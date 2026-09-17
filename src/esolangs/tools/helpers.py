@@ -1,12 +1,7 @@
 """Shared helpers for the boolean-function program generators.
 
-The generators in this package build programs that read ``n`` boolean
-inputs and print the result of a truth table; the helpers here are the
-common input handling they all repeat.
-
-A truth table's length determines its input count: a valid table has
-``2**n`` entries, so ``n`` is recovered from the table alone and the
-generators take no ``n`` parameter.
+A valid table has ``2**n`` entries, so ``n`` is recovered from the length
+and the generators take no ``n`` parameter.
 """
 
 from collections.abc import Callable, Iterable, Sequence
@@ -37,18 +32,9 @@ def constant_span_test(truth_table: str) -> Callable[[int, int], bool]:
 def _validate_truth_table(truth_table: str) -> int:
     """Validate a truth table and return its input count ``n``.
 
-    A valid table has ``2**n`` binary entries, so ``n`` is recovered from
-    the length (a power of two).
-
-    A **one-entry** table is rejected.  It is a well-formed power of two
-    (``2**0``), so it used to pass: forty-four generators built a program
-    for it, twenty-four crashed with an ``IndexError`` reaching for an
-    input that was not there, and sixteen more raised ``negative shift
-    count`` -- a ``ValueError``, but not one that says what is wrong.  Only
-    COD and 123 refused it deliberately.  A nullary table is a *constant*,
-    not a boolean function of any input, and the generators exist to build
-    programs that read their inputs and branch, so it is refused here once
-    rather than crashed on sixty times.
+    A one-entry table (``2**0``) is refused: it is a constant, not a
+    function of any input, and 44 generators used to build one, 24 then
+    crashing with ``IndexError`` and 16 with ``negative shift count``.
     """
     n = _validate_shape(truth_table)
     if n == 0:
@@ -62,20 +48,12 @@ def _validate_truth_table(truth_table: str) -> int:
 def _validate_shape(truth_table: str) -> int:
     """Validate a table's *shape* only, allowing a nullary one.
 
-    The arity rule above is the generators' public contract, but a
-    generator that reduces a table to its essential inputs can legitimately
-    reach a one-entry table on the way down: a constant table projects to
-    exactly that, and the reduced table is then solved as a constant rather
-    than refused.  Minifuck's ``_solve`` is the one caller -- its public
-    entry still validates in full, so the relaxation never reaches an API.
+    Minifuck's ``_solve`` reduces to essential inputs and can reach a
+    one-entry table on the way down; its public entry still validates in full.
     """
-    # The alphabet is checked first because it is the more specific
-    # complaint: ``01a`` is three characters, so a length-first order
-    # answered it with "must have a power-of-two number of entries, got 3"
-    # and never mentioned the ``a`` that was actually wrong.
-    #
-    # Spelled as a set difference rather than ``all(c in "01" ...)``: this
-    # is a per-character check on every candidate build.
+    # Alphabet first: length-first answered ``01a`` with "got 3 entries"
+    # and never named the ``a``.  A set difference, since this runs per
+    # character on every candidate build.
     if set(truth_table) - {"0", "1"}:
         # The *argument*, plus which character is wrong and where.  This
         # printed ``sorted(set(...))``, so someone who typed ``nonsense``
@@ -114,24 +92,13 @@ def _complement(truth_table: str) -> str:
 def _maybe_complement(truth_table: str) -> tuple[str, bool]:
     """Return the table (or its complement) and whether it was flipped.
 
-    A sum-of-minterms program costs one term per row it selects, so a table
-    with more ones than zeros is cheaper evaluated complemented and
-    inverted: every term saved is paid for once, by whatever the language
-    spells ``1 - x`` as.
-
-    Every generator in that family uses this, and each reads the *returned*
-    table -- selecting its ``1`` rows, which are the original's ``0`` rows
-    when it flipped.  What differs is only how the flag is spent, and it is
-    often free: Collatz Multiverse's OR already ends on the complement it
-    would have added, and Point Break's loop guard is ``1 - f`` for reasons
-    of its own, so both simply drop a step instead of gaining one.
-
-    **A constant table may need excluding, and that is the caller's.**  An
-    all-ones table complements to no minterms at all, which is the shape an
-    all-*zeros* table has -- fine where the sum feeds an inversion that
-    turns 0 back into 1, and wrong where the empty case is special-cased
-    into a different construction, as Circuit Diagram's single self-fed
-    gate is.
+    A sum of minterms costs one term per selected row, so more ones than
+    zeros is cheaper complemented and inverted once.  Every caller reads
+    the *returned* table; how the flag is spent is per-language, often free
+    (Collatz Multiverse's OR, Point Break's ``1 - f`` guard).  A constant
+    table is the caller's to exclude: all-ones complements to no minterms,
+    the all-zeros shape, which is wrong where the empty case is special
+    (Circuit Diagram's self-fed gate).
     """
     if truth_table.count("1") > len(truth_table) // 2:
         return _complement(truth_table), True
@@ -141,22 +108,11 @@ def _maybe_complement(truth_table: str) -> tuple[str, bool]:
 def minterm_literals(row: int, n: int) -> list[tuple[int, bool]]:
     """Return the literals whose product is 1 exactly on ``row``.
 
-    One ``(input, negated)`` pair per input, in input order: ``negated`` is
-    True where ``row`` has that input clear, so the minterm wants ``1 - b``
-    rather than ``b``.  The table is indexed most significant first, which
-    is what makes input ``i`` bit ``n - 1 - i`` of the row index.
-
-    Every sum-of-minterms generator needs exactly this, and each used to
-    spell it out: ``(k >> (n - 1 - i)) & 1``, once per generator, with the
-    MSB-first convention re-derived each time.  What they do *with* a
-    literal is genuinely per-language -- qoibl names a variable, rotfuck
-    picks a guard cell, Circuit Diagram indexes a bus pair -- so this
-    returns the selection as data and leaves the emitting alone.
-
-    Only the *literals* are shared.  Which rows to enumerate is the
-    caller's: :func:`grapheme` evaluates whichever of the one-rows and
-    zero-rows is the shorter list, so this takes one row at a time rather
-    than walking the table itself.
+    One ``(input, negated)`` pair per input in input order; MSB-first
+    indexing makes input ``i`` bit ``n - 1 - i``.  Every sum-of-minterms
+    generator re-derived ``(k >> (n - 1 - i)) & 1``; what it does with a
+    literal stays per-language.  Which rows to enumerate is the caller's
+    (:func:`grapheme` takes the shorter of the one- and zero-rows).
     """
     return [(i, not (row >> (n - 1 - i)) & 1) for i in range(n)]
 
@@ -203,12 +159,9 @@ def mark(i: int) -> str:
 def render(template: str, char: str | None, setters: Setters) -> str:
     """Return the template as a wrapper is handed it.
 
-    A generator emits its inputs as runs of :data:`TEMPLATE_CHAR`, each as
-    long as input ``i``'s setters, so the template is the exact shape of
-    every program it fills to, and consecutive inputs need no separator
-    between their runs -- the widths say where one ends.  With ``char`` of
-    None each run is re-spelled as its own :func:`mark`, the form a wrapper
-    keeps whole; otherwise the template is returned as it came.
+    Runs of :data:`TEMPLATE_CHAR` are each as long as their input's setters,
+    so no separator is needed.  With ``char`` None each run is re-spelled
+    as its own :func:`mark`, the form a wrapper keeps whole.
     """
     if char is not None:
         return template
@@ -227,13 +180,9 @@ def unmark(text: str, char: str, inputs: int) -> str:
 def runs(text: str, char: str, setters: Setters) -> list[tuple[int, int]]:
     """Return the ``[start, end)`` of each input's run in ``text``.
 
-    Runs of ``char`` are consumed left to right in consecutive setter
-    widths, and every occurrence of ``char`` must belong to one: a run of
-    the wrong length, a run left over, or a ``char`` in the program text
-    proper all refuse, since each means the template is not the shape its
-    setters describe.  A setter of width zero (%^2^-1 spells an input the
-    table ignores as nothing on both branches) has an empty run, placed
-    where the previous run ended.
+    Runs are consumed left to right in setter widths, and every ``char``
+    must belong to one; a width-zero setter (%^2^-1's ignored input) has
+    an empty run where the previous ended.
     """
     widths = [len(zero) for zero, _one in setters]
     spans: list[tuple[int, int]] = []
@@ -283,18 +232,10 @@ def fill_runs(text: str, char: str, setters: Setters, bits: Sequence[int]) -> st
 def permute_truth_table(truth_table: str, perm: tuple[int, ...]) -> str:
     """Rewrite ``truth_table`` so level ``k`` splits on original input ``perm[k]``.
 
-    A decision tree splits on its inputs in a fixed order, but *which* order
-    is free: the function is the same however its arguments are named.  This
-    returns the table of the same function with the inputs renamed, so a
-    walker that always splits most-significant-first ends up testing
-    ``perm[0]`` at the root, ``perm[1]`` below it, and so on.
-
-    The point is :func:`decision_tree_tokens`'s ``collapse`` (and the
-    equivalent fold in the private recursions): a subtree folds to a leaf
-    only when the rows it covers agree, and which rows a subtree covers is
-    exactly what the split order decides.  ``11110000`` folds after one
-    split; the same function written as ``10101010`` folds only at the
-    bottom.  Reordering lets the second be emitted as the first.
+    The same function with its inputs renamed.  A subtree folds only when
+    its rows agree, and the split order decides which rows a subtree
+    covers: ``11110000`` folds after one split, ``10101010`` only at the
+    bottom, and reordering lets the second be emitted as the first.
     """
     _validate_truth_table(truth_table)
     return read_at(truth_table, perm, len(perm))
@@ -303,18 +244,10 @@ def permute_truth_table(truth_table: str, perm: tuple[int, ...]) -> str:
 def essential_inputs(truth_table: str, n: int) -> list[int]:
     """Which input positions the table's value actually depends on.
 
-    Input ``i`` matters when some row's value changes if only that bit is
-    flipped; a table where none does is constant in ``i``, and an
-    ``n``-input table that ignores some inputs is a smaller table wearing
-    extra ones -- which is what :func:`read_at` projects it back down to.
-
-    Three generators derived this independently before it moved here
-    (``minifuck``, ``one_two_three`` and ``taglate``, the last under the
-    name ``_taglate_dependencies`` and phrased over the rows where the bit
-    is unset rather than over an XOR); ``home_row`` was the fourth caller
-    and the point at which the spelling was worth sharing.  The two
-    phrasings were checked equal over every table to ``n == 4`` before the
-    duplicates were removed.
+    Input ``i`` matters when flipping it changes some row; a table
+    ignoring some inputs is a smaller table wearing extra ones, which
+    :func:`read_at` projects down.  Three generators derived this
+    independently before it moved here (checked equal to ``n == 4``).
     """
     return [
         i
@@ -329,26 +262,11 @@ def essential_inputs(truth_table: str, n: int) -> list[int]:
 def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> str:
     """Return the ``len(inputs)``-input table read at the given input positions.
 
-    Slot ``k`` of the result varies with original input ``inputs[k]``, and
-    every original input not named is held at 0.  Both callers want that one
-    scatter of a small row index into a wide one, and they differ only in
-    whether the naming is a permutation:
-
-    * :func:`permute_truth_table` passes all ``n`` inputs in some order, so
-      nothing is held and the result is the same function with its arguments
-      renamed.
-    * :func:`~esolangs.tools.minifuck._project` passes the
-      *essential* inputs of a table that ignores the rest.  Holding an
-      ignored input at 0 is exactly right there, since by construction it
-      cannot change the answer -- which is what makes an ``n``-input table
-      that ignores some inputs a smaller table wearing extra ones.
-
-    ``n`` is passed rather than derived because the projecting caller's
-    result is narrower than its input: ``len(inputs)`` is the *output* width
-    and ``n`` the table's own, and the two coincide only for a permutation.
-    Validation stays with the callers for the same reason -- minifuck
-    projects tables it has already validated, and revalidating a narrowed
-    table here would check the wrong width.
+    Slot ``k`` varies with original input ``inputs[k]``; every input not
+    named is held at 0.  :func:`permute_truth_table` passes all ``n`` (a
+    renaming); :func:`~esolangs.tools.minifuck._project` passes the
+    essential inputs (holding an ignored one at 0 cannot change the answer).
+    ``n`` is passed because the projected result is narrower than its input.
     """
     # The row indices are built by doubling rather than by re-scattering
     # each row's bits: slot ``k`` is the next-most-significant bit, so
@@ -365,16 +283,10 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
 def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
     """Return the *stream* inputs a decision tree over ``perm`` has to keep.
 
-    A level whose two halves agree everywhere cannot change the answer, so
-    the tree never tests it and the read that fetched it can be discarded.
-    What survives is everything else.
-
-    The subtlety is the two frames.  ``truth_table`` is already permuted, so
-    the fold is computed in *level* space -- level ``k`` splits on bit
-    ``n - 1 - k`` of the permuted table -- while the reads run in *stream*
-    order, over the inputs as the program consumes them.  Level ``k`` reads
-    input ``perm[k]``, so the answer is translated back through ``perm``
-    before it is returned; mixing the frames stores the wrong bits.
+    A level whose halves agree is never tested, so its read is discarded.
+    The fold is computed in *level* space over the permuted table, the
+    reads run in *stream* order, so the answer is translated back through
+    ``perm``; mixing the frames stores the wrong bits.
     """
     n = _validate_truth_table(truth_table)
     branching = {
@@ -397,33 +309,15 @@ def minterm_sum[Factor](
 ) -> tuple[list[int], int, bool]:
     """Fold each 1-row's literal product into a running sum.
 
-    Returns ``(used, width, inverted)``: the essential inputs, their count,
-    and whether the table was complemented -- everything the caller needs to
-    finish, since the seed and the final flip are per-language.
-
-    The walk is the part every sum-of-minterms generator repeats: reduce to
-    the essential inputs, complement when that makes fewer rows, skip the
-    ``0`` rows, and for each survivor turn its literals into factors, fold
-    them into a product, and add that to the sum.  ``literal(input,
-    negated)`` names one factor *by original input index*, so a caller never
-    sees the reduced frame's slots.
-
-    Contrast :func:`minterm_literals`, which shares only one row's
-    selection; this shares the enumeration around it.
-
-    ``literal`` may emit as a side effect -- Collatz Multiverse allocates a
-    register and writes a line for each non-negated input -- because the
-    callbacks are invoked in exactly the order the hand-written loops used:
-    every literal of a row, then its product, then the accumulate.  A
-    callback that numbers something would drift otherwise.
-
-    **What this deliberately cannot do.**  ROTfuck enumerates *all* rows
-    rather than the 1-rows, in three separate passes over the table
-    (complements, then mismatch counts, then accumulation), so its rows are
-    not visited once each; Grapheme builds both sides and keeps the shorter,
-    which is a choice above this loop rather than inside it; and Circuit
-    Diagram routes a bus pair per literal onto a plane instead of naming a
-    factor.  All three keep their own arithmetic.
+    Returns ``(used, width, inverted)``; the seed and final flip are
+    per-language.  Reduces to essential inputs, complements when cheaper,
+    skips 0-rows, and per survivor folds ``literal(input, negated)``
+    factors (named by original index) into a product then the sum.
+    Callbacks run in the hand-written loops' order -- every literal, the
+    product, the accumulate -- so a ``literal`` that allocates (Collatz
+    Multiverse) does not drift.  Not for ROTfuck (three passes over all
+    rows), Grapheme (builds both sides) or Circuit Diagram (routes a bus
+    pair per literal).
     """
     n = _validate_truth_table(truth_table)
     used = essential_inputs(truth_table, n) or [0]
@@ -450,48 +344,20 @@ def best_input_order(
 ) -> str:
     """Return the shorter program from the identity and greedy input orders.
 
-    ``build(permuted_table, perm)`` emits the program that splits on
-    ``perm[k]`` at level ``k``, reading the *permuted* table -- so every row
-    index inside the build is in the permuted frame and self-consistent, and
-    ``perm`` surfaces only where a node names the input it tests.
-
-    Through :data:`_GREEDY_ORDER_MAX_ARITY`, the greedy order is chosen level
-    by level, scoring each remaining input by the constant subtrees it creates.
-    This costs ``O(n**2 * 2**n)`` row work, so it is a bounded small-table
-    optimization rather than part of the scaling path.  Wider tables use the
-    identity directly.  Both orders are built inside the bounded domain,
-    because per-language address and routing costs can outweigh its folds.
-
-    The identity order is tried first and ties keep it, so a table no
-    reorder improves emits exactly what it emitted before: reordering can
-    only shrink a program, never grow or churn one.
-
-    **The read order does not move.**  Only the order the tree *tests* the
-    inputs in changes; the reads (or the load block, or the input
-    runs) stay in input order, so the program consumes its input
-    stream exactly as it did.
-
-    That is what rules Polynomial out: its node reads its own bit and it has
-    *no addressable storage* -- one register, no tape, no variables -- so a
-    bit can only be branched on before the next read overwrites it.  Whether
-    a generator can be reordered is a property of the language rather than of
-    what its generator emits today, so read the interpreter's op set before
-    concluding a tree is stuck with its load order.  6-5 and Jaune were once
-    excluded by that phrase wrongly (both have a tape and a pointer), and so
-    was Bitdeque, whose ``INJECT``/``EJECT`` work the head where
-    ``PUSH``/``POP`` work the tail, making it a deque.  6-5 is the case where
-    hoisting has a *price* -- a pointer move per node and a normalization per
-    stored input -- so it keeps its node-read build as one more candidate and
-    measures.
-
-    **Modulous is where that check comes back negative.**  Its stack reaches
-    only the top two cells, so the escape would be to park the bits in its
-    ``VAR1``-``VAR4`` variables; but ``[PSH VAR1]`` *stores* into a variable
-    and the only op reading one is ``[PRT VAR1 INT]``, which prints it.
-    Every conditional inspects the stack top alone, and ``ADD``/``SUB`` and
-    ``JMP ... IF`` all reject a variable operand, so a variable can be
-    computed on and never read back -- the round trip has no return leg.
-    Verified against both this repo's interpreter and the wiki.
+    ``build(permuted_table, perm)`` splits on ``perm[k]`` at level ``k``
+    over the *permuted* table.  Through :data:`_GREEDY_ORDER_MAX_ARITY` the
+    greedy order is scored level by level (``O(n**2 * 2**n)``), both built
+    since routing costs can outweigh folds; wider tables use the identity.
+    Identity first, ties keep it, so reordering only ever shrinks.
+    Only the *test* order moves; the reads stay in input order.  That rules
+    out Polynomial (one register, no storage: a bit is branched on before
+    the next read).  6-5, Jaune and Bitdeque were wrongly excluded once
+    (all have storage; Bitdeque's ``INJECT``/``EJECT`` make it a deque);
+    6-5 keeps its node-read build as a candidate since hoisting has a
+    price.  Modulous is a true negative: ``[PSH VAR1]`` stores, only
+    ``[PRT VAR1 INT]`` reads a variable, and every conditional and
+    ``ADD``/``SUB``/``JMP IF`` rejects a variable operand -- no return leg
+    (verified against the interpreter and the wiki).
     """
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))
@@ -516,14 +382,9 @@ def best_input_order(
 def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     """Pick an input order one level at a time.
 
-    At each level every input still unchosen is scored by the number of
-    constant subtrees splitting on it would produce among the blocks still
-    live, and the best-scoring one is taken.  That is a direct proxy for
-    what order selection seeks -- a constant subtree is the leaf a fold
-    emits -- without pretending to model language-specific routing costs.
-
-    Ties keep the lowest input index, so a table no order helps yields the
-    identity and the caller emits exactly what it emitted before.
+    Score each unchosen input by the constant subtrees it creates among
+    the live blocks; ties keep the lowest index so an unhelped table
+    yields the identity.
     """
     order: list[int] = []
     remaining = list(range(n))
@@ -587,60 +448,24 @@ def decision_tree_tokens[Token](
 ) -> list[Token]:
     """Walk a truth table's decision tree, combining caller-emitted parts.
 
-    ``leaf(level, row)`` returns the tokens for a leaf reached at ``level``
-    standing for table entry ``row``; ``node(level, zero, one, at)``
-    combines two finished subtrees, given the level it sits at and the index
-    it begins at.  The walk is *post-order*: both children are complete
-    before their parent runs.
+    ``leaf(level, row)`` returns a leaf's tokens; ``node(level, zero, one,
+    at)`` combines two finished subtrees, post-order.  ``collapse`` returns
+    a leaf as soon as a subtree's rows agree.  ``at`` is the absolute index
+    the subtree begins at, from ``start`` and ``parent_width`` (a constant
+    or a function of level, as RAM0's address run), which is what lets
+    Bitdeque, RAM0 and S*bleq name a jump target up front instead of
+    backpatching.
 
-    That is the whole contract, and it is what makes the shared skeleton
-    worth having -- the recursion, the row split, and the running index are
-    the same in every generator, while what a node and a leaf *say* is not.
-
-    ``collapse`` returns a leaf as soon as a subtree's rows agree, so a
-    constant slice emits no branching.
-
-    **The index.**  A language with jumps needs to know where a subtree
-    *lands*, not just what it says.  ``start`` is the index the whole tree
-    begins at and ``parent_width`` how many tokens a node spends before its
-    children -- a constant, or a function of the level when a node's own
-    width grows with depth, as RAM0's address run does.  So ``at`` is the
-    absolute index of the subtree ``node`` is building, which is what lets
-    Bitdeque, RAM0 and S*bleq name the index their one-subtree starts at.
-    All three used to reserve a slot, recurse, and backpatch it; the index
-    arrives up front instead.
-
-    **What this deliberately cannot do**, with the generator each rules out:
-
-    * A node acts only *after* both children, never between them.  6-5,
-      Jaune and Interprogck8 allocate a branch label between the two
-      recursive calls, and Polynomial appends to a shared buffer while
-      threading the running cell value.
-    * Nothing is threaded *down* the walk, so CV(N)(C)'s accumulator,
-      Jaune's held bit and entry cell, and Circlefuck's pointer position --
-      each a function of the branch taken above -- have nowhere to live.
-    * The zero subtree is laid down first.  Between, CV(N)(C), Unsquare and
-      Interprogck8 emit their *one* subtree first, so the indices threaded
-      here would reach their children swapped on any table whose subtrees
-      differ in size.
-    * Rows split most-significant-first, keeping each subtree contiguous.
-      Modulous and Unsquare walk their bits the other way.
-    * The tree is a token *sequence*, laid out by nesting.  Eval and Forth
-      store theirs in a positional heap -- children pinned at
-      ``2i+1``/``2i+2`` -- so a folded subtree has to be blanked in place
-      rather than deleted, and concatenating variable-length subtrees is
-      exactly what breaks that.
-    * Both children are always built.  AddSubJump and Jaune drop an input no
-      node tests and descend into one half alone, and a ``node`` discarding
-      the other half still pays for the tokens the walk built: measured on
-      AddSubJump, 24 of 256 tables came out longer at ``n == 3``.
-    * Lamfunc returns one plain string with no index to thread.
-    * The grid generators' tree is a placement on a plane rather than a
-      token sequence.
-
-    Contrast :func:`decision_tree_program`, which shares an entire finished
-    construction between two dialects of one language family; this shares
-    only the skeleton and takes the emitting as callbacks.
+    Deliberately cannot: act between the children (6-5, Jaune, Interprogck8
+    allocate a label there; Polynomial threads a cell value); thread
+    anything *down* (CV(N)(C)'s accumulator, Jaune's held bit, Circlefuck's
+    pointer); lay the one subtree first (Between, CV(N)(C), Unsquare,
+    Interprogck8); split other than MSB-first (Modulous, Unsquare); build a
+    positional heap (Eval, Forth pin children at ``2i+1``/``2i+2``); skip a
+    child (AddSubJump, Jaune descend into one half -- 24 of 256 tables came
+    out longer at ``n == 3``); Lamfunc's plain string; the grid generators'
+    plane.  Contrast :func:`decision_tree_program`, which shares a whole
+    construction between two dialects.
     """
     n = _validate_truth_table(truth_table)
     constant = constant_span_test(truth_table)
@@ -661,48 +486,18 @@ def decision_tree_tokens[Token](
 def decision_tree_program(truth_table: str, right: str, left: str) -> str:
     """Build a brainfuck-family decision-tree program for ``truth_table``.
 
-    Shared by the Brainfuck and Dimensional tree generators, which differ
-    only in how a move is spelled: ``right``/``left`` are the tokens that
-    step the pointer one cell up/down (``>``/``<`` for Brainfuck, ``>0``/
-    ``<0`` for Dimensional, whose bare moves would read the cell value as
-    the dimension).  Everything else -- the cell layout and the tree itself
-    -- is identical.
-
-    Each input is read and normalized to 0/1 into cell ``2i``, and cell
-    ``2i + 1`` is that node's flag.  A node sets the flag, tests ``[b]`` for
-    the one-side and clears the flag inside it, then tests ``[flag]`` for the
-    zero-side: the flag carries "the one-side did not run" across, so exactly
-    one side fires.  Each loop clears what it tested before its ``]``, so it
-    exits after one pass and leaves both cells zero for the nodes below; the
-    result cell is never a guard, so nothing on the way out has to see it.
-    The tree is O(2**n) characters, sharing the bit tests.
-
-    The flag is computed where it is used, not ahead of time.  This used to
-    be a precomputed complement ``1 - b`` per input, built above the tree
-    through two temp cells -- correct, but O(n**2) characters, since each
-    input's construction walked out to the temps and back.  That cost fell
-    on every table, and dominated the sparse ones, whose trees are almost
-    entirely folded away: n == 10 sparse went from 2,646 characters to 754.
-
-    A leaf only *records* its bit -- a ``'1'`` leaf is one ``+`` on the result
-    cell and a ``'0'`` leaf emits nothing at all -- and the single ``.`` sits
-    below the tree, where the ASCII offset is paid once.  Printing at the leaf
-    instead cost ``_ASCII_ZERO`` characters per leaf, which on a dense table
-    was most of the program.  Together the two take n == 10 xor from 77,939
-    characters to 18,495.
-
-    A subtree whose rows all agree collapses to a leaf rather than branching
-    on bits that cannot change the answer: the side jumps straight to the
-    result cell, or is dropped entirely when its value is ``'0'``.  This is
-    what the deepest level always did -- a one-row span is trivially
-    constant -- lifted to any level, so a table like ``11110000`` spends one
-    leaf per half instead of a full tree.  The inputs are still all read (the
-    reads are unconditional, above the tree), so a folded program consumes
-    its input the same way an unfolded one does.  Factor is the generator
-    that most wants this: it encodes this program as an integer and refuses
-    tables whose encoding exceeds Python's digit limit, so folding -- and now
-    the print-once leaf -- turns some previously unrenderable tables into
-    runnable ones.
+    Shared by Brainfuck and Dimensional, differing only in the move tokens
+    (``>``/``<`` vs ``>0``/``<0``).  Each input is normalized into cell
+    ``2i`` with its flag at ``2i + 1``: a node sets the flag, tests ``[b]``
+    and clears the flag inside, then tests ``[flag]`` for the zero side,
+    so exactly one side fires and both cells are left zero.  O(2**n).
+    The flag replaced a precomputed ``1 - b`` per input (O(n**2): n == 10
+    sparse went 2,646 -> 754 chars).  A leaf only records its bit (``+`` or
+    nothing) and one ``.`` sits below the tree; with the fold, n == 10 xor
+    went 77,939 -> 18,495.  A constant subtree collapses to a leaf; the
+    reads are unconditional above the tree, so a folded program consumes
+    its input the same way.  Factor most wants this: it refuses tables
+    whose integer encoding exceeds Python's digit limit.
     """
     return best_input_order(
         truth_table,
@@ -718,11 +513,8 @@ def _decision_tree_program(
 ) -> str:
     """Emit one input order's program; see :func:`decision_tree_program`.
 
-    ``truth_table`` is already permuted, so every row index here is in the
-    permuted frame.  ``perm`` is spent in exactly one place -- the cell a
-    node tests, ``2 * perm[i]``, with that node's flag at ``2 * perm[i] + 1``.
-    The reads above the tree run over the inputs in their own order and are
-    untouched by it.
+    ``truth_table`` is already permuted; ``perm`` is spent only in the cell
+    a node tests, ``2 * perm[i]``.  The reads above the tree are untouched.
     """
     n = _validate_truth_table(truth_table)
 
@@ -750,9 +542,7 @@ def _decision_tree_program(
     def constant(i: int, combo: int) -> str | None:
         """Return the shared value of the subtree at ``(i, combo)``, else None.
 
-        ``combo`` has the bits above level ``i`` set, so the subtree covers
-        the ``2**(n - i)`` rows that agree with it there -- a contiguous run,
-        since rows split most-significant-first.
+        The subtree's ``2**(n - i)`` rows are contiguous (MSB-first split).
         """
         span = 2 ** (n - i)
         rows = truth_table[combo : combo + span]
@@ -761,11 +551,8 @@ def _decision_tree_program(
     def branch(i: int, combo: int) -> None:
         """Emit one side of node ``i``: a leaf when constant, else a subtree.
 
-        A ``'1'`` leaf is a single ``+`` on the result cell; a ``'0'`` leaf
-        emits nothing at all, because the result cell is already zero and the
-        arm's own guard clear is enough to exit.  Either way the arm is
-        pointer-neutral, so the guard-cell dance around it is unchanged and
-        only the depth the leaf is reached at differs.
+        A ``'1'`` leaf is one ``+``; a ``'0'`` leaf is nothing, since the
+        result cell is already zero.  Either way pointer-neutral.
         """
         value = constant(i + 1, combo)
         if value is None:
@@ -781,10 +568,8 @@ def _decision_tree_program(
     def node(i: int, combo: int) -> None:
         """Emit node ``i``: test ``b_i``, run one side, and leave both cells zero.
 
-        The flag cell carries "the one-side did not run" into the zero-side,
-        which is what the precomputed complement used to do.  Entered at
-        ``bit`` with the flag cell zero, left at the flag cell with both
-        zero again, so nodes nest.
+        Entered at ``bit`` with the flag zero, left at the flag with both
+        zero, so nodes nest.
         """
         bit = 2 * perm[i]
         flag = bit + 1
@@ -830,14 +615,10 @@ _PLAN: dict[int, tuple[frozenset[int], dict[int, tuple[int, int, int]]]] = {
 def _extend_plans(maxval: int) -> None:
     """Fill ``_PLAN`` up to ``maxval`` with minimal two-line build plans.
 
-    A Collatz Multiverse line ``v = a x + b`` applies the Collatz rule to
-    ``v``'s current value: an odd (or zero) value becomes ``value * a + b``
-    and an even value halves.  A fresh register (value 0) therefore copies
-    any built constant ``b`` with ``v = negativeOne x + b``, and when the
-    copied value is *odd* a second line ``v = a x + c`` turns it into
-    ``b * a + c``.  Each constant costs two lines once its operands exist, so
-    a value ``n`` is reachable as ``b * a + c`` with an odd ``b``.  This
-    reaches large values in O(log) constants instead of the +1/+2 chain.
+    ``v = a x + b`` applies the Collatz rule to ``v``: odd or zero becomes
+    ``v * a + b``, even halves.  A fresh register copies ``b`` with
+    ``v = negativeOne x + b``; if ``b`` is odd a second line makes
+    ``b * a + c``.  O(log) constants instead of a +1/+2 chain.
     """
     for m in range(3, maxval + 1):
         if m in _PLAN:
@@ -863,12 +644,8 @@ def _extend_plans(maxval: int) -> None:
 def _cm_constants(needed: Iterable[int]) -> list[str]:
     """Lines building Collatz Multiverse constants for the values in ``needed``.
 
-    ``k1``/``k2`` are bootstrapped from ``negativeOne``, then each further
-    constant is built by the two-line multiply-add trick from
-    :func:`_extend_plans` (``k{n} = negativeOne x + k{b}`` copies the odd
-    ``b``, ``k{n} = k{a} x + k{c}`` multiplies it by ``a`` and adds ``c``).
-    Only the constants the program actually references are built, rather than
-    a full ``1..maxval`` chain.
+    ``k1``/``k2`` bootstrap from ``negativeOne``; the rest use
+    :func:`_extend_plans`'s two-line trick.  Only referenced constants are built.
     """
     need = sorted(n for n in set(needed) if n > 2)
     lines = [

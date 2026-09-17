@@ -29,24 +29,12 @@ from esolangs.tools.minifuck_sim import _clamp, _Joint, _walk_to
 def _column_sweep(j: _Joint, cell7: int) -> dict[int, tuple[int, ...]]:
     """Return every accumulator's printed column, from **one** walk.
 
-    :func:`_printed_column` answers one accumulator, and answering all of them
-    that way re-walks the same ground once per accumulator: the walk to
-    ``acc - 1`` is a prefix of the walk to ``acc``.  This runs the walk once
-    and reads a column off as the pointer passes each accumulator in turn.
-
-    What makes that sound is that the pool code does not depend on the
-    accumulator.  :func:`_find_pool` is asked for a ``walk_out``, so it *could*
-    answer differently per accumulator and the fused walk would be wrong --
-    but measured over every ``(separator, settle, suffix, orientation)`` at
-    two, three and four inputs it never does: one code serves the whole
-    accumulator range or none does.  So the code is chosen once, from the
-    shortest walk, and the walk is then extended.
-
-    Checked against :func:`_printed_column` rather than argued: 30160 columns
-    over the *entire* enumeration at two and three inputs, and 18720 more at
-    four across both suffix families, with no disagreement.  Accumulators the
-    walk cannot reach are absent from the mapping, which is the ``None`` that
-    function returns.
+    The walk to ``acc - 1`` is a prefix of the walk to ``acc``, so one walk
+    serves the range.  Sound because the pool code does not depend on the
+    accumulator (measured over every staging at n=2,3,4: one code serves the
+    whole range or none does).  Checked against :func:`_printed_column`:
+    30160 columns at n=2,3 and 18720 at n=4, no disagreement.  Unreachable
+    accumulators are absent (that function's ``None``).
     """
     code = _find_pool(j, cell7, 8)
     if code is None:
@@ -173,10 +161,8 @@ _SLICE_YIELD_ORDER = (
 def _slices(n: int) -> tuple[tuple[int, int], ...]:
     """Return the ``(separator, settle)`` slices, in the order to spend them.
 
-    Plain enumeration order when there is no budget, so the shipped
-    behaviour is exactly what it was.  Under a budget at the arity the
-    ranking was measured at, yield order instead -- what is given up should
-    be the slices that place the fewest tables.
+    Enumeration order without a budget; yield order under one at the arity
+    the ranking was measured at.
     """
     plain = tuple(
         (sep_index, settle) for sep_index in range(len(_SEPS)) for settle in (0, 1)
@@ -194,23 +180,12 @@ _INSERT_ARITIES = (4, 5)
 def _insert_suffixes() -> Iterator[str]:
     """Enumerate bracket runs with one ``<`` inside, shortest first.
 
-    The pure runs the enumeration spells as ``'[' * k`` are one string per
-    length; putting a single ``<`` at each interior position gives ``k + 1``
-    per length instead, which is where the four-input coverage comes from.
-
-    This is not a free search over the alphabet -- that is what cost 29
-    minutes to find the three-input suffix this family generalises, back when
-    it was stored rather than derived.  It is the smallest generalisation of
-    the pure run that that suffix proves necessary: it interleaves ``<`` into
-    its bracket run, so a family no wider than "the same run with a ``<`` in
-    it" was already known to reach columns no ``'[' * k`` reaches.  A second
-    ``<`` reaches further still; that family was removed once the sculpted
-    route covered the one pair it served.  What was not known, and what the
-    measurement settled, is how *many*: at four inputs the pure runs reach
-    1650 fully-essential columns and this family reaches 15404.
-
-    The order is by length and then by the ``<``'s position from the left, so
-    it is as deterministic as the bracket count it generalises.
+    ``k + 1`` strings per length instead of one, the smallest generalisation
+    of the pure run that the stored three-input suffix (found by a 29-minute
+    alphabet search) proved necessary.  A second ``<`` was removed once the
+    sculpted route covered its one pair.  At n=4 pure runs reach 1650
+    fully-essential columns; this family 15404.  Ordered by length then the
+    ``<``'s position.
     """
     for k in range(_MAX_BRACKETS + 1):
         for cut in range(k + 1):
@@ -225,31 +200,12 @@ _INSERT_SUFFIXES = tuple(_insert_suffixes())
 def _stagings(n: int) -> Iterator[_Staging]:
     """Enumerate ``(separator, settle, suffix, accumulator)`` in order.
 
-    The order is what makes the derivation deterministic, and it is chosen so
-    the cheap stagings come first: separator, then settle, then the bracket
-    run, then the accumulator.  A table is built by the *first* of these that
-    prints it, so this order -- not a stored table -- is what fixes which
-    program each truth table gets.
-
-    At an arity in :data:`_INSERT_ARITIES` the pure runs are followed by
-    :func:`_insert_suffixes`, in a second pass over the same separators and
-    settles.  It is a second pass rather than an inner loop deliberately:
-    every pure run is tried before any insert, so an arity the pure runs
-    already close is assigned exactly the stagings it was assigned before the
-    family existed.  Two and three inputs are unchanged, table for table.
-
-    Neither :func:`_derived_plans` nor :func:`_staging_index` calls this:
-    the oracle interleaves the same loops with the machines it is advancing,
-    so that a bracket count costs one instruction rather than a rebuild, and
-    the index walks them over derived columns with no machines at all.  This
-    states the order both implement.
-
-    There are therefore *three* spellings of one order -- this one, the
-    per-table enumeration, and the inverted index production reads -- and the
-    test suite checks they agree.  That is not redundancy for its own sake:
-    an index that walks the order wrongly still produces columns that are
-    reachable and valid, so only a comparison against another spelling of the
-    order catches it.
+    Cheap stagings first, and the *first* that prints a table is its
+    program, so this order is the specification.  Insert suffixes
+    (:data:`_INSERT_ARITIES`) come in a second pass after every pure run, so
+    n=2,3 are unchanged table for table.  Neither :func:`_derived_plans` nor
+    :func:`_staging_index` calls this -- three spellings of one order, held
+    equal by the tests, because a wrong walk still yields valid columns.
     """
     for sep_index in range(len(_SEPS)):
         for settle in (0, 1):
@@ -268,10 +224,8 @@ def _stagings(n: int) -> Iterator[_Staging]:
 def _replay(truth_table: str, n: int, plan: _Staging) -> str | None:
     """Build one staging and return its template, or None if it does not print.
 
-    The suffix is a bracket *count* for the pure runs -- a plain run, which
-    the ``<`` terminates so the pointer lands where the endgame expects --
-    and a literal string for the insert families, which carry their own
-    terminator.
+    The suffix is a bracket count (pure run, ``<``-terminated) or a literal
+    insert string carrying its own terminator.
     """
     sep_index, settle, suffix, acc = plan
     j = _embed(n, settle=settle, sep=_SEPS[sep_index])
@@ -287,41 +241,16 @@ def _replay(truth_table: str, n: int, plan: _Staging) -> str | None:
 def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
     """Derive a staging for the wanted tables, in one pass of the enumeration.
 
-    **This is the oracle, not the production path.**  :func:`_derive_staging`
-    reads :func:`_staging_index`, which inverts the same enumeration once per
-    arity; this walks it per table.  It stays because the index's correctness
-    claim is *agreement with an independent implementation of the same
-    order*, and an oracle that no longer exists cannot be compared against.
-    ``tests/tools/test_boolean_parameterized.py`` pins the two together --
-    the interesting failure is an index that walks the order wrongly, which
-    still yields reachable, valid columns and so is invisible to any check
-    that only asks whether the program prints.
-
-    A staging is expensive to *build* and cheap to *test against a table*: the
-    embed, the bracket run and the endgame do not depend on which table is
-    wanted, and only the comparison at the very end does.  So the loops run
-    staging-major -- one embed per ``(separator, settle)``, the bracket run
-    extended one ``[`` at a time rather than rebuilt, and the endgame emitted
-    once per ``(k, accumulator, read, orientation)`` -- and each printed column
-    is looked up among the tables still wanting one.
-
-    ``targets`` narrows *what is being looked for* without changing the
-    enumeration: the same loops, the same order, the same first-hit rule.  A
-    table is assigned the first staging in :func:`_stagings` order that prints
-    it, whatever else was asked for alongside it.
-
-    This used to offer a whole-arity spelling as well, which pre-built
-    ``wanted`` over all ``2 ** (2 ** n)`` tables so that one pass answered the
-    entire arity.  That could not run at five inputs -- ``2**32`` entries --
-    and it is no longer worth its place below five either: what made it faster
-    was deriving each column once, and :func:`_printed_column` now memoises
-    exactly that, so asking per table costs what asking for the arity did.
-    Measured across the whole suite, the two spellings finish within a second
-    of each other (105.1s against 104.2s), so the narrower one is the only one
-    kept.
-
-    Returns a mapping from truth table to staging.  A table that no staging
-    reaches is simply absent, so the caller falls through to :func:`_mux`.
+    The oracle, not the production path (:func:`_derive_staging` reads
+    :func:`_staging_index`); kept because the index's correctness claim is
+    agreement with this independent walk, pinned in
+    ``tests/tools/test_boolean_parameterized.py``.  Staging-major: one embed
+    per ``(separator, settle)``, the run extended one ``[`` at a time, one
+    endgame per ``(k, accumulator, read, orientation)``.  ``targets`` narrows
+    the lookup, not the order.  A whole-arity spelling was dropped: it could
+    not run at n=5 (``2**32``) and, with :func:`_printed_column` memoised,
+    finished within a second of this one (105.1s vs 104.2s).  A table no
+    staging reaches is absent, and the caller falls through to :func:`_mux`.
     """
     if n not in _STAGED_ARITIES:
         return {}
@@ -338,24 +267,11 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
     def claim(staged: _Joint, suffix: int | str, head: tuple[int, int]) -> bool:
         """Record what every accumulator prints, deriving it rather than printing.
 
-        Returns whether every table has been placed, which is what stops the
-        enumeration early.  Both passes below share this: the suffix is
-        already emitted by the time it runs, so a bracket count and an insert
-        string reach it the same way.
-
-        What an accumulator prints is not searched for.  :func:`_column_sweep`
-        derives the whole accumulator range in closed form from the tape one
-        walk leaves behind, so an accumulator that answers no wanted table
-        costs a dict lookup rather than a walk -- and the range costs one walk
-        rather than one each.  The two reads are not enumerated at all: they
-        print complementary columns, so both are read off the one derivation.
-        Only an accumulator that *does* answer a wanted table pays for an
-        endgame, and then only to confirm it -- see :func:`_confirm`.
-
-        The accumulator-major loop order is kept exactly, because it is what
-        assigns each table its staging: a table takes the first accumulator
-        that prints it, so sweeping orientation-major would reassign
-        templates even though it derives the same columns.
+        Returns whether every table has been placed.  :func:`_column_sweep`
+        derives the range in closed form; the two reads print complementary
+        columns; only an accumulator answering a wanted table pays for an
+        endgame, to confirm it (:func:`_confirm`).  Accumulator-major order is
+        what assigns each table its staging.
         """
         nonlocal remaining
         sweeps = {cell7: _column_sweep(staged, cell7) for cell7 in (0, 1)}
@@ -436,12 +352,8 @@ def _clear_derived_plans(
 ) -> None:
     """Clear the plan cache and everything derived alongside it.
 
-    The staging index goes too, and that is the key part now that it
-    is what :func:`_derive_staging` reads: a caller asking for a cold
-    derivation means a cold one.  Tests harvest ``_find_pool`` call sites
-    from a build and assert they saw hundreds, which a warm index cuts to
-    six -- clearing the plan cache alone would leave that trap in place, and
-    did, until the index was added here.
+    Including the staging index: tests count ``_find_pool`` sites in a build
+    (hundreds), which a warm index cuts to six.
     """
     _wrapped()
     _PRINTED_COLUMNS.clear()
@@ -467,25 +379,12 @@ _CHAIN_CAP = _BASE + _MAX_BRACKETS + 4
 class _Chain:
     """One row's bracket-run algebra: the prefix-XORs and the staircase.
 
-    A suffix is a run of ``[`` walking right from ``_BASE - 1``, and per row
-    it is a walk that pays for what it crosses.  Crossing cell ``i`` flips
-    it; when the pre-flip value was 1 the flip lands on 0, so the ``[`` also
-    flips cell ``i + 1`` and skips the next instruction.  The carry into
-    each cell is therefore the pre-flip value of the cell before it, which
-    makes the pre-flip values a prefix-XOR of the standing cells --
-
-        v_i = s_i ^ v_{i-1}        (v at ``_BASE - 1`` is 0)
-
-    -- and the cost of crossing cell ``i`` exactly ``1 + v_i`` instructions.
-    Everything the column derivation needs is then three prefix arrays: ``v``
-    itself, its own prefix-XOR ``w`` (what a read over fully-crossed ground
-    reports), and the staircase ``t`` (instructions to settle each cell),
-    whose inverse names the run's extent for any budget.
-
-    Derived from the interpreter's ``_step`` and then checked against it
-    rather than trusted: over every ``(separator, settle, bracket count,
-    row)`` at two, three and four inputs -- 8120 rows -- the predicted tape,
-    pointer and pending skip match the simulated run cell for cell.
+    Crossing cell ``i`` flips it; if it held 1 the ``[`` also flips ``i + 1``
+    and skips, so the pre-flip values are a prefix-XOR of the standing cells,
+    ``v_i = s_i ^ v_{i-1}``, and crossing costs ``1 + v_i``.  Three prefix
+    arrays follow: ``v``, its prefix-XOR ``w`` (a read over crossed ground),
+    and the staircase ``t`` (instructions to settle each cell).  Checked
+    against the interpreter's ``_step`` over 8120 rows at n=2,3,4.
     """
 
     __slots__ = ("l15", "s", "t", "v", "w")
@@ -506,16 +405,8 @@ class _Chain:
     def extent(self, budget: int) -> tuple[int, bool]:
         """Extent and pending skip of a pure run of ``budget`` brackets.
 
-        The extent is the staircase's inverse -- the last cell whose
-        crossing still fits the budget -- and the skip is pending when the
-        budget ran out between a crossing and the skip it owes.
-
-        ``t`` is nondecreasing by construction (``t[i] = t[i-1] + 1 + v[i]``
-        with ``v`` a bit), so the walk this used to make is a binary search:
-        the loop advanced while ``t[m] < budget``, which lands on the first
-        index at or past ``_BASE - 1`` whose staircase reaches the budget,
-        clamped to the ceiling the loop stopped at.  Same answer, in C --
-        checked against the walk over 279000 ``(chain, budget)`` pairs.
+        ``t`` is nondecreasing, so this is a binary search (the walk it replaced
+        was checked equal over 279000 pairs).
         """
         m = bisect_left(self.t, budget, _BASE - 1, _CHAIN_CAP - 2)
         if m > _CHAIN_CAP - 3:
@@ -535,27 +426,13 @@ _Pools = dict[int, tuple[int, int, dict[int, int]] | None]
 def _suffix_plan(chain: _Chain, cut: int, rest: int) -> _Plan:
     """Reduce one row's response to ``'[' * cut + '<' + '[' * rest``.
 
-    ``rest == 0`` is a pure run: the ``<`` moves the pointer without
-    writing.  Otherwise the run splits into two bracket phases around the
-    ``<``, and which of three shapes the row takes turns on the state phase
-    one leaves at the boundary:
-
-    * **A pending skip** hands the ``<`` its job: the skip a pure run would
-      have spent on the next bracket is spent on the ``<`` instead, so the
-      whole suffix is the pure run of ``cut + 1 + rest`` instructions.
-    * **No pending skip and the re-crossed cell reads 0** (it held 1 before
-      phase one flipped it): the second crossing flips it straight back and
-      carries nothing, so the suffix is the pure run of ``cut + rest - 1``
-      instructions plus a point flip at that cell.
-    * **The re-crossed cell reads 1**: the second crossing carries, and the
-      carry cancels phase one's -- every later cell reads ``v_i ^ 1``.  The
-      complemented chain has its own staircase, ``t2(m) = 2 + 3 * (m - c)
-      - t(m) + t(c)``, and no pure-run equivalent, so it is walked here.
-
-    Which case fires is measured, not assumed: filling the four indexes,
-    the pending case fires 63559 times, the flip-back case 68456, the
-    complemented chain 67197 and ``rest == 0`` 9588, so every branch is
-    exercised by the equality checks in :func:`_staging_index`.
+    ``rest == 0`` is a pure run.  Otherwise the boundary state picks one of
+    three shapes: a pending skip is spent on the ``<`` (pure run of
+    ``cut + 1 + rest``); no skip and the re-crossed cell reads 0 (pure run of
+    ``cut + rest - 1`` plus a point flip); it reads 1 (the carry cancels
+    phase one's, every later cell reads ``v_i ^ 1``, own staircase
+    ``t2(m) = 2 + 3 * (m - c) - t(m) + t(c)``).  Filling the four indexes the
+    cases fire 63559 / 68456 / 67197 / 9588 times.
     """
     if rest > 0:
         m1, pending1 = chain.extent(cut)
@@ -587,10 +464,8 @@ def _suffix_plan(chain: _Chain, cut: int, rest: int) -> _Plan:
 def _planned_bit(chain: _Chain, plan: _Plan, acc: int) -> int:
     """One row's XOR of post-suffix cells ``_BASE .. acc``, from its plan.
 
-    The pure shape reads the saturated prefix up to the extent and the
-    unsaturated tail past it; the complemented shape has three regions --
-    phase one's, the re-crossed run's, and past the phase-two extent, where
-    the carry cell joins the standing tail.
+    The pure shape has a saturated prefix and an unsaturated tail; the
+    complemented shape has three regions.
     """
     mode = plan[0]
     if mode != 2:
@@ -615,21 +490,11 @@ def _planned_bit(chain: _Chain, plan: _Plan, acc: int) -> int:
 def _planned_bits(chain: _Chain, plan: _Plan, accs: range, const: int = 0) -> list[int]:
     """Return every accumulator's :func:`_planned_bit`, resolved by region.
 
-    The per-accumulator spelling re-decides the plan's shape on every call
-    -- 2.9 million times filling the five-input index -- when the region
-    boundaries (the extent, the re-crossed cell, the phase-two extent) are
-    fixed by the plan and the accumulators are asked in order.  This walks
-    the same case analysis once per region instead; the loop body is that
-    function's arms verbatim, and ``test_the_batched_planned_bits_match``
-    holds the two spellings equal over every plan the staged arities build.
-
-    ``const`` is the caller's slice constant, XORed onto every bit.  Every
-    arm below is a XOR chain ending in a term the region fixes, so the
-    constant folds into that term rather than costing a second pass over
-    the list: :func:`_closed_sweeps` used to build the row's bits and then
-    rebuild them XORed, 77720 lists an 18-table build.  ``const == 0``
-    recovers the plain :func:`_planned_bit` exactly, which is the default
-    and what the equality test compares against.
+    The per-accumulator spelling re-decided the shape 2.9M times filling the
+    n=5 index; this walks the case analysis once per region
+    (``test_the_batched_planned_bits_match``).  ``const`` folds into each
+    arm's final XOR term rather than a second pass (77720 lists on an
+    18-table build); ``const == 0`` is the plain function.
     """
     w, v = chain.w, chain.v
     mode = plan[0]
@@ -666,16 +531,10 @@ def _planned_bits(chain: _Chain, plan: _Plan, accs: range, const: int = 0) -> li
 def _slice_chains(n: int, sep_index: int, settle: int) -> tuple[list[_Chain], _Pools]:
     """One slice's row chains and per-orientation pool facts.
 
-    The pool is resolved **once per slice and orientation**, not once per
-    suffix, and three measured facts make that sound: a suffix never writes
-    below cell ``_BASE - 1`` (its brackets start there and only walk right),
-    the embed leaves every cell below ``_BASE`` identical across rows (0
-    violations over every slice at two, three and four inputs), and a pool
-    code never reaches past cell 6 from its clamped start -- so nothing a
-    suffix does can change what :func:`_find_pool` sees, and nothing the
-    rows disagree on can reach it.  The facts are also why the sweep's low
-    span is a constant: cells below ``_BASE`` contribute the same XOR to
-    every row's column, precomputed here per accumulator.
+    The pool is resolved once per slice and orientation: a suffix never
+    writes below ``_BASE - 1``, the embed leaves every cell below ``_BASE``
+    identical across rows (0 violations at n=2,3,4), and a pool code never
+    reaches past cell 6.  Those cells' XOR is the sweep's low constant.
     """
     base = _embed(n, settle=settle, sep=_SEPS[sep_index])
     _clamp(base)
@@ -717,20 +576,11 @@ def _closed_sweeps(
 ) -> dict[int, dict[int, tuple[int, ...]]]:
     """Both orientations' accumulator sweeps for one suffix, derived.
 
-    The same mapping :func:`_column_sweep` builds by emitting the pool code
-    and walking, produced arithmetically instead.  The walk-out law is what
-    joins the pieces: a ``[x`` walk carries each crossed cell's pre-flip
-    value into the next, so the cell the read reports at ``acc`` is the XOR
-    of the standing cells from ``cur + 1`` through ``acc`` -- the slice's
-    low constant, then each row's :func:`_planned_bit`.  A ``cut == 0``
-    insert flips cell ``_BASE - 1`` on its way past, which is the one
-    suffix-dependent bit below ``_BASE``; it is row-independent, so it
-    lands as a constant too.
-
-    Checked against the emit-and-walk sweep over the *entire* enumeration
-    at two, three and four inputs -- 10440 ``(staging, orientation)``
-    sweeps across both suffix families -- with no disagreement, on top of
-    the whole-index equality recorded at :func:`_staging_index`.
+    :func:`_column_sweep`'s mapping by arithmetic: the read at ``acc`` is the
+    XOR of standing cells ``cur + 1 .. acc`` (the low constant, then each
+    row's :func:`_planned_bit`); a ``cut == 0`` insert's flip of ``_BASE - 1``
+    is row-independent and lands as a constant.  10440 sweeps at n=2,3,4
+    against emit-and-walk, no disagreement.
     """
     if isinstance(suffix, int):
         cut, rest = suffix, 0
@@ -774,46 +624,19 @@ def _closed_sweeps(
 def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     """Map every column the stagings reach to the staging that prints it.
 
-    The inverse of the enumeration, tabulated once per arity.  **This is
-    the oracle spelling now, not the build path**: :func:`_derive_staging`
-    assigns through :func:`_first_staging`'s constraint intersection, and
-    the tests hold the two equal key for key -- on top of the standing
-    index-vs-:func:`_derived_plans` checks, so all three spellings of the
-    one order keep pinning each other.
-
-    **The columns are derived, not observed.**  This used to run the
-    interpreter for every staging -- fork the embed, emit the pool code,
-    walk to each accumulator -- and that walk was the shipped build's
-    dominant cost, 63.8M ``_Sim`` steps and 25.6s of a 38.4s five-input
-    build.  Every step of it is now arithmetic: the suffix is the bracket
-    staircase (:class:`_Chain`), the pool is a slice constant
-    (:func:`_slice_chains`), and the walk out is the prefix-XOR the walk-out
-    law names (:func:`_closed_sweeps`).  What survives of the old cost is
-    ten embeds and twenty pool probes per arity.  Measured cold: 6.5s to
-    0.62s at four inputs, 31.5s to 1.12s at five.
-
-    An earlier note here recorded that the printed column "does not reduce
-    to a closed form in ``(suffix, accumulator)``" -- three translation
-    hypotheses failed against the measured grid, because the pool code
-    depends on the state the staging leaves behind.  Both halves were right
-    and the conclusion still wasn't: the column is not a *translation* in
-    ``(suffix, accumulator)``, but it is closed-form in the embed's
-    standing columns, and the pool state-dependence dissolves once the
-    state it depends on is proved slice-constant.
-
-    **The order is the contract.**  A table takes the *first* staging that
-    prints it, so this fills each column once, walking the enumeration in
-    exactly :func:`_stagings` order -- both passes, pure bracket runs across
-    every slice before any insert suffix, and the same budget accounting.
-    Interleaving the passes per slice instead produces columns that are all
-    reachable and all valid, and still assigns five-input XOR ``None`` where
-    the enumeration assigns ``(2, 0, 0, 33)``.  That is why the test for this
-    compares staging *tuples* against :func:`_derived_plans` rather than
-    checking that the programs work -- and why the closed form was accepted
-    only on whole-index equality: at every staged arity, the index it fills
-    equals the emit-and-walk index key for key and staging for staging
-    (16, 252, 15994 and 28096 entries), on top of the standing
-    index-vs-oracle tests.
+    The oracle spelling now: :func:`_derive_staging` assigns through
+    :func:`_first_staging`, and the tests hold the two equal key for key.
+    Columns are derived, not observed -- the interpreter walk was 63.8M
+    ``_Sim`` steps, 25.6s of a 38.4s n=5 build; now :class:`_Chain`,
+    :func:`_slice_chains` and :func:`_closed_sweeps`, leaving ten embeds and
+    twenty pool probes per arity (cold: 6.5s -> 0.62s at n=4, 31.5s -> 1.12s
+    at n=5).  An earlier note said no closed form exists in ``(suffix,
+    accumulator)``; true, but it is closed-form in the standing columns once
+    the pool is proved slice-constant.  Fills each column once in exactly
+    :func:`_stagings` order, both passes; interleaving them assigns n=5 XOR
+    ``None`` where the enumeration assigns ``(2, 0, 0, 33)``, which is why
+    the test compares tuples.  Accepted on whole-index equality: 16, 252,
+    15994 and 28096 entries.
     """
     index: dict[tuple[int, ...], _Staging] = {}
     spent = 0
@@ -885,28 +708,12 @@ _RowMasks = dict[tuple[int, int], tuple[int, tuple[int, ...]]]
 def _row_constraints(n: int) -> dict[tuple[int, int], dict[str, _RowMasks]]:
     """Tabulate, per slice, what every staging does to every row.
 
-    The same walk :func:`_staging_index` makes, transposed: instead of
-    filing each staging's finished column under first-claim-wins, this
-    records per-row *facts* -- bit ``s`` of a row's mask says the slice's
-    suffix ``s`` leaves that row's printed bit at 1 for the direct read at
-    that ``(orientation, accumulator)``.  The assignment then stops being a
-    property of dict insertion order and becomes the rule
-    :func:`_first_staging` states: a table's staging is the first one, in
-    enumeration order, that every row's constraint admits.
-
-    The enumeration does not disappear -- it produces row facts instead of
-    final answers, and it cannot do less: the 4640 stagings collapse to
-    only ~4190 distinct behaviours (the density note above
-    :data:`_STAGED_ARITIES`), so anything that answers arbitrary tables
-    carries index-equivalent information.  What changes is what the
-    tabulated object *means*.  A mask bit is one row's behaviour under one
-    staging -- checkable against a single :class:`_Chain` walk -- where an
-    index entry is only "the answer", explainable by nothing short of
-    replaying the whole claim order.
-
-    Budget-independent, unlike the index: the budget caps which stagings a
-    *query* may consult, so it is applied as a mask prefix in
-    :func:`_first_staging` rather than baked into the tabulation.
+    :func:`_staging_index` transposed: bit ``s`` of a row's mask says suffix
+    ``s`` leaves that row's direct-read bit at 1 at that ``(orientation,
+    accumulator)``, so the assignment becomes the rule :func:`_first_staging`
+    states.  Index-equivalent information (4640 stagings, ~4190 behaviours),
+    but a mask bit is checkable against one :class:`_Chain` walk.
+    Budget-independent; the budget is a mask prefix in the query.
     """
     rows = 2**n
     inserts: tuple[int | str, ...] = _INSERT_SUFFIXES if n in _INSERT_ARITIES else ()
@@ -941,26 +748,13 @@ def _row_constraints(n: int) -> dict[tuple[int, int], dict[str, _RowMasks]]:
 def _first_staging(truth_table: str, n: int) -> _Staging | None:
     """Return the first staging, in enumeration order, printing the table.
 
-    **The order is the contract, and it is stated here once**: the pure
-    bracket runs across every slice, then the insert family across every
-    slice -- interleaving the passes still yields valid stagings and
-    assigns five-input XOR the wrong one -- and within a slice the
-    comparison key ``(suffix, accumulator, orientation, read)``, which is
-    exactly :func:`_staging_index`'s claim order.  What used to be implicit
-    in dict insertion is the ``min`` below.
-
-    The rule itself is one sentence.  A row admits the suffixes whose
-    printed bit matches its wanted bit -- its constraint mask directly for
-    the direct read, complemented for the complementing one -- so the
-    stagings that print the table are the AND of the rows' masks, and the
-    winner is the lowest set bit.  Where no bit survives the AND, no
-    staging at this slice and accumulator prints the table, which is the
-    miss the caller falls through on.
-
-    The budget caps how many stagings may be consulted.  It is counted in
-    claims of ``_MAX_ACC - _POOL_WIDTH`` accumulators each, exactly as the
-    index's walk spends it, so the cap in suffixes is the ceiling division,
-    laid over the passes in the same global order.
+    Pure runs across every slice, then inserts, and within a slice
+    ``(suffix, accumulator, orientation, read)`` -- :func:`_staging_index`'s
+    claim order.  A row admits the suffixes whose printed bit matches (mask
+    direct, or complemented for the complementing read); the stagings that
+    print the table are the AND, the winner the lowest set bit, and no bit
+    is the miss.  The budget counts claims of ``_MAX_ACC - _POOL_WIDTH``
+    accumulators, as the index spends it.
     """
     want = [int(c) for c in truth_table]
     budget = _budget(n)
@@ -1015,28 +809,12 @@ def _first_staging(truth_table: str, n: int) -> _Staging | None:
 def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     """Return the staging that builds ``truth_table``, or None if none does.
 
-    :func:`_first_staging` answers from the tabulated row constraints --
-    the enumeration order is still the whole specification, it decides
-    which program a truth table gets, but the assignment is now the stated
-    intersection rule rather than a finished-answer dictionary.
-    :func:`_staging_index` keeps the dictionary spelling as the oracle the
-    tests hold this to, key for key.
-
-    The cost trade, measured: the first staged table at an arity pays the
-    tabulation (0.45s at four inputs, 0.9s at five, about a tenth over the
-    index fill it replaced) and each table after it costs ~0.6ms of mask
-    intersection where the dict hit was ~1us -- the price of an assignment
-    that reads as a rule, and small beside the ~10ms replay below.
-
-    Nothing is returned on the strength of the algebra alone.  The
-    enumeration used to run :func:`_confirm` on each column it claimed;
-    confirming all of them would mean an endgame per reachable column
-    (15994 of them at four inputs) for the few a process actually asks
-    about, so the check rides on the answer instead -- the plan handed back
-    is the one that gets confirmed, the same standard applied to exactly
-    the plans that are used.  A plan that fails it is reported as a miss,
-    so the caller falls through to :func:`_mux` rather than receiving a
-    program that does not print.
+    :func:`_first_staging` over the row constraints; :func:`_staging_index`
+    stays as the oracle.  The first staged table at an arity pays the
+    tabulation (0.45s at n=4, 0.9s at n=5, ~10% over the index fill), each
+    after ~0.6ms of mask intersection vs a ~1us dict hit, beside the ~10ms
+    replay.  The returned plan is confirmed (confirming all 15994 reachable
+    columns at n=4 would be an endgame each); a failure is a miss.
     """
     if n not in _STAGED_ARITIES:
         return None

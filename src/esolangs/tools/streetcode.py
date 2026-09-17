@@ -35,16 +35,10 @@ def _streetcode_combine(arrs: list[list[str]]) -> list[str]:
 
 # The counting-loop ring from ``TestStreetcodeCountingLoop``, mirrored
 # (counter above the value) so the tree forks with CP left on the value.
-#
-#      01234567
-#     0+  ++  +
-#     1|      |   Drive order: the entry ``^`` descend column 1 and run
-#     2|   ~ _|   East along row 6 counting up; ``U`` turns onto the
-#     3| =++_ |   island, and each lap runs North up the eastern lane,
-#     4|^~++~U|   West along row 5 walking the value, then climbs the
-#     5|^~~~~_|   western lane to the top and back around to the corner.
-#     6|^^^^^ |
-#     7+------+
+# Drive order: the entry ``^`` descend column 1 and run East along row 6
+# counting up; ``U`` turns onto the island, and each lap runs North up the
+# eastern lane, West along row 5 walking the value, then climbs the western
+# lane back around to the corner.
 _RING_ROWS = (
     "+  ++  +",
     "|      |",
