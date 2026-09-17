@@ -711,6 +711,52 @@ class TestPctFoldPlan:
             assert io.getvalue() == table[row], row
         assert len(widths) == 1, widths
 
+    @pytest.mark.slow  # ~10s to build, then sampled rows at ~0.6s each
+    def test_the_staged_fold_builds_the_dense_fourteen_input_fixture(self) -> None:
+        """Fourteen inputs: the stage lays when the lay fits, carrying pairs.
+
+        The dense fixture is the table the pair route refused -- its
+        eleven-input cut has 256 classes, and compacting to them strands
+        four pairs the conveyor cycles on forever.  Laid at the first
+        checkpoint where a split fits (725 points), the carried pairs
+        merge in the sixteen-class stage.  Measured: 289k moves, 1.8 MB,
+        ~10 s; twelve sampled rows print on the interpreter.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+        from esolangs.tools import parameterized
+        from tests.tools.fills import _fill_pct_squared_minus_one
+        from tests.tools.test_boolean_contract import _dense
+
+        n = 14
+        table = _dense(n)
+        template = parameterized.pct_squared_minus_one(table)
+        assert len(template) < 2_500_000
+        widths = set()
+        for row in range(0, 2**n, 1381):
+            bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
+            program = _fill_pct_squared_minus_one(template, bits)
+            widths.add(len(program))
+            io = ScriptedIO()
+            run(program, io)
+            assert io.getvalue() == table[row], row
+        assert len(widths) == 1, widths
+
+    @pytest.mark.slow  # ~1s: the stall guard on 2048 unmergeable points
+    def test_the_dense_fifteen_input_fixture_is_refused_by_name(self) -> None:
+        """Fifteen inputs: the eleven-input cut does not compact, so refuse.
+
+        2017 distinct sixteen-row cofactors among 2048 rows leave nothing
+        to merge before the lay, and the laid points jam the window; the
+        refusal says so rather than emitting a partial program.
+        """
+        from esolangs.exceptions import GeneratorCapError
+        from esolangs.tools import parameterized
+        from tests.tools.test_boolean_contract import _dense
+
+        with pytest.raises(GeneratorCapError, match="2017 distinct"):
+            parameterized.pct_squared_minus_one(_dense(15))
+
     def test_a_table_whose_plan_fails_builds_nothing(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:

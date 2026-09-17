@@ -30,6 +30,7 @@ from esolangs.tools.pct_fold_plan import (
     _fold_plan,
     _fold_reduce,
     _FoldKey,
+    _FoldLedger,
     _FoldOp,
     _FoldState,
 )
@@ -668,8 +669,9 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
     victim block homogeneous, so the reduce is thousands of cheap merges
     rather than one per doubling.  The prefix uses per-input setters: the
     narrow uniform ladder to ten inputs (twelve-input tables), the packed
-    subset-sum ladder to eleven (thirteen); fourteen hits the same
-    counting wall one stage later.
+    subset-sum ladder to eleven (thirteen); fourteen needs the packed
+    ladder compacted to 256 classes, which strands pairs the conveyor
+    never merges, and goes through :func:`_staged_fold`.
     """
     prefix = n - 2
     narrow = _fold_uniform(prefix, _FOLD_NARROW_STEP)
@@ -821,6 +823,230 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
     return _header(setters) + "".join(emitter.body)
 
 
+#: The staged route's prefix: the widest packed ladder under the limit.
+_STAGED_PREFIX = 11
+
+#: Point counts at which a stage asks whether the next lay fits; a fit test
+#: walks the pairwise distances, so it is asked at every 25th merge, not
+#: every merge.
+_STAGED_CHECK = 25
+
+#: A stage is abandoned after this many rules-moves without a merge.  The
+#: conveyor cycles forever on a stranded pair (2M moves observed at
+#: fourteen inputs); a stage with no merge in this many moves is refused.
+_STAGED_STALL = 20000
+
+
+def _staged_lay_total(tops: list[int]) -> int | None:
+    """Return the first even split total no pair of ``tops`` is spaced by.
+
+    ``tops`` is sorted.  Two children collide only when their parents sit
+    exactly ``up + down`` apart, and the laid state must fit the window,
+    ``span + total <= 2 * _LIMIT``; the distances that matter are those
+    under the room left.
+    """
+    span = tops[-1] - tops[0]
+    room = 2 * _LIMIT - span
+    if room < 4:
+        return None
+    present = bytearray(room + 1)
+    for i, a in enumerate(tops):
+        for b in tops[i + 1 :]:
+            if b - a > room:
+                break
+            present[b - a] = 1
+    for total in range(4, room + 1, 2):
+        if not present[total] and _split_setter(total) is not None:
+            return total
+    return None
+
+
+def _staged_runs(ledger: _FoldLedger) -> bool:
+    """Whether the rules merge ``ledger`` down by one check interval.
+
+    A lay onto a full window has a move or two and then jams (the dense
+    fixture at fourteen laid at once: one merge, then no move), so a stage
+    is accepted only where the conveyor runs.
+    """
+    drops = 0
+    since_merge = 0
+    size = ledger.size
+    while drops < _STAGED_CHECK and not ledger.is_cofactor_done():
+        op = ledger.rule_move()
+        if op is None or not ledger.step(op):
+            return False
+        if ledger.size < size:
+            size = ledger.size
+            drops += 1
+            since_merge = 0
+        else:
+            since_merge += 1
+            if since_merge > _STAGED_STALL:
+                return False
+    return True
+
+
+def _staged_fold(truth_table: str, n: int, prefix: int = _STAGED_PREFIX) -> str | None:
+    """Fourteen inputs and up: lay when the lay fits, carry duplicates.
+
+    The pair route compacts the packed ladder to one point per cofactor
+    before laying.  At fourteen inputs the eleven-input cut has 256
+    classes, the conveyor merges 2048 points to 260 in 414k moves and then
+    cycles forever on four stranded pairs.  Full compaction is not needed:
+    a same-class pair splits into same-class children, so the stage lays
+    the next input at the first checked state where a collision-free
+    split fits the window and the rules run on the laid state (a lay onto
+    a full window jams at once), and the next stage -- at sixteen classes --
+    merges what was carried.  Dense fourteen: 289k moves, 1.78 MB, ~8 s,
+    against 24k moves and 375 KB at thirteen.
+
+    Fifteen refuses: the dense fixture's eleven-input cut has 2017
+    distinct cofactors among 2048 rows, so nothing compacts before the
+    lay, the laid 4096 points sit at unit gaps, and a one-slot window is
+    occupied on every hop -- the conveyor jams within 1.9k hops with
+    4088 points left.  Counting allows fifteen and sixteen; this
+    construction does not reach them.
+
+    ``prefix`` is the ladder's arity, clamped to ``n - 1``; the tests drive
+    the stages at small arities through it.
+    """
+    prefix = min(prefix, n - 1)
+    weights = _fold_subset_weights(prefix)
+    if weights is None:  # pragma: no cover - the packed eleven fits
+        return None
+    setters = _fold_setters(prefix, weights)
+    positions = _fold_positions(prefix, weights)
+    emitter = _FoldEmitter.__new__(_FoldEmitter)
+    emitter.table = truth_table
+    emitter.rows = 2**n
+    block = 2 ** (n - prefix)
+    emitter.load(
+        {
+            frozenset(range(row * block, (row + 1) * block)): (
+                positions[row],
+                truth_table[row * block : (row + 1) * block],
+            )
+            for row in range(2**prefix)
+        }
+    )
+    emitter.body = [_run(setter) for setter in setters]
+
+    def state() -> _FoldState:
+        return _fold_norm(
+            [
+                (value, 0, emitter.cls[key], emitter.members(key))
+                for key, value in emitter.pos.items()
+            ]
+        )
+
+    def emit(ops: list[_FoldOp]) -> None:
+        for index, (kind, _, amount, rows) in enumerate(ops):
+            if kind == "m":
+                emitter.double(
+                    next_is_rise=index + 1 < len(ops) and ops[index + 1][0] == "u"
+                )
+            elif kind == "d":
+                emitter.dive(amount, rows)
+            else:
+                emitter.rise(amount, rows)
+
+    def laid_state(
+        index: int, total: int, *, cofactor: bool
+    ) -> tuple[dict[_FoldKey, tuple[int, str]], int, tuple[str, str]] | None:
+        """Compute the lay of input ``index`` without touching the emitter."""
+        got = _split_setter(total)
+        if got is None:  # pragma: no cover - the total was chosen spellable
+            return None
+        zero, one, up, down = got
+        lo = emitter.lo()
+        shift = -_LIMIT - lo + down
+        if shift > _LIMIT - emitter.hi() - up:  # pragma: no cover - fit-checked
+            return None
+        laid: dict[_FoldKey, tuple[int, str]] = {}
+        occupied: set[int] = set()
+        for key, value in emitter.pos.items():
+            rows = emitter.members(key)
+            for bit, code in ((0, zero), (1, one)):
+                picked = {row for row in rows if (row >> (n - 1 - index)) & 1 == bit}
+                if not picked:  # pragma: no cover - see _interleaved_final_pair
+                    continue
+                value2 = _apply(value + shift, code)
+                if (
+                    not -_LIMIT <= value2 <= _LIMIT or value2 in occupied
+                ):  # pragma: no cover - the total is collision-free and fits
+                    return None
+                occupied.add(value2)
+                cls = (
+                    _cofactor_class(truth_table, n, next(iter(picked)), index + 1)
+                    if cofactor
+                    else truth_table[next(iter(picked))]
+                )
+                key2: _FoldKey = (
+                    next(iter(picked)) if len(picked) == 1 else frozenset(picked)
+                )
+                laid[key2] = (value2, cls)
+        return laid, shift, (zero, one)
+
+    def lay_if_ready(ledger: _FoldLedger, index: int) -> bool:
+        """Lay input ``index`` if a split fits and the laid state can move."""
+        total = _staged_lay_total(ledger.tops)
+        if total is None:
+            return False
+        last = index == n - 1
+        got = laid_state(index, total, cofactor=not last)
+        if got is None:  # pragma: no cover - fit-checked above
+            return False
+        laid, shift, setter = got
+        probe = _fold_norm(
+            [(value, 0, cls, frozenset()) for value, cls in laid.values()]
+        )
+        if last:
+            if _fold_plan(probe) is None:
+                return False
+        elif not _staged_runs(_FoldLedger.from_state(probe)):
+            return False
+        emitter.preshift(shift)
+        emitter.load(laid)
+        emitter.body.append(_run(setter))
+        setters.append(setter)
+        return True
+
+    for index in range(prefix, n):
+        ledger = _FoldLedger.from_state(state())
+        ops: list[_FoldOp] = []
+        since_merge = 0
+        size = ledger.size
+        checked = size
+        ready = lay_if_ready(ledger, index)
+        while not ready:
+            if ledger.is_cofactor_done():
+                # Compact and still no fit: the window is spent.
+                return None
+            op = ledger.rule_move()
+            if op is None or not ledger.step(op):
+                return None
+            ops.append(op)
+            if ledger.size < size:
+                size = ledger.size
+                since_merge = 0
+                if checked - size >= _STAGED_CHECK:
+                    checked = size
+                    emit(ops)
+                    ops = []
+                    ready = lay_if_ready(ledger, index)
+            else:
+                since_merge += 1
+                if since_merge > _STAGED_STALL:
+                    return None
+        emit(ops)
+    final = _fold_plan(state())
+    if final is None:  # pragma: no cover - the last lay was probed for a move
+        return None
+    emit(final)
+    emitter.finish()
+    return _header(setters) + "".join(emitter.body)
+
+
 def _interleaved_fold(truth_table: str, n: int) -> str | None:
     """Try a run/fold/run build before the all-row fallback.
 
@@ -834,6 +1060,12 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
         # by the pair; a miss would fall through to the ladders below.
         if staged is not None:  # pragma: no branch
             return staged
+    if n > 13:
+        # The pair route ends at thirteen, where the packed ladder's span
+        # meets the limit; past it every table goes through the stages,
+        # and a miss there is a refusal (the all-row path below cannot
+        # lay 2**14 rows either).
+        return _staged_fold(truth_table, n)
     setters: list[tuple[str, str]] = []
     rows = frozenset(range(2**n))
     emitter = _FoldEmitter.__new__(_FoldEmitter)
