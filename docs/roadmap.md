@@ -190,13 +190,11 @@ The candidate list is empty.
   | Language | No spaces | Uniform |
   | --- | --- | --- |
   | %^2^-1 | Holds | Open |
-  | Minsky Swap | Holds | Open |
   | Nopstacle | Language | Open |
 
-  The three uniform cells open for one reason, the input's *weight*: a
-  linear route spells input `i` once at `2**(n-1-i)` units -- Minsky
-  Swap `+` or `*` per unit, Nopstacle `2**i` cells across level `i`'s
-  row -- and %^2^-1 solves its setters per table, so different text
+  The two uniform cells open for one reason, the input's *weight*: a
+  linear route spells input `i` once at `2**(n-1-i)` units -- Nopstacle
+  `2**i` cells across level `i`'s row -- and %^2^-1 solves its setters per table, so different text
   per input is its design.  Closing one means the template carries the
   weight and every input is one unit.  Nopstacle's cells have template
   between them, and a uniform %^2^-1 is a different generator.  Nopstacle's alphabet is the blank and

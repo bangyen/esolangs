@@ -428,52 +428,23 @@ def _setters_back(_template: str, n: int) -> Setters:
 
 
 def _setters_minsky_swap(_template: str, n: int) -> Setters:
-    """Set each input register with a run as long as the bit's own weight.
+    """Set each input register with ``++`` for a one and ``**`` for a zero.
 
-    Minsky Swap has no input instruction, so a one is embedded as a run of
-    ``+`` adding its binary weight to ``reg[0]``, and a zero as a run of
-    ``*`` of the same length doing nothing.  The length is the weight
-    itself, which is what the template counted on when it computed its jump
-    targets -- the two must move together.
+    Minsky Swap has no input instruction, so a one is embedded as two
+    ``+`` setting ``reg[0]`` to two, and a zero as two ``*`` doing nothing
+    -- the same pair at every input, table and arity.  The weight is not
+    here: the template's stage after each run reads the bit with two ``~``
+    and adds ``2**(n-1-i)`` to ``reg[1]`` in its own text, so the run is
+    one unit however significant the bit is.
 
     Both runs are even, because ``*`` swaps the register pointer and an odd
-    run would leave every later command addressing the wrong register.  A
-    one does no swapping at all and a zero an even number, so either way the
-    pointer comes back.
-
-    Equal width is the invariant here, and it is per input rather than
-    across them: ``set_bit(i, 0)`` and ``set_bit(i, 1)`` must match, or the
-    program's length leaks the bit, but block ``i`` need not match block
-    ``j``.  Reading it as across-them and padding every block to ``2**n``
-    cost a factor of ``n`` in commands executed for no invariant at all.
-
-    The LSB is the exception, and not merely a shorter one.  Its block is
-    ``+*+*``, which adds its weight of one to ``reg[0]`` and then, across
-    the swap, leaves ``reg[1]`` holding the LSB as well -- the leaves flip
-    that copy into the answer, so the dump reads ``0 {answer}``.  Writing it
-    as the general rule would give ``+`` and an odd pad, which both loses
-    the ``reg[1]`` copy and strands the pointer.  A zero LSB is ``****``,
-    the same four commands doing nothing.
+    run would leave the stage addressing the wrong register.  A one does no
+    swapping at all and a zero exactly two, so either way the pointer stays
+    on ``reg[0]``, which the stage's ``~`` then reads.  Two rather than one
+    because the pair must be the same width: a one-wide zero would have to
+    be a single ``*``, which moves the pointer onto the accumulator.
     """
-
-    def set_bit(i: int, bit: int) -> str:
-        if i == n - 1:  # LSB: length-4 block, no "~"
-            return "+*+*" if bit else "****"
-        weight: int = 2 ** (n - 1 - i)
-        # As long as the weight, not as long as the table.  Both spellings
-        # are the same width for a 0 as for a 1, which is the rule that
-        # matters -- a program's length must not depend on the bits it is
-        # evaluating -- and that rule is per input, not across them, so a
-        # block need only match its own counterpart.  Padding every block to
-        # 2**n instead made the load run (n-1) * 2**n commands, which was
-        # the whole of this construction's Theta(T log T) execution.
-        #
-        # The pad stays even because ``*`` swaps the register pointer: a
-        # one is ``+`` * weight with no swap at all, a zero ``*`` * weight
-        # with an even number, so both leave the pointer where they found it.
-        return ("+" if bit else "*") * weight
-
-    return tuple((set_bit(i, 0), set_bit(i, 1)) for i in range(n))
+    return (("**", "++"),) * n
 
 
 def _setters_ram0(_template: str, n: int) -> Setters:

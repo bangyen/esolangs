@@ -488,30 +488,30 @@ def minsky_swap(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     Minsky Swap has no input command, so this is a parameterized generator:
-    the template's input runs become *fixed-length* setters that
-    assemble the input's numeric index into ``reg[0]`` — one block per bit,
-    so the inputs are embedded exactly ``n`` times.  Each non-LSB bit's block
-    is as long as that bit's own weight ``2**(n-1-i)``: ``+`` repeated for
-    the weight when the bit is one, ``*`` repeated for it when the bit is
-    zero.  Both spellings are the same length, which is the rule -- a
-    program's length must not depend on the bits it evaluates -- and both
-    leave the register pointer where they found it, since a one does no
-    swapping and a zero does an even number.  The LSB block is the length-4
-    ``+*+*`` (adds one, and leaves ``reg[1]`` polluted with a one) or
-    ``****`` (a no-op), so the setter length is fixed without an odd pad.
+    every input's run is the same two-command pair -- ``++`` sets ``reg[0]``
+    to two, ``**`` swaps the pointer away and back -- and the *template*
+    carries the input's weight.  Each run is followed by a stage that reads
+    the bit off ``reg[0]`` and adds ``2**(n-1-i)`` to ``reg[1]``::
 
-    The blocks therefore sum to ``2**n + 2`` commands rather than the
-    ``(n-1) * 2**n`` they came to when every block was padded to the table's
-    length.  That padding was this construction's whole super-linearity:
-    its commands per table entry used to be the input count, 4.5 through
-    10.0 at one through ten inputs, and now settle at 2.01.
+        $$ ~ ~ * +...+ *
 
-    A cascade of ``2**n`` ``~``s then routes the assembled value *v* to leaf
-    *v* — each ``~`` decrements a nonzero register and jumps on zero, so the
-    (v+1)-th one sees the value hit zero.  A leaf flips the polluted
-    ``reg[1]`` (which holds the LSB) to the answer, then ``~``s on the
-    (zeroed) ``reg[0]`` to run off the program end, so the dumped registers
-    read ``0 {answer}``.
+    Both ``~`` target the command after the stage.  A one leaves ``reg[0]``
+    at two, so both decrement and fall through to the ``+`` block, which
+    the swaps put onto ``reg[1]``; a zero leaves it at zero, so the first
+    ``~`` jumps the block.  Either way the stage ends with ``reg[0]`` zero
+    and the pointer on it, which is what the next stage assumes -- so the
+    stages compose in name order and ``reg[1]`` holds the table index once
+    the last has run.  The blocks sum to ``2**n - 1`` commands, so the load
+    stays linear in the table and the runs no longer count the weight: the
+    jump targets count the block widths instead.
+
+    A ``*`` puts the pointer on ``reg[1]`` and a cascade of ``2**n`` ``~``s
+    routes the value *v* to leaf *v* -- each ``~`` decrements a nonzero
+    register and jumps on zero, so the (v+1)-th one sees the value hit
+    zero.  At a leaf both registers are zero.  A one leaf is ``+ * ~``: it
+    sets ``reg[1]``, steps onto the zero ``reg[0]``, and jumps off the
+    program end; a zero leaf is the bare ``~`` on the zero ``reg[1]``.  The
+    dumped registers read ``0 {answer}``.
     """
     from esolangs.tools.examples import _setters_minsky_swap
 
@@ -521,32 +521,28 @@ def minsky_swap(truth_table: str) -> str:
     targets: list[int] = []
     pos = 0  # instantiated command index of the next command
 
-    # load: bits MSB first; a non-LSB setter is as long as its own bit's
-    # weight, the LSB a length-4 block.  The runs are read off the setters
-    # themselves, so these offsets count exactly the text the fill emits.
-    for run in _runs(_setters_minsky_swap(truth_table, n)):
-        tokens.append(run)
-        pos += len(run)
+    # load: one stage per input, MSB first.  The run is read off the
+    # setters themselves, so the offsets count exactly the text the fill
+    # emits; the weight is the stage's own ``+`` block.
+    for i, run in enumerate(_runs(_setters_minsky_swap(truth_table, n))):
+        weight = 2 ** (n - 1 - i)
+        skip = pos + len(run) + 2 + 2 + weight + 1  # 1-based line after the stage
+        tokens += [run, "~", "~", "*", "+" * weight, "*"]
+        targets += [skip, skip]
+        pos = skip - 1
 
+    tokens.append("*")  # pointer onto reg[1], which holds the index
+    pos += 1
     for _ in range(2**n):  # cascade: route the assembled value to leaf v
         tokens.append("~")
         targets.append(0)
         pos += 1
-    for v in range(2**n):  # leaves: reg[1] holds the LSB; make it the answer
-        targets[v] = pos + 1
-        tokens.append("*")  # pointer onto reg[1]
-        pos += 1
-        lsb = v & 1
-        if lsb == 1 and truth_table[v] == "0":
-            tokens.append("~")  # reg[1] is 1 here, so it decrements, no jump
-            targets.append(0)
-            pos += 1
-        elif lsb == 0 and truth_table[v] == "1":
-            tokens.append("+")
-            pos += 1
-        tokens.append("*")  # pointer back onto reg[0]
-        pos += 1
-        tokens.append("~")  # reg[0] is 0, so this always jumps to the end
+    for v in range(2**n):  # leaves: both registers are zero here
+        targets[n * 2 + v] = pos + 1
+        if truth_table[v] == "1":
+            tokens += ["+", "*"]  # reg[1] = 1, pointer onto the zero reg[0]
+            pos += 2
+        tokens.append("~")  # the addressed register is zero: jump to the end
         targets.append(0)
         pos += 1
 
