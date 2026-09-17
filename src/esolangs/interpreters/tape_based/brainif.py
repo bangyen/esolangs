@@ -53,19 +53,8 @@ from esolangs.interpreters.persistent import (
     put,
 )
 
-#: One instant of a run: ``(ind, ptr, cells)`` -- the line cursor, the tape
-#: pointer, and the cells.  A value, not a record: every transition below
-#: returns a new one rather than editing one in place, and the cells are a
-#: ``tuple`` for the same reason.
-#:
-#: The code is deliberately *not* in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  The parsed line is a parameter to the transition instead.
-#:
-#: A plain tuple rather than a ``NamedTuple``: the fields are read by
-#: unpacking in the functions that use them, so the names bought little, and
-#: ``NamedTuple.__new__`` is Python-level where the tuple constructor is
-#: C-level.
+#: ``(ind, ptr, cells)``: an immutable value, rebound per step.  The
+#: parsed line is a parameter, not a field.
 type _State = tuple[int, int, Chunked[int]]
 
 #: A line the transition can act on: ``(value, command, target)``.  ``None``
@@ -188,14 +177,9 @@ class _Machine:
     def ptr(self) -> int:
         return self.state[1]
 
-    # The growth detector's view.  ``cells`` is already the committed tape
-    # -- there is no write buffer here -- so ``tape`` is the language's own
-    # tuple under the name ``esolangs.vm._TapeMachine`` asks for, and
-    # ``ip`` (below) is the line cursor.  BrainIf qualifies for that
-    # protocol: ``right`` appends exactly one fresh zero, ``left`` clamps
-    # at cell 0 (``ptr = max(0, ptr - 1)``), and every other command reads
-    # or writes only ``cells[ptr]`` -- including the guard, which tests the
-    # cell under the pointer and nothing else.
+    # ``_TapeMachine`` view (no write buffer here).  BrainIf qualifies:
+    # ``right`` appends one zero, ``left`` clamps at 0, everything else
+    # touches only ``cells[ptr]``.
 
     @property
     def tape(self) -> tuple[int, ...]:

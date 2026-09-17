@@ -44,17 +44,9 @@ from esolangs.interpreters.persistent import (
     put,
 )
 
-#: The RAM as an immutable sequence of ``(address, value)`` pairs, held in
-#: *insertion* order -- first write first, a rewrite updating in place.
-#:
-#: That order is observable: the state dump prints the pairs in the order
-#: the dict yielded them, so a program that writes address 3 before address
-#: 1 prints them in that order.  Sorting by address here would be tidier
-#: and would silently change what such a program outputs.
-#:
-#: Ordering does not leak into cycle detection: ``snapshot`` converts to a
-#: ``frozenset``, so two states with the same cells compare equal whatever
-#: order they were written in.
+#: The RAM as ``(address, value)`` pairs in insertion order.  The order is
+#: observable (the dump prints it), so sorting would change output;
+#: ``snapshot`` converts to a ``frozenset`` so it does not affect cycles.
 type _Ram = Chunked[tuple[int, int]]
 
 #: Where each address sits in the store: the machine's memo of a fact about
@@ -63,19 +55,9 @@ type _Ram = Chunked[tuple[int, int]]
 #: stays right for every later state of the same run.
 type _Index = dict[int, int]
 
-#: One instant of a run: ``(ind, z, n, ram, dumped)`` -- the token cursor,
-#: the two registers, the RAM, and whether the final dump has been printed.
-#: A value, not a record: every transition below returns a new one rather
-#: than editing one in place.
-#:
-#: ``dumped`` is state because the dump is a once-per-run effect that
-#: happens *after* the cursor has run off the end, so the position cannot
-#: distinguish "about to dump" from "already dumped".  It stays out of
-#: ``snapshot``, which reports the four fields it always reported.
-#:
-#: The tokens are deliberately not in here.  They do not change during a
-#: run, so carrying them would put constant data in every value the cycle
-#: detector stores.  The current token is a parameter to the transition.
+#: ``(ind, z, n, ram, dumped)``: an immutable value, rebound per step.
+#: ``dumped`` is state because the dump happens after the cursor runs off
+#: the end; it stays out of ``snapshot``.  Tokens are a parameter, not a field.
 type _State = tuple[int, int, int, _Ram, bool]
 
 
