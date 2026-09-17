@@ -242,6 +242,17 @@ class TestATemplateCarriesItsSetters:
         with pytest.raises(ValueError, match="expected 2 bits"):
             fill_runs("$$", "$", (("a", "b"), ("c", "d")), [1])
 
+    def test_a_generator_may_emit_the_runs_itself(self) -> None:
+        """A run-form generator output passes through render and fills the same."""
+        from esolangs.tools.examples import _fill_from
+        from esolangs.tools.helpers import mark, render
+
+        pairs = (("xx", "yy"), ("p", "q"))
+        assert render("a$$$b", "$", pairs) == "a$$$b"
+        assert render("a$$$b", None, pairs) == "a" + mark(0) * 2 + mark(1) + "b"
+        fill = _fill_from(lambda _template, n: pairs[:n])
+        assert fill("a$$$b", [1, 0]) == fill("a{X0}{X1}b", [1, 0]) == "ayypb"
+
     def test_adjacent_inputs_need_no_separator(self) -> None:
         from esolangs.tagged import _Template
 
