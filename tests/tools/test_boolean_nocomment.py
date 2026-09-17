@@ -248,18 +248,3 @@ class TestParameterizedNoComment:
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_nocomment(self.instantiate(template, bits))
                 assert got == table[combo], f"{name} n={n} inputs {bits}"
-
-    def test_narrow_path_needs_a_byte_sized_index(self) -> None:
-        """The single-skip decode covers exactly the arities whose index fits a byte.
-
-        Derived from the interpreter's cell range rather than pinned: the
-        skip amount is peeked off the stack and everything there came from a
-        byte-sized cell, so the widest single-skip index is 255.
-        """
-        from esolangs.tools.parameterized import (
-            _NOCOMMENT_NARROW_MAX,
-            _NOCOMMENT_SKIP_MAX,
-        )
-
-        assert 2**_NOCOMMENT_NARROW_MAX - 1 <= _NOCOMMENT_SKIP_MAX
-        assert 2 ** (_NOCOMMENT_NARROW_MAX + 1) - 1 > _NOCOMMENT_SKIP_MAX

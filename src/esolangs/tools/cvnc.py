@@ -169,16 +169,6 @@ def _stored(truth_table: str, perm: tuple[int, ...]) -> str | None:
     return load + walk(truth_table, 0, None)
 
 
-def _stored_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Adapt :func:`_stored` to :func:`best_input_order`'s contract.
-
-    An unservable order returns ``""`` (skipped, as ZTOALC L's are).
-    Substituting another program would compute a different function, since
-    ``truth_table`` is already permuted.
-    """
-    return _stored(truth_table, perm) or ""
-
-
 def _ordered(truth_table: str, perm: tuple[int, ...]) -> str | None:
     """Build the shortest read strategy available for ``perm``.
 

@@ -12,7 +12,6 @@ pass-stable fixed point.
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    fill_runs,
 )
 
 __all__ = ["a_painter_ant"]
@@ -45,8 +44,3 @@ def a_painter_ant(truth_table: str) -> str:
     # ``sS`` steps onto the answer whichever colour it is.
     out.append("sS")
     return "".join(out)
-
-
-def _instantiate_apa(template: str, bits: list[int]) -> str:
-    """Fill an A Painter Ant template's input runs (``n`` zero, ``N`` one)."""
-    return fill_runs(template, TEMPLATE_CHAR, (PAIR,) * len(bits), bits)

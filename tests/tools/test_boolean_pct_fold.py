@@ -7,6 +7,7 @@ from types import ModuleType
 import pytest
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
+from tests.tools.pct_support import _fold_clean_amount, _fold_rule_move, _fold_step
 
 
 def _run_spans(module: ModuleType, template: str) -> list[tuple[int, int]]:
@@ -355,7 +356,7 @@ class TestPctFoldPlanners:
         assert ops is not None
         state = module._fold_norm(list(self.STATE))  # noqa: SLF001
         for op in ops:
-            state = module._fold_step(state, op)  # noqa: SLF001
+            state = _fold_step(state, op)
             assert state is not None
         # The reduction stops at a threshold state -- one class wholly below
         # the other, which is what the endgame prints from -- rather than
@@ -373,13 +374,11 @@ class TestPctFoldPlanners:
         and the spread is past the doubling bound, so every case falls
         through and the move is ``None``.
         """
-        module = self.module()
-
         stuck = (
             (0, 3000, "0", frozenset({0})),
             (-10, 3000, "1", frozenset({1})),
         )
-        assert module._fold_rule_move(stuck) is None  # noqa: SLF001
+        assert _fold_rule_move(stuck) is None
 
     def test_a_step_the_state_does_not_offer_answers_none(self) -> None:
         """``_fold_step`` re-checks a move rather than trusting it.
@@ -388,14 +387,12 @@ class TestPctFoldPlanners:
         an everything-wipe on a two-class state are each refused, so an op
         that was never legal cannot be applied by accident.
         """
-        module = self.module()
-
         outside = ("d", 1, 99999, frozenset({3}))
-        assert module._fold_step(self.STATE, outside) is None  # noqa: SLF001
+        assert _fold_step(self.STATE, outside) is None
         mixed = ("d", 2, 3004, frozenset({2, 3}))
-        assert module._fold_step(self.STATE, mixed) is None  # noqa: SLF001
+        assert _fold_step(self.STATE, mixed) is None
         everything = ("d", 4, 3004, frozenset({0, 1, 2, 3}))
-        assert module._fold_step(self.STATE, everything) is None  # noqa: SLF001
+        assert _fold_step(self.STATE, everything) is None
 
     def test_a_landing_on_the_other_class_is_refused(self) -> None:
         """A wipe whose landing coincides with an opposite-class point is no move.
@@ -403,14 +400,11 @@ class TestPctFoldPlanners:
         Two points at one value are one point forever, so the algebra refuses
         the collision; the same amount onto a same-class point is the merge.
         """
-        module = self.module()
         onto = ("d", 1, 3004, frozenset({1}))
         cross = ((0, 0, "0", frozenset({0})), (-3004, 0, "1", frozenset({1})))
-        assert module._fold_step(cross, onto) is None  # noqa: SLF001
+        assert _fold_step(cross, onto) is None
         same = ((0, 0, "1", frozenset({0})), (-3004, 0, "1", frozenset({1})))
-        assert module._fold_step(same, onto) == (  # noqa: SLF001
-            (0, 0, "1", frozenset({0, 1})),
-        )
+        assert _fold_step(same, onto) == ((0, 0, "1", frozenset({0, 1})),)
 
     def test_a_clean_amount_skips_an_occupied_landing(self) -> None:
         """The first collision-free amount is computed, not the minimum.
@@ -419,13 +413,11 @@ class TestPctFoldPlanners:
         window's first value, so the clean amount is 3005 -- landing there
         would be a merge the algebra refuses when the classes differ.
         """
-        module = self.module()
-
         state = (
             (0, 0, "1", frozenset({0})),
             (-3004, 0, "0", frozenset({1})),
         )
-        assert module._fold_clean_amount(state, "d", 1) == 3005  # noqa: SLF001
+        assert _fold_clean_amount(state, "d", 1) == 3005
 
 
 class TestPctFoldPlan:

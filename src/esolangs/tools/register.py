@@ -47,9 +47,6 @@ from esolangs.tools.polynomial import (
     _polynomial_dag as _polynomial_dag,
 )
 from esolangs.tools.polynomial import (
-    _polynomial_dag_cost as _polynomial_dag_cost,
-)
-from esolangs.tools.polynomial import (
     _polynomial_drained_dag as _polynomial_drained_dag,
 )
 from esolangs.tools.polynomial import (

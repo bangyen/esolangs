@@ -389,6 +389,3 @@ def cod(truth_table: str, width: int | None = None) -> str:
     if n >= 2:
         candidates.append(_cod_rotated(n, truth_table))
     return min(candidates, key=len)
-
-
-_byte_limit = "this truth table needs a skip beyond the 256-cell byte limit"

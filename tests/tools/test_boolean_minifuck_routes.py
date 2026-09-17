@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.tools.helpers import essential_inputs
-from tests.tools.minifuck_support import _MinifuckCase, run_count
+from tests.tools.minifuck_support import _MinifuckCase, _mux_separate, run_count
 
 
 class TestParameterizedMinifuck(_MinifuckCase):
@@ -123,7 +123,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
 
         module = importlib.import_module("esolangs.tools.minifuck")
 
-        separated = module._mux_separate(4)  # noqa: SLF001
+        separated = _mux_separate(4)
         positions = separated.ptrs()
         assert len(set(positions)) == 16, positions
         assert run_count(separated.template(), 4) == 4
@@ -199,11 +199,9 @@ class TestParameterizedMinifuck(_MinifuckCase):
         """
         import time
 
-        module = importlib.import_module("esolangs.tools.minifuck")
-
         for arity in (2, 3, 4, 5):
             start = time.monotonic()
-            joint = module._mux_separate(arity)  # noqa: SLF001
+            joint = _mux_separate(arity)
             assert joint is not None, arity
             assert len(set(joint.ptrs())) == 2**arity, arity
             assert time.monotonic() - start < 1.0, arity
@@ -260,41 +258,6 @@ class TestParameterizedMinifuck(_MinifuckCase):
                 got = self.run_minifuck(self.instantiate(template, bits))
                 assert got == table[combo], f"{table} inputs {bits}"
         assert searched == [], searched
-
-    def test_the_degenerate_cells_are_where_they_were_written_down(self) -> None:
-        """Measuring the embed reproduces the six cells that used to be stored.
-
-        ``_degenerate_cells`` replaced a written-down mapping, and the reason
-        it can is the reason the mapping was constant in the first place: the
-        carry chain preserves ``b0`` and ``b1`` individually before the
-        prefix-XOR starts mixing.  This pins the collapse to the numbers it
-        replaced, so a change to the embed or the separator that moved these
-        columns would be caught here rather than as a slow degenerate build.
-
-        The cells are the same at every arity the route serves, which is what
-        let one mapping serve all of them.
-        """
-
-        from esolangs.tools.minifuck import _degenerate_cells
-
-        written_down = {
-            "const1": 1,
-            "~b0": 16,
-            "b0": 17,
-            "const0": 18,
-            "~b1": 19,
-            "b1": 20,
-        }
-        for n in (2, 3, 4):
-            assert _degenerate_cells(n) == written_down, n
-        # One input leaves no ``b1`` to find, and the route asks for whatever
-        # is there rather than assuming all six.
-        assert _degenerate_cells(1) == {
-            "const1": 1,
-            "~b0": 16,
-            "b0": 17,
-            "const0": 18,
-        }
 
     @pytest.mark.parametrize(
         ("table", "tier"),

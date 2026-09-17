@@ -33,11 +33,11 @@ from esolangs.tools.parameterized import (
     _connect,
     _drained_leaf,
     _header,
-    _instantiate_arrowqueue,
     _tree,
     arrowqueue,
 )
 from esolangs.vm import run_until_halt_or_cycle
+from tests.tools.fills import _instantiate_arrowqueue
 
 #: Cost band; see ``__main__.py``. Total over every arity, so nothing here enumerates
 #: tables to establish the claim -- the best gating ratio in the directory.

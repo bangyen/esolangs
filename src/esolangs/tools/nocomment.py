@@ -14,16 +14,6 @@ from esolangs.tools.helpers import (
 PAIR = ("c", "i")
 _NOCOMMENT_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
-# The largest value a NoComment cell can hold, hence the largest distance a
-# single ``s``/``b`` jump can cover: the skip amount is peeked off the stack,
-# and everything on that stack came from a byte-sized tape cell.
-_NOCOMMENT_SKIP_MAX = 255
-
-
-# Past this arity the *index* no longer fits one byte, so the single-skip
-# decode below stops working.  It is the largest ``n`` with
-# ``2**n - 1 <= _NOCOMMENT_SKIP_MAX``; the chain takes over well before it.
-_NOCOMMENT_NARROW_MAX = (_NOCOMMENT_SKIP_MAX + 1).bit_length() - 1
 
 # The arity from which :func:`_nocomment_chain` is the smaller program.  The
 # narrow decode pays a NOT gate and a guarded weight per input plus one

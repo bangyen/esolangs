@@ -15,7 +15,6 @@ from esolangs.tools.pct_squared_minus_one import (
     _centred_setter,
     _cofactor_done,
     _fold_norm,
-    _fold_span,
     _fold_to_cofactors,
     _FoldEmitter,
     _interleaved_final_pair,
@@ -23,6 +22,7 @@ from esolangs.tools.pct_squared_minus_one import (
     _split_setter,
     pct_squared_minus_one,
 )
+from tests.tools.pct_support import _fold_span
 
 
 def _state(*items: tuple[int, int, str, frozenset[int]]) -> tuple[object, ...]:
