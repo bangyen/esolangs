@@ -1,16 +1,10 @@
 r"""Boolean generators that embed each input once.
 
-Each template spells input ``i`` as a run of :data:`TEMPLATE_CHAR` exactly
-as wide as that input's setter, one run per input in name order; the harness
-fills the runs and runs one program per input row, allowing no-input
-languages to compute Boolean functions without pretending to read stdin.
-Equal-width setters prevent input bits leaking through program length.
-
-The widths are the setters' own: each generator here asks its language's
-setters function (in :mod:`esolangs.tools.examples`) for the pairs and
-spells a run as long as each, so the template and its fills cannot drift
-apart.  That import is local to each generator because ``examples`` imports
-this module.
+Input ``i`` is a run of :data:`TEMPLATE_CHAR` as wide as its setter, in
+name order; the harness fills the runs and runs one program per row.
+Equal-width setters keep bits out of the program length.  Each generator
+asks its language's setters function (:mod:`esolangs.tools.examples`,
+imported locally since ``examples`` imports this) for the widths.
 """
 
 # Re-exported so this module stays the import site for the whole
@@ -138,30 +132,15 @@ type _Node = tuple[str, int, int, _Node | None, _Node | None]
 def bio(truth_table: str) -> str:
     """Build a BIO template for the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    BIO has three registers (``x``, ``y``, ``z``) and no absolute jumps —
-    its ``{``/``}`` loops are structurally matched — so the setter's length
-    is unconstrained.  Each input is embedded once as the same four-character
-    unit whichever input it is: a one is ``0ox;`` (``x += 1``), a zero
-    ``0oz;`` (a write to ``z``, which nothing reads), so the two bits embed
-    at equal width rather than a zero embedding as nothing.  The template
-    carries the input's weight by Horner's rule: before every run but the
-    first it doubles ``x`` through ``y`` (:data:`_BIO_DOUBLE`), so after the
-    last run ``x = sum 2**(n-1-i) * bit_i`` is the input's numeric index and
-    ``y`` is back at zero.  The weight used to be spelled into the embed as
-    ``2**(n-1-i)`` copies of the unit, which made every input a different
-    pair; carrying it here makes the embed one pair for every input at every
-    arity, for a constant eight commands per input.
-
-    ``y`` is initialized to the table's first entry (``table[0]``), then
-    ``2**n - 1`` *nested* loops each decrement ``x`` once (``0ix{ 1ox; ... };``)
-    and, on the transition ``table[j-1] -> table[j]``, adjust ``y``: ``0oy``
-    for a 0-to-1 rise, ``1oy`` for a 1-to-0 fall, nothing for a flat edge.
-    The j-th level fires iff ``x >= j``, so for the packed value ``V`` the
-    ops telescope to ``y = table[0] + sum_{j=1}^{V} (table[j] - table[j-1]) =
-    table[V]``.  The result is printed with ``1iy``.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.  Each
+    input is the same four-character unit: ``0ox;`` (``x += 1``) for a one,
+    ``0oz;`` (a write nothing reads) for a zero.  The template carries the
+    weight by Horner: before every run but the first it doubles ``x``
+    through ``y`` (:data:`_BIO_DOUBLE`), so ``x`` ends as the index and ``y``
+    at zero -- eight commands per input at any arity.  ``y`` starts at
+    ``table[0]``; ``2**n - 1`` nested loops each decrement ``x`` and adjust
+    ``y`` on a table transition (``0oy`` rise, ``1oy`` fall), so the ops
+    telescope to ``y = table[V]``, printed with ``1iy``.
     """
     from esolangs.tools.examples import _setters_bio
 
@@ -192,48 +171,23 @@ _BIO_DOUBLE = "0ix{1ox;0oy;0oy;};0iy{1oy;0ox;};"
 def bfpda(truth_table: str) -> str:
     """Build a BF-PDA template for the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    BF-PDA has no input command, so this is a parameterized generator: the
-    template's input runs become a push of the bit, four characters wide
-    whichever bit it is, so the program's shape does not reveal its inputs.
-    The harness instantiates one program per input combination.  Each input
-    is embedded once: the load phase pushes every ``<@`` + run pair (a
-    constant 1 marker, then the bit) up front, so the stack holds all ``n``
-    bits and markers with ``b0`` on top.
-
-    Every character outside ``@.<>[]`` is a comment, so the commands are
-    emitted unseparated; the fragments below are spaced only to read.
-
-    A node tests its bit and *consumes* it for the next level using a
-    ``<``-break loop ``[ > one < ] > [ > zero < ] >``: ``[`` enters when the
-    bit is one, ``>`` pops it, the one-branch pops the marker (to expose the
-    next bit), and ``<`` pushes a fresh zero to break the loop -- which
-    works because the guard was already popped, unlike ``[ sub @ ]`` where
-    ``@`` needs the guard still on top.  The zero-branch is selected by the
-    second loop testing the marker: when the bit is zero, ``[`` never
-    entered, so the outer ``>`` pops the *bit* instead (it was never
-    consumed), exposing the marker as the new top.  The marker's role is only
-    to be truthy there -- its value never depends on the input, so a constant
-    1 (not the input's complement) is correct, and it is embedded directly in
-    the template rather than through the bit-value substitution.  A leaf pops
-    the remaining pre-loaded bits (``2*(n-level)`` of them) and prints the
-    constant answer.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.  Each
+    run is a four-character push of its bit; the load pushes every ``<@`` +
+    run pair so the stack holds all bits and markers with ``b0`` on top.
+    Characters outside ``@.<>[]`` are comments.  A node tests and consumes
+    its bit with ``[ > one < ] > [ > zero < ] >``: ``[`` enters on a one,
+    ``>`` pops it, the one-branch pops the marker, ``<`` pushes a zero to
+    break; on a zero the outer ``>`` pops the bit and the second loop tests
+    the marker, a constant 1 embedded directly.  A leaf pops the remaining
+    ``2*(n-level)`` and prints.
     """
     from esolangs.tools.examples import _setters_bfpda
 
     n = _validate_truth_table(truth_table)
 
-    # Load: push a constant-1 marker then the bit, in name order, so the top
-    # of the stack is the *last* input and the tree tests it first.
-    #
-    # The load used to run reversed so the top was ``b0`` and level ``i``
-    # could test input ``i``.  That is the only thing the reversal bought,
-    # and testing the inputs bottom-up costs nothing: the stack is strictly
-    # LIFO either way, every level still consumes exactly one bit and one
-    # marker, and the tree is the same shape reflected.  Pushing in name
-    # order keeps the emitted template's runs in input sequence.
+    # Marker then bit, in name order, so the tree tests the last input
+    # first (the same tree reflected; the reversed load bought nothing and
+    # put the runs out of order).
     head = "".join("<@" + run for run in _runs(_setters_bfpda(truth_table, n)))
 
     def leaf(level: int, value: str) -> str:
@@ -266,44 +220,19 @@ def bfpda(truth_table: str) -> str:
 def bitdeque(truth_table: str) -> str:
     """Build a Bitdeque template for the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Bitdeque has no input command, so this is a parameterized generator: the
-    template's input runs become a *fixed-length* two-command setter per
-    bit, and the harness instantiates one program per input
-    combination.  The earlier wall said the absolute ``GOTO N`` targets shift
-    because the setter had variable length (``INVERT`` vs nothing); the fixed
-    setter removes that: every bit is the one pair ``PUSH INVERT`` (zero)
-    against ``INVERT PUSH`` (one), the register flips after every block --
-    so an odd position pushes its bit complemented, which the tree's table
-    absorbs (:func:`_bitdeque_ordered`) -- and the load is always ``2n``
-    commands, so no absolute index moves between instantiations.
-
-    Bits are pushed in reverse order so ``POP`` (LIFO) yields the most
-    significant bit first, matching the contiguous MSB-first decision-tree
-    splits.  A node pops one bit and ``GOTO``s to the one-subtree when it is
-    one, with the zero-subtree falling through in place.  A leaf drains the
-    deque with ``n+1`` ``POP``s (so the register is exactly zero even for a
-    collapsed tree), pushes the answer, forces the register back to one with
-    a trailing ``INVERT``, and uses a fixed low-address halt trampoline -- so
-    every leaf always routes and the deque printed at halt holds exactly the
-    answer.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.helpers.best_input_order`).
-    Bitdeque is a *deque*, not a stack: ``INJECT``/``EJECT`` work the head
-    where ``PUSH``/``POP`` work the tail, so a node can bring any bit to an
-    end with ``EJECT PUSH`` (head to tail) or ``POP INJECT`` (tail to head)
-    and is not restricted to the order the load pushed.  Rotation costs two
-    commands per position, so an order pays for its folds; the search
-    measures rather than models, and an order whose rotations outweigh its
-    savings loses to the identity.
-
-    The rotations happen *inside the tree*, never in the load block: what
-    a position pushes depends on the register parity there, so moving the
-    head would change which inputs the table must complement.  The emitted
-    load is byte-identical whatever the order.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.  Every
+    bit is the fixed pair ``PUSH INVERT`` (zero) / ``INVERT PUSH`` (one),
+    so the load is always ``2n`` commands and no absolute ``GOTO`` moves;
+    the register flips after every block, so odd positions push complemented,
+    which the table absorbs (:func:`_bitdeque_ordered`).  Bits are pushed in
+    reverse so ``POP`` yields the MSB first.  A node pops and ``GOTO``s to
+    the one-subtree; a leaf drains with ``n+1`` ``POP``s, pushes the answer,
+    restores the register with ``INVERT``, and uses a low-address halt
+    trampoline.  The split order is whichever is shortest
+    (:func:`~esolangs.tools.helpers.best_input_order`): a deque's
+    ``EJECT``/``INJECT`` work the head, so any bit can be brought to an end
+    at two commands per position, measured not modelled.  Rotations happen
+    inside the tree; the load is byte-identical under every order.
     """
     if len(truth_table) <= 16:
         return best_input_order(truth_table, _bitdeque_ordered)
@@ -313,22 +242,11 @@ def bitdeque(truth_table: str) -> str:
 def _bitdeque_linear(truth_table: str) -> str:
     """Push the table, then discard its prefix and suffix in O(T) text.
 
-    Every input is the same two-command unit the tree route embeds, and the
-    input's *weight* lives in the template: after the table is pushed (and
-    the register zeroed, which the last table bit decides statically), each
-    input's run pushes its bit onto the tail, a ``POP`` takes it back into
-    the register, and a ``GOTO`` picks one of two fixed discard blocks --
-    ``EJECT`` the upper half of the window off the head for a one, ``POP``
-    the lower half off the tail for a zero, ``2**(n-1-i)`` commands each.
-    The zero block ends by forcing the register to one and jumping over the
-    one block; both meet at a three-command block that forces the register
-    back to zero, which is what the next run relies on.  The last input
-    skips that: the deque holds exactly the indexed entry, and nothing
-    reads the register again.
-
-    Both blocks are in the text and one runs, so the program is ``2T``
-    discard commands long and executes ``T`` of them: the same growth as
-    before and the same constant the execution contract measures.
+    After the table is pushed, each run pushes its bit, ``POP`` takes it into
+    the register, and a ``GOTO`` picks a discard block: ``EJECT`` the upper
+    half off the head for a one, ``POP`` the lower half off the tail for a
+    zero, ``2**(n-1-i)`` commands each, meeting at a block that zeroes the
+    register.  The last input skips that.  ``2T`` commands long, ``T`` executed.
     """
     from esolangs.tools.examples import _setters_bitdeque
 
@@ -370,24 +288,11 @@ def _bitdeque_linear(truth_table: str) -> str:
 def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one input order's Bitdeque template; see :func:`bitdeque`.
 
-    ``truth_table`` is already permuted, so the rows are in the permuted
-    frame.  ``perm`` is spent on the rotations a node runs before it
-    consumes its bit -- and those are a function of the *level* alone, not
-    of the node: both branches of a level have rotated and consumed exactly
-    the same bits on the way down, so the deque layout at a level is the
-    same on every path through it.  That is what keeps a node's width
-    well-defined for the walker's index arithmetic.
-
-    Under the identity order every bit is already at the tail when it is
-    wanted, so no rotation is emitted and the output is byte-identical to
-    what the unordered generator produced.
-
-    Every input is the one pair ``PUSH INVERT``/``INVERT PUSH``, and the
-    register flips after every block, so the block at an odd load position
-    pushes its bit *complemented*.  The tree reads the table with those
-    inputs complemented back (``row ^ mask``), which is a relabelling of the
-    rows and folds exactly as the table did: the flip lives in the table the
-    tree walks, not in the embed and not in an extra ``INVERT`` per block.
+    ``perm`` is spent on the rotations before a node consumes its bit, a
+    function of the level alone, so a node's width is well-defined.  The
+    identity order emits no rotation.  Odd load positions push complemented;
+    the tree reads the table with those inputs complemented back
+    (``row ^ mask``), a relabelling that folds as the table did.
     """
     from esolangs.tools.examples import _setters_bitdeque
 
@@ -407,18 +312,9 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         out.append("GOTO 0")
         return out
 
-    # Simulate the deque to find each level's rotation.  The load pushes the
-    # inputs in name order, so the tail -- what ``POP`` returns -- is input
-    # ``n - 1`` and the head is input 0.
-    #
-    # Pushing in name order rather than reversed is free.  The reversed load
-    # made the first ``POP`` the *most significant* bit, which only fixes
-    # which input a root-level test reaches first -- and the rotation search
-    # already brings any bit to either end, so both loads reach the same set
-    # of orders at the same cost.  Measured over every order at n = 2, 3 and
-    # 4, the rotation-length multisets are identical.  Name order is the
-    # better default: it keeps the emitted template's runs in input
-    # sequence.
+    # Simulate the deque per level: the tail (``POP``) is input ``n - 1``,
+    # the head input 0.  Name order costs nothing over reversed -- the
+    # rotation-length multisets are identical over every order at n=2,3,4.
     deque = list(range(n))
     rotations: list[list[str]] = []
     for level in range(n):
@@ -484,34 +380,18 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 def minsky_swap(truth_table: str) -> str:
     """Build a Minsky Swap template for the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Minsky Swap has no input command, so this is a parameterized generator:
-    every input's run is the same two-command pair -- ``++`` sets ``reg[0]``
-    to two, ``**`` swaps the pointer away and back -- and the *template*
-    carries the input's weight.  Each run is followed by a stage that reads
-    the bit off ``reg[0]`` and adds ``2**(n-1-i)`` to ``reg[1]``::
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.  Every
+    run is ``++`` (``reg[0] = 2``) or ``**`` (swap away and back), and each
+    is followed by a stage adding ``2**(n-1-i)`` to ``reg[1]``::
 
         $$ ~ ~ * +...+ *
 
-    Both ``~`` target the command after the stage.  A one leaves ``reg[0]``
-    at two, so both decrement and fall through to the ``+`` block, which
-    the swaps put onto ``reg[1]``; a zero leaves it at zero, so the first
-    ``~`` jumps the block.  Either way the stage ends with ``reg[0]`` zero
-    and the pointer on it, which is what the next stage assumes -- so the
-    stages compose in name order and ``reg[1]`` holds the table index once
-    the last has run.  The blocks sum to ``2**n - 1`` commands, so the load
-    stays linear in the table and the runs no longer count the weight: the
-    jump targets count the block widths instead.
-
-    A ``*`` puts the pointer on ``reg[1]`` and a cascade of ``2**n`` ``~``s
-    routes the value *v* to leaf *v* -- each ``~`` decrements a nonzero
-    register and jumps on zero, so the (v+1)-th one sees the value hit
-    zero.  At a leaf both registers are zero.  A one leaf is ``+ * ~``: it
-    sets ``reg[1]``, steps onto the zero ``reg[0]``, and jumps off the
-    program end; a zero leaf is the bare ``~`` on the zero ``reg[1]``.  The
-    dumped registers read ``0 {answer}``.
+    Both ``~`` target the command after the stage: a one falls through to
+    the ``+`` block, a zero jumps it; either way ``reg[0]`` is zero and the
+    pointer on it.  The blocks sum to ``2**n - 1`` commands.  A ``*`` then
+    puts the pointer on ``reg[1]`` and ``2**n`` ``~``s route value ``v`` to
+    leaf ``v``; a one leaf is ``+ * ~``, a zero leaf ``~``.  The dump reads
+    ``0 {answer}``.
     """
     from esolangs.tools.examples import _setters_minsky_swap
 
@@ -555,57 +435,23 @@ def minsky_swap(truth_table: str) -> str:
 def home_row(truth_table: str) -> str:
     """Build a Home Row template for the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Home Row has no input command, so this is a parameterized generator:
-    each input's run becomes a two-character setter at a bit cell that the
-    harness fills in per instantiation.  The cell is zero when the run is
-    reached, so the setter raises it with ``a`` and then
-    either clears it again (``s``) or leaves it (``j``, whose skip does not
-    fire on the now-nonzero cell), spending the same width either way.
-
-    Unlike the removed ``n <= 2`` routing generator (which tried to send the
-    beam to one of ``2**n`` distinct leaf cells -- a wall past ``n == 2`` on
-    the fixed 5x5 grid), this closed-form construction packs the bits into a
-    single binary accumulator and then walks a linear chain of leaf checks,
-    so it never needs more than a handful of live cells regardless of ``n``.
-
-    A cell holds the current value under test; the setup line seeds a
-    second cell with the ASCII digit base (``48``, ``'0'``).  Each of the
-    ``n`` bit-packing lines is ``$$ l s ffff a{2**(n-1-i)} f l``: the
-    ``l``/``s``/``l`` triple is Home Row's position-stable "run once iff
-    nonzero, consuming the guard" gate (loops cannot nest -- ``l``s pair
-    strictly by order of appearance -- so this gate, not a BF-style bracket
-    match, is what makes the packing safe to chain), and its body adds the
-    bit's binary weight to the accumulator only when the bit is 1.  After all
-    ``n`` gates the accumulator holds the combination's integer index
-    ``0 .. 2**n - 1``.
-
-    The remaining ``2**n`` lines are a linear equality chain, one per
-    index ``k``: ``a ffff l s f s ff l f l f <answer> k ; l f f`` fans the
-    accumulator out into a working copy and a backup (destroying the
-    accumulator), subtracts ``k`` from the working copy via the leading
-    ``a ffff``/``s`` structure, and the position-stable gate on that
-    difference either prints the baked answer byte and halts (a match) or
-    restores the accumulator from the backup and falls through to test
-    ``k + 1``.  The answer byte is a literal ``a`` (or nothing) baked
-    directly from ``truth_table[k]`` -- unlike the ``n`` input bits, it is
-    known at generation time, not supplied by the harness, so it needs no
-    input run.  The final line (index ``2**n - 1``) needs no
-    restore, since every other index has already been ruled out.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.  A
+    run is a two-character setter on a zero cell: ``a`` then ``s`` (clear)
+    or ``j`` (a skip that does not fire).  The bits pack into one binary
+    accumulator (the removed routing generator hit a wall past ``n == 2`` on
+    the 5x5 grid): each packing line ``$$ l s ffff a{2**(n-1-i)} f l`` uses
+    Home Row's position-stable ``l``/``s``/``l`` gate (loops cannot nest) to
+    add the weight iff the bit is 1.  Then ``2**n`` lines
+    ``a ffff l s f s ff l f l f <answer> k ; l f f`` fan the accumulator
+    into a working copy and backup, subtract ``k``, and either print the
+    baked answer and halt or restore and fall through; the last needs no restore.
     """
     from esolangs.tools.examples import _setters_home_row
 
     n = _validate_truth_table(truth_table)
-    # A table that ignores some of its inputs is a smaller table, and the
-    # leaf chain -- the whole cost here -- is 2**n lines regardless of what
-    # the table says, so dropping an input halves the program.  The gates
-    # stay: every input keeps its setter run and its packing line, and
-    # an ignored one carries binary weight zero, so its gate runs and
-    # consumes its guard exactly as before while adding nothing to the
-    # accumulator.  Nothing is relocated and no setter changes width, which
-    # keeps the slot-order and equal-width invariants intact.
+    # The leaf chain is 2**n lines whatever the table says, so dropping an
+    # ignored input halves the program; its gate stays with weight zero,
+    # so nothing moves and no setter changes width.
     used = essential_inputs(truth_table, n)
     # A constant table depends on nothing and reduces to a one-input table,
     # never to the length-1 table, which is not a valid shape.
