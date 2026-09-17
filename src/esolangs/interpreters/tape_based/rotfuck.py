@@ -1,43 +1,16 @@
 """Interpreter for ROTfuck.
 
-Brainfuck whose program text rotates: every executed command advances all
-non-comment characters one step along the cyclic alphabet ``+-><,.[]``
-(``+`` becomes ``-``, ``-`` becomes ``>``, ..., ``]`` becomes ``+``).  The
-command at the instruction pointer is therefore a function of how many
-commands have run, not just of the source text.
-
-A character outside the alphabet is a comment: the pointer passes over it
-without executing it, and -- since the wiki rotates "every time an
-instruction is executed" and a comment is not an instruction -- without
-rotating the program.  Comments are therefore fully transparent, and the
-same program with or without them behaves identically.  This is the
-package's reading rather than something the wiki states outright: the page
-never defines what counts as a comment, and ROTfuck has no reference
-implementation to defer to.  The reading matters, because the alternative
-(rotating on comments too) would make whitespace significant and mean a
-program could not be reformatted at all.
-
-The tape follows the same conventions as the plain Brainfuck interpreter in
-this package: an 8-bit wrapping tape that grows to the right, ``<`` clamped
-at the left edge, and :class:`EOFError` when ``,`` runs out of input.
-
-Brackets are matched dynamically.  Because the rotation changes which
-character sits at each position, a bracket's partner cannot be fixed in
-advance from the source; instead, when a bracket needs to jump it rotates
-the program first (the rotation is the bracket's side effect of executing)
-and then seeks for the matching bracket in the rotated program, using the
-standard nesting count.  A bracket that fires with no partner in the rotated
-program is a runtime error, not a load error, and the interpreter halts with
-:class:`~esolangs.exceptions.HaltError`.  Unbalanced sources are legal, since
-the rotation can bring any character to the pointer at any time; only
-executing a partnerless bracket is an error.
-
-Rather than physically rotating the whole program after every command (an
-O(n) rewrite per step), the interpreter tracks the rotation count and
-derives the effective character at any position on the fly: after ``k``
-rotations the command at a source position has advanced ``k`` steps along
-the cycle.  Bracket partners are found by the same derivation, so the
-behavior is identical to rotating the program text.
+Brainfuck whose program rotates: every executed command advances all
+non-comment characters one step along ``+-><,.[]``.  A comment is passed
+over without rotating (the wiki rotates "every time an instruction is
+executed"; the alternative would make whitespace significant) -- the
+package's reading, since the page defines no comment.  Tape as plain
+Brainfuck: 8-bit, ``<`` clamped, :class:`EOFError` on exhausted input.
+Brackets match dynamically: a jumping bracket rotates first, then seeks
+its partner in the rotated program; a partnerless bracket that fires
+raises :class:`~esolangs.exceptions.HaltError`, and unbalanced sources
+are legal.  The rotation count is tracked and the effective character
+derived, not the text rewritten.
 """
 
 import sys
@@ -71,13 +44,8 @@ _OPCODE = {ch: i for i, ch in enumerate(_CYCLE)}
 def _at(chars: tuple[str, ...], rot: int, i: int) -> str:
     """Return the effective command at ``i`` under rotation ``rot``.
 
-    A comment never rotates and never changes, so it reads as itself.
-
-    The rotation is arithmetic on a precomputed opcode rather than a scan
-    for the character's position in the cycle: this is the interpreter's
-    hottest function -- twice per step, once for the command and again for
-    every position a bracket search walks -- and the scan was 46% of a
-    generated program's runtime.
+    Arithmetic on a precomputed opcode: the hottest function, and a cycle
+    scan was 46% of a generated program's runtime.
     """
     code = _OPCODE.get(chars[i], -1)
     return _CYCLE[(code + rot) % 8] if code >= 0 else chars[i]
@@ -116,13 +84,7 @@ def _backward(chars: tuple[str, ...], rot: int, i: int) -> int | None:
 
 
 class _Program:
-    """A ROTfuck program with an implicit rotation count.
-
-    The source text is stored once; the effective command at position ``i``
-    after ``rot`` executed commands is the source character advanced ``rot``
-    steps along the cycle (comments never rotate).  Matching a bracket seeks
-    through these effective characters with the standard nesting count.
-    """
+    """A ROTfuck program with an implicit rotation count."""
 
     def __init__(self, code: str) -> None:
         """Store ``code`` with a zero rotation count."""
@@ -157,18 +119,8 @@ class _Program:
 def _advance(state: _State, chars: tuple[str, ...], byte: int | None = None) -> _State:
     """Return the state after executing the command under the cursor.
 
-    Pure: it reads ``state`` and returns a new one.  ``.``'s printing is
-    the caller's business -- the cell it prints is carried forward
-    unchanged -- and ``,``'s byte arrives as ``byte``.
-
-    A bracket that jumps rotates *before* seeking its partner, so the
-    partner is looked up in the program the jump lands in rather than the
-    one it left.  Both jumps land one past the partner.
-
-    A comment advances the cursor without rotating: the spec rotates
-    "every time an instruction is executed", and a comment is passed over,
-    not executed.  A bracket whose guard is false does rotate -- it is an
-    executed instruction that simply did not jump.
+    A bracket rotates *before* seeking, and lands one past the partner.  A
+    comment advances without rotating; a false-guarded bracket does rotate.
     """
     tape, ptr, ind, rot = state
     char = _at(chars, rot, ind)
@@ -216,12 +168,7 @@ def _advance(state: _State, chars: tuple[str, ...], byte: int | None = None) -> 
 class _Machine:
     """Per-run ROTfuck state: the rotating program, tape, pointer, and cursor.
 
-    ``step()`` executes one command (rotating the program as its side
-    effect); ``halted`` is true once the cursor reaches the end of the
-    source.  The rotation count, tape, and cursor fully determine the next
-    command, so a program that revisits them is a finite-state cycle the
-    hang detector can prove.  The VM and the hang detector expose this
-    object.
+    Rotation, tape and cursor determine the next command, so a revisit is a cycle.
     """
 
     def __init__(self, code: str, io: IO) -> None:
@@ -274,14 +221,7 @@ class _Machine:
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields.
 
-        The fields are this class's published shape -- the VM's views and
-        the tests read them -- so they stay, and the rotation goes back
-        through _Program, which is what ``at`` consults.
-
-        ``tape`` needs no conversion: the field holds the same immutable
-        tuple the transition returns.  Nothing writes ``self.tape[i]``, so
-        the list it used to be was a value in a mutable type, converted
-        out and back on every step for no one.
+        ``tape`` stays the immutable tuple (a list was converted for no one).
         """
         self.tape, self.ptr, self.ind, rot = state
         self.prog.set_rotation(rot)
@@ -289,11 +229,7 @@ class _Machine:
     def step(self) -> None:
         """Execute one command, advancing the cursor and rotation.
 
-        The two ports live here rather than in the transition: this is the
-        shell.  ``.`` prints the cell the transition carries forward
-        unchanged, and ``,``'s byte is read here and handed over.  Which
-        command a cell *is* depends on the rotation, so both consult the
-        effective character rather than the source one.
+        Both ports consult the effective character, not the source one.
         """
         if self.halted:
             return

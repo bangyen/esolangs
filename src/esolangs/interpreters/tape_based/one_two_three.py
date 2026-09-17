@@ -1,40 +1,17 @@
 """Interpreter for 123.
 
-A bit-tape language: the pointer starts at location 0 over an unbounded
-array of bits (all initially FALSE, indexed 0, 1, 2, ... to the right, with
-no upper bound).  ``1`` flips the current bit and moves the pointer left,
-wrapping from -4 back to 0.  ``2`` reads a character into locations 0-7 when
-the pointer is at -3, writes locations 0-7 as a character when at -2 (both
-then reset the pointer to 0), and otherwise just moves the pointer right.
-``3`` is a jump symbol: below location 0 it is a NOP; otherwise, when the
-current bit is TRUE the pointer skips back to the previous ``3`` (or the
-start), and when FALSE it skips forward to the next ``3`` (or the end).  The
-program halts only when the end is reached with the pointer below 0
-(otherwise it loops from the start), and unrecognized characters are NOPs.
-
-Locations 0-7 are read as an 8-bit character MSB-first (location 0 is bit
-7): the cross-check interpreters and the repository's generator agree on
-this order, which is the opposite of the wiki's little-endian note.
-
-Decisions for gaps in the wiki spec (documented):
-- ``,`` reads a whole input line and takes its first byte, raising
-  :class:`EOFError` when input runs out (like the other tape interpreters);
-- a ``3`` with no next ``3`` skips to the end, where the normal loop-or-halt
-  check applies;
-- a program with no ``1``/``2``/``3`` commands halts with no output (the
-  spec would loop forever on the empty program).
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the code to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what 123 *does* stays in the
-pure layer.  The two effects ``2`` can have -- reading a byte at location
--3 and writing one at -2 -- are done by ``step`` before it calls the pure
-transition.
+An unbounded bit tape from location 0.  ``1`` flips the bit and moves
+left, wrapping -4 to 0.  ``2`` reads a character into locations 0-7 at
+-3, writes them at -2 (both reset the pointer to 0), and otherwise moves
+right.  ``3`` is a NOP below 0; on TRUE it jumps back to the previous
+``3`` (or the start), on FALSE forward to the next (or the end).  The
+program halts only at the end with the pointer below 0, else loops.
+Locations 0-7 are MSB-first (location 0 is bit 7), as the cross-checks
+and the generator agree, opposite the wiki's little-endian note.
+``2`` reads a line's first byte and raises :class:`EOFError` when
+exhausted; a program with no commands halts with no output.
+:func:`_advance` is pure over an immutable ``_State``; ``2``'s I/O is
+the shell's.
 """
 
 from __future__ import annotations
@@ -73,14 +50,8 @@ def _with_byte(bits: _Bits, value: int) -> _Bits:
 def _landings(code: str) -> tuple[tuple[int, ...], tuple[int, ...]]:
     """Return where a backward and a forward ``3`` jump land, per position.
 
-    Two prefix scans, run once when the program loads.  The jump used to
-    walk to the nearest ``3`` from the cursor, so it cost the distance to
-    its partner every time it was taken -- and these are not nested
-    brackets but a plain nearest-neighbour search, which a pair of arrays
-    answers outright.
-
-    The edges are that walk's: no ``3`` behind lands at the start, and none
-    ahead lands past the end, where the loop-or-halt check applies.
+    Two prefix scans at load (the jump used to walk to its partner each
+    time); no ``3`` behind lands at the start, none ahead past the end.
     """
     size = len(code)
     back = [0] * size
@@ -106,18 +77,9 @@ def _advance(
 ) -> _State:
     """Return the state after executing one command.
 
-    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
-    argument, so ``2``'s read and write are the caller's business -- the
-    write changes no state beyond the pointer, and the read's byte arrives
-    as ``byte``, already read.
-
-    Reaching the end of the code is not automatically a halt: with the
-    pointer below 0 the run ends, and otherwise the cursor returns to the
-    start.  That check is here rather than in the shell because it decides
-    a state, not an effect.
-
-    ``3`` returns early because its jump already places the cursor; every
-    other command falls through to the shared increment.
+    The end of the code halts only with the pointer below 0, else the cursor
+    returns to the start -- a state decision, so here.  ``3`` places the
+    cursor itself.
     """
     ip, pos, bits, done = state
     if ip >= len(code):
@@ -148,15 +110,8 @@ def _advance(
 class _Machine:
     """Per-run 123 state: an unbounded bit tape, pointer, and code cursor.
 
-    ``step()`` executes one command and ``halted`` says whether the program
-    ended — the shape the VM wrapper and the state-cycle hang detector
-    expect.  :meth:`snapshot` returns the cursor, pointer, tape contents,
-    and input cursor, so a repeated snapshot proves a deterministic run
-    loops forever; programs that only ever touch a bounded prefix of the
-    tape are bounded-state and always resolve as a cycle, while a program
-    that marches the pointer right forever grows the tape without repeating
-    a state (the state-cycle detector's documented "unbounded growth" case,
-    left to the caller's timeout backstop).
+    A program touching a bounded prefix always resolves as a cycle; one that
+    marches right forever is the detector's unbounded-growth case.
     """
 
     def __init__(self, code: str, io: IO) -> None:
@@ -190,10 +145,7 @@ class _Machine:
     def place(self, ip: int, pos: int, bits: frozenset[int] = frozenset()) -> None:
         """Put the machine on a given cursor, pointer, and set of TRUE bits.
 
-        A caller can reach a state directly rather than running a program
-        up to it, which is how the backward-jump branch is exercised: no
-        short program both sets a bit at a location and arrives on a ``3``
-        with an earlier ``3`` behind it.
+        How the backward-jump branch is exercised: no short program reaches it.
         """
         self.state = (ip, pos, bits, self.state[3])
 
@@ -230,10 +182,7 @@ class _Machine:
     def step(self) -> None:
         """Execute one command (or the loop-or-halt check), advancing.
 
-        The two effects live here rather than in the transition: this is
-        the shell, so it is where an effect belongs.  A ``2`` only reads or
-        writes at the two special pointer positions, so the position is
-        tested here as well -- a ``2`` anywhere else must not touch I/O.
+        The position is tested here too: a ``2`` elsewhere must not touch I/O.
         """
         ip, pos, bits, done = self.state
         if done:
