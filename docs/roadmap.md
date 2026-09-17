@@ -73,7 +73,9 @@ The candidate list is empty.
     Descartes minimum ([polynomial](polynomial.md)).
   - WII2D, three cells: a rule emitting readouts within a constant of the
     exact optima (1.4--2.4 characters per entry to domain 14); no one-step
-    or bounded-beam rule over small centres is one.
+    or bounded-beam rule over small centres is one, and the optima's
+    non-ratcheting shape is closed to a dense centre past domain ~200
+    (the zone lemma in [limitations](limitations.md#searched-negatives)).
   - Factor: stays for its two language lower bounds; `%^2^-1`'s
     `Exception` cannot close, and which tables through sixteen inputs the
     planners refuse is finite (every table tried through fourteen builds).
