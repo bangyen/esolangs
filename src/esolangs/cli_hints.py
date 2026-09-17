@@ -1,10 +1,4 @@
-"""What the CLI says when something is wrong, and how it judges an answer.
-
-The hints are the difference between a tool that refuses and one that says
-why: a template mistaken for a program, a truth table in the file slot, an
-input whose alphabet the language does not spell.  Each is a pure function of
-what was seen, so none of them can decide anything.
-"""
+"""What the CLI says when something is wrong, and how it judges an answer."""
 
 from __future__ import annotations
 
@@ -31,14 +25,8 @@ _TIMEOUT_EXIT = 124
 def _exit_code(exc: EsolangError) -> int:
     """Return the exit code ``exc`` should leave behind.
 
-    Derived rather than written at each site, because it was written at
-    each site: ``run`` and ``debug`` exited 124 on a bound running out and
-    ``evaluate``, ``verify`` and ``answer`` exited 1 on the same event, so
-    a script could not use one code to mean "the bound ran out".  The
-    124 is the only exit code this CLI documents a meaning for, in ``run
-    --help``, and three of the five commands did not honour it.
-
-    A ``ValueError`` is misuse and stays 2; everything else is 1.
+    ``run --help`` documents 124 for a bound running out, and three of the
+    five commands exited 1 on it.  ``ValueError`` is misuse, 2; else 1.
     """
     if isinstance(exc, ExecutionTimeoutError):
         return _TIMEOUT_EXIT
@@ -54,12 +42,7 @@ _UNCOUNTABLE_SHAPES = ("one_line", "row_index")
 
 
 def _template_hint(exc: TemplateError, language: str) -> str:
-    """Re-point a template refusal at the CLI flag that fills the slots.
-
-    The library's message names ``esolangs.instantiate(...)``, which is the
-    right answer for a Python caller and a dead end for someone who has
-    only ever typed ``esolangs``.
-    """
+    """Re-point a template refusal at the CLI flag that fills the slots."""
     message = str(exc)
     pointer = "fill them with esolangs.instantiate("
     if pointer not in message:
@@ -74,10 +57,8 @@ def _template_hint(exc: TemplateError, language: str) -> str:
 def _shell_hint(message: str, language: str) -> str:
     """Re-point ``encode``'s refusal at the flag that does the same job.
 
-    Same problem as :func:`_template_hint` and the sibling it was written
-    for: ``encode Minifuck 10`` was answered with "pass the bits to
-    instantiate() instead", and ``instantiate()`` is not a thing you can
-    type at a shell.  The flag that embeds bits is ``generate --bits``.
+    ``instantiate()`` is not a thing you can type at a shell; ``generate
+    --bits`` is.
     """
     pointer = "pass the bits to instantiate() instead"
     if pointer not in message:
@@ -100,9 +81,7 @@ def _looks_like_a_table(value: str) -> bool:
 def _swapped_hint(language: str, table: str) -> str:
     """Return a hint when the language and truth-table arguments look swapped.
 
-    ``generate 0110 brainfuck`` was answered with "unknown language: 0110",
-    which is true and unhelpful: a power-of-two run of 0s and 1s in the
-    language slot is a swap, not a language nobody has implemented.
+    A power-of-two run of 0s and 1s in the language slot is a swap.
     """
     looks_like_table = bool(language) and not set(language) - {"0", "1"}
     if not looks_like_table:
@@ -119,9 +98,7 @@ def _swapped_hint(language: str, table: str) -> str:
 def _did_you_mean(word: str, known: Iterable[str]) -> str:
     """Return a ``did you mean`` clause for ``word``, or an empty string.
 
-    Language names have had suggestions for a while and option names had
-    none, so ``--wdith 40`` was a flat "unknown option" while ``Brainfck``
-    got helped.  Same cutoff as :func:`esolangs.registry.resolve` uses.
+    Same cutoff as :func:`esolangs.registry.resolve`.
     """
     close = get_close_matches(word, sorted(known), n=2, cutoff=SUGGESTION_CUTOFF)
     if not close:
@@ -141,12 +118,8 @@ def _abridge(history: Sequence[object]) -> str:
 def _shape_warning(facts: LanguageInfo, stdin: str, table: str | None = None) -> str:
     """Return the library's complaint about ``stdin``, or ``''``.
 
-    The checks themselves live in :func:`esolangs.check_stdin` now.  They
-    were written here, and a Python caller had no way to reach them -- the
-    one place the API was weaker than this command line, and the guards in
-    question are the ones every reader of this package trips over.  Two
-    copies would have drifted, as two copies of a check in this repository
-    have twice before.
+    The checks live in :func:`esolangs.check_stdin`; two copies drifted
+    twice before.
     """
     if not facts["reads_input"]:
         return ""
@@ -172,15 +145,8 @@ def _decode_note(exc: UnicodeDecodeError) -> str:
 def _stdin_hint(facts: LanguageInfo) -> str:
     """Return a clause naming what this language wants on stdin, if anything.
 
-    A language whose generator embeds its inputs usually wants nothing, and
-    saying so is most of the help: the reader who typed `esolangs run RAM0
-    prog.txt` and watched it wait was waiting for input the program was
-    never going to ask for.
-
-    *Usually*, not always -- the flag says the generated program reads no
-    stdin, and three of those seventeen languages have an input command a
-    hand-written program may still use.  So this suggests and does not
-    skip.
+    Suggests rather than skips: three of the seventeen embed-only languages
+    have an input command a hand-written program may use.
     """
     if not facts["reads_input"] and facts["parameterized"]:
         return (
@@ -196,11 +162,7 @@ def _stdin_hint(facts: LanguageInfo) -> str:
 
 
 def _input_sentence(facts: LanguageInfo) -> str:
-    """Describe this language's stdin in one line, with an example.
-
-    Composed from ``input_shape`` and ``input_encoding`` rather than stored,
-    so a language that declares a new shape is described by declaring it.
-    """
+    """Describe this language's stdin in one line, with an example."""
     zero, one = facts["input_encoding"]
     shape = str(facts["input_shape"])
     example = f"{one}{zero}"
@@ -222,18 +184,10 @@ def _diverging_answer(
 ) -> str:
     """Return the answer bit for a language that answers by terminating.
 
-    By *proof* rather than by waiting.  This used to run the row under the
-    bound and read a timeout as the 1 -- so ``answer --timeout 20`` on a
-    1-row took twenty seconds, and raising the bound made it strictly
-    slower, which is the opposite of what a bound should mean.  ``verify``
-    settles four rows of the same language in a fifth of a second because
-    it uses the repeated-state proof; ``answer --help`` calls itself
-    "``verify`` for one row" and was the one place the proof had not
-    reached.
-
-    The clock stays as the backstop it was always meant to be: a loop that
-    grows without bound never repeats a state, so it still has to be timed
-    out.
+    By repeated-state proof, not by waiting: ``answer --timeout 20`` on a
+    1-row used to take twenty seconds where ``verify`` settles four rows
+    in a fifth of a second.  The clock stays as the backstop for unbounded
+    growth.
     """
     encoding = facts["answer_encoding"]
     return _terminates(
@@ -249,11 +203,7 @@ def _diverging_answer(
 def _as_argument(language: str) -> str:
     """Return ``language`` spelled the way a shell needs it.
 
-    Twelve of the 65 names contain a space, and the package prints
-    commands containing them -- ``describe`` ends with ``esolangs describe
-    --spec A Painter Ant``, and the template hint offers ``esolangs
-    generate --bits <bits> A Painter Ant <table>``.  Copy-pasting either
-    gives ``unexpected argument: 'Painter'``, so the tool was emitting
-    commands it cannot itself parse.
+    Twelve of the 65 names contain a space; ``esolangs describe --spec A
+    Painter Ant`` gave ``unexpected argument: 'Painter'``.
     """
     return f'"{language}"' if " " in language else language
