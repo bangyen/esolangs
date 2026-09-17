@@ -400,13 +400,6 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.nocomment,
         id="nocomment",
     ),
-    "Nopstacle": Language(
-        "Nopstacle",
-        "grid_based.nopstacle",
-        boolean=_boolean.nopstacle,
-        id="nopstacle",
-        split=True,
-    ),
     "Packlang": Language(
         "Packlang",
         "other.packlang",
@@ -512,13 +505,6 @@ LANGUAGES: dict[str, Language] = {
         "grid_based.wii2d",
         boolean=_boolean.wii2d,
         id="wii2d",
-        split=True,
-    ),
-    "ZTOALC L": Language(
-        "ZTOALC L",
-        "other.ztoalc_l",
-        boolean=_boolean.ztoalc_l,
-        id="ztoalc_l",
         split=True,
     ),
 }

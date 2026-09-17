@@ -74,7 +74,7 @@ ceiling is one named constant; reaching it refuses, never truncates.  A
 construction that is polynomial in the table and inside the budget gets no
 ceiling: super-linear growth there is an open roadmap cell for the linearity
 contract to hold, and a ceiling would hide it.  A refusal with no lift
-argument is `exception`, not `cap`.  Audited across all 65 on 2026-09-17:
+argument is `exception`, not `cap`.  Audited across all 63 on 2026-09-17:
 every other arity threshold is a route switch to a total construction or an
 unreachable invariant guard.
 
@@ -122,7 +122,7 @@ table.
 
 ## Generator ledger
 
-The names are the 65 callable entries indexed by `BY_BOOLEAN`.  Rows sharing a
+The names are the 63 callable entries indexed by `BY_BOOLEAN`.  Rows sharing a
 proof scheme share the proof above; the qualification column records the
 language-specific final step or an exception.  `cap` means theoretically total
 after ignoring the performance/resource ceiling as specified above.
@@ -171,7 +171,6 @@ after ignoring the performance/resource ceiling as specified above.
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to its row, so every table of one arity renders to the same length |
 | Modulous | tree | — |
 | NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells |
-| Nopstacle | parameterized tree | a full tree of corridors, unfolded: level `i` reads its input's run at `2**i` node columns and the leaves are halting boxes or a drop onto the blank bottom row |
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry |
 | Packlang | tree | — |
 | Painfuck | tree | Brainfuck tree transliteration |
@@ -193,7 +192,6 @@ after ignoring the performance/resource ceiling as specified above.
 | Unsquare | tree | stack arrangement affects size only |
 | Vandevelo | minterms | constant-one subtrees drop their suffix literals |
 | WII2D | parameterized construction, cap | Horner's chain is total; the decode folds the extremal same-colour pair, whose midpoint is unique, so every fold is legal |
-| ZTOALC L | finite lookup, cap | `2**k` supplies `k` ordered trajectory slots for every finite `k` |
 
 ## Exceptions and walls
 
@@ -290,12 +288,6 @@ The remaining `cap` rows do have a uniform lift argument.
 - Polynomial's `k == n` candidate is the finite decision tree.  Each of its
   finitely many instructions receives a distinct prime root, and removing the
   interpreter-cost screen does not change that encoding.
-- ZTOALC L's command list is finite.  For any list of `k` commands, choose
-  start value `2**k`: its Collatz trajectory is
-  `2**k, 2**(k-1), ..., 2, 1`, giving exactly `k` distinct executable lines
-  in visit order before line 1 halts.  The emitted source may have `2**k`
-  lines, but existence is unconditional and uses no Collatz conjecture.  The
-  committed anchors merely find much smaller programs under `_MAX_LINES`.
 - WII2D's chain is total already (Horner's children `2v` and `2v+1` differ in
   parity, so that junction is legal at every level).  The decode is total too,
   and the argument is a choice of fold rather than a wider search.  Squaring
@@ -370,7 +362,7 @@ theorem's hypothesis -- and under the parameterized contract the state-class
 count above is the wall: a seventeen-input table exists that no template
 computes.
 
-Accordingly, this ledger records 64 theoretical totality arguments and one
+Accordingly, this ledger records 62 theoretical totality arguments and one
 open exception, whose row can never read `Total`: the impossibility is an
 unbounded-program proof, which is what turning an exception into “incapable”
 requires -- a failed search or a live cap is not one -- and what stays open

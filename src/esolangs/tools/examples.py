@@ -35,7 +35,6 @@ from esolangs.tools.helpers import (
 )
 from esolangs.tools.minifuck_sim import PAIR as MINIFUCK_PAIR
 from esolangs.tools.nocomment import PAIR as NOCOMMENT_PAIR
-from esolangs.tools.nopstacle import nopstacle_setters
 from esolangs.tools.one_two_three import PAIR as ONE_TWO_THREE_PAIR
 from esolangs.tools.parameterized import (
     BFPDA_PAIR,
@@ -147,9 +146,9 @@ class BooleanExample:
     #: :func:`instantiate` with these and nothing else.
     setters: Callable[[str, int], Setters] | None = None
     #: The one ``(zero, one)`` pair every input is spelled with, where the
-    #: embed is uniform (16 of 18); ``setters`` is then derived from it.
-    #: The two that read the pairs off the template (Nopstacle's widen per
-    #: level, %^2^-1's sit in the header) pass ``setters`` and leave this.
+    #: embed is uniform (16 of 17); ``setters`` is then derived from it.
+    #: %^2^-1, whose pairs sit in the template's header, passes ``setters``
+    #: and leaves this.
     pair: tuple[str, str] | None = None
     #: The character the public template spells its inputs with, one run
     #: per input; outside the language's alphabet.
@@ -444,7 +443,6 @@ def _register() -> None:
             expected="",
             note="Vandevelo answers by terminating: nil halts and not nil loops",
         ),
-        "ztoalc-l": _reader(b.ztoalc_l, "other.ztoalc_l", split=True),
         "3d-brainfuck": _reader(b.three_d_brainfuck, "tape_based.three_d_brainfuck"),
         "3x": _reader(b.three_x, "stack_based.three_x"),
         "6-5": _reader(b.six_five, "tape_based.six_five"),
@@ -572,22 +570,6 @@ def _register() -> None:
                 "committed.  The headings printed are its interpreter-only "
                 "queue dump, which the verdict does not read: the answer is "
                 "that the program halted at all"
-            ),
-        ),
-        "nopstacle": _embedded(
-            b.nopstacle,
-            "grid_based.nopstacle",
-            setters=nopstacle_setters,
-            answer_mode="termination",
-            answer_values=("halts", "diverges"),
-            expected="",
-            split=True,
-            note=(
-                "Nopstacle answers by termination: the IP falls through a "
-                "decision tree of corridors, a blank bit cell passing it and "
-                "a # deflecting it; a 0 leaf is a box it circles into a "
-                "repeated local state, a 1 leaf drops it onto a blank row "
-                "it runs along across copies forever"
             ),
         ),
         "crement": _embedded(

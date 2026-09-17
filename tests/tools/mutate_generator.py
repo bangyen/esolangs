@@ -41,8 +41,8 @@ import-time trampoline in ``registry``/``lamfunc`` before mutmut has set
 ``paths_to_mutate``, so only it gets trampolines; every other module is
 copied verbatim and imports normally.  The generator modules also import
 cleanly on their own -- ``esolangs.tools.*`` reaches only
-``helpers``, ``wrap``, ``_polynomial``, ``laserfuck_layout`` and
-``ztoalc_starts``.  None of them do work at import time.
+``helpers``, ``wrap``, ``_polynomial`` and ``laserfuck_layout``.  None of
+them do work at import time.
 
 So the layout is the package itself, copied whole into a work directory
 that shadows the editable install because the runner's cwd leads
@@ -132,9 +132,8 @@ class _Kind:
     than separate code paths.  Every one satisfies the two preconditions the
     layout relies on: each module imports cleanly on its own, and nothing it
     reaches does work at import time.  ``boolean.*`` reaches only
-    ``helpers``, ``wrap``, ``_polynomial``, ``laserfuck_layout`` and
-    ``ztoalc_starts``, which the copied package resolves like any other
-    import.
+    ``helpers``, ``wrap``, ``_polynomial`` and ``laserfuck_layout``, which
+    the copied package resolves like any other import.
 
     ``tests_dir`` is deliberately narrow: pointing mutmut at the whole
     suite widens its stats pass past the tests that actually cover the

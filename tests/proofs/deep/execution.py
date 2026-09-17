@@ -72,7 +72,7 @@ honest even where the absolute worst row is missed.
 
 Rows that never halt
 --------------------
-Five languages answer by *not* halting (ArrowQueue, 123, Nopstacle, Crement,
+Four languages answer by *not* halting (ArrowQueue, 123, Crement,
 Vandevelo), so half their rows have no command count at all.  Those rows are
 identified from ``answer_encoding`` and skipped rather than stepped: letting
 them run to ``STEP_CAP`` cost 461 seconds of a 489-second run, to learn what
@@ -145,7 +145,6 @@ ARITY_OVERRIDE = {
     "qoibl": 6,
     "streetcode": 6,
     "wii2d": 7,
-    "ztoalc_l": 7,
 }
 
 #: Generators this contract cannot measure at all, with the reason.
@@ -174,11 +173,10 @@ def exempt_generators() -> dict[str, str]:
     :data:`EXEMPT` plus the resource-ceiling rows of ``proofs.md`` and the
     roadmap audit rows whose execution-time cell is open, read from the
     documents the way ``linearity.py`` reads them: a generator that cannot
-    be built past a low arity cannot produce the rungs a slope needs, and
-    ZTOALC L is the one that lands there; COD's restored fork generator is
-    the one the audit holds open.  Reading them means closing a cap row or
-    an execution cell arms this contract against that generator with no
-    edit here.
+    be built past a low arity cannot produce the rungs a slope needs; COD's
+    restored fork generator is the one the audit holds open.  Reading them
+    means closing a cap row or an execution cell arms this contract against
+    that generator with no edit here.
     """
     reasons = dict(EXEMPT)
     for row in load_ledger().rows:

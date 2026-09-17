@@ -7,6 +7,7 @@ run, debug, answer, evaluate and verify, plus the options they share --
 import importlib
 import inspect
 import json
+import random
 from pathlib import Path
 from unittest.mock import patch
 
@@ -814,10 +815,12 @@ class TestTheRoundTripsFailurePaths:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Nothing ran, so it is the usage class rather than a wrong answer."""
+        rng = random.Random(7)
+        dense = "".join(rng.choice("01") for _ in range(1 << 10))
         with pytest.raises(SystemExit) as exc:
-            call_main(["verify", "ZTOALC L", "01" * (1 << 10)], capsys)
+            call_main(["verify", "WII2D", dense], capsys)
         assert exc.value.code == 2
-        assert "command lines" in capsys.readouterr().err
+        assert "cost guard" in capsys.readouterr().err
 
     def test_a_mismatch_names_the_rows_that_disagree(
         self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

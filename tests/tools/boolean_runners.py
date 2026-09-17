@@ -323,12 +323,6 @@ def run_clockwise(program: str, inputs: list[str]) -> str:
     return esolangs.run("Clockwise", program, stdin="".join(inputs))
 
 
-def run_ztoalc(program: str, inputs: list[str]) -> str:
-    import esolangs
-
-    return esolangs.run("ZTOALC L", program, stdin="\n".join(inputs))
-
-
 def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
 
     from esolangs.interpreters.grid_based.laserfuck import run

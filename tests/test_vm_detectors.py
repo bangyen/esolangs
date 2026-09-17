@@ -656,24 +656,6 @@ class TestRunUntilHaltOrCycle:
         )
         assert run_until_halt_or_cycle(machine) is False
 
-    def test_ztoalc_l_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.ztoalc_l import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine(["2"], ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is True
-
-    def test_ztoalc_l_looping_run_is_detected_as_a_cycle(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.ztoalc_l import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        # each "jump x 1" bumps the pointer past the 2-line program and back
-        # via a Collatz step, tracing 2 -> 3 -> 4 -> 2 forever
-        machine = _Machine(["2", "jump x 1", "jump x 1"], ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is False
-
     def test_a_machine_already_halted_is_reported_as_halting(self) -> None:
         """The loop is never entered, and the answer is still ``True``.
 
