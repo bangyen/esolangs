@@ -1,35 +1,14 @@
 """Compile a brainfuck program into a Line ``Node`` graph.
 
-This is the bridge that lets this repo's existing brainfuck generator
-(``esolangs.tools.tape.brainfuck``) target Line: build a brainfuck
-program with it, compile it here into a :class:`render.Node`
-graph, hand that to :func:`render.render` for a real Line drawing, and the
-result round-trips through :func:`extract.extract`/:func:`simulate.run` back
-to the same tape brainfuck would produce.
-
-The mapping is close to 1:1, matching Line's own opcode set to brainfuck's:
-``+``/``-``/``<``/``>`` unchanged, ``,`` -> ``i`` (Line's "read a number into
-the current cell"), ``.`` -> ``o`` ("print the current cell as a number") --
-per :mod:`simulate`'s own module docstring for what each Line opcode does.
-Brainfuck's per-character I/O (raw bytes) and Line's per-call I/O (whole
-numbers, see :mod:`simulate`'s ``IO``) differ, so a caller comparing output
-against a real brainfuck interpreter must compare per-``,``/``.`` numeric
-values, not raw bytes -- not a compilation gap, just the two languages'
-documented I/O conventions being different in kind.
-
-The one real compilation problem is ``[...]``: brainfuck's loop has no
-1:1 Line opcode, since Line only expresses repetition by a drawn stroke
-physically reconnecting to an earlier point (see ``render.py``'s ``Node.goto``
-and ``WIP.md``'s "Runtime simulation" section for the full backstory of how
-that was discovered).  Compiling ``[...]`` is exactly the shape ``Node.goto``
-was built for: a ``?`` fork whose ``nonzero`` arm is the loop body ending in
-a node whose ``goto`` points back at the fork, and whose ``zero`` arm is
-whatever follows the loop.  ``render.py``'s ``_layout`` never uses a ``?``
-node's ``.next`` at all (a fork is a terminal in its own straight-through
-chain -- the only way past it is through ``.zero``/``.nonzero``, matching
-the wiki's real T-branch shape), so :func:`_parse` builds a ``?``'s
-continuation as its ``.zero`` child directly rather than chaining through
-``.next`` the way every other command does.
+Build with ``esolangs.tools.tape.brainfuck``, compile here, render with
+:func:`render.render`, and the drawing round-trips through
+:func:`extract.extract`/:func:`simulate.run` to the same tape.  The
+mapping is 1:1 (``,`` -> ``i``, ``.`` -> ``o``; compare per-call numeric
+values, not bytes) except ``[...]``: Line expresses repetition only by a
+stroke reconnecting, so a loop is a ``?`` whose ``nonzero`` arm ends in a
+``goto`` back to it and whose ``zero`` arm is what follows.  ``_layout``
+never follows a ``?``'s ``.next``, so :func:`_parse` builds the
+continuation as ``.zero``.
 """
 
 from __future__ import annotations
@@ -42,15 +21,8 @@ _BF_TO_LINE = {"+": "+", "-": "-", "<": "<", ">": ">", ",": "i", ".": "o"}
 def _nop() -> Node:
     """Build a single node whose op has no net effect on tape or pointer.
 
-    Used only as a placeholder to carry a ``goto`` where no real node exists
-    to hang it on -- see :func:`_control_tail`.  ``>`` alone would move the
-    pointer, so this cannot be a single opcode; instead it is one ``Node``
-    whose op is ``>`` immediately followed (via ``.next``) by ``<``, which
-    ``render.py`` lays out as two ordinary kinks moving the pointer right
-    then back left.  The ``goto`` always attaches to the *second* of the two
-    (see call site), so the pointer is back at its original cell by the time
-    the jump fires -- net zero effect, matching what "nothing here" should
-    mean.
+    A ``>`` node followed by ``<``; the ``goto`` attaches to the second, so
+    the pointer is back before the jump.
     """
     out = Node(">")
     back = Node("<")
@@ -61,25 +33,10 @@ def _nop() -> Node:
 def _control_tail(node: Node) -> Node:
     """Find the node where ``node``'s chain falls through to whatever follows it.
 
-    For an ordinary straight-through chain this is just the last node
-    reached by ``.next``.  A ``?`` fork is not a dead end for this purpose,
-    though, even though ``render.py``'s own ``_layout`` never follows a
-    fork's ``.next`` (see module docstring) -- once *entered* on either arm,
-    a brainfuck loop's exit path is exactly its ``zero`` arm (the loop runs
-    while nonzero and falls through once the cell reads zero), so a nested
-    loop's own control flow "continues" through its ``.zero`` child, not
-    ``.next``.  Confirmed necessary: without descending into ``.zero`` here,
-    the code following a nested loop gets wired as the *inner* fork's own
-    ``goto`` target (silently ignored -- ``Node.goto`` is only checked on a
-    straight-through node's step, never a ``?`` node's) instead of the
-    *outer* loop's, dropping the outer loop-back entirely.
-
-    If this walk bottoms out at a ``?`` node with no ``.zero`` at all (its
-    loop is the last thing in its own level, so there is nothing there yet),
-    a placeholder :func:`_nop` is installed as that ``.zero`` and its own
-    tail returned instead -- a plain ``?`` node cannot carry ``goto`` itself
-    (see above), so *some* real node must exist there for the caller to
-    attach one to.
+    A ``?`` is not a dead end: a loop's exit is its ``zero`` arm, so the walk
+    descends there (without this, code after a nested loop was wired as the
+    inner fork's ignored ``goto`` and the outer loop-back dropped).  A ``?``
+    with no ``.zero`` gets a :func:`_nop` placeholder to carry the ``goto``.
     """
     while True:
         if node.op == "?":
@@ -95,18 +52,9 @@ def _control_tail(node: Node) -> Node:
 def _parse(program: str, pos: int) -> tuple[Node | None, int]:
     """Parse brainfuck commands from ``pos`` until ``]`` or end of program.
 
-    Returns ``(head, next_pos)``: ``head`` is the built chain's first node
-    (``None`` if this level had no recognized commands at all, e.g. an
-    all-comment tail or an empty loop body), and ``next_pos`` is the index
-    just past the ``]`` that stopped this call (or ``len(program)`` at top
-    level).  A ``[...]`` recurses into its own body first (so an inner loop
-    is fully built, including its own ``goto``, before anything past it is
-    parsed -- the natural innermost-first order for nested loops), then
-    recurses *again* for everything after the matching ``]`` at this same
-    level, wiring that second recursion's result as the fork's ``.zero``
-    rather than continuing the straight-through chain the way every other
-    command does (see module docstring for why ``.next`` cannot carry a
-    ``?`` node's continuation).
+    Returns ``(head, next_pos)``; ``head`` is ``None`` for a level with no
+    commands.  A ``[...]`` recurses into its body first, then for everything
+    after the ``]``, wiring that as the fork's ``.zero``.
     """
     if pos >= len(program):
         return None, pos
@@ -148,11 +96,8 @@ def _parse(program: str, pos: int) -> tuple[Node | None, int]:
 def bf_to_line(program: str) -> Node:
     """Compile a brainfuck ``program`` into a Line :class:`render.Node` graph.
 
-    Raises :class:`ValueError` if brackets are unbalanced (an unmatched
-    ``[`` runs off the end of the program with no closing ``]``, or a stray
-    ``]`` with no matching ``[``) or if the program contains no recognized
-    commands at all (:func:`render.render` requires at least one node to lay
-    out; an all-comment program has nothing to compile).
+    Raises :class:`ValueError` on unbalanced brackets or a program with no
+    recognized commands.
     """
     depth = 0
     for ch in program:

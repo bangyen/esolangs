@@ -1,65 +1,21 @@
 """Interpreter for Decleq.
 
-An OISC whose instruction ``a b c`` means ``b = a - 1`` and jumps to ``c``
-if the new ``b`` is less than or equal to zero.  The program is a
-self-modifying memory: the source file is a list of integers (whitespace-
-separated, ``#`` comments allowed), the instruction pointer starts at 0, and
-the instruction at address ``pc`` is the three cells
-``memory[pc]..memory[pc+2]``, so the common countdown idiom is ``x x next``
-(decrement ``x``, jump to ``next`` when it reaches zero).
-
-Addressing is asymmetric, and both halves are deliberate.  A *read* out of
-range -- negative or past the end -- is zero, so untouched memory behaves
-as zeros.  A *write* past the right end grows the store; a write to a
-negative address indexes from the right, as a subscript would, because
-growing leftwards would turn a terminating program into a non-terminating
-one.  So a program can write to ``-1`` and read back ``0``: the write
-lands on the last cell and the read does not go looking for it.  A write
-further left than the store is long halts with
-:class:`~esolangs.exceptions.HaltError`.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state to the next state, and never mutates what it
-is given.  It takes no ``io`` argument at all, so it is total and
-side-effect free by construction rather than by inspection.
-
-The memory is a ``tuple``, so a state is a value that can be stored,
-compared, and hashed as it stands.  That the memory *grows* is the reason
-it has to be in the state rather than alongside it: writing past the end
-extends it, and ``halted`` is defined by the pointer against the current
-length, so the length is part of what a step decides -- not a fixed
-property of the program.  A snapshot that dropped it would call two
-genuinely different situations the same.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires
-(``esolangs.vm`` wraps it, and ``run_until_halt_or_cycle`` steps it to
-prove a hang where it can).  It holds one ``_State`` and rebinds it each
-step, so the mutation lives in exactly one assignment and every rule about
-what Decleq *does* stays in the pure layer.  The two memory-mapped I/O
-opcodes are the one place an effect happens, and ``step`` does them before
-calling the pure transition -- effects in the shell, rules in the core.
-
-Documented decisions for gaps in the wiki stub:
-- ``a b c`` stores ``memory[a] - 1`` into ``memory[b]`` (the literal reading
-  of "b = a - 1"; with ``a == b`` it is a plain decrement), then jumps to
-  ``c`` when ``memory[b] <= 0`` and otherwise falls through three cells;
-- the optional memory-mapped I/O is implemented: ``a = -2`` outputs
-  ``memory[b]`` as a byte, ``a = -1`` reads a byte of input into
-  ``memory[b]``, and both fall through rather than jump;
-- cells are unbounded integers, and the pointer halts when it moves off
-  the end of memory; exhausted input raises :class:`EOFError` (repo-wide
-  convention).
-
-Malformed programs raise :class:`ValueError`.
-
-There is no per-run instruction cap here.  A self-decrementing cell (``a b
-c`` with ``a == b`` and a positive start value, jumping to itself) never
-revisits a snapshot -- verified by construction: ``memory[b]`` walks down
-by exactly one every pass, so the state the cycle detector hashes is new
-every time, forever, on unbounded integers.  ``run_until_halt_or_cycle``
-provably cannot terminate on that program, which is exactly the class
-``esolangs.run``'s wall-clock ``timeout`` exists for; a step count local to
-this interpreter would only have duplicated it.
+An OISC: ``a b c`` sets ``b = a - 1`` and jumps to ``c`` if the new ``b``
+is ``<= 0``.  Memory is self-modifying: the source is whitespace-separated
+integers (``#`` comments), the instruction at ``pc`` is
+``memory[pc..pc+2]``, and ``x x next`` is the countdown idiom.  A read out
+of range is zero; a write past the right end grows the store; a write to
+a negative address indexes from the right (growing leftwards would turn a
+terminating program non-terminating), so a program can write to ``-1``
+and read back ``0``; a write further left than the store halts with
+:class:`~esolangs.exceptions.HaltError`.  Decisions:
+``a = -2`` outputs ``memory[b]`` as a byte and ``a = -1`` reads one,
+both falling through; cells are unbounded; the pointer halts off the end;
+exhausted input raises :class:`EOFError`.  Malformed programs raise
+:class:`ValueError`.  No instruction cap: a self-decrementing cell never
+revisits a state on unbounded integers, and ``esolangs.run``'s
+``timeout`` is the guard.  :func:`_advance` is pure over an immutable
+``_State`` whose tuple memory is part of the state because it grows.
 """
 
 from __future__ import annotations
@@ -80,34 +36,20 @@ type _State = tuple[int, tuple[int, ...]]
 
 
 def _read(memory: tuple[int, ...], addr: int) -> int:
-    """Return ``memory[addr]``, or zero when the address is out of range.
-
-    Reading off either end is not an error -- the wiki's programs rely on
-    untouched addresses behaving as zero -- so the bounds check lives here
-    once rather than at each of the three call sites.
-    """
+    """Return ``memory[addr]``, or zero when the address is out of range."""
     return memory[addr] if 0 <= addr < len(memory) else 0
 
 
 def _written(memory: tuple[int, ...], addr: int, value: int) -> tuple[int, ...]:
     """Return ``memory`` with cell ``addr`` set to ``value``, growing if needed.
 
-    A write past the *right* end extends the store with zeros up to
-    ``addr``, which is what makes the length part of the state: the same
-    program text can reach different lengths depending on what it has
-    written.
-
-    A negative ``addr`` indexes from the right, as a write through Python's
-    own subscript did before the store became a tuple -- ``-1`` is the last
-    cell.  That is not a nicety: such a write must land somewhere real (or
-    raise on an empty store) rather than grow the store, since growing
-    instead turns a terminating program into a non-terminating one.
+    A negative ``addr`` indexes from the right (as a subscript did before the
+    store became a tuple), since growing leftwards would make a terminating
+    program non-terminating.
     """
     if addr < 0:
         if addr < -len(memory):
-            # This used to be a bare ``IndexError``, which escaped the
-            # package's one promise: ``run("Decleq", "4 -8")`` reached a
-            # caller as a raw traceback rather than an ``EsolangError``.
+            # Was a bare ``IndexError`` (``run("Decleq", "4 -8")`` gave a traceback).
             raise HaltError(
                 f"address {addr} is {-addr - len(memory)} cells past the "
                 f"left end of a {len(memory)}-cell store"
@@ -122,9 +64,7 @@ def _written(memory: tuple[int, ...], addr: int, value: int) -> tuple[int, ...]:
 def _operands(state: _State) -> tuple[int, int, int]:
     """Return the three cells of the instruction under the pointer.
 
-    A trailing instruction that runs off the end of memory reads its
-    missing operands as zero, the same rule :func:`_read` applies to any
-    out-of-range address.
+    Missing operands read as zero, per :func:`_read`.
     """
     pc, memory = state
     return (memory[pc], _read(memory, pc + 1), _read(memory, pc + 2))
@@ -133,15 +73,8 @@ def _operands(state: _State) -> tuple[int, int, int]:
 def _advance(state: _State, byte: int | None = None) -> _State:
     """Return the state after executing the instruction under the pointer.
 
-    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
-    argument, so the two memory-mapped I/O opcodes are necessarily the
-    caller's business; this function sees only what they leave behind --
-    ``-2``'s output changes no state beyond the pointer, and ``-1``'s byte
-    arrives as ``byte``, already read.
-
-    Both I/O opcodes fall through three cells rather than jumping.  The
-    ordinary instruction is the only one that branches, and it branches on
-    the value it just wrote, not the one it read.
+    Pure; ``-1``'s byte arrives as ``byte``.  Both I/O opcodes fall through;
+    only the ordinary instruction branches, on the value it just wrote.
     """
     pc, memory = state
     a, b, c = _operands(state)
@@ -156,21 +89,14 @@ def _advance(state: _State, byte: int | None = None) -> _State:
 
 
 class _Machine:
-    """A Decleq run: one immutable ``_State``, rebound per step.
-
-    The protocol the rest of the library expects (``step``, ``halted``,
-    ``snapshot``, and the ``memory``/``pc`` attributes) is mutable by
-    construction, so this class supplies it.  All it does is hold the
-    current state; the rules themselves are the pure functions above.
-    """
+    """A Decleq run: one immutable ``_State``, rebound per step."""
 
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code`` into memory and reset the pointer."""
         self.io = io
         self.state: _State = (0, tuple(_parse(code)))
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # Views on the state.
 
     @property
     def pc(self) -> int:
@@ -178,10 +104,7 @@ class _Machine:
 
     @pc.setter
     def pc(self, value: int) -> None:
-        # Writable so a caller can place the pointer directly on a state
-        # that running the program cannot reach cleanly -- the truncated
-        # tail below cell 6 is only reachable past a cell that has since
-        # become the input opcode.
+        # Writable so a test can place the pointer on an unreachable state.
         self.state = (value, self.state[1])
 
     @property
@@ -200,8 +123,7 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        # A list, because that is what this exposed before the memory became
-        # a tuple, and the VM copies what it is handed.
+        # A list, as before the memory became a tuple; the VM copies it.
         return list(self.state[1])
 
     @property
@@ -211,20 +133,14 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The memory is already a tuple, so it goes in as it stands.  The
-        # input cursor joins it because a repeat that ignores consumed input
-        # is not a real cycle.
+        # Plus the input cursor: a repeat ignoring consumed input is not a cycle.
         pc, memory = self.state
         return (memory, pc, self.io.position())
 
     def step(self) -> None:
         """Execute one instruction, advancing the pointer.
 
-        The two memory-mapped I/O opcodes are done here rather than in a
-        function of their own: this is the shell, so it is where an effect
-        belongs, and it keeps :func:`_advance` reachable in one call per
-        step.  ``-2`` writes and changes no memory; ``-1`` reads and hands
-        the byte to the transition, which stores it.
+        The shell does the two memory-mapped I/O opcodes.
         """
         if self.halted:
             return

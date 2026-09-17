@@ -1,30 +1,18 @@
 """Interpreter for Factor.
 
-Factor is brainfuck re-encoded as the prime factorization of a single
-integer.  The program text is decimal digits (every other character is a
-comment and ignored); the integer's prime factors are sorted ascending, and
-each prime's residue modulo 11 selects a brainfuck instruction:
+Brainfuck re-encoded as the prime factorization of one integer (decimal
+digits; other characters are comments).  Primes ascending, residue mod 11
+selects the command::
 
     residue   1   2   3   4   5   6   7   8
     command  >   <   +   -   .   ,   [   ]
 
-A prime's exponent is the number of times its instruction is carried out;
-residues outside 1-8 are ignored.  Decoding is delegated to the brainfuck
-interpreter, so the two agree on the 8-bit wrapping tape, the ``<`` clamp at
-the left edge, and matching-bracket loops (an unbalanced program is
-malformed and raises :class:`ValueError`).
-
-Decisions for gaps in the wiki spec (documented):
-- a program with no digits, and the integers 0 and 1, factor to no
-  instructions and halt with no output;
-- ``,`` reads a whole input line and takes its first byte, raising
-  :class:`EOFError` when input runs out (the brainfuck interpreter's
-  documented behavior).
-
-The interpreter runs on a :class:`_Machine` wrapping the decoded brainfuck
-machine, so it is step-capable: ``step()`` executes one decoded command and
-``halted`` is the underlying brainfuck machine's.  The state-cycle hang
-detector and the VM expose this object.
+The exponent is the repeat count; other residues are ignored.  Decoding is
+delegated to the brainfuck interpreter (8-bit wrap, ``<`` clamp, matched
+loops; unbalanced raises :class:`ValueError`).  No digits, 0 and 1 halt
+with no output; ``,`` reads a line's first byte and raises
+:class:`EOFError` when input runs out.  :class:`_Machine` wraps the
+decoded brainfuck machine.
 """
 
 import math
@@ -54,12 +42,8 @@ _BATCH_BITS = 8192
 def _parse(digits: str) -> int:
     """Read the program's integer, lifting CPython's digit limit to fit it.
 
-    ``int(str)`` refuses above ``sys.get_int_max_str_digits()`` (4300 by
-    default) -- a CPython DoS guard against quadratic conversions, not
-    anything Factor says.  A Factor program *is* one integer, so the guard
-    caps the language at programs of 4300 digits: the n=5 parity table
-    encodes to 12565.  The limit is raised to what this program needs and
-    put back, since it is process-global and ours to borrow, not to keep.
+    The 4300-digit cap is a DoS guard, not Factor's (n=5 parity is 12565
+    digits); raised for this program and put back.
     """
     limit = sys.get_int_max_str_digits()
     if len(digits) <= limit:
@@ -74,54 +58,15 @@ def _parse(digits: str) -> int:
 def _factorint(number: int) -> dict[int, int]:
     """Factorize ``number``, dividing small primes out before sympy sees it.
 
-    ``sympy.factorint`` is a general factorizer, and generality is the
-    wrong tool for the shape Factor produces: the number is a product of
-    many smallish primes -- one per instruction -- so the work is dividing
-    them out, not searching for them.  Walking primes in order and
-    shrinking ``number`` as each comes out does that directly, which
-    matters because these are bignums (1276 digits for the committed
-    boolean example) where every operation is priced by the length.
-
-    The loop must not stop at a fixed prime, and that is the whole
-    subtlety here.  A ceiling looks safe -- whatever is left just goes to
-    sympy -- but it is not: the residue it hands over is then a *large
-    composite* with every factor past the ceiling, which is the input
-    ``factorint`` is worst at.  It abandons trial division for Pollard rho
-    and takes minutes, where the same call on the original number takes
-    milliseconds.  A 10000 ceiling did exactly that to the parity table
-    whose 3243-digit program factors into 237 primes reaching 16189: 80 of
-    them sat above the ceiling, and the sweep that runs it hung.
-
-    So the sieve extends in chunks until the residue is prime or fully
-    divided, and never hands a composite off to ``factorint`` because it
-    gave up on it: a chunk that finds nothing widens the sieve instead.
-    A genuinely hard number therefore sieves toward its own root rather
-    than wedging in Pollard rho, and that wait is bounded from outside --
-    ``scripts/verify_no_exception_leaks.py`` documents the wedge and kills
-    the subprocess, since the cost is in this constructor and no step cap
-    can reach it.
-
-    Deciding that must not cost an ``isprime`` per chunk, and this is the
-    subtlety that replaced the old one.  ``isprime`` runs BPSW -- a
-    Miller-Rabin base-2 test and a Lucas test, each a modular
-    exponentiation priced by the *full* width of its argument -- so asking
-    it about a residue that is still tens of thousands of bits wide costs
-    tens of seconds.  A loop that asks once per chunk pays that toll even
-    though the sieve is what finds every factor: sieving to 58099 measures
-    0.000s and the divisions 0.04s, against 60.02s for three ``isprime``
-    calls on the n=5 parity table (12565 digits, 3000 primes reaching
-    58099).  Dividing the small primes out first does not help either --
-    the bit mass is in *large* primes with large exponents, so the residue
-    after the first chunk is still 27412 of the original 41740 bits.
-
-    So ``isprime`` is gated on a *barren* chunk -- a full chunk that
-    divided nothing out -- and asked at most once per residue value.  That
-    is exactly the signal its answer is worth paying for: every remaining
-    factor is above the sieve, so the residue is either prime or hard.
-    While chunks keep yielding factors the sieve is winning and is left
-    alone, and a number of this shape reaches 1 without a barren chunk
-    ever occurring.  Measured 60.0s -> 0.04s on n=5 parity, and the
-    committed examples stay at 1.4ms.
+    The number is a product of many smallish primes (1276 digits for the
+    committed example), so walk primes in order and shrink as each divides.
+    Never stop at a fixed prime: the residue handed to ``factorint`` is then
+    a large composite that sends it to Pollard rho for minutes (a 10000
+    ceiling hung the sweep on a 3243-digit program with 80 primes above it).
+    Chunks widen until the residue is prime or gone.  ``isprime`` (BPSW,
+    priced by full width) is asked only after a *barren* chunk and once per
+    residue: three calls cost 60.02s on n=5 parity where the sieve to 58099
+    cost 0.04s; now 60.0s -> 0.04s, examples at 1.4ms.
     """
     factors: dict[int, int] = {}
     start = 2
@@ -181,10 +126,7 @@ def decode(number: int) -> str:
 class _Machine:
     """Per-run Factor state: the decoded brainfuck machine.
 
-    ``step()`` executes one decoded command; ``halted`` is the underlying
-    brainfuck machine's.  The VM and the state-cycle hang detector expose
-    this object (the decoded program is fixed, so the brainfuck machine's
-    snapshot is the complete state).
+    ``halted`` and the snapshot are the underlying machine's.
     """
 
     def __init__(self, code: str, io: IO) -> None:
