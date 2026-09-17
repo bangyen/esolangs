@@ -581,17 +581,15 @@ class TestAFailedRowSaysWhichRow:
     def test_a_real_timeout_carries_one_too(self) -> None:
         """Not only the stand-in: the path a caller actually hits.
 
-        The bound is a twentieth of a second, not the one second this used
-        to pass with.  A dense n=7 Circuit Diagram row ran for well over a
-        second when that number was chosen and now takes 0.306, so the
-        timeout stopped biting and the test passed on nothing: no timeout,
-        no note, and ``pytest.raises`` would have said so -- which it did,
-        eventually, which is why the bound is now set from the measurement
-        rather than from what used to be slow.
+        The bound is set from the measurement, not from what used to be
+        slow: a parity n=7 Circuit Diagram row ran for over a second when
+        the first bound was chosen, 0.306 when it was cut to a twentieth,
+        and now steps inside 0.05 alone, so that bound passed on nothing.
+        It times out at 0.02 and below; 0.005 leaves a 4x margin.
         """
         table = "".join(str(bin(r).count("1") & 1) for r in range(128))
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-            esolangs.evaluate("Circuit Diagram", table, timeout=0.05)
+            esolangs.evaluate("Circuit Diagram", table, timeout=0.005)
         note = "\n".join(getattr(caught.value, "__notes__", []))
         assert "row 0 of 128" in note
 
