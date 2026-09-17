@@ -483,24 +483,23 @@ class TestWII2D:
         monkeypatch.setattr(module, "_WII2D_MAX_MAGNITUDE", 1)
         assert _wii2d_decode(list(pattern)) is None
 
-    @pytest.mark.slow  # ~2s: a real doubling-trap pattern at domain 256
     def test_a_doubling_trap_pattern_is_refused_not_hung(self) -> None:
         """A domain-256 pattern that ratchets returns ``None`` in seconds.
 
-        About 1 in 10 sampled domain-256 patterns never reaches two live
+        About 1 in 12 sampled domain-256 patterns never reaches two live
         values: its folds ratchet, doubling the bit length each step.  This
-        pattern (``random.Random(9017)``, one of the two failures in the
-        20-pattern sample the guard raise was measured against) is pinned as
-        the representative: the decode must give up promptly -- the
-        magnitude abort fires at 1.7s where the unbounded run dead-ends at
-        2.2s -- rather than diverge, because ``wii2d()`` turns that ``None``
-        into the refusal ``ValueError``.
+        pattern (``random.Random(27)``, the first refusal under the depth
+        predictor's ranking; the earlier pin, seed 9017, builds under it)
+        is the representative: 16 -> 25 bits over two folds and the
+        magnitude abort fires at step 20, 0.2s, rather than diverging,
+        because ``wii2d()`` turns that ``None`` into the refusal
+        ``ValueError``.
         """
         import random
 
         from esolangs.tools.wii2d import _wii2d_decode
 
-        rng = random.Random(9017)
+        rng = random.Random(27)
         pattern = [rng.randint(0, 1) for _ in range(256)]
         assert _wii2d_decode(pattern) is None
 

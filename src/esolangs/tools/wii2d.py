@@ -8,6 +8,7 @@ best fold per step, so the program is a direct function of the table.
 """
 
 import heapq
+from itertools import pairwise
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.helpers import _ASCII_ZERO, TEMPLATE_CHAR, _validate_truth_table
@@ -48,11 +49,11 @@ _WII2D_MAX_CENTRE = 4096
 # cannot change a succeeding table's choice; deterministic where a clock is not.
 _WII2D_MAX_MAGNITUDE = 1 << 20
 
-# Candidates compressed before the true ranking.  Compression is the
-# expensive half and the decode takes only the head.  A screen, not a bound:
-# compression is a contraction, so the uncompressed magnitude barely predicts
-# the compressed one.  Raised 4 -> 8 with steered compression: at 4 the
-# corpus emitted 286669 chars (vs 285903 one-level); at 8, 261019 (-8.7%).
+# Least shortlist width: candidates ranked on the depth predictor before the
+# winner is compressed.  A screen, not a bound: compression is a contraction,
+# so the uncompressed magnitude barely predicts the compressed one.  The
+# width grows with the live count (``live // 4``): fixed 24-64 costs 7-16%
+# at n == 5, 6 where 8 is right, and n == 9 wants the wider list (0.80x).
 _WII2D_SHORTLIST = 8
 
 # Legal shifts scored per depth.  The legal set is exact; this takes the
@@ -203,6 +204,31 @@ def _wii2d_compress(
         values = [(v + shift) >> depth for v in values]
 
 
+def _wii2d_depth(points: list[int], live: dict[int, int]) -> int:
+    """Return the deepest halving level some shift makes legal.
+
+    The compressor's first run is bounded by this depth, so ``magnitude >>
+    depth`` predicts the compressed magnitude without compressing: over
+    785 contest states (n == 7..9) its argmin lands on the true compressed
+    minimum 779 times.  Only *adjacent* different-bit pairs are scanned --
+    an arc from a farther pair is covered by the arcs of the pairs between
+    -- and the union is the whole accuracy: the arc sum (overlaps counted
+    twice) ranks at rho 0.83 and refuses five tables the contest builds.
+    """
+    span = points[-1] - points[0]
+    pairs = [
+        (high - low, low) for low, high in pairwise(points) if live[low] != live[high]
+    ]
+    depth = 0
+    while (1 << (depth + 1)) <= 2 * span + 2:
+        block = 1 << (depth + 1)
+        arcs = [((-low) % block, block - gap) for gap, low in pairs if gap < block]
+        if not _wii2d_legal_shifts(arcs, block):
+            break
+        depth += 1
+    return depth
+
+
 def _wii2d_threshold(live: dict[int, int]) -> str:
     """Return the op string collapsing one or two live values to their bits.
 
@@ -233,9 +259,11 @@ def _wii2d_folds(
     ``'-' * c + 's'`` sends ``x`` to ``(x - c) ** 2``, merging exactly the
     pairs equidistant from ``c`` -- the one way to make two values agree
     without a conditional.  Legal only when every merged pair needs the same
-    bit; doubling first opens half-integral midpoints.  Only the first
-    :data:`_WII2D_SHORTLIST` are compressed, ranked uncompressed (a screen,
-    not a bound), which keeps the per-step cost flat.
+    bit; doubling first opens half-integral midpoints.  A shortlist ranked
+    uncompressed (a screen, not a bound) is re-ranked on :func:`_wii2d_depth`
+    and only the winner is compressed: 0.84x the size of compressing every
+    shortlisted fold and half the time over 100 tables at n == 5..9, no
+    refusal where that built, three dense n == 9 tables it refused.
     """
     # Legal folds by pair, uncompressed.  ``(p - c) ** 2`` collides exactly
     # for pairs symmetric about ``c``: a centre is illegal iff some pair
@@ -243,14 +271,16 @@ def _wii2d_folds(
     # ``2c`` (disjoint, since at most two points share one ``abs(p - c)``).
     # O(P**2) instead of the per-centre rescan's O(P**3): 5.6s of the 6.3s
     # dense n == 9 build was that loop.  Same candidate set.
-    # Only the shortlist is compressed; the caller takes the head.
     pending: list[tuple[tuple[int, int, int], int, int, int]] = []
+    width = _WII2D_SHORTLIST
     for scale in (0, 1):
         scaled = [v * 2 for v in values] if scale else list(values)
         live = _wii2d_points(scaled, bits)
         if live is None:
             continue
         points = sorted(live)
+        if not scale:
+            width = max(width, len(points) // 4)
         span_low, span_high = points[0], points[-1]
         zeros = [p for p in points if live[p] == 0]
         ones = [p for p in points if live[p] == 1]
@@ -288,27 +318,42 @@ def _wii2d_folds(
                 )
             )
 
-    # Compress only the shortlist, then rank those on their true keys.
-    out: list[tuple[int, int, int, str, list[int]]] = []
-    for _screen, _index, scale, centre in heapq.nsmallest(_WII2D_SHORTLIST, pending):
+    # Rank the shortlist on the predicted compressed magnitude, then compress
+    # the winner alone.  Magnitude first: centres are spelled ``'-' * c``, so
+    # live values are program width.  Survivors first: 396131 chars vs 285903
+    # over the 532-table corpus (+39%), under both compressions.
+    best: tuple[tuple[int, int, int], int, int] | None = None
+    for _screen, _index, scale, centre in heapq.nsmallest(width, pending):
         scaled = [v * 2 for v in values] if scale else values
-        fragment = ("*" if scale else "") + _wii2d_offset(centre) + "s"
-        folded_values = [(v - centre) ** 2 for v in scaled]
-        compressed, grown = _wii2d_compress(folded_values, bits, fragment)
-        out.append(
-            (
-                len(set(compressed)),
-                max(abs(v) for v in compressed),
-                len(grown),
-                grown,
-                compressed,
-            )
+        folded_live = _wii2d_points([(v - centre) ** 2 for v in scaled], bits)
+        if folded_live is None:  # pragma: no cover - the centre was legal
+            continue
+        folded_points = sorted(folded_live)
+        magnitude = max(abs(folded_points[0]), abs(folded_points[-1]))
+        key = (
+            magnitude >> _wii2d_depth(folded_points, folded_live),
+            len(folded_points),
+            scale + abs(centre) + 1,
         )
-    # Magnitude first: centres are spelled ``'-' * c``, so live values are
-    # program width.  Survivors first: 396131 chars vs 285903 over the
-    # 532-table corpus (+39%), under both compressions.
-    out.sort(key=lambda cand: (cand[1], cand[0], cand[2]))
-    return out
+        if best is None or key < best[0]:
+            best = (key, scale, centre)
+    if best is None:
+        return []
+    _key, scale, centre = best
+    scaled = [v * 2 for v in values] if scale else values
+    fragment = ("*" if scale else "") + _wii2d_offset(centre) + "s"
+    compressed, grown = _wii2d_compress(
+        [(v - centre) ** 2 for v in scaled], bits, fragment
+    )
+    return [
+        (
+            len(set(compressed)),
+            max(abs(v) for v in compressed),
+            len(grown),
+            grown,
+            compressed,
+        )
+    ]
 
 
 def _wii2d_decode(pattern: list[int]) -> str | None:

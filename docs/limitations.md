@@ -59,7 +59,7 @@ oracle searches may.
 | WII2D | 9 | 10 | Cost policy: dense n=10 leaves a domain past the admitted 256. |
 | ZTOALC L | 10 | 10 | n=11 needs 545–587 command slots; the line ceiling admits at most 395. |
 
-WII2D n=9 is partial: 37 of 64 sampled dense tables build and the rest refuse
+WII2D n=9 is partial: 54 of 64 sampled dense tables build and the rest refuse
 promptly. Its magnitude guard is load-bearing. A per-node re-embed tree can
 build dense n=13, but is outside the generator contract. `proofs.md` carries
 a total decode inside the contract, folding the extremal same-colour pair; it
