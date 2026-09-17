@@ -71,11 +71,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 
 from esolangs.registry import Generator, canonical_id
-from esolangs.tools.a_painter_ant import _instantiate_apa
-from esolangs.tools.arrowqueue import _instantiate_arrowqueue
-from esolangs.tools.crement import instantiate_crement
-from esolangs.tools.helpers import instantiate
-from esolangs.tools.nopstacle import instantiate_nopstacle
+from esolangs.tools.a_painter_ant import apa_setters
+from esolangs.tools.arrowqueue import arrowqueue_setters
+from esolangs.tools.crement import crement_setters
+from esolangs.tools.helpers import Setters, instantiate, slot_count
+from esolangs.tools.nopstacle import nopstacle_setters
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
 # The committed programs all witness the same two-input function and row:
@@ -178,6 +178,9 @@ class BooleanExample:
     ghost_digit: bool = False
     bits: tuple[int, ...] = ()
     fill: Callable[[str, list[int]], str] | None = None
+    #: The ``(zero, one)`` text per input, read off a template; ``fill`` is
+    #: :func:`instantiate` with these and nothing else.
+    setters: Callable[[str], Setters] | None = None
     split: bool = False
     kwargs: tuple[tuple[str, int], ...] = ()
     note: str = ""
@@ -252,8 +255,9 @@ def _reader(
 def _embedded(
     generator: Callable[[str], str],
     interpreter: str,
-    fill: Callable[[str, list[int]], str],
+    setters: Callable[[str], Setters],
     *,
+    body: Callable[[str], str] | None = None,
     table: str = AND2,
     bits: tuple[int, ...] = (0, 1),
     expected: str = "0",
@@ -265,7 +269,13 @@ def _embedded(
     answer_pattern: str = "",
     answer_values: tuple[str, str] = ("0", "1"),
 ) -> BooleanExample:
-    """Build a parameterized example, whose bits are embedded in the text."""
+    """Build a parameterized example, whose bits are embedded in the text.
+
+    ``setters(template)`` names the ``(zero, one)`` text for every input in
+    order; the example's ``fill`` is then :func:`instantiate` with those
+    pairs and nothing else.  ``body`` strips a header the template carries
+    for the setters' sake (%^2^-1 alone) before the substitution.
+    """
     return BooleanExample(
         answer_mode=answer_mode,
         answer_pattern=answer_pattern,
@@ -276,19 +286,33 @@ def _embedded(
         expected=expected,
         expected_compared=expected_compared,
         bits=bits,
-        fill=fill,
+        fill=_fill_from(setters, body),
+        setters=setters,
         split=split,
         kwargs=kwargs,
         note=note,
     )
 
 
-# Each ``fill`` below is the language's own way of spelling "set input i to
-# this bit", the counterpart of the input read an input-capable language
-# performs.  They mirror the substitutions the generator tests use.
+def _fill_from(
+    setters: Callable[[str], Setters], body: Callable[[str], str] | None = None
+) -> Callable[[str, list[int]], str]:
+    """Return the substitution a ``setters`` function defines."""
+
+    def fill(template: str, bits: list[int]) -> str:
+        source = template if body is None else body(template)
+        return instantiate(source, bits, setters(template))
+
+    return fill
 
 
-def _fill_bio(template: str, bits: list[int]) -> str:
+# Each ``setters`` below is the language's own way of spelling "set input i
+# to this bit", the counterpart of the input read an input-capable language
+# performs: one ``(zero, one)`` pair per input, read off the template.  The
+# example's ``fill`` is :func:`instantiate` with those pairs.
+
+
+def _setters_bio(template: str) -> Setters:
     """Pack each input into ``x`` by its binary weight, in a constant width.
 
     A one adds the input's weight to ``x``; a zero writes the same number of
@@ -305,20 +329,14 @@ def _fill_bio(template: str, bits: list[int]) -> str:
     bf-pda separators were.  ``y`` is not available for the padding: it
     carries the running result.
     """
-    n = len(bits)
-    return instantiate(
-        template,
-        bits,
-        lambda i, b: ("0ox;" if b else "0oz;") * (2 ** (n - 1 - i)),
+    n = slot_count(template)
+    return tuple(
+        ("0oz;" * 2 ** (n - 1 - i), "0ox;" * 2 ** (n - 1 - i)) for i in range(n)
     )
 
 
-def _fill_nocomment(template: str, bits: list[int]) -> str:
-    return instantiate(
-        template,
-        bits,
-        lambda _i, b: "c" if b == 0 else "i",
-    )
+def _setters_nocomment(template: str) -> Setters:
+    return (("c", "i"),) * slot_count(template)
 
 
 # The executed no-op pairs the linear Bitdeque setter pads with, by the width
@@ -362,25 +380,27 @@ def _bitdeque_linear_setter(k: int, bit: int) -> str:
     return ("EJECT " if bit else "POP ") * k + pad
 
 
-def _fill_bitdeque(template: str, bits: list[int]) -> str:
+def _setters_bitdeque(template: str) -> Setters:
+    n = slot_count(template)
     if not template.startswith("GOTO 3"):
-        n = len(bits)
-        return instantiate(
-            template,
-            bits,
-            lambda i, b: _bitdeque_linear_setter(2 ** (n - 1 - i), b),
+        return tuple(
+            (
+                _bitdeque_linear_setter(2 ** (n - 1 - i), 0),
+                _bitdeque_linear_setter(2 ** (n - 1 - i), 1),
+            )
+            for i in range(n)
         )
+
     # The register flips after every load block, and the load pushes the
     # inputs in name order, so bit i is pushed at load position i with the
     # incoming register at i % 2.
-    return instantiate(
-        template,
-        bits,
-        lambda i, b: "PUSH INVERT" if b == i % 2 else "INVERT PUSH",
-    )
+    def spell(i: int, b: int) -> str:
+        return "PUSH INVERT" if b == i % 2 else "INVERT PUSH"
+
+    return tuple((spell(i, 0), spell(i, 1)) for i in range(n))
 
 
-def _fill_bfpda(template: str, bits: list[int]) -> str:
+def _setters_bfpda(template: str) -> Setters:
     """Push the bit, in a constant width.
 
     ``<`` pushes a zero and ``@`` flips the top, so a one is a flip more
@@ -397,14 +417,10 @@ def _fill_bfpda(template: str, bits: list[int]) -> str:
     outside ``@.<>[]`` is a comment here, so that is the padding the
     separators removed from this generator already were.
     """
-    return instantiate(
-        template,
-        bits,
-        lambda _i, b: "<@@@" if b else "<[@]",
-    )
+    return (("<[@]", "<@@@"),) * slot_count(template)
 
 
-def _fill_back(template: str, bits: list[int]) -> str:
+def _setters_back(template: str) -> Setters:
     """Finish each input cell: ``+`` leaves the one, ``-`` flips it to zero.
 
     The beam reads one cell per row as it runs up column 0, so setting a
@@ -427,17 +443,13 @@ def _fill_back(template: str, bits: list[int]) -> str:
     -- but the fill rstrips, so that row vanished and the program's size
     carried the input: at ``n == 2`` the four instantiations were 41, 42,
     and 43 characters over six or seven rows, where they are now all 47
-    over nine.  Contrast :func:`_fill_cod`, whose blank is a grid cell that
+    over nine.  Contrast :func:`_setters_cod`, whose blank is a grid cell that
     cannot be stripped and so leaks nothing.
     """
-    return instantiate(
-        template,
-        bits,
-        lambda _i, b: "+" if b else "-",
-    )
+    return (("-", "+"),) * slot_count(template)
 
 
-def _fill_minsky_swap(template: str, bits: list[int]) -> str:
+def _setters_minsky_swap(template: str) -> Setters:
     """Set each input register with a run as long as the bit's own weight.
 
     Minsky Swap has no input instruction, so a one is embedded as a run of
@@ -465,7 +477,7 @@ def _fill_minsky_swap(template: str, bits: list[int]) -> str:
     the ``reg[1]`` copy and strands the pointer.  A zero LSB is ``****``,
     the same four commands doing nothing.
     """
-    n = len(bits)
+    n = slot_count(template)
 
     def set_bit(i: int, bit: int) -> str:
         if i == n - 1:  # LSB: length-4 block, no "~"
@@ -484,23 +496,19 @@ def _fill_minsky_swap(template: str, bits: list[int]) -> str:
         # with an even number, so both leave the pointer where they found it.
         return ("+" if bit else "*") * weight
 
-    return instantiate(template, bits, set_bit)
+    return tuple((set_bit(i, 0), set_bit(i, 1)) for i in range(n))
 
 
-def _fill_ram0(template: str, bits: list[int]) -> str:
+def _setters_ram0(template: str) -> Setters:
     """Set each input cell with ``Z A`` for a one and ``Z Z`` for a zero.
 
     ``Z`` resets absolutely rather than relative to the incoming register,
     so the same two-command setter works at every position.
     """
-    return instantiate(
-        template,
-        bits,
-        lambda _i, b: "Z A" if b else "Z Z",
-    )
+    return (("Z Z", "Z A"),) * slot_count(template)
 
 
-def _fill_home_row(template: str, bits: list[int]) -> str:
+def _setters_home_row(template: str) -> Setters:
     """Set the bit cell, in a constant width.
 
     The cell is zero when a ``{Xi}`` is reached, so ``a`` raises it to one
@@ -519,14 +527,10 @@ def _fill_home_row(template: str, bits: list[int]) -> str:
     two blanks) works, since the interpreter ignores whitespace, but it
     pads with characters the language does not read.
     """
-    return instantiate(
-        template,
-        bits,
-        lambda _i, b: "aj" if b else "as",
-    )
+    return (("as", "aj"),) * slot_count(template)
 
 
-def _fill_cod(template: str, bits: list[int]) -> str:
+def _setters_cod(template: str) -> Setters:
     """Set the cod's value to the bit at that input's ``+`` fork.
 
     ``)`` increments, so a one is ``)`` and a zero is a space -- which is
@@ -538,10 +542,10 @@ def _fill_cod(template: str, bits: list[int]) -> str:
     command spelling (``)(`` against ``)<``) needs the fork box one column
     wider and costs 350 -> 359 at n=2 and 1495 -> 1529 at n=3.
     """
-    return instantiate(template, bits, lambda _i, b: ")" if b else " ")
+    return ((" ", ")"),) * slot_count(template)
 
 
-def _fill_eval(template: str, bits: list[int]) -> str:
+def _setters_eval(template: str) -> Setters:
     """Stage the bit on the tree stack, then move it to the input stack.
 
     The backtick pushes ``1 - ptr``, so on stack 0 it pushes a one where
@@ -558,14 +562,10 @@ def _fill_eval(template: str, bits: list[int]) -> str:
     pad is not available: every ``{Xi}`` must push exactly one value, and a
     spare ``0`` leaves a residue that a later node reads as a bit.
     """
-    return instantiate(
-        template,
-        bits,
-        lambda _i, b: "`=" if b else "0=",
-    )
+    return (("0=", "`="),) * slot_count(template)
 
 
-def _fill_wii2d(template: str, bits: list[int]) -> str:
+def _setters_wii2d(template: str) -> Setters:
     """Set each junction: ``v`` takes the 1-branch, ``>`` continues east.
 
     A junction is a single cell, so the embed is one character with no
@@ -577,14 +577,10 @@ def _fill_wii2d(template: str, bits: list[int]) -> str:
     The 1-branch's ops do start one column past the junction, but that is
     on the detour row below, so row 0 never needed the room.
     """
-    return instantiate(
-        template,
-        bits,
-        lambda _i, b: "v" if b else ">",
-    )
+    return ((">", "v"),) * slot_count(template)
 
 
-def _fill_minifuck(template: str, bits: list[int]) -> str:
+def _setters_minifuck(template: str) -> Setters:
     """Write each bit at ``ptr+1``: ``[<`` for a one, ``xx`` for a zero.
 
     ``[`` steps right and flips the cell it lands on, and ``<`` steps back,
@@ -598,14 +594,10 @@ def _fill_minifuck(template: str, bits: list[int]) -> str:
     executes rather than one it merely ignores, so a cleanup pass that
     stripped dead characters could not reintroduce the leak.
     """
-    return instantiate(
-        template,
-        bits,
-        lambda _i, b: "[<" if b else "xx",
-    )
+    return (("xx", "[<"),) * slot_count(template)
 
 
-def _fill_one_two_three(template: str, bits: list[int]) -> str:
+def _setters_one_two_three(template: str) -> Setters:
     """Embed each bit as the generator's own ``ONE``/``ZERO`` command.
 
     123 names the two spellings itself rather than leaving them to a
@@ -616,37 +608,42 @@ def _fill_one_two_three(template: str, bits: list[int]) -> str:
     """
     from esolangs.tools.one_two_three import ONE, ZERO
 
-    return instantiate(template, bits, lambda _i, b: ONE if b else ZERO)
+    return ((ZERO, ONE),) * slot_count(template)
 
 
-def _fill_pct_squared_minus_one(template: str, bits: list[int]) -> str:
-    """Substitute each bit's setter, named by the template's own header.
+def _setters_pct_squared_minus_one(template: str) -> Setters:
+    """Each bit's setter, named by the template's own header.
 
     %^2^-1 solves its setters per truth table rather than fixing them by the
     language, so there is no table-independent spelling of "set input i to
     this bit".  The template carries the two branches for each input in a
-    header; the generator's own filler reads it and hands the branch table
-    to :func:`instantiate` as the setter.  Both branches are equal width,
-    so the instantiations share a length.
+    header, which this reads and :func:`_body_pct_squared_minus_one` strips.
+    Both branches are equal width, so the instantiations share a length.
     """
-    from esolangs.tools.pct_squared_minus_one import fill
+    from esolangs.tools.pct_squared_minus_one import setters
 
-    return fill(template, bits)
+    return setters(template)
 
 
-def _fill_arrowqueue(template: str, bits: list[int]) -> str:
+def _body_pct_squared_minus_one(template: str) -> str:
+    from esolangs.tools.pct_squared_minus_one import body
+
+    return body(template)
+
+
+def _setters_arrowqueue(template: str) -> Setters:
     # Each slot is a row of its own, so the multi-row block substitutes in place
-    return _instantiate_arrowqueue(template, bits)
+    return arrowqueue_setters(template)
 
 
-def _fill_nopstacle(template: str, bits: list[int]) -> str:
-    """Fill each level's ``{Xi}`` with its run of bit cells."""
-    return instantiate_nopstacle(template, bits)
+def _setters_nopstacle(template: str) -> Setters:
+    """Return each level's run of bit cells."""
+    return nopstacle_setters(template)
 
 
-def _fill_crement(template: str, bits: list[int]) -> str:
-    """Fill each tester's jump with the data that spells its bit."""
-    return instantiate_crement(template, bits)
+def _setters_crement(template: str) -> Setters:
+    """Return the jump line whose data spells each bit."""
+    return crement_setters(template)
 
 
 # Example file stem -> how that example is built and run.  Stems match the
@@ -810,7 +807,7 @@ def _register() -> None:
         "a-painter-ant": _embedded(
             b.a_painter_ant,
             "grid_based.a_painter_ant",
-            _instantiate_apa,
+            apa_setters,
             answer_mode="dump",
             answer_pattern=r"(?m)^[.#o@]*([o@])[.#o@]*$",
             answer_values=("o", "@"),
@@ -828,7 +825,7 @@ def _register() -> None:
         "back": _embedded(
             b.back,
             "tape_based.back",
-            _fill_back,
+            _setters_back,
             answer_mode="dump",
             split=True,
             expected="0 1 0",
@@ -837,12 +834,12 @@ def _register() -> None:
                 "the answer is cell n, past the n input cells"
             ),
         ),
-        "bf-pda": _embedded(b.bfpda, "stack_based.bf_pda", _fill_bfpda),
-        "bio": _embedded(b.bio, "register_based.bio", _fill_bio),
+        "bf-pda": _embedded(b.bfpda, "stack_based.bf_pda", _setters_bfpda),
+        "bio": _embedded(b.bio, "register_based.bio", _setters_bio),
         "bitdeque": _embedded(
             b.bitdeque,
             "queue_based.bitdeque",
-            _fill_bitdeque,
+            _setters_bitdeque,
             answer_mode="dump",
             note=(
                 "Bitdeque has no output instruction and dumps its deque at "
@@ -853,16 +850,16 @@ def _register() -> None:
         "cod": _embedded(
             b.cod,
             "grid_based.cod",
-            _fill_cod,
+            _setters_cod,
             note="COD has no runtime input and no I/O but a printed number",
         ),
-        "eval": _embedded(b.eval, "stack_based.eval", _fill_eval),
-        "home-row": _embedded(b.home_row, "tape_based.home_row", _fill_home_row),
-        "minifuck": _embedded(b.minifuck, "tape_based.minifuck", _fill_minifuck),
+        "eval": _embedded(b.eval, "stack_based.eval", _setters_eval),
+        "home-row": _embedded(b.home_row, "tape_based.home_row", _setters_home_row),
+        "minifuck": _embedded(b.minifuck, "tape_based.minifuck", _setters_minifuck),
         "minsky-swap": _embedded(
             b.minsky_swap,
             "register_based.minsky_swap",
-            _fill_minsky_swap,
+            _setters_minsky_swap,
             answer_mode="dump",
             expected="0 0",
             note=(
@@ -870,11 +867,11 @@ def _register() -> None:
                 "registers at halt; the answer is the second one"
             ),
         ),
-        "nocomment": _embedded(b.nocomment, "tape_based.nocomment", _fill_nocomment),
+        "nocomment": _embedded(b.nocomment, "tape_based.nocomment", _setters_nocomment),
         "ram0": _embedded(
             b.ram0,
             "register_based.ram0",
-            _fill_ram0,
+            _setters_ram0,
             answer_mode="dump",
             answer_pattern=r"z: (\d+)",
             expected="z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}",
@@ -886,13 +883,14 @@ def _register() -> None:
         "wii2d": _embedded(
             b.wii2d,
             "grid_based.wii2d",
-            _fill_wii2d,
+            _setters_wii2d,
             split=True,
         ),
         "pct-squared-minus-one": _embedded(
             b.pct_squared_minus_one,
             "register_based.pct_squared_minus_one",
-            _fill_pct_squared_minus_one,
+            _setters_pct_squared_minus_one,
+            body=_body_pct_squared_minus_one,
         ),
         # 123 answers with the termination convention, as ArrowQueue does, so
         # only the halting (0) branch is committed.  The constructed template
@@ -902,7 +900,7 @@ def _register() -> None:
         "123": _embedded(
             b.one_two_three,
             "tape_based.one_two_three",
-            _fill_one_two_three,
+            _setters_one_two_three,
             answer_mode="termination",
             answer_values=("halts", "diverges"),
             expected="",
@@ -918,7 +916,7 @@ def _register() -> None:
         "arrowqueue": _embedded(
             b.arrowqueue,
             "grid_based.arrowqueue",
-            _fill_arrowqueue,
+            _setters_arrowqueue,
             answer_mode="termination",
             answer_values=("halts", "diverges"),
             expected="1 0 1 2 3",
@@ -934,7 +932,7 @@ def _register() -> None:
         "nopstacle": _embedded(
             b.nopstacle,
             "grid_based.nopstacle",
-            _fill_nopstacle,
+            _setters_nopstacle,
             answer_mode="termination",
             answer_values=("halts", "diverges"),
             expected="",
@@ -950,7 +948,7 @@ def _register() -> None:
         "crement": _embedded(
             b.crement,
             "other.crement",
-            _fill_crement,
+            _setters_crement,
             answer_mode="termination",
             answer_values=("halts", "diverges"),
             expected="",

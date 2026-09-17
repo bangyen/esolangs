@@ -9,7 +9,7 @@ instantiated rows.
 from functools import cache
 
 from esolangs.exceptions import GeneratorCapError
-from esolangs.tools.helpers import _validate_truth_table, instantiate
+from esolangs.tools.helpers import Setters, _validate_truth_table, instantiate
 from esolangs.tools.pct_codes import (
     _DECL_RE,
     _HEADER_END,
@@ -964,9 +964,18 @@ def fill(template: str, bits: list[int]) -> str:
     program byte-identical however the header was folded, so the two
     branches stay equal width in text as well as in commands.
     """
-    header, _, body = template.partition(_HEADER_END)
-    header = header.replace("\n", "")
+    return instantiate(body(template), bits, setters(template))
+
+
+def body(template: str) -> str:
+    """Return the template past its header: the text the slots are filled in."""
+    return template.partition(_HEADER_END)[2]
+
+
+def setters(template: str) -> Setters:
+    """Return the ``(zero, one)`` branch per input, read off the header."""
+    header = template.partition(_HEADER_END)[0].replace("\n", "")
     branches = {
         int(m.group(1)): (m.group(2), m.group(3)) for m in _DECL_RE.finditer(header)
     }
-    return instantiate(body, bits, lambda index, bit: branches[index][bit])
+    return tuple(branches[i] for i in range(len(branches)))

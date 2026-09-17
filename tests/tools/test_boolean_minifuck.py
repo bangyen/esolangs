@@ -95,7 +95,7 @@ def test_minifuck_reconverged_tables_compute_their_function() -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
     from esolangs.tools import parameterized
-    from esolangs.tools.examples import _fill_minifuck
+    from tests.tools.fills import _fill_minifuck
 
     for table in ("01010101", "10101010"):
         template = parameterized.minifuck(table)
@@ -143,7 +143,7 @@ def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
 
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
-    from esolangs.tools.examples import _fill_minifuck
+    from tests.tools.fills import _fill_minifuck
 
     module = importlib.import_module("esolangs.tools.minifuck")
 
@@ -180,7 +180,7 @@ def test_minifuck_builds_five_input_xor() -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
     from esolangs.tools import parameterized
-    from esolangs.tools.examples import _fill_minifuck
+    from tests.tools.fills import _fill_minifuck
 
     table = "".join(str(bin(r).count("1") & 1) for r in range(32))
     template = parameterized.minifuck(table)
@@ -869,7 +869,7 @@ def test_ten_input_builds_print_on_the_interpreter() -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
     from esolangs.tools import minifuck
-    from esolangs.tools.examples import _fill_minifuck
+    from tests.tools.fills import _fill_minifuck
 
     digest = hashlib.sha256(b"dense:10").digest()
     bits: list[str] = []

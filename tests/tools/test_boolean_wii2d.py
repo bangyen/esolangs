@@ -18,7 +18,7 @@ class TestWII2D:
     def run_chain(self, tpl: str, bits: list[int]) -> str:
         """Instantiate the n-embedding chain template and run the interpreter."""
         from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
-        from esolangs.tools.examples import _fill_wii2d
+        from tests.tools.fills import _fill_wii2d
 
         program = _fill_wii2d(tpl, bits)
         buffer = io.StringIO()

@@ -247,7 +247,7 @@ class TestParameterizedBIO:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from esolangs.tools.examples import _fill_bio
+        from tests.tools.fills import _fill_bio
 
         return _fill_bio(tpl, bits)
 
@@ -293,7 +293,7 @@ class TestParameterizedBIO:
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """A zero pads against the unread ``z``, so the program's length
         does not reveal the inputs."""
-        from esolangs.tools.examples import _fill_bio
+        from tests.tools.fills import _fill_bio
 
         for n in (1, 2, 3):
             for i in range(n):
@@ -330,7 +330,7 @@ class TestParameterizedBitdeque:
         # earlier duplicate here kept passing after the load order changed
         # under it, so the suite disagreed with the harness it is meant to
         # mirror.
-        from esolangs.tools.examples import _fill_bitdeque
+        from tests.tools.fills import _fill_bitdeque
 
         return _fill_bitdeque(tpl, bits)
 
@@ -451,7 +451,7 @@ class TestParameterizedRam0:
         positions against, and that is the shape that hung the suite when
         Minsky Swap's copy drifted.
         """
-        from esolangs.tools.examples import _fill_ram0
+        from tests.tools.fills import _fill_ram0
 
         return _fill_ram0(tpl, bits)
 
@@ -571,7 +571,7 @@ class TestParameterizedMinskySwap:
         class pins is the truth table the instantiated program computes, and
         that is checked below either way.
         """
-        from esolangs.tools.examples import _fill_minsky_swap
+        from tests.tools.fills import _fill_minsky_swap
 
         return _fill_minsky_swap(tpl, bits)
 
@@ -635,7 +635,8 @@ class TestParameterizedMinskySwap:
         string.
         """
         from esolangs.tools import minsky_swap
-        from esolangs.tools.examples import AND2, _fill_minsky_swap
+        from esolangs.tools.examples import AND2
+        from tests.tools.fills import _fill_minsky_swap
 
         program = _fill_minsky_swap(minsky_swap(AND2), list(bits))
         assert self.run_minsky_swap(program) == AND2[(bits[0] << 1) | bits[1]]
@@ -653,7 +654,8 @@ class TestParameterizedMinskySwap:
         number of swaps.  ``"+*+*"`` is the LSB's exception.
         """
         from esolangs.tools import minsky_swap
-        from esolangs.tools.examples import AND2, _fill_minsky_swap
+        from esolangs.tools.examples import AND2
+        from tests.tools.fills import _fill_minsky_swap
 
         template = minsky_swap(AND2)
         # Weight 2 at the MSB of a two-input table, so two commands, and the
@@ -676,13 +678,13 @@ class TestParameterizedBfpda:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from esolangs.tools.examples import _fill_bfpda
+        from tests.tools.fills import _fill_bfpda
 
         return _fill_bfpda(tpl, bits)
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is four characters whichever bit it carries."""
-        from esolangs.tools.examples import _fill_bfpda
+        from tests.tools.fills import _fill_bfpda
 
         for n in (1, 2, 3):
             for i in range(n):
@@ -775,13 +777,13 @@ class TestParameterizedHomeRow:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from esolangs.tools.examples import _fill_home_row
+        from tests.tools.fills import _fill_home_row
 
         return _fill_home_row(tpl, bits)
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is two characters whichever bit it carries."""
-        from esolangs.tools.examples import _fill_home_row
+        from tests.tools.fills import _fill_home_row
 
         for n in (1, 2, 3):
             for i in range(n):

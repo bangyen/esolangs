@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
+from esolangs.tools.helpers import Setters, check_setters, check_slots
+
 __all__ = ["_Tagged", "_Template"]
 
 
@@ -61,8 +65,15 @@ class _Template(_Tagged):
     """
 
     unwrapped: str
+    setters: Setters | None
 
-    def __new__(cls, text: str, language: str, unwrapped: str = "") -> _Template:
+    def __new__(
+        cls,
+        text: str,
+        language: str,
+        unwrapped: str = "",
+        setters: Sequence[tuple[str, str]] | None = None,
+    ) -> _Template:
         """Return ``text`` tagged as ``language``'s template.
 
         ``unwrapped`` is the same template before a width was applied, kept
@@ -75,8 +86,16 @@ class _Template(_Tagged):
         """
         template = super().__new__(cls, text, language)
         template.unwrapped = unwrapped or text
+        template.setters = None
+        if setters is not None:
+            # The conventions, held by the object rather than by every
+            # caller: one equal-width pair per input, and the slots are
+            # exactly ``{X0}``..``{Xn-1}`` once each in order, so the k-th
+            # slot is input k and there is one width to check.
+            template.setters = check_setters(setters)
+            check_slots(template.unwrapped, len(template.setters))
         return template
 
     def __reduce__(self) -> tuple[object, ...]:
-        """Pickle with the unwrapped source as well."""
-        return (type(self), (str(self), self.language, self.unwrapped))
+        """Pickle with the unwrapped source and the setters as well."""
+        return (type(self), (str(self), self.language, self.unwrapped, self.setters))
