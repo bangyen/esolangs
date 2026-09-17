@@ -571,8 +571,8 @@ def example_stems() -> dict[str, str]:
 def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     """Return canonical id -> the substitution that instantiates a template.
 
-    A *parameterized* generator returns a program with ``{Xi}`` slots rather
-    than one that reads its inputs, and the slots are filled with that
+    A *parameterized* generator returns a program with one run of ``$``
+    per input rather than one that reads its inputs, and the runs are filled with that
     language's own code for setting an input.  Each committed example
     already carries that substitution as its ``fill``, so this is the
     existing recipe exposed rather than a second list to keep in step.
@@ -580,10 +580,10 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     Membership here is the definition of "parameterized" used everywhere in
     the package, and it is derived rather than written down for a measured
     reason: the same set taken from ``parameterized.__all__`` omits Home
-    Row, whose generator emits ``{X0}`` all the same, and the three
+    Row, whose generator emits the runs all the same, and the three
     hand-kept lists in the docs each named a different subset.  ``fill`` is
     the only spelling that matches what the generators actually emit -- 17
-    languages, checked against a ``{Xi}`` search over all 65.
+    languages, checked against the runs over all 65.
     """
     from esolangs.tools import examples as _examples
 
@@ -637,8 +637,8 @@ def render_template(
 ) -> tuple[str, str, Setters]:
     """Return the public template for a generator's slot-marked output.
 
-    ``(text, char, setters)``: the text with each ``{Xi}`` rendered as a run
-    of the language's character as long as input ``i``'s setter, the
+    ``(text, char, setters)``: the text, with each input a run of the
+    language's character as long as input ``i``'s setter, the
     character, and the pairs.  With a ``width`` the text is wrapped first,
     each input spelled as its own mark so the wrapper keeps every run whole
     and apart from its neighbour; a run is its setter's exact length, so

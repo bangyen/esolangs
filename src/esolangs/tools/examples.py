@@ -16,7 +16,7 @@ Two kinds of generator appear here:
 - **Input-reading** generators return a runnable program; the harness feeds
   the input bits on stdin (``inputs``).
 - **Parameterized** generators (see :mod:`esolangs.tools.parameterized`)
-  return a *template* whose ``{Xi}`` placeholders must be filled with the
+  return a *template* whose input runs must be filled with the
   language's own code for setting an input.  Those entries carry a ``fill``
   describing that substitution, and read no input at run time.
 
@@ -79,7 +79,6 @@ from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     Setters,
     fill_runs,
-    instantiate,
 )
 from esolangs.tools.nopstacle import nopstacle_setters
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
@@ -316,16 +315,13 @@ def _fill_from(
 ) -> Callable[[str, list[int]], str]:
     """Return the substitution a ``setters`` function defines.
 
-    A generator emits either ``{Xi}`` marks or, once migrated, the public
-    runs of ``char``; the fill takes both while the generators move over.
+    The generator emits the public runs of ``char``; the fill walks them by
+    the pairs' widths.
     """
 
     def fill(template: str, bits: list[int]) -> str:
         source = template if body is None else body(template)
-        pairs = setters(template, len(bits))
-        if "{X" in source:
-            return instantiate(source, bits, pairs)
-        return fill_runs(source, char, pairs, bits)
+        return fill_runs(source, char, setters(template, len(bits)), bits)
 
     return fill
 
@@ -454,7 +450,7 @@ def _setters_back(_template: str, n: int) -> Setters:
     -- never the answer cell, which the tree reaches only later.
 
     Priming first is what makes both rows *execute*.  ``+`` steps the beam
-    an extra cell when the current cell is zero, so the older ``{Xi}`` +
+    an extra cell when the current cell is zero, so the older input +
     ``+`` order had a zero bit's ``+`` setter fire on the still-zero cell
     and skip its own pad row; the pair cost two rows but only ever ran one
     of them, and which one depended on the bit.  Against a primed cell no
@@ -532,7 +528,7 @@ def _setters_ram0(_template: str, n: int) -> Setters:
 def _setters_home_row(_template: str, n: int) -> Setters:
     """Set the bit cell, in a constant width.
 
-    The cell is zero when a ``{Xi}`` is reached, so ``a`` raises it to one
+    The cell is zero when an input is reached, so ``a`` raises it to one
     and the second character settles it without moving the pointer: ``s``
     puts it back to zero, while ``j`` only skips the instruction after it
     when the cell is zero -- which it is not, having just been raised -- so
@@ -541,7 +537,7 @@ def _setters_home_row(_template: str, n: int) -> Setters:
 
     This used to spell a one as ``a`` and a zero as nothing at all, which
     made the program's length reveal its inputs.  The padding has to leave
-    the cell's value alone *and* the pointer where it was: ``{Xi}`` sits
+    the cell's value alone *and* the pointer where it was: the input sits
     directly before a gate that tests this cell, so a pad that moves the
     pointer (``d``/``f``) or changes the count (a second ``a``) misroutes
     the gate rather than being inert.  Padding with spaces (``a`` against
@@ -573,7 +569,7 @@ def _setters_eval(_template: str, n: int) -> Setters:
     character before the shared ``=``.  Padding the old zero to ``0 ``
     also works, since the interpreter skips anything outside its command
     set, but it pads with a character the language ignores.  An all-command
-    pad is not available: every ``{Xi}`` must push exactly one value, and a
+    pad is not available: every input must push exactly one value, and a
     spare ``0`` leaves a residue that a later node reads as a bit.
     """
     return (("0=", "`="),) * n

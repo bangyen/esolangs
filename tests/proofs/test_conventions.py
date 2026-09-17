@@ -11,7 +11,7 @@ are the template object's shape and are checked by its constructor, which
 every embedding generator at every arity measured.
 
 Every convention is about the *embed*, the text a fill substitutes for one
-``{Xi}``.  It is read off the programs rather than off the fill, since four
+input's run.  It is read off the programs rather than off the fill, since four
 fills are not plain substitutions: for one input, the two fills that differ
 only in that bit are compared and the span on which they differ is the
 embed pair.  A blank in it is a delimiter when it stands alone between two
