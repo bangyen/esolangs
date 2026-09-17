@@ -50,3 +50,9 @@ repos:
         language: system
         files: ^src/esolangs/.*\.py$
         pass_filenames: true
+      - id: check-comment-density
+        name: Check comment density (>= 2 code lines per comment line)
+        entry: python3 scripts/check_comment_density.py
+        language: system
+        files: ^src/esolangs/.*\.py$
+        pass_filenames: true
