@@ -46,6 +46,13 @@ stream inputs in read order; BF-PDA must consume its fixed stack order. No
 instruction-only wire is derived for 123, Minifuck, WII2D, or COD. ArrowQueue's
 conditional re-enqueue route remains open.
 
+Every emitted character is build work.  Input reordering is optional
+around a construction, but its work counts toward end-to-end generation
+time: order selection builds at most four named candidates and its generic
+greedy scorer stops at n=10; factorial and exponential contests are
+test-only oracles.  No generator construction may use BFS or DFS; test-only
+oracle searches may.
+
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
 | Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 was 124 MB and ran in 267 s under the previous spelling. |

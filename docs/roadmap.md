@@ -14,20 +14,23 @@ The candidate list is empty.
   loop-less O(T) construction and an executed scaling regression, or record a
   structural proof that the language or required encoding forces super-linear
   output and continue with the next generator.  Generation time includes
-  choosing an input order and writing the result.  Finish with a registry-wide
-  scaling contract.
+  choosing an input order and writing the result.
 
   All 65 generators are audited on four axes.  Totality is the `proofs.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
   totality argument).  Output size is the registry-wide contract
   (`tests/proofs/deep/linearity.py`, per-entry cost to n=12).  Generation
-  time and execution time were measured by hand (Sep 2026): the fitted
-  growth per added input over the top five arities, best of three,
-  execution on the worst sampled parity row with loading excluded, and a
-  figure on a run under ten milliseconds is not read as an exponent.  A row
-  is present while any axis is open and leaves when all four close; an
-  n=8 -> 9 ratio near 2 is not evidence of O(T), so every verdict reads in
-  one direction only.  The live audit is:
+  time and execution time are measured by hand: the fitted growth per
+  added input over the top five arities, best of three, execution on the
+  worst sampled parity row with loading excluded, and a figure on a run
+  under ten milliseconds is not read as an exponent.  A row is present
+  while any axis is open and leaves when all four close; an n=8 -> 9
+  ratio near 2 is not evidence of O(T), so every verdict reads in one
+  direction only.  Closure requires a lower bound over every program in
+  the language under the generator contract.  Super-linear output implies
+  super-linear generation time; the time column is not an independent
+  verdict there, but a linear output can still be built super-linearly.
+  The live audit is:
 
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
@@ -42,96 +45,45 @@ The candidate list is empty.
 
   Generation time, growth per added input at the top arity: Polynomial
   x3.4 dense (1.1 s at n=9), WII2D x4.8 dense (1.1 s at n=9), Factor x2.7
-  (1.2 s at n=11).
+  (1.2 s at n=11), Vandevelo x2.9 dense (0.27 s at n=12, parity x1.9).
   B-tapemark, Streetcode, 6-5, Forth and Circuit Diagram past its n=8
-  route change all read x2.2, between the size contract's x2.15 and what
+  route change read x2.2, between the size contract's x2.15 and what
   these arities separate from noise; they are held linear until a wider
-  measurement says otherwise.  Interprogck8 and Unsquare left this table
-  with their builds byte-identical -- printer flights laid once per shared
-  channel (x3.3 -> x2.03, 2.8 s -> 0.2 s at n=12), and an incremental tree
-  price that re-tests only the levels a sink moves (x2.4 -> x2.02).
-  Circlefuck left at x1.92 (16 ms at n=12, from x2.5): its greedy order
-  puts the essential inputs first and scores at most eight levels, its
-  emitter settles the folds bottom-up and indexes the stream-order table
-  per node instead of scanning every node's rows over a permuted copy,
-  and the programs are unchanged through n=10 and within one percent
-  either way on three of ten sampled tables above.  Vandevelo x2.9 dense
-  (0.27 s at n=12, from x3.6 and 1.3 s, parity x1.9): the peel restarts
-  per cube, scoring ~50 candidate directions on a 2**n-bit mask per round,
-  Theta(T^2 / word).  Keeping the chain of intersected sets across cubes
-  instead -- a peeled cube leaves every level exactly itself, so each
-  level's candidate scores are kept per leaving row -- reads x2.14 at
-  n<=12 (0.11 s, cover +2% on a 90-table corpus) but is quadratic too: a
-  level's direction switches Theta(T) times and each switch rebuilds the
-  level above at its parent's size, 4.2 -> 7.0 rows filtered per entry
-  from n=12 to 14.  Bounding a level to a window of its lowest 512 rows
-  with membership checked against the chain is linear in count and no
-  faster (0.23 s at n=12, 2^depth lookups per test, cover +4%); scoring
-  a sample and growing the cube through the lowest row alone is linear
-  and 0.07 s but +13--20% of cover; re-deriving every level per cube
-  (keep ratio 1.0) matches the shipped cover at 0.994x and is quadratic
-  again.  Every non-restarting peel also trades Cohen--Shinkar's O(T)
-  clause bound for a measurement, since the popular direction is no
-  longer exact over the remainder.  `%^2^-1`
-  left at x2.2 dense and x1.5 parity over n=6..10 (23 ms and 11 ms at
-  n=10, from x4.2 and x2.6, 0.93 s and 0.11 s), byte-identical over 910
-  tables through n=13: the fold planner keeps its points sorted in
-  absolute position under one offset, so a step removes its victims
-  from an end, bisects one landing and flattens row ids only for the
-  victims it names; the emitter mirror is the same sorted list under a
-  lazy offset with a union-find from rows to groups; and the deep band
-  reads legality off the weighted values (class-pure or not, `T * n`)
-  instead of enumerating `T ** 2` row pairs, walking only the zero-free
-  weightings its screen admits.  Above n=10 the time follows the plan:
-  53 ms, 161 ms and 494 ms at n=11..13, 17-30 us per fold step
-  throughout, with the staged route's packed prefix at n=13 costing
-  three steps per table entry where the ladders cost 1.3, and growing
-  the program by the same factor.
-  BFStack, BrainIf, LaserFuck, RAM0
-  and Jaune left the execution column the same way: BFStack's ``[`` scanned
-  for its ``]`` on every skip, and the other four rebuilt a whole immutable
-  tape per write, now a chunked persistent tape
-  (`esolangs.interpreters.persistent`); they read x1.5-x2.0
-  with every output and step count unchanged.
+  measurement says otherwise.
 
-  Closure requires a lower bound over every program in the language under
-  the generator contract.  Super-linear output implies super-linear
-  generation time; the time column is not an independent verdict there,
-  but a linear output can still be built super-linearly, which is what
-  Vandevelo's open generation-time cell records.
+  Vandevelo's open cell is its peel, which restarts per cube and scores
+  ~50 candidate directions on a 2**n-bit mask per round, Theta(T^2 /
+  word).  Keeping the chain of intersected sets across cubes reads x2.14
+  at n<=12 but is quadratic too: a level's direction switches Theta(T)
+  times and each switch rebuilds the level above at its parent's size.  A
+  window of a level's lowest 512 rows is linear in count and no faster; a
+  sampled score with growth through the lowest row is linear and 0.07 s
+  but +13--20% of cover.  Every non-restarting peel also trades
+  Cohen--Shinkar's O(T) clause bound for a measurement, since the popular
+  direction is no longer exact over the remainder.
 
-  COD is back in the table.  Its four-row strip (Sep 2026) was linear on
-  every axis but wrote each input twice -- the swim east and the return
-  west both end at the selected column, and without the wall there the
-  drop is a random junction -- against the once-only embed the
-  parameterized contract asks for, so the fork/cascade generator it
-  replaced is restored: each input's run sets the cod's value at its own
-  `+` fork, once.  Measured on restoration: size x3.5 -> x3.9 per added input
+  COD's fork/cascade generator embeds each input once, at its own `+`
+  fork, and is super-linear on all three axes: size x3.9 per added input
   over n=5..9 (942,668 characters at n=8, 3.67 MB at n=9; the cascade's T
   leaf rows each carry a Theta(T) prefix and gate tail), build time
-  tracking the size (0.10 s at n=9), and the worst row's command count
-  x2.32 per added input at n=9 (40,464 commands) against the execution
-  contract's x2.15, which now reads this cell as its exemption the way
-  the size contract reads the size cell.  The
-  constant-size two-polarity test exists once a bit reaches a node (`<`
-  keeps only one, `(<` keeps only zero, `(`/`)` normalize the survivor),
-  so a linear-area H-tree needs input `i` at every node of level `i`; a
-  shared run cannot distribute the bit to separate node lanes without
-  losing the lane identity, and carrying that identity as the cod's value
-  returns to the super-linear numeric decoder.  That is the row's open
-  question on all three axes.
+  tracking the size, and the worst row's command count x2.32 per added
+  input at n=9 (40,464 commands), which the execution contract reads as
+  its exemption.  The constant-size two-polarity test exists once a bit
+  reaches a node (`<` keeps only one, `(<` keeps only zero, `(`/`)`
+  normalize the survivor), so a linear-area H-tree needs input `i` at
+  every node of level `i`; a shared run cannot distribute the bit to
+  separate node lanes without losing the lane identity, and carrying that
+  identity as the cod's value returns to the super-linear numeric decoder.
+  That is the row's open question on all three axes.
 
-  Nopstacle joins it on the size axis (Sep 2026), with its prototype
-  replaced by a generator: a full decision tree of corridors, level `i`
-  reading its input at `2**i` node columns of one row, and a padded
-  rectangle `4 * 2**n` wide by `3n + 7` high.  Size is `Theta(n 2**n)`
-  by construction -- 31,774 characters at n=8, x2.21 there and x2.13 at
-  n=12 on the contract's two-step mean of the template, per-entry cost
-  44.5 rising by twelve per input -- and build time and the halting
-  row's step count (at most three widths, x1.93 at n=9) track the table.  The same H-tree question as
-  COD's: a linear-area layout puts level `i`'s cells on `2**(i/2)`
-  rows, and one placeholder fills one line; every layout with a line
-  per input is a `2**n`-wide row per input.
+  Nopstacle is open on size alone: a full decision tree of corridors,
+  level `i` reading its input at `2**i` node columns of one row, in a
+  padded rectangle `4 * 2**n` wide by `3n + 7` high, `Theta(n 2**n)` by
+  construction (31,774 characters at n=8, x2.21 there and x2.13 at n=12
+  on the contract's two-step mean, per-entry cost 44.5 rising by twelve
+  per input).  The same H-tree question as COD's: a linear-area layout
+  puts level `i`'s cells on `2**(i/2)` rows, and one run fills one line;
+  every layout with a line per input is a `2**n`-wide row per input.
 
   Polynomial's remaining question is a left-half-plane multiple of the
   mandatory root product with more terms than the Descartes minimum:
@@ -177,21 +129,17 @@ The candidate list is empty.
   input, a second read order would put a cycle some assignment follows,
   and a junction cell can be entered from at most four headings, so any
   fill yields a fixed chain read at most four times, never a tree.
+  WII2D's lift is the extremal-fold rule, total but at megabyte sizes,
+  and its three open cells are one question.
 
-  Polynomial's cap is priced in [polynomial](polynomial.md); WII2D's lift
-  is the extremal-fold rule, total but at megabyte sizes, and its three
-  open cells are one question.  The `Exception` row cannot close:
-  `%^2^-1`'s accumulator has 6263 distinguishable classes between two
-  placeholders (6007 in-window values, 256 deep residues), and the suite's
-  dense seventeen-input fixture forces at least 7640 distinct cofactors at
-  every thirteen-input cut, so no template at any length computes it
-  ([proofs](proofs.md), executed by `tests/proofs/deep/pct_squared_minus_one.py`).
-  What is left is finite -- which tables through sixteen inputs the
-  language admits and the planners refuse: every table tried through
-  thirteen builds, and from fourteen the dense fixture refuses while
-  parity and other tables whose suffix cofactors compact still build --
-  and no cut below seventeen can exceed 4096 classes, so a construction
-  there is not ruled out by counting.
+  Factor's row stays for its two language lower bounds.  `%^2^-1`'s
+  `Exception` cannot close ([limitations](limitations.md)); what is left
+  is finite -- which tables through sixteen inputs the language admits
+  and the planners refuse: every table tried through thirteen builds,
+  from fourteen the dense fixture refuses while parity and other tables
+  whose suffix cofactors compact still build, and no cut below seventeen
+  can exceed 4096 classes, so a construction there is not ruled out by
+  counting.
 
   ZTOALC L's cap and its size are one fact: every command sits on a value
   of one Collatz trajectory, and a trajectory crosses each scale band a
@@ -213,30 +161,7 @@ The candidate list is empty.
   L^(2/3): 2,387 commands from 100,000 lines.  Dense paths are found only
   by search.
 
-  CV(N)(C) left: its halt gadget squares once more whenever the program
-  is not shorter than its reach, two characters per leaf.  6-5 left: past
-  35 inputs its walk loops on sixteen labels, reading each bit's stride
-  off 2-adic valuation marks that one pass per bit shifts, linear in size
-  and executed on every row through n=7.  NoComment left: its rows are
-  code and its index is the stack, so the tape is six cells at any arity;
-  the chain is the smaller program from four inputs (never larger on any
-  four-input table) and executed on every row through n=10.  Factor's
-  totality closed: its digit budget was a size policy, not the
-  language's, and without it the encoder is the ledger's lift argument
-  verbatim; the row stays for its two language lower bounds.
-
-  Treat every emitted character as build work.  Input reordering is optional
-  around the construction, but its work still counts toward end-to-end
-  generation time.  Order selection builds at most four named candidates and
-  its generic greedy scorer stops at n=10; factorial and exponential contests
-  are test-only oracles.
-
-  No generator construction may use BFS or DFS; test-only oracle searches and
-  prose about retired searches may remain.
-
-- **Parameterized generator conventions.**  The eighteen generators that
-  embed their inputs in the program text (`BOOLEAN_EXAMPLES` entries with
-  `setters`) hold to five conventions, all of them about the *embed* --
+- **Boolean generator conventions.**  Five conventions govern the *embed*,
   the text that stands for one input -- not the program around it.  A
   template is the program with each input spelled as a run of one
   character outside the language (`$`), one run per input in order and
@@ -257,11 +182,10 @@ The candidate list is empty.
   is the span, row by row, on which the two fills of one input differ; a
   blank left after deleting each single blank between two non-blank
   characters is a spaces violation, and two inputs whose spans differ are
-  a uniformity one.  Measured Sep 2026 on dense and parity tables at
-  n=2..6, every instantiation: no spaces holds for all eighteen, uniform
-  for eleven.  `Open` means a spelling is not ruled out; `Language` means the
-  alphabet leaves none.  A row is present while any cell is open and
-  leaves when both close.
+  a uniformity one -- on dense and parity tables at n=2..6, every
+  instantiation.  `Open` means a spelling is not ruled out; `Language`
+  means the alphabet leaves none.  A row is present while any cell is
+  open and leaves when both close.
 
   | Language | No spaces | Uniform |
   | --- | --- | --- |
@@ -279,70 +203,16 @@ The candidate list is empty.
   `POP`/`EJECT` per unit with its block pads, BIO 4k-3 characters at
   weight k, Minsky Swap likewise, Nopstacle `2**i` cells across level
   `i`'s row -- and %^2^-1 solves its setters per table, so different text
-  per input is its design.  A Painter Ant and ArrowQueue *tile*: the
-  embed at weight k is the unit embed repeated k times, so a rule that
-  reads the placeholder run's length as the repeat count closes those two
-  at no cost.  The other five do not: Bitdeque's units are 4 and 6 wide
-  with no 2-character no-op (its pads are per block), BIO's connective
-  breaks the tiling, Nopstacle's cells have template between them, and a
-  uniform %^2^-1 is a different generator.  Those are priced, not
-  scheduled.
-
-  Bitdeque left: above the arity the equal-width test covers (n=1..2)
-  its linear route filled `EJECT ` against `POP ` per unit of weight, so
-  the 32 instantiations of a five-input table had 32 distinct lengths
-  (444..506) and the length was the input.  No no-op is two characters,
-  so a *unit* cannot be padded, but a block's deficit `2k` is exactly
-  `k/8` pairs of `PUSH POP` (nine) and `k/16` of `INVERT INVERT`
-  (fourteen) for every `k >= 16`, and the four smaller weights take fixed
-  pairs of the same three no-ops; every row through n=7 executes at one
-  length per template, 578 characters at dense n=5 against 444..506.
-  ArrowQueue left: its
-  one-bit block was `~` amid blanks where the zero block is a dense `*`
-  box, and every cell a block spells is a glyph now -- `.`, which the
-  language defines as a no-op along with every character but `*`, `~`
-  and `+` -- so the corridor the pointer walks and the cells it never
-  reaches are written; the rows still drop their trailing blanks, which
-  keeps the two blocks at fourteen characters each, and every program
-  through n=6 is byte-for-byte the size it was.  COD left: its fork
-  generator spelled a zero as water, one cell at a fixed column, and the
-  command spelling (`)(` against `)<`) would have widened the fork box;
-  `_` -- a no-op except to a cod moving up, and the fork crosses the
-  cell sideways -- is the zero now, one cell, every program the size it
-  was and every row through n=5 executing to its table.  Nopstacle's
-  alphabet is the blank and `#`, so a zero bit *is* a blank: its input
-  run is a bit cell at each of level `i`'s `2**i` node columns with
-  blanks between, the same width either way, and there is no command to
-  spell it with.
-
-  The fill itself is standard for all eighteen: each example names a
-  `setters(template, n)` returning one `(zero, one)` pair per input, the
-  generator's own output spells each input as its run of `$`, and
-  filling walks the runs by the pairs' widths and nothing else.  A width wraps the template with every run kept
-  whole (each input is spelled as its own private-use mark while the
-  wrapper runs, so two adjacent runs are two tokens), and since a run is
-  exactly its setter's length the wrapped template is the wrapped form of
-  every program it fills to -- every row breaks in the same places, which
-  filling first and wrapping after could not promise.  A template read
-  back from a file has its pairs recovered from the language's setters,
-  which the runs' total length determines.  %^2^-1 alone
-  carries a header naming its solved setters, which filling strips.
-  ArrowQueue's slots are rows of their own so its blocks substitute
-  in place (byte-identical to the header rebuild it replaced, n=1..6), A
-  Painter Ant's linear route is a setter, %^2^-1's setter is read
-  off the template's own header, COD's restored fork generator is a
-  one-cell setter, Crement's setter is the jump line whose data is the
-  bit, and Nopstacle's setter is the level's run of cells.
-
-  Two candidate conventions are not adopted.  *Rectangular*: every row of a
-  grid the same width.  COD and Nopstacle hold it; the other four grids are
-  ragged, and padding them writes blanks into the drawing rather than the
-  embed, so it is orthogonal to the fourth convention but costs size.
-  *Executed pad*: the constant-width filler is a command the interpreter
-  runs, not a character it skips.  The `instantiate` docstring asks for it
-  and BIO (`0oz;`), BF-PDA (`<[@]`, minimal by exhaustive search) and Back
-  (prime then finish) are the worked cases, but no test reads the filler,
-  so it is documented, not enforced.
+  per input is its design.  Closing one means the template carries the
+  weight and every input is one unit.  A Painter Ant and ArrowQueue
+  *tile*: the embed at weight k is the unit embed repeated k times.  The
+  other five do not: Bitdeque's units are 4 and 6 wide with no
+  2-character no-op (its pads are per block), BIO's connective breaks the
+  tiling, Nopstacle's cells have template between them, and a uniform
+  %^2^-1 is a different generator.  Nopstacle's alphabet is the blank and
+  `#`, so a zero bit *is* a blank: its input run is a bit cell at each of
+  level `i`'s `2**i` node columns with blanks between, the same width
+  either way, and there is no command to spell it with.
 
   Toggles are an open decision.  The proposed shape: a keyword per relaxed
   convention on the generator, off by default and carried through the
@@ -350,19 +220,11 @@ The candidate list is empty.
   through the same harness (`replace(example, kwargs=...)`); the contract
   sweeps the defaults, and `takes_width` is the precedent for reading a
   capability off the signature.  *Differing widths* buys size where the
-  zero pad is long: BIO's zero would embed as nothing instead of `0oz;`
-  per unit of weight, BF-PDA's pair would return to `<` against `<@` from
-  four characters each, and the earlier BIO fill ran 236/240/244/248 at
-  n=2 against 248 flat -- and it buys the leak back, which is what
-  Bitdeque's linear route had until Sep 2026.  *Allow spaces* would admit a filler
-  the interpreter ignores where an executed no-op is hard to find (BIO
-  `'    ' * w` and Eval `'0 '` both ran clean over 2120 cases and were
-  rejected for it, since an ignored pad is what a later cleanup strips)
-  and a bit spelled as a blank cell on a grid, which after ArrowQueue
-  closed is COD's cell (priced above) and Nopstacle's, which the language
-  forces.
-  Add the width toggle only where a measured build is smaller; the space
-  toggle has nothing left to relax and is not worth its plumbing.
+  zero pad is long (BIO's zero would embed as nothing instead of `0oz;`
+  per unit of weight, BF-PDA's pair would return to `<` against `<@`)
+  and buys the length leak back.  Add the width toggle only where a
+  measured build is smaller; a space toggle has nothing left to relax and
+  is not worth its plumbing.
 
 - **ArrowQueue reusable drain.**  Ship the verified deep-fold drain only if
   a proof makes folding meaningfully testable at `n >= 5`; current coverage
