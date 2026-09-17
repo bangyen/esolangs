@@ -9,19 +9,17 @@ from esolangs.tools.helpers import (
 
 # --- ArrowQueue (no-input grid language; parameterized + termination convention) ---
 #
-# Boolean generator for ArrowQueue.
+# ``*`` turns clockwise, ``~`` pushes the direction, ``+`` pops and points
+# (halting on an empty pop).  No I/O, so: parameterized convention (one run
+# per input bit, filled by :func:`_instantiate_arrowqueue`) plus the
+# termination convention (halt = 0, loop forever = 1; see the limitations
+# ledger's halt-vs-hang ring).
 #
-# ArrowQueue is a 2D grid language with a queue: ``*`` turns the pointer
-# clockwise, ``~`` pushes the current direction onto the queue, and ``+``
-# pops the queue and points the pointer in the popped direction (halting on
-# an empty pop).  It has no input and no output, so the generator follows
-# the parameterized convention (like ``bitdeque``/``minsky_swap``) AND the
-# termination convention (like ``point_break``): the template carries one
-# run per input bit, :func:`_instantiate_arrowqueue` fills each with the
-# language's per-bit embedding, and the result is read
-# from whether the instantiated program *halts* (a ``0`` table entry) or
-# *loops forever* (a ``1`` entry) -- the same convention as the committed
-# halt-vs-hang ring (see ``the limitations ledger``).
+# Grid layout: the first rows embed each input once (queue holds bits as
+# directions, right 0 / down 1); the next rows queue the R/D/L/U loop
+# components; the decision tree pops each bit at a ``+``, right for 0 and
+# down for 1.  A ``0`` leaf is empty (runs off the grid); a ``1`` leaf is a
+# ring that pushes on every edge and pops on every corner.
 #
 # Every input is one cell, the same cell for every input, every table and
 # every arity: ``~`` for a one and ``.`` for a zero.  The pointer crosses
@@ -164,14 +162,11 @@ def _drained_leaf(value: str, skipped: int) -> list[str]:
 
     The drains push nothing, so the ring receives the queue it expects.
     """
-    # A ``0`` leaf halts by running off the grid, which no queue content can
-    # prevent, so it needs no drain at all -- and paying for one costs real
-    # characters: the staircase sits a column right of the branches it
-    # replaced, leaving ``_compact`` fewer all-blank columns to drop.
+    # A ``0`` leaf needs no drain (running off the grid halts regardless),
+    # and a drain costs ``_compact`` blank columns.
     if value != "1":
         return list(_TREE_0)
-    # The leaf is 3x3 placed at (skipped, skipped + 1), so the grid needs
-    # ``skipped + 3`` rows and one more column than that.
+    # 3x3 leaf at (skipped, skipped + 1).
     grid = [[" "] * (skipped + 4) for _ in range(skipped + 3)]
     for i in range(skipped):
         grid[i][i + 1] = "+"

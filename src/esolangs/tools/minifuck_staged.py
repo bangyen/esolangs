@@ -55,20 +55,15 @@ def _column_sweep(j: _Joint, cell7: int) -> dict[int, tuple[int, ...]]:
     probe.emit(code)
     ptrs = set(probe.ptrs())
     if len(ptrs) != 1:
-        # Setting the pool is what converges the rows, so a code that fits
-        # leaves exactly one pointer: measured over every table at two and
-        # three inputs, 27620 sweeps, all of them a single pointer.  The
-        # check stays because that convergence is a property of the pool
-        # codes rather than something this function establishes.
+        # The pool converges the rows to one pointer (27620 sweeps at
+        # n=2,3, all single).  Kept: the property belongs to the pool codes.
         return {}  # pragma: no cover - the pool converges the rows
     cur = ptrs.pop()
     columns: dict[int, tuple[int, ...]] = {}
     for acc in range(_PROBE_WALK_OUT, _MAX_ACC + 1):
         if acc - 1 < cur:
-            # The walk only ever runs forward into the accumulator range:
-            # the pool leaves `cur` at 4 or 5 (measured over the same 27620
-            # sweeps) and the loop starts asking at `acc - 1 == 8`, so it is
-            # always behind.  Guards the invariant rather than a case.
+            # Never fires: the pool leaves ``cur`` at 4 or 5, the loop
+            # starts at ``acc - 1 == 8``.
             continue  # pragma: no cover - the pool lands below the range
         probe.emit("[x" * (acc - 1 - cur))
         cur = acc - 1
@@ -76,171 +71,76 @@ def _column_sweep(j: _Joint, cell7: int) -> dict[int, tuple[int, ...]]:
     return columns
 
 
-# The staged construction: one ``(separator, settle, suffix, accumulator)``
-# per complement pair, *derived* rather than stored.
-#
-# The embed leaves an affine picture -- every cell holds a linear form in the
-# input bits plus the one nonlinear term the ``[`` cascade computes -- and a
-# plain run of ``k`` brackets from ``_BASE - 1`` sweeps that picture forward,
-# exposing a different function at each step.  So the whole problem is: pick
-# the separator, the bracket count and the accumulator, then hand the result
-# to the endgame every other route already uses.  That is small enough to
-# *enumerate*: :func:`_stagings` gives the order -- 5 separators x 2 settle
-# counts x 29 bracket counts x 26 accumulators -- and a table is built by the
-# first entry that prints it.
-#
-# :func:`_derived_plans` runs that enumeration for a whole arity at once,
-# which is what makes it affordable.  A staging is expensive to build and
-# cheap to test against a table, so the loops go staging-major: one embed per
-# (separator, settle), the bracket run extended one instruction at a time,
-# and the endgame emitted once per (k, accumulator, read, orientation)
-# whatever the table.  Measured, three inputs derive in 2.4s and two in
-# 0.15s; the table-major spelling costs minutes, rebuilding every staging
-# once per table.
-#
-# Selection is on the accumulator's value **at the read**, not on the cell
-# holding the answer beforehand: the walk out applies the running prefix-XOR,
-# so at ``acc = 22`` after separator 1, AND arrives as a constant and XOR as
-# ``b1``.  The enumeration sidesteps that by emitting the endgame and reading
-# what the rows actually printed.  A table and its complement share a staging
-# -- the endgame tries both read polarities and both pool orientations, and
-# the printed digit is ``NOT(v XOR cell7)`` -- so counts below are in pairs.
+# One ``(separator, settle, suffix, accumulator)`` per complement pair,
+# derived, not stored.  The embed leaves an affine picture (linear forms in
+# the bits plus the ``[`` cascade's one nonlinear term); a bracket run from
+# ``_BASE - 1`` sweeps it forward, exposing a new function each step.  Small
+# enough to enumerate: :func:`_stagings` orders 5 seps x 2 settles x 29
+# bracket counts x 26 accumulators, first hit wins.
+# :func:`_derived_plans` runs it staging-major for a whole arity (one embed
+# per (sep, settle), run extended one instruction at a time): 2.4s at n=3,
+# 0.15s at n=2, vs minutes table-major.
+# Selection is on the accumulator at the read, not the answer cell before:
+# the walk out applies the prefix-XOR (at ``acc = 22`` after sep 1, AND
+# arrives constant and XOR as ``b1``), so the endgame is emitted and what
+# printed is read.  A table and its complement share a staging (both read
+# polarities x both orientations, digit is ``NOT(v XOR cell7)``).
 _Staging = tuple[int, int, int | str, int]
 
-# Coverage is stated over the 109 complement pairs of three-input tables that
-# are non-degenerate *and* depend on all three inputs (128 pairs, less the 3
-# the degenerate route claims and the 16 that go to the projection route).
-# The enumeration reaches 108 of them and all 8 at two inputs.
-#
-# The one holdout is ``01101101`` / ``10010010``, and the shape of the miss is
-# worth recording so it is not re-run blind.  Its answer column is not scarce
-# -- it stands at cell 24 under separator 2 at ``k == 15``, and 14375 of
-# 804600 sparse suffixes leave it standing somewhere -- but no staging
-# *carries* it to the read, because the walk's prefix-XOR rewrites that very
-# cell.  A pure bracket run never manages it, which is exactly why every
-# entry of :func:`_stagings` being a run puts it out of reach; the stored
-# suffix interleaves two ``<`` into the run instead.  A sweep over 13 of the
-# 15 (separator, settle) slices at ``k <= 40`` and every accumulator reached
-# Hamming distance 1 and never 0.  It is a gap in this family rather than a
-# wall: 180 of the 256 possible columns arrive, and no affine invariant
-# separates them from this one (all 255 parity masks checked).
-#
-# What closed the *other* gaps was a wider separator set rather than a better
-# search -- see :data:`_SEPS`.  The bracket axis is *exhausted*, not capped:
-# nothing here writes leftward, so once every row's pointer has passed the
-# accumulator window no further bracket can change a staged column.  Measured,
-# columns stop changing between ``k == 25`` and ``k == 38``, the sweep ran to
-# 40, and the deepest first hit needed is ``k == 26`` at three inputs, which
-# is where :data:`_MAX_BRACKETS` comes from.  The settle and accumulator axes
-# were sampled rather than exhausted and came back empty.
-#
-# **All four fields are enumerated because the simpler forms were measured
-# and fail.**  One fixed staging is impossible by counting: it offers 52
-# slots, but the prefix-XOR is many-to-one, so the best single staging
-# delivers 13 pairs and the mean is 5.8, against 109 to place.  Two
-# separators reach 49 of 109; dropping the settle field reaches 99, ten pairs
-# being reachable only at ``settle == 1``.  (Ablations must patch
-# :func:`_slices`, the enumeration the index really walks; patching
-# :func:`_stagings`, which has no callers, reports the baseline as the
-# ablation's result.  ``_staging_index`` is cached and must be cleared too.)
-#
-# Nor is there a cheap predictor of which staging serves a table: at four
-# inputs no tested invariant yields a necessary condition, every (separator,
-# settle) slice contributes tables reachable nowhere else, and 72% of tables
-# are served by exactly one slice.  The column algebra does *invert* -- a
-# target's first pure-run staging can be computed directly from per-row
-# admissible-``k`` bitmasks, reproducing the index exactly -- but the 4640
-# stagings collapse to about 4190 distinct plan vectors, so there is no
-# many-to-one structure to exploit, and a per-table inversion runs 20-30ms
-# against a 0.4-0.75s whole-arity fill that then answers every table.
-#
-# Separator 0 is enumerated first although no three-input table needs it:
-# it carries every two-input table on its own, and :data:`_SEP` and
-# :data:`_SCAN_SEPS` use it.
+# Coverage: 108 of the 109 non-degenerate all-input-dependent n=3 pairs
+# (128 less 3 degenerate, 16 projection) and all 8 at n=2.
+# Holdout ``01101101``/``10010010``: its column stands (cell 24, sep 2,
+# k=15; 14375 of 804600 sparse suffixes) but no staging carries it to the
+# read -- the prefix-XOR rewrites that cell.  The stored suffix interleaves
+# two ``<``; a pure run never does.  13 of 15 slices at k <= 40, every acc:
+# Hamming distance 1, never 0.  180 of 256 columns arrive, no affine
+# invariant separates this one (all 255 parity masks).
+# Other gaps closed by wider :data:`_SEPS`, not search.  The bracket axis is
+# exhausted (nothing writes leftward): columns stop changing at k 25-38,
+# deepest first hit k=26 at n=3 (hence :data:`_MAX_BRACKETS`).  Settle and
+# accumulator axes sampled, empty.
+# All four fields are needed: one staging offers 52 slots but delivers at
+# best 13 pairs (mean 5.8) of 109; two seps reach 49; no settle reaches 99
+# (ten pairs need settle 1).  Ablate via :func:`_slices` (the walked
+# enumeration; :func:`_stagings` has no callers) and clear ``_staging_index``.
+# No cheap predictor: at n=4 no invariant is necessary, every slice has
+# unique tables, 72% served by exactly one.  The algebra inverts (per-row
+# admissible-k masks reproduce the index) but 4640 stagings give ~4190
+# distinct plans and per-table inversion is 20-30ms vs a 0.4-0.75s fill.
+# Sep 0 first: no n=3 table needs it, but it carries all of n=2 and
+# :data:`_SEP`/:data:`_SCAN_SEPS` use it.
 
-# The arities the enumeration covers.  Two and three are *total*; four and
-# five are partial, and ship because a miss falls through to the searches, so
-# admitting an arity cannot cost coverage.  Beyond five the gate stays
-# explicit: not that the enumeration is known to fail, but that it has not
-# been shown to succeed.
-#
-# Four reaches 15404 of the 64594 fully-essential four-input tables (23.9%),
-# four-input XOR among them -- the table the searches are recorded as failing
-# on, and what closed it was the *suffix* rather than the search or the pool
-# (see :data:`_STAGED_ARITIES` and :func:`_insert_suffixes`).  Five ships on
-# a harvest of 24582 fully-essential 32-bit columns, complement-closed, with
-# five-input XOR among them; what made it runnable is that
-# :func:`_derived_plans` is asked for the tables it wants rather than for the
-# whole arity.
-#
-# Four inputs costs time in a way the others do not.  At two and three every
-# table is placed, so the derivation stops early; at four it never can, so
-# the enumeration runs to its caps -- about 76 seconds, paid by the first
-# fully-essential four-input table in a process whether it hits or misses,
-# and once, since :func:`_derived_plans` is cached.  Constants, projections
-# and tables with an ignored input never reach it.  The caps are not slack:
-# coverage climbs to both of them, with 12256 tables at ``k <= 24`` against
-# 15404 at 28, so trimming to buy time trims coverage.
+# Two and three are total; four and five partial, shipped because a miss
+# falls through to the searches.  Beyond five: not shown to succeed.
+# Four: 15404 of 64594 fully-essential tables (23.9%), XOR among them,
+# closed by the *suffix* (:func:`_insert_suffixes`).  Five: a harvest of
+# 24582 fully-essential complement-closed columns, XOR among them; runnable
+# because :func:`_derived_plans` is asked per table.
+# Four never places every table, so it runs to its caps: ~76s once per
+# process, paid by the first fully-essential n=4 table.  The caps are not
+# slack: 12256 tables at k <= 24 vs 15404 at 28.
 _STAGED_ARITIES = (2, 3, 4, 5)
 
-# How far the enumeration runs.  Both caps are the measured maximum over
-# every table plus a margin, not guesses: sweeping to a bracket count of 30
-# and an accumulator of 40, the deepest first hit at two inputs is
-# ``(k=6, acc=20)`` and at three ``(k=26, acc=31)``.  Nothing is reached past
-# those, so the sweep stops a little beyond them.
+# Measured max plus margin: sweeping to k=30, acc=40, deepest first hit
+# is (k=6, acc=20) at n=2 and (k=26, acc=31) at n=3.
 _MAX_BRACKETS = 28
 _MAX_ACC = 34
 
-# Only the *upper* ends are measured.  Every accumulator loop in this module
-# starts at :data:`_PROBE_WALK_OUT` rather than at a literal, because the
-# lower end is not a search bound at all: an accumulator has to sit past the
-# pool, which :func:`_endgame` enforces by refusing anything under
-# :data:`_POOL_WIDTH`, so the first one worth asking about is one further
-# right.  The counts spelled ``_MAX_ACC - _POOL_WIDTH`` are the same fact
-# said the other way round -- they are the length of that loop.
+# Lower ends are not search bounds: every accumulator loop starts at
+# :data:`_PROBE_WALK_OUT` because :func:`_endgame` refuses under
+# :data:`_POOL_WIDTH`; ``_MAX_ACC - _POOL_WIDTH`` is that loop's length.
 
-# How much of the enumeration a caller is willing to spend, counted in
-# **stagings visited** rather than in seconds.
-#
-# The unit is the point: a wall-clock budget would build a table on a fast
-# host and raise on a slow one.  A staging is one tuple in
-# :func:`_stagings` order, so a budget picks out the *same* set of tables
-# everywhere and the emitted programs stay byte-identical.  It also tracks
-# real work, since :func:`_column_sweep` derives a staging's whole
-# accumulator range from one walk.
-#
-# **A budget costs program length, not coverage.**  A table it stops short of
-# falls through to :func:`_mux`, total at four inputs at about 11ms, so
-# lowering this cannot make a table unbuildable -- it trades the staged
-# route's shorter template (205 characters at four inputs against the
-# sculpted route's 952) for the tables it gives up.
-#
-# ``None`` means no budget, which is what ships at four inputs and below:
-# the default must reproduce the enumeration exactly there, or every
-# recorded template changes.
+# Budget in stagings visited, not seconds (same tables on every host,
+# byte-identical programs; :func:`_column_sweep` does one walk per staging).
+# Costs length, not coverage: a miss falls through to :func:`_mux` (total
+# at n=4, ~11ms), trading 205 chars staged vs 952 sculpted.  ``None`` = no
+# budget, which ships at n <= 4 and must, or every template changes.
 _STAGING_BUDGET: int | None = None
 
-# Five inputs used to ship a budget of 30000 stagings, and the reason it no
-# longer does is that its rationale was consumed by the tabulation.  The
-# argument was that the arity is only reached by tables the cheaper routes
-# could not place, and that "the enumeration cannot stop early on a miss" --
-# so a miss paid the whole sweep, a measured 54.7 seconds.  A miss is now a
-# dict lookup: :func:`_staging_index` walks the enumeration once per arity,
-# and after that neither a hit nor a miss enumerates anything.
-#
-# So the budget bought nothing but lost coverage.  Measured: the budgeted
-# pass is 2.4s and reaches 6340 columns, the full pass 8.5s and 28096 --
-# **21756 more**, for six seconds once per process.  And the two agree
-# wherever they overlap: every column both reach gets the *same* staging,
-# because a budget truncates the enumeration without reordering it, so
-# lifting it cannot change a template that already existed.
-#
-# What it does change is coverage, which is why it is a deliberate,
-# separately-verified step rather than a tidy-up: tables that sat late in the
-# enumeration went from a raise to a build.  Sampled 20 of the newly reached
-# and every one builds and prints all 32 rows on the shipped interpreter.
-#
-# ``None`` means no budget, which is now what ships at every arity.
+# Five shipped 30000 while a miss paid the whole 54.7s sweep; now a miss is
+# a dict lookup via :func:`_staging_index`.  Budgeted: 2.4s, 6340 columns;
+# full: 8.5s, 28096.  Same staging wherever both reach (a budget truncates,
+# never reorders).  20 newly reached tables sampled, all print 32 rows.
 _STAGING_BUDGET_N5: int | None = None
 
 
@@ -251,26 +151,11 @@ def _budget(n: int) -> int | None:
     return _STAGING_BUDGET
 
 
-# The ``(separator, settle)`` slices in descending measured yield at four
-# inputs, which is what makes a budget worth having.  Every slice costs the
-# same 12064 stagings, and what they return is not close to even -- 2874
-# tables for the best against 424 for the worst -- so spending a budget in
-# this order buys 77% of the hits for half the work, and 91% for 70% of it.
-# Enumerating in the plain ``(sep, settle)`` order instead makes a budget a
-# flat trade, since hits are spread uniformly through the enumeration.
-#
-# Measured at ``n == 4`` and **not** assumed to hold elsewhere: at another
-# arity the ranking is unmeasured, so the full enumeration order is used
-# unless a budget is actually set.  Ordering only matters when something is
-# going to be given up.
-#
-# The yield is *marginal*: a slice is credited with the columns it is first
-# to reach walking the plain enumeration, not with every column it could
-# place alone -- ranking by independent reach gives a different order.  So
-# this is derived rather than frozen, and
-# ``test_the_slice_order_is_its_measured_yield`` re-derives it from
-# ``_staging_index(4)`` each run instead of trusting the numbers above.  All
-# ten counts differ, so descending order is total with no tie-break.
+# Slices by descending marginal yield at n=4 (2874 best vs 424 worst per
+# 12064 stagings): 77% of hits for half the work, 91% for 70%.  Used only
+# when a budget is set; unmeasured at other arities.  Marginal = first to
+# reach in plain order, so ``test_the_slice_order_is_its_measured_yield``
+# re-derives it from ``_staging_index(4)``.  All ten differ, no tie-break.
 _SLICE_YIELD_ORDER = (
     (3, 0),
     (2, 0),
@@ -301,10 +186,8 @@ def _slices(n: int) -> tuple[tuple[int, int], ...]:
     return _SLICE_YIELD_ORDER
 
 
-# The arities whose enumeration includes the insert family below.  It is not
-# offered at two or three inputs because the pure runs already close those
-# arities completely, and enumerating a family that can only be reached after
-# every pure run has missed would cost those arities time for nothing.
+# Not at two or three: pure runs close those, and the family is only
+# reached after every pure run misses.
 _INSERT_ARITIES = (4, 5)
 
 
@@ -334,9 +217,8 @@ def _insert_suffixes() -> Iterator[str]:
             yield "[" * cut + "<" + "[" * (k - cut)
 
 
-# The insert family, materialized once: the constraint query needs to hand
-# a winning ordinal back as its suffix string, and the family is 435 short
-# strings.  :func:`_insert_suffixes` stays the specification of the order.
+# 435 strings; the constraint query returns an ordinal's suffix string.
+# :func:`_insert_suffixes` stays the order's specification.
 _INSERT_SUFFIXES = tuple(_insert_suffixes())
 
 
@@ -444,9 +326,8 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
     if n not in _STAGED_ARITIES:
         return {}
 
-    # What each printed column would answer.  A table and its complement
-    # share a staging, so both spellings map to their own table and whichever
-    # is reached first assigns both.
+    # Both spellings of a complement pair map to their own table; the first
+    # reached assigns both.
     wanted: dict[tuple[int, ...], list[str]] = {}
     for table in targets:
         wanted.setdefault(tuple(int(c) for c in table), []).append(table)
@@ -496,10 +377,8 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
                 return True
         return False
 
-    # Stagings visited, against :data:`_STAGING_BUDGET`.  Counted per
-    # accumulator sweep rather than per emitted suffix, because a staging is
-    # a ``(separator, settle, suffix, accumulator)`` tuple and ``claim``
-    # walks the accumulators for one suffix in a single call.
+    # Stagings visited: per accumulator sweep, since ``claim`` walks all
+    # accumulators of one suffix in a call.
     spent = 0
     budget = _budget(n)
     accs = _MAX_ACC - _POOL_WIDTH
@@ -525,26 +404,16 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
             spent += accs
             if exhausted():
                 return found
-            # Extending the run is what makes this cheap: the next
-            # bracket count is one instruction on from this one, not a
-            # rebuild from the embed.
+            # One instruction on, not a rebuild from the embed.
             run.emit("[")
 
-    # The insert family, in a second pass so that every pure run is tried
-    # first and the arities the pure runs close keep the stagings they had.
-    # This pass cannot share the incremental trick above -- moving the ``<``
-    # one place right is not one instruction on from the last suffix -- so
-    # each string is emitted onto a fork of the embed.
+    # Second pass so pure runs keep their stagings.  Not incremental (moving
+    # the ``<`` is not one instruction on), so each string forks the embed.
     if n not in _INSERT_ARITIES:
         return found
     for sep_index, settle in slices:
-        # Never taken, and kept for symmetry with the loop above rather than
-        # as a live exit: every `spent += accs` is immediately followed by
-        # its own `exhausted()` that returns, so no spend happens between
-        # that check and this one -- a budget that would stop the pass has
-        # already stopped it inside the body.  Measured over nine budgets
-        # spanning the insert pass (7540, where it is entered, to 120640,
-        # the whole enumeration): evaluated 35 times, taken 0.
+        # Never taken (35 evaluations, 0 taken over nine budgets 7540 to
+        # 120640): every spend is followed by its own ``exhausted()`` return.
         if exhausted():
             return found  # pragma: no cover - see above
         base = _embed(n, settle=settle, sep=_SEPS[sep_index])
@@ -583,29 +452,15 @@ def _clear_derived_plans(
 _derived_plans.cache_clear = _clear_derived_plans  # type: ignore[method-assign]
 
 
-# **A linear-algebra screen sat here, and it is gone.**  Everything the
-# endgame emits after the suffix is GF(2)-affine in the columns standing at
-# that point, so a printed column lies in the span of the staging's standing
-# columns, and ``_span_admits`` used that to decline unreachable five-input
-# tables before the per-table enumeration -- 3.6 milliseconds against the
-# 143 seconds a doomed sweep cost.  The index inversion made both numbers
-# obsolete: the arity is tabulated once and a miss is a dict lookup, so the
-# screen's only remaining effect was its own setup -- a measured 0.72s of
-# span bases against the 0.88s index build it could at best skip, paid by
-# every process that built any staged five-input table.  Equivalence at
-# removal: an index key is a printed column and the screen admitted every
-# printed column by its own standing test, so screen-then-lookup and bare
-# lookup answer identically -- checked directly, 400 sampled keys with 0
-# declines and 120 tables with 0 divergences.  The affine-span fact stays
-# true; nothing consumes it any more.
+# A GF(2) span screen (``_span_admits``) sat here: printed columns lie in
+# the span of the standing ones, 3.6ms vs a 143s doomed sweep.  The index
+# made a miss a dict lookup, leaving only its 0.72s setup against the 0.88s
+# index build; removed after 400 sampled keys / 120 tables showed 0
+# divergences.  The affine-span fact stays true; nothing consumes it.
 
 
-# How far right the closed-form column derivation tracks the tape.  The
-# deepest read is one cell past an insert's phase-two extent, and an extent
-# is bounded by the instruction budget: a suffix carries at most
-# ``_MAX_BRACKETS`` brackets, plus one instruction's credit when a pending
-# skip hands its job to the ``<``, so nothing settles past
-# ``_BASE - 1 + _MAX_BRACKETS + 1`` and the reads stop two cells later.
+# Deepest read is one past an insert's phase-two extent, bounded by
+# ``_MAX_BRACKETS`` plus one credit when a pending skip hands off to ``<``.
 _CHAIN_CAP = _BASE + _MAX_BRACKETS + 4
 
 
@@ -637,8 +492,7 @@ class _Chain:
 
     def __init__(self, cells: list[int]) -> None:
         self.s = cells
-        # The one cell below ``_BASE`` a suffix can touch: a ``cut == 0``
-        # insert steps back onto it before its brackets run.
+        # The one cell below ``_BASE`` a suffix touches (``cut == 0`` insert).
         self.l15 = cells[_BASE - 1]
         v = [0] * _CHAIN_CAP
         w = [0] * _CHAIN_CAP
@@ -669,15 +523,12 @@ class _Chain:
         return m, m >= _BASE and budget < self.t[m]
 
 
-# What a row does under one suffix, reduced to five ints so the per-``acc``
-# read below is arithmetic.  ``mode`` 0 is a pure run (extent, saturated
-# read); 1 is a pure run plus a point flip at the re-crossed cell; 2 is the
-# complemented chain, which no pure run reproduces.
+# ``mode`` 0: pure run (extent, saturated read); 1: plus a point flip at the
+# re-crossed cell; 2: complemented chain, which no pure run reproduces.
 _Plan = tuple[int, int, int, int, int]
 
-# Per orientation: the pool's landing pointer, the low cells' full XOR, and
-# the per-accumulator partial XOR for reads that stop below ``_BASE`` --
-# or None where no pool code fits the orientation.
+# Per orientation: landing pointer, low cells' XOR, per-acc partial XOR for
+# reads below ``_BASE``; None where no pool code fits.
 _Pools = dict[int, tuple[int, int, dict[int, int]] | None]
 
 
@@ -782,9 +633,8 @@ def _planned_bits(chain: _Chain, plan: _Plan, accs: range, const: int = 0) -> li
     """
     w, v = chain.w, chain.v
     mode = plan[0]
-    # The saturated arm's parity term is ``(acc - _BASE + 1) & 1``; adding
-    # the constant to the offset flips which of the two values it takes,
-    # which is exactly XORing it, so no arm pays for the fold.
+    # Adding the constant to the offset XORs the saturated arm's parity term
+    # ``(acc - _BASE + 1) & 1`` for free.
     par = 1 - _BASE + const
     if mode != 2:
         m, g = plan[1], plan[2]
@@ -832,12 +682,8 @@ def _slice_chains(n: int, sep_index: int, settle: int) -> tuple[list[_Chain], _P
     _walk_to(base, _BASE - 1)
     chains = [_Chain([(m.tape >> i) & 1 for i in range(_CHAIN_CAP)]) for m in base.ms]
     if len({tuple(c.s[:_BASE]) for c in chains}) != 1:
-        # The whole slice-constant treatment of the pool rests on this, so a
-        # violation is a bug in the embed model, not a case to handle.
-        # Measured over every slice at two, three and four inputs: zero
-        # violations, which is why the raise is never reached -- the check
-        # stays because the property belongs to the embed, not to anything
-        # this function establishes.
+        # The slice-constant pool rests on this; a violation is an embed
+        # model bug.  Zero over every slice at n=2,3,4; kept anyway.
         raise AssertionError(  # pragma: no cover - the embed is row-constant
             "embed left a row-dependent cell below _BASE"
         )
@@ -893,11 +739,8 @@ def _closed_sweeps(
         cut = suffix.index("<")
         rest = len(suffix) - cut - 1
         lflip = 1 if cut == 0 and rest > 0 else 0
-    # The plans are the suffix's whole per-row response and cost nothing to
-    # share, but only one orientation ever has a pool: ``_find_pool`` answers
-    # ``cell7 == 1`` with None at every staged arity and every slice (40 of
-    # 40, measured), so the region walk below runs once per suffix, not twice,
-    # and hoisting it out of the loop would buy nothing.
+    # Only one orientation ever has a pool (``cell7 == 1`` is None in 40 of
+    # 40 slices), so the region walk runs once per suffix; hoisting buys nothing.
     plans = [_suffix_plan(chain, cut, rest) for chain in chains]
     sweeps: dict[int, dict[int, tuple[int, ...]]] = {}
     for cell7 in (0, 1):
@@ -909,14 +752,12 @@ def _closed_sweeps(
         columns: dict[int, tuple[int, ...]] = {}
         for acc in range(_PROBE_WALK_OUT, _BASE):
             if acc - 1 < cur:
-                # Mirrors _column_sweep's guard; the pool lands at 4 or 5,
-                # below the accumulator range, so it never fires.
+                # Mirrors ``_column_sweep``'s guard; never fires.
                 continue  # pragma: no cover - the pool lands below the range
             bit = lowxor[acc] ^ (lflip if acc == _BASE - 1 else 0)
             columns[acc] = (bit,) * len(chains)
-        # The accumulators at ``_BASE`` and above, batched: one region walk
-        # per row rather than one plan dispatch per (row, accumulator), and
-        # the row-major bits transposed to columns at the C level.
+        # Accumulators >= ``_BASE`` batched: one region walk per row, bits
+        # transposed to columns at C level.
         accs = range(_BASE, _MAX_ACC + 1)
         const = lowfull ^ lflip
         rowbits = [
@@ -997,8 +838,7 @@ def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
                     if column not in index:
                         index[column] = (*head, suffix, acc)
 
-    # The slice states are built once and shared by both passes: the second
-    # pass reads the same embeds, and nothing between the passes writes them.
+    # Shared by both passes; nothing between them writes the embeds.
     states: dict[tuple[int, int], tuple[list[_Chain], _Pools]] = {}
 
     slices = _slices(n)
@@ -1020,9 +860,7 @@ def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     if n not in _INSERT_ARITIES:
         return index
     for sep_index, settle in slices:
-        # Never taken, for the same reason as the oracle's copy of this
-        # loop: the spend inside the body is followed immediately by its own
-        # `exhausted()` return, so nothing accrues across the loop boundary.
+        # Never taken; see the oracle's copy of this loop.
         if exhausted():
             return index  # pragma: no cover - see _derived_plans
         chains, pools = states[sep_index, settle]
@@ -1038,9 +876,8 @@ def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     return index
 
 
-# One pass's constraint masks for a slice, keyed by ``(cell7, acc)``: the
-# suffixes whose sweep reaches that pair at all, and, per row, the suffixes
-# under which the row's printed bit is 1 for the direct read.
+# Per ``(cell7, acc)``: suffixes reaching it, and per row the suffixes under
+# which the direct read prints 1.
 _RowMasks = dict[tuple[int, int], tuple[int, tuple[int, ...]]]
 
 
@@ -1209,22 +1046,7 @@ def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     return plan if _replay(truth_table, n, plan) is not None else None
 
 
-# **The flipped-embed pass was here, and it is gone.**  It complemented some
-# inputs as they landed, which took four inputs from 23.9% to 94.35% -- a real
-# gain at the time, and dead weight now.  Every table it placed is a table the
-# plain enumeration missed, and :func:`_mux` builds all 49190 of those (swept
-# exhaustively, not sampled), so nothing reached it that the sculpted route
-# does not reach.  Nor was it a fallback for another arity: it was gated to
-# four inputs alone, which the sculpted route also covers.
-#
-# What it cost was the whole-arity sweep behind it -- over 300 seconds, paid
-# by the first four-input table to miss the stagings, against about 11ms for
-# the same table through :func:`_mux`.  Deleting it takes that miss from
-# minutes to the sculpted route's own derivation.
-#
-# The trade is program length: the flipped pass emitted shorter templates for
-# the tables it placed, and those tables now get the sculpted route's longer
-# ones.  Taken deliberately -- a shorter program is not worth minutes to
-# compute -- and paid only by tables the plain enumeration already missed.
-#
-# The route trades longer output for a much faster build.
+# A flipped-embed pass (complement inputs as they land) took n=4 from 23.9%
+# to 94.35%, but :func:`_mux` builds all 49190 tables it placed (exhaustive)
+# at ~11ms vs its 300s+ whole-arity sweep, and it was gated to n=4 only.
+# Removed; those tables get the sculpted route's longer templates.
