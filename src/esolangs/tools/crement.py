@@ -1,32 +1,21 @@
 """Boolean-function generator for Crement: a decision tree over shared testers.
 
 Crement has no input instruction, so each input is embedded once as the
-*data* of a jump -- ``+J 0 1`` for a one, ``+J 0 0`` for a zero, the same
-width either way -- and the tree reads it through Crement's only means of
-indirection, self-modification.  Input ``i`` owns a two-line tester::
+*data* of a jump -- ``+J 0 1`` for a one, ``+J 0 0`` for a zero -- and
+the tree reads it by self-modification.  Input ``i`` owns a two-line
+tester (``+J 0 b`` taken when the bit is 1, then ``+J 0 1``) whose jump
+addresses a node fills in: a node is two ``+A`` writes patching the
+tester's one- and zero-targets to its children, then a jump into the
+tester.  ``+A t d`` stores ``d + 1``, so a child at line ``c`` is written
+``c - 1``.
 
-    T_i:    +J 0 b         * b is the bit: taken when it is 1
-    T_i+1:  +J 0 1         * taken otherwise
-
-whose two jump addresses are ``0`` until a node fills them in.  A node of
-the tree that splits on input ``i`` is three lines: two ``+A`` writes that
-patch the tester's one- and zero-targets to the node's children, then a
-jump into the tester.  ``+A t d`` stores ``d + 1`` in the address field of
-line ``t``, so a child at line ``c`` is written as ``c - 1``.
-
-The program opens with three fixed lines -- a jump to the root, a jump past
-the end (the halt), and ``+J @ 1`` (a one-step state cycle: it writes
-nothing, so the snapshot repeats at once) -- then the ``2 n`` tester lines,
-then the nodes.  A child is therefore either the halt (``0``), the loop
-(``1``) or a node written relative to the patch itself: the zero subtree is
-laid down first, so its root is always ``@+1``, and the one subtree's root
-is ``@`` plus three times the zero subtree's node count.  Constant subtrees
-fold to the two gadgets directly, so a table's leaves cost no lines, and
-every operand but the halt's own is small, which keeps the size within a
-constant of the node count.  The instantiated program halts for a 0 entry
-and diverges for a 1 entry: one node per level, so it runs at most
-``5 n + 2`` commands, and it is ``3`` lines per node, at most
-``3 (2**n - 1) + 2 n + 3`` lines in all.
+The program opens with a jump to the root, a jump past the end (halt),
+and ``+J @ 1`` (a one-step state cycle), then ``2 n`` tester lines, then
+the nodes; the zero subtree is laid first so its root is ``@+1`` and the
+one subtree's root is ``@`` plus three times the zero subtree's node
+count.  Constant subtrees fold to the two gadgets, so leaves cost no
+lines.  The program halts for a 0 entry and diverges for a 1, running at
+most ``5 n + 2`` commands over at most ``3 (2**n - 1) + 2 n + 3`` lines.
 """
 
 from esolangs.tools.helpers import (
@@ -57,10 +46,8 @@ def _set_bit(_index: int, bit: int) -> str:
 def crement(truth_table: str) -> str:
     """Build a Crement template: one run per input, its tester's first line.
 
-    The program is a decision tree whose nodes route through per-input
-    testers by patching their jump targets (see the module docstring).
-    Rows split most-significant-first, so the root tests input 0, and a
-    subtree whose rows agree folds to the shared loop or to the halt.
+    Rows split most-significant-first; a subtree whose rows agree folds to
+    the shared loop or the halt.
     """
     n = _validate_truth_table(truth_table)
     lines: list[str] = []

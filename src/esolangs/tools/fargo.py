@@ -1,41 +1,18 @@
 """Boolean-function generator for Fargo.
 
-Fargo is the one language in the suite whose *input interface* is already a
-truth table's index: ``@ i`` returns the ``i``th bit of the input number, so
-the generator never has to read, normalize and store bits before it can test
-them.  What every other generator spends on routing -- a decision tree, a
-minterm sum, a grid walk -- Fargo spends on nothing at all.
+``@ i`` returns the ``i``th bit of the input number, so no routing is
+needed and the construction is the **algebraic normal form**
+``f(x) = c0 XOR (c1 & x0) XOR (c2 & x1) XOR (c3 & x0 & x1) XOR ...``,
+coefficients from the Möbius transform (:func:`_anf_coefficients`).
+The emitter factors each variable as ``p = p0 ^ (x & p1)``, so every
+coefficient appears at most once and a dense ANF is O(T).
 
-That makes an **algebraic normal form** the natural construction rather than
-a decision tree. Every boolean function has exactly one ANF::
-
-    f(x) = c0 XOR (c1 & x0) XOR (c2 & x1) XOR (c3 & x0 & x1) XOR ...
-
-The coefficients come from the Möbius transform
-(:func:`_anf_coefficients`). The emitter recursively factors each variable:
-``p = p0 ^ (x & p1)``. Thus every coefficient and factor appears at most
-once, keeping even a dense ANF O(T) for a T-entry table. Variables with wide
-binary indices occur near the root; the heavily repeated deep variables have
-the shortest indices.
-
-The emitted program is two lines::
-
-    % 0 <expression>
-    $
-
-setting bit 0 of the output number to the function's value and printing the
-output number, so the program writes exactly ``0`` or ``1``.  A constant
-table needs no expression at all and emits the literal.
-
-**The input convention.**  Fargo takes one input *number* fixed before the
-run, not a stream of bits, so the harness feeds a single line holding
-``int(bits, 2)`` -- the table's row index.  Input ``i`` counted
-most-significant-first is therefore bit ``n - 1 - i`` of that number, which
-is the only place the mapping appears.  Because the number is read once by
-the interpreter before execution, every program consumes exactly one input
-line whatever the table says, constant tables included.
-
-Input reordering does not apply: ``@`` indexes the input number directly.
+The program is ``% 0 <expression>`` then ``$``, writing exactly ``0`` or
+``1``; a constant table emits the literal.  The harness feeds one line
+holding ``int(bits, 2)``, so input ``i`` (most-significant-first) is bit
+``n - 1 - i`` of that number -- the only place the mapping appears.  The
+interpreter reads that line before execution, so every program consumes
+exactly one input line.  Input reordering does not apply.
 """
 
 from esolangs.tools.helpers import _validate_truth_table
@@ -46,14 +23,9 @@ __all__ = ["fargo"]
 def _anf_coefficients(truth_table: str) -> list[int]:
     """Return the table's algebraic normal form coefficients.
 
-    The Möbius transform: ``coeff[s]`` is the XOR of every table entry whose
-    row is a subset of the mask ``s``.  Computed in place, one input at a
-    time, so it costs ``n * 2**n`` rather than the ``3**n`` of summing each
-    subset separately.
-
-    ``truth_table`` is indexed most-significant-first while a mask's bit
-    ``i`` is the ``i``th input counted the same way, so both sides use one
-    convention and the caller converts to Fargo's LSB-first ``@`` once.
+    Möbius transform in place, one input at a time: ``n * 2**n`` rather
+    than ``3**n``.  Masks use the table's most-significant-first indexing;
+    the caller converts to Fargo's LSB-first ``@`` once.
     """
     n = _validate_truth_table(truth_table)
     coeffs = [int(bit) for bit in truth_table]
@@ -69,10 +41,8 @@ def _anf_coefficients(truth_table: str) -> list[int]:
 def _term(mask: int, n: int) -> str:
     """Return the AND-product of the inputs ``mask`` selects.
 
-    Input ``i`` (most-significant-first) is bit ``n - 1 - i`` of the input
-    number, so it reads ``@ <n - 1 - i>`` with the index in binary, since
-    Fargo's literals are binary.  A product of ``k`` inputs needs ``k - 1``
-    ``&`` operators, written prefix, so they all lead.
+    Input ``i`` reads ``@ <n - 1 - i>`` in binary; ``k`` inputs need
+    ``k - 1`` leading ``&``.
     """
     reads = [f"@ {(n - 1 - i):b}" for i in range(n) if mask >> (n - 1 - i) & 1]
     return "& " * (len(reads) - 1) + " ".join(reads)
@@ -151,15 +121,9 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     """Build a Fargo program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    The program is the table's algebraic normal form (see the module
-    docstring): ``% 0 <expr>`` then ``$``, where ``expr`` XORs together one
-    AND-product per nonzero ANF coefficient.  A constant table has only the
-    degree-zero coefficient, so it emits ``% 0 0`` or ``% 0 1`` and skips
-    the reads entirely -- which is sound here because Fargo's input is read
-    by the *interpreter* before the program starts, so the input line is
-    consumed either way and the read-count contract holds.
+    inputs (most significant first).  Emits the ANF (see the module
+    docstring); a constant table emits ``% 0 0`` or ``% 0 1``, sound because
+    the interpreter consumes the input line either way.
     """
     n = _validate_truth_table(truth_table)
     coeffs = _anf_coefficients(truth_table)
