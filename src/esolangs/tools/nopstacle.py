@@ -142,6 +142,6 @@ def nopstacle_setters(_template: str, n: int) -> Setters:
     def run(i: int, bit: int) -> str:
         cell = "#" if bit else " "
         _, half = _columns(n, i)
-        return cell + (" " * (2 * half - 1) + cell) * (2**i - 1)
+        return cell + (" " * (2 * half - 1) + cell) * ((1 << i) - 1)
 
     return tuple((run(i, 0), run(i, 1)) for i in range(n))
