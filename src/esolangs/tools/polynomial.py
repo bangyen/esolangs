@@ -28,38 +28,21 @@ from esolangs.tools.helpers import (
     read_at,
 )
 
-# Largest instruction count :func:`polynomial` will emit.  Each instruction
-# contributes a factor, so the polynomial's degree -- and the cost of
-# recovering the instructions from it -- tracks this count and nothing else.
-#
-# The analytic worst case over n == 10 tables is now 1659: level ``k`` of
-# the machine holds at most ``min(2**k, 2**2**(10 - k))`` states at 6
-# instructions each (3 of chain, a read, one map, one park), the root level
-# 3, and the two leaves 6 each -- ``3 + 6*274 + 12``.
-# ``test_polynomial_cap_admits_every_n10_table`` re-derives it.  The bound
-# stays at the 1934 the previous builder's worst case set, because that is
-# a price the interpreter was measured to afford (n=8, 541 instructions,
-# 3.5s for all 256 rows; n=10, 1638, 44s for all 1024) and a cheaper
-# per-state spelling is no reason to refuse a table that fit before.
-#
-# The count, not the arity, is what this measures: a table that collapses
-# to few states is cheap at any width, and parity renders far past n == 10
-# inside the bound.  Past it, dense n=11 (2910 instructions under the old
-# builder) built and ran all 2048 rows in 267s, 264.5s of it the one
-# factorization, for a 123609143-character program.
+# Instruction cap; the polynomial's degree and factoring cost track it.
+# Analytic n=10 worst case is 1659 (level k holds ``min(2**k, 2**2**(10-k))``
+# states at 6 instructions, root 3, leaves 12: ``3 + 6*274 + 12``;
+# ``test_polynomial_cap_admits_every_n10_table`` re-derives it).  Kept at
+# the old builder's 1934 because the interpreter affords it (n=8: 541
+# instructions, 3.5s for 256 rows; n=10: 1638, 44s for 1024).  Counts, not
+# arity: parity renders past n=10; dense n=11 (2910) ran 2048 rows in 267s,
+# 264.5s of it one factorization, for a 123609143-char program.
 _POLYNOMIAL_MAX_INSTRS = 1934
 
 
-# How far above the cheapest candidate the dispatch still renders.  Selection
-# is on characters, so the instruction count only screens -- and a strict
-# screen picks wrong, because the two disagree: a longer program's later
-# instructions consume larger primes, and here a ``*=`` costs three times
-# the digits of a ``+=``.
-#
-# The slack has to be measured per arity, not guessed: every table at
-# n <= 3 needs at most 1, but 2000 sampled tables at n == 4 reach 6.  Held
-# at 10, the margin the previous builder's n == 4 worst case (9) set, so a
-# table needing more is a real finding rather than a quiet regression;
+# Instruction-count slack the dispatch still renders; selection is on
+# characters, and the two disagree (later instructions take larger primes,
+# ``*=`` costs 3x the digits of ``+=``).  n <= 3 needs 1, 2000 sampled n=4
+# tables reach 6; held at the old builder's 10 so more is a real finding.
 # ``test_polynomial_screen_slack`` re-derives the n <= 3 figure.
 _POLYNOMIAL_SCREEN_SLACK = 10
 
@@ -133,23 +116,12 @@ def polynomial(truth_table: str) -> str:
         for level in range(n, -1, -1)
     ]
 
-    # A table that ignores some of its inputs is a smaller table, and this
-    # generator cannot get there on its own: a read *assigns* to the single
-    # register, so the construction consumes inputs in stream order and an
-    # ignored one still costs a full level of branching before reaching the
-    # input that matters.  Folding collapses subtrees, not the levels above
-    # them.
-    #
-    # Reduction sidesteps that because it is *order-blind*: it rewrites the
-    # table before anything is built.  The ignored inputs are drained first,
-    # so every path still consumes exactly ``n`` inputs.  Only a *leading*
-    # run can be handled this way -- an ignored input sitting after an
-    # essential one would be drained out of turn and the build would branch
-    # on the wrong bit (measured: 92 wrong rows over 26 tables).
-    #
-    # A drain is one bare read: the next instruction on every path is
-    # itself a read, which overwrites the register, so nothing needs to be
-    # subtracted away.
+    # A read assigns the single register, so inputs are consumed in stream
+    # order and an ignored one still costs a level of branching; folding
+    # collapses subtrees, not levels.  Drain a *leading* ignored run before
+    # building (a later one drained out of turn branches on the wrong bit:
+    # 92 wrong rows over 26 tables).  A drain is one bare read; the next
+    # instruction is itself a read and overwrites it.
     essential = essential_inputs(truth_table, n) or [0]
     lead = next((i for i in range(n) if i in essential), n)
     if lead:
@@ -181,18 +153,10 @@ def polynomial(truth_table: str) -> str:
             "of this width can afford",
         )
 
-    # Selection is on *rendered characters*, because instructions and
-    # characters disagree: a longer program's later instructions consume
-    # larger primes, and the opcodes are not equally priced.
-    #
-    # So the instruction count only screens: a candidate more than
-    # ``_POLYNOMIAL_SCREEN_SLACK`` above the cheapest cannot win and is not
-    # built.  The screen is a measured bound, not a proof: a candidate
-    # rendering shorter from a further-out instruction count would be
-    # skipped.
-    #
-    # ``k`` descends so the tree is tried first, and the comparison is
-    # strict, so a table nothing shortens emits what it always emitted.
+    # Select on rendered characters; the instruction count only screens
+    # (a candidate past ``_POLYNOMIAL_SCREEN_SLACK`` is not built -- a
+    # measured bound, not a proof).  ``k`` descends and the comparison is
+    # strict, so a table nothing shortens emits what it always did.
     cheapest = min(cost for cost, _ in fits)
     program: str | None = None
     for cost, build in fits:
