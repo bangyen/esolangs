@@ -887,7 +887,7 @@ def _register() -> None:
             _setters_arrowqueue,
             answer_mode="termination",
             answer_values=("halts", "diverges"),
-            expected="1 0 1 2 3",
+            expected="1 0 0 1 2 3",
             split=True,
             note=(
                 "ArrowQueue answers by termination -- it halts for a 0 result "

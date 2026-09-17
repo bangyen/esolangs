@@ -22,19 +22,17 @@ import sys
 
 from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
 from esolangs.tools.arrowqueue import _compact
+from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.tools.parameterized import (
-    _FIRST_ONE,
-    _FIRST_ZERO,
     _MIDDLE,
-    _NEXT_ONE,
-    _NEXT_ZERO,
+    _STAGE,
     _TREE_0,
     _TREE_1,
     _TREE_BRANCH_0,
     _TREE_BRANCH_1,
     _connect,
     _drained_leaf,
-    _header_rows,
+    _header,
     _instantiate_arrowqueue,
     _tree,
     arrowqueue,
@@ -98,25 +96,40 @@ def _glyph_rows(block: list[str]) -> set[int]:
     return {r for r, row in enumerate(block) if row.strip()}
 
 
+def _header_rows(bits: list[int]) -> list[str]:
+    """The tree route's header filled with ``bits``, one cell each.
+
+    Input ``i``'s cell is on row ``1 + 2i``, so the row says which bit.
+    """
+    return [
+        row.replace(TEMPLATE_CHAR, "~" if bits[(r - 1) // 2] else ".") if r else row
+        for r, row in enumerate(_header(len(bits)))
+    ]
+
+
+def _encoded(bits: tuple[int, ...]) -> tuple[int, ...]:
+    """The queue the header leaves: ``D, R`` for a one, ``R`` for a zero."""
+    return tuple(h for bit in bits for h in ((1, 0) if bit else (0,)))
+
+
 def check_h1_pitch() -> None:
-    """H1: the header is exactly 4n+1 rows for every arity and pattern."""
+    """H1: the header is exactly 2n+1 rows and n cells for every arity."""
     bad = 0
-    total = 0
     for n in range(1, 13):
-        patterns = (
-            list(itertools.product([0, 1], repeat=n))
-            if n <= 10
-            else [tuple(random.choice([0, 1]) for _ in range(n)) for _ in range(200)]
-        )
-        for bits in patterns:
-            total += 1
-            if len(_header_rows(list(bits))) != 4 * n + 1:
-                bad += 1
-    heights = (len(_FIRST_ONE), len(_FIRST_ZERO), len(_NEXT_ONE), len(_NEXT_ZERO))
+        rows = _header(n)
+        cells = [
+            (r, row.index(TEMPLATE_CHAR))
+            for r, row in enumerate(rows)
+            if TEMPLATE_CHAR in row
+        ]
+        if len(rows) != 2 * n + 1 or cells != [
+            (1 + 2 * i, n + 3 - i) for i in range(n)
+        ]:
+            bad += 1
     report(
         "H1 header pitch",
-        ok=bad == 0 and heights == (5, 5, 4, 4),
-        detail=f"{total} patterns to n=12, {bad} wrong heights; heights {heights}",
+        ok=bad == 0,
+        detail=f"n=1..12, {bad} wrong shapes; one cell per input on a diagonal",
     )
 
 
@@ -135,15 +148,17 @@ def check_h2_h3_handoff() -> None:
             row, col, d, queue, _done = _run_block(
                 _header_rows(list(bits)), (0, 0, 0, ())
             )
-            if not (queue == tuple(bits) and d == 1 and col == 3 and row == 4 * n + 1):
+            if not (
+                queue == _encoded(bits) and d == 1 and col == 3 and row == 2 * n + 1
+            ):
                 bad_h2 += 1
             rows = _header_rows(list(bits)) + list(_MIDDLE)
             row, col, d, queue, _done = _run_block(rows, (0, 0, 0, ()))
             if not (
-                queue == (*bits, *RDLU)
+                queue == (*_encoded(bits), *RDLU)
                 and d == 1
                 and col == 1
-                and row == 4 * n + 1 + len(_MIDDLE)
+                and row == 2 * n + 1 + len(_MIDDLE)
             ):
                 bad_h3 += 1
     report(
@@ -155,6 +170,32 @@ def check_h2_h3_handoff() -> None:
         "H3 middle hand-off",
         ok=bad_h3 == 0,
         detail=f"queue becomes bits+RDLU, enters tree down col 1; {bad_h3} violations",
+    )
+
+
+def check_s_stage() -> None:
+    """S: a cascade stage maps ``m`` markers and a bit to ``2m + bit``.
+
+    Horner's rule is the whole of the weight argument: the stage never
+    sees the arity, so the count after the last stage is the table index
+    by induction on the stages, and the lemma is one stage.
+    """
+    bad = 0
+    cases = 0
+    for m in range(40):
+        for bit in (0, 1):
+            cases += 1
+            rows = [row.replace(TEMPLATE_CHAR, "~" if bit else ".") for row in _STAGE]
+            row, col, d, queue, _done = _run_block(rows, (0, 3, 1, (*([1] * m), 0)))
+            if (row, col, d) != (len(rows), 3, 1) or queue != (
+                *([1] * (2 * m + bit)),
+                0,
+            ):
+                bad += 1
+    report(
+        "S stage is Horner",
+        ok=bad == 0,
+        detail=f"m=0..39 x 2 bits = {cases} stages, {bad} wrong counts or exits",
     )
 
 
@@ -258,18 +299,18 @@ def check_b_branches() -> None:
         detail=f"bit0 -> {right_exits[0][:3]}, bit1 -> {right_exits[1][:3]}, same",
     )
 
-    row, col, d, queue, _done = _run_block(_TREE_BRANCH_1, (0, 1, 1, (7,)))
+    row, col, d, queue, _done = _run_block(_TREE_BRANCH_1, (0, 1, 1, (0, 7)))
     report(
         "B3 1-branch reflects",
         ok=(row, col, d) == (0, 3, 0) and queue == (7,),
-        detail=f"exit {(row, col, d)}, queue preserved {queue}",
+        detail=f"exit {(row, col, d)}, the one's trailing R popped, rest {queue}",
     )
 
-    row, col, d, queue, _done = _run_block(_TREE_BRANCH_1, (0, 0, 1, ()))
+    row, col, d, queue, _done = _run_block(_TREE_BRANCH_1, (0, 0, 1, (0,)))
     report(
         "B3' entry column matters",
-        ok=not 0 <= col < 3,
-        detail=f"1-branch entered at col 0 leaves the grid: exit {(row, col, d)}",
+        ok=(row, col, d) == (3, 0, 1) and queue == (0,),
+        detail=f"1-branch entered at col 0 pops nothing: exit {(row, col, d)}, {queue}",
     )
 
 
@@ -304,14 +345,14 @@ def check_l_leaves() -> None:
         leaf = _drained_leaf("1", k)
         shape_ok = (
             len(leaf) == k + 3
-            and sum(row.count("+") for row in leaf) == k + 4
+            and sum(row.count("+") for row in leaf) == 2 * k + 4
             and sum(row.count("~") for row in leaf)
             == sum(row.count("~") for row in _TREE_1)
         )
         if not shape_ok:
             bad += 1
         for stale in itertools.product([0, 1], repeat=k):
-            queue = (*stale, *RDLU)
+            queue = (*_encoded(stale), *RDLU)
             for state in ((0, 0, 0, queue), (0, 1, 1, queue)):
                 cases += 1
                 if _verdict_from(leaf, state) != "1":
@@ -354,7 +395,7 @@ def check_c1_compaction(*, deep: bool) -> None:
         for table in tables:
             template = arrowqueue(table)
             body = _MIDDLE + _tree(list(table))
-            if _compact(body) != template.split("\n")[n:]:
+            if _compact(body) != template.split("\n")[2 * n + 1 :]:
                 mismatch += 1  # the template's body is not the compacted body
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -381,7 +422,8 @@ def check_tree_sweep() -> None:
             rows = _tree(list(values))
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - j)) & 1 for j in range(n)]
-                if _verdict_from(rows, (0, 1, 1, (*bits, *RDLU))) != values[combo]:
+                queue = (*_encoded(tuple(bits)), *RDLU)
+                if _verdict_from(rows, (0, 1, 1, queue)) != values[combo]:
                     bad += 1
     report(
         "T tree-only routing",
@@ -457,6 +499,7 @@ def main(argv: list[str] | None = None) -> int:
 
     check_h1_pitch()
     check_h2_h3_handoff()
+    check_s_stage()
     check_g_geometry()
     check_b_branches()
     check_l_leaves()

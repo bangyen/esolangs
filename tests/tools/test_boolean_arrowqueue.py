@@ -115,30 +115,52 @@ class TestParameterizedArrowQueue:
         assert len(runs(template, TEMPLATE_CHAR, setters)) == 2
 
     @pytest.mark.parametrize("table", ["0110", "0110100110010110" * 2])
-    def test_each_run_is_a_block_of_rows(self, table: str) -> None:
-        """A run counts a block's newlines, so a run is rows of its own.
+    def test_every_input_is_the_same_one_cell(self, table: str) -> None:
+        """Both routes spell every input as one cell, ``.`` against ``~``.
 
-        The tree route's first block is one row taller than the rest; the
-        linear route's blocks are one row per marker, ``2**(n-1-i)`` for
-        input ``i``.  Filled, the rows come back where the run stood.
+        The tree route follows the cell with a right push and the cascade
+        doubles what is queued before crossing it, so the weight lives in
+        the template and the pair is the same at every input, every
+        arity, and on both routes.
         """
         from esolangs.tools import parameterized
 
         n = len(table).bit_length() - 1
         template = parameterized.arrowqueue(table)
         setters = arrowqueue_setters(template, n)
-        lines = template.splitlines()
-        for i, (zero, one) in enumerate(setters):
-            assert len(zero) == len(one)
-            rows = zero.count("\n") + 1
-            if template.startswith(" *\n"):
-                assert rows == 2 ** (n - 1 - i)
-            else:
-                assert rows == (5 if i == 0 else 4)
-            assert TEMPLATE_CHAR * len(zero) in lines
+        assert setters == ((".", "~"),) * n
+        assert template.count(TEMPLATE_CHAR) == n
+        assert len(runs(template, TEMPLATE_CHAR, setters)) == n
         filled = self.instantiate(template, [1] * n)
-        inside = sum(zero.count("\n") for zero, _ in setters)
-        assert filled.count("\n") == template.count("\n") + inside
+        assert filled.count("\n") == template.count("\n")
+        assert len(filled) == len(template)
+
+    def test_cascade_stage_doubles_and_adds(self) -> None:
+        """A stage turns ``m`` queued markers and a bit into ``2m + bit``.
+
+        This is Horner's rule, and it is what carries the input's weight
+        in the template: the marker count after the last input is the
+        table index, which the cascade below turns right on.
+        """
+        from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
+        from esolangs.tools.parameterized import _STAGE
+
+        for m in range(6):
+            for bit in (0, 1):
+                rows = [
+                    row.replace(TEMPLATE_CHAR, "~" if bit else ".") for row in _STAGE
+                ]
+                machine = _Machine(rows)
+                # Entered heading down onto the ``+``, with ``m`` down
+                # markers and the previous stage's right heading queued.
+                state = (0, 3, 1, (*([1] * m), 0), False)
+                for _ in range(10_000):
+                    if state[4] or (state[0] == len(rows) and state[1] == 3):
+                        break
+                    state = _advance(state, machine.grid, machine.width)
+                row, col, d, queue, done = state
+                assert (row, col, d, done) == (len(rows), 3, 1, True), (m, bit)
+                assert queue == (*([1] * (2 * m + bit)), 0), (m, bit)
 
     @pytest.mark.parametrize(
         ("table", "mixed"),
@@ -202,7 +224,8 @@ class TestParameterizedArrowQueue:
         # the bare ring, and that extra height is the drain chain.
         drained = _drained_leaf("1", 2)
         assert len(drained) == len(_TREE_1) + 2
-        assert sum(row.count("+") for row in drained) == 4 + 2  # ring + drains
+        # Each drain is two pops: the bit, then a one's trailing ``R``.
+        assert sum(row.count("+") for row in drained) == 4 + 2 * 2
 
     def test_folded_zero_leaf_needs_no_drain(self) -> None:
         """A ``0`` leaf halts by leaving the grid, which the queue cannot stop."""
