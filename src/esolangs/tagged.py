@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Self
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
@@ -35,7 +36,7 @@ class _Tagged(str):
 
     language: str
 
-    def __new__(cls, text: str, language: str) -> _Tagged:
+    def __new__(cls, text: str, language: str) -> Self:
         """Return ``text`` tagged as a ``language`` program."""
         program = super().__new__(cls, text)
         program.language = language
@@ -90,7 +91,7 @@ class _Template(_Tagged):
         language: str,
         char: str = TEMPLATE_CHAR,
         setters: Sequence[tuple[str, str]] = (),
-    ) -> _Template:
+    ) -> Self:
         """Return ``text`` tagged as ``language``'s template."""
         template = super().__new__(cls, text, language)
         template.char = char
