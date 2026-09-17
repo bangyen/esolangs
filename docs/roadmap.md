@@ -26,9 +26,8 @@ The candidate list is empty.
   Brent--Kung's bound on every levelled layout) and ZTOALC L (a chunked
   array lookup on Collatz slots, no line-local rule and dense paths only
   by search) left under it on 2026-09-17.  Every open cell below is on
-  that clock: COD's three, Polynomial's two, Vandevelo's time and WII2D's
-  three, the last the one whose exact optima say the language may be
-  linear.
+  that clock: COD's three, Polynomial's two and WII2D's three, the last
+  the one whose exact optima say the language may be linear.
 
   All 63 generators are audited on four axes.  Totality is the `proofs.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
@@ -52,21 +51,20 @@ The candidate list is empty.
   | COD | Total | Open | Open | Open |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Polynomial | Cap | Open | Open | Linear |
-  | Vandevelo | Total | Open | Linear | Linear |
   | WII2D | Cap | Open | Open | Linear |
 
   Generation time, growth per added input at the top arity: Polynomial
   x3.4 dense (1.1 s at n=9), WII2D x4.8 dense (1.1 s at n=9), Factor x2.7
-  (1.2 s at n=11), Vandevelo x2.9 dense (0.27 s at n=12, parity x1.9).
-  B-tapemark, Streetcode, 6-5, Forth and Circuit Diagram past its n=8
-  route change read x2.2, between the size contract's x2.15 and what
-  these arities separate from noise; they are held linear until a wider
-  measurement says otherwise.
+  (1.2 s at n=11).  B-tapemark, Streetcode, 6-5, Forth, Circuit Diagram
+  past its n=8 route change, and Vandevelo (x2.0 dense over n=11..15,
+  0.31 s at n=12, a peel that keeps its working sets across cubes) read
+  x2.0--2.2, between the size contract's x2.15 and what these arities
+  separate from noise; they are held linear until a wider measurement
+  says otherwise.
 
   Each open row's question, with the searched negatives in
   [limitations](limitations.md#searched-negatives):
 
-  - Vandevelo, generation time: a peel that does not restart per cube.
   - COD, all three: an H-tree that distributes input `i` to every node of
     level `i` without a shared run losing lane identity (a tree that reads
     it at `2**i` cells is `Theta(n T)` and outside the conventions).

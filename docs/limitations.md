@@ -86,10 +86,17 @@ Every generator's source is O(T) in the table length except two walls, and
 the registry-wide contract is `tests/proofs/deep/linearity.py`; its verdicts
 read in one direction, since an n=8 -> 9 ratio near 2 is not evidence of
 O(T).  Build *time* is a separate axis: Factor, Polynomial and WII2D are
-super-linear on both; the roadmap's audit
-table carries the figures, with Vandevelo (candidate scoring on 2**n-bit
-masks) still open on build time.  A build stays linear by walking the
-table once: Circlefuck's greedy puts the essential inputs first and
+super-linear on both; the roadmap's audit table carries the figures.
+Vandevelo's affine-cube peel keeps every working set it scores and
+updates them as points leave, and harvests deep-first in phases, so a
+set is built once and charged to the points it hands over: O(T) but for
+two terms, the size proof's exact-popularity fallback (`n * 2**n` a
+call; none on random dense tables to n=14, one at n=15) and each clause's
+dual-basis core, at most `sqrt(2**(d + 1))` inputs for a `d`-cube and
+so a factor under `sqrt(n)` per clause, 2% of the build at n=15.  It
+measures x1.7--2.3 per added input over n=10..15 against the per-cube
+peel's x2.5--4.1, at 0.93--1.02 of its size.  A build stays linear by
+walking the table once: Circlefuck's greedy puts the essential inputs first and
 scores at most eight levels, its essential-input scan compares sibling
 blocks of the packed table, `n * T / 2` bytes in all, which at word width
 `w` is `n * T / (2 w)` word operations with `n <= w` for any table that
@@ -116,39 +123,6 @@ left-half-plane multiple with more terms than Descartes requires, see
 
 The closed searches behind each open roadmap row.  Re-running one is a
 budget decision; the numbers here are what it has to beat.
-
-Vandevelo's open cell is its peel, which restarts per cube and scores
-~50 candidate directions on a 2**n-bit mask per round, Theta(T^2 /
-word).  Keeping the chain of intersected sets across cubes reads x2.14
-at n<=12 but is quadratic too: a level's direction switches Theta(T)
-times and each switch rebuilds the level above at its parent's size.  A
-window of a level's lowest 512 rows is linear in count and no faster; a
-sampled score with growth through the lowest row is linear and 0.07 s
-but +13--20% of cover.  Every non-restarting peel also trades
-Cohen--Shinkar's O(T) clause bound for a measurement, since the popular
-direction is no longer exact over the remainder.  No time bound is
-provable (the cover is in P and reads the mask once); what is known
-is a trade: harvesting every coset of a fixed direction set of
-dimension `log2 n - c` (each lies in a density-1/2 set with probability
-`2**(-n / 2**c)`) costs `T**(1 + 2**-c)`, chaining `d - 2` popular
-directions and matching cosets into cubes in the quotient costs
-`T**(1 + 1/(8C))` at `C` clauses per `T/n` (+14% clauses, 4.2x faster
-at n=12, unexecuted as programs), and O(1)-dimension cubes cost O(T)
-time at `Theta(T log T)` characters.  Cube-finding itself is not the
-obstruction: restricted to a coset of dimension `2**d / (d + 1)` a cube
-of dimension `d` is found in `T**(1 / (2**c log2 n))` queries on a
-random set.  The shipped peel's cubes measure dimension 3.8 -> 1 over
-the density bands at n=12, two above Cohen--Shinkar's guarantee,
-which is vacuous below density 1/8.  A linear-time peel exists: score
-round 0 from an incrementally maintained popularity table over the
-weight-<= 2 directions (loses nothing: 467 cubes against 460 at n=13)
-and grow the cube inside an aligned `2**w`-bit window, x2.05--2.14 per
-input and 5x faster at n=14 for w=11, 7x for w=9 -- at 1.01, 1.03,
-1.05, 1.09, 1.13 of the shipped size over n=10..14 (w=11; 1.29 at n=14
-for w=9), climbing four points per input because a cube grown in a
-region of dimension `w` is `log2(n / w)` bits smaller, so a constant
-ratio needs `w = Theta(n)`, a window of `T**c` bits, and the peel's
-cost returns.
 
 COD's fork/cascade generator embeds each input once, at its own `+`
 fork, and is super-linear on all three axes: size x3.9 per added input

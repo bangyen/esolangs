@@ -86,7 +86,7 @@ from tests.proofs._roadmap import load as load_audit
 from tests.tools.test_boolean_contract import _dense, _parity
 
 #: Cost band; see ``__main__.py``.  It passes now that Forþ is linear, so the
-#: band is a cost call rather than a triage one: it builds all 65 generators at
+#: band is a cost call rather than a triage one: it builds all 63 generators at
 #: rising arity, and 30s is too slow for CI to spend on every push.
 BAND = "by-hand"
 COST = 30.0
@@ -208,7 +208,7 @@ def main() -> int:
     by_display = {lang.name: key for key, lang in BY_BOOLEAN.items()}
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
-    assert len(measured) == len(BY_BOOLEAN) == 65, "not every generator was measured"
+    assert len(measured) == len(BY_BOOLEAN) == 63, "not every generator was measured"
 
     print(f"Scaling contract: {len(measured)} generators, bound x{MAX_GROWTH}\n")
     print(f"  {'generator':30s} {'growth':>7s} {'per entry':>10s}  where")
