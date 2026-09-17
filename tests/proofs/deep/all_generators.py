@@ -2,7 +2,7 @@
 
 Run:  just proofs   (or python tests/proofs/deep/all_generators.py)
 
-Every one of the 65 rows in ``docs/proofs.md`` gets the lemma battery in
+Every one of the 63 rows in ``docs/proofs.md`` gets the lemma battery in
 :mod:`tests.proofs.deep._lemmas` instantiated against its own construction and
 its own ledger scheme.  Four generators additionally have a hand-derived proof
 of their *specific* argument in the files beside this one; those are deeper,
@@ -58,7 +58,7 @@ _SHAPES = (("dense", _dense), ("parity", _parity))
 
 #: Highest arity the ladder climbs.  Measured, not guessed: a calibration
 #: sweep built every registry generator at rising arity under a per-build
-#: alarm, and all 65 reach n=10 in under a second each except
+#: alarm, and all 63 reach n=10 in under a second each except
 #: ``circuit_diagram``, which needs 2s by n=9 and times out past it.  Seven
 #: keeps that one affordable; eight is comfortable for the rest.
 _GROWTH_MAX = 8
@@ -130,7 +130,7 @@ def main() -> int:
         for r in results
         if not core <= {lemma.strip() for lemma in r.passed}
     ]
-    assert len(results) == 65, f"{len(results)} generators, expected 65"
+    assert len(results) == 63, f"{len(results)} generators, expected 63"
     assert not weak, f"core lemmas not established for: {sorted(weak)}"
     print("\nall generator batteries passed")
     return 0

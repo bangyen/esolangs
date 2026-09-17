@@ -8,17 +8,50 @@ guard line hangs on an affine coset of inputs and a whole program hangs on
 a union of cosets.  The generator therefore emits one guard line per coset
 of an affine cover of the table's 1-set.
 
-The cover is peeled: while 1-rows remain, an affine cube is grown inside
-the remainder by iterated popular differences -- pick the direction ``v``
-maximising ``|B & (B ^ v)|``, intersect, repeat while nonempty -- and its
-rows are removed.  The counting behind that choice is Cohen--Shinkar's
-(ECCC TR14-099): while the remainder has density ``eps``, a cube of
-dimension ``log2(n) - log2(log2(1/eps)) - 2`` survives, so the peel ends in
-``1 + 9 * 2**n / n`` clauses and the guard parts across all clauses total
-``O(2**n)``.  Dense random tables measure a flat 8.1--8.9 characters per
-entry at n=8..12 (9,397 at dense n=10 against the retired per-row
-spelling's 36,829); the parity table is one hyperplane and collapses from
-52,821 characters to 259.
+The cover is an affine-cube peel.  A cube is grown by iterated popular
+differences: pick the direction ``v`` maximising ``|B & (B ^ v)|``,
+intersect, repeat while a pair remains; the working sets along that chain
+are exactly the places the partial cube fits, so the chain finds cubes of
+dimension about ``log2(log2(T))`` that no local search sees.  The counting
+behind the choice is Cohen--Shinkar's (ECCC TR14-099): while the remainder
+has density ``eps``, the chain from the most popular direction reaches
+dimension ``d(eps) = log2(n) - log2(log2(1/eps)) - 2``, so a peel that
+only ever takes cubes of at least that dimension ends in ``1 + 9 * 2**n /
+n`` clauses, and the guard parts across all clauses total ``O(2**n)``.
+
+The peel does not restart per cube.  Every set it scores is kept and
+updated as points leave: the root holds the pair set ``S(v) = B & (B ^
+v)`` for a pool of :data:`_CANDIDATES` directions; below each pooled
+direction hangs a node with its own candidates and a greedy sub-chain,
+built on demand and kept while it has points.  Harvesting is deep-first
+in phases: phase ``d`` takes every coset at the deepest level of whichever
+chain is at least ``d`` deep, and drops to ``d - 1`` only when the chain
+from the most popular root direction, brought up to date at every level,
+falls short of ``d`` -- that chain has Cohen--Shinkar's dimension, so the
+phase never drops below ``d(eps)`` while the density is ``eps``, which is
+what the clause bound needs.  The pool is rechosen from the remainder's nearest existing
+differences once a fixed fraction of it has gone; below density
+``1 / max(_CANDIDATES, n)`` the remainder is sparse and each cube is grown
+at its lowest point from that point's nearest differences instead.
+
+Time is linear in the table by construction: a node costs its candidate
+count times its size to build, and is either harvested entirely (charged
+to its points, once per level) or dropped when a pool refresh retires
+its direction (at most the pool's size of them per refresh); removing a
+point updates the pool and every node holding it at the candidate count
+each; a refresh follows a fixed fraction of removals, so the pool's cost
+``T * ln(_CANDIDATES / 2)`` in all and a node's a constant per point it
+loses; the sparse tail costs a constant per point.  Two terms sit
+outside that: the proof's exact fallback -- when no scored direction
+reaches the pigeonhole average on a dense working set, the most popular
+one is found by autocorrelation, ``n * 2**n`` a call, none on random
+dense tables to n=14 and one at n=15 -- and the dual-basis core below,
+at most ``sqrt(2**(dim + 1))`` inputs, so under ``sqrt(n)`` per clause
+at the peel's dimensions and 2% of the build at n=15.  The per-cube peel
+this replaces rescanned the remainder for every cube, ``Theta(T**2 /
+word)``; this one measures x1.7--2.3 per added input over n=10..15 at
+0.93--1.02 of its size.  Dense random tables measure 8.4--9.5 characters
+per entry at n=8..13.
 
 A cube's guard needs one part per constraint, and any basis of the cube's
 dual space will do.  :func:`_constraints` builds one from short relations:
@@ -37,14 +70,19 @@ upkeep is therefore O(T) -- under ``40 * 2**n + 4 * n`` lines -- and its
 measured share stays under half of the emitted text.  The bank holds at
 most ``n**2`` registers (:func:`_bank_cap`), so a register name is never
 longer than two input names and a full bank respells its least recently
-used free register at the same cost as a fresh one.  The reduced-echelon
-basis alone would not give this: on a cube whose columns spread over
-``2**dim`` values it weighs ``n * dim / 2`` however the pivots are
-chosen, which is ``Theta(T log log T)`` at the ``log2(n)`` dimensions the
-peel produces.
+used free register at the same cost as a fresh one; a clause looks for a
+register to reuse or morph among the :data:`_SCAN` most recently used, so
+the lookup is a constant per constraint.  The reduced-echelon basis alone
+would not give the weight bound: on a cube whose columns spread over
+``2**dim`` values it weighs ``n * dim / 2`` however the pivots are chosen,
+which is ``Theta(T log log T)`` at the ``log2(n)`` dimensions the peel
+produces.
 """
 
-from functools import cache
+from __future__ import annotations
+
+import heapq
+from itertools import islice
 
 from esolangs.tools.helpers import _validate_truth_table
 
@@ -54,10 +92,20 @@ __all__ = ["vandevelo"]
 _ALPHABET = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMOPQRSTUVWXYZ0123456789_&*$"
 _RESERVED = {"Inp", "Nil", "l", "loop"}
 
-# Direction candidates scored per growth round.  The peel is exact with any
-# cap -- a missed direction only costs cover size -- and 48 keeps the
-# popular-difference scan linear in the remainder instead of quadratic.
-_CANDIDATE_CAP = 48
+# Directions scored per node: the parent's best _INHERIT plus fresh nearest
+# differences inside the node.  The peel is exact with any cap -- a missed
+# direction only costs cover -- and the proof's fallback covers the dense
+# regime.  48 is the per-cube scan's cap, kept so the covers compare.
+_CANDIDATES = 48
+_INHERIT = 24
+# A node's candidates are rechosen once this fraction of its points has
+# gone; the pool likewise.  Each refresh costs the node's size times the
+# candidates replaced, so the charge per removed point is a constant.
+_REFRESH = 0.25
+# Registers examined when a clause looks for one to reuse or morph: the
+# bank stays under this to n=13 (about 2**(n/2) live registers), so the
+# cap costs nothing measured; a cap of 48 cost 5--8% there.
+_SCAN = 3 * _CANDIDATES
 
 
 def _bank_cap(n: int) -> int:
@@ -94,63 +142,30 @@ def _points(mask: int) -> list[int]:
     return out
 
 
-@cache
-def _lanes(n: int) -> tuple[int, ...]:
-    """Lane mask per bit: every other ``2**b``-wide block of ``2**n`` bits."""
-    return tuple(
-        int(("0" * (1 << b) + "1" * (1 << b)) * (1 << (n - b - 1)), 2) for b in range(n)
-    )
+def _nearest(
+    points: set[int], pivot: int, seen: set[int], n: int, cap: int
+) -> list[int]:
+    """Return the ``cap`` nearest differences from ``pivot`` inside ``points``.
 
-
-def _shift(mask: int, v: int, n: int) -> int:
-    """Return the point-set ``mask`` with every point XORed by ``v``.
-
-    One block swap per set bit of ``v``: bit ``b`` of the point index
-    swaps adjacent 2**b-wide lanes of the 2**n-bit mask.  The lanes are
-    built once per ``n``: spelling each as a ``2**n``-character string on
-    every call was the whole build cost at twelve inputs, 1.06 of 1.30
-    seconds over 48,837 calls, and made a dense build grow x3.6 per added
-    input.  Candidates are low-weight, so the walk is over ``v``'s set bits
-    rather than all ``n`` positions.
-    """
-    lanes = _lanes(n)
-    while v:
-        width = v & -v  # the lowest set bit of ``v`` is that lane's width
-        lane = lanes[width.bit_length() - 1]
-        mask = ((mask & lane) << width) | ((mask >> width) & lane)
-        v ^= width
-    return mask
-
-
-def _nearest_differences(b_mask: int, pivot: int, seen: set[int], n: int) -> list[int]:
-    """Return the :data:`_CANDIDATE_CAP` nearest differences from ``pivot``.
-
-    Smallest by ``(bit_count, value)``, skipping ``seen``: the head of the
-    sorted list of every ``pivot ^ p`` for ``p`` in the set.  Listing the
-    whole set to take its head cost the set's size once per round, and a
-    cube's first round works on the entire remainder, so the peel paid
-    Theta(T) per cube -- quadratic over the ``T / n`` cubes and the whole
-    of a dense twelve-input build's growth.  Instead the differences are
-    walked in exactly that order -- each weight's values ascending, by
-    Gosper's next-permutation step -- testing membership, so a dense set
-    yields its head after about ``cap / density`` probes.  When the probes
-    would outnumber the set's points the set is sparse and the listing is
-    the cheaper way, so the walk hands over to it; the answer is the same
-    either way.
+    Smallest by ``(bit_count, value)``, skipping ``seen``: the differences
+    are walked in that order -- each weight's values ascending, by Gosper's
+    next-permutation step -- testing membership, so a dense set yields its
+    head after about ``cap / density`` probes.  When four times ``cap``
+    probes have not filled the list the set is sparse and the whole of it
+    is listed instead, at its size; the answer is the same either way.
     """
     limit = 1 << n
-    budget = b_mask.bit_count()
     out: list[int] = []
     probes = 0
     for weight in range(1, n + 1):
         v = (1 << weight) - 1
         while v < limit:
             probes += 1
-            if probes > budget:
+            if probes > 4 * cap:
                 break
-            if b_mask >> (pivot ^ v) & 1 and v not in seen:
+            if (pivot ^ v) in points and v not in seen:
                 out.append(v)
-                if len(out) == _CANDIDATE_CAP:
+                if len(out) == cap:
                     return out
             low = v & -v
             ripple = v + low
@@ -158,23 +173,27 @@ def _nearest_differences(b_mask: int, pivot: int, seen: set[int], n: int) -> lis
         else:
             continue
         break
-    else:
-        return out  # every weight walked: the whole set was probed
-    diffs = sorted(
-        (pivot ^ p for p in _points(b_mask) if pivot ^ p not in seen),
-        key=lambda v: (v.bit_count(), v),
-    )
-    return diffs[:_CANDIDATE_CAP]
+    if len(out) < cap:
+        extra = heapq.nsmallest(
+            cap - len(out),
+            (
+                (v.bit_count(), v)
+                for v in (pivot ^ p for p in points)
+                if v and v not in seen and v not in out
+            ),
+        )
+        out.extend(v for _, v in extra)
+    return out
 
 
-def _popularities(b_mask: int, n: int) -> list[int]:
-    """``P[v] = |B & (B ^ v)|`` for every ``v``, one autocorrelation.
+def _popularities(points: set[int], n: int) -> list[int]:
+    """``P[v] = |S & (S ^ v)|`` for every ``v``, one autocorrelation.
 
     Walsh--Hadamard transform of the indicator, squared pointwise, and
     transformed back: exact integers throughout, ``n * 2**n`` additions.
     """
     size = 1 << n
-    vec = [b_mask >> x & 1 for x in range(size)]
+    vec = [1 if x in points else 0 for x in range(size)]
     span = 1
     while span < size:
         for start in range(0, size, span * 2):
@@ -193,49 +212,315 @@ def _popularities(b_mask: int, n: int) -> list[int]:
     return [value >> n for value in vec]
 
 
-def _cube(rest: int, n: int, pool: list[int]) -> tuple[int, list[int]]:
-    """Grow one affine cube inside the remainder set.
+class _Node:
+    """A working set along a chain, with the pair sets of its candidates.
 
-    Returns ``(base, dirs)`` with ``base ^ span(dirs)`` entirely inside
-    ``rest``.  Directions are chosen by popular difference over a capped
-    candidate list -- pooled directions from earlier cubes first, so
-    consecutive clauses share constraint structure and the register bank
-    below morphs instead of rebuilding.  While the working set is still
-    dense (``|B| >= 2**n / n``), a capped scan that misses the pigeonhole
-    average falls back to the exact autocorrelation, so every round in the
-    regime Cohen--Shinkar's telescoping argument covers really does take a
-    direction at least as popular as the average the argument needs.
+    ``points`` is ``S``; ``cands[v]`` is ``S & (S ^ v)`` for each scored
+    direction ``v``; ``span`` is the subspace spanned by the chain's
+    directions down to here; ``child`` is the greedy continuation, kept
+    while it has points; ``removed`` counts points gone since the
+    candidates were chosen.
     """
-    b_mask = rest
+
+    __slots__ = ("cands", "child", "parent", "points", "removed", "span", "v")
+
+    def __init__(
+        self, v: int, points: set[int], span: set[int], parent: _Node | None
+    ) -> None:
+        self.v = v
+        self.points = points
+        self.cands: dict[int, set[int]] = {}
+        self.span = span
+        self.child: _Node | None = None
+        self.parent = parent
+        self.removed = 0
+
+
+def _score(node: _Node, dirs: list[int]) -> None:
+    """Add the pair set of each direction in ``dirs`` to the node."""
+    pts = node.points
+    for v in dirs:
+        if v in node.span or v in node.cands:
+            continue
+        node.cands[v] = {p for p in pts if (p ^ v) in pts}
+
+
+def _best(node: _Node) -> tuple[int | None, int]:
+    """Return the candidate with the largest pair set, if any has a pair."""
+    best_v, best_c = None, 1
+    for v, c in node.cands.items():
+        m = len(c)
+        if m > best_c or (m == best_c and best_v is not None and v < best_v):
+            best_v, best_c = v, m
+    return best_v, best_c
+
+
+def _ensure_popular(node: _Node, n: int) -> None:
+    """Apply the proof's fallback: score the exact most popular direction.
+
+    Only on a dense set (``|S| >= 2**n / n``) whose best scored direction
+    misses the pigeonhole average ``|S|**2 / 2**n``, so that the chain
+    takes a direction at least as popular as Cohen--Shinkar's telescoping
+    needs.
+    """
+    size = len(node.points)
+    total = 1 << n
+    if size * n < total:
+        return
+    _, best_c = _best(node)
+    if best_c * total >= size * size:
+        return
+    popular = _popularities(node.points, n)
+    best_v = None
+    for v in range(1, total):
+        if popular[v] > best_c and v not in node.span and v not in node.cands:
+            best_v, best_c = v, popular[v]
+    if best_v is not None:
+        _score(node, [best_v])
+
+
+def _remove(node: _Node, p: int) -> None:
+    """Take ``p`` out of the node, its pair sets, and its chain below."""
+    if p not in node.points:
+        return
+    node.points.discard(p)
+    node.removed += 1
+    for w, c in node.cands.items():
+        if p in c:
+            c.discard(p)
+            c.discard(p ^ w)
+    child = node.child
+    if child is not None:
+        _remove(child, p)
+        _remove(child, p ^ child.v)
+
+
+def _grow(alive: set[int], pivot: int, cands: list[int]) -> tuple[list[int], list[int]]:
+    """Grow a cube at ``pivot`` inside ``alive``: the sparse tail's rule.
+
+    A candidate is viable while it is outside the cube's span and its
+    copy of the cube lies inside ``alive``; each step keeps the viable
+    direction that leaves the most others viable, a one-step lookahead
+    that costs the candidate count squared per point of the cube.
+    """
     dirs: list[int] = []
-    span = {0}
-    while True:
-        pivot = (b_mask & -b_mask).bit_length() - 1
-        cands: list[int] = []
-        seen = set(span)
-        for v in pool:
-            if v not in seen and v < (1 << n):
-                cands.append(v)
-                seen.add(v)
-        cands.extend(_nearest_differences(b_mask, pivot, seen, n))
-        best_v, best_c = 0, 0
-        for v in cands:
-            count = (b_mask & _shift(b_mask, v, n)).bit_count()
-            if count > best_c:
-                best_v, best_c = v, count
-        size = b_mask.bit_count()
-        if size * n >= (1 << n) and best_c * (1 << n) < size * size:
-            popular = _popularities(b_mask, n)
-            for v in range(1, 1 << n):
-                if popular[v] > best_c and v not in seen:
-                    best_v, best_c = v, popular[v]
-        if not best_c:
-            break
-        b_mask &= _shift(b_mask, best_v, n)
+    cube = [pivot]
+    inside = {pivot}
+    viable = [v for v in cands if (pivot ^ v) in alive]
+    while viable:
+        best_v, best_s = viable[0], -1
+        for v in viable:
+            new = [p ^ v for p in cube]
+            s = sum(1 for w in viable if w != v and all((p ^ w) in alive for p in new))
+            if s > best_s:
+                best_v, best_s = v, s
+        new = [p ^ best_v for p in cube]
+        cube += new
+        inside.update(new)
         dirs.append(best_v)
-        span |= {s ^ best_v for s in span}
-    base = (b_mask & -b_mask).bit_length() - 1
-    return base, dirs
+        viable = [
+            w
+            for w in viable
+            if w != best_v
+            and (pivot ^ w) not in inside
+            and all((p ^ w) in alive for p in new)
+        ]
+    return dirs, cube
+
+
+class _Peel:
+    """The phased deep-first peel over one table's 1-set."""
+
+    def __init__(self, ones: set[int], n: int) -> None:
+        self.n = n
+        self.root = _Node(0, ones, {0}, None)
+        self.nodes: dict[int, _Node] = {}  # pooled direction -> its node
+        self.tried: set[int] = set()  # directions scored this phase
+        self.cubes: list[tuple[int, list[int]]] = []
+        self.since = 0  # points removed since the pool was refreshed
+        _score(self.root, _nearest(ones, min(ones), {0}, n, _CANDIDATES))
+        _ensure_popular(self.root, n)
+
+    def make_child(self, parent: _Node, v: int) -> _Node:
+        """Build the node for direction ``v`` below ``parent``.
+
+        Its set is the parent's pair set for ``v``, scored on the parent's
+        best ``_INHERIT`` directions plus fresh nearest differences inside
+        it.
+        """
+        span = parent.span | {s ^ v for s in parent.span}
+        child = _Node(v, set(parent.cands[v]), span, parent)
+        pts = child.points
+        ranked = sorted(parent.cands.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+        dirs = [w for w, _ in ranked if w != v][:_INHERIT]
+        fresh = _nearest(
+            pts, min(pts), set(dirs) | span, self.n, _CANDIDATES - len(dirs)
+        )
+        _score(child, dirs + fresh)
+        _ensure_popular(child, self.n)
+        return child
+
+    def refresh(self, node: _Node) -> None:
+        """Replace the node's pairless candidates with fresh nearest differences."""
+        node.removed = 0
+        for v in [v for v, c in node.cands.items() if len(c) < 2]:
+            del node.cands[v]
+            if node is self.root:
+                self.nodes.pop(v, None)
+                self.tried.discard(v)
+        pts = node.points
+        seen = set(node.cands) | node.span
+        _score(
+            node, _nearest(pts, min(pts), seen, self.n, _CANDIDATES - len(node.cands))
+        )
+        _ensure_popular(node, self.n)
+
+    def extend(self, node: _Node) -> int:
+        """Build the greedy chain below ``node`` as far as it goes; its depth."""
+        depth = 0
+        cur = node
+        while True:
+            if cur.child is not None and cur.child.points:
+                cur = cur.child
+                depth += 1
+                continue
+            cur.child = None
+            if cur is not node and cur.removed >= _REFRESH * len(cur.points):
+                self.refresh(cur)
+            best_v, _ = _best(cur)
+            if best_v is None:
+                return depth
+            cur.child = self.make_child(cur, best_v)
+            cur = cur.child
+            depth += 1
+
+    def take(self, p: int) -> None:
+        """Remove ``p`` from the remainder and every set holding it."""
+        _remove(self.root, p)
+        for node in self.nodes.values():
+            pts = node.points
+            if p in pts:
+                _remove(node, p)
+            if p ^ node.v in pts:
+                _remove(node, p ^ node.v)
+        self.since += 1
+
+    def harvest(self, node: _Node) -> None:
+        """Take every coset at the deepest level of the node's chain."""
+        chain = [node]
+        while chain[-1].child is not None and chain[-1].child.points:
+            chain.append(chain[-1].child)
+        leaf = chain[-1]
+        dirs = [x.v for x in chain]
+        span = sorted(leaf.span)
+        for p in sorted(leaf.points):
+            if p not in leaf.points:
+                continue
+            coset = [p ^ s for s in span]
+            self.cubes.append((min(coset), list(dirs)))
+            for q in coset:
+                self.take(q)
+
+    def certify(self) -> _Node | None:
+        """Bring the chain the proof speaks for up to date and return it.
+
+        From the most popular root direction, at each level the most
+        popular candidate of the current set, with the exact fallback at
+        each.  Levels whose direction is still the most popular are kept;
+        the chain is rebuilt below the first that is not.
+        """
+        best_v, _ = _best(self.root)
+        if best_v is None:
+            return None
+        # Every pooled direction with a pair has a node by now: the phase
+        # scores each once, and a dropped node forgets it was scored.
+        node = cur = self.nodes[best_v]
+        while True:
+            self.refresh(cur)
+            best_w, _ = _best(cur)
+            if best_w is None:
+                cur.child = None
+                return node
+            child = cur.child
+            if child is None or child.v != best_w or not child.points:
+                child = cur.child = self.make_child(cur, best_w)
+            cur = child
+
+    def run(self) -> list[tuple[int, list[int]]]:
+        """Peel the whole 1-set; returns ``(base, dirs)`` per cube."""
+        root = self.root
+        n = self.n
+        sparse_at = (1 << n) // max(_CANDIDATES, n)
+        depth_target = n + 1
+        tried = self.tried
+        pool: list[int] = []
+        while root.points:
+            if len(root.points) <= sparse_at:
+                self.sparse(pool)
+                continue
+            if self.since >= _REFRESH * len(root.points):
+                self.since = 0
+                self.refresh(root)
+            for v in [v for v, node in self.nodes.items() if not node.points]:
+                del self.nodes[v]
+                tried.discard(v)
+            # 1. the deepest chain at least depth_target deep
+            best: _Node | None = None
+            best_key: tuple[int, int, int] | None = None
+            for v, node in self.nodes.items():
+                if node.removed >= _REFRESH * len(node.points):
+                    self.refresh(node)
+                depth = self.extend(node) + 1
+                if depth >= depth_target:
+                    key = (depth, len(node.points), -v)
+                    if best_key is None or key > best_key:
+                        best, best_key = node, key
+            if best is not None:
+                self.harvest(best)
+                continue
+            # 2. score one more pooled direction this phase -- the exact
+            # most popular one first, if the pool has fallen below average
+            _ensure_popular(root, n)
+            pick = None
+            for v, c in sorted(root.cands.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+                if len(c) < 2:
+                    break
+                if v not in self.nodes and v not in tried:
+                    pick = v
+                    break
+            if pick is not None:
+                tried.add(pick)
+                self.nodes[pick] = self.make_child(root, pick)
+                if depth_target > n:
+                    depth_target = self.extend(self.nodes[pick]) + 1
+                continue
+            # 3. drop the phase, but only past a chain the proof speaks for
+            proven = self.certify()
+            if proven is not None and self.extend(proven) + 1 >= depth_target:
+                self.harvest(proven)
+                continue
+            if depth_target > 1:
+                depth_target -= 1
+                tried.clear()
+                continue
+            p = min(root.points)
+            self.cubes.append((p, []))
+            self.take(p)
+        return self.cubes
+
+    def sparse(self, pool: list[int]) -> None:
+        """One cube of the sparse tail, grown at the remainder's lowest point."""
+        alive = self.root.points
+        pivot = min(alive)
+        cands = list(pool)
+        cands += _nearest(alive, pivot, {0, *pool}, self.n, _CANDIDATES - len(cands))
+        dirs, cube = _grow(alive, pivot, cands)
+        self.cubes.append((pivot, dirs))
+        for q in cube:
+            alive.discard(q)
+        # The last cubes' directions lead the next candidate list, so
+        # consecutive clauses share constraints and the bank morphs.
+        pool[:] = (dirs + [v for v in pool if v not in dirs])[:_INHERIT]
 
 
 def _echelon(dirs: list[int], n: int) -> list[int]:
@@ -251,7 +536,7 @@ def _echelon(dirs: list[int], n: int) -> list[int]:
         for bit, prow in pivots.items():
             if cur >> bit & 1:
                 cur ^= prow
-        if not cur:  # pragma: no cover - _cube only keeps independent dirs
+        if not cur:  # pragma: no cover - the peel only keeps independent dirs
             # A dependent direction would reduce to zero and take the pivot
             # key to -1, quietly corrupting the dual basis and so the guard.
             raise AssertionError("dependent direction reached elimination")
@@ -344,34 +629,21 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
         # most-significant-first, and the first read is the top bit.
         return names[n - 1 - bit]
 
-    rest = 0
-    for row, entry in enumerate(truth_table):
-        if entry == "1":
-            rest |= 1 << row
+    ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
+    cubes = _Peel(ones, n).run() if ones else []
 
-    pool: list[int] = []
     bank: dict[str, int] = {}
     next_register = n
-    while rest:
-        base, dirs = _cube(rest, n, pool)
-        covered = 1 << base
-        for v in dirs:
-            covered |= _shift(covered, v, n)
-        rest &= ~covered
-        for v in dirs:
-            if v in pool:
-                pool.remove(v)
-            pool.insert(0, v)
-        del pool[24:]
-
+    for base, dirs in cubes:
         parts = []
         used: set[str] = set()
         for w, value in _constraints(base, dirs, n):
             if w.bit_count() == 1:
                 part = ref(w.bit_length() - 1)
             else:
+                recent = list(islice(reversed(bank.items()), _SCAN))
                 exact = next(
-                    (r for r, held in bank.items() if held == w and r not in used),
+                    (r for r, held in recent if held == w and r not in used),
                     None,
                 )
                 if exact is not None:
@@ -380,7 +652,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                 else:
                     nearest: str | None = None
                     distance = w.bit_count()
-                    for r, held in bank.items():
+                    for r, held in recent:
                         if r in used:
                             continue
                         d = (held ^ w).bit_count()
