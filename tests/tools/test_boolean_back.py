@@ -82,11 +82,11 @@ class TestParameterizedBack:
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
         from esolangs.tools import parameterized
-        from esolangs.tools.examples import _setters_back
+        from esolangs.tools.back import PAIR
 
         template = parameterized.back("0110")
         assert "{X" not in template
-        assert len(runs(template, TEMPLATE_CHAR, _setters_back(template, 2))) == 2
+        assert len(runs(template, TEMPLATE_CHAR, (PAIR,) * 2)) == 2
 
     def test_each_input_is_stored_once(self) -> None:
         """Each input is embedded once in the tape load, not re-embedded."""

@@ -11,8 +11,8 @@ from esolangs.tools.helpers import (
 #: How each input is set: ``c`` clears the cell for a zero, ``i`` increments
 #: it to one.  The template spells each input as a run of
 #: :data:`TEMPLATE_CHAR` this wide.
-NOCOMMENT_ZERO, NOCOMMENT_ONE = "c", "i"
-_NOCOMMENT_INPUT = TEMPLATE_CHAR * len(NOCOMMENT_ZERO)
+PAIR = ("c", "i")
+_NOCOMMENT_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 # The largest value a NoComment cell can hold, hence the largest distance a
 # single ``s``/``b`` jump can cover: the skip amount is peeked off the stack,

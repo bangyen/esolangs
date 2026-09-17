@@ -200,7 +200,10 @@ The candidate list is empty.
   commands, never as a blank or padded with blanks; a single blank
   between two tokens of the embed is a delimiter and is fine (Bitdeque's
   `INVERT PUSH`, RAM0's `Z A`).  *Uniform*: the pair is the same pair
-  for every input, so the template would be one character and one pair.
+  for every input, so the template would be one character and one pair
+  (16 of 18 spell it so: one `PAIR` constant the generator module owns,
+  which the example's `pair` field reads; Nopstacle and %^2^-1 pass a
+  `setters` function instead).
   The last two are measured, not structural: `tests/proofs/test_conventions.py`
   reads this table and measures every cell off the programs -- the embed
   is the span, row by row, on which the two fills of one input differ; a

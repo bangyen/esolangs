@@ -11,8 +11,8 @@ from esolangs.tools.helpers import (
 #: leaves a zero and ``Z A`` a one whatever came before.  The template
 #: spells each input as a run of :data:`TEMPLATE_CHAR` this wide -- one
 #: token that instantiates to two commands.
-RAM0_ZERO, RAM0_ONE = "Z Z", "Z A"
-_RAM0_INPUT = TEMPLATE_CHAR * len(RAM0_ZERO)
+PAIR = ("Z Z", "Z A")
+_RAM0_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 
 def _ram0_width(address: int) -> int:

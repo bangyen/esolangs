@@ -1,13 +1,11 @@
 """Boolean-function generator for Crement: a decision tree over shared testers.
 
 Crement has no input instruction, so each input is embedded once as the
-*data* of a jump -- ``+J 0 1`` for a one, ``+J 0 0`` for a zero -- and
-the tree reads it by self-modification.  Input ``i`` owns a two-line
-tester (``+J 0 b`` taken when the bit is 1, then ``+J 0 1``) whose jump
-addresses a node fills in: a node is two ``+A`` writes patching the
-tester's one- and zero-targets to its children, then a jump into the
-tester.  ``+A t d`` stores ``d + 1``, so a child at line ``c`` is written
-``c - 1``.
+*data* of a jump (:data:`PAIR`) that the tree reads by self-modification.
+Input ``i`` owns a two-line tester (``+J 0 b`` taken when the bit is 1,
+then ``+J 0 1``) whose targets a node fills in: two ``+A`` writes patching
+the one- and zero-targets to its children, then a jump into the tester.
+``+A t d`` stores ``d + 1``, so a child at line ``c`` is written ``c - 1``.
 
 The program opens with a jump to the root, a jump past the end (halt),
 and ``+J @ 1`` (a one-step state cycle), then ``2 n`` tester lines, then
@@ -20,7 +18,6 @@ most ``5 n + 2`` commands over at most ``3 (2**n - 1) + 2 n + 3`` lines.
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
-    Setters,
     _validate_truth_table,
     fill_runs,
 )
@@ -38,9 +35,7 @@ _HEADER_LINES = 3
 _HALT, _LOOP = 0, 1
 
 
-def _set_bit(_index: int, bit: int) -> str:
-    """Spell the tester's first line: a jump taken exactly when the bit is 1."""
-    return f"+J 0 {bit}"
+PAIR = ("+J 0 0", "+J 0 1")
 
 
 def crement(truth_table: str) -> str:
@@ -84,7 +79,7 @@ def crement(truth_table: str) -> str:
     ]
     testers = [
         line
-        for zero, _one in crement_setters("", n)
+        for zero, _one in (PAIR,) * n
         for line in (TEMPLATE_CHAR * len(zero), "+J 0 1")
     ]
     return "\n".join(header + testers + lines)
@@ -92,10 +87,4 @@ def crement(truth_table: str) -> str:
 
 def instantiate_crement(template: str, bits: list[int]) -> str:
     """Fill each input's run with the jump line that spells its bit."""
-    setters = crement_setters(template, len(bits))
-    return fill_runs(template, TEMPLATE_CHAR, setters, bits)
-
-
-def crement_setters(_template: str, n: int) -> Setters:
-    """Return the tester's first line for a zero and a one, per input."""
-    return ((_set_bit(0, 0), _set_bit(0, 1)),) * n
+    return fill_runs(template, TEMPLATE_CHAR, (PAIR,) * len(bits), bits)

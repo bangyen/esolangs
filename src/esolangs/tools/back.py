@@ -8,8 +8,8 @@ from esolangs.tools.helpers import (
 
 #: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
 #: Both are one grid cell, so a run is the exact width of its program.
-BACK_ZERO, BACK_ONE = "-", "+"
-_BACK_INPUT = TEMPLATE_CHAR * len(BACK_ZERO)
+PAIR = ("-", "+")
+_BACK_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 
 def _reflect_back(source: str) -> str:

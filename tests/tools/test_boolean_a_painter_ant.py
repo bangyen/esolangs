@@ -7,7 +7,7 @@ import pytest
 
 from esolangs.interpreters.grid_based.a_painter_ant import _Machine as _APAMachine
 from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
-from esolangs.tools.a_painter_ant import _instantiate_apa, a_painter_ant, apa_setters
+from esolangs.tools.a_painter_ant import PAIR, _instantiate_apa, a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 
 
@@ -118,7 +118,7 @@ class TestAPainterAnt:
         """The template carries one run per input, not hardcoded bits."""
         template = a_painter_ant("0110")
         assert "{X" not in template
-        setters = apa_setters(template, 2)
+        setters = (PAIR,) * 2
         assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
         assert len(runs(template, TEMPLATE_CHAR, setters)) == 2
 
@@ -147,7 +147,7 @@ class TestAPainterAnt:
     def test_instantiate_one_bit_fills_single_placeholder(self) -> None:
         """An n == 1 template carries one run, filled per bit."""
         template = a_painter_ant("01")  # f(0)=0, f(1)=1
-        assert len(runs(template, TEMPLATE_CHAR, apa_setters(template, 1))) == 1
+        assert len(runs(template, TEMPLATE_CHAR, (PAIR,) * 1)) == 1
         assert template.count(TEMPLATE_CHAR) == 1
         assert _instantiate_apa(template, [1]) == template.replace(TEMPLATE_CHAR, "N")
         assert _instantiate_apa(template, [0]) == template.replace(TEMPLATE_CHAR, "n")
@@ -171,7 +171,7 @@ class TestAPainterAnt:
         for n in range(1, 7):
             for table in _shapes(n):
                 template = a_painter_ant(table)
-                assert apa_setters(template, n) == (("n", "N"),) * n
+                assert PAIR == ("n", "N")
                 assert template.count(TEMPLATE_CHAR) == n
 
     def test_the_template_carries_each_weight(self) -> None:
@@ -270,7 +270,7 @@ class TestAPainterAnt:
     def test_instantiate_fills_bits(self) -> None:
         """Every run fills to ``n`` for a zero and ``N`` for a one."""
         template = a_painter_ant("0110")
-        assert apa_setters(template, 2) == (("n", "N"), ("n", "N"))
+        assert PAIR == ("n", "N")
         assert template.count(TEMPLATE_CHAR) == 2
         assert _instantiate_apa(template, [1, 1]) == template.replace(
             TEMPLATE_CHAR, "N"
