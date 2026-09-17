@@ -14,6 +14,22 @@ MEDIUM_LIMIT = 5.0
 # does not pay for a moving ceiling that no one can predict from a local run.
 CI_SCALE = 3.0
 
+# The hard stop per band, in seconds, applied by `tests/conftest.py` through
+# pytest-timeout.  Not a ceiling to calibrate against -- the band limits
+# above are -- but the point past which a test is a hang: an order of
+# magnitude over the band's own limit at CI scale, so it never trips on an
+# ordinary run and a stuck generator still fails by name.  The slow band's
+# two largest tests are ~70s each at four workers, x2.5 on CI.
+HARD_CEILINGS = {"weekly": 1800, "slow": 600, "medium": 60, "fast": 30}
+
+
+def hard_ceiling(markers: set[str]) -> int:
+    """Return the hard stop for a test carrying ``markers``."""
+    for band in ("weekly", "slow", "medium"):
+        if band in markers:
+            return HARD_CEILINGS[band]
+    return HARD_CEILINGS["fast"]
+
 
 def limits() -> tuple[float, float]:
     """Return the ``(fast, medium)`` ceilings for this machine.

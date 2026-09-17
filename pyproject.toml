@@ -32,6 +32,7 @@ dev = [
     "pytest>=9.0.3",
     "pytest-cov>=4.0.0",
     "pytest-xdist>=3.8.0",
+    "pytest-timeout>=2.3",
     "click>=8.3.3",
     "pygments>=2.20.0",
     "urllib3>=2.7.0",
@@ -167,6 +168,14 @@ addopts = [
     # Override per-run with "-n auto", "-n 8", or "-n 0" on the command line.
     "-n",
     "4",
+    # A hang never reaches the duration policy, so every test also carries a
+    # hard stop: `tests/conftest.py` sets it per band from
+    # `tests/duration_policy.HARD_CEILINGS`.  The thread method, not the
+    # signal one: `esolangs.run` owns SIGALRM and ITIMER_REAL and a test
+    # asserts the timer is disarmed after it.  A stuck test therefore takes
+    # its xdist worker down, and the report names it, rather than the job's
+    # 15-minute limit killing the whole run without a name.
+    "--timeout-method=thread",
 ]
 markers = [
     # The top tier, and the only one CI deselects.  353 of 10865 tests that
@@ -183,7 +192,7 @@ markers = [
     # generator raising only `EsolangError` at twelve inputs, `%^2^-1`
     # reaching a generic thirteen-input table, Factor's thirteen-input
     # program decoding past its retired digit budget -- so they are evidence for
-    # `walls.md` and `limitations.md` and are not deletable.  What they are
+    # `proofs.md` and `limitations.md` and are not deletable.  What they are
     # not is *per-run* evidence: none has ever failed on a change that
     # the rest of the band passed, and each probes an arity nothing else in
     # the suite reaches, so a week is the right sampling interval.
