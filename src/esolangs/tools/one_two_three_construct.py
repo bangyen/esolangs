@@ -3,7 +3,7 @@ r"""Constructed 123 templates for four and more inputs.
 The small-arity route in :mod:`esolangs.tools.one_two_three`
 covers one, two and three inputs from a cheaper bare-fill seed; this
 module builds a template for *any* wider table, under the same contract:
-each ``{Xi}`` appears once in name order, ``1`` embeds a one and ``2`` a
+each input's run appears once in name order, ``1`` embeds a one and ``2`` a
 zero (equal width), and the instantiated program halts for a 0 entry and
 loops by a proven state revisit for a 1.
 
@@ -26,7 +26,7 @@ and become pure storage — and the rest is decode.
 The pipeline
 ------------
 
-1. **Embed** (`_phase_a`): walk to ``P_i``, emit ``{Xi}``, merge, and
+1. **Embed** (`_phase_a`): walk to ``P_i``, emit input ``i``'s run, merge, and
    *scrub* — the merge's blanket flip of ``[0, P_i + 1]`` is re-flipped
    by one more synchronized walk-descend-pop, so phase A ends with all
    ``2**n`` rows at position 0 and the tape carrying exactly one mark at
@@ -85,10 +85,15 @@ from __future__ import annotations
 from collections.abc import Iterable
 from functools import cache
 
+from esolangs.tools.helpers import TEMPLATE_CHAR
+
 __all__ = ["ConstructError", "construct"]
 
 #: Fill characters, shared with the stored-plan module's contract.
+#: The fills: one character each, so instantiations are equal length.  The
+#: template spells each input as a run of :data:`TEMPLATE_CHAR` this wide.
 _ONE, _ZERO = "1", "2"
+_INPUT = TEMPLATE_CHAR * len(_ZERO)
 
 #: Bit offset of cell 0 in a row's tape mask.  The ring occupies cells
 #: -1..-3, so shifting by three keeps every reachable cell's bit index
@@ -356,11 +361,11 @@ class _Builder:
         self.chunks.append(s)
 
     def fill(self, i: int) -> None:
-        """Emit ``{Xi}``; each row executes its own fill character."""
+        """Emit input ``i``'s run; each row executes its own fill character."""
         for row in self.live():
             self.apply_token(row, ("X", i))
         self.seg.append(("X", i))
-        self.chunks.append(f"{{X{i}}}")
+        self.chunks.append(_INPUT)
 
     def fixpoint(self, row: _Row, extra: str = "") -> str:
         """Re-run the pending segment (+ ``extra``) until the row escapes.
@@ -869,7 +874,7 @@ def _construct_linear(truth_table: str, n: int) -> str:
     for i in range(n):
         # The first three runs are one P=1 embed/merge/scrub, leaving exactly
         # bit i at cell 2 and every row at zero.
-        out.extend(("2", f"{{X{i}}}", "11", "212112", "22", "111", "2", "33"))
+        out.extend(("2", _INPUT, "11", "212112", "22", "111", "2", "33"))
         weight = 4 * 2**i
         prefix_positions = range(4 * (2**i - 1), 8 * (2**i - 1) + 1, 4)
         marks = [base + pos + weight for pos in prefix_positions]

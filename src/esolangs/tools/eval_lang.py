@@ -7,13 +7,24 @@ module of that name reads as the builtin wherever it is imported.
 from functools import cache
 from math import factorial
 
-from esolangs.tools.helpers import _validate_truth_table, permute_truth_table, read_at
+from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
+    _validate_truth_table,
+    permute_truth_table,
+    read_at,
+)
 
 # Eval's two stacks and the ops that move values between them.  ``~`` swaps
 # which stack is active, ``*`` reverses the active one, and ``=`` pops the
 # active stack onto the other.  The pair is a spindle: moving values across
 # reverses them, so composing the three reaches essentially any arrangement.
 _EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
+
+#: How each input is set: stage the bit on the tree stack (``0`` pushes a
+#: zero, the backtick a one), then ``=`` moves it to the input stack.  The
+#: template spells each input as a run of :data:`TEMPLATE_CHAR` this wide.
+EVAL_ZERO, EVAL_ONE = "0=", "`="
+_EVAL_INPUT = TEMPLATE_CHAR * len(EVAL_ZERO)
 
 
 # Longest op string worth building.  Costs run to roughly 3 characters per
@@ -188,8 +199,8 @@ def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     onto the reachable arrangements -- 1, 2, 6 and 24 through ``n == 4`` --
     and from ``n == 12`` all 735 programs claim distinct arrangements.
 
-    **This is a runtime reorder, not a relabelling.**  The ``{Xi}`` blocks
-    keep their slots and the harness fills them as before; what changes is
+    **This is a runtime reorder, not a relabelling.**  The input runs
+    keep their places and the harness fills them as before; what changes is
     the emitted program, which now rearranges the stack the nodes pop from.
     The nodes themselves name no input -- each is ``~=~?`` plus a semicolon
     run fixed by its heap index -- so the arrangement alone decides which
@@ -287,7 +298,7 @@ def _eval_ordered(truth_table: str, ops: str) -> str:
     n = _validate_truth_table(truth_table)
     used = _eval_dependencies(truth_table)
     reduced = read_at(truth_table, used, n)
-    bits = "".join("{X" + str(i) + "}" for i in range(n))
+    bits = _EVAL_INPUT * n
     values = "".join("`" if bit == "1" else "0" for bit in reduced)
     out = [bits, ops, values]
     remaining = len(reduced)

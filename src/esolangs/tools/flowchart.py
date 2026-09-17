@@ -252,7 +252,7 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     without any one execution reading twice.  This is deliberately *not* the
     once-only embedding rule that ``tools.parameterized`` documents:
     that rule exists so a language with no input mechanism cannot, through
-    repeated ``{Xi}`` substitution, consult a bit more often than an
+    repeated substitution of an input's run, consult a bit more often than an
     input-capable language would.  Flowchart has a real input command, so it
     is an input-reading generator like :func:`streetcode` (whose ``I``
     commands likewise repeat across tree branches), not a parameterized one.

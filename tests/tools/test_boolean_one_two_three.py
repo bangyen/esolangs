@@ -1,11 +1,15 @@
 """Covers :mod:`esolangs.tools.one_two_three_construct`."""
 
 import random
-import re
 
 import pytest
 
+from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs, runs
+from esolangs.tools.one_two_three import ONE, ZERO
 from tests.tools.boolean_runners import one_two_three_result
+
+#: One input's run, as the template spells it.
+_X = TEMPLATE_CHAR * len(ZERO)
 
 
 # 2.3s over 132 tests: runs the generated program.
@@ -36,11 +40,7 @@ class TestParameterizedOneTwoThree:
         return one_two_three_result(program)
 
     def instantiate(self, template: str, bits: list[int]) -> str:
-        from esolangs.tools.one_two_three import ONE, ZERO
-
-        for i, bit in enumerate(bits):
-            template = template.replace(f"{{X{i}}}", ONE if bit else ZERO)
-        return template
+        return fill_runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * len(bits), bits)
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
@@ -220,7 +220,7 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.one_two_three_construct import construct
 
         assert construct("01") == (
-            "2222{X0}1111121211222222111111233222332233222211211211213311111111"
+            f"2222{_X}1111121211222222111111233222332233222211211211213311111111"
             "122222222212331111111111"
         )
 
@@ -236,16 +236,17 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.one_two_three_construct import construct
 
         total = sum(len(construct(format(value, "08b"))) for value in range(256))
-        assert total == 191359
+        assert total == 189055
 
     def test_slots_run_in_name_order(self) -> None:
-        """Every emitted template embeds {X0} before {X1}."""
+        """Every emitted template embeds exactly two runs, one per input."""
         from esolangs.tools import parameterized
 
         for table_int in range(16):
             table = format(table_int, "04b")
             template = parameterized.one_two_three(table)
-            assert template.index("{X0}") < template.index("{X1}"), table
+            assert "{X" not in template
+            assert len(runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * 2)) == 2, table
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """A zero and a one embed at equal width, so length leaks nothing."""
@@ -277,8 +278,7 @@ class TestParameterizedOneTwoThree:
 
         table = "0000000000000000"
         template = parameterized.one_two_three(table)
-        xs = [template.index(f"{{X{i}}}") for i in range(4)]
-        assert xs == sorted(xs), table
+        assert len(runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * 4)) == 4, table
         sizes = set()
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
@@ -290,10 +290,10 @@ class TestParameterizedOneTwoThree:
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("00000000", 72),
-            ("10000000", 368),
-            ("00010111", 210),
-            ("01101001", 160),
+            ("00000000", 63),
+            ("10000000", 359),
+            ("00010111", 201),
+            ("01101001", 151),
         ],
     )
     def test_three_inputs_take_the_small_route(self, table: str, length: int) -> None:
@@ -426,8 +426,8 @@ class TestParameterizedOneTwoThree:
     @pytest.mark.parametrize(
         ("table", "template"),
         [
-            ("01", "{X0}223311122212331111"),
-            ("0001", "22{X0}22{X1}22331113322331111332133121233111111121121"),
+            ("01", f"{_X}223311122212331111"),
+            ("0001", f"22{_X}22{_X}22331113322331111332133121233111111121121"),
         ],
     )
     def test_the_emitted_template_is_exact(self, table: str, template: str) -> None:
@@ -457,10 +457,12 @@ class TestParameterizedOneTwoThree:
         without changing the verdict -- so only the emitted size sees it.
         The total is asserted rather than one table because the flag's
         effect is spread across the whole sweep; it also pins the
-        separation law's price, 55238 characters against the retired
-        schedules' 43020 and the wide constructor's 211102 -- the law
-        gives up 1.28x to delete the table and keeps 3.8x over the route
-        that needs none.
+        separation law's price, 52826 characters against the retired
+        schedules' 40608 and the wide constructor's 208690 -- the law
+        gives up 1.30x to delete the table and keeps 3.95x over the route
+        that needs none.  (A template is exactly as long as the programs
+        it fills to, so these are program sizes; the figures were first
+        taken with four-character placeholders, 2412 more over this sweep.)
         """
         from esolangs.tools import parameterized
 
@@ -469,7 +471,7 @@ class TestParameterizedOneTwoThree:
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
                 total += len(parameterized.one_two_three(table))
-        assert total == 55238
+        assert total == 52826
 
     def test_a_seed_with_even_positions_is_refused(self) -> None:
         """The junky verdict rejects a seed whose rows are not distinct odd.
@@ -887,25 +889,8 @@ class TestParameterizedOneTwoThree:
             "a one-entry table is a constant, not a boolean function"
         )
 
-    def test_out_of_order_slots_are_refused(self) -> None:
-        """The name-order invariant is asserted, not assumed.
-
-        Every table the generator builds satisfies it, so the guard is
-        reachable only by handing the helper a body that violates it -- which
-        is what a mistyped plan would look like.
-        """
-        from esolangs.tools.one_two_three import _in_name_order
-
-        assert _in_name_order("{X0}{X1}", 2) == "{X0}{X1}"
-
-        with pytest.raises(ValueError, match="out of name order") as caught:
-            _in_name_order("{X1}{X0}", 2)
-        assert str(caught.value) == (
-            "template '{X1}{X0}' emits slots out of name order"
-        )
-
     def test_each_input_is_embedded_once(self) -> None:
-        """Each placeholder appears exactly once, and no {Ci} appears."""
+        """Each input's run appears exactly once, and nothing else is a run."""
 
         from esolangs.tools import parameterized
 
@@ -913,9 +898,9 @@ class TestParameterizedOneTwoThree:
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
                 template = parameterized.one_two_three(table)
-                xs = re.findall(r"\{X(\d+)\}", template)
-                assert sorted(xs) == [str(i) for i in range(n)], (table, xs)
-                assert not re.findall(r"\{C(\d+)\}", template), table
+                spans = runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * n)
+                assert len(spans) == n, (table, spans)
+                assert template.count(TEMPLATE_CHAR) == n * len(ZERO), table
 
     def test_every_batched_run_charges_the_work_budget(self) -> None:
         """Each closed form in ``_exec_run`` has to stop on a drained budget.
@@ -1062,7 +1047,7 @@ class TestParameterizedOneTwoThree:
 
         The ring case is decided by its first step -- -1 and -2 land on 0 --
         after which the rest is a plain right-walk, and it charges the budget
-        like every other closed form.  ``apply_token`` resolves a ``{Xi}``
+        like every other closed form.  ``apply_token`` resolves an input
         fill against the row's own bits; a plain token is passed straight
         through.
         """
@@ -1190,3 +1175,21 @@ class TestParameterizedOneTwoThree:
         # The NOPs are skipped, so padding a program cannot change its verdict.
         assert _replay_verdict("1x1") == _replay_verdict("11")
         assert _replay_verdict("x1y1z") == _replay_verdict("11")
+
+
+def test_a_malformed_template_is_refused() -> None:
+    """The one-run-per-input invariant is asserted, not assumed.
+
+    Every table the generator builds satisfies it, so the guard is
+    reachable only by handing the helper a body that violates it -- a run
+    short, or a fill character loose in the program text -- which is what
+    a mistyped plan would look like.  Fast: nothing runs.
+    """
+    from esolangs.tools.one_two_three import _in_name_order
+
+    assert _in_name_order(_X * 2, 2) == _X * 2
+
+    with pytest.raises(ValueError, match="does not embed 2 inputs"):
+        _in_name_order(_X, 2)
+    with pytest.raises(ValueError, match="does not embed 1 inputs"):
+        _in_name_order(_X + "1" + _X, 1)

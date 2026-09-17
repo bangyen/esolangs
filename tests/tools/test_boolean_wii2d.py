@@ -10,6 +10,11 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.interpreters.io import IO
+from esolangs.tools.helpers import TEMPLATE_CHAR
+from esolangs.tools.wii2d import WII2D_ZERO
+
+#: One junction's run, as the template spells it.
+_X = TEMPLATE_CHAR * len(WII2D_ZERO)
 
 
 class TestWII2D:
@@ -80,14 +85,16 @@ class TestWII2D:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_chain_embeds_each_input_once(self) -> None:
-        """The n-embedding chain has each {Xi} placeholder exactly once."""
-        import re
+        """The n-embedding chain has one junction run per input, exactly."""
+        from esolangs.tools.examples import _setters_wii2d
+        from esolangs.tools.helpers import runs
 
         for n in (1, 2, 3):
             template = boolean.wii2d(format(0, f"0{2**n}b"))
-            xs = re.findall(r"\{X\d+\}", template)
-            assert sorted(xs) == [f"{{X{i}}}" for i in range(n)], (n, xs)
-            assert len(xs) == n, (n, xs)
+            assert "{X" not in template
+            spans = runs(template, TEMPLATE_CHAR, _setters_wii2d(template, n))
+            assert len(spans) == n, (n, spans)
+            assert all(end - start == len(_X) for start, end in spans), spans
 
     def test_apply_ignores_blank_cells(self) -> None:
         """A space is a no-op, so padding an op string cannot change it.
@@ -126,7 +133,7 @@ class TestWII2D:
             # and the generated template uses the closed-form routes, laid
             # out with no blank column between the merge and what follows
             template = boolean.wii2d(table)
-            assert template.startswith(">{X0}->{X1}"), table
+            assert template.startswith(f">{_X}->{_X}"), table
 
     @pytest.mark.parametrize("n", [3, 4, 5, 6, 8])
     def test_chain_parity_closed_form(self, n: int) -> None:
@@ -861,19 +868,19 @@ class TestWII2D:
         # The digit's own column is part of the layout, and running the
         # template cannot see it: a start written one column over still
         # computes the same answer.
-        assert template == (">5{X0} >" + "+" * 48 + "~.\n! >+^")
+        assert template == (f">5{_X} >" + "+" * 48 + "~.\n! >+^")
 
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("0110", 76),
-            ("00000001", 105),
-            ("00000010", 105),
-            ("00000110", 124),
+            ("0110", 70),
+            ("00000001", 96),
+            ("00000010", 96),
+            ("00000110", 115),
         ],
     )
     def test_the_template_has_an_exact_length(self, table: str, length: int) -> None:
-        """The emitted template's size, per table.
+        """The emitted template's size, per table -- every program's size too.
 
         Every route, fold and threshold decision in this generator is a
         choice between spellings that all compute the table -- the chain is
@@ -893,7 +900,7 @@ class TestWII2D:
         another of the same width moves nothing a length check can see.
         """
         assert boolean.wii2d("0110") == (
-            ">{X0}->{X1}+>" + "+" * 48 + "~.\n!>*^\n    >s^"
+            f">{_X}->{_X}+>" + "+" * 48 + "~.\n!>*^\n    >s^"
         )
 
     @pytest.mark.parametrize(

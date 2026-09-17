@@ -1,9 +1,10 @@
 """Covers :mod:`esolangs.tools.back`."""
 
-import re
 from itertools import pairwise
 
 import pytest
+
+from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 
 
 class TestParameterizedBack:
@@ -79,12 +80,13 @@ class TestParameterizedBack:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has one run per input, not hardcoded bits."""
         from esolangs.tools import parameterized
+        from esolangs.tools.examples import _setters_back
 
         template = parameterized.back("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        assert len(runs(template, TEMPLATE_CHAR, _setters_back(template, 2))) == 2
 
     def test_each_input_is_stored_once(self) -> None:
         """Each input is embedded once in the tape load, not re-embedded."""
@@ -94,7 +96,7 @@ class TestParameterizedBack:
         for n in (1, 2, 3):
             table = format(0, f"0{2**n}b")
             template = parameterized.back(table)
-            assert len(re.findall(r"\{X\d+\}", template)) == n
+            assert template.count(TEMPLATE_CHAR) == n
 
     def test_tree_uses_tape_decision_nodes(self) -> None:
         """The reflected decision tree retains its skip and both mirrors."""
@@ -157,11 +159,11 @@ class TestParameterizedBack:
             assert got == table[combo], f"{table} inputs {bits}"
 
     def test_reordering_pays_a_walk_and_keeps_name_order(self) -> None:
-        """A permuted load spends rows on the walk, and keeps its slots sorted.
+        """A permuted load spends rows on the walk, and keeps its runs in name order.
 
         This is the trade Back deliberately takes.  Filling in *cell* order
-        -- putting ``{X perm[c]}`` in cell ``c`` -- emits no walk and is a
-        few percent smaller, but leaves the placeholders out of name order,
+        -- putting input ``perm[c]`` in cell ``c`` -- emits no walk and is a
+        few percent smaller, but leaves the inputs out of name order,
         which no other generator in this module does.  Loading in name order
         and walking the pointer costs about two characters a step and keeps
         the templates uniform.
@@ -181,26 +183,25 @@ class TestParameterizedBack:
             for perm in permutations(range(n)):
                 permuted = parameterized.permute_truth_table(table, perm)
                 built = parameterized._back_ordered(permuted, perm)  # noqa: SLF001
-                names = re.findall(r"\{X(\d+)\}", built)
-                assert names == sorted(names), (table, perm, names)
+                assert built.count(TEMPLATE_CHAR) == n, (table, perm)
                 walked += built.count("<")
         # A non-identity order has to step the pointer back at some point;
         # a build with no leftward step is not reordering anything.
         assert walked > 0
 
     def test_placeholders_run_in_name_order_while_still_reordering(self) -> None:
-        """Back reorders through the *walk*, not through its slot order.
+        """Back reorders through the *walk*, not through its input order.
 
-        The load emits ``{X0}``..``{Xn-1}`` in sequence whatever the input
-        order, and the reorder lives in the ``>``/``<`` runs that carry the
-        pointer to each input's cell.  Both halves matter: dropping the
-        walk would leave the order inert, and permuting the names instead
-        would emit the slots out of sequence, which every other generator in
-        this module avoids.
+        The load emits input 0..n-1 in sequence whatever the input order,
+        and the reorder lives in the ``>``/``<`` runs that carry the pointer
+        to each input's cell.  Both halves matter: dropping the walk would
+        leave the order inert, and permuting the inputs instead would need
+        a template whose k-th run is not input k, which the run form
+        cannot spell.
 
         The units are emitted in reverse name order because the load is
         drawn bottom-to-top up column 0, so the template's *text* reads them
-        backwards -- loading input ``n-1`` first is what puts ``{X0}`` first
+        backwards -- loading input ``n-1`` first is what puts input 0 first
         on the page.
         """
 
@@ -209,9 +210,7 @@ class TestParameterizedBack:
         walked = 0
         for table in ("11110000", "10101010", "01101001", "00111100"):
             template = parameterized.back(table)
-            names = re.findall(r"\{X(\d+)\}", template)
-            assert names == sorted(names), f"{table} slots {names}"
-            assert sorted(names) == ["0", "1", "2"], f"{table} embeds each once"
+            assert template.count(TEMPLATE_CHAR) == 3, f"{table} embeds each once"
             # Reflection moves the load to the last occupied cell of its row.
             column = [
                 line.rstrip()[-1] for line in template.split("\n") if line.strip()
@@ -224,8 +223,8 @@ class TestParameterizedBack:
     def test_reordering_keeps_the_equal_width_embedding(self) -> None:
         """Reordered loads still cost the same for either bit.
 
-        The walk goes before an input's ``-``/``{Xi}`` pair and never
-        between its halves, so the primer and the placeholder stay one
+        The walk goes before an input's ``-``/run pair and never
+        between its halves, so the primer and the run stay one
         unit and both bits still cost the same two rows.  Splitting them
         would let the template's height reveal an input.
         """

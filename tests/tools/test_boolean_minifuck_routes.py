@@ -1,13 +1,12 @@
 """Covers :mod:`esolangs.tools.minifuck` and :mod:`esolangs.tools.minifuck_mux`."""
 
 import importlib
-import re
 from unittest.mock import patch
 
 import pytest
 
 from esolangs.tools.helpers import essential_inputs
-from tests.tools.minifuck_support import _MinifuckCase
+from tests.tools.minifuck_support import _MinifuckCase, run_count
 
 
 class TestParameterizedMinifuck(_MinifuckCase):
@@ -102,8 +101,8 @@ class TestParameterizedMinifuck(_MinifuckCase):
                 # ``minifuck`` is cached, so go through the wrapped function
                 # to be sure the build actually runs under the patch.
                 template = module.minifuck.__wrapped__(table)
-                assert "{X0}" in template, table
-                assert "{X1}" in template, table
+                assert "{X" not in template, table
+                assert run_count(template, 2) == 2, table
             for table in (
                 "01",
                 "01010101",
@@ -112,9 +111,10 @@ class TestParameterizedMinifuck(_MinifuckCase):
                 format(0xD6B4_A791_8E35_C20F, "064b"),
             ):
                 template = module.minifuck.__wrapped__(table)
-                assert template.count("{X") == (len(table).bit_length() - 1)
+                n = len(table).bit_length() - 1
+                assert run_count(template, n) == n
         # And the public entry point still agrees with what it built.
-        assert parameterized.minifuck("0110").count("{X") == 2
+        assert run_count(parameterized.minifuck("0110"), 2) == 2
 
     @pytest.mark.slow  # derives a staging for all sixteen
     def test_the_derivation_reaches_every_two_input_table(self) -> None:
@@ -160,7 +160,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
         Ten of these come out with their slots *not* in ascending order, and
         all ten have the same shape: the ignored input is the *middle* one
         (essential ``[0, 2]``).  Emitting it first cannot sort them, since it
-        already follows ``{X0}``, and no reset fixes it -- reconvergence
+        already follows input 0, and no reset fixes it -- reconvergence
         works by driving every row to one state, so it cannot collapse
         ``x1`` while preserving ``x0``.  Searched to depth 14: none exists.
         Sorting those needs the solver to assign names.
@@ -199,7 +199,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
         without paying the four-input whole-arity derivation.
 
         The separation claim is asserted structurally too: sixteen rows at
-        sixteen distinct pointers, with each ``{Xi}`` appearing once,
+        sixteen distinct pointers, with each input's run appearing once,
         because row addressability without re-embedding is exactly what the
         route contributes.
         """
@@ -209,14 +209,12 @@ class TestParameterizedMinifuck(_MinifuckCase):
         separated = module._mux_separate(4)  # noqa: SLF001
         positions = separated.ptrs()
         assert len(set(positions)) == 16, positions
-        for i in range(4):
-            assert separated.template().count("{X" + str(i) + "}") == 1, i
+        assert run_count(separated.template(), 4) == 4
 
         table = "0110100110010110"
         template = module._mux(table, 4)  # noqa: SLF001
         assert template is not None
-        names = [int(m) for m in re.findall(r"\{X(\d+)\}", template)]
-        assert names == sorted(names), names
+        assert run_count(template, 4) == 4
         widths = set()
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
@@ -262,8 +260,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
         assert len(essential_inputs(table, n)) == n, "the table must be fully essential"
 
         template = module._solve(table)  # noqa: SLF001
-        names = [int(m) for m in re.findall(r"\{X(\d+)\}", template)]
-        assert names == sorted(names), names
+        assert run_count(template, n) == n
         widths = set()
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -530,16 +527,37 @@ class TestParameterizedMinifuck(_MinifuckCase):
         """The template has placeholders and every fill has the same length.
 
         Both properties concern the same expensive ``0110`` construction.
-        Building it separately only to inspect its placeholders duplicated
+        Building it separately only to inspect its runs duplicated
         construction without exercising a distinct path.  The current
         combined check takes 0.12s serially, so it belongs in the fast suite.
         """
         from esolangs.tools import parameterized
 
         template = parameterized.minifuck("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        assert run_count(template, 2) == 2
         lengths = {
             len(self.instantiate(template, [a, b])) for a in (0, 1) for b in (0, 1)
         }
         assert len(lengths) == 1, f"unequal instantiation lengths: {lengths}"
+
+    def test_lift_appends_the_ignored_runs_or_refuses(self) -> None:
+        """``_lift`` widens by appending runs, and refuses an order it cannot spell.
+
+        The k-th run is input k, so an inner solve over inputs ``[0]`` lifts
+        onto two inputs by one appended run; over ``[1]`` there is no
+        renaming to fall back on, and the append would misname the runs.
+        The refusal is what keeps ``_solve``'s fallback from ever emitting
+        a template whose inputs are not the table's.
+        """
+        module = importlib.import_module("esolangs.tools.minifuck")
+        inner = module._solve("01")  # noqa: SLF001
+
+        lifted = module._lift(inner, [0], 2)  # noqa: SLF001
+        assert lifted == inner + module._MINIFUCK_INPUT  # noqa: SLF001
+        assert run_count(lifted, 2) == 2
+        for a, b in ((0, 0), (0, 1), (1, 0), (1, 1)):
+            assert self.run_minifuck(self.instantiate(lifted, [a, b])) == str(a)
+
+        with pytest.raises(ValueError, match="misnames a run"):
+            module._lift(inner, [1], 2)  # noqa: SLF001

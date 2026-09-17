@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import pytest
 
+import esolangs
 import esolangs.tools as boolean
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import Ledger, Row, load

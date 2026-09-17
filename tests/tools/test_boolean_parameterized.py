@@ -575,12 +575,14 @@ class TestParameterizedRam0:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has one run per input, not hardcoded bits."""
         from esolangs.tools import parameterized
+        from esolangs.tools.examples import _setters_ram0
+        from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 
         template = parameterized.ram0("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        assert len(runs(template, TEMPLATE_CHAR, _setters_ram0(template, 2))) == 2
 
     def test_constant_table_is_a_leaf(self) -> None:
         """A constant table emits a single leaf with no branching."""

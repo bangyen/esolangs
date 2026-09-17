@@ -2,7 +2,7 @@ r"""Boolean-function generator for 123, under the termination convention.
 
 123 has no usable input command for a decision tree -- its ``,`` equivalent
 (``2`` at location -3) reads real stdin -- so this is a *parameterized*
-generator: the template's ``{Xi}`` placeholders become ``1`` for a one and
+generator: the template's input runs become ``1`` for a one and
 ``2`` for a zero, and the harness instantiates one program per input
 combination.  Both fills are one character, so no instantiation leaks its
 inputs through ``len()``.
@@ -40,7 +40,7 @@ merge-choreography pipeline in
 small arities the suite sweeps exhaustively build here, from a cheaper
 seed the wider pipeline cannot afford to assume:
 
-1. **Seed.**  ``"2"*w0 {X0} "2"*w1 {X1} ... "33"`` -- bare fills, no
+1. **Seed.**  ``"2"*w0 $ "2"*w1 $ ... "33"`` -- bare fills, no
    merge.  A ``1`` fill flips the cell it stands on and steps left; a
    ``2`` fill just steps right.  After the fills the rows sit at
    popcount-spread positions of one shared parity, carrying
@@ -100,10 +100,12 @@ from __future__ import annotations
 
 from functools import cache
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, runs
 from esolangs.tools.one_two_three_construct import (
+    _ONE,
     _RING,
     _WORK_BUDGET,
+    _ZERO,
     ConstructError,
     _Builder,
     _endgame,
@@ -116,8 +118,9 @@ from esolangs.tools.one_two_three_construct import (
 
 __all__ = ["one_two_three"]
 
-#: ``{Xi}`` fills.  One character each, so instantiations are equal length.
-ONE, ZERO = "1", "2"
+#: The input fills.  One character each, so instantiations are equal length;
+#: the construction names them, and this re-exports its pair.
+ONE, ZERO = _ONE, _ZERO
 
 #: One separation law: the constant pre-fill walk, then the alternating
 #: test displacements.
@@ -259,14 +262,17 @@ def _construct_small(truth_table: str, n: int) -> str:
 
 
 def _in_name_order(body: str, n: int) -> str:
-    """Return ``body`` once its slots are known to be in ascending order.
+    """Return ``body`` once it is known to carry exactly ``n`` input runs.
 
-    The repo-wide invariant is that a template emits ``{X0}`` before
-    ``{X1}``; asserting it here keeps a mis-built template from shipping.
+    The k-th run *is* input k, so name order is the template's shape; what
+    can go wrong is the count -- a run short, a run over, or a fill character
+    where the program text should be -- and checking it here keeps a
+    mis-built template from shipping.
     """
-    positions = [body.index(f"{{X{i}}}") for i in range(n)]
-    if positions != sorted(positions):
-        raise ValueError(f"template {body!r} emits slots out of name order")
+    try:
+        runs(body, TEMPLATE_CHAR, ((ZERO, ONE),) * n)
+    except ValueError as exc:
+        raise ValueError(f"template {body!r} does not embed {n} inputs: {exc}") from exc
     return body
 
 
@@ -276,7 +282,7 @@ def one_two_three(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    The template's ``{Xi}`` placeholders take ``1`` for a one and ``2`` for
+    The template's input runs take ``1`` for a one and ``2`` for
     a zero.  The instantiated program's answer is its *halting* behaviour --
     it halts for a 0 and loops for a 1 -- so the harness decides it with
     :func:`esolangs.vm.run_until_halt_or_cycle` rather than reading output.

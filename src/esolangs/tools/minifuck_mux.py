@@ -19,7 +19,14 @@ from esolangs.tools.minifuck_pool import (
     _pool_slice,
     _try_print,
 )
-from esolangs.tools.minifuck_sim import _clamp, _Joint, _runs, _Sim, _walk_to
+from esolangs.tools.minifuck_sim import (
+    _MINIFUCK_INPUT,
+    _clamp,
+    _Joint,
+    _runs,
+    _Sim,
+    _walk_to,
+)
 
 # ---------------------------------------------------------------------------
 # The sculpted route: separate every row into its own pointer position, then
@@ -944,7 +951,7 @@ def _mux_lookup(truth_table: str, n: int) -> str:
 
     weights = _mux_weights(n)
     for i, weight in enumerate(weights):
-        parts.append("{X" + str(i) + "}")
+        parts.append(_MINIFUCK_INPUT)
         parts.append(_mux_weight(weight))
         if i + 1 < n:
             # The next gadget reaches ``next_weight - 2`` cells left of its

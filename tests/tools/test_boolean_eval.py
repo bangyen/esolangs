@@ -3,6 +3,11 @@
 import pytest
 
 from esolangs import tools as boolean
+from esolangs.tools.eval_lang import EVAL_ZERO
+from esolangs.tools.helpers import TEMPLATE_CHAR
+
+#: One input's run, as the template spells it.
+_X = TEMPLATE_CHAR * len(EVAL_ZERO)
 
 
 class TestEvalBoolean:
@@ -27,13 +32,13 @@ class TestEvalBoolean:
         from tests.tools.fills import _fill_eval
 
         for n in (1, 2, 3):
+            template = _X * n
             for i in range(n):
-                placeholder = "{X" + str(i) + "}"
                 zeros = [0] * n
                 ones = list(zeros)
                 ones[i] = 1
-                assert len(_fill_eval(placeholder, zeros)) == len(
-                    _fill_eval(placeholder, ones)
+                assert len(_fill_eval(template, zeros)) == len(
+                    _fill_eval(template, ones)
                 ), f"n={n} input {i}"
 
     @pytest.mark.parametrize(
@@ -83,7 +88,7 @@ class TestEvalBoolean:
         full = parameterized.eval("10010110")
         folded = parameterized.eval("11111111")
         assert len(folded) < len(full)
-        assert folded == "{X0}{X1}{X2}`~;~~;~~;~."
+        assert folded == _X * 3 + "`~;~~;~~;~."
 
     def test_folding_keeps_both_bits_equal_width(self) -> None:
         """Folding shrinks the template, never one instantiation.
@@ -108,25 +113,25 @@ class TestEvalBoolean:
             assert len(widths) == 1, f"{table} leaks its inputs: {widths}"
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has one run per input, not hardcoded bits."""
         from esolangs.tools import parameterized
 
         template = parameterized.eval("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        assert template.count(TEMPLATE_CHAR) == 2 * len(EVAL_ZERO)
 
     def test_linear_lookup_structure(self) -> None:
         """Each level shares one half-stack discard between both branches."""
         from esolangs.tools import parameterized
 
         template = parameterized.eval("0110")
-        assert template.startswith("{X0}{X1}")
+        assert template.startswith(_X * 2)
         assert template.endswith(".")
         assert '"' not in template
         assert "!" not in template
         assert template.count("~^=~?*") == 2
         assert template.count("~=~?*") == 2
-        assert template.removeprefix("{X0}{X1}").startswith("0``0")
+        assert template.removeprefix(_X * 2).startswith("0``0")
         assert template.count(";") == 3  # shared discards of 2 and 1
 
     def test_reordering_is_not_part_of_the_lookup(self) -> None:
@@ -169,10 +174,10 @@ class TestEvalBoolean:
         """The rearrangement is emitted code, not a change to the fills.
 
         This is what makes it a reorder rather than a relabelling: the
-        ``{Xi}`` blocks keep their slots and the harness fills them exactly
+        input runs keep their places and the harness fills them exactly
         as before, while the emitted program gains ops that rearrange the
         stack its nodes pop from.  Equal-width embedding therefore still
-        holds, since nothing inside a placeholder moved.
+        holds, since nothing inside a run moved.
         """
         from esolangs.tools import parameterized
         from tests.tools.fills import _fill_eval
@@ -180,7 +185,7 @@ class TestEvalBoolean:
         # A table whose cheapest order is not the free one.
         table = "00001101"
         template = parameterized.eval(table)
-        assert template.startswith("{X0}{X1}{X2}")  # slots unmoved
+        assert template.startswith(_X * 3)  # runs unmoved
         widths = {
             len(_fill_eval(template, [(c >> (2 - i)) & 1 for i in range(3)]))
             for c in range(8)
@@ -314,7 +319,8 @@ class TestEvalBoolean:
         n = 6
         table = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**n))
         template = parameterized.eval(table)
-        assert len(template) == 218
+        # The template is the exact shape of every program it fills to.
+        assert len(template) == len(self.instantiate(template, [0] * n)) == 206
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_eval(self.instantiate(template, bits))

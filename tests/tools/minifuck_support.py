@@ -1,5 +1,18 @@
 """The Minifuck suites' shared harness: run a program, fill a template."""
 
+from esolangs.tools.helpers import TEMPLATE_CHAR, runs
+from esolangs.tools.minifuck_sim import MINIFUCK_ONE, MINIFUCK_ZERO
+
+
+def run_count(template: str, n: int) -> int:
+    """How many input runs ``template`` carries, expecting ``n``.
+
+    The k-th run *is* input k, so this is what the text can still show
+    about the embedding: a run short, a run over, or a fill character in
+    the program proper refuses (a ``ValueError`` from :func:`runs`).
+    """
+    return len(runs(template, TEMPLATE_CHAR, ((MINIFUCK_ZERO, MINIFUCK_ONE),) * n))
+
 
 class _MinifuckCase:
     """Input-by-substitution boolean generator for Minifuck.
