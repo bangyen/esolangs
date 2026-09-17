@@ -174,7 +174,16 @@ The candidate list is empty.
   that way and wastes a line on the other 34.  A choice function that
   enters every line at most once is simple by construction, but its
   orbit at every root tried through M=100,000 is under 40 lines: the
-  mass sits in cycles.  Dense paths are found only by search.
+  mass sits in cycles.  Splicing those cycles into one path is bounded
+  too: a perfect path cover of the lines (every line matched, so every
+  cycle can be cut in) holds at most 0.18 M Collatz edges at M=500 and
+  0.053 M at M=5000 by exact assignment, and a cover that keeps 0.81 M
+  of them leaves a fifth of the lines as separate fragments that
+  head-absorption joins 2-79 times before it stops (best 0.276 at M=500,
+  under 0.13 above).  The search's density comes from choosing *which*
+  fifth of the Collatz edges to give up so the jumps thread the fragments
+  into one path, a global condition no assignment sees.  Dense paths are
+  found only by search.
 
 - **Boolean generator conventions.**  Five conventions govern the *embed*,
   the text that stands for one input -- not the program around it.  A
