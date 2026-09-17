@@ -258,6 +258,16 @@ block of two or more values reflects the rest as a block, which
 re-enters the `+` and copies both ways, so no block may meet a `_` and
 routing a block to lanes is left to `<`, one prefix zero-set per visit.
 
+A read bound that charges each sibling pair of rows (one bit apart) its
+own separating cells does not hold on this machine: on the shipped
+program at n=6 the `<` at (40, 1) removes rows 0..31 in one cell, a
+prefix zero-set that separates 32 pairs at bit 0 at once, and the
+N-bound input cell separates a block of nonzero values on `x_i` with no
+`(`/`)` cell at all (x=1 passes with +1, x=0 reflects the block).  So
+the per-pair charge is off by the zero-set's size, and a bound over
+every program has to price copies against zero-set kills and block
+reflections together, which no argument here does.
+
 Polynomial's remaining question is a left-half-plane multiple of the
 mandatory root product with more terms than the Descartes minimum:
 instruction count, monomial count, right-half-plane coefficient mass, and
