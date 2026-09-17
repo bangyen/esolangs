@@ -115,10 +115,7 @@ def _fold_norm(items: list[_FoldPoint]) -> _FoldState:
 def _fold_merge(items: list[_FoldPoint]) -> _FoldState | None:
     """Coalesce equal positions, or ``None`` on a cross-class collision.
 
-    Two points at one value are indistinguishable forever after, so a
-    collision is a merge -- legal only within a class, and only between
-    already-wiped points (a group with extent has rows at *several* values,
-    so an "equal top" is not an equal anything).
+    Legal only within a class and between wiped points.
     """
     by_pos: dict[int, list[tuple[int, str, frozenset[int]]]] = {}
     for p, s, c, i in items:
@@ -142,17 +139,12 @@ def _fold_moves(
 ) -> Iterator[tuple[str, int, int, frozenset[int], _FoldState]]:
     """Yield every candidate move from ``state``.
 
-    The algebra is relative: a wipe relocates its victims by exactly
-    ``3004 + slack`` (the reset line is at 3003 and a landing is at 0), so a
-    dive of the bottom ``k`` groups maps each survivor ``q_i`` above the
-    victims to ``q_i - c`` for any ``c`` in ``[3004, 3003 + q_1]`` -- the
-    window is the gap to the nearest survivor's *bottom*, and every choice
-    of absolute placement realises every ``c`` in it.  Rises mirror.  The
-    doubling ``m`` scales every gap and is what lets a gap outgrow 3004,
-    without which a landing can never split two survivors (each wipe caps
-    the spread at 3003, so the cyclic order of the groups would be invariant
-    and any table whose runs alternate four or more times would be out of
-    reach -- an exhaustive search over wipe-only plans finds exactly that).
+    A wipe relocates its victims by ``3004 + slack``, so a dive of the bottom
+    ``k`` maps each survivor to ``q_i - c`` for ``c`` in ``[3004, 3003 + q_1]``
+    (the gap to the nearest survivor's bottom); rises mirror.  Doubling is
+    what lets a gap outgrow 3004, without which a landing can never split two
+    survivors (an exhaustive wipe-only search confirms four-alternation
+    tables are out of reach).
     """
     m = len(state)
     kmax = m if (kcap is None or m <= 8) else min(m, kcap)
@@ -270,27 +262,13 @@ def _cofactor_done(state: _FoldState) -> bool:
 class _FoldLedger:
     """The plan state kept sorted, so a step costs its victims, not the state.
 
-    A :data:`_FoldState` is rebuilt, re-sorted and rebased on every step by
-    the tuple functions below, which is what made the dense build quadratic
-    (x4.2 per added input, 1360 steps over a 530-point state at ten inputs).
-    Nothing a rule reads needs the whole state: the ends, the gap to the
-    nearest survivor, the first free amount in a window, the nearest
-    same-class wiped point.  So the points live here in *absolute* position
-    -- rebasing is cosmetic, every rule is a difference -- as a sorted list
-    of tops with dicts keyed by top, and a wipe removes its ``k`` victims
-    from one end and inserts one landing.  Only the doubling touches every
-    point, and a plan has a dozen of those.
-
-    Row ids are *chunks*: a point's ``ids`` is a list of frozensets that a
-    landing extends by one, and it is flattened only when the point becomes
-    a victim and the op has to name its rows.  The conveyor merges hundreds
-    of victims onto one point, so copying that point's rows per landing was
-    the other quadratic term.
-
-    ``to_state`` and ``from_state`` are the bridge to the tuple form the
-    tests and the small-state skeleton use; the ops it emits are the same
-    ``_FoldOp`` tuples, and :func:`_fold_step`, :func:`_fold_rule_move` and
-    :func:`_fold_clean_amount` are now one-step views of this class.
+    Rebuilding the tuple state per step made the dense build quadratic
+    (x4.2 per input, 1360 steps over 530 points at ten inputs).  Points live
+    in absolute position as a sorted list of tops with dicts keyed by top; a
+    wipe removes ``k`` victims from one end and inserts one landing, and only
+    the doubling touches every point.  Row ids are chunks flattened only
+    when a point becomes a victim.  ``to_state``/``from_state`` bridge to the
+    tuple form the tests use.
     """
 
     __slots__ = (
@@ -394,10 +372,8 @@ class _FoldLedger:
     def is_threshold(self) -> bool:
         """At most two runs of wiped points: one class wholly below the other.
 
-        What the emitter's endgame prints from, so a plan may stop here
-        rather than merging each class onto one point; the extents are
-        required gone because two spanned runs can interleave, which the
-        boundary count alone cannot see.
+        What the emitter's endgame prints from; extents must be gone since two
+        spanned runs can interleave.
         """
         return self.nspan == 0 and self.bounds <= 1
 
@@ -418,11 +394,8 @@ class _FoldLedger:
     def wipe_frame(self, kind: str, k: int) -> tuple[int, int, int] | None:
         """Return ``(q1, ref, survivors' lowest bottom)`` or ``None``.
 
-        ``ref`` is the victims' reference edge -- their top for a dive,
-        their lowest bottom for a rise -- and ``q1`` the gap from it to the
-        nearest survivor, which is the relocation window's width.  A
-        survivor's *bottom* counts: one whose extent reaches past the
-        victims leaves no window at all.
+        ``ref`` is the victims' reference edge and ``q1`` the gap to the nearest
+        survivor's *bottom*; one whose extent reaches past the victims leaves no window.
         """
         m = len(self.tops)
         if k >= m or k < 1:
@@ -454,12 +427,8 @@ class _FoldLedger:
     def clean_amount(self, kind: str, k: int) -> int | None:
         """Smallest window amount whose landing coincides with no survivor.
 
-        The window is a full interval, so the first free value in it is a
-        computed amount, not a searched one: the survivor tops are walked
-        upward (downward for a rise) from the window's edge and the walk
-        stops at the first gap, which costs the occupied run, not the state.
-        No victim can sit in the window -- a dive's victims are below its
-        reference edge and a rise's above -- so the whole top list serves.
+        Computed by walking the survivor tops from the window's edge to the
+        first gap; no victim can sit in the window.
         """
         frame = self.wipe_frame(kind, k)
         if frame is None:
@@ -497,27 +466,12 @@ class _FoldLedger:
     def rule_move(self) -> _FoldOp | None:
         """Name the one move the closed-form rules choose from this state.
 
-        A fixed case analysis, not a ranking: each case either applies --
-        and then fully determines its move -- or falls through to the next.
-
-        1. One class left: the everything-wipe finishes.
-        2. An end group whose landing window holds a same-class wiped point:
-           wipe it onto the nearest such point, which is a merge.  This is
-           the workhorse -- on a grown ladder it runs as a conveyor, merging
-           one group per op until the windows empty.
-        3. A same-class run of groups at an end: wipe them together at the
-           first collision-free amount, which merges the run onto one point.
-        4. Spread at most 3002: double.  Growth is what pushes same-class
-           gaps past the 3003 line so case 2's windows fill; it is also the
-           only reorder the language has (see :func:`_fold_moves`).
-        5. Otherwise hop an end group by the first collision-free amount.
-           On a state wider than 3004 the hop lands inside the pack,
-           compressing the spread back under the doubling bound.
-
-        Cases 2 and 5 try the dive side first; ties inside a case take the
-        nearest target.  Both choices are conventions -- the r <= 5 mining
-        recorded on :func:`_fold_skeleton` found rank ties to be confluent,
-        and the acceptance sweeps re-measure that end to end.
+        A fixed case analysis: (1) one class left, the everything-wipe;
+        (2) an end group whose window holds a same-class wiped point, wipe onto
+        the nearest (the conveyor); (3) a same-class run at an end, wipe it
+        together; (4) spread at most 3002, double; (5) hop an end group by the
+        first collision-free amount.  Dive side first, nearest target on ties --
+        conventions the r <= 5 mining found confluent.
         """
         tops = self.tops
         m = len(tops)
@@ -575,13 +529,8 @@ class _FoldLedger:
     def step(self, op: _FoldOp) -> bool:
         """Apply one concrete op, or ``False`` where the move algebra refuses it.
 
-        A wipe relocates its victims by ``amount`` and merges them onto one
-        wiped point -- in absolute terms the survivors stay and the landing
-        is inserted at ``ref + amount`` (dive) or ``ref - amount`` (rise) --
-        the doubling scales everything, and the same span guard applies.
-        Divergence from the interpreter is caught downstream either way:
-        the emitter mirrors every row and asserts at each step, so a plan
-        built on wrong arithmetic cannot emit.
+        The landing is inserted at ``ref +- amount``; the emitter mirrors every
+        row and asserts at each step, so wrong arithmetic cannot emit.
         """
         kind, k, amount, _vids = op
         tops = self.tops
@@ -654,17 +603,9 @@ def _fold_reduce(
 ) -> list[_FoldOp] | None:
     """Run the rules to a ``done`` state, or ``None`` where they dead-end.
 
-    The extent pre-pass comes first, as it always has: a group with extent
-    can be neither a landing target nor a merge, so every spanned group is
-    wiped once -- at the first collision-free amount rather than a fixed
-    ``cmin``, for the same reason as case 5 above.  ``budget`` defaults to
-    the derived latency guard recorded on :data:`_FOLD_STEP_SLOPE`; the
-    corpus never reaches it, and a rules dead-end returns ``None`` through
-    the same refusal path the search used.
-
-    The two shipped ``done`` predicates are read off the ledger's counters;
-    any other callable is given the tuple state it expects, at the cost of
-    materialising it per step.
+    Spanned groups are wiped first at the first collision-free amount.
+    ``budget`` defaults to :data:`_FOLD_STEP_SLOPE`'s guard, never reached
+    by the corpus.
     """
     ledger = _FoldLedger.from_state(state)
     if done is _fold_done:
@@ -775,28 +716,13 @@ _FOLD_STEP_SLACK = 16
 def _fold_served(r: int, delta: int, pat1: int) -> bool:
     """Whether the three-phase construction serves this run-length word.
 
-    ``r`` is the number of runs and the pair is ``(delta, pat[1])``; a word
-    this rejects falls through to the rule construction, which is what
-    happens for every ``r >= 6``.
-
-    The second clause is not a budget but an identity.  ``delta`` is set
-    when every middle index ``{(r - 1) // 2, r // 2}`` of the pattern is
-    ``1``, and for ``r`` of 2, 3 and 4 that index set *contains* index 1 --
-    so ``delta`` implies ``pat[1]``, and the three keys ``(2, 1, 0)``,
-    ``(3, 1, 0)`` and ``(4, 1, 0)`` name states that cannot be built.  The
-    converse does not hold and the clause is one-directional: ``(2, 0, 1)``
-    and ``(4, 0, 1)`` are both reachable, because a middle index other than
-    1 can be the ``0`` that clears ``delta``.  At ``r == 3`` the only middle
-    *is* index 1, so there the implication runs both ways and ``(3, 0, 1)``
-    is unreachable too.  At ``r == 5`` the middles are ``{2}`` alone, which
-    frees index 1 entirely.
-
-    This replaced a twelve-entry table of exactly these keys.  The set was
-    recorded as a corpus measurement -- "the four combinations absent here
-    never arise" -- but nothing about it depends on a corpus: enumerating
-    every pattern to ``r == 12`` reproduces the tabulated set exactly, and
-    the four absences are structural.  ``test_fold_served_is_reachability``
-    re-derives it.
+    ``r`` runs and ``(delta, pat[1])``; a rejected word (every ``r >= 6``)
+    falls to the rule construction.  The second clause is an identity, not
+    a budget: for ``r`` of 2, 3, 4 the middle index set contains 1, so
+    ``delta`` implies ``pat[1]`` and ``(r, 1, 0)`` is unbuildable; at
+    ``r == 3`` the implication runs both ways.  Replaced a twelve-entry
+    table; enumerating to ``r == 12`` reproduces it
+    (``test_fold_served_is_reachability``).
     """
     if not 2 <= r <= 5:
         return False
@@ -810,15 +736,10 @@ def _fold_served(r: int, delta: int, pat1: int) -> bool:
 def _fold_skeleton(r: int, delta: int, pat1: int) -> tuple[tuple[str, int, str], ...]:
     """Plan the reduction of an ``r``-run word: peel, park, close.
 
-    *Peel* the ends inward with alternating ``d1``/``u2`` wipes at ``cmax``,
-    *park* with one wipe at ``cmin`` and then double, and *close* with a wipe
-    onto a landing followed by ``cmax`` wipes ending at ``k == 2``.  ``delta``
-    -- set when the middle runs are long -- adds one peel step, which is the
-    ``+1`` of the cost form.  The first move's direction follows which side
-    carries the long run: dive when it sits low, rise when high.
-
-    Below four runs the ends meet before the workspace runs out, so there is
-    nothing to park and the plan is the peel alone.
+    Peel the ends inward with alternating ``d1``/``u2`` at ``cmax``, park
+    with one wipe at ``cmin`` then double, close with a landing then ``cmax``
+    wipes to ``k == 2``; ``delta`` adds one peel.  Below four runs the plan
+    is the peel alone.
     """
     if r == 2:
         opening: list[tuple[str, int, str]] = [("d" if pat1 else "u", 1, "cmax")]
@@ -853,11 +774,7 @@ def _fold_skeleton(r: int, delta: int, pat1: int) -> tuple[tuple[str, int, str],
 def _fold_geometry(
     state: _FoldState, kind: str, k: int
 ) -> tuple[int, int, list[tuple[int, int, str]], str] | None:
-    """Return ``(cmin, cmax, survivor tops, victim class)`` for a wipe.
-
-    Mirrors the window :func:`_fold_moves` computes, so a symbolic amount can
-    be resolved against a state without enumerating that state's moves.
-    """
+    """Return ``(cmin, cmax, survivor tops, victim class)`` for a wipe."""
     if kind == "d":
         asc = sorted(state, key=lambda t: t[0])
         vic, surv = asc[:k], asc[k:]
@@ -882,10 +799,7 @@ def _fold_resolve(
 ) -> tuple[_FoldOp, _FoldState] | None:
     """Turn one symbolic step into a concrete move on ``state``.
 
-    A landing is the semantic content of a step -- it is the merge -- so it
-    is matched first, by the survivor index the symbol names; the index is
-    what transfers between words of one pattern.  ``cmax`` and ``cmin`` fall
-    back in that order.
+    A landing is matched first by survivor index; ``cmax`` and ``cmin`` fall back.
     """
     want: int | None = None
     if sym != "m":
@@ -914,11 +828,7 @@ def _fold_resolve(
 def _fold_construct(state: _FoldState) -> list[_FoldOp] | None:
     """Emit a plan from the state's run-length word, or ``None``.
 
-    No enumeration, no beam and no backtracking: the plan is read from
-    :func:`_fold_skeleton` and each amount is solved against the live
-    state, so the work is one geometry computation per op.  Returns ``None``
-    when the pattern is not tabulated or a step does not resolve, and the
-    caller falls through to the rule construction.
+    One geometry computation per op, read from :func:`_fold_skeleton`.
     """
     st = _fold_norm(list(state))
     if _fold_done(st):
@@ -945,24 +855,13 @@ def _fold_construct(state: _FoldState) -> list[_FoldOp] | None:
 def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
     """Plan a full reduction, or ``None`` where no rule applies.
 
-    The plan is *constructed* either way now.  Where the table's run-length
-    word is one :func:`_fold_served` accepts -- every word of at most
-    five runs -- the skeleton names the plan outright, byte-stable with what
-    always shipped.  Everywhere else :func:`_fold_reduce` runs the rules of
-    :func:`_fold_rule_move` to two points.  The best-first search and the
-    greedy descent that stood here are gone: over every state compared --
-    all 254 non-constant three-input tables, 200-table four-input and
-    150-table five-input samples plus parity, majority and the alternator
-    at each -- the rules and the descent accept exactly the same set, and
-    every rules-built table re-executes on the interpreter at one fill
-    width, three through six inputs, plus eight, ten, eleven, and the
-    twelve-input interleaved route.
-
-    A state of at most two runs is a threshold state -- one class wholly
-    below the other, whatever the runs' extents, provided the extents do
-    not overlap -- and the emitter's endgame prints it directly, so the
-    plan is empty.  That is what makes ``AND``, majority and every minterm
-    a few dozen characters: on the popcount ladder they open as two runs.
+    Words of at most five runs take the skeleton (byte-stable); the rest run
+    :func:`_fold_rule_move` to two points.  The search and greedy descent are
+    gone: over all 254 non-constant three-input tables, 200 four-input, 150
+    five-input plus parity, majority and the alternator, the rules accept the
+    same set, and every rules-built table re-executes at n = 3..6, 8, 10, 11
+    and the twelve-input route.  A two-run state is a threshold state with
+    an empty plan, which is why ``AND`` and majority are a few dozen characters.
     """
     if len(state) <= 2 and all(
         low[0] < high[0] - high[1] for high, low in pairwise(state)
