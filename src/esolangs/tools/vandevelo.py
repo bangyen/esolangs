@@ -20,15 +20,31 @@ entry at n=8..12 (9,397 at dense n=10 against the retired per-row
 spelling's 36,829); the parity table is one hyperplane and collapses from
 52,821 characters to 259.
 
-A cube's guard needs one part per constraint.  Constraints come out of
-Gaussian elimination in reduced form, so each is a parity of at most
-``dim + 1`` inputs; single-input constraints test the input name directly
-and wider ones live in strict register bindings (``A ~> a?``,
-``A ~> A? != b?``) that later clauses morph one toggle at a time instead
-of respelling.  Register upkeep is the one piece with no O(T) proof --
-its worst case is O(T log log T) from the ``dim + 1`` width bound -- and
-the measured upkeep share stays under half of the emitted text.
+A cube's guard needs one part per constraint, and any basis of the cube's
+dual space will do.  :func:`_constraints` builds one from short relations:
+all but at most ``1 + 2**((dim + 1) / 2)`` constraints are parities of at
+most four inputs, the rest come from reduced elimination at most ``dim +
+1`` wide, so a clause's constraints weigh at most ``4 * n + (dim + 1) * (1
++ 2**((dim + 1) / 2))`` inputs in total.  Single-input constraints test
+the input name directly and wider ones live in strict register bindings
+(``A ~> a?``, ``A ~> A? != b?``) that later clauses morph one toggle at a
+time instead of respelling; a fresh register costs one line per input of
+its parity and a morph strictly fewer, so upkeep never exceeds the total
+constraint weight.  Summed over the peel, ``4 * n`` per clause is ``4 * n
++ 36 * 2**n`` by the clause bound, and the second term is at most ``4 *
+2**dim`` per clause, hence ``4 * 2**n`` over the disjoint cubes.  Register
+upkeep is therefore O(T) -- under ``40 * 2**n + 4 * n`` lines -- and its
+measured share stays under half of the emitted text.  The bank holds at
+most ``n**2`` registers (:func:`_bank_cap`), so a register name is never
+longer than two input names and a full bank respells its least recently
+used free register at the same cost as a fresh one.  The reduced-echelon
+basis alone would not give this: on a cube whose columns spread over
+``2**dim`` values it weighs ``n * dim / 2`` however the pivots are
+chosen, which is ``Theta(T log log T)`` at the ``log2(n)`` dimensions the
+peel produces.
 """
+
+from functools import cache
 
 from esolangs.tools.helpers import _validate_truth_table
 
@@ -42,6 +58,19 @@ _RESERVED = {"Inp", "Nil", "l", "loop"}
 # cap -- a missed direction only costs cover size -- and 48 keeps the
 # popular-difference scan linear in the remainder instead of quadratic.
 _CANDIDATE_CAP = 48
+
+
+def _bank_cap(n: int) -> int:
+    """Live registers allowed for an ``n``-input table.
+
+    Uncapped, the bank grows with the peel -- 7 registers at n=6 to 117 at
+    n=13, about ``2**(n/2)`` -- and names for that many registers would put
+    a factor of ``n`` on every reference.  ``n**2`` keeps a register name
+    within twice an input name's length, always leaves a free register (a
+    clause binds at most ``n - 1``), and never binds at measured sizes;
+    ``n`` or ``2 * n`` would cost 40% and 23% at n=13 in forced respelling.
+    """
+    return n * n
 
 
 def _name(index: int) -> str:
@@ -65,18 +94,77 @@ def _points(mask: int) -> list[int]:
     return out
 
 
+@cache
+def _lanes(n: int) -> tuple[int, ...]:
+    """Lane mask per bit: every other ``2**b``-wide block of ``2**n`` bits."""
+    return tuple(
+        int(("0" * (1 << b) + "1" * (1 << b)) * (1 << (n - b - 1)), 2) for b in range(n)
+    )
+
+
 def _shift(mask: int, v: int, n: int) -> int:
     """Return the point-set ``mask`` with every point XORed by ``v``.
 
     One block swap per set bit of ``v``: bit ``b`` of the point index
-    swaps adjacent 2**b-wide lanes of the 2**n-bit mask.
+    swaps adjacent 2**b-wide lanes of the 2**n-bit mask.  The lanes are
+    built once per ``n``: spelling each as a ``2**n``-character string on
+    every call was the whole build cost at twelve inputs, 1.06 of 1.30
+    seconds over 48,837 calls, and made a dense build grow x3.6 per added
+    input.  Candidates are low-weight, so the walk is over ``v``'s set bits
+    rather than all ``n`` positions.
     """
-    for b in range(n):
-        if v >> b & 1:
-            width = 1 << b
-            lane = int(("0" * width + "1" * width) * (1 << (n - b - 1)), 2)
-            mask = ((mask & lane) << width) | ((mask >> width) & lane)
+    lanes = _lanes(n)
+    while v:
+        width = v & -v  # the lowest set bit of ``v`` is that lane's width
+        lane = lanes[width.bit_length() - 1]
+        mask = ((mask & lane) << width) | ((mask >> width) & lane)
+        v ^= width
     return mask
+
+
+def _nearest_differences(b_mask: int, pivot: int, seen: set[int], n: int) -> list[int]:
+    """Return the :data:`_CANDIDATE_CAP` nearest differences from ``pivot``.
+
+    Smallest by ``(bit_count, value)``, skipping ``seen``: the head of the
+    sorted list of every ``pivot ^ p`` for ``p`` in the set.  Listing the
+    whole set to take its head cost the set's size once per round, and a
+    cube's first round works on the entire remainder, so the peel paid
+    Theta(T) per cube -- quadratic over the ``T / n`` cubes and the whole
+    of a dense twelve-input build's growth.  Instead the differences are
+    walked in exactly that order -- each weight's values ascending, by
+    Gosper's next-permutation step -- testing membership, so a dense set
+    yields its head after about ``cap / density`` probes.  When the probes
+    would outnumber the set's points the set is sparse and the listing is
+    the cheaper way, so the walk hands over to it; the answer is the same
+    either way.
+    """
+    limit = 1 << n
+    budget = b_mask.bit_count()
+    out: list[int] = []
+    probes = 0
+    for weight in range(1, n + 1):
+        v = (1 << weight) - 1
+        while v < limit:
+            probes += 1
+            if probes > budget:
+                break
+            if b_mask >> (pivot ^ v) & 1 and v not in seen:
+                out.append(v)
+                if len(out) == _CANDIDATE_CAP:
+                    return out
+            low = v & -v
+            ripple = v + low
+            v = ripple | (((v ^ ripple) >> 2) // low)
+        else:
+            continue
+        break
+    else:
+        return out  # every weight walked: the whole set was probed
+    diffs = sorted(
+        (pivot ^ p for p in _points(b_mask) if pivot ^ p not in seen),
+        key=lambda v: (v.bit_count(), v),
+    )
+    return diffs[:_CANDIDATE_CAP]
 
 
 def _popularities(b_mask: int, n: int) -> list[int]:
@@ -129,11 +217,7 @@ def _cube(rest: int, n: int, pool: list[int]) -> tuple[int, list[int]]:
             if v not in seen and v < (1 << n):
                 cands.append(v)
                 seen.add(v)
-        diffs = sorted(
-            (pivot ^ p for p in _points(b_mask) if pivot ^ p not in seen),
-            key=lambda v: (v.bit_count(), v),
-        )
-        cands.extend(diffs[:_CANDIDATE_CAP])
+        cands.extend(_nearest_differences(b_mask, pivot, seen, n))
         best_v, best_c = 0, 0
         for v in cands:
             count = (b_mask & _shift(b_mask, v, n)).bit_count()
@@ -154,11 +238,12 @@ def _cube(rest: int, n: int, pool: list[int]) -> tuple[int, list[int]]:
     return base, dirs
 
 
-def _constraints(base: int, dirs: list[int], n: int) -> list[tuple[int, int]]:
-    """Dual constraints pinning ``base + span(dirs)``: ``(parity, value)``.
+def _echelon(dirs: list[int], n: int) -> list[int]:
+    """Reduced-echelon basis of the constraint space of ``span(dirs)``.
 
     Reduced elimination keeps each dual to one free coordinate plus bits on
-    the ``len(dirs)`` pivots, so no constraint is wider than ``dim + 1``.
+    the ``len(dirs)`` pivots, so no vector is wider than ``dim + 1``.  Only
+    the completion step of :func:`_constraints` needs it.
     """
     pivots: dict[int, int] = {}
     for row in dirs:
@@ -182,6 +267,62 @@ def _constraints(base: int, dirs: list[int], n: int) -> list[tuple[int, int]]:
             if prow >> free & 1:
                 w ^= 1 << bit
         duals.append(w)
+    return duals
+
+
+def _constraints(base: int, dirs: list[int], n: int) -> list[tuple[int, int]]:
+    """Dual constraints pinning ``base + span(dirs)``: ``(parity, value)``.
+
+    A constraint is a set of inputs whose ``dirs``-columns (the vector of
+    the set's bits across the directions) sum to zero, and any basis of
+    those sets pins the cube.  This one is built from short relations:
+    inputs are scanned in order and kept in a *core* while no one-to-four
+    of the core's columns sum to zero; every other input's column is, by
+    maximality, a sum of at most three core columns, giving it a relation
+    of weight at most four that no other relation shares its bit with.
+    The core's pairwise column sums are distinct and nonzero in
+    ``2**dim - 1`` values, so it holds at most ``1 + 2**((dim + 1) / 2)``
+    inputs, and the ``|core| - dim`` relations still missing come from
+    the reduced-echelon basis, each at most ``dim + 1`` wide.
+
+    A cube's constraints therefore weigh at most
+    ``4 * n + (dim + 1) * (1 + 2**((dim + 1) / 2))`` in total, against
+    ``(n - dim) * (dim + 1)`` for the echelon basis alone, which is what
+    the module docstring's O(T) upkeep bound sums.
+    """
+    dim = len(dirs)
+    cols = [sum((v >> j & 1) << i for i, v in enumerate(dirs)) for j in range(n)]
+    # Sums of one to three core columns, mapped to the set of inputs summed.
+    sums: dict[int, int] = {}
+    core: list[int] = []
+    duals: list[int] = []
+    for j, col in enumerate(cols):
+        if col == 0:
+            duals.append(1 << j)
+        elif col in sums:
+            duals.append(sums[col] | 1 << j)
+        else:
+            singles = [(cols[c], 1 << c) for c in core]
+            pairs = [(a ^ b, x | y) for a, x in singles for b, y in singles if x < y]
+            for value, inputs in [(col, 1 << j)] + [
+                (col ^ a, 1 << j | x) for a, x in singles + pairs
+            ]:
+                sums.setdefault(value, inputs)
+            core.append(j)
+    # A short relation's leading bit is its own input -- the core inputs it
+    # sums are all earlier -- so the relations are independent as they
+    # stand.  Complete to a basis from the echelon duals, keeping each only
+    # when it is independent of what came before.
+    reduced = {w.bit_length() - 1: w for w in duals}
+    for w in _echelon(dirs, n):
+        cur = w
+        while cur and (cur.bit_length() - 1) in reduced:
+            cur ^= reduced[cur.bit_length() - 1]
+        if cur:
+            reduced[cur.bit_length() - 1] = cur
+            duals.append(w)
+    if len(duals) != n - dim:  # pragma: no cover - a basis has n - dim rows
+        raise AssertionError("constraint basis has the wrong rank")
     return [(w, (w & base).bit_count() % 2) for w in duals]
 
 
@@ -235,6 +376,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                 )
                 if exact is not None:
                     register = exact
+                    bank[register] = bank.pop(register)  # most recently used
                 else:
                     nearest: str | None = None
                     distance = w.bit_count()
@@ -244,30 +386,32 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                         d = (held ^ w).bit_count()
                         if d < distance:
                             nearest, distance = r, d
-                    if nearest is None:
+                    if nearest is not None:
+                        register = nearest
+                        toggles = _points(bank.pop(register) ^ w)
+                    elif len(bank) < _bank_cap(n):
                         register = _name(next_register)
                         next_register += 1
-                        bits = _points(w)
-                        first, rest_bits = ref(bits[0]), bits[1:]
+                        toggles = _points(w)
+                    else:
+                        # Bank full: respell the least recently used free
+                        # register, which costs what a fresh one would.
+                        register = next(r for r in bank if r not in used)
+                        del bank[register]
+                        toggles = _points(w)
+                    if nearest is None:
+                        first, toggles = ref(toggles[0]), toggles[1:]
                         lines.append(
                             f"{register}~>{first}?"
                             if compact
                             else f"{register} ~> {first}?"
                         )
-                        for b in rest_bits:
-                            lines.append(
-                                f"{register}~>{register}?!={ref(b)}?"
-                                if compact
-                                else f"{register} ~> {register}? != {ref(b)}?"
-                            )
-                    else:
-                        register = nearest
-                        for b in _points(bank[register] ^ w):
-                            lines.append(
-                                f"{register}~>{register}?!={ref(b)}?"
-                                if compact
-                                else f"{register} ~> {register}? != {ref(b)}?"
-                            )
+                    for b in toggles:
+                        lines.append(
+                            f"{register}~>{register}?!={ref(b)}?"
+                            if compact
+                            else f"{register} ~> {register}? != {ref(b)}?"
+                        )
                     bank[register] = w
                 used.add(register)
                 part = register

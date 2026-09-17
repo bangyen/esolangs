@@ -6,10 +6,12 @@ import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
+from typing import Any
 from urllib.parse import quote
 
 from esolangs import tools as _boolean
 from esolangs.exceptions import UnknownLanguageError
+from esolangs.tools.helpers import MOST_INPUTS, Setters
 
 # Display names whose canonical id cannot be produced by the slug rules
 # (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``).
@@ -569,8 +571,8 @@ def example_stems() -> dict[str, str]:
 def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     """Return canonical id -> the substitution that instantiates a template.
 
-    A *parameterized* generator returns a program with ``{Xi}`` slots rather
-    than one that reads its inputs, and the slots are filled with that
+    A *parameterized* generator returns a program with one run of ``$``
+    per input rather than one that reads its inputs, and the runs are filled with that
     language's own code for setting an input.  Each committed example
     already carries that substitution as its ``fill``, so this is the
     existing recipe exposed rather than a second list to keep in step.
@@ -578,10 +580,10 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     Membership here is the definition of "parameterized" used everywhere in
     the package, and it is derived rather than written down for a measured
     reason: the same set taken from ``parameterized.__all__`` omits Home
-    Row, whose generator emits ``{X0}`` all the same, and the three
+    Row, whose generator emits the runs all the same, and the three
     hand-kept lists in the docs each named a different subset.  ``fill`` is
     the only spelling that matches what the generators actually emit -- 17
-    languages, checked against a ``{Xi}`` search over all 65.
+    languages, checked against the runs over all 65.
     """
     from esolangs.tools import examples as _examples
 
@@ -590,6 +592,101 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
         for stem, example in _examples.BOOLEAN_EXAMPLES.items()
         if example.fill is not None
     }
+
+
+def _examples_by_id() -> dict[str, Any]:
+    from esolangs.tools import examples as _examples
+
+    return {
+        canonical_id(stem.replace("-", " ")): example
+        for stem, example in _examples.BOOLEAN_EXAMPLES.items()
+        if example.setters is not None
+    }
+
+
+def template_char(language_id: str) -> str | None:
+    """Return the character ``language_id``'s templates spell inputs with."""
+    example = _examples_by_id().get(language_id)
+    return None if example is None else example.char
+
+
+def template_body(language_id: str, text: str) -> str:
+    """Return ``text`` without the header a template carries for its setters.
+
+    %^2^-1's template names each input's two branches in a header the
+    interpreter never sees; every other language's template is all program.
+    """
+    body = _examples_by_id()[language_id].body
+    return text if body is None else body(text)
+
+
+def template_setters(language_id: str, template: str, n: int) -> Setters:
+    """Return the ``(zero, one)`` pairs ``template`` fills its ``n`` inputs with.
+
+    ``template`` is the generator's own output (slots, before rendering)
+    or the rendered run form -- the setters read what they need from it,
+    which for %^2^-1 is its header and for the two-route generators the
+    route's prefix.
+    """
+    example = _examples_by_id()[language_id]
+    return example.setters(template, n)
+
+
+def render_template(
+    language_id: str, slots: str, n: int, width: int | None = None
+) -> tuple[str, str, Setters]:
+    """Return the public template for a generator's slot-marked output.
+
+    ``(text, char, setters)``: the text, with each input a run of the
+    language's character as long as input ``i``'s setter, the
+    character, and the pairs.  With a ``width`` the text is wrapped first,
+    each input spelled as its own mark so the wrapper keeps every run whole
+    and apart from its neighbour; a run is its setter's exact length, so
+    the wrapped template is the wrapped form of every program it fills to
+    -- the same breaks on every row.
+    """
+    from esolangs.tools.helpers import render, unmark
+    from esolangs.tools.wrap import wrap_program
+
+    char = template_char(language_id)
+    assert char is not None, f"{language_id} reads its inputs"
+    setters = template_setters(language_id, slots, n)
+    if width is None:
+        return render(slots, char, setters), char, setters
+    wrapped = wrap_program(render(slots, None, setters), language_id, width)
+    return unmark(wrapped, char, n), char, setters
+
+
+#: The most inputs :func:`recover_setters` searches for; past this every
+#: generator is capped by its own table size.
+_MOST_INPUTS = MOST_INPUTS
+
+
+def recover_setters(language_id: str, template: str) -> Setters:
+    """Return the pairs a plain run-form ``template`` was rendered from.
+
+    A template read back from a file carries no pairs, but the language's
+    setters are a function of the input count alone (plus the text, for the
+    header and route cases), and the runs' total length grows with the
+    count -- every generator spells more with more inputs -- so the count
+    is the one value at which the widths sum to what the text holds.  The
+    runs are then checked against it like any other template.
+    """
+    from esolangs.tools.helpers import runs
+
+    char = template_char(language_id)
+    assert char is not None
+    total = template.count(char)
+    for n in range(1, _MOST_INPUTS + 1):
+        setters = template_setters(language_id, template, n)
+        if sum(len(zero) for zero, _one in setters) != total:
+            continue
+        runs(template, char, setters)  # refuses a shape the widths do not fit
+        return setters
+    raise ValueError(
+        f"no input count makes this text a {language_id} template: it has "
+        f"{total} of {char!r}"
+    )
 
 
 def parameterized_ids() -> frozenset[str]:

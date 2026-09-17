@@ -553,6 +553,7 @@ _MINTERM_SHAPED = {
 # collapsed structure.  Reordering does not become applicable to them the way
 # it would if they had grown a tree, which is why they are neither list.
 _REDUCING = {
+    "cod",
     "home_row",
     "nocomment",
     "rotfuck",
@@ -560,10 +561,17 @@ _REDUCING = {
     "super_snusp",
 }
 
-# ``crement`` and ``nopstacle`` are likewise branch-free lookups: their
-# prototypes specialize the selected row while filling the input slots, then
-# emit one halt/diverge gadget, so every table of one arity has the same
-# template length.
+# ``nopstacle`` is a full tree of corridors that never folds: the table only
+# chooses which leaf gadget each column ends in, and both are the same size.
+#
+# ``minsky_swap`` is a branch-free lookup of the same class as
+# ``slow_acv_mammalian``: a stage per input adds its weight to the index
+# register, and a ``~`` cascade routes the index to its row, whose leaf is
+# one command for a zero and three for a one.  Every table of one arity and
+# one ones-count renders to the same length, so a 0% fold is the
+# construction working.  (Its earlier leaves were three or four commands
+# by whether the row's LSB matched its answer, which read as a fold on the
+# one-dependency table that *is* the LSB and on nothing else.)
 #
 # ``alight`` is a branch-free lookup of the same class as
 # ``ztoalc_l``: the inputs are folded into a row index by Horner's
@@ -572,11 +580,21 @@ _REDUCING = {
 # to exactly the same length.  A 0% fold is the construction working.
 # (ZTOALC L's chunked variant of the same fold keeps it in this list for
 # the same reason: lookup size does not track table shape.)
+#
+# ``a_painter_ant`` is a branch-free lookup of the same class: one white
+# corridor cell per row, one answer paint per one-row, and the inputs walk
+# the corridor by their weights, so two tables with the same ones-count
+# render to the same length and a 0% fold is the construction working.
+#
+# ``bio`` is a telescope of one nested level per row whatever the table
+# says; a one-dependency table only spares it the flat edges' adjustments,
+# which is 4.4% once the doubling between the input runs is in the text.
 _UNSHAPED = {
+    "a_painter_ant",
+    "bio",
     "alight",
+    "minsky_swap",
     "b_tapemark",
-    "cod",
-    "crement",
     "nopstacle",
     "wii2d",
     "minifuck",
@@ -768,8 +786,13 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # refuse and one_two_three's n=4..10 both shapes, which the mark respacing
 # cut by 82% overall.  Minifuck's Pascal inverse restored the n=9 contest.
 #
-# Ten still peaks at 637MB RSS on Circuit Diagram's n=10 dense table, 306MB
-# of program text.  That memory, not the time, is what keeps the band split:
+# Ten still peaks at 619MB RSS on Polynomial's n=10 dense table, 34MB of
+# program text (Circuit Diagram's H-layout, once the peak at 306MB of text,
+# is 8MB and 255MB RSS since it was sized from its lattice).  Of that RSS
+# only 154MB is ever live -- the last merge's 59M-digit product held as a
+# decimal, its C string and its Python copy at once -- and the rest is
+# pages the allocator keeps after freeing them.  That memory, not the
+# time, is what keeps the band split:
 # n <= _QUICK_ARITY runs in the default gate and the rest is marked slow.
 # Both bands assert the same thing; splitting them keeps the fast gate at
 # the 65 items and ~3s it had when this swept to five.
@@ -820,8 +843,8 @@ _ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {
 
 # The two table shapes every generator is built against.  A dense
 # pseudo-random table and parity fail *differently*: WII2D reaches n=10 on
-# parity but stops at n=9 dense, factor's digit budget runs out a rung
-# earlier on parity than on dense, and Polynomial's 1934-instruction cap
+# parity but stops at n=9 dense, factor's retired digit budget ran out a
+# rung earlier on parity than on dense, and Polynomial's 1934-instruction cap
 # refuses dense n=11 (2910) while parity fits far past it.  A single-shape
 # sweep reports the wrong ceiling for all three, which is why both shapes
 # are built at every arity and why the cap table is keyed by shape.
@@ -1057,13 +1080,13 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: them approximate, and asserting one here would fail whenever the machine
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
-    "Circuit Diagram": (7_910_330, 11_394_987, 1.4),
-    "COD": (294, 554, 1.9),
+    "Circuit Diagram": (1_780_773, 2_505_897, 1.4),
+    "COD": (942_668, 3_668_678, 3.9),
     "ROTfuck": (15_240, 29_472, 1.9),
-    "Polynomial": (3_383_048, 10_896_883, 3.2),
+    "Polynomial": (1_589_968, 5_016_851, 3.2),
     "SLOW ACV MAMMALIAN": (456_394, 798_829, 1.8),
     "bit~": (28_210, 56_676, 2.0),
-    "123": (22_988, 45_755, 2.0),
+    "123": (22_964, 45_728, 2.0),
     "Factor": (17_613, 36_339, 2.1),
 }
 
@@ -1079,7 +1102,6 @@ _LINEAR_SCALING = {
     "brainif",
     "circuit_diagram",
     "clockwise",
-    "cod",
     "container",
     "dig",
     "forth",
@@ -1097,8 +1119,17 @@ _LINEAR_SCALING = {
     "vandevelo",
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
+# ``ztoalc_l`` sits here for its placement, not its lookup: the commands
+# occupy values of one Collatz trajectory, so the last line grows
+# exponentially in the command count (x8.1 then x49 per input at n=9, 10).
+# ``nopstacle`` is Theta(n 2**n) by construction: one input per line, each
+# line as wide as the table, and one placeholder cannot fill an H-tree.
 _OPEN_SCALING = {
+    "cod",
+    "nopstacle",
     "polynomial",
+    "wii2d",
+    "ztoalc_l",
 }
 
 
@@ -1117,6 +1148,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "minifuck",
         "factor",
         "interprogck8",
+        "nopstacle",
         "polynomial",
         "addsubjump",
         "arrowqueue",
@@ -1136,6 +1168,8 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "slow_acv_mammalian",
         "streetcode",
         "vandevelo",
+        "wii2d",
+        "ztoalc_l",
     }
     classified = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
     assert classified == expected
@@ -1174,7 +1208,7 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
     is only worth having if it is checked, so this is the check.
 
     n=9 is the ceiling here on purpose: Circuit Diagram's deliberately roomy
-    H-layout is already 11.4MB there, and one more arity does not check its
+    H-layout is already 2.5MB there, and one more arity does not check its
     proved area recurrence better.
     """
     at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]

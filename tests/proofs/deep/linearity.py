@@ -23,8 +23,7 @@ Where the bound sits, measured on both sides:
   and Streetcode at x2.065, with everything else at or under x2.02;
 * the super-linear constructions this repository has already retired measured,
   single-step at n=8 -> 9 on parity, A Painter Ant x3.96, COD x3.89, Minifuck
-  x3.53 and 123 x2.43 -- the numbers still quoted in the roadmap's parity-sweep
-  paragraph, all of which this bound rejects.
+  x3.53 and 123 x2.43, all of which this bound rejects.
 
 So it has teeth on both sides and roughly a factor of two of headroom above
 today's worst honest construction.  It is a calibrated regression guard, not a
@@ -118,7 +117,6 @@ ARITY_OVERRIDE = {
     "b_tapemark": 11,
     "circuit_diagram": 10,
     "factor": 11,
-    "pct_squared_minus_one": 10,
     "polynomial": 9,
     "slow_acv_mammalian": 10,
     "streetcode": 10,

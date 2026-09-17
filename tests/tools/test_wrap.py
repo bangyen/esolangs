@@ -21,8 +21,9 @@ from dataclasses import replace
 
 import pytest
 
+import esolangs
 from esolangs import generate, run
-from esolangs.registry import LANGUAGES, canonical_id
+from esolangs.registry import LANGUAGES, canonical_id, template_body
 from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.examples import BooleanExample
 from esolangs.tools.wrap import (
@@ -50,6 +51,20 @@ from esolangs.tools.wrap import (
 # A 2-input table (XOR), which every boolean generator can build.  Used
 # where a test needs *a* program rather than the language's own example.
 TABLE = "0110"
+
+
+def _public(lang: object, table: str) -> str:
+    """What ``generate`` returns with no width: the generator's own output,
+    rendered to the public run form for a parameterized language."""
+    from esolangs.registry import parameterized_ids, render_template
+
+    assert lang.boolean is not None  # type: ignore[attr-defined]
+    text = lang.boolean(table)  # type: ignore[attr-defined]
+    if lang.id in parameterized_ids():  # type: ignore[attr-defined]
+        n = len(table).bit_length() - 1
+        return render_template(lang.id, text, n)[0]  # type: ignore[attr-defined]
+    return text
+
 
 # A third width, narrower than any a reader would ask for, because a broken
 # wrapper is not broken at every width.  Whether a break lands inside a
@@ -106,15 +121,16 @@ UNWRAPPABLE = {
     "cvnc": "the source must syllabify and a newline is in no syllable",
     "fargo": "each physical line is one command; expressions have no continuation",
     "minsky_swap": "only line 1 is code; line 2 gives its numeric jump distances",
+    "nopstacle": "the corridor tree and its bit runs occupy fixed grid coordinates",
     "alight": "a command is a word walked cell by cell; a row end cuts it",
     "super_snusp": "a row is a grid row; a break moves code, it does not reflow",
     "algebraic_programming_language": "a line with '=' defines, one without runs",
     "arrowqueue": "the queue and decision tree occupy fixed grid coordinates",
     "back": "the beam path and embedded input occupy fixed grid coordinates",
-    "cod": "the swimming path and answer strip occupy fixed grid coordinates",
     "brainif": "each line is one instruction and goto targets are line numbers",
     "collatz_multiverse": "each line is one complete register assignment",
     "container": "each line declares a container or one of its rules",
+    "crement": "each line is one instruction; jumps and patches name line numbers",
     "inject": "blocks and executable commands are delimited by source lines",
     "interprogck8": "each line is an instruction and relative jumps count lines",
     "ztoalc_l": "line numbers are the program's Collatz trajectory slots",
@@ -129,15 +145,16 @@ WIDTH_EXCEPTIONS = {
     for name in (
         "arrowqueue",
         "back",
-        "cod",
         "collatz_multiverse",
         "container",
+        "crement",
         "cvnc",
         "grapheme",
         "inject",
         "interprogck8",
         "minsky_swap",
         "nocomment",
+        "nopstacle",
     )
 }
 
@@ -387,9 +404,8 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     wrapper actually ships against.  Some are too terse to need a break at
     all (Sophie's is 37 characters, %^2^-1's is 5), so the table then grows
     until the program is long enough -- the way the text once did.  A
-    parameterized generator leaves a ``{X0}`` placeholder that its example's
-    ``fill`` replaces and the wrapper refuses, which is why the example
-    comes first rather than the grown table.
+    parameterized generator's template is never wrapped, so the grown
+    table is filled before the width is asked for.
     """
     example = _example(name)
     raw = example.build(width=None)
@@ -404,7 +420,7 @@ def test_every_wrapper_actually_fires(name: str) -> None:
         return
     structural = LANGUAGES[name].id in MULTILINE
     for arity in range(1, 5):
-        grown = generate(name, _table(arity))
+        grown = _grown(name, _table(arity), None)
         # A newline disqualifies a grown program only where it means layout.
         # A :data:`MULTILINE` language starts with a structural row its
         # wrapper keeps and folds the rest, so the question there is whether
@@ -413,42 +429,48 @@ def test_every_wrapper_actually_fires(name: str) -> None:
         # the whole program instead stops the search at the first arity whose
         # *header* pushes it past the width, which for %^2^-1 is an arity
         # whose body is still thirteen characters.
-        foldable = grown.split("\n", 1)[1] if structural else grown
+        foldable = grown.split("\n", 1)[1] if structural and "\n" in grown else grown
         if ("\n" in grown and not structural) or len(foldable) <= 40:
             continue
-        narrowed = generate(name, _table(arity), 40)
+        narrowed = _grown(name, _table(arity), 40)
         assert narrowed.count("\n") > grown.count("\n"), f"{name}: wrapper never fired"
         return
     pytest.fail(f"{name}: no table up to 4 inputs produced a program long enough")
 
 
+def _grown(name: str, table: str, width: int | None) -> str:
+    """A runnable program for ``table``: the template filled with zeros."""
+    if _example(name).fill is None:
+        return generate(name, table, width)
+    arity = len(table).bit_length() - 1
+    return esolangs.instantiate(name, generate(name, table), [0] * arity, width)
+
+
 @pytest.mark.parametrize("name", WRAPPED)
-def test_every_wrapper_fires_on_a_template_too(name: str) -> None:
-    """A parameterized language's *template* must wrap, not just its program.
+def test_a_template_wraps_as_every_program_it_fills_to(name: str) -> None:
+    """A width on a template gives every row the same breaks.
 
-    :func:`~esolangs.generate` hands the wrapper what the generator
-    returned, and for a parameterized language that is the template, ``{Xi}``
-    placeholders and all.  A token rule that does not know about ``{Xi}``
-    fails to tile it, and the wrappers here answer that by returning the
-    program untouched -- which reads as "it fits" and is not.
-
-    :func:`test_every_wrapper_actually_fires` cannot see this: it tries the
-    language's own example first and returns as soon as *that* wraps, and an
-    example is filled before it is wrapped.  BIO passed that way while
-    ``generate`` gave back a single 3466-column line at eight inputs.
+    Each input's run is exactly its setter's length and the wrapper keeps
+    it whole, so the wrapped template *is* the wrapped form of every
+    program it fills to: filled in place, no line changes length and no
+    break lands inside a setter -- and every row of the table has the same
+    shape under the width, which filling first and wrapping after could
+    not promise.
     """
     example = _example(name)
     if example.fill is None:
         pytest.skip(f"{name} is not parameterized; its template is its program")
     for arity in range(1, 5):
-        template = generate(name, _table(arity))
-        if "\n" in template or len(template) <= 40:
-            continue
-        assert generate(name, _table(arity), 40) != template, (
-            f"{name}: the wrapper left the template untouched"
-        )
-        return
-    pytest.skip(f"{name}: no table up to 4 inputs gives a template long enough")
+        wrapped = generate(name, _table(arity), 40)
+        shapes = set()
+        for combo in range(2**arity):
+            bits = [(combo >> (arity - 1 - i)) & 1 for i in range(arity)]
+            program = esolangs.instantiate(name, wrapped, bits, 40)
+            shapes.add(tuple(len(line) for line in program.split("\n")))
+        assert len(shapes) == 1, f"{name} at {arity}: rows wrap differently"
+        # %^2^-1's template carries a header that filling strips.
+        body = template_body(LANGUAGES[name].id, wrapped)
+        assert shapes.pop() == tuple(len(line) for line in body.split("\n"))
 
 
 @pytest.mark.parametrize(
@@ -460,11 +482,12 @@ def test_every_wrapper_fires_on_a_template_too(name: str) -> None:
 )
 # part of 6.7s: runs the wrapped program.
 @pytest.mark.medium
-def test_no_width_breaks_a_placeholder(name: str) -> None:
-    """No width may put a line break through the middle of a ``{Xi}``.
+def test_no_width_breaks_a_run(name: str) -> None:
+    """No width may put a line break through the middle of an input's run.
 
-    ``fill`` finds a placeholder by string replace, so a newline inside one
-    leaves it unfilled and the program reads the two halves as commands.
+    Filling walks the runs by the setters' widths, so a newline inside one
+    leaves a run short of its setter -- which the template's constructor
+    refuses, so ``generate`` at such a width would raise here.
 
     This is a *different* question from the one
     :func:`test_every_wrapper_fires_on_a_template_too` asks, and the reason
@@ -476,7 +499,7 @@ def test_no_width_breaks_a_placeholder(name: str) -> None:
     them satisfied the tiling check while doing it.
 
     The width sweep is exhaustive rather than sampled because the fault is
-    a coincidence between the width and where the placeholder happens to
+    a coincidence between the width and where a run happens to
     fall: Eval survives 40 and fails 10, so any fixed pair of widths is a
     coin toss.
     """
@@ -485,13 +508,12 @@ def test_no_width_breaks_a_placeholder(name: str) -> None:
         pytest.skip(f"{name} is not parameterized; it has no placeholder")
     for arity in range(1, 4):
         template = generate(name, _table(arity))
-        placeholders = [f"{{X{i}}}" for i in range(arity) if f"{{X{i}}}" in template]
         for width in range(4, 121):
             wrapped = generate(name, _table(arity), width)
-            for placeholder in placeholders:
-                assert wrapped.count(placeholder) == template.count(placeholder), (
-                    f"{name}: width {width} at {arity} inputs broke {placeholder}"
-                )
+            assert wrapped.inputs == template.inputs == arity, (name, width, arity)
+            assert wrapped.count(template.char) == template.count(template.char), (
+                f"{name}: width {width} at {arity} inputs lost a run"
+            )
 
 
 # Tables the generators take a *different path* on than parity.  The
@@ -590,9 +612,9 @@ def _laid_out(name: str, table: str, bits: str, width: int | None) -> str:
     Goes through the language's own example rather than calling the
     generator, because a width-honouring generator may also be
     *parameterized*: WII2D has no input command, so what it returns is a
-    template whose ``{Xi}`` placeholders the example's ``fill`` replaces.
-    Running the template instead would not fail -- the interpreter reads
-    ``{`` and ``X`` as no-ops and a digit as a load -- it would quietly
+    template whose input runs the example's ``fill`` replaces.  Running
+    the template instead would not fail -- the interpreter reads ``$`` as
+    a no-op -- it would quietly
     compute something unrelated, identically for every width, and the
     comparison would pass without ever testing a fold.
     """
@@ -640,7 +662,7 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
     "name",
     [
         pytest.param(name, marks=pytest.mark.slow)
-        if name in {"crement", "nopstacle", "streetcode", "vandevelo"}
+        if name in {"streetcode", "vandevelo"}
         else name
         for name in WIDTH_HONOURING
     ],
@@ -713,7 +735,7 @@ def test_width_honouring_languages_respect_the_width(name: str) -> None:
         program = generate(language.name, TABLE, width)
         assert max(map(len, program.split("\n"))) <= width
     # omitting the width is still the compact one-shot form
-    assert generate(language.name, TABLE) == language.boolean(TABLE)
+    assert generate(language.name, TABLE) == _public(language, TABLE)
 
 
 @pytest.mark.parametrize("name", WRAPPED)
@@ -725,7 +747,7 @@ def test_no_width_is_unchanged(name: str) -> None:
     """
     lang = LANGUAGES[name]
     assert lang.boolean is not None
-    assert generate(name, TABLE) == lang.boolean(TABLE)
+    assert generate(name, TABLE) == _public(lang, TABLE)
 
 
 def test_clockwise_is_never_reflowed() -> None:
@@ -806,7 +828,9 @@ def test_polynomial_carries_a_term_over_without_inventing_a_sign() -> None:
     This is what keeps the two kinds of row apart for a reader, now that a
     line is not always a whole term.
     """
-    program = generate("Polynomial", TABLE, DEFAULT_WIDTH)
+    # Four-input parity: XOR's coefficients no longer reach the width now
+    # that the generator spells itself on the cheap opcodes.
+    program = generate("Polynomial", "0110100110010110", DEFAULT_WIDTH)
     carried = [
         line for line in program.split("\n")[1:] if not line.startswith(("+ ", "- "))
     ]
@@ -875,40 +899,22 @@ def test_polynomial_keeps_a_sign_with_no_term_to_attach_to() -> None:
 
 
 def test_pct_header_terminator_matches_the_generator() -> None:
-    """:mod:`wrap` spells %^2^-1's header terminator; the generator owns it.
-
-    It is spelled rather than imported so that :mod:`wrap`, which otherwise
-    needs nothing but the standard library, does not pull the whole
-    ``esolangs.tools`` package in.  That is only safe with something
-    holding the two copies together.
-    """
+    """:mod:`wrap` spells %^2^-1's header terminator; the generator owns it."""
     from esolangs.tools.pct_squared_minus_one import _HEADER_END
 
     assert _PCT_HEADER_END == _HEADER_END
 
 
 def test_pct_folds_its_header_to_the_width() -> None:
-    """The header meets the width, at every arity -- it is not kept whole.
-
-    It used to be, on the grounds that it was structural.  It is structural
-    to ``fill``, which is *ours*, not to the interpreter, which never sees a
-    header -- so the template format changed and the header folds.  1407
-    columns at eight inputs, and it did not shrink with a narrower width
-    because nothing folded it.
-
-    A declaration is 175 characters and does not shrink with ``n``, so a
-    wrapper that broke only *between* declarations would still be over 80 at
-    every arity here.  That is why this checks the width rather than merely
-    checking that something folded.
-    """
+    """The header meets the width at every arity; the body's runs are 86 wide."""
     for arity in (2, 4, 6):
-        template = generate("%^2^-1", _table(arity))
         for width in (40, 80):
             wrapped = generate("%^2^-1", _table(arity), width)
-            assert _PCT_HEADER_END in wrapped, "the header and body ran together"
-            for line in wrapped.split("\n"):
-                assert len(line) <= width, f"{arity} inputs, width {width}: {len(line)}"
-        assert len(template.split("\n")[0]) > 80 or arity == 2
+            header, blank, body = wrapped.partition(_PCT_HEADER_END)
+            assert blank, "the header and body ran together"
+            assert all(len(line) <= width for line in header.split("\n"))
+            widest = max(len(zero) for zero, _one in wrapped.setters)
+            assert all(len(line) <= max(width, widest) for line in body.split("\n"))
 
 
 def test_pct_fill_is_unchanged_by_where_the_header_folded() -> None:
@@ -917,10 +923,6 @@ def test_pct_fill_is_unchanged_by_where_the_header_folded() -> None:
     ``fill`` discards the header's newlines before reading it, which is what
     lets the wrapper break *inside* a declaration -- and what keeps the two
     branches of a setter equal width in text as well as in commands.
-
-    The folds below deliberately include ones that land mid-declaration and
-    mid-branch, not just at a ``;``: those are the ones the stripping is
-    for, and a fold only at ``;`` would pass without it.
     """
     from esolangs.tools.pct_squared_minus_one import _HEADER_END, fill
 

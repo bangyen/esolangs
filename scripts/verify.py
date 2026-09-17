@@ -48,11 +48,13 @@ Usage:
 """
 
 import argparse
+import atexit
 import functools
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from fnmatch import fnmatch
 from pathlib import Path
@@ -149,7 +151,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "scripts/generate.py",
         "src/esolangs/tools/ztoalc_starts.py",
     ),
-    "duplicate-code check (pylint)": ("src/esolangs/", "scripts/", "tests/"),
+    "duplicate-code check (pylint)": ("src/esolangs/", "scripts/"),
     # The union of what the two proofs in this band read: ArrowQueue's lemmas
     # import the generator and nothing else, and BIO's also parse the emitted
     # program and instantiate it through the shipped fill.  The runner is in
@@ -175,13 +177,18 @@ STEPS = [
     # `--cov-report=` writes no report: the run is here for the data file,
     # which the touched-file gate reads afterwards.
     #
-    # `--cov-branch` is free on 3.14 (17.89s vs 17.81s without) but costs
-    # 3.3x before it, where sys.monitoring cannot measure branches and
-    # coverage falls back to the old tracer.  An older interpreter pays that
-    # silently rather than breaking, so if this ever feels slow again check
-    # the interpreter before the tests: coverage says so on stderr with a
-    # `no-sysmon` CoverageWarning.  Both timing tables are in
-    # ``the verification history``.
+    # Whole-package measurement is what a full run pays for: 13s over the
+    # 27s the fast selection takes bare, measured 2026-09-16 on 3.14 at
+    # 9861 tests (it read as free at half that suite).  A scoped run does
+    # not pay it -- `_scoped_coverage` narrows the measurement to the
+    # touched files, which is all the gate reads.
+    #
+    # `--cov-branch` costs 3.3x before 3.14, where sys.monitoring cannot
+    # measure branches and coverage falls back to the old tracer.  An older
+    # interpreter pays that silently rather than breaking, so if this ever
+    # feels slow again check the interpreter before the tests: coverage says
+    # so on stderr with a `no-sysmon` CoverageWarning.  Both timing tables
+    # are in ``the verification history``.
     ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     (
@@ -210,7 +217,11 @@ STEPS = [
         # pylint's R0801 reports similar blocks across files, catching
         # copy-pasted helpers like the bracket matcher or the OISC memory
         # tokenizer.  --ignore-imports keeps shared import blocks from
-        # counting as duplication.
+        # counting as duplication.  tests/ is left out: it doubled the line
+        # count and quadrupled the file pairs the O(files^2) comparison
+        # walks (53s -> 10s), and shared test scaffolding is not what the
+        # check is for.  No -j: this runs in pytest's shadow, and the 2s
+        # that workers save here they take back from its four.
         "duplicate-code check (pylint)",
         [
             *PY,
@@ -222,7 +233,6 @@ STEPS = [
             "--ignore-imports=yes",
             "src/esolangs",
             "scripts",
-            "tests",
         ],
     ),
     # The deep proofs cheap enough to gate locally: ArrowQueue's twelve named
@@ -355,12 +365,46 @@ def _scoped_cmd(name: str, cmd: list[str], changed: list[str]) -> list[str] | No
         return [c for c in cmd if c != "--all-files"] + ["--files", *files]
     if name == "pytest":
         paths = _pytest_scope(changed)
-        if paths == WHOLE_SUITE:
-            return cmd  # not localisable: run every test
         if not paths:
             return None  # nothing the Python tests cover moved
+        cmd = _scoped_coverage(cmd, changed)
+        if paths == WHOLE_SUITE:
+            return cmd  # not localisable: run every test
         return [*cmd, *paths]
     return cmd
+
+
+def _scoped_coverage(cmd: list[str], changed: list[str]) -> list[str]:
+    """Measure coverage over the touched source files only.
+
+    The gate that reads the data judges just the ``src/esolangs`` files the
+    branch touched, so measuring the whole package is overhead spent on files
+    nothing will look at.  Whole-package ``--cov --cov-branch`` costs 13s on
+    top of a 27s run; an ``include`` of the touched files costs nothing
+    measurable, because sys.monitoring never instruments the rest.  A branch
+    that touched no source file measures nothing at all -- the gate skips on
+    its own, having no targets.
+
+    coverage refuses ``include`` beside ``source`` (it warns and ignores the
+    include), so this cannot be a pyproject default; the rc is written for
+    the run and replaces the pyproject one for *measurement* only.  Reporting
+    is untouched: the gate reads the data through ``coverage json``, which
+    consults pyproject and so keeps ``exclude_lines``.
+    """
+    if "--cov" not in cmd:
+        return cmd
+    touched = [
+        f for f in changed if f.startswith("src/esolangs/") and f.endswith(".py")
+    ]
+    without = [c for c in cmd if c not in ("--cov", "--cov-branch", "--cov-report=")]
+    if not touched:
+        return without
+    fd, rc = tempfile.mkstemp(prefix="verify-coverage-", suffix=".rc")
+    with os.fdopen(fd, "w") as f:
+        f.write("[run]\ncore = sysmon\nbranch = True\ninclude =\n")
+        f.writelines(f"    {path}\n" for path in touched)
+    atexit.register(os.unlink, rc)
+    return [*without, "--cov", f"--cov-config={rc}", "--cov-report="]
 
 
 def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool, bool]:
@@ -676,7 +720,7 @@ def main() -> int:
             step_env = dict(step_env, SKIP="mypy")
         if only is None and name == "pytest":
             # A default run leaves the whole slow band to CI.  A --full run
-            # takes the band but not the two `weekly` probes inside it,
+            # takes the band but not the `weekly` probes inside it,
             # which are 142.6s of its ~182s and are sampled once a week by
             # `.github/workflows/weekly.yml` -- which runs bare `pytest`
             # rather than this script, so it is unaffected by either flag.

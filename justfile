@@ -18,7 +18,7 @@ help:
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
     @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen boolean/streetcode)"
     @echo "  proofs       - every executable proof: ledger obligations + all 65 deep proofs"
-    @echo "  apa-proof    - re-check the A Painter Ant uniform-in-n proof (1m20s)"
+    @echo "  apa-proof    - re-check the A Painter Ant uniform-in-n proof (15s)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
     @echo ""
@@ -143,7 +143,7 @@ proofs:
 # Not in `just test` or CI: what it guards moves only when APA's head, body,
 # or routing does, so run it then. L2's foreign-leaf sweep at n=9 is 57s of
 # the cost; the table enumeration is cheap.
-# re-check the A Painter Ant uniform-in-n proof (1m20s, single-threaded)
+# re-check the A Painter Ant uniform-in-n proof (15s, single-threaded)
 apa-proof:
     {{PYTHON}} tests/proofs/deep/a_painter_ant.py
 

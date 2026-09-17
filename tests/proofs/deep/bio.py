@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import itertools
 import random
-import re
 import sys
 from pathlib import Path
 
@@ -33,6 +32,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from esolangs.tools import bio
+from esolangs.tools.examples import _setters_bio
+from esolangs.tools.helpers import runs
 
 #: Cost band; see ``__main__.py``. Telescoping-lookup lemmas, cheap enough that
 #: scoping them is the only reason they are ever skipped.
@@ -44,6 +45,17 @@ COST = 0.2
 _RISE, _FALL = "0oy;", "1oy;"
 
 
+def lookup(program: str) -> str:
+    """The telescope: everything after the last input run.
+
+    The pack before it is the runs and the doublings between them, which
+    are loops of their own (``0ix{ 1ox; 0oy; 0oy; };`` is a level-shaped
+    text that adjusts nothing) and would be read as levels if the walk
+    started at the top.  Every lemma about the nesting reads from here.
+    """
+    return program[program.rfind("$") + 1 :]
+
+
 def levels(program: str) -> list[str]:
     """Recover the adjustment at each nesting level, outermost first.
 
@@ -53,6 +65,7 @@ def levels(program: str) -> list[str]:
     -- which is what puts the adjustments in increasing ``j`` order at runtime.
     """
     out: list[str] = []
+    program = lookup(program)
     i = program.find("0ix{")
     while i != -1:
         i += len("0ix{")
@@ -94,7 +107,7 @@ def check_l1(max_n: int = 7) -> list[str]:
             assert len(adjust) == size - 1, (
                 f"n={n}: recovered {len(adjust)} levels, expected {size - 1}"
             )
-            start = 1 if program.split(" ", n)[-1].startswith(_RISE) else 0
+            start = 1 if lookup(program).startswith(_RISE) else 0
             assert start == int(table[0]), (
                 f"n={n}: y starts at {start} but table[0] is {table[0]}"
             )
@@ -130,9 +143,11 @@ def check_l2(max_n: int = 9) -> list[str]:
     for n in range(1, max_n + 1):
         size = 1 << n
         table = "".join(rng.choice("01") for _ in range(size))
-        # The placeholders are spelled with braces too, so they have to go
-        # before the brace profile means anything.
-        program = re.sub(r"\{X\d+\}", "", bio(table))
+        # The pack (runs and the doublings between them) is cut off, so the
+        # brace profile reads straight off the telescope.
+        template = bio(table)
+        assert "{X" not in template, f"n={n}: template still carries {{Xi}} marks"
+        program = lookup(template)
         depth = 0
         returns_to_zero = 0
         for char in program:
@@ -178,11 +193,11 @@ def check_l3(max_n: int = 8) -> list[str]:
         table = "01" * ((1 << n) // 2) or "01"
         template = bio(table[: 1 << n])
         widths = set()
-        for i in range(n):
-            placeholder = "{X" + str(i) + "}"
-            assert template.count(placeholder) == 1, (
-                f"n={n}: {placeholder} embedded {template.count(placeholder)} times"
-            )
+        # One run of ``$`` per input, each as wide as its setter: ``runs``
+        # refuses a stray ``$`` or a run of the wrong width, so ``n`` spans
+        # is exactly one embedding per input.
+        spans = runs(template, "$", _setters_bio(template, n))
+        assert len(spans) == n, f"n={n}: {len(spans)} runs for {n} inputs"
         for bits in ("0" * n, "1" * n):
             filled = _fill(template, bits)
             widths.add(len(filled))
@@ -199,7 +214,7 @@ def _fill(template: str, bits: str) -> str:
     lambda with two symmetric branches is equal-width by construction, so a
     local copy would pass the lemma however the real one drifted.
     """
-    from esolangs.tools.examples import _fill_bio
+    from tests.tools.fills import _fill_bio
 
     return _fill_bio(template, [int(b) for b in bits])
 

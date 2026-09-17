@@ -7,7 +7,7 @@ CLI calls resolve a language name there, then follow the same pipeline:
 language name
     │
     ▼
-registry.Language ──► boolean generator ──► program or {Xi} template
+registry.Language ──► boolean generator ──► program or template
     │                                              │
     │                                      instantiate inputs
     ▼                                              │
@@ -24,8 +24,9 @@ shape, and optional boolean generator.  `resolve` normalizes caller spelling;
 one string or split into lines.
 
 `generate` calls the registered generator with a truth table.  Most generators
-return runnable source.  Languages that embed inputs return a `{Xi}` template;
-`instantiate` fills one copy per input row.  `encode_inputs` handles the other
+return runnable source.  Languages that embed inputs return a template, each
+input a run of `$` as long as its setter; `instantiate` fills one copy per
+input row.  `encode_inputs` handles the other
 languages' stdin conventions.  Generator code lives under
 `src/esolangs/tools/boolean/`.
 

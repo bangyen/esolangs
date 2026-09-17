@@ -88,6 +88,101 @@ def test_registers_are_reused_and_morphed_on_a_wide_table() -> None:
     assert "".join(results) == table
 
 
+def _spread_cube(n: int, dim: int) -> list[int]:
+    """Directions whose columns run through every nonzero value of F2^dim.
+
+    The worst shape for the echelon basis: each free coordinate's dual
+    picks up about half the pivots, so the basis weighs ``n * dim / 2``.
+    """
+    return [
+        sum(((j % (2**dim - 1) + 1) >> i & 1) << j for j in range(n))
+        for i in range(dim)
+    ]
+
+
+def _check_basis(dirs: list[int], n: int) -> list[int]:
+    from esolangs.tools.vandevelo import _constraints
+
+    duals = [w for w, _ in _constraints(0, dirs, n)]
+    assert len(duals) == n - len(dirs)
+    assert all((w & v).bit_count() % 2 == 0 for w in duals for v in dirs)
+    # independent: eliminate on leading bits
+    rows: dict[int, int] = {}
+    for w in duals:
+        while w and (w.bit_length() - 1) in rows:
+            w ^= rows[w.bit_length() - 1]
+        assert w
+        rows[w.bit_length() - 1] = w
+    return duals
+
+
+def test_constraints_weigh_four_per_input_plus_a_core() -> None:
+    """The O(T) upkeep bound rests on the per-clause constraint weight.
+
+    On a spread cube the echelon basis weighs ``n * dim / 2``; the short
+    relation basis stays under ``4 * n + (dim + 1) * (1 + 2**((dim+1)/2))``
+    with at most ``core - dim`` constraints wider than four inputs.
+    """
+    from esolangs.tools.vandevelo import _echelon
+
+    n, dim = 16, 4
+    dirs = _spread_cube(n, dim)
+    duals = _check_basis(dirs, n)
+    echelon = sum(w.bit_count() for w in _echelon(dirs, n))
+    assert echelon >= n * dim // 2
+    core = 1 + 2 ** ((dim + 1) / 2)
+    assert sum(w.bit_count() for w in duals) < echelon
+    assert sum(w.bit_count() for w in duals) <= 4 * n + (dim + 1) * core
+    assert sum(w.bit_count() > 4 for w in duals) <= core - dim
+
+
+def test_constraint_bound_holds_on_random_cubes() -> None:
+    import random
+
+    rng = random.Random(3)
+    for n in range(2, 14):
+        for dim in range(1, n):
+            for _ in range(4):
+                dirs: list[int] = []
+                span = {0}
+                while len(dirs) < dim:
+                    v = rng.randrange(1, 1 << n)
+                    if v not in span:
+                        dirs.append(v)
+                        span |= {s ^ v for s in span}
+                duals = _check_basis(dirs, n)
+                core = 1 + 2 ** ((dim + 1) / 2)
+                assert sum(w.bit_count() for w in duals) <= 4 * n + (dim + 1) * core
+                assert sum(w.bit_count() > 4 for w in duals) <= core - dim
+
+
+def test_a_full_bank_respells_its_least_recently_used_register(monkeypatch) -> None:
+    """The cap that keeps register names as short as input names.
+
+    ``n**2`` never binds at sizes this suite builds, so the cap is forced
+    down to ``n`` here: the bank must stay at ``n`` names, every clause
+    must still find a free register, and the program must still compute
+    the table.
+    """
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.vandevelo")
+    monkeypatch.setattr(module, "_bank_cap", lambda n: n)
+    table = "0011110011110111100001000000010001110110010000001111000111000111"
+    program = vandevelo(table)
+    lines = program.splitlines()
+    registers = {
+        line.split(" ~> ")[0] for line in lines if "~>" in line and "Inp" not in line
+    }
+    assert len(registers) == 6
+    assert (
+        sum("~>" in line and "!=" not in line and "Inp" not in line for line in lines)
+        > 6
+    )
+    results = (_result(program, bits) for bits in product(range(2), repeat=6))
+    assert "".join(results) == table
+
+
 def test_short_names_are_unique_and_skip_builtins() -> None:
     """The compact namespace does not shadow input, nil, or the loop."""
     from esolangs.tools.vandevelo import _RESERVED, _name

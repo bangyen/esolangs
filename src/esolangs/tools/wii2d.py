@@ -2,7 +2,7 @@
 
 WII2D is a no-input grid language, so this follows the parameterized
 convention described in :mod:`esolangs.tools.parameterized`: the
-template's ``{Xi}`` placeholders are junction cells the harness fills with
+template's input runs are junction cells the harness fills with
 ``>`` (bit 0) or ``v`` (bit 1), one program per input combination.
 
 The branch op strings are *constructed*, not searched.  Both halves are
@@ -15,20 +15,25 @@ widens a beam, or retries, so the program is a direct function of the table.
 """
 
 import heapq
-import re
 
 from esolangs.exceptions import GeneratorCapError
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.tools.helpers import _ASCII_ZERO, TEMPLATE_CHAR, _validate_truth_table
 
 __all__ = ["wii2d"]
+
+#: How each junction is set: ``>`` continues east for a zero, ``v`` takes
+#: the 1-branch below.  The template spells each input as a run of
+#: :data:`TEMPLATE_CHAR` this wide -- one grid cell, the junction's own.
+WII2D_ZERO, WII2D_ONE = ">", "v"
+_WII2D_INPUT = TEMPLATE_CHAR * len(WII2D_ZERO)
 
 
 # --- WII2D (no-input grid language; parameterized convention) ---
 #
 # WII2D's only I/O is the ``~`` output; it has no input command, so the
 # boolean generator follows the parameterized convention: the template's
-# ``{Xi}`` placeholders are junction cells, and the harness instantiates one
-# program per input combination by filling each placeholder with ``>`` (bit
+# input runs are junction cells, and the harness instantiates one
+# program per input combination by filling each junction with ``>`` (bit
 # 0, the pointer continues east) or ``v`` (bit 1, the pointer turns south).
 #
 # A full decision tree would need each input re-embedded at every node of its
@@ -530,23 +535,18 @@ def _wii2d_decode(pattern: list[int]) -> str | None:
 # the arithmetic offsets, then the digit and square merges, then the halving
 # ones, with Horner last.
 #
-# The order is *semantic*, not by cost, and the difference is measurable: it
-# holds 42 total-character inversions, the plainest being ``('', '0')`` at
-# one character sitting behind six two-character entries.  No sort key
-# reproduces it -- a sweep of 1.9M candidates over 63 features (field
-# lengths, per-character counts, weighted op costs, and their 1-to-3-deep
-# lexicographic compositions, both directions) found none monotone along the
+# The order is *semantic*, not by cost, and no sort key reproduces it: a
+# sweep of 1.9M candidates over 63 features found none monotone along the
 # shipped sequence, against a positive control that recovers 172 keys for a
-# deliberately sorted list.  Two adjacent pairs make that a proof rather
-# than a failed search: index 10 to 11 and index 17 to 18 both *descend* in
+# deliberately sorted list.  Two adjacent pairs make that a proof rather than
+# a failed search -- index 10 to 11 and index 17 to 18 both *descend* in
 # length, so no key monotone in total length can order this table.
 #
-# What the order buys is size, and it was tuned rather than derived:
-# permuting the merge entries (Horner pinned last) changes 360 of 392
-# emitted programs with zero errors, and the shipped order beats 7 of 8
-# random permutations on total size (57708 against up to 59557).  So it is a
-# measured preference over a structure that is already total -- reordering
-# costs characters, never correctness.
+# What the order buys is size, tuned rather than derived: permuting the merge
+# entries (Horner pinned last) changes 360 of 392 emitted programs with zero
+# errors, and the shipped order beats 7 of 8 random permutations on total
+# size (57708 against up to 59557).  Reordering costs characters, never
+# correctness.
 #
 # A chain junction is a pair ``(A, B)``: ``A`` transforms the accumulator
 # when the input is 0, ``B`` when it is 1.  The pair is shared by every path
@@ -567,16 +567,6 @@ def _wii2d_decode(pattern: list[int]) -> str | None:
 # set small and handing the final decode a narrower domain.  They are tried
 # in a fixed order and the first legal one is taken, so the chain is a single
 # pass with no backtracking and the program depends only on the table.
-#
-# That order is semantic, not by cost: ``('', '0')`` is one character and
-# still sits after three two-character entries, and sorting by total
-# characters -- with or without reset/star tiering, or a weighted op cost --
-# reproduces none of it.  It is a tuned preference over a set every member of
-# which is correct, so permuting it is a size regression rather than a bug:
-# permuting the twenty merge entries (Horner pinned last) changes 360 of 392
-# emitted programs with zero errors, and the shipped order beats 7 of 8
-# random permutations on total size.  Reordering therefore means re-running
-# that tuning, not just re-checking the tests.
 _WII2D_JUNCTIONS: tuple[tuple[str, str], ...] = (
     ("", ""),
     ("", "+"),
@@ -914,7 +904,7 @@ def _wii2d_layout(
 ) -> list[str]:
     """Lay out the junction chain template.
 
-    ``{Xi}`` placeholders on row 0, each branch's op cells on row 0 (bit 0)
+    Junction cells on row 0, each branch's op cells on row 0 (bit 0)
     or on a dedicated detour row below (bit 1), re-merging before the next
     junction.  Nothing is spaced apart: a merge sits directly on the column
     past the longer branch, the next junction directly past the merge, and
@@ -926,9 +916,8 @@ def _wii2d_layout(
     """
     # A junction is a single cell: the fill writes 'v' to take the 1-branch
     # or '>' to continue east, and nothing on row 0 occupies the column after
-    # it.  The '{Xi}' spelling is four characters only because that is how
-    # the placeholder is written, and instantiation gives the rest back.
-    placeholder_width = 1
+    # it.  The template spells it as a run exactly that wide.
+    placeholder_width = len(_WII2D_INPUT)
 
     placeholder_col = [0] * n
     # column 0 is always '>'; a start digit (the construction only ever
@@ -963,14 +952,13 @@ def _wii2d_layout(
     # on.
     #
     # Whether to fold at all is *not* decided here, and that is the point.
-    # ``flat_cols`` counts grid cells, while the program's width is counted
-    # in characters -- and a junction cell holds a ``{Xi}`` placeholder,
-    # which is four characters wide in the template.  Comparing the
+    # ``flat_cols`` counts grid cells; back when a junction cell held a
+    # four-character placeholder the two differed, and comparing the
     # requested width against the cell count declined to fold programs that
-    # rendered well past it: parity at ``n == 6`` is 80 cells and 92
-    # characters, so a request for 80 came back at 92.  :func:`wii2d`
-    # measures the rendered flat form and only asks for a fold when that is
-    # too wide, so this folds whenever it is given a width.
+    # rendered well past it (parity at ``n == 6`` was 80 cells and 92
+    # characters).  :func:`wii2d` measures the rendered flat form and only
+    # asks for a fold when that is too wide, so this folds whenever it is
+    # given a width.
     folded: dict[tuple[int, int], str] = {}
     total_cols = flat_cols
     if width is not None:
@@ -986,10 +974,8 @@ def _wii2d_layout(
     if start:
         grid[0][1] = str(start)
     for i in range(n):
-        # The junction's one cell, spelled out once the layout is finished:
-        # the placeholder's four characters are how it is written, not the
-        # room the junction needs, and the fill gives the difference back.
-        grid[0][placeholder_col[i]] = "\x00" + str(i) + "\x00"
+        # The junction's one cell: input i's run, as wide as either fill.
+        grid[0][placeholder_col[i]] = _WII2D_INPUT
         r0, r1 = routes[i]
         for k, ch in enumerate(r0):
             grid[0][placeholder_col[i] + placeholder_width + k] = ch
@@ -1009,10 +995,7 @@ def _wii2d_layout(
         for k, op in enumerate(print_op):
             grid[0][decode_start + shift_to_ascii_digit + k] = op
     grid[1][0] = "!"
-    rows = ["".join(row).rstrip() for row in grid]
-    return [
-        re.sub("\x00(\\d+)\x00", lambda m: "{X" + m.group(1) + "}", row) for row in rows
-    ]
+    return ["".join(row).rstrip() for row in grid]
 
 
 def wii2d(truth_table: str, width: int | None = None) -> str:
@@ -1023,17 +1006,15 @@ def wii2d(truth_table: str, width: int | None = None) -> str:
 
     ``width`` lays the program out to fit that many columns rather than
     reflowing it afterwards, which a grid cannot be.  What folds is the
-    48-cell run that shifts the answer to an ASCII digit -- a straight run
-    of one commutative op, so the fold needs nothing re-derived; see
-    :func:`_wii2d_fold_decode`.  What does not fold is the junction chain,
-    since each junction is where one input is embedded and each detour row
-    hangs beneath its own junction, so the chain's length plus one column is
-    the floor.  A width under it returns the narrowest program rather than
-    refusing, and a width at or above the unfolded form returns exactly what
-    no width returns.  At three inputs that is 71 columns down to 22.
+    48-cell run that shifts the answer to an ASCII digit (see
+    :func:`_wii2d_fold_decode`); what does not is the junction chain, since
+    each junction embeds one input and each detour row hangs beneath its own
+    junction, so the chain's length plus one column is the floor.  A width
+    under it returns the narrowest program rather than refusing.  At three
+    inputs that is 71 columns down to 22.
 
     WII2D has no input command, so this is a parameterized generator: the
-    template's ``{Xi}`` placeholders are junction cells that the harness
+    template's input runs are junction cells that the harness
     fills with ``>`` (bit 0) or ``v`` (bit 1), one program per input
     combination.  Each input is embedded exactly once: the junctions form a
     *merging chain* whose branch op cells transform the accumulator, so the
@@ -1054,20 +1035,18 @@ def wii2d(truth_table: str, width: int | None = None) -> str:
     ``2 ** (n - 1)``; that keeps majority-of-n and friends cheap at arities
     well past where the general path stops.
 
-    Two **cost guards** bound the general path, neither a claim about what
-    the construction can represent.  :data:`_WII2D_MAX_INDEX_DOMAIN` charges
+    Three **cost guards** bound the general path, none a claim about what the
+    construction can represent.  :data:`_WII2D_MAX_INDEX_DOMAIN` charges
     :func:`_wii2d_cost`, the smaller of ``2 ** (n - 1)`` and the domain the
     chain actually leaves, so dense tables run out at ``n == 9`` while
-    *structured* ones keep going at any arity: an ``n == 8`` xor-of-a-subset
-    collapses to a 4-point decode and builds in 217 characters.  Inside the
-    admitted domains a rare pattern still ratchets into the doubling trap;
-    :data:`_WII2D_MAX_MAGNITUDE` refuses those in seconds instead of
-    diverging.
-    :data:`_WII2D_MAX_REAL_DOMAIN` then refuses the rare table admitted on
-    its arity whose chain found no merge at all, leaving a decode too wide to
-    be worth emitting.  A refusal raises :class:`ValueError` naming which
-    bound it hit; see the two constants for the measured curves and
-    ``the limitations ledger`` for the argument.
+    *structured* ones keep going at any arity -- an ``n == 8``
+    xor-of-a-subset collapses to a 4-point decode and builds in 217
+    characters.  :data:`_WII2D_MAX_MAGNITUDE` refuses the rare admitted
+    pattern that ratchets into the doubling trap, and
+    :data:`_WII2D_MAX_REAL_DOMAIN` the rare table whose chain found no merge
+    at all.  A refusal raises :class:`ValueError` naming which bound it hit;
+    see the constants for the measured curves and ``the limitations ledger``
+    for the argument.
     """
     n = _validate_truth_table(truth_table)
     result = _wii2d_routes(n, truth_table)
@@ -1112,7 +1091,6 @@ def wii2d(truth_table: str, width: int | None = None) -> str:
     flat = "\n".join(_wii2d_layout(n, start, routes, None))
     if width is None or max(len(line) for line in flat.split("\n")) <= width:
         return flat
-    # Measured on the rendered text rather than on the grid's cell count: a
-    # junction cell is a four-character ``{Xi}`` in the template, so the two
-    # differ by more than the fold's own margin.
+    # Measured on the rendered text, which is the program's own width: a
+    # junction cell is one character in the template as in every program.
     return "\n".join(_wii2d_layout(n, start, routes, width))

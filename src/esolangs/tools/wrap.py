@@ -1,120 +1,65 @@
 r"""Wrap generated programs to a readable width, on token boundaries.
 
-The generators emit one long line for most languages: a Polynomial program
-for a dense three-input table is 2471 characters, which no diff or review
-pane shows usefully.  Since most languages treat a newline as whitespace
-(or as a comment character), such a program can be broken across lines
-without changing what it does.
+The generators emit one long line for most languages -- a Polynomial program
+for a dense three-input table is 2471 characters -- and most languages treat
+a newline as whitespace or as a comment character, so such a program can be
+broken across lines without changing what it does.
 
-The wrapping is *token-aware*, which is the whole point of this module.
-Slicing a program every ``width`` characters is wrong for any language
-whose tokens are longer than one character: it can split ``-6`` into ``-``
-and ``6`` (a load error in the numeric languages, which is at least loud),
-or split BIO's fixed-width ``0ox`` triples so the program still runs and
-prints garbage (which is not).  Each wrapper here knows what a token is in
-its family and only ever breaks between two of them.
+The wrapping is *token-aware*, which is the point of this module.  Slicing
+every ``width`` characters can split ``-6`` into ``-`` and ``6`` (a load
+error in the numeric languages, which is at least loud) or split BIO's
+fixed-width ``0ox`` triples so the program still runs and prints garbage
+(which is not).  Each wrapper knows what a token is in its family and only
+breaks between two of them.
 
-Not every language can take newlines, so wrapping is opt-in per language
-rather than a blanket post-processing pass:
+Not every language can take newlines, so wrapping is opt-in per language:
 
-- The 2D languages (Dig, WII2D, and the other grid interpreters) read
-  newlines as row separators, so a newline moves code to another row.
-- NoComment has no comment syntax at all -- an unrecognized character is a
-  load error, and that includes ``\n``.
-- Forbin and Packlang tolerate reflow -- their interpreters read whitespace,
-  not lines -- but their statements sit on indented lines inside braces.
-  Their wrapper preserves those lines and only folds one that exceeds the
-  requested width.
+- The 2D languages read newlines as row separators.
+- NoComment has no comment syntax at all, so ``\n`` is a load error.
+- Forbin and Packlang tolerate reflow but keep their statements on indented
+  lines inside braces, so their wrapper folds only a line over the width.
 
-ROTfuck used to belong on that list: its interpreter rotated the program on
-*every* character the pointer passed, comments included, so an inserted
-newline shifted every later command along the cycle.  That was a deviation
-from the wiki ("every time an instruction is executed"), since a comment is
-not an instruction; with it fixed, comments are transparent and ROTfuck
-wraps like any other single-character-command language.
+Being unwrappable is not being unbounded.  Twelve generators lay out their
+own *shape*, so they honour a width by building a different one rather than
+by reflowing: Streetcode, WII2D and LaserFuck fold their runs into a
+boustrophedon, COD turns its drawing a quarter turn so the width becomes its
+tallest block, Clockwise and Flowchart stack their decision trees a column
+to a node, Dig turns its tree round once, Alight steers with ``turn`` and
+Super SNUSP with mirrors, function x(y) and the Algebraic Programming
+Language *name* their subexpressions so a statement becomes a line each, and
+Circuit Diagram bands -- carrying every live signal back to a column near
+the left so the ones behind it are freed.  :func:`takes_width` is how a
+caller tells; those twelve never reach :func:`wrap_program`.
 
-Being unwrappable is not the same as being unbounded, though.  A generator
-that lays out its own *shape* can honour a width by building a different
-shape, which no after-the-fact reflow can do: Streetcode folds its
-instruction line into a boustrophedon, LaserFuck steers the beam down and
-back so a straight run of tape commands costs rows instead of columns,
-WII2D folds the run that shifts its answer to an ASCII digit the same way,
-COD turns its whole drawing a quarter turn -- its blocks are joined left to
-right, so the width becomes the *tallest* block rather than the widest, and
-what was the width becomes height, which costs nothing -- Clockwise stacks
-the shallow levels of its
-decision tree so a branch costs one column instead of the ``2 ** (n -
-bit)`` it displaces, Dig turns its tree round once so the deep levels run
-back west over the columns the shallow ones used, and function x(y) and the
-Algebraic Programming Language both *name* their subexpressions -- the one
-binding subtrees to ``var``s, the other minterms to nullary functions -- so
-what was a single statement becomes one statement a line.  Flowchart stacks
-its drawn tree the way Clockwise stacks its ring, putting every node on one
-column, Alight steers its walk into a boustrophedon with ``turn``, and
-Super SNUSP does the same with mirrors -- ``\`` and ``/`` stacked in pairs,
-which turn a row round in one row and one column, the cheapest fold here.
-Circuit Diagram *bands*: every signal still live is carried back to a column
-near the left and the columns behind it are freed, which is the only way a
-drawing whose gates must each sit right of their inputs can stop growing.
-Those twelve generators take the width themselves -- :func:`takes_width` is
-how the callers tell -- and never reach :func:`wrap_program`.
+Ten of the twelve are grids, which :func:`wrap_program` skips for being
+already multi-line.  The two naming ones are line-structured source and so
+are also in the tests' unwrappable table; the two facts are independent.
 
-Ten of the twelve are grids, which :func:`wrap_program` would skip anyway
-for being already multi-line.  The two naming ones are not: they are
-line-structured source, so they are *also* in the tests' unwrappable table.
-The two facts are independent -- a finished line of either still must not
-be broken, and the generator narrows by emitting different lines rather
-than by folding the ones it has.
+Only Clockwise folds to an arbitrary width, and what it trades is rows,
+since a stacked level writes the subtree below it twice.  In the others
+something cannot move, and a width under that floor returns the narrowest
+program rather than refusing: WII2D's junction chain carries one input per
+junction, COD's floor is ``2 ** (n + 1) + 1``, Dig's tree can turn round
+exactly once, function x(y) floors at one node's line, APL at the prefix
+reading its inputs, Flowchart at ``n + 5``, Alight at its ``2 ** n``
+table literal, Super SNUSP at four columns, and Circuit Diagram at the rails
+and complements every minterm reads, about ``10 * n`` columns.
 
-Only Clockwise folds to an arbitrary width; in the others something cannot
-move.  WII2D's junction chain carries one input per junction with a detour
-row beneath it, so only the decode's tail folds; COD's floor is its tallest
-block once the drawing is turned a quarter turn, ``2 ** (n + 1) + 1``; and
-Dig's tree can
-turn round exactly once, since two bands running the same way would share
-the column offsets the turn exists to keep apart; function x(y) floors at
-one node's own line, ``var tN: (bK == "1")<tA, tB>``; APL floors at the
-prefix that reads its inputs, which cannot be split and grows with ``n``;
-Flowchart floors at ``n + 5``, one column of corridor per level beside the
-spine; Alight floors at its table literal, ``2 ** n`` characters that are
-one token of one command; Super SNUSP floors at four columns, since every
-one of its tokens is a single cell but the ``48`` its decode leans on; and
-Circuit Diagram floors at what a band cannot reclaim -- the rails and the
-complements, read by every minterm and so live for the whole drawing, about
-``10 * n`` columns.  A width under the floor returns the narrowest program
-rather than refusing.
+Wrapping otherwise assumes a single-line program, since a newline already
+means layout.  Taglate is the exception -- its first line seeds the queue --
+and :data:`MULTILINE` names the languages whose wrappers handle their own
+newlines that way.
 
-What Clockwise trades is rows: a stacked level writes the subtree below it
-twice over, so each one doubles the program's height.  Its own fold --
-collapsing a subtree whose rows all agree -- narrows with the *table*
-instead, and the two are independent.
-
-Wrapping otherwise assumes a single-line program, since a newline in one
-already means layout.  Taglate is the exception: its first line seeds the
-queue and the rest are commands, so its wrapper keeps that seed on its own
-row and folds only what follows.  :data:`MULTILINE` names the languages
-whose wrappers handle their own newlines that way.
-
-Most wrappers only decide *where* the newlines go.  Two layouts also decide where
-the tokens sit within a line, each following the shape its language's
-programs actually have.  :func:`_bio` indents a nested BIO program two
-spaces per loop level, since the boolean generator nests one loop per
-truth-table row and that telescoping chain is invisible packed flat; a
-program under two levels deep is packed as before, since indenting a flat
-run shows nothing.  :func:`wrap_grid`
-right-aligns into columns instead: the subleq-family OISCs (AddSubJump,
-Decleq, S*bleq) have uniform-width numeric tokens, so padding each into a
-cell and right-aligning it lines the columns up between rows, which makes a
-diff of one readable.  It is opt-in for the same reason wrapping is --
-Polynomial is space-delimited too, but its tokens run from 1 to 98
-characters, and padding those to a common width would be nonsense.
-Polynomial gets its own wrapper for a related reason: its one-character
-tokens are the ``+`` and ``-`` between terms, and :func:`_polynomial` glues
-each to the term it signs so no line is just a sign.  That wrapper then puts
-one term to a line rather than packing them to the width, for the reason its
-docstring gives.  SLOW ACV MAMMALIAN uses the same grid layout with a fixed
-four-character cell: its long ``SEED`` runs form the visible structure, while
-the other command words span whole cells.
+Most wrappers only decide *where* the newlines go.  Two also place tokens
+within a line: :func:`_bio` indents two spaces per loop level, since the
+boolean generator nests one loop per row and that telescoping chain is
+invisible packed flat, and :func:`wrap_grid` right-aligns into fixed cells,
+which lines the columns up between rows of the subleq-family OISCs and makes
+a diff of one readable.  Grid layout is opt-in for the same reason wrapping
+is: Polynomial is space-delimited too, but its tokens run from 1 to 98
+characters.  It gets its own wrapper, which glues each ``+`` or ``-`` to the
+term it signs so no line is just a sign.  SLOW ACV MAMMALIAN uses the grid
+layout with a fixed four-character cell.
 
 :data:`WRAPPERS` maps a language id to the wrapper it needs; a language
 absent from it is not wrapped.  :func:`wrap_program` is the entry point the
@@ -124,6 +69,8 @@ generators and the public API call.
 import inspect
 import re
 from collections.abc import Callable
+
+from esolangs.tools.helpers import MARK, MOST_INPUTS, mark
 
 # The default width for a wrapped program.  80 is the conventional review
 # and diff width, and matches the repo's own 88-column limit for Python
@@ -280,20 +227,12 @@ def _span(length: int, cell: int) -> int:
     return max(1, -(-(length + 1) // (cell + 1)))
 
 
-#: A ``{Xi}`` placeholder is one token in *every* language, because
-#: ``BooleanExample.fill`` finds one by string replace: a newline through the
-#: middle leaves it unfilled and the program reads the halves as commands.
-#:
-#: This belongs here rather than in the individual patterns because it is a
-#: property of the templates, not of any language's grammar -- and stating it
-#: per-pattern is what let it be missed.  Tiling is not enough to protect it:
-#: a ``.`` alternative tiles a placeholder one character at a time, so the
-#: tokens still cover the program and :func:`_join_tokens` is still free to
-#: break it in half.  Six languages did, at widths up to 118.
-#:
-#: A *filled* program has no placeholder in it, so this changes nothing for
-#: one; it only ever applies to a template.
-_PLACEHOLDER = r"\{X\d+\}"
+#: A run of one input's mark (:func:`~esolangs.tools.helpers.mark`), what
+#: :func:`~esolangs.generate` spells each input as while a template is
+#: wrapped.  One token: a break inside it would land inside the setter
+#: that replaces it -- mid-word, for a word language -- and each input is
+#: its own character, so two adjacent runs are two tokens.
+_RUN = "|".join(f"{re.escape(mark(i))}+" for i in range(MOST_INPUTS))
 
 
 def wrap_tokens(program: str, width: int, pattern: str) -> str:
@@ -305,13 +244,10 @@ def wrap_tokens(program: str, width: int, pattern: str) -> str:
     token -- so that rejoining the tokens reproduces the input; a program
     that does not tile is returned unwrapped rather than corrupted.
 
-    A :data:`_PLACEHOLDER` is tried ahead of ``pattern``, so no caller has to
-    remember to spell one out.  Alternation is ordered and anchored at each
-    position, so this only wins where a placeholder actually begins: a
-    command that merely happens to carry a ``{`` still matches its own
-    alternative.
+    A :data:`_RUN` is tried ahead of ``pattern``, so no caller has to
+    remember a template's runs.
     """
-    tokens = re.findall(f"{_PLACEHOLDER}|{pattern}", program)
+    tokens = re.findall(f"{_RUN}|{pattern}", program)
     if "".join(tokens) != program:
         return program
     return _join_tokens(tokens, width, separator="")
@@ -321,15 +257,12 @@ def wrap_chars(program: str, width: int) -> str:
     """Wrap a program whose every character is its own token.
 
     The single-character-command families (Brainfuck and its relatives),
-    where any position is a legal break -- except through a
-    :data:`_PLACEHOLDER`, which is why a template takes the token path.  The
-    slice below is the same packing for single-character tokens and stays
-    the path for the programs that have no placeholder to protect.
+    where any position is a legal break -- except inside a template's
+    :data:`_RUN`, which is why a template takes the token path.
     """
-    if "{X" not in program:
+    if not any(MARK <= ord(c) < MARK + MOST_INPUTS for c in program):
         return "\n".join(program[i : i + width] for i in range(0, len(program), width))
-    tokens = re.findall(f"{_PLACEHOLDER}|[\\s\\S]", program)
-    return _join_tokens(tokens, width, separator="")
+    return _join_tokens(re.findall(f"{_RUN}|[\\s\\S]", program), width, separator="")
 
 
 def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
@@ -354,18 +287,7 @@ def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
 # commands with.  The commands are why BIO cannot be wrapped by character
 # count, and their varying width is why a fixed stride will not do either.
 #
-# ``{Xi}`` is here because BIO is *parameterized*: what
-# :func:`~esolangs.generate` is handed to wrap is the template, placeholders
-# and all.  Without it the tokens did not cover the program, :func:`_bio`
-# took its "I cannot read this, leave it alone" exit, and the wrapper was a
-# silent no-op on every template -- 3466 columns at eight inputs, reported
-# as wrapped.  The committed examples never saw it because they fill first.
-#
-# It stays spelled out here, unlike in :data:`_PCT_COMMAND`, because
-# :func:`_bio` tokenizes with this pattern *itself* rather than through
-# :func:`wrap_tokens` -- so it does not get :data:`_PLACEHOLDER` prepended,
-# and dropping this alternative would restore the no-op.  A test covers it.
-_BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};|\{X\d+\}| "
+_BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};| "
 
 # Brainfuck-family single-character commands, and the languages that
 # extend them with a digit argument (Dimensional's ``>0``/``<0``).
@@ -457,7 +379,7 @@ def _bio(program: str, width: int) -> str:
     break lands inside one -- so an indented program means exactly what the
     packed one did.
     """
-    tokens = re.findall(_BIO_COMMAND, program)
+    tokens = re.findall(f"{_RUN}|{_BIO_COMMAND}", program)
     if "".join(tokens) != program:
         return program
     merged: list[str] = []
@@ -761,70 +683,37 @@ def _taglate(program: str, width: int) -> str:
     return seed + "\n" + wrap_chars(commands.replace("\n", ""), width)
 
 
-# %^2^-1's commands are single characters; the placeholder that is not one is
-# :data:`_PLACEHOLDER`'s business, not this pattern's.
+# %^2^-1's commands are single characters.
 _PCT_COMMAND = r"."
+
 
 # What divides a %^2^-1 template's setter header from its body: a blank line,
 # so that a single newline inside either part is that part's own fold.
 #
-# Spelled here rather than imported, because importing it would pull the whole
-# ``esolangs.tools`` package -- thirty-odd generator modules -- into a
-# module that otherwise needs nothing but the standard library.  The generator
-# owns the value (``pct_squared_minus_one._HEADER_END``) and a test asserts the
-# two agree, so the duplication cannot drift silently.
+# What divides a %^2^-1 template's setter header from its body: a blank
+# line.  Spelled here rather than imported, because importing it would pull
+# the whole ``esolangs.tools`` package into a module that otherwise needs
+# nothing but the standard library; a test asserts the two copies agree.
 _PCT_HEADER_END = "\n\n"
 
 
 def _pct_squared_minus_one(program: str, width: int) -> str:
-    """Wrap %^2^-1: fold the setter-declaration header as well as the body.
+    """Wrap %^2^-1: the setter-declaration header as well as the body.
 
     A %^2^-1 *template* is a header of ``0=zero|one;1=...`` declarations, a
-    blank line, and the body.  ``fill`` reads the declarations out of the
-    header and substitutes them into the body.
-
-    The header used to be left on one row, on the grounds that it was
-    "structural".  It is not the *language's* structure -- the interpreter
-    never sees a header, ``fill`` consumes it -- so what kept it whole was
-    our own template format, and the format changed: the header is
-    terminated by a blank line, and ``fill`` discards the header's newlines
-    before reading it.  So the header folds, and 1407 columns at eight
-    inputs become the width asked for.
-
-    It folds at a ``;`` where it can, so a row holds whole declarations, and
-    *inside* one where it must.  The second case is not an edge: one
-    declaration is 175 characters and does not shrink with ``n``, so
-    breaking only between declarations would leave a 175-column floor
-    whatever the width.
-
-    A *filled* program has no header at all and folds entirely.  Both shapes
-    arrive here: :func:`~esolangs.generate` wraps the template, and the
-    committed examples wrap what ``fill`` returns.
-
-    The commands are single characters, so the only unbreakable unit is a
-    ``{Xi}`` placeholder in an unfilled template.
+    blank line, and the body; ``fill`` reads the declarations out of the
+    header, discarding its newlines first, and never shows the interpreter
+    any of it.  So the header folds by character -- a declaration is 175
+    characters and does not shrink with ``n``, so folding only between two
+    would leave a 175-column floor -- and the body wraps by command.  A
+    filled program has no header and folds entirely.
     """
     header, blank, body = program.partition(_PCT_HEADER_END)
     if not blank:
         return wrap_tokens(program, width, _PCT_COMMAND)
-    folded = _pct_header(header.replace("\n", ""), width)
+    flat = header.replace("\n", "")
+    folded = "\n".join(flat[i : i + width] for i in range(0, len(flat), width))
     return folded + blank + wrap_tokens(body.replace("\n", ""), width, _PCT_COMMAND)
-
-
-def _pct_header(header: str, width: int) -> str:
-    """Fold a %^2^-1 header, preferring a break between two declarations.
-
-    Each declaration carries the ``;`` that ends it, so the units pack like
-    any other token; a unit too wide for the line is then folded by
-    character, which is safe because ``fill`` strips the header's newlines
-    before it reads.
-    """
-    units = [unit + ";" for unit in header.split(";")]
-    units[-1] = units[-1][:-1]  # the last declaration has no ``;`` after it
-    rows: list[str] = []
-    for row in _join_tokens(units, width, separator="").split("\n"):
-        rows.append(row if len(row) <= width else wrap_chars(row, width))
-    return "\n".join(rows)
 
 
 def _qoibl(program: str, width: int) -> str:
@@ -931,9 +820,9 @@ WRAPPERS = {
 # rather than being skipped by :func:`wrap_program` for having a newline in
 # it.  Taglate's first line seeds its queue and is structural, so its
 # wrapper keeps that row whole and folds only the commands below it;
-# %^2^-1's first line declares its setters and is structural for the same
-# reason, being what ``fill`` parses to instantiate the body.
-# Qoibl is multi-line for a third reason: none of its lines is structural,
+# %^2^-1's template opens with a setter header, which its wrapper folds
+# by character.  Qoibl is multi-line for a third reason: none of its lines
+# is structural,
 # but every one is a statement, so its wrapper folds each separately rather
 # than reflowing the program as one stream.  The language would not notice
 # the difference -- a newline is whitespace to it -- but the reader would.
