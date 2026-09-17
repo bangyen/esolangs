@@ -10,7 +10,7 @@ import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.tools.helpers import TEMPLATE_CHAR
-from esolangs.tools.nocomment import NOCOMMENT_ZERO
+from esolangs.tools.nocomment import PAIR
 
 
 class TestParameterizedNoComment:
@@ -81,16 +81,16 @@ class TestParameterizedNoComment:
 
         template = parameterized.nocomment("0110")
         assert "{X" not in template
-        assert template.count(TEMPLATE_CHAR) == 2 * len(NOCOMMENT_ZERO)
+        assert template.count(TEMPLATE_CHAR) == 2 * len(PAIR[0])
 
     def test_program_structure(self) -> None:
         """A one-bit template computes the index then skips to the output."""
         from esolangs.tools import parameterized
 
         template = parameterized.nocomment("10")
-        assert template.startswith(TEMPLATE_CHAR * len(NOCOMMENT_ZERO))
+        assert template.startswith(TEMPLATE_CHAR * len(PAIR[0]))
         # The complement is computed at runtime: one run per input, no second.
-        assert template.count(TEMPLATE_CHAR) == len(NOCOMMENT_ZERO)
+        assert template.count(TEMPLATE_CHAR) == len(PAIR[0])
         assert template.endswith("o")  # a single final output
         assert template.count("s") == 3  # NOT gate + guarded increment + index skip
         assert template.count("o") == 1
@@ -211,7 +211,7 @@ class TestParameterizedNoComment:
         n = 6
         table = "".join(str((r >> 4) & 1 ^ (r & 1)) for r in range(2**n))
         template = parameterized.nocomment(table)
-        assert template.count(TEMPLATE_CHAR) == n * len(NOCOMMENT_ZERO)
+        assert template.count(TEMPLATE_CHAR) == n * len(PAIR[0])
         parity = "".join(str(bin(r).count("1") % 2) for r in range(2**n))
         assert len(template) < len(parameterized.nocomment(parity))
         assert template.count("fsf") == 4 + 2 + 1  # four rows, two stages, a pad

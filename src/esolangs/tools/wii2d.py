@@ -17,8 +17,8 @@ __all__ = ["wii2d"]
 
 #: ``>`` continues east for a zero, ``v`` takes the 1-branch below.  One
 #: grid cell, so a run is the exact width of its program.
-WII2D_ZERO, WII2D_ONE = ">", "v"
-_WII2D_INPUT = TEMPLATE_CHAR * len(WII2D_ZERO)
+PAIR = (">", "v")
+_WII2D_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 
 # Ops: digits set the accumulator; ``+ - * / s`` increment, decrement,

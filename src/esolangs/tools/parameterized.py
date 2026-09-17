@@ -2,9 +2,11 @@ r"""Boolean generators that embed each input once.
 
 Input ``i`` is a run of :data:`TEMPLATE_CHAR` as wide as its setter, in
 name order; the harness fills the runs and runs one program per row.
-Equal-width setters keep bits out of the program length.  Each generator
-asks its language's setters function (:mod:`esolangs.tools.examples`,
-imported locally since ``examples`` imports this) for the widths.
+Equal-width setters keep bits out of the program length.  Each language's
+``(zero, one)`` pair is one constant its generator module owns (the
+``*_PAIR`` below for the five generators this module hosts); the example
+in :mod:`esolangs.tools.examples` reads the same constant, so the widths
+the generator lays and the text the fill substitutes cannot drift apart.
 """
 
 # Re-exported so this module stays the import site for the whole
@@ -74,7 +76,6 @@ from esolangs.tools.eval_lang import eval as eval  # noqa: A004 - named "Eval"
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     TEMPLATE_CHAR,
-    Setters,
     _validate_truth_table,
     best_input_order,
     decision_tree_tokens,
@@ -119,9 +120,19 @@ __all__ = [
 ]
 
 
-def _runs(setters: Setters) -> list[str]:
+def _runs(pair: tuple[str, str], n: int) -> list[str]:
     """Each input's run of :data:`TEMPLATE_CHAR`, as wide as its setter."""
-    return [TEMPLATE_CHAR * len(zero) for zero, _one in setters]
+    return [TEMPLATE_CHAR * len(pair[0])] * n
+
+
+BIO_PAIR = ("0oz;", "0ox;")
+#: Four is minimal: a search over ``<>@[]`` finds no equal-width pair under it.
+BFPDA_PAIR = ("<[@]", "<@@@")
+BITDEQUE_PAIR = ("PUSH INVERT", "INVERT PUSH")
+#: Even widths: ``*`` swaps the pointer, so a one-wide zero would move it.
+MINSKY_SWAP_PAIR = ("**", "++")
+#: ``j`` is the pad: a gate tests this cell next, so it must leave value and pointer.
+HOME_ROW_PAIR = ("as", "aj")
 
 
 # A decision-tree node: ("leaf", leaf_id, value, None, None) or
@@ -142,8 +153,6 @@ def bio(truth_table: str) -> str:
     ``y`` on a table transition (``0oy`` rise, ``1oy`` fall), so the ops
     telescope to ``y = table[V]``, printed with ``1iy``.
     """
-    from esolangs.tools.examples import _setters_bio
-
     n = _validate_truth_table(truth_table)
 
     def yop(a: str, b: str) -> str:
@@ -151,7 +160,7 @@ def bio(truth_table: str) -> str:
             return ""
         return "0oy;" if a == "0" else "1oy;"
 
-    pack = _BIO_DOUBLE.join(_runs(_setters_bio(truth_table, n)))
+    pack = _BIO_DOUBLE.join(_runs(BIO_PAIR, n))
     inner = ""
     for j in range(2**n - 1, 0, -1):
         body = "1ox;" + yop(truth_table[j - 1], truth_table[j]) + inner
@@ -181,14 +190,12 @@ def bfpda(truth_table: str) -> str:
     the marker, a constant 1 embedded directly.  A leaf pops the remaining
     ``2*(n-level)`` and prints.
     """
-    from esolangs.tools.examples import _setters_bfpda
-
     n = _validate_truth_table(truth_table)
 
     # Marker then bit, in name order, so the tree tests the last input
     # first (the same tree reflected; the reversed load bought nothing and
     # put the runs out of order).
-    head = "".join("<@" + run for run in _runs(_setters_bfpda(truth_table, n)))
+    head = "".join("<@" + run for run in _runs(BFPDA_PAIR, n))
 
     def leaf(level: int, value: str) -> str:
         drain_preloaded_bits = ">" * (2 * (n - level))
@@ -248,8 +255,6 @@ def _bitdeque_linear(truth_table: str) -> str:
     zero, ``2**(n-1-i)`` commands each, meeting at a block that zeroes the
     register.  The last input skips that.  ``2T`` commands long, ``T`` executed.
     """
-    from esolangs.tools.examples import _setters_bitdeque
-
     n = _validate_truth_table(truth_table)
     tokens: list[str] = []
     register = 0
@@ -262,7 +267,7 @@ def _bitdeque_linear(truth_table: str) -> str:
     if register:
         tokens.append("INVERT")
     at = len(tokens)
-    for i, run in enumerate(_runs(_setters_bitdeque("", n))):
+    for i, run in enumerate(_runs(BITDEQUE_PAIR, n)):
         k = 2 ** (n - 1 - i)
         # ``run`` is one token of text but two commands once filled.
         at += 2
@@ -294,8 +299,6 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     the tree reads the table with those inputs complemented back
     (``row ^ mask``), a relabelling that folds as the table did.
     """
-    from esolangs.tools.examples import _setters_bitdeque
-
     n = _validate_truth_table(truth_table)
     # Level ``level`` tests input ``perm[level]``, whose load position is
     # its name; the row bit for a level is ``n - 1 - level``.
@@ -346,7 +349,7 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     prelude = ["GOTO 3", "INVERT", "GOTO 4", "GOTO@END", "INVERT"]
     # The setters read the route off the template's prefix, so they are
     # handed the prelude, whose opening ``GOTO 3`` names this one.
-    load_block_in_name_order = _runs(_setters_bitdeque("", n))
+    load_block_in_name_order = _runs(BITDEQUE_PAIR, n)
 
     # A node spends its rotation, its pop and its ``GOTO`` before either
     # subtree, so the walker's ``at`` lands on this node and ``at +
@@ -393,8 +396,6 @@ def minsky_swap(truth_table: str) -> str:
     leaf ``v``; a one leaf is ``+ * ~``, a zero leaf ``~``.  The dump reads
     ``0 {answer}``.
     """
-    from esolangs.tools.examples import _setters_minsky_swap
-
     n = _validate_truth_table(truth_table)
 
     tokens: list[str] = []
@@ -404,7 +405,7 @@ def minsky_swap(truth_table: str) -> str:
     # load: one stage per input, MSB first.  The run is read off the
     # setters themselves, so the offsets count exactly the text the fill
     # emits; the weight is the stage's own ``+`` block.
-    for i, run in enumerate(_runs(_setters_minsky_swap(truth_table, n))):
+    for i, run in enumerate(_runs(MINSKY_SWAP_PAIR, n)):
         weight = 2 ** (n - 1 - i)
         skip = pos + len(run) + 2 + 2 + weight + 1  # 1-based line after the stage
         tokens += [run, "~", "~", "*", "+" * weight, "*"]
@@ -446,8 +447,6 @@ def home_row(truth_table: str) -> str:
     into a working copy and backup, subtract ``k``, and either print the
     baked answer and halt or restore and fall through; the last needs no restore.
     """
-    from esolangs.tools.examples import _setters_home_row
-
     n = _validate_truth_table(truth_table)
     # The leaf chain is 2**n lines whatever the table says, so dropping an
     # ignored input halves the program; its gate stays with weight zero,
@@ -461,7 +460,7 @@ def home_row(truth_table: str) -> str:
     setup = "aaaaaalsffaaaaaaaaffflf"
     bit_lines = [
         run + "lsffff" + "a" * weights.get(i, 0) + "fl"
-        for i, run in enumerate(_runs(_setters_home_row(truth_table, n)))
+        for i, run in enumerate(_runs(HOME_ROW_PAIR, n))
     ]
     leaves = [
         "afffflsfsfflflf" + ("a" if bit == "1" else "") + "k;lff" for bit in table[:-1]

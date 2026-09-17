@@ -5,7 +5,7 @@ from itertools import pairwise
 
 import pytest
 
-from esolangs.tools.arrowqueue import arrowqueue_setters
+from esolangs.tools.arrowqueue import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from esolangs.tools.parameterized import _instantiate_arrowqueue
 
@@ -110,7 +110,7 @@ class TestParameterizedArrowQueue:
 
         template = parameterized.arrowqueue("0110")
         assert "{X" not in template
-        setters = arrowqueue_setters(template, 2)
+        setters = (PAIR,) * 2
         assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
         assert len(runs(template, TEMPLATE_CHAR, setters)) == 2
 
@@ -127,7 +127,7 @@ class TestParameterizedArrowQueue:
 
         n = len(table).bit_length() - 1
         template = parameterized.arrowqueue(table)
-        setters = arrowqueue_setters(template, n)
+        setters = (PAIR,) * n
         assert setters == ((".", "~"),) * n
         assert template.count(TEMPLATE_CHAR) == n
         assert len(runs(template, TEMPLATE_CHAR, setters)) == n

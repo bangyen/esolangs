@@ -12,10 +12,12 @@ indexed row.  A ``0`` leaf is empty; a ``1`` leaf is a self-sustaining ring.
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
-    Setters,
     _validate_truth_table,
     fill_runs,
 )
+
+#: Each input's cell, both routes: ``~`` pushes a down heading, ``.`` nothing.
+PAIR = (".", "~")
 
 _TREE_1 = ["+~+", "~ ~", "+~+"]  # the ``1`` leaf: a self-sustaining ring
 
@@ -150,18 +152,7 @@ def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
 
     ``bits`` MSB first; ``~`` pushes a down heading, ``.`` nothing.
     """
-    return fill_runs(
-        template, TEMPLATE_CHAR, arrowqueue_setters(template, len(bits)), bits
-    )
-
-
-def arrowqueue_setters(template: str, n: int) -> Setters:
-    """Return the ``(zero, one)`` cell for every input of ``template``.
-
-    The same cell on both routes.
-    """
-    del template
-    return ((".", "~"),) * n
+    return fill_runs(template, TEMPLATE_CHAR, (PAIR,) * len(bits), bits)
 
 
 def _compact(rows: list[str]) -> list[str]:

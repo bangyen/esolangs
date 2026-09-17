@@ -17,12 +17,12 @@ class TestParameterizedCOD:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.cod import cod_setters
+        from esolangs.tools.cod import PAIR
 
         # each input's one-cell run sets the cod's value to the bit: ')'
         # for one, '_' (a no-op crossed sideways) for zero, read at the
         # start of its '+' fork
-        return fill_runs(tpl, TEMPLATE_CHAR, cod_setters(tpl, len(bits)), bits)
+        return fill_runs(tpl, TEMPLATE_CHAR, (PAIR,) * len(bits), bits)
 
     @pytest.mark.parametrize(
         "table",
@@ -127,20 +127,20 @@ class TestParameterizedCOD:
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
         from esolangs.tools import parameterized
-        from esolangs.tools.cod import cod_setters
+        from esolangs.tools.cod import PAIR
 
         template = parameterized.cod("0110")
         assert "{X" not in template
         assert template.count(TEMPLATE_CHAR) == 2
-        assert len(runs(template, TEMPLATE_CHAR, cod_setters(template, 2))) == 2
+        assert len(runs(template, TEMPLATE_CHAR, (PAIR,) * 2)) == 2
 
     def test_each_input_is_embedded_once(self) -> None:
         """The routing embeds each input exactly once, not per leaf."""
         from esolangs.tools import parameterized
-        from esolangs.tools.cod import cod_setters
+        from esolangs.tools.cod import PAIR
 
         template = parameterized.cod("0110")
-        setters = cod_setters(template, 2)
+        setters = (PAIR,) * 2
         assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
         spans = runs(template, TEMPLATE_CHAR, setters)
         assert [end - start for start, end in spans] == [1, 1]
@@ -189,10 +189,10 @@ class TestParameterizedCOD:
         """
         from esolangs.tools.cod import _cod_dead_box
 
-        one = _cod_dead_box(3, [0]).split("\n")
+        one = _cod_dead_box([0]).split("\n")
         assert one == ["~~~", "~$~", "~~~"]
 
-        two = _cod_dead_box(3, [0, 1]).split("\n")
+        two = _cod_dead_box([0, 1]).split("\n")
         assert two == ["~~~~", "~$$~", "~~~~"]
 
     def test_the_grid_uses_only_cod_characters(self) -> None:

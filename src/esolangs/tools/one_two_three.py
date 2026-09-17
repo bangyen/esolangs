@@ -62,6 +62,8 @@ __all__ = ["one_two_three"]
 #: The input fills.  One character each, so instantiations are equal length;
 #: the construction names them, and this re-exports its pair.
 ONE, ZERO = _ONE, _ZERO
+#: Each input's embed: the generator's own ``ZERO``/``ONE`` command.
+PAIR = (ZERO, ONE)
 
 #: One separation law: the constant pre-fill walk, then the alternating
 #: test displacements.
@@ -190,7 +192,7 @@ def _construct_small(truth_table: str, n: int) -> str:
 def _in_name_order(body: str, n: int) -> str:
     """Return ``body`` once it is known to carry exactly ``n`` input runs."""
     try:
-        runs(body, TEMPLATE_CHAR, ((ZERO, ONE),) * n)
+        runs(body, TEMPLATE_CHAR, (PAIR,) * n)
     except ValueError as exc:
         raise ValueError(f"template {body!r} does not embed {n} inputs: {exc}") from exc
     return body

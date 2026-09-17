@@ -11,7 +11,6 @@ from itertools import zip_longest
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
-    Setters,
     _validate_truth_table,
     essential_inputs,
     read_at,
@@ -163,20 +162,13 @@ def _cod_combine(blocks: list[str]) -> str:
     )
 
 
-def cod_setters(_template: str, n: int) -> Setters:
-    """Set the cod's value to the bit at that input's ``+`` fork.
+#: Each input's cell at its ``+`` fork: ``)`` increments; ``_`` acts only on
+#: a cod moving *up* and is a no-op crossed sideways.  Both one cell,
+#: neither blank (water would do, but a blank spells a bit as nothing).
+PAIR = ("_", ")")
 
-    ``)`` increments; ``_`` acts only on a cod moving *up* and is a no-op
-    crossed sideways.  Both one cell, neither blank (water would do, but a
-    blank spells a bit as nothing).
-    """
-    return (("_", ")"),) * n
-
-
-def _cod_run(n: int, k: int) -> str:
-    """Spell input ``k``'s run: one cell, the width of its setter."""
-    zero, _one = cod_setters("", n)[k]
-    return TEMPLATE_CHAR * len(zero)
+#: An input's run: one cell, the width of its setter.
+_COD_RUN = TEMPLATE_CHAR * len(PAIR[0])
 
 
 def _cod_cells(block: str) -> list[list[str]]:
@@ -243,7 +235,7 @@ def _cod_rotated(n: int, truth_table: str) -> str:
     grid[0][0] = ">"
 
     cascade = _cod_cascade(n, truth_table).split("\n")
-    cascade[1] = _cod_run(n, n - 1) + cascade[1][1:]
+    cascade[1] = _COD_RUN + cascade[1][1:]
     # Pad with wall (as the interpreter does) so every ``---`` touches the
     # right edge; a short row's print would silently find nothing, and
     # blank padding would be water the cod escapes into.
@@ -258,8 +250,8 @@ def _cod_rotated(n: int, truth_table: str) -> str:
         for r in range(height)
     ]
     program = "\n".join(rows)
-    for k in range(n - 1):
-        program = program.replace("?", _cod_run(n, k), 1)
+    for _ in range(n - 1):
+        program = program.replace("?", _COD_RUN, 1)
     return program
 
 
@@ -309,14 +301,14 @@ def _cod_turned(program: str) -> str:
     return "\n".join("".join(row).rstrip() for row in turned)
 
 
-def _cod_dead_box(n: int, names: list[int]) -> str:
+def _cod_dead_box(names: list[int]) -> str:
     """Build a sealed block of ignored inputs' setters, which the cod never enters.
 
     A ``~`` wall on every side; a ``)`` inside increments nothing, so an
     ignored setter is free.  Stacked above or below rather than beside:
     :func:`_cod_combine` pads with spaces, which are open water.
     """
-    inner = "".join(_cod_run(n, i) for i in names)
+    inner = _COD_RUN * len(names)
     wall = "~" * (len(inner) + 2)
     return "\n".join([wall, "~" + inner + "~", wall])
 
@@ -364,18 +356,18 @@ def cod(truth_table: str, width: int | None = None) -> str:
         ignored = [i for i in range(n) if i not in used]
         before = [i for i in ignored if i < used[0]]
         after = [i for i in ignored if i > used[-1]]
-        parts = [_cod_dead_box(n, before)] if before else []
+        parts = [_cod_dead_box(before)] if before else []
         parts.append(core)
         if after:
-            parts.append(_cod_dead_box(n, after))
+            parts.append(_cod_dead_box(after))
         reduced = "\n".join(parts)
 
     blocks = ["~~~\n~> \n~~~"]
     for k in range(n - 1):
-        blocks.append(_cod_fork_box(n, k + 1).replace("?", _cod_run(n, k), 1))
+        blocks.append(_cod_fork_box(n, k + 1).replace("?", _COD_RUN, 1))
 
     box_rows = _cod_cascade(n, truth_table).split("\n")
-    box_rows[1] = _cod_run(n, n - 1) + box_rows[1][1:]
+    box_rows[1] = _COD_RUN + box_rows[1][1:]
     blocks.append("\n".join(box_rows))
 
     full = _cod_combine(blocks)

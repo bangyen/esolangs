@@ -32,8 +32,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from esolangs.tools import bio
-from esolangs.tools.examples import _setters_bio
 from esolangs.tools.helpers import runs
+from esolangs.tools.parameterized import BIO_PAIR
 
 #: Cost band; see ``__main__.py``. Telescoping-lookup lemmas, cheap enough that
 #: scoping them is the only reason they are ever skipped.
@@ -196,7 +196,7 @@ def check_l3(max_n: int = 8) -> list[str]:
         # One run of ``$`` per input, each as wide as its setter: ``runs``
         # refuses a stray ``$`` or a run of the wrong width, so ``n`` spans
         # is exactly one embedding per input.
-        spans = runs(template, "$", _setters_bio(template, n))
+        spans = runs(template, "$", (BIO_PAIR,) * n)
         assert len(spans) == n, f"n={n}: {len(spans)} runs for {n} inputs"
         for bits in ("0" * n, "1" * n):
             filled = _fill(template, bits)

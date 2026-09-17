@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, essential_inputs, runs
-from esolangs.tools.minifuck_sim import MINIFUCK_ONE, MINIFUCK_ZERO
+from esolangs.tools.minifuck_sim import PAIR
 from tests.tools.minifuck_support import run_count
 
 
@@ -36,7 +36,7 @@ def _slot_order(gen: object, table: str) -> list[int] | None:
     except ValueError:
         return None  # a generator need not cover every arity
     n = len(table).bit_length() - 1
-    spans = runs(template, TEMPLATE_CHAR, ((MINIFUCK_ZERO, MINIFUCK_ONE),) * n)
+    spans = runs(template, TEMPLATE_CHAR, (PAIR,) * n)
     return [start for start, _end in spans]
 
 
@@ -313,7 +313,7 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
             assert len(flipped) == len(plain) + len(_FLIP) * mask.bit_count(), mask
             # The gadget goes right after the setter it complements, and
             # after no other.
-            pairs = ((MINIFUCK_ZERO, MINIFUCK_ONE),) * n
+            pairs = (PAIR,) * n
             for i, (_start, end) in enumerate(runs(flipped, TEMPLATE_CHAR, pairs)):
                 follows = flipped[end : end + len(_FLIP)] == _FLIP
                 assert follows == bool((mask >> i) & 1), (mask, i)

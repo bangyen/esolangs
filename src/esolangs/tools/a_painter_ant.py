@@ -11,7 +11,6 @@ pass-stable fixed point.
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
-    Setters,
     _validate_truth_table,
     fill_runs,
 )
@@ -19,8 +18,7 @@ from esolangs.tools.helpers import (
 __all__ = ["a_painter_ant"]
 
 
-#: The one ``(zero, one)`` pair every input is spelled with.
-_PAIR = ("n", "N")
+PAIR = ("n", "N")
 
 
 def a_painter_ant(truth_table: str) -> str:
@@ -51,10 +49,4 @@ def a_painter_ant(truth_table: str) -> str:
 
 def _instantiate_apa(template: str, bits: list[int]) -> str:
     """Fill an A Painter Ant template's input runs (``n`` zero, ``N`` one)."""
-    return fill_runs(template, TEMPLATE_CHAR, apa_setters(template, len(bits)), bits)
-
-
-def apa_setters(template: str, n: int) -> Setters:
-    """Return the ``(zero, one)`` route text for every input of ``template``."""
-    del template
-    return tuple(_PAIR for _ in range(n))
+    return fill_runs(template, TEMPLATE_CHAR, (PAIR,) * len(bits), bits)

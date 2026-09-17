@@ -1,7 +1,7 @@
 """The Minifuck suites' shared harness: run a program, fill a template."""
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
-from esolangs.tools.minifuck_sim import MINIFUCK_ONE, MINIFUCK_ZERO
+from esolangs.tools.minifuck_sim import PAIR
 
 
 def run_count(template: str, n: int) -> int:
@@ -11,7 +11,7 @@ def run_count(template: str, n: int) -> int:
     about the embedding: a run short, a run over, or a fill character in
     the program proper refuses (a ``ValueError`` from :func:`runs`).
     """
-    return len(runs(template, TEMPLATE_CHAR, ((MINIFUCK_ZERO, MINIFUCK_ONE),) * n))
+    return len(runs(template, TEMPLATE_CHAR, (PAIR,) * n))
 
 
 class _MinifuckCase:

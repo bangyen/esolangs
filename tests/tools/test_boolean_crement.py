@@ -7,7 +7,7 @@ import pytest
 
 from esolangs.exceptions import TruthTableError
 from esolangs.interpreters.other.crement import _Machine
-from esolangs.tools.crement import crement, crement_setters, instantiate_crement
+from esolangs.tools.crement import PAIR, crement, instantiate_crement
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from esolangs.vm import run_until_halt_or_cycle
 
@@ -59,7 +59,7 @@ class TestCrementTree:
 
     def test_template_embeds_each_input_once_in_order(self) -> None:
         template = crement(_dense(3))
-        setters = crement_setters(template, 3)
+        setters = (PAIR,) * 3
         assert "{X" not in template
         assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
         # One run per input, each a tester's first line, on lines 3, 5, 7.
