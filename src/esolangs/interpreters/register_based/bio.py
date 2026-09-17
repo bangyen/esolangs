@@ -1,48 +1,15 @@
 """BIO (Binary IO) interpreter implementation.
 
-Register-based esoteric language with three memory blocks (x, y, z).
-Uses commands in format [0|1][O|I][x|y|z] for increment/decrement, loops, and output.
-
-The wiki writes a loop as ``0i{ do something };`` and says every command is
-ended by a ``;``, so neither mark is free-standing punctuation: a command
-is a triple *with* its terminator, and a loop-open is a triple carrying the
-``{`` that opens its body.  :data:`_COMMAND` matches them that way, which
-is what makes a missing ``;`` or ``{`` a load error rather than a program
-that quietly runs as something else.  Only ``//`` comments are dropped.
-
-This is stricter than the page's Thutu contribution, which strips ``;``
-and matches a bare ``0ix``; that is a third-party sketch marked untested
-rather than the language author's implementation, so the prose and the
-worked examples -- which agree, and always write both marks -- are what
-the parser follows.
-
-The interpreter runs on a :class:`_Machine` (the three registers, the loop
-stack, and the command cursor), so it is step-capable: ``step()`` executes
-one command and ``halted`` is true once the cursor reaches the end of the
-command list.  A loop whose body never changes a register grows the loop
-stack and cursor without revisiting a snapshot only when a register grows
-unboundedly (the ``run()`` backstop's class); a loop that revisits a
-snapshot is proven by the state-cycle hang detector.
-
-The braces are checked when the program loads, so a malformed one is
-rejected with :class:`ValueError` before it runs: a loop with no matching
-``}``, a ``}`` closing nothing, a ``0i`` without its ``{``, and any other
-character the language does not define.  Because that check runs first,
-the loop stack can never be popped empty at run time.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the command list to the next state, and
-never mutates what it is given.  It takes no ``io`` argument at all, so it
-is total and side-effect free by construction rather than by inspection.
-
-Nothing needs hoisting out of it beyond the one print: the load check has
-already rejected every malformed program, so no command can fail at run
-time and the transition has no error case of its own.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what BIO *does* stays in the
-pure layer.
+Three registers (x, y, z); commands are ``[0|1][O|I][x|y|z]`` triples.
+The wiki writes a loop as ``0i{ do something };`` and says every command
+ends in ``;``, so a command is a triple *with* its terminator and a
+loop-open carries its ``{`` (:data:`_COMMAND`); the page's untested
+Thutu sketch strips them, and the prose and examples are followed
+instead.  Only ``//`` comments are dropped.  Braces are matched at load,
+so an unmatched ``}``, a ``0i`` without ``{`` or any undefined character
+raises :class:`ValueError` and the loop stack cannot underflow.
+:func:`_advance` is pure and total over an immutable ``_State``; the one
+print is the shell's.
 """
 
 from __future__ import annotations
@@ -68,14 +35,8 @@ def _bumped(reg: tuple[int, int, int], index: int, delta: int) -> tuple[int, int
 def _closers(commands: list[str]) -> tuple[int, ...]:
     """Return, per command, the ``};`` that closes a loop opened there.
 
-    ``-1`` where the command opens nothing.  One pass with a stack, run once
-    when the program is loaded: a loop whose register is zero has to reach
-    past its own body, and searching for that closer each time it happened
-    made a program with Theta(T) skips cost Theta(T) per skip.
-
-    Braces are counted rather than ``0i`` triples: the opener is the triple
-    *with* its ``{``, and ``parse`` has already matched them, so every
-    opener here has a closer and the stack cannot underflow.
+    ``-1`` where nothing opens.  One pass at load: searching per skip made
+    Theta(T) skips cost Theta(T) each.
     """
     closes = [-1] * len(commands)
     open_at: list[int] = []
@@ -102,13 +63,9 @@ _COMMENT = re.compile(r"//[^\n]*")
 def parse(code: str) -> list[str]:
     """Return ``code``'s commands, lowercased, or raise on a malformed program.
 
-    Comments are stripped, then what remains must be commands and
-    whitespace with nothing left over.  A triple without its terminator, a
-    ``0i`` without its ``{``, and a stray character alike are load errors
-    rather than something silently skipped -- the interpreter used to keep
-    only its regex's matches and drop the rest, so a typo ran as a
-    different program.  The braces are matched here too, so
-    :class:`_Machine` can assume every ``}`` has a loop to close.
+    Comments stripped, then nothing but commands and whitespace may remain;
+    the interpreter used to drop what its regex missed, so a typo ran as a
+    different program.
     """
     stripped = _COMMENT.sub("", code)
     commands = [match.group().lower() for match in _COMMAND.finditer(stripped)]
@@ -128,12 +85,7 @@ def parse(code: str) -> list[str]:
 
 
 class _Machine:
-    """Per-run BIO state: the registers, the loop stack, and the cursor.
-
-    ``step()`` executes one command; ``halted`` is true once the cursor
-    reaches the end of the command list.  The VM and the state-cycle hang
-    detector expose this object.
-    """
+    """Per-run BIO state: the registers, the loop stack, and the cursor."""
 
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code`` into commands and reset the registers."""
@@ -197,10 +149,7 @@ class _Machine:
     def step(self) -> None:
         """Execute one command, advancing the cursor.
 
-        The one print lives here rather than in the transition: this is the
-        shell, so it is where an effect belongs.  Nothing else needs
-        hoisting -- the load check has rejected every malformed program, so
-        no command can fail once a run has started.
+        The one print is here; nothing can fail after the load check.
         """
         ind, reg, _stk = self.state
         if ind >= self.size:
@@ -215,16 +164,8 @@ class _Machine:
 def _advance(state: _State, commands: list[str], closes: tuple[int, ...]) -> _State:
     """Return the state after executing one command.
 
-    ``closes`` is :func:`_closers` for ``commands`` -- the loop exits, read
-    rather than searched for.
-
-    Pure, and total: ``parse`` has already matched every brace, so a ``};``
-    always has a loop to return to and a skip always finds its closer.  It
-    takes no ``io`` argument, so ``1i``'s print is the caller's business --
-    it changes no state at all.
-
-    A ``};`` returns to one before the command that opened the loop, so the
-    shared increment lands back *on* the opener and re-tests its register.
+    ``closes`` is :func:`_closers`.  A ``};`` returns to one before its
+    opener, so the shared increment lands back on it and re-tests.
     """
     ind, reg, stk = state
     command = commands[ind]

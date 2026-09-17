@@ -1,29 +1,12 @@
 """Boolean-function generator for Alight.
 
-The construction is *derived*: the wiki has no truth machine to copy, and
-the page is marked unimplemented, so nothing here is transliterated.
-
-What Alight gives that the other grid languages do not is an indexable list
-with an *out-of-line* index -- ``at{list, index}`` takes the index as an
-expression rather than as a walk.  So the truth table needs no branching at
-all: encode it as a string literal, fold the input bits into its row number,
-and read the answer out.
-
-    row = ((b0 * 2 + b1) * 2 + b2) ...
-
-which is Horner's rule.  The input characters remain in their variables and
-the expression subtracts their combined ASCII offset.  The base program is
-therefore O(n) commands over an O(2**n) table literal, with no decision tree
-or leaves.  A width request may split that lookup and turn the walk to
-minimize the grid's longer dimension.
-
-That shape is why ``alight`` sits in the contract test's ``_UNSHAPED`` list
-alongside ``ztoalc_l``.  Both are branch-free lookups, so there are
-no subtrees to collapse and a one-dependency table renders the same length
-as parity -- a 0% fold that is the construction working, not regressing.
-
-The reads are unconditional and come before the lookup, so every table of a
-given arity consumes exactly ``n`` inputs, whatever the table says.
+Derived, not transliterated (the page is unimplemented).  Alight's
+``at{list, index}`` takes the index as an expression, so the table is a
+string literal and the input bits fold into its row by Horner's rule,
+``row = ((b0 * 2 + b1) * 2 + b2)...``, minus their ASCII offset: O(n)
+commands over an O(2**n) literal, no branching.  That is why ``alight``
+sits in the contract test's ``_UNSHAPED`` list with ``ztoalc_l``: a 0%
+fold is the construction working.  The reads are unconditional and first.
 """
 
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
@@ -44,11 +27,8 @@ _ALIGHT_WEST_TURN = "turn left;"
 def _alight_chunk(rows: int, width: int) -> int:
     """How many table entries one lookup may carry, inside ``width``.
 
-    A chunked lookup is a guard and the lookup it guards, which have to
-    share a row with the turn -- so what is left for the literal is the
-    width less all three.  The index text is bounded by the largest row
-    number the table has, which is what makes this a formula rather than a
-    search.
+    A chunk's guard, lookup and turn share a row; the index text is bounded
+    by the largest row number, so this is a formula.
     """
     index = len(f"{rows - 0.5}")
     # ``skip i < I;`` is 10 + I, ``set r at{"", i-I};`` is 18 + I.
@@ -68,23 +48,11 @@ def _alight_chunk(rows: int, width: int) -> int:
 def _alight_units(truth_table: str, n: int, chunk: int) -> list[list[str]]:
     """Build the commands, grouped into pieces a fold may not split.
 
-    A ``skip`` guards *the next command along the heading*, so the two have
-    to stay on one row: a fold between them would leave the ``skip``
-    skipping the turn instead of the lookup, and the walk would not turn.
-
-    The table is one string literal, which is one token of one command and
-    so sets how narrow the program can go.  Splitting it into chunks makes
-    the floor the chunk size instead of ``2 ** n``, at one guarded lookup
-    per chunk.
-
-    Each chunk is guarded only from *below* -- it runs whenever the index
-    has reached it -- so every chunk up to the one that holds the index
-    runs, and the last to run is the right one.  The earlier ones read past
-    the end of their own piece, which the language makes ``nil`` rather than
-    an error (the wiki's rule, and only the three-argument *set* form of
-    ``at`` raises), so they write a value the correct chunk then overwrites.
-    One guard a chunk is what that buys: bounding both ends would take a
-    second ``skip`` on the same row.
+    A ``skip`` guards the next command along the heading, so the pair stays
+    on one row.  The literal is one token, so it is chunked to make the floor
+    the chunk size; each chunk is guarded only from below, so every chunk up
+    to the index's runs and the last overwrites (reading past a chunk's end
+    is ``nil``, per the wiki).
     """
     units: list[list[str]] = [["begin"], ["var a"], ["var i"], ["var r"]]
     for k in range(n):
@@ -135,31 +103,12 @@ def _alight_flat_compact(truth_table: str, n: int) -> str:
 def _alight_folded(units: list[list[str]], width: int) -> str:
     """Lay ``commands`` out as a boustrophedon inside ``width`` columns.
 
-    A command is a *word walked cell by cell*, so a row end cuts one in
-    half -- which is why Alight cannot be reflowed after the fact and has
-    to be laid out here instead.  What makes the layout possible is that
-    the walk's heading is steerable: a row runs east, two ``turn right``
-    bring it round to run west, and two ``turn left`` bring it back.  The
-    first of each pair sits on the row and pivots at its own semicolon; the
-    second is written *downward* from the cell beyond it, which is what
-    turns the walk along the next row.
-
-    Going west the characters are written in the order the walk meets
-    them, which is right to left on the page -- so a westward ``end;``
-    reads ``;dne``.  Nothing is reversed; the row is.
-
-    **The turn always sits at the far edge**, and the gap before it is
-    filled with bare semicolons -- the empty command, which the language
-    makes a nop.  Folding where the commands happen to run out instead
-    leaves the next row starting wherever that was, so it gets less than a
-    full row to work with, and a long command then has nowhere to go but
-    off the left edge.  Padding costs nothing and makes every row the same
-    width.
-
-    The floor is the longest single command plus the turn that shares its
-    row, and for this generator that is the table literal: ``2 ** n``
-    characters that cannot be split, since a string is one token of one
-    command.  A width under the floor is raised to it.
+    A command is a word walked cell by cell, so a row end cuts it; the
+    heading is steered with two ``turn right`` then two ``turn left``, the
+    second of each written downward from the cell beyond.  Westward rows
+    read right to left (``end;`` is ``;dne``).  The turn sits at the far
+    edge with bare semicolons (a nop) filling the gap, so every row is full
+    width.  The floor is the longest command plus its turn.
     """
     longest = max(len(";".join(unit)) for unit in units) + 1
     # Every row runs the full span, so one command plus its turn is what a
@@ -225,9 +174,8 @@ def _dimensions(program: str) -> tuple[int, int]:
 def _alight_balanced(truth_table: str, n: int, width: int) -> str:
     """Return the permitted layout with the smallest longer dimension.
 
-    Candidates are the straight program, its one-column rotation, and every
-    legal boustrophedon no wider than ``width``.  Equal squares prefer less
-    area, then fewer source characters.
+    Straight, one-column rotation, or any legal boustrophedon within
+    ``width``; ties prefer less area, then fewer characters.
     """
     if width < 1:
         raise ValueError("width must be at least 1")
@@ -251,18 +199,10 @@ def _alight_balanced(truth_table: str, n: int, width: int) -> str:
 def alight(truth_table: str, width: int | None = None) -> str:
     """Return an Alight program printing ``truth_table``'s entry for its input.
 
-    Reads ``n`` characters (one per line, ``'0'`` or ``'1'``), folds them
-    into the table's row index by Horner's rule, and prints the table
-    character at that row.
-
-    The table is a string literal indexed by ``at``, so the emitted program
-    has no branches: its length is ``O(2**n)`` in the literal plus ``O(n)``
-    in the reads, and it is a single line of commands running east from
-    ``begin``.
-
-    ``width`` is a hard upper bound.  The generator chooses the straight,
-    vertical, or boustrophedon layout minimizing ``max(rendered width,
-    rendered height)``; ties prefer less area, then fewer source characters.
+    Reads ``n`` characters, folds them into the row by Horner, prints the
+    table character: a branch-free single line, ``O(2**n)`` literal plus
+    ``O(n)`` reads.  ``width`` is a hard bound; the layout minimizing
+    ``max(width, height)`` wins, ties preferring less area.
     """
     n = _validate_truth_table(truth_table)
     flat = _alight_flat_compact(truth_table, n)
