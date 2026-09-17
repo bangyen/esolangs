@@ -23,14 +23,14 @@ class TestParameterizedBack:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from esolangs.tools.examples import _fill_back
+        from tests.tools.fills import _fill_back
 
         return _fill_back(tpl, bits)
 
     def test_program_length_is_the_same_for_every_input(self) -> None:
         """Both bits cost one command, so the size reveals nothing."""
         from esolangs.tools import parameterized
-        from esolangs.tools.examples import _fill_back
+        from tests.tools.fills import _fill_back
 
         for n in (1, 2, 3):
             template = parameterized.back(format(0, f"0{2**n}b"))
@@ -230,7 +230,7 @@ class TestParameterizedBack:
         would let the template's height reveal an input.
         """
         from esolangs.tools import parameterized
-        from esolangs.tools.examples import _fill_back
+        from tests.tools.fills import _fill_back
 
         for table in ("10101010", "11001100", "01101001"):
             template = parameterized.back(table)

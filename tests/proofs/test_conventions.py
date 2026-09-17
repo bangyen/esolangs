@@ -179,7 +179,7 @@ def test_bitdeque_linear_route_is_one_width(audit: Conventions) -> None:
     """The route the equal-width test misses stays at one length.
 
     Its ``EJECT ``/``POP `` units once left 32 lengths for 32 five-input
-    rows; the block pads in :func:`esolangs.tools.examples._fill_bitdeque`
+    rows; the block pads in :func:`esolangs.tools.examples._setters_bitdeque`
     closed that, and this pins the arity where the route begins.
     """
     assert audit.by_name()["Bitdeque"].constant_width == HOLDS

@@ -33,7 +33,7 @@ class TestParameterizedNoComment:
         exactly that and the suite hung rather than failing, which is a
         worse outcome than any this duplication was buying.
         """
-        from esolangs.tools.examples import _fill_nocomment
+        from tests.tools.fills import _fill_nocomment
 
         return _fill_nocomment(tpl, bits)
 

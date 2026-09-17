@@ -61,6 +61,7 @@ from esolangs.registry import (
     example_stems,
     parameterized_ids,
     resolve,
+    template_setters,
     wiki_url,
 )
 from esolangs.tagged import _Tagged, _Template
@@ -212,17 +213,16 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     if width is not None and _takes_width(fn):
         return _Tagged(str(fn(truth_table, width)), resolved)
     if lang.id in parameterized_ids():
-        # A template wraps like anything else.  It did not use to: a narrow
-        # width broke a slot in half -- ``{X`` ending one line and ``1}``
-        # starting the next -- and the template silently stopped being
-        # instantiable, so ``generate --width 10 "Home Row" 0110`` reported
-        # one input slot where the table has two.  The fix is in the token
-        # rules rather than here: ``{Xi}`` is one token in every wrapper
-        # (:data:`~esolangs.tools.wrap._PLACEHOLDER`), so no width can land
-        # inside one.  Skipping the wrap instead would leave the eleven
-        # parameterized languages with a ``width`` that quietly did nothing.
+        # A template wraps like anything else: ``{Xi}`` is one token in every
+        # wrapper (:data:`~esolangs.tools.wrap._PLACEHOLDER`), so no width
+        # can split a slot -- a narrow width once left ``{X`` on one line and
+        # ``1}`` on the next, and ``generate --width 10 "Home Row" 0110``
+        # reported one slot where the table has two.  Skipping the wrap
+        # instead would leave the parameterized languages a width that
+        # quietly did nothing.
         plain = str(fn(truth_table))
-        return _Template(wrap_program(plain, lang.id, width), resolved, plain)
+        wrapped = wrap_program(plain, lang.id, width)
+        return _Template(wrapped, resolved, plain, template_setters(lang.id, plain))
     return _Tagged(wrap_program(str(fn(truth_table)), lang.id, width), resolved)
 
 

@@ -29,7 +29,12 @@ and diverges for a 1 entry: one node per level, so it runs at most
 ``3 (2**n - 1) + 2 n + 3`` lines in all.
 """
 
-from esolangs.tools.helpers import _validate_truth_table, instantiate
+from esolangs.tools.helpers import (
+    Setters,
+    _validate_truth_table,
+    instantiate,
+    slot_count,
+)
 
 __all__ = ["crement", "instantiate_crement"]
 
@@ -96,4 +101,9 @@ def crement(truth_table: str) -> str:
 
 def instantiate_crement(template: str, bits: list[int]) -> str:
     """Fill each ``{Xi}`` with the jump line that spells its bit."""
-    return instantiate(template, bits, _set_bit)
+    return instantiate(template, bits, crement_setters(template))
+
+
+def crement_setters(template: str) -> Setters:
+    """Return the tester's first line for a zero and a one, per input."""
+    return ((_set_bit(0, 0), _set_bit(0, 1)),) * slot_count(template)

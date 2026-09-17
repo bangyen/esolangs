@@ -39,7 +39,12 @@ single pass: the halting row's step count is at most three widths.
 import re
 
 from esolangs.exceptions import TruthTableError
-from esolangs.tools.helpers import _validate_truth_table, instantiate
+from esolangs.tools.helpers import (
+    Setters,
+    _validate_truth_table,
+    instantiate,
+    slot_count,
+)
 
 __all__ = ["instantiate_nopstacle", "nopstacle"]
 
@@ -124,9 +129,16 @@ def instantiate_nopstacle(template: str, bits: list[int]) -> str:
     if len(bits) != n or any(bit not in (0, 1) for bit in bits):
         raise TruthTableError(f"expected {n} Boolean input bits, got {bits!r}")
 
-    def set_bit(i: int, bit: int) -> str:
+    return instantiate(template, bits, nopstacle_setters(template))
+
+
+def nopstacle_setters(template: str) -> Setters:
+    """Each level's run of bit cells, blank for a zero and ``#`` for a one."""
+    n = slot_count(template)
+
+    def run(i: int, bit: int) -> str:
         cell = "#" if bit else " "
         _, half = _columns(n, i)
         return cell + (" " * (2 * half - 1) + cell) * (2**i - 1)
 
-    return instantiate(template, bits, set_bit)
+    return tuple((run(i, 0), run(i, 1)) for i in range(n))

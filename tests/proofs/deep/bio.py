@@ -199,7 +199,7 @@ def _fill(template: str, bits: str) -> str:
     lambda with two symmetric branches is equal-width by construction, so a
     local copy would pass the lemma however the real one drifted.
     """
-    from esolangs.tools.examples import _fill_bio
+    from tests.tools.fills import _fill_bio
 
     return _fill_bio(template, [int(b) for b in bits])
 

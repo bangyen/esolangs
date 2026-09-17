@@ -85,7 +85,7 @@ class TestParameterizedPctSquaredMinusOne:
         return io.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.examples import _fill_pct_squared_minus_one
+        from tests.tools.fills import _fill_pct_squared_minus_one
 
         return _fill_pct_squared_minus_one(tpl, bits)
 
