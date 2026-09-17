@@ -192,15 +192,14 @@ The candidate list is empty.
   | %^2^-1 | Holds | Open |
   | Nopstacle | Language | Open |
 
-  The two uniform cells open for one reason, the input's *weight*: a
-  linear route spells input `i` once at `2**(n-1-i)` units -- Nopstacle
-  `2**i` cells across level `i`'s row -- and %^2^-1 solves its setters per table, so different text
-  per input is its design.  Closing one means the template carries the
-  weight and every input is one unit.  Nopstacle's cells have template
-  between them, and a uniform %^2^-1 is a different generator.  Nopstacle's alphabet is the blank and
-  `#`, so a zero bit *is* a blank: its input run is a bit cell at each of
-  level `i`'s `2**i` node columns with blanks between, the same width
-  either way, and there is no command to spell it with.
+  The two uniform cells are open for different reasons.  Nopstacle's
+  generator is a full decision tree of corridors, and level `i` reads its
+  input at `2**i` node columns of one row, so the run is `2**i` cells with
+  template between them; one cell per input needs every level-`i`
+  corridor to cross the same cell.  %^2^-1 solves its setters per table,
+  so different text per input is its design, and a uniform %^2^-1 is a
+  different generator.  Nopstacle's alphabet is the blank and `#`, so a
+  zero bit *is* a blank: there is no command to spell it with.
 
   Toggles are an open decision.  The proposed shape: a keyword per relaxed
   convention on the generator, off by default and carried through the
