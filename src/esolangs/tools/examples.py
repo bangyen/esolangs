@@ -553,16 +553,16 @@ def _setters_home_row(_template: str, n: int) -> Setters:
 def _setters_cod(_template: str, n: int) -> Setters:
     """Set the cod's value to the bit at that input's ``+`` fork.
 
-    ``)`` increments, so a one is ``)`` and a zero is a space -- which is
-    water, an open grid cell the cod passes through, not the inert filler a
-    space is in a language that ignores unknown characters.  Both bits are
-    one cell, so the programs are already all the same size and differ in
-    exactly one character per input, at a fixed column.  A blank is still
-    a bit spelled as nothing, which the conventions audit records: the
-    command spelling (``)(`` against ``)<``) needs the fork box one column
-    wider and costs 350 -> 359 at n=2 and 1495 -> 1529 at n=3.
+    ``)`` increments, so a one is ``)``; a zero is ``_``, the command that
+    only acts on a cod moving *up* (it turns a nonzero one back down) and
+    is a no-op crossed sideways, which is how the fork meets this cell.
+    Both bits are one cell, so the programs are all the same size and
+    differ in exactly one character per input, at a fixed column, and
+    neither is a blank.  (Water would do for the zero, and did, but a
+    blank is a bit spelled as nothing; ``_`` costs no width where the
+    ``)(``-against-``)<`` spelling needs the fork box a column wider.)
     """
-    return ((" ", ")"),) * n
+    return (("_", ")"),) * n
 
 
 def _setters_eval(_template: str, n: int) -> Setters:

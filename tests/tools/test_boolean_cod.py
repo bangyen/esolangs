@@ -19,12 +19,13 @@ class TestParameterizedCOD:
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         from esolangs.tools import parameterized
 
-        # each {Xi} sets the cod's value to the bit: ')' for one, space
-        # for zero, read at the start of that input's '+' fork
+        # each {Xi} sets the cod's value to the bit: ')' for one, '_' for
+        # zero (a no-op crossed sideways), read at the start of that
+        # input's '+' fork
         return parameterized.instantiate(
             tpl,
             bits,
-            lambda _i, b: ")" if b else " ",
+            lambda _i, b: ")" if b else "_",
         )
 
     @pytest.mark.parametrize(
