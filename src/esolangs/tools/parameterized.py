@@ -270,10 +270,11 @@ def bitdeque(truth_table: str) -> str:
     bit, and the harness instantiates one program per input
     combination.  The earlier wall said the absolute ``GOTO N`` targets shift
     because the setter had variable length (``INVERT`` vs nothing); the fixed
-    setter removes that: each bit is pushed as exactly ``INVERT PUSH`` when
-    it differs from the register and ``PUSH INVERT`` when it matches, and the
-    register flips after every block, so the load is always ``2n`` commands
-    and no absolute index moves between instantiations.
+    setter removes that: every bit is the one pair ``PUSH INVERT`` (zero)
+    against ``INVERT PUSH`` (one), the register flips after every block --
+    so an odd position pushes its bit complemented, which the tree's table
+    absorbs (:func:`_bitdeque_ordered`) -- and the load is always ``2n``
+    commands, so no absolute index moves between instantiations.
 
     Bits are pushed in reverse order so ``POP`` (LIFO) yields the most
     significant bit first, matching the contiguous MSB-first decision-tree
@@ -295,10 +296,10 @@ def bitdeque(truth_table: str) -> str:
     measures rather than models, and an order whose rotations outweigh its
     savings loses to the identity.
 
-    The rotations happen *inside the tree*, never in the load block: an
-    input's ``INVERT PUSH``/``PUSH INVERT`` setter choice depends on the
-    register parity at its position, so moving the head would desync every
-    fill site.  The emitted load is byte-identical whatever the order.
+    The rotations happen *inside the tree*, never in the load block: what
+    a position pushes depends on the register parity there, so moving the
+    head would change which inputs the table must complement.  The emitted
+    load is byte-identical whatever the order.
     """
     if len(truth_table) <= 16:
         return best_input_order(truth_table, _bitdeque_ordered)
@@ -306,7 +307,25 @@ def bitdeque(truth_table: str) -> str:
 
 
 def _bitdeque_linear(truth_table: str) -> str:
-    """Push the table, then discard its prefix and suffix in O(T) text."""
+    """Push the table, then discard its prefix and suffix in O(T) text.
+
+    Every input is the same two-command unit the tree route embeds, and the
+    input's *weight* lives in the template: after the table is pushed (and
+    the register zeroed, which the last table bit decides statically), each
+    input's run pushes its bit onto the tail, a ``POP`` takes it back into
+    the register, and a ``GOTO`` picks one of two fixed discard blocks --
+    ``EJECT`` the upper half of the window off the head for a one, ``POP``
+    the lower half off the tail for a zero, ``2**(n-1-i)`` commands each.
+    The zero block ends by forcing the register to one and jumping over the
+    one block; both meet at a three-command block that forces the register
+    back to zero, which is what the next run relies on.  The last input
+    skips that: the deque holds exactly the indexed entry, and nothing
+    reads the register again.
+
+    Both blocks are in the text and one runs, so the program is ``2T``
+    discard commands long and executes ``T`` of them: the same growth as
+    before and the same constant the execution contract measures.
+    """
     from esolangs.tools.examples import _setters_bitdeque
 
     n = _validate_truth_table(truth_table)
@@ -318,10 +337,29 @@ def _bitdeque_linear(truth_table: str) -> str:
             tokens.append("INVERT")
             register = value
         tokens.append("PUSH")
-    # The setters read the route off the template's prefix, which is the
-    # table's pushes here: this route never opens with ``GOTO 3``.
-    tokens += _runs(_setters_bitdeque(" ".join(tokens), n))
-    tokens += ["POP", "PUSH"]
+    if register:
+        tokens.append("INVERT")
+    at = len(tokens)
+    for i, run in enumerate(_runs(_setters_bitdeque("", n))):
+        k = 2 ** (n - 1 - i)
+        # ``run`` is one token of text but two commands once filled.
+        at += 2
+        # Command indices, with ``at`` the ``POP`` that reads the bit back:
+        # the zero block spans ``at + 2 .. at + k + 1``, its exit ``at + k +
+        # 2 .. at + k + 4``, the one block ``at + k + 5 .. at + 2k + 4`` and
+        # the shared reset begins at ``at + 2k + 5``.
+        one_block = at + k + 5
+        meet = at + 2 * k + 5
+        tokens += [run, "POP", f"GOTO {one_block}"]
+        tokens += ["POP"] * k
+        # Force the register to one, then jump: a one skips the INVERT.
+        tokens += [f"GOTO {at + k + 4}", "INVERT", f"GOTO {meet}"]
+        tokens += ["EJECT"] * k
+        at = meet
+        if i < n - 1:
+            # Force the register to zero: a one skips the first INVERT.
+            tokens += [f"GOTO {at + 2}", "INVERT", "INVERT"]
+            at += 3
     return " ".join(tokens)
 
 
@@ -339,10 +377,21 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     Under the identity order every bit is already at the tail when it is
     wanted, so no rotation is emitted and the output is byte-identical to
     what the unordered generator produced.
+
+    Every input is the one pair ``PUSH INVERT``/``INVERT PUSH``, and the
+    register flips after every block, so the block at an odd load position
+    pushes its bit *complemented*.  The tree reads the table with those
+    inputs complemented back (``row ^ mask``), which is a relabelling of the
+    rows and folds exactly as the table did: the flip lives in the table the
+    tree walks, not in the embed and not in an extra ``INVERT`` per block.
     """
     from esolangs.tools.examples import _setters_bitdeque
 
     n = _validate_truth_table(truth_table)
+    # Level ``level`` tests input ``perm[level]``, whose load position is
+    # its name; the row bit for a level is ``n - 1 - level``.
+    mask = sum(1 << (n - 1 - level) for level in range(n) if perm[level] % 2)
+    seen = "".join(truth_table[row ^ mask] for row in range(2**n))
 
     def leaf(answer: str) -> list[str]:
         out = ["POP"] * (n + 1)
@@ -397,7 +446,7 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     prelude = ["GOTO 3", "INVERT", "GOTO 4", "GOTO@END", "INVERT"]
     # The setters read the route off the template's prefix, so they are
     # handed the prelude, whose opening ``GOTO 3`` names this one.
-    load_block_in_name_order = _runs(_setters_bitdeque(" ".join(prelude), n))
+    load_block_in_name_order = _runs(_setters_bitdeque("", n))
 
     # A node spends its rotation, its pop and its ``GOTO`` before either
     # subtree, so the walker's ``at`` lands on this node and ``at +
@@ -405,7 +454,7 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # commands ahead of the tree, which is where the indices start, so the
     # ``GOTO`` operands are right after substitution.
     def leaf_tokens(_level: int, row: int) -> list[str]:
-        return leaf(truth_table[row])
+        return leaf(seen[row])
 
     def node(level: int, zero: list[str], one: list[str], at: int) -> list[str]:
         return [
@@ -416,7 +465,7 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         ]
 
     tree = decision_tree_tokens(
-        truth_table,
+        seen,
         leaf_tokens,
         node,
         parent_width=width,

@@ -436,24 +436,61 @@ class TestParameterizedBitdeque:
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits.
 
-        Both routes: the tree's run is the eleven characters of ``PUSH
-        INVERT``, the linear route's the width of its discard block.
+        Both routes embed every input as the eleven characters of ``PUSH
+        INVERT``/``INVERT PUSH``: the weight is in the template, so the
+        linear route's runs are as narrow as the tree's.
         """
         from esolangs.tools import parameterized
-        from esolangs.tools.examples import _setters_bitdeque
+        from esolangs.tools.examples import _BITDEQUE_PAIR, _setters_bitdeque
         from esolangs.tools.helpers import runs
 
-        template = parameterized.bitdeque("0110")
-        assert "{X" not in template
-        spans = runs(template, "$", _setters_bitdeque(template, 2))
-        assert [end - start for start, end in spans] == [11, 11]
+        for n in (2, 5):
+            template = parameterized.bitdeque("0110" * 2 ** (n - 2))
+            assert "{X" not in template
+            setters = _setters_bitdeque(template, n)
+            assert setters == (_BITDEQUE_PAIR,) * n
+            spans = runs(template, "$", setters)
+            assert [end - start for start, end in spans] == [11] * n
+
+    def test_odd_inputs_are_pushed_complemented(self) -> None:
+        """The load flips the register per block; the tree's table absorbs it.
+
+        With one pair for every position, the block at an odd load position
+        pushes its bit complemented.  Filling identity-of-input-1 (``0101``)
+        and running just the prelude and load shows the deque holding the
+        complement, and the whole program still answers the table.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.queue_based.bitdeque import run
+        from esolangs.tools import parameterized
+
+        template = parameterized.bitdeque("0101")
+        prelude_and_load = " ".join(self.instantiate(template, [0, 1]).split()[:12])
+        io = ScriptedIO()
+        run(prelude_and_load, io)
+        assert io.getvalue() == "0 0"  # input 1's one pushed as a zero
+        for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
+            assert self.run_bitdeque(self.instantiate(template, bits)) == str(bits[1])
+
+    def test_linear_route_forces_the_register_between_inputs(self) -> None:
+        """Both discard paths meet at a reset, and the last input skips it.
+
+        Every input's zero path ends by forcing the register to one and
+        jumping the one block; each path but the last then lands on the
+        three-command reset the next run relies on.  Counted on a
+        five-input table: ``2**5 - 1`` of each discard command, and the
+        register at the end of the load is zeroed statically.
+        """
+        from esolangs.tools import parameterized
 
         n = 5
-        template = parameterized.bitdeque("0" * 2**n)
-        assert "{X" not in template
-        setters = _setters_bitdeque(template, n)
-        spans = runs(template, "$", setters)
-        assert [end - start for start, end in spans] == [len(z) for z, _ in setters]
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        tokens = parameterized.bitdeque(table).split()
+        assert tokens[:3] == ["PUSH", "INVERT", "PUSH"]  # parity opens 0, 1
+        assert tokens.count("POP") == 2**n - 1 + n  # the discards, the reads
+        assert tokens.count("EJECT") == 2**n - 1
+        assert " ".join(tokens).count("INVERT INVERT") == n - 1  # the resets
+        assert tokens[-1] == "EJECT"  # the last input ends on its one block
 
     def test_constant_table_is_a_leaf(self) -> None:
         """A constant table emits a drain-and-push leaf with no branching."""
