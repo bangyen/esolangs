@@ -96,13 +96,14 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  A Painter Ant, Alight, BIO and
+the tree at any arity.  A Painter Ant, Alight, BIO, Minsky Swap and
 SLOW ACV MAMMALIAN keep no tree route at all: A Painter Ant's answer strip
 is smaller than a tree at every arity, Alight indexes a string literal,
 BIO's telescope is one nested level per row whatever the table says (a
 degenerate table only spares it the flat edges' adjustments, under the fold
-threshold once the doubling between the input runs is in the text), and SLOW
-ACV MAMMALIAN's read chain emits one fixed-width leaf
+threshold once the doubling between the input runs is in the text), Minsky
+Swap's `~` cascade routes the index to a one- or three-command leaf per
+row, and SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf
 slot per row whatever the table says.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
 table.
@@ -155,7 +156,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Jaune | finite lookup | a spatial table reached with two labels |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` |
-| Minsky Swap | parameterized tree | — |
+| Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to its row, so every table of one arity renders to the same length |
 | Modulous | tree | — |
 | NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells |
 | Nopstacle | parameterized tree | a full tree of corridors, unfolded: level `i` reads its input's run at `2**i` node columns and the leaves are halting boxes or a drop onto the blank bottom row |

@@ -741,14 +741,15 @@ class TestParameterizedMinskySwap:
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits.
 
-        The MSB's run is its weight (two), the LSB's the fixed four; the
-        jump targets count those same widths.
+        Every run is two wide, and the stage after each carries the weight:
+        two ``+`` after the MSB, one after the LSB.  The jump targets count
+        those stages, not the runs.
         """
         from esolangs.tools import parameterized
 
         template = parameterized.minsky_swap("0110")
         assert "{X" not in template
-        assert template.startswith("$$ $$$$ ~")
+        assert template.startswith("$$ ~ ~ * ++ * $$ ~ ~ * + * *")
 
     @pytest.mark.parametrize("bits", [(0, 0), (0, 1), (1, 0), (1, 1)])
     def test_examples_fill_sets_either_bit_in_either_position(
@@ -769,28 +770,30 @@ class TestParameterizedMinskySwap:
         program = _fill_minsky_swap(minsky_swap(AND2), list(bits))
         assert self.run_minsky_swap(program) == AND2[(bits[0] << 1) | bits[1]]
 
-    def test_examples_fill_weights_the_non_lsb(self) -> None:
-        """A non-LSB block is its own weight long, in ``+`` or in ``*``.
+    def test_examples_fill_is_one_pair_at_every_input(self) -> None:
+        """A run is ``++`` or ``**`` at the MSB exactly as at the LSB.
 
-        Not padded to the table's length: equal width is required of a bit
-        against *itself*, so that the program's length cannot report the bit,
-        and block ``i`` owes block ``j`` nothing.  Padding them all to
-        ``2**n`` ran ``(n-1) * 2**n`` commands to load ``n`` bits.
-
-        The length stays even either way, which is what stops the register
-        pointer drifting -- a one does no swapping at all and a zero an even
-        number of swaps.  ``"+*+*"`` is the LSB's exception.
+        The weight is the template's: the ``+`` block after the run is as
+        wide as the bit's weight, so the run itself never counts it.  A
+        zero is two swaps, which is what keeps the pointer on ``reg[0]``
+        for the stage's ``~`` -- an odd run would leave it on the
+        accumulator.
         """
         from esolangs.tools import minsky_swap
-        from esolangs.tools.examples import AND2
+        from esolangs.tools.examples import AND2, _setters_minsky_swap
         from tests.tools.fills import _fill_minsky_swap
 
+        assert _setters_minsky_swap("", 5) == (("**", "++"),) * 5
         template = minsky_swap(AND2)
-        # Weight 2 at the MSB of a two-input table, so two commands, and the
-        # LSB's four -- six, where padding to the table gave eight.
-        assert _fill_minsky_swap(template, [1, 1]).startswith("++ +*+*")
-        assert _fill_minsky_swap(template, [0, 1]).startswith("** +*+*")
-        assert "++**" not in _fill_minsky_swap(template, [1, 1])
+        assert _fill_minsky_swap(template, [1, 1]).startswith(
+            "++ ~ ~ * ++ * ++ ~ ~ * + *"
+        )
+        assert _fill_minsky_swap(template, [0, 1]).startswith(
+            "** ~ ~ * ++ * ++ ~ ~ * + *"
+        )
+        assert _fill_minsky_swap(template, [1, 0]).startswith(
+            "++ ~ ~ * ++ * ** ~ ~ * + *"
+        )
 
 
 class TestParameterizedBfpda:

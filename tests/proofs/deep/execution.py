@@ -31,8 +31,10 @@ Where the bound sits, measured on both sides:
   9.0, 10.0 at n=1..10 -- the input count rather than a constant, so
   Theta(T log T).  It padded every input's setter block to the table's
   length when only that bit's weight was needed; sized to the weight, the
-  blocks sum to ``2**n + 2``, per-entry commands settle at 2.01, and it now
-  measures x1.98 and is held to the bound like everything else.
+  blocks sum to ``2**n + 2``, per-entry commands settle at 2.01, and it
+  measured x1.98.  The weight has since moved out of the embed into the
+  template (every run is ``++`` or ``**``, and the stage after it adds the
+  weight), which reads x1.83; it is held to the bound like everything else.
 
 The gap between x2.06 and the x2.29 that was caught is narrow, which is the
 honest reading: the statistic separates a single pass over the table from a
