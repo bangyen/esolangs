@@ -348,8 +348,10 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
         assert wrapped.split() == plain.split()
         return
     # Taglate's first line is a structural queue seed the wrapper must leave
-    # alone; only the commands below it are reflowed.
-    if LANGUAGES[name].id in MULTILINE:
+    # alone; only the commands below it are reflowed.  A filled %^2^-1
+    # program is in the same set for its *template's* header, which the
+    # fill has stripped: one line, nothing structural, wrapped by command.
+    if LANGUAGES[name].id in MULTILINE and "\n" in plain:
         seed, _, rest = wrapped.partition("\n")
         plain_seed, _, plain_rest = plain.partition("\n")
         assert seed == plain_seed

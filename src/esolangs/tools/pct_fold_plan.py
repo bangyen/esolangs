@@ -28,13 +28,13 @@ _FOLD_STEP = 4
 #: unmerged.)  Halving the spacing halves the footprint to 2046, which fits,
 #: and ten inputs then build and print every row on the interpreter.
 #:
-#: Two is the floor.  ``s`` subtracts 2 and ``i`` subtracts 3, so
-#: :func:`_sub_code` spells every amount except 1 -- a step of 1 would need
-#: the last input to subtract exactly 1 and has no spelling at any width.
-#: With 2 the floor, ``2 * (2**n - 1) <= 3003`` caps *this* ladder at ten
-#: inputs.  That is not where the fold ends, though: uniform spacing is
-#: itself the waste, and :data:`_FOLD_SUBSET_LADDER` reaches eleven by
-#: spending only what distinctness costs.
+#: Two was the floor while a setter subtracted its weight itself: ``s``
+#: subtracts 2 and ``i`` subtracts 3, so :func:`_sub_code` spells every
+#: amount except 1.  Laid by the one pair under a ``psp``, a run leaves
+#: exactly ``-bit`` behind, so the all-row fold now goes on to a step of 1
+#: after this one -- ``2**n - 1 <= 3003``, eleven inputs -- and the packed
+#: ladder below is left to the staged route's prefix, whose setters still
+#: subtract their weights.
 #:
 #: It is a *fallback* rather than the default because every shipped program
 #: is built on the wider ladder: at four inputs and below the narrow ladder
@@ -62,12 +62,15 @@ _FOLD_NARROW_STEP = 2
 #: a weight of 1, and the powers above them behave like a binary code, so all
 #: ``2**n`` sums are distinct with a total of exactly ``2**n + 1``.
 #:
-#: That is what lifts the arity.  The narrow uniform ladder spends 4094 at
-#: eleven inputs against the 3003 the workspace allows; this one spends
-#: **2049**, and eleven inputs build and execute.  Twelve needs 4097, which
-#: does not fit, so this shape ends there -- and no ladder of any shape
-#: reaches thirteen, since ``2**13 + 1`` exceeds even the two-sided ``6007``
-#: positions a ``p``-negated ladder could address.
+#: That is what lifted the arity while every setter subtracted its own
+#: weight: the narrow uniform ladder spends 4094 at eleven inputs against
+#: the 3003 the workspace allows, this one **2049**.  The all-row fold now
+#: lays its rows by one pair under a ``psp`` and reaches eleven on the unit
+#: step (2047); this shape serves the staged route's eleven-input prefix,
+#: whose setters still subtract.  Twelve needs 4097, which does not fit, so
+#: this shape ends there -- and no ladder of any shape reaches thirteen,
+#: since ``2**13 + 1`` exceeds even the two-sided ``6007`` positions a
+#: ``p``-negated ladder could address.
 #:
 #: **Row order stops matching position order here**, which is the one thing
 #: the rest of the fold had assumed.  On a uniform ladder row ``r`` sits at
@@ -297,7 +300,17 @@ class _FoldLedger:
     :func:`_fold_clean_amount` are now one-step views of this class.
     """
 
-    __slots__ = ("bots", "by_cls", "cls", "count", "ids", "nspan", "span", "tops")
+    __slots__ = (
+        "bots",
+        "bounds",
+        "by_cls",
+        "cls",
+        "count",
+        "ids",
+        "nspan",
+        "span",
+        "tops",
+    )
 
     def __init__(self) -> None:
         self.tops: list[int] = []
@@ -309,6 +322,9 @@ class _FoldLedger:
         self.by_cls: dict[str, list[int]] = {}
         self.count: dict[str, int] = {}
         self.nspan = 0
+        #: Adjacent pairs in top order whose classes differ: the run count
+        #: less one, kept incrementally so the threshold test is O(1).
+        self.bounds = 0
 
     @classmethod
     def from_state(cls, state: "Iterable[_FoldPoint]") -> "_FoldLedger":
@@ -334,7 +350,16 @@ class _FoldLedger:
         # position and a landing that coincides with a survivor merges.
         if top in self.span:
             raise AssertionError(top)
-        insort(self.tops, top)
+        at = bisect_left(self.tops, top)
+        below = self.tops[at - 1] if at else None
+        above = self.tops[at] if at < len(self.tops) else None
+        if below is not None and above is not None:
+            self.bounds -= self.cls[below] != self.cls[above]
+        if below is not None:
+            self.bounds += self.cls[below] != c
+        if above is not None:
+            self.bounds += self.cls[above] != c
+        self.tops.insert(at, top)
         insort(self.bots, top - span)
         self.span[top] = span
         self.cls[top] = c
@@ -349,7 +374,16 @@ class _FoldLedger:
         span = self.span.pop(top)
         c = self.cls.pop(top)
         del self.ids[top]
-        del self.tops[bisect_left(self.tops, top)]
+        at = bisect_left(self.tops, top)
+        below = self.tops[at - 1] if at else None
+        above = self.tops[at + 1] if at + 1 < len(self.tops) else None
+        if below is not None:
+            self.bounds -= self.cls[below] != c
+        if above is not None:
+            self.bounds -= self.cls[above] != c
+        if below is not None and above is not None:
+            self.bounds += self.cls[below] != self.cls[above]
+        del self.tops[at]
         del self.bots[bisect_left(self.bots, top - span)]
         if self.count[c] == 1:
             del self.count[c]
@@ -364,6 +398,16 @@ class _FoldLedger:
     def is_done(self) -> bool:
         """Two wiped points at most: one value per class, nothing unmerged."""
         return len(self.tops) <= 2 and self.nspan == 0
+
+    def is_threshold(self) -> bool:
+        """At most two runs of wiped points: one class wholly below the other.
+
+        What the emitter's endgame prints from, so a plan may stop here
+        rather than merging each class onto one point; the extents are
+        required gone because two spanned runs can interleave, which the
+        boundary count alone cannot see.
+        """
+        return self.nspan == 0 and self.bounds <= 1
 
     def is_cofactor_done(self) -> bool:
         """One wiped point per live class."""
@@ -642,7 +686,7 @@ def _fold_reduce(
     """
     ledger = _FoldLedger.from_state(state)
     if done is _fold_done:
-        finished: Callable[[], bool] = ledger.is_done
+        finished: Callable[[], bool] = ledger.is_threshold
     elif done is _cofactor_done:
         finished = ledger.is_cofactor_done
     else:  # pragma: no cover - no shipped caller
@@ -1098,8 +1142,26 @@ def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
     every rules-built table re-executes on the interpreter at one fill
     width, three through six inputs, plus eight, ten, eleven, and the
     twelve-input interleaved route.
+
+    A state of at most two runs is a threshold state -- one class wholly
+    below the other, whatever the runs' extents, provided the extents do
+    not overlap -- and the emitter's endgame prints it directly, so the
+    plan is empty.  That is what makes ``AND``, majority and every minterm
+    a few dozen characters: on the popcount ladder they open as two runs.
     """
+    if len(state) <= 2 and all(
+        low[0] < high[0] - high[1] for high, low in pairwise(state)
+    ):
+        return []
     built = _fold_construct(state)
-    if built is not None:
-        return built
-    return _fold_reduce(state, _fold_done)
+    if built is None:
+        return _fold_reduce(state, _fold_done)
+    # The skeleton plans to two points; the endgame needs only two runs,
+    # so the plan is cut at the first threshold state it passes through.
+    ledger = _FoldLedger.from_state(state)
+    for index, op in enumerate(built):
+        if ledger.is_threshold():
+            return built[:index]
+        if not ledger.step(op):  # pragma: no cover - the skeleton's own ops
+            return built
+    return built

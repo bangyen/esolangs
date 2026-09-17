@@ -33,7 +33,20 @@ from esolangs.tools.pct_fold_plan import (
     _FoldOp,
     _FoldState,
 )
-from esolangs.tools.pct_ladder import _header, _run, _runs
+from esolangs.tools.pct_ladder import _header, _run
+
+#: Doublings that take every point strictly below zero under ``-3003`` and
+#: every point above zero over the limit: ``2**12`` exceeds ``3003``, so a
+#: value of ``-1`` or ``1`` is enough, and nothing in the window is spared.
+_DEEP_DOUBLINGS = 12
+
+#: The endgame's chain and digit, by the class that was driven deep.  The
+#: chain walks the wiped class from 0 to ``-255`` or ``-257`` in ``s``,
+#: ``i`` and ``m`` alone -- the deep class only sinks under those -- so
+#: that after the ``p`` the two sit one apart mod 256, deep class on 0.
+#: The shift then lands the deep class on its digit and the other follows
+#: one byte over or under.  Pinned in the tests by replaying both.
+_ENDGAME = {"0": ("immimmimmi", _BYTE_ZERO), "1": ("smimmimmimi", _BYTE_ONE)}
 
 
 class _FoldEmitter:
@@ -320,80 +333,77 @@ class _FoldEmitter:
         return _BYTE_ONE if self.cls[key] == "1" else _BYTE_ZERO
 
     def finish(self) -> None:
-        """Set the one residue that matters and align the print.
+        """Print from a threshold state: every point of one class below the other.
 
-        Two points remain, one per class (or one, for a constant table).
-        Their final gap must be congruent to the difference of their answer
-        bytes; the last relocation of the upper point has the whole
-        lower-point gap as its window, which spans a full residue system
-        once the gap exceeds 257, so exactly one amount in it qualifies.
-        A uniform tail shift then puts the pair onto the bytes themselves.
+        The two classes need not be single points and no gap carries a
+        residue requirement.  The lower class is driven *deep* and the upper
+        class *wiped*, both by doubling: after a shift that puts the boundary
+        at zero (the lower class strictly negative, the upper at or above
+        zero), twelve ``m`` take every negative point below ``-3003``, where
+        nothing but ``p`` ever moves it, and every positive point over the
+        limit, where the next command lands it on 0 -- the same 0 a point
+        already there keeps.  Deep values are one class to ``e`` whatever
+        their spread, so the upper class is now one value and the lower is
+        one residue.
+
+        The bytes are then set by the flip: a chain of ``s``/``i``/``m`` from
+        0 walks the wiped class to ``-255`` (or ``-257``), leaving the deep
+        class deep, and one ``p`` sends the deep class over the limit -- onto
+        0 -- while the wiped class comes up to ``255``.  Their gap is now
+        ``-1`` (or ``+1``) mod 256, and one shift of ``48`` or ``49`` lands
+        both on their digits.  About fifty characters, against the three
+        thousand a relocation-based alignment spent on the same two points.
+
+        A single class (a constant table) is simpler still: ``'`` zeroes
+        every row and one shift lands the digit.
         """
-        if len(self.at) == 1:
-            p = self.at[self.order[0]]
-            t = (self.byte(p) - self.value(p)) % 256
-            room = _LIMIT - self.value(p)
-            while t > room:
-                t -= 256
-            self.preshift(t)
+        keys = [self.at[stored] for stored in self.order]
+        classes = [self.cls[key] for key in keys]
+        if len(set(classes)) == 1:
+            byte = self.byte(keys[0])
+            self.body.append("'p" + self._sub(byte) + "p")
+            final = dict.fromkeys(keys, byte)
         else:
-            lo, hi = (self.at[stored] for stored in self.order)
-            if self.value(hi) - self.value(lo) < 258:
-                self.preshift(-(self.value(lo) + 2600))
-                u1 = max(_LIMIT + 1 - self.value(hi), 2)
-                if self.value(lo) + u1 > _LIMIT:
-                    raise AssertionError("self.pos[lo] + u1 <= _LIMIT")
-                self.body.append("p" + self._sub(u1) + "ps")
-                self.off += u1
-                if self.value(hi) <= _LIMIT:
-                    raise AssertionError("self.pos[hi] > _LIMIT")
-                if self.value(lo) > _LIMIT:
-                    raise AssertionError("self.pos[lo] <= _LIMIT")
-                self._move(hi, 0)
-                self.off -= 2
-                lo, hi = (self.at[stored] for stored in self.order)
-            gap = self.value(hi) - self.value(lo)
-            if gap < 258:
-                raise AssertionError(gap)
-            need = (-(self.byte(hi) - self.byte(lo)) - self.value(lo)) % 256
-            umin = max(_LIMIT + 1 - self.value(hi), 2)
-            umax = _LIMIT - self.value(lo)
-            u = next(
-                (c0 for c0 in range(umin, umax + 1) if c0 % 256 == need),
-                None,
-            )
-            if u is None:
-                raise AssertionError((umin, umax, need))
-            self.body.append("p" + self._sub(u) + "ps")
-            self.off += u
-            if self.value(hi) <= _LIMIT:
-                raise AssertionError("self.pos[hi] > _LIMIT")
-            if self.value(lo) > _LIMIT:
-                raise AssertionError("self.pos[lo] <= _LIMIT")
-            self._move(hi, 0)
-            self.off -= 2
-            lo, hi = (self.at[stored] for stored in self.order)
-            t = (self.byte(hi) - self.value(hi)) % 256
-            room = _LIMIT - self.value(hi)
-            # Unreachable here, unlike in the one-point branch above: the
-            # block just put ``hi`` at 0 and then shifted everything down
-            # by 2, so ``room`` is exactly ``_LIMIT + 2`` while ``t`` is a
-            # residue mod 256.  255 < 3005, so the lift never fires.  The
-            # loop stays because the one-point branch's does, and the two
-            # read as one rule.
-            while t > room:  # pragma: no cover - room is _LIMIT + 2 > 255
-                t -= 256
-            self.preshift(t)
-        for stored, p in self.at.items():
-            if (stored + self.off) % 256 != self.byte(p) % 256:
-                raise AssertionError(
-                    (
-                        stored + self.off,
-                        self.cls[p],
-                    )
-                )
-            if stored + self.off > _LIMIT:
+            split = next(i for i, cls in enumerate(classes) if cls != classes[0])
+            lower, upper = keys[:split], keys[split:]
+            if any(self.cls[key] == classes[0] for key in upper):
+                raise AssertionError("finish needs a threshold state")
+            top = self.value(lower[-1])
+            bottom = self.value(upper[0])
+            # Put the boundary at zero: lower strictly negative, upper at or
+            # above.  Zero shift where the state already straddles it.
+            if top >= 0:
+                self.descend(top + 1)
+            elif bottom < 0:
+                self.plain_rise(-bottom)
+            deep_cls = self.cls[lower[0]]
+            chain, digit = _ENDGAME[deep_cls]
+            tail = "m" * _DEEP_DOUBLINGS + chain + "p" + self._sub(digit) + "p"
+            self.body.append(tail)
+            final = {key: _apply(self.value(key), tail) for key in keys}
+        for key, value in final.items():
+            if value % 256 != self.byte(key) % 256:
+                raise AssertionError((value, self.cls[key]))
+            if value > _LIMIT:
                 raise AssertionError("self.pos[p] <= _LIMIT")
+        # The mirror after the tail: one value per class, kept so a caller
+        # reading ``pos`` sees what the interpreter holds at the print.
+        self.off = 0
+        self.at = {}
+        self.where = {}
+        merged: dict[int, list[int]] = {}
+        for key, value in final.items():
+            merged.setdefault(value, []).append(key)
+        for value, group in merged.items():
+            keep = group[0]
+            for other in group[1:]:
+                self.group[other] = keep
+                self.chunks[keep].extend(self.chunks.pop(other))
+                self.size[keep] += self.size.pop(other)
+                del self.cls[other]
+            self.at[value] = keep
+            self.where[keep] = value
+        self.order = sorted(self.at)
         self.body.append("e")
 
 
@@ -405,9 +415,11 @@ def _fold_uniform(n: int, step: int) -> tuple[int, ...]:
 def _fold_setters(n: int, weights: tuple[int, ...]) -> list[tuple[str, str]]:
     """One subtracting branch per input; the hold matches it in width.
 
-    Input ``i`` subtracts ``weights[i]`` when its bit is 1 and holds when it
-    is 0.  Both branches must come out the same width or the program leaks
-    its inputs through ``len()``.
+    The staged route's setters: input ``i`` subtracts ``weights[i]`` when
+    its bit is 1 and holds when it is 0.  (The all-row fold lays every
+    input by :data:`_PAIR` instead and puts the weight in the template.)
+    Both branches must come out the same width or the program leaks its
+    inputs through ``len()``.
 
     ``s`` subtracts 2, so an amount that is a multiple of 4 spells at an even
     width and the hold is that many ``p``.  The narrow ladder
@@ -500,76 +512,160 @@ def _fold_setters(n: int, weights: tuple[int, ...]) -> list[tuple[str, str]]:
     return out
 
 
+#: The one setter pair every input takes: ``s`` for a 0 bit, ``i`` for a 1.
+#: Both are a subtraction, so a run leaves ``-(2 + bit)`` behind and the
+#: template is what carries the input's weight -- the ``m`` that doubles
+#: everything laid so far -- and its complement, where a ladder asks for
+#: one.  One character wide, the narrowest a pair can be, since nothing
+#: one character long is the identity.
+_PAIR = ("s", "i")
+
+#: Follows every run: ``p`` lifts the accumulator, ``s`` drops the 2 the
+#: run added, ``p`` puts it back.  Between a run and its ``psp`` the value
+#: is ``2 + bit`` above the laid sum's negation, at most ``3003``, so the
+#: lift never resets.  A complemented input is spelled ``p$pi`` instead:
+#: the run is *added* under the ``p`` pair and the ``i`` takes 3 off, so the
+#: input contributes ``-(1 - bit)``.
+_LAY = "$psp"
+_LAY_COMPLEMENT = "p$pi"
+
+
+def _ladder_prefix(n: int, weights: tuple[int, ...], mask: int) -> str:
+    """Spell the runs and the doublings that weight them.
+
+    Input ``k`` is laid as its run and the fix-up, then as many ``m`` as
+    the ratio of its weight to the next input's asks; trailing doublings
+    scale the whole ladder.  So the weights are non-increasing powers of
+    two and every row lands on ``-sum(weights[k] * bit_k)``, with the mask's
+    inputs complemented.
+    """
+    out = []
+    for k in range(n):
+        out.append(_LAY_COMPLEMENT if (mask >> (n - 1 - k)) & 1 else _LAY)
+        below = weights[k + 1] if k + 1 < n else 1
+        ratio = weights[k] // below
+        if ratio * below != weights[k] or ratio & (ratio - 1):
+            raise AssertionError((weights, k))
+        out.append("m" * (ratio.bit_length() - 1))
+    return "".join(out)
+
+
 def _fold(truth_table: str, n: int) -> str | None:
-    """Build a fold template, or ``None`` if no plan is found.
+    """Build a fold template, or ``None`` if no ladder plans.
 
-    The constructions above all place every row's value in a single pass
-    and read the table's structure off a weighting, which is what bounded
-    the deep band at five inputs: an additive weighting has ``n`` degrees
-    of freedom against ``2**n`` residue constraints.  The fold instead
+    The constructions this replaced placed every row's value in a single
+    pass and read the table's structure off a weighting, which is what
+    bounded the deep band at five inputs: an additive weighting has ``n``
+    degrees of freedom against ``2**n`` residue constraints.  The fold
     treats the program as a sequence of *relocations*.  Rows start on a
-    rigid ladder (``acc = -4r``); each wipe -- push a group over the reset
-    line, top or bottom -- relocates it by exactly ``3004 + slack``, where
-    the slack is bounded by the gap to its nearest survivor; the doubling
-    ``m`` regrows gaps past 3004, which is what lets a landing split two
-    survivors and change the groups' cyclic order (wipes alone cap the
-    spread at 3003 and provably never can); and rows of one class are
-    merged by landing them on the same value, which erases their history.
-    The plan is one named move per state -- the case analysis of
-    :func:`_fold_rule_move` -- and the emitted program is *checked*, not
-    trusted: every step is mirrored on all ``2**n`` rows and asserted.
+    ladder; each wipe -- push a group over the reset line, top or bottom --
+    relocates it by exactly ``3004 + slack``, where the slack is bounded by
+    the gap to its nearest survivor; the doubling ``m`` regrows gaps past
+    3004, which is what lets a landing split two survivors and change the
+    groups' cyclic order (wipes alone cap the spread at 3003 and provably
+    never can); and rows of one class are merged by landing them on the
+    same value, which erases their history.  The plan is one named move
+    per state -- the case analysis of :func:`_fold_rule_move` -- and the
+    emitted program is *checked*, not trusted: every step is mirrored on
+    all ``2**n`` rows and asserted.
 
-    Only the final two points carry a residue requirement -- their gap must
-    be congruent to the difference of the answer bytes mod 256 -- and the
-    last relocation's window spans a full residue system, so the residue
-    work needs no weighting at all.  That is why the fold has no arity wall
-    of its own below the workspace bound: the ladder must fit inside the
-    6006 values a ``p`` can traverse.
+    The plan ends at a threshold state, one class wholly below the other,
+    and :meth:`_FoldEmitter.finish` prints from there by doubling, so no
+    gap ever carries a residue requirement.  That is why the fold has no
+    arity wall of its own below the workspace bound: the ladder must fit
+    inside the 3003 values below zero.
 
-    **Three ladders are tried**, and which one serves is what sets the reach
-    -- see :func:`_fold_ladders`.  The two uniform spacings come first
-    because every template that builds today is built on them; the packed
-    ladder (:data:`_FOLD_SUBSET_LADDER`) is the fallback, and it is what
-    carries eleven inputs, spending only the ``2**n + 1`` that distinctness
-    costs against the uniform ladder's ``2 * (2**n - 1)``.
+    **The ladders are tried in order of the points they leave**, and every
+    one is laid by the same pair -- see :func:`_fold_ladders`.  The
+    popcount ladder collapses a symmetric table to ``n + 1`` points, and a
+    threshold on it (``AND``, majority, a minterm under its mask) plans as
+    nothing at all; the distinct ladders lay every row apart.
 
     Reach, measured rather than argued: every table at ``n <= 4``
-    exhaustively, and samples at five through **eleven** that build and print
-    correctly on the shipped interpreter.  Twelve is where the construction
-    stops, and the end is *structural*: no ladder laying ``2**12`` distinct
-    positions spans less than 4095, the doubling is offered only under a
-    spread of 3002, and without the doubling the groups' cyclic order is
-    provably invariant -- the search from such a state exhausts after fifteen
-    states rather than running out of budget.
+    exhaustively, and samples at five through **eleven** that build and
+    print correctly on the shipped interpreter.  Twelve is where a ladder
+    stops: no ladder laying ``2**12`` distinct positions spans less than
+    4095, and the doubling is offered only under a spread of 3002.
     """
-    for weights in _fold_ladders(n):
-        built = _fold_at(truth_table, n, weights)
+    for weights, mask in _fold_ladders(truth_table, n):
+        built = _fold_at(truth_table, n, weights, mask)
         if built is not None:
             return built
     return None
 
 
-def _fold_ladders(n: int) -> list[tuple[int, ...]]:
-    """Return the ladders to try, in order, for an ``n``-input table.
+def _fold_ladders(truth_table: str, n: int) -> list[tuple[tuple[int, ...], int]]:
+    """Return the ladders to try, in order, as ``(weights, mask)`` pairs.
 
-    The two uniform ones come first because every template that already
-    builds is built on them, so trying anything else ahead would rewrite
-    output for tables that need no help.  The subset-sum ladder is the
-    fallback that lifts the arity: see :data:`_FOLD_SUBSET_LADDER`.
+    First the popcount ladder, every weight one, under each mask that keeps
+    its collisions inside a class: rows at one Hamming distance from the
+    mask share a value, so a table symmetric under that complementation
+    starts with ``n + 1`` points rather than ``2**n``.  Every mask is
+    tested through eight inputs; above that only the four a symmetric
+    table can be read off directly -- none, all, and the first row of the
+    smaller class with its complement, which is what a minterm or maxterm
+    needs -- since the sweep is ``4**n`` and the build is measured linear.
+
+    Then the distinct ladders, ``-step * r`` for the row index ``r`` at
+    steps 4, 2 and 1: the wider spacing first because the plans it gives
+    are the ones every table was measured on, the narrower ones because
+    they are what fits the workspace at ten and eleven inputs.  A step of 1
+    is the finest ladder there is and spends only what distinctness costs,
+    ``2**n - 1``; the pair itself is what makes it spellable, since no
+    setter subtracts 1 but ``-(2 + bit)`` under a ``psp`` does.
     """
-    out = [_fold_uniform(n, _FOLD_STEP), _fold_uniform(n, _FOLD_NARROW_STEP)]
-    packed = _fold_subset_weights(n)
-    if packed is not None:
-        out.append(packed)
+    size = 2**n
+    ones = tuple([1] * n)
+    if n <= _MASK_SWEEP:
+        masks = list(range(size))
+    else:
+        masks = [0, size - 1]
+        for cls in "01":
+            rows = [r for r in range(size) if truth_table[r] == cls]
+            if rows and len(rows) <= len(truth_table) // 2:
+                masks += [rows[0], rows[0] ^ (size - 1)]
+    out = []
+    for mask in dict.fromkeys(masks):
+        if _ladder_legal(truth_table, n, ones, mask):
+            out.append((ones, mask))
+    for step in (_FOLD_STEP, _FOLD_NARROW_STEP, 1):
+        out.append((_fold_uniform(n, step), 0))
     return out
+
+
+#: The arity up to which every mask of the popcount ladder is tested.
+_MASK_SWEEP = 8
+
+
+def _ladder_values(n: int, weights: tuple[int, ...], mask: int) -> list[int]:
+    """Where each row lands after the prefix: minus its masked weighted sum."""
+    out = []
+    for r in range(2**n):
+        total = 0
+        for k in range(n):
+            if ((r >> (n - 1 - k)) & 1) ^ ((mask >> (n - 1 - k)) & 1):
+                total += weights[k]
+        out.append(-total)
+    return out
+
+
+def _ladder_legal(
+    truth_table: str, n: int, weights: tuple[int, ...], mask: int
+) -> bool:
+    """Whether every collision on the ladder joins rows of one class."""
+    seen: dict[int, str] = {}
+    for r, value in enumerate(_ladder_values(n, weights, mask)):
+        if seen.setdefault(value, truth_table[r]) != truth_table[r]:
+            return False
+    return True
 
 
 def _fold_subset_weights(n: int) -> tuple[int, ...] | None:
     """Return the packed distinct-subset-sum ladder, or ``None`` past its reach.
 
     See :data:`_FOLD_SUBSET_LADDER` for why this shape, and why ``2**n + 1``
-    is the floor any such ladder pays.  ``n >= 2`` throughout: the fold is
-    only ever reached above two inputs.
+    is the floor any such ladder pays.  Only the staged route lays it now,
+    as its eleven-input prefix; ``n >= 2`` throughout.
     """
     # The tail starts one past the head's total, which is what keeps every
     # subset sum distinct: a power exceeding the sum of everything below it
@@ -663,12 +759,14 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
     class-homogeneous, so the reduce is thousands of cheap merges rather
     than the one-per-doubling starvation an answer-keyed interleave hits.
 
-    The prefix ladder is picked by the same rule the all-row fold uses: the
-    narrow uniform ladder while its footprint fits the workspace (ten
-    inputs, so twelve-input tables), and the packed distinct-subset-sum
-    ladder past that (eleven, so thirteen).  Fourteen inputs would need a
-    twelve-input prefix, and no ladder lays ``2**12`` distinct positions
-    inside the footprint -- the same counting wall, one stage later.
+    The prefix ladder is laid by setters that subtract their own weights,
+    unlike the all-row fold's one pair: the narrow uniform ladder while its
+    footprint fits the workspace (ten inputs, so twelve-input tables), and
+    the packed distinct-subset-sum ladder past that (eleven, so thirteen).
+    Fourteen inputs would need a twelve-input prefix, and no ladder lays
+    ``2**12`` distinct positions inside the footprint -- the same counting
+    wall, one stage later.  This is the one route whose pairs differ per
+    input, and it is reached only past eleven inputs.
     """
     prefix = n - 2
     narrow = _fold_uniform(prefix, _FOLD_NARROW_STEP)
@@ -1002,56 +1100,72 @@ def _fold_positions(n: int, weights: tuple[int, ...]) -> list[int]:
     return out
 
 
-def _fold_at(truth_table: str, n: int, weights: tuple[int, ...]) -> str | None:
+def _fold_at(
+    truth_table: str, n: int, weights: tuple[int, ...], mask: int = 0
+) -> str | None:
     """Build a fold template on a given ladder, or ``None``.
 
     **The ladder is bounded by ``_LIMIT``, not ``2 * _LIMIT``.**  The plan
     state is relative -- :func:`_fold_moves` allows a *span* of ``2 * _LIMIT``
     because a state may sit anywhere in ``[-_LIMIT, _LIMIT]`` -- but the
     emitter lays the rows at absolute positions starting from a zero
-    accumulator, so the ladder itself has to fit in ``[-_LIMIT, _LIMIT]``.
+    accumulator, so the ladder itself has to fit in ``[-_LIMIT, 0]``.
     Checking only the relative bound lets the planner spend thousands of moves on
     a geometry the emitter then refuses on its first op: the alternating
     table at eleven inputs plans 2833 ops on a 4094-wide uniform ladder and
     asserts immediately.
 
-    **Rows are grouped by position, not by row index.**  On a uniform ladder
-    the two orders agree, so the original code walked ``range(2**n)`` and
-    coalesced neighbours; on a weighted ladder they do not, and grouping by
-    index would build a state whose "runs" are not contiguous in the geometry
-    the plan reasons about.  Sorting first makes the same construction work
-    for both, and the uniform case is unchanged because sorting a ladder that
-    is already ordered is the identity.
+    **Rows are grouped by position, not by row index.**  Rows sharing a
+    position are one point from the start -- legal only within a class,
+    which :func:`_fold_ladders` has checked for the popcount ladder and
+    which the distinct ladders never do -- and runs are read off the
+    positions in descending order.  On a uniform ladder that is row order;
+    on the popcount ladder it is Hamming weight.
     """
-    pos = _fold_positions(n, weights)
-    # Two rows sharing a position are merged before the plan starts and can
-    # never be separated again, so every ladder offered is a distinct-sum
-    # one.  Asserted rather than guarded: a ladder that collides is a bug in
-    # :func:`_fold_ladders`, not a table this construction declines.
-    if len(set(pos)) != len(pos):
-        raise AssertionError((n, weights))
-    if max(abs(p) for p in pos) > _LIMIT:
+    values = _ladder_values(n, weights, mask)
+    if min(values) < -_LIMIT:
         return None
-    order = sorted(range(2**n), key=lambda r: -pos[r])
+    groups: dict[int, list[int]] = {}
+    for r, value in enumerate(values):
+        groups.setdefault(value, []).append(r)
+    for rows in groups.values():
+        if len({truth_table[r] for r in rows}) != 1:
+            raise AssertionError((n, weights, mask))
+    order = sorted(groups, reverse=True)
     runs: list[list[int]] = []
-    for r in order:
-        if runs and truth_table[runs[-1][-1]] == truth_table[r]:
-            runs[-1].append(r)
+    for value in order:
+        if (
+            runs
+            and truth_table[groups[runs[-1][-1]][0]] == truth_table[groups[value][0]]
+        ):
+            runs[-1].append(value)
         else:
-            runs.append([r])
+            runs.append([value])
     state = [
         (
-            pos[rn[0]],
-            pos[rn[0]] - pos[rn[-1]],
-            truth_table[rn[0]],
-            frozenset(rn),
+            run[0],
+            run[0] - run[-1],
+            truth_table[groups[run[0]][0]],
+            frozenset(r for value in run for r in groups[value]),
         )
-        for rn in runs
+        for run in runs
     ]
     ops = _fold_plan(_fold_norm(state))
     if ops is None:
         return None
-    emitter = _FoldEmitter(truth_table, n, weights)
+    emitter = _FoldEmitter.__new__(_FoldEmitter)
+    emitter.table = truth_table
+    emitter.rows = 2**n
+    emitter.body = []
+    emitter.load(
+        {
+            (rows[0] if len(rows) == 1 else frozenset(rows)): (
+                value,
+                truth_table[rows[0]],
+            )
+            for value, rows in groups.items()
+        }
+    )
     for idx, (kind, _, c, vids) in enumerate(ops):
         if kind == "m":
             emitter.double(next_is_rise=(idx + 1 < len(ops) and ops[idx + 1][0] == "u"))
@@ -1060,5 +1174,6 @@ def _fold_at(truth_table: str, n: int, weights: tuple[int, ...]) -> str | None:
         else:
             emitter.rise(c, vids)
     emitter.finish()
-    setters = _fold_setters(n, weights)
-    return _header(setters) + _runs(setters) + "".join(emitter.body)
+    return (
+        _header([_PAIR] * n) + _ladder_prefix(n, weights, mask) + "".join(emitter.body)
+    )

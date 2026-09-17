@@ -531,11 +531,12 @@ _MINTERM_SHAPED = {
 #
 # ``pct_squared_minus_one`` emits no tree at all.  %^2^-1's only branch is
 # ``t``, which jumps to position 0 and nowhere else, so the generator
-# computes the answer *arithmetically* -- one affine setter per input and a
-# single ``l`` -- rather than routing rows to leaves.  Its size tracks the
-# constants the solver happens to find, not the table's shape, so the
-# folding discriminator has nothing to measure.  It also raises on the
-# ``n == 3`` tables this test uses, which it cannot separate.
+# computes the answer *arithmetically* -- every input the one pair ``s``/
+# ``i``, weighted by doublings, then a fold of relocations through the
+# reset -- rather than routing rows to leaves.  Its size tracks the runs
+# of the table on its ladder and the plan those runs get, not the table's
+# shape, so the folding discriminator has nothing to measure: a one-input
+# table is a dozen characters and parity at three inputs twelve thousand.
 #
 # ``one_two_three`` emits no tree either, and for a related reason: 123's
 # answer is whether the program halts, and what decides that is the pointer
