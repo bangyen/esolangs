@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from tests.tools.minifuck_support import _MinifuckCase, run_count
+from tests.tools.minifuck_support import _MinifuckCase
 
 
 class TestMinifuckPool(_MinifuckCase):
@@ -84,9 +84,9 @@ class TestMinifuckPool(_MinifuckCase):
         They replaced a breadth-first search, so the property that matters
         is coverage: wherever the search would have found a pool, the list
         must too.  This builds through the public entry point precisely
-        because the routes differ -- the degenerate and reconverged ones
-        reach the endgame from states the staged route never produces, and
-        six of the ten codes answer only those.
+        because the routes differ -- the degenerate one reaches the endgame
+        from states the mux never produces, and six of the ten codes answer
+        only those.
 
         It deliberately does not assert that each code is necessary.
         Measured, none of them is: every one can be dropped alone and every
@@ -104,145 +104,6 @@ class TestMinifuckPool(_MinifuckCase):
         for table_int in range(16):
             table = format(table_int, "04b")
             assert module.minifuck.__wrapped__(table), table
-
-    def test_the_pool_codes_all_serve_one_orientation(self) -> None:
-        """Every pool code answers ``cell7 == 0``, and that is enough.
-
-        The list looks like half a list: no code satisfies ``cell7 == 1``,
-        yet the endgame asks about both orientations.  It works because a
-        missing pool is recoverable -- ``_try_print`` forks the same state
-        for both orientations and both reads, so a refusal is one failed
-        attempt among four.
-
-        The list carried the ``cell7 == 1`` mirrors for one commit.  They
-        changed 136 templates and bought nothing, which an ablation only
-        exposed once the fallback searches were stubbed: with the
-        fallthrough open, a gutted pool list still "works", because the
-        searches quietly rebuild what it drops.  So this pins the property
-        that made the mirrors droppable rather than the mirrors.
-        """
-
-        module = importlib.import_module("esolangs.tools.minifuck_staged")
-        mf = importlib.import_module("esolangs.tools.minifuck")
-        mux = importlib.import_module("esolangs.tools.minifuck_mux")
-        pool = importlib.import_module("esolangs.tools.minifuck_pool")
-
-        codes = pool._POOL_CODES  # noqa: SLF001
-        assert codes, "the pool list should not be empty"
-        # Shortest first, so the emitted program is no longer than it must be.
-        assert list(codes) == sorted(codes, key=len), codes
-        # Every code is built from the two idioms only -- no ``x`` appears,
-        # though the alphabet allows it.
-        for code in codes:
-            assert set(code) <= {"[", "<"}, code
-        # No code answers ``cell7 == 1``: the list really is one orientation.
-        # The fixed construction no longer calls the generic lookup, so replay
-        # its canonical post-clamp state directly as the oracle.
-        joint = mux._mux_separate(2)  # noqa: SLF001
-        joint.emit("x")
-        module._clamp(joint)  # noqa: SLF001
-        walk_out = min(mux._mux_separate(2).ptrs()) - 3  # noqa: SLF001
-        answered = {
-            cell7
-            for cell7 in (0, 1)
-            for code in codes
-            if pool._pool_reaches(joint, code, cell7, walk_out)  # noqa: SLF001
-        }
-        assert answered == {0}, f"expected only cell7==0 to be served, got {answered}"
-
-        # And that is a property of the list, not of the language: the step
-        # family reaches the other orientation natively.  These are not
-        # mirrors -- nothing is appended to a shipped code to get them -- they
-        # are ``'[<' * k`` walks with a different tail, and they answer
-        # ``cell7 == 1`` where no shipped code answers anything.  Pinned so
-        # the "half a list" account cannot drift back into "the other half is
-        # unreachable".
-        #
-        # Harvested separately, and from a cold derivation.  ``cache_clear``
-        # on ``minifuck`` alone is not enough: ``_derived_plans`` survives it,
-        # and a warm plan cache makes this build ask ``_find_pool`` exactly
-        # once instead of the hundreds of times a cold one does.  A one-site
-        # sample would make the check below depend on which test ran first.
-        wide: list[tuple[object, int, int]] = []
-        real = module._find_pool  # noqa: SLF001
-
-        def record_all(joint: object, cell7: int, walk_out: int) -> object:
-            if len(wide) < 400:
-                wide.append((joint.fork(), cell7, walk_out))  # type: ignore[attr-defined]
-            return real(joint, cell7, walk_out)
-
-        with patch.object(module, "_find_pool", record_all):
-            module._derived_plans.cache_clear()  # noqa: SLF001
-            mf.minifuck.cache_clear()
-            # Harvested from the oracle's enumeration rather than a build: a
-            # build now derives its columns in closed form and asks
-            # ``_find_pool`` only twice per slice, where the emit-and-walk
-            # enumeration still visits the staged states one by one.  Three
-            # inputs, because the sample has to be wide: a two-input walk
-            # visits 77 sites where this one fills the 400-site cap.
-            module._derived_plans(3, ("01101001",))  # noqa: SLF001
-        mf.minifuck.cache_clear()
-        assert len(wide) > 100, f"expected a cold build's lookups, got {len(wide)}"
-
-        other = ("[<[<[[[<[<[[<<", "[<[<[[[<[[[[<<", "[<[<[[[[[<[[<<")
-        other_answered = {
-            cell7
-            for joint, cell7, walk_out in wide
-            for code in other
-            if pool._pool_reaches(joint, code, cell7, walk_out)  # noqa: SLF001
-        }
-        assert other_answered == {1}, (
-            f"expected the family's other orientation, got {other_answered}"
-        )
-
-    def test_no_pool_code_serves_both_orientations(self) -> None:
-        """A code answers ``cell7 == 0`` or ``cell7 == 1``, never both.
-
-        Per site this is forced rather than observed: a code's effect on a
-        fixed state is deterministic, so it leaves one value in cell 7 and can
-        match at most one of the two targets.  Checked here on the shipped
-        five and on two codes from the other orientation, because the fact is
-        what makes the list's one-sidedness structural -- the space has no
-        code that would let one string serve both, so "half a list" is the
-        shape of the space rather than a gap in these five.
-        """
-
-        module = importlib.import_module("esolangs.tools.minifuck_staged")
-        mf = importlib.import_module("esolangs.tools.minifuck")
-        pool = importlib.import_module("esolangs.tools.minifuck_pool")
-
-        seen: list[tuple[object, int, int]] = []
-        real = module._find_pool  # noqa: SLF001
-
-        def record(joint: object, cell7: int, walk_out: int) -> object:
-            if len(seen) < 200:
-                seen.append((joint.fork(), cell7, walk_out))  # type: ignore[attr-defined]
-            return real(joint, cell7, walk_out)
-
-        with patch.object(module, "_find_pool", record):
-            module._derived_plans.cache_clear()  # noqa: SLF001
-            mf.minifuck.cache_clear()
-            # The oracle's walk, for the width of the sample; see the note
-            # above -- a build's closed-form derivation visits too few sites.
-            module._derived_plans(3, ("01101001",))  # noqa: SLF001
-        mf.minifuck.cache_clear()
-        assert len(seen) > 100, f"expected a cold walk's lookups, got {len(seen)}"
-
-        # The two witnesses from the other orientation, spelled by the same
-        # step law the shipped codes are.
-        other = (
-            pool._step(4, 3, odd=False),  # noqa: SLF001
-            pool._step() + pool._step(5, 2, odd=False),  # noqa: SLF001
-        )
-        assert other == ("[[[[[[[[<<<", "[<[[[[[[[[[[<<"), other
-
-        for code in (*pool._POOL_CODES, *other):  # noqa: SLF001
-            for joint, _cell7, walk_out in seen:
-                both = all(
-                    pool._pool_reaches(joint, code, orientation, walk_out)  # noqa: SLF001
-                    for orientation in (0, 1)
-                )
-                assert not both, f"{code!r} answered both orientations at one site"
 
     def test_the_pool_codes_are_generated_from_the_law(self) -> None:
         """The five codes are spelled by the law, not stored as strings.
@@ -358,85 +219,6 @@ class TestMinifuckPool(_MinifuckCase):
             machine = run("[<" * n)
             marks = [i for i in range(32) if machine.cell(i)]  # type: ignore[attr-defined]
             assert marks == [n], (n, marks)
-
-    @pytest.mark.slow  # one full three-input build per retired code
-    def test_dropping_a_pool_code_is_measured_not_assumed(self) -> None:
-        """The retired pool-code list cannot affect the production build.
-
-        The fixed construction names ``_SCULPT_POOL_CODE`` before any call;
-        dropping candidates from ``_POOL_CODES`` therefore strands no table.
-        """
-
-        module = importlib.import_module("esolangs.tools.minifuck")
-        codes = module._POOL_CODES  # noqa: SLF001
-
-        def out_of_order() -> int:
-            # A template whose runs are not three whole ones: the shape a
-            # lift that appended a misnamed input would have had, which
-            # ``_lift`` now refuses outright (a ``ValueError``).
-            count = 0
-            for table_int in range(256):
-                table = format(table_int, "08b")
-                try:
-                    template = module.minifuck.__wrapped__(table)
-                except ValueError:
-                    count += 1
-                    continue
-                count += run_count(template, 3) != 3
-            return count
-
-        def reset(new_codes: tuple[str, ...]) -> None:
-            module._POOL_CODES = new_codes  # noqa: SLF001
-            module._derived_plans.cache_clear()  # noqa: SLF001
-            module._degenerate_cells.cache_clear()  # noqa: SLF001
-            module.minifuck.cache_clear()
-
-        original = codes
-        try:
-            reset(original)
-            baseline = out_of_order()
-            # Zero, and it used to be ten.  The ten were the tables whose
-            # ignored input is the *middle* one, which no projection could
-            # sort; ``_mux`` solves them at full arity, where the runs are
-            # in name order by construction.
-            assert baseline == 0, baseline
-
-            stranding = {}
-            for dropped in range(len(codes)):
-                reset(tuple(c for i, c in enumerate(codes) if i != dropped))
-                stranded = []
-                # Keep the production rule live: the point is that changing
-                # this candidate list cannot change it.
-                with patch.object(module, "_mux", module._mux):  # noqa: SLF001
-                    for table_int in range(256):
-                        table = format(table_int, "08b")
-                        # This pair has no staged route by construction --
-                        # no bracket run carries its column to the read --
-                        # so it strands under every drop and would add a
-                        # flat 2 to every count.  What this measures is the
-                        # pool codes, so it is left out.
-                        if table in ("01101101", "10010010"):
-                            continue
-                        try:
-                            module.minifuck.__wrapped__(table)
-                        except (AssertionError, ValueError):
-                            # ``AssertionError`` is a stub firing.  A
-                            # ``ValueError`` is ``_solve`` giving up, which
-                            # is what a strand looks like now that the
-                            # column and parked searches are gone: there is
-                            # no route left below to rebuild it quietly.
-                            # Both mean the same thing here -- this drop
-                            # cost this table.
-                            stranded.append(table)
-                stranding[codes[dropped]] = len(stranded)
-
-            assert not any(stranding.values()), stranding
-            free = [c for c, n in stranding.items() if not n]
-            assert len(free) == len(codes), stranding
-            reset(tuple(c for c in codes if c not in free))
-            assert out_of_order() == baseline == 0, out_of_order()
-        finally:
-            reset(original)
 
     @pytest.mark.slow
     def test_the_pool_rule_matches_the_scan_it_replaced(self) -> None:

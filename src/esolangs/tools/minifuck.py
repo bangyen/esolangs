@@ -72,10 +72,8 @@ from esolangs.tools.minifuck_mux import (
 from esolangs.tools.minifuck_pool import (
     _BASE,
     _SEP,
-    _SEPS,
     _SPAN,
     _embed,
-    _try_print,
 )
 from esolangs.tools.minifuck_pool import (
     _FLIP as _FLIP,
@@ -125,6 +123,9 @@ from esolangs.tools.minifuck_pool import (
 from esolangs.tools.minifuck_pool import (
     _step as _step,
 )
+from esolangs.tools.minifuck_pool import (
+    _try_print as _try_print,
+)
 
 # The machine the construction below emits against.  ``_Sim`` and ``_Joint``
 # are re-exported rather than referenced through the module because the test
@@ -149,76 +150,6 @@ from esolangs.tools.minifuck_sim import (
 )
 from esolangs.tools.minifuck_sim import (
     _walk_to as _walk_to,
-)
-from esolangs.tools.minifuck_staged import (
-    _CHAIN_CAP as _CHAIN_CAP,
-)
-from esolangs.tools.minifuck_staged import (
-    _INSERT_ARITIES as _INSERT_ARITIES,
-)
-from esolangs.tools.minifuck_staged import (
-    _MAX_ACC as _MAX_ACC,
-)
-from esolangs.tools.minifuck_staged import (
-    _MAX_BRACKETS as _MAX_BRACKETS,
-)
-from esolangs.tools.minifuck_staged import (
-    _SLICE_YIELD_ORDER as _SLICE_YIELD_ORDER,
-)
-from esolangs.tools.minifuck_staged import (
-    _STAGED_ARITIES as _STAGED_ARITIES,
-)
-from esolangs.tools.minifuck_staged import (
-    _STAGING_BUDGET as _STAGING_BUDGET,
-)
-from esolangs.tools.minifuck_staged import (
-    _STAGING_BUDGET_N5 as _STAGING_BUDGET_N5,
-)
-from esolangs.tools.minifuck_staged import (
-    _budget as _budget,
-)
-from esolangs.tools.minifuck_staged import (
-    _Chain as _Chain,
-)
-from esolangs.tools.minifuck_staged import (
-    _closed_sweeps as _closed_sweeps,
-)
-from esolangs.tools.minifuck_staged import (
-    _column_sweep as _column_sweep,
-)
-from esolangs.tools.minifuck_staged import (
-    _derive_staging,
-    _replay,
-)
-from esolangs.tools.minifuck_staged import (
-    _derived_plans as _derived_plans,
-)
-from esolangs.tools.minifuck_staged import (
-    _first_staging as _first_staging,
-)
-from esolangs.tools.minifuck_staged import (
-    _insert_suffixes as _insert_suffixes,
-)
-from esolangs.tools.minifuck_staged import (
-    _planned_bit as _planned_bit,
-)
-from esolangs.tools.minifuck_staged import (
-    _planned_bits as _planned_bits,
-)
-from esolangs.tools.minifuck_staged import (
-    _slice_chains as _slice_chains,
-)
-from esolangs.tools.minifuck_staged import (
-    _slices as _slices,
-)
-from esolangs.tools.minifuck_staged import (
-    _staging_index as _staging_index,
-)
-from esolangs.tools.minifuck_staged import (
-    _stagings as _stagings,
-)
-from esolangs.tools.minifuck_staged import (
-    _suffix_plan as _suffix_plan,
 )
 
 __all__ = ["minifuck"]
@@ -307,116 +238,6 @@ def _project(truth_table: str, essential: list[int], n: int) -> str:
     :func:`read_at`, shared with :func:`permute_truth_table`.
     """
     return read_at(truth_table, essential, n)
-
-
-# The fixed head of the reconverging reset.  What follows it is a run of
-# ``<``, which clamps rather than writing, so the run only has to be long
-# enough to bring every row home; see :func:`_reset_code`.
-_RESET_HEAD = "[<[<<[<[<"
-
-
-def _reset_code(ignored: int) -> str:
-    """Return code after which the ignored inputs leave no trace.
-
-    Ignored inputs' setters are emitted first to keep name order, so this
-    suffix drives all ``2**ignored`` rows to an *identical* (not blank --
-    ``<`` clamps without writing) state.  Constructed: a breadth-first
-    search found length 12 at two ignored inputs, one more ``<`` at three,
-    nothing at four under its depth cap; the pattern is :data:`_RESET_HEAD`
-    plus ``ignored + 1`` clamping steps, converging at arities 1 through 8.
-    """
-    return _RESET_HEAD + "<" * (ignored + 1)
-
-
-def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
-    """Build by emitting the ignored inputs first, then erasing them.
-
-    Keeps name order where ``_lift`` would not.  The walk to ``_BASE - 1``
-    before the essential setter reproduces the standard embed, so the
-    fixed-cell lookup of :func:`_degenerate_cells` applies from the
-    constant state the reset leaves.
-    """
-    if not 1 <= len(essential) <= 2:
-        return None
-    ignored = [i for i in range(n) if i not in essential]
-    if ignored != list(range(len(ignored))):
-        # The ignored inputs have to be the *leading* ones for emitting them
-        # first to keep the order ascending.
-        return None
-
-    # Where to look for the answer once the ignored inputs are gone.  One
-    # essential input leaves a projection, which stands at a known cell; two
-    # leave a two-input table, which has a staging of its own -- so replay
-    # that staging and read its own accumulator rather than scanning.  The
-    # scan is what costs: at two essential inputs it turns a 0.5s build into
-    # seconds without reaching anything the staging does not.
-    if len(essential) == 1:
-        setup: tuple[int, int, int, int] | None = None
-        accumulators: tuple[int, ...] = tuple(_degenerate_cells(n).values())
-    else:
-        inner = _project(truth_table, essential, n)
-        plan = _derive_staging(inner, 2)
-        if plan is None:
-            return None
-        sep_index, settle, brackets, acc = plan
-        # Every two-input staging is a plain bracket run; the literal-suffix
-        # form is only used by the one stored three-input exception, and
-        # replaying it here would need the walk this route does not make.
-        if not isinstance(brackets, int):
-            return None
-        setup = (sep_index, settle, brackets, acc)
-        accumulators = (acc,)
-
-    # One constructed reset rather than a handful of searched ones.  The
-    # convergence is still *checked* before anything is built on it: the
-    # construction came from measurement, and a silent failure here would
-    # surface much later as a table that will not print.
-    j = _Joint(n)
-    for i in ignored:
-        j.emit_setter(i)
-    j.emit(_reset_code(len(ignored)))
-    if len({m.key() for m in j.ms}) == 1:
-        _walk_to(j, _BASE - 1)
-        if setup is None:
-            j.emit_setter(essential[0])
-            j.emit("[x")
-        else:
-            sep_index, settle, brackets, _acc = setup
-            for slot, i in enumerate(essential):
-                j.emit_setter(i)
-                j.emit("[x")
-                if slot + 1 < len(essential):
-                    j.emit(_SEPS[sep_index])
-            # The staging's settle count, replayed the way ``_embed`` does
-            # it: re-crossing the bit region advances the affine state, and
-            # the accumulator was chosen against the state that produces.
-            # The enumeration hands back ``settle == 1`` for AND and NAND,
-            # and six three-input tables project onto one of those, so
-            # ignoring the field would replay them against the wrong tape.
-            for _ in range(settle):
-                _clamp(j)
-                _walk_to(j, _BASE - 1)
-            _clamp(j)
-            _walk_to(j, _BASE - 1)
-            j.emit("[" * brackets + "<")
-        _clamp(j)
-        for acc in accumulators:
-            hit = _try_print(j, truth_table, acc)
-            if hit is not None:
-                return hit.template()
-    return None
-
-
-def _staged(truth_table: str, n: int) -> str | None:
-    """Build from a derived staging without searching, or None if there is none.
-
-    A miss falls through to :func:`_mux`, which closes four inputs; see the
-    note above :data:`_MUX_BASE` for the removed flipped-embed pass.
-    """
-    plan = _derive_staging(truth_table, n)
-    if plan is not None:
-        return _replay(truth_table, n, plan)
-    return _mux(truth_table, n)
 
 
 def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
