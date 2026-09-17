@@ -70,22 +70,11 @@ def brainfuck(truth_table: str) -> str:
     """Build a brainfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    This is :func:`bf_tree`, a decision tree sharing the bit tests.
-
-    There used to be a second construction here -- a branch-free sum of
-    minterms -- and ``bf`` returned whichever came out shorter, since the
-    tree was full and so paid for every input on sparse tables where the
-    minterm paid only per one-row.  Once the tree started folding constant
+    inputs (most significant first).  This is :func:`bf_tree`.  A
+    branch-free minterm sum used to compete; once the tree folded constant
     subtrees it won on every table at n <= 4 but the two constant ones,
-    where it now costs about 1.1x the minterm (271 characters at n == 4
-    against the 253 the minterm measured before it was removed) -- a margin
-    that no longer pays for a second construction and a dispatch to choose
-    between them, and which used to be 2.5x.  A constant table is a single
-    leaf, so what is left is almost entirely the reads: it gained nothing
-    from the print-once leaf and everything from dropping the per-input
-    complement construction.
+    where it costs 271 characters at n == 4 against the minterm's 253
+    (1.1x, down from 2.5x), not worth a second construction.
     """
     return bf_tree(truth_table)
 
@@ -96,16 +85,10 @@ _BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
 def _factor_encode(code: str) -> int:
     """Encode a brainfuck program as the Factor integer for it.
 
-    The decoder sorts the prime factors ascending, so the encoder walks
-    primes upward and hands each instruction the next prime with the right
-    residue modulo 11 (Dirichlet's theorem guarantees one always exists).  A
-    run of identical instructions is folded into one prime's exponent, which
-    keeps the integer small while decoding to the same run.
-
-    The prime powers are multiplied as a balanced tree rather than folded
-    into one growing accumulator: the accumulator is priced by its own
-    width at every step, which was 12.5s of a 14.4s build at thirteen
-    inputs (120860 runs) against 0.7s for the tree.
+    Primes ascend with the right residue mod 11 (Dirichlet), a run folding
+    into one exponent.  Prime powers multiply as a balanced tree: a growing
+    accumulator was 12.5s of a 14.4s build at thirteen inputs (120860 runs)
+    against 0.7s.
     """
     from sympy import isprime
 
@@ -133,25 +116,12 @@ def factor(truth_table: str) -> str:
     """Build a Factor program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    A Factor program is a single integer whose prime factorization decodes
-    to brainfuck, so the generator reuses :func:`brainfuck`'s truth-table
-    program unchanged and encodes it with :func:`_factor_encode`.  Total:
-    the tree is finite, every run gets a prime, and the integer is
-    arbitrary-precision on both sides -- this renders it and
-    :func:`esolangs.interpreters.tape_based.factor._parse` reads it back,
-    neither with a ceiling of its own.  It used to refuse past a digit
-    budget (4300, then 16000, then 500000), each a size policy pinned to the
-    arity the suite swept at the time rather than anything Factor says;
-    n=13 parity is 966568 digits, built in 3s and decoded by the interpreter
-    to the same brainfuck.
-
-    The one limit in the way is CPython's ``sys.get_int_max_str_digits()``,
-    a DoS guard against quadratic conversions.  It is process-global, so it
-    is raised to what this render needs and put back.  The need is estimated
-    from the bit length (``log10(2) < 0.30103``, so it never under-counts)
-    rather than paid for with the conversion it is sizing.
+    inputs (most significant first).  Encodes :func:`brainfuck`'s program
+    with :func:`_factor_encode`; total, with no digit ceiling (the old
+    4300/16000/500000 budgets were size policy): n=13 parity is 966568
+    digits, built in 3s.  CPython's ``sys.get_int_max_str_digits()`` is
+    raised to a bit-length estimate (``log10(2) < 0.30103``, never
+    under-counting) and put back.
     """
     number = _factor_encode(brainfuck(truth_table))
     digits = int(number.bit_length() * 0.30103) + 1
@@ -169,12 +139,8 @@ def three_d_brainfuck(truth_table: str) -> str:
     """Build a 3D Brainfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    3D Brainfuck's ``>``/``<`` set the generation pointer's heading (a no-op
-    in this interpreter), so the array is walked along one axis with
-    ``e``/``w`` instead; :func:`brainfuck`'s decision tree otherwise
-    translates directly, so this folds constant subtrees because that does.
+    inputs (most significant first).  :func:`brainfuck`'s tree with
+    ``e``/``w`` for the moves, since ``>``/``<`` are no-ops.
     """
     return brainfuck(truth_table).translate(str.maketrans("><", "ew"))
 
@@ -189,17 +155,11 @@ def painfuck(truth_table: str) -> str:
     """Build a Painfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Painfuck is brainfuck-compatible: the commands ``a``/``b`` are while-
-    nonzero loops, ``j`` reads a byte and ``u`` prints one.
-    :func:`brainfuck`'s decision tree translates directly (so this folds
-    constant subtrees because that does), mapping BF's
-    ``>``/``<`` (each one cell) to ``rl`` (+1) / ``l`` (-1), ``+``/``-`` to
-    ``ps`` (+1) / ``s`` (-1), and ``[``/``]``/``,``/``.`` to ``a``/``b``/
-    ``j``/``u``.  The interpreter then rewrites the source through two
-    substitution cycles, so each emitted command is pre-shifted ``k`` steps
-    back along its cycle (where ``k`` counts the commands so far) to undo it.
+    inputs (most significant first).  :func:`brainfuck`'s tree with
+    ``>``/``<`` as ``rl``/``l``, ``+``/``-`` as ``ps``/``s`` and
+    ``[``/``]``/``,``/``.`` as ``a``/``b``/``j``/``u``, each command
+    pre-shifted ``k`` steps back along its cycle to undo the interpreter's
+    substitution.
     """
     code = (
         brainfuck(truth_table)
@@ -233,13 +193,8 @@ def painfuck(truth_table: str) -> str:
 def bf_tree(truth_table: str) -> str:
     """Build a decision-tree brainfuck program for the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    The construction is :func:`decision_tree_program`, shared with
-    :func:`dimensional_tree`.  The tree is O(2**n) characters (sharing the
-    bit tests), versus the branch-free minterm evaluator's O(n * 2**n); for
-    XOR-n it measures 0.2K..4.9K characters at n = 2..8, against the
-    1.4K..33M the minterm measured before it was removed.
+    :func:`decision_tree_program`, shared with :func:`dimensional_tree`:
+    O(2**n) characters against the minterm evaluator's O(n * 2**n); XOR-n
+    measures 0.2K..4.9K at n = 2..8 against the minterm's 1.4K..33M.
     """
     return decision_tree_program(truth_table, ">", "<")

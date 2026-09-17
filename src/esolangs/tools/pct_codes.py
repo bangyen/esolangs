@@ -1,10 +1,4 @@
-"""The %^2^-1 instruction spellings the fold is built from.
-
-The fold emits two primitives -- an affine step and a subtraction of a chosen
-size -- so they are spelled once here, along with the template-format
-constants :func:`~esolangs.tools.pct_squared_minus_one.fill` reads and the
-byte values ``e`` prints as digits.
-"""
+"""The %^2^-1 instruction spellings the fold is built from."""
 
 import re
 
@@ -32,9 +26,7 @@ _DECL_RE = re.compile(r"(\d+)=([^|;]*)\|([^;]*)")
 def _sub_code(k: int) -> str | None:
     """Return code subtracting exactly ``k >= 0``, or ``None`` if impossible.
 
-    ``s`` subtracts 2 and ``i`` subtracts 3, so every ``k`` is expressible as
-    ``2a + 3b`` except ``k == 1``, which has no representation and is the one
-    gap the callers route around.
+    ``s`` subtracts 2 and ``i`` 3, so only ``k == 1`` has no spelling.
     """
     if k == 0:
         return ""
@@ -48,9 +40,7 @@ def _sub_code(k: int) -> str | None:
 def _sub_with(k: int, threes: int) -> str | None:
     """Subtract ``k`` spending exactly ``threes`` ``i`` commands, or ``None``.
 
-    :func:`_sub_code` always spells the shortest way, which fixes the width's
-    parity; trading ``s`` for ``i`` is what lets a caller reach the other
-    parity, since ``i`` moves 3 in one character where ``s`` needs two.
+    Trading ``s`` for ``i`` is how a caller reaches the other width parity.
     """
     rest = k - 3 * threes
     if rest < 0 or rest % 2:
@@ -61,8 +51,7 @@ def _sub_with(k: int, threes: int) -> str | None:
 def _affine_code(a: int, b: int) -> str | None:
     """Return a command string realising ``x -> a*x + b``, or ``None``.
 
-    The offset is applied after the multiplier so it is not scaled by it.  A
-    positive offset is spelled as a negated subtraction, ``-(-x - b)``.
+    A positive offset is spelled as a negated subtraction, ``-(-x - b)``.
     """
     head = {1: "", -1: "p", 0: "'", 2: "m"}.get(a)
     if head is None:
@@ -80,8 +69,7 @@ def _affine_code(a: int, b: int) -> str | None:
 def _apply(acc: int, code: str) -> int:
     """Run ``code`` on ``acc`` exactly as ``_Machine.step`` would.
 
-    The over-3003 reset fires *before* each command, so it is applied inside
-    the loop rather than once to the result.
+    The over-3003 reset fires *before* each command.
     """
     for char in code:
         if acc > _LIMIT:
@@ -102,17 +90,10 @@ def _apply(acc: int, code: str) -> int:
 def _pad_pair(zero: str | None, one: str | None) -> tuple[str, str] | None:
     """Pad two setter branches to equal width, preserving each one's value.
 
-    Either branch may be ``None``, meaning the caller's arithmetic had no
-    spelling in ``s``/``i``; that propagates as ``None`` rather than needing a
-    guard at every call site.
-
-    A program whose length depends on its inputs leaks them through
-    ``len()``, so both branches of a setter must be the same width.  The pad
-    is ``pp``: two negations, which the interpreter *executes* and which
-    compose to the identity, so a later pass stripping characters the
-    language merely ignores could not reintroduce the leak.  Only an even
-    shortfall can be padded this way; an odd one returns ``None`` and the
-    caller moves on to a different offset.
+    A ``None`` branch propagates.  Unequal widths leak the input through
+    ``len()``; the pad is ``pp``, two executed negations composing to the
+    identity, so a pass stripping ignored characters cannot reintroduce
+    the leak.  An odd shortfall returns ``None``.
     """
     if zero is None or one is None:
         return None

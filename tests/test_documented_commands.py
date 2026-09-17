@@ -250,4 +250,4 @@ def test_every_qualified_reference_resolves() -> None:
         f"{t} (in {', '.join(sorted(w))})" for t, w in sorted(broken.items())
     )
     # A regex that stopped matching would make the check above vacuous.
-    assert len(targets) >= 40, f"only {len(targets)} qualified references found"
+    assert len(targets) >= 30, f"only {len(targets)} qualified references found"
