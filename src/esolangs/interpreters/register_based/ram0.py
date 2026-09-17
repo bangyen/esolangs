@@ -1,32 +1,12 @@
 """RAM0 interpreter implementation.
 
-Computational model with two registers (z, n) and unbounded RAM.
-Seven commands: Z, A, N, C, L, S, and goto.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and a token to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.
-
-The RAM is a ``tuple`` of ``(address, value)`` pairs kept in insertion
-order (the dump prints them in that order), so a state is a value that can
-be stored, compared, and hashed as it stands.  A dict would have been the
-obvious store, but a mutable one is
-exactly what the old :func:`change` reached through -- it took the RAM and
-wrote into the caller's copy -- and that is the aliasing this rewrite
-exists to remove.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what RAM0 *does* stays in the
-pure layer.
-
-``step()`` executes one token and ``halted`` is true once the cursor runs
-off either end of the token list.  The state dump is printed exactly once,
-on the step that halts the machine, matching the original's
-print-after-the-loop behavior.  That "exactly once" is why the dumped flag
-is part of the state rather than a field beside it: it records that an
-effect has already happened, and a state that forgot it would print twice.
+Two registers (z, n) and unbounded RAM; seven commands: Z, A, N, C, L,
+S, and goto.  :func:`_advance` is pure over an immutable ``_State``
+whose RAM is a tuple of ``(address, value)`` pairs in insertion order
+(the dump prints that order); the old :func:`change` wrote into the
+caller's dict.  ``halted`` once the cursor runs off the token list, and
+the dump prints exactly once on that step -- the ``dumped`` flag is in
+the state because it records an effect.
 """
 
 from __future__ import annotations
@@ -64,17 +44,9 @@ type _State = tuple[int, int, int, _Ram, bool]
 def _stored(ram: _Ram, addr: int, value: int, index: _Index) -> _Ram:
     """Return ``ram`` with ``addr`` set to ``value``, in insertion order.
 
-    A rewrite updates the existing pair where it sits; a new address is
-    appended.  That is what a dict does, and the dump reads the order back
-    out, so it has to be what happens here too.
-
-    The store is a chunked tape (:mod:`esolangs.interpreters.persistent`),
-    so the rebuild an immutable store costs is one chunk rather than every
-    pair, and ``index`` -- the machine's address-to-position memo -- finds
-    an existing pair in one lookup where this used to scan.  The boolean
-    corpus initializes one cell per table row, 268 at eight inputs, and
-    Theta(T) writes of O(T) each were why a RAM0 program's execution grew
-    faster than its command count.
+    A chunked tape (:mod:`esolangs.interpreters.persistent`) with an
+    address-to-position memo: Theta(T) writes of O(T) each (268 cells at
+    eight inputs) made execution grow faster than the command count.
     """
     position = index.get(addr)
     if position is not None:
@@ -93,12 +65,8 @@ def change(
 ) -> tuple[int, int, _Ram, bool]:
     """Execute a single RAM0 command and return the updated registers.
 
-    Now returns the RAM alongside the registers instead of writing into a
-    dict the caller still holds.  ``S`` is the only command that touches
-    the store, and it hands back a new one.
-
-    The trailing flag is the ``C`` skip condition: whether ``z`` is zero
-    after the command ran.
+    Returns the RAM too rather than writing the caller's dict; the trailing
+    flag is ``C``'s skip condition.
     """
     if op == "Z":
         z = 0
@@ -116,14 +84,8 @@ def change(
 def _advance(state: _State, op: str, index: _Index) -> _State:
     """Return the state after executing one token.
 
-    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
-    argument, so the dump is necessarily the caller's business -- this
-    function only records, through ``dumped``, that it has happened.
-
-    ``C`` skips the next token when ``z`` is zero after the command; a
-    digit token is a 1-based goto, so it lands on ``int(op) - 2`` and the
-    shared increment below carries it to ``int(op) - 1``.  Every other
-    token falls through to that same increment.
+    ``C`` skips the next token when ``z`` is zero; a digit is a 1-based goto
+    landing on ``int(op) - 2`` so the shared increment carries it.
     """
     ind, z, n, ram, dumped = state
     z, n, ram, skip = change(z, n, ram, op, index)
@@ -135,14 +97,7 @@ def _advance(state: _State, op: str, index: _Index) -> _State:
 
 
 class _Machine:
-    """A RAM0 run: one immutable ``_State``, rebound per step.
-
-    The protocol the rest of the library expects (``step``, ``halted``,
-    ``snapshot``, and the ``z``/``n``/``ram``/``ind`` attributes) is mutable
-    by construction, so this class supplies it.  All it does is hold the
-    current state and the tokens; the rules themselves are the pure
-    functions above.
-    """
+    """A RAM0 run: one immutable ``_State``, rebound per step."""
 
     #: Whether the tape/registers are written on the step *after* the halt.
     #: It belongs to the language, not to whoever is stepping it: ``run``
@@ -190,11 +145,7 @@ class _Machine:
     def halted(self) -> bool:
         """Whether the cursor has run past the end of the token list.
 
-        Matches the original loop's sole condition (``ind < len(tokens)``):
-        a goto always lands with ``ind >= 0`` because the regex only
-        tokenizes digit strings starting ``1``-``9`` (so ``int(c) - 2 + 1``,
-        the post-increment value, is never negative) -- there is no path to
-        a negative index this needs to guard against separately.
+        A goto never lands negative (the regex tokenizes digits starting 1-9).
         """
         return self.state[0] >= self.size
 
@@ -240,10 +191,7 @@ class _Machine:
     def step(self) -> None:
         """Execute one token, dumping the state once the cursor runs off.
 
-        The dump is here rather than in the transition: this is the shell,
-        so it is where an effect belongs.  The transition carries the flag
-        that says it has happened, which is what keeps it to exactly one
-        dump however many times a halted machine is stepped.
+        The transition's flag keeps it to one dump.
         """
         ind, z, n, ram, dumped = self.state
         if ind >= self.size:

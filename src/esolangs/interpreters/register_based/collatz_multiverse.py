@@ -1,51 +1,18 @@
 """Interpreter for Collatz Multiverse.
 
-An OISC where every line is ``[var1] = [var2] x + [var3], [DO|NOT] PRINT.``
-The Collatz rule applies to var1: if it is odd (or 0), it becomes
-``var1 * var2 + var3``; if it is even, it is halved.  ``DO`` prints the
-result as a byte, ``NOT`` does not.  Variables are named by letters, digits,
-and underscores (not starting with a digit) and start at 0; ``arr[var]``
-indexes an array (bare ``arr`` acts as ``arr[0]``); ``negativeOne`` starts
-at -1; ``input`` reads an integer from stdin and cannot be a target; and
-``lineNumber`` reads the current line (1-indexed), and assigning to it moves
-the instruction pointer to that line without executing it immediately.
-
-Documented decisions for gaps in the wiki spec:
-- the program is its non-blank lines, numbered from 1; execution starts at
-  line 1 and halts when the pointer leaves the program;
-- var2/var3 and array indices must be variable names, not numeric literals
-  (the wiki rejects ``var = 3 x + 1``);
-- assigning to ``lineNumber`` applies the Collatz rule to the current line
-  number and jumps to the result (the wiki does not exempt it);
-- ``DO`` prints the low byte of the result;
-- ``input`` raises :class:`EOFError` when input runs out (repo-wide
-  convention);
-- a malformed line, a numeric literal, or an attempt to redefine ``input``
-  is malformed (:class:`ValueError`).
-
-The interpreter runs on a :class:`_Machine` (the registers, the arrays, and
-the line pointer), so it is step-capable: ``step()`` executes one line and
-``halted`` is true once the pointer leaves the program.  A ``lineNumber``
-jump that returns to an exact state is a cycle the state-cycle hang detector
-proves; the ``run()`` backstop stays for the unbounded-growth class (a
-register that keeps growing).
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and a parsed line to the next state, and
-never mutates what it is given.  It takes no ``io`` argument at all, so it
-is total and side-effect free by construction rather than by inspection.
-
-Reading is where this language differs from the others in the series: a
-read can *do* something.  ``input`` consumes from stdin, and an indexed
-read used to create the array as a side effect of looking in it.  So the
-shell reads every ``input`` a line needs before the transition runs and
-passes them in, and :func:`_read` is a pure lookup that defaults a missing
-array or register to zero rather than creating one.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what Collatz Multiverse *does*
-stays in the pure layer.
+Every line is ``[var1] = [var2] x + [var3], [DO|NOT] PRINT.``: an odd or
+zero var1 becomes ``var1 * var2 + var3``, an even one is halved, and
+``DO`` prints the low byte.  Variables start at 0; ``arr[var]`` indexes
+(bare ``arr`` is ``arr[0]``); ``negativeOne`` starts at -1; ``input``
+reads an integer and cannot be a target; ``lineNumber`` is the 1-based
+current line and assigning it jumps (the Collatz rule applies to it
+too).  Non-blank lines are numbered from 1; the run halts when the
+pointer leaves.  var2/var3 and indices must be names (the wiki rejects
+``var = 3 x + 1``); ``input`` raises :class:`EOFError` when exhausted; a
+malformed line, numeric literal or redefinition of ``input`` raises
+:class:`ValueError`.  :func:`_advance` is pure over an immutable
+``_State``; the shell pre-reads every ``input`` a line names, and
+:func:`_read` defaults a missing array to zero rather than creating it.
 """
 
 from __future__ import annotations
@@ -93,11 +60,7 @@ def _reg_set(regs: _Regs, name: str, value: int) -> _Regs:
 
 
 def _arr_get(arrays: _Arrays, name: str, index: int) -> int:
-    """Return ``name[index]``, or zero for a cell never written.
-
-    A pure lookup: unlike the ``setdefault`` this replaces, asking about an
-    array does not bring it into being.
-    """
+    """Return ``name[index]``, or zero for a cell never written."""
     for key, cells in arrays:
         if key == name:
             for i, value in cells:
@@ -129,12 +92,7 @@ _LINE = re.compile(
 
 
 class _Machine:
-    """Per-run Collatz Multiverse state: registers, arrays, and the pointer.
-
-    ``step()`` executes one line; ``halted`` is true once the pointer leaves
-    the program.  The VM and the state-cycle hang detector expose this
-    object.
-    """
+    """Per-run Collatz Multiverse state: registers, arrays, and the pointer."""
 
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code`` into lines and start at line 1."""
@@ -211,10 +169,8 @@ class _Machine:
     def step(self) -> None:
         """Execute one line, moving the pointer.
 
-        Every ``input`` the line names is read here, in the order the
-        transition would have read them, and handed over as values.  That
-        is what lets :func:`_advance` be pure: ``input`` is the one read
-        that consumes something, and a line can name it up to three times.
+        Every ``input`` the line names (up to three) is read here, in the
+        transition's order.
         """
         if self.halted:
             return
@@ -245,11 +201,7 @@ type _Line = tuple[str, str | None, str, str | None, str, str | None, str]
 
 
 def _plain(state: _State, name: str) -> int:
-    """Read a non-indexed, non-input operand.
-
-    Index operands come through here too: an array subscript is always a
-    bare name, so it can never itself be indexed or read input.
-    """
+    """Read a non-indexed, non-input operand (index operands come here too)."""
     ip, regs, _arrays = state
     return ip if name == "lineNumber" else _reg_get(regs, name)
 
@@ -257,9 +209,7 @@ def _plain(state: _State, name: str) -> int:
 def _operand(state: _State, spec: _Operand, pending: list[int]) -> int:
     """Read one operand, taking any ``input`` value the shell pre-read.
 
-    ``pending`` is consumed in the same order the operands name ``input``,
-    which is the order :meth:`_Machine.step` filled it: index before the
-    name it subscripts, and operands left to right.
+    ``pending`` is consumed in operand order: index before its name, left to right.
     """
     name, index = spec
     idx = 0
@@ -283,17 +233,8 @@ def _advance(
 ) -> tuple[int, _State]:
     """Return the computed value and the state after executing one line.
 
-    Pure: it reads ``state`` and returns a new one.  The value comes back
-    alongside because ``DO PRINT`` needs it and printing is the shell's --
-    returning it is cheaper than making the caller recompute the Collatz
-    step to find out what was printed.
-
-    ``reads`` holds the ``input`` values the shell already consumed, in the
-    order the operands name them.
-
-    The Collatz rule: an odd (or zero) target becomes ``var1 * var2 +
-    var3``, and an even one is halved.  Assigning to ``lineNumber`` moves
-    the pointer to the result instead of writing a register.
+    The value comes back because ``DO PRINT`` is the shell's.  ``reads``
+    holds the pre-read ``input`` values.
     """
     ip, regs, arrays = state
     var1, idx1, var2, idx2, var3, idx3, _do_print = line
