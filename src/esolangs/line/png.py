@@ -370,12 +370,6 @@ def write_grey(pixels: list[bytearray]) -> bytes:
     )
 
 
-def read_grey_file(path: str) -> list[bytearray]:
-    """Read a PNG file from ``path`` as one ``bytearray`` of levels per row."""
-    with open(path, "rb") as handle:
-        return read_grey(handle.read())
-
-
 def write_grey_file(path: str, pixels: list[bytearray]) -> None:
     """Write greyscale rows to ``path`` as a PNG."""
     with open(path, "wb") as handle:

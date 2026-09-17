@@ -497,16 +497,6 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
 flatten = lattice.flatten
 
 
-def count_pivots(stroke: Stroke) -> int:
-    """Count the branch pivots in a stroke tree (one per real fork)."""
-    count = 1 if stroke.zero is not None or stroke.nonzero is not None else 0
-    if stroke.zero is not None:
-        count += count_pivots(stroke.zero)
-    if stroke.nonzero is not None:
-        count += count_pivots(stroke.nonzero)
-    return count
-
-
 def _redraw(vertex_lists: list[list[Vertex]], mask: Mask) -> Mask:
     """Draw every walked vertex-to-vertex leg's real ink onto a blank canvas.
 
