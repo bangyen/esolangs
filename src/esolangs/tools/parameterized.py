@@ -107,8 +107,7 @@ MINSKY_SWAP_PAIR = ("**", "++")
 HOME_ROW_PAIR = ("as", "aj")
 
 
-# A decision-tree node: ("leaf", leaf_id, value, None, None) or
-# ("node", node_id, level, zero_subtree, one_subtree).
+# ("leaf", leaf_id, value, None, None) or ("node", node_id, level, zero, one).
 type _Node = tuple[str, int, int, _Node | None, _Node | None]
 
 

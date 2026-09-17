@@ -1,12 +1,9 @@
 """Boolean-function generator for A Painter Ant (parameterized convention).
 
-Lowercase moves onto black, uppercase onto white, ``P`` paints white; the
-program loops and the answer is the colour of the cell the ant ends a
-pass on.  Row -1 is the never-painted lane, row 0 the corridor of
-``2**n`` white cells, row +1 the answers.  Each input is ``n`` (into the
-lane) or ``N`` (blocked), then ``E`` x ``2**(n-1-i)`` which only the
-corridor allows, then ``SN`` returning a lane ant.  Every program is a
-pass-stable fixed point.
+Row -1 is the never-painted lane, row 0 the corridor of ``2**n`` white
+cells, row +1 the answers.  Each input is ``n`` (into the lane) or ``N``
+(blocked), then ``E`` x ``2**(n-1-i)`` which only the corridor allows,
+then ``SN``; the answer is the colour of the cell a pass ends on.
 """
 
 from esolangs.tools.helpers import (
@@ -21,10 +18,7 @@ PAIR = ("n", "N")
 
 
 def a_painter_ant(truth_table: str) -> str:
-    """Build an A Painter Ant template for an ``n``-input Boolean function.
-
-    One character run per input, the weight in the ``E`` walk after it.
-    """
+    """Build an A Painter Ant template: one run per input, weight in the ``E`` walk."""
     n = _validate_truth_table(truth_table)
     size = len(truth_table)
     # Pass 1 paints the origin; later ``N`` lifts off the answer, ``W`` returns.
