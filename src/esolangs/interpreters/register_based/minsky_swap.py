@@ -1,42 +1,16 @@
-"""Minsky Swap interpreter implementation.
+"""Interpreter for Minsky Swap.
 
-Turing-complete language based on Minsky machines.
-Uses two unbounded registers with a register pointer that can be swapped.
+Two unbounded registers and a swappable register pointer.  The Nth ``~``
+jumps to the Nth number on the jump line, 1-based ("line N", per the
+wiki); a ``~`` with no jump number raises :class:`ValueError`.  The wiki
+defines no I/O, so both registers are printed once at the end,
+space-separated with no trailing newline -- the repo's convention for
+interpreter-only languages (Back, Bitdeque, A Painter Ant), not the
+spec's; LaserFuck's spec pins newlines instead.
 
-Jump targets are 1-based and fixed by the tilde's position in the code line:
-the Nth ``~`` jumps to the Nth number on the jump line, so ``decnz(N)`` (and
-its compact ``~``) restarts execution at line N.  The wiki describes targets
-as 1-based ("line N"), which this interpreter follows.
-
-A ``~`` with no corresponding jump number is a malformed program and is
-rejected with :class:`ValueError`.
-
-The wiki defines no I/O for this language, so the interpreter prints both
-registers when the program ends -- space-separated on one line, with no
-trailing newline.  This is the convention the other interpreter-only
-languages here follow (Back's tape, Bitdeque's deque, A Painter Ant's grid
-raster); the choice to print at all, and the separator, are the repo's, not
-the spec's.  A language whose spec *does* pin an output format follows that
-instead: LaserFuck's says its decimal mode prints "with line breaks", so it
-separates with newlines rather than spaces.
-
-The interpreter runs on a :class:`_Machine` (the parsed program, both
-registers, and the instruction cursor), so it is step-capable: ``step()``
-executes one command and ``halted`` is true once the cursor reaches the end
-of the program.  The register dump is printed exactly once, on the step
-that halts the machine, matching the original's print-after-the-loop
-behavior.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the jump table to the next state, and
-never mutates what it is given.  It takes no ``io`` argument at all, so it
-is total and side-effect free by construction rather than by inspection.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what Minsky Swap *does* stays
-in the pure layer.  The register dump is the language's only effect and is
-done by ``step``.
+:func:`_advance` is a pure transition over an immutable ``_State`` with no
+``io`` argument; :class:`_Machine` is the mutable shell that rebinds one
+state per ``step()`` and does the one dump on the halting step.
 """
 
 from __future__ import annotations
@@ -66,16 +40,9 @@ type _State = tuple[int, int, tuple[int, int], bool]
 def _advance(state: _State, prog: str, targets: dict[int, int]) -> _State:
     """Return the state after executing one command.
 
-    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
-    argument, so the dump is necessarily the caller's business -- this
-    function only records, through ``dumped``, that it has happened.
-
-    ``~`` is decrement-or-jump: it decrements the current register when it
-    is nonzero, and otherwise jumps to its 1-based target, landing on
-    ``target - 2`` so the shared increment carries it to ``target - 1``.
-
-    The parse strips everything but ``+~*``, so the final branch is ``*``,
-    which swaps which register the pointer addresses.
+    ``~`` decrements a nonzero register, else jumps to ``target - 2`` so the
+    shared increment lands on ``target - 1``; ``*`` swaps the pointer.  The
+    dump is the caller's; ``dumped`` records that it happened.
     """
     ind, ptr, reg, dumped = state
     op = prog[ind]
@@ -123,12 +90,7 @@ def _parse(code: str) -> tuple[str, list[int]]:
 
 
 class _Machine:
-    """Per-run Minsky Swap state: the program, both registers, and the cursor.
-
-    ``step()`` executes one command; ``halted`` is true once the cursor
-    reaches the end of the program.  The state-cycle hang detector and the
-    VM expose this object.
-    """
+    """Per-run Minsky Swap state: the program, both registers, and the cursor."""
 
     #: Whether the tape/registers are written on the step *after* the halt.
     #: It belongs to the language, not to whoever is stepping it: ``run``
@@ -212,10 +174,8 @@ class _Machine:
     def step(self) -> None:
         """Execute one command, dumping the registers once the cursor ends.
 
-        The dump is here rather than in the transition: this is the shell,
-        so it is where an effect belongs.  The transition carries the flag
-        that says it has happened, which keeps it to exactly one dump
-        however many times a halted machine is stepped.
+        The transition's ``dumped`` flag keeps it to one dump however often a
+        halted machine is stepped.
         """
         ind, ptr, reg, dumped = self.state
         if ind >= self.size:

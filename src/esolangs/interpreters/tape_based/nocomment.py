@@ -1,37 +1,15 @@
 """Interpreter for NoComment.
 
-The full wiki language (not a subset): a byte tape with a movable pointer,
-plus a byte stack.  ``i``/``d`` increment/decrement the current cell, ``c``
-clears it, ``l``/``r`` move the pointer left/right, ``n`` pushes the current
-cell onto the stack, ``f`` pops the stack into the current cell, ``s``/``b``
-jump forward/backward by a peeked stack value when the current cell is
-nonzero (``s`` skips X instructions, ``b`` jumps back X-1), and ``o`` prints
-the current cell as a byte.  The tape is static and the pointer wraps at both
-ends (per the wiki, pointer overflow is legal and moves to the opposite end).
-Its size defaults to 4096, and ``run`` takes a ``tape`` argument for
-programs that need a longer one.
+Byte tape with a wrapping pointer (size 4096; ``run`` takes ``tape``) plus
+a byte stack.  ``i``/``d``/``c`` increment/decrement/clear, ``l``/``r``
+move, ``n``/``f`` push/pop, ``s``/``b`` jump forward X/back X-1 by the
+peeked stack top when the cell is nonzero, ``o`` prints.  Per the wiki, a
+non-command character is malformed (:class:`ValueError`) and popping an
+empty stack halts (:class:`~esolangs.exceptions.HaltError`).
 
-Per the wiki, any character that is not a command is an error (there are no
-comments), and popping an empty stack is an error.  A malformed program
-(unrecognized character) raises :class:`ValueError`; an invalid operation
-(stack underflow) raises :class:`~esolangs.exceptions.HaltError`.
-
-The interpreter runs on a :class:`_Machine` (the byte tape, the stack, and
-the code cursor), so it is step-capable: ``step()`` executes one command and
-``halted`` is true once the cursor reaches the end of the code.  A jump back
-to a command that never changes state is a cycle the state-cycle hang
-detector proves; the ``run()`` backstop stays for the unbounded-growth class.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and a command to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what NoComment *does* stays in
-the pure layer.  Printing, and the two errors a program can raise, stay in
-the shell -- which leaves the transition total.
+:func:`_advance` is a pure, total transition over an immutable ``_State``
+with no ``io`` argument; :class:`_Machine` is the shell that prints and
+raises.
 """
 
 from __future__ import annotations
@@ -64,12 +42,7 @@ type _State = tuple[int, int, bytes, tuple[int, ...], int, bool]
 
 
 def _committed(state: _State) -> bytes:
-    """Return ``state``'s tape with the buffered cell written back if stale.
-
-    The one place the buffer's invariant is discharged.  Every path that
-    leaves the cell under the pointer -- the two moves, and the observers on
-    :class:`_Machine` -- goes through here.
-    """
+    """Return ``state``'s tape with the buffered cell written back if stale."""
     _ind, ptr, tape, _stack, acc, dirty = state
     if not dirty:
         return tape
@@ -79,15 +52,8 @@ def _committed(state: _State) -> bytes:
 def _advance(state: _State, code: str, size: int) -> _State:
     """Return the state after executing the command at the cursor.
 
-    Pure, and total: the shell has already rejected the stack underflow, the
-    out-of-range jump, and the unrecognized character, so every command it
-    can be handed has a defined successor state.  It takes no ``io``
-    argument, so ``o``'s print is the caller's business -- it changes no
-    state at all.
-
-    ``s`` skips X forward and ``b`` jumps back X-1, which is the same move
-    in opposite directions.  Both read the top of the stack without popping
-    it, and both only fire when the current cell is nonzero.
+    Total: the shell has already rejected underflow, out-of-range jumps and
+    unknown characters.  ``s``/``b`` peek the stack and fire only on nonzero.
     """
     ind, ptr, tape, stack, acc, dirty = state
     char = code[ind]
@@ -118,12 +84,7 @@ def _advance(state: _State, code: str, size: int) -> _State:
 
 
 class _Machine:
-    """Per-run NoComment state: the byte tape, the stack, and the cursor.
-
-    ``step()`` executes one command; ``halted`` is true once the cursor
-    reaches the end of the code.  The VM and the state-cycle hang detector
-    expose this object.
-    """
+    """Per-run NoComment state: the byte tape, the stack, and the cursor."""
 
     def __init__(self, code: str, io: IO, tape: int = _TAPE) -> None:
         """Start with a cleared tape of ``tape`` cells at the origin."""
@@ -183,12 +144,8 @@ class _Machine:
     def step(self) -> None:
         """Execute one command, advancing the cursor.
 
-        The print and both error cases live here rather than in the
-        transition: this is the shell, so it is where an effect or a raise
-        belongs, and it leaves :func:`_advance` total.
-
-        ``o`` reads the write buffer rather than the tape, because ``acc``
-        is the cell's true value whether or not the tape has caught up.
+        ``o`` reads the write buffer ``acc``, the cell's true value whether or
+        not the tape has caught up.
         """
         if self.halted:
             return
