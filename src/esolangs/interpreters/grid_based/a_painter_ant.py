@@ -6,10 +6,11 @@ the program loops.  No I/O, so :func:`run` steps whole passes until the
 state repeats at a pass start, then :meth:`_Machine.interrupt` makes the
 next ``step`` print the visited box: ``#`` white, ``.`` black, the ant
 ``@``/``o`` (where it rests is the boolean answer).  Whitespace is
-ignored; any other character is malformed (:class:`ValueError`, exit 2).  A whole pass is
-the unit: a 10,000-instruction budget once cut AND2 mid-pass at 95.24
-passes.  Every generated program is a pass-stable fixed point (verified
-to ten passes); a divergent one is stepped until Brent's proves it.
+ignored; any other character is malformed (:class:`ValueError`, exit 2).
+A whole pass is the unit: a 10,000-instruction budget once cut AND2
+mid-pass at 95.24 passes.  Every generated program is a pass-stable fixed
+point (verified to ten passes); a divergent one is stepped until Brent's
+proves it.
 """
 
 import sys
