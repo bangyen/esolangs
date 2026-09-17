@@ -57,7 +57,7 @@ from esolangs.tools.minifuck_sim import (
 # stay because the cap is what makes "a stall returns None" true.  The
 # trailing ``x`` is the ``_FLIP`` lesson: a cascading last ``[`` sets skip.
 #
-# **Measured.**  All 3652 n=4 tables the staged families miss build and
+# **Measured.**  All 3652 n=4 tables the deleted staged families missed build and
 # print 16/16 rows, closing the arity at 64594 of 64594.  ~220ms per build
 # for 43% shorter programs: the first ``(C, orientation, read)`` that prints
 # (7ms) is a poor choice since a round costs ``3 * K + 1`` -- sampled n=4
@@ -69,7 +69,7 @@ from esolangs.tools.minifuck_sim import (
 # :data:`_MUX_MIN_ARITY`.  200 of 200 fully-essential n=5 tables print
 # 32/32 at ~0.14s; two n=6 tables that used to raise emit 4040 and 3993
 # chars in 41.6s and 53.8s; 448 of 448 rows correct at n=5,6,7.
-# Last route, after the staged families in :func:`_solve`; a pool code
+# Last route in :func:`_solve`; a pool code
 # refusing every ``(C, orientation, read)`` raises rather than sweeping.
 
 # Pool codes were designed against ``_walk_to``'s uniform wake, marks to

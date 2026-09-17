@@ -41,18 +41,3 @@ class _MinifuckCase:
         from tests.tools.fills import _fill_minifuck
 
         return _fill_minifuck(tpl, bits)
-
-
-def _all_derived_plans(derived_plans, staged_arities, n: int) -> dict:
-    """Every staging the enumeration places at ``n``, in one pass.
-
-    ``_derived_plans`` is asked for the tables it should look for, so a test
-    that wants the whole arity has to name them.  The arity guard is checked
-    *first*: naming every table means ``2 ** (2 ** n)`` of them, which is
-    unbuildable past four inputs, and the guard is what the unstaged arities
-    are being tested for anyway.
-    """
-    if n not in staged_arities:
-        return derived_plans(n, ())
-    every = tuple(format(v, f"0{2**n}b") for v in range(2 ** (2**n)))
-    return derived_plans(n, every)
