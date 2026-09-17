@@ -47,21 +47,10 @@ from esolangs.interpreters.io import IO
 # (d_row, d_col) per heading, in the clockwise order right, down, left, up.
 DELTA = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
-#: One instant of a run: ``(row, col, d, queue, done)`` -- the IP's position
-#: and heading, the direction queue, and whether the run has stopped.  A
-#: value, not a record: every transition below returns a new one rather than
-#: editing one in place, and the queue is a ``tuple`` for the same reason.
-#:
-#: ``done`` has to be carried because halting here is not a property of the
-#: position: ``+`` on an empty queue stops the run with the IP still inside
-#: the grid, so the same ``(row, col, d, queue)`` can be either live or
-#: stopped.  It is deliberately *not* in ``snapshot``, which reports only
-#: the four fields it always reported -- the cycle detector compares live
-#: states, and a stopped run is not something it is asked about.
-#:
-#: The grid is deliberately not in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  It is a parameter to the transition instead.
+#: ``(row, col, d, queue, done)``: an immutable value, rebound per step.
+#: ``done`` is state because ``+`` on an empty queue stops the run with the
+#: IP still inside the grid; it stays out of ``snapshot``.  The grid is a
+#: parameter, not a field, so the cycle detector stores no constants.
 type _State = tuple[int, int, int, tuple[int, ...], bool]
 
 

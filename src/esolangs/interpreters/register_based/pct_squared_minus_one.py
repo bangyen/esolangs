@@ -39,23 +39,8 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-#: One instant of a run: ``(ind, acc)`` -- the code position and the
-#: accumulator.  A value, not a record: every transition below returns a new
-#: one rather than editing one in place.
-#:
-#: This is exactly what ``snapshot`` returns, and always has been.  The
-#: state and its hashable view are the same tuple, so unlike brainfuck --
-#: whose tape needs committing before an observer may see it -- there is no
-#: second spelling of a logical state for the cycle detector to trip over.
-#:
-#: A plain tuple rather than a ``NamedTuple``: the two fields are read by
-#: unpacking in the functions that use them, so the names buy little, and
-#: ``NamedTuple.__new__`` is Python-level where the tuple constructor is
-#: C-level.
-#:
-#: The code is deliberately *not* in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  It is a parameter to the transition instead.
+#: ``(ind, acc)``: an immutable value, rebound per step, and exactly what
+#: ``snapshot`` returns.  The code is a parameter, not a field.
 type _State = tuple[int, int]
 
 

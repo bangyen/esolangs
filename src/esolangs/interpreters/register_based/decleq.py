@@ -72,22 +72,10 @@ from esolangs.interpreters.memory import parse_int_memory as _parse
 _OUT = -2
 _IN = -1
 
-#: One instant of a run: ``(pc, memory)`` -- the program counter and the
-#: self-modifying store.  A value, not a record: every transition below
-#: returns a new one rather than editing one in place, and the memory is a
-#: ``tuple`` for the same reason.
-#:
-#: The memory is in the state rather than beside it because this language
-#: rewrites it as it runs *and* can extend it: a write past the end grows
-#: the store, and ``halted`` compares the pointer against the current
-#: length.  The length is therefore something a step decides, and two states
-#: that agree on every cell they share but not on how many cells exist are
-#: different states.
-#:
-#: A plain tuple rather than a ``NamedTuple``: the fields are read by
-#: unpacking in the functions that use them, so the names bought little, and
-#: ``NamedTuple.__new__`` is Python-level where the tuple constructor is
-#: C-level.
+#: ``(pc, memory)``: an immutable value, rebound per step.  Memory is in
+#: the state because the program rewrites and extends it, and ``halted``
+#: compares against the current length.  A plain tuple: ``NamedTuple``
+#: construction is Python-level.
 type _State = tuple[int, tuple[int, ...]]
 
 

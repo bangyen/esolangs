@@ -52,18 +52,9 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-#: One instant of a run: ``(ind, reg, stk)`` -- the command cursor, the
-#: three registers, and the loop-return stack.  A value, not a record:
-#: every transition below returns a new one rather than editing one in
-#: place, and both stores are tuples for the same reason.
-#:
-#: The commands are deliberately not in here.  They do not change during a
-#: run, so carrying them would put constant data in every value the cycle
-#: detector stores.  They are a parameter to the transition instead.
-#:
-#: The field order starts ``ind`` for consistency with the rest of the
-#: series, but ``snapshot`` still returns ``(reg, stk, ind, ...)`` -- the
-#: order it always returned.
+#: ``(ind, reg, stk)``: an immutable value, rebound per step.  Commands
+#: are a parameter, not a field.  ``snapshot`` still returns
+#: ``(reg, stk, ind, ...)``, the order it always did.
 type _State = tuple[int, tuple[int, int, int], tuple[int, ...]]
 
 
@@ -96,20 +87,11 @@ def _closers(commands: list[str]) -> tuple[int, ...]:
     return tuple(closes)
 
 
-# A BIO command: an increment/decrement/output triple ended by its ``;``, a
-# loop-open triple carrying the ``{`` that opens its body, or the ``};``
-# that closes one.  The wiki writes the loop as ``0i{ do something };`` and
-# says every command is ended by a ``;``, so both belong to the command
-# rather than being free-standing punctuation -- and a triple missing
-# either is not a command at all.
-#
-# The terminator is bound to the opcode rather than alternated freely: only
-# ``0i`` takes ``{``, and every other opcode takes ``;``.  A blind
-# ``(?:\{|;)`` accepted the two mismatched shapes as commands, and both then
-# walked off the end at run time -- ``0ix;`` reached ``_skip`` looking for a
-# ``};`` that brace matching never required, and ``0ox{`` opened a body
-# nothing had pushed, so its ``};`` popped an empty stack.  Both are
-# rejected at load, which is the reading this matches.
+# A command is a triple with its ``;``, a ``0i`` triple with its ``{``, or
+# ``};`` (the wiki: ``0i{ do something };``, every command ends in ``;``).
+# The terminator is bound to the opcode: a blind ``(?:\{|;)`` accepted
+# ``0ix;`` (walked off the end in ``_skip``) and ``0ox{`` (popped an empty
+# stack); both are now rejected at load.
 _COMMAND = re.compile(r"0[iI][xXyYzZ]\{|(?:0[oO]|1[oOiI])[xXyYzZ];|\};")
 
 # Comments run from ``//`` to the end of the line and carry no meaning, so

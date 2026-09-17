@@ -78,14 +78,9 @@ from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.vm import VM, machine_traits, make_vm
 
 
-#: Read from the installed distribution rather than written here: the
-#: hand-kept copy said 0.1.0 while the package was 0.2.0, so ``--version``
-#: named a release that does not exist.  The fallback covers a source tree
-#: that was never installed.
-#: Read on first access rather than on import.  ``importlib.metadata``
-#: drags in ``email.parser`` to parse a wheel's metadata, and measured 23ms
-#: of this package's 56ms import -- two fifths of it, spent on a string
-#: most callers never read.  PEP 562 defers it to whoever asks.
+#: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
+#: the fallback covers an uninstalled tree.  Read on first access, not
+#: import: ``importlib.metadata`` was 23ms of the 56ms import (PEP 562).
 def __getattr__(name: str) -> str:
     """Resolve ``__version__`` lazily; everything else is a normal miss."""
     if name != "__version__":
@@ -155,14 +150,8 @@ def __dir__() -> list[str]:
     return sorted(__all__)
 
 
-#: The committed example programs, shipped inside the package.
-#:
-#: They used to sit at the repository root, which put them outside the
-#: wheel: ``parents[2]`` is the repo root from a checkout and the directory
-#: above ``site-packages`` from an install, so an installed copy reported
-#: no examples at all -- and could in principle have globbed an unrelated
-#: ``examples/`` that happened to sit there.  Inside the package the path
-#: is the same either way.
+#: The committed examples, inside the package so the wheel ships them
+#: (at the repo root, ``parents[2]`` from an install was above ``site-packages``).
 _EXAMPLES = pathlib.Path(__file__).resolve().parent / "examples"
 
 # An unfilled input slot in a parameterized generator's template.  Matched
@@ -454,13 +443,8 @@ def check_program(
             f"and answer nonsense"
         )
     if not isinstance(stdin, str):
-        # ArgumentError, not ProgramError: the stdin is not the program, and
-        # ProgramError says "a program could not be loaded: it is malformed
-        # for its language".  ``check_stdin`` filed the identical fault as an
-        # ArgumentError all along, so the four entry points that reach here
-        # disagreed with it -- and a caller who wrapped their bad-stdin guard
-        # in ``except ArgumentError`` caught it for one function and missed
-        # it for the other four.
+        # ArgumentError, matching ``check_stdin``: stdin is not the program,
+        # and the four entry points here used to disagree with it.
         raise ArgumentError(
             f"stdin must be a string, got {type(stdin).__name__}; "
             f"join your lines with '\\n'"
@@ -530,20 +514,10 @@ def run(
         threading.current_thread() is threading.main_thread()
         and hasattr(signal, "SIGALRM")
     ):
-        # Checked here rather than inside ``_run`` so that every ValueError
-        # from the run itself is the interpreter refusing the program, and
-        # can be re-raised as one.
-        #
-        # The message used to stop after the constraint, which left a
-        # caller on a worker thread with two options and no third: a
-        # timeout that raises, or ``None`` that runs forever.  Both routes
-        # out already exist and neither was mentioned.
-        #
-        # Deliberately *not* a silent fallback to the stepping path.  Two
-        # execution paths for one function is how the step route and this
-        # one came to disagree in the first place -- which is why
-        # ``tests/test_stepping_parity.py`` exists -- and a divergence a
-        # caller cannot see is worse than a refusal they can read.
+        # Before ``_run``, so every ValueError from the run is the
+        # interpreter's.  The message names both routes out for a worker
+        # thread.  Not a silent fallback to stepping: two paths for one
+        # function is how they diverged (``tests/test_stepping_parity.py``).
         raise ArgumentError(
             "the timeout guard uses SIGALRM and needs a Unix main thread; "
             "off it, either bound the run cooperatively with "
@@ -568,18 +542,9 @@ def run(
     try:
         _run(run_fn, program_args, io_obj, timeout)
     except RecursionError as exc:
-        # An interpreter that recurses runs out of Python stack on a large
-        # enough program, and the bare ``RecursionError`` was the only
-        # exception in the package that escaped ``EsolangError``.  A sweep
-        # written to the documented handler crashed on it.
-        #
-        # The message used to end "this interpreter cannot carry one that
-        # large", which was not true: the limit is CPython's, and a caller
-        # raising it made the same program run.  Qoibl was the language this
-        # fired for and its tokenizer carries its own stack now, so the
-        # remaining reach of this handler is any interpreter that recurses
-        # per construct -- and the honest thing to tell that caller is where
-        # the limit actually lives.
+        # ``RecursionError`` was the one exception escaping ``EsolangError``.
+        # The limit is CPython's, not the interpreter's (raising it made the
+        # program run); Qoibl's tokenizer carries its own stack now.
         raise InterpreterLimitError(
             f"the {name} interpreter recursed deeper than CPython's stack "
             f"limit allows on this program ({len(program)} characters); the "
@@ -619,12 +584,8 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
     advice, so the strict path and the advisory path cannot disagree.
     """
     if not stdin:
-        # An empty stdin is "I am not feeding this anything", which is a
-        # legitimate thing to do with an arbitrary program -- the protocol
-        # tests run sixty-five programs that way.  Judging it by *shape*
-        # warned about all of them.  The case that matters, a program that
-        # reads anyway and gets a value, is decided after the run from the
-        # counts, where there is no guessing: see below.
+        # Empty stdin is legitimate (the protocol tests run 65 programs
+        # that way); a program that reads anyway is caught by the counts below.
         return
     if not describe(name)["reads_input"]:
         # A language that embeds its inputs is *given* no stdin by design --
@@ -709,23 +670,10 @@ def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
             stacklevel=3,
         )
     if io_obj.past_end and describe(name)["eof_is_a_value"]:
-        # The exact signal, and the one worth having most: this run asked
-        # for input that was not there and *kept going*.  Only the seven
-        # languages ``eof_is_a_value`` marks reach here -- for the other
-        # forty-five the read raises and nothing below runs -- and this is
-        # the wrong answer those seven produce in silence: an underfed
-        # program answers a different row, and a program given no stdin at
-        # all answers row 0.
-        #
-        # Counted rather than inferred from ``supplied == 0``: that missed
-        # the underfeed case, where some input was supplied and the reads
-        # past the end came after it.
-        #
-        # Gated on ``eof_is_a_value`` because reading past the end is not
-        # always a mistake: Suffolk's generated programs end *by* running
-        # out of input -- it is that language's documented stop, and it
-        # halts rather than taking a value -- so counting the read alone
-        # warned about every correct Suffolk run there is.
+        # Read past the end and kept going: the silent wrong answer the
+        # seven ``eof_is_a_value`` languages give (a different row, or row
+        # 0).  Counted, not ``supplied == 0``, which missed underfeeding.
+        # Gated because Suffolk ends *by* running out of input.
         warnings.warn(
             f"{name} read past the end of its input {io_obj.past_end} time(s) "
             f"and took a value each time rather than stopping; the answer is "
@@ -759,17 +707,9 @@ def _run_timed_signal(
     timeout: float,
 ) -> None:
     """Run ``run_fn`` under a ``SIGALRM`` wall-clock guard (main thread only)."""
-    # Whether an arriving alarm still means "the run is overrunning".  The
-    # handler fires between two bytecodes -- *any* two, including the ones
-    # in the cleanup below -- so without this it could raise into its own
-    # teardown and skip the rest of it, leaving the timer armed and the old
-    # handler unrestored.  A later alarm then arrived with SIGALRM's default
-    # disposition, which is to terminate the process: a short timeout killed
-    # the interpreter outright roughly one run in three, no traceback and no
-    # exception, which is the worst way for a guard against hanging to fail.
-    #
-    # Clearing it is a single store, so the cleanup cannot be interrupted by
-    # the thing it is cleaning up.
+    # The handler fires between any two bytecodes, including the cleanup's;
+    # raising into its own teardown left the timer armed and the default
+    # SIGALRM disposition killed one run in three.  Clearing this is one store.
     armed = True
 
     def _timeout_handler(_signum: int, _frame: object) -> None:
@@ -789,25 +729,11 @@ def _run_timed_signal(
         run_fn(program, io_obj)
     finally:
         armed = False
-        # Ignore the signal *first*, then disarm, then put the old handler
-        # back.  Disarming first looks sufficient and is not: an alarm can
-        # already be in flight when the run finishes, and if it is delivered
-        # after ``old`` is restored -- and ``old`` is the default
-        # disposition -- SIGALRM's default action is to **terminate the
-        # process**.  It did: a very short timeout killed the interpreter
-        # outright about one run in ten, no traceback, no exception, exit
-        # 142, which is the worst way for a guard against hanging to fail.
-        #
-        # ``SIG_IGN`` is installed at the C level, so an alarm arriving in
-        # this window is discarded rather than reaching that default.
-        #
-        # One window remains by design: an alarm delivered between
-        # ``run_fn`` returning and the line below still finds the custom
-        # handler and raises, reporting a timeout for a run that had just
-        # finished.  That is an exception rather than a death, and closing
-        # it would need the handler to know whether the run was still going
-        # -- a flag read from a signal handler, to save a caller from a
-        # timeout they did set.
+        # Ignore first, then disarm, then restore: an alarm in flight after
+        # ``old`` (the default disposition) is restored terminates the
+        # process -- exit 142, one run in ten.  ``SIG_IGN`` is C-level.
+        # An alarm between ``run_fn`` returning and here still raises a
+        # timeout; closing that needs a flag read from a handler, not worth it.
         signal.signal(signal.SIGALRM, signal.SIG_IGN)
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, old)
@@ -1113,14 +1039,9 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
         raise ArgumentError(f"stdin must be a string, got {type(stdin).__name__}")
     shape = str(facts["input_shape"])
     zero, one = facts["input_encoding"]
-    # ``splitlines``, which is what :class:`ScriptedIO` uses to cut stdin
-    # into the lines it hands over -- so this counts exactly the lines the
-    # program will read.  It was ``stdin.strip().split("\n")``, and the
-    # ``strip`` silently dropped a *leading or trailing blank line*: neither
-    # counted nor alphabet-checked here, while the interpreter consumed it
-    # as an input bit.  ``run("brainfuck", xor, "\n\n")`` answered 1 where
-    # XOR of two zeros is 0, with no warning, because this function had
-    # already decided there was nothing there.
+    # ``splitlines``, as :class:`ScriptedIO` cuts it.  ``strip().split``
+    # dropped a leading/trailing blank line the interpreter still read:
+    # ``run("brainfuck", xor, "\n\n")`` answered 1 unwarned.
     lines = stdin.splitlines()
     wanted = None
     if truth_table is not None:
@@ -1137,16 +1058,10 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
                 f"{name} reads one decimal row index, but stdin is {stdin.strip()!r}"
             )
         if len(lines[0]) > 1 and lines[0][0] == "0":
-            # A decimal row index never has a leading zero, so this is
-            # almost always the bit string typed out: `0010` fed to a
-            # 16-row program parses as *ten* and answers row 10 instead of
-            # row 2.  Neither a count nor a range check catches it -- ten
-            # is one line and is in range -- and no table is needed to see
-            # it, which is why the rule is shaped this way.
-            # The bit-string reading is only offered when the digits *are*
-            # bits.  ``int(x, 2)`` on ``'02'`` raises, so the message meant
-            # to explain a leading zero crashed on one -- a traceback out
-            # of the function whose whole job is to refuse cleanly.
+            # A leading zero is almost always the bit string typed out
+            # (``0010`` parses as ten, answers row 10 not 2; count and range
+            # both pass).  The bit reading is offered only when the digits
+            # are bits: ``int('02', 2)`` crashed the refusal.
             if not set(lines[0]) - {"0", "1"}:
                 raise ArgumentError(
                     f"{name} reads one decimal row index, and {lines[0]!r} "
@@ -1173,13 +1088,9 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
             raise ArgumentError(
                 f"{name} wants {wanted} bits on its one line, got {len(lines[0])}"
             )
-        # Per *character*, because for this shape a character is a bit --
-        # and the alphabet check below is per line, which this branch used
-        # to return past.  So the one language with this shape had its
-        # declared alphabet enforced nowhere: ``check_stdin("Clockwise",
-        # "999", table)`` was accepted, and the program answered a
-        # different row of the table with nothing said, which is exactly
-        # what this function exists to prevent.
+        # Per character (a character is a bit here); this branch used to
+        # return past the per-line alphabet check, so
+        # ``check_stdin("Clockwise", "999", table)`` was accepted.
         astray = [char for char in lines[0] if char not in (zero, one)]
         if astray:
             raise ArgumentError(
@@ -1265,20 +1176,11 @@ def read_answer(language: str, output: str) -> str:
     )
 
 
-#: Not a stop reason.  It sits beside :data:`STOP_REASONS` in ``dir()`` and
-#: reads like a sibling of it; it is not one.  A stop reason says why a
-#: *debugger* stopped, and this says how one of the three answer-by-running
-#: languages spells its answer.
-#:
-#: The two outcomes an ``answer_mode`` of ``"termination"`` reports, in the
-#: order ``describe(...)["answer_encoding"]`` gives them: index 0 is the
-#: answer 0 and index 1 the answer 1, so ``encoding.index("diverges")`` is
-#: which way round the polarity goes.
-#:
-#: Exported because a caller writing the generic round trip needs the
-#: vocabulary and there was nowhere to read it: one reader hand-copied this
-#: tuple into their own code and said so, which is the same gap
-#: :data:`STOP_REASONS` was added to close for the debugger.
+#: The two outcomes of ``answer_mode == "termination"``, in
+#: ``describe(...)["answer_encoding"]`` order (index = answer), so
+#: ``encoding.index("diverges")`` is the polarity.  Not a stop reason,
+#: despite sitting beside :data:`STOP_REASONS`.  Exported because a reader
+#: hand-copied it.
 TERMINATION_OUTCOMES: tuple[str, str] = ("halts", "diverges")
 
 
@@ -1357,12 +1259,9 @@ def evaluate(
     if isinstance(timeout, _Default):
         bound = _TERMINATION_TIMEOUT if terminating else _ROW_TIMEOUT
     else:
-        # An explicit ``None`` means *unbounded*, the way it does in
-        # :func:`run` -- and it is the escape hatch for a thread, since the
-        # wall-clock guard is a ``SIGALRM`` and needs the main one.  Safe
-        # here in a way it would not be for arbitrary programs: every
-        # program this runs is one it generated, and the three that diverge
-        # are settled by a repeated state rather than a clock.
+        # ``None`` is unbounded, as in :func:`run`, and the thread escape
+        # hatch (the guard is ``SIGALRM``).  Safe: every program here is
+        # generated, and the divergers are settled by a repeated state.
         bound = timeout
     # The width goes to whichever call builds the runnable text: for a
     # template that is ``instantiate`` below, which keeps every input's
@@ -1390,16 +1289,8 @@ def evaluate(
             else:
                 answers.append(read_answer(name, run(name, source, stdin, bound)))
         except EsolangError as exc:
-            # Which row, as a note rather than a new exception: the classes
-            # here do not share a constructor -- ``InputExhaustedError``
-            # takes two counts and builds its own message -- so re-raising
-            # with a longer string would mean knowing all of them.
-            #
-            # Without this a failure on a 1024-row table said only that
-            # something exceeded the bound, and "row 0 is pathological" and
-            # "row 900 is" are different problems with the same message.
-            # The bits are here too, since they are what makes the row
-            # reproducible in one call.
+            # The row and its bits as a note (the classes share no
+            # constructor); a 1024-row failure otherwise names no row.
             exc.add_note(
                 f"while evaluating row {row} of {len(truth_table)} "
                 f"(inputs {''.join(str(b) for b in bits)}), after "
@@ -1452,23 +1343,13 @@ def _terminates(
     try:
         _run(_drive, source, ScriptedIO(""), bound)
     except ExecutionTimeoutError:  # pragma: no cover - see below
-        # No cycle inside the bound: unbounded growth, or simply slow.  The
-        # old answer, and still the right one.
-        #
-        # Not reached by any table the suite runs, and not for want of
-        # trying to: these programs revisit a state inside a hundred steps,
-        # so even a one-millisecond bound proves the cycle before the clock
-        # can fire.  It stays because the detector only proves *cycles* --
-        # a loop that grows without bound never repeats a state -- and its
-        # own docstring asks callers to keep a clock for that case.
+        # No cycle inside the bound: unbounded growth or slow.  Unreached
+        # by the suite (every program repeats within ~100 steps); kept
+        # because the detector proves only cycles.
         return diverges
     except InputExhaustedError:  # pragma: no cover - see below
-        # Reading past the end is how some of these stop; that is a halt.
-        #
-        # Not reachable through :func:`evaluate`, which encodes every row
-        # itself and so never underfeeds one -- kept because this is the
-        # one ending a *cycle* search cannot see coming, and a future
-        # caller passing its own stdin would hit it.
+        # Reading past the end is a halt.  Unreachable via :func:`evaluate`
+        # (it never underfeeds); kept for a caller passing its own stdin.
         return halts
     return halts if verdict and verdict[0] else diverges
 

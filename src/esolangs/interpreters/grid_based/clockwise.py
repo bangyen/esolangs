@@ -42,19 +42,10 @@ from esolangs.interpreters.io import IO
 #: How many parity bits make one printed byte.
 _BYTE_BITS = 7
 
-#: One instant of a run: ``(row, col, r, acc, out, inp, done)`` -- the
-#: pointer's position and heading, the accumulator, the parity bits not yet
-#: flushed, the rotating input bits, and whether the ring has closed.  A
-#: value, not a record: every transition below returns a new one rather
-#: than editing one in place, and both bit queues are tuples for the same
-#: reason.
-#:
-#: ``done`` is state because halting here is a property of the *move*: the
-#: pointer returning to the origin ends the run, except on a ``0`` heading,
-#: so the position alone does not say whether the ring has closed.
-#:
-#: ``done`` stays out of ``snapshot``, which reports the six live fields
-#: plus the input cursor, in the order it always returned them.
+#: ``(row, col, r, acc, out, inp, done)``: position, heading, accumulator,
+#: unflushed parity bits, rotating input bits, ring closed.  ``done`` is
+#: state because returning to the origin ends the run except on a ``0``
+#: heading; it stays out of ``snapshot``.
 type _State = tuple[int, int, int, int, tuple[str, ...], tuple[str, ...], bool]
 
 COL = [1, 0, -1, 0]
@@ -241,15 +232,9 @@ class _Machine:
         if not self.state[5]:
             row, col, r, _acc, _out, _inp, _done = self.state
             if move(row, col, r, self.code, self.state[3])[3] == ".":
-                # ``InputExhaustedError``, not a bare ``EOFError``: it *is*
-                # one (that is the class's second base), but the bare form
-                # carried no message and was not an ``EsolangError``, so a
-                # sweep written to the documented ``except EsolangError``
-                # crashed on this one language.  The same program with
-                # *empty* stdin has always raised the typed one, from
-                # ``ScriptedIO``; only this look-ahead raised its own.
-                # The counts come off the io by ``getattr``: this look-ahead
-                # runs against the base ``IO`` too, which does not keep them.
+                # ``InputExhaustedError`` (an ``EOFError`` too), not the
+                # bare one: a sweep on ``except EsolangError`` crashed here.
+                # Counts via ``getattr``: the base ``IO`` does not keep them.
                 raise InputExhaustedError(
                     getattr(self.io, "reads", 0), getattr(self.io, "supplied", 0)
                 )
