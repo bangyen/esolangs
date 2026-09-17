@@ -116,7 +116,7 @@ after ignoring the performance/resource ceiling as specified above.
 | AddSubJump | finite lookup | packed `n`-bit cells selected by a self-modified operand |
 | Algebraic Programming Language | minterms | base-26 names are unbounded |
 | Alight | finite lookup | inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches |
-| ArrowQueue | parameterized lookup | marker counts select one of `2**n` constant-size cascade stages |
+| ArrowQueue | parameterized lookup | one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages |
 | B-tapemark | tree | reflected finite grid; indexed table spans preserve the same leaves without recursive copies |
 | Back | parameterized tree | — |
 | BF-PDA | parameterized tree | — |

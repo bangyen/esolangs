@@ -23,19 +23,10 @@ from esolangs.tools.a_painter_ant import a_painter_ant
 # it by this name.  Re-exported in the ``x as x`` form so a caller that
 # does not care where a piece lives need not know.
 from esolangs.tools.arrowqueue import (
-    _FIRST_ONE as _FIRST_ONE,
-)
-from esolangs.tools.arrowqueue import (
-    _FIRST_ZERO as _FIRST_ZERO,
-)
-from esolangs.tools.arrowqueue import (
     _MIDDLE as _MIDDLE,
 )
 from esolangs.tools.arrowqueue import (
-    _NEXT_ONE as _NEXT_ONE,
-)
-from esolangs.tools.arrowqueue import (
-    _NEXT_ZERO as _NEXT_ZERO,
+    _STAGE as _STAGE,
 )
 from esolangs.tools.arrowqueue import (
     _TREE_0 as _TREE_0,
@@ -56,7 +47,7 @@ from esolangs.tools.arrowqueue import (
     _drained_leaf as _drained_leaf,
 )
 from esolangs.tools.arrowqueue import (
-    _header_rows as _header_rows,
+    _header as _header,
 )
 from esolangs.tools.arrowqueue import (
     _instantiate_arrowqueue as _instantiate_arrowqueue,

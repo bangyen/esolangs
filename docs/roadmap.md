@@ -191,20 +191,17 @@ The candidate list is empty.
   | --- | --- | --- |
   | %^2^-1 | Holds | Open |
   | A Painter Ant | Holds | Open |
-  | ArrowQueue | Holds | Open |
   | BIO | Holds | Open |
   | Minsky Swap | Holds | Open |
   | Nopstacle | Language | Open |
 
-  The six uniform cells open for one reason, the input's *weight*: a
+  The five uniform cells open for one reason, the input's *weight*: a
   linear route spells input `i` once at `2**(n-1-i)` units -- A Painter
-  Ant `E` per unit, ArrowQueue a marker row per unit from n=5, BIO 4k-3
-  characters at weight k, Minsky Swap likewise, Nopstacle `2**i` cells across level
+  Ant `E` per unit, BIO 4k-3 characters at weight k, Minsky Swap likewise, Nopstacle `2**i` cells across level
   `i`'s row -- and %^2^-1 solves its setters per table, so different text
   per input is its design.  Closing one means the template carries the
-  weight and every input is one unit.  A Painter Ant and ArrowQueue
-  *tile*: the embed at weight k is the unit embed repeated k times.  The
-  other four do not: BIO's connective breaks the tiling, Nopstacle's cells have template between them, and a uniform
+  weight and every input is one unit.  A Painter Ant *tiles*: the embed
+  at weight k is the unit embed repeated k times.  The other four do not: BIO's connective breaks the tiling, Nopstacle's cells have template between them, and a uniform
   %^2^-1 is a different generator.  Nopstacle's alphabet is the blank and
   `#`, so a zero bit *is* a blank: its input run is a bit cell at each of
   level `i`'s `2**i` node columns with blanks between, the same width
