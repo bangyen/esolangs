@@ -229,11 +229,11 @@ def check_embedding(fn: Builder, max_n: int = 4) -> str:
     ``n`` spans embeds each of its ``n`` inputs exactly once.
     """
     import esolangs
-    from esolangs.registry import parameterized_ids, resolve
+    from esolangs.registry import canonical_id, parameterized_ids
     from esolangs.tools.helpers import runs
 
     name = _language_of(fn)
-    if name is None or resolve(name) not in parameterized_ids():
+    if name is None or canonical_id(name) not in parameterized_ids():
         raise UnprovenError("not a parameterized generator: no runs to count")
     checked = 0
     for n in range(2, max_n + 1):
