@@ -1,99 +1,40 @@
 r"""Boolean-function generator for 123, under the termination convention.
 
-123 has no usable input command for a decision tree -- its ``,`` equivalent
-(``2`` at location -3) reads real stdin -- so this is a *parameterized*
-generator: the template's input runs become ``1`` for a one and
-``2`` for a zero, and the harness instantiates one program per input
-combination.  Both fills are one character, so no instantiation leaks its
-inputs through ``len()``.
+123's input command reads real stdin, so this is a *parameterized*
+generator: input runs become ``1`` for a one and ``2`` for a zero (both
+one character, so ``len()`` leaks nothing).  **The answer is the halting
+behaviour**: halt is 0, a proven loop is 1, decided by
+:func:`esolangs.vm.run_until_halt_or_cycle`.
 
-**The answer is the halting behaviour, not printed output.**  Halt means 0
-and a proven loop means 1, the convention already used here for ArrowQueue
-and Point Break; the verdict comes from
-:func:`esolangs.vm.run_until_halt_or_cycle`, so a loop is proved by a state
-revisit rather than assumed from a fuel cap.
+Printing cannot work: flipping is XOR, so straight-line programs are
+affine and reach only the eight affine tables at ``n == 2``.  The
+limitations ledger's *monotone* cap (nine of sixteen) belonged to the
+displacement-neutral ``12``/``21`` setter, not the language: the ±1
+setter here displaces the fills oppositely, so the looping set need not
+be upward-closed.
 
-Why that convention and not printing
-------------------------------------
+Construction (``n <= 3``; wider tables go unchanged to
+:mod:`esolangs.tools.one_two_three_construct`):
 
-Flipping a bit is XOR, so a straight-line ``1``/``2`` program is affine by
-construction: the printing route reaches exactly the eight affine tables at
-``n == 2`` (the constants, the two projections, their negations, XOR and
-XNOR) and cannot express AND.  Termination escapes that bound because the
-verdict accumulates over passes instead of reading one cell.
+1. **Seed** ``"2"*w0 $ "2"*w1 $ ... "33"`` -- the fills are the
+   embedding; ``33`` closes at the first offset where no row sits on a
+   mark (bounded first-fit, like the wider ``_close``).
+2. **Separation** -- a frozen per-arity schedule of even-displacement
+   walk/descend segments each closed by ``33``, ending with every row at
+   a distinct odd position.  Frozen constants, replayed on the exact
+   model, never searched at build time.
+3. **Verdict** -- the wider pipeline's planned kill on a junky tape: one
+   paint per row whose tested cell disagrees with the table's demand;
+   distinct odd positions keep paint offsets collision-free.
+4. **Endgame** -- the wider pipeline's, reused.
 
-``the limitations ledger`` recorded the termination route as capped in turn, at the
-*monotone* tables, for a verified union of nine of the sixteen.  That
-ceiling belongs to the displacement-neutral ``12``/``21`` setter it fixed,
-not to the language: under that setter every instantiation stays in
-position lockstep, so a set bit can only add a pass and never remove one.
-The ±1 setter used here is *not* neutral, the two fills displace the
-pointer oppositely, and the looping set need not be upward-closed.
-
-The construction
-----------------
-
-Every arity is *constructed*; nothing is searched at build time and no
-truth-table-keyed plan is stored.  Wider tables (``n > 3``) go to the
-merge-choreography pipeline in
-:mod:`esolangs.tools.one_two_three_construct` unchanged.  The
-small arities the suite sweeps exhaustively build here, from a cheaper
-seed the wider pipeline cannot afford to assume:
-
-1. **Seed.**  ``"2"*w0 $ "2"*w1 $ ... "33"`` -- bare fills, no
-   merge.  A ``1`` fill flips the cell it stands on and steps left; a
-   ``2`` fill just steps right.  After the fills the rows sit at
-   popcount-spread positions of one shared parity, carrying
-   row-dependent marks -- the fills *are* the embedding, at a cost of a
-   few characters instead of the synchronized pipeline's walk, merge and
-   scrub per input.  The closing ``33`` lands on the first offset where
-   no row sits on a marked cell (a bounded first-fit scan, the same
-   species as the wider pipeline's ``_close``).
-2. **Separation.**  A short fixed schedule of walk/descend segments,
-   each closed by ``33``: rows on a marked cell re-run the segment until
-   they escape, and a segment's displacement is kept *even* so the
-   cascade count cannot break the shared parity.  Each schedule is a
-   frozen constant below -- discovered offline, but table-independent
-   and re-executed deterministically on the exact model, never searched
-   for at build time -- and ends with every row at a distinct odd
-   position.
-3. **Verdict.**  The wider pipeline's planned kill, generalized to the
-   junky tape the descents leave: instead of shielding exactly the
-   0-rows, one paint per row whose tested cell disagrees with the
-   table's demand (0-rows must test a pre-mark the kill segment clears;
-   1-rows must test clean so the segment's own mark loops them).  The
-   collision-freedom argument is unchanged -- distinct all-odd positions
-   make every paint offset unique -- and ``test(kills=...)`` still
-   validates every fate on the exact model.
-4. **Endgame.**  The wider pipeline's, reused as is.
-
-Several schedules are frozen per arity, and a table takes the shortest:
-each candidate is built on the exact model (a candidate whose verdict
-preconditions fail simply raises and is skipped), and at least one
-candidate covers every table -- the suite's exhaustive ``n <= 3`` sweep,
-which runs the emitted programs on the real interpreter, is what pins
-that, the same status as the schedule constants themselves.
-
-Why constructed templates are still longer than the retired plans
------------------------------------------------------------------
-
-Arities up to three used to come from stored plan tables (see git
-history) with mean template lengths 5.75, 11.44 and 19.97 characters --
-but 102 of the 256 three-input entries were search-found witnesses with
-no canonical form: no rule reaches the short shapes, because a plan
-without ``3`` or a write computes a function of popcount parity alone,
-and the pass counts of the ``3`` mechanism depend on the order of the
-fills rather than their sum.  The constructed route trades length for
-derivability -- mean 26.0, 60.5 and 163.9 characters at one, two and
-three inputs (4.5x, 5.3x and 8.2x the retired plans), every byte
-re-derivable from the rules plus the frozen schedule constants.
-
-Every emitted template loops by a *proven state revisit*, never by
-unbounded growth.  That is a hard requirement rather than an aesthetic
-one: :func:`~esolangs.vm.run_until_halt_or_cycle` never returns on a
-program whose pointer marches right forever, so a template with such a
-row would hang the harness instead of reporting a 1.  The suite checks
-this directly.
+The suite's exhaustive ``n <= 3`` sweep on the real interpreter is what
+pins the schedules.  Retired stored plans (see git history) averaged
+5.75/11.44/19.97 characters at one/two/three inputs; the constructed
+route averages 26.0/60.5/163.9 (4.5x/5.3x/8.2x) because 102 of the 256
+three-input plans were search-found witnesses with no rule.  Every
+template loops by a proven state revisit, never unbounded growth, or
+the harness would hang instead of reporting a 1; the suite checks it.
 """
 
 from __future__ import annotations
@@ -160,13 +101,9 @@ _LAWS: dict[int, _Law] = {
 def _separated(n: int) -> _Builder:
     """Execute arity ``n``'s separation law up to full separation.
 
-    The result is a prototype the per-table build clones, so the law is
-    modelled once per process.  Everything here is deterministic replay
-    of the derived constants: the only scan is the seed's
-    first-clean-close offset, a bounded first-fit like the wider
-    pipeline's ``_close``.  Raises if the law no longer separates --
-    which the suite's exhaustive sweep turns into a test failure, so a
-    corrupted constant cannot ship a template.
+    A prototype the per-table build clones, so the law is modelled once per
+    process.  Raises if the law no longer separates, which the exhaustive
+    sweep turns into a test failure.
     """
     walk, disps = _LAWS[n]
     _work[0] = _WORK_BUDGET
@@ -201,18 +138,11 @@ def _separated(n: int) -> _Builder:
 def _verdict_junky(b: _Builder, table: str) -> None:
     """Settle the verdict with the planned kill, on a junky tape.
 
-    The wider pipeline's ``_verdict`` shields exactly the 0-rows because
-    its separation guarantees a clean zone above every row.  Here a
-    row's tested cell may hold a leftover mark either way, so the paints
-    aim at *disagreement* instead: below the kill, a 0-row's tested cell
-    must end marked (the kill segment then clears it and the row skips
-    out) and a 1-row's must end clear (the segment's own trailing mark
-    then loops it).  Paint offsets stay collision-free for the same
-    reason as there -- two rows sharing an offset would sit one cell
-    apart, impossible with every position odd and distinct.  Rows at or
-    above the kill height walk back and test their own cell, which must
-    be clean -- a dirty survivor rejects the candidate schedule (measured
-    over every table and schedule at these arities, none ever has one).
+    Paints aim at *disagreement*: below the kill a 0-row's tested cell must
+    end marked (the kill clears it) and a 1-row's clear (the kill's trailing
+    mark loops it).  Rows at or above the kill height test their own cell,
+    which must be clean; a dirty survivor rejects the schedule (none does at
+    these arities).
     """
     ones = [r for r in b.live() if _table_val(table, r.bits) == "1"]
     if not ones:
@@ -243,12 +173,8 @@ def _verdict_junky(b: _Builder, table: str) -> None:
 def _construct_small(truth_table: str, n: int) -> str:
     """Build the small-arity template arity ``n``'s separation law gives.
 
-    One prototype, not a field of candidates: the law covers every table
-    at its arity, so there is nothing to choose between.  No closing
-    replay: ``test_all_small_tables`` sweeps every table at ``n <= 3``
-    through the real interpreter, so re-running each build here would
-    charge the caller for a property the suite proves exhaustively --
-    the same contract as
+    No closing replay: ``test_all_small_tables`` sweeps every ``n <= 3``
+    table through the real interpreter, the same contract as
     :func:`~esolangs.tools.one_two_three_construct.construct`.
     """
     _work[0] = _WORK_BUDGET
@@ -262,13 +188,7 @@ def _construct_small(truth_table: str, n: int) -> str:
 
 
 def _in_name_order(body: str, n: int) -> str:
-    """Return ``body`` once it is known to carry exactly ``n`` input runs.
-
-    The k-th run *is* input k, so name order is the template's shape; what
-    can go wrong is the count -- a run short, a run over, or a fill character
-    where the program text should be -- and checking it here keeps a
-    mis-built template from shipping.
-    """
+    """Return ``body`` once it is known to carry exactly ``n`` input runs."""
     try:
         runs(body, TEMPLATE_CHAR, ((ZERO, ONE),) * n)
     except ValueError as exc:
@@ -280,24 +200,11 @@ def one_two_three(truth_table: str) -> str:
     """Build a 123 template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    The template's input runs take ``1`` for a one and ``2`` for
-    a zero.  The instantiated program's answer is its *halting* behaviour --
-    it halts for a 0 and loops for a 1 -- so the harness decides it with
-    :func:`esolangs.vm.run_until_halt_or_cycle` rather than reading output.
-
-    Every arity is constructed: the old objection — an inert embed shifts
-    the pointer phase the plan decodes — bound only the retired stored
-    plans' phase-decode shape.  Small arities (``n <= 3``) build here
-    from the bare-fill seed and the derived separation law; wider
-    tables go to
-    :func:`~esolangs.tools.one_two_three_construct.construct`
-    unchanged.  Both routes are constructions, not searches: they raise
-    :class:`ValueError` when a stage invariant breaks rather than
-    emitting a template the rule does not license.  Neither replays the
-    result -- that execution gate lives in the test suite, which runs
-    the emitted programs on the real interpreter.
+    inputs (most significant first).  Input runs take ``1`` for a one and
+    ``2`` for a zero; the program halts for 0 and loops for 1, decided by
+    :func:`esolangs.vm.run_until_halt_or_cycle`.  Raises
+    :class:`ValueError` when a stage invariant breaks; the execution gate
+    lives in the test suite.
     """
     n = _validate_truth_table(truth_table)
     if n > 3:
