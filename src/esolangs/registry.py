@@ -1,5 +1,7 @@
 """Registry of language metadata, used by the API, tools, and tests."""
 
+from __future__ import annotations
+
 import difflib
 import re
 import unicodedata
