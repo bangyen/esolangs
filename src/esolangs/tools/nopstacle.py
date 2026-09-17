@@ -1,39 +1,22 @@
 """Boolean-function generator for Nopstacle: a decision tree of corridors.
 
-Nopstacle's IP walks blank cells and turns anticlockwise in place when a
-``#`` or the outer edge blocks it; it halts when a local state repeats
-without leaving the current copy of the rectangle and runs forever when it
-keeps crossing into new copies.  There is no input, so the inputs are cells:
-a ``1`` is a ``#`` and a ``0`` is a blank.  The program is a binary decision
-tree drawn downwards.  A node is a vertical corridor ending at a bit cell:
-a blank lets the IP fall straight through into the ``0`` child; a ``#``
-deflects it into a U-turn that carries it left along a span row to the
-``1`` child's corridor.  The leaves along the bottom are the table: a ``0``
-entry is a two-cell box the IP circles once, repeating a local state; a
-``1`` entry drops the IP onto an all-blank row where a ``#`` beneath turns
-it right and it crosses copies forever.
+The IP walks blank cells, turns anticlockwise at a ``#`` or the edge,
+halts when a local state repeats within one copy of the rectangle, and
+runs forever when it keeps crossing into new copies.  Inputs are cells: a
+``1`` is a ``#``, a ``0`` a blank.  A node is a vertical corridor ending
+at a bit cell: a blank drops the IP into the ``0`` child, a ``#`` U-turns
+it along a span row to the ``1`` child.  A ``0`` leaf is a two-cell box
+the IP circles once; a ``1`` leaf drops it onto a blank row where a ``#``
+beneath turns it right across copies forever.
 
-One level, node column ``x``, subtree half-width ``a`` (``.`` marks a cell
-the IP visits, ``b`` the bit)::
-
-    up-wall row     .#            the IP arrived down column x
-    span row   #.....#            1: right, up (blocked), left to x-a, down
-    bit row     .   b             0: through b, down column x
-
-Rows are grouped three per level under a two-row turnaround that carries
-the IP from the origin to the root at the right edge, and a leaf band of
-four rows under the last level.  Level ``i`` reads input ``i`` at ``2**i``
-node columns spaced ``2**(n-i)`` leaf pitches apart, so input ``i`` is one
-run per level: a bit cell at each node column and blanks between, the same
-width for either bit.  Width is ``4 * 2**n`` cells, height ``3n + 7`` rows.
-The rectangle is padded, so every instantiation of a template has one
-length.
-
-Size is ``Theta(n 2**n)``: the last level alone is ``2**n`` leaf pitches
-wide, the rectangle is padded to it, and each input owns three rows.  An
-H-tree would be ``O(2**n)``, but its level-``i`` cells fall on ``2**(i/2)``
-different rows, and one input's run fills one line.  Execution is a
-single pass: the halting row's step count is at most three widths.
+Levels are three rows each (up-wall, span, bit) under a two-row
+turnaround from the origin to the root, with a four-row leaf band.  Level
+``i`` reads input ``i`` at ``2**i`` node columns ``2**(n-i)`` leaf pitches
+apart, one run per level of the same width either bit.  Width is
+``4 * 2**n``, height ``3n + 7``, padded so every instantiation has one
+length: ``Theta(n 2**n)``.  An H-tree would be ``O(2**n)`` but spreads a
+level over ``2**(i/2)`` rows, and one run fills one line.  The halting
+row's step count is at most three widths.
 """
 
 from esolangs.exceptions import TruthTableError
@@ -62,11 +45,9 @@ def _columns(n: int, i: int) -> tuple[int, int]:
 def nopstacle(truth_table: str) -> str:
     """Build a template specialized by :func:`instantiate_nopstacle`.
 
-    Level ``i``'s bit row is blank up to its leftmost node column, then
-    its run -- as wide as the setter that fills it, bit cells and the
-    blanks between -- then blank to the rectangle's edge; everything else
-    is drawn here.  The answer is termination: the IP halts for a ``0`` entry and
-    crosses copies forever for a ``1``.
+    Level ``i``'s bit row is blank up to its leftmost node column, then its
+    run, then blank to the edge.  The answer is termination: halt for a
+    ``0`` entry, crossing copies forever for a ``1``.
     """
     n = _validate_truth_table(truth_table)
     width = 2**n * _PITCH
@@ -118,9 +99,7 @@ def nopstacle(truth_table: str) -> str:
 def instantiate_nopstacle(template: str, bits: list[int]) -> str:
     """Fill each input's run with its level's bit cells.
 
-    The run spans the level's node columns, ``2**(n-i)`` leaf pitches
-    apart, with the bit at each and blanks between; a ``0`` run is blank
-    end to end and exactly as wide as a ``1`` run.
+    A ``0`` run is blank end to end and exactly as wide as a ``1`` run.
     """
     # The runs' total width grows with the input count, so the count is
     # the one value at which the widths sum to what the template holds.
