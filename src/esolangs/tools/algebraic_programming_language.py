@@ -4,22 +4,11 @@ from itertools import pairwise
 
 from esolangs.tools.helpers import _validate_truth_table, best_input_order
 
-#: The variable names inputs are read into, in the order the harness feeds
-#: them.  APL binds a variable by *naming* it on an executed line, so the
-#: names must appear in ascending order in the program text.
-#:
-#: The wiki allows "any lowercase Latin (including accents), Cyrillic, or
-#: Greek letters" as a variable, so the alphabet is not the 26 ASCII
-#: letters.  The accented Latin range is appended, which more than
-#: covers any arity a minterm sum can materialize -- ``n == 54`` is
-#: already a ``2**54``-row table.  Cyrillic and Greek are left out
-#: deliberately: they are legal, but Greek alpha and Cyrillic u are
-#: confusable with Latin a and y in a generated program (ruff's RUF001
-#: says so), and there is no arity that needs them.
-#:
-#: The sequence is codepoint-ascending, which :func:`_order_key` relies
-#: on: literals are sorted by name so the emitted line names ``a`` before
-#: ``b``, and a non-monotone alphabet would put the reads out of order.
+#: Input variable names in harness order; a variable is bound by being
+#: named on an executed line, so these must be codepoint-ascending
+#: (:func:`_order_key` sorts by name).  The wiki allows accented Latin,
+#: Cyrillic and Greek; accented Latin is appended (past any reachable
+#: arity), Cyrillic and Greek left out as confusable (RUF001).
 _NAMES = "abcdefghijklmnopqrstuvwxyzàáâãäåæçèéêëìíîïñòóôõöøùúûüý"
 
 #: The complement operator, spelled exactly as the wiki spells it.
@@ -29,36 +18,16 @@ _NOT = "!x = {\nx & $0\n$1\n}"
 def algebraic_programming_language(truth_table: str, width: int | None = None) -> str:
     """Build an APL program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    APL has neither an input command nor an output command. A variable is
-    read from stdin by appearing on an executed line, and that line's result
-    is printed. The default expression is a folded decision tree: each node
-    selects its zero and one subtrees with ``!x`` and ``!!x``.
-
-    Every value stays 0 or 1: ``!`` returns exactly one of them, ``&``
-    returns 0 or its right operand, and ``|`` returns its left operand or
-    its right.  So the printed result is the table's bit, and nothing
-    depends on how the language spells a non-zero truth value.
-
-    Each literal carries its own normalization rather than a separate pass:
-    a 1-bit is spelled ``!!a`` and a 0-bit ``!a``, so an input fed as any
-    non-zero number behaves the same; the harness feeds 0 and 1, but the
-    table's semantics should not rest on that.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.helpers.best_input_order`).
-    The *reads* are unaffected: a variable is read when the line first
-    names it, and the emitted line always names ``a`` before ``b``, so
-    reordering changes which minterm literal comes first, never the input
-    order.
-
-    A zero-valued prefix names every input in ascending order before the
-    tree, preserving input binding even when a constant subtree folds. The
-    tree has O(T) nodes for a T-entry table and no depth-sized whitespace, so
-    its emitted size is O(T). Width-constrained output retains the definition-
-    split minterm form because APL cannot continue an expression across lines.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.  A
+    variable is read from stdin by appearing on an executed line, and the
+    line's result is printed.  A folded decision tree selects subtrees with
+    ``!x`` and ``!!x``; every value stays 0 or 1, and a literal carries its
+    own normalization (``!!a``/``!a``).  The split order is whichever is
+    shortest (:func:`~esolangs.tools.helpers.best_input_order`); the reads
+    are unaffected since the line names ``a`` before ``b``.  A zero-valued
+    prefix names every input first, preserving binding under folds; O(T)
+    size.  Width-constrained output keeps the definition-split minterm form,
+    since APL cannot continue an expression across lines.
     """
     if width is not None:
         return best_input_order(
@@ -90,9 +59,7 @@ def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 def _apl_name(index: int) -> str:
     """Return the ``index``-th function name: an uppercase run, A..Z, AA, AB.
 
-    A function name is a *run of uppercase letters* -- the parser takes the
-    longest one -- so there are no digits to spell an index with and the
-    names count in base 26 instead.
+    Names are uppercase runs, so they count in base 26.
     """
     name = ""
     while True:
@@ -105,16 +72,12 @@ def _apl_name(index: int) -> str:
 def _apl_ordered(
     truth_table: str, perm: tuple[int, ...], width: int | None = None
 ) -> str:
-    """Emit one input order's APL program.
-
-    See :func:`algebraic_programming_language`.
-    """
+    """Emit one input order's APL program (see the public function)."""
     n = _validate_truth_table(truth_table)
     rows = [row for row, bit in enumerate(truth_table) if bit == "1"]
     if not rows:
-        # The constant-0 table needs no inputs read at all... but every
-        # generator must read its ``n`` inputs, so the minterms are
-        # replaced by an expression that names each one and yields 0.
+        # The constant-0 table must still name every input; the
+        # expression yields 0.
         body = " & ".join(f"!!{_NAMES[i]}" for i in range(n)) + " & 0"
         return f"{_NOT}\n{body}"
     terms = []
@@ -136,34 +99,18 @@ def _apl_ordered(
 def _apl_narrowed(terms: list[list[str]], n: int, width: int) -> str:
     """Spread the minterm sum over definitions until every line fits.
 
-    An uppercase name defined without parentheses is a nullary function, so
-    any subexpression can be given a line of its own and called back in
-    four characters.  Definitions are not executed and so print nothing,
-    which is what makes this legal at all: the language prints *every*
-    executed line, so the sum cannot simply be split across several.
-
-    What cannot move off the executed line is the *reading*.  A variable is
-    read by appearing on an executed line, and the interpreter binds every
-    unbound one there in a pre-scan before evaluating -- so a variable that
-    only ever appeared inside a definition would be unbound when the call
-    reached it.  The line therefore keeps a prefix naming every input in
-    order.  ``a & b & ... & 0`` is always 0, whichever way it
-    short-circuits, and ``0 | rest`` is ``rest``, so the prefix reads the
-    inputs and contributes nothing to the answer.  That prefix is also the
-    floor: it cannot be split, and it grows with ``n``.
+    A nullary definition prints nothing, so a subexpression can be named and
+    called in four characters.  Reading cannot move off the executed line
+    (variables are bound by a pre-scan there), so the line keeps a prefix
+    ``a & b & ... & 0 | rest`` naming every input, which is also the floor.
     """
     named: list[str] = []
     reads = " & ".join(_NAMES[i] for i in range(n)) + " & 0"
-    # Splitting below the floor does not narrow anything -- it lengthens the
-    # names, and the executed line carries two of them -- so the floor is
-    # what a width under it is raised to.  Without this, asking for 1 gives
-    # a *wider* program than asking for 20, which is not what "the narrowest
-    # it can build" should mean.
+    # Below the floor splitting only lengthens names (asking for 1 gave a
+    # wider program than 20), so a smaller width is raised to it.
     limit = max(width, len(reads) + 9)
-    # Definitions are bounded by two per node of a tree over the literals,
-    # and the prefix has to be budgeted against the longest name that tree
-    # can reach rather than the next one -- a subexpression is named later
-    # than it is built, so the counter may gain a letter in between.
+    # Budget the prefix against the longest name the tree can reach, since
+    # a subexpression is named later than it is built.
     bound = 4 * len(terms) * (n + 1) + 4
     head = len(f"{_apl_name(bound)} = ")
 
@@ -176,9 +123,7 @@ def _apl_narrowed(terms: list[list[str]], n: int, width: int) -> str:
     def fold(parts: list[str], op: str) -> str:
         """Join ``parts`` with ``op``, halving into definitions until it fits.
 
-        Splitting is what shortens a line, so a part that is still too long
-        is named rather than joined -- and a name is four characters, which
-        is why halving terminates.
+        A name is four characters, which is why halving terminates.
         """
         if len(parts) == 1:
             return parts[0]
