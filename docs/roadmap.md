@@ -316,9 +316,15 @@ The candidate list is empty.
   blanks between, the same width either way, and there is no command to
   spell it with.
 
-  The fill itself is standard for all eighteen: the example's `fill`
-  calls `helpers.instantiate` with a per-bit setter, and nothing else;
-  the setter takes the input index because of the uniform column above.  ArrowQueue's slots are rows of their own so its blocks substitute
+  The fill itself is standard for all eighteen: each example names a
+  `setters(template)` returning one `(zero, one)` pair per input, and its
+  `fill` is `helpers.instantiate` with those pairs and nothing else (the
+  pair is per input because of the uniform column above).  `generate`
+  hands the pairs to the template object, whose constructor refuses a
+  pair of unequal width or slots that are not `{X0}`..`{Xn-1}` once each
+  in order -- so single embed, constant width and slot order hold where
+  the template is made, and the audit above measures them a second time
+  off the programs.  ArrowQueue's slots are rows of their own so its blocks substitute
   in place (byte-identical to the header rebuild it replaced, n=1..6), A
   Painter Ant's linear route is a setter, %^2^-1's setter is read
   off the template's own header, COD's restored fork generator is a

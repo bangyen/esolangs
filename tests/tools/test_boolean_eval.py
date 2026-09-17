@@ -18,13 +18,13 @@ class TestEvalBoolean:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from esolangs.tools.examples import _fill_eval
+        from tests.tools.fills import _fill_eval
 
         return _fill_eval(tpl, bits)
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is two characters whichever bit it carries."""
-        from esolangs.tools.examples import _fill_eval
+        from tests.tools.fills import _fill_eval
 
         for n in (1, 2, 3):
             for i in range(n):
@@ -175,7 +175,7 @@ class TestEvalBoolean:
         holds, since nothing inside a placeholder moved.
         """
         from esolangs.tools import parameterized
-        from esolangs.tools.examples import _fill_eval
+        from tests.tools.fills import _fill_eval
 
         # A table whose cheapest order is not the free one.
         table = "00001101"

@@ -9,7 +9,8 @@ A truth table's length determines its input count: a valid table has
 generators take no ``n`` parameter.
 """
 
-from collections.abc import Callable, Iterable
+import re
+from collections.abc import Callable, Iterable, Sequence
 
 from esolangs.exceptions import TruthTableError
 
@@ -163,12 +164,48 @@ def minterm_literals(row: int, n: int) -> list[tuple[int, bool]]:
 
 SetBit = Callable[[int, int], str]
 
+#: One ``(zero, one)`` pair per input, in name order: what a template's
+#: slots are filled with.  Each pair is equal width, checked by
+#: :func:`check_setters`, so the constant-width convention is a property
+#: of the object rather than of every caller.
+Setters = tuple[tuple[str, str], ...]
 
-def instantiate(template: str, bits: list[int], set_bit: SetBit) -> str:
+_SLOT = re.compile(r"\{X(\d+)\}")
+
+
+def slot_count(template: str) -> int:
+    """How many inputs a template's ``{Xi}`` slots name."""
+    return len({int(index) for index in _SLOT.findall(template)})
+
+
+def check_setters(setters: Sequence[tuple[str, str]]) -> Setters:
+    """Return ``setters`` as a tuple, refusing a pair of unequal width."""
+    checked = tuple((zero, one) for zero, one in setters)
+    for i, (zero, one) in enumerate(checked):
+        if len(zero) != len(one):
+            raise ValueError(
+                f"input {i}'s setters differ in width ({len(zero)} against "
+                f"{len(one)}), so the program's length would carry the bit"
+            )
+    return checked
+
+
+def check_slots(template: str, n: int) -> None:
+    """Refuse a template whose slots are not ``{X0}``..``{Xn-1}``, once, in order."""
+    slots = [int(index) for index in _SLOT.findall(template)]
+    if slots != list(range(n)):
+        raise ValueError(
+            f"template slots must be {{X0}}..{{X{n - 1}}} once each in order, "
+            f"found {slots}"
+        )
+
+
+def instantiate(template: str, bits: list[int], set_bit: SetBit | Setters) -> str:
     """Substitute each ``{Xi}`` placeholder.
 
     ``{Xi}`` becomes ``set_bit(i, bit)``, the language's code for setting
-    input ``i`` to the bit.
+    input ``i`` to the bit; ``set_bit`` may also be the :data:`Setters`
+    pairs themselves, indexed the same way.
 
     **A ``set_bit`` must return the same width for a 0 and a 1.**  This is the
     one place the generators deliberately give up shortness.  Spelling a zero
@@ -193,6 +230,11 @@ def instantiate(template: str, bits: list[int], set_bit: SetBit) -> str:
     ``{Xi}`` with its ``s``-as-NOT-gate, so the placeholder never appeared in
     a template and every caller passed a ``set_comp`` nothing consumed.
     """
+    if not callable(set_bit):
+        # A bit past the last pair fills nothing, as a bit past the last
+        # slot always has: the suites fill a lone ``{Xi}`` with n bits.
+        pairs = set_bit
+        set_bit = lambda i, bit: pairs[i][bit] if i < len(pairs) else ""  # noqa: E731
     for i, bit in enumerate(bits):
         template = template.replace("{X" + str(i) + "}", set_bit(i, bit))
     return template

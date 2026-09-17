@@ -196,6 +196,62 @@ class TestATemplateKnowsWhoseItIs:
         assert "{X0}" in template
 
 
+class TestATemplateCarriesItsSetters:
+    """The conventions live on the template object, not on every caller.
+
+    ``generate`` hands the template one ``(zero, one)`` pair per input, and
+    the constructor refuses unequal widths and slots out of order, so a
+    generator cannot leak a bit through the program's length or misname an
+    input without failing at the point the template is made.
+    """
+
+    def test_every_parameterized_template_carries_equal_width_pairs(self) -> None:
+        for name in esolangs.list_languages():
+            if not esolangs.describe(name)["parameterized"]:
+                continue
+            template = esolangs.generate(name, "0110")
+            pairs = template.setters
+            assert pairs is not None, name
+            assert len(pairs) == 2, name
+            assert all(len(zero) == len(one) for zero, one in pairs), name
+
+    def test_a_reading_language_has_no_setters(self) -> None:
+        from esolangs.tagged import _Template
+
+        assert getattr(esolangs.generate("brainfuck", "0110"), "setters", None) is None
+        assert _Template("{X0}", "Minifuck").setters is None
+
+    def test_unequal_widths_are_refused(self) -> None:
+        from esolangs.tagged import _Template
+
+        with pytest.raises(ValueError, match="differ in width"):
+            _Template("{X0}", "Minifuck", setters=[("x", "xx")])
+
+    def test_slots_out_of_order_are_refused(self) -> None:
+        from esolangs.tagged import _Template
+
+        with pytest.raises(ValueError, match="once each in order"):
+            _Template("{X1}{X0}", "Minifuck", setters=[("a", "b"), ("c", "d")])
+        with pytest.raises(ValueError, match="once each in order"):
+            _Template("{X0}{X0}", "Minifuck", setters=[("a", "b")])
+        with pytest.raises(ValueError, match="once each in order"):
+            _Template("{X0}", "Minifuck", setters=[("a", "b"), ("c", "d")])
+
+    def test_the_pairs_fill_the_template(self) -> None:
+        from esolangs.tools.helpers import instantiate
+
+        template = esolangs.generate("Minifuck", "0110")
+        by_pairs = instantiate(template, [0, 1], template.setters)
+        assert by_pairs == esolangs.instantiate("Minifuck", template, [0, 1])
+
+    def test_the_setters_survive_a_width_and_a_pickle(self) -> None:
+        import pickle
+
+        template = esolangs.generate("Minifuck", "0110", 20)
+        assert template.setters == esolangs.generate("Minifuck", "0110").setters
+        assert pickle.loads(pickle.dumps(template)).setters == template.setters
+
+
 class TestAProgramKnowsWhoseItIs:
     """A generated program run under another language is refused at the door.
 

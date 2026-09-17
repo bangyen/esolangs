@@ -1,6 +1,11 @@
 """Boolean-function generator for ArrowQueue, and the tree it draws."""
 
-from esolangs.tools.helpers import _validate_truth_table, instantiate
+from esolangs.tools.helpers import (
+    Setters,
+    _validate_truth_table,
+    instantiate,
+    slot_count,
+)
 
 # --- ArrowQueue (no-input grid language; parameterized + termination convention) ---
 #
@@ -269,7 +274,12 @@ def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
     a ``1`` bit appends its weight in down markers and a ``0`` bit the same
     number of no-op rows.  Both spellings are one width per slot.
     """
-    n = len(bits)
+    return instantiate(template, bits, arrowqueue_setters(template))
+
+
+def arrowqueue_setters(template: str) -> Setters:
+    """Return the ``(zero, one)`` block for every input of ``template``."""
+    n = slot_count(template)
     linear = template.startswith(" *\n")
 
     def block(i: int, bit: int) -> str:
@@ -281,7 +291,7 @@ def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
             rows = _NEXT_ONE if bit else _NEXT_ZERO
         return "\n".join(row.rstrip() for row in rows)
 
-    return instantiate(template, bits, block)
+    return tuple((block(i, 0), block(i, 1)) for i in range(n))
 
 
 def _compact(rows: list[str]) -> list[str]:

@@ -603,7 +603,7 @@ class TestPctFoldPlan:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
         from esolangs.tools import parameterized
-        from esolangs.tools.examples import _fill_pct_squared_minus_one
+        from tests.tools.fills import _fill_pct_squared_minus_one
 
         n = 10
         table = "".join(
@@ -635,7 +635,7 @@ class TestPctFoldPlan:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
         from esolangs.tools import parameterized
-        from esolangs.tools.examples import _fill_pct_squared_minus_one
+        from tests.tools.fills import _fill_pct_squared_minus_one
 
         n = 11
         rng = random.Random(11011)
@@ -659,7 +659,7 @@ class TestPctFoldPlan:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
         from esolangs.tools import parameterized
-        from esolangs.tools.examples import _fill_pct_squared_minus_one
+        from tests.tools.fills import _fill_pct_squared_minus_one
 
         rng = random.Random(1)
         table = "".join(rng.choice("01") for _ in range(2**12))
@@ -693,7 +693,7 @@ class TestPctFoldPlan:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
         from esolangs.tools import parameterized
-        from esolangs.tools.examples import _fill_pct_squared_minus_one
+        from tests.tools.fills import _fill_pct_squared_minus_one
 
         rng = random.Random(13)
         table = "".join(rng.choice("01") for _ in range(2**13))

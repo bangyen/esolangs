@@ -10,6 +10,7 @@ from urllib.parse import quote
 
 from esolangs import tools as _boolean
 from esolangs.exceptions import UnknownLanguageError
+from esolangs.tools.helpers import Setters
 
 # Display names whose canonical id cannot be produced by the slug rules
 # (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``).
@@ -590,6 +591,29 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
         for stem, example in _examples.BOOLEAN_EXAMPLES.items()
         if example.fill is not None
     }
+
+
+def _setters() -> dict[str, Callable[[str], Setters]]:
+    """Return canonical id -> the function reading a template's setters.
+
+    The same examples as :func:`_fills`, exposed one level down: the
+    ``(zero, one)`` pairs a template's slots are filled with, which
+    :func:`esolangs.generate` hands to the template object so the width and
+    slot conventions are checked where the template is made.
+    """
+    from esolangs.tools import examples as _examples
+
+    return {
+        canonical_id(stem.replace("-", " ")): example.setters
+        for stem, example in _examples.BOOLEAN_EXAMPLES.items()
+        if example.setters is not None
+    }
+
+
+def template_setters(language_id: str, template: str) -> Setters | None:
+    """Return the ``(zero, one)`` pairs of ``template``, or None for a reader."""
+    setters = _setters().get(language_id)
+    return None if setters is None else setters(template)
 
 
 def parameterized_ids() -> frozenset[str]:
