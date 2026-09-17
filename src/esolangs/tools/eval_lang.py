@@ -34,29 +34,17 @@ _EVAL_INPUT = TEMPLATE_CHAR * len(EVAL_ZERO)
 _EVAL_MAX_OPS = 16
 
 
-# The reorder words, built rather than stored.  A word is a skeleton over
-# ``~``, ``*`` and ``=``-runs, and only three shapes are ever redundant:
-# ``~~`` and ``**`` are the identity, and two adjacent ``=``-runs are one
-# run.  Ruling those out leaves the skeletons below, and the run lengths
-# are pinned by a conservation law: the ``~`` parity before a run fixes
-# which way it moves, and a word can only end with the tree stack empty if
-# everything pushed onto it comes back, so the out-runs and the in-runs
-# must sum alike -- and it must hold at every prefix, since an in-run can
-# only carry back what is already parked.  Enumerating (skeleton, run
-# lengths) under that law, in order of length and then ``~`` < ``*`` <
-# ``=``, gives the words ``_eval_stack_programs`` folds.
-#
-# The law over-approximates and never under-approximates: it admits longer
-# spellings of arrangements a shorter word already reaches -- 37255 words
-# for the 735 arrangements the cap allows -- which first-claim-wins
-# discards.  That is what makes the construction safe: no arrangement can be
-# lost, only re-spelled.  The fold this feeds is byte-identical to the
-# 735-entry catalog it replaced, at every ``n`` from 1 to 14.  The set is
-# finite for *every* ``n``: a word moves at most six values, deeper ones
-# riding along in rigid whole-stack reversals, so arrangements stop appearing
-# once the stack outgrows that reach (620, 691, 717, 728, 733, 735 over
-# ``n == 7..12``, then constant).  ``test_reorder_catalog_matches_search``
-# replays the replaced breadth-first search and asserts byte equality.
+# Reorder words, built not stored: skeletons over ``~``, ``*`` and
+# ``=``-runs with ``~~``, ``**`` and adjacent ``=``-runs ruled out, run
+# lengths pinned by conservation (``~`` parity fixes direction; out-runs
+# and in-runs must balance at every prefix so the tree stack ends empty),
+# enumerated by length then ``~`` < ``*`` < ``=``.
+# The law over-approximates only (37255 words for 735 arrangements;
+# first-claim-wins discards the rest), so nothing is lost, only re-spelled;
+# byte-identical to the 735-entry catalog at n = 1..14.  Finite at every
+# n: a word moves at most six values, so reach plateaus (620, 691, 717,
+# 728, 733, 735 over n = 7..12).  ``test_reorder_catalog_matches_search``
+# replays the old BFS.
 _EVAL_OP_RANK = {"~": 0, "*": 1, "=": 2}
 
 
@@ -165,12 +153,8 @@ def _eval_reorders(max_ops: int = _EVAL_MAX_OPS) -> tuple[str, ...]:
                 words.add(skeleton)
             continue
         if directions[-1] == _EVAL_READ_STACK:
-            # A skeleton ending in an out-run spells no word at all.  An
-            # in-run is capped at ``balance``, so the balance never goes
-            # negative; a final out-run then adds at least one and leaves it
-            # strictly positive, meaning values are still parked on the tree
-            # stack when the word ends.  Half the skeletons (32721 of 65535)
-            # are this shape, and filling them was pure waste.
+            # A final out-run leaves the balance positive (values parked),
+            # so it spells no word; 32721 of 65535 skeletons.
             continue
         _eval_fill_runs(
             skeleton, directions, max_ops - (len(skeleton) - len(directions)), words
@@ -207,13 +191,8 @@ def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     input a level tests.
     """
     reached: dict[tuple[int, ...], str] = {}
-    # A word only shuttles and reverses, never copies or drops, so every
-    # arrangement it can leave is a permutation of ``range(n)``.  Once ``n!``
-    # of them are claimed there is nothing left for a later word to claim,
-    # and first-claim-wins means the ones already held are the cheapest --
-    # so stopping is not a heuristic.  It fires at ``n <= 4``, where the
-    # catalog collapses onto all ``n!`` arrangements; from ``n == 5`` the
-    # reach is short of ``n!`` (119 of 120) and the loop runs to the end.
+    # Arrangements are permutations, so ``n!`` claimed is exhaustive, not
+    # a heuristic.  Fires at n <= 4; from n = 5 reach is 119 of 120.
     everything = factorial(n)
     for ops in _eval_reorders():
         stacks: tuple[list[int], list[int]] = ([], list(range(n)))

@@ -49,18 +49,9 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-#: One instant of a run: ``(ind, ptr, acc, tape)`` -- the code cursor, the
-#: pointer, the accumulator, and the tape.  A value, not a record: every
-#: transition below returns a new one rather than editing one in place, and
-#: the tape is a ``tuple`` for the same reason.
-#:
-#: There is no halted flag: Suffolk never halts.  ``run`` stops on a proof
-#: -- a repeated state or the EOF from reading past the end of the input --
-#: so "stopped" is a fact about the *run*, not about any state.
-#:
-#: The code is deliberately not in here.  It does not change during a run,
-#: so carrying it would put constant data in every value ``run`` stores, and
-#: it stores one per step until the program repeats.
+#: ``(ind, ptr, acc, tape)``: an immutable value, rebound per step.  No
+#: halted flag: Suffolk never halts, ``run`` stops on a repeated state or
+#: EOF.  The code is a parameter, not a field (``run`` stores one state per step).
 type _State = tuple[int, int, int, tuple[int, ...]]
 
 
@@ -100,15 +91,8 @@ def _advance(state: _State, code: str, byte: int | None = None) -> _State:
 class _Machine:
     """Per-run Suffolk state: the code, tape, and accumulator."""
 
-    #: Whether the program can reach a halt of its own.  It belongs to the
-    #: language, not to whoever is stepping it: the wiki's rerun is
-    #: infinite, so ``while not vm.halted: vm.step()`` never returns.  A
-    #: caller stepping this one has to bound the run itself -- with a hang
-    #: detector, or :func:`esolangs.run`'s ``timeout``.
-    #:
-    #: :func:`run` stops it from outside, and takes no bound to do it: a
-    #: program that reads hits :class:`EOFError` past the end of its input,
-    #: and one that reads nothing returns to the state it began in.
+    #: ``while not vm.halted`` never returns; :func:`run` needs no bound
+    #: (a reader hits :class:`EOFError`, a non-reader repeats its start state).
     self_halts = False
 
     def __init__(self, code: str, io: IO) -> None:
@@ -169,13 +153,9 @@ class _Machine:
         """
         return self._exhausted
 
-    # ``esolangs.vm._AffineMachine``: the growing-cell hang certificate.
-    # Suffolk qualifies because ``_advance`` never reads a value to decide
-    # what to do -- ``ind`` wraps unconditionally and the pointer moves by
-    # fixed rules -- and every value it writes is affine but for ``!``'s
-    # one ``max(0, ...)``, which ``clamp_slack`` exposes.  The class this
-    # decides is the one :func:`run`'s docstring leaves to the caller:
-    # cells growing without bound, with no input to run out of.
+    # ``_AffineMachine`` (growing-cell hang certificate): control never
+    # reads a value, and every write is affine but ``!``'s ``max(0, ...)``,
+    # which ``clamp_slack`` exposes.
 
     @property
     def key(self) -> tuple[int, int, int]:
