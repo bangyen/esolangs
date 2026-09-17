@@ -26,19 +26,11 @@ def _sink_top(stack: tuple[int, ...], places: int) -> tuple[int, ...]:
 def stack_programs(n: int, sinks: Sinks, read: str) -> dict[tuple[int, ...], str]:
     """Read-and-sink program for each reachable stack arrangement.
 
-    Returns the arrangement (bottom to top, by input index) mapped to the
-    program producing it; an absent arrangement is one the ops cannot reach.
-
-    **The reachable set is a product, not a search.**  A read leaves its bit
-    on top, and the only choice that outlasts the next read is how far that
-    bit sinks -- 0, 1 or 2 places, since neither language's ops reach
-    deeper.  Composing one choice per read therefore enumerates every
-    arrangement, ``2 * 3**(n - 2)`` of them, which a test pins.
-
-    Shared by Forþ and Unsquare, whose stacks differ only in how a sink is
-    spelled: ``sinks`` is the ``(places, ops)`` table and ``read`` the code
-    that pushes one normalized bit.  The two callers' docstrings record
-    *different* findings about the same enumeration and stay where they are.
+    Maps each arrangement (bottom to top, by input index) to its program.
+    A product, not a search: a read leaves its bit on top and the only
+    lasting choice is how far it sinks (0, 1 or 2), so there are
+    ``2 * 3**(n - 2)`` arrangements, which a test pins.  Shared by Forþ and
+    Unsquare via ``sinks`` (``(places, ops)``) and ``read``.
     """
     reached: dict[tuple[int, ...], str] = {}
     for combination in product(sinks, repeat=n):
@@ -117,20 +109,12 @@ def _grapheme_push_int(value: int) -> str:
 def grapheme(truth_table: str) -> str:
     """Build a Grapheme program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.  The
-    program prints ``'0'`` or ``'1'``.
-
-    Grapheme reads a whole line with ``W`` and every non-empty string is
-    truthy, so the generator uses a two-character input alphabet instead of
-    ``'0'``/``'1'``: the harness feeds ``A`` for a one bit and ``%`` for a
-    zero.  Each bit is normalized to the integer 0/1 with ``W 65 B T``
-    (``B`` computes ``ord(bit) - 65``, which is 0 exactly for ``A``, and
-    ``T`` maps zero to 1 and nonzero to 0), stored in a variable, and the
-    table is evaluated by a folded decision tree. ``V`` skips the unselected
-    branch by its character length, so subtrees stay inline and need no
-    widening variable keys. The most repeated, deepest inputs occupy the
-    shortest keys. A leaf pushes its bit and ``Y`` prints it.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first; prints
+    ``'0'`` or ``'1'``.  ``W`` reads a whole line and every non-empty string
+    is truthy, so the harness feeds ``A`` (one) and ``%`` (zero), normalized
+    by ``W 65 B T`` and stored; a folded decision tree follows, with ``V``
+    skipping the unselected branch by character length.  The most repeated,
+    deepest inputs get the shortest keys.  A leaf pushes its bit; ``Y`` prints.
     """
     n = _validate_truth_table(truth_table)
 
@@ -197,49 +181,17 @@ def _forth_const(value: int) -> str:
 def forth(truth_table: str) -> str:
     """Build a Forþ program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.  The
-    program prints ``'0'`` or ``'1'``.
-
-    Forþ reads a line with ``,`` and has no clean pop, so the generator
-    builds a decision tree out of functions: ``{ scope }`` stores a scope in
-    the function table and ``;`` calls the one its key names.  Each input is
-    read and normalized to 0/1 with ``,68*-``, and a leaf pushes
-    ``48 + result`` which the final ``.`` prints.
-
-    **Every number the tree names is a step, not an address.**  Nodes take
-    heap indices -- the children of ``m`` are ``2m + 1`` and ``2m + 2`` --
-    and spelling those out is what the construction avoids, because there
-    are ``2**(n + 1)`` of them and a base-15 literal for one costs
-    ``O(n)``.  Two properties of the language make the index implicit
-    instead:
-
-    - ``{`` reads its key without popping, so one pushed number labels a
-      definition and is still there for the next.  The definitions are
-      emitted in increasing index order and each is introduced by the step
-      to it -- ``1+`` between adjacent nodes -- so the whole table of
-      scopes is written with a running counter.
-    - ``;`` pops, so a node that dups its key before calling leaves the
-      callee its *own* index on the stack, under nothing but the bits still
-      unread.  An internal node is then the fixed string ``2*1++:;``: it
-      doubles its index for the child base, adds the bit below it (which is
-      the dispatch, and consumes the bit), dups, and calls.
-
-    The result is that no node's cost depends on where it sits, and the
-    program is linear in the table.  See :func:`_forth_ordered` for the
-    stack discipline that keeps it balanced.
-
-    A subtree whose rows all agree answers in place -- the node pushes the
-    result byte instead of dispatching, and its whole subtree goes
-    unemitted.  That costs nothing to arrange because Forþ keys its scope
-    table by the number pushed before ``{`` and looks it up with a default,
-    so a gap in the numbering is a scope that never exists; the step to the
-    next emitted node simply spans it.  The reads sit outside the tree, so
-    a folded program consumes its input exactly as an unfolded one does.
-
-    ``;`` pops the stack, so the tree naturally tests the last input first.
-    The generator keeps that order instead of enumerating reachable stack
-    arrangements.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first; prints
+    ``'0'`` or ``'1'``.  A decision tree of functions: ``{ scope }`` stores,
+    ``;`` calls; inputs normalized with ``,68*-``; a leaf pushes
+    ``48 + result`` for the final ``.``.  Heap indices (children of ``m`` at
+    ``2m + 1``, ``2m + 2``) are never spelled: ``{`` reads its key without
+    popping, so definitions are emitted in index order introduced by
+    ``1+``, and ``;`` pops, so a node that dups its key leaves the callee
+    its own index -- an internal node is the fixed ``2*1++:;``.  Linear in
+    the table.  A constant subtree answers in place and its numbering gap
+    is a scope that never exists.  ``;`` pops, so the last input is tested
+    first; that order is kept.
     """
     n = _validate_truth_table(truth_table)
     # ``;`` pops, so the tree tests the *last* input at the root: the order
@@ -274,25 +226,11 @@ _FORTH_SINKS = ((0, ""), (1, "v"), (2, "cc"))
 def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     """Read-and-rotate program for each reachable stack arrangement.
 
-    Returns the arrangement (bottom to top, by input index) mapped to the
-    program producing it; an absent arrangement is one the ops cannot reach.
-
-    **The reachable set is a product, not a search.**  A read leaves its bit
-    on top, and the only choice that outlasts the next read is how far that
-    bit sinks -- 0, 1 or 2 places, since ``v`` and ``c`` reach no deeper.
-    Composing one choice per read therefore enumerates every arrangement,
-    ``2 * 3**(n - 2)`` of them, which a test pins.
-
-    **Interleaving the sinks with the reads is what makes this worth doing.**
-    Rotating only after all ``n`` reads would permute just the last three
-    bits -- 6 arrangements at every width, which collapses the saving to
-    2.4% at n == 4 and nothing at n == 5.  Sinking each bit as it arrives,
-    before later reads bury it, reaches 18 at n == 4 and 54 at n == 5.
-
-    A breadth-first search over (arrangement, reads done) finds op strings
-    shorter on some arrangements, because they compose across reads -- a
-    late ``c`` can do work several per-read ``v``s would each repeat.  It is
-    not used: the generator retains its natural input order.
+    ``2 * 3**(n - 2)`` arrangements, as :func:`stack_programs`.  Sinking
+    each bit as it arrives (not after all reads, which permutes only the last
+    three: 2.4% saving at n == 4, none at n == 5) reaches 18 at n == 4 and 54
+    at n == 5.  A BFS finds shorter op strings on some arrangements (a late
+    ``c`` composes across reads); not used, the natural order is kept.
     """
     return stack_programs(n, _FORTH_SINKS, _FORTH_READ)
 
@@ -300,23 +238,12 @@ def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
 def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one input order's Forþ program; see :func:`forth`.
 
-    ``truth_table`` is already permuted, so the tree is a plain contiguous
-    most-significant-first walk and every row index here is self-consistent.
-    ``perm`` surfaces only in the stack arrangement the reads must produce:
-    the tree pops its test bit, so level ``k`` needs ``perm[k]`` on top and
-    the stack bottom-to-top is ``perm`` reversed.
-
-    Returns ``""`` when the ops cannot reach that arrangement, which is a
-    signal to try another order rather than a failure.
-
-    **The stack is balanced by construction, and has to be.**  An
-    empty-stack pop is fatal in Forþ -- it halts the program rather than
-    aborting a scope -- and the definition counter is left sitting under
-    the bits, so the tree must never pop past them.  It does not: each
-    dispatch consumes exactly one bit and one index and produces one index,
-    so a walk to depth ``k`` has consumed ``k`` bits and holds one index,
-    and the leaf pushes the answer byte above it.  The counter and the
-    leaf's index are the only residue, both below the byte ``.`` prints.
+    ``truth_table`` is already permuted; ``perm`` surfaces only in the
+    arrangement the reads must produce (level ``k`` needs ``perm[k]`` on
+    top).  Returns ``""`` when unreachable.  The stack is balanced by
+    construction and must be: an empty pop halts Forþ, and the definition
+    counter sits under the bits.  Each dispatch consumes one bit and one
+    index and produces one index.
     """
     n = _validate_truth_table(truth_table)
     wanted = tuple(reversed(perm))
@@ -333,9 +260,7 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     def rows_under(m: int) -> list[int]:
         """Return the table rows the subtree rooted at heap index ``m`` covers.
 
-        The table is permuted, so the tree splits it most-significant-first
-        and a node covers a contiguous run -- the leaf at heap index ``m``
-        is row ``m - last_internal - 1``.
+        The leaf at heap index ``m`` is row ``m - last_internal - 1``.
         """
         if m > last_internal:
             return [m - last_internal - 1]
@@ -387,13 +312,8 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 def modulous(truth_table: str) -> str:
     """Build a Modulous program computing the given truth table.
 
-    ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), ``n`` is the input count implied by the table length.
-
-    Modulous reads the inputs onto the stack with ``[INP INT]`` (top is the
-    last input), then a decision tree branches on the top with
-    ``[JMP F n IF 0/1]``, popping each checked bit. Each leaf pushes the
-    result with ``[PSH INT]`` and prints it.
+    ``[INP INT]`` reads the inputs onto the stack; ``[JMP F n IF 0/1]``
+    branches on the top, popping; a leaf ``[PSH INT]``s and prints.
     """
     n = _validate_truth_table(truth_table)
 
@@ -413,10 +333,8 @@ def modulous(truth_table: str) -> str:
 def _bfstack_encoder(n: int) -> str:
     """BFStack code turning the n inputs into the number ``1 + sum(bit*2^k)``.
 
-    Each input is read with ``,`` and normalized to 0/1 with 48 ``-``s; if it
-    is one, ``[<+w>]`` adds its weight ``w`` to the accumulator below it.
-    The ``+1`` offset keeps the result nonzero so the decoder's outer ``[``
-    always runs (a ``0`` result would be ambiguous with a skipped loop).
+    ``,`` reads, 48 ``-``s normalize, ``[<+w>]`` adds the weight.  The ``+1``
+    keeps the result nonzero so the decoder's outer ``[`` always runs.
     """
     prog = ">>+"  # result cell (0) below the accumulator (1)
     for k in range(n):
@@ -428,12 +346,8 @@ def _bfstack_encoder(n: int) -> str:
 def _bfstack_decoder(truth_table: str) -> str:
     """BFStack code mapping the encoded number to the table's result.
 
-    The output is 1 for every input except the rows where the table is 0.
-    Each such row maps to a distinct value of the ``+1``-offset number, so the
-    decoder tests them by cumulative subtraction: ``[`` opens a ``while`` that
-    only reaches the inner ``[<+>]`` (setting the result to 1) when the number
-    survives every subtraction; hitting a zero row's value subtracts to 0 and
-    skips the ``[<+>]`` instead, leaving the result 0.
+    Cumulative subtraction: the inner ``[<+>]`` sets 1 only when the number
+    survives every zero-row subtraction.
     """
     zeros = [k + 1 for k, ch in enumerate(truth_table) if ch == "0"]
     if not zeros:
@@ -451,14 +365,8 @@ def _bfstack_decoder(truth_table: str) -> str:
 def bfstack(truth_table: str) -> str:
     """Build a BFStack program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    BFStack is a pure stack machine, so the generator avoids branching
-    entirely: it encodes the n inputs as the number ``1 + sum(bit*2^k)``
-    (each ``,`` reads and normalizes a bit, ``[<+w>]`` adds its weight), then
-    decodes it with nested ``[`` loops that only set the result to 1 when the
-    number is not one of the table's zero rows.
+    No branching: encode the inputs as ``1 + sum(bit*2^k)``, then nested
+    ``[`` loops set the result to 1 unless the number is a zero row.
     """
     n = _validate_truth_table(truth_table)
     return (
@@ -473,41 +381,17 @@ def bfstack(truth_table: str) -> str:
 def unsquare(truth_table: str) -> str:
     """Build an Unsquare program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Unsquare's ``>``/``<`` loop runs while the accumulator is neither 0 nor 1,
-    so a 0/1 bit is turned into a loop condition by ``x`` (0 stays 0, 1
-    becomes 2) and its negation by a stack-clean flip ``x->IA<`` (``0`` swaps
-    to 1, ``1`` to 0).  Each input is read and reduced to 0/1 by ``>-<``
-    (subtracting 2 until parity) and pushed; the decision tree then pops bits
-    from the stack top and branches.  A branch that runs ends with ``IA``
-    (leaving acc = 1 so the sibling's ``FLIP x > <`` guard skips), and each
-    leaf pushes ``48 + entry`` and leaves acc = 0, so the final ``o`` prints
-    exactly the matching row's entry.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program.**  ``A`` pops, so the *natural* order tests the last input at
-    the root -- Unsquare's tree is stack-ordered, not input-ordered, exactly
-    as Forþ's is.
-
-    This generator was long excluded from reordering on the reading that
-    ``S`` swaps only the top two and there is one accumulator, so nothing
-    rotates to depth.  That reads the ops singly.  Together they rotate,
-    because **the accumulator is the second place to hold a bit**: ``A``
-    pops the top into it, ``S`` swaps the two now exposed, and ``P`` pushes
-    it back, sinking a bit two places (:data:`_UNSQUARE_SINKS`).
-
-    At each read the generator greedily chooses whether to sink the new bit
-    zero, one, or two places.  It prices those three reachable continuations
-    with the exact tree-size model, so it builds one final program rather than
-    enumerating ``2 * 3**(n-2)`` complete arrangements.
-
-    The pricing is incremental (:class:`_UnsquarePricer`): the tree tests
-    the still-natural inputs above the arranged ones, and sinking the new
-    input ``s`` places re-tests only the top ``s + 1`` levels of each
-    cofactor tree, so a read costs ``O(T / 2**k)`` and the order ``O(T)``
-    in all.  Pricing every candidate from scratch was ``O(nT)`` each.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.
+    ``>``/``<`` loops while the accumulator is neither 0 nor 1, so ``x``
+    makes a bit a loop condition and ``x->IA<`` its negation; inputs are
+    reduced by ``>-<`` and pushed; a run branch ends ``IA`` so the sibling's
+    guard skips, and a leaf pushes ``48 + entry`` for the final ``o``.
+    ``A`` pops, so the natural order tests the last input first.  Reordering
+    was wrongly excluded (``S`` swaps only the top two): the accumulator is
+    a second place to hold a bit, so ``A``/``S``/``P`` sink one two places
+    (:data:`_UNSQUARE_SINKS`).  At each read the generator greedily sinks
+    the new bit 0, 1 or 2 places, priced by :class:`_UnsquarePricer`
+    incrementally (``O(T)`` for the order; from scratch was ``O(nT)`` each).
     """
     n = _validate_truth_table(truth_table)
     # A zero-place sink is always a candidate, so each greedy choice is no
@@ -551,25 +435,9 @@ _UNSQUARE_SINKS = ((0, ""), (1, "S"), (2, "SASP"))
 def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     """Read-and-sink program for each reachable stack arrangement.
 
-    Returns the arrangement (bottom to top, by input index) mapped to the
-    program producing it; an absent arrangement is one the ops cannot reach.
-
-    **The reachable set is a product, not a search.**  A read leaves its bit
-    on top, and the only choice that outlasts the next read is how far that
-    bit sinks -- 0, 1 or 2 places, since ``S`` and the one accumulator reach
-    no deeper.  Composing one choice per read enumerates every arrangement,
-    ``2 * 3**(n - 2)`` of them, which a test pins.  Forþ's stack has the same
-    count for the same reason, reached through different ops.
-
-    Forþ enumerates for the same reason and records a breadth-first search as
-    the rejected alternative: there the search *does* find shorter op strings
-    on some arrangements, because a late ``c`` composes across reads, and it
-    is dropped as a trade -- 1-2 characters that mostly do not survive to the
-    output, against code a reader can follow.  Here there is no trade.  A
-    search over (arrangement, reads done) finds the *same* set with the
-    *same* shortest string at every width through n == 7, because these sinks
-    do not compose across reads at all, so the enumeration is both the
-    simpler code and the optimal one.
+    ``2 * 3**(n - 2)`` arrangements, as Forþ.  Unlike Forþ, a BFS finds the
+    same set with the same shortest strings through n == 7: these sinks do
+    not compose across reads, so the enumeration is also optimal.
     """
     return stack_programs(n, _UNSQUARE_SINKS, _UNSQUARE_READ)
 
@@ -577,19 +445,11 @@ def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
 class _UnsquarePricer:
     """Exact tree sizes for the greedy's candidates, one read at a time.
 
-    The tree tests the natural (not yet read) inputs first, top-down from
-    input ``n - 1`` to the one just read, and the arranged inputs below
-    them, the stack's top first.  A node is a row index with the inputs
-    still free below it zeroed; ``levels[d]`` holds, for every node at
-    depth ``d`` of the arranged part, its constant value (``-1`` when
-    mixed) and its cost -- 29 for a constant subtree, 17 plus the halves
-    otherwise; the tests keep that model spelled recursively as the oracle.
-
-    Sinking the new input ``s`` places puts it under ``s`` of the old top
-    inputs, so the new tree's levels from ``s + 1`` down are the old
-    levels from ``s`` down, node for node; only the top ``s + 1`` levels
-    are re-merged, ``O(T / 2**k)`` at read ``k``, and the natural part
-    above is re-merged from the new top, ``O(T / 2**k)`` again.
+    The tree tests the natural inputs top-down, then the arranged ones from
+    the stack top; ``levels[d]`` holds each node's constant value (``-1``
+    mixed) and cost (29 constant, 17 plus halves).  Sinking ``s`` places
+    shifts the old levels down by one, so only the top ``s + 1`` levels and
+    the natural part are re-merged, ``O(T / 2**k)`` at read ``k``.
     """
 
     def __init__(self, truth_table: str, n: int) -> None:
@@ -650,10 +510,8 @@ class _UnsquarePricer:
 def _unsquare_tree(truth_table: str, n: int) -> str:
     """Emit the decision tree for an already-permuted table; see :func:`unsquare`.
 
-    ``truth_table`` is in the permuted frame, so bit ``k`` of a row index is
-    the input tested at level ``k`` and the tree needs no reference to the
-    order that produced it -- the stack prefix has already put the bits where
-    the pops will find them.
+    Bit ``k`` of a row index is the input at level ``k``; the stack prefix
+    has put the bits where the pops find them.
     """
     flip = "x->IA<"
 

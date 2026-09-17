@@ -1,21 +1,13 @@
 """Boolean-function generator for Polynomial.
 
-The algebra that turns a program into a polynomial is
-:mod:`esolangs.tools._polynomial`; this is the construction that decides
-which instructions to encode.
-
-**Every instruction is priced by its opcode.**  A complex instruction
-``[a, b]`` is the factor ``(x - a)**2 + p**(2*b)`` and a real one ``[v]`` is
-``x - p**v``, so the digits a program spends on an instruction grow with
-``2*b`` or ``v`` times ``log p``.  The opcodes are not equally priced:
-``+=`` is ``b == 1``, ``-=`` is 2, ``*=`` 3, ``//=`` 4; ``if > 0`` is
-``v == 1``, ``endif`` 2, ``if < 0`` 3, ``if == 0`` 4.  Every construction
-here therefore spells subtraction as ``+=`` with a negative operand, tests
-with ``if > 0`` only, and keeps ``*=`` and ``//=`` for the two places
-nothing cheaper reaches.  Against the previous builder (``-= 1; if == 0``
-chains, ``-= 48`` reads) the dense fixtures render 1.9x shorter at n == 6
-and 2.1x at n == 7, every row executed; the count of instructions also
-falls, since the chain's ``-= offset`` and the read's ``-= 48`` are gone.
+:mod:`esolangs.tools._polynomial` is the algebra; this decides the
+instructions.  Every instruction is priced by opcode: ``[a, b]`` is the
+factor ``(x - a)**2 + p**(2*b)`` and ``[v]`` is ``x - p**v``, with
+``+=`` at ``b == 1``, ``-=`` 2, ``*=`` 3, ``//=`` 4 and ``if > 0`` at
+``v == 1``, ``endif`` 2, ``if < 0`` 3, ``if == 0`` 4.  So subtraction is
+``+=`` with a negative operand, tests are ``if > 0`` only, and ``*=``/
+``//=`` are kept for the two places nothing cheaper reaches: dense n == 6
+renders 1.9x shorter than the ``-= 1; if == 0`` builder, n == 7 2.1x.
 """
 
 from typing import Any
@@ -28,14 +20,10 @@ from esolangs.tools.helpers import (
     read_at,
 )
 
-# Instruction cap; the polynomial's degree and factoring cost track it.
-# Analytic n=10 worst case is 1659 (level k holds ``min(2**k, 2**2**(10-k))``
-# states at 6 instructions, root 3, leaves 12: ``3 + 6*274 + 12``;
-# ``test_polynomial_cap_admits_every_n10_table`` re-derives it).  Kept at
-# the old builder's 1934 because the interpreter affords it (n=8: 541
-# instructions, 3.5s for 256 rows; n=10: 1638, 44s for 1024).  Counts, not
-# arity: parity renders past n=10; dense n=11 (2910) ran 2048 rows in 267s,
-# 264.5s of it one factorization, for a 123609143-char program.
+# Instruction cap.  Analytic n=10 worst case is 1659
+# (``test_polynomial_cap_admits_every_n10_table``); kept at the old 1934,
+# which the interpreter affords (n=10: 1638 instructions, 44s for 1024
+# rows).  Dense n=11 (2910) ran 2048 rows in 267s, 264.5s of it factoring.
 _POLYNOMIAL_MAX_INSTRS = 1934
 
 
@@ -50,57 +38,15 @@ _POLYNOMIAL_SCREEN_SLACK = 10
 def polynomial(truth_table: str) -> str:
     """Build a Polynomial program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Polynomial programs are polynomials whose roots encode instructions, so
-    both constructions below emit complex ``[a, b]`` (arithmetic, input,
-    output) and real ``[v]`` (if/endif) roots that expand into
-    ``f(x) = ...``.  The program's size and the interpreter's factorization
-    cost both track the *instruction count* -- which is what the two
-    constructions compete on -- and the digits per instruction track the
-    opcode, which is why every construction spells itself on the cheapest
-    ones (see the module docstring).
-
-    Every construction here is :func:`_polynomial_hybrid` at some ``k``:
-    ``k == n`` branches every bit and never reaches a machine (a plain
-    decision tree, collapsing a constant subtable to its output), ``k == 0``
-    hands the whole table to one machine, and the interior branches ``k``
-    bits and gives each surviving residual its own machine.  The reduced
-    variants prepend a drain for a leading run of ignored inputs and rebuild
-    on the smaller table.
-
-    The machine merges any two prefixes with the *same residual
-    subfunction* rather than only constant ones -- an ordered BDD where the
-    tree is a plain tree.  That merge is strictly stronger than the fold and
-    the gap grows with ``n``: parity is the tree's worst case at every width
-    (``2**n - 1`` internal nodes) and needs just two states per level, so
-    ``k == 0`` is *linear* there -- 11 instructions per input.  Small or
-    near-constant tables still favour the tree end.
-
-    The interior is where neither endpoint serves: a table whose residuals
-    merge *within* a top-level split but not *across* it defeats both, since
-    the tree cannot merge them at all and the machine pays a full state level
-    for the split.
-
-    **The order the tree tests its inputs in is not free here**, unlike
-    every other decision-tree generator: a read *assigns* to the single
-    register, so nothing survives it and the tested bit is always the one
-    just read.  Every construction consumes input in stream order, so
-    reordering is unreachable rather than merely unhelpful.  What the machine
-    recovers is the *saving* a reorder would have bought -- the residual
-    merge subsumes the folds a better order would have exposed.
-
-    Selection is on *rendered characters* rather than instruction count,
-    because the two disagree; the count screens which candidates are worth
-    rendering.  See the dispatch below.
-
-    A table needing more than ``_POLYNOMIAL_MAX_INSTRS`` instructions under
-    both constructions raises :class:`ValueError`: the interpreter recovers
-    instructions by factoring the polynomial, and that is what becomes
-    impractical.  The bound is on instructions rather than on ``n``, but it
-    is sized so every n == 10 table fits; a table that collapses to few
-    states renders at any width beyond that.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.
+    Programs are polynomials whose roots are instructions.  Every
+    construction is :func:`_polynomial_hybrid` at some ``k``: ``k == n`` a
+    folded tree, ``k == 0`` one state machine (an ordered BDD merging equal
+    residuals: parity needs two states per level, 11 instructions per
+    input), the interior a machine per residual; reduced variants drain a
+    leading run of ignored inputs.  Reordering is unreachable (a read
+    assigns the single register).  Selection is on rendered characters.
+    More than ``_POLYNOMIAL_MAX_INSTRS`` raises :class:`ValueError`.
     """
     n = _validate_truth_table(truth_table)
 
@@ -116,12 +62,9 @@ def polynomial(truth_table: str) -> str:
         for level in range(n, -1, -1)
     ]
 
-    # A read assigns the single register, so inputs are consumed in stream
-    # order and an ignored one still costs a level of branching; folding
-    # collapses subtrees, not levels.  Drain a *leading* ignored run before
-    # building (a later one drained out of turn branches on the wrong bit:
-    # 92 wrong rows over 26 tables).  A drain is one bare read; the next
-    # instruction is itself a read and overwrites it.
+    # An ignored input still costs a level of branching, so drain a
+    # *leading* ignored run before building (a later one drained out of
+    # turn branched on the wrong bit: 92 wrong rows over 26 tables).
     essential = essential_inputs(truth_table, n) or [0]
     lead = next((i for i in range(n) if i in essential), n)
     if lead:
@@ -176,9 +119,8 @@ def polynomial(truth_table: str) -> str:
 def _polynomial_decode_key(instr: list[int]) -> tuple[int, int]:
     """Return where ``convert`` places ``instr`` among the roots of one prime.
 
-    The interpreter walks the primes upward and, within a prime, takes its
-    roots sorted by ``(imag, real)``: real roots ``p**v`` first in exponent
-    order, then complex ``a + p**b i`` by ``b`` and then by ``a``.
+    Primes upward; within one, real roots by exponent then complex by
+    ``(b, a)``.
     """
     if len(instr) == 1:
         return (0, instr[0])
@@ -188,20 +130,11 @@ def _polynomial_decode_key(instr: list[int]) -> tuple[int, int]:
 def _polynomial_assemble(instrs: list[list[int]]) -> str:
     """Expand an instruction list into its ``f(x) = ...`` polynomial.
 
-    A complex instruction ``[a, b]`` contributes ``(x - a)**2 + p**(2*b)``
-    and a real one ``[v]`` contributes ``x - p**v``, so the roots the
-    interpreter factors back out are exactly the instructions.
-
-    **Consecutive instructions share a prime when their decode order is
-    their program order.**  The interpreter orders instructions by prime and,
-    within one prime, by :func:`_polynomial_decode_key`; a run whose keys
-    never decrease therefore reads back in the order it was written whether
-    it sits on one prime or on several.  Each shared prime is one fewer
-    prime consumed, so every later instruction's constant shrinks: measured
-    on dense n=5..8 machines the text falls 14%, 12%, 11%, 10% (the gain
-    thins as ``log p`` grows past the ``log 2`` a halved prime saves).
-    A machine block's ``if > 0; input; *= span`` is one such run and its
-    ``endif; += 1`` another, so a block spends three primes, not six.
+    Consecutive instructions share a prime when their decode order is their
+    program order (keys never decrease), and each shared prime shrinks every
+    later constant: dense n=5..8 machines fall 14%, 12%, 11%, 10%.  A block's
+    ``if > 0; input; *= span`` and ``endif; += 1`` are such runs, so a block
+    spends three primes, not six.
     """
     from esolangs.tools._polynomial import primes, render_product
 
@@ -231,11 +164,8 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
 def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
     """Return the distinct residual subfunctions at each level.
 
-    Level ``k``'s states are the distinct subtables of width ``2**(n-k)``
-    reachable after reading ``k`` bits.  Two prefixes that leave the same
-    subtable are the *same* state and share one continuation -- the merge a
-    decision tree cannot make, since it can only collapse a constant
-    subtable.
+    Two prefixes leaving the same subtable are one state -- the merge a
+    tree cannot make.
     """
     levels = [[truth_table]]
     for k in range(n):
@@ -252,16 +182,10 @@ def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
 def _polynomial_labels(levels: list[list[str]], n: int) -> list[dict[str, int]]:
     """Label each level's states so a parent's children sit one apart.
 
-    A block maps its read bit to a child index with ``*= span`` where
-    ``span`` is the zero child's index less the one child's; a span of 1
-    needs no multiply at all, and ``*=`` is the dearest opcode a block
-    carries (``p**6`` against ``p**2`` for the ``+=`` that follows).  So the
-    labels are chosen, greedily, to make ``zero == one + 1`` for as many
-    parents as the level allows: each parent asks for its one child to be
-    followed by its zero child, the request is granted when neither slot is
-    taken and it closes no cycle, and the chains are then numbered in level
-    order.  Measured on dense n=6..8 machines, 8, 13 and 30 spans survive
-    against 31, 50 and 82 blocks.
+    A span of 1 needs no ``*= span``, the dearest opcode a block carries
+    (``p**6`` vs ``p**2``), so labels are chosen greedily to make
+    ``zero == one + 1`` where no slot is taken and no cycle closes: dense
+    n=6..8 keep 8, 13 and 30 spans against 31, 50 and 82 blocks.
     """
     index = [{state: i for i, state in enumerate(level)} for level in levels]
     for k in range(n):
@@ -299,9 +223,7 @@ def _polynomial_labels(levels: list[list[str]], n: int) -> list[dict[str, int]]:
 def _polynomial_dag_cost(truth_table: str) -> int:
     """Return :func:`_polynomial_dag`'s instruction count.
 
-    Counted by building: the build is linear in the states and the render
-    is what costs, so nothing is saved by pricing it separately -- and a
-    separate mirror would drift on the labelling.
+    Counted by building; a separate mirror would drift on the labelling.
     """
     return len(_polynomial_dag(truth_table))
 
@@ -309,42 +231,13 @@ def _polynomial_dag_cost(truth_table: str) -> int:
 def _polynomial_dag(truth_table: str, park: int | None = None) -> list[list[int]]:
     """Emit the state-machine instructions; see :func:`polynomial`.
 
-    The register is the only storage and a read *assigns* to it, so nothing
-    survives a read except the instruction cursor.  The state is therefore
-    carried as *which branch is running*: a level is a chain of blocks, one
-    per live state, and the block that fires reads its bit and moves to the
-    child state's index.
-
-    **The chain counts up from a negative index and tests ``if > 0``.**  A
-    level is entered with the register at ``-i`` for state ``i``; every
-    block does ``+= 1`` and tests ``> 0``, so block ``i`` is the first to
-    see a positive register.  Its body parks the register at
-    ``-(child + remaining)``, where ``remaining`` is the number of blocks
-    still to come: their increments bring it to exactly ``-child`` and never
-    above zero, so no later block fires and the next level is entered in
-    the same convention.  ``if > 0`` is the cheapest test there is
-    (``x - p``, where ``if == 0`` is ``x - p**4``) and ``+= 1`` the
-    cheapest arithmetic; the previous chain's ``-= 1; if == 0`` cost
-    ``p**4`` twice per block.  The root level has one state and no chain.
-
-    **The read is mapped in one or two instructions.**  The register holds
-    ``48 + bit`` after a read; when the children differ by ``span =
-    zero - one`` the block does ``*= span`` then ``+= park - 48*span``,
-    and when ``span == 1`` (which :func:`_polynomial_labels` arranges as
-    often as it can) the multiply goes.  Children that merge, so the bit
-    cannot change the answer, are read and divided away (``//= 50``); a
-    ``*= 0`` is not an option, because ``[0, b]`` is how the interpreter
-    spells I/O -- the same trap makes a zero park a *skip* rather than an
-    instruction, since ``[0, 1]`` would print.
-
-    The leaf states are one-wide subtables, so each *is* its answer: its
-    block steps the register (at 1 inside the test) to the digit, prints,
-    and parks at or below ``-park`` so that any tree arms enclosing the
-    machine, each adding at most one on its way out, never see a positive
-    register.  ``park`` defaults to two past the table's width.
-
-    Exactly one branch fires per level, and every branch reads once, so each
-    path consumes ``n`` inputs by construction rather than by draining.
+    State is *which branch is running*: a level is a chain of blocks, one
+    per state, entered at ``-i``; each does ``+= 1; if > 0``, so block ``i``
+    fires and parks at ``-(child + remaining)`` so none later fires.  The
+    read is mapped by ``*= span; += park - 48*span`` (multiply dropped at
+    ``span == 1``); merged children are divided away with ``//= 50``, since
+    ``[0, b]`` spells I/O.  A leaf steps to the digit, prints, and parks at
+    or below ``-park`` so enclosing arms never see a positive register.
     """
     n = _validate_truth_table(truth_table)
     if park is None:
@@ -411,28 +304,13 @@ def _polynomial_dag(truth_table: str, park: int | None = None) -> list[list[int]
 def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
     """Emit ``k`` tree levels above a state machine per surviving residual.
 
-    This is the whole construction family, not a third option beside two
-    others.  ``k == n`` never reaches the machine and emits exactly what a
-    plain decision tree emits; ``k == 0`` hands the whole table to one
-    machine.  Between them the tree branches the top ``k`` bits and each
-    surviving residual gets its own machine.
-
-    The endpoints are worth having as one function because the interior is
-    where the wins are.  The tree cannot merge two prefixes leaving the same
-    residual; the machine pays for a level of states even where the table's
-    top split is the only structure there is.  A table whose residuals merge
-    *within* a top-level split but not *across* it is served by neither.
-
-    **The tree tests ``if > 0`` twice.**  A node reads, subtracts 48 and
-    branches ``if > 0`` into the one-bit arm; every arm leaves the register
-    at or below ``-(n + 2)`` on its way out (a leaf parks there, a machine's
-    leaves park there), so ``+= 1; if > 0`` afterwards fires exactly for the
-    zero bit -- at ``p`` and ``p**2`` where ``if == 0`` costs ``p**4``.
-    Each level out adds one, so the deepest arm's park still clears the
-    top.  Both arms are entered holding 1.
-
-    The machine needs no splice: its root level has no chain and opens with
-    a read, so whatever the arm holds is overwritten.
+    The whole family: ``k == n`` is the plain tree, ``k == 0`` one machine,
+    the interior serves tables whose residuals merge within a top split but
+    not across it.  A tree node reads, subtracts 48, branches ``if > 0``
+    into the one-arm; every arm leaves the register at or below
+    ``-(n + 2)``, so ``+= 1; if > 0`` fires for the zero bit (``p`` and
+    ``p**2`` vs ``if == 0``'s ``p**4``).  The machine's root opens with a
+    read, so no splice is needed.
     """
     n = _validate_truth_table(truth_table)
     instrs: list[list[int]] = []
@@ -474,12 +352,8 @@ def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
 def _polynomial_drained_dag(truth_table: str) -> list[list[int]] | None:
     """Drain a leading run of ignored inputs, then run the machine.
 
-    The reduction the tree gets above is available to the machine too.  A
-    drain is one bare read per ignored input: the machine's root level
-    opens with a read of its own, so the drained byte is never looked at.
-
-    Returns ``None`` when no input is ignored, or when the reduction leaves
-    a single row (a constant, which the tree already spells cheaply).
+    One bare read per ignored input.  ``None`` when nothing is ignored or the
+    reduction leaves one row.
     """
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n) or [0]
@@ -503,7 +377,6 @@ def _polynomial_drained_dag_cost(truth_table: str) -> int | None:
 def _polynomial_hybrid_cost(truth_table: str, k: int) -> int:
     """Return :func:`_polynomial_hybrid`'s instruction count.
 
-    Counted by building, for the reason :func:`_polynomial_dag_cost` gives;
-    ``test_polynomial_hybrid_cost_mirrors_build`` keeps the two equal.
+    Counted by building; ``test_polynomial_hybrid_cost_mirrors_build``.
     """
     return len(_polynomial_hybrid(truth_table, k))
