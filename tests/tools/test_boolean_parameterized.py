@@ -35,13 +35,73 @@ def _parameterized_generators():
     ]
 
 
+# The five generators that spell their inputs as runs of ``$`` themselves,
+# by public name, and the module attribute each is.
+_RUN_FORM = {
+    "BIO": "bio",
+    "Bitdeque": "bitdeque",
+    "Minsky Swap": "minsky_swap",
+    "BF-PDA": "bfpda",
+    "Home Row": "home_row",
+}
+
+
+def _embedded_inputs(gen: object, template: str, n: int) -> list[int]:
+    """The inputs ``template`` embeds, in the order it embeds them.
+
+    A generator emits either ``{Xi}`` marks or, once migrated, one run of
+    the language's character per input.  The runs are read off the
+    example's setters -- :func:`~esolangs.tools.helpers.runs` refuses a run
+    of the wrong width, a stray character or a run left over, so a template
+    that embeds an input twice or out of step with its setters fails here
+    rather than reading as in order.
+    """
+    from esolangs.tools.examples import BOOLEAN_EXAMPLES
+    from esolangs.tools.helpers import runs
+
+    if "{X" in template:
+        return [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", template)]
+    example = next(e for e in BOOLEAN_EXAMPLES.values() if e.generator is gen)
+    spans = runs(template, example.char, example.setters(template, n))
+    return list(range(len(spans)))
+
+
+def _run_form(setters: object, n: int) -> str:
+    """A bare template of ``n`` runs, one per input, as wide as its setter.
+
+    The synthetic template the width tests fill: nothing but the runs, so
+    the filled length is the setters' alone.
+    """
+    return "".join("$" * len(zero) for zero, _one in setters("", n))
+
+
+@pytest.mark.parametrize(("language", "attr"), sorted(_RUN_FORM.items()))
+def test_run_form_generators_spell_their_own_runs(language: str, attr: str) -> None:
+    """The generator emits the public runs itself: no ``{Xi}`` anywhere.
+
+    The public template is the generator's output verbatim, and its runs
+    of ``$`` sum to exactly its setters' widths -- one run per input,
+    each as long as the code that replaces it.
+    """
+    import esolangs
+    from esolangs.tools import parameterized
+
+    for table in ("01", "0110", "01101001"):
+        raw = getattr(parameterized, attr)(table)
+        assert "{X" not in raw, (language, table)
+        template = esolangs.generate(language, table)
+        assert str(template) == raw, (language, table)
+        assert template.count("$") == sum(len(zero) for zero, _ in template.setters)
+        assert template.inputs == len(table).bit_length() - 1
+
+
 @pytest.mark.slow  # ~3s: builds every generator, up to n=4
 def test_parameterized_generators_embed_each_input_once() -> None:
     """Every no-input generator embeds each input exactly once.
 
     An input-capable language reads each of its n inputs exactly once per
     run; a no-input language's parameterized generator should match, so each
-    {Xi} appears exactly once -- never re-embedded at multiple decision
+    input is embedded exactly once -- never re-embedded at multiple decision
     nodes.
 
     A {Ci} complement placeholder must not appear at all.  instantiate no
@@ -63,9 +123,9 @@ def test_parameterized_generators_embed_each_input_once() -> None:
                 # from quietly emptying the sweep.
                 continue
             checked += 1
-            xs = re.findall(r"\{X(\d+)\}", template)
+            xs = _embedded_inputs(gen, template, n)
             cs = re.findall(r"\{C(\d+)\}", template)
-            assert sorted(xs) == [str(i) for i in range(n)], (name, n, xs)
+            assert sorted(xs) == list(range(n)), (name, n, xs)
             assert len(xs) == n, (name, n, xs)
             assert not cs, (name, n, cs)
     # Guard the skip above: every generator covers at least n == 2, so a run
@@ -139,13 +199,13 @@ def _all_derived_plans(derived_plans, staged_arities, n: int) -> dict:
 
 
 def _slot_order(gen: object, table: str) -> list[int] | None:
-    """The ``{Xi}`` indices in the order ``gen`` emits them, or None."""
+    """The input indices in the order ``gen`` emits them, or None."""
 
     try:
         template = gen(table)
     except ValueError:
         return None  # a generator need not cover every arity
-    return [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", template)]
+    return _embedded_inputs(gen, template, len(table).bit_length() - 1)
 
 
 @pytest.mark.slow  # builds every generator over several tables
@@ -273,36 +333,42 @@ class TestParameterizedBIO:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has input runs, not hardcoded bits."""
         from esolangs.tools import parameterized
+        from esolangs.tools.examples import _setters_bio
+        from esolangs.tools.helpers import runs
 
         template = parameterized.bio("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        # weight 2 then weight 1: eight then four characters of ``$``
+        assert template.startswith("$$$$$$$$ $$$$ ")
+        assert runs(template, "$", _setters_bio(template, 2)) == [(0, 8), (9, 13)]
 
     def test_each_input_is_stored_once(self) -> None:
         """The packing scheme embeds each input exactly once."""
 
         from esolangs.tools import parameterized
+        from esolangs.tools.examples import _setters_bio
+        from esolangs.tools.helpers import runs
 
         for n in (1, 2, 3):
             table = format(0, f"0{2**n}b")
             template = parameterized.bio(table)
-            assert len(re.findall(r"\{X\d+\}", template)) == n
+            assert len(runs(template, "$", _setters_bio(template, n))) == n
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """A zero pads against the unread ``z``, so the program's length
         does not reveal the inputs."""
+        from esolangs.tools.examples import _setters_bio
         from tests.tools.fills import _fill_bio
 
         for n in (1, 2, 3):
+            template = _run_form(_setters_bio, n)
             for i in range(n):
-                placeholder = "{X" + str(i) + "}"
                 zeros = [0] * n
                 ones = list(zeros)
                 ones[i] = 1
-                assert len(_fill_bio(placeholder, zeros)) == len(
-                    _fill_bio(placeholder, ones)
+                assert len(_fill_bio(template, zeros)) == len(
+                    _fill_bio(template, ones)
                 ), f"n={n} input {i}"
 
     def test_padding_never_touches_a_read_register(self) -> None:
@@ -374,12 +440,26 @@ class TestParameterizedBitdeque:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has input runs, not hardcoded bits.
+
+        Both routes: the tree's run is the eleven characters of ``PUSH
+        INVERT``, the linear route's the width of its discard block.
+        """
         from esolangs.tools import parameterized
+        from esolangs.tools.examples import _setters_bitdeque
+        from esolangs.tools.helpers import runs
 
         template = parameterized.bitdeque("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        spans = runs(template, "$", _setters_bitdeque(template, 2))
+        assert [end - start for start, end in spans] == [11, 11]
+
+        n = 5
+        template = parameterized.bitdeque("0" * 2**n)
+        assert "{X" not in template
+        setters = _setters_bitdeque(template, n)
+        spans = runs(template, "$", setters)
+        assert [end - start for start, end in spans] == [len(z) for z, _ in setters]
 
     def test_constant_table_is_a_leaf(self) -> None:
         """A constant table emits a drain-and-push leaf with no branching."""
@@ -615,12 +695,16 @@ class TestParameterizedMinskySwap:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has input runs, not hardcoded bits.
+
+        The MSB's run is its weight (two), the LSB's the fixed four; the
+        jump targets count those same widths.
+        """
         from esolangs.tools import parameterized
 
         template = parameterized.minsky_swap("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        assert template.startswith("$$ $$$$ ~")
 
     @pytest.mark.parametrize("bits", [(0, 0), (0, 1), (1, 0), (1, 1)])
     def test_examples_fill_sets_either_bit_in_either_position(
@@ -684,16 +768,17 @@ class TestParameterizedBfpda:
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is four characters whichever bit it carries."""
+        from esolangs.tools.examples import _setters_bfpda
         from tests.tools.fills import _fill_bfpda
 
         for n in (1, 2, 3):
+            template = _run_form(_setters_bfpda, n)
             for i in range(n):
-                placeholder = "{X" + str(i) + "}"
                 zeros = [0] * n
                 ones = list(zeros)
                 ones[i] = 1
-                assert len(_fill_bfpda(placeholder, zeros)) == len(
-                    _fill_bfpda(placeholder, ones)
+                assert len(_fill_bfpda(template, zeros)) == len(
+                    _fill_bfpda(template, ones)
                 ), f"n={n} input {i}"
 
     @pytest.mark.parametrize(
@@ -736,24 +821,25 @@ class TestParameterizedBfpda:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has input runs, not hardcoded bits."""
         from esolangs.tools import parameterized
 
         template = parameterized.bfpda("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        assert template.startswith("<@$$$$<@$$$$")
 
     def test_program_structure(self) -> None:
         """Each input is embedded once (pre-loaded), not re-embedded per node."""
 
         from esolangs.tools import parameterized
+        from esolangs.tools.examples import _setters_bfpda
+        from esolangs.tools.helpers import runs
 
         template = parameterized.bfpda("0110")
-        assert template.count("{X0}") == 1
-        assert template.count("{X1}") == 1
+        # ``runs`` refuses a stray ``$``, so two spans is exactly two embeds
+        assert runs(template, "$", _setters_bfpda(template, 2)) == [(2, 6), (8, 12)]
         assert "{C0}" not in template  # the marker is a constant, not a complement
         assert "{C1}" not in template
-        assert len(re.findall(r"\{X\d+\}", template)) == 2  # n embeds
 
     def test_leaf_print_is_balanced(self) -> None:
         """A leaf pops the remaining bits, prints the answer, and pops it."""
@@ -783,16 +869,17 @@ class TestParameterizedHomeRow:
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is two characters whichever bit it carries."""
+        from esolangs.tools.examples import _setters_home_row
         from tests.tools.fills import _fill_home_row
 
         for n in (1, 2, 3):
+            template = _run_form(_setters_home_row, n)
             for i in range(n):
-                placeholder = "{X" + str(i) + "}"
                 zeros = [0] * n
                 ones = list(zeros)
                 ones[i] = 1
-                assert len(_fill_home_row(placeholder, zeros)) == len(
-                    _fill_home_row(placeholder, ones)
+                assert len(_fill_home_row(template, zeros)) == len(
+                    _fill_home_row(template, ones)
                 ), f"n={n} input {i}"
 
     @pytest.mark.parametrize(
@@ -850,23 +937,25 @@ class TestParameterizedHomeRow:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has input runs, not hardcoded bits."""
         from esolangs.tools import parameterized
 
         template = parameterized.home_row("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        # each packing line opens with its two-character run
+        assert "$$lsffffaafl$$lsffffafl" in template
 
     def test_each_input_embedded_once(self) -> None:
 
         from esolangs.tools import parameterized
+        from esolangs.tools.examples import _setters_home_row
+        from esolangs.tools.helpers import runs
 
         template = parameterized.home_row("0110")
-        assert template.count("{X0}") == 1
-        assert template.count("{X1}") == 1
+        # ``runs`` refuses a stray ``$``, so two spans is exactly two embeds
+        assert len(runs(template, "$", _setters_home_row(template, 2))) == 2
         assert "{C0}" not in template
         assert "{C1}" not in template
-        assert len(re.findall(r"\{X\d+\}", template)) == 2
 
 
 @pytest.mark.slow  # 2.6s: every fill of every parameterized generator
