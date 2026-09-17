@@ -227,8 +227,18 @@ def render(template: str, char: str | None, setters: Setters) -> str:
     exact shape of every program it fills to, and consecutive inputs need
     no separator between their runs -- the widths say where one ends.
     With ``char`` of None each input is its own :func:`mark`, the form a
-    wrapper is handed.
+    wrapper is handed.  A generator that already emits runs of ``char``
+    (no ``{Xi}`` in its output) is passed through, its runs re-spelled as
+    marks when those are asked for.
     """
+    if "{X" not in template:
+        if char is None:
+            out, position = [], 0
+            for i, (start, end) in enumerate(runs(template, TEMPLATE_CHAR, setters)):
+                out.append(template[position:start] + mark(i) * (end - start))
+                position = end
+            return "".join(out) + template[position:]
+        return template
     check_slots(template, len(setters))
     for i, (zero, _one) in enumerate(setters):
         run = (mark(i) if char is None else char) * len(zero)

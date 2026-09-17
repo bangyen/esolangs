@@ -74,7 +74,12 @@ from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import apa_setters
 from esolangs.tools.arrowqueue import arrowqueue_setters
 from esolangs.tools.crement import crement_setters
-from esolangs.tools.helpers import TEMPLATE_CHAR, Setters, instantiate, slot_count
+from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
+    Setters,
+    fill_runs,
+    instantiate,
+)
 from esolangs.tools.nopstacle import nopstacle_setters
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
@@ -293,7 +298,7 @@ def _embedded(
         expected=expected,
         expected_compared=expected_compared,
         bits=bits,
-        fill=_fill_from(setters, body),
+        fill=_fill_from(setters, body, char),
         setters=setters,
         char=char,
         body=body,
@@ -304,13 +309,22 @@ def _embedded(
 
 
 def _fill_from(
-    setters: Callable[[str, int], Setters], body: Callable[[str], str] | None = None
+    setters: Callable[[str, int], Setters],
+    body: Callable[[str], str] | None = None,
+    char: str = TEMPLATE_CHAR,
 ) -> Callable[[str, list[int]], str]:
-    """Return the substitution a ``setters`` function defines."""
+    """Return the substitution a ``setters`` function defines.
+
+    A generator emits either ``{Xi}`` marks or, once migrated, the public
+    runs of ``char``; the fill takes both while the generators move over.
+    """
 
     def fill(template: str, bits: list[int]) -> str:
         source = template if body is None else body(template)
-        return instantiate(source, bits, setters(template, slot_count(template)))
+        pairs = setters(template, len(bits))
+        if "{X" in source:
+            return instantiate(source, bits, pairs)
+        return fill_runs(source, char, pairs, bits)
 
     return fill
 
