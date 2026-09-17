@@ -333,25 +333,27 @@ def _fill_from(
 
 
 def _setters_bio(_template: str, n: int) -> Setters:
-    """Pack each input into ``x`` by its binary weight, in a constant width.
+    """Spell every input as the same four-character unit.
 
-    A one adds the input's weight to ``x``; a zero writes the same number of
-    commands to ``z``, which the generator never reads, so both bits embed
-    as the same number of characters and the program's shape no longer
-    reveals its inputs.
+    A one is ``0ox;`` (``x += 1``); a zero is one command to ``z``, which
+    the generator never reads, so both bits embed as the same number of
+    characters and the program's shape does not reveal its inputs.  The
+    input's weight is not here: the template doubles ``x`` between the
+    runs (Horner's rule), so the pair is the same for every input at every
+    arity.  It used to be the unit repeated ``2**(n-1-i)`` times, which
+    spelled the weight into the embed and made each input a different pair.
 
-    This used to embed a zero as nothing at all, which made the program's
-    length reveal its inputs: at ``n == 2`` the four instantiations ran to
-    236, 240, 244, and 248 characters.  Padding with spaces instead of
-    ``0oz;`` also works -- :func:`~esolangs.interpreters.register_based.bio.parse`
-    discards whitespace before checking that nothing but commands is left --
-    but it pads with characters the language ignores, which is what the
-    bf-pda separators were.  ``y`` is not available for the padding: it
-    carries the running result.
+    An earlier embed wrote a zero as nothing at all, which made the
+    program's length reveal its inputs: at ``n == 2`` the four
+    instantiations ran to 236, 240, 244, and 248 characters.  Padding with
+    spaces instead of ``0oz;`` also works --
+    :func:`~esolangs.interpreters.register_based.bio.parse` discards
+    whitespace before checking that nothing but commands is left -- but it
+    pads with characters the language ignores, which is what the bf-pda
+    separators were.  ``y`` is not available for the padding: it is the
+    doubling's carrier and then the running result.
     """
-    return tuple(
-        ("0oz;" * 2 ** (n - 1 - i), "0ox;" * 2 ** (n - 1 - i)) for i in range(n)
-    )
+    return (("0oz;", "0ox;"),) * n
 
 
 def _setters_nocomment(_template: str, n: int) -> Setters:

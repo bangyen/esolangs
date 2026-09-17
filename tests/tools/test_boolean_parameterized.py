@@ -333,9 +333,11 @@ class TestParameterizedBIO:
         from esolangs.tools.helpers import runs
 
         template = parameterized.bio("0110")
-        # weight 2 then weight 1: eight then four characters of ``$``
-        assert template.startswith("$$$$$$$$ $$$$ ")
-        assert runs(template, "$", _setters_bio(template, 2)) == [(0, 8), (9, 13)]
+        # one four-character unit per input; the doubling between them
+        # (eight commands, 32 characters) carries the first input's weight
+        double = "0ix{1ox;0oy;0oy;};0iy{1oy;0ox;};"
+        assert template.startswith("$$$$" + double + "$$$$")
+        assert runs(template, "$", _setters_bio(template, 2)) == [(0, 4), (36, 40)]
 
     def test_each_input_is_stored_once(self) -> None:
         """The packing scheme embeds each input exactly once."""
@@ -372,6 +374,15 @@ class TestParameterizedBIO:
         for n in (1, 2, 3):
             template = parameterized.bio(format(0, f"0{2**n}b"))
             assert "z" not in template.lower()
+
+    def test_every_input_is_the_same_pair(self) -> None:
+        """The weight lives in the template: one ``(zero, one)`` at every arity."""
+        import esolangs
+
+        for n in range(1, 7):
+            setters = esolangs.generate("BIO", "01" * (2 ** (n - 1))).setters
+            assert set(setters) == {("0oz;", "0ox;")}, n
+            assert len(setters) == n
 
 
 class TestParameterizedBitdeque:
