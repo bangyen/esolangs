@@ -1,44 +1,30 @@
 """Boolean-function generator for Interprogck8.
 
-Routing rides a *shared corridor* instead of a private router: every odd
-line nothing occupies is a bare ``DownAccLines`` rung, and a rung is
-stateless, so one lattice serves every chain at once.  ``u`` reads the
-digit and two ``@dd`` leave 28 or 29 in the accumulator, and from an odd
-rung the stride ``1 + acc`` preserves line parity exactly when the bit
-was 1 -- so a 0 dismounts onto one even line 29 below the launch rung,
-while a 1 flies odd lines of one residue class mod 30 until the first
-non-rung line on that class, the node's *stop*.  Which line catches a
-chain is arithmetic in (position, stride); no chain owns a rung.  That
-is what removes the old router's super-linear term: it paid ~span/255
-private rungs per express chain and every tree level cost the same
-``L/255`` again, where the corridor is paid once for everyone.
-Measured: per-entry cost oscillates between 805 and 887 characters over
-n=8..12 with no trend (the old router climbed 328 to 526 over n=3..10),
-and the registry scaling contract reads x1.963 against its x2.15 bound
-with no exemption.
+Routing rides a *shared corridor*: every unoccupied odd line is a
+stateless ``DownAccLines`` rung, so one lattice serves every chain.
+``u`` reads the digit and two ``@dd`` leave 28 or 29 in the accumulator;
+from an odd rung the stride ``1 + acc`` preserves line parity exactly
+when the bit was 1, so a 0 dismounts onto one even line 29 below and a 1
+flies odd lines of one residue class mod 30 to the first non-rung line
+on that class, the node's *stop*.  The old router paid ~span/255 private
+rungs per express chain and ``L/255`` again per level; the corridor is
+paid once.  Measured: 805-887 characters per entry over n=8..12 with no
+trend (the old router climbed 328 to 526 over n=3..10); the scaling
+contract reads x1.963 against its x2.15 bound.
 
-Interference is phase separation.  Each read depth owns a channel -- a
-(stride, residue) pair -- and every odd-line instruction avoids every
-channel that crosses it, so a flight passes any number of deeper
-subtrees without dismounting.  A stride class holds 14 residues, handed
-out descending so the read's own adjuster lines fall on residues no
-channel uses; deeper depths append ``@nd`` adjusters, so class ``k``
-flies stride ``30 + 2k`` and opens 14 fresh residues.  Class 113 is the
-last (a stride is one accumulator step, at most 256), 1596 read depths
--- no representable table reaches that, so the construction is total
-over its inputs.  A constant subtree folds to a *consume* chain: one
-read per remaining input whose both arms converge, by flow, on the next
--- the 0-arm's zeroed flow walks forward through the 1-arm's stop.
-Leaf arms load 65 with one ``nNnN`` and fly stride 66 to the nearest of
-four shared printer stops per digit; the print code is sequential text
-past the stops, where nothing flies.
+Each read depth owns a (stride, residue) channel and every odd-line
+instruction avoids every channel crossing it, so a flight passes deeper
+subtrees without dismounting.  A stride class holds 14 residues handed
+out descending; class ``k`` flies stride ``30 + 2k`` with ``k`` ``@nd``
+adjusters, class 113 is the last (a stride is at most 256), 1596 read
+depths.  A constant subtree folds to a *consume* chain whose arms
+converge by flow.  Leaf arms load 65 with one ``nNnN`` and fly stride 66
+to the nearest of four shared printer stops per digit.
 
-Assembly is one forward pass over computed coordinates -- no width
-fixed point, no meadows, no repair rounds -- dense n=9 builds in ~0.04s
-against the old router's minutes-scale repairs.  Every flight is
-checked after it: :func:`_validate` walks the emitted lines exactly as
-``DownAccLines`` flies them, and a flight that would dismount anywhere
-but its stop is refused rather than emitted.
+Assembly is one forward pass over computed coordinates: dense n=9 builds
+in ~0.04s against the old router's minutes of repairs.
+:func:`_validate` walks every emitted flight as ``DownAccLines`` would
+and refuses one that dismounts anywhere but its stop.
 """
 
 from esolangs.tools.helpers import _validate_truth_table
@@ -115,8 +101,7 @@ class _Layout:
     def clear(self, line: int, avoid: _Avoid) -> bool:
         """Whether ``line`` is free and off every channel in ``avoid``.
 
-        Only odd lines can sit on a channel: flights land on odd lines
-        alone, so an even line never needs the residue check.
+        Only odd lines can sit on a channel.
         """
         if line in self.ops:
             return False
@@ -134,12 +119,9 @@ class _Layout:
     ) -> int:
         """First line at or past ``start`` whose whole gadget fits.
 
-        The line must meet ``parity`` and every congruence, and all of
-        ``line .. line + span - 1`` must clear ``avoid`` -- a read's
-        adjusters trail it, so the footprint is checked as one piece.
-        The scan bound is a backstop against a planning bug, not a
-        budget: a free line on any single congruence class recurs
-        within its modulus times the longest occupied run.
+        All of ``line .. line + span - 1`` must clear ``avoid``.  The scan
+        bound is a backstop, not a budget: a free line on one congruence
+        class recurs within its modulus times the longest occupied run.
         """
         line = start
         for _ in range(100_000):
@@ -160,17 +142,11 @@ class _Layout:
     def lay_shared(self, flights: list[tuple[int, int, int]]) -> None:
         """Lay flights that share stops, walking each channel once.
 
-        Every printer flight flies from its leaf to a stop at the end of
-        the program, so laid one by one they walked the whole text once
-        per leaf: 8.6 million rung visits for a 395 thousand line program
-        at twelve inputs, Theta(T^2) for a linear output, x3.3 per added
-        input.  Flights on one channel -- same stride, same residue, same
-        stop -- lay the same rungs, and the earliest launch's walk covers
-        every later one's range, so the channel is walked from its
-        earliest launch exactly once.  The lines touched, the order they
-        are touched in, and the collision checks are the same as the
-        one-by-one walks made; only the repeats are gone.  Each flight
-        is still recorded for :func:`_validate`.
+        Laid one by one, printer flights walked the whole text once per
+        leaf: 8.6 million rung visits for a 395 thousand line program at
+        twelve inputs, x3.3 per added input.  Flights on one channel lay
+        the same rungs and the earliest launch's walk covers every later
+        one, so the checks are the same and only the repeats are gone.
         """
         earliest: dict[tuple[int, int, int], int] = {}
         for launch, stride, stop in flights:
@@ -200,9 +176,8 @@ def _assemble(table: str, n: int) -> tuple[list[str], list[_Flight]]:
     def launch_pad(entry: int, value: int) -> int:
         """Place a printer launch, reached by acc-0 flow from ``entry``.
 
-        One even line loading 65; the rung after it flies stride 66 on
-        whichever of the digit's four residues is nearest, so the pad
-        costs a few lines of slack rather than half a period.
+        One even line loading 65; the rung after flies stride 66 on the
+        nearest of the digit's four residues.
         """
         line = min(
             layout.place(entry, 0, ((_PRINT_STRIDE, (residue - 1) % _PRINT_STRIDE),))
@@ -217,10 +192,8 @@ def _assemble(table: str, n: int) -> tuple[list[str], list[_Flight]]:
     ) -> tuple[int, int, int]:
         """Place one read and its adjusters; return (launch, stride, arm).
 
-        ``launch`` is the rung both arms leave from, ``arm`` the even
-        line the 0-arm dismounts onto.  The footprint -- the read, four
-        ``@dd``, the class's ``@nd`` tail -- is placed as one piece so
-        its odd lines stay off every crossing channel.
+        ``launch`` is the rung both arms leave from, ``arm`` the even line
+        the 0-arm dismounts onto; the footprint is placed as one piece.
         """
         stride, phase = _channel(depth)
         width = stride - 27  # ``u`` + 2 ``@dd`` + (stride - 30) ``@nd``
@@ -335,18 +308,11 @@ def _assemble(table: str, n: int) -> tuple[list[str], list[_Flight]]:
 def _validate(lines: list[str], flights: list[_Flight]) -> None:
     """Walk every flight exactly as ``DownAccLines`` would fly it.
 
-    The corridor's one failure mode is a non-rung line straying onto an
-    open channel, which would dismount a chain mid-flight and compute
-    the wrong row -- so a program is emitted only after every flight
-    has been walked to its intended stop on the emitted text.
-
-    A walk is shared where flights share a channel and a stop.  A flight
-    whose launch is a rung lying on the path an already-walked flight
-    took to the same stop flies that walk's suffix, so it dismounts where
-    that walk did; the walk it would make is the tail of one already
-    made on this text.  Each channel is therefore walked from its
-    earliest launch once rather than once per leaf, which is what kept
-    this linear once the printer flights were laid the same way.
+    A non-rung line straying onto an open channel would dismount a chain
+    mid-flight, so every flight is walked to its stop on the emitted text.
+    A flight launching from a rung on an already-walked path to the same
+    stop flies that walk's suffix, so each channel is walked once from its
+    earliest launch, which keeps this linear.
     """
     reached: dict[tuple[int, int, int], int] = {}
     for launch, stride, stop in flights:
