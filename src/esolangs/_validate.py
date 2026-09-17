@@ -47,17 +47,11 @@ def check_timeout(timeout: object) -> None:
             f"wall-clock timer"
         )
     if timeout < _TIMEOUT_FLOOR:
-        # Measured, not chosen.  The guard arms a ``SIGALRM`` and takes it
-        # down again, and below about a millisecond the alarm starts landing
-        # inside that teardown: with the caller's own disposition restored
-        # -- which it must be, or a later alarm of theirs is swallowed --
-        # 19 of 20 processes hammering a 100-microsecond bound were killed
-        # outright, and none at all at a millisecond or above (4000 runs
-        # each).
-        #
-        # So the bound this cannot service is refused rather than offered
-        # and quietly turned into a death.  Nothing realistic asks for one:
-        # the shortest bound anything in this package uses is five seconds.
+        # Measured: below about a millisecond the alarm lands inside the
+        # guard's own teardown -- 19 of 20 processes hammering a
+        # 100-microsecond bound were killed outright, none at a millisecond
+        # or above (4000 runs each).  The shortest bound this package uses
+        # is five seconds.
         raise ArgumentError(
             f"timeout must be at least {_TIMEOUT_FLOOR} seconds, got "
             f"{timeout}; the wall-clock guard is a signal and cannot be "
@@ -93,10 +87,8 @@ def check_bits(bits: object, what: str = "bits") -> list[int]:
     ):
         if any(isinstance(bit, bool) for bit in bits):
             # Said separately because "must be 0 or 1" reads as wrong when
-            # you passed True, which *is* 1.  The exclusion is deliberate:
-            # `bool` is an `int` subclass, so before this check a
-            # `[True, False]` -- or a `[1.0, 0.0]` -- was accepted and
-            # selected a different row of the table.
+            # you passed True.  Before this check `[True, False]` and
+            # `[1.0, 0.0]` were accepted and selected a different row.
             raise ArgumentError(
                 f"{what} must be the integers 0 and 1; bools are refused on "
                 f"purpose, because True == 1 and a list of them used to be "
@@ -117,16 +109,10 @@ _MAX_CELLS = 1 << 24
 def check_address(addr: int, language: str) -> int:
     """Return ``addr``, refusing one no store should be grown to.
 
-    Three interpreters took an address straight from the program text and
-    allocated it.  ``run("S*bleq", "100000000000000000000 0 0")`` came
-    back as ``OverflowError: cannot fit 'int' into an index-sized
-    integer`` and one order of magnitude down as ``MemoryError`` -- both
-    escaping the package's promise that a deliberate failure is an
-    ``EsolangError``, and neither stoppable by ``timeout``, since the
-    allocation is one step.
-
-    Refused *before* allocating rather than caught after: on a machine
-    with more headroom the smaller case thrashes instead of raising.
+    ``run("S*bleq", "100000000000000000000 0 0")`` came back as
+    ``OverflowError`` (and ``MemoryError`` one magnitude down), escaping
+    the ``EsolangError`` promise and unstoppable by ``timeout``.  Refused
+    before allocating, since a roomier machine thrashes instead.
     """
     from esolangs.exceptions import InterpreterLimitError
 

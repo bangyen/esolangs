@@ -1,27 +1,16 @@
 """A persistent tape: an immutable sequence whose writes cost a chunk, not the tape.
 
-The pure interpreters keep their tape inside an immutable state value, so a
-write returns a new tape rather than editing one in place.  As a flat tuple
-that costs the whole tape per write -- ``(*cells[:i], v, *cells[i + 1:])``
--- and the boolean corpus grows its tapes to Theta(T) cells and writes
-Theta(T) times, so a program's execution grew as Theta(T^2) while its
-command count stayed linear: BrainIf x2.5 per added input at nine inputs,
-LaserFuck x2.6, Jaune x2.5, RAM0 x2.5, against a linear x2.0.
+A flat-tuple write ``(*cells[:i], v, *cells[i + 1:])`` copies the whole
+tape, and the boolean corpus writes Theta(T) times to Theta(T) cells, so
+execution grew Theta(T^2): BrainIf x2.5 per added input at nine inputs,
+LaserFuck x2.6, Jaune x2.5, RAM0 x2.5, against a linear x2.0.  Stored as
+a tuple of fixed-size chunks, a write costs ``CHUNK + len(tape) / CHUNK``
+copies and every untouched chunk is the *same object*, which also makes
+Brent's snapshot equality compare by identity.
 
-This keeps the tape a value -- a tuple, hashable, comparable, sharable
-between states -- and stores it as a tuple of fixed-size chunks.  A write
-rebuilds the one chunk it lands in and the outer tuple of chunk references,
-``CHUNK + len(tape) / CHUNK`` copies instead of ``len(tape)``, and every
-untouched chunk is the *same object* in the new tape.  That sharing is what
-makes the cycle detector cheaper too: Brent's check compares snapshots by
-tuple equality, and an unchanged chunk compares by identity.
-
-The invariant: every chunk but the first and last holds exactly
-:data:`CHUNK` items, and those two hold one to :data:`CHUNK` each, so the
-tape grows cheaply at either end -- LaserFuck's ``<`` at the origin grows
-it leftward, once per cell the program reaches.  An empty tape is ``()``.
-Indexing pads the first chunk up to full on the fly, so a leading partial
-chunk costs one subtraction per read rather than a re-chunking per prepend.
+Invariant: every chunk but the first and last holds exactly :data:`CHUNK`
+items, those two hold one to :data:`CHUNK`, and an empty tape is ``()``.
+Indexing pads the first chunk on the fly, so a prepend never re-chunks.
 """
 
 from __future__ import annotations
