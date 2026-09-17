@@ -42,16 +42,12 @@ _RESIDUE = {1: ">", 2: "<", 3: "+", 4: "-", 5: ".", 6: ",", 7: "[", 8: "]"}
 type _State = _BFMachine
 
 
-#: How far :func:`_factorint` extends its sieve at a time.  It keeps going
-#: while the residue is still composite, so this is a batch size and not a
-#: ceiling on the primes it will find.
+#: Sieve batch size for :func:`_factorint`; not a ceiling.
 _SIEVE_CHUNK = 20000
 
-#: How wide the residue must be before a chunk is tested by one gcd rather
-#: than by a remainder per prime.  The batch trades a chunk-sized product
-#: for a full-width division per prime, which only pays once the number
-#: dwarfs the product; the committed examples sit below this and take the
-#: direct path unchanged.
+#: Residue width above which a chunk is tested by one gcd, not a remainder
+#: per prime.  Pays only once the number dwarfs the chunk product; the
+#: committed examples sit below it.
 _BATCH_BITS = 8192
 
 
@@ -134,41 +130,21 @@ def _factorint(number: int) -> dict[int, int]:
         stop = start + _SIEVE_CHUNK
         divided = False
         primes = list(sympy.sieve.primerange(start, stop))
-        # One gcd for the whole chunk, not a remainder per prime.
-        #
-        # ``number % prime`` is priced by the width of ``number``, not of
-        # ``prime``, so asking it once per prime was the quadratic: a
-        # boolean program's integer grows Theta(T) digits *and* needs
-        # Theta(T) primes, and the product of those two was the load cost.
-        # A prime divides ``number`` exactly when it divides the gcd of
-        # ``number`` with the chunk's product, and that gcd is small -- so
-        # the primes that actually divide are found by dividing *it*.
-        #
-        # Sound as the chunk proceeds: the only values divided out below are
-        # *other* primes, and removing them cannot change whether ``p``
-        # divides what is left.
-        #
-        # Only worth it on a wide residue.  The chunk's product is itself
-        # thousands of digits, so building it costs more than the divisions
-        # it saves whenever ``number`` is small -- which is every committed
-        # example.  Below the threshold the primes are tested directly, the
-        # way they always were.
+        # One gcd per chunk: ``number % prime`` costs the width of
+        # ``number``, and a boolean program's integer has Theta(T) digits
+        # and Theta(T) primes -- that product was the load cost.  A prime
+        # divides ``number`` iff it divides ``gcd(number, chunk product)``,
+        # which is small.  Sound mid-chunk: only other primes are divided out.
         batched = bool(primes) and number.bit_length() >= _BATCH_BITS
         common = math.gcd(number, math.prod(primes)) if batched else 0
-        # A barren chunk still walks its primes, and deliberately so: the
-        # gcd is then 1, every ``common % prime`` below is 1, and each prime
-        # falls straight through to the next -- but the root exit in the
-        # loop still gets asked, which is the one thing skipping the chunk
-        # would have quietly dropped.  What is saved is the division, not
-        # the comparison.
+        # A barren chunk (gcd 1) still walks its primes so the root exit in
+        # the loop is still asked; only the division is saved.
         for prime in primes:
             if number == 1:
-                # The chunk finished the number off; nothing is left to
-                # test, and the root check below would read 1 as a factor.
+                # Finished; the root check below would read 1 as a factor.
                 break
             if prime * prime > number:
-                # Nothing below the root divides it, so the residue is
-                # prime -- the one case worth taking without ``isprime``.
+                # Nothing below the root divides it: prime, no ``isprime`` needed.
                 factors[number] = factors.get(number, 0) + 1
                 return factors
             if batched and common % prime:
@@ -180,24 +156,18 @@ def _factorint(number: int) -> dict[int, int]:
         if number == 1:
             break
         if divided:
-            # The sieve is still finding factors, so widen it rather than
-            # pay ``isprime`` on a residue that is plainly composite.
+            # Still finding factors: widen rather than pay ``isprime``.
             start = stop
             continue
-        # A barren chunk: every remaining factor is above the sieve, so
-        # the residue's primality is finally worth the BPSW test -- but
-        # only once per value, since consecutive barren chunks would
-        # otherwise re-ask the same question at the same full width.
+        # Barren: every factor is above the sieve, so BPSW is worth it --
+        # once per value, not per barren chunk.
         if number != checked:
             checked = number
             if sympy.isprime(number):
                 factors[number] = factors.get(number, 0) + 1
                 return factors
-        # Composite, with every factor above the sieve.  Widening is the
-        # only sound move: handing it to ``sympy.factorint`` here would
-        # make the barren chunk a ceiling, and a ceiling's leftover is the
-        # large composite that sends ``factorint`` to Pollard rho for
-        # minutes -- the very failure the chunked sieve exists to avoid.
+        # Composite above the sieve: widen.  ``sympy.factorint`` here would
+        # send the leftover to Pollard rho for minutes.
         start = stop
     return factors
 
@@ -233,8 +203,7 @@ class _Machine:
     def halted(self) -> bool:
         return self.bf.halted
 
-    # The VM's language-shaped view: Decoded brainfuck machine; ip the cursor, memory
-    # the tape.
+    # VM view of the decoded brainfuck machine.
 
     @property
     def ip(self) -> int:
@@ -251,11 +220,7 @@ class _Machine:
         """No stack in this language."""
         return []
 
-    # The growth detector's view, forwarded like everything else here.
-    # Factor has no execution semantics of its own -- it decodes a numeral
-    # to brainfuck and runs that -- so it inherits brainfuck's eligibility
-    # for ``esolangs.vm._TapeMachine`` exactly, rather than making a claim
-    # of its own.
+    # Forwarded: Factor inherits brainfuck's ``_TapeMachine`` eligibility.
 
     @property
     def ptr(self) -> int:
