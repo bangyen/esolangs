@@ -574,7 +574,7 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     Row, whose generator emits the runs all the same, and the three
     hand-kept lists in the docs each named a different subset.  ``fill`` is
     the only spelling that matches what the generators actually emit -- 17
-    languages, checked against the runs over all 65.
+    languages, checked against the runs over all 63.
     """
     from esolangs.tools import examples as _examples
 

@@ -2,6 +2,8 @@
 
 from itertools import product
 
+import pytest
+
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.vandevelo import _Machine
 from esolangs.tools.vandevelo import vandevelo
@@ -50,23 +52,61 @@ def test_parity_is_a_single_hyperplane() -> None:
     assert len(lines) == 18
 
 
-def test_the_exact_autocorrelation_improves_on_the_capped_scan() -> None:
+def test_the_exact_autocorrelation_improves_on_the_scored_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The fallback that makes the clause bound a bound, not a heuristic.
 
-    :data:`~esolangs.tools.vandevelo._CANDIDATE_CAP` scans only 48
+    A node scores only :data:`~esolangs.tools.vandevelo._CANDIDATES`
     directions, so it can miss the pigeonhole-average one that
-    Cohen--Shinkar's telescoping argument needs; while the remainder is
+    Cohen--Shinkar's telescoping argument needs; while the working set is
     dense the generator falls back to an exact Walsh--Hadamard
-    autocorrelation.  That fallback runs on most tables but only
-    *improves* on a minority -- 17 of 400 random tables at n=4..7 -- so
-    this table is a found witness rather than a constructed one, and it
-    is pinned because deleting the fallback would leave the docstring's
-    bound unproven while every small table still passed.
+    autocorrelation.  The fresh nearest differences cover almost every
+    table -- the fallback changes the output on 3 of 400 random tables at
+    n=4..7, all at n=4 -- so this table is a found witness rather than a
+    constructed one, and it is pinned because deleting the fallback would
+    leave the docstring's bound unproven while every small table still
+    passed: without it this table costs 203 characters, with it 157.
     """
-    table = "00111101101000111111101000100101"
+    import importlib
+
+    table = "1101010110111010"
     program = vandevelo(table)
-    results = (_result(program, bits) for bits in product(range(2), repeat=5))
+    results = (_result(program, bits) for bits in product(range(2), repeat=4))
     assert "".join(results) == table
+    module = importlib.import_module("esolangs.tools.vandevelo")
+    monkeypatch.setattr(module, "_ensure_popular", lambda *_: None)
+    assert len(vandevelo(table)) > len(program)
+
+
+def test_the_peel_partitions_the_one_set_into_cubes() -> None:
+    """Every harvested cube lies in the 1-set, and together they tile it.
+
+    The peel keeps its working sets across cubes and removes points from
+    every set holding them; a stale set would either miss a point or hand
+    the same point to two cubes.  Sparse and dense tables both, since the
+    sparse tail is a different rule.
+    """
+    import random
+
+    from esolangs.tools.vandevelo import _Peel
+
+    rng = random.Random(5)
+    for n in (6, 8, 9):
+        for density in (0.5, 0.15):
+            ones = {i for i in range(1 << n) if rng.random() < density}
+            if not ones:
+                continue
+            seen: set[int] = set()
+            for base, dirs in _Peel(set(ones), n).run():
+                cube = {base}
+                for v in dirs:
+                    cube |= {p ^ v for p in cube}
+                assert len(cube) == 1 << len(dirs), "dependent directions"
+                assert cube <= ones, "a cube left the 1-set"
+                assert not cube & seen, "two cubes share a point"
+                seen |= cube
+            assert seen == ones
 
 
 def test_registers_are_reused_and_morphed_on_a_wide_table() -> None:
