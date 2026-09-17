@@ -341,7 +341,8 @@ class TestAProgramKnowsWhoseItIs:
         assert copied == program
         assert getattr(copied, "language", None) == "brainfuck"
         template = pickle.loads(pickle.dumps(esolangs.generate("Minifuck", "0110", 20)))
-        assert template == esolangs.generate("Minifuck", "0110")
+        assert template == esolangs.generate("Minifuck", "0110", 20)
+        assert template.replace("\n", "") == esolangs.generate("Minifuck", "0110")
 
     def test_a_width_keeps_the_tag(self) -> None:
         program = esolangs.generate("brainfuck", "0110", 20)

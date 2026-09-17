@@ -127,9 +127,9 @@ options:
                gives 18, asked for 200 gives 56, because it folds runs
                rather than breaking lines), and `none` ignores it, because
                the language's newlines are semantic or it rejects them.  A
-               template is never wrapped (it is the shape of its programs;
-               a layout language lays it out); with --bits the width is
-               applied to the filled program.  A bare --width takes the
+               template wraps with each input's run kept whole, so every
+               row it fills to has the same breaks; a layout language lays
+               it out instead.  A bare --width takes the
                default, so the next word is read as the language, not as a
                width.
 

@@ -11,7 +11,7 @@ from urllib.parse import quote
 
 from esolangs import tools as _boolean
 from esolangs.exceptions import UnknownLanguageError
-from esolangs.tools.helpers import Setters
+from esolangs.tools.helpers import MOST_INPUTS, Setters
 
 # Display names whose canonical id cannot be produced by the slug rules
 # (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``).
@@ -632,24 +632,34 @@ def template_setters(language_id: str, template: str, n: int) -> Setters:
     return example.setters(template, n)
 
 
-def render_template(language_id: str, slots: str, n: int) -> tuple[str, str, Setters]:
+def render_template(
+    language_id: str, slots: str, n: int, width: int | None = None
+) -> tuple[str, str, Setters]:
     """Return the public template for a generator's slot-marked output.
 
     ``(text, char, setters)``: the text with each ``{Xi}`` rendered as a run
     of the language's character as long as input ``i``'s setter, the
-    character, and the pairs.
+    character, and the pairs.  With a ``width`` the text is wrapped first,
+    each input spelled as its own mark so the wrapper keeps every run whole
+    and apart from its neighbour; a run is its setter's exact length, so
+    the wrapped template is the wrapped form of every program it fills to
+    -- the same breaks on every row.
     """
-    from esolangs.tools.helpers import render
+    from esolangs.tools.helpers import render, unmark
+    from esolangs.tools.wrap import wrap_program
 
     char = template_char(language_id)
     assert char is not None, f"{language_id} reads its inputs"
     setters = template_setters(language_id, slots, n)
-    return render(slots, char, setters), char, setters
+    if width is None:
+        return render(slots, char, setters), char, setters
+    wrapped = wrap_program(render(slots, None, setters), language_id, width)
+    return unmark(wrapped, char, n), char, setters
 
 
 #: The most inputs :func:`recover_setters` searches for; past this every
 #: generator is capped by its own table size.
-_MOST_INPUTS = 64
+_MOST_INPUTS = MOST_INPUTS
 
 
 def recover_setters(language_id: str, template: str) -> Setters:
