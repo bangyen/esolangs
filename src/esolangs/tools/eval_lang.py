@@ -51,10 +51,8 @@ _EVAL_OP_RANK = {"~": 0, "*": 1, "=": 2}
 def _eval_skeletons(max_ops: int) -> list[str]:
     """Reorder-word skeletons, ``E`` marking an ``=``-run of unfixed length.
 
-    A skeleton starts with ``~`` -- the read stack holds the bits, so
-    nothing can happen before the first switch -- and carries no ``~~``,
-    no ``**`` and no two adjacent runs, each of which spells a word some
-    shorter skeleton already spells.
+    Starts with ``~``; no ``~~``, ``**`` or adjacent runs, which shorter
+    skeletons already spell.
     """
     out: list[str] = []
 
@@ -96,18 +94,10 @@ def _eval_fill_runs(
 ) -> None:
     """Add every word spelling ``skeleton`` whose runs balance within budget.
 
-    The runs are filled left to right, spending the cap as we go, so the
-    walk never builds a word it would only discard for length.  ``balance``
-    is the running out-mass minus in-mass; a word is valid exactly when it
-    lands back at zero, every value pushed onto the tree stack having come
-    home.
-
-    The caller only passes skeletons whose *last* run is an in-run, so the
-    final run's length is not searched: it has to be exactly ``balance`` to
-    land at zero, and the walk emits at that one length when the budget
-    still affords it.  Collapsing the innermost -- and by far the widest --
-    level of the recursion from a loop to a single test cuts the walk from
-    1091320 calls to 690617; the caller's skip takes it to 348053.
+    Runs fill left to right against the cap; ``balance`` is out-mass minus
+    in-mass and must land at zero.  The last run is an in-run whose length
+    is forced to ``balance``, which cuts the walk from 1091320 calls to
+    690617; the caller's skip takes it to 348053.
     """
     count = len(directions)
     last = count - 1
@@ -169,26 +159,16 @@ def _eval_reorders(max_ops: int = _EVAL_MAX_OPS) -> tuple[str, ...]:
 def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     """Shortest ops rearranging the staged bits into each arrangement.
 
-    Returns the input stack (bottom to top, by input index) mapped to the
-    ops producing it.  The staging blocks leave the bits on the input stack
-    and nothing else, so these ops run between the staging and the tree and
-    are free to reverse or shuttle them.
+    Maps each input stack (bottom to top, by input index) to the ops
+    producing it: every catalog program is replayed cheapest first and the
+    first to reach an arrangement claims it.  Programs that underflow or
+    leave the tree stack dirty are skipped; through ``n == 4`` the reachable
+    arrangements are 1, 2, 6 and 24, and from ``n == 12`` all 735 programs
+    claim distinct ones.
 
-    Each catalog program is replayed on the staged stacks, and the first to
-    reach an arrangement claims it -- valid because the catalog holds every
-    program the cap admits, cheapest first.  A program that pops an empty
-    stack at this ``n`` is skipped, and one that leaves values on the tree
-    stack (or the wrong stack active) ends unusable, since the tree expects
-    to start from a bare tree stack; at small ``n`` the catalog collapses
-    onto the reachable arrangements -- 1, 2, 6 and 24 through ``n == 4`` --
-    and from ``n == 12`` all 735 programs claim distinct arrangements.
-
-    **This is a runtime reorder, not a relabelling.**  The input runs
-    keep their places and the harness fills them as before; what changes is
-    the emitted program, which now rearranges the stack the nodes pop from.
-    The nodes themselves name no input -- each is ``~=~?`` plus a semicolon
-    run fixed by its heap index -- so the arrangement alone decides which
-    input a level tests.
+    **A runtime reorder, not a relabelling**: the input runs keep their
+    places and the nodes name no input, so the arrangement alone decides
+    which input a level tests.
     """
     reached: dict[tuple[int, ...], str] = {}
     # Arrangements are permutations, so ``n!`` claimed is exhaustive, not
@@ -223,19 +203,14 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     """Build an Eval template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.  The
-    program prints ``'0'`` or ``'1'``.
+    inputs (most significant first).  The program prints ``'0'`` or ``'1'``.
 
-    Eval has no input command, so each placeholder stages one equal-width bit
-    on the input stack.  The table's result bits are pushed on the other
-    stack, then each input halves that candidate stack.  A zero discards its
-    top half; a one reverses, discards the same half, and reverses back.
-
-    Duplicating the input before the first conditional preserves it for the
-    second, so both branches share one semicolon run.  Those runs total
-    ``T/2 + T/4 + ... < T`` commands; the table contributes ``T`` pushes and
-    every other level cost is constant.  Ignored inputs are drained without
-    halving after one linear bottom-up dependency pass.
+    Each placeholder stages one equal-width bit on the input stack; the
+    table's bits are pushed on the other stack and each input halves it (a
+    zero discards the top half; a one reverses, discards, reverses back).
+    Duplicating the input lets both branches share one semicolon run,
+    totalling ``T/2 + T/4 + ... < T``; ignored inputs are drained after one
+    bottom-up dependency pass.
     """
     n = _validate_truth_table(truth_table)
     table = permute_truth_table(truth_table, tuple(reversed(range(n))))

@@ -91,11 +91,8 @@ _NEG_DIGIT = (_ZERO, _NEG_THIRD, _NEG_TWO_THIRDS)
 def _const(n: int) -> str:
     """3x code pushing ``n`` on a clean stack, for any integer ``n``.
 
-    ``n`` is written in base 3 and its digits are processed most significant
-    first: ``v`` starts as the leading digit and each following digit ``d``
-    applies the affine map ``v -> 3v + d`` via one ``x`` (see ``_NEG_THIRD``).
-    The result is a closed-form program of ``O(log_3 n)`` length leaving
-    exactly ``[n]`` on the stack.
+    Base-3 digits, most significant first, each applying ``v -> 3v + d``
+    via one ``x`` (see ``_NEG_THIRD``): ``O(log_3 n)`` length.
     """
     if n <= 2:
         return _DIGIT[n]
@@ -113,49 +110,26 @@ def three_x(truth_table: str) -> str:
     """Build a 3x program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
+    inputs (most significant first).
 
-    3x reads an integer with ``?`` and has no direct boolean literals or
-    conditionals, so the generator builds a decision tree with variables:
+    Each ``?`` stores one bit in a variable; a ``( ... )`` guard pops into
+    a trash variable (0), the body stores the entry into the result
+    variable (3), a sentinel zero exits.  The result defaults to the
+    majority value, so only differing rows get an override block.
 
-    - each ``?`` reads one input bit and stores it in a variable (the
-      cheapest names after 0 and 3);
-    - a ``( ... )`` loop runs while its guard is nonzero: the guard value is
-      popped into a trash variable (0), the body stores the table entry into
-      the result variable (3), and a sentinel zero exits the loop.
-
-    The result variable defaults to the majority table value (so the
-    ``( ... )`` loop emits no override when every row matches), and only the
-    input combinations whose table entry differs from the default get an
-    override block.  Each override's ``( ... )`` guard leaves the stack
-    balanced via the trash pop, so arbitrary ``n`` works.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.helpers.best_input_order`).
-    The reorder is spelled in the *store targets* rather than in the tree:
-    ``?`` consumes the stream in order, but each read may store into any
-    variable, so reading stream input ``i`` into the name the tree tests at
-    depth ``perm.index(i)`` reorders the splits while consuming the input
-    stream exactly as before.
-
-    That makes the reorder **free of any cost the search cannot see**.  The
-    read block stores each name exactly once whatever the order, so its
-    length never changes, and the tree is byte-identical to the one the
-    permuted table produces -- unlike a generator that walks to its inputs
-    (Circlefuck) or has to hoist them first (S*bleq, BrainIf), where the
-    screen is respectively an over- and an under-estimate.  Here the screen
-    figure is exact: 4.5% at n=3 (146 of 256 tables improved), 5.4% at n=4.
+    **The tree splits in whichever order emits the shortest program**
+    (:func:`~esolangs.tools.helpers.best_input_order`), spelled in the
+    store targets: stream input ``i`` is stored into the name tested at
+    depth ``perm.index(i)``.  The read block's length never changes, so
+    the screen figure is exact: 4.5% at n=3 (146 of 256 tables), 5.4%
+    at n=4 -- unlike Circlefuck (over-estimate) or S*bleq/BrainIf
+    (under-estimate).
     """
     return best_input_order(truth_table, _three_x_ordered)
 
 
 def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's 3x program; see :func:`three_x`.
-
-    ``perm[k]`` is the stream input the tree tests at depth ``k``, so stream
-    input ``i`` is stored into ``input_vars[perm.index(i)]`` and the tree
-    itself is unchanged.
-    """
+    """Emit one input order's 3x program; see :func:`three_x`."""
     n = _validate_truth_table(truth_table)
 
     # Variable allocation: var 0 is the loop-trash (its constant, 333x, is
@@ -263,14 +237,10 @@ def bit_tilde(truth_table: str) -> str:
     """Build a bit~ program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    bit~ is a bit pool with ``{``/``}`` while-nonzero loops. Each node copies
-    its stored input into two indicators, complements the zero indicator,
-    then uses both as one-shot branch loops. The loop body clears its own
-    indicator, so both paths converge and scratch cells can be reused by
-    depth. Deep levels occupy cells nearest the input area; their repeated
-    pointer walks therefore form a geometric sum and the source is O(T).
+    inputs (most significant first).  Each node copies its input into two
+    indicators, complements one, and uses both as one-shot ``{``/``}``
+    branch loops that clear themselves; deep levels sit nearest the input
+    area so the pointer walks sum geometrically and the source is O(T).
     """
     n = _validate_truth_table(truth_table)
 
