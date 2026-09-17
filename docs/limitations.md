@@ -33,7 +33,12 @@ Parameterized generators embed inputs in the program, each exactly once.
 template it cannot compute every table either: between two placeholders its
 accumulator has 6263 distinguishable classes, and the suite's dense
 seventeen-input fixture needs more at every thirteen-input cut
-([proofs](proofs.md)). Its screened
+([proofs](proofs.md)).  Below that wall the shipped construction reaches
+fourteen inputs on every table tried (dense fourteen is 1.8 MB, built in
+about ten seconds) and refuses the dense fifteen-input fixture, whose
+eleven-input cut has 2017 distinct cofactors among 2048 rows: nothing
+compacts before the next lay, and the laid points jam the fold's one-slot
+landing window.  Its screened
 reorder requires a permuted template or fill mapping; with both fixed,
 interleaving only lengthens the identity template. Input reordering has no
 useful effect on Alight, Container, Grapheme, Home Row, or Packlang; do not
@@ -91,10 +96,10 @@ blocks of the packed table, `n * T / 2` bytes in all, which at word width
 `w` is `n * T / (2 w)` word operations with `n <= w` for any table that
 fits in memory.
 
-**Factor is Theta(T log T) on parity and super-linear for some table under
-every encoding.**  The folded Brainfuck tree has Theta(T) maximal command
-runs; each consumes the next prime in one of eight nonzero residue classes
-modulo 11, the k-th such prime has Theta(log k) digits, and run compression
+**Factor's folded tree is Theta(T log T) on parity; the language forces
+`Omega(T log T / log log T)` for some table under every encoding.**  The
+folded Brainfuck tree has Theta(T) maximal command runs; each consumes
+the next prime in one of eight nonzero residue classes modulo 11, the k-th such prime has Theta(log k) digits, and run compression
 changes exponents, not the number of distinct primes.  Language-level: with D
 digits and m active primes, `m = O(D/log D)`, exponents sum to O(D), their
 compositions into at most m runs number `exp(O(D log log D/log D))`, and the

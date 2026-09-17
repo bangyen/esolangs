@@ -6,6 +6,18 @@ this module embeds each input once.  Every input is spelled by the one pair
 the runs carries everything else: the weight, as doublings between runs; a
 complement, as a ``p`` pair around one; and the table itself, as the fold's
 sequence of relocations, replayed on every row before it is emitted.
+
+Reach: every table through four inputs, every table tried through
+fourteen, and any table symmetric under a complementation at any arity.
+Twelve and thirteen lay a packed eleven-input ladder, compact it to one
+point per suffix cofactor and fold the last two inputs; fourteen and up
+lay each remaining input at the first checked state where a collision-free
+split fits the window and the rules run on the result, carrying same-class
+duplicates into the next stage rather than merging them (dense fourteen:
+289k moves, 1.8 MB, ~10 s, against 24k moves and 375 KB at thirteen).
+Fifteen refuses: a dense table's eleven-input cut has 2017 distinct
+cofactors among 2048 rows, nothing compacts before the lay, and the laid
+4096 points at unit gaps jam the conveyor's one-slot window.
 """
 
 from esolangs.exceptions import GeneratorCapError
@@ -214,7 +226,9 @@ def pct_squared_minus_one(truth_table: str) -> str:
     handful of points -- and then the distinct ladders, which close every
     table through eleven inputs.  Past that the staged
     :func:`_interleaved_fold` lays two inputs after a compaction, with its
-    own pairs; a table none of them covers raises
+    own pairs, and from fourteen :func:`~esolangs.tools.pct_fold._staged_fold`
+    lays one input per stage as soon as the lay fits; a table none of them
+    covers raises
     :class:`~esolangs.exceptions.GeneratorCapError`, because emitting
     nothing is better than emitting a program that computes the wrong
     function.
@@ -233,10 +247,12 @@ def pct_squared_minus_one(truth_table: str) -> str:
     if built is None:
         raise GeneratorCapError(
             f"%^2^-1 builds every table at one through four inputs, every "
-            f"table tried from five through thirteen, and any table "
+            f"table tried from five through fourteen, and any table "
             f"symmetric under a complementation of its inputs; beyond those "
-            f"the tables the all-row fold can plan and the compactable "
-            f"suffix-cofactor stages the interleaved fold can plan; "
+            f"the tables the all-row fold can plan and the stages whose "
+            f"eleven-input cut compacts far enough for the next lay to fit "
+            f"and run (a dense fifteen-input table has 2017 distinct "
+            f"cofactors at that cut, and its lay jams the conveyor); "
             f"got {n} inputs ({truth_table!r})"
         )
     return built
