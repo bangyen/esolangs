@@ -1,10 +1,10 @@
 """Boolean-function generator for ArrowQueue, and the tree it draws."""
 
 from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
     Setters,
     _validate_truth_table,
-    instantiate,
-    slot_count,
+    fill_runs,
 )
 
 # --- ArrowQueue (no-input grid language; parameterized + termination convention) ---
@@ -16,16 +16,16 @@ from esolangs.tools.helpers import (
 # pops the queue and points the pointer in the popped direction (halting on
 # an empty pop).  It has no input and no output, so the generator follows
 # the parameterized convention (like ``bitdeque``/``minsky_swap``) AND the
-# termination convention (like ``point_break``): the template carries
-# ``{Xi}`` placeholders for the input bits, :func:`_instantiate_arrowqueue`
-# fills each with the language's per-bit embedding, and the result is read
+# termination convention (like ``point_break``): the template carries one
+# run per input bit, :func:`_instantiate_arrowqueue` fills each with the
+# language's per-bit embedding, and the result is read
 # from whether the instantiated program *halts* (a ``0`` table entry) or
 # *loops forever* (a ``1`` entry) -- the same convention as the committed
 # halt-vs-hang ring (see ``the limitations ledger``).
 #
 # The template is a grid:
 #
-# - the first rows embed each input once, one ``{Xi}`` placeholder per bit
+# - the first rows embed each input once, one run per bit
 #   (the queue stores bits as directions: right is 0, down is 1);
 # - the next rows queue the right/down/left/up loop components (a ``0``
 #   leaf pops them all and then halts on the empty pop; a ``1`` leaf's ring
@@ -209,8 +209,8 @@ def arrowqueue(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     ArrowQueue has no input command, so this is a parameterized generator:
-    the returned template's ``{Xi}`` placeholders become the per-bit
-    embedding blocks, and the harness instantiates one program per input
+    the returned template's input runs become the per-bit embedding
+    blocks, and the harness instantiates one program per input
     combination (see :func:`_instantiate_arrowqueue`).  Since ArrowQueue has
     no output, the result is read from the termination convention: the
     instantiated program halts iff the table entry for the embedded bits is
@@ -232,10 +232,14 @@ def arrowqueue(truth_table: str) -> str:
     124 to 128 bytes that way -- it is 109 now).
     """
     n = _validate_truth_table(truth_table)
-    slots = ["{X" + str(i) + "}" for i in range(n)]
-    if len(truth_table) > 16:
-        return "\n".join([" *", *slots, *_linear_body(truth_table)])
-    return "\n".join([*slots, *_compact(_MIDDLE + _tree(list(truth_table)))])
+    linear = len(truth_table) > 16
+    # A run is a count of characters, so a multi-row block's newlines are
+    # inside its run; the rows come back when the run is filled.
+    setters = _route_setters(n, linear=linear)
+    runs = [TEMPLATE_CHAR * len(zero) for zero, _one in setters]
+    if linear:
+        return "\n".join([" *", *runs, *_linear_body(truth_table)])
+    return "\n".join([*runs, *_compact(_MIDDLE + _tree(list(truth_table)))])
 
 
 def _linear_body(truth_table: str) -> list[str]:
@@ -264,24 +268,28 @@ def _linear_body(truth_table: str) -> list[str]:
 
 
 def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
-    """Fill an ArrowQueue template's ``{Xi}`` placeholders with the bits.
+    """Fill an ArrowQueue template's input runs with the bits.
 
     ``bits`` is listed most-significant first and must match the template
-    built by :func:`arrowqueue`.  Every slot sits on a row of its own, so
+    built by :func:`arrowqueue`.  Every run sits on a row of its own, so
     the per-bit embedding is a multi-row block substituted like any other
     setter: under the tree, a ``1`` bit's block pushes down and a ``0``
     bit's block pushes right, exactly once each; under the linear cascade,
     a ``1`` bit appends its weight in down markers and a ``0`` bit the same
-    number of no-op rows.  Both spellings are one width per slot.
+    number of no-op rows.  Both spellings are one width per input.
     """
-    return instantiate(
-        template, bits, arrowqueue_setters(template, slot_count(template))
+    return fill_runs(
+        template, TEMPLATE_CHAR, arrowqueue_setters(template, len(bits)), bits
     )
 
 
 def arrowqueue_setters(template: str, n: int) -> Setters:
     """Return the ``(zero, one)`` block for every input of ``template``."""
-    linear = template.startswith(" *\n")
+    return _route_setters(n, linear=template.startswith(" *\n"))
+
+
+def _route_setters(n: int, *, linear: bool) -> Setters:
+    """Return the blocks of the tree route, or of the linear one."""
 
     def block(i: int, bit: int) -> str:
         if linear:

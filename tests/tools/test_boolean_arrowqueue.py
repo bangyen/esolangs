@@ -5,6 +5,8 @@ from itertools import pairwise
 
 import pytest
 
+from esolangs.tools.arrowqueue import arrowqueue_setters
+from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from esolangs.tools.parameterized import _instantiate_arrowqueue
 
 
@@ -103,12 +105,40 @@ class TestParameterizedArrowQueue:
         assert all(b <= 2 * a for a, b in pairwise(sizes))
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has one run per input, not hardcoded bits."""
         from esolangs.tools import parameterized
 
         template = parameterized.arrowqueue("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        setters = arrowqueue_setters(template, 2)
+        assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
+        assert len(runs(template, TEMPLATE_CHAR, setters)) == 2
+
+    @pytest.mark.parametrize("table", ["0110", "0110100110010110" * 2])
+    def test_each_run_is_a_block_of_rows(self, table: str) -> None:
+        """A run counts a block's newlines, so a run is rows of its own.
+
+        The tree route's first block is one row taller than the rest; the
+        linear route's blocks are one row per marker, ``2**(n-1-i)`` for
+        input ``i``.  Filled, the rows come back where the run stood.
+        """
+        from esolangs.tools import parameterized
+
+        n = len(table).bit_length() - 1
+        template = parameterized.arrowqueue(table)
+        setters = arrowqueue_setters(template, n)
+        lines = template.splitlines()
+        for i, (zero, one) in enumerate(setters):
+            assert len(zero) == len(one)
+            rows = zero.count("\n") + 1
+            if template.startswith(" *\n"):
+                assert rows == 2 ** (n - 1 - i)
+            else:
+                assert rows == (5 if i == 0 else 4)
+            assert TEMPLATE_CHAR * len(zero) in lines
+        filled = self.instantiate(template, [1] * n)
+        inside = sum(zero.count("\n") for zero, _ in setters)
+        assert filled.count("\n") == template.count("\n") + inside
 
     @pytest.mark.parametrize(
         ("table", "mixed"),

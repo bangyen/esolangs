@@ -11,7 +11,6 @@ from itertools import chain
 from esolangs.tools.pct_codes import (
     _BYTE_ONE,
     _BYTE_ZERO,
-    _HEADER_END,
     _LIMIT,
     _affine_code,
     _apply,
@@ -19,6 +18,7 @@ from esolangs.tools.pct_codes import (
     _sub_code,
     _sub_of_width,
 )
+from esolangs.tools.pct_ladder import _header, _runs
 
 #: The band construction's weights are multiples of this, so every row starts
 #: congruent mod 256 and the residue of a band is decided by one translation.
@@ -403,9 +403,5 @@ def _deep_band(truth_table: str, n: int) -> str | None:
             setters = _deep_setters(units, mask)
             if setters is None:  # pragma: no cover - a planned weighting spells
                 continue
-            header = ";".join(
-                f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters)
-            )
-            placeholders = "".join("{X" + str(k) + "}" for k in range(n))
-            return header + _HEADER_END + placeholders + body
+            return _header(setters) + _runs(setters) + body
     return None

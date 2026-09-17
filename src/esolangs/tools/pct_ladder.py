@@ -5,14 +5,34 @@ run of weighted rungs that stays exactly affine inside ``[-_LIMIT, 0]``, so the
 reset never fires until the suffix asks it to.
 """
 
+from collections.abc import Sequence
 from functools import cache
 
+from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.tools.pct_codes import (
     _HEADER_END,
     _apply,
     _even_width_for,
     _sub_of_width,
 )
+
+
+def _header(setters: Sequence[tuple[str, str]]) -> str:
+    """Spell the header naming every setter's two branches, and its end."""
+    header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
+    return header + _HEADER_END
+
+
+def _run(setter: tuple[str, str]) -> str:
+    """Spell one input as its run: the template character, one per branch cell."""
+    zero, _one = setter
+    return TEMPLATE_CHAR * len(zero)
+
+
+def _runs(setters: Sequence[tuple[str, str]]) -> str:
+    """Spell every input's run in name order, with no separator between."""
+    return "".join(_run(setter) for setter in setters)
+
 
 #: Ladders the search runs, as ``(weights, base)``.  Every value is a multiple
 #: of 250 and every rung stays within ``[-3003, 0]``, which is what keeps stage
@@ -279,6 +299,4 @@ def _ladder(truth_table: str, n: int) -> str | None:
     if spelled is None:
         raise AssertionError(index)
     setters, lead = spelled
-    header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
-    body = lead + "".join("{X" + str(k) + "}" for k in range(n)) + suffix
-    return header + _HEADER_END + body
+    return _header(setters) + lead + _runs(setters) + suffix

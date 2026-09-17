@@ -58,7 +58,9 @@ from esolangs.tools.a_painter_ant import (
     _instantiate_apa,
     _leaf_positions,
     _reverse_moves,
+    _route_setters,
 )
+from esolangs.tools.helpers import TEMPLATE_CHAR
 from tests.tools.a_painter_ant_trace import run
 
 #: Cost band; see ``__main__.py``. L2's foreign-leaf sweep at n=9 is 57s of the cost.
@@ -102,9 +104,9 @@ def tree_program(table: str, idx: int, n: int) -> str:
     routes through the weighted embedding on its own.
     """
     head = _head(table, [0] * n)
-    prefix = "".join("{X" + str(i) + "}" for i in range(n - 1))
-    suffix = "{X" + str(n - 1) + "}"
-    return _instantiate_apa(head + prefix + _body() + suffix, bits_of(idx, n))
+    runs = [TEMPLATE_CHAR * len(zero) for zero, _one in _route_setters(n, linear=False)]
+    template = head + "".join(runs[:-1]) + _body() + runs[-1]
+    return _instantiate_apa(template, bits_of(idx, n))
 
 
 def head_units(table: str, n: int) -> list[Unit]:

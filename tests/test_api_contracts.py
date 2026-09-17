@@ -29,7 +29,7 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
-from esolangs.registry import LANGUAGES, parameterized_ids
+from esolangs.registry import LANGUAGES, parameterized_ids, template_char
 from esolangs.tools.wrap import takes_width
 
 XOR = "0110"
@@ -102,15 +102,12 @@ class TestParameterizedTemplates:
         from esolangs.tools.helpers import runs
 
         def embeds(lang: object) -> bool:
-            # A generator embeds its inputs either as ``{Xi}`` marks or, once
-            # migrated, as one run of the language's character per input,
-            # each as wide as its setter.  ``$`` alone is not the signature:
-            # three readers have it in their alphabet, so the run form is
-            # checked against the setters, which a reader's program does
-            # not fit.
+            # A generator embeds its inputs as one run of the language's
+            # character per input, each as wide as its setter.  ``$`` alone
+            # is not the signature: four readers have it in their alphabet,
+            # so the run form is checked against the setters, which a
+            # reader's program does not fit.
             out = str(lang.boolean(XOR))
-            if "{X0}" in out:
-                return True
             char = template_char(lang.id)
             if char is None or char not in out:
                 return False

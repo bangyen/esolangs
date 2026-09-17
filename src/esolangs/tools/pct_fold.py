@@ -11,7 +11,6 @@ from bisect import bisect_left, insort
 from esolangs.tools.pct_codes import (
     _BYTE_ONE,
     _BYTE_ZERO,
-    _HEADER_END,
     _LIMIT,
     _affine_code,
     _apply,
@@ -34,6 +33,7 @@ from esolangs.tools.pct_fold_plan import (
     _FoldOp,
     _FoldState,
 )
+from esolangs.tools.pct_ladder import _header, _run, _runs
 
 
 class _FoldEmitter:
@@ -690,7 +690,7 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
             for row in range(2**prefix)
         }
     )
-    emitter.body = ["{X" + str(index) + "}" for index in range(prefix)]
+    emitter.body = [_run(setter) for setter in setters]
 
     def lay(index: int, *, cofactor: bool) -> tuple[str, str] | None:
         lo = emitter.lo()
@@ -755,7 +755,7 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
                 )
                 laid[key2] = (value2, cls)
         emitter.load(laid)
-        emitter.body.append("{X" + str(index) + "}")
+        emitter.body.append(_run((zero, one)))
         return zero, one
 
     def state() -> _FoldState:
@@ -817,16 +817,13 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
         return None
     emit(final)
     emitter.finish()
-    header = ";".join(
-        f"{index}={zero}|{one}" for index, (zero, one) in enumerate(setters)
-    )
-    return header + _HEADER_END + "".join(emitter.body)
+    return _header(setters) + "".join(emitter.body)
 
 
 def _interleaved_fold(truth_table: str, n: int) -> str | None:
-    """Try a placeholder/fold/placeholder build before the all-row fallback.
+    """Try a run/fold/run build before the all-row fallback.
 
-    Every ``{Xi}`` appears once and in name order, but unlike :func:`_fold_at`
+    Every input's run appears once and in name order, but unlike :func:`_fold_at`
     its setter is emitted immediately before the cofactor fold it enables.
     The emitter mirrors every raw row, so a returned candidate is checked at
     every reset and landing just like the shipped ladder path.
@@ -916,7 +913,7 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
             )
             laid[coalesced_key] = (value, cls)
         emitter.load(laid)
-        emitter.body.append("{X" + str(index) + "}")
+        emitter.body.append(_run((zero, one)))
 
         items = [
             (value, 0, emitter.cls[key], emitter.members(key))
@@ -963,10 +960,7 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
         else:
             emitter.rise(amount, row_ids)
     emitter.finish()
-    header = ";".join(
-        f"{index}={zero}|{one}" for index, (zero, one) in enumerate(setters)
-    )
-    return header + _HEADER_END + "".join(emitter.body)
+    return _header(setters) + "".join(emitter.body)
 
 
 #: A two-sided ladder was built and **removed once measured**, the same way
@@ -1066,8 +1060,5 @@ def _fold_at(truth_table: str, n: int, weights: tuple[int, ...]) -> str | None:
         else:
             emitter.rise(c, vids)
     emitter.finish()
-    header = ";".join(
-        f"{k}={zero}|{one}" for k, (zero, one) in enumerate(_fold_setters(n, weights))
-    )
-    placeholders = "".join("{X" + str(k) + "}" for k in range(n))
-    return header + _HEADER_END + placeholders + "".join(emitter.body)
+    setters = _fold_setters(n, weights)
+    return _header(setters) + _runs(setters) + "".join(emitter.body)

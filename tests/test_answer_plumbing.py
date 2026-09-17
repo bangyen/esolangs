@@ -253,6 +253,25 @@ class TestATemplateCarriesItsSetters:
         fill = _fill_from(lambda _template, n: pairs[:n])
         assert fill("a$$$b", [1, 0]) == fill("a{X0}{X1}b", [1, 0]) == "ayypb"
 
+    def test_a_zero_width_setter_has_an_empty_run(self) -> None:
+        """An input spelled as nothing on both branches (%^2^-1) fills to nothing."""
+        from esolangs.tools.helpers import fill_runs, runs
+
+        pairs = (("", ""), ("xx", "yy"), ("", ""))
+        assert runs("a$$b", "$", pairs) == [(0, 0), (1, 3), (3, 3)]
+        assert fill_runs("a$$b", "$", pairs, [1, 0, 1]) == "axxb"
+        assert fill_runs("a$$b", "$", pairs, [0, 1, 0]) == "ayyb"
+
+    def test_marks_fill_through_a_callable_or_pairs_alike(self) -> None:
+        """The mark form fills by a setter function or by the pairs themselves."""
+        from esolangs.tools.helpers import instantiate
+
+        pairs = (("xx", "yy"), ("p", "q"))
+        assert instantiate("a{X0}{X1}b", [1, 0], pairs) == "ayypb"
+        assert instantiate("a{X0}{X1}b", [1, 0], lambda i, bit: pairs[i][bit]) == (
+            "ayypb"
+        )
+
     def test_adjacent_inputs_need_no_separator(self) -> None:
         from esolangs.tagged import _Template
 

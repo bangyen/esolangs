@@ -9,7 +9,12 @@ instantiated rows.
 from functools import cache
 
 from esolangs.exceptions import GeneratorCapError
-from esolangs.tools.helpers import Setters, _validate_truth_table, instantiate
+from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
+    Setters,
+    _validate_truth_table,
+    fill_runs,
+)
 from esolangs.tools.pct_codes import (
     _DECL_RE,
     _HEADER_END,
@@ -145,7 +150,9 @@ from esolangs.tools.pct_ladder import (
     _LADDERS as _LADDERS,
 )
 from esolangs.tools.pct_ladder import (
+    _header,
     _ladder,
+    _runs,
 )
 from esolangs.tools.pct_ladder import (
     _ladder_built as _ladder_built,
@@ -437,10 +444,8 @@ def _cascade(truth_table: str, n: int) -> str | None:
             setters.append((_CASCADE_ERASE, _CASCADE_IDENT))
         else:
             setters.append((_CASCADE_IDENT, _CASCADE_ERASE))
-    header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
     tail = (_CASCADE_NOT if complement else "") + "l"
-    body = _CASCADE_ONE + "".join("{X" + str(k) + "}" for k in range(n)) + tail
-    return header + _HEADER_END + body
+    return _header(setters) + _CASCADE_ONE + _runs(setters) + tail
 
 
 #: Multipliers the wide search composes: the closure of ``m`` (double) and
@@ -796,11 +801,7 @@ def _spell_affine(
     tail = _tail_for(one, other)
     if tail is None:
         return None
-    header = ";".join(
-        f"{k}={zero}|{one_code}" for k, (zero, one_code) in enumerate(setters)
-    )
-    body = "".join("{X" + str(k) + "}" for k in range(3)) + tail
-    return header + _HEADER_END + body
+    return _header(setters) + _runs(setters) + tail
 
 
 def pct_squared_minus_one(truth_table: str) -> str:
@@ -862,10 +863,14 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # this path reaches above three inputs, so the enumeration is skipped
         # rather than paid for; at three inputs it stays, where it is instant.
         affine = _affine(truth_table, n) if n == 3 else None
-        # Ties keep the cascade, which is what the order emitted before.
+        # A template the same length either way is split by the program it
+        # fills to -- the body past the header, since a run is its setter's
+        # width -- and a tie there keeps the cascade, which is what the order
+        # emitted before.  (Two of the 256 three-input tables tie on the
+        # template and are two characters shorter filled by the affine path.)
         best = min(
             (build for build in (cascade, affine) if build is not None),
-            key=len,
+            key=lambda build: (len(build), len(body(build))),
             default=None,
         )
         if best is not None:
@@ -943,17 +948,15 @@ def pct_squared_minus_one(truth_table: str) -> str:
                 f"one-input derivation split on input 1: {truth_table!r}"
             )
         setters, tail = setters[:1], zero + tail
-    header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
-    body = "".join("{X" + str(k) + "}" for k in range(n)) + tail
-    return header + _HEADER_END + body
+    return _header(setters) + _runs(setters) + tail
 
 
 def fill(template: str, bits: list[int]) -> str:
     """Instantiate ``template`` for ``bits``, returning a runnable program.
 
     The header names each setter's two branches; this strips it and replaces
-    every ``{Xi}`` with the branch that input's bit selects.  The branches
-    are equal width, so every instantiation has the same length whatever the
+    each input's run with the branch its bit selects.  The branches are
+    equal width, so every instantiation has the same length whatever the
     inputs.
 
     The header's own newlines are discarded before it is read, which is what
@@ -964,11 +967,11 @@ def fill(template: str, bits: list[int]) -> str:
     program byte-identical however the header was folded, so the two
     branches stay equal width in text as well as in commands.
     """
-    return instantiate(body(template), bits, setters(template))
+    return fill_runs(body(template), TEMPLATE_CHAR, setters(template), bits)
 
 
 def body(template: str) -> str:
-    """Return the template past its header: the text the slots are filled in."""
+    """Return the template past its header: the text the runs are filled in."""
     return template.partition(_HEADER_END)[2]
 
 
