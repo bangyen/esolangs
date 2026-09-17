@@ -47,32 +47,14 @@ _READ = -3
 _WRITE = -2
 _START = 0
 
-#: The set bits of the tape, as a frozenset of locations.  The tape is
-#: unbounded and starts all-FALSE, so the set of TRUE locations *is* the
-#: tape -- there is nothing to preallocate and nothing to grow.
-#:
-#: A frozenset rather than a sorted tuple because a location is only ever
-#: tested, set, or cleared; order is never read.  ``snapshot`` sorts on the
-#: way out, as it always did, so one logical tape still has one hash.
+#: The TRUE locations of an unbounded all-FALSE tape.  A frozenset: order
+#: is never read, and ``snapshot`` sorts on the way out.
 type _Bits = frozenset[int]
 
-#: One instant of a run: ``(ip, pos, bits, done)`` -- the code cursor, the
-#: tape pointer, the set bits, and whether the run has ended.  A value, not
-#: a record: every transition below returns a new one rather than editing
-#: one in place.
-#:
-#: ``done`` is state because halting here is a decision the end-of-program
-#: check makes, and it depends on the *pointer*, not the cursor: reaching
-#: the end with the pointer below 0 halts, and with it at 0 or above loops
-#: back to the start.  The same cursor means either, so the position cannot
-#: carry it.
-#:
-#: ``done`` stays out of ``snapshot``, which reports the four fields it
-#: always reported.
-#:
-#: The code is deliberately not in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  It is a parameter to the transition instead.
+#: ``(ip, pos, bits, done)``: an immutable value, rebound per step.
+#: ``done`` is state because the end-of-program check depends on the
+#: pointer (below 0 halts, else loops), not the cursor; it stays out of
+#: ``snapshot``.  The code is a parameter, not a field.
 type _State = tuple[int, int, _Bits, bool]
 
 
