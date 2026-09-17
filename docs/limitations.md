@@ -232,6 +232,22 @@ lie outside the live range or be met by one `<` per value.  The open
 question is therefore one gadget: a two-exit zero test on a block of
 `R` values, `o(R)` cells, every stray cod dead.
 
+A residue model was then executed (start values 0..23 injected, every
+`<` kill and N-bound `_` release logged per cell).  On a single bounce
+column (`>` corridor, `(`/`<` cells, `_` at the top) each cell removes
+one residue class whose modulus is the round trip's net shift: `(<_`
+kills the odd values, `((<_` the values `2 mod 4`, `<(_` kills even and
+releases odd.  A `+` with two reflecting trunks (`(_` and `((_`) is not
+a program: past 3,000 cods by tick 600 for every start value, no halt,
+and one `_` releasing the same value up to 73 times, the classes now
+`mod 2`, the gcd of the two round trips, with a finite pre-period.  On
+the shipped programs at n=2..6 there is no cycle and no release: every
+`<` removes one value per run, and across rows its set is a prefix
+interval of the row index of size `2**k` (the zero set of an affine form
+in the bits read so far), not a residue class of the full index -- so a
+fate map is not a union of residue classes of the decoded index, and a
+bound by that family alone is not a bound on the language.
+
 Polynomial's remaining question is a left-half-plane multiple of the
 mandatory root product with more terms than the Descartes minimum:
 instruction count, monomial count, right-half-plane coefficient mass, and
