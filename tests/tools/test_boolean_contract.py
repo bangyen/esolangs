@@ -571,7 +571,13 @@ _REDUCING = {
 # to exactly the same length.  A 0% fold is the construction working.
 # (ZTOALC L's chunked variant of the same fold keeps it in this list for
 # the same reason: lookup size does not track table shape.)
+#
+# ``a_painter_ant`` is a branch-free lookup of the same class: one white
+# corridor cell per row, one answer paint per one-row, and the inputs walk
+# the corridor by their weights, so two tables with the same ones-count
+# render to the same length and a 0% fold is the construction working.
 _UNSHAPED = {
+    "a_painter_ant",
     "alight",
     "b_tapemark",
     "nopstacle",

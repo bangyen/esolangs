@@ -1,6 +1,6 @@
 """Covers :mod:`esolangs.tools.a_painter_ant`, and the trace it is read from."""
 
-from itertools import pairwise
+from itertools import pairwise, product
 from typing import ClassVar
 
 import pytest
@@ -20,10 +20,10 @@ class TestAPainterAnt:
     coordinates), so the Boolean answer is read from a small semantic grid
     model: the colour of the cell the ant lands on at the end of a cycle
     (white is one, black is zero), read after any whole number of cycles
-    since every instantiated program is a cycle-stable fixed point.  ``n ==
-    1`` pads to a two-input table with the second input fixed to zero;
-    ``n >= 3`` uses the same piecewise head with more bits, and every arity
-    is exact and cycle-stable (see ``the relevant generator tests``).
+    since every instantiated program is a cycle-stable fixed point.  One
+    construction serves every arity: a white corridor of ``2**n`` cells
+    with the answers in the row below, each input one character (``n`` or
+    ``N``) and its weight the ``E`` walk the template spells after it.
     """
 
     _MOVE: ClassVar[dict[str, tuple[int, int]]] = {
@@ -122,26 +122,21 @@ class TestAPainterAnt:
         assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
         assert len(runs(template, TEMPLATE_CHAR, setters)) == 2
 
-    def test_leaf_paint_omits_zero_subtrees(self) -> None:
-        """A zero leaf is omitted and a one leaf is painted P.
+    def test_zero_answers_are_not_painted(self) -> None:
+        """A one answer is painted ``P``; a zero answer is left black.
 
         The generator never paints a cell black (no ``p``), which is what
         keeps every instantiated program a monotone, cycle-stable fixed
         point.
         """
-        template = a_painter_ant("0110")  # f(1,1)=0, f(0,0)=0, f(1,0)=1, f(0,1)=1
+        template = a_painter_ant("0110")
         assert template.count("P") < a_painter_ant("1111").count("P")
         # no paint-black anywhere in any instantiated program
         program = _instantiate_apa(template, [1, 1])
         assert "p" not in program
 
     def test_all_one_input_functions(self) -> None:
-        """Every one-input table is exact and cycle-stable for both inputs.
-
-        n == 1 is supported by fixing the padded second input to zero and
-        using the n == 2 construction with b1 == 0 (see
-        :func:`a_painter_ant`).
-        """
+        """Every one-input table is exact and cycle-stable for both inputs."""
         for value in range(4):
             table = format(value, "02b")
             for bit in [0, 1]:
@@ -153,91 +148,73 @@ class TestAPainterAnt:
         """An n == 1 template carries one run, filled per bit."""
         template = a_painter_ant("01")  # f(0)=0, f(1)=1
         assert len(runs(template, TEMPLATE_CHAR, apa_setters(template, 1))) == 1
-        run = TEMPLATE_CHAR * 8
-        assert template.count(run) == 1
-        assert _instantiate_apa(template, [1]) == template.replace(run, "WWwWWEEe")
-        assert _instantiate_apa(template, [0]) == template.replace(run, "NENEESWw")
+        assert template.count(TEMPLATE_CHAR) == 1
+        assert _instantiate_apa(template, [1]) == template.replace(TEMPLATE_CHAR, "N")
+        assert _instantiate_apa(template, [0]) == template.replace(TEMPLATE_CHAR, "n")
 
     def test_three_input_works(self) -> None:
         """AND3 is exact and cycle-stable on every input."""
-        from itertools import product
-
         for bits in product([0, 1], repeat=3):
             table = "00000001"
             assert self._check(table, list(bits)) == int(
                 table[bits[0] * 4 + bits[1] * 2 + bits[2]]
             ), f"AND3 bits {bits}"
 
-    def test_four_input_head_works(self) -> None:
-        """The head's leaf layout generalizes past three inputs."""
-        from esolangs.tools.a_painter_ant import _leaf_positions
+    def test_every_input_is_the_one_pair(self) -> None:
+        """Uniform: the same ``(n, N)`` pair for every input at every arity.
 
-        positions = _leaf_positions(4)
-        assert len(positions) == 16
-        assert len({(x, y) for x, y, _ in positions}) == 16  # all distinct
-
-    def test_leaf_coordinates_agree_with_the_moves_that_walk_them(self) -> None:
-        """``_leaf_positions`` is the mirror of what ``_bit_move`` emits.
-
-        The head reaches a leaf by walking ``_bit_move`` per bit, and the
-        routing reads it at the coordinate ``_leaf_positions`` reports;
-        the docstrings say the two always agree, and nothing checked it.
-        Distinctness alone does not: perturbing the weight to
-        ``2**(n-k+1)``, or swapping the axis parity, leaves all ``2**n``
-        points distinct and every ``bits`` tuple unchanged, so the layout
-        looks fine while the head walks somewhere the routing does not
-        read.  Deriving the coordinate from the moves catches exactly that.
-
-        The two are mirrored on **x only**: a set bit moves west
-        (``-x``) but counts ``+2**(n-k)``, while on the vertical axis a set
-        bit moves north and counts positive alike.  That asymmetry is the
-        "mirror position" the docstring names, and pinning it is what makes
-        an axis-parity flip visible.
+        The conventions audit reads this off the programs; here it is
+        pinned at the source, on both of its table shapes, so that a route
+        that spelled an input's weight into its embed again would fail
+        here before it failed there.
         """
-        from esolangs.tools.a_painter_ant import _bit_move, _leaf_positions
+        for n in range(1, 7):
+            for table in _shapes(n):
+                template = a_painter_ant(table)
+                assert apa_setters(template, n) == (("n", "N"),) * n
+                assert template.count(TEMPLATE_CHAR) == n
 
-        step = {"w": (-1, 0), "e": (1, 0), "n": (0, 1), "s": (0, -1)}
-        for n in (1, 2, 3, 4, 5):
-            for x, y, bits in _leaf_positions(n):
-                walked_x = walked_y = 0
-                for k, bit in enumerate(bits):
-                    for move in _bit_move(n, k, bit):
-                        dx, dy = step[move]
-                        walked_x += dx
-                        walked_y += dy
-                assert (walked_x, walked_y) == (-x, y), (n, bits)
+    def test_the_template_carries_each_weight(self) -> None:
+        """Input ``i``'s run is followed by ``2**(n-1-i)`` ``E`` and ``SN``.
 
-    def test_leaf_coordinates_are_the_weighted_grid(self) -> None:
-        """Each bit contributes ``+-2**(n-k)`` on the axis its index picks.
-
-        Pinned exactly at two and three inputs, since the weight and the
-        axis choice are both invisible to a distinctness check and to
-        every behavioural assertion in this class -- the head only consumes
-        the ``bits`` field.
+        The walk is the weight and the ``SN`` is the return to the
+        corridor; the ``sS`` after the last one steps onto the answer.
         """
-        from esolangs.tools.a_painter_ant import _leaf_positions
-
-        assert _leaf_positions(2) == [
-            (-2, -4, (0, 0)),
-            (2, -4, (0, 1)),
-            (-2, 4, (1, 0)),
-            (2, 4, (1, 1)),
-        ]
-        assert [(x, y) for x, y, _ in _leaf_positions(3)] == [
-            (-10, -4),
-            (-6, -4),
-            (-10, 4),
-            (-6, 4),
-            (6, -4),
-            (10, -4),
-            (6, 4),
-            (10, 4),
+        template = a_painter_ant("01" * 16)  # n = 5
+        head, *tails = template.split(TEMPLATE_CHAR)
+        assert head.endswith("W" * 31)
+        assert tails == [
+            "E" * 16 + "SN",
+            "E" * 8 + "SN",
+            "E" * 4 + "SN",
+            "E" * 2 + "SN",
+            "E" * 1 + "SNsS",
         ]
 
-    def test_four_and_five_input_generator_works(self) -> None:
-        """The generator handles n == 4 and n == 5, exact and cycle-stable."""
-        from itertools import product
+    def test_each_input_moves_the_ant_by_its_weight(self) -> None:
+        """After input ``i``'s gadget the ant stands at the partial index.
 
+        Traced on the semantic model: a one walks the corridor by the
+        weight, a zero steps into the black lane and is walked nowhere,
+        and both end the gadget back on the corridor row.
+        """
+        from tests.tools.a_painter_ant_trace import run
+
+        n = 4
+        template = a_painter_ant("0110100110010110")
+        first = template.index(TEMPLATE_CHAR)
+        for bits in product([0, 1], repeat=n):
+            program = _instantiate_apa(template, list(bits))
+            steps = run(program, 1).steps
+            partial = 0
+            cursor = first
+            for i, bit in enumerate(bits):
+                partial += bit << (n - 1 - i)
+                cursor += 1 + (1 << (n - 1 - i)) + 2  # the run, the walk, SN
+                assert steps[cursor - 1].position == (partial, 0), (bits, i)
+
+    def test_wide_tables_are_exact(self) -> None:
+        """The construction handles n == 4 and n == 5, exact and cycle-stable."""
         from tests.tools.a_painter_ant_trace import cycle_stable, landing_after
 
         tables = {
@@ -254,15 +231,16 @@ class TestAPainterAnt:
                         table[sum(bits[k] << (n - 1 - k) for k in range(n))]
                     ), f"n={n} table {table} bits {bits}"
 
-    def test_shared_head_growth(self) -> None:
+    def test_size_growth(self) -> None:
         """Wide dense tables grow no faster than their table size.
 
-        The template is the filled program's size, its runs the routing
-        steps: ten per row less a constant, so doubling the table doubles
-        the size and adds that constant back.
+        The two ``W`` walks cost two characters per entry, the corridor and
+        its answers seven, the walks one per entry, and each input three more:
+        doubling the table doubles the size and adds that constant back.
         """
         sizes = [len(a_painter_ant("1" * (2**n))) for n in range(6, 10)]
-        assert all(b <= 2 * a + 2 for a, b in pairwise(sizes))
+        assert all(b <= 2 * a + 3 for a, b in pairwise(sizes))
+        assert sizes[0] == 1 + (64 + 63) + (7 * 64 - 3) + 63 + 3 * 6 + 2
 
     def test_linear_strip_executes_dense_wide_table(self) -> None:
         """Every row reaches its adjacent strip cell and remains cycle-stable."""
@@ -279,8 +257,6 @@ class TestAPainterAnt:
 
     def test_three_input_xor_works(self) -> None:
         """XOR3 is exact and cycle-stable on every input."""
-        from itertools import product
-
         for bits in product([0, 1], repeat=3):
             table = "01101001"
             assert self._check(table, list(bits)) == int(
@@ -292,16 +268,25 @@ class TestAPainterAnt:
             a_painter_ant("0123")
 
     def test_instantiate_fills_bits(self) -> None:
-        """Input 0 fills nnnn/ssss (the 2^(n-i)=4 weight), input 1 the E/W dance."""
+        """Every run fills to ``n`` for a zero and ``N`` for a one."""
         template = a_painter_ant("0110")
-        assert apa_setters(template, 2) == (("ssss", "nnnn"), ("NENEESWw", "WWwWWEEe"))
-        first, second = TEMPLATE_CHAR * 4, TEMPLATE_CHAR * 8
+        assert apa_setters(template, 2) == (("n", "N"), ("n", "N"))
+        assert template.count(TEMPLATE_CHAR) == 2
         assert _instantiate_apa(template, [1, 1]) == template.replace(
-            first, "nnnn", 1
-        ).replace(second, "WWwWWEEe")
+            TEMPLATE_CHAR, "N"
+        )
         assert _instantiate_apa(template, [0, 0]) == template.replace(
-            first, "ssss", 1
-        ).replace(second, "NENEESWw")
+            TEMPLATE_CHAR, "n"
+        )
+        mixed = template.replace(TEMPLATE_CHAR, "n", 1).replace(TEMPLATE_CHAR, "N")
+        assert _instantiate_apa(template, [0, 1]) == mixed
+
+
+def _shapes(n: int) -> tuple[str, str]:
+    """The conventions audit's two table shapes at arity ``n``."""
+    parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**n))
+    dense = "".join("1" if (i * 7 + 3) % 5 < 2 else "0" for i in range(2**n))
+    return parity, dense
 
 
 def _render_after_passes(program: str, passes: int) -> str:
@@ -319,28 +304,6 @@ def _render_after_passes(program: str, passes: int) -> str:
     for _ in range(passes * span):
         machine.step()
     return machine.render()
-
-
-class TestLinearFill:
-    """The wide-table fill is a setter: one step per unit of weight."""
-
-    def test_each_slot_is_its_weight_in_steps(self) -> None:
-        n = 5
-        template = a_painter_ant("01" * 16)
-        assert template.endswith("sS")
-        zeros = _instantiate_apa(template, [0] * n)
-        for i in range(n):
-            bits = [0] * n
-            bits[i] = 1
-            ones = _instantiate_apa(template, bits)
-            assert len(ones) == len(zeros)
-            weight = 1 << (n - 1 - i)
-            differing = [
-                k for k, (a, b) in enumerate(zip(zeros, ones, strict=True)) if a != b
-            ]
-            assert len(differing) == weight
-            assert {ones[k] for k in differing} == {"E"}
-            assert {zeros[k] for k in differing} == {"e"}
 
 
 class TestAPainterAntTrace:

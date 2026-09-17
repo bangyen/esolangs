@@ -48,10 +48,10 @@ for the ``0,1`` row of a two-input table -- rather than a line per bit.
 Two languages used to fail that test and no longer do.  Back's answer was
 the cell *under the head*, which the tape dump does not locate; the
 generator now writes the result into a single answer cell, so the dump
-reports it like any other.  A Painter Ant's answer is which of two painted
-leaf rings the ant rests in, and the interpreter's raster drew painted cells
-only, so the ant was invisible and the rings identical; ``render`` now marks
-the ant's own cell, with ``o`` on black and ``@`` on white.
+reports it like any other.  A Painter Ant's answer is the cell the ant rests
+on, and the interpreter's raster drew painted cells only, so the ant was
+invisible; ``render`` now marks the ant's own cell, with ``o`` on black and
+``@`` on white.
 
 **The ``_fill_*`` functions here are the only place a setter is spelled.**
 A caller that wants one -- a test, a harness, a script -- imports it rather
@@ -781,15 +781,11 @@ def _register() -> None:
             answer_mode="dump",
             answer_pattern=r"(?m)^[.#o@]*([o@])[.#o@]*$",
             answer_values=("o", "@"),
-            expected=(
-                "..#......\n.........\n.........\n.........\n.........\n"
-                ".........\n..#...#..\n.###.###.\n##o###.##\n.###.###.\n"
-                "..#...#.."
-            ),
+            expected="....\n####\n.o.#",
             note=(
                 "A Painter Ant has no output: it paints a grid and the answer "
-                "is which of the two leaf rings the ant rests in, shown by "
-                "'o' (on black, a zero) or '@' (on white, a one)"
+                "is the answer cell the ant rests on below its white corridor, "
+                "shown by 'o' (on black, a zero) or '@' (on white, a one)"
             ),
         ),
         "back": _embedded(

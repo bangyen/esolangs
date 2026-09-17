@@ -18,7 +18,7 @@ that row is actually spelled for the language.
 | `3d-brainfuck.txt` | 3D Brainfuck | `0001` | `01` | 0 1 | '0' |
 | `3x.txt` | 3x | `0001` | `01` | 0 1 | '0' |
 | `6-5.txt` | 6-5 | `0001` | `01` | 0 1 | '0' |
-| `a-painter-ant.txt` | A Painter Ant | `0001` | `01` | embedded 01 | '..#......\n.........\n.........\n.........\n.........\n.........\n..#...#..\n.###.###.\n##o###.##\n.###.###.\n..#...#..' |
+| `a-painter-ant.txt` | A Painter Ant | `0001` | `01` | embedded 01 | '....\n####\n.o.#' |
 | `addsubjump.txt` | AddSubJump | `0001` | `01` | 0 1 | '0' |
 | `algebraic-programming-language.txt` | Algebraic Programming Language | `0001` | `01` | 0 1 | '0\n' |
 | `alight.txt` | Alight | `0001` | `01` | 0 1 | '0' |
@@ -83,7 +83,7 @@ that row is actually spelled for the language.
 ## Notes
 
 - **123** -- 123 answers by terminating: it halts for a 0 result and loops forever for a 1, so only the halting branch is committed. Its output is not the answer and is not compared -- the merge pops through location -2 and prints whatever that cell holds, which for this program is the two bytes 'VO with a diaeresis'
-- **a-painter-ant** -- A Painter Ant has no output: it paints a grid and the answer is which of the two leaf rings the ant rests in, shown by 'o' (on black, a zero) or '@' (on white, a one)
+- **a-painter-ant** -- A Painter Ant has no output: it paints a grid and the answer is the answer cell the ant rests on below its white corridor, shown by 'o' (on black, a zero) or '@' (on white, a one)
 - **algebraic-programming-language** -- an executed line prints its result, so the answer ends in a newline
 - **arrowqueue** -- ArrowQueue answers by termination -- it halts for a 0 result and loops forever for a 1, so only the halting branch is committed.  The headings printed are its interpreter-only queue dump, which the verdict does not read: the answer is that the program halted at all
 - **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n, past the n input cells
