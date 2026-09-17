@@ -63,7 +63,18 @@ jobs:
       run: uv run python -m tests.proofs.deep ci
 
     # --all, not the touched-language default the local gate uses: this is
-    # the run that holds exceptions.py's contract across all 69.  68s.
+    # the run that holds exceptions.py's contract across all 65.  68s cold;
+    # the cache below carries the last clean sweep's fingerprints forward so
+    # a run pays only for the interpreters, examples or machinery that
+    # changed since.  The key is per commit and the restore prefix takes the
+    # newest, so every run saves and the next run inherits.
+    - name: Restore the leak sweep's clean fingerprints
+      uses: actions/cache@v4
+      with:
+        path: .leaksweep-cache.json
+        key: leaksweep-${{ github.sha }}
+        restore-keys: leaksweep-
+
     - name: Check that no interpreter leaks a raw exception
       run: uv run python scripts/verify_no_exception_leaks.py --all
 
