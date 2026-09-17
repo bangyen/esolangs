@@ -18,11 +18,11 @@ that row is actually spelled for the language.
 | `3d-brainfuck.txt` | 3D Brainfuck | `0001` | `01` | 0 1 | '0' |
 | `3x.txt` | 3x | `0001` | `01` | 0 1 | '0' |
 | `6-5.txt` | 6-5 | `0001` | `01` | 0 1 | '0' |
-| `a-painter-ant.txt` | A Painter Ant | `0001` | `01` | embedded 01 | '..#......\n.........\n.........\n.........\n.........\n.........\n..#...#..\n.###.###.\n##o###.##\n.###.###.\n..#...#..' |
+| `a-painter-ant.txt` | A Painter Ant | `0001` | `01` | embedded 01 | '....\n####\n.o.#' |
 | `addsubjump.txt` | AddSubJump | `0001` | `01` | 0 1 | '0' |
 | `algebraic-programming-language.txt` | Algebraic Programming Language | `0001` | `01` | 0 1 | '0\n' |
 | `alight.txt` | Alight | `0001` | `01` | 0 1 | '0' |
-| `arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '1 0 1 2 3' |
+| `arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '1 0 0 1 2 3' |
 | `b-tapemark.txt` | B-tapemark | `0001` | `01` | 0 1 | '0' |
 | `back.txt` | Back | `0001` | `01` | embedded 01 | '0 1 0' |
 | `bf-pda.txt` | BF-PDA | `0001` | `01` | embedded 01 | '0' |
@@ -83,7 +83,7 @@ that row is actually spelled for the language.
 ## Notes
 
 - **123** -- 123 answers by terminating: it halts for a 0 result and loops forever for a 1, so only the halting branch is committed. Its output is not the answer and is not compared -- the merge pops through location -2 and prints whatever that cell holds, which for this program is the two bytes 'VO with a diaeresis'
-- **a-painter-ant** -- A Painter Ant has no output: it paints a grid and the answer is which of the two leaf rings the ant rests in, shown by 'o' (on black, a zero) or '@' (on white, a one)
+- **a-painter-ant** -- A Painter Ant has no output: it paints a grid and the answer is the answer cell the ant rests on below its white corridor, shown by 'o' (on black, a zero) or '@' (on white, a one)
 - **algebraic-programming-language** -- an executed line prints its result, so the answer ends in a newline
 - **arrowqueue** -- ArrowQueue answers by termination -- it halts for a 0 result and loops forever for a 1, so only the halting branch is committed.  The headings printed are its interpreter-only queue dump, which the verdict does not read: the answer is that the program halted at all
 - **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n, past the n input cells
@@ -91,13 +91,13 @@ that row is actually spelled for the language.
 - **clockwise** -- Clockwise reads all its input bits in one go, so they go on one line -- one character per bit, not a line per bit, and not seven bits packed into a character: that packing is real but is on the output side. A line per bit, or a packed one, is read as a different row and answered wrongly
 - **cod** -- COD has no runtime input and no I/O but a printed number
 - **container** -- Container prints the answer like any other reader; it also ends by calling sys.exit(0) rather than returning, which matters to a harness driving it but not to reading the result
-- **crement** -- Crement answers by termination: a false jump halts for 0 and a positive self-jump diverges for 1
+- **crement** -- Crement answers by termination: the tree's nodes patch a per-input tester's jump targets, and the row lands past the end (halts, 0) or on a self-jump (diverges, 1)
 - **fargo** -- Fargo reads one number whose bits are the inputs, so the committed input is the row index rather than a bit per line
 - **grapheme** -- Grapheme's generator normalizes each input line with ord(line[0]) - 65 and then maps zero to 1, so its input bits are spelled % and A: 'A' is a 1 and every other first character is a 0, which means a 0/1 line reads as 0 and the program answers the all-zeros row. The second step is not optional prose -- ord('A') - 65 is 0, so the subtraction alone says the opposite
 - **inject** -- send terminates each line, so the answer ends in a newline
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
-- **nopstacle** -- Nopstacle answers by termination: a local repeated state halts for 0 and crossing repeated copies forever is 1
+- **nopstacle** -- Nopstacle answers by termination: the IP falls through a decision tree of corridors, a blank bit cell passing it and a # deflecting it; a 0 leaf is a box it circles into a repeated local state, a 1 leaf drops it onto a blank row it runs along across copies forever
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
 - **taglate** -- Taglate takes a line per bit like most languages, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four lines. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
 - **vandevelo** -- Vandevelo answers by terminating: nil halts and not nil loops

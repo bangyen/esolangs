@@ -1,7 +1,7 @@
 """Public API for the esolangs package.
 
 Provides ``generate`` (produce a program computing a truth table),
-``instantiate`` (fill a parameterized generator's ``{Xi}`` slots), ``run``
+``instantiate`` (fill a parameterized generator's input runs), ``run``
 (execute a program through an interpreter), ``make_vm`` (a step-and-inspect
 wrapper around the step-capable interpreters), ``make_debugger`` (a
 breakpoint/watch layer over the VM), ``describe`` (a structured language
@@ -60,9 +60,14 @@ from esolangs.registry import (
     _fills,
     example_stems,
     parameterized_ids,
+    recover_setters,
+    render_template,
     resolve,
+    template_body,
+    template_char,
     wiki_url,
 )
+from esolangs.tagged import _Tagged, _Template
 
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width("LaserFuck")`` got False for
@@ -163,8 +168,6 @@ _EXAMPLES = pathlib.Path(__file__).resolve().parent / "examples"
 # An unfilled input slot in a parameterized generator's template.  Matched
 # only for the languages whose generator emits one: ``{`` is a live command
 # in several of the others, so a blanket search would refuse real programs.
-_SLOT = re.compile(r"\{X\d+\}")
-_SLOT_INDEX = re.compile(r"\{X(\d+)\}")
 
 # Interpreter module family -> state model name.
 _STATE_MODELS = {
@@ -177,51 +180,6 @@ _STATE_MODELS = {
 }
 
 
-class _Template(str):
-    """A parameterized generator's template, tagged with the language.
-
-    A template is otherwise an ordinary string of source with ``{Xi}`` slots
-    in it, and that is the whole problem: :func:`instantiate` had no way to
-    tell whose it was, so it accepted any name and substituted *that*
-    language's setter code into another language's program.  The result was
-    not an error and not obviously wrong -- it ran, and answered::
-
-        mf = generate("Minifuck", "0110")     # XOR
-        instantiate("RAM0", mf, [0, 1])       # wrong language, no complaint
-        # ... and the program answers 0, where XOR of 0 and 1 is 1.
-
-    Syntax cannot catch that; the mismatched program was well-formed. So the
-    template carries its language and :func:`instantiate` compares.
-
-    The tag is an attribute on a ``str`` subclass rather than a wrapper type
-    so that a template stays a string everywhere else -- it is written to
-    files, printed, and sliced by callers who should not have to know this
-    exists.  Which also means the tag does not survive a round trip through
-    disk, and a plain ``str`` is therefore accepted unchecked: the check
-    catches the mistake where it is made, in one process, and does not
-    pretend to cover the file the CLI wrote an hour ago.
-    """
-
-    language: str
-    unwrapped: str
-
-    def __new__(cls, text: str, language: str, unwrapped: str = "") -> "_Template":
-        """Return ``text`` tagged as ``language``'s template.
-
-        ``unwrapped`` is the same template before a width was applied, kept
-        because :func:`instantiate` cannot recover it: a reflow wrapper
-        leaves ordinary newlines behind and there is no way to tell the ones
-        it inserted from ones the generator meant.  Without it a width on
-        ``instantiate`` was a no-op for every parameterized language --
-        ``wrap_program`` declines to reflow a program that already has
-        newlines, which after ``generate(table, width)`` it always does.
-        """
-        template = super().__new__(cls, text)
-        template.language = language
-        template.unwrapped = unwrapped or text
-        return template
-
-
 def generate(language: str, truth_table: str, width: int | None = None) -> str:
     """Return a program in ``language`` computing ``truth_table``.
 
@@ -229,22 +187,20 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     inputs, most significant first, so its length implies the input count
     and the generators take no ``n``.
 
-    Seventeen languages embed their inputs in the program text rather than
-    reading them.  For those this returns a *template* with one ``{Xi}``
-    slot per input, which :func:`instantiate` fills;
+    Eighteen languages embed their inputs in the program text rather than
+    reading them.  For those this returns a *template*: the program with
+    each input spelled as a run of one character (``$`` unless the language
+    declares another), one run per input in order and exactly as long as
+    the code that replaces it, which :func:`instantiate` fills;
     ``describe(language)["parameterized"]`` says which you have, and a
     template handed to :func:`run` is refused rather than executed.
 
-    ``width`` is a *request*, not a bound.  What it does depends on the
-    language -- see ``describe(language)["width_effect"]`` -- and for the
-    22 whose newlines are semantic, or that reject one outright, it does
-    nothing at all.  A single token longer than the width still overruns
-    it.
-
-    The count is not a constant.  It said 38 while the answer was 22,
-    because a round of teaching generators to lay themselves out moved
-    sixteen languages out of that group without moving the sentence.
-    ``describe`` is derived and cannot drift; prefer it to this number.
+    ``width`` is a *request*, not a bound: what it does depends on the
+    language (see ``describe(language)["width_effect"]``), it does nothing
+    at all where newlines are semantic, and a single token longer than the
+    width still overruns it.  A template wraps with each input's run kept
+    whole, so it is the wrapped shape of every program it fills to and
+    every row breaks in the same places.
     """
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
@@ -257,40 +213,29 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
             f"{type(truth_table).__name__}"
         )
     check_width(width)
-    if width is not None and _takes_width(fn):
-        return str(fn(truth_table, width))
-    if lang.id in parameterized_ids():
-        # A template wraps like anything else.  It did not use to: a narrow
-        # width broke a slot in half -- ``{X`` ending one line and ``1}``
-        # starting the next -- and the template silently stopped being
-        # instantiable, so ``generate --width 10 "Home Row" 0110`` reported
-        # one input slot where the table has two.  The fix is in the token
-        # rules rather than here: ``{Xi}`` is one token in every wrapper
-        # (:data:`~esolangs.tools.wrap._PLACEHOLDER`), so no width can land
-        # inside one.  Skipping the wrap instead would leave the eleven
-        # parameterized languages with a ``width`` that quietly did nothing.
-        plain = str(fn(truth_table))
-        return _Template(wrap_program(plain, lang.id, width), resolved, plain)
-    return wrap_program(str(fn(truth_table)), lang.id, width)
+    laid_out = width is not None and _takes_width(fn)
+    slots = str(fn(truth_table, width) if laid_out else fn(truth_table))
+    if lang.id not in parameterized_ids():
+        program = slots if laid_out else wrap_program(slots, lang.id, width)
+        return _Tagged(program, resolved)
+    # The generator spells each input as a run; the public template is
+    # that, wrapped with every run whole (see render_template).
+    inputs = len(truth_table).bit_length() - 1
+    wrap_to = None if laid_out else width
+    text, char, pairs = render_template(lang.id, slots, inputs, wrap_to)
+    return _Template(text, resolved, char, pairs)
 
 
 def _is_template_for(template: str, name: str, truth_table: str) -> bool:
     """Return whether ``template`` is what ``name`` generates for the table.
 
-    Compared against the *unwrapped* template, then again with the newlines
-    taken out of both.  The second pass is what lets a wrapped template
-    through: ``generate(name, table, 40)`` is the same program with line
-    breaks added between tokens, and refusing it would make the width and
-    the provenance check mutually exclusive.
-
-    Only for a language whose unwrapped template is a single line, since
-    for the rest a newline is layout and dropping it compares two different
-    programs.
+    A wrapped template passes where the plain one is a single line (for
+    the rest a newline is layout, and dropping it compares two programs).
     """
     plain = generate(name, truth_table)
-    if template == plain:
-        return True
-    return "\n" not in plain and template.replace("\n", "") == plain
+    return template == plain or (
+        "\n" not in plain and template.replace("\n", "") == plain
+    )
 
 
 def instantiate(
@@ -300,12 +245,12 @@ def instantiate(
     width: int | None = None,
     truth_table: str | None = None,
 ) -> str:
-    """Fill a parameterized generator's ``{Xi}`` slots with ``bits``.
+    """Fill a parameterized generator's template with ``bits``.
 
-    The seventeen parameterized generators embed their inputs in the
+    The eighteen parameterized generators embed their inputs in the
     program text, so :func:`generate` returns a template and this makes it
-    runnable.  Substituting the slots by hand does not work: each language
-    spells a set-input its own way, and a bare ``0`` or ``1`` in the slot
+    runnable.  Substituting the runs by hand does not work: each language
+    spells a set-input its own way, and a bare ``0`` or ``1`` in the run
     is a different program.
 
     A language whose generator reads its inputs instead has nothing to
@@ -313,27 +258,27 @@ def instantiate(
     template from a *different* language -- which would otherwise run and
     answer the wrong row.
 
-    ``width`` is taken here as well as on :func:`generate`, and this is the
-    one that a caller filling a template wants: a slot is four columns and
-    the setter code that replaces it is not, so a template wrapped to a
-    width no longer meets it once the slots are gone.
+    ``width`` is taken here as well: a wrapped template fills to a program
+    with the same breaks, and an unwrapped one is wrapped after filling.
+
+    A template :func:`generate` returned carries its setters; a plain
+    string -- read back from a file -- has them recovered from the
+    language's own setters, which its runs' total length determines.
     """
     check_width(width)
     name = resolve(language)
     if truth_table is not None and not _is_template_for(template, name, truth_table):
-        # The provenance check a tag cannot make.  A template carries its
-        # language, so filling one language's as another is refused -- but a
-        # *hand-written* string is untagged by design (a tag cannot survive
-        # a file), and `instantiate("Minifuck", "hello {X0}", [1])` happily
-        # substituted into it and returned something that ran to nothing.
+        # The provenance check a tag cannot make: a hand-written string is
+        # untagged by design (a tag cannot survive a file), and
+        # `instantiate("Minifuck", "hello $$", [1])` filled it happily.
         # Given the table it should have come from, that is decidable.
         raise TemplateError(
             f"this is not the template generate({name!r}, {truth_table!r}) "
             f"returns, so filling it would produce a program that does not "
             f"compute that table"
         )
-    fill = _fills().get(LANGUAGES[name].id)
-    if fill is None:
+    char = template_char(LANGUAGES[name].id)
+    if char is None:
         raise TemplateError(
             f"{name} reads its inputs rather than embedding them, so there "
             f"is nothing to instantiate; pass them in as stdin instead"
@@ -351,48 +296,34 @@ def instantiate(
             f"{origin} program -- which runs, and answers the wrong row"
         )
     bits = check_bits(bits, "bits")
-    wanted = len({int(slot) for slot in _SLOT_INDEX.findall(template)})
-    if len(bits) != wanted:
-        if wanted == 0:
-            # The count is true and answers a question nobody asked.  Both
-            # ways of getting here -- an ordinary program, and a template
-            # instantiate() has already filled -- look the same from here,
-            # so the message names both rather than guessing.
+    tagged = template if isinstance(template, _Template) else None
+    if tagged is None:
+        if char not in template:
+            # An ordinary program and an already-filled template look the
+            # same from here, so the message names both.
             raise TemplateError(
-                f"this {name} text has no {{Xi}} slots to fill: it is either "
+                f"this {name} text has no run of {char!r} to fill: it is either "
                 f"an ordinary program or a template instantiate() has already "
                 f"been applied to, and generate({name!r}, table) returns the "
                 f"template to fill"
             )
+        try:
+            pairs = recover_setters(LANGUAGES[name].id, template)
+        except ValueError as exc:
+            raise TemplateError(f"not a {name} template: {exc}") from exc
+        tagged = _Template(template, name, char, pairs)
+    if len(bits) != tagged.inputs:
         given = (
             f"{len(bits)} bit was given"
             if len(bits) == 1
             else f"{len(bits)} bits were given"
         )
         raise TemplateError(
-            f"this {name} template has {wanted} input slot"
-            f"{'' if wanted == 1 else 's'}, but {given}"
+            f"this {name} template has {tagged.inputs} input"
+            f"{'' if tagged.inputs == 1 else 's'}, but {given}"
         )
-    # Reflowed from the template *before* its width, when there is one.
-    #
-    # ``wrap_program`` declines to reflow a program that already has
-    # newlines, since for most languages a newline is layout rather than
-    # something it put there.  After ``generate(table, width)`` a template
-    # always has them, so re-wrapping the filled program did nothing at all
-    # -- a width here was inert for all seventeen parameterized languages,
-    # which is exactly the call this function's docstring recommends.
-    # Filling the unwrapped source instead gives the wrapper the single-line
-    # program it needs, and the answer is the same either way because the
-    # slots are in the same places.
-    #
-    # Only for the languages a wrapper actually reflows.  A layout language
-    # -- COD, WII2D -- lays its *template* out to the width in the generator
-    # and has no wrapper here, so for those the width-laid-out template is
-    # the one to fill and unwrapping it would throw the layout away.
-    source: str = template
-    if width is not None and LANGUAGES[name].id in WRAPPERS:
-        source = getattr(template, "unwrapped", template)
-    return wrap_program(fill(source, bits), LANGUAGES[name].id, width)
+    program = template_body(LANGUAGES[name].id, tagged.fill(bits))
+    return _Tagged(wrap_program(program, LANGUAGES[name].id, width), name)
 
 
 #: Characters a filename is made of, and a program mostly is not.
@@ -411,16 +342,12 @@ def _looks_like_a_path(program: str) -> bool:
     since the ``.`` is brainfuck's print.
 
     The rule keys on shape: one line, only the characters a path is made
-    of, and either rooted (``/``, ``./``, ``../``, ``~``) or ending in a
-    short extension.  It checked for a literal ``.txt`` before, which
-    caught ``prog.txt`` and let ``prog.bf`` -- the natural extension for
-    this package's flagship language -- and ``/etc/hosts`` straight
-    through.
-
-    ``.`` and ``..`` are accepted, and so is a bare ``~``: they are legal
-    programs -- ``~~`` is two ArrowQueue commands -- and a rule that
-    refuses a real program is worse than the bug it prevents.  Only
-    ``~/`` counts as rooted for that reason.
+    of, and either rooted (``/``, ``./``, ``../``, ``~/``) or ending in a
+    short extension -- a literal ``.txt`` check caught ``prog.txt`` and
+    let ``prog.bf`` and ``/etc/hosts`` through.  ``.``, ``..`` and a bare
+    ``~`` are accepted: they are legal programs (``~~`` is two ArrowQueue
+    commands), and a rule that refuses a real program is worse than the
+    bug it prevents.
     """
     if "\n" in program or not _PATH_CHARS.match(program):
         return False
@@ -433,8 +360,8 @@ def check_runnable(language: str, program: str) -> None:
 
     Both are mistakes a running interpreter cannot report, because both are
     *valid* input to it: a filename is a string of characters the language
-    mostly ignores, and a ``{Xi}`` slot is either a fault far from its cause
-    or -- Minifuck's case -- silently nothing.  Each produced a confident
+    mostly ignores, and a template's run of ``$`` is either a fault far from
+    its cause or -- Minifuck's case -- silently nothing.  Each produced a confident
     wrong answer, which is the one outcome worth spending a check to avoid.
 
     Public because :func:`run` is not the only way to execute a program:
@@ -447,12 +374,12 @@ def check_runnable(language: str, program: str) -> None:
             f"program looks like a path, not source: {program!r}. "
             f"Read the file first, or pass pathlib.Path({program!r})"
         )
-    if LANGUAGES[name].id in parameterized_ids() and _SLOT.search(program):
-        slots = sorted(set(_SLOT.findall(program)))
+    char = template_char(LANGUAGES[name].id)
+    if char is not None and char in program:
         raise TemplateError(
             f"{name}'s generator returns a template, and this one still has "
-            f"unfilled slots ({', '.join(slots)}); fill them with "
-            f"esolangs.instantiate({name!r}, program, bits)"
+            f"unfilled runs of {char!r} ({program.count(char)} characters); "
+            f"fill them with esolangs.instantiate({name!r}, program, bits)"
         )
 
 
@@ -468,38 +395,28 @@ def check_program(
     parses: ``check_program("brainfuck", "[")`` returns the program, and
     :func:`make_vm` on the same string raises ``ProgramError: unmatched
     '['``.  Over half the languages have some program this accepts and the
-    interpreter then rejects.  (The exact count was measured at a larger
-    registry and is not re-derived here -- what the caller needs is that
-    this is the common case, not the rare one.)
+    interpreter then rejects.
 
-    That is structural rather than an oversight waiting to be fixed here.
-    :func:`make_vm` *calls* this function, so validating by building a
-    machine would recurse; the load check belongs to the interpreter and
-    happens when one is built.  Use this as a pre-flight for the mistakes
-    above, and :func:`make_vm` or :func:`run` inside ``except
-    EsolangError`` when the question is "will this program load".
+    That is structural: :func:`make_vm` *calls* this function, so validating
+    by building a machine would recurse, and the load check belongs to the
+    interpreter.  Use this as a pre-flight for the mistakes above, and
+    :func:`make_vm` or :func:`run` inside ``except EsolangError`` when the
+    question is "will this program load".
 
-    ``stdin`` is checked for its type only, not its content.
-    :func:`check_stdin` is the one that reads it against the shape and
-    alphabet a language declares, and it needs the truth table to do the
-    whole job.
+    ``stdin`` is checked for its type only.  :func:`check_stdin` reads it
+    against the shape and alphabet a language declares, and needs the truth
+    table to do the whole job.
 
-    The whole load-time contract in one place, because there are two ways
-    to execute a program and only :func:`run` used to apply it:
+    The whole load-time contract is here because there are two ways to
+    execute a program and only :func:`run` used to apply it:
     ``make_debugger("brainfuck", None)`` raised ``'NoneType' is not a
-    container or iterable`` from inside an interpreter, where ``run`` had
-    long said ``program must be a string of source or a Path``.
+    container or iterable`` from inside an interpreter.
 
-    A :class:`~pathlib.Path` is read here.  Its trailing newline is the
-    file's rather than the program's, and three interpreters (CV(N)(C),
-    Grapheme, NoComment) reject one as an unknown command, which made
-    reading a committed example fail on the very files this package ships.
-
-    That is fixed, but the one-liner this used to show as proof was not a
-    working example: two of those three read stdin, so
-    ``run(lang, Path(describe(lang)["examples"][0]))`` raises
-    :class:`~esolangs.exceptions.InputExhaustedError` for them -- for want
-    of input, not for the newline.  The whole call is::
+    A :class:`~pathlib.Path` is read here, and its trailing newline is the
+    file's rather than the program's -- CV(N)(C), Grapheme and NoComment
+    reject one as an unknown command, which made reading a committed
+    example fail on the files this package ships.  Two of those three read
+    stdin, so the whole call is::
 
         path = pathlib.Path(describe(lang)["examples"][0])
         run(lang, path, encode_inputs(lang, [0, 1]))
@@ -526,6 +443,15 @@ def check_program(
         raise ProgramError(
             f"program must be a string of source or a Path, got "
             f"{type(program).__name__}"
+        )
+    origin = getattr(program, "language", None)
+    if origin is not None and origin != name:
+        # The program says where it came from; a plain string does not and
+        # is taken at its word (see :class:`_Tagged`).
+        raise ProgramError(
+            f"this program was generated for {origin}, so running it as "
+            f"{name} would read it as {name} source -- which may well run, "
+            f"and answer nonsense"
         )
     if not isinstance(stdin, str):
         # ArgumentError, not ProgramError: the stdin is not the program, and
@@ -559,41 +485,31 @@ def run(
 
     **A Path and its text are not quite the same argument**: reading a file
     strips one trailing newline and passing a string does not, so the two
-    disagree wherever a newline is not a legal character.  Both are
-    deliberate -- a trailing newline in a file is the editor's, one in a
-    string you built is yours.
+    disagree wherever a newline is not legal.  Both are deliberate -- a
+    trailing newline in a file is the editor's, one in a string is yours.
 
     ``stdin`` is fed to the program line by line.  A program that asks for
     more than it is given usually raises
     :class:`~esolangs.exceptions.InputExhaustedError`, but not always:
     ``describe(language)["eof_is_a_value"]`` marks the languages that take
-    an exhausted read as a value and carry on, which answers a *different
-    row* of the table.  Those cases warn with an
-    :class:`~esolangs.exceptions.InputMismatchWarning` where there is a
-    read past the end to notice; Clockwise and Fargo take their input as a
-    single line, so an underfed program is undetectable here and only
+    an exhausted read as a value and carry on, answering a *different row*
+    of the table.  Those warn with an
+    :class:`~esolangs.exceptions.InputMismatchWarning` where there is a read
+    past the end to notice; Clockwise and Fargo take their input as a single
+    line, so an underfed program is undetectable here and only
     ``check_stdin`` with the table catches it.
 
-    Two languages do neither, and the flag does not separate them out:
-
-    * **Alight** is marked ``eof_is_a_value`` and does not carry on -- the
-      sentinel reaches its arithmetic and it halts with ``cannot apply '+'
-      to 2.0 and 'eof'``.  So it refuses, loudly, which is the safe half
-      of the flag's two outcomes but not the one it names.
-    * **Suffolk** is marked ``False`` and does not raise.  An exhausted
-      read *ends* the program, so a run comes back ``halted`` with no
-      output and no warning at all.  That is written down under
-      ``self_halts``, which says Suffolk "ends when a read runs out of
-      input" -- the two traits describe the same fact and only one of them
-      is where a reader looks for it.
-
-    Swept rather than sampled: the other fifty of the fifty-two
-    stdin-reading languages do exactly what the flag says.
+    Two languages are neither outcome and the flag cannot say so.  **Alight**
+    is marked ``eof_is_a_value`` but does not carry on, halting with
+    ``cannot apply '+' to 2.0 and 'eof'``; **Suffolk** is marked ``False``
+    but does not raise, since an exhausted read *ends* the program (the same
+    fact ``self_halts`` records).  Swept rather than sampled: the other
+    fifty of the fifty-two stdin-reading languages match the flag.
 
     How a language spells its bits is not universal -- Grapheme reads
     ``%``/``A``, Fargo one number whose bits are the inputs -- so take the
-    alphabet from ``describe(language)["input_encoding"]``; feeding the
-    wrong one is answered with a wrong result, not an error.
+    alphabet from ``describe(language)["input_encoding"]``; the wrong one is
+    answered with a wrong result, not an error.
 
     ``timeout`` bounds the run in wall-clock seconds and raises
     :class:`~esolangs.exceptions.ExecutionTimeoutError`, which is a
@@ -947,7 +863,7 @@ def describe(language: str) -> LanguageInfo:
     ``wiki_url``.
 
     Generation: ``boolean_generator`` says a truth-table generator exists;
-    ``parameterized`` says it returns a ``{Xi}`` template, which takes its
+    ``parameterized`` says it returns a template, which takes its
     bits from :func:`instantiate` and so has ``reads_input`` false.
 
     Width: ``width_effect`` is what a ``width`` does -- ``"layout"`` (the
@@ -964,17 +880,16 @@ def describe(language: str) -> LanguageInfo:
     read them rather than assuming.
 
     Answer: ``answer_mode`` is ``"output"`` (printed; read the last
-    non-whitespace character), ``"dump"`` (the whole final state is
-    printed and the answer sits at a fixed place in it) or
-    ``"termination"`` (it halts for one value and runs forever for the
-    other, so a timeout *is* an answer).  ``answer_pattern`` is the regex
-    whose first group holds the answer, empty when the last character is
-    it; ``answer_encoding`` is the ``(zero, one)`` that position is
-    spelled with, or the polarity ``("halts", "diverges")`` for a
-    termination language; ``answer_convention`` is prose naming where to
-    look.  These describe the *raw output*: :func:`read_answer` always
-    hands back ``"0"`` or ``"1"``, so A Painter Ant's ``("o", "@")`` is a
-    mark in its grid, not a value you will see.
+    non-whitespace character), ``"dump"`` (the final state is printed and
+    the answer sits at a fixed place in it) or ``"termination"`` (it halts
+    for one value and runs forever for the other, so a timeout *is* an
+    answer).  ``answer_pattern`` is the regex whose first group holds the
+    answer, empty when the last character is it; ``answer_encoding`` is the
+    ``(zero, one)`` that position is spelled with, or the polarity
+    ``("halts", "diverges")``; ``answer_convention`` is prose naming where
+    to look.  These describe the *raw output*, so A Painter Ant's
+    ``("o", "@")`` is a mark in its grid rather than a value a caller sees
+    -- :func:`read_answer` always hands back ``"0"`` or ``"1"``.
 
     Machine traits: ``self_halts``, ``dumps_on_the_post_halt_step``,
     ``steppable_to_answer`` and ``eof_is_a_value``, documented on
@@ -1051,8 +966,6 @@ def _width_effect(lang: Any) -> str:
       are semantic or it rejects them outright.  This is the one worth
       knowing: it was a silent no-op.
     """
-    from esolangs.tools.wrap import WRAPPERS
-
     # One expression rather than an early return for the generator-less
     # case: every registered language has a generator, so that return was a
     # line no input could reach.
@@ -1177,19 +1090,14 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
     reader of this package has found: a ``0``/``1`` line fed to Grapheme,
     several lines fed to Clockwise, anything but a number fed to Fargo.
 
-    Raises :class:`~esolangs.exceptions.ArgumentError`.  A *raise* rather
-    than a warning because a caller reaching for this function has asked
-    to be told; :func:`run` itself still executes whatever it is given,
-    since it runs arbitrary programs of a language and not only the
-    generated truth-table ones, and a shape this rejects may be exactly
-    what a hand-written program wants.
+    Raises :class:`~esolangs.exceptions.ArgumentError` rather than warning,
+    because a caller reaching for this function has asked to be told.
+    :func:`run` still executes whatever it is given: it runs arbitrary
+    programs, and a shape this rejects may be what a hand-written one wants.
 
-    ``truth_table`` is optional and adds the count: with it, stdin must
-    hold as many bits as the program reads, which catches the *surplus*
-    case too.  Six lines fed to a three-input program answered the first
-    three and ignored the rest, at exit 0 -- and the count was available
-    all along, since the too-few case has always reported "2 lines
-    supplied, read 3".
+    ``truth_table`` is optional and adds the count, which catches the
+    *surplus* case: six lines fed to a three-input program answered the
+    first three and ignored the rest, at exit 0.
 
     Every check reads a :func:`describe` field, so a language with a new
     shape is covered by declaring it.
@@ -1457,8 +1365,8 @@ def evaluate(
         # are settled by a repeated state rather than a clock.
         bound = timeout
     # The width goes to whichever call builds the runnable text: for a
-    # template that is ``instantiate`` below, since a ``{Xi}`` slot is not a
-    # token any wrapper knows and a break inside one destroys it.
+    # template that is ``instantiate`` below, which keeps every input's
+    # run whole where a break inside one would destroy it.
     program = generate(name, truth_table, None if facts["parameterized"] else width)
     if terminating:
         # Which of halting and diverging means 1, as data.  It is

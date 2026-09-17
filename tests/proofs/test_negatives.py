@@ -1,4 +1,4 @@
-"""The limits ``docs/limitations.md`` claims, as executable checks.
+"""The limits ``docs/polynomial.md`` claims, as executable checks.
 
 Most of that document's content is a measurement -- a ratio, a census, a
 growth exponent.  Those belong in prose, where a stale number reads as a
@@ -38,7 +38,7 @@ from esolangs.tools.register import polynomial
 # Polynomial cannot ship a factored program
 # --------------------------------------------------------------------------
 #
-# ``docs/limitations.md`` prices Polynomial's text as the *expanded*
+# ``docs/polynomial.md`` prices Polynomial's text as the *expanded*
 # polynomial's coefficient digits.  The obvious escape is to ship the product
 # form instead -- m factors, each O(log) characters, so O(m log m) text and no
 # expansion at all.  The document rules that out on the parser's behaviour,
@@ -161,7 +161,7 @@ class TestRungsAreTransparent:
 # Polynomial multiples cannot change what a program does
 # --------------------------------------------------------------------------
 #
-# ``docs/limitations.md`` says extra roots that do not match an instruction
+# ``docs/polynomial.md`` says extra roots that do not match an instruction
 # code "may multiply the mandatory root product without changing execution".
 # That premise carries the whole sparse-multiple frontier, so it is executed
 # rather than asserted: built here, decoded here, and run here.

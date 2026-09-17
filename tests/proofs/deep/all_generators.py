@@ -64,10 +64,13 @@ _SHAPES = (("dense", _dense), ("parity", _parity))
 _GROWTH_MAX = 8
 _GROWTH_OVERRIDE = {"circuit_diagram": 7}
 
-#: Generators whose ledger row is ``exception``: they may refuse tables the
-#: others accept, so their batteries routinely report refusals.  Listed to
-#: keep that expected rather than surprising.
-_MAY_REFUSE = frozenset({"Interprogck8", "%^2^-1", "WII2D"})
+#: Generators that may refuse tables the others accept, so their batteries
+#: routinely report refusals.  Listed to keep that expected rather than
+#: surprising.  ``%^2^-1`` is the one the ledger labels ``exception``; WII2D
+#: caps without carrying the label.  Interprogck8 was here until linearizing
+#: it retired the repair loop its cap existed for -- it has no cap left, so a
+#: refusal from it now is news rather than noise.
+_MAY_REFUSE = frozenset({"%^2^-1", "WII2D"})
 
 
 def battery(name: str, scheme: str, key: str) -> Result:

@@ -24,7 +24,8 @@ construction completes at every arity of a ladder on both table shapes.  That
 is the counting half of each scheme above, and it is what makes "finite object
 covering every row" checkable per generator.  Four generators -- A Painter Ant,
 ArrowQueue, Container and BIO -- additionally have a hand-derived proof of
-their own specific argument, which no generic battery can reach.
+their own specific argument, which no generic battery can reach, and
+`pct_squared_minus_one.py` executes the wall below.
 
 Each proof declares the cost band it runs in, and
 `python -m tests.proofs.deep <band>` selects on that: `verify` is the local
@@ -66,13 +67,13 @@ finite table when the language's addresses or program integers are unbounded;
 where this repository imposes a finite ceiling, the row is marked `cap`.
 
 **Parameterized tree.**  A no-input language receives each bit through an
-equal-width `{Xi}` replacement.  Embedding the placeholders at the internal
+equal-width replacement of its run.  Embedding the runs at the internal
 nodes of a full decision tree gives the same induction as `tree`; equal width
 prevents program length from becoming an extra input.  A generator may use a
 smaller arithmetic construction, but the full tree is its coverage witness.
 
 **Parameterized lookup.**  A no-input language embeds each bit once through
-the same equal-width `{Xi}` replacement, and the embedded bits address a finite
+the same equal-width replacement, and the embedded bits address a finite
 stored table instead of routing a tree.  Index formation is one embedding per
 input and the table has `2**n` entries, so the `finite lookup` argument applies
 unchanged.
@@ -95,10 +96,14 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  Alight, COD, Crement, Nopstacle and
-SLOW ACV MAMMALIAN keep no tree route at all: Alight indexes a string literal,
-COD emits four rows, the two prototypes embed the table verbatim beside their
-input slots, and SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf
+the tree at any arity.  A Painter Ant, Alight, BIO, Minsky Swap and
+SLOW ACV MAMMALIAN keep no tree route at all: A Painter Ant's answer strip
+is smaller than a tree at every arity, Alight indexes a string literal,
+BIO's telescope is one nested level per row whatever the table says (a
+degenerate table only spares it the flat edges' adjustments, under the fold
+threshold once the doubling between the input runs is in the text), Minsky
+Swap's `~` cascade routes the index to a one- or three-command leaf per
+row, and SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf
 slot per row whatever the table says.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
 table.
@@ -112,11 +117,11 @@ after ignoring the performance/resource ceiling as specified above.
 
 | Generator | Proof | Qualification |
 | --- | --- | --- |
-| A Painter Ant | parameterized lookup | the embedded bits advance the ant along a self-painting corridor by their own weights, leaving it over the indexed answer cell |
+| A Painter Ant | parameterized lookup | each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, leaving it over the indexed answer cell |
 | AddSubJump | finite lookup | packed `n`-bit cells selected by a self-modified operand |
 | Algebraic Programming Language | minterms | base-26 names are unbounded |
 | Alight | finite lookup | inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches |
-| ArrowQueue | parameterized lookup | marker counts select one of `2**n` constant-size cascade stages |
+| ArrowQueue | parameterized lookup | one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages |
 | B-tapemark | tree | reflected finite grid; indexed table spans preserve the same leaves without recursive copies |
 | Back | parameterized tree | — |
 | BF-PDA | parameterized tree | — |
@@ -129,17 +134,17 @@ after ignoring the performance/resource ceiling as specified above.
 | Circlefuck | tree | its local shape guard is equivalent to the shared guard |
 | Circuit Diagram | tree | finite planar routing |
 | Clockwise | tree | finite grid layout |
-| COD | parameterized lookup | binary-weight water runs stop the path over one of `2**n` baked-in answer cells; this row has no tree route |
+| COD | parameterized tree | each input's run sets the cod's value at its own fork box, once; the leaf cascade prints the entry |
 | Collatz Multiverse | tree | finite cell placement |
 | Container | finite lookup | the reversed table is one decimal literal divided by ten in a fixed two-bank network |
-| Crement | finite lookup | prototype instantiation |
-| CV(N)(C) | tree, cap | the halting-goto reach is a renderer ceiling |
+| Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, and a folded subtree targets the shared self-jump or the line past the end |
+| CV(N)(C) | tree | the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts |
 | Decleq | tree | — |
 | Dig | tree | finite cell placement |
 | Dimensional | tree | `decision_tree_program` with dimensional moves |
 | EGL | tree | — |
 | Eval | linear lookup | fixed reversed stack order selects the indexed row |
-| Factor | tree, cap | Brainfuck tree followed by a total prime encoding; Dirichlet supplies the next prime in each residue class mod 11 |
+| Factor | tree | Brainfuck tree followed by a total prime encoding: Dirichlet supplies the next prime in each residue class mod 11, and the integer is arbitrary precision on both sides |
 | Fargo | tree | finite folded layout |
 | Flowchart | finite lookup | a five-row deque preloads `2**n` answers and discards opposite halves |
 | Forbin | tree | — |
@@ -151,10 +156,10 @@ after ignoring the performance/resource ceiling as specified above.
 | Jaune | finite lookup | a spatial table reached with two labels |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` |
-| Minsky Swap | parameterized tree | — |
+| Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to its row, so every table of one arity renders to the same length |
 | Modulous | tree | — |
-| NoComment | finite lookup, cap | fixed interpreter tape is the ceiling |
-| Nopstacle | finite lookup | prototype instantiation |
+| NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells |
+| Nopstacle | parameterized tree | a full tree of corridors, unfolded: level `i` reads its input's run at `2**i` node columns and the leaves are halting boxes or a drop onto the blank bottom row |
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry |
 | Packlang | tree | — |
 | Painfuck | tree | Brainfuck tree transliteration |
@@ -164,7 +169,7 @@ after ignoring the performance/resource ceiling as specified above.
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup |
 | ROTfuck | tree | movement search stops after at most eight offsets |
 | S*bleq | finite lookup | packed chunks decoded after the hoisted read block |
-| 6-5 | finite lookup, cap | constant-label arithmetic evaluates `(T >> index) & 1` |
+| 6-5 | finite lookup | past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks |
 | SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit as a 256-multiple weight on array 16; one trampoline lands the indexed 256-token leaf |
 | Sophie | tree | — |
 | Streetcode | tree | — |
@@ -180,11 +185,17 @@ after ignoring the performance/resource ceiling as specified above.
 
 ## Exceptions and walls
 
-The one remaining `exception` row is a proof gap, not permission to call the
-language incapable.
+The one remaining `exception` row is two-sided: the language provably
+cannot compute every table under the parameterized contract, and below that
+wall the generator's reach is not characterized.
 
 - `%^2^-1` can refuse when none of its cascade, affine, ladder, band, or fold
-  planners succeeds.
+  planners succeeds; every table tried through thirteen inputs builds, and
+  from fourteen only tables whose suffix cofactors compact (parity among
+  them) do.  No construction can be total: the suite's dense fixture at
+  seventeen inputs is computed by no template at any program length
+  (proof below), so the totality question is the finite one of which tables
+  below the wall a construction misses.
 
 ### Attempts on the open cases
 
@@ -197,83 +208,70 @@ no simultaneous-placement lemma is needed because nothing is ever moved.
 Stride classes `30 + 2k` for `k` up to 113 hand 14 residues each to
 successive depth bands, 1596 read depths, past any representable table.
 
-**`%^2^-1`.**  The proved two-read wall does not survive parameterization, and
-the 3003 reset does not make the machine finite-state: negative accumulators
-are unbounded and repeated `m` stores arbitrarily many bits without resetting.
-That defeats the obvious counting proof of a cap.  A totality attempt can
-encode the input index by doubling a negative accumulator and applying one of
-two fixed offsets per placeholder.  It then needs one uniform tail mapping the
-`2**n` resulting integers to the table's two output bytes.
+**`%^2^-1` is not total under the parameterized contract.**  A template
+program computing a table `f` embeds each input once, reads no stdin (`n`
+would raise), halts on every row, and prints exactly the answer byte.  Its
+state is the pair `(position, accumulator)`, and the position is uniform
+across rows, so between two placeholders the accumulator is the whole state.
 
-Two things that tail cannot use.  There is no squaring: `m` doubles the
-accumulator, and the “squaring” in the language's own description is of the
-represented value `10**x`, so absent the reset the reachable maps are exactly
-`x -> ±2**j x + c` — an affine monoid, with the reset the only non-affine
-primitive and hence the only way to merge two values.  And `t` cannot
-separate: it rewinds to position 0 with the state `(0, acc)`, deterministic in
-`acc`, so a run either diverges or leaves that `t` with `acc == 0`, after
-which every surviving input agrees and all later behaviour is
-input-independent.  The only input-dependent signal is how many times the
-program repeated, i.e. the output *length*, which a one-byte answer cannot
-carry.  So a separating program may be taken to be `t`-free, which is what
-every shipped one already is.
+*The reset makes every state class-finite.*  In-window values `-3003..3003`
+are 6007.  A value above 3003 is zeroed before the next command.  A value
+below `-3003` can only decrease or be destroyed -- `s`, `i` and `m` take it
+deeper, `p` lifts it past the limit and the next command zeroes it, `'`
+zeroes it -- so two deep values congruent mod 256 are never separated: every
+command keeps them congruent and deep, or zeroes both, and `e` prints the same
+byte (`l` on a deep value prints several characters, which is not an answer
+byte for either).  Two rows whose accumulators are equal, both over the limit,
+or deep and congruent mod 256 therefore print the same byte for every
+completion of the remaining inputs, and the distinguishable classes number at
+most `6007 + 256 = 6263`.  Executed on the shipped interpreter
+(`tests/proofs/deep/pct_squared_minus_one.py`): 3000 random words on
+congruent deep pairs printed identically and left one class, and 1985 of
+2000 incongruent pairs printed differently.
 
-That leaves a purely order-theoretic question, and it turns on a move that is
-not the obvious one.  The reset fires before *every* command, hence between a
-scaling and an offset: `m**j` then an offset spells `x -> R(2**j x) + b`, not
-`R(2**j x + b)`, so a block driven past the limit lands on `b` — freely
-chosen — rather than on 0.  Spelling a single `R(a x + b)` needs either
-`a | b`, offset first, or `b > 0` with no premature clamp, scale first, and
-that divisibility binds: over every state reached from a row-index start at
-three inputs, the window for swapping the top two values is non-empty 254
-times out of 254 and spellable 0 times out of 254, always because `a` does not
-divide `b`.  The one move such a state does admit is the rotation parking the
-survivors against 3003 and leaving the ex-top at 0, which opens one interior
-slot per turn.
+*`t` is inert.*  A firing `t` rewinds to position 0, and a halting row's
+final pass runs the whole text passing every `t` on a zero accumulator.  A
+row prints once, so it prints only in that final pass -- anything printed
+before a firing `t` is printed again -- and after the first `t` in the text
+its print lies past every position that ever fired.  From that first `t` the
+final pass continues from `(t_1 + 1, 0)` on every row, so the output depends
+only on the placeholders after `t_1`, which for a table depending on every
+input is all of them, and the program is the straight-line run of the text
+from there.
 
-So the honest primitive is a *cut*: `sub(c)`, then `m**j`, then an offset,
-merging everything above `c + 3003/2**j` onto that offset.  Since `c` may sit
-just under the top survivor the power-of-two condition is trivially met, and
-the ratio question dissolves into a span budget — each cut scales the
-surviving span by about `3003/gap`, and the span may only grow from 15 to
-6006.  One barrier is proved: a value below `-3003` can only decrease or be
-destroyed, every increasing route passing through a `p` that overflows, so
-there is no mirrored bottom cut and the last cut must land in window, `e`
-needing a final gap congruent to ±1 modulo 256 that a scaled gap never is.
-Cuts do separate the alternating four-row table that block collapses and end
-swaps provably cannot, and reach `01101001` in twelve, while the eight- and
-sixteen-row alternating tables were not found by a beam search — a search
-failure, not an impossibility.  Whether the span budget always suffices is the
-finite-map lemma, and it is the whole open case.
+*Counting.*  Cut the text after the `k`-th placeholder in text order and let
+`S` be the inputs laid so far.  Two prefixes with different `S`-cofactors --
+different functions of the remaining inputs -- must lie in different classes,
+since the same completion prints different answers.  So for every `k`, the
+number of distinct cofactors after fixing `S` is at most 6263, for the `S`
+the template's placeholder order induces.  The suite's dense fixture at
+seventeen inputs (`_dense(17)` in `tests/tools/test_boolean_contract.py`)
+has, for *every* one of the 2380 thirteen-input subsets, at least 7640
+distinct four-input cofactors -- computed exhaustively, 8 s, in the same
+proof -- so no placeholder order fits, at any program length.  Padding the
+fixture with ignored inputs gives a witness at every wider arity.  The bound
+is tight enough to place the wall: sixteen inputs never exceed `2**12 = 4096`
+distinct cofactors at any cut and the fixture's worst twelve-input cut has
+3932, so the counting cannot bite below seventeen; the dense fixture's build
+ends at thirteen for a different reason, the `2**n + 1` distinct ladder
+positions that must fit under 3003.  Reading only the output's last character
+would admit `l` on deep values and raise the deep classes to 1280 and the
+bound to 7287; the same witness still exceeds it.
+
+What remains is finite: for each arity through sixteen, which tables the
+language admits that the shipped planners refuse.  The retired search for a
+uniform tail (a doubled negative accumulator plus one offset per placeholder,
+the cut `sub(c) m**j add(b)` merging everything above `c + 3003/2**j`, the
+span budget of about eight doublings) is bounded by the same count and is not
+resumed.
 
 ### Resource-ceiling audit
 
 The remaining `cap` rows do have a uniform lift argument.
 
-- CV(N)(C)'s tree is finite.  Its halt gadget squares a positive accumulator
-  before jumping by it; adding squarings makes the reach grow by repeated
-  squaring and eventually exceeds any fixed finite tree, including the extra
-  gadget characters.
-- Factor first builds the total Brainfuck tree.  Its finite encoding loop
-  assigns each command run the next prime in one of the nonzero residue
-  classes 1 through 8 modulo 11.  Dirichlet guarantees such a prime above
-  every bound, and an arbitrary-precision integer holds their finite product.
-- NoComment's wide construction needs a finite number of cells for every
-  finite table and already accepts the tape size as a parameter.  The language
-  specifies static memory but no fixed size; choosing that finite size removes
-  the interpreter's default ceiling.
 - Polynomial's `k == n` candidate is the finite decision tree.  Each of its
   finitely many instructions receives a distinct prime root, and removing the
   interpreter-cost screen does not change that encoding.
-- 6-5 has a cap-free arithmetic construction using a constant number of its 35
-  labels.  Read the bits into `x`, encode the finite table as
-  `T = sum(table[i] * 2**i)`, halve `T` exactly `x` times, and print its parity:
-  `(T >> x) & 1 = table[x]`.  The cell operations construct every finite `T`
-  with a finite run of `+5`/`+6`; the retired implementation refused only
-  when that run exceeded about 2 MB.  Its source is recoverable immediately
-  before commit `87478ea8`, which removed it because no table inside the
-  practical size bound escaped the newer tree/walk paths.  Thus 35 limits the
-  shipped positional walk, not theoretical 6-5 coverage.
 - ZTOALC L's command list is finite.  For any list of `k` commands, choose
   start value `2**k`: its Collatz trajectory is
   `2**k, 2**(k-1), ..., 2, 1`, giving exactly `k` distinct executable lines
@@ -310,10 +308,33 @@ Reserving a disjoint key for the normalization constant therefore extends the
 same finite tree proof to every arity.  Decimal digit 6 is split into `1 + 5`,
 since `F` delimits integer mode and cannot occur inside its literal.
 
-The shipped 6-5 function still refuses past its optimized construction.  Its
-classification is theoretical in this section's stated sense: removing the
-resource policy requires restoring a known construction, not merely changing
-one numeric constant.  WII2D reads the same way: the shipped decode keeps
+6-5 left this section when its walk stopped spending a label per input.
+NoComment left when its rows stopped living on the tape: the index is pushed
+as byte-sized stage amounts, a chain of uniform six-command groups pops and
+skips its way to the row's group, and every group after it adds the
+difference between its row and the next, so the landing cell telescopes to
+`table[index]` on six cells at any arity.
+`8n` names the n-th `4` of the program and the operand characters stop at
+35, so a walk that branches every bit with its own jump ends at 35 inputs;
+the looped walk (`_six_five_looped`) marks each row with its 2-adic
+valuation in sixes, and a bit's advance is a loop to the first row past
+the pointer whose mark reads zero — the first row whose valuation is
+exactly `n-1-i`, which is the row `2**(n-1-i)` ahead, because the pointer
+stands on an even multiple of that stride.  The marks are kept at
+`6 * (v - (n-1-i))` by `n-1` decrement passes before the first bit and one
+increment pass after each, so every loop tests a sentinel or a zero and
+the label bill is the loop count, sixteen.  The marks sum to `2**n - n - 1`,
+so the program is linear; every row of every table at seven inputs and
+under has been executed, and the dispatch reaches the loop only past 35.
+Factor left when its digit budget was retired: the budget (4300, then
+16000, then 500000 digits) was a size policy pinned to the arity the
+suite swept, never a ceiling of the language's -- the generator renders
+the integer and the interpreter parses it with CPython's conversion
+guard lifted on both sides -- so the lift argument above *is* the
+construction.  Parity at thirteen inputs is 966568 digits, built in
+three seconds with the prime powers multiplied as a balanced tree, and
+the interpreter decodes it to the tree the generator encoded.
+WII2D reads the other way: the shipped decode keeps
 ranking folds by magnitude, so it still refuses about four in ten dense
 tables at the widest admitted domain, and reaching the extremal-fold
 construction means choosing a different fold rather than relaxing a constant.
@@ -321,17 +342,18 @@ Prompt refusal is the better behaviour there — the extremal fold spells its
 centres in unary, and a refused table costs seconds where the total
 construction costs minutes and a megabyte.
 
-There is one proved language wall, but it does not classify the shipped
-generator.  In the ordinary reading model, every `%^2^-1` program satisfying
-the two-input Boolean contract ignores one input: `n` overwrites the sole
-accumulator, and the only branch, `t`, rewinds to the program start, so a clean
-run cannot preserve the first bit through the second read.  XOR and AND are
-therefore impossible at every program length.  The exported generator is
-parameterized and contains no `n`; substituting `{Xi}` changes the program
-before execution and voids the theorem's hypothesis.
+Two language walls are proved for `%^2^-1`.  In the ordinary reading model,
+every program satisfying the two-input Boolean contract ignores one input:
+`n` overwrites the sole accumulator, and the only branch, `t`, rewinds to the
+program start, so a clean run cannot preserve the first bit through the second
+read.  XOR and AND are therefore impossible at every program length.  The
+exported generator is parameterized and contains no `n`, which voids that
+theorem's hypothesis -- and under the parameterized contract the state-class
+count above is the wall: a seventeen-input table exists that no template
+computes.
 
 Accordingly, this ledger records 64 theoretical totality arguments and one
-open exception.  It records no structural impossibility for an exported
-generator's actual parameterized contract.  Turning any exception into
-“incapable” requires an unbounded-program proof; a failed search or a live cap
-is not one.
+open exception, whose row can never read `Total`: the impossibility is an
+unbounded-program proof, which is what turning an exception into “incapable”
+requires -- a failed search or a live cap is not one -- and what stays open
+is the generator's reach below the wall.

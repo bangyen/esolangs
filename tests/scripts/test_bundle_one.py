@@ -195,11 +195,32 @@ class TestBundleDetails:
         assert result.stdout == "Input: Input: 1"
 
 
+#: The environment the installer is handed: deliberately bare, so the script
+#: is exercised the way a piped ``curl`` would run it rather than inside this
+#: suite's virtualenv.
+_INSTALLER_ENV: dict[str, str] = {}
+
+
 @pytest.mark.slow
 def test_install_one_downloads_and_runs_a_bundle() -> None:
     """The public shell installer fetches and runs representative bundles."""
     if shutil.which("curl") is None:
         pytest.skip("curl is not installed")
+    # The installer runs on whatever ``python3`` resolves to, and an older one
+    # cannot parse the PEP 695 aliases the interpreters use -- the installer
+    # says so and stops, which is a pass for the installer and no test of the
+    # bundle.  Probed under the same bare environment the run below gives it,
+    # not this process's: with no PATH, ``sh`` falls back to the system one
+    # and finds a different python3 from the venv running these tests.
+    version = subprocess.run(
+        ["python3", "-c", "import sys; print('%d.%d' % sys.version_info[:2])"],
+        env=_INSTALLER_ENV,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    if tuple(int(part) for part in version.split(".")) < (3, 12):
+        pytest.skip(f"the python3 the installer would use is {version}, not 3.12+")
 
     class QuietHandler(SimpleHTTPRequestHandler):
         """Serve the checkout without logging individual requests."""
@@ -222,7 +243,8 @@ def test_install_one_downloads_and_runs_a_bundle() -> None:
                 result = subprocess.run(
                     ["sh", str(REPO_ROOT / "scripts/install_one.sh"), language],
                     cwd=workdir,
-                    env={"ESOLANGS_BASE": f"http://127.0.0.1:{server.server_port}"},
+                    env=_INSTALLER_ENV
+                    | {"ESOLANGS_BASE": f"http://127.0.0.1:{server.server_port}"},
                     capture_output=True,
                     text=True,
                 )

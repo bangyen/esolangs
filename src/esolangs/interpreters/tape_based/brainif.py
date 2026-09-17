@@ -43,6 +43,15 @@ from __future__ import annotations
 import sys
 
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.persistent import (
+    Chunked,
+    append,
+    chunked,
+    flatten,
+    get,
+    length,
+    put,
+)
 
 #: One instant of a run: ``(ind, ptr, cells)`` -- the line cursor, the tape
 #: pointer, and the cells.  A value, not a record: every transition below
@@ -57,7 +66,7 @@ from esolangs.interpreters.io import IO
 #: unpacking in the functions that use them, so the names bought little, and
 #: ``NamedTuple.__new__`` is Python-level where the tuple constructor is
 #: C-level.
-type _State = tuple[int, int, tuple[int, ...]]
+type _State = tuple[int, int, Chunked[int]]
 
 #: A line the transition can act on: ``(value, command, target)``.  ``None``
 #: stands for a blank line, which advances the cursor and nothing else.
@@ -117,21 +126,24 @@ def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
     if line is None:
         return (ind + 1, ptr, cells)
     value, command, target = line
-    if cells[ptr] == value:
+    current = get(cells, ptr)
+    if current == value:
         if command in ("increment", "inc"):
-            cells = (*cells[:ptr], cells[ptr] + 1, *cells[ptr + 1 :])
+            # The tape is chunked (:mod:`esolangs.interpreters.persistent`),
+            # so a write rebuilds one chunk rather than the whole tape.
+            cells = put(cells, ptr, current + 1)
         elif command == "right":
             ptr += 1
             # A move past the right end grows the tape by one zero cell.
-            if ptr == len(cells):
-                cells = (*cells, 0)
+            if ptr == length(cells):
+                cells = append(cells, 0)
         elif command == "left":
             # ``left`` at the origin is clamped rather than an error.
             ptr = max(0, ptr - 1)
         elif command == "goto":
             ind = target - 2
         elif command == "input":
-            cells = (*cells[:ptr], byte or 0, *cells[ptr + 1 :])
+            cells = put(cells, ptr, byte or 0)
     return (ind + 1, ptr, cells)
 
 
@@ -157,16 +169,16 @@ class _Machine:
         # ``halted`` is read twice per line -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
-        self.state: _State = (0, 0, (0,))
+        self.state: _State = (0, 0, chunked((0,)))
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
 
     @property
     def cells(self) -> tuple[int, ...]:
-        # The state's own tuple, handed back as it stands.  Brainfuck's
+        # The state's tape, flattened out of its chunks.  Brainfuck's
         # ``tape`` reads the same way, so the two tape languages agree.
-        return self.state[2]
+        return flatten(self.state[2])
 
     @property
     def ind(self) -> int:
@@ -188,7 +200,7 @@ class _Machine:
     @property
     def tape(self) -> tuple[int, ...]:
         """The cells, under the name the growth detector reads."""
-        return self.state[2]
+        return flatten(self.state[2])
 
     def input_position(self) -> int:
         """Report the input cursor for the growth detector."""
@@ -210,7 +222,7 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        return list(self.state[2])
+        return list(flatten(self.state[2]))
 
     @property
     def stack(self) -> list[object]:
@@ -246,9 +258,9 @@ class _Machine:
         if parsed is not None:
             _ind, ptr, cells = self.state
             value, command, _target = parsed
-            if cells[ptr] == value:
+            if get(cells, ptr) == value:
                 if command == "output":
-                    self.io.print_char(chr(cells[ptr]))
+                    self.io.print_char(chr(value))
                 elif command == "input":
                     # The original skips empty reads rather than storing
                     # one, so a blank input line is not a zero byte.

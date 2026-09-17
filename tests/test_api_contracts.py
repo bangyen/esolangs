@@ -29,7 +29,7 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
-from esolangs.registry import LANGUAGES, parameterized_ids
+from esolangs.registry import LANGUAGES, parameterized_ids, template_char
 from esolangs.tools.wrap import takes_width
 
 XOR = "0110"
@@ -75,7 +75,7 @@ class TestParameterizedTemplates:
         template = esolangs.generate("Minifuck", XOR)
         with pytest.raises(TemplateError) as exc:
             esolangs.run("Minifuck", template)
-        assert "{X0}" in str(exc.value)
+        assert "unfilled runs of '$'" in str(exc.value)
         assert "instantiate" in str(exc.value)
 
     def test_instantiating_gives_the_right_answer(self) -> None:
@@ -98,10 +98,25 @@ class TestParameterizedTemplates:
         The same set taken from ``parameterized.__all__`` omits Home Row,
         and three documents each named a different subset.
         """
+        from esolangs.registry import template_setters
+        from esolangs.tools.helpers import runs
+
+        def embeds(lang: object) -> bool:
+            # A generator embeds its inputs as one run of the language's
+            # character per input, each as wide as its setter.  ``$`` alone
+            # is not the signature: four readers have it in their alphabet,
+            # so the run form is checked against the setters, which a
+            # reader's program does not fit.
+            out = str(lang.boolean(XOR))
+            char = template_char(lang.id)
+            if char is None or char not in out:
+                return False
+            return len(runs(out, char, template_setters(lang.id, out, 2))) == 2
+
         emits = {
             lang.id
             for lang in LANGUAGES.values()
-            if lang.boolean is not None and "{X0}" in str(lang.boolean(XOR))
+            if lang.boolean is not None and embeds(lang)
         }
         assert emits == set(parameterized_ids())
 
@@ -338,7 +353,7 @@ class TestInstantiateValidates:
 
     def test_the_bit_count_must_match_the_slots(self) -> None:
         template = esolangs.generate("Minifuck", XOR)
-        with pytest.raises(TemplateError, match="2 input slots, but 1 bit was given"):
+        with pytest.raises(TemplateError, match="2 inputs, but 1 bit was given"):
             esolangs.instantiate("Minifuck", template, [1])
 
     def test_a_bit_must_be_a_bit(self) -> None:

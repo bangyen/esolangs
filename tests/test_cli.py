@@ -800,7 +800,7 @@ class TestProgramFailuresAreReported:
         path.write_text(generated.stdout.rstrip("\n"))
         result = run_cli("run", "Minifuck", str(path))
         assert result.returncode == 2
-        assert "{X0}" in result.stderr
+        assert "unfilled runs of '$'" in result.stderr
         assert "Traceback" not in result.stderr
 
     @pytest.mark.slow
