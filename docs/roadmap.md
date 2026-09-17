@@ -190,16 +190,24 @@ The candidate list is empty.
   | Language | No spaces | Uniform |
   | --- | --- | --- |
   | %^2^-1 | Holds | Open |
-  | Nopstacle | Language | Open |
+  | Nopstacle | Language | Language |
 
-  The two uniform cells are open for different reasons.  Nopstacle's
-  generator is a full decision tree of corridors, and level `i` reads its
-  input at `2**i` node columns of one row, so the run is `2**i` cells with
-  template between them; one cell per input needs every level-`i`
-  corridor to cross the same cell.  %^2^-1 solves its setters per table,
-  so different text per input is its design, and a uniform %^2^-1 is a
-  different generator.  Nopstacle's alphabet is the blank and `#`, so a
-  zero bit *is* a blank: there is no command to spell it with.
+  %^2^-1's uniform cell is open because it solves its setters per table:
+  different text per input is its design, and a uniform %^2^-1 is a
+  different generator.  Nopstacle's two `Language` cells are one fact
+  about its walker: the alphabet is the blank and `#`, so a zero bit *is*
+  a blank and there is no command to spell it with; and a cell acts on
+  the walk only as the target of a neighbour heading into it
+  (`_advance` tests `grid[ny][nx]`), so an embed of fixed width `k` has
+  `2k + 2` ports and a template with one such embed per input is a
+  branching program with at most `2k + 2` nodes per input.  Fewer than
+  `2**450` of those exist against `2**512` tables at n=9 for `k = 1`
+  (n=10 for `k = 2`, n=11 for `k = 4`), so no uniform embed keeps the
+  generator total; below that bound an exact SAT model of the walker
+  finds a program for every table tried at n<=5, each a per-table search
+  with re-reads, which is not a construction.  To refute: a bit-dependent
+  mechanism in `_advance` other than a port read, or a total rule drawing
+  at most four ports per input.
 
   Toggles are an open decision.  The proposed shape: a keyword per relaxed
   convention on the generator, off by default and carried through the
