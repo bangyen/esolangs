@@ -1,62 +1,22 @@
 """Boolean-function generator for Inject.
 
-Inject has no numbers, no cells and no arithmetic: the only state is the
-text of the program's own label-blocks, and the only test is ``skipq X Y``,
-which asks whether two blocks are *textually equal*.  So a truth table is
-evaluated as a decision tree whose every node is a string comparison
-against a constant block, and whose leaves ``send`` a constant.
+The only state is the program's label-blocks and the only test is
+``skipq X Y`` (textual equality), so a table is a decision tree of
+string comparisons against a constant block.  Three facts, checked
+against the interpreter: the only forward jump is ``skip``'s first
+clause (a bare ``skip`` inside a block loops back), so every escape is
+"``skip``-family command, then a label that opens a block"; a guarded
+block is entered by drifting into it, so a taken branch falls out the
+bottom and each leaf must jump clear; and the clause-1 landing line
+executes, so a leaf jumps over an escape block spanning every remaining
+executable line into the inert tail.  Blocks may overlap, so each leaf
+has its own escape label, all closing consecutively in the tail.
 
-Three facts about the language shape the whole construction, each checked
-against the interpreter rather than argued from the spec.
-
-**The only forward jump is ``skip``'s first clause.**  A bare ``skip``
-inside a block is clause 2 -- it jumps *backwards*, to the innermost
-enclosing block's opening label, which is an infinite loop.  Clause 1 fires
-only when the very next line opens a block, and then continues after that
-block's closing delimiter.  So every conditional and every escape in the
-program is spelled "``skip``-family command, then a label that opens a
-block", and a jump's distance is chosen by choosing where that block ends.
-
-**A guarded block is entered by drifting into it.**  Nothing "calls" a
-block; when the guard does not fire, control simply flows onto the next
-line, which is the block's opening delimiter, and then into the block.
-That means a taken branch also *falls out the bottom* of its block into
-whatever follows, so each leaf must end by jumping clear of everything
-after it.
-
-**The clause-1 landing line executes.**  Jumping to just past a block's end
-lands on a real line, and if that line opens another block, control drifts
-into that one too.  A leaf therefore cannot jump to "the end"; it jumps
-over an escape block that spans *every remaining executable line*, landing
-in the inert data tail.  Labels are strictly two-occurrence, so each leaf
-carries its own escape label -- legal because blocks may overlap, and the
-escape blocks all close consecutively in the tail.
-
-Layout
-------
-
-The bits are read up front, one ``readto`` per input, into compactly named
-blocks.  Reading first rather than at the tree's nodes is what keeps
-the read count equal on every path -- the boolean contract requires exactly
-``n`` reads whatever the inputs are -- and it also lets a node test a bit
-more than once for free.
-
-The tree then walks the table.  At depth ``d`` the node tests the input
-the chosen order puts there (``perm[d]``; identity and greedy compete,
-with ties keeping the identity) against the constant zero block:
-
-* ``skipq INPUT ZERO`` fires when the bit **is** ``0``, so the block
-  it guards is the ``1``-subtree, which is skipped exactly then;
-* falling through enters that block, which holds the ``1``-subtree.
-
-A leaf sends the zero or one block and then escapes.  Because a constant
-block is both a comparison operand and an answer, the program needs only
-the two of them.
-
-The tail holds the answer constants and the closing
-delimiters of every escape block, all of which are inert: control reaches
-the tail only by a leaf's escape jump, and a line whose first word is not a
-command is a no-op.
+The bits are read up front (one ``readto`` each) so every path reads
+``n`` times.  At depth ``d`` the node tests ``perm[d]`` (identity and
+greedy compete) with ``skipq INPUT ZERO``, which fires when the bit is
+``0`` and skips the ``1``-subtree block.  A leaf sends the zero or one
+block and escapes; the two constants serve as operands and answers.
 """
 
 from esolangs.tools.helpers import (
@@ -105,9 +65,7 @@ class _Names:
 def _leaf(bit: str, escape: str) -> list[str]:
     """Emit a leaf: send the answer's constant block, then jump clear.
 
-    The escape is ``skip`` followed by ``escape``'s opening delimiter, so
-    clause 1 carries control past that block's close -- which the caller
-    places after every remaining executable line.
+    ``skip`` then ``escape``'s opening delimiter carries control past its close.
     """
     return [f"send {'o' if bit == '1' else 'z'}", "skip", f"{escape};"]
 
@@ -117,9 +75,7 @@ def _tree(
 ) -> list[str]:
     """Emit the decision tree for ``table``, testing input ``perm[depth]`` first.
 
-    ``table`` is in the permuted frame, so its bit ``depth`` is original
-    input ``perm[depth]`` -- ``perm`` is spent only on the block a node
-    names.  ``names`` also records escape labels in closing order.
+    ``table`` is in the permuted frame; ``names`` records escape labels, closing order.
     """
     constant = constant_span_test(table)
 
@@ -149,19 +105,9 @@ def _tree(
 def inject(truth_table: str) -> str:
     """Build an Inject program computing ``truth_table``.
 
-    The program reads ``n`` lines of input -- one bit per line, the
-    convention the boolean harness feeds -- and writes the table's entry
-    for that combination, followed by a newline (``send`` terminates every
-    line it writes).
-
-    The construction is a decision tree of ``skipq`` guards over blocks
-    holding the stored input bits; see the module docstring for why the
-    reads are hoisted and why each leaf carries its own escape label.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.helpers.best_input_order`).
-    The ``readto`` block stays in input order, so only the block a
-    ``skipq`` names moves.
+    Reads ``n`` lines and writes the entry plus a newline.  The split order
+    is whichever is shortest (:func:`~esolangs.tools.helpers.best_input_order`);
+    the ``readto`` block stays in input order.
     """
     if len(truth_table) <= 16:
         return best_input_order(truth_table, _inject_ordered)

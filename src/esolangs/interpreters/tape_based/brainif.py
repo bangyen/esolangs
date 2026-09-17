@@ -1,41 +1,13 @@
 """Interpreter for BrainIf.
 
-Line-based: each ``if <value> <command>`` runs only when the cell equals
-<value>.  Commands increment, move right/left, goto a line, read a byte of
-input, or output the current cell.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and a parsed line to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.  The
-cells are a tuple, so a state is a value that can be stored, compared, and
-hashed as it stands.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires
-(``esolangs.vm`` wraps it and the hang detector steps it).  It holds one
-``_State`` and rebinds it each step, so the mutation lives in exactly one
-assignment and every rule about what BrainIf *does* stays in the pure
-layer.  Two things stay in the shell because a total transition cannot do
-them: the ``input``/``output`` effects, and rejecting a malformed line.
-
-Parsing is likewise the shell's job.  :func:`_parse` turns a line into the
-``(value, command, target)`` a transition needs, or raises -- so
-:func:`_advance` receives something already known to be well-formed and has
-no error case of its own.  This is what keeps the transition total: every
-line it can be handed has a defined successor state.
-
-A command line missing its required operands (``if`` without a value, or
-``goto`` without a target) is a malformed program and is rejected with
-:class:`ValueError`.
-
-The guard is tested against the cell as it stands when the line runs, which
-means an adjacent pair like ``if 0 increment`` / ``if 1 increment`` both
-fire on a single pass -- the second tests the value the first just wrote.
-That is the language's behaviour, not an oversight, and a previous attempt
-to reorder it was reverted; the transition below reproduces it exactly by
-testing the guard against the current state rather than a saved one.
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
+Line-based: ``if <value> <command>`` runs when the cell equals the
+value; commands increment, move, goto a line, read a byte, or output.
+A line missing its operands raises :class:`ValueError`; exhausted input
+raises :class:`EOFError`.  The guard reads the cell as it stands, so
+``if 0 increment`` / ``if 1 increment`` both fire in one pass -- the
+language's behaviour, and a reorder was reverted.  :func:`_advance` is
+pure over an immutable ``_State``; :func:`_parse`, the I/O and the
+malformed-line rejection are the shell's.
 """
 
 from __future__ import annotations
@@ -66,13 +38,8 @@ type _Line = tuple[int, str, int] | None
 def _parse(line: str) -> _Line:
     """Return the parsed form of one source line, or raise if malformed.
 
-    This is where a program can be rejected, which is precisely why it is
-    not in :func:`_advance`: the transition should have no error case, so
-    everything that can fail happens before it is called.
-
-    The command is recognised by substring, as the original did -- the
-    language's own examples write ``increment`` where the wiki says
-    ``inc`` -- so the whole line is searched rather than a fixed token.
+    Commands are recognised by substring (the examples write ``increment``
+    where the wiki says ``inc``).
     """
     line = line.strip()
     if not line:
@@ -96,20 +63,9 @@ def _parse(line: str) -> _Line:
 def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
     """Return the state after executing one parsed line.
 
-    Pure: it reads ``state`` and returns a new one, and every command that
-    is not I/O is decided entirely here.  It takes no ``io`` argument, so
-    ``input`` and ``output`` are necessarily the caller's business; this
-    function sees only what they leave behind -- ``output`` changes no state
-    at all, and ``input``'s byte arrives as ``byte``, already read.
-
-    The guard reads the cell under the pointer *now*, not a value saved
-    before the line ran.  That is what produces the documented double-fire
-    of an adjacent guard pair, and it is required.
-
-    ``goto`` sets the cursor to its target minus two, because the shared
-    increment below then lands it on target minus one -- the language
-    numbers lines from one.  Every other command falls through to that same
-    increment, which is what makes the cursor advance exactly once per call.
+    Pure; ``input``'s byte arrives as ``byte``.  The guard reads the cell
+    *now*.  ``goto`` sets the cursor to target minus two so the shared
+    increment lands on target minus one (lines number from one).
     """
     ind, ptr, cells = state
     if line is None:
@@ -139,16 +95,7 @@ def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
 class _Machine:
     """A BrainIf run: one immutable ``_State``, rebound per step.
 
-    The protocol the rest of the library expects (``step``, ``halted``,
-    ``snapshot``, and the ``cells``/``ind``/``ptr`` attributes) is mutable
-    by construction, so this class supplies it.  All it does is hold the
-    current state and the program; the rules themselves are the pure
-    functions above.
-
-    ``step()`` executes one line; ``halted`` is true once the cursor passes
-    the last line.  A ``goto`` can rewind the cursor, so a loop whose cell
-    never leaves the tested value is a finite-state cycle the state-cycle
-    hang detector can prove.
+    A ``goto`` loop whose cell never leaves the tested value is a provable cycle.
     """
 
     def __init__(self, code: list[str], io: IO) -> None:
@@ -224,16 +171,8 @@ class _Machine:
     def step(self) -> None:
         """Execute one line, advancing the cursor.
 
-        Parsing, the two I/O effects, and the malformed-line rejection are
-        all here rather than in the transition: this is the shell, so it is
-        where an effect or an error belongs, and it leaves
-        :func:`_advance` total.  ``output`` writes and changes no state;
-        ``input`` reads and hands the byte to the transition, which stores
-        it.
-
-        The I/O only happens when the guard passes, which is why the guard
-        is tested here as well -- an ``input`` line whose guard fails must
-        not consume a byte.
+        The shell parses, does I/O and rejects; I/O happens only when the guard
+        passes, so an ``input`` whose guard fails consumes nothing.
         """
         if self.halted:
             return

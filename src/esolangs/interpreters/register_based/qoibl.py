@@ -1,48 +1,18 @@
 """Qoibl (Qwerty oriented impractical bicharacter language) interpreter.
 
-Qoibl is an esoteric programming language with eight instructions and a
-256-variable list, using only the characters 'e', 'r', 't', 'w', 'q', 'y'
-for programming constructs.  The wiki's eight are the seven dispatched
-commands in :data:`INSTRUCTIONS` plus ``e``/``y`` binary literal notation,
-which is a construct here rather than a command: :func:`tokenize` reads a
-``[ey]+`` run as a literal, so it never reaches the instruction table.  The
-four :data:`OPERATORS` (``ee``, ``ey``, ``ye``, ``yy``) are counted
-separately by the wiki; they qualify the instruction they follow, reading
-as ``=``, ``>``, ``<``, ``!=`` after ``yr`` and as ``+``, ``-``, ``*``,
-``/`` after ``ry``.
-
-Per the wiki, characters outside the instruction alphabet are ignored, so
-spaces and newlines are optional: the statement, not the line, is the unit of
-execution, and a whole program may be written as one unbroken run of
-characters.  :func:`tokenize` recovers the boundaries, since a two-character
-instruction butted against a variable-width ``[ey]+`` literal leaves none.
-
-The wiki specifies a 256-entry variable list; this interpreter uses an
-unbounded dictionary and does not enforce the cap.  Division by zero is an
-invalid operation and halts the program with
-:class:`~esolangs.exceptions.HaltError`; a comparison or arithmetic expression
-with an unrecognized operator is a malformed program and is rejected with
-:class:`ValueError`.
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-
-Evaluation is a pure function over an immutable ``_Vars``: :func:`_eval`
-takes an expression and the variables it sees, and returns the value with
-the variables that the expression left behind.  It never reaches an
-:class:`IO`.  The mutation lives in :meth:`_Machine.step`, which rebinds one
-field from what the transition returned.
-
-The ports cannot be lifted out of the recursion the way a one-command step
-lifts them.  A statement is Qoibl's unit of execution -- ``rr`` runs its
-body to completion inside a single ``step()`` -- so how many times a nested
-``et`` reads, and what an ``rr`` prints on the way, depends on values that
-only exist part-way through the evaluation.  :func:`_eval` therefore takes
-the two ports as callbacks: ``read`` for ``et`` and ``emit`` for ``tt``.
-That keeps the *state* threading pure and total, which is what the mutation
-net tests, while leaving the effects at the one seam that has to stay
-ordered.  Eval's frame stack is the other answer to this shape and does not
-fit here: there a step is one command, so nesting can be unwound onto an
-explicit stack; here the language defines the statement as the step.
+Eight instructions and a 256-variable list over ``e r t w q y``: seven
+dispatched commands (:data:`INSTRUCTIONS`) plus ``[ey]+`` binary
+literals, and the four :data:`OPERATORS` (``ee``, ``ey``, ``ye``, ``yy``)
+reading as ``= > < !=`` after ``yr`` and ``+ - * /`` after ``ry``.
+Other characters are ignored, so the statement, not the line, is the
+unit and :func:`tokenize` recovers boundaries.  The variable list is an
+unbounded dict.  Division by zero raises
+:class:`~esolangs.exceptions.HaltError`; an unrecognized operator raises
+:class:`ValueError`; exhausted input raises :class:`EOFError`.
+:func:`_eval` is pure over an immutable ``_Vars`` but takes the two ports
+as callbacks (``read`` for ``et``, ``emit`` for ``tt``): a statement is
+the step and ``rr`` runs its body inside one, so the effects cannot be
+lifted out of the recursion.
 """
 
 import functools
@@ -60,9 +30,7 @@ OPERATORS = frozenset({"ee", "ey", "ye", "yy"})
 def _steal(tokens: list[str], char: str) -> list[str] | None:
     """Return ``tokens`` with a trailing ``char`` removed from the last literal.
 
-    ``et`` and ``yr`` are spelled with a character that a preceding binary
-    literal would otherwise absorb, so forming them means giving that
-    character back.  Returns ``None`` when there is nothing to take.
+    ``et`` and ``yr`` end in a character a preceding literal would absorb.
     """
     if not tokens or tokens[-1] in INSTRUCTIONS or not tokens[-1].endswith(char):
         return None
@@ -73,32 +41,12 @@ def _steal(tokens: list[str], char: str) -> list[str] | None:
 def _scan(line: str, accept: Callable[[list[str]], bool]) -> list[str]:
     """Return the first tokenization of ``line`` that ``accept`` approves.
 
-    Instructions are two characters and binary literals are ``[ey]+``, so a
-    literal butted against ``et`` or ``yr`` has no marked boundary.  Whether
-    ``r`` opens ``ry`` or closes ``yr`` depends on the surrounding grammar
-    rather than on nearby characters, so the ambiguous positions are explored
-    depth-first and ``accept`` decides which reading was meant.  Readings that
-    consume the next character are tried before those that reach backwards.
-
-    Whitespace is a boundary rather than a separator: it is skipped, but a
-    token is never assembled from characters on both sides of it, so a spaced
-    program admits exactly one tokenization.
-
-    **The search carries its own stack.**  Written as a recursive walk it
-    spent one Python frame per character -- a measured 1241 frames of the
-    1315 a 3972-character program reached, against 56 for the statement
-    splitter and 8 for the grammar check.  That put the whole language under
-    CPython's recursion limit: a six-input majority table refused with
-    ``InterpreterLimitError`` while being, as its own message said, a
-    perfectly well-formed program.  A caller could lift the limit with
-    ``sys.setrecursionlimit`` and it would run, which is the tell that the
-    wall belonged to the interpreter and not to Qoibl.
-
-    An explicit stack removes it rather than raising it, so nothing here
-    borrows a process-global setting or has a ceiling left to document.
-    Entries are pushed in reverse because a stack pops last-in first and the
-    branch order is load-bearing: readings that consume the next character
-    must still be tried before those that reach backwards.
+    Whether ``r`` opens ``ry`` or closes ``yr`` depends on the grammar, so
+    ambiguous positions are explored depth-first, consuming-next before
+    reaching-back; whitespace is a boundary.  The search carries its own
+    stack: a recursive walk spent one frame per character (1241 of 1315 on a
+    3972-character program) and refused a six-input majority table with
+    ``InterpreterLimitError``.
     """
     n = len(line)
     stack: list[tuple[int, list[str], bool]] = [(0, [], False)]
@@ -150,16 +98,9 @@ def _scan(line: str, accept: Callable[[list[str]], bool]) -> list[str]:
 class _Reading:
     """One token run, asked about by index rather than by slice.
 
-    The grammar below is the same one :func:`_wellformed` always used; what
-    changed is what a question costs.  Asking it of a *list* meant every
-    candidate prefix copied its tokens and rescanned them for markers, and
-    the split search asks about a prefix per cut point -- so the two loops
-    multiplied, and loading a program was cubic in its length.
-
-    A span is a pair of indices into one immutable tuple.  ``_after`` is a
-    precomputed next-occurrence table, so finding a marker is a lookup
-    rather than a scan, and ``_memo`` settles a span once however many
-    prefixes reach it.
+    Asking of a list copied and rescanned per candidate prefix, making
+    loading cubic; ``_after`` is a next-occurrence table and ``_memo``
+    settles a span once.
     """
 
     __slots__ = ("_after", "_memo", "_tokens")
@@ -223,15 +164,7 @@ class _Reading:
 def _wellformed(expr: list[str]) -> bool:
     """Whether ``expr`` parses, mirroring :func:`_eval` without effects.
 
-    :func:`_eval` prints and consumes input as it goes, so it cannot be used
-    to test a candidate tokenization.  The split points here are the same
-    ones it uses, so a candidate accepted here is one it can run -- including
-    the order of the arms: a ``ry``/``yr`` marker is found before the ``qe``
-    arm is reached, so an arithmetic value inside a ``qe`` key is rejected
-    here and unreachable there.
-
-    One expression, asked once: :class:`_Reading` is what the split search
-    uses, and this is the same question put the standalone way.
+    Same split points and arm order, so an accepted candidate is one it can run.
     """
     return _Reading(expr).at(0, len(expr))
 
@@ -240,16 +173,8 @@ def _wellformed(expr: list[str]) -> bool:
 def _tokenized(source: str) -> tuple[tuple[str, ...], ...]:
     """Return the reading :func:`tokenize` found, keyed by source and cached.
 
-    The reading is a pure function of the text, and the search for it is
-    what the language costs: on the six-input parity program it is 2.72s of
-    a 2.72s run, essentially all of it in :func:`_wellformed`.  Nothing was
-    reusing that.  ``verify`` runs one program once per row, so a six-input
-    table paid the identical search 64 times -- 155s where one search and 64
-    executions is about 6s.
-
-    Immutable, so the cache cannot hand two callers the same mutable lists;
-    :func:`tokenize` rebuilds fresh ones, which is O(tokens) against a search
-    that is not.
+    The search was 2.72s of a 2.72s six-input parity run, paid once per
+    row by ``verify``: 155s for 64 rows where one search is about 6s.
     """
     cleaned = re.sub("[^ewqtry\\s]", "", source).strip()
     if not cleaned:
@@ -273,16 +198,8 @@ def _tokenized(source: str) -> tuple[tuple[str, ...], ...]:
 def tokenize(source: str) -> list[list[str]]:
     """Split Qoibl source into statements, each a list of tokens.
 
-    The language ignores characters that are not part of an instruction, so
-    spaces and newlines are optional and a whole program may be written as one
-    run of characters.  Instructions are two characters and binary literals
-    are ``[ey]+``, so the boundaries are recovered by scanning: the reading
-    chosen is the first one under which every statement parses.  Whitespace,
-    where present, still keeps a token from spanning it, so a conventionally
-    spaced program splits exactly as ``str.split`` would.
-
-    Fresh lists on every call, as callers have always got, over a cached
-    immutable reading -- see :func:`_tokenized`.
+    The first reading under which every statement parses; whitespace still
+    keeps a token from spanning it.  Fresh lists over a cached reading.
     """
     return [list(statement) for statement in _tokenized(source)]
 
@@ -290,17 +207,9 @@ def tokenize(source: str) -> list[list[str]]:
 def _split(tokens: list[str], out: list[list[str]]) -> bool:
     """Cut ``tokens`` into the shortest prefixes that each parse.
 
-    Settled from the right.  ``cut[i]`` is the shortest statement starting at
-    ``i`` whose *remainder* also splits, so by the time a position is asked,
-    every position after it has already answered.  That is the cut the old
-    recursive search returned too -- it also took the first prefix that
-    parses and whose tail splits -- but it re-explored a failed tail once per
-    earlier cut, and each trial re-sliced and rescanned its tokens.
-
-    Still quadratic in the token count: a position in the middle of a
-    statement can start nothing, and proving that means trying its ends.
-    The scan itself is a list index, though, and the parse behind it is
-    settled once per span, so the constant is small.
+    Settled from the right: ``cut[i]`` is the shortest statement at ``i``
+    whose remainder also splits (the same cut the recursive search found).
+    Still quadratic in tokens, with a small constant.
     """
     size = len(tokens)
     reading = _Reading(tokens)
@@ -348,13 +257,8 @@ type _Emit = Callable[[str], None]
 def _eval(expr: list[str], var: _Vars, read: _Read, emit: _Emit) -> tuple[int, _Vars]:
     """Return ``expr``'s value and the variables it leaves behind.
 
-    Pure in its state: it reads ``var`` and returns a new mapping, and never
-    edits the one it was given.  ``read`` and ``emit`` are the two ports.
-
-    ``we`` evaluates its target before its value, and ``rr`` re-evaluates
-    its condition against the variables its body just returned -- the
-    threading is what makes a loop terminate, so it is the part a mutant
-    breaks first.
+    ``we`` evaluates its target before its value; ``rr`` re-evaluates its
+    condition against the variables its body returned.
     """
     if not expr:
         raise ValueError("malformed expression")
@@ -399,8 +303,7 @@ def _operands(
 ) -> tuple[str, int, int, _Vars]:
     """Return the operator and both operands around ``marker``.
 
-    The left side is evaluated before the right, which is observable: either
-    may read input or print, and swapping them reverses both.
+    Left before right, which is observable through the ports.
     """
     beg = expr.index(marker)
     if beg + 1 >= len(expr):
@@ -503,10 +406,7 @@ class _Machine:
     def _parse(self, expr: str | list[str]) -> int:
         """Evaluate one expression, committing what it assigns.
 
-        Kept as a method because the tokenizer's siblings and the tests
-        reach it by this name.  It is now the shell around :func:`_eval`:
-        the ports are bound here, and the variables the evaluation returns
-        are written back in one place.
+        The shell around :func:`_eval`; kept as a method for its callers.
         """
         tokens = list(expr) if isinstance(expr, list) else [expr]
         value, var = _eval(
@@ -530,9 +430,7 @@ class _Machine:
 def run(code: list[str] | str, io: IO) -> None:
     """Execute Qoibl program code.
 
-    ``code`` may be a list of lines or one string; either way the whole
-    program is one character stream, since the language draws no distinction
-    between a newline and any other ignored character.
+    Lines or one string; the program is one character stream.
     """
     state = _Machine(code, io)
 
