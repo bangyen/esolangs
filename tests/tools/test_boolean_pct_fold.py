@@ -1,12 +1,25 @@
 """Covers :mod:`esolangs.tools.pct_fold` and :mod:`esolangs.tools.pct_fold_plan`."""
 
 import importlib
+from types import ModuleType
 
 import pytest
 
+from esolangs.tools.helpers import TEMPLATE_CHAR, runs
+
+
+def _run_spans(module: ModuleType, template: str) -> list[tuple[int, int]]:
+    """The ``[start, end)`` of each input's run in the template's body.
+
+    ``runs`` consumes the runs left to right in the header's setter order
+    and refuses a run of the wrong width or a stray, so a span per input
+    is the runs in stream order, each as wide as its setter.
+    """
+    return runs(module.body(template), TEMPLATE_CHAR, module.setters(template))
+
 
 class TestPctInterleavedFold:
-    """The staged replacement emits real code between its placeholders."""
+    """The staged replacement emits real code between its runs."""
 
     def test_interleaved_template_replays_every_three_input_row(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -16,11 +29,9 @@ class TestPctInterleavedFold:
         table = "00001111"  # X1 creates equal suffix cofactors before X2
         template = module._interleaved_fold(table, 3)  # noqa: SLF001
         assert template is not None
-        slots = [template.index("{X" + str(i) + "}") for i in range(3)]
-        assert slots == sorted(slots)
-        # Slots remain in stream order even when a stage coalesces directly
+        # Runs remain in stream order even when a stage coalesces directly
         # through equal branches instead of needing a relocation.
-        assert template.count("{X") == 3
+        assert len(_run_spans(module, template)) == 3
         for row, want in enumerate(table):
             bits = [(row >> 2) & 1, (row >> 1) & 1, row & 1]
             io = ScriptedIO()
@@ -50,9 +61,7 @@ class TestPctInterleavedFold:
             if template is None:
                 continue
             built += 1
-            assert template.count("{X") == 3, table
-            slots = [template.index("{X" + str(i) + "}") for i in range(3)]
-            assert slots == sorted(slots), table  # slots stay in stream order
+            assert len(_run_spans(module, template)) == 3, table  # stream order
         # The route is selective by design -- it runs before the all-row
         # fallback -- so pin that it neither builds everything nor nothing.
         assert built == 136
@@ -99,9 +108,7 @@ class TestPctInterleavedFold:
             if template is None:
                 continue
             built += 1
-            assert template.count("{X") == 4, table
-            slots = [template.index("{X" + str(i) + "}") for i in range(4)]
-            assert slots == sorted(slots), table
+            assert len(_run_spans(module, template)) == 4, table
         assert built == 1444
 
     def test_interleaved_fallback_builds_past_the_all_row_ladder(self) -> None:

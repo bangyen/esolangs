@@ -26,6 +26,7 @@ import pytest
 import esolangs
 import esolangs.tools as boolean
 from esolangs.registry import BY_BOOLEAN
+from esolangs.tools.helpers import runs
 from tests.proofs._ledger import Ledger, Row, load
 
 #: Every table at ``n == 3`` that depends on exactly one input, both
@@ -91,13 +92,17 @@ def _parameterized_rows(ledger: Ledger) -> list[Row]:
 
 
 def test_parameterized_rows_embed_each_input_exactly_once() -> None:
-    """A ``parameterized`` row's proof rests on the ``{Xi}`` embedding.
+    """A ``parameterized`` row's proof rests on the per-input embedding.
 
     Both parameterized schemes say the language "receives each bit through an
-    equal-width ``{Xi}`` replacement" and embeds it *once* -- re-embedding an
-    input at several decision nodes would make program length depend on the
-    input, which is the hypothesis the equal-width argument needs.  So the
-    placeholder count is the scheme's signature, and it is directly countable.
+    equal-width replacement" and embeds it *once* -- re-embedding an input at
+    several decision nodes would make program length depend on the input,
+    which is the hypothesis the equal-width argument needs.  So the run count
+    is the scheme's signature, and it is directly countable: the public
+    template spells each input as one run of the language's character, as
+    wide as its setter, and :func:`runs` accounts for every occurrence of
+    the character -- a run of the wrong width, a run left over, or a stray
+    character all refuse.
 
     Driving this from the ledger rather than from
     ``esolangs.tools.parameterized.__all__`` is deliberate.  Home Row is a
@@ -113,25 +118,18 @@ def test_parameterized_rows_embed_each_input_exactly_once() -> None:
     from esolangs.tools.helpers import runs
 
     for row in rows:
+        # The generator spells its inputs as runs of ``$`` itself; the runs
+        # are read against the language's own setters, which refuse a stray
+        # run, so three spans is exactly one per input.
         program = str(_generator(row)(_PARITY))
-        if "{X" not in program:
-            # A migrated generator spells its inputs as runs of ``$``; the
-            # runs are read against the language's own setters, which
-            # refuse a stray run, so three spans is exactly one per input.
-            language = canonical_id(row.generator)
-            spans = runs(program, "$", recover_setters(language, program))
-            assert len(spans) == 3, (
-                f"{row.generator} is a {' '.join(row.labels)} row but embeds "
-                f"{len(spans)} inputs at n=3"
-            )
-            continue
-        for i in range(3):
-            placeholder = "{X" + str(i) + "}"
-            assert program.count(placeholder) == 1, (
-                f"{row.generator} is a {' '.join(row.labels)} row but emits "
-                f"{placeholder} {program.count(placeholder)} times at n=3 -- "
-                f"the scheme's argument needs exactly one embedding per input"
-            )
+        assert "{X" not in program, row.generator
+        language = canonical_id(row.generator)
+        spans = runs(program, "$", recover_setters(language, program))
+        assert len(spans) == 3, (
+            f"{row.generator} is a {' '.join(row.labels)} row but embeds "
+            f"{len(spans)} inputs at n=3 -- the scheme's argument needs "
+            f"exactly one embedding per input"
+        )
 
 
 def test_rows_without_a_tree_route_are_the_ones_the_ledger_names(

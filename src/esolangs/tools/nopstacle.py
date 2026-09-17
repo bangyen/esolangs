@@ -23,7 +23,7 @@ the IP visits, ``b`` the bit)::
 Rows are grouped three per level under a two-row turnaround that carries
 the IP from the origin to the root at the right edge, and a leaf band of
 four rows under the last level.  Level ``i`` reads input ``i`` at ``2**i``
-node columns spaced ``2**(n-i)`` leaf pitches apart, so ``{Xi}`` is one
+node columns spaced ``2**(n-i)`` leaf pitches apart, so input ``i`` is one
 run per level: a bit cell at each node column and blanks between, the same
 width for either bit.  Width is ``4 * 2**n`` cells, height ``3n + 7`` rows.
 The rectangle is padded, so every instantiation of a template has one
@@ -32,18 +32,16 @@ length.
 Size is ``Theta(n 2**n)``: the last level alone is ``2**n`` leaf pitches
 wide, the rectangle is padded to it, and each input owns three rows.  An
 H-tree would be ``O(2**n)``, but its level-``i`` cells fall on ``2**(i/2)``
-different rows, and one ``{Xi}`` placeholder fills one line.  Execution is a
+different rows, and one input's run fills one line.  Execution is a
 single pass: the halting row's step count is at most three widths.
 """
 
-import re
-
 from esolangs.exceptions import TruthTableError
 from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
     Setters,
     _validate_truth_table,
-    instantiate,
-    slot_count,
+    fill_runs,
 )
 
 __all__ = ["instantiate_nopstacle", "nopstacle"]
@@ -54,7 +52,6 @@ _PITCH = 4
 _LEVEL = 3
 #: Rows above the tree: the turnaround from the origin to the root column.
 _HEAD = 2
-_SLOT = re.compile(r"\{X(\d+)\}")
 
 
 def _columns(n: int, i: int) -> tuple[int, int]:
@@ -66,8 +63,9 @@ def nopstacle(truth_table: str) -> str:
     """Build a template specialized by :func:`instantiate_nopstacle`.
 
     Level ``i``'s bit row is blank up to its leftmost node column, then
-    ``{Xi}``, then blank to the rectangle's edge; everything else is drawn
-    here.  The answer is termination: the IP halts for a ``0`` entry and
+    its run -- as wide as the setter that fills it, bit cells and the
+    blanks between -- then blank to the rectangle's edge; everything else
+    is drawn here.  The answer is termination: the IP halts for a ``0`` entry and
     crosses copies forever for a ``1``.
     """
     n = _validate_truth_table(truth_table)
@@ -109,29 +107,33 @@ def nopstacle(truth_table: str) -> str:
             wall(x, blank + 1)
 
     lines = ["".join(row) for row in grid]
+    setters = nopstacle_setters("", n)
     for i, y in enumerate(rows):
         first = (2 ** (n - i) - 1) * _PITCH
-        lines[y] = " " * first + f"{{X{i}}}" + " " * (width - root - 1)
+        run = TEMPLATE_CHAR * len(setters[i][0])
+        lines[y] = " " * first + run + " " * (width - root - 1)
     return "\n".join(lines)
 
 
 def instantiate_nopstacle(template: str, bits: list[int]) -> str:
-    """Fill each ``{Xi}`` with its level's run of bit cells.
+    """Fill each input's run with its level's bit cells.
 
     The run spans the level's node columns, ``2**(n-i)`` leaf pitches
     apart, with the bit at each and blanks between; a ``0`` run is blank
     end to end and exactly as wide as a ``1`` run.
     """
-    slots = [int(s) for s in _SLOT.findall(template)]
-    n = len(slots)
-    if slots != list(range(n)) or n == 0:
+    # The runs' total width grows with the input count, so the count is
+    # the one value at which the widths sum to what the template holds.
+    total = template.count(TEMPLATE_CHAR)
+    n = 1
+    while total > sum(len(zero) for zero, _one in nopstacle_setters(template, n)):
+        n += 1
+    setters = nopstacle_setters(template, n)
+    if total != sum(len(zero) for zero, _one in setters):
         raise ValueError("not a Nopstacle Boolean template")
     if len(bits) != n or any(bit not in (0, 1) for bit in bits):
         raise TruthTableError(f"expected {n} Boolean input bits, got {bits!r}")
-
-    return instantiate(
-        template, bits, nopstacle_setters(template, slot_count(template))
-    )
+    return fill_runs(template, TEMPLATE_CHAR, setters, bits)
 
 
 def nopstacle_setters(_template: str, n: int) -> Setters:

@@ -1,8 +1,8 @@
 """Covers :mod:`esolangs.tools.cod`."""
 
-import re
-
 import pytest
+
+from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs, runs
 
 
 class TestParameterizedCOD:
@@ -17,16 +17,12 @@ class TestParameterizedCOD:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools import parameterized
+        from esolangs.tools.cod import cod_setters
 
-        # each {Xi} sets the cod's value to the bit: ')' for one, '_' for
-        # zero (a no-op crossed sideways), read at the start of that
-        # input's '+' fork
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: ")" if b else "_",
-        )
+        # each input's one-cell run sets the cod's value to the bit: ')'
+        # for one, '_' (a no-op crossed sideways) for zero, read at the
+        # start of its '+' fork
+        return fill_runs(tpl, TEMPLATE_CHAR, cod_setters(tpl, len(bits)), bits)
 
     @pytest.mark.parametrize(
         "table",
@@ -129,31 +125,34 @@ class TestParameterizedCOD:
             assert len(io_.getvalue()) == 1
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has one run per input, not hardcoded bits."""
         from esolangs.tools import parameterized
+        from esolangs.tools.cod import cod_setters
 
         template = parameterized.cod("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        assert template.count(TEMPLATE_CHAR) == 2
+        assert len(runs(template, TEMPLATE_CHAR, cod_setters(template, 2))) == 2
 
     def test_each_input_is_embedded_once(self) -> None:
         """The routing embeds each input exactly once, not per leaf."""
-
         from esolangs.tools import parameterized
+        from esolangs.tools.cod import cod_setters
 
         template = parameterized.cod("0110")
-        assert template.count("{X0}") == 1
-        assert template.count("{X1}") == 1
-        assert len(re.findall(r"\{X\d+\}", template)) == 2
+        setters = cod_setters(template, 2)
+        assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
+        spans = runs(template, TEMPLATE_CHAR, setters)
+        assert [end - start for start, end in spans] == [1, 1]
 
     @pytest.mark.parametrize(
         ("table", "rows", "columns"),
         [
-            ("01", 5, 20),
-            ("0110", 9, 44),
-            ("0001", 9, 44),
-            ("11110000", 8, 20),
-            ("01101001", 17, 96),
+            ("01", 5, 17),
+            ("0110", 9, 38),
+            ("0001", 9, 38),
+            ("11110000", 8, 17),
+            ("01101001", 17, 87),
         ],
     )
     def test_the_template_has_exact_dimensions(
@@ -170,8 +169,9 @@ class TestParameterizedCOD:
         printed bit and see none of it.
 
         ``11110000`` is the reduction case: it depends on one of its three
-        inputs and draws at 8 by 20 where a real three-input table needs
-        17 by 96.
+        inputs and draws at 8 by 17 where a real three-input table needs
+        17 by 87.  A run is one cell, so these are the filled program's
+        extents too.
         """
         from esolangs.tools import parameterized
 
@@ -185,21 +185,21 @@ class TestParameterizedCOD:
         One name gives ``~~~`` and two give ``~~~~``: a wall that grew or
         shrank by one would still draw a box, and the cod would still be
         trapped in it, since what stops the cod is meeting a wall at all
-        rather than the wall's length.
+        rather than the wall's length.  Each name is its one-cell run.
         """
         from esolangs.tools.cod import _cod_dead_box
 
-        one = _cod_dead_box((0,)).split("\n")
-        assert one == ["~~~", "~{X0}~", "~~~"]
+        one = _cod_dead_box(3, [0]).split("\n")
+        assert one == ["~~~", "~$~", "~~~"]
 
-        two = _cod_dead_box((0, 1)).split("\n")
-        assert two == ["~~~~", "~{X0}{X1}~", "~~~~"]
+        two = _cod_dead_box(3, [0, 1]).split("\n")
+        assert two == ["~~~~", "~$$~", "~~~~"]
 
     def test_the_grid_uses_only_cod_characters(self) -> None:
-        """Nothing but the language's glyphs, the slots, and layout space."""
+        """Nothing but the language's glyphs, the runs, and layout space."""
         from esolangs.tools import parameterized
 
-        allowed = set(" ()+-012<>X{}~\n")
+        allowed = set(" ()+-<>~\n" + TEMPLATE_CHAR)
         for table in ("01", "0110", "01101001", "11110000"):
             assert set(parameterized.cod(table)) <= allowed, table
 
@@ -224,8 +224,8 @@ class TestParameterizedCOD:
         from esolangs.tools import parameterized
 
         for table in ("11110000", "00001111", "10101010"):
-            assert len(parameterized.cod(table)) == 113, table
-        assert len(parameterized.cod("01101001")) == 1504
+            assert len(parameterized.cod(table)) == 104, table
+        assert len(parameterized.cod("01101001")) == 1495
 
     def test_constant_table_rejected(self) -> None:
         """n == 0 (a single-entry table, no inputs) is not supported."""
@@ -251,8 +251,7 @@ class TestParameterizedCOD:
         from esolangs.tools import parameterized
 
         template = parameterized.cod(table)
-        assert "{X0}" in template
-        assert "{X1}" not in template
+        assert template.count(TEMPLATE_CHAR) == 1
         for x0 in range(2):
             got = self.run_cod(self.instantiate(template, [x0]))
             assert got == f"{table[x0]}", f"table {table} input {x0}"

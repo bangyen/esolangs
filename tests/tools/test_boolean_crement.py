@@ -7,7 +7,8 @@ import pytest
 
 from esolangs.exceptions import TruthTableError
 from esolangs.interpreters.other.crement import _Machine
-from esolangs.tools.crement import crement, instantiate_crement
+from esolangs.tools.crement import crement, crement_setters, instantiate_crement
+from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from esolangs.vm import run_until_halt_or_cycle
 
 
@@ -58,12 +59,15 @@ class TestCrementTree:
 
     def test_template_embeds_each_input_once_in_order(self) -> None:
         template = crement(_dense(3))
-        assert [line for line in template.splitlines() if "{" in line] == [
-            "{X0}",
-            "{X1}",
-            "{X2}",
-        ]
-        assert "{C" not in template
+        setters = crement_setters(template, 3)
+        assert "{X" not in template
+        assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
+        # One run per input, each a tester's first line, on lines 3, 5, 7.
+        lines = template.splitlines()
+        run = TEMPLATE_CHAR * len("+J 0 0")
+        assert [i for i, line in enumerate(lines) if TEMPLATE_CHAR in line] == [3, 5, 7]
+        assert [line for line in lines if TEMPLATE_CHAR in line] == [run] * 3
+        assert len(runs(template, TEMPLATE_CHAR, setters)) == 3
 
     def test_setter_spells_the_bit_as_a_jump(self) -> None:
         """The two fills differ only in the tester's data field."""
@@ -111,7 +115,7 @@ class TestCrementTree:
         the fixed header.
         """
         sizes = [len(crement(_dense(n))) for n in range(1, 9)]
-        assert sizes == [53, 89, 193, 375, 777, 1524, 3057, 6087]
+        assert sizes == [55, 93, 199, 383, 787, 1536, 3071, 6103]
         ratios = [b / a for a, b in pairwise(sizes)]
         assert all(1.6 <= r <= 2.2 for r in ratios), ratios
         assert all(1.95 <= r <= 2.05 for r in ratios[-3:]), ratios

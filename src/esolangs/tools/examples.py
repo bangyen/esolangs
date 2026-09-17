@@ -73,6 +73,7 @@ from dataclasses import dataclass, replace
 from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import apa_setters
 from esolangs.tools.arrowqueue import arrowqueue_setters
+from esolangs.tools.cod import cod_setters
 from esolangs.tools.crement import crement_setters
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
@@ -550,19 +551,12 @@ def _setters_home_row(_template: str, n: int) -> Setters:
     return (("as", "aj"),) * n
 
 
-def _setters_cod(_template: str, n: int) -> Setters:
+def _setters_cod(template: str, n: int) -> Setters:
     """Set the cod's value to the bit at that input's ``+`` fork.
 
-    ``)`` increments, so a one is ``)``; a zero is ``_``, the command that
-    only acts on a cod moving *up* (it turns a nonzero one back down) and
-    is a no-op crossed sideways, which is how the fork meets this cell.
-    Both bits are one cell, so the programs are all the same size and
-    differ in exactly one character per input, at a fixed column, and
-    neither is a blank.  (Water would do for the zero, and did, but a
-    blank is a bit spelled as nothing; ``_`` costs no width where the
-    ``)(``-against-``)<`` spelling needs the fork box a column wider.)
+    The pair lives beside the run in :func:`esolangs.tools.cod.cod_setters`.
     """
-    return (("_", ")"),) * n
+    return cod_setters(template, n)
 
 
 def _setters_eval(_template: str, n: int) -> Setters:

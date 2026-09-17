@@ -7,7 +7,8 @@ import pytest
 
 from esolangs.interpreters.grid_based.a_painter_ant import _Machine as _APAMachine
 from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
-from esolangs.tools.a_painter_ant import _instantiate_apa, a_painter_ant
+from esolangs.tools.a_painter_ant import _instantiate_apa, a_painter_ant, apa_setters
+from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 
 
 # 2.0s over 45 tests: runs the generated program.
@@ -114,10 +115,12 @@ class TestAPainterAnt:
         assert self._check("1111", [1, 1]) == 1
 
     def test_template_has_input_placeholders(self) -> None:
-        """The template carries {X0} and {X1}, not hardcoded bits."""
+        """The template carries one run per input, not hardcoded bits."""
         template = a_painter_ant("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        setters = apa_setters(template, 2)
+        assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
+        assert len(runs(template, TEMPLATE_CHAR, setters)) == 2
 
     def test_leaf_paint_omits_zero_subtrees(self) -> None:
         """A zero leaf is omitted and a one leaf is painted P.
@@ -147,12 +150,13 @@ class TestAPainterAnt:
                 )
 
     def test_instantiate_one_bit_fills_single_placeholder(self) -> None:
-        """An n == 1 template carries only {X0}, filled per bit."""
+        """An n == 1 template carries one run, filled per bit."""
         template = a_painter_ant("01")  # f(0)=0, f(1)=1
-        assert "{X0}" in template
-        assert "{X1}" not in template
-        assert _instantiate_apa(template, [1]) == template.replace("{X0}", "WWwWWEEe")
-        assert _instantiate_apa(template, [0]) == template.replace("{X0}", "NENEESWw")
+        assert len(runs(template, TEMPLATE_CHAR, apa_setters(template, 1))) == 1
+        run = TEMPLATE_CHAR * 8
+        assert template.count(run) == 1
+        assert _instantiate_apa(template, [1]) == template.replace(run, "WWwWWEEe")
+        assert _instantiate_apa(template, [0]) == template.replace(run, "NENEESWw")
 
     def test_three_input_works(self) -> None:
         """AND3 is exact and cycle-stable on every input."""
@@ -251,9 +255,14 @@ class TestAPainterAnt:
                     ), f"n={n} table {table} bits {bits}"
 
     def test_shared_head_growth(self) -> None:
-        """Wide dense tables grow no faster than their table size."""
+        """Wide dense tables grow no faster than their table size.
+
+        The template is the filled program's size, its runs the routing
+        steps: ten per row less a constant, so doubling the table doubles
+        the size and adds that constant back.
+        """
         sizes = [len(a_painter_ant("1" * (2**n))) for n in range(6, 10)]
-        assert all(b <= 2 * a for a, b in pairwise(sizes))
+        assert all(b <= 2 * a + 2 for a, b in pairwise(sizes))
 
     def test_linear_strip_executes_dense_wide_table(self) -> None:
         """Every row reaches its adjacent strip cell and remains cycle-stable."""
@@ -283,16 +292,16 @@ class TestAPainterAnt:
             a_painter_ant("0123")
 
     def test_instantiate_fills_bits(self) -> None:
-        """{X0} fills nnnn/ssss (the 2^(n-i)=4 weight) and {X1} fills the E/W dance."""
+        """Input 0 fills nnnn/ssss (the 2^(n-i)=4 weight), input 1 the E/W dance."""
         template = a_painter_ant("0110")
+        assert apa_setters(template, 2) == (("ssss", "nnnn"), ("NENEESWw", "WWwWWEEe"))
+        first, second = TEMPLATE_CHAR * 4, TEMPLATE_CHAR * 8
         assert _instantiate_apa(template, [1, 1]) == template.replace(
-            "{X0}",
-            "nnnn",
-        ).replace("{X1}", "WWwWWEEe")
+            first, "nnnn", 1
+        ).replace(second, "WWwWWEEe")
         assert _instantiate_apa(template, [0, 0]) == template.replace(
-            "{X0}",
-            "ssss",
-        ).replace("{X1}", "NENEESWw")
+            first, "ssss", 1
+        ).replace(second, "NENEESWw")
 
 
 def _render_after_passes(program: str, passes: int) -> str:

@@ -7,7 +7,8 @@ import pytest
 
 from esolangs.exceptions import TruthTableError
 from esolangs.interpreters.grid_based.nopstacle import _Machine
-from esolangs.tools.nopstacle import instantiate_nopstacle, nopstacle
+from esolangs.tools.helpers import TEMPLATE_CHAR, runs
+from esolangs.tools.nopstacle import instantiate_nopstacle, nopstacle, nopstacle_setters
 from esolangs.vm import run_until_halt_or_cycle
 from tests.tools.test_boolean_contract import _dense
 
@@ -50,9 +51,16 @@ def test_random_tables_at_four_and_five_inputs(n: int) -> None:
 
 def test_template_holds_each_input_once_in_order() -> None:
     template = nopstacle("01101001")
-    slots = [line for line in template.splitlines() if "{X" in line]
-    assert [line.strip() for line in slots] == ["{X0}", "{X1}", "{X2}"]
-    assert template.count("{X") == 3
+    assert "{X" not in template
+    setters = nopstacle_setters(template, 3)
+    assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
+    # Level i's run spans its 2**i node columns, blanks between, on its own row.
+    rows = [line for line in template.splitlines() if TEMPLATE_CHAR in line]
+    assert [row.strip() for row in rows] == [
+        TEMPLATE_CHAR * len(zero) for zero, _ in setters
+    ]
+    assert [len(zero) for zero, _ in setters] == [1, 1 + 16, 1 + 8 * 3]
+    assert len(runs(template, TEMPLATE_CHAR, setters)) == 3
 
 
 def test_instantiated_program_is_a_padded_nopstacle_rectangle() -> None:
@@ -98,4 +106,4 @@ def test_instantiation_rejects_wrong_bits(bits: list[int]) -> None:
 
 def test_instantiation_rejects_a_foreign_template() -> None:
     with pytest.raises(ValueError, match="Nopstacle"):
-        instantiate_nopstacle("{X1}{X0}", [0, 1])
+        instantiate_nopstacle("$$$", [0, 1])

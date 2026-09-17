@@ -2,19 +2,19 @@
 
 A Painter Ant is a no-input grid language, so this follows the
 parameterized convention described in
-:mod:`esolangs.tools.parameterized`: the template's ``{Xi}``
-placeholders are movement runs that the harness fills per input
-combination, and the ant's final cell colour encodes the table entry.
+:mod:`esolangs.tools.parameterized`: the template's input runs are
+filled with movement per input combination, and the ant's final cell
+colour encodes the table entry.
 
 Wide tables use one white corridor with the answers in the adjacent row.
 Building it, returning to its origin, and routing along it each cost O(T).
 """
 
 from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
     Setters,
     _validate_truth_table,
-    instantiate,
-    slot_count,
+    fill_runs,
 )
 
 __all__ = ["a_painter_ant"]
@@ -33,8 +33,8 @@ __all__ = ["a_painter_ant"]
 #
 # The wiki defines no I/O, so the generator follows the parameterized
 # convention (like ``bio``/``back``/``nocomment``/``bfpda``): the template
-# carries ``{X0}`` and ``{X1}`` placeholders for the two input bits, which
-# :func:`instantiate` fills with the per-bit routing code.  The answer is the
+# carries one run per input bit, which :func:`_instantiate_apa` fills
+# with the per-bit routing code.  The answer is the
 # **colour of the cell the ant lands on** at the end of a cycle (white is one,
 # black is zero), read by a semantic grid model (the interpreter's own output
 # is the visited-cell bounding box, which carries no coordinates).
@@ -67,7 +67,7 @@ __all__ = ["a_painter_ant"]
 # program is a cycle-stable fixed point (the bounding box is identical for
 # any whole number of cycles).
 
-# ``{XF}``: the final (least-significant) input routes east/west.
+# The final (least-significant) input routes east/west.
 _XF = {1: "WWwWWEEe", 0: "NENEESWw"}
 # The inverse of each move direction, for retracing a path.
 _OPP = {
@@ -227,10 +227,10 @@ def a_painter_ant(truth_table: str) -> str:
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.  The
-    returned template contains ``{X0}``..``{Xn-1}`` placeholders that
-    :func:`~esolangs.tools.parameterized.instantiate` fills with
-    the per-bit routing.  The answer is the colour of the cell the ant lands
-    on after a cycle (white is one, black is zero).
+    returned template contains one run per input that
+    :func:`_instantiate_apa` fills with the per-bit routing.  The answer is
+    the colour of the cell the ant lands on after a cycle (white is one,
+    black is zero).
 
     Every table is supported for any ``n``, and every instantiated program
     is a cycle-stable fixed point.  The first ``n-1`` inputs route by their
@@ -247,10 +247,9 @@ def a_painter_ant(truth_table: str) -> str:
     # n-1 inputs route by weight before the body, and the final
     # (least-significant) input routes east/west onto its leaf after it.
     head = _head(truth_table, [0] * n)
-    prefix = "".join("{X" + str(i) + "}" for i in range(n - 1))
-    suffix = "{X" + str(n - 1) + "}"
+    runs = [TEMPLATE_CHAR * len(zero) for zero, _one in _route_setters(n, linear=False)]
 
-    return head + prefix + _body() + suffix
+    return head + "".join(runs[:-1]) + _body() + runs[-1]
 
 
 def _a_painter_ant_linear(truth_table: str, n: int) -> str:
@@ -271,7 +270,8 @@ def _a_painter_ant_linear(truth_table: str, n: int) -> str:
             # that answer, so both paints are harmless and ``N`` is blocked.
             out.append("sPN")
     out.append("W" * (size - 1))
-    out.extend(f"{{X{i}}}" for i in range(n))
+    setters = _route_setters(n, linear=True)
+    out.extend(TEMPLATE_CHAR * len(zero) for zero, _one in setters)
     # White answer: ``s`` is blocked and ``S`` enters it.  Black answer:
     # ``s`` enters it and ``S`` is blocked by the black cell beyond.
     out.append("sS")
@@ -279,7 +279,7 @@ def _a_painter_ant_linear(truth_table: str, n: int) -> str:
 
 
 def _instantiate_apa(template: str, bits: list[int]) -> str:
-    """Fill an A Painter Ant template's ``{Xi}`` placeholders.
+    """Fill an A Painter Ant template's input runs.
 
     Every input except the final one routes piecewise by its weight
     (``2 ** (n - i)`` cells along the index-parity axis, west/north for a
@@ -288,14 +288,19 @@ def _instantiate_apa(template: str, bits: list[int]) -> str:
     ``NENEESWw`` landing dance onto its leaf.  ``bits`` must match the
     template built by :func:`a_painter_ant`.
     """
-    return instantiate(template, bits, apa_setters(template, slot_count(template)))
+    return fill_runs(template, TEMPLATE_CHAR, apa_setters(template, len(bits)), bits)
 
 
 def apa_setters(template: str, n: int) -> Setters:
     """Return the ``(zero, one)`` route text for every input of ``template``."""
+    return _route_setters(n, linear=template.endswith("sS"))
+
+
+def _route_setters(n: int, *, linear: bool) -> Setters:
+    """Return the setters of the tree route, or of the linear one."""
 
     def spell(i: int, bit: int) -> str:
-        if template.endswith("sS"):  # the linear route: one step per weight
+        if linear:  # one step per weight
             return ("E" if bit else "e") * (1 << (n - 1 - i))
         if i == n - 1:
             return _XF[bit]

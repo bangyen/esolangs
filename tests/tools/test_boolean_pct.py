@@ -144,12 +144,17 @@ class TestParameterizedPctSquaredMinusOne:
         assert len(lengths) == 1, lengths
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has one run per input, not hardcoded bits."""
         from esolangs.tools import parameterized
+        from esolangs.tools.helpers import TEMPLATE_CHAR, runs
+        from esolangs.tools.pct_squared_minus_one import body, setters
 
         template = parameterized.pct_squared_minus_one("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        pairs = setters(template)
+        assert len(pairs) == 2
+        assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in pairs)
+        assert len(runs(body(template), TEMPLATE_CHAR, pairs)) == 2
 
     @pytest.mark.slow  # 5.3s: derives all sixteen two-input tables
     def test_programs_never_read_input(self) -> None:
@@ -1069,18 +1074,27 @@ class TestPctAffineSolver:
         """The cascade is usually shorter at three inputs, but not always.
 
         Both paths are cheap at this arity, so both are built and the shorter
-        kept.  The direct spelling bases improve 30 tables; the largest saving
-        is seven characters, 41 against 34.
+        kept -- the template, whose runs are its setters' widths, so this is
+        the filled program's length too.  The direct spelling bases improve
+        28 tables, the largest saving nine characters (35 against 26), and
+        two more tie on the template and are shorter filled.
         """
         module = self.module()
         improved = 0
+        tied = 0
         for value in range(256):
             table = format(value, "08b")
-            shipped = len(boolean.pct_squared_minus_one(table))
+            shipped = boolean.pct_squared_minus_one(table)
             cascade = module._cascade(table, 3)  # noqa: SLF001
-            assert cascade is None or shipped <= len(cascade), table
-            improved += cascade is not None and shipped < len(cascade)
-        assert improved == 30
+            if cascade is None:
+                continue
+            assert len(shipped) <= len(cascade), table
+            improved += len(shipped) < len(cascade)
+            if len(shipped) == len(cascade) and shipped != cascade:
+                tied += 1
+                assert len(module.body(shipped)) < len(module.body(cascade)), table
+        assert improved == 28
+        assert tied == 2
 
     def test_affine_stays_gated_above_three_inputs(self) -> None:
         """The comparison must not reach the four-input enumeration.

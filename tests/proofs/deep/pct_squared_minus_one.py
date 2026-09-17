@@ -2,7 +2,7 @@
 
 Run:  just proofs   (or python tests/proofs/deep/pct_squared_minus_one.py)
 
-The ledger row is `exception`, and `docs/proofs.md` proves that no `{Xi}`
+The ledger row is `exception`, and `docs/proofs.md` proves that no embedded-input
 template computes the suite's dense seventeen-input fixture: between two
 placeholders the accumulator is the whole state, the reset leaves at most
 6263 distinguishable accumulator classes, and the fixture forces more

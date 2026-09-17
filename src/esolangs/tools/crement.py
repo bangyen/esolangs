@@ -5,7 +5,7 @@ Crement has no input instruction, so each input is embedded once as the
 width either way -- and the tree reads it through Crement's only means of
 indirection, self-modification.  Input ``i`` owns a two-line tester::
 
-    T_i:    +J 0 {Xi}      * taken when the bit is 1
+    T_i:    +J 0 b         * b is the bit: taken when it is 1
     T_i+1:  +J 0 1         * taken otherwise
 
 whose two jump addresses are ``0`` until a node fills them in.  A node of
@@ -30,10 +30,10 @@ and diverges for a 1 entry: one node per level, so it runs at most
 """
 
 from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
     Setters,
     _validate_truth_table,
-    instantiate,
-    slot_count,
+    fill_runs,
 )
 
 __all__ = ["crement", "instantiate_crement"]
@@ -55,7 +55,7 @@ def _set_bit(_index: int, bit: int) -> str:
 
 
 def crement(truth_table: str) -> str:
-    """Build a Crement template with one ``{Xi}`` tester line per input.
+    """Build a Crement template: one run per input, its tester's first line.
 
     The program is a decision tree whose nodes route through per-input
     testers by patching their jump targets (see the module docstring).
@@ -95,13 +95,18 @@ def crement(truth_table: str) -> str:
         f"+J {first + len(lines)} 1",
         "+J @ 1",
     ]
-    testers = [line for i in range(n) for line in (f"{{X{i}}}", "+J 0 1")]
+    testers = [
+        line
+        for zero, _one in crement_setters("", n)
+        for line in (TEMPLATE_CHAR * len(zero), "+J 0 1")
+    ]
     return "\n".join(header + testers + lines)
 
 
 def instantiate_crement(template: str, bits: list[int]) -> str:
-    """Fill each ``{Xi}`` with the jump line that spells its bit."""
-    return instantiate(template, bits, crement_setters(template, slot_count(template)))
+    """Fill each input's run with the jump line that spells its bit."""
+    setters = crement_setters(template, len(bits))
+    return fill_runs(template, TEMPLATE_CHAR, setters, bits)
 
 
 def crement_setters(_template: str, n: int) -> Setters:
