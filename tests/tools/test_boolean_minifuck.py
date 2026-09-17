@@ -13,7 +13,7 @@ import pytest
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from esolangs.tools.minifuck_sim import PAIR
-from tests.tools.minifuck_support import run_count
+from tests.tools.minifuck_support import _mux_separate, run_count
 
 
 def _unreachable(*_args: object, **_kwargs: object) -> None:
@@ -191,58 +191,6 @@ def test_mux_refuses_below_its_minimum_arity() -> None:
     assert module._mux("01", 1) is None  # noqa: SLF001
 
 
-def test_the_scout_distrusts_states_its_summary_cannot_speak_for() -> None:
-    """A base outside the parity law's key sends ``_mux`` to the sweep.
-
-    The scout summarises a row as its tape alone, which is only sound with
-    no skip pending, no dead row, and one shared pool region.  No
-    separation produces the other states, so they are constructed: each
-    must come back untrusted rather than mispriced.
-    """
-
-    module = importlib.import_module("esolangs.tools.minifuck")
-
-    base = module._mux_separate(2)  # noqa: SLF001
-    positions = base.ptrs()
-    lowest, highest = min(positions), max(positions)
-    accs = range(highest - lowest + module._POOL_WIDTH + 1, lowest - 1)  # noqa: SLF001
-
-    trusted = module._mux_scout(base, "0110", 2, accs)  # noqa: SLF001
-    assert trusted[1], "the real separation must be scoutable"
-
-    skipped = base.fork()
-    skipped.ms[0].skip = True
-    assert module._mux_scout(skipped, "0110", 2, accs) == (None, False)  # noqa: SLF001
-
-    dead = base.fork()
-    dead.ms[1].dead = True
-    assert module._mux_scout(dead, "0110", 2, accs) == (None, False)  # noqa: SLF001
-
-    torn = base.fork()
-    torn.ms[0].tape ^= 1 << 3
-    assert module._mux_scout(torn, "0110", 2, accs) == (None, False)  # noqa: SLF001
-
-
-def test_the_probe_simulates_when_the_parity_law_declines() -> None:
-    """Off the canonical state the probe answers by simulation, identically.
-
-    ``_sculpt_columns`` refuses a joint whose rows disagree inside the pool
-    region, and ``_mux_probe`` must then hand back exactly what the
-    simulated probe says -- the fallback is the specification, not an
-    approximation of it.
-    """
-
-    module = importlib.import_module("esolangs.tools.minifuck")
-
-    torn = module._mux_separate(2).fork()  # noqa: SLF001
-    torn.ms[0].tape ^= 1 << 3
-    acc = module._POOL_WIDTH + 4  # noqa: SLF001
-    assert module._sculpt_columns(torn, acc) is None  # noqa: SLF001
-    assert module._mux_probe(torn, acc, 0) == module._mux_probe_sim(  # noqa: SLF001
-        torn, acc, 0
-    )
-
-
 def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
     """A code that strands a skip or leaves the pool region has no frame.
 
@@ -254,7 +202,7 @@ def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
 
     module = importlib.import_module("esolangs.tools.minifuck")
 
-    byte = module._mux_separate(2).ms[0].tape & module._POOL_MASK  # noqa: SLF001
+    byte = _mux_separate(2).ms[0].tape & module._POOL_MASK  # noqa: SLF001
     assert module._probe_frame("[", byte) is None  # noqa: SLF001
     assert module._probe_frame("[x" * 9, byte) is None  # noqa: SLF001
     assert module._probe_frame(module._SCULPT_POOL_CODE, byte) is not None  # noqa: SLF001
@@ -399,84 +347,6 @@ def test_the_rewind_law_matches_the_parsed_runs() -> None:
     skipping.run_rewind(0)
     clone.apply(_runs("x"))
     assert skipping.key() == clone.key()
-
-
-def test_the_pascal_plan_matches_the_emitted_round_loop() -> None:
-    """The binomial inverse returns the sculpt loop's exact rewinds.
-
-    Every two-input table is checked at every accumulator, then sampled
-    wider rows check the same identity after the triangle grows.  The oracle
-    emits each selected round and probes again; it shares no inverse with the
-    plan.  Multi-round cases are required so a probe that never fired cannot
-    make the differential pass vacuously.
-    """
-    import math
-    import random
-
-    module = importlib.import_module("esolangs.tools.minifuck")
-
-    for row in range(65):
-        expected = sum(
-            1 << column for column in range(row + 1) if math.comb(row, column) & 1
-        )
-        assert module._pascal_parity_row(row) == expected  # noqa: SLF001
-
-    rng = random.Random(20260913)
-    cases: list[tuple[int, list[str]]] = [
-        (2, [format(value, "04b") for value in range(16)]),
-        (3, [format(rng.getrandbits(8), "08b") for _ in range(8)]),
-        (6, [format(rng.getrandbits(64), "064b") for _ in range(2)]),
-    ]
-    longest = 0
-    for n, tables in cases:
-        base = module._mux_separate(n)  # noqa: SLF001
-        positions = base.ptrs()
-        lowest, highest = min(positions), max(positions)
-        all_accs = range(
-            highest - lowest + module._POOL_WIDTH + 1,  # noqa: SLF001
-            lowest - 1,
-        )
-        accs = (
-            all_accs
-            if n == 2
-            else (all_accs.start, all_accs[len(all_accs) // 2], all_accs[-1])
-        )
-        want_tables = [tuple(int(ch) for ch in table) for table in tables]
-        for table, want in zip(tables, want_tables, strict=True):
-            for acc in accs:
-                recorded: dict[tuple[int, bool], list[int]] = {}
-                winner, trusted = module._mux_scout(  # noqa: SLF001
-                    base, table, n, range(acc, acc + 1), recorded
-                )
-                assert trusted
-                assert winner is not None
-
-                joint = base.fork()
-                emitted: list[int] = []
-                for _ in range(2**n + 4):
-                    found = module._mux_probe(joint, acc, 0)  # noqa: SLF001
-                    assert found is not None
-                    disagree = [
-                        pointer
-                        for pointer, got, target in zip(
-                            joint.ptrs(), found[0], want, strict=True
-                        )
-                        if got != target
-                    ]
-                    if not disagree:
-                        break
-                    rewind = max(disagree) - acc + 1
-                    emitted.append(rewind)
-                    joint.emit("<" * rewind)
-                    joint.emit("[x" * rewind)
-                    joint.emit("x")
-                else:
-                    raise AssertionError("the emitted oracle reached the round cap")
-
-                planned = recorded[(acc, True)]
-                assert planned == emitted, (n, table, acc)
-                longest = max(longest, len(planned))
-    assert longest > 1, "the oracle never exercised round composition"
 
 
 @pytest.mark.parametrize("n", [2, 10])

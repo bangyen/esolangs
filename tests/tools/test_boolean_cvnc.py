@@ -7,9 +7,20 @@ import random
 import pytest
 
 from esolangs import tools as boolean
+from esolangs.tools.cvnc import _stored
 from tests.tools.boolean_runners import (
     run_cvnc,
 )
+
+
+def _stored_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Adapt :func:`_stored` to :func:`best_input_order`'s contract.
+
+    An unservable order returns ``""`` (skipped, as ZTOALC L's are).
+    Substituting another program would compute a different function, since
+    ``truth_table`` is already permuted.
+    """
+    return _stored(truth_table, perm) or ""
 
 
 class TestCvnc:
@@ -203,7 +214,7 @@ class TestCvnc:
         module = importlib.import_module("esolangs.tools.cvnc")
         # (0, 2, 1, 3) is the smallest non-unimodal permutation.
         assert module._deque_schedule((0, 2, 1, 3)) is None  # noqa: SLF001
-        assert module._stored_candidate("0" * 16, (0, 2, 1, 3)) == ""  # noqa: SLF001
+        assert _stored_candidate("0" * 16, (0, 2, 1, 3)) == ""
         # The identity is always unimodal, so a candidate always exists.
         assert module._deque_schedule((0, 1, 2, 3)) is not None  # noqa: SLF001
 
@@ -263,7 +274,7 @@ class TestCvnc:
             tree = module._tree(table, 0)  # noqa: SLF001
             hoisted = best_input_order(
                 table,
-                module._stored_candidate,  # noqa: SLF001
+                _stored_candidate,
             )
             if hoisted and len(hoisted) == len(tree):
                 tied.append(table)

@@ -63,9 +63,10 @@ from pathlib import Path
 # Run as a script (not under pytest), the repo root is not on the path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from esolangs.tools.a_painter_ant import _instantiate_apa, a_painter_ant
+from esolangs.tools.a_painter_ant import a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from tests.tools.a_painter_ant_trace import run
+from tests.tools.fills import _instantiate_apa
 
 #: Cost band; see ``__main__.py``.  L4's ladder to n=10 is most of it.
 BAND = "by-hand"

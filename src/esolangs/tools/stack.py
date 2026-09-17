@@ -431,17 +431,6 @@ _UNSQUARE_READ = "iA>-<P"
 _UNSQUARE_SINKS = ((0, ""), (1, "S"), (2, "SASP"))
 
 
-@cache
-def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
-    """Read-and-sink program for each reachable stack arrangement.
-
-    ``2 * 3**(n - 2)`` arrangements, as Forþ.  Unlike Forþ, a BFS finds the
-    same set with the same shortest strings through n == 7: these sinks do
-    not compose across reads, so the enumeration is also optimal.
-    """
-    return stack_programs(n, _UNSQUARE_SINKS, _UNSQUARE_READ)
-
-
 class _UnsquarePricer:
     """Exact tree sizes for the greedy's candidates, one read at a time.
 

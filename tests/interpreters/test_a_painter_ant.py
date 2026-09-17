@@ -170,8 +170,9 @@ class TestStepMachine:
 
     def test_generated_boolean_program_is_a_cycle(self) -> None:
         from esolangs.interpreters.grid_based.a_painter_ant import _Machine
-        from esolangs.tools.a_painter_ant import _instantiate_apa, a_painter_ant
+        from esolangs.tools.a_painter_ant import a_painter_ant
         from esolangs.vm import run_until_halt_or_cycle
+        from tests.tools.fills import _instantiate_apa
 
         program = _instantiate_apa(a_painter_ant("0110"), [1, 0])  # XOR, f=1
         assert run_until_halt_or_cycle(_Machine(program)) is False

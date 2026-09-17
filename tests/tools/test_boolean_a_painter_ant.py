@@ -7,8 +7,9 @@ import pytest
 
 from esolangs.interpreters.grid_based.a_painter_ant import _Machine as _APAMachine
 from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
-from esolangs.tools.a_painter_ant import PAIR, _instantiate_apa, a_painter_ant
+from esolangs.tools.a_painter_ant import PAIR, a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
+from tests.tools.fills import _instantiate_apa
 
 
 # 2.0s over 45 tests: runs the generated program.

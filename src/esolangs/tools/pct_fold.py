@@ -640,13 +640,6 @@ def _fold_to_cofactors(state: _FoldState) -> list[_FoldOp] | None:
     return _fold_reduce(start, _cofactor_done)
 
 
-def _fold_span(state: _FoldState) -> int:
-    """Return ``state``'s occupied top-to-bottom extent."""
-    return max(point for point, _, _, _ in state) - min(
-        point - extent for point, extent, _, _ in state
-    )
-
-
 def _split_setter(total: int) -> tuple[str, str, int, int] | None:
     """Spell an up/down setter pair whose moves sum to ``total``."""
     middle = total // 2

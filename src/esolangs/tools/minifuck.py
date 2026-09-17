@@ -34,45 +34,17 @@ from esolangs.tools.minifuck_mux import (
     _SCULPT_POOL_CODE as _SCULPT_POOL_CODE,
 )
 from esolangs.tools.minifuck_mux import (
-    _mux_probe as _mux_probe,
-)
-from esolangs.tools.minifuck_mux import (
-    _mux_probe_sim as _mux_probe_sim,
-)
-from esolangs.tools.minifuck_mux import (
-    _mux_scout as _mux_scout,
-)
-from esolangs.tools.minifuck_mux import (
-    _mux_sculpt as _mux_sculpt,
-)
-from esolangs.tools.minifuck_mux import (
-    _mux_separate as _mux_separate,
-)
-from esolangs.tools.minifuck_mux import (
     _mux_start as _mux_start,
-)
-from esolangs.tools.minifuck_mux import (
-    _mux_sweep as _mux_sweep,
 )
 from esolangs.tools.minifuck_mux import (
     _mux_weight as _mux_weight,
 )
 from esolangs.tools.minifuck_mux import (
-    _pascal_parity_row as _pascal_parity_row,
-)
-from esolangs.tools.minifuck_mux import (
     _probe_frame as _probe_frame,
-)
-from esolangs.tools.minifuck_mux import (
-    _sculpt_columns as _sculpt_columns,
-)
-from esolangs.tools.minifuck_mux import (
-    _sculpt_pool_code as _sculpt_pool_code,
 )
 from esolangs.tools.minifuck_pool import (
     _BASE,
     _SEP,
-    _SPAN,
     _embed,
 )
 from esolangs.tools.minifuck_pool import (
@@ -100,9 +72,6 @@ from esolangs.tools.minifuck_pool import (
     _READS as _READS,
 )
 from esolangs.tools.minifuck_pool import (
-    _SCAN_SEPS as _SCAN_SEPS,
-)
-from esolangs.tools.minifuck_pool import (
     _endgame as _endgame,
 )
 from esolangs.tools.minifuck_pool import (
@@ -112,19 +81,10 @@ from esolangs.tools.minifuck_pool import (
     _pool_code_for_row as _pool_code_for_row,
 )
 from esolangs.tools.minifuck_pool import (
-    _pool_reaches as _pool_reaches,
-)
-from esolangs.tools.minifuck_pool import (
     _pool_slice as _pool_slice,
 )
 from esolangs.tools.minifuck_pool import (
-    _printed_column as _printed_column,
-)
-from esolangs.tools.minifuck_pool import (
     _step as _step,
-)
-from esolangs.tools.minifuck_pool import (
-    _try_print as _try_print,
 )
 
 # The machine the construction below emits against.  ``_Sim`` and ``_Joint``
@@ -153,51 +113,6 @@ from esolangs.tools.minifuck_sim import (
 )
 
 __all__ = ["minifuck"]
-
-
-_DEGENERATE_COLUMNS = ("const1", "~b0", "b0", "const0", "~b1", "b1")
-
-
-def _column_of(name: str, n: int) -> tuple[int, ...] | None:
-    """Return the column ``name`` stands for, or None if this arity has no such bit.
-
-    ``b1`` does not exist at one input; an all-zero stand-in would match
-    ``const0`` and carry a meaningless duplicate cell.
-    """
-    rows = range(2**n)
-    if name in ("const0", "const1"):
-        return tuple(int(name == "const1") for _ in rows)
-    negated = name.startswith("~")
-    bit = int(name.lstrip("~")[1:])
-    if bit >= n:
-        return None
-    return tuple((((r >> (n - 1 - bit)) & 1) ^ negated) for r in rows)
-
-
-@cache
-def _degenerate_cells(n: int) -> dict[str, int]:
-    """Find where the embed leaves the constants and the first two inputs.
-
-    The carry chain preserves ``b0`` and ``b1`` before the prefix-XOR mixes,
-    so the cells are read off the embedded tape; measured, this reproduces
-    the six former constants at every arity.  Later inputs are not
-    separable here; :func:`_mux` builds them.  Only the default settle
-    count is meaningful.
-    """
-    joint = _embed(n, sep=_SEP)
-    _clamp(joint)
-    wanted = {
-        name: column
-        for name in _DEGENERATE_COLUMNS
-        if (column := _column_of(name, n)) is not None
-    }
-    found: dict[str, int] = {}
-    for cell in range(1, _BASE + n * _SPAN + 8):
-        column = joint.col(cell)
-        for name, target in wanted.items():
-            if name not in found and column == target:
-                found[name] = cell
-    return found
 
 
 def _degenerate(truth_table: str, n: int) -> str | None:

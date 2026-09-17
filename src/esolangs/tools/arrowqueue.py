@@ -13,7 +13,6 @@ indexed row.  A ``0`` leaf is empty; a ``1`` leaf is a self-sustaining ring.
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    fill_runs,
 )
 
 #: Each input's cell, both routes: ``~`` pushes a down heading, ``.`` nothing.
@@ -40,12 +39,6 @@ _MIDDLE = ["*~* ", "*  *", "*  *", "~ ~ ", "*~* ", "**  ", "*  *"]
 # it); the popped right heading exits through the input cell and the tail
 # pushes the next stage's stop heading.
 _STAGE = ["  *+*", "   ~" + TEMPLATE_CHAR, "   ~", "  **", " *~*", " *  *"]
-
-
-# One cascade row: ``+`` pops a marker and drops to the next, or pops the
-# sentinel and goes right (ring for a one, off the grid for a zero).
-_CASCADE_1 = [" + +~+", "   ~ ~", "   +~+"]
-_CASCADE_0 = [" +", "", ""]
 
 
 def _header(n: int) -> list[str]:
@@ -145,14 +138,6 @@ def arrowqueue(truth_table: str) -> str:
             )
         return "\n".join(row.rstrip() for row in rows)
     return "\n".join([*_header(n), *_compact(_MIDDLE + _tree(list(truth_table)))])
-
-
-def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
-    """Fill an ArrowQueue template's input runs with the bits.
-
-    ``bits`` MSB first; ``~`` pushes a down heading, ``.`` nothing.
-    """
-    return fill_runs(template, TEMPLATE_CHAR, (PAIR,) * len(bits), bits)
 
 
 def _compact(rows: list[str]) -> list[str]:

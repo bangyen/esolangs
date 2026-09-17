@@ -9,15 +9,8 @@ in :mod:`esolangs.tools.examples` reads the same constant, so the widths
 the generator lays and the text the fill substitutes cannot drift apart.
 """
 
-# Re-exported so this module stays the import site for the whole
-# parameterized family; each of these owns a file because its
-# construction (a search or a grid layout) dwarfs the others.
+# Re-exported (``x as x``): this module is the import site for the family.
 from esolangs.tools.a_painter_ant import a_painter_ant
-
-# The strategies live in their own modules, but this one is the
-# construction's face: the registry, the wrapper and the suite all reach
-# it by this name.  Re-exported in the ``x as x`` form so a caller that
-# does not care where a piece lives need not know.
 from esolangs.tools.arrowqueue import (
     _MIDDLE as _MIDDLE,
 )
@@ -46,9 +39,6 @@ from esolangs.tools.arrowqueue import (
     _header as _header,
 )
 from esolangs.tools.arrowqueue import (
-    _instantiate_arrowqueue as _instantiate_arrowqueue,
-)
-from esolangs.tools.arrowqueue import (
     _tree as _tree,
 )
 from esolangs.tools.arrowqueue import arrowqueue as arrowqueue
@@ -58,19 +48,7 @@ from esolangs.tools.back import (
 from esolangs.tools.back import back as back
 from esolangs.tools.cod import cod
 from esolangs.tools.eval_lang import (
-    _EVAL_MAX_OPS as _EVAL_MAX_OPS,
-)
-from esolangs.tools.eval_lang import (
-    _eval_cost as _eval_cost,
-)
-from esolangs.tools.eval_lang import (
     _eval_ordered as _eval_ordered,
-)
-from esolangs.tools.eval_lang import (
-    _eval_reorders as _eval_reorders,
-)
-from esolangs.tools.eval_lang import (
-    _eval_stack_programs as _eval_stack_programs,
 )
 from esolangs.tools.eval_lang import eval as eval  # noqa: A004 - named "Eval"
 from esolangs.tools.helpers import (
@@ -86,12 +64,6 @@ from esolangs.tools.helpers import (
     permute_truth_table as permute_truth_table,
 )
 from esolangs.tools.minifuck import minifuck
-from esolangs.tools.nocomment import (
-    _NOCOMMENT_NARROW_MAX as _NOCOMMENT_NARROW_MAX,
-)
-from esolangs.tools.nocomment import (
-    _NOCOMMENT_SKIP_MAX as _NOCOMMENT_SKIP_MAX,
-)
 from esolangs.tools.nocomment import nocomment as nocomment
 from esolangs.tools.one_two_three import one_two_three
 from esolangs.tools.pct_squared_minus_one import pct_squared_minus_one
@@ -170,10 +142,8 @@ def bio(truth_table: str) -> str:
 
 
 #: ``x = 2 * x`` through ``y``: the first loop moves each unit of ``x`` into
-#: ``y`` twice, the second moves ``y`` back.  Both registers are non-negative
-#: throughout, so each loop runs its register down to zero and stops, and
-#: ``y`` ends where it started, at zero, so the result's accumulator is
-#: untouched.
+#: ``y`` twice, the second moves ``y`` back; both registers stay non-negative,
+#: so each loop terminates and ``y`` ends at zero.
 _BIO_DOUBLE = "0ix{1ox;0oy;0oy;};0iy{1oy;0ox;};"
 
 
@@ -202,10 +172,8 @@ def bfpda(truth_table: str) -> str:
         print_answer = ("<@" if value == "1" else "<") + ".>"
         return drain_preloaded_bits + print_answer
 
-    # Not routed through :func:`decision_tree_tokens`: this tree is a plain
-    # string with no index to thread, so the walker's token lists would have
-    # to be one-element lists unwrapped at every use, which reads worse than
-    # the four lines it saves.
+    # Not routed through :func:`decision_tree_tokens`: a plain string with no
+    # index to thread, so its token lists would be one-element lists throughout.
     def node(i: int, rows: list[int]) -> str:
         results = {truth_table[r] for r in rows}
         if i == n or len(results) == 1:

@@ -9,6 +9,8 @@ import itertools
 
 import pytest
 
+from tests.tools.pct_support import _fold_step
+
 #: The one pair every input is spelled by, at every arity.
 _PAIR = ("s", "i")
 
@@ -616,7 +618,7 @@ class TestPctThresholdPlans:
         assert plan == skeleton[: len(plan)]
         assert len(plan) < len(skeleton)
         for op in plan:
-            state = module._fold_step(state, op)  # noqa: SLF001
+            state = _fold_step(state, op)
             assert state is not None
         classes = [cls for _, _, cls, _ in state]
         assert sum(a != b for a, b in itertools.pairwise(classes)) == 1

@@ -1,9 +1,4 @@
-"""The Minifuck embed and the pool the endgame prints through.
-
-Every route embeds each input once with :func:`_embed` and prints through
-cells 0..7, the *pool*; the embed, pool codes, column derivation and
-endgame are shared here.
-"""
+"""The Minifuck embed and the pool (cells 0..7) the endgame prints through."""
 
 from functools import cache
 
@@ -18,18 +13,12 @@ _BASE = 16
 _SEPS = ("[x<[x", "[x[x[x", "[<[<[", "[[[[[", "[x[<[")
 _SEP = _SEPS[0]
 
-# Widening this multiplies every search's cost; the plan reaches the rest.
-_SCAN_SEPS = _SEPS[:2]
-
-# Reach of the bits and their working area, for sizing windows.
-_SPAN = 6
 
 # ASCII '0' (0b00110000) or '1' (0b00110001): cells 0..6 fixed, cell 7 answer.
 _POOL = (0, 0, 1, 1, 0, 0, 0)
 
-# ``.`` reads ``tape[:8]`` as one byte.  The same 8 is the ``_endgame``
-# floor, the rewind guard and :data:`_PROBE_WALK_OUT`; the sculpting loop
-# starting one past the guard is what makes the rewind bound tight.
+# ``.`` reads ``tape[:8]`` as one byte; the same 8 is the ``_endgame`` floor
+# and :data:`_PROBE_WALK_OUT`.
 _POOL_WIDTH = len(_POOL) + 1
 
 # ``[<`` lands at ``(acc-1) + v``, ``[x<[<`` at ``(acc-1) + NOT v``; the
@@ -105,34 +94,6 @@ def _render(steps: int, core: int, overrides: dict[int, tuple[int, bool]]) -> st
 
 
 _POOL_CODES = tuple(_render(*plan) for plan in _PLANS)
-
-
-def _pool_reaches(j: _Joint, code: str, cell7: int, walk_out: int) -> bool:
-    """Whether ``code`` leaves the pool correct once walked out.
-
-    Judged *after* the walk to the accumulator, which crosses the pool.
-    """
-    target = (*_POOL, cell7)
-    probe = [m.copy() for m in j.ms]
-    for char in code:
-        for m in probe:
-            m.exec(char)
-    if any(m.dead or m.skip for m in probe):
-        return False
-    if len({m.ptr for m in probe}) != 1:
-        return False
-    steps = walk_out - probe[0].ptr
-    if steps < 0:
-        return False
-    for _ in range(steps):
-        for char in "[x":
-            for m in probe:
-                m.exec(char)
-    for cell in range(_POOL_WIDTH):
-        col = {m.cell(cell) for m in probe}
-        if len(col) != 1 or probe[0].cell(cell) != target[cell]:
-            return False
-    return True
 
 
 # The verdict is invariant in the walk out (9..39), so the key omits it.
@@ -250,108 +211,3 @@ def _endgame(j: _Joint, acc: int, read: str, cell7: int) -> None:
         if len(set(j.col(cell))) != 1:
             raise AssertionError(f"pool cell {cell} is input-dependent")
     j.emit("[x.")
-
-
-def _complement(column: tuple[int, ...]) -> tuple[int, ...]:
-    """Flip every row of a column."""
-    return tuple(1 - bit for bit in column)
-
-
-# Keyed by ``(template, accumulator, orientation)``; a dict since ``None``
-# is a real answer.  ``_derived_plans.cache_clear`` empties it too (tests
-# count ``_find_pool`` sites, which a warm cache cuts to seventeen).
-_PRINTED_COLUMNS: dict[tuple[str, int, int], tuple[int, ...] | None] = {}
-_MISSING = object()
-
-
-def _printed_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
-    """Return what the ``'[x<[<'`` read prints here, without printing it.
-
-    After the pool code and walk to ``acc - 1`` the read reports ``ptr + 1``,
-    complemented for ``'[<'``.  Checked against :func:`_endgame` over 15600
-    columns; ``None`` on the two conditions it raises on.  Memoised on the
-    template: 12612 distinct triples at n=3 however many tables are asked.
-    """
-    key = (j.template(), acc, cell7)
-    hit = _PRINTED_COLUMNS.get(key, _MISSING)
-    if hit is not _MISSING:
-        return hit  # type: ignore[return-value]
-    column = _derive_column(j, acc, cell7)
-    _PRINTED_COLUMNS[key] = column
-    return column
-
-
-def _derive_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
-    """Return the column :func:`_printed_column` memoises, derived fresh.
-
-    For :func:`_try_print`, whose fresh template per sculpted build would
-    never hit the memo.
-    """
-    code = _find_pool(j, cell7, acc - 1)
-    if code is None:
-        return None
-    probe = j.fork()
-    probe.emit(code)
-    try:
-        _walk_to(probe, acc - 1)
-    except ValueError:  # pragma: no cover - not observed, not unreachable
-        # ``_find_pool`` ignores ``walk_out``; 1740 real stagings, no failure.
-        return None
-    return tuple(probe.col(probe.ms[0].ptr + 1))
-
-
-def _confirm(
-    j: _Joint, acc: int, read: str, cell7: int, column: tuple[int, ...]
-) -> bool:
-    """Whether the endgame really prints ``column`` here.
-
-    Nothing is recorded on the algebra alone.  :func:`_endgame`'s
-    input-independence assertion is a bug in the pair, not a miss, and propagates.
-    """
-    probe = j.fork()
-    try:
-        _endgame(probe, acc, read, cell7)
-    except ValueError:  # pragma: no cover - not observed (268 confirmations, n=2,3)
-        # Kept: an endgame that cannot run is the disagreement this exists for.
-        return False
-    printed = probe.printed()
-    if any(len(digit) != 1 for digit in printed):
-        return False
-    return tuple(int(digit) for digit in printed) == column
-
-
-def _try_print(j: _Joint, truth_table: str, acc: int) -> _Joint | None:
-    """Emit the endgame that prints the table at ``acc``, or None.
-
-    Read and orientation are computed from :func:`_derive_column` (the reads
-    differ only in polarity), in the old trial order; the output is still
-    compared against the table (15600 columns checked, corpus byte-identical).
-    """
-    if acc < _POOL_WIDTH:
-        # Mirrors ``_endgame``'s floor.  Not a dead guard: ``_degenerate``
-        # probes every cell and the constant-one column sits at cell 1.
-        return None
-    want = list(truth_table)
-    derived: dict[int, tuple[int, ...] | None] = {}
-    for read in _READS:
-        for cell7 in (0, 1):
-            if cell7 not in derived:
-                derived[cell7] = _derive_column(j, acc, cell7)
-            column = derived[cell7]
-            if column is None:
-                continue
-            digits = column if read == _READS[1] else _complement(column)
-            if list(map(str, digits)) != want:
-                continue
-            probe = j.fork()
-            try:
-                _endgame(probe, acc, read, cell7)
-            except ValueError:  # pragma: no cover - not observed
-                # The endgame refuses on the same two conditions the
-                # derivation declined on; a raise here is a derivation bug.
-                continue
-            if probe.printed() != want:  # pragma: no cover - the acceptance
-                # Never observed, but "seen to print" is the standard.
-                continue
-            return probe
-    return None

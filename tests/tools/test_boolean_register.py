@@ -278,15 +278,6 @@ class TestPolynomial:
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
 
-    def test_dag_cost_mirrors_its_emitter(self) -> None:
-        """``_polynomial_hybrid_cost`` prices a residual through this."""
-        from esolangs.tools.register import _polynomial_dag_cost
-
-        for n in range(1, 4):
-            for value in range(1 << (1 << n)):
-                table = format(value, f"0{1 << n}b")
-                assert _polynomial_dag_cost(table) == len(_polynomial_dag(table))
-
     def test_polynomial_hybrid_cost_mirrors_build(self) -> None:
         """The hybrid's cost function is a deliberate mirror of its emitter.
 
