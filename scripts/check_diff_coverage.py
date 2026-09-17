@@ -33,9 +33,11 @@ the branch introduced and the subset run can cheaply enforce.
 """
 
 import argparse
+import fnmatch
 import json
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +47,19 @@ ROOT = Path(__file__).resolve().parents[1]
 # (`source = ["src/esolangs"]`).  A touched file in tests/ or scripts/ has no
 # coverage record to check, so it is not evidence of anything either way.
 MEASURED = "src/esolangs/"
+
+
+def _omitted() -> list[str]:
+    """Return coverage's own ``omit`` patterns from ``pyproject.toml``.
+
+    A file coverage was told to omit (``_template.py``) never gets a record,
+    so without this the gate would read it as a module no test imports.
+    """
+    with (ROOT / "pyproject.toml").open("rb") as fh:
+        config = tomllib.load(fh)
+    return list(
+        config.get("tool", {}).get("coverage", {}).get("run", {}).get("omit", [])
+    )
 
 
 def _added_lines(base: str) -> dict[str, set[int]] | None:
@@ -202,7 +217,14 @@ def main() -> int:
         print("skip: could not read the branch diff")
         return 0
 
-    targets = {f for f in added if f.startswith(MEASURED) and f.endswith(".py")}
+    omitted = _omitted()
+    targets = {
+        f
+        for f in added
+        if f.startswith(MEASURED)
+        and f.endswith(".py")
+        and not any(fnmatch.fnmatch(f, pattern) for pattern in omitted)
+    }
     if not targets:
         print(f"skip: branch touched no files under {MEASURED}")
         return 0
