@@ -8,18 +8,10 @@ from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
 def circlefuck(truth_table: str) -> str:
     """Build a Circlefuck program computing the given truth table.
 
-    ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), ``n`` is the input count implied by the table length.
-
-    Circlefuck reads each input with ``,`` and normalizes it to 0/1 with 48
-    ``-``s, then a decision tree branches on the cells from the last input
-    down. Each leaf starts from a cleared cell, so it sets the result with
-    ``+``s, prints it, and halts with ``@`` -- halting at the leaf means the
-    tree never needs to skip the sibling branch.  A boolean table is just
-    the byte-valued generator with ``48 + bit`` outputs.
-
-    A subtree whose rows all agree folds to a leaf; see
-    :func:`circlefuck_byte`, which both share.
+    ``,`` reads each input, 48 ``-``s normalize, and a decision tree branches
+    from the last input down; each leaf sets a cleared cell with ``+``s,
+    prints, and halts with ``@``.  The byte-valued generator with
+    ``48 + bit`` outputs (:func:`circlefuck_byte`).
     """
     # Validated here rather than left to ``circlefuck_byte``: that one takes
     # a *byte* table, where a single entry is a legal constant, so it cannot
@@ -31,23 +23,11 @@ def circlefuck(truth_table: str) -> str:
 def circlefuck_byte(truth_table: Sequence[int]) -> str:
     """Build a Circlefuck program computing a byte-valued function.
 
-    ``truth_table`` is a sequence of ``2**n`` byte values (0-255) indexed by
-    the inputs (most significant first); the input count ``n`` is implied
-    by the table length.  This is the boolean generator generalized to
-    arbitrary byte outputs: each leaf prints ``chr(value)`` instead of
-    ``chr(48 + bit)``.
-
-    A subtree whose rows all agree becomes a leaf rather than branching on
-    bits that cannot change the answer.  The reads sit above the tree and
-    are unconditional, so a folded program consumes its input exactly as an
-    unfolded one does.
-
-    **The tree compares its identity and greedy input orders.**  Unlike
-    generators whose nodes
-    *name* the input they test, a Circlefuck node tests whatever cell the
-    pointer is over, so an order is not a renaming: the tree has to walk
-    the pointer to the cell it wants, and the walk is a real cost the fold
-    has to beat.  See :func:`_circlefuck_ordered`.
+    ``truth_table`` is ``2**n`` byte values, MSB first; each leaf prints
+    ``chr(value)``.  A constant subtree folds; the reads are unconditional
+    above the tree.  Identity and greedy orders compete: a node tests the
+    cell under the pointer, so an order is a walk with a real cost
+    (:func:`_circlefuck_ordered`).
     """
     n = len(truth_table).bit_length() - 1
     if len(truth_table) != 2**n:
@@ -61,14 +41,8 @@ def circlefuck_byte(truth_table: Sequence[int]) -> str:
 def _best_byte_order(truth_table: Sequence[int], n: int) -> str:
     """Return the shorter program from the identity and greedy orders.
 
-    The byte-valued twin of
-    :func:`~esolangs.tools.helpers.best_input_order`, which takes a
-    binary *string*; the search and its guarantees are the same.  The
-    identity order goes first and ties keep it, so a table no reorder helps
-    emits exactly what it emitted before.
-
-    The identity and greedy orders are both built, so the heuristic cannot
-    make the output longer.
+    The byte-valued twin of :func:`~esolangs.tools.helpers.best_input_order`;
+    identity first, ties keep it.
     """
     best = _circlefuck_ordered(list(truth_table), tuple(range(n)))
     if n < 2:
@@ -86,14 +60,8 @@ _CIRCLEFUCK_PASSES = 8
 def _essential_byte_inputs(truth_table: Sequence[int], n: int) -> list[int]:
     """Return the inputs the byte table depends on, ascending.
 
-    An input is inessential when flipping it never changes the value: the
-    two halves of every subtree that splits on it are the same.  In the
-    packed table those halves are adjacent runs, so the test is one
-    comparison per pair of sibling blocks -- ``2**n / 2**(b + 1)`` pairs
-    for the input at row bit ``b``, a total of ``2**n`` Python steps over
-    all inputs.  The bytes compared come to ``n * 2**n / 2``, which at a
-    word width of ``w`` is ``n * 2**n / (2 w)`` word operations, and
-    ``n <= w`` for any table that fits in memory, so this is O(T).
+    One comparison per pair of sibling blocks, ``2**n`` steps in all; the
+    bytes compared are ``n * 2**n / 2``, O(T) at word width.
     """
     packed = bytes(truth_table)
     width = len(packed)
@@ -111,19 +79,11 @@ def _essential_byte_inputs(truth_table: Sequence[int], n: int) -> list[int]:
 def _circlefuck_greedy(truth_table: Sequence[int], n: int) -> str:
     """Pick an order level by level, in a fixed number of passes.
 
-    The inputs the table depends on go first, since splitting on any other
-    folds nothing, and among them each level takes the one that creates
-    the most constant subtrees (:func:`_constant_subtree_scores`, one pass
-    over the rows per level, with the subtree keys carried from the level
-    before).  After :data:`_CIRCLEFUCK_PASSES` passes the rest of the
-    essential inputs follow the last pass's scores, and the inessential
-    ones come last in stream order.
-
-    Scoring every level was one pass per input, ``Theta(T log T)`` by
-    construction.  On a 231-table corpus to twelve inputs, stopping at
-    eight passes changes four programs by under half a percent and
-    shrinks the corpus overall; a table with at most eight essential
-    inputs gets exactly the full greedy.
+    Essential inputs first, each level taking the one creating the most
+    constant subtrees (:func:`_constant_subtree_scores`); after
+    :data:`_CIRCLEFUCK_PASSES` the rest follow the last scores.  Full greedy
+    was ``Theta(T log T)``; eight passes change four of a 231-table corpus
+    by under half a percent.
     """
     essential = _essential_byte_inputs(truth_table, n)
     remaining = list(essential)
@@ -152,18 +112,10 @@ def _constant_subtree_scores(
 ) -> list[int]:
     """Count the constant subtrees splitting each subtree on ``i``, per ``i``.
 
-    ``keys[row]`` names the row's subtree: rows agreeing on every input in
-    the prefix chosen so far share a key.  A subtree is constant when the
-    table takes one value across all of its rows, which is exactly when the
-    build folds it to a leaf.  The tests keep the one-prefix definition
-    this is checked against.
-
-    One pass over the rows.  A row's index *is* the vector of its input
-    bits, so which half of its subtree the row falls into for every
-    candidate at once is the index itself (candidates reading 1) and its
-    complement (candidates reading 0).  Each subtree keeps, per table
-    value, the OR of those two vectors, and a half is then constant where
-    exactly one value's mask reaches it -- for every candidate in one word.
+    One pass: a row's index is its bit vector, so each subtree keeps per
+    table value the OR of the index and its complement, and a half is
+    constant where exactly one value's mask reaches it -- every candidate in
+    one word.
     """
     width = len(truth_table)
     full = (1 << n) - 1
@@ -200,25 +152,11 @@ def _constant_subtree_scores(
 def _circlefuck_ordered(truth_table: list[int], perm: tuple[int, ...]) -> str:
     """Emit one input order's Circlefuck program; see :func:`circlefuck_byte`.
 
-    ``truth_table`` is in stream order and ``perm[k]`` is the input tested
-    at level ``k``, so the tree's row index -- bit ``k`` for level ``k`` --
-    is not the table's: every node carries its table index alongside,
-    adding ``2**(n-1-perm[k])`` where the row adds ``2**(n-1-k)``.  That is
-    what a permuted copy of the table used to spell out, at ``n`` steps
-    per row; here it is one addition per node.
-
-    A subtree folds when every row it could reach agrees.  Whether it does
-    is settled bottom-up before anything is emitted -- a node is constant
-    when both children are and agree -- one visit per node, where testing
-    each node's rows as the build reached it read every row once per
-    level.
-
-    **The walk is what makes this generator's reorder a real question.**  A
-    node here does not name its input, it tests the cell under the pointer,
-    so a level costs ``|previous cell - perm[k]|`` move characters on top of
-    its branch.  The identity order is the one the walk is free for -- it
-    steps left one cell per level, the single ``<`` the unordered build
-    emitted -- so any other order has to fold enough to pay for its moves.
+    The table is in stream order, so each node carries its table index
+    (``2**(n-1-perm[k])``) beside its row index.  Folding is settled
+    bottom-up, one visit per node.  A level costs
+    ``|previous cell - perm[k]|`` moves; the identity's walk is the single
+    ``<`` the unordered build emitted.
     """
     n = len(perm)
     prog: list[str] = []
