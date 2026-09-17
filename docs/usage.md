@@ -34,7 +34,7 @@ steps rather than the result, they are `generate`, `encode_inputs`, `run`,
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
 - `esolangs.evaluate` -- return the truth table a generated `language` program *actually* computes
 - `esolangs.generate` -- return a program in `language` computing `truth_table`
-- `esolangs.instantiate` -- fill a parameterized generator's `{Xi}` slots with `bits`
+- `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
 - `esolangs.list_languages` -- return the supported language names, sorted
 - `esolangs.make_debugger` -- return a `Debugger` over a fresh `VM` for `language`
 - `esolangs.make_vm` -- return a step-and-inspect wrapper around `language`'s interpreter
@@ -87,11 +87,14 @@ surplus line as well as a missing one.
 
 ## Templates
 
-Seventeen languages embed the inputs in the program rather than reading
-them, so `generate` returns a template with a `{Xi}` slot per input. Fill
-it with `esolangs.instantiate(language, template, bits)`; running one
-unfilled is refused. `esolangs list --details` marks them `tmpl` and
-identifies each one.
+Eighteen languages embed the inputs in the program rather than reading
+them, so `generate` returns a template: the program with each input spelled
+as a run of `$` (a character outside the language), one run per input in
+order and exactly as long as the code that replaces it, so the template is
+the shape of every program it fills to.  Fill it with
+`esolangs.instantiate(language, template, bits)`; running one unfilled is
+refused.  `esolangs list --details` marks them `tmpl` and identifies each
+one.
 
 ## Reading the answer
 

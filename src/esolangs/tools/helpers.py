@@ -200,6 +200,75 @@ def check_slots(template: str, n: int) -> None:
         )
 
 
+#: The character a public template spells its inputs with, unless a
+#: language declares another: outside every embedding language's alphabet.
+TEMPLATE_CHAR = "$"
+
+
+def render(template: str, char: str, setters: Setters) -> str:
+    """Return the public template: each ``{Xi}`` as a run of ``char``.
+
+    The run is as long as input ``i``'s setters, so the template is the
+    exact shape of every program it fills to, and consecutive inputs need
+    no separator between their runs -- the widths say where one ends.
+    """
+    check_slots(template, len(setters))
+    for i, (zero, _one) in enumerate(setters):
+        template = template.replace("{X" + str(i) + "}", char * len(zero))
+    return template
+
+
+def runs(text: str, char: str, setters: Setters) -> list[tuple[int, int]]:
+    """Return the ``[start, end)`` of each input's run in ``text``.
+
+    Runs of ``char`` are consumed left to right in consecutive setter
+    widths, and every occurrence of ``char`` must belong to one: a run of
+    the wrong length, a run left over, or a ``char`` in the program text
+    proper all refuse, since each means the template is not the shape its
+    setters describe.
+    """
+    widths = [len(zero) for zero, _one in setters]
+    spans: list[tuple[int, int]] = []
+    position = 0
+    for i, width in enumerate(widths):
+        start = text.find(char, position)
+        if start < 0:
+            raise ValueError(
+                f"template has {i} run(s) of {char!r}, setters name {len(widths)}"
+            )
+        end = start + width
+        if text[start:end] != char * width:
+            raise ValueError(
+                f"input {i}'s run of {char!r} at {start} is shorter than its "
+                f"setter width {width}"
+            )
+        spans.append((start, end))
+        position = end
+    stray = text.find(char, position)
+    if stray >= 0:
+        raise ValueError(
+            f"{char!r} at {stray} belongs to no input: {len(widths)} setter(s), "
+            f"more runs than that"
+        )
+    return spans
+
+
+def fill_runs(text: str, char: str, setters: Setters, bits: Sequence[int]) -> str:
+    """Return ``text`` with each input's run replaced by its bit's setter."""
+    if len(bits) != len(setters):
+        raise ValueError(f"expected {len(setters)} bits, got {len(bits)}")
+    out: list[str] = []
+    position = 0
+    for (start, end), (zero, one), bit in zip(
+        runs(text, char, setters), setters, bits, strict=True
+    ):
+        out.append(text[position:start])
+        out.append(one if bit else zero)
+        position = end
+    out.append(text[position:])
+    return "".join(out)
+
+
 def instantiate(template: str, bits: list[int], set_bit: SetBit | Setters) -> str:
     """Substitute each ``{Xi}`` placeholder.
 

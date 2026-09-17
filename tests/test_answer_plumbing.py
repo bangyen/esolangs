@@ -193,7 +193,7 @@ class TestATemplateKnowsWhoseItIs:
         template = esolangs.generate("Minifuck", "0110")
         assert isinstance(template, str)
         assert template == str(template)
-        assert "{X0}" in template
+        assert "$$" in template
 
 
 class TestATemplateCarriesItsSetters:
@@ -216,10 +216,7 @@ class TestATemplateCarriesItsSetters:
             assert all(len(zero) == len(one) for zero, one in pairs), name
 
     def test_a_reading_language_has_no_setters(self) -> None:
-        from esolangs.tagged import _Template
-
         assert getattr(esolangs.generate("brainfuck", "0110"), "setters", None) is None
-        assert _Template("{X0}", "Minifuck").setters is None
 
     def test_unequal_widths_are_refused(self) -> None:
         from esolangs.tagged import _Template
@@ -227,29 +224,63 @@ class TestATemplateCarriesItsSetters:
         with pytest.raises(ValueError, match="differ in width"):
             _Template("{X0}", "Minifuck", setters=[("x", "xx")])
 
-    def test_slots_out_of_order_are_refused(self) -> None:
+    def test_runs_that_do_not_fit_the_setters_are_refused(self) -> None:
         from esolangs.tagged import _Template
 
-        with pytest.raises(ValueError, match="once each in order"):
-            _Template("{X1}{X0}", "Minifuck", setters=[("a", "b"), ("c", "d")])
-        with pytest.raises(ValueError, match="once each in order"):
-            _Template("{X0}{X0}", "Minifuck", setters=[("a", "b")])
-        with pytest.raises(ValueError, match="once each in order"):
-            _Template("{X0}", "Minifuck", setters=[("a", "b"), ("c", "d")])
+        with pytest.raises(ValueError, match="shorter than its setter width"):
+            _Template("a$b$$", "Minifuck", setters=[("aa", "bb"), ("c", "d")])
+        with pytest.raises(ValueError, match="belongs to no input"):
+            _Template("a$$b$", "Minifuck", setters=[("aa", "bb")])
+        with pytest.raises(ValueError, match="1 run"):
+            _Template("a$$b", "Minifuck", setters=[("aa", "bb"), ("c", "d")])
 
-    def test_the_pairs_fill_the_template(self) -> None:
-        from esolangs.tools.helpers import instantiate
+    def test_a_generator_marking_its_slots_out_of_order_is_refused(self) -> None:
+        from esolangs.tools.helpers import fill_runs, render
 
-        template = esolangs.generate("Minifuck", "0110")
-        by_pairs = instantiate(template, [0, 1], template.setters)
-        assert by_pairs == esolangs.instantiate("Minifuck", template, [0, 1])
+        with pytest.raises(ValueError, match="once each in order"):
+            render("{X1}{X0}", "$", (("a", "b"), ("c", "d")))
+        with pytest.raises(ValueError, match="expected 2 bits"):
+            fill_runs("$$", "$", (("a", "b"), ("c", "d")), [1])
+
+    def test_adjacent_inputs_need_no_separator(self) -> None:
+        from esolangs.tagged import _Template
+
+        template = _Template("a$$$b", "Minifuck", setters=[("xx", "yy"), ("p", "q")])
+        assert template.fill([1, 0]) == "ayypb"
+        assert template.fill([0, 1]) == "axxqb"
+
+    def test_the_template_is_the_shape_of_every_program(self) -> None:
+        """Every run is as long as its setter, so filling moves no character.
+
+        %^2^-1 is the one exception in text: its template carries a header
+        naming the setters, which the interpreter never sees and filling
+        strips; its body is the shape of its programs.
+        """
+        from esolangs.registry import template_body
+
+        for name in ("Minifuck", "Bitdeque", "%^2^-1", "Nopstacle"):
+            template = esolangs.generate(name, "0110")
+            shape = len(template_body(esolangs.describe(name)["id"], template))
+            for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
+                assert len(esolangs.instantiate(name, template, bits)) == shape
+
+    def test_a_plain_string_is_filled_by_recovering_its_setters(self) -> None:
+        for name in ("Minifuck", "Bitdeque", "%^2^-1", "A Painter Ant"):
+            template = esolangs.generate(name, "0110")
+            assert esolangs.instantiate(name, str(template), [1, 0]) == (
+                esolangs.instantiate(name, template, [1, 0])
+            )
+        with pytest.raises(esolangs.TemplateError, match="not a Minifuck template"):
+            esolangs.instantiate("Minifuck", "abc$$$", [1, 0])
 
     def test_the_setters_survive_a_width_and_a_pickle(self) -> None:
         import pickle
 
         template = esolangs.generate("Minifuck", "0110", 20)
         assert template.setters == esolangs.generate("Minifuck", "0110").setters
-        assert pickle.loads(pickle.dumps(template)).setters == template.setters
+        copied = pickle.loads(pickle.dumps(template))
+        assert copied.setters == template.setters
+        assert copied.char == template.char
 
 
 class TestAProgramKnowsWhoseItIs:
@@ -310,9 +341,7 @@ class TestAProgramKnowsWhoseItIs:
         assert copied == program
         assert getattr(copied, "language", None) == "brainfuck"
         template = pickle.loads(pickle.dumps(esolangs.generate("Minifuck", "0110", 20)))
-        assert getattr(template, "unwrapped", None) == esolangs.generate(
-            "Minifuck", "0110"
-        )
+        assert template == esolangs.generate("Minifuck", "0110")
 
     def test_a_width_keeps_the_tag(self) -> None:
         program = esolangs.generate("brainfuck", "0110", 20)
@@ -1104,13 +1133,11 @@ class TestEveryDumpSaysWhereTheAnswerIs:
 
 
 class TestFillingSomethingWithNoSlots:
-    """ "0 input slots" is true and answers a question nobody asked."""
+    """ "0 inputs" is true and answers a question nobody asked."""
 
     def test_a_plain_program_says_it_is_not_a_template(self) -> None:
         """The mistake is "this is not a template", not a count of zero."""
-        with pytest.raises(
-            esolangs.TemplateError, match=re.escape("no {Xi} slots to fill")
-        ):
+        with pytest.raises(esolangs.TemplateError, match=re.escape("no run of '$'")):
             esolangs.instantiate("Minifuck", "abc", [1, 0])
 
     def test_filling_twice_says_the_same_thing(self) -> None:
@@ -1123,7 +1150,7 @@ class TestFillingSomethingWithNoSlots:
     def test_a_real_slot_mismatch_still_counts(self) -> None:
         """The count is the right answer when there *are* slots."""
         template = esolangs.generate("Minifuck", "0110")
-        with pytest.raises(esolangs.TemplateError, match="2 input slots"):
+        with pytest.raises(esolangs.TemplateError, match="2 inputs"):
             esolangs.instantiate("Minifuck", template, [1, 0, 1])
 
 

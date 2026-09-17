@@ -422,7 +422,7 @@ class TestDebugMakesTheSameRefusals:
         with pytest.raises(SystemExit) as exc:
             call_main(["debug", "Minifuck", str(path)], capsys)
         assert exc.value.code == 2
-        assert "{X0}" in capsys.readouterr().err
+        assert "unfilled runs of '$'" in capsys.readouterr().err
 
     def test_a_load_error_is_reported_not_raised(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

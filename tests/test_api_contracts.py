@@ -75,7 +75,7 @@ class TestParameterizedTemplates:
         template = esolangs.generate("Minifuck", XOR)
         with pytest.raises(TemplateError) as exc:
             esolangs.run("Minifuck", template)
-        assert "{X0}" in str(exc.value)
+        assert "unfilled runs of '$'" in str(exc.value)
         assert "instantiate" in str(exc.value)
 
     def test_instantiating_gives_the_right_answer(self) -> None:
@@ -338,7 +338,7 @@ class TestInstantiateValidates:
 
     def test_the_bit_count_must_match_the_slots(self) -> None:
         template = esolangs.generate("Minifuck", XOR)
-        with pytest.raises(TemplateError, match="2 input slots, but 1 bit was given"):
+        with pytest.raises(TemplateError, match="2 inputs, but 1 bit was given"):
             esolangs.instantiate("Minifuck", template, [1])
 
     def test_a_bit_must_be_a_bit(self) -> None:

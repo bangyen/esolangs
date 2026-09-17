@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from esolangs.tools.helpers import Setters, check_setters, check_slots
+from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
+    Setters,
+    check_setters,
+    fill_runs,
+    runs,
+)
 
 __all__ = ["_Tagged", "_Template"]
 
@@ -41,61 +47,66 @@ class _Tagged(str):
 
 
 class _Template(_Tagged):
-    """A parameterized generator's template, tagged with the language.
+    """A parameterized generator's template: the program's shape, plus how to fill it.
 
-    A template is otherwise an ordinary string of source with ``{Xi}`` slots
-    in it, and that is the whole problem: :func:`instantiate` had no way to
-    tell whose it was, so it accepted any name and substituted *that*
-    language's setter code into another language's program.  The result was
-    not an error and not obviously wrong -- it ran, and answered::
+    The text is the program with each input spelled as a run of one
+    character (``$`` unless the language declares another) exactly as long
+    as that input's setter, so ``len(template) == len(program)`` for every
+    row it fills to and consecutive inputs need no separator: the setter
+    widths say where one run ends.  ``setters`` is one ``(zero, one)`` pair
+    per input, in order -- the k-th run *is* input k, there is no index to
+    keep in step with anything -- and the constructor holds the
+    conventions: every pair equal width (or the program's length would
+    carry the bit), the runs accounting for every occurrence of the
+    character (a run of the wrong length, a run left over, or the character
+    in the program text proper all refuse).
+
+    The language tag is what lets :func:`esolangs.instantiate` refuse a
+    template under another name.  Filling one language's template as
+    another was not an error and not obviously wrong -- it ran, and
+    answered::
 
         mf = generate("Minifuck", "0110")     # XOR
         instantiate("RAM0", mf, [0, 1])       # wrong language, no complaint
         # ... and the program answers 0, where XOR of 0 and 1 is 1.
 
-    Syntax cannot catch that; the mismatched program was well-formed. So the
-    template carries its language and :func:`instantiate` compares.
-
     The tag is an attribute on a ``str`` subclass rather than a wrapper type,
     so a template stays a string everywhere else -- written to files,
-    printed, sliced.  Which means it does not survive a round trip through
-    disk, so a plain ``str`` is accepted unchecked: the check catches the
-    mistake where it is made and does not pretend to cover the file the CLI
-    wrote an hour ago.
+    printed, sliced.  Which means the pairs do not survive a round trip
+    through disk; a plain string is filled by recovering them from the
+    language's own setters (:func:`esolangs.registry.recover_setters`),
+    which the runs' total length determines.
+
+    A template is never wrapped: it is the shape of its programs, and a
+    width applies when it is filled.
     """
 
-    unwrapped: str
-    setters: Setters | None
+    char: str
+    setters: Setters
 
     def __new__(
         cls,
         text: str,
         language: str,
-        unwrapped: str = "",
-        setters: Sequence[tuple[str, str]] | None = None,
+        char: str = TEMPLATE_CHAR,
+        setters: Sequence[tuple[str, str]] = (),
     ) -> _Template:
-        """Return ``text`` tagged as ``language``'s template.
-
-        ``unwrapped`` is the same template before a width was applied, kept
-        because :func:`instantiate` cannot recover it: a reflow wrapper
-        leaves ordinary newlines behind and there is no way to tell the ones
-        it inserted from ones the generator meant.  Without it a width on
-        ``instantiate`` was a no-op for every parameterized language --
-        ``wrap_program`` declines to reflow a program that already has
-        newlines, which after ``generate(table, width)`` it always does.
-        """
+        """Return ``text`` tagged as ``language``'s template."""
         template = super().__new__(cls, text, language)
-        template.unwrapped = unwrapped or text
-        template.setters = None
-        if setters is not None:
-            # The conventions, held by the object rather than by every
-            # caller: one equal-width pair per input, and the slots are
-            # exactly ``{X0}``..``{Xn-1}`` once each in order, so the k-th
-            # slot is input k and there is one width to check.
-            template.setters = check_setters(setters)
-            check_slots(template.unwrapped, len(template.setters))
+        template.char = char
+        template.setters = check_setters(setters)
+        runs(text, char, template.setters)
         return template
 
+    @property
+    def inputs(self) -> int:
+        """How many inputs the template embeds."""
+        return len(self.setters)
+
+    def fill(self, bits: Sequence[int]) -> str:
+        """Return the program for ``bits``."""
+        return fill_runs(str(self), self.char, self.setters, bits)
+
     def __reduce__(self) -> tuple[object, ...]:
-        """Pickle with the unwrapped source and the setters as well."""
-        return (type(self), (str(self), self.language, self.unwrapped, self.setters))
+        """Pickle with the character and the setters."""
+        return (type(self), (str(self), self.language, self.char, self.setters))

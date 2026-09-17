@@ -225,22 +225,6 @@ def _span(length: int, cell: int) -> int:
     return max(1, -(-(length + 1) // (cell + 1)))
 
 
-#: A ``{Xi}`` placeholder is one token in *every* language, because
-#: ``BooleanExample.fill`` finds one by string replace: a newline through the
-#: middle leaves it unfilled and the program reads the halves as commands.
-#:
-#: This belongs here rather than in the individual patterns because it is a
-#: property of the templates, not of any language's grammar -- and stating it
-#: per-pattern is what let it be missed.  Tiling is not enough to protect it:
-#: a ``.`` alternative tiles a placeholder one character at a time, so the
-#: tokens still cover the program and :func:`_join_tokens` is still free to
-#: break it in half.  Six languages did, at widths up to 118.
-#:
-#: A *filled* program has no placeholder in it, so this changes nothing for
-#: one; it only ever applies to a template.
-_PLACEHOLDER = r"\{X\d+\}"
-
-
 def wrap_tokens(program: str, width: int, pattern: str) -> str:
     """Wrap a program whose tokens are the matches of ``pattern``.
 
@@ -249,14 +233,8 @@ def wrap_tokens(program: str, width: int, pattern: str) -> str:
     pattern must tile the program exactly -- every character belongs to some
     token -- so that rejoining the tokens reproduces the input; a program
     that does not tile is returned unwrapped rather than corrupted.
-
-    A :data:`_PLACEHOLDER` is tried ahead of ``pattern``, so no caller has to
-    remember to spell one out.  Alternation is ordered and anchored at each
-    position, so this only wins where a placeholder actually begins: a
-    command that merely happens to carry a ``{`` still matches its own
-    alternative.
     """
-    tokens = re.findall(f"{_PLACEHOLDER}|{pattern}", program)
+    tokens = re.findall(pattern, program)
     if "".join(tokens) != program:
         return program
     return _join_tokens(tokens, width, separator="")
@@ -266,15 +244,9 @@ def wrap_chars(program: str, width: int) -> str:
     """Wrap a program whose every character is its own token.
 
     The single-character-command families (Brainfuck and its relatives),
-    where any position is a legal break -- except through a
-    :data:`_PLACEHOLDER`, which is why a template takes the token path.  The
-    slice below is the same packing for single-character tokens and stays
-    the path for the programs that have no placeholder to protect.
+    where any position is a legal break.
     """
-    if "{X" not in program:
-        return "\n".join(program[i : i + width] for i in range(0, len(program), width))
-    tokens = re.findall(f"{_PLACEHOLDER}|[\\s\\S]", program)
-    return _join_tokens(tokens, width, separator="")
+    return "\n".join(program[i : i + width] for i in range(0, len(program), width))
 
 
 def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
@@ -299,18 +271,7 @@ def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
 # commands with.  The commands are why BIO cannot be wrapped by character
 # count, and their varying width is why a fixed stride will not do either.
 #
-# ``{Xi}`` is here because BIO is *parameterized*: what
-# :func:`~esolangs.generate` is handed to wrap is the template, placeholders
-# and all.  Without it the tokens did not cover the program, :func:`_bio`
-# took its "I cannot read this, leave it alone" exit, and the wrapper was a
-# silent no-op on every template -- 3466 columns at eight inputs, reported
-# as wrapped.  The committed examples never saw it because they fill first.
-#
-# It stays spelled out here, unlike in :data:`_PCT_COMMAND`, because
-# :func:`_bio` tokenizes with this pattern *itself* rather than through
-# :func:`wrap_tokens` -- so it does not get :data:`_PLACEHOLDER` prepended,
-# and dropping this alternative would restore the no-op.  A test covers it.
-_BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};|\{X\d+\}| "
+_BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};| "
 
 # Brainfuck-family single-character commands, and the languages that
 # extend them with a digit argument (Dimensional's ``>0``/``<0``).
@@ -706,70 +667,21 @@ def _taglate(program: str, width: int) -> str:
     return seed + "\n" + wrap_chars(commands.replace("\n", ""), width)
 
 
-# %^2^-1's commands are single characters; the placeholder that is not one is
-# :data:`_PLACEHOLDER`'s business, not this pattern's.
+# %^2^-1's commands are single characters.
 _PCT_COMMAND = r"."
+
 
 # What divides a %^2^-1 template's setter header from its body: a blank line,
 # so that a single newline inside either part is that part's own fold.
 #
-# Spelled here rather than imported, because importing it would pull the whole
-# ``esolangs.tools`` package -- thirty-odd generator modules -- into a
-# module that otherwise needs nothing but the standard library.  The generator
-# owns the value (``pct_squared_minus_one._HEADER_END``) and a test asserts the
-# two agree, so the duplication cannot drift silently.
-_PCT_HEADER_END = "\n\n"
-
-
 def _pct_squared_minus_one(program: str, width: int) -> str:
-    """Wrap %^2^-1: fold the setter-declaration header as well as the body.
+    """Wrap %^2^-1, whose commands are single characters.
 
-    A %^2^-1 *template* is a header of ``0=zero|one;1=...`` declarations, a
-    blank line, and the body.  ``fill`` reads the declarations out of the
-    header and substitutes them into the body.
-
-    The header used to be left on one row, on the grounds that it was
-    "structural".  It is not the *language's* structure -- the interpreter
-    never sees a header, ``fill`` consumes it -- so what kept it whole was
-    our own template format, and the format changed: the header is
-    terminated by a blank line, and ``fill`` discards the header's newlines
-    before reading it.  So the header folds, and 1407 columns at eight
-    inputs become the width asked for.
-
-    It folds at a ``;`` where it can, so a row holds whole declarations, and
-    *inside* one where it must.  The second case is not an edge: one
-    declaration is 175 characters and does not shrink with ``n``, so
-    breaking only between declarations would leave a 175-column floor
-    whatever the width.
-
-    A *filled* program has no header at all and folds entirely.  Both shapes
-    arrive here: :func:`~esolangs.generate` wraps the template, and the
-    committed examples wrap what ``fill`` returns.
-
-    The commands are single characters, so the only unbreakable unit is a
-    ``{Xi}`` placeholder in an unfilled template.
+    Only filled programs arrive here: a template is never wrapped (it is
+    the shape of its programs, and a width applies when it is filled), so
+    the setter-declaration header a template carries is never folded.
     """
-    header, blank, body = program.partition(_PCT_HEADER_END)
-    if not blank:
-        return wrap_tokens(program, width, _PCT_COMMAND)
-    folded = _pct_header(header.replace("\n", ""), width)
-    return folded + blank + wrap_tokens(body.replace("\n", ""), width, _PCT_COMMAND)
-
-
-def _pct_header(header: str, width: int) -> str:
-    """Fold a %^2^-1 header, preferring a break between two declarations.
-
-    Each declaration carries the ``;`` that ends it, so the units pack like
-    any other token; a unit too wide for the line is then folded by
-    character, which is safe because ``fill`` strips the header's newlines
-    before it reads.
-    """
-    units = [unit + ";" for unit in header.split(";")]
-    units[-1] = units[-1][:-1]  # the last declaration has no ``;`` after it
-    rows: list[str] = []
-    for row in _join_tokens(units, width, separator="").split("\n"):
-        rows.append(row if len(row) <= width else wrap_chars(row, width))
-    return "\n".join(rows)
+    return wrap_tokens(program, width, _PCT_COMMAND)
 
 
 def _qoibl(program: str, width: int) -> str:
@@ -875,16 +787,12 @@ WRAPPERS = {
 # The languages whose wrapper handles an already-multi-line program itself,
 # rather than being skipped by :func:`wrap_program` for having a newline in
 # it.  Taglate's first line seeds its queue and is structural, so its
-# wrapper keeps that row whole and folds only the commands below it;
-# %^2^-1's first line declares its setters and is structural for the same
-# reason, being what ``fill`` parses to instantiate the body.
+# wrapper keeps that row whole and folds only the commands below it.
 # Qoibl is multi-line for a third reason: none of its lines is structural,
 # but every one is a statement, so its wrapper folds each separately rather
 # than reflowing the program as one stream.  The language would not notice
 # the difference -- a newline is whitespace to it -- but the reader would.
-MULTILINE = frozenset(
-    {"taglate", "pct_squared_minus_one", "qoibl", "forbin", "packlang"}
-)
+MULTILINE = frozenset({"taglate", "qoibl", "forbin", "packlang"})
 
 
 def takes_width(fn: Callable[..., str]) -> bool:

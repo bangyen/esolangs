@@ -172,7 +172,7 @@ def _list(rest: list[str]) -> None:
     width = max(len(name) for name in LANGUAGES)
     # The legend lived in `list --help` only, so the marker columns arrived
     # unexplained for anyone who ran the thing before reading about it.
-    print(f"{'language'.ljust(width)}  gen=generator tmpl={{Xi}} ex=example")
+    print(f"{'language'.ljust(width)}  gen=generator tmpl=template ex=example")
     for name in list_languages():
         facts = describe(name)
         marks = " ".join(
@@ -422,12 +422,10 @@ def _generate(rest: list[str]) -> None:
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
     try:
         # Widthed at both ends, and that is not a mistake.  ``generate``
-        # lays the template out -- which is the only place a *layout*
-        # language like COD can honour a width at all -- and ``instantiate``
-        # reflows the filled program from the template's pre-width source,
-        # because the setter code replacing a slot is wider than the four
-        # columns the slot took.  Generating unwrapped here instead threw
-        # COD's and WII2D's layout away.
+        # hands the width to a *layout* language like COD, which lays its
+        # template out and is the only place it can honour one (a template
+        # is otherwise never wrapped), and ``instantiate`` wraps the filled
+        # program.
         program = generate(rest[0], rest[1], width)
         if "--bits" in options:
             bits = options["--bits"]

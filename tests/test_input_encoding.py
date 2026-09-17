@@ -82,14 +82,17 @@ class TestTheExceptionalLanguages:
 
 
 class TestTemplatesAreNotWrapped:
-    """A ``{Xi}`` slot is not a token any wrapper knows."""
+    """A template's run of its character is one token to every wrapper."""
 
     @pytest.mark.parametrize("language", ["Home Row", "123", "A Painter Ant", "Eval"])
     def test_a_width_leaves_a_template_intact(self, language: str) -> None:
-        """A narrow width used to cut ``{X1}`` in half, silently."""
-        template = esolangs.generate(language, XOR, width=5)
-        assert "{X0}" in template
-        assert "{X1}" in template
+        """A narrow width used to cut a slot in half, silently."""
+        narrow = esolangs.generate(language, XOR, width=5)
+        plain = esolangs.generate(language, XOR)
+        assert narrow.setters == plain.setters
+        assert narrow.count(narrow.char) == sum(len(z) for z, _ in narrow.setters)
+        filled = esolangs.instantiate(language, narrow, [0, 1])
+        assert filled.replace("\n", "") == esolangs.instantiate(language, plain, [0, 1])
 
     def test_the_width_applies_once_the_bits_are_in(self) -> None:
         template = esolangs.generate("Home Row", XOR)

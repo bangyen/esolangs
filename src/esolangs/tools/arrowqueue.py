@@ -274,12 +274,13 @@ def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
     a ``1`` bit appends its weight in down markers and a ``0`` bit the same
     number of no-op rows.  Both spellings are one width per slot.
     """
-    return instantiate(template, bits, arrowqueue_setters(template))
+    return instantiate(
+        template, bits, arrowqueue_setters(template, slot_count(template))
+    )
 
 
-def arrowqueue_setters(template: str) -> Setters:
+def arrowqueue_setters(template: str, n: int) -> Setters:
     """Return the ``(zero, one)`` block for every input of ``template``."""
-    n = slot_count(template)
     linear = template.startswith(" *\n")
 
     def block(i: int, bit: int) -> str:

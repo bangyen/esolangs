@@ -21,12 +21,12 @@ from dataclasses import replace
 
 import pytest
 
+import esolangs
 from esolangs import generate, run
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.examples import BooleanExample
 from esolangs.tools.wrap import (
-    _PCT_HEADER_END,
     DEFAULT_WIDTH,
     MULTILINE,
     WRAPPERS,
@@ -50,6 +50,20 @@ from esolangs.tools.wrap import (
 # A 2-input table (XOR), which every boolean generator can build.  Used
 # where a test needs *a* program rather than the language's own example.
 TABLE = "0110"
+
+
+def _public(lang: object, table: str) -> str:
+    """What ``generate`` returns with no width: the generator's own output,
+    rendered to the public run form for a parameterized language."""
+    from esolangs.registry import parameterized_ids, render_template
+
+    assert lang.boolean is not None  # type: ignore[attr-defined]
+    text = lang.boolean(table)  # type: ignore[attr-defined]
+    if lang.id in parameterized_ids():  # type: ignore[attr-defined]
+        n = len(table).bit_length() - 1
+        return render_template(lang.id, text, n)[0]  # type: ignore[attr-defined]
+    return text
+
 
 # A third width, narrower than any a reader would ask for, because a broken
 # wrapper is not broken at every width.  Whether a break lands inside a
@@ -389,9 +403,8 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     wrapper actually ships against.  Some are too terse to need a break at
     all (Sophie's is 37 characters, %^2^-1's is 5), so the table then grows
     until the program is long enough -- the way the text once did.  A
-    parameterized generator leaves a ``{X0}`` placeholder that its example's
-    ``fill`` replaces and the wrapper refuses, which is why the example
-    comes first rather than the grown table.
+    parameterized generator's template is never wrapped, so the grown
+    table is filled before the width is asked for.
     """
     example = _example(name)
     raw = example.build(width=None)
@@ -406,7 +419,7 @@ def test_every_wrapper_actually_fires(name: str) -> None:
         return
     structural = LANGUAGES[name].id in MULTILINE
     for arity in range(1, 5):
-        grown = generate(name, _table(arity))
+        grown = _grown(name, _table(arity), None)
         # A newline disqualifies a grown program only where it means layout.
         # A :data:`MULTILINE` language starts with a structural row its
         # wrapper keeps and folds the rest, so the question there is whether
@@ -418,39 +431,36 @@ def test_every_wrapper_actually_fires(name: str) -> None:
         foldable = grown.split("\n", 1)[1] if structural else grown
         if ("\n" in grown and not structural) or len(foldable) <= 40:
             continue
-        narrowed = generate(name, _table(arity), 40)
+        narrowed = _grown(name, _table(arity), 40)
         assert narrowed.count("\n") > grown.count("\n"), f"{name}: wrapper never fired"
         return
     pytest.fail(f"{name}: no table up to 4 inputs produced a program long enough")
 
 
+def _grown(name: str, table: str, width: int | None) -> str:
+    """A runnable program for ``table``: the template filled with zeros."""
+    if _example(name).fill is None:
+        return generate(name, table, width)
+    arity = len(table).bit_length() - 1
+    return esolangs.instantiate(name, generate(name, table), [0] * arity, width)
+
+
 @pytest.mark.parametrize("name", WRAPPED)
-def test_every_wrapper_fires_on_a_template_too(name: str) -> None:
-    """A parameterized language's *template* must wrap, not just its program.
+def test_a_template_is_never_wrapped(name: str) -> None:
+    """A width leaves a parameterized language's *template* alone.
 
-    :func:`~esolangs.generate` hands the wrapper what the generator
-    returned, and for a parameterized language that is the template, ``{Xi}``
-    placeholders and all.  A token rule that does not know about ``{Xi}``
-    fails to tile it, and the wrappers here answer that by returning the
-    program untouched -- which reads as "it fits" and is not.
-
-    :func:`test_every_wrapper_actually_fires` cannot see this: it tries the
-    language's own example first and returns as soon as *that* wraps, and an
-    example is filled before it is wrapped.  BIO passed that way while
-    ``generate`` gave back a single 3466-column line at eight inputs.
+    A template is the shape of its programs -- each input a run as long as
+    its setter -- and a break inside a run would land mid-setter once it is
+    filled (mid-word, for a word language, and at a position the zero and
+    one setters do not share).  So the width applies when the template is
+    filled, and :func:`~esolangs.generate` returns the template unwrapped.
     """
     example = _example(name)
     if example.fill is None:
         pytest.skip(f"{name} is not parameterized; its template is its program")
     for arity in range(1, 5):
         template = generate(name, _table(arity))
-        if "\n" in template or len(template) <= 40:
-            continue
-        assert generate(name, _table(arity), 40) != template, (
-            f"{name}: the wrapper left the template untouched"
-        )
-        return
-    pytest.skip(f"{name}: no table up to 4 inputs gives a template long enough")
+        assert generate(name, _table(arity), 40) == template
 
 
 @pytest.mark.parametrize(
@@ -715,7 +725,7 @@ def test_width_honouring_languages_respect_the_width(name: str) -> None:
         program = generate(language.name, TABLE, width)
         assert max(map(len, program.split("\n"))) <= width
     # omitting the width is still the compact one-shot form
-    assert generate(language.name, TABLE) == language.boolean(TABLE)
+    assert generate(language.name, TABLE) == _public(language, TABLE)
 
 
 @pytest.mark.parametrize("name", WRAPPED)
@@ -727,7 +737,7 @@ def test_no_width_is_unchanged(name: str) -> None:
     """
     lang = LANGUAGES[name]
     assert lang.boolean is not None
-    assert generate(name, TABLE) == lang.boolean(TABLE)
+    assert generate(name, TABLE) == _public(lang, TABLE)
 
 
 def test_clockwise_is_never_reflowed() -> None:
@@ -878,53 +888,13 @@ def test_polynomial_keeps_a_sign_with_no_term_to_attach_to() -> None:
     assert _polynomial("f(x) = x + - 7", 80) == "f(x) = x\n+\n- 7"
 
 
-def test_pct_header_terminator_matches_the_generator() -> None:
-    """:mod:`wrap` spells %^2^-1's header terminator; the generator owns it.
-
-    It is spelled rather than imported so that :mod:`wrap`, which otherwise
-    needs nothing but the standard library, does not pull the whole
-    ``esolangs.tools`` package in.  That is only safe with something
-    holding the two copies together.
-    """
-    from esolangs.tools.pct_squared_minus_one import _HEADER_END
-
-    assert _PCT_HEADER_END == _HEADER_END
-
-
-def test_pct_folds_its_header_to_the_width() -> None:
-    """The header meets the width, at every arity -- it is not kept whole.
-
-    It used to be, on the grounds that it was structural.  It is structural
-    to ``fill``, which is *ours*, not to the interpreter, which never sees a
-    header -- so the template format changed and the header folds.  1407
-    columns at eight inputs, and it did not shrink with a narrower width
-    because nothing folded it.
-
-    A declaration is 175 characters and does not shrink with ``n``, so a
-    wrapper that broke only *between* declarations would still be over 80 at
-    every arity here.  That is why this checks the width rather than merely
-    checking that something folded.
-    """
-    for arity in (2, 4, 6):
-        template = generate("%^2^-1", _table(arity))
-        for width in (40, 80):
-            wrapped = generate("%^2^-1", _table(arity), width)
-            assert _PCT_HEADER_END in wrapped, "the header and body ran together"
-            for line in wrapped.split("\n"):
-                assert len(line) <= width, f"{arity} inputs, width {width}: {len(line)}"
-        assert len(template.split("\n")[0]) > 80 or arity == 2
-
-
 def test_pct_fill_is_unchanged_by_where_the_header_folded() -> None:
-    """However the header is folded, the filled program is byte-identical.
+    """However the header is folded by hand, the filled program is byte-identical.
 
-    ``fill`` discards the header's newlines before reading it, which is what
-    lets the wrapper break *inside* a declaration -- and what keeps the two
-    branches of a setter equal width in text as well as in commands.
-
-    The folds below deliberately include ones that land mid-declaration and
-    mid-branch, not just at a ``;``: those are the ones the stripping is
-    for, and a fold only at ``;`` would pass without it.
+    ``fill`` discards the header's newlines before reading it, so a header
+    a reader has folded -- even mid-declaration or mid-branch -- reads the
+    same, and the two branches of a setter stay equal width in text as well
+    as in commands.
     """
     from esolangs.tools.pct_squared_minus_one import _HEADER_END, fill
 

@@ -1165,7 +1165,7 @@ def make_vm(language: str, program: str | os.PathLike[str], stdin: str = "") -> 
 
     The program and ``stdin`` are checked exactly as :func:`esolangs.run`
     checks them, since stepping is the *other* way to execute a program: an
-    unfilled ``{Xi}`` template otherwise runs to a confident ``output:
+    unfilled template otherwise runs to a confident ``output:
     '0'``.  ``program`` may be a :class:`~pathlib.Path`, and the checked
     value is what reaches the interpreter -- checking a value and using it
     have to be the same expression or they drift, which is the argument for

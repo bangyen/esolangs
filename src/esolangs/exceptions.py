@@ -154,9 +154,9 @@ class TruthTableError(EsolangError, ValueError):
 class TemplateError(EsolangError, ValueError):
     """A parameterized generator's template was used as a program.
 
-    The parameterized generators return a *template* whose ``{Xi}`` slots
-    stand for the language's own code for setting input ``i``.  Running one
-    unfilled is never what the caller meant: the slots are not instructions,
+    The parameterized generators return a *template* whose runs of ``$``
+    stand for the language's own code for setting each input.  Running one
+    unfilled is never what the caller meant: the runs are not instructions,
     so the program either faults on them or -- worse -- ignores them and
     computes a constant.  Filling them is :func:`esolangs.instantiate`.
     """
