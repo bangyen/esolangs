@@ -95,9 +95,7 @@ _MUX_SEPARATED: dict[int, _Joint] = {}
 def _mux_reference(n: int) -> _Joint:
     """Return a joint walked to the embed's start with nothing embedded yet.
 
-    What :func:`_mux_separate`'s guard check compares against: the walk-in is
-    common to every row, so this is the tape the construction must leave
-    untouched left of :data:`_MUX_GUARD`.
+    The tape :func:`_mux_separate` must leave untouched left of :data:`_MUX_GUARD`.
     """
     j = _Joint(n)
     _walk_to(j, _mux_start(n) - 1)
@@ -115,20 +113,10 @@ def _mux_intact(before: _Joint, after: _Joint) -> bool:
 def _mux_weight(k: int) -> str:
     """Return the gadget displacing a **fresh** setter bit by exactly ``-k``.
 
-    A single restoring read ``[x<[<`` moves the pointer by the bit's value and
-    puts the cell back, so the bit can be read again; rewinding one cell
-    between such reads compounds them, and ``k`` of them displace by ``k``
-    times the bit.  Measured linear for ``k`` of 1 to 8, with no row dying.
-
-    *Fresh* is required and is the reason an earlier attempt at
-    per-setter weighting read 1 for every weight: a single ``[x`` between the
-    setter and this gadget folds the bit into the running prefix-XOR, and the
-    reads then see the walk's wake rather than the bit.  Emit this directly
-    after :meth:`_Joint.emit_setter`, never after a walk.
-
-    The gadget writes at most ``max(0, k - 3)`` cells left of the setter
-    (measured over the same range), which is what :func:`_mux_separate`'s pad
-    is sized against.
+    ``k`` restoring reads ``[x<[<`` with one-cell rewinds compound to ``-k``
+    times the bit (linear for k 1..8).  *Fresh*: one ``[x`` between the
+    setter and this folds the bit into the prefix-XOR and every weight reads
+    1.  Writes at most ``max(0, k - 3)`` cells left of the setter.
     """
     return ("[x<[<" + "<") * (k - 1) + "[x<[<" if k > 0 else ""
 
@@ -141,17 +129,9 @@ def _mux_weights(n: int) -> tuple[int, ...]:
 def _mux_pad(n: int) -> int:
     """Return the slack each gadget gets beyond the previous one's weight.
 
-    A gadget of weight ``k`` reaches ``k - 3`` cells left of its setter, so
-    the pad has to clear that much *and* keep the deepest rewind above cell
-    0.  ``2**(n-2) - 1`` is where the second condition binds and is sharp:
-    at four inputs pads 1 and 2 separate 14 of 16 and pad 3 separates all 16;
-    at five, pads 1 to 6 reach 21 to 30 of 32 and pad 7 closes it.  Below the
-    threshold the weights are still exactly right -- the misses are rows
-    whose leading bits clamp at the tape's floor, not a weighting error.
-
-    The shift spells the power rather than ``2 **``, which mypy widens to
-    ``Any`` because a negative exponent would make it a float; the arities
-    here are always at least two, so the shift is the honest spelling.
+    Clears the ``k - 3`` reach and keeps the deepest rewind above cell 0;
+    ``2**(n-2) - 1`` is sharp (n=4: pad 3 separates all 16; n=5: pad 7 closes
+    it; below, rows clamp at the floor).  A shift, since mypy widens ``2 **``.
     """
     return max((1 << (n - 2)) - 1, 1)
 
@@ -159,39 +139,14 @@ def _mux_pad(n: int) -> int:
 def _mux_start(n: int) -> int:
     """Return where to lay the embed so no gadget writes left of the guard.
 
-    The leftmost write is the first gadget's, and it is the heaviest.  The
-    setter lays its bit at the start cell itself, and a weight-``k`` gadget
-    then reaches ``k - 2`` cells left of that -- measured directly, and note
-    it is ``k - 2`` from the *bit* where the module's older prose says
-    ``k - 3``; the two differ by where they count from, not in the geometry.
-    With ``start = _MUX_BASE + 2**(n-1) - offset`` and ``k = 2**(n-1)``, the
-    ``2**(n-1)`` cancels:
-
-        leftmost write = start - k + 2 = _MUX_BASE - offset + 2
-
-    which does not depend on ``n`` at all -- it is 25 at every arity.  Asking
-    that it clear :data:`_MUX_GUARD` by one gives
-
-        offset = _MUX_BASE - _MUX_GUARD + 1
-
-    the expression below, and 9 as shipped.
-
-    **The offset is derived rather than written down, because it is pinned
-    rather than chosen.**  It used to be the literal ``9``, which read as a
-    tuning; it is not.  Every offset builds and larger ones are shorter --
-    measured at five inputs, a mean template of 1443, 1431, 1419, 1407, 1395
-    and 1383 characters for offsets 3 through 13 -- so nothing about *length*
-    stops the count rising.  What stops it is the guard: the leftmost write
-    tracks the offset cell for cell and lands on :data:`_MUX_GUARD` exactly
-    here, so one more takes it to cell 22 and :func:`_mux_intact` fails, at
-    five and six inputs alike.  The separation still separates there; only
-    the guard catches it.  So this is the *shortest legal* start, and moving
-    :data:`_MUX_GUARD` should move it too -- which is what spelling it this
-    way buys.
-
-    The offset applies only once the first gadget outgrows it, so it is
-    nothing at two, three and four inputs -- they already clear the guard --
-    and 7 and 23 cells at five and six.
+    The first gadget is the heaviest and reaches ``k - 2`` left of the bit
+    (``k - 3`` from the setter); with ``start = _MUX_BASE + 2**(n-1) - offset``
+    the ``2**(n-1)`` cancels and the leftmost write is
+    ``_MUX_BASE - offset + 2`` at every arity, so
+    ``offset = _MUX_BASE - _MUX_GUARD + 1`` (9) clears the guard by one.
+    Derived, not tuned: every offset builds and larger is shorter (n=5 mean
+    1443 -> 1383 for offsets 3..13), but one more lands on :data:`_MUX_GUARD`
+    and :func:`_mux_intact` fails.  Applies only from five inputs.
     """
     return _MUX_BASE + max(0, (1 << (n - 1)) - (_MUX_BASE - _MUX_GUARD + 1))
 
@@ -199,30 +154,11 @@ def _mux_start(n: int) -> int:
 def _mux_separate(n: int) -> _Joint | None:
     """Emit an embed leaving all ``2**n`` rows at distinct pointers.
 
-    Constructed rather than searched.  Each input is weighted as it lands --
-    setter, then :func:`_mux_weight` on the still-fresh bit, then a pad wide
-    enough that the next gadget starts outside this one's damage -- so the
-    pointer ends at ``c0 - sum(2**(n-1-i) * x_i)``.  That is affine in the
-    inputs with the binary weights, hence injective, so the rows are
-    separated by construction and there is nothing to search for.
-
-    Table-independent, so it is built once per arity and cached; callers get
-    a fork.  The return type keeps the ``None`` case the searches needed, so
-    :func:`_mux` is unchanged, but the construction does not fail: the
-    verification below is what the arity gate now rests on.
-
-    **No right-pad is emitted, because the weighting cannot need one.**  The
-    sculpting rounds want ``min(ptrs)`` to stand clear of the span, and the
-    lowest pointer is
-
-        min(q) = start + (n-1) * (pad + 1) - 1
-
-    against a span of ``2**n - 1``.  With ``pad + 1 = 2**(n-2)`` the leading
-    term is ``(n-1) * 2**(n-2)``, which passes ``2**n`` at five inputs and
-    then runs away from it -- the difference is ``2**(n-2) * (n-5)`` -- so the
-    clearance is never tight: it is 30, 28, 28, 39, 71, 151 cells at two
-    through seven inputs and grows from there.  A right-pad guarding that
-    gap used to sit here and could not fire at any arity.
+    Setter, :func:`_mux_weight` on the fresh bit, then a pad, so the pointer
+    ends at ``c0 - sum(2**(n-1-i) * x_i)``: affine with binary weights,
+    hence injective.  Table-independent, cached per arity.  No right-pad:
+    ``min(q) = start + (n-1) * (pad + 1) - 1`` clears the span by 30, 28, 28,
+    39, 71, 151 cells at n=2..7 and grows.
     """
     if n in _MUX_SEPARATED:
         return _MUX_SEPARATED[n].fork()
@@ -263,9 +199,7 @@ _SCULPT_POOL_CODE = _POOL_CODES[4]
 def _sculpt_pool_code(cell7: int) -> str | None:
     """Return the code a sculpting probe reaches, by :data:`_SCULPT_POOL_CODE`.
 
-    ``test_sculpt_pool_code_matches_scan`` replays the replaced scan as the
-    specification oracle, so the constant is checked against
-    :func:`_pool_reaches` rather than trusted.
+    ``test_sculpt_pool_code_matches_scan`` replays the replaced scan.
     """
     return _SCULPT_POOL_CODE if cell7 == 0 else None
 
@@ -293,14 +227,9 @@ def _canonical_endgame(j: _Joint, acc: int, *, direct: bool) -> None:
 def _probe_frame(code: str, byte: int) -> tuple[int, int] | None:
     """Return ``(landed, parity)`` for ``code`` run from a converged row.
 
-    ``landed`` is where the code leaves the pointer and ``parity`` is the
-    XOR of the pool-region cells it leaves between there and cell 7 -- the
-    two constants the closed-form probe column reads.  Derived by running
-    the code on the simulator from ``(byte, pointer 0, no skip)``, twice
-    with different junk above the pool region; None when the two runs
-    disagree or either leaves the region written, a skip pending, the row
-    dead, or the pointer past the region -- states the summary cannot speak
-    for, which send the caller back to simulation.
+    Run twice with different junk above the pool region; None when they
+    disagree or the region is written, a skip pending, the row dead or the
+    pointer past the region.
     """
     frames = []
     for high in (0, (1 << 64) - 1):
@@ -324,13 +253,9 @@ def _probe_frame(code: str, byte: int) -> tuple[int, int] | None:
 def _sculpt_columns(j: _Joint, acc: int) -> tuple[int, ...] | None:
     """Return the probe column by the parity law, or None to fall back.
 
-    The probe's forked walk is affine: after the pool code, the cell at
-    ``acc`` is the prefix-XOR carry over everything the walk crossed, so a
-    row's answer is the frame's parity XOR the parity of its own cells
-    ``8..acc``.  Valid only while every row is alive and shares the frame's
-    window byte -- the clamp converges the pointers and the probe's ``x``
-    eats a pending skip, so neither enters the key.  A row outside that
-    summary returns None and the caller simulates instead.
+    After the pool code the cell at ``acc`` is the prefix-XOR carry, so a
+    row's answer is the frame's parity XOR the parity of its cells
+    ``8..acc``; valid while every row is alive and shares the window byte.
     """
     if acc <= _POOL_WIDTH:
         return None
@@ -354,9 +279,7 @@ def _mux_probe_sim(
 ) -> tuple[tuple[int, ...], str] | None:
     """Run the probe by simulation: fork, absorb, clamp, set the pool, walk.
 
-    The specification :func:`_mux_probe`'s parity law is held to -- the
-    scout checks the two agree live, once per build -- and the fallback for
-    states :func:`_sculpt_columns` refuses to summarise.
+    The specification the parity law is held to, and the fallback.
     """
     probe = j.fork()
     probe.emit("x")  # absorb a pending skip so the clamp below is exact
@@ -379,23 +302,10 @@ def _mux_probe(
 ) -> tuple[tuple[int, ...], str] | None:
     """Return the column printed at ``acc`` and the pool code that got it.
 
-    The code is not searched for.  :data:`_SCULPT_POOL_CODE` names it: the
-    probe state here is canonical (the ``x`` and the clamp put every row at
-    pointer 0 with the same pool region), so the verdict is a constant of
-    the construction.  See that constant for the derivation and the
-    measurements behind it.  ``hint`` carried the previous round's winner
-    when this was a scan; it is accepted and ignored because the value
-    cannot change between rounds, and callers still pass it because
-    :func:`_mux` reads the code back out of the return.
-
-    The column is not walked for either.  The probe's fork was pure
-    arithmetic -- clamp and walk never depend on anything but the row's
-    cells 8..acc once the pool region is uniform -- so
-    :func:`_sculpt_columns` computes it by the parity law, one popcount per
-    row, and :func:`_mux_probe_sim` remains as the specification and the
-    fallback for any state the law's frame refuses.  The two are compared
-    live once per build by the scout, on top of the differential tests that
-    pin the laws themselves.
+    The code is :data:`_SCULPT_POOL_CODE` (the probe state is canonical);
+    ``hint`` is accepted and ignored.  The column is :func:`_sculpt_columns`'s
+    parity law, with :func:`_mux_probe_sim` as fallback; the scout compares
+    the two live once per build.
     """
     del hint
     code = _sculpt_pool_code(cell7)
@@ -419,15 +329,9 @@ def _mux_sculpt(
 ) -> str | None:
     """Sculpt the printed column at one ``(C, orientation, read)``.
 
-    Derive the column the endgame would print, take the highest-positioned
-    row that disagrees, flip its cell ``C`` with one clean round, repeat.
-    The frontier argument in the section comment bounds the loop; the cap is
-    that bound plus a small allowance, and a stall returns None rather than
-    looping.  The allowance was for a pool-code switch, which
-    :data:`_SCULPT_POOL_CODE` has since ruled out -- it is kept as slack
-    because the cap's job is to make the fall-through true, not to be tight.
-    The finished joint is handed to :func:`_try_print`, so what is returned
-    was seen to print the table.
+    Take the highest disagreeing row, flip its cell ``C`` with one round,
+    repeat.  The cap is the frontier bound plus slack; a stall returns None.
+    The joint is handed to :func:`_try_print`.
     """
     want = tuple(int(c) for c in truth_table)
     j = base.fork()
@@ -465,9 +369,7 @@ def _mux_sculpt(
 def _pascal_parity_row(n: int) -> int:
     """Return row ``n`` of Pascal's triangle modulo two as a bitvector.
 
-    Lucas' theorem says its set positions are exactly the submasks of ``n``.
-    Multiplying the corresponding ``(1 + x**bit)`` factors therefore spells
-    the row with one shift per set bit, without a coefficient loop or table.
+    Lucas: the set positions are the submasks of ``n``, one shift per set bit.
     """
     row = 1
     bit = 1
@@ -491,22 +393,11 @@ def _mux_round_plan(
 ) -> tuple[list[int], int] | None:
     """Return the sculpt's rewinds and their cost by the Pascal inverse.
 
-    The pointers are consecutive and sorted high to low.  For row ``i``,
-    cells ``acc-i .. acc`` form a vector ordered low to high.  A round fired
-    at earlier row ``h`` replaces its suffix ``h..i`` by one plus its prefix
-    XOR.  Its inverse is first difference on that suffix.
-
-    Let ``c[q]`` count fired rounds through row ``q``.  In the product of
-    those inverse differences, entry ``(i, q)`` is
-    ``binomial(c[q], i-q) mod 2``: choose which differences supply the
-    ``i-q`` downward steps.  Lucas' theorem makes that coefficient the bit
-    test ``(i-q) & ~c[q] == 0``.  Building the inverse one row at a time and
-    summing its columns gives the parity after every prior round directly;
-    no round is replayed on a later row.
-
-    A fired round's affine one contributes Pascal row ``selected`` at its
-    position.  ``round_limit`` reproduces the scout's strict length prune;
-    None also preserves the sculpt's rewind guard.
+    A round fired at row ``h`` replaces a suffix by one plus its prefix XOR;
+    its inverse is first difference, and in the product entry ``(i, q)`` is
+    ``binomial(c[q], i-q) mod 2``, the bit test ``(i-q) & ~c[q] == 0``.  So
+    the parity after every prior round is read directly, no replay.
+    ``round_limit`` reproduces the scout's strict prune.
     """
     inverse_rows: list[int] = []
     selected_through: list[int] = []
@@ -553,35 +444,14 @@ def _mux_scout(
 ) -> tuple[tuple[int, bool, int] | None, bool]:
     """Price every ``(accumulator, orientation)`` sculpt without emitting.
 
-    Returns ``(winner, trusted)``.  The winner is ``(acc, direct, length)``
-    for the combination :func:`_mux_sweep` would keep -- the shortest build,
-    first in sweep order on a tie -- or None when every combination fails.
-    ``trusted`` False means the base defeats the shadow's summary and the
-    caller must run the sweep itself.
-
-    The shadow solves the sculpt loop by its Pascal inverse.  Consecutive
-    pointers make the rounds a triangular system: reversing one round is
-    first difference, so Lucas' theorem names every coefficient of the
-    product from the number of earlier rounds.  :func:`_mux_round_plan`
-    obtains the whole firing sequence without replaying a round on any later
-    row.  The endgame's read, pool code and lengths are fixed by the frame
-    constants, which prices a combination without building it.
-
-    Two exactnesses make the answer the sweep's own.  The rewind guard and
-    refusal sites are reproduced one for one; the old cap is discharged
-    because the triangular solve visits each row once.  A combination is
-    abandoned only when its running length strictly exceeds the best
-    completed one, so it can no longer finish at or below it -- ties
-    complete, and the winner is chosen over exact lengths in sweep order.
-    The one live check: the first column is computed both ways, and a
-    disagreement distrusts the whole scout rather than shipping from the
-    law.
-
-    ``rewinds_out``, when given, collects each completed combination's
-    rewinds in firing order -- the one fact beyond the length that
-    :func:`_mux_plan_tail` needs to spell the build without sculpting it.
-    Recording is free (the pending list already holds them), and leaving
-    the parameter off prices exactly as before.
+    ``(winner, trusted)``: the shortest build in sweep order, or None;
+    ``trusted`` False means the base defeats the summary.  The sculpt loop is
+    solved by its Pascal inverse (:func:`_mux_round_plan`); the endgame's
+    lengths are frame constants.  Guard and refusal sites are reproduced one
+    for one; a combination is abandoned only when its running length
+    strictly exceeds the best completed.  The first column is computed both
+    ways and a disagreement distrusts the scout.  ``rewinds_out`` collects
+    each combination's rewinds for :func:`_mux_plan_tail`.
     """
     del n  # the Pascal inverse has no arity-specific step
     ms = base.ms
@@ -710,15 +580,8 @@ def _mux_scout(
 def _mux_plan_tail(base: _Joint, acc: int, rewinds: list[int]) -> tuple[str, str]:
     """Spell the fixed sculpt from its derived rewinds.
 
-    With the rewinds in firing order every emitted part is a constant of
-    the frame: a round is ``<``/``[x`` runs of its rewind and a trailing
-    ``x``, the clamp is ``highest + 1`` (rounds move no pointer), and the
-    endgame's pool code, direct read, walk and rewind are fixed by ``acc``.
-    Returns ``(rounds, suffix)``, the tail after ``base``'s own template
-    split where :func:`_mux_replays` switches laws.
-
-    Nothing ships on this spelling alone: :func:`_mux` replays it over every
-    row and accepts on the printed digits.
+    Every part is a frame constant.  Returns ``(rounds, suffix)``;
+    :func:`_mux` replays it over every row before shipping.
     """
     byte = base.ms[0].tape & _POOL_MASK
     if byte != _POOL_MASK ^ 1:  # pragma: no cover - separation fixes the byte
@@ -754,14 +617,8 @@ def _mux_replays(
 ) -> bool:
     """Whether the spelled build really prints the table, row by row.
 
-    The module-wide acceptance, applied to the scout's spelling: every row
-    advances through the tail by the laws and the digits it prints are
-    compared against the table -- the same standard :func:`_try_print`
-    holds a sculpted joint to.  The rounds go through the fused
-    :meth:`_Sim.run_rewinds` (one window per row where the parsed runs
-    cost three law calls a round), the endgame through the parsed runs;
-    ``suffix`` must be the tail past the rounds, exactly as
-    :func:`_mux_plan_tail` spells it.
+    The module-wide acceptance: rounds through :meth:`_Sim.run_rewinds`,
+    the endgame through the parsed runs.
     """
     probe = base.fork()
     for m in probe.ms:
@@ -776,10 +633,7 @@ _MUX_PRESERVE_RIGHT = "[x<" * 3 + "[x"
 def _mux_init_bits(bits: str) -> str:
     """Write ``bits`` on fresh cells in one left-to-right pass.
 
-    After the first zero, every tile leaves the following cell preset to one;
-    the zero and one tiles consume or restore that preset respectively.
-    Callers append a zero guard, making the one-cell wake independent of the
-    data (including the all-one word).
+    Each tile leaves the next cell preset to one; callers append a zero guard.
     """
     parts: list[str] = []
     zero_seen = False
@@ -800,19 +654,11 @@ def _mux_init_bits(bits: str) -> str:
 def _mux_lookup(truth_table: str, n: int) -> str:
     """Return the linear preloaded-strip mux.
 
-    ``[x<[x<[x<[x`` advances one cell and restores an arbitrary tape cell;
-    four additions cancel in the two-bit Minifuck state.  Repeating that
-    identity crosses the preloaded controls without changing them.  The
-    binary-weight separator is shifted beyond the strip, after which one
-    non-writing left run maps row ``r`` to control ``r``.  Reading that cell
-    changes the parity swept by the fixed print tail.
-
-    With zero controls the printed row is ``popcount(r)`` plus the separator
-    phase below: its geometric pads contribute one and each odd displacement
-    of the walk-in toggles it.
-    A control bit flips every row except its own; the sentinel flips every
-    row.  Thus controls are the disagreement column and their parity is the
-    sentinel, making the selected output exactly the requested bit.
+    ``[x<[x<[x<[x`` advances one cell and restores a cell; repeating it
+    crosses the preloaded controls unchanged, and one left run maps row
+    ``r`` to control ``r``.  With zero controls the printed row is
+    ``popcount(r)`` plus the separator phase; a control flips every row but
+    its own and the sentinel flips all, so the selected output is the bit.
     """
     total = len(truth_table)
     phase = (n ^ (_mux_start(n) - _MUX_BASE) ^ 1) & 1
@@ -869,10 +715,8 @@ def _mux_lookup(truth_table: str, n: int) -> str:
 def _mux_sweep(base: _Joint, truth_table: str, n: int, accs: range) -> str | None:
     """Sculpt every combination for real and keep the shortest build.
 
-    The retired specification :func:`_mux_scout` is held to.  The
-    seed probe settles which orientations can be sculpted at all --
-    ``cell7 == 1`` is answered by no code -- and also hands the sculpt its
-    ``hint``, which is how the loop always read.
+    The specification :func:`_mux_scout` is held to; the seed probe settles
+    the orientations (``cell7 == 1`` answers to no code).
     """
     best: str | None = None
     for acc in accs:
