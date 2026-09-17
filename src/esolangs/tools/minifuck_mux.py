@@ -30,130 +30,65 @@ from esolangs.tools.minifuck_sim import (
 
 # ---------------------------------------------------------------------------
 # The sculpted route: separate every row into its own pointer position, then
-# fix the printed column one row at a time, from the highest position down.
+# fix the printed column one row at a time, highest position down.  Closes
+# the four-input residue with every input embedded exactly once.
 #
-# This closes the four-input residue, and it embeds each input **exactly
-# once** -- the repo-wide rule (see ``docs/limitations.md``) is kept, not
-# carved out.  It stands on the embed having already put the whole row
-# identity on the tape: ``_embed``'s walk transform is affine and invertible,
-# so no two rows are in the same state afterwards, and converting that state
-# difference into a *pointer* difference needs only reads of what is there.
+# **Separation** is closed form: ``setter(i); weight(2**(n-1-i)); pad`` per
+# input.  :func:`_mux_weight` makes a bit worth ``k``: ``k`` restoring reads
+# ``[x<[<`` with a one-cell rewind between compound to ``-k * bit`` (linear
+# for k 1..8), so the pointer lands at ``c0 - sum(2**(n-1-i) * x_i)``,
+# injective.  Two measured conditions: the bit must be fresh (one ``[x``
+# between setter and gadget folds it into the prefix-XOR and every weight
+# collapses to 1 -- the "wall" an earlier attempt hit; rightward pad 0..10
+# preserves it), and gadgets must not overlap (weight ``k`` writes at most
+# ``k - 3`` cells left; :func:`_mux_pad` clears that plus the deepest
+# rewind's room; the ``2**(n-2) - 1`` threshold is sharp, misses below it
+# are rows clamping at the floor).  Replaced four searches (pointer-census
+# BFS, greedy aimed reads, beam, two-machine BFS): 2.8s at n=3, 15.0s at
+# n=4, failing at n=5 after 191s.  This is 0.0007s at 4, 0.004s at 5.
 #
-# **Separation** is that conversion, constructed in closed form with no
-# search.  Weight each input as it lands, so the pointer ends holding the
-# row's binary expansion::
+# **Sculpting** fixes target cell ``C`` below every row.  One round
+# ``'<' * K + '[x' * K``, ``K = b - C + 1``: the row at ``b`` rewinds to
+# ``C - 1`` and flips ``C`` unconditionally; rows above ``b`` never write
+# below their own rewind, so their read value is untouched; rows below
+# pick up cascade debris (scrambled).  Fixing the highest disagreeing row
+# strictly lowers the frontier: at most ``2**n`` rounds.  The pool code is
+# a constant (:data:`_SCULPT_POOL_CODE`); the allowance and fall-through
+# stay because the cap is what makes "a stall returns None" true.  The
+# trailing ``x`` is the ``_FLIP`` lesson: a cascading last ``[`` sets skip.
 #
-#     for i in range(n):
-#         setter(i); weight(2**(n-1-i)); pad
+# **Measured.**  All 3652 n=4 tables the staged families miss build and
+# print 16/16 rows, closing the arity at 64594 of 64594.  ~220ms per build
+# for 43% shorter programs: the first ``(C, orientation, read)`` that prints
+# (7ms) is a poor choice since a round costs ``3 * K + 1`` -- sampled n=4
+# first-ascending 1046 chars, first-descending 700, min over all 594; XOR5
+# 2511 -> 1174.  Two probe savings verified byte-identical.
 #
-# :func:`_mux_weight` is what makes a bit worth more than one step: a
-# restoring read ``[x<[<`` displaces by the bit and puts the cell back, so
-# ``k`` of them with a one-cell rewind between compound to exactly ``-k``
-# times the bit (measured linear for ``k`` of 1 to 8).  The pointer lands at
-# ``c0 - sum(2**(n-1-i) * x_i)``, injective by binary expansion, so all
-# ``2**n`` rows are separated by construction.
-#
-# Two conditions make the weights compose, both found by measuring:
-#
-# * the bit must be **fresh**.  One ``[x`` between the setter and the gadget
-#   folds it into the running prefix-XOR and every weight collapses to 1 --
-#   which is what an earlier per-setter attempt measured and read as a wall.
-#   Once the displacement is banked in the pointer, rightward padding
-#   preserves it (measured pad 0 to 10).
-# * gadgets must not reach into each other.  Weight ``k`` writes at most
-#   ``k - 3`` cells left of its setter, so :func:`_mux_pad` leaves that much
-#   clear air plus the deepest rewind's room above cell 0.  The threshold
-#   ``2**(n-2) - 1`` is sharp -- below it the weights are still exactly right
-#   and the misses are rows clamping at the tape floor.
-#
-# This replaced four searches (a pointer-census BFS, a greedy pass over aimed
-# reads, a beam over aimed-read sequences, and a two-machine BFS on one
-# colliding pair) costing 2.8s at three inputs and 15.0s at four, and failing
-# outright at five after 191s.  The construction is 0.0007s at four and
-# 0.004s at five.
-#
-# **Sculpting** then edits the separated rows individually.  Fix a target
-# cell ``C`` below every row; one round ``'<' * K + '[x' * K`` with
-# ``K = b - C + 1`` has three provable effects:
-#
-# * the row at position ``b`` rewinds to ``C - 1`` and its first landing is
-#   ``C`` -- an *unconditional* flip, clean whatever that row's tape holds;
-# * a row above ``b`` starts right of ``C`` and writes nothing below its own
-#   rewind point, so the value the endgame reads for it is untouched;
-# * rows below ``b`` cross ``C`` on the way back and pick up value-dependent
-#   cascade debris: scrambled, not controlled.
-#
-# So repeatedly fixing the *highest* disagreeing row strictly lowers the
-# frontier and the loop lands in at most ``2**n`` rounds.  The pool code, once
-# the one non-structural residue, is closed by name: the probe state is
-# canonical at every round, so the code is a constant and cannot switch (see
-# :data:`_SCULPT_POOL_CODE`).  The loop keeps its allowance and fall-through
-# anyway, since they cost nothing and the cap is what makes "a stall returns
-# None" true.  The trailing ``x`` on every round is the ``_FLIP`` lesson
-# again: a walk whose last ``[`` cascades leaves the skip flag set, so the
-# next instruction must be one the program can afford to lose.
-#
-# **Coverage and cost, measured.**  All 3652 four-input tables the staged
-# families miss build through this route and print all 16 rows correctly on
-# the shipped interpreter, which closes the arity at 64594 of 64594.
-#
-# A build costs about 220ms and buys a 43% shorter program.  It used to cost
-# 7ms by returning the first ``(C, orientation, read)`` that printed; it now
-# sculpts all of them and keeps the shortest, because the accumulator sets
-# the price of every round -- a round is ``3 * K + 1`` characters for a
-# rewind of ``K = frontier - C + 1`` -- and the first is a poor choice.  Over
-# sampled four-input tables: first-ascending 1046 characters,
-# first-descending 700, minimum over all 594; at five inputs XOR5 goes from
-# 2511 to 1174.  Two probe savings pay part of the extra work back and are
-# verified to leave the emitted template byte for byte identical.
-#
-# **There is no arity gate.**  Every one of the route's six refusal sites
-# closes uniformly in ``n`` (``the relevant generator tests``, "Is ``_mux``
-# total?"), which is what replaced the arity tuple with
-# :data:`_MUX_MIN_ARITY`.  Sampled end to end: 200 of 200 fully-essential
-# five-input tables build and print all 32 rows correctly at about 0.14s
-# each, five-input XOR among them; the two six-input tables that used to
-# raise emit 4040 and 3993 characters in 41.6s and 53.8s, and
-# :meth:`test_no_arity_is_gated` prints all 64 rows of a fixed one.  ``the
-# relevant generator tests`` carries the wider run, 448 of 448 rows correct
-# at five, six and seven inputs.
-#
-# The route sits *after* the staged families in :func:`_solve`, so every
-# table they build keeps its template byte for byte.  It is the last route:
-# the searches behind it are gone, so a table it cannot build -- a pool code
-# refusing every ``(C, orientation, read)`` -- raises rather than sweeping.
+# **No arity gate.**  All six refusal sites close uniformly in ``n`` (the
+# generator tests, "Is ``_mux`` total?"), replacing the arity tuple with
+# :data:`_MUX_MIN_ARITY`.  200 of 200 fully-essential n=5 tables print
+# 32/32 at ~0.14s; two n=6 tables that used to raise emit 4040 and 3993
+# chars in 41.6s and 53.8s; 448 of 448 rows correct at n=5,6,7.
+# Last route, after the staged families in :func:`_solve`; a pool code
+# refusing every ``(C, orientation, read)`` raises rather than sweeping.
 
-# Where the sculpted route embeds, and how much of the tape to its left the
-# separation searches must not write.  The pool codes were designed against
-# the uniform wake ``_walk_to`` leaves and their marks reach to about cell
-# fourteen, so a separation that scribbles there strands every probe --
-# measured, 0 usable pool probes against 14 with the region intact.  Eight
-# cells between the guard and the embed are deliberately left writable:
-# scratch there is what lets the searches finish, and sealing it turns the
-# four-input separation from a 15-second derivation into a failure.
+# Pool codes were designed against ``_walk_to``'s uniform wake, marks to
+# ~cell 14: scribbling there strands every probe (0 usable vs 14).  Eight
+# writable cells between guard and embed are what let the searches finish;
+# sealing them turned the n=4 separation from 15s into a failure.
 _MUX_BASE = _BASE + 16
 _MUX_GUARD = _MUX_BASE - 8
 
-# The lowest arity the route is offered.  There is no upper bound: this used
-# to be a tuple ``(2, 3, 4, 5)`` recording the arities that had been
-# *verified*, and the route declined outside it in 0.0s -- a configuration
-# gate, not a construction that failed.  ``the relevant generator tests`` ("Is
-# ``_mux``
-# total?") now closes all six of the route's ``None``-sites with arguments
-# that carry no residual ``n``: the separation is affine and injective by the
-# constant 24-cell saturation margin plus the strict non-overlap the halving
-# weights give, the rewind guard is an algebraic identity, the round cap is
-# window geometry, and the pool probe reads only cells the initial walk
-# freezes to one value at every arity.  So the gate was the last thing making
-# the generator partial, and it is gone.
-#
-# Two is the floor because ``_solve`` routes constants and single-input
-# projections to :func:`_degenerate` before ever reaching here; the route
-# itself has no arity-specific step at all.
+# No upper bound: the old ``(2, 3, 4, 5)`` tuple was a configuration gate,
+# and the generator tests ("Is ``_mux`` total?") close all six ``None``
+# sites with no residual ``n`` (affine injective separation via the 24-cell
+# saturation margin and non-overlapping halving weights; rewind guard is an
+# identity; round cap is window geometry; the pool probe reads only cells
+# the initial walk freezes).  Two is the floor because ``_solve`` routes
+# constants and projections to :func:`_degenerate` first.
 _MUX_MIN_ARITY = 2
 
-# One derived separation per arity, handed out as forks.  A plain dict
-# rather than ``lru_cache`` because the value is a mutable ``_Joint``.
+# One separation per arity, forked out.  A dict: the value is a mutable ``_Joint``.
 _MUX_SEPARATED: dict[int, _Joint] = {}
 
 
@@ -300,15 +235,9 @@ def _mux_separate(n: int) -> _Joint | None:
         j.emit_weight(_mux_weight(k), k)
         if i + 1 < n:
             j.emit("[x" * (k + pad))
-    # The construction is derived, but it is still *checked* before it is
-    # cached: a separation that quietly lost a row would be found by the
-    # sculpting loop as an unfixable table rather than as a bad separation.
-    #
-    # Neither check fires at any arity -- which is the point of deriving the
-    # separation rather than searching for one, and is argued uniformly in
-    # `n` in ``the relevant generator tests`` under "Is ``_mux`` total?" -- so
-    # both refusals are the guard against a future weighting that breaks the
-    # construction, not a live path.
+    # Checked before caching: a lost row would otherwise surface as an
+    # unfixable table.  Neither fires at any arity (argued uniformly in the
+    # generator tests); they guard against a future weighting.
     if any(m.dead for m in j.ms) or len(set(j.ptrs())) != 2**n:
         return None  # pragma: no cover - the construction separates by design
     if not _mux_intact(_mux_reference(n), j):
@@ -317,41 +246,17 @@ def _mux_separate(n: int) -> _Joint | None:
     return j
 
 
-#: Which pool code a *sculpting* probe reaches, named rather than searched.
-#:
-#: The scan this replaces was re-deriving a constant.  The verdict is fixed
-#: by the construction:
-#:
-#: * **The probe state is canonical.**  :func:`_mux_probe` emits ``x`` to
-#:   absorb a pending skip and then :func:`_clamp`\ s, and ``<`` never
-#:   writes -- so every probe, at every round of every sculpt, asks about
-#:   rows whose pointers are all 0, with no skip and no dead row, and whose
-#:   pool region is ``(0, 1, 1, 1, 1, 1, 1, 1)``.  Measured as one state per
-#:   ``cell7``: exhaustive at ``n == 3`` (256 tables, 50688 probes), 200
-#:   sampled at four and 12 at five -- 2 distinct full states in all, which
-#:   are the two values of ``cell7`` and nothing else.
-#: * **Nothing outside the pool region can matter.**  Running any pool code
-#:   from that state touches at most cell 6, inside the 8-wide region the
-#:   verdict reads, so the region *is* the whole input to the question.
-#: * **A sculpt cannot disturb it.**  A round rewinds by ``K`` under the
-#:   guard ``rewind > min(ptrs) - _POOL_WIDTH``, so it never writes into the
-#:   region, and the next round re-clamps to the same state.
-#:
-#: So the answer is a constant of the arity-free construction rather than a
-#: property of the table: the fifth code answers ``cell7 == 0`` at every
-#: accumulator and every round, and ``cell7 == 1`` is answered by none.
-#:
-#: The value is the rule rather than the seconds -- naming the code takes a
-#: warm five-input build from ~3.1s to ~2.8s, since the old ``hint`` already
-#: skipped the list on all but the first round.  The rest of
-#: :func:`_mux_probe` is the *column derivation*, a different question this
-#: constant does not close.
-#:
-#: This is the sculpting probe only, and a special case of a general rule:
-#: :func:`_find_pool` asks the same question of the *derivation* path, whose
-#: joints are not clamped to this state, and answers it by
-#: :data:`_POOL_CODE_OF` without a scan either.  This constant stays because
-#: the sculpting probe's state is known at import.
+#: The sculpting probe's pool code, a constant of the construction.  The
+#: probe state is canonical: :func:`_mux_probe` emits ``x`` then clamps and
+#: ``<`` never writes, so every probe has all pointers at 0, no skip, pool
+#: region ``(0, 1, 1, 1, 1, 1, 1, 1)`` -- 2 distinct states in all (the two
+#: ``cell7`` values) over 50688 probes at n=3, 200 tables at 4, 12 at 5.  No
+#: pool code touches past cell 6 from there, and a round's rewind guard
+#: ``rewind > min(ptrs) - _POOL_WIDTH`` keeps it out of the region.  So the
+#: fifth code answers ``cell7 == 0`` everywhere and none answers 1.  Worth
+#: ~0.3s on a warm n=5 build (3.1 -> 2.8s); the column derivation in
+#: :func:`_mux_probe` is a different question.  :func:`_find_pool` answers
+#: the unclamped derivation path via :data:`_POOL_CODE_OF` likewise.
 _SCULPT_POOL_CODE = _POOL_CODES[4]
 
 
@@ -408,12 +313,9 @@ def _probe_frame(code: str, byte: int) -> tuple[int, int] | None:
             return None
         frames.append((sim.ptr, sim.tape & _POOL_MASK))
     if frames[0] != frames[1]:  # pragma: no cover - no code both reads and frames
-        # The two fills differ only above the region, so this catches a code
-        # whose low result *reads* what sits there without writing it -- the
-        # write is the guard above.  Enumerating the whole `<[.x` alphabet
-        # through length 8 from four bytes produced a writer (`.[[...[<`,
-        # covered) and no reader, so this is the residual check rather than a
-        # reachable refusal: it keeps the frame a function of the byte alone.
+        # Catches a code that *reads* above the region (the write is the
+        # guard above).  The ``<[.x`` alphabet through length 8 produced a
+        # writer (``.[[...[<``) and no reader; residual, not reachable.
         return None
     landed, low = frames[0]
     return landed, (low >> (landed + 1)).bit_count() & 1
@@ -466,10 +368,8 @@ def _mux_probe_sim(
     try:
         _walk_to(probe, acc - 1)
     except ValueError:  # pragma: no cover - not observed; as _printed_column
-        # Same shape, and same caveat, as the copy in `_printed_column`: a
-        # pool code that fits the site does not by itself promise the walk,
-        # because `_find_pool` ignores `walk_out`.  Not observed over 38144
-        # sculpting rounds at two and three inputs.
+        # As in ``_printed_column``: ``_find_pool`` ignores ``walk_out``.
+        # Not observed over 38144 sculpting rounds at n=2,3.
         return None
     return tuple(probe.col(probe.ms[0].ptr + 1)), code
 
@@ -543,28 +443,18 @@ def _mux_sculpt(
         frontier = max(disagree)
         rewind = frontier - acc + 1
         if rewind > min(j.ptrs()) - _POOL_WIDTH:
-            # Not observed, but the closest of any guard here: measured over
-            # every table at two and three inputs, 38144 rewinds with a
-            # margin (bound minus rewind) between 0 and 24 -- so the padding
-            # `_mux_separate` leaves is exactly enough at its tightest, and
-            # nothing about the construction makes it *more* than enough.
-            # This is the guard a change to either side would trip first.
+            # The closest guard: 38144 rewinds at n=2,3 with margin 0..24,
+            # so ``_mux_separate``'s padding is exactly enough at its tightest.
             return None  # pragma: no cover - not observed; margin reaches 0
-        # Emitted as three runs rather than one concatenated string.  The
-        # template is ``"".join(parts)`` either way, so the program is
-        # unchanged -- but a mixed string has no closed form, and this is
-        # the loop's hot path: split, the rewind's two long runs go through
-        # `_Sim.run_left` and `_Sim.run_walk` instead of being stepped one
-        # character at a time per row.
+        # Three runs, not one string: same template, but the two long runs
+        # then go through ``_Sim.run_left``/``run_walk`` instead of per-char.
         j.emit("<" * rewind)
         j.emit("[x" * rewind)
         j.emit("x")
     else:
-        # The loop runs `2**n + 4` rounds and each fixes at least the
-        # frontier row, so a table that needs more rounds than it has rows
-        # would be one where a round undid an earlier fix.  Not observed
-        # over every table at two and three inputs; kept because "stall
-        # returns None rather than looping" is the contract this else is.
+        # ``2**n + 4`` rounds, each fixing the frontier row; exceeding it
+        # means a round undid a fix.  Not observed at n=2,3; this else is
+        # the "stall returns None" contract.
         return None  # pragma: no cover - a round never undoes an earlier fix
     j.emit("x")
     _clamp(j)
@@ -706,10 +596,8 @@ def _mux_scout(
     c_probe = frame[1]
     codes = tuple(_POOL_CODES)
     slice0 = _pool_slice(codes, 0, skip=False)
-    # What `_try_print` will do from the sculpted state: per orientation,
-    # the pool code `_find_pool` names there, where it lands, and the parity
-    # its walk out carries -- None when no code answers, which is that
-    # orientation's `_derive_column` returning None.
+    # Per orientation: ``_find_pool``'s code, its landing, and the walk-out
+    # parity; None when no code answers (= ``_derive_column`` None).
     endgames: dict[int, tuple[int, int, int] | None] = {}
     for cell7 in (0, 1):
         chosen = slice0.get((byte, cell7))
@@ -736,15 +624,13 @@ def _mux_scout(
     checked = False
     best: int | None = None
     lengths: dict[tuple[int, bool], int] = {}
-    # Scouted largest accumulator first: rounds cost ``3 * K + 1`` with
-    # ``K = frontier - acc + 1``, so the cheap builds sit at the top and
-    # pricing them first is what lets the strict-abort prune the expensive
-    # bottom after a handful of rounds.  The order prices; it never picks.
+    # Largest accumulator first: rounds cost ``3 * K + 1``, ``K = frontier
+    # - acc + 1``, so cheap builds price first and the strict-abort prunes
+    # the rest.  The order prices; it never picks.
     parities: list[int] | None = None
     for acc in reversed(accs):
-        # Each row's parity over cells ``8..acc`` of the base state.  Walked
-        # down one accumulator at a time: the window loses its top cell, so
-        # its parity flips by that one bit.
+        # Row parity over cells ``8..acc``; stepping ``acc`` down flips it
+        # by the dropped cell.
         if parities is None:
             pmask = (1 << (acc - _POOL_WIDTH + 1)) - 1
             parities = [((t >> _POOL_WIDTH) & pmask).bit_count() & 1 for t in tapes_s]
@@ -755,9 +641,8 @@ def _mux_scout(
             ]
         for direct in (True, False):
             g = 0 if direct else 1
-            # `_try_print`'s own trial order, decided by the constants: a
-            # read matches when its polarity cancels the constant offset
-            # between the probe's parity and the endgame code's.
+            # ``_try_print``'s trial order: a read matches when its polarity
+            # cancels the probe/endgame parity offset.
             matched = None
             for read, cell7 in (
                 (_READS[0], 0),
@@ -773,13 +658,11 @@ def _mux_scout(
                     matched = (read, end)
                     break
             if matched is None:
-                # No read prints this orientation: the sculpt would run its
-                # rounds and then `_try_print` would refuse.  Same outcome.
+                # No read prints this orientation; ``_try_print`` would refuse.
                 continue
             read, (code_len, landed, _) = matched
-            # Everything the sculpt emits outside its rounds, priced up
-            # front: the trailing ``x``, the clamp, then the endgame's pool
-            # code, walk out, read, rewind to the pool, and ``[x.``.
+            # Fixed cost outside the rounds: ``x``, clamp, pool code, walk
+            # out, read, rewind, ``[x.``.
             total = (
                 base_len
                 + 1
@@ -954,10 +837,8 @@ def _mux_lookup(truth_table: str, n: int) -> str:
         parts.append(_MINIFUCK_INPUT)
         parts.append(_mux_weight(weight))
         if i + 1 < n:
-            # The next gadget reaches ``next_weight - 2`` cells left of its
-            # setter.  Advancing by the current weight plus one less than
-            # that next weight puts it on fresh tape.  These pads sum to
-            # T/2-1 rather than spending the old T/4 pad at every level.
+            # The next gadget reaches ``next_weight - 2`` left of its setter;
+            # this pad puts it on fresh tape.  Pads sum to T/2-1, not T/4 each.
             parts.append("[x" * (weight + weights[i + 1] - 1))
 
     pmax = start + 3 * total // 2 - 3

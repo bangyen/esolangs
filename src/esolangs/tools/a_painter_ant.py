@@ -93,15 +93,12 @@ def a_painter_ant(truth_table: str) -> str:
     if truth_table[0] == "1":
         out.append("sPN")
     for bit in truth_table[1:]:
-        # First pass: ``e`` enters the black next cell and paints it; ``E``
-        # is then blocked.  Later passes: ``e`` is blocked and ``E`` enters
-        # that already-white cell.  Thus the same four commands advance one
-        # cell on every pass while establishing a permanent white corridor.
+        # Pass 1: ``e`` enters black and paints, ``E`` blocked.  Later:
+        # ``e`` blocked, ``E`` enters white.  Advances one cell every pass.
         out.append("ePEP")
         if bit == "1":
-            # On the first pass, enter and paint the black answer cell, then
-            # return north to the white corridor.  Later ``s`` is blocked by
-            # that answer, so both paints are harmless and ``N`` is blocked.
+            # Pass 1 paints the answer cell and returns north; later ``s``
+            # is blocked by it and both paints are harmless.
             out.append("sPN")
     out.append("W" * (size - 1))
     for i in range(n):

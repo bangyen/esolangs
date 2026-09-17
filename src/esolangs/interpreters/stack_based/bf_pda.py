@@ -48,16 +48,8 @@ import sys
 from esolangs.interpreters.brackets import match_brackets
 from esolangs.interpreters.io import IO
 
-#: One instant of a run: ``(ip, stack)`` -- the cursor and the bit stack.  A
-#: value, not a record: every transition below returns a new one rather than
-#: editing one in place, and the stack is a ``tuple`` for the same reason.
-#:
-#: This is exactly what ``snapshot`` returns, and always has been, so the
-#: state and its hashable view are the same tuple.
-#:
-#: The code is deliberately not in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  It is a parameter to the transition instead.
+#: ``(ip, stack)``: an immutable value, rebound per step, and exactly what
+#: ``snapshot`` returns.  The code is a parameter, not a field.
 type _State = tuple[int, tuple[int, ...]]
 
 
@@ -93,12 +85,12 @@ def _advance(state: _State, code: str, jumps: dict[int, int]) -> _State:
     """
     ip, stack = state
     if code[ip] == "@":
-        # An empty stack auto-pushes the zero the peek saw, then flips it.
+        # Empty stack: push the zero the peek saw, then flip it.
         stack = (*stack[:-1], stack[-1] ^ 1) if stack else (1,)
     elif code[ip] == "<":
         stack = (*stack, 0)
     elif code[ip] == ">":
-        # ``>`` on an empty stack pops nothing.
+        # Empty stack pops nothing.
         stack = stack[:-1]
     elif code[ip] == "[":
         if _top(stack) == 0:
@@ -120,26 +112,18 @@ class _Machine:
         """
         if not code:
             raise ValueError("BF-PDA program cannot be empty")
-        # The balance check and the jump table are the same walk, so it is
-        # done once and kept.  This used to count depth and discard it, then
-        # rescan for a partner on every jump.
-        #
-        # The shared matcher reports an unmatched ``[`` at the innermost one
-        # still waiting rather than at the last ``[`` in the text.  Those
-        # agree wherever the old message was pinned, and differ only where
-        # the old one was wrong: ``rfind`` could name a bracket that *was*
-        # matched, as in ``[[]``, which names 1 where the unmatched one is 0.
+        # One walk for balance and the jump table (this used to rescan per
+        # jump).  An unmatched ``[`` is reported at the innermost waiting
+        # one; the old ``rfind`` named a matched bracket in ``[[]``.
         self.jumps = match_brackets(code)
 
         self.io = io
         self.code = code
-        # ``halted`` is read twice per command -- once by ``run``'s loop and
-        # once by ``step``'s guard -- so the length is taken once here.
+        # ``halted`` is read twice per command; take the length once.
         self.size = len(code)
         self.state: _State = (0, ())
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # Views on the state.
 
     @property
     def ip(self) -> int:
@@ -156,9 +140,7 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.state[0] >= self.size
 
-    # The VM's language-shaped view: a stack of bits whose top is the
-    # current cell, so the store *is* the stack and ``memory`` is empty.
-    # ``ip`` and ``stack`` above already are the view.
+    # VM view: the store is the stack, so ``memory`` is empty.
 
     @property
     def memory(self) -> list[int]:
@@ -167,8 +149,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The state as it stands: it is already the (ip, stack) pair this
-        # returned before the split, and it is already hashable.
+        # The state is already the hashable (ip, stack) pair.
         return self.state
 
     def step(self) -> None:

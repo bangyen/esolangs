@@ -72,9 +72,7 @@ from collections.abc import Callable
 
 from esolangs.tools.helpers import MARK, MOST_INPUTS, mark
 
-# The default width for a wrapped program.  80 is the conventional review
-# and diff width, and matches the repo's own 88-column limit for Python
-# closely enough that a wrapped program never looks out of place beside it.
+# 80: the conventional review/diff width, close to the repo's 88 for Python.
 DEFAULT_WIDTH = 80
 
 
@@ -157,7 +155,7 @@ def _wrap_grid(
     tokens: list[str], width: int, cell: int, *, left_aligned: bool = False
 ) -> str:
     """Align ``tokens`` on a lattice whose base cell is ``cell``."""
-    # A row of k cells is k cells plus the k-1 single spaces between them.
+    # k cells plus k-1 separators.
     per_row = max(1, (width + 1) // (cell + 1))
     lines: list[str] = []
     row: list[str] = []
@@ -167,13 +165,11 @@ def _wrap_grid(
         if row and used + span > per_row:
             lines.append(" ".join(row).rstrip())
             row, used = [], 0
-        # A token spanning k cells occupies its k cells plus the k-1 separators
-        # they absorb.
+        # k cells plus the k-1 separators it absorbs.
         slot = span * cell + span - 1
         row.append(token.ljust(slot) if left_aligned else token.rjust(slot))
         used += span
-    # The loop ends by appending, and an empty ``tokens`` returned above, so
-    # ``row`` always holds the last row by the time it is flushed here.
+    # ``row`` always holds the last row here (empty ``tokens`` returned above).
     if row:  # pragma: no branch - never empty; see above
         lines.append(" ".join(row).rstrip())
     return "\n".join(lines)
@@ -227,11 +223,8 @@ def _span(length: int, cell: int) -> int:
     return max(1, -(-(length + 1) // (cell + 1)))
 
 
-#: A run of one input's mark (:func:`~esolangs.tools.helpers.mark`), what
-#: :func:`~esolangs.generate` spells each input as while a template is
-#: wrapped.  One token: a break inside it would land inside the setter
-#: that replaces it -- mid-word, for a word language -- and each input is
-#: its own character, so two adjacent runs are two tokens.
+#: One input's mark run (:func:`~esolangs.tools.helpers.mark`), one token:
+#: a break inside would land inside the setter.  Adjacent runs are two tokens.
 _RUN = "|".join(f"{re.escape(mark(i))}+" for i in range(MOST_INPUTS))
 
 
@@ -281,72 +274,38 @@ def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
     return "\n".join(lines)
 
 
-# A BIO command is a ``[0|1][o|i][x|y|z]`` triple with the ``;`` that ends
-# it, a loop-open triple carrying the ``{`` that opens its body, or the
-# ``};`` that closes one -- plus the space the boolean generator separates
-# commands with.  The commands are why BIO cannot be wrapped by character
-# count, and their varying width is why a fixed stride will not do either.
-#
+# ``[01][oi][xyz]`` plus ``;`` or ``{``, or ``};``, or the separating
+# space.  Varying width is why neither a character wrap nor a fixed stride
+# will do.
 _BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};| "
 
-# Brainfuck-family single-character commands, and the languages that
-# extend them with a digit argument (Dimensional's ``>0``/``<0``).
+# Brainfuck-family, plus a digit argument (Dimensional's ``>0``/``<0``).
 _DIMENSIONAL_COMMAND = r"[<>]\d+|."
 
-# 6-5's ``7``/``8`` take the *next character* as their operand, whatever it
-# is -- the interpreter's own tokenizer merges the pair without inspecting
-# it, so the operand is not restricted to the digits and letters the spec
-# names.  Matching any character (rather than, say, ``[0-9A-Z]``) keeps the
-# wrapper's token stream identical to the interpreter's on every program,
-# including ones carrying operands outside the spec's alphabet.
-#
-# ``7n`` additionally swallows the instruction it guards -- including that
-# instruction's own operand when it is another ``7n``/``8n`` -- because a
-# newline between them would be skipped in its place.  See :func:`_six_five`.
+# 6-5's ``7``/``8`` take the next character, whatever it is (the
+# interpreter's tokenizer merges the pair blind), so this matches any
+# character, not ``[0-9A-Z]``.  ``7n`` also swallows the instruction it
+# guards, operand included; see :func:`_six_five`.
 _SIX_FIVE_COMMAND = r"7[\s\S](?:[78][\s\S]|[\s\S])|8[\s\S]|[\s\S]"
 
-# The languages that print through a *literal*, where a newline dropped
-# inside the literal is not whitespace between commands but a character the
-# program goes on to print (or, in Sophie's case, prints *instead* of the
-# one that was there).  Each pattern makes the literal a single unbreakable
-# token and leaves every other character its own, so the boolean programs --
-# which carry no literal -- still tokenize exactly as ``wrap_chars`` would.
-#
-# A literal wider than the width is then left on its own line rather than
-# broken, which is :func:`_join_tokens`'s existing behaviour for an
-# oversized token: a 3x program that is one ``[...]`` does not wrap.  An
-# over-wide line is the honest outcome here, since the alternative is a
-# program that prints something else.
-# Sophie's loads and branches take a *run* of digits, and the interpreter
-# matches each as one unit: ``#\$(\d+)`` for a numeric load, ``@\$(\d+){``
-# for a numeric branch, and the one-character forms behind them.  The
-# alternatives below are those four, longest first, so a break can never
-# land inside a number or between ``@$48`` and the ``{`` it opens.
-#
-# The earlier pattern spelled the load ``#\$\d+,`` with the comma required,
-# which is a different command -- so ``#$1`` fell through to the
-# one-character form, tokenized as ``#$`` and ``1``, and a newline between
-# them left a load of the character ``'\n'``.
-# ``}{`` is the last alternative and not a command at all: it is an
-# if-block's close beside its else-block's open.  A failed branch jumps to
-# the close and then tests whether the *next* character is ``{`` to decide
-# whether an else-block follows, so a newline between the two loses the
-# else.  Only that adjacency matters -- a ``}`` followed by anything else
-# was not opening an else either way.
+# Literal-printing languages: a newline inside the literal is printed (or,
+# in Sophie, printed instead).  The literal is one token; an over-wide one
+# stays on its own line (:func:`_join_tokens`'s oversized-token rule).
+# Sophie: ``#\$(\d+)`` numeric load, ``@\$(\d+){`` numeric branch, the
+# one-character forms behind them, longest first.  The old ``#\$\d+,``
+# required the comma, so ``#$1`` tokenized as ``#$`` + ``1`` and a newline
+# between them loaded ``'\n'``.  ``}{`` is an if-close beside an else-open:
+# a failed branch tests the *next* character for ``{``, so a newline there
+# loses the else.
 _SOPHIE_COMMAND = r"@\$\d+\{|@\$?.\{|#\$\d+|#\$?.|\}\{|."
 
-# A collapsed Minifuck ``[`` skips the next *character* (the interpreter
-# advances ``ind + 2``), so a newline sitting there is what gets skipped and
-# the instruction it should have skipped runs instead.  Consecutive ``[``
-# chain that displacement, so a whole run has to stay with the character
-# after it rather than just the last one.
+# Minifuck ``[`` skips the next character (``ind + 2``), so a newline
+# there is what gets skipped; consecutive ``[`` chain, so the whole run
+# stays with the character after it.
 _MINIFUCK_COMMAND = r"\[+.|."
 
-# Jaune's operators take an operand *before* them: ``3?`` jumps to label 3,
-# ``2+`` adds 2, and ``v`` is a number too, so ``v?`` jumps to the label the
-# input names.  Those pairs are the only unbreakable units.  A repeated bare
-# command (``++``) is a counted one, but splitting it changes nothing --
-# adding 1 twice is adding 2 -- so a run needs no rule of its own.
+# Jaune: operand before operator (``3?``, ``2+``, ``v?``) is the only
+# unbreakable unit.  A bare run ``++`` splits harmlessly (1 + 1 = 2).
 _JAUNE_COMMAND = r"\d+[-+:?!$@]|v[-+?!@]|."
 _BRACKET_LITERAL = r"\[[^\]]*\]|."
 _EVAL_UNIT = r'"[^"]*"|\?.|.'
@@ -391,8 +350,7 @@ def _bio(program: str, width: int) -> str:
     if _bio_depth(merged) >= 2:
         return _bio_indented(merged, width)
     wrapped = _join_tokens(merged, width, separator="")
-    # A break after a command leaves its trailing separator at the end of the
-    # line; the newline separates the commands just as well, so drop it.
+    # The newline replaces the trailing separator.
     return "\n".join(line.rstrip(" ") for line in wrapped.split("\n"))
 
 
@@ -440,8 +398,7 @@ def _bio_indented(tokens: list[str], width: int) -> str:
     lines: list[str] = []
     depth = 0
     run: list[str] = []
-    # Two spaces a level, up to the depth that still leaves a run a quarter
-    # of the width to pack into.
+    # Two spaces a level, while a run still gets a quarter of the width.
     cap = max(0, (width - width // 4) // 2)
 
     def flush(at: int) -> None:
@@ -634,10 +591,8 @@ def _polynomial(program: str, width: int) -> str:
     pending = ""
     for token in program.split():
         if token in ("+", "-"):
-            # A sign already held has no term to attach to; keep it as its
-            # own line rather than dropping it.  ``format_coeffs`` never
-            # emits two in a row (it collapses ``+ -`` into ``- ``), so this
-            # is only about the helper staying total for any input.
+            # A held sign with no term becomes its own line; ``format_coeffs``
+            # never emits two in a row, so this only keeps the helper total.
             if pending:
                 terms.append(pending)
             pending = token
@@ -687,13 +642,9 @@ def _taglate(program: str, width: int) -> str:
 _PCT_COMMAND = r"."
 
 
-# What divides a %^2^-1 template's setter header from its body: a blank line,
-# so that a single newline inside either part is that part's own fold.
-#
-# What divides a %^2^-1 template's setter header from its body: a blank
-# line.  Spelled here rather than imported, because importing it would pull
-# the whole ``esolangs.tools`` package into a module that otherwise needs
-# nothing but the standard library; a test asserts the two copies agree.
+# Blank line between a %^2^-1 setter header and body.  Spelled, not
+# imported, to keep ``esolangs.tools`` out of a stdlib-only module; a test
+# asserts the copies agree.
 _PCT_HEADER_END = "\n\n"
 
 
@@ -734,31 +685,25 @@ def _qoibl(program: str, width: int) -> str:
     return "\n".join(wrap_space_delimited(line, width) for line in program.split("\n"))
 
 
-# Language id -> the wrapper that language needs.  A language absent here
-# is never wrapped: either its newlines are semantic (the 2D grid
-# languages), it rejects them outright (NoComment), or its own execution
-# model makes character position meaningful (ROTfuck).  See the module
-# docstring for why each exclusion is an exclusion.
+# Language id -> wrapper.  Absent = never wrapped: semantic newlines (2D
+# grids), rejects them (NoComment), or position-dependent (ROTfuck).  See
+# the module docstring.
 WRAPPERS = {
     "addsubjump": wrap_grid,
     "decleq": wrap_grid,
     "sbleq": wrap_grid,
-    # Space-delimited, but its ``+``/``-`` are tokens of their own and its
-    # terms outgrow any width, so the plain space wrapper stranded every
-    # sign on a line by itself; ``_polynomial`` keeps each sign with its
-    # term and gives each term a line.
+    # Space wrap stranded every sign alone; keep sign with term, one per line.
     "polynomial": _polynomial,
     # Space-delimited, but ``GOTO`` and its target must stay on one line.
     "bitdeque": _bitdeque,
     "bio": _bio,
     "dimensional": _dimensional,
-    # Almost single-character, but 7n/8n are two-character tokens that a
-    # plain character wrap splits -- see :func:`_six_five`.
+    # 7n/8n are two-character tokens; see :func:`_six_five`.
     "six_five": _six_five,
     "brainfuck": wrap_chars,
     "three_d_brainfuck": wrap_chars,
     "circlefuck": wrap_chars,
-    # Not single-character after all: ``[`` skips the character after it.
+    # ``[`` skips the character after it.
     "minifuck": _minifuck,
     "factor": wrap_chars,
     "home_row": wrap_chars,
@@ -768,64 +713,41 @@ WRAPPERS = {
     "rotfuck": wrap_chars,
     "bfstack": wrap_chars,
     "suffolk": wrap_chars,
-    # 123 is single-character commands throughout -- its trailing ``1`` is a
-    # terminator, not a structural line -- so any position is a legal break.
+    # The trailing ``1`` is a terminator, not a structural line.
     "one_two_three": wrap_chars,
-    # SLOW ACV MAMMALIAN's ``SEED`` runs are its visible unit, so four-character
-    # cells align them while its longer command words span whole cells.
+    # Four-character cells align the ``SEED`` runs; longer words span cells.
     "slow_acv_mammalian": _mammalian,
-    # Space-delimited too, and the space is the only safe break: Lamfunc's
-    # ``vs``/``vg``/``0b1`` and RAM0's operands (``L C 19``) are multi-
-    # character tokens that a character wrap splits.  RAM0's numbers are
-    # instruction indices, which a break between tokens leaves alone.
+    # Multi-character tokens (``vs``, ``0b1``, ``L C 19``); space is the
+    # only safe break.
     "lamfunc": wrap_space_delimited,
     "ram0": wrap_space_delimited,
     # Operand-before-operator, so a break between the two is a load error.
     "jaune": _jaune,
-    # Their programs are single long lines that need wrapping, and they
-    # print through a literal that must not be broken; the literal-aware
-    # wrappers above are what keeps a break out of one.
+    # Print through a literal that must not be broken.
     "modulous": _bracket_literal,
     "eval": _quote_literal,
     "sophie": _sophie,
     "three_x": _bracket_literal,
-    # Forth's commands are single characters throughout, with no literal.
     "forth": wrap_chars,
-    # Both concatenate their command text before reading it, so a line break
-    # can never land inside a command: Taglate joins every line after the
-    # queue seed and only then tokenizes (so a two-character ``gy``/``gz``
-    # cannot be split across rows), and A Painter Ant drops whitespace
-    # outright.  Their boolean programs are the single long lines that
-    # need this.
+    # Both concatenate before tokenizing (Taglate after the queue seed; A
+    # Painter Ant drops whitespace), so no break can land inside a command.
     "taglate": _taglate,
     "a_painter_ant": wrap_chars,
-    # Its body is the longest unwrapped line in the corpus -- 2444 columns at
-    # ``n == 3`` -- and its header is structural, so it wraps like Taglate.
+    # Longest line in the corpus (2444 columns at n=3); structural header.
     "pct_squared_minus_one": _pct_squared_minus_one,
-    # Single-character stack commands, no literal and no multi-character
-    # token, so any position is a legal break.
     "bf_pda": wrap_chars,
-    # One statement a line, each of space-separated tokens, and a newline
-    # between two tokens is just whitespace -- so each line folds on its own.
+    # One statement a line; each folds on its own.
     "qoibl": _qoibl,
-    # Both parsers treat every newline as ordinary whitespace, but their
-    # generators already emit indented blocks.  Keep those statement lines
-    # and fold only an individual line that exceeds the requested width.
+    # Generators emit indented blocks; fold only an over-wide line.
     "forbin": _indented,
     "packlang": _indented,
 }
 
 
-# The languages whose wrapper handles an already-multi-line program itself,
-# rather than being skipped by :func:`wrap_program` for having a newline in
-# it.  Taglate's first line seeds its queue and is structural, so its
-# wrapper keeps that row whole and folds only the commands below it;
-# %^2^-1's template opens with a setter header, which its wrapper folds
-# by character.  Qoibl is multi-line for a third reason: none of its lines
-# is structural,
-# but every one is a statement, so its wrapper folds each separately rather
-# than reflowing the program as one stream.  The language would not notice
-# the difference -- a newline is whitespace to it -- but the reader would.
+# Wrappers that handle a multi-line program themselves instead of being
+# skipped: Taglate's first line seeds its queue (kept whole); %^2^-1's
+# setter header folds by character; Qoibl's every line is a statement,
+# folded separately for the reader (the language would not notice).
 MULTILINE = frozenset(
     {"taglate", "pct_squared_minus_one", "qoibl", "forbin", "packlang"}
 )

@@ -105,50 +105,40 @@ from esolangs.tools.helpers import (
 
 __all__ = ["cvnc"]
 
-# Read one input bit.  ``o`` is integer square root, identity on 0 and 1, so
-# it is the no-op vowel that completes ``s``'s syllable.
+# Read one bit; ``o`` (isqrt) is identity on 0/1, the no-op vowel for ``s``.
 _READ = "so"
 
-# Open the "bit is one" arm and close it.  ``ɰ̊`` jumps past its ``ʋ`` when
-# the accumulator is zero, so falling through means the bit was one.
+# Open/close the "bit is one" arm: ``ɰ̊`` jumps past ``ʋ`` on zero.
 _IF_ONE = "ɰ̊o"
 _END_IF = "ʋo"
 
-# Increment, the only way to raise the accumulator one step inside a syllable.
+# Increment.
 _INCREMENT = "ci"
 
-# Force a just-read bit to a known zero.  ``ə`` decrements but floors at zero,
-# so it sends both 0 and 1 to 0 -- which is what lets a folded leaf climb from
-# a fixed starting point without branching to discover what it holds.
+# ``ə`` decrements with a floor at 0, so it sends 0 and 1 both to 0: a
+# folded leaf climbs from a known point without branching.
 _NORMALIZE = "cə"
 
-# Print the accumulator as a character.  ``u`` applies the function, which is
-# empty here -- every syllable in a leaf has a ``c`` onset -- so it does not
-# parse and does nothing.
+# Print; ``u`` applies the (empty, every leaf syllable has a ``c`` onset)
+# function, which does nothing.
 _PRINT = "fu"
 
-# Push the accumulator to the front / back of the deque.  A nasal rides the
-# read's own syllable -- ``som`` is one syllable running three commands -- so
-# storing a bit costs one character on top of reading it, not a whole syllable.
+# Push front / back.  A nasal rides the read's syllable (``som`` is one
+# syllable, three commands), so storing costs one character, not a syllable.
 _PUSH_FRONT = "m"
 _PUSH_BACK = "n"
 
-# Fetch a stored bit from the front / back into the accumulator.  ``c`` resets
-# the (already empty) function and ``u`` applies it, which does not parse and so
-# does nothing; the pop then overwrites whatever the accumulator held, which is
-# what makes the inert vowel safe even though it runs before the pop.
+# Pop front / back into the accumulator.  ``cu`` is inert and runs before
+# the pop, which overwrites the accumulator anyway.
 _FETCH_FRONT = "cuŋ"
 _FETCH_BACK = "cuɲ"
 
-# The accumulator entering the halt gadget: the leaf has just printed, so it
-# still holds the ASCII digit.  49 is the larger of the two, and starting
-# from the smaller (48) is what the reach must be computed against.
+# Accumulator entering the halt gadget: the printed ASCII digit.  Reach is
+# computed from the smaller, 48.
 _HALT_ENTRY = _ASCII_ZERO
 
-# Squarings every gadget starts with.  One is the measured floor (with none
-# the gadget reaches only 50 and lands back inside the program); two reach
-# 6.25M, past every arity worth asking for, and :func:`cvnc` adds more only
-# when the program says so.  See the module docstring.
+# Squarings per gadget.  None reaches only 50 (inside the program); one is
+# the floor; two reach 6.25M.  :func:`cvnc` adds more only when needed.
 _HALT_SQUARINGS = 2
 
 
@@ -170,8 +160,7 @@ def _reach(squarings: int) -> int:
     return reach
 
 
-# The gadget every candidate is measured with; ``ɹ`` occurs nowhere else in
-# an emitted program, so replacing the gadget string replaces every gadget.
+# ``ɹ`` occurs nowhere else, so replacing this string replaces every gadget.
 _HALT = _halt(_HALT_SQUARINGS)
 
 
@@ -194,22 +183,17 @@ def _tree(table: str, accumulator: int) -> str:
     agree stops branching here, but still owes every read below it.
     """
     if table.count(table[0]) == len(table):
-        # Folded.  The reads are the interface and are all still owed; only
-        # the branching is dead.  The last of them leaves an unpredictable
-        # bit, so ``cə`` floors it to a known zero for the leaf to climb
-        # from -- and when nothing is left to read, the accumulator is
-        # already the bit the caller's branch handed down.
+        # Folded: reads are still owed, only branching is dead.  The last
+        # read leaves an unknown bit, so ``cə`` floors it; with nothing to
+        # read, the accumulator is the bit the caller's branch handed down.
         reads = _bit_count(len(table))
         if not reads:
             return _leaf(table[0], accumulator)
         return _READ * reads + _NORMALIZE + _leaf(table[0], 0)
     half = len(table) // 2
-    # The table is indexed most-significant-first, so its *first* half is the
-    # rows where this input is 0 and its second half the rows where it is 1.
-    # ``ɰ̊`` jumps away on zero, so the arm between the markers is the one
-    # that runs when the bit is 1 -- the second half -- and the arm after
-    # them is the first.  Getting this the other way round is the bug that
-    # inverts every table with an odd number of 1s in it.
+    # MSB-first: first half is bit 0, second half bit 1.  ``ɰ̊`` jumps on
+    # zero, so the arm between the markers is the second half.  Swapped,
+    # every table with an odd number of 1s inverts.
     return _READ + _IF_ONE + _tree(table[half:], 1) + _END_IF + _tree(table[:half], 0)
 
 
@@ -240,11 +224,10 @@ def _deque_schedule(
     """
     n = len(perm)
     for assignment in range(1 << n):
-        # Bit ``i`` of the assignment sends input ``i`` to the front.
+        # Bit ``i`` sends input ``i`` to the front.
         front = [i for i in range(n) if assignment >> i & 1]
         back = [i for i in range(n) if not assignment >> i & 1]
-        # Front pushes reverse (each goes in ahead of the last); back pushes
-        # keep their order, so the deque reads front-to-back as this.
+        # Front pushes reverse, back pushes keep order.
         held = list(reversed(front)) + back
         pops = []
         for wanted in perm:
@@ -288,14 +271,9 @@ def _stored(truth_table: str, perm: tuple[int, ...]) -> str | None:
 
     def walk(table: str, level: int, accumulator: int | None) -> str:
         if table.count(table[0]) == len(table):
-            # No reads are owed -- the load block did them all -- so a folded
-            # leaf is the leaf alone.  What it climbs from depends on whether
-            # a branch ran: below one, the accumulator is the bit that branch
-            # fetched and is known statically.  At the root of a table that
-            # folds immediately, nothing has been fetched and the accumulator
-            # is still the *last bit the load block read*, which is not known,
-            # so ``cə`` floors it to zero first -- the same normalization the
-            # node-read tree does, for the same reason.
+            # The load block did every read.  Below a branch the accumulator
+            # is that branch's known bit; at a root that folds immediately it
+            # is the load block's last read, unknown, so ``cə`` floors it.
             if accumulator is None:
                 return _NORMALIZE + _leaf(table[0], 0)
             return _leaf(table[0], accumulator)
@@ -369,8 +347,7 @@ def cvnc(truth_table: str) -> str:
     once, with the starting gadget: a squaring adds the same two characters
     to every leaf, and the reach it buys dwarfs the length it adds.
     """
-    # Called for the refusal: a one-entry table has no input to read or
-    # branch on, and the arity itself is not needed below.
+    # For the refusal only; the arity is not needed below.
     _validate_truth_table(truth_table)
     program = best_input_order(truth_table, _ordered_candidate)
     squarings = _HALT_SQUARINGS

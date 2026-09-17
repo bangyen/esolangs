@@ -87,24 +87,18 @@ _FOLD_NARROW_STEP = 2
 #: weight of 1 would otherwise be needed for.
 _FOLD_SUBSET_LADDER = (2, 3)
 
-#: One point of a fold plan: ``(top, span, cls, rows)`` -- the group's highest
-#: row value relative to the state's top, how far its rows extend below it
-#: (0 once it has been wiped and its rows merged), its class, and the rows.
+#: ``(top, span, cls, rows)``: highest row value relative to the state's
+#: top, extent below it (0 once wiped), class, rows.
 _FoldPoint = tuple[int, int, str, frozenset[int]]
 _FoldState = tuple[_FoldPoint, ...]
 
-#: One move: ``(kind, k, c, victims)`` -- ``"m"`` doubles, ``"d"``/``"u"``
-#: wipe the bottom/top ``k`` groups with relocation amount ``c``.
+#: ``(kind, k, c, victims)``: ``"m"`` doubles, ``"d"``/``"u"`` wipe the
+#: bottom/top ``k`` groups with relocation ``c``.
 _FoldOp = tuple[str, int, int, frozenset[int]]
 
-#: The largest bridge state :func:`_fold_to_cofactors` will search.  Measured,
-#: not chosen: exhaustively over ``n <= 4`` the 33628 tables that build never
-#: hand the bridge more than eight points, and the adversaries built to grow
-#: the state (a function of the first ``k`` inputs embedded at ``n = 8, 10,
-#: 12``) top out at four.  Above this a doomed arity used to get expensive --
-#: a 512-point state burned the retired best-first bridge's 50000-state cap
-#: for 192s -- while contributing no build, so it is declined instead of
-#: paid for.
+#: Largest bridge state :func:`_fold_to_cofactors` searches.  Measured: the
+#: 33628 building tables at n <= 4 never exceed 8 points, adversaries at
+#: n = 8, 10, 12 top out at 4, and a 512-point state once burned 192s.
 _COFACTOR_BRIDGE_POINTS = 8
 
 #: A point in the emitter's mirror: a raw row or a merged set of rows.
@@ -165,8 +159,8 @@ def _fold_moves(
     top_all = max(p for p, _, _, _ in state)
     bot_all = min(p - s for p, s, _, _ in state)
     spread = top_all - bot_all
-    # Doubling needs the whole state inside [-3003, 3003] afterwards, and an
-    # odd spread of 3003 has no integer placement, hence the -2.
+    # State must fit in [-3003, 3003] after doubling; odd 3003 has no
+    # integer placement, hence -2.
     if 0 < spread * 2 <= 2 * _LIMIT - 2:
         yield (
             "m",
@@ -250,8 +244,7 @@ def _fold_moves(
             if hi - lo > 2 * _LIMIT:
                 continue
             merged = _fold_merge(items)
-            # The span check above is the merge's own precondition, so a
-            # pair that passes it always merges.
+            # The span check is the merge's precondition; passing it merges.
             if merged is not None:  # pragma: no branch
                 yield (
                     "u",
@@ -346,8 +339,7 @@ class _FoldLedger:
         return len(self.tops)
 
     def _insert(self, top: int, span: int, c: str, ids: list[frozenset[int]]) -> None:
-        # Tops are distinct: the start state lays every run at its own
-        # position and a landing that coincides with a survivor merges.
+        # Tops are distinct: a landing on a survivor merges.
         if top in self.span:
             raise AssertionError(top)
         at = bisect_left(self.tops, top)
@@ -417,8 +409,7 @@ class _FoldLedger:
         return self.tops[-1] - self.bots[0]
 
     def can_double(self) -> bool:
-        # Doubling needs the whole state inside [-3003, 3003] afterwards,
-        # and an odd spread of 3003 has no integer placement, hence the -2.
+        # As in ``_fold_double``: fit in [-3003, 3003], odd -> -2.
         return 0 < self.spread() * 2 <= 2 * _LIMIT - 2
 
     def _victims(self, kind: str, k: int) -> list[int]:
@@ -440,9 +431,7 @@ class _FoldLedger:
         vcls = self.cls[vic[0]]
         if any(self.cls[t] != vcls for t in vic):
             return None
-        # The survivors' lowest bottom: walk the bottom multiset past the
-        # victims' own bottoms, which is O(k) since it stops at the first
-        # value no victim owns.
+        # Survivors' lowest bottom, O(k): stop at the first value no victim owns.
         skip: dict[int, int] = {}
         for t in vic:
             b = t - self.span[t]
@@ -488,13 +477,9 @@ class _FoldLedger:
             while i >= 0 and tops[i] == ref - amount:
                 amount += 1
                 i -= 1
-        # The window cannot be exhausted: it has ``q1`` slots and the
-        # occupied set is the survivor tops, which are distinct positions,
-        # so filling it needs ``q1`` survivors -- while ``q1`` is itself the
-        # gap to the *nearest* survivor, and packing that many in collapses
-        # it to 1.  Measured over 47.2M legal wipe frames (sizes 2-4, both
-        # directions, every k, mixed spans and classes): no window ever ran
-        # out.  The return stays as the total function's last arm.
+        # Cannot exhaust: filling ``q1`` slots needs ``q1`` distinct survivor
+        # tops, but ``q1`` is the gap to the nearest one.  47.2M legal wipe
+        # frames, none ran out.  The return keeps the function total.
         if amount > _LIMIT + q1:
             return None  # pragma: no cover
         return amount
@@ -545,9 +530,8 @@ class _FoldLedger:
             q1, ref, _minbot = frame
             vcls = self.cls[tops[0] if kind == "d" else tops[-1]]
             lst = self.by_cls.get(vcls, ())
-            # The nearest same-class wiped point in the window, by bisect:
-            # the victim itself is span 0 of that class but sits at distance
-            # 0, outside every window.
+            # Nearest same-class wiped point; the victim is at distance 0,
+            # outside every window.
             if kind == "d":
                 i = bisect_left(lst, ref + _LIMIT + 1)
                 if i < len(lst) and lst[i] <= ref + _LIMIT + q1:
@@ -632,10 +616,8 @@ class _FoldLedger:
         lo = min(minbot, landing)
         if hi - lo > 2 * _LIMIT:
             return False
-        # Two points at one value are indistinguishable forever after, so a
-        # collision is a merge -- legal only within a class, and only onto
-        # an already-wiped point (a group with extent has rows at *several*
-        # values, so an "equal top" is not an equal anything).
+        # A collision is a merge: same class only, onto a wiped point only
+        # (a group with extent has rows at several values).
         c = self.cls[vic[0]]
         if landing in self.span and (self.cls[landing] != c or self.span[landing]):
             return False
@@ -718,244 +700,78 @@ def _fold_reduce(
     return ops if finished() else None
 
 
-#: The rule construction's step budget, as ``slope * points + slack``
-#: rather than a flat number.  **The starting point count is the run
-#: count** -- the fold opens with one point per run of the sorted table, so
-#: a budget written against points is written against the table's own
-#: structure.
+#: Step budget ``slope * points + slack``; points open at one per run.
+#: It is what guarantees a return: counts never rise and workspace-guarded
+#: states are finite, but :func:`_fold_reduce` carries no ``seen`` set, so a
+#: (never observed) cycle would loop without it.  It decides how long a
+#: doomed descent runs, never what builds; the fold is the last route.
 #:
-#: **The budget is what guarantees a return.**  Two of the retired
-#: descent's termination facts still hold -- ``_fold_merge`` only ever
-#: coalesces points, so the count never rises, and every move guards the
-#: workspace, so the states at a fixed count are finitely many -- but the
-#: third leg was its ``seen`` set, and :func:`_fold_reduce` carries none.
-#: The rules are deterministic, so a revisited state would be a true cycle;
-#: none was observed anywhere the construction was measured, but nothing
-#: forbids one, and the budget converts that possibility into the same
-#: ``None`` refusal every other dead end takes.
+#: Calibration (retired descent, exhaustive at four inputs): worst 78 steps
+#: at 16 points vs 144 allowed (1.8x).  Worst pts->steps ratio peaks at 5.25
+#: near 12 points; sampling wider gave 5.65 (five inputs, 17 points) and
+#: rose with every widening, so the slope is chosen, not derived.  The rules
+#: sit lower: worst 4.77 at 13 points, including the 997-group 11-input state.
+#: Replacing the flat 400: byte-identical over 387 tables at n=3..8; at n=9
+#: (359 steps used at 8) the flat budget built 1 of 3, this builds 3 of 3.
 #:
-#: So the slope only has to be generous enough not to cut a reduction short,
-#: and its calibration predates the rules: on the retired descent's walks
-#: **four inputs was enumerated rather than sampled**: folding all 65534
-#: non-constant four-input tables gives a worst of 78 steps at 16 points,
-#: against the 144 this budget allows there -- 1.8x headroom over an
-#: exhaustive population, not a lucky sample.  The whole ``pts -> steps``
-#: table is regular: the maximum climbs smoothly with the point count and
-#: the worst ratio peaks at **5.25** around 12 points, then falls away.
+#: Greedy cost is a function of the run-length word alone (127/127 words at
+#: n=3, 32767/32767 at n=4, complement-invariant), as a *sequence*: only
+#: 27 of 2248 rotation/reflection classes are cost-invariant, and sliding one
+#: length-2 run through an alternating word moves cost 27 -> 78.
 #:
-#: Sampling at wider arities agrees (worst 5.65 at five inputs, at 17
-#: points) and, importantly, does *not* converge downward -- the worst
-#: observed ratio rose with every widening, 4.25 through 5.65.  That is why
-#: the slope is not presented as derived: it is a bound chosen to sit well
-#: above an observed peak that small states, not large ones, produce.  The
-#: rules sit further under it than the descent did -- their worst observed
-#: ratio is 4.77, at 13 points, over the same corpora plus the 997-group
-#: eleven-input state -- so the bound carries over unshrunk.  What makes
-#: that acceptable is the termination argument above -- the budget does not
-#: decide what builds, only how long a doomed descent runs -- plus the fold
-#: being the last route tried, so a loose budget costs refusal latency and
-#: nothing on a table that builds.
-#:
-#: **What the cost actually depends on is the run-length word**, and that is
-#: exhaustive rather than sampled: writing each table as its sequence of run
-#: lengths, every one of the 127 distinct words at three inputs and all
-#: 32767 at four map to a *single* step count, with no exceptions.  Since
-#: 65534 tables share those 32767 words in pairs -- a table and its
-#: complement -- the cost is complement-invariant too, and nothing about the
-#: table beyond the word matters.
-#:
-#: The dependence is on the word as a *sequence*, not as a multiset: only 27
-#: of the 2248 rotation-and-reflection classes at four inputs are
-#: cost-invariant.  Position is what moves it.  Holding the point count,
-#: run count and class sizes fixed and sliding one length-2 run through an
-#: otherwise alternating word takes the cost from 27 steps to 78 -- the same
-#: table shape, three times the work, decided by where the defect sits.  The
-#: worst tables in the whole four-input enumeration are exactly that: near
-#: alternating with a single late defect.
-#:
-#: **All of the above is about the greedy descent's path length, which is
-#: not an invariant of anything.**  It is one policy's walk, tie-broken by
-#: the order :func:`_fold_moves` yields and carrying a ``seen`` set that
-#: makes each step depend on the whole history, so it is not even a graph
-#: distance.  Comparing it against one -- a breadth-first search over
-#: signatures with a global visited set -- it is *optimal on 4 of 196*
-#: three-input words, and can be 14 steps where 6 suffice.  Some words the
-#: descent takes 9 steps on are 2 steps from done.
-#:
-#: Against the true distance the structure is completely different.  Within
-#: a fixed run count the optimal cost takes exactly **two adjacent values**
-#: (spread 1, against the greedy spread of 9), and it does *not* depend on
-#: the exact run lengths at all -- only on which runs exceed 1, with zero
-#: ambiguity at every run count.  So the incompressibility this docstring
-#: used to record is a fact about the heuristic, not about the fold: the
-#: exact lengths that "matter without limit" matter only to greedy's walk.
-#:
-#: **The optimal cost has a closed form.**  Writing ``r`` for the run count
-#: and calling a slot *long* when its run exceeds 1::
+#: Greedy path length is not a distance: vs BFS it is optimal on 4 of 196
+#: three-input words (14 where 6 suffice).  The BFS cost has a closed form,
+#: ``r`` = run count, a slot *long* when its run exceeds 1::
 #:
 #:     cost(word) = 2 * r - 3 - (r % 2) + [every middle slot is long]
 #:
-#: where the *middle* slots are ``{(r - 1) // 2, r // 2}`` -- one slot for
-#: odd ``r``, two for even.  The first three terms are ``base(r)``, the
-#: minimum cost at that run count: 1, 2, 5, 6, 9, 10, 13 at ``r = 2..8``.
-#: The bracket is the ``delta``, which is 0 or 1, so the two-adjacent-values
-#: spread above is exactly this term.
+#: middle slots ``{(r - 1) // 2, r // 2}``; ``base(r)`` = 1, 2, 5, 6, 9, 10, 13
+#: at r = 2..8.  Distance is from :func:`_fold`'s start state (65534/65534
+#: signatures match the word-built one) over ``(top, span, class)`` with a
+#: global visited set and :func:`_fold_moves` at ``kcap=None`` (binds only at
+#: r >= 9, untested).  Measured over 1091 words, zero mismatches: exhaustive
+#: r <= 6 at n=3 (119) plus two r == 7; exhaustive ``>1``-patterns r <= 5 at
+#: n=4,5 (322, 468); 300 random at n=5,6; adversarial middle-slot pairs.
+#: Delta pins: r=6 ``(1,1,2,1,1,10)`` and ``(1,1,1,2,1,10)`` cost 9, ``(1,1,2,2,1,9)``
+#: costs 10; r=7 ``(1,1,1,2,1,1,25)`` costs 11 (depths 9-10 exhaust, 393s),
+#: base(7)=10 proved by BFS on ``(2,1,1,1,1,1,1)`` / ``(1,1,1,1,1,1,2)`` (1.17M
+#: states, 344s/195s) and IDDFS on ``(1,1,1,1,1,1,26)``.
+#: Mechanism: only a wipe zeroes a span, wipes take ``asc[:k]``/``desc[:k]``
+#: (8116/8116 contiguous), so a long middle run costs the extra move
+#: (necessary on all 1005 reachable 3-point states; 462 one-move finishes as
+#: control).  A ``k >= 2`` wipe does NOT need span-0 victims (414 of 840
+#: have a spanned one); the span-0 requirement is in the landing.
+#: base(r) = ``r - 1 + 2 * floor((r - 2) / 2)`` with ``floor((r - 2) / 2)``
+#: doublings is a census, not a bound.  Unmeasured: ``>1``-pattern
+#: sufficiency beyond r <= 5 (n=4,5) / r <= 6 (n=3); r >= 8 everywhere
+#: (base(8)=13 is a prediction; BFS at r=7 is ~6 min, 1.2M states).
 #:
-#: **Definitions, because the quantity is what the prior investigation got
-#: wrong.**  ``cost`` is the breadth-first distance from the start state --
-#: one point per run, at ``-_FOLD_STEP * first_row`` with span
-#: ``_FOLD_STEP * (len - 1)`` -- to a :func:`_fold_done` state, over
-#: ``(top, span, class)`` signatures with a *global* visited set, generating
-#: successors with :func:`_fold_moves` at ``kcap=None``.  ``kcap`` does not
-#: bind below nine points (``kmax = m if m <= 8``), so this is the shipped
-#: move set for every word measured; at ``r >= 9`` the retired descent's
-#: ``kcap=3`` was a different graph and is not covered by this rule.
+#: Corrected records: ``(19,2,11)``/``(23,2,7)`` both cost 3, ``(34,20,10)``/
+#: ``(10,20,34)`` both 3, ``(40,4,8,12)``/``(12,4,8,40)`` both 6 -- the old
+#: "counterexamples" were greedy artifacts; ``(1,14,1)`` costs 3 vs
+#: ``(1,1,14)`` 2 as the rule says; base(2)=1 at every arity.  ``3 * points``
+#: fits n=3 exactly but fails at n=4 (10 points) and n=5.  Widening ``kcap``
+#: 3 -> 6 is byte-identical (median 1.92, worst 5.10); the harness that
+#: suggested otherwise started from 2**n points, not the run count.
 #:
-#: The harness's start state is the same object :func:`_fold` builds, and
-#: that is checked rather than assumed: over all 65534 non-constant
-#: four-input tables, the state constructed from the run-length word alone
-#: has the identical signature to the one built from the table, 65534
-#: of 65534.  Those tables carry only 32767 distinct words -- a table and its
-#: complement share one -- which is where the cost's complement-invariance
-#: comes from.
+#: Plan length is not program length: a dive at 3004 costs 1490 chars from
+#: rest and 4 when near, a doubling 751, the finish > 1000 (:func:`_sub_code`
+#: is ``k // 2`` chars).  17 -> 6 ops saved 13%; optimising chars saves 60%+.
+#: The char cost model is closed form (zero error on all 56 n=3 tables):
+#: :meth:`_FoldEmitter.finish` solves ``need = (-(byte(hi) - byte(lo)) -
+#: pos[lo]) % 256``, cost ``u // 2 + 31``.  Not complement-invariant: bytes
+#: 48/49 shift the congruence by 2 (~127 chars); ``01100111`` 5424 vs 5306.
 #:
-#: Measured over **1091 words with zero mismatches**: exhaustive at three
-#: inputs for ``r <= 6`` (all 119 words) plus two of the seven ``r == 7``
-#: words, the ones with the defect at either end; exhaustive
-#: over ``>1``-patterns at four and five inputs for ``r <= 5``, each pattern
-#: carried by several words that vary *where* the mass sits (the axis that
-#: killed the earlier candidates), 322 and 468 words; 300 uniformly random
-#: words at five and six inputs; and an adversarial round on the shapes the
-#: rule is most likely to get wrong -- pairs differing only at a middle slot,
-#: extreme mass contrasts, the same pattern at 8, 16, 32 and 64 rows.
-#:
-#: The delta is pinned at the run counts where its shape changes.  At
-#: ``r == 6`` the middle is a *pair* of slots and the conjunction is what
-#: matters: at four inputs ``(1, 1, 2, 1, 1, 10)`` and ``(1, 1, 1, 2, 1, 10)``
-#: each cost 9 with one middle slot long, while ``(1, 1, 2, 2, 1, 9)`` costs
-#: 10 with both.  At ``r == 7`` the middle is the single slot 3, and
-#: ``(1, 1, 1, 2, 1, 1, 25)`` costs exactly 11 -- depths 9 and 10 exhaust
-#: with no solution and depth 11 finds a plan (393s) -- so the ``+1`` is
-#: present at a run count no other measurement reached.  It is measured
-#: against ``base(7) == 10``, which is itself proved twice: a full BFS on
-#: ``(2, 1, 1, 1, 1, 1, 1)`` and on ``(1, 1, 1, 1, 1, 1, 2)`` at three inputs
-#: (1.17M states, 344s and 195s), and an iterative deepening on
-#: ``(1, 1, 1, 1, 1, 1, 26)`` at five that finds nothing at depth 9 and a
-#: plan at depth 10.
-#:
-#: **The delta's mechanism, re-derived.**  A one-move finish from three
-#: points requires an untouched span-0 point, and *only a wipe zeroes a
-#: span*: the wipe collapses its victims to ``(0, 0, cls, ids)`` while every
-#: survivor keeps its span, and :func:`_fold_merge` refuses to coalesce
-#: anything whose span is nonzero.  Since every wipe takes ``asc[:k]`` or
-#: ``desc[:k]`` -- 8116 of 8116 moves checked contiguous, none interior -- a
-#: long *middle* run is the one group no prefix or suffix reaches without
-#: dragging a neighbour, so it costs the extra move.  Verified as a
-#: necessary condition on all 1005 reachable three-point states, with 462 of
-#: them admitting a one-move finish as a positive control.
-#:
-#: The earlier telling of this mechanism was wrong in one detail worth
-#: keeping straight: a ``k >= 2`` wipe does *not* require span-0 victims
-#: (414 of 840 partial sweeps observed have a spanned victim).  The span-0
-#: requirement lives in the landing, not the sweep.
-#:
-#: The ``base(r)`` half is regularity rather than proof.  Censusing optimal
-#: plans gives ``r - 1 + 2 * floor((r - 2) / 2)`` moves, split as
-#: ``floor((r - 2) / 2)`` doublings and the rest wipes -- ``(1, 15)`` is one
-#: ``d``; ``(1, 1, 14)`` is ``d`` then ``u``; ``(1, 1, 1, 13)`` is
-#: ``d, m, d, u, u``; ``(1, 1, 1, 1, 1, 11)`` is four ``d``, two ``m``,
-#: three ``u``.  A doubling is what lets a landing split two survivors, so
-#: the count tracks how often the cyclic order must be broken.  That is a
-#: mechanism sketch, not a lower-bound argument: the closed form is
-#: validated by measurement, and the ``m``-count is observed rather than
-#: derived.
-#:
-#: **Four recorded counterexamples were greedy artifacts, and the record is
-#: corrected here.**  Every pair below was measured against the descent's
-#: path length, not against a distance, and under BFS each pair *agrees*:
-#: ``(19, 2, 11)`` and ``(23, 2, 7)`` both cost 3; ``(34, 20, 10)`` and
-#: ``(10, 20, 34)`` both cost 3; ``(40, 4, 8, 12)`` and ``(12, 4, 8, 40)``
-#: both cost 6.  So the cums-mod-4-with-cap key and the ``min(x, K)``
-#: recodings were never falsified against the true cost -- and the middle
-#: -slot rule's supposed death at four inputs was the same mistake:
-#: ``(1, 14, 1)`` costs 3 where ``(1, 1, 14)`` costs 2, exactly as the rule
-#: says, against the claim that all 3-run words there cost 2 alike.  The
-#: recorded ``base`` table was wrong too: ``base(2) = 1`` at every arity, not
-#: 0 at four inputs -- a two-run word always has a run longer than 1, so its
-#: start state has a nonzero span and cannot already be done.
-#:
-#: What this does *not* say: the ``>1``-pattern is sufficient only where it
-#: was measured (``r <= 5`` at four and five inputs, ``r <= 6`` at three),
-#: and ``r >= 8`` is untested at every arity -- ``base(8) = 13`` is the
-#: closed form's prediction, not a measurement.  A full BFS at seven runs
-#: costs about six minutes and 1.2M states, so the ladder above that is a
-#: compute question rather than an open one.
-#:
-#: One law was found and refuted: ``3 * points`` bounds the exhaustive
-#: three-input maxima exactly, with the bound attained.  It does not survive
-#: -- four inputs violate it at ten points and five inputs reach 5.65 -- so
-#: the tight small-arity fit is a coincidence of small states rather than
-#: the shape of the algorithm.
-#:
-#: One thing measured and *rejected*: widening ``kcap`` from 3 to 6 in the
-#: descent's move generation.  A re-implemented harness suggested it removed
-#: long plateaus, but that harness started from ``2**n`` points where the
-#: real descent starts from the run count, so it was not this algorithm.
-#: Instrumenting the shipped beam gives byte-identical ratios at both values
-#: -- median 1.92, worst 5.10 either way -- so the widening buys nothing.
-#:
-#: Substituting it for the flat 400 is a **no-op where 400 was enough**: over
-#: 387 tables at three through eight inputs the emitted programs are
-#: byte-identical, every one re-executed on the interpreter.  Where 400 was
-#: *not* enough it lifts an arity, which is the point -- eight inputs already
-#: used 359 steps, so nine overran the flat budget and built 1 of 3 random
-#: tables, where the derived bound builds 3 of 3 and prints all 512 rows.
-#:
-#: What it is not any more is *arity-capping* by accident.
-#: **Plan length is not program length, and for size it is close to the
-#: wrong objective.**  Ops have wildly different prices: within one plan a
-#: dive at 3004 costs 1490 characters from a resting accumulator and 4 when
-#: the accumulator is already near, a doubling costs 751, and the finish
-#: over a thousand.  The charge is the arithmetic distance travelled,
-#: spelled in unary -- :func:`_sub_code` is ``k // 2`` characters -- so op
-#: count barely correlates with emitted length.  Cutting a plan from 17 ops
-#: to 6 was measured to save 13% of characters; optimising characters
-#: directly saves 60% and more.
-#:
-#: **The cost model is closed form**, verified to zero error on all 56
-#: constructible three-input tables.  Each op is priced by mirroring the
-#: emitter's position updates, and :meth:`_FoldEmitter.finish` solves a
-#: single congruence -- ``need = (-(byte(hi) - byte(lo)) - pos[lo]) % 256``,
-#: whose unique in-window solution ``u`` costs ``u // 2 + 31``.  A candidate
-#: plan can therefore be priced without emitting it.
-#:
-#: That model explains a fact worth recording: character cost is **not**
-#: complement-invariant, though plan length is.  The answer bytes are 48 and
-#: 49, so which class lands on top flips a ``+-1`` and moves the congruence
-#: by 2 mod 256 -- about 127 characters.  ``01100111`` costs 5424 where its
-#: complement ``10011000`` costs 5306.
-#:
-#: **One construction ships nothing yet but is verified:** every three-run
-#: table builds from three greedy rises, no search -- 3176 to 3185
-#: characters against this generator's 9838 to 10640, within 1 to 8 of the
-#: enumerated optimum, each program executed on the interpreter with every
-#: row correct at one fill width.  The cost is nearly independent of the run
-#: lengths and of the arity.
-#:
-#: Three attempts to generalise that failed, recorded so they are not
-#: retried.  Reranking this descent by characters instead of point count
-#: looked like a 27.7% win and is **272% worse** on tables all variants
-#: build -- the apparent saving was selection bias from abandoning hard
-#: tables, at 116/254 coverage against 206/254.  A fixed catalogue of the
-#: observed optimal shapes, walked greedily, saturates at 34 of 40 however
-#: wide the amount branching.  And greedy on the exact cost model builds 8
-#: of 40 at a mean of **-67%**.  Exact edge weights are not enough without a
-#: cost-to-go term; the choice of move is not greedily determined.
+#: Unshipped but verified: every three-run table builds from three greedy
+#: rises, 3176-3185 chars vs 9838-10640 here, within 1-8 of optimum.
+#: Failed generalisations (do not retry): reranking by chars looked -27.7%
+#: and is +272% on tables all variants build (116/254 vs 206/254 coverage);
+#: a greedy catalogue of optimal shapes saturates at 34 of 40; greedy on the
+#: exact cost model builds 8 of 40 at -67%.  Needs a cost-to-go term.
 _FOLD_STEP_SLOPE = 8
 _FOLD_STEP_SLACK = 16
 
 
-#: Which run-length words the three-phase construction serves.  ``r`` is the
 def _fold_served(r: int, delta: int, pat1: int) -> bool:
     """Whether the three-phase construction serves this run-length word.
 
@@ -1011,8 +827,7 @@ def _fold_skeleton(r: int, delta: int, pat1: int) -> tuple[tuple[str, int, str],
         if delta:
             return (("d", 1, "cmax"), ("d", 1, "cmax"), ("d", 2, "cmax"))
         return (("d", 1, "cmax"), ("u", 2, "cmax"))
-    # One peel per run past the four the park and close consume, plus one
-    # more for delta, alternating direction from the dive that starts it.
+    # One peel per run past the four park and close consume, plus delta.
     peels = r - 4 + delta
     peel = [("d", 1, "cmax") if i % 2 == 0 else ("u", 2, "cmax") for i in range(peels)]
     park: tuple[str, int, str]
