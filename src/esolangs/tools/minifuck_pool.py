@@ -10,87 +10,53 @@ from functools import cache
 
 from esolangs.tools.minifuck_sim import _clamp, _Joint, _runs, _Sim, _walk_to
 
-# What an acceptance callback keeps: each search names its own result type,
-# and returning None means "keep looking".
-
-# Where the embedded bits start.  The pool is cells 0..7, so the working area
-# begins past it with a little room for the walk-in.
+# First embedded bit; the pool is cells 0..7, plus room for the walk-in.
 _BASE = 16
 
-# What separates one embedded bit from the next.  A plain ``[x`` run leaves
-# the prefix-XORs too correlated for the one-sided tests the endgame makes;
-# the ``<`` steps back over a cell so the parities stay distinguishable.
-#
-# The separator decides the affine picture the whole construction reads from,
-# and the first two here were picked by hand -- the binding constraint rather
-# than a detail: between them they leave 126 distinct columns standing in
-# :func:`_staging_index` against the 252 all five reach (98 of them, 49 as
-# complement pairs, inside the population the coverage figures use).  The
-# figure here read 92, which no frame reproduces; it is corrected with its
-# frame named, since a bare count is what made it unrecoverable.
-# And 112 of the 120 tables the searches could not reach were absent from the
-# tape entirely rather than merely hard to print.  Enumerating short strings
-# over the same alphabet fixed that -- the three added below carry 118 of
-# those 120, and the searches never had to change.
-# Only the first two are used by the routes that scan separators (the
-# degenerate path and the fallback searches); the rest are reached by the
-# staging enumeration, so adding one costs those routes nothing.
+# Between embedded bits.  A plain ``[x`` run leaves the prefix-XORs too
+# correlated for the endgame's one-sided tests; ``<`` keeps parities apart.
+# The separator fixes the affine picture.  The first two (hand-picked) leave
+# 126 distinct columns in :func:`_staging_index` vs 252 for all five (98, 49
+# as complement pairs, in the coverage population; an earlier "92" matched no
+# frame).  112 of the 120 unreachable tables were absent from the tape, not
+# merely unprintable; the last three seps carry 118 of them.  Only the first
+# two are scanned (degenerate path, fallback searches); the rest are reached
+# by the staging enumeration, so adding one costs the scans nothing.
 _SEPS = ("[x<[x", "[x[x[x", "[<[<[", "[[[[[", "[x[<[")
 _SEP = _SEPS[0]
 
-# The separators the scanning routes try.  Widening this would multiply every
-# search's cost; the plan reaches the others directly instead.
+# Widening this multiplies every search's cost; the plan reaches the rest.
 _SCAN_SEPS = _SEPS[:2]
 
-# How far the bits and their working area reach, for sizing the windows.
+# Reach of the bits and their working area, for sizing windows.
 _SPAN = 6
 
-# The pool spells ASCII '0' (0b00110000) or '1' (0b00110001), so cells 0..6
-# are fixed and cell 7 carries the answer.
+# ASCII '0' (0b00110000) or '1' (0b00110001): cells 0..6 fixed, cell 7 answer.
 _POOL = (0, 0, 1, 1, 0, 0, 0)
 
-# How wide the pool is.  ``.`` reads ``tape[:8]`` as one byte, so this is a
-# byte and not a tunable: it is the same 8 that ``_POOL`` above spells out.
-#
-# **Several numbers in this module are this one wearing different hats**, and
-# the totality argument in ``the relevant generator tests`` turns on the
-# relationship: the accumulator floor ``_endgame`` refuses below, the
-# sculpting rewind guard ``rewind > min(ptrs) - _POOL_WIDTH``,
-# :data:`_PROBE_WALK_OUT` and the lowest cell a round may write (both
-# ``_POOL_WIDTH + 1``), and the sculpting accumulator loop's start,
-# ``span + _POOL_WIDTH + 1``.
-#
-# That last pair is essential: the loop starting one *past* the guard is what
-# makes the rewind bound tight rather than slack, since the worst rewind is
-# ``lo - _POOL_WIDTH``, the guard itself, so the guard can never fire.
-# Spelled ``8`` and ``9`` the identity looks like a coincidence.
-#
-# The staging path takes the same two, and only ``_MAX_ACC`` itself is a
-# search bound.  ``_MUX_GUARD``'s ``8`` is *not* this constant but a scratch
-# width; it is not independent either, since :func:`_mux_start`'s offset
-# derives from it, but the two are coupled elsewhere.
+# ``.`` reads ``tape[:8]`` as one byte, so 8 is not a tunable.  The same 8
+# is the ``_endgame`` accumulator floor, the sculpting rewind guard
+# ``rewind > min(ptrs) - _POOL_WIDTH``, :data:`_PROBE_WALK_OUT` and the lowest
+# cell a round may write (both ``+1``), and the sculpting accumulator loop's
+# start ``span + _POOL_WIDTH + 1``.  The loop starting one past the guard is
+# what makes the rewind bound tight (worst rewind is ``lo - _POOL_WIDTH``,
+# the guard itself), and the totality argument in the generator tests turns
+# on it; spelled 8 and 9 it looks like coincidence.  ``_MUX_GUARD``'s 8 is a
+# scratch width, coupled to this only via :func:`_mux_start`'s offset.
 _POOL_WIDTH = len(_POOL) + 1
 
-# The two reads.  ``[<`` leaves the pointer at ``(acc-1) + v``; ``[x<[<``
-# leaves it at ``(acc-1) + NOT v``, restores the cell, and flips its
-# neighbour unconditionally.  The printed digit is ``NOT(v XOR cell7)`` and
-# every reachable pool conserves that XOR, so the read polarity -- not the
-# pool -- is what makes a table and its complement both printable.
+# ``[<`` leaves the pointer at ``(acc-1) + v``; ``[x<[<`` at ``(acc-1) + NOT
+# v``, restoring the cell and flipping its neighbour.  The digit printed is
+# ``NOT(v XOR cell7)`` and every reachable pool conserves that XOR, so read
+# polarity, not the pool, is what makes a table and its complement printable.
 _READS = ("[<", "[x<[<")
 
 
-# What complements the bit a setter just wrote.  ``<`` steps back over the
-# cell the setter used and ``[`` flips it, which cascades into the setter's
-# own cell -- so the bit standing there is inverted, and the pointer is left
-# where the setter left it.
-#
-# The trailing character is not padding.  That cascade sets the interpreter's
-# skip flag, and a gadget that ends there eats the *next* instruction of the
-# template, shifting every later embedding by a cell; the third character
-# feeds the skip instead.  Measured rather than reasoned: the two-character
-# ``<[`` passes a probe that compares tape and pointer, and the tables built
-# on it printed 0 of 12 on the real interpreter.  ``skip`` is part of the
-# state, and a probe that omits it reports a gadget that is not one.
+# Complements the bit a setter just wrote: ``<[`` cascades into the setter's
+# cell.  The ``x`` is not padding -- the cascade sets the skip flag and a
+# gadget ending on it eats the template's next instruction, shifting every
+# later embed.  Measured: ``<[`` passes a tape+pointer probe and printed 0 of
+# 12 on the real interpreter; a probe that omits ``skip`` lies.
 _FLIP = "<[x"
 
 
@@ -137,10 +103,8 @@ def _embed(
     return j
 
 
-# Pool codes move a mark right, then place the pointer behind it.
-# The five shipped plans are tried in order and accepted only by the same
-# joint-state check used for every candidate. Their spellings are behavioral:
-# seemingly similar strings can diverge on the live pool state.
+# Pool codes carry a mark right, then park the pointer behind it.  Tried in
+# order; similar-looking strings diverge on the live pool state.
 def _step(carry: int = 1, backs: int = 1, *, odd: bool = True) -> str:
     """One step of a pool code: carry a mark right, then walk the pointer back.
 
@@ -154,29 +118,16 @@ def _step(carry: int = 1, backs: int = 1, *, odd: bool = True) -> str:
     return "[" * (2 * carry - odd) + "<" * backs
 
 
-# Each plan is ``(steps, core, overrides)``: how many steps the code walks,
-# which one is the core, and the steps that are not the default.  A default
-# step carries the mark one cell and leaves the pointer one behind it; the
-# core carries two.  Two of the five need no override at all -- they are the
-# construction indexed by where the mark goes, and nothing else.
+# ``(steps, core, {step: (backs, odd)})``.  A default step carries the mark
+# one cell, pointer one behind; the core carries two.
 #
-# An override is ``(backs, odd)`` for the step it names, so the two free
-# variables stay visible side by side.
-#
-# **These values do not compress further**, which was measured.  ``core`` is
-# not derivable from the finished code: on a blank tape every plan with
-# ``core > 0`` ends at ``mark = steps + 1`` and ``pointer = steps`` whatever
-# the core's index (verified for ``steps`` 1 to 40).  It is pinned on live
-# states instead.  Moving it strands tables at every alternative for three of
-# the plans -- 22 for the third, 18 for the fourth, 6 for the fifth -- which
-# for the third and fourth is what dropping those codes outright costs.  The
-# second plan's core strands nothing and is pinned by slot order instead, 10
-# out-of-name-order templates going to 18.
-#
-# Only the first plan's core moves freely, which is a fact about the arity
-# rather than the core: that code answers no site at ``n <= 3``, so every
-# spelling looks free there.  The two spellings are genuinely different
-# functions, leaving marks at cells 1, 2, 4 against a single mark at 3.
+# Measured not to compress further.  ``core`` is invisible on a blank tape
+# (every ``core > 0`` ends at mark = steps + 1, pointer = steps, for steps
+# 1..40) and is pinned on live states: moving it strands 22 / 18 / 6 tables
+# for plans 3 / 4 / 5 (for 3 and 4, the cost of dropping the code).  Plan
+# 2's core strands nothing but slot order pins it (10 -> 18 out-of-order
+# templates).  Plan 1's core is free only because it answers no site at
+# n <= 3; its spellings differ (marks at 1, 2, 4 vs a single mark at 3).
 _PLANS: tuple[tuple[int, int, dict[int, tuple[int, bool]]], ...] = (
     (2, 0, {1: (4, True)}),
     (4, 1, {}),
@@ -228,38 +179,21 @@ def _pool_reaches(j: _Joint, code: str, cell7: int, walk_out: int) -> bool:
     return True
 
 
-# What the pool derivation probes with.  The verdict is invariant in the walk
-# out (measured over 9..39, no ``(site, code)`` pair changes answer), so the
-# derivation needs *a* value and not the caller's; naming one here is what lets
-# the key omit it.  The smallest legal accumulator, since :func:`_endgame`
-# rejects anything under 8 and the probe should sit where every caller's does
-# or further left.
+# The verdict is invariant in the walk out (9..39, no (site, code) pair
+# changes), so the key omits it and the probe uses the smallest legal
+# accumulator.
 _PROBE_WALK_OUT = _POOL_WIDTH + 1
 
-#: The window a pool verdict depends on: cells 0 to ``_POOL_WIDTH - 1``.
+#: Cells 0 to ``_POOL_WIDTH - 1``: the window a pool verdict depends on.
 _POOL_MASK = (1 << _POOL_WIDTH) - 1
 
 
-#: How far right a row can sit and still be summarised by its window.
-#:
-#: The bound is not "where acceptance stops" -- codes answer out to pointer 10
-#: -- but **where the window stops being the whole key**.  Two things fail
-#: further right, and this is the tighter of them:
-#:
-#: * At pointer 3 the codes reach above cell 7, so the window no longer
-#:   determines the verdict: 3 of 300 random window values changed answer when
-#:   the cells above them were re-randomised.  At pointers 0 to 2 that is 0 of
-#:   2400, over eight redraws of 28 bits each.
-#: * From pointer 4 the verdict also starts depending on the walk out, which
-#:   :func:`_find_pool` deletes: 31 keys change answer across walk outs 9 to
-#:   39, none of them below pointer 4.
-#:
-#: So the table is derived over the pointers where one answer is *the* answer,
-#: and a row beyond it is refused rather than guessed at.  Nothing is lost:
-#: every site a build reaches has the pointer at 0 -- 1956 of 1956 at two and
-#: three inputs -- so the refused region is one the generator never asks about,
-#: and refusing is what keeps the lookup honest instead of returning a verdict
-#: that cells outside the key would contradict.
+#: Rightmost pointer at which the window is the whole key (codes answer out
+#: to pointer 10, but): at pointer 3 codes reach above cell 7 and 3 of 300
+#: window values changed verdict under re-randomised upper cells (0 of 2400
+#: at pointers 0-2); from pointer 4 the verdict also depends on the walk out
+#: (31 keys change across 9..39, none below 4).  Rows beyond are refused, not
+#: guessed; every build site has pointer 0 (1956 of 1956 at n=2,3).
 _POOL_PTR_MAX = 2
 
 
@@ -313,17 +247,13 @@ def _pool_code_for_row(
         probe.ptr = ptr
         probe.skip = skip
         probe.apply(_runs(code))
-        # Neither guard the scan carried can fire inside the derived domain:
-        # over its 7680 (key, code) runs no code leaves a row dead or
-        # mid-skip, and none ends right of the probe's walk out.  They were
-        # refusals when a *candidate* was being tried; the list is fixed now,
-        # so a code that broke either would be a change to the pool rather
-        # than a state to skip past, and raising says so where a ``continue``
-        # would quietly drop the code from the table.
-        if probe.dead or probe.skip:  # pragma: no cover - see the note above
+        # Neither fires over the domain's 7680 (key, code) runs.  The list is
+        # fixed, so a breach is a change to the pool, not a state to skip;
+        # ``continue`` would silently drop the code from the table.
+        if probe.dead or probe.skip:  # pragma: no cover - see above
             raise AssertionError(f"pool code {code!r} left a row unrunnable")
         steps = _PROBE_WALK_OUT - probe.ptr
-        if steps < 0:  # pragma: no cover - see the note above
+        if steps < 0:  # pragma: no cover - see above
             raise AssertionError(f"pool code {code!r} ended past the walk out")
         landed = probe.ptr
         probe.run_walk(steps)
@@ -407,8 +337,6 @@ def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
     def answer_for(row: _Sim) -> tuple[int, int] | None:
         """Which code this row names, and where that code leaves it."""
         if row.dead or row.ptr > _POOL_PTR_MAX:
-            # A dead row prints nothing, and one past the bound is outside the
-            # window's reach.  Both mean "no pool from here".
             return None
         rows = _pool_slice(codes, row.ptr, skip=row.skip)
         return rows.get((row.tape & _POOL_MASK, cell7))
@@ -417,8 +345,7 @@ def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
     if chosen is None:
         return None
     for row in j.ms[1:]:
-        # Equality covers both conditions at once: the rows must name the same
-        # code *and* be left on the same cell by it.
+        # Same code *and* same landing cell.
         if answer_for(row) != chosen:
             return None
     return codes[chosen[0]]
@@ -441,12 +368,8 @@ def _endgame(j: _Joint, acc: int, read: str, cell7: int) -> None:
     _walk_to(j, acc - 1)
     j.emit(read)
     j.emit("<" * (acc - (_POOL_WIDTH - 1)))
-    # ``_find_pool`` accepts a code only after checking the pool *past* the
-    # walk out, which is the state reached here -- so this is that check
-    # restated on what was actually emitted rather than on a simulated walk.
-    # It is an AssertionError rather than a ValueError deliberately: the two
-    # disagreeing is a bug in the pair, and ``_try_print`` swallows every
-    # ValueError, which would turn it into a silently skipped accumulator.
+    # ``_find_pool``'s check, restated on what was emitted.  AssertionError on
+    # purpose: ``_try_print`` swallows ValueError, and disagreement is a bug.
     for cell in range(_POOL_WIDTH):
         if len(set(j.col(cell))) != 1:
             raise AssertionError(f"pool cell {cell} is input-dependent")
@@ -458,15 +381,11 @@ def _complement(column: tuple[int, ...]) -> tuple[int, ...]:
     return tuple(1 - bit for bit in column)
 
 
-# Derived columns, keyed by ``(template, accumulator, orientation)``.  A plain
-# dict rather than ``lru_cache`` because the key is computed from the mutable
-# ``_Joint`` rather than being its arguments, and because ``None`` is a real
-# answer here -- the sentinel keeps it distinguishable from a miss.
-#
-# ``_derived_plans.cache_clear`` empties this too, because a caller asking for
-# a cold derivation means a cold one: tests harvest ``_find_pool`` call sites
-# from a build and assert they saw hundreds, which a warm column cache cuts to
-# seventeen.  Clearing the plan cache alone would leave that trap in place.
+# Keyed by ``(template, accumulator, orientation)``.  A dict, not
+# ``lru_cache``: the key comes from the mutable ``_Joint``, and ``None`` is a
+# real answer (hence the sentinel).  ``_derived_plans.cache_clear`` empties
+# this too -- tests count ``_find_pool`` sites in a build (hundreds), which a
+# warm column cache cuts to seventeen.
 _PRINTED_COLUMNS: dict[tuple[str, int, int], tuple[int, ...] | None] = {}
 _MISSING = object()
 
@@ -525,19 +444,10 @@ def _derive_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
     probe.emit(code)
     try:
         _walk_to(probe, acc - 1)
-    except ValueError:  # pragma: no cover - not observed; see below
-        # Never seen to fire, but *not* dead by construction, which is why
-        # this says "not observed" rather than "unreachable".  The obvious
-        # argument -- that `_find_pool` was asked for a code reaching
-        # `acc - 1`, so the walk must succeed -- does not hold: `walk_out`
-        # is deleted rather than forwarded, because the verdict is invariant
-        # in it.  So a code that fits the site says nothing about how far
-        # right the accumulator can then be relayed.
-        #
-        # What is measured: 1740 real stagings, captured from builds at two
-        # and three inputs, walked over the whole accumulator range with the
-        # cache cleared each time -- no failure.  A direct `_walk_to` to an
-        # unreachable target raises, as the control.
+    except ValueError:  # pragma: no cover - not observed, not unreachable
+        # ``_find_pool`` deletes ``walk_out``, so a fitting code says nothing
+        # about how far right the accumulator can be relayed.  1740 real
+        # stagings (n=2,3) over the whole accumulator range: no failure.
         return None
     return tuple(probe.col(probe.ms[0].ptr + 1))
 
@@ -560,14 +470,8 @@ def _confirm(
     probe = j.fork()
     try:
         _endgame(probe, acc, read, cell7)
-    except ValueError:  # pragma: no cover - not observed; see below
-        # The derivation only offers accumulators whose column it already
-        # read off a walk, so the endgame it then runs has somewhere to go.
-        # Traced over every table at two and three inputs: 268 confirmations,
-        # none of them raising.  Kept rather than removed because the whole
-        # point of this function is that nothing is recorded on the strength
-        # of the algebra alone -- an endgame that could not run is exactly
-        # the disagreement it exists to catch.
+    except ValueError:  # pragma: no cover - not observed (268 confirmations, n=2,3)
+        # Kept: an endgame that cannot run is the disagreement this exists for.
         return False
     printed = probe.printed()
     if any(len(digit) != 1 for digit in printed):
@@ -597,12 +501,8 @@ def _try_print(j: _Joint, truth_table: str, acc: int) -> _Joint | None:
     is byte-identical under the computed choice.
     """
     if acc < _POOL_WIDTH:
-        # The endgame's own first refusal, mirrored: an accumulator inside
-        # the pool cannot be printed from, and asking the derivation about
-        # one would send its walk leftward instead.  ``_degenerate`` probes
-        # every recorded cell and the constant-one column stands at cell 1
-        # -- the walk-in's own wake -- so this is a case every degenerate
-        # build reaches rather than a guard.
+        # Mirrors ``_endgame``'s floor.  Not a dead guard: ``_degenerate``
+        # probes every cell and the constant-one column sits at cell 1.
         return None
     want = list(truth_table)
     derived: dict[int, tuple[int, ...] | None] = {}
@@ -619,19 +519,12 @@ def _try_print(j: _Joint, truth_table: str, acc: int) -> _Joint | None:
             probe = j.fork()
             try:
                 _endgame(probe, acc, read, cell7)
-            except ValueError:  # pragma: no cover - not observed; see below
-                # The endgame refuses on exactly the two conditions the
-                # derivation already declined on -- no pool code, or a walk
-                # that cannot reach -- so a pair the derivation offered has
-                # somewhere to go.  Kept because the derivation and the
-                # emission disagreeing is precisely what the acceptance
-                # below exists to catch, and a raise here is that
-                # disagreement's other spelling.
+            except ValueError:  # pragma: no cover - not observed
+                # The endgame refuses on the same two conditions the
+                # derivation declined on; a raise here is a derivation bug.
                 continue
             if probe.printed() != want:  # pragma: no cover - the acceptance
-                # Never observed -- the derivation is the emission's own
-                # algebra -- but this is the "seen to print" standard, so a
-                # divergence is reported as a miss rather than shipped.
+                # Never observed, but "seen to print" is the standard.
                 continue
             return probe
     return None
