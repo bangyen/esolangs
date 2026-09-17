@@ -564,6 +564,15 @@ _REDUCING = {
 # ``nopstacle`` is a full tree of corridors that never folds: the table only
 # chooses which leaf gadget each column ends in, and both are the same size.
 #
+# ``minsky_swap`` is a branch-free lookup of the same class as
+# ``slow_acv_mammalian``: a stage per input adds its weight to the index
+# register, and a ``~`` cascade routes the index to its row, whose leaf is
+# one command for a zero and three for a one.  Every table of one arity and
+# one ones-count renders to the same length, so a 0% fold is the
+# construction working.  (Its earlier leaves were three or four commands
+# by whether the row's LSB matched its answer, which read as a fold on the
+# one-dependency table that *is* the LSB and on nothing else.)
+#
 # ``alight`` is a branch-free lookup of the same class as
 # ``ztoalc_l``: the inputs are folded into a row index by Horner's
 # rule and the table is a string literal read with ``at{table, i+0.5}``, so
@@ -579,6 +588,7 @@ _REDUCING = {
 _UNSHAPED = {
     "a_painter_ant",
     "alight",
+    "minsky_swap",
     "b_tapemark",
     "nopstacle",
     "wii2d",
