@@ -205,17 +205,40 @@ def check_slots(template: str, n: int) -> None:
 TEMPLATE_CHAR = "$"
 
 
-def render(template: str, char: str, setters: Setters) -> str:
+#: The first of the private-use characters a template is spelled with
+#: while it is wrapped: input ``i`` is a run of ``chr(MARK + i)``, so a
+#: wrapper sees every input as its own unbreakable token, even beside the
+#: next, and the marks become the language's character afterwards.
+MARK = 0xE000
+
+#: The most inputs a template can carry marks for.
+MOST_INPUTS = 64
+
+
+def mark(i: int) -> str:
+    """Return the character input ``i`` is spelled with while wrapping."""
+    return chr(MARK + i)
+
+
+def render(template: str, char: str | None, setters: Setters) -> str:
     """Return the public template: each ``{Xi}`` as a run of ``char``.
 
     The run is as long as input ``i``'s setters, so the template is the
     exact shape of every program it fills to, and consecutive inputs need
     no separator between their runs -- the widths say where one ends.
+    With ``char`` of None each input is its own :func:`mark`, the form a
+    wrapper is handed.
     """
     check_slots(template, len(setters))
     for i, (zero, _one) in enumerate(setters):
-        template = template.replace("{X" + str(i) + "}", char * len(zero))
+        run = (mark(i) if char is None else char) * len(zero)
+        template = template.replace("{X" + str(i) + "}", run)
     return template
+
+
+def unmark(text: str, char: str, inputs: int) -> str:
+    """Return ``text`` with every input's mark replaced by ``char``."""
+    return text.translate({MARK + i: char for i in range(inputs)})
 
 
 def runs(text: str, char: str, setters: Setters) -> list[tuple[int, int]]:

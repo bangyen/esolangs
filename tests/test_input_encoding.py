@@ -86,7 +86,7 @@ class TestTemplatesAreNotWrapped:
 
     @pytest.mark.parametrize("language", ["Home Row", "123", "A Painter Ant", "Eval"])
     def test_a_width_leaves_a_template_intact(self, language: str) -> None:
-        """A narrow width used to cut a slot in half, silently."""
+        """A narrow width used to cut a slot in half, silently; a run is whole."""
         narrow = esolangs.generate(language, XOR, width=5)
         plain = esolangs.generate(language, XOR)
         assert narrow.setters == plain.setters
