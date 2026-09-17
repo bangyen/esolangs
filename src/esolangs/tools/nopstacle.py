@@ -19,15 +19,13 @@ level over ``2**(i/2)`` rows, and one run fills one line.  The halting
 row's step count is at most three widths.
 """
 
-from esolangs.exceptions import TruthTableError
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     Setters,
     _validate_truth_table,
-    fill_runs,
 )
 
-__all__ = ["instantiate_nopstacle", "nopstacle"]
+__all__ = ["nopstacle"]
 
 #: Columns per leaf: the halting box is two cells with a wall either side.
 _PITCH = 4
@@ -94,25 +92,6 @@ def nopstacle(truth_table: str) -> str:
         run = TEMPLATE_CHAR * len(setters[i][0])
         lines[y] = " " * first + run + " " * (width - root - 1)
     return "\n".join(lines)
-
-
-def instantiate_nopstacle(template: str, bits: list[int]) -> str:
-    """Fill each input's run with its level's bit cells.
-
-    A ``0`` run is blank end to end and exactly as wide as a ``1`` run.
-    """
-    # The runs' total width grows with the input count, so the count is
-    # the one value at which the widths sum to what the template holds.
-    total = template.count(TEMPLATE_CHAR)
-    n = 1
-    while total > sum(len(zero) for zero, _one in nopstacle_setters(template, n)):
-        n += 1
-    setters = nopstacle_setters(template, n)
-    if total != sum(len(zero) for zero, _one in setters):
-        raise ValueError("not a Nopstacle Boolean template")
-    if len(bits) != n or any(bit not in (0, 1) for bit in bits):
-        raise TruthTableError(f"expected {n} Boolean input bits, got {bits!r}")
-    return fill_runs(template, TEMPLATE_CHAR, setters, bits)
 
 
 def nopstacle_setters(_template: str, n: int) -> Setters:

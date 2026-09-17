@@ -35,7 +35,6 @@ from esolangs.tools.jaune import (
     _jaune_ordered as _jaune_ordered,
 )
 from esolangs.tools.jaune import jaune as jaune
-from esolangs.tools.jaune import jaune_multiply as jaune_multiply
 from esolangs.tools.rotfuck import rotfuck
 from esolangs.tools.sbleq import (
     _sbleq_hoisted as _sbleq_hoisted,
@@ -55,7 +54,6 @@ __all__ = [
     "dimensional_tree",
     "factor",
     "jaune",
-    "jaune_multiply",
     "painfuck",
     "rotfuck",
     "sbleq",

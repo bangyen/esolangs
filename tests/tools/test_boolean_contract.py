@@ -501,9 +501,8 @@ _MINTERM_SHAPED = {
 }
 
 # Neither model describes these.  ``wii2d`` is a route search over a grid,
-# not a sum and not a tree.  The other two do not take a boolean truth table
-# at all: ``jaune_multiply`` takes no argument (it multiplies two decimal
-# numbers, a fixed program), and ``circlefuck_byte`` takes a *byte* table.
+# not a sum and not a tree.  ``circlefuck_byte`` takes a *byte* table, not
+# a boolean one.
 #
 # ``b_tapemark`` is a tree, but a deliberately *unfolded* one, so the
 # folding discriminator does not apply: its nodes read the input, and
@@ -602,7 +601,6 @@ _UNSHAPED = {
     "one_two_three",
     "ztoalc_l",
     "pct_squared_minus_one",
-    "jaune_multiply",
     "circlefuck_byte",
     "slow_acv_mammalian",
     "container",

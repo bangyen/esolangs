@@ -26,6 +26,7 @@ from tests.tools.boolean_runners import (
     run_suffolk,
     run_three_d_brainfuck,
 )
+from tests.tools.jaune_support import jaune_multiply
 
 
 def _leaves(table: str) -> int:
@@ -736,14 +737,14 @@ class TestJaune:
     )
     def test_multiply(self, a: int, b: int) -> None:
         """The sentinel-delimited multiply reads any-length operands."""
-        program = boolean.jaune_multiply()
+        program = jaune_multiply()
         lines = [*list(str(a)), "*", *list(str(b)), "#"]
         got = run_jaune(program, lines)
         assert got == str(a * b), f"{a} * {b}"
 
     def test_multiply_all_small_operands(self) -> None:
         """Every single-digit pair produces the right product."""
-        program = boolean.jaune_multiply()
+        program = jaune_multiply()
         for a in range(10):
             for b in range(10):
                 lines = [*list(str(a)), "*", *list(str(b)), "#"]

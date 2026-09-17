@@ -6,7 +6,7 @@ from typing import Any
 
 import esolangs.tools as boolean
 
-_ALLOWED = {"circlefuck_byte", "jaune_multiply"}
+_ALLOWED = {"circlefuck_byte"}
 
 
 def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:

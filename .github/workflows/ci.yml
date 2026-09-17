@@ -48,6 +48,12 @@ jobs:
     - name: Type-check src/ and scripts/
       run: uv run mypy
 
+    # A generator route that was replaced keeps its own tests green; three
+    # sat unread for months.  Reports any tools/ name, or any private name
+    # elsewhere in src/, that nothing in src/ or scripts/ reads.  <2s.
+    - name: Check for definitions nothing reads
+      run: uv run python scripts/check_dead_definitions.py
+
     - name: Check for duplicated code blocks
       run: >
         uv run --with pylint python -m pylint --disable=all

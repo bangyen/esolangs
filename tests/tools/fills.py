@@ -7,14 +7,17 @@ that exercise a single language's substitution reach it here by name
 rather than through the example table.
 """
 
+from esolangs.exceptions import TruthTableError
 from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
 from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
 from esolangs.tools.back import PAIR as BACK_PAIR
+from esolangs.tools.crement import PAIR as CREMENT_PAIR
 from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
 from esolangs.tools.examples import _fill_from, uniform
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.minifuck_sim import PAIR as MINIFUCK_PAIR
 from esolangs.tools.nocomment import PAIR as NOCOMMENT_PAIR
+from esolangs.tools.nopstacle import nopstacle_setters
 from esolangs.tools.parameterized import (
     BFPDA_PAIR,
     BIO_PAIR,
@@ -64,3 +67,27 @@ def _instantiate_apa(template: str, bits: list[int]) -> str:
 def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
     """Fill an ArrowQueue template's input runs (``.`` zero, ``~`` one)."""
     return fill_runs(template, TEMPLATE_CHAR, (ARROWQUEUE_PAIR,) * len(bits), bits)
+
+
+def instantiate_crement(template: str, bits: list[int]) -> str:
+    """Fill each input's run with the jump line that spells its bit."""
+    return fill_runs(template, TEMPLATE_CHAR, (CREMENT_PAIR,) * len(bits), bits)
+
+
+def instantiate_nopstacle(template: str, bits: list[int]) -> str:
+    """Fill each input's run with its level's bit cells.
+
+    A ``0`` run is blank end to end and exactly as wide as a ``1`` run.
+    """
+    # The runs' total width grows with the input count, so the count is
+    # the one value at which the widths sum to what the template holds.
+    total = template.count(TEMPLATE_CHAR)
+    n = 1
+    while total > sum(len(zero) for zero, _one in nopstacle_setters(template, n)):
+        n += 1
+    setters = nopstacle_setters(template, n)
+    if total != sum(len(zero) for zero, _one in setters):
+        raise ValueError("not a Nopstacle Boolean template")
+    if len(bits) != n or any(bit not in (0, 1) for bit in bits):
+        raise TruthTableError(f"expected {n} Boolean input bits, got {bits!r}")
+    return fill_runs(template, TEMPLATE_CHAR, setters, bits)
