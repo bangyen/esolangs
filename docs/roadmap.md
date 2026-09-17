@@ -251,28 +251,28 @@ The candidate list is empty.
   and only one of the three ways that happens is a defect: driving a
   *search* over candidate codes.  Simulation used as bookkeeping for what is
   already being emitted is fine, and size contests run no simulator at all.
-  WII2D's decode still enumerates the legal folds, validates each against
-  the decode model, and takes the head of a ranked shortlist.  The
-  compressed-magnitude contest is load-bearing: on a 230-table seeded
-  corpus the one-shot rules lose (nearest-midpoint centre 1.06x the size
-  and 0 of 8 dense n=9 against 4 of 8; most-merges and cheapest-centre
-  build nothing past n=6), and the extremal same-colour fold -- always
-  legal, the argument that made the decode total -- refuses from n=7 under
-  the shipped centre and magnitude caps and needs them lifted to build
-  dense n=9 at a megabyte.  Size is not the obstruction: a closed-form
-  fold key (`log2(mag / gap) + scale + live / 3`, `gap` the closest
-  different-colour folded gap) emits 1.13-1.24x the contest's size over
-  92 decode inputs at n=5..9, but refuses 3 of the 18 with a domain of
-  128 or more that the contest builds, as does every other key tried
-  (the contest's own screen key alone refuses 5).  The contest ranks on
-  the *compressed* magnitude, and the compressor's depth is the arc union
-  of every different-colour pair, which no local statistic predicts on a
-  packed state; a per-step magnitude guard does not recover it because
-  the bad state is entered several folds earlier, and a closed-form
-  compressor that makes the key exact costs 2.6-3.7x and fails more.  A
-  closing rule must keep the prompt refusal or beat the contest on
-  executed programs; a longer emitted program is an acceptable price,
-  and the replaced search stays in the tests as the oracle.
+  WII2D's decode still enumerates the legal folds and takes the head of a
+  ranked shortlist, but the ranking no longer runs the compressor per
+  candidate: `_wii2d_depth` reads the deepest legal halving level off the
+  adjacent different-colour arcs of the uncompressed fold, and `magnitude
+  >> depth` picks the same fold as the compressed contest on 779 of 785
+  states.  Compressing the winner alone, with the shortlist widened to
+  `live / 4`, is 0.84x the contest's size and half its time over 100
+  decode inputs at n=5..9 with no refusal the contest did not make, and
+  on 64 seeded dense n=9 tables the generator builds 54 where it built 38
+  (27 s against 57 s, mean 53.9k chars against 69.6k).  What remains is
+  the enumeration and the rank itself.  One-shot rules lose (nearest-
+  midpoint centre 1.06x and 0 of 8 dense n=9 against 4 of 8;
+  most-merges and cheapest-centre build nothing past n=6; the extremal
+  same-colour fold refuses from n=7 under the shipped caps and needs a
+  megabyte for dense n=9), and every scalar key over the uncompressed
+  state (best `log2(mag / gap) + scale + live / 3`) refuses 3-16 of the
+  18 inputs with domain 128 or more that the contest builds: the arc
+  union is what carries the rank, the arc sum (rho 0.83) refuses five,
+  and a per-step guard cannot recover a bad state entered folds earlier.
+  A closing rule must keep the prompt refusal or beat the shipped decode
+  on executed programs; a longer emitted program is an acceptable price,
+  and the replaced ranking stays in the tests as the oracle.
 
 - **`%^2^-1` fourteen inputs.**  The staged fold's endgame strands its last
   duplicated cofactor pairs.  Rank order is steerable (pulsed doubling), but

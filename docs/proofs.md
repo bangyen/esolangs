@@ -336,7 +336,7 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 WII2D reads the other way: the shipped decode keeps
-ranking folds by magnitude, so it still refuses about four in ten dense
+ranking folds by predicted magnitude, so it still refuses about one in six dense
 tables at the widest admitted domain, and reaching the extremal-fold
 construction means choosing a different fold rather than relaxing a constant.
 Prompt refusal is the better behaviour there — the extremal fold spells its
