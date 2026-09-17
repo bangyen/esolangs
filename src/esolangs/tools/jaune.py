@@ -7,74 +7,37 @@ from esolangs.tools.helpers import (
     stored_inputs,
 )
 
-# ROTfuck rotates the whole program after every command, so a brainfuck-style
-# decision tree does not survive: the bracket that fires seeks its partner in
-# the *rotated* program, at a rotation state that depends on the step count.
-# The construction below is the discovered escape, verified against the
-# interpreter: each ``[`` body is a *straight-line* ``+-><``-only block (no
-# brackets), and the closing ``]`` is a phantom character whose position is
-# encoded so that the ``[``-fire seek finds it at the right rotation state.
-#
-# A block is ``[ body ]`` at positions ``p``..``q`` where ``len(body)``
-# satisfies ``len(body) + 1 ≡ 0 (mod 8)``:
-#
-# - skip path (cell == 0): the ``[`` fires, rotates once, seeks forward for
-#   ``]`` at depth 1, and lands at ``q + 1`` with rotation state ``p + 1``;
-# - body path (cell != 0): the body runs (straight-line, pointer starts and
-#   ends on the tested cell, which stays nonzero), and at ``q`` the phantom
-#   shows ``rot^len(body)(']')`` = ``'['`` (since ``len(body) ≡ 7``), which
-#   does not fire on the nonzero cell, so it advances to ``q + 1`` with state
-#   ``q + 1 ≡ p + 1 (mod 8)``.
-#
-# Both paths therefore re-converge at ``q + 1`` in the same rotation state,
-# so the rest of the program can be encoded position-wise.  A body command at
-# relative offset ``j`` must also satisfy ``rot^{-j}(cmd)`` not a bracket, so
-# the ``[``-fire seek (at state ``p + 1``) sees no bracket inside the body.
-#
-# The generator is a branch-free minterm sum over an idempotent-zeroing
-# indirection: each input bit ``b_i`` (cell ``i``) and its complement ``c_i``
-# (cell ``n + i``, set to 1) guard blocks that count mismatches into cells
-# ``mc_k``; one block per minterm then zeroes ``m_k`` (cell
-# ``2n + 1 + 2**n + k``) iff ``mc_k != 0``, so ``m_k == 1`` exactly when the
-# input is ``k``; and blocks guarded by the ``1``-rows accumulate into the
-# result cell, which is printed as ``48 + r``.
+# ROTfuck rotates the program after every command, so a firing bracket
+# seeks its partner in the *rotated* program.  The escape, verified against
+# the interpreter: each ``[`` body is a straight-line ``+-><`` block and
+# the closing ``]`` a phantom at a position ``q`` with ``len(body) + 1 ≡ 0
+# (mod 8)``.  Skip path: ``[`` fires, seeks ``]`` at depth 1, lands at
+# ``q + 1`` in state ``p + 1``.  Body path: the body runs (pointer ends on
+# the tested, still-nonzero cell); at ``q`` the phantom reads
+# ``rot^len(body)(']') = '['`` which does not fire, advancing to ``q + 1``
+# in state ``q + 1 ≡ p + 1``.  Both paths re-converge, so the rest encodes
+# position-wise; a body command at offset ``j`` must have ``rot^{-j}(cmd)``
+# non-bracket so the seek sees no bracket.  The generator is a branch-free
+# minterm sum: bits ``b_i`` (cell ``i``) and complements ``c_i`` (cell
+# ``n + i``) guard blocks counting mismatches into ``mc_k``; a block per
+# minterm zeroes ``m_k`` iff ``mc_k != 0``; 1-row blocks accumulate the
+# result, printed as ``48 + r``.
 
 
 def jaune(truth_table: str) -> str:
     """Build a Jaune program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    All ``n`` bits are read up front -- one ``v`` each (a digit character,
-    ``ord-48``) -- and the tree then routes with ``?`` jumps: a node walks to
-    the cell holding its bit and ``N?`` jumps to label ``N`` when that cell is
-    nonzero, else falls through.  Each leaf prints its answer with ``^`` and
-    terminates locally.  A subtree whose table slice is a constant
-    collapses to a single leaf.
-
-    Only the inputs the tree actually branches on get a cell of their own:
-    a read is followed by ``>`` when its bit is needed later and left to be
-    overwritten by the next read when it is not, so the kept bits sit in one
-    contiguous block and the tree navigates a span as wide as the function's
-    real dependencies.  A leaf then prints from the cell it is standing on
-    -- its parent's test cell, whose value it knows -- so the answer costs
-    at most one ``+``/``-`` and no navigation.
-
-    **Reading up front is what makes the input count constant.**  The reads
-    used to sit *at* the nodes, so a folded tree skipped them: a constant
-    table consumed no input at all while a parity table consumed every bit,
-    making the program's stream consumption a function of its truth table.
-    Every generator here must avoid this -- the reads are
-    the interface -- and Jaune escaped the contract test that sweeps for it
-    only by not being registered in ``BY_FUNCTION``.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.helpers.best_input_order`),
-    which the hoist enables: with every bit parked in its own cell, a node
-    can test any of them.  Navigation costs one ``>``/``<`` per cell
-    crossed, so an order pays for the folds it wins, and the search measures
-    rather than assumes.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.  All
+    bits are read up front (``v``, ``ord-48``), then ``?`` jumps route the
+    tree; each leaf prints with ``^`` and terminates.  Only inputs the tree
+    branches on get a cell (``>`` after the read), so the tree navigates a
+    span as wide as the real dependencies, and a leaf prints from its
+    parent's test cell for one ``+``/``-``.  Reading up front keeps the
+    input count constant: reads at the nodes let a folded tree skip them,
+    and Jaune escaped the contract test only by not being in
+    ``BY_FUNCTION``.  The split order is whichever is shortest
+    (:func:`~esolangs.tools.helpers.best_input_order`); navigation costs one
+    move per cell, measured not assumed.
     """
     if len(truth_table) <= 16:
         return best_input_order(truth_table, _jaune_ordered)
@@ -113,28 +76,9 @@ def _jaune_linear(truth_table: str) -> str:
 def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one input order's Jaune program; see :func:`jaune`.
 
-    Two things keep this cheap, and both come from the tree's shape being
-    known before a line is emitted.
-
-    **Inputs the tree never tests are clobbered rather than stored.**  The
-    read contract asks that every input be *consumed*, not that every value
-    be *kept*, so an input no node branches on is read into the cell the
-    next read overwrites -- ``v`` without the following ``>``.  The tested
-    bits then land in adjacent cells, so the tree navigates a block as wide
-    as the function's real dependencies rather than one as wide as ``n``.  A
-    constant table reads every input and stores none.
-
-    **A leaf prints from the cell it is already standing on.**  It was
-    reached by its parent's test, so the pointer is on that parent's cell
-    and the value there is known -- 1 on the then-branch, 0 on the else --
-    which makes the leaf one ``+``/``-`` and a ``^`` with no navigation at
-    all.  Mutating a bit cell is safe because exactly one leaf runs per
-    execution and it terminates immediately.
-
-    The pointer's position on entry to a node is a function of its *level*
-    alone, never of the path taken: both of a parent's branches leave the
-    pointer on the parent's cell, so the navigation is computed per level
-    instead of threaded through the branch history.
+    Untested inputs are read into the cell the next read overwrites; a leaf
+    prints from the cell it stands on (1 on then, 0 on else); the pointer's
+    position on entry to a node is a function of level alone.
     """
     n = _validate_truth_table(truth_table)
     label = [1]
@@ -196,31 +140,14 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 def jaune_multiply() -> str:
     """Build a Jaune program reading two decimal numbers and printing their product.
 
-    The program reads decimal digits (most-significant first, one per input
-    line) into the first operand until a ``*`` line, then digits into the
-    second operand until a ``#`` line, and prints the product as a decimal
-    number with no leading zeros.  The single construction handles *any*
-    number of digits, so the generator takes no ``n`` parameter: multiplying
-    is one function ``a * b``, and the operand lengths are a property of the
-    input, not of the function (unlike a boolean truth table, where ``n``
-    selects a different function space).
-
-    Jaune is the language the multiply capability needs: its cells do not
-    wrap (the author's JauneJS stores each cell as a JavaScript number with
-    plain ``+=``/``-=``, and this interpreter uses Python ``int``), so each
-    operand fits in a single cell with no digit-per-cell carry, and ``^``
-    prints the current cell as a decimal number directly.  Each read loop
-    runs on a dedicated always-one
-    cell: the ``?``/``!`` jumps are conditional, so a cell permanently set to
-    1 gives the loop-back jump an unconditional trigger (the sentinel check
-    is the only exit).  A digit is folded into the operand with ``v+`` (read
-    a digit and add it), ``#`` (copy the current cell to hold) and a run of
-    nine ``&`` (add the hold cell), which multiplies the accumulated value by
-    10; a sentinel is detected by adding its offset from a digit (``*`` is
-    42, so ``6+`` zeroes it) and jumping on zero.  The product is then a
-    repeated-addition loop over the second operand.  Cells 0/1/2/3/4 hold
-    the first operand, the digit scratch, the second operand, the result,
-    and the always-one trigger.
+    Digits MSB first, one per line, up to ``*`` for the first operand and
+    ``#`` for the second; prints the product with no leading zeros, at any
+    length (no ``n``).  Jaune's cells do not wrap (JauneJS uses JS numbers),
+    so an operand is one cell and ``^`` prints it.  A read loop runs on an
+    always-one cell so ``?``/``!`` jump unconditionally; a digit is folded
+    with ``v+``, ``#`` (copy to hold) and nine ``&`` (x10); a sentinel is
+    detected by ``6+`` zeroing ``*`` (42).  Cells 0-4: first operand, digit
+    scratch, second operand, result, trigger.
     """
     out: list[str] = []
     pos = 0

@@ -47,51 +47,19 @@ _NOCOMMENT_STAGE = 32
 def _nocomment_chain(truth_table: str, n: int) -> str:
     """Build a NoComment template that needs six tape cells at any arity.
 
-    The narrow generator lands the pointer on ``table[index]`` with one
-    ``s`` whose skip amount *is* the index, which caps it at ``n == 8``, and
-    the wide generator it used to hand off to put the ``2**n`` output cells
-    on the tape, which the static 4096-cell tape capped at ``n == 12``.
-    This puts nothing per row on the tape.  The rows live in the *code*, the
-    index lives on the *stack*, and the tape holds six cells for any ``n``.
-
-    As in the narrow decode, a table that ignores some inputs is evaluated
-    over the essential ones: every input keeps its setter, and an
-    ignored one pushes no stage, so the rows and stages are those of the
-    smaller table.
-
-    *The stack is the index.*  The index is a sum of stage amounts, each at
-    most a byte, pushed one per stage: bit ``i`` of weight ``W`` pushes
-    ``W / 32`` full stages (or one stage of ``W`` when ``W < 32``), each
-    holding ``6 * a + 4`` when the bit is one and ``4`` when it is zero.
-    The bit's cells are dead once its stages are pushed, so every bit reuses
-    the same six -- the tape never grows with ``n``.
-
-    *The code is the table.*  After the prologue the program is a run of
-    uniform six-command groups, ``f s f X X s``.  A stage lands on a group's
-    first command with the pointer on ``G``: ``f`` pops the spent amount
-    into ``G`` (nonzero, so the skip fires) and ``s`` skips the next amount
-    -- ``6 * a + 4`` commands from the second position is exactly ``a + 1``
-    groups.  The stack's last amount is the constant ``6``, which lands two
-    commands *into* a group instead: that ``f`` pops the ``6`` into ``G``,
-    the group's ``X X`` runs, and its final ``s`` skips the constant ``3``
-    left on the stack -- which from the sixth position is the *next* group's
-    ``X X``.  So the fall-through executes every later group's delta and
-    nothing else: it pops nothing and lands nowhere a stage could.
-
-    *The delta telescopes.*  Group ``m + 1 + j`` is row ``j`` and its
-    ``X X`` is ``+2``, ``-2`` or ``0`` (``ii``, ``dd``, ``id``) for
-    ``table[j] - table[j + 1]``, the row past the last counting as zero.
-    Landing on row ``A`` therefore runs the deltas of rows ``A`` and after,
-    which sum to ``table[A] - 0``: ``G`` reads ``6 + 2 * table[A]`` whatever
-    fell through, and the epilogue maps ``{6, 8}`` to ``{48, 49}`` with one
-    skip-guarded ``+1`` and prints it.  The first ``m + 1`` groups are pads
-    a stage may land on, with zero deltas.
-
-    Size is ``6`` commands per row plus ``T / 32`` stage pushes plus a
-    fixed prologue per bit -- linear, and below the narrow decode from
-    ``n == 4`` up.  Execution is one skip per stage, then three commands
-    per group fallen through: ``O(T)`` commands.  The stack holds
-    ``T / 32 + n + 3`` values at its deepest.
+    The one-``s`` narrow decode caps at ``n == 8`` and the wide one's
+    ``2**n`` output cells at ``n == 12`` on the 4096-cell tape; here the rows
+    live in the *code* and the index on the *stack*.  A table that ignores
+    inputs is evaluated over the essential ones.  Bit ``i`` of weight ``W``
+    pushes ``W / 32`` stages of ``6 * a + 4`` (one) or ``4`` (zero), reusing
+    six cells.  The code is uniform six-command groups ``f s f X X s``: a
+    stage's ``f`` pops the amount into ``G`` and ``s`` skips ``a + 1``
+    groups; the constant ``6`` lands two commands into a group so the
+    fall-through runs every later group's ``X X`` delta (``+2``, ``-2`` or
+    ``0`` for ``table[j] - table[j + 1]``) and nothing else.  The deltas
+    telescope to ``table[A]``, ``G`` reads ``6 + 2 * table[A]``, and the
+    epilogue maps ``{6, 8}`` to ``{48, 49}``.  Size ``6`` per row plus
+    ``T / 32`` pushes; execution ``O(T)``; stack depth ``T / 32 + n + 3``.
     """
     used = essential_inputs(truth_table, n) or [0]
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
@@ -113,9 +81,7 @@ def _nocomment_chain(truth_table: str, n: int) -> str:
     def guarded(cell: int, block: list[str]) -> None:
         """Run ``block`` iff ``cell`` is zero, ending on ``cell``.
 
-        The skip amount is pushed from ``scratch`` first and popped back into
-        it after, on both paths, so the guard leaves the stack as it found it
-        -- the stack below is the index under construction.
+        Leaves the stack as it found it; below is the index under construction.
         """
         move(scratch)
         out.append("c")
@@ -189,53 +155,25 @@ def _nocomment_chain(truth_table: str, n: int) -> str:
 def nocomment(truth_table: str) -> str:
     """Build a NoComment template for the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    NoComment has no input command, so this is a parameterized generator: the
-    template's input runs become a constant-length setter for each
-    input bit, and the harness instantiates one program per input
-    combination.  Unlike an earlier version of this generator, the complement
-    is *not* embedded: NoComment's ``s`` (skip the next block iff the tested
-    cell is nonzero) doubles as a NOT gate, since the skipped block only runs
-    when the cell is zero.  A short runtime prologue pushes a fixed skip
-    length, tests each raw bit cell, and increments a fresh complement cell
-    in the skipped block -- so ``comp_i = 1 - bit_i`` is computed once per
-    input from the embedded bit, with no complement run and no second
-    embed.
-
-    Rather than routing a decision tree, the program **computes the input's
-    numeric index** and uses it as a byte-sized ``s`` skip into a staircase of
-    ``l`` moves that land the pointer on a pre-loaded output cell holding
-    ``48 + truth_table[index]``.  Each bit ``i`` contributes its weight
-    (``2**w``) to the index cell only when the bit is one -- the guard tests
-    the complement cell so the contribution is skipped when the bit is zero.
-    The output is then a single ``o``.
-
-    This is a straight-line program: no leaf chains, no interleaved stations,
-    no placement.  A single ``s`` skip is byte-sized, so this narrow form
-    needs the whole index to fit a byte -- a property of the *one-skip*
-    decode, not of the language.  It is used only below
-    ``_NOCOMMENT_CHAIN_MIN``, where it is the smaller program: from four
-    inputs :func:`_nocomment_chain` pushes the index as a run of byte-sized
-    skips and keeps the rows in the code, on six tape cells at any arity.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.  Each
+    run is a constant-length setter; the complement is not embedded, since
+    ``s`` (skip iff nonzero) doubles as a NOT gate and a prologue computes
+    ``comp_i = 1 - bit_i`` once.  The program computes the numeric index
+    (each bit adds ``2**w`` when its complement cell is zero) and uses it as
+    a byte-sized ``s`` skip into a staircase of ``l`` moves landing on a
+    preloaded cell holding ``48 + truth_table[index]``, then one ``o``.  The
+    one-skip form needs the index to fit a byte and is used below
+    ``_NOCOMMENT_CHAIN_MIN``; :func:`_nocomment_chain` takes over from four inputs.
     """
     n = _validate_truth_table(truth_table)
     if n >= _NOCOMMENT_CHAIN_MIN:
         return _nocomment_chain(truth_table, n)
 
-    # A table that ignores some of its inputs is a smaller table, and almost
-    # everything here is sized by the *index range*: the staircase is one
-    # ``l`` per row, and one output cell per row is preloaded and stepped
-    # through in the setup's sorted climb.  Evaluating over the essential
-    # inputs alone shrinks the dominant term from ``2**n`` to ``2**width``.
-    #
-    # Every input keeps its setter and its NOT-gate prologue -- the
-    # harness has a bit for each one -- and an ignored input costs only its
-    # guarded increment's *run length*, which goes to zero: the weight is
-    # ``["i"] * (2**w)``, a run this generator chooses, so a dropped input
-    # contributes an empty run.  The guard still runs and still leaves the
-    # pointer on its complement cell, so the emitted moves stay consistent.
+    # Everything is sized by the index range (one ``l`` and one output
+    # cell per row), so evaluating over the essential inputs shrinks
+    # ``2**n`` to ``2**width``.  Every input keeps its setter and prologue;
+    # an ignored one's weight run ``["i"] * (2**w)`` is empty, and its
+    # guard still leaves the pointer on its complement cell.
     used = essential_inputs(truth_table, n) or [0]
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     width = len(used)
@@ -304,12 +242,9 @@ def nocomment(truth_table: str) -> str:
         setup.append("r")
     setup_ptr[0] = n
 
-    # NOT-gate prologue: for each bit i, comp_i = 1 - bit_i.  ``s`` at the
-    # bit cell skips a fixed-length block (move to comp_i, set it, move back)
-    # exactly when the bit is nonzero, so the block runs -- and increments
-    # the complement cell -- only when the bit is zero.  Both the skip and
-    # fall-through paths leave the pointer back on the bit cell, so the
-    # next bit's prologue starts from a known position.
+    # NOT-gate prologue: ``s`` at the bit cell skips the block that
+    # increments comp_i, so it runs only when the bit is zero; both paths
+    # leave the pointer on the bit cell.
     for i in range(n):
         comp = n + i
         # comp is always to the right of bit i (comp - i == n), so the gate
