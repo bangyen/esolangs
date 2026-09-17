@@ -55,7 +55,7 @@ oracle searches may.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 was 124 MB and ran in 267 s under the previous spelling. |
+| Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 priced at 267 s and over 100 MB; not re-run. |
 | WII2D | 9 | 10 | Cost policy: dense n=10 leaves a domain past the admitted 256. |
 | ZTOALC L | 10 | 10 | n=11 needs 545–587 command slots; the line ceiling admits at most 395. |
 
@@ -74,7 +74,7 @@ linear construction has to get past.
 Uncapped dense-program sizes at n=8/n=9: Circuit Diagram 1.78/2.51 MB,
 Polynomial 1.59/5.02 MB, SLOW ACV MAMMALIAN 456/799 KB, 123 22.4/44.7 KB,
 bit~ 27.5/55.3 KB, Factor 17.2/35.5 KB, ROTfuck 14.9/28.8 KB, COD
-943 KB/3.67 MB (the once-only fork generator, restored Sep 2026). Run generated programs before claiming size or equivalence.
+943 KB/3.67 MB. Run generated programs before claiming size or equivalence.
 
 ### Scaling
 
@@ -84,16 +84,12 @@ read in one direction, since an n=8 -> 9 ratio near 2 is not evidence of
 O(T).  Build *time* is a separate axis: Factor, Polynomial and WII2D are
 super-linear on both; the roadmap's audit
 table carries the figures, with Vandevelo (candidate scoring on 2**n-bit
-masks) still open on build time.  Interprogck8 and Unsquare read
-super-linear in September 2026 (x3.3 and x2.4); each was one re-walk of
-the table and both emit byte-identical programs at x2.0 now.  Circlefuck
-was Theta(T log T) three ways -- a permuted table copy, one greedy scoring
-pass per input, and every node scanning its rows for the fold -- and is
-now one bottom-up fold pass, per-node table indexing, and a greedy that
-puts the essential inputs first and scores at most eight levels, x1.92;
-the essential-input scan compares sibling blocks of the packed table,
-`n * T / 2` bytes in all, which at word width `w` is `n * T / (2 w)` word
-operations with `n <= w` for any table that fits in memory.
+masks) still open on build time.  A build stays linear by walking the
+table once: Circlefuck's greedy puts the essential inputs first and
+scores at most eight levels, its essential-input scan compares sibling
+blocks of the packed table, `n * T / 2` bytes in all, which at word width
+`w` is `n * T / (2 w)` word operations with `n <= w` for any table that
+fits in memory.
 
 **Factor is Theta(T log T) on parity and super-linear for some table under
 every encoding.**  The folded Brainfuck tree has Theta(T) maximal command
@@ -124,20 +120,15 @@ interpreter and is recorded here.
 
 - **Constant per command, linear program:** Minifuck, Forth, Back,
   ROTfuck, S*bleq, Qoibl, Container's command count, and about a dozen more.
-- **Per-command cost is now constant everywhere it was measured.**  Five
-  interpreters read super-linear in September 2026 -- BFStack x2.8 per
-  added input at nine inputs, BrainIf x2.5, LaserFuck x2.6, RAM0 x2.5,
-  Jaune x2.5 -- for two reasons.  BFStack's ``[`` scanned forward for its
-  ``]`` on every skip; it reads a table built at load, like the nine
-  interpreters before it.  The other four rebuilt an immutable tape,
-  association list or pointer store on every write, so Theta(T) writes
-  cost Theta(T^2); their tapes are now a chunked persistent tuple
-  (`esolangs.interpreters.persistent`: a write rebuilds one 32-cell chunk
-  and the outer tuple, untouched chunks are shared, and the value stays
-  hashable for the cycle detector), and RAM0's store also carries a
-  machine-level address index so a load is a lookup rather than a scan.
-  They read x1.5-x2.0 now, with every output and step
-  count over the corpus unchanged.  Flowchart's pointer memory is a map at
+- **Per-command cost is constant everywhere it was measured.**  Two
+  designs keep it so: a bracket match is a table built at load, never a
+  scan per skip, and an immutable tape, association list or pointer store
+  is a chunked persistent tuple (`esolangs.interpreters.persistent`: a
+  write rebuilds one 32-cell chunk and the outer tuple, untouched chunks
+  are shared, and the value stays hashable for the cycle detector), with
+  RAM0's store carrying a machine-level address index so a load is a
+  lookup.  Either mistake reads x2.5-x2.8 per added input at nine inputs;
+  the fixed interpreters read x1.5-x2.0.  Flowchart's pointer memory is a map at
   x2.1; Eval, Bitdeque, Collatz Multiverse and Container read x1.9-x2.35
   on runs of a few milliseconds, which is noise, not an exponent.
 - **Sublinear:** twenty-two never read most of the table.  brainfuck's worst
@@ -159,8 +150,7 @@ Basicfuck, and Nevermind: ordinary imperative languages with shared-shim
 generators and no downstream consumer. The second band removed Suptiftam,
 Lamfunc, `function x(y)`, Between, and Point Break on the same criterion,
 leaving 60. Crement, Nopstacle, Vandevelo, B-tapemark, and EGL were added
-afterwards, and all five raise the floor: the two that specialized their
-lookup in the host were given generators in Sep 2026.
+afterwards, and all five raise the floor.
 
 The 2D candidate pool is screened out; the screen is recorded because
 re-running it is expensive.  `Category:Two-dimensional` x
