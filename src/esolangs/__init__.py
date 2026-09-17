@@ -1,28 +1,16 @@
 """Public API for the esolangs package.
 
-Provides ``generate`` (produce a program computing a truth table),
-``instantiate`` (fill a parameterized generator's input runs), ``run``
-(execute a program through an interpreter), ``make_vm`` (a step-and-inspect
-wrapper around the step-capable interpreters), ``make_debugger`` (a
-breakpoint/watch layer over the VM), ``describe`` (a structured language
-summary), and ``list_languages``.
+``generate`` produces a program computing a truth table; ``instantiate``
+fills a parameterized generator's input runs; ``run`` executes a program;
+``make_vm`` and ``make_debugger`` step one; ``describe`` and
+``list_languages`` summarize the registry.  ``encode_inputs`` and
+``read_answer`` feed a program and judge what it printed; ``check_stdin``,
+``check_program`` and ``check_runnable`` apply the checks before anything
+runs; ``evaluate`` and ``verify`` are the whole round trip; ``spec`` is the
+interpreter's own description of a language.
 
-``encode_inputs`` and ``read_answer`` are the two halves of feeding a
-program and judging what it printed; ``check_stdin`` says whether stdin is
-what a language wants before anything runs; ``check_program`` applies the
-load-time checks on their own; ``check_runnable`` rejects source that is
-actually a path or an unfilled template.
-
-``evaluate`` and ``verify`` are the round trip those compose into: they
-generate a program for a truth table, run it on every row, and return the
-table it computes (or whether it matches).  ``spec`` returns the
-interpreter's own description of a language, for writing one by hand.
-
-Every language name is resolved case-insensitively
-(:func:`esolangs.registry.resolve`), so ``Brainfuck`` and ``brainfuck``
-reach the same interpreter and a near miss is answered with a suggestion.
-Every error raised on purpose derives from
-:class:`~esolangs.exceptions.EsolangError`.
+Names resolve case-insensitively (:func:`esolangs.registry.resolve`), and
+every deliberate error derives from :class:`~esolangs.exceptions.EsolangError`.
 """
 
 import importlib
@@ -141,12 +129,7 @@ __all__ = [
 
 
 def __dir__() -> list[str]:
-    """Return the public surface, so tab-completion matches ``__all__``.
-
-    Without this ``dir(esolangs)`` also offered ``os``, ``re``, ``signal``,
-    ``threading`` and a dozen internals -- every module this one imports --
-    with nothing to mark which of them the package actually supports.
-    """
+    """Return the public surface, so tab-completion matches ``__all__``."""
     return sorted(__all__)
 
 
@@ -172,24 +155,18 @@ _STATE_MODELS = {
 def generate(language: str, truth_table: str, width: int | None = None) -> str:
     """Return a program in ``language`` computing ``truth_table``.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs, most significant first, so its length implies the input count
-    and the generators take no ``n``.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first, so its
+    length implies ``n``.  Eighteen languages embed their inputs in the
+    program text; for those this returns a *template* with each input as a
+    run of one character (``$`` unless the language declares another), one
+    run per input, exactly as long as the code :func:`instantiate` fills it
+    with.  ``describe(language)["parameterized"]`` says which you have; a
+    template handed to :func:`run` is refused.
 
-    Eighteen languages embed their inputs in the program text rather than
-    reading them.  For those this returns a *template*: the program with
-    each input spelled as a run of one character (``$`` unless the language
-    declares another), one run per input in order and exactly as long as
-    the code that replaces it, which :func:`instantiate` fills;
-    ``describe(language)["parameterized"]`` says which you have, and a
-    template handed to :func:`run` is refused rather than executed.
-
-    ``width`` is a *request*, not a bound: what it does depends on the
-    language (see ``describe(language)["width_effect"]``), it does nothing
-    at all where newlines are semantic, and a single token longer than the
-    width still overruns it.  A template wraps with each input's run kept
-    whole, so it is the wrapped shape of every program it fills to and
-    every row breaks in the same places.
+    ``width`` is a request, not a bound (``describe(language)["width_effect"]``):
+    it does nothing where newlines are semantic, and a single token longer
+    than the width still overruns it.  A template wraps with each run kept
+    whole, so every row breaks in the same places.
     """
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
@@ -218,8 +195,7 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
 def _is_template_for(template: str, name: str, truth_table: str) -> bool:
     """Return whether ``template`` is what ``name`` generates for the table.
 
-    A wrapped template passes where the plain one is a single line (for
-    the rest a newline is layout, and dropping it compares two programs).
+    A wrapped template passes where the plain one is a single line.
     """
     plain = generate(name, truth_table)
     return template == plain or (
@@ -236,23 +212,12 @@ def instantiate(
 ) -> str:
     """Fill a parameterized generator's template with ``bits``.
 
-    The eighteen parameterized generators embed their inputs in the
-    program text, so :func:`generate` returns a template and this makes it
-    runnable.  Substituting the runs by hand does not work: each language
-    spells a set-input its own way, and a bare ``0`` or ``1`` in the run
-    is a different program.
-
-    A language whose generator reads its inputs instead has nothing to
-    fill and raises :class:`~esolangs.exceptions.TemplateError`, as does a
-    template from a *different* language -- which would otherwise run and
-    answer the wrong row.
-
-    ``width`` is taken here as well: a wrapped template fills to a program
-    with the same breaks, and an unwrapped one is wrapped after filling.
-
-    A template :func:`generate` returned carries its setters; a plain
-    string -- read back from a file -- has them recovered from the
-    language's own setters, which its runs' total length determines.
+    Substituting the runs by hand does not work: each language spells a
+    set-input its own way.  A language whose generator reads its inputs, or
+    a template from a different language, raises
+    :class:`~esolangs.exceptions.TemplateError`.  ``width`` applies here too.
+    A template :func:`generate` returned carries its setters; a plain string
+    has them recovered from the language's own.
     """
     check_width(width)
     name = resolve(language)
@@ -325,18 +290,11 @@ _PATH_EXTENSION = re.compile(r"\.[A-Za-z0-9]{1,5}$")
 def _looks_like_a_path(program: str) -> bool:
     """Whether ``program`` is a filename someone meant to open.
 
-    A program is source; a filename handed over as a plain ``str`` is a
-    mistake that *runs*, because a path is legal text in most of these
-    languages -- ``run("brainfuck", "prog.bf")`` returns a null byte,
-    since the ``.`` is brainfuck's print.
-
-    The rule keys on shape: one line, only the characters a path is made
-    of, and either rooted (``/``, ``./``, ``../``, ``~/``) or ending in a
-    short extension -- a literal ``.txt`` check caught ``prog.txt`` and
-    let ``prog.bf`` and ``/etc/hosts`` through.  ``.``, ``..`` and a bare
-    ``~`` are accepted: they are legal programs (``~~`` is two ArrowQueue
-    commands), and a rule that refuses a real program is worse than the
-    bug it prevents.
+    A path is legal text in most of these languages
+    (``run("brainfuck", "prog.bf")`` returns a null byte).  Shape-based: one
+    line of path characters, rooted (``/``, ``./``, ``../``, ``~/``) or ending
+    in a short extension.  ``.``, ``..`` and ``~`` are accepted as programs
+    (``~~`` is two ArrowQueue commands).
     """
     if "\n" in program or not _PATH_CHARS.match(program):
         return False
@@ -347,15 +305,9 @@ def _looks_like_a_path(program: str) -> bool:
 def check_runnable(language: str, program: str) -> None:
     """Reject a program that is a path or an unfilled template.
 
-    Both are mistakes a running interpreter cannot report, because both are
-    *valid* input to it: a filename is a string of characters the language
-    mostly ignores, and a template's run of ``$`` is either a fault far from
-    its cause or -- Minifuck's case -- silently nothing.  Each produced a confident
-    wrong answer, which is the one outcome worth spending a check to avoid.
-
-    Public because :func:`run` is not the only way to execute a program:
-    the debugger stepped an unfilled template all the way to a confident
-    ``output: '0'``, so the CLI's ``debug`` calls this too.
+    Both are valid input to an interpreter and each produced a confident
+    wrong answer (Minifuck runs a ``$`` run as nothing).  Public because the
+    debugger stepped a template to ``output: '0'``; the CLI's ``debug`` calls it.
     """
     name = resolve(language)
     if _looks_like_a_path(program):
@@ -377,35 +329,14 @@ def check_program(
 ) -> str:
     """Return ``program`` as source, having checked what can be checked here.
 
-    **Not a load check.**  It refuses a program that is the wrong *kind* of
-    thing -- a path handed over as a string, an unfilled template, a
-    non-string, an unreadable file, a name outside the registry -- and it
-    type-checks ``stdin``.  It does not ask the language whether the source
-    parses: ``check_program("brainfuck", "[")`` returns the program, and
-    :func:`make_vm` on the same string raises ``ProgramError: unmatched
-    '['``.  Over half the languages have some program this accepts and the
-    interpreter then rejects.
-
-    That is structural: :func:`make_vm` *calls* this function, so validating
-    by building a machine would recurse, and the load check belongs to the
-    interpreter.  Use this as a pre-flight for the mistakes above, and
-    :func:`make_vm` or :func:`run` inside ``except EsolangError`` when the
-    question is "will this program load".
-
-    ``stdin`` is checked for its type only.  :func:`check_stdin` reads it
-    against the shape and alphabet a language declares, and needs the truth
-    table to do the whole job.
-
-    The whole load-time contract is here because there are two ways to
-    execute a program and only :func:`run` used to apply it:
-    ``make_debugger("brainfuck", None)`` raised ``'NoneType' is not a
-    container or iterable`` from inside an interpreter.
-
-    A :class:`~pathlib.Path` is read here, and its trailing newline is the
-    file's rather than the program's -- CV(N)(C), Grapheme and NoComment
-    reject one as an unknown command, which made reading a committed
-    example fail on the files this package ships.  Two of those three read
-    stdin, so the whole call is::
+    Not a load check: it refuses the wrong *kind* of thing (a path as a
+    string, an unfilled template, a non-string, an unreadable file, an
+    unknown name) and type-checks ``stdin``, but ``check_program("brainfuck",
+    "[")`` returns the program and :func:`make_vm` raises ``ProgramError``.
+    :func:`make_vm` calls this, so it cannot build a machine to check.
+    :func:`check_stdin` judges ``stdin``'s shape.  A :class:`~pathlib.Path`
+    is read here with its trailing newline stripped (CV(N)(C), Grapheme and
+    NoComment reject one), so the whole call is::
 
         path = pathlib.Path(describe(lang)["examples"][0])
         run(lang, path, encode_inputs(lang, [0, 1]))
@@ -462,52 +393,28 @@ def run(
 ) -> str:
     """Execute ``program`` and return its output.
 
-    ``program`` is the program's *source*, or a :class:`~pathlib.Path` to
-    read it from.  A plain string shaped like a filename is refused rather
-    than executed, because a filename is a legal program in most of these
-    languages and running one silently answers with nonsense.
+    ``program`` is source or a :class:`~pathlib.Path`; a string shaped like a
+    filename is refused.  A Path and its text are
+    not quite the same argument: a file loses one trailing newline, a
+    string keeps it.
 
-    **A Path and its text are not quite the same argument**: reading a file
-    strips one trailing newline and passing a string does not, so the two
-    disagree wherever a newline is not legal.  Both are deliberate -- a
-    trailing newline in a file is the editor's, one in a string is yours.
+    ``stdin`` is fed line by line.  Reading past the end usually raises
+    :class:`~esolangs.exceptions.InputExhaustedError`;
+    ``describe(language)["eof_is_a_value"]`` marks the languages that take a
+    value and answer a *different row*, warning with
+    :class:`~esolangs.exceptions.InputMismatchWarning` (Clockwise and Fargo
+    read one line, so only ``check_stdin`` with the table catches them).
+    Two are neither: Alight halts on ``cannot apply '+' to 2.0 and 'eof'``,
+    Suffolk ends the program.  Take the alphabet from
+    ``describe(language)["input_encoding"]``; the wrong one is a wrong result.
 
-    ``stdin`` is fed to the program line by line.  A program that asks for
-    more than it is given usually raises
-    :class:`~esolangs.exceptions.InputExhaustedError`, but not always:
-    ``describe(language)["eof_is_a_value"]`` marks the languages that take
-    an exhausted read as a value and carry on, answering a *different row*
-    of the table.  Those warn with an
-    :class:`~esolangs.exceptions.InputMismatchWarning` where there is a read
-    past the end to notice; Clockwise and Fargo take their input as a single
-    line, so an underfed program is undetectable here and only
-    ``check_stdin`` with the table catches it.
-
-    Two languages are neither outcome and the flag cannot say so.  **Alight**
-    is marked ``eof_is_a_value`` but does not carry on, halting with
-    ``cannot apply '+' to 2.0 and 'eof'``; **Suffolk** is marked ``False``
-    but does not raise, since an exhausted read *ends* the program (the same
-    fact ``self_halts`` records).  Swept rather than sampled: the other
-    fifty of the fifty-two stdin-reading languages match the flag.
-
-    How a language spells its bits is not universal -- Grapheme reads
-    ``%``/``A``, Fargo one number whose bits are the inputs -- so take the
-    alphabet from ``describe(language)["input_encoding"]``; the wrong one is
-    answered with a wrong result, not an error.
-
-    ``timeout`` bounds the run in wall-clock seconds and raises
-    :class:`~esolangs.exceptions.ExecutionTimeoutError`, which is a
-    :class:`TimeoutError` as well as a
-    :class:`~esolangs.exceptions.HaltError` -- catch it rather than the
-    base, so a program halting on an invalid operation is not mistaken for
-    the clock.  The guard is ``SIGALRM`` and so needs a Unix main thread;
-    off it, :meth:`Debugger.run` bounds cooperatively by stepping.
-
-    ``seed`` fixes the random draws of the seven languages that make them.
-
-    A program the interpreter cannot load raises
-    :class:`~esolangs.exceptions.ProgramError`, so every deliberate failure
-    here derives from :class:`~esolangs.exceptions.EsolangError`.
+    ``timeout`` is wall-clock seconds and raises
+    :class:`~esolangs.exceptions.ExecutionTimeoutError` (a
+    :class:`TimeoutError` and a :class:`~esolangs.exceptions.HaltError`; catch
+    it, not the base).  It is ``SIGALRM``, so needs a Unix main thread; off it,
+    :meth:`Debugger.run` bounds by stepping.  ``seed`` fixes the seven
+    languages that draw.  An unloadable program raises
+    :class:`~esolangs.exceptions.ProgramError`.
     """
     check_timeout(timeout)
     if timeout is not None and not (
@@ -573,15 +480,8 @@ def run(
 def _warn_about_stdin(name: str, stdin: str) -> None:
     """Warn, once, if ``stdin`` contradicts what ``name`` declares it reads.
 
-    A warning and not a refusal, for the reason :func:`run` gives: this
-    executes arbitrary programs of a language, not only the generated
-    truth-table ones, so a shape that looks wrong for a boolean program may
-    be exactly what a hand-written one wants.  But silence was
-    indistinguishable from correctness, and the checks already existed --
-    the command line applied them and a Python caller got nothing.
-
-    :func:`check_stdin` raises; this is the same judgement rendered as
-    advice, so the strict path and the advisory path cannot disagree.
+    A warning, not a refusal: ``run`` executes arbitrary programs.  The same
+    judgement :func:`check_stdin` raises, rendered as advice.
     """
     if not stdin:
         # Empty stdin is legitimate (the protocol tests run 65 programs
@@ -603,24 +503,11 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
 def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., Any]:
     """Bind ``seed`` to ``run_fn``'s random source, refusing where there is none.
 
-    Seven languages draw -- COD, Interprogck8, LaserFuck, Modulous,
-    Painfuck, Super SNUSP and WII2D -- and their interpreters each take an
-    ``rng``.  Nothing public passed one.  So LaserFuck's docstring said "a
-    caller that needs a particular one passes an ``rng``" while ``run``,
-    ``make_vm``, ``make_debugger``, ``evaluate`` and ``verify`` all had no
-    parameter for it, and the only route was to import the private module
-    and hand-build an ``IO``.  Ten identical runs of ``o+++.`` gave ``3``
-    five times and nothing five times.
-
-    ``make_vm`` was never affected: it always seeds, from the interpreter's
-    own ``reproducible_seed``, which is why stepping was reproducible and
-    running was not -- an asymmetry with no reason behind it.
-
-    A seed for a language that draws nothing is refused rather than
-    ignored.  Passing one means expecting the run to repeat, and it will
-    repeat whatever happens here, so silence would be right by accident;
-    but it would also hide the likelier reading, which is that the caller
-    has the wrong language.
+    Seven languages draw (COD, Interprogck8, LaserFuck, Modulous, Painfuck,
+    Super SNUSP, WII2D) and nothing public passed an ``rng``: ten runs of
+    ``o+++.`` gave ``3`` five times and nothing five times, while ``make_vm``
+    always seeded.  A seed for a language that draws nothing is refused: the
+    likelier reading is the wrong language.
     """
     import inspect
 
@@ -638,9 +525,7 @@ def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., A
 def _keeping_output[E: EsolangError](exc: E, io_obj: ScriptedIO) -> E:
     """Attach what the program printed before ``exc``, and return it.
 
-    A note as well as the attribute: the attribute is what the CLI prints,
-    and the note is for anyone reading a traceback who would otherwise
-    conclude the program produced nothing at all.
+    The attribute is what the CLI prints; the note is for a traceback reader.
     """
     written = io_obj.getvalue()
     if written:
@@ -652,14 +537,9 @@ def _keeping_output[E: EsolangError](exc: E, io_obj: ScriptedIO) -> E:
 def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
     """Warn if the program left supplied input unread.
 
-    Six lines fed to a three-input program answered the first three and
-    ignored the rest, with nothing to show it had happened -- while feeding
-    too *few* had always said "2 lines supplied, read 3".  The count was
-    there the whole time; only the other direction was never checked.
-
-    It cannot be an error: reading less than it is given is what a great
-    many perfectly good programs do.  The arity mismatch it usually means
-    is the thing worth naming.
+    Six lines to a three-input program answered the first three silently,
+    while too few always said "2 lines supplied, read 3".  Not an error:
+    reading less than given is what many programs do.
     """
     read, supplied = io_obj.reads, io_obj.supplied
     if supplied > read > 0:
@@ -689,11 +569,7 @@ def _run(
     io_obj: ScriptedIO,
     timeout: float | None,
 ) -> None:
-    """Run ``run_fn``, applying the wall-clock ``timeout`` guard when set.
-
-    Whether a timeout *can* be applied is settled in :func:`run` before this
-    is reached, so there is no third case here.
-    """
+    """Run ``run_fn``, applying the wall-clock ``timeout`` guard when set."""
     if timeout is None:
         run_fn(program, io_obj)
     else:
@@ -747,16 +623,9 @@ def _run_timed_signal(
 class LanguageInfo(TypedDict):
     """What :func:`describe` returns, as a type a caller can annotate with.
 
-    It was ``dict[str, object]``, which is accurate and useless: every
-    field access needs a cast, and ``mypy --strict`` over an ordinary
-    consumer program reported five errors, all of them this.  The
-    docstring on :func:`describe` already specified every key -- this is
-    that specification in a form the type checker can read.
-
-    ``total=True``: every language has every key.  A field that does not
-    apply is a documented empty value rather than a missing one, which is
-    what lets a caller iterate the registry without branching -- the
-    property four rounds of this package's history were spent on.
+    ``dict[str, object]`` cost a cast per field (five ``mypy --strict`` errors
+    in an ordinary consumer).  ``total=True``: a field that does not apply is
+    a documented empty value, so a caller iterates the registry without branching.
     """
 
     name: str
@@ -785,45 +654,24 @@ class LanguageInfo(TypedDict):
 def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
-    Identity: ``name``, ``id``, ``state_model``, ``interpreter``,
-    ``wiki_url``.
-
-    Generation: ``boolean_generator`` says a truth-table generator exists;
-    ``parameterized`` says it returns a template, which takes its
-    bits from :func:`instantiate` and so has ``reads_input`` false.
-
-    Width: ``width_effect`` is what a ``width`` does -- ``"layout"`` (the
-    generator builds a shape to fit; a hint, not a bound), ``"wrap"`` (the
-    finished program is reflowed between whole tokens), or ``"none"`` (it
-    is ignored, because newlines are semantic here).  ``width_aware`` is
-    the narrower ``width_effect == "layout"``.  Neither promises the
-    result fits; see :func:`generate`.
-
-    Input: ``input_shape`` is how the bits are laid out and
-    ``input_encoding`` the ``(zero, one)`` pair they are spelled with --
-    ``("0", "1")`` almost everywhere, ``("%", "A")`` for Grapheme.  Feed
-    the wrong alphabet and you get a wrong answer rather than an error, so
-    read them rather than assuming.
-
-    Answer: ``answer_mode`` is ``"output"`` (printed; read the last
-    non-whitespace character), ``"dump"`` (the final state is printed and
-    the answer sits at a fixed place in it) or ``"termination"`` (it halts
-    for one value and runs forever for the other, so a timeout *is* an
-    answer).  ``answer_pattern`` is the regex whose first group holds the
-    answer, empty when the last character is it; ``answer_encoding`` is the
-    ``(zero, one)`` that position is spelled with, or the polarity
-    ``("halts", "diverges")``; ``answer_convention`` is prose naming where
-    to look.  These describe the *raw output*, so A Painter Ant's
-    ``("o", "@")`` is a mark in its grid rather than a value a caller sees
-    -- :func:`read_answer` always hands back ``"0"`` or ``"1"``.
-
-    Machine traits: ``self_halts``, ``dumps_on_the_post_halt_step``,
-    ``steppable_to_answer`` and ``eof_is_a_value``, documented on
-    :func:`~esolangs.vm.machine_traits`.
-
-    ``examples`` lists the committed programs for the language, which
-    ship with the package; ``examples/MANIFEST.md`` beside them
-    says what each one computes.
+    Identity: ``name``, ``id``, ``state_model``, ``interpreter``, ``wiki_url``.
+    Generation: ``boolean_generator``; ``parameterized`` (a template, filled by
+    :func:`instantiate`, ``reads_input`` false).  Width: ``width_effect`` is
+    ``"layout"`` (a shape built to fit; a hint), ``"wrap"`` (reflowed between
+    tokens) or ``"none"`` (newlines are semantic); ``width_aware`` is the
+    narrower ``== "layout"``.  Input: ``input_shape`` and ``input_encoding``,
+    the ``(zero, one)`` pair (``("%", "A")`` for Grapheme) -- the wrong
+    alphabet is a wrong answer.  Answer: ``answer_mode`` is ``"output"``
+    (last non-whitespace character), ``"dump"`` (a fixed place in the final
+    state) or ``"termination"`` (a timeout *is* an answer);
+    ``answer_pattern`` is the regex whose first group holds it;
+    ``answer_encoding`` the ``(zero, one)`` or ``("halts", "diverges")``;
+    ``answer_convention`` prose.  These describe raw output (A Painter Ant's
+    ``("o", "@")`` is a grid mark); :func:`read_answer` returns ``"0"``/``"1"``.
+    Machine traits (``self_halts``, ``dumps_on_the_post_halt_step``,
+    ``steppable_to_answer``, ``eof_is_a_value``) are documented on
+    :func:`~esolangs.vm.machine_traits`.  ``examples`` lists the committed
+    programs; ``examples/MANIFEST.md`` says what each computes.
     """
     name = resolve(language)
     lang = LANGUAGES[name]
@@ -875,22 +723,10 @@ def describe(language: str) -> LanguageInfo:
 def _width_effect(lang: Any) -> str:
     """Return what ``width`` actually does to this language's program.
 
-    ``width_aware`` answered a narrower question than anyone was asking --
-    whether the *generator* takes the width itself -- so it was ``False``
-    for Sophie, whose program is reflowed to the width afterwards, and
-    ``False`` for Clockwise, which ignores the width entirely.  One flag,
-    three behaviours, and no way to tell them apart without reading the
-    source; a reader said so in as many words.
-
-    * ``"layout"`` -- the generator is handed the width and builds a shape
-      to fit.  A *hint*, not a bound: LaserFuck asked for 10 gives 18, and
-      asked for 200 gives 56, because it folds straight runs rather than
-      breaking lines.
-    * ``"wrap"`` -- the finished program is reflowed between whole tokens,
-      so the width is honoured except by a single token longer than it.
-    * ``"none"`` -- the width is ignored, because the language's newlines
-      are semantic or it rejects them outright.  This is the one worth
-      knowing: it was a silent no-op.
+    ``width_aware`` was ``False`` for both Sophie (reflowed afterwards) and
+    Clockwise (ignores it).  ``"layout"``: a shape built to fit, a hint
+    (LaserFuck asked for 10 gives 18, for 200 gives 56); ``"wrap"``:
+    reflowed between tokens; ``"none"``: ignored, newlines semantic.
     """
     # One expression rather than an early return for the generator-less
     # case: every registered language has a generator, so that return was a
@@ -903,14 +739,9 @@ def _width_effect(lang: Any) -> str:
 def spec(language: str) -> str:
     """Return the interpreter's own description of ``language``.
 
-    Every interpreter carries a module docstring giving the command table
-    and -- more useful -- where this implementation differs from the wiki
-    page.  It is the best documentation here for *writing* a program, as
-    opposed to generating one.
-
-    Read from the module rather than stored, so it cannot drift.  Python
-    started with ``-OO`` strips docstrings, and this raises rather than
-    returning an empty string.
+    The module docstring: the command table and where this implementation
+    differs from the wiki -- the documentation for *writing* a program.
+    Raises under ``-OO``, which strips docstrings.
     """
     name = resolve(language)
     module = RUNNERS[name][0]
@@ -936,16 +767,11 @@ def encode_inputs(
 ) -> str:
     """Return the stdin that feeds ``bits`` to a ``language`` program.
 
-    Most languages read one ``0``/``1`` line per input.  Four do not, and
-    each of them answers the obvious guess with a *wrong bit* rather than
-    an error, which is why this exists: Grapheme spells its bits ``%`` and
-    ``A``, Clockwise wants them all on one line, Fargo wants one number
-    whose bits are the inputs, and Taglate pads an odd count with a
-    leading zero.
-
-    ``truth_table`` is needed only where the encoding depends on the
-    arity.  A language that embeds its inputs in the program reads no
-    stdin at all and is refused here -- use :func:`instantiate`.
+    Most read one ``0``/``1`` line per input; Grapheme spells ``%``/``A``,
+    Clockwise wants one line, Fargo one number, Taglate pads an odd count --
+    each answering the obvious guess with a wrong bit.  ``truth_table`` is
+    needed only where the encoding depends on arity.  A language that embeds
+    its inputs is refused; use :func:`instantiate`.
     """
     # Every registered language has a committed example, so the lookup
     # always finds one; ``example_stems`` covers all 65 and a test pins that.
@@ -1010,23 +836,11 @@ INPUT_SHAPES: tuple[str, ...] = (
 def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> None:
     """Refuse ``stdin`` that cannot be what ``language`` wants to read.
 
-    The judge the CLI has always applied, moved here so Python callers get
-    it too -- it was the one place the API was strictly weaker than the
-    command line, and the sharp edges it guards are the ones every blind
-    reader of this package has found: a ``0``/``1`` line fed to Grapheme,
-    several lines fed to Clockwise, anything but a number fed to Fargo.
-
-    Raises :class:`~esolangs.exceptions.ArgumentError` rather than warning,
-    because a caller reaching for this function has asked to be told.
-    :func:`run` still executes whatever it is given: it runs arbitrary
-    programs, and a shape this rejects may be what a hand-written one wants.
-
-    ``truth_table`` is optional and adds the count, which catches the
-    *surplus* case: six lines fed to a three-input program answered the
-    first three and ignored the rest, at exit 0.
-
-    Every check reads a :func:`describe` field, so a language with a new
-    shape is covered by declaring it.
+    The CLI's judge, for Python callers: a ``0``/``1`` line to Grapheme,
+    several lines to Clockwise, a non-number to Fargo.  Raises
+    :class:`~esolangs.exceptions.ArgumentError`; :func:`run` only warns.
+    ``truth_table`` adds the count, catching surplus lines.  Every check reads
+    a :func:`describe` field.
     """
     facts = describe(language)
     name = str(facts["name"])
@@ -1118,25 +932,14 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
 def read_answer(language: str, output: str) -> str:
     """Return the answer bit a ``language`` program's ``output`` carries.
 
-    The counterpart to :func:`encode_inputs`.  Most languages print the
-    answer and this is the last non-whitespace character; the six that dump
-    their whole final state instead need to be told where in the dump it
-    sits, and two of those genuinely differ -- RAM0's answer is its ``z``
-    register, three lines above the end, and A Painter Ant marks the ant's
-    own cell ``o`` on black and ``@`` on white rather than printing a digit.
-    ``describe(language)["answer_pattern"]`` is the same fact as data.
-
-    This exists because ``answer_mode`` alone was not enough: it said *that*
-    a language dumps without saying *where*, so a verifier still had to read
-    the prose, and one that hardcoded two of the dumps and forgot a third
-    reported a passing language as broken.  The other four dumps happen to
-    end on the answer, which is what makes the gap easy to miss.
-
-    A language whose answer is its *termination* raises
-    :class:`~esolangs.exceptions.ArgumentError`: 123, ArrowQueue and Point
-    Break halt for a 0 and loop forever for a 1, so their output is not the
-    answer and reading one out of it would invent a result.  Bound the run
-    and catch :class:`~esolangs.exceptions.ExecutionTimeoutError` instead.
+    Most print it (last non-whitespace character); six dump their state, and
+    two differ -- RAM0's answer is its ``z`` register three lines up, A
+    Painter Ant marks the ant's cell ``o``/``@``.
+    ``describe(language)["answer_pattern"]`` is the same fact as data (a
+    verifier that hardcoded two dumps and forgot a third reported a passing
+    language as broken).  A termination-answer language (123, ArrowQueue,
+    Point Break) raises :class:`~esolangs.exceptions.ArgumentError`: bound
+    the run and catch :class:`~esolangs.exceptions.ExecutionTimeoutError`.
     """
     name = resolve(language)
     if not isinstance(output, str):
@@ -1187,22 +990,12 @@ TERMINATION_OUTCOMES: tuple[str, str] = ("halts", "diverges")
 class _Default:
     """The "argument was not given" marker for :func:`evaluate`.
 
-    Needed because ``None`` already means something: in :func:`run` it means
-    *unbounded*, and a reader found that the same word meant "use the
-    default" here -- so there was no value at all that turned the alarm off,
-    and the two headline convenience functions could not be called from a
-    thread.  Now omitting the argument takes the defaults and passing
-    ``None`` means what it means everywhere else.
+    ``None`` already means *unbounded* in :func:`run`, and meaning "default"
+    here too left no value that turned the alarm off from a thread.
     """
 
     def __repr__(self) -> str:
-        """Render as ``<default>`` in a signature rather than as an address.
-
-        ``help(esolangs.evaluate)`` showed ``timeout: float |
-        esolangs._Default | None = <esolangs._Default object at
-        0x105fa12b0>`` -- an address, in the documentation, changing every
-        run.  A reader has to work out that the sentinel means "omit it".
-        """
+        """Render as ``<default>`` in a signature rather than as an address."""
         return "<default>"
 
 
@@ -1226,23 +1019,14 @@ def evaluate(
 ) -> str:
     """Return the truth table a generated ``language`` program *actually* computes.
 
-    Generates the program for ``truth_table``, runs it on every row of its
-    input space, and returns the answers as a binary string of the same
-    length -- so the round trip is one call, and a mismatch tells you which
-    rows disagree.  :func:`verify` is this with the comparison done.
-
-    ``timeout`` bounds each row.  Omit it for the defaults; pass ``None``
-    for unbounded, which is what makes this callable off the main thread.
-    The three languages that answer by *not terminating* do not pay it:
-    those rows are settled by a repeated machine state, which proves the
-    loop in microseconds, so the bound is only a backstop for a program
-    that diverges by growing instead of repeating.
-
-    ``width`` is passed through to the build, so this answers whether a
-    program still computes its table once it has been wrapped.
-
-    A failure carries the row it happened on as an exception note, and
-    whatever the program printed first as ``partial_output``.
+    Generates, runs every row, returns the answers as a binary string;
+    :func:`verify` is this with the comparison done.  ``timeout`` bounds each
+    row: omit for the defaults, ``None`` for unbounded (callable off the main
+    thread).  The three termination-answer languages do not pay it: those rows are
+    settled by a repeated machine state, so the bound is only a backstop
+    for growth.
+    ``width`` is passed through.  A failure carries the row as a note and
+    ``partial_output``.
     """
     # Checked here, not only inside ``run``: the termination path drives the
     # machine itself and never reaches ``run``, so a bound too small to
@@ -1311,24 +1095,10 @@ def _terminates(
 ) -> str:
     """Return this row's answer for a language that answers by terminating.
 
-    A *proof* where one is available.  These three answer 1 by never
-    stopping, so the obvious reading is "wait and see", and waiting is what
-    this did: five seconds per 1-row, twenty seconds per language at two
-    inputs and forty at three, which is most of what a sweep over the
-    registry cost.
-
-    A deterministic machine that returns to a state it has already been in
-    will do the same thing again forever, so a repeated snapshot settles it
-    exactly -- and settles it in milliseconds, because these programs
-    revisit a state within a hundred steps.  The clock stays as the
-    backstop :func:`~esolangs.vm.run_until_halt_or_cycle` asks for: it
-    proves *cycles*, and a loop that grows without bound never repeats a
-    state, so a program that does that still has to be timed out.
-
-    This was declined two rounds ago, when the proposal was a step budget.
-    That refusal was right and this is not the same thing: a budget guesses
-    that a program still running will never stop, and can be wrong about a
-    slow one; a repeated state is a fact about every future step.
+    A repeated snapshot proves the loop in milliseconds (these programs
+    revisit a state within a hundred steps) where waiting cost five seconds
+    per 1-row.  The clock stays for growth, which never repeats.  A step
+    budget was rightly refused earlier; a repeated state is a fact, not a guess.
     """
     from esolangs.vm import run_until_halt_or_cycle
 
@@ -1362,10 +1132,7 @@ def verify(
 ) -> bool:
     """Whether a generated ``language`` program really computes ``truth_table``.
 
-    :func:`evaluate` with the comparison done, for the common case where
-    only the verdict is wanted.  Use ``evaluate`` when a mismatch needs
-    locating: it returns the table the program computed, so the rows that
-    disagree are visible rather than summarized to ``False``.
+    Use :func:`evaluate` to see which rows disagree.
     """
     return evaluate(language, truth_table, timeout, width) == truth_table
 
@@ -1373,9 +1140,8 @@ def verify(
 def _validate_shape_for_evaluate(truth_table: str) -> int:
     """Return the input count of ``truth_table``, refusing a malformed one.
 
-    :func:`generate` validates it too, a few lines later, but the row loop
-    needs the arity *before* that happens -- and a bad table reported by
-    whichever generator ran first named the generator rather than the table.
+    The row loop needs the arity before :func:`generate` validates, and a
+    generator's error named the generator rather than the table.
     """
     from esolangs.tools.helpers import _validate_truth_table
 
@@ -1390,8 +1156,7 @@ def _validate_shape_for_evaluate(truth_table: str) -> int:
 def _example_for(language_id: str) -> Any:
     """Return the committed boolean example for ``language_id``, or None.
 
-    Deferred like the rest of the example lookups: ``examples`` imports the
-    registry, so importing it at module scope would close a cycle.
+    Deferred: ``examples`` imports the registry.
     """
     from esolangs.tools.examples import BOOLEAN_EXAMPLES
 

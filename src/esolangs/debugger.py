@@ -1,14 +1,9 @@
 """A debugger on top of the step-and-inspect VM.
 
-:class:`Debugger` wraps a :class:`esolangs.vm.VM` and adds the two
-affordances a study tool needs beyond stepping: breakpoints (stop the run
-when a condition holds, before the step that would change it) and watches
-(record how a cell or stack slot evolves step by step).
-
-Breakpoints are checked *before* each step, so a ``break_at`` on the initial
-instruction position fires immediately without executing it, and a
-``break_on_cell`` fires while the cell still holds the watched value (before
-the step that would move past it).
+:class:`Debugger` wraps a :class:`esolangs.vm.VM` with breakpoints (stop
+before the step that would change the condition) and watches (a per-step
+history of a cell or stack slot).  Breakpoints are checked *before* each
+step, so ``break_at`` on the initial position fires without executing it.
 """
 
 from __future__ import annotations
@@ -35,24 +30,10 @@ STOP_REASONS: tuple[StopReason, ...] = ("halted", "breakpoint", "max_steps", "ti
 class Debugger:
     """Breakpoints and watches over a :class:`VM`.
 
-    ``step()`` advances one command; ``run()`` advances until the machine
-    halts or a breakpoint fires -- **pass ``max_steps`` or ``timeout``
-    unless the program is known to halt**, since neither is bounded by
-    default and several of these languages loop forever by design.
-
-    The ``halted``/``output``/``ip``/``memory``/``stack`` properties mirror
-    the wrapped VM, and ``watch_cell``/``watch_stack`` accumulate a per-step
-    history.
-
-    So do the three language traits -- ``self_halts``,
-    ``dumps_on_the_post_halt_step`` and ``steppable_to_answer``.  They were
-    the mirrors left out, and they are the ones a *driving* caller needs:
-    they say whether to bound the run, whether the answer arrives one step
-    past the halt, and whether stepping reaches it at all.  Reading them
-    meant reaching through ``self.vm``, which is the wrapped machine and is
-    public for exactly the cases this class does not cover -- but a trait
-    that decides how to drive the debugger should not need the thing being
-    driven.
+    ``step()`` advances one command; ``run()`` until a halt or breakpoint --
+    **pass ``max_steps`` or ``timeout``** unless the program is known to
+    halt.  The VM's properties and traits are mirrored so a driving caller
+    never needs ``self.vm``; ``watch_cell``/``watch_stack`` accumulate history.
     """
 
     def __init__(self, vm: VM) -> None:
@@ -81,13 +62,8 @@ class Debugger:
     def ip(self) -> int | tuple[int, ...] | None:
         """The wrapped VM's current position.
 
-        An ``int``, a tuple, or ``None``, and **not stable in kind or
-        arity within a run**.  :meth:`break_at` is the reason to care:
-        it is a method of this class and using it correctly depends on
-        what shape this reports.  :attr:`~esolangs.vm.VM.ip` has the
-        rules -- row before column for the grid ten, the other nine that
-        report tuples meaning something else entirely, and the six
-        that change shape mid-run.
+        An ``int``, a tuple, or ``None``, not stable in kind or arity within a
+        run; :attr:`~esolangs.vm.VM.ip` has the rules :meth:`break_at` depends on.
         """
         return self.vm.ip
 
@@ -115,11 +91,7 @@ class Debugger:
     def self_halts(self) -> bool:
         """Whether a program in this language can reach a halt of its own.
 
-        See :attr:`~esolangs.vm.VM.self_halts` for which languages, and
-        for why the answer is not "the ones without a halt command".
-        Deliberately a pointer rather than a paraphrase: a second copy
-        of a fact is a second thing to keep true, and the copies here
-        have already drifted apart once.
+        See :attr:`~esolangs.vm.VM.self_halts`; a pointer, since copies drifted once.
         """
         return self.vm.self_halts
 
@@ -127,26 +99,9 @@ class Debugger:
     def dumps_on_the_post_halt_step(self) -> bool:
         """Whether the output lands on the step *after* ``halted`` goes true.
 
-        **On this class a :meth:`run` that returned ``"halted"`` has
-        already taken that step**, so it holds the dumped output and needs
-        nothing further.  :meth:`step` has not: a caller driving with
-        ``while not dbg.halted: dbg.step()`` stops one step short and holds
-        ``""``, which is what the trait is warning about.
-
-        A run that returned ``"breakpoint"`` may or may not have taken it,
-        because the breakpoint is checked on both sides of the dump -- so
-        on these seven, ``halted`` being true does not by itself mean the
-        answer is written.  The stop *reason* is what tells you; see
-        :meth:`run`.  This used to lead with an unconditional "``run`` has
-        already taken that step", which was true when only ``"halted"``
-        could follow a halt and stopped being true when the second check
-        was added.
-
-        Said here because the wrapped VM's version of this docstring says
-        "one further ``step()`` writes what ``run`` writes", meaning
-        :func:`esolangs.run` -- and read on a :class:`Debugger`, ``run``
-        naturally reads as :meth:`Debugger.run`, which makes the sentence
-        describe a step this class has already taken.
+        A :meth:`run` returning ``"halted"`` has taken it; one returning
+        ``"breakpoint"`` may not have, so on these seven the stop reason, not
+        ``halted``, says whether the answer is written.
         """
         return self.vm.dumps_on_the_post_halt_step
 
@@ -154,63 +109,29 @@ class Debugger:
     def steppable_to_answer(self) -> bool:
         """Whether stepping this language ever reaches the answer.
 
-        See :attr:`~esolangs.vm.VM.steppable_to_answer` for the one
-        language this is ``False`` for and why a bigger budget does not
-        help.  A pointer, not a paraphrase -- see :attr:`self_halts`.
+        See :attr:`~esolangs.vm.VM.steppable_to_answer`.
         """
         return self.vm.steppable_to_answer
 
     def snapshot(self) -> object:
         """Return the wrapped machine's complete *internal* state, hashable.
 
-        Internal, not everything: ``output`` is excluded.  That is what the
-        loop proof needs -- equal internal state means the same future, so a
-        repeat means the machine never halts -- but it does mean two
-        snapshots can compare equal across a step that wrote something, as
-        the post-halt dump step does on seven languages.  Do not read it as
-        a full state diff.
-
-        Mirrored for the reason this class already gives for the traits: a
-        caller reaching through ``self.vm`` to get at it is doing the thing
-        the mirrors exist to avoid.  And this one is worth reaching for --
-        a repeated snapshot proves a loop, which is how the three
-        termination languages are settled in microseconds instead of by
-        waiting out a clock.
+        ``output`` is excluded (equal internal state means the same future), so
+        two snapshots compare equal across the post-halt dump.  A repeated
+        snapshot proves a loop, which settles the three termination languages in
+        microseconds.
         """
         return self.vm.snapshot()
 
     def break_at(self, ip: int | tuple[int, ...]) -> None:
         """Stop when the program counter reaches ``ip``.
 
-        A position is an ``int``, or a tuple of them for the grid languages
-        whose ``ip`` is a coordinate.  Anything else is refused rather than
-        stored: it compares unequal to every position the machine ever
-        reaches, so the breakpoint would simply never fire, and a silently
-        dead breakpoint is worse than an error.
-
-        The *kind* is checked against this language too, because the same
-        argument applies one level up: ``break_at((1, 2))`` on brainfuck,
-        whose ``ip`` is an index, and ``break_at(10)`` on Alight, whose
-        ``ip`` is a coordinate, were both stored and both could never fire.
-
-        Only the kind, not the arity: a tuple ``ip``'s length is the
-        language's own and is not constant within a run (see
-        :attr:`~esolangs.vm.VM.ip`), so an arity check would refuse
-        breakpoints legitimate later in the same run.  A machine whose
-        ``ip`` is already ``None`` or empty has no shape to compare
-        against, and anything is accepted.
-
-        ``None`` is refused too, which is a gap rather than a guard:
-        :attr:`~esolangs.vm.VM.ip` reports it as a real position -- five
-        languages reach it, and Circuit Diagram *starts* there -- so
-        ``break_when(lambda vm: vm.ip is None)`` is how to say it.  This
-        method stays typed to a position, because the kind check is what
-        makes a mistyped breakpoint an error rather than a dead one.
-
-        An in-kind position the program never *reaches* is accepted and will
-        not fire.  Deciding that needs the program's length, which is not
-        part of the VM protocol -- ``ip`` is language-shaped and there is no
-        ``len``.
+        An ``int``, or a tuple for a coordinate ``ip``; anything else, or the
+        wrong kind for this language, is refused rather than stored as a
+        breakpoint that never fires.  Kind only, not arity (not constant within
+        a run; see :attr:`~esolangs.vm.VM.ip`).  ``None`` is refused although
+        five languages reach it: use ``break_when(lambda vm: vm.ip is None)``.
+        A position never reached is accepted (the protocol has no ``len``).
         """
         if isinstance(ip, int) and not isinstance(ip, bool):
             check_whole(ip, "ip")
@@ -235,8 +156,7 @@ class Debugger:
     def break_on_cell(self, index: int, value: int) -> None:
         """Stop when ``memory[index]`` holds ``value``.
 
-        ``value`` is checked for the same reason ``ip`` is above: a cell
-        holds an ``int``, so a breakpoint on anything else never fires.
+        ``value`` must be an ``int``, or it never fires.
         """
         check_whole(index, "index")
         if isinstance(value, bool) or not isinstance(value, int):
@@ -248,9 +168,7 @@ class Debugger:
     def break_on_stack(self, slot: int, value: object) -> None:
         """Stop when the ``slot``-th stack value from the top holds ``value``.
 
-        ``value`` is deliberately unchecked -- a stack slot holds whatever
-        its language pushes, which is not always an int -- but the slot is
-        an index like any other.
+        ``value`` is unchecked: a slot holds whatever its language pushes.
         """
         check_whole(slot, "slot")
         self._breakpoints.append(
@@ -260,10 +178,7 @@ class Debugger:
     def break_on_output(self, text: str) -> None:
         """Stop once ``text`` has been written so far.
 
-        Checked here rather than at the stop: a non-string was registered
-        without complaint and then raised ``'in <string>' requires string
-        as left operand`` from inside the run loop, pointing at the VM
-        instead of at the argument.
+        A non-string is refused here, not from inside the run loop.
         """
         if not isinstance(text, str):
             raise ArgumentError(f"text must be a string, got {type(text).__name__}")
@@ -272,12 +187,7 @@ class Debugger:
     def break_when(self, predicate: Callable[[VM], bool]) -> None:
         """Stop when ``predicate(vm)`` holds; a catch-all for the rest.
 
-        The predicate takes the VM and returns a bool.  Both halves are
-        checked now, because neither failed where it was given: a
-        non-callable raised ``'int' object is not callable`` from the run
-        loop, and a zero-argument lambda raised ``takes 0 positional
-        arguments but 1 was given`` -- each naming the loop rather than the
-        setter that accepted it.
+        Callability and arity are checked here, not from inside the run loop.
         """
         if not callable(predicate):
             raise ArgumentError(
@@ -294,10 +204,8 @@ class Debugger:
     def clear_breakpoints(self) -> None:
         """Drop every breakpoint, leaving the watches and the run intact.
 
-        The counterpart the breakpoint setters lacked.  Without it a
-        condition that stays true -- :meth:`break_on_output`'s does, since
-        output only accumulates -- could not be taken back, and the session
-        that set one had no way to reach the end of its program.
+        Without it a condition that stays true (:meth:`break_on_output`'s) could
+        not be taken back.
         """
         self._breakpoints.clear()
         self._suppressed.clear()
@@ -306,21 +214,9 @@ class Debugger:
     def watch_cell(self, index: int) -> list[int | None]:
         """Record ``memory[index]`` each step, returning the history.
 
-        A cell that is not there records ``None``; the list grows by one
-        per :meth:`step`.  Watching a cell again returns the existing
-        history.
-
-        "Not there" is not only "not grown to yet".  Memory *shrinks* on
-        six languages mid-run -- COD from four cells to none, Forbin from
-        sixteen to none, Taglate from twenty-two to four, and Packlang,
-        Circuit Diagram and Bitdeque likewise -- so a watch can record
-        integers and then go back to ``None``.  Reading that as "the tape
-        has not grown there yet", which this used to say, gets the second
-        half backwards.
-
-        **Recording starts here, not at construction**, so steps taken
-        before this call leave no entry: watch first, then run.  The list is
-        live, so the one returned keeps filling as the machine advances.
+        A missing cell records ``None``, and memory *shrinks* on six languages
+        (COD 4 -> 0, Forbin 16 -> 0, Taglate 22 -> 4, Packlang, Circuit Diagram,
+        Bitdeque).  Recording starts here; the list is live.
         """
         check_whole(index, "index")
         if index not in self._cell_history:
@@ -330,18 +226,9 @@ class Debugger:
     def watch_stack(self, slot: int) -> list[object]:
         """Record the ``slot``-th stack value from the top each step.
 
-        A language with no stack records ``None`` once per step rather
-        than an empty history, and is not refused: ``stack`` is ``[]`` for
-        those, which is a legitimate state rather than an absent one, and
-        the VM protocol draws no line between the two.  A missing slot
-        reads as ``None`` exactly as :meth:`watch_cell` records ``None``
-        for a cell the tape has not grown to, so a stackless language is
-        every slot missing on every step.  ``describe(...)["state_model"]``
-        is the fact to consult first.
-
-        This said "records an empty history forever", which is what a
-        reader would have to test to find out was wrong: the list is one
-        ``None`` per step and is never empty after a run.
+        A language with no stack records one ``None`` per step, not an empty
+        history: ``stack`` is ``[]`` there, and the protocol draws no line.
+        ``describe(...)["state_model"]`` is the fact to consult first.
         """
         check_whole(slot, "slot")
         if slot not in self._stack_history:
@@ -359,35 +246,9 @@ class Debugger:
     def step(self) -> None:
         """Execute one command, recording any watches.
 
-        Past the halt this delegates like any other step, because that is
-        where the ``dumps_on_the_post_halt_step`` languages keep their
-        answer.  It used to return early on ``halted``, which looks like a
-        kindness and cost them their output: for those the dump *is* the
-        step after the halt, so refusing to take it left ``output`` empty
-        with the machine finished, and the only way through was to reach
-        past this class and call ``self.vm.step()``.  A debugger-driven
-        verifier scored 58/65 on that alone.
-
-        No count here.  This said "six languages", and six is the size of a
-        *different* set -- the one ``answer_mode == "dump"`` picks out,
-        which includes A Painter Ant and leaves out ArrowQueue and Point
-        Break.  Seven languages dump on the post-halt step.  Two sets that
-        overlap in four places are exactly the pair a number in prose gets
-        wrong, and :attr:`VM.self_halts` argues against writing one down at
-        all.
-
-        The guard was not protecting anything either: an interpreter's
-        ``step`` past its halt is a no-op by construction, so the delegation
-        is safe for every other language too.
-
-        Warns about an underfed stdin at the halt, exactly as :meth:`run`
-        does.  It did not, and that was the wrong way round: the warning
-        exists because six languages take an exhausted read as a *value* and
-        answer a different row of the table, which is a wrong answer with
-        nothing in the output to show for it -- and ``step`` is the mode a
-        debugging session actually drives with.  A caller stepping an
-        underfed Fargo to its halt got a confident ``'0'`` and no warning,
-        while ``run`` on the same machine said so.
+        Delegates past the halt: the post-halt-dump languages keep their answer
+        there, and returning early cost a debugger-driven verifier 58/65.
+        Warns about an underfed stdin at the halt as :meth:`run` does.
         """
         self.vm.step()
         self._record()
@@ -398,52 +259,17 @@ class Debugger:
     ) -> StopReason:
         """Execute until the machine halts, a breakpoint fires, or a bound ends it.
 
-        Returns *why* it stopped -- ``"halted"``, ``"breakpoint"``,
-        ``"max_steps"`` or ``"timeout"`` -- since ``halted`` alone cannot
-        tell a breakpoint from an exhausted budget.
-
-        A breakpoint is checked before each step, so the run stops with the
-        watched condition still true.  **One that stopped the last run does
-        not fire again until its condition goes false**, which is what lets
-        a resumed run advance; one that has not fired yet is checked as
-        always, so ``break_at(ip)`` on the initial position still stops
-        before the first step.
-
-        It is checked again after the machine halts, or a condition the
-        *last* step made true is never looked at and the run reports
-        ``"halted"`` over a watch that fired.  On the seven languages where
-        the output arrives a step past the halt
-        (``dumps_on_the_post_halt_step``) that is two more checks, before
-        and after the dump, since the dump changes ``output``.
-
-        **So ``"breakpoint"`` can be returned with ``halted`` true and
-        ``output`` still empty** on those seven.  It is not a stuck state --
-        another ``step()`` or ``run()`` takes the dump -- but a caller whose
-        loop reads ``if dbg.halted: return dbg.output`` without checking the
-        reason will read ``""``.
-
-        ``max_steps`` bounds the run in steps and ``timeout`` in wall-clock
-        seconds, ``None`` for both meaning unbounded.  The post-halt dump
-        step is outside the budget, so ``max_steps=N`` can advance those
-        seven ``N + 1`` times and return a watch history one longer than the
-        bound: the step exists so the answer is readable, and spending the
-        last unit of budget on it would let a bound equal to the program's
-        length hide the output.
-
-        Either bound *returns* rather than raising, so one ``reason ==``
-        covers every way a run can stop.  A run that *faults* still raises
-        out of here rather than returning a fifth reason -- an
-        :class:`~esolangs.exceptions.InputExhaustedError` from an underfed
-        ``,`` is the common one, and it is not recoverable in place, since
-        there is no way to hand more stdin to a live debugger.  The CLI's
-        ``debug`` catches it and prints ``stopped: raised``; see
-        :data:`STOP_REASONS`.  The timeout is checked where a breakpoint is
-        rather than through a signal, so it needs no main thread and leaves
-        the machine inspectable where it stopped.
-
-        The drive is :func:`~esolangs.vm.run_until_halt`, stepping ``self``
-        rather than ``self.vm`` so that recording the watches stays part of
-        a step instead of becoming a hook the shared loop would grow.
+        Returns why: ``"halted"``, ``"breakpoint"``, ``"max_steps"`` or
+        ``"timeout"``.  A breakpoint that stopped the last run is suppressed
+        until its condition goes false.  It is checked again after the halt, and
+        on the seven post-halt-dump languages before *and* after the dump, so
+        ``"breakpoint"`` can come back with ``halted`` true and ``output`` empty
+        -- another ``step()`` takes the dump, which is outside ``max_steps``.
+        Bounds return rather than raise (``None`` unbounded); a fault still
+        raises (the CLI prints ``stopped: raised``, see :data:`STOP_REASONS`).
+        The timeout is checked with the breakpoints, so no main thread is
+        needed.  Drives :func:`~esolangs.vm.run_until_halt` over ``self`` so
+        watches stay part of a step.
         """
         if max_steps is not None:
             check_whole(max_steps, "max_steps")
@@ -485,20 +311,10 @@ class Debugger:
     def _warn_about_stdin_once(self) -> None:
         """Say what :func:`esolangs.run` says about a stdin that did not fit.
 
-        ``run`` warns when a program read fewer lines than it was given, and
-        -- the one that matters -- when it read *past* the end on one of the
-        languages where the end of input is a value rather than an error.
-        That second case is a wrong answer produced in silence: an underfed
-        program answers a different row.
-
-        The debugger never said any of it, so the tool you reach for
-        *because* you suspect a wrong answer was the one that would not
-        mention the commonest cause of one.  Warned at the halt, which is
-        where ``run`` warns and the earliest point the counts are final.
-
-        Once per debugger.  ``run`` can be called again on a halted machine
-        and returns immediately, and a warning that repeats every time a
-        caller re-checks its stop reason is noise.
+        Fewer lines than given, or -- the one that matters -- a read past the
+        end where the end is a value: a wrong answer in silence.  At the halt,
+        where the counts are final; once per debugger, since ``run`` on a halted
+        machine returns immediately.
         """
         if self._warned:
             return
@@ -531,18 +347,9 @@ class Debugger:
     def _at_breakpoint(self) -> bool:
         """Whether a breakpoint fires now: one that holds and did not already.
 
-        A breakpoint that *stopped* the last run is suppressed until its
-        condition goes false again, which is what makes a resumed run
-        advance.  The distinction is invisible for the position and value
-        breakpoints, whose conditions stop holding as soon as the machine
-        moves, and it is the whole story for :meth:`break_on_output`: output
-        only accumulates, so ``text in vm.output`` is true forever after the
-        first time and re-firing on it meant the run never progressed.
-
-        Suppression is per condition, so a second breakpoint still stops a
-        resumed run, and it is dropped the moment the condition is false --
-        an output breakpoint on a language that can rewrite its output would
-        re-arm itself like any other.
+        Suppressed until its condition goes false again, per condition.
+        Invisible for position and value breakpoints; the whole story for
+        :meth:`break_on_output`, whose ``text in vm.output`` is true forever.
         """
         hits = {i for i, cond in enumerate(self._breakpoints) if cond(self.vm)}
         self._suppressed &= hits
@@ -555,24 +362,12 @@ def make_debugger(
 ) -> Debugger:
     """Return a :class:`Debugger` over a fresh :class:`VM` for ``language``.
 
-    ``stdin`` is fed to the program line by line, like :func:`esolangs.run`.
-    Only a name outside the registry raises
-    :class:`~esolangs.exceptions.UnknownLanguageError`, as with
-    :func:`esolangs.make_vm`.
-
-    This used to say "a language without a step-capable interpreter", which
-    describes a set with no members -- every registered language is
-    step-capable, which is what ``make_vm``'s own docstring says two lines
-    away.  A reader guarding against it was guarding against nothing.  A
-    program that is malformed for its language raises
-    :class:`~esolangs.exceptions.ProgramError`, which is the refusal that
-    does happen here.
-
-    So, on one language, is
-    :class:`~esolangs.exceptions.InputExhaustedError`: Clockwise reads its
-    whole input in one go and does it while the machine is being built, so
-    an underfed Clockwise program faults here rather than at
-    :meth:`Debugger.run` like the other fifty-one.  Worth knowing before
-    wrapping only the ``run`` in a guard.
+    ``stdin`` is fed line by line.  Only an unknown name raises
+    :class:`~esolangs.exceptions.UnknownLanguageError` (every language is
+    step-capable); a malformed program raises
+    :class:`~esolangs.exceptions.ProgramError`, and on Clockwise -- which
+    reads its whole input while the machine is built -- an underfed stdin
+    raises :class:`~esolangs.exceptions.InputExhaustedError` here rather
+    than at :meth:`Debugger.run`.
     """
     return Debugger(make_vm(language, program, stdin))
