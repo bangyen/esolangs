@@ -190,12 +190,12 @@ def test_bitdeque_linear_route_is_one_width(audit: Conventions) -> None:
     """The route the equal-width test misses stays at one length.
 
     Its ``EJECT ``/``POP `` units once left 32 lengths for 32 five-input
-    rows; the block pads in :func:`esolangs.tools.examples._setters_bitdeque`
-    closed that, and this pins the arity where the route begins.
+    rows; block pads closed that, and now the weight is the template's
+    (the discard blocks) and every input is the one eleven-character
+    pair, so the row has left the audit.  This pins the arity where the
+    route begins.
     """
-    assert (
-        audit.by_name()["Bitdeque"].no_spaces == HOLDS
-    )  # the width cell has no column now
+    assert "Bitdeque" not in audit.by_name()  # every cell holds
     example = _embedding()["Bitdeque"]
     assert example.fill is not None
     for n in (4, 5):

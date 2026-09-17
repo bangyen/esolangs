@@ -358,64 +358,22 @@ def _setters_nocomment(_template: str, n: int) -> Setters:
     return (("c", "i"),) * n
 
 
-# The executed no-op pairs the linear Bitdeque setter pads with, by the width
-# each takes with its trailing space: ``PUSH POP`` (push the register, pop it
-# back), ``INJECT EJECT`` (the same at the head) and ``INVERT INVERT``.
-_BITDEQUE_NOOPS = {9: "PUSH POP ", 13: "INJECT EJECT ", 14: "INVERT INVERT "}
-
-# Pads for the four weights the rule below does not reach: zero-side width,
-# one-side width, each a sum of the widths above, differing by ``2 * k``.
-_BITDEQUE_SMALL_PADS = {
-    1: ((14, 14), (13, 13)),
-    2: ((13,), (9,)),
-    4: ((9, 13), (14,)),
-    8: ((13, 13, 13), (9, 14)),
-}
+#: Bitdeque's one pair: with the register at zero, ``PUSH INVERT`` pushes a
+#: zero and ``INVERT PUSH`` a one, and both leave the register at one.
+_BITDEQUE_PAIR = ("PUSH INVERT", "INVERT PUSH")
 
 
-def _bitdeque_linear_setter(k: int, bit: int) -> str:
-    """Discard ``k`` entries from the end the bit names, at one width.
+def _setters_bitdeque(_template: str, n: int) -> Setters:
+    """Spell every input as the same eleven-character pair on both routes.
 
-    A one keeps the upper half of the window, so it ejects ``k`` from the
-    head; a zero pops ``k`` from the tail.  ``EJECT `` is six characters and
-    ``POP `` four, so the zero side is short by ``2 * k`` and both sides are
-    padded with executed no-ops until they match.  Padding a *unit* cannot
-    work -- no no-op is two characters -- but a block can: for ``k >= 16``
-    the deficit ``2 * k`` is exactly ``k / 8`` pairs of ``PUSH POP`` (nine
-    characters) and ``k / 16`` of ``INVERT INVERT`` (fourteen), since
-    ``9 * k / 8 + 14 * k / 16 = 2 * k``.  The four smaller weights take the
-    smallest pair of sums of nine, thirteen and fourteen that differ by
-    ``2 * k``, listed in :data:`_BITDEQUE_SMALL_PADS`.
+    The tree route's load block flips the register after each unit, so an
+    odd position pushes its bit complemented; the tree reads a table with
+    those inputs complemented back rather than the embed changing per
+    position.  The linear route pops each unit's bit straight back into
+    the register and spends the input's weight in the template's discard
+    blocks, so the unit never repeats.
     """
-    if k in _BITDEQUE_SMALL_PADS:
-        zero, one = _BITDEQUE_SMALL_PADS[k]
-        pad = "".join(_BITDEQUE_NOOPS[w] for w in (one if bit else zero))
-    else:
-        pad = (
-            ""
-            if bit
-            else _BITDEQUE_NOOPS[9] * (k // 8) + _BITDEQUE_NOOPS[14] * (k // 16)
-        )
-    return ("EJECT " if bit else "POP ") * k + pad
-
-
-def _setters_bitdeque(template: str, n: int) -> Setters:
-    if not template.startswith("GOTO 3"):
-        return tuple(
-            (
-                _bitdeque_linear_setter(2 ** (n - 1 - i), 0),
-                _bitdeque_linear_setter(2 ** (n - 1 - i), 1),
-            )
-            for i in range(n)
-        )
-
-    # The register flips after every load block, and the load pushes the
-    # inputs in name order, so bit i is pushed at load position i with the
-    # incoming register at i % 2.
-    def spell(i: int, b: int) -> str:
-        return "PUSH INVERT" if b == i % 2 else "INVERT PUSH"
-
-    return tuple((spell(i, 0), spell(i, 1)) for i in range(n))
+    return (_BITDEQUE_PAIR,) * n
 
 
 def _setters_bfpda(_template: str, n: int) -> Setters:
