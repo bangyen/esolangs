@@ -152,6 +152,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "src/esolangs/tools/ztoalc_starts.py",
     ),
     "duplicate-code check (pylint)": ("src/esolangs/", "scripts/"),
+    "dead definitions": ("src/", "scripts/"),
     # The union of what the two proofs in this band read: ArrowQueue's lemmas
     # import the generator and nothing else, and BIO's also parse the emitted
     # program and instantiate it through the shipped fill.  The runner is in
@@ -191,6 +192,9 @@ STEPS = [
     # are in ``the verification history``.
     ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
+    # A generator route that was replaced keeps its own tests green, so it
+    # never fails; three sat that way for months.  <1s.
+    ("dead definitions", [*PY, "scripts/check_dead_definitions.py"]),
     (
         # These also run under the plain `pytest` step above.  Repeated here
         # under `--isolated --no-project`, which installs only pytest, so a

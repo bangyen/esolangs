@@ -8,8 +8,9 @@ import pytest
 from esolangs.exceptions import TruthTableError
 from esolangs.interpreters.grid_based.nopstacle import _Machine
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
-from esolangs.tools.nopstacle import instantiate_nopstacle, nopstacle, nopstacle_setters
+from esolangs.tools.nopstacle import nopstacle, nopstacle_setters
 from esolangs.vm import run_until_halt_or_cycle
+from tests.tools.fills import instantiate_nopstacle
 from tests.tools.test_boolean_contract import _dense
 
 

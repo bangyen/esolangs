@@ -7,22 +7,19 @@ then ``+J 0 1``) whose targets a node fills in: two ``+A`` writes patching
 the one- and zero-targets to its children, then a jump into the tester.
 ``+A t d`` stores ``d + 1``, so a child at line ``c`` is written ``c - 1``.
 
-The program opens with a jump to the root, a jump past the end (halt),
-and ``+J @ 1`` (a one-step state cycle), then ``2 n`` tester lines, then
-the nodes; the zero subtree is laid first so its root is ``@+1`` and the
-one subtree's root is ``@`` plus three times the zero subtree's node
-count.  Constant subtrees fold to the two gadgets, so leaves cost no
-lines.  The program halts for a 0 entry and diverges for a 1, running at
-most ``5 n + 2`` commands over at most ``3 (2**n - 1) + 2 n + 3`` lines.
+Layout: a jump to the root, the halt, ``+J @ 1`` (a one-step cycle), then
+``2 n`` tester lines, then the nodes, zero subtree first so its root is
+``@+1``; constant subtrees fold to the two gadgets.  Halts for a 0 entry,
+diverges for a 1: at most ``5 n + 2`` commands over ``3 (2**n - 1) + 2 n + 3``
+lines.
 """
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    fill_runs,
 )
 
-__all__ = ["crement", "instantiate_crement"]
+__all__ = ["crement"]
 
 #: Lines one node spends: two patches and a call.
 _NODE_LINES = 3
@@ -83,8 +80,3 @@ def crement(truth_table: str) -> str:
         for line in (TEMPLATE_CHAR * len(zero), "+J 0 1")
     ]
     return "\n".join(header + testers + lines)
-
-
-def instantiate_crement(template: str, bits: list[int]) -> str:
-    """Fill each input's run with the jump line that spells its bit."""
-    return fill_runs(template, TEMPLATE_CHAR, (PAIR,) * len(bits), bits)
