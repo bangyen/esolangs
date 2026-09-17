@@ -473,14 +473,6 @@ def test_a_template_wraps_as_every_program_it_fills_to(name: str) -> None:
         assert shapes.pop() == tuple(len(line) for line in body.split("\n"))
 
 
-def _grown(name: str, table: str, width: int | None) -> str:
-    """A runnable program for ``table``: the template filled with zeros."""
-    if _example(name).fill is None:
-        return generate(name, table, width)
-    arity = len(table).bit_length() - 1
-    return esolangs.instantiate(name, generate(name, table), [0] * arity, width)
-
-
 @pytest.mark.parametrize(
     "name",
     [
@@ -490,11 +482,12 @@ def _grown(name: str, table: str, width: int | None) -> str:
 )
 # part of 6.7s: runs the wrapped program.
 @pytest.mark.medium
-def test_no_width_breaks_a_placeholder(name: str) -> None:
-    """No width may put a line break through the middle of a ``{Xi}``.
+def test_no_width_breaks_a_run(name: str) -> None:
+    """No width may put a line break through the middle of an input's run.
 
-    ``fill`` finds a placeholder by string replace, so a newline inside one
-    leaves it unfilled and the program reads the two halves as commands.
+    Filling walks the runs by the setters' widths, so a newline inside one
+    leaves a run short of its setter -- which the template's constructor
+    refuses, so ``generate`` at such a width would raise here.
 
     This is a *different* question from the one
     :func:`test_every_wrapper_fires_on_a_template_too` asks, and the reason
@@ -506,7 +499,7 @@ def test_no_width_breaks_a_placeholder(name: str) -> None:
     them satisfied the tiling check while doing it.
 
     The width sweep is exhaustive rather than sampled because the fault is
-    a coincidence between the width and where the placeholder happens to
+    a coincidence between the width and where a run happens to
     fall: Eval survives 40 and fails 10, so any fixed pair of widths is a
     coin toss.
     """
@@ -515,13 +508,12 @@ def test_no_width_breaks_a_placeholder(name: str) -> None:
         pytest.skip(f"{name} is not parameterized; it has no placeholder")
     for arity in range(1, 4):
         template = generate(name, _table(arity))
-        placeholders = [f"{{X{i}}}" for i in range(arity) if f"{{X{i}}}" in template]
         for width in range(4, 121):
             wrapped = generate(name, _table(arity), width)
-            for placeholder in placeholders:
-                assert wrapped.count(placeholder) == template.count(placeholder), (
-                    f"{name}: width {width} at {arity} inputs broke {placeholder}"
-                )
+            assert wrapped.inputs == template.inputs == arity, (name, width, arity)
+            assert wrapped.count(template.char) == template.count(template.char), (
+                f"{name}: width {width} at {arity} inputs lost a run"
+            )
 
 
 # Tables the generators take a *different path* on than parity.  The
@@ -620,9 +612,9 @@ def _laid_out(name: str, table: str, bits: str, width: int | None) -> str:
     Goes through the language's own example rather than calling the
     generator, because a width-honouring generator may also be
     *parameterized*: WII2D has no input command, so what it returns is a
-    template whose ``{Xi}`` placeholders the example's ``fill`` replaces.
-    Running the template instead would not fail -- the interpreter reads
-    ``{`` and ``X`` as no-ops and a digit as a load -- it would quietly
+    template whose input runs the example's ``fill`` replaces.  Running
+    the template instead would not fail -- the interpreter reads ``$`` as
+    a no-op -- it would quietly
     compute something unrelated, identically for every width, and the
     comparison would pass without ever testing a fold.
     """

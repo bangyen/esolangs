@@ -1,7 +1,7 @@
 """Public API for the esolangs package.
 
 Provides ``generate`` (produce a program computing a truth table),
-``instantiate`` (fill a parameterized generator's ``{Xi}`` slots), ``run``
+``instantiate`` (fill a parameterized generator's input runs), ``run``
 (execute a program through an interpreter), ``make_vm`` (a step-and-inspect
 wrapper around the step-capable interpreters), ``make_debugger`` (a
 breakpoint/watch layer over the VM), ``describe`` (a structured language
@@ -218,8 +218,8 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     if lang.id not in parameterized_ids():
         program = slots if laid_out else wrap_program(slots, lang.id, width)
         return _Tagged(program, resolved)
-    # The generator marks each input ``{Xi}``; the public template is each
-    # rendered as a run, wrapped with every run whole (see render_template).
+    # The generator spells each input as a run; the public template is
+    # that, wrapped with every run whole (see render_template).
     inputs = len(truth_table).bit_length() - 1
     wrap_to = None if laid_out else width
     text, char, pairs = render_template(lang.id, slots, inputs, wrap_to)
@@ -863,7 +863,7 @@ def describe(language: str) -> LanguageInfo:
     ``wiki_url``.
 
     Generation: ``boolean_generator`` says a truth-table generator exists;
-    ``parameterized`` says it returns a ``{Xi}`` template, which takes its
+    ``parameterized`` says it returns a template, which takes its
     bits from :func:`instantiate` and so has ``reads_input`` false.
 
     Width: ``width_effect`` is what a ``width`` does -- ``"layout"`` (the
@@ -1365,8 +1365,8 @@ def evaluate(
         # are settled by a repeated state rather than a clock.
         bound = timeout
     # The width goes to whichever call builds the runnable text: for a
-    # template that is ``instantiate`` below, since a ``{Xi}`` slot is not a
-    # token any wrapper knows and a break inside one destroys it.
+    # template that is ``instantiate`` below, which keeps every input's
+    # run whole where a break inside one would destroy it.
     program = generate(name, truth_table, None if facts["parameterized"] else width)
     if terminating:
         # Which of halting and diverging means 1, as data.  It is

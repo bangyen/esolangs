@@ -98,7 +98,7 @@ class TestParameterizedTemplates:
         The same set taken from ``parameterized.__all__`` omits Home Row,
         and three documents each named a different subset.
         """
-        from esolangs.registry import template_char, template_setters
+        from esolangs.registry import template_setters
         from esolangs.tools.helpers import runs
 
         def embeds(lang: object) -> bool:

@@ -49,18 +49,15 @@ _RUN_FORM = {
 def _embedded_inputs(gen: object, template: str, n: int) -> list[int]:
     """The inputs ``template`` embeds, in the order it embeds them.
 
-    A generator emits either ``{Xi}`` marks or, once migrated, one run of
-    the language's character per input.  The runs are read off the
-    example's setters -- :func:`~esolangs.tools.helpers.runs` refuses a run
-    of the wrong width, a stray character or a run left over, so a template
-    that embeds an input twice or out of step with its setters fails here
-    rather than reading as in order.
+    A generator emits one run of the language's character per input; the
+    runs are read off the example's setters -- :func:`~esolangs.tools.helpers.runs`
+    refuses a run of the wrong width, a stray character or a run left over,
+    so a template that embeds an input twice or out of step with its setters
+    fails here rather than reading as in order.
     """
     from esolangs.tools.examples import BOOLEAN_EXAMPLES
     from esolangs.tools.helpers import runs
 
-    if "{X" in template:
-        return [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", template)]
     example = next(e for e in BOOLEAN_EXAMPLES.values() if e.generator is gen)
     spans = runs(template, example.char, example.setters(template, n))
     return list(range(len(spans)))
@@ -134,9 +131,8 @@ def test_parameterized_generators_embed_each_input_once() -> None:
     assert checked >= len(_parameterized_generators()), checked
 
 
-# Slot order is not needed for correctness -- :func:`instantiate` substitutes
-# each ``{Xi}`` by name, replacing a unique token wherever it sits -- but it
-# is worth holding to, because an out-of-order load is a restructured load.
+# Slot order is the template's definition -- the k-th run is input k -- so
+# what is checked is that every run fits its setter, one run per input.
 #
 # Every generator emits its slots in name order.  A generator whose order
 # carried information would also have to emit a different *drawing* for a
@@ -210,12 +206,12 @@ def _slot_order(gen: object, table: str) -> list[int] | None:
 
 @pytest.mark.slow  # builds every generator over several tables
 def test_slots_run_in_name_order() -> None:
-    """Every template emits ``{X0}``..``{Xn-1}`` in ascending order.
+    """Every template's runs fit its setters, one run per input, in order.
 
-    Ordering is not needed for correctness -- :func:`instantiate` replaces
-    each placeholder by name, wherever it sits -- but it is the shape every
-    generator here holds to, and a load that leaves it is a load that has
-    been restructured.  That is worth a failure rather than a shrug.
+    The k-th run *is* input k, so order cannot be wrong; what can is a run
+    of the wrong width, a stray character or a run left over, which the
+    reader refuses, and a load restructured that way is worth a failure
+    rather than a shrug.
 
     Every generator is swept, with no exceptions carried -- Minifuck was the
     last one and is covered in its own test below, which pins the specific
@@ -233,14 +229,12 @@ def test_slots_run_in_name_order() -> None:
 
 
 def _drawing(template: str) -> str:
-    """The template with every placeholder *name* erased.
+    """The template as the drawing the reorder bar compares.
 
-    What the reorder bar tests is the emitted drawing, so comparing
-    templates directly would count a mere relabelling as a change.  Erasing
-    the names leaves exactly what a relabelling cannot alter.
+    Every input is a run of the same character, so a mere relabelling of
+    inputs already leaves the text unchanged: the drawing is the template.
     """
-
-    return re.sub(r"\{X\d+\}", "{X}", template)
+    return template
 
 
 @pytest.mark.slow  # builds every permuting generator over several tables

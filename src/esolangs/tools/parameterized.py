@@ -94,7 +94,6 @@ from esolangs.tools.helpers import (
     best_input_order,
     decision_tree_tokens,
     essential_inputs,
-    instantiate,
     read_at,
 )
 from esolangs.tools.helpers import (
@@ -125,7 +124,6 @@ __all__ = [
     "bitdeque",
     "cod",
     "eval",
-    "instantiate",
     "minifuck",
     "minsky_swap",
     "nocomment",

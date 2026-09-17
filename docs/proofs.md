@@ -67,13 +67,13 @@ finite table when the language's addresses or program integers are unbounded;
 where this repository imposes a finite ceiling, the row is marked `cap`.
 
 **Parameterized tree.**  A no-input language receives each bit through an
-equal-width `{Xi}` replacement.  Embedding the placeholders at the internal
+equal-width replacement of its run.  Embedding the runs at the internal
 nodes of a full decision tree gives the same induction as `tree`; equal width
 prevents program length from becoming an extra input.  A generator may use a
 smaller arithmetic construction, but the full tree is its coverage witness.
 
 **Parameterized lookup.**  A no-input language embeds each bit once through
-the same equal-width `{Xi}` replacement, and the embedded bits address a finite
+the same equal-width replacement, and the embedded bits address a finite
 stored table instead of routing a tree.  Index formation is one embedding per
 input and the table has `2**n` entries, so the `finite lookup` argument applies
 unchanged.
@@ -129,7 +129,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Circlefuck | tree | its local shape guard is equivalent to the shared guard |
 | Circuit Diagram | tree | finite planar routing |
 | Clockwise | tree | finite grid layout |
-| COD | parameterized tree | each `{Xi}` sets the cod's value at its own fork box, once; the leaf cascade prints the entry |
+| COD | parameterized tree | each input's run sets the cod's value at its own fork box, once; the leaf cascade prints the entry |
 | Collatz Multiverse | tree | finite cell placement |
 | Container | finite lookup | the reversed table is one decimal literal divided by ten in a fixed two-bank network |
 | Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, and a folded subtree targets the shared self-jump or the line past the end |
@@ -154,7 +154,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Minsky Swap | parameterized tree | — |
 | Modulous | tree | — |
 | NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells |
-| Nopstacle | parameterized tree | a full tree of corridors, unfolded: level `i` reads its `{Xi}` run at `2**i` node columns and the leaves are halting boxes or a drop onto the blank bottom row |
+| Nopstacle | parameterized tree | a full tree of corridors, unfolded: level `i` reads its input's run at `2**i` node columns and the leaves are halting boxes or a drop onto the blank bottom row |
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry |
 | Packlang | tree | — |
 | Painfuck | tree | Brainfuck tree transliteration |
@@ -188,7 +188,7 @@ wall the generator's reach is not characterized.
   planners succeeds; every table tried through thirteen inputs builds, and
   from fourteen only tables whose suffix cofactors compact (parity among
   them) do.  No construction can be total: the suite's dense fixture at
-  seventeen inputs is computed by no `{Xi}` template at any program length
+  seventeen inputs is computed by no template at any program length
   (proof below), so the totality question is the finite one of which tables
   below the wall a construction misses.
 
