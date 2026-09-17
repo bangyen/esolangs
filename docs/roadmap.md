@@ -65,9 +65,10 @@ The candidate list is empty.
   Each open row's question, with the searched negatives in
   [limitations](limitations.md#searched-negatives):
 
-  - COD, all three: an H-tree that distributes input `i` to every node of
-    level `i` without a shared run losing lane identity (a tree that reads
-    it at `2**i` cells is `Theta(n T)` and outside the conventions).
+  - COD, all three: a two-exit zero test on a block of `R` values in
+    `o(R)` cells with every stray cod dead (an input cell serves four
+    headings, so a level's fifth node lives in the value; a one-lane
+    node is eight commands but repeats the embed).
   - Polynomial: a left-half-plane multiple with more terms than the
     Descartes minimum ([polynomial](polynomial.md)).
   - WII2D, three cells: a rule emitting readouts within a constant of the

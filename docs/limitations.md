@@ -205,6 +205,33 @@ costs `>= K/2` shift cells by the residue argument; a keeper *with* `+`
 inside, or a classifier mapping the index to the answer without
 isolating it, is bounded only by counting at `Omega(T)`.
 
+Executed on the interpreter, the same day: a plain cell with four open
+sides is a crossing (a cod goes straight when its forward cell is open),
+so planarity forces nothing and a `K_{3,3}` argument does not apply; a
+plain cell with three open sides is a random junction for the cod whose
+forward is blocked, so every deterministic join is a `+`, and a `+`
+entered from a branch copies the cod out through the entry -- a join
+always leaks a backward copy; a `_` reflection retraces the whole
+arrival path as one block to the nearest `+` or dead end.  Cods never
+interact, so the bit reaches a cod only by that cod (or a `+` copy of
+it) crossing the input cell, in one of four headings; two cods at one
+cell and heading with equal values share every later step, so a level
+with more than four nodes carries the node in the value.  A `_` (or the
+N-bound input cell, `_` when the bit is zero) releases exactly the cods
+whose value is zero, all into one state, so each `_` cell is one
+continuation and the rest reverse as a block.  The leak *is* killable
+when the lane's value is known: `))<((` before a `+` passes a forward
+cod of value 0 and kills a backward copy of value 2, and with a `<`
+sibling the N-bound input cell is a halting two-way node of eight commands
+(x=1 climbs on with value 2, x=0 reflects into the sibling with value
+2, both print once) -- an O(1) node, but one whose input cell serves
+one lane, the repeated embed again.  With the lane in the value the
+valve has no fixed value to kill and the reflected block re-enters the
+forward flow at the nearest `+` shifted by twice the trunk, so it must
+lie outside the live range or be met by one `<` per value.  The open
+question is therefore one gadget: a two-exit zero test on a block of
+`R` values, `o(R)` cells, every stray cod dead.
+
 Polynomial's remaining question is a left-half-plane multiple of the
 mandatory root product with more terms than the Descartes minimum:
 instruction count, monomial count, right-half-plane coefficient mass, and
