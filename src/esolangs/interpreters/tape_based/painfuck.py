@@ -1,83 +1,39 @@
 """Interpreter for Painfuck.
 
-The program file is *not* executed directly: its source text is first
-translated through a fixed substitution, the ``trans`` table.  Each source
-character that appears in one of the two cycles ``pevkjzwr`` and
-``yuctsobqihald`` is replaced by the character ``k`` steps further along
-that cycle, where ``k`` is the number of characters translated so far (so
-the substitution is a position-dependent Caesar shift per cycle); characters
-in no cycle are dropped.  This is the inverse of the generator's own cycle
-rotation, so a generated program round-trips.
+Source is first translated through the ``trans`` table: each character in
+the cycles ``pevkjzwr`` and ``yuctsobqihald`` is replaced by the one ``k``
+steps along its cycle, ``k`` the count translated so far; others are
+dropped.  This inverts the generator's rotation, so generated programs
+round-trip.
 
-The translated program runs over a tape of unbounded integers starting as a
-single 0 cell.  ``p``/``s`` add 2/subtract 1 from the current cell,
-``r``/``l`` move the pointer two right/one left (``l`` clamps at cell 0,
-``r`` grows the tape), ``i``/``j`` read a number/byte from input,
-``o``/``u`` print the cell as a decimal number/byte, ``a``/``b`` open/close
-a while-nonzero loop, ``k`` squares the cell, ``z`` zeroes it, ``h``
-halves it (truncating toward zero), ``w``/``q`` copy from the right/left
-neighbor, ``c`` repeats the next command ``7``^run-length times, ``y``
-skips the next command, ``v`` skips the next command when the cell is
-nonzero, ``d`` resets the pointer to cell 0, ``t`` repeats the previous
-command ``3``^run-length times, and ``e`` halts.  A ``c``/``t`` run also
-re-fetches the command it repeats: ``c`` consumes the whole ``c`` run and
-repeats the following command, ``t`` consumes the whole ``t`` run and
-repeats the preceding command.
+Tape of unbounded integers from one 0 cell.  ``p``/``s`` add 2/subtract
+1; ``r``/``l`` move two right/one left (``l`` clamps at 0); ``i``/``j``
+read a number/byte; ``o``/``u`` print number/byte; ``a``/``b`` loop while
+nonzero; ``k`` squares, ``z`` zeroes, ``h`` halves toward zero; ``w``/``q``
+copy from right/left neighbour; ``c`` repeats the next command
+``7**run``; ``y`` skips the next command (with probability 1/2, per the
+wiki); ``v`` skips it when the cell is nonzero; ``d`` resets the pointer;
+``t`` repeats the previous command ``3**run``; ``e`` halts.
 
-Each run is *one* count, not one per character: ``ccc`` is ``7**3`` and
-``ttt`` is ``3**3``.  The two differ in what they can consume.  ``c`` sits
-before its command and runs it outright, so ``cp`` runs ``p`` seven times;
-``t`` sits after one that has already executed and can only add, so ``pt``
-runs ``p`` four times -- once itself, three more from the ``t``.  A ``t``
-cannot retroactively cancel the application that already happened.
+A run is one count: ``ccc`` is ``7**3``.  ``cp`` runs ``p`` seven times;
+``pt`` four (once itself, three from ``t``); ``ct`` is ``7 ** 4``.  Both
+runs are read at dispatch, the only reading that makes ``pt`` and ``ct``
+both right; the wiki specifies neither, and no generated program pairs
+them.  A repeated ``y`` is each its own flip, so ``cyp`` spans
+``{0, 2, ..., 14}`` weighted ``Binomial(7, 1/2)``.
 
-The command before a ``t`` run may itself be a ``c`` run, and then the
-``t`` adds applications of *that*: ``ct`` is four ``c``s, ``7 ** 4``.  Both
-runs are read at dispatch rather than letting the ``t`` execute on its own,
-which would have to hand a count backward to a command already gone -- and
-no such handoff leaves ``pt`` and ``ct`` both right.
+Divergences from the retired cross-check (written alongside this
+interpreter, so never independent evidence): repeated ``y`` rebound and
+executed there; reads at exhausted input raise :class:`EOFError` (it
+exited 3); ``i`` on a non-integer line raises :class:`HaltError` (it
+exited 3); a ``t`` run walking before the program repeats NUL in both;
+out-of-program reads are NUL, so an unmatched ``a`` on zero halts; ``u``
+prints ``chr(cell & 0xFF)``.  Invalid runtime operations halt with
+:class:`~esolangs.exceptions.HaltError`.
 
-The wiki specifies neither the composition nor the run lengths, so the
-arithmetic above is this implementation's reading of "do the last command
-3 times" rather than a quoted rule.  No generated program pairs the two:
-every ``t`` run one emits follows a ``p`` or an ``s``.
-
-A repeated ``y`` is the same kind of gap.  Each repeat is its own flip, so a
-run of ``rep`` drops ``heads`` applications of the bound command and ``cyp``
-spans ``{0, 2, ..., 14}``, weighted by ``Binomial(7, 1/2)``.  All the
-candidate readings agree at ``rep`` 1, the only case the wiki describes.  A
-run of ``c`` or ``t`` is by contrast one counted operator, not a repeat.
-
-Documented divergences from the cross-check:
-
-- ``y`` is nondeterministic (a random skip) in the wiki and in the retired
-  cross-check alike, so it skips the next command with probability 1/2 here
-  too; the generator and the differential corpus never use it.  A *repeated*
-  ``y`` diverges: the cross-check rebound the repeated command and executed
-  it, where each repeat here is its own flip.  The cross-check was written
-  alongside this interpreter rather than from an independent source, so its
-  agreement was never evidence about the composition.
-- Reads at exhausted input raise :class:`EOFError` (the repo-wide
-  convention), where the cross-check exits with status 3.
-- ``i`` parses the whole input line as an integer with ``int()``; a line
-  that is not a single integer raises :class:`HaltError` (the cross-check
-  exits with status 3 on the same input).
-- A ``t`` run that reaches the start of the program repeats a NUL in place
-  of the command it walks before the program, in both implementations (the
-  cross-check used to read out of bounds there; it now bounds the walk).
-- The cross-check's reads before/after the program are modeled as NUL, so an
-  unmatched ``a`` on a zero cell skips to the end and the program halts.
-- ``u`` prints ``chr(cell & 0xFF)``, matching the cross-check's ``(char)``
-  cast for cell values outside the byte range.
-
-Invalid runtime operations halt with :class:`~esolangs.exceptions.HaltError`.
-
-The interpreter runs on a :class:`_Machine` (the tape, the loop stack, the
-pointer, and the code cursor), so it is step-capable: ``step()`` executes one
-command and ``halted`` is true once the cursor reaches the end of the code.
-``y`` draws a random skip.  The ordinary cycle detector remains unsound on
-it, but the machine can enumerate every coin outcome for the bounded
-all-branches detector in :mod:`esolangs.vm`.
+Step-capable via :class:`_Machine`.  ``y`` is random, so the cycle
+detector is unsound on it, but the machine enumerates every coin outcome
+for the bounded all-branches detector in :mod:`esolangs.vm`.
 """
 
 import sys
@@ -98,13 +54,7 @@ _NUL = "\0"
 
 
 def _translate(code: str) -> str:
-    """Translate the source text into an executable program.
-
-    Mirrors the cross-check ``trans`` table: each source character found in
-    one of the two cycles is replaced by the character ``k`` steps further
-    along that cycle, where ``k`` counts the characters translated so far.
-    Characters in no cycle are dropped.
-    """
+    """Translate the source text into an executable program."""
     prog: list[str] = []
     k = 0
     for char in code:
@@ -130,12 +80,7 @@ type _State = tuple[tuple[int, ...], tuple[int, ...], int, int, int]
 
 @dataclass(frozen=True)
 class _Print:
-    """Write a value, as a number (``o``) or a character (``u``).
-
-    ``count`` is how many times in a row -- a repeated ``o``/``u`` prints
-    the *same* cell every iteration, since nothing between them changes it,
-    so one effect carries the repeat instead of ``rep`` copies of itself.
-    """
+    """Write a value ``count`` times, as a number (``o``) or character (``u``)."""
 
     value: int
     as_char: bool
@@ -148,10 +93,7 @@ type _Effect = _Print
 class _NeedRead(Exception):  # noqa: N818 - a control signal, not an error
     """Raised by the core when it wants an input it was not given.
 
-    The shell answers by reading one and running the step again.  The core
-    is pure, so re-running is safe; the reads it already had are handed
-    back in order, which keeps a repeated ``i`` reading the same number of
-    times as the original did.
+    The shell reads one and re-runs the pure step with the reads so far.
     """
 
     def __init__(self, *, line: bool) -> None:
@@ -165,12 +107,7 @@ class _NeedCoin(Exception):  # noqa: N818 - a control signal, not an error
 
 
 class _Halted(Exception):  # noqa: N818 - carries a state, not a message
-    """A HaltError raised partway through a step, with the state reached.
-
-    ``c`` spends cursor and multiplies the repeat counter before the
-    command it repeats runs, so how much of a step happened before a fault
-    is not something the caller can reconstruct.  The core hands it over.
-    """
+    """A HaltError raised partway through a step, with the state reached."""
 
     def __init__(self, state: _State, effects: list[_Effect], error: HaltError) -> None:
         """Record the partial state, the writes already made, and the cause."""
@@ -181,11 +118,7 @@ class _Halted(Exception):  # noqa: N818 - carries a state, not a message
 
 
 class _Reader:
-    """Hands out the inputs already supplied, then asks for one more.
-
-    Both input forms draw from this one sequence, in the order the program
-    asks for them; the request carries which kind the shell should fetch.
-    """
+    """Hands out the inputs already supplied, then asks for one more."""
 
     def __init__(self, values: tuple[str | int, ...]) -> None:
         """Start at the beginning of ``values``."""
@@ -258,15 +191,10 @@ def _advance(
 ) -> tuple[_State, list[_Effect]]:
     """Return the state after one step, and what it wants written.
 
-    Pure: it reads its arguments and returns a description.  The two output
-    forms are collected rather than performed, because the repeat counter
-    can make one step print many times; the inputs arrive in ``reads`` and
-    the ``y`` coin flips in ``coins``.
-
-    The command being run is a local, not state: ``c``, ``y``, ``v`` and
-    ``t`` each fetch a *different* command partway through the repeat loop,
-    and ``j`` rewrites itself to a newline so a repeated read only reads
-    once.  All of that lives inside one step.
+    Pure.  Writes are collected, not performed, because the repeat counter
+    can print many times per step; inputs arrive in ``reads`` and ``y``
+    coins in ``coins``.  The command is a local, not state: ``c``, ``y``,
+    ``v``, ``t`` refetch mid-repeat and ``j`` rewrites itself to a newline.
     """
     tape, loop, ptr, ind, rep = state
     reader = _Reader(reads)
@@ -451,17 +379,14 @@ def _advance(
 class _Machine:
     """Per-run Painfuck state: the tape, loop stack, pointer, and cursor.
 
-    ``step()`` executes one command; ``halted`` is true once the cursor
-    reaches the end of the code.  The VM and the state-cycle hang detector
-    expose this object (``y`` makes the machine non-deterministic, so the
-    hang detector must exclude it).
+    ``y`` makes the machine non-deterministic, so the hang detector must
+    exclude it.
     """
 
     def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
         """Translate ``code`` and start at the first command.
 
-        ``rng`` overrides the ``y`` command's coin flip, which is what
-        makes a stepped run reproducible; ``None`` draws for real.
+        ``rng`` overrides ``y``'s coin flip; ``None`` draws for real.
         """
         self.io = io
         self._rng = rng
@@ -520,13 +445,9 @@ class _Machine:
     ) -> tuple[_State, ...] | None:
         """Enumerate all coin outcomes for one command without mutating us.
 
-        A repeated ``c``/``t`` command can execute several ``y`` operations
-        in one public ``step()``, so this forks again every time the pure
-        core asks for a coin, rather than assuming a one-step/one-draw
-        correspondence.  Input would require an independent cursor and
-        future-line store for every sibling branch; declining it is sound,
-        and lets the caller report an undecided result rather than sharing
-        one branch's input with another.
+        Forks again on every coin the core asks for, since one ``step()`` can
+        run several ``y``.  Input is declined (each branch would need its own
+        cursor), so the caller reports undecided.
         """
         pending: list[tuple[int, ...]] = [()]
         successors: list[_State] = []
@@ -561,24 +482,14 @@ class _Machine:
         return (self.tape, self.loop, self.ptr, self.ind, self.rep)
 
     def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields.
-
-        The fields are this class's published shape -- ``snapshot`` reads
-        all five -- so they stay; the one assignment a step makes is here
-        rather than in the rules above.
-        """
+        """Write a transition's result back onto the machine's fields."""
         self.tape, self.loop, self.ptr, self.ind, self.rep = state
 
     def step(self) -> None:
         """Execute one command, advancing the cursor.
 
-        The ports live here rather than in the transition: this is the
-        shell.  A step can print or read more than once, because the repeat
-        counter runs the same command many times -- so the core collects
-        what it wants written and asks for each input as it needs it, and
-        this reads one and runs it again.  Re-running is safe because the
-        core is pure, and the inputs it already had are handed back in
-        order.
+        A step can print or read more than once; the core collects writes and
+        asks for each input, and this re-runs it with the inputs so far.
         """
         if self.halted:
             return
@@ -619,13 +530,7 @@ class _Machine:
         self._restore(state)
 
     def _write(self, effect: _Effect) -> None:
-        """Perform one collected write, ``count`` times over.
-
-        A repeat is written as one string rather than a loop of calls: the
-        value is the same every time, and ``print_str`` derives its
-        end-of-line state from the text, so the repeated form and the
-        looped one leave the port identical.
-        """
+        """Perform one collected write, ``count`` times over, as one string."""
         if effect.count == 1:
             if effect.as_char:
                 self.io.print_char(chr(effect.value))
@@ -639,12 +544,7 @@ class _Machine:
 def run(code: str, io: IO, rng: Randomness | None = None) -> None:
     """Run a Painfuck program, flipping ``y``'s coin with ``rng``.
 
-    ``rng`` is the source ``y`` draws from; ``None`` draws for real, which
-    is the spec's behaviour and what a plain run gets.  The machine has
-    always taken one -- it is how the VM makes a stepped run reproducible
-    -- but ``run`` did not forward it, so a caller holding only ``run``
-    could not pin the coin without patching ``secrets`` globally.  This is
-    the signature COD, WII2D and LaserFuck take.
+    ``None`` draws for real.  Same signature as COD, WII2D and LaserFuck.
     """
     machine = _Machine(code, io, rng)
     while not machine.halted:

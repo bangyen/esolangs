@@ -1,10 +1,8 @@
 """Polynomial algebra for the Polynomial generator.
 
-A Polynomial program is a polynomial whose roots encode instructions: each
-instruction is assigned a prime p, ascending in program order (consecutive
-instructions may share one; see ``_polynomial_assemble``), and turned into a
-complex root ``a + p**b*i``. Conjugate pairs are included so the expanded
-coefficients stay integers.
+Each instruction gets a prime ``p`` ascending in program order (see
+``_polynomial_assemble``) and becomes a root ``a + p**b*i``; conjugate
+pairs keep the coefficients integral.
 """
 
 import contextlib
@@ -17,14 +15,8 @@ from collections.abc import Iterator
 def _digit_limit_for(digits: int) -> Iterator[None]:
     """Raise CPython's ``int``/``str`` digit cap to fit ``digits``, then restore.
 
-    ``sys.get_int_max_str_digits()`` defaults to 4300 and is a DoS guard
-    against quadratic conversions, not anything Polynomial says.  A
-    program's coefficients grow with its instruction count -- a 541
-    instruction table needs more than that -- so at some arity the guard
-    stops the generator from rendering a program the interpreter could run.
-    It is process-global and ours to borrow, so it is raised to what this
-    render needs and handed straight back, exactly as Factor's ``_parse``
-    and boolean ``factor`` already do for the same reason.
+    The 4300 default is a DoS guard; a 541-instruction table exceeds it.
+    Same borrow as Factor's ``_parse`` and boolean ``factor``.
     """
     limit = sys.get_int_max_str_digits()
     if digits <= limit:
@@ -83,10 +75,8 @@ _PACKED_GROUP_SIZE = 96
 def render_product(factors: list[list[int]]) -> str:
     """Multiply the ``factors`` together and render the ``f(x) = ...`` text.
 
-    Each factor is a coefficient list, highest degree first.  Small products
-    take the incremental ``multiply`` loop; large ones take
-    :func:`_packed_product`.  Both are exact integer arithmetic over the
-    same factors, so they render the same bytes.
+    Small products take ``multiply``; large ones :func:`_packed_product`.
+    Both are exact, so they render the same bytes.
     """
     if len(factors) < _PACKED_MIN_FACTORS:
         coeffs = [1]
@@ -99,25 +89,12 @@ def render_product(factors: list[list[int]]) -> str:
 def _packed_product(factors: list[list[int]]) -> tuple[list[str], bool]:
     """Expand ``factors`` by packing whole polynomials into single decimals.
 
-    Padding every coefficient to a common width and concatenating spells the
-    polynomial evaluated at ``10**width``, so one integer multiplication of
-    two such strings is one polynomial multiplication (Kronecker
-    substitution) and slicing the product's digits apart recovers the
-    coefficients.  Coefficients are carried as decimal *strings* throughout:
-    ``int``/``Decimal`` conversion is quadratic in both directions, while
-    ``str`` in either direction is linear, so nothing here ever builds the
-    integers.
-
-    ``Decimal`` rather than ``int`` because libmpdec multiplies with a
-    number-theoretic transform where CPython's ``int`` stops at Karatsuba --
-    measured at 25M digits a side, 1.6s against roughly a minute.
-
-    The leaves stay on the incremental loop: it is cheap while the
-    coefficients are short, and packing costs a ``str`` per coefficient that
-    only pays for itself once the operands are long.
-
-    Returns the coefficients highest degree first, as signed decimal strings
-    -- or, with the flag set, as magnitudes whose sign is ``(-1)**index``.
+    Kronecker substitution at ``10**width``; coefficients stay decimal
+    strings because ``int`` conversion is quadratic.  ``Decimal`` because
+    libmpdec uses an NTT where ``int`` stops at Karatsuba: 1.6s against
+    roughly a minute at 25M digits a side.  Leaves stay on the incremental
+    loop.  Returns coefficients highest degree first, signed, or with the
+    flag as magnitudes whose sign is ``(-1)**index``.
     """
     # An upper bound on any coefficient anywhere in the tree: a product's
     # widest coefficient has at most the sum of its factors' widest digit
@@ -152,19 +129,11 @@ def _expand_group(factors: list[list[int]]) -> list[str]:
 def _normalise(coeffs: list[str]) -> tuple[list[str], bool]:
     """Drop the signs from a coefficient list whose signs alternate.
 
-    Signs that alternate with the index are closed under multiplication, so
-    a node in that form stays in it all the way up the tree and its slots are
-    never negative -- which is what lets :func:`_merge` slice a product apart
-    without first biasing it.
-
-    A factor ``[1, -2a, a*a + p**(2*b)]`` has the property only for
-    ``a >= 0``, and the generator now spells every subtraction and every
-    chain park as a *negative* operand at ``b == 1`` (the cheapest opcode),
-    so most leaves lose it and the merges above them take the signed path:
-    on dense n=10, 7 of the 11 nodes normalise and 4 carry signs.  Detected
-    rather than assumed, either way; the signed path costs a second decimal
-    as wide as the product, and the render is still 1.8x faster than the
-    previous builder's because the product is half the size.
+    Alternating signs are closed under multiplication, so :func:`_merge`
+    can slice without biasing.  The generator's negative ``b == 1``
+    operands break it for most leaves: on dense n=10, 7 of 11 nodes
+    normalise and 4 carry signs; the render is still 1.8x faster than the
+    previous builder's.
     """
     if all(c == "0" or (c[0] == "-") == (i % 2 == 1) for i, c in enumerate(coeffs)):
         return [c[1:] if c[0] == "-" else c for c in coeffs], True
@@ -179,10 +148,7 @@ def _resign(magnitudes: list[str]) -> list[str]:
 def _pack(coeffs: list[str], width: int) -> "decimal.Decimal":
     """Pack signed coefficient strings into the polynomial's value at ``10**width``.
 
-    A negative coefficient cannot be spelled in a digit slot, so the
-    positive and negative coefficients are packed into two non-negative
-    decimals and subtracted -- one linear pass each, where a per-coefficient
-    ``int`` would be quadratic.
+    Positives and negatives are packed separately and subtracted.
     """
     if not any(c[0] == "-" for c in coeffs):
         return decimal.Decimal("".join(c.rjust(width, "0") for c in coeffs))
@@ -197,15 +163,11 @@ def _merge(
 ) -> tuple[list[str], bool]:
     """Multiply two polynomials packed as single decimals, and unpack the product.
 
-    Each side is :func:`_normalise`'s pair.  Two normalised sides multiply as
-    magnitudes and stay normalised; otherwise the signs come back and the
-    slots have to hold a *signed* coefficient, so the width carries one digit
-    more than the bound -- a product coefficient is a sum of at most
-    ``min(len(left), len(right))`` pairwise products, so its digit count is at
-    most the two widest inputs' plus that count's.  Biasing every slot by half
-    its range makes those slots non-negative and so sliceable; the two biased
-    forms differ only in which sign decodes without a borrow, and a slot's
-    leading digit says which one to read.
+    Normalised sides multiply as magnitudes; otherwise slots hold signed
+    coefficients, the width carries one extra digit (a product coefficient
+    sums at most ``min(len(left), len(right))`` products), and every slot is
+    biased by half its range; the leading digit says which biased form to
+    read.
     """
     (lhs, normalised), (rhs, right_normalised) = left, right
     if normalised != right_normalised:
@@ -259,12 +221,8 @@ def _merge(
 def _render_terms(coeffs: list[str], alternating: bool) -> str:  # noqa: FBT001 - internal
     """Render coefficient strings, highest degree first.
 
-    ``alternating`` says the strings are magnitudes whose sign is
-    ``(-1)**index``; otherwise they carry their own leading ``-``.
-
-    A mirror of :func:`_format_coeffs` that never builds the integers: a
-    leading ``-`` and the ``" + "`` separator collapse into the one ``" - "``
-    that :func:`_format_coeffs` reaches by rewriting ``"+ -"``.
+    ``alternating`` means magnitudes with sign ``(-1)**index``.  Mirrors
+    :func:`_format_coeffs` without building the integers.
     """
     degree = len(coeffs) - 1
     out = ["f(x) = "]
@@ -289,10 +247,7 @@ def _render_terms(coeffs: list[str], alternating: bool) -> str:  # noqa: FBT001 
 def format_coeffs(coeffs: list[int]) -> str:
     """Render the coefficient list as the program's ``f(x) = ...`` text.
 
-    The widest coefficient sets how far CPython's digit cap has to be lifted
-    for the ``str`` calls below; it is estimated from the bit length
-    (``log10(2) ~= 0.30103``) so sizing it does not pay for the very
-    conversion it is about to allow.
+    The digit cap is estimated from the bit length (``log10(2) ~= 0.30103``).
     """
     widest = max((abs(coeff) for coeff in coeffs), default=0)
     digits = int(widest.bit_length() * 0.30103) + 2
