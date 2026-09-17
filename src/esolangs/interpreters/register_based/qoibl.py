@@ -161,14 +161,6 @@ class _Reading:
         return bool(re.fullmatch("[ey]+", op)) and hi - lo == 1
 
 
-def _wellformed(expr: list[str]) -> bool:
-    """Whether ``expr`` parses, mirroring :func:`_eval` without effects.
-
-    Same split points and arm order, so an accepted candidate is one it can run.
-    """
-    return _Reading(expr).at(0, len(expr))
-
-
 @functools.lru_cache(maxsize=32)
 def _tokenized(source: str) -> tuple[tuple[str, ...], ...]:
     """Return the reading :func:`tokenize` found, keyed by source and cached.
