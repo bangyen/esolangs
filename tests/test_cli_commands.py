@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import cli
+from esolangs import cli_round_trip
 from esolangs.cli import HELP
 from tests.cli_support import _LOOPS, call_both
 from tests.test_cli import _program, call_main
@@ -828,7 +828,7 @@ class TestTheRoundTripsFailurePaths:
         wrong* is the one a reader only ever reaches on a bad day, so it
         must not be the untested one.
         """
-        monkeypatch.setattr(cli, "evaluate", lambda *_a, **_k: "0000")
+        monkeypatch.setattr(cli_round_trip, "evaluate", lambda *_a, **_k: "0000")
         with pytest.raises(SystemExit) as exc:
             call_main(["verify", "brainfuck", "0110"], capsys)
         assert exc.value.code == 1
@@ -840,7 +840,7 @@ class TestTheRoundTripsFailurePaths:
         self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`evaluate` reports and exits 0; the comparison is the caller's."""
-        monkeypatch.setattr(cli, "evaluate", lambda *_a, **_k: "0000")
+        monkeypatch.setattr(cli_round_trip, "evaluate", lambda *_a, **_k: "0000")
         assert call_main(["evaluate", "brainfuck", "0110"], capsys).strip() == "0000"
 
 
