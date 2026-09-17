@@ -337,11 +337,40 @@ family (`|c| <= 8`, scale 1/2/4, relayouts included) one-step greedy
 under any of four keys ratchets past the magnitude bound on 6--17 of 20
 domain-16 columns, and a beam of width 4, 16, 64 builds 16, 18, 20 of
 20 at 5.6, 5.5, 6.0 per entry -- the shipped size, against an optimum
-of at most 2.8.  Counting alone gives `0.21 T`; an accounting bound
-(every `s` doubles the bit length of the far points, only `/` removes
-bits, a cheap fold sits at the bottom of the window and merges the
-short side only) would give `Omega(D log D)` if every fold merged
-O(1) points, and the optima's relayouts are exactly folds that do not.
+of at most 2.8.  Counting alone gives `0.21 T`.  Every domain-8
+pattern's exact optimum (254 of them, cap 2**12) averages 1.68 per
+entry, median 13 and at most 24 characters (`11010100`:
+`++s/-//-----s-//--s-///s`); 38% of the optimal text is unary, 42%
+halvings, merges split evenly between `s` (mirror pairs) and `/`
+(blocks), an `s`-epoch merges 2.8, 3.4, 4.1 at domain 8, 10, 12, and the
+magnitude before each `s` is `log2(live - 1)` minus 0.4, 0.3, 0.1 bits:
+the optima never ratchet.  One fact about the readout is deterministic
+and pinned in `tests/proofs/test_negatives.py`: an epoch (an `s` and
+its `+ - /` tail) that merges `m` and halves `h` times has `2**h <=
+r**2` for `r` the (m+3)-th smallest `|w|` before the `s`, since m+3
+squares inside an interval shorter than `2**h` meet at most two aligned
+blocks; so the epoch leaves magnitude at least `max|w|**2 / 2**h -
+unary - 1 >= (max|w| / r)**2 - unary - 1` (checked on all 1038 epochs of
+the 342 optima, ratio at most 0.89).  On the dense index `0 .. D-1` the
+first epoch's `r` is at most `m + 4` unless its centre is more than
+`D/2` away (at least `D/2` unary), so it leaves magnitude at least
+`(D-1)**2 / (4 (m+4)**2) - unary - 1`: a ratchet once `D > 4 (m+4)**2`,
+about 200 at the m = 3 the optima show; and the image, points at
+`lambda * j**2` with gaps `2 lambda j`, has a `sqrt(M)`-radius hole
+holding at most m+2 points (what a second non-ratcheting epoch needs)
+only at unary distance `D**2 / (4 (m+2)**2)` or beyond.  What closes
+nothing yet: the halving identity `sum over s of Phi <= length` with
+`Phi >= log2 live` gives `Omega(D)` only, and the description bound
+(an epoch is `(a, c, h, S)` with `S < r**2` by the lemma, so `2a +
+O(log length)` bits) gives `Omega(D / log D)` epochs only -- the two
+balance at linear, and the super-linear term must come from `Phi' >=
+2 Phi - 2 log2 r - 3` with a hole of radius `sqrt(M)/4` costing its
+unary distance, which needs the live set's density near the origin
+after an arbitrary history.  Incompressibility (Li--Vitanyi ch. 6)
+supplies the frame and nothing model-specific; Mansour--Schieber--
+Tiwari floor bounds, 1D map folding (crimps and end folds count folds,
+not unary creases), addition-chain bounds (one target, no merging) and
+merging bounds (no comparisons here) do not map.
 WII2D's lift is the extremal-fold rule, total but at megabyte sizes,
 and its three open cells are one question: a rule emitting readouts
 within a constant of the optimum, which no one-step or bounded-beam
