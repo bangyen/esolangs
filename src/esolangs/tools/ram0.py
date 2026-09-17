@@ -1,10 +1,18 @@
 """Boolean-function generator for RAM0."""
 
 from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
     _validate_truth_table,
     best_input_order,
     decision_tree_tokens,
 )
+
+#: How each input is set: ``Z`` resets the register absolutely, so ``Z Z``
+#: leaves a zero and ``Z A`` a one whatever came before.  The template
+#: spells each input as a run of :data:`TEMPLATE_CHAR` this wide -- one
+#: token that instantiates to two commands.
+RAM0_ZERO, RAM0_ONE = "Z Z", "Z A"
+_RAM0_INPUT = TEMPLATE_CHAR * len(RAM0_ZERO)
 
 
 def _ram0_width(address: int) -> int:
@@ -24,7 +32,7 @@ def ram0(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     RAM0 has no input command, so this is a parameterized generator: the
-    template's ``{Xi}`` placeholders become a fixed-length two-command
+    template's input runs become a fixed-length two-command
     setter — ``Z Z`` for a zero, ``Z A`` for a one — independent of the
     incoming register (``Z`` resets absolutely).  The earlier wall's
     variable-length setter (``Z`` vs ``Z A``) was what shifted the absolute
@@ -48,7 +56,7 @@ def ram0(truth_table: str) -> str:
     additionally benefits from low addresses at deep, oft-repeated levels.
     That assignment is fixed optimally by depth: level ``n-1`` uses address
     zero, up to the root at ``n-1``.  The load remains in input order, so the
-    ``{Xi}`` placeholders and their positions are untouched.
+    input runs and their positions are untouched.
     """
     if len(truth_table) <= 16:
         return best_input_order(truth_table, _ram0_ordered)
@@ -85,7 +93,7 @@ def _ram0_linear(truth_table: str) -> str:
     # pointer; cells 2..n+1 hold the parameterized inputs.
     for i in range(n):
         unary(i + 2)
-        emit("N", "{X" + str(i) + "}", "S")
+        emit("N", _RAM0_INPUT, "S")
 
     table_base = n + 2
     store_constant(0, table_base - 1)
@@ -120,7 +128,7 @@ def _ram0_linear(truth_table: str) -> str:
     emit("Z", "A", "L", "L")
     extra: list[int] = [0]
     for token in tokens:
-        extra.append(extra[-1] + token.startswith("{X"))
+        extra.append(extra[-1] + (token == _RAM0_INPUT))
     for at, target in jumps:
         target_at = labels[target]
         tokens[at] = str(target_at + extra[target_at] + 1)
@@ -153,7 +161,7 @@ def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         tokens.extend("A" for _ in range(address))
         tokens.append("N")
         pos += 1 + address + 1
-        tokens.append("{X" + str(i) + "}")  # expands to "Z A" / "Z Z"
+        tokens.append(_RAM0_INPUT)  # expands to "Z A" / "Z Z"
         pos += 2
         tokens.append("S")
         pos += 1
@@ -175,7 +183,7 @@ def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             *one,
         ]
 
-    # Every tree token is one command (unlike the load block's ``{Xi}``, which
+    # Every tree token is one command (unlike the load block's input run, which
     # expands to two), so the tree's command count is its token count.
     tree = decision_tree_tokens(
         truth_table,

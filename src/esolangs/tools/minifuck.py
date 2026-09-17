@@ -7,7 +7,6 @@ differentially against the interpreter; the retired enumerations remain as
 test oracles only.
 """
 
-import re
 from functools import cache
 
 from esolangs.tools.helpers import (
@@ -135,6 +134,9 @@ from esolangs.tools.minifuck_pool import (
 # reads as part of the construction rather than as a call into a simulator.
 # ``_Sim`` and ``_Joint`` are re-exported rather than referenced through
 # the module because the test suite imports them from here by name.
+from esolangs.tools.minifuck_sim import (
+    _MINIFUCK_INPUT,
+)
 from esolangs.tools.minifuck_sim import (
     _clamp as _clamp,
 )
@@ -345,7 +347,7 @@ def _reset_code(ignored: int) -> str:
 
     The setters for the inputs a table ignores still have to be emitted --
     the harness has a bit for every input -- and emitting them first is what
-    keeps the placeholders in name order.  They do write the tape, though, so
+    keeps the runs in name order.  They do write the tape, though, so
     what follows must erase the difference: after this suffix all
     ``2**ignored`` rows are in *identical* states.
 
@@ -369,9 +371,9 @@ def _reset_code(ignored: int) -> str:
 def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
     """Build by emitting the ignored inputs first, then erasing them.
 
-    ``_lift`` puts the ignored placeholders last, which leaves name order.
-    The alternative is to emit them *first* -- ``{X0}``..``{Xn-1}`` stays
-    ascending -- and then reconverge the rows so nothing downstream can tell
+    ``_lift`` puts the ignored inputs' runs last, which leaves name order.
+    The alternative is to emit them *first* -- the runs stay in name
+    order -- and then reconverge the rows so nothing downstream can tell
     which bits they were.  After that the table is a one-input problem in its
     single essential input, and the rest is the embed geometry every other
     degenerate table uses.
@@ -473,38 +475,37 @@ def _staged(truth_table: str, n: int) -> str | None:
 
 
 def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
-    """Whether lifting would emit the ``{Xi}`` out of ascending order.
+    """Whether lifting would put the ignored inputs' runs out of name order.
 
-    :func:`_lift` appends the ignored inputs after the solved template, so
-    the result is still sorted when every ignored index is above every
-    essential one -- ``{X0}{X1}`` then ``{X2}``.  It is only when an ignored
-    index sits *below* an essential one that the append leaves sequence.
+    :func:`_lift` appends the ignored inputs after the solved template, and
+    the k-th run *is* input k, so the result names its inputs correctly only
+    when every ignored index is above every essential one -- inputs 0 and 1
+    then input 2.  It is only when an ignored index sits *below* an
+    essential one that the append misnames them.
     """
     ignored = [i for i in range(n) if i not in essential]
     return bool(ignored and essential and min(ignored) < max(essential))
 
 
 def _lift(template: str, essential: list[int], n: int) -> str:
-    """Renumber a smaller table's placeholders back onto the wider arity.
+    """Widen a smaller table's template back onto the wider arity.
 
-    The inner solve used ``{X0}..{Xk-1}``, which correspond to the original
-    inputs listed in ``essential``.  The renaming is done in a single pass, so
-    a rename cannot collide with a placeholder it has not rewritten yet.
+    The inner solve emitted one run per essential input, in order; those
+    runs stay where they are and are read as the inputs listed in
+    ``essential`` (which :func:`_lift_leaves_name_order` has checked are
+    the first ``len(essential)`` names).
 
-    Every input the function ignores still needs a placeholder, or the harness
-    would have a bit with nowhere to put it.  Those go on the end: the fill is
-    two characters whichever bit it is, so they cannot make the program's
-    length depend on the inputs, and by then the digit has been printed -- the
-    ``.`` has already run -- so whatever they do to the tape cannot matter.
+    Every input the function ignores still needs a run, or the harness
+    would have a bit with nowhere to put it.  Those go on the end: the fill
+    is two characters whichever bit it is, so they cannot make the program's
+    length depend on the inputs, and by then the digit has been printed --
+    the ``.`` has already run -- so whatever they do to the tape cannot
+    matter.  An order the append would misname is refused rather than
+    emitted: the k-th run is input k, so there is no renaming to fall back on.
     """
-    rename = {f"X{slot}": f"X{i}" for slot, i in enumerate(essential)}
-    lifted = re.sub(
-        r"\{(X\d+)\}",
-        lambda m: "{" + rename[m.group(1)] + "}",
-        template,
-    )
-    ignored = "".join("{X" + str(i) + "}" for i in range(n) if i not in essential)
-    return lifted + ignored
+    if _lift_leaves_name_order(essential, n):
+        raise ValueError(f"lifting {essential} onto {n} inputs misnames a run")
+    return template + _MINIFUCK_INPUT * (n - len(essential))
 
 
 @cache
@@ -515,7 +516,7 @@ def _solve(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     Minifuck has no usable input command, so this is a parameterized
-    generator: the template's ``{Xi}`` placeholders become ``[<`` for a one
+    generator: the template's input runs become ``[<`` for a one
     and ``xx`` for a zero -- equal width, so no instantiation leaks its
     inputs through its length -- and the harness instantiates one program per
     input combination.
@@ -543,7 +544,7 @@ def _solve(truth_table: str) -> str:
         return _mux_lookup(truth_table, n)
 
     # Below the strip crossover, a table that ignores inputs is a smaller
-    # table wearing extra ones; solve it there and renumber the placeholders.
+    # table wearing extra ones; solve it there and append the ignored runs.
     essential = essential_inputs(truth_table, n)
     if len(essential) < n:
         # Projection is cheaper, but appending ignored inputs after the print

@@ -61,6 +61,8 @@ about.
 from collections.abc import Callable
 from functools import lru_cache
 
+from esolangs.tools.helpers import TEMPLATE_CHAR
+
 # How an emitted string decomposes: each entry is a law and its repeat
 # count.  ``dot`` carries no count -- prints are emitted singly -- and the
 # ``walk`` fast path keeps a pure ``[x`` run at one law call.
@@ -556,14 +558,21 @@ class _Sim:
             self.run_comment(1)
 
 
+#: How each input is set, at ``ptr+1``: ``[<`` steps right, flips the cell
+#: and steps back for a one; ``xx`` is two executed no-ops for a zero.  The
+#: template spells each input as a run of :data:`TEMPLATE_CHAR` this wide.
+MINIFUCK_ZERO, MINIFUCK_ONE = "xx", "[<"
+_MINIFUCK_INPUT = TEMPLATE_CHAR * len(MINIFUCK_ZERO)
+
+
 def _set_bit(bit: int) -> str:
-    """Return the ``{Xi}`` fill writing ``bit`` at ``ptr+1``.
+    """Return the input fill writing ``bit`` at ``ptr+1``.
 
     Both spellings are two characters and leave the pointer where they found
     it, so every instantiation has the same length -- without that, the
     program's length would leak the inputs it is meant to be evaluating.
     """
-    return "[<" if bit else "xx"
+    return MINIFUCK_ONE if bit else MINIFUCK_ZERO
 
 
 class _Joint:
@@ -598,8 +607,8 @@ class _Joint:
             m.apply(parsed)
 
     def emit_setter(self, i: int) -> None:
-        """Emit the ``{Xi}`` placeholder, simulating each row with its bit."""
-        self.parts.append("{X" + str(i) + "}")
+        """Emit input ``i``'s run, simulating each row with its bit."""
+        self.parts.append(_MINIFUCK_INPUT)
         one = _runs(_set_bit(1))
         zero = _runs(_set_bit(0))
         for bits, m in zip(self.rows, self.ms, strict=True):
@@ -645,7 +654,7 @@ class _Joint:
         return ["".join(m.out) for m in self.ms]
 
     def template(self) -> str:
-        """Return the emitted template, ``{Xi}`` placeholders included."""
+        """Return the emitted template, input runs included."""
         return "".join(self.parts)
 
 

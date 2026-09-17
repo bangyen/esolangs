@@ -100,7 +100,7 @@ def _embed(
     sep: str = _SEP,
     flips: int = 0,
 ) -> _Joint:
-    """Emit the embed: each ``{Xi}`` once, separated by :data:`_SEP`.
+    """Emit the embed: each input's run once, separated by :data:`_SEP`.
 
     The separator is not arbitrary.  A plain run of ``[x`` leaves the bits'
     prefix-XORs too correlated for the one-sided tests the endgame can make,
