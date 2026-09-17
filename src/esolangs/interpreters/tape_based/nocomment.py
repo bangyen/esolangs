@@ -41,52 +41,25 @@ import sys
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# The default static tape size.  The tape is finite by specification, not for
-# want of an unbounded Python list: the wiki makes pointer overflow and underflow
-# legal and defines them as moving "to the opposite end of memory", then says
-# outright that "this is the reason why the memory space needs to be static".  A
-# tape with no opposite end could not implement that wrap, so no size at all is
-# not an option -- only which finite size.
-#
-# The wiki leaves the size open, so it is a host choice, and callers may pass
-# their own.  The default stays 4096 because the size is *observable*: cell 0
-# steps left to ``tape - 1``, so moving the default would change what existing
-# wrapping programs do.
+# Finite by specification: the wiki defines pointer overflow as moving "to
+# the opposite end of memory" and says "the memory space needs to be static".
+# The size is a host choice, and observable (cell 0 steps left to tape - 1),
+# so changing the default changes what wrapping programs do.
 _TAPE = 4096
 
-#: One instant of a run: ``(ind, ptr, tape, stack, acc, dirty)`` -- the code
-#: cursor, the pointer, the tape, the stack, and a write buffer for the cell
-#: under the pointer.  A value, not a record: every transition below returns
-#: a new one rather than editing one in place, and the tape and stack are
-#: tuples for the same reason.
-#:
-#: The buffer is not decoration here, it is what makes the immutable tape
-#: affordable.  NoComment's tape is *static* -- 4096 cells by specification,
-#: because the wiki defines pointer overflow as wrapping to the opposite end
-#: -- so rebuilding it costs the whole 4096 on every write.  The generated
-#: corpus writes the same cell 111 times in a row before moving, so buffering
-#: the current cell and committing it on a move turns that run of 111
-#: rebuilds into one.  (This is exactly brainfuck's buffer, and unlike RAM0
-#: -- whose writes are all to *different* addresses, where a buffer would
-#: absorb nothing -- the pattern here fits.)
-#:
-#: The tape is ``bytes`` rather than a tuple of ints because the buffer only
-#: collapses *runs*, and the boolean corpus has none: its decode writes a
-#: cell and immediately moves, so it commits on ~66% of steps where the text
-#: corpus commits on almost none.  A tuple rebuild copies 4096 pointers, a
-#: ``bytes`` rebuild is one memcpy -- measured 32x apart over the 2637
-#: commits an 11-input decode makes (44.6ms -> 1.4ms), which is what keeps
-#: the widest generated tables affordable.  Cells are mod-256 by
-#: construction, so ``bytes`` is exactly wide enough, and it stays immutable
-#: and hashable, which is what ``snapshot`` needs.
-#:
-#: ``acc`` always holds the true value of the cell under the pointer.  While
-#: ``dirty`` is set, ``tape[ptr]`` is stale and ``acc`` is the truth; the
-#: tape is brought up to date by :func:`_committed`, which every path that
-#: leaves the cell goes through.  The stale window is invisible from
-#: outside: ``snapshot`` and the ``tape`` property both commit first, so one
-#: logical state has exactly one spelling and a real repeat still compares
-#: equal to itself.
+#: ``(ind, ptr, tape, stack, acc, dirty)``: an immutable value, rebound per
+#: step.  ``acc`` is the true cell under the pointer; while ``dirty``,
+#: ``tape[ptr]`` is stale and :func:`_committed` (every path that leaves the
+#: cell) fixes it.  ``snapshot`` and ``tape`` commit first, so one logical
+#: state has one spelling for the cycle detector.
+#: The buffer is what makes a static 4096-cell immutable tape affordable: the
+#: text corpus writes one cell 111 times before moving, so 111 rebuilds
+#: become one (brainfuck's buffer; RAM0 writes distinct addresses, so it
+#: would absorb nothing there).
+#: ``bytes``, not a tuple: the boolean corpus has no runs (write, then move;
+#: ~66% of steps commit), and a ``bytes`` rebuild is one memcpy vs 4096
+#: pointer copies -- 32x over the 2637 commits of an 11-input decode
+#: (44.6ms -> 1.4ms).  Cells are mod-256, and ``bytes`` stays hashable.
 type _State = tuple[int, int, bytes, tuple[int, ...], int, bool]
 
 
@@ -119,7 +92,7 @@ def _advance(state: _State, code: str, size: int) -> _State:
     ind, ptr, tape, stack, acc, dirty = state
     char = code[ind]
     if char == "i":
-        # The buffered cell absorbs the write; the tape is not touched.
+        # Buffered; the tape is untouched.
         acc = (acc + 1) % 256
         dirty = True
     elif char == "d":
@@ -129,8 +102,7 @@ def _advance(state: _State, code: str, size: int) -> _State:
         acc = 0
         dirty = True
     elif char in "lr":
-        # Leaving the cell, so the buffer is discharged first.  The pointer
-        # wraps at both ends, per the wiki.
+        # Leaving the cell: commit first.  Wraps at both ends, per the wiki.
         tape = _committed(state)
         dirty = False
         ptr = (ptr + (1 if char == "r" else -1)) % size
@@ -160,23 +132,15 @@ class _Machine:
         self.io = io
         self.code = code
         self.size = tape
-        # ``halted`` is read twice per command -- once by ``run``'s loop and
-        # once by ``step``'s guard -- so the length is taken once here.
+        # ``halted`` is read twice per command; take the length once.
         self.length = len(code)
         self.state: _State = (0, 0, bytes(tape), (), 0, False)
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
-    #
-    # ``tape`` and ``snapshot`` commit the write buffer before reporting, so
-    # an observer never sees the stale window.
+    # Views on the state.  ``tape`` and ``snapshot`` commit first.
 
     @property
     def tape(self) -> tuple[int, ...]:
-        # The state carries `bytes`; the language's view is a cell tuple, so
-        # the widening happens here at the observer rather than in the hot
-        # path.  Indexing `bytes` already yields ints, so nothing inside the
-        # transition needs the tuple.
+        # Widen ``bytes`` to a cell tuple here, not in the hot path.
         return tuple(_committed(self.state))
 
     @property
@@ -196,7 +160,7 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.state[0] >= self.length
 
-    # The VM's language-shaped view: cell tape + stack + cursor.
+    # VM view.
 
     @property
     def ip(self) -> int:
@@ -210,16 +174,9 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The committed tape, not the raw one: the cycle detector hashes
-        # what this returns, and a logical state with two spellings (dirty
-        # and committed) would make a real repeat look like a new state.
-        #
-        # It carries the `bytes` directly rather than widening to the cell
-        # tuple `tape` reports.  The detector's contract is only that this
-        # is hashable and complete, and `bytes` hashes and compares by
-        # value, so a repeat is still exactly a repeat -- while widening
-        # 4096 cells on every step would cost more than the commit this
-        # whole buffer exists to avoid.
+        # Committed tape (one spelling per state), as ``bytes``: it hashes by
+        # value, and widening 4096 cells per step would cost more than the
+        # commit the buffer exists to avoid.
         ind, ptr, _tape, stack, _acc, _dirty = self.state
         return (_committed(self.state), stack, ptr, ind, self.io.position())
 
@@ -242,12 +199,8 @@ class _Machine:
                 f"'f' at position {ind} pops the stack and the stack is empty"
             )
         if char in "sb" and acc and stack:
-            # ``s`` skips X forward and ``b`` jumps back X-1: the next
-            # command is at ind ± X + 1.  Kept as one check because each
-            # half of the bound is dead in one direction -- a forward
-            # target is always at least 1, and a backward one rarely
-            # reaches the end -- so separate copies leave unreachable
-            # branches behind.
+            # ``s`` skips X forward, ``b`` jumps back X-1: next is ind ± X + 1.
+            # One check for both, or each direction leaves a dead branch.
             delta = stack[-1] if char == "s" else -stack[-1]
             if not 0 <= ind + delta + 1 < self.length:
                 raise HaltError(

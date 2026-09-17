@@ -6,10 +6,8 @@ from esolangs.tools.helpers import (
     constant_span_test,
 )
 
-#: How each input is finished against a cell the load has primed to 1:
-#: ``-`` flips it back to zero, ``+`` is inert and leaves the one.  The
-#: template spells each input as a run of :data:`TEMPLATE_CHAR` this wide
-#: -- one grid cell, so the template is the exact shape of its programs.
+#: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
+#: Both are one grid cell, so a run is the exact width of its program.
 BACK_ZERO, BACK_ONE = "-", "+"
 _BACK_INPUT = TEMPLATE_CHAR * len(BACK_ZERO)
 
@@ -35,9 +33,8 @@ def _reflect_back(source: str) -> str:
             ]
         )
 
-    # Start east, turn south, wrap west, then turn north and west into the
-    # reflected root.  The two extra columns touch only these first rows;
-    # all tree padding is now trailing and disappears under rstrip.
+    # East, south, wrap west, north, west into the reflected root.  The two
+    # extra columns touch only rows 0-1; tree padding is trailing and rstrips.
     reflected[0][0] = reflected[0][-1] = "\\"
     reflected[1][0] = "/"
     reflected[1][-1] = "\\"
@@ -127,22 +124,9 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # The load: fill the input cells, then '>' to open the answer cell at n
-    # and walk the pointer back to cell 0 for the tree's first test.  Held as
-    # units, one grid cell each.
-    #
-    # The load runs the inputs in *name* order and walks the pointer to the
-    # cell each one belongs in.  Cell ``c`` is tested by level ``c``, which
-    # has to test input ``perm[c]``, so input ``i`` belongs at cell
-    # ``perm.index(i)`` -- the inverse of the permutation.
-    #
-    # Filling in cell order instead (cell ``c`` taking input ``perm[c]``) emits
-    # no walk at all and is what this generator did briefly: it costs nothing
-    # and delivers the full 12.0% screen against the 9.15% here.  It is not
-    # kept, because it puts the template's inputs out of name order, and
-    # the k-th run of a template is input k.  The saving is real but the
-    # exception is not affordable; see
-    # the docstring for the trade.
+    # Level c tests cell c and input perm[c], so input i lives at cell
+    # perm.index(i).  Filling in cell order instead needs no walk (12.0% vs
+    # 9.15%) but breaks "run k = input k"; not kept -- see the docstring.
     cells = [0] * n
     for level, i in enumerate(perm):
         cells[i] = level
@@ -151,64 +135,32 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         """Move the pointer from cell ``frm`` to cell ``to``, one per row."""
         return [">" if to >= frm else "<"] * abs(to - frm)
 
-    # Emitted in *reverse* name order, because the load is drawn bottom-to-top
-    # into column 0 (the beam runs up it), so the template's text reads the
-    # units backwards.  Loading input ``n-1`` first therefore puts input 0
-    # first in the emitted template, which is the order every other generator
-    # in this module reads in.  The walk costs whatever it costs; the search
-    # over input orders prices it either way.
+    # Reverse name order: the load is drawn bottom-up in column 0, so this
+    # emits input 0 first.  The input-order search prices the walk anyway.
     units: list[str] = []
     at = 0
     for cell in range(n - 1, -1, -1):
-        # Two units per input, so neither bit has to be written as a blank:
-        # the beam reads one cell per row in column 0, so the setter's second
-        # command needs a row of its own rather than the column beside it.
-        # Where the tree is the taller of the two these rows already exist.
-        #
-        # The first row is a constant '-' that primes the cell to 1 for both
-        # bits alike, and the *second* carries the input's run that finishes
-        # it: '-' again to flip a zero back down, '+' to leave a one standing.
-        # Putting the bit on the trailing row rather than the leading one is
-        # what makes every load row execute -- see the fill for why the older
-        # run + '+' order skipped a row instead.
-        #
-        # The walk that puts this input in its cell goes *before* the pair,
-        # never between the two halves of it: splitting them would break the
-        # equal-width embedding, since the primer and the run have to
-        # stay two rows for either bit.
+        # Primer '-' then the run, one row each (the beam reads one cell per
+        # row).  Bit on the trailing row so every load row executes; the walk
+        # goes before the pair, never between, or the height leaks the bit.
         units.extend(walk(at, cells[cell]))
         units.append("-")
         units.append(_BACK_INPUT)
         at = cells[cell]
-    # Open the answer cell at n, then home to cell 0 for the tree's first
-    # test.  Under the identity order the last input sits at cell n-1 and
-    # this is the single '>' the load always ended on.
+    # Open the answer cell at n, then home to cell 0.
     units.extend(walk(at, n))
     units.extend("<" * n)
 
-    # The load occupies column 0 and the tree everything from column 1, so the
-    # tree carries no indent for it -- the drawing's width is the tree's alone.
-    # A single '/' at the origin performs both turns.  The beam starts at (0,0)
-    # heading right; the '/' turns it up, off the top edge and onto the bottom
-    # row, where it runs the load *upward* back to the origin; the '/' takes it
-    # again, now heading up, and turns it right into the tree.  So the load is
-    # written bottom-to-top, and an earlier layout's two '\' -- one to drop the
-    # beam off the load's end, one to turn it back right -- are both gone along
-    # with the row and the indent they cost.
-    #
-    # Riding off the top edge makes the grid's toroidal wrap required:
-    # ``_Machine.step`` advances with ``% len(code)``, so up from row 0 lands
-    # on the last row.  The wiki text the interpreter quotes does not mention
-    # the edges at all, and no interpreter test covers a wrap, so this is the
-    # one place the generator leans on behaviour with no witness outside this
-    # repo's own interpreter.
+    # One '/' at the origin does both turns: right -> up off the top edge onto
+    # the bottom row, up the load, then up -> right into the tree at column 1.
+    # Relies on toroidal wrap (``_Machine.step`` uses ``% len(code)``); the
+    # wiki text is silent on edges and no interpreter test covers a wrap.
     grid: dict[tuple[int, int], str] = {}
     next_row = [1]
     constant = constant_span_test(truth_table)
 
     def leaf(level: int, value: str, row: int, col: int) -> None:
-        # walk to the single answer cell, write a 1 there when the leaf's
-        # value is 1 (it starts 0), and halt
+        # Walk to cell n, flip it (starts 0) for a 1-leaf, halt.
         delta = n - level
         move = (">" if delta >= 0 else "<") * abs(delta)
         code = move + ("-" if value == "1" else "") + "*"
@@ -232,13 +184,8 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     emit(0, 0, 2**n, 0, 1)  # tree root at column 1, the beam arriving rightward
 
-    # The grid is as tall as whichever of the two needs more rows: the tree
-    # wants 2**n and the load wants one row per unit below the '/'.  Past
-    # n = 3 the tree is the taller, so the load's rows start sharing with tree
-    # rows -- safe for the same reason the whole template is: an input's run
-    # is exactly as wide as either embedding (one character), so the tree
-    # glyphs on that row keep the columns they were drawn for.  An embedding
-    # whose width depended on the bit would break that silently.
+    # Height is max(tree 2**n, load units + 1).  Past n=3 load rows share with
+    # tree rows; safe only because a run is one character for either bit.
     height = max(max(r for r, _ in grid) + 1, 1 + len(units))
     width = max(c for _, c in grid) + 1
     rows = [[" "] * width for _ in range(height)]
@@ -247,9 +194,6 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     rows[0][0] = "/"
     for k, unit in enumerate(units):
         rows[height - 1 - k][0] = unit
-    # Every row is built at the full grid width, so the rstrip trims the pad
-    # each one carries past its last glyph.  It no longer has a bit to hide:
-    # both bits embed as a single command ('-' or '+'), never as the blank a
-    # zero once used, so no input row instantiates to whitespace and
-    # the strip cannot change a filled row's length.
+    # rstrip is safe: no input row can instantiate to whitespace (a zero used
+    # to embed as a blank, and the height revealed it).
     return _reflect_back("\n".join("".join(row).rstrip() for row in rows))

@@ -38,39 +38,17 @@ import sys
 from esolangs.interpreters.brackets import match_brackets as matches
 from esolangs.interpreters.io import IO
 
-#: One instant of a run: ``(ind, ptr, tape, acc, dirty)`` -- the code
-#: position, the pointer, the tape, and a write buffer for the cell under
-#: the pointer.  A value, not a record: every transition below returns a new
-#: one rather than editing one in place, and the tape is a ``tuple`` for the
-#: same reason.
-#:
-#: ``acc`` always holds the true value of the cell under the pointer.  While
-#: ``dirty`` is set, ``tape[ptr]`` is stale and ``acc`` is the truth; the
-#: tape is brought back up to date by :func:`_committed`, which every path
-#: that leaves the cell goes through.  This is what makes a run of ``+`` or
-#: ``-`` cost one tape rebuild instead of one per command -- 58% of the
-#: commands real generated programs execute are ``+``/``-``, in runs
-#: averaging 3.8 and reaching 49.
-#:
-#: The stale window is invisible from outside: ``snapshot`` and the ``tape``
-#: property both commit first, so an observer always sees one canonical
-#: tape.  That is not just for tidiness -- the cycle detector hashes what
-#: ``snapshot`` returns, and a logical state with two spellings (dirty and
-#: committed) would make a real repeat look like a new state.
-#:
-#: A plain tuple rather than a ``NamedTuple``: the fields are read by
-#: unpacking in the functions that use them, so the names bought little, and
-#: ``NamedTuple.__new__`` is Python-level where the tuple constructor is
-#: C-level -- measured 2.7x slower to build, at one build per step.
-#:
-#: The code and its bracket map are deliberately *not* in here.  Neither
-#: changes during a run, so carrying them would put constant data in every
-#: value the cycle detector stores.  They are parameters to the transition
-#: functions instead.
-#:
-#: The field order starts ``ind, ptr, tape`` because that is the order
-#: ``snapshot`` returns, and it returned exactly those three before the
-#: buffer existed.  Reordering would silently reorder every snapshot.
+#: ``(ind, ptr, tape, acc, dirty)``: an immutable value, rebound per step.
+#: ``acc`` is the true cell under the pointer; while ``dirty``, ``tape[ptr]``
+#: is stale and :func:`_committed` (every path that leaves the cell) fixes it.
+#: One rebuild per run of ``+``/``-`` instead of one per command: 58% of
+#: executed commands are ``+``/``-``, in runs averaging 3.8, max 49.
+#: ``snapshot`` and ``tape`` commit first, so one logical state has one
+#: spelling and the cycle detector's hash sees a repeat as a repeat.
+#: A plain tuple: ``NamedTuple.__new__`` is Python-level, 2.7x slower to
+#: build, and this is built once per step.  Code and bracket map are
+#: parameters, not fields, so the cycle detector stores no constants.
+#: Order starts ``ind, ptr, tape`` because ``snapshot`` returns those three.
 type _State = tuple[int, int, tuple[int, ...], int, bool]
 
 
@@ -122,15 +100,14 @@ def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
     ind, ptr, tape, acc, dirty = state
     char = code[ind]
     if char == "+":
-        # The buffered cell absorbs the write; the tape is not touched.
+        # Buffered; the tape is untouched.
         acc = (acc + 1) % 256
         dirty = True
     elif char == "-":
         acc = (acc - 1) % 256
         dirty = True
     elif char == ">":
-        # Leaving the cell, so the buffer is discharged first.  A ``>`` past
-        # the right end grows the tape by one zero cell.
+        # Leaving the cell: commit first.  Past the right end grows by one.
         tape = _committed(state)
         dirty = False
         ptr += 1
@@ -138,18 +115,14 @@ def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
             tape = (*tape, 0)
         acc = tape[ptr]
     elif char == "<":
-        # ``<`` at the left edge is clamped rather than an error, and a
-        # clamped move never leaves the cell, so it must not commit either.
+        # Clamped at the left edge; a clamped move stays, so no commit.
         if ptr:
             tape = _committed(state)
             dirty = False
             ptr -= 1
             acc = tape[ptr]
     elif (char == "[" and acc == 0) or (char == "]" and acc != 0):
-        # The test reads the buffer, which is the cell's true value whether
-        # or not the tape has caught up.  Both brackets are one rule with
-        # the test inverted, and the jump lands on the partner: the
-        # increment below steps past it.
+        # Tests ``acc`` (the truth).  Lands on the partner; +1 steps past it.
         ind = brackets[ind]
     return (ind + 1, ptr, tape, acc, dirty)
 
@@ -168,21 +141,12 @@ class _Machine:
         self.code = code
         self.io = io
         self.brackets = matches(code)
-        # ``halted`` is read twice per command -- once by ``run``'s loop and
-        # once by ``step``'s guard -- so the length is taken once here
-        # rather than recomputed on every one of those reads.
+        # ``halted`` is read twice per command; take the length once.
         self.size = len(code)
         self.state: _State = (0, 0, (0,), 0, False)
 
-    # The language's own names, which ``factor.py`` reads.  They are views
-    # on the current state rather than fields of their own, so there is one
-    # place a step can change.
-    #
-    # ``tape`` and ``snapshot`` commit the write buffer before reporting.
-    # An observer must never see the stale window: the tape it gets is the
-    # one the program has actually written, and -- because the cycle
-    # detector hashes snapshots -- one logical state must have exactly one
-    # spelling, or a real repeat would not compare equal to itself.
+    # Views for ``factor.py``.  ``tape`` and ``snapshot`` commit first: an
+    # observer never sees the stale window (see ``_State``).
 
     @property
     def tape(self) -> tuple[int, ...]:
@@ -209,9 +173,7 @@ class _Machine:
     def halted(self) -> bool:
         return self.state[0] >= self.size
 
-    # The VM's language-shaped view: Tape + pointer; ip is the code cursor, memory the
-    # tape.  ``memory`` goes through ``tape``, so it commits the write
-    # buffer like every other observer.
+    # VM view.  ``memory`` goes through ``tape``, so it commits too.
 
     @property
     def ip(self) -> int:
@@ -230,11 +192,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The committed tape, not the raw one, plus the input cursor: a
-        # repeat that ignores consumed input is not a real cycle.  ``acc``
-        # and ``dirty`` are deliberately absent -- they are a
-        # representation of the tape, not state of their own, and including
-        # them would give one logical state two hashes.
+        # Committed tape plus input cursor (a repeat that ignores consumed
+        # input is not a cycle).  ``acc``/``dirty`` would give one state two hashes.
         ind, ptr = self.state[0], self.state[1]
         return (ind, ptr, _committed(self.state), self.io.position())
 
@@ -260,14 +219,8 @@ class _Machine:
         if char == ".":
             self.io.print_char(chr(acc))
         elif char == ",":
-            # Reduced, like every other write to a cell.  ``input_char``
-            # returns a whole code point, so an input line starting above
-            # U+00FF used to put that code point straight into a cell on an
-            # 8-bit tape: ``,.`` round-tripped an emoji, and the tape held
-            # 128512.  Worse, the value was inconsistent with itself --
-            # unreduced until arithmetic touched it, so ``,.`` printed the
-            # emoji while ``,+.`` printed ``\x01``.  CVNC already reads
-            # ``(byte or 0) % 256`` for this reason.
+            # ``input_char`` is a whole code point.  Unreduced, ``,.`` echoed
+            # an emoji while ``,+.`` printed ``\x01``.  CVNC does the same.
             state = (ind, ptr, tape, self.io.input_char() % 256, True)
         self.state = _advance(state, self.code, self.brackets)
 
