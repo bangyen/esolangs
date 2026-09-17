@@ -585,8 +585,13 @@ _REDUCING = {
 # corridor cell per row, one answer paint per one-row, and the inputs walk
 # the corridor by their weights, so two tables with the same ones-count
 # render to the same length and a 0% fold is the construction working.
+#
+# ``bio`` is a telescope of one nested level per row whatever the table
+# says; a one-dependency table only spares it the flat edges' adjustments,
+# which is 4.4% once the doubling between the input runs is in the text.
 _UNSHAPED = {
     "a_painter_ant",
+    "bio",
     "alight",
     "minsky_swap",
     "b_tapemark",
@@ -1076,12 +1081,12 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "Circuit Diagram": (1_780_773, 2_505_897, 1.4),
-    "COD": (942_692, 3_668_705, 3.9),
+    "COD": (942_668, 3_668_678, 3.9),
     "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (1_589_968, 5_016_851, 3.2),
     "SLOW ACV MAMMALIAN": (456_394, 798_829, 1.8),
     "bit~": (28_210, 56_676, 2.0),
-    "123": (22_988, 45_755, 2.0),
+    "123": (22_964, 45_728, 2.0),
     "Factor": (17_613, 36_339, 2.1),
 }
 
