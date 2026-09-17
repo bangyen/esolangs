@@ -99,7 +99,7 @@ test-anchor *args:
     {{PYTHON}} scripts/verify.py --only "ztoalc anchor table is reproducible" {{args}}
 
 test-lint *args:
-    {{PYTHON}} scripts/verify.py --only pre-commit,"duplicate-code check (pylint)",bandit {{args}}
+    {{PYTHON}} scripts/verify.py --only pre-commit,"duplicate-code check (pylint)",bandit,"dead definitions" {{args}}
 
 test-bandit *args:
     {{PYTHON}} scripts/verify.py --only bandit {{args}}

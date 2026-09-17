@@ -7,9 +7,10 @@ import pytest
 
 from esolangs.exceptions import TruthTableError
 from esolangs.interpreters.other.crement import _Machine
-from esolangs.tools.crement import PAIR, crement, instantiate_crement
+from esolangs.tools.crement import PAIR, crement
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from esolangs.vm import run_until_halt_or_cycle
+from tests.tools.fills import instantiate_crement
 
 
 def _result(program: str) -> str:
