@@ -1,46 +1,21 @@
 """Interpreter for 3x.
 
-A stack-based language over exact rationals.  ``3`` pushes the rational 3,
-``x`` replaces the top three items ``a, b, c`` (c on top) with ``(c-b)/a``,
-``?`` reads a rational from input, ``!`` pops and prints the top (as an
-integer when whole, otherwise as a fraction), ``v`` stores the top under a
-popped key, ``^`` pushes the value of a popped key (3 if unassigned), ``#``
-swaps the top two, ``(``/``)`` loop while the top is nonzero, and ``[``
-prints the literal up to the next ``]`` and skips past it.
+A stack language over exact rationals.  ``3`` pushes 3, ``x`` replaces
+``a, b, c`` (c on top) with ``(c-b)/a``, ``?`` reads a rational, ``!``
+pops and prints (integer when whole), ``v`` stores the top under a popped
+key, ``^`` pushes a key's value (3 if unset), ``#`` swaps, ``(``/``)``
+loop while the top is nonzero, ``[`` prints the literal up to ``]``.
 
-Semantics:
-- an empty-stack pop, a swap or ``x`` with too few items, a ``(``/``)`` on
-  an empty stack, an unmatched ``(``, a ``)`` with no pending ``(``, or a
-  division by zero raise :class:`HaltError`;
-- ``?`` raises :class:`EOFError` when input runs out, where the cross-check
-  exits with status 3, and rejects input that is not an integer or a
-  fraction (matching the cross-check's ``Rational`` parser, which rejects
-  decimals);
-- ``[`` with no closing ``]`` prints nothing.
+Underflow, an unmatched ``(``, a stray ``)`` and division by zero raise
+:class:`HaltError`; ``?`` raises :class:`EOFError` at end of input (the
+cross-check exits 3) and rejects anything but an integer or fraction;
+``[`` with no ``]`` prints nothing; malformed programs raise
+:class:`ValueError`.
 
-Malformed programs raise :class:`ValueError`.
-
-The interpreter runs on a :class:`_Machine` (the code, stack, jump stack,
-variables, and cursor), so it is step-capable: ``step()`` executes one
-command and ``halted`` is true once the cursor reaches the end of the code.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the code to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.
-
-Keeping the transition total takes two pieces, because 3x has seven ways
-to fail.  :func:`_needs` says how many stack items a command requires, so
-the shell can reject an underflow before calling the transition, and
-:func:`_forward` returns ``None`` for an unmatched ``(`` so the shell
-raises rather than the transition faulting mid-scan.  The one failure that
-depends on a *value* rather than a count -- ``x`` dividing by zero -- is
-checked in the shell too, where the operands are already in hand.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what 3x *does* stays in the
-pure layer.
+:func:`_advance` is a pure, total transition over an immutable
+``_State``; :func:`_needs` and :func:`_forward` let the shell reject
+underflow and unmatched brackets first, and the shell checks the zero
+divisor.  :class:`_Machine` rebinds one state per ``step()``.
 """
 
 from __future__ import annotations
@@ -88,9 +63,7 @@ def _needs(char: str) -> int:
 def _forward(code: str, ind: int) -> int | None:
     """Return the position of the ``)`` matching the ``(`` at ``ind``.
 
-    ``None`` when the bracket is unmatched, which the caller turns into a
-    :class:`HaltError` -- returning it rather than raising is what keeps
-    the transition below free of error cases.
+    ``None`` when unmatched; the caller raises :class:`HaltError`.
     """
     num = 1
     while num > 0:
@@ -189,12 +162,7 @@ class _Machine:
         return self.state
 
     def step(self) -> None:
-        """Execute one command, advancing (or jumping) the cursor.
-
-        The two I/O commands and every error case live here rather than in
-        the transition: this is the shell, so it is where an effect or a
-        raise belongs, and it leaves :func:`_advance` total.
-        """
+        """Execute one command, advancing (or jumping) the cursor."""
         if self.halted:
             return
         ind, stack, jumps, variables = self.state
@@ -243,15 +211,9 @@ def _advance(
 ) -> _State:
     """Return the state after executing the command at the cursor.
 
-    Pure, and total: the shell has already rejected every underflow, the
-    division by zero and the unmatched brackets, read any input value, and
-    resolved any forward jump.  It takes no ``io`` argument, so ``!`` and
-    ``[`` are the caller's business -- neither changes state beyond the
-    cursor -- and ``?``'s value arrives as ``value``.
-
-    A ``)`` on a nonzero top jumps back to the matching ``(``'s own index,
-    so the shared increment lands on the first command of the body and the
-    bracket is not re-tested; on a zero top it drops the pending jump.
+    Total: the shell has rejected every error case, read ``?``'s ``value``
+    and resolved forward jumps.  ``)`` on a nonzero top jumps to the
+    matching ``(``'s index so the shared increment lands on the body.
     """
     ind, stack, jumps, variables = state
     char = code[ind]

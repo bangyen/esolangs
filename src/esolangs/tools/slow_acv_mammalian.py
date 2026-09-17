@@ -1,57 +1,35 @@
 """Boolean-function generator for SLOW ACV MAMMALIAN.
 
-The program is a *chain* of ``n`` read nodes followed by one dispatch jump
-into a flat table of fixed 256-token leaf slots, so both the emitted size
-and the build are O(T) for a table of length ``T = 2**n``: the tree this
-replaced re-emitted both subtrees under every node and its slot recurrence
-made it super-linear (``S(d) >= (2 + 1/255) S(d-1)``).
-
-Two identities carry the control flow, both machine-verified by the tests
-and end to end over every table through ``n == 3``:
+A *chain* of ``n`` read nodes and one dispatch jump into a table of
+256-token leaf slots: O(T) size and build, where the tree it replaced was
+super-linear (``S(d) >= (2 + 1/255) S(d-1)``).  Two identities carry the
+control flow, machine-verified end to end over every table through
+``n == 3``:
 
 ``landing = start - 15``
     A read node is ``SEED*wrap EXCRETE SEED*j1 DIGEST SEED*16 DIGEST
-    ACCEPT DIGEST LEAPFROG``; on the aim class :func:`_aim` picks, the
-    1-branch resumes exactly 15 tokens short of the array sum and ``j1``
-    cancels (see :func:`_node`).
+    ACCEPT DIGEST LEAPFROG``; on :func:`_aim`'s class the 1-branch resumes
+    15 tokens short and ``j1`` cancels (see :func:`_node`).
 
 ``target = nonhead + b``
-    ``LEAPFROG``'s target is ``acc - head - 1`` and a fresh ``DIGEST``
-    folds the head in, so the head cancels and an unconditional jump lands
-    on the non-head sum plus the byte its own ``EXCRETE`` appended.
+    ``LEAPFROG`` targets ``acc - head - 1`` and a fresh ``DIGEST`` folds
+    the head in, so an unconditional jump lands on the non-head sum plus
+    its own appended byte.
 
-What makes a *chain* possible where the tree forked is that a bit's whole
-effect is banked as an exact binary weight ``2**(n-1-i) * 256`` on array
-16's non-head sum and every other divergence between the two branch paths
-is cancelled before they merge:
+A bit's whole effect is banked as ``2**(n-1-i) * 256`` on array 16's
+non-head sum; both branches leave through trampolines aimed at one merge
+address (so array 0's sums agree exactly), the 1-arm's tuning chunk
+(:func:`_arm`) zeroes the even head residue at slope -2, and the weights
+being multiples of 256 keep every downstream mod-256 solve blind to which
+arms ran.  The 1-arm reaches array 16 with ``SPRINT``, appends its weight
+in chunks of at most 15 ``SEED``s (head steps by 17, so a byte >= 239 is
+within 15 steps), and returns the same way.
 
-* Both branches leave through a trampoline aimed at the same merge
-  address, and ``target = nonhead + b`` makes the post-jump non-head sum
-  *equal the target*, so array 0's non-head sums agree exactly -- the
-  next node's landing is path-independent.
-* Both trampolines' final solves leave ``head0 == 2*hop - target``, so
-  the branch paths' SEED counts differ by an even residue; the 1-arm's
-  tuning chunk (:func:`_arm`) moves that residue at slope -2 and zeroes
-  it, which equalizes every head (a SEED moves them all in lockstep).
-* The weights are multiples of 256, so every mod-256 solve downstream is
-  blind to which arms ran; only the dispatch jump, whose target is the
-  full non-head sum, sees them -- and lands ``leaf_base + row * 256``.
-
-The 1-arm reaches array 16 with ``SPRINT`` (head set to 16, ``acc == 0``
-after an ``EXCRETE``), appends its weight in chunks of at most 15 ``SEED``s
-each (array 16's head steps by 17, so a byte at least 239 is always within
-15 steps), and returns the same way.  ``ACCEPT`` appends to array 0
-whatever the pointer holds, so the reads themselves never route.
-
-Everything is a closed form; the two bounded fixed points (the arm slot
-and the tuning byte) settle in a few steps and raise if they do not.  The
-merge equalities are asserted on every build, so a drifted identity aborts
-the generation rather than emitting a mis-aimed program.  Executed
-evidence: every table through ``n == 3``, every row, plus sampled rows of
-dense tables through ``n == 12``.
-
-The chain reads all ``n`` inputs unconditionally -- the reads are the
-interface, so a constant table still consumes every input.
+Everything is closed-form; the two bounded fixed points raise if they do
+not settle, and the merge equalities are asserted on every build.
+Executed evidence: every table through ``n == 3``, plus sampled rows of
+dense tables through ``n == 12``.  All ``n`` inputs are read
+unconditionally.
 """
 
 from collections.abc import Sequence
@@ -99,12 +77,9 @@ def _seeded(array: Sequence[int], count: int) -> list[int]:
 def _stash_chunk(array: list[int], acc: int) -> tuple[list[str], list[int], int]:
     """``SEED*k DIGEST EXCRETE``, appending exactly ``_STASH_BYTE``.
 
-    ``SEED`` advances the sum by one per token, and a head wrap drops it by
-    256, so the sum's *low byte* advances by exactly one either way.  Only
-    the low byte is spent -- ``EXCRETE`` appends ``acc % 256`` -- so the
-    count solves in one step instead of a scan.  After the first chunk the
-    accumulator is 0 and the sum's low byte settles, so from the third
-    chunk on every count is 1: a chunk is then 3 tokens for 255 of reach.
+    The sum's low byte advances by one per ``SEED`` even across a head
+    wrap, so the count solves in one step; from the third chunk on every
+    count is 1, so a chunk is 3 tokens for 255 of reach.
     """
     count = (((acc % 256) ^ _STASH_BYTE) - sum(array)) % 256
     return (
@@ -117,9 +92,8 @@ def _stash_chunk(array: list[int], acc: int) -> tuple[list[str], list[int], int]
 def _aim(start: int) -> int:
     """Return the seed count putting ``start + j1`` on the aim class.
 
-    The class is even values whose bits 4-5 are ``01`` -- 16 residues out
-    of every 256, at most 49 apart, so the count never exceeds 49 and the
-    node's head stays far under the 255 a mid-run wrap would need.
+    Even values whose bits 4-5 are ``01``: 16 residues per 256, at most 49
+    apart, so the head stays far under the 255 a mid-run wrap needs.
     """
     offset = (start - _J2) % 64
     if offset <= 14:
@@ -131,12 +105,9 @@ def _aim(start: int) -> int:
 def _node(array: list[int], acc: int) -> tuple[list[str], _State, _State, int]:
     """One read node: tokens, the 0-exit, the 1-exit, and the landing.
 
-    All four are arithmetic in the entering state.  The 0-branch falls
-    through with ``acc == first`` and the bit 0 appended; the 1-branch
-    jumps to ``start - 15`` with ``acc == first + 1`` and the bit 1
-    appended.  Nothing about the exits depends on which ``j1`` the aim
-    picked, which is what lets the landing be committed before the arm
-    and the merge exist.
+    The 0-branch falls through with ``acc == first``; the 1-branch jumps
+    to ``start - 15`` with ``acc == first + 1``.  Neither exit depends on
+    ``j1``, so the landing commits before the arm and merge exist.
     """
     wrap = (256 - array[0]) % 256
     opened = [*_seeded(array, wrap), acc % 256]
@@ -163,14 +134,10 @@ def _trampoline(
 ) -> tuple[list[str], list[int], int]:
     """Build an unconditional jump to token ``target``, plus its exit state.
 
-    Chunks raise the non-head sum by exactly 255 each until ``target`` is
-    within a byte's reach, and ``u`` is solved so the ``EXCRETE`` appends
-    the one ``b`` that closes the rest: the final ``DIGEST`` folds the
-    whole array into the cleared accumulator, so the jump resumes at the
-    non-head sum plus ``b``, with the head cancelling out of
-    ``acc - head - 1`` entirely.  ``b >= 1`` keeps the ``LEAPFROG`` firing
-    (it is the array's last element), and the callers guarantee it by
-    always aiming past the sum they enter with.
+    Chunks raise the non-head sum by 255 each until ``target`` is within a
+    byte, then ``u`` is solved so the ``EXCRETE`` appends the closing
+    ``b``.  ``b >= 1`` keeps the ``LEAPFROG`` firing; callers always aim
+    past the sum they enter with.
     """
     cur, val, tokens = list(array), acc, []
     while sum(cur) - cur[0] < target - 255:
@@ -186,11 +153,7 @@ def _trampoline(
 
 
 def _chunk_run(chunks: int) -> int:
-    """Bound from above what ``chunks`` stash chunks cost in tokens.
-
-    The first two counts are whatever the entering residues force (at most
-    255 each); every later chunk is the settled 3-token form.
-    """
+    """Bound from above what ``chunks`` stash chunks cost in tokens."""
     return 257 * min(chunks, 2) + 3 * max(0, chunks - 2)
 
 
@@ -203,11 +166,9 @@ def _tramp_bound(distance: int) -> int:
 class _Sums:
     """Build-time machine state: heads and non-head sums of arrays 0 and 16.
 
-    Cells are never indexed -- the construction uses no ``CONSUME`` or
-    ``FISSION``, ``SPRINT`` only ever reads ``curr[0]``, and every
-    ``LEAPFROG``'s firing cell is appended by its own code -- so the two
-    sums, the two heads, the accumulator and the pointer are the whole
-    state.
+    Cells are never indexed (no ``CONSUME``/``FISSION``; ``SPRINT`` reads
+    only ``curr[0]``), so the sums, heads, accumulator and pointer are the
+    whole state.
     """
 
     __slots__ = ("acc", "h0", "hw", "n0", "nw", "ptr")
@@ -280,9 +241,7 @@ def _w_exact_chunk(st: _Sums, value: int) -> list[str]:
 def _w_greedy_chunk(st: _Sums) -> list[str]:
     """Append a byte of at least 239 for at most 15 ``SEED``s.
 
-    Array 16's head steps by 17, so 16 consecutive counts place the
-    appended byte on a lattice of gap 17 -- some point always falls in the
-    17-wide window [239, 255].
+    Head steps by 17, so 16 counts always hit the 17-wide window [239, 255].
     """
     for count in range(16):
         if (st.hw + st.nw + _W_STEP * count) % 256 >= 239:
@@ -295,9 +254,8 @@ def _w_greedy_chunk(st: _Sums) -> list[str]:
 def _w_raise(st: _Sums, amount: int) -> list[str]:
     """Raise array 16's non-head sum by exactly ``amount >= 0``.
 
-    Greedy high-byte chunks close all but the last 510, which two exact
-    chunks (each 1..255) finish -- so the cost is about a token per 14 of
-    weight and the total is hit exactly, never overshot.
+    Greedy chunks close all but the last 510, two exact chunks finish:
+    about a token per 14 of weight, never overshot.
     """
     tokens: list[str] = []
     end = st.nw + amount
@@ -322,9 +280,8 @@ def _jump(st: _Sums, target: int) -> list[str]:
 def _arm(one: _Sums, weight: int, beta: int, cont: int) -> tuple[list[str], _Sums]:
     """Build the 1-branch: bank ``weight`` on array 16 and merge at ``cont``.
 
-    The tuning chunk appends ``beta`` to array 0; the merge trampoline's
-    solves re-anchor on top of it, so ``beta`` shifts this path's total
-    SEED count at slope -2 -- the knob that matches the 0-path's heads.
+    The tuning chunk's ``beta`` shifts this path's SEED count at slope -2,
+    the knob that matches the 0-path's heads.
     """
     st = one.clone()
     tokens = _route_to_w(st)
@@ -340,11 +297,8 @@ def _arm(one: _Sums, weight: int, beta: int, cont: int) -> tuple[list[str], _Sum
 def _dispatch(st: _Sums, base: int) -> tuple[list[str], _Sums, list[int]]:
     """Build the jump into the leaf table, byte 1, plus the leaf counts.
 
-    The leaves always fit their slots, whatever byte the dispatch appends:
-    its ``u`` run is solved so the appended byte is ``b``, which pins the
-    exit residue at ``sum % 256 == 2b`` -- even, so XORing in a digit moves
-    it by ``+1 +-16 +-32`` and the worst leaf count is ``241 * (-16) ==
-    240`` of the slot's 252.  So the byte is simply the least that fires.
+    The exit residue is pinned even at ``sum % 256 == 2b``, so the worst
+    leaf count is 240 of the slot's 252; the byte is the least that fires.
     """
     b = 1
     d = st.clone()
@@ -368,9 +322,8 @@ def _dispatch(st: _Sums, base: int) -> tuple[list[str], _Sums, list[int]]:
 def slow_acv_mammalian(truth_table: str) -> str:
     """Build a SLOW ACV MAMMALIAN program evaluating ``truth_table``.
 
-    The program reads ``n`` digits with ``ACCEPT`` and prints the table
-    entry for the combination it was given.  One read node per input, one
-    dispatch jump, one 256-token leaf slot per table entry: O(T) text.
+    One read node per input (``ACCEPT``), one dispatch jump, one 256-token
+    leaf slot per entry: O(T) text.
     """
     n = _validate_truth_table(truth_table)
     st = _Sums()
