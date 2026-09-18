@@ -1256,3 +1256,46 @@ class TestPctStateDependentRule:
                 io = ScriptedIO()
                 run(program, io)
                 assert io.getvalue() == table[row], (n, row)
+
+
+class TestPctSuperLinearScaling:
+    """Dense size and plan cost grow past the x2 bound where the contract stops.
+
+    The size contract (``tests/proofs/deep/linearity.py``) measures to n=12
+    past the n=4 route change, where dense reads x1.12 per added input.  Past
+    that ceiling the shipped construction accelerates: rendered dense size is
+    x3.13 at thirteen and x5.69 at fourteen (89,366 / 279,712 / 1,592,014 at
+    n=12..14) and the rules' moves x4.5 / x12.3 (5,400 / 24,343 / 299,480).
+    The ratios here are the executed record past the contract's ceiling, so
+    the roadmap's size and time cells rest on the measurement, not the n=12
+    artifact; an O(T) construction or a language bound would break the top
+    asserts and be noticed.
+    """
+
+    @pytest.mark.slow  # ~7s: three dense builds through the staged route
+    def test_dense_size_and_plan_growth_past_twelve_inputs(self) -> None:
+        from esolangs.tools import parameterized
+        from esolangs.tools.pct_fold_plan import _FoldLedger
+        from tests.tools.test_boolean_contract import _dense
+
+        original = _FoldLedger.rule_move
+        count = [0]
+
+        def counted(ledger: _FoldLedger) -> tuple | None:
+            count[0] += 1
+            return original(ledger)
+
+        sizes: dict[int, int] = {}
+        moves: dict[int, int] = {}
+        try:
+            for n in (12, 13, 14):
+                count[0] = 0
+                _FoldLedger.rule_move = counted
+                sizes[n] = len(parameterized.pct_squared_minus_one(_dense(n)))
+                moves[n] = count[0]
+        finally:
+            _FoldLedger.rule_move = original
+        assert sizes[13] / sizes[12] > 2.5, sizes  # measured 3.13
+        assert sizes[14] / sizes[13] > 4.0, sizes  # measured 5.69
+        assert moves[13] / moves[12] > 3.0, moves  # measured 4.51
+        assert moves[14] / moves[13] > 8.0, moves  # measured 12.30
