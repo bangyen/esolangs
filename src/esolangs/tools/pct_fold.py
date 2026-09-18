@@ -15,6 +15,7 @@ from esolangs.tools.pct_codes import (
     _affine_code,
     _apply,
     _pad_pair,
+    _short_sub_code,
     _sub_code,
     _sub_with,
 )
@@ -131,7 +132,7 @@ class _FoldEmitter:
         return self.order[-1] + self.off
 
     def _sub(self, k: int) -> str:
-        code = _sub_code(k)
+        code = _short_sub_code(k)
         if code is None:
             raise AssertionError(k)
         return code

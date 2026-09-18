@@ -37,6 +37,18 @@ def _sub_code(k: int) -> str | None:
     return "i" + "s" * ((k - 3) // 2)
 
 
+def _short_sub_code(k: int) -> str | None:
+    """Return the shortest straight descent by ``k``, if it is spellable."""
+    if k == 0:
+        return ""
+    if k == 1:
+        return None
+    threes = k // 3
+    if (k - 3 * threes) % 2:
+        threes -= 1
+    return "i" * threes + "s" * ((k - 3 * threes) // 2)
+
+
 def _sub_with(k: int, threes: int) -> str | None:
     """Subtract ``k`` spending exactly ``threes`` ``i`` commands, or ``None``.
 

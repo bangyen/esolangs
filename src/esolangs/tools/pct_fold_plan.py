@@ -679,9 +679,11 @@ def _fold_reduce(
 #: 3 -> 6 is byte-identical (median 1.92, worst 5.10); the harness that
 #: suggested otherwise started from 2**n points, not the run count.
 #:
-#: Plan length is not program length: a dive at 3004 costs 1490 chars from
-#: rest and 4 when near, a doubling 751, the finish > 1000 (:func:`_sub_code`
-#: is ``k // 2`` chars).  17 -> 6 ops saved 13%; optimising chars saves 60%+.
+#: Plan length is not program length: a dive at 3004 spells its displacement
+#: in 1002 commands from rest and 4 when near; a doubling also pays its
+#: pre-shift.  The emitter uses the shortest 2/3 descent, while setters keep
+#: the parity-preserving spelling.  17 -> 6 ops saved 13%; optimising chars
+#: saves 60%+.
 #: The char cost model is closed form (zero error on all 56 n=3 tables):
 #: :meth:`_FoldEmitter.finish` solves ``need = (-(byte(hi) - byte(lo)) -
 #: pos[lo]) % 256``, cost ``u // 2 + 31``.  Not complement-invariant: bytes

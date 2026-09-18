@@ -34,7 +34,7 @@ template it cannot compute every table either: between two placeholders its
 accumulator has 6263 distinguishable classes, and the suite's dense
 seventeen-input fixture needs more at every thirteen-input cut
 ([proofs](proofs.md)).  Below that wall the shipped construction reaches
-fourteen inputs on every table tried (dense fourteen is 1.8 MB, built in
+fourteen inputs on every table tried (dense fourteen is 1.59 MB, built in
 about ten seconds) and refuses the dense fifteen-input fixture, whose
 eleven-input cut has 2017 distinct cofactors among 2048 rows: nothing
 compacts before the next lay, and the laid points jam the fold's one-slot

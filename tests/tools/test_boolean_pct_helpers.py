@@ -17,6 +17,15 @@ class TestPctSquaredHelpers:
     def module():
         return importlib.import_module("esolangs.tools.pct_squared_minus_one")
 
+    def test_body_descents_use_the_shortest_spelling(self) -> None:
+        """A relocation pays one command per three units, not per two."""
+        codes = importlib.import_module("esolangs.tools.pct_codes")
+        for amount in range(2, 100):
+            code = codes._short_sub_code(amount)  # noqa: SLF001
+            assert code is not None
+            assert codes._apply(0, code) == -amount  # noqa: SLF001
+            assert len(code) == (amount + 2) // 3
+
     def test_the_move_algebra_refuses_what_it_cannot_place(self) -> None:
         """Each refusal in ``_fold_step`` is a placement the window forbids.
 
