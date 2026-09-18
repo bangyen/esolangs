@@ -3,7 +3,7 @@
 A top-level def, class or constant is *dead* when no ``ast.Name`` or
 ``ast.Attribute`` outside its own definition, and outside import
 statements, names it.  Two routes (Minifuck's staged and sculpted) and the
-Eval reorder catalog sat that way for months, each with a test suite of
+Eval reorder catalog sat that way, each with a test suite of
 its own, because a replaced construction keeps its tests green.
 
 The rule is deliberately narrow:

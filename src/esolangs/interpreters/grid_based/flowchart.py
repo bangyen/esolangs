@@ -80,7 +80,7 @@ rather than invented, and every one of the three examples on the page
   register, so nothing else on the page constrains this.
 
   This one is a genuine judgment call and could reasonably go the other
-  way.  The page is from 2025 and categorised Unimplemented, so its
+  way.  The page is categorised Unimplemented, so its
   diagrams were almost certainly never run, and a spurious trailing bit is
   exactly the kind of edge case a hand-written example misses -- "the cat
   is simply buggy, and the prose means what it says" is a defensible

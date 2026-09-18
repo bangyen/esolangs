@@ -1,6 +1,6 @@
 """The dead-definition gate reports what nothing reads and nothing else.
 
-Two routes and a reorder catalog lived on for months with only their own
+Two routes and a reorder catalog lived on with only their own
 tests reading them.  This pins the three judgements the checker has to get
 right to be a gate rather than a nuisance: a planted unread name in
 ``tools/`` is reported; a name read only through an import alias is not; a
