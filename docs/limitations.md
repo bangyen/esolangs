@@ -285,7 +285,14 @@ which is `T log T` text.  Proved for the profile: above `K <= L - 2`
 unbounded low coefficients some remainder coefficient is at least
 `p_L - 1` (divided differences; tight at L=5), `Omega(log T)` digits a
 term and nothing on the term count; at L=6 no remainder bounded by 13
-exists over three low coefficients through degree 26.  Root-set term bounds (Descartes on either
+exists over three low coefficients through degree 26.  The full linear
+program's certificate lifts that to `prod_{i>K+1} (p_i - 1)` times the
+leading coefficient, asymptotically in the degree, for the lowest `K+1`
+positions (integer z3: unsat at 60/120/192 and sat at 80/160/300 for
+L=5,6,7); if it held for every unbounded set and degree, iterating it
+would give every multiple `Omega(T^2/log T)` digits.  Those two
+conditions are measured (every set of size <= 3 at L=4,5; exact optima
+above the limit at every degree tried), not proved.  Root-set term bounds (Descartes on either
 ray, sector and unit-circle fewnomial bounds, cyclic-code weight
 bounds, Tao's uncertainty principle) do not apply: the forced roots are
 prime powers and `a +- p^b i`, on no ray, circle or root-of-unity set,
