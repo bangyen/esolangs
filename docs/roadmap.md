@@ -35,7 +35,8 @@ The candidate list is empty.
   clause: four executed rounds the
   same day produced the model in its searched-negatives paragraph (no
   routing primitive, joins that leak a copy, a kill per zero-set per copy)
-  and no construction or bound; Polynomial's two rounds likewise.  The
+  and no construction or bound; Polynomial's thirteen rounds and WII2D's
+  ten ended in a measured target and one unproved lemma each.  The
   clause is deliberate: a wall that has not been proved is not a lookup
   table, and Factor's bound came after its wall was measured.
 
@@ -84,12 +85,13 @@ The candidate list is empty.
     `o(R)` cells with every stray cod dead (an input cell serves four
     headings, so a level's fifth node lives in the value; a one-lane
     node is eight commands but repeats the embed).
-  - Polynomial: a multiple of the mandatory root product with O(T)
-    coefficient *digits* -- the term count is at its Descartes floor and
-    compatible with O(T) -- i.e. a left-half-plane cofactor with a sparse
-    small remainder; one-large-coefficient and dense-remainder profiles
-    are executed negatives, and the exact minimum over every multiple is
-    the product itself to L=7 ([polynomial](polynomial.md)).
+  - Polynomial, size and time: the exact minimum-mass multiple of the
+    mandatory root product is the product itself (integer to L=7, and
+    the real relaxation one digit lighter), `Theta(L**2 log L)` =
+    `Theta(T**2 / log T)` digits, so no construction is left and the row
+    closes as a language lower bound when one lemma on exponential sums
+    is proved (its `u = 0, 1` cases are; the rest is verified to `c = 14`
+    and reduced to one product in [polynomial](polynomial.md)).
   - Streetcode, size and time: each level's hall spans every row of both
     subtrees, so the ~4T leaf rows are `Theta(n)` wide (220, 235, 244
     characters per row at n=8, 10, 12) -- `Theta(T log T)`, and the
