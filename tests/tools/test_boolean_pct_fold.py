@@ -966,23 +966,15 @@ class TestPctFifteenObstruction:
         )
         return emitter, module
 
-    @pytest.mark.slow  # ~2s: the conveyor runs its cap on the laid state
-    def test_a_forced_wide_lay_jams_after_eight_merges(self) -> None:
-        """A wide split total buys room and almost no merges.
-
-        Laying the twelfth input of dense fifteen at total 3956 (child
-        bands 3956 apart, laid span 4101) gives the conveyor a first move
-        where the fitting total 2048 gives none -- then 8 merges in 1894
-        ops, stuck at 4088 of the needed ~3840.  The bands are unit-dense,
-        so no doubling fires and no 3004-corridor clears.
-        """
+    @staticmethod
+    def _forced_lay(n: int, total: int):
+        """Lay input eleven of dense ``n`` at ``total``, as a ledger."""
         from esolangs.tools.pct_codes import _LIMIT, _apply
         from esolangs.tools.pct_fold_plan import _fold_norm, _FoldLedger
         from tests.tools.test_boolean_contract import _dense
 
-        n, total = 15, 3956
         table = _dense(n)
-        emitter, module = self._stage_eleven(n, table)
+        emitter, module = TestPctFifteenObstruction._stage_eleven(n, table)
         zero, one, _up, down = module._split_setter(total)  # noqa: SLF001
         shift = -_LIMIT - emitter.lo() + down
         laid = {}
@@ -998,14 +990,49 @@ class TestPctFifteenObstruction:
                 )
                 key2 = next(iter(picked)) if len(picked) == 1 else frozenset(picked)
                 laid[key2] = (value2, cls)
-        assert len(laid) == 4096
-        ledger = _FoldLedger.from_state(
+        return _FoldLedger.from_state(
             _fold_norm([(value, 0, cls, frozenset()) for value, cls in laid.values()])
-        )
-        assert ledger.rule_move() is not None
-        merges = ops = 0
+        ), len(laid)
+
+    @staticmethod
+    def _legal_wipes(ledger) -> list:
+        """Every legal wipe: ends-only bounds k by the single-class end run.
+
+        A longer end segment contains the mixed prefix, so its frame stays
+        ``None``; each amount inside a live frame is tried on a copy.
+        """
+        from esolangs.tools.pct_codes import _LIMIT
+        from esolangs.tools.pct_fold_plan import _FoldLedger
+
+        out = []
+        for kind, end in (("d", 0), ("u", -1)):
+            cls = ledger.cls[ledger.tops[end]]
+            run = 1
+            while (
+                run < ledger.size
+                and ledger.cls[
+                    ledger.tops[run] if kind == "d" else ledger.tops[-run - 1]
+                ]
+                == cls
+            ):
+                run += 1
+            for k in range(1, run + 2):
+                frame = ledger.wipe_frame(kind, k)
+                if frame is None:
+                    continue
+                q1, _ref, _minbot = frame
+                for amount in range(_LIMIT + 1, _LIMIT + q1 + 1):
+                    probe = _FoldLedger.from_state(ledger.to_state())
+                    if probe.step(ledger.op(kind, k, amount)):
+                        out.append((kind, k, amount))
+        return out
+
+    @staticmethod
+    def _run_greedy(ledger, cap: int = 8000) -> tuple:
+        """Rules to jam-or-done; returns ``(ops, merges, size, done)``."""
+        ops = merges = 0
         size = ledger.size
-        while ops < 5000 and not ledger.is_cofactor_done():
+        while ops < cap and not ledger.is_cofactor_done():
             op = ledger.rule_move()
             if op is None or not ledger.step(op):
                 break
@@ -1013,7 +1040,69 @@ class TestPctFifteenObstruction:
             if ledger.size < size:
                 merges += size - ledger.size
                 size = ledger.size
-        assert (merges, ledger.size) == (8, 4088)
+        return ops, merges, size, ledger.is_cofactor_done()
+
+    @pytest.mark.slow  # lay + full move-set enumeration over 4096 points
+    def test_a_fitting_lay_is_dead_on_arrival(self) -> None:
+        """The fitting total lays a state with no legal move at all.
+
+        Total 2048 lays 4096 unit-dense points at span 4097: no doubling,
+        256 classes so no everything-wipe, and every end-segment wipe at
+        every window amount refused -- not just no rule move (the probe's
+        verdict) but an empty move set, so no sequence of any length
+        merges further.  Total 2050 reads the same.
+        """
+        from esolangs.tools.pct_fold_plan import _FoldLedger
+
+        for total in (2048, 2050):
+            ledger, count = self._forced_lay(15, total)
+            assert count == 4096
+            assert not ledger.can_double()
+            assert ledger.rule_move() is None
+            assert self._legal_wipes(ledger) == []
+            replumbed = _FoldLedger.from_state(ledger.to_state())
+            assert (replumbed.size, len(replumbed.count)) == (4096, 256)
+
+    @pytest.mark.slow  # four greedy runs of ~1900 ops each
+    def test_every_first_move_rejoins_the_jam(self) -> None:
+        """The wide lay's four legal openers all reach the same jam.
+
+        Total 3956 is not dead at op 0: both ends wipe at 3004/3005.  But
+        each of the four first moves rejoins the greedy path -- 8 merges,
+        stuck at 4088 -- so depth-one branching is exhausted; what remains
+        open is non-greedy deep sequences, the priced-weeks hole.
+        """
+        from esolangs.tools.pct_fold_plan import _FoldLedger
+
+        ledger, _ = self._forced_lay(15, 3956)
+        firsts = self._legal_wipes(ledger)
+        assert firsts == [
+            ("d", 1, 3004),
+            ("d", 1, 3005),
+            ("u", 1, 3004),
+            ("u", 1, 3005),
+        ]
+        for kind, k, amount in firsts:
+            branch = _FoldLedger.from_state(ledger.to_state())
+            assert branch.step(branch.op(kind, k, amount))
+            _ops, merges, size, done = self._run_greedy(branch)
+            assert (merges, size, done) == (8, 4088, False)
+
+    @pytest.mark.slow  # ~2s: the conveyor runs its cap on the laid state
+    def test_a_forced_wide_lay_jams_after_eight_merges(self) -> None:
+        """A wide split total buys room and almost no merges.
+
+        Laying the twelfth input of dense fifteen at total 3956 (child
+        bands 3956 apart, laid span 4101) gives the conveyor a first move
+        where the fitting total 2048 gives none -- then 8 merges in 1894
+        ops, stuck at 4088 of the needed ~3840.  The bands are unit-dense,
+        so no doubling fires and no 3004-corridor clears.
+        """
+        ledger, count = self._forced_lay(15, 3956)
+        assert count == 4096
+        assert ledger.rule_move() is not None
+        _ops, merges, size, _done = self._run_greedy(ledger, cap=5000)
+        assert (merges, size) == (8, 4088)
 
     @pytest.mark.medium  # executes built programs: parity-16 build alone is 0.6s
     def test_structured_tables_build_past_the_dense_wall(self) -> None:
