@@ -904,3 +904,42 @@ class TestEachLeadingZeroBuysOneRoot:
                 zeros.add(d) if d not in zeros else None
                 d += 1
             assert 1 / _certificate_tail(rho, tuple(sorted(zeros))) >= target, free_set
+
+
+class TestOneDisplacedZeroIsProved:
+    """``docs/polynomial.md`` ("One displaced zero"): with zeros at ``1..c-2``
+    and one more at ``z``, the certificate is ``F + lambda G`` (``F`` the
+    leading-zero certificate on the ``c - 1`` largest roots, ``G`` the
+    ``c``-root sum vanishing at ``0..c-2``), ``u_d = sigma P (h'_d - r_z h_d)``,
+    and ``tail <= prod`` over the ``c - 1`` largest roots follows from
+    ``y_c <= 1/2``.  The identity and the inequality, exactly."""
+
+    @pytest.mark.parametrize(
+        "rho", [(5, 7, 11), (3, 5, 7, 11), (2, 3, 5, 7), (5, 7, 11, 13, 17)]
+    )
+    def test_identity_and_bound(self, rho: tuple[int, ...]) -> None:
+        c = len(rho)
+        y = [
+            Fraction(1, r) for r in rho
+        ]  # rho descending is not assumed: sort y ascending
+        y.sort()
+        top = y[:-1]  # the c - 1 largest roots
+        horizon = 80
+        h_all = _h_table(tuple(y), horizon)
+        h_top = _h_table(tuple(top), horizon)
+        product = math.prod(top)
+        bound = math.prod(v / (1 - v) for v in top)
+        roots_sorted = tuple(sorted(rho, reverse=True))
+        for z in range(c - 1, 30):
+            zeros = (*range(1, c - 1), z)
+            a = sp.Matrix(
+                [[Fraction(1)] * c] + [[v**w for v in y] for w in zeros]
+            ).LUsolve(sp.Matrix([1] + [0] * (c - 1)))
+            a = [Fraction(int(x.p), int(x.q)) for x in a]
+            ratio = Fraction(h_top[z - c + 1]) / Fraction(h_all[z - c + 1])
+            for d in range(c - 1, 50):
+                u_d = sum(ai * v**d for ai, v in zip(a, y, strict=True))
+                assert u_d == (-1) ** c * product * (
+                    h_top[d - c + 1] - ratio * h_all[d - c + 1]
+                )
+            assert _certificate_tail(roots_sorted, zeros) <= bound
