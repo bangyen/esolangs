@@ -109,6 +109,11 @@ separate axes.
   exactly-once embedding: an executed two-route geometry reaches the shared
   second input with different headings, but that cell resets both routes to
   the same position and heading (`TestWii2dAtCannotPreservePrefixState`).
+  A deterministic two-ply rule (scale, fold the canonical extreme pair,
+  then halve by the smallest opposite-colour gap) is total and runs a full
+  domain-8 grid, but its LFSR domain-16 readout is 1,430,153 cells versus
+  the shipped 110; it is not a constant-loss construction
+  (`TestWii2dCanonicalExtremePair`).
 - **%^2^-1:** the shortest 2/3 descent cuts dense fourteen inputs from 1.84 MB
   to 1.59 MB but does not bound relocations. Its size contract only reaches
   n=12 past the route change.

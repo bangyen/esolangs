@@ -128,6 +128,9 @@ The candidate list is empty.
     An `@` route does not preserve that state through the next exactly-once
     input: the shared cell resets both arrival headings and positions
     (`TestWii2dAtCannotPreservePrefixState`).
+    A deterministic scale/fold/safe-halving rule is total and executes at
+    domain 8, but its domain-16 LFSR readout is 1,430,153 cells versus 110
+    for the shipped decode (`TestWii2dCanonicalExtremePair`).
     A non-fold construction is closed: the language has no instruction
     that reads a value into control, so a branch is a build-time embed
     choice between two edges sharing one op string per surviving value,

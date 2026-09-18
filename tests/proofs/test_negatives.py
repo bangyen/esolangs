@@ -44,6 +44,7 @@ from esolangs.tools.register import polynomial
 from esolangs.tools.wii2d import (
     _wii2d_apply,
     _wii2d_compress,
+    _wii2d_decode,
     _wii2d_points,
     _wii2d_threshold,
 )
@@ -434,6 +435,75 @@ class TestWii2dExtremalRule:
         ops = _wii2d_extremal_decode(pattern)
         assert len(ops) == 8_978_977
         assert [_wii2d_apply(ops, value) for value in range(32)] == pattern
+
+
+def _wii2d_canonical_decode(pattern: list[int]) -> str:
+    """Oracle for the fixed extreme-pair, square, and safe-halving rule."""
+    if len(set(pattern)) == 1:
+        return str(pattern[0])
+    values = list(range(len(pattern)))
+    ops = ""
+    for _ in range(len(pattern)):
+        live = _wii2d_points(values, pattern)
+        assert live is not None
+        if len(live) <= 2:
+            return ops + _wii2d_threshold(live)
+        points = sorted(live)
+        highest = [point for point in points if live[point] == live[points[-1]]]
+        if len(highest) >= 2:
+            pair = highest[-2:]
+        else:
+            lowest = [point for point in points if live[point] == live[points[0]]]
+            pair = lowest[:2]
+        centre = sum(pair)
+        values = [(2 * value - centre) ** 2 for value in values]
+        ops += "*" + "-" * centre + "s"
+        points = sorted(set(values))
+        labels = dict(zip(values, pattern, strict=True))
+        gap = min(
+            points[index + 1] - points[index]
+            for index in range(len(points) - 1)
+            if labels[points[index]] != labels[points[index + 1]]
+        )
+        halvings = gap.bit_length() - 1
+        values = [value >> halvings for value in values]
+        ops += "/" * halvings
+    raise AssertionError("the canonical fold did not reduce the live set")
+
+
+class TestWii2dCanonicalExtremePair:
+    """The fixed two-ply rule is total, but not within a constant factor."""
+
+    def test_the_rule_is_total_for_every_domain_eight_pattern(self) -> None:
+        for value in range(256):
+            pattern = [(value >> (7 - index)) & 1 for index in range(8)]
+            ops = _wii2d_canonical_decode(pattern)
+            assert [_wii2d_apply(ops, point) for point in range(8)] == pattern
+
+    def test_domain_eight_runs_the_full_generated_grid(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
+        from esolangs.tools.wii2d import _wii2d_layout
+        from tests.tools.fills import _fill_wii2d
+
+        pattern = _wii2d_lfsr(8)
+        ops = _wii2d_canonical_decode(pattern)
+        assert len(ops) == 63
+        routes = [("*", "*+")] * 3 + [(ops, ops)]
+        template = "\n".join(_wii2d_layout(4, 0, routes))
+        table = "".join(str(bit) * 2 for bit in pattern)
+        for combo, expected in enumerate(table):
+            bits = [(combo >> (3 - index)) & 1 for index in range(4)]
+            io = ScriptedIO()
+            run_wii2d(_fill_wii2d(template, bits).splitlines(), io)
+            assert io.getvalue() == expected, (bits, expected)
+
+    @pytest.mark.slow  # a 16-point canonical rule emits 1.4M op cells
+    def test_the_named_domain_sixteen_witness_is_not_constant_loss(self) -> None:
+        pattern = _wii2d_lfsr(16)
+        ops = _wii2d_canonical_decode(pattern)
+        assert len(ops) == 1_430_153
+        assert len(_wii2d_decode(pattern)) == 110
+        assert [_wii2d_apply(ops, value) for value in range(16)] == pattern
 
 
 class TestWii2dAtCannotPreservePrefixState:
