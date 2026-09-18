@@ -369,3 +369,40 @@ class TestTailHeightIsAPrimorialFraction:
         coeffs = [3540, 2, -1012, -1, 0, 2, 1, 5, -1]
         for r in (2, 3, 5):
             assert sum(c * r**j for j, c in enumerate(coeffs)) == 0
+
+
+def _remainder_fits(roots: tuple[int, ...], degree: int, low: int, height: int) -> bool:
+    """Is there a multiple ``G + tau`` of ``prod (x - r)``: ``G`` free on degrees
+    ``0..low``, ``tau`` nonzero on ``low+1..degree`` with ``|tau_j| <= height``?"""
+    solver = z3.Solver()
+    solver.set("timeout", 60_000)
+    g = [z3.Int(f"g{j}") for j in range(low + 1)]
+    tau = [z3.Int(f"t{j}") for j in range(low + 1, degree + 1)]
+    for c in tau:
+        solver.add(c >= -height, c <= height)
+    solver.add(z3.Or(*[c != 0 for c in tau]))
+    for r in roots:
+        solver.add(
+            sum(c * r**j for j, c in enumerate(g))
+            + sum(c * r ** (j + low + 1) for j, c in enumerate(tau))
+            == 0
+        )
+    verdict = solver.check()
+    assert verdict != z3.unknown
+    return verdict == z3.sat
+
+
+class TestSparseRemainderNeedsTheLargestPrime:
+    """``docs/polynomial.md`` ("The sparse-remainder profile"): above ``K <=
+    L - 2`` unbounded low coefficients, some remainder coefficient is at
+    least ``p_L - 1`` (divided-difference lemma), tight at ``L = 5``; and at
+    ``L = 6`` with three unbounded low coefficients no remainder bounded by
+    ``p_L = 13`` exists through degree 20 at all.
+    """
+
+    def test_the_lemma_threshold_is_tight_at_five_primes(self) -> None:
+        assert not _remainder_fits((2, 3, 5, 7, 11), 18, 3, 10)
+        assert _remainder_fits((2, 3, 5, 7, 11), 18, 3, 11)
+
+    def test_six_primes_admit_no_remainder_bounded_by_the_largest(self) -> None:
+        assert not _remainder_fits((2, 3, 5, 7, 11, 13), 20, 3, 13)

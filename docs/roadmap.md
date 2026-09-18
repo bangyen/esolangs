@@ -69,10 +69,11 @@ The candidate list is empty.
     `o(R)` cells with every stray cod dead (an input cell serves four
     headings, so a level's fifth node lives in the value; a one-lane
     node is eight commands but repeats the embed).
-  - Polynomial: a left-half-plane multiple with more terms than the
-    Descartes minimum whose small remainder is *sparse*; one-large-
-    coefficient and dense-remainder profiles are executed negatives, and
-    no root-set term bound applies ([polynomial](polynomial.md)).
+  - Polynomial: a multiple of the mandatory root product with O(T)
+    coefficient *digits* -- the term count is at its Descartes floor and
+    compatible with O(T) -- i.e. a left-half-plane cofactor with a sparse
+    small remainder; one-large-coefficient and dense-remainder profiles
+    are executed negatives ([polynomial](polynomial.md)).
   - WII2D, three cells: a rule emitting readouts within a constant of the
     exact optima (1.4--2.4 characters per entry to domain 14); no one-step
     or bounded-beam rule over small centres is one, and the optima's
