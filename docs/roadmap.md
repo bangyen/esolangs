@@ -115,9 +115,14 @@ The candidate list is empty.
     but does not bound a point's relocations or the number of them: the
     four-input `0101010100100010` plan moves one row ten times in 62 steps,
     renders to 14,739 bytes, and executes all sixteen rows.  The contract's
-    x1.11 measures only to n=12 past the n=4 route change.  Its `Exception`
-    cannot close, and which tables through sixteen inputs the planners refuse
-    is finite (every table tried through fourteen builds).
+    x1.11 measures only to n=12 past the n=4 route change; past it the plan
+    is not O(T), measured: dense size x3.13 and x5.69 per added input at
+    thirteen and fourteen (89,366/279,712/1,592,014 at n=12..14) and the
+    rules' moves x4.5 and x12.3, with the merge rate collapsing 2.7 to 63
+    ops per merge as the staged classes grow 4 to 256
+    (`TestPctSuperLinearScaling`).  Its `Exception` cannot close, and which
+    tables through sixteen inputs the planners refuse is finite (every table
+    tried through fourteen builds).
 
 - **Boolean generator conventions.**  Five conventions govern the *embed*,
   the text that stands for one input -- not the program around it.  A
