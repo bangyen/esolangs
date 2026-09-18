@@ -571,3 +571,87 @@ class TestConvolutionStepOfTheTwoRootTheorem:
                     assert 0 <= left <= psi * right, (n, d, s)
                     equalities += left == psi * right and right > 0
         assert (equalities > 0) == (small == ())
+
+
+# --------------------------------------------------------------------------
+# Polynomial: no multiple is lighter than the product itself
+# --------------------------------------------------------------------------
+#
+# ``docs/polynomial.md`` ("Total mass"): over every integer cofactor of the
+# degrees searched, the least coefficient-digit mass of a multiple of the
+# first L primes' product is the product's own.  That mass is
+# Theta(L^2 log L), so the iterated elimination's target is the truth at
+# every size measured.  Exact, by z3 bisection on a digit budget.
+
+
+def _digit_mass(coeffs: list[int]) -> int:
+    return sum(len(str(abs(c))) for c in coeffs if c)
+
+
+def _product(roots: tuple[int, ...]) -> list[int]:
+    p = [1]
+    for r in roots:
+        q = [0] * (len(p) + 1)
+        for i, c in enumerate(p):
+            q[i] -= r * c
+            q[i + 1] += c
+        p = q
+    return p
+
+
+def _lighter_multiple_exists(roots: tuple[int, ...], degree: int, budget: int) -> bool:
+    """Is there a nonzero integer multiple of degree <= ``degree`` whose
+    coefficient digits sum to at most ``budget``?"""
+    p = _product(roots)
+    low = len(p) - 1
+    solver = z3.Solver()
+    solver.set("timeout", 60_000)
+    m = [z3.Int(f"m{j}") for j in range(degree - low + 1)]
+    for v in m:
+        solver.add(v >= -(10**budget), v <= 10**budget)
+    solver.add(z3.Or(*[v != 0 for v in m]))
+    cost = 0
+    for k in range(degree + 1):
+        fk = sum(p[i] * m[k - i] for i in range(low + 1) if 0 <= k - i <= degree - low)
+        solver.add(fk <= 10**budget - 1, fk >= -(10**budget - 1))
+        bits = [z3.Bool(f"b{k}_{j}") for j in range(budget)]
+        for j, b in enumerate(bits):
+            solver.add(z3.Or(b, z3.And(fk <= 10**j - 1, fk >= -(10**j - 1))))
+            if j:
+                solver.add(z3.Implies(b, bits[j - 1]))
+        cost = cost + sum(z3.If(b, 1, 0) for b in bits)
+    solver.add(cost <= budget)
+    verdict = solver.check()
+    assert verdict != z3.unknown
+    return verdict == z3.sat
+
+
+class TestNoMultipleIsLighterThanTheProduct:
+    @pytest.mark.parametrize(
+        ("roots", "degree"),
+        [
+            ((2, 3, 5), 8),
+            ((2, 3, 5, 7), 6),
+            ((2, 3, 5, 7, 11), 7),
+            pytest.param((2, 3, 5, 7, 11, 13), 8, marks=pytest.mark.medium),
+            pytest.param((2, 3, 5, 7, 11, 13, 17), 9, marks=pytest.mark.medium),
+        ],
+    )
+    def test_the_product_is_the_minimum(
+        self, roots: tuple[int, ...], degree: int
+    ) -> None:
+        dense = _digit_mass(_product(roots))
+        assert not _lighter_multiple_exists(roots, degree, dense - 1)
+        assert _lighter_multiple_exists(roots, degree, dense)
+
+    def test_the_product_has_u_plus_one_coefficients_over_each_threshold(self) -> None:
+        # The iterated elimination's assembled statement, on the only
+        # minimal-mass witness: at least u+1 coefficients below the top reach
+        # prod_{i>u} (p_i - 1), tight at u = L-3, L-2.
+        primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37]
+        for count in range(3, 13):
+            roots = tuple(primes[:count])
+            below = [abs(c) for c in _product(roots)[:-1]]
+            for u in range(count - 1):
+                threshold = math.prod(p - 1 for p in roots[u:])
+                assert sum(1 for c in below if c >= threshold) >= u + 1, (count, u)

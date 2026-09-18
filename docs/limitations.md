@@ -301,7 +301,11 @@ the same inequality for `c >= 3` designated roots at the boundary of the
 Toeplitz matrix (an equality in its interior by a Schur-function
 identity; measured at c=3,4) and the free-position minimum, which is a
 quotient gauge on a Descartes system, not a moment-cone principal
-representation.  Root-set term bounds (Descartes on either
+representation.  The exact minimum coefficient-digit mass over every
+integer multiple is the product's own at L=3..7 in every cofactor
+degree that finished (to D=12; 7, 12, 18, 25, 36 digits, exponent 1.93
+over L=3..7, `Theta(L^2 log L)` exactly), so no O(T)-digit multiple
+exists at those sizes and the target of the elimination is the truth.  Root-set term bounds (Descartes on either
 ray, sector and unit-circle fewnomial bounds, cyclic-code weight
 bounds, Tao's uncertainty principle) do not apply: the forced roots are
 prime powers and `a +- p^b i`, on no ray, circle or root-of-unity set,
