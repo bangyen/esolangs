@@ -370,6 +370,30 @@ class TestCODModelFacts:
             seen.extend((c.r, c.d) for c in machine.cods)
         assert seen == [(3, "N"), (2, "N"), (1, "N"), (0, "S"), (1, "S"), (2, "S")]
 
+    def test_the_start_cannot_be_a_deterministic_return_diode(self) -> None:
+        """A second exit at ``>`` is also a second random launch heading.
+
+        A tempting constant-size zero test sends a cod north into ``_``:
+        zero reaches the top print and a nonzero cod reflects back to ``>``
+        to take its north exit.  That exit must already be open at launch,
+        though.  The two possible first draws therefore take different
+        paths before the value test.  A reusable ingress needs an ordinary
+        cell with the same issue, so ``>`` cannot supply the missing diode.
+        """
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+
+        diode = _grid("~~~---\n~~~)~~\n~~~_~~\n~~~.~~\n---.~~\n~~>.~~\n~~~~~~")
+        outputs = []
+        for first in (0, 1):
+            io_ = ScriptedIO("")
+            machine = _Machine(diode, io_, rng=FirstDraw(first))
+            while not machine.halted:
+                machine.step()
+            outputs.append(io_.getvalue())
+        assert outputs == ["0", "1"]
+
     @pytest.mark.parametrize("fill", ["_", ")"])
     def test_the_one_lane_node_halts_and_prints_once(self, fill: str) -> None:
         """Eight commands: ``))<((`` valve, ``+``, ``<`` sibling, ``)`` trunk.
