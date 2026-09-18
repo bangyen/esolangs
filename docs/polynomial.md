@@ -598,6 +598,36 @@ and (ii-a), (ii-b) are open; the pinned test carries both measurements
 (`TestTriangleSlackIsBounded`).  The bound is not written: its proof
 would rest on (ii-a) and (ii-b), which are numerical facts, not lemmas.
 
+*Two resumption points for (ii-a)/(ii-b), and why the `k = 1` mechanism
+stops there.*  The one-displaced proof worked because `G` was a
+convolution of `F`: `G = (F * (1, y_c, y_c**2, ...) - y_c**d) / sigma P`,
+which needs `F`'s zeros to be the consecutive run `1..c-2`.  For `k >=
+2` no such relation holds -- `G_d / (F * geo)_d` past the last zero is
+constant in 0 of 270 random cases at `c = 4..6` -- so neither "`G/F =
+sum_j y_c**j F_{d-j}/F_d`" nor the near-zone version of the `k = 1`
+accounting is available; a proof must relate `F` and `G` differently.
+What is measured and usable: `|F|` is log-concave past its last
+prescribed zero (0 violations in 5940 triples, `c = 4..6`), and `|F/G|`
+decreases there.  Resumption A: find the operator taking `F` to `G` for
+general `k` -- both are the unique elements of two-dimensional spaces
+(`c`-root sums vanishing on `Z'` are spanned by `u` and `G`; `(c-1)`-root
+sums vanishing on `Z'` by `F` alone) and `(1 - y_c x)` maps `c`-root
+sums to `(c-1)`-root sums, so `E := G - y_c G_{d-1}` is a `(c-1)`-root
+sum on `d >= 1` and `F` may be recoverable from `E` by the zero data;
+if `E = mu F + (terms supported on Z' + 1)`, the `k = 1` accounting
+returns with an explicit boundary term.  Resumption B (the dodge):
+`|lambda| tail(G) <= K bound(f)` for every `z_k` splits into a far zone,
+where `|F_z / G_z| <= C (y_{c-1}/y_c)**(z - z_{k-1})` times its value at
+`z_{k-1} + 1` with `C` a dominant-term constant (the decay ratio
+`p_{c-1}/p_c -> 1` for large primes, so the zone width is `O(p_c)` and
+the level loses a factor `O(c log c)`, which the assembly absorbs), and
+a near zone of `O(p_c)` offsets each needing `|F_{z}| tail(G) / |G_{z}|
+<= C bound(f)` -- the statement (ii-b) itself, at every offset, for which
+the `k = 1` computation is not a template.  Either way the open content
+is one inequality between two exponential sums sharing `c - 2`
+prescribed zeros, one with an extra root; measured to hold with room
+(0.17 of the bound for `k >= 2`).
+
 *Gap (a) is not a principal-representation theorem.*  The primal is
 `min_B` over `f_D = 1`, `|f_m| <= B` off `U`, `f_U` free, `sum_m f_m v_m
 = 0` with `v_m = (p_i**m)_i`: the gauge of `v_D` modulo `span(v_U)` in

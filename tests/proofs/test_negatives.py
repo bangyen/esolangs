@@ -998,3 +998,35 @@ class TestTriangleSlackIsBounded:
                 ]
                 assert all(a >= b for a, b in itertools.pairwise(ratios))
         assert worst < Fraction(7, 10)
+
+
+class TestConvolutionRelationIsOneDisplacedOnly:
+    """``docs/polynomial.md`` ("Two resumption points"): ``G`` is a convolution
+    of ``F`` only when the zeros are one consecutive run (``k = 1``); with a
+    second displaced zero the ratio ``G_d / (F * geo)_d`` is not constant.
+    ``|F|`` is log-concave past its last prescribed zero either way."""
+
+    def test_k1_relation_and_its_failure_at_k2(self) -> None:
+        y = sorted(Fraction(1, p) for p in (3, 5, 7, 11))
+        y_c = y[-1]
+
+        def conv(f_at, d: int) -> Fraction:
+            return sum(y_c**j * f_at(d - j) for j in range(d))
+
+        def make(zeros: tuple[int, ...]):
+            a_f = _exp_sum(y[:-1], zeros, None)
+            a_g = _exp_sum(y, (0, *zeros), max(zeros) + 1)
+            f_at = lambda d: sum(ai * v**d for ai, v in zip(a_f, y[:-1], strict=True))  # noqa: E731
+            g_at = lambda d: sum(ai * v**d for ai, v in zip(a_g, y, strict=True))  # noqa: E731
+            return f_at, g_at
+
+        f_at, g_at = make((1, 2))  # k = 1: zeros 1..c-2
+        ratios = {g_at(d) / conv(f_at, d) for d in range(3, 12)}
+        assert len(ratios) == 1
+        f_at, g_at = make((1, 4))  # k = 2
+        ratios = {g_at(d) / conv(f_at, d) for d in range(5, 12)}
+        assert len(ratios) > 1
+        vals = [abs(f_at(d)) for d in range(5, 30)]
+        assert all(
+            b * b >= a * c for a, b, c in zip(vals, vals[1:], vals[2:], strict=False)
+        )
