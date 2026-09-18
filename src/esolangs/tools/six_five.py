@@ -14,8 +14,10 @@ import string
 from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
+    _GREEDY_ORDER_MAX_ARITY,
     _greedy_input_order,
     _validate_truth_table,
+    constant_span_test,
     permute_truth_table,
     stored_inputs,
 )
@@ -39,12 +41,17 @@ def _six_five_markers(table: str) -> int:
 
     One per internal node the fold leaves; a slice whose characters agree
     folds to a leaf.  Pass a permuted table for that order's count -- the
-    35-label budget is a per-order gate.
+    35-label budget is a per-order gate.  Spans, not slices: O(2**n).
     """
-    if len(set(table)) == 1:
-        return 0
-    half = len(table) // 2
-    return 1 + _six_five_markers(table[:half]) + _six_five_markers(table[half:])
+    constant = constant_span_test(table)
+
+    def count(lo: int, hi: int) -> int:
+        if constant(lo, hi):
+            return 0
+        mid = (lo + hi) // 2
+        return 1 + count(lo, mid) + count(mid, hi)
+
+    return count(0, len(table))
 
 
 def six_five(truth_table: str) -> str:
@@ -67,7 +74,9 @@ def six_five(truth_table: str) -> str:
     inputs :func:`_six_five_looped` (sixteen at any width).  Trees stay
     preferred while one fits.  Four orders compete: identity, fold-greedy,
     reverse, first-then-reversed (the last two find cheap pointer walks on
-    symmetric tables; AND-8's 40320 orders took 17s vs milliseconds).
+    symmetric tables; AND-8's 40320 orders took 17s vs milliseconds).  The
+    greedy order is scored through :data:`_GREEDY_ORDER_MAX_ARITY`, as in
+    :func:`best_input_order`; wider tables drop it.
     """
     n = _validate_truth_table(truth_table)
     best = ""
@@ -75,7 +84,9 @@ def six_five(truth_table: str) -> str:
     orders = dict.fromkeys(
         (
             identity,
-            _greedy_input_order(truth_table, n),
+            _greedy_input_order(truth_table, n)
+            if n <= _GREEDY_ORDER_MAX_ARITY
+            else identity,
             tuple(reversed(identity)),
             (0, *reversed(range(1, n))),
         )
@@ -229,24 +240,27 @@ def _six_five_dag_cost(truth_table: str) -> int:
     """Markers the shared build spends on ``truth_table``.
 
     One per distinct internal node less the root, plus one per distinct
-    *right* leaf (:func:`_six_five_shared`).
+    *right* leaf (:func:`_six_five_shared`).  Two windows are equal exactly
+    when their children are, so each span is named by its children's names
+    (a constant span by its length and value) and the names are interned:
+    O(1) a node, O(2**n) in all, against hashing every slice.
     """
-    internal: set[str] = set()
+    constant = constant_span_test(truth_table)
+    names: dict[tuple[object, object], int] = {}
+    internal: set[int] = set()
     right_leaves: set[str] = set()
 
-    def walk(window: str, *, right: bool) -> None:
-        if len(set(window)) == 1:
+    def walk(lo: int, hi: int, *, right: bool) -> tuple[object, object]:
+        if constant(lo, hi):
             if right:
-                right_leaves.add(window[0])
-            return
-        if window in internal:
-            return
-        internal.add(window)
-        half = len(window) // 2
-        walk(window[:half], right=False)
-        walk(window[half:], right=True)
+                right_leaves.add(truth_table[lo])
+            return (hi - lo, truth_table[lo])
+        mid = (lo + hi) // 2
+        name = (walk(lo, mid, right=False), walk(mid, hi, right=True))
+        internal.add(names.setdefault(name, len(names)))
+        return name
 
-    walk(truth_table, right=False)
+    walk(0, len(truth_table), right=False)
     return max(len(internal) - 1, 0) + len(right_leaves)
 
 
@@ -420,9 +434,11 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         tail = "5" if r == 5 else "62" * r
         return "6" * q + tail + "A0"
 
+    constant = constant_span_test(truth_table)
+
     def node(level: int, lo: int, hi: int, entry: int, held: int | None) -> str:
         nonlocal marker
-        if level == n or len(set(truth_table[lo:hi])) == 1:
+        if level == n or constant(lo, hi):
             return leaf(truth_table[lo], entry, held)
         # A clobbered input has no cell to test.  Its bit cannot change the
         # answer, so the two halves of this span are value-identical and

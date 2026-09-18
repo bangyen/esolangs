@@ -30,23 +30,26 @@ def packlang(truth_table: str) -> str:
         changes.append(changes[-1] + (previous != current))
 
     names = [f"x{n - 1 - depth}" for depth in range(n)]
+    lines: list[str] = []  # one flat list, appended at the leaves: O(2**n)
 
-    def tree(start: int, end: int, depth: int) -> list[str]:
+    def tree(start: int, end: int, depth: int) -> None:
         if changes[start] == changes[end - 1]:
-            return [f"{_INDENT * 2}INCR acc;"] if truth_table[start] == "1" else []
+            if truth_table[start] == "1":
+                lines.append(f"{_INDENT * 2}INCR acc;")
+            return
         half = (start + end) // 2
         name = names[depth]
-        lines = [f"{_INDENT * 2}If !({name} ^ {_ASCII_ZERO}) Then {{"]
-        lines.extend(tree(start, half, depth + 1))
+        lines.append(f"{_INDENT * 2}If !({name} ^ {_ASCII_ZERO}) Then {{")
+        tree(start, half, depth + 1)
         lines.append(f"{_INDENT * 2}}}")
         lines.append(f"{_INDENT * 2}If {name} ^ {_ASCII_ZERO} Then {{")
-        lines.extend(tree(half, end, depth + 1))
+        tree(half, end, depth + 1)
         lines.append(f"{_INDENT * 2}}}")
-        return lines
 
     declarations = "".join(f"  Char {name};\n" for name in names)
     reads = "".join(f"{_INDENT * 2}charGet({name});\n" for name in names)
-    body = "\n".join(tree(0, 1 << n, 0))
+    tree(0, 1 << n, 0)
+    body = "\n".join(lines)
     if body:
         body += "\n"
     return (
