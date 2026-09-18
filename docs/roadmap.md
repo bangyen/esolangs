@@ -43,19 +43,9 @@ The candidate list is empty.
   mandatory root product, is now proved, and the row closes on size and
   time as a language lower bound.  The clause is deliberate: a wall that
   has not been proved is not a lookup table, and both Factor's bound and
-  Polynomial's came after their walls were measured.  SLOW ACV MAMMALIAN
-  closed on generation time the same way its size and execution-time cells
-  already had: the per-node retry loop was re-simulating an O(weight)
-  `_w_raise` and an O(weight) trampoline build on every retry just to size
-  and length-check a candidate landing, not to emit it.  Both dry-run costs
-  close to O(1) -- `_w_raise`'s chunk sequence is a residue orbit over 256
-  states (`r -> 2 * added(r) % 256`) that a cycle detector skips through by
-  multiplication, and the trampoline's chunk count is exactly 1 `SEED` per
-  chunk past the second, closed by division -- so a level's retries no
-  longer each pay for the O(weight) build its accepted attempt alone needs.
-  Measured flat at ~0.021 microseconds per emitted token across four
-  doublings (n=14 to n=20, 4.3M to 271M tokens), byte-identical to the
-  prior output on every table checked.  Closed 2026-09-18.
+  Polynomial's came after their walls were measured. SLOW ACV MAMMALIAN closed
+  on generation time on 2026-09-18: an O(1) residue-orbit dry run replaced
+  retry-time O(weight) simulation, with byte-identical output.
 
   All 63 generators are audited on four axes.  Totality is the `proofs.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
@@ -89,16 +79,10 @@ The candidate list is empty.
   a peel that keeps its working sets across cubes) read x2.0--2.2,
   between the size contract's x2.15 and what these arities separate from
   noise; they are held linear until a wider measurement says otherwise.
-  Interprogck8 reads x1.96 the same way and is not held linear: its
-  construction carries a `log T` the twelve doublings cannot see, so its
-  row is open on what the code says.  Streetcode closed on generation
-  time and output size on 2026-09-18: the alternating-axis H-tree
-  (`9250e3ce`) already replaced the per-row hall that carried the
-  `log T` factor, and both axes were simply never re-measured after it
-  shipped.  Best of three, dense random tables, n=10..14: size ratio
-  2.10, 1.98, 2.06, 1.99 and time ratio 2.30, 2.25, 2.18, 1.94 -- falling
-  toward 2, not away from it, well inside the size contract's x2.15 at
-  every rung.
+  Interprogck8 reads x1.96 but remains open: its construction carries `log T`.
+  Streetcode closed on generation time and output size on 2026-09-18; its
+  alternating-axis H-tree (`9250e3ce`) is linear by construction and measured
+  within the size contract through n=14.
 
   Each open row's question, with the searched negatives in
   [limitations](limitations.md#searched-negatives):
@@ -164,50 +148,14 @@ The candidate list is empty.
 
 - **Boolean generator conventions.**  Five conventions govern the *embed*,
   the text that stands for one input -- not the program around it.  A
-  template is the program with each input spelled as a run of one
-  character outside the language (`$`), one run per input in order and
-  exactly as long as the code that replaces it, plus one `(zero, one)`
-  pair per input; three of the five are therefore the template's own
-  shape.  *Single embed*: each input is one run (the constructor refuses
-  a run of the wrong length, a run left over, or the character in the
-  program proper).  *Constant width*: every instantiation of one template
-  has the template's length, so `len(program)` reveals nothing (the
-  constructor refuses a pair of unequal width).  *Slot order*: the k-th
-  run is input k, by definition.  *No spaces*: a bit is spelled in
-  commands, never as a blank or padded with blanks; a single blank
-  between two tokens of the embed is a delimiter and is fine (Bitdeque's
-  `INVERT PUSH`, RAM0's `Z A`).  *Uniform*: the pair is the same pair
-  for every input, so the template would be one character and one pair
-  (16 of 17 spell it so: one `PAIR` constant the generator module owns,
-  which the example's `pair` field reads; %^2^-1 passes a `setters`
-  function instead).
-  The last two are measured, not structural: `tests/proofs/test_conventions.py`
-  reads this table and measures every cell off the programs -- the embed
-  is the span, row by row, on which the two fills of one input differ; a
-  blank left after deleting each single blank between two non-blank
-  characters is a spaces violation, and two inputs whose spans differ are
-  a uniformity one -- on dense and parity tables at n=2..6, every
-  instantiation.  `Open` means a spelling is not ruled out; `Language`
-  means the alphabet leaves none.  A row is present while any cell is
-  open and leaves when both close; the table is empty since Nopstacle,
-  whose alphabet was the blank and `#`, left the collection.
-
+  template has one ordered run per input, constant width, no padded spaces,
+  and a uniform `(zero, one)` pair.
   | Language | No spaces | Uniform |
   | --- | --- | --- |
-
-  Toggles are an open decision.  The proposed shape: a keyword per relaxed
-  convention on the generator, off by default and carried through the
-  example's `kwargs` so the suite builds and executes the relaxed program
-  through the same harness (`replace(example, kwargs=...)`); the contract
-  sweeps the defaults, and `takes_width` is the precedent for reading a
-  capability off the signature.  *Differing widths* buys size where the
-  zero pad is long (BF-PDA's pair would return to `<` against `<@`)
-  and buys the length leak back.  Add the width toggle only where a
-  measured build is smaller; a space toggle has nothing left to relax and
-  is not worth its plumbing.
-- **ArrowQueue reusable drain.**  Ship the verified deep-fold drain only if
-  a proof makes folding meaningfully testable at `n >= 5`; current coverage
-  does not reach its crossover.
+  `tests/proofs/test_conventions.py` checks these on dense and parity tables
+  at n=2..6. The table is empty; add a relaxed-width toggle only for a smaller
+  executed build. A space toggle has no remaining use.
+- **ArrowQueue reusable drain.** Ship it only if folding is testable at `n >= 5`.
 
 - **Reorder ArrowQueue inputs.**  The three-input screen leaves 12.4%
   headroom, but its queued inputs cannot be renamed in place.  Find a
