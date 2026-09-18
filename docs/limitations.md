@@ -99,9 +99,13 @@ separate axes.
   constant-width gadget costs about 8x per node; transfers wrap modulo 256,
   and function capture cannot nest.
 - **WII2D:** one-step centre rules, scalar keys, added merge-free vocabulary,
-  and bounded-beam lookahead do not match the shipped depth predictor. Exact
-  small optima cost 1.4–2.4 characters per entry; the evidence is a readout
-  model, not a language bound.
+  and bounded-beam lookahead do not match the shipped depth predictor. The
+  total extremal-fold fallback was also executed: on the 5-bit maximal-LFSR
+  sequence it emits 29, 88, and 8,978,977 op cells at domains 8, 16, and 32
+  while reproducing every bit (the proof oracle is
+  `tests/proofs/test_negatives.py::TestWii2dExtremalRule`). Exact small
+  optima cost 1.4–2.4 characters per entry; these are readout-model
+  obstructions, not a language bound.
 - **%^2^-1:** the shortest 2/3 descent cuts dense fourteen inputs from 1.84 MB
   to 1.59 MB but does not bound relocations. Its size contract only reaches
   n=12 past the route change.
