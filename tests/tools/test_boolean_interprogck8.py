@@ -261,6 +261,38 @@ class TestPrimitiveSurvey:
         assert machine.state.slot is None
         assert machine.state.lines == ("<", "nNnN", "div", ">", "EXE")
 
+    @pytest.mark.parametrize(
+        ("bit", "survivor"), [("0", "nNnN"), ("1", "NnNn")]
+    )
+    def test_z_can_retain_a_branch_in_its_remaining_text(
+        self, bit: str, survivor: str
+    ) -> None:
+        """A selected ``z`` leaves one distinguishable marker behind.
+
+        This is why dropping acc and the slot is not a normal form: a
+        restart can retain the branch in the program itself.  A language
+        lower bound must account for that deletion state.
+        """
+        d48 = _dice(48)
+        program = [
+            "u",
+            f"{{values/=/={d48}/={d48}}}",
+            "DownAccLines",
+            *(["x"] * 80),
+            "NnNn",
+            "z",
+            "x",
+            "nNnN",
+            "z",
+        ]
+        machine = _Machine(program, ScriptedIO(f"{bit}\n"))
+        for _ in range(4):
+            machine.step()
+        assert machine.state.acc == 0
+        assert machine.state.slot is None
+        assert survivor in machine.state.lines
+        assert ({"NnNn", "nNnN"} - {survivor}).isdisjoint(machine.state.lines)
+
     def test_the_function_slot_branches_with_no_jump_distance(self) -> None:
         """One read, routed by ``EXE``/``IFT``/``IFQ`` alone: all 4 rows.
 
