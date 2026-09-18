@@ -159,6 +159,61 @@ terms and three distinct moduli; `x^N - 1` puts `N` roots on one circle from
 two terms.  Sparsity bounds positive real roots (Descartes), not complex
 moduli.
 
+**Root-set term bounds do not map.**  Every bound on the term count of a
+polynomial from a set it must vanish on -- Descartes on either real ray
+(`x -> -x` counts the *cofactor's* negative roots, which the constructor
+chooses), Khovanskii-type sector bounds, Lenstra's and Filaseta--Granville
+--Schinzel's bounds on roots of unity of lacunary polynomials, the BCH /
+Hartmann--Tzeng / van Lint--Wilson bounds on cyclic-code weight, and Tao's
+`|supp f| + |supp f^| >= p + 1` for `Z/p` -- needs the forced roots on a
+ray, a circle, or among the `N`-th roots of unity.  The forced roots are
+positive prime powers and `a +- p**b i` with arbitrary integer `a`: on no
+common circle or line through the origin, and the interpreter reduces
+modulo nothing, so cyclotomic factors are the constructor's to add, never
+required.  What remains of these is Descartes on the positive ray, `t >= L +
+1`, and that count is compatible with `O(T)` text.  Plaisted's NP-hardness
+of deciding sparse multiples is about the general instance, not a bound on
+this family.  (Executed lower bound none; this paragraph is the mapping.)
+
+**The tail is a primorial fraction** (executed).  Write a multiple with
+`0` in its support as `f_0 + S(x)`; `S` takes one value at every real root
+and `f_0` is minus that value.  Minimising the largest non-constant
+coefficient over every `S` of degree `<= D` (z3, exact) gives, for the first
+`L` primes: `L = 3`, floor 13 at every `D` from 6 to 16 (primorial 30);
+`L = 4`, 82 at `D = 6..8` and 80 at `D = 10..16` (210); `L = 5`, 1234, 966,
+855, 844 at `D = 7, 9, 11, 13` (2310).  LLL on the same lattice (reduced
+basis, not exact) reaches 9972 at `L = 6, D = 18..22` (30030) and 187999
+at `L = 7, D = 24` (510510).  The floor sits at `0.33..0.43` of the
+primorial and stops falling once `D` passes about `2L`; the greedy multiple
+(choose each cofactor coefficient to keep the running coefficient inside
+`(-primorial/2, primorial/2]`) shows `1/2` is always reachable.  So the
+profile "one primorial-sized coefficient, every other one polynomial" has
+no member at any searched size, and a second coefficient at a constant
+fraction of the primorial is the measured floor -- still `Theta(T)` digits,
+so matching, not separating.  `tests/proofs/test_negatives.py` re-derives
+the `L = 3, 4` floors at `D = 8`.
+
+**Few large coefficients exist only with a dense tiny part** (executed).
+Allowing `K` non-constant coefficients past `B` and the rest at most `B`:
+`L = 3, B = 5` admits `K = 1` from `D = 6` on; `L = 4` admits `K = 1` at
+`B = 49` from `D = 6` and `K = 2` at `B = 7` from `D = 8`, but no `K = 1`
+at `B = 7` through `D = 24`; `L = 5` admits neither `K = 1` at `B = 11` or
+`121` nor `K = 2` at `B = 11` through `D = 24`, and `L = 6` none of `K = 1`
+at `13` or `169`, `K = 2` at `13` through `D = 26` (z3, every degree
+proved).  The least `K` at `B = p_L**2` over `D` up to `18..20` is 1, 1,
+2, 3 at `L = 3..6`, and every witness puts its large coefficients at the
+lowest degrees, nearly proportional to the product of the smallest `K`
+root factors (`L = 6, D = 20`: `f_0 : f_1 : f_2 : f_3` within 0.7% of
+`(x-2)(x-3)(x-5)` scaled), so the large part grows with `L` and the tiny
+part is left to absorb the large roots.  Where the profile exists, the
+large coefficients are `~2**D` (`3540 - 1012x^2 + ...` at `L = 3, D = 8`,
+the rest at most 5; `f_0 ~ 3 * 10**16` at `L = 6, D = 20`) and the tiny
+part occupies every degree, so its text is `D log D` -- at `D >= L log2 L`
+that is `T log T`, not `T`, and at `D ~ 3L` the `K ~ L/2` large
+coefficients of `D` bits each are `L**2` on their own.  Exact minimum text
+mass over every multiple of `(x-2)(x-3)(x-5)` of degree `<= 8` is the
+product's own 11 digits (z3 optimise, 145 s); larger sizes did not finish.
+
 ## Literature
 
 [Giesbrecht, Roche and Tilak][sparse-multiples] (Algorithmica 64:454-480,
@@ -181,9 +236,22 @@ rank two or more and no single minor pins a coefficient; its cofactor roots
 must have substantially negative real part with inexact magnitude relations
 to the prime-power instruction roots.  Every other route -- sign patterns,
 operands, exact mirrors, the `(L+1)`-term class, small cofactor degree,
-unbalanced profiles, norm bounds -- is closed above.  Conjectured
+unbalanced profiles, norm bounds, root-set term bounds, the
+one-large-coefficient profile -- is closed above.  Conjectured
 NP-completeness would not forbid a bespoke family, so the row stays open
 rather than closing as a wall.
+
+The profile that survives is narrower than before: `O(1)` coefficients of
+`O(T)` digits, a second one at a constant fraction of the primorial, and a
+*sparse* remainder -- `O(T / log T)` terms of `O(log T)` digits, since a
+remainder at every degree costs `D log D >= T log T`.  Whether the
+remainder can be sparse is the question; every executed multiple with a
+small remainder had it dense.  The heuristic against it is the Gaussian
+count: multiples of cofactor degree `k` form a lattice of covolume about
+`primorial**(k+1)`, and the box of the profile has volume `2**O(T)`, so
+generic lattices give `k = O(1)` -- the small-cofactor class, closed.  A
+proof would have to show this lattice has no unexpectedly short vector,
+which is exactly what its algebraic structure does not grant.
 
 What such a multiple must look like, each a line and none a search.  Term
 killing does not reach it: the Rolle operator `x d/dx - c` behind Descartes

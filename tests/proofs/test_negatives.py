@@ -22,6 +22,7 @@ a claim worth relying on belongs somewhere that runs.
 from __future__ import annotations
 
 import pytest
+import z3
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
@@ -310,3 +311,61 @@ class TestWii2dFoldCannotHalvePastItsMergeZone:
                 radius = radii[merges + 2]
                 assert 2**h <= radius * radius, (program, h, merges, radius)
             assert magnitude >= max_w * max_w / 2**h, (program, magnitude, max_w, h)
+
+
+# --------------------------------------------------------------------------
+# Polynomial multiples: the second-largest coefficient is a primorial fraction
+# --------------------------------------------------------------------------
+#
+# ``docs/polynomial.md`` ("The tail is a primorial fraction") reports that a
+# multiple of ``(x-2)(x-3)...`` whose every non-constant coefficient is small
+# does not exist at any degree searched: the floor sits near ``0.4`` of the
+# primorial and stops falling once the degree passes about twice the root
+# count.  The one-big-coefficient profile the open row needs is the negation
+# of this.  Exact, by z3, at the two smallest sizes where the floor has
+# already flattened; the witness shows the *other* profile (two large
+# coefficients, the rest at most 5) does exist, so the floor is about the
+# maximum of the tail, not its count.
+
+
+def _tail_fits(roots: tuple[int, ...], degree: int, height: int) -> bool:
+    """Is there a nonzero ``S = sum_{j=1..degree} s_j x^j``, ``|s_j| <= height``,
+    with ``S(r)`` equal at every root?  Then ``S - S(r_0)`` is a multiple."""
+    solver = z3.Solver()
+    solver.set("timeout", 60_000)
+    coeffs = [z3.Int(f"s{j}") for j in range(1, degree + 1)]
+    for c in coeffs:
+        solver.add(c >= -height, c <= height)
+    solver.add(z3.Or(*[c != 0 for c in coeffs]))
+    values = [sum(c * r ** (j + 1) for j, c in enumerate(coeffs)) for r in roots]
+    for value in values[1:]:
+        solver.add(value == values[0])
+    verdict = solver.check()
+    assert verdict != z3.unknown
+    return verdict == z3.sat
+
+
+class TestTailHeightIsAPrimorialFraction:
+    """Every non-constant coefficient small: impossible below ~0.4 primorial.
+
+    If the ``unsat`` side ever turns ``sat``, a multiple with a single large
+    coefficient exists at that size and the open row's profile is live.
+    """
+
+    @pytest.mark.parametrize(
+        ("roots", "degree", "floor"),
+        [((2, 3, 5), 8, 13), ((2, 3, 5, 7), 8, 82)],
+    )
+    def test_the_floor_is_exact(
+        self, roots: tuple[int, ...], degree: int, floor: int
+    ) -> None:
+        assert not _tail_fits(roots, degree, floor - 1)
+        assert _tail_fits(roots, degree, floor)
+
+    def test_two_large_coefficients_with_a_tiny_rest_do_exist(self) -> None:
+        # 3540 - 1012 x^2 + (2x - x^3 + 2x^5 + x^6 + 5x^7 - x^8): every other
+        # coefficient at most 5.  Cheap in count, not in text: both large ones
+        # are ~2^degree, and the tiny part fills every degree.
+        coeffs = [3540, 2, -1012, -1, 0, 2, 1, 5, -1]
+        for r in (2, 3, 5):
+            assert sum(c * r**j for j, c in enumerate(coeffs)) == 0
