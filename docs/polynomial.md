@@ -385,6 +385,32 @@ is `s_{((d-c+1)**(c-1))} * s_{lambda_B/mu} >= (prod rho)**(d-c+2)
 s_{lambda_A/mu}`, measured, not proved, for `c >= 3` (`c = 2` is the
 hand argument above).  That inequality is the whole of gap (b).
 
+**Total mass: no multiple is lighter than the product** (executed).  The
+decisive measurement for the whole route: the least coefficient-digit
+mass over *every* integer multiple `P * M`, `deg M <= D - L` (z3,
+bisection on a digit budget, exact) is the product's own at every size
+that finished -- `L = 3`: 7 digits, `D <= 12`; `L = 4`: 12, `D <= 12`
+(`D = 14`: nothing at or under 10, 11 unknown); `L = 5`: 18, `D <= 11`
+(`D = 13`: nothing at or under 14); `L = 6`: 25, `D <= 12`; `L = 7`: 36,
+`D <= 11`.  The sequence 7, 12, 18, 25, 36, 47, 63, 78, 100, 118 (`L =
+3..12`, the product's digits) has successive ratios 1.71, 1.50, 1.39,
+1.44 at `L = 3..7` against 1.68, 1.45, 1.34, 1.27 for `L log L`, fitted
+exponent 1.93 over `L = 3..7`, and is `Theta(L**2 log L)` exactly
+(`e_k >= p_{L/2}**k` for `k <= L/2`, `e_k <= C(L, k) p_L**k`).  So the
+minimum reads `L**2 log L`, not `L log L`: the iterated elimination's
+target is the truth at every size measured, the route is alive, and no
+`O(T)`-digit multiple exists to become a construction -- the roadmap's
+"multiple with `O(T)` coefficient digits" has no member below `L = 7`
+in any cofactor degree searched.  The minimal witness is the product
+(or a shift of it), never a sparser cofactor.  On that witness the
+assembled statement reads: at least `u + 1` coefficients below the top
+reach `prod_{i>u} (p_i - 1)`, for every `u`, `L = 3..12`, tight at `u =
+L-3, L-2`; `sum_u log10` of the thresholds is 0.75..0.81 of the
+product's digits.  That count -- not "some coefficient is large" -- is
+the statement the iteration must deliver, and it is what (a) has to be
+proved as.  Pinned: the minima at `(L, D) = (3, 8), (4, 6), (5, 7), (6,
+8), (7, 9)` and the count to `L = 12`.
+
 *Gap (a) is not a principal-representation theorem.*  The primal is
 `min_B` over `f_D = 1`, `|f_m| <= B` off `U`, `f_U` free, `sum_m f_m v_m
 = 0` with `v_m = (p_i**m)_i`: the gauge of `v_D` modulo `span(v_U)` in

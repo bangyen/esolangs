@@ -88,7 +88,8 @@ The candidate list is empty.
     coefficient *digits* -- the term count is at its Descartes floor and
     compatible with O(T) -- i.e. a left-half-plane cofactor with a sparse
     small remainder; one-large-coefficient and dense-remainder profiles
-    are executed negatives ([polynomial](polynomial.md)).
+    are executed negatives, and the exact minimum over every multiple is
+    the product itself to L=7 ([polynomial](polynomial.md)).
   - Streetcode, size and time: each level's hall spans every row of both
     subtrees, so the ~4T leaf rows are `Theta(n)` wide (220, 235, 244
     characters per row at n=8, 10, 12) -- `Theta(T log T)`, and the
