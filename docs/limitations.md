@@ -505,7 +505,27 @@ pattern, which forbids nothing, does it for 12--13 characters.
 Domains 192 and 256 were not run (budget).  It is not a bound on the row:
 it prices the one dense start, and after the first return to `O(live)`
 the set is no longer dense, so the same argument does not chain -- the
-number of dense starts a program has is one.  Incompressibility (Li--Vitanyi
+number of dense starts a program has is one.  The same search from
+the states the shipped decoder actually passes through (after every
+epoch that returns to magnitude at most `4 live`, eight per table,
+six tables at domain 128 and three at 256, centres to `live / 4`,
+120 s each): no two-epoch continuation returning to `4 live` exists
+at any of the 62 states with `live >= 14` (54 exhaustive, 8 capped),
+and at the nine states with `live` 8--24 the least costs 0.83--2.9
+`live` where the decoder's next two epochs cost 1.3--4.4 `live`; with
+every centre allowed, domain 64 states at 22 and 14 live floor at
+1.55 and 1.86 `live` (exhaustive) against the decoder's 3.0 and 2.7,
+and a domain-128 state at 42 live has a pair at 2.0 `live` against
+the decoder's 4.2 (capped at 300 s, so an upper bound on the floor).
+The decoder's live count falls by 5--20 per return, not by half
+(domain 128: 95, 79, 67, 42, 36, 24, 15, 9; domain 256 returns start
+only at 73--127 live, its first 15--26 epochs running above `4
+live`), so a floor of `c live` per two epochs sums to `Omega(D**2 /
+m)` over the `D / m` epochs, the decoder's own `D**2 / m`: the
+executed evidence is that the readout on the decoder's path is
+quadratic over the merge count and the decoder tracks the two-epoch
+floor within 2x where the floor is exact (live at most 42); the
+unproved lemma is that floor at an arbitrary state.  Incompressibility (Li--Vitanyi
 ch. 6) supplies the frame and nothing model-specific;
 Mansour--Schieber--Tiwari floor bounds, 1D map folding (crimps and end
 folds count folds, not unary creases), addition-chain bounds (one
