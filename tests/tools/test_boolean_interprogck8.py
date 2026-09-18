@@ -309,6 +309,37 @@ class TestPrimitiveSurvey:
         assert survivor in machine.state.lines
         assert ({"NnNn", "nNnN"} - {survivor}).isdisjoint(machine.state.lines)
 
+    def test_z_branch_cannot_retire_a_read_for_a_nested_pass(self) -> None:
+        """The smallest two-pass recorder leaves its first ``u`` live.
+
+        The two conditional targets delete different marker pairs, then
+        restart.  The read at line zero is untouched, so the second pass
+        consumes the next bit at the same read instead of advancing to a
+        nested conditional.  Its fixed jump then lands at the shifted EOF.
+        """
+        d48 = _dice(48)
+        program = [
+            "u",
+            f"{{values/=/={d48}/={d48}}}",
+            "DownAccLines",
+            *("x" for _ in range(81)),
+            "NnNn",
+            "z",
+            "x",
+            "nNnN",
+            "z",
+        ]
+        io = ScriptedIO("0\n1\n")
+        machine = _Machine(program, io)
+        for _ in range(5):  # u, compare, jump, marker, z/restart
+            machine.step()
+        assert io.position() == 1
+        assert machine.state.lines[0] == "u"
+        run_until_halt_or_cycle(machine)
+        assert io.position() == 2
+        assert machine.halted
+        assert io.getvalue() == ""
+
     def test_the_function_slot_branches_with_no_jump_distance(self) -> None:
         """One read, routed by ``EXE``/``IFT``/``IFQ`` alone: all 4 rows.
 
