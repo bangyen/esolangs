@@ -23,6 +23,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     best_input_order,
+    constant_span_test,
 )
 
 __all__ = ["cvnc"]
@@ -87,17 +88,31 @@ def _tree(table: str, accumulator: int) -> str:
     """Build the program for ``table``, given what the last read left behind.
 
     A constant table stops branching but still owes every read below it.
+    Spans of the one table, an O(1) constant test and one flat piece list:
+    O(2**n).
     """
-    if table.count(table[0]) == len(table):
-        # Folded: reads still owed; ``cə`` floors the unknown last bit.
-        reads = _bit_count(len(table))
-        if not reads:
-            return _leaf(table[0], accumulator)
-        return _READ * reads + _NORMALIZE + _leaf(table[0], 0)
-    half = len(table) // 2
-    # ``ɰ̊`` jumps on zero, so the arm between the markers is the second
-    # (bit 1) half; swapped, every odd-weight table inverts.
-    return _READ + _IF_ONE + _tree(table[half:], 1) + _END_IF + _tree(table[:half], 0)
+    constant = constant_span_test(table)
+    pieces: list[str] = []
+
+    def walk(lo: int, hi: int, accumulator: int) -> None:
+        if constant(lo, hi):
+            # Folded: reads still owed; ``cə`` floors the unknown last bit.
+            reads = _bit_count(hi - lo)
+            if not reads:
+                pieces.append(_leaf(table[lo], accumulator))
+            else:
+                pieces.append(_READ * reads + _NORMALIZE + _leaf(table[lo], 0))
+            return
+        mid = (lo + hi) // 2
+        # ``ɰ̊`` jumps on zero, so the arm between the markers is the second
+        # (bit 1) half; swapped, every odd-weight table inverts.
+        pieces.append(_READ + _IF_ONE)
+        walk(mid, hi, 1)
+        pieces.append(_END_IF)
+        walk(lo, mid, 0)
+
+    walk(0, len(table), accumulator)
+    return "".join(pieces)
 
 
 def _bit_count(size: int) -> int:
@@ -149,24 +164,26 @@ def _stored(truth_table: str, perm: tuple[int, ...]) -> str | None:
         return None
     pushes, pops = schedule
     load = "".join(_READ + push for push in pushes)
+    constant = constant_span_test(truth_table)
+    pieces = [load]
 
-    def walk(table: str, level: int, accumulator: int | None) -> str:
-        if table.count(table[0]) == len(table):
+    def walk(lo: int, hi: int, level: int, accumulator: int | None) -> None:
+        if constant(lo, hi):
             # Below a branch the accumulator is a known bit; at an
             # immediately-folding root it is the last read, so ``cə`` floors it.
             if accumulator is None:
-                return _NORMALIZE + _leaf(table[0], 0)
-            return _leaf(table[0], accumulator)
-        half = len(table) // 2
-        return (
-            pops[level]
-            + _IF_ONE
-            + walk(table[half:], level + 1, 1)
-            + _END_IF
-            + walk(table[:half], level + 1, 0)
-        )
+                pieces.append(_NORMALIZE + _leaf(truth_table[lo], 0))
+            else:
+                pieces.append(_leaf(truth_table[lo], accumulator))
+            return
+        mid = (lo + hi) // 2
+        pieces.append(pops[level] + _IF_ONE)
+        walk(mid, hi, level + 1, 1)
+        pieces.append(_END_IF)
+        walk(lo, mid, level + 1, 0)
 
-    return load + walk(truth_table, 0, None)
+    walk(0, len(truth_table), 0, None)
+    return "".join(pieces)
 
 
 def _ordered(truth_table: str, perm: tuple[int, ...]) -> str | None:

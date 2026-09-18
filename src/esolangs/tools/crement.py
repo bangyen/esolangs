@@ -17,6 +17,7 @@ lines.
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
+    constant_span_test,
 )
 
 __all__ = ["crement"]
@@ -44,12 +45,12 @@ def crement(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     lines: list[str] = []
     tester = [_HEADER_LINES + 2 * i for i in range(n)]
+    constant = constant_span_test(truth_table)  # O(1) a node, so O(2**n) in all
 
     def walk(lo: int, hi: int) -> int | None:
         """Emit the subtree over rows ``lo:hi``; a folded leaf is its gadget."""
-        span = truth_table[lo:hi]
-        if span.count(span[0]) == len(span):
-            return _LOOP if span[0] == "1" else _HALT
+        if constant(lo, hi):
+            return _LOOP if truth_table[lo] == "1" else _HALT
         level = n - (hi - lo).bit_length() + 1
         at = len(lines)
         lines.extend([""] * _NODE_LINES)  # reserve the node's lines

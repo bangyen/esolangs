@@ -5,6 +5,7 @@
 # rest are re-exported so this module stays the import site the package and
 # tests already use.
 
+from collections.abc import Callable
 from itertools import pairwise
 
 from esolangs.tools.clockwise import clockwise as clockwise
@@ -157,13 +158,21 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     def not_bit() -> str:
         return _ONE + "#" + _ONE + "x"  # from [b] leave [1-b]
 
-    def guard(i: int, body: str) -> str:
-        """If bit i is 1, run ``body``; leaves the stack balanced."""
-        return read(i) + "(" + trash + body + _ZERO + ")" + trash
+    # A guard's body is laid down between its two halves, into one flat
+    # piece list rather than a string rebuilt per level.
+    pieces: list[str] = []
 
-    def guard_not(i: int, body: str) -> str:
+    def guard(i: int, body: Callable[[], None]) -> None:
+        """If bit i is 1, run ``body``; leaves the stack balanced."""
+        pieces.append(read(i) + "(" + trash)
+        body()
+        pieces.append(_ZERO + ")" + trash)
+
+    def guard_not(i: int, body: Callable[[], None]) -> None:
         """If bit i is 0, run ``body``; leaves the stack balanced."""
-        return read(i) + not_bit() + "(" + trash + body + _ZERO + ")" + trash
+        pieces.append(read(i) + not_bit() + "(" + trash)
+        body()
+        pieces.append(_ZERO + ")" + trash)
 
     # A table that ignores some of its inputs is a smaller table, and this
     # tree does not fold it away on its own: it prunes only the rows that
@@ -185,12 +194,12 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # A reduced tree tests only ``width`` names, so the ignored inputs take
     # the leftover ones; ``perm`` is a permutation of all ``n`` either way.
     depth_of = {stream: depth for depth, stream in enumerate(perm)}
-    prog = "".join("?" + store(input_vars[depth_of[i]]) for i in range(n))
+    pieces.append("".join("?" + store(input_vars[depth_of[i]]) for i in range(n)))
 
     # Default the result to the majority value so only the minority rows
     # need an override block (combos matching the default are skipped).
     default = "1" if table.count("1") >= table.count("0") else "0"
-    prog += (_ONE if default == "1" else _ZERO) + store(result)
+    pieces.append((_ONE if default == "1" else _ZERO) + store(result))
 
     # One decision tree instead of an independent guard chain per differing
     # combo: rows that share a bit prefix share the guards for that prefix,
@@ -210,25 +219,29 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # like ``[0, 2]`` are exactly where that mismatch shows up.
     slot_var = [input_vars[s] for s in essential]
 
-    def build(rows: list[int], depth: int) -> str:
-        if not rows:
-            return ""
+    # Rows split most-significant-first, so a subtree is a row span, and a
+    # prefix count of the differing rows says in O(1) whether it is pruned:
+    # O(2**n) over the tree.
+    differing = [0]
+    for entry in table:
+        differing.append(differing[-1] + (entry != default))
+
+    def build(lo: int, hi: int, depth: int) -> None:
+        if differing[lo] == differing[hi]:
+            return
         if depth == width:
-            return override(rows[0])  # rows are pruned, so it differs from default
-        bit = width - 1 - depth
-        rows1 = [r for r in rows if (r >> bit) & 1]
-        rows0 = [r for r in rows if not (r >> bit) & 1]
-        sub1 = build(rows1, depth + 1)
-        sub0 = build(rows0, depth + 1)
-        return (guard(slot_var[depth], sub1) if sub1 else "") + (
-            guard_not(slot_var[depth], sub0) if sub0 else ""
-        )
+            pieces.append(override(lo))  # rows are pruned, so it differs from default
+            return
+        mid = (lo + hi) // 2
+        if differing[mid] != differing[hi]:
+            guard(slot_var[depth], lambda: build(mid, hi, depth + 1))
+        if differing[lo] != differing[mid]:
+            guard_not(slot_var[depth], lambda: build(lo, mid, depth + 1))
 
-    differing = [c for c in range(2**width) if table[c] != default]
-    prog += build(differing, 0)
+    build(0, 2**width, 0)
 
-    prog += read(result) + "!"
-    return prog
+    pieces.append(read(result) + "!")
+    return "".join(pieces)
 
 
 def bit_tilde(truth_table: str) -> str:

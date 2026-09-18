@@ -1,6 +1,10 @@
 """Boolean-function generator for EGL."""
 
-from esolangs.tools.helpers import _validate_truth_table, best_input_order
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    best_input_order,
+    constant_span_test,
+)
 
 
 def _egl_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -11,21 +15,28 @@ def _egl_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # At X,N,P = input,1,0, the loop maps 0 -> 0,1,0 and 1 -> 0,0,1.
     reads = "".join("x>+<(>>+<-<-)>>>" for _ in range(n))
 
-    def guard(cell: int, body: str) -> str:
+    # Spans, an O(1) constant test and one flat piece list: O(2**n).
+    constant = constant_span_test(truth_table)
+    pieces = [f"{origin + 1},1:", reads]
+
+    def guard(cell: int, lo: int, hi: int, depth: int) -> None:
         distance = origin - cell
         left, right = "<" * distance, ">" * distance
-        return left + "(-" + right + body + left + ")" + right
+        pieces.append(left + "(-" + right)
+        tree(lo, hi, depth)
+        pieces.append(left + ")" + right)
 
-    def tree(table: str, depth: int) -> str:
-        if table == table[0] * len(table):
-            return "+=-" if table[0] == "1" else "="
-        half = len(table) // 2
+    def tree(lo: int, hi: int, depth: int) -> None:
+        if constant(lo, hi):
+            pieces.append("+=-" if truth_table[lo] == "1" else "=")
+            return
+        mid = (lo + hi) // 2
         cell = 3 * perm[depth]
-        zero = guard(cell + 1, tree(table[:half], depth + 1))
-        one = guard(cell + 2, tree(table[half:], depth + 1))
-        return zero + one
+        guard(cell + 1, lo, mid, depth + 1)
+        guard(cell + 2, mid, hi, depth + 1)
 
-    return f"{origin + 1},1:" + reads + tree(truth_table, 0)
+    tree(0, len(truth_table), 0)
+    return "".join(pieces)
 
 
 def egl(truth_table: str, width: int | None = None) -> str:

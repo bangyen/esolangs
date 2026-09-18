@@ -5,6 +5,7 @@ and the generators take no ``n`` parameter.
 """
 
 from collections.abc import Callable, Iterable, Sequence
+from itertools import repeat
 
 from esolangs.exceptions import TruthTableError
 
@@ -215,15 +216,19 @@ def essential_inputs(truth_table: str, n: int) -> list[int]:
     ignoring some inputs is a smaller table wearing extra ones, which
     :func:`read_at` projects down.  Three generators derived this
     independently before it moved here (checked equal to ``n == 4``).
+    Theta(n * 2**n) = O(T log T): one scan per input, intrinsic to the
+    check; each scan is a C-level slice compare per block.
     """
-    return [
-        i
-        for i in range(n)
-        if any(
-            truth_table[row] != truth_table[row ^ (1 << (n - 1 - i))]
-            for row in range(2**n)
-        )
-    ]
+    return [i for i in range(n) if _depends_on(truth_table, 1 << (n - 1 - i))]
+
+
+def _depends_on(truth_table: str, half: int) -> bool:
+    """Whether some block of ``2 * half`` rows has unequal halves."""
+    block = 2 * half
+    return any(
+        truth_table[lo : lo + half] != truth_table[lo + half : lo + block]
+        for lo in range(0, len(truth_table), block)
+    )
 
 
 def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> str:
@@ -256,16 +261,7 @@ def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
     ``perm``; mixing the frames stores the wrong bits.
     """
     n = _validate_truth_table(truth_table)
-    branching = {
-        k
-        for k in range(n)
-        if any(
-            truth_table[r] != truth_table[r | (1 << (n - 1 - k))]
-            for r in range(2**n)
-            if not r & (1 << (n - 1 - k))
-        )
-    }
-    return {perm[k] for k in branching}
+    return {perm[k] for k in range(n) if _depends_on(truth_table, 1 << (n - 1 - k))}
 
 
 _GREEDY_ORDER_MAX_ARITY = 10
@@ -363,11 +359,11 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     return tuple(order)
 
 
-# The walker only concatenates tokens and measures runs of them, never looks
+# The walker only lays tokens out and measures runs of them, never looks
 # inside one, so a token is whatever the caller finds convenient: a string
 # for most generators, an instruction tuple for S*bleq.
 type Leaf[Token] = Callable[[int, int], list[Token]]
-type Node[Token] = Callable[[int, list[Token], list[Token], int], list[Token]]
+type Node[Token] = Callable[[int, int, int, int], list[Token]]
 
 
 def decision_tree_tokens[Token](
@@ -379,15 +375,17 @@ def decision_tree_tokens[Token](
     start: int = 0,
     collapse: bool = False,
 ) -> list[Token]:
-    """Walk a truth table's decision tree, combining caller-emitted parts.
+    """Walk a truth table's decision tree, laying out caller-emitted parts.
 
     ``leaf(level, row)`` returns a leaf's tokens; ``node(level, zero, one,
-    at)`` combines two finished subtrees, post-order.  ``collapse`` returns
-    a leaf as soon as a subtree's rows agree.  ``at`` is the absolute index
-    the subtree begins at, from ``start`` and ``parent_width`` (a constant
-    or a function of level, as RAM0's address run), which is what lets
-    Bitdeque, RAM0 and S*bleq name a jump target up front instead of
-    backpatching.
+    at)`` returns a node's own ``parent_width`` tokens given its finished
+    subtrees' *lengths*, post-order; they sit ahead of the zero subtree,
+    then the one subtree.  ``collapse`` returns a leaf as soon as a
+    subtree's rows agree.  ``at`` is the absolute index the subtree begins
+    at, from ``start`` and ``parent_width`` (a constant or a function of
+    level, as RAM0's address run), which is what lets Bitdeque, RAM0 and
+    S*bleq name a jump target up front instead of backpatching.  One flat
+    list, a node's slot written in after its subtrees: O(tokens).
 
     Deliberately cannot: act between the children (6-5, Jaune, Interprogck8
     allocate a label there; Polynomial threads a cell value); thread
@@ -403,17 +401,25 @@ def decision_tree_tokens[Token](
     n = _validate_truth_table(truth_table)
     constant = constant_span_test(truth_table)
     width = parent_width if callable(parent_width) else lambda _level: parent_width
+    out: list[Token] = []
 
-    def walk(level: int, lo: int, hi: int, at: int) -> list[Token]:
+    def walk(level: int, lo: int, hi: int, at: int) -> None:
         if level == n or (collapse and constant(lo, hi)):
-            return leaf(level, lo)
+            out.extend(leaf(level, lo))
+            return
         half = (hi - lo) // 2
-        below = at + width(level)
-        zero = walk(level + 1, lo, lo + half, below)
-        one = walk(level + 1, lo + half, hi, below + len(zero))
-        return node(level, zero, one, at)
+        slot = len(out)
+        own = width(level)
+        out.extend(repeat(None, own))  # type: ignore[arg-type]
+        below = at + own
+        walk(level + 1, lo, lo + half, below)
+        zero = len(out) - slot - own
+        walk(level + 1, lo + half, hi, below + zero)
+        one = len(out) - slot - own - zero
+        out[slot : slot + own] = node(level, zero, one, at)
 
-    return walk(0, 0, len(truth_table), start)
+    walk(0, 0, len(truth_table), start)
+    return out
 
 
 def decision_tree_program(truth_table: str, right: str, left: str) -> str:
@@ -472,14 +478,15 @@ def _decision_tree_program(
     # decision tree: node i entered at cell 2i, exits at cell 2i+1
     result = 2 * n
 
+    is_constant = constant_span_test(truth_table)
+
     def constant(i: int, combo: int) -> str | None:
         """Return the shared value of the subtree at ``(i, combo)``, else None.
 
         The subtree's ``2**(n - i)`` rows are contiguous (MSB-first split).
         """
         span = 2 ** (n - i)
-        rows = truth_table[combo : combo + span]
-        return rows[0] if len(set(rows)) == 1 else None
+        return truth_table[combo] if is_constant(combo, combo + span) else None
 
     def branch(i: int, combo: int) -> None:
         """Emit one side of node ``i``: a leaf when constant, else a subtree.
