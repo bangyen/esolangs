@@ -223,6 +223,41 @@ def _one_level_slot_tree(table: str) -> list[str]:
     ]
 
 
+def _staged_two_bit_reader() -> list[str]:
+    """Capture one reader per first-bit arm, then read a second bit.
+
+    The two bodies leave distinct accumulator ranges: body 0 returns 48/49,
+    while body 1 adds ten and returns 58/59.  This is a positive probe for
+    persistent slot state, not a generator route: a third stage would need a
+    fresh capture inside each arm, which the interpreter refuses to nest.
+    """
+    return [
+        "u",
+        *("@dd" for _ in range(4)),
+        *("@nt" for _ in range(8)),
+        "DownAccLines",
+        "@id",
+        "DownAccLines",
+        "x",
+        "<",
+        "u",
+        "@id",
+        ">",
+        "EXE",
+        "div",
+        "DownAccLines",
+        "x",
+        "x",
+        "x",
+        "<",
+        "u",
+        ">",
+        "EXE",
+        "div",
+        *("x" for _ in range(53)),
+    ]
+
+
 class TestPrimitiveSurvey:
     """Round-3's primitive-by-primitive check for a branch past ``acc``.
 
@@ -356,6 +391,16 @@ class TestPrimitiveSurvey:
                 assert machine.io.getvalue() == table[int(bit)], (
                     f"table={table} bit={bit}"
                 )
+
+    def test_staged_slot_carries_one_bit_through_a_second_read(self) -> None:
+        """Two staged captures preserve the first bit across the second read."""
+        program = _staged_two_bit_reader()
+        for first in "01":
+            for second in "01":
+                machine = _Machine(program, ScriptedIO(f"{first}\n{second}\n"))
+                run_until_halt_or_cycle(machine)
+                expected = chr(48 + int(second) + 10 * int(first))
+                assert machine.io.getvalue() == expected, f"row={first}{second}"
 
     def test_the_slot_skips_past_255_lines_uncapped(self) -> None:
         """A captured body of 400 lines is skipped in one step, no relay.
