@@ -218,3 +218,60 @@ class TestWii2dTwoPrefixBeatsShipped:
             io = ScriptedIO()
             run_wii2d(_fill_wii2d(template, bits).splitlines(), io)
             assert io.getvalue() == table[combo], bits
+
+
+def _cheapest_progressive_on_path(domain: int) -> tuple[int, int]:
+    """Return ``(live, cost)`` of the cheapest 3+-merge fold one step in.
+
+    Replays the shipped decoder's own first fold on the LFSR witness, then
+    exhausts scales 0/1 for the cheapest legal next fold merging 3+ values.
+    Cost is the unary spelling ``scale + |centre| + 1``.
+    """
+    pattern = _lfsr(domain)
+    bits = list(pattern)
+    values, _ops = _wii2d_compress(list(range(domain)), bits, "")
+    values = _wii2d_folds(values, bits)[0][4]
+    stepped = _wii2d_points(values, bits)
+    assert stepped is not None  # the shipped winner is legal by construction
+    live = len(stepped)
+    best: int | None = None
+    for scale in (0, 1):
+        scaled = [value * 2 if scale else value for value in values]
+        state = _wii2d_points(scaled, bits)
+        assert state is not None
+        points = sorted(state)
+        zeros = [point for point in points if state[point] == 0]
+        ones = [point for point in points if state[point] == 1]
+        crossing = {zero + one for zero in zeros for one in ones}
+        merging: dict[int, int] = {}
+        for group in (zeros, ones):
+            for index, first in enumerate(group):
+                for second in group[index + 1 :]:
+                    double = first + second
+                    if double % 2 != 0 or double in crossing:
+                        continue
+                    merging[double] = merging.get(double, 0) + 1
+        for double, merges in merging.items():
+            if merges >= 3:
+                cost = scale + abs(double // 2) + 1
+                if best is None or cost < best:
+                    best = cost
+    assert best is not None
+    return live, best
+
+
+class TestWii2dNoPerEpochFloor:
+    """Later epochs go cheap, so the first-fold floor does not lift.
+
+    One shipped step in, a 3+-merge fold costs 7 at live 28 (domain 32) and
+    at live 59 (domain 64) -- far under ``live / 2``. The ratchet is
+    cumulative unary-centre spend, not a per-epoch price: pinning this kills
+    the ``every progressive epoch pays Omega(live)`` induction, which is why
+    the readout bound stays an executed obstruction rather than a proof.
+    """
+
+    @pytest.mark.parametrize(("domain", "live", "cost"), [(32, 28, 7), (64, 59, 7)])
+    def test_a_progressive_fold_costs_single_digits(
+        self, domain: int, live: int, cost: int
+    ) -> None:
+        assert _cheapest_progressive_on_path(domain) == (live, cost)

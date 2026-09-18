@@ -113,7 +113,16 @@ separate axes.
   then halve by the smallest opposite-colour gap) is total and runs a full
   domain-8 grid, but its LFSR domain-16 readout is 1,430,153 cells versus
   the shipped 110; it is not a constant-loss construction
-  (`TestWii2dCanonicalExtremePair`).
+  (`TestWii2dCanonicalExtremePair`). Exact two-prefix minima beat the shipped
+  readout 15–37% on the LFSR witness and sampled dense patterns (80 vs 110
+  at 16, 282 vs 333 at 32, 898 vs 1127 at 64) but need the pair search
+  itself (238/903/4063 prefixes, 40.8 s at 64), and per-entry cost still
+  grows (5.0/8.8/14.0); a named second pick is worse than shipped twice in
+  five (`TestWii2dTwoPrefixBeatsShipped`). No per-epoch floor lifts this
+  into a bound: one shipped step in, a 3+-merge fold costs 7 at live 28
+  (domain 32) and at live 59 (domain 64), so later epochs go cheap and the
+  ratchet is cumulative unary-centre spend, not terminal magnitude
+  (`TestWii2dNoPerEpochFloor`).
 - **%^2^-1:** the shortest 2/3 descent cuts dense fourteen inputs from 1.84 MB
   to 1.59 MB but does not bound relocations. Its size contract only reaches
   n=12 past the route change.
