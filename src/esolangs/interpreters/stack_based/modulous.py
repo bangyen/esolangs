@@ -480,7 +480,7 @@ def run(code: str, io: IO, rng: Randomness | None = None) -> None:
     has always taken one -- it is how the VM makes a stepped run
     reproducible -- but ``run`` did not forward it, so a caller holding
     only ``run`` could not pin the draw without patching ``secrets``
-    globally.  This is the signature COD, WII2D and LaserFuck take.
+    globally.  This is the signature COD and LaserFuck take.
     """
     state = _Machine(code, io, rng)
 

@@ -235,7 +235,7 @@ STEPS = [
     # The contract exceptions.py states, executed: no interpreter may leak a
     # raw Python error to its caller.  Bare, it checks only the languages
     # this branch touched, which is why it is affordable here; CI runs
-    # --all (63 languages, 68s).
+    # --all (60 languages, 68s).
     (
         "exception leaks",
         [*PY, "scripts/verify_no_exception_leaks.py"],

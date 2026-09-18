@@ -34,33 +34,15 @@ its selection cost counts; named candidates are capped at four and the generic
 greedy scorer stops at n=10. Generator constructions may not use BFS or DFS;
 test-only oracles may.
 
-`%^2^-1` cannot compute every table as a template: its accumulator has 6,263
-classes between placeholders, while the dense 17-input fixture exceeds that
-at every 13-input cut ([proofs](proofs.md)). The shipped planner builds every
-table tried through fourteen inputs (dense: 1.59 MB in about 10 s) and refuses
-the dense fifteen-input fixture: its 11-cut has 2,017 cofactors among 2,048
-rows and the fold's landing window jams. This is a planner wall, not a language
-lower bound; the language has an unimplemented reset move and its
-transformation monoid remains the finite question.
-
 The screen script measures permuted-table builds, not an admissible reorder
-under a fixed input template and fill mapping. Interprogck8, Dig, Flowchart,
+under a fixed input template and fill mapping. Dig, Flowchart,
 BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
 its fixed stack order. No instruction-only wire is derived for 123, Minifuck,
-WII2D, or COD. ArrowQueue re-enqueue remains open.
+or COD. ArrowQueue re-enqueue remains open.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
 | Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. |
-| WII2D | 9 | 10 | Dense n=10 exceeds the admitted 256-domain cost policy. |
-
-WII2D n=9 is partial: 54 of 64 sampled dense tables build; the magnitude guard
-is load-bearing. A total extremal-fold decode reaches domain 512 but is refused
-on cost (the four refusing dense n=9 cases cost 0.8–1.6 MB). It is not a
-drop-in replacement: under shipped caps it refuses from n=7 and is 3x size at
-n=6. The open issue is a constant-factor readout rule, not whether folding is
-necessary: no instruction reads a value into control, so the fold is the only
-branching primitive.
 
 Polynomial's mandatory root product has minimum mass at the product itself;
 the slack certificate proves `Theta(L**2 log L) = Theta(T**2 / log T)` digits
@@ -95,56 +77,10 @@ separate axes.
   ``<``/``_`` distinguish only zero from nonzero. Executed probes for
   ``2**k`` versus ``2**k + 1`` stay control-equivalent for a ``k``-cell probe;
   the first probe that distinguishes them spends ``2**k`` decrements.
-- **Interprogck8:** a depth-d read costs `3 + 2 floor(d / 14)` lines. The
-  constant-width gadget costs about 8x per node; transfers wrap modulo 256,
-  and function capture cannot nest.
-- **WII2D:** one-step centre rules, scalar keys, added merge-free vocabulary,
-  and bounded-beam lookahead do not match the shipped depth predictor. The
-  total extremal-fold fallback was also executed: on the 5-bit maximal-LFSR
-  sequence it emits 29, 88, and 8,978,977 op cells at domains 8, 16, and 32
-  while reproducing every bit (the proof oracle is
-  `tests/proofs/test_negatives.py::TestWii2dExtremalRule`). Exact small
-  optima cost 1.4–2.4 characters per entry; these are readout-model
-  obstructions, not a language bound. `@` does not add prefix state under
-  exactly-once embedding: an executed two-route geometry reaches the shared
-  second input with different headings, but that cell resets both routes to
-  the same position and heading (`TestWii2dAtCannotPreservePrefixState`).
-  A deterministic two-ply rule (scale, fold the canonical extreme pair,
-  then halve by the smallest opposite-colour gap) is total and runs a full
-  domain-8 grid, but its LFSR domain-16 readout is 1,430,153 cells versus
-  the shipped 110; it is not a constant-loss construction
-  (`TestWii2dCanonicalExtremePair`). Exact two-prefix minima beat the shipped
-  readout 15–37% on the LFSR witness and sampled dense patterns (80 vs 110
-  at 16, 282 vs 333 at 32, 898 vs 1127 at 64) but need the pair search
-  itself (238/903/4063 prefixes, 40.8 s at 64), and per-entry cost still
-  grows (5.0/8.8/14.0); a named second pick is worse than shipped twice in
-  five (`TestWii2dTwoPrefixBeatsShipped`). No per-epoch floor lifts this
-  into a bound: one shipped step in, a 3+-merge fold costs 7 at live 28
-  (domain 32) and at live 59 (domain 64), so later epochs go cheap and the
-   ratchet is cumulative unary-centre spend, not terminal magnitude
-   (`TestWii2dNoPerEpochFloor`). A loop-less max-pair first fold plus shipped
-   tail recovers nothing at domain 16 (110/29/63/63/128 vs shipped
-   110/30/63/63/115, LFSR-16 30 over the 80-pair optimum)
-   (`TestWii2dFragRankerFailsLikeTwoPly`). A four-scorer by two-tie-break
-   loop-less step-1 sweep gains one cell at best (29/110/333/63/63 vs
-   shipped 30/110/333/63/63) and the ratio scorer blows domain 32 to 467;
-   a local one-step lookahead over the top-3 fires yet gives 115 on
-   LFSR-16, 35 over the optimum (`TestWii2dRankerSweep`). Broadening to
-   twelve random witnesses falsifies the uniform miss without saving any
-   rule: merge wins one D=16 draw by 47 yet loses a D=32 draw by 261, ratio
-   wins another D=32 draw by 208 yet loses a third by 321, and at D=48 both
-   more than double the LFSR readout (1093 vs 502), growing to +147% at
-   D=80 (3817 vs 1545), while both stay near shipped on D=64/72 random
-   draws (`TestWii2dR7PatternBroadening`).
-- **%^2^-1:** the shortest 2/3 descent cuts dense fourteen inputs from 1.84 MB
-  to 1.59 MB but does not bound relocations. Its size contract only reaches
-  n=12 past the route change; measured past it, dense size grows x3.13 and
-  x5.69 per added input at thirteen and fourteen and the rules' moves x4.5 and
-  x12.3, so the shipped plan is not O(T) (`TestPctSuperLinearScaling`).
 
 ## Curation
 
-The collection has 63 languages; its floor is 34. Ordinary imperative entries
+The collection has 60 languages; its floor is 31. Ordinary imperative entries
 with shared-shim generators and no consumer were removed. Nopstacle and
 ZTOALC L left on 2026-09-17: the former cannot meet embed conventions, the
 latter was a searched syntax-level lookup table. The 2D candidate screen is

@@ -149,7 +149,7 @@ def runs(text: str, char: str, setters: Setters) -> list[tuple[int, int]]:
     """Return the ``[start, end)`` of each input's run in ``text``.
 
     Runs are consumed left to right in setter widths, and every ``char``
-    must belong to one; a width-zero setter (%^2^-1's ignored input) has
+    must belong to one; a width-zero setter (an ignored input) has
     an empty run where the previous ended.
     """
     widths = [len(zero) for zero, _one in setters]
@@ -387,11 +387,11 @@ def decision_tree_tokens[Token](
     S*bleq name a jump target up front instead of backpatching.  One flat
     list, a node's slot written in after its subtrees: O(tokens).
 
-    Deliberately cannot: act between the children (6-5, Jaune, Interprogck8
-    allocate a label there; Polynomial threads a cell value); thread
+    Deliberately cannot: act between the children (6-5, Jaune allocate a
+    label there; Polynomial threads a cell value); thread
     anything *down* (CV(N)(C)'s accumulator, Jaune's held bit, Circlefuck's
-    pointer); lay the one subtree first (Between, CV(N)(C), Unsquare,
-    Interprogck8); split other than MSB-first (Modulous, Unsquare); build a
+    pointer); lay the one subtree first (Between, CV(N)(C), Unsquare); split
+    other than MSB-first (Modulous, Unsquare); build a
     positional heap (Eval, Forth pin children at ``2i+1``/``2i+2``); skip a
     child (AddSubJump, Jaune descend into one half -- 24 of 256 tables came
     out longer at ``n == 3``); Lamfunc's plain string; the grid generators'

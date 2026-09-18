@@ -126,9 +126,7 @@ def _reads(entry: tuple, table: str) -> int:
         # A generator that does not cover this table emits no program, and a
         # program that does not exist reads nothing.  Reporting 0 routes the
         # caller into its "does not read input" skip rather than failing on a
-        # coverage gap, which is not what this test measures.  %^2^-1 is the
-        # case in hand: it derives two-input tables only, and the sweep's
-        # parity table has three.
+        # coverage gap, which is not what this test measures.
         return 0
     io = ScriptedIO("0\n" * 8)
     source = program.splitlines() if lang.split else program
@@ -500,8 +498,8 @@ _MINTERM_SHAPED = {
     "bfstack",
 }
 
-# Neither model describes these.  ``wii2d`` is a route search over a grid,
-# not a sum and not a tree.
+# Neither model describes these.  ``minifuck`` is a route search over a
+# grid, not a sum and not a tree.
 #
 # ``b_tapemark`` is a tree, but a deliberately *unfolded* one, so the
 # folding discriminator does not apply: its nodes read the input, and
@@ -510,19 +508,10 @@ _MINTERM_SHAPED = {
 # chain into a flat leaf table -- every table of one arity renders to the
 # same length, so a 0% fold is its construction working.
 #
-# ``minifuck`` is a search too, and of the same kind as ``wii2d``: it emits
+# ``minifuck`` is a search too: it emits
 # whatever code it can *see* produce the table's column, so the program has
 # no per-row structure to fold and its size tracks the search rather than the
 # table's shape.
-#
-# ``pct_squared_minus_one`` emits no tree at all.  %^2^-1's only branch is
-# ``t``, which jumps to position 0 and nowhere else, so the generator
-# computes the answer *arithmetically* -- every input the one pair ``s``/
-# ``i``, weighted by doublings, then a fold of relocations through the
-# reset -- rather than routing rows to leaves.  Its size tracks the runs
-# of the table on its ladder and the plan those runs get, not the table's
-# shape, so the folding discriminator has nothing to measure: a one-input
-# table is a dozen characters and parity at three inputs twelve thousand.
 #
 # ``one_two_three`` emits no tree either, and for a related reason: 123's
 # answer is whether the program halts, and what decides that is the pointer
@@ -577,10 +566,8 @@ _UNSHAPED = {
     "alight",
     "minsky_swap",
     "b_tapemark",
-    "wii2d",
     "minifuck",
     "one_two_three",
-    "pct_squared_minus_one",
     "slow_acv_mammalian",
     "container",
 }
@@ -740,17 +727,14 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 
 
 # Every boolean generator builds a table at n <= _MAX_ARITY.  Ten inputs:
-# the whole registry was swept at n=1..10 on both shapes, and exactly one
-# generator falls short -- WII2D, dense only, recorded below.  Every other
-# one of the 65 builds both shapes at n=10.
+# the whole registry was swept at n=1..10 on both shapes.
 #
 # Ten is here because it was made affordable, not because the cost was
 # waved through.  This sweep stopped at five for a long time, then briefly
-# at eight: n<=10 cost 141s of CPU, and n=9 alone was 53s of it.  Five
+# at eight: n<=10 cost 141s of CPU, and n=9 alone was 53s of it.  Three
 # generators were then measured and rewritten:
 #
-#     minifuck        42.8s -> 8.6s     interprogck8    14.7s -> 3.5s
-#     polynomial      28.4s -> 5.5s     wii2d            7.2s -> 1.3s
+#     minifuck        42.8s -> 8.6s     polynomial      28.4s -> 5.5s
 #     one_two_three   17.8s -> 3.7s
 #
 # plus a generic pass on input ordering.  Exhaustive ordering was later
@@ -773,7 +757,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # time, is what keeps the band split:
 # n <= _QUICK_ARITY runs in the default gate and the rest is marked slow.
 # Both bands assert the same thing; splitting them keeps the fast gate at
-# the 65 items and ~3s it had when this swept to five.
+# the 60 items and ~3s it had when this swept to five.
 _MAX_ARITY = 10
 _QUICK_ARITY = 5
 
@@ -786,46 +770,25 @@ _ARITY_BANDS = (
     ),
 )
 
-# The generators that do not reach _MAX_ARITY, keyed by ``(name, shape)``
-# because a cap can bind on one table shape and not the other.  WII2D is
-# exactly that: a per-name cap of 9 would demand its parity n=10 refuse,
-# which it does not -- that shape builds in 350 characters.
-#
-#   wii2d refuses n=10 dense because the decode spans 512 index points past
-#   the ``_WII2D_MAX_INDEX_DOMAIN = 256`` cost guard.  Unlike the two caps
-#   below, raising the constant does *not* buy the table: at domain 512 the
-#   decode ratchets -- live count crawls 512 -> 475 over 19 steps while the
-#   bit length doubles every step, reaching 1.09M bits, the 19th step alone
-#   144s -- and refuses on the magnitude bound instead.  It is a wall of the
-#   exactly-once embed convention; ``the limitations ledger`` carries the curve.
-#
-# Two generators that used to be here are gone, and both of those refusals
-# were the *construction's* limit rather than the language's:
-#
-#   interprogck8 capped at n=3 because one ``DownAccLines`` reaches 255
-#   lines and the n=4 bit-0 crossing spans 452.  Long hops now ride an
-#   express through one-line rungs parked in meadows.
-#
-#   factor capped at n=3 on CPython's 4300-digit ``int``-render guard, then
-#   at n=6 on the 16000-digit budget that replaced it.  Both are size
-#   policies rather than anything Factor says.
-#
-# An entry needs the measurement that put it there and the phrase its own
-# refusal is built around -- asserting only that something refused would
-# accept a generator that had started failing for an unrelated reason,
-# since an encoding bug reads exactly like a cap from the outside.
-_ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {
-    ("wii2d", "dense"): (9, "cost guard; below the bound this is a size/time"),
-}
+# No generator falls short of _MAX_ARITY on either shape any more.  The
+# caps that used to bind below it were constructions' limits:
+# interprogck8's ``DownAccLines`` reach (a long hop needed an express
+# through one-line rungs parked in meadows) left with its language, and
+# factor's digit budget (a size policy rather than anything Factor says)
+# was retired.  If a generator stops building at some arity,
+# ``test_every_generator_builds_up_to_ten_inputs`` fails and the
+# measurement that put the cap here belongs back in this table, with the
+# phrase its own refusal is built around.
+_ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {}
 
 
 # The two table shapes every generator is built against.  A dense
-# pseudo-random table and parity fail *differently*: WII2D reaches n=10 on
-# parity but stops at n=9 dense, factor's retired digit budget ran out a
-# rung earlier on parity than on dense, and Polynomial's 1934-instruction cap
-# refuses dense n=11 (2910) while parity fits far past it.  A single-shape
-# sweep reports the wrong ceiling for all three, which is why both shapes
-# are built at every arity and why the cap table is keyed by shape.
+# pseudo-random table and parity fail *differently*: factor's retired digit
+# budget ran out a rung earlier on parity than on dense, and Polynomial's
+# 1934-instruction cap refuses dense n=11 (2910) while parity fits far past
+# it.  A single-shape sweep reports the wrong ceiling for all three, which
+# is why both shapes are built at every arity and why the cap table is
+# keyed by shape.
 def _dense(n: int) -> str:
     """A deterministic dense pseudo-random table -- the worst case to fold."""
     digest = hashlib.sha256(f"dense:{n}".encode()).digest()
@@ -876,32 +839,6 @@ def test_every_generator_builds_up_to_ten_inputs(name: str, arities: range) -> N
                     fn(table)
 
 
-@pytest.mark.slow
-def test_arity_caps_are_still_caps() -> None:
-    """A capped generator that grew past its cap must leave ``_ARITY_CAPPED``.
-
-    The table above is a record of measurements, so it goes stale in the
-    direction that matters: a generator whose construction is extended
-    keeps its entry and this suite keeps asserting the *old* refusal, which
-    turns a fixed limitation into a permanently pinned one.  Asserting the
-    cap is still binding is what makes the entry falsifiable.
-
-    A cap below :data:`_MAX_ARITY` is only a cap if it is also the *last*
-    arity that builds, so both ends are checked on the shape the entry is
-    keyed to -- an entry whose cap drifted low would otherwise pass here
-    while hiding coverage the generator still has.
-    """
-    makers = dict(_SHAPES)
-    for (name, shape), (cap, pattern) in sorted(_ARITY_CAPPED.items()):
-        fn = getattr(boolean, name)
-        make = makers[shape]
-        assert str(fn(make(cap))), (
-            f"{name} no longer builds at its cap n={cap} ({shape})"
-        )
-        with pytest.raises(ValueError, match=re.escape(pattern)):
-            fn(make(cap + 1))
-
-
 # Every table of arity one, two and three: 4 + 16 + 256 = 276 of them.  The
 # sweep above sees two tables per arity, so a generator that refuses some
 # *third* shape -- an all-but-one-row table, a table whose fold leaves one
@@ -913,9 +850,6 @@ def test_arity_caps_are_still_caps() -> None:
 # entries.  A structural argument says a generator returns on every table of
 # every arity; this checks the whole domain at the arities where "whole" is
 # reachable, which is what stops the argument from resting on its own prose.
-#
-# 4.3s serial across all 65, no generator over 1.8s -- pct-squared-minus-one
-# is the top at 1.71s, and the other 64 are under 0.6s each.
 _EXHAUSTIVE_ARITY = 3
 
 
@@ -978,7 +912,7 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
 # test and a nightly job.
 #
 # n=6 is the floor that would have caught the bug and is affordable for all
-# 65: 13.4s of work in total, no language over 4.3s, and none excluded.
+# 60: 13.4s of work in total, no language over 4.3s, and none excluded.
 # Restoring the old key alphabet makes this fail, which is the only
 # evidence that the arity is high enough.
 # There is deliberately no exclusion table here -- an empty one is the
@@ -1008,7 +942,7 @@ def _one_hot(n: int) -> str:
     every one of the 65536 tables at n <= 4 and collides on 35% of random
     tables at n=7 -- so a second *shape* buys what a seventh input does not.
 
-    It costs 30.5s of work across the 65, against 13.4s for one minterm.  A
+    It costs 30.5s of work across the 60, against 13.4s for one minterm.  A
     third shape was measured and dropped: a 2-CNF at n=6 costs 67.2s, 37s of
     it Circuit Diagram alone, and caught nothing this does not.
     """
@@ -1072,8 +1006,7 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
 # The roadmap's original scaling queue.  A row leaves ``_OPEN_SCALING`` only
 # after an O(T) construction or a language-wide lower bound; it enters when
 # the construction is read super-linear, whatever the twelve doublings
-# measure (Interprogck8's depth-widening read is ``Theta(T log T)`` at
-# x1.96 measured).  Streetcode left 2026-09-18: its per-level hall was the
+# measure.  Streetcode left 2026-09-18: its per-level hall was the
 # ``Theta(T log T)`` source and the alternating-axis H-tree replaced it.
 _LINEAR_SCALING = {
     "a_painter_ant",
@@ -1102,29 +1035,19 @@ _LINEAR_SCALING = {
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
     "cod",
-    "interprogck8",
-    "pct_squared_minus_one",
     "polynomial",
-    "wii2d",
 }
 
 
 def test_remaining_scaling_audit_is_exhaustive() -> None:
-    """Every generator in the scaling audit remains classified.
-
-    The roadmap's original queue plus whatever the registry-wide contract has
-    since added to the audit -- Interprogck8 is the first, measured
-    super-linear while sitting outside the queue entirely.
-    """
+    """Every generator in the scaling audit remains classified."""
     expected = {
         "a_painter_ant",
         "one_two_three",
-        "pct_squared_minus_one",
         "circuit_diagram",
         "cod",
         "minifuck",
         "factor",
-        "interprogck8",
         "polynomial",
         "addsubjump",
         "arrowqueue",
@@ -1144,7 +1067,6 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "slow_acv_mammalian",
         "streetcode",
         "vandevelo",
-        "wii2d",
     }
     classified = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
     assert classified == expected

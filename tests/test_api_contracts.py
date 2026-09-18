@@ -235,7 +235,7 @@ class TestDescribe:
         assert missing == []
 
     def test_width_aware_names_the_generators_that_lay_themselves_out(self) -> None:
-        """It answered False for all 65: it takes a generator, not a name.
+        """It answered False for all 60: it takes a generator, not a name.
 
         Derived rather than listed.  It was two names, then twelve, and
         every generator that learns to lay itself out adds another -- a
@@ -463,7 +463,7 @@ class TestDescribeHasANameableType:
         assert declared == set(esolangs.describe("brainfuck"))
 
     def test_every_language_matches_the_declared_types(self) -> None:
-        """Declared from a survey of all 65, so it is checked against all 65.
+        """Declared from a survey of all 60, so it is checked against all 60.
 
         A TypedDict is not enforced at runtime, so nothing but this notices
         a language whose field is a different shape.
@@ -507,7 +507,7 @@ class TestDescribeHasANameableType:
 class TestSpecAbortsRatherThanReturningNothing:
     """``-OO`` strips docstrings, and ``spec`` read one.
 
-    So it returned ``""`` for all 65 languages -- a silent wrong answer
+    So it returned ``""`` for all 60 languages -- a silent wrong answer
     from the function whose whole promise is that it cannot go stale.
     """
 
@@ -635,7 +635,7 @@ class TestAMistypedPathIsNotRunAsAProgram:
             assert not ("\n" not in text and text.endswith(".txt")), path.name
 
     def test_no_generated_program_looks_like_one_either(self) -> None:
-        """All 65, three tables each, since a generator could drift into it."""
+        """All 60, three tables each, since a generator could drift into it."""
         for name in esolangs.list_languages():
             for table in ("01", "0110", "10010110"):
                 program = esolangs.generate(name, table)
@@ -813,7 +813,7 @@ class TestTheVmPathRefusesLikeRunDoes:
             getattr(esolangs, entry)("brainfuck", "]")
 
     def test_no_language_leaks_anything_else(self) -> None:
-        """All 65 against six kinds of junk, both entry points.
+        """All 60 against six kinds of junk, both entry points.
 
         Swept rather than sampled because the leak was *per interpreter* --
         every one that validates its program text had it, and which those

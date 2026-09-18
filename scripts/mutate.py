@@ -363,8 +363,8 @@ def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
         # they test the installed package instead of the bundle: no mutant is
         # visible, so mutmut's forced-fail check aborts the run before a
         # single one is scored.  The quoted module path is rewritten rather
-        # than the call, because the call is not always on one line -- the
-        # %^2^-1 suite splits it across three.
+        # than the call, because the call is not always on one line -- a
+        # suite can split it across three.
         src = re.sub(
             rf"""(['"])esolangs\.interpreters\.{re.escape(module)}\1""",
             rf"\g<1>{stem}\g<1>",

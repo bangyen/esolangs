@@ -8,7 +8,7 @@ existed only in this test suite, so a reader outside it got a confident
 wrong answer -- and each fix moved one more fact into the package.
 
 The verifier below is the measure of that.  It knows no language names, no
-alphabets, no dump layouts, no halting conventions.  It reached 63 of 65
+alphabets, no dump layouts, no halting conventions.  It reached 58 of 60
 when ``answer_mode`` said only *that* a language dumps its state; the last
 two needed ``read_answer`` to say *where* in the dump the answer sits.
 """
@@ -70,7 +70,7 @@ def _verify(name: str, table: str) -> str:
 @pytest.mark.slow
 @pytest.mark.parametrize("table", _TABLES)
 def test_every_language_verifies_with_no_per_language_knowledge(table: str) -> None:
-    """All 65, driven only by what the API reports about each."""
+    """All 60, driven only by what the API reports about each."""
     wrong = {}
     for name in esolangs.list_languages():
         got = _verify(name, table)

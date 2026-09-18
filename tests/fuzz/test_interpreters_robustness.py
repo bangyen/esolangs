@@ -179,12 +179,6 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.stack_based.unsquare import _Machine
 
         return _Machine("", io)
-    if module == "esolangs.interpreters.register_based.pct_squared_minus_one":
-        from esolangs.interpreters.register_based.pct_squared_minus_one import (
-            _Machine,
-        )
-
-        return _Machine("", io)
     if module == "esolangs.interpreters.tape_based.suffolk":
         from esolangs.interpreters.tape_based.suffolk import _Machine
 
@@ -270,7 +264,6 @@ _STEP_MACHINES = {
     "esolangs.interpreters.register_based.minsky_swap",
     "esolangs.interpreters.tape_based.home_row",
     "esolangs.interpreters.stack_based.unsquare",
-    "esolangs.interpreters.register_based.pct_squared_minus_one",
     "esolangs.interpreters.tape_based.suffolk",
     "esolangs.interpreters.other.container",
     "esolangs.interpreters.stack_based.bf_pda",

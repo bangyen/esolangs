@@ -9,7 +9,6 @@ from esolangs.tools.cvnc import cvnc
 from esolangs.tools.egl import egl
 from esolangs.tools.fargo import fargo
 from esolangs.tools.inject import inject
-from esolangs.tools.interprogck8 import interprogck8
 from esolangs.tools.other import (
     bit_tilde,
     clockwise,
@@ -36,9 +35,7 @@ from esolangs.tools.parameterized import (
     minsky_swap,
     nocomment,
     one_two_three,
-    pct_squared_minus_one,
     ram0,
-    wii2d,
 )
 from esolangs.tools.register import (
     addsubjump,
@@ -110,7 +107,6 @@ __all__ = [
     "grapheme",
     "home_row",
     "inject",
-    "interprogck8",
     "jaune",
     "laserfuck",
     "minifuck",
@@ -120,7 +116,6 @@ __all__ = [
     "one_two_three",
     "packlang",
     "painfuck",
-    "pct_squared_minus_one",
     "polynomial",
     "qoibl",
     "ram0",
@@ -137,7 +132,6 @@ __all__ = [
     "three_x",
     "unsquare",
     "vandevelo",
-    "wii2d",
 ]
 
 

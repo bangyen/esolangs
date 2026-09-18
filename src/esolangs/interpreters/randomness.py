@@ -1,6 +1,6 @@
 """Shared randomness hook for the interpreters that need one.
 
-WII2D's ``?``, Painfuck's ``y``, Modulous's ``RND``, COD's junction and
+Painfuck's ``y``, Modulous's ``RND``, COD's junction and
 LaserFuck's splitter draw at random; a bare ``secrets`` call makes the
 public API non-deterministic and breaks the cycle detector's premise.
 ``None`` keeps the spec's real draw; a caller needing reproducibility
