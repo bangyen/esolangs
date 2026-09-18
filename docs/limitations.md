@@ -86,6 +86,11 @@ separate axes.
 
 - **COD:** tested routing has no compact two-exit zero test. Joins leak a copy
   and a kill is required per zero-set per copy; this is not a lower bound.
+  Scoped to disjoint routed-cascade arms, the reason is exact: a residual
+  ``r`` reaches ``<`` only after at least ``r`` net ``(`` cells, so selecting
+  index ``T - 1`` prices ``sum(range(T)) = T(T - 1)/2`` cells. Shared lanes
+  are outside that lemma; the executed shared-column attempt re-enters its
+  ``+`` and doubles live cods.
 - **Interprogck8:** a depth-d read costs `3 + 2 floor(d / 14)` lines. The
   constant-width gadget costs about 8x per node; transfers wrap modulo 256,
   and function capture cannot nest.
