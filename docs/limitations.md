@@ -405,7 +405,19 @@ epoch on, and on the shipped decodes the forced centre is a median 2%
 of `M` against the 30--60% paid.  What it does price is epoch two:
 `|c_2| >= D**2 / (42 m (m+4)) - 2 sqrt(M_2)` unless that epoch
 ratchets, and a program may ratchet there and un-ratchet later, where
-nothing is forced.  Incompressibility (Li--Vitanyi
+nothing is forced.  Un-ratcheting was priced last: on the shipped
+decodes every ratchet run (68 runs, all of one or two epochs, at most
+ten non-ratcheting epochs between runs) ends with a centre of at
+least 2.8 `sqrt(M_start)` (6.7 with `M_start >= 64`), but the exact
+optima end 14 of their 15 runs with `live >= m + 3` and `M >= 16` at
+a centre of zero: `01011100` under `-s-/s-///////s-//s` ratchets 7 ->
+17 and then halves seven times about the origin, merging three of
+seven, so no `sqrt(M_start) / (c m)` price holds.  The origin is a
+free hole after any epoch (above), and a free un-ratchet after `k`
+free squarings needs only the pre-run set to hold at most m+2 points
+within about `sqrt(M)` of it, which the optima have at their size;
+the lemma refuses it only once `D > 4 (m+2)**2`, past every exact
+optimum.  Incompressibility (Li--Vitanyi
 ch. 6) supplies the frame and nothing model-specific;
 Mansour--Schieber--Tiwari floor bounds, 1D map folding (crimps and end
 folds count folds, not unary creases), addition-chain bounds (one
