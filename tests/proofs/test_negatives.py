@@ -799,7 +799,8 @@ class TestThreeRootHypothesisAtTheBoundary:
     ``c = 3`` designated roots -- rows ``{n-d, n-1, n}`` against ``{n-1, n,
     n+1}``, every column set, ``psi_d = h_{d-2}(1/rho) / prod rho`` -- an
     equality in the interior, measured at the truncation boundary, and
-    the one statement gap (b) still needs for ``c >= 3``."""
+    the one statement gap (b) still needs for ``c >= 3`` -- of the sharp
+    form only; the slack certificate forms no truncated Toeplitz minor."""
 
     @pytest.mark.parametrize(
         ("small", "rho"), [((), (2, 3, 5)), ((2,), (3, 5, 7)), ((2, 3), (5, 7, 11))]
@@ -867,8 +868,9 @@ class TestEachLeadingZeroBuysOneRoot:
     exponential sum on ``c`` roots with ``c - 1`` prescribed zeros, of which
     the first ``f`` are at distances ``1..f``, the tail is at most
     ``1 / prod (rho - 1)`` over the ``f + 1`` largest roots, with equality
-    when every zero is a leading one.  The one lemma the language bound
-    still needs; measured here, exhaustively on small zero sets."""
+    when every zero is a leading one.  Proved there; the proof's own links
+    are pinned by :class:`TestLeadingZeroTheoremProof`, and this is the
+    statement they assemble to, checked exhaustively on small zero sets."""
 
     @pytest.mark.parametrize("rho", [(5, 7, 11), (3, 5, 7, 11), (7, 11, 13, 17)])
     def test_measured(self, rho: tuple[int, ...]) -> None:
@@ -912,7 +914,9 @@ class TestOneDisplacedZeroIsProved:
     leading-zero certificate on the ``c - 1`` largest roots, ``G`` the
     ``c``-root sum vanishing at ``0..c-2``), ``u_d = sigma P (h'_d - r_z h_d)``,
     and ``tail <= prod`` over the ``c - 1`` largest roots follows from
-    ``y_c <= 1/2``.  The identity and the inequality, exactly."""
+    ``y_c <= 1/2``.  The identity and the inequality, exactly.  This is the
+    ``k = 1``, all-leading-``Z'`` case of the theorem, where the peel's
+    ``Delta`` vanishes identically and (C) is an identity."""
 
     @pytest.mark.parametrize(
         "rho", [(5, 7, 11), (3, 5, 7, 11), (2, 3, 5, 7), (5, 7, 11, 13, 17)]
@@ -955,13 +959,16 @@ def _exp_sum(y: list[Fraction], zeros: tuple[int, ...], unit_at: int | None):
 
 
 class TestTriangleSlackIsBounded:
-    """``docs/polynomial.md`` ("The slack, spent"): ``u = F + lambda G`` with
+    """``docs/polynomial.md`` ("What the earlier rounds leave behind"): the
+    lossy induction the peel superseded.  ``u = F + lambda G`` with
     ``F`` on the ``c - 1`` largest roots carrying all zeros but the last
     displaced one and ``G`` the ``c``-root sum vanishing at ``0`` and those;
     the triangle term ``|lambda| tail(G)`` is at most ``0.7 bound(f)`` (0.53,
     0.58, 0.61, 0.64 at ``c = 3..6``), worst with one displaced zero just
     past the fill, and ``|F_d / G_d|`` decreases past the last prescribed
-    zero.  Measured; the two sub-lemmas the lossy proof needs."""
+    zero.  Kept as the record of the route: step 3's identity is exact where
+    this triangle inequality was lossy, so the two sub-lemmas it needed are
+    no longer a dependency of the bound."""
 
     @pytest.mark.parametrize(
         "count",
@@ -1007,10 +1014,13 @@ class TestTriangleSlackIsBounded:
 
 
 class TestConvolutionRelationIsOneDisplacedOnly:
-    """``docs/polynomial.md`` ("Two resumption points"): ``G`` is a convolution
-    of ``F`` only when the zeros are one consecutive run (``k = 1``); with a
-    second displaced zero the ratio ``G_d / (F * geo)_d`` is not constant.
-    ``|F|`` is log-concave past its last prescribed zero either way."""
+    """``docs/polynomial.md`` ("What the earlier rounds leave behind"): ``G``
+    is a convolution of ``F`` only when the zeros are one consecutive run
+    (``k = 1``); with a second displaced zero the ratio ``G_d / (F * geo)_d``
+    is not constant.  That is step 5's ``p = 0`` dichotomy: the convolution
+    is the identity case, and (C) is the inequality that replaces it
+    everywhere else.  ``|F|`` is log-concave past its last prescribed zero
+    either way."""
 
     def test_k1_relation_and_its_failure_at_k2(self) -> None:
         y = sorted(Fraction(1, p) for p in (3, 5, 7, 11))
@@ -1039,8 +1049,9 @@ class TestConvolutionRelationIsOneDisplacedOnly:
 
 
 class TestPointADecomposition:
-    """``docs/polynomial.md`` ("The decomposition, and the one product it does
-    not split"): ``E_d = G_d - y_c G_{d-1}`` is a ``(c-1)``-root sum vanishing
+    """``docs/polynomial.md`` ("What the earlier rounds leave behind"): the
+    Lagrange-basis decomposition the peel superseded, whose ``B``-pieces
+    would not split.  ``E_d = G_d - y_c G_{d-1}`` is a ``(c-1)``-root sum vanishing
     on the leading zeros with ``E_{z_j} = -y_c G_{z_j - 1}``, it equals
     ``mu F + sum_j E_{z_j} B_j`` on the Lagrange basis exactly, and ``G_d =
     sum_{i<d} y_c^i E_{d-i}`` recovers ``G``.  The triangle sum over these
@@ -1105,3 +1116,144 @@ class TestPointADecomposition:
             )
             worst = max(worst, total / bound)
         assert worst < Fraction(1, 2)
+
+
+# --------------------------------------------------------------------------
+# The leading-zero theorem, link by link
+# --------------------------------------------------------------------------
+#
+# ``docs/polynomial.md`` ("The slack certificate") proves the lemma the whole
+# language bound rests on, by peeling one root and one zero at a time.  The
+# five steps are an identity, an equivalence, two inequalities and a zero
+# count; each is exact, so each is pinned rather than measured.  A failure
+# here is not a stale number -- it is the bound.
+
+
+def _val(a: list[Fraction], y: list[Fraction], d: int) -> Fraction:
+    """``v_d = sum_i a_i y_i**d``."""
+    return sum(ai * v**d for ai, v in zip(a, y, strict=True))
+
+
+def _from(a: list[Fraction], y: list[Fraction], m: int) -> Fraction:
+    """``sum_{d >= m} v_d``, in closed form."""
+    return sum(ai * v**m / (1 - v) for ai, v in zip(a, y, strict=True))
+
+
+def _abs_tail(a: list[Fraction], y: list[Fraction], zeros: tuple[int, ...]) -> Fraction:
+    """``sum_{d >= 1} |v_d|``: term by term to the last zero, then the
+    one-signed remainder in closed form (step 0: a ``c``-term sum has no zero
+    past the last prescribed one)."""
+    top = max(zeros, default=0)
+    return sum(abs(_val(a, y, d)) for d in range(1, top + 1)) + abs(
+        _from(a, y, top + 1)
+    )
+
+
+def _leading_run(zeros: tuple[int, ...]) -> int:
+    """``f``: the largest ``f`` with ``1..f`` all in ``zeros``."""
+    f = 0
+    while f + 1 in zeros:
+        f += 1
+    return f
+
+
+class TestLeadingZeroTheoremProof:
+    """``docs/polynomial.md`` ("The slack certificate"): the peel, exactly.
+
+    With ``z = max Z`` displaced, ``Z' = Z \\ {z}``, ``m = max Z'``, ``F`` the
+    certificate on the ``c - 1`` largest roots with zeros ``Z'`` and ``F_0 =
+    1``, and ``G`` the ``c``-root sum vanishing on ``{0} u Z'`` with ``G_z =
+    1``, the theorem reduces to ``tail(u) <= tail(F)`` and that to a zero
+    count.  Checked here in exact rationals: step 3's identity, step 4's
+    equivalence and the two inequalities (C) and (D), and step 5's structure
+    for ``Delta``.
+    """
+
+    HORIZON: ClassVar[int] = 24
+
+    @pytest.mark.parametrize(
+        ("rho", "reach"),
+        [
+            ((11, 7, 5), 11),
+            ((11, 7, 5, 3), 8),
+            ((7, 5, 3, 2), 8),
+            ((17, 13, 11, 7, 5), 8),
+        ],
+    )
+    def test_every_link(self, rho: tuple[int, ...], reach: int) -> None:
+        y = sorted(Fraction(1, r) for r in rho)  # ascending: y_c = 1/min(rho)
+        c = len(y)
+        y_c, top_roots = y[-1], y[:-1]
+        strict_steps = 0
+        for zeros in itertools.combinations(range(1, reach), c - 1):
+            a_u = _exp_sum(y, zeros, None)
+            bound = math.prod(v / (1 - v) for v in y[: _leading_run(zeros) + 1])
+            tail_u = _abs_tail(a_u, y, zeros)
+            assert tail_u <= bound, zeros
+            if _leading_run(zeros) == c - 1:
+                assert tail_u == bound  # the k = 0 equality case
+                continue
+
+            z, rest = zeros[-1], zeros[:-1]
+            m = max(rest, default=0)
+            a_f = _exp_sum(top_roots, rest, None)
+            a_g = _exp_sum(y, (0, *rest), z)
+            eta = 1 if _val(a_f, top_roots, m + 1) > 0 else -1
+
+            def f_hat(d: int, a: list[Fraction] = a_f, s: int = eta) -> Fraction:
+                return s * _val(a, top_roots, d)
+
+            def g_at(d: int, a: list[Fraction] = a_g) -> Fraction:
+                return _val(a, y, d)
+
+            # Step 1: the peel is the whole induction, and it is strict.
+            tail_f = _abs_tail(a_f, top_roots, rest)
+            assert tail_u < tail_f, zeros
+            strict_steps += 1
+
+            # Step 2: F and lambda G are anti-aligned, crossing exactly at z.
+            mu = abs(f_hat(z))
+            for d in range(1, z):
+                if d not in rest:
+                    assert abs(f_hat(d)) > mu * abs(g_at(d)), (zeros, d)
+            for d in range(z + 1, z + 12):
+                assert abs(f_hat(d)) < mu * abs(g_at(d)), (zeros, d)
+
+            # Step 3: the identity, exactly.
+            tail_g = _abs_tail(a_g, y, (0, *rest))
+            above = abs(_from(a_u, y, z + 1))
+            assert tail_f - tail_u == mu * tail_g - 2 * above, zeros
+
+            # Step 4: the equivalence, then (T) and the factor 2.
+            gamma_g = _from(a_g, y, z) / g_at(z)
+            gamma_f = eta * _from(a_f, top_roots, z) / f_hat(z)
+            assert gamma_g <= gamma_f / (1 - y_c), zeros
+            assert gamma_g <= 2 * gamma_f, zeros
+
+            # (C): G's normalised profile is under F's convolved with y_c.
+            psi = ratio = Fraction(1)
+            for t in range(1, self.HORIZON):
+                psi = y_c * psi + f_hat(z + t) / f_hat(z)
+                ratio = y_c * ratio + (g_at(z + t) - y_c * g_at(z + t - 1)) / g_at(z)
+                assert g_at(z + t) / g_at(z) == ratio  # the recurrence for G
+                assert ratio <= psi, (zeros, t)
+
+            # (D), and the W > 0 that chains it to every z.
+            sigma = g_at(m + 1) / f_hat(m + 1)
+            for d in range(z, z + self.HORIZON):
+                e_d = g_at(d) - y_c * g_at(d - 1)
+                assert e_d / f_hat(d) <= sigma <= g_at(z) / f_hat(z), (zeros, d)
+                assert g_at(d) * f_hat(m + 1) - g_at(m + 1) * f_hat(d) >= 0
+
+            # Step 5: Delta vanishes identically iff {0} u Z' is an interval,
+            # and otherwise has no zero above m + 1 and is positive there.
+            def delta(d: int, s: Fraction = sigma) -> Fraction:
+                return s * f_hat(d) - (g_at(d) - y_c * g_at(d - 1))
+
+            interval = [0, *rest] == list(range(c - 1))
+            assert delta(m + 1) == 0
+            if interval:
+                assert all(delta(d) == 0 for d in range(m + 2, m + 12))
+            else:
+                assert all(delta(d) > 0 for d in range(m + 2, m + 12)), zeros
+        assert strict_steps  # the parametrisation reaches the peel at all

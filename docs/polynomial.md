@@ -1,10 +1,15 @@
-# Polynomial: the open scaling row
+# Polynomial: the scaling lower bound
 
-The one row still open in the roadmap's scaling audit.  Program text is the
-expanded coefficient digits of a polynomial whose roots encode instructions.
-Everything below is either proved, executed, or a bounded search; what remains
-open is exactly one question, stated at the end.  `tests/proofs/test_negatives.py`
-executes the claims marked (executed).
+Program text is the expanded coefficient digits of a polynomial whose roots
+encode instructions.  The size and time cells of the roadmap's scaling audit
+are closed here as a language lower bound: every Polynomial program for a
+maximal-width table is `Omega(T**2 / log T)` characters, for every cofactor,
+every operand sign and every degree.  Everything below is proved, executed,
+or a bounded search; the bound itself is the theorem under "The slack
+certificate", and the searches that narrowed the question to it are kept
+because they say what is *not* available -- not because anything is still
+being looked for.  `tests/proofs/test_negatives.py` executes the claims
+marked (executed) and pins every link of the proof.
 
 ## Instruction count is language-forced
 
@@ -294,13 +299,17 @@ with `mass(F) >= sum_u log Theta_u`.  If `Theta_u >= prod_{i>u} (p_i - 1)`
 for every `U` -- what the sweep shows and the lowest-position certificate
 proves -- that is `sum_i (i - 1) log p_i = Omega(L**2 log L) =
 Omega(T**2 / log T)` for **every** multiple, the dense product's own order
-and the right-half-plane bound without the half-plane.  Two gaps keep it
-from being a theorem: the certificate is proved for `U = {0..K}` only, and
-asymptotically in `D` (the exact optima sit above the limit at every
-finite degree measured, but that is measured, not proved).  Until both
-close the row stays open; the target is now exact.
+and the right-half-plane bound without the half-plane.  Two gaps kept this
+*sharp* form from being a theorem: the certificate is proved for
+`U = {0..K}` only, and asymptotically in `D` (the exact optima sit above the
+limit at every finite degree measured, but that is measured, not proved).
+Both are still open, and both are now unnecessary -- the slack certificate
+below gives up the `u` primes `p_{u+1}..p_{2u}`, keeps
+`Omega(L**2 log L)`, and is proved for free positions anywhere at every
+degree.  What follows on the two gaps is therefore the record of the sharp
+form, not a dependency of the bound.
 
-Status of the two gaps, one round further.  (b) *Finite degree.*  The
+Status of the two gaps of the sharp form.  (b) *Finite degree.*  The
 exact-degree certificate (the row-space member with `c - 1` zeros just
 under the top, low-position constraints included) is never below the
 limit: every `K <= L - 2` at `L = 5, 6, 7`, every `D` from `L` to 40, in
@@ -383,7 +392,8 @@ rho_i**-k`, so both minors are `det V[R] * const` and their ratio is
 `s_{lambda/mu}(rho_1..rho_c)` by Jacobi--Trudi and the needed inequality
 is `s_{((d-c+1)**(c-1))} * s_{lambda_B/mu} >= (prod rho)**(d-c+2)
 s_{lambda_A/mu}`, measured, not proved, for `c >= 3` (`c = 2` is the
-hand argument above).  That inequality is the whole of gap (b).
+hand argument above).  That inequality is the whole of gap (b), of the
+sharp form only: the slack certificate needs no truncated Toeplitz minor.
 
 **Total mass: no multiple is lighter than the product** (executed).  The
 decisive measurement for the whole route: the least coefficient-digit
@@ -493,151 +503,195 @@ B` by up to x147 (`(2,3,5)`), x110, x61 over 515 boundary cases each,
 and no two-sided form exists -- boundary `2x2` ratios fall to 0.004 of
 `psi`.  Dead as a route.
 
-**The slack certificate: one lemma is the whole bound** (measured,
-stated exactly).  Only `sum_u log Theta_u = Omega(L**2 log L)` is
-needed, so give up the `u` primes `p_{u+1}..p_{2u}`.  For a free set `U`
-of size `u <= (L-1)/2` at *any* positions, take the pure certificate on
-the `L - u` largest roots -- the `u` smallest unused, so no coupling, no
-truncated Toeplitz, no `c >= 3` boundary at all -- with its `L - u - 1`
-zeros at `U` and at the first `L - 2u - 1` distances under the top not
-in `U`.  It vanishes on `U` and is in the row space.  Measured: its
-threshold is at least `prod_{i>2u} (p_i - 1)`, ratio `1.0000..1.005`,
-for `L = 5..10`, `u <= (L-1)/2`, every `U` inside distance 8 (`u <= 3`)
-and 120 random `U` to distance 40 -- approached from above as `U` goes
-deep, where the certificate tends to the pure one on the `L - 2u`
-largest roots.  The general statement behind it, about pure exponential
-sums only: **for `c` roots and `c - 1` prescribed zeros of which the
-first `f` are the distances `1..f`, the tail is at most `1 / prod (rho -
-1)` over the `f + 1` largest roots, with equality exactly when every zero
-is a leading one** (exhaustive over zero sets inside distance 7 and 300
-random ones to distance 30, for `(5,7,11)`, `(3,5,7,11)`, `(7,11,13,17)`,
-`(5,7,11,13,17)`, `(3,5,7,11,13,17)`; maximum ratio 1.0000).  Each
-leading zero buys one root; a displaced zero buys nothing but costs
-nothing.  Sign structure for a proof: a `c`-term exponential sum has
-no zeros besides the `c - 1` prescribed, so it alternates across them
-and the tail is `S(1) + 2 sum_g (-1)**g S(z_g)` with `S(d) = sum_i
-a_i y_i**d / (1 - y_i)` -- an explicit rational function of the roots;
-the claim is that moving any zero deeper never lowers it and the limit
-is the leading-zero product.  With this lemma: anchor `|f_D| >= 1`,
-iterate `u = 0..(L-1)/2` over the `u` largest coefficients wherever
-they sit, and every real multiple of `prod (x - p_i)` has `mass >=
-sum_{u <= (L-1)/2} log prod_{i>2u} (p_i - 1) = (1/4 - o(1)) L**2 log L`,
-i.e. every Polynomial program is `Omega(T**2 / log T)` characters.  The
-lemma is pinned (`TestEachLeadingZeroBuysOneRoot`); the bound is not
-written until it is proved.
+**The slack certificate: the lemma, and the bound.**  Only `sum_u log
+Theta_u = Omega(L**2 log L)` is needed, so give up the `u` primes
+`p_{u+1}..p_{2u}`.  For a free set `U` of size `u <= (L-1)/2` at *any*
+positions, take the pure certificate on the `L - u` largest roots -- the
+`u` smallest unused, so no coupling, no truncated Toeplitz, no `c >= 3`
+boundary at all -- with its `L - u - 1` zeros at `U` and at the first
+`L - 2u - 1` distances under the top not in `U`.  It vanishes on `U` and is
+in the row space.  The fill is the first `L - 2u - 1` distances outside
+`U`, so together with the members of `U` below its top it makes one run
+from 1: the leading run is at least `L - 2u - 1` long, and the theorem
+below caps the tail at `1 / prod (rho - 1)` over the `L - 2u` largest
+roots.  So the threshold is at least `prod_{i > 2u} (p_i - 1)` -- proved,
+and measured within `1.0000..1.005` of it for `L = 5..10`, `u <= (L-1)/2`,
+every `U` inside distance 8 and 120 random `U` to distance 40, approached
+from above as `U` goes deep, where the certificate tends to the pure one on
+the `L - 2u` largest roots.  Gaps (a) and (b) are moot on this route: it
+forms no truncated Toeplitz minor, so it needs neither the `c >= 3` skew
+Schur inequality nor a lowest-position exchange argument.
 
-**One displaced zero, proved; the lemma's shape, mapped.**  Write `y_i =
-1/rho_i`, so `y_1 < ... < y_c <= 1/2`, `h'_s = h_s(y_1..y_{c-1})` (the
-`c - 1` largest roots), `h_s = h_s(y_1..y_c)`, `P = y_1 ... y_{c-1}`.
-*Not monotone.*  The tail is not a monotone function of the zero
-positions, so no extremal-at-the-boundary theorem applies as such:
-`(3,5,7,11)`, `Z = (1,2,3) -> (1,2,4)` drops it `1/480 -> 0.00162`
-(changing `f`), and `(2,3,5,7)`, `Z = (1,2,4) -> (1,2,5)` drops
-`0.011218 -> 0.011169` with `f` fixed; pointwise `|u_d|` is never
-monotone.  Karlin--Studden's principal representations (min/max of a
-functional over nodes) are therefore not the statement; the lemma is a
-supremum over each fixed `f`, approached as the displaced zeros go to
-infinity, not attained.  *Proved for `f = c - 2` (one displaced zero
-`z >= c - 1`), every `c`, every root `>= 2`.*  Let `F` be the
-leading-zero certificate on the `c - 1` largest roots (`F_d = (-1)**c P
-h'_{d-c+1}` for `d >= c-1`, zero on `1..c-2`) and `G_d = h_{d-c+1}(y)`
-for `d >= c-1`, zero below, the unique `c`-root sum vanishing at
-`0..c-2`.  Then `u = F + lambda G` with `u_z = 0`, i.e. `u_d = (-1)**c P
-(h'_d - r h_d)` with `r = h'_z / h_z` (indices shifted by `c - 1`), an
-identity checked exactly.  `h'_s / h_s` is strictly decreasing in `s`
-(`h_s / h'_s = sum_k y_c**k h'_{s-k} / h'_s` and each `h'_{s-k} / h'_s`
-increases with `s` by log-concavity of the Polya-frequency sequence
-`h'`), so `u` has the sign of `(-1)**c` below `z` and the opposite above,
-and `tail = P [sum_{s<z'} (h'_s - r h_s) + sum_{s>z'} (r h_s - h'_s)]`.
-Against `bound(c-2) = P sum_s h'_s`: `bound - tail = P [h'_{z'} + r
-sum_{s<z'} h_s + 2 sum_{s>z'} h'_s - r sum_{s>z'} h_s]`, and splitting
-the convolution `h = h' * (1, y_c, y_c**2, ...)` at `z'` gives exactly
-`sum_{s>z'} h_s = (A + y_c h_{z'}) / (1 - y_c)` with `A = sum_{s>z'}
-h'_s`, so the negative term is `r A / (1 - y_c) + h'_{z'} y_c / (1 -
-y_c) <= 2A + h'_{z'}` because `r <= 1` (`h' <= h`) and `y_c <= 1/2`.
-Hence `tail <= bound(c-2)`, with room `P [r sum_{s<z'} h_s + ...]`.
-Pinned to `z < 30` on four root sets.  In the slack assembly this is
-`u = 1`: **at least two coefficients of every real multiple reach
-`prod_{i>2} (p_i - 1)`, wherever the first one sits** -- rigorous now,
-on top of `u = 0`.  *What remains for general `f`.*  With `k = c - 1 -
-f` displaced zeros, `u = F + lambda G` still holds with `F` the
-certificate on the `c - 1` largest roots carrying the leading zeros and
-the first `k - 1` displaced ones, and `G` the `c`-root sum vanishing at
-`0`, the leading zeros and those `k - 1`; `tail(F) <= bound(f)` by
-induction on `c`, but `F` and `G` now alternate across `k - 1` interior
-zeros each, and the one-displaced argument's two ingredients -- one
-sign change for `u`, one-signed `G` -- are gone.  The lemma is verified
-to `c = 14` (roots `3..47`, `f` from `0` to `c - 2`, displaced zeros to
-distance 35; ratio at most 0.99999), and the induction on the number of
-displaced zeros, with the sign pattern of `F + lambda G` tracked through
-the interlacing of `F`'s and `G`'s zeros, is the resumption point.
+**Theorem (each leading zero buys one root).**  Let `rho_1 > ... > rho_c >=
+2` be distinct reals, `y_i = 1/rho_i`, so `0 < y_1 < ... < y_c <= 1/2`.
+Let `Z` be a set of `c - 1` positive integers whose leading run is `1..f`
+(`f` maximal with `{1..f}` inside `Z`), and let `u_d = sum_i a_i y_i**d` be
+the exponential sum with `u_0 = 1` and `u` vanishing on `Z`.  Then
 
-**The slack, spent: a lossy induction whose two sub-lemmas are measured.**
-The assembly tolerates `tail <= K(c) bound(f)` with any `K(c) = 2**O(c)`
-(the loss `sum_u log K(L - 2u)` is `O(L**2)`, below `L**2 log L`), so the
-lemma need not be sharp.  With `k` displaced zeros, `u = F + lambda G`
-(`F` on the `c - 1` largest roots carrying the leading zeros and the
-first `k - 1` displaced ones, `F_0 = 1`; `G` the `c`-root sum vanishing
-at `0`, the leading zeros and those `k - 1`; `lambda = -F_{z_k} /
-G_{z_k}`), and the triangle inequality gives `tail(u) <= tail(F) +
-|lambda| tail(G)`.  By induction on `c`, `tail(F) <= K(c-1) bound(f)`
-(the top `f + 1` roots are the same).  Measured over every `Z` to
-distance 9..30, `c = 3..8` (roots `3..23`): `|lambda| tail(G) / bound(f)`
-is at most 0.53, 0.58, 0.61, 0.64, 0.66, 0.67, always worst at one
-displaced zero just past the fill (`Z = (1..c-2, c)`), and at most 0.17
-once `k >= 2`; so `K(c) <= K(c-1) + 0.7`, linear in `c`, while the true
-`K` is 1.  What a proof needs, stated exactly: (ii-a) `|F_d / G_d|` is
-decreasing in `d` past the last prescribed zero `z_{k-1}` (measured on
-every case, 2320..5800 consecutive pairs per `c`), so the worst `z_k`
-is `z_{k-1} + 1`; (ii-b) at that `z_k`, `|F_{z_k}| tail(G) / |G_{z_k}|
-<= C bound(f)` for a constant or polynomial `C(c)`.  For `k = 1` both
-are the proved one-displaced argument (`F/G = h'/h`, and the crude
-`|lambda| tail(G) <= P (h'_{z'} / h_{z'}) sum_s h_s <= 2 bound(c-2)`).
-For `k >= 2`, `F` and `G` each alternate across `k - 1` interior zeros
-and (ii-a), (ii-b) are open; the pinned test carries both measurements
-(`TestTriangleSlackIsBounded`).  The bound is not written: its proof
-would rest on (ii-a) and (ii-b), which are numerical facts, not lemmas.
+    tail(Z) := sum_{d >= 1} |u_d|  <=  prod_{i <= f+1} y_i / (1 - y_i)
+                                    =  1 / prod_{i <= f+1} (rho_i - 1),
 
-**The decomposition, and the one product it does not split** (THE
-resumption point).  The `k = 1` mechanism was a convolution, `G = (F *
-(1, y_c, ...) - y_c**d) / sigma P`, which needs `F`'s zeros to be one
-consecutive run; for `k >= 2` no such relation holds (`G_d / (F *
-geo)_d` constant in 0 of 270 cases).  What holds for every `k`, exactly:
-`E_d := G_d - y_c G_{d-1}` is a `(c-1)`-root sum (the operator kills
-`y_c`), it vanishes on the leading zeros `1..f` (both `d` and `d - 1`
-are zeros of `G`), and `E_{z_j} = -y_c G_{z_j - 1}` at the displaced
-ones.  The `(c-1)`-root sums vanishing on `1..f` form a `k`-dimensional
-space with Lagrange basis `B_j` on the nodes `0, z_1..z_{k-1}` (`B_j`
-vanishes at `0`, `1..f` and every `z_i`, `i != j`, with `B_j(z_j) = 1`),
-and `E = mu F + sum_j E_{z_j} B_j` with `mu = E_0 = -y_c G_{-1}`, `G`
-extended to `d = -1` as the exponential sum; then `G_d = sum_{i<d}
-y_c**i E_{d-i}` recovers `G`.  Hence `|lambda| tail(G) <= |F_{z_k}| (y_c
-/ (1 - y_c)) [ |G_{-1}| T(F) + sum_j |G_{z_j-1}| T(B_j) ] / |G_{z_k}|`
-with `T` the full tail from `d = 1`.  Measured (`c = 4..7`, `k = 2..5`,
-displaced zeros to distance 17): the whole right side is at most
-`0.45 bound(f)`, so the accounting closes numerically with room.  The
-pieces do not split: `|F_{z_k}| |G_{-1}| / |G_{z_k}|` is bounded (0.68,
-1.60, 1.19, 1.96 at `c = 4..7`) and `T(F) <= K bound(f)` is the induction
-hypothesis, so the `F`-piece is fine; but each `B`-piece is the product
-of `T(B_j) / bound(f)`, which is astronomically large (`3 * 10**12 ..
-10**18` -- `B_j` is normalised at `z_j`, where it is tiny against its
-own bulk), and `|F_{z_k}| |G_{z_j-1}| / |G_{z_k}|`, which is
-correspondingly small (`10**-3 .. 10**-6`), with a bounded product
-(under 0.16).  So the open number is the product `Psi_j := |F_{z_k}|
-|G_{z_j-1}| T(B_j) / (|G_{z_k}| bound(f))` -- the tail of the Lagrange
-component `E_{z_j} B_j` of `E`, measured against `bound(f) |G_{z_k}| /
-|F_{z_k}|` -- and a proof must bound it without separating the factors:
-either through the induction itself, treating `E_{z_j} B_j` as a
-`(c-1)`-root object whose normalisation is the value of the `c`-root `G`
-one step before `z_j`, or by a Vandermonde-ratio estimate of the product
-directly.  Pinned: the three identities and the bound-sum
-(`TestPointADecomposition`).  Also measured and usable: `|F|` is
-log-concave past its last prescribed zero (0 of 5940 triples), `|F/G|`
-decreases there, and in the far zone `|F_z / G_z|` decays like `(y_{c-1}
-/ y_c)**(z - z_{k-1})`, so only offsets within `O(p_c)` of `z_{k-1}`
-need the bound, at a loss of `O(c log c)` per level.
+with equality exactly when `Z = {1, ..., c - 1}`.  Each leading zero buys
+one root; a displaced zero buys nothing and costs nothing.
 
-*Gap (a) is not a principal-representation theorem.*  The primal is
+*Step 0, the sign pattern.*  A real exponential sum on `n` distinct
+positive nodes has at most `n - 1` real zeros counting multiplicity
+(divide by the smallest node's power and induct with Rolle).  So a sum with
+`n - 1` prescribed zeros has exactly those, all simple, and its sign at `d`
+is its sign at the bottom times `(-1)**(number of its zeros below d)`.  In
+particular `sgn(u_d) = (-1)**|{z in Z : z < d}|` and `|u_d| > 0` off `Z`.
+
+*Step 1, the peel.*  Induct on the number `k = c - 1 - f` of displaced
+zeros.  At `k = 0` the zeros are `1..c-1`: with `U(x) = sum_d u_d x**d =
+N(x) / prod (1 - y_i x)`, `deg N <= c - 1`, the conditions say `N(x) -
+prod (1 - y_i x)` is `x**c` times a constant, which the vanishing `x**c`
+coefficient of `N` fixes at `(-1)**(c+1) prod y_i`.  Hence `u_d =
+(-1)**(c+1) prod y_i h_{d-c}(y)` for `d >= c`, one-signed, and `tail =
+prod y_i sum_{s >= 0} h_s(y) = prod_i y_i/(1 - y_i)` -- the bound, exactly,
+which is the equality case.
+
+For `k >= 1` let `z = max Z` (displaced, since the leading run stops below
+it), `Z' = Z \ {z}`, and `m = max Z'` (`0` if `Z'` is empty).  Let `F` be
+the certificate on the `c - 1` largest roots with `F_0 = 1` and zeros `Z'`,
+and `G` the `c`-root sum vanishing on `{0} u Z'`, normalised `G_z = 1`.
+Then `u = F + lambda G` with `lambda = -F_z`.  `Z'` has the same leading
+run `f`, and `f + 1 <= c - 1`, so the bound for `F` is computed on the same
+`f + 1` roots as the bound for `u`: the induction closes on
+
+    tail(u) <= tail(F).
+
+*Step 2, the two are anti-aligned.*  `F`'s zeros are exactly `Z'` and
+`G`'s exactly `{0} u Z'`, so for `d >= 1` off `Z'` both flip only at `Z'`
+and `sgn(F_d G_d)` is the constant `eta := sgn(F_z)` (`G_z = 1 > 0`).  So
+`F_d` and `lambda G_d` have opposite signs at every such `d`, and
+
+    |u_d| = | |F_d| - mu |G_d| |,    mu := |F_z| = |lambda|.
+
+`u` flips sign at `z` where `F` does not, so the crossing is exactly there:
+`|F_d| > mu |G_d|` for `1 <= d < z` and `|F_d| < mu |G_d|` for `d > z`.
+
+*Step 3, an exact identity.*  Summing `|F_d| - |u_d|` over the two regions
+(`mu |G_d|` where `mu|G_d| <= |F_d|`, and `mu|G_d| - 2|u_d|` above `z`):
+
+    tail(F) - tail(u) = mu T_G - 2 sum_{d > z} |u_d|,   T_G := sum_{d>=1} |G_d|.
+
+Writing `T_G = sum_{1 <= d <= z} |G_d| + sum_{d > z} |G_d|` and dropping
+everything below `z` but `|G_z|` turns `tail(u) <= tail(F)` into
+
+    Gamma_G(z) <= 2 Gamma_F(z),     Gamma_v(z) := (sum_{d >= z} |v_d|) / |v_z|,
+
+and that step is an equivalence, not a slackening: what is dropped,
+`sum_{1 <= d < z} |G_d|`, vanishes exactly when `Z' = {1..z-1}`, i.e. only
+in the `k = 0` case already settled.  So the inequality below is strict for
+every `k >= 1`, which is the equality claim.
+
+*Step 4, one root costs one factor `1/(1 - y_c)`.*  Write `E_d := G_d -
+y_c G_{d-1}`, an exponential sum on the `c - 1` largest roots (the operator
+kills `y_c`), and `hat F_d := eta F_d > 0` for `d > m`.  The two facts are
+
+    (D)  E_d / hat F_d <= G_z / hat F_z          for every d >= z > m,
+    (C)  G_{z+t}/G_z <= sum_{j<=t} y_c**(t-j) hat F_{z+j}/hat F_z   for t >= 0.
+
+(C) follows from (D) by induction on `t`: both sides obey `x_t = y_c x_{t-1}
++ (drive)` with `x_0 = 1`, the drives being `E_{z+t}/G_z` and `hat
+F_{z+t}/hat F_z`, and `G_d = y_c G_{d-1} + E_d` is the definition of `E`.
+Summing (C) over `t >= 0` -- every `G_d` with `d >= z > m` is positive, so
+the left side sums to `Gamma_G(z)` -- gives
+
+    Gamma_G(z) <= Gamma_F(z) / (1 - y_c),
+
+sharp: equality needs `Delta == 0` *and* `z = m + 1` (step 5), which
+together say `Z` is all-leading.  Finally `1/(1 - y_c) <= 2` precisely
+because `rho_c >= 2`, the hypothesis's only use in the whole proof.  With
+step 3 that is `tail(u) <= tail(F)`, and the induction closes.
+
+*Step 5, (D) is a zero count.*  Let `A := {0} u Z' = {a_1 = 0 < ... <
+a_{c-1} = m}`, `sigma := G_{m+1} / hat F_{m+1}`, and
+
+    Delta_d := sigma hat F_d - E_d,
+
+an exponential sum on the `c - 1` largest roots, so either identically zero
+-- and then (D) holds with equality -- or with at most `c - 2` real zeros
+counting multiplicity.  Forced zeros: `Delta_{m+1} = 0` by the definition of
+`sigma`, since `G_m = 0`; and `Delta_d = sigma hat F_d = 0` at every `d`
+with both `d` and `d - 1` in `A`, because then `G_d = G_{d-1} = 0` and
+`d in Z'` -- `r` of them, `r` the number of consecutive pairs in `A`.  At
+every other `d = a_{j+1}` in `Z'`, `Delta_d = y_c G_{a_{j+1}-1}`, nonzero of
+sign `(-1)**(c-1-j)`: `d - 1` lies strictly between `a_j` and `a_{j+1}`,
+where `G` has `c - 1 - j` of its zeros above it and is positive past the
+last.  Let `J` be those `j`, `p = |J| = c - 2 - r`.
+
+If `p = 0` then `A = {0, ..., c-2}`, `r = c - 2`, and the forced zeros
+number `c - 1 > c - 2`: `Delta` is identically zero, (D) holds with
+equality, and this is exactly the convolution case -- `hat F_d` and `G_d`
+are `h_{d-c+1}` of the `c - 1` largest roots and of all `c`, and
+`h(y_1..y_c) = h(y_1..y_{c-1}) * (1, y_c, y_c**2, ...)`.  It is why the
+`k = 1` convolution of the earlier round existed and did not extend: one
+consecutive run of zeros is `p = 0`.
+
+If `p >= 1`, take `j < j'` consecutive in `J`.  Between `a_{j+1}` and
+`a_{j'+1}` lie `q = j' - j - 1` forced zeros, at the `A` points in between,
+and the two endpoint values differ in sign by `(-1)**(q+1)`.  The number of
+zeros of `Delta` in that open interval, counted with multiplicity, has the
+parity the endpoint signs dictate, which is the parity of `q + 1`: so it is
+at least `q + 1`, one more than the forced ones.  That is `p - 1` further
+zeros in all, distinct from the `r` forced ones and from `m + 1`, and
+`r + (p - 1) + 1 = c - 2` exhausts the budget -- every zero of `Delta` is
+accounted for, all simple, and all at most `m + 1`.  In particular there is
+no zero above `a_{j*+1}` for the largest `j*` in `J` other than the
+consecutive-pair ones and `m + 1`, so counting the `c - 1 - j*` simple
+crossings up from `a_{j*+1}` (sign `(-1)**(c-1-j*)`) past `m + 1` leaves
+sign `(-1)**(2(c-1-j*)) = +1`.  Hence `Delta >= 0` on `[m+1, inf)`, i.e.
+`E_d / hat F_d <= sigma` there.
+
+It remains that `sigma <= G_z / hat F_z` for every `z > m`.  `W :=
+hat F_{m+1} G - G_{m+1} hat F` is a `c`-root sum vanishing on `Z' u {m+1}`,
+all `c - 1` of its zeros, hence one-signed above `m + 1`; positive there,
+because only `G` carries `y_c` and so `W_d ~ hat F_{m+1} gamma_c y_c**d`
+with `gamma_c > 0` (`G > 0` past `m`).  Chaining, `E_d / hat F_d <= sigma <=
+G_z / hat F_z` for `d >= z > m`, which is (D).  `tests/proofs/test_negatives.py`
+pins every link -- the identity of step 3, the equivalence of step 4, (C),
+(D), `W > 0`, and `Delta`'s zero structure -- in exact rationals.
+
+**The bound: every Polynomial program is `Omega(T**2 / log T)` characters.**
+Anchor at the top (`|f_D| >= 1`), iterate `u = 0..(L-1)/2` taking `U` to be
+the positions of the `u` largest coefficients below it wherever they sit,
+and the slack certificate forces a `(u+1)`-th coefficient of at least
+`prod_{i > 2u} (p_i - 1)` times the leading one.  Summing logs over `u`,
+every real -- hence every integer -- multiple of `prod_{i<=L} (x - p_i)` of
+every degree has
+
+    mass >= sum_{u <= (L-1)/2} log prod_{i > 2u} (p_i - 1)
+          = sum_i ceil(i/2) log(p_i - 1) = (1/4 - o(1)) L**2 log L
+
+nats, for every cofactor and every operand sign.  The routing floor puts
+`L = Omega(T/log T)` real instruction roots in every program for a
+maximal-width table, so the coefficient digits are `Omega(L**2 log L) =
+Omega(T**2 / log T)`, the dense product's own order and the
+right-half-plane theorem's bound without the half-plane.  Polynomial's
+output size and generation time are language lower bounds, not open cells.
+
+*What the earlier rounds leave behind.*  The routes that did not reach the
+lemma are recorded so they are not rebuilt, and the peel above explains
+two of them.  The tail is not a monotone function of the zero
+positions -- `(3,5,7,11)`, `Z = (1,2,3) -> (1,2,4)` drops it `1/480 ->
+0.00162` (changing `f`), and `(2,3,5,7)`, `Z = (1,2,4) -> (1,2,5)` drops
+`0.011218 -> 0.011169` with `f` fixed -- so no extremal-at-the-boundary
+theorem applies and Karlin--Studden's principal representations are not the
+statement; the supremum at fixed `f` is approached as the displaced zeros go
+to infinity and is not attained.  Step 1 sidesteps this by comparing `u`
+with the limit itself, root and zero dropped together, rather than moving
+one zero at a time.  The `k = 1` convolution `G = (F * (1, y_c, ...) -
+y_c**d) / sigma P` needed `F`'s zeros to be one consecutive run; that is
+`p = 0` in step 5, where `Delta == 0`, and (C) replaces the identity by an
+inequality everywhere else.  The lossy triangle induction (`tail(u) <=
+tail(F) + |lambda| tail(G)`, measured `K(c) <= K(c-1) + 0.7`) and the
+Lagrange-basis decomposition of `E` (three exact identities and a bound-sum
+under 0.45, whose `B`-pieces would not split) are both superseded: step 3's
+identity is exact where the triangle inequality was lossy, and the sign
+structure of step 2 is what the triangle inequality threw away.
+
+*Gap (a) was not a principal-representation theorem.*  The primal is
 `min_B` over `f_D = 1`, `|f_m| <= B` off `U`, `f_U` free, `sum_m f_m v_m
 = 0` with `v_m = (p_i**m)_i`: the gauge of `v_D` modulo `span(v_U)` in
 the norm whose unit ball is the absolutely convex hull of `{v_m : m not
@@ -648,6 +702,8 @@ representation (nonnegative measures, index counted with endpoints) does
 not apply as stated; no hypothesis of the LP fails, the theorem simply
 does not cover it.  Measured at `L = 4, 5, 6`: the minimum over `U` of
 fixed size is the lowest positions and rises as any position moves up.
+The slack certificate makes the question moot -- it needs no exchange
+argument, because it is proved for free positions anywhere.
 
 ## Literature
 
@@ -663,42 +719,36 @@ t-sparse multiples is NP-complete over both Q and F_q, when t is a parameter
 in the input".  Roche's 2018 survey ([arXiv:1807.08289][sparse-survey])
 leaves sparse division and divisibility testing as Open Problems 2 and 3.
 
-## What is open
+## What is closed
 
-A non-generic O(T)-digit multiple of the mandatory root product with *more*
-terms than the Descartes minimum `L + 1`, so that the coefficient kernel has
-rank two or more and no single minor pins a coefficient; its cofactor roots
-must have substantially negative real part with inexact magnitude relations
-to the prime-power instruction roots.  Every other route -- sign patterns,
-operands, exact mirrors, the `(L+1)`-term class, small cofactor degree,
-unbalanced profiles, norm bounds, root-set term bounds, the
-one-large-coefficient profile -- is closed above.  Conjectured
-NP-completeness would not forbid a bespoke family, so the row stays open
-rather than closing as a wall.
+Nothing on the bound.  The route the earlier rounds narrowed to -- an
+O(T)-digit multiple of the mandatory root product with *more* terms than
+the Descartes minimum `L + 1`, cofactor roots of substantially negative
+real part and inexact magnitude relations to the instruction roots -- has
+no member: the iterated elimination's certificate, in its slack form, is
+proved for free positions anywhere and every degree, so **every** multiple
+of the mandatory product carries `Omega(L**2 log L)` coefficient digits and
+every Polynomial program for a maximal-width table is `Omega(T**2 / log T)`
+characters.  The sparse-remainder profile that survived the searches (`O(1)`
+coefficients of `O(T)` digits, a second at a constant fraction of the
+primorial, and an `O(T/log T)`-term remainder of `O(log T)`-digit terms) is
+covered by it like every other: the bound is over all multiples, so it needs
+no profile case analysis, and the Gaussian count that argued heuristically
+against the profile -- multiples of cofactor degree `k` form a lattice of
+covolume about `primorial**(k+1)` against a box of volume `2**O(T)` -- is no
+longer load-bearing.  Conjectured NP-completeness of sparse multiples was
+never an obstruction to a bespoke family and is not one to the bound either:
+the bound is about mass, not about deciding sparsity.
 
-The profile that survives is narrower than before: `O(1)` coefficients of
-`O(T)` digits, a second one at a constant fraction of the primorial, and a
-*sparse* remainder -- `O(T / log T)` terms of `O(log T)` digits, since a
-remainder at every degree costs `D log D >= T log T`.  Whether the
-remainder can be sparse is the question; every executed multiple with a
-small remainder had it dense.  The heuristic against it is the Gaussian
-count: multiples of cofactor degree `k` form a lattice of covolume about
-`primorial**(k+1)`, and the box of the profile has volume `2**O(T)`, so
-generic lattices give `k = O(1)` -- the small-cofactor class, closed.  A
-proof would have to show this lattice has no unexpectedly short vector,
-which is exactly what its algebraic structure does not grant -- or run the
-iterated elimination above to its end: prove its certificate for every
-unbounded set and every degree, and every multiple is `Omega(T**2 / log
-T)`.
-
-What such a multiple must look like, each a line and none a search.  Term
-killing does not reach it: the Rolle operator `x d/dx - c` behind Descartes
+The structural facts collected while the question was open stand, and are
+now consequences rather than constraints on a search.  Term killing does not
+reach a sparser multiple: the Rolle operator `x d/dx - c` behind Descartes
 deletes one term and loses at most one positive root, so the kernel rank
 `t - L` is invariant and the `(L+1)`-term theorem does not extend by
 reduction.  With `0` in the support (divide out `x^e_1`) every prime divides
-`f_0`, so `f_0` is at least the primorial and an O(T)-digit multiple has O(1)
-coefficients that large; `F(2) = 0` then puts the degree at or above
-`log2 f_0 - log2(sum of the other coefficients)`, so either the other
+`f_0`, so `f_0` is at least the primorial and an O(T)-digit multiple would
+have O(1) coefficients that large; `F(2) = 0` then puts the degree at or
+above `log2 f_0 - log2(sum of the other coefficients)`, so either the other
 coefficients sum to the primorial's square root or the degree is at least
 `0.72 L log L`.  A gap `g` between consecutive exponents has `2^g` at most
 the sum of the coefficients below it whenever the part above is nonzero at
@@ -707,6 +757,12 @@ adds, so the degree is at most `t log2(t H)`.  The `p`-adic Newton polygons
 add nothing past the primorial: a slope `-1` segment at every `p_i` is met by
 `p_i || f_0` and a term at `x^1`, as in `P` itself.  Checked on 48
 constructed multiples to `L = 7` with a split control.
+
+Totality is the one cell that cannot close: the `Cap` is the ledger's own
+label, and a Polynomial program's digit count refuses some tables on cost.
+The row therefore stays in the roadmap's audit the way Factor's does --
+size and time as language lower bounds, totality capped -- and no
+construction is left to look for.
 
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
 [sparse-survey]: https://arxiv.org/abs/1807.08289
