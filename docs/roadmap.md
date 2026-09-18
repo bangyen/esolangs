@@ -41,7 +41,19 @@ The candidate list is empty.
   mandatory root product, is now proved, and the row closes on size and
   time as a language lower bound.  The clause is deliberate: a wall that
   has not been proved is not a lookup table, and both Factor's bound and
-  Polynomial's came after their walls were measured.
+  Polynomial's came after their walls were measured.  SLOW ACV MAMMALIAN
+  closed on generation time the same way its size and execution-time cells
+  already had: the per-node retry loop was re-simulating an O(weight)
+  `_w_raise` and an O(weight) trampoline build on every retry just to size
+  and length-check a candidate landing, not to emit it.  Both dry-run costs
+  close to O(1) -- `_w_raise`'s chunk sequence is a residue orbit over 256
+  states (`r -> 2 * added(r) % 256`) that a cycle detector skips through by
+  multiplication, and the trampoline's chunk count is exactly 1 `SEED` per
+  chunk past the second, closed by division -- so a level's retries no
+  longer each pay for the O(weight) build its accepted attempt alone needs.
+  Measured flat at ~0.021 microseconds per emitted token across four
+  doublings (n=14 to n=20, 4.3M to 271M tokens), byte-identical to the
+  prior output on every table checked.  Closed 2026-09-18.
 
   All 63 generators are audited on four axes.  Totality is the `proofs.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
@@ -66,7 +78,6 @@ The candidate list is empty.
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Interprogck8 | Total | Open | Open | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
-  | SLOW ACV MAMMALIAN | Total | Open | Linear | Linear |
   | Streetcode | Total | Open | Open | Linear |
   | WII2D | Cap | Open | Open | Linear |
 
@@ -112,14 +123,6 @@ The candidate list is empty.
     only to n=12 past the n=4 route change.  Its `Exception` cannot close,
     and which tables through sixteen inputs the planners refuse is finite
     (every table tried through fourteen builds).
-  - SLOW ACV MAMMALIAN, time only: the text is O(T) (one 256-token leaf
-    slot per entry), but each read node's ballast loop appends chunks
-    until the landing clears a jump whose length grows with the node's
-    weight, re-running an O(weight) dry raise per chunk; nothing bounds
-    the chunk count (296, 408, 570, 878 per build at n=6, 8, 10, 12, x1.5
-    per two inputs) and the raise depends on the chunk-shifted state, so
-    it cannot be hoisted without changing the program.  Closes with a
-    per-level chunk bound or a landing computed in closed form.
   - Polynomial: stays for its language lower bound on size and time.  The
     exact minimum-mass multiple of the mandatory root product is the
     product itself (integer to L=7, and the real relaxation one digit

@@ -142,11 +142,14 @@ Moebius transform (`n` passes of `2**n`, the construction itself), and
 Sophie's shared-state build, whose states are the residual subtables as
 strings, `n 2**n` characters in all.  Generators that run
 `best_input_order` pay its `O(n**2 2**n)` scoring, capped at `n <= 10`.
-SLOW ACV MAMMALIAN is O(T) text times its ballast iterations, which
-nothing bounds (296 to 878 chunks per build over n=6..12, each re-running
-an O(weight) dry raise); the raise depends on the chunk-shifted state and
-cannot be hoisted without changing the program, so its generation-time
-cell is open in the roadmap's audit.
+SLOW ACV MAMMALIAN's per-node retry loop dry-runs a candidate landing
+before committing to it, and used to re-simulate an O(weight) weight-raise
+and trampoline build on every retry just to size and length-check the
+candidate.  Both are now O(1): the weight-raise's chunk sequence is a
+residue orbit over 256 states that a cycle detector skips through by
+multiplication, and the trampoline's chunk count is closed by division
+once past its first two chunks (each spends exactly one `SEED`).  Measured
+flat at ~0.021 microseconds per emitted token across four doublings.
 
 **Factor's folded tree is Theta(T log T) on parity; the language forces
 `Omega(T log T / log log T)` for some table under every encoding.**  The

@@ -195,7 +195,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | ROTfuck | tree | movement search stops after at most eight offsets | linear, time n log: essential_inputs |
 | S*bleq | finite lookup | packed chunks decoded after the hoisted read block | linear: T/n packed chunks of n bits, O(n) decoder |
 | 6-5 | finite lookup | past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks | linear, time n log: greedy order scoring, capped at n <= 10 |
-| SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit as a 256-multiple weight on array 16; one trampoline lands the indexed 256-token leaf | open: ballast loop, 296..878 chunks per build at n=6..12, no bound by inspection |
+| SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit as a 256-multiple weight on array 16; one trampoline lands the indexed 256-token leaf | linear: per-node landing search sized in O(1), not an O(weight) dry build |
 | Sophie | tree | — | linear, time n log: shared-state build, n 2**n state characters |
 | Streetcode | tree | — | open: hall per level spans every leaf row, Theta(T log T); uncapped greedy Theta(T log**2 T) |
 | Suffolk | tree | — | linear, time n log: essential_inputs |

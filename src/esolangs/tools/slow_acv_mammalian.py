@@ -137,19 +137,53 @@ def _trampoline(
     Chunks raise the non-head sum by 255 each until ``target`` is within a
     byte, then ``u`` is solved so the ``EXCRETE`` appends the closing
     ``b``.  ``b >= 1`` keeps the ``LEAPFROG`` firing; callers always aim
-    past the sum they enter with.
+    past the sum they enter with.  ``rest_sum`` is ``sum(cur) - cur[0]``
+    carried incrementally: each chunk appends exactly one new element
+    (``_STASH_BYTE``) and touches no other, so re-summing the growing
+    list every iteration -- as a naive read of the loop condition would
+    -- costs O(chunks**2) for no reason.
     """
     cur, val, tokens = list(array), acc, []
-    while sum(cur) - cur[0] < target - 255:
+    rest_sum = sum(cur[1:])
+    while rest_sum < target - 255:
         chunk, cur, val = _stash_chunk(cur, val)
+        rest_sum += _STASH_BYTE
         tokens += chunk
-    hop = target - (sum(cur) - cur[0])
+    hop = target - rest_sum
     if not 1 <= hop <= 255:  # pragma: no cover - the window solve is exact
         raise AssertionError(f"trampoline byte {hop} escaped 1..255")
-    count = (((val % 256) ^ hop) - sum(cur)) % 256
+    count = (((val % 256) ^ hop) - (cur[0] + rest_sum)) % 256
     tokens += [*["SEED"] * count, "DIGEST", "EXCRETE", "DIGEST", "LEAPFROG"]
     out = [(cur[0] + count) % 256, *cur[1:], hop]
     return tokens, out, sum(out)
+
+
+def _trampoline_len(array: list[int], acc: int, target: int) -> int:
+    """Token count :func:`_trampoline` would emit reaching ``target``, O(1).
+
+    The first two chunks solve a residue from ``acc``; every chunk after
+    that always spends exactly one ``SEED`` (verified against
+    :func:`_stash_chunk` directly), so the tail is closed by division
+    instead of walked -- what lets the per-node retry search check a
+    candidate landing without paying for the trampoline it would build.
+    """
+    cur, val = list(array), acc
+    tokens = 0
+    rest_sum = sum(cur[1:])
+    for _ in range(2):
+        if rest_sum >= target - 255:
+            break
+        chunk, cur, val = _stash_chunk(cur, val)
+        rest_sum += _STASH_BYTE
+        tokens += len(chunk)
+    if rest_sum < target - 255:
+        more = -(-(target - 255 - rest_sum) // _STASH_BYTE)
+        tokens += 3 * more
+        rest_sum += _STASH_BYTE * more
+        cur = [(cur[0] + more) % 256, *cur[1:]]
+    hop = target - rest_sum
+    count = (((val % 256) ^ hop) - (cur[0] + rest_sum)) % 256
+    return tokens + count + 4
 
 
 def _chunk_run(chunks: int) -> int:
@@ -268,6 +302,102 @@ def _w_raise(st: _Sums, amount: int) -> list[str]:
     return tokens
 
 
+def _greedy_step_table() -> tuple[tuple[int, int], ...]:
+    """For each residue ``r``, the greedy chunk's ``(seed count, added byte)``.
+
+    Derived directly from :func:`_w_greedy_chunk`'s own search, not fit to
+    any table of programs -- 256 residues, once, at import time.
+    """
+    table = []
+    for r in range(256):
+        for count in range(16):
+            added = (r + _W_STEP * count) % 256
+            if added >= 239:
+                table.append((count, added))
+                break
+        else:  # pragma: no cover - argued in _w_greedy_chunk's docstring
+            raise AssertionError(f"no 17-step residue in [239, 255] from {r}")
+    return tuple(table)
+
+
+_GREEDY_STEP = _greedy_step_table()
+
+
+def _greedy_advance(r: int, target: int) -> tuple[int, int, int, int]:
+    """Fast-forward the greedy phase: total SEEDs and advance past ``target``.
+
+    A chunk's added byte depends only on the residue ``r = (hw + nw) %
+    256`` (:func:`_greedy_step_table`), and the next residue is always
+    ``2 * added % 256`` -- multiply out ``r' = (r + 17*count + added) %
+    256`` where ``added = (r + 17*count) % 256`` and the ``17*count``
+    terms cancel mod 256.  That orbit lives in 256 states, so simulating
+    it must repeat a residue within 256 steps; once it does, the repeat's
+    span is a cycle whose whole-multiples are skipped by multiplication
+    instead of being walked, which is what makes this O(1) in ``target``
+    rather than O(target / 247) like :func:`_w_raise`'s direct loop.
+    Returns ``(seed count, chunk count, byte advance, final residue)``.
+    """
+    if target <= 0:
+        return 0, 0, 0, r
+    seen: dict[int, tuple[int, int, int]] = {}
+    steps = seed_count = advance = 0
+    while advance < target:
+        if r in seen:
+            prev_steps, prev_seeds, prev_advance = seen[r]
+            cyc_steps = steps - prev_steps
+            cyc_seeds = seed_count - prev_seeds
+            cyc_advance = advance - prev_advance
+            full = (target - advance - 1) // cyc_advance
+            if full > 0:
+                steps += full * cyc_steps
+                seed_count += full * cyc_seeds
+                advance += full * cyc_advance
+            seen = {}  # landed back on the same r; walk the remainder plainly
+            continue
+        seen[r] = (steps, seed_count, advance)
+        count, added = _GREEDY_STEP[r]
+        seed_count += count
+        steps += 1
+        advance += added
+        r = (2 * added) % 256
+    return seed_count, steps, advance, r
+
+
+def _route_to_0_len(hw: int) -> int:
+    """Token count :func:`_route_to_0` would emit from head ``hw``."""
+    return ((_ROUTE_BACK - hw) * _W_INV) % 256 + 1
+
+
+def _w_raise_len(hw: int, nw: int, amount: int) -> tuple[int, int]:
+    """``(token count, final hw)`` for :func:`_w_raise`'s effect, in O(1).
+
+    Mirrors ``_w_raise`` exactly -- same chunk boundaries, same byte
+    values -- but the greedy phase is closed by :func:`_greedy_advance`
+    instead of walked chunk by chunk.  Sizing an arm's slot only needs
+    this length and the resulting head (:func:`_route_to_0_len` needs
+    nothing else), never the token text itself.
+    """
+    r = (hw + nw) % 256
+    target = max(0, amount - 510)
+    total_seeds, chunks, greedy_advance_amt, r = _greedy_advance(r, target)
+    remaining = amount - greedy_advance_amt
+    if remaining > 255:
+        value = remaining - 255
+        count = ((value - r) * _W_INV) % 256
+        total_seeds += count
+        chunks += 1
+        r = (2 * value) % 256
+        remaining = 255
+    if remaining:
+        value = remaining
+        count = ((value - r) * _W_INV) % 256
+        total_seeds += count
+        chunks += 1
+    tokens = total_seeds + 2 * chunks
+    final_hw = (hw + _W_STEP * total_seeds) % 256
+    return tokens, final_hw
+
+
 def _jump(st: _Sums, target: int) -> list[str]:
     """Emit an array-0 trampoline to ``target`` and replay it onto ``st``."""
     tokens, out_arr, out_acc = _trampoline(st.arr0(), st.acc, target)
@@ -342,12 +472,17 @@ def slow_acv_mammalian(truth_table: str) -> str:
             _replay(zero, node_toks, bit=0)
             one = st.clone()
             _replay(one, node_toks, bit=1)
-            # Size the arm's slot from an exact dry build of its core; the
-            # slot only has to hold the tuning chunk and merge trampoline
-            # too, and everything past them before ``cont`` is dead.
+            # Size the arm's slot from an exact length, not a dry build:
+            # the slot only has to hold the tuning chunk and merge
+            # trampoline too, and everything past them before ``cont`` is
+            # dead.  ``_w_raise`` alone is O(weight) to simulate, and this
+            # retry loop can run several times per level, so a level's
+            # sizing cost was O(weight) per retry -- ``_w_raise_len``
+            # closes it to O(1) without changing which attempt succeeds.
             core = one.clone()
-            core_len = len(_route_to_w(core)) + len(_w_raise(core, weight))
-            core_len += len(_route_to_0(core))
+            route_w_toks = _route_to_w(core)
+            w_len, w_final_hw = _w_raise_len(core.hw, core.nw, weight)
+            core_len = len(route_w_toks) + w_len + _route_to_0_len(w_final_hw)
             arm_slot = core_len + 257 + _tramp_bound(600)
             for _ in range(8):
                 need = core_len + 257 + _tramp_bound(arm_slot)
@@ -357,14 +492,26 @@ def slow_acv_mammalian(truth_table: str) -> str:
             else:  # pragma: no cover - the bound grows ~3/255 per token
                 raise AssertionError("the arm slot did not settle")
             cont = landing + arm_slot
-            z = zero.clone()
-            t0 = _jump(z, cont)
-            if landing >= node_end + len(t0):
+            # Only the landing check needs the trampoline's length, and
+            # most retries fail it: building the real jump here re-paid
+            # its O(distance) cost on every retry, on top of the ones
+            # that fail.  ``_trampoline_len`` answers the check in O(1);
+            # the real jump is built once below, for whichever attempt
+            # the loop settles on.
+            t0_len = _trampoline_len(zero.arr0(), zero.acc, cont)
+            if landing >= node_end + t0_len:
                 break
             chunk, _, _ = _stash_chunk(st.arr0(), st.acc)
             _replay(st, chunk)
             tokens += chunk
             pos += len(chunk)
+
+        z = zero.clone()
+        t0 = _jump(z, cont)
+        if len(t0) != t0_len:  # pragma: no cover - the fast length is exact
+            raise AssertionError(
+                f"trampoline length mismatch: fast {t0_len}, real {len(t0)}"
+            )
 
         tokens += node_toks
         tokens += t0
