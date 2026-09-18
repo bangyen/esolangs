@@ -234,6 +234,27 @@ printed characters at 3,000 ticks, for every offset tried
 corridor needs the same O(1) valve at every station, and only station 0
 has a value fixed at compile time.
 
+A shared decrement corridor with an *ungated* tap was then tried, size
+rather than execution the target (a `+` fork: north continues, west
+jogs and forced-turns north into `_`, then a bit-adjust and a private
+O(1)-width dash to the left edge -- no valve, strays meant to be
+tolerated since execution can stay `Theta(T**2)`).  Executed at n=2, the
+simplest case (value 0 at the very first station): it does not tolerate.
+A `_`-reflected copy returns to the same `+` heading the opposite way it
+left, and `+`'s entry exclusion only blocks *that* one direction --
+both the original entry and the original continue direction are open
+again, so every round trip re-forks into both and the live population
+doubles every four ticks (1, 2, 2, 2, 2, 2, 4, ..., 128 cods unhalted at
+tick 26, nothing ever printed;
+`test_a_shared_decrement_column_with_plain_fork_taps_explodes`).  A
+plain `+` cannot host an ungated tap on a shared corridor at all; the
+valve (compile-time-only) and an O(distance) gauntlet (the shipped
+generator) are the only two ways found to keep a stray from re-entering
+live, and neither gives `Theta(T)` size.  Round 3, and the row rests:
+three obstructions pinned this session (concurrent strays, the valve's
+compile-time requirement, the ungated tap's re-entry) on top of the
+prior rounds'.
+
 Executed on the interpreter, the same day: a plain cell with four open
 sides is a crossing (a cod goes straight when its forward cell is open),
 so planarity forces nothing and a `K_{3,3}` argument does not apply; a
