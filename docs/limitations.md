@@ -259,12 +259,16 @@ The apparent constant-size answer -- use the sole ``>`` as a return diode
 for a ``_`` zero test -- is not deterministic.  Its return exit must be
 open when the cod launches, so that exit is also a second launch heading;
 the two first draws reach different prints before the zero test.  Closing
-it removes the return route.  An ordinary fork-free ingress is reversible:
-away from ``_``, a forced turn reverses to the cell it came from, so a
-reflected cod retraces its whole ingress.  Thus a reusable diode needs a
+it removes the return route.  A value gate cannot hide it: ``<`` and ``_``
+are passable when ``>`` chooses a heading and act only after the move.
+An ordinary fork-free ingress is reversible: away from ``_``, a forced turn
+reverses to the cell it came from, so a reflected cod retraces its whole
+ingress.  It cannot meet a new ``-`` before its shared ``+`` without that
+same ``-`` having consumed the forward cod.  Thus a reusable diode needs a
 ``+`` and must kill its backward copy; the known-zero valve and ungated tap
 above are the two executed attempts.  Pinned by
-``test_the_start_cannot_be_a_deterministic_return_diode``.
+``test_the_start_cannot_be_a_deterministic_return_diode`` and
+``test_a_value_gate_is_open_when_the_start_chooses_a_heading``.
 
 Executed on the interpreter, the same day: a plain cell with four open
 sides is a crossing (a cod goes straight when its forward cell is open),
