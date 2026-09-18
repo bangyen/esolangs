@@ -24,28 +24,14 @@ The candidate list is empty.
   table in a language's syntax is not a generator -- any language can be
   brute-forced -- so a row whose generator is one carries a clock: one
   more executed round, and if neither a construction nor a bound comes of
-  it the language leaves with its row.  ZTOALC L (a chunked array lookup
-  on Collatz slots, no line-local rule and dense paths only by search)
-  left under it on 2026-09-17.  Nopstacle left the same day on the first
-  clause, not this one: its generator was a decision tree of corridors
-  like twenty-five others', `Theta(n 2**n)` because a level's run must
-  sit on one line, but its alphabet -- the blank and `#` -- can spell
-  neither the no-spaces nor the uniform convention, and no construction
-  under the conventions exists to be linear.  COD stays on the third
+  it the language leaves with its row. COD stays on the third
   clause: four executed rounds the
   same day produced the model in its searched-negatives paragraph (no
   routing primitive, joins that leak a copy, a kill per zero-set per copy)
-  and no construction or bound.  WII2D stays on the third clause too:
+  and no construction or bound. WII2D stays on the third clause too:
   the fold is the language's only branching, pinned in
   `tests/tools/test_boolean_wii2d.py::test_the_junction_catalogue_alone_cannot_replace_the_fold`.
-  Polynomial's fourteen rounds ended in the bound:
-  its measured target, `Theta(L**2 log L)` digits for every multiple of the
-  mandatory root product, is now proved, and the row closes on size and
-  time as a language lower bound.  The clause is deliberate: a wall that
-  has not been proved is not a lookup table, and both Factor's bound and
-  Polynomial's came after their walls were measured. SLOW ACV MAMMALIAN closed
-  on generation time on 2026-09-18: an O(1) residue-orbit dry run replaced
-  retry-time O(weight) simulation, with byte-identical output.
+  A wall that has not been proved is not a lookup table.
 
   All 63 generators are audited on four axes.  Totality is the `proofs.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
@@ -72,17 +58,13 @@ The candidate list is empty.
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
   | WII2D | Cap | Open | Open | Linear |
 
-  Generation time, growth per added input at the top arity: Polynomial
-  x3.4 dense (1.1 s at n=9), WII2D x4.8 dense (1.1 s at n=9), Factor x2.7
-  (1.2 s at n=11).  B-tapemark, 6-5, Forth, Circuit Diagram past its n=8
+  Generation time, growth per added input at the top arity: WII2D x4.8
+  dense (1.1 s at n=9). B-tapemark, 6-5, Forth, Circuit Diagram past its n=8
   route change, and Vandevelo (x2.0 dense over n=11..15, 0.31 s at n=12,
   a peel that keeps its working sets across cubes) read x2.0--2.2,
   between the size contract's x2.15 and what these arities separate from
   noise; they are held linear until a wider measurement says otherwise.
   Interprogck8 reads x1.96 but remains open: its construction carries `log T`.
-  Streetcode closed on generation time and output size on 2026-09-18; its
-  alternating-axis H-tree (`9250e3ce`) is linear by construction and measured
-  within the size contract through n=14.
 
   Each open row's question, with the searched negatives in
   [limitations](limitations.md#searched-negatives):
@@ -122,20 +104,12 @@ The candidate list is empty.
     and from the shipped decoder's own states no two epochs return to
     `4 live` under `live / 4` unary, a floor it tracks within 2x
     (the zone lemma in [limitations](limitations.md#searched-negatives)).
-    The total extremal-fold fallback is also closed as a linear rule: its
-    named 5-bit maximal-LFSR witness emits 29, 88, and 8,978,977 op cells at
-    domains 8, 16, and 32 while reproducing every bit.
     An `@` route does not preserve that state through the next exactly-once
     input: the shared cell resets both arrival headings and positions
     (`TestWii2dAtCannotPreservePrefixState`).
     A deterministic scale/fold/safe-halving rule is total and executes at
     domain 8, but its domain-16 LFSR readout is 1,430,153 cells versus 110
     for the shipped decode (`TestWii2dCanonicalExtremePair`).
-    A non-fold construction is closed: the language has no instruction
-    that reads a value into control, so a branch is a build-time embed
-    choice between two edges sharing one op string per surviving value,
-    and only the fold's arithmetic can split them
-    (`tests/tools/test_boolean_wii2d.py::test_the_junction_catalogue_alone_cannot_replace_the_fold`).
   - `%^2^-1`, size and time: the shortest 2/3 descent shrank the dense
     fourteen-input template from 1.84 MB to 1.59 MB (280 KB at thirteen),
     but does not bound a point's relocations or the number of them: the
@@ -144,16 +118,6 @@ The candidate list is empty.
     x1.11 measures only to n=12 past the n=4 route change.  Its `Exception`
     cannot close, and which tables through sixteen inputs the planners refuse
     is finite (every table tried through fourteen builds).
-  - Polynomial: stays for its language lower bound on size and time.  The
-    exact minimum-mass multiple of the mandatory root product is the
-    product itself (integer to L=7, and the real relaxation one digit
-    lighter), and the iterated elimination's slack certificate now proves
-    `Theta(L**2 log L)` = `Theta(T**2 / log T)` digits for *every* multiple,
-    every cofactor and every operand sign -- the lemma on exponential sums
-    it rested on is a theorem in [polynomial](polynomial.md).  No
-    construction is left and nothing on the bound is open; only the `Cap`
-    remains, and a `Cap` cannot close.
-  - Factor: stays for its two language lower bounds.
 
 - **Boolean generator conventions.**  Five conventions govern the *embed*,
   the text that stands for one input -- not the program around it.  A
