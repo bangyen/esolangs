@@ -943,3 +943,58 @@ class TestOneDisplacedZeroIsProved:
                     h_top[d - c + 1] - ratio * h_all[d - c + 1]
                 )
             assert _certificate_tail(roots_sorted, zeros) <= bound
+
+
+def _exp_sum(y: list[Fraction], zeros: tuple[int, ...], unit_at: int | None):
+    """Coefficients of the exponential sum on ``y`` with the given zeros, normalised
+    to value 1 at ``unit_at`` (``None`` means at 0)."""
+    rows = [[v ** (0 if unit_at is None else unit_at) for v in y]]
+    rows += [[v**z for v in y] for z in zeros]
+    sol = sp.Matrix(rows).LUsolve(sp.Matrix([1] + [0] * len(zeros)))
+    return [Fraction(int(x.p), int(x.q)) for x in sol]
+
+
+class TestTriangleSlackIsBounded:
+    """``docs/polynomial.md`` ("The slack, spent"): ``u = F + lambda G`` with
+    ``F`` on the ``c - 1`` largest roots carrying all zeros but the last
+    displaced one and ``G`` the ``c``-root sum vanishing at ``0`` and those;
+    the triangle term ``|lambda| tail(G)`` is at most ``0.7 bound(f)`` (0.53,
+    0.58, 0.61, 0.64 at ``c = 3..6``), worst with one displaced zero just
+    past the fill, and ``|F_d / G_d|`` decreases past the last prescribed
+    zero.  Measured; the two sub-lemmas the lossy proof needs."""
+
+    @pytest.mark.parametrize(
+        "count", [3, 4, 5, pytest.param(6, marks=pytest.mark.medium)]
+    )
+    def test_slack_and_monotone_ratio(self, count: int) -> None:
+        primes = (3, 5, 7, 11, 13, 17)[:count]
+        y = sorted(Fraction(1, p) for p in primes)
+        worst = Fraction(0)
+        for f in range(count - 1):
+            k = count - 1 - f
+            lead = tuple(range(1, f + 1))
+            bound = math.prod(v / (1 - v) for v in y[: f + 1])
+            for disp in itertools.combinations(range(f + 2, f + 2 + 9), k):
+                a_f = _exp_sum(y[:-1], lead + disp[:-1], None)
+                a_g = _exp_sum(y, (0, *lead, *disp[:-1]), disp[-1])
+                horizon = disp[-1] + 50
+
+                def f_at(d: int, a: list[Fraction] = a_f) -> Fraction:
+                    return sum(ai * v**d for ai, v in zip(a, y[:-1], strict=True))
+
+                def g_at(d: int, a: list[Fraction] = a_g) -> Fraction:
+                    return sum(ai * v**d for ai, v in zip(a, y, strict=True))
+
+                tail_g = sum(
+                    abs(g_at(d)) for d in range(1, horizon) if d not in lead + disp
+                )
+                tail_g += abs(
+                    sum(ai * v**horizon / (1 - v) for ai, v in zip(a_g, y, strict=True))
+                )
+                worst = max(worst, abs(f_at(disp[-1])) * tail_g / bound)
+                last = disp[-2] if k > 1 else f
+                ratios = [
+                    abs(f_at(d)) / abs(g_at(d)) for d in range(last + 1, last + 20)
+                ]
+                assert all(a >= b for a, b in itertools.pairwise(ratios))
+        assert worst < Fraction(7, 10)

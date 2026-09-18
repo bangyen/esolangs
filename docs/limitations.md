@@ -318,7 +318,11 @@ Desnanot--Jacobi is recorded as not lifting `c=2`.  Proved so far: the
 lemma with one displaced zero (so at least two coefficients of every
 multiple reach `prod_{i>2}(p_i-1)` wherever the first sits); the tail is
 not monotone in the zero positions, so no principal-representation
-theorem closes the rest.  Root-set term bounds (Descartes on either
+theorem closes the rest.  A lossy induction (`u = F + lambda G`, triangle
+inequality) needs only two measured sub-lemmas -- the ratio `|F/G|`
+decreases past the last prescribed zero, and the triangle term is under
+`0.7 bound(f)` (c=3..8) -- to give `K(c)` linear in `c`, which the
+assembly absorbs.  Root-set term bounds (Descartes on either
 ray, sector and unit-circle fewnomial bounds, cyclic-code weight
 bounds, Tao's uncertainty principle) do not apply: the forced roots are
 prime powers and `a +- p^b i`, on no ray, circle or root-of-unity set,
