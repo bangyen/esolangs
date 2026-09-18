@@ -535,6 +535,29 @@ class TestPctFoldPlan:
             positions = module._fold_positions(n, weights)  # noqa: SLF001
             assert len(set(positions)) == 2**n, n
 
+    def test_the_ladder_refuses_past_eleven_inputs_on_the_span(self) -> None:
+        """``_fold_subset_weights`` refuses once its floor exceeds ``_LIMIT``.
+
+        The floor is ``2**n + 1`` (the previous test); the gate is
+        ``sum(weights) <= _LIMIT``.  ``_LIMIT`` is not a generator dial --
+        it is the interpreter's own over-3003 reset
+        (``register_based/pct_squared_minus_one.py``'s ``_reset``,
+        mirrored here so planning matches execution), so no decomposition
+        of the ladder (one ladder over all ``n`` inputs, or a prefix ladder
+        plus a second one over the rest) can seat more than
+        ``floor(log2(_LIMIT)) `` ~ 11 inputs at unit gaps: the floor is a
+        property of the *span*, and laying a second ladder on top of the
+        first still needs the same ``2**n + 1`` distinct positions in
+        total, not less, wherever the ``n`` weights are split.  Eleven
+        fits (``2**11 + 1 = 2049 <= 3003``); twelve does not
+        (``2**12 + 1 = 4097 > 3003``).
+        """
+        module = self.module()
+        assert module._LIMIT == 3003  # noqa: SLF001
+        assert module._fold_subset_weights(11) is not None  # noqa: SLF001
+        assert module._fold_subset_weights(12) is None  # noqa: SLF001
+        assert module._fold_subset_weights(13) is None  # noqa: SLF001
+
     @pytest.mark.parametrize("ladder", ["narrow", "packed"])
     def test_ladder_setters_are_equal_width(self, ladder: str) -> None:
         """Both branches match in width, and odd-width amounts are respelled.
