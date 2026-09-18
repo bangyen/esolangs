@@ -489,6 +489,68 @@ class TestCODModelFacts:
         assert not machine.halted
         assert len(machine.io.getvalue()) > 100
 
+    def test_the_shared_lane_zero_test_fails_on_every_nonzero_residual(self) -> None:
+        """Lead 1: the 8-command node cannot serve an R=4 block on one lane.
+
+        Valve ``))<((``, one ``+`` fork, one sibling ``<``, one trunk ``)``
+        -- eight commands, both ``<`` kills single shared cells -- fed
+        residuals 0..3 (``len`` 125 + 9 per setter).  Offset 0 halts with
+        one print and peak 2; each nonzero offset re-enters the shared
+        ``+`` from the opposite heading every cycle, printing a walking
+        value per cycle (600+ chars at 3000 ticks, steady peak 3).
+        """
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        for offset in range(4):
+            main = ">" + ")" * offset + "))<((..+<."
+            width = len(main) + 2
+            fork_col = main.index("+") + 1
+            trunk_dot_col = width - 2
+
+            def wall(w: int = width) -> str:
+                return "~" * w
+
+            def with_char(col: int, ch: str) -> str:
+                row = list(wall())
+                row[col] = ch
+                return "".join(row)
+
+            row1 = list(wall())
+            row1[fork_col : fork_col + 4] = list(".---")
+            program = "\n".join(
+                [
+                    wall(),
+                    "".join(row1),
+                    with_char(fork_col, "_"),
+                    with_char(fork_col, ")"),
+                    "~" + main + "~",
+                    with_char(trunk_dot_col, "."),
+                    with_char(trunk_dot_col, "."),
+                    with_char(trunk_dot_col, "."),
+                    "-" * 3 + " " * (width - 3),
+                ]
+            )
+            assert len(program) == 125 + 9 * offset
+            assert program.count("+") == 1
+            assert program.count("<") == 2
+
+            machine = _Machine(program, ScriptedIO(""))
+            peak = 0
+            for _ in range(3000):
+                if machine.halted:
+                    break
+                machine.step()
+                peak = max(peak, len(machine.cods))
+            if offset == 0:
+                assert machine.halted
+                assert machine.io.getvalue() == "2"
+                assert peak == 2
+            else:
+                assert not machine.halted
+                assert len(machine.io.getvalue()) >= 600
+                assert peak == 3
+
     def test_a_shared_decrement_column_with_plain_fork_taps_explodes(self) -> None:
         """Round 3: a shared corridor with an ungated (no-valve) ``+`` tap.
 
