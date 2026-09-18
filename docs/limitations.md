@@ -102,6 +102,34 @@ blocks of the packed table, `n * T / 2` bytes in all, which at word width
 `w` is `n * T / (2 w)` word operations with `n <= w` for any table that
 fits in memory.
 
+Decleq and Minsky Swap were `Theta(T log T)` by their jump targets, which
+the contract read as linear (x1.92 and x2.20 at n=12).  A full decision
+tree in an absolute-jump OISC names `T - 1` distinct targets, `Theta(T
+log T)` digits however it folds, so Decleq's tree now stops `k` levels
+short, `2**k >= 2n`, and each leaf is a `2**k`-cell table of `48`/`49`
+indexed by a counter the low inputs decrement: 41 to 6.5 characters per
+entry at n=12 on parity, execution `O(n)`.  Minsky Swap's `2**n` cascade
+targets were `2**n` leaf addresses and its leaf `~`s spelled the end
+address `2**n` more times; both now name one of two shared leaves at the
+head of the program, a one-digit target per row: 18.9 to 5.1 characters
+per entry at n=12, every table of one arity the same length.
+Interprogck8's per-entry cost is a step function of the arity rather than
+a line: one stride class serves fourteen inputs at 805-887 characters per
+entry, a second costs 6300-6600 at n=15, and the placer refuses a
+forty-first input, so the contract's x1.96 reads the first step's flatness
+and nothing past it.
+
+A survey on 2026-09-17 classified the 60 generators outside COD,
+Polynomial and WII2D's open cells by reading each construction, since the
+contract's measurement cannot see a `log T` factor in twelve doublings:
+24 proved O(T), 8 argued, 1 measured only (`%^2^-1`, whose relocations no
+invariant bounds), and 27 with a super-linear worst case -- 5 on size
+(Factor's language bound, Streetcode, and Decleq, Minsky Swap and
+Interprogck8 above) and 22 time-only, mostly `Theta(T log T)` from
+per-node table slices and per-level concatenation, being fixed in a
+separate batch.  Worst-case classes come from reading the construction;
+the measurement is the regression guard.
+
 **Factor's folded tree is Theta(T log T) on parity; the language forces
 `Omega(T log T / log log T)` for some table under every encoding.**  The
 folded Brainfuck tree has Theta(T) maximal command runs; each consumes
