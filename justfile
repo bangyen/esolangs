@@ -16,7 +16,7 @@ help:
     @echo "  test-line    - tests/interpreters suites with pytest only (~3s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
     @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen boolean/streetcode)"
-    @echo "  proofs       - every executable proof: ledger obligations + all 65 deep proofs"
+    @echo "  proofs       - every executable proof: ledger obligations + all 7 deep proofs"
     @echo "  apa-proof    - re-check the A Painter Ant uniform-in-n proof (15s)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
@@ -131,7 +131,7 @@ mutate-gen module *args:
 # 16s. The runner keeps going after a failure and reports at the end, so
 # linearity's standing Forþ finding does not hide the proofs after it.
 # Use `python -m tests.proofs.deep --list` to see the bands.
-# run every executable proof: the ledger obligations and all six deep proofs
+# run every executable proof: the ledger obligations and all 7 deep proofs
 proofs:
     {{PYTHON}} -m pytest tests/proofs -q
     {{PYTHON}} -m tests.proofs.deep all
