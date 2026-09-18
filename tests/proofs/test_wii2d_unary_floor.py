@@ -765,14 +765,14 @@ class TestWii2dR7PatternBroadening:
 
     LFSR-8/16/32 plus twelve new random literals (D=16/32, seeds
     7/11/13/17/19/23 and 107/111/113/117/119/123), shipped vs merge-cheap
-    vs ratio-cheap, every point apply-replayed, D<=32 decodes under 5ms
-    each: merge wins r16_s17 by 47 (67 vs 114) yet loses r32_s111 by 261
+    vs ratio-cheap, every point apply-replayed, a few ms per decode at
+    D<=32: merge wins r16_s17 by 47 (67 vs 114) yet loses r32_s111 by 261
     (439 vs 178); ratio wins r32_s117 by 208 (170 vs 378) yet loses r32_s123
     by 321 (523 vs 202). Either scorer's best win exceeds 40% while its
     worst loss exceeds 100%, so the volatility -- not a uniform miss -- is
     the pin: the prefix gap needs the pair search itself, no step-1 rule.
-    D=24/40/48/56/64/72/80 spot-checks plus D=64/72 random draws (under
-    5ms each at D<=32, under 35ms at D<=80): both scorers double LFSR-24
+    D=24/40/48/56/64/72/80 spot-checks plus D=64/72 random draws (a few
+    ms each at D<=32, under 50ms at D<=80 unloaded): both scorers double
     (266 vs 131) and LFSR-48 (1093 vs 502) and more than double LFSR-80
     (3817 vs 1545, the worst loss yet), ratio alone loses LFSR-40 by 250
     and LFSR-64 by 661, all three tie at LFSR-56 (1547), yet both stay
