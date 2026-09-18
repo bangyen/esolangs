@@ -850,14 +850,15 @@ def _staged_lay_total(tops: list[int]) -> int | None:
     room = 2 * _LIMIT - span
     if room < 4:
         return None
-    present = bytearray(room + 1)
-    for i, a in enumerate(tops):
-        for b in tops[i + 1 :]:
-            if b - a > room:
-                break
-            present[b - a] = 1
+    # The window is a language constant (at most 6006), so test each
+    # candidate against a set of tops instead of enumerating all pairs.  The
+    # old pair walk was quadratic in the live points; this is O(T) with the
+    # fixed workspace, and returns the same first absent distance.
+    occupied = set(tops)
     for total in range(4, room + 1, 2):
-        if not present[total] and _split_setter(total) is not None:
+        if _split_setter(total) is None:
+            continue
+        if not any(top + total in occupied for top in tops):
             return total
     return None
 
