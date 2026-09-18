@@ -102,7 +102,8 @@ The candidate list is empty.
   - WII2D, three cells: a rule emitting readouts within a constant of the
     exact optima (1.4--2.4 characters per entry to domain 14); no one-step
     or bounded-beam rule over small centres is one, and the optima's
-    non-ratcheting shape is closed to a dense centre past domain ~200
+    non-ratcheting shape ends between domain 32 and 64: a first epoch
+    within eight units of the origin then leaves magnitude 4--8 `D`
     (the zone lemma in [limitations](limitations.md#searched-negatives)).
   - `%^2^-1`, size and time: no invariant bounds a point's relocations
     (~1.5 KB each), and the top arities read x4.8 per input (375 KB at
