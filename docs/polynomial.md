@@ -214,6 +214,46 @@ coefficients of `D` bits each are `L**2` on their own.  Exact minimum text
 mass over every multiple of `(x-2)(x-3)(x-5)` of degree `<= 8` is the
 product's own 11 digits (z3 optimise, 145 s); larger sizes did not finish.
 
+**The sparse-remainder profile: the chain, one lemma, and the executed
+minima.**  Write the profile as `F = G + tau`, `G` the `K + 1` lowest
+coefficients (unbounded), `tau` supported above degree `K` with `t` terms
+each at most `B`.  Real roots only: a multiple of the full product is a
+multiple of `prod (x - p_i)`, so its bound is a bound.  The chain: with
+support `s_0 < ... < s_{t-1}` and gaps `g_j = s_j - s_{j-1}`, `F(r) = 0
+mod r**k` for every `k` gives, step by step, `G(r) = 0 mod r**s_0` and
+`tau_{s_j} = -(G(r) + sum_{l<j} tau_{s_l} r**s_l) / r**s_j mod r**g_{j+1}`
+for every root `r` at once, so each `tau_{s_j}` is a CRT residue mod
+`primorial**g_{j+1}` fixed by `G` and the terms below it, and the top
+carry must vanish exactly.  This is `F(r) = 0` rewritten, not a new
+constraint: the residues are functions of `G`, and whether `K + 1`
+integers can steer `t` residues into `[-B, B]` is the Diophantine question
+itself.  Counting bits -- `sum log(2|g_k|+1) + t log(2B+1)` of freedom
+against `(D - s_0) log primorial` of residue -- is the Gaussian heuristic
+again; every witness below satisfies it with margin (`L = 6, D = 20`: 356
+against 238 bits), as a heuristic must, and it proves nothing.  What does
+prove: eliminate `G` by a `(K+1)`-th divided difference over any `K + 2`
+roots `I`, `sum_j tau_j h_{j-K-1}(r_I) = 0` with `h` the complete
+homogeneous symmetric polynomials, `h_{m+1} >= rho h_m` for `rho = max
+r_I`, so the top term needs `|tau_top| h_m <= B sum_{m' < m} h_{m'} <= B
+h_m / (rho - 1)`: **every remainder above `K <= L - 2` unbounded low
+coefficients has a coefficient of at least `p_L - 1`.**  Tight: `L = 5, K
+= 3, D = 18` is unsat at `B = 10` and sat at `B = 11`; `L = 6, K = 4` unsat
+at 12.  That is `Omega(log T)` digits per remainder term, the profile's
+own allowance, and nothing on `t`.  Executed minima of `t` (z3, 120 s
+alarm per instance): at `B = p_L**2` the least `t` is reached by the
+product itself or a cofactor of degree `<= 6` (`L = 3..5` with `K = L -
+2`: `t = 2`; `L = 5, K = 2`: 5; `L = 6, K = 3`: 9 at `D = 20`, unknown at
+6), because `P`'s own top coefficients are under `p_L**2` at these sizes;
+`K = L - 1` is the `(L+1)`-term class (`x**D mod P`, `t = 1`, `G` of
+`L * D` digits).  At `B = p_L`: `L = 5, K = 3` needs `t = 7` (degree 11,
+`G ~ 10**9`); `L = 6, K = 3` has **no** multiple through `D = 26` for any
+`t`, `K = 2` none through 26, `K = 4` unknown at `t = 8`.  The size reading:
+digits are `sum log|g_k| + t (log B + log D)`; the lemma gives `t log L`,
+the chain's count would give `0.3 (D - K) L log2 L` -- quadratic, the
+product's order -- if it were a theorem, and it is not.  Bound on this
+profile only; not a language lower bound.  `tests/proofs/test_negatives.py`
+pins the lemma's threshold and the `L = 6, K = 3, B = 13` negative.
+
 ## Literature
 
 [Giesbrecht, Roche and Tilak][sparse-multiples] (Algorithmica 64:454-480,

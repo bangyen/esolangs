@@ -165,8 +165,8 @@ D = O(T) that is `2**o(T)` functions against `2**T` tables.
 `Omega(T/log T)`; every multiple carries `Omega(T/log T)` monomials; every
 right-half-plane program is `Omega(T^2/log T)`; every Descartes-minimal
 multiple is `Omega(T^2/log^2 T)` on the whole plane.  What remains is a
-left-half-plane multiple with more terms than Descartes requires, see
-[polynomial](polynomial.md).
+left-half-plane multiple with `O(T)` coefficient digits over more terms
+than Descartes requires, see [polynomial](polynomial.md).
 
 ### Searched negatives
 
@@ -268,8 +268,9 @@ the per-pair charge is off by the zero-set's size, and a bound over
 every program has to price copies against zero-set kills and block
 reflections together, which no argument here does.
 
-Polynomial's remaining question is a left-half-plane multiple of the
-mandatory root product with more terms than the Descartes minimum:
+Polynomial's remaining question is coefficient mass, not term count: a
+left-half-plane multiple of the mandatory root product with O(T) digits
+across more terms than the Descartes minimum:
 instruction count, monomial count, right-half-plane coefficient mass, and
 the Descartes-minimal class are all language-forced, every searched
 escape is closed, and the Rolle reduction behind Descartes cannot lower
@@ -283,7 +284,11 @@ L=5 admits no K<=2 at B=11 and no K=1 at B=121 through degree 24, L=6
 none of those through 26 (the least K at B = p_L^2 is 1, 1, 2, 3 at
 L=3..6), and where the profile exists the
 large coefficients are ~2^D and the remainder fills every degree,
-which is `T log T` text.  Root-set term bounds (Descartes on either
+which is `T log T` text.  Proved for the profile: above `K <= L - 2`
+unbounded low coefficients some remainder coefficient is at least
+`p_L - 1` (divided differences; tight at L=5), `Omega(log T)` digits a
+term and nothing on the term count; at L=6 no remainder bounded by 13
+exists over three low coefficients through degree 26.  Root-set term bounds (Descartes on either
 ray, sector and unit-circle fewnomial bounds, cyclic-code weight
 bounds, Tao's uncertainty principle) do not apply: the forced roots are
 prime powers and `a +- p^b i`, on no ray, circle or root-of-unity set,
