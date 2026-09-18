@@ -267,6 +267,7 @@ class TestNestingDepth:
         """
         assert _run_bf("+[>+[>+[>+[>+<-]<-]<-]<-]>>>>.", tmp_path / "depth4.png") == [1]
 
+    @pytest.mark.medium  # 1.2s: the extract/simulate side at depth 5
     def test_five_levels_round_trip(self, tmp_path: Path) -> None:
         """Depth 5 renders, extracts and executes correctly.
 

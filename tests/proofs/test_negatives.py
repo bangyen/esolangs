@@ -427,8 +427,13 @@ class TestIteratedEliminationThresholds:
             pytest.param(
                 (2, 3, 5, 7, 11, 13), 16, 3, 120, 160, marks=pytest.mark.medium
             ),
+            # 2.3s alone, but z3 is CPU-bound and the bands measure wall
+            # clock: under `-n auto` this one contends with the other
+            # solver tests and reached 23s, past even the medium band's
+            # scaled CI ceiling.  The band with headroom is the honest
+            # home for it; the weekly run still checks it.
             pytest.param(
-                (2, 3, 5, 7, 11, 13, 17), 16, 4, 192, 300, marks=pytest.mark.medium
+                (2, 3, 5, 7, 11, 13, 17), 16, 4, 192, 300, marks=pytest.mark.slow
             ),
         ],
     )
