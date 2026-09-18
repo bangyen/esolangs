@@ -125,6 +125,9 @@ The candidate list is empty.
     The total extremal-fold fallback is also closed as a linear rule: its
     named 5-bit maximal-LFSR witness emits 29, 88, and 8,978,977 op cells at
     domains 8, 16, and 32 while reproducing every bit.
+    An `@` route does not preserve that state through the next exactly-once
+    input: the shared cell resets both arrival headings and positions
+    (`TestWii2dAtCannotPreservePrefixState`).
     A non-fold construction is closed: the language has no instruction
     that reads a value into control, so a branch is a build-time embed
     choice between two edges sharing one op string per surviving value,
