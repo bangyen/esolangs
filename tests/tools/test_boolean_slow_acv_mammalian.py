@@ -1,8 +1,20 @@
 """Covers :mod:`esolangs.tools.slow_acv_mammalian`."""
 
+import random
+
 import pytest
 
 from esolangs import tools as boolean
+from esolangs.tools.slow_acv_mammalian import (
+    _greedy_advance,
+    _route_to_0_len,
+    _stash_chunk,
+    _Sums,
+    _trampoline,
+    _trampoline_len,
+    _w_raise,
+    _w_raise_len,
+)
 from tests.tools.boolean_runners import (
     run_slow_acv_mammalian,
 )
@@ -295,3 +307,112 @@ class TestSlowAcvMammalian:
             for table in ("01", "0110", "01101001")
         ]
         assert sizes == [22_531, 40_555, 58_472]
+
+
+class TestFastLanding:
+    """The O(1) sizing helpers agree with the O(weight) builds they replace.
+
+    ``slow_acv_mammalian``'s per-node retry loop used to re-simulate
+    ``_w_raise`` and ``_trampoline`` on every retry just to size and
+    length-check a candidate landing.  ``_w_raise_len`` and
+    ``_trampoline_len`` answer the same questions in O(1); these tests
+    hold them to the slow builds directly; cases marked below force a
+    residue cycle, the O(1) path's only real branch.
+    """
+
+    @pytest.mark.parametrize(
+        ("hw0", "nw0", "amount"),
+        [
+            (0, 0, 0),  # no raise at all
+            (5, 100, 10),  # inside the two exact chunks, no greedy phase
+            (5, 100, 1_000),  # a handful of greedy chunks, no cycle
+            (200, 50_000, 5_000_000),  # forces a residue cycle
+            (1, 1, 10**7),  # forces a residue cycle from a different start
+        ],
+    )
+    def test_w_raise_len_matches_the_real_build(
+        self, hw0: int, nw0: int, amount: int
+    ) -> None:
+        st = _Sums()
+        st.hw, st.nw, st.ptr = hw0, nw0, 1
+        real_tokens = _w_raise(st, amount)
+
+        fast_len, fast_hw = _w_raise_len(hw0, nw0, amount)
+        assert fast_len == len(real_tokens)
+        assert fast_hw == st.hw
+        # _route_to_0_len only needs the resulting head, never the tokens.
+        assert _route_to_0_len(fast_hw) == _route_to_0_len(st.hw)
+
+    def test_greedy_advance_cycle_matches_a_full_walk(self) -> None:
+        """A target past 256 chunks must exercise the cycle-jump branch."""
+        _, chunks, advance, final_r = _greedy_advance(17, 10**6)
+        assert chunks > 256  # otherwise this case is not testing the jump
+        assert advance >= 10**6
+
+        # Cross-check against the slow reference the construction ships.
+        st = _Sums()
+        st.hw, st.nw, st.ptr = 0, 17, 1
+        _w_raise(st, 10**6 + 510)
+        assert (st.hw + st.nw) % 256 == final_r
+
+    @pytest.mark.parametrize("target", range(1, 4001, 40))
+    def test_greedy_advance_matches_a_slow_walk_across_many_targets(
+        self, target: int
+    ) -> None:
+        """Sweep small-to-large targets from one residue.
+
+        Some of these land the cycle jump exactly on its first lap (no
+        extra multiple needed) and some skip several laps -- both paths
+        through the jump, not just the one big-target picks.
+        """
+        st = _Sums()
+        st.hw, st.nw, st.ptr = 3, 29, 1
+        real_tokens = _w_raise(st, target)
+        fast_len, fast_hw = _w_raise_len(3, 29, target)
+        assert (fast_len, fast_hw) == (len(real_tokens), st.hw)
+
+    @pytest.mark.parametrize(
+        "seed",
+        range(20),
+    )
+    def test_w_raise_len_matches_random_states(self, seed: int) -> None:
+        rng = random.Random(seed)
+        hw0 = rng.randrange(256)
+        nw0 = rng.randrange(10**6)
+        amount = rng.randrange(2 * 10**6)
+        st = _Sums()
+        st.hw, st.nw, st.ptr = hw0, nw0, 1
+        real_tokens = _w_raise(st, amount)
+        fast_len, fast_hw = _w_raise_len(hw0, nw0, amount)
+        assert (fast_len, fast_hw) == (len(real_tokens), st.hw)
+
+    @pytest.mark.parametrize(
+        ("h0", "n0", "acc", "target"),
+        [
+            (5, 0, 0, 1),  # zero chunks: the initial gap already fits
+            (5, 10, 4, 20),  # one chunk
+            (5, 10, 4, 500),  # two chunks
+            (5, 10, 4, 100_000),  # past two chunks: the closed-form tail
+            (200, 50_000, 999, 300_000),  # a longer closed-form tail
+        ],
+    )
+    def test_trampoline_len_matches_the_real_build(
+        self, h0: int, n0: int, acc: int, target: int
+    ) -> None:
+        array = [h0, n0]
+        real_tokens, _, _ = _trampoline(array, acc, target)
+        assert _trampoline_len(array, acc, target) == len(real_tokens)
+
+    def test_trampoline_stash_chunk_count_is_one_past_the_second(self) -> None:
+        """The closed-form tail's premise, pinned directly.
+
+        ``_trampoline_len`` assumes every chunk past the second spends
+        exactly one ``SEED`` -- verified here against ``_stash_chunk``
+        itself rather than only through the lengths above.
+        """
+        array, acc = [11, 23], 7
+        counts = []
+        for _ in range(6):
+            chunk, array, acc = _stash_chunk(array, acc)
+            counts.append(len(chunk) - 2)
+        assert counts[2:] == [1, 1, 1, 1]
