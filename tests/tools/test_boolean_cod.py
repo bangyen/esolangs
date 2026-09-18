@@ -449,6 +449,74 @@ class TestCODModelFacts:
         assert not machine.halted
         assert len(machine.io.getvalue()) > 100
 
+    def test_a_shared_decrement_column_with_plain_fork_taps_explodes(self) -> None:
+        """Round 3: a shared corridor with an ungated (no-valve) ``+`` tap.
+
+        Each station is ``+`` (fork: north continues, west taps off), a
+        west jog forced-turned north into ``_``, then a bit-adjust and a
+        private dash reaching the left edge -- O(1) width per station, no
+        gauntlet.  The idea (this round's (b)) was that strays are
+        tolerable since only size, not execution, is the target.
+
+        They are not tolerable: a copy ``_`` reflects (any station before
+        the true index, value nonzero) re-enters the same ``+`` heading
+        the *opposite* way it left, and ``+``'s entry exclusion only
+        blocks the one direction it is *now* arriving from -- both the
+        original entry and the original continue direction are open
+        again, so it re-forks into both.  Every round trip through
+        ``+``/jog/``_`` doubles the live population: 1, 2, 2, 2, 2, 2, 4,
+        4, 4, 4, 8, ... (executed, n=2, the simplest case: value 0 at the
+        very first station).  128 cods alive and unhalted at tick 26,
+        nothing ever printed.  A plain ``+`` cannot host an ungated tap on
+        a shared corridor at all -- the valve (round 2) or an O(distance)
+        gauntlet (the shipped generator) are the only ways found to keep a
+        stray from re-entering live.
+        """
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        width = 8  # 0-2 dash zone, 3 lead-in, 4 wall, 5 tap column, 6 main
+
+        def wall_row() -> list[str]:
+            return list("~" * width)
+
+        rows: list[list[str]] = []
+        top = wall_row()
+        top[5] = "."  # bit for the bare final leaf (unused by this probe)
+        rows.append(top)
+        turn = wall_row()
+        turn[3] = turn[5] = "."
+        rows.append(turn)
+        rows.append(list("-" * 3 + "~" * (width - 3)))
+        for _ in range(3):  # n=2: 3 gated stations plus the bare leaf above
+            r0 = wall_row()
+            r0[5] = "."
+            rows.append(r0)
+            turn0 = wall_row()
+            turn0[3] = turn0[5] = "."
+            rows.append(turn0)
+            rows.append(list("-" * 3 + "~" * (width - 3)))
+            r1 = wall_row()
+            r1[5], r1[6] = "_", "<"
+            rows.append(r1)
+            r2 = wall_row()
+            r2[5], r2[6] = ".", "+"
+            rows.append(r2)
+            r3 = wall_row()
+            r3[6] = "("
+            rows.append(r3)
+        bottom = wall_row()
+        bottom[6] = ">"
+        rows.append(bottom)
+        program = "\n".join("".join(r) for r in reversed(rows))
+
+        machine = _Machine(program, ScriptedIO(""))
+        for _ in range(26):
+            machine.step()
+        assert not machine.halted
+        assert len(machine.cods) == 128
+        assert machine.io.getvalue() == ""
+
     def test_the_t_squared_wall_is_concurrent_strays_not_walk_length(self) -> None:
         """The shipped cascade's cost is *width* (live strays), not *depth*.
 
