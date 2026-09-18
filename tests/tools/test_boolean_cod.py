@@ -597,3 +597,37 @@ class TestCODModelFacts:
 
         assert run([1] * n) == (7713, True, "1", total)
         assert run([0] * n) == (7820, True, "0", 2)
+
+    @pytest.mark.parametrize("n", range(1, 9))
+    def test_disjoint_unary_zero_tests_pay_the_residual_sum(self, n: int) -> None:
+        """A scoped floor for the routed-cascade model, not a language bound.
+
+        In an arm that owns its cells, ``<`` can kill a stray only at value
+        zero.  With no value operation besides unit ``(``/``)``, a stray
+        arriving at residual ``r`` therefore needs at least ``r`` net
+        decrements before that kill.  A selected index ``T - 1`` leaves
+        residuals ``T - 1, ..., 0`` in the independent arms, so their
+        disjoint decrement cells total ``T * (T - 1) / 2``.  Shared lanes
+        are outside this lemma; their failed re-entry construction is pinned
+        by ``test_a_shared_decrement_column_with_plain_fork_taps_explodes``.
+        """
+        total = 2**n
+        residuals = range(total - 1, -1, -1)
+        assert sum(residuals) == total * (total - 1) // 2
+
+        # A shorter unary descent leaves a nonzero residue, so ``<`` cannot
+        # kill the stray.  Execute the witness rather than treating the
+        # arithmetic as a source-size claim.
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        residual = total - 1
+        descent = "(" * (residual - 1)
+        row = ">" + ")" * residual + descent + "<"
+        width = len(row)
+        code = "~" * width + "\n" + row + "\n" + "~" * width
+        machine = _Machine(code, ScriptedIO(""))
+        for _ in range(2 * residual):
+            machine.step()
+        assert machine.cods[0].value == 1
+        assert not machine.halted
