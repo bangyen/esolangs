@@ -148,7 +148,7 @@ def load(path: Path | None = None) -> Ledger:
         for match in re.finditer(r"^\*\*(.+?)\.\*\*", schemes, re.MULTILINE)
     }
 
-    # ``exceptions?``: the count reached zero in Sep 2026, and the sentence has
+    # ``exceptions?``: the count reached zero, and the sentence has
     # to stay grammatical, so the plural cannot be hard-coded here.
     count = re.search(
         r"records (\d+) theoretical totality arguments and (\w+)\s+open exceptions?",

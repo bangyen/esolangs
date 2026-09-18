@@ -42,7 +42,7 @@ class TestSlowAcvMammalian:
             # worst, 1.68s after the landings were first solved.  The whole
             # construction is closed-form now -- a build is 0.3ms and this
             # case is dominated by the eight interpreter runs, measured
-            # 2026-09-05 at 0.07s -- so they rejoin the fast run.
+            # at 0.07s -- so they rejoin the fast run.
             ("11111110", 3),  # NAND3
             ("01101001", 3),  # XOR3
         ],

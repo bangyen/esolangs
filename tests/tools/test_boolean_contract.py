@@ -45,7 +45,7 @@ _TABLES = ["00000000", "01101001"]
 # it stops being noticed.
 #
 # The set is empty.  ``minifuck`` was its last member, at 14.9s of the
-# sweep's 18.0s, and left on 2026-09-06 when the emitter stopped stepping
+# sweep's 18.0s, and left when the emitter stopped stepping
 # its straight runs one character at a time: the entry now measures 0.03s
 # against the one-second budget.  ``the relevant generator tests`` has the
 # full ledger of what entered and left this set, with the measurement
@@ -897,7 +897,7 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
 
 
 # The build sweep above proves every generator *returns* a program up to ten
-# inputs.  It never runs one, and for four years nothing else ran one past
+# inputs.  It never runs one, and nothing else ran one past
 # four inputs either.  Grapheme's variable keys collided with two of its own
 # command characters from slot 5 onward, so from six essential inputs it
 # emitted a program its own interpreter could not execute -- and the sweep
@@ -1006,7 +1006,7 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
 # The roadmap's original scaling queue.  A row leaves ``_OPEN_SCALING`` only
 # after an O(T) construction or a language-wide lower bound; it enters when
 # the construction is read super-linear, whatever the twelve doublings
-# measure.  Streetcode left 2026-09-18: its per-level hall was the
+# measure.  Streetcode left: its per-level hall was the
 # ``Theta(T log T)`` source and the alternating-axis H-tree replaced it.
 _LINEAR_SCALING = {
     "a_painter_ant",

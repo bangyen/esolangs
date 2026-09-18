@@ -74,7 +74,7 @@ ceiling is one named constant; reaching it refuses, never truncates.  A
 construction that is polynomial in the table and inside the budget gets no
 ceiling: super-linear growth there is an open roadmap cell for the linearity
 contract to hold, and a ceiling would hide it.  A refusal with no lift
-argument is `exception`, not `cap`.  Audited across all 60 on 2026-09-17:
+argument is `exception`, not `cap`.  Audited across all 60:
 every other arity threshold is a route switch to a total construction or an
 unreachable invariant guard.
 

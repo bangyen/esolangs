@@ -20,4 +20,4 @@ Use GitHub's private [security advisory
 form](https://github.com/bangyen/esolangs/security/advisories/new).  Include
 the language, the smallest reproducer, the version and the impact.
 
-Expect acknowledgement within a week; a fix may take longer.
+Expect acknowledgement promptly; a fix may take longer.

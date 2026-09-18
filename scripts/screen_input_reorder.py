@@ -7,7 +7,7 @@ table space is closed under input permutation, so the permuted builds are
 lookups, not builds.  This metric reproduces the deleted ledger's verified
 figures exactly (dig 19.8, flowchart 17.1, modulous 16.4, arrowqueue 12.4).
 
-Premise, checked by execution 2026-09: the program built for
+Premise, checked by execution: the program built for
 ``permute_truth_table(t, p)``, fed input ``k`` = bit ``p[k]`` of the row,
 prints ``t[row]`` -- 288 runs over polynomial and brainfuck via the
 suite's runners, all 6 orders, every row of three tables.

@@ -40,11 +40,10 @@ def check_timeout(timeout: object) -> None:
         # argument`` and 1e10 as ``OverflowError: timestamp out of range``,
         # both as raw tracebacks.  Zero, negatives, ``inf`` and ``nan`` were
         # all refused cleanly; only the large finite case fell through, and
-        # a year-long bound is not one anybody wants anyway.
+        # a bound that long is not one anybody wants anyway.
         raise ArgumentError(
-            f"timeout must be at most {_TIMEOUT_CEILING} seconds (about a "
-            f"month), got {timeout}; a longer one does not fit the "
-            f"wall-clock timer"
+            f"timeout must be at most {_TIMEOUT_CEILING} seconds, got "
+            f"{timeout}; a longer one does not fit the wall-clock timer"
         )
     if timeout < _TIMEOUT_FLOOR:
         # Measured: below about a millisecond the alarm lands inside the

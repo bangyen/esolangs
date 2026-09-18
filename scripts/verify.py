@@ -164,7 +164,7 @@ STEPS = [
     # which the touched-file gate reads afterwards.
     #
     # Whole-package measurement is what a full run pays for: 13s over the
-    # 27s the fast selection takes bare, measured 2026-09-16 on 3.14 at
+    # 27s the fast selection takes bare, measured on 3.14 at
     # 9861 tests (it read as free at half that suite).  A scoped run does
     # not pay it -- `_scoped_coverage` narrows the measurement to the
     # touched files, which is all the gate reads.
@@ -178,7 +178,7 @@ STEPS = [
     ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     # A generator route that was replaced keeps its own tests green, so it
-    # never fails; three sat that way for months.  <1s.
+    # never fails; three sat that way.  <1s.
     ("dead definitions", [*PY, "scripts/check_dead_definitions.py"]),
     (
         # These also run under the plain `pytest` step above.  Repeated here

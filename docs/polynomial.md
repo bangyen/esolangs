@@ -707,8 +707,8 @@ argument, because it is proved for free positions anywhere.
 
 ## Literature
 
-[Giesbrecht, Roche and Tilak][sparse-multiples] (Algorithmica 64:454-480,
-2012) give an unconditional algorithm for binomial multiples (the `t = 2`
+[Giesbrecht, Roche and Tilak][sparse-multiples] (Algorithmica 64:454-480)
+give an unconditional algorithm for binomial multiples (the `t = 2`
 case Niven closes here) and, for each fixed `t >= 3`, one needing an a priori
 height bound and no repeated cyclotomic factors.  The mandatory products are
 cyclotomic-free (squared modulus at least 4, measured 58 at smallest over
@@ -716,7 +716,7 @@ dense n=3..6); what excludes them is `t = Theta(T/log T)` growing with the
 degree -- the case the paper singles out: "Removing these restrictions is
 desirable (though not necessarily possible)", and "we suspect that computing
 t-sparse multiples is NP-complete over both Q and F_q, when t is a parameter
-in the input".  Roche's 2018 survey ([arXiv:1807.08289][sparse-survey])
+in the input".  Roche's survey ([arXiv:1807.08289][sparse-survey])
 leaves sparse division and divisibility testing as Open Problems 2 and 3.
 
 ## What is closed

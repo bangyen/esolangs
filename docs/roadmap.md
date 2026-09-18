@@ -25,8 +25,8 @@ The candidate list is empty.
   brute-forced -- so a row whose generator is one carries a clock: one
   more executed round, and if neither a construction nor a bound comes of
   it the language leaves with its row. COD stays on the third
-  clause: four executed rounds the
-  same day produced the model in its searched-negatives paragraph (no
+  clause: four executed rounds together produced the model in its
+  searched-negatives paragraph (no
   routing primitive, joins that leak a copy, a kill per zero-set per copy)
   and no construction or bound.  A wall that has not been proved is not a
   lookup table.

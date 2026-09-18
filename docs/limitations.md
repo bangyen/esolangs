@@ -82,7 +82,7 @@ separate axes.
 
 The collection has 60 languages; its floor is 31. Ordinary imperative entries
 with shared-shim generators and no consumer were removed. Nopstacle and
-ZTOALC L left on 2026-09-17: the former cannot meet embed conventions, the
+ZTOALC L left: the former cannot meet embed conventions, the
 latter was a searched syntax-level lookup table. The 2D candidate screen is
 kept because re-running it is expensive: 1,543 unimplemented pages intersected
 with 567 two-dimensional-language pages, then filtered to 36 by implemented
