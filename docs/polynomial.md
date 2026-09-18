@@ -572,6 +572,32 @@ distance 35; ratio at most 0.99999), and the induction on the number of
 displaced zeros, with the sign pattern of `F + lambda G` tracked through
 the interlacing of `F`'s and `G`'s zeros, is the resumption point.
 
+**The slack, spent: a lossy induction whose two sub-lemmas are measured.**
+The assembly tolerates `tail <= K(c) bound(f)` with any `K(c) = 2**O(c)`
+(the loss `sum_u log K(L - 2u)` is `O(L**2)`, below `L**2 log L`), so the
+lemma need not be sharp.  With `k` displaced zeros, `u = F + lambda G`
+(`F` on the `c - 1` largest roots carrying the leading zeros and the
+first `k - 1` displaced ones, `F_0 = 1`; `G` the `c`-root sum vanishing
+at `0`, the leading zeros and those `k - 1`; `lambda = -F_{z_k} /
+G_{z_k}`), and the triangle inequality gives `tail(u) <= tail(F) +
+|lambda| tail(G)`.  By induction on `c`, `tail(F) <= K(c-1) bound(f)`
+(the top `f + 1` roots are the same).  Measured over every `Z` to
+distance 9..30, `c = 3..8` (roots `3..23`): `|lambda| tail(G) / bound(f)`
+is at most 0.53, 0.58, 0.61, 0.64, 0.66, 0.67, always worst at one
+displaced zero just past the fill (`Z = (1..c-2, c)`), and at most 0.17
+once `k >= 2`; so `K(c) <= K(c-1) + 0.7`, linear in `c`, while the true
+`K` is 1.  What a proof needs, stated exactly: (ii-a) `|F_d / G_d|` is
+decreasing in `d` past the last prescribed zero `z_{k-1}` (measured on
+every case, 2320..5800 consecutive pairs per `c`), so the worst `z_k`
+is `z_{k-1} + 1`; (ii-b) at that `z_k`, `|F_{z_k}| tail(G) / |G_{z_k}|
+<= C bound(f)` for a constant or polynomial `C(c)`.  For `k = 1` both
+are the proved one-displaced argument (`F/G = h'/h`, and the crude
+`|lambda| tail(G) <= P (h'_{z'} / h_{z'}) sum_s h_s <= 2 bound(c-2)`).
+For `k >= 2`, `F` and `G` each alternate across `k - 1` interior zeros
+and (ii-a), (ii-b) are open; the pinned test carries both measurements
+(`TestTriangleSlackIsBounded`).  The bound is not written: its proof
+would rest on (ii-a) and (ii-b), which are numerical facts, not lemmas.
+
 *Gap (a) is not a principal-representation theorem.*  The primal is
 `min_B` over `f_D = 1`, `|f_m| <= B` off `U`, `f_U` free, `sum_m f_m v_m
 = 0` with `v_m = (p_i**m)_i`: the gauge of `v_D` modulo `span(v_U)` in
