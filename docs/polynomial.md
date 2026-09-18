@@ -254,6 +254,52 @@ product's order -- if it were a theorem, and it is not.  Bound on this
 profile only; not a language lower bound.  `tests/proofs/test_negatives.py`
 pins the lemma's threshold and the `L = 6, K = 3, B = 13` negative.
 
+**The iterated elimination: `prod (p_i - 1)` over the largest primes.**  The
+`p_L - 1` lemma is one row of a linear program, and the program's own
+certificate is much stronger.  With real roots `r_1 < ... < r_L` and the
+unbounded positions `U`, every constraint on the bounded coefficients is
+`sum_m f_m w_m = 0` for a sequence `w_m = sum_i c_i r_i**m` with `w_m = 0`
+on `U` (the coefficients of `Lambda(x) / prod (1 - r_i x)`, `deg Lambda <=
+L - 1`, `Lambda` vanishing on `U`); for `U = {0..K}` the divided-difference
+rows are the members with `c` supported on `K + 2` roots.  A multiple of
+degree `D` has `|f_D| >= 1`, so if some `w` has `|w_D| > B * sum_{m not in U,
+m < D} |w_m|` then some bounded coefficient exceeds `B`.  Read backwards
+from the top, `u_d = w_{D-d} = sum_i a_i r_i**-d`.  Take `a` on the `c =
+L - K - 1` largest roots `rho_1..rho_c` with `u_0 = 1`, `u_1 = ... =
+u_{c-1} = 0`: the generating function is `1 - (-x)**c / (prod rho_i *
+prod (1 - x/rho_i))`, so `u_d = -(-1)**c h_{d-c}(1/rho) / prod rho_i`
+for `d >= c`, of one sign, and `sum_{d>=1} |u_d| = 1 / prod (rho_i - 1)`
+**exactly**.  The `K + 1` conditions `w_0 = ... = w_K = 0` are met by a
+correction on the `K + 1` smallest roots of relative size `O((p_{K+1} /
+p_{K+2})**D)`.  Hence **every multiple with its `K + 1` lowest coefficients
+free, `K <= L - 2`, has a coefficient above degree `K` of at least `(1 -
+o(1)) prod_{i=K+2}^{L} (p_i - 1)` times its leading coefficient**, the
+`o(1)` exponentially small in the degree.  Exact LP optima (z3 over the
+rationals) converge to it from above: `L = 6, K = 3`: 216, 134, 122, 120.4,
+120.0 at `D = 8, 12, 16, 20, 30` against `(11-1)(13-1) = 120`; `L = 5, K
+= 2`: 244 at `D = 14` against `4 * 6 * 10 = 240`; `L = 4, K = 1`: 24.5
+against 24.  Integer z3 on the profile itself, both sides: `L = 5, K = 2`
+unsat at `B = 60`, sat at 80; `L = 6, K = 3` unsat at 120, sat at 160; `L
+= 7, K = 4` unsat at 192, sat at 300 (`D = 14..16`).  Sweeping *every*
+`U` of size 1..3 at `L = 4, 5` (`D = 8..14`), the least threshold is
+always the lowest positions `{0..u-1}` and the largest is the positions
+just under the top (`L = 5, |U| = 2, D = 14`: 244 at `{0,1}`, 939 at
+`{12,13}`).
+
+What this would assemble to, and what is missing.  Anchor at the top
+(`|f_D| >= 1`), take `U` = the `u` largest coefficients below it, and the
+program gives an `(u+1)`-th coefficient of at least `Theta_u = min_{|U|=u}
+Theta_U(D)`; iterating `u = 0..L-2` yields `L - 1` distinct coefficients
+with `mass(F) >= sum_u log Theta_u`.  If `Theta_u >= prod_{i>u} (p_i - 1)`
+for every `U` -- what the sweep shows and the lowest-position certificate
+proves -- that is `sum_i (i - 1) log p_i = Omega(L**2 log L) =
+Omega(T**2 / log T)` for **every** multiple, the dense product's own order
+and the right-half-plane bound without the half-plane.  Two gaps keep it
+from being a theorem: the certificate is proved for `U = {0..K}` only, and
+asymptotically in `D` (the exact optima sit above the limit at every
+finite degree measured, but that is measured, not proved).  Until both
+close the row stays open; the target is now exact.
+
 ## Literature
 
 [Giesbrecht, Roche and Tilak][sparse-multiples] (Algorithmica 64:454-480,
@@ -291,7 +337,10 @@ count: multiples of cofactor degree `k` form a lattice of covolume about
 `primorial**(k+1)`, and the box of the profile has volume `2**O(T)`, so
 generic lattices give `k = O(1)` -- the small-cofactor class, closed.  A
 proof would have to show this lattice has no unexpectedly short vector,
-which is exactly what its algebraic structure does not grant.
+which is exactly what its algebraic structure does not grant -- or run the
+iterated elimination above to its end: prove its certificate for every
+unbounded set and every degree, and every multiple is `Omega(T**2 / log
+T)`.
 
 What such a multiple must look like, each a line and none a search.  Term
 killing does not reach it: the Rolle operator `x d/dx - c` behind Descartes

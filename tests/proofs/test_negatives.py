@@ -406,3 +406,28 @@ class TestSparseRemainderNeedsTheLargestPrime:
 
     def test_six_primes_admit_no_remainder_bounded_by_the_largest(self) -> None:
         assert not _remainder_fits((2, 3, 5, 7, 11, 13), 20, 3, 13)
+
+
+class TestIteratedEliminationThresholds:
+    """``docs/polynomial.md`` ("The iterated elimination"): with the lowest
+    ``K + 1`` coefficients free, some higher coefficient reaches
+    ``prod_{i > K+1} (p_i - 1)``; unsat at the product, sat within 1.4x.
+    """
+
+    @pytest.mark.parametrize(
+        ("roots", "degree", "low", "below", "above"),
+        [
+            ((2, 3, 5, 7, 11), 14, 2, 60, 80),
+            pytest.param(
+                (2, 3, 5, 7, 11, 13), 16, 3, 120, 160, marks=pytest.mark.medium
+            ),
+            pytest.param(
+                (2, 3, 5, 7, 11, 13, 17), 16, 4, 192, 300, marks=pytest.mark.medium
+            ),
+        ],
+    )
+    def test_the_product_of_the_largest_primes_less_one(
+        self, roots: tuple[int, ...], degree: int, low: int, below: int, above: int
+    ) -> None:
+        assert not _remainder_fits(roots, degree, low, below)
+        assert _remainder_fits(roots, degree, low, above)
