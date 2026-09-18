@@ -9,8 +9,9 @@ import hashlib
 
 import pytest
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.register_based.interprogck8 import _Machine
+from esolangs.interpreters.register_based.interprogck8 import _dice, _Machine
 from esolangs.tools import interprogck8
 from esolangs.tools.interprogck8 import _assemble, _validate
 from esolangs.vm import run_until_halt_or_cycle
@@ -117,3 +118,182 @@ class TestCorridor:
         lines, flights = _assemble(table, 5)
         assert flights, "a routed tree records its flights"
         _validate(lines, flights)
+
+
+class TestModelFacts:
+    """Two facts a corridor construction past depth 14 has to get past.
+
+    Both are the reason no O(T) hand-built alternative shipped in
+    ``docs/roadmap.md``'s Interprogck8 bullet: the accumulator cannot carry
+    a jump distance past 255, and a residue shared for transit collides
+    with a nested landing marker on the same residue.
+    """
+
+    def test_a_spelled_distance_past_255_wraps(self) -> None:
+        """``NnNn`` + 26 ``@id`` + 1 ``@nd`` spells 261, but acc is mod 256.
+
+        The jump lands ``(261 % 256) = 5`` lines past ``DownAccLines``, not
+        261: the marker at the wrapped offset prints, the one at the
+        intended offset does not.
+        """
+        spell = ["NnNn", *(["@id"] * 26), "@nd"]
+        lines = [*spell, "DownAccLines"]
+        wrapped_target = len(lines) + 1 + 5  # (26*10 + 1) % 256 == 5
+        intended_target = len(lines) + 261
+        program_lines = lines + ["x"] * (intended_target + 2 - len(lines))
+        program_lines[wrapped_target] = "nNnN"  # loads 65 ('A')
+        program_lines[wrapped_target + 1] = "div"
+        program_lines[intended_target] = "NnNn"  # loads 0
+        program_lines[intended_target + 1] = "div"  # would print NUL
+        machine = _Machine(program_lines, ScriptedIO(""))
+        run_until_halt_or_cycle(machine)
+        assert machine.io.getvalue()[:1] == "A", (
+            "the acc-mod-256 wrap, not the spelled 261"
+        )
+
+    def test_a_shared_transit_residue_collides_with_a_nested_marker(self) -> None:
+        """An outer flight stops at an inner node's own landing marker.
+
+        Reserving one residue mod 30 for every level's transit (removing
+        the per-depth-band residue growth) makes a longer flight land on
+        whichever nested node's marker sits on that residue first, not its
+        own target: this two-hop flight (should reach +60) stops at the
+        marker planted at +30.
+        """
+        launch = 5  # odd, so an unoccupied default line acts as DownAccLines
+        lines = ["x"] * 100
+        lines[0], lines[1], lines[2] = "u", "@dd", "@dd"  # acc = 28 or 29
+        lines[launch] = "DownAccLines"
+        inner_marker = launch + 30  # a nested node's own (unrelated) stop
+        lines[inner_marker], lines[inner_marker + 1] = "NnNn", "div"
+        true_target = launch + 60  # the outer flight's real destination
+        lines[true_target], lines[true_target + 1] = "nNnN", "div"
+        machine = _Machine(lines, ScriptedIO("1\n"))  # '1' -> acc=29, the flying arm
+        run_until_halt_or_cycle(machine)
+        assert machine.io.getvalue()[:1] == "\x00", (
+            "stopped on the inner marker, not the target"
+        )
+
+
+def _leaf(bit: int) -> list[str]:
+    """Print one digit: load 0, then decimal-spell it up and print."""
+    digit = 48 + bit
+    tens, ones = divmod(digit, 10)
+    return ["NnNn", *(["@id"] * tens), *(["@nd"] * ones), "div"]
+
+
+def _one_level_slot_tree(table: str) -> list[str]:
+    """One read, branching on the function slot instead of ``DownAccLines``.
+
+    ``<...>`` captures a body and jumps past it for free, with no
+    accumulator distance at all -- the 0-subtree is captured, skipped,
+    then conditionally ``EXE``'d by ``IFQ``; the 1-subtree is captured
+    the same way afterward and conditionally run by ``IFT``.
+    """
+    d48 = _dice(48)
+    return [
+        "<",
+        *_leaf(int(table[0])),
+        ">",
+        "u",
+        f"{{values/=/={d48}/={d48}}}",
+        "IFQ",
+        "<",
+        *_leaf(int(table[1])),
+        ">",
+        "IFT",
+    ]
+
+
+class TestPrimitiveSurvey:
+    """Round-3's primitive-by-primitive check for a branch past ``acc``.
+
+    Every primitive that moves control or holds state, executed: acc and
+    ``DownAccLines`` (8-bit, capped at 255, see ``TestModelFacts``);
+    ``{values...}`` (writes only 81/84, never more of a jump target);
+    bare ``$py``/``u`` (assigns acc with no ``% 256``, unbounded, but only
+    from a stdin read -- not from anything the build controls); ``z``
+    (restarts to line 0, not a data-dependent target); and the function
+    slot, below.
+    """
+
+    def test_values_only_ever_writes_the_two_verdicts(self) -> None:
+        """``{values...}`` cannot carry a target past 8 bits.
+
+        Comparing acc (0) against two distinct 300+-pip literals is
+        forced unequal, so the only reachable outputs are 81 (Q) or 84
+        (T) -- never the literals' own magnitude.
+        """
+        program = ["NnNn", "{values/=/=" + "." * 300 + "/=" + "." * 301 + "}", "$ay"]
+        machine = _Machine(program, ScriptedIO(""))
+        run_until_halt_or_cycle(machine)
+        assert machine.io.getvalue() == _dice(84)
+
+    def test_bare_py_sets_acc_with_no_wrap_but_needs_a_read(self) -> None:
+        """Bare ``$py``/``u`` skip the ``% 256`` every arithmetic op has.
+
+        Feeding a 300-pip literal and jumping lands 300 lines on, not 44
+        (``300 % 256``) -- unbounded, but only by consuming an extra
+        stdin read outside the n-bit convention, so it cannot encode a
+        build-fixed jump distance.
+        """
+        lines = ["$py", "DownAccLines"] + ["x"] * 400
+        lines[2 + 44], lines[2 + 44 + 1] = "nNnN", "div"  # wrapped landing
+        lines[2 + 300], lines[2 + 300 + 1] = "NnNn", "div"  # true landing
+        machine = _Machine(lines, ScriptedIO("." * 300 + "\n"))
+        run_until_halt_or_cycle(machine)
+        assert machine.io.getvalue()[:1] == "\x00", "lands at +300, not the wrapped +44"
+
+    def test_the_function_slot_branches_with_no_jump_distance(self) -> None:
+        """One read, routed by ``EXE``/``IFT``/``IFQ`` alone: all 4 rows.
+
+        No ``DownAccLines`` appears in this program at all -- the capture
+        does the skipping, for free, regardless of the skipped body's
+        size (``test_the_slot_skips_past_255_lines_uncapped``).
+        """
+        for table in ("01", "10", "00", "11"):
+            program = _one_level_slot_tree(table)
+            assert "DownAccLines" not in program
+            for bit in "01":
+                machine = _Machine(program, ScriptedIO(f"{bit}\n"))
+                run_until_halt_or_cycle(machine)
+                assert machine.io.getvalue() == table[int(bit)], (
+                    f"table={table} bit={bit}"
+                )
+
+    def test_the_slot_skips_past_255_lines_uncapped(self) -> None:
+        """A captured body of 400 lines is skipped in one step, no relay.
+
+        ``_capture``'s scan is a text search for ``>``, not accumulator
+        arithmetic, so it has none of ``DownAccLines``'s 255-line cap.
+        """
+        program = ["<", *(["x"] * 400), ">", "nNnN", "div"]
+        machine = _Machine(program, ScriptedIO(""))
+        run_until_halt_or_cycle(machine)
+        assert machine.io.getvalue() == "A"
+
+    def test_the_slot_cannot_nest_a_second_level(self) -> None:
+        """The one-level trick does not compose to a depth-2 tree.
+
+        Capturing a subtree that itself contains ``<`` -- needed for a
+        second read -- is refused at the capture scan, unconditionally:
+        the function slot cannot recurse, so it cannot build an n>1 tree
+        by itself.
+        """
+        left, right = _one_level_slot_tree("0110"[:2]), _one_level_slot_tree("0110"[2:])
+        d48 = _dice(48)
+        program = [
+            "<",
+            *left,
+            ">",
+            "u",
+            f"{{values/=/={d48}/={d48}}}",
+            "IFQ",
+            "<",
+            *right,
+            ">",
+            "IFT",
+        ]
+        machine = _Machine(program, ScriptedIO("0\n0\n"))
+        with pytest.raises(HaltError, match="nested function opener"):
+            run_until_halt_or_cycle(machine)
