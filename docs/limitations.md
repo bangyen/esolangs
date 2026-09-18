@@ -273,9 +273,21 @@ mandatory root product with more terms than the Descartes minimum:
 instruction count, monomial count, right-half-plane coefficient mass, and
 the Descartes-minimal class are all language-forced, every searched
 escape is closed, and the Rolle reduction behind Descartes cannot lower
-the kernel's rank; the open class carries O(1) primorial-sized
-coefficients and has degree `0.72 L log L` or more unless a second
-coefficient reaches the primorial's square root.
+the kernel's rank; the open class carries O(1) coefficients of O(T)
+digits and a *sparse* small remainder.  Executed (z3, exact): with
+every non-constant coefficient bounded, the bound cannot go below
+0.33--0.43 of the primorial at L=3..5 for any degree to 16 (13, 80,
+844; LLL agrees to L=7), and the tail-height floor stops falling past
+degree ~2L; with K large coefficients allowed and the rest at most B,
+L=5 admits no K<=2 at B=11 and no K=1 at B=121 through degree 24, L=6
+none of those through 26 (the least K at B = p_L^2 is 1, 1, 2, 3 at
+L=3..6), and where the profile exists the
+large coefficients are ~2^D and the remainder fills every degree,
+which is `T log T` text.  Root-set term bounds (Descartes on either
+ray, sector and unit-circle fewnomial bounds, cyclic-code weight
+bounds, Tao's uncertainty principle) do not apply: the forced roots are
+prime powers and `a +- p^b i`, on no ray, circle or root-of-unity set,
+and nothing is reduced modulo `x^N - 1`.
 [polynomial](polynomial.md) has the proofs, the measured negatives, and
 the literature match.  The class is mixed, not Hurwitz: the mandatory
 real roots are positive prime powers and only the cofactor sits left,
