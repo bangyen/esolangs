@@ -495,46 +495,52 @@ window holds at least `2R / (2 sqrt(kappa (|C| + R + 1)) + kappa + 2)
 D**1.5 / (50 Q))` up to the unoptimised constants of that derivation
 (`un_1, un_2 <= D`, else the unary alone exceeds `D`).  With
 `m = O(log D)` merges per epoch on a random pattern that is
-super-linear for the prefix, and the exact two-epoch search agrees
-(family: `a <= 2`, `|c| <= D/4` at resolution `2**-a`, `h <= 22`,
-every legal `S < 2**h`, both epochs, at least one merge each, final
-magnitude at most `4 live`; the family is every epoch without a
-halving before its `s` and with at most two doublings): no such
-prefix exists at domain 64 on three random patterns and the
-alternating one (1,168--16,103 first epochs, 1.8e8--1.3e9 second
-epochs each, exhaustive) or within 120 s on a fourth, nor at domain
-96 on one random pattern and the alternating one (exhaustive) or
-within 180 s on two more, nor at domain 128 on one random pattern
-(exhaustive) or within 240 s on another; the third domain-128
-pattern has one at 79 characters (0.62 `D`: centres -24.5 and -29.5
-below the index, nine halvings each, 12 and 7 merges), and none
-exists from the shipped decoder's own un-ratcheted domain-64 state
-(57 live, magnitude 144, centres to 14, exhaustive); the all-ones
-pattern, which forbids nothing, does it for 12--13 characters.
-Domains 192 and 256 were not run (budget).  It is not a bound on the row:
-it prices the one dense start, and after the first return to `O(live)`
-the set is no longer dense, so the same argument does not chain -- the
-number of dense starts a program has is one.  The same search from
-the states the shipped decoder actually passes through (after every
-epoch that returns to magnitude at most `4 live`, eight per table,
-six tables at domain 128 and three at 256, centres to `live / 4`,
-120 s each): no two-epoch continuation returning to `4 live` exists
-at any of the 62 states with `live >= 14` (54 exhaustive, 8 capped),
-and at the nine states with `live` 8--24 the least costs 0.83--2.9
-`live` where the decoder's next two epochs cost 1.3--4.4 `live`; with
-every centre allowed, domain 64 states at 22 and 14 live floor at
-1.55 and 1.86 `live` (exhaustive) against the decoder's 3.0 and 2.7,
-and a domain-128 state at 42 live has a pair at 2.0 `live` against
-the decoder's 4.2 (capped at 300 s, so an upper bound on the floor).
-The decoder's live count falls by 5--20 per return, not by half
-(domain 128: 95, 79, 67, 42, 36, 24, 15, 9; domain 256 returns start
-only at 73--127 live, its first 15--26 epochs running above `4
-live`), so a floor of `c live` per two epochs sums to `Omega(D**2 /
-m)` over the `D / m` epochs, the decoder's own `D**2 / m`: the
-executed evidence is that the readout on the decoder's path is
-quadratic over the merge count and the decoder tracks the two-epoch
-floor within 2x where the floor is exact (live at most 42); the
-unproved lemma is that floor at an arbitrary state.  Incompressibility (Li--Vitanyi
+super-linear for the prefix.  The exact two-epoch search (family:
+`a <= 2`, `|c| <= live / 4` at resolution `2**-a`, `h <= 22`, every
+legal `S < 2**h`, at least one merge per epoch, final magnitude at
+most `4 live` -- every epoch without a halving before its `s` and
+with at most two doublings; `two.c` in the scratch record) finds no
+such pair from the dense index at domain 64 (three random patterns
+and the alternating one, 1,168--16,103 first and 1.8e8--1.3e9 second
+epochs each, exhaustive), 96 or 128 (one random and the alternating
+pattern exhaustive each, the rest capped at 180--240 s) except one
+at 0.62 `D` on a domain-128 pattern (centres -24.5 and -29.5 below
+the index, nine halvings each, 12 and 7 merges), the all-ones pattern
+doing it for 12--13 characters; and none from any of the 62 states
+with 14 or more live that the shipped decoder passes through after a
+return to `4 live` (eight per table, six tables at domain 128 and
+three at 256; 54 exhaustive, 8 capped), the nine states at 8--24
+live flooring at 0.83--2.9 `live` where the decoder's next two
+epochs cost 1.3--4.4 `live`, and with every centre allowed the floor
+is 1.55 and 1.86 `live` at 22 and 14 live (domain 64, exhaustive)
+against the decoder's 3.0 and 2.7, and at most 2.0 `live` at 42 live
+(domain 128, capped) against 4.2.  The decoder's live count falls by
+5--20 per return, not by half (domain 128: 95, 79, 67, 42, 36, 24,
+15, 9; domain 256 returns start at 73--127 live, its first 15--26
+epochs running above `4 live`), so a floor of `c live` per two
+epochs sums to `Omega(D**2 / m)` over the `D / m` epochs, the
+decoder's own `D**2 / m`.  The floor is a set fact, not a path fact:
+on random subsets of `[-4L, 4L]` and of `[-16L, 16L]` with `L`
+random-labelled points, and on every-other and every-third
+progressions (`L` = 16, 24, 32, 48, ten each, centres to `L / 4`,
+40 s), the least pair found costs 0.62--1.19 `L` and no class is
+cheaper than the real states (the sparser class floors at 1.19 `L`
+at `L` = 16 and finds nothing at 24); at `L` = 16--48 two epochs'
+halvings alone are about `4 log2 L`, so these sizes do not separate
+`c L` from a logarithm.  The dense-start proof uses contiguity twice:
+`N(c, rho) >= rho` gives `kappa >= 1 / (16 (m + 2))`, and a hole of
+radius `H` at the centre weakens it to `kappa >= delta / (2H)`, so a
+one-epoch return needs a hole of a quarter of the range; and the
+pullback takes consecutive radii one apart, which a largest gap `g`
+turns into `g**2` in the constant.  The lemma to prove is therefore
+about `L` points at magnitude `O(L)` with largest gap `o(L)`, and
+the unproved step is that floor.  The model: the shipped chain
+merges no cofactors before the readout on any of the nine tables
+above nor on 59 of 60 random tables at five to seven inputs (first
+junction `("", "+")`, then Horner), and the exact optima are readouts
+by construction, so every program measured lives in the readout
+model -- evidence that the model is the language's for random
+tables, not a reduction.  Incompressibility (Li--Vitanyi
 ch. 6) supplies the frame and nothing model-specific;
 Mansour--Schieber--Tiwari floor bounds, 1D map folding (crimps and end
 folds count folds, not unary creases), addition-chain bounds (one
