@@ -18,16 +18,22 @@ The candidate list is empty.
 
   The bar for membership: a language stays while its generator is O(T)
   on all four axes under the conventions, or its row carries a proved
-  language lower bound.  A lookup table in a language's syntax is not a
-  generator -- any language can be brute-forced -- so a row that is only
-  open carries a clock: one more executed round, and if neither a
-  construction nor a bound comes of it the language leaves with its row.
-  Nopstacle (a full decision tree of corridors, `Theta(n 2**n)` under
-  Brent--Kung's bound on every levelled layout) and ZTOALC L (a chunked
-  array lookup on Collatz slots, no line-local rule and dense paths only
-  by search) left under it on 2026-09-17.  Every open cell below is on
-  that clock: COD's three, Polynomial's two and WII2D's three, the last
-  the one whose exact optima say the language may be linear.
+  language lower bound, or its generator is a construction whose open
+  cells carry an executed obstruction -- a semantic model of the language
+  that every construction tried has broken on, pinned as tests.  A lookup
+  table in a language's syntax is not a generator -- any language can be
+  brute-forced -- so a row whose generator is one carries a clock: one
+  more executed round, and if neither a construction nor a bound comes of
+  it the language leaves with its row.  Nopstacle (a full decision tree
+  of corridors, `Theta(n 2**n)` under Brent--Kung's bound on every
+  levelled layout) and ZTOALC L (a chunked array lookup on Collatz slots,
+  no line-local rule and dense paths only by search) left under it on
+  2026-09-17.  COD stays on the third clause: four executed rounds the
+  same day produced the model in its searched-negatives paragraph (no
+  routing primitive, joins that leak a copy, a kill per zero-set per copy)
+  and no construction or bound; Polynomial's two rounds likewise.  The
+  clause is deliberate: a wall that has not been proved is not a lookup
+  table, and Factor's bound came after its wall was measured.
 
   All 63 generators are audited on four axes.  Totality is the `proofs.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
