@@ -455,7 +455,15 @@ accumulator values (0, 1, 2) need two digits (0, 0, 1), the catalogue's
 edge labels are the same two strings for every value on an edge, and no
 instruction inspects the value to choose a third, so the fold is not a
 search layered on the decision tree; it supplies the last two edges'
-labels the catalogue cannot.  After the
+labels the catalogue cannot.  Fourteen executed rounds on WII2D have now
+ended in the measured target, an unproved lemma, and this model; four of
+them were on the readout rule alone (Phi-potential, an added merge-free
+relayout vocabulary, an algebraic two-fold lookahead) and each ranked no
+better than the shipped depth predictor -- Phi ratchets to refusal past
+domain 16, the relayout vocabulary won 0 of many decode steps under the
+shipped ranker, and the two-fold lookahead (relayout kept) was 0 relayout
+wins over 30 tables and +5% to +65% chars/entry worse at domain 32--256
+(one table -27% better, most 15--90% worse).  After the
 last `s` the readout is monotone, so the 0-points sit strictly below
 the 1-points there; pulling back through a fold halves the alternation
 count at most, `>= log2 A` squarings for `A` alternations, and a

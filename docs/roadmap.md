@@ -36,15 +36,8 @@ The candidate list is empty.
   same day produced the model in its searched-negatives paragraph (no
   routing primitive, joins that leak a copy, a kill per zero-set per copy)
   and no construction or bound.  WII2D stays on the third clause too:
-  fourteen executed rounds ended in the measured target, an unproved
-  lemma, and now the model (limitations, WII2D's language-shape
-  paragraph) -- no cell of the interpreter reads the accumulator for
-  control, a branch is a build-time embed choice between two edges, and
-  an edge's op strings are the same for every value that reaches it, so
-  nothing but the fold's arithmetic can split one surviving value from
-  another; extending the junction catalogue past what it naturally
-  merges to skip the fold misreads AND at two inputs (executed,
-  `tests/tools/test_boolean_wii2d.py::test_the_junction_catalogue_alone_cannot_replace_the_fold`).
+  the fold is the language's only branching, pinned in
+  `tests/tools/test_boolean_wii2d.py::test_the_junction_catalogue_alone_cannot_replace_the_fold`.
   Polynomial's fourteen rounds ended in the bound:
   its measured target, `Theta(L**2 log L)` digits for every multiple of the
   mandatory root product, is now proved, and the row closes on size and
@@ -145,12 +138,8 @@ The candidate list is empty.
     A non-fold construction is closed: the language has no instruction
     that reads a value into control, so a branch is a build-time embed
     choice between two edges sharing one op string per surviving value,
-    and only the fold's arithmetic can split them (limitations, WII2D's
-    language-shape paragraph).  Four rounds on the readout rule itself
-    (Phi-potential, added merge-free relayout vocabulary, algebraic
-    two-fold lookahead) each ranked no better than the shipped
-    depth predictor, one strictly worse (+5% to +65% at domain
-    32--256); fold-ranking is closed too.
+    and only the fold's arithmetic can split them
+    (`tests/tools/test_boolean_wii2d.py::test_the_junction_catalogue_alone_cannot_replace_the_fold`).
   - `%^2^-1`, size and time: no invariant bounds a point's relocations
     (~1.5 KB each), and the top arities read x4.8 per input (375 KB at
     n=13, 1.8 MB at n=14, refused at 15); the contract's x1.11 measures
@@ -220,6 +209,24 @@ The candidate list is empty.
   re-enqueue and grid-routing construction, then compare emitted, executed
   programs against the current template; abandon it if the routing spends
   the apparent gain.
+
+- **Replace WII2D's build-time fold search.**  "Uses a simulator" means
+  the module drives an interpreter or an execution model while generating,
+  and only one of the three ways that happens is a defect: driving a
+  *search* over candidate codes.  Simulation used as bookkeeping for what is
+  already being emitted is fine, and size contests run no simulator at all.
+  WII2D's decode still enumerates the legal folds and ranks a shortlist;
+  what remains is the enumeration and the rank itself (the losing rules
+  are in [limitations](limitations.md#searched-negatives)).
+  A closing rule must keep the prompt refusal or beat the shipped decode
+  on executed programs; a longer emitted program is an acceptable price,
+  and the replaced ranking stays in the tests as the oracle.  The fold
+  itself is the language's only branching, executed and pinned
+  (`tests/tools/test_boolean_wii2d.py::test_the_junction_catalogue_alone_cannot_replace_the_fold`),
+  so this item is about the choice rule alone: one-step keys, Phi, an
+  added merge-free vocabulary and a two-ply lookahead all rank no better
+  than the shipped depth predictor (numbers in
+  [limitations](limitations.md#searched-negatives)).
 
 - **`%^2^-1` fifteen inputs.**  Fourteen builds by laying the next input
   when the lay fits (a collision-free even split with `span + total <=
