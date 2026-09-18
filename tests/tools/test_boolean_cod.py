@@ -394,6 +394,22 @@ class TestCODModelFacts:
             outputs.append(io_.getvalue())
         assert outputs == ["0", "1"]
 
+    @pytest.mark.parametrize("gate", ["<", "_"])
+    def test_a_value_gate_is_open_when_the_start_chooses_a_heading(
+        self, gate: str
+    ) -> None:
+        """``<`` and ``_`` act after launch, not while choosing its exit."""
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+
+        grid = f"~{gate}~\n~> "
+        headings = [
+            _Machine(grid, ScriptedIO(""), rng=FirstDraw(first)).cods[0].d
+            for first in (0, 1)
+        ]
+        assert headings == ["N", "E"]
+
     @pytest.mark.parametrize("fill", ["_", ")"])
     def test_the_one_lane_node_halts_and_prints_once(self, fill: str) -> None:
         """Eight commands: ``))<((`` valve, ``+``, ``<`` sibling, ``)`` trunk.
