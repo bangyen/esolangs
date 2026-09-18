@@ -217,6 +217,23 @@ costs `>= K/2` shift cells by the residue argument; a keeper *with* `+`
 inside, or a classifier mapping the index to the answer without
 isolating it, is bounded only by counting at `Omega(T)`.
 
+A per-station substitution of the one-lane node's valve (a shared
+corridor, station `k` decrementing once and printing on a `+`/valve/`<`
+sibling) was executed and refuted: the valve's `))<((` only guarantees
+survival of a compile-time-known value (0, the very first read) through
+the `<` in its middle, by shifting it to a range the `<` never kills
+(`+2` then `<` excludes only `-2`).  Substituting station `k` does not
+make the *arriving* value compile-time known -- it is `v - k`, fixed
+only for `k = 0`.  Fed a compile-time nonzero value instead (extra `)`
+cells before the same eight commands), the valve still passes the `<`
+(nothing excludes a positive value), so the `_` sibling that was meant
+to pass through on a known zero now reflects instead, re-entering the
+shared `+` and re-forking without end: still unhalted and past 700
+printed characters at 3,000 ticks, for every offset tried
+(`test_the_valve_only_works_on_a_compile_time_known_value`).  A shared
+corridor needs the same O(1) valve at every station, and only station 0
+has a value fixed at compile time.
+
 Executed on the interpreter, the same day: a plain cell with four open
 sides is a crossing (a cod goes straight when its forward cell is open),
 so planarity forces nothing and a `K_{3,3}` argument does not apply; a

@@ -392,6 +392,63 @@ class TestCODModelFacts:
         halted, output, peak = _run_counting(node)
         assert (halted, output, peak) == (True, "2", 2)
 
+    @pytest.mark.parametrize("offset", [1, 2, 3, 5])
+    def test_the_valve_only_works_on_a_compile_time_known_value(
+        self, offset: int
+    ) -> None:
+        """The one-lane node's valve does not generalize to a runtime offset.
+
+        The pinned node above relies on the lane's value being compile-time
+        0 (the cod's very first read).  A shared corridor cannot offer that:
+        station ``k``'s stray carries ``v - k``, known only at runtime.
+        Feeding the identical valve/fork/sibling shape a compile-time
+        *nonzero* value (``offset`` extra ``)`` cells before the valve, same
+        eight commands after) breaks both halves at once -- the valve's
+        ``<`` no longer discriminates (it only ever excludes ``-2``, never
+        the actual value), so the north branch's ``_`` now reflects instead
+        of passing through, re-entering the shared ``+`` and re-forking
+        forever: still unhalted and printing 700+ characters after 3,000
+        ticks, for every offset tried.  A per-station valve substitution
+        (this round's idea (b)) needs the arriving value to be a compile-time
+        constant at every station, which only station 0 ever has.
+        """
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        main = ">" + ")" * offset + "))<((..+<."
+        width = len(main) + 2
+        fork_col = main.index("+") + 1
+        trunk_dot_col = width - 2
+
+        def wall() -> str:
+            return "~" * width
+
+        def with_char(col: str, ch: str) -> str:
+            row = list(wall())
+            row[col] = ch
+            return "".join(row)
+
+        row1 = list(wall())
+        row1[fork_col : fork_col + 4] = list(".---")
+        rows = [
+            wall(),
+            "".join(row1),
+            with_char(fork_col, "_"),
+            with_char(fork_col, ")"),
+            "~" + main + "~",
+            with_char(trunk_dot_col, "."),
+            with_char(trunk_dot_col, "."),
+            with_char(trunk_dot_col, "."),
+            "-" * 3 + " " * (width - 3),
+        ]
+        node = "\n".join(rows)
+
+        machine = _Machine(node, ScriptedIO(""))
+        for _ in range(3000):
+            machine.step()
+        assert not machine.halted
+        assert len(machine.io.getvalue()) > 100
+
     def test_the_t_squared_wall_is_concurrent_strays_not_walk_length(self) -> None:
         """The shipped cascade's cost is *width* (live strays), not *depth*.
 
