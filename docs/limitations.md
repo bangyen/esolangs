@@ -91,6 +91,10 @@ separate axes.
   index ``T - 1`` prices ``sum(range(T)) = T(T - 1)/2`` cells. Shared lanes
   are outside that lemma; the executed shared-column attempt re-enters its
   ``+`` and doubles live cods.
+  COD has no packed scalar escape: every value operation changes by one, and
+  ``<``/``_`` distinguish only zero from nonzero. Executed probes for
+  ``2**k`` versus ``2**k + 1`` stay control-equivalent for a ``k``-cell probe;
+  the first probe that distinguishes them spends ``2**k`` decrements.
 - **Interprogck8:** a depth-d read costs `3 + 2 floor(d / 14)` lines. The
   constant-width gadget costs about 8x per node; transfers wrap modulo 256,
   and function capture cannot nest.
