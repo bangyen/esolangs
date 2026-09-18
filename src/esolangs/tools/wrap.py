@@ -7,11 +7,11 @@ rows, NoComment rejects them, Forbin and Packlang fold only an over-wide
 line.
 
 Twelve generators lay out their own shape instead (:func:`takes_width`):
-Streetcode, WII2D and LaserFuck fold into a boustrophedon; COD turns a
+Streetcode and LaserFuck fold into a boustrophedon; COD turns a
 quarter turn; Clockwise and Flowchart stack a column per node; Dig turns
 once; Alight and Super SNUSP steer; function x(y) and APL name a
 subexpression per line; Circuit Diagram bands.  Only Clockwise folds to
-any width; the rest floor (WII2D one input per junction, COD
+any width; the rest floor (COD
 ``2 ** (n + 1) + 1``, Flowchart ``n + 5``, Alight ``2 ** n``, Super SNUSP
 four, Circuit Diagram ~``10 * n``) and return the narrowest program.
 
@@ -413,31 +413,6 @@ def _taglate(program: str, width: int) -> str:
     return seed + "\n" + wrap_chars(commands.replace("\n", ""), width)
 
 
-# %^2^-1's commands are single characters.
-_PCT_COMMAND = r"."
-
-
-# Blank line between a %^2^-1 setter header and body.  Spelled, not
-# imported, to keep ``esolangs.tools`` out of a stdlib-only module; a test
-# asserts the copies agree.
-_PCT_HEADER_END = "\n\n"
-
-
-def _pct_squared_minus_one(program: str, width: int) -> str:
-    """Wrap %^2^-1: the setter-declaration header as well as the body.
-
-    ``fill`` discards the header's newlines before reading it, so the header
-    folds by character (a declaration is 175 chars, so folding between two
-    leaves a 175-column floor); the body wraps by command.
-    """
-    header, blank, body = program.partition(_PCT_HEADER_END)
-    if not blank:
-        return wrap_tokens(program, width, _PCT_COMMAND)
-    flat = header.replace("\n", "")
-    folded = "\n".join(flat[i : i + width] for i in range(0, len(flat), width))
-    return folded + blank + wrap_tokens(body.replace("\n", ""), width, _PCT_COMMAND)
-
-
 def _qoibl(program: str, width: int) -> str:
     """Wrap Qoibl, folding each of its lines but keeping them apart.
 
@@ -495,8 +470,6 @@ WRAPPERS = {
     # Painter Ant drops whitespace), so no break can land inside a command.
     "taglate": _taglate,
     "a_painter_ant": wrap_chars,
-    # Longest line in the corpus (2444 columns at n=3); structural header.
-    "pct_squared_minus_one": _pct_squared_minus_one,
     "bf_pda": wrap_chars,
     # One statement a line; each folds on its own.
     "qoibl": _qoibl,
@@ -507,12 +480,10 @@ WRAPPERS = {
 
 
 # Wrappers that handle a multi-line program themselves instead of being
-# skipped: Taglate's first line seeds its queue (kept whole); %^2^-1's
-# setter header folds by character; Qoibl's every line is a statement,
-# folded separately for the reader (the language would not notice).
-MULTILINE = frozenset(
-    {"taglate", "pct_squared_minus_one", "qoibl", "forbin", "packlang"}
-)
+# skipped: Taglate's first line seeds its queue (kept whole); Qoibl's every
+# line is a statement, folded separately for the reader (the language would
+# not notice).
+MULTILINE = frozenset({"taglate", "qoibl", "forbin", "packlang"})
 
 
 def takes_width(fn: Callable[..., str]) -> bool:

@@ -52,11 +52,10 @@ def _big_table(arity: int = 11) -> str:
 class TestADeliberateRefusalIsAnEsolangError:
     """The package promises it, and the refusals that broke the promise.
 
-    Every generator cap raised a plain ``ValueError`` -- Interprogck8 a
-    *private* ``_StuckError`` nothing exported -- so ``except EsolangError``
-    around a registry sweep, the idiom the docs advertise, crashed on the
-    first of them.  Interprogck8 has since become total and is no longer one
-    of them; the others still cap, and still have to cap catchably.
+    Every generator cap once raised a plain ``ValueError``, so ``except
+    EsolangError`` around a registry sweep, the idiom the docs advertise,
+    crashed on the first of them.  The caps that remain still have to be
+    catchable.
     """
 
     #: The ones that stop rather than build, and the arity that trips each.
@@ -65,19 +64,8 @@ class TestADeliberateRefusalIsAnEsolangError:
     #: Factor's cap was on the encoded integer's digits, not on ``n``, and
     #: a shared n=11 quietly stopped testing it at all -- the
     #: ``pytest.raises`` simply saw the program get built.
-    #:
-    #: **Interprogck8 was here and is not a refuser any more.**  Linearizing
-    #: it retired the repair loop its cap existed for, so the cap and its
-    #: private ``_StuckError`` went with it and nothing raises at any arity
-    #: -- a dense n=13 table builds in about twelve seconds.  Which is the
-    #: failure Factor's note warns about, in the other direction: the entry
-    #: stayed behind and the ``pytest.raises`` saw the program get built.
-    #: Re-add it only against a raise, not against a hope.  Factor left when
-    #: its digit budget was retired (a size policy, never the language's),
-    #: and NoComment never joined: its chain builds at any arity.
     _REFUSERS: ClassVar[dict[str, int]] = {
         "Polynomial": 11,
-        "WII2D": 11,
     }
 
     @pytest.mark.slow
@@ -105,10 +93,10 @@ class TestADeliberateRefusalIsAnEsolangError:
 
     @pytest.mark.slow
     def test_no_private_name_leaks_into_a_message(self) -> None:
-        """WII2D's named its own module-private constant at the reader."""
+        """A cap message renders its constant's value, not its name."""
         with pytest.raises(esolangs.GeneratorCapError) as exc:
-            esolangs.generate("WII2D", _big_table())
-        assert "_WII2D" not in str(exc.value)
+            esolangs.generate("Polynomial", _big_table())
+        assert "_POLYNOMIAL" not in str(exc.value)
 
 
 class TestEveryAuditedCapIsCatchable:
@@ -122,19 +110,19 @@ class TestEveryAuditedCapIsCatchable:
 
     NoComment no longer refuses at any arity -- its chain runs on six tape
     cells -- so the fast checks here drive the cheapest refusal that
-    remains, WII2D's cost guard on a dense ten-input table, and NoComment
-    is checked to *build* where it escaped.
+    remains, Polynomial's instruction cap on a dense eleven-input table,
+    and NoComment is checked to *build* where it escaped.
     """
 
     def test_the_refusal_is_catchable_at_the_size_it_refuses(self) -> None:
         """A refusal past the sweep's bound, at the first arity that triggers it."""
         with pytest.raises(esolangs.GeneratorCapError, match="cost"):
-            esolangs.generate("WII2D", _big_table(10))
+            esolangs.generate("Polynomial", _big_table(11))
 
     def test_it_is_catchable_through_evaluate_too(self) -> None:
         """NoComment's leaked through ``evaluate`` identically."""
         with pytest.raises(esolangs.GeneratorCapError):
-            esolangs.evaluate("WII2D", _big_table(10))
+            esolangs.evaluate("Polynomial", _big_table(11))
 
     def test_nocomment_builds_at_the_arity_that_escaped(self) -> None:
         """The escape's subject is gone: n=12 is a template, not a refusal."""
@@ -305,7 +293,7 @@ class TestASuggestionIsWorthLessThanSilence:
     A wrong guess is worse than none: it sends the reader off to check a
     language they never meant.  0.65 is the lowest cutoff that suggests
     nothing for any of the junk below, and it rescues exactly as many real
-    typos as 0.6 did -- 285 of 294 single-edit slips across the 65 names.
+    typos as 0.6 did -- 265 of 269 single-edit slips across the 60 names.
     0.7 starts costing rescues.
 
     The numbers are recomputed below rather than quoted, so the constant
@@ -461,23 +449,23 @@ class TestATableLengthNamesTheNearestLegalOnes:
 
 
 class TestASurroundingSpaceResolves:
-    """63 of 65 names already tolerated one, and the two that did not.
+    """59 of 60 names already tolerated one, and the one that did not.
 
     ``canonical_id`` collapses runs of non-alphanumerics and strips the
     result, so a stray space fell out for almost every name.  The override
-    table is an exact lookup, though, so the two names needing an override
-    were exactly the two that broke -- and ``"CV(N)(C) "`` came back as
+    table is an exact lookup, though, so a name needing an override
+    broke -- ``"CV(N)(C) "`` came back as
     ``did you mean CV(N)(C)?``, an invisible diff with no way forward.
     """
 
     @pytest.mark.parametrize("pad", [" {}", "{} ", " {} ", "\t{}\n"])
     def test_every_language_tolerates_surrounding_space(self, pad: str) -> None:
-        """All 65, because the two that failed were not the obvious two."""
+        """All 60, because the one that failed was not the obvious one."""
         for name in esolangs.list_languages():
             assert esolangs.describe(pad.format(name))["name"] == name
 
-    @pytest.mark.parametrize("name", ["%^2^-1", "CV(N)(C)"])
-    def test_the_two_override_names_specifically(self, name: str) -> None:
+    @pytest.mark.parametrize("name", ["CV(N)(C)"])
+    def test_the_override_name_specifically(self, name: str) -> None:
         """Named, so a future override cannot quietly reintroduce the gap."""
         assert esolangs.describe(f" {name} ")["name"] == name
 

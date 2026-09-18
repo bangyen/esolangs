@@ -2,7 +2,7 @@
 
 Run:  just proofs   (or python tests/proofs/deep/all_generators.py)
 
-Every one of the 63 rows in ``docs/proofs.md`` gets the lemma battery in
+Every one of the 60 rows in ``docs/proofs.md`` gets the lemma battery in
 :mod:`tests.proofs.deep._lemmas` instantiated against its own construction and
 its own ledger scheme.  Four generators additionally have a hand-derived proof
 of their *specific* argument in the files beside this one; those are deeper,
@@ -58,7 +58,7 @@ _SHAPES = (("dense", _dense), ("parity", _parity))
 
 #: Highest arity the ladder climbs.  Measured, not guessed: a calibration
 #: sweep built every registry generator at rising arity under a per-build
-#: alarm, and all 63 reach n=10 in under a second each except
+#: alarm, and all 60 reach n=10 in under a second each except
 #: ``circuit_diagram``, which needs 2s by n=9 and times out past it.  Seven
 #: keeps that one affordable; eight is comfortable for the rest.
 _GROWTH_MAX = 8
@@ -66,11 +66,9 @@ _GROWTH_OVERRIDE = {"circuit_diagram": 7}
 
 #: Generators that may refuse tables the others accept, so their batteries
 #: routinely report refusals.  Listed to keep that expected rather than
-#: surprising.  ``%^2^-1`` is the one the ledger labels ``exception``; WII2D
-#: caps without carrying the label.  Interprogck8 was here until linearizing
-#: it retired the repair loop its cap existed for -- it has no cap left, so a
-#: refusal from it now is news rather than noise.
-_MAY_REFUSE = frozenset({"%^2^-1", "WII2D"})
+#: surprising.  None remain: the ``exception`` row and the ``cap`` rows in
+#: the ledger left with their languages.
+_MAY_REFUSE = frozenset()
 
 
 def battery(name: str, scheme: str, key: str) -> Result:
@@ -130,7 +128,7 @@ def main() -> int:
         for r in results
         if not core <= {lemma.strip() for lemma in r.passed}
     ]
-    assert len(results) == 63, f"{len(results)} generators, expected 63"
+    assert len(results) == 60, f"{len(results)} generators, expected 60"
     assert not weak, f"core lemmas not established for: {sorted(weak)}"
     print("\nall generator batteries passed")
     return 0

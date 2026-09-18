@@ -1,7 +1,7 @@
 """The LaserFuck boolean generator.
 
 One language, one file -- the pattern this package already follows for
-``wii2d.py``, ``streetcode.py``, ``circuit_diagram.py``, and the rest of the
+``streetcode.py``, ``circuit_diagram.py``, and the rest of the
 larger generators, and the one the text package follows for its own
 LaserFuck.  It earns it here for the same reason: at ~420 lines it was
 better than a quarter of ``other.py``, and it is the only generator in that

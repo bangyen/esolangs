@@ -18,7 +18,7 @@ One blind spot belongs to the harness rather than to any suite, and the
 is imported cannot be mutated**.  mutmut switches variants through a
 trampoline that reads its config at call time, and an import has already
 happened by then, so the original ran.  ``vm.py``'s ``_derived_adapter`` is
-the case -- ``_VM_ADAPTERS`` is a module-level comprehension over all 65
+the case -- ``_VM_ADAPTERS`` is a module-level comprehension over all 60
 languages -- and all 43 of its mutants survive, including ones that would
 raise on any call.  They are not a gap in the tests, which construct VMs
 for every language; they are unreachable by the tool.  Read a ``core``
@@ -532,8 +532,9 @@ if _budget and not _STATS_PASS:
 # mutmut parses each file into an AST to build its mutants, and the parsing
 # runs in spawned children on macOS -- so the limit has to be raised at
 # interpreter startup, which is what a sitecustomize on PYTHONPATH does.
-# The generator modules are much larger than an interpreter (%^2^-1 is 3337
-# lines), so this matters more here than it did there.
+# The generator modules are much larger than an interpreter (the fold
+# planners run to thousands of lines), so this matters more here than it
+# did there.
 _SITECUSTOMIZE = "import sys\n\nsys.setrecursionlimit(50000)\n"
 
 

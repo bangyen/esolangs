@@ -1,6 +1,6 @@
 """Parse ``docs/proofs.md`` into the structure the proof tests enforce.
 
-The ledger is prose, and until now nothing read it: its 65 rows, its proof
+The ledger is prose, and until now nothing read it: its 60 rows, its proof
 schemes and its two audit sections could drift from the registry and from each
 other without anything failing.  This module is the reader that makes the
 drift detectable; :mod:`tests.proofs.test_ledger` is the assertion.
@@ -46,7 +46,7 @@ NOT_A_LABEL = frozenset({"Size dispatch"})
 #: ledger preamble, ``exception`` in the Exceptions section.
 QUALIFIERS = frozenset({"cap", "exception"})
 
-_WORD_NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
+_WORD_NUMBERS = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
 
 #: The Scaling column's classes, the text before the cell's first colon.
 #: ``linear`` is proved O(T) size and time; ``linear, time n log`` keeps one
@@ -148,7 +148,7 @@ def load(path: Path | None = None) -> Ledger:
         for match in re.finditer(r"^\*\*(.+?)\.\*\*", schemes, re.MULTILINE)
     }
 
-    # ``exceptions?``: the count reached one in Sep 2026, and the sentence has
+    # ``exceptions?``: the count reached zero in Sep 2026, and the sentence has
     # to stay grammatical, so the plural cannot be hard-coded here.
     count = re.search(
         r"records (\d+) theoretical totality arguments and (\w+)\s+open exceptions?",

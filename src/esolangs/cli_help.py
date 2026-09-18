@@ -165,9 +165,9 @@ options:
                      Unbounded by default.  Three languages answer 1 by
                      *not* terminating -- 123, ArrowQueue and Point Break
                      -- so a timeout there is the answer, not a failure.
-  --seed N           fix the random draws so the run repeats.  Seven
-                     languages draw: COD, Interprogck8, LaserFuck,
-                     Modulous, Painfuck, Super SNUSP and WII2D.  A seed
+  --seed N           fix the random draws so the run repeats.  Five
+                     languages draw: COD, LaserFuck,
+                     Modulous, Painfuck and Super SNUSP.  A seed
                      for a language that draws nothing is refused rather
                      than ignored.
   --table TABLE      the truth table the program was generated from.  Adds
@@ -295,7 +295,7 @@ of this tool, and the only place they were readable was a Python session.
 options:
   --spec      print the interpreter's own description of the language: its
               command table, and where this implementation differs from the
-              wiki page.  Every one of the 63 carries one, they run to a
+              wiki page.  Every one of the 60 carries one, they run to a
               few thousand characters, and they are the best documentation
               here for *writing* a program rather than generating one.
   --json      print `esolangs.describe` verbatim as JSON.  The default

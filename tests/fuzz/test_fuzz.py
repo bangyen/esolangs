@@ -170,19 +170,19 @@ def test_painfuck_random_including_random_skip() -> None:
             pytest.fail(f"Painfuck branch fuzz was undecided: {error}")
 
 
-def test_wii2d_random_turns() -> None:
-    """Fuzz WII2D's ``?`` by exploring its four headings at each turn."""
-    from esolangs.interpreters.grid_based.wii2d import _Machine
+def test_laserfuck_random_splits() -> None:
+    """Fuzz LaserFuck's ``*`` by exploring its four headings at each split."""
+    from esolangs.interpreters.grid_based.laserfuck import _Machine
 
     random.seed(13)
     for _ in range(25):
         width = 4
-        code = ["".join(random.choice("?.") for _ in range(width)) for _ in range(3)]
+        code = ["".join(random.choice("*o") for _ in range(width)) for _ in range(3)]
         # One start marker is required.  The rest of this bounded-state corpus
-        # contains only a halt and the formerly omitted random-turn command.
+        # contains only a halt and the formerly omitted random-split command.
         start_col = random.randrange(width)
-        code[-1] = code[-1][:start_col] + "!" + code[-1][start_col + 1 :]
+        code[-1] = code[-1][:start_col] + "o" + code[-1][start_col + 1 :]
         try:
             run_until_halt_or_all_branches_cycle(_Machine(code, IO()))
         except TimeoutError as error:
-            pytest.fail(f"WII2D branch fuzz was undecided: {error}")
+            pytest.fail(f"LaserFuck branch fuzz was undecided: {error}")

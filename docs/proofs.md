@@ -18,14 +18,13 @@ What is machine-checked lives in `tests/proofs/`.  `test_ledger.py` holds this
 document to the registry and to itself, and `test_schemes.py` holds each row to
 its scheme's measurable consequence; both are in the fast band and gate every
 push.  `tests/proofs/deep/` holds the proofs themselves, at two depths.
-`all_generators.py` runs a lemma battery against all sixty-five: every single
+`all_generators.py` runs a lemma battery against all sixty: every single
 row of the table demonstrably participates in the emitted program, and the
 construction completes at every arity of a ladder on both table shapes.  That
 is the counting half of each scheme above, and it is what makes "finite object
 covering every row" checkable per generator.  Four generators -- A Painter Ant,
 ArrowQueue, Container and BIO -- additionally have a hand-derived proof of
-their own specific argument, which no generic battery can reach, and
-`pct_squared_minus_one.py` executes the wall below.
+their own specific argument, which no generic battery can reach.
 
 Each proof declares the cost band it runs in, and
 `python -m tests.proofs.deep <band>` selects on that: `verify` is the local
@@ -75,7 +74,7 @@ ceiling is one named constant; reaching it refuses, never truncates.  A
 construction that is polynomial in the table and inside the budget gets no
 ceiling: super-linear growth there is an open roadmap cell for the linearity
 contract to hold, and a ceiling would hide it.  A refusal with no lift
-argument is `exception`, not `cap`.  Audited across all 63 on 2026-09-17:
+argument is `exception`, not `cap`.  Audited across all 60 on 2026-09-17:
 every other arity threshold is a route switch to a total construction or an
 unreachable invariant guard.
 
@@ -123,7 +122,7 @@ table.
 
 ## Generator ledger
 
-The names are the 63 callable entries indexed by `BY_BOOLEAN`.  Rows sharing a
+The names are the 60 callable entries indexed by `BY_BOOLEAN`.  Rows sharing a
 proof scheme share the proof above; the qualification column records the
 language-specific final step or an exception.  `cap` means theoretically total
 after ignoring the performance/resource ceiling as specified above.
@@ -178,7 +177,6 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Grapheme | tree | arbitrary integer variable keys remove the old 24 one-letter-key ceiling | linear, time n log: essential_inputs |
 | Home Row | parameterized tree | — | linear, time n log: essential_inputs |
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: T literal, `.` halvings sum to 2T |
-| Interprogck8 | tree | routed by a shared `DownAccLines` corridor: a read's 48/49 selects dismount against flight by landing parity, stops are phase-separated by depth, and assembly is one pass with no repair loop; the residue pool is probed per arity and places every depth through forty inputs, an unreachable guard | open: a read at depth d is 3 + 2 floor(d / 14) lines, Theta(T n / 14) |
 | Jaune | finite lookup | a spatial table reached with two labels | linear: two cells per row, unary weights sum T - 1 |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` | linear: mux lookup, constant strings times O(T) counts |
@@ -188,7 +186,6 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
 | Packlang | tree | — | linear: folded tree, shortest names deepest, flat pieces |
 | Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
-| %^2^-1 | exception | one setter pair, the weight as doublings in the template; the fold's planners cover all tables through four inputs and tested tables through fourteen, but no all-arity proof is known | measured: point relocations, no invariant; x4.8 per input at n=13..14 |
 | Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding | lower bound: Theta(L**2 log L) digits for every multiple of the mandatory root product; language Omega(T**2 / log T) |
 | Qoibl | tree | — | linear: span walk, O(1) node tests by halves |
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup | linear: 16-17 tokens per row, unary runs 2T - 2 |
@@ -205,101 +202,12 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 3x | tree | — | linear, time n log: essential_inputs; greedy order scoring, capped |
 | Unsquare | tree | stack arrangement affects size only | linear: span walk, pricer sums geometrically |
 | Vandevelo | minterms | constant-one subtrees drop their suffix literals | linear: amortised peel; sqrt(log T) dual-basis core; proof fallback n 2^n |
-| WII2D | parameterized construction, cap | Horner's chain is total; the decode folds the extremal same-colour pair, whose midpoint is unique, so every fold is legal | open: a readout rule within a constant of the optima, none known |
 
 ## Exceptions and walls
 
-The one remaining `exception` row is two-sided: the language provably
-cannot compute every table under the parameterized contract, and below that
-wall the generator's reach is not characterized.
-
-- `%^2^-1` can refuse when neither of its fold planners succeeds -- the
-  all-row fold on a popcount or distinct ladder, or the staged fold past
-  eleven inputs; every table tried through fourteen inputs builds, any
-  table symmetric under a complementation of its inputs builds at any
-  arity, and from fifteen only tables whose eleven-input cut compacts far
-  enough for the next lay to fit do (the dense fixture's has 2017 distinct
-  cofactors among 2048 rows, and the lay jams).  No construction can be total: the suite's dense fixture at
-  seventeen inputs is computed by no template at any program length
-  (proof below), so the totality question is the finite one of which tables
-  below the wall a construction misses.
-
-### Attempts on the open cases
-
-**Interprogck8** left this section Sep 2026: the repair loop whose totality
-was the gap no longer exists.  The corridor assembly places each gadget once
-on computed coordinates, a placement is a bounded congruence scan (a free
-line on one class recurs within its modulus times the longest occupied run,
-and every occupied run is O(1)), and rungs are shared rather than embedded --
-no simultaneous-placement lemma is needed because nothing is ever moved.
-Stride classes `30 + 2k` hand residues to successive depth bands; a
-class-`k` read's `1 + k` odd lines need `1 + k` free consecutive residues
-in every class below it, so the pool per class is probed on the placer at
-each arity (fourteen through fourteen inputs, thirteen to 26, twelve to 36,
-nine to 40) and the generator refuses a forty-first input, a guard no
-representable table reaches.  The earlier text's 1596 depths assumed a
-full class leaves room for the next; it leaves one residue, and a class-1
-read needs two.
-
-**`%^2^-1` is not total under the parameterized contract.**  A template
-program computing a table `f` embeds each input once, reads no stdin (`n`
-would raise), halts on every row, and prints exactly the answer byte.  Its
-state is the pair `(position, accumulator)`, and the position is uniform
-across rows, so between two placeholders the accumulator is the whole state.
-
-*The reset makes every state class-finite.*  In-window values `-3003..3003`
-are 6007.  A value above 3003 is zeroed before the next command.  A value
-below `-3003` can only decrease or be destroyed -- `s`, `i` and `m` take it
-deeper, `p` lifts it past the limit and the next command zeroes it, `'`
-zeroes it -- so two deep values congruent mod 256 are never separated: every
-command keeps them congruent and deep, or zeroes both, and `e` prints the same
-byte (`l` on a deep value prints several characters, which is not an answer
-byte for either).  Two rows whose accumulators are equal, both over the limit,
-or deep and congruent mod 256 therefore print the same byte for every
-completion of the remaining inputs, and the distinguishable classes number at
-most `6007 + 256 = 6263`.  Executed on the shipped interpreter
-(`tests/proofs/deep/pct_squared_minus_one.py`): 3000 random words on
-congruent deep pairs printed identically and left one class, and 1985 of
-2000 incongruent pairs printed differently.
-
-*`t` is inert.*  A firing `t` rewinds to position 0, and a halting row's
-final pass runs the whole text passing every `t` on a zero accumulator.  A
-row prints once, so it prints only in that final pass -- anything printed
-before a firing `t` is printed again -- and after the first `t` in the text
-its print lies past every position that ever fired.  From that first `t` the
-final pass continues from `(t_1 + 1, 0)` on every row, so the output depends
-only on the placeholders after `t_1`, which for a table depending on every
-input is all of them, and the program is the straight-line run of the text
-from there.
-
-*Counting.*  Cut the text after the `k`-th placeholder in text order and let
-`S` be the inputs laid so far.  Two prefixes with different `S`-cofactors --
-different functions of the remaining inputs -- must lie in different classes,
-since the same completion prints different answers.  So for every `k`, the
-number of distinct cofactors after fixing `S` is at most 6263, for the `S`
-the template's placeholder order induces.  The suite's dense fixture at
-seventeen inputs (`_dense(17)` in `tests/tools/test_boolean_contract.py`)
-has, for *every* one of the 2380 thirteen-input subsets, at least 7640
-distinct four-input cofactors -- computed exhaustively, 8 s, in the same
-proof -- so no placeholder order fits, at any program length.  Padding the
-fixture with ignored inputs gives a witness at every wider arity.  The bound
-is tight enough to place the wall: sixteen inputs never exceed `2**12 = 4096`
-distinct cofactors at any cut and the fixture's worst twelve-input cut has
-3932, so the counting cannot bite below seventeen; the dense fixture's build
-ends at fourteen for a different reason: the staged fold lays an input only
-onto a state the conveyor can still merge, and at fifteen the eleven-input
-cut has 2017 distinct cofactors among 2048 rows -- nothing to compact before
-the lay, and 4096 laid points at unit gaps jam the one-slot window within
-1.9k hops.  Reading only the output's last character
-would admit `l` on deep values and raise the deep classes to 1280 and the
-bound to 7287; the same witness still exceeds it.
-
-What remains is finite: for each arity through sixteen, which tables the
-language admits that the shipped planners refuse.  The retired search for a
-uniform tail (a doubled negative accumulator plus one offset per placeholder,
-the cut `sub(c) m**j add(b)` merging everything above `c + 3003/2**j`, the
-span budget of about eight doublings) is bounded by the same count and is not
-resumed.
+No `exception` row remains: the one such generator, `%^2^-1`, left with its
+language.  Every remaining row is `Total`, or theoretically total past the
+resource ceiling below.
 
 ### Resource-ceiling audit
 
@@ -308,26 +216,6 @@ The remaining `cap` rows do have a uniform lift argument.
 - Polynomial's `k == n` candidate is the finite decision tree.  Each of its
   finitely many instructions receives a distinct prime root, and removing the
   interpreter-cost screen does not change that encoding.
-- WII2D's chain is total already (Horner's children `2v` and `2v+1` differ in
-  parity, so that junction is legal at every level).  The decode is total too,
-  and the argument is a choice of fold rather than a wider search.  Squaring
-  is the only merging op, so after a shift by `c` it identifies `x` and `y`
-  exactly when `x + y = -2c`: one fold merges precisely the pairs sharing a
-  midpoint, and it is legal exactly when every pair with that midpoint is
-  monochromatic.  The two largest values have strictly the largest sum, since
-  any other pair swaps one of them for something smaller, so *no* other pair
-  shares their midpoint and folding them is legal whatever the rest of the
-  colouring does.  One `*` first makes every value even, hence every midpoint
-  an integer.  Some colour class has two members whenever three values are
-  live, and when neither extremal pair is monochromatic, repeated squaring on
-  a positive set makes all pair sums distinct — for distinct positive integers
-  `a**M + b**M = c**M + d**M` forces `{a,b} = {c,d}` once `M` is large enough
-  — after which every same-colour pair is foldable.  The live count therefore
-  falls to one per colour, and `_wii2d_threshold` reads out any two distinct
-  values.  What the shipped decode does instead is rank folds by magnitude and
-  take the cheapest, which is what ratchets; the extremal fold costs unary
-  offsets and always works.  Every WII2D magnitude guard is repository policy,
-  the interpreter bounding only the *printed* value, which is 48 or 49.
 
 Grapheme's lift is already applied, so it is a `tree` row rather than a
 `cap` row.  Its folded tree needs one variable per essential input, but
@@ -364,26 +252,7 @@ guard lifted on both sides -- so the lift argument above *is* the
 construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
-WII2D reads the other way: the shipped decode keeps
-ranking folds by predicted magnitude, so it still refuses about one in six dense
-tables at the widest admitted domain, and reaching the extremal-fold
-construction means choosing a different fold rather than relaxing a constant.
-Prompt refusal is the better behaviour there — the extremal fold spells its
-centres in unary, and a refused table costs seconds where the total
-construction costs minutes and a megabyte.
 
-Two language walls are proved for `%^2^-1`.  In the ordinary reading model,
-every program satisfying the two-input Boolean contract ignores one input:
-`n` overwrites the sole accumulator, and the only branch, `t`, rewinds to the
-program start, so a clean run cannot preserve the first bit through the second
-read.  XOR and AND are therefore impossible at every program length.  The
-exported generator is parameterized and contains no `n`, which voids that
-theorem's hypothesis -- and under the parameterized contract the state-class
-count above is the wall: a seventeen-input table exists that no template
-computes.
-
-Accordingly, this ledger records 62 theoretical totality arguments and one
-open exception, whose row can never read `Total`: the impossibility is an
-unbounded-program proof, which is what turning an exception into “incapable”
-requires -- a failed search or a live cap is not one -- and what stays open
-is the generator's reach below the wall.
+Accordingly, this ledger records 60 theoretical totality arguments and zero
+open exceptions; every row is `Total` or theoretically total past a resource
+ceiling.

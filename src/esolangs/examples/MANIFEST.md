@@ -53,7 +53,6 @@ that row is actually spelled for the language.
 | `grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
 | `home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
 | `inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
-| `interprogck8.txt` | Interprogck8 | `0001` | `01` | 0 1 | '0' |
 | `jaune.txt` | Jaune | `0001` | `01` | 0 1 | '0' |
 | `laserfuck.txt` | LaserFuck | `0001` | `01` | 0 1 | '0' |
 | `minifuck.txt` | Minifuck | `0001` | `01` | embedded 01 | '0' |
@@ -62,7 +61,6 @@ that row is actually spelled for the language.
 | `nocomment.txt` | NoComment | `0001` | `01` | embedded 01 | '0' |
 | `packlang.txt` | Packlang | `0001` | `01` | 0 1 | '0' |
 | `painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
-| `pct-squared-minus-one.txt` | %^2^-1 | `0001` | `01` | embedded 01 | '0' |
 | `polynomial.txt` | Polynomial | `0001` | `01` | 0 1 | '0' |
 | `qoibl.txt` | Qoibl | `0001` | `01` | 0 1 | '0' |
 | `ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |
@@ -76,7 +74,6 @@ that row is actually spelled for the language.
 | `taglate.txt` | Taglate | `0001` | `01` | 0 1 | '0' |
 | `unsquare.txt` | Unsquare | `0001` | `01` | 0 1 | '0' |
 | `vandevelo.txt` | Vandevelo | `0001` | `01` | 0 1 | (nothing) |
-| `wii2d.txt` | WII2D | `0001` | `01` | embedded 01 | '0' |
 
 ## Notes
 

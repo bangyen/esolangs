@@ -219,15 +219,12 @@ class TestATemplateCarriesItsSetters:
         assert getattr(esolangs.generate("brainfuck", "0110"), "setters", None) is None
 
     def test_a_uniform_example_derives_its_setters_from_its_pair(self) -> None:
-        """Sixteen examples carry one pair; the other one reads the template."""
+        """Every embedded example carries one pair and derives from it."""
         from esolangs.tools.examples import BOOLEAN_EXAMPLES, _embedded, uniform
 
         embedded = [e for e in BOOLEAN_EXAMPLES.values() if e.setters is not None]
         uniform_ones = [e for e in embedded if e.pair is not None]
-        assert len(uniform_ones) == 16
-        assert {e.stem for e in embedded if e.pair is None} == {
-            "pct-squared-minus-one",
-        }
+        assert uniform_ones == embedded
         for example in uniform_ones:
             assert example.setters("", 3) == uniform(example.pair)("", 3)
         with pytest.raises(TypeError, match="exactly one"):
@@ -271,7 +268,7 @@ class TestATemplateCarriesItsSetters:
         assert fill("a$$$b", [1, 0]) == "ayypb"
 
     def test_a_zero_width_setter_has_an_empty_run(self) -> None:
-        """An input spelled as nothing on both branches (%^2^-1) fills to nothing."""
+        """An input spelled as nothing on both branches fills to nothing."""
         from esolangs.tools.helpers import fill_runs, runs
 
         pairs = (("", ""), ("xx", "yy"), ("", ""))
@@ -287,22 +284,17 @@ class TestATemplateCarriesItsSetters:
         assert template.fill([0, 1]) == "axxqb"
 
     def test_the_template_is_the_shape_of_every_program(self) -> None:
-        """Every run is as long as its setter, so filling moves no character.
-
-        %^2^-1 is the one exception in text: its template carries a header
-        naming the setters, which the interpreter never sees and filling
-        strips; its body is the shape of its programs.
-        """
+        """Every run is as long as its setter, so filling moves no character."""
         from esolangs.registry import template_body
 
-        for name in ("Minifuck", "Bitdeque", "%^2^-1", "Crement"):
+        for name in ("Minifuck", "Bitdeque", "Crement"):
             template = esolangs.generate(name, "0110")
             shape = len(template_body(esolangs.describe(name)["id"], template))
             for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
                 assert len(esolangs.instantiate(name, template, bits)) == shape
 
     def test_a_plain_string_is_filled_by_recovering_its_setters(self) -> None:
-        for name in ("Minifuck", "Bitdeque", "%^2^-1", "A Painter Ant"):
+        for name in ("Minifuck", "Bitdeque", "A Painter Ant"):
             template = esolangs.generate(name, "0110")
             assert esolangs.instantiate(name, str(template), [1, 0]) == (
                 esolangs.instantiate(name, template, [1, 0])
@@ -437,7 +429,7 @@ class TestTheVerifierIsShipped:
 
     @pytest.mark.slow
     def test_every_language_verifies(self) -> None:
-        """65/65, through the public function rather than a local copy."""
+        """60/60, through the public function rather than a local copy."""
         failed = [
             n for n in esolangs.list_languages() if not esolangs.verify(n, "0110")
         ]
@@ -613,11 +605,11 @@ class TestWhatHappensWhenAProgramIsUnderfed:
             if not esolangs.describe(name)["parameterized"]
             and self._underfed(name)[0] == "raised"
         )
-        # 39 of the 46 that read stdin, measured (40 of 48 before Nopstacle
-        # and ZTOALC L left).  Pinned exactly, so that a change which
+        # 38 of the 45 that read stdin, measured (39 of 46 before Interprogck8
+        # left).  Pinned exactly, so that a change which
         # quietly moves a language out of the norm shows up here rather
         # than in a docstring nobody re-derives.
-        assert raised == 39
+        assert raised == 38
 
     def test_the_trait_is_reported_by_describe(self) -> None:
         """A caller must be able to learn this without underfeeding one."""
@@ -1207,7 +1199,7 @@ class TestEvaluateTakesAWidth:
 
     @pytest.mark.medium
     def test_every_language_survives_a_wrap(self) -> None:
-        """All 65, because a wrapper that broke one would break it quietly.
+        """All 60, because a wrapper that broke one would break it quietly.
 
         1.8s for the set at two inputs, which is the whole point of doing it
         here rather than leaving it to a caller who has to write the loop.
