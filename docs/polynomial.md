@@ -445,6 +445,44 @@ carries.  The proof of the count form therefore belongs to the linear
 program, with residues at most as a bookkeeping device; the chain is
 recorded so it is not rebuilt.
 
+*The `c >= 3` boundary, two attacks that do not land.*  The truncated
+Toeplitz matrix is the full rank-`c` matrix `V diag(A) W` with its
+`r < k` entries zeroed -- a Hadamard mask, not a product with a
+projection -- so Cauchy--Binet through the truncation is unavailable;
+what the truncation does is remove path families from the
+Jacobi--Trudi / Lindstrom--Gessel--Viennot count, so the boundary
+inequality is "truncation lowers the `A`-minor by at least the factor
+it lowers the `B`-minor", `A_trunc / A_full <= B_trunc / B_full`, which
+holds in every case computed (`c = 3, 4`, roots `(2,3,5)`, `(5,7,11)`,
+`(2,3,5,7)`, `n <= 12`, columns to 6, 720..806 cases each, maximum ratio
+exactly 1) and would follow from a path-family injection of the
+Lam--Postnikov--Pylyavskyy kind; not built.  Pinned: the `c = 3`
+hypothesis with `psi_d = h_{d-2}(1/rho) / prod rho` to `n = 10`.
+
+*Gap (a), what the slack buys and what it does not.*  Only `sum_u log
+Theta_u = Omega(L**2 log L)` is needed, so `Theta_u` may lose constant
+factors and even the top `u` primes: `prod_{i>2u+1} (p_i - 1)` still
+sums to `(L**2 / 4) log L`.  Case `max(U) <= 2u` (`U` packed low): free
+every position below `max(U)` and apply the lowest-position certificate
+with `2u + 1` free positions -- sound, and the whole of (a) for such
+`U`, once the `c >= 3` base holds.  Case `max(U) > 2u`: a certificate
+cannot be confined to a window -- `F(p_i) = 0` is one global relation
+and a nonzero `sum c_i r_i**m` has at most `L - 1` zeros -- so "the `u =
+0` statement on the gap's window" is not a statement; that step fails
+as written.  What a proof has to do instead, from the certificate's
+own arithmetic: carry the certificate on the `L - 2u` largest roots and
+correct each free position with one of the `u` smallest.  A free
+position at distance `d` under the top costs a correction whose tail is
+at most `C(d, c) (p_u / p_{2u+1})**d rho**c` times the main tail, with
+`p_u / p_{2u+1} <= 1/2` -- negligible once `d >= c log2 rho + O(c)`,
+i.e. for free positions more than about `c log L` below the top -- but
+ruinous inside that window (`r_j**c` against `1`), where the free
+positions must instead be absorbed as extra zeros of the main part on
+more large roots, whose tail is then no longer the closed form `1 / prod
+(rho - 1)`.  The exact optimum is largest for `U` in that window
+(measured), so the truth is fine there; the certificate that shows it
+is the remaining construction.  That, plus the `c >= 3` base, is (a).
+
 *Gap (a) is not a principal-representation theorem.*  The primal is
 `min_B` over `f_D = 1`, `|f_m| <= B` off `U`, `f_U` free, `sum_m f_m v_m
 = 0` with `v_m = (p_i**m)_i`: the gauge of `v_D` modulo `span(v_U)` in
