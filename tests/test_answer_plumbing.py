@@ -748,17 +748,6 @@ class TestTheStdinJudgeIsReachableFromPython:
         with pytest.raises(esolangs.ArgumentError, match="wants 3 bits"):
             esolangs.check_stdin("Clockwise", "10", "00010111")
 
-    def test_the_closed_sets_are_exported(self) -> None:
-        """A verifier branching on these should not spell a magic string."""
-        modes = {
-            str(esolangs.describe(n)["answer_mode"]) for n in esolangs.list_languages()
-        }
-        shapes = {
-            str(esolangs.describe(n)["input_shape"]) for n in esolangs.list_languages()
-        }
-        assert modes <= set(esolangs.ANSWER_MODES)
-        assert shapes <= set(esolangs.INPUT_SHAPES)
-
 
 class TestRunSaysWhenStdinLooksWrong:
     """Silence was indistinguishable from correctness, from Python."""

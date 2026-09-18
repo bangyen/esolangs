@@ -860,22 +860,6 @@ class TestTheTerminationProofFallsBackToTheClock:
             assert esolangs.evaluate(name, "0110") == "0110"
 
 
-class TestTheTerminationVocabularyIsExported:
-    """A reader hand-copied this tuple and said so."""
-
-    def test_it_matches_what_describe_reports(self) -> None:
-        """The same two strings, in the order the polarity is read from."""
-        for name in ("123", "ArrowQueue"):
-            assert (
-                esolangs.describe(name)["answer_encoding"]
-                == esolangs.TERMINATION_OUTCOMES
-            )
-
-    def test_it_is_exported(self) -> None:
-        """Beside ``STOP_REASONS``, which closed the same gap for stopping."""
-        assert "TERMINATION_OUTCOMES" in esolangs.__all__
-
-
 class TestEvaluateNoLongerClaimsToPayTheTimeout:
     """Its docstring and ``Debugger.snapshot``'s disagreed about the same thing."""
 

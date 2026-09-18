@@ -25,9 +25,6 @@ from functools import partial
 from typing import Any, TypedDict, cast
 
 from esolangs._answers import (
-    ANSWER_MODES,
-    INPUT_SHAPES,
-    TERMINATION_OUTCOMES,
     check_stdin,
     encode_inputs,
     read_answer,
@@ -105,10 +102,7 @@ def __getattr__(name: str) -> str:
 #: alongside the six functions anyone wants, and there was no way to tell
 #: from the outside which was which.
 __all__ = [
-    "ANSWER_MODES",
-    "INPUT_SHAPES",
     "STOP_REASONS",
-    "TERMINATION_OUTCOMES",
     "VM",
     "ArgumentError",
     "Debugger",
