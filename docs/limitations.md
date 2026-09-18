@@ -126,9 +126,30 @@ contract's measurement cannot see a `log T` factor in twelve doublings:
 invariant bounds), and 27 with a super-linear worst case -- 5 on size
 (Factor's language bound, Streetcode, and Decleq, Minsky Swap and
 Interprogck8 above) and 22 time-only, mostly `Theta(T log T)` from
-per-node table slices and per-level concatenation, being fixed in a
-separate batch.  Worst-case classes come from reading the construction;
-the measurement is the regression guard.
+per-node table slices and per-level concatenation.  Worst-case classes
+come from reading the construction; the measurement is the regression
+guard.
+
+Those 22 are now O(T) time by construction, every program byte-identical
+to before: each decision-tree generator walks `(lo, hi)` row spans with an
+O(1) constant test and appends into one flat piece list joined once, so
+no subtree is sliced, partitioned or copied per level (3x, 6-5,
+AddSubJump, APL, Back, B-tapemark, BF-PDA, BIO, Bitdeque, brainfuck and
+its Dimensional, Painfuck and 3D relatives, Crement, CV(N)(C), EGL,
+Forth, Grapheme, Modulous, Packlang, Qoibl, RAM0, S*bleq, Suffolk,
+Taglate, Unsquare); Back and B-tapemark render each row from its own
+cells rather than the bounding box; Qoibl and 6-5's DAG cost name spans by
+their halves so equality is O(1).  Four costs keep one log factor and say
+so: `essential_inputs` and `stored_inputs` (`Theta(n 2**n)`, one C-level
+slice-compare scan per input, shared by every generator that projects to
+its essential inputs), Circlefuck's byte compare (the same scan), Fargo's
+Moebius transform (`n` passes of `2**n`, the construction itself), and
+Sophie's shared-state build, whose states are the residual subtables as
+strings, `n 2**n` characters in all.  Generators that run
+`best_input_order` pay its `O(n**2 2**n)` scoring, capped at `n <= 10`.
+SLOW ACV MAMMALIAN is O(T) times its ballast iterations, about five per
+level; the dry raise inside that loop depends on the chunk-shifted state
+and cannot be hoisted without changing the program.
 
 **Factor's folded tree is Theta(T log T) on parity; the language forces
 `Omega(T log T / log log T)` for some table under every encoding.**  The
