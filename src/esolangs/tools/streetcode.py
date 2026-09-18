@@ -569,9 +569,9 @@ def _streetcode_h_layout(
     """Return an alternating-axis decision tree whose rectangle is O(T)."""
     cells: set[tuple[int, int]] = set()
     glyphs: dict[tuple[int, int], str] = {}
-    # The western radius is smaller than this geometric bound.  Keeping the
-    # tree east of column zero leaves the input normalizer a private region.
-    root = (0, 32 * (1 << (n // 2)))
+    # This bound exceeds the western radius by eight cells, keeping the tree
+    # east of column zero and leaving the input normalizer a private region.
+    root = (0, 16 * (1 << (n // 2)))
     cells |= _streetcode_h_corridor((0, 0), root)
 
     def descend(prefix: str, anchor: tuple[int, int], direction: str) -> None:
