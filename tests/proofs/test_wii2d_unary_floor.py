@@ -334,7 +334,213 @@ def _frag_ranker_decode(pattern: list[int]) -> tuple[tuple[int, int, int], str]:
     return (scale, centre, merges), total
 
 
-class TestWii2dFragRankerFailsLikeTwoPly:
+def _ranker_folds(values: list[int], bits: list[int]) -> list[tuple[int, ...]]:
+    """Return loop-less ``(scale, centre, merges, cost, frags, drop)`` per legal fold.
+
+    Uses only :func:`_wii2d_points` plus set arithmetic -- no
+    :func:`_wii2d_folds`, no depth, no compress or tail simulation.
+    ``drop == merges`` and ``frags == live - merges`` for legal square
+    folds (pairs are disjoint), so three of the four scorers below rank
+    identically; the sweep records that instead of hiding it.
+    """
+    live0 = _wii2d_points(values, bits)
+    assert live0 is not None
+    count = len(live0)
+    out: list[tuple[int, ...]] = []
+    for scale in (0, 1):
+        scaled = [value * 2 if scale else value for value in values]
+        live = _wii2d_points(scaled, bits)
+        if live is None:
+            continue
+        points = sorted(live)
+        zeros = [point for point in points if live[point] == 0]
+        ones = [point for point in points if live[point] == 1]
+        crossing = {zero + one for zero in zeros for one in ones}
+        merging: dict[int, int] = {}
+        for group in (zeros, ones):
+            for index, first in enumerate(group):
+                for second in group[index + 1 :]:
+                    double = first + second
+                    if double % 2 != 0 or double in crossing:
+                        continue
+                    merging[double] = merging.get(double, 0) + 1
+        for double, merges in merging.items():
+            centre = double // 2
+            cost = scale + abs(centre) + 1
+            frags = len({(value - centre) ** 2 for value in scaled})
+            out.append((scale, centre, merges, cost, frags, count - frags))
+    return out
+
+
+def _ranker_pick(
+    folds: list[tuple[int, ...]], scorer: str, tiebreak: str
+) -> tuple[int, ...]:
+    """Return the top-1 fold under ``scorer`` (merge/frag/ratio/drop) and tie-break."""
+    best: tuple[int, ...] | None = None
+    best_key: tuple[float, int, int, int] | None = None
+    for scale, centre, merges, cost, frags, drop in folds:
+        if scorer == "merge":
+            primary = float(-merges)
+        elif scorer == "frag":
+            primary = float(frags)
+        elif scorer == "ratio":
+            primary = -merges / cost
+        else:
+            assert scorer == "drop"
+            primary = float(-drop)
+        tie = (
+            (cost, scale, centre)
+            if tiebreak == "cheap"
+            else (-abs(centre), scale, -centre)
+        )
+        key = (primary, *tie)
+        if best_key is None or key < best_key:
+            best_key = key
+            best = (scale, centre, merges, cost, frags, drop)
+    assert best is not None
+    return best
+
+
+def _ranker_decode(
+    pattern: list[int], scorer: str, tiebreak: str
+) -> tuple[tuple[int, ...], str]:
+    """Force the loop-less top-1 first fold, then finish by shipped tail."""
+    bits = list(pattern)
+    values, ops = _wii2d_compress(list(range(len(bits))), bits, "")
+    scale, centre = _ranker_pick(_ranker_folds(values, bits), scorer, tiebreak)[:2]
+    stepped, grown = _prefix_step(values, bits, ops, scale, centre)
+    total = _shipped_tail(stepped, bits, grown)
+    assert total is not None
+    assert [_wii2d_apply(total, v) for v in range(len(bits))] == bits
+    return (scale, centre), total
+
+
+def _lookahead_decode(pattern: list[int]) -> tuple[tuple[int, ...], str]:
+    """Rank step-1 top-3 (ratio, cheap) by a local one-step lookahead.
+
+    Estimate per first fold is ``cost1 + min(cost2 - merges2)`` over legal
+    second folds -- no :func:`_shipped_tail` in the ranking, local only.
+    """
+    bits = list(pattern)
+    values, ops = _wii2d_compress(list(range(len(bits))), bits, "")
+    folds = _ranker_folds(values, bits)
+    ordered = sorted(
+        folds, key=lambda fold: (-fold[2] / fold[3], fold[3], fold[0], fold[1])
+    )
+    best: tuple[int, ...] | None = None
+    best_key: tuple[int, int, int, int] | None = None
+    for fold in ordered[:3]:
+        scale, centre, _merges, cost = fold[0], fold[1], fold[2], fold[3]
+        stepped, _grown = _prefix_step(values, bits, ops, scale, centre)
+        seconds = _ranker_folds(stepped, bits)
+        estimate = cost if not seconds else cost + min(s[3] - s[2] for s in seconds)
+        key = (estimate, cost, scale, centre)
+        if best_key is None or key < best_key:
+            best_key = key
+            best = (scale, centre)
+    assert best is not None
+    scale, centre = best
+    stepped, grown = _prefix_step(values, bits, ops, scale, centre)
+    total = _shipped_tail(stepped, bits, grown)
+    assert total is not None
+    assert [_wii2d_apply(total, v) for v in range(len(bits))] == bits
+    return best, total
+
+
+class TestWii2dRankerSweep:
+    """No loop-less step-1 scorer and no local lookahead recovers the prefix gap.
+
+    Four scorers (merge/frag/ratio/drop) by two tie-breaks (cheap/far) on
+    LFSR-8/16/32 plus two rand16 literals, replay-verified, D<=32: best
+    (merge/frag/drop by cheap) is 29/110/333/63/63 vs shipped
+    30/110/333/63/63 -- one cell, LFSR-16 still 30 over the pinned 80-pair
+    optimum. Worst (ratio by cheap) blows LFSR-32 to 467 and R1 to 74.
+    A local one-step lookahead over the step-1 top-3 fires yet gives
+    115 on LFSR-16 (merge base: 115/110), recovering nothing. Third-clause
+    standing with the frag-pair pin: the gap needs the pair search itself.
+    """
+
+    @pytest.mark.parametrize(
+        ("pattern", "shipped", "ranked"),
+        [
+            pytest.param(tuple(_lfsr(8)), 30, 29, id="lfsr8"),
+            pytest.param(tuple(_lfsr(16)), 110, 110, id="lfsr16"),
+            pytest.param(tuple(_lfsr(32)), 333, 333, id="lfsr32"),
+            pytest.param(_WII2D_FRAG_RAND16[0], 63, 63, id="rand0"),
+            pytest.param(_WII2D_FRAG_RAND16[1], 63, 63, id="rand1"),
+        ],
+    )
+    def test_the_best_step1_scorer_gains_one_cell(
+        self, pattern: tuple[int, ...], shipped: int, ranked: int
+    ) -> None:
+        bits = list(pattern)
+        decoded = _wii2d_decode(bits)
+        assert decoded is not None
+        assert [_wii2d_apply(decoded, v) for v in range(len(bits))] == bits
+        assert len(decoded) == shipped
+        _pick, total = _ranker_decode(bits, "merge", "cheap")
+        assert len(total) == ranked
+        assert len(decoded) - len(total) <= 1  # never a >=10% recovery
+
+    @pytest.mark.parametrize(
+        ("pattern", "shipped", "ranked"),
+        [
+            pytest.param(tuple(_lfsr(32)), 333, 467, id="lfsr32"),
+            pytest.param(_WII2D_FRAG_RAND16[1], 63, 74, id="rand1"),
+        ],
+    )
+    def test_the_ratio_scorer_goes_backwards(
+        self, pattern: tuple[int, ...], shipped: int, ranked: int
+    ) -> None:
+        bits = list(pattern)
+        assert len(_wii2d_decode(bits) or "") == shipped
+        pick, total = _ranker_decode(bits, "ratio", "cheap")
+        assert len(total) == ranked
+        assert pick == ((0, 2) if len(bits) == 32 else (1, 5))  # fires, loses
+
+    def test_the_lookahead_fires_yet_misses_the_optimum(self) -> None:
+        bits = _lfsr(16)
+        top1, _tail = _ranker_decode(bits, "ratio", "cheap")
+        pick, total = _lookahead_decode(bits)
+        assert top1 == (0, 2)  # step-1 top-1 stays
+        assert pick == (0, 1)  # lookahead fires: leaves the top-1
+        assert len(total) == 115  # 35 over the pinned 80-pair optimum
+
+    def test_the_scoring_uses_no_folds_depth_or_tail(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.wii2d")
+
+        def refuse(*_args: object) -> object:
+            raise AssertionError("tail simulation in a loop-less scorer")
+
+        monkeypatch.setattr(module, "_wii2d_folds", refuse)
+        monkeypatch.setattr(module, "_wii2d_depth", refuse)
+        bits = _lfsr(16)
+        values, _ops = _wii2d_compress(list(range(16)), bits, "")
+        folds = _ranker_folds(values, bits)
+        assert _ranker_pick(folds, "merge", "cheap")[:2] == (0, 2)
+        assert _ranker_pick(folds, "merge", "far")[:2] == (1, 4)  # tie-break fires
+
+    def test_the_best_readout_runs_the_full_grid(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.wii2d import _wii2d_layout
+        from tests.tools.fills import _fill_wii2d
+
+        pattern = _lfsr(16)
+        _pick, ops = _ranker_decode(pattern, "merge", "cheap")
+        routes = [("*", "*+")] * 4 + [(ops, ops)]
+        template = "\n".join(_wii2d_layout(5, 0, routes))
+        table = "".join(str(bit) * 2 for bit in pattern)
+        for combo in range(32):
+            bits = [(combo >> (4 - index)) & 1 for index in range(5)]
+            io = ScriptedIO()
+            run_wii2d(_fill_wii2d(template, bits).splitlines(), io)
+            assert io.getvalue() == table[combo], bits
+
     """A loop-less pair-count first fold recovers none of the prefix gap.
 
     Top-1 by local same-bit pair count (no tail simulation) plus shipped
