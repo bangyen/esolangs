@@ -810,6 +810,204 @@ class TestCODModelFacts:
         assert io_.nprints == 230
         assert peak == 2
 
+    def test_the_drain_singles_fate_but_leaks_value(self) -> None:
+        """D's single print is a translation: no bias makes it residual-free.
+
+        Ten build configs (bias -2..+2 x north adjust ``)``/``(``) at R=2..4,
+        drain row 6 ``-``, plus drain rows 5/7 at bias 0: every halted
+        single-print row prints ``V + 1 + bias - (2 if adjust == '(' else 0)``
+        (R=4 V=3 reaches ``4``..``6``), so no config prints one value on
+        every residual of an R. Biases that hit zero go silent instead
+        (halted, 0 prints, peak <= 2), never constant-nonzero. Drains at rows
+        5/7 print the same ``V+1`` as row 6. A two-pair shared lane (cells
+        ``a``, ``b`` with ``V = a + b``, len 143) therefore fails all 12
+        AND/OR/XOR rows: fate is always single-print, value always ``V+1``.
+        """
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        class _CountingIO(ScriptedIO):
+            def __init__(self) -> None:
+                super().__init__("")
+                self.nprints = 0
+
+            def print_str(self, text: str) -> None:
+                self.nprints += 1
+                super().print_str(text)
+
+        def build(offset: int, bias: str = "", adjust: str = ")") -> str:
+            main = ">" + ")" * offset + bias + "))<((..+<."
+            width = len(main) + 2
+            fork = main.index("+") + 1
+            trunk = width - 2
+
+            def wall() -> str:
+                return "~" * width
+
+            def at(col: int, ch: str) -> str:
+                row = list(wall())
+                row[col] = ch
+                return "".join(row)
+
+            bar = list(wall())
+            bar[fork : fork + 4] = list(".---")
+            rows = [
+                wall(),
+                "".join(bar),
+                at(fork, "<"),
+                at(fork, adjust),
+                "~" + main + "~",
+                at(trunk, "."),
+                at(trunk, "."),
+                at(trunk, "."),
+                "-" * 3 + " " * (width - 3),
+            ]
+            edited = list(rows[6])
+            edited[trunk] = "-"
+            rows[6] = "".join(edited)
+            return "\n".join(rows)
+
+        def run(program: str) -> tuple[bool, str, int, int]:
+            io_ = _CountingIO()
+            machine = _Machine(program, io_)
+            peak = 0
+            for _ in range(500):
+                if machine.halted:
+                    break
+                machine.step()
+                peak = max(peak, len(machine.cods))
+            return machine.halted, machine.io.getvalue(), io_.nprints, peak
+
+        # (bias cells, adjust, residual) -> (halted, prints, exact output)
+        table: dict[tuple[int, str, int], tuple[bool, int, str]] = {
+            (0, ")", 0): (True, 1, "1"),
+            (0, ")", 1): (True, 1, "2"),
+            (0, ")", 2): (True, 1, "3"),
+            (0, ")", 3): (True, 1, "4"),
+            (-1, ")", 0): (True, 0, ""),
+            (-1, ")", 1): (True, 1, "1"),
+            (-1, ")", 3): (True, 1, "3"),
+            (1, ")", 0): (True, 1, "2"),
+            (1, ")", 3): (True, 1, "5"),
+            (2, ")", 0): (True, 1, "3"),
+            (2, ")", 3): (True, 1, "6"),
+            (-2, ")", 0): (True, 0, ""),
+            (-2, ")", 2): (True, 1, "1"),
+            (-2, ")", 3): (True, 1, "2"),
+            (0, "(", 0): (True, 1, "-1"),
+            (0, "(", 1): (True, 0, ""),
+            (0, "(", 2): (True, 1, "1"),
+            (0, "(", 3): (True, 1, "2"),
+            (1, "(", 0): (True, 0, ""),
+            (1, "(", 3): (True, 1, "3"),
+            (2, "(", 0): (True, 1, "1"),
+            (2, "(", 3): (True, 1, "4"),
+            (-1, "(", 0): (True, 1, "-2"),
+            (-1, "(", 2): (True, 0, ""),
+            (-2, "(", 1): (True, 1, "-2"),
+            (-2, "(", 3): (True, 0, ""),
+        }
+        cells = {-2: "((", -1: "(", 0: ""}
+        for (bias, adjust, v), (halted, prints, exact) in table.items():
+            program = build(v, cells[bias] if bias <= 0 else ")" * bias, adjust)
+            got_halted, got_out, got_prints, peak = run(program)
+            assert got_halted == halted, (bias, adjust, v)
+            assert got_prints == prints, (bias, adjust, v)
+            assert got_out == exact, (bias, adjust, v)
+            assert peak <= 2, (bias, adjust, v)
+        # no config prints one value on every residual of an R: the
+        # single-print outputs across V=0..3 are pairwise distinct
+        for bias in (-2, -1, 0, 1, 2):
+            for adjust in (")", "("):
+                outs = [
+                    run(build(w, cells[bias] if bias <= 0 else ")" * bias, adjust))
+                    for w in range(4)
+                ]
+                singles = [o for (_, o, n, _) in outs if n == 1]
+                assert len(set(singles)) == len(singles), (bias, adjust, singles)
+                assert not (len(singles) == 4 and len(set(singles)) == 1), (
+                    bias,
+                    adjust,
+                )
+
+        # drain rows 5/7 agree with row 6 at bias 0
+        for row in (5, 7):
+            for v, exact in ((0, "1"), (3, "4")):
+                main = ">" + ")" * v + "))<((..+<."
+                width = len(main) + 2
+                fork = main.index("+") + 1
+                trunk = width - 2
+
+                def wall(w: int = width) -> str:
+                    return "~" * w
+
+                def at(col: int, ch: str, w: int = width) -> str:
+                    line = list("~" * w)
+                    line[col] = ch
+                    return "".join(line)
+
+                bar = list(wall())
+                bar[fork : fork + 4] = list(".---")
+                rows = [
+                    wall(),
+                    "".join(bar),
+                    at(fork, "<"),
+                    at(fork, ")"),
+                    "~" + main + "~",
+                    at(trunk, "."),
+                    at(trunk, "."),
+                    at(trunk, "."),
+                    "-" * 3 + " " * (width - 3),
+                ]
+                edited = list(rows[row])
+                edited[trunk] = "-"
+                rows[row] = "".join(edited)
+                halted, out, prints, peak = run("\n".join(rows))
+                assert (halted, out, prints, peak) == (True, exact, 1, 2), (row, v)
+
+        # two-pair shared lane: V = a + b, len 143, 0/12 boolean rows pass
+        passes = 0
+        for combo in range(4):
+            a, b = (combo >> 1) & 1, combo & 1
+            cell = lambda x: ")" if x else "_"  # noqa: E731
+            main = ">" + cell(a) + cell(b) + "))<((..+<."
+            width = len(main) + 2
+            fork = main.index("+") + 1
+            trunk = width - 2
+
+            def wall2(w: int = width) -> str:
+                return "~" * w
+
+            def at2(col: int, ch: str, w: int = width) -> str:
+                line = list("~" * w)
+                line[col] = ch
+                return "".join(line)
+
+            bar2 = list(wall2())
+            bar2[fork : fork + 4] = list(".---")
+            rows2 = [
+                wall2(),
+                "".join(bar2),
+                at2(fork, "<"),
+                at2(fork, ")"),
+                "~" + main + "~",
+                at2(trunk, "."),
+                at2(trunk, "."),
+                at2(trunk, "."),
+                "-" * 3 + " " * (width - 3),
+            ]
+            edited2 = list(rows2[6])
+            edited2[trunk] = "-"
+            rows2[6] = "".join(edited2)
+            program = "\n".join(rows2)
+            assert len(program) == 143, (a, b)
+            halted, out, prints, peak = run(program)
+            assert (halted, prints, peak) == (True, 1, 2), (a, b)
+            assert out == str(a + b + 1), (a, b)
+            for want in (str(a & b), str(a | b), str(a ^ b)):
+                passes += out == want
+        assert passes == 0
+
     def test_a_shared_decrement_column_with_plain_fork_taps_explodes(self) -> None:
         """Round 3: a shared corridor with an ungated (no-valve) ``+`` tap.
 
