@@ -551,6 +551,171 @@ class TestCODModelFacts:
                 assert len(machine.io.getvalue()) >= 600
                 assert peak == 3
 
+    def test_the_two_pair_shared_catalogue_has_no_clean_zero_test(self) -> None:
+        """Lead 2: ten hand-placed shared-lane geometries fail at R=2..3.
+
+        Base is the pinned 8-command lane (valve ``))<((``, fork ``+``,
+        sibling ``<``, trunk ``)`` + north ``_``); variants mirror the
+        valve, swap the fork/kill order, stagger the trunk a cell west,
+        or swap a gate for its complement -- each run at residuals
+        ``V=0..R-1`` for ``R=2,3`` with the pinned node as positive
+        control.  Every variant keeps ``<=13`` commands, so none fails
+        on size: V0/V1/V6/V7/V8 walk-print unhalted (600+ chars, peak 3),
+        V1-V2/V2-V0/V9 corners die silent (halted, 0 prints, peak 1),
+        V4/V5/V7-V0/V8-V1 halt but print twice (the join leak: both
+        exits fire), and the staggered trunk doubles past 500 live cods
+        with nothing printed.  No variant prints exactly once per
+        residual, so none seeds an ``o(R)`` construction.
+        """
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        class _CountingIO(ScriptedIO):
+            def __init__(self) -> None:
+                super().__init__("")
+                self.nprints = 0
+
+            def print_str(self, text: str) -> None:
+                self.nprints += 1
+                super().print_str(text)
+
+        def build(
+            offset: int,
+            valve: str = "))<(( ",
+            tail: str = "..+<.",
+            gate: str = "_",
+            adjust: str = ")",
+            trunk_dx: int = 0,
+        ) -> str:
+            core = valve.replace(" ", "")
+            main = ">" + ")" * offset + core + tail
+            width = len(main) + 2
+            fork = main.index("+") + 1
+            trunk = width - 2 + trunk_dx
+
+            def wall() -> str:
+                return "~" * width
+
+            def at(col: int, ch: str) -> str:
+                row = list(wall())
+                row[col] = ch
+                return "".join(row)
+
+            bar = list(wall())
+            bar[fork : fork + 4] = list(".---")
+            return "\n".join(
+                [
+                    wall(),
+                    "".join(bar),
+                    at(fork, gate),
+                    at(fork, adjust),
+                    "~" + main + "~",
+                    at(trunk, "."),
+                    at(trunk, "."),
+                    at(trunk, "."),
+                    "-" * 3 + " " * (width - 3),
+                ]
+            )
+
+        control = _grid(
+            "~~~~~~~~~~~~~\n"
+            "~~~~~~~~~.---\n"
+            "~~~~~~~~~_~~~\n"
+            "~~~~~~~~~)~~~\n"
+            "~>))<((..+<.~\n"
+            "~~~~~~~~~~~.~\n"
+            "~~~~~~~~~~~.~\n"
+            "~~~~~~~~~~~.~\n"
+            "---.........."
+        )
+        halted, output, peak = _run_counting(control)
+        assert (halted, output, peak) == (True, "2", 2)
+
+        # (length, halted, prints, exact output or None, peak, peak is floor)
+        # Walker outputs need no exact string: every one measured 600+.
+        table: dict[tuple[str, int], tuple[int, bool, int, str | None, int, bool]] = {
+            ("base", 0): (125, True, 1, "2", 2, False),
+            ("base", 1): (134, False, 0, None, 3, False),
+            ("base", 2): (143, False, 0, None, 3, False),
+            ("mirror", 0): (125, True, 1, "2", 2, False),
+            ("mirror", 1): (134, False, 0, None, 3, False),
+            ("mirror", 2): (143, True, 0, "", 1, False),
+            ("swap", 0): (126, True, 0, "", 1, False),
+            ("swap", 1): (135, False, 0, None, 3, False),
+            ("swap", 2): (144, False, 0, None, 3, False),
+            ("stagger", 0): (125, False, 0, "", 100, True),
+            ("stagger", 1): (134, False, 0, "", 100, True),
+            ("stagger", 2): (143, False, 0, "", 100, True),
+            ("nkill", 0): (125, True, 1, "1", 2, False),
+            ("nkill", 1): (134, True, 2, "21", 2, False),
+            ("nkill", 2): (143, True, 2, "32", 2, False),
+            ("ndec", 0): (125, True, 1, "-2", 2, False),
+            ("ndec", 1): (134, True, 2, "01", 2, False),
+            ("ndec", 2): (143, True, 3, "242", 3, False),
+            ("vnoop", 0): (125, False, 0, None, 3, False),
+            ("vnoop", 1): (134, False, 0, None, 3, False),
+            ("vnoop", 2): (143, False, 0, None, 3, False),
+            ("snoop", 0): (125, True, 2, "02", 3, False),
+            ("snoop", 1): (134, False, 0, None, 3, False),
+            ("snoop", 2): (143, False, 0, None, 3, False),
+            ("strong", 0): (143, False, 0, None, 3, False),
+            ("strong", 1): (152, True, 2, "13", 3, False),
+            ("strong", 2): (161, False, 0, None, 3, False),
+            ("mirswap", 0): (126, True, 0, "", 1, False),
+            ("mirswap", 1): (135, False, 0, None, 3, False),
+            ("mirswap", 2): (144, True, 0, "", 1, False),
+        }
+        shapes: dict[str, dict[str, object]] = {
+            "base": {},
+            "mirror": {"valve": "((<))"},
+            "swap": {"tail": "..<+."},
+            "stagger": {"trunk_dx": -1},
+            "nkill": {"gate": "<"},
+            "ndec": {"adjust": "("},
+            "vnoop": {"valve": "))_(( "},
+            "snoop": {"tail": "..+_."},
+            "strong": {"valve": ")))<((("},
+            "mirswap": {"valve": "((<))", "tail": "..<+."},
+        }
+        for r in (2, 3):
+            for name, kw in shapes.items():
+                for v in range(r):
+                    program = build(
+                        v,
+                        valve=str(kw.get("valve", "))<(( ")),
+                        tail=str(kw.get("tail", "..+<.")),
+                        gate=str(kw.get("gate", "_")),
+                        adjust=str(kw.get("adjust", ")")),
+                        trunk_dx=int(kw.get("trunk_dx", 0)),
+                    )
+                    length, want_halt, prints, exact, want_peak, floor = table[
+                        (name, v)
+                    ]
+                    assert len(program) == length, (name, v)
+                    cmds = sum(program.count(c) for c in "+()<>_") - 1
+                    assert cmds <= 16, (name, v, cmds)
+                    io_ = _CountingIO()
+                    machine = _Machine(program, io_)
+                    seen = 0
+                    for _ in range(3000):
+                        if machine.halted:
+                            break
+                        machine.step()
+                        seen = max(seen, len(machine.cods))
+                        if len(machine.cods) > 500:
+                            break
+                    assert machine.halted == want_halt, (name, r, v)
+                    if want_halt:
+                        assert io_.nprints == prints, (name, r, v)
+                    if exact is not None:
+                        assert io_.getvalue() == exact, (name, r, v)
+                    else:
+                        assert len(io_.getvalue()) >= 600, (name, r, v)
+                    if floor:
+                        assert seen > want_peak, (name, r, v, seen)
+                    else:
+                        assert seen == want_peak, (name, r, v, seen)
+
     def test_a_shared_decrement_column_with_plain_fork_taps_explodes(self) -> None:
         """Round 3: a shared corridor with an ungated (no-valve) ``+`` tap.
 
