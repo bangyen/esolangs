@@ -145,10 +145,12 @@ The candidate list is empty.
     (`tests/tools/test_boolean_wii2d.py::test_the_junction_catalogue_alone_cannot_replace_the_fold`).
   - `%^2^-1`, size and time: the shortest 2/3 descent shrank the dense
     fourteen-input template from 1.84 MB to 1.59 MB (280 KB at thirteen),
-    but does not bound a point's relocations or the number of them.  The
-    contract's x1.11 measures only to n=12 past the n=4 route change.  Its
-    `Exception` cannot close, and which tables through sixteen inputs the
-    planners refuse is finite (every table tried through fourteen builds).
+    but does not bound a point's relocations or the number of them: the
+    four-input `0101010100100010` plan moves one row ten times in 62 steps,
+    renders to 14,739 bytes, and executes all sixteen rows.  The contract's
+    x1.11 measures only to n=12 past the n=4 route change.  Its `Exception`
+    cannot close, and which tables through sixteen inputs the planners refuse
+    is finite (every table tried through fourteen builds).
   - Polynomial: stays for its language lower bound on size and time.  The
     exact minimum-mass multiple of the mandatory root product is the
     product itself (integer to L=7, and the real relaxation one digit

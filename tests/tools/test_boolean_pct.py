@@ -206,6 +206,44 @@ class TestParameterizedPctSquaredMinusOne:
         assert "m" in plan, "the doubling never fired"
         _executes(template, table, 3)
 
+    def test_one_point_can_relocate_ten_times(self) -> None:
+        """The four-input positive control defeats a per-point potential."""
+        from collections import Counter
+
+        from esolangs.tools.pct_fold import _fold_ladders, _ladder_values
+        from esolangs.tools.pct_fold_plan import _fold_norm, _fold_plan
+        from esolangs.tools.pct_squared_minus_one import _fold
+
+        table, n = "0101010100100010", 4
+        weights, mask = _fold_ladders(table, n)[0]
+        assert (weights, mask) == ((32, 16, 8, 4), 0)
+        values = _ladder_values(n, weights, mask)
+        runs: list[list[int]] = []
+        for row, _value in enumerate(values):
+            if runs and table[runs[-1][-1]] == table[row]:
+                runs[-1].append(row)
+            else:
+                runs.append([row])
+        state = _fold_norm(
+            [
+                (
+                    values[run[0]],
+                    values[run[0]] - values[run[-1]],
+                    table[run[0]],
+                    frozenset(run),
+                )
+                for run in runs
+            ]
+        )
+        plan = _fold_plan(state)
+        assert plan is not None
+        visits = Counter(row for _kind, _k, _c, rows in plan for row in rows)
+        assert max(visits.values()) == 10
+        template = _fold(table, n)
+        assert template is not None
+        assert len(template) == 14_739
+        _executes(template, table, n)
+
     @pytest.mark.slow  # a 19-run plan plus 32 interpreter runs
     def test_fold_closes_five_inputs(self) -> None:
         """A five-input table with no symmetry computes on the distinct ladder.
