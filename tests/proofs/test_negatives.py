@@ -964,7 +964,13 @@ class TestTriangleSlackIsBounded:
     zero.  Measured; the two sub-lemmas the lossy proof needs."""
 
     @pytest.mark.parametrize(
-        "count", [3, 4, 5, pytest.param(6, marks=pytest.mark.medium)]
+        "count",
+        [
+            3,
+            4,
+            pytest.param(5, marks=pytest.mark.medium),
+            pytest.param(6, marks=pytest.mark.medium),
+        ],
     )
     def test_slack_and_monotone_ratio(self, count: int) -> None:
         primes = (3, 5, 7, 11, 13, 17)[:count]
