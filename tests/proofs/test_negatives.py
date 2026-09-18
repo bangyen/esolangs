@@ -520,3 +520,54 @@ class TestTwoLargestRootsTermwise:
                 psi = (Fraction(1, a**d) - Fraction(1, b**d)) / (b - a)
                 left = q[n - d] * q[n - 1] - q[n - d - 1] * q[n]
                 assert 0 <= left <= psi * top, (n, d)
+
+
+class TestConvolutionStepOfTheTwoRootTheorem:
+    """``docs/polynomial.md`` ("The two largest roots, every degree"): the
+    induction step.  Adding a root ``x`` convolves ``Q`` with ``(1, x, x^2,
+    ...)``; by Cauchy--Binet every 2x2 minor of the new Toeplitz matrix on
+    columns ``{0, s}`` is ``sum_{k1 < s <= k2} x^(k1 + k2 - s)`` times the old
+    minor on columns ``{k1, k2}``, the same weights for both row pairs, and
+    the s-uniform inequality passes through.  Checked exactly, and the
+    inequality itself with the pure base an identity in the interior.
+    """
+
+    @staticmethod
+    def _minor(q: list[int], r1: int, r2: int, c1: int, c2: int) -> int:
+        def at(m: int) -> int:
+            return q[m] if m >= 0 else 0
+
+        return at(r1 - c1) * at(r2 - c2) - at(r1 - c2) * at(r2 - c1)
+
+    def test_cauchy_binet_weights_are_shared_by_both_row_pairs(self) -> None:
+        q = _h_table((3, 5, 7), 40)
+        x = 2
+        q2 = _h_table((2, 3, 5, 7), 40)
+        for n in range(2, 20):
+            for d in range(1, n):
+                for s in range(1, 8):
+                    for rows in ((n - d, n), (n, n + 1)):
+                        expanded = sum(
+                            x ** (k1 + k2 - s) * self._minor(q, *rows, k1, k2)
+                            for k1 in range(s)
+                            for k2 in range(s, n + 2)
+                        )
+                        assert expanded == self._minor(q2, *rows, 0, s), (n, d, s, rows)
+
+    @pytest.mark.parametrize(
+        ("small", "a", "b"),
+        [((), 2, 3), ((2,), 3, 5), ((2, 3, 5), 7, 11), ((10,), 11, 13)],
+    )
+    def test_s_uniform_inequality(self, small: tuple[int, ...], a: int, b: int) -> None:
+        q = _h_table((*small, a, b), 26)
+        hab = _h_table((a, b), 26)
+        equalities = 0
+        for n in range(1, 24):
+            for d in range(1, n + 1):
+                psi = Fraction(hab[d - 1], (a * b) ** d)
+                for s in range(1, n + 2):
+                    left = self._minor(q, n - d, n, 0, s)
+                    right = self._minor(q, n, n + 1, 0, s)
+                    assert 0 <= left <= psi * right, (n, d, s)
+                    equalities += left == psi * right and right > 0
+        assert (equalities > 0) == (small == ())
