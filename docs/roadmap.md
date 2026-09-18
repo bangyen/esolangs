@@ -24,11 +24,15 @@ The candidate list is empty.
   table in a language's syntax is not a generator -- any language can be
   brute-forced -- so a row whose generator is one carries a clock: one
   more executed round, and if neither a construction nor a bound comes of
-  it the language leaves with its row.  Nopstacle (a full decision tree
-  of corridors, `Theta(n 2**n)` under Brent--Kung's bound on every
-  levelled layout) and ZTOALC L (a chunked array lookup on Collatz slots,
-  no line-local rule and dense paths only by search) left under it on
-  2026-09-17.  COD stays on the third clause: four executed rounds the
+  it the language leaves with its row.  ZTOALC L (a chunked array lookup
+  on Collatz slots, no line-local rule and dense paths only by search)
+  left under it on 2026-09-17.  Nopstacle left the same day on the first
+  clause, not this one: its generator was a decision tree of corridors
+  like twenty-five others', `Theta(n 2**n)` because a level's run must
+  sit on one line, but its alphabet -- the blank and `#` -- can spell
+  neither the no-spaces nor the uniform convention, and no construction
+  under the conventions exists to be linear.  COD stays on the third
+  clause: four executed rounds the
   same day produced the model in its searched-negatives paragraph (no
   routing primitive, joins that leak a copy, a kill per zero-set per copy)
   and no construction or bound; Polynomial's two rounds likewise.  The

@@ -529,14 +529,16 @@ generators and no downstream consumer. The second band removed Suptiftam,
 Lamfunc, `function x(y)`, Between, and Point Break on the same criterion,
 leaving 60. Crement, Nopstacle, Vandevelo, B-tapemark, and EGL were added
 afterwards, and all five raised the floor.  Nopstacle and ZTOALC L left on
-2026-09-17 under the roadmap's membership bar: a lookup table in a
-language's syntax is not a generator.  Nopstacle's was a full decision
-tree of corridors, `Theta(n 2**n)` with Brent--Kung's column-moment bound
-on every levelled layout and the merged-node escape unbuilt, and its
-alphabet (blank and `#`) could spell neither convention; ZTOALC L's was a
-chunked array lookup whose commands sat on Collatz trajectory slots, with
-every line-local path rule dead (Flajolet--Odlyzko) and dense paths
-found only by search.
+2026-09-17 under the roadmap's membership bar, on different clauses.
+ZTOALC L's generator was a lookup table in the language's syntax: a
+chunked array holding the table, its commands sat on Collatz trajectory
+slots, with every line-local path rule dead (Flajolet--Odlyzko) and dense
+paths found only by search.  Nopstacle's was a decision tree of corridors
+like the shared meta-generator's, `Theta(n 2**n)` with Brent--Kung's
+column-moment bound on every levelled layout and the merged-node escape
+unbuilt; what removed it is that its alphabet (blank and `#`) can spell
+neither the no-spaces nor the uniform convention, so no construction
+under the conventions exists to be linear.
 
 The 2D candidate pool is screened out; the screen is recorded because
 re-running it is expensive.  `Category:Two-dimensional` x
