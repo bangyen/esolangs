@@ -1,6 +1,6 @@
 """The README's inline Sophie program is executed, not just displayed.
 
-The README listed 65 languages without showing a single program.  The one
+The README listed 60 languages without showing a single program.  The one
 it now shows is a generated artifact, so it is under the execution gate
 like any other: a size or output claim in prose is not evidence.  This
 pins the fenced block against both the generator that produced it and the

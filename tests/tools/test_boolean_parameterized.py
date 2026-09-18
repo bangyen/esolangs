@@ -18,10 +18,10 @@ def _parameterized_generators():
     """Return every parameterized generator the module exports.
 
     Read off ``__all__`` rather than hand-listed.  The roster used to name
-    thirteen of the seventeen exports, so ``a_painter_ant``, ``cod`` and
-    ``wii2d`` were silently exempt from the exactly-once and slot-order
+    a hand-picked subset, so ``a_painter_ant`` and ``cod``
+    were silently exempt from the exactly-once and slot-order
     invariants below -- including ``cod``, which this module's own docstring
-    claims to cover.  The exemption bought nothing (all three satisfy both
+    claims to cover.  The exemption bought nothing (both satisfy both
     invariants), which is what makes a silent roster worse than an explicit
     one: nobody chose it.  ``instantiate`` is the shared helper, not
     a generator, so it is the one name excluded, by name and for a reason.
@@ -113,8 +113,7 @@ def test_parameterized_generators_embed_each_input_once() -> None:
             try:
                 template = gen(table)
             except ValueError:
-                # A generator need not cover every arity -- %^2^-1 derives
-                # one- and two-input tables only.  The invariant here is about
+                # A generator need not cover every arity.  The invariant here is about
                 # the templates a generator *does* emit, so an uncovered arity
                 # is skipped rather than failed; the count below keeps that
                 # from quietly emptying the sweep.

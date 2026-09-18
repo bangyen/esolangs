@@ -193,8 +193,8 @@ class TestLocateLine:
         assert locate("ab\ncdef", (1,), "line") == Mark(1, 0, 4)
 
     def test_the_frame_indices_after_it_are_ignored(self) -> None:
-        # Interprogck8 appends one index per open frame; the line is still
-        # the first part.
+        # Algebraic Programming Language appends one index per open frame;
+        # the line is still the first part.
         assert locate("ab\ncdef", (1, 7, 2), "line") == Mark(1, 0, 4)
 
     def test_the_span_covers_the_padded_rectangle(self) -> None:
@@ -233,7 +233,9 @@ class TestRender:
         assert _highlighted(render(frame)) is None
 
     def test_a_line_shape_marks_the_whole_line(self) -> None:
-        frame = _frame("abc\ndef", (1,), language="Interprogck8", ip_shape="line")
+        frame = _frame(
+            "abc\ndef", (1,), language="Algebraic Programming Language", ip_shape="line"
+        )
         assert _highlighted(render(frame)) == "def"
 
     def test_an_unlocatable_ip_leaves_the_program_unmarked(self) -> None:

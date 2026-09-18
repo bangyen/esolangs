@@ -284,86 +284,6 @@ class TestNonTextInputIsRefusedNotCrashed:
             esolangs.run("brainfuck", path)
 
 
-# 6.5s over 12 tests: drives the CLI as a subprocess.
-@pytest.mark.medium
-# 6.5s over 12 tests: drives the CLI as a subprocess.
-@pytest.mark.medium
-# 6.5s over 12 tests: drives the CLI as a subprocess.
-@pytest.mark.medium
-class TestOutputPythonCannotEncode:
-    """A legal WII2D program crashed the CLI with a nineteen-line traceback.
-
-    ``~`` prints the accumulator as a character with no bound, so a program
-    can legitimately produce a lone surrogate -- and writing one to a UTF-8
-    stdout raises ``UnicodeEncodeError`` from inside the CLI.  Not producing
-    a raw traceback is the thing this CLI is built for, and there were two
-    separate sites: the success path, and the partial-output write added
-    the same afternoon, so fixing either alone would have left the other.
-    """
-
-    #: ``>5s++***********~.`` drives the accumulator to 27 * 2**11 = 0xD800.
-    SURROGATE = ">5s++***********~.\n!\n"
-
-    def test_the_library_returns_it_unharmed(self) -> None:
-        """The crash was the CLI's; the library was always fine."""
-        assert esolangs.run("WII2D", self.SURROGATE, "", 5) == "\ud800"
-
-    def test_the_cli_does_not_crash(self, tmp_path: Path) -> None:
-        """It exited 1 with a traceback; it exits 0 with the bytes.
-
-        Driven as a subprocess rather than through ``capsys``, which is not
-        squeamishness: the fix writes the surrogate through the byte stream
-        because no valid UTF-8 spells it, and ``capsys`` decodes what it
-        captures as UTF-8 and raises.  A real stdout is a byte sink, so the
-        subprocess is the honest test and the captured one would be testing
-        the harness.
-        """
-        path = tmp_path / "w.txt"
-        path.write_text(self.SURROGATE)
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "esolangs",
-                "run",
-                "--timeout",
-                "5",
-                "WII2D",
-                str(path),
-            ],
-            capture_output=True,
-            input=b"",
-            check=False,
-        )
-        assert result.returncode == 0, result.stderr[-300:]
-        assert b"Traceback" not in result.stderr
-        # The WTF-8 spelling of U+D800, which is what "verbatim" means for
-        # text that has no valid UTF-8 form.
-        assert result.stdout.startswith(b"\xed\xa0\x80")
-
-    @pytest.mark.slow
-    def test_the_partial_output_write_is_guarded_too(self) -> None:
-        """The second site.  ``>+~`` overruns the code point range.
-
-        It reaches the failure *after* printing a megabyte, so the partial
-        write is the one that carries the unencodable text -- and that
-        write is newer than the bug report that found the first one.
-        """
-        with pytest.raises(esolangs.HaltError) as caught:
-            esolangs.run("WII2D", ">+~\n!\n", "", 5)
-        assert len(caught.value.partial_output) > 1_000_000
-
-    @pytest.mark.slow
-    def test_the_overrun_says_what_it_was(self) -> None:
-        """It leaked ``chr() arg not in range(0x110000)``, naming nothing."""
-        with pytest.raises(esolangs.HaltError) as caught:
-            esolangs.run("WII2D", ">+~\n!\n", "", 5)
-        message = str(caught.value)
-        assert "'~'" in message
-        assert "row 0, column 2" in message
-        assert "1114112" in message
-
-
 # 2.0s over 21 tests: drives the CLI as a subprocess.
 @pytest.mark.medium
 # 2.0s over 21 tests: drives the CLI as a subprocess.
@@ -690,7 +610,7 @@ class TestCheckStdinIsASubcommand:
 
 class TestCheckStdinSaysWhatItCanActuallyCheck:
     """Its help listed "the wrong number of lines" among what it catches
-    without ``--table``.  For 63 of the 65 it cannot.
+    without ``--table``.  For 57 of the 60 it cannot.
 
     Without a table it judges *shape*, and for a line-per-bit language a
     shape is not a count: one line, three lines and none at all are
@@ -720,7 +640,7 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
         }
         assert [n for n, s in shapes.items() if s == "one_line"] == ["Clockwise"]
         assert [n for n, s in shapes.items() if s == "row_index"] == ["Fargo"]
-        assert sum(s == "line_per_bit" for s in shapes.values()) == 60
+        assert sum(s == "line_per_bit" for s in shapes.values()) == 57
 
     def test_a_one_line_language_does_catch_a_stray_line(self) -> None:
         """Which is why the help can still claim a shape check at all."""

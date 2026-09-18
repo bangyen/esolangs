@@ -114,7 +114,7 @@ def _settle(vm: VM, language: str) -> _Observed:
 
     Three of the file's conventions meet here.  A language with a halt is
     driven to it; the never-halting two are stepped a fixed distance
-    instead, so all sixty-three are covered rather than two being skipped.
+    instead, so all sixty are covered rather than two being skipped.
     And the dumping languages are stepped once more, because that step is
     where their output is written -- every one of them is still empty at
     the halt itself, so a comparison that stopped there would be comparing
@@ -424,7 +424,7 @@ class TestEveryLanguageImplementsTheSameInterface:
         """Every language's wrapper satisfies the published ``VM``.
 
         ``test_vm.py`` asserted this for brainfuck.  One language passing
-        says nothing about the other sixty-two, which is the whole reason
+        says nothing about the other fifty-nine, which is the whole reason
         the checks in this file are swept.
         """
         assert isinstance(make_vm(language, program, stdin), VM)
@@ -454,7 +454,7 @@ class TestEveryLanguageIsPure:
 
     None of the three is skipped for the never-halting languages: they are
     compared over a fixed step prefix instead of at a halt, so all
-    sixty-three are covered.
+    sixty are covered.
     """
 
     def test_two_runs_end_in_the_same_state(

@@ -18,10 +18,8 @@ from esolangs.tools.helpers import MOST_INPUTS, Setters
 if TYPE_CHECKING:
     from esolangs.tools.examples import BooleanExample
 
-# Display names whose canonical id cannot be produced by the slug rules
-# (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``).
+# Display names whose canonical id cannot be produced by the slug rules.
 _CANONICAL_OVERRIDES = {
-    "%^2^-1": "pct_squared_minus_one",
     # The parentheses are part of the name -- they mark the optional slots
     # of the CV(N)(C) syllable -- so the slug rule turns them into
     # separators and yields "cv_n_c".  The language is written and
@@ -47,8 +45,8 @@ _DIGIT_WORDS = {
 #:
 #: 0.6 offered ``Sophie`` for ``nope``, which is worse than saying nothing:
 #: a wrong guess sends the reader off to check a language they never meant.
-#: Measured rather than picked -- across 294 single-edit typos of the 65
-#: names, 0.6 and 0.65 both rescue 285, while 0.65 is the lowest value that
+#: Measured rather than picked -- across 269 single-edit typos of the 60
+#: names, 0.6 and 0.65 both rescue 265, while 0.65 is the lowest value that
 #: suggests nothing for any of ``nope``, ``zzzz``, ``xyz``, ``qqqqqq``,
 #: ``hello``, ``python``, ``asdf``, ``test`` and ``foo``.  0.7 starts
 #: costing real rescues.  ``TestASuggestionIsWorthLessThanSilence`` is the
@@ -68,10 +66,10 @@ def canonical_id(name: str) -> str:
     # and became ``cv_n_c``, which is nothing's id.  Every other awkward
     # name (``BRAINFUCK``, ``s*bleq``, ``forþ``) was already tolerant.
     # Stripped before anything else.  The slug rules below collapse runs of
-    # non-alphanumerics and strip the result, so 63 of the 65 names already
+    # non-alphanumerics and strip the result, so 59 of the 60 names already
     # tolerated a stray surrounding space -- but the override lookup is an
-    # exact one, and the two names that need an override were therefore the
-    # exact two that did not.  ``CV(N)(C) `` was the bad one: it fell
+    # exact one, and the name that needs an override was therefore the
+    # one that did not.  ``CV(N)(C) `` was the bad one: it fell
     # through to ``cv_n_c``, matched nothing, and came back as "did you mean
     # CV(N)(C)?" -- an invisible diff and no way forward.
     name = name.strip()
@@ -149,12 +147,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.six_five",
         boolean=_boolean.six_five,
         id="six_five",
-    ),
-    "%^2^-1": Language(
-        "%^2^-1",
-        "register_based.pct_squared_minus_one",
-        boolean=_boolean.pct_squared_minus_one,
-        id="pct_squared_minus_one",
     ),
     "ArrowQueue": Language(
         "ArrowQueue",
@@ -350,13 +342,6 @@ LANGUAGES: dict[str, Language] = {
         id="inject",
         interpreter="other.inject",
     ),
-    "Interprogck8": Language(
-        "Interprogck8",
-        "register_based.interprogck8",
-        boolean=_boolean.interprogck8,
-        id=canonical_id("Interprogck8"),
-        split=True,
-    ),
     "Jaune": Language(
         "Jaune",
         boolean=_boolean.jaune,
@@ -500,13 +485,6 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.vandevelo,
         id="vandevelo",
     ),
-    "WII2D": Language(
-        "WII2D",
-        "grid_based.wii2d",
-        boolean=_boolean.wii2d,
-        id="wii2d",
-        split=True,
-    ),
 }
 
 
@@ -538,8 +516,8 @@ def example_stems() -> dict[str, str]:
 
     The stems are dash-separated display names (``a-painter-ant``), while
     every internal reference is the underscored :func:`canonical_id` slug
-    (``a_painter_ant``), and a few match neither by hand (``6-5``,
-    ``pct-squared-minus-one``).  Deriving the map from the example table the
+    (``a_painter_ant``), and a few match neither by hand (``6-5``).
+    Deriving the map from the example table the
     same way :meth:`~esolangs.tools.examples.BooleanExample.build`
     does keeps the two spellings from drifting: a stem with no language, or
     a language with no stem, shows up as a missing key rather than as a
@@ -573,8 +551,8 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     reason: the same set taken from ``parameterized.__all__`` omits Home
     Row, whose generator emits the runs all the same, and the three
     hand-kept lists in the docs each named a different subset.  ``fill`` is
-    the only spelling that matches what the generators actually emit -- 17
-    languages, checked against the runs over all 63.
+    the only spelling that matches what the generators actually emit -- 15
+    languages, checked against the runs over all 60.
     """
     from esolangs.tools import examples as _examples
 
@@ -604,8 +582,7 @@ def template_char(language_id: str) -> str | None:
 def template_body(language_id: str, text: str) -> str:
     """Return ``text`` without the header a template carries for its setters.
 
-    %^2^-1's template names each input's two branches in a header the
-    interpreter never sees; every other language's template is all program.
+    A template is all program; no remaining language carries a header.
     """
     body = _examples_by_id()[language_id].body
     return text if body is None else body(text)
@@ -616,8 +593,7 @@ def template_setters(language_id: str, template: str, n: int) -> Setters:
 
     ``template`` is the generator's own output (slots, before rendering)
     or the rendered run form -- the setters read what they need from it,
-    which for %^2^-1 is its header and for the two-route generators the
-    route's prefix.
+    which for the two-route generators is the route's prefix.
     """
     setters = _examples_by_id()[language_id].setters
     if setters is None:  # pragma: no cover -- _examples_by_id keeps only setters
@@ -705,10 +681,9 @@ _BY_ID: dict[str, str] = {lang.id: name for name, lang in LANGUAGES.items()}
 #: so parentheses, ``*``, ``~`` and ``-`` stay readable -- ``CV(N)(C)`` is a
 #: better link than ``CV%28N%29%28C%29`` and both resolve.  What is *not*
 #: here is the point: ``%`` is the escape character itself and ``^`` is in
-#: neither set, so ``%^2^-1`` went out as
-#: ``https://esolangs.org/wiki/%^2^-1``, which esolangs.org answers 400 --
-#: ``%^2`` is not a percent-escape.  Non-ASCII is escaped too: ``Forþ`` as
-#: raw bytes is served by a browser and refused by a strict client.
+#: neither set, so a name carrying either went out percent-escaped and the
+#: wiki answered 400.  Non-ASCII is escaped too: ``Forþ`` as raw bytes is
+#: served by a browser and refused by a strict client.
 _WIKI_SAFE = "_-.~()*!'+,;=:@&$"
 
 

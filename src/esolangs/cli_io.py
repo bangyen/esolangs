@@ -240,7 +240,8 @@ class _WaitingNotice:
 def _write_output(text: str) -> None:
     """Write program output to stdout, whatever bytes it turned out to be.
 
-    WII2D's ``~`` can print a lone surrogate, on which
+    A program can legitimately print a lone surrogate (Sophie's `,` prints
+    the accumulator as a character with no bound), on which
     ``sys.stdout.write`` raised a nineteen-line traceback.  Written through
     the byte stream with ``surrogatepass`` when the text stream refuses,
     keeping ``run --help``'s verbatim promise; a stream with no ``buffer``

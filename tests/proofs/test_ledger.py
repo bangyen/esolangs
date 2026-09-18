@@ -39,9 +39,9 @@ def test_the_ledger_covers_exactly_the_registered_generators(ledger: Ledger) -> 
     """One row per callable in ``BY_BOOLEAN``, and no row without one.
 
     Compared on the *display* name (``Language.name``), not the registry key:
-    the keys are snake_case ids (``pct_squared_minus_one``) while the ledger
-    names languages as they are written (``%^2^-1``).  Comparing the wrong one
-    reports all 65 as missing in both directions, which reads like a parser
+    the keys are snake_case ids (``cvnc``) while the ledger
+    names languages as they are written (``CV(N)(C)``).  Comparing the wrong one
+    reports all 60 as missing in both directions, which reads like a parser
     bug rather than the naming mismatch it is.
     """
     registered = {lang.name for lang in BY_BOOLEAN.values()}

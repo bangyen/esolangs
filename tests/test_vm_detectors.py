@@ -30,57 +30,6 @@ def _read_cell(state: object) -> int:
 
 
 class TestRunUntilHaltOrCycle:
-    def test_wii2d_all_random_turns_can_be_proved_to_loop(self) -> None:
-        """Every heading from ``?`` returns to this two-cell ring.
-
-        Running one seeded trace would only show that seed loops.  The
-        branching detector must visit all four headings and may return a
-        hang verdict only after they merge back into the same finite graph.
-        The two fixed traces are the execution control: both are actual
-        interpreter runs, not a hand-written successor table.
-        """
-        from esolangs.interpreters.grid_based.wii2d import _Machine
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.randomness import FirstDraw
-        from esolangs.vm import (
-            run_until_halt_or_all_branches_cycle,
-            run_until_halt_or_cycle,
-        )
-
-        code = [">?", "! "]
-        assert (
-            run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is False
-        )
-        for turn in range(4):
-            assert (
-                run_until_halt_or_cycle(
-                    _Machine(code, ScriptedIO(), FirstDraw(turn, rest=turn))
-                )
-                is False
-            )
-
-    def test_wii2d_one_halting_turn_refutes_an_all_branches_hang(self) -> None:
-        from esolangs.interpreters.grid_based.wii2d import _Machine
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.randomness import FirstDraw
-        from esolangs.vm import (
-            run_until_halt_or_all_branches_cycle,
-            run_until_halt_or_cycle,
-        )
-
-        # East or west lands on '.', while north/south return to '?'.
-        code = ["?.", "! "]
-        assert (
-            run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is True
-        )
-        assert (
-            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(3))) is True
-        )
-        assert (
-            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(0, rest=0)))
-            is False
-        )
-
     def test_painfuck_all_coin_outcomes_can_be_proved_to_loop(self) -> None:
         """Either ``y`` outcome reaches a loop close and returns to ``a``."""
         from esolangs.interpreters.io import ScriptedIO
@@ -540,7 +489,9 @@ class TestRunUntilHaltOrCycle:
             )
 
     def test_branching_search_leaves_unbounded_or_input_paths_undecided(self) -> None:
-        from esolangs.interpreters.grid_based.wii2d import _Machine as Wii2dMachine
+        from esolangs.interpreters.grid_based.laserfuck import (
+            _Machine as LaserfuckMachine,
+        )
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.painfuck import (
             _Machine as PainfuckMachine,
@@ -549,7 +500,7 @@ class TestRunUntilHaltOrCycle:
 
         with pytest.raises(TimeoutError, match="reachable graph may be unbounded"):
             run_until_halt_or_all_branches_cycle(
-                Wii2dMachine([">?", "! "], ScriptedIO()), limit=1
+                LaserfuckMachine(["o*"], ScriptedIO()), limit=1
             )
         # A source program whose translation is the direct target 'j'.
         # The detector must not let sibling paths share its input cursor.
@@ -1069,15 +1020,15 @@ class TestTheDetectorsTakeAVM:
         reproducible, and a search that followed that generator would
         explore one draw and call the other three unreachable.  It does
         not, because ``branching_successors`` forks the immutable state
-        rather than the live machine -- so ``?.``, where only east and
-        west reach the halt, is still found to halt.
+        rather than the live machine -- so ``}o{``, where only up and
+        down leave the grid, is still found to halt.
         """
         from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
 
-        looping = make_vm("WII2D", ">?\n! ")
+        looping = make_vm("LaserFuck", " v \n}o{\n ^ ")
         assert run_until_halt_or_all_branches_cycle(looping) is False
 
-        halting = make_vm("WII2D", "?.\n! ")
+        halting = make_vm("LaserFuck", "}o{")
         assert run_until_halt_or_all_branches_cycle(halting) is True
 
     def test_the_ancestor_detector_takes_a_vm(self) -> None:

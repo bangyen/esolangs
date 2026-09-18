@@ -120,7 +120,7 @@ class InputExhaustedError(EsolangError, EOFError):
 class GeneratorCapError(EsolangError, ValueError):
     """A boolean generator refusing a table that is too big for it.
 
-    Polynomial (primes), WII2D (decode points).  Still a
+    Polynomial (primes).  Still a
     :class:`ValueError`.  The caps are not arity-bounded, which is why
     ``describe`` carries no maximum arity.
     """

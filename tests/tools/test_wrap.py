@@ -27,7 +27,6 @@ from esolangs.registry import LANGUAGES, canonical_id, template_body
 from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.examples import BooleanExample
 from esolangs.tools.wrap import (
-    _PCT_HEADER_END,
     DEFAULT_WIDTH,
     MULTILINE,
     WRAPPERS,
@@ -131,7 +130,6 @@ UNWRAPPABLE = {
     "container": "each line declares a container or one of its rules",
     "crement": "each line is one instruction; jumps and patches name line numbers",
     "inject": "blocks and executable commands are delimited by source lines",
-    "interprogck8": "each line is an instruction and relative jumps count lines",
 }
 
 # The narrower claim needed by the registry audit: these generators currently
@@ -149,7 +147,6 @@ WIDTH_EXCEPTIONS = {
         "cvnc",
         "grapheme",
         "inject",
-        "interprogck8",
         "minsky_swap",
         "nocomment",
     )
@@ -345,9 +342,7 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
         assert wrapped.split() == plain.split()
         return
     # Taglate's first line is a structural queue seed the wrapper must leave
-    # alone; only the commands below it are reflowed.  A filled %^2^-1
-    # program is in the same set for its *template's* header, which the
-    # fill has stripped: one line, nothing structural, wrapped by command.
+    # alone; only the commands below it are reflowed.
     if LANGUAGES[name].id in MULTILINE and "\n" in plain:
         seed, _, rest = wrapped.partition("\n")
         plain_seed, _, plain_rest = plain.partition("\n")
@@ -401,7 +396,7 @@ def test_every_wrapper_actually_fires(name: str) -> None:
 
     The language's own example is tried first, since it is the program the
     wrapper actually ships against.  Some are too terse to need a break at
-    all (Sophie's is 37 characters, %^2^-1's is 5), so the table then grows
+    all (Sophie's is 37 characters), so the table then grows
     until the program is long enough -- the way the text once did.  A
     parameterized generator's template is never wrapped, so the grown
     table is filled before the width is asked for.
@@ -424,10 +419,7 @@ def test_every_wrapper_actually_fires(name: str) -> None:
         # A :data:`MULTILINE` language starts with a structural row its
         # wrapper keeps and folds the rest, so the question there is whether
         # wrapping adds *more* rows, not whether any exist -- and whether the
-        # part it may fold is itself long enough to need a break.  Measuring
-        # the whole program instead stops the search at the first arity whose
-        # *header* pushes it past the width, which for %^2^-1 is an arity
-        # whose body is still thirteen characters.
+        # part it may fold is itself long enough to need a break.
         foldable = grown.split("\n", 1)[1] if structural and "\n" in grown else grown
         if ("\n" in grown and not structural) or len(foldable) <= 40:
             continue
@@ -467,18 +459,11 @@ def test_a_template_wraps_as_every_program_it_fills_to(name: str) -> None:
             program = esolangs.instantiate(name, wrapped, bits, 40)
             shapes.add(tuple(len(line) for line in program.split("\n")))
         assert len(shapes) == 1, f"{name} at {arity}: rows wrap differently"
-        # %^2^-1's template carries a header that filling strips.
         body = template_body(LANGUAGES[name].id, wrapped)
         assert shapes.pop() == tuple(len(line) for line in body.split("\n"))
 
 
-@pytest.mark.parametrize(
-    "name",
-    [
-        pytest.param(name, marks=pytest.mark.slow) if name == "%^2^-1" else name
-        for name in WRAPPED
-    ],
-)
+@pytest.mark.parametrize("name", WRAPPED)
 # part of 6.7s: runs the wrapped program.
 @pytest.mark.medium
 def test_no_width_breaks_a_run(name: str) -> None:
@@ -610,8 +595,9 @@ def _laid_out(name: str, table: str, bits: str, width: int | None) -> str:
 
     Goes through the language's own example rather than calling the
     generator, because a width-honouring generator may also be
-    *parameterized*: WII2D has no input command, so what it returns is a
-    template whose input runs the example's ``fill`` replaces.  Running
+    *parameterized*: a grid language has no input command, so what it
+    returns is a template whose input runs the example's ``fill``
+    replaces.  Running
     the template instead would not fail -- the interpreter reads ``$`` as
     a no-op -- it would quietly
     compute something unrelated, identically for every width, and the
@@ -895,48 +881,6 @@ def test_polynomial_keeps_a_sign_with_no_term_to_attach_to() -> None:
     ``- `` -- so this is only the helper staying total.
     """
     assert _polynomial("f(x) = x + - 7", 80) == "f(x) = x\n+\n- 7"
-
-
-def test_pct_header_terminator_matches_the_generator() -> None:
-    """:mod:`wrap` spells %^2^-1's header terminator; the generator owns it."""
-    from esolangs.tools.pct_squared_minus_one import _HEADER_END
-
-    assert _PCT_HEADER_END == _HEADER_END
-
-
-def test_pct_folds_its_header_to_the_width() -> None:
-    """The header meets the width at every arity; the body's runs are 86 wide."""
-    for arity in (2, 4, 6):
-        for width in (40, 80):
-            wrapped = generate("%^2^-1", _table(arity), width)
-            header, blank, body = wrapped.partition(_PCT_HEADER_END)
-            assert blank, "the header and body ran together"
-            assert all(len(line) <= width for line in header.split("\n"))
-            widest = max(len(zero) for zero, _one in wrapped.setters)
-            assert all(len(line) <= max(width, widest) for line in body.split("\n"))
-
-
-def test_pct_fill_is_unchanged_by_where_the_header_folded() -> None:
-    """However the header is folded, the filled program is byte-identical.
-
-    ``fill`` discards the header's newlines before reading it, which is what
-    lets the wrapper break *inside* a declaration -- and what keeps the two
-    branches of a setter equal width in text as well as in commands.
-    """
-    from esolangs.tools.pct_squared_minus_one import _HEADER_END, fill
-
-    for arity in (2, 4):
-        template = generate("%^2^-1", _table(arity))
-        header, _, body = template.partition(_HEADER_END)
-        for every in (7, 23, 174, 175):
-            refolded = (
-                "\n".join(header[i : i + every] for i in range(0, len(header), every))
-                + _HEADER_END
-                + body
-            )
-            for combo in range(2**arity):
-                bits = [(combo >> (arity - 1 - i)) & 1 for i in range(arity)]
-                assert fill(refolded, bits) == fill(template, bits)
 
 
 def test_wrap_grid_right_aligns_into_columns() -> None:

@@ -22,6 +22,6 @@ expected output. Without it a program can be run but not judged — none of
 these languages has a comment syntax to carry the answer.
 
 Filenames are dash-separated display names, which is not always the name
-the CLI takes: `wii2d.txt` is `WII2D`, `pct-squared-minus-one.txt` is
-`%^2^-1`. The manifest's Language column gives the name to pass to
-`esolangs run`, and language lookup is case-insensitive anyway.
+the CLI takes: `cvnc.txt` is `CV(N)(C)`. The manifest's Language column
+gives the name to pass to `esolangs run`, and language lookup is
+case-insensitive anyway.

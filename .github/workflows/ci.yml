@@ -69,7 +69,7 @@ jobs:
       run: uv run python -m tests.proofs.deep ci
 
     # --all, not the touched-language default the local gate uses: this is
-    # the run that holds exceptions.py's contract across all 65.  68s cold;
+    # the run that holds exceptions.py's contract across all 60.  68s cold;
     # the cache below carries the last clean sweep's fingerprints forward so
     # a run pays only for the interpreters, examples or machinery that
     # changed since.  The key is per commit and the restore prefix takes the
@@ -133,7 +133,7 @@ jobs:
       # `-n auto` is already every vCPU the runner has -- xdist falls back to
       # `os.cpu_count()` because psutil is not a dependency here -- so there
       # is no worker count left to raise.  What made this job slow was the
-      # `slow` band: 353 of 10865 tests that measure, locally at two workers,
+      # `slow` band: 546 of 10172 tests that measure, locally at two workers,
       # 289s against the 81s the rest take.  Those moved to
       # `.github/workflows/weekly.yml`; this runs fast and `medium`.
       #

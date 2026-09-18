@@ -1,6 +1,6 @@
 name: Weekly full suite
 
-# The `slow` band, which per-PR CI deselects.  353 of 10865 tests that cost,
+# The `slow` band, which per-PR CI deselects.  546 of 10172 tests that cost,
 # locally at two workers, 289s against the 81s the rest take -- arity
 # sweeps, whole-table
 # verifications and the twelve-input cap checks, the tests whose cost is the

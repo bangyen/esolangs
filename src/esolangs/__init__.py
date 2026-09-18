@@ -500,8 +500,8 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
 def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., Any]:
     """Bind ``seed`` to ``run_fn``'s random source, refusing where there is none.
 
-    Seven languages draw (COD, Interprogck8, LaserFuck, Modulous, Painfuck,
-    Super SNUSP, WII2D) and nothing public passed an ``rng``: ten runs of
+    Five languages draw (COD, LaserFuck, Modulous, Painfuck,
+    Super SNUSP) and nothing public passed an ``rng``: ten runs of
     ``o+++.`` gave ``3`` five times and nothing five times, while ``make_vm``
     always seeded.  A seed for a language that draws nothing is refused: the
     likelier reading is the wrong language.
@@ -511,8 +511,8 @@ def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., A
     if "rng" not in inspect.signature(run_fn).parameters:
         raise ArgumentError(
             f"{name} draws no random values, so a seed has nothing to fix; "
-            f"the languages that draw are COD, Interprogck8, LaserFuck, "
-            f"Modulous, Painfuck, Super SNUSP and WII2D"
+            f"the languages that draw are COD, LaserFuck, "
+            f"Modulous, Painfuck and Super SNUSP"
         )
     from esolangs.interpreters.randomness import Seeded
 

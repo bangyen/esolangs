@@ -189,9 +189,9 @@ markers = [
     # ~40s between them.  Measured with `--durations=0`, not estimated.
     #
     # Each is a high-arity probe of a claim documented elsewhere -- every
-    # generator raising only `EsolangError` at twelve inputs, `%^2^-1`
-    # reaching a generic thirteen-input table, Factor's thirteen-input
-    # program decoding past its retired digit budget -- so they are evidence for
+    # generator raising only `EsolangError` at twelve inputs, and Factor's
+    # thirteen-input program decoding past its retired digit budget -- so
+    # they are evidence for
     # `proofs.md` and `limitations.md` and are not deletable.  What they are
     # not is *per-run* evidence: none has ever failed on a change that
     # the rest of the band passed, and each probes an arity nothing else in

@@ -18,8 +18,8 @@ about earlier inputs lives in the cursor alone: just before the k-th read the
 reachable configurations number at most twice the instruction count, and a
 maximal-width table needs Omega(T/log T) residual classes under every read
 order.  Every Polynomial program for such a table carries `m = Omega(T/log T)`
-instructions whatever its operands.  The step is sound here where it failed
-under Interprogck8: a state is exactly `(register, cursor)`, the input arm
+instructions whatever its operands.  The step is sound: a state is exactly
+`(register, cursor)`, the input arm
 assigns rather than combines, and the instruction list is never rewritten.
 
 ## The text is not construction-forced

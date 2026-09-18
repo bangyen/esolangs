@@ -43,10 +43,7 @@ from esolangs.tools.parameterized import (
     HOME_ROW_PAIR,
     MINSKY_SWAP_PAIR,
 )
-from esolangs.tools.pct_squared_minus_one import body as pct_body
-from esolangs.tools.pct_squared_minus_one import setters as pct_setters
 from esolangs.tools.ram0 import PAIR as RAM0_PAIR
-from esolangs.tools.wii2d import PAIR as WII2D_PAIR
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
 # The committed programs all witness the same two-input function and row:
@@ -146,15 +143,13 @@ class BooleanExample:
     #: :func:`instantiate` with these and nothing else.
     setters: Callable[[str, int], Setters] | None = None
     #: The one ``(zero, one)`` pair every input is spelled with, where the
-    #: embed is uniform (16 of 17); ``setters`` is then derived from it.
-    #: %^2^-1, whose pairs sit in the template's header, passes ``setters``
-    #: and leaves this.
+    #: embed is uniform; ``setters`` is then derived from it.
     pair: tuple[str, str] | None = None
     #: The character the public template spells its inputs with, one run
     #: per input; outside the language's alphabet.
     char: str = TEMPLATE_CHAR
-    #: Strips a header the template carries for its setters' sake (%^2^-1
-    #: alone) -- the part of the template that is not program.
+    #: Strips a header the template carries for its setters' sake -- the
+    #: part of the template that is not program.
     body: Callable[[str], str] | None = None
     split: bool = False
     kwargs: tuple[tuple[str, int], ...] = ()
@@ -239,8 +234,7 @@ def _embedded(
     """Build a parameterized example, whose bits are embedded in the text.
 
     ``pair`` is the one pair every input is spelled with, or
-    ``setters(template, n)`` names them; ``body`` strips a header (%^2^-1
-    alone) first.
+    ``setters(template, n)`` names them; ``body`` strips a header first.
     """
     if (pair is None) == (setters is None):
         raise TypeError("exactly one of pair and setters")
@@ -335,11 +329,6 @@ def _register() -> None:
             "other.inject",
             expected="0\n",
             note="send terminates each line, so the answer ends in a newline",
-        ),
-        "interprogck8": _reader(
-            b.interprogck8,
-            "register_based.interprogck8",
-            split=True,
         ),
         "circuit_diagram": _reader(
             b.circuit_diagram,
@@ -522,18 +511,6 @@ def _register() -> None:
                 "RAM0 has no output instruction and dumps its whole state "
                 "at halt; the answer is the 'z' register"
             ),
-        ),
-        "wii2d": _embedded(
-            b.wii2d,
-            "grid_based.wii2d",
-            pair=WII2D_PAIR,
-            split=True,
-        ),
-        "pct-squared-minus-one": _embedded(
-            b.pct_squared_minus_one,
-            "register_based.pct_squared_minus_one",
-            setters=pct_setters,
-            body=pct_body,
         ),
         # 123 answers with the termination convention, as ArrowQueue does, so
         # only the halting (0) branch is committed.  The constructed template

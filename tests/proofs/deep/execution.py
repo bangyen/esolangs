@@ -144,7 +144,6 @@ ARITY_OVERRIDE = {
     "polynomial": 7,
     "qoibl": 6,
     "streetcode": 6,
-    "wii2d": 7,
 }
 
 #: Generators this contract cannot measure at all, with the reason.
@@ -322,7 +321,7 @@ def main() -> int:
     assert not unknown, f"exempt names no such generator: {unknown}"
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
-    assert len(measured) == len(BY_BOOLEAN) == 63, "not every generator was measured"
+    assert len(measured) == len(BY_BOOLEAN) == 60, "not every generator was measured"
 
     print(f"Execution contract: {len(measured)} generators, bound x{MAX_GROWTH}\n")
     print(f"  {'generator':30s} {'growth':>7s} {'commands':>9s}  where")

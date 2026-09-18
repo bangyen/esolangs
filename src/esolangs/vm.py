@@ -601,7 +601,7 @@ class VM(Protocol):
         checks kind, not arity.  For the ten grid languages the leading
         components are row then column, never x then y; nine more report
         a tuple without being grids (3D Brainfuck, Back, Eval, Forþ,
-        Grapheme, Interprogck8, APL, Forbin, ``function x(y)``) and
+        Grapheme, APL, Forbin, ``function x(y)``) and
         ``describe(...)["state_model"]`` separates them.
         """
 

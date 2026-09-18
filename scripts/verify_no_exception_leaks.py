@@ -229,12 +229,13 @@ def _drive(lang: str, program: str, stdin: str, cap: int) -> bool:
 
 #: Wall-clock a language's worker gets before the parent kills it.
 #:
-#: Sized from measurement, not from caution: 60 of the 64 languages finish
-#: in 102.9s *combined*, and the slowest that finishes at all is AddSubJump
-#: at 4.7s.  30s is therefore ~6x the real maximum -- room for a slower
-#: machine without letting a wedged language cost minutes.  The four that
-#: exceed it (COD, Factor, Painfuck, Suptiftam) are not slow-but-valid: they
-#: are unbounded work, and no larger number collects them.
+#: Sized from measurement, not from caution: the sweep finished in 102.9s
+#: *combined* at the last count, and the slowest language that finishes at
+#: all is AddSubJump at 4.7s.  30s is therefore ~6x the real maximum --
+#: room for a slower machine without letting a wedged language cost
+#: minutes.  The languages that exceed it (COD, Factor, Painfuck) are not
+#: slow-but-valid: they are unbounded work, and no larger number collects
+#: them.
 _LANG_TIMEOUT = 30.0
 
 #: How many language workers run at once.  Deliberately **2**, not the core

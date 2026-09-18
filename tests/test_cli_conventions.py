@@ -37,7 +37,7 @@ class TestExamplesShipWithThePackage:
             for name in esolangs.list_languages()
             if esolangs.describe(name)["examples"]
         ]
-        assert len(populated) == 63
+        assert len(populated) == 60
 
     def test_every_reported_path_exists(self) -> None:
         """A path reported and absent is worse than none reported."""
@@ -95,7 +95,7 @@ class TestExamplesShipWithThePackage:
 class TestTheSpecIsReachable:
     """The best documentation here was reachable only by guessing.
 
-    Every one of the 65 interpreters carries a module docstring with the
+    Every one of the 60 interpreters carries a module docstring with the
     command table and, more usefully, where this implementation differs
     from the wiki page.  Nothing pointed at them: ``docs/`` has a
     capability matrix and two per-language notes, neither a spec, and
@@ -162,20 +162,15 @@ class TestTheSpecIsReachable:
 
 
 class TestWikiUrlsAreUsable:
-    """``describe('%^2^-1')`` handed back a URL that answers 400.
+    """The wiki slug must escape what a path cannot carry.
 
-    ``%^2`` is not a percent-escape, so the link was broken for the one
-    language whose name starts with the escape character.  The same URL was
-    a markdown link in README.md, built by a *second* copy of the slug
-    logic in ``scripts/generate.py docs`` -- so fixing either alone
-    would have left the other wrong.
+    ``%`` is the escape character itself and ``^`` is in neither RFC 3986
+    set, so a name carrying either must come out percent-escaped or the
+    link answers 400.  The same URL is built again as a markdown link in
+    README.md by a *second* copy of the slug logic in
+    ``scripts/generate.py docs`` -- so fixing either alone would have left
+    the other wrong.
     """
-
-    def test_the_broken_one_is_escaped(self) -> None:
-        """Escaped, and specifically the two characters a path cannot carry."""
-        assert esolangs.describe("%^2^-1")["wiki_url"] == (
-            "https://esolangs.org/wiki/%25%5E2%5E-1"
-        )
 
     def test_non_ascii_is_escaped(self) -> None:
         """Raw bytes work in a browser and are refused by a strict client."""
@@ -203,7 +198,7 @@ class TestWikiUrlsAreUsable:
         )
 
     def test_every_url_is_a_valid_path(self) -> None:
-        """No unescaped ``%`` or ``^`` anywhere in the 65, which is the rule."""
+        """No unescaped ``%`` or ``^`` anywhere in the 60, which is the rule."""
         for name in esolangs.list_languages():
             url = str(esolangs.describe(name)["wiki_url"])
             slug = url.removeprefix("https://esolangs.org/wiki/")
@@ -214,14 +209,14 @@ class TestWikiUrlsAreUsable:
     def test_the_readme_uses_the_same_builder(self) -> None:
         """The second copy of the slug logic is what made this ship twice."""
         readme = (Path(__file__).parents[1] / "README.md").read_text()
-        assert "https://esolangs.org/wiki/%25%5E2%5E-1" in readme
-        assert "https://esolangs.org/wiki/%^2^-1" not in readme
+        assert "https://esolangs.org/wiki/For%C3%BE" in readme
+        assert "https://esolangs.org/wiki/Forþ" not in readme
 
 
 class TestPrintedCommandsCanBePasted:
     """The tool emitted commands it cannot itself parse.
 
-    Twelve of the 65 names contain a space, and ``describe`` ends with
+    Nine of the 60 names contain a space, and ``describe`` ends with
     ``esolangs describe --spec A Painter Ant`` while the template hint
     offers ``esolangs generate --bits <bits> A Painter Ant <table>``.
     Copy-pasting either gives ``unexpected argument: 'Painter'``.

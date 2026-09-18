@@ -204,7 +204,7 @@ def _diverging_answer(
 def _as_argument(language: str) -> str:
     """Return ``language`` spelled the way a shell needs it.
 
-    Nine of the 63 names contain a space; ``esolangs describe --spec A
+    Nine of the 60 names contain a space; ``esolangs describe --spec A
     Painter Ant`` gave ``unexpected argument: 'Painter'``.
     """
     return f'"{language}"' if " " in language else language
