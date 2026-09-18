@@ -375,6 +375,21 @@ class TestPrimitiveSurvey:
         assert machine.halted
         assert io.getvalue() == ""
 
+    def test_z_restart_recaptures_a_reader_but_loses_prior_bit(self) -> None:
+        """Alternating slot ownership across ``z`` cannot retain old state.
+
+        The first pass captures and executes ``u`` for the first bit, then
+        ``z`` restarts after deleting its own marker.  The second pass
+        recaptures the same reader and prints the second bit; all four rows
+        execute, but the first bit has vanished from the result.
+        """
+        program = ["<", "u", ">", "EXE", "z", "x", ">", "EXE", "div"]
+        for first in "01":
+            for second in "01":
+                machine = _Machine(program, ScriptedIO(f"{first}\n{second}\n"))
+                run_until_halt_or_cycle(machine)
+                assert machine.io.getvalue() == second, f"row={first}{second}"
+
     def test_the_function_slot_branches_with_no_jump_distance(self) -> None:
         """One read, routed by ``EXE``/``IFT``/``IFQ`` alone: all 4 rows.
 
