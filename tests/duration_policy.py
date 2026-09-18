@@ -7,7 +7,7 @@ MEDIUM_LIMIT = 5.0
 
 # GitHub's runner is slower than the machine the bands were calibrated on, so
 # the same test measures longer there and a locally-green band fails CI.  Over
-# the nine tests that failed the run of 2026-09-15 the CI/local ratio was 1.76x
+# the nine tests that failed a run the CI/local ratio was 1.76x
 # to 2.52x (median 1.92x), so 3.0 clears every observed case with headroom.
 # The alternative -- calibrating against a reference workload timed per run --
 # only cut the drift of a deliberately loaded machine from 26% to 10%, which

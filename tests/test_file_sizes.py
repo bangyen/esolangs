@@ -25,7 +25,7 @@ MAX_LINES = 1500
 #: is under the cap.  Nothing may be added: a new entry means a file grew past
 #: the cap instead of being split.
 #:
-#: Empty since the prose sweep of September 2026 took ``__init__.py`` (1523)
+#: Empty since the prose sweep took ``__init__.py`` (1523)
 #: and ``streetcode.py`` (1855) under the cap.
 _RATCHET: dict[str, int] = {}
 

@@ -826,7 +826,7 @@ class TestTheRoundTripsFailurePaths:
         """No language actually mismatches, so the reporting is driven here.
 
         Which is the point of testing it: the path that says *what went
-        wrong* is the one a reader only ever reaches on a bad day, so it
+        wrong* is the one a reader only ever reaches by mistake, so it
         must not be the untested one.
         """
         monkeypatch.setattr(cli_round_trip, "evaluate", lambda *_a, **_k: "0000")

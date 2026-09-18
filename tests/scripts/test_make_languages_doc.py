@@ -237,7 +237,7 @@ def test_usage_input_shapes_table_is_in_sync() -> None:
     """Regenerating the stdin table leaves it unchanged.
 
     The table replaced three hand-written prose copies of the same four
-    exceptions, one of which was wrong for two years' worth of commits.
+    exceptions, one of which was wrong across many commits.
     """
     module = load_script()
     expected = (

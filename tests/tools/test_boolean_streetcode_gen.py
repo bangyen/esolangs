@@ -38,7 +38,7 @@ class TestStreetcode:
     def test_h_tree_rectangle_is_linear(self) -> None:
         """Alternating axes bound the rendered rectangle, not just live roads.
 
-        Extended to n=11 (roadmap 2026-09-18): the per-row hall that carried
+        Extended to n=11 (roadmap): the per-row hall that carried
         a `log T` factor is gone, and the fixed per-T constants below still
         hold one arity past where they were first pinned.
         """
