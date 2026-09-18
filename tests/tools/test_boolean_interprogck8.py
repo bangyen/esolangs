@@ -13,6 +13,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.interprogck8 import _dice, _Machine
 from esolangs.tools import interprogck8
+from esolangs.tools.helpers import _greedy_input_order, permute_truth_table
 from esolangs.tools.interprogck8 import _assemble, _validate
 from esolangs.vm import run_until_halt_or_cycle
 from tests.tools.boolean_runners import run_interprogck8
@@ -132,6 +133,67 @@ class TestCorridor:
         for row in range(2**6):
             bits = list(bin(row)[2:].zfill(6))
             assert run_interprogck8(program, bits) == table[row], f"row {row}"
+
+    @pytest.mark.slow
+    def test_dense_size_stays_flat_to_twelve_while_flights_grow(self) -> None:
+        """Dense per-entry size is flat to n=12 while flight length is not.
+
+        Dense n=12 emits 714.4 characters per entry (741.9 at n=10, 745.7
+        at n=11: no trend) in 0.2 s, and 18 digest-sampled rows execute --
+        but total flight length reaches 11592x nT against 3711x at n=10,
+        so the routed-tree edge count and the size are decoupled one more
+        rung out.  The registry contract (to n=12) confirms the cell; this
+        pins the numbers it must confirm.
+        """
+        n = 12
+        table = _dense_table(n)
+        program = interprogck8(table)
+        lines, flights = _assemble(table, n)
+        _validate(lines, flights)
+        assert 600 <= len(program) / 2**n <= 900, "flat one rung past n=10"
+        total = sum(stop - launch for launch, _, stop in flights)
+        assert total > 3711 * n * 2**n, "flights grew past the n=10 figure"
+        digest = hashlib.sha256(f"rows:{n}".encode()).digest()
+        rows = {0, 2**n - 1}
+        rows.update(int.from_bytes(digest[i : i + 2]) % 2**n for i in range(0, 32, 2))
+        seen = set()
+        for row in sorted(rows):
+            bits = list(bin(row)[2:].zfill(n))
+            got = run_interprogck8(program, bits)
+            assert got == table[row], f"n={n} row {row}"
+            seen.add(got)
+        assert seen == {"0", "1"}, "the sample must cover both polarities"
+
+    @pytest.mark.slow
+    def test_input_order_collapse_is_not_spendable(self) -> None:
+        """A greedy input order collapses pass-through but cannot be spent.
+
+        The cofactor-popcount scorer finds input 7 first on the n=10
+        ``x7`` table and the permuted build shrinks 476.8 to 12.5
+        characters per entry, all 1024 rows executing on permuted inputs --
+        so the scorer fires and a flat result elsewhere is real.  But level
+        ``k`` necessarily splits on stream input ``k`` (the reads are the
+        interface), so feeding that program stream-order inputs mismatches
+        512 of 1024 rows: reordering is not a construction for this
+        generator.  Symmetric sparse tables (AND, OR, single minterm) score
+        every input tied, keep the identity, and gain nothing.
+        """
+        n = 10
+        table = "".join(str((row >> (n - 1 - 7)) & 1) for row in range(2**n))
+        order = _greedy_input_order(table, n)
+        assert order[0] == 7, "the scorer must find the live input first"
+        program = interprogck8(permute_truth_table(table, order))
+        assert len(program) / 2**n < 476.8 / 10, "the collapse must be large"
+        for row in range(2**n):
+            bits = list(bin(row)[2:].zfill(n))
+            fed = [bits[order[k]] for k in range(n)]
+            assert run_interprogck8(program, fed) == table[row], f"row {row}"
+        bad = 0
+        for row in range(2**n):
+            bits = list(bin(row)[2:].zfill(n))
+            if run_interprogck8(program, bits) != table[row]:
+                bad += 1
+        assert bad == 512, "stream-order inputs must break the permuted build"
 
     def test_open_depths_price_one_residue_each(self) -> None:
         """Each open depth owns one odd residue of fifteen.
