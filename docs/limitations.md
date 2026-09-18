@@ -138,7 +138,9 @@ separate axes.
    draws (`TestWii2dR7PatternBroadening`).
 - **%^2^-1:** the shortest 2/3 descent cuts dense fourteen inputs from 1.84 MB
   to 1.59 MB but does not bound relocations. Its size contract only reaches
-  n=12 past the route change.
+  n=12 past the route change; measured past it, dense size grows x3.13 and
+  x5.69 per added input at thirteen and fourteen and the rules' moves x4.5 and
+  x12.3, so the shipped plan is not O(T) (`TestPctSuperLinearScaling`).
 
 ## Curation
 
