@@ -125,7 +125,11 @@ separate axes.
    (`TestWii2dNoPerEpochFloor`). A loop-less max-pair first fold plus shipped
    tail recovers nothing at domain 16 (110/29/63/63/128 vs shipped
    110/30/63/63/115, LFSR-16 30 over the 80-pair optimum)
-   (`TestWii2dFragRankerFailsLikeTwoPly`).
+   (`TestWii2dFragRankerFailsLikeTwoPly`). A four-scorer by two-tie-break
+   loop-less step-1 sweep gains one cell at best (29/110/333/63/63 vs
+   shipped 30/110/333/63/63) and the ratio scorer blows domain 32 to 467;
+   a local one-step lookahead over the top-3 fires yet gives 115 on
+   LFSR-16, 35 over the optimum (`TestWii2dRankerSweep`).
 - **%^2^-1:** the shortest 2/3 descent cuts dense fourteen inputs from 1.84 MB
   to 1.59 MB but does not bound relocations. Its size contract only reaches
   n=12 past the route change.
