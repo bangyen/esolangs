@@ -365,7 +365,9 @@ rows correctly -- but nesting a second read inside it is refused
 unconditionally (`HaltError: nested function opener`), so it cannot
 compose into an n>1 tree.  `z` is data-reachable but restarts with acc 0 and
 an empty slot after deleting itself and its predecessor; it retains a choice
-only indirectly in the altered text (`test_z_restart_drops_the_selected_slot_and_accumulator`).
+only indirectly in the altered text: a conditional jump can leave either of
+two markers (`test_z_can_retain_a_branch_in_its_remaining_text`).  A language
+bound must account for that deletion state.
 
 Polynomial's question was coefficient mass, not term count, and it is
 closed: the class that survived every search -- a left-half-plane multiple
