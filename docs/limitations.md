@@ -448,7 +448,14 @@ point) and `s` (square); no cell reads it for control (`@` is
 positional, `?` random), a junction exits the same way from every
 heading, so a halting run reads each input once and every program is a
 read-once branching program with one node per input, two edges each,
-edge labels straight-line strings, final value 48 or 49.  After the
+edge labels straight-line strings, final value 48 or 49.  Executed:
+resolving the last input from `_WII2D_JUNCTIONS`' fixed catalogue alone
+(no fold) misreads AND (`0001`, n=2) at row 01 -- three surviving
+accumulator values (0, 1, 2) need two digits (0, 0, 1), the catalogue's
+edge labels are the same two strings for every value on an edge, and no
+instruction inspects the value to choose a third, so the fold is not a
+search layered on the decision tree; it supplies the last two edges'
+labels the catalogue cannot.  After the
 last `s` the readout is monotone, so the 0-points sit strictly below
 the 1-points there; pulling back through a fold halves the alternation
 count at most, `>= log2 A` squarings for `A` alternations, and a
