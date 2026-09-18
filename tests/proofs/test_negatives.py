@@ -791,3 +791,42 @@ class TestCountStatementsOnAdversarialWitnesses:
             strong = math.prod(roots[u:])
             assert sum(1 for c in below if c >= weak) >= u + 1, ("weak", u)
             assert sum(1 for c in below if 2 * c >= strong) >= u + 1, ("strong", u)
+
+
+class TestThreeRootHypothesisAtTheBoundary:
+    """``docs/polynomial.md`` ("General c"): the s-uniform hypothesis for
+    ``c = 3`` designated roots -- rows ``{n-d, n-1, n}`` against ``{n-1, n,
+    n+1}``, every column set, ``psi_d = h_{d-2}(1/rho) / prod rho`` -- an
+    equality in the interior, measured at the truncation boundary, and
+    the one statement gap (b) still needs for ``c >= 3``."""
+
+    @pytest.mark.parametrize(
+        ("small", "rho"), [((), (2, 3, 5)), ((2,), (3, 5, 7)), ((2, 3), (5, 7, 11))]
+    )
+    def test_measured_to_n_10(
+        self, small: tuple[int, ...], rho: tuple[int, ...]
+    ) -> None:
+        q = _h_table((*small, *rho), 14)
+        hinv = _h_table(tuple(Fraction(1, p) for p in rho), 14)
+        prod_rho = math.prod(rho)
+
+        def at(m: int) -> int:
+            return q[m] if m >= 0 else 0
+
+        def minor(rows: list[int], cols: list[int]) -> int:
+            return sp.Matrix([[at(r - k) for k in cols] for r in rows]).det()
+
+        interior_equalities = 0
+        for n in range(2, 11):
+            rows_b = [n - 1, n, n + 1]
+            for d in range(2, n):
+                rows_a = [n - d, n - 1, n]
+                psi = hinv[d - 2] / prod_rho
+                for c1 in range(1, 6):
+                    for c2 in range(c1 + 1, 7):
+                        cols = [0, c1, c2]
+                        left, right = minor(rows_a, cols), minor(rows_b, cols)
+                        assert 0 <= left <= psi * right, (n, d, cols)
+                        if n - d >= c2 and left == psi * right:
+                            interior_equalities += 1
+        assert (interior_equalities > 0) == (small == ())
