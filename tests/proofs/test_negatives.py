@@ -21,7 +21,11 @@ a claim worth relying on belongs somewhere that runs.
 
 from __future__ import annotations
 
+import math
+from fractions import Fraction
+
 import pytest
+import sympy as sp
 import z3
 
 from esolangs.exceptions import HaltError
@@ -431,3 +435,88 @@ class TestIteratedEliminationThresholds:
     ) -> None:
         assert not _remainder_fits(roots, degree, low, below)
         assert _remainder_fits(roots, degree, low, above)
+
+
+# --------------------------------------------------------------------------
+# Polynomial: the finite-degree certificate and the c = 2 termwise inequality
+# --------------------------------------------------------------------------
+#
+# ``docs/polynomial.md`` ("The iterated elimination") states two measured
+# inequalities that a language lower bound would need proved for every
+# degree.  Both are exact-rational computations, so they are pinned here at
+# the sizes they were measured; a failure names the degree.
+
+
+def _h_table(roots: tuple[int, ...], smax: int) -> list[int]:
+    """Complete homogeneous symmetric polynomials ``h_0..h_smax`` of ``roots``."""
+    h = [1] + [0] * smax
+    for x in roots:
+        for s in range(1, smax + 1):
+            h[s] = h[s] + x * h[s - 1]
+    return h
+
+
+def _certificate_threshold(roots: tuple[int, ...], low: int, degree: int) -> Fraction:
+    """``1 / tail`` of the row-space certificate with ``c - 1`` zeros under the
+    top, ``c = L - low - 1``; the profile with the lowest ``low + 1``
+    coefficients free is infeasible below it (Farkas)."""
+    qs = list(range(low + 1, len(roots)))
+    c = len(qs)
+    h = _h_table(roots, degree)
+
+    def at(s: int) -> int:
+        return h[s] if s >= 0 else 0
+
+    rows = [[at(degree - d - q) for q in qs] for d in range(c)]
+    lam = sp.Matrix(rows).LUsolve(sp.Matrix([1] + [0] * (c - 1)))
+    lam = [Fraction(int(x.p), int(x.q)) for x in lam]
+    w = {
+        m: sum(lam[i] * at(m - q) for i, q in enumerate(qs))
+        for m in range(low + 1, degree + 1)
+    }
+    assert w[degree] == 1
+    assert all(w[degree - d] == 0 for d in range(1, c))
+    return 1 / sum(abs(w[m]) for m in range(low + 1, degree - c + 1))
+
+
+class TestFiniteDegreeCertificateDominatesTheLimit:
+    """The exact-degree certificate is never below ``prod (p_i - 1)`` over the
+    largest primes -- measured, and what a proof of (b) must give."""
+
+    @pytest.mark.parametrize(
+        ("roots", "low", "degrees"),
+        [
+            ((2, 3, 5, 7, 11), 0, range(5, 41)),
+            ((2, 3, 5, 7, 11), 2, range(5, 41)),
+            ((2, 3, 5, 7, 11, 13), 3, range(6, 41)),
+            ((2, 3, 5, 7, 11, 13, 17), 0, range(7, 41)),
+            ((2, 3, 5, 7, 11, 13, 17), 4, range(7, 41)),
+        ],
+    )
+    def test_never_below(
+        self, roots: tuple[int, ...], low: int, degrees: range
+    ) -> None:
+        limit = math.prod(p - 1 for p in roots[low + 1 :])
+        for degree in degrees:
+            assert _certificate_threshold(roots, low, degree) >= limit, degree
+
+
+class TestTwoLargestRootsTermwise:
+    """``c = 2``: with ``Q = h(all roots)``, ``a < b`` the two largest,
+    ``Q_{n-d} Q_{n-1} - Q_{n-d-1} Q_n <= psi_d (Q_n^2 - Q_{n-1} Q_{n+1})``,
+    ``psi_d = (a^-d - b^-d) / (b - a)``; an identity when only ``a, b`` are
+    present.  Summed over ``d`` it is the ``c = 2`` case of (b)."""
+
+    @pytest.mark.parametrize(
+        "roots", [(2, 3, 5), (2, 3, 5, 7, 11), (2, 3, 5, 7, 11, 13)]
+    )
+    def test_holds_to_n_30(self, roots: tuple[int, ...]) -> None:
+        a, b = roots[-2], roots[-1]
+        q = _h_table(roots, 32)
+        for n in range(2, 31):
+            top = q[n] * q[n] - q[n - 1] * q[n + 1]
+            assert top > 0
+            for d in range(1, n):
+                psi = (Fraction(1, a**d) - Fraction(1, b**d)) / (b - a)
+                left = q[n - d] * q[n - 1] - q[n - d - 1] * q[n]
+                assert 0 <= left <= psi * top, (n, d)

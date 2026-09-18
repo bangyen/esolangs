@@ -300,6 +300,36 @@ asymptotically in `D` (the exact optima sit above the limit at every
 finite degree measured, but that is measured, not proved).  Until both
 close the row stays open; the target is now exact.
 
+Status of the two gaps, one round further.  (b) *Finite degree.*  The
+exact-degree certificate (the row-space member with `c - 1` zeros just
+under the top, low-position constraints included) is never below the
+limit: every `K <= L - 2` at `L = 5, 6, 7`, every `D` from `L` to 40, in
+exact rationals (`L = 7, K = 4`: 1349, 626, 424, ... 192.0 against 192;
+pinned to `D = 40` in `tests/proofs/test_negatives.py`).  The
+sequences involved are Polya-frequency: `1 / prod (1 - r_i x)` with `r_i >
+0` is the generating function of a PF sequence (Aissen--Schoenberg--
+Whitney), so `h_s(r)` is log-concave in `s`, the kernel `(a, s) ->
+h_s(X, a)` is TP2 by composition, and the certificate's tail is
+one-signed -- that part is proved.  For `c = 2` the whole inequality
+reduces, through the 2x2 Cauchy--Binet expansion `Delta(s, t) = (b - a)
+(Q_s Q_{t-1} - Q_{s-1} Q_t)` with `Q = h(all roots)` and `a < b` the two
+largest, to the termwise statement `Q_{n-d} Q_{n-1} - Q_{n-d-1} Q_n <=
+psi_d (Q_n**2 - Q_{n-1} Q_{n+1})`, `psi_d = (a**-d - b**-d) / (b - a)`,
+which is an *identity* when only `a, b` are present (`h_n**2 - h_{n-1}
+h_{n+1} = (ab)**n`) and strict below, ratio 0.9995..1.0000 at `L = 3..8`,
+`n <= 40`.  Adding a root smaller than `a` must not raise that ratio;
+that single inequality, and its `c > 2` analogue through the `c x c`
+minors, is what (b) still needs.  A primal reduction does not work:
+dividing out the small roots turns bounded coefficients into `B *
+h_n(small)` ones, and the free low coefficients are `B r**D` large.  (a)
+*Lowest positions.*  Every unbounded set of size 1..3 at `L = 4, 5` and
+size 1..2 at `L = 6` (`D = 10, 14`) has its minimum at `{0..u-1}`, and
+the optimum rises monotonically as any one position moves up (`L = 6,
+|U| = 1, D = 14`: 8196, 8325, 8527, 8844 at positions 0, 1, 2, 3; 12270
+at 13).  No exchange argument is proved: a primal move of one free
+position needs a multiple supported on two degrees, which does not
+exist, and the dual rows are not comparable position by position.
+
 ## Literature
 
 [Giesbrecht, Roche and Tilak][sparse-multiples] (Algorithmica 64:454-480,
