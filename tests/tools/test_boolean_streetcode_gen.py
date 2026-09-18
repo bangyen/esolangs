@@ -36,8 +36,13 @@ class TestStreetcode:
         assert run_streetcode(program, [str(bit) for bit in bits]) == table[combo]
 
     def test_h_tree_rectangle_is_linear(self) -> None:
-        """Alternating axes bound the rendered rectangle, not just live roads."""
-        for n in range(6, 11):
+        """Alternating axes bound the rendered rectangle, not just live roads.
+
+        Extended to n=11 (roadmap 2026-09-18): the per-row hall that carried
+        a `log T` factor is gone, and the fixed per-T constants below still
+        hold one arity past where they were first pinned.
+        """
+        for n in range(6, 12):
             table = "".join(str(index.bit_count() & 1) for index in range(2**n))
             program = boolean.streetcode(table)
             rows = program.splitlines()
