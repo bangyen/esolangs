@@ -255,6 +255,7 @@ class TestNestingDepth:
         """
         assert _run_bf("++[>++[>++[>+<-]<-]<-]>>>.", tmp_path / "d3heavy.png") == [8]
 
+    @pytest.mark.medium  # 0.8s serial, 1.01s at four workers
     def test_four_levels_round_trip(self, tmp_path: Path) -> None:
         """Depth 4 renders, extracts and executes correctly.
 
