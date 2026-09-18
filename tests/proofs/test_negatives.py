@@ -319,6 +319,45 @@ class TestWii2dFoldCannotHalvePastItsMergeZone:
             assert magnitude >= max_w * max_w / 2**h, (program, magnitude, max_w, h)
 
 
+class TestWii2dZeroMergeRelayoutCannotReset:
+    def test_a_scaled_fractional_relayout_leaves_a_quadratic_tail(self) -> None:
+        """``*``-scaled ``+s`` cannot halve an alternating prefix deeply.
+
+        With ``q`` doublings' scale, the first values are 1, ``(q + 1)^2``
+        and ``(2q + 1)^2``.  Their span is ``4q(q + 1)``, so a halving
+        block that large leaves at most two quotient values.  The full span
+        is quadratic in the domain over that bounded block.  ``q == 4`` is
+        tight: shift 47 and six halvings attain 0, 1, 2 but leave 63 at 1000.
+        """
+        for q, relayout in ((1, "+s"), (2, "*+s"), (4, "**+s"), (8, "***+s")):
+            prefix = [_wii2d_apply(relayout, value) for value in range(3)]
+            assert prefix == [1, (q + 1) ** 2, (2 * q + 1) ** 2]
+            block = 4 * q * (q + 1)
+            assert (prefix[-1] - prefix[0] + block - 1) // block == 1
+
+        # ``+/`` spells bit zero of the shift, then the following pairs
+        # spell the remaining bits of 47 before each floor-halving.
+        reset = "**+s" + "+/+/+/+//+/"
+        assert [_wii2d_apply(reset, value) for value in range(3)] == [0, 1, 2]
+        assert _wii2d_apply(reset, 63) == 1000
+
+        from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
+        from esolangs.tools.wii2d import _wii2d_layout
+
+        template = "\n".join(
+            _wii2d_layout(
+                6,
+                0,
+                [("*", "*+")] * 5 + [("*" + reset, "*+" + reset)],
+                None,
+            )
+        )
+        io = ScriptedIO()
+        run_wii2d(template.replace("$", "v").splitlines(), io)
+        assert len(template) == 201
+        assert ord(io.getvalue()) - 48 == 1000
+
+
 # --------------------------------------------------------------------------
 # Polynomial multiples: the second-largest coefficient is a primorial fraction
 # --------------------------------------------------------------------------

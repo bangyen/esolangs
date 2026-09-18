@@ -509,7 +509,14 @@ points before halving merges them), and the shipped enumeration only
 lists centres with a same-colour pair; from the same post-`s` state the
 shipped compressor lands on the optimum's live count and magnitude 21
 of 52 times at 11% more characters, so the halving side is close and
-the fold choice is the gap.  That gap is global: over the small-centre
+the fold choice is the gap.  A scale-dependent fractional relayout cannot
+be an amortised reset either: with scale `q = 2**a`, `*` repeated `a` then
+`+s` maps 0, 1, 2 to `1, (q + 1)**2, (2q + 1)**2`, span `4q(q + 1)`.
+Any larger halving block leaves at most two values regardless of the shift,
+so the alternating prefix bounds the block by `O(q**2)` while the full span
+is `Theta(q**2 D**2)`.  Six halvings are tight at `q = 4` (shift 47 gives
+0, 1, 2), but at domain 64 they leave 63 at 1000.  That gap is global: over
+the small-centre
 family (`|c| <= 8`, scale 1/2/4, relayouts included) one-step greedy
 under any of four keys ratchets past the magnitude bound on 6--17 of 20
 domain-16 columns, and a beam of width 4, 16, 64 builds 16, 18, 20 of
