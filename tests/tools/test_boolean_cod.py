@@ -631,3 +631,38 @@ class TestCODModelFacts:
             machine.step()
         assert machine.cods[0].value == 1
         assert not machine.halted
+
+    @pytest.mark.parametrize("bits", range(1, 9))
+    def test_scalar_residues_have_no_packed_low_bit_probe(self, bits: int) -> None:
+        """A scalar COD value needs unary work to expose a binary residue.
+
+        Values ``2**bits`` and ``2**bits + 1`` have identical zero/nonzero
+        control until the first has been decremented to zero.  A short probe
+        therefore leaves both cods live, while the exact probe distinguishes
+        them only after ``2**bits`` cells.  This rules out a packed residual
+        gadget using the language's scalar value operations; it does not
+        rule out sharing those unary cells between independent cods.
+        """
+        from dataclasses import replace
+
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        magnitude = 2**bits
+
+        def probe(length: int, value: int) -> tuple[bool, int | None]:
+            row = ">" + "(" * length + "<~"
+            width = len(row)
+            code = "~" * width + "\n" + row + "\n" + "~" * width
+            machine = _Machine(code, ScriptedIO(""))
+            machine.cods = (replace(machine.cods[0], value=value),)
+            for _ in range(length + 1):
+                if machine.halted:
+                    return True, None
+                machine.step()
+            return (machine.halted, None if machine.halted else machine.cods[0].value)
+
+        assert probe(bits, magnitude) == (False, magnitude - bits)
+        assert probe(bits, magnitude + 1) == (False, magnitude + 1 - bits)
+        assert probe(magnitude, magnitude) == (True, None)
+        assert probe(magnitude, magnitude + 1) == (False, 1)
