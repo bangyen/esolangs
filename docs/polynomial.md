@@ -598,35 +598,44 @@ and (ii-a), (ii-b) are open; the pinned test carries both measurements
 (`TestTriangleSlackIsBounded`).  The bound is not written: its proof
 would rest on (ii-a) and (ii-b), which are numerical facts, not lemmas.
 
-*Two resumption points for (ii-a)/(ii-b), and why the `k = 1` mechanism
-stops there.*  The one-displaced proof worked because `G` was a
-convolution of `F`: `G = (F * (1, y_c, y_c**2, ...) - y_c**d) / sigma P`,
-which needs `F`'s zeros to be the consecutive run `1..c-2`.  For `k >=
-2` no such relation holds -- `G_d / (F * geo)_d` past the last zero is
-constant in 0 of 270 random cases at `c = 4..6` -- so neither "`G/F =
-sum_j y_c**j F_{d-j}/F_d`" nor the near-zone version of the `k = 1`
-accounting is available; a proof must relate `F` and `G` differently.
-What is measured and usable: `|F|` is log-concave past its last
-prescribed zero (0 violations in 5940 triples, `c = 4..6`), and `|F/G|`
-decreases there.  Resumption A: find the operator taking `F` to `G` for
-general `k` -- both are the unique elements of two-dimensional spaces
-(`c`-root sums vanishing on `Z'` are spanned by `u` and `G`; `(c-1)`-root
-sums vanishing on `Z'` by `F` alone) and `(1 - y_c x)` maps `c`-root
-sums to `(c-1)`-root sums, so `E := G - y_c G_{d-1}` is a `(c-1)`-root
-sum on `d >= 1` and `F` may be recoverable from `E` by the zero data;
-if `E = mu F + (terms supported on Z' + 1)`, the `k = 1` accounting
-returns with an explicit boundary term.  Resumption B (the dodge):
-`|lambda| tail(G) <= K bound(f)` for every `z_k` splits into a far zone,
-where `|F_z / G_z| <= C (y_{c-1}/y_c)**(z - z_{k-1})` times its value at
-`z_{k-1} + 1` with `C` a dominant-term constant (the decay ratio
-`p_{c-1}/p_c -> 1` for large primes, so the zone width is `O(p_c)` and
-the level loses a factor `O(c log c)`, which the assembly absorbs), and
-a near zone of `O(p_c)` offsets each needing `|F_{z}| tail(G) / |G_{z}|
-<= C bound(f)` -- the statement (ii-b) itself, at every offset, for which
-the `k = 1` computation is not a template.  Either way the open content
-is one inequality between two exponential sums sharing `c - 2`
-prescribed zeros, one with an extra root; measured to hold with room
-(0.17 of the bound for `k >= 2`).
+**The decomposition, and the one product it does not split** (THE
+resumption point).  The `k = 1` mechanism was a convolution, `G = (F *
+(1, y_c, ...) - y_c**d) / sigma P`, which needs `F`'s zeros to be one
+consecutive run; for `k >= 2` no such relation holds (`G_d / (F *
+geo)_d` constant in 0 of 270 cases).  What holds for every `k`, exactly:
+`E_d := G_d - y_c G_{d-1}` is a `(c-1)`-root sum (the operator kills
+`y_c`), it vanishes on the leading zeros `1..f` (both `d` and `d - 1`
+are zeros of `G`), and `E_{z_j} = -y_c G_{z_j - 1}` at the displaced
+ones.  The `(c-1)`-root sums vanishing on `1..f` form a `k`-dimensional
+space with Lagrange basis `B_j` on the nodes `0, z_1..z_{k-1}` (`B_j`
+vanishes at `0`, `1..f` and every `z_i`, `i != j`, with `B_j(z_j) = 1`),
+and `E = mu F + sum_j E_{z_j} B_j` with `mu = E_0 = -y_c G_{-1}`, `G`
+extended to `d = -1` as the exponential sum; then `G_d = sum_{i<d}
+y_c**i E_{d-i}` recovers `G`.  Hence `|lambda| tail(G) <= |F_{z_k}| (y_c
+/ (1 - y_c)) [ |G_{-1}| T(F) + sum_j |G_{z_j-1}| T(B_j) ] / |G_{z_k}|`
+with `T` the full tail from `d = 1`.  Measured (`c = 4..7`, `k = 2..5`,
+displaced zeros to distance 17): the whole right side is at most
+`0.45 bound(f)`, so the accounting closes numerically with room.  The
+pieces do not split: `|F_{z_k}| |G_{-1}| / |G_{z_k}|` is bounded (0.68,
+1.60, 1.19, 1.96 at `c = 4..7`) and `T(F) <= K bound(f)` is the induction
+hypothesis, so the `F`-piece is fine; but each `B`-piece is the product
+of `T(B_j) / bound(f)`, which is astronomically large (`3 * 10**12 ..
+10**18` -- `B_j` is normalised at `z_j`, where it is tiny against its
+own bulk), and `|F_{z_k}| |G_{z_j-1}| / |G_{z_k}|`, which is
+correspondingly small (`10**-3 .. 10**-6`), with a bounded product
+(under 0.16).  So the open number is the product `Psi_j := |F_{z_k}|
+|G_{z_j-1}| T(B_j) / (|G_{z_k}| bound(f))` -- the tail of the Lagrange
+component `E_{z_j} B_j` of `E`, measured against `bound(f) |G_{z_k}| /
+|F_{z_k}|` -- and a proof must bound it without separating the factors:
+either through the induction itself, treating `E_{z_j} B_j` as a
+`(c-1)`-root object whose normalisation is the value of the `c`-root `G`
+one step before `z_j`, or by a Vandermonde-ratio estimate of the product
+directly.  Pinned: the three identities and the bound-sum
+(`TestPointADecomposition`).  Also measured and usable: `|F|` is
+log-concave past its last prescribed zero (0 of 5940 triples), `|F/G|`
+decreases there, and in the far zone `|F_z / G_z|` decays like `(y_{c-1}
+/ y_c)**(z - z_{k-1})`, so only offsets within `O(p_c)` of `z_{k-1}`
+need the bound, at a loss of `O(c log c)` per level.
 
 *Gap (a) is not a principal-representation theorem.*  The primal is
 `min_B` over `f_D = 1`, `|f_m| <= B` off `U`, `f_U` free, `sum_m f_m v_m
