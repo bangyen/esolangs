@@ -90,19 +90,34 @@ class TestDormantMachinery:
         """The positive control: neither backstop fires by default."""
         assert interprogck8(_parity_table(6))
 
-    def test_the_pool_thins_by_arity_and_ends_at_forty(self) -> None:
+    def test_the_pool_thins_when_a_second_class_opens(self) -> None:
         """Residues per class come from probing the placer, not a table.
 
         Fourteen inputs ride one full class; a fifteenth needs a second,
         whose two-odd-line read never fits under a full first, so the
-        pool thins to thirteen; past forty no pool places every depth
-        under a fully open stack and the generator refuses.
+        pool thins to thirteen.  The arity where it runs out is the next
+        test: the probe past 15 is what costs, and it costs on the placer
+        rather than on anything this repository can make cheaper.
         """
-        from esolangs.exceptions import TruthTableError
         from esolangs.tools.interprogck8 import _phases
 
         assert _phases(14) == 14
         assert _phases(15) == 13
+
+    # 0.8s local, 3.4s on a CI runner against the fast band's scaled 3s:
+    # `_phases` walks the pool down from fourteen and replays the whole
+    # placement stack per candidate, and the two high arities are most of
+    # that.  The probe is the documented method, not a shortcut to replace.
+    @pytest.mark.medium
+    def test_the_pool_ends_at_forty(self) -> None:
+        """Past forty no pool places every depth under a fully open stack.
+
+        Forty is the last arity the probe places, at nine residues; a
+        forty-first has no pool at all and the generator refuses.
+        """
+        from esolangs.exceptions import TruthTableError
+        from esolangs.tools.interprogck8 import _phases
+
         assert _phases(40) == 9
         with pytest.raises(TruthTableError, match="at most 40"):
             _phases(41)
