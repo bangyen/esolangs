@@ -261,9 +261,7 @@ class TestPrimitiveSurvey:
         assert machine.state.slot is None
         assert machine.state.lines == ("<", "nNnN", "div", ">", "EXE")
 
-    @pytest.mark.parametrize(
-        ("bit", "survivor"), [("0", "nNnN"), ("1", "NnNn")]
-    )
+    @pytest.mark.parametrize(("bit", "survivor"), [("0", "nNnN"), ("1", "NnNn")])
     def test_z_can_retain_a_branch_in_its_remaining_text(
         self, bit: str, survivor: str
     ) -> None:
