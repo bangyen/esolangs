@@ -483,6 +483,49 @@ more large roots, whose tail is then no longer the closed form `1 / prod
 (measured), so the truth is fine there; the certificate that shows it
 is the remaining construction.  That, plus the `c >= 3` base, is (a).
 
+*Desnanot--Jacobi does not lift `c = 2` to `c = 3`.*  The identity
+writes each `3x3` minor as `(X1 Y1 - X2 Y2) / centre` in `2x2` minors of
+the same matrix, verified exactly, but the two-root theorem bounds every
+`2x2` ratio from one side only, and the target needs the other side on
+the subtracted product: substituting the proved bounds (`X2 >= 0`, `X1
+<= psi Y2`) leaves `A <= psi_{d-1} Y1 Y2 / centre`, which exceeds `psi_d
+B` by up to x147 (`(2,3,5)`), x110, x61 over 515 boundary cases each,
+and no two-sided form exists -- boundary `2x2` ratios fall to 0.004 of
+`psi`.  Dead as a route.
+
+**The slack certificate: one lemma is the whole bound** (measured,
+stated exactly).  Only `sum_u log Theta_u = Omega(L**2 log L)` is
+needed, so give up the `u` primes `p_{u+1}..p_{2u}`.  For a free set `U`
+of size `u <= (L-1)/2` at *any* positions, take the pure certificate on
+the `L - u` largest roots -- the `u` smallest unused, so no coupling, no
+truncated Toeplitz, no `c >= 3` boundary at all -- with its `L - u - 1`
+zeros at `U` and at the first `L - 2u - 1` distances under the top not
+in `U`.  It vanishes on `U` and is in the row space.  Measured: its
+threshold is at least `prod_{i>2u} (p_i - 1)`, ratio `1.0000..1.005`,
+for `L = 5..10`, `u <= (L-1)/2`, every `U` inside distance 8 (`u <= 3`)
+and 120 random `U` to distance 40 -- approached from above as `U` goes
+deep, where the certificate tends to the pure one on the `L - 2u`
+largest roots.  The general statement behind it, about pure exponential
+sums only: **for `c` roots and `c - 1` prescribed zeros of which the
+first `f` are the distances `1..f`, the tail is at most `1 / prod (rho -
+1)` over the `f + 1` largest roots, with equality exactly when every zero
+is a leading one** (exhaustive over zero sets inside distance 7 and 300
+random ones to distance 30, for `(5,7,11)`, `(3,5,7,11)`, `(7,11,13,17)`,
+`(5,7,11,13,17)`, `(3,5,7,11,13,17)`; maximum ratio 1.0000).  Each
+leading zero buys one root; a displaced zero buys nothing but costs
+nothing.  Sign structure for a proof: a `c`-term exponential sum has
+no zeros besides the `c - 1` prescribed, so it alternates across them
+and the tail is `S(1) + 2 sum_g (-1)**g S(z_g)` with `S(d) = sum_i
+a_i y_i**d / (1 - y_i)` -- an explicit rational function of the roots;
+the claim is that moving any zero deeper never lowers it and the limit
+is the leading-zero product.  With this lemma: anchor `|f_D| >= 1`,
+iterate `u = 0..(L-1)/2` over the `u` largest coefficients wherever
+they sit, and every real multiple of `prod (x - p_i)` has `mass >=
+sum_{u <= (L-1)/2} log prod_{i>2u} (p_i - 1) = (1/4 - o(1)) L**2 log L`,
+i.e. every Polynomial program is `Omega(T**2 / log T)` characters.  The
+lemma is pinned (`TestEachLeadingZeroBuysOneRoot`); the bound is not
+written until it is proved.
+
 *Gap (a) is not a principal-representation theorem.*  The primal is
 `min_B` over `f_D = 1`, `|f_m| <= B` off `U`, `f_U` free, `sum_m f_m v_m
 = 0` with `v_m = (p_i**m)_i`: the gauge of `v_D` modulo `span(v_U)` in
