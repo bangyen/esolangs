@@ -6,8 +6,6 @@ from typing import Any
 
 import esolangs.tools as boolean
 
-_ALLOWED = {"circlefuck_byte"}
-
 
 def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:
     """Return the public generator callables a package exports."""
@@ -21,12 +19,10 @@ def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:
 
 
 def test_boolean_generators_take_a_truth_table() -> None:
-    """Each non-exempt generator takes ``truth_table`` and no required extra."""
+    """Each generator takes ``truth_table`` and no required extra."""
     failures = {}
     exported = dict(_public(boolean))
     for name, fn in exported.items():
-        if name in _ALLOWED:
-            continue
         params = list(inspect.signature(fn).parameters.values())
         issues = []
         if not params:
@@ -41,4 +37,3 @@ def test_boolean_generators_take_a_truth_table() -> None:
         if issues:
             failures[name] = issues
     assert not failures
-    assert exported.keys() >= _ALLOWED

@@ -18,9 +18,6 @@ from esolangs.tools.circlefuck import (
 from esolangs.tools.circlefuck import (
     circlefuck as circlefuck,
 )
-from esolangs.tools.circlefuck import (
-    circlefuck_byte as circlefuck_byte,
-)
 from esolangs.tools.dimensional import dimensional, dimensional_tree
 from esolangs.tools.helpers import (
     _ASCII_ONE as _ASCII_ONE,
@@ -49,7 +46,6 @@ __all__ = [
     "brainfuck",
     "brainif",
     "circlefuck",
-    "circlefuck_byte",
     "dimensional",
     "dimensional_tree",
     "factor",

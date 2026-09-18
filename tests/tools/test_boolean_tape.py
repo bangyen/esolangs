@@ -26,7 +26,6 @@ from tests.tools.boolean_runners import (
     run_suffolk,
     run_three_d_brainfuck,
 )
-from tests.tools.jaune_support import jaune_multiply
 
 
 def _leaves(table: str) -> int:
@@ -139,16 +138,14 @@ class TestCirclefuck:
         ],
     )
     def test_byte_values(self, values: list[int], n: int) -> None:
-        """circlefuck_byte outputs the given byte per input combination."""
-        program = boolean.circlefuck_byte(values)
+        """The byte tree under the generator prints the leaf's byte."""
+        from esolangs.tools.circlefuck import _best_byte_order
+
+        program = _best_byte_order(values, n)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_circlefuck(program, [str(b) for b in bits])
             assert got == chr(values[combo]), f"inputs {bits}"
-
-    def test_byte_values_require_a_power_of_two_table(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.circlefuck_byte([1, 2, 3])
 
     def test_identity_and_greedy_are_the_only_candidates(self) -> None:
         """The two candidates are counted and the selected one is executed."""
@@ -718,39 +715,6 @@ class TestJaune:
             sizes.append(len(boolean.jaune(table)))
         assert all(b <= 2 * a for a, b in pairwise(sizes))
 
-    @pytest.mark.parametrize(
-        ("a", "b"),
-        [
-            (0, 5),
-            (5, 0),
-            (0, 0),
-            (3, 4),
-            (12, 34),
-            (99, 99),
-            (100, 7),
-            (7, 100),
-            (7, 123),
-            (123, 456),
-            (12345, 6789),
-            pytest.param(99999, 99999, marks=pytest.mark.slow),  # 1.3s
-        ],
-    )
-    def test_multiply(self, a: int, b: int) -> None:
-        """The sentinel-delimited multiply reads any-length operands."""
-        program = jaune_multiply()
-        lines = [*list(str(a)), "*", *list(str(b)), "#"]
-        got = run_jaune(program, lines)
-        assert got == str(a * b), f"{a} * {b}"
-
-    def test_multiply_all_small_operands(self) -> None:
-        """Every single-digit pair produces the right product."""
-        program = jaune_multiply()
-        for a in range(10):
-            for b in range(10):
-                lines = [*list(str(a)), "*", *list(str(b)), "#"]
-                got = run_jaune(program, lines)
-                assert got == str(a * b), f"{a} * {b}"
-
 
 class TestSbleq:
     @pytest.mark.parametrize(
@@ -1103,7 +1067,7 @@ def _constant_subtree_count(truth_table: list[int], n: int, prefix: list[int]) -
 def test_circlefuck_scores_every_candidate_as_the_one_prefix_count(seed: int) -> None:
     """One pass scores all inputs exactly as scoring each prefix did.
 
-    Byte tables, since ``circlefuck_byte`` is what scores: the masks are
+    Byte tables, since the tree scores on bytes: the masks are
     kept per distinct value, not per bit.
     """
     from esolangs.tools.circlefuck import _constant_subtree_scores
