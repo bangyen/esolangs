@@ -556,10 +556,33 @@ gap (`2 g sqrt(kappa M_1)` with `kappa M_1` about 1) -- no operation
 pays magnitude to open a gap, the fold opens one for free at the far
 end and the halving closes only the near end.  The invariant "gap at
 most 2 after a return" is therefore false, and with the measured
-`g` the theorem prices only `sqrt(live)`.  What the measured floors
-say instead is a profile statement -- gaps small near the origin,
-large at the top, which costs about `4 live` to reach -- and the
-pullback with a position-dependent gap is the unproved step.  The model: the shipped chain
+`g` the theorem prices only `sqrt(live)`.  The profile class the image-gap
+formula names, `S(a, L)`: `L` points in `[0, 4L]` with the gap at
+position `P` at most `a sqrt(P) + 2`.  Every one of the 89 real
+return states (domain 64--256) lies in it with `a <= 2.1` but one
+(3.8 at 20 live), median 0.8, and `a` does not grow along the
+decoder's path; it is not closed under cheap epochs -- a fold near
+the origin at stable magnitude maps `a` to about `2a` at the top of
+the image (`2 sqrt(kappa P) (a sqrt(P_pre) + 2)` with `kappa P` near
+1 and `P_pre` near `4L`), while a fold about the top, which costs
+about `4L` unary, maps it to `2 / sqrt(L)`; the decoder's bounded `a`
+is bought by its centres.  On the class, a one-epoch return is
+priced: a centre inside the hull at position `P_0` sees gaps `g_0 =
+a sqrt(P_0) + 2`, so `kappa >= 1 / (16 g_0**2 (m_1 + 3))`, and the
+return needs `kappa <= 1 / L`, hence `P_0 >= (sqrt(L / (16 (m_1 +
+3))) - 2)**2 / a**2` unary; below the hull it costs `L / 4 - O(1)`,
+above it `4L` -- all `Omega(L)` for bounded `a`.  The two-epoch
+branch is not: the count condition (at most `2 m_2 + 6` live points
+within `R = M_1 / (2 sqrt(4L + 1))` of the second centre) against
+image gaps `2 sqrt(kappa X) (a sqrt(P_0) + (X / kappa)**(1/4)) + ...`
+yields `X >= kappa L**2 / (4.5 a (2 m_2 + 7))**(4/3)` and exceeds `R`
+only past `L` of about `((4.5 a (2 m_2 + 7))**(4/3) / 2.24)**2`,
+20,000 at `a = 1` and five merges, so it proves nothing at any
+measured size.  Resumption point: the two-epoch branch on `S(a, L)`
+with the count condition replaced by legality -- the count is what
+costs the `4/3` power and the `(2 m_2 + 7)**2`, and the measured
+floors (none under `live / 4` from 71 states) say legality is doing
+the work.  The model: the shipped chain
 merges no cofactors before the readout on any of the nine tables
 above nor on 59 of 60 random tables at five to seven inputs (first
 junction `("", "+")`, then Horner), and the exact optima are readouts
