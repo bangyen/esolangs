@@ -1,4 +1,4 @@
-"""Boolean-function generators for Circlefuck and its byte dialect."""
+"""Boolean-function generator for Circlefuck."""
 
 from collections.abc import Sequence
 
@@ -9,33 +9,16 @@ def circlefuck(truth_table: str) -> str:
     """Build a Circlefuck program computing the given truth table.
 
     ``,`` reads each input, 48 ``-``s normalize, and a decision tree branches
-    from the last input down; each leaf sets a cleared cell with ``+``s,
-    prints, and halts with ``@``.  The byte-valued generator with
-    ``48 + bit`` outputs (:func:`circlefuck_byte`).
+    from the last input down; each leaf sets a cleared cell with ``+``s to
+    the byte ``48 + bit``, prints, and halts with ``@``.  The tree is built
+    over byte values, so a constant subtree folds on the value; the reads
+    are unconditional above the tree.  Identity and greedy orders compete:
+    a node tests the cell under the pointer, so an order is a walk with a
+    real cost (:func:`_circlefuck_ordered`).
     """
-    # Validated here rather than left to ``circlefuck_byte``: that one takes
-    # a *byte* table, where a single entry is a legal constant, so it cannot
-    # carry the boolean generators' "at least one input" rule.
     _validate_truth_table(truth_table)
-    return circlefuck_byte([_ASCII_ZERO + int(bit) for bit in truth_table])
-
-
-def circlefuck_byte(truth_table: Sequence[int]) -> str:
-    """Build a Circlefuck program computing a byte-valued function.
-
-    ``truth_table`` is ``2**n`` byte values, MSB first; each leaf prints
-    ``chr(value)``.  A constant subtree folds; the reads are unconditional
-    above the tree.  Identity and greedy orders compete: a node tests the
-    cell under the pointer, so an order is a walk with a real cost
-    (:func:`_circlefuck_ordered`).
-    """
-    n = len(truth_table).bit_length() - 1
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            "truth table must have a power-of-two number of entries "
-            f"(2**n), got {len(truth_table)}",
-        )
-    return _best_byte_order(truth_table, n)
+    table = [_ASCII_ZERO + int(bit) for bit in truth_table]
+    return _best_byte_order(table, len(table).bit_length() - 1)
 
 
 def _best_byte_order(truth_table: Sequence[int], n: int) -> str:
@@ -150,7 +133,7 @@ def _constant_subtree_scores(
 
 
 def _circlefuck_ordered(truth_table: list[int], perm: tuple[int, ...]) -> str:
-    """Emit one input order's Circlefuck program; see :func:`circlefuck_byte`.
+    """Emit one input order's Circlefuck program; see :func:`circlefuck`.
 
     The table is in stream order, so each node carries its table index
     (``2**(n-1-perm[k])``) beside its row index.  Folding is settled

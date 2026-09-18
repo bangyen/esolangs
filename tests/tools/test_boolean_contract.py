@@ -501,8 +501,7 @@ _MINTERM_SHAPED = {
 }
 
 # Neither model describes these.  ``wii2d`` is a route search over a grid,
-# not a sum and not a tree.  ``circlefuck_byte`` takes a *byte* table, not
-# a boolean one.
+# not a sum and not a tree.
 #
 # ``b_tapemark`` is a tree, but a deliberately *unfolded* one, so the
 # folding discriminator does not apply: its nodes read the input, and
@@ -582,7 +581,6 @@ _UNSHAPED = {
     "minifuck",
     "one_two_three",
     "pct_squared_minus_one",
-    "circlefuck_byte",
     "slow_acv_mammalian",
     "container",
 }
