@@ -447,7 +447,21 @@ free hole after any epoch (above), and a free un-ratchet after `k`
 free squarings needs only the pre-run set to hold at most m+2 points
 within about `sqrt(M)` of it, which the optima have at their size;
 the lemma refuses it only once `D > 4 (m+2)**2`, past every exact
-optimum.  Incompressibility (Li--Vitanyi
+optimum.  The linear reading of the optima was then tried as a rule
+and fails at the first epoch: over every centre in `[-2D, 3D]` with
+up to two doublings and every legal `(h, S)` (shifts sampled), the
+least magnitude a first epoch can leave on the dense index with a
+centre within 8 is 10--21, 33--39, 258--281, 528, 2096 at domain 16,
+32, 64, 128, 256 (merging 1--6), and over all centres 7, 24, 87, 177,
+383, at centres of 22, 17--44, 85--95, 86, 188 units merging 3--9 --
+the small-centre ratchet begins between domain 32 and 64, and from 64
+on a non-ratcheting epoch costs 0.7--1.4 `D` unary for at most nine
+merges.  The greedy structured rule (fold within `C`, up to two
+doublings, then the legal `(h, S)` with the most merges that pulls
+the magnitude back to the live count) builds domain 16 at 3.7 per
+entry with `C = 24` (exact optimum at most 2.8, shipped 6.0), domain 32
+at 7.8 with `C = 48`, and nothing at domain 64 with `C = 96`; with
+`C = 8` it builds domain 12 at 4.5 and nothing at 16.  Incompressibility (Li--Vitanyi
 ch. 6) supplies the frame and nothing model-specific;
 Mansour--Schieber--Tiwari floor bounds, 1D map folding (crimps and end
 folds count folds, not unary creases), addition-chain bounds (one
