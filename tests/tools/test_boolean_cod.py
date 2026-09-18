@@ -391,3 +391,44 @@ class TestCODModelFacts:
         ).replace("X", fill)
         halted, output, peak = _run_counting(node)
         assert (halted, output, peak) == (True, "2", 2)
+
+    def test_the_t_squared_wall_is_concurrent_strays_not_walk_length(self) -> None:
+        """The shipped cascade's cost is *width* (live strays), not *depth*.
+
+        At n=7 (T=128) the single-one table's worst index drives peak live
+        cods to T -- one stray per still-open row, all converging on the
+        same tick since row ``j``'s stray needs exactly ``V - j`` steps to
+        die and rows are peeled off one tick apart.  Tick count itself
+        (7,713) stays far under ``T**2`` (16,384): the interpreter's cost is
+        ``ticks * live-cod-count``, not ticks alone.  Index 0 never builds
+        that population (every stray dies within a tick or two of birth).
+        This is why idea (3) -- keep the ``T**2`` grid, shrink the live
+        walk -- does not escape the row's open question: an O(1)-per-stray
+        kill needs a zero test independent of ``|V - j|``, and COD's four
+        value ops (``)`` ``(`` ``<`` ``_``) only test distance to zero by
+        walking it.
+        """
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools import parameterized
+        from esolangs.tools.cod import PAIR
+        from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+
+        n = 7
+        total = 2**n
+        table = "0" * (total - 1) + "1"
+        template = parameterized.cod(table)
+
+        def run(bits: list[int]) -> tuple[int, bool, str, int]:
+            code = fill_runs(template, TEMPLATE_CHAR, (PAIR,) * n, bits)
+            machine = _Machine(code, ScriptedIO(""))
+            steps = 0
+            peak = 0
+            while not machine.halted:
+                machine.step()
+                steps += 1
+                peak = max(peak, len(machine.cods))
+            return steps, machine.halted, machine.io.getvalue(), peak
+
+        assert run([1] * n) == (7713, True, "1", total)
+        assert run([0] * n) == (7820, True, "0", 2)

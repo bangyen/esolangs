@@ -260,6 +260,21 @@ in the bits read so far), not a residue class of the full index -- so a
 fate map is not a union of residue classes of the decoded index, and a
 bound by that family alone is not a bound on the language.
 
+Concurrency was then executed on the shipped program (n=7, single-one
+table, `test_the_t_squared_wall_is_concurrent_strays_not_walk_length`):
+the worst index drives peak live cods to `T` (128), one stray per
+still-open row converging on the same tick, because row `j`'s stray
+needs exactly `V - j` steps to die and rows are peeled off one tick
+apart -- but total ticks (7,713) stays far under `T**2` (16,384).  The
+wall is `ticks * live-cod-count`, a *width* cost, not walk length; index
+0 never builds the population (every stray dies within a tick or two).
+So a fix that keeps the `T**2` grid but shortens the live walk (killing
+a stray in O(1) rather than `O(V - j)`) does not exist on this
+primitive set either: the only kill is `<` against zero, so an O(1)
+stray kill needs a zero test independent of `|V - j|`, and none of
+`)`/`(`/`<`/`_` offers one -- each only reaches zero by walking the
+distance.
+
 A value-encoded funnel (lanes carry their prefix in the value, one
 input cell, then a ladder of `_` rungs back to lanes) was executed on
 its smallest ladder, two rungs (`+` with `_` above, `(`, `+` with `_`
