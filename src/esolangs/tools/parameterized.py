@@ -357,26 +357,26 @@ def minsky_swap(truth_table: str) -> str:
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Every
     run is ``++`` (``reg[0] = 2``) or ``**`` (swap away and back), and each
-    is followed by a stage adding ``2**(n-1-i)`` to ``reg[1]``::
-
-        $$ ~ ~ * +...+ *
-
-    Both ``~`` target the command after the stage: a one falls through to
-    the ``+`` block, a zero jumps it; either way ``reg[0]`` is zero and the
-    pointer on it.  The blocks sum to ``2**n - 1`` commands.  A ``*`` then
-    puts the pointer on ``reg[1]`` and ``2**n`` ``~``s route value ``v`` to
-    leaf ``v``; a one leaf is ``+ * ~``, a zero leaf ``~``.  The dump reads
-    ``0 {answer}``.
+    is followed by a stage ``~ ~ * +...+ *`` adding ``2**(n-1-i)`` to
+    ``reg[1]``: both ``~`` target the command after the stage, so a one
+    falls through to the ``+`` block and a zero jumps it, and either way
+    ``reg[0]`` is zero with the pointer on it.  A ``*`` then puts the
+    pointer on ``reg[1]`` and ``2**n`` ``~``s route value ``v`` to one of
+    two shared leaves behind a line-1 ``~`` that jumps over them at start:
+    line 2 halts (a ``~`` targeting one past the end), lines 3-5
+    (``+ * ~``) set ``reg[1]`` first.  Every target is the digit 2 or 3 (a
+    leaf per row was ``Theta(T log T)`` of addresses), every table of one
+    arity is one length, and the dump reads ``0 {answer}``.
     """
     n = _validate_truth_table(truth_table)
 
-    tokens: list[str] = []
-    targets: list[int] = []
-    pos = 0  # instantiated command index of the next command
+    zero_leaf, one_leaf = 2, 3
+    tokens: list[str] = ["~", "~", "+", "*", "~"]
+    targets: list[int] = [6, 0, 0]
+    pos = 5  # instantiated command index of the next command
 
-    # load: one stage per input, MSB first.  The run is read off the
-    # setters themselves, so the offsets count exactly the text the fill
-    # emits; the weight is the stage's own ``+`` block.
+    # load: one stage per input, MSB first; the run is read off the setters
+    # themselves, so the offsets count exactly the text the fill emits.
     for i, run in enumerate(_runs(MINSKY_SWAP_PAIR, n)):
         weight = 2 ** (n - 1 - i)
         skip = pos + len(run) + 2 + 2 + weight + 1  # 1-based line after the stage
@@ -386,20 +386,11 @@ def minsky_swap(truth_table: str) -> str:
 
     tokens.append("*")  # pointer onto reg[1], which holds the index
     pos += 1
-    for _ in range(2**n):  # cascade: route the assembled value to leaf v
-        tokens.append("~")
-        targets.append(0)
-        pos += 1
-    for v in range(2**n):  # leaves: both registers are zero here
-        targets[n * 2 + v] = pos + 1
-        if truth_table[v] == "1":
-            tokens += ["+", "*"]  # reg[1] = 1, pointer onto the zero reg[0]
-            pos += 2
-        tokens.append("~")  # the addressed register is zero: jump to the end
-        targets.append(0)
-        pos += 1
+    tokens += ["~"] * 2**n
+    targets += [one_leaf if bit == "1" else zero_leaf for bit in truth_table]
+    pos += 2**n
 
-    end = pos + 1  # 1-based target just past the last command
+    end = pos + 1
     return (
         " ".join(tokens) + "\n" + " ".join(str(end if t == 0 else t) for t in targets)
     )

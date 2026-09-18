@@ -742,13 +742,14 @@ class TestParameterizedMinskySwap:
 
         Every run is two wide, and the stage after each carries the weight:
         two ``+`` after the MSB, one after the LSB.  The jump targets count
-        those stages, not the runs.
+        those stages, not the runs.  The five commands ahead of the first
+        run are the shared leaves and the ``~`` that jumps over them.
         """
         from esolangs.tools import parameterized
 
         template = parameterized.minsky_swap("0110")
         assert "{X" not in template
-        assert template.startswith("$$ ~ ~ * ++ * $$ ~ ~ * + * *")
+        assert template.startswith("~ ~ + * ~ $$ ~ ~ * ++ * $$ ~ ~ * + * *")
 
     @pytest.mark.parametrize("bits", [(0, 0), (0, 1), (1, 0), (1, 1)])
     def test_examples_fill_sets_either_bit_in_either_position(
@@ -785,14 +786,15 @@ class TestParameterizedMinskySwap:
 
         assert MINSKY_SWAP_PAIR == ("**", "++")
         template = minsky_swap(AND2)
+        leaves = "~ ~ + * ~ "
         assert _fill_minsky_swap(template, [1, 1]).startswith(
-            "++ ~ ~ * ++ * ++ ~ ~ * + *"
+            leaves + "++ ~ ~ * ++ * ++ ~ ~ * + *"
         )
         assert _fill_minsky_swap(template, [0, 1]).startswith(
-            "** ~ ~ * ++ * ++ ~ ~ * + *"
+            leaves + "** ~ ~ * ++ * ++ ~ ~ * + *"
         )
         assert _fill_minsky_swap(template, [1, 0]).startswith(
-            "++ ~ ~ * ++ * ** ~ ~ * + *"
+            leaves + "++ ~ ~ * ++ * ** ~ ~ * + *"
         )
 
 

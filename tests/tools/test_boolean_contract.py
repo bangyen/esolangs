@@ -551,12 +551,12 @@ _REDUCING = {
 
 # ``minsky_swap`` is a branch-free lookup of the same class as
 # ``slow_acv_mammalian``: a stage per input adds its weight to the index
-# register, and a ``~`` cascade routes the index to its row, whose leaf is
-# one command for a zero and three for a one.  Every table of one arity and
-# one ones-count renders to the same length, so a 0% fold is the
-# construction working.  (Its earlier leaves were three or four commands
-# by whether the row's LSB matched its answer, which read as a fold on the
-# one-dependency table that *is* the LSB and on nothing else.)
+# register, and a ``~`` cascade routes the index to one of two shared
+# leaves, a one-digit target per row.  Every table of one arity renders to
+# the same length, so a 0% fold is the construction working.  (Its
+# earlier leaves were three or four commands by whether the row's LSB
+# matched its answer, which read as a fold on the one-dependency table
+# that *is* the LSB and on nothing else.)
 #
 # ``alight`` is a branch-free lookup: the inputs are folded into a row
 # index by Horner's rule and the table is a string literal read with
