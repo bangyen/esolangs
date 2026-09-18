@@ -56,6 +56,7 @@ from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     best_input_order,
+    constant_span_test,
     decision_tree_tokens,
     essential_inputs,
     read_at,
@@ -132,12 +133,13 @@ def bio(truth_table: str) -> str:
         return "0oy;" if a == "0" else "1oy;"
 
     pack = _BIO_DOUBLE.join(_runs(BIO_PAIR, n))
-    inner = ""
-    for j in range(2**n - 1, 0, -1):
-        body = "1ox;" + yop(truth_table[j - 1], truth_table[j]) + inner
-        inner = "0ix{" + body + "};"
+    # Loop ``j`` wraps ``j + 1``: opens, then closes, joined once (O(2**n)).
+    opens = [
+        "0ix{1ox;" + yop(truth_table[j - 1], truth_table[j]) for j in range(1, 2**n)
+    ]
     init = "0oy;" if truth_table[0] == "1" else ""
-    return pack + init + inner + "0oy;" * _ASCII_ZERO + "1iy;"
+    closes = "};" * len(opens)
+    return pack + init + "".join(opens) + closes + "0oy;" * _ASCII_ZERO + "1iy;"
 
 
 #: ``x = 2 * x`` through ``y``: the first loop moves each unit of ``x`` into
@@ -171,24 +173,32 @@ def bfpda(truth_table: str) -> str:
         print_answer = ("<@" if value == "1" else "<") + ".>"
         return drain_preloaded_bits + print_answer
 
+    # The load pushes in name order, so the stack hands back the *last*
+    # input first: level ``i`` tests input ``n - 1 - i``, row bit ``i``.
+    # Through the bit-reversed index that subtree is a contiguous span.
+    reflected = "".join(
+        truth_table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(2**n)
+    )
+    constant = constant_span_test(reflected)
+    pieces = [head]
+
     # Not routed through :func:`decision_tree_tokens`: a plain string with no
     # index to thread, so its token lists would be one-element lists throughout.
-    def node(i: int, rows: list[int]) -> str:
-        results = {truth_table[r] for r in rows}
-        if i == n or len(results) == 1:
-            return leaf(i, results.pop() if i < n else truth_table[rows[0]])
-        # The load pushes in name order, so the stack hands back the *last*
-        # input first: level ``i`` tests input ``n - 1 - i``, whose row bit
-        # is at position ``i``.
-        zero = [r for r in rows if ((r >> i) & 1) == 0]
-        one = [r for r in rows if ((r >> i) & 1) == 1]
-        sub0 = node(i + 1, zero)
-        sub1 = node(i + 1, one)
+    def node(i: int, lo: int, hi: int) -> None:
+        if i == n or constant(lo, hi):
+            pieces.append(leaf(i, reflected[lo]))
+            return
+        mid = (lo + hi) // 2
         # one-branch pops ~bi first (expose next bit); zero-branch has it popped
         # by the node's own loop
-        return "[>" + ">" + sub1 + "<]>[>" + sub0 + "<]>"
+        pieces.append("[>>")
+        node(i + 1, mid, hi)
+        pieces.append("<]>[>")
+        node(i + 1, lo, mid)
+        pieces.append("<]>")
 
-    return head + node(0, list(range(2**n)))
+    node(0, 0, 2**n)
+    return "".join(pieces)
 
 
 def bitdeque(truth_table: str) -> str:
@@ -326,13 +336,8 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     def leaf_tokens(_level: int, row: int) -> list[str]:
         return leaf(seen[row])
 
-    def node(level: int, zero: list[str], one: list[str], at: int) -> list[str]:
-        return [
-            *rotations[level],
-            f"GOTO {at + width(level) + len(zero)}",
-            *zero,
-            *one,
-        ]
+    def node(level: int, zero: int, _one: int, at: int) -> list[str]:
+        return [*rotations[level], f"GOTO {at + width(level) + zero}"]
 
     tree = decision_tree_tokens(
         seen,

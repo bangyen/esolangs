@@ -37,23 +37,32 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
 
 
 def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order as a folded, linear-size Boolean tree."""
+    """Emit one input order as a folded, linear-size Boolean tree.
+
+    The pieces go into one flat list, joined once, so the build is O(T)
+    rather than a copy of every subtree per level.
+    """
     n = _validate_truth_table(truth_table)
     changes = [0]
     for previous, current in pairwise(truth_table):
         changes.append(changes[-1] + (previous != current))
+    reads = " & ".join(_NAMES[index] for index in range(n)) + " & 0"
+    pieces = [f"{_NOT}\n({reads}) | "]
 
-    def tree(start: int, end: int, depth: int) -> str:
+    def tree(start: int, end: int, depth: int) -> None:
         if changes[start] == changes[end - 1]:
-            return truth_table[start]
+            pieces.append(truth_table[start])
+            return
         half = (start + end) // 2
         name = _NAMES[perm[depth]]
-        zero = tree(start, half, depth + 1)
-        one = tree(half, end, depth + 1)
-        return f"((!{name} & {zero}) | (!!{name} & {one}))"
+        pieces.append(f"((!{name} & ")
+        tree(start, half, depth + 1)
+        pieces.append(f") | (!!{name} & ")
+        tree(half, end, depth + 1)
+        pieces.append("))")
 
-    reads = " & ".join(_NAMES[index] for index in range(n)) + " & 0"
-    return f"{_NOT}\n({reads}) | {tree(0, 1 << n, 0)}"
+    tree(0, 1 << n, 0)
+    return "".join(pieces)
 
 
 def _apl_name(index: int) -> str:

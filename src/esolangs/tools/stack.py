@@ -4,9 +4,9 @@ from functools import cache
 from itertools import pairwise, product
 
 from esolangs.tools.helpers import (
-    _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
+    constant_span_test,
     essential_inputs,
     permute_truth_table,
     read_at,
@@ -144,20 +144,31 @@ def grapheme(truth_table: str) -> str:
     for previous, current in pairwise(table):
         changes.append(changes[-1] + (previous != current))
 
-    def tree(start: int, end: int, depth: int) -> tuple[list[str], int]:
+    # One flat piece list: a node's two skips depend on its subtrees'
+    # lengths, so each is a slot reserved ahead and written once the
+    # subtree is down -- O(T) rather than a copy per level.
+    body: list[str] = []
+
+    def tree(start: int, end: int, depth: int) -> int:
+        """Lay the subtree down and return its length in characters."""
         if changes[start] == changes[end - 1]:
             leaf = _grapheme_push1() if table[start] == "1" else _grapheme_push0()
-            return [leaf], len(leaf)
+            body.append(leaf)
+            return len(leaf)
         half = (start + end) // 2
-        zero, zero_len = tree(start, half, depth + 1)
-        one, one_len = tree(half, end, depth + 1)
+        conditional = len(body)
+        body.append("")
+        zero_len = tree(start, half, depth + 1)
+        skip = len(body)
+        body.append("")
+        one_len = tree(half, end, depth + 1)
         always = _grapheme_push_int(one_len) + _grapheme_push0() + "V"
         lookup = _grapheme_push_key(_grapheme_slot_key(slots[depth])) + "D"
-        conditional = _grapheme_push_int(zero_len + len(always)) + lookup + "TV"
-        parts = [conditional, *zero, always, *one]
-        return parts, sum(map(len, parts))
+        body[skip] = always
+        body[conditional] = _grapheme_push_int(zero_len + len(always)) + lookup + "TV"
+        return len(body[conditional]) + zero_len + len(always) + one_len
 
-    body, _length = tree(0, 1 << width, 0)
+    tree(0, 1 << width, 0)
     return "".join([*head, *body, "Y"])
 
 
@@ -256,15 +267,20 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         return ""
 
     last_internal = 2**n - 2
+    constant = constant_span_test(truth_table)
 
-    def rows_under(m: int) -> list[int]:
+    def span_under(m: int) -> tuple[int, int]:
         """Return the table rows the subtree rooted at heap index ``m`` covers.
 
-        The leaf at heap index ``m`` is row ``m - last_internal - 1``.
+        Heap index ``m`` at depth ``d`` is the ``m - (2**d - 1)``-th node of
+        its level, and covers that many spans of ``2**(n - d)`` rows in; the
+        leaf at heap index ``m`` is row ``m - last_internal - 1``.  O(1), so
+        the fold test over the whole heap is O(2**n).
         """
-        if m > last_internal:
-            return [m - last_internal - 1]
-        return rows_under(2 * m + 1) + rows_under(2 * m + 2)
+        depth = (m + 1).bit_length() - 1
+        width = 1 << (n - depth)
+        lo = (m - (1 << depth) + 1) * width
+        return lo, lo + width
 
     prog = []
     folded: set[int] = set()
@@ -277,14 +293,14 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             # the numbering costs nothing -- the node simply never exists.
             continue
         if m <= last_internal:
-            rows = rows_under(m)
-            if len({truth_table[row] for row in rows}) == 1:
+            lo, hi = span_under(m)
+            if constant(lo, hi):
                 # Every row under this node agrees, so the bits it would
                 # branch on cannot change the answer: answer here and drop
                 # the whole subtree.  The inputs are read up front, outside
                 # the tree, so a folded program still consumes its input
                 # exactly as an unfolded one does.
-                body = _forth_const(_ASCII_ZERO + int(truth_table[rows[0]]))
+                body = _forth_const(_ASCII_ZERO + int(truth_table[lo]))
                 # Drop the *whole* subtree, not just the two children: a
                 # grandchild is just as unreachable, and marking one level
                 # leaves the deeper nodes emitted but never called.
@@ -316,18 +332,33 @@ def modulous(truth_table: str) -> str:
     branches on the top, popping; a leaf ``[PSH INT]``s and prints.
     """
     n = _validate_truth_table(truth_table)
+    # The stack pops the *last* input first, so the tree splits on the low
+    # row bit at the root.  Read through the bit-reversed index that
+    # subtree is a contiguous span, so the tree walks spans of the
+    # reflected table with an O(1) constant test into one flat piece list,
+    # each subtree reporting its command count for the jump: O(2**n).
+    reflected = "".join(
+        truth_table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(2**n)
+    )
+    constant = constant_span_test(reflected)
+    pieces = ["[INP INT]" * n]
 
-    def build(rows: list[int], k: int) -> str:
-        if len({truth_table[row] for row in rows}) == 1:
-            return f"[PSH INT {truth_table[rows[0]]}][PRT INT][END]"
-        g0 = [r for r in rows if ((r >> (n - k)) & 1) == 0]
-        g1 = [r for r in rows if ((r >> (n - k)) & 1) == 1]
-        sub0 = build(g0, k - 1)
-        sub1 = build(g1, k - 1)
-        d = 2 + sub0.count("[")
-        return f"[JMP F 2 IF 0][JMP F {d} IF 1][POP]{sub0}[POP]{sub1}"
+    def build(lo: int, hi: int) -> int:
+        """Lay the subtree down and return how many commands it spans."""
+        if constant(lo, hi):
+            pieces.append(f"[PSH INT {reflected[lo]}][PRT INT][END]")
+            return 3
+        mid = (lo + hi) // 2
+        jump = len(pieces)
+        pieces.append("")
+        sub0 = build(lo, mid)
+        pieces.append("[POP]")
+        sub1 = build(mid, hi)
+        pieces[jump] = f"[JMP F 2 IF 0][JMP F {2 + sub0} IF 1][POP]"
+        return 3 + sub0 + 1 + sub1
 
-    return "[INP INT]" * n + build(list(range(2**n)), n)
+    build(0, 2**n)
+    return "".join(pieces)
 
 
 def _bfstack_encoder(n: int) -> str:
@@ -500,19 +531,32 @@ def _unsquare_tree(truth_table: str, n: int) -> str:
     """Emit the decision tree for an already-permuted table; see :func:`unsquare`.
 
     Bit ``k`` of a row index is the input at level ``k``; the stack prefix
-    has put the bits where the pops find them.
+    has put the bits where the pops find them.  Read through the
+    bit-reversed index each subtree is a contiguous span, so the tree walks
+    spans of the reflected table with an O(1) constant test into one flat
+    piece list: O(2**n).
     """
     flip = "x->IA<"
+    reflected = "".join(
+        truth_table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(2**n)
+    )
+    constant = constant_span_test(reflected)
+    pieces: list[str] = []
 
-    def leaf(row: int) -> str:
-        value = _ASCII_ZERO + int(truth_table[row])
-        return ("IA" if value == _ASCII_ONE else "OA") + "+" * 24 + "P" + "OA"
+    def leaf(value: str) -> str:
+        return ("IA" if value == "1" else "OA") + "+" * 24 + "P" + "OA"
 
-    def build(rows: list[int], k: int) -> str:
-        if len({truth_table[row] for row in rows}) == 1:
-            return leaf(rows[0])
-        g1 = [row for row in rows if ((row >> k) & 1) == 1]
-        g0 = [row for row in rows if ((row >> k) & 1) == 0]
-        return f"Ax>{build(g1, k + 1)}IA<{flip}x>{build(g0, k + 1)}OA<"
+    def build(lo: int, hi: int) -> None:
+        if constant(lo, hi):
+            pieces.append(leaf(reflected[lo]))
+            return
+        mid = (lo + hi) // 2
+        pieces.append("Ax>")
+        build(mid, hi)
+        pieces.append(f"IA<{flip}x>")
+        build(lo, mid)
+        pieces.append("OA<")
 
-    return build(list(range(2**n)), 0) + "o"
+    build(0, 2**n)
+    pieces.append("o")
+    return "".join(pieces)
