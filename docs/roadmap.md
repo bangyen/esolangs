@@ -122,6 +122,9 @@ The candidate list is empty.
     and from the shipped decoder's own states no two epochs return to
     `4 live` under `live / 4` unary, a floor it tracks within 2x
     (the zone lemma in [limitations](limitations.md#searched-negatives)).
+    The total extremal-fold fallback is also closed as a linear rule: its
+    named 5-bit maximal-LFSR witness emits 29, 88, and 8,978,977 op cells at
+    domains 8, 16, and 32 while reproducing every bit.
     A non-fold construction is closed: the language has no instruction
     that reads a value into control, so a branch is a build-time embed
     choice between two edges sharing one op string per surviving value,

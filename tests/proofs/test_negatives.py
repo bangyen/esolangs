@@ -40,7 +40,12 @@ from esolangs.interpreters.register_based.polynomial import (
 )
 from esolangs.tools._polynomial import format_coeffs, multiply
 from esolangs.tools.register import polynomial
-from esolangs.tools.wii2d import _wii2d_apply
+from esolangs.tools.wii2d import (
+    _wii2d_apply,
+    _wii2d_compress,
+    _wii2d_points,
+    _wii2d_threshold,
+)
 
 # --------------------------------------------------------------------------
 # Polynomial cannot ship a factored program
@@ -356,6 +361,78 @@ class TestWii2dZeroMergeRelayoutCannotReset:
         run_wii2d(template.replace("$", "v").splitlines(), io)
         assert len(template) == 201
         assert ord(io.getvalue()) - 48 == 1000
+
+
+# --------------------------------------------------------------------------
+# WII2D: the direct extremal-fold rule is not a linear readout
+# --------------------------------------------------------------------------
+#
+# The totality proof suggests taking the largest legal same-colour midpoint
+# at every step.  This removes ranking, but it pays the midpoint as unary
+# ``-`` cells.  The LFSR below is a named, non-table witness: its period-31
+# sequence has no long runs or low-order symmetry.  The oracle is deliberately
+# test-only; it scans legal midpoints to pin the rule's result, then executes
+# the emitted op string on every point.  It is not a generator construction.
+
+
+def _wii2d_lfsr(domain: int) -> list[int]:
+    """Return the first ``domain`` bits of a 5-bit maximal LFSR."""
+    state = 1
+    result: list[int] = []
+    for _ in range(domain):
+        result.append(state & 1)
+        state = ((state >> 1) ^ (-(state & 1) & 18)) & 31
+    return result
+
+
+def _wii2d_extremal_decode(pattern: list[int]) -> str:
+    """Oracle for the largest-legal-midpoint rule, not production code."""
+    values = list(range(len(pattern)))
+    ops = ""
+    while True:
+        live = _wii2d_points(values, pattern)
+        assert live is not None
+        if len(live) <= 2:
+            return ops + _wii2d_threshold(live)
+        points = sorted(live)
+        zeros = [point for point in points if live[point] == 0]
+        ones = [point for point in points if live[point] == 1]
+        crossing = {zero + one for zero in zeros for one in ones}
+        doubles = [
+            first + second
+            for group in (zeros, ones)
+            for index, first in enumerate(group)
+            for second in group[index + 1 :]
+            if (first + second) % 2 == 0 and first + second not in crossing
+        ]
+        assert doubles
+        centre = max(doubles) // 2
+        values, fragment = _wii2d_compress(
+            [(value - centre) ** 2 for value in values],
+            pattern,
+            "-" * centre + "s",
+        )
+        ops += fragment
+
+
+class TestWii2dExtremalRule:
+    """A total fold choice can still be structurally super-linear."""
+
+    @pytest.mark.parametrize(("domain", "minimum_length"), [(8, 29), (16, 88)])
+    def test_the_rule_executes_and_pays_its_midpoints(
+        self, domain: int, minimum_length: int
+    ) -> None:
+        pattern = _wii2d_lfsr(domain)
+        ops = _wii2d_extremal_decode(pattern)
+        assert len(ops) >= minimum_length
+        assert [_wii2d_apply(ops, value) for value in range(domain)] == pattern
+
+    @pytest.mark.slow  # the named rule emits 8.9M unary cells at domain 32
+    def test_the_named_witness_crosses_a_megachar_at_32(self) -> None:
+        pattern = _wii2d_lfsr(32)
+        ops = _wii2d_extremal_decode(pattern)
+        assert len(ops) == 8_978_977
+        assert [_wii2d_apply(ops, value) for value in range(32)] == pattern
 
 
 # --------------------------------------------------------------------------
