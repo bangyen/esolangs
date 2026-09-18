@@ -771,14 +771,15 @@ class TestWii2dR7PatternBroadening:
     by 321 (523 vs 202). Either scorer's best win exceeds 40% while its
     worst loss exceeds 100%, so the volatility -- not a uniform miss -- is
     the pin: the prefix gap needs the pair search itself, no step-1 rule.
-    D=24/40/48/56/64/72/80 spot-checks plus D=64/72 random draws (~15ms
-    each): both scorers double LFSR-24 (266 vs 131) and LFSR-48 (1093 vs
-    502) and more than double LFSR-80 (3817 vs 1545, the worst loss yet),
-    ratio alone loses LFSR-40 by 250 and LFSR-64 by 661, all three tie at
-    LFSR-56 (1547), yet both stay near shipped on the random draws
-    (991/877 vs 1091 at 64, 1202/1215 vs 1202 at 72).
+    D=24/40/48/56/64/72/80 spot-checks plus D=64/72 random draws (under
+    5ms each at D<=32, under 35ms at D<=80): both scorers double LFSR-24
+    (266 vs 131) and LFSR-48 (1093 vs 502) and more than double LFSR-80
+    (3817 vs 1545, the worst loss yet), ratio alone loses LFSR-40 by 250
+    and LFSR-64 by 661, all three tie at LFSR-56 (1547), yet both stay
+    near shipped on the random draws (991/877 vs 1091 at 64, 1202/1215
+    vs 1202 at 72).
     Best-variant (merge-cheap) readouts run the full grid at n=5 (32/32
-    rows) and n=6 (64/64 rows).
+    rows) and n=6 (64/64 rows), each beside its shipped positive control.
     """
 
     @pytest.mark.parametrize(
@@ -966,15 +967,6 @@ class TestWii2dR7PatternBroadening:
                 tuple(_lfsr(48)), 502, 1093, (0, 2), 1093, (0, 2), id="lfsr48"
             ),
             pytest.param(
-                tuple(_lfsr(64)),
-                1127,
-                1127,
-                (1, 119),
-                1788,
-                (0, 2),
-                id="lfsr64",
-            ),
-            pytest.param(
                 tuple(_lfsr(56)),
                 1547,
                 1547,
@@ -982,6 +974,15 @@ class TestWii2dR7PatternBroadening:
                 1547,
                 (0, 2),
                 id="lfsr56",
+            ),
+            pytest.param(
+                tuple(_lfsr(64)),
+                1127,
+                1127,
+                (1, 119),
+                1788,
+                (0, 2),
+                id="lfsr64",
             ),
             pytest.param(
                 tuple(_lfsr(72)),
