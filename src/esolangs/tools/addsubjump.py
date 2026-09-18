@@ -7,6 +7,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     best_input_order,
+    constant_span_test,
     stored_inputs,
 )
 
@@ -248,9 +249,12 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # contiguous ``truth_table[lo:hi]`` and its two halves are that slice cut
     # in two.  Carried as a pair rather than as the list of row indices it
     # used to be: the list rebuilt itself at every node, O(n * 2**n) per
-    # candidate, for spans the slice bounds already name.
+    # candidate, for spans the slice bounds already name.  The fold test is
+    # O(1) on the span, so the tree is O(2**n).
+    constant = constant_span_test(truth_table)
+
     def build(level: int, lo: int, hi: int) -> None:
-        if truth_table.count(truth_table[lo], lo, hi) == hi - lo:
+        if constant(lo, hi):
             # Every read already happened up front, so a folded leaf prints
             # and halts with nothing to drain.
             emit(-1, 4 + int(truth_table[lo]), -8, -7)
