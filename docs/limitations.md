@@ -105,7 +105,10 @@ separate axes.
   while reproducing every bit (the proof oracle is
   `tests/proofs/test_negatives.py::TestWii2dExtremalRule`). Exact small
   optima cost 1.4–2.4 characters per entry; these are readout-model
-  obstructions, not a language bound.
+  obstructions, not a language bound. `@` does not add prefix state under
+  exactly-once embedding: an executed two-route geometry reaches the shared
+  second input with different headings, but that cell resets both routes to
+  the same position and heading (`TestWii2dAtCannotPreservePrefixState`).
 - **%^2^-1:** the shortest 2/3 descent cuts dense fourteen inputs from 1.84 MB
   to 1.59 MB but does not bound relocations. Its size contract only reaches
   n=12 past the route change.

@@ -31,6 +31,7 @@ import sympy as sp
 import z3
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters.grid_based.wii2d import _Machine as Wii2DMachine
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.interprogck8 import _Machine
 from esolangs.interpreters.register_based.polynomial import (
@@ -433,6 +434,32 @@ class TestWii2dExtremalRule:
         ops = _wii2d_extremal_decode(pattern)
         assert len(ops) == 8_978_977
         assert [_wii2d_apply(ops, value) for value in range(32)] == pattern
+
+
+class TestWii2dAtCannotPreservePrefixState:
+    """A shared input cell erases geometric state, even with ``@`` routing."""
+
+    def test_two_prefix_arrivals_collapse_at_the_second_input(self) -> None:
+        # The first cell is the exactly-once input placeholder.  Its 1-edge
+        # descends through an ``@`` pair; the 0-edge travels directly.  Both
+        # reach the one shared second input at row 0, column 2.
+        rows = ("$ >.", "! ^ ", ">@@ ")
+        arrivals: list[tuple[int, int, int]] = []
+        after_input: list[tuple[int, int, int]] = []
+        for fill in (">", "v"):
+            machine = Wii2DMachine(
+                [rows[0].replace("$", fill), *rows[1:]], ScriptedIO()
+            )
+            trace: list[tuple[int, int, int]] = []
+            while not machine.halted:
+                trace.append(machine.ip)
+                machine.step()
+            arrivals.append(next(ip for ip in trace if ip[:2] == (0, 2)))
+            # The second input is ``>``.  It overwrites the differing arrival
+            # headings, so both runs leave it at the same state.
+            after_input.append(trace[trace.index(arrivals[-1]) + 1])
+        assert arrivals == [(0, 2, 3), (0, 2, 0)]
+        assert after_input == [(0, 3, 3), (0, 3, 3)]
 
 
 # --------------------------------------------------------------------------
