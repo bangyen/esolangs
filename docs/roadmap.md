@@ -143,12 +143,12 @@ The candidate list is empty.
     choice between two edges sharing one op string per surviving value,
     and only the fold's arithmetic can split them
     (`tests/tools/test_boolean_wii2d.py::test_the_junction_catalogue_alone_cannot_replace_the_fold`).
-  - `%^2^-1`, size and time: no invariant bounds a point's relocations
-    (~1.5 KB each), and the top arities read x4.8 per input (375 KB at
-    n=13, 1.8 MB at n=14, refused at 15); the contract's x1.11 measures
-    only to n=12 past the n=4 route change.  Its `Exception` cannot close,
-    and which tables through sixteen inputs the planners refuse is finite
-    (every table tried through fourteen builds).
+  - `%^2^-1`, size and time: the shortest 2/3 descent shrank the dense
+    fourteen-input template from 1.84 MB to 1.59 MB (280 KB at thirteen),
+    but does not bound a point's relocations or the number of them.  The
+    contract's x1.11 measures only to n=12 past the n=4 route change.  Its
+    `Exception` cannot close, and which tables through sixteen inputs the
+    planners refuse is finite (every table tried through fourteen builds).
   - Polynomial: stays for its language lower bound on size and time.  The
     exact minimum-mass multiple of the mandatory root product is the
     product itself (integer to L=7, and the real relaxation one digit

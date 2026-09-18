@@ -14,7 +14,7 @@ point per suffix cofactor and fold the last two inputs; fourteen and up
 lay each remaining input at the first checked state where a collision-free
 split fits the window and the rules run on the result, carrying same-class
 duplicates into the next stage rather than merging them (dense fourteen:
-289k moves, 1.8 MB, ~10 s, against 24k moves and 375 KB at thirteen).
+289k moves, 1.6 MB, ~10 s, against 24k moves and 280 KB at thirteen).
 Fifteen refuses: a dense table's eleven-input cut has 2017 distinct
 cofactors among 2048 rows, nothing compacts before the lay, and the laid
 4096 points at unit gaps jam the conveyor's one-slot window.
