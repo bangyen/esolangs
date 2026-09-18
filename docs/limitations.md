@@ -384,12 +384,28 @@ yet: the halving identity `sum over s of Phi <= length` with `Phi >=
 log2 live` gives `Omega(D)` only, and the description bound (an epoch
 is `(a, c, h, S)` with `S < r**2` by the lemma, so `2a + O(log
 length)` bits) gives `Omega(D / log D)` epochs only -- the two balance
-at linear, and the super-linear term must come from the profile bound:
-a free epoch cannot leave a sub-quadratic origin twice running (the
-magnitude squares over every two free epochs), and a paid centre must
-reach a gap of `sqrt(M / 8m)`, whose distance from the origin is the
-previous set's span-to-gap ratio squared -- tracking that ratio through
-an arbitrary history is the open step.  Incompressibility (Li--Vitanyi
+at linear, and the super-linear term would have to come from the
+profile bound.  The span-to-gap route was checked and priced: with
+`gamma` the plain gap of `V_(t-1)` between the preimages of the two
+points of `V_t` bracketing the next centre and `Lambda = d_max /
+gamma`, every non-ratcheting epoch with `M >= 16` and `live >= m + 3`
+has `|c| + gap >= Lambda**2 / (32 (m+2))` on 108 shipped and 15
+optimum epochs (least ratio 2.11; the radial-difference `gamma` fails
+once at 0.71, the gap at the previous centre twice at 0.89), and the
+plain-gap form follows from the lemma with `28 (m+3)**2` in place of
+`32 (m+2)`: at most m+2 points lie within `d_max / sqrt(M + unary +
+1)` of a non-ratcheting centre, so a gap of `sqrt(M) / (3 (m+3))`
+sits within `sqrt(M)` of it, and a gap of `V_t` at position `P` pulls
+back to a gap of at least `(gap - 1) / (2 sqrt(kappa P))` in
+`V_(t-1)`.  It prices nothing past the third epoch: the same pullback
+unrolled to the dense index gives `gamma_(t-1) <= prod over j < t of
+2 sqrt(|c_j| + d_j)` with `d_j` the chain point's radius, so a program
+paying `sqrt(M)` per centre has `Lambda` below one from the fourth
+epoch on, and on the shipped decodes the forced centre is a median 2%
+of `M` against the 30--60% paid.  What it does price is epoch two:
+`|c_2| >= D**2 / (42 m (m+4)) - 2 sqrt(M_2)` unless that epoch
+ratchets, and a program may ratchet there and un-ratchet later, where
+nothing is forced.  Incompressibility (Li--Vitanyi
 ch. 6) supplies the frame and nothing model-specific;
 Mansour--Schieber--Tiwari floor bounds, 1D map folding (crimps and end
 folds count folds, not unary creases), addition-chain bounds (one
