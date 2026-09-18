@@ -1149,3 +1149,110 @@ class TestPctFifteenObstruction:
 
         with pytest.raises(GeneratorCapError, match="got 16 inputs"):
             parameterized.pct_squared_minus_one(_dense(16))
+
+
+class TestPctStateDependentRule:
+    """Mate-vs-run decided by the landing, not a fixed order.
+
+    No static order wins both twelve and thirteen dense: run-first wins
+    twelve (82601 vs 89366) and loses thirteen (294547 vs 279712).  Wiping
+    the run only when its landing leaves fewer holes (spread + 1 - size on
+    a one-step copy) beats the shipped mate-first rule at both -- 83541 vs
+    89366 at twelve, 277022 vs 279712 at thirteen -- by flipping mate to
+    run at 250 contested states (twelve) and 42 (thirteen), never the
+    reverse.  Fifteen still refuses; structured thirteen is byte-identical.
+    """
+
+    @staticmethod
+    def _hole_rule(ledger) -> tuple | None:
+        """One SHIP step, except mate-vs-run goes to the tighter landing."""
+        from bisect import bisect_left, bisect_right
+
+        from esolangs.tools.pct_codes import _LIMIT
+
+        tops, m = ledger.tops, len(ledger.tops)
+        if len(ledger.count) == 1:
+            return ledger.op("d", m, _LIMIT + 1)
+
+        def mate():
+            for kind in ("d", "u"):
+                frame = ledger.wipe_frame(kind, 1)
+                if frame is None:
+                    continue
+                q1, ref, _minbot = frame
+                vcls = ledger.cls[tops[0] if kind == "d" else tops[-1]]
+                lst = ledger.by_cls.get(vcls, ())
+                if kind == "d":
+                    i = bisect_left(lst, ref + _LIMIT + 1)
+                    if i < len(lst) and lst[i] <= ref + _LIMIT + q1:
+                        return ledger.op(kind, 1, lst[i] - ref)
+                else:
+                    i = bisect_right(lst, ref - _LIMIT - 1) - 1
+                    if i >= 0 and lst[i] >= ref - _LIMIT - q1:
+                        return ledger.op(kind, 1, ref - lst[i])
+            return None
+
+        def run():
+            for kind, end in (("u", -1), ("d", 0)):
+                k = 1
+                while k < m and ledger.cls[tops[end - k if end else k]] == (
+                    ledger.cls[tops[-1]] if kind == "u" else ledger.cls[tops[0]]
+                ):
+                    k += 1
+                if 1 < k < m:
+                    amount = ledger.clean_amount(kind, k)
+                    if amount is not None:
+                        return ledger.op(kind, k, amount)
+            return None
+
+        mate_op, run_op = mate(), run()
+        if mate_op is not None and run_op is not None:
+            from esolangs.tools.pct_fold_plan import _FoldLedger
+
+            holes = {}
+            for name, op in (("mate", mate_op), ("run", run_op)):
+                probe = _FoldLedger.from_state(ledger.to_state())
+                if probe.step(op):
+                    holes[name] = probe.spread() + 1 - probe.size
+            if holes.get("run", 10**18) < holes.get("mate", 10**18):
+                return run_op
+            return mate_op
+        if mate_op is not None:
+            return mate_op
+        if run_op is not None:
+            return run_op
+        if ledger.can_double():
+            return ("m", 0, 0, frozenset())
+        for kind in ("d", "u"):
+            amount = ledger.clean_amount(kind, 1)
+            if amount is not None:
+                return ledger.op(kind, 1, amount)
+        return None
+
+    @pytest.mark.slow  # ~5s: four dense builds (12+13 x SHIP+hole) plus 32 rows
+    def test_hole_lookup_beats_ship_at_twelve_and_thirteen(self) -> None:
+        """The tighter landing wins at both arities and prints."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+        from esolangs.tools import parameterized
+        from esolangs.tools.pct_fold_plan import _FoldLedger
+        from tests.tools.fills import _fill_pct_squared_minus_one
+        from tests.tools.test_boolean_contract import _dense
+
+        ship = _FoldLedger.rule_move
+        for n in (12, 13):
+            table = _dense(n)
+            _FoldLedger.rule_move = ship
+            ship_bytes = len(parameterized.pct_squared_minus_one(table))
+            try:
+                _FoldLedger.rule_move = self._hole_rule
+                template = parameterized.pct_squared_minus_one(table)
+            finally:
+                _FoldLedger.rule_move = ship
+            assert len(template) < ship_bytes, (n, len(template), ship_bytes)
+            for row in range(0, 2**n, max(1, 2**n // 16)):
+                bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
+                program = _fill_pct_squared_minus_one(template, bits)
+                io = ScriptedIO()
+                run(program, io)
+                assert io.getvalue() == table[row], (n, row)
