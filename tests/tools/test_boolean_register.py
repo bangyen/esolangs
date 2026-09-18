@@ -38,6 +38,7 @@ from tests.tools.boolean_runners import (
     run_sophie,
     run_sophie_from,
 )
+from tests.tools.test_boolean_contract import _parity
 
 
 class TestAddSubJump:
@@ -830,59 +831,63 @@ class TestDecleq:
             got = run_decleq(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_branch_normalizes_essential_bits_to_one_and_two(self) -> None:
-        """Each essential bit gets a 47-step decrement chain, then one branch."""
-        program = boolean.decleq("0110")
-        cells = [int(tok) for tok in program.split()]
-        instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
-        # Count a==b>0 instructions: the 47 normalization steps per
-        # essential input plus the decision-tree branches (2**n - 1 here).
-        decs = [ins for ins in instrs if ins[0] == ins[1] and ins[0] > 0]
-        assert len(decs) == 47 * 2 + 3
-        assert sum(1 for ins in instrs if ins[0] == -1) == 2  # one read each
+    def test_essential_bits_get_one_chain_each(self) -> None:
+        """Each essential bit is decremented 47 times, then tested once.
+
+        An ignored input is read, so the interface holds, but never
+        decremented: its chain would normalize a bit no branch and no
+        index step ever looks at.
+        """
+        for table, essential in (("0110", {0, 1}), ("11110000", {0})):
+            n = len(table).bit_length() - 1
+            program = boolean.decleq(table)
+            cells = [int(tok) for tok in program.split()]
+            instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
+            assert sum(1 for ins in instrs if ins[0] == -1) == n  # one read each
+            for i in range(n):
+                rc = 18 + i
+                decs = sum(1 for ins in instrs if ins[0] == ins[1] == rc)
+                assert decs == (48 if i in essential else 0), (table, i)
 
     def test_constant_subtrees_fold(self) -> None:
-        """A constant subtree becomes a leaf instead of branching further.
+        """A constant subtree above the table level is a one-instruction leaf.
 
         Decleq splits most-significant-first, so its subtrees are
-        contiguous runs: ``11110000`` is two constant halves and folds to
-        one branch, while ``10101010`` is constant over no run at all and
-        keeps the full tree.
+        contiguous runs: at five inputs the tree tests one bit above the
+        sixteen-row tables, and ``1 * 16 + 0 * 16`` folds both halves to
+        a jump each -- no table at all -- while parity folds nothing and
+        carries two tables.
         """
-        program = boolean.decleq("11110000")
-        cells = [int(tok) for tok in program.split()]
-        instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
-        decs = [ins for ins in instrs if ins[0] == ins[1] and ins[0] > 0]
-        # The table depends only on its first input.  Both other inputs are
-        # still read, but their folded branches never need normalizing.
-        assert len(decs) == 47 + 1
-        assert sum(1 for ins in instrs if ins[0] == -1) == 3
-        assert len(boolean.decleq("11110000")) < len(boolean.decleq("10101010"))
+        halves = "1" * 16 + "0" * 16
+        parity = "".join(str(bin(row).count("1") & 1) for row in range(32))
 
-    def test_folding_leaves_no_dead_cells(self) -> None:
-        """Every cell is an instruction or live data -- none is filler.
-
-        ``data_base`` is computed before emitting, so the tree has to be
-        *counted* before it is walked.  When that count is right the code
-        ends exactly at ``data_base`` and the only zero cells in the
-        finished program are the ``n`` read cells, which the reads fill in
-        at runtime.
-
-        A count that assumed nothing folded would still produce a working
-        program -- the allocation fills out to the reserved address, so
-        every leaf resolves -- with a run of dead zero cells wedged in
-        between (63 at ``n == 3``).  Nothing about the output reveals
-        that, so the cell count is what has to be pinned.
-        """
-        for table in ("11111111", "11110000", "11001100"):
-            n = len(table).bit_length() - 1
+        def outputs(table: str) -> int:
             cells = [int(tok) for tok in boolean.decleq(table).split()]
-            zeros_at_end = 0
-            for value in reversed(cells[:-2]):  # the two output cells hold 48/49
-                if value:
-                    break
-                zeros_at_end += 1
-            assert zeros_at_end == n, f"{table} carries {zeros_at_end - n} dead cells"
+            return cells.count(-2)
+
+        # The two gadgets print; a table leaf carries one more print each.
+        assert outputs(halves) == 2
+        assert outputs(parity) == 4
+        assert len(boolean.decleq(halves)) < len(boolean.decleq(parity))
+
+    def test_size_is_linear_in_the_table(self) -> None:
+        """The per-entry cost falls with arity: no leaf names a wide address.
+
+        A full decision tree is ``Theta(T log T)`` in Decleq (``T - 1``
+        distinct absolute targets), so the tree stops ``k`` levels short and
+        the rest is a table of three-character cells.  Executed at n=6 on
+        every row, because a wrong index lands on a plausible cell.
+        """
+        per_entry = [len(boolean.decleq(_parity(n))) / 2**n for n in (8, 10, 12)]
+        assert per_entry[0] > per_entry[1] > per_entry[2]
+        assert per_entry[2] < 8
+        rng = random.Random(6)
+        table = "".join(rng.choice("01") for _ in range(64))
+        program = boolean.decleq(table)
+        for combo in range(64):
+            bits = [(combo >> (5 - i)) & 1 for i in range(6)]
+            got = run_decleq(program, [str(b) for b in bits])
+            assert got == table[combo], f"inputs {bits}"
 
     def test_folded_leaves_still_print_correctly(self) -> None:
         """Every folded table still prints its entry for every input."""

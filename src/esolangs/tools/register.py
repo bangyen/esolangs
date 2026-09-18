@@ -72,79 +72,75 @@ def decleq(truth_table: str) -> str:
     Decleq's only arithmetic is ``b = a - 1`` with a ``<= 0`` jump, so each
     input byte (48/49) is normalized to 1/2 by a 47-step decrement chain,
     which makes ``cell cell c`` a branch: a ``0`` bit (1) decrements to 0 and
-    jumps to ``c``, a ``1`` bit (2) falls through.  The decision tree routes
-    those branches to leaves that output 48 or 49 (placed in data cells of
-    the self-modifying memory) and then halt.
+    jumps to ``c``, a ``1`` bit (2) falls through.
 
-    A subtree whose rows all agree becomes a leaf rather than branching on
-    bits that cannot change the answer.  Rows split most-significant-first,
-    so a subtree is a contiguous run and ``11110000`` folds to a single
-    branch -- unlike the generators that split the other way, where that
-    table folds nothing.
+    A pure decision tree is ``Theta(T log T)`` here whatever it folds: its
+    ``T - 1`` branches name ``T - 1`` distinct absolute targets, whose digits
+    sum to that.  So the tree stops ``k`` levels short, ``2**k >= 2 n``, and
+    each of its leaves is a ``2**k``-cell table of ``48``/``49`` indexed by
+    the last ``k`` inputs.  The index is computed once, before the tree: a
+    counter starts at ``2**k`` and each low input that is one takes its
+    weight off it in an unrolled run of decrements, ``2**k - 1`` cells in
+    all.  A leaf then decrements the address operand of its own output
+    instruction that many times short of the table's top, lands on row
+    ``index``, prints it and halts.  Size is O(T): the tables are ``T``
+    three-character cells, and the ``T / 2**k <= T / (2 n)`` leaves and
+    branches carry O(n) digits each.  Execution is ``O(2**k) = O(n)``.
 
-    The fold has to be counted *before* it is emitted.  ``data_base`` sits
-    above the code, so the output cells' addresses depend on how long the
-    tree came out; :func:`tree_instrs` walks it first and must stop in
-    exactly the places :func:`node` will.  When it does, the code ends
-    exactly at ``data_base`` and the ``extend`` below allocates only the
-    ``n`` read cells and the two output cells -- every cell in the program
-    holds either an instruction or live data.
-
-    Getting the count wrong does not produce a *broken* program: the
-    ``extend`` fills out to whatever address was reserved, so the leaves
-    still resolve and the output is still correct.  It silently inserts a
-    run of dead zero cells instead (63 of them at ``n == 3`` if the tree is
-    sized as though nothing folded), which is why the test pins the cell
-    count rather than the output -- an output-based test cannot see it.
+    A subtree whose rows all agree becomes a one-instruction leaf that jumps
+    to a shared print-and-halt gadget at a fixed low address rather than
+    branching on bits that cannot change the answer.  Rows split
+    most-significant-first, so a subtree is a contiguous run and
+    ``11110000`` folds to a single branch -- unlike the generators that
+    split the other way, where that table folds nothing.
 
     Every input is still read, so the program consumes exactly ``n`` input
-    bytes.  But an ignored input never controls a non-folded branch, so it
-    needs no 47-step normalization chain: the fixed cost is
-    ``47 * len(essential_inputs)`` rather than ``47 * n``.
+    bytes.  But an ignored input never controls a non-folded branch and
+    never moves the index, so it needs no 47-step normalization chain: the
+    fixed cost is ``47 * len(essential_inputs)`` rather than ``47 * n``.
+
+    Layout: cell 0 jumps over two print-and-halt gadgets (``-2 K 0`` then
+    ``0 0 END``), the constants 48 and 49, the counter and the ``n`` read
+    cells; the code follows on the next multiple of three.  Cell 0 is the
+    decrement source of every unconditional jump -- it only ever goes
+    further negative -- and ``END`` is one past the last cell, the smallest
+    address that halts.
     """
     n = _validate_truth_table(truth_table)
+    # The table depth: the fewest low inputs whose lookup pays for the
+    # tree above it, ``2**k >= 2 n``, and never more inputs than there are.
+    k = min(n, (2 * n - 1).bit_length())
+    span = 2**k
 
-    def constant(level: int, row: int) -> bool:
-        """Whether every row this subtree covers agrees.
+    # ``changes[r]`` counts the value changes before row ``r``, so a run is
+    # constant iff its two ends agree; a slice-and-set per node would cost
+    # ``Theta(n T)`` over the tree.
+    changes = [0]
+    for previous, current in pairwise(truth_table):
+        changes.append(changes[-1] + (previous != current))
 
-        Rows split most-significant-first, so a subtree covers the
-        contiguous run of ``2 ** (n - level)`` rows starting at ``row``.
-        """
-        span = 2 ** (n - level)
-        return len(set(truth_table[row : row + span])) == 1
-
-    def tree_instrs(level: int, row: int) -> int:
-        """Instructions the subtree at ``(level, row)`` emits.
-
-        The data cells sit above the code, so their addresses depend on the
-        tree's length -- which folding changes.  The count has to come from
-        the same walk that emits, or every leaf would name the wrong output
-        cell.
-        """
-        if level == n or constant(level, row):
-            return 2  # output, then halt
-        return (
-            1
-            + tree_instrs(level + 1, row + 2 ** (n - 1 - level))
-            + tree_instrs(
-                level + 1,
-                row,
-            )
-        )
+    def constant(row: int, width: int) -> bool:
+        """Whether the ``width`` rows starting at ``row`` all agree."""
+        return changes[row] == changes[row + width - 1]
 
     # Every input is read to preserve the interface, but only inputs on
     # which the table depends need normalizing: folding makes both outcomes
-    # of every other branch equivalent.
+    # of every other branch equivalent, and an ignored low input's weight
+    # would select a row that agrees with the one it selects now.
     essential = set(essential_inputs(truth_table, n))
-    # instructions: n reads, one normalization chain per essential input,
-    # and the tree, whose size depends on how much of it folds away.
-    n_instr = n + 47 * len(essential) + tree_instrs(0, 0)
-    data_base = 3 * n_instr
-    read_cells = [data_base + i for i in range(n)]
-    out48 = data_base + n
-    out49 = out48 + 1
 
-    mem: list[int] = []
+    # Fixed low addresses.  The two gadgets print then jump to END; leaves
+    # reach them by ``0 0 gadget``.
+    out_zero, halt, out_one = 3, 6, 9
+    k48, k49, counter = 15, 16, 17
+    read_cells = [18 + i for i in range(n)]
+    # The code starts on a multiple of three so wrap_grid's columns are the
+    # operand columns; at most two pad cells.
+    code = -(-(18 + n) // 3) * 3
+
+    mem: list[int] = [0, 0, code, -2, k48, 0, 0, 0, 0, -2, k49, 0, 0, 0, 0]
+    mem += [_ASCII_ZERO, _ASCII_ONE, span] + [0] * (code - 18)
+    ends = [halt + 2, halt + 8]  # the two END operands, patched last
 
     def emit(a: int, b: int, c: int) -> None:
         mem.extend([a, b, c])
@@ -163,47 +159,59 @@ def decleq(truth_table: str) -> str:
         for _ in range(47):
             emit(rc, rc, pc() + 3)
 
-    # The halt jump has to name an address past the end of memory, unknown
-    # until the data cells below have been appended.  Each leaf emits this
-    # placeholder and the real address is substituted once the program is
-    # complete, so the sentinel is exactly one past the last cell however the
-    # tree came out.
-    halts: list[int] = []
+    # Index: the low ``k`` inputs, each one taking its weight off the
+    # counter.  A zero (1) decrements to 0 and jumps the run; a one (2)
+    # falls into it.
+    for i in range(n - k, n):
+        if i not in essential:
+            continue
+        rc = read_cells[i]
+        weight = 2 ** (n - 1 - i)
+        emit(rc, rc, pc() + 3 * (weight + 1))
+        for _ in range(weight):
+            emit(counter, counter, pc() + 3)
+
+    def leaf(row: int) -> None:
+        """Print row ``counter`` of the table at ``row``, then halt.
+
+        ``counter`` holds ``2**k - index``; the loop runs it down and takes
+        one off the output's address operand per pass but the last, so the
+        operand ends ``index`` above the table's base.
+        """
+        loop = pc()
+        out = loop + 9
+        emit(counter, counter, out)
+        emit(out + 1, out + 1, loop)
+        emit(0, 0, loop)
+        emit(-2, out + 6 + span - 1, 0)
+        emit(0, 0, halt)
+        mem.extend(_ASCII_ZERO + int(c) for c in truth_table[row : row + span])
 
     def node(level: int, row: int) -> None:
-        # The fold has to stop in exactly the places tree_instrs stopped:
-        # it sized the data cells from that walk, so a check applied here
-        # and not there would leave every leaf naming the wrong address.
-        if level == n or constant(level, row):
-            emit(-2, out49 if truth_table[row] == "1" else out48, 0)
-            emit(0, 0, 0)
-            halts.append(pc() - 1)
+        width = 2 ** (n - level)
+        if constant(row, width):
+            emit(0, 0, out_one if truth_table[row] == "1" else out_zero)
+            return
+        if level == n - k:
+            leaf(row)
             return
         rc = read_cells[level]
         emit(rc, rc, 0)
         branch = pc() - 3
-        node(level + 1, row + 2 ** (n - 1 - level))
+        node(level + 1, row + width // 2)
         target = pc()
         node(level + 1, row)
         patch(branch, target)
 
     node(0, 0)
 
-    mem.extend([0] * (out49 - len(mem) + 1))
-    mem[out48] = _ASCII_ZERO
-    mem[out49] = _ASCII_ONE
     # One past the last cell: the interpreter halts as soon as the pointer
     # leaves memory, so this is the smallest address that stops the program.
-    #
-    # Deriving it from the cell count also keeps it out of wrap_grid's way,
-    # however big the program gets.  Every leaf names out48 or out49 --
-    # len(mem) - 2 and len(mem) - 1 -- so a token within two of the sentinel
-    # always exists, and the two can differ by at most one digit (only across
-    # a power of ten).  _cell_width drops an outlier only while it is at
-    # least *twice* the next width, which one digit never is above 9 cells,
-    # so the sentinel widens the cell at worst and never spans two of them
-    # the way the old constant 10**9 did.
-    for addr in halts:
+    # Deriving it from the cell count keeps it out of wrap_grid's way: a
+    # leaf's table-top operand is within ``2**k + 8`` of it, so the two
+    # differ by at most one digit, and _cell_width drops an outlier only at
+    # twice the next width.
+    for addr in ends:
         mem[addr] = len(mem)
     return " ".join(map(str, mem))
 
