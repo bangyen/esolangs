@@ -129,7 +129,13 @@ separate axes.
    loop-less step-1 sweep gains one cell at best (29/110/333/63/63 vs
    shipped 30/110/333/63/63) and the ratio scorer blows domain 32 to 467;
    a local one-step lookahead over the top-3 fires yet gives 115 on
-   LFSR-16, 35 over the optimum (`TestWii2dRankerSweep`).
+   LFSR-16, 35 over the optimum (`TestWii2dRankerSweep`). Broadening to
+   twelve random witnesses falsifies the uniform miss without saving any
+   rule: merge wins one D=16 draw by 47 yet loses a D=32 draw by 261, ratio
+   wins another D=32 draw by 208 yet loses a third by 321, and at D=48 both
+   more than double the LFSR readout (1093 vs 502), growing to +147% at
+   D=80 (3817 vs 1545), while both stay near shipped on D=64/72 random
+   draws (`TestWii2dR7PatternBroadening`).
 - **%^2^-1:** the shortest 2/3 descent cuts dense fourteen inputs from 1.84 MB
   to 1.59 MB but does not bound relocations. Its size contract only reaches
   n=12 past the route change.
