@@ -293,11 +293,15 @@ L=5,6,7); if it held for every unbounded set and degree, iterating it
 would give every multiple `Omega(T^2/log T)` digits.  Those two
 conditions are measured (every set of size <= 3 at L=4,5 and <= 2 at
 L=6; the exact-degree certificate above the limit for every K at
-L=5..7, degrees to 40, pinned in the proofs tests), not proved: what
-remains is one inequality on complete homogeneous symmetric polynomials
-(an identity on the two largest roots alone; adding a smaller root must
-not raise a 2x2-minor ratio) and the exchange step for the free
-positions.  Root-set term bounds (Descartes on either
+L=5..7, degrees to 40, pinned in the proofs tests).  Proved for the two
+largest roots at every degree: with the `L-2` lowest coefficients free,
+some coefficient reaches `(p_{L-1}-1)(p_L-1)` (a Cauchy--Binet induction
+on adjoined roots from an explicit two-root identity).  What remains is
+the same inequality for `c >= 3` designated roots at the boundary of the
+Toeplitz matrix (an equality in its interior by a Schur-function
+identity; measured at c=3,4) and the free-position minimum, which is a
+quotient gauge on a Descartes system, not a moment-cone principal
+representation.  Root-set term bounds (Descartes on either
 ray, sector and unit-circle fewnomial bounds, cyclic-code weight
 bounds, Tao's uncertainty principle) do not apply: the forced roots are
 prime powers and `a +- p^b i`, on no ray, circle or root-of-unity set,

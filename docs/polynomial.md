@@ -330,6 +330,73 @@ at 13).  No exchange argument is proved: a primal move of one free
 position needs a multiple supported on two degrees, which does not
 exist, and the dual rows are not comparable position by position.
 
+**The two largest roots, every degree (proved).**  Let `Q_m = h_m` of a
+multiset of positive reals containing `a < b` (`Q_m = 0` for `m < 0`),
+`T` its lower-triangular Toeplitz matrix `T[r][k] = Q_{r-k}`, and
+`psi_d = h_{d-1}(a, b) / (ab)**d`.  Claim `(H)`: for all `n >= 1`, `d >= 1`,
+`s >= 1`, `det T[{n-d, n}; {0, s}] <= psi_d * det T[{n, n+1}; {0, s}]`.
+*Base*, the multiset `{a, b}`: `Q_m = (b**(m+1) - a**(m+1)) / (b - a)`
+and `Q_p Q_q - Q_{p-t} Q_{q+t} = (ab)**(p-t+1) h_{t-1}(a,b) h_{q-p+t-1}(a,b)`
+whenever every index is nonnegative, so both minors are explicit and
+their ratio is `psi_d` exactly; where an index is negative the left
+minor is `Q_{n-d} Q_{n-s}` or `0`, and `h_u h_v (ab)**e <= h_{v+e} h_{u+e}`
+(from `h_{m+1} >= b h_m >= a h_m`) closes it.  *Step*, adjoining a root
+`x > 0`: `Q' = Q * (1, x, x**2, ...)`, so `T' = T G` with `G[i][j] =
+x**(i-j)`, and Cauchy--Binet on columns `{0, s}` gives `det T'[R; {0,s}]
+= sum_{k1 < s <= k2} x**(k1+k2-s) det T[R; {k1, k2}]` -- every other
+2x2 minor of `G` is `x**(k1+k2-s) - x**(k1+k2-s) = 0` -- with weights
+that depend on the columns only, hence identical for `R = {n-d, n}` and
+`R = {n, n+1}`.  Toeplitz shift moves `det T[R; {k1, k2}]` to `det T[R -
+k1; {0, k2 - k1}]`, the same two row shapes at anchor `n - k1` and column
+gap `k2 - k1`, where `(H)` applies (or the left minor is `0`).  Summing
+with nonnegative weights gives `(H)` for `Q'`.  Executed: the expansion
+and `(H)` in exact integers to `n = 24`, equality exactly in the pure
+interior.  *Consequence.*  With `a, b = p_{L-1}, p_L` and the other
+`L - 2` primes as the rest, the `c = 2` certificate (one zero under the
+top, `K = L - 3` free low coefficients) has `E_s A_{S-1} = -Delta(s, S-1)`
+and `E_S A_{S-1} = Delta(S-1, S)` with `Delta(s, t) = (b - a) det T[{s,
+t}; {0, 1}]`, so its tail over the top is `sum_{d=1}^{n} det T[{n-d, n};
+{0,1}] / det T[{n, n+1}; {0,1}] <= sum_d psi_d = 1 / ((a-1)(b-1))`.
+**Every real multiple of `prod_{i<=L} (x - p_i)` of any degree `D >= L`,
+monic, with its `L - 2` lowest coefficients free, has a coefficient in
+degrees `[L-2, D)` of absolute value at least `(p_{L-1} - 1)(p_L - 1)`.**
+Integer z3 agrees: `L = 5`: unsat at 60, sat at 80; `L = 6`: 120 / 160;
+`L = 7`: 192 / 300.
+
+*General `c`, what carries and what does not.*  The step carries
+verbatim: `c x c` Cauchy--Binet, weights `det G[S; C] >= 0` (the geometric
+sequence is Polya-frequency) depending on `(S, C)` only, Toeplitz shift.
+The hypothesis must be stated for every column set `C = {0 < c_1 < ... <
+c_{c-1}}`, rows `{n-d} + {n-c+2..n}` against `{n-c+2..n+1}`, with
+`psi_d = h_{d-c+1}(1/rho) / prod rho` (`rho` the `c` designated roots,
+`d >= c-1`); measured true at `c = 3, 4` for every `C` to column 6, `n <=
+12`, roots `(2,3,5)`, `(5,7,11)`, `(2,3,5,7)` alone and with one to three
+smaller roots adjoined (ratio to `psi_d` at most 1, below 1 once a root
+is adjoined).  The base case, the `c` designated roots alone: in the
+interior (every entry `Q_{r-k}` with `r >= k`) the truncated Toeplitz
+matrix factors as `V diag(A) W` with `V[r][i] = rho_i**r`, `W[i][k] =
+rho_i**-k`, so both minors are `det V[R] * const` and their ratio is
+`s_lambda(rho) / s_mu(rho)` for `lambda = ((n-c+1)**(c-1), n-d)`, `mu =
+((n-c+1)**c)`, which the rectangle-complement identity `s_{(k**(c-1))}(rho)
+= (prod rho)**k h_k(1/rho)` evaluates to `psi_d` -- equality, for every
+`C`.  At the boundary (some `r < k`) the minors are skew Schur functions
+`s_{lambda/mu}(rho_1..rho_c)` by Jacobi--Trudi and the needed inequality
+is `s_{((d-c+1)**(c-1))} * s_{lambda_B/mu} >= (prod rho)**(d-c+2)
+s_{lambda_A/mu}`, measured, not proved, for `c >= 3` (`c = 2` is the
+hand argument above).  That inequality is the whole of gap (b).
+
+*Gap (a) is not a principal-representation theorem.*  The primal is
+`min_B` over `f_D = 1`, `|f_m| <= B` off `U`, `f_U` free, `sum_m f_m v_m
+= 0` with `v_m = (p_i**m)_i`: the gauge of `v_D` modulo `span(v_U)` in
+the norm whose unit ball is the absolutely convex hull of `{v_m : m not
+in U, m < D}`.  The nodes are distinct and positive and the `v_m` trace
+a Descartes system, but the weights are signed and the object is a
+quotient gauge, not a moment cone, so Karlin--Studden's lower principal
+representation (nonnegative measures, index counted with endpoints) does
+not apply as stated; no hypothesis of the LP fails, the theorem simply
+does not cover it.  Measured at `L = 4, 5, 6`: the minimum over `U` of
+fixed size is the lowest positions and rises as any position moves up.
+
 ## Literature
 
 [Giesbrecht, Roche and Tilak][sparse-multiples] (Algorithmica 64:454-480,
