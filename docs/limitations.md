@@ -250,10 +250,21 @@ tick 26, nothing ever printed;
 plain `+` cannot host an ungated tap on a shared corridor at all; the
 valve (compile-time-only) and an O(distance) gauntlet (the shipped
 generator) are the only two ways found to keep a stray from re-entering
-live, and neither gives `Theta(T)` size.  Round 3, and the row rests:
+live, and neither gives `Theta(T)` size.  Round 4, and the row rests:
 three obstructions pinned this session (concurrent strays, the valve's
 compile-time requirement, the ungated tap's re-entry) on top of the
 prior rounds'.
+
+The apparent constant-size answer -- use the sole ``>`` as a return diode
+for a ``_`` zero test -- is not deterministic.  Its return exit must be
+open when the cod launches, so that exit is also a second launch heading;
+the two first draws reach different prints before the zero test.  Closing
+it removes the return route.  An ordinary fork-free ingress is reversible:
+away from ``_``, a forced turn reverses to the cell it came from, so a
+reflected cod retraces its whole ingress.  Thus a reusable diode needs a
+``+`` and must kill its backward copy; the known-zero valve and ungated tap
+above are the two executed attempts.  Pinned by
+``test_the_start_cannot_be_a_deterministic_return_diode``.
 
 Executed on the interpreter, the same day: a plain cell with four open
 sides is a crossing (a cod goes straight when its forward cell is open),
