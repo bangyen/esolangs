@@ -71,25 +71,6 @@ def encode_inputs(
     return "".join(f"{digit}\n" for digit in digits)
 
 
-#: The three ways a language hands back its answer, as data.  The closed set
-#: a generic caller branches on, exported for the same reason
-#: :data:`STOP_REASONS` and :data:`TERMINATION_OUTCOMES` are: a verifier that
-#: branches on ``answer_mode`` otherwise has to spell ``"termination"`` as a
-#: magic string, which is the one thing those two constants exist to stop.
-ANSWER_MODES: tuple[str, ...] = ("output", "dump", "termination")
-
-#: The four stdin layouts, likewise.  ``line_per_bit`` is the rule;
-#: ``line_per_bit_padded`` prepends a zero line for an odd input count,
-#: ``one_line`` puts every bit on one line, and ``row_index`` sends a single
-#: decimal number whose bits are the inputs.
-INPUT_SHAPES: tuple[str, ...] = (
-    "line_per_bit",
-    "line_per_bit_padded",
-    "one_line",
-    "row_index",
-)
-
-
 def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> None:
     """Refuse ``stdin`` that cannot be what ``language`` wants to read.
 
@@ -234,14 +215,6 @@ def read_answer(language: str, output: str) -> str:
         f"{name} produced no answer this could read: expected {zero!r} or "
         f"{one!r} {where}, got {output[-40:]!r}{detail}"
     )
-
-
-#: The two outcomes of ``answer_mode == "termination"``, in
-#: ``describe(...)["answer_encoding"]`` order (index = answer), so
-#: ``encoding.index("diverges")`` is the polarity.  Not a stop reason,
-#: despite sitting beside :data:`STOP_REASONS`.  Exported because a reader
-#: hand-copied it.
-TERMINATION_OUTCOMES: tuple[str, str] = ("halts", "diverges")
 
 
 def _validate_shape_for_evaluate(truth_table: str) -> int:
