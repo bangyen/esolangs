@@ -57,7 +57,7 @@ The candidate list is empty.
 
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
-  | %^2^-1 | Exception | Linear | Linear | Linear |
+  | %^2^-1 | Exception | Open | Open | Linear |
   | COD | Total | Open | Open | Open |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Interprogck8 | Total | Open | Open | Linear |
@@ -103,9 +103,13 @@ The candidate list is empty.
     or bounded-beam rule over small centres is one, and the optima's
     non-ratcheting shape is closed to a dense centre past domain ~200
     (the zone lemma in [limitations](limitations.md#searched-negatives)).
-  - Factor: stays for its two language lower bounds; `%^2^-1`'s
-    `Exception` cannot close, and which tables through sixteen inputs the
-    planners refuse is finite (every table tried through fourteen builds).
+  - `%^2^-1`, size and time: no invariant bounds a point's relocations
+    (~1.5 KB each), and the top arities read x4.8 per input (375 KB at
+    n=13, 1.8 MB at n=14, refused at 15); the contract's x1.11 measures
+    only to n=12 past the n=4 route change.  Its `Exception` cannot close,
+    and which tables through sixteen inputs the planners refuse is finite
+    (every table tried through fourteen builds).
+  - Factor: stays for its two language lower bounds.
 
 - **Boolean generator conventions.**  Five conventions govern the *embed*,
   the text that stands for one input -- not the program around it.  A

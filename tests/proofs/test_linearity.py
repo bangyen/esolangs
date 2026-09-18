@@ -162,5 +162,5 @@ def test_the_contract_covers_generators_the_original_queue_missed() -> None:
     *original* twenty-five.
     """
     queue = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
-    assert len(queue - {"interprogck8", "wii2d"}) == 25
-    assert len(BY_BOOLEAN) - len(queue) == 36
+    assert len(queue - {"interprogck8", "pct_squared_minus_one", "wii2d"}) == 25
+    assert len(BY_BOOLEAN) - len(queue) == 35

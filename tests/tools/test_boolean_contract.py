@@ -1103,6 +1103,7 @@ _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
     "cod",
     "interprogck8",
+    "pct_squared_minus_one",
     "polynomial",
     "streetcode",
     "wii2d",
@@ -1119,6 +1120,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
     expected = {
         "a_painter_ant",
         "one_two_three",
+        "pct_squared_minus_one",
         "circuit_diagram",
         "cod",
         "minifuck",
