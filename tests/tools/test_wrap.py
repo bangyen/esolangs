@@ -121,7 +121,6 @@ UNWRAPPABLE = {
     "cvnc": "the source must syllabify and a newline is in no syllable",
     "fargo": "each physical line is one command; expressions have no continuation",
     "minsky_swap": "only line 1 is code; line 2 gives its numeric jump distances",
-    "nopstacle": "the corridor tree and its bit runs occupy fixed grid coordinates",
     "alight": "a command is a word walked cell by cell; a row end cuts it",
     "super_snusp": "a row is a grid row; a break moves code, it does not reflow",
     "algebraic_programming_language": "a line with '=' defines, one without runs",
@@ -133,7 +132,6 @@ UNWRAPPABLE = {
     "crement": "each line is one instruction; jumps and patches name line numbers",
     "inject": "blocks and executable commands are delimited by source lines",
     "interprogck8": "each line is an instruction and relative jumps count lines",
-    "ztoalc_l": "line numbers are the program's Collatz trajectory slots",
 }
 
 # The narrower claim needed by the registry audit: these generators currently
@@ -154,7 +152,6 @@ WIDTH_EXCEPTIONS = {
         "interprogck8",
         "minsky_swap",
         "nocomment",
-        "nopstacle",
     )
 }
 
@@ -348,8 +345,10 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
         assert wrapped.split() == plain.split()
         return
     # Taglate's first line is a structural queue seed the wrapper must leave
-    # alone; only the commands below it are reflowed.
-    if LANGUAGES[name].id in MULTILINE:
+    # alone; only the commands below it are reflowed.  A filled %^2^-1
+    # program is in the same set for its *template's* header, which the
+    # fill has stripped: one line, nothing structural, wrapped by command.
+    if LANGUAGES[name].id in MULTILINE and "\n" in plain:
         seed, _, rest = wrapped.partition("\n")
         plain_seed, _, plain_rest = plain.partition("\n")
         assert seed == plain_seed

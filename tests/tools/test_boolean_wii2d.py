@@ -11,10 +11,10 @@ import pytest
 from esolangs import tools as boolean
 from esolangs.interpreters.io import IO
 from esolangs.tools.helpers import TEMPLATE_CHAR
-from esolangs.tools.wii2d import WII2D_ZERO
+from esolangs.tools.wii2d import PAIR
 
 #: One junction's run, as the template spells it.
-_X = TEMPLATE_CHAR * len(WII2D_ZERO)
+_X = TEMPLATE_CHAR * len(PAIR[0])
 
 
 class TestWII2D:
@@ -86,13 +86,12 @@ class TestWII2D:
 
     def test_chain_embeds_each_input_once(self) -> None:
         """The n-embedding chain has one junction run per input, exactly."""
-        from esolangs.tools.examples import _setters_wii2d
         from esolangs.tools.helpers import runs
 
         for n in (1, 2, 3):
             template = boolean.wii2d(format(0, f"0{2**n}b"))
             assert "{X" not in template
-            spans = runs(template, TEMPLATE_CHAR, _setters_wii2d(template, n))
+            spans = runs(template, TEMPLATE_CHAR, (PAIR,) * n)
             assert len(spans) == n, (n, spans)
             assert all(end - start == len(_X) for start, end in spans), spans
 
@@ -483,24 +482,23 @@ class TestWII2D:
         monkeypatch.setattr(module, "_WII2D_MAX_MAGNITUDE", 1)
         assert _wii2d_decode(list(pattern)) is None
 
-    @pytest.mark.slow  # ~2s: a real doubling-trap pattern at domain 256
     def test_a_doubling_trap_pattern_is_refused_not_hung(self) -> None:
         """A domain-256 pattern that ratchets returns ``None`` in seconds.
 
-        About 1 in 10 sampled domain-256 patterns never reaches two live
+        About 1 in 12 sampled domain-256 patterns never reaches two live
         values: its folds ratchet, doubling the bit length each step.  This
-        pattern (``random.Random(9017)``, one of the two failures in the
-        20-pattern sample the guard raise was measured against) is pinned as
-        the representative: the decode must give up promptly -- the
-        magnitude abort fires at 1.7s where the unbounded run dead-ends at
-        2.2s -- rather than diverge, because ``wii2d()`` turns that ``None``
-        into the refusal ``ValueError``.
+        pattern (``random.Random(27)``, the first refusal under the depth
+        predictor's ranking; the earlier pin, seed 9017, builds under it)
+        is the representative: 16 -> 25 bits over two folds and the
+        magnitude abort fires at step 20, 0.2s, rather than diverging,
+        because ``wii2d()`` turns that ``None`` into the refusal
+        ``ValueError``.
         """
         import random
 
         from esolangs.tools.wii2d import _wii2d_decode
 
-        rng = random.Random(9017)
+        rng = random.Random(27)
         pattern = [rng.randint(0, 1) for _ in range(256)]
         assert _wii2d_decode(pattern) is None
 

@@ -1,30 +1,12 @@
 """Interpreter for Minifuck.
 
-A binary tape where [ skips the next instruction when the flipped bit is 0
-and . prints the first eight cells as a binary byte (reading a byte of input
-instead when the pool is zero).  < moves the pointer left.
-
-The program is not implicitly looped: execution halts when the instruction
-pointer reaches the end of the code (the wiki talk page leaves the question
-open; this interpreter does not assume an implicit loop).
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-
-Minifuck is the smallest interpreter in the repo, which makes it the one
-worth writing as a *functional core with an imperative shell*: :class:`_State`
-is an immutable snapshot of the machine, :func:`_advance` is a pure function
-from one state to the next, and :class:`_Machine` is the thin mutable shell
-the VM and the hang detector need (their protocol wants an in-place
-``step()``, so the shell rebinds ``self.state`` rather than the core mutating
-anything).
-
-The one effect in the language is ``.``, whose behaviour depends on the tape:
-a non-zero print window prints, a zero one reads.  A pure step cannot decide
-that *and* perform it, so :func:`_advance` returns the next state paired with an
-:class:`_Effect` describing what the shell owes the outside world.  Input
-comes back the same way: :func:`_load` is the pure half of a read, splicing a
-byte the shell has already fetched into the print window.  Nothing in the
-core touches :class:`IO`.
+A binary tape: ``[`` flips the current bit and skips the next instruction
+when it became 0, ``.`` prints cells 0-7 as a byte or *reads* one when
+they are zero, ``<`` moves left.  Not implicitly looped (the talk page
+leaves it open): the run halts at the end of the code.  Exhausted input
+raises :class:`EOFError`.  :func:`_advance` is a pure function from
+:class:`_State` to the next state plus an :class:`_Effect` naming what
+the shell owes; :func:`_load` is the pure half of a read.
 """
 
 import sys
@@ -42,19 +24,10 @@ _WINDOW = (1 << _WIDTH) - 1
 class _State(NamedTuple):
     """An immutable Minifuck machine state.
 
-    The tape is an ``int`` used as a bitvector, cell *i* at bit *i*: the tape
-    is binary, so a flip is ``tape ^ (1 << ptr)`` and no cell has to be
-    copied to change one.  A tuple would be immutable too, but every flip
-    would rebuild it, which makes a step cost O(tape) and a run quadratic --
-    measured at 152x the mutable-list version by tape 20000.  An int is
-    immutable *and* O(1) here, so a state can be shared, hashed, and compared
-    without a defensive copy, which is what lets :meth:`_Machine.snapshot`
-    hand its state straight to the cycle detector.
-
-    ``length`` is carried because the int cannot report it: a tape of
-    trailing zeros is the same int as a shorter one, and the growth rule
-    below (and the list ``_Machine.tape`` hands back) both depend on where
-    the tape actually ends.
+    The tape is an ``int`` bitvector, cell *i* at bit *i*: a flip is
+    ``tape ^ (1 << ptr)``, O(1) and immutable (a tuple rebuilt per flip was
+    152x slower by tape 20000).  ``length`` is carried because trailing zeros
+    are invisible in the int.
     """
 
     code: str
@@ -77,10 +50,8 @@ class _State(NamedTuple):
 class _Effect(NamedTuple):
     """What a pure step owes the outside world: at most one IO action.
 
-    ``char`` is the byte ``.`` printed, or ``None``; ``reads`` is true when
-    ``.`` found a zero print window and the shell must fetch a byte and pass
-    it back through :func:`_load`.  Both are falsy for every other command,
-    so the shell's fast path is a single truth test.
+    ``char`` is the byte printed or ``None``; ``reads`` says the shell must
+    fetch a byte for :func:`_load`.
     """
 
     char: str | None = None
@@ -99,10 +70,7 @@ def _start(code: str) -> _State:
 def _pool(tape: int) -> int:
     """Read cells 0-7 as one binary byte, cell 0 the most significant bit.
 
-    The tape numbers cells rightward from the origin but the byte is written
-    most significant bit first, so the window is reversed on the way out --
-    and on the way back in through :func:`_load`.  This is the only place the
-    two orders meet; getting it backwards is invisible to the type checker.
+    The one place the tape's and the byte's orders meet.
     """
     window = tape & _WINDOW
     return sum(
@@ -114,17 +82,8 @@ def _pool(tape: int) -> int:
 def _load(state: _State, byte: int) -> _State:
     """Splice ``byte`` into the print window, keeping the tape past it.
 
-    Only the window's bits are replaced, so the boundary is exactly the
-    window: clearing any further would silently drop cell 8 once the pointer
-    had walked out that far.
-
-    The ``& ~_WINDOW`` is defensive rather than required, and mutation
-    testing reports it as a survivor for that reason: :func:`_advance` calls
-    this only when it found a zero print window, so the bits being cleared
-    are already zero (6016 calls checked, never once non-zero).  It stays
-    because ``_load``'s contract is "replace the window", not "assume the
-    caller zeroed it" -- but a mutant dropping the ``~`` is equivalent, not
-    a test gap.
+    The ``& ~_WINDOW`` is defensive (the window is already zero when this is
+    called, 6016 calls checked); a mutant dropping it is equivalent, not a gap.
     """
     bits = sum(((byte >> (_WIDTH - 1 - i)) & 1) << i for i in range(_WIDTH))
     return state._replace(tape=(state.tape & ~_WINDOW) | bits)
@@ -135,17 +94,9 @@ def _step(
 ) -> tuple[int, int, int, bool, str | None, bool]:
     """One instruction as plain scalars: the language, with no state objects.
 
-    Returns ``(tape, length, ptr, skipped, char, reads)`` -- ``skipped`` says
-    a ``[`` collapsed and the *next* instruction is to be ignored, and the
-    last two are the same print/read decision :class:`_Effect` carries.
-
-    This is the single definition of what a Minifuck instruction does.
-    :func:`_advance` wraps it in :class:`_State`/:class:`_Effect` for the
-    interpreter's own use, and the boolean generator's emitter calls it
-    directly -- it advances one instruction at a time and cannot afford to
-    build a state object per step, having measured 4.2x from doing so.
-    Keeping the semantics here rather than in either caller is what stops
-    the emitter and a real run from drifting apart.
+    Returns ``(tape, length, ptr, skipped, char, reads)``.  The single
+    definition: :func:`_advance` wraps it, and the boolean generator's
+    emitter calls it directly (a state object per step measured 4.2x).
     """
     if ins == "<":
         return (tape, length, ptr - 1 if ptr else ptr, False, None, False)
@@ -182,11 +133,7 @@ def _step(
 def _advance(state: _State) -> tuple[_State, _Effect]:
     """Execute one instruction, returning the next state and its effect.
 
-    Pure: the caller owns every side effect.  Stepping a halted state is a
-    no-op that leaves the cursor where it is, matching the shell's contract.
-
-    The instruction itself is :func:`_step`; this packs its scalars back into
-    the state and effect the shell works with.
+    Pure; stepping a halted state is a no-op.
     """
     if state.halted:
         return state, _QUIET
@@ -210,12 +157,7 @@ def _advance(state: _State) -> tuple[_State, _Effect]:
 class _Machine:
     """Per-run Minifuck state: the tape, pointer, and code cursor.
 
-    The mutable shell around the pure core: ``step()`` executes one
-    instruction and rebinds ``state``, performing whatever IO the core asked
-    for; ``halted`` is true once the cursor reaches the end of the code.  The
-    VM and the state-cycle hang detector expose this object (the tape never
-    rewinds, so a Minifuck program always halts), and read ``tape``/``ptr``/
-    ``ind`` off it, which the properties below forward to the state.
+    The tape never rewinds, so a program always halts.
     """
 
     def __init__(self, code: str, io: IO) -> None:
@@ -265,9 +207,7 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 
-        ``length`` rides along with the tape int: two tapes differing only in
-        trailing zeros are the same int, so dropping it would call two
-        distinct states a cycle.
+        ``length`` rides along, since trailing zeros are invisible in the int.
         """
         state = self.state
         return (state.tape, state.length, state.ptr, state.ind, self.io.position())

@@ -58,8 +58,7 @@ and the measurement restarts after it.  The band is a rule rather than a fit:
 a table doubles, so no construction that is even remotely linear can quadruple
 or halve across one added input.  The failure mode is safe -- a generator
 whose every step breaks the band never accumulates the three rungs a
-measurement needs and is reported UNPROVEN, never passed.  ZTOALC L is the one
-that lands there, and its ceiling is why it is a ``cap`` row.
+measurement needs and is reported UNPROVEN, never passed.
 
 Two arities of the same parity are compared (a two-step geometric mean)
 because the alternating-axis layouts only grow on every other input: Taglate
@@ -87,7 +86,7 @@ from tests.proofs._roadmap import load as load_audit
 from tests.tools.test_boolean_contract import _dense, _parity
 
 #: Cost band; see ``__main__.py``.  It passes now that Forþ is linear, so the
-#: band is a cost call rather than a triage one: it builds all 65 generators at
+#: band is a cost call rather than a triage one: it builds all 63 generators at
 #: rising arity, and 30s is too slow for CI to spend on every push.
 BAND = "by-hand"
 COST = 30.0
@@ -121,7 +120,6 @@ ARITY_OVERRIDE = {
     "slow_acv_mammalian": 10,
     "streetcode": 10,
     "wii2d": 9,
-    "ztoalc_l": 10,
 }
 
 
@@ -193,6 +191,12 @@ def exempt_generators() -> dict[str, str]:
     construction runs into a resource ceiling (``cap``) or has no totality
     argument at all (``exception``).  Closing a row in either document is a
     one-line edit that immediately arms this contract against that generator.
+
+    Not read from the ledger's Scaling column: that column opens a row on
+    *time* as well as size (SLOW ACV MAMMALIAN's ballast loop), and this
+    contract measures size only, so the audit's size cell is the narrower
+    and correct source.  ``test_the_scaling_column_is_the_audit`` keeps the
+    column and the audit in step.
     """
     reasons = {}
     for row in load_ledger().rows:
@@ -210,7 +214,7 @@ def main() -> int:
     by_display = {lang.name: key for key, lang in BY_BOOLEAN.items()}
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
-    assert len(measured) == len(BY_BOOLEAN) == 65, "not every generator was measured"
+    assert len(measured) == len(BY_BOOLEAN) == 63, "not every generator was measured"
 
     print(f"Scaling contract: {len(measured)} generators, bound x{MAX_GROWTH}\n")
     print(f"  {'generator':30s} {'growth':>7s} {'per entry':>10s}  where")

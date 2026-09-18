@@ -1,79 +1,34 @@
 """Interpreter for Grapheme.
 
-A Turing-complete stack language whose program text is a series of
-independent uppercase Latin letters, each one a command.  The stack holds
-unbounded signed integers, strings, and functions; an untyped variable
-system maps names (integers or strings) to values.  ``E``/``F``/``H`` toggle
-string/int/function mode, in which characters accumulate into a value pushed
-when the mode ends (``E``/``F``/``H`` cannot appear inside the value, so
-strings are uppercase letters without ``E`` and integers are letter digits).
+Each uppercase letter is a command; the stack holds unbounded integers,
+strings and functions, with an untyped variable map.  ``E``/``F``/``H``
+toggle string/int/function mode, accumulating characters into a value
+pushed when the mode ends.
 
-Decisions for gaps in the wiki spec (documented):
-- popping an empty stack, math on a function, ``Y`` on a function, a
-  negative integer in ``N`` (whose letter alphabet is only ``A``-``J``),
-  a function as a variable name, an undeclared variable in ``D``, and
-  division by zero are invalid operations (:class:`~esolangs.exceptions
-  .HaltError`), and a character outside ``A``-``Z`` is malformed
-  (:class:`ValueError`);
-- ``G``/``I``/``Q``/``Z`` run a function in a fresh normal-mode context
-  sharing the stack and variables, so a function cannot leave the caller in
-  a mid-string/int/function mode;
-- ``W`` reads a whole line and raises :class:`EOFError` when input is
-  exhausted;
-- a function value is the command string between its ``H``s, so ``N`` on a
-  function returns exactly that body.
+Gaps decided: underflow, math or ``Y`` on a function, a negative ``N``
+integer (alphabet ``A``-``J``), a function as a variable name, an
+undeclared ``D`` variable and division by zero halt
+(:class:`~esolangs.exceptions.HaltError`); a character outside
+``A``-``Z`` is malformed (:class:`ValueError`); ``G``/``I``/``Q``/``Z``
+run a function in a fresh normal-mode context sharing stack and
+variables; ``W`` reads a line and raises :class:`EOFError` at end of
+input; ``N`` on a function returns its body.
 
-The interpreter runs on a :class:`_Machine` with an explicit call stack (one
-frame per active ``G``/``I``/``Q``/``Z`` call), so it is step-capable:
-``step()`` executes one command, ``halted`` is true once no frame remains,
-and a repeated :meth:`_Machine.snapshot` proves a loop (e.g. ``Z`` re-running
-a function whose net effect on the stack is a no-op).  A program whose stack
-keeps growing without repeating a state is not caught this way and needs a
-wall-clock bound instead.
+:class:`_Machine` has an explicit call stack (one frame per active call),
+so ``halted`` is true once no frame remains and a repeated
+:meth:`_Machine.snapshot` proves a loop; unbounded growth (``HKHKZ``)
+needs the wall-clock bound.  :func:`_advance` is pure over an immutable
+``_State`` (variables, tuple call stack) and returns *collected effects*
+``(pops, pushes, reverse)`` on the value stack, which stays a list in the
+shell: 200,000 commands of ``HKHKZ`` take 0.21s against a list and 445s
+against a rebuilt tuple.  The invariant that makes reporting sound:
+**every command pops before it pushes**, so operands are read at
+``stack[-1 - pops]``.  Finishing a frame (flush the mode buffer, pop, or
+rewind for ``Z``) is part of the transition, reading the *virtual* depth.
 
-The execution model is a pure function over an immutable ``_State`` -- the
-variables and the call stack -- paired with *collected effects* on the value
-stack.  :func:`_advance` returns the next state, what it wants done to the
-stack, and anything it printed; :meth:`_Machine.step` rebinds the two fields
-and applies the effects, so the mutation lives in exactly one place.  A
-frame is a tuple rather than a record for the same reason Eval's is: the
-call stack is then a value, which is what lets :meth:`snapshot` hash it and
-the cycle detector prove a loop.
-
-The value stack is not threaded because of cost. A
-Grapheme program can push without bound -- ``HKHKZ`` does, which is exactly
-the class a snapshot repeat cannot catch and ``esolangs.run``'s wall-clock
-``timeout`` is the backstop for -- so rebuilding a stack tuple per command
-is quadratic in the stack's depth.  Measured, it is not a constant factor:
-200,000 commands of ``HKHKZ`` take 0.21s against a mutable list and 445s
-against a rebuilt tuple.  So the stack stays a list in
-the shell, and a step reports its intent as ``(pops, pushes, reverse)``
-instead: a count to remove, the values to add, and whether ``P`` reversed
-what was left.  COD's per-cod transition reports what it wants done for the
-same reason.
-
-The model depends on an invariant that nothing enforces:
-**every command pops before it pushes.**  The pure layer therefore reads its
-operands from the live stack by index -- ``stack[-1 - pops]``, counting up as
-it goes -- and never has to see a value it has itself pushed.
-
-Finishing a frame is part of the transition, not of the shell.  A frame
-whose code has run out flushes any open mode buffer onto the stack and is
-then popped -- or, for ``Z``, rewound to its start while the stack is
-non-empty.  None of that touches a port, and doing it inside the step is
-what makes ``halted`` true as soon as the last command runs rather than one
-step later.  The emptiness tests there read the stack's *virtual* depth --
-its length less the pending pops, plus the pending pushes -- since the
-effects have not been applied yet.
-
-There was once a ``steps``/``limit`` budget here, checked at the top of
-every step and excluded from ``snapshot`` because it rises every step and
-could never repeat.  It is gone: the class it guarded -- an unbounded
-push, which never revisits a state -- is exactly what ``esolangs.run``'s
-wall-clock ``timeout`` exists to catch, and a step count local to this
-interpreter only duplicated it.  Calls use the same backstop for an
-unbounded sequence of distinct entries; an exact replay of an ancestor is
-instead decided by :func:`esolangs.vm.run_until_halt_or_ancestor`.
+The old ``steps``/``limit`` budget is gone: unbounded pushes are what
+``esolangs.run``'s ``timeout`` catches, and ancestor replay is decided by
+:func:`esolangs.vm.run_until_halt_or_ancestor`.
 """
 
 from __future__ import annotations
@@ -191,10 +146,7 @@ def _frame(code: str, repeat: str = "") -> _Frame:
 def _pop(view: _StackView, pops: int) -> tuple[int, _Value]:
     """Read the next value down the stack, and the pop count that consumes it.
 
-    The pure layer never edits the stack, so a pop is bookkeeping: the value
-    is read at ``-1 - pops`` and the count goes up.  This is sound only
-    because every command pops before it pushes, so a read can never need a
-    value this same step has pushed.
+    Sound only because every command pops before it pushes.
     """
     if pops >= len(view):
         raise HaltError("popped an empty stack")
@@ -216,12 +168,7 @@ def _flush_of(frame: _Frame) -> tuple[_Value, ...]:
 def _finished(state: _State, view: _StackView, fx: _StackFx) -> tuple[_State, _StackFx]:
     """Flush the top frame's mode and pop it -- or rewind it, for ``Z``.
 
-    Pure, and part of the step rather than the shell: nothing here reaches
-    a port, and running it inside the transition is what makes ``halted``
-    true as soon as the last command does its work.
-
-    ``Z``'s "while the stack is non-empty" test reads the *virtual* depth,
-    since the effects collected so far have not been applied yet.
+    ``Z``'s emptiness test reads the *virtual* depth.
     """
     variables, frames = state
     frame = frames[-1]
@@ -241,13 +188,8 @@ def _advance(
 ) -> tuple[_State, _StackFx, _Value | None]:
     """Execute one command: the new state, the stack effects, any output.
 
-    Pure: it reads ``state`` and ``view`` and returns new values, and
-    reaches no ``IO``.  ``Y`` reports the value it would write -- the shell
-    picks ``print_str`` or ``print_value`` on its type -- and ``W``'s line
-    arrives as ``line_in``.
-
-    The stack is reported rather than rebuilt: see the module docstring for
-    why, and for the pop-before-push invariant the reporting relies on.
+    Pure.  ``Y`` reports its value (the shell picks ``print_str`` or
+    ``print_value`` by type); ``W``'s line arrives as ``line_in``.
     """
     variables, frames = state
     frame = frames[-1]
@@ -441,16 +383,8 @@ class _Machine:
     def ip(self) -> tuple[int, ...]:
         """Each active frame's pc, root-to-leaf.
 
-        Every call frame (``G``/``I``/``Q``/``Z`` push one) contributes its
-        ``pc``, so this grows and shrinks with recursion depth instead of
-        folding every frame into the active one's position.  A breakpoint on
-        a specific position is therefore depth-sensitive: ``(5,)`` matches
-        only a single top-level frame at pc 5, not pc 5 one call deeper
-        (``(2, 5)``).
-
-        A frame is only ever popped once its own pc reaches the end of its
-        code, so no frames at all means the top-level one finished at the
-        end of the program -- which is what is reported then.
+        Depth-sensitive: ``(5,)`` matches only a top-level frame at pc 5,
+        not ``(2, 5)``.  No frames means the program finished at its end.
         """
         if self.frames:
             return tuple(f[1] for f in self.frames)
@@ -476,10 +410,8 @@ class _Machine:
     def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
         """Return the state a called function needs to replay an ancestor.
 
-        Function text and ``Z``'s repeat mode identify the fresh frame; the
-        shared value stack and variables carry every binding it can read.
-        Their immutable copies keep a later mutation from changing an
-        ancestor key.  See :func:`esolangs.vm.run_until_halt_or_ancestor`.
+        Function text, ``Z``'s repeat mode, and immutable copies of the
+        stack and variables.  See :func:`esolangs.vm.run_until_halt_or_ancestor`.
         """
         code, _, _, _, _, repeat = frame
         return (
@@ -493,11 +425,8 @@ class _Machine:
     def _apply(self, fx: _StackFx) -> None:
         """Apply a step's stack effects, in order: pops, reverse, pushes.
 
-        The order is what the commands mean: an operand is consumed before
-        its result is pushed, and ``P`` reverses what is left rather than
-        what a later push will add.  No command currently reverses *and*
-        pushes, so nothing depends on the last two being in this order --
-        fixing it here is what keeps that from becoming a question.
+        No command currently reverses *and* pushes; fixing the order here
+        keeps that from becoming a question.
         """
         pops, pushes, reverse = fx
         if pops:
@@ -507,12 +436,7 @@ class _Machine:
         self.stack.extend(pushes)
 
     def step(self) -> None:
-        """Execute one command, finishing any frames that are now complete.
-
-        The two ports live here rather than in the transition: this is the
-        shell.  ``W``'s line is read before the transition runs and ``Y``'s
-        value is written after it, dispatched on the value's type.
-        """
+        """Execute one command, finishing any frames that are now complete."""
         if self.halted:
             return
 

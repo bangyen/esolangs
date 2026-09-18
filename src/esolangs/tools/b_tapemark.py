@@ -78,21 +78,29 @@ class _Builder:
         self.node(table, depth - 1, x + 12, y - gap, start, middle)
         self.node(table, depth - 1, x + 12, y + gap, middle, stop)
 
-    def render(self) -> str:
-        """Render after removing wholly blank rows and columns."""
+    def render(self, *, reflect: bool = False) -> str:
+        """Render after removing wholly blank rows and columns.
+
+        ``reflect`` mirrors the program horizontally, directional symbols
+        included.  Each row is drawn from its own cells, only as long as
+        its last one, so the cost is the output's size rather than the
+        bounding box (rows by the ``12n`` columns).
+        """
         xs = sorted({x for x, _ in self.cells})
         ys = sorted({y for _, y in self.cells})
-        return "\n".join(
-            "".join(self.cells.get((x, y), " ") for x in xs).rstrip() for y in ys
-        )
-
-
-def _reflect(source: str) -> str:
-    """Reflect a program horizontally, including directional symbols."""
-    symbols = str.maketrans({">": "<", "<": ">", "/": "\\", "\\": "/"})
-    rows = source.splitlines()
-    width = max(map(len, rows))
-    return "\n".join(row.ljust(width)[::-1].translate(symbols).rstrip() for row in rows)
+        column = {x: len(xs) - 1 - i if reflect else i for i, x in enumerate(xs)}
+        symbols = {">": "<", "<": ">", "/": "\\", "\\": "/"} if reflect else {}
+        rows: dict[int, dict[int, str]] = {y: {} for y in ys}
+        for (x, y), char in self.cells.items():
+            rows[y][column[x]] = symbols.get(char, char)
+        lines = []
+        for y in ys:
+            cells = rows[y]
+            line = [" "] * (max(cells) + 1)
+            for i, char in cells.items():
+                line[i] = char
+            lines.append("".join(line))
+        return "\n".join(lines)
 
 
 def b_tapemark(truth_table: str, width: int | None = None) -> str:
@@ -106,13 +114,12 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     builder = _Builder()
     builder.put(-1, 0, ">")
     builder.node(truth_table, depth, 0, 0)
-    program = builder.render()
     if width is not None:
         # The raw orientation is the alternate width-requested layout.  Both
         # orientations have the same intrinsic width; only their ragged area
         # differs, so neither can honour a bound the other cannot.
-        return program
+        return builder.render()
     # Digits only print while travelling horizontally, so a quarter-turn is
     # not equivalent.  Reflection preserves every heading while moving the
     # tree's triangular padding to the right edge, where it is not rendered.
-    return _reflect(program)
+    return builder.render(reflect=True)

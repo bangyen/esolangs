@@ -10,7 +10,6 @@ from esolangs.tools.egl import egl
 from esolangs.tools.fargo import fargo
 from esolangs.tools.inject import inject
 from esolangs.tools.interprogck8 import interprogck8
-from esolangs.tools.nopstacle import nopstacle
 from esolangs.tools.other import (
     bit_tilde,
     clockwise,
@@ -21,7 +20,6 @@ from esolangs.tools.other import (
     streetcode,
     taglate,
     three_x,
-    ztoalc_l,
 )
 from esolangs.tools.packlang import packlang
 from esolangs.tools.parameterized import (
@@ -58,12 +56,10 @@ from esolangs.tools.tape import (
     brainfuck,
     brainif,
     circlefuck,
-    circlefuck_byte,
     dimensional,
     dimensional_tree,
     factor,
     jaune,
-    jaune_multiply,
     painfuck,
     rotfuck,
     sbleq,
@@ -93,7 +89,6 @@ __all__ = [
     "brainfuck",
     "brainif",
     "circlefuck",
-    "circlefuck_byte",
     "circuit_diagram",
     "clockwise",
     "cod",
@@ -117,13 +112,11 @@ __all__ = [
     "inject",
     "interprogck8",
     "jaune",
-    "jaune_multiply",
     "laserfuck",
     "minifuck",
     "minsky_swap",
     "modulous",
     "nocomment",
-    "nopstacle",
     "one_two_three",
     "packlang",
     "painfuck",
@@ -145,7 +138,6 @@ __all__ = [
     "unsquare",
     "vandevelo",
     "wii2d",
-    "ztoalc_l",
 ]
 
 

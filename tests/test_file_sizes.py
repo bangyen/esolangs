@@ -25,20 +25,9 @@ MAX_LINES = 1500
 #: is under the cap.  Nothing may be added: a new entry means a file grew past
 #: the cap instead of being split.
 #:
-#: The two source files here are not waiting to be split.  ``streetcode.py``
-#: would split along the line its own docstring draws -- the pure movement
-#: rules against the mutable run -- but the rules are written in terms of
-#: ``_State``, and ``test_interpreter_conventions`` requires an interpreter to
-#: *declare* ``_State`` in its own file, read from the source rather than
-#: imported.  Honouring both would need a cycle or a third module that leaves
-#: neither file declaring it, so the convention wins.  ``__init__.py`` is the
-#: public API: the one seam in it is the round trip, and moving that out means
-#: a module importing the package that imports it, which is an import-order
-#: trap in the package root in exchange for a line count.
-_RATCHET = {
-    "src/esolangs/__init__.py": 1523,
-    "src/esolangs/interpreters/grid_based/streetcode.py": 1855,
-}
+#: Empty since the prose sweep of September 2026 took ``__init__.py`` (1523)
+#: and ``streetcode.py`` (1855) under the cap.
+_RATCHET: dict[str, int] = {}
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 _TREES = ("src", "tests", "scripts")

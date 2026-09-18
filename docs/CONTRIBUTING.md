@@ -38,6 +38,34 @@ in.
 | `src/esolangs/registry.py` | the source of truth for public integration |
 | `tests/` | interpreter and generator coverage |
 
+## Interpreter conventions
+
+`src/esolangs/interpreters/_template.py` is the starting point.  Every
+interpreter:
+
+- Exposes `run(code, io)` with a required `IO` (grid languages get
+  `split=True` in the registry and receive lines).  Prints and reads
+  through `io`; never `print`/`input`.
+- Raises `ValueError` for a malformed program and `HaltError` for an
+  invalid runtime operation, and terminates by construction: the fuzz
+  suites feed random and empty programs.
+- Guards an input line before indexing it (`if val:`); an empty line is
+  legal, and running out raises `EOFError` either way.
+- Keeps the run state in a class named `_Machine` with `step()`, `halted`
+  and `snapshot()` (the complete state, input cursor included).  The name
+  is looked up by the tests: when `dimensional.py` used it for something
+  else the language was silently skipped.
+- Writes the language as a pure transition (`_advance`) over an immutable
+  state, with `step` as the shell doing the I/O; a store that cannot be
+  threaded cheaply returns effects instead (`grapheme.py`).
+- Documents decisions for genuine spec gaps in the module docstring
+  (`suffolk.py` shows one), never to define away invalid operations.
+- Provides a `__main__` block calling `run(data, IO())`.
+
+`tests/test_interpreter_conventions.py` checks the module docstring starts
+`Interpreter for <Language>.` and mentions `EOF`, `HaltError` or
+`ValueError` wherever the interpreter reads input or raises them.
+
 ## Checklist
 
 1. Start from the template; document actual input, error and halt behaviour.

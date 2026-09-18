@@ -143,7 +143,6 @@ _NOT_SWEPT: dict[str, str] = {
     # there is no output to compare a row against.
     "123": "answers by termination, not by output",
     "crement": "answers by termination, not by output",
-    "nopstacle": "answers by termination, not by output",
     "vandevelo": "answers by termination, not by output",
     # The dumping languages print their whole final state -- a tape, a
     # register list, a queue, a RAM map -- and which part of that dump is

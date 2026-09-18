@@ -2,7 +2,12 @@
 
 from itertools import pairwise
 
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, essential_inputs
+from esolangs.tools.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    essential_inputs,
+    read_at,
+)
 
 
 def _reorder_tt(tt: str, n: int) -> str:
@@ -14,10 +19,10 @@ def _reorder_tt(tt: str, n: int) -> str:
     i & 1)`` puts the 1-group of the current input first, then the 0-group,
     with the two sub-cases of the next input adjacent inside each group.
     Odd-reduce levels (which branch the other way) then re-apply the same
-    ordering, so the sort key serves both.
+    ordering, so the sort key serves both.  That key is the pairs in
+    reverse, each pair in place, written out directly: O(2**n), no sort.
     """
-    indices = sorted(range(2**n), key=lambda i: (-(i >> 1), i & 1))
-    return "".join(tt[i] for i in indices)
+    return "".join(tt[i : i + 2] for i in range(2**n - 2, -1, -2))
 
 
 def _even_reduce(pairs: int, level: int, n: int) -> str:
@@ -124,18 +129,12 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
 
 
 def _taglate_reduced_table(truth_table: str, n: int, used: list[int]) -> str:
-    """Rewrite the function over just the inputs in ``used``."""
-    width = len(used)
-    return "".join(
-        truth_table[
-            sum(
-                1 << (n - 1 - i)
-                for slot, i in enumerate(used)
-                if (row >> (width - 1 - slot)) & 1
-            )
-        ]
-        for row in range(2**width)
-    )
+    """Rewrite the function over just the inputs in ``used``.
+
+    :func:`read_at` builds the row indices by doubling, O(2**width) rather
+    than a bit sum per row.
+    """
+    return read_at(truth_table, used, n)
 
 
 def taglate(truth_table: str) -> str:

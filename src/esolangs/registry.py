@@ -1,17 +1,22 @@
 """Registry of language metadata, used by the API, tools, and tests."""
 
+from __future__ import annotations
+
 import difflib
 import re
 import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
-from typing import Any
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from esolangs import tools as _boolean
-from esolangs.exceptions import UnknownLanguageError
+from esolangs.exceptions import TemplateError, UnknownLanguageError
 from esolangs.tools.helpers import MOST_INPUTS, Setters
+
+if TYPE_CHECKING:
+    from esolangs.tools.examples import BooleanExample
 
 # Display names whose canonical id cannot be produced by the slug rules
 # (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``).
@@ -395,13 +400,6 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.nocomment,
         id="nocomment",
     ),
-    "Nopstacle": Language(
-        "Nopstacle",
-        "grid_based.nopstacle",
-        boolean=_boolean.nopstacle,
-        id="nopstacle",
-        split=True,
-    ),
     "Packlang": Language(
         "Packlang",
         "other.packlang",
@@ -509,13 +507,6 @@ LANGUAGES: dict[str, Language] = {
         id="wii2d",
         split=True,
     ),
-    "ZTOALC L": Language(
-        "ZTOALC L",
-        "other.ztoalc_l",
-        boolean=_boolean.ztoalc_l,
-        id="ztoalc_l",
-        split=True,
-    ),
 }
 
 
@@ -583,7 +574,7 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     Row, whose generator emits the runs all the same, and the three
     hand-kept lists in the docs each named a different subset.  ``fill`` is
     the only spelling that matches what the generators actually emit -- 17
-    languages, checked against the runs over all 65.
+    languages, checked against the runs over all 63.
     """
     from esolangs.tools import examples as _examples
 
@@ -594,7 +585,7 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     }
 
 
-def _examples_by_id() -> dict[str, Any]:
+def _examples_by_id() -> dict[str, BooleanExample]:
     from esolangs.tools import examples as _examples
 
     return {
@@ -628,8 +619,12 @@ def template_setters(language_id: str, template: str, n: int) -> Setters:
     which for %^2^-1 is its header and for the two-route generators the
     route's prefix.
     """
-    example = _examples_by_id()[language_id]
-    return example.setters(template, n)
+    setters = _examples_by_id()[language_id].setters
+    if setters is None:  # pragma: no cover -- _examples_by_id keeps only setters
+        raise TemplateError(
+            f"{language_id} reads its inputs rather than embedding them"
+        )
+    return setters(template, n)
 
 
 def render_template(
@@ -649,7 +644,10 @@ def render_template(
     from esolangs.tools.wrap import wrap_program
 
     char = template_char(language_id)
-    assert char is not None, f"{language_id} reads its inputs"
+    if char is None:
+        raise TemplateError(
+            f"{language_id} reads its inputs rather than embedding them"
+        )
     setters = template_setters(language_id, slots, n)
     if width is None:
         return render(slots, char, setters), char, setters
@@ -675,7 +673,10 @@ def recover_setters(language_id: str, template: str) -> Setters:
     from esolangs.tools.helpers import runs
 
     char = template_char(language_id)
-    assert char is not None
+    if char is None:
+        raise TemplateError(
+            f"{language_id} reads its inputs rather than embedding them"
+        )
     total = template.count(char)
     for n in range(1, _MOST_INPUTS + 1):
         setters = template_setters(language_id, template, n)

@@ -26,9 +26,15 @@ Run::
     python scripts/verify_no_exception_leaks.py            # touched languages
     python scripts/verify_no_exception_leaks.py --all      # every language
     python scripts/verify_no_exception_leaks.py --all out.json
+
+A clean sweep is remembered in ``.leaksweep-cache.json`` under a hash of
+the interpreter, the shared machinery, the language's examples and this
+script, and skipped while that hash stands; a leak is never remembered.
+``LEAKSWEEP_CACHE=0`` sweeps regardless.
 """
 
 import concurrent.futures as cf
+import hashlib
 import json
 import os
 import pathlib
@@ -304,6 +310,61 @@ class _Report(typing.NamedTuple):
     findings: list[dict[str, str]]
 
 
+#: Where clean results live.  Gitignored; CI restores it across runs so
+#: ``--all`` pays only for what changed since the last green sweep.
+_CACHE = _ROOT / ".leaksweep-cache.json"
+_USE_CACHE = os.environ.get("LEAKSWEEP_CACHE", "1") != "0"
+
+
+def _sources(module: str) -> list[pathlib.Path]:
+    """Return every file a sweep of interpreter ``module`` executes.
+
+    ``module`` is relative to ``esolangs.interpreters`` (``RUNNERS`` form).
+    Every path must exist: a missing one hashed as empty would remember a
+    sweep that never read the interpreter.
+    """
+    pkg = _ROOT / "src" / "esolangs"
+    return [
+        _HERE,
+        _ROOT / "scripts" / "_scope.py",
+        pkg / "interpreters" / (module.replace(".", "/") + ".py"),
+        *(pkg / f for f in _SHARED),
+    ]
+
+
+def _fingerprint(module: str, examples: list[str]) -> str:
+    """Hash everything a sweep of ``module`` reads; a change to any part re-sweeps."""
+    h = hashlib.sha256()
+    for path in _sources(module):
+        h.update(path.read_bytes())
+        h.update(b"\0")
+    for text in examples:
+        h.update(text.encode())
+        h.update(b"\0")
+    h.update(f"{_STEP_CAP}:{_LANG_TIMEOUT}".encode())
+    return h.hexdigest()
+
+
+def _load_cache() -> dict[str, str]:
+    """Return the remembered clean fingerprints, empty if absent or unreadable."""
+    if not _USE_CACHE or not _CACHE.exists():
+        return {}
+    try:
+        got = json.loads(_CACHE.read_text())
+    except (OSError, ValueError):
+        return {}
+    return got if isinstance(got, dict) else {}
+
+
+def _save_cache(cache: dict[str, str]) -> None:
+    """Write the clean fingerprints back, atomically."""
+    if not _USE_CACHE:
+        return
+    tmp = _CACHE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
+    tmp.replace(_CACHE)
+
+
 def _run_worker(lang: str) -> tuple[float, str, _Report | None]:
     """Sweep one language in a child process, killing it if it wedges.
 
@@ -390,6 +451,13 @@ def main() -> None:
     missing = [n for n, v in examples.items() if not v]
     print(f"languages without example programs: {len(missing)}", flush=True)
 
+    cache = _load_cache()
+    keys = {n: _fingerprint(RUNNERS[n][0], examples[n]) for n in langs}
+    cached = [n for n in langs if cache.get(n) == keys[n]]
+    if cached:
+        print(f"unchanged since last clean sweep: {len(cached)}", flush=True)
+    langs = [n for n in langs if n not in cached]
+
     findings: dict[str, list[dict[str, str]]] = {}
     counts: dict[str, int] = {}
 
@@ -433,13 +501,16 @@ def main() -> None:
         hits = findings.get(lang)
         status = f"LEAK {len(hits)}" if hits else "ok"
         print(f"{lang:26} {n:6} runs {elapsed:6.1f}s  {status}", flush=True)
+        if not hits:
+            cache[lang] = keys[lang]
+    _save_cache(cache)
 
     if args:
         with open(args[0], "w") as fh:
             json.dump(
                 {"findings": findings, "counts": counts}, fh, indent=1, sort_keys=True
             )
-    print(f"\nlanguages with leaks: {len(findings)} / {len(langs)}")
+    print(f"\nlanguages with leaks: {len(findings)} / {len(langs) + len(cached)}")
     if findings:
         raise SystemExit(1)
 

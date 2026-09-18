@@ -46,7 +46,7 @@ def test_reads_wiki_fixtures_as_pillow_did(
 ) -> None:
     """Each fixture decodes to the shape and ink count Pillow reported."""
     (height, width), ink = expected
-    grey = png.read_grey_file(str(FIXTURES / name))
+    grey = png.read_grey((FIXTURES / name).read_bytes())
     assert len(grey) == height
     assert {len(row) for row in grey} == {width}
     assert sum(level < 128 for row in grey for level in row) == ink
@@ -70,7 +70,7 @@ def test_roundtrip_through_a_file(tmp_path: Path) -> None:
     path = tmp_path / "out.png"
     original = [bytearray([0, 128]), bytearray([255, 7])]
     png.write_grey_file(str(path), original)
-    assert png.read_grey_file(str(path)) == original
+    assert png.read_grey(path.read_bytes()) == original
 
 
 def _encode(

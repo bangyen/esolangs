@@ -11,8 +11,8 @@ from esolangs.tools.helpers import (
 #: leaves a zero and ``Z A`` a one whatever came before.  The template
 #: spells each input as a run of :data:`TEMPLATE_CHAR` this wide -- one
 #: token that instantiates to two commands.
-RAM0_ZERO, RAM0_ONE = "Z Z", "Z A"
-_RAM0_INPUT = TEMPLATE_CHAR * len(RAM0_ZERO)
+PAIR = ("Z Z", "Z A")
+_RAM0_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 
 def _ram0_width(address: int) -> int:
@@ -169,18 +169,16 @@ def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     def leaf_tokens(_level: int, row: int) -> list[str]:
         return ["Z", "A" if truth_table[row] == "1" else "Z", "2"]
 
-    def node(level: int, zero: list[str], one: list[str], at: int) -> list[str]:
+    def node(level: int, zero: int, _one: int, at: int) -> list[str]:
         # ``Z``, the level's ``A`` run, ``L``, ``C`` and the ``ONE@`` slot all
         # precede the subtrees, which is the node's own width; the one subtree
-        # therefore starts a further ``len(zero)`` along, 1-based.
+        # therefore starts a further ``zero`` along, 1-based.
         return [
             "Z",
             *("A" for _ in range(n - 1 - level)),
             "L",
             "C",
-            f"ONE@{at + width(level) + len(zero) + 1}",
-            *zero,
-            *one,
+            f"ONE@{at + width(level) + zero + 1}",
         ]
 
     # Every tree token is one command (unlike the load block's input run, which

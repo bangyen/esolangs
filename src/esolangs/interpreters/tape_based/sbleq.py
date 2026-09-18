@@ -1,36 +1,16 @@
 r"""Interpreter for S*bleq.
 
-S*bleq is a derivative of Subleq, an OISC whose single instruction subtracts
-and branches when the result is less than or equal to zero.  Each instruction
-is three addresses ``a b c``:
+A Subleq derivative: each instruction ``a b c`` does ``mem[a] -= mem[b]``
+and, if the result is ``<= 0``, jumps to ``mem[c]`` (indirect); otherwise
+the pointer advances by three.  Address ``-1`` is the instruction
+pointer, ``-2`` the next input byte (zero at EOF, per the wiki), ``-3``
+outputs the other operand; none appears in ``c``.  ``store`` selects the
+base (``a``), ``S*bl*q`` (``a`` and ``b``) or ``Subl*q`` (``b``)
+variant; the ``S**bleq`` indirection family is not implemented.
 
-    mem[a] = mem[a] - mem[b]
-    if mem[a] <= 0: ip = mem[c]     # indirect: jump to the value at c
-
-The instruction pointer advances by three otherwise.  Three special addresses
-take the place of I/O and the instruction pointer (and never appear in ``c``):
-
-    -1  the instruction pointer itself
-    -2  the next byte of user input
-    -3  output the value at the other address in the instruction
-
-The base S*bleq stores the difference in ``a``.  The wiki defines three
-variations that only change the store target or add indirection: ``S*bl*q``
-stores in both ``a`` and ``b``, ``Subl*q`` stores in ``b``, and the
-``S**bleq`` family reads/writes through ``*a`` and ``*b``.  This interpreter
-implements the base language; a ``store`` parameter selects the base or the
-two store-target variations.
-
-Programs are read as whitespace-separated integers and loaded into memory at
-address zero.  Memory is unbounded; reads past the end of the program return
-zero, matching the Subleq convention that an OISC memory is an infinite array
-of cells.  Execution halts when the instruction pointer runs off the end of
-the program, or when a ``c`` address holds a negative target (jumping to a
-negative address).
-
-
-Reading input (``-2``) past the end of the stream returns zero
-at EOF (per the wiki); malformed programs raise :class:`ValueError`.
+Programs are whitespace-separated integers loaded at address zero; reads
+past the end are zero.  Execution halts off the end of the program or on
+a negative jump target.  Malformed programs raise :class:`ValueError`.
 """
 
 import sys
@@ -56,10 +36,7 @@ type _State = tuple[tuple[int, ...], int, bool]
 def _read(state: _State, addr: int, byte: int | None = None) -> int:
     """Read a value: a special address or a memory cell.
 
-    ``byte`` is what the shell already took from the input port, since
-    ``-2`` is the one address whose read consumes something.  An address
-    past the end reads as zero; a negative one other than the two special
-    cases is not an address at all.
+    ``byte`` is what the shell took from the input port for ``-2``.
     """
     mem, ip, _halted = state
     if addr == -1:
@@ -74,9 +51,7 @@ def _read(state: _State, addr: int, byte: int | None = None) -> int:
 def _write(state: _State, addr: int, value: int) -> _State:
     """Return ``state`` with ``addr`` set to ``value``.
 
-    Writing ``-1`` moves the instruction pointer, which is what lets an
-    S*bleq program compute where to go next; ``-2`` and ``-3`` are
-    read-only ports and a write to either is discarded.
+    ``-1`` moves the instruction pointer; ``-2``/``-3`` writes are discarded.
     """
     mem, ip, halted = state
     if addr >= 0:
@@ -92,15 +67,8 @@ def _write(state: _State, addr: int, value: int) -> _State:
 def _advance(state: _State, store: str, byte: int | None = None) -> _State:
     """Return the state after executing one ``a b c`` instruction.
 
-    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
-    argument, so the output port is the caller's business -- an instruction
-    that writes one changes nothing but the pointer -- and the input port's
-    byte arrives as ``byte``.
-
-    The store variant decides where the difference lands: ``"a"`` writes
-    only ``a``, while ``"ab"`` and ``"b"`` also write ``b`` when it is a
-    real address.  A non-positive difference branches to ``c``, and a
-    branch to a negative address halts.
+    Pure; output is the caller's, input arrives as ``byte``.  ``"ab"`` and
+    ``"b"`` also write ``b`` when it is a real address.
     """
     mem, ip, _halted = state
     a, b, c = mem[ip], mem[ip + 1], mem[ip + 2]
@@ -140,11 +108,7 @@ class _Machine:
     eof_is_a_value = True
 
     def __init__(self, code: str, io: IO, store: str = "a") -> None:
-        """Build a machine over the cells ``code`` parses to.
-
-        The program is a list of integers, not text, so the source is
-        parsed here into the ``mem`` tuple the machine steps over.
-        """
+        """Build a machine over the cells ``code`` parses to."""
         self.io = io
         self.mem = tuple(_parse(code))
         self.ip = 0
@@ -181,12 +145,7 @@ class _Machine:
         return (self.mem, self.ip, self._halted)
 
     def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields.
-
-        The fields are this class's constructor API, so they stay; the one
-        assignment a step makes is here rather than scattered through the
-        rules above.
-        """
+        """Write a transition's result back onto the machine's fields."""
         mem, self.ip, self._halted = state
         self.mem = mem
 
@@ -203,10 +162,8 @@ class _Machine:
     def step(self) -> None:
         """Execute one instruction (``a b c``), advancing or branching.
 
-        The two ports live here rather than in the transition: this is the
-        shell, so it is where an effect belongs.  ``-3`` in either operand
-        slot prints the other, and ``-2`` in either is a read -- taken once
-        here and handed over, since both operands consult the same byte.
+        ``-3`` in either slot prints the other; ``-2`` in either is one
+        read, shared by both operands.
         """
         if self.halted:
             return
@@ -226,8 +183,7 @@ class _Machine:
 def run(code: str, io: IO, store: str = "a") -> None:
     """Execute an S*bleq program.
 
-    ``store`` selects the storage variant: ``"a"`` (base S*bleq), ``"ab"``
-    (S*bl*q, stores in both a and b), or ``"b"`` (Subl*q, stores in b).
+    ``store`` is ``"a"`` (base), ``"ab"`` (S*bl*q) or ``"b"`` (Subl*q).
     """
     mach = _Machine(code, io, store=store)
 

@@ -159,3 +159,7 @@ notes/
 #   `git add -f`, which is the point -- committing a doc becomes deliberate.
 *.md
 !README.md
+
+# scripts/verify_no_exception_leaks.py: clean-sweep fingerprints
+.leaksweep-cache.json
+.leaksweep-cache.tmp

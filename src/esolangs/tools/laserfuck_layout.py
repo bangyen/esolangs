@@ -31,12 +31,6 @@ are precisely the long same-character ones -- 48 ``-`` per reader, one
 # the funnel and start the program over.
 MARGIN = 3
 
-# The narrowest width a fold can make progress in: the margin cell that
-# turns the beam right, at least one op, and the turn-down that ends the
-# segment.  A width below this is raised to it rather than refused, matching
-# the rest of the width plumbing.
-MIN_WIDTH = MARGIN + 2
-
 
 def fold(
     grid: list[list[str]],

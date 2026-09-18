@@ -16,7 +16,31 @@ The candidate list is empty.
   output and continue with the next generator.  Generation time includes
   choosing an input order and writing the result.
 
-  All 65 generators are audited on four axes.  Totality is the `proofs.md`
+  The bar for membership: a language stays while its generator is O(T)
+  on all four axes under the conventions, or its row carries a proved
+  language lower bound, or its generator is a construction whose open
+  cells carry an executed obstruction -- a semantic model of the language
+  that every construction tried has broken on, pinned as tests.  A lookup
+  table in a language's syntax is not a generator -- any language can be
+  brute-forced -- so a row whose generator is one carries a clock: one
+  more executed round, and if neither a construction nor a bound comes of
+  it the language leaves with its row.  ZTOALC L (a chunked array lookup
+  on Collatz slots, no line-local rule and dense paths only by search)
+  left under it on 2026-09-17.  Nopstacle left the same day on the first
+  clause, not this one: its generator was a decision tree of corridors
+  like twenty-five others', `Theta(n 2**n)` because a level's run must
+  sit on one line, but its alphabet -- the blank and `#` -- can spell
+  neither the no-spaces nor the uniform convention, and no construction
+  under the conventions exists to be linear.  COD stays on the third
+  clause: four executed rounds the
+  same day produced the model in its searched-negatives paragraph (no
+  routing primitive, joins that leak a copy, a kill per zero-set per copy)
+  and no construction or bound; Polynomial's thirteen rounds and WII2D's
+  ten ended in a measured target and one unproved lemma each.  The
+  clause is deliberate: a wall that has not been proved is not a lookup
+  table, and Factor's bound came after its wall was measured.
+
+  All 63 generators are audited on four axes.  Totality is the `proofs.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
   totality argument).  Output size is the registry-wide contract
   (`tests/proofs/deep/linearity.py`, per-entry cost to n=12).  Generation
@@ -34,132 +58,73 @@ The candidate list is empty.
 
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
-  | %^2^-1 | Exception | Linear | Linear | Linear |
+  | %^2^-1 | Exception | Open | Open | Linear |
   | COD | Total | Open | Open | Open |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
-  | Nopstacle | Total | Linear | Open | Linear |
+  | Interprogck8 | Total | Open | Open | Linear |
   | Polynomial | Cap | Open | Open | Linear |
-  | Vandevelo | Total | Open | Linear | Linear |
+  | SLOW ACV MAMMALIAN | Total | Open | Linear | Linear |
+  | Streetcode | Total | Open | Open | Linear |
   | WII2D | Cap | Open | Open | Linear |
-  | ZTOALC L | Cap | Open | Open | Linear |
 
   Generation time, growth per added input at the top arity: Polynomial
   x3.4 dense (1.1 s at n=9), WII2D x4.8 dense (1.1 s at n=9), Factor x2.7
-  (1.2 s at n=11), Vandevelo x2.9 dense (0.27 s at n=12, parity x1.9).
-  B-tapemark, Streetcode, 6-5, Forth and Circuit Diagram past its n=8
-  route change read x2.2, between the size contract's x2.15 and what
-  these arities separate from noise; they are held linear until a wider
-  measurement says otherwise.
+  (1.2 s at n=11).  B-tapemark, 6-5, Forth, Circuit Diagram past its n=8
+  route change, and Vandevelo (x2.0 dense over n=11..15, 0.31 s at n=12,
+  a peel that keeps its working sets across cubes) read x2.0--2.2,
+  between the size contract's x2.15 and what these arities separate from
+  noise; they are held linear until a wider measurement says otherwise.
+  Streetcode and Interprogck8 read x2.07 and x1.96 the same way and are
+  not held linear: their constructions carry a `log T` the twelve
+  doublings cannot see, so their rows are open on what the code says.
 
-  Vandevelo's open cell is its peel, which restarts per cube and scores
-  ~50 candidate directions on a 2**n-bit mask per round, Theta(T^2 /
-  word).  Keeping the chain of intersected sets across cubes reads x2.14
-  at n<=12 but is quadratic too: a level's direction switches Theta(T)
-  times and each switch rebuilds the level above at its parent's size.  A
-  window of a level's lowest 512 rows is linear in count and no faster; a
-  sampled score with growth through the lowest row is linear and 0.07 s
-  but +13--20% of cover.  Every non-restarting peel also trades
-  Cohen--Shinkar's O(T) clause bound for a measurement, since the popular
-  direction is no longer exact over the remainder.
+  Each open row's question, with the searched negatives in
+  [limitations](limitations.md#searched-negatives):
 
-  COD's fork/cascade generator embeds each input once, at its own `+`
-  fork, and is super-linear on all three axes: size x3.9 per added input
-  over n=5..9 (942,668 characters at n=8, 3.67 MB at n=9; the cascade's T
-  leaf rows each carry a Theta(T) prefix and gate tail), build time
-  tracking the size, and the worst row's command count x2.32 per added
-  input at n=9 (40,464 commands), which the execution contract reads as
-  its exemption.  The constant-size two-polarity test exists once a bit
-  reaches a node (`<` keeps only one, `(<` keeps only zero, `(`/`)`
-  normalize the survivor), so a linear-area H-tree needs input `i` at
-  every node of level `i`; a shared run cannot distribute the bit to
-  separate node lanes without losing the lane identity, and carrying that
-  identity as the cod's value returns to the super-linear numeric decoder.
-  That is the row's open question on all three axes.
-
-  Nopstacle is open on size alone: a full decision tree of corridors,
-  level `i` reading its input at `2**i` node columns of one row, in a
-  padded rectangle `4 * 2**n` wide by `3n + 7` high, `Theta(n 2**n)` by
-  construction (31,774 characters at n=8, x2.21 there and x2.13 at n=12
-  on the contract's two-step mean, per-entry cost 44.5 rising by twelve
-  per input).  The same H-tree question as COD's: a linear-area layout
-  puts level `i`'s cells on `2**(i/2)` rows, and one run fills one line;
-  every layout with a line per input is a `2**n`-wide row per input.
-
-  Polynomial's remaining question is a left-half-plane multiple of the
-  mandatory root product with more terms than the Descartes minimum:
-  instruction count, monomial count, right-half-plane coefficient mass, and
-  the Descartes-minimal class are all language-forced, every searched
-  escape is closed, and the Rolle reduction behind Descartes cannot lower
-  the kernel's rank; the open class carries O(1) primorial-sized
-  coefficients and has degree `0.72 L log L` or more unless a second
-  coefficient reaches the primorial's square root.
-  [polynomial](polynomial.md) has the proofs, the measured negatives, and
-  the literature match.
-
-  WII2D's remaining question is the decode: the last junction's two
-  branches turn the Horner index into the table's columns by folding
-  (`'-' * c + 's'`, one character per unit of the centre) and halving, and
-  the emitted size per table entry climbs 11 -> 16 -> 15 -> 58 -> 153 from
-  n=5 to n=9 on the suite's dense fixture.  A linear construction needs the
-  answer readable as the accumulator's *top* bit -- floor-halving discards
-  low bits and a digit discards everything, so nothing discards the bits
-  above -- and every cheap placement found (shifts by `2 ** q`, squaring's
-  cross terms, a dot product by multiplication) leaves other entries or
-  monomials above it.  Refuted by an op-string family of length O(T) that
-  computes an arbitrary column from the index, or from `2 ** (K +- q)`,
-  which the chain can emit in O(n) characters.  A readout that tolerates
-  junk above the answer is refuted too: every op but `s` is monotone on
-  non-negative values and `~` needs the exact 48 or 49, so after the last
-  squaring the readout is a monotone map onto two values -- a threshold
-  in value order -- and anything else needs another `s`, which is a fold
-  with a unary centre.  "Nothing discards the bits above" holds only over
-  a low field wider than one bit: `-` then `K - 1` halvings carry a one-bit
-  low field up as a borrow, leaving `2a + b - 1`, and integer-centre folds
-  then read `b` under any top field `a` at the price of `a`'s *value
-  count* (a two-bit `a` at `K = 30` executes in 72 characters).  So the
-  last junction is cheap given its two-bit class: `3x - 2y` on top yields
-  `x` by a threshold and `x ^ y` by one fold, both O(K), executed on all
-  four classes.  What that costs is the class, two functions of `n - 1`
-  inputs -- the same problem.  Recursing instead (store the table, let
-  each junction keep one half) needs the branch keeping the *lower* half
-  to forget the upper one above a multi-bit field: the borrow carries one
-  bit, halving further destroys the field, and a fold's centre there is
-  spelled at that field's weight, `2 ** m` characters for an `m`-bit
-  half.  The layout adds nothing: for a dense table every run reads every
-  input, a second read order would put a cycle some assignment follows,
-  and a junction cell can be entered from at most four headings, so any
-  fill yields a fixed chain read at most four times, never a tree.
-  WII2D's lift is the extremal-fold rule, total but at megabyte sizes,
-  and its three open cells are one question.
-
-  Factor's row stays for its two language lower bounds.  `%^2^-1`'s
-  `Exception` cannot close ([limitations](limitations.md)); what is left
-  is finite -- which tables through sixteen inputs the language admits
-  and the planners refuse: every table tried through thirteen builds,
-  from fourteen the dense fixture refuses while parity and other tables
-  whose suffix cofactors compact still build, and no cut below seventeen
-  can exceed 4096 classes, so a construction there is not ruled out by
-  counting.
-
-  ZTOALC L's cap and its size are one fact: every command sits on a value
-  of one Collatz trajectory, and a trajectory crosses each scale band a
-  few times, so the L-th smallest value grows exponentially in L.  The
-  best start under `2**22` supplies 395 lines (a sieve of every start);
-  dense n=10 is 311 commands on 1,477,714 lines, 14.5 -> 58.7 -> 1446
-  characters per entry over n=8..10 (x8.1, x49 per input), and n=11 needs
-  545-587 commands.  The ledger's lift, start `2**k`, is the same
-  placement at `2**k` lines.  Neither is language-forced: `jump if` moves
-  the pointer to the next line instead, and with it a program can execute
-  about 0.7 of its lines in one straight run -- an exact search over every
-  start and jump set is 28 of 36 lines at L=36 and 0.68-0.83 at every
-  fourth L from 8 to 44, executed on the interpreter as 28 commands on 36
-  lines where the trajectory placement needs 106.  What is missing is a
-  rule.  The run must be a simple path in `p -> p/2 | 3p+1 | p+1`; a
-  fixed local rule drifts by a power of 3/2 per round and visits O(log L)
-  lines, and a boundary-reflected greedy (take the Collatz edge unless its
-  landing is used, else jump) stops when both exits are used, about
-  L^(2/3): 2,387 commands from 100,000 lines.  Dense paths are found only
-  by search.
+  - COD, all three: a two-exit zero test on a block of `R` values in
+    `o(R)` cells with every stray cod dead (an input cell serves four
+    headings, so a level's fifth node lives in the value; a one-lane
+    node is eight commands but repeats the embed).
+  - Polynomial, size and time: the exact minimum-mass multiple of the
+    mandatory root product is the product itself (integer to L=7, and
+    the real relaxation one digit lighter), `Theta(L**2 log L)` =
+    `Theta(T**2 / log T)` digits, so no construction is left and the row
+    closes as a language lower bound when one lemma on exponential sums
+    is proved (its `u = 0, 1` cases are; the rest is verified to `c = 14`
+    and reduced to one product in [polynomial](polynomial.md)).
+  - Streetcode, size and time: each level's hall spans every row of both
+    subtrees, so the ~4T leaf rows are `Theta(n)` wide (220, 235, 244
+    characters per row at n=8, 10, 12) -- `Theta(T log T)`, and the
+    uncapped greedy order `Theta(T log**2 T)`; the escape is a packed
+    positional layout like AddSubJump's, priced and unbuilt.
+  - Interprogck8, size and time: a read at depth `d` is `3 + 2 floor(d /
+    14)` lines, `Theta(T n / 14)` in steps of fourteen inputs (805--887
+    characters per entry to n=14, 6300--6600 at n=15, refused past 40);
+    a constant-width read gadget exists at ~8x per node at every arity,
+    priced and not taken.
+  - WII2D, three cells: a rule emitting readouts within a constant of the
+    exact optima (1.4--2.4 characters per entry to domain 14); no one-step
+    or bounded-beam rule over small centres is one, and the optima's
+    non-ratcheting shape ends between domain 32 and 64: a first epoch
+    within eight units of the origin then leaves magnitude 4--8 `D`,
+    and from the shipped decoder's own states no two epochs return to
+    `4 live` under `live / 4` unary, a floor it tracks within 2x
+    (the zone lemma in [limitations](limitations.md#searched-negatives)).
+  - `%^2^-1`, size and time: no invariant bounds a point's relocations
+    (~1.5 KB each), and the top arities read x4.8 per input (375 KB at
+    n=13, 1.8 MB at n=14, refused at 15); the contract's x1.11 measures
+    only to n=12 past the n=4 route change.  Its `Exception` cannot close,
+    and which tables through sixteen inputs the planners refuse is finite
+    (every table tried through fourteen builds).
+  - SLOW ACV MAMMALIAN, time only: the text is O(T) (one 256-token leaf
+    slot per entry), but each read node's ballast loop appends chunks
+    until the landing clears a jump whose length grows with the node's
+    weight, re-running an O(weight) dry raise per chunk; nothing bounds
+    the chunk count (296, 408, 570, 878 per build at n=6, 8, 10, 12, x1.5
+    per two inputs) and the raise depends on the chunk-shifted state, so
+    it cannot be hoisted without changing the program.  Closes with a
+    per-level chunk bound or a landing computed in closed form.
+  - Factor: stays for its two language lower bounds.
 
 - **Boolean generator conventions.**  Five conventions govern the *embed*,
   the text that stands for one input -- not the program around it.  A
@@ -176,7 +141,10 @@ The candidate list is empty.
   commands, never as a blank or padded with blanks; a single blank
   between two tokens of the embed is a delimiter and is fine (Bitdeque's
   `INVERT PUSH`, RAM0's `Z A`).  *Uniform*: the pair is the same pair
-  for every input, so the template would be one character and one pair.
+  for every input, so the template would be one character and one pair
+  (16 of 17 spell it so: one `PAIR` constant the generator module owns,
+  which the example's `pair` field reads; %^2^-1 passes a `setters`
+  function instead).
   The last two are measured, not structural: `tests/proofs/test_conventions.py`
   reads this table and measures every cell off the programs -- the embed
   is the span, row by row, on which the two fills of one input differ; a
@@ -185,29 +153,11 @@ The candidate list is empty.
   a uniformity one -- on dense and parity tables at n=2..6, every
   instantiation.  `Open` means a spelling is not ruled out; `Language`
   means the alphabet leaves none.  A row is present while any cell is
-  open and leaves when both close.
+  open and leaves when both close; the table is empty since Nopstacle,
+  whose alphabet was the blank and `#`, left the collection.
 
   | Language | No spaces | Uniform |
   | --- | --- | --- |
-  | %^2^-1 | Holds | Open |
-  | Nopstacle | Language | Language |
-
-  %^2^-1's uniform cell is open because it solves its setters per table:
-  different text per input is its design, and a uniform %^2^-1 is a
-  different generator.  Nopstacle's two `Language` cells are one fact
-  about its walker: the alphabet is the blank and `#`, so a zero bit *is*
-  a blank and there is no command to spell it with; and a cell acts on
-  the walk only as the target of a neighbour heading into it
-  (`_advance` tests `grid[ny][nx]`), so an embed of fixed width `k` has
-  `2k + 2` ports and a template with one such embed per input is a
-  branching program with at most `2k + 2` nodes per input.  Fewer than
-  `2**450` of those exist against `2**512` tables at n=9 for `k = 1`
-  (n=10 for `k = 2`, n=11 for `k = 4`), so no uniform embed keeps the
-  generator total; below that bound an exact SAT model of the walker
-  finds a program for every table tried at n<=5, each a per-table search
-  with re-reads, which is not a construction.  To refute: a bit-dependent
-  mechanism in `_advance` other than a port read, or a total rule drawing
-  at most four ports per input.
 
   Toggles are an open decision.  The proposed shape: a keyword per relaxed
   convention on the generator, off by default and carried through the
@@ -219,7 +169,6 @@ The candidate list is empty.
   and buys the length leak back.  Add the width toggle only where a
   measured build is smaller; a space toggle has nothing left to relax and
   is not worth its plumbing.
-
 - **ArrowQueue reusable drain.**  Ship the verified deep-fold drain only if
   a proof makes folding meaningfully testable at `n >= 5`; current coverage
   does not reach its crossover.
@@ -235,23 +184,26 @@ The candidate list is empty.
   and only one of the three ways that happens is a defect: driving a
   *search* over candidate codes.  Simulation used as bookkeeping for what is
   already being emitted is fine, and size contests run no simulator at all.
-  WII2D's decode still enumerates the legal folds, validates each against
-  the decode model, and takes the head of a ranked shortlist.  The
-  compressed-magnitude contest is load-bearing: on a 230-table seeded
-  corpus the one-shot rules lose (nearest-midpoint centre 1.06x the size
-  and 0 of 8 dense n=9 against 4 of 8; most-merges and cheapest-centre
-  build nothing past n=6), and the extremal same-colour fold -- always
-  legal, the argument that made the decode total -- refuses from n=7 under
-  the shipped centre and magnitude caps and needs them lifted to build
-  dense n=9 at a megabyte.  A closing rule must keep the prompt refusal or
-  beat the contest on executed programs; a longer emitted program is an
-  acceptable price, and the replaced search stays in the tests as the
-  oracle.
+  WII2D's decode still enumerates the legal folds and ranks a shortlist;
+  what remains is the enumeration and the rank itself (the losing rules
+  are in [limitations](limitations.md#searched-negatives)).
+  A closing rule must keep the prompt refusal or beat the shipped decode
+  on executed programs; a longer emitted program is an acceptable price,
+  and the replaced ranking stays in the tests as the oracle.
 
-- **`%^2^-1` fourteen inputs.**  The staged fold's endgame strands its last
-  duplicated cofactor pairs.  Rank order is steerable (pulsed doubling), but
-  a merge needs the pair's value gap `d` inside a wipe window, and diving
-  the partner maps `d -> amount - d` with the amount free in the window --
-  a derived, unbuilt alignment controller.  Build it only if a ~20x
-  thirteen-input build cost (~430k plan ops, ~8MB templates, ~226 ops per
-  merge) is acceptable.
+- **`%^2^-1` fifteen inputs.**  Fourteen builds by laying the next input
+  when the lay fits (a collision-free even split with `span + total <=
+  6006`) and the rules merge 25 more points on the laid state (a
+  one-move probe lays too early and jams), carrying the stranded
+  duplicate pairs into the next stage where the conveyor merges them at
+  sixteen classes: dense n=14 in 9.8 s and 1.84 MB, about 5x the size
+  and 12x the plan ops of thirteen, 40 sampled rows executed, n<=13
+  byte-identical.  At
+  fifteen the 11-cut has 2,017 distinct sixteen-row cofactors among
+  2,048 rows, so nothing compacts below 2,017 points before the lay; the
+  rules stall (20k ops, no merge), the spread state refuses the lay
+  (span 4,638 + total 4,640), an immediate lay has no rule move at op 0,
+  and a forced band gap jams the conveyor at 4,088--4,091 points.  A
+  fifteen needs a mechanism that lays an input onto ~2,000 unit-spaced
+  points while merging its 256 child classes; nothing in the move set
+  does so cheaply.

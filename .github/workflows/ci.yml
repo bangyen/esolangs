@@ -48,6 +48,12 @@ jobs:
     - name: Type-check src/ and scripts/
       run: uv run mypy
 
+    # A generator route that was replaced keeps its own tests green; three
+    # sat unread for months.  Reports any tools/ name, or any private name
+    # elsewhere in src/, that nothing in src/ or scripts/ reads.  <2s.
+    - name: Check for definitions nothing reads
+      run: uv run python scripts/check_dead_definitions.py
+
     - name: Check for duplicated code blocks
       run: >
         uv run --with pylint python -m pylint --disable=all
@@ -63,14 +69,20 @@ jobs:
       run: uv run python -m tests.proofs.deep ci
 
     # --all, not the touched-language default the local gate uses: this is
-    # the run that holds exceptions.py's contract across all 69.  68s.
+    # the run that holds exceptions.py's contract across all 65.  68s cold;
+    # the cache below carries the last clean sweep's fingerprints forward so
+    # a run pays only for the interpreters, examples or machinery that
+    # changed since.  The key is per commit and the restore prefix takes the
+    # newest, so every run saves and the next run inherits.
+    - name: Restore the leak sweep's clean fingerprints
+      uses: actions/cache@v4
+      with:
+        path: .leaksweep-cache.json
+        key: leaksweep-${{ github.sha }}
+        restore-keys: leaksweep-
+
     - name: Check that no interpreter leaks a raw exception
       run: uv run python scripts/verify_no_exception_leaks.py --all
-
-    # Re-derives the ZTOALC anchor table, checks its 395-capacity claim, and
-    # diffs the anchors against the committed file.
-    - name: Check ZTOALC derivations
-      run: uv run python scripts/generate.py ztoalc --check
 
   test:
     runs-on: ubuntu-latest

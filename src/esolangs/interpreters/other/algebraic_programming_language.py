@@ -99,8 +99,6 @@ _Bin = tuple[Literal["bin"], str, "_Node", "_Node"]
 _Call = tuple[Literal["call"], str, list["_Node"]]
 _Node = _Lit | _Var | _Ref | _Neg | _Ret | _Bin | _Call
 
-_LOWER = "abcdefghijklmnopqrstuvwxyz"
-_UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 # The spec allows accented Latin, Cyrillic, and Greek letters as well, so
 # case is tested with ``str`` methods rather than against these ASCII
 # spellings; the constants are kept for the digits and the symbol class.

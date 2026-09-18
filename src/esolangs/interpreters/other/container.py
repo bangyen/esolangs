@@ -1,40 +1,18 @@
 """Interpreter for Container.
 
-The first line declares rules: ``name = initial`` or a bare ``name``, and
-following indented lines attach conditional deltas (``n cond``) to the most
-recent container.  Each tick updates every container by its satisfied rules;
-PRINT outputs OUT as a byte when it turns on, the empty-named container reads
-a line of input into the IN container when it fires, and EXIT halts the
-program.
+The first line declares rules (``name = initial`` or a bare ``name``);
+following indented lines attach conditional deltas (``n cond``) to the
+most recent container.  Each tick updates every container from the *old*
+values; PRINT outputs OUT as a byte when it turns on, the empty-named
+container reads a line into IN when it fires, and EXIT halts.  A rule
+before any declaration raises :class:`ValueError`; an empty program halts
+at once; exhausted input raises :class:`EOFError`.  :func:`run` returns
+the EXIT code (``None`` if EXIT never fired) rather than exiting.
 
-A rule line before any container declaration is a malformed program and is
-rejected with :class:`ValueError`; an empty program halts immediately.
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-
-The interpreter runs on a :class:`_Machine` (the containers, their current
-values, and the exit code once EXIT fires), so it is step-capable:
-``step()`` executes one full tick and ``halted`` is true once EXIT fires.
-:func:`run` returns the EXIT code (``None`` if EXIT never fired) instead
-of exiting the process, so a halt is a value the caller receives rather
-than a ``SystemExit`` the library throws at it.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the container rules to the next state,
-and never mutates what it is given.  It takes no ``io`` argument at all, so
-it is total and side-effect free by construction rather than by inspection.
-
-A tick is where this language differs from the others in the series.  Every
-container updates at once from the *old* values, and then three things --
-PRINT's output, the empty container's read, and EXIT -- fire on comparisons
-between the old and new values.  So the shell computes what the tick will
-produce, does the two effects, and hands the read byte to the transition,
-which is what actually builds the next state.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what Container *does* stays in
-the pure layer.
+:func:`_advance` is a pure transition over an immutable ``_State`` with
+no ``io`` argument.  The shell computes the tick, does the two effects
+that compare old against new values, and hands the read byte to the
+transition; :class:`_Machine` rebinds one state per ``step()``.
 """
 
 from __future__ import annotations
@@ -83,11 +61,7 @@ def _has(variables: _Vars, name: str) -> bool:
 
 
 def _tick(obj: list[Con], variables: _Vars) -> _Vars:
-    """Return every container's value after one update, in name order.
-
-    All of them update from the same old values, which is what makes a tick
-    simultaneous rather than sequential.
-    """
+    """Return every container's value after one update, in name order."""
     old = dict(variables)
     return tuple(sorted((o.name, o.update(old)) for o in obj))
 
@@ -211,11 +185,8 @@ class _Machine:
     def step(self) -> None:
         """Execute one full tick, updating every container's value.
 
-        The tick is computed first, because all three of the things that
-        can happen -- PRINT's output, the read, and EXIT -- compare the old
-        values against the new ones.  :func:`_ports` decides the first two
-        from that comparison and :func:`_advance` the third; this performs
-        what they report and hands the read's byte on.
+        :func:`_ports` decides the print and the read from the old/new
+        comparison, :func:`_advance` decides EXIT.
         """
         if self.halted:
             return
@@ -241,10 +212,7 @@ class _Machine:
 def _rises(variables: _Vars, new: _Vars, name: str) -> bool:
     """Whether ``name`` goes from zero to nonzero across a tick.
 
-    A container fires on the rising edge, which is why both its old and
-    its new value matter.  EXIT is the exception and is decided in
-    :func:`_advance`: it fires on any *change*, so that a program can exit
-    with zero.
+    EXIT instead fires on any *change*, so a program can exit with zero.
     """
     return (
         _has(variables, name) and _get(variables, name) == 0 and bool(_get(new, name))
@@ -254,10 +222,7 @@ def _rises(variables: _Vars, new: _Vars, name: str) -> bool:
 def _ports(variables: _Vars, new: _Vars) -> tuple[int | None, bool]:
     """Return what the tick wants done: a byte to print, and whether to read.
 
-    Pure: it compares the two ticks and reports.  The shell performs both,
-    which keeps the rules for *when* a container fires here with the rest
-    of the language rather than beside the ``io`` calls that carry them
-    out.  ``PRINT`` prints OUT modulo 128, and only when OUT exists.
+    ``PRINT`` prints OUT modulo 128, and only when OUT exists.
     """
     output = None
     if _rises(variables, new, "PRINT") and _has(variables, "OUT"):
@@ -273,14 +238,9 @@ def _advance(
 ) -> _State:
     """Return the state a tick lands on.
 
-    Pure: it reads ``state`` and returns a new one.  ``new`` is the tick the
-    shell already computed, ``queue`` what is left of the input after any
-    read, and ``byte`` the character that read took -- so the two effects
-    are already done and only their consequences arrive here.
-
-    A read writes its byte into IN, overriding whatever the tick computed
-    for that container.  EXIT halts when its value *changes*, and the value
-    it changed to is the code, which is why a program can exit with zero.
+    ``new`` is the computed tick, ``queue`` the remaining input, ``byte``
+    what the read took and writes into IN.  EXIT halts on a *change*, and
+    the new value is the code.
     """
     variables, _queue, exit_code, count = state
     if byte is not None:
@@ -293,10 +253,8 @@ def _advance(
 def run(code: list[str], io: IO) -> int | None:
     """Run a Container program by ticking its rules until EXIT fires.
 
-    Returns the EXIT code, or ``None`` if the program ended without one.
-    EXIT is Container's *normal* halt, not an invalid operation, so it
-    returns like every other interpreter here rather than raising.  Only
-    the ``__main__`` block below turns the code into a process exit.
+    Returns the EXIT code, or ``None``; EXIT is the normal halt.  Only the
+    ``__main__`` block turns the code into a process exit.
     """
     machine = _Machine(code, io)
     while not machine.halted:

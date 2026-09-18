@@ -1,35 +1,15 @@
 """Interpreter for 6-5.
 
-The wiki spec is authoritative: ``7n`` skips the *next instruction* when the
-cell equals ``n`` (the value is a parameter, never executed), and ``8n`` is a
-two-character token that jumps to the n-th ``4`` marker.  To get this right
-the program is tokenized first, merging each ``7``/``8`` with its operand,
-rather than reading the next character on the fly.
+Per the wiki, ``7n`` skips the next instruction when the cell equals
+``n`` and ``8n`` jumps to the n-th ``4`` marker; both operands are
+parameters, so the program is tokenized with them merged.  Printing a
+cell outside the character range halts with
+:class:`~esolangs.exceptions.HaltError`; exhausted input raises
+:class:`EOFError`.
 
-Outputting a cell value outside the valid character range is an invalid
-operation and halts the program with
-:class:`~esolangs.exceptions.HaltError`.
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-
-The interpreter runs on a :class:`_Machine` (the token list, the cell, the
-tape, and the cursor), so it is step-capable: ``step()`` executes one token
-and ``halted`` is true once the cursor reaches the end of the program,
-making a ``8n`` jump back to a ``4`` marker a finite-state cycle the state
-cycle detector can prove.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the token list to the next state, and
-never mutates what it is given.  It takes no ``io`` argument at all, so it
-is total and side-effect free by construction rather than by inspection.
-The tape is a tuple, so a state is a value that can be stored, compared,
-and hashed as it stands.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what 6-5 *does* stays in the
-pure layer.  The two I/O tokens, and the out-of-range check that ``A``
-halts on, stay in the shell -- which is what leaves the transition total.
+:func:`_advance` is a pure transition over an immutable ``_State`` (tuple
+tape, so hashable) with no ``io`` argument; :class:`_Machine` is the shell
+holding the two I/O tokens and ``A``'s range check.
 """
 
 from __future__ import annotations
@@ -70,8 +50,7 @@ def num(char: str) -> int:
 def _tokens(code: str) -> list[str]:
     """Split a program into instructions, merging each 7/8 with its operand.
 
-    Comments start at a ``C`` that is not the operand of a ``7``/``8`` (a
-    ``C`` after ``7``/``8`` is a value 12) and run to the end of the line.
+    A ``C`` not operand to ``7``/``8`` starts a comment to end of line.
     """
     code = re.sub(r"([^78])C[^\n]*", r"\1", code)
     toks: list[str] = []
@@ -92,22 +71,12 @@ def _written(tape: tuple[int, ...], cell: int, value: int) -> tuple[int, ...]:
 
 
 def _markers(toks: list[str]) -> tuple[int, ...]:
-    """Return the index of every ``4`` marker, in program order.
-
-    The markers never move, so this is taken once per program: scanning the
-    token list on every ``8n`` made a looping program pay its own length
-    per jump.
-    """
+    """Return the index of every ``4`` marker, in program order."""
     return tuple(j for j, tok in enumerate(toks) if tok == "4")
 
 
 def _marker(markers: tuple[int, ...], nth: int) -> int | None:
-    """Return the index of the ``nth`` ``4`` marker, or None if absent.
-
-    ``8n`` naming a marker the program does not have leaves the cursor
-    where it is, so the miss is returned rather than raised -- which keeps
-    the transition free of error cases.
-    """
+    """Return the index of the ``nth`` ``4`` marker, or None if absent."""
     if 1 <= nth <= len(markers):
         return markers[nth - 1]
     return None
@@ -121,22 +90,9 @@ def _advance(
 ) -> _State:
     """Return the state after executing one token.
 
-    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
-    argument, so ``A``'s print and ``B``'s read are the caller's business
-    -- the print changes no state at all, and the read's byte arrives as
-    ``byte``.
-
-    ``1`` moves the pointer right by two and grows the tape to meet it;
-    ``3`` moves back one and is clamped at the origin.  ``7n`` skips the
-    next token when the cell equals ``n``, and ``8n`` jumps to the n-th
-    ``4`` marker -- both operands are parameters, never executed, which is
-    why the program was tokenized with them merged.
-
-    ``0`` halts by putting the cursor past the last token, and returns
-    early so the shared increment does not carry it further.
-
-    ``markers`` is :func:`_markers` of ``toks``; a caller stepping one
-    program many times passes it, and one without it pays the scan here.
+    ``1`` moves right two and grows the tape; ``3`` moves back one, clamped
+    at 0.  A missing ``8n`` marker leaves the cursor; ``0`` halts by putting
+    it past the end.  ``markers`` is :func:`_markers` of ``toks``.
     """
     ind, cell, tape = state
     tok = toks[ind]
@@ -167,13 +123,7 @@ def _advance(
 
 
 class _Machine:
-    """Per-run 6-5 state: the tokens, cell, tape, and cursor.
-
-    ``step()`` executes one token; ``halted`` is true once the cursor passes
-    the last token.  A ``8n`` jump back to a ``4`` marker whose skip test
-    never fires is a finite-state cycle the hang detector can prove.  The VM
-    and the hang detector expose this object.
-    """
+    """Per-run 6-5 state: the tokens, cell, tape, and cursor."""
 
     def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and reset the cell, tape, and cursor."""
@@ -252,10 +202,7 @@ class _Machine:
     def step(self) -> None:
         """Execute one token, advancing the cursor.
 
-        The two I/O tokens live here rather than in the transition: this is
-        the shell, so it is where an effect belongs.  ``A``'s range check
-        comes with the print, because it is what decides whether the effect
-        can happen at all -- a cell outside the character range is an
+        ``A``'s range check is here with the print: an out-of-range cell is an
         invalid operation, not a value to truncate.
         """
         if self.halted:
