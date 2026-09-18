@@ -1,6 +1,6 @@
 # Limitations and contracts
 
-Standing contracts and walls.  The open Polynomial row is in
+Standing contracts and walls.  Polynomial's scaling wall is proved in
 [polynomial](polynomial.md); closed scaling rows are recorded in their commits.
 
 ## Interpreter conventions
@@ -158,12 +158,24 @@ compositions into at most m runs number `exp(O(D log log D/log D))`, and the
 residues add `8**m`, so D-digit texts decode to `2**o(D)` programs.  If
 D = O(T) that is `2**o(T)` functions against `2**T` tables.
 
-**Polynomial is open.**  Instruction count is language-forced at
-`Omega(T/log T)`; every multiple carries `Omega(T/log T)` monomials; every
-right-half-plane program is `Omega(T^2/log T)`; every Descartes-minimal
-multiple is `Omega(T^2/log^2 T)` on the whole plane.  What remains is a
-left-half-plane multiple with `O(T)` coefficient digits over more terms
-than Descartes requires, see [polynomial](polynomial.md).
+**Polynomial's text is `Omega(T^2/log T)` for some table under every
+encoding.**  Instruction count is language-forced at `Omega(T/log T)`: the
+input instruction overwrites the register, so between reads every bit about
+earlier inputs lives in the cursor, and the routing lemma puts
+`L = Omega(T/log T)` of those instructions on real prime-power roots.  Every
+program's text is the coefficient digits of a multiple of the mandatory root
+product, and the iterated elimination's slack certificate -- the pure
+exponential sum on the `L - u` largest roots, whose tail each leading zero
+divides by one more `(rho - 1)` -- forces a `(u+1)`-th coefficient of at
+least `prod_{i>2u} (p_i - 1)` times the leading one, for free positions
+anywhere and every degree.  Summing over `u <= (L-1)/2` gives
+`(1/4 - o(1)) L**2 log L` nats of coefficient mass, for every cofactor,
+every operand sign and every degree, so the text is `Omega(T**2/log T)`
+characters.  The proof is in [polynomial](polynomial.md) and every link is
+pinned in `tests/proofs/test_negatives.py`; the earlier partial bounds it
+subsumes (right half-plane `Omega(T^2/log T)`, Descartes-minimal
+`Omega(T^2/log^2 T)`, the primorial's linear floor) are recorded there
+too.
 
 ### Searched negatives
 
@@ -265,14 +277,16 @@ the per-pair charge is off by the zero-set's size, and a bound over
 every program has to price copies against zero-set kills and block
 reflections together, which no argument here does.
 
-Polynomial's remaining question is coefficient mass, not term count: a
-left-half-plane multiple of the mandatory root product with O(T) digits
-across more terms than the Descartes minimum:
-instruction count, monomial count, right-half-plane coefficient mass, and
-the Descartes-minimal class are all language-forced, every searched
-escape is closed, and the Rolle reduction behind Descartes cannot lower
-the kernel's rank; the open class carries O(1) coefficients of O(T)
-digits and a *sparse* small remainder.  Executed (z3, exact): with
+Polynomial's question was coefficient mass, not term count, and it is
+closed: the class that survived every search -- a left-half-plane multiple
+of the mandatory root product with O(T) digits across more terms than the
+Descartes minimum, O(1) coefficients of O(T) digits and a *sparse* small
+remainder -- has no member, because the slack certificate bounds *every*
+multiple below.  What the searches established stands as the record of the
+route.  Instruction count, monomial count, right-half-plane coefficient
+mass, and the Descartes-minimal class are all language-forced, every
+searched escape is closed, and the Rolle reduction behind Descartes cannot
+lower the kernel's rank.  Executed (z3, exact): with
 every non-constant coefficient bounded, the bound cannot go below
 0.33--0.43 of the primorial at L=3..5 for any degree to 16 (13, 80,
 844; LLL agrees to L=7), and the tail-height floor stops falling past
@@ -308,21 +322,26 @@ over L=3..7, `Theta(L^2 log L)` exactly), so no O(T)-digit multiple
 exists at those sizes and the target of the elimination is the truth;
 over real monic cofactors the minimum is the product's mass less one
 digit (L=3..6), so the linear-programming route is sound and the bound
-is not an integrality fact.  The whole bound now rests on one measured
-lemma about pure exponential sums (a `c`-root certificate with `c-1`
-prescribed zeros, the first `f` leading, has tail at most `1/prod(rho-1)`
-over the `f+1` largest roots; exhaustive to distance 7, random to 30, five
-root sets; verified to c=14): with it every program is `Omega(T^2/log
-T)` with constant 1/4, the `c >= 3` truncation question disappears, and
-Desnanot--Jacobi is recorded as not lifting `c=2`.  Proved so far: the
-lemma with one displaced zero (so at least two coefficients of every
-multiple reach `prod_{i>2}(p_i-1)` wherever the first sits); the tail is
-not monotone in the zero positions, so no principal-representation
-theorem closes the rest.  A lossy induction (`u = F + lambda G`, triangle
-inequality) needs only two measured sub-lemmas -- the ratio `|F/G|`
-decreases past the last prescribed zero, and the triangle term is under
-`0.7 bound(f)` (c=3..8) -- to give `K(c)` linear in `c`, which the
-assembly absorbs.  Root-set term bounds (Descartes on either
+is not an integrality fact.  The whole bound rests on one lemma
+about pure exponential sums, now a theorem: a `c`-root certificate with
+`c-1` prescribed zeros, the first `f` leading, has tail at most
+`1/prod(rho-1)` over the `f+1` largest roots, with equality exactly when
+every zero is leading.  It is proved by peeling one root and one zero
+together -- `u = F + lambda G` with `F` on the `c-1` largest roots and `G`
+vanishing at `0` as well, whose anti-aligned signs make `tail(F) - tail(u)
+= mu T_G - 2 sum_{d>z}|u_d|` an identity, reduce the step to
+`Gamma_G <= Gamma_F/(1-y_c)`, and end in a count of the zeros of one
+`(c-1)`-root sum.  With it every program is `Omega(T^2/log T)` with
+constant 1/4, the `c >= 3` truncation question and the free-position
+exchange argument both disappear (the slack certificate forms no truncated
+Toeplitz minor), and Desnanot--Jacobi is recorded as not lifting `c=2`.
+Superseded en route and kept as record: the tail is not monotone in the
+zero positions, so no principal-representation theorem applies and the
+peel compares against the escaping limit instead; the `k=1` convolution
+is the peel's degenerate case; and the lossy triangle induction
+(`K(c) <= K(c-1) + 0.7`, c=3..8) and the Lagrange-basis decomposition of
+`E` are not needed, the identity being exact where the triangle inequality
+was not.  Root-set term bounds (Descartes on either
 ray, sector and unit-circle fewnomial bounds, cyclic-code weight
 bounds, Tao's uncertainty principle) do not apply: the forced roots are
 prime powers and `a +- p^b i`, on no ray, circle or root-of-unity set,

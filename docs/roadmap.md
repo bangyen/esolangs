@@ -35,10 +35,13 @@ The candidate list is empty.
   clause: four executed rounds the
   same day produced the model in its searched-negatives paragraph (no
   routing primitive, joins that leak a copy, a kill per zero-set per copy)
-  and no construction or bound; Polynomial's thirteen rounds and WII2D's
-  ten ended in a measured target and one unproved lemma each.  The
-  clause is deliberate: a wall that has not been proved is not a lookup
-  table, and Factor's bound came after its wall was measured.
+  and no construction or bound; WII2D's ten ended in a measured target and
+  one unproved lemma.  Polynomial's fourteen rounds ended in the bound:
+  its measured target, `Theta(L**2 log L)` digits for every multiple of the
+  mandatory root product, is now proved, and the row closes on size and
+  time as a language lower bound.  The clause is deliberate: a wall that
+  has not been proved is not a lookup table, and both Factor's bound and
+  Polynomial's came after their walls were measured.
 
   All 63 generators are audited on four axes.  Totality is the `proofs.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
@@ -62,7 +65,7 @@ The candidate list is empty.
   | COD | Total | Open | Open | Open |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Interprogck8 | Total | Open | Open | Linear |
-  | Polynomial | Cap | Open | Open | Linear |
+  | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
   | SLOW ACV MAMMALIAN | Total | Open | Linear | Linear |
   | Streetcode | Total | Open | Open | Linear |
   | WII2D | Cap | Open | Open | Linear |
@@ -85,13 +88,6 @@ The candidate list is empty.
     `o(R)` cells with every stray cod dead (an input cell serves four
     headings, so a level's fifth node lives in the value; a one-lane
     node is eight commands but repeats the embed).
-  - Polynomial, size and time: the exact minimum-mass multiple of the
-    mandatory root product is the product itself (integer to L=7, and
-    the real relaxation one digit lighter), `Theta(L**2 log L)` =
-    `Theta(T**2 / log T)` digits, so no construction is left and the row
-    closes as a language lower bound when one lemma on exponential sums
-    is proved (its `u = 0, 1` cases are; the rest is verified to `c = 14`
-    and reduced to one product in [polynomial](polynomial.md)).
   - Streetcode, size and time: each level's hall spans every row of both
     subtrees, so the ~4T leaf rows are `Theta(n)` wide (220, 235, 244
     characters per row at n=8, 10, 12) -- `Theta(T log T)`, and the
@@ -124,6 +120,15 @@ The candidate list is empty.
     per two inputs) and the raise depends on the chunk-shifted state, so
     it cannot be hoisted without changing the program.  Closes with a
     per-level chunk bound or a landing computed in closed form.
+  - Polynomial: stays for its language lower bound on size and time.  The
+    exact minimum-mass multiple of the mandatory root product is the
+    product itself (integer to L=7, and the real relaxation one digit
+    lighter), and the iterated elimination's slack certificate now proves
+    `Theta(L**2 log L)` = `Theta(T**2 / log T)` digits for *every* multiple,
+    every cofactor and every operand sign -- the lemma on exponential sums
+    it rested on is a theorem in [polynomial](polynomial.md).  No
+    construction is left and nothing on the bound is open; only the `Cap`
+    remains, and a `Cap` cannot close.
   - Factor: stays for its two language lower bounds.
 
 - **Boolean generator conventions.**  Five conventions govern the *embed*,

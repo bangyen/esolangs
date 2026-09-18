@@ -43,7 +43,8 @@ every generator to it except those the roadmap's scaling audit or this
 document's `cap` and `exception` rows already exempt.  Read its verdicts in one
 direction only: exceeding the bound is evidence, staying inside it is not, and
 Factor -- proven super-linear at the language level in `limitations.md` and
-measuring x2.11 -- is why.
+measuring x2.11 -- is why.  Polynomial is the second such proof, at
+`Omega(T**2 / log T)` ([polynomial](polynomial.md)).
 
 ## Proof schemes
 
@@ -188,7 +189,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Packlang | tree | — | linear: folded tree, shortest names deepest, flat pieces |
 | Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
 | %^2^-1 | exception | one setter pair, the weight as doublings in the template; the fold's planners cover all tables through four inputs and tested tables through fourteen, but no all-arity proof is known | measured: point relocations, no invariant; x4.8 per input at n=13..14 |
-| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding | open: coefficient digits of the root-product multiple, no O(T) cofactor known |
+| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding | lower bound: Theta(L**2 log L) digits for every multiple of the mandatory root product; language Omega(T**2 / log T) |
 | Qoibl | tree | — | linear: span walk, O(1) node tests by halves |
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup | linear: 16-17 tokens per row, unary runs 2T - 2 |
 | ROTfuck | tree | movement search stops after at most eight offsets | linear, time n log: essential_inputs |
