@@ -526,6 +526,52 @@ i.e. every Polynomial program is `Omega(T**2 / log T)` characters.  The
 lemma is pinned (`TestEachLeadingZeroBuysOneRoot`); the bound is not
 written until it is proved.
 
+**One displaced zero, proved; the lemma's shape, mapped.**  Write `y_i =
+1/rho_i`, so `y_1 < ... < y_c <= 1/2`, `h'_s = h_s(y_1..y_{c-1})` (the
+`c - 1` largest roots), `h_s = h_s(y_1..y_c)`, `P = y_1 ... y_{c-1}`.
+*Not monotone.*  The tail is not a monotone function of the zero
+positions, so no extremal-at-the-boundary theorem applies as such:
+`(3,5,7,11)`, `Z = (1,2,3) -> (1,2,4)` drops it `1/480 -> 0.00162`
+(changing `f`), and `(2,3,5,7)`, `Z = (1,2,4) -> (1,2,5)` drops
+`0.011218 -> 0.011169` with `f` fixed; pointwise `|u_d|` is never
+monotone.  Karlin--Studden's principal representations (min/max of a
+functional over nodes) are therefore not the statement; the lemma is a
+supremum over each fixed `f`, approached as the displaced zeros go to
+infinity, not attained.  *Proved for `f = c - 2` (one displaced zero
+`z >= c - 1`), every `c`, every root `>= 2`.*  Let `F` be the
+leading-zero certificate on the `c - 1` largest roots (`F_d = (-1)**c P
+h'_{d-c+1}` for `d >= c-1`, zero on `1..c-2`) and `G_d = h_{d-c+1}(y)`
+for `d >= c-1`, zero below, the unique `c`-root sum vanishing at
+`0..c-2`.  Then `u = F + lambda G` with `u_z = 0`, i.e. `u_d = (-1)**c P
+(h'_d - r h_d)` with `r = h'_z / h_z` (indices shifted by `c - 1`), an
+identity checked exactly.  `h'_s / h_s` is strictly decreasing in `s`
+(`h_s / h'_s = sum_k y_c**k h'_{s-k} / h'_s` and each `h'_{s-k} / h'_s`
+increases with `s` by log-concavity of the Polya-frequency sequence
+`h'`), so `u` has the sign of `(-1)**c` below `z` and the opposite above,
+and `tail = P [sum_{s<z'} (h'_s - r h_s) + sum_{s>z'} (r h_s - h'_s)]`.
+Against `bound(c-2) = P sum_s h'_s`: `bound - tail = P [h'_{z'} + r
+sum_{s<z'} h_s + 2 sum_{s>z'} h'_s - r sum_{s>z'} h_s]`, and splitting
+the convolution `h = h' * (1, y_c, y_c**2, ...)` at `z'` gives exactly
+`sum_{s>z'} h_s = (A + y_c h_{z'}) / (1 - y_c)` with `A = sum_{s>z'}
+h'_s`, so the negative term is `r A / (1 - y_c) + h'_{z'} y_c / (1 -
+y_c) <= 2A + h'_{z'}` because `r <= 1` (`h' <= h`) and `y_c <= 1/2`.
+Hence `tail <= bound(c-2)`, with room `P [r sum_{s<z'} h_s + ...]`.
+Pinned to `z < 30` on four root sets.  In the slack assembly this is
+`u = 1`: **at least two coefficients of every real multiple reach
+`prod_{i>2} (p_i - 1)`, wherever the first one sits** -- rigorous now,
+on top of `u = 0`.  *What remains for general `f`.*  With `k = c - 1 -
+f` displaced zeros, `u = F + lambda G` still holds with `F` the
+certificate on the `c - 1` largest roots carrying the leading zeros and
+the first `k - 1` displaced ones, and `G` the `c`-root sum vanishing at
+`0`, the leading zeros and those `k - 1`; `tail(F) <= bound(f)` by
+induction on `c`, but `F` and `G` now alternate across `k - 1` interior
+zeros each, and the one-displaced argument's two ingredients -- one
+sign change for `u`, one-signed `G` -- are gone.  The lemma is verified
+to `c = 14` (roots `3..47`, `f` from `0` to `c - 2`, displaced zeros to
+distance 35; ratio at most 0.99999), and the induction on the number of
+displaced zeros, with the sign pattern of `F + lambda G` tracked through
+the interlacing of `F`'s and `G`'s zeros, is the resumption point.
+
 *Gap (a) is not a principal-representation theorem.*  The primal is
 `min_B` over `f_D = 1`, `|f_m| <= B` off `U`, `f_U` free, `sum_m f_m v_m
 = 0` with `v_m = (p_i**m)_i`: the gauge of `v_D` modulo `span(v_U)` in
