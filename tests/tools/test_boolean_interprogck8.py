@@ -244,6 +244,23 @@ class TestPrimitiveSurvey:
         run_until_halt_or_cycle(machine)
         assert machine.io.getvalue()[:1] == "\x00", "lands at +300, not the wrapped +44"
 
+    def test_z_restart_drops_the_selected_slot_and_accumulator(self) -> None:
+        """``z`` cannot carry either direct control state across its restart.
+
+        It can be reached conditionally and its deletion changes the text,
+        but the new run starts with neither the captured continuation nor
+        the accumulator value that selected it.  Any use as a relay must
+        recover state from the altered text.
+        """
+        program = ["<", "nNnN", "div", ">", "nNnN", "z", "EXE"]
+        machine = _Machine(program, ScriptedIO(""))
+        machine.step()  # capture the printer
+        machine.step()  # load 65
+        machine.step()  # delete that load and z, then restart
+        assert machine.state.acc == 0
+        assert machine.state.slot is None
+        assert machine.state.lines == ("<", "nNnN", "div", ">", "EXE")
+
     def test_the_function_slot_branches_with_no_jump_distance(self) -> None:
         """One read, routed by ``EXE``/``IFT``/``IFQ`` alone: all 4 rows.
 

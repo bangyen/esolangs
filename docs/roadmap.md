@@ -124,9 +124,11 @@ The candidate list is empty.
     size with no jump distance at all and branches with no
     `DownAccLines`, but cannot nest -- capturing a subtree that itself
     holds `<` is refused unconditionally, so it routes one read and no
-    more.  No primitive composes past acc + `DownAccLines`, so the model
-    claim stands: a tree's total flight length is `Theta(n T)`, the total
-    edge length of a linear arrangement of a complete binary tree.
+    more.  `z` restarts with acc 0 and an empty slot, retaining a choice only
+    indirectly in its two-line deletion.  These are obstructions to the
+    routed-tree model, not a language lower bound: within that model a tree's
+    total flight length is `Theta(n T)`, the total edge length of a linear
+    arrangement of a complete binary tree.
   - WII2D, three cells: a rule emitting readouts within a constant of the
     exact optima (1.4--2.4 characters per entry to domain 14); no one-step
     or bounded-beam rule over small centres is one, and the optima's
