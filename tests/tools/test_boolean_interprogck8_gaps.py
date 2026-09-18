@@ -1,11 +1,12 @@
 """Interprogck8's corridor machinery that no shipped arity reaches.
 
 Two pieces are load-bearing but dormant at buildable sizes: the stride
-classes past the first (the mod-50 phase pool holds 21 depths, far past
-the contract's ceiling) and the validator's refusal (the assembler plans
-the flights it validates, so a live build never trips it).  Each is
-reached by construction -- shrinking the pool, corrupting the corridor
--- rather than by finding a table that defeats the real constants.
+classes past the first (the mod-30 pool of fourteen residues serves
+fourteen inputs, past the contract's ceiling) and the validator's refusal
+(the assembler plans the flights it validates, so a live build never
+trips it).  Each is reached by construction -- shrinking the pool,
+corrupting the corridor -- rather than by finding a table that defeats
+the real constants.
 """
 
 import hashlib
@@ -88,3 +89,20 @@ class TestDormantMachinery:
     def test_the_shipped_constants_still_build_the_table(self) -> None:
         """The positive control: neither backstop fires by default."""
         assert interprogck8(_parity_table(6))
+
+    def test_the_pool_thins_by_arity_and_ends_at_forty(self) -> None:
+        """Residues per class come from probing the placer, not a table.
+
+        Fourteen inputs ride one full class; a fifteenth needs a second,
+        whose two-odd-line read never fits under a full first, so the
+        pool thins to thirteen; past forty no pool places every depth
+        under a fully open stack and the generator refuses.
+        """
+        from esolangs.exceptions import TruthTableError
+        from esolangs.tools.interprogck8 import _phases
+
+        assert _phases(14) == 14
+        assert _phases(15) == 13
+        assert _phases(40) == 9
+        with pytest.raises(TruthTableError, match="at most 40"):
+            _phases(41)
