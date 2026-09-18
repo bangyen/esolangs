@@ -127,71 +127,84 @@ proof scheme share the proof above; the qualification column records the
 language-specific final step or an exception.  `cap` means theoretically total
 after ignoring the performance/resource ceiling as specified above.
 
-| Generator | Proof | Qualification |
-| --- | --- | --- |
-| A Painter Ant | parameterized lookup | each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, leaving it over the indexed answer cell |
-| AddSubJump | finite lookup | packed `n`-bit cells selected by a self-modified operand |
-| Algebraic Programming Language | minterms | base-26 names are unbounded |
-| Alight | finite lookup | inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches |
-| ArrowQueue | parameterized lookup | one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages |
-| B-tapemark | tree | reflected finite grid; indexed table spans preserve the same leaves without recursive copies |
-| Back | parameterized tree | — |
-| BF-PDA | parameterized tree | — |
-| BFStack | minterms | — |
-| BIO | finite lookup | nested loops telescope from `table[0]` to `table[index]` |
-| bit~ | tree | — |
-| Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque |
-| brainfuck | tree | `decision_tree_program` |
-| BrainIf | finite lookup | a spatial table is addressed by the read row index |
-| Circlefuck | tree | its local shape guard is equivalent to the shared guard |
-| Circuit Diagram | tree | finite planar routing |
-| Clockwise | tree | finite grid layout |
-| COD | parameterized tree | each input's run sets the cod's value at its own fork box, once; the leaf cascade prints the entry |
-| Collatz Multiverse | tree | finite cell placement |
-| Container | finite lookup | the reversed table is one decimal literal divided by ten in a fixed two-bank network |
-| Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, and a folded subtree targets the shared self-jump or the line past the end |
-| CV(N)(C) | tree | the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts |
-| Decleq | tree | the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits |
-| Dig | tree | finite cell placement |
-| Dimensional | tree | `decision_tree_program` with dimensional moves |
-| EGL | tree | — |
-| Eval | linear lookup | fixed reversed stack order selects the indexed row |
-| Factor | tree | Brainfuck tree followed by a total prime encoding: Dirichlet supplies the next prime in each residue class mod 11, and the integer is arbitrary precision on both sides |
-| Fargo | tree | finite folded layout |
-| Flowchart | finite lookup | a five-row deque preloads `2**n` answers and discards opposite halves |
-| Forbin | tree | — |
-| Forþ | tree | — |
-| Grapheme | tree | arbitrary integer variable keys remove the old 24 one-letter-key ceiling |
-| Home Row | parameterized tree | — |
-| Inject | finite lookup | one table block halved by `O(n)` conditional substitutions |
-| Interprogck8 | tree | routed by a shared `DownAccLines` corridor: a read's 48/49 selects dismount against flight by landing parity, stops are phase-separated by depth, and assembly is one pass with no repair loop; the residue pool is probed per arity and places every depth through forty inputs, an unreachable guard |
-| Jaune | finite lookup | a spatial table reached with two labels |
-| LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep |
-| Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` |
-| Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length |
-| Modulous | tree | — |
-| NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells |
-| 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry |
-| Packlang | tree | — |
-| Painfuck | tree | Brainfuck tree transliteration |
-| %^2^-1 | exception | one setter pair, the weight as doublings in the template; the fold's planners cover all tables through four inputs and tested tables through fourteen, but no all-arity proof is known |
-| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding |
-| Qoibl | tree | — |
-| RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup |
-| ROTfuck | tree | movement search stops after at most eight offsets |
-| S*bleq | finite lookup | packed chunks decoded after the hoisted read block |
-| 6-5 | finite lookup | past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks |
-| SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit as a 256-multiple weight on array 16; one trampoline lands the indexed 256-token leaf |
-| Sophie | tree | — |
-| Streetcode | tree | — |
-| Suffolk | tree | — |
-| Super SNUSP | tree | each folding pass removes at least one pending unit |
-| Taglate | tree | — |
-| 3D Brainfuck | tree | Brainfuck tree transliteration |
-| 3x | tree | — |
-| Unsquare | tree | stack arrangement affects size only |
-| Vandevelo | minterms | constant-one subtrees drop their suffix literals |
-| WII2D | parameterized construction, cap | Horner's chain is total; the decode folds the extremal same-colour pair, whose midpoint is unique, so every fold is legal |
+The Scaling column is the worst-case cost of the construction in `T = 2**n`,
+read from the code rather than measured (the size contract in
+`tests/proofs/deep/linearity.py` cannot see a `log T` in twelve doublings).
+Each cell is one of: `linear: <argument>` (size and time O(T) for every
+table; the clause names the argument in twelve words or fewer); `linear,
+time n log: <term>` (size O(T), one stated `log T` factor in generation
+time); `measured: <what is unbounded>` (no invariant bounds it); `open:
+<term>` (a super-linear term with its bound -- exactly the rows open on size
+or time in the roadmap's audit); `lower bound: <bound>` (the language forces
+it).  Where a generator dispatches on table size, the cell describes the
+wide route.  `tests/proofs/test_ledger.py` checks the grammar and
+`tests/proofs/test_linearity.py` checks the column against the audit.
+
+| Generator | Proof | Qualification | Scaling |
+| --- | --- | --- | --- |
+| A Painter Ant | parameterized lookup | each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, leaving it over the indexed answer cell | linear: table walk; corridor weights sum to T |
+| AddSubJump | finite lookup | packed `n`-bit cells selected by a self-modified operand | linear: T/n packed cells of O(n) digits, O(n) decoder |
+| Algebraic Programming Language | minterms | base-26 names are unbounded | linear, time n log: greedy order scoring, capped at n <= 10 |
+| Alight | finite lookup | inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches | linear: one T-character literal, O(n) Horner reads |
+| ArrowQueue | parameterized lookup | one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages | linear: 6n + 3T rows, three per entry |
+| B-tapemark | tree | reflected finite grid; indexed table spans preserve the same leaves without recursive copies | linear: T - 1 fixed-footprint nodes, rows rendered from their cells |
+| Back | parameterized tree | — | linear: leaf moves sum geometrically, sparse row render |
+| BF-PDA | parameterized tree | — | linear: span walk, leaf drains sum geometrically |
+| BFStack | minterms | — | linear: zero-row walk telescopes to T |
+| BIO | finite lookup | nested loops telescope from `table[0]` to `table[index]` | linear: T - 1 loop pieces joined once |
+| bit~ | tree | — | linear, time n log: essential_inputs |
+| Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque | linear: 2T commands, discard blocks sum to T |
+| brainfuck | tree | `decision_tree_program` | linear: decision_tree_program, span walk, leaf moves geometric |
+| BrainIf | finite lookup | a spatial table is addressed by the read row index | linear: n + T strip cells of 51 lines |
+| Circlefuck | tree | its local shape guard is equivalent to the shared guard | linear, time n log: essential-input byte compare; greedy candidate's walk |
+| Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) |
+| Clockwise | tree | finite grid layout | linear: alternating rectangle of area O(T), exits in walk order |
+| COD | parameterized tree | each input's run sets the cod's value at its own fork box, once; the leaf cascade prints the entry | open: a level's zero test spends Theta(R) cells per block of R values |
+| Collatz Multiverse | tree | finite cell placement | linear: folded tree, shortest names deepest, flat appends |
+| Container | finite lookup | the reversed table is one decimal literal divided by ten in a fixed two-bank network | linear: one T-digit literal in a fixed network |
+| Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, and a folded subtree targets the shared self-jump or the line past the end | linear: 3(T - 1) + 2n + 3 lines, span walk |
+| CV(N)(C) | tree | the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts | linear, time n log: greedy order scoring, capped at n <= 10 |
+| Decleq | tree | the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits | linear, time n log: essential_inputs |
+| Dig | tree | finite cell placement | linear: axis-swapping rectangle of area O(T), five cells per node |
+| Dimensional | tree | `decision_tree_program` with dimensional moves | linear: decision_tree_program with dimensional moves |
+| EGL | tree | — | linear, time n log: greedy order scoring, capped at n <= 10 |
+| Eval | linear lookup | fixed reversed stack order selects the indexed row | linear: T literal plus halving `;` runs under T |
+| Factor | tree | Brainfuck tree followed by a total prime encoding: Dirichlet supplies the next prime in each residue class mod 11, and the integer is arbitrary precision on both sides | lower bound: Theta(T) prime runs of Theta(log T) digits; language Omega(T log T / log log T) |
+| Fargo | tree | finite folded layout | linear, time n log: Moebius transform, n passes over 2**n |
+| Flowchart | finite lookup | a five-row deque preloads `2**n` answers and discards opposite halves | linear: 2T preload nodes and T arm cells on five rows |
+| Forbin | tree | — | linear, time n log: greedy order scoring, capped at n <= 10 |
+| Forþ | tree | — | linear: span walk, constant dispatch, step literals geometric |
+| Grapheme | tree | arbitrary integer variable keys remove the old 24 one-letter-key ceiling | linear, time n log: essential_inputs |
+| Home Row | parameterized tree | — | linear, time n log: essential_inputs |
+| Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: T literal, `.` halvings sum to 2T |
+| Interprogck8 | tree | routed by a shared `DownAccLines` corridor: a read's 48/49 selects dismount against flight by landing parity, stops are phase-separated by depth, and assembly is one pass with no repair loop; the residue pool is probed per arity and places every depth through forty inputs, an unreachable guard | open: a read at depth d is 3 + 2 floor(d / 14) lines, Theta(T n / 14) |
+| Jaune | finite lookup | a spatial table reached with two labels | linear: two cells per row, unary weights sum T - 1 |
+| LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T |
+| Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` | linear: mux lookup, constant strings times O(T) counts |
+| Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length | linear: cascade routes to two shared leaves, one-digit targets |
+| Modulous | tree | — | linear: span walk, fold digits geometric |
+| NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells | linear, time n log: essential_inputs |
+| 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
+| Packlang | tree | — | linear: folded tree, shortest names deepest, flat pieces |
+| Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
+| %^2^-1 | exception | one setter pair, the weight as doublings in the template; the fold's planners cover all tables through four inputs and tested tables through fourteen, but no all-arity proof is known | measured: point relocations, no invariant; x4.8 per input at n=13..14 |
+| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding | open: coefficient digits of the root-product multiple, no O(T) cofactor known |
+| Qoibl | tree | — | linear: span walk, O(1) node tests by halves |
+| RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup | linear: 16-17 tokens per row, unary runs 2T - 2 |
+| ROTfuck | tree | movement search stops after at most eight offsets | linear, time n log: essential_inputs |
+| S*bleq | finite lookup | packed chunks decoded after the hoisted read block | linear: T/n packed chunks of n bits, O(n) decoder |
+| 6-5 | finite lookup | past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks | linear, time n log: greedy order scoring, capped at n <= 10 |
+| SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit as a 256-multiple weight on array 16; one trampoline lands the indexed 256-token leaf | open: ballast loop, 296..878 chunks per build at n=6..12, no bound by inspection |
+| Sophie | tree | — | linear, time n log: shared-state build, n 2**n state characters |
+| Streetcode | tree | — | open: hall per level spans every leaf row, Theta(T log T); uncapped greedy Theta(T log**2 T) |
+| Suffolk | tree | — | linear, time n log: essential_inputs |
+| Super SNUSP | tree | each folding pass removes at least one pending unit | linear: one `*` per entry; ANF only below five inputs |
+| Taglate | tree | — | linear, time n log: essential_inputs |
+| 3D Brainfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
+| 3x | tree | — | linear, time n log: essential_inputs; greedy order scoring, capped |
+| Unsquare | tree | stack arrangement affects size only | linear: span walk, pricer sums geometrically |
+| Vandevelo | minterms | constant-one subtrees drop their suffix literals | linear: amortised peel; sqrt(log T) dual-basis core; proof fallback n 2^n |
+| WII2D | parameterized construction, cap | Horner's chain is total; the decode folds the extremal same-colour pair, whose midpoint is unique, so every fold is legal | open: a readout rule within a constant of the optima, none known |
 
 ## Exceptions and walls
 

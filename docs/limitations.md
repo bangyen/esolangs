@@ -119,17 +119,12 @@ entry, a second costs 6300-6600 at n=15, and the placer refuses a
 forty-first input, so the contract's x1.96 reads the first step's flatness
 and nothing past it.
 
-A survey on 2026-09-17 classified the 60 generators outside COD,
-Polynomial and WII2D's open cells by reading each construction, since the
-contract's measurement cannot see a `log T` factor in twelve doublings:
-24 proved O(T), 8 argued, 1 measured only (`%^2^-1`, whose relocations no
-invariant bounds), and 27 with a super-linear worst case -- 5 on size
-(Factor's language bound, Streetcode, and Decleq, Minsky Swap and
-Interprogck8 above) and 22 time-only, mostly `Theta(T log T)` from
-per-node table slices and per-level concatenation.  Worst-case classes
-come from reading the construction; the measurement is the regression
-guard.
+Every generator's worst-case class, read from its construction rather
+than measured, is the Scaling column of the [proofs ledger](proofs.md#generator-ledger),
+checked against the roadmap's audit by `tests/proofs/test_linearity.py`.
 
+The survey behind that column found 22 time-only super-linear terms, mostly
+`Theta(T log T)` from per-node table slices and per-level concatenation.
 Those 22 are now O(T) time by construction, every program byte-identical
 to before: each decision-tree generator walks `(lo, hi)` row spans with an
 O(1) constant test and appends into one flat piece list joined once, so
@@ -147,9 +142,11 @@ Moebius transform (`n` passes of `2**n`, the construction itself), and
 Sophie's shared-state build, whose states are the residual subtables as
 strings, `n 2**n` characters in all.  Generators that run
 `best_input_order` pay its `O(n**2 2**n)` scoring, capped at `n <= 10`.
-SLOW ACV MAMMALIAN is O(T) times its ballast iterations, about five per
-level; the dry raise inside that loop depends on the chunk-shifted state
-and cannot be hoisted without changing the program.
+SLOW ACV MAMMALIAN is O(T) text times its ballast iterations, which
+nothing bounds (296 to 878 chunks per build over n=6..12, each re-running
+an O(weight) dry raise); the raise depends on the chunk-shifted state and
+cannot be hoisted without changing the program, so its generation-time
+cell is open in the roadmap's audit.
 
 **Factor's folded tree is Theta(T log T) on parity; the language forces
 `Omega(T log T / log log T)` for some table under every encoding.**  The
