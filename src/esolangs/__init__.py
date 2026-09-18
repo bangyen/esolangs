@@ -58,25 +58,22 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import (
     LANGUAGES,
     RUNNERS,
-    _fills,
-    example_stems,
     parameterized_ids,
     recover_setters,
     render_template,
     resolve,
     template_body,
     template_char,
-    wiki_url,
 )
 from esolangs.tagged import _Tagged, _Template
+from esolangs.tools.wrap import takes_width as _takes_width
 
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width("LaserFuck")`` got False for
 # every language in the registry, contradicting both its own docstring and
 # ``describe(...)["width_aware"]`` -- which is the question they were asking.
-from esolangs.tools.wrap import WRAPPERS, wrap_program
-from esolangs.tools.wrap import takes_width as _takes_width
-from esolangs.vm import VM, machine_traits, make_vm
+from esolangs.tools.wrap import wrap_program
+from esolangs.vm import VM, make_vm
 
 
 #: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
