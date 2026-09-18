@@ -614,3 +614,464 @@ class TestWii2dRankerSweep:
             io = ScriptedIO()
             run_wii2d(_fill_wii2d(template, bits).splitlines(), io)
             assert io.getvalue() == table[combo], bits
+
+
+#: Six new draws -- ``random.Random(7/11/13)`` at D=16 and
+#: ``random.Random(107/111/113)`` at D=32; literals, RNG-independent.
+_WII2D_R7_RAND16: tuple[tuple[int, ...], ...] = (
+    (1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0),
+    (1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0),
+    (1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1),
+)
+_WII2D_R7_RAND32: tuple[tuple[int, ...], ...] = (
+    (
+        0,
+        1,
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1,
+    ),
+    (
+        0,
+        1,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+    ),
+    (
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+    ),
+)
+
+
+def _replay_ok(total: str, pattern: list[int]) -> bool:
+    """Return whether ``total`` decodes ``pattern`` cell by cell."""
+    return [_wii2d_apply(total, v) for v in range(len(pattern))] == pattern
+
+
+def _bits(row: str) -> tuple[int, ...]:
+    """Return the bit tuple for a ``"0101..."`` literal row."""
+    return tuple(int(char) for char in row)
+
+
+#: Six further draws -- ``random.Random(17/19/23)`` at D=16 and
+#: ``random.Random(117/119/123)`` at D=32; bit-string literals verified
+#: against persistent-RNG draws, RNG-independent as pinned.
+_WII2D_R7B_RAND: tuple[str, ...] = (
+    "1111010001111100",  # seed 17, D=16
+    "0001110101111011",  # seed 19, D=16
+    "1001111001100100",  # seed 23, D=16
+    "00001010111001100111100100111001",  # seed 117, D=32
+    "10100100110101110100101100001110",  # seed 119, D=32
+    "01011001110001100010100110000001",  # seed 123, D=32
+)
+
+#: First 64 draws of ``random.Random(117)``; extends seed 117 to D=64.
+_WII2D_R7_R64: str = "0000101011100110011110010011100100000111111110010110110110100111"
+
+#: First 72 draws of ``random.Random(117)``; extends seed 117 to D=72.
+_WII2D_R7_R72: str = (
+    "000010101110011001111001001110010000011111111001011011011010011110010110"
+)
+
+
+class TestWii2dR7PatternBroadening:
+    """No single loop-less step-1 scorer survives a broader witness set.
+
+    LFSR-8/16/32 plus twelve new random literals (D=16/32, seeds
+    7/11/13/17/19/23 and 107/111/113/117/119/123), shipped vs merge-cheap
+    vs ratio-cheap, every point apply-replayed, D<=32 decodes under 5ms
+    each: merge wins r16_s17 by 47 (67 vs 114) yet loses r32_s111 by 261
+    (439 vs 178); ratio wins r32_s117 by 208 (170 vs 378) yet loses r32_s123
+    by 321 (523 vs 202). Either scorer's best win exceeds 40% while its
+    worst loss exceeds 100%, so the volatility -- not a uniform miss -- is
+    the pin: the prefix gap needs the pair search itself, no step-1 rule.
+    D=24/40/48/56/64/72/80 spot-checks plus D=64/72 random draws (~15ms
+    each): both scorers double LFSR-24 (266 vs 131) and LFSR-48 (1093 vs
+    502) and more than double LFSR-80 (3817 vs 1545, the worst loss yet),
+    ratio alone loses LFSR-40 by 250 and LFSR-64 by 661, all three tie at
+    LFSR-56 (1547), yet both stay near shipped on the random draws
+    (991/877 vs 1091 at 64, 1202/1215 vs 1202 at 72).
+    Best-variant (merge-cheap) readouts run the full grid at n=5 (32/32
+    rows) and n=6 (64/64 rows).
+    """
+
+    @pytest.mark.parametrize(
+        ("pattern", "shipped", "merge", "merge_pick", "ratio", "ratio_pick"),
+        [
+            pytest.param(tuple(_lfsr(8)), 30, 29, (0, 2), 29, (0, 2), id="lfsr8"),
+            pytest.param(tuple(_lfsr(16)), 110, 110, (0, 2), 110, (0, 2), id="lfsr16"),
+            pytest.param(tuple(_lfsr(32)), 333, 333, (1, 57), 467, (0, 2), id="lfsr32"),
+            pytest.param(
+                _WII2D_R7_RAND16[0], 89, 85, (1, 23), 114, (0, 1), id="r16_s7"
+            ),
+            pytest.param(
+                _WII2D_R7_RAND16[1], 117, 80, (0, 11), 68, (0, 1), id="r16_s11"
+            ),
+            pytest.param(
+                _WII2D_R7_RAND16[2], 47, 127, (1, 27), 47, (1, 1), id="r16_s13"
+            ),
+            pytest.param(
+                _WII2D_R7_RAND32[0],
+                374,
+                374,
+                (1, 57),
+                276,
+                (0, 2),
+                id="r32_s107",
+            ),
+            pytest.param(
+                _WII2D_R7_RAND32[1],
+                178,
+                439,
+                (0, 26),
+                178,
+                (0, 3),
+                id="r32_s111",
+            ),
+            pytest.param(
+                _WII2D_R7_RAND32[2],
+                334,
+                334,
+                (1, 7),
+                416,
+                (0, 1),
+                id="r32_s113",
+            ),
+            pytest.param(
+                _bits(_WII2D_R7B_RAND[0]),
+                114,
+                67,
+                (0, 11),
+                68,
+                (0, 1),
+                id="r16_s17",
+            ),
+            pytest.param(
+                _bits(_WII2D_R7B_RAND[1]),
+                92,
+                69,
+                (0, 13),
+                80,
+                (0, 1),
+                id="r16_s19",
+            ),
+            pytest.param(
+                _bits(_WII2D_R7B_RAND[2]),
+                52,
+                52,
+                (1, 9),
+                52,
+                (1, 9),
+                id="r16_s23",
+            ),
+            pytest.param(
+                _bits(_WII2D_R7B_RAND[3]),
+                378,
+                217,
+                (0, 27),
+                170,
+                (0, 1),
+                id="r32_s117",
+            ),
+            pytest.param(
+                _bits(_WII2D_R7B_RAND[4]),
+                284,
+                284,
+                (0, 29),
+                512,
+                (0, 1),
+                id="r32_s119",
+            ),
+            pytest.param(
+                _bits(_WII2D_R7B_RAND[5]),
+                202,
+                202,
+                (1, 55),
+                523,
+                (0, 1),
+                id="r32_s123",
+            ),
+        ],
+    )
+    def test_three_way_lengths_and_picks(
+        self,
+        pattern: tuple[int, ...],
+        shipped: int,
+        merge: int,
+        merge_pick: tuple[int, int],
+        ratio: int,
+        ratio_pick: tuple[int, int],
+    ) -> None:
+        bits = list(pattern)
+        decoded = _wii2d_decode(bits)
+        assert decoded is not None
+        assert _replay_ok(decoded, bits)
+        assert len(decoded) == shipped
+        merge_choice, merge_total = _ranker_decode(bits, "merge", "cheap")
+        assert _replay_ok(merge_total, bits)
+        assert (merge_choice, len(merge_total)) == (merge_pick, merge)
+        ratio_choice, ratio_total = _ranker_decode(bits, "ratio", "cheap")
+        assert _replay_ok(ratio_total, bits)
+        assert (ratio_choice, len(ratio_total)) == (ratio_pick, ratio)
+
+    def test_no_scorer_dominates_either_direction(self) -> None:
+        won, lost = _bits(_WII2D_R7B_RAND[0]), _WII2D_R7_RAND32[1]
+        shipped_won = _wii2d_decode(list(won))
+        assert shipped_won is not None
+        assert len(shipped_won) == 114
+        _pick, merge_won = _ranker_decode(list(won), "merge", "cheap")
+        assert _replay_ok(merge_won, list(won))
+        assert len(merge_won) == 67
+        shipped_lost = _wii2d_decode(list(lost))
+        assert shipped_lost is not None
+        assert len(shipped_lost) == 178
+        _pick, merge_lost = _ranker_decode(list(lost), "merge", "cheap")
+        assert _replay_ok(merge_lost, list(lost))
+        assert len(merge_lost) == 439
+        assert len(shipped_won) - len(merge_won) >= 40  # wins by 47 ...
+        assert len(merge_lost) - len(shipped_lost) >= 200  # ... loses by 261
+
+    def test_the_ratio_scorer_mirrors_the_volatility(self) -> None:
+        won, lost = _bits(_WII2D_R7B_RAND[3]), _bits(_WII2D_R7B_RAND[5])
+        shipped_won = _wii2d_decode(list(won))
+        assert shipped_won is not None
+        assert len(shipped_won) == 378
+        _pick, ratio_won = _ranker_decode(list(won), "ratio", "cheap")
+        assert _replay_ok(ratio_won, list(won))
+        assert len(ratio_won) == 170
+        shipped_lost = _wii2d_decode(list(lost))
+        assert shipped_lost is not None
+        assert len(shipped_lost) == 202
+        _pick, ratio_lost = _ranker_decode(list(lost), "ratio", "cheap")
+        assert _replay_ok(ratio_lost, list(lost))
+        assert len(ratio_lost) == 523
+        assert len(shipped_won) - len(ratio_won) >= 150  # wins by 208 ...
+        assert len(ratio_lost) - len(shipped_lost) >= 300  # ... loses by 321
+
+    def test_the_ranking_stays_loop_less_on_new_witnesses(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.wii2d")
+
+        def refuse(*_args: object) -> object:
+            raise AssertionError("tail simulation in a loop-less scorer")
+
+        monkeypatch.setattr(module, "_wii2d_folds", refuse)
+        monkeypatch.setattr(module, "_wii2d_depth", refuse)
+        for pattern, merge_pick, ratio_pick in (
+            (_WII2D_R7_RAND16[1], (0, 11), (0, 1)),
+            (_WII2D_R7_RAND32[0], (1, 57), (0, 2)),
+        ):
+            bits = list(pattern)
+            values, _ops = _wii2d_compress(list(range(len(bits))), bits, "")
+            folds = _ranker_folds(values, bits)
+            assert _ranker_pick(folds, "merge", "cheap")[:2] == merge_pick
+            assert _ranker_pick(folds, "ratio", "cheap")[:2] == ratio_pick
+
+    @pytest.mark.medium
+    @pytest.mark.parametrize(
+        ("pattern", "shipped", "merge", "merge_pick", "ratio", "ratio_pick"),
+        [
+            pytest.param(tuple(_lfsr(24)), 131, 266, (0, 2), 266, (0, 2), id="lfsr24"),
+            pytest.param(tuple(_lfsr(40)), 471, 471, (0, 36), 721, (0, 2), id="lfsr40"),
+            pytest.param(
+                tuple(_lfsr(48)), 502, 1093, (0, 2), 1093, (0, 2), id="lfsr48"
+            ),
+            pytest.param(
+                tuple(_lfsr(64)),
+                1127,
+                1127,
+                (1, 119),
+                1788,
+                (0, 2),
+                id="lfsr64",
+            ),
+            pytest.param(
+                tuple(_lfsr(56)),
+                1547,
+                1547,
+                (0, 2),
+                1547,
+                (0, 2),
+                id="lfsr56",
+            ),
+            pytest.param(
+                tuple(_lfsr(72)),
+                1606,
+                2277,
+                (0, 2),
+                2277,
+                (0, 2),
+                id="lfsr72",
+            ),
+            pytest.param(
+                tuple(_lfsr(80)),
+                1545,
+                3817,
+                (0, 2),
+                3817,
+                (0, 2),
+                id="lfsr80",
+            ),
+            pytest.param(
+                _bits(_WII2D_R7_R64),
+                1091,
+                991,
+                (1, 105),
+                877,
+                (0, 1),
+                id="r64_s117",
+            ),
+            pytest.param(
+                _bits(_WII2D_R7_R72),
+                1202,
+                1202,
+                (1, 125),
+                1215,
+                (0, 1),
+                id="r72_s117",
+            ),
+        ],
+    )
+    def test_scale_spot_check(
+        self,
+        pattern: tuple[int, ...],
+        shipped: int,
+        merge: int,
+        merge_pick: tuple[int, int],
+        ratio: int,
+        ratio_pick: tuple[int, int],
+    ) -> None:
+        import time
+
+        bits = list(pattern)
+        start = time.perf_counter()
+        decoded = _wii2d_decode(bits)
+        shipped_ms = (time.perf_counter() - start) * 1000
+        assert decoded is not None
+        assert _replay_ok(decoded, bits)
+        assert len(decoded) == shipped
+        start = time.perf_counter()
+        merge_choice, merge_total = _ranker_decode(bits, "merge", "cheap")
+        merge_ms = (time.perf_counter() - start) * 1000
+        assert _replay_ok(merge_total, bits)
+        assert (merge_choice, len(merge_total)) == (merge_pick, merge)
+        start = time.perf_counter()
+        ratio_choice, ratio_total = _ranker_decode(bits, "ratio", "cheap")
+        ratio_ms = (time.perf_counter() - start) * 1000
+        assert _replay_ok(ratio_total, bits)
+        assert (ratio_choice, len(ratio_total)) == (ratio_pick, ratio)
+        assert max(shipped_ms, merge_ms, ratio_ms) < 600_000  # 10-min cap
+
+    @pytest.mark.medium
+    def test_best_variant_runs_n5_and_n6(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.wii2d import _wii2d_layout
+        from tests.tools.fills import _fill_wii2d
+
+        for width, domain, rows in ((5, 16, 32), (6, 32, 64)):
+            pattern = _lfsr(domain)
+            shipped = _wii2d_decode(pattern)
+            assert shipped is not None
+            _pick, ranked = _ranker_decode(pattern, "merge", "cheap")
+            for ops in (shipped, ranked):  # shipped first, as positive control
+                assert _replay_ok(ops, pattern)
+                routes = [("*", "*+")] * (width - 1) + [(ops, ops)]
+                template = "\n".join(_wii2d_layout(width, 0, routes))
+                table = "".join(str(bit) * 2 for bit in pattern)
+                for combo in range(rows):
+                    combo_bits = [
+                        (combo >> (width - 1 - index)) & 1 for index in range(width)
+                    ]
+                    io = ScriptedIO()
+                    run_wii2d(_fill_wii2d(template, combo_bits).splitlines(), io)
+                    assert io.getvalue() == table[combo], (width, ops, combo_bits)
