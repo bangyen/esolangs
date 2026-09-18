@@ -765,6 +765,59 @@ class TestPctFoldPlan:
             assert io.getvalue() == table[row], row
         assert len(widths) == 1, widths
 
+    @pytest.mark.slow  # ~10s: 450k rule moves before the stall is evident
+    def test_compacting_straight_to_the_fourteen_input_classes_stalls(self) -> None:
+        """The clean two-stage build (ladder, then compact to 256, then a
+        tiny tail ladder) is not reachable: the compaction step alone
+        cannot finish.
+
+        Laying the eleven-input packed ladder and grouping by the
+        remaining three inputs' cofactor gives 2048 points in exactly 256
+        classes -- the same numbers :func:`_interleaved_final_pair`'s
+        docstring reports.  Feeding that state straight to
+        :func:`_fold_reduce` (the same conveyor :func:`_staged_fold` uses
+        per lay, unbounded here) merges down to 260 points in 413,978
+        moves and 33.4M relocations, then cycles for the rest of a
+        450,000-move budget -- almost entirely ``d`` (bottom) wipes with
+        an occasional ``m`` doubling to regrow the window, no ``u`` wipe
+        and no merge -- and returns ``None``.  The failing move is
+        :meth:`_FoldLedger.rule_move`'s case 2 (dive onto the nearest
+        same-class wiped point): for the four stranded pairs, no landing
+        in ``[ref + _LIMIT + 1, ref + _LIMIT + q1]`` ever coincides with
+        the partner's position, at any window the doublings reach --
+        "case 2's window only ever serves its own class" (comment above
+        :data:`_FOLD_STEP_SLOPE`).  This is why :func:`_staged_fold` lays
+        the twelfth through fourteenth inputs incrementally instead of
+        compacting once up front.
+        """
+        from esolangs.tools import pct_fold as module
+        from esolangs.tools.pct_fold_plan import (
+            _cofactor_done,
+            _fold_norm,
+            _fold_reduce,
+        )
+        from tests.tools.test_boolean_contract import _dense
+
+        n, prefix = 14, 11
+        table = _dense(n)
+        weights = module._fold_subset_weights(prefix)  # noqa: SLF001
+        positions = module._fold_positions(prefix, weights)  # noqa: SLF001
+        block = 2 ** (n - prefix)
+        state = _fold_norm(
+            [
+                (
+                    positions[row],
+                    0,
+                    table[row * block : (row + 1) * block],
+                    frozenset(range(row * block, (row + 1) * block)),
+                )
+                for row in range(2**prefix)
+            ]
+        )
+        assert len(state) == 2048
+        assert len({c for _, _, c, _ in state}) == 256
+        assert _fold_reduce(state, _cofactor_done, budget=450_000) is None
+
     @pytest.mark.slow  # ~1s: the stall guard on 2048 unmergeable points
     def test_the_dense_fifteen_input_fixture_is_refused_by_name(self) -> None:
         """Fifteen inputs: the eleven-input cut does not compact, so refuse.
