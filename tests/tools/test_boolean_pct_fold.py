@@ -287,6 +287,36 @@ class TestPctFoldMoves:
         )
         assert len(list(self.module()._fold_moves(state, kcap=3))) == 1  # noqa: SLF001
 
+    def test_only_end_segments_are_wipeable(self) -> None:
+        """Ends-only is language law, not a planner restriction.
+
+        Shifts and doublings move every point together, so only the
+        reset-wipe moves points relative to each other -- and its victims
+        are exactly the points past the reset line, a bottom/top segment
+        at every shift.  A middle group cannot be wiped alone: the groups
+        below it are dragged along and the landing refuses mixed classes.
+        """
+        tops = [0, -4, -8]
+        asc = sorted(tops)
+        for shift in (0, 1, 2995, 2996, 2999, 3000, 3003, 3004, 5000):
+            below = {t for t in tops if t - shift < -3003}
+            assert below == set(asc[: len(below)])
+        alternating = (
+            (0, 0, "a", frozenset({0})),
+            (-4, 0, "b", frozenset({1})),
+            (-8, 0, "a", frozenset({2})),
+        )
+        for kind, _k, _c, vids, _nb in self.module()._fold_moves(alternating):  # noqa: SLF001
+            if kind == "m":
+                continue
+            assert vids in (frozenset({0}), frozenset({2})), vids
+        from esolangs.tools.pct_fold import _FoldEmitter
+
+        emitter = _FoldEmitter.__new__(_FoldEmitter)
+        emitter.load({0: (0, "a"), 1: (-4, "b"), 2: (-8, "a")})
+        with pytest.raises(AssertionError):
+            emitter.dive(3004, frozenset({1, 2}))
+
     def test_a_relocation_that_would_overflow_the_span_is_skipped(self) -> None:
         """Every wipe caps the spread, so a move that widens it is refused.
 
