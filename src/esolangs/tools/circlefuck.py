@@ -60,8 +60,8 @@ _CIRCLEFUCK_PASSES = 8
 def _essential_byte_inputs(truth_table: Sequence[int], n: int) -> list[int]:
     """Return the inputs the byte table depends on, ascending.
 
-    One comparison per pair of sibling blocks, ``2**n`` steps in all; the
-    bytes compared are ``n * 2**n / 2``, O(T) at word width.
+    One C-level slice compare per pair of sibling blocks, ``2**n`` steps in
+    all; the bytes compared are ``n * 2**n / 2``, intrinsic to the check.
     """
     packed = bytes(truth_table)
     width = len(packed)

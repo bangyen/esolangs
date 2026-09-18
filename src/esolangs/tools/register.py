@@ -32,6 +32,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _cm_constants,
     _validate_truth_table,
+    constant_span_test,
     essential_inputs,
 )
 from esolangs.tools.polynomial import (
@@ -362,14 +363,19 @@ def sophie_labels(retained: list[list[str]]) -> list[dict[str, int]]:
 
 
 def _sophie_hybrid(truth_table: str) -> str:
-    """Emit a Sophie tree that labels only shared residual states."""
+    """Emit a Sophie tree that labels only shared residual states.
+
+    The states are the residual subtables as strings, ``n * 2**n``
+    characters over all levels, and every test here is one C-level pass
+    over a state: Theta(T log T), intrinsic to naming the shared states.
+    """
     n = _validate_truth_table(truth_table)
     levels = _polynomial_states(truth_table, n)
     references: list[dict[str, int]] = [{} for _ in levels]
     for k in range(n - 1):
         width = 2 ** (n - k - 1)
         for state in levels[k]:
-            if len(set(state)) == 1:
+            if state.count(state[0]) == len(state):
                 continue
             for child in {state[:width], state[width:]}:
                 references[k + 1][child] = references[k + 1].get(child, 0) + 1
@@ -378,14 +384,15 @@ def _sophie_hybrid(truth_table: str) -> str:
         [
             state
             for state in states
-            if k == 0 or (len(set(state)) > 1 and references[k].get(state, 0) > 1)
+            if k == 0
+            or (state.count(state[0]) < len(state) and references[k].get(state, 0) > 1)
         ]
         for k, states in enumerate(levels)
     ]
     labels = sophie_labels(retained)
 
     def body(k: int, state: str) -> str:
-        if len(set(state)) == 1:
+        if state.count(state[0]) == len(state):
             return ";" * (n - k) + f"#${_ASCII_ZERO + int(state[0])},&"
         width = 2 ** (n - k - 1)
         zero, one = state[:width], state[width:]
@@ -446,16 +453,32 @@ def qoibl(truth_table: str) -> str:
         )
 
     root = 4 * n
+    constant = constant_span_test(truth_table)
+    # ``names[w][i]`` names the ``i``-th span of ``2**w`` rows, two spans
+    # sharing a name exactly when they are equal (a span's name is the
+    # interned pair of its halves'), so the equal-halves test that skips a
+    # level is O(1) and the tree is O(2**n) rather than a slice compare a node.
+    names = [[int(bit) for bit in truth_table]]
+    for _ in range(n):
+        interned: dict[tuple[int, int], int] = {}
+        below = names[-1]
+        names.append(
+            [
+                interned.setdefault((below[i], below[i + 1]), len(interned))
+                for i in range(0, len(below), 2)
+            ]
+        )
 
     def assign(destination: int, expression: str) -> None:
         lines.append(f"we {_qoibl_enc(destination)} we {expression} we")
 
     def node(level: int, lo: int, hi: int, destination: int) -> None:
-        if len(set(truth_table[lo:hi])) == 1:
+        if constant(lo, hi):
             assign(destination, _qoibl_enc(int(truth_table[lo])))
             return
         mid = (lo + hi) // 2
-        if truth_table[lo:mid] == truth_table[mid:hi]:
+        halves = names[n - level - 1]
+        if halves[lo // (mid - lo)] == halves[mid // (mid - lo)]:
             node(level + 1, lo, mid, destination)
             return
         raw, complement, low, high = registers(level)
