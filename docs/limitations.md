@@ -308,7 +308,13 @@ over L=3..7, `Theta(L^2 log L)` exactly), so no O(T)-digit multiple
 exists at those sizes and the target of the elimination is the truth;
 over real monic cofactors the minimum is the product's mass less one
 digit (L=3..6), so the linear-programming route is sound and the bound
-is not an integrality fact.  Root-set term bounds (Descartes on either
+is not an integrality fact.  The whole bound now rests on one measured
+lemma about pure exponential sums (a `c`-root certificate with `c-1`
+prescribed zeros, the first `f` leading, has tail at most `1/prod(rho-1)`
+over the `f+1` largest roots; exhaustive to distance 7, random to 30, five
+root sets): with it every program is `Omega(T^2/log T)` with constant
+1/4, the `c >= 3` truncation question disappears, and Desnanot--Jacobi
+is recorded as not lifting `c=2`.  Root-set term bounds (Descartes on either
 ray, sector and unit-circle fewnomial bounds, cyclic-code weight
 bounds, Tao's uncertainty principle) do not apply: the forced roots are
 prime powers and `a +- p^b i`, on no ray, circle or root-of-unity set,

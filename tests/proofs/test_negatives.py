@@ -21,6 +21,7 @@ a claim worth relying on belongs somewhere that runs.
 
 from __future__ import annotations
 
+import itertools
 import math
 from fractions import Fraction
 from typing import ClassVar
@@ -830,3 +831,76 @@ class TestThreeRootHypothesisAtTheBoundary:
                         if n - d >= c2 and left == psi * right:
                             interior_equalities += 1
         assert (interior_equalities > 0) == (small == ())
+
+
+def _certificate_tail(
+    rho: tuple[int, ...], zeros: tuple[int, ...], horizon: int = 100
+) -> Fraction:
+    """``u_d = sum a_i rho_i^-d`` with ``u_0 = 1`` and ``u_z = 0`` on ``zeros``
+    (``len(zeros) == len(rho) - 1``); returns an upper bound on
+    ``sum_{d >= 1, d not in zeros} |u_d|`` (exact to ``horizon``, geometric
+    remainder beyond)."""
+    rows = [[Fraction(1)] * len(rho)] + [
+        [Fraction(1, r) ** z for r in rho] for z in zeros
+    ]
+    sol = sp.Matrix(rows).LUsolve(sp.Matrix([1] + [0] * len(zeros)))
+    a = [Fraction(int(x.p), int(x.q)) for x in sol]
+    total = sum(
+        abs(sum(ai * Fraction(1, r) ** d for ai, r in zip(a, rho, strict=True)))
+        for d in range(1, horizon + 1)
+        if d not in zeros
+    )
+    # Past the last prescribed zero the sum is one-signed (a c-term
+    # exponential sum has no other zeros), so the remainder is exact.
+    assert horizon > max(zeros)
+    remainder = abs(
+        sum(
+            ai * Fraction(1, r) ** (horizon + 1) / (1 - Fraction(1, r))
+            for ai, r in zip(a, rho, strict=True)
+        )
+    )
+    return total + remainder
+
+
+class TestEachLeadingZeroBuysOneRoot:
+    """``docs/polynomial.md`` ("The slack certificate"): for the pure
+    exponential sum on ``c`` roots with ``c - 1`` prescribed zeros, of which
+    the first ``f`` are at distances ``1..f``, the tail is at most
+    ``1 / prod (rho - 1)`` over the ``f + 1`` largest roots, with equality
+    when every zero is a leading one.  The one lemma the language bound
+    still needs; measured here, exhaustively on small zero sets."""
+
+    @pytest.mark.parametrize("rho", [(5, 7, 11), (3, 5, 7, 11), (7, 11, 13, 17)])
+    def test_measured(self, rho: tuple[int, ...]) -> None:
+        c = len(rho)
+        largest_first = sorted(rho, reverse=True)
+        equalities = 0
+        for zeros in itertools.combinations(range(1, 9), c - 1):
+            lead = 0
+            while lead + 1 in zeros:
+                lead += 1
+            bound = Fraction(1, math.prod(r - 1 for r in largest_first[: lead + 1]))
+            tail = _certificate_tail(rho, zeros)
+            assert tail <= bound, zeros
+            equalities += tail == bound
+        assert equalities == 1  # only the all-leading set
+
+    @pytest.mark.parametrize(
+        ("count", "free"), [(6, 1), (6, 2), (7, 2), (7, 3), (8, 3)]
+    )
+    def test_free_positions_anywhere_reach_the_slack_threshold(
+        self, count: int, free: int
+    ) -> None:
+        # Free set U of size u anywhere under the top: the certificate on the
+        # L - u largest roots with zeros at U plus the first L - 2u - 1 free
+        # distances is top-heavy at prod_{i > 2u} (p_i - 1) or better.
+        primes = (2, 3, 5, 7, 11, 13, 17, 19)[:count]
+        rho = primes[free:]
+        target = math.prod(p - 1 for p in primes[2 * free :])
+        for free_set in itertools.combinations(range(1, 8), free):
+            zeros = set(free_set)
+            d = 1
+            while len(zeros) < len(rho) - 1:
+                zeros.add(d) if d not in zeros else None
+                d += 1
+            assert 1 / _certificate_tail(rho, tuple(sorted(zeros))) >= target, free_set
