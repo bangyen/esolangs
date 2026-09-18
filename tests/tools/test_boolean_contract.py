@@ -1072,7 +1072,10 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
 
 
 # The roadmap's original scaling queue.  A row leaves ``_OPEN_SCALING`` only
-# after an O(T) construction or a language-wide lower bound.
+# after an O(T) construction or a language-wide lower bound; it enters when
+# the construction is read super-linear, whatever the twelve doublings
+# measure (Streetcode's per-level hall and Interprogck8's depth-widening
+# read are both ``Theta(T log T)`` at x2.07 and x1.96 measured).
 _LINEAR_SCALING = {
     "a_painter_ant",
     "addsubjump",
@@ -1087,7 +1090,6 @@ _LINEAR_SCALING = {
     "forth",
     "flowchart",
     "inject",
-    "interprogck8",
     "jaune",
     "laserfuck",
     "minifuck",
@@ -1095,13 +1097,14 @@ _LINEAR_SCALING = {
     "ram0",
     "sbleq",
     "slow_acv_mammalian",
-    "streetcode",
     "vandevelo",
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
     "cod",
+    "interprogck8",
     "polynomial",
+    "streetcode",
     "wii2d",
 }
 
@@ -1153,12 +1156,7 @@ def test_converted_generators_scale_linearly(name: str) -> None:
     fn = getattr(boolean, name)
     # The grid H-layouts have different odd/even finite-size constants; their
     # all-arity area bounds are checked with their construction invariants.
-    if name == "circuit_diagram":
-        arities = (8, 9)
-    elif name == "streetcode":
-        arities = (9, 10)
-    else:
-        arities = (11, 12)
+    arities = (8, 9) if name == "circuit_diagram" else (11, 12)
     sizes = [len(fn(_parity(n))) for n in arities]
     if name == "minifuck":
         assert all(size <= 70 * 2**n for size, n in zip(sizes, arities, strict=True))

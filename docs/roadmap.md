@@ -60,17 +60,21 @@ The candidate list is empty.
   | %^2^-1 | Exception | Linear | Linear | Linear |
   | COD | Total | Open | Open | Open |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
+  | Interprogck8 | Total | Open | Open | Linear |
   | Polynomial | Cap | Open | Open | Linear |
+  | Streetcode | Total | Open | Open | Linear |
   | WII2D | Cap | Open | Open | Linear |
 
   Generation time, growth per added input at the top arity: Polynomial
   x3.4 dense (1.1 s at n=9), WII2D x4.8 dense (1.1 s at n=9), Factor x2.7
-  (1.2 s at n=11).  B-tapemark, Streetcode, 6-5, Forth, Circuit Diagram
-  past its n=8 route change, and Vandevelo (x2.0 dense over n=11..15,
-  0.31 s at n=12, a peel that keeps its working sets across cubes) read
-  x2.0--2.2, between the size contract's x2.15 and what these arities
-  separate from noise; they are held linear until a wider measurement
-  says otherwise.
+  (1.2 s at n=11).  B-tapemark, 6-5, Forth, Circuit Diagram past its n=8
+  route change, and Vandevelo (x2.0 dense over n=11..15, 0.31 s at n=12,
+  a peel that keeps its working sets across cubes) read x2.0--2.2,
+  between the size contract's x2.15 and what these arities separate from
+  noise; they are held linear until a wider measurement says otherwise.
+  Streetcode and Interprogck8 read x2.07 and x1.96 the same way and are
+  not held linear: their constructions carry a `log T` the twelve
+  doublings cannot see, so their rows are open on what the code says.
 
   Each open row's question, with the searched negatives in
   [limitations](limitations.md#searched-negatives):
@@ -84,6 +88,16 @@ The candidate list is empty.
     compatible with O(T) -- i.e. a left-half-plane cofactor with a sparse
     small remainder; one-large-coefficient and dense-remainder profiles
     are executed negatives ([polynomial](polynomial.md)).
+  - Streetcode, size and time: each level's hall spans every row of both
+    subtrees, so the ~4T leaf rows are `Theta(n)` wide (220, 235, 244
+    characters per row at n=8, 10, 12) -- `Theta(T log T)`, and the
+    uncapped greedy order `Theta(T log**2 T)`; the escape is a packed
+    positional layout like AddSubJump's, priced and unbuilt.
+  - Interprogck8, size and time: a read at depth `d` is `3 + 2 floor(d /
+    14)` lines, `Theta(T n / 14)` in steps of fourteen inputs (805--887
+    characters per entry to n=14, 6300--6600 at n=15, refused past 40);
+    a constant-width read gadget exists at ~8x per node at every arity,
+    priced and not taken.
   - WII2D, three cells: a rule emitting readouts within a constant of the
     exact optima (1.4--2.4 characters per entry to domain 14); no one-step
     or bounded-beam rule over small centres is one, and the optima's
