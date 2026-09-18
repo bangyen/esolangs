@@ -411,6 +411,40 @@ the statement the iteration must deliver, and it is what (a) has to be
 proved as.  Pinned: the minima at `(L, D) = (3, 8), (4, 6), (5, 7), (6,
 8), (7, 9)` and the count to `L = 12`.
 
+**Real against integer: the bound does not live in integrality**
+(executed).  The certificates and the two-root theorem are over real
+cofactors; the program is integer.  Minimising the same digit mass over
+*real* monic cofactors, a coefficient below 1 costing nothing (z3 over
+the rationals, bisection): the product's mass less exactly one digit --
+6 against 7 (`L = 3`, `D <= 10`), 11 against 12 (`L = 4`, `D <= 10`), 17
+against 18 (`L = 5`, `D <= 11`), 24 against 25 (`L = 6`, `D <= 10`) --
+the one digit being what the free sub-unit tail buys; the real
+minimisers keep the product's shape with one coefficient traded.  So
+the real relaxation is as heavy as the integer object up to a constant,
+the linear-programming route can in principle deliver `Omega(L**2 log
+L)`, and a proof does not need to pass through residues.  Pinned at
+`(L, D) = (3, 5), (4, 6), (5, 7)`.
+
+*The `p`-adic residue chain is residues only.*  `F(p_i) = 0` read
+`p_i`-adically: the lowest nonzero coefficient is a multiple of the
+primorial, and every later one is forced modulo `prod p_i` by the ones
+below it (`f_{m+j+1} = -carry_j^{(i)} mod p_i`, all `i` at once by CRT), so
+each coefficient is either the least residue of a determined value or
+at least `prod p_i / 2`.  The count statements this suggests hold on
+everything measured: at least `u + 1` coefficients below the top reach
+`prod_{i>u} (p_i - 1)` (weak) and even `prod_{i>u} p_i / 2` (strong), on
+20,000 random integer multiples per `L = 4..7` (cofactor degree to 8,
+entries to 3; and to degree 12, entries to 50 at `L = 6`) and on every
+adversarial minimiser of the earlier rounds -- the strong count is
+exactly `u + 1` at `u = 0` on the tail-height minimisers and at `u = 1`
+on the `L = 4` sparse-remainder one, so it is the sharp form.  What the
+chain cannot do alone is force a *magnitude*: a least residue may be
+small, and the tail-height floor (`0.36` of the primorial, above the
+chain's `1/4`) is a magnitude fact that the real relaxation already
+carries.  The proof of the count form therefore belongs to the linear
+program, with residues at most as a bookkeeping device; the chain is
+recorded so it is not rebuilt.
+
 *Gap (a) is not a principal-representation theorem.*  The primal is
 `min_B` over `f_D = 1`, `|f_m| <= B` off `U`, `f_U` free, `sum_m f_m v_m
 = 0` with `v_m = (p_i**m)_i`: the gauge of `v_D` modulo `span(v_U)` in

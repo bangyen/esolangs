@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import math
 from fractions import Fraction
+from typing import ClassVar
 
 import pytest
 import sympy as sp
@@ -655,3 +656,138 @@ class TestNoMultipleIsLighterThanTheProduct:
             for u in range(count - 1):
                 threshold = math.prod(p - 1 for p in roots[u:])
                 assert sum(1 for c in below if c >= threshold) >= u + 1, (count, u)
+
+
+def _lighter_real_multiple_exists(
+    roots: tuple[int, ...], degree: int, budget: int
+) -> bool:
+    """Real relaxation: monic real cofactor, a coefficient below 1 costs nothing,
+    ``digits(f) = #{j >= 0 : |f| >= 10^j}``; is the digit sum at most ``budget``?"""
+    p = _product(roots)
+    low = len(p) - 1
+    solver = z3.Solver()
+    solver.set("timeout", 60_000)
+    m = [z3.Real(f"m{j}") for j in range(degree - low + 1)]
+    solver.add(m[-1] == 1)
+    cost = 0
+    for k in range(degree + 1):
+        fk = sum(p[i] * m[k - i] for i in range(low + 1) if 0 <= k - i <= degree - low)
+        bits = [z3.Bool(f"b{k}_{j}") for j in range(budget + 1)]
+        for j, b in enumerate(bits):
+            solver.add(z3.Or(b, z3.And(fk < 10**j, fk > -(10**j))))
+            if j:
+                solver.add(z3.Implies(b, bits[j - 1]))
+        solver.add(z3.Not(bits[budget]))
+        cost = cost + sum(z3.If(b, 1, 0) for b in bits)
+    solver.add(cost <= budget)
+    verdict = solver.check()
+    assert verdict != z3.unknown
+    return verdict == z3.sat
+
+
+class TestTheRealRelaxationIsAsHeavy:
+    """``docs/polynomial.md`` ("Real against integer"): over real monic
+    cofactors the least digit mass is the product's own less one -- the one
+    digit that free sub-unit coefficients buy -- so the linear-programming
+    route is sound and integrality is not where the bound lives."""
+
+    @pytest.mark.parametrize(
+        ("roots", "degree"), [((2, 3, 5), 5), ((2, 3, 5, 7), 6), ((2, 3, 5, 7, 11), 7)]
+    )
+    def test_one_digit_under_the_product(
+        self, roots: tuple[int, ...], degree: int
+    ) -> None:
+        dense = _digit_mass(_product(roots))
+        assert not _lighter_real_multiple_exists(roots, degree, dense - 2)
+        assert _lighter_real_multiple_exists(roots, degree, dense - 1)
+
+
+class TestCountStatementsOnAdversarialWitnesses:
+    """The count form of gap (a) on the z3 minimisers of earlier rounds (each
+    an exact multiple, re-verified here): at least ``u + 1`` coefficients
+    below the top reach ``prod_{i>u} (p_i - 1)`` (weak) and even
+    ``prod_{i>u} p_i / 2`` (strong), the strong count exactly ``u + 1`` at
+    ``u = 0`` on the tail-height minimisers."""
+
+    WITNESSES: ClassVar = [
+        ((2, 3, 5), [-60, 2, 12, 13, -8, 1, 0, 0, 0]),
+        ((2, 3, 5, 7), [-3360, -38, -73, -42, 2, 78, 80, 36, -56, 14, -1]),
+        (
+            (2, 3, 5, 7, 11),
+            [-34650, 15, 593, -677, 92, 855, 802, 316, -652, 210, -25, 1],
+        ),
+        (
+            (2, 3, 5, 7),
+            [
+                -12885390,
+                6507873,
+                -49,
+                -12,
+                -17,
+                -30,
+                -21,
+                -36,
+                -42,
+                -15,
+                -32,
+                -23,
+                -24,
+                11,
+                -1,
+            ],
+        ),
+        (
+            (2, 3, 5, 7, 11),
+            [
+                3161833290,
+                -2646414393,
+                532793472,
+                55,
+                67,
+                -52,
+                63,
+                64,
+                -54,
+                -1,
+                54,
+                -27,
+                -75,
+                18,
+                -1,
+            ],
+        ),
+        (
+            (2, 3, 5, 7, 11, 13),
+            [
+                -12348183267420,
+                12824797280984,
+                -4170337811545,
+                422492795974,
+                112,
+                117,
+                -93,
+                89,
+                -81,
+                12,
+                -50,
+                -77,
+                -140,
+                -3,
+                -142,
+                24,
+                -1,
+            ],
+        ),
+    ]
+
+    @pytest.mark.parametrize(("roots", "coeffs"), WITNESSES)
+    def test_counts(self, roots: tuple[int, ...], coeffs: list[int]) -> None:
+        for r in roots:
+            assert sum(c * r**k for k, c in enumerate(coeffs)) == 0
+        top = max(k for k, c in enumerate(coeffs) if c)
+        below = [abs(c) for c in coeffs[:top]]
+        for u in range(len(roots)):
+            weak = math.prod(p - 1 for p in roots[u:])
+            strong = math.prod(roots[u:])
+            assert sum(1 for c in below if c >= weak) >= u + 1, ("weak", u)
+            assert sum(1 for c in below if 2 * c >= strong) >= u + 1, ("strong", u)
