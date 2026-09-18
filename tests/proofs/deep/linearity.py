@@ -191,6 +191,12 @@ def exempt_generators() -> dict[str, str]:
     construction runs into a resource ceiling (``cap``) or has no totality
     argument at all (``exception``).  Closing a row in either document is a
     one-line edit that immediately arms this contract against that generator.
+
+    Not read from the ledger's Scaling column: that column opens a row on
+    *time* as well as size (SLOW ACV MAMMALIAN's ballast loop), and this
+    contract measures size only, so the audit's size cell is the narrower
+    and correct source.  ``test_the_scaling_column_is_the_audit`` keeps the
+    column and the audit in step.
     """
     reasons = {}
     for row in load_ledger().rows:

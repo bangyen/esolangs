@@ -62,6 +62,7 @@ The candidate list is empty.
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Interprogck8 | Total | Open | Open | Linear |
   | Polynomial | Cap | Open | Open | Linear |
+  | SLOW ACV MAMMALIAN | Total | Open | Linear | Linear |
   | Streetcode | Total | Open | Open | Linear |
   | WII2D | Cap | Open | Open | Linear |
 
@@ -109,6 +110,14 @@ The candidate list is empty.
     only to n=12 past the n=4 route change.  Its `Exception` cannot close,
     and which tables through sixteen inputs the planners refuse is finite
     (every table tried through fourteen builds).
+  - SLOW ACV MAMMALIAN, time only: the text is O(T) (one 256-token leaf
+    slot per entry), but each read node's ballast loop appends chunks
+    until the landing clears a jump whose length grows with the node's
+    weight, re-running an O(weight) dry raise per chunk; nothing bounds
+    the chunk count (296, 408, 570, 878 per build at n=6, 8, 10, 12, x1.5
+    per two inputs) and the raise depends on the chunk-shifted state, so
+    it cannot be hoisted without changing the program.  Closes with a
+    per-level chunk bound or a landing computed in closed form.
   - Factor: stays for its two language lower bounds.
 
 - **Boolean generator conventions.**  Five conventions govern the *embed*,

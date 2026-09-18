@@ -48,6 +48,21 @@ QUALIFIERS = frozenset({"cap", "exception"})
 
 _WORD_NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
 
+#: The Scaling column's classes, the text before the cell's first colon.
+#: ``linear`` is proved O(T) size and time; ``linear, time n log`` keeps one
+#: stated log factor in generation time; ``measured`` has no bound at all;
+#: ``open`` and ``lower bound`` are the roadmap audit's open rows.
+SCALING_CLASSES = frozenset(
+    {"linear", "linear, time n log", "measured", "open", "lower bound"}
+)
+
+#: The classes whose rows the roadmap's audit table must carry as open on
+#: generation time or output size, and vice versa.
+UNSETTLED_SCALING = frozenset({"measured", "open", "lower bound"})
+
+#: A ``linear`` clause names its argument; longer than this it is prose.
+LINEAR_CLAUSE_WORDS = 12
+
 
 @dataclass(frozen=True)
 class Row:
@@ -56,11 +71,22 @@ class Row:
     generator: str
     labels: tuple[str, ...]
     qualification: str
+    scaling: str
 
     @property
     def schemes(self) -> tuple[str, ...]:
         """The labels that name a proof scheme rather than a qualifier."""
         return tuple(x for x in self.labels if x not in QUALIFIERS)
+
+    @property
+    def scaling_class(self) -> str:
+        """The Scaling cell's class: the text before its first colon."""
+        return self.scaling.split(":", 1)[0].strip()
+
+    @property
+    def scaling_clause(self) -> str:
+        """The Scaling cell's argument or term: the text after its class."""
+        return self.scaling.split(":", 1)[1].strip() if ":" in self.scaling else ""
 
 
 @dataclass(frozen=True)
@@ -109,9 +135,12 @@ def load(path: Path | None = None) -> Ledger:
         if not line.startswith("| ") or line.startswith(("| ---", "| Generator")):
             continue
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        generator, proof, qualification = cells[0], cells[1], cells[2]
+        # Four cells, not "at least three": a row that lost its Scaling cell
+        # would otherwise parse as settled by omission.
+        assert len(cells) == 4, f"{DOC} ledger row has {len(cells)} cells: {line!r}"
+        generator, proof, qualification, scaling = cells
         labels = tuple(part.strip() for part in proof.split(","))
-        rows.append(Row(generator, labels, qualification))
+        rows.append(Row(generator, labels, qualification, scaling))
 
     schemes = _section(text, "Proof schemes")
     defined = {

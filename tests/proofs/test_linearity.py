@@ -19,6 +19,7 @@ from __future__ import annotations
 import pytest
 
 from esolangs.registry import BY_BOOLEAN
+from tests.proofs._ledger import UNSETTLED_SCALING
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs._roadmap import SETTLED, TOTAL, Audit, load
 from tests.proofs.deep.execution import EXEMPT as _EXECUTION_EXEMPT
@@ -105,6 +106,34 @@ def test_the_suites_hand_kept_sets_match_the_audit(audit: Audit) -> None:
     unresolved = _display(_OPEN_SCALING | _LANGUAGE_SUPERLINEAR_SCALING)
     assert unresolved == audit.unsettled
     assert _display(_LINEAR_SCALING) & audit.unsettled == set()
+
+
+def test_the_scaling_column_is_the_audit(audit: Audit) -> None:
+    """A ledger row is ``open``, ``lower bound`` or ``measured`` iff it is audited.
+
+    The proofs ledger's Scaling column and the roadmap's audit table state
+    the same thing twice: a row whose generation time or output size is not
+    settled in the audit carries one of those classes, and no other row
+    does.  ``lower bound`` is the audit's ``Language lower bound`` cell.
+    """
+    ledger = load_ledger()
+    unsettled = {
+        row.generator for row in ledger.rows if row.scaling_class in UNSETTLED_SCALING
+    }
+    audited = {
+        row.generator
+        for row in audit.rows
+        if row.generation_time not in SETTLED or row.output_size not in SETTLED
+    }
+    assert unsettled == audited
+    bounded = {
+        row.generator for row in ledger.rows if row.scaling_class == "lower bound"
+    }
+    assert bounded == {
+        row.generator
+        for row in audit.rows
+        if "Language lower bound" in (row.generation_time, row.output_size)
+    }
 
 
 def test_the_exempt_set_is_read_from_both_documents(audit: Audit) -> None:
