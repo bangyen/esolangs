@@ -133,6 +133,25 @@ class TestCorridor:
             bits = list(bin(row)[2:].zfill(6))
             assert run_interprogck8(program, bits) == table[row], f"row {row}"
 
+    def test_open_depths_price_one_residue_each(self) -> None:
+        """Each open depth owns one odd residue of fifteen.
+
+        Dense n=6 holds six distinct stride-30 launch residues against
+        the fifteen odd residues mod 30, leaving nine free -- the pool
+        exhausts at depth fifteen, which is the shipped class boundary,
+        not a fitted constant. Four executed rows keep it honest.
+        """
+        table = _dense_table(6)
+        program = interprogck8(table)
+        lines, flights = _assemble(table, 6)
+        _validate(lines, flights)
+        residues = {launch % 30 for launch, stride, _ in flights if stride == 30}
+        assert len(residues) == 6, "one channel per open depth"
+        assert 15 - len(residues) == 9, "nine of fifteen odd residues free"
+        for row in (0, 1, 62, 63):
+            bits = list(bin(row)[2:].zfill(6))
+            assert run_interprogck8(program, bits) == table[row], f"row {row}"
+
     def test_every_flight_dismounts_on_its_own_stop(self) -> None:
         """The corridor property, pinned on the assembled artifact.
 
@@ -369,6 +388,36 @@ class TestPrimitiveSurvey:
         assert machine.state.slot is None
         assert survivor in machine.state.lines
         assert ({"NnNn", "nNnN"} - {survivor}).isdisjoint(machine.state.lines)
+
+    def test_z_deletion_channel_holds_exactly_one_bit(self) -> None:
+        """A conditional ``z`` restart persists exactly two states.
+
+        Both first-bit branches restart with acc 0 and an empty slot;
+        the full post-restart texts differ only in which adjacent marker
+        survives -- one bit, worth at most one extra residue level past
+        the corridor pool, not an escape from it.
+        """
+        d48 = _dice(48)
+        states = set()
+        for bit in ("0", "1"):
+            program = [
+                "u",
+                f"{{values/=/={d48}/={d48}}}",
+                "DownAccLines",
+                *("x" for _ in range(80)),
+                "NnNn",
+                "z",
+                "x",
+                "nNnN",
+                "z",
+            ]
+            machine = _Machine(program, ScriptedIO(f"{bit}\n"))
+            for _ in range(4):
+                machine.step()
+            assert machine.state.acc == 0
+            assert machine.state.slot is None
+            states.add(tuple(machine.state.lines))
+        assert len(states) == 2, "the deletion channel is one bit"
 
     def test_z_branch_cannot_retire_a_read_for_a_nested_pass(self) -> None:
         """The smallest two-pass recorder leaves its first ``u`` live.
