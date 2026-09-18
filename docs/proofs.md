@@ -114,9 +114,9 @@ is smaller than a tree at every arity, Alight indexes a string literal,
 BIO's telescope is one nested level per row whatever the table says (a
 degenerate table only spares it the flat edges' adjustments, under the fold
 threshold once the doubling between the input runs is in the text), Minsky
-Swap's `~` cascade routes the index to a one- or three-command leaf per
-row, and SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf
-slot per row whatever the table says.  Container's sub-crossover route is a
+Swap's `~` cascade routes the index to one of two shared leaves with a
+one-digit target per row, and SLOW ACV MAMMALIAN's read chain emits one
+fixed-width leaf slot per row whatever the table says.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
 table.
 
@@ -151,7 +151,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Container | finite lookup | the reversed table is one decimal literal divided by ten in a fixed two-bank network |
 | Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, and a folded subtree targets the shared self-jump or the line past the end |
 | CV(N)(C) | tree | the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts |
-| Decleq | tree | — |
+| Decleq | tree | the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits |
 | Dig | tree | finite cell placement |
 | Dimensional | tree | `decision_tree_program` with dimensional moves |
 | EGL | tree | — |
@@ -164,11 +164,11 @@ after ignoring the performance/resource ceiling as specified above.
 | Grapheme | tree | arbitrary integer variable keys remove the old 24 one-letter-key ceiling |
 | Home Row | parameterized tree | — |
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions |
-| Interprogck8 | tree | routed by a shared `DownAccLines` corridor: a read's 48/49 selects dismount against flight by landing parity, stops are phase-separated by depth, and assembly is one pass with no repair loop |
+| Interprogck8 | tree | routed by a shared `DownAccLines` corridor: a read's 48/49 selects dismount against flight by landing parity, stops are phase-separated by depth, and assembly is one pass with no repair loop; the residue pool is probed per arity and places every depth through forty inputs, an unreachable guard |
 | Jaune | finite lookup | a spatial table reached with two labels |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` |
-| Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to its row, so every table of one arity renders to the same length |
+| Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length |
 | Modulous | tree | — |
 | NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells |
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry |
@@ -218,8 +218,14 @@ on computed coordinates, a placement is a bounded congruence scan (a free
 line on one class recurs within its modulus times the longest occupied run,
 and every occupied run is O(1)), and rungs are shared rather than embedded --
 no simultaneous-placement lemma is needed because nothing is ever moved.
-Stride classes `30 + 2k` for `k` up to 113 hand 14 residues each to
-successive depth bands, 1596 read depths, past any representable table.
+Stride classes `30 + 2k` hand residues to successive depth bands; a
+class-`k` read's `1 + k` odd lines need `1 + k` free consecutive residues
+in every class below it, so the pool per class is probed on the placer at
+each arity (fourteen through fourteen inputs, thirteen to 26, twelve to 36,
+nine to 40) and the generator refuses a forty-first input, a guard no
+representable table reaches.  The earlier text's 1596 depths assumed a
+full class leaves room for the next; it leaves one residue, and a class-1
+read needs two.
 
 **`%^2^-1` is not total under the parameterized contract.**  A template
 program computing a table `f` embeds each input once, reads no stdin (`n`
