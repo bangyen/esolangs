@@ -237,16 +237,18 @@ class TestIgnoredRootMultiplesPreserveExecution:
 # ``docs/limitations.md`` (searched negatives, WII2D) rests its ratchet
 # accounting on one deterministic fact about the readout: after an ``s``
 # whose epoch (the ``s`` and its ``+ - /`` tail) merges ``m`` live values
-# and halves ``h`` times, ``2**h <= r**2`` where ``r`` is the (m+3)-th
-# smallest distinct ``|w|`` before the ``s`` -- those m+3 squares lie in an
-# interval shorter than ``2**h``, which meets at most two aligned blocks, so
-# a deeper halving would merge m+1.  Hence the epoch leaves magnitude at
-# least ``max(w)**2 / 2**h - unary - 1``: a fold about a dense centre squares
-# the magnitude and divides it by ``r**2``.  The programs below are exact
-# optima from the exhaustive readout search (domain 8, every pattern, cap
-# 2**12) and the longest found at domains 10 and 12; each is replayed on
-# the op semantics first.  A failure here means the lemma is wrong and the
-# ratchet paragraph with it, not that a decoder regressed.
+# and halves ``h`` times, for every ``n`` the ``n`` smallest distinct
+# ``|w|`` before the ``s`` (largest ``r``) satisfy ``m >= n - 2 r**2 / 2**h
+# - 2``: their squares span ``r**2``, a span meets at most ``r**2 / 2**h +
+# 1`` block boundaries and at most that many consecutive gaps of ``2**h``
+# or more, and every other consecutive pair merges.  At ``n = m + 3`` this
+# is ``2**h <= r**2``, so the epoch leaves magnitude at least ``max(w)**2 /
+# 2**h - unary - 1``: a fold about a dense centre squares the magnitude and
+# divides it by ``r**2``.  The programs below are exact optima from the
+# exhaustive readout search (domain 8, every pattern, cap 2**12) and the
+# longest found at domains 10 and 12; each is replayed on the op semantics
+# first.  A failure here means the lemma is wrong and the ratchet paragraph
+# with it, not that a decoder regressed.
 
 _WII2D_OPTIMA: tuple[tuple[str, str], ...] = (
     ("11010100", "++s/-//-----s-//--s-///s"),
@@ -258,10 +260,15 @@ _WII2D_OPTIMA: tuple[tuple[str, str], ...] = (
 )
 
 
-def _wii2d_epochs(pattern: str, program: str) -> list[tuple[int, int, int, int, int]]:
-    """Return ``(h, m, r, max_w, out)`` per ``s`` epoch, replaying ``program``."""
+def _wii2d_epochs(
+    pattern: str, program: str
+) -> list[tuple[int, int, list[int], int, int]]:
+    """Return ``(h, m, radii, max_w, out)`` per ``s`` epoch, replaying ``program``.
+
+    ``radii`` is the sorted list of distinct ``|w|`` before the ``s``.
+    """
     values = list(range(len(pattern)))
-    out: list[tuple[int, int, int, int, int]] = []
+    out: list[tuple[int, int, list[int], int, int]] = []
     i = 0
     while i < len(program):
         if program[i] != "s":
@@ -279,9 +286,8 @@ def _wii2d_epochs(pattern: str, program: str) -> list[tuple[int, int, int, int, 
             unary += program[i] in "+-"
             i += 1
         merges = live - len(set(values))
-        radius = before[min(merges + 2, len(before) - 1)]
         magnitude = max(abs(v) for v in values) + unary + 1
-        out.append((h, merges, radius, before[-1], magnitude))
+        out.append((h, merges, before, before[-1], magnitude))
     return out
 
 
@@ -297,6 +303,10 @@ class TestWii2dFoldCannotHalvePastItsMergeZone:
     def test_every_epoch_obeys_the_zone_lemma(self, pattern: str, program: str) -> None:
         epochs = _wii2d_epochs(pattern, program)
         assert epochs, program
-        for h, merges, radius, max_w, magnitude in epochs:
-            assert 2**h <= radius * radius, (program, h, merges, radius)
+        for h, merges, radii, max_w, magnitude in epochs:
+            for n, radius in enumerate(radii, 1):
+                assert merges >= n - 2 * radius * radius / 2**h - 2, (program, h, n)
+            if len(radii) >= merges + 3:
+                radius = radii[merges + 2]
+                assert 2**h <= radius * radius, (program, h, merges, radius)
             assert magnitude >= max_w * max_w / 2**h, (program, magnitude, max_w, h)
