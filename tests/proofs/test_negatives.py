@@ -1030,3 +1030,72 @@ class TestConvolutionRelationIsOneDisplacedOnly:
         assert all(
             b * b >= a * c for a, b, c in zip(vals, vals[1:], vals[2:], strict=False)
         )
+
+
+class TestPointADecomposition:
+    """``docs/polynomial.md`` ("The decomposition, and the one product it does
+    not split"): ``E_d = G_d - y_c G_{d-1}`` is a ``(c-1)``-root sum vanishing
+    on the leading zeros with ``E_{z_j} = -y_c G_{z_j - 1}``, it equals
+    ``mu F + sum_j E_{z_j} B_j`` on the Lagrange basis exactly, and ``G_d =
+    sum_{i<d} y_c^i E_{d-i}`` recovers ``G``.  The triangle sum over these
+    pieces stays under ``0.5 bound(f)`` while its ``B``-pieces are products
+    of an unbounded tail and a vanishing ratio."""
+
+    def test_identities_and_bound_sum(self) -> None:
+        y = sorted(Fraction(1, p) for p in (3, 5, 7, 11, 13))
+        y_c = y[-1]
+        worst = Fraction(0)
+        for f, disp in [
+            (0, (2, 5, 7, 9)),
+            (1, (3, 4, 6)),
+            (1, (4, 7, 12)),
+            (2, (5, 6)),
+            (2, (4, 9)),
+        ]:
+            lead = tuple(range(1, f + 1))
+            z_k = disp[-1]
+            a_f = _exp_sum(y[:-1], lead + disp[:-1], None)
+            a_g = _exp_sum(y, (0, *lead, *disp[:-1]), z_k)
+            a_e = [ai * (1 - y_c / v) for ai, v in zip(a_g[:-1], y[:-1], strict=True)]
+
+            def val(a: list[Fraction], roots: list[Fraction], d: int) -> Fraction:
+                return sum(ai * v**d for ai, v in zip(a, roots, strict=True))
+
+            for d in range(1, 14):
+                assert val(a_e, y[:-1], d) == val(a_g, y, d) - y_c * val(a_g, y, d - 1)
+                assert val(a_g, y, d) == sum(
+                    y_c**i * val(a_e, y[:-1], d - i) for i in range(d)
+                )
+            basis = []
+            for j, z_j in enumerate(disp[:-1]):
+                others = tuple(z for i, z in enumerate(disp[:-1]) if i != j)
+                basis.append(_exp_sum(y[:-1], (0, *lead, *others), z_j))
+            mu = val(a_e, y[:-1], 0)
+            for d in range(0, 16):
+                recon = mu * val(a_f, y[:-1], d) + sum(
+                    val(a_e, y[:-1], z_j) * val(b, y[:-1], d)
+                    for z_j, b in zip(disp[:-1], basis, strict=True)
+                )
+                assert recon == val(a_e, y[:-1], d)
+            bound = math.prod(v / (1 - v) for v in y[: f + 1])
+            horizon = z_k + 40
+
+            def tail1(
+                a: list[Fraction], roots: list[Fraction], horizon: int = horizon
+            ) -> Fraction:
+                s = sum(abs(val(a, roots, d)) for d in range(1, horizon))
+                return s + abs(
+                    sum(
+                        ai * v**horizon / (1 - v)
+                        for ai, v in zip(a, roots, strict=True)
+                    )
+                )
+
+            pref = abs(val(a_f, y[:-1], z_k)) * y_c / (1 - y_c)
+            total = pref * abs(val(a_g, y, -1)) * tail1(a_f, y[:-1])
+            total += sum(
+                pref * abs(val(a_g, y, z_j - 1)) * tail1(b, y[:-1])
+                for z_j, b in zip(disp[:-1], basis, strict=True)
+            )
+            worst = max(worst, total / bound)
+        assert worst < Fraction(1, 2)
