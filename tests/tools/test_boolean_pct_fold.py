@@ -904,3 +904,129 @@ class TestPctFoldSkeletonResolver:
             (-5, 0, "b", frozenset({1})),
         )
         assert module._fold_construct(finished) == []  # noqa: SLF001
+
+
+class TestPctFifteenObstruction:
+    """The fifteen-input wall's shape: what lays, what jams, what still builds.
+
+    Dense refuses at fifteen and sixteen, but the refusal is the table's,
+    not the arity's: symmetric tables build and print on the interpreter
+    past it.  The band-gap escape -- laying the twelfth input at a wide
+    split total so the child bands separate -- buys eight merges and jams.
+    """
+
+    @staticmethod
+    def _stage_eleven(n: int, table: str):
+        """The packed eleven-input ladder as a loaded emitter and its module."""
+        module = importlib.import_module("esolangs.tools.pct_fold")
+        weights = module._fold_subset_weights(11)  # noqa: SLF001
+        positions = module._fold_positions(11, weights)  # noqa: SLF001
+        emitter = module._FoldEmitter.__new__(module._FoldEmitter)  # noqa: SLF001
+        emitter.table = table
+        emitter.rows = 2**n
+        block = 2 ** (n - 11)
+        emitter.load(
+            {
+                frozenset(range(row * block, (row + 1) * block)): (
+                    positions[row],
+                    table[row * block : (row + 1) * block],
+                )
+                for row in range(2**11)
+            }
+        )
+        return emitter, module
+
+    @pytest.mark.slow  # ~2s: the conveyor runs its cap on the laid state
+    def test_a_forced_wide_lay_jams_after_eight_merges(self) -> None:
+        """A wide split total buys room and almost no merges.
+
+        Laying the twelfth input of dense fifteen at total 3956 (child
+        bands 3956 apart, laid span 4101) gives the conveyor a first move
+        where the fitting total 2048 gives none -- then 8 merges in 1894
+        ops, stuck at 4088 of the needed ~3840.  The bands are unit-dense,
+        so no doubling fires and no 3004-corridor clears.
+        """
+        from esolangs.tools.pct_codes import _LIMIT, _apply
+        from esolangs.tools.pct_fold_plan import _fold_norm, _FoldLedger
+        from tests.tools.test_boolean_contract import _dense
+
+        n, total = 15, 3956
+        table = _dense(n)
+        emitter, module = self._stage_eleven(n, table)
+        zero, one, _up, down = module._split_setter(total)  # noqa: SLF001
+        shift = -_LIMIT - emitter.lo() + down
+        laid = {}
+        for key, value in emitter.pos.items():
+            rows = emitter.members(key)
+            for bit, code in ((0, zero), (1, one)):
+                picked = {r for r in rows if (r >> (n - 12)) & 1 == bit}
+                if not picked:
+                    continue
+                value2 = _apply(value + shift, code)
+                cls = module._cofactor_class(  # noqa: SLF001
+                    table, n, next(iter(picked)), 12
+                )
+                key2 = next(iter(picked)) if len(picked) == 1 else frozenset(picked)
+                laid[key2] = (value2, cls)
+        assert len(laid) == 4096
+        ledger = _FoldLedger.from_state(
+            _fold_norm([(value, 0, cls, frozenset()) for value, cls in laid.values()])
+        )
+        assert ledger.rule_move() is not None
+        merges = ops = 0
+        size = ledger.size
+        while ops < 5000 and not ledger.is_cofactor_done():
+            op = ledger.rule_move()
+            if op is None or not ledger.step(op):
+                break
+            ops += 1
+            if ledger.size < size:
+                merges += size - ledger.size
+                size = ledger.size
+        assert (merges, ledger.size) == (8, 4088)
+
+    @pytest.mark.medium  # executes built programs: parity-16 build alone is 0.6s
+    def test_structured_tables_build_past_the_dense_wall(self) -> None:
+        """Parity and majority build at fifteen and sixteen and print.
+
+        The planners refuse dense-like tables -- an eleven-cut cofactor
+        count near 2048 nothing compacts -- not wide tables as such.
+        Sampled rows print on the interpreter per table.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+        from esolangs.tools import parameterized
+        from tests.tools.fills import _fill_pct_squared_minus_one
+        from tests.tools.test_boolean_contract import _parity
+
+        cases = [
+            (_parity(15), 15),
+            (
+                "".join(
+                    "1" if bin(r).count("1") > 15 / 2 else "0" for r in range(2**15)
+                ),
+                15,
+            ),
+            (_parity(16), 16),
+        ]
+        for table, n in cases:
+            template = parameterized.pct_squared_minus_one(table)
+            widths = set()
+            for row in range(0, 2**n, 5437):
+                bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
+                program = _fill_pct_squared_minus_one(template, bits)
+                widths.add(len(program))
+                io = ScriptedIO()
+                run(program, io)
+                assert io.getvalue() == table[row], (n, row)
+            assert len(widths) == 1, widths
+
+    @pytest.mark.slow  # ~1s: the stall guard on 2048 unmergeable points
+    def test_the_dense_sixteen_input_fixture_is_refused(self) -> None:
+        """Sixteen inputs refuses like fifteen: the cut still will not compact."""
+        from esolangs.exceptions import GeneratorCapError
+        from esolangs.tools import parameterized
+        from tests.tools.test_boolean_contract import _dense
+
+        with pytest.raises(GeneratorCapError, match="got 16 inputs"):
+            parameterized.pct_squared_minus_one(_dense(16))
