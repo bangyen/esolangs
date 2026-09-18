@@ -12,33 +12,33 @@ PAIR = ("-", "+")
 _BACK_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 
-def _reflect_back(source: str) -> str:
+def _reflect_back(grid: dict[tuple[int, int], str], height: int, width: int) -> str:
     r"""Reflect a Back template and route the fixed eastward start into it.
 
-    An input's run is one grid cell like every other character, so
-    reflection reverses characters.  Only the beam mirrors swap; ``<`` and
-    ``>`` move the tape head and keep their meanings.
+    ``grid`` maps ``(row, column)`` to a character; ``width`` is the widest
+    row.  An input's run is one grid cell like every other character, so
+    reflection reverses cells.  Only the beam mirrors swap; ``<`` and ``>``
+    move the tape head and keep their meanings.  Rendered from the sparse
+    cells, each row only as long as its last one, so the cost is the
+    output's size rather than the bounding box (``2**n`` rows by ``4n``).
     """
-    rows = [list(row) for row in source.splitlines()]
-    width = max(map(len, rows))
-    mirrors = str.maketrans({"/": "\\", "\\": "/"})
-    reflected: list[list[str]] = []
-    for row in rows:
-        cells = list(reversed([*row, *([" "] * (width - len(row)))]))
-        reflected.append(
-            [
-                " ",
-                *(cell.translate(mirrors) for cell in cells),
-                " ",
-            ]
-        )
+    mirrors = {"/": "\\", "\\": "/"}
+    rows: list[dict[int, str]] = [{} for _ in range(height)]
+    for (row, column), cell in grid.items():
+        rows[row][width - column] = mirrors.get(cell, cell)
 
     # East, south, wrap west, north, west into the reflected root.  The two
     # extra columns touch only rows 0-1; tree padding is trailing and rstrips.
-    reflected[0][0] = reflected[0][-1] = "\\"
-    reflected[1][0] = "/"
-    reflected[1][-1] = "\\"
-    return "\n".join("".join(row).rstrip() for row in reflected)
+    rows[0][0] = rows[0][width + 1] = "\\"
+    rows[1][0] = "/"
+    rows[1][width + 1] = "\\"
+    lines = []
+    for cells in rows:
+        line = [" "] * (max(cells, default=-1) + 1)
+        for column, cell in cells.items():
+            line[column] = cell
+        lines.append("".join(line))
+    return "\n".join(lines)
 
 
 def back(truth_table: str) -> str:
@@ -188,12 +188,9 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # tree rows; safe only because a run is one character for either bit.
     height = max(max(r for r, _ in grid) + 1, 1 + len(units))
     width = max(c for _, c in grid) + 1
-    rows = [[" "] * width for _ in range(height)]
-    for (r, c), ch in grid.items():
-        rows[r][c] = ch
-    rows[0][0] = "/"
+    grid[(0, 0)] = "/"
     for k, unit in enumerate(units):
-        rows[height - 1 - k][0] = unit
-    # rstrip is safe: no input row can instantiate to whitespace (a zero used
-    # to embed as a blank, and the height revealed it).
-    return _reflect_back("\n".join("".join(row).rstrip() for row in rows))
+        grid[(height - 1 - k, 0)] = unit
+    # No input row can instantiate to whitespace (a zero used to embed as a
+    # blank, and the height revealed it).
+    return _reflect_back(grid, height, width)

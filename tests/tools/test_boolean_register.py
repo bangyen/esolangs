@@ -118,6 +118,7 @@ class TestQoibl:
             ("10", 1),  # NOT
             ("0110", 2),  # XOR
             ("0001", 2),  # AND
+            ("01100110", 3),  # XOR of the last two: the root's halves agree
             ("11111110", 3),  # NAND3
             ("1000000000000000", 4),  # AND4
         ],

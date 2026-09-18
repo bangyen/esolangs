@@ -165,17 +165,18 @@ def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
     """Return the distinct residual subfunctions at each level.
 
     Two prefixes leaving the same subtable are one state -- the merge a
-    tree cannot make.
+    tree cannot make.  A level's states are deduplicated through a set, so
+    a level costs its own text (the states' total length), not a list scan
+    per child; the levels together hold ``n * 2**n`` characters.
     """
     levels = [[truth_table]]
     for k in range(n):
         width = 2 ** (n - k - 1)
-        nxt: list[str] = []
+        nxt: dict[str, None] = {}
         for state in levels[k]:
-            for half in (state[:width], state[width:]):
-                if half not in nxt:
-                    nxt.append(half)
-        levels.append(nxt)
+            nxt.setdefault(state[:width])
+            nxt.setdefault(state[width:])
+        levels.append(list(nxt))
     return levels
 
 

@@ -195,9 +195,10 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     for x, y in exits:
         # Drop a passing path to zero so it does not turn on a leaf's exit.
         place((x - 1, y), "S")
-    for y in sorted({y for _, y in exits}):
+    for y in {y for _, y in exits}:
         # The ring closes up column 0: '!' turns a zero accumulator up,
-        # the '+' above restores it past every exit.
+        # the '+' above restores it past every exit.  ``place`` refuses a
+        # collision, so the order is immaterial and the set is not sorted.
         place((0, y), "!")
         place((0, y - 1), "+")
     place((root, 0), "R")
