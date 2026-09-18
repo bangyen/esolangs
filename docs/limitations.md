@@ -531,14 +531,35 @@ progressions (`L` = 16, 24, 32, 48, ten each, centres to `L / 4`,
 cheaper than the real states (the sparser class floors at 1.19 `L`
 at `L` = 16 and finds nothing at 24); at `L` = 16--48 two epochs'
 halvings alone are about `4 log2 L`, so these sizes do not separate
-`c L` from a logarithm.  The dense-start proof uses contiguity twice:
-`N(c, rho) >= rho` gives `kappa >= 1 / (16 (m + 2))`, and a hole of
-radius `H` at the centre weakens it to `kappa >= delta / (2H)`, so a
-one-epoch return needs a hole of a quarter of the range; and the
-pullback takes consecutive radii one apart, which a largest gap `g`
-turns into `g**2` in the constant.  The lemma to prove is therefore
-about `L` points at magnitude `O(L)` with largest gap `o(L)`, and
-the unproved step is that floor.  The model: the shipped chain
+`c L` from a logarithm.  With the largest gap `g` carried as a parameter the dense-start
+proof reads: a window of radius `rho` inside the hull holds at least
+`rho / g - 1` points, so a first epoch whose centre lies within `e`
+of the hull has `kappa >= (m_1 + 3.5) / (e + 4 g (m_1 + 3))**2`; a
+one-epoch return to `4 live` (`kappa <= 1 / (4 live)`) therefore
+needs `e >= live / (2g) - g (2 m_1 + 5)`, and otherwise the epoch
+leaves `M_1 >= live**2 / (64 g**2 (m_1 + 3)) - 1` with image gaps at
+position `P` at most `2 g sqrt(kappa (P + 1)) + 1`; a second epoch
+returning from there has at most `2 m_2 + 6` live points within `R
+= (M_1 - |C|) / sqrt(4 live + 1)` of its centre, which the image
+denies for every centre inside its hull once `sqrt(live) / (4g) > 2
+m_2 + 6`, and a centre `e_2` below the hull needs `e_2 >= kappa
+(live**1.5 / 8 - g**2 (2 m_2 + 6)**2)`, so the two-epoch cost is at
+least `min(live / (2g) - g (2 m_1 + 5), live**1.5 / (256 g**2 (m_1 +
+3)), M_1 / 2)` for `live >= 16 g**2 (2 m_2 + 6)**2`.  With `g = 2`
+that is `live / 4` past about 20,000 live and nothing below, so it
+is consistent with every measured floor and explains none of them;
+and `g` is not 2: the largest gap at the shipped decoder's returns is
+7--35 (domain 128: 10, 10, 9, 8, 7, 6, 10, 2, 4, 4, 1 at 95 down to
+9 live; 25 at 84 and 35 at 20 live on one table; domain 256: 12--24
+above 40 live), because an epoch at stable magnitude doubles the top
+gap (`2 g sqrt(kappa M_1)` with `kappa M_1` about 1) -- no operation
+pays magnitude to open a gap, the fold opens one for free at the far
+end and the halving closes only the near end.  The invariant "gap at
+most 2 after a return" is therefore false, and with the measured
+`g` the theorem prices only `sqrt(live)`.  What the measured floors
+say instead is a profile statement -- gaps small near the origin,
+large at the top, which costs about `4 live` to reach -- and the
+pullback with a position-dependent gap is the unproved step.  The model: the shipped chain
 merges no cofactors before the readout on any of the nine tables
 above nor on 59 of 60 random tables at five to seven inputs (first
 junction `("", "+")`, then Horner), and the exact optima are readouts
