@@ -346,31 +346,56 @@ halvings, merges split evenly between `s` (mirror pairs) and `/`
 magnitude before each `s` is `log2(live - 1)` minus 0.4, 0.3, 0.1 bits:
 the optima never ratchet.  One fact about the readout is deterministic
 and pinned in `tests/proofs/test_negatives.py`: an epoch (an `s` and
-its `+ - /` tail) that merges `m` and halves `h` times has `2**h <=
-r**2` for `r` the (m+3)-th smallest `|w|` before the `s`, since m+3
-squares inside an interval shorter than `2**h` meet at most two aligned
-blocks; so the epoch leaves magnitude at least `max|w|**2 / 2**h -
-unary - 1 >= (max|w| / r)**2 - unary - 1` (checked on all 1038 epochs of
-the 342 optima, ratio at most 0.89).  On the dense index `0 .. D-1` the
-first epoch's `r` is at most `m + 4` unless its centre is more than
-`D/2` away (at least `D/2` unary), so it leaves magnitude at least
-`(D-1)**2 / (4 (m+4)**2) - unary - 1`: a ratchet once `D > 4 (m+4)**2`,
-about 200 at the m = 3 the optima show; and the image, points at
-`lambda * j**2` with gaps `2 lambda j`, has a `sqrt(M)`-radius hole
-holding at most m+2 points (what a second non-ratcheting epoch needs)
-only at unary distance `D**2 / (4 (m+2)**2)` or beyond.  What closes
-nothing yet: the halving identity `sum over s of Phi <= length` with
-`Phi >= log2 live` gives `Omega(D)` only, and the description bound
-(an epoch is `(a, c, h, S)` with `S < r**2` by the lemma, so `2a +
-O(log length)` bits) gives `Omega(D / log D)` epochs only -- the two
-balance at linear, and the super-linear term must come from `Phi' >=
-2 Phi - 2 log2 r - 3` with a hole of radius `sqrt(M)/4` costing its
-unary distance, which needs the live set's density near the origin
-after an arbitrary history.  Incompressibility (Li--Vitanyi ch. 6)
-supplies the frame and nothing model-specific; Mansour--Schieber--
-Tiwari floor bounds, 1D map folding (crimps and end folds count folds,
-not unary creases), addition-chain bounds (one target, no merging) and
-merging bounds (no comparisons here) do not map.
+its `+ - /` tail) that merges `m` and halves `h` times has, for every
+`n`, `m >= n - 2 r**2 / 2**h - 2` with `r` the n-th smallest `|w|`
+before the `s` (n squares span `r**2`, which meets at most `r**2 /
+2**h + 1` block boundaries and as many wide gaps, and every other
+consecutive pair merges); at `n = m + 3` that is `2**h <= r**2`, so the
+epoch leaves magnitude at least `max|w|**2 / 2**h - unary - 1 >=
+(max|w| / r)**2 - unary - 1` (checked on all 1038 epochs of the 342
+optima and 231 epochs of shipped decodes at domain 32--256; the m+3
+ratio is at most 0.89).  Its contrapositive is the ratchet: an epoch
+that does not raise the magnitude needs a centre whose density profile
+is sub-quadratic, `N(c, rho) <= m + 2 + 2 rho**2 (M_out + unary + 1) /
+d_max**2` at every radius, hence a gap of at least `sqrt(M / (8
+(m+2)))` at the centre (1.14--1.5 times that on the tightest
+non-ratcheting epochs seen).  On the dense index `0 .. D-1` the first
+epoch's `r` is at most `m + 4` unless its centre is more than `D/2`
+away, so it leaves magnitude at least `(D-1)**2 / (4 (m+4)**2) - unary
+- 1`: a ratchet once `D > 4 (m+4)**2`, about 200 at the m = 3 the
+optima show; on that image (points `kappa j**2`, gaps `2 kappa j`) a
+second epoch either pays a centre at `D**2 / (4 (m+3)**2)` or beyond,
+or has the first epoch ratchet to `D**4 / (512 (m+2)**3)`.  What does
+not hold: a density invariant near the origin.  After every epoch of
+the shipped decodes at domain 32--256 the origin has at most m+2 live
+points within `sqrt(M)/2` (nearest such hole at distance 0--9 on all
+60 non-ratcheting epochs), and `s`, `ss`, `sss` on `0 .. 63` leave 6,
+7, 7 points within `sqrt(M)/2`: hollowing the origin is free, so
+`N_t(X) >= X / f(t)` is false for every `f`, and only the profile
+bound above survives.  The shipped decoder at domain 64--256 sits at
+`M` between `L**2 / 15` and `L**2 / 8` and pays centres of 0.3--0.6
+`M` per epoch of 3--10 merges (1288 and 4335 characters at domain 64
+and 128, `D**2 / m`).  An epoch-level beam (width 16, every legal
+integer centre to 4096, the shipped compressor per fold, key `length +
+2 live + bits / 2`) returns 148 characters on one domain-12 pattern
+against the exact 24--35 and times out at 60 s on three: not an
+oracle, no beam figure at domain 32 or beyond.  What closes nothing
+yet: the halving identity `sum over s of Phi <= length` with `Phi >=
+log2 live` gives `Omega(D)` only, and the description bound (an epoch
+is `(a, c, h, S)` with `S < r**2` by the lemma, so `2a + O(log
+length)` bits) gives `Omega(D / log D)` epochs only -- the two balance
+at linear, and the super-linear term must come from the profile bound:
+a free epoch cannot leave a sub-quadratic origin twice running (the
+magnitude squares over every two free epochs), and a paid centre must
+reach a gap of `sqrt(M / 8m)`, whose distance from the origin is the
+previous set's span-to-gap ratio squared -- tracking that ratio through
+an arbitrary history is the open step.  Incompressibility (Li--Vitanyi
+ch. 6) supplies the frame and nothing model-specific;
+Mansour--Schieber--Tiwari floor bounds, 1D map folding (crimps and end
+folds count folds, not unary creases), addition-chain bounds (one
+target, no merging) and merging bounds (no comparisons here) do not
+map.  All of this is the readout model: one accumulator from the
+Horner index to a bit, no cofactor merging at earlier junctions.
 WII2D's lift is the extremal-fold rule, total but at megabyte sizes,
 and its three open cells are one question: a rule emitting readouts
 within a constant of the optimum, which no one-step or bounded-beam
