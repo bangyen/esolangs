@@ -107,6 +107,32 @@ class TestCorridor:
             bits = list(bin(row)[2:].zfill(n))
             assert run_interprogck8(program, bits) == table[row], f"n={n} row {row}"
 
+    def test_relay_flights_past_255_keep_size_flat(self) -> None:
+        """Relay chains route past-255 flights with flat per-entry size.
+
+        Dense n=6 has 51 of 97 flights spanning past ``DownAccLines``'s
+        255-line reach (longest 5478 lines), so the relay is exercised,
+        not assumed -- and the emitted program still computes all 64
+        rows.  Per-entry size stays flat (674 at n=6, 742 at n=10) while
+        total flight length is already super-linear (309x nT at n=6
+        against 56x at n=2): sharing decouples size from flight length,
+        so a routed-tree edge-length count alone cannot close the
+        roadmap's size cell and any bound must price the sharing.
+        """
+        table = _dense_table(6)
+        program = interprogck8(table)
+        lines, flights = _assemble(table, 6)
+        _validate(lines, flights)
+        over = [f for f in flights if f[2] - f[0] > 255]
+        assert len(over) > len(flights) // 2, "the relay must actually fire"
+        assert max(f[2] - f[0] for f in flights) > 5000
+        assert 600 <= len(program) / 64 <= 900, "flat through the relay regime"
+        total = sum(stop - launch for launch, _, stop in flights)
+        assert total > 200 * 6 * 64, "flight length already super-linear"
+        for row in range(2**6):
+            bits = list(bin(row)[2:].zfill(6))
+            assert run_interprogck8(program, bits) == table[row], f"row {row}"
+
     def test_every_flight_dismounts_on_its_own_stop(self) -> None:
         """The corridor property, pinned on the assembled artifact.
 
