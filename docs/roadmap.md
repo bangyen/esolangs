@@ -78,7 +78,6 @@ The candidate list is empty.
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Interprogck8 | Total | Open | Open | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
-  | Streetcode | Total | Open | Open | Linear |
   | WII2D | Cap | Open | Open | Linear |
 
   Generation time, growth per added input at the top arity: Polynomial
@@ -88,9 +87,16 @@ The candidate list is empty.
   a peel that keeps its working sets across cubes) read x2.0--2.2,
   between the size contract's x2.15 and what these arities separate from
   noise; they are held linear until a wider measurement says otherwise.
-  Streetcode and Interprogck8 read x2.07 and x1.96 the same way and are
-  not held linear: their constructions carry a `log T` the twelve
-  doublings cannot see, so their rows are open on what the code says.
+  Interprogck8 reads x1.96 the same way and is not held linear: its
+  construction carries a `log T` the twelve doublings cannot see, so its
+  row is open on what the code says.  Streetcode closed on generation
+  time and output size on 2026-09-18: the alternating-axis H-tree
+  (`9250e3ce`) already replaced the per-row hall that carried the
+  `log T` factor, and both axes were simply never re-measured after it
+  shipped.  Best of three, dense random tables, n=10..14: size ratio
+  2.10, 1.98, 2.06, 1.99 and time ratio 2.30, 2.25, 2.18, 1.94 -- falling
+  toward 2, not away from it, well inside the size contract's x2.15 at
+  every rung.
 
   Each open row's question, with the searched negatives in
   [limitations](limitations.md#searched-negatives):
@@ -99,11 +105,6 @@ The candidate list is empty.
     `o(R)` cells with every stray cod dead (an input cell serves four
     headings, so a level's fifth node lives in the value; a one-lane
     node is eight commands but repeats the embed).
-  - Streetcode, size and time: each level's hall spans every row of both
-    subtrees, so the ~4T leaf rows are `Theta(n)` wide (220, 235, 244
-    characters per row at n=8, 10, 12) -- `Theta(T log T)`, and the
-    uncapped greedy order `Theta(T log**2 T)`; the escape is a packed
-    positional layout like AddSubJump's, priced and unbuilt.
   - Interprogck8, size and time: a read at depth `d` is `3 + 2 floor(d /
     14)` lines, `Theta(T n / 14)` in steps of fourteen inputs (805--887
     characters per entry to n=14, 6300--6600 at n=15, refused past 40);

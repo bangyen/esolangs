@@ -1072,8 +1072,9 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
 # The roadmap's original scaling queue.  A row leaves ``_OPEN_SCALING`` only
 # after an O(T) construction or a language-wide lower bound; it enters when
 # the construction is read super-linear, whatever the twelve doublings
-# measure (Streetcode's per-level hall and Interprogck8's depth-widening
-# read are both ``Theta(T log T)`` at x2.07 and x1.96 measured).
+# measure (Interprogck8's depth-widening read is ``Theta(T log T)`` at
+# x1.96 measured).  Streetcode left 2026-09-18: its per-level hall was the
+# ``Theta(T log T)`` source and the alternating-axis H-tree replaced it.
 _LINEAR_SCALING = {
     "a_painter_ant",
     "addsubjump",
@@ -1095,6 +1096,7 @@ _LINEAR_SCALING = {
     "ram0",
     "sbleq",
     "slow_acv_mammalian",
+    "streetcode",
     "vandevelo",
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
@@ -1103,7 +1105,6 @@ _OPEN_SCALING = {
     "interprogck8",
     "pct_squared_minus_one",
     "polynomial",
-    "streetcode",
     "wii2d",
 }
 
