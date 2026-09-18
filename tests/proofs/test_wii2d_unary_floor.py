@@ -275,3 +275,136 @@ class TestWii2dNoPerEpochFloor:
         self, domain: int, live: int, cost: int
     ) -> None:
         assert _cheapest_progressive_on_path(domain) == (live, cost)
+
+
+#: Three 16-bit draws from ``random.Random(3)`` (D<=16 adaptation of the
+#: notes' rand32 trio); literals so the pin does not depend on the RNG.
+_WII2D_FRAG_RAND16: tuple[tuple[int, ...], ...] = (
+    (0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0),
+    (1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0),
+    (0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0),
+)
+
+
+def _frag_ranker_pick(values: list[int], bits: list[int]) -> tuple[int, int, int]:
+    """Return the ``(scale, centre, merges)`` top-1 by local pair count.
+
+    Scores each legal first fold (scales 0/1) by its same-bit pair count
+    only -- no :func:`_wii2d_folds`, no depth, no compress, no tail
+    simulation; ties break on ``scale + |centre| + 1``, scale, centre.
+    """
+    best: tuple[int, int, int] | None = None
+    best_key: tuple[int, int, int, int] | None = None
+    for scale in (0, 1):
+        scaled = [value * 2 if scale else value for value in values]
+        live = _wii2d_points(scaled, bits)
+        if live is None:
+            continue
+        points = sorted(live)
+        zeros = [point for point in points if live[point] == 0]
+        ones = [point for point in points if live[point] == 1]
+        crossing = {zero + one for zero in zeros for one in ones}
+        merging: dict[int, int] = {}
+        for group in (zeros, ones):
+            for index, first in enumerate(group):
+                for second in group[index + 1 :]:
+                    double = first + second
+                    if double % 2 != 0 or double in crossing:
+                        continue
+                    merging[double] = merging.get(double, 0) + 1
+        for double, merges in merging.items():
+            centre = double // 2
+            key = (-merges, scale + abs(centre) + 1, scale, centre)
+            if best_key is None or key < best_key:
+                best_key = key
+                best = (scale, centre, merges)
+    assert best is not None
+    return best
+
+
+def _frag_ranker_decode(pattern: list[int]) -> tuple[tuple[int, int, int], str]:
+    """Force the loop-less top-1 first fold, then finish by shipped tail."""
+    bits = list(pattern)
+    values, ops = _wii2d_compress(list(range(len(bits))), bits, "")
+    scale, centre, merges = _frag_ranker_pick(values, bits)
+    stepped, grown = _prefix_step(values, bits, ops, scale, centre)
+    total = _shipped_tail(stepped, bits, grown)
+    assert total is not None
+    assert [_wii2d_apply(total, v) for v in range(len(bits))] == bits
+    return (scale, centre, merges), total
+
+
+class TestWii2dFragRankerFailsLikeTwoPly:
+    """A loop-less pair-count first fold recovers none of the prefix gap.
+
+    Top-1 by local same-bit pair count (no tail simulation) plus shipped
+    tail, replay-verified: 110/29/63/63/128 vs shipped 110/30/63/63/115
+    (LFSR-16, LFSR-8, three rand16). Max gain one cell; LFSR-16 misses the
+    pinned 80-pair optimum by 30 and R2 goes backwards by 13. The 7-27%
+    two-prefix gap needs the pair search itself, like the extremal-at-
+    step-two hybrid before it: third-clause standing, no construction.
+    """
+
+    @pytest.mark.parametrize(
+        ("pattern", "shipped", "ranked"),
+        [
+            pytest.param(tuple(_lfsr(16)), 110, 110, id="lfsr16"),
+            pytest.param(tuple(_lfsr(8)), 30, 29, id="lfsr8"),
+            pytest.param(_WII2D_FRAG_RAND16[0], 63, 63, id="rand0"),
+            pytest.param(_WII2D_FRAG_RAND16[1], 63, 63, id="rand1"),
+            pytest.param(_WII2D_FRAG_RAND16[2], 115, 128, id="rand2"),
+        ],
+    )
+    def test_pair_count_recovers_nothing(
+        self, pattern: tuple[int, ...], shipped: int, ranked: int
+    ) -> None:
+        bits = list(pattern)
+        decoded = _wii2d_decode(bits)
+        assert decoded is not None
+        assert [_wii2d_apply(decoded, v) for v in range(len(bits))] == bits
+        assert len(decoded) == shipped
+        _pick, total = _frag_ranker_decode(bits)
+        assert len(total) == ranked
+        assert len(decoded) - len(total) <= 1  # never a >=10% recovery
+
+    def test_the_ranker_fires_yet_misses_the_optimum(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.wii2d")
+        seen: list[str] = []
+
+        def capture(
+            values: list[int], bits: list[int]
+        ) -> list[tuple[int, int, int, str, list[int]]]:
+            candidates = _wii2d_folds(values, bits)
+            if len(seen) < 1 and candidates:
+                seen.append(candidates[0][3])
+            return candidates
+
+        monkeypatch.setattr(module, "_wii2d_folds", capture)
+        assert _wii2d_decode(_lfsr(16)) is not None
+        bits = _lfsr(16)
+        (scale, centre, merges), total = _frag_ranker_decode(bits)
+        assert (scale, centre, merges) == (0, 2, 2)  # max-merge, cheapest
+        assert seen
+        assert seen[0].startswith("*")  # shipped goes scaled: fires
+        assert len(total) == 110  # 30 over the pinned 80-pair optimum
+
+    def test_the_ranked_readout_runs_the_full_grid(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.wii2d import _wii2d_layout
+        from tests.tools.fills import _fill_wii2d
+
+        pattern = _lfsr(16)
+        _pick, ops = _frag_ranker_decode(pattern)
+        routes = [("*", "*+")] * 4 + [(ops, ops)]
+        template = "\n".join(_wii2d_layout(5, 0, routes))
+        table = "".join(str(bit) * 2 for bit in pattern)
+        for combo in range(32):
+            bits = [(combo >> (4 - index)) & 1 for index in range(5)]
+            io = ScriptedIO()
+            run_wii2d(_fill_wii2d(template, bits).splitlines(), io)
+            assert io.getvalue() == table[combo], bits

@@ -121,8 +121,11 @@ separate axes.
   five (`TestWii2dTwoPrefixBeatsShipped`). No per-epoch floor lifts this
   into a bound: one shipped step in, a 3+-merge fold costs 7 at live 28
   (domain 32) and at live 59 (domain 64), so later epochs go cheap and the
-  ratchet is cumulative unary-centre spend, not terminal magnitude
-  (`TestWii2dNoPerEpochFloor`).
+   ratchet is cumulative unary-centre spend, not terminal magnitude
+   (`TestWii2dNoPerEpochFloor`). A loop-less max-pair first fold plus shipped
+   tail recovers nothing at domain 16 (110/29/63/63/128 vs shipped
+   110/30/63/63/115, LFSR-16 30 over the 80-pair optimum)
+   (`TestWii2dFragRankerFailsLikeTwoPly`).
 - **%^2^-1:** the shortest 2/3 descent cuts dense fourteen inputs from 1.84 MB
   to 1.59 MB but does not bound relocations. Its size contract only reaches
   n=12 past the route change.
