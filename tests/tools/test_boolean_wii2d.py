@@ -613,6 +613,42 @@ class TestWII2D:
         assert centre > _WII2D_MAX_CENTRE
         assert _wii2d_folds([20000, 20004, 20010], [1, 1, 0]) == []
 
+    def test_the_junction_catalogue_alone_cannot_replace_the_fold(self) -> None:
+        """WII2D's only branching is a build-time embed choice, never a
+        runtime read of the accumulator -- the fold is where the last two
+        edges of the read-once branching program get their labels, not a
+        search layered on top of one.
+
+        Chaining ``_WII2D_JUNCTIONS`` for a second (``n``-th, not ``n -
+        1``) level instead of calling :func:`_wii2d_decode` finds AND
+        (``0001``) a legal-looking route -- every ``_wii2d_advance`` call
+        it tries accepts -- but it is wrong: three accumulator values (0,
+        1, 2) survive needing digits (0, 0, 1), and an edge's two op
+        strings are the same for every value that reaches it, so nothing
+        in the catalogue can split value 1 from value 0 the way the fold's
+        arithmetic does.  Executed on row 01 (bits ``[0, 1]``): the
+        catalogue route prints ``1``, not the required ``0``.
+        """
+        from esolangs.tools.wii2d import _WII2D_JUNCTIONS, _wii2d_advance, _wii2d_layout
+
+        table = "0001"  # AND
+        states: list[tuple[str, int]] = [(table, 0)]
+        routes: list[tuple[str, str]] = []
+        for _ in range(2):  # n = 2: both inputs from the catalogue, no fold
+            for ops in _WII2D_JUNCTIONS:
+                advanced = _wii2d_advance(states, ops)
+                if advanced is not None:
+                    routes.append(ops)
+                    states = advanced
+                    break
+        # Every surviving cofactor is one row wide -- the catalogue accepted
+        # the whole chain as legal.
+        assert all(len(cofactor) == 1 for cofactor, _value in states)
+        template = "\n".join(_wii2d_layout(2, 0, routes, None))
+        got = self.run_chain(template, [0, 1])  # row 01, table[1] == '0'
+        assert got == "1", "pin the catalogue's miswiring, not a wish"
+        assert table[0b01] == "0"
+
     def test_the_beam_search_gives_up_when_no_fold_survives(self) -> None:
         """With every fold rejected the search has nowhere to go.
 
