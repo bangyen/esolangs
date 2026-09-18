@@ -50,24 +50,11 @@ from collections.abc import Sequence
 
 from esolangs.interpreters.io import IO
 
-#: One instant of a run: ``(row, col, a, b, tape, cell, done)`` -- the
-#: beam's position and direction vector, the bit tape, the tape pointer, and
-#: whether the beam has reached a ``*``.  A value, not a record: every
-#: transition below returns a new one rather than editing one in place, and
-#: the tape is a ``tuple`` for the same reason.
-#:
-#: ``done`` is state because halting here is a decision a cell makes, not a
-#: fact about the position: the beam sits *on* the ``*`` when it stops, and
-#: the grid wraps, so no position means "stopped".
-#:
-#: ``done`` stays out of ``snapshot``, which reports the six fields it
-#: always reported plus the input cursor.  The field order there is the
-#: order it already returned; reordering would silently reorder every
-#: snapshot the cycle detector has hashed.
-#:
-#: The grid is deliberately not in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  It is a parameter to the transition instead.
+#: ``(row, col, a, b, tape, cell, done)``: an immutable value, rebound per
+#: step.  ``done`` is state because the beam sits *on* the ``*`` and the
+#: grid wraps, so no position means "stopped"; it stays out of ``snapshot``
+#: (six fields plus input cursor, in the order always returned).  The grid
+#: is a parameter, not a field, so the cycle detector stores no constants.
 type _State = tuple[int, int, int, int, tuple[int, ...], int, bool]
 
 
@@ -93,12 +80,12 @@ def _advance(state: _State, code: Sequence[str], size: int) -> _State:
     elif char == "/":
         a, b = -b, -a
     elif char == "<":
-        # ``<`` at the origin is clamped rather than an error.
+        # Clamped at the origin.
         if cell:
             cell -= 1
     elif char == ">":
         cell += 1
-        # The tape grows a cell to meet the pointer.
+        # Grows to meet the pointer.
         if cell == len(tape):
             tape = (*tape, 0)
     elif char == "-":
@@ -106,7 +93,7 @@ def _advance(state: _State, code: Sequence[str], size: int) -> _State:
     elif char == "+" and not tape[cell]:
         row, col = row + a, col + b
     elif char == "*":
-        # The beam stops where it stands; the dump is the shell's.
+        # Stops in place; the dump is the shell's.
         return (row, col, a, b, tape, cell, True)
     return ((row + a) % len(code), (col + b) % size, a, b, tape, cell, False)
 
@@ -119,11 +106,8 @@ class _Machine:
     state-cycle hang detector expose this object.
     """
 
-    #: Whether the tape is written on the step *after* the halt.  It
-    #: belongs to the language, not to whoever is stepping it: ``run`` ends
-    #: its loop with one more ``step()``, so a caller who stops at
-    #: ``halted`` has driven the program correctly and still holds none of
-    #: its output.
+    #: The tape is dumped on the step *after* the halt; a caller who stops
+    #: at ``halted`` holds no output.
     dumps_on_the_post_halt_step = True
 
     def __init__(self, code: list[str], io: IO) -> None:
@@ -133,14 +117,12 @@ class _Machine:
         self.io = io
         self.size = max(len(line) for line in code)
         self.code = tuple(line.ljust(self.size) for line in code)
-        # The beam starts top-left heading right: (a, b) is (d_row, d_col).
+        # Top-left heading right; (a, b) is (d_row, d_col).
         self.state: _State = (0, 0, 0, 1, (0,), 0, False)
-        # Out of ``_State``: the dump is the shell's, and ``snapshot`` must
-        # keep hashing the fields it always has.
+        # Not in ``_State``: the dump is the shell's.
         self._dumped = False
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # Views on the state.
 
     @property
     def row(self) -> int:
@@ -166,16 +148,11 @@ class _Machine:
     def cell(self) -> int:
         return self.state[5]
 
-    # The growth detector's view.  The pointer is ``cell`` here, so it is
-    # aliased to the name ``esolangs.vm._TapeMachine`` asks for; ``ip``
-    # below already carries the beam's direction, which that protocol needs
-    # -- two visits to one grid square travelling different ways are not
-    # the same point in the program.  Back qualifies: ``>`` appends exactly
-    # one fresh zero, ``<`` clamps at cell 0 (``if cell: cell -= 1``), and
-    # the code-side wrap ``(row + a) % len(code)`` moves the *beam*, not
-    # the tape, so it does not disturb translation invariance.  ``*`` is
-    # the one command that reads the whole tape, and it halts, so it can
-    # never occur inside a period the certificate compares.
+    # ``_TapeMachine`` view: ``cell`` aliased to the pointer name; ``ip``
+    # carries direction (same square, different heading is a different
+    # point).  Back qualifies: ``>`` appends one zero, ``<`` clamps at 0,
+    # the code wrap moves the beam not the tape, and ``*`` (the only
+    # whole-tape read) halts, so it is never inside a compared period.
 
     @property
     def ptr(self) -> int:
@@ -196,13 +173,10 @@ class _Machine:
         """Whether the end-of-run tape dump has already been printed."""
         return self._dumped
 
-    # The VM's language-shaped view: 2D beam; ip is the beam's (row, col, direction),
-    # memory the bit tape.
+    # VM view: ip is (row, col, direction), memory the bit tape.
 
-    #: ``ip`` is a cell of the program's own rectangle: the first two
-    #: parts are a row and a column, and the rest is a heading.  Without
-    #: this a caller cannot tell the pair from a call depth or a frame
-    #: stack, which look identical and mean somewhere else entirely.
+    #: ``ip`` is (row, col, heading) in the program rectangle; without this
+    #: a caller cannot tell it from a call depth or frame stack.
     ip_shape = "grid"
 
     @property
@@ -223,9 +197,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The six live fields plus the input cursor, in the order this
-        # returned before ``done`` joined the state.  ``done`` stays out:
-        # the detector compares states of a running machine.
+        # Six live fields plus input cursor; ``done`` stays out.
         row, col, a, b, tape, cell, _done = self.state
         return (row, col, a, b, tape, cell, self.io.position())
 

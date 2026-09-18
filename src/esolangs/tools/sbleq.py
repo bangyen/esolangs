@@ -242,17 +242,14 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         return [(-3, 1 + int(truth_table[row]), "out", 0), (0, 0, "halt", 0)]
 
     def node(
-        level: int,
-        zero: list[tuple[int, int, str, int]],
-        one: list[tuple[int, int, str, int]],
-        at: int,
+        level: int, zero: int, _one: int, at: int
     ) -> list[tuple[int, int, str, int]]:
         # A branch spends one instruction before either subtree, so the
         # one-side starts just past this node and its whole zero subtree.
         # The walker hands that index down, which is what the old build
         # reserved a slot and backpatched to get.
-        target = 3 * (at + 1 + len(zero))
-        return [(vbase + perm[level], neg49, "one", target), *zero, *one]
+        target = 3 * (at + 1 + zero)
+        return [(vbase + perm[level], neg49, "one", target)]
 
     instructions = reads + decision_tree_tokens(
         truth_table,

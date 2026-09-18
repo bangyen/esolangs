@@ -1,15 +1,15 @@
-"""Regenerate committed docs, examples, or ZTOALC anchors."""
+"""Regenerate committed docs or examples."""
 
 import argparse
 import sys
 
-from esolangs.tools import _generate_docs, _generate_examples, _generate_ztoalc
+from esolangs.tools import _generate_docs, _generate_examples
 
 
 def main() -> int:
     """Dispatch one generation command."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("target", choices=("docs", "examples", "ztoalc"))
+    parser.add_argument("target", choices=("docs", "examples"))
     parser.add_argument("args", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.target == "docs":
@@ -19,11 +19,6 @@ def main() -> int:
     if args.target == "examples":
         sys.argv = [sys.argv[0], *args.args]
         return _generate_examples.main()
-    if args.target == "ztoalc":
-        if any(arg != "--check" for arg in args.args):
-            parser.error("ztoalc accepts only --check")
-        sys.argv = [sys.argv[0], *args.args]
-        return _generate_ztoalc.main()
     raise AssertionError(args.target)
 
 

@@ -1,11 +1,13 @@
 """Covers :mod:`esolangs.tools.pct_fold` and :mod:`esolangs.tools.pct_fold_plan`."""
 
 import importlib
+import itertools
 from types import ModuleType
 
 import pytest
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
+from tests.tools.pct_support import _fold_clean_amount, _fold_rule_move, _fold_step
 
 
 def _run_spans(module: ModuleType, template: str) -> list[tuple[int, int]]:
@@ -183,26 +185,21 @@ class TestPctFoldEmitter:
         assert em.body == ["pip", "s"]
         assert all(em.pos[r] - before[r] == 1 for r in before)
 
-    def test_the_final_alignment_wraps_when_it_would_overshoot(self) -> None:
-        """The last shift is a residue, and only one lift of it fits.
+    def test_a_single_class_finishes_on_its_digit_from_anywhere(self) -> None:
+        """One class: ``finish`` erases the point and shifts to the byte.
 
-        ``finish`` moves the surviving point onto its answer byte, which
-        pins it only modulo 256.  Taken as a positive residue that shift
-        can exceed the headroom to the limit, so it is lowered by 256 until
-        it fits -- the same residue, reached from below.  A point near the
-        ceiling therefore ends up *under* where it started while still
-        landing on the byte.
+        A constant table's rows may sit anywhere in the window when the
+        endgame runs; ``'`` puts them all on zero, and one shift of 48 or
+        49 lands the digit, so the mirror reads the digit itself whatever
+        the start.
         """
-        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
-
-        for start, expected in ((0, 48), (2900, 2864)):
+        for start in (0, 2900, -2900):
             em = self.emitter("0", 0)
             key = next(iter(em.pos))
             em.load({key: (start, "0")})
             em.finish()
-            assert em.pos[key] == expected
-            assert em.pos[key] % 256 == em.byte(key) % 256
-            assert abs(em.pos[key]) <= module._LIMIT  # noqa: SLF001
+            assert em.pos[key] == 48
+            assert em.body == ["'p" + "s" * 24 + "p", "e"]
 
     def test_a_rise_with_no_headroom_preshifts_first(self) -> None:
         """``p`` needs two to work with, so a shorter rise makes room.
@@ -359,9 +356,15 @@ class TestPctFoldPlanners:
         assert ops is not None
         state = module._fold_norm(list(self.STATE))  # noqa: SLF001
         for op in ops:
-            state = module._fold_step(state, op)  # noqa: SLF001
+            state = _fold_step(state, op)
             assert state is not None
-        assert module._fold_done(state)  # noqa: SLF001
+        # The reduction stops at a threshold state -- one class wholly below
+        # the other, which is what the endgame prints from -- rather than
+        # going on to one point per class.
+        classes = [cls for _, span, cls, _ in state if span == 0]
+        assert len(classes) == len(state)
+        assert sum(a != b for a, b in itertools.pairwise(classes)) <= 1
+        assert not module._fold_done(state)  # noqa: SLF001
 
     def test_no_rule_applies_to_a_walled_state(self) -> None:
         """Spans that fill the workspace leave the case analysis empty.
@@ -371,13 +374,11 @@ class TestPctFoldPlanners:
         and the spread is past the doubling bound, so every case falls
         through and the move is ``None``.
         """
-        module = self.module()
-
         stuck = (
             (0, 3000, "0", frozenset({0})),
             (-10, 3000, "1", frozenset({1})),
         )
-        assert module._fold_rule_move(stuck) is None  # noqa: SLF001
+        assert _fold_rule_move(stuck) is None
 
     def test_a_step_the_state_does_not_offer_answers_none(self) -> None:
         """``_fold_step`` re-checks a move rather than trusting it.
@@ -386,14 +387,12 @@ class TestPctFoldPlanners:
         an everything-wipe on a two-class state are each refused, so an op
         that was never legal cannot be applied by accident.
         """
-        module = self.module()
-
         outside = ("d", 1, 99999, frozenset({3}))
-        assert module._fold_step(self.STATE, outside) is None  # noqa: SLF001
+        assert _fold_step(self.STATE, outside) is None
         mixed = ("d", 2, 3004, frozenset({2, 3}))
-        assert module._fold_step(self.STATE, mixed) is None  # noqa: SLF001
+        assert _fold_step(self.STATE, mixed) is None
         everything = ("d", 4, 3004, frozenset({0, 1, 2, 3}))
-        assert module._fold_step(self.STATE, everything) is None  # noqa: SLF001
+        assert _fold_step(self.STATE, everything) is None
 
     def test_a_landing_on_the_other_class_is_refused(self) -> None:
         """A wipe whose landing coincides with an opposite-class point is no move.
@@ -401,14 +400,11 @@ class TestPctFoldPlanners:
         Two points at one value are one point forever, so the algebra refuses
         the collision; the same amount onto a same-class point is the merge.
         """
-        module = self.module()
         onto = ("d", 1, 3004, frozenset({1}))
         cross = ((0, 0, "0", frozenset({0})), (-3004, 0, "1", frozenset({1})))
-        assert module._fold_step(cross, onto) is None  # noqa: SLF001
+        assert _fold_step(cross, onto) is None
         same = ((0, 0, "1", frozenset({0})), (-3004, 0, "1", frozenset({1})))
-        assert module._fold_step(same, onto) == (  # noqa: SLF001
-            (0, 0, "1", frozenset({0, 1})),
-        )
+        assert _fold_step(same, onto) == ((0, 0, "1", frozenset({0, 1})),)
 
     def test_a_clean_amount_skips_an_occupied_landing(self) -> None:
         """The first collision-free amount is computed, not the minimum.
@@ -417,13 +413,11 @@ class TestPctFoldPlanners:
         window's first value, so the clean amount is 3005 -- landing there
         would be a merge the algebra refuses when the classes differ.
         """
-        module = self.module()
-
         state = (
             (0, 0, "1", frozenset({0})),
             (-3004, 0, "0", frozenset({1})),
         )
-        assert module._fold_clean_amount(state, "d", 1) == 3005  # noqa: SLF001
+        assert _fold_clean_amount(state, "d", 1) == 3005
 
 
 class TestPctFoldPlan:
@@ -486,34 +480,36 @@ class TestPctFoldPlan:
         assert self.module()._fold_plan(state) is None  # noqa: SLF001
 
     def test_a_table_too_wide_for_the_workspace_is_refused(self) -> None:
-        """The ladder must fit the workspace, and the packed one fits longest.
+        """The ladder must fit the workspace, and the unit one fits longest.
 
         The emitter lays the rows from a zero accumulator, so a ladder has to
-        fit ``[-_LIMIT, _LIMIT]`` -- not the ``2 * _LIMIT`` span a *relative*
+        fit ``[-_LIMIT, 0]`` -- not the ``2 * _LIMIT`` span a *relative*
         plan state may occupy.  Checking only the latter lets the planner spend
         thousands of moves on a geometry the emitter refuses on its first op.
 
-        Which ladder is offered sets the reach.  The uniform ones spend
-        ``step * (2**n - 1)`` and give out at nine and ten inputs; the packed
-        ladder spends only ``2**n + 1`` and carries eleven.  Twelve exceeds
-        even that, so no ladder is offered and the fold refuses.
+        Which ladder is offered sets the reach.  The distinct ladders spend
+        ``step * (2**n - 1)`` and give out at ten, eleven and twelve inputs
+        for steps 4, 2 and 1.  Twelve exceeds even the unit step, so no
+        distinct ladder is offered and the fold refuses a table that is not
+        symmetric under any mask.
         """
-        pct = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         module = self.module()
         limit = module._LIMIT  # noqa: SLF001
 
-        # Each ladder in turn gives out one or two arities later than the last.
+        # Each ladder in turn gives out one arity later than the last.
         assert limit < module._FOLD_STEP * (2**10 - 1)  # noqa: SLF001
         assert limit < module._FOLD_NARROW_STEP * (2**11 - 1)  # noqa: SLF001
-        assert sum(module._fold_subset_weights(11)) <= limit  # noqa: SLF001
-        assert module._fold_subset_weights(12) is None  # noqa: SLF001
+        assert 2**11 - 1 <= limit < 2**12 - 1
 
-        # Nothing serves twelve inputs, so the fold declines.  The table has
-        # to be one the fold would otherwise plan: ``"01" * 2048`` alternates
-        # every row, which is 4096 runs and a subcube the *cascade* builds,
-        # so it never reaches the fold at all.  A low-run table does.
+        # Nothing lays twelve inputs apart, so the fold declines a table no
+        # mask collapses: ``x0 xor x1`` has both classes at every Hamming
+        # weight past the first under any of the four masks tried there.
         wide = "".join(str(((r >> 11) & 1) ^ ((r >> 10) & 1)) for r in range(2**12))
-        assert pct._cascade(wide, 12) is None  # noqa: SLF001
+        assert all(
+            not module._ladder_legal(wide, 12, weights, mask)  # noqa: SLF001
+            for weights, mask in module._fold_ladders(wide, 12)  # noqa: SLF001
+            if weights == (1,) * 12
+        )
         assert module._fold(wide, 12) is None  # noqa: SLF001
         # A table inside the bound still builds, so the ``None`` above is
         # the workspace and not the arity itself.
@@ -714,6 +710,52 @@ class TestPctFoldPlan:
             run(program, io)
             assert io.getvalue() == table[row], row
         assert len(widths) == 1, widths
+
+    @pytest.mark.slow  # ~10s to build, then sampled rows at ~0.6s each
+    def test_the_staged_fold_builds_the_dense_fourteen_input_fixture(self) -> None:
+        """Fourteen inputs: the stage lays when the lay fits, carrying pairs.
+
+        The dense fixture is the table the pair route refused -- its
+        eleven-input cut has 256 classes, and compacting to them strands
+        four pairs the conveyor cycles on forever.  Laid at the first
+        checkpoint where a split fits (725 points), the carried pairs
+        merge in the sixteen-class stage.  Measured: 289k moves, 1.8 MB,
+        ~10 s; twelve sampled rows print on the interpreter.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+        from esolangs.tools import parameterized
+        from tests.tools.fills import _fill_pct_squared_minus_one
+        from tests.tools.test_boolean_contract import _dense
+
+        n = 14
+        table = _dense(n)
+        template = parameterized.pct_squared_minus_one(table)
+        assert len(template) < 2_500_000
+        widths = set()
+        for row in range(0, 2**n, 1381):
+            bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
+            program = _fill_pct_squared_minus_one(template, bits)
+            widths.add(len(program))
+            io = ScriptedIO()
+            run(program, io)
+            assert io.getvalue() == table[row], row
+        assert len(widths) == 1, widths
+
+    @pytest.mark.slow  # ~1s: the stall guard on 2048 unmergeable points
+    def test_the_dense_fifteen_input_fixture_is_refused_by_name(self) -> None:
+        """Fifteen inputs: the eleven-input cut does not compact, so refuse.
+
+        2017 distinct sixteen-row cofactors among 2048 rows leave nothing
+        to merge before the lay, and the laid points jam the window; the
+        refusal says so rather than emitting a partial program.
+        """
+        from esolangs.exceptions import GeneratorCapError
+        from esolangs.tools import parameterized
+        from tests.tools.test_boolean_contract import _dense
+
+        with pytest.raises(GeneratorCapError, match="2017 distinct"):
+            parameterized.pct_squared_minus_one(_dense(15))
 
     def test_a_table_whose_plan_fails_builds_nothing(
         self, monkeypatch: pytest.MonkeyPatch

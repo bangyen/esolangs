@@ -18,7 +18,15 @@ from __future__ import annotations
 import pytest
 
 from esolangs.registry import BY_BOOLEAN
-from tests.proofs._ledger import NOT_A_LABEL, QUALIFIERS, SCHEME_LABELS, Ledger, load
+from tests.proofs._ledger import (
+    LINEAR_CLAUSE_WORDS,
+    NOT_A_LABEL,
+    QUALIFIERS,
+    SCALING_CLASSES,
+    SCHEME_LABELS,
+    Ledger,
+    load,
+)
 
 
 @pytest.fixture(scope="module")
@@ -129,3 +137,34 @@ def test_the_ledger_totals_itself_correctly(ledger: Ledger) -> None:
         f"{ledger.claimed_arguments} + {ledger.claimed_exceptions} "
         f"!= {len(ledger.rows)} rows"
     )
+
+
+def test_every_row_carries_a_scaling_cell(ledger: Ledger) -> None:
+    """The Scaling column is checked like the Proof column: a class, then a clause.
+
+    A row whose cell is missing fails in the parser (four cells or nothing);
+    a row whose class is not one of :data:`SCALING_CLASSES` fails here, so a
+    typo cannot read as settled.  Every class carries a clause: ``linear``
+    names its argument in :data:`LINEAR_CLAUSE_WORDS` words or fewer, the
+    others name the term or the bound.
+    """
+    for row in ledger.rows:
+        assert row.scaling_class in SCALING_CLASSES, (
+            f"{row.generator}: unknown scaling class {row.scaling_class!r}"
+        )
+        assert row.scaling_clause, f"{row.generator}: scaling cell has no clause"
+        if row.scaling_class == "linear":
+            words = len(row.scaling_clause.split())
+            assert words <= LINEAR_CLAUSE_WORDS, (
+                f"{row.generator}: linear clause is {words} words, "
+                f"more than {LINEAR_CLAUSE_WORDS}"
+            )
+
+
+def test_the_measured_class_is_the_exception_row(ledger: Ledger) -> None:
+    """``measured`` means nothing bounds it, which is what ``exception`` means.
+
+    Kept in step in both directions so neither label can be granted alone.
+    """
+    measured = {row.generator for row in ledger.rows if row.scaling_class == "measured"}
+    assert measured == {row.generator for row in ledger.labelled("exception")}

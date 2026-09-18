@@ -218,6 +218,25 @@ class TestATemplateCarriesItsSetters:
     def test_a_reading_language_has_no_setters(self) -> None:
         assert getattr(esolangs.generate("brainfuck", "0110"), "setters", None) is None
 
+    def test_a_uniform_example_derives_its_setters_from_its_pair(self) -> None:
+        """Sixteen examples carry one pair; the other one reads the template."""
+        from esolangs.tools.examples import BOOLEAN_EXAMPLES, _embedded, uniform
+
+        embedded = [e for e in BOOLEAN_EXAMPLES.values() if e.setters is not None]
+        uniform_ones = [e for e in embedded if e.pair is not None]
+        assert len(uniform_ones) == 16
+        assert {e.stem for e in embedded if e.pair is None} == {
+            "pct-squared-minus-one",
+        }
+        for example in uniform_ones:
+            assert example.setters("", 3) == uniform(example.pair)("", 3)
+        with pytest.raises(TypeError, match="exactly one"):
+            _embedded(
+                esolangs.generate, "x", pair=("a", "b"), setters=uniform(("a", "b"))
+            )
+        with pytest.raises(TypeError, match="exactly one"):
+            _embedded(esolangs.generate, "x")
+
     def test_unequal_widths_are_refused(self) -> None:
         from esolangs.tagged import _Template
 
@@ -276,7 +295,7 @@ class TestATemplateCarriesItsSetters:
         """
         from esolangs.registry import template_body
 
-        for name in ("Minifuck", "Bitdeque", "%^2^-1", "Nopstacle"):
+        for name in ("Minifuck", "Bitdeque", "%^2^-1", "Crement"):
             template = esolangs.generate(name, "0110")
             shape = len(template_body(esolangs.describe(name)["id"], template))
             for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
@@ -594,10 +613,11 @@ class TestWhatHappensWhenAProgramIsUnderfed:
             if not esolangs.describe(name)["parameterized"]
             and self._underfed(name)[0] == "raised"
         )
-        # 40 of the 48 that read stdin, measured.  Pinned exactly, so that
-        # a change which quietly moves a language out of the norm shows up
-        # here rather than in a docstring nobody re-derives.
-        assert raised == 40
+        # 39 of the 46 that read stdin, measured (40 of 48 before Nopstacle
+        # and ZTOALC L left).  Pinned exactly, so that a change which
+        # quietly moves a language out of the norm shows up here rather
+        # than in a docstring nobody re-derives.
+        assert raised == 39
 
     def test_the_trait_is_reported_by_describe(self) -> None:
         """A caller must be able to learn this without underfeeding one."""

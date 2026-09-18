@@ -502,7 +502,11 @@ class TestQoiblParserGuards:
         all is malformed.  Without this check both were accepted, so a
         program that never spelled a complete operation would still run.
         """
-        from esolangs.interpreters.register_based.qoibl import _wellformed
+        from esolangs.interpreters.register_based.qoibl import _Reading
+
+        def _wellformed(expr: list[str]) -> bool:
+            # :func:`_eval`'s split points and arm order, without effects.
+            return _Reading(expr).at(0, len(expr))
 
         assert _wellformed(["e", "yr", "ee", "yr", "y"]) is True
         assert _wellformed(["e", "yr", "ee", "ry", "y"]) is False  # wrong close

@@ -1,34 +1,17 @@
 """Interpreter for Clockwise.
 
-A pointer walks clockwise around a square ring, turning a quarter at R cells
-and at ! when the accumulator is zero.  ? turns a quarter *for every count*
-the accumulator holds -- the condition below is the accumulator itself, not a
-test of it -- so 2 reverses the pointer and 0 leaves it on course.  ; outputs
-the accumulator parity, . reads an input bit, S zeroes the accumulator, and
-seven parity bits are grouped into one printed byte.
+A pointer walks clockwise around a square ring, turning a quarter at
+``R`` and at ``!`` when the accumulator is zero; ``?`` turns a quarter
+*per count* the accumulator holds, so 2 reverses.  ``;`` outputs the
+accumulator parity (seven bits per printed byte), ``.`` reads an input
+bit, ``S`` zeroes.  Walking off the edge is malformed
+(:class:`ValueError`).  Input bits are read once in ``__init__`` and then
+rotated, so ``.`` consumes from a queue in the state; a program that reads
+with no bits at all raises :class:`EOFError`.
 
-The wiki defines the program as a closed ring; a pointer that walks off the
-edge is a malformed program and is rejected with :class:`ValueError`.  Input
-bits are read once at the start and then rotated, so a program that consumes
-more than 7 bits re-reads them rather than halting on exhausted input.
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the ring to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.
-
-Input is not an effect during a run: the bits are read once in
-``__init__`` and then rotated, so ``.`` consumes from a queue the state
-carries rather than from the outside world.  That leaves ``step`` with one
-effect -- flushing a byte once seven parity bits accumulate -- and one
-error, the ``EOFError`` for a program that reads with no bits at all.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what Clockwise *does* stays in
-the pure layer.
+:func:`_advance` is a pure transition over an immutable ``_State`` with
+no ``io`` argument; :class:`_Machine` rebinds one state per ``step()``
+and flushes the byte.
 """
 
 from __future__ import annotations
@@ -42,19 +25,10 @@ from esolangs.interpreters.io import IO
 #: How many parity bits make one printed byte.
 _BYTE_BITS = 7
 
-#: One instant of a run: ``(row, col, r, acc, out, inp, done)`` -- the
-#: pointer's position and heading, the accumulator, the parity bits not yet
-#: flushed, the rotating input bits, and whether the ring has closed.  A
-#: value, not a record: every transition below returns a new one rather
-#: than editing one in place, and both bit queues are tuples for the same
-#: reason.
-#:
-#: ``done`` is state because halting here is a property of the *move*: the
-#: pointer returning to the origin ends the run, except on a ``0`` heading,
-#: so the position alone does not say whether the ring has closed.
-#:
-#: ``done`` stays out of ``snapshot``, which reports the six live fields
-#: plus the input cursor, in the order it always returned them.
+#: ``(row, col, r, acc, out, inp, done)``: position, heading, accumulator,
+#: unflushed parity bits, rotating input bits, ring closed.  ``done`` is
+#: state because returning to the origin ends the run except on a ``0``
+#: heading; it stays out of ``snapshot``.
 type _State = tuple[int, int, int, int, tuple[str, ...], tuple[str, ...], bool]
 
 COL = [1, 0, -1, 0]
@@ -85,22 +59,10 @@ def move(
 def _advance(state: _State, code: Sequence[str]) -> tuple[_State, int | None]:
     """Return the state after one cell, and any byte that is ready to print.
 
-    Pure: it reads ``state`` and returns a new one.  The byte is reported
-    rather than printed -- printing is the shell's -- and the seven bits
-    are already cleared in the state that comes back.
-
     The move happens first: a cell's instruction is the one the pointer
-    *left*, not the one it arrives on, which is what makes the ring walk
-    and the instruction stream the same thing.
-
-    A turn cell (``R``, or ``?``/``!`` when the accumulator agrees) needs
-    no case of its own: the dispatch below has no branch for one, and a
-    flush cannot fire on it -- ``out`` reaches seven only on the ``;`` that
-    appends the seventh bit.  So a turn falls through to the shared
-    ``cont`` check.
-
-    A ``.`` on an empty queue is left for the shell to reject: bits are
-    read up front, so an empty queue means the program was given none.
+    *left*.  A turn cell needs no case: no flush can fire on it, so it
+    falls through to the shared ``cont`` check.  ``.`` on an empty queue is
+    left for the shell to reject.
     """
     row, col, r, acc, out, inp, _done = state
     row, col, r, ins, cont = move(row, col, r, code, acc)
@@ -133,13 +95,8 @@ def _advance(state: _State, code: Sequence[str]) -> tuple[_State, int | None]:
 class _Machine:
     """Per-run Clockwise state: position, heading, accumulator, pending bits.
 
-    ``step()`` moves the pointer one cell, executes its instruction, and
-    flushes a printed byte when seven parity bits accumulate; ``halted`` is
-    true once the pointer returns to the origin (a ``0`` heading is the only
-    return that is *not* a halt, and no ring can arrive that way, since a
-    step onto the origin heading right starts from ``(0, -1)`` -- which
-    :func:`move` refuses -- so that arm is a guard, not a loop).  The VM and
-    the state-cycle hang detector expose this object.
+    ``halted`` is true once the pointer returns to the origin; the ``0``
+    heading arm there is a guard, since :func:`move` refuses ``(0, -1)``.
     """
 
     def __init__(self, code: list[str], io: IO) -> None:
@@ -224,14 +181,7 @@ class _Machine:
         return (row, col, r, acc, out, inp, self.io.position())
 
     def step(self) -> None:
-        """Move the pointer one cell and execute the instruction it left.
-
-        The byte flush and the empty-queue rejection live here rather than
-        in the transition: this is the shell, so it is where an effect or a
-        raise belongs.  The transition reports *that* a byte is ready and
-        hands back a state with the bits already cleared, so this only has
-        to write them.
-        """
+        """Move the pointer one cell and execute the instruction it left."""
         if self.state[6]:
             return
         # Bits are read up front, so an empty queue means the program was
@@ -241,15 +191,9 @@ class _Machine:
         if not self.state[5]:
             row, col, r, _acc, _out, _inp, _done = self.state
             if move(row, col, r, self.code, self.state[3])[3] == ".":
-                # ``InputExhaustedError``, not a bare ``EOFError``: it *is*
-                # one (that is the class's second base), but the bare form
-                # carried no message and was not an ``EsolangError``, so a
-                # sweep written to the documented ``except EsolangError``
-                # crashed on this one language.  The same program with
-                # *empty* stdin has always raised the typed one, from
-                # ``ScriptedIO``; only this look-ahead raised its own.
-                # The counts come off the io by ``getattr``: this look-ahead
-                # runs against the base ``IO`` too, which does not keep them.
+                # ``InputExhaustedError`` (an ``EOFError`` too), not the
+                # bare one: a sweep on ``except EsolangError`` crashed here.
+                # Counts via ``getattr``: the base ``IO`` does not keep them.
                 raise InputExhaustedError(
                     getattr(self.io, "reads", 0), getattr(self.io, "supplied", 0)
                 )

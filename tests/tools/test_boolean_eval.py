@@ -3,11 +3,11 @@
 import pytest
 
 from esolangs import tools as boolean
-from esolangs.tools.eval_lang import EVAL_ZERO
+from esolangs.tools.eval_lang import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR
 
 #: One input's run, as the template spells it.
-_X = TEMPLATE_CHAR * len(EVAL_ZERO)
+_X = TEMPLATE_CHAR * len(PAIR[0])
 
 
 class TestEvalBoolean:
@@ -118,7 +118,7 @@ class TestEvalBoolean:
 
         template = parameterized.eval("0110")
         assert "{X" not in template
-        assert template.count(TEMPLATE_CHAR) == 2 * len(EVAL_ZERO)
+        assert template.count(TEMPLATE_CHAR) == 2 * len(PAIR[0])
 
     def test_linear_lookup_structure(self) -> None:
         """Each level shares one half-stack discard between both branches."""
@@ -152,11 +152,8 @@ class TestEvalBoolean:
     def test_reorder_cost_selects_the_emitted_template(self) -> None:
         """The pricing model matches every candidate and picks the shortest."""
         from esolangs.tools.helpers import permute_truth_table
-        from esolangs.tools.parameterized import (
-            _eval_cost,
-            _eval_ordered,
-            _eval_stack_programs,
-        )
+        from esolangs.tools.parameterized import _eval_ordered
+        from tests.tools.eval_reorders import _eval_cost, _eval_stack_programs
 
         for n in (1, 2, 3):
             for value in range(2 ** (2**n)):
@@ -202,7 +199,7 @@ class TestEvalBoolean:
         """
         from math import factorial
 
-        from esolangs.tools.parameterized import _eval_stack_programs
+        from tests.tools.eval_reorders import _eval_stack_programs
 
         for n in (2, 3, 4):
             assert len(_eval_stack_programs(n)) == factorial(n)
@@ -217,7 +214,7 @@ class TestEvalBoolean:
         claimed string minimal, and the ``~`` < ``*`` < ``=`` tie order is
         what keeps the fold byte-identical to the search it replaced.
         """
-        from esolangs.tools.parameterized import (
+        from tests.tools.eval_reorders import (
             _EVAL_MAX_OPS,
             _eval_reorders,
         )
@@ -239,7 +236,7 @@ class TestEvalBoolean:
         count that must hold is the arrangement count: 735 from ``n == 12``
         on, which is where the catalog froze.
         """
-        from esolangs.tools.parameterized import _eval_stack_programs
+        from tests.tools.eval_reorders import _eval_stack_programs
 
         assert len(_eval_stack_programs(12)) == 735
         assert len(_eval_stack_programs(13)) == 735
@@ -258,10 +255,7 @@ class TestEvalBoolean:
         """
         from collections import deque
 
-        from esolangs.tools.parameterized import (
-            _EVAL_MAX_OPS,
-            _eval_stack_programs,
-        )
+        from tests.tools.eval_reorders import _EVAL_MAX_OPS, _eval_stack_programs
 
         def searched(n: int) -> dict[tuple[int, ...], str]:
             start: tuple[tuple[int, ...], tuple[int, ...], int] = (

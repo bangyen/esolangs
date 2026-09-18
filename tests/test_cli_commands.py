@@ -7,13 +7,14 @@ run, debug, answer, evaluate and verify, plus the options they share --
 import importlib
 import inspect
 import json
+import random
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 import esolangs
-from esolangs import cli
+from esolangs import cli_round_trip
 from esolangs.cli import HELP
 from tests.cli_support import _LOOPS, call_both
 from tests.test_cli import _program, call_main
@@ -814,10 +815,12 @@ class TestTheRoundTripsFailurePaths:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Nothing ran, so it is the usage class rather than a wrong answer."""
+        rng = random.Random(7)
+        dense = "".join(rng.choice("01") for _ in range(1 << 10))
         with pytest.raises(SystemExit) as exc:
-            call_main(["verify", "ZTOALC L", "01" * (1 << 10)], capsys)
+            call_main(["verify", "WII2D", dense], capsys)
         assert exc.value.code == 2
-        assert "command lines" in capsys.readouterr().err
+        assert "cost guard" in capsys.readouterr().err
 
     def test_a_mismatch_names_the_rows_that_disagree(
         self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -828,7 +831,7 @@ class TestTheRoundTripsFailurePaths:
         wrong* is the one a reader only ever reaches on a bad day, so it
         must not be the untested one.
         """
-        monkeypatch.setattr(cli, "evaluate", lambda *_a, **_k: "0000")
+        monkeypatch.setattr(cli_round_trip, "evaluate", lambda *_a, **_k: "0000")
         with pytest.raises(SystemExit) as exc:
             call_main(["verify", "brainfuck", "0110"], capsys)
         assert exc.value.code == 1
@@ -840,7 +843,7 @@ class TestTheRoundTripsFailurePaths:
         self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`evaluate` reports and exits 0; the comparison is the caller's."""
-        monkeypatch.setattr(cli, "evaluate", lambda *_a, **_k: "0000")
+        monkeypatch.setattr(cli_round_trip, "evaluate", lambda *_a, **_k: "0000")
         assert call_main(["evaluate", "brainfuck", "0110"], capsys).strip() == "0000"
 
 

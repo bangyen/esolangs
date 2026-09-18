@@ -53,22 +53,10 @@ _DIG_DIGITS = "0123456789;"
 def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
     """Build a leaf that consumes ``reads`` inputs, then prints ``value``.
 
-    ``$`` makes the cells after it commands, as many as the digit beside it
-    says, so the reads a folded leaf still owes need no block each: one
-    ``$`` covers every ``~`` plus the three cells that print.  Its count is
-    a single digit, so a window holds at most nine cells; past that the
-    windows chain, and a window that spends its whole count leaves the
-    counter at zero, which is what arms the next ``$`` with no cell in
-    between.
-
-    ``aligned`` is for the banded layout, where a leaf shares columns with
-    the other band and its cells have to fall where that band's do not
-    care.  Two things change.  Windows become exactly ``_DIG_BAND`` cells
-    long, so every ``$`` in the chain keeps the column residue the first
-    one had.  And a blank goes before the value when ``reads`` is even --
-    a blank inside an armed window only spends a count -- which puts the
-    value digit an odd number of cells from the ``$``, where the other
-    band's ``$`` and ``#`` never look.
+    ``$`` arms the cells after it as commands, up to nine per window; windows
+    chain, a spent count arming the next ``$``.  ``aligned`` (banded layout)
+    makes windows exactly ``_DIG_BAND`` long and pads the value to an odd
+    offset from the ``$``, where the other band's ``$`` and ``#`` never look.
     """
     out = ""
     if not aligned:
@@ -89,27 +77,12 @@ def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
 def _dig_columns(n: int, split: int | None) -> tuple[int, int]:
     """Where the two bands start, or the one band if ``split`` is ``None``.
 
-    A flat tree walks east the whole way and every level owns five columns
-    of its own.  A banded one turns round once: the levels before ``split``
-    run east, the rest run west over the same columns, mirrored so the mole
-    still meets each block's ``$`` first.
-
-    The bands can overlap at all only because of how their columns line up.
-    Read a block's cells by their offset: a ``$`` or a ``#`` -- the only
-    two that consult a neighbour -- sits at 0 or 4, and the digits that
-    could confuse one sit at 1 and 3.  So with a stride of six, letting
-    ``d`` be an east block's column minus a west block's, a digit lands on
-    a neighbour-reading cell when ``d`` is 1, 3, -1 or -3, and a mole
-    falling from a ``#`` lands on a ``$`` or a ``#`` when ``d`` is 0 or -4.
-    Every one of those is 0, 1, 2, 3 or 5 modulo six.  **Four is not**, so
-    fixing ``d`` at four modulo six clears all of them at once, whatever
-    the overlap -- and every pair of an east and a west block differs by
-    ``d`` plus a multiple of six.
-
-    That also says why the turn happens once and not twice.  A second turn
-    would put two bands running the same way, and two east blocks differ by
-    a multiple of six, which is zero modulo six -- the case ``d`` had to
-    avoid.  So one turn is the whole of what Dig's geometry allows.
+    A banded tree turns round once and the west band runs over the east
+    band's columns, mirrored.  A ``$`` or ``#`` sits at block offset 0 or 4
+    and confusable digits at 1 and 3, so with stride six a collision needs
+    the bands' column difference ``d`` to be 0, 1, 2, 3 or 5 mod six; four is
+    not, so ``d = 4 mod 6`` clears all of them.  A second turn would put two
+    bands the same way, differing by 0 mod six -- the case ``d`` must avoid.
     """
     if split is None:
         return 1, 0
@@ -142,11 +115,8 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
     def place(row: int, col: int, text: str) -> None:
         """Write ``text`` along ``row`` from ``col``, refusing an occupied cell.
 
-        The columns above are what keeps two cells apart; this is what says
-        so.  A Dig cell steers or arms the mole that stands on it, so an
-        overwrite is one of the two ways a bad layout goes wrong, and the
-        other -- a mole falling through a cell that acts on it -- is what
-        :func:`_dig_clear` checks.
+        An overwrite is one of the two ways a bad layout fails; :func:`_dig_clear`
+        checks the other.
         """
         for i, char in enumerate(text):
             if col + i < 0:
@@ -227,16 +197,10 @@ def _dig_clear(
 ) -> None:
     """Refuse a grid whose moles would be stopped on their way.
 
-    Two things can go wrong that placing cells cannot see.  A mole falling
-    from a ``#`` to its child passes every row between, and a cell it meets
-    there steers or arms it unless it is scenery -- which, with the counter
-    at zero, everything but :data:`_DIG_OPAQUE` is.  And a ``$`` or a ``#``
-    takes its digit from the first of up, right, down, left that has one,
-    so a digit directly above or below either is a wrong answer that runs.
-
-    Both are checked against the grid rather than argued from the column
-    rule, because the rule is what *places* the cells and an argument that
-    places and checks with the same reasoning checks nothing.
+    A mole falling from ``#`` to its child meets every row between (only
+    :data:`_DIG_OPAQUE` is scenery), and a ``$`` or ``#`` takes the first
+    digit of up, right, down, left.  Checked against the grid, since the
+    column rule is what places the cells.
     """
     for col, start, end in corridors:
         low, high = sorted((start, end))
@@ -261,12 +225,9 @@ _DIG_DIRECTIONS = ((-1, 0), (0, 1), (1, 0), (0, -1))
 def _dig_alternating(truth_table: str, n: int) -> str:
     """Lay a full Dig tree with its branch axis rotating at every level.
 
-    A ``#`` naturally sends its zero and one children left and right.  Let a
-    subtree's local x-axis be its entering heading.  Its children therefore
-    enter on the local y-axis; placing each just beyond its own most-backward
-    cell keeps the two child rectangles on opposite sides of the parent.
-    Width and height swap, then one doubles, at successive levels.  Thus each
-    pair of levels doubles both and the rendered rectangle is O(2**n).
+    Children enter on the local y-axis, placed just beyond the parent's
+    most-backward cell; width and height swap and one doubles per level, so
+    the rectangle is O(2**n).
     """
     # Bounds of a complete m-level subtree entered east, inclusive and local
     # to its first ``$``: (min_x, max_x, min_y, max_y).  Leaves and branch
@@ -348,54 +309,18 @@ def _dig_alternating(truth_table: str, n: int) -> str:
 def dig(truth_table: str, width: int | None = None) -> str:
     """Build a Dig program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-    Past four inputs the default alternates the branch axis at every level.
-    Its width and height each double once per pair of levels, so its area and
-    construction time are O(T).  ``width`` retains the folded one- or
-    two-band layouts below; a width under their floor returns the narrower
-    program rather than refusing.
-
-    The tree is laid out so the mole starts in the top-left corner (``'``)
-    facing down into the root.  Each branch block reads one input bit:
-    ``~`` inputs it, ``;`` stores it in the grid, and ``#`` turns the mole
-    down or up on that bit.  The two children of a node keep facing the way
-    the next level's branch is entered, and the leaves print the function's
-    value for the input combination they stand for.
-
-    A subtree whose rows all agree becomes a leaf, and the rows it would
-    have filled are never written -- which is what the walk buys over filling
-    the grid level by level, where a pruned row still had to be skipped by
-    hand.  A constant table collapses to a single line.
-
-    A folded leaf still reads the inputs it never branched on, since a
-    program whose input count depended on its table would desync a caller
-    feeding several programs from one stream.  Those reads are cheap: a
-    branch spends ``;`` to store its bit for its own ``#``, and a leaf turns
-    nowhere, so the read is bare -- and ``$`` covers a run of cells at once,
-    so they need no block each.
-
-    A level costs five columns, not seven.  Two cells the blocks used to
-    spend are not needed.  The ``>`` that opened a block only ever repeated
-    the heading the mole already had -- every block but the root's is
-    entered moving right -- so only the root keeps one, to turn out of the
-    column it starts down.  And the ``@`` that closed a block was never
-    reached: ``;`` writes the bit it just read, so the ``#`` beside it
-    always sees a 0 or a 1 and always turns.  Putting the count to the
-    right of its ``$`` rather than the left is what lets the blocks abut,
-    since ``$`` looks up, right, down, left and takes the first digit it
-    finds.
-
-    In the explicit-width layout, ``5 * n + 6`` columns is what that comes
-    to, and a width under it is met
-    by turning the tree round once: the levels past the turn run west over
-    the columns the levels before it already used, their blocks mirrored so
-    the mole still meets each ``$`` first.  Nothing has to be routed back --
-    the ``#`` at the end of the last eastbound block turns the mole onto its
-    child's row, and a ``<`` there points it into a block that starts where
-    it stands.  What the two bands cost is one spare column a level, and
-    :func:`_dig_columns` is where the arithmetic that lets them overlap
-    lives, along with the reason a *second* turn is not possible.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.  Past
+    four inputs the default alternates the branch axis (area and time O(T));
+    ``width`` keeps the one- or two-band layouts, the narrower returned when
+    under the floor.  The mole starts top-left facing down; each branch
+    block reads a bit (``~``), stores it (``;``) and ``#`` turns on it; a
+    constant subtree becomes a leaf and its rows are never written.  A
+    folded leaf still reads (bare, covered by one ``$``).  A level costs five
+    columns: the opening ``>`` only repeated the heading and the closing ``@``
+    was never reached, and the count sits right of its ``$``.  Under
+    ``5 * n + 6`` the tree turns round once (:func:`_dig_columns`); the ``#``
+    at the last eastbound block turns onto the child's row and a ``<`` points
+    west, at one spare column per level.
     """
     n = _validate_truth_table(truth_table)
     if width is None and n > 4:

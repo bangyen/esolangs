@@ -1,37 +1,14 @@
 """Interpreter for BFStack.
 
-Brainfuck-style commands on a stack: > pushes 0, < pops, + and - adjust the
-top, . prints it, , pushes a byte of input, and [ ] loop while the top is
-nonzero.  A pop or output on an empty stack is invalid and halts the program.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and a command to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.  Both
-stacks are tuples, so a state is a value that can be stored, compared, and
-hashed as it stands.
-
-Keeping the transition *total* takes one extra piece here, because six of
-BFStack's commands can fail on an empty stack.  :func:`_needs_operand` says
-which commands require one, so the shell can reject an invalid step before
-calling the transition -- rather than the transition having a raise in six
-branches.  The match for a ``[`` can likewise be missing, so
-:func:`_forward_table` maps an unmatched ``[`` to ``None`` and the shell
-turns that into the error.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what BFStack *does* stays in
-the pure layer.
-
-The wiki does not specify the cell width for ``+``/``-``; this interpreter
-wraps at 8 bits (mod 256).  It also raises :class:`EOFError` on exhausted
-input, :class:`HaltError` on an invalid empty-stack operation, and
-:class:`ValueError` on an unmatched ``[``.
-
-``step()`` executes one command and ``halted`` is true once the cursor
-reaches the end of the code, making a ``[`` loop whose top never zeroes a
-finite-state cycle the state cycle detector can prove.
+Brainfuck commands on a stack: ``>`` pushes 0, ``<`` pops, ``+``/``-``
+adjust the top (mod 256; the wiki gives no width), ``.`` prints it,
+``,`` pushes a byte, ``[ ]`` loop while the top is nonzero.  An
+empty-stack pop or output raises :class:`HaltError`; an unmatched ``[``
+raises :class:`ValueError` when reached; exhausted input raises
+:class:`EOFError`.  :func:`_advance` is pure and total over an
+immutable ``_State``: :func:`_needs_operand` lets the shell reject an
+empty-stack step first, and :func:`_forward_table` maps an unmatched
+``[`` to ``None`` for the shell to raise on.
 """
 
 from __future__ import annotations
@@ -69,16 +46,9 @@ def _needs_operand(char: str) -> bool:
 def _forward_table(code: str) -> dict[int, int | None]:
     """Map every ``[`` to its ``]``, or to ``None`` when it has none.
 
-    Built once at load with one stack pass instead of a scan from the
-    bracket every time a zero top skips its loop.  That scan was the whole
-    run cost of a generated boolean program -- 502 skips over a
-    2,080-character program were 95% of the worst row at nine inputs, x2.8
-    per added input against a linear x2.0 -- for a table this small.
-
-    Unmatched brackets are *not* rejected here: an unmatched ``[`` is a
-    run-time error in BFStack, raised only if a zero top reaches it, and
-    an unmatched ``]`` only if it is reached with no loop open.  Both stay
-    the shell's business, so this never raises.
+    Built once at load: scanning per skip was 95% of the worst row at nine
+    inputs (502 skips over 2,080 characters, x2.8 per input against x2.0).
+    Unmatched brackets are run-time errors, so this never raises.
     """
     table: dict[int, int | None] = {}
     stack: list[int] = []
@@ -96,18 +66,8 @@ def _advance(
 ) -> _State:
     """Return the state after executing the command at the cursor.
 
-    Pure, and total: every command it can be handed has a defined successor
-    state, because the shell has already rejected the empty-stack cases and
-    resolved the unmatched-bracket one.  It takes no ``io`` argument, so
-    ``.`` and ``,`` are the caller's business -- ``.`` changes no state at
-    all, and ``,``'s byte arrives as ``byte``, already read.
-
-    ``]`` jumps to one before the position the matching ``[`` pushed, so
-    the shared increment below lands back *on* the ``[`` and re-tests it.
-    Anything that is not a command is a comment and falls through to that
-    same increment.
-
-    ``jumps`` is :func:`_forward_table` for ``code``.
+    Pure and total; ``,``'s byte arrives as ``byte``.  ``]`` jumps to one
+    before its ``[`` so the shared increment re-tests it.
     """
     ind, stk, lst = state
     char = code[ind]
@@ -135,14 +95,7 @@ def _advance(
 
 
 class _Machine:
-    """A BFStack run: one immutable ``_State``, rebound per step.
-
-    The protocol the rest of the library expects (``step``, ``halted``,
-    ``snapshot``, and the ``stk``/``lst``/``ind`` attributes) is mutable by
-    construction, so this class supplies it.  All it does is hold the
-    current state and the code; the rules themselves are the pure functions
-    above.
-    """
+    """A BFStack run: one immutable ``_State``, rebound per step."""
 
     def __init__(self, code: str, io: IO) -> None:
         """Start with an empty data stack and loop stack."""
@@ -205,9 +158,7 @@ class _Machine:
     def step(self) -> None:
         """Execute one command, advancing the cursor.
 
-        The two I/O effects and all three error cases live here rather than
-        in the transition: this is the shell, so it is where an effect or a
-        raise belongs, and it leaves :func:`_advance` total.
+        The two I/O effects and all three error cases are here.
         """
         if self.halted:
             return

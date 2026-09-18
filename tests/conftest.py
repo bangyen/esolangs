@@ -8,7 +8,16 @@ import pytest
 from _pytest.reports import TestReport
 from coverage.collector import Collector
 
-from tests.duration_policy import violation
+from tests.duration_policy import hard_ceiling, violation
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Give every test its band's hard stop unless it set a ``timeout`` itself."""
+    for item in items:
+        if item.get_closest_marker("timeout") is not None:
+            continue
+        markers = {marker.name for marker in item.iter_markers()}
+        item.add_marker(pytest.mark.timeout(hard_ceiling(markers)))
 
 
 @pytest.hookimpl(wrapper=True)

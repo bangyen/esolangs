@@ -1,41 +1,21 @@
 """Interpreter for Taglate.
 
-Taglate is a queue-based language: the first line seeds a queue of integers
-(0-65535, wrapping), and the remaining lines hold commands.  Commands do
-queue arithmetic (``a``-``d``), rotate and discard (``e``/``f``), loops
-(``gy``/``gz``), character I/O (``h``/``i``), a toggle-counter trick
-(``j``), and ``t``, which replaces the queue with a Google Translate URL of
-its text.
+The first line seeds a queue of integers (0-65535, wrapping); the rest
+hold commands: arithmetic ``a``-``d``, rotate/discard ``e``/``f``, loops
+``gy``/``gz``, char I/O ``h``/``i``, ``j`` toggle-counter, and ``t``,
+which replaces the queue with a Google Translate URL of its text.
 
-Decisions for gaps in the wiki spec (documented):
-- division by zero halts the program (it is an invalid operation, so the
-  interpreter does not invent a result for it);
-- an empty queue reads as 0 for loop conditions;
-- popping an empty queue in an arithmetic or I/O command is an invalid
-  operation and halts the program with
-  :class:`~esolangs.exceptions.HaltError`;
-- an unmatched ``gy``/``gz`` is a malformed program and is rejected with
-  :class:`ValueError`;
-- a character that is not a command is **skipped**, and a lone ``g`` not
-  followed by ``y``/``z`` is skipped with it.  The wiki says only that the
-  command lines are "filled with a bunch of commands, all lowercase
-  letters" and does not say what else may appear, so this is a choice.  Its
-  cost is that a program of pure nonsense (``qqq``) runs cleanly and prints
-  nothing, which reads as success; the reason to keep it is that skipping
-  is what the tokenizer was built to do and
-  ``test_a_skipped_character_advances_the_cursor`` and its three
-  neighbours pin the advance behaviour deliberately.  Bitdeque, the other
-  queue language, refuses instead -- there the swallow was neither
-  intended nor tested, and its commands are upper-case words, so a
-  lower-case program vanished entirely;
-- ``t`` keeps ASCII letters, digits, and ``-_.~`` (the RFC 3986 unreserved
-  set), encoding everything else as ``%XX`` (uppercase hex, more digits for
-  values above 255).  This is a deliberate conservative choice: the real
-  translate page also leaves ``!$'()*,/:;?@`` literal and uses ``+`` for
-  spaces, but the wiki spec only requires URL-safe characters to survive, so
-  encoding the extra characters too is safe and simpler.
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
+Gaps decided: division by zero and popping an empty queue halt with
+:class:`~esolangs.exceptions.HaltError`; an empty queue reads as 0 for
+loop conditions; unmatched ``gy``/``gz`` raise :class:`ValueError`; a
+non-command character (and a lone ``g``) is **skipped** -- so ``qqq``
+runs cleanly -- because ``test_a_skipped_character_advances_the_cursor``
+and its neighbours pin that deliberately, where Bitdeque, the other
+queue language, refuses; ``t``
+keeps the RFC 3986 unreserved set and ``%XX``-encodes the rest
+(uppercase hex, wider above 255), narrower than the real page's
+``!$'()*,/:;?@`` and ``+`` but within the spec.  Exhausted input raises
+:class:`EOFError`.
 """
 
 import sys
@@ -109,8 +89,7 @@ type _State = tuple[tuple[int, ...], int]
 def _pop(state: _State) -> tuple[int, _State]:
     """Return the front value and the state without it.
 
-    Raises :class:`HaltError` on an empty queue, which is what makes
-    popping one an invalid operation rather than a zero.
+    Raises :class:`HaltError` on an empty queue.
     """
     queue, ind = state
     if not queue:
@@ -132,18 +111,10 @@ def _advance(
 ) -> _State:
     """Return the state after executing ``tok``.
 
-    Pure: it reads ``state`` and returns a new one.  ``i``'s printing is
-    the caller's business -- the value it prints is popped here and handed
-    back through the state -- and ``h``'s byte arrives as ``byte``.
-
-    Popping is threaded rather than mutating, which matters for the four
-    commands that pop twice in one expression.  ``a`` and ``c`` consumed
-    the first value before discovering the queue was too short, leaving it
-    empty and the cursor unmoved; raising from the *second* ``_pop`` on a
-    state that already lost the first reproduces exactly that.
-
-    ``d`` is the one arithmetic command that does not wrap, and a zero
-    divisor halts rather than inventing a result.
+    Pure; ``i``'s value is popped here and handed back, ``h``'s byte
+    arrives as ``byte``.  Popping is threaded so ``a``/``c`` on a one-value
+    queue lose it before the second pop halts, as the original did.  ``d``
+    does not wrap and halts on zero.
     """
     queue, ind = state
     if tok == "a":
@@ -208,9 +179,7 @@ _POPS = {"a": 2, "b": 2, "c": 2, "d": 2, "e": 1, "f": 1, "i": 1, "j": 1}
 def _consumed(state: _State, tok: str) -> _State:
     """Return the state a halting ``tok`` leaves behind.
 
-    The original popped straight off the queue, so the values taken before
-    the halt were gone and the cursor had not moved.  This drops the same
-    ones: as many as the queue actually held, up to what the token wanted.
+    Drops as many values as the queue held, up to what the token wanted.
     """
     queue, ind = state
     return (queue[min(_POPS.get(tok, 0), len(queue)) :], ind)
@@ -219,11 +188,8 @@ def _consumed(state: _State, tok: str) -> _State:
 class _Machine:
     """Per-run Taglate state: the queue, the token list, and the cursor.
 
-    ``step()`` executes one token; ``halted`` is true once the cursor passes
-    the last token.  ``t`` rebuilds the queue from the URL, and ``gy``/``gz``
-    move the cursor to a partner, so a loop whose head never zeroes is a
-    finite-state cycle the state-cycle hang detector can prove.  The VM and
-    the hang detector expose this object.
+    A loop whose head never zeroes is a finite-state cycle the hang
+    detector can prove.
     """
 
     def __init__(self, code: list[str], io: IO) -> None:
@@ -267,26 +233,15 @@ class _Machine:
         return (self.queue, self.ind)
 
     def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields.
-
-        The fields are this class's published shape -- the VM's views and
-        the tests read them -- so they stay; the one assignment a step
-        makes is here rather than scattered through the rules above.
-        """
+        """Write a transition's result back onto the machine's fields."""
         self.queue, self.ind = state
 
     def step(self) -> None:
         """Execute one token, advancing the cursor.
 
-        The two ports live here rather than in the transition: this is the
-        shell.  ``h``'s byte is read here and handed over, and ``i`` prints
-        the value the transition is about to pop -- read before the call,
-        since the transition returns the queue without it.
-
-        A failed step still moves the queue.  ``a`` and ``c`` pop twice, so
-        a one-value queue loses that value before the halt, and the
-        original left it that way; the state is written back on the way out
-        so the machine is left where the old code left it.
+        ``i`` prints the value the transition is about to pop, read before
+        the call.  A failed step still writes the state back, so the queue
+        is left as the original left it.
         """
         if self.halted:
             return

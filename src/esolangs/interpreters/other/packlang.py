@@ -500,8 +500,6 @@ class _Parser:
 
 
 _DATATYPES = frozenset({"Integer", "Char", "String", "Array", "Pointer"})
-#: The built-in package every example depends on for its two IO functions.
-_IO_PACKAGE = "IO"
 
 
 class _Program:
