@@ -174,6 +174,24 @@ class TestModelFacts:
             "stopped on the inner marker, not the target"
         )
 
+    def test_even_launches_do_not_add_a_second_shared_residue(self) -> None:
+        """A mixed-parity channel still stops at a nested marker.
+
+        Giving a stride-30 flight an even launch (the unused parity in the
+        shipped corridor) does not distinguish it from an odd launch: both
+        visit the same residue progression.  The marker at ``+30`` catches
+        the flight intended for ``+60`` and prints NUL instead of ``A``.
+        """
+        lines = ["x"] * 80
+        lines[0:3] = ["u", "@dd", "@dd"]  # input 1 leaves acc = 29
+        launch = 8  # even, unlike the shipped corridor's odd launches
+        lines[launch] = "DownAccLines"
+        lines[launch + 30 : launch + 32] = ["NnNn", "div"]
+        lines[launch + 60 : launch + 62] = ["nNnN", "div"]
+        machine = _Machine(lines, ScriptedIO("1\n"))
+        run_until_halt_or_cycle(machine)
+        assert machine.io.getvalue()[:1] == "\x00"
+
 
 def _leaf(bit: int) -> list[str]:
     """Print one digit: load 0, then decimal-spell it up and print."""
