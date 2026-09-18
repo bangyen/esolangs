@@ -333,6 +333,23 @@ the per-pair charge is off by the zero-set's size, and a bound over
 every program has to price copies against zero-set kills and block
 reflections together, which no argument here does.
 
+Interprogck8's corridor is the whole reach of the machine: every control
+transfer is `DownAccLines` on an 8-bit accumulator, so a jump spelled past
+255 wraps rather than lands (`NnNn` + 26 `@id` + 1 `@nd` then
+`DownAccLines` reaches 6 lines on, not 262), and a residue shared for a
+long flight's transit collides with a nested node's own landing marker on
+it (a stride-30 flight built to reach +60 stops at +30, on the marker).
+Both executed and pinned in `tests/tools/test_boolean_interprogck8.py`.
+Every other stateful primitive was surveyed the same way: `{values...}`
+writes only 81/84, never a target; a bare `$py` assigns acc with no
+`% 256` wrap but only by consuming an extra stdin read outside the n-bit
+convention; the function slot skips a captured body of any size with no
+jump-distance arithmetic and branches on it with no `DownAccLines`, and a
+one-read tree built on it alone (`TestPrimitiveSurvey`) executes all four
+rows correctly -- but nesting a second read inside it is refused
+unconditionally (`HaltError: nested function opener`), so it cannot
+compose into an n>1 tree.
+
 Polynomial's question was coefficient mass, not term count, and it is
 closed: the class that survived every search -- a left-half-plane multiple
 of the mandatory root product with O(T) digits across more terms than the

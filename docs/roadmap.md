@@ -109,7 +109,22 @@ The candidate list is empty.
     14)` lines, `Theta(T n / 14)` in steps of fourteen inputs (805--887
     characters per entry to n=14, 6300--6600 at n=15, refused past 40);
     a constant-width read gadget exists at ~8x per node at every arity,
-    priced and not taken.
+    priced and not taken.  Pinned: a spelled distance of 261 after
+    `DownAccLines` lands 6 lines on, not 262 (acc wraps mod 256), and a
+    stride-30 two-hop flight meant to reach +60 stops at +30 on an inner
+    node's own landing marker of the same residue -- every control
+    transfer is `DownAccLines` on an 8-bit acc, so a flight past 255
+    lines needs a relay chain, and a residue shared for transit collides
+    with a nested marker on it.  The other primitives were surveyed for a
+    way around it: `{values...}` writes only 81/84, and a bare `$py`
+    assigns acc with no wrap but only from an extra stdin read outside
+    the n-bit convention; the function slot skips a captured body of any
+    size with no jump distance at all and branches with no
+    `DownAccLines`, but cannot nest -- capturing a subtree that itself
+    holds `<` is refused unconditionally, so it routes one read and no
+    more.  No primitive composes past acc + `DownAccLines`, so the model
+    claim stands: a tree's total flight length is `Theta(n T)`, the total
+    edge length of a linear arrangement of a complete binary tree.
   - WII2D, three cells: a rule emitting readouts within a constant of the
     exact optima (1.4--2.4 characters per entry to domain 14); no one-step
     or bounded-beam rule over small centres is one, and the optima's
