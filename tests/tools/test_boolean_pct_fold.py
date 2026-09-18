@@ -199,7 +199,7 @@ class TestPctFoldEmitter:
             em.load({key: (start, "0")})
             em.finish()
             assert em.pos[key] == 48
-            assert em.body == ["'p" + "s" * 24 + "p", "e"]
+            assert em.body == ["'p" + "i" * 16 + "p", "e"]
 
     def test_a_rise_with_no_headroom_preshifts_first(self) -> None:
         """``p`` needs two to work with, so a shorter rise makes room.
@@ -236,7 +236,7 @@ class TestPctFoldEmitter:
         em = self.emitter("0", 0)
         key = next(iter(em.pos))
         em.rise(module._LIMIT + 1, frozenset({key}))  # noqa: SLF001
-        assert em.body == ["p" + module._sub_code(module._LIMIT + 1) + "p", "s"]  # noqa: SLF001
+        assert em.body == ["p" + "i" * 1000 + "ss" + "p", "s"]
         assert em.pos == {key: -2}
 
 
@@ -742,7 +742,7 @@ class TestPctFoldPlan:
         eleven-input cut has 256 classes, and compacting to them strands
         four pairs the conveyor cycles on forever.  Laid at the first
         checkpoint where a split fits (725 points), the carried pairs
-        merge in the sixteen-class stage.  Measured: 289k moves, 1.8 MB,
+        merge in the sixteen-class stage.  Measured: 289k moves, 1.6 MB,
         ~10 s; twelve sampled rows print on the interpreter.
         """
         from esolangs.interpreters.io import ScriptedIO
