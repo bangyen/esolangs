@@ -461,7 +461,47 @@ doublings, then the legal `(h, S)` with the most merges that pulls
 the magnitude back to the live count) builds domain 16 at 3.7 per
 entry with `C = 24` (exact optimum at most 2.8, shipped 6.0), domain 32
 at 7.8 with `C = 48`, and nothing at domain 64 with `C = 96`; with
-`C = 8` it builds domain 12 at 4.5 and nothing at 16.  Incompressibility (Li--Vitanyi
+`C = 8` it builds domain 12 at 4.5 and nothing at 16.  **What is
+proved about the readout model's first two epochs** (readout only:
+one accumulator from the Horner index, no cofactor merging at earlier
+junctions): write an epoch as `a` doublings, a centre `c`, `s`, then
+`h` halvings with `un` unary among them (a global translation of the
+image by at most `un`, absorbed into the next centre), and `kappa =
+4**a / 2**h`.  On the dense index `0 .. D-1`, the every-radius lemma
+at radius `1 / (4 kappa)` gives `kappa >= 1 / (16 (m_1 + 2) + 8
+max(0, -c))` (or `m_1 >= D/16 - 2`), so the first epoch leaves `M_1
+>= kappa D**2 / 4 - 1` and an image whose consecutive points at
+radius `d` from `c` lie at most `kappa (2d + 1) + 1` apart.  A second
+epoch with effective centre `C` that merges `m_2` and leaves
+magnitude at most `4 live` has at most `2 m_2 + 6` live points within
+`R = (M_1 - |C|) / sqrt(4 live + un_2 + 1)` of `C`, while that
+window holds at least `2R / (2 sqrt(kappa (|C| + R + 1)) + kappa + 2)
+- m_1 - 1` of them; with `Q = m_1 + 2 m_2 + 7` this forces `|C| >=
+(R - Q (kappa + 2) / 2)**2 / (Q**2 kappa) - R - 1` when `|C| <= M_1 /
+2`, and `|C| >= M_1 / 2` otherwise, so `max(|c|, |C|) >= min(D / 12,
+D**1.5 / (50 Q))` up to the unoptimised constants of that derivation
+(`un_1, un_2 <= D`, else the unary alone exceeds `D`).  With
+`m = O(log D)` merges per epoch on a random pattern that is
+super-linear for the prefix, and the exact two-epoch search agrees
+(family: `a <= 2`, `|c| <= D/4` at resolution `2**-a`, `h <= 22`,
+every legal `S < 2**h`, both epochs, at least one merge each, final
+magnitude at most `4 live`; the family is every epoch without a
+halving before its `s` and with at most two doublings): no such
+prefix exists at domain 64 on three random patterns and the
+alternating one (1,168--16,103 first epochs, 1.8e8--1.3e9 second
+epochs each, exhaustive) or within 120 s on a fourth, nor at domain
+96 on one random pattern and the alternating one (exhaustive) or
+within 180 s on two more, nor at domain 128 on one random pattern
+(exhaustive) or within 240 s on another; the third domain-128
+pattern has one at 79 characters (0.62 `D`: centres -24.5 and -29.5
+below the index, nine halvings each, 12 and 7 merges), and none
+exists from the shipped decoder's own un-ratcheted domain-64 state
+(57 live, magnitude 144, centres to 14, exhaustive); the all-ones
+pattern, which forbids nothing, does it for 12--13 characters.
+Domains 192 and 256 were not run (budget).  It is not a bound on the row:
+it prices the one dense start, and after the first return to `O(live)`
+the set is no longer dense, so the same argument does not chain -- the
+number of dense starts a program has is one.  Incompressibility (Li--Vitanyi
 ch. 6) supplies the frame and nothing model-specific;
 Mansour--Schieber--Tiwari floor bounds, 1D map folding (crimps and end
 folds count folds, not unary creases), addition-chain bounds (one
