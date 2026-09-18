@@ -716,6 +716,100 @@ class TestCODModelFacts:
                     else:
                         assert seen == want_peak, (name, r, v, seen)
 
+    def test_south_trunk_drain_eats_the_second_copy(self) -> None:
+        """Lead 3: one ``-`` in the trunk corridor singles the north-kill print.
+
+        North-kill halts but double-prints (``21``/``32``, peak 2); six
+        single-cell south drains tried, R<=3 residuals, 3000 ticks.
+        Conditional ``<`` in the corridor (rows 5/6/7) and a side ``<``
+        pocket never fire (corridor values stay nonzero, pocket never
+        entered): still ``21``/``32``.  A wall block at row 7 bounces the
+        copy back into ``+``: v=1 walks unhalted (230 prints, peak 2),
+        v=2 halts doubled (``33``).  An unconditional ``-`` mid-corridor
+        eats the second copy on every residual: v=0/1/2 halt in 12/13/14
+        ticks printing exactly once (``1``/``2``/``3``), peak 2, lens
+        125/134/143 -- the first print routes around the corridor, so the
+        drain only ever meets the second copy.
+        """
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        class _CountingIO(ScriptedIO):
+            def __init__(self) -> None:
+                super().__init__("")
+                self.nprints = 0
+
+            def print_str(self, text: str) -> None:
+                self.nprints += 1
+                super().print_str(text)
+
+        def build(offset: int) -> tuple[list[str], int]:
+            main = ">" + ")" * offset + "))<((..+<."
+            width = len(main) + 2
+            fork = main.index("+") + 1
+            trunk = width - 2
+
+            def wall() -> str:
+                return "~" * width
+
+            def at(col: int, ch: str) -> str:
+                row = list(wall())
+                row[col] = ch
+                return "".join(row)
+
+            bar = list(wall())
+            bar[fork : fork + 4] = list(".---")
+            return (
+                [
+                    wall(),
+                    "".join(bar),
+                    at(fork, "<"),
+                    at(fork, ")"),
+                    "~" + main + "~",
+                    at(trunk, "."),
+                    at(trunk, "."),
+                    at(trunk, "."),
+                    "-" * 3 + " " * (width - 3),
+                ],
+                trunk,
+            )
+
+        def drain(offset: int, row: int, ch: str) -> str:
+            rows, trunk = build(offset)
+            edited = list(rows[row])
+            edited[trunk] = ch
+            rows[row] = "".join(edited)
+            return "\n".join(rows)
+
+        for v, exact in ((0, "1"), (1, "2"), (2, "3")):
+            program = drain(v, 6, "-")
+            assert len(program) == 125 + 9 * v
+            io_ = _CountingIO()
+            machine = _Machine(program, io_)
+            peak = 0
+            for _ in range(3000):
+                if machine.halted:
+                    break
+                machine.step()
+                peak = max(peak, len(machine.cods))
+            assert machine.halted
+            assert io_.nprints == 1
+            assert io_.getvalue() == exact
+            assert peak == 2
+
+        program = drain(1, 7, "~")
+        io_ = _CountingIO()
+        machine = _Machine(program, io_)
+        peak = 0
+        for _ in range(3000):
+            if machine.halted:
+                break
+            machine.step()
+            peak = max(peak, len(machine.cods))
+        assert not machine.halted
+        assert io_.nprints == 230
+        assert peak == 2
+
     def test_a_shared_decrement_column_with_plain_fork_taps_explodes(self) -> None:
         """Round 3: a shared corridor with an ungated (no-valve) ``+`` tap.
 
