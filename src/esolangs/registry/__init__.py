@@ -37,14 +37,10 @@ __all__ = [
 ]
 
 
-# Generator function name -> Language, so tests can look a generator up by
-# the name of its function (e.g. ``six_five`` for "6-5").
-#
-# This used to have a twin keyed by the *text* generator's name, and a sweep
-# written over that twin silently skipped every boolean-only language rather
-# than failing.  That is how Jaune's table-dependent input count survived:
-# sixteen boolean generators were invisible to the read-count contract test.
-# Keying only by ``boolean`` leaves nothing to pick the wrong map from.
+# Generator function name -> Language, so tests can look one up by its
+# function name (``six_five`` for "6-5").  A twin keyed by the removed text
+# generators' names made a sweep skip sixteen boolean generators silently,
+# which is how Jaune's input count survived; one map leaves no wrong pick.
 BY_BOOLEAN: dict[str, Language] = {
     lang.boolean.__name__: lang
     for lang in LANGUAGES.values()
@@ -63,19 +59,13 @@ RUNNERS: dict[str, tuple[str, bool]] = {
 def example_stems() -> dict[str, str]:
     """Return canonical id -> the ``examples/`` filename stem, per language.
 
-    The stems are dash-separated display names (``a-painter-ant``), while
-    every internal reference is the underscored :func:`canonical_id` slug
-    (``a_painter_ant``), and a few match neither by hand (``6-5``).
-    Deriving the map from the example table the
-    same way :meth:`~esolangs.tools.examples.BooleanExample.build`
-    does keeps the two spellings from drifting: a stem with no language, or
-    a language with no stem, shows up as a missing key rather than as a
-    silently empty example list, which is how a fifth of the registry came
-    to report none.
-
-    The import is deferred because ``examples`` imports this module; the
-    map is wanted only when someone asks for a description, so paying for
-    it then costs nothing at import time.
+    The stems are dash-separated display names (``a-painter-ant``); every
+    internal reference is the underscored slug (``a_painter_ant``), and a few
+    match neither by hand.  Deriving the map from the same example table
+    :meth:`~esolangs.tools.examples.BooleanExample.build` uses keeps the two
+    from drifting: a mismatch is a missing key, not a silently empty example
+    list, which once left a fifth of the registry reporting none.  The import
+    is deferred because ``examples`` imports this module.
     """
     from esolangs.tools import examples as _examples
 
@@ -89,19 +79,13 @@ def example_stems() -> dict[str, str]:
 def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     """Return canonical id -> the substitution that instantiates a template.
 
-    A *parameterized* generator returns a program with one run of ``$``
-    per input rather than one that reads its inputs, and the runs are filled with that
-    language's own code for setting an input.  Each committed example
-    already carries that substitution as its ``fill``, so this is the
-    existing recipe exposed rather than a second list to keep in step.
-
-    Membership here is the definition of "parameterized" used everywhere in
-    the package, and it is derived rather than written down for a measured
-    reason: the same set taken from ``parameterized.__all__`` omits Home
-    Row, whose generator emits the runs all the same, and the three
-    hand-kept lists in the docs each named a different subset.  ``fill`` is
-    the only spelling that matches what the generators actually emit --
-    the count it returns is checked against the runs over every one.
+    A *parameterized* generator returns a program with one run of ``$`` per
+    input instead of one that reads its inputs; each committed example
+    already carries the substitution as its ``fill``, so this exposes the
+    existing recipe rather than a second list.  Membership is derived, not
+    written down: ``parameterized.__all__`` omits Home Row, whose generator
+    emits the runs all the same, and the three hand-kept doc lists each
+    named a different subset.  ``fill`` matches what the generators emit.
     """
     from esolangs.tools import examples as _examples
 
@@ -157,13 +141,10 @@ def render_template(
 ) -> tuple[str, str, Setters]:
     """Return the public template for a generator's slot-marked output.
 
-    ``(text, char, setters)``: the text, with each input a run of the
-    language's character as long as input ``i``'s setter, the
-    character, and the pairs.  With a ``width`` the text is wrapped first,
-    each input spelled as its own mark so the wrapper keeps every run whole
-    and apart from its neighbour; a run is its setter's exact length, so
-    the wrapped template is the wrapped form of every program it fills to
-    -- the same breaks on every row.
+    ``(text, char, setters)``: each input a run of the language's character
+    as long as its setter.  With a ``width`` each input is marked and the
+    wrapper breaks every run of the same length the same way, so the wrapped
+    template is the wrapped form of every program it fills to.
     """
     from esolangs.tools.helpers import render, unmark
     from esolangs.tools.wrap import wrap_program
@@ -224,15 +205,11 @@ def parameterized_ids() -> frozenset[str]:
 _BY_ID: dict[str, str] = {lang.id: name for name, lang in LANGUAGES.items()}
 
 
-#: Characters a wiki slug may keep as themselves.
-#:
-#: RFC 3986 lets a path segment carry the unreserved set and the sub-delims,
-#: so parentheses, ``*``, ``~`` and ``-`` stay readable -- ``CV(N)(C)`` is a
-#: better link than ``CV%28N%29%28C%29`` and both resolve.  What is *not*
-#: here is the point: ``%`` is the escape character itself and ``^`` is in
-#: neither set, so a name carrying either went out percent-escaped and the
-#: wiki answered 400.  Non-ASCII is escaped too: ``Forþ`` as raw bytes is
-#: served by a browser and refused by a strict client.
+#: Characters a wiki slug may keep: RFC 3986's unreserved set and sub-delims,
+#: so parentheses, ``*``, ``~`` and ``-`` stay readable.  ``%`` is the escape
+#: character itself and ``^`` is in neither set, so a name carrying either
+#: went out escaped and the wiki answered 400.  Non-ASCII is escaped too:
+#: ``Forþ`` as raw bytes is served by a browser and refused by a strict one.
 _WIKI_SAFE = "_-.~()*!'+,;=:@&$"
 
 
@@ -251,23 +228,18 @@ def wiki_url(name: str) -> str:
 def resolve(name: str) -> str:
     """Return the registered display name matching ``name``.
 
-    An exact hit wins.  Otherwise the name is matched by its
-    :func:`canonical_id`, which makes the lookup case- and
-    punctuation-insensitive: ``Brainfuck``, ``brainfuck`` and ``BRAINFUCK``
-    all reach the one registered ``brainfuck``.  That the display names mix
-    conventions (``brainfuck``, ``Suffolk``, ``bit~``) is exactly why -- a
-    caller cannot guess which one a given language follows, and being told
-    "unknown language" for a name that is plainly in ``esolangs list`` is
-    the wrong answer to a question of spelling.
-
-    A name matching nothing raises :class:`UnknownLanguageError` naming the
-    closest registered spellings.
+    An exact hit wins; otherwise the name is matched by :func:`canonical_id`,
+    which makes the lookup case- and punctuation-insensitive: ``Brainfuck``,
+    ``brainfuck`` and ``BRAINFUCK`` all reach the registered ``brainfuck``.
+    The display names mix conventions (``brainfuck``, ``Suffolk``, ``bit~``),
+    so a caller cannot guess the spelling, and "unknown language" for a name
+    plainly in ``esolangs list`` is the wrong answer.  A miss raises
+    :class:`UnknownLanguageError` naming the closest registered spellings.
     """
     if not isinstance(name, str):
-        # Checked before ``canonical_id`` touches it, which would otherwise
-        # answer a ``None`` language with ``'NoneType' object has no
-        # attribute 'replace'`` -- the one wrong-type argument in the API
-        # that escaped as an internal AttributeError.
+        # Before ``canonical_id`` touches it: a ``None`` name would otherwise
+        # escape as ``'NoneType' object has no attribute 'replace'`` from
+        # inside the API.
         raise UnknownLanguageError(
             f"expected a language name, got {type(name).__name__}"
         )
