@@ -2,8 +2,8 @@
 
 Run via: uv run --with pytest pytest test_bf_to_line.py
 
-This suite exists to close the coverage gap WIP.md flagged when the
-nested-loop regression was found: `test_simulate.py` builds cyclic `Stroke`
+This suite exists to close the coverage gap flagged when the nested-loop
+regression was found: `test_simulate.py` builds cyclic `Stroke`
 trees directly from `lattice.py` primitives, so it exercises `simulate.py`'s
 execution logic but never `render.py`'s actual loop-drawing geometry
 (`_layout`/`_loop_return_legs`).  Every test here therefore goes the
@@ -94,7 +94,7 @@ class TestSingleLoop:
 
 
 class TestNestedLoops:
-    """Two levels of real `[...]` -- the case WIP.md recorded as broken.
+    """Two levels of real `[...]` -- the case that was broken.
 
     `++[>++[>+<-]<-]>>.` computes 2*2 into cell 2.  Before the fix it built
     the correct tape but never reached its own final `.`, so it printed
@@ -103,7 +103,7 @@ class TestNestedLoops:
     """
 
     def test_nested_multiply_prints_result(self, tmp_path: Path) -> None:
-        """The exact program WIP.md recorded as silently truncating."""
+        """The exact program that silently truncated before the fix."""
         assert _run_bf("++[>++[>+<-]<-]>>.", tmp_path / "nested.png") == [4]
 
     def test_nested_loop_reaches_code_after_outer_loop(self, tmp_path: Path) -> None:
@@ -206,8 +206,8 @@ class TestNestingDepth:
     This class used to be called `TestNestingDepthLimit` and pinned where
     the drawable depth stopped -- a boundary that moved from 3 to 4 to 5 to
     7 across successive routing fixes (measured corridors, a pixel-exact
-    fallback, soft doorstep costs, ring fences -- see `WIP.md`'s depth-4 and
-    depth-5 entries), each fix buying a level or two and exposing the next
+    fallback, soft doorstep costs, ring fences), each fix buying a level or two
+    and exposing the next
     congestion.  The pattern itself was the finding: *search-based* routing
     competes for space globally, so every depth is a new fight.
 
@@ -261,8 +261,8 @@ class TestNestingDepth:
 
         The same inward-moving shape as the depth-3 case, one level deeper:
         cell 4 ends at 1 and `>>>>.` prints it.  This is the exact program
-        whose failure `WIP.md`'s "Why depth 4 fails" entry instrumented cell
-        by cell -- first pinned when three routing fixes made it drawable,
+        whose failure was instrumented cell by cell -- first pinned when three
+        routing fixes made it drawable,
         and kept now that constructed loop-backs superseded them, exactly as
         the depth-3 programs were pinned when their boundary fell.
         """
@@ -273,8 +273,8 @@ class TestNestingDepth:
         """Depth 5 renders, extracts and executes correctly.
 
         One level deeper again: cell 5 ends at 1 and `>>>>>.` prints it.
-        This is the depth the free-form router could not reach at all (see
-        `WIP.md`'s depth-5 entry) -- its depth-3 detour's shortest route
+        This is the depth the free-form router could not reach at all -- its
+        depth-3 detour's shortest route
         sealed the depth-4 detour's region from 96% reachable to 5%.
         Pinned as a round-trip because it is the first depth only a
         construction-based loop-back can draw.
