@@ -31,7 +31,7 @@ def encode_inputs(
     its inputs is refused; use :func:`instantiate`.
     """
     # Every registered language has a committed example, so the lookup
-    # always finds one; ``example_stems`` covers all 59 and a test pins that.
+    # always finds one; ``example_stems`` covers them all and a test pins that.
     name = resolve(language)
     example = _example_for(LANGUAGES[name].id)
     if example.fill is not None:

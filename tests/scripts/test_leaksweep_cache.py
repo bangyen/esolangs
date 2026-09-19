@@ -3,7 +3,7 @@
 The cache key is a hash of the files a sweep reads.  A path that does not
 exist would hash as nothing, and a sweep would then be remembered as clean
 for an interpreter it never read -- which is how the first cut of the key
-built the interpreter path one directory too high and skipped all 59.
+built the interpreter path one directory too high and skipped every one.
 """
 
 import importlib.util

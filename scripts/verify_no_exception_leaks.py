@@ -18,7 +18,7 @@ By default only the languages this branch actually touched are swept,
 which makes it cheap enough to run habitually: a change to one
 interpreter is checked in seconds, and a change to shared machinery
 (``io.py``, ``vm.py``, ``exceptions.py``) still sweeps everything, since
-that is exactly where a one-line bug reaches all 59 languages at once --
+that is exactly where a one-line bug reaches every language at once --
 as the ``input_char`` bug this script was written to catch did.
 
 Run::

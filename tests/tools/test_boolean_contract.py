@@ -756,7 +756,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # time, is what keeps the band split:
 # n <= _QUICK_ARITY runs in the default gate and the rest is marked slow.
 # Both bands assert the same thing; splitting them keeps the fast gate at
-# the 59 items and ~3s it had when this swept to five.
+# the whole registry and ~3s it had when this swept to five.
 _MAX_ARITY = 10
 _QUICK_ARITY = 5
 
@@ -941,7 +941,7 @@ def _one_hot(n: int) -> str:
     every one of the 65536 tables at n <= 4 and collides on 35% of random
     tables at n=7 -- so a second *shape* buys what a seventh input does not.
 
-    It costs 30.5s of work across the 59, against 13.4s for one minterm.  A
+    It costs 30.5s of work across the registry, against 13.4s for one minterm.  A
     third shape was measured and dropped: a 2-CNF at n=6 costs 67.2s, 37s of
     it Circuit Diagram alone, and caught nothing this does not.
     """
