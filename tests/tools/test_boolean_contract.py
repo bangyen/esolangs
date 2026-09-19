@@ -529,7 +529,6 @@ _MINTERM_SHAPED = {
 # collapsed structure.  Reordering does not become applicable to them the way
 # it would if they had grown a tree, which is why they are neither list.
 _REDUCING = {
-    "cod",
     "home_row",
     "nocomment",
     "rotfuck",
@@ -993,7 +992,6 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "Circuit Diagram": (1_780_773, 2_505_897, 1.4),
-    "COD": (942_668, 3_668_678, 3.9),
     "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (1_589_968, 5_016_851, 3.2),
     "SLOW ACV MAMMALIAN": (456_394, 798_829, 1.8),
@@ -1034,7 +1032,6 @@ _LINEAR_SCALING = {
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
-    "cod",
     "polynomial",
 }
 
@@ -1045,7 +1042,6 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "a_painter_ant",
         "one_two_three",
         "circuit_diagram",
-        "cod",
         "minifuck",
         "factor",
         "polynomial",
@@ -1094,7 +1090,7 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
 
     It answers that with a growth law rather than an ``estimate()`` API,
     because the generators the question is about have no cap arithmetic to
-    consult -- Circuit Diagram, COD and ROTfuck never refuse -- so an
+    consult -- Circuit Diagram and ROTfuck never refuse -- so an
     estimator for them would be a hand-fitted size model, which is the kind
     of frozen table this repository turns back into a rule.  A rule in prose
     is only worth having if it is checked, so this is the check.

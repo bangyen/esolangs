@@ -35,7 +35,6 @@ that row is actually spelled for the language.
 | `circlefuck.txt` | Circlefuck | `0001` | `01` | 0 1 | '0' |
 | `circuit_diagram.txt` | Circuit Diagram | `0001` | `01` | 0 1 | '0' |
 | `clockwise.txt` | Clockwise | `0001` | `01` | 01 | '0' |
-| `cod.txt` | COD | `0001` | `01` | embedded 01 | '0' |
 | `collatz-multiverse.txt` | Collatz Multiverse | `0001` | `01` | 0 1 | '0' |
 | `container.txt` | Container | `0001` | `01` | 0 1 | '0' |
 | `crement.txt` | Crement | `0001` | `01` | embedded 01 | (nothing) |
@@ -84,7 +83,6 @@ that row is actually spelled for the language.
 - **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n, past the n input cells
 - **bitdeque** -- Bitdeque has no output instruction and dumps its deque at halt; the generator leaves exactly one bit on it, so the whole dump is the answer and there is no position to name
 - **clockwise** -- Clockwise reads all its input bits in one go, so they go on one line -- one character per bit, not a line per bit, and not seven bits packed into a character: that packing is real but is on the output side. A line per bit, or a packed one, is read as a different row and answered wrongly
-- **cod** -- COD has no runtime input and no I/O but a printed number
 - **container** -- Container prints the answer like any other reader; it also ends by calling sys.exit(0) rather than returning, which matters to a harness driving it but not to reading the result
 - **crement** -- Crement answers by termination: the tree's nodes patch a per-input tester's jump targets, and the row lands past the end (halts, 0) or on a self-jump (diverges, 1)
 - **fargo** -- Fargo reads one number whose bits are the inputs, so the committed input is the row index rather than a bit per line

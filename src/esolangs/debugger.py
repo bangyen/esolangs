@@ -214,8 +214,8 @@ class Debugger:
     def watch_cell(self, index: int) -> list[int | None]:
         """Record ``memory[index]`` each step, returning the history.
 
-        A missing cell records ``None``, and memory *shrinks* on six languages
-        (COD 4 -> 0, Forbin 16 -> 0, Taglate 22 -> 4, Packlang, Circuit Diagram,
+        A missing cell records ``None``, and memory *shrinks* on five languages
+        (Forbin 16 -> 0, Taglate 22 -> 4, Packlang, Circuit Diagram,
         Bitdeque).  Recording starts here; the list is live.
         """
         check_whole(index, "index")

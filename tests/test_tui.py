@@ -163,8 +163,9 @@ class TestLocateGrid:
         "ip", [(1, 1), (1, 1, 2), (1, 1, 2, 0), (1, 1, 0, 0, 1, 1)]
     )
     def test_any_width_of_heading_is_accepted(self, ip: tuple[int, ...]) -> None:
-        # COD flattens one four-tuple per live cod, so a grid position is
-        # not a fixed width; the first two parts are what matters.
+        # Some interpreters flatten a multi-value state per live agent, so a
+        # grid position is not a fixed width; the first two parts are what
+        # matters.
         assert locate("ab\ncd", ip, "grid") == Mark(1, 1)
 
     def test_it_may_sit_past_its_own_ragged_line(self) -> None:

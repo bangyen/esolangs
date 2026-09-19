@@ -22,7 +22,7 @@ Where the bound sits, measured on both sides:
 * the settled cohort's worst is Circuit Diagram at x2.079 (+3.9% per entry)
   and Streetcode at x2.065, with everything else at or under x2.02;
 * the super-linear constructions this repository has already retired measured,
-  single-step at n=8 -> 9 on parity, A Painter Ant x3.96, COD x3.89, Minifuck
+  single-step at n=8 -> 9 on parity, A Painter Ant x3.96, Minifuck
   x3.53 and 123 x2.43, all of which this bound rejects.
 
 So it has teeth on both sides and roughly a factor of two of headroom above
@@ -85,7 +85,7 @@ from tests.proofs._roadmap import load as load_audit
 from tests.tools.test_boolean_contract import _dense, _parity
 
 #: Cost band; see ``__main__.py``.  It passes now that Forþ is linear, so the
-#: band is a cost call rather than a triage one: it builds all 60 generators at
+#: band is a cost call rather than a triage one: it builds all 59 generators at
 #: rising arity, and 30s is too slow for CI to spend on every push.
 BAND = "by-hand"
 COST = 30.0
@@ -212,7 +212,7 @@ def main() -> int:
     by_display = {lang.name: key for key, lang in BY_BOOLEAN.items()}
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
-    assert len(measured) == len(BY_BOOLEAN) == 60, "not every generator was measured"
+    assert len(measured) == len(BY_BOOLEAN) == 59, "not every generator was measured"
 
     print(f"Scaling contract: {len(measured)} generators, bound x{MAX_GROWTH}\n")
     print(f"  {'generator':30s} {'growth':>7s} {'per entry':>10s}  where")

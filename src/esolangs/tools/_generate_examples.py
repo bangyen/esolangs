@@ -123,7 +123,7 @@ def write_boolean_manifest() -> None:
     """Write the manifest to disk.
 
     Split from the text so a test can compare the committed file against
-    what this would produce without regenerating all 60 programs to find
+    what this would produce without regenerating all 59 programs to find
     out.  Nothing checked the manifest at all until then, so a note added
     to a language left the committed table describing the one before it.
     """
