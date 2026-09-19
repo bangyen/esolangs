@@ -27,12 +27,9 @@ moves every later line, the executing one included.  Output is collected
 (a ``send`` makes many writes); ``readto``'s line arrives as an argument.
 """
 
-from __future__ import annotations
-
 import re
 import sys
 from collections.abc import Mapping, Sequence
-from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -69,21 +66,14 @@ def _spans(lines: list[str]) -> dict[str, tuple[int, int]]:
 #: A label's two delimiter line numbers, by name.
 type _Spans = Mapping[str, tuple[int, int]]
 
-
 #: One instant of a run: ``(lines, spans, ind, done)`` -- the program text,
 #: the label spans over it, the line cursor, and whether ``skip``'s third
-#: clause has exited.  A value, not a mutable record: :func:`_advance` returns a new
+#: clause has exited.  A value, not a record: :func:`_advance` returns a new
 #: tuple rather than editing one in place.
 #:
 #: The lines are *in* here because they are the memory: ``readto`` and
 #: ``inject`` rewrite the running program, and the spans move with them.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    lines: Sequence[str]
-    spans: _Spans
-    ind: int
-    done: bool
+type _State = tuple[Sequence[str], _Spans, int, bool]
 
 
 def _span(spans: _Spans, name: str) -> tuple[int, int]:
@@ -111,7 +101,7 @@ def _replaced(state: _State, name: str, body: list[str]) -> _State:
     grown = [*lines[: begin + 1], *body, *lines[end:]]
     shift = len(body) - (end - begin - 1)
     if not shift:
-        return _State(grown, spans, ind, done)
+        return (grown, spans, ind, done)
     if begin < ind:
         ind += shift
     # Only positions strictly after the opening delimiter move: an
@@ -122,7 +112,7 @@ def _replaced(state: _State, name: str, body: list[str]) -> _State:
         label: (b + shift * (b > begin), e + shift * (e > begin))
         for label, (b, e) in spans.items()
     }
-    return _State(grown, moved, ind, done)
+    return (grown, moved, ind, done)
 
 
 def _begins_block(state: _State, index: int) -> str | None:
@@ -152,11 +142,11 @@ def _skipped(state: _State) -> _State:
     lines, spans, ind, _ = state
     ahead = _begins_block(state, ind + 1)
     if ahead is not None:
-        return _State(lines, spans, spans[ahead][1] + 1, done=False)
+        return (lines, spans, spans[ahead][1] + 1, False)
     inner = _innermost(state)
     if inner is not None:
-        return _State(lines, spans, spans[inner][0], done=False)
-    return _State(lines, spans, ind, done=True)
+        return (lines, spans, spans[inner][0], False)
+    return (lines, spans, ind, True)
 
 
 def _injected(state: _State, rest: str) -> _State:
@@ -189,7 +179,7 @@ def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[st
     # A blank line and a label line are both no-ops: control runs straight
     # through a block's delimiters.
     if not line or _LABEL.fullmatch(line):
-        return _State(lines, spans, ind + 1, done), []
+        return (lines, spans, ind + 1, done), []
 
     command, _, rest = line.partition(" ")
     rest = rest.strip()
@@ -231,7 +221,7 @@ def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[st
     # flow through, so the dispatch is "a command word runs, everything
     # else is text".
 
-    return _State(lines, spans, ind + 1, done), output
+    return (lines, spans, ind + 1, done), output
 
 
 class _Machine:
@@ -284,7 +274,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return _State(self.lines, self.spans, self.ind, self.done)
+        return (self.lines, self.spans, self.ind, self.done)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields."""

@@ -14,7 +14,6 @@ a negative jump target.  Malformed programs raise :class:`ValueError`.
 """
 
 import sys
-from typing import NamedTuple
 
 from esolangs._validate import check_address
 from esolangs.interpreters.io import IO
@@ -31,12 +30,7 @@ _STORES = ("a", "ab", "b")
 #:
 #: ``halted`` is carried because a jump to a negative address stops the run
 #: with the pointer left where it was, so the position alone does not say.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    mem: tuple[int, ...]
-    ip: int
-    halted: bool
+type _State = tuple[tuple[int, ...], int, bool]
 
 
 def _read(state: _State, addr: int, byte: int | None = None) -> int:
@@ -64,9 +58,9 @@ def _write(state: _State, addr: int, value: int) -> _State:
         if addr >= len(mem):
             check_address(addr, "S*bleq")
             mem = (*mem, *([0] * (addr + 1 - len(mem))))
-        return _State((*mem[:addr], value, *mem[addr + 1 :]), ip, halted)
+        return ((*mem[:addr], value, *mem[addr + 1 :]), ip, halted)
     if addr == -1:
-        return _State(mem, value, halted)
+        return (mem, value, halted)
     return state
 
 
@@ -80,7 +74,7 @@ def _advance(state: _State, store: str, byte: int | None = None) -> _State:
     a, b, c = mem[ip], mem[ip + 1], mem[ip + 2]
     if a == -3 or b == -3:
         # The print already happened in the shell.
-        return _State(mem, ip + 3, halted=False)
+        return (mem, ip + 3, False)
 
     diff = _read(state, a, byte) - _read(state, b, byte)
     after = _write(state, a, diff)
@@ -88,11 +82,11 @@ def _advance(state: _State, store: str, byte: int | None = None) -> _State:
         after = _write(after, b, diff)
 
     if diff > 0:
-        return _State(after[0], after[1] + 3, halted=False)
+        return (after[0], after[1] + 3, False)
     target = _read(after, c)
     if target < 0:
-        return _State(after[0], after[1], halted=True)
-    return _State(after[0], target, halted=False)
+        return (after[0], after[1], True)
+    return (after[0], target, False)
 
 
 class _Machine:
@@ -148,7 +142,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transitions work on."""
-        return _State(self.mem, self.ip, self._halted)
+        return (self.mem, self.ip, self._halted)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields."""

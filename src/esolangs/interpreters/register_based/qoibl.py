@@ -19,7 +19,6 @@ import functools
 import re
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -233,16 +232,10 @@ def _split(tokens: list[str], out: list[list[str]]) -> bool:
 #: assigns half-way through and then raises leaves the caller's copy intact.
 type _Vars = Mapping[int, int]
 
-
 #: Every value a Qoibl statement can change: the variable mapping that
 #: expression evaluation returns and the top-level statement cursor.  The
 #: tokenized program is fixed for a run, while ports stay in the shell.
-class _State(NamedTuple):
-    """Every value a Qoibl statement can change."""
-
-    var: _Vars
-    ind: int
-
+type _State = tuple[_Vars, int]
 
 #: What ``et`` and ``tt`` reach.  The ports stay callbacks because a
 #: statement is the unit of execution: an ``rr`` body can read and print any
@@ -395,7 +388,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The complete changing state as the evaluator's value boundary."""
-        return _State(self.var, self.ind)
+        return (self.var, self.ind)
 
     def _restore(self, state: _State) -> None:
         """Write a statement transition's result back onto the shell."""
@@ -412,7 +405,7 @@ class _Machine:
             tokens, self._state[0], self.io.input_char, self.io.print_char
         )
         _, ind = self._state
-        self._restore(_State(var, ind))
+        self._restore((var, ind))
         return value
 
     def step(self) -> None:
@@ -421,7 +414,7 @@ class _Machine:
             return
         var, ind = self._state
         tokens = self.code[ind]
-        self._restore(_State(var, ind + 1))
+        self._restore((var, ind + 1))
         if tokens:
             self._parse(tokens)
 

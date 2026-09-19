@@ -32,7 +32,6 @@ from __future__ import annotations
 import math
 import sys
 from collections.abc import Hashable
-from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -246,7 +245,7 @@ class _InvalidFunctionError(Exception):
 
 #: One instant of a run: ``(accumulator, deque, function, pointer)``.
 #:
-#: A value, not a mutable record: every handler below returns a new state rather
+#: A value, not a record: every handler below returns a new state rather
 #: than editing the one it was handed.  The deque and the function are
 #: tuples for the same reason -- and both are bounded by what the program
 #: has pushed, which no loop grows without also growing the accumulator.
@@ -254,13 +253,7 @@ class _InvalidFunctionError(Exception):
 #: The tokens, the syllable starts, the loop pairs and the offset table
 #: stay out: CV(N)(C) never rewrites its own source, so they are computed
 #: once and handed to the transition.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    accumulator: int
-    deque: tuple[int, ...]
-    function: tuple[str, ...]
-    pointer: int
+type _State = tuple[int, tuple[int, ...], tuple[str, ...], int]
 
 
 def _popped(deque: tuple[int, ...], *, front: bool) -> tuple[tuple[int, ...], int]:
@@ -290,24 +283,20 @@ def _fricative(
     if token == _READ_NUM:
         # The accumulator is unsigned, so a negative line floors at zero,
         # and an empty line (a bare Enter) reads as 0 rather than raising.
-        return _State(
-            max(_as_int((line or "").strip()), 0), deque, function, pointer
-        ), None
+        return (max(_as_int((line or "").strip()), 0), deque, function, pointer), None
     # what is left is ``ʒ``, the character read
-    return _State((byte or 0) % 256, deque, function, pointer), None
+    return ((byte or 0) % 256, deque, function, pointer), None
 
 
 def _plosive(state: _State, token: str) -> _State:
     """Append to the function, or reset it."""
     accumulator, deque, function, pointer = state
     if token == _CLEAR_FUNCTION:
-        return _State(accumulator, deque, (), pointer)
+        return (accumulator, deque, (), pointer)
     if token in _FUNCTION_SYMBOLS:
-        return _State(
-            accumulator, deque, (*function, _FUNCTION_SYMBOLS[token]), pointer
-        )
+        return (accumulator, deque, (*function, _FUNCTION_SYMBOLS[token]), pointer)
     deque, value = _popped(deque, front=token == _POP_FRONT_APPEND)
-    return _State(accumulator, deque, (*function, str(value)), pointer)
+    return (accumulator, deque, (*function, str(value)), pointer)
 
 
 def _vowel(state: _State, token: str) -> _State:
@@ -323,18 +312,18 @@ def _vowel(state: _State, token: str) -> _State:
         accumulator = math.isqrt(accumulator)
     else:
         accumulator = _applied(accumulator, function)
-    return _State(accumulator, deque, function, pointer)
+    return (accumulator, deque, function, pointer)
 
 
 def _nasal(state: _State, token: str) -> _State:
     """Push to or pop from the deque."""
     accumulator, deque, function, pointer = state
     if token == _PUSH_FRONT:
-        return _State(accumulator, (accumulator, *deque), function, pointer)
+        return (accumulator, (accumulator, *deque), function, pointer)
     if token == _PUSH_BACK:
-        return _State(accumulator, (*deque, accumulator), function, pointer)
+        return (accumulator, (*deque, accumulator), function, pointer)
     deque, accumulator = _popped(deque, front=token == _POP_FRONT)
-    return _State(accumulator, deque, function, pointer)
+    return (accumulator, deque, function, pointer)
 
 
 def _approximant(
@@ -363,7 +352,7 @@ def _approximant(
     else:
         # ``ʋ`` jumps back *to* its opener, which re-tests the condition.
         pointer = pairs[pointer - 1]
-    return _State(accumulator, deque, function, pointer)
+    return (accumulator, deque, function, pointer)
 
 
 def _advance(
@@ -470,7 +459,7 @@ class _Machine:
             byte = self.io.input_char()
 
         state, output = _advance(
-            _State(self.accumulator, self.deque, self.function, self.pointer),
+            (self.accumulator, self.deque, self.function, self.pointer),
             token,
             self.starts,
             self.pairs,

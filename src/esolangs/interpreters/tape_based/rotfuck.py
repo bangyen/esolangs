@@ -14,7 +14,6 @@ derived, not the text rewritten.
 """
 
 import sys
-from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -32,13 +31,7 @@ _COMMANDS = frozenset(_CYCLE)
 #: steps along the cycle, so the rotation count is what a step is really
 #: reading -- which is why it belongs in the state and the characters do
 #: not.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    tape: tuple[int, ...]
-    ptr: int
-    ind: int
-    rot: int
+type _State = tuple[tuple[int, ...], int, int, int]
 
 
 #: Each command's index in ``_CYCLE``, so the rotation is an addition rather
@@ -159,17 +152,17 @@ def _advance(state: _State, chars: tuple[str, ...], byte: int | None = None) -> 
         partner = _forward(chars, rot, ind)
         if partner is None:
             raise HaltError("an executed '[' has no bracket partner")
-        return _State(tape, ptr, partner + 1, rot)
+        return (tape, ptr, partner + 1, rot)
     elif char == "]" and tape[ptr] != 0:
         rot += 1
         partner = _backward(chars, rot, ind)
         if partner is None:
             raise HaltError("an executed ']' has no bracket partner")
-        return _State(tape, ptr, partner + 1, rot)
+        return (tape, ptr, partner + 1, rot)
 
     if char in _COMMANDS:
         rot += 1
-    return _State(tape, ptr, ind + 1, rot)
+    return (tape, ptr, ind + 1, rot)
 
 
 class _Machine:
@@ -223,7 +216,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return _State(self.tape, self.ptr, self.ind, self.prog.rotation())
+        return (self.tape, self.ptr, self.ind, self.prog.rotation())
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields.

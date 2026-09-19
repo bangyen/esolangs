@@ -40,7 +40,6 @@ the harness would hang instead of reporting a 1; the suite checks it.
 from __future__ import annotations
 
 from functools import cache
-from typing import NamedTuple
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, runs
 from esolangs.tools.one_two_three_construct import (
@@ -66,7 +65,6 @@ ONE, ZERO = _ONE, _ZERO
 #: Each input's embed: the generator's own ``ZERO``/``ONE`` command.
 PAIR = (ZERO, ONE)
 
-
 #: One separation law: the constant pre-fill walk, then the alternating
 #: test displacements.
 #:
@@ -80,12 +78,7 @@ PAIR = (ZERO, ONE)
 #: their *marks* after a bare fill, not in their positions, so a walk
 #: alone can never split them (a halving-gap law of the retired
 #: synchronized pipeline's shape fails here for exactly that reason).
-class _Law(NamedTuple):
-    """One separation law."""
-
-    walk: int
-    disps: tuple[int, ...]
-
+type _Law = tuple[int, tuple[int, ...]]
 
 #: The separation law per small arity.
 #:
@@ -100,9 +93,9 @@ class _Law(NamedTuple):
 #: table could only raise, never mis-emit, and the suite's exhaustive
 #: ``n <= 3`` sweep re-proves coverage and correctness every run.
 _LAWS: dict[int, _Law] = {
-    1: _Law(0, ()),
-    2: _Law(2, (3, 2, 4)),
-    3: _Law(3, (1, 3, 9, 4)),
+    1: (0, ()),
+    2: (2, (3, 2, 4)),
+    3: (3, (1, 3, 9, 4)),
 }
 
 

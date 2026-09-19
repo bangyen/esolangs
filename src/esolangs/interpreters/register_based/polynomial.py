@@ -733,15 +733,10 @@ _COND: dict[int, Callable[[int], bool]] = {
     3: lambda reg: not reg,
 }
 
-
 #: One instant of a run: ``(reg, ind)`` -- the single integer register and
-#: the instruction cursor.  A value, not a mutable record: :func:`_advance`
-#: returns a new pair rather than editing one in place.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    reg: int
-    ind: int
+#: the instruction cursor.  A value, not a record: :func:`_advance` returns a
+#: new pair rather than editing one in place.
+type _State = tuple[int, int]
 
 
 def _partner(
@@ -792,7 +787,7 @@ def _advance(
     elif not _COND[(one - 1) % 4](reg):
         ind = _partner(instructions, ind, pairs)
 
-    return _State(reg, ind + 1), output
+    return (reg, ind + 1), output
 
 
 class _Machine:
@@ -858,7 +853,7 @@ class _Machine:
             byte = ord(val[0])
 
         (self.reg, self.ind), output = _advance(
-            _State(self.reg, self.ind), self.instructions, byte, self._pairs
+            (self.reg, self.ind), self.instructions, byte, self._pairs
         )
         if output is not None:
             self.io.print_char(output)
