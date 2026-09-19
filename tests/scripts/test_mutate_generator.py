@@ -1,4 +1,4 @@
-"""``scripts/mutate_generator.py`` selects the suites and shapes the run.
+"""``tests/tools/mutate_generator.py`` selects the suites and shapes the run.
 
 Every failure this pins is silent.  A generator mutation run that selects
 too few suites still prints a percentage, and the percentage looks
@@ -38,7 +38,7 @@ class TestTestFiles:
 
         The narrowings that were tried each left a blind spot: importing
         misses the suites that reach a generator through the package
-        re-export (``boolean.laserfuck``), and resolving attribute access
+        re-export (``esolangs.tools.laserfuck``), and resolving attribute access
         still misses a suite that dispatches through a table.
         Comparing against the directory listing means a new suite is
         included the moment it is added, with nothing to remember.
@@ -218,7 +218,7 @@ class TestParseTarget:
         assert script._parse_target("tools/wrap") == ("tools", "wrap")  # noqa: SLF001
 
     def test_an_unambiguous_bare_name_still_resolves(self) -> None:
-        """The boolean-only spelling keeps working where it is unambiguous."""
+        """The bare spelling keeps working where it is unambiguous."""
         script = load_script()
         assert script._parse_target("minifuck") == ("tools", "minifuck")  # noqa: SLF001
 
@@ -296,12 +296,11 @@ class TestParseTarget:
                 assert (kind.pkg_dir / f"{name}.py").exists()
 
     def test_the_bare_tools_modules_are_a_target_kind(self) -> None:
-        """``wrap`` is reachable, and the subpackages are not swept in.
+        """``wrap`` is reachable, and only the package's own modules are.
 
         The kind globs ``*.py`` directly under ``esolangs/tools``, so it
-        picks up the modules that sit beside the generator family without
-        listing ``boolean`` a second time -- a directory does not match the
-        glob.
+        picks up the layout helpers without sweeping in a subpackage -- a
+        directory does not match the glob.
         """
         script = load_script()
         modules = script._modules("tools")  # noqa: SLF001
@@ -316,12 +315,11 @@ class TestPrepare:
         """``paths_to_mutate`` must name the family that was asked for.
 
         The bug this pins shipped once: the path was built with a literal
-        ``boolean`` while the score was read from the target's own family, so
-        a target in the other family mutated *boolean's* file and then found
-        no result file where it looked.  That mismatch is what made it loud.
-        Had both sides shared the wrong literal it would have been silent --
-        a run reporting a real, plausible score for a module nobody asked
-        about.
+        family name while the score was read from the target's own, so the
+        mutant ran on the wrong file and the result was looked for somewhere
+        else.  That mismatch is what made it loud.  Had both sides shared
+        the wrong literal it would have been silent -- a run reporting a
+        real, plausible score for a module nobody asked about.
         """
         script = load_script()
         proj, _ = script._prepare("tools", "wrap", tmp_path, slow=False)  # noqa: SLF001
