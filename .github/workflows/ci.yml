@@ -134,8 +134,8 @@ jobs:
       # `os.cpu_count()` because psutil is not a dependency here -- so there
       # is no worker count left to raise.  What made this job slow was the
       # `slow` band: 546 of 10172 tests that measure, locally at two workers,
-      # 289s against the 81s the rest take.  Those moved to
-      # `.github/workflows/weekly.yml`; this runs fast and `medium`.
+      # 289s against the 81s the rest take.  The `slow` job below runs
+      # them sharded; this runs fast and `medium`.
       #
       # `--cov-branch` is free on this leg (see the table above) and the gate
       # below needs the arcs.
@@ -152,6 +152,46 @@ jobs:
     - name: Test with pytest
       if: matrix.python-version != '3.14'
       run: uv run pytest -n auto -m "not slow"
+
+
+  slow:
+    # The `slow` band, sharded round-robin across four jobs so per-PR CI
+    # keeps the signal without the wall time: one file holds nearly half
+    # the band, so contiguous slices would leave one shard carrying it
+    # whole.  `-m "slow and not weekly"`, mirroring verify.py's --full
+    # run: the two high-arity probes stay on the weekly sampling interval,
+    # and weekly.yml (bare `pytest`) remains their only runner.
+    #
+    # 3.14 only: the fast suite already covers every promised interpreter
+    # on every push, and weekly.yml keeps the whole suite on all three.
+    # Count-balanced, not time-balanced; the timeout has headroom for CI's
+    # slower cores.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      # One shard's failure should not cancel the evidence from the others.
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
+    - name: Set up Python 3.14
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.14"
+
+    # Explicit, like every other sync here: with `.python-version`
+    # committed, a bare `uv sync` would follow the pin.
+    - name: Install dependencies
+      run: uv sync --extra dev --python 3.14
+
+    - name: Test one slow shard
+      run: uv run python scripts/pytest_shard.py --marker "slow and not weekly" --shard ${{ matrix.shard }} --shards 4 -- -n auto
 
 
   generated-docs:

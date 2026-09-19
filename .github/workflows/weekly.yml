@@ -1,12 +1,11 @@
 name: Weekly full suite
 
-# The `slow` band, which per-PR CI deselects.  546 of 10172 tests that cost,
-# locally at two workers, 289s against the 81s the rest take -- arity
-# sweeps, whole-table
-# verifications and the twelve-input cap checks, the tests whose cost is the
-# point.  Running them on every push bought a fast signal on the work least
-# likely to regress between commits; running them weekly keeps the signal and
-# gives PR authors back the wall time.
+# The whole suite on all three interpreters, on a schedule.  The `slow`
+# band also runs per-PR now, sharded across four jobs in ci.yml; what
+# keeps this workflow is the `weekly` marker -- the two high-arity probes
+# nothing else runs -- plus a weekly full-suite pass at interpreters the
+# per-PR legs skip.  The slow tests here are the cheap part of the bill
+# next to those probes.
 #
 # Two things about `schedule:` worth knowing before relying on it.  It only
 # fires on the default branch, so this file does nothing until it is on
