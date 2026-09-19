@@ -393,6 +393,22 @@ def _run_worker(lang: str) -> tuple[float, str, _Report | None]:
     return elapsed, "ok", _Report(got["runs"], got["findings"])
 
 
+def _examples(langs: list[str]) -> tuple[dict[str, list[str]], list[str]]:
+    """Return each language's example programs, and those with none.
+
+    ``RUNNERS`` is keyed by display name; the example files by canonical id.
+    """
+    from esolangs.registry import canonical_id
+
+    slug_of = {name: canonical_id(name) for name in langs}
+    by_slug: dict[str, list[str]] = {}
+    for p in (_ROOT / "examples" / "boolean").glob("*.txt"):
+        by_slug.setdefault(p.stem, []).append(p.read_text())
+    examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
+    missing = [n for n, v in examples.items() if not v]
+    return examples, missing
+
+
 def _worker(target: str) -> None:
     """Sweep one language and print its result as JSON on stdout.
 
@@ -401,15 +417,10 @@ def _worker(target: str) -> None:
     factors its program with sympy before a step runs), which no step cap
     or in-process alarm can bound.
     """
-    from esolangs.registry import RUNNERS, canonical_id
+    from esolangs.registry import RUNNERS
 
     langs = sorted(RUNNERS)
-    slug_of = {name: canonical_id(name) for name in langs}
-    by_slug: dict[str, list[str]] = {}
-    for d in ("boolean",):
-        for p in (_ROOT / "examples" / d).glob("*.txt"):
-            by_slug.setdefault(p.stem, []).append(p.read_text())
-    examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
+    examples, _ = _examples(langs)
 
     rng = random.Random(1234)
     progs: list[str] = []
@@ -423,9 +434,63 @@ def _worker(target: str) -> None:
     print(json.dumps({"runs": n, "findings": found}), flush=True)
 
 
+def _run_pool(langs: list[str]) -> dict[str, tuple[float, str, _Report | None]]:
+    """Sweep *langs* concurrently, returning each worker's result by language.
+
+    Workers are independent processes, so they overlap freely; the pool is
+    threads only because each task does nothing but wait on one.  This also
+    keeps a language that burns its whole timeout from delaying the rest.
+    """
+    done: dict[str, tuple[float, str, _Report | None]] = {}
+    with cf.ThreadPoolExecutor(max_workers=_JOBS) as pool:
+        futures = {pool.submit(_run_worker, lang): lang for lang in langs}
+        for fut in cf.as_completed(futures):
+            lang = futures[fut]
+            done[lang] = fut.result()
+            # Progress as it lands.  The ordered report below is the record;
+            # this is so a long sweep shows it is alive, and names the
+            # language that is still out when it is not.
+            print(
+                f"  .. {lang} ({len(done)}/{len(langs)})", file=sys.stderr, flush=True
+            )
+    return done
+
+
+def _report_langs(
+    langs: list[str],
+    done: dict[str, tuple[float, str, _Report | None]],
+    keys: dict[str, str],
+    cache: dict[str, str],
+) -> tuple[dict[str, list[dict[str, str]]], dict[str, int]]:
+    """Print each language's result, remember the clean ones, collect findings.
+
+    Reported in registry order rather than completion order, so two runs of
+    the sweep produce the same transcript.  A language whose worker never
+    reported is a failed sweep, not a clean one.
+    """
+    findings: dict[str, list[dict[str, str]]] = {}
+    counts: dict[str, int] = {}
+    for lang in langs:
+        elapsed, status, result = done[lang]
+        if result is None:
+            print(f"{lang:26} {'':6}      {elapsed:6.1f}s  {status}", flush=True)
+            continue
+        n = result.runs
+        for hit in result.findings:
+            findings.setdefault(lang, []).append(hit)
+            key = f"{lang}:{hit['exc']}"
+            counts[key] = counts.get(key, 0) + 1
+        hits = findings.get(lang)
+        status = f"LEAK {len(hits)}" if hits else "ok"
+        print(f"{lang:26} {n:6} runs {elapsed:6.1f}s  {status}", flush=True)
+        if not hits:
+            cache[lang] = keys[lang]
+    return findings, counts
+
+
 def main() -> None:
     """Sweep every registered language and report any that leaks."""
-    from esolangs.registry import RUNNERS, canonical_id
+    from esolangs.registry import RUNNERS
 
     if "--worker" in sys.argv[1:]:
         _worker(sys.argv[sys.argv.index("--worker") + 1])
@@ -442,14 +507,7 @@ def main() -> None:
         print("nothing to check (pass --all to sweep the whole registry)")
         return
 
-    # RUNNERS is keyed by display name; the example files by canonical id.
-    slug_of = {name: canonical_id(name) for name in langs}
-    by_slug: dict[str, list[str]] = {}
-    for d in ("boolean",):
-        for p in (_ROOT / "examples" / d).glob("*.txt"):
-            by_slug.setdefault(p.stem, []).append(p.read_text())
-    examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
-    missing = [n for n, v in examples.items() if not v]
+    examples, missing = _examples(langs)
     print(f"languages without example programs: {len(missing)}", flush=True)
 
     cache = _load_cache()
@@ -458,9 +516,6 @@ def main() -> None:
     if cached:
         print(f"unchanged since last clean sweep: {len(cached)}", flush=True)
     langs = [n for n in langs if n not in cached]
-
-    findings: dict[str, list[dict[str, str]]] = {}
-    counts: dict[str, int] = {}
 
     # Drawn here, in order, purely to keep this generator in step with each
     # worker's own replay: one generator feeds every language in sequence,
@@ -471,39 +526,8 @@ def main() -> None:
     for lang in langs:
         _corpus(lang, examples, rng)
 
-    timeouts: list[str] = []
-    # Workers are independent processes, so they overlap freely; the pool is
-    # threads only because each task does nothing but wait on one.  This also
-    # keeps a language that burns its whole timeout from delaying the rest.
-    with cf.ThreadPoolExecutor(max_workers=_JOBS) as pool:
-        futures = {pool.submit(_run_worker, lang): lang for lang in langs}
-        done = {}
-        for fut in cf.as_completed(futures):
-            lang = futures[fut]
-            done[lang] = fut.result()
-            # Progress as it lands.  The ordered report below is the record;
-            # this is so a long sweep shows it is alive, and names the
-            # language that is still out when it is not.
-            done_msg = f"  .. {lang} ({len(done)}/{len(langs)})"
-            print(done_msg, file=sys.stderr, flush=True)
-    # Reported in registry order rather than completion order, so two runs
-    # of the sweep produce the same transcript.
-    for lang in langs:
-        elapsed, status, result = done[lang]
-        if result is None:
-            timeouts.append(lang)
-            print(f"{lang:26} {'':6}      {elapsed:6.1f}s  {status}", flush=True)
-            continue
-        n = result.runs
-        for hit in result.findings:
-            findings.setdefault(lang, []).append(hit)
-            key = f"{lang}:{hit['exc']}"
-            counts[key] = counts.get(key, 0) + 1
-        hits = findings.get(lang)
-        status = f"LEAK {len(hits)}" if hits else "ok"
-        print(f"{lang:26} {n:6} runs {elapsed:6.1f}s  {status}", flush=True)
-        if not hits:
-            cache[lang] = keys[lang]
+    done = _run_pool(langs)
+    findings, counts = _report_langs(langs, done, keys, cache)
     _save_cache(cache)
 
     if args:
