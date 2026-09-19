@@ -7,7 +7,7 @@ alphabet fuzzing for languages whose random programs must terminate --
 halting or rejecting -- rather than legitimately looping.
 
 The corpus is seeded from the generators because the samples alone barely
-reach an interpreter: a median of five characters, so a sweep over all 60
+reach an interpreter: a median of five characters, so a sweep over all 59
 languages executed a median of twelve steps each and Container executed
 nothing at all.  Adding generated seeds and drawing edits from each seed's
 own alphabet multiplies executed steps by 3.9x and leaves no language at
@@ -56,7 +56,7 @@ def _generated_seed(language: str) -> str | None:
     The mutation corpus used to be seeded from ``SAMPLES`` alone, and those
     programs are tiny: a median of five characters, with Container's the
     empty string.  Mutating five characters barely reaches an interpreter --
-    a sweep over all 60 languages executed a median of twelve steps each,
+    a sweep over all 59 languages executed a median of twelve steps each,
     one step per variant, and Container executed nothing at all.
 
     Generator output is the corpus this file was missing; seeding from it

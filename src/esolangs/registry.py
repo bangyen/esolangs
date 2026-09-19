@@ -545,7 +545,7 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     reason: the same set taken from ``parameterized.__all__`` omits Home
     Row, whose generator emits the runs all the same, and the three
     hand-kept lists in the docs each named a different subset.  ``fill`` is
-    the only spelling that matches what the generators actually emit -- 15
+    the only spelling that matches what the generators actually emit -- 14
     languages, checked against the runs over all 59.
     """
     from esolangs.tools import examples as _examples

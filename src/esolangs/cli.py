@@ -254,7 +254,7 @@ def _describe(rest: list[str]) -> None:
         return
     # A template language reads no stdin, so its shape and alphabet are
     # noise.  Hidden here, not dropped from ``describe()``, whose keys stay
-    # uniform across all 60.
+    # uniform across all 59.
     hidden = set()
     if not facts["reads_input"] and facts["parameterized"]:
         hidden = {"input_shape", "input_encoding"}
