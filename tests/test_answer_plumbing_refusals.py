@@ -790,9 +790,9 @@ class TestTheCallersSignalsAreTheirOwn:
     def test_the_floor_applies_to_evaluate_too(self) -> None:
         """Its termination path never reaches ``run``, so it checked nothing.
 
-        The same bound raised for sixty-six languages and was silently read
-        as "diverges" for the other three, which returned a confident
-        ``1111`` for XOR.
+        The same bound raised for the languages that halt and was silently
+        read as "diverges" for the termination-answer ones, which returned a
+        confident ``1111`` for XOR.
         """
         with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
             esolangs.evaluate("123", "0110", 1e-06)

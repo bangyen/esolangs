@@ -4,9 +4,8 @@ Run:  just proofs   (or python tests/proofs/deep/linearity.py)
 
 ``docs/roadmap.md`` asks for "a registry-wide scaling contract" to finish the
 linear-generator item.  ``tests/tools/test_boolean_contract.py`` already has
-one, but it covers only the twenty-five languages of that item's original
-queue; the other thirty-five generators have never had their growth checked at all.
-This measures all sixty.
+one, but it covers only part of the registry; the rest have never had their
+growth checked at all.  This measures every generator.
 
 What is asserted
 ----------------

@@ -60,8 +60,7 @@ class Frame:
 
     The :class:`~esolangs.vm.VM` views, the step count, and whatever the
     machine names itself (``acc``, ``ptr``, ``ind``) in :attr:`views` --
-    read off the machine, not inferred: only eleven of the sixty
-    interpreters have a ``ptr``.
+    read off the machine, not inferred: only eleven of them have a ``ptr``.
     """
 
     language: str

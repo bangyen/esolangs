@@ -400,7 +400,7 @@ def run(
     :class:`~esolangs.exceptions.ExecutionTimeoutError` (a
     :class:`TimeoutError` and a :class:`~esolangs.exceptions.HaltError`; catch
     it, not the base).  It is ``SIGALRM``, so needs a Unix main thread; off it,
-    :meth:`Debugger.run` bounds by stepping.  ``seed`` fixes the seven
+    :meth:`Debugger.run` bounds by stepping.  ``seed`` fixes the four
     languages that draw.  An unloadable program raises
     :class:`~esolangs.exceptions.ProgramError`.
     """
@@ -472,12 +472,12 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
     judgement :func:`check_stdin` raises, rendered as advice.
     """
     if not stdin:
-        # Empty stdin is legitimate (the protocol tests run 63 programs
+        # Empty stdin is legitimate (the protocol tests run every language
         # that way); a program that reads anyway is caught by the counts below.
         return
     if not describe(name)["reads_input"]:
         # A language that embeds its inputs is *given* no stdin by design --
-        # ``evaluate`` passes "" for all seventeen of them -- so there is
+        # ``evaluate`` passes "" for every one of them -- so there is
         # nothing here to be wrong.  ``check_stdin`` refuses the pair
         # outright, which is right for a caller who asked; as advice it was
         # just noise, and it fired once per row of every template language.
@@ -539,7 +539,7 @@ def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
         )
     if io_obj.past_end and describe(name)["eof_is_a_value"]:
         # Read past the end and kept going: the silent wrong answer the
-        # seven ``eof_is_a_value`` languages give (a different row, or row
+        # five ``eof_is_a_value`` languages give (a different row, or row
         # 0).  Counted, not ``supplied == 0``, which missed underfeeding.
         # Gated because Suffolk ends *by* running out of input.
         warnings.warn(

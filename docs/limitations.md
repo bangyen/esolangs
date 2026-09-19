@@ -17,9 +17,10 @@ Polynomial's proved wall is in [polynomial](polynomial.md).
 
 ## Source positions
 
-`esolangs debug --tui` marks only a source position. `ip_shape` is `offset`
-(45 languages), `grid` (11), `line` (2), or `opaque` (7); undeclared tuples
-are refused and opaque positions have no program mark.
+`esolangs debug --tui` marks only a source position. `ip_shape` is `offset`,
+`grid`, `line`, or `opaque` -- `tests/test_vm_protocol.py` sweeps every language
+and refuses an undeclared or misspelled value. Opaque positions have no program
+mark.
 
 Line extraction accepts anti-aliased PNGs only when strokes retain a connected
 dark core. The 3px scan fixture executes addition; a one-third-pixel shift of

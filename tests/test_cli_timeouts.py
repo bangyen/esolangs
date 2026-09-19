@@ -1,7 +1,7 @@
 """What ``--timeout`` bounds, what it costs, and the code it exits with.
 
 The bound is the one thing a CLI user can reach for when a program will not
-stop, and three languages answer *by* not stopping, so a timeout has to be
+stop, and four languages answer *by* not stopping, so a timeout has to be
 tellable from a crash.
 """
 
@@ -25,7 +25,7 @@ class TestATimeoutHasOneExitCode:
     ``run`` and ``debug`` exited 124 and ``evaluate``, ``verify`` and
     ``answer`` exited 1 on the same event, so a script could not test for
     it -- and 124 is the only exit code this CLI documents a meaning for.
-    The three languages whose answer *is* a timeout make the distinction
+    The four languages whose answer *is* a timeout make the distinction
     load-bearing rather than tidy.
     """
 
@@ -244,7 +244,7 @@ class TestRunCanBeBounded:
                 capsys,
             )
         # 124, after timeout(1).  This was 1 -- the same code a program's
-        # own failure exits with -- which left the three languages whose
+        # own failure exits with -- which left the four languages whose
         # answer *is* a timeout indistinguishable from a crash.
         assert exc.value.code == 124
         assert "timeout" in capsys.readouterr().err

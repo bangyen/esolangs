@@ -336,8 +336,8 @@ def test_rejects_a_non_png() -> None:
 def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
     """A JPEG names itself and the fix, rather than failing on the signature.
 
-    JPEG support was written and deliberately removed (see WIP.md), so this
-    is the one wrong-format case likely enough to be worth a message that
+    JPEG support was written and deliberately removed, so this is the one
+    wrong-format case likely enough to be worth a message that
     says what to do next instead of "bad signature".
     """
     from esolangs.line import extract

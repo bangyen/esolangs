@@ -19,7 +19,7 @@ already occupy.  Four axes, with what currently sits on each:
   guard, implicit comparator, pointer displacement (`123`).
 - **Answer convention** -- print 0/1, landing colour (`a_painter_ant`),
   position-encoded (`minifuck`),
-  termination as the answer (`123`, ArrowQueue, Point Break).
+  termination as the answer (`123`, ArrowQueue, Crement, Vandevelo).
 - **Input interface** -- read-and-route, bit-addressable index (`fargo`),
   parameterized embed.
 
