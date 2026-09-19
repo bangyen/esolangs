@@ -610,7 +610,7 @@ class TestCheckStdinIsASubcommand:
 
 class TestCheckStdinSaysWhatItCanActuallyCheck:
     """Its help listed "the wrong number of lines" among what it catches
-    without ``--table``.  For 57 of the 59 it cannot.
+    without ``--table``.  For most languages it cannot.
 
     Without a table it judges *shape*, and for a line-per-bit language a
     shape is not a count: one line, three lines and none at all are

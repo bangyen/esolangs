@@ -45,8 +45,8 @@ _DIGIT_WORDS = {
 #:
 #: 0.6 offered ``Sophie`` for ``nope``, which is worse than saying nothing:
 #: a wrong guess sends the reader off to check a language they never meant.
-#: Measured rather than picked -- across 269 single-edit typos of the 59
-#: names, 0.6 and 0.65 both rescue 265, while 0.65 is the lowest value that
+#: Measured rather than picked -- across 269 single-edit typos of the
+#: registered names, 0.6 and 0.65 both rescue 265, while 0.65 is the lowest value that
 #: suggests nothing for any of ``nope``, ``zzzz``, ``xyz``, ``qqqqqq``,
 #: ``hello``, ``python``, ``asdf``, ``test`` and ``foo``.  0.7 starts
 #: costing real rescues.  ``TestASuggestionIsWorthLessThanSilence`` is the
@@ -66,7 +66,7 @@ def canonical_id(name: str) -> str:
     # and became ``cv_n_c``, which is nothing's id.  Every other awkward
     # name (``BRAINFUCK``, ``s*bleq``, ``forþ``) was already tolerant.
     # Stripped before anything else.  The slug rules below collapse runs of
-    # non-alphanumerics and strip the result, so 58 of the 59 names already
+    # non-alphanumerics and strip the result, so almost every name already
     # tolerated a stray surrounding space -- but the override lookup is an
     # exact one, and the name that needs an override was therefore the
     # one that did not.  ``CV(N)(C) `` was the bad one: it fell
@@ -545,8 +545,8 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     reason: the same set taken from ``parameterized.__all__`` omits Home
     Row, whose generator emits the runs all the same, and the three
     hand-kept lists in the docs each named a different subset.  ``fill`` is
-    the only spelling that matches what the generators actually emit -- 14
-    languages, checked against the runs over all 59.
+    the only spelling that matches what the generators actually emit --
+    the count it returns is checked against the runs over every one.
     """
     from esolangs.tools import examples as _examples
 

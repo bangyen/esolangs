@@ -234,7 +234,7 @@ class TestTheEofTraitIsOnTheVmToo:
 #: The arity and shapes the *execution* sweep uses, so the two agree.
 _WIDER_ARITY = 6
 
-#: Four rows rather than all 59.  A step/run divergence is a property of
+#: Four rows rather than every language.  A step/run divergence is a property of
 #: the program, not of the row -- Grapheme's and Sophie's showed on every
 #: row that reached the broken construct -- so sampling buys the arity and
 #: the second shape for a sixteenth of the cost.
