@@ -418,7 +418,7 @@ def _undecorate_classes(target: Path) -> list[str]:
     # The rewrite only works for a class the module does not *use* while it
     # is still importing.  The calls below go at the end, so a module body
     # that constructs one has already run against the undecorated class --
-    # ``registry.py`` builds ``LANGUAGES`` out of ``Language(...)`` and
+    # ``registry/_table.py`` builds ``LANGUAGES`` out of ``Language(...)`` and
     # fails with "Language() takes no arguments", which says nothing about
     # what went wrong.  Refuse with the reason instead.
     #

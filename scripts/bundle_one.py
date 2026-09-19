@@ -86,12 +86,12 @@ def _drop_lines(src: str, drop: set[int]) -> str:
 def _parse_registry(source: Source) -> dict[str, str]:
     """Map each display name to its interpreter module path.
 
-    ``registry.py`` is parsed with ``ast`` (never executed), so the mapping
+    ``registry/_table.py`` is parsed with ``ast`` (never executed), so the mapping
     works against a raw download where the ``esolangs`` package cannot be
     imported.  The interpreter argument is either the ``interpreter=`` keyword
     or the second positional ``Language(name, interpreter, ...)`` slot.
     """
-    tree = ast.parse(source.get("registry.py"))
+    tree = ast.parse(source.get("registry/_table.py"))
     langs: dict[str, str] = {}
     for node in tree.body:
         targets: list[ast.expr]
