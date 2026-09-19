@@ -17,7 +17,6 @@ the shell's.
 from __future__ import annotations
 
 import sys
-from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
 
@@ -29,18 +28,11 @@ _START = 0
 #: is never read, and ``snapshot`` sorts on the way out.
 type _Bits = frozenset[int]
 
-
 #: ``(ip, pos, bits, done)``: an immutable value, rebound per step.
 #: ``done`` is state because the end-of-program check depends on the
 #: pointer (below 0 halts, else loops), not the cursor; it stays out of
 #: ``snapshot``.  The code is a parameter, not a field.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    ip: int
-    pos: int
-    bits: _Bits
-    done: bool
+type _State = tuple[int, int, _Bits, bool]
 
 
 def _byte_of(bits: _Bits) -> int:
@@ -92,9 +84,7 @@ def _advance(
     ip, pos, bits, done = state
     if ip >= len(code):
         # End of the program: halt below location 0, else loop from the top.
-        if pos < 0:
-            return _State(ip, pos, bits, done=True)
-        return _State(_START, pos, bits, done)
+        return (ip, pos, bits, True) if pos < 0 else (_START, pos, bits, done)
     char = code[ip]
     if char == "1":
         bits = bits ^ frozenset((pos,))
@@ -113,8 +103,8 @@ def _advance(
     elif char == "3" and pos >= 0:
         # Below location 0 a ``3`` is a NOP; at or above it jumps, and the
         # jump has already positioned the cursor.
-        return _State(landings[0 if pos in bits else 1][ip], pos, bits, done)
-    return _State(ip + 1, pos, bits, done)
+        return (landings[0 if pos in bits else 1][ip], pos, bits, done)
+    return (ip + 1, pos, bits, done)
 
 
 class _Machine:
@@ -133,7 +123,7 @@ class _Machine:
         self.n = len(code)
         # A program with no commands can never move, so it is done already.
         idle = not any(c in "123" for c in code)
-        self.state: _State = _State(0, _START, frozenset(), idle)
+        self.state: _State = (0, _START, frozenset(), idle)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -157,7 +147,7 @@ class _Machine:
 
         How the backward-jump branch is exercised: no short program reaches it.
         """
-        self.state = _State(ip, pos, bits, self.state[3])
+        self.state = (ip, pos, bits, self.state[3])
 
     @property
     def halted(self) -> bool:

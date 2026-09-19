@@ -17,15 +17,13 @@ backstop covers it.
 from __future__ import annotations
 
 import sys
-from typing import NamedTuple
 
 from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
-
 #: One instant of a run: ``(ind, cell, tape)`` -- the code cursor, the
-#: pointer, and the bit pool.  A value, not a mutable record: every transition
-#: below returns a new one rather than editing one in place, and the pool is a
+#: pointer, and the bit pool.  A value, not a record: every transition below
+#: returns a new one rather than editing one in place, and the pool is a
 #: ``tuple`` for the same reason.
 #:
 #: The code is deliberately not in here.  It does not change during a run,
@@ -35,12 +33,7 @@ from esolangs.interpreters.io import IO
 #: The field order starts ``ind, cell`` for readability, but ``snapshot``
 #: still returns ``(tape, cell, ind, ...)`` -- the order it always returned.
 #: Reordering there would silently reorder every stored hash.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    ind: int
-    cell: int
-    tape: tuple[int, ...]
+type _State = tuple[int, int, tuple[int, ...]]
 
 
 def _grown(tape: tuple[int, ...], need: int) -> tuple[int, ...]:
@@ -100,7 +93,7 @@ def _advance(
     elif target is not None:
         # Both brackets, once the shell has decided a jump happens.
         ind = target
-    return _State(ind + 1, cell, tape)
+    return (ind + 1, cell, tape)
 
 
 class _Machine:
@@ -113,7 +106,7 @@ class _Machine:
         # ``halted`` is read twice per character -- once by ``run``'s loop
         # and once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
-        self.state: _State = _State(0, 0, (0,) * 8)
+        self.state: _State = (0, 0, (0,) * 8)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.

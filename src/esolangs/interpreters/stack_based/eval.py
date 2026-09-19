@@ -45,7 +45,6 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Hashable
-from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -53,38 +52,23 @@ from esolangs.interpreters.io import IO
 #: A value on a stack: Eval's stacks hold both.
 type _Val = int | str
 
-
 #: The part of a run the pure layer owns: ``(ptr, (stack0, stack1))`` -- the
-#: active stack index and both stacks.  A value, not a mutable record: every
+#: active stack index and both stacks.  A value, not a record: every
 #: transition below returns a new one rather than editing one in place.
 #:
 #: The code cursor is *not* in here.  Cursors belong to frames: a nested
 #: ``!`` gets its own, while the stacks are shared by every frame.
-class _Core(NamedTuple):
-    """The part of a run the pure layer owns."""
-
-    ptr: int
-    stacks: tuple[tuple[_Val, ...], tuple[_Val, ...]]
-
+type _Core = tuple[int, tuple[tuple[_Val, ...], tuple[_Val, ...]]]
 
 #: One frame on the call stack: the program it is running and how far in.
-#: A value, rebuilt rather than edited, so the whole stack is a value the
-#: cycle detector can hash.
-class _Frame(NamedTuple):
-    """One frame on the call stack."""
-
-    sym: str
-    ind: int
-
+#: A plain tuple, rebuilt rather than edited, so the whole stack is a value
+#: the cycle detector can hash.
+type _Frame = tuple[str, int]
 
 #: Every value an Eval command can change: the shared two-stack core and the
 #: immutable call-frame stack.  Program text lives in its frame; ports stay
 #: in the shell.
-class _State(NamedTuple):
-    """Every value an Eval command can change."""
-
-    core: _Core
-    frames: tuple[_Frame, ...]
+type _State = tuple[_Core, tuple[_Frame, ...]]
 
 
 class _Fault(Exception):  # noqa: N818 - an internal signal, not an error type
@@ -101,7 +85,7 @@ def _pushed(core: _Core, value: _Val) -> _Core:
     """Return ``core`` with ``value`` pushed on the active stack."""
     ptr, stacks = core
     active = (*stacks[ptr], value)
-    return _Core(ptr, (active, stacks[1]) if ptr == 0 else (stacks[0], active))
+    return (ptr, (active, stacks[1]) if ptr == 0 else (stacks[0], active))
 
 
 def _popped(core: _Core) -> tuple[_Core, _Val]:
@@ -113,7 +97,7 @@ def _popped(core: _Core) -> tuple[_Core, _Val]:
     if not stacks[ptr]:
         raise _Fault
     rest, value = stacks[ptr][:-1], stacks[ptr][-1]
-    return _Core(ptr, (rest, stacks[1]) if ptr == 0 else (stacks[0], rest)), value
+    return (ptr, (rest, stacks[1]) if ptr == 0 else (stacks[0], rest)), value
 
 
 def _iterate(
@@ -153,16 +137,14 @@ def _iterate(
         core, value = _popped(core)
         ptr, stacks = core
         other = (*stacks[1 - ptr], value)
-        core = _Core(ptr, (stacks[0], other) if ptr == 0 else (other, stacks[1]))
+        core = (ptr, (stacks[0], other) if ptr == 0 else (other, stacks[1]))
     elif char == ";":
         core, _value = _popped(core)
     elif char == "~":
-        core = _Core(ptr ^ 1, stacks)
+        core = (ptr ^ 1, stacks)
     elif char == "*":
         reversed_ = stacks[ptr][::-1]
-        core = _Core(
-            ptr, (reversed_, stacks[1]) if ptr == 0 else (stacks[0], reversed_)
-        )
+        core = (ptr, (reversed_, stacks[1]) if ptr == 0 else (stacks[0], reversed_))
     elif char == "?":
         core, value = _popped(core)
         if not value:
@@ -197,7 +179,7 @@ class _Machine:
         self.stk = ((), ())
         self.io = io
         self.sym = code
-        self.frames = (_Frame(code, 0),) if code else ()
+        self.frames = ((code, 0),) if code else ()
 
     @property
     def ind(self) -> int:
@@ -266,7 +248,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The complete changing state at the command boundary."""
-        return _State(_Core(self.ptr, self.stk), self.frames)
+        return ((self.ptr, self.stk), self.frames)
 
     def _restore(self, state: _State) -> None:
         """Write a pure command transition back onto the machine shell."""
@@ -312,7 +294,7 @@ class _Machine:
             return
         sym, ind = frames[-1]
         if ind >= len(sym):
-            self._restore(_State(core, frames[:-1]))
+            self._restore((core, frames[:-1]))
             return
         try:
             core, ind, output, call = _iterate(core, sym, ind)
@@ -320,12 +302,12 @@ class _Machine:
             raise HaltError from None
         if output is not None:
             self.io.print_value(output)
-        frames = (*frames[:-1], _Frame(sym, ind))
+        frames = (*frames[:-1], (sym, ind))
         if call is not None:
             # The nested program becomes a frame of its own rather than
             # running here, which is what makes its commands steps.
-            frames = (*frames, _Frame(call, 0))
-        self._restore(_State(core, frames))
+            frames = (*frames, (call, 0))
+        self._restore((core, frames))
 
 
 def run(code: str, io: IO) -> None:

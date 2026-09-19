@@ -69,7 +69,7 @@ value to settle on; no :class:`HaltError` is raised.
 
 import re
 import sys
-from typing import Final, Literal, NamedTuple
+from typing import Final, Literal
 
 from esolangs.interpreters.io import IO
 
@@ -618,15 +618,7 @@ def _merge(driven: list[tuple[int, ...]]) -> tuple[int, ...]:
 #: never rewrites itself, so they are handed to the transition.
 type _Values = tuple[tuple[int, ...] | None, ...]
 type _Latches = tuple[tuple[tuple[int, ...] | None, ...], ...]
-
-
-#: ``(values, latches)``; a value, not a mutable record -- a generation
-#: returns a new pair rather than editing the wirings in place.
-class _State(NamedTuple):
-    """One instant of a run: ``(values, latches)``."""
-
-    values: _Values
-    latches: _Latches
+type _State = tuple[_Values, _Latches]
 
 
 def _emitted(
@@ -681,7 +673,7 @@ def _generation(
     driven = tuple(
         _merge(pending[i]) if i in pending else None for i in range(len(wirings))
     )
-    return _State(driven, tuple(grown)), quiet
+    return (driven, tuple(grown)), quiet
 
 
 class _Machine:
@@ -803,12 +795,10 @@ class _Machine:
 
         Every ``:`` gate whose wire carries a value prints, in gate order.
         """
-        for text in _emitted(
-            _State(self.values, self.latches), self.wirings, self.gates
-        ):
+        for text in _emitted((self.values, self.latches), self.wirings, self.gates):
             self.io.print_str(text)
         (self.values, self.latches), halted = _generation(
-            _State(self.values, self.latches), self.wirings, self.gates
+            (self.values, self.latches), self.wirings, self.gates
         )
         if halted:
             self.halted = True
