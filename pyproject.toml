@@ -178,10 +178,11 @@ addopts = [
     "--timeout-method=thread",
 ]
 markers = [
-    # The top tier, and the only one CI deselects.  353 of 10865 tests that
-    # cost 289s locally at two workers against the 81s the other 10314 take,
-    # so per-PR CI runs `-m "not slow"` and
-    # `.github/workflows/weekly.yml` runs the whole suite on a schedule.
+    # The top tier.  353 of 10865 tests that cost 289s locally at two
+    # workers against the 81s the other 10314 take, so per-PR CI runs them
+    # sharded across four `slow` jobs (`-m "slow and not weekly"` -- the
+    # `weekly` probes stay weekly) and `.github/workflows/weekly.yml`
+    # keeps the whole suite on a schedule.
     # `just test` and `just test-full` do not deselect it locally.
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     # A tier above `slow`, and a cost tier rather than a kind: two tests are
