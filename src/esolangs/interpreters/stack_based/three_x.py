@@ -23,6 +23,7 @@ from __future__ import annotations
 import re
 import sys
 from fractions import Fraction
+from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -30,11 +31,11 @@ from esolangs.interpreters.io import IO
 #: The value ``^`` yields for a key never assigned.
 _UNSET = 3
 
+
 #: One instant of a run: ``(ind, stack, jumps, variables)`` -- the cursor,
 #: the operand stack, the loop-return stack, and the variables.  A value,
-#: not a record: every transition below returns a new one rather than
-#: editing one in place, and all three stores are tuples for the same
-#: reason.
+#: not a mutable record: every transition below returns a new one rather than
+#: editing one in place, and all three stores are tuples for the same reason.
 #:
 #: The variables are kept sorted by key, which is how ``snapshot`` already
 #: reported them, so one logical set of bindings has one spelling.
@@ -42,12 +43,14 @@ _UNSET = 3
 #: The code is deliberately not in here.  It does not change during a run,
 #: so carrying it would put constant data in every value the cycle detector
 #: stores.  It is a parameter to the transition instead.
-type _State = tuple[
-    int,
-    tuple[Fraction, ...],
-    tuple[int, ...],
-    tuple[tuple[Fraction, Fraction], ...],
-]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    ind: int
+    stack: tuple[Fraction, ...]
+    jumps: tuple[int, ...]
+    variables: tuple[tuple[Fraction, Fraction], ...]
+
 
 #: How many stack items each command needs.  ``x`` takes three, the two
 #: two-item commands take two, and the rest of the popping commands take
@@ -113,7 +116,7 @@ class _Machine:
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
-        self.state: _State = (0, (), (), ())
+        self.state: _State = _State(0, (), (), ())
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -182,7 +185,7 @@ class _Machine:
             if target is None:
                 # The original's scan walked the cursor to the end before
                 # noticing, so a caller catching the error sees that.
-                self.state = (len(self.code), stack, jumps, variables)
+                self.state = _State(len(self.code), stack, jumps, variables)
                 raise HaltError("unmatched (")
         elif char == "?":
             line = self.io.input_str().strip()
@@ -247,7 +250,7 @@ def _advance(
         close = code.find("]", ind + 1)
         if close != -1:
             ind = close
-    return (ind + 1, stack, jumps, variables)
+    return _State(ind + 1, stack, jumps, variables)
 
 
 def run(code: str, io: IO) -> None:

@@ -18,16 +18,27 @@ transition; :class:`_Machine` rebinds one state per ``step()``.
 from __future__ import annotations
 
 import sys
+from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
 
+
+#: One container's name and value.
+class _Binding(NamedTuple):
+    """A container's name and value."""
+
+    name: str
+    value: int
+
+
 #: The container values, as an immutable name->value mapping in name order,
 #: so one logical set of values has exactly one spelling.
-type _Vars = tuple[tuple[str, int], ...]
+type _Vars = tuple[_Binding, ...]
+
 
 #: One instant of a run: ``(vars, queue, exit_code, tick)`` -- the container
 #: values, the pending input characters, the EXIT code once it fires, and
-#: the tick counter.  A value, not a record: every transition below returns
+#: the tick counter.  A value, not a mutable record: every transition below returns
 #: a new one rather than editing one in place.
 #:
 #: ``exit_code`` is state because halting here is a value a tick produces,
@@ -37,7 +48,13 @@ type _Vars = tuple[tuple[str, int], ...]
 #: ``tick`` is deliberately excluded from ``snapshot``: it counts steps, not
 #: state, and including it would make every state unique by construction
 #: and reduce the cycle detector to a step budget.
-type _State = tuple[_Vars, tuple[str, ...], int | None, int]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    vars: _Vars
+    queue: tuple[str, ...]
+    exit_code: int | None
+    tick: int
 
 
 def _get(variables: _Vars, name: str) -> int:
@@ -63,7 +80,7 @@ def _has(variables: _Vars, name: str) -> bool:
 def _tick(obj: list[Con], variables: _Vars) -> _Vars:
     """Return every container's value after one update, in name order."""
     old = dict(variables)
-    return tuple(sorted((o.name, o.update(old)) for o in obj))
+    return tuple(sorted(_Binding(o.name, o.update(old)) for o in obj))
 
 
 class Con:
@@ -127,7 +144,9 @@ class _Machine:
                     raise ValueError("rule line before any container declaration")
                 self.obj[-1].add(line)
 
-        self.state: _State = (tuple(sorted(start.items())), (), None, 0)
+        self.state: _State = _State(
+            tuple(sorted(_Binding(k, v) for k, v in start.items())), (), None, 0
+        )
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -244,10 +263,12 @@ def _advance(
     """
     variables, _queue, exit_code, count = state
     if byte is not None:
-        new = tuple(sorted({**dict(new), "IN": byte}.items()))
+        new = tuple(
+            sorted(_Binding(k, v) for k, v in {**dict(new), "IN": byte}.items())
+        )
     if _has(variables, "EXIT") and _get(variables, "EXIT") != _get(new, "EXIT"):
         exit_code = _get(new, "EXIT")
-    return (new, queue, exit_code, count + 1)
+    return _State(new, queue, exit_code, count + 1)
 
 
 def run(code: list[str], io: IO) -> int | None:

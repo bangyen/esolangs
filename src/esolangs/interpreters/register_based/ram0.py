@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 import sys
+from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.persistent import (
@@ -24,10 +25,18 @@ from esolangs.interpreters.persistent import (
     put,
 )
 
-#: The RAM as ``(address, value)`` pairs in insertion order.  The order is
+
+#: The RAM as ``(addr, value)`` pairs in insertion order.  The order is
 #: observable (the dump prints it), so sorting would change output;
 #: ``snapshot`` converts to a ``frozenset`` so it does not affect cycles.
-type _Ram = Chunked[tuple[int, int]]
+class _Cell(NamedTuple):
+    """One RAM cell: an address and the value stored there."""
+
+    addr: int
+    value: int
+
+
+type _Ram = Chunked[_Cell]
 
 #: Where each address sits in the store: the machine's memo of a fact about
 #: its own run.  A pair, once appended, never moves -- a rewrite updates it
@@ -35,10 +44,18 @@ type _Ram = Chunked[tuple[int, int]]
 #: stays right for every later state of the same run.
 type _Index = dict[int, int]
 
+
 #: ``(ind, z, n, ram, dumped)``: an immutable value, rebound per step.
 #: ``dumped`` is state because the dump happens after the cursor runs off
 #: the end; it stays out of ``snapshot``.  Tokens are a parameter, not a field.
-type _State = tuple[int, int, int, _Ram, bool]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    ind: int
+    z: int
+    n: int
+    ram: _Ram
+    dumped: bool
 
 
 def _stored(ram: _Ram, addr: int, value: int, index: _Index) -> _Ram:
@@ -50,8 +67,8 @@ def _stored(ram: _Ram, addr: int, value: int, index: _Index) -> _Ram:
     """
     position = index.get(addr)
     if position is not None:
-        return put(ram, position, (addr, value))
-    return append(ram, (addr, value))
+        return put(ram, position, _Cell(addr, value))
+    return append(ram, _Cell(addr, value))
 
 
 def _loaded(ram: _Ram, addr: int, index: _Index) -> int:
@@ -93,7 +110,7 @@ def _advance(state: _State, op: str, index: _Index) -> _State:
         ind += 1
     elif op.isdigit():
         ind = int(op) - 2
-    return (ind + 1, z, n, ram, dumped)
+    return _State(ind + 1, z, n, ram, dumped)
 
 
 class _Machine:
@@ -113,7 +130,7 @@ class _Machine:
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.tokens)
-        self.state: _State = (0, 0, 0, (), False)
+        self.state: _State = _State(0, 0, 0, (), dumped=False)
         self._index: _Index = {}
 
     # The language's own names.  They are views on the current state rather
@@ -197,7 +214,7 @@ class _Machine:
         if ind >= self.size:
             if not dumped:
                 self._dump(z, n, ram)
-                self.state = (ind, z, n, ram, True)
+                self.state = _State(ind, z, n, ram, dumped=True)
             return
         op = self.tokens[ind]
         self.state = _advance(self.state, op, self._index)

@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Mapping, Sequence
-from typing import Final, Literal
+from typing import Final, Literal, NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -110,25 +110,47 @@ def _truthy(value: _Value) -> bool:
 
 #: One call context: ``(code, pc, mode, buf, pending_at, repeat)``.
 #:
-#: A tuple rather than a record, so the whole call stack is a value that
+#: A value, not a mutable record, so the whole call stack is a value that
 #: :meth:`_Machine.snapshot` can hash -- Eval's frames are tuples for the
 #: same reason.  ``repeat`` carries ``Z``'s body: a frame holding one is
 #: rewound instead of popped while the stack is non-empty.
-type _Frame = tuple[str, int, str, tuple[str, ...], int, str]
+class _Frame(NamedTuple):
+    """One call context."""
+
+    code: str
+    pc: int
+    mode: str
+    buf: tuple[str, ...]
+    pending_at: int
+    repeat: str
+
+
+type _Vars = Mapping[_Value, _Value]
+
 
 #: The part of a run the pure layer owns: the variables and the call stack.
 #: The value stack is deliberately absent; see the module docstring.
-type _Vars = Mapping[_Value, _Value]
-type _State = tuple[_Vars, tuple[_Frame, ...]]
+class _State(NamedTuple):
+    """The part of a run the pure layer owns."""
+
+    variables: _Vars
+    frames: tuple[_Frame, ...]
+
 
 #: A read-only view of the live value stack, which the pure layer indexes
 #: but never writes.
 type _StackView = Sequence[_Value]
 
+
 #: What a step wants done to the value stack: how many to remove from the
 #: top, what to add after that, and whether ``P`` reversed what was left.
 #: Applied in exactly that order.
-type _StackFx = tuple[int, tuple[_Value, ...], bool]
+class _StackFx(NamedTuple):
+    """What a step wants done to the value stack."""
+
+    pops: int
+    pushes: tuple[_Value, ...]
+    reverse: bool
 
 
 #: The command that opens each mode, and the one that closes it.  The two
@@ -140,7 +162,7 @@ _CLOSES: Final = {mode: char for char, mode in _OPENS.items()}
 
 def _frame(code: str, repeat: str = "") -> _Frame:
     """Build a fresh frame for ``code``, at the start and in no mode."""
-    return (code, 0, "", (), -1, repeat)
+    return _Frame(code, 0, "", (), -1, repeat)
 
 
 def _pop(view: _StackView, pops: int) -> tuple[int, _Value]:
@@ -174,13 +196,13 @@ def _finished(state: _State, view: _StackView, fx: _StackFx) -> tuple[_State, _S
     frame = frames[-1]
     pops, pushes, reverse = fx
     pushes = (*pushes, *_flush_of(frame))
-    fx = (pops, pushes, reverse)
+    fx = _StackFx(pops, pushes, reverse)
 
     code, _, _, _, _, repeat = frame
     if repeat and len(view) - pops + len(pushes) > 0:
-        rewound = (code, 0, "", (), -1, repeat)
-        return (variables, (*frames[:-1], rewound)), fx
-    return (variables, frames[:-1]), fx
+        rewound = _Frame(code, 0, "", (), -1, repeat)
+        return _State(variables, (*frames[:-1], rewound)), fx
+    return _State(variables, frames[:-1]), fx
 
 
 def _advance(
@@ -208,10 +230,14 @@ def _advance(
         grown: _Frame
         if c == _CLOSES[mode]:
             pushes = _flush_of(frame)
-            grown = (code, pc + 1, "", (), pending_at, repeat)
+            grown = _Frame(code, pc + 1, "", (), pending_at, repeat)
         else:
-            grown = (code, pc + 1, mode, (*buf, c), pending_at, repeat)
-        return (variables, (*frames[:-1], grown)), (pops, pushes, reverse), None
+            grown = _Frame(code, pc + 1, mode, (*buf, c), pending_at, repeat)
+        return (
+            _State(variables, (*frames[:-1], grown)),
+            _StackFx(pops, pushes, reverse),
+            None,
+        )
 
     body: str | None = None
     call_repeat = ""
@@ -332,7 +358,7 @@ def _advance(
         pc += 1
         pending_at = -1
 
-    frames = (*frames[:-1], (code, pc, mode, buf, pending_at, repeat))
+    frames = (*frames[:-1], _Frame(code, pc, mode, buf, pending_at, repeat))
 
     if body is not None:
         frames = (*frames, _frame(body, call_repeat))
@@ -340,8 +366,8 @@ def _advance(
     # a command that left the current frame finished (the program ended or
     # a call returned) is completed now, so a caller sees ``halted`` as
     # soon as the last command runs instead of one step later.
-    state = (variables, frames)
-    fx = (pops, pushes, reverse)
+    state = _State(variables, frames)
+    fx = _StackFx(pops, pushes, reverse)
     while frames and frames[-1][1] >= len(frames[-1][0]):
         state, fx = _finished(state, view, fx)
         frames = state[1]
@@ -399,7 +425,7 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # A frame is already a tuple of its six fields, so the call stack
         # goes in as it stands rather than being unpacked field by field --
-        # which is what a frame being a value rather than a record buys.
+        # which is what a frame being a value buys.
         return (
             tuple(self.stack),
             frozenset(self.vars.items()),
@@ -446,7 +472,9 @@ class _Machine:
         # only flushes and pops, which the transition does.
         if pc >= len(code):
             (self.vars, self.frames), fx = _finished(
-                (self.vars, self.frames), self.stack, (0, (), False)
+                _State(self.vars, self.frames),
+                self.stack,
+                _StackFx(0, (), reverse=False),
             )
             self._apply(fx)
             return
@@ -460,7 +488,7 @@ class _Machine:
             line_in = self.io.input_str()
 
         (self.vars, self.frames), fx, output = _advance(
-            (self.vars, self.frames), self.stack, line_in
+            _State(self.vars, self.frames), self.stack, line_in
         )
         self._apply(fx)
 

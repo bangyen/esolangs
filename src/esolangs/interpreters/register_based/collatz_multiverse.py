@@ -19,19 +19,37 @@ from __future__ import annotations
 
 import re
 import sys
-from typing import cast
+from typing import NamedTuple, cast
 
 from esolangs.interpreters.io import IO
 
+
+#: One register, a ``(name, value)`` pair, in name-sorted order.
+class _Reg(NamedTuple):
+    """A named register and its value."""
+
+    name: str
+    value: int
+
+
+#: One array cell, an ``(index, value)`` pair, in index-sorted order.
+class _Cell(NamedTuple):
+    """An array cell's index and its value."""
+
+    idx: int
+    value: int
+
+
 #: The registers, as an immutable name->value mapping.
-type _Regs = tuple[tuple[str, int], ...]
+type _Regs = tuple[_Reg, ...]
 
 #: The arrays, as an immutable name->(index->value) mapping.
-type _Arrays = tuple[tuple[str, tuple[tuple[int, int], ...]], ...]
+type _Arrays = tuple[tuple[str, tuple[_Cell, ...]], ...]
+
 
 #: One instant of a run: ``(ip, registers, arrays)`` -- the line pointer and
-#: the two stores.  A value, not a record: every transition below returns a
-#: new one rather than editing one in place.
+#: the two stores.  A value, not a mutable record: every transition below
+#: returns a new one rather than editing one in place.
 #:
 #: Both stores are sorted by name (and arrays by index within a name), so
 #: one logical store has exactly one spelling.  ``snapshot`` builds
@@ -42,7 +60,12 @@ type _Arrays = tuple[tuple[str, tuple[tuple[int, int], ...]], ...]
 #: during a run, so carrying it would put constant data in every value the
 #: cycle detector stores.  The current line is a parameter to the
 #: transition instead.
-type _State = tuple[int, _Regs, _Arrays]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    ip: int
+    regs: _Regs
+    arrays: _Arrays
 
 
 def _reg_get(regs: _Regs, name: str) -> int:
@@ -55,8 +78,8 @@ def _reg_get(regs: _Regs, name: str) -> int:
 
 def _reg_set(regs: _Regs, name: str, value: int) -> _Regs:
     """Return ``regs`` with ``name`` set to ``value``, in name order."""
-    kept = tuple((k, v) for k, v in regs if k != name)
-    return tuple(sorted((*kept, (name, value))))
+    kept = tuple(_Reg(k, v) for k, v in regs if k != name)
+    return tuple(sorted((*kept, _Reg(name, value))))
 
 
 def _arr_get(arrays: _Arrays, name: str, index: int) -> int:
@@ -72,13 +95,13 @@ def _arr_get(arrays: _Arrays, name: str, index: int) -> int:
 
 def _arr_set(arrays: _Arrays, name: str, index: int, value: int) -> _Arrays:
     """Return ``arrays`` with ``name[index]`` set, in name and index order."""
-    cells: tuple[tuple[int, int], ...] = ()
+    cells: tuple[_Cell, ...] = ()
     for key, existing in arrays:
         if key == name:
             cells = existing
             break
-    kept = tuple((i, v) for i, v in cells if i != index)
-    updated = tuple(sorted((*kept, (index, value))))
+    kept = tuple(_Cell(i, v) for i, v in cells if i != index)
+    updated = tuple(sorted((*kept, _Cell(index, value))))
     others = tuple((k, v) for k, v in arrays if k != name)
     return tuple(sorted((*others, (name, updated))))
 
@@ -115,7 +138,7 @@ class _Machine:
                 raise ValueError("input cannot be redefined")
             self.parsed.append(cast("_Line", m.groups()))
         # ``negativeOne`` starts at -1; every other name starts at 0.
-        self.state: _State = (1, (("negativeOne", -1),), ())
+        self.state: _State = _State(1, (_Reg("negativeOne", -1),), ())
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -180,7 +203,11 @@ class _Machine:
         # read before the array it indexes -- the order the old _read
         # recursion produced.
         reads = []
-        for name, index in ((var1, idx1), (var2, idx2), (var3, idx3)):
+        for name, index in (
+            _Operand(var1, idx1),
+            _Operand(var2, idx2),
+            _Operand(var3, idx3),
+        ):
             if index == "input":
                 reads.append(self.io.input_num())
             if name == "input":
@@ -193,11 +220,25 @@ class _Machine:
 #: One operand as parsed: a name, and the index name when it is an array
 #: subscript.  Both halves are plain identifiers -- the language rejects
 #: numeric literals -- so an index is always another variable to look up.
-type _Operand = tuple[str, str | None]
+class _Operand(NamedTuple):
+    """A name and the optional index name of an array subscript."""
+
+    name: str
+    idx: str | None
+
 
 #: One parsed line: the three operand name/index pairs and the print flag,
 #: in the order the regex captures them.
-type _Line = tuple[str, str | None, str, str | None, str, str | None, str]
+class _Line(NamedTuple):
+    """One parsed line."""
+
+    var1: str
+    idx1: str | None
+    var2: str
+    idx2: str | None
+    var3: str
+    idx3: str | None
+    do_print: str
 
 
 def _plain(state: _State, name: str) -> int:
@@ -240,9 +281,9 @@ def _advance(
     var1, idx1, var2, idx2, var3, idx3, _do_print = line
     pending = list(reads)
 
-    target = _operand(state, (var1, idx1), pending)
-    a = _operand(state, (var2, idx2), pending)
-    b = _operand(state, (var3, idx3), pending)
+    target = _operand(state, _Operand(var1, idx1), pending)
+    a = _operand(state, _Operand(var2, idx2), pending)
+    b = _operand(state, _Operand(var3, idx3), pending)
     value = target * a + b if target == 0 or target % 2 != 0 else target // 2
 
     next_ip = ip + 1
@@ -252,7 +293,7 @@ def _advance(
         arrays = _arr_set(arrays, var1, _plain(state, idx1), value)
     else:
         regs = _reg_set(regs, var1, value)
-    return value, (next_ip, regs, arrays)
+    return value, _State(next_ip, regs, arrays)
 
 
 def run(code: str, io: IO) -> None:

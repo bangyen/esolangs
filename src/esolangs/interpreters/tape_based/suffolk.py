@@ -17,13 +17,21 @@ The transition :func:`_advance` is pure over an immutable ``_State``
 from __future__ import annotations
 
 import sys
+from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
+
 
 #: ``(ind, ptr, acc, tape)``: an immutable value, rebound per step.  No
 #: halted flag: Suffolk never halts, ``run`` stops on a repeated state or
 #: EOF.  The code is a parameter, not a field (``run`` stores one state per step).
-type _State = tuple[int, int, int, tuple[int, ...]]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    ind: int
+    ptr: int
+    acc: int
+    tape: tuple[int, ...]
 
 
 def _advance(state: _State, code: str, byte: int | None = None) -> _State:
@@ -48,7 +56,7 @@ def _advance(state: _State, code: str, byte: int | None = None) -> _State:
     elif sym == ",":
         acc = byte if byte is not None else 0
     ind += 1
-    return (0 if ind == len(code) else ind, ptr, acc, tape)
+    return _State(0 if ind == len(code) else ind, ptr, acc, tape)
 
 
 class _Machine:
@@ -67,7 +75,7 @@ class _Machine:
             raise ValueError("Suffolk program cannot be empty")
         self.io = io
         self.code = code
-        self.state: _State = (0, 0, 0, (0,))
+        self.state: _State = _State(0, 0, 0, (0,))
         self._exhausted = False
 
     # The language's own names.  They are views on the current state rather

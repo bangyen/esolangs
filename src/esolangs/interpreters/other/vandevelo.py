@@ -18,6 +18,7 @@ from __future__ import annotations
 import re
 import sys
 from dataclasses import dataclass
+from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
 
@@ -37,7 +38,15 @@ class _Expr:
 
 type _Value = bool | _Expr
 type _Store = tuple[tuple[str, _Value], ...]
-type _Frame = tuple[_Expr, int, bool | None]
+
+
+#: One frame: the expression being evaluated, its stage, and its left value.
+class _Frame(NamedTuple):
+    """One evaluation frame."""
+
+    expression: _Expr
+    stage: int
+    left: bool | None
 
 
 def _expr(source: str) -> _Expr:
@@ -134,7 +143,7 @@ def _advance(
                 0,
                 _bind(state.store, statement.target, lazy_value),
             )
-        stack = ((statement.parts[state.part], 0, None),)
+        stack = (_Frame(statement.parts[state.part], 0, None),)
 
     expression, stage, left = stack[-1]
     stack = stack[:-1]
@@ -156,7 +165,7 @@ def _advance(
                     state.ind,
                     state.part,
                     state.store,
-                    (*stack, (stored, 0, None)),
+                    (*stack, _Frame(stored, 0, None)),
                     state.pending,
                 )
     elif kind == "not":
@@ -168,7 +177,7 @@ def _advance(
                 state.ind,
                 state.part,
                 state.store,
-                (*stack, (expression, 1, None), (operand, 0, None)),
+                (*stack, _Frame(expression, 1, None), _Frame(operand, 0, None)),
                 state.pending,
             )
         result = not state.pending
@@ -180,7 +189,7 @@ def _advance(
             state.ind,
             state.part,
             state.store,
-            (*stack, (expression, 1, None), (operand, 0, None)),
+            (*stack, _Frame(expression, 1, None), _Frame(operand, 0, None)),
             state.pending,
         )
     elif stage == 1:
@@ -191,7 +200,7 @@ def _advance(
             state.ind,
             state.part,
             state.store,
-            (*stack, (expression, 2, state.pending), (operand, 0, None)),
+            (*stack, _Frame(expression, 2, state.pending), _Frame(operand, 0, None)),
             state.pending,
         )
     else:

@@ -76,19 +76,25 @@ operation.
 """
 
 import sys
-from typing import Literal, TypeGuard, cast
+from typing import Literal, NamedTuple, TypeGuard, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
+
 #: Headings as ``(drow, dcol)`` in screen coordinates -- row grows downward,
 #: so a *left* turn (counter-clockwise on the page) takes east to north.
-type _Heading = tuple[int, int]
+class _Heading(NamedTuple):
+    """A heading: one step's ``(drow, dcol)`` in screen coordinates."""
 
-_EAST: _Heading = (0, 1)
-_WEST: _Heading = (0, -1)
-_NORTH: _Heading = (-1, 0)
-_SOUTH: _Heading = (1, 0)
+    drow: int
+    dcol: int
+
+
+_EAST: _Heading = _Heading(0, 1)
+_WEST: _Heading = _Heading(0, -1)
+_NORTH: _Heading = _Heading(-1, 0)
+_SOUTH: _Heading = _Heading(1, 0)
 
 # Turning is a rotation of this cycle: the next entry is a right turn, the
 # previous a left one.  Written as a cycle rather than two dicts so the two
@@ -161,7 +167,7 @@ class _Walker:
         self,
         row: int,
         col: int,
-        heading: tuple[int, int],
+        heading: _Heading,
         variables: dict[str, "_Value"],
     ) -> None:
         self.row = row
@@ -412,6 +418,7 @@ def _parse_args(p: _Parser, close: str) -> list["_Expr"]:
 #: the tag.
 type _Expr = tuple[object, ...]
 
+
 #: One instant of a walk: ``(row, col, heading, vars)`` -- where the pointer
 #: is, which way it is going, and the frame it is going there with.  The grid
 #: is not in it: no command writes to the program, so it is a constant of the
@@ -422,7 +429,13 @@ type _Expr = tuple[object, ...]
 #: stores it, because a variable may hold a list -- and since three-argument
 #: ``at`` writes in place, a live reference would let a later command mutate
 #: a snapshot the cycle detector had already banked.
-type _State = tuple[int, int, _Heading, tuple[object, ...]]
+class _State(NamedTuple):
+    """One instant of a walk: ``(row, col, heading, vars)``."""
+
+    row: int
+    col: int
+    heading: _Heading
+    vars: tuple[object, ...]
 
 
 def _truth(value: _Value) -> bool:
@@ -608,11 +621,11 @@ class _Machine:
         self.walker.col = value
 
     @property
-    def heading(self) -> tuple[int, int]:
+    def heading(self) -> _Heading:
         return self.walker.heading
 
     @heading.setter
-    def heading(self, value: tuple[int, int]) -> None:
+    def heading(self, value: _Heading) -> None:
         self.walker.heading = value
 
     @property

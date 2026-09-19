@@ -12,13 +12,19 @@ state and the transition is total; an empty or unbalanced program raises
 from __future__ import annotations
 
 import sys
+from typing import NamedTuple
 
 from esolangs.interpreters.brackets import match_brackets
 from esolangs.interpreters.io import IO
 
+
 #: ``(ip, stack)``: an immutable value, rebound per step, and exactly what
 #: ``snapshot`` returns.  The code is a parameter, not a field.
-type _State = tuple[int, tuple[int, ...]]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    ip: int
+    stack: tuple[int, ...]
 
 
 def _top(stack: tuple[int, ...]) -> int:
@@ -44,10 +50,10 @@ def _advance(state: _State, code: str, jumps: dict[int, int]) -> _State:
         stack = stack[:-1]
     elif code[ip] == "[":
         if _top(stack) == 0:
-            return (jumps[ip] + 1, stack)
+            return _State(jumps[ip] + 1, stack)
     elif code[ip] == "]" and _top(stack) == 1:
-        return (jumps[ip] + 1, stack)
-    return (ip + 1, stack)
+        return _State(jumps[ip] + 1, stack)
+    return _State(ip + 1, stack)
 
 
 class _Machine:
@@ -66,7 +72,7 @@ class _Machine:
         self.code = code
         # ``halted`` is read twice per command; take the length once.
         self.size = len(code)
-        self.state: _State = (0, ())
+        self.state: _State = _State(0, ())
 
     # Views on the state.
 

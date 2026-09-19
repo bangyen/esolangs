@@ -11,6 +11,7 @@ import functools
 import operator
 import re
 import sys
+from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
 
@@ -26,7 +27,16 @@ from esolangs.interpreters.io import IO
 #: The token stream is not here: it is fixed for the whole run, so a step
 #: takes the opcode it is executing as an argument instead.
 type _Arrays = tuple[tuple[int, ...], ...]
-type _State = tuple[_Arrays, int, int, int, bool]
+
+
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    arrays: _Arrays
+    ptr: int
+    acc: int
+    ind: int
+    halted: bool
 
 
 def _total(op: int, arrays: _Arrays) -> _Arrays:
@@ -147,13 +157,13 @@ def _advance(state: _State, n: int, byte: int | None = None) -> _State:
     elif n == 7 and curr and curr[-1]:
         target = acc - curr[0] - 1
         if target < 0:
-            return (arrays, ptr, acc, ind, True)
+            return _State(arrays, ptr, acc, ind, halted=True)
         ind = target
     elif n == 8 and byte is not None:
         head = (*arrays[0], (byte ^ acc) % 256)
         arrays = (head, *arrays[1:])
 
-    return (arrays, ptr, acc, ind + 1, halted)
+    return _State(arrays, ptr, acc, ind + 1, halted)
 
 
 class _Machine:
@@ -203,7 +213,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transitions work on."""
-        return (
+        return _State(
             self.lst,
             self.ptr,
             self.acc,

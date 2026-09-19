@@ -14,17 +14,26 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
+from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
 
 # (d_row, d_col) per heading, in the clockwise order right, down, left, up.
 DELTA = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
+
 #: ``(row, col, d, queue, done)``: an immutable value, rebound per step.
 #: ``done`` is state because ``+`` on an empty queue stops the run with the
 #: IP still inside the grid; it stays out of ``snapshot``.  The grid is a
 #: parameter, not a field, so the cycle detector stores no constants.
-type _State = tuple[int, int, int, tuple[int, ...], bool]
+class _State(NamedTuple):
+    """One instant of a run: ``(row, col, d, queue, done)``."""
+
+    row: int
+    col: int
+    d: int
+    queue: tuple[int, ...]
+    done: bool
 
 
 def _outside(row: int, col: int, grid: Sequence[str], width: int) -> bool:
@@ -40,7 +49,7 @@ def _advance(state: _State, grid: Sequence[str], width: int) -> _State:
     """
     row, col, d, queue, _done = state
     if _outside(row, col, grid, width):
-        return (row, col, d, queue, True)
+        return _State(row, col, d, queue, done=True)
     cell = grid[row][col]
     if cell == "*":
         d = (d + 1) % 4
@@ -49,12 +58,12 @@ def _advance(state: _State, grid: Sequence[str], width: int) -> _State:
     elif cell == "+":
         if not queue:
             # An empty pop stops the run where it stands, without moving.
-            return (row, col, d, queue, True)
+            return _State(row, col, d, queue, done=True)
         d, queue = queue[0], queue[1:]
     d_row, d_col = DELTA[d]
     row += d_row
     col += d_col
-    return (row, col, d, queue, _outside(row, col, grid, width))
+    return _State(row, col, d, queue, _outside(row, col, grid, width))
 
 
 class _Machine:
@@ -77,7 +86,7 @@ class _Machine:
         self.width = max(map(len, code), default=0)
         self.grid = tuple(line.ljust(self.width) for line in code)
         # An empty program has nowhere to start, so it is stopped already.
-        self.state: _State = (0, 0, 0, (), not self.grid)
+        self.state: _State = _State(0, 0, 0, (), not self.grid)
         # Out of ``_State``: the dump is the shell's, and ``snapshot`` must
         # keep hashing the four live fields it always has.
         self._dumped = False
@@ -106,7 +115,7 @@ class _Machine:
         Including outside the grid, which the entry bounds check handles.
         """
         _row, _col, d, queue, done = self.state
-        self.state = (row, col, d, queue, done)
+        self.state = _State(row, col, d, queue, done)
 
     @property
     def halted(self) -> bool:
