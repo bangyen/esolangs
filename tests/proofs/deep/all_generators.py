@@ -128,7 +128,7 @@ def main() -> int:
         for r in results
         if not core <= {lemma.strip() for lemma in r.passed}
     ]
-    assert len(results) == 60, f"{len(results)} generators, expected 60"
+    assert len(results) == 59, f"{len(results)} generators, expected 59"
     assert not weak, f"core lemmas not established for: {sorted(weak)}"
     print("\nall generator batteries passed")
     return 0

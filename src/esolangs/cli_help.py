@@ -165,8 +165,8 @@ options:
                      Unbounded by default.  Three languages answer 1 by
                      *not* terminating -- 123, ArrowQueue and Point Break
                      -- so a timeout there is the answer, not a failure.
-  --seed N           fix the random draws so the run repeats.  Five
-                     languages draw: COD, LaserFuck,
+  --seed N           fix the random draws so the run repeats.  Four
+                     languages draw: LaserFuck,
                      Modulous, Painfuck and Super SNUSP.  A seed
                      for a language that draws nothing is refused rather
                      than ignored.

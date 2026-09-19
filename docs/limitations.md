@@ -37,8 +37,8 @@ test-only oracles may.
 The screen script measures permuted-table builds, not an admissible reorder
 under a fixed input template and fill mapping. Dig, Flowchart,
 BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
-its fixed stack order. No instruction-only wire is derived for 123, Minifuck,
-or COD. ArrowQueue re-enqueue remains open.
+its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
+ArrowQueue re-enqueue remains open.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
@@ -64,23 +64,9 @@ Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.
 Those choices prevent repeated scans, but command cost and source size remain
 separate axes.
 
-### Searched negatives
-
-- **COD:** tested routing has no compact two-exit zero test. Joins leak a copy
-  and a kill is required per zero-set per copy; this is not a lower bound.
-  Scoped to disjoint routed-cascade arms, the reason is exact: a residual
-  ``r`` reaches ``<`` only after at least ``r`` net ``(`` cells, so selecting
-  index ``T - 1`` prices ``sum(range(T)) = T(T - 1)/2`` cells. Shared lanes
-  are outside that lemma; the executed shared-column attempt re-enters its
-  ``+`` and doubles live cods.
-  COD has no packed scalar escape: every value operation changes by one, and
-  ``<``/``_`` distinguish only zero from nonzero. Executed probes for
-  ``2**k`` versus ``2**k + 1`` stay control-equivalent for a ``k``-cell probe;
-  the first probe that distinguishes them spends ``2**k`` decrements.
-
 ## Curation
 
-The collection has 60 languages; its floor is 31. Ordinary imperative entries
+The collection has 59 languages; its floor is 31. Ordinary imperative entries
 with shared-shim generators and no consumer were removed. Nopstacle and
 ZTOALC L left: the former cannot meet embed conventions, the
 latter was a searched syntax-level lookup table. The 2D candidate screen is

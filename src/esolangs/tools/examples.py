@@ -25,7 +25,6 @@ from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
 from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
 from esolangs.tools.back import PAIR as BACK_PAIR
-from esolangs.tools.cod import PAIR as COD_PAIR
 from esolangs.tools.crement import PAIR as CREMENT_PAIR
 from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
 from esolangs.tools.helpers import (
@@ -476,12 +475,6 @@ def _register() -> None:
                 "halt; the generator leaves exactly one bit on it, so the "
                 "whole dump is the answer and there is no position to name"
             ),
-        ),
-        "cod": _embedded(
-            b.cod,
-            "grid_based.cod",
-            pair=COD_PAIR,
-            note="COD has no runtime input and no I/O but a printed number",
         ),
         "eval": _embedded(b.eval, "stack_based.eval", pair=EVAL_PAIR),
         "home-row": _embedded(b.home_row, "tape_based.home_row", pair=HOME_ROW_PAIR),
