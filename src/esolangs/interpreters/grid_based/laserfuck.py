@@ -14,7 +14,7 @@ cross-check does.  Exhausted input raises :class:`EOFError`.
 """
 
 import sys
-from typing import cast
+from typing import NamedTuple, cast
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.persistent import (
@@ -42,12 +42,31 @@ from esolangs.interpreters.randomness import Randomness, draw
 #: step is handed it rather than carrying it.
 type _Beams = tuple[tuple[int, int, int], ...]
 type _Tape = Chunked[tuple[int, int]]
-type _State = tuple[_Tape, int, _Beams, int, bool, tuple[int, int, int]]
+
+
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    tape: _Tape
+    ptr: int
+    lsrs: _Beams
+    ind: int
+    jmp: bool
+    pos: tuple[int, int, int]
+
 
 #: One instant as the all-outcomes search sees it: ``_State`` without the
 #: reported position, and with ``None`` beams standing for a laser whose
 #: heading has not been drawn yet.
-type _BranchState = tuple[_Tape, int, _Beams | None, int, bool]
+class _BranchState(NamedTuple):
+    """One instant as the all-outcomes search sees it."""
+
+    tape: _Tape
+    ptr: int
+    lsrs: _Beams | None
+    ind: int
+    jmp: bool
+
 
 #: The position handed to a transition during a branching search.  Every
 #: caller strips the result's copy, so the value only has to be constant.
@@ -57,7 +76,7 @@ _NO_POS = (0, 0, 0)
 def _strip_pos(state: _State) -> _BranchState:
     """Drop the reported position from a transition's result."""
     tape, ptr, lsrs, ind, jmp, _pos = state
-    return (tape, ptr, lsrs, ind, jmp)
+    return _BranchState(tape, ptr, lsrs, ind, jmp)
 
 
 def _write(tape: _Tape, ptr: int, value: int, touched: int) -> _Tape:
@@ -115,7 +134,7 @@ def _advance(
         lsrs = (*lsrs[:ind], *lsrs[ind + 1 :])
         if lsrs:
             ind %= len(lsrs)
-        return (tape, ptr, lsrs, ind, jmp, pos)
+        return _State(tape, ptr, lsrs, ind, jmp, pos)
     elif op == "*":
         lsrs = (*lsrs, (row, col, 2 * (1 - d // 2) + split))
     elif op in "_(":
@@ -138,7 +157,7 @@ def _advance(
         jmp = True
 
     lsrs = (*lsrs[:ind], (row, col, d), *lsrs[ind + 1 :])
-    return (tape, ptr, lsrs, (ind + 1) % len(lsrs), jmp, pos)
+    return _State(tape, ptr, lsrs, (ind + 1) % len(lsrs), jmp, pos)
 
 
 class _Machine:
@@ -268,7 +287,7 @@ class _Machine:
         so the ordinary emptiness test halts it.
         """
         unplaced = None if self.lsrs else ()
-        return (self.tape, self.ptr, unplaced, self.ind, self.jmp)
+        return _BranchState(self.tape, self.ptr, unplaced, self.ind, self.jmp)
 
     def branching_halted(self, state: object) -> bool:
         """Report whether ``state`` has no live beam left.
@@ -292,7 +311,7 @@ class _Machine:
         tape, ptr, lsrs, ind, jmp = cast(_BranchState, state)
         if lsrs is None:
             return tuple(
-                (tape, ptr, ((self.start[0], self.start[1], d),), ind, jmp)
+                _BranchState(tape, ptr, ((self.start[0], self.start[1], d),), ind, jmp)
                 for d in range(4)
             )
 
@@ -301,7 +320,7 @@ class _Machine:
 
         if jmp:
             moved = (*lsrs[:ind], (row, col, d), *lsrs[ind + 1 :])
-            return ((tape, ptr, moved, (ind + 1) % len(moved), False),)
+            return (_BranchState(tape, ptr, moved, (ind + 1) % len(moved), jmp=False),)
 
         op = (
             self.text[row][col]
@@ -315,7 +334,7 @@ class _Machine:
         return tuple(
             _strip_pos(
                 _advance(
-                    (tape, ptr, lsrs, ind, jmp, _NO_POS),
+                    _State(tape, ptr, lsrs, ind, jmp, _NO_POS),
                     op,
                     row,
                     col,
@@ -330,7 +349,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (
+        return _State(
             self.tape,
             self.ptr,
             tuple(self.lsrs),

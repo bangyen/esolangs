@@ -101,6 +101,7 @@ Further decisions for gaps the wiki leaves open:
 import re
 import sys
 from collections.abc import Callable
+from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -128,16 +129,29 @@ _VALUE = "val"  # a bare expression statement: the function's return value
 #: :func:`_node` and :func:`_int` rather than modelled per tag.
 type _Expr = tuple[object, ...]
 
+
 #: One variable: its name and its value.  Arrays hold a tuple of values;
 #: scalars a single int.
-type _Slot = tuple[str, object]
+class _Slot(NamedTuple):
+    """One variable's name and value."""
+
+    name: str
+    value: object
+
+
 type _Store = tuple[_Slot, ...]
+
 
 #: The whole run state as a value: the statement cursor, the variable
 #: store, and the function's value so far.  The parsed program is constant
 #: for a run, so it is not part of the state; :class:`_Frame` is this tuple
 #: with names, and :meth:`_Frame.key` is the tuple itself.
-type _State = tuple[int, _Store, int]
+class _State(NamedTuple):
+    """The whole run state as a value."""
+
+    pc: int
+    store: _Store
+    result: int
 
 
 class _Type:
@@ -635,7 +649,7 @@ def _get(store: _Store, name: str) -> object:
 
 
 def _set(store: _Store, name: str, value: object) -> _Store:
-    return tuple((slot, value if slot == name else old) for slot, old in store)
+    return tuple(_Slot(slot, value if slot == name else old) for slot, old in store)
 
 
 def _truth(value: int) -> bool:
@@ -823,14 +837,16 @@ def _entered(func: _Function, values: list[int], program: _Program) -> _Frame:
         raise HaltError(f"{func.name!r} takes {len(func.params)} arguments")
     store = _initial_store(func, program)
     bound = dict(zip(func.params, values, strict=True))
-    return _Frame(func, tuple((slot, bound.get(slot, value)) for slot, value in store))
+    return _Frame(
+        func, tuple(_Slot(slot, bound.get(slot, value)) for slot, value in store)
+    )
 
 
 def _initial_store(func: _Function, program: _Program) -> _Store:
     """Build a function's store: the globals it sees, plus its own locals."""
     types = dict(program.globals)
     types.update(func.locals)
-    return tuple((name, kind.zero()) for name, kind in sorted(types.items()))
+    return tuple(_Slot(name, kind.zero()) for name, kind in sorted(types.items()))
 
 
 def _type_of(name: str, func: _Function, program: _Program) -> _Type:

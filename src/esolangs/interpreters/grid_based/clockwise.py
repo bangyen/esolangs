@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
+from typing import NamedTuple
 
 from esolangs.exceptions import InputExhaustedError
 from esolangs.interpreters.io import IO
@@ -25,11 +26,22 @@ from esolangs.interpreters.io import IO
 #: How many parity bits make one printed byte.
 _BYTE_BITS = 7
 
+
 #: ``(row, col, r, acc, out, inp, done)``: position, heading, accumulator,
 #: unflushed parity bits, rotating input bits, ring closed.  ``done`` is
 #: state because returning to the origin ends the run except on a ``0``
 #: heading; it stays out of ``snapshot``.
-type _State = tuple[int, int, int, int, tuple[str, ...], tuple[str, ...], bool]
+class _State(NamedTuple):
+    """One instant of a run: ``(row, col, r, acc, out, inp, done)``."""
+
+    row: int
+    col: int
+    r: int
+    acc: int
+    out: tuple[str, ...]
+    inp: tuple[str, ...]
+    done: bool
+
 
 COL = [1, 0, -1, 0]
 ROW = [0, 1, 0, -1]
@@ -89,7 +101,7 @@ def _advance(state: _State, code: Sequence[str]) -> tuple[_State, int | None]:
     if len(out) == _BYTE_BITS:
         byte = int("".join(out), 2)
         out = ()
-    return (row, col, r, acc, out, inp, not cont), byte
+    return _State(row, col, r, acc, out, inp, not cont), byte
 
 
 class _Machine:
@@ -112,7 +124,7 @@ class _Machine:
             for k in io.input_str():
                 val = f"{ord(k):07b}"
                 bits += list(val.zfill(_BYTE_BITS))
-        self.state: _State = (0, 0, 0, 0, (), tuple(bits), False)
+        self.state: _State = _State(0, 0, 0, 0, (), tuple(bits), done=False)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.

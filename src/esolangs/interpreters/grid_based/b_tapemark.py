@@ -13,10 +13,16 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
 
-type _Point = tuple[int, int]
+
+class _Point(NamedTuple):
+    """A grid point: its ``(x, y)`` coordinates."""
+
+    x: int
+    y: int
 
 
 class _Grid:
@@ -111,7 +117,7 @@ def _write(grid: _Grid, point: _Point, char: str) -> _Grid:
 def _move(point: _Point, direction: int) -> _Point:
     """Return the adjacent point in ``direction``."""
     dx, dy = _DIRECTIONS[direction]
-    return point[0] + dx, point[1] + dy
+    return _Point(point[0] + dx, point[1] + dy)
 
 
 def _load(source: str) -> _State:
@@ -126,7 +132,7 @@ def _load(source: str) -> _State:
             elif quoted:
                 continue
             elif char in _STARTS:
-                starts.append(((x, y), _STARTS.index(char)))
+                starts.append((_Point(x, y), _STARTS.index(char)))
             elif char in _COMMANDS or "0" <= char <= "9" or "A" <= char <= "Z":
                 if char != " ":
                     cells[x, y] = char

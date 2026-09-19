@@ -47,15 +47,26 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
+from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
+
 
 #: ``(row, col, a, b, tape, cell, done)``: an immutable value, rebound per
 #: step.  ``done`` is state because the beam sits *on* the ``*`` and the
 #: grid wraps, so no position means "stopped"; it stays out of ``snapshot``
 #: (six fields plus input cursor, in the order always returned).  The grid
 #: is a parameter, not a field, so the cycle detector stores no constants.
-type _State = tuple[int, int, int, int, tuple[int, ...], int, bool]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    row: int
+    col: int
+    a: int
+    b: int
+    tape: tuple[int, ...]
+    cell: int
+    done: bool
 
 
 def _advance(state: _State, code: Sequence[str], size: int) -> _State:
@@ -94,8 +105,8 @@ def _advance(state: _State, code: Sequence[str], size: int) -> _State:
         row, col = row + a, col + b
     elif char == "*":
         # Stops in place; the dump is the shell's.
-        return (row, col, a, b, tape, cell, True)
-    return ((row + a) % len(code), (col + b) % size, a, b, tape, cell, False)
+        return _State(row, col, a, b, tape, cell, done=True)
+    return _State((row + a) % len(code), (col + b) % size, a, b, tape, cell, done=False)
 
 
 class _Machine:
@@ -118,7 +129,7 @@ class _Machine:
         self.size = max(len(line) for line in code)
         self.code = tuple(line.ljust(self.size) for line in code)
         # Top-left heading right; (a, b) is (d_row, d_col).
-        self.state: _State = (0, 0, 0, 1, (0,), 0, False)
+        self.state: _State = _State(0, 0, 0, 1, (0,), 0, done=False)
         # Not in ``_State``: the dump is the shell's.
         self._dumped = False
 

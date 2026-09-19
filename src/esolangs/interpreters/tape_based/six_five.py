@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 import sys
+from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -24,9 +25,10 @@ from esolangs.interpreters.io import IO
 #: character range is an invalid operation, not a wrap or a truncation.
 _MAX_CHAR = 0x10FFFF
 
+
 #: One instant of a run: ``(ind, cell, tape)`` -- the token cursor, the cell
-#: pointer, and the tape.  A value, not a record: every transition below
-#: returns a new one rather than editing one in place, and the tape is a
+#: pointer, and the tape.  A value, not a mutable record: every transition
+#: below returns a new one rather than editing one in place, and the tape is a
 #: ``tuple`` for the same reason.
 #:
 #: The tokens are deliberately not in here.  They do not change during a
@@ -37,7 +39,12 @@ _MAX_CHAR = 0x10FFFF
 #: interpreters, but ``snapshot`` still returns ``(cell, tape, ind, ...)``
 #: -- the order it always returned.  Reordering there would silently
 #: reorder every hash the cycle detector has stored.
-type _State = tuple[int, int, tuple[int, ...]]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    ind: int
+    cell: int
+    tape: tuple[int, ...]
 
 
 def num(char: str) -> int:
@@ -116,10 +123,10 @@ def _advance(
         if tape[cell] == (num(tok[1]) if len(tok) > 1 else 0):
             ind += 1  # skip the next instruction
     elif tok == "0":
-        return (len(toks), cell, tape)  # halt
+        return _State(len(toks), cell, tape)  # halt
     elif tok == "B":
         tape = _written(tape, cell, byte if byte is not None else 0)
-    return (ind + 1, cell, tape)
+    return _State(ind + 1, cell, tape)
 
 
 class _Machine:
@@ -133,7 +140,7 @@ class _Machine:
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.toks)
         self.markers = _markers(self.toks)
-        self.state: _State = (0, 0, (0,))
+        self.state: _State = _State(0, 0, (0,))
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.

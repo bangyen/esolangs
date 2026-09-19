@@ -9,6 +9,8 @@ in :mod:`esolangs.tools.examples` reads the same constant, so the widths
 the generator lays and the text the fill substitutes cannot drift apart.
 """
 
+from typing import NamedTuple
+
 from esolangs.tools.a_painter_ant import a_painter_ant
 from esolangs.tools.arrowqueue import (
     _MIDDLE as _MIDDLE,
@@ -102,7 +104,14 @@ HOME_ROW_PAIR = ("as", "aj")
 
 
 # ("leaf", leaf_id, value, None, None) or ("node", node_id, level, zero, one).
-type _Node = tuple[str, int, int, _Node | None, _Node | None]
+class _Node(NamedTuple):
+    """A decision-tree node: a tag, two ints, and two subtrees."""
+
+    op: str
+    a: int
+    b: int
+    left: "_Node | None"
+    right: "_Node | None"
 
 
 def bio(truth_table: str) -> str:
