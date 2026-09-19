@@ -1,17 +1,16 @@
 """Mutation-test one generator against the suite that covers it.
 
-The companion to ``scripts/mutate_one.py``, which does this for
+The companion to ``scripts/mutate.py``, which does this for
 interpreters.  The question is the same one line coverage cannot answer:
 not whether a test *executed* a line, but whether it would have noticed the
 line being wrong.  A generator is a good target for it, because the thing
 it emits is a program -- a test that only checks the program *runs* cannot
 see a change that leaves it running and computing something else.
 
-Three kinds of target share this harness, differing only in where their
-source and tests live (see ``_KINDS``): the ``boolean`` generator family
-under ``esolangs.tools``, the modules directly under ``esolangs.tools``,
-and ``core`` -- the package root, where ``vm``, ``debug``, ``tui`` and
-``cli`` sit.
+Two kinds of target share this harness, differing only in where their
+source and tests live (see ``_KINDS``): the generator modules under
+``esolangs.tools``, and ``core`` -- the package root, where ``vm``,
+``debug``, ``tui`` and ``cli`` sit.
 
 One blind spot belongs to the harness rather than to any suite, and the
 ``core`` kind is where it shows: **a function called only while its module
@@ -24,7 +23,7 @@ raise on any call.  They are not a gap in the tests, which construct VMs
 for every language; they are unreachable by the tool.  Read a ``core``
 score with that subtracted, and do not restructure a module to suit it.
 
-That third kind is here rather than in ``mutate_one`` because
+The ``core`` kind is here rather than in ``mutate_one`` because
 ``mutate_one`` cannot reach it.  It mutates a *bundle*, an interpreter
 inlined with its shared modules into one dependency-closed file, and its
 own docstring says tests reaching past the interpreter into the VM or the
@@ -63,15 +62,13 @@ rather than the ones that name the target.  :func:`_test_files` has the
 measurement behind that -- the correction this harness needed most, since
 selecting by import alone under-reported 19 of the 27 generator modules.
 
-Every kind is reachable as ``family/module``.  Eight module names --
-helpers, laserfuck, other, register, stack, streetcode, super_snusp, tape
--- exist in *both* generator packages, so a bare name is accepted only
-where it is unambiguous; see :func:`_parse_target`.
+Every kind is reachable as ``family/module``.  A bare name is accepted only
+where one kind defines it; see :func:`_parse_target`.
 
 Usage:
-    python scripts/mutate_generator.py tools/register
-    python scripts/mutate_generator.py tools/streetcode
-    python scripts/mutate_generator.py dimensional --keep   # leave the work dir
+    python scripts/mutate.py generator tools/register
+    python scripts/mutate.py generator tools/streetcode
+    python scripts/mutate.py generator dimensional --keep   # leave the work dir
 
 Requires: mutmut==3.7.0, the same pin ``mutate_one`` documents.
 """
@@ -131,7 +128,7 @@ class _Kind:
     The kinds differ only in these paths, so they are a table rather
     than separate code paths.  Every one satisfies the two preconditions the
     layout relies on: each module imports cleanly on its own, and nothing it
-    reaches does work at import time.  ``boolean.*`` reaches only
+    reaches does work at import time.  ``esolangs.tools.*`` reaches only
     ``helpers``, ``wrap``, ``_polynomial`` and ``laserfuck_layout``, which
     the copied package resolves like any other import.
 
@@ -276,7 +273,7 @@ _MAX_ALARM = 20.0
 
 # How long the unmutated suite may take before the run is called stuck.
 # Higher than ``mutate_one``'s 120s: a generator's selected suites are the
-# whole boolean corpus for that family, where an interpreter's was one file.
+# whole boolean corpus, where an interpreter's was one file.
 _BASELINE_TIMEOUT = 600.0
 
 # Below this share of mutants killed, the run is treated as broken rather
@@ -348,16 +345,16 @@ def _test_files(kind: _Kind) -> list[str]:
     * **By import.**  A suite that imports
       ``esolangs.tools.<module>`` can kill its mutants -- but most
       suites do not import the module at all.  They import the *package*
-      and reach the generator through its re-export (``boolean.laserfuck``),
-      which no import scan can see.  Measured over the 27 generator
-      modules, importing alone under-selected 19 of them: every ``rotfuck``
-      test lives in ``test_boolean_tape``, which imports only ``boolean``.
+      and reach the generator through the package's re-export, which no
+      import scan can see.  Measured over the 27 generator modules,
+      importing alone under-selected 19 of them: every ``rotfuck`` test
+      lives in ``test_boolean_tape``, which imports only the package.
     * **By import, plus the contract suite always.**  Better -- the contract
       suite is where several generators are checked -- but it fixes only
       the one file that was noticed, and 19 modules were short by more than
       that file.
-    * **By attribute access**, resolving ``boolean.<name>`` back to the
-      module that defines it.  This catches the re-export, and still misses
+    * **By attribute access**, resolving ``esolangs.tools.<name>`` back to
+      the module that defines it.  This catches the re-export, and still misses
       a suite that dispatches through a string or a table, which some
       of these do.
 
