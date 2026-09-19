@@ -14,11 +14,11 @@ already occupy.  Four axes, with what currently sits on each:
 
 - **Construction shape** -- decision tree (the default), minterm sum
   (`circuit_diagram`), ANF/XOR-of-products (`fargo`, the only one), grid
-  walk (`laserfuck`, `wii2d`, `a_painter_ant`, `streetcode`).
+  walk (`laserfuck`, `a_painter_ant`, `streetcode`).
 - **Branch mechanism** -- explicit conditional, value-testable jump, skip
   guard, implicit comparator, pointer displacement (`123`).
 - **Answer convention** -- print 0/1, landing colour (`a_painter_ant`),
-  position-encoded (`minifuck`), decimal accumulator (`%^2^-1`),
+  position-encoded (`minifuck`),
   termination as the answer (`123`, ArrowQueue, Point Break).
 - **Input interface** -- read-and-route, bit-addressable index (`fargo`),
   parameterized embed.

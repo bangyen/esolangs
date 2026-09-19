@@ -29,6 +29,32 @@ class TestATimeoutHasOneExitCode:
     load-bearing rather than tidy.
     """
 
+    @pytest.fixture
+    def cold_polynomial_parse(self) -> None:
+        """Make the bound below genuinely unmeetable, whatever ran first.
+
+        ``--timeout`` has a floor of a millisecond -- ``check_timeout``
+        measured the alarm landing inside the guard's own teardown below
+        that -- so a test of the bound needs a row that reliably costs
+        more than one.  A Polynomial row does not: it is ~0.5ms warm at
+        every arity (n=3, 4, 5 all measure 0.46-0.54ms), because the whole
+        cost is one cold parse per program, ~290ms, held by
+        ``_parse_program`` and ``_factor_roots``.  Those caches are
+        load-bearing -- re-parsing a tens-of-megabytes program cost 0.9s a
+        row -- so the fix is not to remove them but to start cold: any
+        earlier test in the same worker that ran this table left these
+        three passing for the wrong reason, and then failing under the
+        full band, where something does.  Widening the table does not
+        help; the warm row does not grow with it.
+        """
+        from esolangs.interpreters.register_based.polynomial import (
+            _factor_roots,
+            _parse_program,
+        )
+
+        _parse_program.cache_clear()
+        _factor_roots.cache_clear()
+
     @pytest.mark.medium
     @pytest.mark.parametrize(
         "args",
@@ -38,6 +64,7 @@ class TestATimeoutHasOneExitCode:
             ["answer", "10010110", "101"],
         ],
     )
+    @pytest.mark.usefixtures("cold_polynomial_parse")
     def test_the_bound_running_out_is_124(
         self, args: list[str], capsys: pytest.CaptureFixture[str]
     ) -> None:

@@ -203,8 +203,8 @@ def _generate(rest: list[str]) -> None:
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
     try:
         # Widthed at both ends, and that is not a mistake.  ``generate``
-        # wraps the template (or hands the width to a *layout* language
-        # like COD, which lays it out), and ``instantiate`` wraps a program
+        # wraps the template (or hands the width to a *layout* language,
+        # which lays it out), and ``instantiate`` wraps a program
         # filled from an unwrapped template; a wrapped one fills in place.
         program = generate(rest[0], rest[1], width)
         if "--bits" in options:
@@ -254,7 +254,7 @@ def _describe(rest: list[str]) -> None:
         return
     # A template language reads no stdin, so its shape and alphabet are
     # noise.  Hidden here, not dropped from ``describe()``, whose keys stay
-    # uniform across all 63.
+    # uniform across every language.
     hidden = set()
     if not facts["reads_input"] and facts["parameterized"]:
         hidden = {"input_shape", "input_encoding"}

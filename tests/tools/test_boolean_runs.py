@@ -1,4 +1,4 @@
-"""The run form of seven parameterized generators' templates.
+"""The run form of six parameterized generators' templates.
 
 Each generator here emits its public template itself -- every input as a
 run of :data:`~esolangs.tools.helpers.TEMPLATE_CHAR` exactly as wide as
@@ -19,7 +19,6 @@ _CASES = [
     ("Eval", "01101001"),
     ("NoComment", "01101001"),
     ("RAM0", "01101001"),
-    ("WII2D", "01101001"),
     ("123", "0110"),
     ("Minifuck", "01"),
 ]

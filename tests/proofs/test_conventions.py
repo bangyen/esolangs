@@ -68,7 +68,7 @@ def _span(a: str, b: str) -> tuple[str, str]:
     """The stretches on which two equal-length programs differ, as a pair.
 
     Taken row by row and joined with newlines, so a grid fill that writes
-    one input's cells on two rows (COD's swim and its return) yields those
+    one input's cells on two rows yields those
     cells and not the untouched rows between them.
     """
     zero, one = [], []

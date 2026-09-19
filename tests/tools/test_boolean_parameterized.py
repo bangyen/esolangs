@@ -3,7 +3,7 @@
 The rule the family is built on -- each input embedded exactly once, at equal
 width, with the slots in name order -- is checked here across all of them.
 The languages with a source file of their own have a test file to match:
-test_boolean_one_two_three, _arrowqueue, _cod, _eval, _back and _nocomment.
+test_boolean_one_two_three, _arrowqueue, _eval, _back and _nocomment.
 """
 
 import importlib
@@ -18,10 +18,9 @@ def _parameterized_generators():
     """Return every parameterized generator the module exports.
 
     Read off ``__all__`` rather than hand-listed.  The roster used to name
-    thirteen of the seventeen exports, so ``a_painter_ant``, ``cod`` and
-    ``wii2d`` were silently exempt from the exactly-once and slot-order
-    invariants below -- including ``cod``, which this module's own docstring
-    claims to cover.  The exemption bought nothing (all three satisfy both
+    a hand-picked subset, so ``a_painter_ant``
+    was silently exempt from the exactly-once and slot-order
+    invariants below.  The exemption bought nothing (both satisfy both
     invariants), which is what makes a silent roster worse than an explicit
     one: nobody chose it.  ``instantiate`` is the shared helper, not
     a generator, so it is the one name excluded, by name and for a reason.
@@ -113,8 +112,7 @@ def test_parameterized_generators_embed_each_input_once() -> None:
             try:
                 template = gen(table)
             except ValueError:
-                # A generator need not cover every arity -- %^2^-1 derives
-                # one- and two-input tables only.  The invariant here is about
+                # A generator need not cover every arity.  The invariant here is about
                 # the templates a generator *does* emit, so an uncovered arity
                 # is skipped rather than failed; the count below keeps that
                 # from quietly emptying the sweep.

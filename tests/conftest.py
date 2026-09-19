@@ -2,6 +2,7 @@
 
 import contextlib
 from collections.abc import Generator
+from pathlib import Path
 
 import coverage
 import pytest
@@ -9,6 +10,35 @@ from _pytest.reports import TestReport
 from coverage.collector import Collector
 
 from tests.duration_policy import hard_ceiling, violation
+
+
+def _reject_stale_install() -> None:
+    """Fail fast when ``esolangs`` resolves outside this checkout.
+
+    A stale editable install shadows the repo: plain ``pytest`` then imports a
+    different checkout's package while the tests read this one's files.  Run
+    via ``just test-py`` (or with ``PYTHONPATH=$PWD/src``), or reinstall the
+    editable install.
+    """
+    try:
+        import esolangs
+    except ModuleNotFoundError as exc:
+        raise ImportError(
+            "esolangs is not importable: run via `just test-py` "
+            "(or with PYTHONPATH=$PWD/src)."
+        ) from exc
+    here = Path(__file__).resolve().parents[1] / "src" / "esolangs"
+    location = esolangs.__file__
+    got = Path(location).resolve().parent if location is not None else None
+    if got != here:
+        raise ImportError(
+            f"esolangs resolves to {got}, not this checkout ({here}): "
+            "a stale editable install is shadowing the repo. Run via "
+            "`just test-py` (or with PYTHONPATH=$PWD/src)."
+        )
+
+
+_reject_stale_install()
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:

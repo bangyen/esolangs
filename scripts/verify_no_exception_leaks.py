@@ -18,7 +18,7 @@ By default only the languages this branch actually touched are swept,
 which makes it cheap enough to run habitually: a change to one
 interpreter is checked in seconds, and a change to shared machinery
 (``io.py``, ``vm.py``, ``exceptions.py``) still sweeps everything, since
-that is exactly where a one-line bug reaches all 59 languages at once --
+that is exactly where a one-line bug reaches every language at once --
 as the ``input_char`` bug this script was written to catch did.
 
 Run::
@@ -152,8 +152,8 @@ _STEP_CAP = int(os.environ.get("LEAKSWEEP_STEP_CAP", 0)) or 20000
 _CAP_LADDER = (10, 100, 1000, _STEP_CAP)
 
 # The cap is not what makes `--all` expensive, and lowering it would not
-# help: the slow languages cost per *step*, not per step count.  Four of them
-# (COD, Factor, Painfuck, Suptiftam) exceed any cap worth setting, and the
+# help: the slow languages cost per *step*, not per step count.  Three of them
+# (Factor, Painfuck, Suptiftam) exceed any cap worth setting, and the
 # subprocess timeout is what actually bounds them -- Factor because
 # `make_vm` factorizes before a single step runs, in uninterruptible C a
 # SIGALRM cannot land on.  The cap stays 20000, and the ladder above means
@@ -229,12 +229,13 @@ def _drive(lang: str, program: str, stdin: str, cap: int) -> bool:
 
 #: Wall-clock a language's worker gets before the parent kills it.
 #:
-#: Sized from measurement, not from caution: 60 of the 64 languages finish
-#: in 102.9s *combined*, and the slowest that finishes at all is AddSubJump
-#: at 4.7s.  30s is therefore ~6x the real maximum -- room for a slower
-#: machine without letting a wedged language cost minutes.  The four that
-#: exceed it (COD, Factor, Painfuck, Suptiftam) are not slow-but-valid: they
-#: are unbounded work, and no larger number collects them.
+#: Sized from measurement, not from caution: the sweep finished in 102.9s
+#: *combined* at the last count, and the slowest language that finishes at
+#: all is AddSubJump at 4.7s.  30s is therefore ~6x the real maximum --
+#: room for a slower machine without letting a wedged language cost
+#: minutes.  The languages that exceed it (Factor, Painfuck) are not
+#: slow-but-valid: they are unbounded work, and no larger number collects
+#: them.
 _LANG_TIMEOUT = 30.0
 
 #: How many language workers run at once.  Deliberately **2**, not the core

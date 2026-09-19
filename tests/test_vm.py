@@ -186,36 +186,6 @@ class TestLaserFuck:
         assert vm.output == io_obj.getvalue()
 
 
-class TestCOD:
-    def test_ip_memory_and_output(self) -> None:
-        # ')' increments twice, then '---' on the right edge prints and
-        # removes the cod; ip is the single cod's (row, col, heading, value).
-        vm = esolangs.make_vm("COD", "~~~~~\n~>))---")
-        assert vm.ip == (1, 1, 2, 0)  # heading 2 == E
-        assert vm.memory == [0]
-        assert vm.stack == []
-        vm.step()
-        assert vm.ip == (1, 2, 2, 1)
-        assert vm.memory == [1]
-        vm.step()
-        assert vm.ip == (1, 3, 2, 2)
-        vm.step()
-        assert vm.halted
-        assert vm.output == "2"
-        vm.step()  # stepping a halted VM is a no-op
-
-    def test_random_junction_is_deterministic(self) -> None:
-        # forward blocked, East and West both open: the adapter's generator
-        # is seeded so the draw lands on 'E' every run, unlike the
-        # interpreter's default secrets-backed draw.
-        code = "\n".join(["~~~~~~~", "~     ~", "~ ~ ~ ~", "~~~>~~~"])
-        vm = esolangs.make_vm("COD", code)
-        vm.step()  # (3,3,N) -> (2,3,N)
-        vm.step()  # (2,3,N) -> (1,3,N): enters the junction cell
-        vm.step()  # forward (N) blocked: resolves to 'E'
-        assert vm.ip == (1, 4, 2, 0)  # heading 2 == E
-
-
 class TestArrowQueue:
     def test_ip_is_position_and_heading(self) -> None:
         vm = esolangs.make_vm("ArrowQueue", "~+*")
@@ -407,26 +377,6 @@ class TestCircuitDiagram:
         assert _run_all(vm) == "1"
         vm.step()  # no-op
         assert vm.output == "1"
-
-
-class TestWii2d:
-    def test_ip_position_velocity_and_accumulator(self) -> None:
-        vm = esolangs.make_vm("WII2D", ">~.\n!")
-        assert vm.ip == (0, 0, 0)  # starts above the ! heading north
-        assert vm.memory == [0]
-        vm.step()  # > sets the heading east
-        assert vm.ip == (0, 1, 3)
-        vm.step()  # ~ prints the accumulator
-        assert vm.output == "\x00"
-        vm.step()  # . halts
-        assert vm.halted
-        assert vm.stack == []
-
-    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
-        vm = esolangs.make_vm("WII2D", ">~.\n!")
-        assert _run_all(vm) == "\x00"
-        vm.step()  # no-op
-        assert vm.output == "\x00"
 
 
 class TestForth:
@@ -751,17 +701,6 @@ class TestUnsquare:
         assert vm.stack == [1]
 
 
-class TestPctSquaredMinusOne:
-    def test_accumulator_and_cursor(self) -> None:
-        vm = esolangs.make_vm("%^2^-1", "ie")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # i subtracts 3 from the accumulator
-        assert (vm.ip, vm.memory) == (1, [-3])
-        vm.step()  # e prints the low byte of the accumulator
-        assert vm.halted
-        assert vm.output == "\xfd"
-
-
 class TestSuffolk:
     def test_tape_and_cursor(self) -> None:
         vm = esolangs.make_vm("Suffolk", "!" * 66 + "<.")
@@ -1032,13 +971,10 @@ class TestEveryLanguageIsSteppable:
 
         assert missing == {}
         assert random_languages == {
-            "COD",
-            "Interprogck8",
             "LaserFuck",
             "Modulous",
             "Painfuck",
             "Super SNUSP",
-            "WII2D",
         }, "the random set changed -- a new language needs a branching search"
 
     def test_memory_and_stack_are_copies_not_the_live_store(self) -> None:
@@ -1070,10 +1006,10 @@ class TestEveryLanguageIsSteppable:
         assert checked > 30, f"only {checked} adapters exercised"
 
     def test_stepping_is_reproducible_for_the_random_languages(self) -> None:
-        """Five languages have a random instruction; the VM pins every one.
+        """Four languages have a random instruction; the VM pins every one.
 
-        ``?`` (WII2D), ``y`` (Painfuck), ``RND`` (Modulous), a COD junction
-        and LaserFuck's ``*`` beam splitter all draw at *runtime*, so two
+        ``y`` (Painfuck), ``RND`` (Modulous) and LaserFuck's ``*`` beam
+        splitter all draw at *runtime*, so two
         runs of the same program could disagree -- which would make a
         stepped VM unusable and ``run_until_halt_or_cycle``'s argument
         ("a deterministic machine that revisits a state has looped") false.
@@ -1088,10 +1024,8 @@ class TestEveryLanguageIsSteppable:
         from esolangs.interpreters import randomness
 
         cases = {
-            "WII2D": ">?.\n!",
             "Painfuck": "y",
             "Modulous": "[RND 9][PRT INT]",
-            "COD": "~~~~~~~\n~     ~\n~ ~ ~ ~\n~~~>~~~",
             "LaserFuck": "*\no",
         }
 

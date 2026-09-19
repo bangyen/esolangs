@@ -164,7 +164,7 @@ STEPS = [
     # which the touched-file gate reads afterwards.
     #
     # Whole-package measurement is what a full run pays for: 13s over the
-    # 27s the fast selection takes bare, measured 2026-09-16 on 3.14 at
+    # 27s the fast selection takes bare, measured on 3.14 at
     # 9861 tests (it read as free at half that suite).  A scoped run does
     # not pay it -- `_scoped_coverage` narrows the measurement to the
     # touched files, which is all the gate reads.
@@ -178,7 +178,7 @@ STEPS = [
     ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     # A generator route that was replaced keeps its own tests green, so it
-    # never fails; three sat that way for months.  <1s.
+    # never fails; three sat that way.  <1s.
     ("dead definitions", [*PY, "scripts/check_dead_definitions.py"]),
     (
         # These also run under the plain `pytest` step above.  Repeated here
@@ -235,7 +235,7 @@ STEPS = [
     # The contract exceptions.py states, executed: no interpreter may leak a
     # raw Python error to its caller.  Bare, it checks only the languages
     # this branch touched, which is why it is affordable here; CI runs
-    # --all (63 languages, 68s).
+    # --all (59 languages, 68s).
     (
         "exception leaks",
         [*PY, "scripts/verify_no_exception_leaks.py"],
@@ -472,6 +472,30 @@ HEAVY_STEPS = frozenset({LEAK_STEP})
 LEAKSWEEP_JOBS = "6"
 
 
+def _ensure_dev_deps() -> None:
+    """Sync dev dependencies when the runner's Python lacks them.
+
+    A fresh worktree venv has an interpreter but no third-party packages, so
+    every step fails at 0.0s with ``No module named ...`` -- missing tooling,
+    not broken code.  Syncing once here fixes it where the failure surfaces.
+    ``VERIFY_NO_SYNC`` opts out (offline machines); without ``uv`` there is
+    nothing to sync with, so the steps report it themselves.
+    """
+    if os.environ.get("VERIFY_NO_SYNC", "0") not in ("", "0"):
+        return
+    probe = subprocess.run(
+        [*PY, "-c", "import pytest"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if probe.returncode == 0:
+        return
+    if shutil.which("uv") is None:
+        return
+    print("dev dependencies missing; running `uv sync --extra dev` ...")
+    subprocess.run(["uv", "sync", "--extra", "dev"], cwd=ROOT, check=False)
+
+
 def _should_stream(steps: int, *, quiet: bool, verbose: bool) -> bool:
     """Whether the steps write to the terminal directly rather than be replayed.
 
@@ -633,6 +657,9 @@ def _run_steps(
 def main() -> int:
     """Compile and run every example, reporting failures."""
     only, skip, full, quiet, verbose = _parse_only_skip()
+
+    # `--list` exits inside the parse, so this never slows it down.
+    _ensure_dev_deps()
 
     # An explicit --only is already a hand-picked subset; scoping it further
     # would silently drop steps the caller asked for by name.

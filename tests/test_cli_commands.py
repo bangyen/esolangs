@@ -210,13 +210,10 @@ class TestASeedMakesARunRepeat:
             ).parameters
         ]
         assert drawing == [
-            "COD",
-            "Interprogck8",
             "LaserFuck",
             "Modulous",
             "Painfuck",
             "Super SNUSP",
-            "WII2D",
         ]
         with pytest.raises(esolangs.ArgumentError) as caught:
             esolangs.run("brainfuck", "+++.", "", 5, seed=1)
@@ -512,7 +509,7 @@ class TestTheAnswerCommandDoesOneRow:
     def test_it_supplies_a_bound_for_a_diverging_language(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """A one-liner that needs a flag for three of sixty-five is not one."""
+        """A one-liner that needs a flag for three of sixty is not one."""
         assert call_main(["answer", "123", "0110", "01"], capsys).strip() == "1"
         assert call_main(["answer", "123", "0110", "00"], capsys).strip() == "0"
 
@@ -520,7 +517,7 @@ class TestTheAnswerCommandDoesOneRow:
     def test_it_agrees_with_evaluate_everywhere(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Row by row against the whole-table command, for all sixty-five."""
+        """Row by row against the whole-table command, for all sixty."""
         table = "0110"
         for name in esolangs.list_languages():
             for row, bits in enumerate(("00", "01", "10", "11")):
@@ -816,11 +813,11 @@ class TestTheRoundTripsFailurePaths:
     ) -> None:
         """Nothing ran, so it is the usage class rather than a wrong answer."""
         rng = random.Random(7)
-        dense = "".join(rng.choice("01") for _ in range(1 << 10))
+        dense = "".join(rng.choice("01") for _ in range(1 << 11))
         with pytest.raises(SystemExit) as exc:
-            call_main(["verify", "WII2D", dense], capsys)
+            call_main(["verify", "Polynomial", dense], capsys)
         assert exc.value.code == 2
-        assert "cost guard" in capsys.readouterr().err
+        assert "caps at" in capsys.readouterr().err
 
     def test_a_mismatch_names_the_rows_that_disagree(
         self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -828,7 +825,7 @@ class TestTheRoundTripsFailurePaths:
         """No language actually mismatches, so the reporting is driven here.
 
         Which is the point of testing it: the path that says *what went
-        wrong* is the one a reader only ever reaches on a bad day, so it
+        wrong* is the one a reader only ever reaches by mistake, so it
         must not be the untested one.
         """
         monkeypatch.setattr(cli_round_trip, "evaluate", lambda *_a, **_k: "0000")
@@ -890,12 +887,12 @@ class TestEvaluateNeedsNoSeed:
 
     @pytest.mark.parametrize(
         "language",
-        ["COD", "Interprogck8", "LaserFuck", "Modulous", "Painfuck", "WII2D"],
+        ["LaserFuck", "Modulous", "Painfuck"],
     )
     def test_a_drawing_language_evaluates_the_same_every_time(
         self, language: str
     ) -> None:
-        """The seven that draw, less the slowest, four runs each."""
+        """The four that draw, less the slowest, four runs each."""
         answers = {esolangs.evaluate(language, "0110", timeout=30) for _ in range(4)}
         assert answers == {"0110"}
 

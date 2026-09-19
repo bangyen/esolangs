@@ -5,8 +5,8 @@ Run:  just proofs   (or python tests/proofs/deep/linearity.py)
 ``docs/roadmap.md`` asks for "a registry-wide scaling contract" to finish the
 linear-generator item.  ``tests/tools/test_boolean_contract.py`` already has
 one, but it covers only the twenty-five languages of that item's original
-queue; the other forty generators have never had their growth checked at all.
-This measures all sixty-five.
+queue; the other thirty-five generators have never had their growth checked at all.
+This measures all sixty.
 
 What is asserted
 ----------------
@@ -22,7 +22,7 @@ Where the bound sits, measured on both sides:
 * the settled cohort's worst is Circuit Diagram at x2.079 (+3.9% per entry)
   and Streetcode at x2.065, with everything else at or under x2.02;
 * the super-linear constructions this repository has already retired measured,
-  single-step at n=8 -> 9 on parity, A Painter Ant x3.96, COD x3.89, Minifuck
+  single-step at n=8 -> 9 on parity, A Painter Ant x3.96, Minifuck
   x3.53 and 123 x2.43, all of which this bound rejects.
 
 So it has teeth on both sides and roughly a factor of two of headroom above
@@ -47,11 +47,10 @@ Regime changes are excluded, not smoothed
 -----------------------------------------
 Generators dispatch, and a route switch moves size by a factor that has
 nothing to do with asymptotics: Circuit Diagram jumps x154 at n=8 when its
-H-layout takes over, Streetcode x23 at n=6, %^2^-1 x321 at n=4, and Container
+H-layout takes over, Streetcode x23 at n=6, and Container
 *drops* from 5674 to 1200 at n=7.  Measuring across one of those reads the
 constant, not the growth -- an earlier draft of this file scored Circuit
-Diagram at x20.2 for exactly that reason, and %^2^-1 and WII2D looked
-super-linear until their upward jumps were excluded.
+Diagram at x20.2 for exactly that reason.
 
 So a step whose ratio leaves ``REGIME_BAND`` is treated as a route boundary
 and the measurement restarts after it.  The band is a rule rather than a fit:
@@ -86,7 +85,7 @@ from tests.proofs._roadmap import load as load_audit
 from tests.tools.test_boolean_contract import _dense, _parity
 
 #: Cost band; see ``__main__.py``.  It passes now that Forþ is linear, so the
-#: band is a cost call rather than a triage one: it builds all 63 generators at
+#: band is a cost call rather than a triage one: it builds every generator at
 #: rising arity, and 30s is too slow for CI to spend on every push.
 BAND = "by-hand"
 COST = 30.0
@@ -119,7 +118,6 @@ ARITY_OVERRIDE = {
     "polynomial": 9,
     "slow_acv_mammalian": 10,
     "streetcode": 10,
-    "wii2d": 9,
 }
 
 
@@ -214,7 +212,7 @@ def main() -> int:
     by_display = {lang.name: key for key, lang in BY_BOOLEAN.items()}
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
-    assert len(measured) == len(BY_BOOLEAN) == 63, "not every generator was measured"
+    assert len(measured) == len(BY_BOOLEAN) == 59, "not every generator was measured"
 
     print(f"Scaling contract: {len(measured)} generators, bound x{MAX_GROWTH}\n")
     print(f"  {'generator':30s} {'growth':>7s} {'per entry':>10s}  where")

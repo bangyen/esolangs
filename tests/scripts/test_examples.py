@@ -163,7 +163,7 @@ def test_every_boolean_generator_has_an_example() -> None:
     :data:`BOOLEAN_EXAMPLES`, which is the hand-maintained table in
     ``esolangs.tools.examples``.  A generator absent from *both* --
     no entry and so no file -- cancels out of that comparison and is
-    invisible to it, which is how seven generators (%^2^-1, 123, CV(N)(C),
+    invisible to it, which is how six generators (123, CV(N)(C),
     Fargo, Minifuck, SLOW ACV MAMMALIAN and Super SNUSP) went uncovered.
 
     The registry is the only source that knows a generator exists, so it is

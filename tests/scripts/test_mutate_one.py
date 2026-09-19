@@ -74,7 +74,9 @@ class TestRewriteImports:
             "from esolangs.vm import run_until_halt_or_cycle",
             "from esolangs.registry import RUNNERS",
         ):
-            out = script._rewrite_imports(f"{line}\n", "bundled", "grid_based.cod")  # noqa: SLF001
+            out = script._rewrite_imports(  # noqa: SLF001
+                f"{line}\n", "bundled", "grid_based.streetcode"
+            )
             assert out.strip() == line
 
     def test_an_ordinary_package_import_is_repointed(self) -> None:

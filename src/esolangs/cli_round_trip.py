@@ -44,7 +44,7 @@ def _answer(rest: list[str]) -> None:
         if facts["answer_mode"] == "termination":
             # A bound is the answer here rather than a safeguard, so one is
             # supplied: this command exists to be a one-liner, and making a
-            # reader discover that three of the sixty-five need a flag would
+            # reader discover that three of the sixty need a flag would
             # defeat that.
             print(_diverging_answer(name, source, stdin, timeout or 5.0, facts))
             return
