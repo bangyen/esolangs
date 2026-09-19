@@ -153,7 +153,7 @@ def spec(language: str) -> str:
     interpreter = importlib.import_module("esolangs.interpreters." + module)
     text = (interpreter.__doc__ or "").strip()
     if not text:
-        # ``-OO`` strips docstrings, so this returned ``""`` for all 59 --
+        # ``-OO`` strips docstrings, so this returned ``""`` for every one --
         # a silent wrong answer from the function whose whole promise is
         # "read rather than stored, so it cannot drift".  Nothing to say is
         # worth an abort, not an empty string that looks like an answer.

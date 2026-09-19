@@ -2,7 +2,7 @@
 
 Run:  just proofs   (or python tests/proofs/deep/all_generators.py)
 
-Every one of the 59 rows in ``docs/proofs.md`` gets the lemma battery in
+Every row in ``docs/proofs.md`` gets the lemma battery in
 :mod:`tests.proofs.deep._lemmas` instantiated against its own construction and
 its own ledger scheme.  Four generators additionally have a hand-derived proof
 of their *specific* argument in the files beside this one; those are deeper,
@@ -58,7 +58,7 @@ _SHAPES = (("dense", _dense), ("parity", _parity))
 
 #: Highest arity the ladder climbs.  Measured, not guessed: a calibration
 #: sweep built every registry generator at rising arity under a per-build
-#: alarm, and all 59 reach n=10 in under a second each except
+#: alarm, and every one reaches n=10 in under a second each except
 #: ``circuit_diagram``, which needs 2s by n=9 and times out past it.  Seven
 #: keeps that one affordable; eight is comfortable for the rest.
 _GROWTH_MAX = 8

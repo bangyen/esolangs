@@ -449,7 +449,7 @@ class TestATableLengthNamesTheNearestLegalOnes:
 
 
 class TestASurroundingSpaceResolves:
-    """58 of 59 names already tolerated one, and the one that did not.
+    """Almost every name already tolerated one, and the one that did not.
 
     ``canonical_id`` collapses runs of non-alphanumerics and strips the
     result, so a stray space fell out for almost every name.  The override
@@ -460,7 +460,7 @@ class TestASurroundingSpaceResolves:
 
     @pytest.mark.parametrize("pad", [" {}", "{} ", " {} ", "\t{}\n"])
     def test_every_language_tolerates_surrounding_space(self, pad: str) -> None:
-        """All 60, because the one that failed was not the obvious one."""
+        """All of them, because the one that failed was not the obvious one."""
         for name in esolangs.list_languages():
             assert esolangs.describe(pad.format(name))["name"] == name
 

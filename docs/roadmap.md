@@ -27,7 +27,7 @@ The candidate list is empty.
   it the language leaves with its row.  A wall that has not been proved is
   not a lookup table.
 
-  All 59 generators are audited on four axes.  Totality is the `proofs.md`
+  Every generator is audited on four axes.  Totality is the `proofs.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
   totality argument).  Output size is the registry-wide contract
   (`tests/proofs/deep/linearity.py`, per-entry cost to n=12).  Generation

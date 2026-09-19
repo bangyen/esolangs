@@ -85,7 +85,7 @@ from tests.proofs._roadmap import load as load_audit
 from tests.tools.test_boolean_contract import _dense, _parity
 
 #: Cost band; see ``__main__.py``.  It passes now that Forþ is linear, so the
-#: band is a cost call rather than a triage one: it builds all 59 generators at
+#: band is a cost call rather than a triage one: it builds every generator at
 #: rising arity, and 30s is too slow for CI to spend on every push.
 BAND = "by-hand"
 COST = 30.0

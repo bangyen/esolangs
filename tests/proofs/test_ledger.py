@@ -41,7 +41,7 @@ def test_the_ledger_covers_exactly_the_registered_generators(ledger: Ledger) -> 
     Compared on the *display* name (``Language.name``), not the registry key:
     the keys are snake_case ids (``cvnc``) while the ledger
     names languages as they are written (``CV(N)(C)``).  Comparing the wrong one
-    reports all 59 as missing in both directions, which reads like a parser
+    reports all of them as missing in both directions, which reads like a parser
     bug rather than the naming mismatch it is.
     """
     registered = {lang.name for lang in BY_BOOLEAN.values()}
