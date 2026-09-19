@@ -25,9 +25,6 @@ from functools import partial
 from typing import Any, TypedDict, cast
 
 from esolangs._answers import (
-    ANSWER_MODES,
-    INPUT_SHAPES,
-    TERMINATION_OUTCOMES,
     check_stdin,
     encode_inputs,
     read_answer,
@@ -61,25 +58,22 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import (
     LANGUAGES,
     RUNNERS,
-    _fills,
-    example_stems,
     parameterized_ids,
     recover_setters,
     render_template,
     resolve,
     template_body,
     template_char,
-    wiki_url,
 )
 from esolangs.tagged import _Tagged, _Template
+from esolangs.tools.wrap import takes_width as _takes_width
 
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width("LaserFuck")`` got False for
 # every language in the registry, contradicting both its own docstring and
 # ``describe(...)["width_aware"]`` -- which is the question they were asking.
-from esolangs.tools.wrap import WRAPPERS, wrap_program
-from esolangs.tools.wrap import takes_width as _takes_width
-from esolangs.vm import VM, machine_traits, make_vm
+from esolangs.tools.wrap import wrap_program
+from esolangs.vm import VM, make_vm
 
 
 #: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
@@ -105,10 +99,7 @@ def __getattr__(name: str) -> str:
 #: alongside the six functions anyone wants, and there was no way to tell
 #: from the outside which was which.
 __all__ = [
-    "ANSWER_MODES",
-    "INPUT_SHAPES",
     "STOP_REASONS",
-    "TERMINATION_OUTCOMES",
     "VM",
     "ArgumentError",
     "Debugger",
@@ -500,8 +491,8 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
 def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., Any]:
     """Bind ``seed`` to ``run_fn``'s random source, refusing where there is none.
 
-    Seven languages draw (COD, Interprogck8, LaserFuck, Modulous, Painfuck,
-    Super SNUSP, WII2D) and nothing public passed an ``rng``: ten runs of
+    Four languages draw (LaserFuck, Modulous, Painfuck,
+    Super SNUSP) and nothing public passed an ``rng``: ten runs of
     ``o+++.`` gave ``3`` five times and nothing five times, while ``make_vm``
     always seeded.  A seed for a language that draws nothing is refused: the
     likelier reading is the wrong language.
@@ -511,8 +502,8 @@ def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., A
     if "rng" not in inspect.signature(run_fn).parameters:
         raise ArgumentError(
             f"{name} draws no random values, so a seed has nothing to fix; "
-            f"the languages that draw are COD, Interprogck8, LaserFuck, "
-            f"Modulous, Painfuck, Super SNUSP and WII2D"
+            f"the languages that draw are LaserFuck, "
+            f"Modulous, Painfuck and Super SNUSP"
         )
     from esolangs.interpreters.randomness import Seeded
 

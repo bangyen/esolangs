@@ -1,7 +1,7 @@
 """The grid generators whose tests are short: Super SNUSP and Alight.
 
-The three that are not have files of their own: test_boolean_wii2d,
-test_boolean_circuit_diagram and test_boolean_a_painter_ant.
+The two that are not have files of their own: test_boolean_circuit_diagram
+and test_boolean_a_painter_ant.
 """
 
 import pytest

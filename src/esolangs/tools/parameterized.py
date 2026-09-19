@@ -9,7 +9,6 @@ in :mod:`esolangs.tools.examples` reads the same constant, so the widths
 the generator lays and the text the fill substitutes cannot drift apart.
 """
 
-# Re-exported (``x as x``): this module is the import site for the family.
 from esolangs.tools.a_painter_ant import a_painter_ant
 from esolangs.tools.arrowqueue import (
     _MIDDLE as _MIDDLE,
@@ -46,7 +45,6 @@ from esolangs.tools.back import (
     _back_ordered as _back_ordered,
 )
 from esolangs.tools.back import back as back
-from esolangs.tools.cod import cod
 from esolangs.tools.eval_lang import (
     _eval_ordered as _eval_ordered,
 )
@@ -67,12 +65,10 @@ from esolangs.tools.helpers import (
 from esolangs.tools.minifuck import minifuck
 from esolangs.tools.nocomment import nocomment as nocomment
 from esolangs.tools.one_two_three import one_two_three
-from esolangs.tools.pct_squared_minus_one import pct_squared_minus_one
 from esolangs.tools.ram0 import (
     _ram0_ordered as _ram0_ordered,
 )
 from esolangs.tools.ram0 import ram0 as ram0
-from esolangs.tools.wii2d import wii2d
 
 __all__ = [
     "a_painter_ant",
@@ -81,15 +77,12 @@ __all__ = [
     "bfpda",
     "bio",
     "bitdeque",
-    "cod",
     "eval",
     "minifuck",
     "minsky_swap",
     "nocomment",
     "one_two_three",
-    "pct_squared_minus_one",
     "ram0",
-    "wii2d",
 ]
 
 
@@ -402,8 +395,7 @@ def home_row(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  A
     run is a two-character setter on a zero cell: ``a`` then ``s`` (clear)
     or ``j`` (a skip that does not fire).  The bits pack into one binary
-    accumulator (the removed routing generator hit a wall past ``n == 2`` on
-    the 5x5 grid): each packing line ``$$ l s ffff a{2**(n-1-i)} f l`` uses
+    accumulator: each packing line ``$$ l s ffff a{2**(n-1-i)} f l`` uses
     Home Row's position-stable ``l``/``s``/``l`` gate (loops cannot nest) to
     add the weight iff the bit is 1.  Then ``2**n`` lines
     ``a ffff l s f s ff l f l f <answer> k ; l f f`` fan the accumulator

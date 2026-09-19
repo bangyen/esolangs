@@ -163,8 +163,9 @@ class TestLocateGrid:
         "ip", [(1, 1), (1, 1, 2), (1, 1, 2, 0), (1, 1, 0, 0, 1, 1)]
     )
     def test_any_width_of_heading_is_accepted(self, ip: tuple[int, ...]) -> None:
-        # COD flattens one four-tuple per live cod, so a grid position is
-        # not a fixed width; the first two parts are what matters.
+        # Some interpreters flatten a multi-value state per live agent, so a
+        # grid position is not a fixed width; the first two parts are what
+        # matters.
         assert locate("ab\ncd", ip, "grid") == Mark(1, 1)
 
     def test_it_may_sit_past_its_own_ragged_line(self) -> None:
@@ -193,8 +194,8 @@ class TestLocateLine:
         assert locate("ab\ncdef", (1,), "line") == Mark(1, 0, 4)
 
     def test_the_frame_indices_after_it_are_ignored(self) -> None:
-        # Interprogck8 appends one index per open frame; the line is still
-        # the first part.
+        # Algebraic Programming Language appends one index per open frame;
+        # the line is still the first part.
         assert locate("ab\ncdef", (1, 7, 2), "line") == Mark(1, 0, 4)
 
     def test_the_span_covers_the_padded_rectangle(self) -> None:
@@ -233,7 +234,9 @@ class TestRender:
         assert _highlighted(render(frame)) is None
 
     def test_a_line_shape_marks_the_whole_line(self) -> None:
-        frame = _frame("abc\ndef", (1,), language="Interprogck8", ip_shape="line")
+        frame = _frame(
+            "abc\ndef", (1,), language="Algebraic Programming Language", ip_shape="line"
+        )
         assert _highlighted(render(frame)) == "def"
 
     def test_an_unlocatable_ip_leaves_the_program_unmarked(self) -> None:

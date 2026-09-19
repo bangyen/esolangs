@@ -178,7 +178,6 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "123": ("3231", ""),
     "3D Brainfuck": ("+.", ""),
     "3x": ("3!", ""),
-    "%^2^-1": ("ie", ""),
     "6-5": ("55A", ""),
     "A Painter Ant": ("Pnn", ""),
     "Algebraic Programming Language": ("a + 1", "41\n"),
@@ -194,7 +193,6 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Bitdeque": ("PUSH INVERT", ""),
     "BrainIf": ("if 0 output", ""),
     "brainfuck": ("+++[>+++<-]>.", ""),
-    "COD": ("~~~~~\n~>))---", ""),
     "Circlefuck": ("+.@", ""),
     "Circuit Diagram": (CIRCUIT_PRIME_TESTER, bits_of(7)),
     "Clockwise": ("+;S;S;S;S;S;+;R\nR             R", ""),
@@ -223,7 +221,6 @@ SAMPLES: dict[str, tuple[str, str]] = {
     # interpreter's module docstring), on the input that halts: the "1"
     # branch loops forever.
     "Inject": (INJECT_TRUTH_MACHINE, "0\n"),
-    "Interprogck8": ("nNnN\ndiv", ""),
     "Jaune": ("++^", ""),
     "LaserFuck": ("ÿ   x\n    +\n    o", ""),
     "Minifuck": (".", ""),
@@ -248,5 +245,4 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Taglate": ("abc\ni", ""),
     "Unsquare": ("Io", ""),
     "Vandevelo": ("Nil?", ""),
-    "WII2D": (">~.\n!", ""),
 }
