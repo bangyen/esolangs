@@ -5,22 +5,7 @@ PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python
 
 # Help
 help:
-    @echo "Available targets:"
-    @echo "  lint-python  - Lint Python files with Ruff and MyPy"
-    @echo "  lint         - Run all linting targets"
-    @echo "  test         - Local check, scoped to this branch; slow tests left to CI"
-    @echo "  test-full    - Every check, whole tree"
-    @echo "  test-quick   - Tier 1: pre-commit + pytest, fast band only (~8s pytest)"
-    @echo "  test-mid     - Tier 2: pytest, fast + medium (execution and subprocess) (~25s)"
-    @echo "  test-py      - pytest only (-n auto; every tier, weekly included)"
-    @echo "  test-line    - tests/interpreters suites with pytest only (~3s)"
-    @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
-    @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen boolean/streetcode)"
-    @echo "  proofs       - every executable proof: ledger obligations + all 7 deep proofs"
-    @echo "  apa-proof    - re-check the A Painter Ant uniform-in-n proof (15s)"
-    @echo "  install-dev  - Install development dependencies"
-    @echo "  clean        - Clean up generated files"
-    @echo ""
+    @just --list
     @echo ""
     @echo "  Four tiers, by what a test does rather than by a stopwatch"
     @echo "  (except the last, which is purely cost):"
@@ -94,9 +79,11 @@ test-py *args:
 test-line *args:
     {{PYTHON}} scripts/verify.py --only "Line interpreter suites" {{args}}
 
+# lint + duplicate-code + bandit + dead definitions
 test-lint *args:
     {{PYTHON}} scripts/verify.py --only pre-commit,"duplicate-code check (pylint)",bandit,"dead definitions" {{args}}
 
+# security scan only
 test-bandit *args:
     {{PYTHON}} scripts/verify.py --only bandit {{args}}
 
@@ -143,14 +130,14 @@ proofs:
 apa-proof:
     {{PYTHON}} tests/proofs/deep/a_painter_ant.py
 
-# clean generated: bytecode, build metadata, verifier reports, and any source
-# directory that only bytecode kept alive (the deleted compilers/ and
-# transpilers/ husks).  `find -delete` refuses a non-empty directory, so
-# directories go through `rm -rf`.
+# clean generated: `find -delete` refuses a non-empty directory, so removal
+# goes through `rm -rf`: bytecode, build metadata, verifier reports, and
+# bytecode-only husk dirs (tools/boolean/, tools/text/, interpreters/line/,
+# tests/compilers/).
 clean:
     #!/usr/bin/env bash
     find . -path ./.venv -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
         | xargs -0 rm -rf
     find . -path ./.venv -prune -o -name "*.pyc" -type f -delete
     rm -rf build dist .coverage coverage.xml bandit-report.json .mypy_cache .ruff_cache .pytest_cache
-    find src -mindepth 1 -type d -empty -delete
+    find src tests -mindepth 1 -type d -empty -delete

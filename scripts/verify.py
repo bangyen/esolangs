@@ -472,6 +472,30 @@ HEAVY_STEPS = frozenset({LEAK_STEP})
 LEAKSWEEP_JOBS = "6"
 
 
+def _ensure_dev_deps() -> None:
+    """Sync dev dependencies when the runner's Python lacks them.
+
+    A fresh worktree venv has an interpreter but no third-party packages, so
+    every step fails at 0.0s with ``No module named ...`` -- missing tooling,
+    not broken code.  Syncing once here fixes it where the failure surfaces.
+    ``VERIFY_NO_SYNC`` opts out (offline machines); without ``uv`` there is
+    nothing to sync with, so the steps report it themselves.
+    """
+    if os.environ.get("VERIFY_NO_SYNC", "0") not in ("", "0"):
+        return
+    probe = subprocess.run(
+        [*PY, "-c", "import pytest"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if probe.returncode == 0:
+        return
+    if shutil.which("uv") is None:
+        return
+    print("dev dependencies missing; running `uv sync --extra dev` ...")
+    subprocess.run(["uv", "sync", "--extra", "dev"], cwd=ROOT, check=False)
+
+
 def _should_stream(steps: int, *, quiet: bool, verbose: bool) -> bool:
     """Whether the steps write to the terminal directly rather than be replayed.
 
@@ -633,6 +657,9 @@ def _run_steps(
 def main() -> int:
     """Compile and run every example, reporting failures."""
     only, skip, full, quiet, verbose = _parse_only_skip()
+
+    # `--list` exits inside the parse, so this never slows it down.
+    _ensure_dev_deps()
 
     # An explicit --only is already a hand-picked subset; scoping it further
     # would silently drop steps the caller asked for by name.
