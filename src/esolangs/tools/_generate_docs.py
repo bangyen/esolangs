@@ -152,7 +152,9 @@ def render_examples_section() -> str:
     """
     return "\n".join(
         [
-            "Ready-to-run programs are committed under [`examples/`](examples/):",
+            "Ready-to-run programs are committed under"
+            " [`examples/`]"
+            "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):",
             f"`examples/` holds a truth-table program for each of the {len(BOOLEAN)}",
             "languages with a boolean generator.  It regenerates via",
             "`scripts/generate.py examples`.",
@@ -299,7 +301,9 @@ def render_tui_section() -> str:
             "",
             "The live screen reverse-videos the cell at that `ip`; colour"
             " does not survive",
-            "the page.  [usage](docs/usage.md#debugging) names every key.",
+            "the page."
+            "  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debugging)"
+            " names every key.",
         ]
     )
 
