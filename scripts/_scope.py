@@ -28,7 +28,9 @@ SHARED_INTERPRETER = (
     "interpreters/brackets.py",
     "exceptions.py",
     "vm.py",
-    "registry.py",
+    "registry/__init__.py",
+    "registry/_slug.py",
+    "registry/_table.py",
 )
 
 # The checking machinery itself.  A change here can alter what every step
