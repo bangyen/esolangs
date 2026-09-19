@@ -21,7 +21,6 @@ proved by the hang detector, unbounded growth by the ``run()`` backstop.
 
 import sys
 from collections.abc import Mapping
-from typing import NamedTuple
 
 from esolangs.interpreters.brackets import match_brackets as _matches
 from esolangs.interpreters.io import IO
@@ -69,15 +68,7 @@ def _moved(point: _Point, delta: _Point) -> _Point:
 #: The grid and its bracket table stay out -- 3D Brainfuck never rewrites
 #: its own source -- so a step is handed them.
 type _Cells = dict[_Point, int]
-
-
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    cells: _Cells
-    ap: _Point
-    pos: _Point
-    heading: _Point
+type _State = tuple[_Cells, _Point, _Point, _Point]
 
 
 def _advance(
@@ -108,11 +99,11 @@ def _advance(
         cells = {**cells, ap: byte if byte is not None else 0}
     elif char == "[":
         if cells.get(ap, 0) == 0:
-            return _State(cells, ap, (match[pos[0]] + 1, 0, 0), heading)
+            return (cells, ap, (match[pos[0]] + 1, 0, 0), heading)
     elif char == "]" and cells.get(ap, 0) != 0:
-        return _State(cells, ap, (match[pos[0]] + 1, 0, 0), heading)
+        return (cells, ap, (match[pos[0]] + 1, 0, 0), heading)
 
-    return _State(cells, ap, _moved(pos, heading), heading)
+    return (cells, ap, _moved(pos, heading), heading)
 
 
 class _Machine:
@@ -175,7 +166,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return _State(self.cells, self.ap, self.pos, self.heading)
+        return (self.cells, self.ap, self.pos, self.heading)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields."""

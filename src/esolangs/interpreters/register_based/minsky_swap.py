@@ -17,16 +17,14 @@ from __future__ import annotations
 
 import re
 import sys
-from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
 
-
 #: One instant of a run: ``(ind, ptr, reg, dumped)`` -- the cursor, the
 #: register pointer, both registers, and whether the end-of-run dump has
-#: been printed.  A value, not a mutable record: every transition below
-#: returns a new one rather than editing one in place, and the registers
-#: are a tuple for the same reason.
+#: been printed.  A value, not a record: every transition below returns a
+#: new one rather than editing one in place, and the registers are a tuple
+#: for the same reason.
 #:
 #: ``dumped`` is state because the dump is a once-per-run effect that
 #: happens *after* the cursor has run off the end, so the position alone
@@ -36,13 +34,7 @@ from esolangs.interpreters.io import IO
 #: The program and its jump table are deliberately not in here.  Neither
 #: changes during a run, so carrying them would put constant data in every
 #: value the cycle detector stores.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    ind: int
-    ptr: int
-    reg: tuple[int, int]
-    dumped: bool
+type _State = tuple[int, int, tuple[int, int], bool]
 
 
 def _advance(state: _State, prog: str, targets: dict[int, int]) -> _State:
@@ -63,7 +55,7 @@ def _advance(state: _State, prog: str, targets: dict[int, int]) -> _State:
             ind = target - 2
     else:
         ptr ^= 1
-    return _State(ind + 1, ptr, reg, dumped)
+    return (ind + 1, ptr, reg, dumped)
 
 
 def _parse(code: str) -> tuple[str, list[int]]:
@@ -125,7 +117,7 @@ class _Machine:
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.prog)
-        self.state: _State = _State(0, 0, (0, 0), dumped=False)
+        self.state: _State = (0, 0, (0, 0), False)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -189,7 +181,7 @@ class _Machine:
         if ind >= self.size:
             if not dumped:
                 self.io.print_str(" ".join(map(str, reg)))
-                self.state = _State(ind, ptr, reg, dumped=True)
+                self.state = (ind, ptr, reg, True)
             return
         self.state = _advance(self.state, self.prog, self.targets)
 

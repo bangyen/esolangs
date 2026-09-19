@@ -12,8 +12,6 @@ out; a non-numeric token raises :class:`ValueError`; no instruction cap
 allocate halts with :class:`HaltError`.
 """
 
-from typing import NamedTuple
-
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
@@ -33,8 +31,8 @@ _SPECIAL = set(range(_FUM, _IO + 1))
 
 #: One instant of a run: ``(memory, ip, cf, zf, nf, vf, fum)`` -- the
 #: self-modifying store, the instruction pointer, the four flags, and the
-#: flag-update mode.  A value, not a mutable record: every transition below
-#: returns a new one rather than editing one in place, and the memory is copied on
+#: flag-update mode.  A value, not a record: every transition below returns
+#: a new one rather than editing one in place, and the memory is copied on
 #: write for the same reason.
 #:
 #: The memory is in the state rather than beside it because this language
@@ -49,23 +47,8 @@ _SPECIAL = set(range(_FUM, _IO + 1))
 #: what ``halted`` and the allocation cap test) and can no longer be read
 #: off the container.  A ``dict`` is unhashable, so :meth:`_Machine.snapshot`
 #: is what freezes it for the cycle detector.
-class _Cells(NamedTuple):
-    """The sparse store: non-zero cells, and the allocated length."""
-
-    cells: dict[int, int]
-    length: int
-
-
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    memory: _Cells
-    ip: int
-    cf: int
-    zf: int
-    nf: int
-    vf: int
-    fum: int
+type _Cells = tuple[dict[int, int], int]
+type _State = tuple[_Cells, int, int, int, int, int, int]
 
 
 def _pack(values: list[int]) -> _Cells:
@@ -73,7 +56,7 @@ def _pack(values: list[int]) -> _Cells:
 
     Zeros are dropped, as :func:`_store` does, so parsed and written zeros match.
     """
-    return _Cells({i: v for i, v in enumerate(values) if v}, len(values))
+    return ({i: v for i, v in enumerate(values) if v}, len(values))
 
 
 def _operands(state: _State) -> tuple[int, int, int, int]:
@@ -143,7 +126,7 @@ def _store(state: _State, addr: int, value: int) -> _State:
     if addr == _IO:
         return state
     if addr in _SPECIAL:
-        return _State(state[0], ip, cf, zf, nf, vf, value) if addr == _FUM else state
+        return (state[0], ip, cf, zf, nf, vf, value) if addr == _FUM else state
     if addr >= length:
         length = addr + 1
     new = dict(cells)
@@ -151,7 +134,7 @@ def _store(state: _State, addr: int, value: int) -> _State:
         new[addr] = value
     else:
         new.pop(addr, None)
-    return _State(_Cells(new, length), ip, cf, zf, nf, vf, fum)
+    return ((new, length), ip, cf, zf, nf, vf, fum)
 
 
 def _advance(state: _State, reads: tuple[int, ...]) -> tuple[int, _State]:
@@ -180,8 +163,8 @@ def _advance(state: _State, reads: tuple[int, ...]) -> tuple[int, _State]:
         zf = 1 if value == 0 else 0
         nf = 1 if value < 0 else 0
         cf = vf = 0
-    after = _State(memory, _ip, cf, zf, nf, vf, fum)
-    return value, _State(memory, _load(after, c), cf, zf, nf, vf, fum)
+    after = (memory, _ip, cf, zf, nf, vf, fum)
+    return value, (memory, _load(after, c), cf, zf, nf, vf, fum)
 
 
 class _Machine:
@@ -190,7 +173,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code`` into memory and reset the pointer and flags."""
         self.io = io
-        self.state: _State = _State(_pack(list(_parse(code))), 0, 0, 0, 0, 0, 0)
+        self.state: _State = (_pack(list(_parse(code))), 0, 0, 0, 0, 0, 0)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.

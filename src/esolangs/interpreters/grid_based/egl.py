@@ -15,22 +15,11 @@ from __future__ import annotations
 
 import re
 import sys
-from typing import NamedTuple
 
 from esolangs.interpreters.brackets import match_brackets
 from esolangs.interpreters.io import IO
 
-
-class _State(NamedTuple):
-    """One instant of a run: ``(pc, row, col, grid, loops)``."""
-
-    pc: int
-    row: int
-    col: int
-    grid: tuple[int, ...]
-    loops: tuple[tuple[int, int, int], ...]
-
-
+type _State = tuple[int, int, int, tuple[int, ...], tuple[tuple[int, int, int], ...]]
 type _Output = int | str | None
 
 
@@ -97,7 +86,7 @@ def _advance(
 
     if not 0 <= row < height or not 0 <= col < width:
         raise ValueError("EGL pointer moved outside the grid")
-    return _State(pc + 1, row, col, tuple(cells), loops), output
+    return (pc + 1, row, col, tuple(cells), loops), output
 
 
 class _Machine:
@@ -116,7 +105,7 @@ class _Machine:
         except ValueError as error:
             raise ValueError("unmatched parenthesis in EGL program") from error
         self.io = io
-        self.state: _State = _State(
+        self.state: _State = (
             0,
             0,
             0,

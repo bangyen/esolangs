@@ -16,7 +16,6 @@ cross-check exits 3); ``i`` raises :class:`EOFError` when exhausted.
 from __future__ import annotations
 
 import sys
-from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -31,11 +30,10 @@ _SURROGATES = range(0xD800, 0xE000)
 #: this mapping needs none.
 _NEEDS = {"A": 1, "o": 1, "S": 2}
 
-
 #: One instant of a run: ``(ind, acc, stack, jumps)`` -- the code cursor,
 #: the accumulator, the data stack, and the jump-return stack.  A value, not
-#: a mutable record: every transition below returns a new one rather than
-#: editing one in place, and both stacks are tuples for the same reason.
+#: a record: every transition below returns a new one rather than editing
+#: one in place, and both stacks are tuples for the same reason.
 #:
 #: The jump stack is state, not a scratch register: a ``<`` reads the
 #: position a matching ``>`` pushed, so two runs sitting on the same command
@@ -44,13 +42,7 @@ _NEEDS = {"A": 1, "o": 1, "S": 2}
 #: The code is deliberately not in here.  It does not change during a run,
 #: so carrying it would put constant data in every value the cycle detector
 #: stores.  It is a parameter to the transition instead.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    ind: int
-    acc: int
-    stack: tuple[int, ...]
-    jumps: tuple[int, ...]
+type _State = tuple[int, int, tuple[int, ...], tuple[int, ...]]
 
 
 def _needs(char: str) -> int:
@@ -112,7 +104,7 @@ def _advance(
             jumps = (*jumps, ind - 1)
     elif char == "<":
         ind, jumps = jumps[-1], jumps[:-1]
-    return _State(ind + 1, acc, stack, jumps)
+    return (ind + 1, acc, stack, jumps)
 
 
 class _Machine:
@@ -125,7 +117,7 @@ class _Machine:
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
-        self.state: _State = _State(0, 0, (), ())
+        self.state: _State = (0, 0, (), ())
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -153,7 +145,7 @@ class _Machine:
         For watching what a short op-string does to a stack with depth.
         """
         ind, acc, _stack, jumps = self.state
-        self.state = _State(ind, acc, tuple(stack), jumps)
+        self.state = (ind, acc, tuple(stack), jumps)
 
     @property
     def halted(self) -> bool:
@@ -201,7 +193,7 @@ class _Machine:
         if char == ">" and acc in (0, 1):
             target = _forward(self.code, ind)
             if target is None:
-                self.state = _State(self.size, acc, stack, jumps)
+                self.state = (self.size, acc, stack, jumps)
                 raise HaltError("unmatched >")
         elif char == "o":
             value = stack[-1]

@@ -33,7 +33,7 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 import re
 import sys
 from collections.abc import Callable, Mapping
-from typing import NamedTuple, cast
+from typing import cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -75,40 +75,18 @@ def _reject_stray_text(code: str) -> None:
 #: The tokens stay out: Modulous parses its program once and never
 #: rewrites it, so a handler is handed the token it is running rather than
 #: carrying the list.
-class _Core(NamedTuple):
-    """One instant of a run."""
-
-    stk: tuple[int, ...]
-    var: dict[str, int]
-    ind: int
-
+type _Core = tuple[tuple[int, ...], dict[str, int], int]
 
 #: Every value a Modulous step can change: the handler's stack, variables,
 #: and cursor, plus whether ``END`` has stopped the run.  Tokens are parsed
 #: once and never rewritten, while ports and randomness stay in the shell.
-class _State(NamedTuple):
-    """Every value a Modulous step can change."""
-
-    core: _Core
-    halted: bool
-
+type _State = tuple[_Core, bool]
 
 #: One instant as the all-outcomes search sees it.  Identical to
 #: :data:`_State` except that ``var`` is the sorted tuple of its items --
 #: a dict cannot be a member of the search's visited set.
-class _FrozenCore(NamedTuple):
-    """One instant as the all-outcomes search sees it."""
-
-    stk: tuple[int, ...]
-    var: tuple[tuple[str, int], ...]
-    ind: int
-
-
-class _BranchState(NamedTuple):
-    """The frozen core and the halt flag."""
-
-    core: _FrozenCore
-    halted: bool
+type _FrozenCore = tuple[tuple[int, ...], tuple[tuple[str, int], ...], int]
+type _BranchState = tuple[_FrozenCore, bool]
 
 
 #: The most outcomes one ``RND`` may open in a branching search.  Its range
@@ -123,13 +101,13 @@ _RND_FANOUT = 256
 def _freeze(state: _State) -> _BranchState:
     """Return ``state`` with its variable map made hashable."""
     (stk, var, ind), halted = state
-    return _BranchState(_FrozenCore(stk, tuple(sorted(var.items())), ind), halted)
+    return ((stk, tuple(sorted(var.items())), ind), halted)
 
 
 def _thaw(state: _BranchState) -> _State:
     """Invert :func:`_freeze` so a handler sees the map it expects."""
     (stk, var, ind), halted = state
-    return _State(_Core(stk, dict(var), ind), halted)
+    return ((stk, dict(var), ind), halted)
 
 
 class _Machine:
@@ -228,15 +206,15 @@ class _Machine:
         stk, var, ind = core
         mod = self.tokens[ind]
         arg = mod.split()
-        advanced: _Core = _Core(stk, var, ind + 1)
+        advanced: _Core = (stk, var, ind + 1)
         if not arg:
-            return (_freeze(_State(advanced, halted)),)
+            return (_freeze((advanced, halted)),)
 
         handler = _DISPATCH.get(arg[0])
         if handler is None:
             if "+" in mod or "-" in mod:
-                return (_freeze(_State(_var_arith(advanced, mod), halted)),)
-            return (_freeze(_State(advanced, halted)),)
+                return (_freeze((_var_arith(advanced, mod), halted)),)
+            return (_freeze((advanced, halted)),)
 
         if arg[0] == "INP":
             return None
@@ -254,14 +232,13 @@ class _Machine:
 
         done = halted or arg[0] == "END"
         return tuple(
-            _freeze(_State(handler(advanced, mod, arg, value), done))
-            for value in values
+            _freeze((handler(advanced, mod, arg, value), done)) for value in values
         )
 
     @property
     def _state(self) -> _State:
         """The complete changing state, with the handler core inside it."""
-        return _State(_Core(self.stk, self.var, self.ind), self._halted)
+        return ((self.stk, self.var, self.ind), self._halted)
 
     def _restore(self, state: _State) -> None:
         """Write a transition result back onto the machine shell."""
@@ -282,7 +259,7 @@ class _Machine:
         (stk, var, ind), halted = self._state
         mod = self.tokens[ind]
         arg = mod.split()
-        self._restore(_State(_Core(stk, var, ind + 1), halted))
+        self._restore(((stk, var, ind + 1), halted))
         if not arg:
             return
 
@@ -290,7 +267,7 @@ class _Machine:
         if handler is None:
             if "+" in mod or "-" in mod:
                 core, halted = self._state
-                self._restore(_State(_var_arith(core, mod), halted))
+                self._restore((_var_arith(core, mod), halted))
                 return
             # Not a command and not variable arithmetic.  This used to
             # ``return``, so ``[PRTINT]`` -- a plausible slip for ``[PRT
@@ -312,7 +289,7 @@ class _Machine:
             if n >= 1:
                 value = draw(self.rng, n)
         core, halted = self._state
-        self._restore(_State(handler(core, mod, arg, value), halted or arg[0] == "END"))
+        self._restore((handler(core, mod, arg, value), halted or arg[0] == "END"))
 
     def _print(self, mod: str, arg: list[str]) -> None:
         """Write what ``PRT`` names: a variable, or the top of the stack."""
@@ -361,37 +338,37 @@ def _jmp(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
             ind += int(_operand(arg, 2)) - 1
         else:
             ind -= int(_operand(arg, 2)) + 1
-    return _Core(stk, var, ind)
+    return (stk, var, ind)
 
 
 def _add(core: _Core, _mod: str, arg: list[str], _value: str | int | None) -> _Core:
     """Add an operand to the top of the stack."""
     stk, var, ind = core
     n = int(_operand(arg, 1))
-    return _Core((*stk[:-1], _top(stk) + n), var, ind)
+    return ((*stk[:-1], _top(stk) + n), var, ind)
 
 
 def _sub(core: _Core, _mod: str, arg: list[str], _value: str | int | None) -> _Core:
     """Subtract an operand from the top of the stack."""
     stk, var, ind = core
     n = int(_operand(arg, 1))
-    return _Core((*stk[:-1], _top(stk) - n), var, ind)
+    return ((*stk[:-1], _top(stk) - n), var, ind)
 
 
 def _rst(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _Core:
     """Send the cursor back to the first token."""
     stk, var, _ind = core
-    return _Core(stk, var, 0)
+    return (stk, var, 0)
 
 
 def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Core:
     """Push a literal, the characters of a string, or store into a variable."""
     stk, var, ind = core
     if "INT" in mod:
-        return _Core((*stk, int(_operand(arg, 2))), var, ind)
+        return ((*stk, int(_operand(arg, 2))), var, ind)
     if "STR" in mod:
         m = mod.split('"')[1]
-        return _Core((*stk, *[ord(c) for c in m][::-1]), var, ind)
+        return ((*stk, *[ord(c) for c in m][::-1]), var, ind)
     if "VAR" in mod:
         # The store names its target the same way every other variable op
         # does, so it rejects an unknown name the same way too: ``PRT`` and
@@ -401,7 +378,7 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
         # into a phantom ``VAR`` and silently do nothing to ``VAR1``.
         name = _operand(arg, 1)
         _named(var, name)
-        return _Core(stk, {**var, name: _top(stk)}, ind)
+        return (stk, {**var, name: _top(stk)}, ind)
     return core
 
 
@@ -409,7 +386,7 @@ def _pop(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _
     """Discard the top of the stack."""
     stk, var, ind = core
     _top(stk)
-    return _Core(stk[:-1], var, ind)
+    return (stk[:-1], var, ind)
 
 
 def _swp(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _Core:
@@ -418,7 +395,7 @@ def _swp(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _
     if len(stk) < 2:
         were = "is 1" if len(stk) == 1 else f"are {len(stk)}"
         raise HaltError(f"SWP needs two values on the stack and there {were}")
-    return _Core((*stk[:-2], stk[-1], stk[-2]), var, ind)
+    return ((*stk[:-2], stk[-1], stk[-2]), var, ind)
 
 
 def _prt(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Core:
@@ -428,7 +405,7 @@ def _prt(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
         _named(var, _operand(arg, 1))
         return core
     _top(stk)
-    return _Core(stk[:-1], var, ind)
+    return (stk[:-1], var, ind)
 
 
 def _inp(core: _Core, mod: str, _arg: list[str], value: str | int | None) -> _Core:
@@ -441,10 +418,10 @@ def _inp(core: _Core, mod: str, _arg: list[str], value: str | int | None) -> _Co
     stk, var, ind = core
     text = "" if value is None else str(value)
     if "INT" in mod and text:
-        return _Core((*stk, int(text)), var, ind)
+        return ((*stk, int(text)), var, ind)
     if "INT" in mod:
         return core
-    return _Core((*stk, *[ord(c) for c in text][::-1]), var, ind)
+    return ((*stk, *[ord(c) for c in text][::-1]), var, ind)
 
 
 def _end(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _Core:
@@ -455,7 +432,7 @@ def _end(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _
 def _dup(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _Core:
     """Push a copy of the top."""
     stk, var, ind = core
-    return _Core((*stk, _top(stk)), var, ind)
+    return ((*stk, _top(stk)), var, ind)
 
 
 def _rnd(core: _Core, _mod: str, arg: list[str], value: str | int | None) -> _Core:
@@ -464,7 +441,7 @@ def _rnd(core: _Core, _mod: str, arg: list[str], value: str | int | None) -> _Co
     n = int(_operand(arg, 1))
     if n < 1:
         raise HaltError(f"RND needs an upper bound of at least 1, got {n}")
-    return _Core((*stk, int(value) if value is not None else 0), var, ind)
+    return ((*stk, int(value) if value is not None else 0), var, ind)
 
 
 def _var_arith(core: _Core, mod: str) -> _Core:
@@ -472,11 +449,11 @@ def _var_arith(core: _Core, mod: str) -> _Core:
     stk, var, ind = core
     if "+" in mod:
         lhs, rhs = mod.split("+")
-        return _Core(stk, {**var, lhs: _named(var, lhs) + int(rhs)}, ind)
+        return (stk, {**var, lhs: _named(var, lhs) + int(rhs)}, ind)
     # The caller only routes a token here when it holds a ``+`` or a ``-``,
     # so the one that is not a ``+`` is a ``-``.
     lhs, rhs = mod.split("-")
-    return _Core(stk, {**var, lhs: _named(var, lhs) - int(rhs)}, ind)
+    return (stk, {**var, lhs: _named(var, lhs) - int(rhs)}, ind)
 
 
 _DISPATCH: dict[str, Callable[[_Core, str, list[str], str | int | None], _Core]] = {

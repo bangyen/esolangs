@@ -14,16 +14,14 @@ from __future__ import annotations
 
 import re
 import sys
-from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
 
-
 #: One instant of a run: ``(ind, reg, deq, rendered)`` -- the token cursor,
 #: the register, the deque, and whether the end-of-run dump has been
-#: printed.  A value, not a mutable record: every transition below returns a
-#: new one rather than editing one in place, and the deque is a ``tuple``
-#: for the same reason.
+#: printed.  A value, not a record: every transition below returns a new one
+#: rather than editing one in place, and the deque is a ``tuple`` for the
+#: same reason.
 #:
 #: ``rendered`` is state because the dump is a once-per-run effect that
 #: happens *after* the cursor has passed the last token, so the position
@@ -33,13 +31,7 @@ from esolangs.interpreters.io import IO
 #: The tokens are deliberately not in the transition's view of the world,
 #: but they *are* in ``snapshot`` -- which is where they already were, and
 #: removing them would change every hash the cycle detector has stored.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    ind: int
-    reg: int
-    deq: tuple[int, ...]
-    rendered: bool
+type _State = tuple[int, int, tuple[int, ...], bool]
 
 
 def _advance(state: _State, sym: str) -> _State:
@@ -61,7 +53,7 @@ def _advance(state: _State, sym: str) -> _State:
         reg ^= 1
     elif reg:
         ind = int(sym[4:]) - 1
-    return _State(ind + 1, reg, deq, rendered)
+    return (ind + 1, reg, deq, rendered)
 
 
 def _reject_stray_text(code: str, pattern: re.Pattern[str]) -> None:
@@ -106,7 +98,7 @@ class _Machine:
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.tokens)
-        self.state: _State = _State(0, 0, (), rendered=False)
+        self.state: _State = (0, 0, (), False)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -168,7 +160,7 @@ class _Machine:
         if ind >= self.size:
             if not rendered:
                 self.render()
-                self.state = _State(ind, reg, deq, rendered=True)
+                self.state = (ind, reg, deq, True)
             return
         self.state = _advance(self.state, self.tokens[ind][0])
 

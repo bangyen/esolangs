@@ -16,20 +16,13 @@ from __future__ import annotations
 
 import re
 import sys
-from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
-
 
 #: ``(ind, reg, stk)``: an immutable value, rebound per step.  Commands
 #: are a parameter, not a field.  ``snapshot`` still returns
 #: ``(reg, stk, ind, ...)``, the order it always did.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    ind: int
-    reg: tuple[int, int, int]
-    stk: tuple[int, ...]
+type _State = tuple[int, tuple[int, int, int], tuple[int, ...]]
 
 
 def _bumped(reg: tuple[int, int, int], index: int, delta: int) -> tuple[int, int, int]:
@@ -104,7 +97,7 @@ class _Machine:
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.commands)
-        self.state: _State = _State(0, (0, 0, 0), ())
+        self.state: _State = (0, (0, 0, 0), ())
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -193,7 +186,7 @@ def _advance(state: _State, commands: list[str], closes: tuple[int, ...]) -> _St
         stk = (*stk, ind)
     else:
         ind = closes[ind]
-    return _State(ind + 1, reg, stk)
+    return (ind + 1, reg, stk)
 
 
 def run(code: str, io: IO) -> None:

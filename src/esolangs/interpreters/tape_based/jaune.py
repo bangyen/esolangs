@@ -25,7 +25,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, NamedTuple
+from typing import Literal
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -161,14 +161,7 @@ def _parse(code: str) -> list[_Command]:
 #: The commands and the label and subroutine tables stay out: Jaune parses
 #: its program once and never rewrites it, so a step is handed them rather
 #: than carrying them.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    cells: Chunked[int]
-    ptr: int
-    hold: int
-    pos: int
-    calls: tuple[int, ...]
+type _State = tuple[Chunked[int], int, int, int, tuple[int, ...]]
 
 
 def _set(cells: Chunked[int], ptr: int, value: int) -> Chunked[int]:
@@ -239,18 +232,18 @@ def _advance(
         if target is None:
             raise HaltError(f"jump to undefined label {cmd.arg}")
         if get(cells, ptr) != 0:
-            return _State(cells, ptr, hold, target, calls)
+            return (cells, ptr, hold, target, calls)
     elif c == "!":
         target = marks.get((":", cmd.arg))
         if target is None:
             raise HaltError(f"jump to undefined label {cmd.arg}")
         if get(cells, ptr) == 0:
-            return _State(cells, ptr, hold, target, calls)
+            return (cells, ptr, hold, target, calls)
     elif c == "@":
         target = marks.get(("$", cmd.arg))
         if target is None:
             raise HaltError(f"call to undefined subroutine {cmd.arg}")
-        return _State(cells, ptr, hold, target, (*calls, pos + 1))
+        return (cells, ptr, hold, target, (*calls, pos + 1))
     elif c in ("v?", "v!"):
         # The read names the label, so the operand is the digit just taken
         # rather than a parsed one.  The read happens whether or not the
@@ -263,23 +256,23 @@ def _advance(
         cell = get(cells, ptr)
         taken = cell != 0 if c == "v?" else cell == 0
         if taken:
-            return _State(cells, ptr, hold, target, calls)
+            return (cells, ptr, hold, target, calls)
     elif c == "v@":
         num = value if value is not None else 0
         target = marks.get(("$", num))
         if target is None:
             raise HaltError(f"call to undefined subroutine {num}")
-        return _State(cells, ptr, hold, target, (*calls, pos + 1))
+        return (cells, ptr, hold, target, (*calls, pos + 1))
     elif c == ";":
         if not calls:
             raise HaltError("; with no active subroutine call")
-        return _State(cells, ptr, hold, calls[-1], calls[:-1])
+        return (cells, ptr, hold, calls[-1], calls[:-1])
     elif c == ".":
-        return _State(cells, ptr, hold, len(commands), calls)
+        return (cells, ptr, hold, len(commands), calls)
     # ":" and "$" are positions rather than commands -- a label and a
     # subroutine definition -- so execution falls through them in place.
 
-    return _State(cells, ptr, hold, pos + 1, calls)
+    return (cells, ptr, hold, pos + 1, calls)
 
 
 class _Machine:
@@ -352,7 +345,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return _State(
+        return (
             self.cells,
             self.ptr,
             self.hold,

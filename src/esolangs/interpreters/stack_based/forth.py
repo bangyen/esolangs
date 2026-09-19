@@ -24,7 +24,6 @@ unsigned bytes; ``.`` prints the low byte (``& 0xFF``), so ``.`` on
 
 import sys
 from dataclasses import dataclass
-from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -67,15 +66,7 @@ class _Frame:
 #: scope the way completing it would, and only at the top level does it
 #: mean the run failed.  ``run`` reads it after the loop.
 type _Frames = tuple[_Frame, ...]
-
-
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    stack: tuple[int, ...]
-    table: dict[int, str]
-    frames: _Frames
-    error: bool
+type _State = tuple[tuple[int, ...], dict[int, str], _Frames, bool]
 
 
 def _top(stack: tuple[int, ...]) -> int:
@@ -100,14 +91,14 @@ def _finalize(state: _State) -> _State:
     while frames and frames[-1].pc >= len(frames[-1].code):
         frame = frames[-1]
         if frame.loop and _top(stack) != 0:
-            return _State(
+            return (
                 stack,
                 table,
                 (*frames[:-1], _Frame(frame.code, 0, loop=True)),
                 error,
             )
         frames = frames[:-1]
-    return _State(stack, table, frames, error)
+    return (stack, table, frames, error)
 
 
 def _abort(state: _State) -> _State:
@@ -119,9 +110,9 @@ def _abort(state: _State) -> _State:
     stack, table, frames, error = state
     top_level = len(frames) == 1
     frame = frames[-1]
-    ended = _State(stack, table, (*frames[:-1], _at(frame, len(frame.code))), error)
+    ended = (stack, table, (*frames[:-1], _at(frame, len(frame.code))), error)
     stack, table, frames, error = _finalize(ended)
-    return _State(stack, table, frames, error or top_level)
+    return (stack, table, frames, error or top_level)
 
 
 def _scan(frame: _Frame, add: str, sub: str) -> tuple[str, int] | None:
@@ -163,56 +154,52 @@ def _advance(state: _State, line: str | None = None) -> _State:
     char = frame.code[frame.pc]
     frames = (*frames[:-1], _at(frame, frame.pc + 1))
     frame = frames[-1]
-    state = _State(stack, table, frames, error)
+    state = (stack, table, frames, error)
 
     if "0" <= char <= "9":
-        return _State((*stack, ord(char) - 48), table, frames, error)
+        return ((*stack, ord(char) - 48), table, frames, error)
     if "A" <= char <= "F":
-        return _State((*stack, ord(char) - 55), table, frames, error)
+        return ((*stack, ord(char) - 55), table, frames, error)
     if char == ":":
-        return _State((*stack, _top(stack)), table, frames, error)
+        return ((*stack, _top(stack)), table, frames, error)
     if char == "~":
-        return _State((*stack[:-1], ~_top(stack)), table, frames, error)
+        return ((*stack[:-1], ~_top(stack)), table, frames, error)
     if char == ".":
         # The print already happened in the shell; this only pops.
         _top(stack)
-        return _State(stack[:-1], table, frames, error)
+        return (stack[:-1], table, frames, error)
     if char == ",":
         read = tuple(ord(ch) & 0xFF for ch in (line or ""))
-        return _State((*stack, *read), table, frames, error)
+        return ((*stack, *read), table, frames, error)
     if char == ";":
         scope = table.get(_top(stack), "")
-        return _State(stack[:-1], table, (*frames, _Frame(scope)), error)
+        return (stack[:-1], table, (*frames, _Frame(scope)), error)
     if char == "o":
-        return _State(tuple(reversed(stack)), table, frames, error)
+        return (tuple(reversed(stack)), table, frames, error)
     if char == "c":
         if len(stack) < 3:
             return _abort(state)
-        return _State((*stack[:-3], *stack[-2:], stack[-3]), table, frames, error)
+        return ((*stack[:-3], *stack[-2:], stack[-3]), table, frames, error)
     if char in "([{":
         sub = ")" if char == "(" else "]" if char == "[" else "}"
         found = _scan(frame, char, sub)
         if found is None:
             # The scan walked to the end without closing, and the original
             # left the cursor there before aborting.
-            ended = _State(
-                stack, table, (*frames[:-1], _at(frame, len(frame.code))), error
-            )
+            ended = (stack, table, (*frames[:-1], _at(frame, len(frame.code))), error)
             return _abort(ended)
         scope, pc = found
         frames = (*frames[:-1], _at(frame, pc))
-        state = _State(stack, table, frames, error)
+        state = (stack, table, frames, error)
         if char == "(":
             if _top(stack):
-                return _State(stack, table, (*frames, _Frame(scope)), error)
+                return (stack, table, (*frames, _Frame(scope)), error)
             return state
         if char == "[":
             if _top(stack):
-                return _State(
-                    stack, table, (*frames, _Frame(scope, 0, loop=True)), error
-                )
+                return (stack, table, (*frames, _Frame(scope, 0, loop=True)), error)
             return state
-        return _State(stack, {**table, _top(stack): scope}, frames, error)
+        return (stack, {**table, _top(stack): scope}, frames, error)
     if char in "+-*/%v":
         if len(stack) < 2:
             return _abort(state)
@@ -220,24 +207,24 @@ def _advance(state: _State, line: str | None = None) -> _State:
         rest = stack[:-2]
         # Both operands are consumed before the divisor is tested, so a
         # zero-divisor abort leaves the stack without them.
-        popped = _State(rest, table, frames, error)
+        popped = (rest, table, frames, error)
         if char == "+":
-            return _State((*rest, _wrap32(one + two)), table, frames, error)
+            return ((*rest, _wrap32(one + two)), table, frames, error)
         if char == "-":
-            return _State((*rest, _wrap32(one - two)), table, frames, error)
+            return ((*rest, _wrap32(one - two)), table, frames, error)
         if char == "*":
-            return _State((*rest, _wrap32(one * two)), table, frames, error)
+            return ((*rest, _wrap32(one * two)), table, frames, error)
         if char == "/":
             if two == 0:
                 return _abort(popped)
-            return _State((*rest, _wrap32(_trunc_div(one, two))), table, frames, error)
+            return ((*rest, _wrap32(_trunc_div(one, two))), table, frames, error)
         if char == "%":
             if two == 0:
                 return _abort(popped)
-            return _State((*rest, _wrap32(_trunc_mod(one, two))), table, frames, error)
+            return ((*rest, _wrap32(_trunc_mod(one, two))), table, frames, error)
         # The arm admits only ``+-*/%v`` and the other five are handled, so
         # this is ``v``: the swap.
-        return _State((*rest, two, one), table, frames, error)
+        return ((*rest, two, one), table, frames, error)
     return state
 
 
@@ -315,7 +302,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return _State(self.stack, self.table, self.frames, self.error)
+        return (self.stack, self.table, self.frames, self.error)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields."""
@@ -354,7 +341,7 @@ class _Machine:
                 found = _scan(frame, char, sub)
                 frame = _at(frame, found[1] if found else len(frame.code))
             frames = (*frames[:-1], frame)
-        self._restore(_State(stack, table, frames, error))
+        self._restore((stack, table, frames, error))
 
         line = None
         if char == ",":

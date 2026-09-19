@@ -21,7 +21,6 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys
-from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -44,16 +43,7 @@ _DIRECT = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 #: ``num`` is the underground counter ``$`` arms.  Every work command is
 #: inert unless it is positive, so it is what decides whether a cell is an
 #: instruction or scenery.
-class _State(NamedTuple):
-    """One instant of a run: ``(code, row, col, move, mole, num, done)``."""
-
-    code: tuple[str, ...]
-    row: int
-    col: int
-    move: int
-    mole: int
-    num: int
-    done: bool
+type _State = tuple[tuple[str, ...], int, int, int, int, int, bool]
 
 
 def _value(code: tuple[str, ...], row: int, col: int, size: int) -> int:
@@ -146,7 +136,7 @@ def _advance(
     elif char == "$":
         num = _value(code, row, col, size)
     elif char == "@":
-        return _State(code, row, col, move, mole, num, done=True)
+        return (code, row, col, move, mole, num, True)
 
     row += _DIRECT[move][0]
     col += _DIRECT[move][1]
@@ -154,7 +144,7 @@ def _advance(
     # Walking off the grid stops the program, without error.
     if row < 0 or row >= len(code) or col < 0 or col >= size:
         done = True
-    return _State(code, row, col, move, mole, num, done)
+    return (code, row, col, move, mole, num, done)
 
 
 class _Machine:
@@ -230,7 +220,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return _State(
+        return (
             self.code,
             self.row,
             self.col,

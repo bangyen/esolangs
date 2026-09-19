@@ -34,7 +34,7 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import NamedTuple, cast
+from typing import cast
 
 from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
@@ -185,12 +185,7 @@ def _number(code: str, ind: int, default: int | None) -> tuple[int | None, int]:
 #: slower.  Nothing shares a level, so there is no aliasing to preserve
 #: either: the transition names what it wants done to the tape and the
 #: shell does it.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    ind: int
-    comment: bool
-    axis: int
+type _State = tuple[int, bool, int]
 
 
 #: What a command wants done to the tape.  Every Dimensional command makes
@@ -259,28 +254,28 @@ def _advance(
     c = code[ind - 1]
 
     if comment:
-        return (_State(ind, c != "*", axis), None)
+        return ((ind, c != "*", axis), None)
     if c == "*":
-        return (_State(ind, comment=True, axis=axis), None)
+        return ((ind, True, axis), None)
     if c == ">":
         dim, ind = _number(code, ind, None)
-        return (_State(ind, comment, axis), _Move(dim, 1))
+        return ((ind, comment, axis), _Move(dim, 1))
     if c == "<":
         dim, ind = _number(code, ind, None)
-        return (_State(ind, comment, axis), _Move(dim, -1))
+        return ((ind, comment, axis), _Move(dim, -1))
     if c == "+":
-        return (_State(ind, comment, axis), _AddValue(1))
+        return ((ind, comment, axis), _AddValue(1))
     if c == "-":
-        return (_State(ind, comment, axis), _AddValue(-1))
+        return ((ind, comment, axis), _AddValue(-1))
     if c == ".":
         # The print already happened in the shell.
-        return (_State(ind, comment, axis), None)
+        return ((ind, comment, axis), None)
     if c in ",dx":
-        return (_State(ind, comment, axis), _SetValue(port if port is not None else 0))
+        return ((ind, comment, axis), _SetValue(port if port is not None else 0))
     if c == ":":
         if ind >= len(code):
             raise ValueError("':' must be followed by a character")
-        return (_State(ind + 1, comment, axis), _SetValue(ord(code[ind])))
+        return ((ind + 1, comment, axis), _SetValue(ord(code[ind])))
     if c == "=":
         if ind + 2 > len(code):
             raise ValueError("'=' must be followed by two hex digits")
@@ -288,32 +283,32 @@ def _advance(
             literal = int(code[ind : ind + 2], 16)
         except ValueError as exc:
             raise ValueError(f"invalid hex literal {code[ind : ind + 2]!r}") from exc
-        return (_State(ind + 2, comment, axis), _SetValue(literal))
+        return ((ind + 2, comment, axis), _SetValue(literal))
     if c == "$":
         wanted, ind = _number(code, ind, 2)
-        return (_State(ind, comment, max(2, wanted if wanted is not None else 2)), None)
+        return ((ind, comment, max(2, wanted if wanted is not None else 2)), None)
     if c == "[":
         if value() == 0:
-            return (_State(match[ind - 1] + 1, comment, axis), None)
-        return (_State(ind, comment, axis), None)
+            return ((match[ind - 1] + 1, comment, axis), None)
+        return ((ind, comment, axis), None)
     if c == "]":
-        return (_State(match[ind - 1], comment, axis), None)
+        return ((match[ind - 1], comment, axis), None)
     if c == "{":
         open_i = ind - 1
         dim, ind = _number(code, ind, 0)
         if coord(dim if dim is not None else 0) == 0:
-            return (_State(match[open_i] + 1, comment, axis), None)
-        return (_State(ind, comment, axis), None)
+            return ((match[open_i] + 1, comment, axis), None)
+        return ((ind, comment, axis), None)
     if c == "}":
-        return (_State(match[ind - 1], comment, axis), None)
+        return ((match[ind - 1], comment, axis), None)
     if c == "?":
         dim, ind = _number(code, ind, 0)
-        return (_State(ind, comment, axis), _FromCoord(dim if dim is not None else 0))
+        return ((ind, comment, axis), _FromCoord(dim if dim is not None else 0))
     if c == "!":
         dim, ind = _number(code, ind, 0)
-        return (_State(ind, comment, axis), _Clear(dim if dim is not None else 0))
+        return ((ind, comment, axis), _Clear(dim if dim is not None else 0))
     # any other character is not a command and is ignored
-    return (_State(ind, comment, axis), None)
+    return ((ind, comment, axis), None)
 
 
 class _Machine:
@@ -369,7 +364,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return _State(self.ind, self.comment, self.tape.axis)
+        return (self.ind, self.comment, self.tape.axis)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields.

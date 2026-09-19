@@ -19,12 +19,10 @@ from __future__ import annotations
 import re
 import sys
 from collections.abc import Sequence
-from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
-
 
 #: One instant of a run: ``(ind, ptr, cells, done)`` -- the code cursor, the
 #: data pointer, the tape, and whether ``@`` has halted the run.
@@ -35,38 +33,19 @@ from esolangs.interpreters.io import IO
 #:
 #: ``done`` stays out of ``snapshot``, which reports the three live fields
 #: plus the input cursor, in the order it always returned them.
-class _State(NamedTuple):
-    """One instant of a run."""
-
-    ind: int
-    ptr: int
-    cells: tuple[int, ...]
-    done: bool
-
+type _State = tuple[int, int, tuple[int, ...], bool]
 
 #: The one change a cell makes to the tape: ``("set", i, value)`` writes a
 #: cell, ``("insert", i, 0)`` grows the tape at ``i``, ``("delete", i, 0)``
 #: removes that cell, and ``None`` leaves the tape alone.  Named rather than
 #: applied so that recording a write does not copy the tape -- see
 #: :func:`_advance`.
-class _Edit(NamedTuple):
-    """The one change a cell makes to the tape; ``None`` leaves it alone."""
-
-    kind: str
-    at: int
-    value: int
-
+type _Edit = tuple[str, int, int] | None
 
 #: What executing one cell did: ``(ind, ptr, done, edit)``.  The cursors are
 #: already wrapped against the length the edit produces, so the shell can
 #: apply the edit and store the cursors without recomputing anything.
-class _Move(NamedTuple):
-    """What executing one cell did."""
-
-    ind: int
-    ptr: int
-    done: bool
-    edit: _Edit | None
+type _Move = tuple[int, int, bool, _Edit]
 
 
 def parse(code: str) -> list[int]:
@@ -136,38 +115,38 @@ def _advance(
     """
     char = chr(cells[ind])
     size = len(cells)
-    edit: _Edit | None = None
+    edit: _Edit = None
     if char == ">":
         ptr = (ptr + 1) % size
     elif char == "<":
         ptr = (ptr - 1) % size
     elif char == "+":
-        edit = _Edit("set", ptr, (cells[ptr] + 1) % 256)
+        edit = ("set", ptr, (cells[ptr] + 1) % 256)
     elif char == "-":
-        edit = _Edit("set", ptr, (cells[ptr] - 1) % 256)
+        edit = ("set", ptr, (cells[ptr] - 1) % 256)
     elif char == ",":
         # Reduced like ``+`` and ``-`` above: ``input_char`` returns a whole
         # code point, so an input line starting above U+00FF otherwise put
         # that code point into a cell the two arithmetic arms keep in
         # 0..255 -- and left it disagreeing with itself, since the next
         # ``+`` reduced what ``,`` had not.
-        edit = _Edit("set", ptr, (byte if byte is not None else 0) % 256)
+        edit = ("set", ptr, (byte if byte is not None else 0) % 256)
     elif char in "[]":
         ind = find(cells, ind, ptr)
     elif char == "@":
         # The run stops on the ``@`` itself, without wrapping past it.
-        return _Move(ind, ptr, done=True, edit=None)
+        return (ind, ptr, True, None)
     elif char == "#":
         ind += 1
     elif char == "{":
-        edit = _Edit("insert", ptr, 0)
+        edit = ("insert", ptr, 0)
         size += 1
         ind += 1
     elif char == "}":
-        edit = _Edit("delete", ptr, 0)
+        edit = ("delete", ptr, 0)
         size -= 1
         ptr %= size
-    return _Move((ind + 1) % size, ptr, done=False, edit=edit)
+    return ((ind + 1) % size, ptr, False, edit)
 
 
 class _Machine:
@@ -198,7 +177,7 @@ class _Machine:
     @property
     def state(self) -> _State:
         """The machine's fields as the value the old transition took."""
-        return _State(self._ind, self._ptr, tuple(self._cells), self._done)
+        return (self._ind, self._ptr, tuple(self._cells), self._done)
 
     @property
     def cells(self) -> tuple[int, ...]:
