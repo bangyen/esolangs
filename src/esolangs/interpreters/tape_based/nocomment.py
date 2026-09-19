@@ -15,6 +15,7 @@ raises.
 from __future__ import annotations
 
 import sys
+from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -24,6 +25,7 @@ from esolangs.interpreters.io import IO
 # The size is a host choice, and observable (cell 0 steps left to tape - 1),
 # so changing the default changes what wrapping programs do.
 _TAPE = 4096
+
 
 #: ``(ind, ptr, tape, stack, acc, dirty)``: an immutable value, rebound per
 #: step.  ``acc`` is the true cell under the pointer; while ``dirty``,
@@ -38,7 +40,15 @@ _TAPE = 4096
 #: ~66% of steps commit), and a ``bytes`` rebuild is one memcpy vs 4096
 #: pointer copies -- 32x over the 2637 commits of an 11-input decode
 #: (44.6ms -> 1.4ms).  Cells are mod-256, and ``bytes`` stays hashable.
-type _State = tuple[int, int, bytes, tuple[int, ...], int, bool]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    ind: int
+    ptr: int
+    tape: bytes
+    stack: tuple[int, ...]
+    acc: int
+    dirty: bool
 
 
 def _committed(state: _State) -> bytes:
@@ -80,7 +90,7 @@ def _advance(state: _State, code: str, size: int) -> _State:
         dirty = True
     elif char in "sb" and acc and stack:
         ind += stack[-1] if char == "s" else -stack[-1]
-    return (ind + 1, ptr, tape, stack, acc, dirty)
+    return _State(ind + 1, ptr, tape, stack, acc, dirty)
 
 
 class _Machine:
@@ -95,7 +105,7 @@ class _Machine:
         self.size = tape
         # ``halted`` is read twice per command; take the length once.
         self.length = len(code)
-        self.state: _State = (0, 0, bytes(tape), (), 0, False)
+        self.state: _State = _State(0, 0, bytes(tape), (), 0, dirty=False)
 
     # Views on the state.  ``tape`` and ``snapshot`` commit first.
 

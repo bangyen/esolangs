@@ -33,6 +33,7 @@ unconditionally.
 """
 
 from collections.abc import Sequence
+from typing import NamedTuple
 
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
 
@@ -63,8 +64,13 @@ _ROUTE_BACK = 23 - _W
 # :func:`slow_acv_mammalian`).
 _LEAF_SLOT = 256
 
+
 #: A machine state as the generator tracks it: array 0 and the accumulator.
-type _State = tuple[list[int], int]
+class _State(NamedTuple):
+    """A machine state as the generator tracks it."""
+
+    array: list[int]
+    acc: int
 
 
 def _seeded(array: Sequence[int], count: int) -> list[int]:
@@ -126,7 +132,12 @@ def _node(array: list[int], acc: int) -> tuple[list[str], _State, _State, int]:
         "LEAPFROG",
     ]
     loaded = _seeded(opened, j1 + _J2)
-    return tokens, ([*loaded, 0], first), ([*loaded, 1], first + 1), start - 15
+    return (
+        tokens,
+        _State([*loaded, 0], first),
+        _State([*loaded, 1], first + 1),
+        start - 15,
+    )
 
 
 def _trampoline(

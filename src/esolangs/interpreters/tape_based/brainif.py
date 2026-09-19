@@ -13,6 +13,7 @@ malformed-line rejection are the shell's.
 from __future__ import annotations
 
 import sys
+from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.persistent import (
@@ -25,17 +26,29 @@ from esolangs.interpreters.persistent import (
     put,
 )
 
+
 #: ``(ind, ptr, cells)``: an immutable value, rebound per step.  The
 #: parsed line is a parameter, not a field.
-type _State = tuple[int, int, Chunked[int]]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    ind: int
+    ptr: int
+    cells: Chunked[int]
+
 
 #: A line the transition can act on: ``(value, command, target)``.  ``None``
 #: stands for a blank line, which advances the cursor and nothing else.
 #: ``target`` is meaningful only for ``goto`` and is zero otherwise.
-type _Line = tuple[int, str, int] | None
+class _Line(NamedTuple):
+    """A parsed source line; ``None`` means a blank line."""
+
+    value: int
+    command: str
+    target: int
 
 
-def _parse(line: str) -> _Line:
+def _parse(line: str) -> _Line | None:
     """Return the parsed form of one source line, or raise if malformed.
 
     Commands are recognised by substring (the examples write ``increment``
@@ -53,14 +66,14 @@ def _parse(line: str) -> _Line:
             if name == "goto":
                 if len(arr) < 4:
                     raise ValueError("goto requires a target line")
-                return (value, "goto", int(arr[3]))
-            return (value, name, 0)
+                return _Line(value, "goto", int(arr[3]))
+            return _Line(value, name, 0)
     # A guarded line naming no command is inert but well-formed: it tests
     # the cell, does nothing, and falls through like any other line.
-    return (value, "", 0)
+    return _Line(value, "", 0)
 
 
-def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
+def _advance(state: _State, line: _Line | None, byte: int | None = None) -> _State:
     """Return the state after executing one parsed line.
 
     Pure; ``input``'s byte arrives as ``byte``.  The guard reads the cell
@@ -69,7 +82,7 @@ def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
     """
     ind, ptr, cells = state
     if line is None:
-        return (ind + 1, ptr, cells)
+        return _State(ind + 1, ptr, cells)
     value, command, target = line
     current = get(cells, ptr)
     if current == value:
@@ -89,7 +102,7 @@ def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
             ind = target - 2
         elif command == "input":
             cells = put(cells, ptr, byte or 0)
-    return (ind + 1, ptr, cells)
+    return _State(ind + 1, ptr, cells)
 
 
 class _Machine:
@@ -105,7 +118,7 @@ class _Machine:
         # ``halted`` is read twice per line -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
-        self.state: _State = (0, 0, chunked((0,)))
+        self.state: _State = _State(0, 0, chunked((0,)))
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.

@@ -38,7 +38,7 @@ for the bounded all-branches detector in :mod:`esolangs.vm`.
 
 import sys
 from dataclasses import dataclass
-from typing import cast
+from typing import NamedTuple, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -75,7 +75,14 @@ def _trunc2(n: int) -> int:
 #: ``(tape, loop, ptr, ind, rep)``: cells, loop-entry stack, pointer,
 #: cursor, repeat counter.  ``c`` multiplies ``rep`` by 7 and ``t`` by 3
 #: and the whole command runs that many times, so effects are a list.
-type _State = tuple[tuple[int, ...], tuple[int, ...], int, int, int]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    tape: tuple[int, ...]
+    loop: tuple[int, ...]
+    ptr: int
+    ind: int
+    rep: int
 
 
 @dataclass(frozen=True)
@@ -275,7 +282,7 @@ def _advance(
                 tape = _set(tape, ptr, int(str(line)))
             except ValueError:
                 raise _Halted(
-                    (tape, loop, ptr, ind, rep), effects, HaltError()
+                    _State(tape, loop, ptr, ind, rep), effects, HaltError()
                 ) from None
         elif c == "j":
             # ``j`` is answered with a character code, so this is already an int.
@@ -296,7 +303,7 @@ def _advance(
         elif c == "b":
             if not loop:
                 raise _Halted(
-                    (tape, loop, ptr, ind, rep),
+                    _State(tape, loop, ptr, ind, rep),
                     effects,
                     HaltError("unmatched 'b': the loop stack is empty"),
                 )
@@ -347,7 +354,7 @@ def _advance(
             if rep <= 0:
                 break
         elif c == "e":
-            return ((tape, loop, ptr, n, 0), effects)
+            return (_State(tape, loop, ptr, n, 0), effects)
         elif c == "v" and tape[ptr] != 0 and ind < n:
             c = prog[ind]
             ind += 1
@@ -373,7 +380,7 @@ def _advance(
             c = prog[ind] if found else _NUL
             ind = val
 
-    return ((tape, loop, ptr, ind, rep + 1), effects)
+    return (_State(tape, loop, ptr, ind, rep + 1), effects)
 
 
 class _Machine:
@@ -471,7 +478,7 @@ class _Machine:
                 # its cursor past the program; ``branching_halted`` then
                 # recognizes it without pretending the failed command ran.
                 tape, loop, ptr, _ind, rep = halt.state
-                successors.append((tape, loop, ptr, self.n, rep))
+                successors.append(_State(tape, loop, ptr, self.n, rep))
             else:
                 successors.append(next_state)
         return tuple(successors)
@@ -479,7 +486,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (self.tape, self.loop, self.ptr, self.ind, self.rep)
+        return _State(self.tape, self.loop, self.ptr, self.ind, self.rep)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields."""
@@ -507,7 +514,7 @@ class _Machine:
                     # a thing -- but the original had already advanced the
                     # cursor and spent a repeat, so write that much back.
                     tape, loop, ptr, ind, rep = start
-                    self._restore((tape, loop, ptr, ind + 1, max(rep - 1, 0)))
+                    self._restore(_State(tape, loop, ptr, ind + 1, max(rep - 1, 0)))
                     raise
                 reads = (*reads, value)
                 continue

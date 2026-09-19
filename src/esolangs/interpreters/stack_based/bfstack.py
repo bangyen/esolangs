@@ -14,13 +14,15 @@ empty-stack step first, and :func:`_forward_table` maps an unmatched
 from __future__ import annotations
 
 import sys
+from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
+
 #: One instant of a run: ``(ind, stk, lst)`` -- the code cursor, the data
-#: stack, and the loop stack.  A value, not a record: every transition below
-#: returns a new one rather than editing one in place, and both stacks are
+#: stack, and the loop stack.  A value, not a mutable record: every transition
+#: below returns a new one rather than editing one in place, and both stacks are
 #: tuples for the same reason.
 #:
 #: The loop stack is state, not a scratch register: a ``]`` reads the
@@ -30,7 +32,13 @@ from esolangs.interpreters.io import IO
 #: The code is deliberately not in here.  It does not change during a run,
 #: so carrying it would put constant data in every value the cycle detector
 #: stores.  It is a parameter to the transition instead.
-type _State = tuple[int, tuple[int, ...], tuple[int, ...]]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    ind: int
+    stk: tuple[int, ...]
+    lst: tuple[int, ...]
+
 
 #: The commands that read the top of the data stack, and so cannot run on
 #: an empty one.  ``>`` pushes and ``,`` pushes, so neither needs an
@@ -91,7 +99,7 @@ def _advance(
             ind = target if target is not None else ind
     elif char == "]":
         ind, lst = lst[-1] - 1, lst[:-1]
-    return (ind + 1, stk, lst)
+    return _State(ind + 1, stk, lst)
 
 
 class _Machine:
@@ -105,7 +113,7 @@ class _Machine:
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
         self._jumps = _forward_table(code)
-        self.state: _State = (0, (), ())
+        self.state: _State = _State(0, (), ())
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -176,7 +184,7 @@ class _Machine:
             # the bracket was unmatched, leaving the machine halted.  A
             # caller that catches the error still sees that, so the cursor
             # is moved here rather than left where the scan began.
-            self.state = (self.size, stk, lst)
+            self.state = _State(self.size, stk, lst)
             raise ValueError("unmatched '['")
         byte = None
         if char == ".":

@@ -15,7 +15,7 @@ proves it.
 
 import sys
 from collections.abc import Mapping
-from typing import Literal
+from typing import Literal, NamedTuple
 
 from esolangs.interpreters.io import IO
 
@@ -40,11 +40,28 @@ _HEADING: dict[str, _Heading] = {h: h for h in _MOVE}
 #: read-only ``Mapping``, not a frozen copy: freezing to a ``frozenset``
 #: turned a 0.1s test into 134s on thousand-cell grids.
 type _Grid = Mapping[tuple[int, int], int]
-type _State = tuple[_Grid, int, int, int]
+
+
+#: ``(grid, x, y, ip)``; ``visited`` is bookkeeping, not state.  A value,
+#: not a mutable record: every transition returns a new one.
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    grid: _Grid
+    x: int
+    y: int
+    ip: int
+
 
 #: ``(x, y, ip, paint)``, paint = ``(cell, colour)`` or None.  One write
 #: per step instead of a grid copy; :meth:`_Machine._restore` applies it.
-type _Move = tuple[int, int, int, tuple[tuple[int, int], int] | None]
+class _Move(NamedTuple):
+    """One step's position change and any paint it made."""
+
+    x: int
+    y: int
+    ip: int
+    paint: tuple[tuple[int, int], int] | None
 
 
 def _colour(grid: _Grid, cell: tuple[int, int]) -> int:
@@ -61,9 +78,9 @@ def _advance(state: _State, command: str) -> _Move:
     """
     grid, x, y, ip = state
     if command == "p":
-        return (x, y, ip, ((x, y), 0))
+        return _Move(x, y, ip, ((x, y), 0))
     if command == "P":
-        return (x, y, ip, ((x, y), 1))
+        return _Move(x, y, ip, ((x, y), 1))
 
     # Only a move if the lowercased character is a heading.
     heading = _HEADING.get(command.lower())
@@ -71,8 +88,8 @@ def _advance(state: _State, command: str) -> _Move:
         raise ValueError(f"unknown command {command!r}")
     dx, dy = _MOVE[heading]
     if (_colour(grid, (x + dx, y + dy)) == 1) == command.isupper():
-        return (x + dx, y + dy, ip, None)
-    return (x, y, ip, None)
+        return _Move(x + dx, y + dy, ip, None)
+    return _Move(x, y, ip, None)
 
 
 class _Machine:
@@ -137,7 +154,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (self.grid, self.x, self.y, self.ip)
+        return _State(self.grid, self.x, self.y, self.ip)
 
     def _restore(self, move: _Move) -> None:
         """Write a transition's result back onto the machine's fields.
@@ -178,7 +195,7 @@ class _Machine:
         if not self.prog:  # pragma: no cover - run() never steps an empty program
             return
         x, y, _ip, paint = _advance(self._state, self.prog[self.ip])
-        self._restore((x, y, (self.ip + 1) % len(self.prog), paint))
+        self._restore(_Move(x, y, (self.ip + 1) % len(self.prog), paint))
 
     def render(self) -> str:
         """Render the visited bounding box, marking the ant's cell.

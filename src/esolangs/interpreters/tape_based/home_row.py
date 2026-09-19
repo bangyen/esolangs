@@ -17,13 +17,15 @@ write buffer.
 from __future__ import annotations
 
 import sys
+from typing import NamedTuple
 
 from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
+
 #: One instant of a run: ``(ind, ptr, grid)`` -- the code cursor, the
-#: pointer, and the 25 cells.  A value, not a record: every transition below
-#: returns a new one rather than editing one in place, and the grid is a
+#: pointer, and the 25 cells.  A value, not a mutable record: every transition
+#: below returns a new one rather than editing one in place, and the grid is a
 #: ``tuple`` for the same reason.
 #:
 #: This is exactly what ``snapshot`` returns, and always has been, so the
@@ -32,7 +34,12 @@ from esolangs.interpreters.io import IO
 #: The code and its loop pairing are deliberately not in here.  Neither
 #: changes during a run, so carrying them would put constant data in every
 #: value the cycle detector stores.  They are parameters to the transition.
-type _State = tuple[int, int, tuple[int, ...]]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    ind: int
+    ptr: int
+    grid: tuple[int, ...]
 
 
 def _matches(code: str) -> tuple[dict[int, int], set[int]]:
@@ -96,7 +103,7 @@ def _advance(
                 ind = partner
         elif grid[ptr] != 0:
             ind = partner
-    return (ind + 1, ptr, grid)
+    return _State(ind + 1, ptr, grid)
 
 
 class _Machine:
@@ -110,7 +117,7 @@ class _Machine:
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
-        self.state: _State = (0, 0, (0,) * 25)
+        self.state: _State = _State(0, 0, (0,) * 25)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.

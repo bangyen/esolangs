@@ -20,6 +20,7 @@ end of the code.
 
 import re
 import sys
+from typing import NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -120,7 +121,14 @@ def find(code: str, ind: int) -> int:
 #:
 #: The code is not here: Sophie never rewrites itself, so a step is handed
 #: the program rather than carrying it.
-type _State = tuple[int, int, bool, tuple[int, ...], bool]
+class _State(NamedTuple):
+    """One instant of a run."""
+
+    acc: int
+    ind: int
+    skp: bool
+    stk: tuple[int, ...]
+    halted: bool
 
 
 def _advance(
@@ -166,7 +174,7 @@ def _advance(
     elif c == "{":
         ind = partners[ind]
     elif c == "&":
-        return (acc, ind, skp, stk, True)
+        return _State(acc, ind, skp, stk, halted=True)
     else:
         val = code[ind:]
         if m := re.match(r"@\$(\d+){", val):
@@ -180,7 +188,7 @@ def _advance(
             acc = ord(m[1])
             ind += m.end() - 1
 
-    return (acc, ind + 1, skp, stk, halted)
+    return _State(acc, ind + 1, skp, stk, halted)
 
 
 def _branch(
@@ -256,7 +264,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (self.acc, self.ind, self.skp, self.stk, self._halted_by_command)
+        return _State(self.acc, self.ind, self.skp, self.stk, self._halted_by_command)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields.

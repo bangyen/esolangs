@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
-from typing import cast
+from typing import NamedTuple, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -23,10 +23,26 @@ from esolangs.interpreters.randomness import Randomness, draw
 _DIRECTIONS = ((0, 1), (1, 0), (0, -1), (-1, 0))
 _RULD = (3, 0, 1, 2)
 _LURD = (1, 2, 3, 0)
-type _State = tuple[
-    int, int, int, int, tuple[tuple[int, int], ...], tuple[int, ...], bool, bool
-]
-type _Effect = tuple[str, int] | None
+
+
+class _State(NamedTuple):
+    """One instant of a run: ``(row, col, heading, pointer, cells, values, ...)``."""
+
+    row: int
+    col: int
+    heading: int
+    pointer: int
+    cells: tuple[tuple[int, int], ...]
+    values: tuple[int, ...]
+    last_digit: bool
+    done: bool
+
+
+class _Effect(NamedTuple):
+    """One output effect the transition requests: the kind and its value."""
+
+    kind: str
+    value: int
 
 
 #: The most outcomes one ``=`` may open in a branching search.  Its range is
@@ -87,7 +103,7 @@ def _advance(
     char_input: int | None = None,
     number_input: int | None = None,
     random_offset: int | None = None,
-) -> tuple[_State, _Effect]:
+) -> tuple[_State, _Effect | None]:
     """Return the pure next state and an output effect, if this cell emits."""
     row, col, heading, pointer, cells, values, last_digit, done = state
     if done:
@@ -101,9 +117,21 @@ def _advance(
         if command == "!":
             steps = 2
         elif command == "'":
-            return (row, col, heading, pointer, cells, values, False, True), None
+            return (
+                _State(
+                    row,
+                    col,
+                    heading,
+                    pointer,
+                    cells,
+                    values,
+                    last_digit=False,
+                    done=True,
+                ),
+                None,
+            )
         elif command == "#":
-            effect = ("num", value)
+            effect = _Effect("num", value)
         elif command == "$":
             _top(values)
             values = values[:-1]
@@ -151,7 +179,7 @@ def _advance(
                 chr(value)
             except ValueError:
                 raise HaltError from None
-            effect = ("char", value)
+            effect = _Effect("char", value)
         elif command == "/":
             heading = _RULD[heading]
         elif command == "\\":
@@ -198,7 +226,7 @@ def _advance(
     row += d_row * steps
     col += d_col * steps
     done = not (0 <= row < len(code) and 0 <= col < len(code[0]))
-    return (row, col, heading, pointer, cells, values, last_digit, done), effect
+    return _State(row, col, heading, pointer, cells, values, last_digit, done), effect
 
 
 class _Machine:
@@ -220,7 +248,9 @@ class _Machine:
         row, col, heading = (
             (*starts[0], 0) if starts else (len(self.code) - 1, width - 1, 2)
         )
-        self.state: _State = (row, col, heading, 0, (), (), False, False)
+        self.state: _State = _State(
+            row, col, heading, 0, (), (), last_digit=False, done=False
+        )
 
     @property
     def halted(self) -> bool:
