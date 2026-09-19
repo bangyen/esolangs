@@ -10,7 +10,6 @@ the shell owes; :func:`_load` is the pure half of a read.
 """
 
 import sys
-from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
 
@@ -20,51 +19,27 @@ _WIDTH = 8
 #: Mask of the print window, cells 0-7.
 _WINDOW = (1 << _WIDTH) - 1
 
+#: ``(code, tape, length, ptr, ind)``: an immutable value, rebound per step.
+#: The tape is an ``int`` bitvector, cell *i* at bit *i*: a flip is
+#: ``tape ^ (1 << ptr)``, O(1) and immutable (a tuple rebuilt per flip was
+#: 152x slower by tape 20000).  ``length`` is carried because trailing zeros
+#: are invisible in the int.  A plain tuple: ``NamedTuple`` construction is
+#: Python-level and this is built once per step (plain measured ~1.15x faster
+#: end-to-end on a 300k-step run).
+type _State = tuple[str, int, int, int, int]
 
-class _State(NamedTuple):
-    """An immutable Minifuck machine state.
-
-    The tape is an ``int`` bitvector, cell *i* at bit *i*: a flip is
-    ``tape ^ (1 << ptr)``, O(1) and immutable (a tuple rebuilt per flip was
-    152x slower by tape 20000).  ``length`` is carried because trailing zeros
-    are invisible in the int.
-    """
-
-    code: str
-    tape: int
-    length: int
-    ptr: int
-    ind: int
-
-    @property
-    def halted(self) -> bool:
-        """Whether the cursor has reached the end of the code."""
-        return self.ind >= len(self.code)
-
-    @property
-    def cells(self) -> list[int]:
-        """The tape as a list of bits, the shape callers and tests expect."""
-        return [(self.tape >> i) & 1 for i in range(self.length)]
-
-
-class _Effect(NamedTuple):
-    """What a pure step owes the outside world: at most one IO action.
-
-    ``char`` is the byte printed or ``None``; ``reads`` says the shell must
-    fetch a byte for :func:`_load`.
-    """
-
-    char: str | None = None
-    reads: bool = False
-
+#: What a pure step owes the outside world: ``(char, reads)``, ``char`` the
+#: byte printed or ``None``, ``reads`` meaning the shell must fetch a byte
+#: for :func:`_load`.
+type _Effect = tuple[str | None, bool]
 
 #: The effect of a step that does no IO, shared rather than rebuilt per step.
-_QUIET = _Effect()
+_QUIET: _Effect = (None, False)
 
 
 def _start(code: str) -> _State:
     """Return the initial state: an eight-cell tape at the origin."""
-    return _State(code, 0, _WIDTH, 0, 0)
+    return (code, 0, _WIDTH, 0, 0)
 
 
 def _pool(tape: int) -> int:
@@ -85,8 +60,9 @@ def _load(state: _State, byte: int) -> _State:
     The ``& ~_WINDOW`` is defensive (the window is already zero when this is
     called, 6016 calls checked); a mutant dropping it is equivalent, not a gap.
     """
+    code, tape, length, ptr, ind = state
     bits = sum(((byte >> (_WIDTH - 1 - i)) & 1) << i for i in range(_WIDTH))
-    return state._replace(tape=(state.tape & ~_WINDOW) | bits)
+    return (code, (tape & ~_WINDOW) | bits, length, ptr, ind)
 
 
 def _step(
@@ -135,23 +111,22 @@ def _advance(state: _State) -> tuple[_State, _Effect]:
 
     Pure; stepping a halted state is a no-op.
     """
-    if state.halted:
+    code, tape, length, ptr, ind = state
+    if ind >= len(code):
         return state, _QUIET
 
-    ins = state.code[state.ind]
-    tape, length, ptr, skipped, char, reads = _step(
-        ins, state.tape, state.length, state.ptr
-    )
+    ins = code[ind]
+    tape, length, ptr, skipped, char, reads = _step(ins, tape, length, ptr)
 
     # A collapsed ``[`` skips the next instruction, on top of the advance
     # every step makes.
-    ind = state.ind + (2 if skipped else 1)
+    ind = ind + (2 if skipped else 1)
 
     if char is not None:
-        return _State(state.code, tape, length, ptr, ind), _Effect(char=char)
+        return (code, tape, length, ptr, ind), (char, False)
     if reads:
-        return _State(state.code, tape, length, ptr, ind), _Effect(reads=True)
-    return _State(state.code, tape, length, ptr, ind), _QUIET
+        return (code, tape, length, ptr, ind), (None, True)
+    return (code, tape, length, ptr, ind), _QUIET
 
 
 class _Machine:
@@ -168,15 +143,16 @@ class _Machine:
     @property
     def tape(self) -> list[int]:
         """The tape as a list, the shape callers and tests expect."""
-        return self.state.cells
+        _, tape, length, _, _ = self.state
+        return [(tape >> i) & 1 for i in range(length)]
 
     @property
     def ptr(self) -> int:
-        return self.state.ptr
+        return self.state[3]
 
     @property
     def ind(self) -> int:
-        return self.state.ind
+        return self.state[4]
 
     # The VM's language-shaped view.  Minifuck is a binary tape walked by a
     # cursor: ``ip`` is that cursor, ``memory`` the cells, and there is no
@@ -187,12 +163,12 @@ class _Machine:
     @property
     def ip(self) -> int:
         """The code cursor."""
-        return self.state.ind
+        return self.state[4]
 
     @property
     def memory(self) -> list[int]:
         """The tape's cells."""
-        return self.state.cells
+        return self.tape
 
     @property
     def stack(self) -> list[object]:
@@ -202,22 +178,22 @@ class _Machine:
     @property
     def halted(self) -> bool:
         """Whether the cursor has reached the end of the code."""
-        return self.state.halted
+        return self.state[4] >= len(self.state[0])
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 
         ``length`` rides along, since trailing zeros are invisible in the int.
         """
-        state = self.state
-        return (state.tape, state.length, state.ptr, state.ind, self.io.position())
+        _, tape, length, ptr, ind = self.state
+        return (tape, length, ptr, ind, self.io.position())
 
     def step(self) -> None:
         """Execute one instruction, advancing the cursor."""
         state, effect = _advance(self.state)
-        if effect.char is not None:
-            self.io.print_char(effect.char)
-        elif effect.reads:
+        if effect[0] is not None:
+            self.io.print_char(effect[0])
+        elif effect[1]:
             state = _load(state, self.io.input_char())
         self.state = state
 
