@@ -178,6 +178,27 @@ def test_main_updates_all_registry_derived_docs(
     assert "language request template" in capsys.readouterr().out
 
 
+def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:
+    """The ``update_*`` writers splice the marked blocks, as generate.py does.
+
+    The sync tests call the renderers directly; this calls the writers against
+    a copy, so the code path ``scripts/generate.py docs`` runs is exercised and
+    not only the strings it produces.  An in-sync copy must round-trip
+    unchanged, which also pins the markers the writers index on.
+    """
+    module = load_script()
+    (tmp_path / "docs").mkdir()
+    readme = README.read_text()
+    usage = USAGE_DOC.read_text()
+    (tmp_path / "README.md").write_text(readme)
+    (tmp_path / "docs" / "usage.md").write_text(usage)
+    module.ROOT = tmp_path
+    module.update_readme()
+    module.update_usage()
+    assert (tmp_path / "README.md").read_text() == readme
+    assert (tmp_path / "docs" / "usage.md").read_text() == usage
+
+
 def test_readme_tui_frame_is_in_sync() -> None:
     """Regenerating the TUI screen leaves it unchanged.
 
