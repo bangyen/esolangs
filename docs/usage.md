@@ -18,7 +18,7 @@ esolangs.evaluate("A Painter Ant", "0110")  # -> '0110'
 esolangs.verify("Fargo", "10010110")  # -> True
 ```
 
-Both work for all 60 -- the four odd input shapes, the fifteen template
+Both work for all 59 -- the four odd input shapes, the fourteen template
 languages and the three that answer by diverging included. If you need the
 steps rather than the result, they are `generate`, `encode_inputs`, `run`,
 `read_answer`, below.

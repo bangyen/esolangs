@@ -18,7 +18,7 @@ One blind spot belongs to the harness rather than to any suite, and the
 is imported cannot be mutated**.  mutmut switches variants through a
 trampoline that reads its config at call time, and an import has already
 happened by then, so the original ran.  ``vm.py``'s ``_derived_adapter`` is
-the case -- ``_VM_ADAPTERS`` is a module-level comprehension over all 60
+the case -- ``_VM_ADAPTERS`` is a module-level comprehension over all 59
 languages -- and all 43 of its mutants survive, including ones that would
 raise on any call.  They are not a gap in the tests, which construct VMs
 for every language; they are unreachable by the tool.  Read a ``core``

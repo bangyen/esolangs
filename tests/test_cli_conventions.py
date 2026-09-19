@@ -95,7 +95,7 @@ class TestExamplesShipWithThePackage:
 class TestTheSpecIsReachable:
     """The best documentation here was reachable only by guessing.
 
-    Every one of the 60 interpreters carries a module docstring with the
+    Every one of the 59 interpreters carries a module docstring with the
     command table and, more usefully, where this implementation differs
     from the wiki page.  Nothing pointed at them: ``docs/`` has a
     capability matrix and two per-language notes, neither a spec, and
@@ -198,7 +198,7 @@ class TestWikiUrlsAreUsable:
         )
 
     def test_every_url_is_a_valid_path(self) -> None:
-        """No unescaped ``%`` or ``^`` anywhere in the 60, which is the rule."""
+        """No unescaped ``%`` or ``^`` anywhere in the 59, which is the rule."""
         for name in esolangs.list_languages():
             url = str(esolangs.describe(name)["wiki_url"])
             slug = url.removeprefix("https://esolangs.org/wiki/")
@@ -216,7 +216,7 @@ class TestWikiUrlsAreUsable:
 class TestPrintedCommandsCanBePasted:
     """The tool emitted commands it cannot itself parse.
 
-    Nine of the 60 names contain a space, and ``describe`` ends with
+    Nine of the 59 names contain a space, and ``describe`` ends with
     ``esolangs describe --spec A Painter Ant`` while the template hint
     offers ``esolangs generate --bits <bits> A Painter Ant <table>``.
     Copy-pasting either gives ``unexpected argument: 'Painter'``.

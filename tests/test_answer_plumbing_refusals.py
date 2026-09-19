@@ -293,7 +293,7 @@ class TestASuggestionIsWorthLessThanSilence:
     A wrong guess is worse than none: it sends the reader off to check a
     language they never meant.  0.65 is the lowest cutoff that suggests
     nothing for any of the junk below, and it rescues exactly as many real
-    typos as 0.6 did -- 265 of 269 single-edit slips across the 60 names.
+    typos as 0.6 did -- 265 of 269 single-edit slips across the 59 names.
     0.7 starts costing rescues.
 
     The numbers are recomputed below rather than quoted, so the constant
@@ -449,7 +449,7 @@ class TestATableLengthNamesTheNearestLegalOnes:
 
 
 class TestASurroundingSpaceResolves:
-    """59 of 60 names already tolerated one, and the one that did not.
+    """58 of 59 names already tolerated one, and the one that did not.
 
     ``canonical_id`` collapses runs of non-alphanumerics and strips the
     result, so a stray space fell out for almost every name.  The override
