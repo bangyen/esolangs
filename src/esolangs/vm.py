@@ -593,10 +593,10 @@ class VM(Protocol):
         """The current code/instruction position, language-shaped.
 
         An index, a coordinate tuple, or ``None`` once the agent is
-        consumed.  The tuple's arity is not stable within a run: six
+        consumed.  The tuple's arity is not stable within a run: five
         languages change shape (Flowchart and Super SNUSP to ``None``,
-        ``function x(y)`` to ``()``, APL, Forþ and COD growing and
-        shrinking -- COD through 4, 8, 12, 16 to 0), so size nothing to
+        ``function x(y)`` to ``()``, APL and Forþ growing and
+        shrinking), so size nothing to
         the initial arity; :meth:`~esolangs.debugger.Debugger.break_at`
         checks kind, not arity.  For the ten grid languages the leading
         components are row then column, never x then y; nine more report
@@ -866,7 +866,7 @@ def _derived_adapter(language: str) -> Callable[[str, str], _DelegatingVM]:
             state = getattr(module, "_Machine")  # noqa: B009
             # Seeded for reproducibility (the interpreter falls back to
             # ``secrets``); the seed is the machine's, since the first draw
-            # is a fact about the language (COD goes East, LaserFuck up).
+            # is a fact about the language (LaserFuck starts heading up).
             if "rng" in inspect.signature(state).parameters:
                 seed = getattr(state, "reproducible_seed", 0)
                 self._machine = state(code, self._io, rng=Seeded(seed))

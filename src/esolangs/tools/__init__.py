@@ -28,7 +28,6 @@ from esolangs.tools.parameterized import (
     bfpda,
     bio,
     bitdeque,
-    cod,
     eval,  # noqa: A004 - the language is named "Eval"
     home_row,
     minifuck,
@@ -88,7 +87,6 @@ __all__ = [
     "circlefuck",
     "circuit_diagram",
     "clockwise",
-    "cod",
     "collatz_multiverse",
     "container",
     "crement",

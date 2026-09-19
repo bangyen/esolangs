@@ -9,7 +9,6 @@ in :mod:`esolangs.tools.examples` reads the same constant, so the widths
 the generator lays and the text the fill substitutes cannot drift apart.
 """
 
-# Re-exported (``x as x``): this module is the import site for the family.
 from esolangs.tools.a_painter_ant import a_painter_ant
 from esolangs.tools.arrowqueue import (
     _MIDDLE as _MIDDLE,
@@ -46,7 +45,6 @@ from esolangs.tools.back import (
     _back_ordered as _back_ordered,
 )
 from esolangs.tools.back import back as back
-from esolangs.tools.cod import cod
 from esolangs.tools.eval_lang import (
     _eval_ordered as _eval_ordered,
 )
@@ -79,7 +77,6 @@ __all__ = [
     "bfpda",
     "bio",
     "bitdeque",
-    "cod",
     "eval",
     "minifuck",
     "minsky_swap",

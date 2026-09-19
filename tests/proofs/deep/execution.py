@@ -24,7 +24,7 @@ Where the bound sits, measured on both sides:
   look at most of the table, brainfuck's count being an arithmetic
   progression in the input count rather than the table's; Crement's
   ``5 n + 2`` tree walk measures x1.15 for the same reason) up to x2.06
-  (AddSubJump), with 123, S*bleq, Bitdeque, Collatz Multiverse and COD all
+  (AddSubJump), with 123, S*bleq, Bitdeque and Collatz Multiverse all
   within a percent of x2.00 -- a single pass over the table;
 * it has caught one construction for real.  Minsky Swap measured x2.29,
   with commands per table entry of 4.5, 4.0, 3.9, 4.5, 5.2, 6.1, 7.1, 8.0,
@@ -172,8 +172,8 @@ def exempt_generators() -> dict[str, str]:
     :data:`EXEMPT` plus the resource-ceiling rows of ``proofs.md`` and the
     roadmap audit rows whose execution-time cell is open, read from the
     documents the way ``linearity.py`` reads them: a generator that cannot
-    be built past a low arity cannot produce the rungs a slope needs; COD's
-    restored fork generator is the one the audit holds open.  Reading them
+    be built past a low arity cannot produce the rungs a slope needs.
+    Reading them
     means closing a cap row or an execution cell arms this contract against
     that generator with no edit here.
     """
@@ -321,7 +321,7 @@ def main() -> int:
     assert not unknown, f"exempt names no such generator: {unknown}"
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
-    assert len(measured) == len(BY_BOOLEAN) == 60, "not every generator was measured"
+    assert len(measured) == len(BY_BOOLEAN) == 59, "not every generator was measured"
 
     print(f"Execution contract: {len(measured)} generators, bound x{MAX_GROWTH}\n")
     print(f"  {'generator':30s} {'growth':>7s} {'commands':>9s}  where")

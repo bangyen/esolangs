@@ -28,7 +28,7 @@ body:
     attributes:
       label: Why this one
       description: >
-        What it adds that the current 60 do not — a computational model, an
+        What it adds that the current 59 do not — a computational model, an
         I/O shape, or a control-flow idea not already represented.
     validations:
       required: true

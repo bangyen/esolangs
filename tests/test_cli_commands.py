@@ -210,7 +210,6 @@ class TestASeedMakesARunRepeat:
             ).parameters
         ]
         assert drawing == [
-            "COD",
             "LaserFuck",
             "Modulous",
             "Painfuck",
@@ -888,12 +887,12 @@ class TestEvaluateNeedsNoSeed:
 
     @pytest.mark.parametrize(
         "language",
-        ["COD", "LaserFuck", "Modulous", "Painfuck"],
+        ["LaserFuck", "Modulous", "Painfuck"],
     )
     def test_a_drawing_language_evaluates_the_same_every_time(
         self, language: str
     ) -> None:
-        """The five that draw, less the slowest, four runs each."""
+        """The four that draw, less the slowest, four runs each."""
         answers = {esolangs.evaluate(language, "0110", timeout=30) for _ in range(4)}
         assert answers == {"0110"}
 

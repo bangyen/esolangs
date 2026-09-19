@@ -231,12 +231,6 @@ LANGUAGES: dict[str, Language] = {
         id="clockwise",
         split=True,
     ),
-    "COD": Language(
-        "COD",
-        boolean=_boolean.cod,
-        id="cod",
-        interpreter="grid_based.cod",
-    ),
     "Collatz Multiverse": Language(
         "Collatz Multiverse",
         "register_based.collatz_multiverse",

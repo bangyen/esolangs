@@ -37,7 +37,7 @@ class TestExamplesShipWithThePackage:
             for name in esolangs.list_languages()
             if esolangs.describe(name)["examples"]
         ]
-        assert len(populated) == 60
+        assert len(populated) == 59
 
     def test_every_reported_path_exists(self) -> None:
         """A path reported and absent is worse than none reported."""

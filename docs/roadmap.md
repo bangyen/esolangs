@@ -24,14 +24,10 @@ The candidate list is empty.
   table in a language's syntax is not a generator -- any language can be
   brute-forced -- so a row whose generator is one carries a clock: one
   more executed round, and if neither a construction nor a bound comes of
-  it the language leaves with its row. COD stays on the third
-  clause: four executed rounds together produced the model in its
-  searched-negatives paragraph (no
-  routing primitive, joins that leak a copy, a kill per zero-set per copy)
-  and no construction or bound.  A wall that has not been proved is not a
-  lookup table.
+  it the language leaves with its row.  A wall that has not been proved is
+  not a lookup table.
 
-  All 60 generators are audited on four axes.  Totality is the `proofs.md`
+  All 59 generators are audited on four axes.  Totality is the `proofs.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
   totality argument).  Output size is the registry-wide contract
   (`tests/proofs/deep/linearity.py`, per-entry cost to n=12).  Generation
@@ -49,7 +45,6 @@ The candidate list is empty.
 
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
-  | COD | Total | Open | Open | Open |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
@@ -59,14 +54,6 @@ The candidate list is empty.
   working sets across cubes) read x2.0--2.2, between the size contract's
   x2.15 and what these arities separate from noise; they are held linear
   until a wider measurement says otherwise.
-
-  Each open row's question, with the searched negatives in
-  [limitations](limitations.md#searched-negatives):
-
-  - COD, all three: a two-exit zero test on a block of `R` values in
-    `o(R)` cells with every stray cod dead (an input cell serves four
-    headings, so a level's fifth node lives in the value; a one-lane
-    node is eight commands but repeats the embed).
 
 - **Boolean generator conventions.**  Five conventions govern the *embed*,
   the text that stands for one input -- not the program around it.  A

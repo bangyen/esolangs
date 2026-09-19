@@ -413,7 +413,7 @@ def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
 
     ``rng`` supplies the initial direction (``randbelow(4)``: 0=up, 1=down,
     2=left, 3=right) and each ``*`` split; ``None`` draws for real.  Same
-    signature as COD.
+    signature as the other drawing interpreters.
     """
     machine = _Machine(code, io, rng)
     while not machine.halted:

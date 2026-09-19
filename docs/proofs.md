@@ -74,7 +74,7 @@ ceiling is one named constant; reaching it refuses, never truncates.  A
 construction that is polynomial in the table and inside the budget gets no
 ceiling: super-linear growth there is an open roadmap cell for the linearity
 contract to hold, and a ceiling would hide it.  A refusal with no lift
-argument is `exception`, not `cap`.  Audited across all 60:
+argument is `exception`, not `cap`.  Audited across all 59:
 every other arity threshold is a route switch to a total construction or an
 unreachable invariant guard.
 
@@ -122,7 +122,7 @@ table.
 
 ## Generator ledger
 
-The names are the 60 callable entries indexed by `BY_BOOLEAN`.  Rows sharing a
+The names are the 59 callable entries indexed by `BY_BOOLEAN`.  Rows sharing a
 proof scheme share the proof above; the qualification column records the
 language-specific final step or an exception.  `cap` means theoretically total
 after ignoring the performance/resource ceiling as specified above.
@@ -159,7 +159,6 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Circlefuck | tree | its local shape guard is equivalent to the shared guard | linear, time n log: essential-input byte compare; greedy candidate's walk |
 | Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) |
 | Clockwise | tree | finite grid layout | linear: alternating rectangle of area O(T), exits in walk order |
-| COD | parameterized tree | each input's run sets the cod's value at its own fork box, once; the leaf cascade prints the entry | open: a level's zero test spends Theta(R) cells per block of R values |
 | Collatz Multiverse | tree | finite cell placement | linear: folded tree, shortest names deepest, flat appends |
 | Container | finite lookup | the reversed table is one decimal literal divided by ten in a fixed two-bank network | linear: one T-digit literal in a fixed network |
 | Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, and a folded subtree targets the shared self-jump or the line past the end | linear: 3(T - 1) + 2n + 3 lines, span walk |
@@ -253,6 +252,6 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 60 theoretical totality arguments and zero
+Accordingly, this ledger records 59 theoretical totality arguments and zero
 open exceptions; every row is `Total` or theoretically total past a resource
 ceiling.

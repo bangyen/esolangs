@@ -193,7 +193,6 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Bitdeque": ("PUSH INVERT", ""),
     "BrainIf": ("if 0 output", ""),
     "brainfuck": ("+++[>+++<-]>.", ""),
-    "COD": ("~~~~~\n~>))---", ""),
     "Circlefuck": ("+.@", ""),
     "Circuit Diagram": (CIRCUIT_PRIME_TESTER, bits_of(7)),
     "Clockwise": ("+;S;S;S;S;S;+;R\nR             R", ""),

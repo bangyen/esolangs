@@ -152,8 +152,8 @@ _STEP_CAP = int(os.environ.get("LEAKSWEEP_STEP_CAP", 0)) or 20000
 _CAP_LADDER = (10, 100, 1000, _STEP_CAP)
 
 # The cap is not what makes `--all` expensive, and lowering it would not
-# help: the slow languages cost per *step*, not per step count.  Four of them
-# (COD, Factor, Painfuck, Suptiftam) exceed any cap worth setting, and the
+# help: the slow languages cost per *step*, not per step count.  Three of them
+# (Factor, Painfuck, Suptiftam) exceed any cap worth setting, and the
 # subprocess timeout is what actually bounds them -- Factor because
 # `make_vm` factorizes before a single step runs, in uninterruptible C a
 # SIGALRM cannot land on.  The cap stays 20000, and the ladder above means
@@ -233,7 +233,7 @@ def _drive(lang: str, program: str, stdin: str, cap: int) -> bool:
 #: *combined* at the last count, and the slowest language that finishes at
 #: all is AddSubJump at 4.7s.  30s is therefore ~6x the real maximum --
 #: room for a slower machine without letting a wedged language cost
-#: minutes.  The languages that exceed it (COD, Factor, Painfuck) are not
+#: minutes.  The languages that exceed it (Factor, Painfuck) are not
 #: slow-but-valid: they are unbounded work, and no larger number collects
 #: them.
 _LANG_TIMEOUT = 30.0
