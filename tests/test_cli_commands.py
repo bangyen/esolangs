@@ -509,7 +509,7 @@ class TestTheAnswerCommandDoesOneRow:
     def test_it_supplies_a_bound_for_a_diverging_language(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """A one-liner that needs a flag for three of sixty is not one."""
+        """A one-liner that needs a flag for a diverging language is not one."""
         assert call_main(["answer", "123", "0110", "01"], capsys).strip() == "1"
         assert call_main(["answer", "123", "0110", "00"], capsys).strip() == "0"
 
@@ -517,7 +517,7 @@ class TestTheAnswerCommandDoesOneRow:
     def test_it_agrees_with_evaluate_everywhere(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Row by row against the whole-table command, for all sixty."""
+        """Row by row against the whole-table command, for every language."""
         table = "0110"
         for name in esolangs.list_languages():
             for row, bits in enumerate(("00", "01", "10", "11")):

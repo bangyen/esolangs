@@ -55,7 +55,7 @@ EXITS = {"container"}
 #
 # :func:`test_boolean_example` runs a committed program to completion with no
 # step cap, which is right for every other language and fatal for these
-# three: a file holding the looping branch does not fail, it hangs the
+# two: a file holding the looping branch does not fail, it hangs the
 # suite with no diagnostic.  Nothing about the entry forces the halting row
 # -- ``bits`` is just data, and a wrong one regenerates a looping file --
 # so :func:`test_halt_convention_examples_halt` checks the committed
@@ -116,9 +116,9 @@ def test_boolean_examples_cover_every_committed_file() -> None:
 def test_halt_convention_examples_halt(name: str) -> None:
     """The committed program of a halt-convention language terminates.
 
-    These three answer with termination rather than output, so the
-    committed file is the halting (0) branch; ArrowQueue and Point Break
-    print nothing on it, and 123's junk write-bytes are ignored.
+    These two answer with termination rather than output, so the
+    committed file is the halting (0) branch; ArrowQueue prints nothing on
+    it, and 123's junk write-bytes are ignored.
     :func:`test_boolean_example` then runs it with no step cap -- which
     turns a file holding the *looping* branch into a hung suite rather
     than a failure, with nothing to say which file did it.
@@ -140,10 +140,8 @@ def test_halt_convention_examples_halt(name: str) -> None:
 def _halts(name: str, program: str, _inputs: list[str]) -> bool:
     """Whether ``name``'s committed program terminates, by cycle detection.
 
-    ``inputs`` are the example's own stdin lines: 123 and ArrowQueue embed
-    their bits and read nothing, but Point Break reads its two with ``?``,
-    so running it on an empty stdin raises ``EOFError`` instead of
-    answering the question this test asks.
+    ``inputs`` are the example's own stdin lines: both languages embed
+    their bits and read nothing.
     """
     from esolangs.vm import run_until_halt_or_cycle
 
@@ -192,8 +190,8 @@ def test_every_boolean_generator_has_an_example() -> None:
 #
 # The input-reading languages take their bits on stdin; the parameterized
 # ones (see ``esolangs.tools.parameterized``) have the bits embedded
-# in the program text and read no input.  ArrowQueue and Point Break have no
-# output at all: their result is the halt-vs-loop convention, so only the
+# in the program text and read no input.  The halt-convention languages have
+# no output at all: their result is the halt-vs-loop convention, so only the
 # terminating (`0`) branch is committed -- the `1` branch loops forever by
 # definition and is not executed.
 BOOLEAN_EXAMPLES = {

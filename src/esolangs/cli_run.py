@@ -92,7 +92,7 @@ def _run(rest: list[str]) -> None:
                 f"that the program never stops, so there is nothing to wait "
                 f"for without a bound"
             )
-        # The default path for these three is an unbounded run of a program
+        # The default path for these four is an unbounded run of a program
         # written to loop forever, which is a hang with no output and no
         # explanation.  Not refused -- a program whose answer is 0 halts,
         # and running one unbounded is perfectly sensible -- but said aloud.
@@ -174,7 +174,7 @@ def _run(rest: list[str]) -> None:
             sys.exit(_TIMEOUT_EXIT)
         # Distinct from a program error's 1, following timeout(1), so a
         # script can tell "ran out of time" from "the program broke".  Those
-        # shared exit 1, which made the three termination languages'
+        # shared exit 1, which made the four termination languages'
         # answer indistinguishable from a crash.
         _emit_partial(exc)
         _fail(str(exc), _TIMEOUT_EXIT)

@@ -162,9 +162,10 @@ out, 130 interrupted.
 
 options:
   --timeout SECONDS  stop the run after this long rather than hanging.
-                     Unbounded by default.  Three languages answer 1 by
-                     *not* terminating -- 123, ArrowQueue and Point Break
-                     -- so a timeout there is the answer, not a failure.
+                     Unbounded by default.  Four languages answer 1 by
+                     *not* terminating -- 123, ArrowQueue, Crement and
+                     Vandevelo -- so a timeout there is the answer, not a
+                     failure.
   --seed N           fix the random draws so the run repeats.  Four
                      languages draw: LaserFuck,
                      Modulous, Painfuck and Super SNUSP.  A seed
@@ -174,10 +175,10 @@ options:
                      the bit *count* to the stdin check, which a shape
                      check cannot do alone: three lines fed to a two-input
                      program is only wrong relative to an arity.
-  --judge            print the answer bit instead of the raw output.  Nine
+  --judge            print the answer bit instead of the raw output.  Ten
                      languages do not simply print it -- six dump their
-                     whole final state, three answer by terminating -- and
-                     those three need `--timeout`.
+                     whole final state, four answer by terminating -- and
+                     those four need `--timeout`.
 
 examples:
   printf '1\n0\n' | esolangs run brainfuck prog.txt
@@ -198,13 +199,13 @@ mis-encoded: the bits go in as bits.
   esolangs answer Fargo 10010110 101       -> 1
   esolangs answer "A Painter Ant" 0110 01  -> 1
 
-Works for every language, including the seventeen whose generators embed
-their inputs, the six that dump their whole final state, and the three that
+Works for every language, including the fourteen whose generators embed
+their inputs, the six that dump their whole final state, and the four that
 answer by not terminating -- for those a bound is needed, and the default
 below is applied.
 
 options:
-  --timeout SECONDS  bound the run.  Defaults to 5 seconds for the three
+  --timeout SECONDS  bound the run.  Defaults to 5 seconds for the four
                      languages whose answer for a 1 is that the program
                      never stops, and to none for the rest.
 """,
@@ -223,7 +224,7 @@ A generator may refuse a table as too big for it; that is reported and
 exits 2, since nothing ran.
 
 options:
-  --timeout SECONDS  bound each row.  The three languages that answer 1 by
+  --timeout SECONDS  bound each row.  The four languages that answer 1 by
                      not terminating do *not* pay it per 1-row: those rows
                      are settled by a repeated machine state, which proves
                      the loop in microseconds, so the bound is only the
@@ -246,7 +247,7 @@ Print the truth table a generated <language> program actually computes.
 `verify` with the comparison left to you: the output is a binary string the
 same length as <truth-table>, so a mismatch shows which rows disagree
 rather than collapsing to a yes or no.  Exits 0 whenever the program ran,
-and 124 when --timeout stopped it -- which for the three languages that
+and 124 when --timeout stopped it -- which for the four languages that
 answer by not terminating is the answer rather than a fault.
 
 examples:
@@ -265,8 +266,8 @@ out of range.
 
 Without --table it judges *shape*, and for most languages a shape is not a
 count.  Clockwise wants every bit on one line; Fargo wants one row index.
-For those two a stray line is a shape error and is caught.  Of the other
-sixty-seven, sixty-six read a line per bit and Taglate reads a line per
+For those two a stray line is a shape error and is caught.  Of the rest,
+every language but Taglate reads a line per bit; Taglate reads a line per
 bit plus a padding one -- and for all of them one line, three lines and no
 lines at all are equally well shaped.  An empty stdin passes `check-stdin
 brainfuck`, which is the trap worth naming: only --table knows how many
@@ -295,7 +296,7 @@ of this tool, and the only place they were readable was a Python session.
 options:
   --spec      print the interpreter's own description of the language: its
               command table, and where this implementation differs from the
-              wiki page.  Every one of the 60 carries one, they run to a
+              wiki page.  Every language carries one, they run to a
               few thousand characters, and they are the best documentation
               here for *writing* a program rather than generating one.
   --json      print `esolangs.describe` verbatim as JSON.  The default
@@ -303,7 +304,7 @@ options:
               prints as `0 1` with no way back to two values, an empty
               field is dropped rather than shown as empty, the closing
               `input` line is a sentence this command composes and not a
-              key at all, and for the seventeen template languages
+              key at all, and for the fourteen template languages
               `input_shape` and `input_encoding` are left out entirely --
               they describe an stdin those programs never read, and the
               `input` line says so instead.  --json is the dict, exactly,
@@ -326,7 +327,7 @@ register three lines from the end, A Painter Ant's as the mark on the ant's
 own cell (`o` for 0, `@` for 1) somewhere in an eleven-line grid.  Working
 that out by hand meant generating all four rows and diffing them.
 
-The three languages that answer by terminating have no output to read, so
+The four languages that answer by terminating have no output to read, so
 they are refused here and named: use `run --judge --timeout S` instead.
 
 examples:
@@ -357,7 +358,7 @@ options:
   --break-on-cell I=V  stop while memory cell I still holds V.
   --timeout SECONDS    stop the run after this long, reporting
                        `stopped: timeout`.  Like --steps this bounds a
-                       program that never halts, which is what the three
+                       program that never halts, which is what the four
                        terminate-as-answer languages are.
   --stdin TEXT         feed TEXT to the program as its input, one line per
                        newline.  The only way to give a debugged program

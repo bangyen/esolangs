@@ -111,8 +111,8 @@ def _reads(entry: tuple, table: str) -> int:
 
     Driven through :func:`run_until_halt_or_cycle` where the interpreter
     exposes a stepping machine.  Some of these programs never terminate by
-    design -- Point Break's convention is to halt iff the function is 0 and
-    loop forever iff it is 1 -- and waiting those out against an
+    design -- the termination convention is to halt iff the function is 0
+    and loop forever iff it is 1 -- and waiting those out against an
     interpreter's step cap costs seconds each, which this sweep pays on
     every pytest invocation.  A deterministic machine that revisits its
     exact state has provably looped, so the detector stops it at once: the
