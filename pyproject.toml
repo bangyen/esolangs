@@ -92,19 +92,34 @@ select = [
     "SLF", # private member access
 ]
 ignore = [
-    "C901",  # too complex
     "D203",  # conflicts with D211 (blank line before class)
     "D213",  # conflicts with D212 (multi-line summary placement)
 ]
 
+# Cyclomatic complexity is gated on the verification tooling only.  An
+# interpreter's branch count tracks the language it implements -- grid and
+# tape machines dispatch per cell, generators per opcode -- so a blanket
+# ceiling would either be vacuous or force those apart.  scripts/ is the
+# branchy logic written by hand, where the count measures something.  The
+# ceiling is the mccabe default; a step over it needs extracting, not an
+# exemption.  ruff enforces it wherever it runs: pre-commit, `just lint`, and
+# so every `just test`.
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+# See the mccabe note above: the complexity gate covers scripts/ only, so the
+# package is exempt from C901.
+"src/**/*.py" = ["C901"]
 # The leak sweep imports the package under test, so it has to extend
 # sys.path before those imports can resolve.
 "scripts/verify_no_exception_leaks.py" = ["E402"]
 # Test files are exempt from docstring requirements: test method and class
-# names are self-documenting, so the D rules would only add boilerplate.
-"tests/**/*.py" = ["D", "N802"]
+# names are self-documenting, so the D rules would only add boilerplate.  They
+# are exempt from the complexity gate for the same reason as src/ (see the
+# mccabe note): a test's branches mirror the cases it pins.
+"tests/**/*.py" = ["C901", "D", "N802"]
 # CV(N)(C)'s source code *is* IPA, so the ambiguous-unicode rules fire on
 # every command in the language: the fricative is U+03B8 GREEK SMALL LETTER
 # THETA, the multiplication plosive U+0261 LATIN SMALL LETTER SCRIPT G, and
