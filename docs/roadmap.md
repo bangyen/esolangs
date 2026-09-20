@@ -108,7 +108,12 @@ implemented, so never in the screen.
   the lower bound for every cofactor and operand sign.  The uncapped
   residual-DAG construction has `O(T/log T)` instructions and expands to the
   matching upper bound.  The public generator's resource cap remains, and no
-  matching construction-time upper bound is claimed.  See
+  matching construction-time upper bound is known: packed expansion is
+  between its `Omega(T**2/log T)` output cost and the conservative
+  `O(T**4/log T)` schoolbook bound.  Cold parsing is polynomial while the
+  fixed-field peel takes every generated factor, but the uncapped asymptotic
+  family eventually reaches the exponential-worst-case Zassenhaus fallback.
+  See
   [polynomial](polynomial.md) and `tests/proofs/deep/multiplicity.py`.
 
   Generation time, growth per added input at the top arity: B-tapemark,
