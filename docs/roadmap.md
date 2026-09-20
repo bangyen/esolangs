@@ -164,9 +164,9 @@ implemented, so never in the screen.
   the apparent gain.
 
 - **Raster source integration.**  `SourceKind`, an RGB-preserving public
-  `Raster`, and a Brainloller raster/Brainfuck adapter establish the source
-  boundary without changing `RUNNERS`.  Admit Piet only with `line` registered,
-  so an image source has two interpreter consumers.  `generate`
+  `Raster`, and the unimplemented Line language establish the source boundary
+  without changing `RUNNERS`.  Admit Piet only with `line` registered, so an
+  image source has two interpreter consumers.  `generate`
   (`__init__.py:143`) is typed `-> str` and wraps through `wrap_program`; a
   raster language reads rather than embeds, so it must return the generator's
   `Raster` untouched and skip the string path, widening the return type
@@ -184,11 +184,8 @@ implemented, so never in the screen.
 - **Image-source candidates.**  A read of the 129 `Category:Non-textual` pages
   for raster sources only -- music (Fugue, Velato), music-note, and
   steganography pages excluded.  Verdicts are spec reads, not executed
-  generators.  For the source kind above: Braincopter (2005) first, a PNG
-  Brainfuck clone whose opcode is `(65536R + 256G + B) % 11` and whose
-  generator is a palette render of the registered `brainfuck` generator
-  (`tools/tape.py:63`) -- the cheapest second consumer; Brainloller (2005),
-  its fixed-RGB-palette sibling, is the same interpreter landed first.
+  generators.  Brainloller and Braincopter are already implemented and not
+  popular enough to clear the collection's alternative admission route.
   Deferred: Bytemap (2012, source and data the same self-modifying grid, no
   interpreter yet) and Gifunk (2021, APNG/GIF fungeoid whose IP crosses frames)
   are the
