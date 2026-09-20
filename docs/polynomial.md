@@ -688,27 +688,38 @@ What is still forced: the program is a multiple of its distinct-root product,
 so the theorem gives `Omega(L'**2 log L')` for `L'` distinct real roots, and
 the multiplicity contributes mass of its own -- `mass((x-2)**M) / M**2 = 0.365`
 measured at `M = 10..160`, and complex cofactors do not cancel it
-(`(x-2)**M (x**2+1)**K` and `(x-2)**M (x**2-2x+2)**M` both grow).  `M = Omega(m)` total real roots with `m = Omega(T/log T)` instruction roots (a routing
-floor on distinct *primes*, stronger than the position count), so the
+(`(x-2)**M (x**2+1)**K` and `(x-2)**M (x**2-2x+2)**M` both grow).  `m = Omega(T/log T)` real instruction positions (the routing floor above), so the
 unconditional language bound is `Omega(T**2 / log**2 T)`: the confluent
 slack certificate (below) prices multiplicity as `Omega(m**2)`, giving the
 same order whether the roots are distinct or repeated.
 
 The stronger `Omega(T**2 / log T)` needs the **sharpened routing lemma**:
-`N'(k+1) <= 2 * L_real + E(k)`, where `L_real` is the number of distinct
-*real* instruction-root values, not instruction positions or blocks.  The
-block lemma counts distinct primes (each a distinct root, real or complex),
-but a complex-only block can host the routed read, and a real block can be
-re-entered at several cursors -- the language has loops: codes `5..8` are
-loop brackets (`_advance` jumps a closing bracket back to its opener when the
-opener's code exceeds 4, executed on `[1,1],[5],[1,1],[2],[0,1]`, which
-spins), and `convert` emits code `5..8` for a real root `p**5..p**8`, so one
-real instruction value can serve many reads.  Hence `L_real = o(#blocks)` is
-not excluded, and the extra `log` rests entirely on the sharpened routing
-lemma, which is open; the roadmap and the ledger record the row `Open` and
-carry `Omega(T**2 / log**2 T)` as the proved bound.  The complex escape
-cannot substitute: Round 4 of the offline work refuted the natural
-complex-node certificate with an exact counterexample (nodes
+`N'(k+1) <= c * L_real + E(k)`, where `L_real` is the number of distinct
+*real* instruction-root values, not instruction positions.  The routing floor
+above is stated on positions (`m_r`); since the distinct-root theorem bounds
+*every multiple* of the distinct-root product, `L_real = Omega(T/log T)` alone
+would upgrade the row.  It is open, and the current row does not need it: the
+confluent certificate prices multiplicity, so `Omega(T**2 / log**2 T)` stands
+without it.
+
+The obstacle is loop re-entry.  Codes `5..8` are loop brackets (`_advance`
+jumps a closing bracket back to its opener when the opener's code exceeds 4,
+executed on `[1,1],[5],[1,1],[2],[0,1]`, which spins), and `convert` emits
+code `5..8` for a real root `p**5..p**8`; a value whose test is re-entered can
+see several registers, so one value can serve several residuals and
+`L_real = o(#blocks)` is not excluded.  What is executed
+(`tests/proofs/deep/multiplicity.py`, `_check_routing`, `_check_loops`): each
+real instruction has exactly two successors, fixed by its bracket and
+independent of the register; two same-value positions in one block (a repeated
+root `(x - p**v)**r` emits `r` copies) see one register per visit and collapse
+to the same traces, so multiplicity adds no routing power; and the shipped
+generator has `L_real` within a constant of `m` (`n=3` is 10 against 12,
+`n=4` is 22 against 22), with no value reaching 3 successors.  The remaining
+step is the first-divergence injection -- distinct level-`(k+1)` residuals
+into `(value, successor)` pairs over all inputs and entries -- which the
+several cursors at which one value can be entered leave unproved.  The
+complex escape cannot substitute: Round 4 of the offline work refuted the
+natural complex-node certificate with an exact counterexample (nodes
 `1/(2 +- 2i)`, `1/(-2 +- 49i)`, tail/bound up to 69.4).
 
 **The confluent certificate (multiplicity is free of the extra hypothesis).**
