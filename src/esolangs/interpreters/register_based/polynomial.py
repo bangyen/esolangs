@@ -24,11 +24,25 @@ import math
 import re
 import sys
 from collections.abc import Callable, Iterator, Sequence
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
-import sympy as sp
+try:
+    import sympy as sp
+except ModuleNotFoundError:  # optional ``math`` extra
+    sp = None
 
+from esolangs.exceptions import MissingDependencyError
 from esolangs.interpreters.io import IO
+
+
+def _require_sympy() -> Any:
+    """Return SymPy or name the extra that installs it."""
+    if sp is None:
+        raise MissingDependencyError(
+            "Polynomial requires optional mathematics support; "
+            "install it with `pip install 'esolangs[math]'`"
+        )
+    return sp
 
 
 class _Root(NamedTuple):
@@ -373,6 +387,7 @@ def _quadratic_candidates_ntt(
     Spurious pairs survive at the product of the densities (~0.2% on dense
     n=10) and die in trial division.
     """
+    sp = _require_sympy()
     field_data = []
     for (modulus, _, _, generator), roots in zip(_NTT_FIELDS, root_sets, strict=True):
         mask = 0
@@ -538,6 +553,7 @@ def _peel_instruction_quadratics(
     if len(coefficients) < 3:
         return [], coefficients
 
+    sp = _require_sympy()
     modulus = _PEEL_MODULUS
     x = sp.Symbol("x")
     try:
@@ -605,6 +621,7 @@ def _peel_prime_power_roots(
     At large degree the ``screen`` (root of the original mod the NTT fields)
     gates the Horner: 14.6K probes -> ~170 on dense n=8, 48.7s -> under 1s.
     """
+    sp = _require_sympy()
     found: list[int] = []
     limit = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
     # As above: the range always outlasts `limit`, so this ends on the `break`.
@@ -644,6 +661,7 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
     program usually nothing.  Past :data:`_NTT_MIN_DEGREE` the candidates
     are screened through the fields' root sets; same acceptance.
     """
+    sp = _require_sympy()
     if len(coefficients) - 1 > _NTT_MIN_DEGREE:
         from esolangs.polynomial_resources import estimate_cold_parse
 

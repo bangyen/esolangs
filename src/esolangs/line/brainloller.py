@@ -25,13 +25,8 @@ def decode(program: Raster) -> str:
     y = x = 0
     dy, dx = 0, 1
     height, width = len(program.rows), len(program.rows[0])
-    seen: set[tuple[int, int, int, int]] = set()
     commands: list[str] = []
     while 0 <= y < height and 0 <= x < width:
-        state = (y, x, dy, dx)
-        if state in seen:
-            raise ValueError("Brainloller instruction path cycles")
-        seen.add(state)
         pixel = program.rows[y][x]
         command = _COMMANDS.get(pixel)
         if command is not None:
