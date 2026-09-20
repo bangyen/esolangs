@@ -163,6 +163,8 @@ class TestAnswerMode:
         wrong = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
+            if not facts["boolean_generator"]:
+                continue
             if facts["parameterized"] or facts["answer_mode"] != "output":
                 continue
             program = esolangs.generate(name, XOR)

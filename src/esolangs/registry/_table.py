@@ -400,14 +400,16 @@ LANGUAGES: dict[str, Language] = {
 }
 
 #: Interpreter-only classics: widely known languages kept for coverage, not
-#: construction.  ``boolean=None`` is the whole tier -- no generator, so no
-#: linearity contract and no ``generate``; ``esolangs list --details`` marks
-#: them.  The four admission axes do not apply: they are here because a
-#: caller expects them, and each is an ordinary machine in its own costume.
+#: construction.  Befunge and Whitespace carry a generator as well; Malbolge's
+#: ``boolean=None`` is the whole tier -- no generator, so no linearity
+#: contract and no ``generate``; ``esolangs list --details`` marks it.  The
+#: four admission axes do not apply: they are here because a caller expects
+#: them, and each is an ordinary machine in its own costume.
 CLASSICS: dict[str, Language] = {
     "Befunge": Language(
         "Befunge",
         "grid_based.befunge",
+        boolean=_boolean.befunge,
         id="befunge",
         split=True,
     ),
@@ -419,6 +421,7 @@ CLASSICS: dict[str, Language] = {
     "Whitespace": Language(
         "Whitespace",
         "stack_based.whitespace",
+        boolean=_boolean.whitespace,
         id="whitespace",
     ),
 }

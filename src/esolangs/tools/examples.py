@@ -305,6 +305,14 @@ def _register() -> None:
         ),
         "alight": _reader(b.alight, "grid_based.alight", split=True),
         "b-tapemark": _reader(b.b_tapemark, "grid_based.b_tapemark"),
+        # ``.`` writes the digit and a trailing space, so the committed
+        # answer carries it and the sweep strips it.
+        "befunge": _reader(
+            b.befunge,
+            "grid_based.befunge",
+            expected="0 ",
+            split=True,
+        ),
         "bfstack": _reader(b.bfstack, "stack_based.bfstack"),
         "bit~": _reader(b.bit_tilde, "tape_based.bit_tilde"),
         "brainfuck": _reader(b.brainfuck, "tape_based.brainfuck"),
@@ -431,6 +439,7 @@ def _register() -> None:
             expected="",
             note="Vandevelo answers by terminating: nil halts and not nil loops",
         ),
+        "whitespace": _reader(b.whitespace, "stack_based.whitespace"),
         "3d-brainfuck": _reader(b.three_d_brainfuck, "tape_based.three_d_brainfuck"),
         "3x": _reader(b.three_x, "stack_based.three_x"),
         "6-5": _reader(b.six_five, "tape_based.six_five"),

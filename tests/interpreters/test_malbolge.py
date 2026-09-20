@@ -4,10 +4,12 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.malbolge import (
+    _EOF,
     _WORDS,
-    _Machine,
+    _advance,
     _crazy,
     _load,
+    _Machine,
     _op,
     run,
 )
@@ -72,3 +74,27 @@ def test_a_non_instruction_source_character_is_rejected() -> None:
 
 def test_an_empty_program_halts_at_once() -> None:
     assert run_program(run, " ") == ""
+
+
+def test_a_halted_state_advances_to_itself() -> None:
+    done = (0, 0, 0, True)
+    assert _advance(done, _load("Q")) == (done, (), None)
+
+
+def test_a_read_with_no_input_is_the_eof_value() -> None:
+    # 'q' at cell 4 deciphers to '/', the input instruction; an absent input
+    # leaves the EOF sentinel in ``a`` rather than raising.
+    memory = [ord("q")] * 8
+    (a, _c, _d, halted), _writes, _effect = _advance((0, 4, 0, False), memory)
+    assert a == _EOF
+    assert not halted
+
+
+def test_a_non_graphic_rewrite_skips_the_encipherment() -> None:
+    # The apostrophe is the cell that deciphers to '*': rotating 39 gives 13,
+    # below the graphic range, so the cell keeps the value and is not
+    # re-enciphered.
+    (a, _c, _d, halted), writes, _effect = _advance((0, 0, 0, False), [ord("'")] * 8)
+    assert not halted
+    assert a == 13
+    assert writes == ((0, 13),)

@@ -125,11 +125,13 @@ UNWRAPPABLE = {
     "algebraic_programming_language": "a line with '=' defines, one without runs",
     "arrowqueue": "the queue and decision tree occupy fixed grid coordinates",
     "back": "the beam path and embedded input occupy fixed grid coordinates",
+    "befunge": "a row is a grid row and the lookup table is indexed by column",
     "brainif": "each line is one instruction and goto targets are line numbers",
     "collatz_multiverse": "each line is one complete register assignment",
     "container": "each line declares a container or one of its rules",
     "crement": "each line is one instruction; jumps and patches name line numbers",
     "inject": "blocks and executable commands are delimited by source lines",
+    "whitespace": "every space, tab and newline is a token or a number terminator",
 }
 
 # The narrower claim needed by the registry audit: these generators currently
@@ -141,6 +143,7 @@ WIDTH_EXCEPTIONS = {
     for name in (
         "arrowqueue",
         "back",
+        "befunge",
         "collatz_multiverse",
         "container",
         "crement",
@@ -149,6 +152,7 @@ WIDTH_EXCEPTIONS = {
         "inject",
         "minsky_swap",
         "nocomment",
+        "whitespace",
     )
 }
 

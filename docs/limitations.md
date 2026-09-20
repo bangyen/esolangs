@@ -41,6 +41,15 @@ BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
 its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
 ArrowQueue re-enqueue remains open.
 
+Malbolge registers no generator. Its only data operations are the crazy
+operation and rotation, and control reaches memory only through `d`
+(`i`/`j` set `c`/`d` from `memory[d]`); the input byte lands in `a`. The
+grid-lookup and literal-halving rules the other classics use have no
+primitive here: nothing turns the input bits into a row index or a branch
+target without first building a ternary ALU. That is an obstacle, not a
+lower bound -- no argument yet rules such an ALU out -- so the language
+stays interpreter-only with `generate` refusing it.
+
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
 | Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. |
@@ -71,10 +80,10 @@ separate axes.
 
 ## Curation
 
-The collection has 62 languages; its floor is 31. Three interpreter-only
-classics (Befunge, Whitespace, Malbolge) are registered with no generator and
-marked `int` by `list --details`: they are here for coverage, not for a new
-construction axis, so the four admission axes do not apply to them. Ordinary
+The collection has 62 languages; its floor is 31. One interpreter-only
+classic (Malbolge) is registered with no generator and marked `int` by
+`list --details`: it is here for coverage, not for a new construction axis.
+Befunge and Whitespace carry loop-less O(T) generators. Ordinary
 imperative entries with shared-shim generators and no consumer were removed. Nopstacle and
 ZTOALC L left: the former cannot meet embed conventions, the
 latter was a searched syntax-level lookup table. The 2D candidate screen is
