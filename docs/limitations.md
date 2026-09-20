@@ -74,12 +74,10 @@ expressible at any length.
 | Malbolge | 9 | 9 | The ten-input branch's two targets stay adjacent; separating them needs a run-time store. |
 | Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. |
 
-Polynomial's mandatory root product has minimum mass at the product itself;
-for programs whose real instruction roots are distinct the slack certificate
-proves `Theta(L**2 log L) = Theta(T**2 / log T)` digits for every multiple,
-cofactor, and operand sign. Repeated real roots are legal (`(x-2)^3` decodes to
-three `[1]` instructions) and that theorem does not cover them, so the general
-language bound is open -- the one missing lemma is named in
+Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
+instruction-root values even when roots repeat. The slack certificate prices
+every multiple of their distinct-root product, proving the tight
+`Theta(T**2 / log T)` language bound for every cofactor and operand sign; see
 [polynomial](proofs/polynomial.md). Factor has a language floor
 `Omega(T log T)`, a weighted exponent-vector count on D-digit integers
 ([factor](proofs/factor.md)); its worst-case generated encoding is `Theta(T log T)`.
