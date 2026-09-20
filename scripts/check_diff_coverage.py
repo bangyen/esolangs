@@ -39,7 +39,7 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -189,30 +189,51 @@ def _coverage_json(data_file: Path) -> dict[str, dict[str, Any]] | None:
         return None
 
 
-def _targets(added: dict[str, set[int]], omitted: list[str]) -> set[str]:
-    """Return the touched files coverage is configured to measure."""
-    return {
+def main() -> int:
+    """Check every file this branch touched against the recorded coverage."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--data-file",
+        default=str(ROOT / ".coverage"),
+        help="coverage data file written by the pytest step",
+    )
+    parser.add_argument(
+        "--partial",
+        action="store_true",
+        help=(
+            "the suite ran a subset: report whole-file gaps, but fail only on "
+            "uncovered added statements and branches"
+        ),
+    )
+    args = parser.parse_args()
+
+    base = _diff_base()
+    if base is None:
+        print("skip: no diff base (shallow clone or detached HEAD)")
+        return 0
+
+    added = _added_lines(base)
+    if added is None:
+        print("skip: could not read the branch diff")
+        return 0
+
+    omitted = _omitted()
+    targets = {
         f
         for f in added
         if f.startswith(MEASURED)
         and f.endswith(".py")
         and not any(fnmatch.fnmatch(f, pattern) for pattern in omitted)
     }
+    if not targets:
+        print(f"skip: branch touched no files under {MEASURED}")
+        return 0
 
+    files = _coverage_json(Path(args.data_file))
+    if files is None:
+        print(f"skip: no usable coverage data at {args.data_file}")
+        return 0
 
-class _Audit(NamedTuple):
-    """What the recorded coverage says about the touched files."""
-
-    gaps: list[tuple[str, list[int]]]
-    arc_gaps: list[tuple[str, list[tuple[int, int]]]]
-    unmeasured: list[str]
-    checked: int
-    arcs_checked: int
-    branch_data: bool
-
-
-def _audit(files: dict[str, dict[str, Any]], targets: set[str]) -> _Audit:
-    """Compare every touched file's record against the whole-file rule."""
     gaps: list[tuple[str, list[int]]] = []
     arc_gaps: list[tuple[str, list[tuple[int, int]]]] = []
     unmeasured: list[str] = []
@@ -251,75 +272,51 @@ def _audit(files: dict[str, dict[str, Any]], targets: set[str]) -> _Audit:
         arcs_checked += len(untaken)
         if untaken:
             arc_gaps.append((path, untaken))
-    return _Audit(gaps, arc_gaps, unmeasured, checked, arcs_checked, branch_data)
 
+    if not gaps and not arc_gaps and not unmeasured:
+        summary = (
+            f"touched-file coverage: 100% "
+            f"({len(targets)} file(s), {checked} statement(s)"
+        )
+        summary += f", {arcs_checked} branch(es))" if branch_data else ")"
+        print(summary)
+        return 0
 
-def _clean_summary(targets: set[str], audit: _Audit) -> str:
-    """Return the all-clear line, with branch counts when arcs were measured."""
-    summary = (
-        f"touched-file coverage: 100% "
-        f"({len(targets)} file(s), {audit.checked} statement(s)"
-    )
-    summary += f", {audit.arcs_checked} branch(es))" if audit.branch_data else ")"
-    return summary
+    if gaps:
+        total = sum(len(m) for _, m in gaps)
+        print(
+            f"touched-file coverage: {total} statement(s) never executed "
+            f"in {len(gaps)} touched file(s)"
+        )
+        for path, missing in gaps:
+            spans = ",".join(str(n) for n in missing)
+            print(f"  {path}: {spans}")
 
+    if arc_gaps:
+        total_arcs = sum(len(a) for _, a in arc_gaps)
+        print(f"touched-file branches: {total_arcs} branch(es) never taken")
+        for path, untaken in arc_gaps:
+            for src, dest in untaken:
+                where = "exit" if dest < 0 else f"line {dest}"
+                print(f"  {path}: line {src} never continues to {where}")
 
-def _report_lines(gaps: list[tuple[str, list[int]]]) -> None:
-    """Print each touched file's unexecuted statements."""
-    total = sum(len(m) for _, m in gaps)
-    print(
-        f"touched-file coverage: {total} statement(s) never executed "
-        f"in {len(gaps)} touched file(s)"
-    )
-    for path, missing in gaps:
-        spans = ",".join(str(n) for n in missing)
-        print(f"  {path}: {spans}")
+    if unmeasured:
+        print(f"touched but never imported by the suite: {len(unmeasured)} file(s)")
+        for path in unmeasured:
+            print(f"  {path}")
 
-
-def _report_arcs(arc_gaps: list[tuple[str, list[tuple[int, int]]]]) -> None:
-    """Print each touched file's one-sided branches."""
-    total_arcs = sum(len(a) for _, a in arc_gaps)
-    print(f"touched-file branches: {total_arcs} branch(es) never taken")
-    for path, untaken in arc_gaps:
-        for src, dest in untaken:
-            where = "exit" if dest < 0 else f"line {dest}"
-            print(f"  {path}: line {src} never continues to {where}")
-
-
-def _report_unmeasured(unmeasured: list[str]) -> None:
-    """Print the touched modules the suite never imported."""
-    print(f"touched but never imported by the suite: {len(unmeasured)} file(s)")
-    for path in unmeasured:
-        print(f"  {path}")
-
-
-def _blocking_gaps(
-    gaps: list[tuple[str, list[int]]], added: dict[str, set[int]]
-) -> list[tuple[str, list[int]]]:
-    """Return the subset of *gaps* whose lines this branch added."""
-    blocking = [
+    blocking_gaps = [
         (path, [line for line in missing if line in added[path]])
         for path, missing in gaps
     ]
-    return [(path, missing) for path, missing in blocking if missing]
-
-
-def _blocking_arcs(
-    arc_gaps: list[tuple[str, list[tuple[int, int]]]], added: dict[str, set[int]]
-) -> list[tuple[str, list[tuple[int, int]]]]:
-    """Return the subset of *arc_gaps* whose source lines this branch added."""
-    blocking = [
+    blocking_gaps = [(path, missing) for path, missing in blocking_gaps if missing]
+    blocking_arcs = [
         (path, [arc for arc in arcs if arc[0] in added[path]])
         for path, arcs in arc_gaps
     ]
-    return [(path, arcs) for path, arcs in blocking if arcs]
+    blocking_arcs = [(path, arcs) for path, arcs in blocking_arcs if arcs]
 
-
-def _verdict(*, partial: bool, audit: _Audit, added: dict[str, set[int]]) -> int:
-    """Return the exit code for a run that found at least one gap."""
-    blocking_gaps = _blocking_gaps(audit.gaps, added)
-    blocking_arcs = _blocking_arcs(audit.arc_gaps, added)
-    if partial and not blocking_gaps and not blocking_arcs and not audit.unmeasured:
+    if args.partial and not blocking_gaps and not blocking_arcs and not unmeasured:
         print(
             "\nnot failing on gaps outside added lines: the suite ran a subset. "
             "Re-check the whole files with the full suite:\n"
@@ -327,7 +324,7 @@ def _verdict(*, partial: bool, audit: _Audit, added: dict[str, set[int]]) -> int
             "uv run python scripts/check_diff_coverage.py"
         )
         return 0
-    if partial:
+    if args.partial:
         print(
             "\nAdded executable lines and branches must be covered by the fast suite."
         )
@@ -338,58 +335,6 @@ def _verdict(*, partial: bool, audit: _Audit, added: dict[str, set[int]]) -> int
         "with a comment saying why."
     )
     return 1
-
-
-def main() -> int:
-    """Check every file this branch touched against the recorded coverage."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--data-file",
-        default=str(ROOT / ".coverage"),
-        help="coverage data file written by the pytest step",
-    )
-    parser.add_argument(
-        "--partial",
-        action="store_true",
-        help=(
-            "the suite ran a subset: report whole-file gaps, but fail only on "
-            "uncovered added statements and branches"
-        ),
-    )
-    args = parser.parse_args()
-
-    base = _diff_base()
-    if base is None:
-        print("skip: no diff base (shallow clone or detached HEAD)")
-        return 0
-
-    added = _added_lines(base)
-    if added is None:
-        print("skip: could not read the branch diff")
-        return 0
-
-    targets = _targets(added, _omitted())
-    if not targets:
-        print(f"skip: branch touched no files under {MEASURED}")
-        return 0
-
-    files = _coverage_json(Path(args.data_file))
-    if files is None:
-        print(f"skip: no usable coverage data at {args.data_file}")
-        return 0
-
-    audit = _audit(files, targets)
-    if not audit.gaps and not audit.arc_gaps and not audit.unmeasured:
-        print(_clean_summary(targets, audit))
-        return 0
-
-    if audit.gaps:
-        _report_lines(audit.gaps)
-    if audit.arc_gaps:
-        _report_arcs(audit.arc_gaps)
-    if audit.unmeasured:
-        _report_unmeasured(audit.unmeasured)
-    return _verdict(partial=args.partial, audit=audit, added=added)
 
 
 if __name__ == "__main__":

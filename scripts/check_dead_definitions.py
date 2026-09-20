@@ -45,39 +45,28 @@ def _top_level_names(node: ast.stmt) -> set[str]:
     return set()
 
 
-def _aliases(tree: ast.Module) -> dict[str, str]:
-    """Map every ``from m import x as y`` alias to the name it aliases."""
+def _references(tree: ast.Module) -> Counter[str]:
+    """Count every name read in ``tree`` outside import statements, de-aliased."""
     aliases: dict[str, str] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
             for alias in node.names:
                 if alias.asname:
                     aliases[alias.asname] = alias.name
-    return aliases
-
-
-def _tally(counts: Counter[str], sub: ast.AST, aliases: dict[str, str]) -> None:
-    """Add one node's contribution, de-aliased, to *counts*."""
-    if isinstance(sub, ast.Name):
-        counts[aliases.get(sub.id, sub.id)] += 1
-    elif isinstance(sub, ast.Attribute):
-        counts[sub.attr] += 1
-    elif isinstance(sub, ast.Constant) and isinstance(sub.value, str):
-        # A forward reference: ``"_State | _Halt | None"``.  Docstrings do not
-        # parse as an expression and drop out here.
-        for name in _forward_names(sub.value):
-            counts[aliases.get(name, name)] += 1
-
-
-def _references(tree: ast.Module) -> Counter[str]:
-    """Count every name read in ``tree`` outside import statements, de-aliased."""
-    aliases = _aliases(tree)
     counts: Counter[str] = Counter()
     for node in tree.body:
         if isinstance(node, ast.Import | ast.ImportFrom):
             continue
         for sub in ast.walk(node):
-            _tally(counts, sub, aliases)
+            if isinstance(sub, ast.Name):
+                counts[aliases.get(sub.id, sub.id)] += 1
+            elif isinstance(sub, ast.Attribute):
+                counts[sub.attr] += 1
+            elif isinstance(sub, ast.Constant) and isinstance(sub.value, str):
+                # A forward reference: ``"_State | _Halt | None"``.  Docstrings
+                # do not parse as an expression and drop out here.
+                for name in _forward_names(sub.value):
+                    counts[aliases.get(name, name)] += 1
     return counts
 
 
