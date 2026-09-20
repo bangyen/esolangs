@@ -61,6 +61,8 @@ _EXAMPLES_START = "<!-- EXAMPLES:START -->"
 _EXAMPLES_END = "<!-- EXAMPLES:END -->"
 _BOOLEAN_COUNT_START = "<!-- BOOLEAN-COUNT:START -->"
 _BOOLEAN_COUNT_END = "<!-- BOOLEAN-COUNT:END -->"
+_PACKAGE_COUNT_START = "<!-- PACKAGE-COUNT:START -->"
+_PACKAGE_COUNT_END = "<!-- PACKAGE-COUNT:END -->"
 _SHAPES_START = "<!-- INPUT-SHAPES:START -->"
 _SHAPES_END = "<!-- INPUT-SHAPES:END -->"
 _API_START = "<!-- PUBLIC-API:START -->"
@@ -91,6 +93,15 @@ _SAMPLE_BITS = [1, 0, 1]
 def _wiki_name(name: str) -> str:
     """Return the esolangs wiki page title for the displayed language name."""
     return name
+
+
+def render_package_count_section() -> str:
+    """Render the total and source-shape counts in the README lead."""
+    return (
+        f"Interpreters and Boolean generators for {len(LANGUAGES)} esoteric "
+        f"languages: {len(RUNNERS)} text and "
+        f"{len(LANGUAGES) - len(RUNNERS)} raster."
+    )
 
 
 def _wiki_link(name: str) -> str:
@@ -364,6 +375,11 @@ def update_readme() -> None:
     path = ROOT / "README.md"
     text = path.read_text()
     for start, end, render in (
+        (
+            _PACKAGE_COUNT_START,
+            _PACKAGE_COUNT_END,
+            render_package_count_section,
+        ),
         (_README_START, _README_END, render_languages_section),
         (_EXAMPLES_START, _EXAMPLES_END, render_examples_section),
         (_BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END, render_boolean_count_section),
