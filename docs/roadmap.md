@@ -5,10 +5,11 @@ Only live work belongs here. Contracts and standing walls go to
 
 ## New interpreters
 
-Implement the surveyed two-dimensional candidates in this order.  This is the
-2026-09-19 re-run of the `Category:Unimplemented` x `Category:Two-dimensional
-languages` pass (116 pages, up from 111); the verdicts are spec reads, not
-executed generators, so the size question is open for every entry.
+Implement the surveyed interpreter candidates in this order.  The first four
+are the 2026-09-19 re-run of the `Category:Unimplemented` x
+`Category:Two-dimensional languages` pass (116 pages, up from 111); the
+verdicts are spec reads, not executed generators, so the size question is open
+for every entry.
 
 - **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
   filed it unread, thinking the `{{:thisthat}}` transclusions hid the node
@@ -31,6 +32,14 @@ executed generators, so the size question is open for every entry.
 - **Gridify** (2026): the most complete new spec -- Befunge-style stack, `~`/`&`
   in, `.`/`,` out, a four-way `?` dispatch -- but its construction is the grid
   walk the set already has.  Last: admit only if it forces a new axis.
+- **INTERCAL** (1972): not from the 2D pass, and not a completeness add -- the
+  well-known candidates otherwise re-occupy an axis the set already has, and
+  the collection is curated by admission, not coverage.  INTERCAL is the
+  exception: `COME FROM` is pull-based, label-triggered transfer, where every
+  branch here is push/conditional/jump/pointer, so it forces a new branch
+  mechanism.  Spec read only, not priced: whether a loop-less O(T) construction
+  survives the computed-label and `COME FROM` wiring, and whether its binary
+  I/O routes through the package's stdin convention, is the work.
 
 ## Conditional follow-up
 
