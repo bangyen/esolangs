@@ -46,10 +46,10 @@ every generator to it except those the roadmap's scaling audit or this
 document's `cap` and `exception` rows already exempt.  Read its verdicts in one
 direction only: exceeding the bound is evidence, staying inside it is not, and
 Factor -- proven super-linear at the language level in [factor](factor.md) and
-measuring x2.11 -- is why.  Polynomial's `Omega(T**2 / log T)` is proved for
-distinct real instruction roots only; repeated roots are legal and the missing
-multiplicity lemma is named in [polynomial](polynomial.md), so its audit row is
-`Open`, not a language lower bound.
+measuring x2.11 -- is why.  Polynomial's block-incidence lemma forces
+`Omega(T/log T)` distinct real instruction-root values even when roots repeat;
+the slack certificate then proves `Omega(T**2 / log T)` for every program.
+The argument is in [polynomial](polynomial.md).
 
 ## Proof schemes
 

@@ -128,6 +128,17 @@ proofs:
     {{PYTHON}} -m pytest tests/proofs -q
     {{PYTHON}} -m tests.proofs.deep all
 
+# compile the standalone complexity notes; PDFs are ignored generated files
+proofs-pdf:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    command -v tectonic >/dev/null 2>&1 || {
+        echo "tectonic is required (brew install tectonic)" >&2
+        exit 1
+    }
+    tectonic --outdir docs/proofs docs/proofs/factor.tex
+    tectonic --outdir docs/proofs docs/proofs/polynomial.tex
+
 # Not in `just test` or CI: what it guards moves only when APA's head, body,
 # or routing does, so run it then. L2's foreign-leaf sweep at n=9 is 57s of
 # the cost; the table enumeration is cheap.

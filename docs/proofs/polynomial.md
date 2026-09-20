@@ -804,8 +804,9 @@ the incidence between its block and its partner's opener block.  Positions
 with one incidence are consecutive inside the closer block.  After the first,
 entry is fallthrough with the common condition false or a skip landing after
 the preceding closer, again with that condition false; no instruction between
-them changes the register.  Thus an incidence is charged at most once.  Hence
-`m_routing <= L_real + 2L_real - 3`, and
+them changes the register.  Thus an incidence is charged at most once.  For
+`L_real >= 2` this gives `m_routing <= L_real + 2L_real - 3`; for `L_real = 1`,
+the weaker `m_routing <= 3L_real` is immediate.  In every case
 `N'(k+1) <= 6L_real + E(k)`.  The dense-table floor forces
 `L_real = Omega(T/log T)`.
 
