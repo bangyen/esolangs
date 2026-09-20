@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from esolangs import line as _line
+from esolangs import piet as _piet
 from esolangs import tools as _boolean
 from esolangs.registry._slug import canonical_id
 
@@ -289,6 +290,7 @@ LANGUAGES: dict[str, Language] = {
         "Piet",
         id="piet",
         source_kind=SourceKind.RASTER,
+        raster_boolean=_piet.generate,
     ),
     "SLOW ACV MAMMALIAN": Language(
         "SLOW ACV MAMMALIAN",
