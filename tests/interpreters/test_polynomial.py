@@ -219,6 +219,9 @@ class TestPolynomialSafety:
 
 
 class TestPolynomialExecution:
+    def test_nested_control_flow_brackets_match(self) -> None:
+        assert brackets([[1], [1], [2], [2]], 0) == 3
+
     def test_output_instruction(self) -> None:
         """A root of 2i encodes an output instruction (reg starts at 0)."""
         buffer = io.StringIO()
@@ -316,6 +319,14 @@ class TestPolynomialExecution:
             machine = _Machine("f(x) = x^2+16", IO())
             machine.step()
             assert machine.reg == -1
+
+    def test_eof_reads_as_minus_one(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.polynomial import _Machine
+
+        machine = _Machine("f(x) = x^2+16", ScriptedIO())
+        machine.step()
+        assert machine.reg == -1
 
 
 class TestPeelPrimePowerRoots:

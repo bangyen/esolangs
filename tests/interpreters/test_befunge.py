@@ -24,16 +24,33 @@ def test_arithmetic_prints_with_the_reference_trailing_space() -> None:
     assert run_befunge("78*1+.@") == "57 "
 
 
-def test_division_and_modulo_round_down() -> None:
-    # -7 / 2 floors to -4 and -7 % 2 follows the divisor, as the wiki says.
-    assert run_befunge("07-2 /.@") == "-4 "
-    assert run_befunge("07-2 %.@") == "1 "
+def test_division_and_modulo_truncate_toward_zero() -> None:
+    assert run_befunge("07-2 /.@") == "-3 "
+    assert run_befunge("07-2 %.@") == "-1 "
 
 
-def test_a_zero_divisor_halts_with_a_message() -> None:
-    for program in ("10/.@", "10%.@"):
-        with pytest.raises(HaltError, match="zero"):
-            run(program.splitlines(), IO())
+def test_a_zero_divisor_reads_the_result() -> None:
+    assert run_befunge("10/.@", "7\n") == "7 "
+    assert run_befunge("10%.@", "8\n") == "8 "
+    for command in "/%":
+        state = ((0, 0, 1, 0), ((command,),), (1, 0), False, False)
+        with pytest.raises(HaltError, match="needs a result"):
+            _advance(state)
+
+
+def test_program_uses_the_80_by_25_torus() -> None:
+    machine = _Machine(["<"], IO())
+    machine.step()
+    assert machine.ip == (0, 79, -1, 0)
+    assert len(machine.state[1]) == 25
+    assert len(machine.state[1][0]) == 80
+
+
+def test_oversized_program_is_rejected() -> None:
+    with pytest.raises(ValueError, match="80x25"):
+        _Machine([" " * 81], IO())
+    with pytest.raises(ValueError, match="80x25"):
+        _Machine([" "] * 26, IO())
 
 
 def test_both_conditionals_turn_the_pointer() -> None:

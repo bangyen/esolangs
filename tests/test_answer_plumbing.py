@@ -620,10 +620,10 @@ class TestWhatHappensWhenAProgramIsUnderfed:
             and not esolangs.describe(name)["parameterized"]
             and self._underfed(name)[0] == "raised"
         )
-        # 40 of the 48 that read stdin, measured.  Pinned exactly, so that a change
+        # 39 of the 48 that read stdin, measured.  Pinned exactly, so that a change
         # which quietly moves a language out of the norm shows up here rather
         # than in a docstring nobody re-derives.
-        assert raised == 40
+        assert raised == 39
 
     def test_the_trait_is_reported_by_describe(self) -> None:
         """A caller must be able to learn this without underfeeding one."""

@@ -3,8 +3,8 @@
 Polynomial programs are polynomial functions ``f(x) = ...``; real zeroes
 are control flow and complex zeroes register operations on a single
 integer register, in ascending-prime order.  The wiki's cat notes output
-ignores negatives; this clamps to zero (a NUL), and raises
-:class:`EOFError` on exhausted input rather than halting with -1.
+ignores negatives; this clamps to zero (a NUL), and EOF stores -1 as
+specified.
 Malformed programs raise :class:`ValueError`.  No instruction cap: a
 growing register never repeats, and ``esolangs.run``'s ``timeout`` is
 the guard.
@@ -841,6 +841,8 @@ class _Machine:
     complete state.
     """
 
+    eof_is_a_value = True
+
     def __init__(self, code: str, io: IO) -> None:
         """Recover ``code``'s instructions and start with a zero register."""
         self.io = io
@@ -893,7 +895,10 @@ class _Machine:
             # An empty line reads as -1, which is what the trailing NUL in
             # the original's ``input_str() + chr(0)`` produced: ``ord`` of
             # that NUL is 0, and ``0 or -1`` is -1.
-            val = self.io.input_str() + chr(0)
+            try:
+                val = self.io.input_str() + chr(0)
+            except EOFError:
+                val = chr(0)
             byte = ord(val[0])
 
         (self.reg, self.ind), output = _advance(
