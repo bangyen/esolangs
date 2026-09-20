@@ -148,3 +148,22 @@ implemented, so never in the screen.
   stepping parity, examples) would then require its conformance, and both
   generators are area-cost, pulling `line` into `tests/proofs/deep/linearity.py`.
   Worth it for the source kind itself; it does not strengthen the Piet case.
+
+- **Image-source candidates.**  A read of the 129 `Category:Non-textual` pages
+  for raster sources only -- music (Fugue, Velato), music-note, and
+  steganography pages excluded.  Verdicts are spec reads, not executed
+  generators.  For the source kind above: Braincopter (2005) first, a PNG
+  Brainfuck clone whose opcode is `(65536R + 256G + B) % 11` and whose
+  generator is a palette render of the registered `brainfuck` generator
+  (`tools/tape.py:63`) -- the cheapest second consumer; Brainloller (2005),
+  its fixed-RGB-palette sibling, is the same interpreter landed first.
+  Deferred: Bytemap (2012, source and data the same self-modifying grid, no
+  interpreter yet) and Gifunk (2021, APNG/GIF fungeoid whose IP crosses frames)
+  are the
+  only image languages beyond Piet that force an axis the set lacks, both WIP;
+  Turing Paint (2020, six hand-drawable colours) needs the website, not the
+  wiki stub; Befunk (2014, Befunge-98 in PNG, Funk value
+  `(R%10)*100 + (G%10)*10 + B%10`) waits on Befunge-98 and a construction that
+  dodges `?`'s random delta.  Rejected: HuePrism (output-only, no input
+  interface) and BitCode/PicCode (no interpreter, no numbers); the Minecraft
+  ports are game-save media, not a reproducible raster.
