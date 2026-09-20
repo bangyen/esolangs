@@ -2,12 +2,12 @@
 
 import pytest
 
+from esolangs.interpreters.io import ScriptedIO
 from esolangs.line import Raster
 from esolangs.line import run as run_line
 from esolangs.line.brainloller import decode, encode
 from esolangs.line.line_boolean import line_boolean
 from esolangs.line.render import render
-from esolangs.interpreters.io import ScriptedIO
 
 
 def test_linear_program_survives_png_round_trip() -> None:
@@ -31,6 +31,15 @@ def test_turns_define_a_two_dimensional_path() -> None:
         )
     )
     assert decode(raster) == "+."
+
+
+def test_empty_source_is_rejected() -> None:
+    with pytest.raises(ValueError, match="at least one pixel"):
+        encode("")
+
+
+def test_unknown_colour_is_a_noop() -> None:
+    assert decode(encode("comment")) == ""
 
 
 def test_raster_rejects_non_rectangular_rows() -> None:
