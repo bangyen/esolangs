@@ -160,7 +160,7 @@ bound routing positions by the number of distinct root values.
 If a decoded program contains $L$ distinct real instruction-root values,
 then
 \[
-  m_{\rm route}\le 3L-3
+  m_{\rm route}\le 3L
   \quad\text{and hence}\quad
   N'(k+1)\le 6L+E(k).
 \]
@@ -184,8 +184,9 @@ opener block.  All closers with the same incidence are consecutive within
 their block.  After the first, entry is either fallthrough with the common
 condition false or a skip landing after the preceding closer, again with that
 condition false; the register is unchanged between them.  Thus each incidence
-is charged at most once.  There are at most $L$ routing openers and at most
-$2L-3$ routing closers.  Substitute this in
+is charged at most once.  For $L\ge2$ there are at most $L$ routing openers
+and at most $2L-3$ routing closers; for $L=1$ the displayed weaker bound is
+immediate.  Substitute this in
 \eqref{eq:basic-routing}.
 \end{proof}
 
