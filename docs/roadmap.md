@@ -100,11 +100,16 @@ implemented, so never in the screen.
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Polynomial | Cap | Open | Open | Linear |
 
-  Polynomial is open, not a language lower bound: the `Omega(T**2 / log T)`
-  proof assumes distinct real instruction roots, and a repeated root is legal
-  (`(x-2)^3` decodes to three `[1]` instructions). The routing lemma bounds
-  instruction positions, not distinct roots, so the reduction is the missing
-  lemma; see [polynomial](polynomial.md).
+  Polynomial is open, not a language lower bound.  Proved unconditionally:
+  `Omega(T**2 / log**2 T)` (the confluent slack certificate prices
+  multiplicity, so repeated real roots are covered; see
+  [polynomial](polynomial.md) and `tests/proofs/deep/multiplicity.py`).  The
+  extra `log` to `Omega(T**2 / log T)` needs the sharpened routing lemma --
+  `N'(k+1) <= 2 * L_real + E(k)`, distinct real root values rather than
+  instruction positions -- because a complex-only block can host a routed
+  read and a real block can be re-entered at several cursors.  The complex
+  roots cannot be charged to mass (an exact counterexample refutes the
+  complex-node certificate).
 
   Generation time, growth per added input at the top arity: B-tapemark,
   6-5, Forth, Circuit Diagram past its n=8 route change, and Vandevelo

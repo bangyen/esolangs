@@ -688,13 +688,36 @@ What is still forced: the program is a multiple of its distinct-root product,
 so the theorem gives `Omega(L'**2 log L')` for `L'` distinct real roots, and
 the multiplicity contributes mass of its own -- `mass((x-2)**M) / M**2 = 0.365`
 measured at `M = 10..160`, and complex cofactors do not cancel it
-(`(x-2)**M (x**2+1)**K` and `(x-2)**M (x**2-2x+2)**M` both grow).  With
-`M = Omega(T/log T)` instructions that is `Omega(T**2 / log**2 T)` at worst,
-still super-linear; the `Omega(T**2 / log T)` above needs either the missing
-lemma that a maximal-width table forces `Omega(T/log T)` *distinct* real
-instruction roots, or a multiplicity mass bound of `Omega(M**2 log M)`.  That
-lemma is the one open link, and the roadmap and the ledger record the row
-`Open` until it lands.
+(`(x-2)**M (x**2+1)**K` and `(x-2)**M (x**2-2x+2)**M` both grow).  `M = Omega(m)` total real roots with `m = Omega(T/log T)` instruction roots (a routing
+floor on distinct *primes*, stronger than the position count), so the
+unconditional language bound is `Omega(T**2 / log**2 T)`: the confluent
+slack certificate (below) prices multiplicity as `Omega(m**2)`, giving the
+same order whether the roots are distinct or repeated.
+
+The stronger `Omega(T**2 / log T)` needs the **sharpened routing lemma**:
+`N'(k+1) <= 2 * L_real + E(k)`, where `L_real` is the number of distinct
+*real* instruction-root values, not instruction positions or blocks.  The
+block lemma counts distinct primes (each a distinct root, real or complex),
+but a complex-only block can host the routed read and a real block can be
+re-entered at several cursors, so `L_real = o(#blocks)` is not excluded.
+The complex escape cannot be charged to mass: Round 4 of the offline work
+refuted the natural complex-node certificate with an exact counterexample
+(nodes `1/(2 +- 2i)`, `1/(-2 +- 49i)`, tail/bound up to 69.4).  So the extra
+`log` rests entirely on the sharpened routing lemma, which is open; the
+roadmap and the ledger record the row `Open` and carry `Omega(T**2 / log**2 T)`
+as the proved bound.
+
+**The confluent certificate (multiplicity is free of the extra hypothesis).**
+The distinct-node theorem above is replaced by its confluent analogue, proved
+in `tests/proofs/deep/multiplicity.py` and stated here: for
+`u_d = sum_i P_i(d) y_i^d` with `deg P_i < e_i`, `u_0 = 1`, and `u_z = 0` on a
+zero set `Z` of size `sum e_i - 1`, the tail bound holds with the product read
+over the **expanded multiset** (each `y_i` repeated `e_i` times).  The proof
+is the Hermite limit of the distinct theorem.  It gives
+`mass(F) >= (log10 2)/32 * m**2` for a monic multiple of `prod (x - r_i)^{e_i}`
+with `m = sum e_i`, so the repeated-root case is priced at `Omega(m**2)` and
+the language bound is `Omega(T**2 / log**2 T)` with no distinctness
+hypothesis at all.
 
 *What the earlier rounds leave behind.*  The routes that did not reach the
 lemma are recorded so they are not rebuilt, and the peel above explains
