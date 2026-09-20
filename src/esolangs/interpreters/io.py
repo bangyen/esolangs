@@ -161,7 +161,7 @@ class ScriptedIO(IO):
     def past_end(self) -> int:
         """How many reads went past the end of the supplied input.
 
-        Counted even though the read raises, because eight languages catch
+        Counted even though the read raises, because seven languages catch
         that raise and carry on with a value -- and for them this is the
         only record that it happened.  ``reads`` deliberately does not
         include these: it counts lines actually taken.
