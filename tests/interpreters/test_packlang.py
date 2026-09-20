@@ -367,6 +367,10 @@ Package : IO {
 
 
 class TestErrors:
+    def test_an_operator_cannot_start_an_expression(self) -> None:
+        with pytest.raises(ValueError, match="unexpected token"):
+            _run("Package : IO { Integer main { ); } } p;")
+
     def test_unbalanced_block_is_malformed(self) -> None:
         """A block that is never closed runs the parser off the end.
 

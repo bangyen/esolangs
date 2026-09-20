@@ -8,31 +8,20 @@ from typing import Literal, NamedTuple, NewType, cast
 # :func:`_matches` exhaustiveness visible.
 _Pattern = Literal["?", "W", "."]
 
-# The four compass headings.  Named so a heading stays distinct from the
-# cell characters and form patterns that are also plain strings.
 _Heading = Literal["N", "E", "S", "W"]
 
 # Road count including entry, or 0: only 0, 3 and 4 are reachable.  A two-way
 # is a corridor; a five-way needs another direction.  Kept int for truth tests.
 _Junction = Literal[0, 3, 4]
 
-# Which way a merge latch turns, relative to the heading it was taken
-# under.  Straight and reverse are unreachable, not merely unobserved --
-# see ``the implementation``.
 _Turn = Literal["left", "right"]
 
 
 class _Mouth(NamedTuple):
-    """A road mouth as :func:`_road_mouth` measured it.
+    """A road mouth as :func:`_road_mouth` measured it."""
 
-    Named fields keep ``near`` and ``far`` from being read in the wrong order.
-    """
-
-    # Perpendicular distance from the car to the wall carrying the mouth.
     dist: int
-    # Depth along the direction of travel of the ``+`` nearer the car.
     near: int
-    # Depth along the direction of travel of the ``+`` further along.
     far: int
 
     @property
@@ -42,21 +31,12 @@ class _Mouth(NamedTuple):
 
 
 class _Merge(NamedTuple):
-    """An in-progress lane merge, latched until the car reaches ``target``.
+    """An in-progress lane merge, latched until the car reaches ``target``."""
 
-    Holds *which way* it turns, not the heading, so the two direction
-    fields cannot be built swapped; :attr:`new_heading` recovers it.
-    """
-
-    # The cell the car must reach before the turn is made.
     target_row: int
     target_col: int
-    # Which way it turns there, relative to ``latched_heading``.
     turn: _Turn
-    # The heading the latch was taken under; a turn in between voids it.
     latched_heading: _Heading
-    # Whether the latch came from a crossing mouth, which decides whether
-    # the branch condition is re-read on arrival.
     crossing: bool
 
     @property
@@ -75,12 +55,7 @@ class _Merge(NamedTuple):
 
 
 class _Latches(NamedTuple):
-    """The three values :func:`_choose_heading` carries between steps.
-
-    One record so the machine, :meth:`_Machine.snapshot` and the drive-state
-    search share one field order, and each steering phase is a function
-    from latches to latches (see :class:`_Steer`).
-    """
+    """The three values :func:`_choose_heading` carries between steps."""
 
     # Set when a junction turn is detected but not yet reached (phase 1).
     merge: "_Merge | None"

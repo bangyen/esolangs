@@ -3,14 +3,12 @@ r"""Interpreter for Befunge.
 Befunge is a two-dimensional grid language: the instruction pointer carries a
 stack and a heading, wraps at the edges, and ``p`` edits the grid in place.
 ``,`` and ``.`` print, ``~`` and ``&`` read, and string mode pushes cells as
-bytes.  EOF propagates.  Decisions for the gaps the wiki leaves open: the grid
-is the program's own rectangle rather than the reference's fixed 80x25, all
-four edges wrap, division rounds down as the wiki says but a zero divisor
-raises :class:`~esolangs.exceptions.HaltError` where the spec asks the user, a
+bytes.  EOF propagates.  The playfield is the specified 80x25 torus; division
+truncates toward zero, and a zero divisor reads the result from the user.  A
 pop off the empty stack yields 0, ``g`` outside the grid pushes 0, and ``p``
-outside is ignored.  ``.`` prints the integer and a trailing space, the
-reference's behaviour the wiki's table omits.  An empty program raises
-:class:`ValueError`.
+outside is ignored.  ``.`` prints the integer and a trailing space.  An empty
+or oversized program raises :class:`ValueError`; a zero divisor with no result
+to read raises :class:`~esolangs.exceptions.HaltError`.
 """
 
 from __future__ import annotations
@@ -25,6 +23,8 @@ from esolangs.interpreters.randomness import Randomness, draw
 
 #: ``?`` picks one, in the order the shell's draw maps to: right, down, left, up.
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
+_WIDTH = 80
+_HEIGHT = 25
 type _Cursor = tuple[int, int, int, int]
 type _Grid = tuple[tuple[str, ...], ...]
 type _Stack = tuple[int, ...] | list[int]
@@ -87,12 +87,22 @@ def _advance(
             stack = _push(stack, b * a)
         elif command == "/":
             if not a:
-                raise HaltError("'/' divides by zero; the stack top was 0")
-            stack = _push(stack, b // a)
+                if number_input is None:
+                    raise HaltError("'/' divides by zero and needs a result")
+                stack = (*stack, number_input)
+            else:
+                quotient = abs(b) // abs(a)
+                stack = (*stack, -quotient if (a < 0) != (b < 0) else quotient)
         else:
             if not a:
-                raise HaltError("'%' takes the remainder by a zero divisor")
-            stack = _push(stack, b % a)
+                if number_input is None:
+                    raise HaltError("'%' divides by zero and needs a result")
+                stack = (*stack, number_input)
+            else:
+                quotient = abs(b) // abs(a)
+                if (a < 0) != (b < 0):
+                    quotient = -quotient
+                stack = (*stack, b - quotient * a)
     elif command == "!":
         a, stack = _pop(stack)
         stack = _push(stack, 0 if a else 1)
@@ -175,7 +185,11 @@ class _Machine:
     ) -> None:
         if not code or not (width := max(map(len, code), default=0)):
             raise ValueError("Befunge program cannot be empty")
-        self.grid = tuple(tuple(row.ljust(width)) for row in code)
+        if width > _WIDTH or len(code) > _HEIGHT:
+            raise ValueError("Befunge program exceeds its 80x25 playfield")
+        rows = [row.ljust(_WIDTH) for row in code]
+        rows.extend(" " * _WIDTH for _ in range(_HEIGHT - len(rows)))
+        self.grid = tuple(tuple(row) for row in rows)
         self.code, self.io, self._rng = code, io, rng
         self.state: _State = ((0, 0, 1, 0), self.grid, [], False, False)
 
@@ -240,7 +254,10 @@ class _Machine:
         (col, row, _dx, _dy), grid, _stack, _string, _done = self.state
         command = grid[row][col]
         char_input = self.io.input_char() if command == "~" else None
-        number_input = self.io.input_num() if command == "&" else None
+        needs_number = command == "&" or (
+            command in "/%" and bool(self.state[2]) and self.state[2][-1] == 0
+        )
+        number_input = self.io.input_num() if needs_number else None
         random_dir = draw(self._rng, 4) if command == "?" else None
         self.state, effect = _advance(self.state, char_input, number_input, random_dir)
         if effect:

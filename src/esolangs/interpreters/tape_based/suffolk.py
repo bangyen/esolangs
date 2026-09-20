@@ -4,12 +4,9 @@
 ``!`` writes the cell a value from the accumulator clamped at zero, ``,``
 reads a byte, ``.`` prints the accumulator minus one; the code reruns
 forever.  The wiki has ``,`` read one character with EOF zeroing the
-accumulator; this reads a line (first byte) and raises :class:`EOFError`
-on exhausted input.  An empty program raises :class:`ValueError`.
-:func:`run` stops on a proof -- a repeated state or that ``EOFError`` --
-never a pass count; growth with no input to run out of is left to
-``esolangs.run``'s ``timeout``.  ``halted`` is ``False`` until a read
-exhausts input; a repeated :meth:`_Machine.snapshot` proves a loop.
+accumulator; this reads a line's first byte, zeroes the accumulator at EOF,
+and ends the scripted run there.  An empty program raises :class:`ValueError`.
+:func:`run` otherwise stops on a repeated state, never a pass count.
 The transition :func:`_advance` is pure over an immutable ``_State``
 (a tuple tape, so ``run`` can put states straight into a set).
 """
@@ -21,8 +18,7 @@ import sys
 from esolangs.interpreters.io import IO
 
 #: ``(ind, ptr, acc, tape)``: an immutable value, rebound per step.  No
-#: halted flag: Suffolk never halts, ``run`` stops on a repeated state or
-#: EOF.  The code is a parameter, not a field (``run`` stores one state per step).
+#: halted flag: Suffolk has no instruction-level halt.
 type _State = tuple[int, int, int, tuple[int, ...]]
 
 
@@ -55,7 +51,7 @@ class _Machine:
     """Per-run Suffolk state: the code, tape, and accumulator."""
 
     #: ``while not vm.halted`` never returns; :func:`run` needs no bound
-    #: (a reader hits :class:`EOFError`, a non-reader repeats its start state).
+    #: (both reading and non-reading programs end only by a proved repeat).
     self_halts = False
 
     def __init__(self, code: str, io: IO) -> None:
@@ -91,15 +87,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """True once a read has run past the end of the input.
-
-        For a while this was constant ``False`` with the exhausted read escaping
-        as :class:`EOFError`, so ``run("Suffolk", p, s)`` returned ``'1'`` while
-        ``make_debugger(...).run()`` raised on the same program.  The output is
-        complete when the read fires, so exhaustion is a halt on both paths.
-        ``self_halts`` stays ``False``: a program that never reads ends only by
-        repeating a state.
-        """
+        """Whether EOF zeroed the accumulator and ended this scripted run."""
         return self._exhausted
 
     # ``_AffineMachine`` (growing-cell hang certificate): control never
@@ -164,8 +152,7 @@ class _Machine:
         """Execute one command, wrapping to the start at the end of the code.
 
         ``,`` hands the transition the new accumulator: the sum on a character,
-        zero on a blank line (the package convention; the wiki's "at EOF set the
-        integer to 0" is about EOF, which still raises).
+        zero on a blank line or at EOF.
         """
         if self._exhausted:
             return
@@ -173,15 +160,11 @@ class _Machine:
         sym = self.code[ind]
         byte = None
         if sym == ",":
-            # The read past the end of the input is this language's stop,
-            # so it ends the machine here rather than escaping to whoever
-            # happens to be driving.  Nothing has advanced yet, so the
-            # state stays the one that produced the finished output.
             try:
                 inp = self.io.input_str()
             except EOFError:
+                inp = ""
                 self._exhausted = True
-                return
             byte = acc + ord(inp[0]) if inp else 0
         elif sym == "." and acc:
             self.io.print_char(chr(acc - 1))
@@ -189,16 +172,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    """Run a Suffolk program until it repeats a state or runs out of input.
-
-    Both stops are decidable: a reading program hits :class:`EOFError`
-    part-way through its second pass, before a second ``.``; a non-reading
-    one ends where it began (the generator's tail restores every cell) and
-    the repeat proves the loop.  Both *return*: re-raising the exhausted read
-    once made ``esolangs.run("Suffolk", ...)`` fail on every generated
-    program, the committed example included.  The halt now lives in
-    :meth:`_Machine.step`, so every driver agrees.
-    """
+    """Run until EOF zeroes the accumulator or a state repeats."""
     machine = _Machine(code, io)
     seen: set[tuple[object, ...]] = set()
     while not machine.halted:
