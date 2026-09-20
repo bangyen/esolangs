@@ -25,9 +25,9 @@ from esolangs.interpreters.randomness import Randomness, draw
 
 #: ``?`` picks one, in the order the shell's draw maps to: right, down, left, up.
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
-type _State = tuple[
-    int, int, int, int, tuple[tuple[str, ...], ...], tuple[int, ...], bool, bool
-]
+type _Cursor = tuple[int, int, int, int]
+type _Grid = tuple[tuple[str, ...], ...]
+type _State = tuple[_Cursor, _Grid, tuple[int, ...], bool, bool]
 type _Effect = tuple[str, int] | None
 
 
@@ -43,7 +43,7 @@ def _advance(
     random_dir: int | None = None,
 ) -> tuple[_State, _Effect]:
     """Return the next state and an output effect, if this cell emits."""
-    col, row, dx, dy, grid, stack, string, done = state
+    (col, row, dx, dy), grid, stack, string, done = state
     if done:
         return state, None
     height, width = len(grid), len(grid[0])
@@ -55,7 +55,7 @@ def _advance(
             (col + dx) % width,
             (row + dy) % height,
         )
-        return ((col, row, dx, dy, grid, (*stack, ord(command)), True, done), None)
+        return (((col, row, dx, dy), grid, (*stack, ord(command)), True, done), None)
     if command == '"':
         string = not string
     elif command.isdigit():
@@ -145,7 +145,7 @@ def _advance(
     elif command == "@":
         done = True
     col, row = (col + dx) % width, (row + dy) % height
-    return ((col, row, dx, dy, grid, stack, string, done), effect)
+    return (((col, row, dx, dy), grid, stack, string, done), effect)
 
 
 class _Machine:
@@ -161,11 +161,11 @@ class _Machine:
             raise ValueError("Befunge program cannot be empty")
         self.grid = tuple(tuple(row.ljust(width)) for row in code)
         self.code, self.io, self._rng = code, io, rng
-        self.state: _State = (0, 0, 1, 0, self.grid, (), False, False)
+        self.state: _State = ((0, 0, 1, 0), self.grid, (), False, False)
 
     @property
     def halted(self) -> bool:
-        return self.state[7]
+        return self.state[4]
 
     #: ``ip`` is a cell of the program's own rectangle: a column and a row,
     #: then the heading, so a caller can draw it rather than guess.
@@ -173,7 +173,8 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...] | None:
-        return None if self.halted else (self.state[1], self.state[0], *self.state[2:4])
+        col, row, dx, dy = self.state[0]
+        return None if self.halted else (row, col, dx, dy)
 
     @property
     def memory(self) -> list[int]:
@@ -182,10 +183,11 @@ class _Machine:
 
     @property
     def stack(self) -> list[object]:
-        return list(self.state[5])
+        return list(self.state[2])
 
     def snapshot(self) -> tuple[object, ...]:
-        return (*self.state, self.io.position())
+        cursor, grid, stack, string, done = self.state
+        return (*cursor, grid, stack, string, done, self.io.position())
 
     def branching_snapshot(self) -> _State:
         """Return the current state as the hang search's starting point."""
@@ -193,7 +195,7 @@ class _Machine:
 
     def branching_halted(self, state: object) -> bool:
         """Report whether ``state`` has reached ``@``."""
-        return cast(_State, state)[7]
+        return cast(_State, state)[4]
 
     def branching_successors(
         self, state: object, _limit: int
@@ -205,10 +207,10 @@ class _Machine:
         :meth:`step`: catching it would hide a halting branch.
         """
         current = cast(_State, state)
-        if current[7]:
+        if current[4]:
             return (current,)
-        col, row = current[0], current[1]
-        command = current[4][row][col]
+        col, row, _dx, _dy = current[0]
+        command = current[1][row][col]
         if command in "~&":
             return None
         if command == "?":
@@ -218,7 +220,7 @@ class _Machine:
     def step(self) -> None:
         if self.halted:
             return
-        col, row, _dx, _dy, grid, _stack, _string, _done = self.state
+        (col, row, _dx, _dy), grid, _stack, _string, _done = self.state
         command = grid[row][col]
         char_input = self.io.input_char() if command == "~" else None
         number_input = self.io.input_num() if command == "&" else None
