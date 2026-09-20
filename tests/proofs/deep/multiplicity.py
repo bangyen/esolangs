@@ -3,10 +3,13 @@
 Run:  just proofs   (or python tests/proofs/deep/multiplicity.py)
 
 ``docs/polynomial.md`` proves "each leading zero buys one root" for an
-exponential sum on *distinct* nodes, and the language bound
-``Omega(T**2 / log T)`` follows only while the real instruction roots are
-distinct.  A repeated root is legal (``(x-2)**3`` decodes to three ``[1]``
-instructions), and the missing step is a mass bound that counts multiplicity.
+exponential sum on *distinct* nodes.  The unconditional language bound is
+``Omega(T**2 / log**2 T)``: the routing floor gives ``m = Omega(T/log T)``
+real instructions, and the confluent certificate here prices multiplicity as
+``Omega(m**2)``, so no distinctness hypothesis is needed.  The extra ``log``
+in ``Omega(T**2 / log T)`` needs the sharpened routing lemma -- distinct real
+root *values* -- and that is open; the obstacle is that the language has
+loops, which ``_check_loops`` pins.
 
 The confluent analogue is::
 
@@ -230,14 +233,63 @@ def _check_mass(failures: list[str]) -> int:
     return count
 
 
+def _check_loops(failures: list[str]) -> int:
+    """Pin the routing-floor obstacle: codes 5..8 loop, and convert emits them.
+
+    The sharpened routing lemma would need each real instruction to route a
+    *fresh* read, i.e. no re-entry.  ``_advance`` jumps a closing bracket back
+    to its opener when the opener's code exceeds 4, so codes 5..8 are loops;
+    ``convert`` maps a real root ``p**v`` to code ``v`` for ``v`` in 1..8, so a
+    real root can be a loop bracket and one real value can serve many reads.
+    """
+    from esolangs.interpreters.register_based.polynomial import (
+        _advance,
+        _bracket_pairs,
+        convert,
+    )
+
+    count = 0
+    # code 5 opener: reach the close, jump back while reg > 0 -> no halt
+    instrs = [[1, 1], [5], [1, 1], [2], [0, 1]]
+    pairs = _bracket_pairs(instrs)
+    state, steps = (0, 0), 0
+    while state[1] < len(instrs) and steps < 50:
+        state, _ = _advance(state, instrs, None, pairs)
+        steps += 1
+    if state[1] >= len(instrs):
+        failures.append("code 5 bracket halted instead of looping")
+    count += 1
+    # code 1 opener: skip forward, never re-enter
+    instrs = [[1, 1], [1], [1, 1], [2], [0, 1]]
+    pairs = _bracket_pairs(instrs)
+    seen: list[int] = []
+    state, steps = (1, 0), 0
+    while state[1] < len(instrs) and steps < 50:
+        seen.append(state[1])
+        state, _ = _advance(state, instrs, None, pairs)
+        steps += 1
+    if len(seen) != len(set(seen)):
+        failures.append("code 1 bracket re-entered an instruction")
+    count += 1
+    # convert emits code v for a real root p**v, so v in 5..8 is reachable
+    for p, v in ((2, 5), (3, 5), (2, 6), (2, 8)):
+        emitted = convert([complex(p**v, 0)])
+        if emitted != [[v]]:
+            failures.append(f"convert(p**{v}={p**v}) = {emitted}, not [[{v}]]")
+    count += 4
+    return count
+
+
 def main() -> int:
     failures: list[str] = []
     certs = _check_certificates(failures)
     asm = _check_assembly(failures)
     mass = _check_mass(failures)
+    loops = _check_loops(failures)
     print(f"  confluent certificates checked exactly : {certs}")
     print(f"  slack-assembly thresholds checked      : {asm}")
     print(f"  divisibility + mass(f) >= c m^2 cases  : {mass}")
+    print(f"  routing-floor bracket facts checked    : {loops}")
     if failures:
         for line in failures:
             print(f"  FAIL: {line}")
