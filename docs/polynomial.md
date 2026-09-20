@@ -698,14 +698,18 @@ The stronger `Omega(T**2 / log T)` needs the **sharpened routing lemma**:
 `N'(k+1) <= 2 * L_real + E(k)`, where `L_real` is the number of distinct
 *real* instruction-root values, not instruction positions or blocks.  The
 block lemma counts distinct primes (each a distinct root, real or complex),
-but a complex-only block can host the routed read and a real block can be
-re-entered at several cursors, so `L_real = o(#blocks)` is not excluded.
-The complex escape cannot be charged to mass: Round 4 of the offline work
-refuted the natural complex-node certificate with an exact counterexample
-(nodes `1/(2 +- 2i)`, `1/(-2 +- 49i)`, tail/bound up to 69.4).  So the extra
-`log` rests entirely on the sharpened routing lemma, which is open; the
-roadmap and the ledger record the row `Open` and carry `Omega(T**2 / log**2 T)`
-as the proved bound.
+but a complex-only block can host the routed read, and a real block can be
+re-entered at several cursors -- the language has loops: codes `5..8` are
+loop brackets (`_advance` jumps a closing bracket back to its opener when the
+opener's code exceeds 4, executed on `[1,1],[5],[1,1],[2],[0,1]`, which
+spins), and `convert` emits code `5..8` for a real root `p**5..p**8`, so one
+real instruction value can serve many reads.  Hence `L_real = o(#blocks)` is
+not excluded, and the extra `log` rests entirely on the sharpened routing
+lemma, which is open; the roadmap and the ledger record the row `Open` and
+carry `Omega(T**2 / log**2 T)` as the proved bound.  The complex escape
+cannot substitute: Round 4 of the offline work refuted the natural
+complex-node certificate with an exact counterexample (nodes
+`1/(2 +- 2i)`, `1/(-2 +- 49i)`, tail/bound up to 69.4).
 
 **The confluent certificate (multiplicity is free of the extra hypothesis).**
 The distinct-node theorem above is replaced by its confluent analogue, proved
