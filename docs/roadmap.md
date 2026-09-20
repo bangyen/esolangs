@@ -8,7 +8,7 @@ Only live work belongs here. Contracts and standing walls go to
 Implement the surveyed two-dimensional candidates in this order.  This is the
 2026-09-19 re-run of the `Category:Unimplemented` x `Category:Two-dimensional
 languages` pass (116 pages, up from 111); the verdicts are spec reads, not
-executed generators, so the size question is open for all three.
+executed generators, so the size question is open for every entry.
 
 - **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
   filed it unread, thinking the `{{:thisthat}}` transclusions hid the node
@@ -18,6 +18,13 @@ executed generators, so the size question is open for all three.
   make a combinational network the natural generator, a construction the set
   does not occupy.  Settle `◨⬒` and the partial-node cases first, and dodge
   `◘`'s random pointer pick by construction.
+- **Self-replicating marbles** (2024): a second gate-native pick the 2026-09-02
+  audit missed -- it recorded "no input or output vocabulary", but `i` and `o`
+  are in the command table and the NAND example uses both.  A marble carries one
+  bit, `?` deletes it on 0, and two marbles on one tile merge with NAND; a
+  marble leaving a section replicates to every instruction of the next, a
+  fan-out primitive the set does not have.  Pin "the next section" and the
+  collision tick before building.
 - **Wirefunge** (2011): native not/and/or/xor/nor/nand/xnor gates over
   bit-addressable `a-h`/`1-8` ports, but the page is a self-labelled "Draft
   Spec" and propagation is simultaneous.  Pin one evaluation order, then admit.
