@@ -201,6 +201,22 @@ class TestStepMachine:
 
         assert run_until_halt_or_cycle(_Machine(["if 0 goto 1"], ScriptedIO())) is False
 
+    def test_pure_transition_covers_blank_and_existing_right_cell(self) -> None:
+        from esolangs.interpreters.persistent import chunked
+        from esolangs.interpreters.tape_based.brainif import _advance
+
+        cells = chunked((0, 0))
+        assert _advance((0, 0, cells), None) == (1, 0, cells)
+        assert _advance((0, 0, cells), (0, "right", 0)) == (1, 1, cells)
+
+    def test_machine_retries_a_blank_input_line(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainif import _Machine
+
+        machine = _Machine(["if 0 input"], ScriptedIO("\nA\n"))
+        machine.step()
+        assert machine.cells == (65,)
+
 
 def test_a_blank_line_is_skipped() -> None:
     """A line with nothing on it advances the counter and does no work.
@@ -219,6 +235,11 @@ def test_a_blank_line_is_skipped() -> None:
     """
     assert run_and_capture(["if 0 increment", "", "if 1 output"]) == "\x01"
     assert run_and_capture(["if 0 increment", "", "   ", "if 1 output"]) == "\x01"
+
+
+def test_run_reuses_a_parsed_line_after_a_backward_goto() -> None:
+    code = ["if 1 increment", "if 0 increment", "if 1 goto 1"]
+    assert run_and_capture(code) == ""
 
 
 def _machine(code: object) -> object:

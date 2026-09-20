@@ -255,9 +255,46 @@ class _Machine:
 
 def run(code: str, io: IO) -> None:
     """Run a ROTfuck program."""
-    machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    chars = tuple(code)
+    tape = bytearray(1)
+    ptr = 0
+    ind = 0
+    rot = 0
+    while ind < len(chars):
+        char = _at(chars, rot, ind)
+        if char == ">":
+            ptr += 1
+            if ptr == len(tape):
+                tape.append(0)
+        elif char == "<":
+            if ptr:
+                ptr -= 1
+        elif char == "+":
+            tape[ptr] = (tape[ptr] + 1) % 256
+        elif char == "-":
+            tape[ptr] = (tape[ptr] - 1) % 256
+        elif char == ".":
+            io.print_char(chr(tape[ptr]))
+        elif char == ",":
+            tape[ptr] = io.input_char() % 256
+        elif char == "[" and tape[ptr] == 0:
+            rot += 1
+            partner = _forward(chars, rot, ind)
+            if partner is None:
+                raise HaltError("an executed '[' has no bracket partner")
+            ind = partner + 1
+            continue
+        elif char == "]" and tape[ptr] != 0:
+            rot += 1
+            partner = _backward(chars, rot, ind)
+            if partner is None:
+                raise HaltError("an executed ']' has no bracket partner")
+            ind = partner + 1
+            continue
+
+        if char in _COMMANDS:
+            rot += 1
+        ind += 1
 
 
 if __name__ == "__main__":

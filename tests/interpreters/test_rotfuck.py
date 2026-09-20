@@ -236,6 +236,16 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
 
+    def test_pure_transition_moves_left_and_checks_backward_partners(self) -> None:
+        from esolangs.interpreters.tape_based.rotfuck import _advance
+
+        chars = tuple("<[]")
+        assert _advance(((0, 1), 1, 0, 0), chars) == ((0, 1), 0, 1, 1)
+        assert _advance(((1,), 0, 1, 0), tuple(".]")) == ((1,), 0, 1, 1)
+
+        with pytest.raises(HaltError):
+            _advance(((1,), 0, 0, 0), tuple("]"))
+
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
