@@ -51,6 +51,44 @@ it, and wrapping preserves the order.  The structural envelopes and a
 directly assembled, executed machine are pinned by
 `TestPolynomial.test_uncapped_dag_has_matching_text_bound`.
 
+## Construction and cold-parse time
+
+Let `m = O(T/log T)` be the instruction count and
+`L = Theta(T**2/log T)` the maximal-width output length.  Building and
+deduplicating the residual strings touches `O(T log T)` characters.  Prime
+enumeration and factor construction are polynomial in `m`; expansion owns the
+asymptotics.  If `M(q)` is the cost of multiplying `q` decimal digits, the
+balanced packed-product tree takes conservatively
+`O(M(L) log m + L)` time: it has `O(log m)` merge levels, and no packed node is
+wider than the final one.  With schoolbook `M(q) = O(q**2)`, this gives the
+portable bound `O(T**4/log T)`.  Merely writing the result costs
+`Omega(T**2/log T)`, so the construction-time classification remains between
+those bounds; libmpdec's faster multiplication narrows the measured gap, not
+the proved one.
+
+A cold parse first scans `Theta(L)` source characters and converts the dense
+coefficients to integers.  On the current fixed-field fast path, modular
+screens cost linear work in the coefficient digits and accepted roots are
+proved by repeated exact division.  A conservative bound for a fully peeled
+generated program, including schoolbook decimal conversion, is
+`O(m**3 log**2 m)` bit operations, or `O(T**3/log T)`.  `_parse_program`
+caches the recovered instruction tuple, so later machines using the same
+source do not repay this cold cost.
+
+That fast-path bound is not an asymptotic parser bound for the uncapped
+construction.  Its fields and `|a| <= 81920` lift are fixed; eventually a
+generated operand lies outside them and the remainder reaches SymPy's
+Zassenhaus factorization.  Its recombination enumerates subsets of modular
+factors, giving the current fallback a conservative
+`2**O(m) poly(m, H) = 2**O(T/log T) poly(T)` worst-case bound, where
+`H = O(m log m)` is the coefficient height.  Polynomial-time integer-
+polynomial factorization algorithms exist, but this implementation does not
+establish that bound.  Cold timings on the dense fixtures at `n = 5..10`
+were `0.57, 0.72, 1.26, 2.49, 5.15, 17.55` seconds; construction was
+`0.008, 0.018, 0.061, 0.187, 0.587, 2.186` seconds for outputs from 56 KB to
+16.9 MB.  These measurements check which stages dominate; they are not the
+asymptotic proof.
+
 ## The text is not construction-forced
 
 Negative operands are **legal**: `convert` puts no sign condition on a complex
@@ -852,13 +890,10 @@ add nothing past the primorial: a slope `-1` segment at every `p_i` is met by
 `p_i || f_0` and a term at `x^1`, as in `P` itself.  Checked on 48
 constructed multiples to `L = 7` with a split control.
 
-Totality is one cell that cannot close: the `Cap` is the ledger's own
-label, and a Polynomial program's digit count refuses some tables on cost.
-Size and time are the other: the bound is proved for distinct real instruction
-roots only, and the repeated-root multiplicity lemma above is the missing
-link.  The row therefore stays in the roadmap's audit as `Open` -- totality
-capped, size and time open -- with the distinct-root bound and the
-multiplicity measurements as its evidence.
+Totality remains capped.  Text is closed at `Theta(T**2/log T)`; generation
+time inherits that output lower bound and the packed-product upper bound
+above.  Cold parsing is polynomial on the fully peeled fast path but retains
+the Zassenhaus fallback's exponential worst case for the uncapped family.
 
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
 [sparse-survey]: https://arxiv.org/abs/1807.08289
