@@ -162,13 +162,13 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.one_two_three import _Machine
 
         machine = _Machine("111", ScriptedIO())
-        assert machine.snapshot() == (0, 0, (), 0)
+        assert machine.snapshot() == (0, 0, frozenset(), 0)
         machine.step()
-        assert machine.snapshot() == (1, -1, (0,), 0)
+        assert machine.snapshot() == (1, -1, frozenset((0,)), 0)
         machine.step()
-        assert machine.snapshot() == (2, -2, (-1, 0), 0)
+        assert machine.snapshot() == (2, -2, frozenset((-1, 0)), 0)
         machine.step()
-        assert machine.snapshot() == (3, -3, (-2, -1, 0), 0)
+        assert machine.snapshot() == (3, -3, frozenset((-2, -1, 0)), 0)
 
     def test_backward_jump_stops_at_an_adjacent_three(self) -> None:
         """The backward scan starts at the character before the ``3``.
