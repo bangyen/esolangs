@@ -653,7 +653,8 @@ G_z / hat F_z` for `d >= z > m`, which is (D).  `tests/proofs/test_negatives.py`
 pins every link -- the identity of step 3, the equivalence of step 4, (C),
 (D), `W > 0`, and `Delta`'s zero structure -- in exact rationals.
 
-**The bound: every Polynomial program is `Omega(T**2 / log T)` characters.**
+**The bound for distinct real instruction roots: `Omega(T**2 / log T)`
+characters.**
 Anchor at the top (`|f_D| >= 1`), iterate `u = 0..(L-1)/2` taking `U` to be
 the positions of the `u` largest coefficients below it wherever they sit,
 and the slack certificate forces a `(u+1)`-th coefficient of at least
@@ -666,10 +667,34 @@ every degree has
 
 nats, for every cofactor and every operand sign.  The routing floor puts
 `L = Omega(T/log T)` real instruction roots in every program for a
-maximal-width table, so the coefficient digits are `Omega(L**2 log L) =
-Omega(T**2 / log T)`, the dense product's own order and the
-right-half-plane theorem's bound without the half-plane.  Polynomial's
-output size and generation time are language lower bounds, not open cells.
+maximal-width table, so a program whose real instruction roots are *distinct*
+has coefficient digits `Omega(L**2 log L) = Omega(T**2 / log T)`, the dense
+product's own order and the right-half-plane theorem's bound without the
+half-plane.  Distinctness is the one hypothesis not proved for every program;
+see below.
+
+**Repeated real roots are legal, and the distinctness hypothesis is unproved.**
+The slack certificate's theorem is stated for distinct roots (`rho_1 > ... >
+rho_c`), and the bound above prices multiples of `prod_{i<=L} (x - p_i)` with
+the `p_i` distinct.  A program need not have distinct real instruction roots:
+`_factor_roots` preserves multiplicity (`[Root(r, 0)] * multiplicity`), and
+`convert` emits one instruction per root, so `f(x) = (x-2)^3` is a legal
+program decoding to `[1], [1], [1]` (executed).  The routing lemma bounds
+instruction *positions* -- "the reachable configurations number at most twice
+the instruction count" -- not distinct root *values*, so it does not force
+`L = Omega(T/log T)` distinct roots.
+
+What is still forced: the program is a multiple of its distinct-root product,
+so the theorem gives `Omega(L'**2 log L')` for `L'` distinct real roots, and
+the multiplicity contributes mass of its own -- `mass((x-2)**M) / M**2 = 0.365`
+measured at `M = 10..160`, and complex cofactors do not cancel it
+(`(x-2)**M (x**2+1)**K` and `(x-2)**M (x**2-2x+2)**M` both grow).  With
+`M = Omega(T/log T)` instructions that is `Omega(T**2 / log**2 T)` at worst,
+still super-linear; the `Omega(T**2 / log T)` above needs either the missing
+lemma that a maximal-width table forces `Omega(T/log T)` *distinct* real
+instruction roots, or a multiplicity mass bound of `Omega(M**2 log M)`.  That
+lemma is the one open link, and the roadmap and the ledger record the row
+`Open` until it lands.
 
 *What the earlier rounds leave behind.*  The routes that did not reach the
 lemma are recorded so they are not rebuilt, and the peel above explains
@@ -721,15 +746,17 @@ leaves sparse division and divisibility testing as Open Problems 2 and 3.
 
 ## What is closed
 
-Nothing on the bound.  The route the earlier rounds narrowed to -- an
-O(T)-digit multiple of the mandatory root product with *more* terms than
+Nothing on the distinct-root bound.  The route the earlier rounds narrowed to
+-- an O(T)-digit multiple of the mandatory root product with *more* terms than
 the Descartes minimum `L + 1`, cofactor roots of substantially negative
 real part and inexact magnitude relations to the instruction roots -- has
 no member: the iterated elimination's certificate, in its slack form, is
 proved for free positions anywhere and every degree, so **every** multiple
-of the mandatory product carries `Omega(L**2 log L)` coefficient digits and
-every Polynomial program for a maximal-width table is `Omega(T**2 / log T)`
-characters.  The sparse-remainder profile that survived the searches (`O(1)`
+of the mandatory distinct-root product carries `Omega(L**2 log L)` coefficient
+digits.  What is open is the reduction from the instruction *count* to the
+number of *distinct* real roots (the section above): a repeated root is legal,
+and the routing lemma bounds positions, not root values.  The sparse-remainder
+profile that survived the searches (`O(1)`
 coefficients of `O(T)` digits, a second at a constant fraction of the
 primorial, and an `O(T/log T)`-term remainder of `O(log T)`-digit terms) is
 covered by it like every other: the bound is over all multiples, so it needs
@@ -758,11 +785,13 @@ add nothing past the primorial: a slope `-1` segment at every `p_i` is met by
 `p_i || f_0` and a term at `x^1`, as in `P` itself.  Checked on 48
 constructed multiples to `L = 7` with a split control.
 
-Totality is the one cell that cannot close: the `Cap` is the ledger's own
+Totality is one cell that cannot close: the `Cap` is the ledger's own
 label, and a Polynomial program's digit count refuses some tables on cost.
-The row therefore stays in the roadmap's audit the way Factor's does --
-size and time as language lower bounds, totality capped -- and no
-construction is left to look for.
+Size and time are the other: the bound is proved for distinct real instruction
+roots only, and the repeated-root multiplicity lemma above is the missing
+link.  The row therefore stays in the roadmap's audit as `Open` -- totality
+capped, size and time open -- with the distinct-root bound and the
+multiplicity measurements as its evidence.
 
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
 [sparse-survey]: https://arxiv.org/abs/1807.08289

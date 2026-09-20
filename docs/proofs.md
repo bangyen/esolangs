@@ -41,9 +41,11 @@ characters per table entry past each generator's last route change and holds
 every generator to it except those the roadmap's scaling audit or this
 document's `cap` and `exception` rows already exempt.  Read its verdicts in one
 direction only: exceeding the bound is evidence, staying inside it is not, and
-Factor -- proven super-linear at the language level in `limitations.md` and
-measuring x2.11 -- is why.  Polynomial is the second such proof, at
-`Omega(T**2 / log T)` ([polynomial](polynomial.md)).
+Factor -- proven super-linear at the language level in [factor](factor.md) and
+measuring x2.11 -- is why.  Polynomial's `Omega(T**2 / log T)` is proved for
+distinct real instruction roots only; repeated roots are legal and the missing
+multiplicity lemma is named in [polynomial](polynomial.md), so its audit row is
+`Open`, not a language lower bound.
 
 ## Proof schemes
 
@@ -168,7 +170,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Dimensional | tree | `decision_tree_program` with dimensional moves | linear: decision_tree_program with dimensional moves |
 | EGL | tree | — | linear, time n log: greedy order scoring, capped at n <= 10 |
 | Eval | linear lookup | fixed reversed stack order selects the indexed row | linear: T literal plus halving `;` runs under T |
-| Factor | tree | Brainfuck tree followed by a total prime encoding: Dirichlet supplies the next prime in each residue class mod 11, and the integer is arbitrary precision on both sides | lower bound: Theta(T) prime runs of Theta(log T) digits; language Omega(T log T / log log T) |
+| Factor | tree | Brainfuck tree followed by a total prime encoding: Dirichlet supplies the next prime in each residue class mod 11, and the integer is arbitrary precision on both sides | lower bound: Theta(T) prime runs of Theta(log T) digits; language Omega(T log T / log log T) ([factor](factor.md)) |
 | Fargo | tree | finite folded layout | linear, time n log: Moebius transform, n passes over 2**n |
 | Flowchart | finite lookup | a five-row deque preloads `2**n` answers and discards opposite halves | linear: 2T preload nodes and T arm cells on five rows |
 | Forbin | tree | — | linear, time n log: greedy order scoring, capped at n <= 10 |
@@ -185,7 +187,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
 | Packlang | tree | — | linear: folded tree, shortest names deepest, flat pieces |
 | Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
-| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding | lower bound: Theta(L**2 log L) digits for every multiple of the mandatory root product; language Omega(T**2 / log T) |
+| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding | open: distinct real instruction roots give Omega(T**2 / log T); the repeated-root multiplicity lemma is unproved ([polynomial](polynomial.md)) |
 | Qoibl | tree | — | linear: span walk, O(1) node tests by halves |
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup | linear: 16-17 tokens per row, unary runs 2T - 2 |
 | ROTfuck | tree | movement search stops after at most eight offsets | linear, time n log: essential_inputs |
