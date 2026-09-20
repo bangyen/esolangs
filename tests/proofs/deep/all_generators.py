@@ -2,7 +2,7 @@
 
 Run:  just proofs   (or python tests/proofs/deep/all_generators.py)
 
-Every row in ``docs/proofs.md`` gets the lemma battery in
+Every row in ``docs/proofs/index.md`` gets the lemma battery in
 :mod:`tests.proofs.deep._lemmas` instantiated against its own construction and
 its own ledger scheme.  Four generators additionally have a hand-derived proof
 of their *specific* argument in the files beside this one; those are deeper,

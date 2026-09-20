@@ -1,7 +1,7 @@
 # Limitations and contracts
 
 Standing contracts and walls. Closed scaling work belongs in its commit;
-Polynomial's proved wall is in [polynomial](polynomial.md).
+Polynomial's proved wall is in [polynomial](proofs/polynomial.md).
 
 ## Interpreter conventions
 
@@ -80,9 +80,9 @@ proves `Theta(L**2 log L) = Theta(T**2 / log T)` digits for every multiple,
 cofactor, and operand sign. Repeated real roots are legal (`(x-2)^3` decodes to
 three `[1]` instructions) and that theorem does not cover them, so the general
 language bound is open -- the one missing lemma is named in
-[polynomial](polynomial.md). Factor has a language floor
+[polynomial](proofs/polynomial.md). Factor has a language floor
 `Omega(T log T)`, a weighted exponent-vector count on D-digit integers
-([factor](factor.md)); its worst-case generated encoding is `Theta(T log T)`.
+([factor](proofs/factor.md)); its worst-case generated encoding is `Theta(T log T)`.
 
 ### Scaling
 

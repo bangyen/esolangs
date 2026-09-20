@@ -1,5 +1,9 @@
 # Boolean-generator coverage proofs
 
+Standalone complexity proofs are [Factor](factor.tex) and
+[Polynomial](polynomial.tex).  Their Markdown companions retain implementation
+bounds, measurements, counterexamples, and the development record.
+
 This ledger answers one question: for every exported Boolean generator and
 every truth table of length `2**n`, does its construction produce a program
 for every finite `n`?  “Total” here means mathematical coverage, not practical

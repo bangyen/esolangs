@@ -78,7 +78,7 @@ def test_the_audit_holds_only_unresolved_rows(audit: Audit) -> None:
 
 
 def test_the_totality_column_is_the_ledger(audit: Audit) -> None:
-    """A ``Cap`` or ``Exception`` cell is ``proofs.md``'s label, spelled twice.
+    """A ``Cap`` or ``Exception`` cell is ``proofs/index.md``'s label, spelled twice.
 
     Every ledger row carrying one of those labels must appear here with the
     same verdict, and no row here may claim one the ledger does not.
@@ -137,7 +137,7 @@ def test_the_scaling_column_is_the_audit(audit: Audit) -> None:
 
 
 def test_the_exempt_set_is_read_from_both_documents(audit: Audit) -> None:
-    """The bound's exemptions come from the roadmap and from ``proofs.md``.
+    """The bound's exemptions come from the roadmap and from ``proofs/index.md``.
 
     Pinned here because the measured half is not collected by pytest: if the
     exemption source silently narrowed to one document, the only signal would
@@ -160,7 +160,7 @@ def test_the_execution_exempt_set_is_read_from_both_documents(audit: Audit) -> N
     """The command-count bound's exemptions come from the same two documents.
 
     Its own hand-kept set is the one generator that answers by never
-    halting; everything else is a ``proofs.md`` cap row or an audit row
+    halting; everything else is a ``proofs/index.md`` cap row or an audit row
     whose execution cell is open, so a row closing there arms the band.
     """
     exempt = execution_exempt()

@@ -94,7 +94,7 @@ implemented, so never in the screen.
   generated-family parsing is polynomial in `T`, while arbitrary semiprimes
   retain exponential trial-sieve loading. The time bound is naturally
   output-sensitive in the last selected prime `Q` and digit count `D`, without
-  assuming a prime-gap conjecture. See [factor](factor.md).
+  assuming a prime-gap conjecture. See [factor](proofs/factor.md).
 
   Polynomial has tight language-level text complexity
   `Theta(T**2 / log T)`.  Equal real
@@ -119,7 +119,7 @@ implemented, so never in the screen.
   programs outside the envelope retain the general factorization fallback.
   Conservative generation and cold-parse work/memory estimators cover the
   tested corpus and boundary controls, including pre-expansion refusal and a
-  parse outside the former fixed lift.  See [polynomial](polynomial.md) and
+  parse outside the former fixed lift.  See [polynomial](proofs/polynomial.md) and
   `tests/proofs/deep/multiplicity.py`.
 
   Generation time, growth per added input at the top arity: B-tapemark,

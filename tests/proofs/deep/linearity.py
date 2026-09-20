@@ -186,7 +186,7 @@ def exempt_generators() -> dict[str, str]:
     """Generators the documents already say are not settled as linear.
 
     Read from both ledgers rather than listed here.  The roadmap's audit table
-    holds the open scaling rows; ``proofs.md`` marks the generators whose
+    holds the open scaling rows; ``proofs/index.md`` marks the generators whose
     construction runs into a resource ceiling (``cap``) or has no totality
     argument at all (``exception``).  Closing a row in either document is a
     one-line edit that immediately arms this contract against that generator.
@@ -201,7 +201,7 @@ def exempt_generators() -> dict[str, str]:
     for row in load_ledger().rows:
         for label in ("cap", "exception"):
             if label in row.labels:
-                reasons[row.generator] = f"proofs.md {label} row"
+                reasons[row.generator] = f"proofs/index.md {label} row"
     for name in sorted(load_audit().unsettled):
         reasons[name] = "roadmap scaling audit: open"
     return reasons
