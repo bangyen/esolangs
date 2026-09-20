@@ -5,6 +5,7 @@ loop semantics directly.
 """
 
 import importlib
+import random
 
 import pytest
 
@@ -143,3 +144,40 @@ class TestBrainfuck:
             run_and_capture("]")
         with pytest.raises(ValueError, match="unmatched"):
             run_and_capture("+]")
+
+
+class TestFastRunParity:
+    @staticmethod
+    def run_reference(code: str, stdin: str = "") -> tuple[str, int]:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+
+        io_obj = ScriptedIO(stdin)
+        machine = _Machine(code, io_obj)
+        while not machine.halted:
+            machine.step()
+        return io_obj.getvalue(), io_obj.reads
+
+    @pytest.mark.parametrize(
+        ("code", "stdin"),
+        [
+            ("+++>++++<[>++<-]>. ", ""),
+            ("[>++++<-]>. ", ""),
+            ("-[>+<-]>. ", ""),
+            ("++[+].", ""),
+            (",+.", "Ā\n"),
+            ("+++[>++[>+<-]<-]>+++.", ""),
+        ],
+    )
+    def test_curated_programs_match(self, code: str, stdin: str) -> None:
+        assert (
+            run_and_capture(code, stdin.splitlines())
+            == self.run_reference(code, stdin)[0]
+        )
+
+    def test_generated_straight_line_programs_match(self) -> None:
+        rng = random.Random(0)
+        commands = "+-<>.abc"
+        for _ in range(100):
+            code = "".join(rng.choice(commands) for _ in range(200))
+            assert run_and_capture(code) == self.run_reference(code)[0]
