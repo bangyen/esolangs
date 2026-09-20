@@ -49,21 +49,17 @@ def _parity(n: int) -> str:
 
 
 @pytest.mark.parametrize(
-    ("n", "table"),
-    [
-        (n, table)
-        for n in (1, 2, 3)
-        for table in ("".join(bits) for bits in product("01", repeat=2**n))
-    ],
+    "table",
+    ["".join(bits) for n in (1, 2, 3) for bits in product("01", repeat=2**n)],
 )
-def test_every_table_up_to_three_inputs(n: int, table: str) -> None:
+def test_every_table_up_to_three_inputs(table: str) -> None:
     """The whole domain through n=3, run row by row."""
     assert _rows(table) == list(table)
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("n", (6, 9))
-@pytest.mark.parametrize("shape", (_dense, _parity))
+@pytest.mark.parametrize("n", [6, 9])
+@pytest.mark.parametrize("shape", [_dense, _parity])
 def test_dense_and_parity_run(n: int, shape: object) -> None:
     """The two worst-case shapes at the top of the supported range."""
     table = shape(n)  # type: ignore[operator]

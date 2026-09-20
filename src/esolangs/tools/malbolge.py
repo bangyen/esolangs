@@ -93,7 +93,7 @@ def _addr_of(value: int, avoid: tuple[int, ...], low: int = 34) -> int:
         for address in _G_ADDRESSES.get(value, ())
         if low <= address <= 126 and address not in avoid
     ]
-    if not candidates:
+    if not candidates:  # pragma: no cover - the first pass always finds one
         candidates = [
             address
             for address in _G_ADDRESSES.get(value, ())
@@ -174,8 +174,7 @@ def _skeleton(n: int) -> tuple[dict[int, str], tuple[int, ...]]:
             set_d(cell)
         code[c] = op
         c += 1
-        if op in "*p/<voi":
-            d += 1
+        d += 1  # every Malbolge instruction increments ``d``
 
     for i in range(n):
         emit("/")
