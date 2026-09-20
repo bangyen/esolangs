@@ -10,6 +10,7 @@ from esolangs.tools.cvnc import cvnc
 from esolangs.tools.egl import egl
 from esolangs.tools.fargo import fargo
 from esolangs.tools.inject import inject
+from esolangs.tools.malbolge import malbolge
 from esolangs.tools.other import (
     bit_tilde,
     clockwise,
@@ -110,6 +111,7 @@ __all__ = [
     "inject",
     "jaune",
     "laserfuck",
+    "malbolge",
     "minifuck",
     "minsky_swap",
     "modulous",

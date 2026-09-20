@@ -570,6 +570,7 @@ _UNSHAPED = {
     "befunge",
     "bio",
     "alight",
+    "malbolge",
     "minsky_swap",
     "b_tapemark",
     "minifuck",
@@ -786,7 +787,14 @@ _ARITY_BANDS = (
 # ``test_every_generator_builds_up_to_ten_inputs`` fails and the
 # measurement that put the cap here belongs back in this table, with the
 # phrase its own refusal is built around.
-_ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {}
+# Malbolge's mixer is injective with pairwise gap >= 3 only through nine
+# inputs.  The ten-input branch's two targets differ solely in di-trit 0, and
+# no `p` chain can lift that difference into an address the code copies can be
+# placed at without a run-time store, so the generator refuses n > 9.
+_ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {
+    ("malbolge", "dense"): (9, "builds at most 9 inputs"),
+    ("malbolge", "parity"): (9, "builds at most 9 inputs"),
+}
 
 
 # The two table shapes every generator is built against.  A dense

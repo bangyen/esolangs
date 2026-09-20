@@ -1,6 +1,6 @@
 """Parse ``docs/proofs.md`` into the structure the proof tests enforce.
 
-The ledger is prose, and until now nothing read it: its 61 rows, its proof
+The ledger is prose, and until now nothing read it: its 62 rows, its proof
 schemes and its two audit sections could drift from the registry and from each
 other without anything failing.  This module is the reader that makes the
 drift detectable; :mod:`tests.proofs.test_ledger` is the assertion.
