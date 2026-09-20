@@ -5,6 +5,9 @@ loop semantics directly.
 """
 
 import importlib
+import io
+import random
+from contextlib import redirect_stdout
 
 import pytest
 
@@ -143,3 +146,72 @@ class TestBrainfuck:
             run_and_capture("]")
         with pytest.raises(ValueError, match="unmatched"):
             run_and_capture("+]")
+
+
+class TestNativeParity:
+    @staticmethod
+    def run_python(code: str, stdin: str = "") -> tuple[str, int]:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _run_python
+
+        io_obj = ScriptedIO(stdin)
+        _run_python(code, io_obj)
+        return io_obj.getvalue(), io_obj.reads
+
+    @pytest.mark.parametrize(
+        ("code", "stdin"),
+        [
+            ("", ""),
+            ("abc+++abc.abc", ""),
+            ("-.<<.>+.", ""),
+            ("+++[>++[>+<-]<-]>+++.", ""),
+            (",>,<.>.", "A\nB\n"),
+            (",.", "\n"),
+            (",+.", "Ā\n"),
+        ],
+    )
+    def test_curated_programs_match(self, code: str, stdin: str) -> None:
+        assert (
+            run_and_capture(code, stdin.splitlines()) == self.run_python(code, stdin)[0]
+        )
+
+    def test_generated_halting_programs_match(self) -> None:
+        rng = random.Random(0)
+        commands = "+-<>.abc"
+        for _ in range(100):
+            code = "".join(rng.choice(commands) for _ in range(200))
+            assert run_and_capture(code) == self.run_python(code)[0]
+
+    def test_missing_extension_falls_back(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def unavailable(_name: str) -> None:
+            raise ImportError
+
+        monkeypatch.setattr(bf.importlib, "import_module", unavailable)
+        assert run_and_capture("+++.") == "\x03"
+
+    def test_interactive_io_uses_the_reference_machine(self) -> None:
+        from esolangs.interpreters.io import IO
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            bf.run("+++.", IO())
+        assert output.getvalue() == "\x03"
+
+    def test_partial_output_and_reads_survive_exhaustion(self) -> None:
+        from esolangs.exceptions import InputExhaustedError
+        from esolangs.interpreters.io import ScriptedIO
+
+        io_obj = ScriptedIO("A\n")
+        with pytest.raises(InputExhaustedError):
+            bf.run(",.,", io_obj)
+        assert io_obj.getvalue() == "A"
+        assert io_obj.reads == 1
+
+    def test_timeout_keeps_output(self) -> None:
+        import esolangs
+
+        with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+            esolangs.run("brainfuck", ".+[]", timeout=0.01)
+        assert caught.value.partial_output == "\x00"

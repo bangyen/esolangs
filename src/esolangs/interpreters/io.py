@@ -147,7 +147,7 @@ class ScriptedIO(IO):
         """Read input from ``stdin`` and capture all output internally."""
         super().__init__()
         self._supplied = stdin.splitlines()
-        self._lines = iter(self._supplied)
+        self._index = 0
         self._reads = 0
         self._past_end = 0
         self._buffer = _stdlib_io.StringIO()
@@ -180,9 +180,7 @@ class ScriptedIO(IO):
         return len(self._supplied)
 
     def _read(self, _prompt: str) -> str:
-        try:
-            value = next(self._lines)
-        except StopIteration:
+        if self._index == len(self._supplied):
             # An InputExhaustedError *is* an EOFError, so the repo-wide
             # convention every interpreter documents -- and Suffolk's run
             # loop detects -- is unchanged.  What it adds is the message:
@@ -190,9 +188,21 @@ class ScriptedIO(IO):
             # which cannot say that the program wanted more input than the
             # caller passed, or how much it had.
             self._past_end += 1
-            raise InputExhaustedError(self._reads, len(self._supplied)) from None
+            raise InputExhaustedError(self._reads, len(self._supplied))
+        value = self._supplied[self._index]
+        self._index += 1
         self._reads += 1
         return value
+
+    def native_inputs(self) -> list[str]:
+        """Return unread lines for one batched native interpreter call."""
+        return self._supplied[self._index :]
+
+    def accept_native(self, output: str, reads: int) -> None:
+        """Commit output and input consumption from a native interpreter."""
+        self._index += reads
+        self._reads += reads
+        self.print_str(output)
 
     def position(self) -> int:
         """Report the number of input lines consumed so far."""

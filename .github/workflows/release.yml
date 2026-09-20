@@ -62,7 +62,18 @@ jobs:
 
   build:
     needs: check-version
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          artifact: linux-x86_64
+        - os: macos-13
+          artifact: macos-x86_64
+        - os: macos-14
+          artifact: macos-arm64
+        - os: windows-latest
+          artifact: windows-x86_64
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v7
@@ -75,26 +86,34 @@ jobs:
       with:
         python-version: "3.12"
 
-    - name: Build the sdist and wheel
-      run: uv build
+    - name: Build the wheel
+      run: uv build --wheel
+
+    - name: Build the source distribution once
+      if: matrix.os == 'ubuntu-latest'
+      run: uv build --sdist
 
     # Catches a README that PyPI would reject at upload, after the tag exists.
     - name: Check the distribution metadata
-      run: uv run --with twine python -m twine check dist/*
+      run: >-
+        uv run --with twine python -c
+        "import glob, subprocess, sys;
+        subprocess.run([sys.executable, '-m', 'twine', 'check', *glob.glob('dist/*')], check=True)"
 
-    # A wheel that imports and runs is the minimum bar for publishing one.
-    # `list` rather than `--help`: this CLI dispatches on subcommands and
-    # treats an unknown flag as an error, so `--help` exits 2.
+    # A wheel that imports and executes native code is the minimum bar.
     - name: The built wheel installs and runs
-      run: |
-        uv venv /tmp/relcheck
-        VIRTUAL_ENV=/tmp/relcheck uv pip install dist/*.whl
-        /tmp/relcheck/bin/esolangs list > /dev/null
-        /tmp/relcheck/bin/python -c "import esolangs; print('import ok', esolangs.__name__)"
+      run: >-
+        python -c
+        "import glob, subprocess, sys;
+        wheel = glob.glob('dist/*.whl')[0];
+        subprocess.run(['uv', 'pip', 'install', '--system', wheel], check=True);
+        import esolangs, esolangs._native;
+        assert esolangs.run('brainfuck', '+++.') == chr(3);
+        print('import ok', esolangs.__name__)"
 
     - uses: actions/upload-artifact@v7
       with:
-        name: dist
+        name: dist-${{ matrix.artifact }}
         path: dist/
 
   publish:
@@ -112,8 +131,9 @@ jobs:
     steps:
     - uses: actions/download-artifact@v8
       with:
-        name: dist
+        pattern: dist-*
         path: dist/
+        merge-multiple: true
 
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
