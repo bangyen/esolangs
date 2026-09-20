@@ -83,8 +83,16 @@ def _drop_lines(src: str, drop: set[int]) -> str:
     )
 
 
-def _languages_table(tree: ast.Module) -> ast.Dict | None:
-    """Return the ``LANGUAGES = {...}`` dict node, or ``None`` if absent."""
+def _parse_registry(source: Source) -> dict[str, str]:
+    """Map each display name to its interpreter module path.
+
+    ``registry/_table.py`` is parsed with ``ast`` (never executed), so the mapping
+    works against a raw download where the ``esolangs`` package cannot be
+    imported.  The interpreter argument is either the ``interpreter=`` keyword
+    or the second positional ``Language(name, interpreter, ...)`` slot.
+    """
+    tree = ast.parse(source.get("registry/_table.py"))
+    langs: dict[str, str] = {}
     for node in tree.body:
         targets: list[ast.expr]
         value: ast.expr | None
@@ -94,57 +102,32 @@ def _languages_table(tree: ast.Module) -> ast.Dict | None:
             targets, value = [node.target], node.value
         else:
             continue
-        if isinstance(value, ast.Dict) and any(
-            isinstance(t, ast.Name) and t.id == "LANGUAGES" for t in targets
+        if not (
+            value is not None
+            and isinstance(value, ast.Dict)
+            and any(isinstance(t, ast.Name) and t.id == "LANGUAGES" for t in targets)
         ):
-            return value
-    return None
-
-
-def _interpreter_of(entry: ast.expr) -> str | None:
-    """Return the interpreter path a ``Language(...)`` call names, if any.
-
-    The argument is either the ``interpreter=`` keyword or the second
-    positional slot.
-    """
-    if not isinstance(entry, ast.Call):
-        return None
-    interpreter: str | None = None
-    for kw in entry.keywords:
-        if (
-            kw.arg == "interpreter"
-            and isinstance(kw.value, ast.Constant)
-            and isinstance(kw.value.value, str)
-        ):
-            interpreter = kw.value.value
-    if interpreter is not None:
-        return interpreter
-    if (
-        len(entry.args) > 1
-        and isinstance(entry.args[1], ast.Constant)
-        and isinstance(entry.args[1].value, str)
-    ):
-        return entry.args[1].value
-    return None
-
-
-def _parse_registry(source: Source) -> dict[str, str]:
-    """Map each display name to its interpreter module path.
-
-    ``registry/_table.py`` is parsed with ``ast`` (never executed), so the mapping
-    works against a raw download where the ``esolangs`` package cannot be
-    imported.
-    """
-    table = _languages_table(ast.parse(source.get("registry/_table.py")))
-    if table is None:
-        return {}
-    langs: dict[str, str] = {}
-    for key, entry in zip(table.keys, table.values, strict=True):
-        if not (isinstance(key, ast.Constant) and isinstance(key.value, str)):
             continue
-        interpreter = _interpreter_of(entry)
-        if interpreter:
-            langs[key.value] = interpreter
+        for key, entry in zip(value.keys, value.values, strict=True):
+            if not (isinstance(key, ast.Constant) and isinstance(entry, ast.Call)):
+                continue
+            interpreter: str | None = None
+            for kw in entry.keywords:
+                if (
+                    kw.arg == "interpreter"
+                    and isinstance(kw.value, ast.Constant)
+                    and isinstance(kw.value.value, str)
+                ):
+                    interpreter = kw.value.value
+            if (
+                interpreter is None
+                and len(entry.args) > 1
+                and isinstance(entry.args[1], ast.Constant)
+                and isinstance(entry.args[1].value, str)
+            ):
+                interpreter = entry.args[1].value
+            if interpreter and isinstance(key.value, str):
+                langs[key.value] = interpreter
     return langs
 
 
