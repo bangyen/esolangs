@@ -15,20 +15,9 @@ enforced; n=11 upward is untested.
 
 from __future__ import annotations
 
+from esolangs.tools.helpers import _validate_truth_table
+
 from .render import Node, chain
-
-
-def _validate_truth_table(truth_table: str) -> int:
-    """Validate a truth table and return its input count ``n``."""
-    n = len(truth_table).bit_length() - 1
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            "truth table must have a power-of-two number of entries "
-            f"(2**n), got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
-    return n
 
 
 def line_boolean(truth_table: str) -> Node:

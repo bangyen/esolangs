@@ -11,7 +11,7 @@ from esolangs.raster import Raster
 
 @pytest.mark.parametrize(
     "truth_table",
-    ["0", "1", "01", "10", "0001", "0110", "10010110", "0110100110010110"],
+    ["01", "10", "0001", "0110", "10010110", "0110100110010110"],
 )
 def test_every_row_executes(truth_table: str) -> None:
     program = generate(truth_table)
@@ -45,14 +45,14 @@ def test_public_generate_returns_a_piet_raster() -> None:
 
 
 def test_emitted_pixels_are_linear_in_the_table() -> None:
-    for inputs in range(9):
+    for inputs in range(1, 9):
         entries = 2**inputs
         program = generate("01" * (entries // 2) if entries > 1 else "0")
         assert len(program.rows) * len(program.rows[0]) <= 64 * entries
         assert len(program.to_png()) <= 110 * entries
 
 
-@pytest.mark.parametrize("truth_table", ["", "010", "0121"])
+@pytest.mark.parametrize("truth_table", ["", "0", "1", "010", "0121"])
 def test_invalid_truth_table_is_rejected(truth_table: str) -> None:
     with pytest.raises(ValueError, match="truth table"):
         generate(truth_table)
