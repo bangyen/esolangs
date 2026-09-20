@@ -50,9 +50,7 @@ def estimate_generation(factors: list[list[int]]) -> GenerationEstimate:
     )
     exponent_chars = max(1, len(str(degree)) + 2)
     # Every coefficient may be present and carry `` - ``/`` + `` plus x^d.
-    rendered_chars = 7 + (degree + 1) * (
-        coefficient_digits + 3 + exponent_chars
-    )
+    rendered_chars = 7 + (degree + 1) * (coefficient_digits + 3 + exponent_chars)
     # _merge's slot adds convolution-count and sign digits.  Three packed
     # decimals plus the coefficient strings can coexist at its high-water mark.
     slot_width = coefficient_digits + len(str(degree + 1)) + 2
@@ -102,9 +100,7 @@ def estimate_cold_parse(coeffs: list[int]) -> ColdParseEstimate:
     # plus container overhead on every supported CPython word size.
     words_per_candidate = 16 + 64 * max(1, (degree + 1).bit_length())
     candidate_words = candidate_count * words_per_candidate
-    peak_words = (
-        field_points + (degree + 1) * coefficient_digits + candidate_words
-    )
+    peak_words = field_points + (degree + 1) * coefficient_digits + candidate_words
     # Coefficients alone carry no provenance or factor-shape certificate.
     # Any nonconstant arbitrary program may leave a remainder for factor_list.
     fallback_possible = degree > 0

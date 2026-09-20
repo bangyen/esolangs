@@ -108,10 +108,13 @@ implemented, so never in the screen.
   the lower bound for every cofactor and operand sign.  The uncapped
   residual-DAG construction has `O(T/log T)` instructions and expands to the
   matching upper bound.  The pre-expansion estimator bounds rendered and live
-  decimal digits before the resource cap admits multiplication.  Its root
-  bound `R = O(T**2/log T)` makes packed expansion `O(R log R) = O(T**2)` on
-  libmpdec's large FNT path (`O(R**2) = O(T**4/log**2 T)` with schoolbook
-  multiplication), against the `Omega(T**2/log T)` output cost.
+  decimal digits before the resource cap admits multiplication.  Put
+  `alpha = log_2 3`.  Libmpdec's fixed maximum transform makes the uncapped
+  root multiplication Karatsuba-with-FNT at scale, and the balanced packed
+  operands give matching bounds: generation is
+  `Theta(R**alpha) = Theta((T**2/log T)**alpha)`.  Below that fixed maximum,
+  including the public capped range, direct FNT gives
+  `Theta(R log R) = Theta(T**2)`.
 
   Root recovery now lifts through `D**2`, covering the generated
   `|a| < 50D` envelope, and swaps NTT field roles when an instruction prime

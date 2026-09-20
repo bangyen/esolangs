@@ -76,6 +76,38 @@ class TestPackedAgainstIncremental:
 
 
 class TestResourceEstimate:
+    @pytest.mark.medium
+    def test_generated_root_merge_exceeds_fnt_cutoff(self, monkeypatch) -> None:
+        """A generated balanced root sends two wide operands to libmpdec.
+
+        Libmpdec stores 19 decimal digits per 64-bit word and dispatches away
+        from base multiplication once the smaller operand exceeds 256 words.
+        The asymptotic proof uses the same padding shape beyond its maximum
+        direct transform; this is the execution-gate positive control.
+        """
+        import decimal
+        import importlib
+
+        from esolangs.tools.polynomial import _polynomial_dag, _polynomial_factors
+        from tests.tools.test_boolean_contract import _dense
+
+        module = importlib.import_module("esolangs.tools._polynomial")
+        original = _pack
+        packed_digits: list[int] = []
+
+        def traced_pack(coeffs: list[str], width: int) -> decimal.Decimal:
+            value = original(coeffs, width)
+            packed_digits.append(len(str(abs(value))))
+            return value
+
+        monkeypatch.setattr(module, "_pack", traced_pack)
+        factors = _polynomial_factors(_polynomial_dag(_dense(7)))
+        program = render_product(factors)
+        left, right = packed_digits[-2:]
+        assert min(left, right) > 256 * 19
+        assert max(left, right) < 2 * min(left, right)
+        assert max(left, right) <= len(program)
+
     def test_public_generator_covers_dispatch_resource_branches(self) -> None:
         from esolangs.tools.polynomial import _polynomial_dag, polynomial
 

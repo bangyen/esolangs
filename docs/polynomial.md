@@ -15,8 +15,8 @@ The order is tight for program text.  The uncapped residual-DAG construction
 emits `O(T**2 / log T)` characters for every table, so maximal-width tables
 have `Theta(T**2 / log T)` language complexity.  This is an existence theorem,
 not a totality claim for the public generator: its 1934-instruction resource
-cap still refuses some wider tables.  It also gives no matching construction-
-time or parse-time upper bound.
+cap still refuses some wider tables.  Construction and generated-family cold
+parse time are classified below.
 
 ## Instruction count is language-forced
 
@@ -62,12 +62,26 @@ asymptotics.  A node covering `r` factors has `O(r)` slots of
 `O(m/r)` merges at that balanced-tree level, so expansion costs
 `sum_r O((m/r) M(q(r)))`, over powers of two through `m`.  The new
 pre-expansion estimator gives `R = O(m**2 log m)` decimal digits at the root;
-the geometric level sum is root-dominated.  Thus the portable schoolbook
-bound is `O(R**2) = O(T**4/log**2 T)`, while libmpdec's large FNT path is
-`O(R log R) = O(T**2)` word operations.  This output-sensitive form is the
-tightened construction upper bound.  Writing the result costs
-`Omega(T**2/log T)`, leaving a factor of `log T` between the current-path
-upper bound and the language lower bound.
+the geometric level sum is root-dominated.  Put `alpha = log_2 3`.  Libmpdec
+4.0.1 dispatches a product above its fixed maximum transform to
+`_mpd_kmul_fnt`, whose content-independent recurrence is
+`K(q) = 3K(ceil(q/2)) + Theta(q) = Theta(q**alpha)`; its leaves are direct
+FNT products.  Hence the uncapped packed tree costs
+`O(R**alpha)`.  On a maximal-width table, the rendered length forces the root
+slot width to `Theta(m log m)`.  Both balanced children have `Theta(m)` slots,
+so their zero-padded Decimal operands are each `Theta(R)` digits and the root
+alone costs `Omega(R**alpha)`.  Therefore current fixed-libmpdec generation is
+
+`Theta(R**alpha) = Theta((T**2/log T)**alpha)` word operations, about
+`Theta(T**3.169925/log**1.584963 T)`.  This closes the implementation-time
+gap.  Inside libmpdec's direct-FNT range the same argument gives
+`Theta(R log R) = Theta(T**2)`; the public resource ceiling stays inside that
+range.  The classification is for fixed-word libmpdec operations, not a
+language-level multiplication lower bound or a claim about other Decimal
+backends.  `TestResourceEstimate.test_generated_root_merge_exceeds_fnt_cutoff`
+executes the balanced root operands and the threshold; libmpdec 4.0.1 pins the
+dispatcher in `mpdecimal.c`, the three transforms in `convolute.c`, and the
+Karatsuba recurrence in `_karatsuba_rec_fnt`.
 
 A cold parse first scans `Theta(L)` source characters and converts the dense
 coefficients to integers.  Write `D` for the degree and `H` for the largest
@@ -899,10 +913,11 @@ add nothing past the primorial: a slope `-1` segment at every `p_i` is met by
 `p_i || f_0` and a term at `x^1`, as in `P` itself.  Checked on 48
 constructed multiples to `L = 7` with a split control.
 
-Totality remains capped.  Text is closed at `Theta(T**2/log T)`; generation
-time inherits that output lower bound and the packed-product upper bound
-above.  Cold parsing is polynomial on the fully peeled fast path but retains
-the Zassenhaus fallback's exponential worst case for the uncapped family.
+Totality remains capped.  Text is `Theta(T**2/log T)` and fixed-libmpdec
+generation is `Theta((T**2/log T)**log_2(3))`, with `Theta(T**2)` throughout
+the direct-FNT range admitted by the public cap.  Generated-family cold
+parsing is polynomial; only arbitrary hand-written programs outside its
+operand envelope retain the general factorization fallback.
 
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
 [sparse-survey]: https://arxiv.org/abs/1807.08289
