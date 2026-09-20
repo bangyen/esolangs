@@ -1,10 +1,10 @@
-"""Execution tests for the interpreter-only Whitespace classic."""
+"""Execution tests for the Whitespace classic."""
 
 import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.stack_based.whitespace import run
+from esolangs.interpreters.stack_based.whitespace import _advance, run
 from tests.interpreters.runner import run_program
 
 S, T, L = " ", "\t", "\n"
@@ -137,10 +137,41 @@ def test_read_number_stores_it() -> None:
 
 
 def test_malformed_programs_are_rejected() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="ends inside"):
         run("   ", IO())  # ends inside the push
     with pytest.raises(ValueError, match="empty"):
         run("", IO())
+    # An unknown arithmetic subcommand is malformed, not a crash: the bare
+    # dict lookup let this escape as KeyError until the fuzzer hit it.
+    with pytest.raises(ValueError, match="no command"):
+        run(T + S + L + T, IO())
+    # A flow command whose third token is not ``line feed`` is malformed too.
+    with pytest.raises(ValueError, match="flow command"):
+        run(L + L + S, IO())
+
+
+def test_a_pop_from_an_empty_stack_halts() -> None:
+    for program in (ADD, SWAP, DISCARD, STORE, RETRIEVE, OUT_NUM, OUT_CHAR):
+        with pytest.raises(HaltError, match="empty"):
+            run(program + END, IO())
+
+
+def test_slide_on_an_empty_stack_halts() -> None:
+    with pytest.raises(HaltError, match="slide"):
+        run(slide(1) + END, IO())
+
+
+def test_a_read_with_no_input_halts() -> None:
+    # ``_advance`` is called with no value supplied; the shell's read raises
+    # EOF before reaching this guard, so this is a direct-call contract.
+    for kind in ("read_char", "read_num"):
+        with pytest.raises(HaltError, match="input left"):
+            _advance((0, (0,), (), (), False), [(kind, 0)], {})
+
+
+def test_advancing_a_done_state_is_a_no_op() -> None:
+    done = (0, (), (), (), True)
+    assert _advance(done, [], {}) == (done, None)
 
 
 @pytest.mark.parametrize(

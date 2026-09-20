@@ -5,7 +5,7 @@
 [![PyPI](https://img.shields.io/pypi/v/esolangs.svg)](https://pypi.org/project/esolangs/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Interpreters for 62 esoteric languages, 59 with boolean-circuit generators.
+Interpreters for 62 esoteric languages, 61 with boolean-circuit generators.
 `generate` takes a truth table and returns a program computing it;
 `verify` runs that program on every row and checks what it answers.
 
@@ -102,7 +102,7 @@ the page.  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#d
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):
-`examples/` holds a truth-table program for each of the 59
+`examples/` holds a truth-table program for each of the 61
 languages with a boolean generator.  It regenerates via
 `scripts/generate.py examples`.
 
@@ -123,7 +123,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [Alight](https://esolangs.org/wiki/Alight) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/alight.py))
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/arrowqueue.py))
 - [B-tapemark](https://esolangs.org/wiki/B-tapemark) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/b_tapemark.py))
-- [Befunge](https://esolangs.org/wiki/Befunge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/befunge.py)) *(interpreter-only)*
+- [Befunge](https://esolangs.org/wiki/Befunge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/befunge.py))
 - [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/circuit_diagram.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/clockwise.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/dig.py))
@@ -145,7 +145,7 @@ Languages that use a stack for data manipulation.
 - [Grapheme](https://esolangs.org/wiki/Grapheme) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/grapheme.py))
 - [Modulous](https://esolangs.org/wiki/Modulous) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/modulous.py))
 - [Unsquare](https://esolangs.org/wiki/Unsquare) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/unsquare.py))
-- [Whitespace](https://esolangs.org/wiki/Whitespace) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/whitespace.py)) *(interpreter-only)*
+- [Whitespace](https://esolangs.org/wiki/Whitespace) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/whitespace.py))
 
 ### Queue-based Languages
 
@@ -220,7 +220,7 @@ Boolean generators accept a most-significant-input-first binary truth table.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  59 of the
+first; its length implies `n`, so it isn't passed separately.  61 of the
 languages have such a generator, some covering only a documented subset of
 tables.
 

@@ -110,15 +110,17 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  A Painter Ant, Alight, BIO, Minsky Swap and
-SLOW ACV MAMMALIAN keep no tree route at all: A Painter Ant's answer strip
-is smaller than a tree at every arity, Alight indexes a string literal,
-BIO's telescope is one nested level per row whatever the table says (a
-degenerate table only spares it the flat edges' adjustments, under the fold
-threshold once the doubling between the input runs is in the text), Minsky
-Swap's `~` cascade routes the index to one of two shared leaves with a
-one-digit target per row, and SLOW ACV MAMMALIAN's read chain emits one
-fixed-width leaf slot per row whatever the table says.  Container's sub-crossover route is a
+the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Minsky Swap,
+SLOW ACV MAMMALIAN and Whitespace keep no tree route at all: A Painter Ant's
+answer strip is smaller than a tree at every arity, Alight indexes a string
+literal, Befunge reads one grid cell per table entry with `g`, BIO's
+telescope is one nested level per row whatever the table says (a degenerate
+table only spares it the flat edges' adjustments, under the fold threshold
+once the doubling between the input runs is in the text), Minsky Swap's `~`
+cascade routes the index to one of two shared leaves with a one-digit target
+per row, SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
+row whatever the table says, and Whitespace halves one literal once per index
+step; none has a subtree to fold.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
 table.
 
@@ -151,6 +153,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | ArrowQueue | parameterized lookup | one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages | linear: 6n + 3T rows, three per entry |
 | B-tapemark | tree | reflected finite grid; indexed table spans preserve the same leaves without recursive copies | linear: T - 1 fixed-footprint nodes, rows rendered from their cells |
 | Back | parameterized tree | — | linear: leaf moves sum geometrically, sparse row render |
+| Befunge | finite lookup | the grid is the table, one cell per entry, read by `g` at the Horner index | linear: T table cells, one g at the index |
 | BF-PDA | parameterized tree | — | linear: span walk, leaf drains sum geometrically |
 | BFStack | minterms | — | linear: zero-row walk telescopes to T |
 | BIO | finite lookup | nested loops telescope from `table[0]` to `table[index]` | linear: T - 1 loop pieces joined once |
@@ -203,6 +206,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 3x | tree | — | linear, time n log: essential_inputs; greedy order scoring, capped |
 | Unsquare | tree | stack arrangement affects size only | linear: span walk, pricer sums geometrically |
 | Vandevelo | minterms | constant-one subtrees drop their suffix literals | linear: amortised peel; sqrt(log T) dual-basis core; proof fallback n 2^n |
+| Whitespace | linear lookup | the table is one binary literal, halved once per index step | linear: T-bit literal, index halvings |
 
 ## Exceptions and walls
 
@@ -254,6 +258,6 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 59 theoretical totality arguments and zero
+Accordingly, this ledger records 61 theoretical totality arguments and zero
 open exceptions; every row is `Total` or theoretically total past a resource
 ceiling.

@@ -3,6 +3,7 @@
 from esolangs.tools.algebraic_programming_language import algebraic_programming_language
 from esolangs.tools.alight import alight
 from esolangs.tools.b_tapemark import b_tapemark
+from esolangs.tools.befunge import befunge
 from esolangs.tools.circuit_diagram import circuit_diagram
 from esolangs.tools.crement import crement
 from esolangs.tools.cvnc import cvnc
@@ -65,6 +66,7 @@ from esolangs.tools.tape import (
     three_d_brainfuck,
 )
 from esolangs.tools.vandevelo import vandevelo
+from esolangs.tools.whitespace import whitespace
 
 __all__ = [
     "BOOLEAN",
@@ -75,6 +77,7 @@ __all__ = [
     "arrowqueue",
     "b_tapemark",
     "back",
+    "befunge",
     "between",
     "bf_tree",
     "bfpda",
@@ -130,6 +133,7 @@ __all__ = [
     "three_x",
     "unsquare",
     "vandevelo",
+    "whitespace",
 ]
 
 

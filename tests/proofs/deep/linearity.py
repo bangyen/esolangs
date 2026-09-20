@@ -213,7 +213,7 @@ def main() -> int:
     by_display = {lang.name: key for key, lang in BY_BOOLEAN.items()}
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
-    assert len(measured) == len(BY_BOOLEAN) == 59, "not every generator was measured"
+    assert len(measured) == len(BY_BOOLEAN) == 61, "not every generator was measured"
 
     print(f"Scaling contract: {len(measured)} generators, bound x{MAX_GROWTH}\n")
     print(f"  {'generator':30s} {'growth':>7s} {'per entry':>10s}  where")

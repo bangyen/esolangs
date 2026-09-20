@@ -521,6 +521,8 @@ class TestTheAnswerCommandDoesOneRow:
         """Row by row against the whole-table command, for every language."""
         table = "0110"
         for name in esolangs.list_languages():
+            if not esolangs.describe(name)["boolean_generator"]:
+                continue
             for row, bits in enumerate(("00", "01", "10", "11")):
                 got = call_main(["answer", name, table, bits], capsys).strip()
                 assert got == table[row], f"{name} row {bits}"

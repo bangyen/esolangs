@@ -25,6 +25,7 @@ that row is actually spelled for the language.
 | `arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '1 0 0 1 2 3' |
 | `b-tapemark.txt` | B-tapemark | `0001` | `01` | 0 1 | '0' |
 | `back.txt` | Back | `0001` | `01` | embedded 01 | '0 1 0' |
+| `befunge.txt` | Befunge | `0001` | `01` | 0 1 | '0 ' |
 | `bf-pda.txt` | BF-PDA | `0001` | `01` | embedded 01 | '0' |
 | `bfstack.txt` | BFStack | `0001` | `01` | 0 1 | '0' |
 | `bio.txt` | BIO | `0001` | `01` | embedded 01 | '0' |
@@ -73,6 +74,7 @@ that row is actually spelled for the language.
 | `taglate.txt` | Taglate | `0001` | `01` | 0 1 | '0' |
 | `unsquare.txt` | Unsquare | `0001` | `01` | 0 1 | '0' |
 | `vandevelo.txt` | Vandevelo | `0001` | `01` | 0 1 | (nothing) |
+| `whitespace.txt` | Whitespace | `0001` | `01` | 0 1 | '0' |
 
 ## Notes
 
