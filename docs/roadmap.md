@@ -80,7 +80,13 @@ for every entry.
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
-  | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
+  | Polynomial | Cap | Open | Open | Linear |
+
+  Polynomial is open, not a language lower bound: the `Omega(T**2 / log T)`
+  proof assumes distinct real instruction roots, and a repeated root is legal
+  (`(x-2)^3` decodes to three `[1]` instructions). The routing lemma bounds
+  instruction positions, not distinct roots, so the reduction is the missing
+  lemma; see [polynomial](polynomial.md).
 
   Generation time, growth per added input at the top arity: B-tapemark,
   6-5, Forth, Circuit Diagram past its n=8 route change, and Vandevelo
