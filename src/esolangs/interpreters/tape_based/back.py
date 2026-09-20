@@ -211,7 +211,7 @@ class _Machine:
         grid.
 
         It fires on the step *after* the halt, as Minsky Swap, Bitdeque,
-        RAM0, ArrowQueue and Point Break all do: a caller who drives the
+        RAM0, ArrowQueue and LaserFuck all do: a caller who drives the
         machine itself then sees the same output from all six, rather than
         holding Back's tape and none of the others'.  ``dumped`` keeps it
         to one dump however many times a halted machine is stepped.

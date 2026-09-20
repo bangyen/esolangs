@@ -708,8 +708,8 @@ def main() -> int:
             cmd = narrowed
         # The `slow` marker covers the generator derivations and fuzz loops
         # whose cost is seconds each.  Deselecting them locally trades no
-        # coverage, because CI's `test` matrix job runs pytest *unfiltered* --
-        # every marked test still runs on every push.  This is keyed on
+        # coverage, because the sharded `slow` job runs every marked test
+        # on every push.  This is keyed on
         # --full rather than on scoping because a run that widens back to
         # everything -- a tooling change, an unreadable diff -- should still
         # not pay for them.

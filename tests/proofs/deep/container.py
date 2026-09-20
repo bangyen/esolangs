@@ -57,6 +57,11 @@ def check_l1(max_n: int = 12, per_arity: int = 40) -> list[str]:
     deletes high rows that are zero, and integer division must still report
     zero for them -- which it does, because a digit past the top of the number
     is zero and so was the row.
+
+    The literal read here is the one the *emitted program* carries, not a
+    second computation of the same rule: an ``A=<digits>:`` line whose text
+    disagreed with :func:`packed_literal` would otherwise leave this lemma
+    green while the program decoded the wrong table.
     """
     lines = []
     rng = random.Random(11)
@@ -68,7 +73,17 @@ def check_l1(max_n: int = 12, per_arity: int = 40) -> list[str]:
             tables.append("".join(rng.choice("01") for _ in range(size)))
         stripped = 0
         for table in tables:
-            value = int(packed_literal(table))
+            emitted = [
+                line[2:-1]
+                for line in _container_packed(table).splitlines()
+                if line.startswith("A=") and line.endswith(":")
+            ]
+            assert len(emitted) == 1, f"n={n}: {len(emitted)} literal lines"
+            assert emitted[0] == packed_literal(table), (
+                f"n={n}: emitted literal {emitted[0]!r} but the rule gives "
+                f"{packed_literal(table)!r}"
+            )
+            value = int(emitted[0])
             for i, bit in enumerate(table):
                 digit = (value // 10**i) % 10
                 assert digit == int(bit), (

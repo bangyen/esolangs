@@ -17,7 +17,7 @@ interpreter module ◄──── source + encoded stdin ◄──┘
     └── make_vm() ──► step-and-inspect state
 ```
 
-`src/esolangs/registry.py` is the integration source of truth.  Each
+`src/esolangs/registry/` is the integration source of truth.  Each
 `Language` records the display name, canonical id, interpreter module, source
 shape, and optional boolean generator.  `resolve` normalizes caller spelling;
 `RUNNERS` supplies the interpreter module and whether its source is passed as
@@ -28,7 +28,7 @@ return runnable source.  Languages that embed inputs return a template, each
 input a run of `$` as long as its setter; `instantiate` fills one copy per
 input row.  `encode_inputs` handles the other
 languages' stdin conventions.  Generator code lives under
-`src/esolangs/tools/boolean/`.
+`src/esolangs/tools/`.
 
 `run` loads the registered module from `src/esolangs/interpreters/`, constructs
 the shared scripted I/O object, and calls its `run(code, io)` entry point.

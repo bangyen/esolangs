@@ -4,9 +4,8 @@ Run:  just proofs   (or python tests/proofs/deep/linearity.py)
 
 ``docs/roadmap.md`` asks for "a registry-wide scaling contract" to finish the
 linear-generator item.  ``tests/tools/test_boolean_contract.py`` already has
-one, but it covers only the twenty-five languages of that item's original
-queue; the other thirty-five generators have never had their growth checked at all.
-This measures all sixty.
+one, but it covers only part of the registry; the rest have never had their
+growth checked at all.  This measures every generator.
 
 What is asserted
 ----------------
@@ -19,11 +18,13 @@ allows the per-entry cost to rise by at most 7.5% per added input.
 
 Where the bound sits, measured on both sides:
 
-* the settled cohort's worst is Circuit Diagram at x2.079 (+3.9% per entry)
-  and Streetcode at x2.065, with everything else at or under x2.02;
+* the settled cohort's worst is Circuit Diagram at x2.115 (+5.7% per entry)
+  and Streetcode at x2.074, with everything else at or under x2.02;
 * the super-linear constructions this repository has already retired measured,
   single-step at n=8 -> 9 on parity, A Painter Ant x3.96, Minifuck
-  x3.53 and 123 x2.43, all of which this bound rejects.
+  x3.53 and 123 x2.43, all of which this bound rejects.  A synthetic `T log T`
+  series measures x2.191 here and is rejected; `T log T / log log T` (Factor's
+  proved floor) measures x2.109 and is not -- the documented blind spot.
 
 So it has teeth on both sides and roughly a factor of two of headroom above
 today's worst honest construction.  It is a calibrated regression guard, not a

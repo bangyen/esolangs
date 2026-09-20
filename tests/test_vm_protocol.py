@@ -114,7 +114,7 @@ def _settle(vm: VM, language: str) -> _Observed:
 
     Three of the file's conventions meet here.  A language with a halt is
     driven to it; the never-halting two are stepped a fixed distance
-    instead, so all sixty are covered rather than two being skipped.
+    instead, so every language is covered rather than two being skipped.
     And the dumping languages are stepped once more, because that step is
     where their output is written -- every one of them is still empty at
     the halt itself, so a comparison that stopped there would be comparing
@@ -309,7 +309,7 @@ class TestEveryLanguageHonoursTheProtocol:
 
         Unlike the halting trait this one is checkable against the machine
         itself: driving to the halt writes everything ``run`` writes,
-        except on the seven, where the last step is still owed.  So the
+        except on the six, where the last step is still owed.  So the
         declaration is compared against what the language actually does --
         a machine whose dump moved back into ``run`` would fail here rather
         than keeping a trait nobody rechecked.
@@ -453,8 +453,8 @@ class TestEveryLanguageIsPure:
     a second one is affected by the first.
 
     None of the three is skipped for the never-halting languages: they are
-    compared over a fixed step prefix instead of at a halt, so all
-    sixty are covered.
+    compared over a fixed step prefix instead of at a halt, so every
+    language is covered.
     """
 
     def test_two_runs_end_in_the_same_state(

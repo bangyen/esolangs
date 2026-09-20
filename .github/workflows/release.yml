@@ -17,6 +17,8 @@ on:
   push:
     tags:
       - "v*"
+  # Manual dispatch builds and verifies; publishing is tag-only, so a
+  # dispatch from a branch (which has no tag to compare) is inert.
   workflow_dispatch:
 
 permissions:
@@ -45,7 +47,10 @@ jobs:
       with:
         python-version: "3.12"
 
+    # A manual dispatch from a branch has no tag to compare, so the check is
+    # tag-only; branch dispatches still build and verify, but cannot publish.
     - name: The tag must match the version in pyproject.toml
+      if: github.ref_type == 'tag'
       run: |
         tag="${GITHUB_REF_NAME#v}"
         pkg="$(uv run python -c 'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
@@ -94,6 +99,7 @@ jobs:
 
   publish:
     needs: build
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Scopes the OIDC credential to this environment, so the trusted publisher

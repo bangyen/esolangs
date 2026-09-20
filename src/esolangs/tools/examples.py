@@ -7,8 +7,8 @@ both derive from :data:`BOOLEAN_EXAMPLES`.  Parameterized generators carry
 a ``fill``.  A language qualifies when its answer is recoverable from what
 it prints, including a fixed position in a state dump (Minsky Swap's
 second register, RAM0's ``z``, LaserFuck's tape after the inputs).
-ArrowQueue, Point Break and 123 answer by termination, so the committed
-row is a halting one (123's ``1,0`` row halts but prints a stray
+123, ArrowQueue, Crement and Vandevelo answer by termination, so the
+committed row is a halting one (123's ``1,0`` row halts but prints a stray
 ``0x80``).  Fargo reads one number whose bits are the inputs, so its
 input is the row index.  Back (answer under the head) and A Painter Ant
 (invisible ant) used to fail and no longer do.

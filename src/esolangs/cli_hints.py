@@ -17,7 +17,7 @@ _HISTORY_SHOWN = 40
 
 
 #: A run stopped by its ``--timeout``, following timeout(1).  Distinct from
-#: a program error's 1, which it shared: for the three languages that answer
+#: a program error's 1, which it shared: for the four languages that answer
 #: by not terminating, the timeout is the *answer*, and a script had no way
 #: to tell that from the program having broken.
 _TIMEOUT_EXIT = 124
@@ -146,7 +146,7 @@ def _decode_note(exc: UnicodeDecodeError) -> str:
 def _stdin_hint(facts: LanguageInfo) -> str:
     """Return a clause naming what this language wants on stdin, if anything.
 
-    Suggests rather than skips: three of the seventeen embed-only languages
+    Suggests rather than skips: three of the fourteen embed-only languages
     have an input command a hand-written program may use.
     """
     if not facts["reads_input"] and facts["parameterized"]:

@@ -97,11 +97,11 @@ mutate language *args:
     {{PYTHON}} scripts/mutate.py interpreter "{{language}}" {{args}}
 
 # the same for one generator, named family/module after where it lives under
-# src/esolangs/tools (e.g. just mutate-gen boolean/register).  A bare name
-# works where only one family defines it; the families no longer share a
-# module name, so in practice every bare name resolves.  Every suite in
-# tests/tools runs; slow tests are deselected unless --slow is passed, since
-# a mutation run pays the suite's cost once per mutant.
+# src/esolangs/tools (e.g. just mutate-gen tools/register).  A bare name works
+# where only one family defines it, and no name is shared today, so in
+# practice every bare name resolves.  Every suite in tests/tools runs; slow
+# tests are deselected unless --slow is passed, since a mutation run pays the
+# suite's cost once per mutant.
 #
 # The `core` family is the package root -- `just mutate-gen core/tui`,
 # `core/vm`, `core/debug`, `core/cli`.  Those are the modules mutate_one
@@ -131,9 +131,7 @@ apa-proof:
     {{PYTHON}} tests/proofs/deep/a_painter_ant.py
 
 # clean generated: `find -delete` refuses a non-empty directory, so removal
-# goes through `rm -rf`: bytecode, build metadata, verifier reports, and
-# bytecode-only husk dirs (tools/boolean/, tools/text/, interpreters/line/,
-# tests/compilers/).
+# goes through `rm -rf`: bytecode, build metadata, and verifier reports.
 clean:
     #!/usr/bin/env bash
     find . -path ./.venv -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \

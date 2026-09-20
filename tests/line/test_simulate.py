@@ -2,8 +2,8 @@
 
 Run via: uv run --with pytest pytest test_simulate.py
 
-Captures the checks this module's own development relied on ad hoc (see
-WIP.md's "Runtime simulation" entry for the full history): opcode basics
+Captures the checks this module's own development relied on ad hoc: opcode
+basics
 through a real render->extract round-trip, the zero/nonzero swap between
 lattice.py's field names and the wiki's actual "turn right if 0" rule,
 both wiki fixtures computing correct results across several real inputs
