@@ -399,12 +399,10 @@ LANGUAGES: dict[str, Language] = {
     ),
 }
 
-#: Interpreter-only classics: widely known languages kept for coverage, not
-#: construction.  Befunge and Whitespace carry a generator as well; Malbolge's
-#: ``boolean=None`` is the whole tier -- no generator, so no linearity
-#: contract and no ``generate``; ``esolangs list --details`` marks it.  The
-#: four admission axes do not apply: they are here because a caller expects
-#: them, and each is an ordinary machine in its own costume.
+#: Widely known classics kept for coverage as much as construction.  All
+#: three now carry a generator, but they sit outside the four admission axes:
+#: they are here because a caller expects them, and each is an ordinary
+#: machine in its own costume.  Malbolge's generator caps at nine inputs.
 CLASSICS: dict[str, Language] = {
     "Befunge": Language(
         "Befunge",
@@ -416,6 +414,7 @@ CLASSICS: dict[str, Language] = {
     "Malbolge": Language(
         "Malbolge",
         "other.malbolge",
+        boolean=_boolean.malbolge,
         id="malbolge",
     ),
     "Whitespace": Language(
