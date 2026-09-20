@@ -7,12 +7,13 @@ exponential sum on *distinct* nodes.  The unconditional language bound is
 ``Omega(T**2 / log**2 T)``: the routing floor gives ``m = Omega(T/log T)``
 real instruction *positions*, and the confluent certificate here prices
 ``m`` roots with multiplicity as ``Omega(m**2)``, so no distinctness
-hypothesis is needed and the row is complete at that order.  The stronger
-``Omega(T**2 / log T)`` would need the sharpened routing lemma
-``N' <= c * L_real + E`` with ``L_real`` the distinct real *values*; that is
-open, and ``_check_routing`` pins the executed facts around it (two
-successors per test, same-value positions collapsing, no multiplicity in the
-shipped generator).  ``_check_loops`` pins the loop obstacle.
+hypothesis is needed at that order.  The sharpened routing lemma
+``N' <= 6 * L_real + E`` closes the extra logarithm.
+Equal real roots form contiguous blocks.  Contracting those blocks turns the
+noncrossing bracket matching into an outerplanar incidence graph; one opener
+routes per block and one closer per incidence.  ``_check_routing_bound`` pins
+the executed facts, including the counterexample that makes the incidence --
+not merely ``(value, condition)`` -- necessary.
 
 The confluent analogue is::
 
@@ -237,11 +238,10 @@ def _check_mass(failures: list[str]) -> int:
 
 
 def _check_loops(failures: list[str]) -> int:
-    """Pin the routing-floor obstacle: codes 5..8 loop, and convert emits them.
+    """Pin the loop case covered by the block-incidence argument.
 
-    The sharpened routing lemma would need each real instruction to route a
-    *fresh* read, i.e. no re-entry.  ``_advance`` jumps a closing bracket back
-    to its opener when the opener's code exceeds 4, so codes 5..8 are loops;
+    ``_advance`` jumps a closing bracket back to its opener when the opener's
+    code exceeds 4, so codes 5..8 are loops;
     ``convert`` maps a real root ``p**v`` to code ``v`` for ``v`` in 1..8, so a
     real root can be a loop bracket and one real value can serve many reads.
     """
@@ -288,11 +288,9 @@ def _check_routing(failures: list[str]) -> int:
 
     ``docs/polynomial.md`` proves ``N'(k+1) <= 2m + E(k)`` with ``m`` the real
     instruction *positions* (the routing floor), which with the confluent
-    certificate gives ``Omega(T**2 / log**2 T)``.  The stronger
-    ``Omega(T**2 / log T)`` needs ``N' <= c * L_real + E`` with ``L_real`` the
-    distinct real *values*; `_check_routing_bound` shows the per-(value,
-    condition) route to it is false.  This check pins the per-instruction
-    facts the routing floor rests on:
+    certificate gives ``Omega(T**2 / log**2 T)``.  The block-incidence bound
+    sharpens this to ``Omega(T**2 / log T)``.  This check pins the
+    per-instruction facts the routing floor rests on:
 
     * every real instruction has at most two successors, fixed by its bracket
       and independent of the register;
@@ -379,7 +377,7 @@ def _check_routing(failures: list[str]) -> int:
 
 
 def _check_routing_bound(failures: list[str]) -> int:
-    """Pin the state of the sharpened routing bound ``N' <= c * L_real + E``.
+    """Pin the sharpened routing bound ``N' <= 6 * L_real + E``.
 
     The routing floor gives ``N' <= 2m + E`` on real *positions*; the sharper
     ``N' <= 2 * m_routing + E`` counts only positions that take both
@@ -394,10 +392,11 @@ def _check_routing_bound(failures: list[str]) -> int:
     * loop openers have code only in ``5, 7, 8`` (code ``6`` indexes the
       absent ``_COND`` slot and would raise), so a value carries at most three
       conditions;
-    * ``m_routing <= 3 * L_real`` is not refuted by the witnesses (they satisfy
-      it with room), but the per-(value, condition) invariant is refuted, so
-      ``L_real = Omega(T/log T)`` stays open and the row keeps the
-      unconditional ``Omega(T**2 / log**2 T)``.
+    * exact equal roots are contiguous, so their blocks and the noncrossing
+      bracket incidences give ``m_routing <= L_real + (2L_real - 3)``;
+    * the witness refutes the smaller per-(value, condition) charge, while
+      every routing opener block and opener-block/closer-block incidence is
+      charged only once.
     """
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.register_based.polynomial import (
@@ -513,6 +512,40 @@ def _check_routing_bound(failures: list[str]) -> int:
     if not any(witness[p][0] in (2, 6) and len(s) > 1 for p, s in succ.items()):
         failures.append("refuting witness has no routing closer")
     count += 1
+
+    # Give each maximal same-code run a single exact-root value.  This is the
+    # strongest legal identification for the witness: convert emits every
+    # copy of one real root contiguously.  Routing openers charge their block;
+    # routing closers charge the incidence with their partner's opener block.
+    block_at: dict[int, int] = {}
+    block_codes: list[int] = []
+    previous: tuple[int, int] | None = None
+    for pos, instruction in enumerate(witness):
+        if len(instruction) != 1:
+            previous = None
+            continue
+        key = (pos - 1, instruction[0])
+        if previous is None or previous[1] != instruction[0]:
+            block_codes.append(instruction[0])
+        block_at[pos] = len(block_codes) - 1
+        previous = key
+
+    routing = {p for p, exits in succ.items() if len(exits) > 1}
+    opener_charges = [block_at[p] for p in routing if witness[p][0] not in (2, 6)]
+    closer_charges = [
+        (block_at[pr[p]], block_at[p]) for p in routing if witness[p][0] in (2, 6)
+    ]
+    if len(opener_charges) != len(set(opener_charges)):
+        failures.append("two routing openers charge one exact-root block")
+    if len(closer_charges) != len(set(closer_charges)):
+        failures.append("two routing closers charge one block incidence")
+    incidences = {(block_at[p], block_at[q]) for p, q in pr.items() if p < q}
+    real_blocks = len(block_codes)
+    if len(incidences) > 2 * real_blocks - 3:
+        failures.append("noncrossing block incidence exceeded outerplanar bound")
+    if len(routing) > 3 * real_blocks - 3:
+        failures.append("routing positions exceeded block-incidence bound")
+    count += 1
     return count
 
 
@@ -529,7 +562,7 @@ def main() -> int:
     print(f"  divisibility + mass(f) >= c m^2 cases  : {mass}")
     print(f"  routing-floor bracket facts checked    : {loops}")
     print(f"  sharpened-routing facts checked        : {routing}")
-    print(f"  routing bound (per-value invariant)    : {bound}")
+    print(f"  routing block-incidence bound          : {bound}")
     if failures:
         for line in failures:
             print(f"  FAIL: {line}")
