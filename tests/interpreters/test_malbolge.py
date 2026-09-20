@@ -44,6 +44,12 @@ def test_memory_is_filled_and_sized() -> None:
     assert memory[2] == _crazy(memory[1], memory[0])
 
 
+def test_each_machine_receives_fresh_memory() -> None:
+    first = _load("Q")
+    first[0] = 0
+    assert _load("Q")[0] == ord("Q")
+
+
 def test_a_known_program_prints_its_greeting() -> None:
     """The reference Hello World is the end-to-end check."""
     assert run_program(run, HELLO) == "Hello, world."

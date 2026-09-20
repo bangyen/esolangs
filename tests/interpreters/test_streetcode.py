@@ -39,6 +39,26 @@ class TestStreetcodeSingleCommands:
     def test_increment_then_output(self) -> None:
         assert run_street("C^O;") == chr(1)
 
+    def test_repeated_runs_reuse_validated_geometry(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from esolangs.interpreters.grid_based import streetcode
+
+        streetcode._Machine._compile.cache_clear()  # noqa: SLF001
+        calls = 0
+        validate = streetcode._Machine._validate  # noqa: SLF001
+
+        def counted(machine: _Machine, start: tuple[int, int]) -> None:
+            nonlocal calls
+            calls += 1
+            validate(machine, start)
+
+        monkeypatch.setattr(streetcode._Machine, "_validate", counted)  # noqa: SLF001
+        assert run_street("C^O;") == chr(1)
+        assert run_street("C^O;") == chr(1)
+        assert calls == 1
+        streetcode._Machine._compile.cache_clear()  # noqa: SLF001
+
     def test_decrement_below_zero_then_output_is_invalid(self) -> None:
         """A cell of -1 is a valid signed int, but not a valid code point."""
         with pytest.raises(HaltError):
