@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from functools import cache
 
 from esolangs.raster import Raster
+from esolangs.tools.helpers import _validate_truth_table
 
 from . import _COLOURS, BLACK
 
@@ -26,19 +27,6 @@ _OUT_NUMBER = (5, 1)
 class _Operation:
     change: Change
     size: int = 1
-
-
-def _validate(truth_table: str) -> int:
-    """Validate a truth table and return its input count."""
-    n = len(truth_table).bit_length() - 1
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            "truth table must have a power-of-two number of entries "
-            f"(2**n), got {len(truth_table)}"
-        )
-    if not all(bit in "01" for bit in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
-    return n
 
 
 def _push(value: int) -> _Operation:
@@ -92,7 +80,7 @@ def _next_colour(colour: tuple[int, int, int], change: Change) -> tuple[int, int
 @cache
 def generate(truth_table: str) -> Raster:
     """Return a Piet raster computing ``truth_table`` in linear space."""
-    inputs = _validate(truth_table)
+    inputs = _validate_truth_table(truth_table)
     operations = _operations(truth_table, inputs)
 
     # A three-codel initial block reaches row 1.  Its pop is ignored on the
