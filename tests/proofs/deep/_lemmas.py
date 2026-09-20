@@ -109,8 +109,15 @@ def build(fn: Builder, table: str) -> str | None:
         return None
 
 
-def check_coverage(fn: Builder, max_n: int = 3) -> str:
-    """Every table of every arity up to ``max_n`` builds, enumerated."""
+def check_coverage(fn: Builder, max_n: int = 3, *, allow_refusals: bool = False) -> str:
+    """Every table of every arity up to ``max_n`` builds, enumerated.
+
+    A refusal is a failure here: the scheme's coverage claim is that the
+    construction handles every table, so a ``ValueError`` on one of them is the
+    lemma failing, not a domain edge.  Only a ledger row marked ``cap`` or
+    ``exception`` may refuse (``allow_refusals``), and even then something must
+    build.
+    """
     built = refused = 0
     for n in range(1, max_n + 1):
         for table in tables_at(n):
@@ -120,6 +127,11 @@ def check_coverage(fn: Builder, max_n: int = 3) -> str:
                 built += 1
     if built == 0:
         raise UnprovenError(f"refuses every table through n={max_n}")
+    if refused and not allow_refusals:
+        raise AssertionError(
+            f"{refused} of {built + refused} tables refused through n={max_n}; "
+            "only a cap/exception row may refuse, and this one is not marked so"
+        )
     return f"{built} tables built, {refused} refused, exhaustive to n={max_n}"
 
 
@@ -171,12 +183,20 @@ def check_rows(fn: Builder, max_n: int = 4) -> str:
     return f"{checked} single-row flips, every one visible in the program"
 
 
-def check_ladder(fn: Builder, max_n: int, shapes: object) -> str:
+def check_ladder(
+    fn: Builder,
+    max_n: int,
+    shapes: object,
+    *,
+    allow_refusals: bool = False,
+) -> str:
     """The construction completes at every arity, on both table shapes.
 
     Both shapes, because a generator can cover one and refuse the other: the
     suite's own sweep is keyed by ``(name, shape)`` for exactly that reason,
-    and a single-shape ladder reports the wrong ceiling.
+    and a single-shape ladder reports the wrong ceiling.  Every arity up to
+    ``max_n`` must build unless the row is ``cap``/``exception``; only the
+    counts are reported then.
 
     Size is not asserted -- see the module docstring for the two formulations
     that were tried and why both are false.  The crossover a dispatching
@@ -195,6 +215,14 @@ def check_ladder(fn: Builder, max_n: int, shapes: object) -> str:
             built.setdefault(name, []).append((n, len(program)))
     if not built:
         raise UnprovenError(f"builds no shape at any arity through n={max_n}")
+    expected = list(range(1, max_n + 1))
+    for name, _make in shapes:  # type: ignore[misc]
+        reached = [n for n, _size in built.get(name, [])]
+        if reached != expected and not allow_refusals:
+            raise AssertionError(
+                f"{name}: built arities {reached}, not {expected}; a total row "
+                "must build every arity on both shapes"
+            )
     drops = []
     for name, series in built.items():
         for (_a, before), (b, after) in itertools.pairwise(series):
