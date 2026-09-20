@@ -362,44 +362,52 @@ def _iter_bits(mask: int, size: int) -> Iterator[int]:
 
 
 def _quadratic_candidates_ntt(
-    prime_count: int, root_sets: tuple[set[int], set[int]]
+    prime_count: int,
+    root_sets: tuple[set[int], set[int]],
+    real_bound: int,
 ) -> set[tuple[int, int]]:
     """Propose ``(a, p**(2*b))`` pairs from the two fields' root sets.
 
-    Roots pairing at distance ``2*i*p**b`` in the first field propose an
-    ``a`` (bitmask rotation, lift ``|a| <= m0 // 2``); the second field
-    checks independently.  Spurious pairs survive at the product of the
-    densities (~0.2% on dense n=10) and die in trial division.
+    Roots pairing at distance ``2*i*p**b`` in the first field propose every
+    lift of ``a`` through ``real_bound``; the second field checks each lift.
+    Spurious pairs survive at the product of the densities (~0.2% on dense
+    n=10) and die in trial division.
     """
-    (m0, _, _, g0), (m1, _, _, g1) = _NTT_FIELDS
-    roots0, roots1 = root_sets
-    i0 = pow(g0, (m0 - 1) // 4, m0)
-    i1 = pow(g1, (m1 - 1) // 4, m1)
-    mask0 = 0
-    for r in roots0:
-        mask0 |= 1 << r
-    full = (1 << m0) - 1
-    half = m0 // 2
+    field_data = []
+    for (modulus, _, _, generator), roots in zip(_NTT_FIELDS, root_sets, strict=True):
+        mask = 0
+        for root in roots:
+            mask |= 1 << root
+        field_data.append(
+            (modulus, pow(generator, (modulus - 1) // 4, modulus), roots, mask)
+        )
     candidates: set[tuple[int, int]] = set()
     for index, base in enumerate(  # pragma: no branch - ends on the break
         sp.primerange(2, prime_count * prime_count + 3)
     ):
         if index >= prime_count:
             break
+        # If the instruction prime equals one field, its conjugate roots
+        # coincide there.  Pair in the other field and use the collision as
+        # the cross-check; every generated prime is therefore recoverable.
+        primary = 1 if base == field_data[0][0] else 0
+        m0, i0, _roots0, mask0 = field_data[primary]
+        m1, i1, roots1, _mask1 = field_data[1 - primary]
+        full = (1 << m0) - 1
         power0 = base % m0
         power1 = base % m1
         square = base * base
         for _exponent in range(_PEEL_MAX_IMAGINARY_EXPONENT):
             delta = 2 * i0 * power0 % m0
-            if delta:
-                rotated = ((mask0 << delta) | (mask0 >> (m0 - delta))) & full
-                hits = mask0 & rotated
-                if hits:
-                    offset0 = i0 * power0 % m0
-                    offset1 = i1 * power1 % m1
-                    for r in _iter_bits(hits, m0):
-                        lifted = (r - offset0) % m0
-                        real = lifted if lifted <= half else lifted - m0
+            rotated = ((mask0 << delta) | (mask0 >> (m0 - delta))) & full
+            hits = mask0 & rotated
+            if hits:
+                offset0 = i0 * power0 % m0
+                offset1 = i1 * power1 % m1
+                for r in _iter_bits(hits, m0):
+                    residue = (r - offset0) % m0
+                    first = residue + ((-real_bound - residue + m0 - 1) // m0) * m0
+                    for real in range(first, real_bound + 1, m0):
                         if (real + offset1) % m1 in roots1 and (
                             real - offset1
                         ) % m1 in roots1:
@@ -408,6 +416,19 @@ def _quadratic_candidates_ntt(
             power1 = power1 * base % m1
             square *= base * base
     return candidates
+
+
+def _ntt_real_bound(degree: int) -> int:
+    """Return the real-part lift window for a polynomial of ``degree``.
+
+    A generated DAG operand is a label plus a span or byte delta: labels total
+    at most the instruction count, spans at most 48 times it, and the tree and
+    parking cases add at most 51.  Thus ``|a| < 50 * degree`` once the NTT path
+    starts above degree 100, where ``degree**2`` covers it.  The quadratic
+    envelope also admits generous hand-written slack; exact division remains
+    the acceptance test.
+    """
+    return max(_NTT_FIELDS[0][0] // 2, degree * degree)
 
 
 def _divide_quadratic_mod(
@@ -624,6 +645,9 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
     are screened through the fields' root sets; same acceptance.
     """
     if len(coefficients) - 1 > _NTT_MIN_DEGREE:
+        from esolangs.polynomial_resources import estimate_cold_parse
+
+        estimate = estimate_cold_parse(list(coefficients))
         root_sets = tuple(_roots_mod(list(coefficients), f) for f in _NTT_FIELDS)
 
         def in_every_field(candidate: int) -> bool:
@@ -637,7 +661,9 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
         if len(remainder) > 1:
             prime_count = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
             candidates = _quadratic_candidates_ntt(
-                prime_count, (root_sets[0], root_sets[1])
+                prime_count,
+                (root_sets[0], root_sets[1]),
+                estimate.real_lift_bound,
             )
             quadratics, remainder = _divide_out_quadratics(remainder, candidates)
         else:
