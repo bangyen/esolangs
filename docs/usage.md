@@ -146,7 +146,7 @@ than marked in the wrong place; the header always shows the raw `ip`.
 ## describe
 
 `describe(language)` returns the record every function above branches on:
-`input_shape`, `input_encoding`, `answer_mode`, `answer_encoding`,
+`source_kind`, `input_shape`, `input_encoding`, `answer_mode`, `answer_encoding`,
 `width_effect`, `parameterized`, `reads_input` and the rest.
 `esolangs describe --json <language>` prints it, and `esolangs list
 --details` reduces it to a marker column -- `gen`, `tmpl`, `ex`.

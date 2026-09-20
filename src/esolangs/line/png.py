@@ -223,13 +223,10 @@ def _deinterlace(
     return rows
 
 
-def read_grey(data: bytes) -> list[bytearray]:
-    """Decode PNG bytes to one ``bytearray`` of greyscale levels per row.
-
-    Colour is reduced with the same ITU-R 601-2 luma weights Pillow's
-    ``convert("L")`` uses -- palette entries included -- so an ink threshold
-    means the same thing whichever format a drawing arrives in.
-    """
+def _decode_png(
+    data: bytes,
+) -> tuple[list[list[int]], int, int, int, int, bytes | None]:
+    """Return decoded samples plus width, channels, depth, colour and palette."""
     header = None
     palette = None
     idat = bytearray()
@@ -271,7 +268,52 @@ def read_grey(data: bytes) -> list[bytearray]:
     else:
         samples = _read_pass(data_stream, width, height, channels, depth)
 
-    return _to_grey(samples, width, channels, depth, colour, palette)
+    return samples, width, channels, depth, colour, palette
+
+
+def read_grey(data: bytes) -> list[bytearray]:
+    """Decode PNG bytes to one ``bytearray`` of greyscale levels per row.
+
+    Colour is reduced with the same ITU-R 601-2 luma weights Pillow's
+    ``convert("L")`` uses -- palette entries included -- so an ink threshold
+    means the same thing whichever format a drawing arrives in.
+    """
+    decoded = _decode_png(data)
+    return _to_grey(*decoded)
+
+
+def read_rgb(data: bytes) -> list[list[tuple[int, int, int]]]:
+    """Decode PNG bytes to rows of 8-bit ``(red, green, blue)`` pixels."""
+    samples, width, channels, depth, colour, palette = _decode_png(data)
+    top = (1 << depth) - 1
+
+    def level(value: int) -> int:
+        if depth == 8:
+            return value
+        if depth == 16:
+            return value >> 8
+        return value * 255 // top
+
+    rows: list[list[tuple[int, int, int]]] = []
+    for row in samples:
+        pixels: list[tuple[int, int, int]] = []
+        for x in range(width):
+            base = x * channels
+            if colour == _PALETTE:
+                if palette is None:
+                    raise ValueError("palette PNG has no PLTE chunk")
+                offset = row[base] * 3
+                entry = palette[offset : offset + 3]
+                if len(entry) != 3:
+                    raise ValueError("palette index outside PLTE chunk")
+                pixels.append((entry[0], entry[1], entry[2]))
+            elif colour in (_RGB, _RGBA):
+                pixels.append(tuple(level(v) for v in row[base : base + 3]))  # type: ignore[arg-type]
+            else:
+                grey = level(row[base])
+                pixels.append((grey, grey, grey))
+        rows.append(pixels)
+    return rows
 
 
 def _to_grey(
@@ -374,3 +416,34 @@ def write_grey_file(path: str, pixels: list[bytearray]) -> None:
     """Write greyscale rows to ``path`` as a PNG."""
     with open(path, "wb") as handle:
         handle.write(write_grey(pixels))
+
+
+def write_rgb(pixels: list[list[tuple[int, int, int]]]) -> bytes:
+    """Encode rectangular 8-bit RGB rows as PNG bytes."""
+    height = len(pixels)
+    width = len(pixels[0]) if height else 0
+    if not height or not width or any(len(row) != width for row in pixels):
+        raise ValueError("expected a non-empty 2-D RGB image")
+    raw = bytearray()
+    for row in pixels:
+        raw.append(0)
+        for pixel in row:
+            if len(pixel) != 3 or any(not 0 <= value <= 255 for value in pixel):
+                raise ValueError(f"invalid RGB pixel {pixel!r}")
+            raw.extend(pixel)
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(body))
+            + kind
+            + body
+            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+        )
+
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, _RGB, 0, 0, 0)
+    return (
+        _SIGNATURE
+        + chunk(b"IHDR", ihdr)
+        + chunk(b"IDAT", zlib.compress(bytes(raw), 9))
+        + chunk(b"IEND", b"")
+    )

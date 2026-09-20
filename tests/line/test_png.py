@@ -62,7 +62,11 @@ def test_roundtrip_preserves_every_byte(shape: tuple[int, int]) -> None:
     original = [
         bytearray(rng.randrange(256) for _ in range(width)) for _ in range(height)
     ]
-    assert png.read_grey(png.write_grey(original)) == original
+    encoded = png.write_grey(original)
+    assert png.read_grey(encoded) == original
+    assert png.read_rgb(encoded) == [
+        [(level, level, level) for level in row] for row in original
+    ]
 
 
 def test_roundtrip_through_a_file(tmp_path: Path) -> None:
@@ -160,6 +164,7 @@ def test_sub_byte_depths_unpack_and_scale(
     width = len(expected)
     blob = _encode([bytes([0, packed])], width, 1, depth=depth)
     assert png.read_grey(blob) == [bytearray(expected)]
+    assert png.read_rgb(blob) == [[(value,) * 3 for value in expected]]
 
 
 def test_palette_is_resolved_through_plte() -> None:
@@ -185,6 +190,7 @@ def test_palette_is_resolved_through_plte() -> None:
         + chunk(b"IEND", b"")
     )
     assert png.read_grey(blob) == [bytearray([255, 0])]
+    assert png.read_rgb(blob) == [[(255, 255, 255), (0, 0, 0)]]
 
 
 @pytest.mark.parametrize(
@@ -217,6 +223,11 @@ def test_colour_types_reduce_to_grey_as_pillow_does(
     """
     blob = _encode([bytes([0, *pixel])], 1, 1, colour=colour)
     assert png.read_grey(blob) == [bytearray([expected])]
+    rgb = png.read_rgb(blob)
+    if colour in (png._RGB, png._RGBA):  # noqa: SLF001
+        assert rgb == [[tuple(pixel[:3])]]
+    else:
+        assert rgb == [[(pixel[0],) * 3]]
 
 
 def test_multi_channel_filters_step_by_a_whole_pixel() -> None:
@@ -316,6 +327,7 @@ def test_sixteen_bit_scales_down_rather_than_clipping() -> None:
         row += struct.pack(">H", value)
     blob = _encode([bytes(row)], len(values), 1, depth=16, colour=png._GREY)  # noqa: SLF001
     assert png.read_grey(blob) == [bytearray(v >> 8 for v in values)]
+    assert png.read_rgb(blob) == [[(v >> 8,) * 3 for v in values]]
 
 
 def test_sixteen_bit_colour_reduces_through_luma() -> None:
@@ -325,6 +337,7 @@ def test_sixteen_bit_colour_reduces_through_luma() -> None:
         row += struct.pack(">H", value)
     blob = _encode([bytes(row)], 1, 1, depth=16, colour=png._RGB)  # noqa: SLF001
     assert png.read_grey(blob) == [bytearray([76])]
+    assert png.read_rgb(blob) == [[(255, 0, 0)]]
 
 
 def test_rejects_a_non_png() -> None:
@@ -364,6 +377,61 @@ def test_rejects_an_unknown_colour_type_by_number() -> None:
         png.read_grey(_encode([bytes([0, 0])], 1, 1, colour=5))
 
 
+def test_rejects_a_missing_header() -> None:
+    with pytest.raises(ValueError, match="no IHDR"):
+        png.read_rgb(png._SIGNATURE)  # noqa: SLF001
+
+
+def test_rejects_a_truncated_chunk() -> None:
+    blob = png._SIGNATURE + struct.pack(">I", 4) + b"IHDR" + b"x"  # noqa: SLF001
+    with pytest.raises(ValueError, match="truncated IHDR"):
+        png.read_rgb(blob)
+
+
+def test_empty_png_pass_has_no_samples() -> None:
+    assert png._read_pass(b"", 0, 1, 1, 8) == []  # noqa: SLF001
+
+
+def test_rejects_an_unknown_compression_method() -> None:
+    blob = bytearray(_encode([bytes([0, 0])], 1, 1))
+    blob[8 + 8 + 10] = 1
+    with pytest.raises(ValueError, match="compression"):
+        png.read_rgb(bytes(blob))
+
+
+@pytest.mark.parametrize("depth", [3, 7])
+def test_rgb_rejects_an_unknown_depth(depth: int) -> None:
+    with pytest.raises(ValueError, match="bit depth"):
+        png.read_rgb(_encode([bytes([0, 0])], 1, 1, depth=depth))
+
+
+def test_rgb_rejects_a_palette_without_entries() -> None:
+    with pytest.raises(ValueError, match="no PLTE"):
+        png.read_rgb(_encode([bytes([0, 0])], 1, 1, colour=png._PALETTE))  # noqa: SLF001
+    with pytest.raises(ValueError, match="no PLTE"):
+        png.read_grey(_encode([bytes([0, 0])], 1, 1, colour=png._PALETTE))  # noqa: SLF001
+
+
+def test_rgb_rejects_an_index_outside_the_palette() -> None:
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(body))
+            + kind
+            + body
+            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+        )
+
+    blob = (
+        png._SIGNATURE  # noqa: SLF001
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, png._PALETTE, 0, 0, 0))  # noqa: SLF001
+        + chunk(b"PLTE", bytes([255, 255, 255]))
+        + chunk(b"IDAT", zlib.compress(bytes([0, 1])))
+        + chunk(b"IEND", b"")
+    )
+    with pytest.raises(ValueError, match="outside PLTE"):
+        png.read_rgb(blob)
+
+
 def test_rejects_an_unknown_row_filter() -> None:
     """A filter byte outside 0-4 is corruption, not something to guess at."""
     with pytest.raises(ValueError, match="row filter"):
@@ -374,3 +442,12 @@ def test_rejects_ragged_rows_on_write() -> None:
     """Rows of differing lengths are not an image; the writer must say so."""
     with pytest.raises(ValueError, match="equal-length rows"):
         png.write_grey([bytearray([0, 0]), bytearray([0])])
+
+
+def test_rgb_writer_rejects_empty_ragged_and_invalid_pixels() -> None:
+    with pytest.raises(ValueError, match="non-empty"):
+        png.write_rgb([])
+    with pytest.raises(ValueError, match="non-empty"):
+        png.write_rgb([[(0, 0, 0)], []])
+    with pytest.raises(ValueError, match="invalid RGB"):
+        png.write_rgb([[(0, 0, 256)]])

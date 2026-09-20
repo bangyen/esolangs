@@ -41,6 +41,7 @@ class LanguageInfo(TypedDict):
 
     name: str
     id: str
+    source_kind: str
     state_model: str | None
     interpreter: str | None
     boolean_generator: bool
@@ -65,7 +66,8 @@ class LanguageInfo(TypedDict):
 def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
-    Identity: ``name``, ``id``, ``state_model``, ``interpreter``, ``wiki_url``.
+    Identity: ``name``, ``id``, ``source_kind``, ``state_model``,
+    ``interpreter``, ``wiki_url``.
     Generation: ``boolean_generator``; ``parameterized`` (a template, filled by
     :func:`instantiate`, ``reads_input`` false).  Width: ``width_effect`` is
     ``"layout"`` (a shape built to fit; a hint), ``"wrap"`` (reflowed between
@@ -101,6 +103,7 @@ def describe(language: str) -> LanguageInfo:
     return {
         "name": name,
         "id": lang.id,
+        "source_kind": lang.source_kind.value,
         "state_model": _STATE_MODELS.get(family) if family else None,
         "interpreter": lang.interpreter,
         "boolean_generator": lang.boolean is not None,
