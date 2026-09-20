@@ -1,5 +1,10 @@
 # Task runner for the project
 
+# Keep uv's cache inside the checkout by default.  Sandboxed worktrees cannot
+# necessarily write ~/.cache, and a documented `just test-quick` should not
+# need permission outside the repository.  An explicit UV_CACHE_DIR still wins.
+export UV_CACHE_DIR := env_var_or_default("UV_CACHE_DIR", justfile_directory() + "/.cache/uv")
+
 # Auto-detect uv - falls back to plain python if not available
 PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python"`
 

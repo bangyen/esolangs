@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import StrEnum
 
 from esolangs import tools as _boolean
 from esolangs.registry._slug import canonical_id
@@ -17,6 +18,13 @@ from esolangs.registry._slug import canonical_id
 Generator = Callable[..., str]
 
 
+class SourceKind(StrEnum):
+    """The representation an interpreter consumes."""
+
+    TEXT = "text"
+    RASTER = "raster"
+
+
 @dataclass(frozen=True)
 class Language:
     """Language name, interpreter, source shape, id, and optional generator."""
@@ -26,6 +34,7 @@ class Language:
     split: bool = False
     id: str = ""
     boolean: Generator | None = None
+    source_kind: SourceKind = SourceKind.TEXT
 
 
 LANGUAGES: dict[str, Language] = {
