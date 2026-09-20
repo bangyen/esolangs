@@ -81,6 +81,18 @@ def _parse(code: str) -> tuple[list[_Instruction], list[int]]:
             chars.append(char)
         return "".join(chars)
 
+    def choose(options: dict[object, str], key: object) -> str:
+        """Return the command ``key`` names, or refuse it as malformed.
+
+        A bare ``[key]`` let an unknown subcommand escape as ``KeyError``,
+        which is not the ``ValueError`` a malformed program promises and
+        which the fuzzer found on a mutated Whitespace source.
+        """
+        try:
+            return options[key]
+        except KeyError:
+            raise ValueError(f"Whitespace has no command at {key!r}") from None
+
     instructions: list[_Instruction] = []
     offsets: list[int] = []
     while cursor < count:
@@ -91,7 +103,7 @@ def _parse(code: str) -> tuple[list[_Instruction], list[int]]:
             if command == _SPACE:
                 instructions.append(("push", number()))
             elif command == _LINE:
-                kind = {_SPACE: "dup", _TAB: "swap", _LINE: "discard"}[take()]
+                kind = choose({_SPACE: "dup", _TAB: "swap", _LINE: "discard"}, take())
                 instructions.append((kind, 0))
             elif take() == _SPACE:
                 instructions.append(("copy", number()))
@@ -100,36 +112,49 @@ def _parse(code: str) -> tuple[list[_Instruction], list[int]]:
         elif memory == _TAB:
             command = take()
             if command == _LINE:
-                kind = {
-                    (_SPACE, _SPACE): "out_char",
-                    (_SPACE, _TAB): "out_num",
-                    (_TAB, _SPACE): "read_char",
-                    (_TAB, _TAB): "read_num",
-                }[(take(), take())]
+                kind = choose(
+                    {
+                        (_SPACE, _SPACE): "out_char",
+                        (_SPACE, _TAB): "out_num",
+                        (_TAB, _SPACE): "read_char",
+                        (_TAB, _TAB): "read_num",
+                    },
+                    (take(), take()),
+                )
                 instructions.append((kind, 0))
             elif command == _TAB:
-                instructions.append(({_SPACE: "store", _TAB: "retrieve"}[take()], 0))
+                instructions.append(
+                    (choose({_SPACE: "store", _TAB: "retrieve"}, take()), 0)
+                )
             else:
-                kind = {
-                    (_SPACE, _SPACE): "add",
-                    (_SPACE, _TAB): "sub",
-                    (_SPACE, _LINE): "mul",
-                    (_TAB, _SPACE): "div",
-                    (_TAB, _TAB): "mod",
-                }[(take(), take())]
+                kind = choose(
+                    {
+                        (_SPACE, _SPACE): "add",
+                        (_SPACE, _TAB): "sub",
+                        (_SPACE, _LINE): "mul",
+                        (_TAB, _SPACE): "div",
+                        (_TAB, _TAB): "mod",
+                    },
+                    (take(), take()),
+                )
                 instructions.append((kind, 0))
         else:
             command = take()
             if command == _SPACE:
                 instructions.append(
-                    ({_SPACE: "mark", _TAB: "call", _LINE: "jump"}[take()], label())
+                    (
+                        choose({_SPACE: "mark", _TAB: "call", _LINE: "jump"}, take()),
+                        label(),
+                    )
                 )
             elif command == _TAB:
                 sub = take()
                 if sub == _LINE:
                     instructions.append(("return", 0))
                 else:
-                    instructions.append(({_SPACE: "jz", _TAB: "jn"}[sub], label()))
+                    instructions.append(
+                        (choose({_SPACE: "jz", _TAB: "jn"}, sub), label())
+                    )
             else:
                 if take() != _LINE:
                     raise ValueError("Whitespace has no flow command with that prefix")

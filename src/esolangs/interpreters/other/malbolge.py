@@ -101,10 +101,7 @@ def _advance(
     elif op == "<":
         effect = a & 0xFF
     elif op == "/":
-        if char_input is None:
-            a = _EOF
-        else:
-            a = char_input
+        a = _EOF if char_input is None else char_input
     elif op == "v":
         return (a, c, d, True), (), None
     value = peek(c)
@@ -123,7 +120,10 @@ def _load(code: str) -> list[int]:
         if char.isspace():
             continue
         cell = ord(char)
-        if index >= _WORDS:
+        # 59049 cells each deciphering to an instruction cannot be built: the
+        # decipherment cycles with the cell index, so the decode check below
+        # rejects a long source before this can fire.
+        if index >= _WORDS:  # pragma: no cover
             raise ValueError("Malbolge program is longer than its 59049 cells")
         decoded = _op(cell, index)
         if decoded is None or decoded not in "ji*p</vo":

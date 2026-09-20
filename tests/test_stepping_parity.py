@@ -95,7 +95,8 @@ def _steppable_languages() -> list[str]:
     return [
         name
         for name in esolangs.list_languages()
-        if esolangs.describe(name)["steppable_to_answer"]
+        if esolangs.describe(name)["boolean_generator"]
+        and esolangs.describe(name)["steppable_to_answer"]
         and esolangs.describe(name)["answer_mode"] != "termination"
     ]
 
@@ -177,6 +178,8 @@ class TestStepPastHaltIsSafeEverywhere:
         broke = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
+            if not facts["boolean_generator"]:
+                continue
             if not facts["steppable_to_answer"] or not facts["self_halts"]:
                 continue
             if facts["answer_mode"] == "termination":

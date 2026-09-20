@@ -233,6 +233,13 @@ class TestATemplateCarriesItsSetters:
             )
         with pytest.raises(TypeError, match="exactly one"):
             _embedded(esolangs.generate, "x")
+        # A pair-only call derives its setters; the import-time examples are
+        # not always captured by the coverage tracer, so exercise it here.
+        derived = _embedded(esolangs.generate, "x", pair=("a", "b"))
+        assert derived.pair == ("a", "b")
+        # And a setters-only call must not try to derive them.
+        explicit = _embedded(esolangs.generate, "x", setters=uniform(("a", "b")))
+        assert explicit.setters is not None
 
     def test_unequal_widths_are_refused(self) -> None:
         from esolangs.tagged import _Template
@@ -431,7 +438,10 @@ class TestTheVerifierIsShipped:
     def test_every_language_verifies(self) -> None:
         """60/60, through the public function rather than a local copy."""
         failed = [
-            n for n in esolangs.list_languages() if not esolangs.verify(n, "0110")
+            n
+            for n in esolangs.list_languages()
+            if esolangs.describe(n)["boolean_generator"]
+            and not esolangs.verify(n, "0110")
         ]
         assert not failed
 
@@ -463,6 +473,8 @@ class TestWidthEffectSaysWhatWidthDoes:
         wrong = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
+            if not facts["boolean_generator"]:
+                continue
             plain = esolangs.generate(name, "0110")
             narrow = esolangs.generate(name, "0110", 20)
             if facts["width_effect"] == "none" and plain != narrow:
@@ -580,6 +592,8 @@ class TestWhatHappensWhenAProgramIsUnderfed:
         mismatched = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
+            if not facts["boolean_generator"]:
+                continue
             if facts["parameterized"]:
                 continue  # no stdin to underfeed
             if facts["input_shape"] == "one_line":
@@ -602,14 +616,15 @@ class TestWhatHappensWhenAProgramIsUnderfed:
         raised = sum(
             1
             for name in esolangs.list_languages()
-            if not esolangs.describe(name)["parameterized"]
+            if esolangs.describe(name)["boolean_generator"]
+            and not esolangs.describe(name)["parameterized"]
             and self._underfed(name)[0] == "raised"
         )
-        # 38 of the 45 that read stdin, measured (39 of 46 before Interprogck8
-        # left).  Pinned exactly, so that a change which
-        # quietly moves a language out of the norm shows up here rather
+        # 40 of the 47 that read stdin, measured (38 of 45 before Befunge and
+        # Whitespace gained generators).  Pinned exactly, so that a change
+        # which quietly moves a language out of the norm shows up here rather
         # than in a docstring nobody re-derives.
-        assert raised == 38
+        assert raised == 40
 
     def test_the_trait_is_reported_by_describe(self) -> None:
         """A caller must be able to learn this without underfeeding one."""

@@ -559,8 +559,15 @@ _REDUCING = {
 # ``bio`` is a telescope of one nested level per row whatever the table
 # says; a one-dependency table only spares it the flat edges' adjustments,
 # which is 4.4% once the doubling between the input runs is in the text.
+#
+# ``befunge`` and ``whitespace`` are branch-free lookups of the same class:
+# Befunge writes one grid cell per table entry and reads it with ``g``, and
+# Whitespace halves one literal once per index step, so two tables with the
+# same ones-count render to the same length and a 0% fold is the construction
+# working.
 _UNSHAPED = {
     "a_painter_ant",
+    "befunge",
     "bio",
     "alight",
     "minsky_swap",
@@ -569,6 +576,7 @@ _UNSHAPED = {
     "one_two_three",
     "slow_acv_mammalian",
     "container",
+    "whitespace",
 }
 
 # Every table depending on exactly one input, at n == 3, both polarities.
@@ -955,7 +963,10 @@ _EXEC_SHAPES = (("one_minterm", _one_minterm), ("one_hot", _one_hot))
 @pytest.mark.parametrize(
     "make", [make for _, make in _EXEC_SHAPES], ids=[s for s, _ in _EXEC_SHAPES]
 )
-@pytest.mark.parametrize("name", sorted(esolangs.list_languages()))
+@pytest.mark.parametrize(
+    "name",
+    sorted(n for n in esolangs.list_languages() if LANGUAGES[n].boolean is not None),
+)
 @pytest.mark.slow
 def test_every_generator_runs_what_it_builds(
     name: str, make: Callable[[int], str]
@@ -1117,7 +1128,7 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
     biggest = max(
         (len(esolangs.generate(name, _dense(9))), name)
         for name in esolangs.list_languages()
-        if name not in _DOCUMENTED_SIZES
+        if name not in _DOCUMENTED_SIZES and LANGUAGES[name].boolean is not None
     )
     assert biggest[0] < 600_000, biggest
     assert biggest[1] == "Streetcode"

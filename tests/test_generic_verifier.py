@@ -73,6 +73,8 @@ def test_every_language_verifies_with_no_per_language_knowledge(table: str) -> N
     """Every language, driven only by what the API reports about each."""
     wrong = {}
     for name in esolangs.list_languages():
+        if not esolangs.describe(name)["boolean_generator"]:
+            continue
         got = _verify(name, table)
         if got != table:
             wrong[name] = got
