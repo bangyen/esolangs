@@ -1181,7 +1181,7 @@ class TestEvaluateTakesAWidth:
     still *works* -- a break inside a token computes a different table, or
     none -- so "does it survive the wrap" is the round trip most worth
     running.  ``evaluate`` and ``verify`` did not take one, and hand-rolling
-    it also lost the divergence proof, which turns the three languages that
+    it also lost the divergence proof, which turns the four languages that
     answer 1 by not terminating from milliseconds into a full bound per
     1-row.
     """

@@ -66,6 +66,17 @@ class TestWidensToEverything:
         changed = ["src/esolangs/interpreters/io.py"]
         assert scope.widens_to_everything(changed) is not None  # type: ignore[attr-defined]
 
+    def test_every_registry_module_widens(self) -> None:
+        """The registry package is shared machinery under any filename."""
+        scope = load_script()
+        names = [
+            path.relative_to(REPO_ROOT).as_posix()
+            for path in sorted((REPO_ROOT / "src/esolangs/registry").rglob("*.py"))
+        ]
+        assert names, "registry package has no modules"
+        for name in names:
+            assert scope.widens_to_everything([name]) is not None  # type: ignore[attr-defined]
+
     def test_verification_tooling_widens(self) -> None:
         """A scoped run cannot be trusted to validate the scoping code itself."""
         scope = load_script()

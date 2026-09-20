@@ -176,7 +176,7 @@ def read_answer(language: str, output: str) -> str:
     ``describe(language)["answer_pattern"]`` is the same fact as data (a
     verifier that hardcoded two dumps and forgot a third reported a passing
     language as broken).  A termination-answer language (123, ArrowQueue,
-    Point Break) raises :class:`~esolangs.exceptions.ArgumentError`: bound
+    Crement, Vandevelo) raises :class:`~esolangs.exceptions.ArgumentError`: bound
     the run and catch :class:`~esolangs.exceptions.ExecutionTimeoutError`.
     """
     name = resolve(language)

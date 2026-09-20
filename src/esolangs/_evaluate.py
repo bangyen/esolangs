@@ -35,7 +35,7 @@ class _Default:
 _DEFAULT = _Default()
 
 #: A termination-answering language proves a 1 by *not* halting, so
-#: :func:`evaluate` pays this once for every such row.  Three languages
+#: :func:`evaluate` pays this once for every such row.  Four languages
 #: carry that convention, so the floor is real and small.
 _TERMINATION_TIMEOUT = 5.0
 
@@ -55,7 +55,7 @@ def evaluate(
     Generates, runs every row, returns the answers as a binary string;
     :func:`verify` is this with the comparison done.  ``timeout`` bounds each
     row: omit for the defaults, ``None`` for unbounded (callable off the main
-    thread).  The three termination-answer languages do not pay it: those rows are
+    thread).  The four termination-answer languages do not pay it: those rows are
     settled by a repeated machine state, so the bound is only a backstop
     for growth.
     ``width`` is passed through.  A failure carries the row as a note and
@@ -63,9 +63,9 @@ def evaluate(
     """
     # Checked here, not only inside ``run``: the termination path drives the
     # machine itself and never reaches ``run``, so a bound too small to
-    # service was refused for sixty-six languages and silently read as
-    # "diverges" for the other three -- the same argument answering a
-    # different table depending on which kind of language it was.
+    # service was refused for the languages that halt and silently read as
+    # "diverges" for the termination-answer ones -- the same argument
+    # answering a different table depending on which kind of language it was.
     if not isinstance(timeout, _Default):
         check_timeout(timeout)
     facts = describe(language)

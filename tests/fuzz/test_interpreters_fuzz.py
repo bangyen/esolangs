@@ -40,11 +40,10 @@ FUZZ = {
     "register_based.minsky_swap": "+~*",
 }
 
-# ArrowQueue, back, Between, Jaune, Point Break, and RAM0 are
-# not fuzzed here: they have unconditional, goto, or directional loops
-# (Jaune's ?/! jumps, Point Break's POINT/END), so a random program may
-# legitimately never terminate and the "terminates" invariant does not
-# apply to them.
+# ArrowQueue, back, Jaune and RAM0 are not fuzzed here: they have
+# unconditional, goto, or directional loops (Jaune's ?/! jumps), so a random
+# program may legitimately never terminate and the "terminates" invariant
+# does not apply to them.
 
 
 _HOSTILE = "!?+-*/[]{}()<>;:,. 01az\n"

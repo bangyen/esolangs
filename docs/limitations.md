@@ -17,9 +17,10 @@ Polynomial's proved wall is in [polynomial](polynomial.md).
 
 ## Source positions
 
-`esolangs debug --tui` marks only a source position. `ip_shape` is `offset`
-(45 languages), `grid` (11), `line` (2), or `opaque` (7); undeclared tuples
-are refused and opaque positions have no program mark.
+`esolangs debug --tui` marks only a source position. `ip_shape` is `offset`,
+`grid`, `line`, or `opaque` -- `tests/test_vm_protocol.py` sweeps every language
+and refuses an undeclared or misspelled value. Opaque positions have no program
+mark.
 
 Line extraction accepts anti-aliased PNGs only when strokes retain a connected
 dark core. The 3px scan fixture executes addition; a one-third-pixel shift of
@@ -45,10 +46,14 @@ ArrowQueue re-enqueue remains open.
 | Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. |
 
 Polynomial's mandatory root product has minimum mass at the product itself;
-the slack certificate proves `Theta(L**2 log L) = Theta(T**2 / log T)` digits
-for every multiple, cofactor, and operand sign. Factor has a language floor
-`Omega(T log T / log log T)` because exponents are unary-priced and primes are
-distinct and ascending; its folded tree is `Theta(T log T)`.
+for programs whose real instruction roots are distinct the slack certificate
+proves `Theta(L**2 log L) = Theta(T**2 / log T)` digits for every multiple,
+cofactor, and operand sign. Repeated real roots are legal (`(x-2)^3` decodes to
+three `[1]` instructions) and that theorem does not cover them, so the general
+language bound is open -- the one missing lemma is named in
+[polynomial](polynomial.md). Factor has a language floor
+`Omega(T log T / log log T)`, a pigeonhole count on D-digit integers
+([factor](factor.md)); its folded tree is `Theta(T log T)`.
 
 ### Scaling
 

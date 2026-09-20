@@ -9,15 +9,19 @@ Interpreters and boolean-circuit generators for 59 esoteric languages.
 `generate` takes a truth table and returns a program computing it;
 `verify` runs that program on every row and checks what it answers.
 
-[usage](docs/usage.md) is the caller's guide -- the exported functions, the
-four odd input shapes, templates, reading an answer back, the debugger.
-[architecture](docs/architecture.md) shows how the registry, generators,
-interpreters, and answer extraction connect.
-[roadmap](docs/roadmap.md) tracks live work and
-[limitations](docs/limitations.md) records contracts.
+[usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md) is the
+caller's guide -- the exported functions, the four odd input shapes,
+templates, reading an answer back, the debugger.
+[architecture](https://github.com/bangyen/esolangs/blob/main/docs/architecture.md)
+shows how the registry, generators, interpreters, and answer extraction
+connect.
+[roadmap](https://github.com/bangyen/esolangs/blob/main/docs/roadmap.md) tracks
+live work and
+[limitations](https://github.com/bangyen/esolangs/blob/main/docs/limitations.md)
+records contracts.
 
 Start with the [CLI](#command-line), [Python API](#python-api), or
-[contribution guide](docs/CONTRIBUTING.md).
+[contribution guide](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md).
 
 ## Command line
 
@@ -46,7 +50,8 @@ esolangs.verify("Fargo", "10010110")  # -> True
 Pass each command the language it was generated for: running a Suffolk
 program as brainfuck does not fail, it reports something useless.  How a
 language reads its input bits is not universal either -- let
-[`encode_inputs`](docs/usage.md#feeding-a-program) build the stdin.
+[`encode_inputs`](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program)
+build the stdin.
 
 ## Examples
 
@@ -90,13 +95,13 @@ hjkl move | t break | space step | c continue | r run | b back | q quit
 ```
 
 The live screen reverse-videos the cell at that `ip`; colour does not survive
-the page.  [usage](docs/usage.md#debugging) names every key.
+the page.  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debugging) names every key.
 
 <!-- TUI-FRAME:END -->
 
 <!-- EXAMPLES:START -->
 
-Ready-to-run programs are committed under [`examples/`](examples/):
+Ready-to-run programs are committed under [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):
 `examples/` holds a truth-table program for each of the 59
 languages with a boolean generator.  It regenerates via
 `scripts/generate.py examples`.
@@ -239,5 +244,6 @@ Regenerate the committed examples with `python scripts/generate.py examples`.
 
 ## Contributing
 
-Read [the contribution guide](docs/CONTRIBUTING.md), then run `just test`.
-The project is GPL v3; see [LICENSE](LICENSE).
+Read [the contribution guide](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md),
+then run `just test`.
+The project is GPL v3; see [LICENSE](https://github.com/bangyen/esolangs/blob/main/LICENSE).
