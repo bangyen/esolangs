@@ -57,14 +57,16 @@ Let `m = O(T/log T)` be the instruction count and
 `L = Theta(T**2/log T)` the maximal-width output length.  Building and
 deduplicating the residual strings touches `O(T log T)` characters.  Prime
 enumeration and factor construction are polynomial in `m`; expansion owns the
-asymptotics.  If `M(q)` is the cost of multiplying `q` decimal digits, the
-balanced packed-product tree takes conservatively
-`O(M(L) log m + L)` time: it has `O(log m)` merge levels, and no packed node is
-wider than the final one.  With schoolbook `M(q) = O(q**2)`, this gives the
-portable bound `O(T**4/log T)`.  Merely writing the result costs
-`Omega(T**2/log T)`, so the construction-time classification remains between
-those bounds; libmpdec's faster multiplication narrows the measured gap, not
-the proved one.
+asymptotics.  A node covering `r` factors has `O(r)` slots of
+`O(r log m)` digits, hence packed width `q(r) = O(r**2 log m)`.  There are
+`O(m/r)` merges at that balanced-tree level, so expansion costs
+`sum_r O((m/r) M(q(r)))`, over powers of two through `m`.  Schoolbook
+`M(q) = O(q**2)` is dominated by the root level and gives the portable bound
+`O(m**4 log**2 m) = O(T**4/log**2 T)`.  On libmpdec's large FNT path,
+`M(q) = O(q log q)`, the geometric level sum is
+`O(m**2 log**2 m) = O(T**2)` word operations.  Merely writing the result costs
+`Omega(T**2/log T)`, leaving a factor of `log T` between the current-path
+upper bound and the language lower bound.
 
 A cold parse first scans `Theta(L)` source characters and converts the dense
 coefficients to integers.  On the current fixed-field fast path, modular
