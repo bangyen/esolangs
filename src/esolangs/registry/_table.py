@@ -285,6 +285,11 @@ LANGUAGES: dict[str, Language] = {
         source_kind=SourceKind.RASTER,
         raster_boolean=_line.generate,
     ),
+    "Piet": Language(
+        "Piet",
+        id="piet",
+        source_kind=SourceKind.RASTER,
+    ),
     "SLOW ACV MAMMALIAN": Language(
         "SLOW ACV MAMMALIAN",
         "tape_based.slow_acv_mammalian",
