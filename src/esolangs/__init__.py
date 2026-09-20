@@ -56,7 +56,7 @@ from esolangs.exceptions import (
     UnknownLanguageError,
 )
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.line import Raster
+from esolangs.raster import Raster
 from esolangs.registry import (
     LANGUAGES,
     RUNNERS,
