@@ -156,6 +156,55 @@ class TestQoibl:
 # 4.2s over 72 tests: runs the generated program.
 @pytest.mark.medium
 class TestPolynomial:
+    def test_uncapped_dag_has_matching_text_bound(self) -> None:
+        """Pin and execute the construction matching the language lower bound.
+
+        The public generator keeps its resource cap; composing the existing
+        DAG emitter and assembler directly is the language-level witness.
+        These are structural envelopes, not a fitted size ratio.
+        """
+        from esolangs.tools.polynomial import _polynomial_assemble
+        from tests.tools.test_boolean_contract import _dense
+
+        for n in range(4, 9):
+            table = _dense(n)
+            levels = _polynomial_states(table, n)
+            ceilings = [2 ** min(k, 2 ** (n - k)) for k in range(n + 1)]
+            states = sum(map(len, levels))
+            assert all(
+                len(level) <= ceiling
+                for level, ceiling in zip(levels, ceilings, strict=True)
+            )
+            assert states <= sum(ceilings)
+            assert sum(ceilings) * n <= 8 * 2**n
+
+            instructions = _polynomial_dag(table)
+            assert len(instructions) <= 6 * states
+            assert all(
+                (len(instruction) == 1 and instruction[0] <= 2)
+                or (
+                    len(instruction) == 2
+                    and instruction[1] <= 4
+                    and abs(instruction[0]) <= 50 * states + n + 3
+                )
+                for instruction in instructions
+            )
+
+        table = _dense(4)
+        instructions = _polynomial_dag(table)
+        program = _polynomial_assemble(instructions)
+        m = len(instructions)
+        operand = max(abs(instruction[0]) for instruction in instructions)
+        # The m-th prime is below m**2.  This bounds every factor's l1 norm;
+        # multiplying l1 norms bounds every expanded coefficient.
+        factor_l1_bound = (operand + 1) ** 2 + m**16
+        coefficient_digits = m * len(str(factor_l1_bound))
+        rendered_bound = 7 + (2 * m + 1) * (coefficient_digits + len(str(2 * m)) + 6)
+        assert len(program) <= rendered_bound
+        for row in range(16):
+            bits = [(row >> (3 - i)) & 1 for i in range(4)]
+            assert run_polynomial(program, [str(bit) for bit in bits]) == table[row]
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
