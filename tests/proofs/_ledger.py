@@ -1,4 +1,4 @@
-"""Parse ``docs/proofs.md`` into the structure the proof tests enforce.
+"""Parse ``docs/proofs/index.md`` into the structure the proof tests enforce.
 
 The ledger is prose, and until now nothing read it: its 62 rows, its proof
 schemes and its two audit sections could drift from the registry and from each
@@ -6,7 +6,7 @@ other without anything failing.  This module is the reader that makes the
 drift detectable; :mod:`tests.proofs.test_ledger` is the assertion.
 
 The parser adapts to the document, never the other way round.  Nothing here
-should motivate reformatting ``proofs.md`` -- if a section grows a shape this
+should motivate reformatting ``proofs/index.md`` -- if a section grows a shape this
 cannot read, widen the parser.
 """
 
@@ -19,7 +19,7 @@ from pathlib import Path
 #: Resolved from this file, not the working directory: the suite is run from
 #: the repo root, from `just`, and from a worktree, and only ``__file__`` is
 #: stable across all three.
-DOC = Path(__file__).resolve().parents[2] / "docs" / "proofs.md"
+DOC = Path(__file__).resolve().parents[2] / "docs" / "proofs" / "index.md"
 
 #: The scheme definitions carry prose headings; the ledger's Proof column
 #: carries short labels.  The mapping is explicit because the two genuinely
@@ -91,7 +91,7 @@ class Row:
 
 @dataclass(frozen=True)
 class Ledger:
-    """Everything ``proofs.md`` claims that can be checked against the code."""
+    """Everything ``proofs/index.md`` claims that can be checked against the code."""
 
     rows: tuple[Row, ...]
     defined_schemes: frozenset[str]

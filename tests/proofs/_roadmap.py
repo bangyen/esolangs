@@ -8,7 +8,7 @@ exactly the open set -- `350d2e2e` trimmed twenty-one rows that had been
 confirmed linear.
 
 The linearity contract reads that table rather than carrying its own list, for
-the same reason :mod:`tests.proofs._ledger` reads ``proofs.md``: a duplicated
+the same reason :mod:`tests.proofs._ledger` reads ``proofs/index.md``: a duplicated
 list is free to drift, and this one has drifted before.  Closing a row then
 means one edit, to the doc, and the contract immediately starts *demanding*
 linearity of the generator that left.
@@ -33,7 +33,7 @@ DOC = Path(__file__).resolve().parents[2] / "docs" / "roadmap.md"
 SETTLED = frozenset({"Linear", "O(T)"})
 
 #: The totality column's settled verdict.  The other spellings a row may carry
-#: are the ``proofs.md`` ledger's own labels, ``Cap`` and ``Exception``.
+#: are the ``proofs/index.md`` ledger's own labels, ``Cap`` and ``Exception``.
 TOTAL = "Total"
 
 

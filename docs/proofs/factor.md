@@ -1,5 +1,8 @@
 # Factor: size and construction bounds
 
+The standalone theorem is [factor.tex](factor.tex).  This companion retains
+implementation bounds and the executable evidence behind them.
+
 A Factor program is one decimal integer. Factoring it yields an ordered list
 of prime powers; a prime's residue mod 11 selects a Brainfuck command and its
 exponent is the run length. Put

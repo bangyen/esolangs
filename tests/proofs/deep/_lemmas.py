@@ -7,7 +7,7 @@ what its literal spells, which adjustment sits at which nesting level.  Nothing
 generic can reach that, and this module does not pretend to.
 
 What it does reach is the part of each scheme's argument that is about
-*counting*, and that part is uniform.  Every scheme in ``docs/proofs.md``
+*counting*, and that part is uniform.  Every scheme in ``docs/proofs/index.md``
 proves totality the same way: the construction is a finite object whose size is
 bounded by a function of the arity, and every row of the table participates in
 it.  Both halves are falsifiable per generator:
