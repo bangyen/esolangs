@@ -2,6 +2,8 @@
 
 import sys
 
+from esolangs.factor_primes import prime_segments
+
 # Every language whose construction reads on its own owns a file; what is
 # left here is brainfuck and the four dialects built directly on it.  The
 # rest are re-exported so this module stays the import site the package and
@@ -75,30 +77,34 @@ def brainfuck(truth_table: str) -> str:
 
 _BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
 
+# Exact prime enumeration, in bounded segments. ``isprime`` becomes a BPSW
+# probable-prime test above 2**64; Factor is uncapped, so it cannot certify the
+# primes in a total encoding. The chunk is only a segment width, never a cap.
+_FACTOR_PRIME_CHUNK = 20000
+
 
 def _factor_encode(code: str) -> int:
     """Encode a brainfuck program as the Factor integer for it.
 
-    Primes ascend with the right residue mod 11 (Dirichlet), a run folding
-    into one exponent.  Prime powers multiply as a balanced tree: a growing
+    Exact sieved primes ascend with the right residue mod 11 (Dirichlet), a
+    run folds into one exponent. Prime powers multiply as a balanced tree: a growing
     accumulator was 12.5s of a 14.4s build at thirteen inputs (120860 runs)
     against 0.7s.
     """
-    from sympy import isprime
-
     powers: list[int] = []
-    candidate = 2
+    primes = (
+        prime
+        for _start, _stop, segment in prime_segments(_FACTOR_PRIME_CHUNK)
+        for prime in segment
+    )
     i = 0
     while i < len(code):
         residue = _BF_RESIDUE[code[i]]
         j = i
         while j < len(code) and code[j] == code[i]:
             j += 1
-        prime = candidate
-        while not (prime % 11 == residue and isprime(prime)):
-            prime += 1
+        prime = next(prime for prime in primes if prime % 11 == residue)
         powers.append(prime ** (j - i))
-        candidate = prime + 1
         i = j
     while len(powers) > 1:
         pairs = [a * b for a, b in zip(powers[::2], powers[1::2], strict=False)]

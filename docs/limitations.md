@@ -82,7 +82,7 @@ three `[1]` instructions) and that theorem does not cover them, so the general
 language bound is open -- the one missing lemma is named in
 [polynomial](polynomial.md). Factor has a language floor
 `Omega(T log T / log log T)`, a pigeonhole count on D-digit integers
-([factor](factor.md)); its folded tree is `Theta(T log T)`.
+([factor](factor.md)); its worst-case generated encoding is `Theta(T log T)`.
 
 ### Scaling
 
