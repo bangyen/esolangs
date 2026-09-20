@@ -140,11 +140,30 @@ implemented, so never in the screen.
   executed build. A space toggle has no remaining use.
 - **ArrowQueue reusable drain.** Ship it only if folding is testable at `n >= 5`.
 
-- **Reorder ArrowQueue inputs.**  The three-input screen leaves 12.4%
+- **Reorder ArrowQueue inputs.**  The current three-input screen leaves 7.2%
   headroom, but its queued inputs cannot be renamed in place.  Find a
   re-enqueue and grid-routing construction, then compare emitted, executed
   programs against the current template; abandon it if the routing spends
   the apparent gain.
+
+- **Reorder Circuit Diagram selectors.**  The three-input exhaustive screen
+  leaves 20.4% headroom.  Its inputs already occupy separate rails, so keep
+  their read order and permute only which rail each Shannon level selects.
+  Ship only if executed programs beat both flat and H layouts on a wider
+  corpus without moving generation above O(T).
+
+- **Reorder Crement testers.**  The same screen leaves 12.4% headroom.  Keep
+  the parameterized runs in name order and map each tree level to the chosen
+  tester address.  Ship only if every three-input table executes correctly
+  and the routing win survives the emitted tester and patch addresses.
+
+- **Prune raster dependencies.**  Line and Piet both retain every input and
+  every table entry when the function ignores inputs: at four inputs, an
+  all-zero Line drawing is 1,920 x 2,060 pixels and an all-zero Piet program
+  is 258 codels.  Read every input to preserve the interface, but branch or
+  index only on the essential ones.  Ship separately per language only if
+  the PNG round trip executes and reduces pixels or codels on an exhaustive
+  small-table corpus; constants are the positive control.
 
 - **Raster source integration.**  Done for Line and Piet: `generate` returns
   an `esolangs.raster.Raster`, `run` accepts it or a PNG path through the
