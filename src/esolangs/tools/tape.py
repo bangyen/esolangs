@@ -1,5 +1,6 @@
 """Boolean-function generators for tape-based languages."""
 
+import heapq
 import sys
 
 from esolangs.factor_primes import prime_segments
@@ -87,9 +88,9 @@ def _factor_encode(code: str) -> int:
     """Encode a brainfuck program as the Factor integer for it.
 
     Exact sieved primes ascend with the right residue mod 11 (Dirichlet), a
-    run folds into one exponent. Prime powers multiply as a balanced tree: a growing
-    accumulator was 12.5s of a 14.4s build at thirteen inputs (120860 runs)
-    against 0.7s.
+    run folds into one exponent. Prime powers multiply smallest-width first:
+    a growing accumulator was 12.5s of a 14.4s build at thirteen inputs
+    (120860 runs) against 0.7s, and width balance gives the arithmetic bound.
     """
     powers: list[int] = []
     primes = (
@@ -106,10 +107,16 @@ def _factor_encode(code: str) -> int:
         prime = next(prime for prime in primes if prime % 11 == residue)
         powers.append(prime ** (j - i))
         i = j
-    while len(powers) > 1:
-        pairs = [a * b for a, b in zip(powers[::2], powers[1::2], strict=False)]
-        powers = pairs + powers[-1:] if len(powers) % 2 else pairs
-    return powers[0] if powers else 1
+    heap = [(value.bit_length(), serial, value) for serial, value in enumerate(powers)]
+    heapq.heapify(heap)
+    serial = len(heap)
+    while len(heap) > 1:
+        _a_bits, _a_serial, a = heapq.heappop(heap)
+        _b_bits, _b_serial, b = heapq.heappop(heap)
+        product = a * b
+        heapq.heappush(heap, (product.bit_length(), serial, product))
+        serial += 1
+    return heap[0][2] if heap else 1
 
 
 def factor(truth_table: str) -> str:

@@ -22,9 +22,9 @@ Where the bound sits, measured on both sides:
   and Streetcode at x2.074, with everything else at or under x2.02;
 * the super-linear constructions this repository has already retired measured,
   single-step at n=8 -> 9 on parity, A Painter Ant x3.96, Minifuck
-  x3.53 and 123 x2.43, all of which this bound rejects.  A synthetic `T log T`
-  series measures x2.191 here and is rejected; `T log T / log log T` (Factor's
-  proved floor) measures x2.109 and is not -- the documented blind spot.
+  x3.53 and 123 x2.43, all of which this bound rejects. A synthetic `T log T`
+  series measures x2.191 here and is rejected, while Factor's finite-arity
+  `Theta(T log T)` encoding measures x2.113 -- the documented blind spot.
 
 So it has teeth on both sides and roughly a factor of two of headroom above
 today's worst honest construction.  It is a calibrated regression guard, not a
