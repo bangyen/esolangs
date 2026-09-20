@@ -47,14 +47,17 @@ implemented, so never in the screen.
   the direction pointer and toggle the codel chooser, so the branch is a
   data-selected direction -- a sixth mechanism against the five in
   [contributing](CONTRIBUTING.md), the same axis INTERCAL claims and dearer.
-  The generator would be the grid walk the set has, so the case rests on the
-  branch alone: image source is `line`'s point, not a new one, and `line`
-  sits outside the registry, so Piet needs the registry to carry a raster or
-  an indexed-colour text encoding.  Pin before building: exact-palette
-  matching (anti-aliasing moves a codel; non-standard colours are
-  implementation-defined), the eight-attempt black/edge termination, the
-  DP/CC initial state.  Spec read only; output size is open -- area, where
-  every pushed constant is a block of that many codels.
+  The generator would be the grid walk the set has, so the language case
+  rests on the branch alone.  The medium carries the integration case: image
+  source is not a language axis, but two raster sources give the registry a
+  reason to carry one -- `line` alone is a path no registry caller reaches,
+  and registering Piet beside it gives a raster source kind two consumers,
+  the downstream a shared shim needs to stay off the curation removal list.
+  Pin before building: exact-palette matching (anti-aliasing moves a codel;
+  non-standard colours are implementation-defined), the eight-attempt
+  black/edge termination, the DP/CC initial state.  Spec read only; output
+  size is open -- area, where every pushed constant is a block of that many
+  codels.
 
 ## Conditional follow-up
 
