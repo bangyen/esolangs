@@ -455,7 +455,7 @@ def run(
     name = resolve(language)
     program = check_program(name, program, stdin)
     if isinstance(program, Raster):
-        run_fn = importlib.import_module("esolangs.line").run
+        run_fn = importlib.import_module(f"esolangs.{LANGUAGES[name].id}").run
         split = False
     else:
         module, split = RUNNERS[name]
