@@ -5,7 +5,25 @@ Only live work belongs here. Contracts and standing walls go to
 
 ## New interpreters
 
-The candidate list is empty.
+Implement the surveyed two-dimensional candidates in this order.  This is the
+2026-09-19 re-run of the `Category:Unimplemented` x `Category:Two-dimensional
+languages` pass (116 pages, up from 111); the verdicts are spec reads, not
+executed generators, so the size question is open for all three.
+
+- **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
+  filed it unread, thinking the `{{:thisthat}}` transclusions hid the node
+  table; they inject only a CSS `style=` string, so the table is in the
+  wikitext.  Native gates -- `◘` NAND, `□■▦` NOR/OR/XOR with `□■` also
+  emitting 0/1, `◇` one-bit input/output, `◐◑◒◓` bit-conditioned routing --
+  make a combinational network the natural generator, a construction the set
+  does not occupy.  Settle `◨⬒` and the partial-node cases first, and dodge
+  `◘`'s random pointer pick by construction.
+- **Wirefunge** (2011): native not/and/or/xor/nor/nand/xnor gates over
+  bit-addressable `a-h`/`1-8` ports, but the page is a self-labelled "Draft
+  Spec" and propagation is simultaneous.  Pin one evaluation order, then admit.
+- **Gridify** (2026): the most complete new spec -- Befunge-style stack, `~`/`&`
+  in, `.`/`,` out, a four-way `?` dispatch -- but its construction is the grid
+  walk the set already has.  Last: admit only if it forces a new axis.
 
 ## Conditional follow-up
 
