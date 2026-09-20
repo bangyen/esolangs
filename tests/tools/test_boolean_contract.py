@@ -1088,7 +1088,13 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
     assert classified <= set(BY_BOOLEAN)
 
 
-@pytest.mark.parametrize("name", sorted(_LINEAR_SCALING))
+@pytest.mark.parametrize(
+    "name",
+    [
+        pytest.param(name, marks=pytest.mark.slow) if name == "streetcode" else name
+        for name in sorted(_LINEAR_SCALING)
+    ],
+)
 def test_converted_generators_scale_linearly(name: str) -> None:
     """Doubling a wide unfolded table at most doubles generated text."""
     fn = getattr(boolean, name)
