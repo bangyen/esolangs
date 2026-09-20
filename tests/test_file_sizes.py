@@ -28,7 +28,6 @@ MAX_LINES = 1200
 _RATCHET = {
     "src/esolangs/interpreters/grid_based/alight.py": 1228,
     "src/esolangs/interpreters/grid_based/streetcode.py": 1500,
-    "tests/test_vm.py": 1241,
 }
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
