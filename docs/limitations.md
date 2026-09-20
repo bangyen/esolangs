@@ -41,65 +41,37 @@ BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
 its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
 ArrowQueue re-enqueue remains open.
 
-Malbolge registers no generator. Its only data operations are the crazy
-operation and rotation, and control reaches memory only through `d`
-(`i`/`j` set `c`/`d` from `memory[d]`); the input byte lands in `a`. Two
-measured obstacles sit between that and a linear generator, neither a lower
-bound.
+Malbolge registers a generator through nine inputs, source-embedded with no
+initializer. A branch-free four-cell mixer (`p,p,p,p,p,p,p,p,r`, inits
+52/88/34/77) folds the row index into a distinct address `h(row)` in
+`[9828, 59034]` with pairwise gap at least three, and a three-cell source stub
+at `h(row)` prints the answer: `p` then `<` for a 1 row, `o` then `<` for a 0
+row, with `A` preloaded to `'0'`.
 
-Without `i`/`j` the machine is straight-line (`c == d` from the reset state),
-so a `p`'s operand is its own cell's instruction character -- one of 94 values
-in 33..126 -- and no earlier write is ever read back. A BFS over the input
-pair `(48, 49)` under those 94 maps closes at 216 states, and every reachable
-low-byte pair is `(n, n)` or `(n, n+1)`; `(49, 48)` is unreachable. NOT is not
-expressible at any length, so the no-jump model is dead for every nontrivial
-table.
+The store is the program. `i`/`j` let the pointer revisit a cell, and a cell
+whose content is the unique NOP character `f(a) = 33 + ((35 - a) % 94)` at its
+address is walked over harmlessly, so the mixer inits, the navigation
+constants and the stubs all live in the source. Malbolge re-enciphers every
+cell it executes, so a walked-over cell's value is not `f(a)` but
+`g(a) = XLAT2[f(a) - 33]`; the generator places each state and navigation cell
+at the address whose `g` value it wants and computes `h` against those values.
 
-With `i`/`j` a conditional branch does exist: hold `V` in `memory[d]`, read
-the input into `a`, `p` writes `crazy(a, V)` back, and an `i` jumps there.
-`crazy(48, V)` and `crazy(49, V)` differ by 0 or -1, so the targets are
-adjacent; rotating the input before the `p` moves the distinguishing trit and
-separates them by `3**k`, the shape a ternary-address tree wants. But the
-operand `V` must be in memory before `p`, and `_load` admits only source
-characters that decipher to an instruction at their position: source data is 8
-values per cell, all at most 126. Source `V`, `V = rotate^k(s)`, and an input
-rotation together give only 1050 distinct target pairs (differences `-3**k`,
-`k = 0..9`), while a tree has `2**(n+1) - 1` nodes (1023 at n=9, 2047 at
-n=10). BFS from 33..126 under rotation and `crazy` with a source operand
-reaches 44007 of 59049 words, so a source-driven builder cannot name every
-operand either. Building `V` is the ternary ALU this entry used to call an
-obstacle. The per-node tree also spends tens of cells a node, near the fixed
-59049-word store at n=10, so the fit is bf2malbolge's `O(1)`-code computed
-branch into a `T`-cell corridor -- which needs the row index, the same ALU.
-Scheffer's compiler gives the shape (arbitrary load/store in about four `p`s
-per word), so an O(T) generator is not ruled out; it needs a generator-side
-Malbolge assembler. The language stays interpreter-only with `generate`
-refusing it until that is built.
+The generator caps at nine inputs. A ten-input map needs a depth-one branch on
+one bit, and the two branch values `crazy(48, V)` and `crazy(49, V)` differ
+only in di-trit 0; every `p` chain preserves that difference, so the targets
+stay adjacent and cannot address two separated code copies. Lifting the
+difference into a high di-trit needs a rotation of `A`, but `*` rotates
+`memory[d]`, not `A`: rotating `A` needs the store the old note called the
+operand builder. `n > 9` is refused with `GeneratorCapError`.
 
-A HeLL generator was driven through an LMAO port (GPL-3.0, byte-identical on
-the six shipped examples) and run on the repository interpreter.  It exposes a
-second wall under the assembler one: the increment subroutine the ternary index
-route needs is not re-entrant.  `value` is a pointer advanced by one through a
-data web whose flag phases are not restored between calls, so an unrolled
-second call nets `+1`, not `+2`:
-
-    n=1 "01"       rows [0],[1] -> '0','1'              correct
-    n=2 "0110"     rows [0,0],[0,1],[1,0] -> '0','1','1' correct
-                   row [1,1] -> '1', want '0'; value reads corridor+0
-    n=3 "01101001" 4 of 8 rows wrong
-
-The failure survives distinct return slots per call, `R_ROT R_ROT` in the
-caller, restoring only the current `SUBROUTINE_FLAG`, and a `LOOP2` loop tail,
-so it is the subroutine's internal web, not the call site.  `digital_root`
-calls `increment_value` repeatedly, but its loop body is a separate top-level
-braced block; a caller inside the `ENTRY` block cannot reproduce that layout.
-The per-bit trit-set construction (call the increment once per set bit, under a
-rotation) therefore needs a per-bit copy of the increment's whole state
-machine, not merely a fresh call site.  Reopen with a web-resetting
-construction, or with the raw-loader route above.
+The no-`i`/`j` model is still dead. Straight-line `c == d` from the reset
+state gives a `p` its own cell's instruction character, one of 94 values in
+33..126, and the input pair `(49, 48)` is unreachable, so NOT is not
+expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
+| Malbolge | 9 | 9 | The ten-input branch's two targets stay adjacent; separating them needs a run-time store. |
 | Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. |
 
 Polynomial's mandatory root product has minimum mass at the product itself;
@@ -128,10 +100,10 @@ separate axes.
 
 ## Curation
 
-The collection has 62 languages; its floor is 31. One interpreter-only
-classic (Malbolge) is registered with no generator and marked `int` by
-`list --details`: it is here for coverage, not for a new construction axis.
-Befunge and Whitespace carry loop-less O(T) generators. Ordinary
+The collection has 62 languages; its floor is 31. All three classics carry
+generators: Befunge and Whitespace loop-less O(T) lookups, Malbolge a
+source-embedded mixer through nine inputs. They are here for coverage, not for
+a new construction axis. Ordinary
 imperative entries with shared-shim generators and no consumer were removed. Nopstacle and
 ZTOALC L left: the former cannot meet embed conventions, the
 latter was a searched syntax-level lookup table. The 2D candidate screen is

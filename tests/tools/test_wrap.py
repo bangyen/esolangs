@@ -131,6 +131,8 @@ UNWRAPPABLE = {
     "container": "each line declares a container or one of its rules",
     "crement": "each line is one instruction; jumps and patches name line numbers",
     "inject": "blocks and executable commands are delimited by source lines",
+    "malbolge": "the source is the full 59049-cell store; the mixer and the "
+    "stubs sit at fixed addresses, so reflowing loses the layout",
     "whitespace": "every space, tab and newline is a token or a number terminator",
 }
 
@@ -150,6 +152,7 @@ WIDTH_EXCEPTIONS = {
         "cvnc",
         "grapheme",
         "inject",
+        "malbolge",
         "minsky_swap",
         "nocomment",
         "whitespace",

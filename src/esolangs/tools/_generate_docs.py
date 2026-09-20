@@ -239,8 +239,14 @@ def render_input_shapes_section() -> str:
             f" `0`/`1` line per bit -- `{default}`.",
             f"The remaining {embedded} embed their inputs and read no stdin:"
             " `instantiate` fills them.",
-            f"The {classics} interpreter-only classics have no generator, so"
-            " there is no generated stdin to feed.",
+            *(
+                [
+                    f"The {classics} interpreter-only classics have no"
+                    " generator, so there is no generated stdin to feed."
+                ]
+                if classics
+                else []
+            ),
             "Call `encode_inputs` rather than reading a row off",
             "this table; it is generated from `describe`, and so is the table.",
         ]

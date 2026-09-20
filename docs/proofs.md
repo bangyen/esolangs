@@ -110,13 +110,15 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Minsky Swap,
+the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Malbolge, Minsky Swap,
 SLOW ACV MAMMALIAN and Whitespace keep no tree route at all: A Painter Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, Befunge reads one grid cell per table entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
-once the doubling between the input runs is in the text), Minsky Swap's `~`
+once the doubling between the input runs is in the text), Malbolge folds the
+row index through a fixed mixer and prints from one source stub per row so
+the table is the program's data rather than a tree, Minsky Swap's `~`
 cascade routes the index to one of two shared leaves with a one-digit target
 per row, SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
 row whatever the table says, and Whitespace halves one literal once per index
@@ -183,6 +185,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: T literal, `.` halvings sum to 2T |
 | Jaune | finite lookup | a spatial table reached with two labels | linear: two cells per row, unary weights sum T - 1 |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T |
+| Malbolge | linear lookup | a branch-free four-cell mixer folds the row index into a distinct address and the source stub there prints the answer, with no initializer | linear: one stub per row, fixed mixer, capped at n <= 9 |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` | linear: mux lookup, constant strings times O(T) counts |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length | linear: cascade routes to two shared leaves, one-digit targets |
 | Modulous | tree | — | linear: span walk, fold digits geometric |
@@ -258,6 +261,6 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 61 theoretical totality arguments and zero
+Accordingly, this ledger records 62 theoretical totality arguments and zero
 open exceptions; every row is `Total` or theoretically total past a resource
 ceiling.

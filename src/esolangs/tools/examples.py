@@ -404,6 +404,11 @@ def _register() -> None:
                 "the source it is drawn from: seed 0 draws heading 3"
             ),
         ),
+        "malbolge": _reader(
+            b.malbolge,
+            "other.malbolge",
+            note="the answer is one character and is printed with no newline",
+        ),
         "modulous": _reader(b.modulous, "stack_based.modulous"),
         "packlang": _reader(b.packlang, "other.packlang"),
         "painfuck": _reader(b.painfuck, "tape_based.painfuck"),

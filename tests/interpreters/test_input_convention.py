@@ -291,6 +291,7 @@ _EOF_IS_A_HALT: dict[str, str] = {
     "circuit_diagram": "resolves its inputs while laying the grid",
     "flowchart": "reads at the switch, which a program without one skips",
     "s*bleq": "a failed read leaves the cell alone and the program runs on",
+    "malbolge": "an exhausted read is the value 59048, not an error",
 }
 
 
