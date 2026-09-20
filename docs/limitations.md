@@ -43,12 +43,38 @@ ArrowQueue re-enqueue remains open.
 
 Malbolge registers no generator. Its only data operations are the crazy
 operation and rotation, and control reaches memory only through `d`
-(`i`/`j` set `c`/`d` from `memory[d]`); the input byte lands in `a`. The
-grid-lookup and literal-halving rules the other classics use have no
-primitive here: nothing turns the input bits into a row index or a branch
-target without first building a ternary ALU. That is an obstacle, not a
-lower bound -- no argument yet rules such an ALU out -- so the language
-stays interpreter-only with `generate` refusing it.
+(`i`/`j` set `c`/`d` from `memory[d]`); the input byte lands in `a`. Two
+measured obstacles sit between that and a linear generator, neither a lower
+bound.
+
+Without `i`/`j` the machine is straight-line (`c == d` from the reset state),
+so a `p`'s operand is its own cell's instruction character -- one of 94 values
+in 33..126 -- and no earlier write is ever read back. A BFS over the input
+pair `(48, 49)` under those 94 maps closes at 216 states, and every reachable
+low-byte pair is `(n, n)` or `(n, n+1)`; `(49, 48)` is unreachable. NOT is not
+expressible at any length, so the no-jump model is dead for every nontrivial
+table.
+
+With `i`/`j` a conditional branch does exist: hold `V` in `memory[d]`, read
+the input into `a`, `p` writes `crazy(a, V)` back, and an `i` jumps there.
+`crazy(48, V)` and `crazy(49, V)` differ by 0 or -1, so the targets are
+adjacent; rotating the input before the `p` moves the distinguishing trit and
+separates them by `3**k`, the shape a ternary-address tree wants. But the
+operand `V` must be in memory before `p`, and `_load` admits only source
+characters that decipher to an instruction at their position: source data is 8
+values per cell, all at most 126. Source `V`, `V = rotate^k(s)`, and an input
+rotation together give only 1050 distinct target pairs (differences `-3**k`,
+`k = 0..9`), while a tree has `2**(n+1) - 1` nodes (1023 at n=9, 2047 at
+n=10). BFS from 33..126 under rotation and `crazy` with a source operand
+reaches 44007 of 59049 words, so a source-driven builder cannot name every
+operand either. Building `V` is the ternary ALU this entry used to call an
+obstacle. The per-node tree also spends tens of cells a node, near the fixed
+59049-word store at n=10, so the fit is bf2malbolge's `O(1)`-code computed
+branch into a `T`-cell corridor -- which needs the row index, the same ALU.
+Scheffer's compiler gives the shape (arbitrary load/store in about four `p`s
+per word), so an O(T) generator is not ruled out; it needs a generator-side
+Malbolge assembler. The language stays interpreter-only with `generate`
+refusing it until that is built.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
