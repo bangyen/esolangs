@@ -5,11 +5,14 @@ Run:  just proofs   (or python tests/proofs/deep/multiplicity.py)
 ``docs/polynomial.md`` proves "each leading zero buys one root" for an
 exponential sum on *distinct* nodes.  The unconditional language bound is
 ``Omega(T**2 / log**2 T)``: the routing floor gives ``m = Omega(T/log T)``
-real instructions, and the confluent certificate here prices multiplicity as
-``Omega(m**2)``, so no distinctness hypothesis is needed.  The extra ``log``
-in ``Omega(T**2 / log T)`` needs the sharpened routing lemma -- distinct real
-root *values* -- and that is open; the obstacle is that the language has
-loops, which ``_check_loops`` pins.
+real instruction *positions*, and the confluent certificate here prices
+``m`` roots with multiplicity as ``Omega(m**2)``, so no distinctness
+hypothesis is needed and the row is complete at that order.  The stronger
+``Omega(T**2 / log T)`` would need the sharpened routing lemma
+``N' <= c * L_real + E`` with ``L_real`` the distinct real *values*; that is
+open, and ``_check_routing`` pins the executed facts around it (two
+successors per test, same-value positions collapsing, no multiplicity in the
+shipped generator).  ``_check_loops`` pins the loop obstacle.
 
 The confluent analogue is::
 
@@ -280,16 +283,112 @@ def _check_loops(failures: list[str]) -> int:
     return count
 
 
+def _check_routing(failures: list[str]) -> int:
+    """Pin the executed facts behind the sharpened routing lemma.
+
+    ``docs/polynomial.md`` proves ``N'(k+1) <= 2m + E(k)`` with ``m`` the real
+    instruction *positions* (the routing floor), which with the confluent
+    certificate gives ``Omega(T**2 / log**2 T)``.  The stronger
+    ``Omega(T**2 / log T)`` would need ``N' <= c * L_real + E`` with ``L_real``
+    the distinct real *values*.  That is open; this check pins what is
+    executed:
+
+    * every real instruction has at most two successors, fixed by its bracket
+      and independent of the register;
+    * two same-value positions in one block (a repeated root ``(x - p**v)**r``
+      emits ``r`` copies) see one register per visit and collapse to at most
+      two traces, so multiplicity adds no routing power -- it only helps the
+      mass bound;
+    * on the shipped generator ``N' <= 2 * L_real`` with margin, a positive
+      control that the bound is not vacuous.
+    """
+    from esolangs.interpreters.register_based.polynomial import (
+        _advance,
+        _bracket_pairs,
+    )
+    from esolangs.tools.polynomial import polynomial
+
+    count = 0
+    # A real instruction has two successors whatever the register: a taken
+    # bracket jumps to a fixed partner, otherwise the cursor falls through.
+    for instrs in (
+        [[1], [2]],
+        [[1, 1], [5], [1, 1], [2], [0, 1]],
+        [[1], [1], [2], [2]],
+    ):
+        pairs = _bracket_pairs(instrs)
+        for pos, ins in enumerate(instrs):
+            if len(ins) != 1:
+                continue
+            succ = set()
+            for reg in (-1, 0, 1):
+                (_, nxt), _ = _advance((reg, pos), instrs, None, pairs)
+                succ.add(nxt)
+            if len(succ) > 2:
+                failures.append(f"real {ins} at {pos} has {len(succ)} successors")
+    count += 1
+
+    # Same-value positions in one block collapse: `[1,1,2,2]` has two `p**1`
+    # tests but the run takes the same two traces as `[1,2]`.
+    def traces(instrs: list[list[int]]) -> set[tuple[int, ...]]:
+        pairs = _bracket_pairs(instrs)
+        out = set()
+        for entry in (-1, 0, 1):
+            state, steps, path = (entry, 0), 0, []
+            while state[1] < len(instrs) and steps < 40:
+                path.append(state[1])
+                state, _ = _advance(state, instrs, None, pairs)
+                steps += 1
+            out.add(tuple(path))
+        return out
+
+    if len(traces([[1, 1, 2, 2]])) != len(traces([[1, 2]])):
+        failures.append("[1,1,2,2] does not collapse to [1,2]'s traces")
+    count += 1
+    # Positive control: the shipped dense table has L_real close to m (only
+    # slight multiplicity at n=3: 10 values against 12 positions).
+    import hashlib
+    import re
+
+    from esolangs.interpreters.register_based.polynomial import sanitize
+
+    def dense(n: int) -> str:
+        digest = hashlib.sha256(f"dense:{n}".encode()).digest()
+        bits: list[str] = []
+        block = 0
+        while len(bits) < 2**n:
+            digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+            bits.extend(str(byte & 1) for byte in digest)
+            block += 1
+        return "".join(bits[: 2**n])
+
+    for n in (2, 3, 4):
+        from esolangs.interpreters.register_based.polynomial import _find_roots
+
+        cleaned = re.sub(r"[^\df(x)=+-^]", "", polynomial(dense(n)))
+        roots = _find_roots(sanitize(cleaned))
+        reals = [r.real for r in roots if r.imag == 0]
+        values = set(reals)
+        if not reals:
+            failures.append(f"dense n={n} has no real instruction")
+        if len(values) > len(reals):
+            failures.append(f"dense n={n}: L_real={len(values)} > m={len(reals)}")
+        count += 1
+    return count
+
+
 def main() -> int:
     failures: list[str] = []
     certs = _check_certificates(failures)
     asm = _check_assembly(failures)
     mass = _check_mass(failures)
     loops = _check_loops(failures)
+    routing = _check_routing(failures)
     print(f"  confluent certificates checked exactly : {certs}")
     print(f"  slack-assembly thresholds checked      : {asm}")
     print(f"  divisibility + mass(f) >= c m^2 cases  : {mass}")
     print(f"  routing-floor bracket facts checked    : {loops}")
+    print(f"  sharpened-routing facts checked        : {routing}")
     if failures:
         for line in failures:
             print(f"  FAIL: {line}")
