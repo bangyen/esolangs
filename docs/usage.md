@@ -68,8 +68,9 @@ esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0\n1\n0\n1\n'
 | Taglate | `line_per_bit_padded` | `0`/`1` | `'0\n1\n0\n1\n'` |
 
 The other 41 that read stdin take one `0`/`1` line per bit -- `'1\n0\n1\n'`.
-The remaining 14 read no stdin at all: their inputs are
-embedded by `instantiate`.  Call `encode_inputs` rather than reading a row off
+The remaining 14 embed their inputs and read no stdin: `instantiate` fills them.
+The 3 interpreter-only classics have no generator, so there is no generated stdin to feed.
+Call `encode_inputs` rather than reading a row off
 this table; it is generated from `describe`, and so is the table.
 
 <!-- INPUT-SHAPES:END -->

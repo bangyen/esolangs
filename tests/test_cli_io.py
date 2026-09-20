@@ -408,6 +408,8 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
         """The check must not fire on what `encode_inputs` itself produces."""
         noisy = []
         for name in esolangs.list_languages():
+            if not esolangs.describe(name)["boolean_generator"]:
+                continue
             if esolangs.describe(name)["parameterized"]:
                 continue
             stdin = esolangs.encode_inputs(name, [1, 0], "0110")
@@ -637,6 +639,7 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
         shapes = {
             name: str(esolangs.describe(name)["input_shape"])
             for name in esolangs.list_languages()
+            if esolangs.describe(name)["boolean_generator"]
         }
         assert [n for n, s in shapes.items() if s == "one_line"] == ["Clockwise"]
         assert [n for n, s in shapes.items() if s == "row_index"] == ["Fargo"]

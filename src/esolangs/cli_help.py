@@ -93,6 +93,8 @@ options:
                 tmpl   that generator returns a template rather than a
                        runnable program -- see `esolangs generate --help`
                 ex     a committed program in examples/
+                int    interpreter-only: a classic kept for coverage, with
+                       no generator, so `generate` refuses it
   --json      print a JSON array instead: names alone, or with --details
               an object per language carrying the same three facts as
               booleans, so nobody has to parse the marker column.

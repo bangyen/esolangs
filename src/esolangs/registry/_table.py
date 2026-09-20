@@ -398,3 +398,29 @@ LANGUAGES: dict[str, Language] = {
         id="vandevelo",
     ),
 }
+
+#: Interpreter-only classics: widely known languages kept for coverage, not
+#: construction.  ``boolean=None`` is the whole tier -- no generator, so no
+#: linearity contract and no ``generate``; ``esolangs list --details`` marks
+#: them.  The four admission axes do not apply: they are here because a
+#: caller expects them, and each is an ordinary machine in its own costume.
+CLASSICS: dict[str, Language] = {
+    "Befunge": Language(
+        "Befunge",
+        "grid_based.befunge",
+        id="befunge",
+        split=True,
+    ),
+    "Malbolge": Language(
+        "Malbolge",
+        "other.malbolge",
+        id="malbolge",
+    ),
+    "Whitespace": Language(
+        "Whitespace",
+        "stack_based.whitespace",
+        id="whitespace",
+    ),
+}
+
+LANGUAGES.update(CLASSICS)
