@@ -9,7 +9,8 @@ Implement the surveyed interpreter candidates in this order.  The first four
 are the 2026-09-19 re-run of the `Category:Unimplemented` x
 `Category:Two-dimensional languages` pass (116 pages, up from 111); the
 verdicts are spec reads, not executed generators, so the size question is open
-for every entry.
+for every entry.  INTERCAL and Piet are outside that pass -- already
+implemented, so never in the screen.
 
 - **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
   filed it unread, thinking the `{{:thisthat}}` transclusions hid the node
@@ -40,6 +41,20 @@ for every entry.
   mechanism.  Spec read only, not priced: whether a loop-less O(T) construction
   survives the computed-label and `COME FROM` wiring, and whether its binary
   I/O routes through the package's stdin convention, is the work.
+- **Piet** (2001): outside the pass for the same reason.  A non-textual
+  colour-raster source whose command is the hue/lightness delta between the
+  block left and the block entered; `pointer`/`switch` pop a value to rotate
+  the direction pointer and toggle the codel chooser, so the branch is a
+  data-selected direction -- a sixth mechanism against the five in
+  [contributing](CONTRIBUTING.md), the same axis INTERCAL claims and dearer.
+  The generator would be the grid walk the set has, so the case rests on the
+  branch alone: image source is `line`'s point, not a new one, and `line`
+  sits outside the registry, so Piet needs the registry to carry a raster or
+  an indexed-colour text encoding.  Pin before building: exact-palette
+  matching (anti-aliasing moves a codel; non-standard colours are
+  implementation-defined), the eight-attempt black/edge termination, the
+  DP/CC initial state.  Spec read only; output size is open -- area, where
+  every pushed constant is a block of that many codels.
 
 ## Conditional follow-up
 
