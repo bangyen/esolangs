@@ -91,6 +91,13 @@ def check_l1(max_n: int = 7) -> list[str]:
     that entry is one -- and level ``j`` fires for every ``j <= V``.  Folding
     the recovered adjustments in order must therefore reproduce the table
     exactly, and it is checked against every row rather than sampled ones.
+
+    The fold's per-edge semantics are also *executed*: the program is run
+    through the shipped interpreter at a low arity (n<=3, where a full walk is
+    cheap) and the register it leaves must equal the folded ``table[index]``.
+    That ties the parse to the machine -- a fold that agreed with a wrong
+    reading of ``0oy;``/``1oy;`` would otherwise pass here while the
+    interpreter disagreed.
     """
     lines = []
     rng = random.Random(19)
@@ -101,6 +108,7 @@ def check_l1(max_n: int = 7) -> list[str]:
         tables.append("".join(str(bin(i).count("1") % 2) for i in range(size)))
         while len(tables) < 12:
             tables.append("".join(rng.choice("01") for _ in range(size)))
+        executed = 0
         for table in tables:
             program = bio(table)
             adjust = levels(program)
@@ -122,11 +130,35 @@ def check_l1(max_n: int = 7) -> list[str]:
                 assert y == int(table[index]), (
                     f"n={n} row {index}: telescope holds {y}, table says {table[index]}"
                 )
+                if n <= 3:
+                    got = _executed_answer(program, n, index)
+                    assert got == y, (
+                        f"n={n} row {index}: interpreter gives {got}, fold gives {y}"
+                    )
+                    executed += 1
         lines.append(
             f"  n={n}: {len(tables):2d} tables x {size:3d} rows telescoped, "
-            f"{size - 1} levels each"
+            f"{size - 1} levels each, {executed} executed"
         )
     return lines
+
+
+def _executed_answer(program: str, n: int, index: int) -> int:
+    """Run ``program`` for input ``index`` and read the register it leaves.
+
+    Uses the shipped interpreter and a scripted input, so the answer comes
+    from the machine rather than the parse.  ``index``'s bits are the input
+    lines, most-significant first.
+    """
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.register_based.bio import _Machine
+
+    bits = format(index, f"0{n}b")
+    filled = _fill(program, bits)
+    machine = _Machine(filled, ScriptedIO("\n".join(bits) + "\n"))
+    while not machine.halted:
+        machine.step()
+    return machine.reg[1] - 48  # y holds the ASCII '0'/'1' the telescope writes
 
 
 def check_l2(max_n: int = 9) -> list[str]:

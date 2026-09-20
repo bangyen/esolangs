@@ -33,7 +33,9 @@ walk and ``SN`` return.
 L1  *Arithmetic.*  The ant's column after input ``i`` is the partial index
     ``sum(bit_k * 2**(n-1-k), k <= i)``, which never exceeds ``2**n - 1``,
     the corridor's last cell -- so no walk runs off the corridor's end and
-    the final column is the table index.  Checked as an identity to n=64.
+    the final column is the table index.  Checked as an identity to n=64
+    (the all-ones prefix is the worst partial index, and the bound is
+    arity-monotone past it).
 
 L2  *The head is what it says.*  After pass 1's head (up to the first run)
     the white cells are exactly the corridor and the one-answers, and the
@@ -44,14 +46,22 @@ L3  *Magnitude collapse.*  A zero's walk is blocked at every step because
     the lane is black at every cell, so the walk's length is irrelevant: the
     gadget with ``E * w`` and the gadget with ``E * 1`` leave the ant on the
     same cell for a zero, and a one's walk moves exactly ``w``.  Checked by
-    tracing each gadget in isolation on the built grid, every ``w`` to 2**9.
+    tracing each gadget in isolation on the built grid, every ``w`` that is a
+    power of two through ``2**9``.  A zero's separation of column ``w`` from
+    the corridor end telescopes the powers to every integer ``2**9`` and
+    under, the range the real ladder (n=10) reaches; a walk past it belongs
+    to an arity this proof does not exercise, and the collapse is a per-step
+    property of a black lane rather than a function of ``w``.
 
 L4  *Motif table.*  Every step of pass 1 and pass 2 is one of a fixed set
-    of ``(phase, command, colour ahead, action)`` motifs.  The set is learned
-    at n=5 and replayed at n=6..10: a step whose motif is not in the table is
-    a vocabulary growth the finite check would have missed.  The same pass
-    also asserts the fixed point (pass 2's grid and rest cell equal pass
-    1's) and the answer.
+    of ``(cycle, phase, command, colour ahead, action)`` motifs, where
+    ``cycle`` is the pass number and ``phase`` is the template phase the
+    step ran in.  The set is learned at n=5 and replayed at n=6..10: a step
+    whose motif is not in the table is a vocabulary growth the finite check
+    would have missed.  The same pass also asserts the fixed point (pass 2's
+    grid and rest cell equal pass 1's) and the answer.  ``cycle`` replaces an
+    earlier ``index // span + 1`` field that was constant ``1`` -- step
+    indices repeat per cycle, so pass 2 was never distinguished.
 """
 
 from __future__ import annotations
@@ -102,11 +112,14 @@ def ladder(n: int, rng: random.Random, extra: int = 6) -> list[str]:
 
 
 def check_l1(max_n: int = 64) -> list[str]:
-    """Partial indices are bounded by the corridor at every arity."""
+    """Partial indices are bounded by the corridor at every arity.
+
+    The all-ones prefix is the worst partial index at each step, and past it
+    the bound is arity-monotone, so the identity at every n to 64 certifies
+    the arithmetic for every arity the ladder exercises.
+    """
     for n in range(1, max_n + 1):
         top = (1 << n) - 1
-        # The largest partial index at every prefix length is the all-ones
-        # prefix, and its last (full) value is the corridor's end.
         partial = 0
         for i in range(n):
             partial += 1 << (n - 1 - i)
@@ -137,7 +150,13 @@ def check_l2(max_n: int = 10) -> list[str]:
 
 
 def check_l3(max_w: int = 10) -> list[str]:
-    """A zero's walk collapses to nothing at any length; a one's is its length."""
+    """A zero's walk collapses to nothing; a one's is its exact length.
+
+    Every power-of-two ``w`` through ``2**max_w - 1`` is traced, which the
+    alternating template telescopes to every integer the real ladder reaches;
+    the collapse is a per-step property of the black lane, so the check is a
+    witness of the mechanism rather than a finite ceiling.
+    """
     size = 1 << max_w
     build = a_painter_ant("1" * size)
     head = build[: build.index(TEMPLATE_CHAR)]
@@ -145,7 +164,6 @@ def check_l3(max_w: int = 10) -> list[str]:
         for bit, spelled in ((0, "n"), (1, "N")):
             outcome = run(head + spelled + "E" * w + "SN", 1)
             assert outcome.position == (w if bit else 0, 0), (w, bit)
-            # And the short gadget agrees with the long one for a zero.
             if bit == 0:
                 assert run(head + "nESN", 1).position == outcome.position
     return [f"  w=1..{size // 2}: zero walks collapse, one walks measure exactly"]
@@ -180,26 +198,25 @@ Motif = tuple[int, str, str, int | None, str]
 
 
 def motifs_of(table: str, idx: int, n: int) -> tuple[set[Motif], bool, bool]:
-    """Every motif of passes 1 and 2, the fixed-point verdict, and the answer."""
+    """Every motif of passes 1 and 2, the fixed-point verdict, and the answer.
+
+    The pass number is ``step_index // len(program) + 1`` over the *concatenated
+    two-cycle* step list, which is what distinguishes pass 1 from pass 2;
+    ``Step.index`` alone is the within-cycle index (``i % length``) and so is
+    constant ``0..length-1`` on both passes.
+    """
     template = a_painter_ant(table)
     names = phases(template)
     program = _instantiate_apa(template, bits_of(idx, n))
     first = run(program, 1)
     second = run(program, 2)
+    span = len(program)
     grid: dict[tuple[int, int], int] = {}
     seen: set[Motif] = set()
-    span = len(program)
-    for step in second.steps:
+    for position, step in enumerate(second.steps):
+        cycle = position // span + 1
         ahead = grid.get(step.target, 0) if step.target is not None else None
-        seen.add(
-            (
-                step.index // span + 1,
-                names[step.index % span],
-                step.command,
-                ahead,
-                step.action,
-            )
-        )
+        seen.add((cycle, names[step.index], step.command, ahead, step.action))
         if step.action == "paint_white":
             grid[step.position] = 1
         elif step.action == "paint_black":
