@@ -5,7 +5,12 @@
 [![PyPI](https://img.shields.io/pypi/v/esolangs.svg)](https://pypi.org/project/esolangs/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Interpreters for 62 esoteric languages, 61 with boolean-circuit generators.
+<!-- PACKAGE-COUNT:START -->
+
+Interpreters and Boolean generators for 64 esoteric languages: 62 text and 2 raster.
+
+<!-- PACKAGE-COUNT:END -->
+
 `generate` takes a truth table and returns a program computing it;
 `verify` runs that program on every row and checks what it answers.
 
@@ -15,6 +20,10 @@ templates, reading an answer back, the debugger.
 [architecture](https://github.com/bangyen/esolangs/blob/main/docs/architecture.md)
 shows how the registry, generators, interpreters, and answer extraction
 connect.
+[tutorial](https://github.com/bangyen/esolangs/blob/main/docs/tutorial.md)
+walks one truth table through text, template, raster, and debugger interfaces;
+[compatibility](https://github.com/bangyen/esolangs/blob/main/docs/compatibility.md)
+defines the beta package's stable surface.
 [roadmap](https://github.com/bangyen/esolangs/blob/main/docs/roadmap.md) tracks
 live work and
 [limitations](https://github.com/bangyen/esolangs/blob/main/docs/limitations.md)

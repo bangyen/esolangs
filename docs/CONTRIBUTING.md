@@ -68,9 +68,13 @@ interpreter:
 
 ## Checklist
 
-1. Start from the template; document actual input, error and halt behaviour.
+1. Run `just new-language "Name" --category tape_based` (using the matching
+   category), then replace the placeholder semantics and test.
 2. Register the language and any generator in `registry/_table.py`.
 3. Add end-to-end tests, and execute the generated programs.
-4. Run `just test`; `just test-full` for release-scale changes.
+4. Record generator evidence with `just benchmark "Name" TABLE`; compare
+   `source_units` and `commands`, not wall-clock time.
+5. Regenerate docs, then run `just test`; `just test-full` for release-scale
+   changes.
 
 Preserve generated-file contracts, and require an end-to-end capability.
