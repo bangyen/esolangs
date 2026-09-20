@@ -69,6 +69,7 @@ value to settle on; no :class:`HaltError` is raised.
 
 import re
 import sys
+from functools import lru_cache
 from typing import Final, Literal
 
 from esolangs.interpreters.io import IO
@@ -555,6 +556,29 @@ class _Parser:
         return [(gate.outputs[0], 1)]
 
 
+@lru_cache(maxsize=16)
+def _compile(
+    code: tuple[str, ...],
+) -> tuple[
+    _Grid,
+    list[_Wiring],
+    list[_Gate],
+    dict[int, int],
+    dict[tuple[int, int], _Wiring],
+]:
+    """Return the validated, read-only topology shared by public runs."""
+    grid = _Grid(list(code))
+    parsed = _Parser(grid)
+    wirings = parsed.wirings
+    return (
+        grid,
+        wirings,
+        parsed.gates,
+        {id(wiring): i for i, wiring in enumerate(wirings)},
+        {cell: wiring for wiring in wirings for cell in wiring.cells},
+    )
+
+
 def _apply_gate(kind: _LogicGate, inputs: list[tuple[int, ...]]) -> tuple[int, ...]:
     """Return the wires ``kind`` drives given its non-null input wires."""
     if kind == "~":
@@ -723,6 +747,24 @@ class _Machine:
         )
         self._load_inputs()
 
+    @classmethod
+    def _for_run(cls, code: list[str], io: IO) -> "_Machine":
+        """Return fresh state over the source's cached static topology."""
+        machine = cls.__new__(cls)
+        machine.io = io
+        (
+            machine.grid,
+            machine.wirings,
+            machine.gates,
+            machine.index,
+            machine._by_cell,  # noqa: SLF001 -- alternate constructor
+        ) = _compile(tuple(code))
+        machine.halted = False
+        machine.values = (None,) * len(machine.wirings)
+        machine.latches = tuple((None,) * len(gate.inputs) for gate in machine.gates)
+        machine._load_inputs()  # noqa: SLF001 -- alternate constructor
+        return machine
+
     def _load_inputs(self) -> None:
         """Drive every input wiring with the bits read from stdin.
 
@@ -812,7 +854,7 @@ class _Machine:
 
 def run(code: list[str], io: IO) -> None:
     """Execute a Circuit Diagram program."""
-    machine = _Machine(code, io)
+    machine = _Machine._for_run(code, io)  # noqa: SLF001 -- public fast path
     while not machine.halted:
         machine.step()
 
