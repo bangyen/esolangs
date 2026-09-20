@@ -17,6 +17,7 @@ the shell's.
 from __future__ import annotations
 
 import sys
+from functools import lru_cache
 
 from esolangs.interpreters.io import IO
 
@@ -47,6 +48,7 @@ def _with_byte(bits: _Bits, value: int) -> _Bits:
     )
 
 
+@lru_cache(maxsize=16)
 def _landings(code: str) -> tuple[tuple[int, ...], tuple[int, ...]]:
     """Return where a backward and a forward ``3`` jump land, per position.
 
@@ -169,11 +171,11 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The set locations, sorted, as this always reported them -- one
-        # logical tape must have exactly one hash.  ``done`` stays out: the
+        # A frozenset is already canonical and hashable; sorting it at every
+        # cycle probe dominated generated programs.  ``done`` stays out: the
         # detector compares states of a running machine.
         ip, pos, bits, _done = self.state
-        return (ip, pos, tuple(sorted(bits)), self.io.position())
+        return (ip, pos, bits, self.io.position())
 
     def byte(self) -> int:
         """Read locations 0-7 as an MSB-first byte (location 0 is bit 7)."""
