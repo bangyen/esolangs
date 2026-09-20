@@ -41,21 +41,6 @@ implemented, so never in the screen.
   mechanism.  Spec read only, not priced: whether a loop-less O(T) construction
   survives the computed-label and `COME FROM` wiring, and whether its binary
   I/O routes through the package's stdin convention, is the work.
-- **Piet** (2001): outside the pass for the same reason.  A non-textual
-  colour-raster source whose command is the hue/lightness delta between the
-  block left and the block entered; `pointer`/`switch` pop a value to rotate
-  the direction pointer and toggle the codel chooser, so the branch is a
-  data-selected direction -- a sixth mechanism against the five in
-  [contributing](CONTRIBUTING.md), the same axis INTERCAL claims and dearer.
-  The generator would be the grid walk the set has, so the language case
-  rests on the branch alone.  The medium carries the integration case: image
-  source is not a language axis, but Piet would give Line's registered raster
-  path a second consumer and prove the boundary is shared rather than bespoke.
-  Pin before building: exact-palette matching (anti-aliasing moves a codel;
-  non-standard colours are implementation-defined), the eight-attempt
-  black/edge termination, the DP/CC initial state.  Spec read only; output
-  size is open -- area, where every pushed constant is a block of that many
-  codels.
 
 ## Conditional follow-up
 
@@ -161,12 +146,11 @@ implemented, so never in the screen.
   programs against the current template; abandon it if the routing spends
   the apparent gain.
 
-- **Raster source integration.**  Done for Line: `generate` returns a lazy
-  RGB `Raster`, `run` accepts it or a PNG path, and `describe` reports
+- **Raster source integration.**  Done for Line and Piet: `generate` returns
+  an RGB `Raster`, `run` accepts it or a PNG path, and `describe` reports
   `source_kind="raster"`.  Raster languages stay outside text-only `RUNNERS`
-  and its VM/step/fuzz contracts.  A generated raster retains its graph for
-  repeated rows; PNG-loaded source is extracted and executed from pixels.
-  Piet is now the next useful consumer of this boundary.
+  and its VM/step/fuzz contracts.  Line retains its graph for repeated rows;
+  Piet emits and executes the pixels themselves.
 
 - **Image-source candidates.**  A read of the 129 `Category:Non-textual` pages
   for raster sources only -- music (Fugue, Velato), music-note, and

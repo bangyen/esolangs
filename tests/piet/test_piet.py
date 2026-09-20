@@ -2,8 +2,9 @@
 
 from pathlib import Path
 
-import esolangs
 import pytest
+
+import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.line import Raster
 from esolangs.piet import _command, run
