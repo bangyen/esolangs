@@ -210,6 +210,7 @@ class TestASeedMakesARunRepeat:
             ).parameters
         ]
         assert drawing == [
+            "Befunge",
             "LaserFuck",
             "Modulous",
             "Painfuck",

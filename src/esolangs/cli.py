@@ -166,14 +166,17 @@ def _list(rest: list[str]) -> None:
     width = max(len(name) for name in LANGUAGES)
     # The legend lived in `list --help` only, so the marker columns arrived
     # unexplained for anyone who ran the thing before reading about it.
-    print(f"{'language'.ljust(width)}  gen=generator tmpl=template ex=example")
+    print(
+        f"{'language'.ljust(width)}  gen=generator tmpl=template ex=example "
+        f"int=interpreter-only"
+    )
     for name in list_languages():
         facts = describe(name)
         marks = " ".join(
             filter(
                 None,
                 (
-                    "gen" if facts["boolean_generator"] else "",
+                    "gen" if facts["boolean_generator"] else "int",
                     "tmpl" if facts["parameterized"] else "",
                     "ex" if facts["examples"] else "",
                 ),

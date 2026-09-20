@@ -775,7 +775,7 @@ class TestRunSaysWhenStdinLooksWrong:
         noisy = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
-            if facts["parameterized"]:
+            if not facts["boolean_generator"] or facts["parameterized"]:
                 continue
             program = esolangs.generate(name, "0110")
             if facts["answer_mode"] == "termination":
@@ -845,7 +845,11 @@ class TestRunSaysWhenStdinLooksWrong:
         noisy = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
-            if facts["parameterized"] or facts["answer_mode"] == "termination":
+            if (
+                not facts["boolean_generator"]
+                or facts["parameterized"]
+                or facts["answer_mode"] == "termination"
+            ):
                 continue
             stdin = esolangs.encode_inputs(name, [1, 0], "0110")
             with warnings.catch_warnings(record=True) as caught:
@@ -1196,7 +1200,8 @@ class TestEvaluateTakesAWidth:
         wrong = [
             name
             for name in esolangs.list_languages()
-            if esolangs.evaluate(name, "0110", timeout=30, width=40) != "0110"
+            if esolangs.describe(name)["boolean_generator"]
+            and esolangs.evaluate(name, "0110", timeout=30, width=40) != "0110"
         ]
         assert not wrong
 

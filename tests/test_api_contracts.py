@@ -230,7 +230,8 @@ class TestDescribe:
         missing = [
             name
             for name in esolangs.list_languages()
-            if not esolangs.describe(name)["examples"]
+            if esolangs.describe(name)["boolean_generator"]
+            and not esolangs.describe(name)["examples"]
         ]
         assert missing == []
 
@@ -637,6 +638,8 @@ class TestAMistypedPathIsNotRunAsAProgram:
     def test_no_generated_program_looks_like_one_either(self) -> None:
         """All 60, three tables each, since a generator could drift into it."""
         for name in esolangs.list_languages():
+            if not esolangs.describe(name)["boolean_generator"]:
+                continue
             for table in ("01", "0110", "10010110"):
                 program = esolangs.generate(name, table)
                 looks = "\n" not in program and program.endswith(".txt")
@@ -959,6 +962,8 @@ class TestThePathGuardKnowsMoreThanTxt:
         """The widened rule is only safe while this holds."""
         mistaken = []
         for name in esolangs.list_languages():
+            if not esolangs.describe(name)["boolean_generator"]:
+                continue
             for table in ("01", "0110"):
                 program = esolangs.generate(name, table)
                 if esolangs._looks_like_a_path(program):  # noqa: SLF001

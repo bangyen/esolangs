@@ -133,9 +133,12 @@ def render_languages_section() -> str:
         out.append(description)
         out.append("")
         for name in sorted(groups[prefix]):
+            tier = (
+                "" if LANGUAGES[name].boolean is not None else " *(interpreter-only)*"
+            )
             out.append(
                 f"- [{_wiki_name(name)}]({_wiki_link(name)})"
-                f" ([code]({_source_link(name)}))"
+                f" ([code]({_source_link(name)})){tier}"
             )
         out.append("")
     return "\n".join(out).rstrip()
@@ -225,15 +228,20 @@ def render_input_shapes_section() -> str:
         stdin = repr(esolangs.encode_inputs(name, _SAMPLE_BITS))
         rows.append(f"| {name} | `{record['input_shape']}` | {alphabet} | `{stdin}` |")
     default = repr(esolangs.encode_inputs("brainfuck", _SAMPLE_BITS))
+    embedded = sum(1 for name in LANGUAGES if esolangs.describe(name)["parameterized"])
+    classics = sum(
+        1 for name in LANGUAGES if esolangs.describe(name)["boolean_generator"] is False
+    )
     rows.extend(
         [
             "",
             f"The other {len(reading) - len(odd)} that read stdin take one"
             f" `0`/`1` line per bit -- `{default}`.",
-            f"The remaining {len(LANGUAGES) - len(reading)} read no stdin at all:"
-            " their inputs are",
-            "embedded by `instantiate`.  Call `encode_inputs` rather than"
-            " reading a row off",
+            f"The remaining {embedded} embed their inputs and read no stdin:"
+            " `instantiate` fills them.",
+            f"The {classics} interpreter-only classics have no generator, so"
+            " there is no generated stdin to feed.",
+            "Call `encode_inputs` rather than reading a row off",
             "this table; it is generated from `describe`, and so is the table.",
         ]
     )

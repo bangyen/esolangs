@@ -71,8 +71,11 @@ separate axes.
 
 ## Curation
 
-The collection has 59 languages; its floor is 31. Ordinary imperative entries
-with shared-shim generators and no consumer were removed. Nopstacle and
+The collection has 62 languages; its floor is 31. Three interpreter-only
+classics (Befunge, Whitespace, Malbolge) are registered with no generator and
+marked `int` by `list --details`: they are here for coverage, not for a new
+construction axis, so the four admission axes do not apply to them. Ordinary
+imperative entries with shared-shim generators and no consumer were removed. Nopstacle and
 ZTOALC L left: the former cannot meet embed conventions, the
 latter was a searched syntax-level lookup table. The 2D candidate screen is
 kept because re-running it is expensive: 1,543 unimplemented pages intersected
