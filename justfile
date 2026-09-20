@@ -92,6 +92,14 @@ test-lint *args:
 test-bandit *args:
     {{PYTHON}} scripts/verify.py --only bandit {{args}}
 
+# emit repeatable generator size/time/command evidence as JSON
+benchmark language table *args:
+    {{PYTHON}} scripts/benchmark.py "{{language}}" "{{table}}" {{args}}
+
+# create interpreter and test stubs; pass e.g. --category tape_based
+new-language name *args:
+    {{PYTHON}} scripts/new_language.py "{{name}}" {{args}}
+
 # mutation-test one interpreter: what its tests would NOT have caught
 # (not part of `just test` -- it is a few minutes per language)
 # `language` is quoted below: twelve of the sixty-five display names contain

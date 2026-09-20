@@ -4,19 +4,16 @@ import functools
 from collections.abc import Callable, Iterator
 from typing import Literal, NamedTuple, NewType, cast
 
-# The alphabet a wall form is written in: ``?`` matches any cell, ``W`` a
-# wall character, ``.`` a non-wall.  Naming the three lets the checker see
-# :func:`_matches` handles every one.
+# Wall-form alphabet: ``?`` any, ``W`` wall, ``.`` non-wall.  Naming it makes
+# :func:`_matches` exhaustiveness visible.
 _Pattern = Literal["?", "W", "."]
 
 # The four compass headings.  Named so a heading stays distinct from the
 # cell characters and form patterns that are also plain strings.
 _Heading = Literal["N", "E", "S", "W"]
 
-# How many roads the drawn shape offers, counting the one the car came in
-# on, or 0 for no junction.  Only 0, 3 and 4 are reachable -- a "two-way
-# junction" is a corridor, a five-way needs a fifth direction.  Plain ints
-# rather than an enum: ``_junction_kind`` is used as a truth value.
+# Road count including entry, or 0: only 0, 3 and 4 are reachable.  A two-way
+# is a corridor; a five-way needs another direction.  Kept int for truth tests.
 _Junction = Literal[0, 3, 4]
 
 # Which way a merge latch turns, relative to the heading it was taken
@@ -113,16 +110,11 @@ class _State(NamedTuple):
         return _Car(self.row, self.col, self.heading)
 
 
-# An open cell ``_validate_width``'s flood fill reached; ``_validate_enclosed``
-# proves none is on the border, so ``_block``'s unchecked 3x3 read is
-# reachable only from cells carrying that proof (mypy refuses a plain
-# coordinate).  Reads further out go through ``_at``'s ``'?'`` sentinel.
+# A flood-reached open cell.  Enclosure makes its unchecked 3x3 read safe;
+# mypy rejects an ordinary coordinate.  Further reads use ``_at``'s sentinel.
 _ReachableCell = NewType("_ReachableCell", tuple[int, int])
-# The car stops here on purpose: the square is ``;``.  Distinct from the
-# ``None`` a probe returns when the rules run out of road, which is a
-# malformed street ``_validate_total`` rejects at construction -- keeping
-# them apart lets :meth:`_Machine.step` treat a surviving ``None`` as the
-# validator bug it would have to be rather than halting quietly.
+# Intentional ``;`` stop, distinct from a probe's ``None``.  Construction
+# rejects the latter, so a survivor is a validator bug rather than a halt.
 _Halt = Literal["halt"]
 # A state's successors, keyed by the two branch bits movement can read in
 # one step: the arrival cell and the post-instruction cell, in that order.
@@ -142,10 +134,8 @@ _DELTA: dict[_Heading, tuple[int, int]] = {
 }
 _WALLS = frozenset("+-|")
 
-# What a read off the edge of the drawing returns: not a wall, so the form,
-# glyph and mouth scans see nothing rather than a phantom one, and not any
-# glyph a program can contain.  ``_Grid.open_at`` tests the bounds itself,
-# since off the grid is not drivable either.
+# Off-grid sentinel: neither wall nor source glyph, so scans see no phantom.
+# ``_Grid.open_at`` checks bounds separately because it is not drivable.
 _VOID = "?"
 
 # Closed set: every glyph maps here or to ``NOP``, so :meth:`_Machine.step`
@@ -171,11 +161,8 @@ _OPS: dict[str, _Op] = {
 # wall can sit two cells out, and 3 covers that with a cell to spare.
 _MOUTH_MAX_DIST = 3
 
-# How far along travel ``_road_mouth`` looks for the ``+`` closing a road's
-# mouth.  Swept against the suite, the floor is 5 (at 4 the wider junctions'
-# mouths stop being seen); 7 is that plus slack.  Raising it is not
-# conservatively safer -- the bound is two-sided, since too high a scan runs
-# past the box and pairs up two ``+`` that bound nothing.
+# Longitudinal mouth scan: the tested floor is 5; 7 adds slack.  Larger is not
+# safer because scanning past the box can pair unrelated ``+`` cells.
 _MOUTH_MAX_DEPTH = 7
 
 
@@ -251,11 +238,8 @@ class _Grid:
         self.width = max(len(row) for row in rows)
         self._rows = [row.ljust(self.width) for row in rows]
         self.height = len(self._rows)
-        # Memo shared by the geometry rules (see :func:`_geometric`).  The
-        # drawing is fixed for a run, and the rules are asked a lot: over
-        # ``tests/fixtures/streetcode_hello.txt`` they run 3242/12734/5864
-        # times from only 727/1235/702 distinct states.  ``__setitem__``
-        # clears it, since a redrawn row is a different drawing.
+        # Shared geometry memo: the hello fixture makes 3242/12734/5864 calls
+        # from 727/1235/702 states.  Redrawing clears it.
         self._geometry: dict[tuple[str, tuple[object, ...]], object] = {}
 
     @property
@@ -273,10 +257,8 @@ class _Grid:
         The coordinate read is total; :meth:`open_at` is the one read
         treating off-grid as closed.
         """
-        # The coordinate read is the hottest call in loading a drawing, so
-        # it is tested first and with ``type`` rather than ``isinstance``.
-        # The bounds are the grid's ``height``/``width``, not the row's
-        # length: a short row reads as blank to its right.
+        # Coordinate reads are hottest, hence the first exact-type test.  Grid
+        # bounds, not row length, make a short row blank on its right.
         if type(where) is tuple:
             row, col = where
             if not (0 <= row < self.height and 0 <= col < self.width):
@@ -486,10 +468,8 @@ def _road_mouth(grid: _Grid, car: _Car, side: _Heading) -> _Mouth | None:
                     return _Mouth(dist=dist, near=near, far=far)
                 break
         if any(grid[pos(d, dist)] in _WALLS for d in (-1, 0, 1)):
-            # The wall the car drives along, carrying no mouth it could
-            # turn into.  Anything further out sits behind it, so a `+`
-            # pair sighted through solid wall is another corridor's
-            # geometry and would fire in the middle of an ordinary bend.
+            # A solid nearer wall hides any farther mouth; sighting ``+``
+            # through it would mistake another corridor for this bend.
             return None
     return None
 
@@ -624,10 +604,8 @@ def _junction_choices(grid: _Grid, car: _Car) -> list[_Heading]:
                 return []
     for side in (_left(heading), heading, _right(heading)):
         if crossing:
-            # Driving out through a mouth head-on, the sides are the main
-            # road the branch joins.  It runs perpendicular, so its extent
-            # cannot be probed from inside the mouth (two cells out hits
-            # its far wall): take whichever way is open.
+            # Head-on from a mouth, the sides are the joined road.  Its extent
+            # cannot be probed inside the mouth, so take whichever is open.
             if _open_toward(grid, car, side):
                 roads.append(side)
         elif _road_deep(grid, car, side) and _lawful_turn(grid, car, side):
@@ -759,10 +737,8 @@ def _heading_from_junction(
     # A junction that fired always offers at least two roads.
     new_heading = roads[0] if current_cell == 0 else roads[1]
     turning = new_heading != heading
-    # Nothing deferred: every offered road passed ``_road_deep`` (whose
-    # first test is the destination cell -- keep it, or a junction fires
-    # early into the wall) or ``_open_toward``.  Lane merging is for turns
-    # onto a detected side road only.
+    # Every road passed ``_road_deep`` or ``_open_toward``; merging applies
+    # only to turns onto a detected side road.
     if turning and _crossing_mouth(grid, car):
         # Emerging head-on from a branch onto the road it joins: cross to
         # the far lane before turning, since "drive on the right-hand

@@ -23,6 +23,15 @@ from collections.abc import Callable, Hashable, Sequence
 from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
+from esolangs._vm_views import (
+    _VIEW_ITEMS as _VIEW_ITEMS,
+)
+from esolangs._vm_views import (
+    _abbreviate as _abbreviate,
+)
+from esolangs._vm_views import (
+    machine_views,
+)
 from esolangs.exceptions import (
     InterpreterLimitError,
     ProgramError,
@@ -630,9 +639,7 @@ class VM(Protocol):
     def views(self) -> tuple[tuple[str, str], ...]:
         """The machine's own named state, as ``(name, text)`` pairs.
 
-        The property descriptors on the machine's class, less
-        :data:`_NOT_A_VIEW`, so they cannot drift from the interpreters.
-        Two names reading one slot (``ind`` and ``ip``) are both shown.
+        Derived from its public property descriptors, so it cannot drift.
         """
 
     @property
@@ -677,60 +684,6 @@ class VM(Protocol):
         empty).  Distinct from ``self_halts``, which Suffolk carries while
         still writing its answer.  Use :func:`esolangs.run`.
         """
-
-
-#: The names a caller already has by other means -- the views every language
-#: offers, the snapshot hooks the cycle provers use, and the traits -- so
-#: they are not repeated as "the machine's own".
-_NOT_A_VIEW = frozenset(
-    {
-        "ip",
-        "memory",
-        "stack",
-        "output",
-        "halted",
-        "snapshot",
-        "branching_snapshot",
-        "branching_halted",
-        "branching_successors",
-        "frame_entry_key",
-        "self_halts",
-        "steppable_to_answer",
-        "dumps_on_the_post_halt_step",
-        "eof_is_a_value",
-        "ip_shape",
-        "reproducible_seed",
-    }
-)
-
-#: How many items of a sequence view to show before counting the rest.  A
-#: tape can be thousands of cells, and rendering one per step would cost
-#: more than running the program.
-_VIEW_ITEMS = 8
-
-
-def _read_view(machine: object, name: str) -> str | None:
-    """Return ``machine.name`` as short text, or ``None`` if it cannot be read.
-
-    ``None`` so one property raising before a run does not take the set down.
-    """
-    try:
-        value = getattr(machine, name)
-    except Exception:
-        return None
-    return _abbreviate(value)
-
-
-def _abbreviate(value: object) -> str:
-    """Render ``value`` short enough to sit on one row.
-
-    Cut *before* formatting: a 4000-cell tape formatted then truncated would
-    be the stepper's most expensive step.
-    """
-    if isinstance(value, (list, tuple)) and len(value) > _VIEW_ITEMS:
-        return f"{type(value)(value[:_VIEW_ITEMS])!r} +{len(value) - _VIEW_ITEMS} more"
-    text = repr(value)
-    return text if len(text) <= 60 else text[:57] + "..."
 
 
 class _DelegatingVM:
@@ -808,17 +761,7 @@ class _DelegatingVM:
 
     @property
     def views(self) -> tuple[tuple[str, str], ...]:
-        machine = self._machine
-        found = []
-        for name, attribute in sorted(vars(type(machine)).items()):
-            if name.startswith("_") or name in _NOT_A_VIEW:
-                continue
-            if not isinstance(attribute, property):
-                continue
-            text = _read_view(machine, name)
-            if text is not None:
-                found.append((name, text))
-        return tuple(found)
+        return machine_views(self._machine)
 
     @property
     def dumps_on_the_post_halt_step(self) -> bool:

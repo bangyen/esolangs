@@ -5,6 +5,10 @@ caller knows nothing about. Every decision below reads a
 [`describe`](#describe) field rather than a language name, so nothing here
 needs a per-language branch.
 
+For a guided example covering text, embedded-input, and raster programs, see
+the [XOR tutorial](tutorial.md). The [compatibility policy](compatibility.md)
+defines which Python, CLI, metadata, and semantic interfaces are stable.
+
 ## The round trip
 
 `evaluate` runs a generated program on every row of its input space and
