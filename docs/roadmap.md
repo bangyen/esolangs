@@ -98,19 +98,15 @@ implemented, so never in the screen.
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
-  | Polynomial | Cap | Open | Open | Linear |
+  | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
-  Polynomial is open, not a language lower bound.  Proved unconditionally:
-  `Omega(T**2 / log**2 T)` (the confluent slack certificate prices
-  multiplicity, so repeated real roots are covered; see
-  [polynomial](polynomial.md) and `tests/proofs/deep/multiplicity.py`).  The
-  extra `log` to `Omega(T**2 / log T)` needs `L_real = Omega(T/log T)`
-  distinct real root values.  The route through `m_routing <= 3 * L_real`
-  and "one routing position per (value, condition)" is refuted: an executed
-  table has two same-value same-condition routing closers, via a cross-level
-  skip past the inner closers (`_check_routing_bound`).  The complex roots
-  cannot substitute (an exact counterexample refutes the complex-node
-  certificate).
+  Polynomial has a language lower bound `Omega(T**2 / log T)`.  Equal real
+  roots form contiguous blocks; their noncrossing opener/closer incidence
+  graph is outerplanar, giving `m_routing < 3L_real` and therefore
+  `L_real = Omega(T/log T)`.  The distinct-root slack certificate then gives
+  the bound for every cofactor and operand sign; the confluent certificate
+  separately prices multiplicity.  See [polynomial](polynomial.md) and
+  `tests/proofs/deep/multiplicity.py`.
 
   Generation time, growth per added input at the top arity: B-tapemark,
   6-5, Forth, Circuit Diagram past its n=8 route change, and Vandevelo

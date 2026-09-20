@@ -670,61 +670,58 @@ nats, for every cofactor and every operand sign.  The routing floor puts
 maximal-width table, so a program whose real instruction roots are *distinct*
 has coefficient digits `Omega(L**2 log L) = Omega(T**2 / log T)`, the dense
 product's own order and the right-half-plane theorem's bound without the
-half-plane.  Distinctness is the one hypothesis not proved for every program;
-see below.
+half-plane.  The block-incidence lemma below forces enough distinct roots in
+every program.
 
-**Repeated real roots are legal, and the distinctness hypothesis is unproved.**
+**Repeated real roots are legal and do not evade the bound.**
 The slack certificate's theorem is stated for distinct roots (`rho_1 > ... >
 rho_c`), and the bound above prices multiples of `prod_{i<=L} (x - p_i)` with
 the `p_i` distinct.  A program need not have distinct real instruction roots:
 `_factor_roots` preserves multiplicity (`[Root(r, 0)] * multiplicity`), and
 `convert` emits one instruction per root, so `f(x) = (x-2)^3` is a legal
-program decoding to `[1], [1], [1]` (executed).  The routing lemma bounds
-instruction *positions* -- "the reachable configurations number at most twice
-the instruction count" -- not distinct root *values*, so it does not force
-`L = Omega(T/log T)` distinct roots.
+program decoding to `[1], [1], [1]` (executed).  The basic routing lemma
+bounds instruction positions; the block-incidence refinement below bounds
+distinct root values.
 
-What is still forced: the program is a multiple of its distinct-root product,
-so the theorem gives `Omega(L'**2 log L')` for `L'` distinct real roots, and
-the multiplicity contributes mass of its own -- `mass((x-2)**M) / M**2 = 0.365`
-measured at `M = 10..160`, and complex cofactors do not cancel it
-(`(x-2)**M (x**2+1)**K` and `(x-2)**M (x**2-2x+2)**M` both grow).  `m = Omega(T/log T)` real instruction positions (the routing floor above), so the
-unconditional language bound is `Omega(T**2 / log**2 T)`: the confluent
-slack certificate (below) prices multiplicity as `Omega(m**2)`, giving the
-same order whether the roots are distinct or repeated.
+The program is a multiple of its distinct-root product, so the theorem gives
+`Omega(L'**2 log L')` for `L'` distinct real roots.  The refinement forces
+`L' = Omega(T/log T)`.  Independently, the confluent certificate below prices
+multiplicity as `Omega(m**2)`.
 
-The stronger `Omega(T**2 / log T)` needs the **sharpened routing lemma**:
+The stronger `Omega(T**2 / log T)` follows from the **sharpened routing lemma**:
 `N'(k+1) <= c * L_real + E(k)`, where `L_real` is the number of distinct
 *real* instruction-root values, not instruction positions.  The routing floor
 above is stated on positions (`m_r`); since the distinct-root theorem bounds
 *every multiple* of the distinct-root product, `L_real = Omega(T/log T)` alone
-would upgrade the row.  It stays open, with one proposed route refuted below;
-the current row does not need it -- the confluent certificate prices
-multiplicity, so `Omega(T**2 / log**2 T)` stands unconditionally.
+upgrades the row.  The lemma is proved below; the confluent certificate still
+removes the distinctness hypothesis from the coefficient argument.
 
-**The route that fails.**  A position that always takes one successor splits
+**The block-incidence proof.**  A position that always takes one successor splits
 nothing, so `N'(k+1) <= 2 * m_routing + E(k)` with `m_routing` the positions
-taking both successors.  It is tempting to bound `m_routing <= 3 * L_real` by
-"at most one routing position per (value, condition)", which would follow from
-nesting.  Two of the three supports hold: a back-edge's target is `opener + 1`,
-so if that is itself a closer a condition-true jump self-loops and a halting
-program never routes such a closer (positive control `[1,1],[5],[2],[0,1]`
-spins); and loop openers have code only in `5, 7, 8` -- code `6` indexes the
-absent `_COND` slot and would raise -- so a value carries at most three
-conditions.  But the per-condition invariant is **false**, executed: a 2-bit
-calibrated tree followed by nested openers and a same-code closer run
-(`tests/proofs/deep/multiplicity.py`, `_check_routing_bound`) has two `[2]`
-closers of one value and one condition both routing, and a 3-bit variant has
-three.  The nesting argument ignores a cross-level skip: an intermediate
-closer whose partner opener has a *different* condition jumps past the inner
-closers, leaving the register class it carried to reach the outer one.
+taking both successors.  `convert` emits all copies of one exact real root in
+one contiguous block.  Draw the noncrossing bracket matches above the
+instruction line and contract each block.  The resulting simple incidence
+graph is outerplanar, hence has at most `2L_real - 3` edges.
 
-So `m_routing <= 3 * L_real` is not refuted (`m_routing/L_real` is 9/14 and
-19/28 on the witnesses) but no longer has a proof, and `L_real = Omega(T/log T)`
-is open.  The row keeps the unconditional `Omega(T**2 / log**2 T)`.  The
-complex escape cannot substitute: Round 4 of the offline work refuted the
-natural complex-node certificate with an exact counterexample (nodes
-`1/(2 +- 2i)`, `1/(-2 +- 49i)`, tail/bound up to 69.4).
+At most one opener routes in a block.  After its first position, entry is
+either fallthrough from the preceding identical test or a loop back-edge to
+the instruction after that test; both require the common condition to be
+true, so the entered opener falls through.  A routing closer is charged to
+the incidence between its block and its partner's opener block.  Positions
+with one incidence are consecutive inside the closer block.  After the first,
+entry is fallthrough with the common condition false or a skip landing after
+the preceding closer, again with that condition false; no instruction between
+them changes the register.  Thus an incidence is charged at most once.  Hence
+`m_routing <= L_real + 2L_real - 3`, and
+`N'(k+1) <= 6L_real + E(k)`.  The dense-table floor forces
+`L_real = Omega(T/log T)`.
+
+The smaller "one closer per (value, condition)" charge is false, executed:
+one contiguous `[2]` block has two routing closers with code-5 partners in
+different opener blocks.  Those are two incidence edges, so the example is a
+positive control for the distinction rather than a refutation of the lemma.
+`tests/proofs/deep/multiplicity.py` checks both charges and the outerplanar
+count on that machine.
 
 **The confluent certificate (multiplicity is free of the extra hypothesis).**
 The distinct-node theorem above is replaced by its confluent analogue, proved
@@ -795,9 +792,8 @@ real part and inexact magnitude relations to the instruction roots -- has
 no member: the iterated elimination's certificate, in its slack form, is
 proved for free positions anywhere and every degree, so **every** multiple
 of the mandatory distinct-root product carries `Omega(L**2 log L)` coefficient
-digits.  What is open is the reduction from the instruction *count* to the
-number of *distinct* real roots (the section above): a repeated root is legal,
-and the routing lemma bounds positions, not root values.  The sparse-remainder
+digits.  The block-incidence lemma supplies the reduction from routed
+instructions to distinct real roots.  The sparse-remainder
 profile that survived the searches (`O(1)`
 coefficients of `O(T)` digits, a second at a constant fraction of the
 primorial, and an `O(T/log T)`-term remainder of `O(log T)`-digit terms) is
