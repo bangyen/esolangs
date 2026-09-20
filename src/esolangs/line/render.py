@@ -20,7 +20,7 @@ import itertools
 import sys
 from dataclasses import dataclass, field
 
-from . import png
+from esolangs.raster import png
 
 # One grid unit in pixels; roughly the wiki's own scale per straight run.
 _UNIT = 20

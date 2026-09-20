@@ -1,4 +1,4 @@
-"""A minimal PNG reader and writer, so Line's tooling needs no image library.
+"""A minimal PNG reader and writer for raster-language source.
 
 Images are passed as one ``bytearray`` of greyscale levels per row -- the
 same shape ``render.Canvas`` keeps its pixels in, and what

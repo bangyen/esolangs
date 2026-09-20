@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.line import png
+from esolangs.raster import png
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "line"
 

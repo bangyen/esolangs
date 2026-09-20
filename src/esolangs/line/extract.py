@@ -14,7 +14,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import lattice, png
+from esolangs.raster import png
+
+from . import lattice
 from . import mask as mask_module
 from .lattice import _DIRS, _ink
 from .mask import Mask

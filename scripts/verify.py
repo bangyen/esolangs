@@ -193,7 +193,7 @@ STEPS = [
             "tests/line/test_bf_to_line.py",
             "tests/line/test_line_boolean.py",
             "tests/line/test_mask.py",
-            "tests/line/test_png.py",
+            "tests/raster/test_png.py",
             "tests/line/test_simulate.py",
             "-q",
         ],

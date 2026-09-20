@@ -33,9 +33,9 @@ from esolangs.line.extract import (
 )
 from esolangs.line.lattice import _DIRS, Stroke, Vertex
 from esolangs.line.mask import Mask, from_grey
-from esolangs.line.png import read_grey
 from esolangs.line.render import Node, chain, render
 from esolangs.line.simulate import IO, run
+from esolangs.raster.png import read_grey
 
 # Anchored to this file rather than the working directory, so the wiki
 # fixtures resolve no matter where pytest is invoked from.
