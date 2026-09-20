@@ -489,7 +489,8 @@ class TestSteppingWarnsAboutStdinToo:
         return [
             name
             for name in esolangs.list_languages()
-            if esolangs.describe(name)["eof_is_a_value"]
+            if esolangs.describe(name)["boolean_generator"]
+            and esolangs.describe(name)["eof_is_a_value"]
             and not esolangs.describe(name)["parameterized"]
             and name != "Alight"
         ]
