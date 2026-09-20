@@ -102,14 +102,16 @@ implemented, so never in the screen.
 
   Factor's adaptive residue sequence is bounded by fixed-modulus Hoheisel:
   its last selected prime `Q` is polynomial in the run count. Worst-case
-  generated text is `Theta(T log T)`, while every language encoding has the
-  `Omega(T log T / log log T)` pigeonhole floor. Prime discovery is now an
+  generated text and the weighted exponent-vector language floor are both
+  `Theta(T log T)`. Prime discovery is now an
   arbitrary-precision segmented sieve, and the decoder uses `isprime` only in
-  its proven `< 2**64` range, closing both machine-word and BPSW totality gaps. Cold
-  generation and generated-family parsing are polynomial in `T`; arbitrary
-  semiprimes retain exponential trial-sieve loading. The implementation-time
-  audit is parameterized by `Q,D` because `Q = Theta(T log T)` is not proved.
-  See [factor](factor.md).
+  its proven `< 2**64` range, closing both machine-word and BPSW totality gaps.
+  Cold generation is tightly
+  `Theta(T + Q log log Q + D**log_2(3))` in the documented RAM/byte model;
+  generated-family parsing is polynomial in `T`, while arbitrary semiprimes
+  retain exponential trial-sieve loading. The time bound is naturally
+  output-sensitive in the last selected prime `Q` and digit count `D`, without
+  assuming a prime-gap conjecture. See [factor](factor.md).
 
   Polynomial has tight language-level text complexity
   `Theta(T**2 / log T)`.  Equal real
