@@ -18,6 +18,7 @@ import pytest
 
 from esolangs.interpreters.grid_based.circuit_diagram import (
     _OUTPUT,
+    _compile,
     _Connections,
     _Grid,
     _Machine,
@@ -109,6 +110,12 @@ class TestPrimeTester:
         """Guard the replay as a set, not just value by value."""
         detected = {n for n in range(16) if output_for(PRIME_TESTER, bits_of(n)) == "1"}
         assert detected == PRIMES
+
+    def test_cached_topology_keeps_run_state_isolated(self) -> None:
+        _compile.cache_clear()
+        assert output_for(PRIME_TESTER, bits_of(2)) == "1"
+        assert output_for(PRIME_TESTER, bits_of(4)) == "0"
+        assert _compile.cache_info().hits == 1
 
     def test_it_halts_rather_than_looping(self) -> None:
         machine = _Machine(PRIME_TESTER, ScriptedIO(bits_of(7)))
