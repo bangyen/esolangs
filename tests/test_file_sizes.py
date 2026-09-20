@@ -28,7 +28,6 @@ MAX_LINES = 1200
 _RATCHET = {
     "src/esolangs/interpreters/grid_based/alight.py": 1228,
     "src/esolangs/interpreters/grid_based/streetcode.py": 1500,
-    "src/esolangs/tools/circuit_diagram.py": 1284,
     "tests/test_answer_plumbing.py": 1268,
     "tests/test_vm.py": 1241,
     "tests/test_vm_detectors.py": 1220,
