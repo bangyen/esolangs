@@ -181,6 +181,14 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
 
+    def test_machine_steps_over_a_blank_line(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainif import _Machine
+
+        machine = _Machine(["", "if 0 output"], ScriptedIO())
+        machine.step()
+        assert machine.ind == 1
+
     def test_the_read_lands_in_the_cell(self) -> None:
         """``input`` puts the byte where the language says it goes.
 

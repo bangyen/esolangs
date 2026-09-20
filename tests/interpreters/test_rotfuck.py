@@ -241,6 +241,7 @@ class TestStepMachine:
 
         chars = tuple("<[]")
         assert _advance(((0, 1), 1, 0, 0), chars) == ((0, 1), 0, 1, 1)
+        assert _advance(((0,), 0, 0, 0), tuple("<")) == ((0,), 0, 1, 1)
         assert _advance(((1,), 0, 1, 0), tuple(".]")) == ((1,), 0, 1, 1)
 
         with pytest.raises(HaltError):

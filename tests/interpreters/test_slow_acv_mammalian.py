@@ -101,6 +101,17 @@ class TestMammalian:
         assert machine.lst[0] == ()
         assert machine.ptr == 0
 
+    def test_fast_run_covers_each_control_branch(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+
+        run(
+            "CONSUME SEED CONFLAGRATE EXCRETE CONSUME FISSION DIGEST SPRINT",
+            ScriptedIO(),
+        )
+        run("CONSUME SPRINT ACCEPT", ScriptedIO("\n"))
+        run("SEED LEAPFROG", ScriptedIO())
+        run("ACCEPT DIGEST LEAPFROG", ScriptedIO("A\n"))
+
 
 class TestStepMachine:
     def test_step_after_halt_is_a_noop(self) -> None:
