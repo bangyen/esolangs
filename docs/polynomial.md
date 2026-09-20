@@ -11,6 +11,13 @@ because they say what is *not* available -- not because anything is still
 being looked for.  `tests/proofs/test_negatives.py` executes the claims
 marked (executed) and pins every link of the proof.
 
+The order is tight for program text.  The uncapped residual-DAG construction
+emits `O(T**2 / log T)` characters for every table, so maximal-width tables
+have `Theta(T**2 / log T)` language complexity.  This is an existence theorem,
+not a totality claim for the public generator: its 1934-instruction resource
+cap still refuses some wider tables.  It also gives no matching construction-
+time or parse-time upper bound.
+
 ## Instruction count is language-forced
 
 The input instruction *overwrites* the register, so between reads every bit
@@ -21,6 +28,28 @@ order.  Every Polynomial program for such a table carries `m = Omega(T/log T)`
 instructions whatever its operands.  The step is sound: a state is exactly
 `(register, cursor)`, the input arm
 assigns rather than combines, and the instruction list is never rewritten.
+
+## The matching text upper bound
+
+After `k` reads the residual-DAG construction has at most
+`s_k = min(2**k, 2**(2**(n-k)))` states: the first term counts prefixes and
+the second all Boolean residuals of the remaining width.  With
+`h = floor(log2 n) - 1`, the levels with `n-k <= h` total
+`O(sqrt(T) log n) = O(T/n)`; the other levels form a geometric tail
+`O(T / 2**h) = O(T/n)`.  Thus `S = sum s_k = O(T/log T)`, and the uncapped
+`_polynomial_dag` construction spends at most six instructions per state.
+
+For its `m <= 6S` instructions, every operand is `O(S)`, every encoded
+exponent is constant, and at most `m` prime groups use primes
+`p_m = O(m log m)`.  Each linear or quadratic factor therefore has
+coefficient l1 norm `m**O(1)`.  Submultiplicativity bounds every coefficient
+of their product by `m**O(m)`, or `O(m log m)` decimal digits.  There are at
+most `2m + 1` coefficients; exponents and separators add only `O(m log m)`.
+The expanded program is consequently
+`O(m**2 log m) = O(T**2 / log T)` characters.  Zero coefficients only shorten
+it, and wrapping preserves the order.  The structural envelopes and a
+directly assembled, executed machine are pinned by
+`TestPolynomial.test_uncapped_dag_has_matching_text_bound`.
 
 ## The text is not construction-forced
 

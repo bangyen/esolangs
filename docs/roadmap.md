@@ -100,13 +100,16 @@ implemented, so never in the screen.
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
-  Polynomial has a language lower bound `Omega(T**2 / log T)`.  Equal real
+  Polynomial has tight language-level text complexity
+  `Theta(T**2 / log T)`.  Equal real
   roots form contiguous blocks; their noncrossing opener/closer incidence
   graph is outerplanar, giving `m_routing < 3L_real` and therefore
   `L_real = Omega(T/log T)`.  The distinct-root slack certificate then gives
-  the bound for every cofactor and operand sign; the confluent certificate
-  separately prices multiplicity.  See [polynomial](polynomial.md) and
-  `tests/proofs/deep/multiplicity.py`.
+  the lower bound for every cofactor and operand sign.  The uncapped
+  residual-DAG construction has `O(T/log T)` instructions and expands to the
+  matching upper bound.  The public generator's resource cap remains, and no
+  matching construction-time upper bound is claimed.  See
+  [polynomial](polynomial.md) and `tests/proofs/deep/multiplicity.py`.
 
   Generation time, growth per added input at the top arity: B-tapemark,
   6-5, Forth, Circuit Diagram past its n=8 route change, and Vandevelo
