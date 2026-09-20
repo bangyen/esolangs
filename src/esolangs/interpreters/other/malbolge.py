@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
+from functools import lru_cache
 
 from esolangs.interpreters.io import IO
 
@@ -112,8 +113,9 @@ def _advance(
     return (a, c, d, False), tuple(writes.items()), effect
 
 
-def _load(code: str) -> list[int]:
-    """Return the 59049-word memory for ``code``, program then crazy fill."""
+@lru_cache(maxsize=16)
+def _initial_memory(code: str) -> tuple[int, ...]:
+    """Return reusable initial memory for ``code``."""
     memory = [0] * _WORDS
     index = 0
     for char in code:
@@ -136,7 +138,12 @@ def _load(code: str) -> list[int]:
     while index < _WORDS:
         memory[index] = _crazy(memory[index - 1], memory[index - 2])
         index += 1
-    return memory
+    return tuple(memory)
+
+
+def _load(code: str) -> list[int]:
+    """Return fresh 59049-word memory for ``code``."""
+    return list(_initial_memory(code))
 
 
 class _Machine:

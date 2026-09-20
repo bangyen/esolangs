@@ -27,7 +27,7 @@ empty line sets the cell to 0.
 import functools
 import sys
 from collections.abc import Callable, Iterator, Mapping
-from typing import Literal, NamedTuple, NewType, assert_never, cast
+from typing import Literal, NamedTuple, NewType, Self, assert_never, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -1464,10 +1464,31 @@ class _Machine:
             )
         self._state = successor
 
+    @staticmethod
+    @functools.lru_cache(maxsize=16)
+    def _compile(
+        code: tuple[str, ...],
+    ) -> tuple[_Grid, _State, dict[_State, _Edges] | None]:
+        prototype = _Machine(list(code), IO())
+        return prototype.grid, prototype._state, prototype._graph
+
+    @classmethod
+    def _for_run(cls, code: list[str], io: IO) -> Self:
+        grid, state, graph = cls._compile(tuple(code))
+        machine = cls.__new__(cls)
+        machine.io = io
+        machine.grid = grid
+        machine._state = state  # noqa: SLF001
+        machine.cp = 0
+        machine.cells = {}
+        machine._done = False  # noqa: SLF001
+        machine._graph = graph  # noqa: SLF001
+        return machine
+
 
 def run(code: list[str], io: IO) -> None:
     """Drive a Streetcode car over ``code`` until it halts."""
-    machine = _Machine(code, io)
+    machine = _Machine._for_run(code, io)  # noqa: SLF001
     while not machine.halted:
         machine.step()
 
