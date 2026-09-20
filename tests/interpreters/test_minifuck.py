@@ -1,5 +1,10 @@
 """Unit tests for the Minifuck interpreter."""
 
+import importlib
+import io
+import random
+from contextlib import redirect_stdout
+
 import pytest
 
 from esolangs.interpreters.tape_based.minifuck import run
@@ -15,6 +20,64 @@ from tests.interpreters.runner import run_program
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
+
+
+class TestNativeParity:
+    @staticmethod
+    def run_python(code: str, stdin: str = "") -> tuple[str, int]:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.minifuck import _run_python
+
+        io_obj = ScriptedIO(stdin)
+        _run_python(code, io_obj)
+        return io_obj.getvalue(), io_obj.reads
+
+    def test_generated_halting_programs_match(self) -> None:
+        rng = random.Random(0)
+        stdin = "A\n" * 200
+        for _ in range(100):
+            code = "".join(rng.choice("<.[abc") for _ in range(200))
+            native = run_and_capture(code, ["A"] * 200)
+            assert native == self.run_python(code, stdin)[0]
+
+    def test_missing_extension_falls_back(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        module = importlib.import_module("esolangs.interpreters.tape_based.minifuck")
+
+        def unavailable(_name: str) -> None:
+            raise ImportError
+
+        monkeypatch.setattr(module, "import_module", unavailable)
+        assert run_and_capture(".") == "@"
+
+    def test_interactive_io_uses_the_reference_machine(self) -> None:
+        from esolangs.interpreters.io import IO
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            run(".", IO())
+        assert output.getvalue() == "@"
+
+    def test_native_exception_commits_progress(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+
+        module = importlib.import_module("esolangs.interpreters.tape_based.minifuck")
+
+        def interrupted(_code: str, _inputs: list[str]) -> None:
+            error = RuntimeError("stop")
+            vars(error)["_esolangs_native_output"] = "A"
+            vars(error)["_esolangs_native_reads"] = 1
+            raise error
+
+        monkeypatch.setattr(module, "_native_result", interrupted)
+        io_obj = ScriptedIO("x\ny\n")
+        with pytest.raises(RuntimeError, match="stop"):
+            run(".", io_obj)
+        assert io_obj.getvalue() == "A"
+        assert io_obj.reads == 1
 
 
 class TestMinifuck:

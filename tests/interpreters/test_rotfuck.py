@@ -14,7 +14,10 @@ source.  A bracket that fires with no partner in the rotated program is a
 runtime error.
 """
 
-import contextlib
+import importlib
+import io
+from collections.abc import Callable
+from contextlib import redirect_stdout
 
 import pytest
 
@@ -40,10 +43,89 @@ def build(commands: str) -> str:
 
 
 def run_program(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    with contextlib.suppress(EOFError):
-        run(code, io)
-    return io.getvalue()
+    from esolangs.interpreters.tape_based.rotfuck import _run_python
+
+    def outcome(
+        runner: Callable[[str, ScriptedIO], None],
+    ) -> tuple[str, Exception | None]:
+        io_obj = ScriptedIO(stdin)
+        try:
+            runner(code, io_obj)
+        except EOFError:
+            return io_obj.getvalue(), None
+        except Exception as exc:
+            return io_obj.getvalue(), exc
+        return io_obj.getvalue(), None
+
+    expected, reference_error = outcome(_run_python)
+    actual, native_error = outcome(run)
+    assert (type(native_error), str(native_error)) == (
+        type(reference_error),
+        str(reference_error),
+    )
+    assert actual == expected
+    if native_error is not None:
+        raise native_error
+    return actual
+
+
+class TestNativeParity:
+    @staticmethod
+    def run_python(code: str, stdin: str = "") -> str:
+        from esolangs.interpreters.tape_based.rotfuck import _run_python
+
+        io_obj = ScriptedIO(stdin)
+        _run_python(code, io_obj)
+        return io_obj.getvalue()
+
+    @pytest.mark.parametrize(
+        ("commands", "stdin"),
+        [
+            ("++>++<.>.", ""),
+            (",>,<.>.", "A\nB\n"),
+            ("--.>>+.", ""),
+        ],
+    )
+    def test_curated_programs_match(self, commands: str, stdin: str) -> None:
+        code = build(commands)
+        assert run_program(code, stdin) == self.run_python(code, stdin)
+
+    def test_missing_extension_falls_back(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        module = importlib.import_module("esolangs.interpreters.tape_based.rotfuck")
+
+        def unavailable(_name: str) -> None:
+            raise ImportError
+
+        monkeypatch.setattr(module, "import_module", unavailable)
+        assert run_program(build("+.")) == "\x01"
+
+    def test_interactive_io_uses_the_reference_machine(self) -> None:
+        from esolangs.interpreters.io import IO
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            run(build("+."), IO())
+        assert output.getvalue() == "\x01"
+
+    def test_native_exception_commits_progress(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        module = importlib.import_module("esolangs.interpreters.tape_based.rotfuck")
+
+        def interrupted(_code: str, _inputs: list[str]) -> None:
+            error = RuntimeError("stop")
+            vars(error)["_esolangs_native_output"] = "A"
+            vars(error)["_esolangs_native_reads"] = 1
+            raise error
+
+        monkeypatch.setattr(module, "_native_result", interrupted)
+        io_obj = ScriptedIO("x\ny\n")
+        with pytest.raises(RuntimeError, match="stop"):
+            run(build("."), io_obj)
+        assert io_obj.getvalue() == "A"
+        assert io_obj.reads == 1
 
 
 class TestRotation:

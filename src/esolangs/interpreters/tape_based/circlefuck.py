@@ -19,10 +19,13 @@ from __future__ import annotations
 import re
 import sys
 from collections.abc import Sequence
+from functools import lru_cache
+from importlib import import_module
+from typing import cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.brackets import unmatched
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 
 #: One instant of a run: ``(ind, ptr, cells, done)`` -- the code cursor, the
 #: data pointer, the tape, and whether ``@`` has halted the run.
@@ -66,6 +69,12 @@ def parse(code: str) -> list[int]:
     code = bytes(code, "utf-8").decode("unicode_escape")
 
     return [ord(c) for c in code]
+
+
+@lru_cache(maxsize=16)
+def _parsed(code: str) -> tuple[int, ...]:
+    """Return the decoded source, cached for repeated truth-table rows."""
+    return tuple(parse(code))
 
 
 def find(code: Sequence[int], ind: int, ptr: int) -> int:
@@ -159,7 +168,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code``; an empty program is malformed."""
         self.io = io
-        cells = parse(code)
+        cells = list(_parsed(code))
         if not cells:
             raise ValueError("Circlefuck program cannot be empty")
         # The shell owns the tape as a mutable list: a write is one
@@ -253,11 +262,56 @@ class _Machine:
                 del cells[at]
 
 
-def run(code: str, io: IO) -> None:
-    """Run a Circlefuck program."""
+def _run_python(code: str, io: IO) -> None:
+    """Run through the stepwise reference machine."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
+
+
+def _native_result(
+    cells: list[int], inputs: list[str]
+) -> tuple[str, int, int, int] | None:
+    """Return one optional native batch result."""
+    try:
+        native = import_module("esolangs._native")
+    except ImportError:
+        return None
+    return cast(tuple[str, int, int, int], native.circlefuck(cells, inputs))
+
+
+def run(code: str, io: IO) -> None:
+    """Run a Circlefuck program."""
+    if not isinstance(io, ScriptedIO):
+        _run_python(code, io)
+        return
+    cells = list(_parsed(code))
+    if not cells:
+        raise ValueError("Circlefuck program cannot be empty")
+    try:
+        result = _native_result(cells, io.native_inputs())
+    except BaseException as exc:
+        io.accept_native(
+            getattr(exc, "_esolangs_native_output", ""),
+            getattr(exc, "_esolangs_native_reads", 0),
+        )
+        raise
+    if result is None:
+        _run_python(code, io)
+        return
+    output, reads, status, position = result
+    io.accept_native(output, reads)
+    if status == 1:
+        io.input_char()
+    if status == 2:
+        raise unmatched("[", position)
+    if status == 3:
+        raise unmatched("]", position)
+    if status == 4:
+        raise HaltError(
+            "'}' deletes the current cell and this is the last one, "
+            "so there would be no program left to run"
+        )
 
 
 if __name__ == "__main__":

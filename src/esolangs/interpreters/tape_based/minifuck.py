@@ -10,8 +10,10 @@ the shell owes; :func:`_load` is the pure half of a read.
 """
 
 import sys
+from importlib import import_module
+from typing import cast
 
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 
 #: Width of the print window: ``.`` reads cells 0-7 as one binary byte.
 _WIDTH = 8
@@ -198,11 +200,42 @@ class _Machine:
         self.state = state
 
 
-def run(code: str, io: IO) -> None:
-    """Run a Minifuck program."""
+def _run_python(code: str, io: IO) -> None:
+    """Run through the stepwise reference machine."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
+
+
+def _native_result(code: str, inputs: list[str]) -> tuple[str, int, bool] | None:
+    """Return one optional native batch result."""
+    try:
+        native = import_module("esolangs._native")
+    except ImportError:
+        return None
+    return cast(tuple[str, int, bool], native.minifuck(code, inputs))
+
+
+def run(code: str, io: IO) -> None:
+    """Run a Minifuck program."""
+    if not isinstance(io, ScriptedIO):
+        _run_python(code, io)
+        return
+    try:
+        result = _native_result(code, io.native_inputs())
+    except BaseException as exc:
+        io.accept_native(
+            getattr(exc, "_esolangs_native_output", ""),
+            getattr(exc, "_esolangs_native_reads", 0),
+        )
+        raise
+    if result is None:
+        _run_python(code, io)
+        return
+    output, reads, exhausted = result
+    io.accept_native(output, reads)
+    if exhausted:
+        io.input_char()
 
 
 if __name__ == "__main__":
