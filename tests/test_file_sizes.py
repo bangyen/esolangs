@@ -26,7 +26,6 @@ MAX_LINES = 1200
 #: the cap instead of being split.
 #:
 _RATCHET = {
-    "src/esolangs/interpreters/grid_based/alight.py": 1228,
     "src/esolangs/interpreters/grid_based/streetcode.py": 1500,
 }
 
