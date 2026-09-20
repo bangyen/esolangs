@@ -289,9 +289,10 @@ def _check_routing(failures: list[str]) -> int:
     ``docs/polynomial.md`` proves ``N'(k+1) <= 2m + E(k)`` with ``m`` the real
     instruction *positions* (the routing floor), which with the confluent
     certificate gives ``Omega(T**2 / log**2 T)``.  The stronger
-    ``Omega(T**2 / log T)`` reduces to ``N' <= 6 * L_real + E`` with ``L_real``
-    the distinct real *values*; `_check_routing_bound` pins that reduction.
-    This check pins the per-instruction facts it rests on:
+    ``Omega(T**2 / log T)`` needs ``N' <= c * L_real + E`` with ``L_real`` the
+    distinct real *values*; `_check_routing_bound` shows the per-(value,
+    condition) route to it is false.  This check pins the per-instruction
+    facts the routing floor rests on:
 
     * every real instruction has at most two successors, fixed by its bracket
       and independent of the register;
@@ -378,30 +379,32 @@ def _check_routing(failures: list[str]) -> int:
 
 
 def _check_routing_bound(failures: list[str]) -> int:
-    """Pin the sharpened routing lemma ``N' <= 6 * L_real + E``.
+    """Pin the state of the sharpened routing bound ``N' <= c * L_real + E``.
 
     The routing floor gives ``N' <= 2m + E`` on real *positions*; the sharper
     ``N' <= 2 * m_routing + E`` counts only positions that take both
-    successors.  ``m_routing <= 3 * L_real`` then follows from three facts:
+    successors.  A proposed route -- ``m_routing <= 3 * L_real`` via "at most
+    one routing position per (value, condition)" -- is **false**: this check
+    runs the refuting table and confirms two routing closers share one value
+    and one condition.  What survives and is pinned here:
 
     * a back-edge's target is ``opener + 1``; if that is itself a closer, a
-      condition-true jump lands on the closer and self-loops, so a halting
-      program never routes such a closer (executed positive control);
-    * consequently a routing closer is reached only by fall-through, so two
-      same-value, same-condition closers nest and only one routes;
+      condition-true jump self-loops, so a halting program never routes such a
+      closer (positive control: a self-looped closer spins);
     * loop openers have code only in ``5, 7, 8`` (code ``6`` indexes the
-      unused ``_COND`` slot and would raise), so a value carries at most three
-      conditions.
-
-    Then ``N' <= 6 L_real + E``, ``L_real = Omega(T/log T)``, and the
-    distinct-root certificate upgrades the row to ``Omega(T**2 / log T)``.
+      absent ``_COND`` slot and would raise), so a value carries at most three
+      conditions;
+    * ``m_routing <= 3 * L_real`` is not refuted by the witnesses (they satisfy
+      it with room), but the per-(value, condition) invariant is refuted, so
+      ``L_real = Omega(T/log T)`` stays open and the row keeps the
+      unconditional ``Omega(T**2 / log**2 T)``.
     """
-    from itertools import product
-
+    from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.register_based.polynomial import (
         _COND,
         _advance,
         _bracket_pairs,
+        _Machine,
     )
 
     count = 0
@@ -422,88 +425,93 @@ def _check_routing_bound(failures: list[str]) -> int:
     if state[1] >= len(instrs):
         failures.append("self-looped closer halted; positive control dead")
     count += 1
-    # Exhaustive over a halting corpus: no routing closer has opener+1 a
-    # closer, and no (code, condition) has two routing positions.  The
-    # alphabet must be rich enough to form two routing positions, or the
-    # sweep proves nothing; `max_routing` is checked as a positive control.
-    alphabet = [
-        [1],
-        [2],
-        [3],
-        [4],
-        [5],
-        [6],
-        [7],
-        [8],
-        [1, 1],
-        [-48, 1],
-        [0, 1],
+    # The refuting table: a 2-bit calibrated tree, three nested loop openers,
+    # and a same-value closer run.  Executed through the real machine; it must
+    # produce one character on every input, and two of its closers must both
+    # route with the same value and condition -- the false invariant.
+    witness = [
         [0, 2],
-        [1, 2],
-        [3, 3],
+        [-48, 1],
+        [1],
+        [0, 2],
+        [-48, 1],
+        [1],
+        [-7, 1],
+        [2],
+        [1, 1],
+        [1],
+        [-4, 1],
+        [2],
+        [2],
+        [1, 1],
+        [1],
+        [0, 2],
+        [-48, 1],
+        [1],
+        [-5, 1],
+        [2],
+        [1, 1],
+        [1],
+        [-2, 1],
+        [2],
+        [2],
+        [-1, 3],
+        [5],
+        [-3, 1],
+        [7],
+        [-1, 3],
+        [5],
+        [-1, 1],
+        [2],
+        [2],
+        [2],
+        [48, 1],
+        [0, 1],
     ]
-    seen = 0
-    max_routing = 0
-    import random
-
-    rng = random.Random(20260920)
-    bodies = [
-        [list(s) for s in seq]
-        for length in range(2, 5)
-        for seq in product(alphabet, repeat=length)
-    ]
-    # Random longer programs, or the corpus cannot form two routing positions
-    # (positive control below); the seed and witness are pinned so the sweep
-    # is reproducible.
-    for _ in range(60000):
-        bodies.append([list(rng.choice(alphabet)) for _ in range(rng.randint(6, 11))])
-    bodies.append([[8], [4], [0, 2], [6], [1, 2], [5], [1, 2], [2], [2], [3, 3]])
-    for body in bodies:
-        pr = _bracket_pairs(body)
-        if len(pr) % 2:
-            continue
-        reg, ind, pos, steps, succ = 0, 0, 0, 0, {}
-        while ind < len(body) and steps < 300:
+    pr = _bracket_pairs(witness)
+    succ: dict[int, set[int]] = {}
+    for r in range(4):
+        bits = [(r >> (1 - i)) & 1 for i in range(2)]
+        io = ScriptedIO("\n".join(str(b) for b in bits) + "\n")
+        m = _Machine("f(x) = 1", io)
+        m.instructions = [list(x) for x in witness]
+        m._pairs = pr  # noqa: SLF001 -- the machine's own bracket table
+        guard = 0
+        while not m.halted and guard < 5000:
+            m.step()
+            guard += 1
+        if not m.halted or len(io.getvalue()) != 1 or io.past_end:
+            failures.append(f"refuting witness not a table on input {bits}")
+    for r in range(4):
+        bits = [(r >> (1 - i)) & 1 for i in range(2)]
+        reg, ind, pos, steps = 0, 0, 0, 0
+        while ind < len(witness) and steps < 5000:
             steps += 1
-            ins = body[ind]
-            byte = 48 if ins == [0, 2] and pos < 2 else None
+            ins = witness[ind]
+            byte = None
             if ins == [0, 2]:
+                byte = 48 + bits[pos]
                 pos += 1
             was = ind
-            try:
-                (reg, ind), _ = _advance((reg, ind), body, byte, pr)
-            except Exception:
-                break
-            if len(body[was]) == 1:
+            (reg, ind), _ = _advance((reg, ind), witness, byte, pr)
+            if len(witness[was]) == 1:
                 succ.setdefault(was, set()).add(ind)
-        if ind < len(body):
-            continue  # not halting on the zero input
-        seen += 1
-        groups: dict[tuple[int, int], int] = {}
-        for p, s in succ.items():
-            if len(s) <= 1:
-                continue
-            if body[p][0] in (2, 6):
-                o = pr[p]
-                if (
-                    o + 1 < len(body)
-                    and len(body[o + 1]) == 1
-                    and body[o + 1][0] in (2, 6)
-                ):
-                    failures.append(f"halting program routes a self-looped closer {p}")
-                cond = (body[o][0] - 1) % 4
-            else:
-                cond = (body[p][0] - 1) % 4
-            key = (body[p][0], cond)
-            groups[key] = groups.get(key, 0) + 1
-        max_routing = max(max_routing, sum(groups.values()))
-        for k, v in groups.items():
-            if v > 1:
-                failures.append(f"halting corpus: {v} routing positions for {k}")
-    if seen < 1000:
-        failures.append(f"halting corpus too small: {seen}")
-    if max_routing < 2:
-        failures.append(f"corpus never forms two routing positions: {max_routing}")
+    groups: dict[tuple[int, int], int] = {}
+    for p, s in succ.items():
+        if len(s) <= 1:
+            continue
+        if witness[p][0] in (2, 6):
+            cond = (witness[pr[p]][0] - 1) % 4
+            value = ("close", witness[p][0])
+        else:
+            cond = (witness[p][0] - 1) % 4
+            value = ("open", witness[p][0])
+        key = (value, cond)
+        groups[key] = groups.get(key, 0) + 1
+    if not any(v > 1 for v in groups.values()):
+        failures.append("refuting witness no longer refutes: probe did not fire")
+    if not any(witness[p][0] in (2, 6) and len(s) > 1 for p, s in succ.items()):
+        failures.append("refuting witness has no routing closer")
     count += 1
     return count
 
@@ -521,7 +529,7 @@ def main() -> int:
     print(f"  divisibility + mass(f) >= c m^2 cases  : {mass}")
     print(f"  routing-floor bracket facts checked    : {loops}")
     print(f"  sharpened-routing facts checked        : {routing}")
-    print(f"  routing bound (N' <= 6 L_real) checked : {bound}")
+    print(f"  routing bound (per-value invariant)    : {bound}")
     if failures:
         for line in failures:
             print(f"  FAIL: {line}")
