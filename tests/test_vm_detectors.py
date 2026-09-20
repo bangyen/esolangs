@@ -25,7 +25,7 @@ def _painfuck_source(targets: str) -> str:
 
 def _read_cell(state: object) -> int:
     """Return the cell under the pointer of a Super SNUSP branching state."""
-    _row, _col, _heading, pointer, cells, *_rest = state  # type: ignore[misc]
+    _cursor, (pointer, cells), *_rest = state  # type: ignore[misc]
     return next((value for index, value in cells if index == pointer), 0)
 
 

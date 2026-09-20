@@ -42,10 +42,10 @@ def test_both_conditionals_turn_the_pointer() -> None:
         ("|", (0, 1), (0, -1)),
     ):
         grid = ((command,),)
-        moved, _ = _advance((0, 0, 1, 0, grid, (0,), False, False))
-        assert moved[2:4] == zero
-        moved, _ = _advance((0, 0, 1, 0, grid, (1,), False, False))
-        assert moved[2:4] == nonzero
+        moved, _ = _advance(((0, 0, 1, 0), grid, (0,), False, False))
+        assert moved[0][2:4] == zero
+        moved, _ = _advance(((0, 0, 1, 0), grid, (1,), False, False))
+        assert moved[0][2:4] == nonzero
 
 
 def test_bridge_skips_the_next_cell() -> None:
@@ -55,16 +55,16 @@ def test_bridge_skips_the_next_cell() -> None:
 
 def test_put_writes_and_get_reads_the_grid() -> None:
     """``p`` pops y, x, v and writes a byte; ``g`` reads one back."""
-    wrote, _ = _advance((0, 0, 1, 0, (("p",), (" ",)), (64, 0, 1), False, False))
-    assert wrote[4][1][0] == "@"
-    read, _ = _advance((0, 0, 1, 0, (("g",), ("@",)), (0, 1), False, False))
-    assert read[5] == (64,)
+    wrote, _ = _advance(((0, 0, 1, 0), (("p",), (" ",)), (64, 0, 1), False, False))
+    assert wrote[1][1][0] == "@"
+    read, _ = _advance(((0, 0, 1, 0), (("g",), ("@",)), (0, 1), False, False))
+    assert read[2] == (64,)
 
 
 def test_put_outside_the_grid_is_ignored() -> None:
     # The stack is (v, x, y) with y on top; both coordinates are off a 1x1 grid.
-    moved, _ = _advance((0, 0, 1, 0, (("p",),), (65, 5, 5), False, False))
-    assert moved[4] == (("p",),)
+    moved, _ = _advance(((0, 0, 1, 0), (("p",),), (65, 5, 5), False, False))
+    assert moved[1] == (("p",),)
 
 
 def test_integer_and_character_input() -> None:
@@ -76,10 +76,10 @@ def test_random_direction_uses_the_supplied_draw() -> None:
     # Right, down, left, up is the documented draw order; each moves one cell
     # from the `?` at (1,1).
     grid = ("...", ".?.", "...")
-    state = (1, 1, 1, 0, tuple(tuple(row) for row in grid), (), False, False)
+    state = ((1, 1, 1, 0), tuple(tuple(row) for row in grid), (), False, False)
     for direction, (x, y) in enumerate(((2, 1), (1, 2), (0, 1), (1, 0))):
         moved, _ = _advance(state, random_dir=direction)
-        assert moved[:2] == (x, y)
+        assert moved[0][:2] == (x, y)
 
 
 def test_a_seeded_run_is_reproducible() -> None:
@@ -93,7 +93,7 @@ def test_empty_program_is_rejected() -> None:
 
 
 def test_a_done_state_is_its_own_successor() -> None:
-    done = (0, 0, 1, 0, (("@",),), (), False, True)
+    done = ((0, 0, 1, 0), (("@",),), (), False, True)
     assert _advance(done) == (done, None)
 
 
@@ -112,17 +112,17 @@ def test_the_four_heading_commands_set_the_direction() -> None:
         ("^", (0, -1)),
         ("v", (0, 1)),
     ):
-        moved, _ = _advance((0, 0, 0, 0, ((command,),), (), False, False))
-        assert moved[2:4] == heading
+        moved, _ = _advance(((0, 0, 0, 0), ((command,),), (), False, False))
+        assert moved[0][2:4] == heading
 
 
 def test_reads_past_the_end_halt() -> None:
     with pytest.raises(HaltError, match="random draw"):
-        _advance((0, 0, 1, 0, (("?",),), (), False, False))
+        _advance(((0, 0, 1, 0), (("?",),), (), False, False))
     # ``_advance`` is called with no character supplied; the shell's read
     # raises EOF before this guard, so this is a direct-call contract.
     with pytest.raises(HaltError, match="no input left"):
-        _advance((0, 0, 1, 0, (("~",),), (), False, False))
+        _advance(((0, 0, 1, 0), (("~",),), (), False, False))
 
 
 def test_the_branching_protocol_forks_the_draw() -> None:
@@ -145,6 +145,6 @@ def test_the_branching_protocol_forks_the_draw() -> None:
 
 
 def test_advance_refuses_input_the_shell_did_not_supply() -> None:
-    empty = (0, 0, 1, 0, (("&",),), (), False, False)
+    empty = ((0, 0, 1, 0), (("&",),), (), False, False)
     with pytest.raises(HaltError, match="no input left"):
         _advance(empty)
