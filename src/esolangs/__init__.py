@@ -572,7 +572,7 @@ def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
         )
     if io_obj.past_end and describe(name)["eof_is_a_value"]:
         # Read past the end and kept going: the silent wrong answer the
-        # five ``eof_is_a_value`` languages give (a different row, or row
+        # six ``eof_is_a_value`` languages give (a different row, or row
         # 0).  Counted, not ``supplied == 0``, which missed underfeeding.
         # Gated because Suffolk ends *by* running out of input.
         warnings.warn(
