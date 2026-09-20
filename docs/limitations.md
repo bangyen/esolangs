@@ -76,6 +76,28 @@ per word), so an O(T) generator is not ruled out; it needs a generator-side
 Malbolge assembler. The language stays interpreter-only with `generate`
 refusing it until that is built.
 
+A HeLL generator was driven through an LMAO port (GPL-3.0, byte-identical on
+the six shipped examples) and run on the repository interpreter.  It exposes a
+second wall under the assembler one: the increment subroutine the ternary index
+route needs is not re-entrant.  `value` is a pointer advanced by one through a
+data web whose flag phases are not restored between calls, so an unrolled
+second call nets `+1`, not `+2`:
+
+    n=1 "01"       rows [0],[1] -> '0','1'              correct
+    n=2 "0110"     rows [0,0],[0,1],[1,0] -> '0','1','1' correct
+                   row [1,1] -> '1', want '0'; value reads corridor+0
+    n=3 "01101001" 4 of 8 rows wrong
+
+The failure survives distinct return slots per call, `R_ROT R_ROT` in the
+caller, restoring only the current `SUBROUTINE_FLAG`, and a `LOOP2` loop tail,
+so it is the subroutine's internal web, not the call site.  `digital_root`
+calls `increment_value` repeatedly, but its loop body is a separate top-level
+braced block; a caller inside the `ENTRY` block cannot reproduce that layout.
+The per-bit trit-set construction (call the increment once per set bit, under a
+rotation) therefore needs a per-bit copy of the increment's whole state
+machine, not merely a fresh call site.  Reopen with a web-resetting
+construction, or with the raw-loader route above.
+
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
 | Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. |
