@@ -104,12 +104,13 @@ implemented, so never in the screen.
   `Omega(T**2 / log**2 T)` (the confluent slack certificate prices
   multiplicity, so repeated real roots are covered; see
   [polynomial](polynomial.md) and `tests/proofs/deep/multiplicity.py`).  The
-  extra `log` to `Omega(T**2 / log T)` needs the sharpened routing lemma --
-  `N'(k+1) <= 2 * L_real + E(k)`, distinct real root values rather than
-  instruction positions -- because a complex-only block can host a routed
-  read and a real block can be re-entered at several cursors.  The complex
-  roots cannot be charged to mass (an exact counterexample refutes the
-  complex-node certificate).
+  extra `log` to `Omega(T**2 / log T)` reduces to `N' <= 6 * L_real + E`
+  (`m_routing <= 3 * L_real`, distinct real root values rather than
+  instruction positions): a routing closer is reached only by fall-through,
+  and only three loop conditions exist.  The per-condition closer-nesting
+  step is verified with zero violations over a halting corpus but not
+  formalized; the complex roots cannot substitute (an exact counterexample
+  refutes the complex-node certificate).
 
   Generation time, growth per added input at the top arity: B-tapemark,
   6-5, Forth, Circuit Diagram past its n=8 route change, and Vandevelo

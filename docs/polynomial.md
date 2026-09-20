@@ -698,29 +698,38 @@ The stronger `Omega(T**2 / log T)` needs the **sharpened routing lemma**:
 *real* instruction-root values, not instruction positions.  The routing floor
 above is stated on positions (`m_r`); since the distinct-root theorem bounds
 *every multiple* of the distinct-root product, `L_real = Omega(T/log T)` alone
-would upgrade the row.  It is open, and the current row does not need it: the
-confluent certificate prices multiplicity, so `Omega(T**2 / log**2 T)` stands
-without it.
+would upgrade the row.  The current row does not need it -- the confluent
+certificate prices multiplicity, so `Omega(T**2 / log**2 T)` stands
+unconditionally -- but the sharpen reduces to one verified lemma.
 
-The obstacle is loop re-entry.  Codes `5..8` are loop brackets (`_advance`
-jumps a closing bracket back to its opener when the opener's code exceeds 4,
-executed on `[1,1],[5],[1,1],[2],[0,1]`, which spins), and `convert` emits
-code `5..8` for a real root `p**5..p**8`; a value whose test is re-entered can
-see several registers, so one value can serve several residuals and
-`L_real = o(#blocks)` is not excluded.  What is executed
-(`tests/proofs/deep/multiplicity.py`, `_check_routing`, `_check_loops`): each
-real instruction has exactly two successors, fixed by its bracket and
-independent of the register; two same-value positions in one block (a repeated
-root `(x - p**v)**r` emits `r` copies) see one register per visit and collapse
-to the same traces, so multiplicity adds no routing power; and the shipped
-generator has `L_real` within a constant of `m` (`n=3` is 10 against 12,
-`n=4` is 22 against 22), with no value reaching 3 successors.  The remaining
-step is the first-divergence injection -- distinct level-`(k+1)` residuals
-into `(value, successor)` pairs over all inputs and entries -- which the
-several cursors at which one value can be entered leave unproved.  The
-complex escape cannot substitute: Round 4 of the offline work refuted the
-natural complex-node certificate with an exact counterexample (nodes
-`1/(2 +- 2i)`, `1/(-2 +- 49i)`, tail/bound up to 69.4).
+**The reduction.**  A position that always takes one successor splits nothing,
+so `N'(k+1) <= 2 * m_routing + E(k)` with `m_routing` the positions taking
+both successors.  Then `m_routing <= 3 * L_real`:
+
+* a back-edge's target is `opener + 1`; if that is itself a closer, a
+  condition-true jump lands back on the closer and self-loops, so a halting
+  program never routes such a closer (proved; positive control
+  `[1,1],[5],[2],[0,1]` spins);
+* hence a routing closer is reached only by fall-through, so same-condition
+  closers nest and one value carries at most one *routing* closer per
+  condition;
+* loop openers have code only in `5, 7, 8` -- code `6` indexes the unused
+  `_COND` slot and would raise -- so a value carries at most three conditions.
+
+Together `N' <= 6 L_real + E`, giving `L_real = Omega(T/log T)` and the
+`Omega(T**2 / log T)` row.  `_check_routing_bound` pins all three pieces
+executably: the `_COND` key set, the self-loop control, and (over a halting
+corpus) zero routing closers with `opener + 1` a closer and at most one
+routing position per `(code, condition)`.  The one step argued rather than
+proved is the per-condition nesting for two *closers of the same code whose
+partners share a condition*: verified with zero violations over 100k+
+programs and every hand construction, but the general argument that their
+reaches nest is not formalized.  The row is therefore recorded as reduced to
+that lemma, not claimed outright.
+
+The complex escape cannot substitute for it: Round 4 of the offline work
+refuted the natural complex-node certificate with an exact counterexample
+(nodes `1/(2 +- 2i)`, `1/(-2 +- 49i)`, tail/bound up to 69.4).
 
 **The confluent certificate (multiplicity is free of the extra hypothesis).**
 The distinct-node theorem above is replaced by its confluent analogue, proved
