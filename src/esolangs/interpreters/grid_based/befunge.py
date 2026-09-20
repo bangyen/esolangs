@@ -27,13 +27,26 @@ from esolangs.interpreters.randomness import Randomness, draw
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
 type _Cursor = tuple[int, int, int, int]
 type _Grid = tuple[tuple[str, ...], ...]
-type _State = tuple[_Cursor, _Grid, tuple[int, ...], bool, bool]
+type _Stack = tuple[int, ...] | list[int]
+type _State = tuple[_Cursor, _Grid, _Stack, bool, bool]
 type _Effect = tuple[str, int] | None
 
 
-def _pop(stack: tuple[int, ...]) -> tuple[int, tuple[int, ...]]:
+def _pop(stack: _Stack) -> tuple[int, _Stack]:
     """Return the top and the rest; an empty stack reads as 0."""
-    return (stack[-1], stack[:-1]) if stack else (0, stack)
+    if not stack:
+        return 0, stack
+    if isinstance(stack, list):
+        return stack.pop(), stack
+    return stack[-1], stack[:-1]
+
+
+def _push(stack: _Stack, *values: int) -> _Stack:
+    """Push onto a runtime list or an immutable branching state."""
+    if isinstance(stack, list):
+        stack.extend(values)
+        return stack
+    return (*stack, *values)
 
 
 def _advance(
@@ -55,35 +68,38 @@ def _advance(
             (col + dx) % width,
             (row + dy) % height,
         )
-        return (((col, row, dx, dy), grid, (*stack, ord(command)), True, done), None)
+        return (
+            ((col, row, dx, dy), grid, _push(stack, ord(command)), True, done),
+            None,
+        )
     if command == '"':
         string = not string
     elif command.isdigit():
-        stack = (*stack, int(command))
+        stack = _push(stack, int(command))
     elif command in "+-*/%":
         a, stack = _pop(stack)
         b, stack = _pop(stack)
         if command == "+":
-            stack = (*stack, b + a)
+            stack = _push(stack, b + a)
         elif command == "-":
-            stack = (*stack, b - a)
+            stack = _push(stack, b - a)
         elif command == "*":
-            stack = (*stack, b * a)
+            stack = _push(stack, b * a)
         elif command == "/":
             if not a:
                 raise HaltError("'/' divides by zero; the stack top was 0")
-            stack = (*stack, b // a)
+            stack = _push(stack, b // a)
         else:
             if not a:
                 raise HaltError("'%' takes the remainder by a zero divisor")
-            stack = (*stack, b % a)
+            stack = _push(stack, b % a)
     elif command == "!":
         a, stack = _pop(stack)
-        stack = (*stack, 0 if a else 1)
+        stack = _push(stack, 0 if a else 1)
     elif command == "`":
         a, stack = _pop(stack)
         b, stack = _pop(stack)
-        stack = (*stack, 1 if b > a else 0)
+        stack = _push(stack, 1 if b > a else 0)
     elif command == ">":
         dx, dy = 1, 0
     elif command == "<":
@@ -104,11 +120,11 @@ def _advance(
         dx, dy = (0, 1) if a == 0 else (0, -1)
     elif command == ":":
         a, stack = _pop(stack)
-        stack = (*stack, a, a)
+        stack = _push(stack, a, a)
     elif command == "\\":
         a, stack = _pop(stack)
         b, stack = _pop(stack)
-        stack = (*stack, a, b)
+        stack = _push(stack, a, b)
     elif command == "$":
         _value, stack = _pop(stack)
     elif command == ".":
@@ -123,7 +139,7 @@ def _advance(
         y, stack = _pop(stack)
         x, stack = _pop(stack)
         in_grid = 0 <= y < height and 0 <= x < width
-        stack = (*stack, ord(grid[y][x]) if in_grid else 0)
+        stack = _push(stack, ord(grid[y][x]) if in_grid else 0)
     elif command == "p":
         y, stack = _pop(stack)
         x, stack = _pop(stack)
@@ -137,11 +153,11 @@ def _advance(
     elif command == "&":
         if number_input is None:
             raise HaltError("'&' reads a number and there is no input left")
-        stack = (*stack, number_input)
+        stack = _push(stack, number_input)
     elif command == "~":
         if char_input is None:
             raise HaltError("'~' reads a character and there is no input left")
-        stack = (*stack, char_input)
+        stack = _push(stack, char_input)
     elif command == "@":
         done = True
     col, row = (col + dx) % width, (row + dy) % height
@@ -161,7 +177,7 @@ class _Machine:
             raise ValueError("Befunge program cannot be empty")
         self.grid = tuple(tuple(row.ljust(width)) for row in code)
         self.code, self.io, self._rng = code, io, rng
-        self.state: _State = ((0, 0, 1, 0), self.grid, (), False, False)
+        self.state: _State = ((0, 0, 1, 0), self.grid, [], False, False)
 
     @property
     def halted(self) -> bool:
@@ -187,11 +203,12 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         cursor, grid, stack, string, done = self.state
-        return (*cursor, grid, stack, string, done, self.io.position())
+        return (*cursor, grid, tuple(stack), string, done, self.io.position())
 
     def branching_snapshot(self) -> _State:
         """Return the current state as the hang search's starting point."""
-        return self.state
+        cursor, grid, stack, string, done = self.state
+        return cursor, grid, tuple(stack), string, done
 
     def branching_halted(self, state: object) -> bool:
         """Report whether ``state`` has reached ``@``."""
