@@ -6,10 +6,10 @@ import pytest
 
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.line import Raster
 from esolangs.line import run as run_line
 from esolangs.line.line_boolean import line_boolean
 from esolangs.line.render import render
+from esolangs.raster import Raster
 
 
 def test_png_round_trip_preserves_rgb() -> None:
@@ -29,7 +29,9 @@ def test_raster_rejects_an_invalid_channel() -> None:
 
 def test_raster_converts_to_greyscale() -> None:
     raster = Raster((((255, 0, 0), (0, 255, 0), (0, 0, 255)),))
-    assert raster.grey_rows() == [bytearray([76, 150, 29])]
+    from esolangs.line import _grey_rows
+
+    assert _grey_rows(raster.rows) == [bytearray([76, 150, 29])]
 
 
 @pytest.mark.medium

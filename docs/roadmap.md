@@ -147,10 +147,10 @@ implemented, so never in the screen.
   the apparent gain.
 
 - **Raster source integration.**  Done for Line and Piet: `generate` returns
-  an RGB `Raster`, `run` accepts it or a PNG path, and `describe` reports
-  `source_kind="raster"`.  Raster languages stay outside text-only `RUNNERS`
-  and its VM/step/fuzz contracts.  Line retains its graph for repeated rows;
-  Piet emits and executes the pixels themselves.
+  an `esolangs.raster.Raster`, `run` accepts it or a PNG path through the
+  shared codec, and `describe` reports `source_kind="raster"`.  Raster
+  languages stay outside text-only `RUNNERS` and its VM/step/fuzz contracts.
+  Line retains its graph for repeated rows; Piet emits and executes the pixels.
 
 - **Image-source candidates.**  A read of the 129 `Category:Non-textual` pages
   for raster sources only -- music (Fugue, Velato), music-note, and

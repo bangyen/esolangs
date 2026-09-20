@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cache
 
-from esolangs.line import Raster
+from esolangs.raster import Raster
 
-from . import BLACK, _COLOURS
+from . import _COLOURS, BLACK
 
 Change = tuple[int, int]
 
@@ -81,12 +81,12 @@ def _operations(truth_table: str, inputs: int) -> list[_Operation]:
     return operations
 
 
-def _next_colour(
-    colour: tuple[int, int, int], change: Change
-) -> tuple[int, int, int]:
+def _next_colour(colour: tuple[int, int, int], change: Change) -> tuple[int, int, int]:
     hue, lightness = _COLOURS[colour]
     wanted = (hue + change[0]) % 6, (lightness + change[1]) % 3
-    return next(pixel for pixel, coordinates in _COLOURS.items() if coordinates == wanted)
+    return next(
+        pixel for pixel, coordinates in _COLOURS.items() if coordinates == wanted
+    )
 
 
 @cache

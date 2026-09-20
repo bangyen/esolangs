@@ -17,7 +17,7 @@ from esolangs.exceptions import (
     InputExhaustedError,
 )
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.line import Raster
+from esolangs.raster import Raster
 from esolangs.vm import make_vm
 
 

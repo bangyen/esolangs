@@ -6,7 +6,7 @@ from collections.abc import Callable
 from contextlib import suppress
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.line import Raster
+from esolangs.raster import Raster
 
 Pixel = tuple[int, int, int]
 Point = tuple[int, int]

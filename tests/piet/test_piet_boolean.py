@@ -5,8 +5,8 @@ from itertools import product
 import pytest
 
 import esolangs
-from esolangs.line import Raster
 from esolangs.piet import generate
+from esolangs.raster import Raster
 
 
 @pytest.mark.parametrize(
