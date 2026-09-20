@@ -201,6 +201,7 @@ class TestASeedMakesARunRepeat:
         drawing = [
             name
             for name in esolangs.list_languages()
+            if esolangs.describe(name)["interpreter"] is not None
             if "rng"
             in inspect.signature(
                 importlib.import_module(

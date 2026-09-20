@@ -17,6 +17,7 @@ from esolangs.exceptions import (
     InputExhaustedError,
 )
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.line import Raster
 from esolangs.vm import make_vm
 
 
@@ -96,12 +97,17 @@ def evaluate(
     answers = []
     for row in range(len(truth_table)):
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
+        source: str | Raster
         if facts["parameterized"]:
+            if isinstance(program, Raster):  # pragma: no cover - impossible metadata
+                raise TypeError("a raster generator cannot be parameterized")
             source, stdin = esolangs.instantiate(name, program, bits, width), ""
         else:
             source, stdin = program, encode_inputs(name, bits, truth_table)
         try:
             if terminating:
+                if not isinstance(source, str):  # raster languages answer by output
+                    raise TypeError("a raster language cannot answer by termination")
                 answers.append(
                     _terminates(name, source, stdin, bound, halts_is, diverges_is)
                 )

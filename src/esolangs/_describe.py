@@ -97,7 +97,16 @@ def describe(language: str) -> LanguageInfo:
     # ``chdir`` away it is ``cannot read examples/brainfuck.txt``,
     # and for anyone who pip-installed there is no such directory at all.
     examples = sorted(str(p) for p in _EXAMPLES.glob(f"{stem}.txt"))
-    traits = machine_traits(name)
+    traits = (
+        machine_traits(name)
+        if name in RUNNERS
+        else {
+            "self_halts": True,
+            "dumps_on_the_post_halt_step": False,
+            "steppable_to_answer": False,
+            "eof_is_a_value": False,
+        }
+    )
     parameterized = lang.id in parameterized_ids()
     example = _example_for(lang.id)
     return {
@@ -106,9 +115,12 @@ def describe(language: str) -> LanguageInfo:
         "source_kind": lang.source_kind.value,
         "state_model": _STATE_MODELS.get(family) if family else None,
         "interpreter": lang.interpreter,
-        "boolean_generator": lang.boolean is not None,
+        "boolean_generator": (
+            lang.boolean is not None or lang.raster_boolean is not None
+        ),
         "parameterized": parameterized,
-        "reads_input": lang.boolean is not None and not parameterized,
+        "reads_input": (lang.boolean is not None or lang.raster_boolean is not None)
+        and not parameterized,
         # Derived, not recomputed: this was a second copy of the very
         # expression _width_effect() evaluates, so the two could drift into
         # disagreeing about the same language.
@@ -152,8 +164,12 @@ def spec(language: str) -> str:
     Raises under ``-OO``, which strips docstrings.
     """
     name = resolve(language)
-    module = RUNNERS[name][0]
-    interpreter = importlib.import_module("esolangs.interpreters." + module)
+    lang = LANGUAGES[name]
+    if lang.source_kind.value == "raster":
+        interpreter = importlib.import_module("esolangs.line")
+    else:
+        module = RUNNERS[name][0]
+        interpreter = importlib.import_module("esolangs.interpreters." + module)
     text = (interpreter.__doc__ or "").strip()
     if not text:
         # ``-OO`` strips docstrings, so this returned ``""`` for every one --

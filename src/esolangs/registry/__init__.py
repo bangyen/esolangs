@@ -52,7 +52,7 @@ BY_BOOLEAN: dict[str, Language] = {
 RUNNERS: dict[str, tuple[str, bool]] = {
     name: (lang.interpreter, lang.split)
     for name, lang in LANGUAGES.items()
-    if lang.interpreter
+    if lang.interpreter and lang.source_kind is SourceKind.TEXT
 }
 
 
