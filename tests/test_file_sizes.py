@@ -25,9 +25,7 @@ MAX_LINES = 1200
 #: is under the cap.  Nothing may be added: a new entry means a file grew past
 #: the cap instead of being split.
 #:
-_RATCHET = {
-    "src/esolangs/interpreters/grid_based/streetcode.py": 1500,
-}
+_RATCHET: dict[str, int] = {}
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 _TREES = ("src", "tests", "scripts")

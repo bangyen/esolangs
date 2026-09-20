@@ -89,6 +89,44 @@ class TestRewriteImports:
         )
         assert out.strip() == "from bundled import _Machine"
 
+    def test_streetcode_companion_alias_becomes_the_bundle(self) -> None:
+        """Its geometry is in the mutation target, so patches must reach it."""
+        script = load_script()
+        out = script._rewrite_imports(  # noqa: SLF001
+            "from esolangs.interpreters.grid_based import "
+            "_streetcode_geometry as module\n",
+            "bundled",
+            "grid_based.streetcode",
+        )
+        assert out.strip() == "import bundled as module"
+
+
+class TestMutationTarget:
+    def test_streetcode_keeps_its_geometry_in_the_target(self, tmp_path: Path) -> None:
+        """The companion is language code, not an excluded dependency."""
+        script = load_script()
+        bundle = tmp_path / "bundled.py"
+        bundle.write_text(
+            '"""bundle"""\n\n'
+            "# --- inlined from esolangs/exceptions.py ---\n"
+            "class Shared: pass\n"
+            "# --- inlined from "
+            "esolangs/interpreters/grid_based/_streetcode_geometry.py ---\n"
+            "class Geometry: pass\n"
+            "# --- inlined from esolangs/interpreters/grid_based/streetcode.py ---\n"
+            "class Machine: pass\n"
+        )
+
+        script._split_inlined(bundle, "grid_based.streetcode")  # noqa: SLF001
+
+        target = bundle.read_text()
+        shared = (tmp_path / "_inlined.py").read_text()
+        assert "class Geometry" in target
+        assert "class Machine" in target
+        assert "class Shared" not in target
+        assert "class Shared" in shared
+        assert "class Geometry" not in shared
+
 
 class TestDropUnbundledTests:
     """What counts as reaching past the bundle, and what only looks like it.
