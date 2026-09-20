@@ -187,7 +187,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
 | Packlang | tree | — | linear: folded tree, shortest names deepest, flat pieces |
 | Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
-| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding | open: multiplicity is priced at Omega(T**2 / log**2 T) by the confluent certificate; the extra log reduces to `N' <= 6 L_real + E` (m_routing <= 3 L_real), with the per-condition closer-nesting step verified but not formalized ([polynomial](polynomial.md)) |
+| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding | open: multiplicity is priced at Omega(T**2 / log**2 T) by the confluent certificate; the extra log needs L_real = Omega(T/log T), whose per-(value, condition) route is refuted by an executed table with two same-value same-condition routing closers ([polynomial](polynomial.md)) |
 | Qoibl | tree | — | linear: span walk, O(1) node tests by halves |
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup | linear: 16-17 tokens per row, unary runs 2T - 2 |
 | ROTfuck | tree | movement search stops after at most eight offsets | linear, time n log: essential_inputs |
