@@ -231,6 +231,7 @@ class TestDescribe:
             name
             for name in esolangs.list_languages()
             if esolangs.describe(name)["boolean_generator"]
+            and esolangs.describe(name)["source_kind"] == "text"
             and not esolangs.describe(name)["examples"]
         ]
         assert missing == []
@@ -640,9 +641,15 @@ class TestAMistypedPathIsNotRunAsAProgram:
         for name in esolangs.list_languages():
             if not esolangs.describe(name)["boolean_generator"]:
                 continue
+            if esolangs.describe(name)["source_kind"] != "text":
+                continue
             for table in ("01", "0110", "10010110"):
                 program = esolangs.generate(name, table)
-                looks = "\n" not in program and program.endswith(".txt")
+                looks = (
+                    isinstance(program, str)
+                    and "\n" not in program
+                    and program.endswith(".txt")
+                )
                 assert not looks, (name, table)
 
     def test_a_pathlib_path_is_read_in_both_directions(
@@ -963,6 +970,8 @@ class TestThePathGuardKnowsMoreThanTxt:
         mistaken = []
         for name in esolangs.list_languages():
             if not esolangs.describe(name)["boolean_generator"]:
+                continue
+            if esolangs.describe(name)["source_kind"] != "text":
                 continue
             for table in ("01", "0110"):
                 program = esolangs.generate(name, table)

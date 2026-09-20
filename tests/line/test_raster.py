@@ -1,7 +1,10 @@
-"""The public raster boundary exercised by the unimplemented Line language."""
+"""The public raster boundary exercised by Line."""
+
+from pathlib import Path
 
 import pytest
 
+import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.line import Raster
 from esolangs.line import run as run_line
@@ -29,6 +32,7 @@ def test_raster_converts_to_greyscale() -> None:
     assert raster.grey_rows() == [bytearray([76, 150, 29])]
 
 
+@pytest.mark.medium
 def test_line_consumes_the_public_raster() -> None:
     canvas = render(line_boolean("01"))
     raster = Raster(
@@ -37,3 +41,19 @@ def test_line_consumes_the_public_raster() -> None:
     io = ScriptedIO("1\n")
     run_line(raster, io)
     assert io.getvalue() == "1"
+
+
+def test_line_is_a_public_raster_language() -> None:
+    program = esolangs.generate("Line", "01")
+    assert isinstance(program, Raster)
+    assert esolangs.describe("Line")["source_kind"] == "raster"
+    assert esolangs.run("Line", program, "1\n") == "1"
+
+
+@pytest.mark.slow
+def test_public_run_loads_line_png(tmp_path: Path) -> None:
+    program = esolangs.generate("Line", "01")
+    assert isinstance(program, Raster)
+    path = tmp_path / "line.png"
+    path.write_bytes(program.to_png())
+    assert esolangs.run("Line", path, "0\n") == "0"
