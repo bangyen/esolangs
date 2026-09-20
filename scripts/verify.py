@@ -56,7 +56,6 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Callable
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -544,58 +543,6 @@ def _report(name: str, elapsed: float, returncode: int, output: str | None) -> b
     return ok
 
 
-#: One planned step: its display name, argv and environment.
-Step = tuple[str, list[str], dict[str, str]]
-
-
-def _partition(
-    runnable: list[Step],
-) -> tuple[list[Step], Step | None, list[Step], list[Step]]:
-    """Split the plan into mutator, long pole, shadow and heavy steps."""
-    mutator = [s for s in runnable if s[0] == MUTATES_TREE]
-    rest = [s for s in runnable if s[0] != MUTATES_TREE]
-    long_step = next((s for s in rest if s[0] == LONG_STEP), None)
-    shadow = [s for s in rest if s[0] != LONG_STEP and s[0] not in HEAVY_STEPS]
-    heavy = [s for s in rest if s[0] in HEAVY_STEPS]
-    return mutator, long_step, shadow, heavy
-
-
-def _run_each(
-    steps: list[Step], run_serial: Callable[[str, list[str], dict[str, str]], None]
-) -> None:
-    """Run each step serially, in order."""
-    for name, cmd, step_env in steps:
-        run_serial(name, cmd, step_env)
-
-
-def _launch_long(
-    long_step: Step | None,
-    shadow: list[Step],
-    run_serial: Callable[[str, list[str], dict[str, str]], None],
-) -> tuple[subprocess.Popen[str] | None, float]:
-    """Start the long step; return its process and start time.
-
-    Nothing to fill the shadow with means it runs as an ordinary serial step,
-    which lets a single-step run (`just test-py`) stream its output live.
-    """
-    if long_step is None:
-        return None, 0.0
-    if not shadow:
-        run_serial(*long_step)
-        return None, 0.0
-    _, cmd, step_env = long_step
-    start = time.time()
-    proc = subprocess.Popen(
-        cmd,
-        env=step_env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-    print(f"[....] {LONG_STEP} (running alongside the remaining steps)")
-    return proc, start
-
-
 def _run_steps(
     runnable: list[tuple[str, list[str], dict[str, str]]],
     *,
@@ -653,13 +600,38 @@ def _run_steps(
             )
         record(name, time.time() - start, returncode, captured)
 
-    mutator, long_step, shadow, heavy = _partition(runnable)
     # Phase 1: the tree-mutating step, alone, before anything reads the tree.
-    _run_each(mutator, run_serial)
+    for name, cmd, step_env in runnable:
+        if name == MUTATES_TREE:
+            run_serial(name, cmd, step_env)
 
     # Phase 2: launch the long step, then run the cheap ones in its shadow.
-    proc, long_start = _launch_long(long_step, shadow, run_serial)
-    _run_each(shadow, run_serial)
+    rest = [s for s in runnable if s[0] != MUTATES_TREE]
+    long_step = next((s for s in rest if s[0] == LONG_STEP), None)
+    shadow = [s for s in rest if s[0] != LONG_STEP and s[0] not in HEAVY_STEPS]
+    heavy = [s for s in rest if s[0] in HEAVY_STEPS]
+    proc = None
+    long_start = 0.0
+    # Nothing to fill the shadow with: run it as an ordinary step, which lets
+    # a single-step run (`just test-py`) stream its output live.
+    if long_step is not None and not shadow:
+        run_serial(*long_step)
+        long_step = None
+    if long_step is not None:
+        _, cmd, step_env = long_step
+        long_start = time.time()
+        proc = subprocess.Popen(
+            cmd,
+            env=step_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        print(f"[....] {LONG_STEP} (running alongside the remaining steps)")
+
+    for name, cmd, step_env in shadow:
+        run_serial(name, cmd, step_env)
+
     if proc is not None:
         # The cheap steps are done and pytest holds the only remaining output.
         output, returncode = _wait_with_heartbeat(proc, LONG_STEP, long_start)
@@ -676,169 +648,10 @@ def _run_steps(
         run_serial(*gate)
 
     # Phase 4: the parallel steps, now that they can have the machine.
-    _run_each(heavy, run_serial)
+    for name, cmd, step_env in heavy:
+        run_serial(name, cmd, step_env)
 
     return len(failed), timings, time.time() - wall_start
-
-
-def _have_pylint() -> bool:
-    """Whether the step interpreter can import pylint.
-
-    Probes PY rather than the running interpreter: verify.py may be launched
-    by a different python than the one it runs the steps with (e.g.
-    ``uv run --with pylint python scripts/verify.py``, which leaves PY
-    pointing at .venv), and it is PY that has to import pylint.
-    """
-    return (
-        subprocess.run(
-            [*PY, "-c", "import pylint"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        ).returncode
-        == 0
-    )
-
-
-def _step_env(
-    name: str, env: dict[str, str], *, only: set[str] | None, full: bool
-) -> dict[str, str]:
-    """Return the environment a step needs on top of the shared one."""
-    step_env = env
-    if name == LEAK_STEP and "LEAKSWEEP_JOBS" not in env:
-        step_env = dict(step_env, LEAKSWEEP_JOBS=LEAKSWEEP_JOBS)
-    if name == "pre-commit":
-        # Skip the config's mypy hook: the very next step runs mypy over
-        # src/ *and* scripts/ from the project env, against the same
-        # pyproject config, so the hook re-proves a strict subset -- and
-        # pays for its own isolated env to do it.  Only the local run
-        # skips it; CI runs `pre-commit run --all-files` with no SKIP
-        # (ci.yml:28), so the hook still guards the config itself.
-        step_env = dict(step_env, SKIP="mypy")
-    if only is None and not full and name == LINE_STEP:
-        # Not argv: the command ends in `pytest . -q` under `uv run
-        # --isolated`, so an appended flag would land after the path
-        # argument and be read by uv's pytest, not composed with the
-        # rest of the step's own options.  PYTEST_ADDOPTS is applied
-        # by pytest itself wherever it ends up running.
-        #
-        # The tests/interpreters suites carry the same `slow` marker on their
-        # two 5.2s tests (the eight-level nesting round trip and the n=5
-        # parity table), which are 10.4s of that step's 12.8s.  CI's `line`
-        # job runs that suite unfiltered on every push, so deselecting them
-        # here trades no coverage either.
-        step_env = dict(env, PYTEST_ADDOPTS=_line_addopts(env))
-    return step_env
-
-
-def _step_cmd(
-    name: str, cmd: list[str], *, only: set[str] | None, full: bool
-) -> list[str]:
-    """Return the argv a step needs on top of the shared one."""
-    if only is None and name == "pytest":
-        # A default run leaves the whole slow band to CI.  A --full run
-        # takes the band but not the `weekly` probes inside it,
-        # which are 142.6s of its ~182s and are sampled once a week by
-        # `.github/workflows/weekly.yml` -- which runs bare `pytest`
-        # rather than this script, so it is unaffected by either flag.
-        #
-        # Appended to argv rather than set in `addopts`, because pytest
-        # *prepends* addopts: a default there would sit before the
-        # caller's own `-m` and lose to it, and `just test-quick`'s
-        # `-m 'not slow and not medium'` would then re-admit the band it
-        # exists to skip.
-        #
-        # The `slow` marker covers the generator derivations and fuzz loops
-        # whose cost is seconds each.  Deselecting them locally trades no
-        # coverage, because the sharded `slow` job runs every marked test
-        # on every push.  This is keyed on --full rather than on scoping
-        # because a run that widens back to everything -- a tooling
-        # change, an unreadable diff -- should still not pay for them.
-        return [*cmd, "-m", "not weekly" if full else "not slow"]
-    return cmd
-
-
-def _plan_step(
-    name: str,
-    cmd: list[str],
-    *,
-    only: set[str] | None,
-    skip: set[str] | None,
-    full: bool,
-    unaffected: set[str] | None,
-    changed: list[str],
-    env: dict[str, str],
-    have_pylint: bool,
-) -> Step | None:
-    """Decide one step: skip it, narrow it, or run it.  ``None`` means skip."""
-    if only is not None and name not in only:
-        return None
-    if skip is not None and name in skip:
-        print(f"[skip] {name}: filtered via --skip")
-        return None
-    if name in FULL_ONLY and only is None and not full:
-        print(f"[skip] {name}: left to CI and --full")
-        return None
-    if unaffected is not None and name in unaffected:
-        print(f"[skip] {name}: branch touched none of its files")
-        return None
-    if unaffected is not None:
-        narrowed = _scoped_cmd(name, cmd, changed)
-        if narrowed is None:
-            print(f"[skip] {name}: branch touched none of its files")
-            return None
-        cmd = narrowed
-    if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
-        print(f"[skip] {name}: uv not installed")
-        return None
-    if not have_pylint and "(pylint)" in name:
-        print(f"[skip] {name}: pylint not installed (pip install pylint)")
-        return None
-    return (
-        name,
-        _step_cmd(name, cmd, only=only, full=full),
-        _step_env(name, env, only=only, full=full),
-    )
-
-
-def _coverage_gate(
-    runnable: list[Step], env: dict[str, str], *, only: set[str] | None, full: bool
-) -> Step | None:
-    """Return the touched-file coverage gate, or ``None`` when pytest will not run.
-
-    The gate speaks only for the suite that actually ran.  A default local
-    run deselects the `slow` tests, so a line covered only by one of those
-    would read as uncovered; --partial makes the gate report it rather than
-    fail on evidence it does not have.  A --full run has no such excuse.
-
-    The deselection has two sources, and both have to be caught.  This file
-    appends `-m "not slow"` itself, but `just test-quick` instead exports
-    PYTEST_ADDOPTS and passes --only, which suppresses the append while
-    pytest still reads the env var and runs the subset.  Keying on --only
-    alone would leave that path enforcing strict subset data -- the exact
-    false failure --partial exists to prevent, on the blessed fast loop.
-    """
-    if not any(name == "pytest" for name, _, _ in runnable):
-        return None
-    gate_cmd = [*PY, "scripts/check_diff_coverage.py"]
-    selected = any(
-        word.startswith("-m") for word in env.get("PYTEST_ADDOPTS", "").split()
-    )
-    if selected or (only is None and not full):
-        gate_cmd.append("--partial")
-    return DIFF_COVERAGE_STEP, gate_cmd, env
-
-
-def _print_timings(timings: list[tuple[str, float]], wall: float) -> None:
-    """Print the per-step table; the two totals differ when steps overlapped."""
-    print("-" * 40)
-    for name, elapsed in timings:
-        print(f"{elapsed:5.1f}s  {name}")
-    total = sum(t for _, t in timings)
-    # Two totals, because they stopped being the same number once pytest
-    # started running alongside the rest: the sum is how much work was
-    # done, the wall is how long the push actually waited for it.
-    print(f"{total:5.1f}s  TOTAL (sum of steps)")
-    print(f"{wall:5.1f}s  WALL  (elapsed, steps overlap)")
 
 
 def main() -> int:
@@ -858,34 +671,127 @@ def main() -> int:
         print(f"scope: {len(STEPS) - len(unaffected)}/{len(STEPS)} steps ({why})")
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
-    have_pylint = _have_pylint()
+    # Probe PY rather than the running interpreter: verify.py may be launched
+    # by a different python than the one it runs the steps with (e.g.
+    # `uv run --with pylint python scripts/verify.py`, which leaves PY pointing
+    # at .venv), and it is PY that has to import pylint.
+    have_pylint = (
+        subprocess.run(
+            [*PY, "-c", "import pylint"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).returncode
+        == 0
+    )
     # Decide every step first, then run.  Deciding is pure bookkeeping (scope
     # lookups, tool probes) while running is where the time goes, so keeping
     # the two apart lets the runner overlap the long step with the short ones
     # without the skip logic having to care.
-    runnable: list[Step] = []
+    runnable: list[tuple[str, list[str], dict[str, str]]] = []
     for name, cmd in STEPS:
-        planned = _plan_step(
-            name,
-            cmd,
-            only=only,
-            skip=skip,
-            full=full,
-            unaffected=unaffected,
-            changed=changed,
-            env=env,
-            have_pylint=have_pylint,
-        )
-        if planned is not None:
-            runnable.append(planned)
+        if only is not None and name not in only:
+            continue
+        if skip is not None and name in skip:
+            print(f"[skip] {name}: filtered via --skip")
+            continue
+        if name in FULL_ONLY and only is None and not full:
+            print(f"[skip] {name}: left to CI and --full")
+            continue
+        if unaffected is not None and name in unaffected:
+            print(f"[skip] {name}: branch touched none of its files")
+            continue
+        if unaffected is not None:
+            narrowed = _scoped_cmd(name, cmd, changed)
+            if narrowed is None:
+                print(f"[skip] {name}: branch touched none of its files")
+                continue
+            cmd = narrowed
+        # The `slow` marker covers the generator derivations and fuzz loops
+        # whose cost is seconds each.  Deselecting them locally trades no
+        # coverage, because the sharded `slow` job runs every marked test
+        # on every push.  This is keyed on
+        # --full rather than on scoping because a run that widens back to
+        # everything -- a tooling change, an unreadable diff -- should still
+        # not pay for them.
+        #
+        # The tests/interpreters suites carry the same marker on their two 5.2s tests
+        # (the eight-level nesting round trip and the n=5 parity table), which
+        # are 10.4s of that step's 12.8s.  CI's `line` job runs that suite
+        # unfiltered on every push, so deselecting them here trades no
+        # coverage either.
+        step_env = env
+        if name == LEAK_STEP and "LEAKSWEEP_JOBS" not in env:
+            step_env = dict(step_env, LEAKSWEEP_JOBS=LEAKSWEEP_JOBS)
+        if name == "pre-commit":
+            # Skip the config's mypy hook: the very next step runs mypy over
+            # src/ *and* scripts/ from the project env, against the same
+            # pyproject config, so the hook re-proves a strict subset -- and
+            # pays for its own isolated env to do it.  Only the local run
+            # skips it; CI runs `pre-commit run --all-files` with no SKIP
+            # (ci.yml:28), so the hook still guards the config itself.
+            step_env = dict(step_env, SKIP="mypy")
+        if only is None and name == "pytest":
+            # A default run leaves the whole slow band to CI.  A --full run
+            # takes the band but not the `weekly` probes inside it,
+            # which are 142.6s of its ~182s and are sampled once a week by
+            # `.github/workflows/weekly.yml` -- which runs bare `pytest`
+            # rather than this script, so it is unaffected by either flag.
+            #
+            # Appended to argv rather than set in `addopts`, because pytest
+            # *prepends* addopts: a default there would sit before the
+            # caller's own `-m` and lose to it, and `just test-quick`'s
+            # `-m 'not slow and not medium'` would then re-admit the band it
+            # exists to skip.
+            cmd = [*cmd, "-m", "not weekly" if full else "not slow"]
+        if only is None and not full and name == LINE_STEP:
+            # Not argv: the command ends in `pytest . -q` under `uv run
+            # --isolated`, so an appended flag would land after the path
+            # argument and be read by uv's pytest, not composed with the
+            # rest of the step's own options.  PYTEST_ADDOPTS is applied
+            # by pytest itself wherever it ends up running.
+            step_env = dict(env, PYTEST_ADDOPTS=_line_addopts(env))
+        if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
+            print(f"[skip] {name}: uv not installed")
+            continue
+        if not have_pylint and "(pylint)" in name:
+            print(f"[skip] {name}: pylint not installed (pip install pylint)")
+            continue
+        runnable.append((name, cmd, step_env))
 
-    gate = _coverage_gate(runnable, env, only=only, full=full)
+    # The gate speaks only for the suite that actually ran.  A default local
+    # run deselects the `slow` tests, so a line covered only by one of those
+    # would read as uncovered; --partial makes the gate report it rather than
+    # fail on evidence it does not have.  A --full run has no such excuse.
+    #
+    # The deselection has two sources, and both have to be caught.  This file
+    # appends `-m "not slow"` itself, but `just test-quick` instead exports
+    # PYTEST_ADDOPTS and passes --only, which suppresses the append while
+    # pytest still reads the env var and runs the subset.  Keying on --only
+    # alone would leave that path enforcing strict subset data -- the exact
+    # false failure --partial exists to prevent, on the blessed fast loop.
+    gate: tuple[str, list[str], dict[str, str]] | None = None
+    if any(name == "pytest" for name, _, _ in runnable):
+        gate_cmd = [*PY, "scripts/check_diff_coverage.py"]
+        selected = any(
+            word.startswith("-m") for word in env.get("PYTEST_ADDOPTS", "").split()
+        )
+        if selected or (only is None and not full):
+            gate_cmd.append("--partial")
+        gate = (DIFF_COVERAGE_STEP, gate_cmd, env)
 
     stream = _should_stream(len(runnable), quiet=quiet, verbose=verbose)
     failures, timings, wall = _run_steps(runnable, stream=stream, gate=gate)
 
     if timings:
-        _print_timings(timings, wall)
+        print("-" * 40)
+        for name, elapsed in timings:
+            print(f"{elapsed:5.1f}s  {name}")
+        total = sum(t for _, t in timings)
+        # Two totals, because they stopped being the same number once pytest
+        # started running alongside the rest: the sum is how much work was
+        # done, the wall is how long the push actually waited for it.
+        print(f"{total:5.1f}s  TOTAL (sum of steps)")
+        print(f"{wall:5.1f}s  WALL  (elapsed, steps overlap)")
     print("=" * 40)
     if failures:
         print(f"{failures} check(s) failed")
