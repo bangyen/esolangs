@@ -365,19 +365,26 @@ def check_l_leaves() -> None:
         detail=f"k=0..8, all stale patterns x 2 entries = {cases} runs, {bad} bad",
     )
 
-    bare_top = [
-        format(i, f"0{2**n}b")
-        for n in (1, 2, 3)
-        for i in range(2 ** (2**n))
-        if _tree(list(format(i, f"0{2**n}b"))) == list(_TREE_1)
-    ]
+    # A ``1`` leaf must carry its drain: for ``k > 0`` skipped bits the leaf
+    # grows by one ``+/+`` step per bit and a ``*`` glyph appears.  The bare
+    # ring ``_TREE_1`` is 3 rows tall and has no ``*`` -- it is exactly what a
+    # leaf that skipped its drain would look like, so the predicate below is
+    # *about the ring* and the control is the ring itself.
+    def is_bare_ring(rows: list[str]) -> bool:
+        return len(rows) == 3 and not any("*" in row for row in rows)
+
+    bare_leaves = [n for n in range(1, 6) if is_bare_ring(_drained_leaf("1", n))]
     const_ok = all(
         _tree(list("1" * (2**n))) == _drained_leaf("1", n) for n in range(1, 6)
     )
+    control = is_bare_ring(list(_TREE_1))
     report(
         "L4 bare ring never on top",
-        ok=not bare_top and const_ok,
-        detail=f"{len(bare_top)} tables (n<=3) top out bare; constant-1 folds to k=n",
+        ok=not bare_leaves and const_ok and control,
+        detail=(
+            f"k=1..5 leaves carry a drain ({len(bare_leaves)} bare); "
+            f"constant-1 folds to k=n; control fires={control}"
+        ),
     )
 
 
