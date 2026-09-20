@@ -5,6 +5,8 @@ Polynomial is an esoteric language where programs are polynomial functions and
 statements are executed based on the zeroes of the function.
 """
 
+import builtins
+import importlib
 import io
 import json
 import sys
@@ -13,7 +15,9 @@ from pathlib import Path
 
 import pytest
 
+import esolangs
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.register_based import polynomial as polynomial_module
 from esolangs.interpreters.register_based.polynomial import (
     _divide_quadratic,
     _factor_roots,
@@ -32,6 +36,25 @@ from tests.interpreters.contract import CycleContract, SnapshotContract
 _PRECISION_PROGRAMS: dict[str, str] = json.loads(
     (Path(__file__).parents[2] / "tests/fixtures/polynomial_precision.json").read_text()
 )
+
+
+def test_missing_math_extra_is_actionable(monkeypatch: pytest.MonkeyPatch) -> None:
+    real_import = builtins.__import__
+
+    def without_sympy(name: str, *args: object, **kwargs: object) -> object:
+        if name == "sympy":
+            raise ModuleNotFoundError("No module named 'sympy'", name="sympy")
+        return real_import(name, *args, **kwargs)
+
+    with monkeypatch.context() as missing:
+        missing.delitem(sys.modules, "sympy")
+        missing.setattr(builtins, "__import__", without_sympy)
+        importlib.reload(polynomial_module)
+        with pytest.raises(
+            esolangs.MissingDependencyError, match=r"pip install 'esolangs\[math\]'"
+        ):
+            esolangs.run("Polynomial", "f(x) = x")
+    importlib.reload(polynomial_module)
 
 
 class TestPolynomialHelperFunctions:

@@ -38,6 +38,22 @@ def test_unknown_language_raises() -> None:
     assert issubclass(UnknownLanguageError, ValueError)
 
 
+def test_missing_dependency_error_is_public() -> None:
+    assert issubclass(esolangs.MissingDependencyError, EsolangError)
+    assert issubclass(esolangs.MissingDependencyError, ImportError)
+
+
+def test_deliberate_error_keeps_partial_output() -> None:
+    from esolangs import _keeping_output
+    from esolangs.interpreters.io import ScriptedIO
+
+    io = ScriptedIO()
+    io.print_str("before")
+    error = _keeping_output(EsolangError("stop"), io)
+    assert error.partial_output == "before"
+    assert error.__notes__ == ["the program printed 'before' before this"]
+
+
 def test_run_eof_when_input_runs_out() -> None:
     program = boolean.circlefuck("10")  # reads one input bit
     with pytest.raises(EOFError):

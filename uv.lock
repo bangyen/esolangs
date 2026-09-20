@@ -199,9 +199,6 @@ wheels = [
 name = "esolangs"
 version = "0.5.0"
 source = { editable = "." }
-dependencies = [
-    { name = "sympy" },
-]
 
 [package.optional-dependencies]
 dev = [
@@ -215,10 +212,14 @@ dev = [
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
     { name = "ruff" },
+    { name = "sympy" },
     { name = "types-requests" },
     { name = "types-setuptools" },
     { name = "urllib3" },
     { name = "z3-solver" },
+]
+math = [
+    { name = "sympy" },
 ]
 
 [package.metadata]
@@ -233,13 +234,14 @@ requires-dist = [
     { name = "pytest-timeout", marker = "extra == 'dev'", specifier = ">=2.3" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.8.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = "==0.16.5" },
-    { name = "sympy", specifier = ">=1.12.0" },
+    { name = "sympy", marker = "extra == 'dev'", specifier = ">=1.12.0" },
+    { name = "sympy", marker = "extra == 'math'", specifier = ">=1.12.0" },
     { name = "types-requests", marker = "extra == 'dev'" },
     { name = "types-setuptools", marker = "extra == 'dev'" },
     { name = "urllib3", marker = "extra == 'dev'", specifier = ">=2.7.0" },
     { name = "z3-solver", marker = "extra == 'dev'", specifier = ">=4.15.0" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["math", "dev"]
 
 [[package]]
 name = "execnet"

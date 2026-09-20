@@ -158,10 +158,14 @@ class TestLongPrograms:
 class TestFactorint:
     """``_factorint`` must answer exactly what ``sympy.factorint`` would.
 
-    It divides small primes out itself and only hands the residue to
-    sympy (see the function's docstring), so the two can disagree only
-    where that split is wrong -- which is precisely what these check.
+    SymPy is the test oracle; the interpreter itself stays standard-library.
     """
+
+    def test_primality_boundaries(self) -> None:
+        from esolangs.interpreters.tape_based.factor import _isprime64
+
+        assert not _isprime64(0)
+        assert _isprime64(2)
 
     @pytest.mark.parametrize(
         "number",
@@ -257,20 +261,10 @@ class TestFactorint:
         # a slow machine.
         assert elapsed < 5.0, f"factorizing took {elapsed:.1f}s"
 
-    def test_never_hands_a_composite_to_sympy(self) -> None:
-        """The same guarantee as above, asserted on the handoff itself.
-
-        The timing test next to this one passes whenever the machine is
-        fast enough, so it cannot see a handoff that happens to be cheap.
-        This one makes ``factorint`` fail if it is called at all, and
-        picks the input that provokes the handoff: every factor sits just
-        above ``_SIEVE_CHUNK``, so the first chunk divides nothing out and
-        a loop that treated a barren chunk as a ceiling would give up
-        here with the composite intact.
-        """
+    def test_never_strands_a_composite_above_the_first_chunk(self) -> None:
+        """A barren chunk is not a factorization ceiling."""
         import sympy
 
-        from esolangs.interpreters.tape_based import factor as factor_module
         from esolangs.interpreters.tape_based.factor import (
             _SIEVE_CHUNK,
             _factorint,
@@ -280,12 +274,7 @@ class TestFactorint:
         assert min(primes) > _SIEVE_CHUNK, "the case needs a barren first chunk"
         number = primes[0] * primes[1] * primes[2]
 
-        def refuse(*_args: object, **_kwargs: object) -> dict[int, int]:
-            raise AssertionError("a composite was stranded on sympy.factorint")
-
-        with patch.object(factor_module.sympy, "factorint", refuse):
-            assert _factorint(number) == dict.fromkeys(primes, 1)
-        # The sieve, not sympy, is what found them.
+        assert _factorint(number) == dict.fromkeys(primes, 1)
         assert sympy.factorint(number) == dict.fromkeys(primes, 1)
 
     def test_does_not_pay_isprime_per_chunk(self) -> None:
@@ -305,7 +294,7 @@ class TestFactorint:
         )
 
         asked: list[int] = []
-        real_isprime = factor_module.sympy.isprime
+        real_isprime = factor_module._isprime64  # noqa: SLF001
 
         def counting_isprime(value: int) -> bool:
             asked.append(value)
@@ -313,10 +302,12 @@ class TestFactorint:
 
         # A prime in the third chunk, so the sieve must widen twice, with
         # a fat small-prime tail to make the residue a real bignum.
-        far = int(factor_module.sympy.nextprime(_SIEVE_CHUNK * 2))
+        import sympy
+
+        far = int(sympy.nextprime(_SIEVE_CHUNK * 2))
         assert far > _SIEVE_CHUNK * 2, far
         number = 3**40 * 5**20 * far
-        with patch.object(factor_module.sympy, "isprime", counting_isprime):
+        with patch.object(factor_module, "_isprime64", counting_isprime):
             factors = _factorint(number)
 
         assert factors == {3: 40, 5: 20, far: 1}, factors
@@ -330,13 +321,13 @@ class TestFactorint:
         primes = [20011, 20021, 20023, 20029, 20047]
         number = math.prod(primes)
         assert number >= 2**64
-        real_isprime = factor_module.sympy.isprime
+        real_isprime = factor_module._isprime64  # noqa: SLF001
 
         def exact_range_only(value: int) -> bool:
             assert value < 2**64
             return bool(real_isprime(value))
 
-        with patch.object(factor_module.sympy, "isprime", exact_range_only):
+        with patch.object(factor_module, "_isprime64", exact_range_only):
             assert _factorint(number) == dict.fromkeys(primes, 1)
 
     def test_matches_sympy_on_random_integers(self) -> None:
