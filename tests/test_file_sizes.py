@@ -30,7 +30,6 @@ _RATCHET = {
     "src/esolangs/interpreters/grid_based/streetcode.py": 1500,
     "tests/test_answer_plumbing.py": 1268,
     "tests/test_vm.py": 1241,
-    "tests/test_vm_detectors.py": 1220,
     "tests/tools/test_boolean_tape.py": 1227,
 }
 
