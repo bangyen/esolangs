@@ -6,6 +6,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.befunge import _advance, _Machine, run
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Seeded
+from esolangs.vm import run_until_halt
 from tests.interpreters.runner import run_program
 
 
@@ -90,6 +91,13 @@ def test_a_seeded_run_is_reproducible() -> None:
 def test_empty_program_is_rejected() -> None:
     with pytest.raises(ValueError, match="cannot be empty"):
         run([], IO())
+
+
+def test_an_unbounded_push_uses_the_mutable_runtime_stack() -> None:
+    """The hostile-input sweep drives this path to 20,000 stack entries."""
+    machine = _Machine(["1"], IO())
+    assert run_until_halt(machine, 20_000) is False
+    assert machine.stack == [1] * 20_000
 
 
 def test_a_done_state_is_its_own_successor() -> None:
