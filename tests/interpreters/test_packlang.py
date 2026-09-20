@@ -176,35 +176,13 @@ class TestWikiExamples:
         assert io.getvalue() == "1" * io.getvalue().count("1")
         assert set(io.getvalue()) == {"1"}
 
-    def test_cat_parses_and_accumulates_but_cannot_reach_its_terminator(
-        self,
-    ) -> None:
-        """The wiki cat assumes a byte stream; this package reads lines.
-
-        Its inner loop ends on ``c ^ 10``, a literal newline *byte* from
-        ``charGet``.  Input here arrives through ``splitlines``, so a line
-        never begins with byte 10 -- a blank line is ``""`` and reads as
-        the package-wide 0 -- and the terminator is unreachable by
-        construction rather than by a bug.  What is checked is that the
-        program runs and consumes its input; the echo phase it never
-        reaches is asserted by the rewritten cat below.
-        """
-        io = ScriptedIO("h\ni\n\n")
-        with pytest.raises(EOFError):
-            run(CAT, io)
-        assert io.position() == 3
-
-    def test_a_line_terminated_cat_echoes(self) -> None:
-        """The same construction with the terminator this IO can deliver.
-
-        Only the guard changes -- ``c ^ 10`` becomes ``c``, so the loop
-        ends on the 0 a blank line reads as. The copy-by-countdown body,
-        the array indexing and the echo loop are the wiki's unchanged,
-        which is what makes this evidence that the cat's *mechanism* runs.
-        """
-        assert (
-            _run(CAT.replace("While c ^ 10 Do", "While c Do"), "h\ni\n\n") == "hi\r\n"
-        )
+    def test_cat_reaches_its_newline_terminator_at_eof(self) -> None:
+        machine = _Machine(CAT, io := ScriptedIO("h\ni\n"))
+        for _ in range(1000):
+            machine.step()
+            if io.getvalue() == "hi\r\n":
+                break
+        assert io.getvalue() == "hi\r\n"
 
     def test_plus_or_minus_runs(self) -> None:
         """Its ``: code`` names a package variable, not a parameter.
@@ -230,12 +208,12 @@ class TestLiteralBase:
     def test_the_decimal_examples_are_byte_exact(self) -> None:
         assert _run(HELLO) == "Hello, World!\r\n"
         assert _run(TRUTH_MACHINE, "0\n") == "0"
-        # The cat's own terminator is unreachable under line-based input
-        # (see TestWikiExamples); its decimal literals are what is pinned
-        # here -- 100 as an array length and 13/10 as the CRLF it echoes.
-        assert (
-            _run(CAT.replace("While c ^ 10 Do", "While c Do"), "h\ni\n\n") == "hi\r\n"
-        )
+        machine = _Machine(CAT, io := ScriptedIO("h\ni\n"))
+        for _ in range(1000):
+            machine.step()
+            if io.getvalue() == "hi\r\n":
+                break
+        assert io.getvalue() == "hi\r\n"
 
     def test_the_binary_authored_example_is_declared_wrong(self) -> None:
         """As written it prints mojibake, not the ``0110`` its comments claim.
@@ -374,13 +352,7 @@ Package : IO {
         assert _run(code) == "A"
 
     def test_empty_input_line_reads_as_zero(self) -> None:
-        """The package-wide blank-line convention, which beats the wiki.
-
-        The wiki says empty input returns a newline; every interpreter
-        here reads a blank line as 0 instead, and
-        ``tests/interpreters/test_input_convention.py`` pins that across
-        the whole package, so the shared convention wins.
-        """
+        """A supplied blank line remains distinct from EOF."""
         code = """
 Package : IO {
   Char c;
@@ -583,18 +555,18 @@ Package : IO {
         with pytest.raises(HaltError, match="outside"):
             _run(code)
 
-    def test_reading_past_the_input_raises_eof(self) -> None:
+    def test_reading_past_the_input_yields_newline(self) -> None:
         code = """
 Package : IO {
   Char c;
   Integer main {
     charGet(c);
+    charPut(c);
     0;
   }
 } p;
 """
-        with pytest.raises(EOFError):
-            run_program(run, code, "", suppress_eof=False)
+        assert _run(code) == "\n"
 
     @pytest.mark.parametrize(
         "program",
