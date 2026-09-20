@@ -2,7 +2,7 @@
 
 Run:  just proofs   (or python tests/proofs/deep/multiplicity.py)
 
-``docs/polynomial.md`` proves "each leading zero buys one root" for an
+``docs/proofs/polynomial.md`` proves "each leading zero buys one root" for an
 exponential sum on *distinct* nodes.  The unconditional language bound is
 ``Omega(T**2 / log**2 T)``: the routing floor gives ``m = Omega(T/log T)``
 real instruction *positions*, and the confluent certificate here prices
@@ -286,7 +286,7 @@ def _check_loops(failures: list[str]) -> int:
 def _check_routing(failures: list[str]) -> int:
     """Pin the executed facts behind the sharpened routing lemma.
 
-    ``docs/polynomial.md`` proves ``N'(k+1) <= 2m + E(k)`` with ``m`` the real
+    ``docs/proofs/polynomial.md`` proves ``N'(k+1) <= 2m + E(k)`` with ``m`` the real
     instruction *positions* (the routing floor), which with the confluent
     certificate gives ``Omega(T**2 / log**2 T)``.  The block-incidence bound
     sharpens this to ``Omega(T**2 / log T)``.  This check pins the

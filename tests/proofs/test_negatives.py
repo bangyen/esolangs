@@ -1,4 +1,4 @@
-"""The limits ``docs/polynomial.md`` claims, as executable checks.
+"""The limits ``docs/proofs/polynomial.md`` claims, as executable checks.
 
 Most of that document's content is a measurement -- a ratio, a census, a
 growth exponent.  Those belong in prose, where a stale number reads as a
@@ -43,7 +43,7 @@ from esolangs.tools.register import polynomial
 # Polynomial cannot ship a factored program
 # --------------------------------------------------------------------------
 #
-# ``docs/polynomial.md`` prices Polynomial's text as the *expanded*
+# ``docs/proofs/polynomial.md`` prices Polynomial's text as the *expanded*
 # polynomial's coefficient digits.  The obvious escape is to ship the product
 # form instead -- m factors, each O(log) characters, so O(m log m) text and no
 # expansion at all.  The document rules that out on the parser's behaviour,
@@ -85,7 +85,7 @@ class TestFactoredProgramsAreMisread:
 # Polynomial multiples cannot change what a program does
 # --------------------------------------------------------------------------
 #
-# ``docs/polynomial.md`` says extra roots that do not match an instruction
+# ``docs/proofs/polynomial.md`` says extra roots that do not match an instruction
 # code "may multiply the mandatory root product without changing execution".
 # That premise carries the whole sparse-multiple frontier, so it is executed
 # rather than asserted: built here, decoded here, and run here.
@@ -157,7 +157,7 @@ class TestIgnoredRootMultiplesPreserveExecution:
 # Polynomial multiples: the second-largest coefficient is a primorial fraction
 # --------------------------------------------------------------------------
 #
-# ``docs/polynomial.md`` ("The tail is a primorial fraction") reports that a
+# ``docs/proofs/polynomial.md`` ("The tail is a primorial fraction") reports that a
 # multiple of ``(x-2)(x-3)...`` whose every non-constant coefficient is small
 # does not exist at any degree searched: the floor sits near ``0.4`` of the
 # primorial and stops falling once the degree passes about twice the root
@@ -233,7 +233,7 @@ def _remainder_fits(roots: tuple[int, ...], degree: int, low: int, height: int) 
 
 
 class TestSparseRemainderNeedsTheLargestPrime:
-    """``docs/polynomial.md`` ("The sparse-remainder profile"): above ``K <=
+    """``docs/proofs/polynomial.md`` ("The sparse-remainder profile"): above ``K <=
     L - 2`` unbounded low coefficients, some remainder coefficient is at
     least ``p_L - 1`` (divided-difference lemma), tight at ``L = 5``; and at
     ``L = 6`` with three unbounded low coefficients no remainder bounded by
@@ -249,7 +249,7 @@ class TestSparseRemainderNeedsTheLargestPrime:
 
 
 class TestIteratedEliminationThresholds:
-    """``docs/polynomial.md`` ("The iterated elimination"): with the lowest
+    """``docs/proofs/polynomial.md`` ("The iterated elimination"): with the lowest
     ``K + 1`` coefficients free, some higher coefficient reaches
     ``prod_{i > K+1} (p_i - 1)``; unsat at the product, sat within 1.4x.
     """
@@ -283,7 +283,7 @@ class TestIteratedEliminationThresholds:
 # Polynomial: the finite-degree certificate and the c = 2 termwise inequality
 # --------------------------------------------------------------------------
 #
-# ``docs/polynomial.md`` ("The iterated elimination") states two measured
+# ``docs/proofs/polynomial.md`` ("The iterated elimination") states two measured
 # inequalities that a language lower bound would need proved for every
 # degree.  Both are exact-rational computations, so they are pinned here at
 # the sizes they were measured; a failure names the degree.
@@ -365,7 +365,7 @@ class TestTwoLargestRootsTermwise:
 
 
 class TestConvolutionStepOfTheTwoRootTheorem:
-    """``docs/polynomial.md`` ("The two largest roots, every degree"): the
+    """``docs/proofs/polynomial.md`` ("The two largest roots, every degree"): the
     induction step.  Adding a root ``x`` convolves ``Q`` with ``(1, x, x^2,
     ...)``; by Cauchy--Binet every 2x2 minor of the new Toeplitz matrix on
     columns ``{0, s}`` is ``sum_{k1 < s <= k2} x^(k1 + k2 - s)`` times the old
@@ -419,7 +419,7 @@ class TestConvolutionStepOfTheTwoRootTheorem:
 # Polynomial: no multiple is lighter than the product itself
 # --------------------------------------------------------------------------
 #
-# ``docs/polynomial.md`` ("Total mass"): over every integer cofactor of the
+# ``docs/proofs/polynomial.md`` ("Total mass"): over every integer cofactor of the
 # degrees searched, the least coefficient-digit mass of a multiple of the
 # first L primes' product is the product's own.  That mass is
 # Theta(L^2 log L), so the iterated elimination's target is the truth at
@@ -527,7 +527,7 @@ def _lighter_real_multiple_exists(
 
 
 class TestTheRealRelaxationIsAsHeavy:
-    """``docs/polynomial.md`` ("Real against integer"): over real monic
+    """``docs/proofs/polynomial.md`` ("Real against integer"): over real monic
     cofactors the least digit mass is the product's own less one -- the one
     digit that free sub-unit coefficients buy -- so the linear-programming
     route is sound and integrality is not where the bound lives."""
@@ -635,7 +635,7 @@ class TestCountStatementsOnAdversarialWitnesses:
 
 
 class TestThreeRootHypothesisAtTheBoundary:
-    """``docs/polynomial.md`` ("General c"): the s-uniform hypothesis for
+    """``docs/proofs/polynomial.md`` ("General c"): the s-uniform hypothesis for
     ``c = 3`` designated roots -- rows ``{n-d, n-1, n}`` against ``{n-1, n,
     n+1}``, every column set, ``psi_d = h_{d-2}(1/rho) / prod rho`` -- an
     equality in the interior, measured at the truncation boundary, and
@@ -704,7 +704,7 @@ def _certificate_tail(
 
 
 class TestEachLeadingZeroBuysOneRoot:
-    """``docs/polynomial.md`` ("The slack certificate"): for the pure
+    """``docs/proofs/polynomial.md`` ("The slack certificate"): for the pure
     exponential sum on ``c`` roots with ``c - 1`` prescribed zeros, of which
     the first ``f`` are at distances ``1..f``, the tail is at most
     ``1 / prod (rho - 1)`` over the ``f + 1`` largest roots, with equality
@@ -749,7 +749,7 @@ class TestEachLeadingZeroBuysOneRoot:
 
 
 class TestOneDisplacedZeroIsProved:
-    """``docs/polynomial.md`` ("One displaced zero"): with zeros at ``1..c-2``
+    """``docs/proofs/polynomial.md`` ("One displaced zero"): with zeros at ``1..c-2``
     and one more at ``z``, the certificate is ``F + lambda G`` (``F`` the
     leading-zero certificate on the ``c - 1`` largest roots, ``G`` the
     ``c``-root sum vanishing at ``0..c-2``), ``u_d = sigma P (h'_d - r_z h_d)``,
@@ -799,7 +799,7 @@ def _exp_sum(y: list[Fraction], zeros: tuple[int, ...], unit_at: int | None):
 
 
 class TestTriangleSlackIsBounded:
-    """``docs/polynomial.md`` ("What the earlier rounds leave behind"): the
+    """``docs/proofs/polynomial.md`` ("What the earlier rounds leave behind"): the
     lossy induction the peel superseded.  ``u = F + lambda G`` with
     ``F`` on the ``c - 1`` largest roots carrying all zeros but the last
     displaced one and ``G`` the ``c``-root sum vanishing at ``0`` and those;
@@ -854,7 +854,7 @@ class TestTriangleSlackIsBounded:
 
 
 class TestConvolutionRelationIsOneDisplacedOnly:
-    """``docs/polynomial.md`` ("What the earlier rounds leave behind"): ``G``
+    """``docs/proofs/polynomial.md`` ("What the earlier rounds leave behind"): ``G``
     is a convolution of ``F`` only when the zeros are one consecutive run
     (``k = 1``); with a second displaced zero the ratio ``G_d / (F * geo)_d``
     is not constant.  That is step 5's ``p = 0`` dichotomy: the convolution
@@ -889,7 +889,7 @@ class TestConvolutionRelationIsOneDisplacedOnly:
 
 
 class TestPointADecomposition:
-    """``docs/polynomial.md`` ("What the earlier rounds leave behind"): the
+    """``docs/proofs/polynomial.md`` ("What the earlier rounds leave behind"): the
     Lagrange-basis decomposition the peel superseded, whose ``B``-pieces
     would not split.  ``E_d = G_d - y_c G_{d-1}`` is a ``(c-1)``-root sum vanishing
     on the leading zeros with ``E_{z_j} = -y_c G_{z_j - 1}``, it equals
@@ -962,7 +962,7 @@ class TestPointADecomposition:
 # The leading-zero theorem, link by link
 # --------------------------------------------------------------------------
 #
-# ``docs/polynomial.md`` ("The slack certificate") proves the lemma the whole
+# ``docs/proofs/polynomial.md`` ("The slack certificate") proves the lemma the whole
 # language bound rests on, by peeling one root and one zero at a time.  The
 # five steps are an identity, an equivalence, two inequalities and a zero
 # count; each is exact, so each is pinned rather than measured.  A failure
@@ -998,7 +998,7 @@ def _leading_run(zeros: tuple[int, ...]) -> int:
 
 
 class TestLeadingZeroTheoremProof:
-    """``docs/polynomial.md`` ("The slack certificate"): the peel, exactly.
+    """``docs/proofs/polynomial.md`` ("The slack certificate"): the peel, exactly.
 
     With ``z = max Z`` displaced, ``Z' = Z \\ {z}``, ``m = max Z'``, ``F`` the
     certificate on the ``c - 1`` largest roots with zeros ``Z'`` and ``F_0 =

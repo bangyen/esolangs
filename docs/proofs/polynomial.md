@@ -1,5 +1,8 @@
 # Polynomial: the scaling lower bound
 
+The standalone theorem is [polynomial.tex](polynomial.tex).  This companion
+retains implementation bounds, searches, counterexamples, and proof history.
+
 Program text is the expanded coefficient digits of a polynomial whose roots
 encode instructions.  The size and time cells of the roadmap's scaling audit
 are closed here as a language lower bound: every Polynomial program for a
