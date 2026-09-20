@@ -129,3 +129,22 @@ implemented, so never in the screen.
   re-enqueue and grid-routing construction, then compare emitted, executed
   programs against the current template; abandon it if the routing spends
   the apparent gain.
+
+- **Raster source kind.**  Admit Piet only with `line` registered, so an image
+  source has two consumers.  Registry half, small: a source kind beside
+  `split` on `Language` (`_table.py:21`), surfaced without breaking the public
+  `RUNNERS` shape (`registry/__init__.py:51`, read as ``(module, split)``) --
+  a sibling `SOURCE_KIND` map or a `raster` frozenset.  `generate`
+  (`__init__.py:143`) is typed `-> str` and wraps through `wrap_program`; a
+  raster language reads rather than embeds, so it must return the generator's
+  `Raster` untouched and skip the string path, widening the return type
+  `_Template`/`_Tagged`, `check_program` and `run` (`__init__.py:375`) assume.
+  `describe` gains the kind.  Language half, large: `line` is not an
+  interpreter in this repo's sense -- `line/simulate.py` offers
+  `compile_program`/`run_compiled`, with no `_Machine`, `step`, `halted`,
+  `snapshot` or `ip_shape`, and its generator round-trips through a file
+  (`render(...).save` -> `extract(path)`, `tests/line/test_line_boolean.py:40`).
+  Every interpreter-sweeping suite (fuzz, VM protocol, input convention,
+  stepping parity, examples) would then require its conformance, and both
+  generators are area-cost, pulling `line` into `tests/proofs/deep/linearity.py`.
+  Worth it for the source kind itself; it does not strengthen the Piet case.
