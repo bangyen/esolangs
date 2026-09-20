@@ -109,12 +109,26 @@ implemented, so never in the screen.
   residual-DAG construction has `O(T/log T)` instructions and expands to the
   matching upper bound.  The public generator's resource cap remains, and no
   matching construction-time upper bound is known: packed expansion is
-  between its `Omega(T**2/log T)` output cost and the conservative
-  `O(T**4/log T)` schoolbook bound.  Cold parsing is polynomial while the
+  between its `Omega(T**2/log T)` output cost and `O(T**2)` on libmpdec's
+  large FNT path (`O(T**4/log**2 T)` with schoolbook multiplication).  Cold
+  parsing is polynomial while the
   fixed-field peel takes every generated factor, but the uncapped asymptotic
   family eventually reaches the exponential-worst-case Zassenhaus fallback.
   See
   [polynomial](polynomial.md) and `tests/proofs/deep/multiplicity.py`.
+
+  Remaining Polynomial work:
+
+  - Scale root recovery fields and lifts from the degree and operand envelope.
+    Close it with exact-division acceptance plus an executed generated case
+    beyond the current `|a| <= 81920` lift.
+  - Prove a polynomial cold-parse bound for the generated family without the
+    Zassenhaus fallback.  Close it on uncapped witnesses outside the fixed
+    fields while preserving arbitrary-program fallback semantics.
+  - Add conservative generation and cold-parse time/memory estimators.  Close
+    each only after corpus and boundary tests show no underestimate, with
+    positive controls that refuse an oversized generation and flag a parse
+    outside the fast peel.
 
   Generation time, growth per added input at the top arity: B-tapemark,
   6-5, Forth, Circuit Diagram past its n=8 route change, and Vandevelo
