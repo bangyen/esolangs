@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import suppress
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.line import Raster
@@ -152,24 +153,18 @@ def _command(
                 if rolls:
                     stack[-depth:] = stack[-rolls:] + stack[-depth:-rolls]
     elif (hue, lightness) == (4, 2):
-        try:
+        with suppress(EOFError, ValueError):
             stack.append(io.input_num())
-        except (EOFError, ValueError):
-            pass
     elif (hue, lightness) == (5, 0):
-        try:
+        with suppress(EOFError):
             stack.append(io.input_char())
-        except EOFError:
-            pass
     elif (hue, lightness) == (5, 1):
         if stack:
             io.print_num(stack.pop())
     elif (hue, lightness) == (5, 2) and stack:
         value = stack.pop()
-        try:
+        with suppress(ValueError):
             io.print_char(chr(value))
-        except ValueError:
-            pass
     return 0, 0
 
 
@@ -227,3 +222,10 @@ def run(program: Raster, io: ScriptedIO) -> None:
                 dp = (dp + 1) % 4
         if not moved:
             return
+
+
+def generate(truth_table: str) -> Raster:
+    """Return a Piet raster computing ``truth_table``."""
+    from .piet_boolean import generate as _generate
+
+    return _generate(truth_table)
