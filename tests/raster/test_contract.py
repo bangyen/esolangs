@@ -9,7 +9,9 @@ from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, SourceKind
 
 RASTER_LANGUAGES = [
-    name for name, language in LANGUAGES.items() if language.source_kind is SourceKind.RASTER
+    name
+    for name, language in LANGUAGES.items()
+    if language.source_kind is SourceKind.RASTER
 ]
 
 
@@ -22,9 +24,19 @@ def test_raster_type_has_neutral_ownership() -> None:
 def test_every_raster_language_generates_shared_source(language: str) -> None:
     program = esolangs.generate(language, "01")
     assert isinstance(program, Raster)
-    assert program.rows and program.rows[0]
+    assert program.rows
+    assert program.rows[0]
     assert esolangs.describe(language)["source_kind"] == "raster"
     assert esolangs.run(language, program, "1\n") == "1"
+
+
+@pytest.mark.parametrize("language", RASTER_LANGUAGES)
+@pytest.mark.parametrize("truth_table", ["0", "1"])
+def test_every_raster_generator_rejects_zero_inputs(
+    language: str, truth_table: str
+) -> None:
+    with pytest.raises(esolangs.TruthTableError, match="needs at least one input"):
+        esolangs.generate(language, truth_table)
 
 
 @pytest.mark.slow
