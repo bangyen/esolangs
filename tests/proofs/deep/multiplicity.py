@@ -289,9 +289,9 @@ def _check_routing(failures: list[str]) -> int:
     ``docs/polynomial.md`` proves ``N'(k+1) <= 2m + E(k)`` with ``m`` the real
     instruction *positions* (the routing floor), which with the confluent
     certificate gives ``Omega(T**2 / log**2 T)``.  The stronger
-    ``Omega(T**2 / log T)`` would need ``N' <= c * L_real + E`` with ``L_real``
-    the distinct real *values*.  That is open; this check pins what is
-    executed:
+    ``Omega(T**2 / log T)`` reduces to ``N' <= 6 * L_real + E`` with ``L_real``
+    the distinct real *values*; `_check_routing_bound` pins that reduction.
+    This check pins the per-instruction facts it rests on:
 
     * every real instruction has at most two successors, fixed by its bracket
       and independent of the register;
@@ -377,6 +377,137 @@ def _check_routing(failures: list[str]) -> int:
     return count
 
 
+def _check_routing_bound(failures: list[str]) -> int:
+    """Pin the sharpened routing lemma ``N' <= 6 * L_real + E``.
+
+    The routing floor gives ``N' <= 2m + E`` on real *positions*; the sharper
+    ``N' <= 2 * m_routing + E`` counts only positions that take both
+    successors.  ``m_routing <= 3 * L_real`` then follows from three facts:
+
+    * a back-edge's target is ``opener + 1``; if that is itself a closer, a
+      condition-true jump lands on the closer and self-loops, so a halting
+      program never routes such a closer (executed positive control);
+    * consequently a routing closer is reached only by fall-through, so two
+      same-value, same-condition closers nest and only one routes;
+    * loop openers have code only in ``5, 7, 8`` (code ``6`` indexes the
+      unused ``_COND`` slot and would raise), so a value carries at most three
+      conditions.
+
+    Then ``N' <= 6 L_real + E``, ``L_real = Omega(T/log T)``, and the
+    distinct-root certificate upgrades the row to ``Omega(T**2 / log T)``.
+    """
+    from itertools import product
+
+    from esolangs.interpreters.register_based.polynomial import (
+        _COND,
+        _advance,
+        _bracket_pairs,
+    )
+
+    count = 0
+    # Code 6 as a loop opener indexes _COND[1], which is absent: only 5, 7, 8
+    # are loop conditions, so a value has at most three.
+    if set(_COND) != {0, 2, 3}:
+        failures.append(f"_COND keys changed: {set(_COND)}")
+    if {(c - 1) % 4 for c in range(1, 9) if c > 4} != {0, 1, 2, 3}:
+        failures.append("loop-opener condition set changed")
+    count += 1
+    # Positive control: a self-looped closer does not halt.
+    instrs = [[1, 1], [5], [2], [0, 1]]
+    pairs = _bracket_pairs(instrs)
+    state, steps = (0, 0), 0
+    while state[1] < len(instrs) and steps < 50:
+        state, _ = _advance(state, instrs, None, pairs)
+        steps += 1
+    if state[1] >= len(instrs):
+        failures.append("self-looped closer halted; positive control dead")
+    count += 1
+    # Exhaustive over a halting corpus: no routing closer has opener+1 a
+    # closer, and no (code, condition) has two routing positions.  The
+    # alphabet must be rich enough to form two routing positions, or the
+    # sweep proves nothing; `max_routing` is checked as a positive control.
+    alphabet = [
+        [1],
+        [2],
+        [3],
+        [4],
+        [5],
+        [6],
+        [7],
+        [8],
+        [1, 1],
+        [-48, 1],
+        [0, 1],
+        [0, 2],
+        [1, 2],
+        [3, 3],
+    ]
+    seen = 0
+    max_routing = 0
+    import random
+
+    rng = random.Random(20260920)
+    bodies = [
+        [list(s) for s in seq]
+        for length in range(2, 5)
+        for seq in product(alphabet, repeat=length)
+    ]
+    # Random longer programs, or the corpus cannot form two routing positions
+    # (positive control below); the seed and witness are pinned so the sweep
+    # is reproducible.
+    for _ in range(60000):
+        bodies.append([list(rng.choice(alphabet)) for _ in range(rng.randint(6, 11))])
+    bodies.append([[8], [4], [0, 2], [6], [1, 2], [5], [1, 2], [2], [2], [3, 3]])
+    for body in bodies:
+        pr = _bracket_pairs(body)
+        if len(pr) % 2:
+            continue
+        reg, ind, pos, steps, succ = 0, 0, 0, 0, {}
+        while ind < len(body) and steps < 300:
+            steps += 1
+            ins = body[ind]
+            byte = 48 if ins == [0, 2] and pos < 2 else None
+            if ins == [0, 2]:
+                pos += 1
+            was = ind
+            try:
+                (reg, ind), _ = _advance((reg, ind), body, byte, pr)
+            except Exception:
+                break
+            if len(body[was]) == 1:
+                succ.setdefault(was, set()).add(ind)
+        if ind < len(body):
+            continue  # not halting on the zero input
+        seen += 1
+        groups: dict[tuple[int, int], int] = {}
+        for p, s in succ.items():
+            if len(s) <= 1:
+                continue
+            if body[p][0] in (2, 6):
+                o = pr[p]
+                if (
+                    o + 1 < len(body)
+                    and len(body[o + 1]) == 1
+                    and body[o + 1][0] in (2, 6)
+                ):
+                    failures.append(f"halting program routes a self-looped closer {p}")
+                cond = (body[o][0] - 1) % 4
+            else:
+                cond = (body[p][0] - 1) % 4
+            key = (body[p][0], cond)
+            groups[key] = groups.get(key, 0) + 1
+        max_routing = max(max_routing, sum(groups.values()))
+        for k, v in groups.items():
+            if v > 1:
+                failures.append(f"halting corpus: {v} routing positions for {k}")
+    if seen < 1000:
+        failures.append(f"halting corpus too small: {seen}")
+    if max_routing < 2:
+        failures.append(f"corpus never forms two routing positions: {max_routing}")
+    count += 1
+    return count
+
+
 def main() -> int:
     failures: list[str] = []
     certs = _check_certificates(failures)
@@ -384,11 +515,13 @@ def main() -> int:
     mass = _check_mass(failures)
     loops = _check_loops(failures)
     routing = _check_routing(failures)
+    bound = _check_routing_bound(failures)
     print(f"  confluent certificates checked exactly : {certs}")
     print(f"  slack-assembly thresholds checked      : {asm}")
     print(f"  divisibility + mass(f) >= c m^2 cases  : {mass}")
     print(f"  routing-floor bracket facts checked    : {loops}")
     print(f"  sharpened-routing facts checked        : {routing}")
+    print(f"  routing bound (N' <= 6 L_real) checked : {bound}")
     if failures:
         for line in failures:
             print(f"  FAIL: {line}")
