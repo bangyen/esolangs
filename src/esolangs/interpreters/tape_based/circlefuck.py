@@ -19,6 +19,7 @@ from __future__ import annotations
 import re
 import sys
 from collections.abc import Sequence
+from functools import lru_cache
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.brackets import unmatched
@@ -66,6 +67,12 @@ def parse(code: str) -> list[int]:
     code = bytes(code, "utf-8").decode("unicode_escape")
 
     return [ord(c) for c in code]
+
+
+@lru_cache(maxsize=16)
+def _parsed(code: str) -> tuple[int, ...]:
+    """Return the parsed tape in a reusable immutable form."""
+    return tuple(parse(code))
 
 
 def find(code: Sequence[int], ind: int, ptr: int) -> int:
@@ -159,7 +166,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code``; an empty program is malformed."""
         self.io = io
-        cells = parse(code)
+        cells = list(_parsed(code))
         if not cells:
             raise ValueError("Circlefuck program cannot be empty")
         # The shell owns the tape as a mutable list: a write is one
