@@ -8,6 +8,7 @@ to hold them, which is why the gates could stop matching wording.
 
 import pathlib
 import re
+from typing import cast
 
 import esolangs
 from esolangs.registry import LANGUAGES, RUNNERS, wiki_url
@@ -298,6 +299,7 @@ def render_tui_section() -> str:
     from esolangs import tui
 
     program = esolangs.generate(_TUI_LANGUAGE, _TUI_TABLE)
+    program = cast(str, program)
     stdin = esolangs.encode_inputs(_TUI_LANGUAGE, _TUI_BITS)
     frame = tui.replay(_TUI_LANGUAGE, program, stdin, _TUI_STEP)
     screen = tui.render(frame, height=_TUI_HEIGHT, width=_TUI_WIDTH)

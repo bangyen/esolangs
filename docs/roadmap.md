@@ -49,10 +49,8 @@ implemented, so never in the screen.
   [contributing](CONTRIBUTING.md), the same axis INTERCAL claims and dearer.
   The generator would be the grid walk the set has, so the language case
   rests on the branch alone.  The medium carries the integration case: image
-  source is not a language axis, but two raster sources give the registry a
-  reason to carry one -- `line` alone is a path no registry caller reaches,
-  and registering Piet beside it gives a raster source kind two consumers,
-  the downstream a shared shim needs to stay off the curation removal list.
+  source is not a language axis, but Piet would give Line's registered raster
+  path a second consumer and prove the boundary is shared rather than bespoke.
   Pin before building: exact-palette matching (anti-aliasing moves a codel;
   non-standard colours are implementation-defined), the eight-attempt
   black/edge termination, the DP/CC initial state.  Spec read only; output
@@ -163,23 +161,12 @@ implemented, so never in the screen.
   programs against the current template; abandon it if the routing spends
   the apparent gain.
 
-- **Raster source integration.**  `SourceKind`, an RGB-preserving public
-  `Raster`, and the unimplemented Line language establish the source boundary
-  without changing `RUNNERS`.  Admit Piet only with `line` registered, so an
-  image source has two interpreter consumers.  `generate`
-  (`__init__.py:143`) is typed `-> str` and wraps through `wrap_program`; a
-  raster language reads rather than embeds, so it must return the generator's
-  `Raster` untouched and skip the string path, widening the return type
-  `_Template`/`_Tagged`, `check_program` and `run` (`__init__.py:375`) assume.
-  `describe` already carries the kind.  Language half, large: `line` is not an
-  interpreter in this repo's sense -- `line/simulate.py` offers
-  `compile_program`/`run_compiled`, with no `_Machine`, `step`, `halted`,
-  `snapshot` or `ip_shape`, and its generator round-trips through a file
-  (`render(...).save` -> `extract(path)`, `tests/line/test_line_boolean.py:40`).
-  Every interpreter-sweeping suite (fuzz, VM protocol, input convention,
-  stepping parity, examples) would then require its conformance, and both
-  generators are area-cost, pulling `line` into `tests/proofs/deep/linearity.py`.
-  Worth it for the source kind itself; it does not strengthen the Piet case.
+- **Raster source integration.**  Done for Line: `generate` returns a lazy
+  RGB `Raster`, `run` accepts it or a PNG path, and `describe` reports
+  `source_kind="raster"`.  Raster languages stay outside text-only `RUNNERS`
+  and its VM/step/fuzz contracts.  A generated raster retains its graph for
+  repeated rows; PNG-loaded source is extracted and executed from pixels.
+  Piet is now the next useful consumer of this boundary.
 
 - **Image-source candidates.**  A read of the 129 `Category:Non-textual` pages
   for raster sources only -- music (Fugue, Velato), music-note, and

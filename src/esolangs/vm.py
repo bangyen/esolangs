@@ -927,6 +927,8 @@ def make_vm(language: str, program: str | os.PathLike[str], stdin: str = "") -> 
     if name not in _VM_ADAPTERS:
         raise UnknownLanguageError(language)
     source = check_program(name, program, stdin)
+    if not isinstance(source, str):  # guarded by membership in text-only adapters
+        raise UnknownLanguageError(language)
     try:
         return _VM_ADAPTERS[name](source, stdin)
     except RecursionError as exc:
