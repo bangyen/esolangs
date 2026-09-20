@@ -13,6 +13,7 @@ from esolangs.tools.helpers import _validate_truth_table
 
 #: ``6 * 8``: Befunge has no multi-digit literal, so 48 is built arithmetically.
 _ASCII_ZERO = "68*"
+_END = ".@"
 
 
 def befunge(truth_table: str) -> str:
@@ -39,7 +40,8 @@ def befunge(truth_table: str) -> str:
         + build_width
         + "/1+g"
         + _ASCII_ZERO
-        + "-.@"
+        + "-"
+        + _END
     )
     rows = [header]
     rows.extend(truth_table[base : base + width] for base in range(0, count, width))
