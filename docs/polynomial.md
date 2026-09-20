@@ -60,32 +60,39 @@ enumeration and factor construction are polynomial in `m`; expansion owns the
 asymptotics.  A node covering `r` factors has `O(r)` slots of
 `O(r log m)` digits, hence packed width `q(r) = O(r**2 log m)`.  There are
 `O(m/r)` merges at that balanced-tree level, so expansion costs
-`sum_r O((m/r) M(q(r)))`, over powers of two through `m`.  Schoolbook
-`M(q) = O(q**2)` is dominated by the root level and gives the portable bound
-`O(m**4 log**2 m) = O(T**4/log**2 T)`.  On libmpdec's large FNT path,
-`M(q) = O(q log q)`, the geometric level sum is
-`O(m**2 log**2 m) = O(T**2)` word operations.  Merely writing the result costs
+`sum_r O((m/r) M(q(r)))`, over powers of two through `m`.  The new
+pre-expansion estimator gives `R = O(m**2 log m)` decimal digits at the root;
+the geometric level sum is root-dominated.  Thus the portable schoolbook
+bound is `O(R**2) = O(T**4/log**2 T)`, while libmpdec's large FNT path is
+`O(R log R) = O(T**2)` word operations.  This output-sensitive form is the
+tightened construction upper bound.  Writing the result costs
 `Omega(T**2/log T)`, leaving a factor of `log T` between the current-path
 upper bound and the language lower bound.
 
 A cold parse first scans `Theta(L)` source characters and converts the dense
-coefficients to integers.  On the current fixed-field fast path, modular
-screens cost linear work in the coefficient digits and accepted roots are
-proved by repeated exact division.  A conservative bound for a fully peeled
-generated program, including schoolbook decimal conversion, is
-`O(m**3 log**2 m)` bit operations, or `O(T**3/log T)`.  `_parse_program`
-caches the recovered instruction tuple, so later machines using the same
-source do not repay this cold cost.
+coefficients to integers.  Write `D` for the degree and `H` for the largest
+coefficient's bit length.  Above the NTT threshold the quadratic lift now
+searches `|a| <= D**2`.  Every generated operand satisfies `|a| = O(D)`:
+tree operands are bounded by their instruction count, while a DAG operand is
+at most its two adjacent levels' state counts plus 48 times their label span.
+Thus every generated factor is proposed and exact division leaves a constant
+remainder; generated programs never reach SymPy's Zassenhaus fallback.  If an
+instruction prime equals the primary field modulus, the fields swap pairing
+and cross-check roles, so that otherwise-collapsed conjugate pair is covered.
 
-That fast-path bound is not an asymptotic parser bound for the uncapped
-construction.  Its fields and `|a| <= 81920` lift are fixed; eventually a
-generated operand lies outside them and the remainder reaches SymPy's
-Zassenhaus factorization.  Its recombination enumerates subsets of modular
-factors, giving the current fallback a conservative
-`2**O(m) poly(m, H) = 2**O(T/log T) poly(T)` worst-case bound, where
-`H = O(m log m)` is the coefficient height.  Polynomial-time integer-
-polynomial factorization algorithms exist, but this implementation does not
-establish that bound.  Cold timings on the dense fixtures at `n = 5..10`
+The fixed fields have constant transform cost asymptotically.  There are at
+most `O(D**3)` lifted quadratic candidates, each taking `O(D)` coefficient
+work to screen and, conservatively, exact-divide.  Intermediate quotient
+width is `O(H + D log D)`, so cold parsing is
+`O(L**2 + D**4 M(H + D log D))` bit operations, where `M` is integer
+multiplication.  Even schoolbook arithmetic gives `O(L**6 log**2 L)` because
+`D,H <= L`.  This is a deliberately loose polynomial certificate, not a
+runtime estimate.  A hand-written polynomial with a root outside the lift
+keeps its remainder and
+still reaches `factor_list`, preserving the language's arbitrary-program
+semantics.  `_parse_program` caches recovered instructions, so later machines
+using the same source do not repay the cold cost.  Cold timings on the dense
+fixtures at `n = 5..10`
 were `0.57, 0.72, 1.26, 2.49, 5.15, 17.55` seconds; construction was
 `0.008, 0.018, 0.061, 0.187, 0.587, 2.186` seconds for outputs from 56 KB to
 16.9 MB.  These measurements check which stages dominate; they are not the

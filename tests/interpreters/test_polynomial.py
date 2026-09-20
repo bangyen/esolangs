@@ -665,6 +665,36 @@ class TestNttRecovery:
     leaving what encodes nothing.
     """
 
+    def test_modular_quadratic_screen_handles_short_and_false_positive(self) -> None:
+        from esolangs.interpreters.register_based.polynomial import (
+            _TRIAL_MODULUS,
+            _divide_out_quadratics,
+            _divide_quadratic_mod,
+        )
+
+        assert _divide_quadratic_mod([1, 1], 0, 1) is None
+        found, remainder = _divide_out_quadratics([1, 0, 1 + _TRIAL_MODULUS], {(0, 1)})
+        assert found == []
+        assert remainder == [1, 0, 1 + _TRIAL_MODULUS]
+
+    def test_large_real_only_remainder_uses_parse_estimate(self, monkeypatch) -> None:
+        import esolangs.interpreters.register_based.polynomial as module
+        from esolangs.interpreters.register_based.polynomial import (
+            _factor_roots,
+            _Root,
+        )
+
+        coefficients = (1, *([0] * 101))
+        monkeypatch.setattr(module, "_roots_mod", lambda *_args: set())
+        monkeypatch.setattr(
+            module,
+            "_peel_prime_power_roots",
+            lambda _coefficients, _screen: ([2], [1]),
+        )
+        _factor_roots.cache_clear()
+        assert _factor_roots(coefficients) == (_Root(2, 0),)
+        _factor_roots.cache_clear()
+
     @staticmethod
     def _program(pairs: list[tuple[int, int]], reals: list[int]) -> list[int]:
         """Integer coefficients of ``prod (x-a)^2+q * prod (x-r)``."""
@@ -738,6 +768,28 @@ class TestNttRecovery:
 
         assert 0 in _roots_mod([1, -7, 0], _NTT_FIELDS[0])  # x(x - 7)
 
+    def test_instruction_prime_may_equal_pairing_modulus(self, monkeypatch) -> None:
+        """A field collision swaps pairing fields instead of losing the root."""
+        import sympy as sp
+
+        from esolangs.interpreters.register_based.polynomial import (
+            _NTT_FIELDS,
+            _quadratic_candidates_ntt,
+        )
+
+        base = _NTT_FIELDS[0][0]
+        real = 7
+        root_sets = []
+        for modulus, _, _, generator in _NTT_FIELDS:
+            imaginary_unit = pow(generator, (modulus - 1) // 4, modulus)
+            offset = imaginary_unit * base % modulus
+            root_sets.append({(real + offset) % modulus, (real - offset) % modulus})
+        monkeypatch.setattr(sp, "primerange", lambda _start, _stop: iter((base,)))
+
+        assert (real, base * base) in _quadratic_candidates_ntt(
+            1, (root_sets[0], root_sets[1]), 20
+        )
+
     def test_iter_bits_matches_bit_positions(self) -> None:
         """The byte-scan extraction is exactly ``bin()``'s set bits."""
         from esolangs.interpreters.register_based.polynomial import _iter_bits
@@ -787,14 +839,9 @@ class TestNttRecovery:
         recovered = _factor_roots(tuple(coefficients))
         assert sorted(recovered) == sorted(expected)
 
-    def test_what_the_large_path_cannot_take_reaches_factor_list(self) -> None:
-        """The fallback stays wired on the NTT path.
-
-        A real part past the lift window (half the pairing field) pairs to
-        the wrong lift, fails the exact division, and survives to
-        ``factor_list``, which decodes it anyway -- same bargain as the
-        enumerated path's ``_PEEL_MAX_REAL_PART`` case.
-        """
+    @pytest.mark.medium
+    def test_large_path_lift_scales_past_the_pairing_field(self, monkeypatch) -> None:
+        """Degree-scaled lifting recovers a generated wide operand directly."""
         import math
 
         import sympy as sp
@@ -806,10 +853,17 @@ class TestNttRecovery:
             _Root,
         )
 
-        wide = _NTT_FIELDS[0][0]  # a real part the lift cannot reach
-        pairs = [(3, p * p) for p in sp.primerange(2, 800)]
-        pairs = pairs[: (_NTT_MIN_DEGREE // 2) + 2]
+        wide = _NTT_FIELDS[0][0]  # past the old +/- m // 2 lift
+        pairs = [(3, p * p) for p in sp.primerange(2, 3000)]
+        pairs = pairs[: max((_NTT_MIN_DEGREE // 2) + 2, math.isqrt(wide) + 1)]
         coefficients = self._program([*pairs, (wide, 9)], [])
+
+        def no_fallback(*_args, **_kwargs):
+            raise AssertionError(
+                "generated-envelope factors must not reach factor_list"
+            )
+
+        monkeypatch.setattr(sp, "factor_list", no_fallback)
 
         _factor_roots.cache_clear()
         recovered = _factor_roots(tuple(coefficients))
@@ -818,6 +872,38 @@ class TestNttRecovery:
             root = math.isqrt(q)
             expected.extend([_Root(a, root), _Root(a, -root)])
         assert sorted(recovered) == sorted(expected)
+
+    @pytest.mark.medium
+    def test_operand_past_dynamic_envelope_reaches_fallback(self, monkeypatch) -> None:
+        """Arbitrary operands outside the generated envelope retain fallback."""
+        import sympy as sp
+
+        from esolangs.interpreters.register_based.polynomial import (
+            _NTT_MIN_DEGREE,
+            _factor_roots,
+            _ntt_real_bound,
+            _Root,
+        )
+
+        pairs = [(3, p * p) for p in sp.primerange(2, 800)]
+        pairs = pairs[: (_NTT_MIN_DEGREE // 2) + 2]
+        degree = 2 * (len(pairs) + 1)
+        wide = _ntt_real_bound(degree) + 1
+        coefficients = self._program([*pairs, (wide, 9)], [])
+        original = sp.factor_list
+        called = False
+
+        def recording_fallback(*args, **kwargs):
+            nonlocal called
+            called = True
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(sp, "factor_list", recording_fallback)
+        _factor_roots.cache_clear()
+        recovered = _factor_roots(tuple(coefficients))
+        assert called
+        assert _Root(wide, 3) in recovered
+        assert _Root(wide, -3) in recovered
 
 
 class TestPolynomialHighPrecisionRoots:

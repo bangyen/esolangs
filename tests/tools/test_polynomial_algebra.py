@@ -15,12 +15,15 @@ with a signed one.  They are real numeric edge cases rather than dead code,
 so they are driven directly.
 """
 
+import pytest
+
 from esolangs.tools._polynomial import (
     _PACKED_MIN_FACTORS,
     _normalise,
     _pack,
     _render_terms,
     _resign,
+    estimate_product,
     format_coeffs,
     multiply,
     render_product,
@@ -70,6 +73,73 @@ class TestPackedAgainstIncremental:
         factors = _mixed_factors(4)
         factors[0] = [1, 0, -1]
         assert render_product(factors) == _incremental(factors)
+
+
+class TestResourceEstimate:
+    def test_public_generator_covers_dispatch_resource_branches(self) -> None:
+        from esolangs.tools.polynomial import _polynomial_dag, polynomial
+
+        assert polynomial("0101").startswith("f(x) = ")  # leading ignored input
+        assert polynomial("0000").startswith("f(x) = ")  # one constant leaf
+        assert _polynomial_dag("01")
+
+    @pytest.mark.parametrize(
+        "table",
+        ["01", "0110", "01101001", "0110100110010110"],
+    )
+    def test_render_bound_holds_on_generator_corpus(self, table: str) -> None:
+        from esolangs.tools.polynomial import (
+            _polynomial_factors,
+            _polynomial_hybrid,
+        )
+
+        factors = _polynomial_factors(_polynomial_hybrid(table, 0))
+        assert len(render_product(factors)) <= estimate_product(factors).rendered_chars
+
+    def test_render_bound_holds_across_signed_boundary_cases(self) -> None:
+        cases = [
+            [[1, -2], [1, 3]],
+            [[1, 0, -1], [1, -9]],
+            _mixed_factors(5),
+            [[1, 2 + i, 3 + i] for i in range(_PACKED_MIN_FACTORS + 8)],
+        ]
+        for factors in cases:
+            estimate = estimate_product(factors)
+            assert len(render_product(factors)) <= estimate.rendered_chars
+            assert estimate.peak_decimal_digits >= estimate.rendered_chars
+
+    def test_larger_coefficients_increase_every_resource_bound(self) -> None:
+        small = estimate_product([[1, -2], [1, -3]])
+        large = estimate_product([[1, -(10**20)], [1, -(10**30)]])
+        assert large.rendered_chars > small.rendered_chars
+        assert large.peak_decimal_digits > small.peak_decimal_digits
+        assert large.digit_work > small.digit_work
+
+
+def test_cold_parse_estimate_covers_a_root_past_the_old_fixed_lift() -> None:
+    from esolangs.polynomial_resources import estimate_cold_parse
+
+    coeffs = [1, *([0] * 399)]
+    estimate = estimate_cold_parse(coeffs)
+    assert estimate.real_lift_bound > 163_841 // 2
+    assert estimate.field_count == 2
+    assert estimate.fallback_possible
+    assert estimate.peak_words >= len(coeffs) * estimate.coefficient_digits
+    assert estimate.digit_work > 0
+
+
+def test_assemble_refuses_an_oversized_estimate_before_expansion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import importlib
+
+    from esolangs.exceptions import GeneratorCapError
+    from esolangs.tools.polynomial import _polynomial_assemble
+
+    module = importlib.import_module("esolangs.tools.polynomial")
+    monkeypatch.setattr(module, "_POLYNOMIAL_MAX_ESTIMATED_CHARS", 100)
+    with pytest.raises(GeneratorCapError, match="live decimal digits"):
+        _polynomial_assemble([[10**40, 1]])
 
 
 class TestNormalise:
