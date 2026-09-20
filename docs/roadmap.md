@@ -100,6 +100,17 @@ implemented, so never in the screen.
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
+  Factor's adaptive residue sequence is bounded by fixed-modulus Hoheisel:
+  its last selected prime `Q` is polynomial in the run count. Worst-case
+  generated text is `Theta(T log T)`, while every language encoding has the
+  `Omega(T log T / log log T)` pigeonhole floor. Prime discovery is now an
+  arbitrary-precision segmented sieve, and the decoder uses `isprime` only in
+  its proven `< 2**64` range, closing both machine-word and BPSW totality gaps. Cold
+  generation and generated-family parsing are polynomial in `T`; arbitrary
+  semiprimes retain exponential trial-sieve loading. The implementation-time
+  audit is parameterized by `Q,D` because `Q = Theta(T log T)` is not proved.
+  See [factor](factor.md).
+
   Polynomial has tight language-level text complexity
   `Theta(T**2 / log T)`.  Equal real
   roots form contiguous blocks; their noncrossing opener/closer incidence

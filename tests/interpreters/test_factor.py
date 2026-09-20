@@ -1,5 +1,6 @@
 """Unit tests for the Factor interpreter."""
 
+import math
 import sys
 from unittest.mock import patch
 
@@ -320,6 +321,23 @@ class TestFactorint:
 
         assert factors == {3: 40, 5: 20, far: 1}, factors
         assert not asked, f"isprime asked about {len(asked)} residues, expected none"
+
+    def test_probable_prime_screen_is_never_used_above_64_bits(self) -> None:
+        """An uncapped decode cannot accept BPSW as a primality proof."""
+        from esolangs.interpreters.tape_based import factor as factor_module
+        from esolangs.interpreters.tape_based.factor import _factorint
+
+        primes = [20011, 20021, 20023, 20029, 20047]
+        number = math.prod(primes)
+        assert number >= 2**64
+        real_isprime = factor_module.sympy.isprime
+
+        def exact_range_only(value: int) -> bool:
+            assert value < 2**64
+            return bool(real_isprime(value))
+
+        with patch.object(factor_module.sympy, "isprime", exact_range_only):
+            assert _factorint(number) == dict.fromkeys(primes, 1)
 
     def test_matches_sympy_on_random_integers(self) -> None:
         """A sweep, since the cases above are all deliberately chosen."""

@@ -337,6 +337,18 @@ class TestThreeDBf:
 
 
 class TestFactor:
+    def test_prime_search_is_exact_across_segments(self) -> None:
+        """The uncapped encoder uses an arbitrary-precision exact sieve."""
+        import sympy
+
+        from esolangs.factor_primes import prime_segments
+
+        segments = prime_segments(40)
+        first = next(segments)
+        second = next(segments)
+        assert first == (2, 42, list(sympy.primerange(2, 42)))
+        assert second == (42, 82, list(sympy.primerange(42, 82)))
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -419,8 +431,8 @@ class TestFactor:
         """No digit budget: the 500000-digit refusal is gone (dense n=13).
 
         705048 digits, and the interpreter decodes it to the tree the
-        generator encoded.  That decode is the whole load cost, quadratic
-        in the digits (n=12 parity's 460824 took 43s), so the rows run on
+        generator encoded.  That decode is the whole load cost (n=12
+        parity's 460824 took 43s), so the rows run on
         the decoded machine -- the object ``_Machine.step`` drives --
         rather than through 8192 re-factorizations; ``weekly`` like the
         other high-arity probes.
