@@ -120,6 +120,12 @@ _INS = (
 _OPCODE = {name: op for op, name in enumerate(_INS)}
 
 
+@functools.lru_cache(maxsize=16)
+def _tokens(code: str) -> tuple[str, ...]:
+    """Return the reusable instruction tokens in ``code``."""
+    return tuple(re.findall(f"({'|'.join(_INS)})", code))
+
+
 def _advance(state: _State, n: int, byte: int | None = None) -> _State:
     """Return the state after executing the token with opcode ``n``.
 
@@ -161,7 +167,7 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        self.tokens = re.findall(f"({'|'.join(_INS)})", code)
+        self.tokens = _tokens(code)
         self.lst: _Arrays = tuple((0,) for _ in range(23))
         self.ind = self.ptr = self.acc = 0
         self._halted_by_command = False
@@ -234,9 +240,36 @@ class _Machine:
 
 def run(code: str, io: IO) -> None:
     """Run a SLOW ACV MAMMALIAN program."""
-    machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    tokens = _tokens(code)
+    arrays = [[0] for _ in range(23)]
+    ind = ptr = acc = 0
+    while ind < len(tokens):
+        n = _OPCODE[tokens[ind]]
+        curr = arrays[ptr]
+        if n == 0:
+            for num, arr in enumerate(arrays, 1):
+                if arr:
+                    arr[0] = (arr[0] + num) % 256
+        elif n == 1:
+            rebuilt = _total(1, tuple(tuple(arr) for arr in arrays))
+            arrays = [list(arr) for arr in rebuilt]
+        elif n < 6:
+            updated, acc = _partial(n, tuple(curr), acc)
+            arrays[ptr] = list(updated)
+        elif n == 6 and acc < len(curr):
+            ptr = (ptr + curr[acc]) % 23
+        elif n == 7 and curr and curr[-1]:
+            target = acc - curr[0] - 1
+            if target < 0:
+                return
+            ind = target
+        elif n == 8:
+            val = io.input_str()
+            if val:
+                arrays[0].append((ord(val[0]) ^ acc) % 256)
+        elif n == 9:
+            io.print_char(chr(acc % 256))
+        ind += 1
 
 
 if __name__ == "__main__":

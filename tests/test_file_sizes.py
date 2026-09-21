@@ -1,9 +1,9 @@
 """No file grows past the cap, and the ones already over it only shrink.
 
 The cap is on raw lines, which is what ``wc -l`` and a reviewer's scrollbar
-see.  1500 sits just above the repo's 90th percentile, so it flags outliers
-rather than taxing the commenting style: 38% of the tree is comments and
-docstrings, and a tighter cap would price those out rather than the code.
+see.  1200 leaves only a small set of existing outliers, which the ratchet
+keeps shrinking without making their comments and docstrings the cheapest
+way under the cap.
 
 ``_RATCHET`` pins every file already over the cap at the size it had when
 this test landed, so nothing had to be split up front.  Three rules keep it
@@ -18,15 +18,13 @@ import pathlib
 import pytest
 
 #: The most lines a file may have before it has to be split.
-MAX_LINES = 1500
+MAX_LINES = 1200
 
 #: Files already over :data:`MAX_LINES`, at the size they had when the cap
 #: landed.  Each may only shrink, and must be deleted from this table once it
 #: is under the cap.  Nothing may be added: a new entry means a file grew past
 #: the cap instead of being split.
 #:
-#: Empty since the prose sweep took ``__init__.py`` (1523)
-#: and ``streetcode.py`` (1855) under the cap.
 _RATCHET: dict[str, int] = {}
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent

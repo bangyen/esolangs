@@ -11,6 +11,7 @@ shell does ``.`` and ``,``.  ``factor.py`` drives a decoded program through it.
 from __future__ import annotations
 
 import sys
+from functools import lru_cache
 
 from esolangs.interpreters.brackets import match_brackets as matches
 from esolangs.interpreters.io import IO
@@ -27,6 +28,17 @@ from esolangs.interpreters.io import IO
 #: parameters, not fields, so the cycle detector stores no constants.
 #: Order starts ``ind, ptr, tape`` because ``snapshot`` returns those three.
 type _State = tuple[int, int, tuple[int, ...], int, bool]
+type _Op = tuple[int, int]
+
+_ADD = 0
+_RIGHT = 1
+_LEFT = 2
+_OUTPUT = 3
+_INPUT = 4
+_OPEN = 5
+_CLOSE = 6
+_CLEAR = 7
+_TRANSFER_RIGHT = 8
 
 
 def _written(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
@@ -162,11 +174,89 @@ class _Machine:
         self.state = _advance(state, self.code, self.brackets)
 
 
+@lru_cache(maxsize=16)
+def _compile(code: str) -> tuple[_Op, ...]:
+    """Return compact operations for the mutable run path."""
+    brackets = matches(code)
+    ops: list[_Op] = []
+    op_at: dict[int, int] = {}
+    ind = 0
+    while ind < len(code):
+        char = code[ind]
+        if char in "+-":
+            change = 0
+            while ind < len(code) and code[ind] in "+-":
+                change += 1 if code[ind] == "+" else -1
+                ind += 1
+            if change % 256:
+                ops.append((_ADD, change % 256))
+            continue
+        if char in "><":
+            end = ind + 1
+            while end < len(code) and code[end] == char:
+                end += 1
+            ops.append((_RIGHT if char == ">" else _LEFT, end - ind))
+            ind = end
+            continue
+        if char == "[" and code[ind : ind + 3] in ("[-]", "[+]"):
+            ops.append((_CLEAR, 0))
+            ind += 3
+            continue
+        if char == "[" and code[ind : ind + 2] == "[>":
+            end = ind + 2
+            change = 0
+            while end < len(code) and code[end] in "+-":
+                change += 1 if code[end] == "+" else -1
+                end += 1
+            if end > ind + 2 and code[end : end + 3] == "<-]":
+                ops.append((_TRANSFER_RIGHT, change % 256))
+                ind = end + 3
+                continue
+        if char in ".,[]":
+            op_at[ind] = len(ops)
+            opcode = {".": _OUTPUT, ",": _INPUT, "[": _OPEN, "]": _CLOSE}[char]
+            ops.append((opcode, brackets.get(ind, 0)))
+        ind += 1
+    for at, (opcode, target) in enumerate(ops):
+        if opcode in (_OPEN, _CLOSE):
+            ops[at] = (opcode, op_at[target])
+    return tuple(ops)
+
+
 def run(code: str, io: IO) -> None:
-    """Run a Brainfuck program."""
-    machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    """Run compact operations over mutable local state."""
+    ops = _compile(code)
+    tape = bytearray(1)
+    ptr = 0
+    ind = 0
+    output = io.print_char
+    input_char = io.input_char
+    while ind < len(ops):
+        opcode, arg = ops[ind]
+        if opcode == _ADD:
+            tape[ptr] = (tape[ptr] + arg) % 256
+        elif opcode == _RIGHT:
+            ptr += arg
+            if ptr >= len(tape):
+                tape.extend(bytes(ptr + 1 - len(tape)))
+        elif opcode == _LEFT:
+            ptr = max(0, ptr - arg)
+        elif opcode == _OUTPUT:
+            output(chr(tape[ptr]))
+        elif opcode == _INPUT:
+            tape[ptr] = input_char() % 256
+        elif (opcode == _OPEN and tape[ptr] == 0) or (
+            opcode == _CLOSE and tape[ptr] != 0
+        ):
+            ind = arg
+        elif opcode == _CLEAR:
+            tape[ptr] = 0
+        elif opcode == _TRANSFER_RIGHT:
+            if ptr + 1 == len(tape):
+                tape.append(0)
+            tape[ptr + 1] = (tape[ptr + 1] + tape[ptr] * arg) % 256
+            tape[ptr] = 0
+        ind += 1
 
 
 if __name__ == "__main__":

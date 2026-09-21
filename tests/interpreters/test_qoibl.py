@@ -293,6 +293,15 @@ class TestQoiblEdgeCases:
             run(code, IO())
         assert f.getvalue() == chr(0)
 
+    def test_variable_indices_stay_within_the_256_cell_list(self) -> None:
+        from esolangs.exceptions import HaltError
+        from esolangs.interpreters.register_based.qoibl import _eval
+
+        with pytest.raises(HaltError, match="variable index"):
+            _eval(["we", "yeeeeeeee", "we", "y", "we"], {}, lambda: 0, lambda _s: None)
+        with pytest.raises(HaltError, match="variable index"):
+            _eval(["qe", "yeeeeeeee", "qe"], {}, lambda: 0, lambda _s: None)
+
     def test_division_by_zero(self) -> None:
         from esolangs.exceptions import HaltError
 

@@ -79,6 +79,25 @@ class TestRewriteImports:
             )
             assert out.strip() == line
 
+    def test_a_top_level_tools_import_is_left_alone(self) -> None:
+        """The skip applies to an imported name as well as a submodule."""
+        script = load_script()
+        line = "from esolangs import tools as boolean_tools"
+        out = script._rewrite_imports(  # noqa: SLF001
+            f"{line}\n", "bundled", "tape_based.factor"
+        )
+        assert out.strip() == line
+
+    def test_a_full_interpreter_module_alias_becomes_the_bundle(self) -> None:
+        """Monkeypatches and direct imports must address the same module."""
+        script = load_script()
+        out = script._rewrite_imports(  # noqa: SLF001
+            "import esolangs.interpreters.register_based.polynomial as module\n",
+            "bundled",
+            "register_based.polynomial",
+        )
+        assert out.strip() == "import bundled as module"
+
     def test_an_ordinary_package_import_is_repointed(self) -> None:
         """The names a bundled suite needs come from the bundle itself."""
         script = load_script()
@@ -88,6 +107,44 @@ class TestRewriteImports:
             "grid_based.streetcode",
         )
         assert out.strip() == "from bundled import _Machine"
+
+    def test_streetcode_companion_alias_becomes_the_bundle(self) -> None:
+        """Its geometry is in the mutation target, so patches must reach it."""
+        script = load_script()
+        out = script._rewrite_imports(  # noqa: SLF001
+            "from esolangs.interpreters.grid_based import "
+            "_streetcode_geometry as module\n",
+            "bundled",
+            "grid_based.streetcode",
+        )
+        assert out.strip() == "import bundled as module"
+
+
+class TestMutationTarget:
+    def test_streetcode_keeps_its_geometry_in_the_target(self, tmp_path: Path) -> None:
+        """The companion is language code, not an excluded dependency."""
+        script = load_script()
+        bundle = tmp_path / "bundled.py"
+        bundle.write_text(
+            '"""bundle"""\n\n'
+            "# --- inlined from esolangs/exceptions.py ---\n"
+            "class Shared: pass\n"
+            "# --- inlined from "
+            "esolangs/interpreters/grid_based/_streetcode_geometry.py ---\n"
+            "class Geometry: pass\n"
+            "# --- inlined from esolangs/interpreters/grid_based/streetcode.py ---\n"
+            "class Machine: pass\n"
+        )
+
+        script._split_inlined(bundle, "grid_based.streetcode")  # noqa: SLF001
+
+        target = bundle.read_text()
+        shared = (tmp_path / "_inlined.py").read_text()
+        assert "class Geometry" in target
+        assert "class Machine" in target
+        assert "class Shared" not in target
+        assert "class Shared" in shared
+        assert "class Geometry" not in shared
 
 
 class TestDropUnbundledTests:

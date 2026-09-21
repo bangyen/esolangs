@@ -734,12 +734,14 @@ class _Machine:
                 return False
             walker.pending = expr
         if walker.returned is not None:
-            walker.pending = _substitute_first(walker.pending, walker.returned)
+            walker.pending = _replace_first(walker.pending, walker.returned)[0]
             walker.returned = None
         walker.pending, name = self._reduce(walker.pending)
         if name is None:
             return False
-        call = _first_call(walker.pending, name)
+        call = _first_call_or_none(walker.pending, name)
+        if call is None:  # pragma: no cover - _reduce just found one
+            raise HaltError(f"lost the pending call to {name!r}")
         self._push_call(name, [self._eval(a) for a in cast(list[_Expr], call[2])])
         return True
 
@@ -1119,17 +1121,6 @@ def _command_expr(text: str, word: str) -> "_Expr | None":
     return _parse_expr(p)
 
 
-def _substitute_first(expr: "_Expr", value: "_Value") -> "_Expr":
-    """Replace the leftmost unresolved ``call`` node with ``value``.
-
-    The leftmost remaining call *is* the one that just returned: a walker
-    is pushed for it and nothing else runs until it does, so no identity
-    tracking is needed.
-    """
-    replaced, _ = _replace_first(expr, value)
-    return replaced
-
-
 def _replace_first(expr: "_Expr", value: "_Value") -> tuple["_Expr", bool]:
     """Return ``expr`` with its first call replaced, and whether one was."""
     tag = expr[0]
@@ -1144,31 +1135,17 @@ def _replace_first(expr: "_Expr", value: "_Value") -> tuple["_Expr", bool]:
             return ("bin", expr[1], left, expr[3]), True
         right, done = _replace_first(cast(_Expr, expr[3]), value)
         return ("bin", expr[1], left, right), done
-    if tag == "list":
-        items = list(cast(list[_Expr], expr[1]))
-        for i, item in enumerate(items):
-            items[i], done = _replace_first(item, value)
-            if done:
-                return ("list", items), True
-        return ("list", items), False
-    args = list(cast(list[_Expr], expr[2]))
-    for i, arg in enumerate(args):
-        args[i], done = _replace_first(arg, value)
+    index = 1 if tag == "list" else 2
+    children = list(cast(list[_Expr], expr[index]))
+    for i, child in enumerate(children):
+        children[i], done = _replace_first(child, value)
         if done:
-            return ("call", expr[1], args), True
+            if tag == "list":
+                return ("list", children), True
+            return ("call", expr[1], children), True
+    if tag == "list":
+        return ("list", children), False
     return ("val", value), True
-
-
-def _first_call(expr: "_Expr", name: str) -> "_Expr":
-    """Return the leftmost ``call`` node to ``name`` in ``expr``.
-
-    ``_reduce`` has already replaced every call to its left, so this is
-    the one it stopped at.
-    """
-    found = _first_call_or_none(expr, name)
-    if found is None:  # pragma: no cover - _reduce just found one
-        raise HaltError(f"lost the pending call to {name!r}")
-    return found
 
 
 def _first_call_or_none(expr: "_Expr", name: str) -> "_Expr | None":
@@ -1177,22 +1154,16 @@ def _first_call_or_none(expr: "_Expr", name: str) -> "_Expr | None":
     if tag in ("num", "special", "var", "val"):
         return None
     if tag == "not":
-        return _first_call_or_none(cast(_Expr, expr[1]), name)
-    if tag == "bin":
-        return _first_call_or_none(cast(_Expr, expr[2]), name) or _first_call_or_none(
-            cast(_Expr, expr[3]), name
-        )
-    if tag == "list":
-        for item in cast(list[_Expr], expr[1]):
-            found = _first_call_or_none(item, name)
-            if found is not None:
-                return found
-        return None
-    for arg in cast(list[_Expr], expr[2]):
-        found = _first_call_or_none(arg, name)
+        children = [cast(_Expr, expr[1])]
+    elif tag == "bin":
+        children = [cast(_Expr, expr[2]), cast(_Expr, expr[3])]
+    else:
+        children = cast(list[_Expr], expr[1 if tag == "list" else 2])
+    for child in children:
+        found = _first_call_or_none(child, name)
         if found is not None:
             return found
-    return expr if expr[1] == name else None
+    return expr if tag == "call" and expr[1] == name else None
 
 
 def _freeze(value: object) -> object:

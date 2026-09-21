@@ -169,7 +169,7 @@ EXEMPT = {
 def exempt_generators() -> dict[str, str]:
     """Every generator this contract does not hold to the bound.
 
-    :data:`EXEMPT` plus the resource-ceiling rows of ``proofs.md`` and the
+    :data:`EXEMPT` plus the resource-ceiling rows of ``proofs/index.md`` and the
     roadmap audit rows whose execution-time cell is open, read from the
     documents the way ``linearity.py`` reads them: a generator that cannot
     be built past a low arity cannot produce the rungs a slope needs.
@@ -181,7 +181,7 @@ def exempt_generators() -> dict[str, str]:
     for row in load_ledger().rows:
         for label in ("cap", "exception"):
             if label in row.labels:
-                reasons.setdefault(row.generator, f"proofs.md {label} row")
+                reasons.setdefault(row.generator, f"proofs/index.md {label} row")
     for name in sorted(load_audit().execution_unsettled):
         reasons.setdefault(name, "roadmap scaling audit: execution open")
     return reasons
@@ -321,7 +321,7 @@ def main() -> int:
     assert not unknown, f"exempt names no such generator: {unknown}"
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
-    assert len(measured) == len(BY_BOOLEAN) == 59, "not every generator was measured"
+    assert len(measured) == len(BY_BOOLEAN) == 62, "not every generator was measured"
 
     print(f"Execution contract: {len(measured)} generators, bound x{MAX_GROWTH}\n")
     print(f"  {'generator':30s} {'growth':>7s} {'commands':>9s}  where")

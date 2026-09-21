@@ -158,10 +158,10 @@ class TestBundleMatchesPackage:
 @pytest.mark.medium
 class TestBundleDetails:
     def test_sympy_required_note(self, tmp_path: Path) -> None:
-        """Factor's bundle tells the user sympy is required."""
+        """Polynomial's bundle tells the user sympy is required."""
         bundle_one = load_script()
-        out = tmp_path / "factor.py"
-        bundle_one.bundle("Factor", bundle_one.Source(None), out)
+        out = tmp_path / "polynomial.py"
+        bundle_one.bundle("Polynomial", bundle_one.Source(None), out)
         assert "Requires: pip install sympy" in out.read_text()
 
     def test_transitive_interpreter_inlined(self, tmp_path: Path) -> None:

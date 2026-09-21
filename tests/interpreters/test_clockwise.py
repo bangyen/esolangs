@@ -44,12 +44,11 @@ class TestClockwise:
         program that exercised it emitted straight away -- where the parity
         the ``;`` takes is the same whether the bit was added or subtracted
         (-1 and 1 are both odd).  The turn is not.  One ``+`` after the read
-        leaves 2 against 0, and ``?`` turns a quarter for every count it
-        holds, so 2 reverses the pointer and it walks back west to the
-        origin and halts, while 0 holds course off the edge of the ring.
-        Row 1 is never entered either way.  The first bit of ``A`` is 1.
+        leaves 2 against 0, and ``?`` turns once for the nonzero 2.  That
+        path turns through row 1's two ``R`` cells back to the origin; 0
+        holds course off the edge.  The first bit of ``A`` is 1.
         """
-        assert run_and_capture([".+?", "R  "], inputs=["A"]) == ""
+        assert run_and_capture([".+?", "R R"], inputs=["A"]) == ""
 
     def test_every_input_character_contributes_its_bits(self) -> None:
         """The bits of a second character are appended, not substituted.
@@ -169,25 +168,18 @@ class TestMove:
         with pytest.raises(ValueError, match=r"^Clockwise ring is not closed$"):
             move(0, -1, 3, grid, 0)
 
-    def test_a_question_turns_a_quarter_for_every_count_it_holds(self) -> None:
-        """``?`` turns ``acc`` quarters, not one.
-
-        Every ring in this file reaches a ``?`` holding 0 or 1, where the
-        two readings agree; they part at 2, which is a half-turn that sends
-        the pointer back the way it came.  ``R`` and ``!`` are the single
-        quarter-turn they look like -- ``!`` *tests* the accumulator, so it
-        can only be a bool, while ``?`` is the accumulator itself.
-        """
+    def test_a_question_turns_once_when_nonzero(self) -> None:
+        """``?`` tests whether ``acc`` is nonzero; its turn is one quarter."""
         from esolangs.interpreters.grid_based.clockwise import move
 
         counts = (0, 1, 2, 3, 4, -1)
         assert [move(1, 1, 0, ["???"] * 3, acc)[2] for acc in counts] == [
             0,
             1,
-            2,
-            3,
-            0,
-            3,
+            1,
+            1,
+            1,
+            1,
         ]
         assert [move(1, 1, 0, ["!!!"] * 3, acc)[2] for acc in (0, 1, 2)] == [1, 0, 0]
         assert [move(1, 1, 0, ["RRR"] * 3, acc)[2] for acc in (0, 1, 2)] == [1, 1, 1]

@@ -1,4 +1,4 @@
-"""``docs/proofs.md`` must agree with the registry and with itself.
+"""``docs/proofs/index.md`` must agree with the registry and with itself.
 
 Nothing read the ledger before this file.  It is prose, so every claim in it
 -- which generators it covers, which proof schemes exist, how many rows are

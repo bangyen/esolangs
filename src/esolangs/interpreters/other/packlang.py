@@ -62,20 +62,10 @@ Further decisions for gaps the wiki leaves open:
   such function raises :class:`ValueError`, as does an unbalanced or
   empty program, a malformed declaration, or a call with the wrong
   argument count.
-* **EOF.**  ``charGet`` reads a line and takes its first byte.  The wiki
-  says empty input returns a newline, but this package reads a blank line
-  as 0 everywhere (``tests/interpreters/test_input_convention.py`` pins
-  that across all interpreters), so the shared convention wins over the
-  wiki here and an empty line is 0.  Reading past the end of the input is
-  the separate case and raises :class:`EOFError`.
-
-  One consequence is worth naming: input arrives through ``splitlines``,
-  so a line never *begins* with byte 10 and ``charGet`` cannot return it.
-  The wiki cat's ``While c ^ 10 Do`` terminator is therefore unreachable
-  here -- the program parses and accumulates but never leaves the loop.
-  That is a property of the package's line-oriented IO rather than of
-  this interpreter; the test file pins both the cat's real behavior and
-  the same construction with a reachable guard.
+* **EOF.**  ``charGet`` reads a line and takes its first byte.  As the wiki
+  specifies, exhausted input yields newline byte 10, making the wiki cat's
+  ``c ^ 10`` terminator reachable.  A supplied blank line remains 0 under
+  the package-wide distinction between an empty line and no line at all.
 * **Invalid runtime operations** raise
   :class:`~esolangs.exceptions.HaltError`: an undefined variable or
   function, an array index outside its length, and one rule of this
@@ -995,6 +985,8 @@ class _Machine:
     rather than hanging where nothing can see it.
     """
 
+    eof_is_a_value = True
+
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.program = _parse(code)
@@ -1081,12 +1073,12 @@ class _Machine:
         prepared = _resolved(frame)
         result, out, wants_read = _advance(frame, self.program, None, prepared)
         if wants_read:
-            # ``input_char`` reads a line and takes its first byte, and
-            # already gives a blank line the package-wide 0 that
-            # ``tests/interpreters/test_input_convention.py`` pins.  A
-            # callee reaches this the same way the entry function does:
-            # its statements are stepped, so the shell is right here.
-            byte = self.io.input_char()
+            # Packlang alone defines exhausted input as newline.  Keep that
+            # exception here rather than changing the shared input port.
+            try:
+                byte = self.io.input_char()
+            except EOFError:
+                byte = 10
             result, out, _ = _advance(frame, self.program, byte, prepared)
         result.pending = None
         result.returned = None

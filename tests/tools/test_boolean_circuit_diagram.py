@@ -144,6 +144,15 @@ class TestCircuitDiagramLayoutGuards:
         early_stays = _Layout._clash([(2, 4, 1), (6, 9, 2)], None, 0, 10, 9)  # noqa: SLF001
         assert early_stays == (2, True)
 
+    def test_interval_primitives_keep_order_and_the_earliest_clash(self) -> None:
+        """Guard-only insertion and a later glyph preserve the first hit."""
+        from esolangs.tools.circuit_diagram import _Layout
+
+        runs = [(6, 9, 2)]
+        _Layout._record(runs, (2, 4, 1))  # noqa: SLF001
+        assert runs == [(2, 4, 1), (6, 9, 2)]
+        assert _Layout._clash(runs, [7], 0, 10, 9) == (2, True)  # noqa: SLF001
+
     @pytest.mark.parametrize(
         ("dx", "dy"),
         [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx, dy) != (0, 0)],
@@ -640,6 +649,20 @@ class TestCircuitDiagram:
         assert (20, 24) in layout.junctions
         layout.release(_HOLD)
         assert not layout._reserved  # noqa: SLF001
+
+    @pytest.mark.parametrize("collision", ["endpoint", "neighbour", "interior"])
+    def test_a_route_refuses_each_kind_of_claimed_cell(self, collision: str) -> None:
+        """Endpoints, their neighbours and run interiors are all guarded."""
+        from esolangs.tools.circuit_diagram import _RoutingLayout
+
+        layout = _RoutingLayout()
+        if collision == "endpoint":
+            layout.glyphs[(0, 0)] = "x"
+        elif collision == "neighbour":
+            layout.junctions[(1, 1)] = 2
+        else:
+            layout._horizontal_cells[(1, 0)] = 2  # noqa: SLF001
+        assert not layout._route_is_free([(0, 0), (2, 0)], 1)  # noqa: SLF001
 
     @pytest.mark.slow  # ~6s: three n=4 builds, sixteen interpreted rows each
     def test_h_layout_lanes_execute_at_four_inputs(self) -> None:

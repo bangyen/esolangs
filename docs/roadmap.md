@@ -41,23 +41,13 @@ implemented, so never in the screen.
   mechanism.  Spec read only, not priced: whether a loop-less O(T) construction
   survives the computed-label and `COME FROM` wiring, and whether its binary
   I/O routes through the package's stdin convention, is the work.
-- **Piet** (2001): outside the pass for the same reason.  A non-textual
-  colour-raster source whose command is the hue/lightness delta between the
-  block left and the block entered; `pointer`/`switch` pop a value to rotate
-  the direction pointer and toggle the codel chooser, so the branch is a
-  data-selected direction -- a sixth mechanism against the five in
-  [contributing](CONTRIBUTING.md), the same axis INTERCAL claims and dearer.
-  The generator would be the grid walk the set has, so the language case
-  rests on the branch alone.  The medium carries the integration case: image
-  source is not a language axis, but two raster sources give the registry a
-  reason to carry one -- `line` alone is a path no registry caller reaches,
-  and registering Piet beside it gives a raster source kind two consumers,
-  the downstream a shared shim needs to stay off the curation removal list.
-  Pin before building: exact-palette matching (anti-aliasing moves a codel;
-  non-standard colours are implementation-defined), the eight-attempt
-  black/edge termination, the DP/CC initial state.  Spec read only; output
-  size is open -- area, where every pushed constant is a block of that many
-  codels.
+
+- **Classic-language audit.**  Spec-read Thue, FRACTRAN, Unlambda, and FALSE
+  against the admission test, using brainfuck, Befunge, Malbolge, Piet,
+  Whitespace, and Super SNUSP as the retained comparison set.  For each
+  candidate, identify the new axis, deterministic semantics, stdin route, and
+  a loop-less Boolean construction or a documented obstruction.  Promote only
+  survivors to ordered interpreter work; record rejections in limitations.
 
 ## Conditional follow-up
 
@@ -98,13 +88,46 @@ implemented, so never in the screen.
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
-  | Polynomial | Cap | Open | Open | Linear |
+  | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
-  Polynomial is open, not a language lower bound: the `Omega(T**2 / log T)`
-  proof assumes distinct real instruction roots, and a repeated root is legal
-  (`(x-2)^3` decodes to three `[1]` instructions). The routing lemma bounds
-  instruction positions, not distinct roots, so the reduction is the missing
-  lemma; see [polynomial](polynomial.md).
+  Factor's adaptive residue sequence is bounded by fixed-modulus Hoheisel:
+  its last selected prime `Q` is polynomial in the run count. Worst-case
+  generated text and the weighted exponent-vector language floor are both
+  `Theta(T log T)`. Prime discovery is now an
+  arbitrary-precision segmented sieve, and the decoder uses `isprime` only in
+  its proven `< 2**64` range, closing both machine-word and BPSW totality gaps.
+  Cold generation is tightly
+  `Theta(T + Q log log Q + D**log_2(3))` in the documented RAM/byte model;
+  generated-family parsing is polynomial in `T`, while arbitrary semiprimes
+  retain exponential trial-sieve loading. The time bound is naturally
+  output-sensitive in the last selected prime `Q` and digit count `D`, without
+  assuming a prime-gap conjecture. See [factor](proofs/factor.md).
+
+  Polynomial has tight language-level text complexity
+  `Theta(T**2 / log T)`.  Equal real
+  roots form contiguous blocks; their noncrossing opener/closer incidence
+  graph is outerplanar, giving `m_routing < 3L_real` and therefore
+  `L_real = Omega(T/log T)`.  The distinct-root slack certificate then gives
+  the lower bound for every cofactor and operand sign.  The uncapped
+  residual-DAG construction has `O(T/log T)` instructions and expands to the
+  matching upper bound.  The pre-expansion estimator bounds rendered and live
+  decimal digits before the resource cap admits multiplication.  Put
+  `alpha = log_2 3`.  Libmpdec's fixed maximum transform makes the uncapped
+  root multiplication Karatsuba-with-FNT at scale, and the balanced packed
+  operands give matching bounds: generation is
+  `Theta(R**alpha) = Theta((T**2/log T)**alpha)`.  Below that fixed maximum,
+  including the public capped range, direct FNT gives
+  `Theta(R log R) = Theta(T**2)`.
+
+  Root recovery now lifts through `D**2`, covering the generated
+  `|a| < 50D` envelope, and swaps NTT field roles when an instruction prime
+  equals the primary modulus.  Exact division remains acceptance.  Therefore
+  every generated factor peels and cold parsing is polynomial; arbitrary
+  programs outside the envelope retain the general factorization fallback.
+  Conservative generation and cold-parse work/memory estimators cover the
+  tested corpus and boundary controls, including pre-expansion refusal and a
+  parse outside the former fixed lift.  See [polynomial](proofs/polynomial.md) and
+  `tests/proofs/deep/multiplicity.py`.
 
   Generation time, growth per added input at the top arity: B-tapemark,
   6-5, Forth, Circuit Diagram past its n=8 route change, and Vandevelo
@@ -124,39 +147,42 @@ implemented, so never in the screen.
   executed build. A space toggle has no remaining use.
 - **ArrowQueue reusable drain.** Ship it only if folding is testable at `n >= 5`.
 
-- **Reorder ArrowQueue inputs.**  The three-input screen leaves 12.4%
+- **Reorder ArrowQueue inputs.**  The current three-input screen leaves 7.2%
   headroom, but its queued inputs cannot be renamed in place.  Find a
   re-enqueue and grid-routing construction, then compare emitted, executed
   programs against the current template; abandon it if the routing spends
   the apparent gain.
 
-- **Raster source kind.**  Admit Piet only with `line` registered, so an image
-  source has two consumers.  Registry half, small: a source kind beside
-  `split` on `Language` (`_table.py:21`), surfaced without breaking the public
-  `RUNNERS` shape (`registry/__init__.py:51`, read as ``(module, split)``) --
-  a sibling `SOURCE_KIND` map or a `raster` frozenset.  `generate`
-  (`__init__.py:143`) is typed `-> str` and wraps through `wrap_program`; a
-  raster language reads rather than embeds, so it must return the generator's
-  `Raster` untouched and skip the string path, widening the return type
-  `_Template`/`_Tagged`, `check_program` and `run` (`__init__.py:375`) assume.
-  `describe` gains the kind.  Language half, large: `line` is not an
-  interpreter in this repo's sense -- `line/simulate.py` offers
-  `compile_program`/`run_compiled`, with no `_Machine`, `step`, `halted`,
-  `snapshot` or `ip_shape`, and its generator round-trips through a file
-  (`render(...).save` -> `extract(path)`, `tests/line/test_line_boolean.py:40`).
-  Every interpreter-sweeping suite (fuzz, VM protocol, input convention,
-  stepping parity, examples) would then require its conformance, and both
-  generators are area-cost, pulling `line` into `tests/proofs/deep/linearity.py`.
-  Worth it for the source kind itself; it does not strengthen the Piet case.
+- **Reorder Circuit Diagram selectors.**  The three-input exhaustive screen
+  leaves 20.4% headroom.  Its inputs already occupy separate rails, so keep
+  their read order and permute only which rail each Shannon level selects.
+  Ship only if executed programs beat both flat and H layouts on a wider
+  corpus without moving generation above O(T).
+
+- **Reorder Crement testers.**  The same screen leaves 12.4% headroom.  Keep
+  the parameterized runs in name order and map each tree level to the chosen
+  tester address.  Ship only if every three-input table executes correctly
+  and the routing win survives the emitted tester and patch addresses.
+
+- **Prune raster dependencies.**  Line and Piet both retain every input and
+  every table entry when the function ignores inputs: at four inputs, an
+  all-zero Line drawing is 1,920 x 2,060 pixels and an all-zero Piet program
+  is 258 codels.  Read every input to preserve the interface, but branch or
+  index only on the essential ones.  Ship separately per language only if
+  the PNG round trip executes and reduces pixels or codels on an exhaustive
+  small-table corpus; constants are the positive control.
+
+- **Raster source integration.**  Done for Line and Piet: `generate` returns
+  an `esolangs.raster.Raster`, `run` accepts it or a PNG path through the
+  shared codec, and `describe` reports `source_kind="raster"`.  Raster
+  languages stay outside text-only `RUNNERS` and its VM/step/fuzz contracts.
+  Line retains its graph for repeated rows; Piet emits and executes the pixels.
 
 - **Image-source candidates.**  A read of the 129 `Category:Non-textual` pages
   for raster sources only -- music (Fugue, Velato), music-note, and
   steganography pages excluded.  Verdicts are spec reads, not executed
-  generators.  For the source kind above: Braincopter (2005) first, a PNG
-  Brainfuck clone whose opcode is `(65536R + 256G + B) % 11` and whose
-  generator is a palette render of the registered `brainfuck` generator
-  (`tools/tape.py:63`) -- the cheapest second consumer; Brainloller (2005),
-  its fixed-RGB-palette sibling, is the same interpreter landed first.
+  generators.  Brainloller and Braincopter are already implemented and not
+  popular enough to clear the collection's alternative admission route.
   Deferred: Bytemap (2012, source and data the same self-modifying grid, no
   interpreter yet) and Gifunk (2021, APNG/GIF fungeoid whose IP crosses frames)
   are the

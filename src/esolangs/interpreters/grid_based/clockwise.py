@@ -1,8 +1,8 @@
 """Interpreter for Clockwise.
 
 A pointer walks clockwise around a square ring, turning a quarter at
-``R`` and at ``!`` when the accumulator is zero; ``?`` turns a quarter
-*per count* the accumulator holds, so 2 reverses.  ``;`` outputs the
+``R`` and at ``!`` when the accumulator is zero; ``?`` turns one quarter
+when the accumulator is nonzero.  ``;`` outputs the
 accumulator parity (seven bits per printed byte), ``.`` reads an input
 bit, ``S`` zeroes.  Walking off the edge is malformed
 (:class:`ValueError`).  Input bits are read once in ``__init__`` and then
@@ -46,7 +46,7 @@ def move(
     if not 0 <= row < len(code) or not 0 <= col < len(code[row]):
         raise ValueError("Clockwise ring is not closed")
     o = code[row][col]
-    c = (o == "R") or (o == "?" and acc) or (o == "!" and not acc)
+    c = (o == "R") or (o == "?" and acc != 0) or (o == "!" and acc == 0)
 
     r = (r + c) % 4
     row += ROW[r]

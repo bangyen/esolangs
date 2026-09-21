@@ -68,6 +68,10 @@ class ArgumentError(EsolangError, ValueError):
     """An argument's value is outside what the call accepts."""
 
 
+class MissingDependencyError(EsolangError, ImportError):
+    """An optional dependency required by one language is not installed."""
+
+
 class ProgramError(EsolangError, ValueError):
     """A program could not be loaded: it is malformed for its language."""
 

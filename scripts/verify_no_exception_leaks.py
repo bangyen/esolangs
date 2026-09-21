@@ -11,8 +11,10 @@ KeyError -- is a bug in the interpreter, not in the program it was given.
 The corpus is deliberately hostile but *derived from real programs*: the
 generic fragments below, plus every shipped example for the language, plus
 mutations of those examples (truncated, a character dropped, one doubled,
-one inserted).  Truncation finds the interesting cases -- a half-written
-program reaches states no hand-written test thinks to build.
+one inserted).  Factor's integer is shortened before mutation because its
+operand size changes cost, not interpreter paths.  Truncation finds the
+interesting cases -- a half-written program reaches states no hand-written
+test thinks to build.
 
 By default only the languages this branch actually touched are swept,
 which makes it cheap enough to run habitually: a change to one
@@ -39,6 +41,7 @@ import json
 import os
 import pathlib
 import random
+import re
 import subprocess
 import sys
 import time
@@ -151,19 +154,34 @@ _STEP_CAP = int(os.environ.get("LEAKSWEEP_STEP_CAP", 0)) or 20000
 #: unchanged; only the number of runs that pay for it is.
 _CAP_LADDER = (10, 100, 1000, _STEP_CAP)
 
-# The cap is not what makes `--all` expensive, and lowering it would not
-# help: the slow languages cost per *step*, not per step count.  Three of them
-# (Factor, Painfuck, Suptiftam) exceed any cap worth setting, and the
-# subprocess timeout is what actually bounds them -- Factor because
-# `make_vm` factorizes before a single step runs, in uninterruptible C a
-# SIGALRM cannot land on.  The cap stays 20000, and the ladder above means
-# few runs pay it.  Measurements in ``the verification history``.
+# Lowering the final cap would miss late exceptions.  The optimizations below
+# instead bound Factor's pre-step arithmetic and make Befunge's pushes O(1),
+# leaving all 20,000 steps intact.  Measurements are in the verification history.
 
 # Four inputs, not a dozen: the distinctions that actually change a read
 # are no input at all, a blank line, a digit, and a non-digit.  Extra
 # spellings of "a digit" multiply the sweep without reaching new code --
 # and the sweep runs every program against every one of these.
 STDINS = ["", "\n", "0\n1\n", "abc"]
+
+# Factor does unbounded work before its first VM step when a one-character
+# mutation turns its deliberately factorable example into a huge semiprime.
+# Twelve digits still exercise the same parser and factorization paths and
+# are the measured safe bound used by the interpreter fuzzer too.
+_MAX_OPERAND_DIGITS = 12
+
+
+def _cap_numeric_runs(program: str) -> str:
+    """Keep only the first bounded number of digits in a Factor program."""
+    left = _MAX_OPERAND_DIGITS
+
+    def shorten(match: re.Match[str]) -> str:
+        nonlocal left
+        kept = match.group()[:left]
+        left -= len(kept)
+        return kept
+
+    return re.sub(r"\d+", shorten, program)
 
 
 def mutate(text: str, rng: random.Random, n: int = 12) -> list[str]:
@@ -229,21 +247,17 @@ def _drive(lang: str, program: str, stdin: str, cap: int) -> bool:
 
 #: Wall-clock a language's worker gets before the parent kills it.
 #:
-#: Sized from measurement, not from caution: the sweep finished in 102.9s
-#: *combined* at the last count, and the slowest language that finishes at
-#: all is AddSubJump at 4.7s.  30s is therefore ~6x the real maximum --
-#: room for a slower machine without letting a wedged language cost
-#: minutes.  The languages that exceed it (Factor, Painfuck) are not
-#: slow-but-valid: they are unbounded work, and no larger number collects
-#: them.
+#: The full six-worker sweep finishes in 5.4s and its slowest worker in 4.5s.
+#: Thirty seconds leaves room for a slower machine while bounding a regression
+#: in VM construction, where the step cap cannot act.
 _LANG_TIMEOUT = 30.0
 
 #: How many language workers run at once.  Deliberately **2**, not the core
 #: count: each worker is a separate process doing pure CPU work, so scaling
 #: this to the machine saturates it -- and this script runs on a developer's
-#: laptop beside everything else they are doing.  Two is enough to stop one
-#: slow language (Factor burns its whole timeout) from stalling the queue,
-#: which is most of the win.  Raise it deliberately with ``LEAKSWEEP_JOBS``
+#: laptop beside everything else they are doing.  Two keeps a slow language
+#: from stalling the queue without occupying the whole machine.  Raise it
+#: deliberately with ``LEAKSWEEP_JOBS``
 #: on a machine with cores to spare; ``LEAKSWEEP_JOBS=1`` is sequential,
 #: which is what to use when reading a live transcript.
 _JOBS = max(1, int(os.environ.get("LEAKSWEEP_JOBS", 0)) or 2)
@@ -259,6 +273,8 @@ def _corpus(lang: str, examples: dict[str, list[str]], rng: random.Random) -> li
     """
     progs = list(GENERIC)
     for src in examples[lang]:
+        if lang == "Factor":
+            src = _cap_numeric_runs(src)
         progs.append(src)
         progs.extend(mutate(src, rng))
     return progs
@@ -315,6 +331,14 @@ class _Report(typing.NamedTuple):
 #: ``--all`` pays only for what changed since the last green sweep.
 _CACHE = _ROOT / ".leaksweep-cache.json"
 _USE_CACHE = os.environ.get("LEAKSWEEP_CACHE", "1") != "0"
+
+
+def _examples_by_slug() -> dict[str, list[str]]:
+    """Return the shipped example programs keyed by canonical language ID."""
+    by_slug: dict[str, list[str]] = {}
+    for path in (_ROOT / "src" / "esolangs" / "examples").glob("*.txt"):
+        by_slug.setdefault(path.stem, []).append(path.read_text())
+    return by_slug
 
 
 def _sources(module: str) -> list[pathlib.Path]:
@@ -405,10 +429,7 @@ def _worker(target: str) -> None:
 
     langs = sorted(RUNNERS)
     slug_of = {name: canonical_id(name) for name in langs}
-    by_slug: dict[str, list[str]] = {}
-    for d in ("boolean",):
-        for p in (_ROOT / "examples" / d).glob("*.txt"):
-            by_slug.setdefault(p.stem, []).append(p.read_text())
+    by_slug = _examples_by_slug()
     examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
 
     rng = random.Random(1234)
@@ -444,10 +465,7 @@ def main() -> None:
 
     # RUNNERS is keyed by display name; the example files by canonical id.
     slug_of = {name: canonical_id(name) for name in langs}
-    by_slug: dict[str, list[str]] = {}
-    for d in ("boolean",):
-        for p in (_ROOT / "examples" / d).glob("*.txt"):
-            by_slug.setdefault(p.stem, []).append(p.read_text())
+    by_slug = _examples_by_slug()
     examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
     missing = [n for n, v in examples.items() if not v]
     print(f"languages without example programs: {len(missing)}", flush=True)
@@ -512,7 +530,9 @@ def main() -> None:
                 {"findings": findings, "counts": counts}, fh, indent=1, sort_keys=True
             )
     print(f"\nlanguages with leaks: {len(findings)} / {len(langs) + len(cached)}")
-    if findings:
+    if timeouts:
+        print(f"languages that timed out: {', '.join(timeouts)}")
+    if findings or timeouts:
         raise SystemExit(1)
 
 

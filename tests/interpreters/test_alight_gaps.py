@@ -9,7 +9,6 @@ the node shapes ``_Parser`` emits.
 
 from esolangs.interpreters.grid_based.alight import (
     _command_expr,
-    _first_call,
     _first_call_or_none,
     _replace_first,
     run,
@@ -182,7 +181,3 @@ class TestFirstCall:
         inner = ("call", "f", [])
         node = ("call", "f", [inner])
         assert _first_call_or_none(node, "f") is inner
-
-    def test_first_call_returns_what_the_search_found(self) -> None:
-        node = ("not", ("call", "f", []))
-        assert _first_call(node, "f") == ("call", "f", [])

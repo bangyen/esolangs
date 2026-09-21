@@ -4,8 +4,8 @@ Byte tape with a wrapping pointer (size 4096; ``run`` takes ``tape``) plus
 a byte stack.  ``i``/``d``/``c`` increment/decrement/clear, ``l``/``r``
 move, ``n``/``f`` push/pop, ``s``/``b`` jump forward X/back X-1 by the
 peeked stack top when the cell is nonzero, ``o`` prints.  Per the wiki, a
-non-command character is malformed (:class:`ValueError`) and popping an
-empty stack halts (:class:`~esolangs.exceptions.HaltError`).
+non-command character is malformed (:class:`ValueError`) and popping or
+peeking an empty stack halts (:class:`~esolangs.exceptions.HaltError`).
 
 :func:`_advance` is a pure, total transition over an immutable ``_State``
 with no ``io`` argument; :class:`_Machine` is the shell that prints and
@@ -154,6 +154,10 @@ class _Machine:
         if char == "f" and not stack:
             raise HaltError(
                 f"'f' at position {ind} pops the stack and the stack is empty"
+            )
+        if char in "sb" and acc and not stack:
+            raise HaltError(
+                f"{char!r} at position {ind} peeks the stack and the stack is empty"
             )
         if char in "sb" and acc and stack:
             # ``s`` skips X forward, ``b`` jumps back X-1: next is ind ± X + 1.

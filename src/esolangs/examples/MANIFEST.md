@@ -25,6 +25,7 @@ that row is actually spelled for the language.
 | `arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '1 0 0 1 2 3' |
 | `b-tapemark.txt` | B-tapemark | `0001` | `01` | 0 1 | '0' |
 | `back.txt` | Back | `0001` | `01` | embedded 01 | '0 1 0' |
+| `befunge.txt` | Befunge | `0001` | `01` | 0 1 | '0 ' |
 | `bf-pda.txt` | BF-PDA | `0001` | `01` | embedded 01 | '0' |
 | `bfstack.txt` | BFStack | `0001` | `01` | 0 1 | '0' |
 | `bio.txt` | BIO | `0001` | `01` | embedded 01 | '0' |
@@ -54,6 +55,7 @@ that row is actually spelled for the language.
 | `inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
 | `jaune.txt` | Jaune | `0001` | `01` | 0 1 | '0' |
 | `laserfuck.txt` | LaserFuck | `0001` | `01` | 0 1 | '0' |
+| `malbolge.txt` | Malbolge | `0001` | `01` | 0 1 | '0' |
 | `minifuck.txt` | Minifuck | `0001` | `01` | embedded 01 | '0' |
 | `minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '0 0' |
 | `modulous.txt` | Modulous | `0001` | `01` | 0 1 | '0' |
@@ -73,6 +75,7 @@ that row is actually spelled for the language.
 | `taglate.txt` | Taglate | `0001` | `01` | 0 1 | '0' |
 | `unsquare.txt` | Unsquare | `0001` | `01` | 0 1 | '0' |
 | `vandevelo.txt` | Vandevelo | `0001` | `01` | 0 1 | (nothing) |
+| `whitespace.txt` | Whitespace | `0001` | `01` | 0 1 | '0' |
 
 ## Notes
 
@@ -89,6 +92,7 @@ that row is actually spelled for the language.
 - **grapheme** -- Grapheme's generator normalizes each input line with ord(line[0]) - 65 and then maps zero to 1, so its input bits are spelled % and A: 'A' is a 1 and every other first character is a 0, which means a 0/1 line reads as 0 and the program answers the all-zeros row. The second step is not optional prose -- ord('A') - 65 is 0, so the subtraction alone says the opposite
 - **inject** -- send terminates each line, so the answer ends in a newline
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
+- **malbolge** -- the answer is one character and is printed with no newline
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
 - **taglate** -- Taglate takes a line per bit like most languages, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four lines. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly

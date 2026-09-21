@@ -102,12 +102,10 @@ def _expired_at(deadline: float) -> Callable[[], bool]:
 
 #: Longest integer a mutated program may contain before the fuzzer skips it.
 #:
-#: Factor's program *is* an integer and ``make_vm`` factors it with sympy
-#: before any step runs, so a mutation that turns a 60-digit factorable
-#: number into a 62-digit semiprime costs unbounded, uninterruptible C time.
-#: Bounding that wedge at all needs a subprocess with a hard kill, which a
-#: fuzz test cannot pay; the cheap half of the remedy is this one, guarding
-#: the digit length instead.  Twelve digits factor instantly and still
+#: Factor's program *is* an integer and ``make_vm`` factors it before any
+#: step runs, so a mutation that turns a 60-digit factorable number into a
+#: 62-digit semiprime makes trial division unbounded.  Twelve digits factor
+#: instantly and still
 #: exercise every path that a longer number would, since the interpreter's
 #: behaviour does not depend on the operand's size.
 _MAX_OPERAND_DIGITS = 12
@@ -129,9 +127,9 @@ def _drives_cheaply(language: str, seed: str) -> bool:
 
     A step is not a unit of work, and on Factor the work is not even in a
     step: its generated program is a 60-odd-digit semiprime, and the
-    interpreter hands that to ``sympy.factorint`` while *constructing* the
-    machine.  Factoring a semiprime that size does not finish, so the cost
-    is paid inside ``make_vm`` before a step budget exists -- which is why
+    interpreter factors it while *constructing* the machine.  Factoring a
+    semiprime that size does not finish, so the cost is paid inside
+    ``make_vm`` before a step budget exists -- which is why
     neither a step cap nor a deadline checked between steps bounds it.
     Polynomial's 8th-degree seed factors the same way.
 
@@ -140,12 +138,10 @@ def _drives_cheaply(language: str, seed: str) -> bool:
     prefix.  It screens by measured cost rather than by a list of slow
     languages, because a list would go stale the moment a generator changed.
 
-    The screen cannot be made airtight, and the repo already knows why: a
-    SIGALRM cannot land inside sympy's uninterruptible C, so bounding
-    Factor that way needs a subprocess with a hard kill -- far too heavy
-    for a unit test.  The cheap half of the remedy, a digit-length guard on
-    Factor's mutants, is what :func:`_affordable_variant` applies below:
-    keep the operand small enough that factoring it is never the cost.
+    The screen cannot be made airtight.  The cheap half of the remedy, a
+    digit-length guard on Factor's mutants, is what
+    :func:`_affordable_variant` applies below: keep the operand small enough
+    that factoring it is never the cost.
     """
     if not _affordable_variant(seed):
         return False

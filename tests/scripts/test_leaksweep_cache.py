@@ -45,3 +45,18 @@ def test_the_key_reads_the_interpreter_and_the_examples() -> None:
     assert fingerprint(bf, ["+"]) != fingerprint(brainif, ["+"])
     assert fingerprint(bf, ["+"]) != fingerprint(bf, ["-"])
     assert fingerprint(bf, ["+"]) == fingerprint(bf, ["+"])
+
+
+def test_the_sweep_loads_the_packaged_examples() -> None:
+    """The old ``examples/boolean`` path disappeared with the package move."""
+    sweep = load_script()
+    examples = sweep._examples_by_slug()  # type: ignore[attr-defined]  # noqa: SLF001
+    assert "brainfuck" in examples
+    assert examples["brainfuck"]
+
+
+def test_factor_corpus_caps_the_total_operand_not_each_line() -> None:
+    """Factor concatenates every digit before factoring the resulting integer."""
+    sweep = load_script()
+    capped = sweep._cap_numeric_runs("1234567890\n1234567890")  # type: ignore[attr-defined]  # noqa: SLF001
+    assert capped == "1234567890\n12"

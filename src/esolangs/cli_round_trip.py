@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from esolangs import (
+    Raster,
     describe,
     encode_inputs,
     evaluate,
@@ -37,11 +38,16 @@ def _answer(rest: list[str]) -> None:
         name = str(facts["name"])
         row = [int(bit) for bit in bits]
         program = generate(name, table)
+        source: str | Raster
         if facts["parameterized"]:
+            if isinstance(program, Raster):  # pragma: no cover - inconsistent metadata
+                raise TypeError("a raster generator cannot be parameterized")
             source, stdin = instantiate(name, program, row, truth_table=table), ""
         else:
             source, stdin = program, encode_inputs(name, row, table)
         if facts["answer_mode"] == "termination":
+            if not isinstance(source, str):  # pragma: no cover - inconsistent metadata
+                raise TypeError("a raster language cannot answer by termination")
             # A bound is the answer here rather than a safeguard, so one is
             # supplied: this command exists to be a one-liner, and making a
             # reader discover that the termination-answer languages need a

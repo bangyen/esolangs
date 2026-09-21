@@ -12,7 +12,7 @@ read a number/byte; ``o``/``u`` print number/byte; ``a``/``b`` loop while
 nonzero; ``k`` squares, ``z`` zeroes, ``h`` halves toward zero; ``w``/``q``
 copy from right/left neighbour; ``c`` repeats the next command
 ``7**run``; ``y`` skips the next command (with probability 1/2, per the
-wiki); ``v`` skips it when the cell is nonzero; ``d`` resets the pointer;
+wiki); ``v`` executes it only when the cell is zero; ``d`` resets the pointer;
 ``t`` repeats the previous command ``3**run``; ``e`` halts.
 
 A run is one count: ``ccc`` is ``7**3``.  ``cp`` runs ``p`` seven times;
@@ -348,9 +348,10 @@ def _advance(
                 break
         elif c == "e":
             return ((tape, loop, ptr, n, 0), effects)
-        elif c == "v" and tape[ptr] != 0 and ind < n:
+        elif c == "v" and tape[ptr] == 0 and ind < n:
             c = prog[ind]
             ind += 1
+            rep = 1
         elif c == "d":
             ptr = 0
         elif c == "t":
