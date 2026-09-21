@@ -66,8 +66,8 @@ needed below.  We use only the following properties of the interpreter.
 \begin{enumerate}
 \item Between two input reads the complete state is the pair consisting of
 the register and the instruction cursor.
-\item Each real instruction root is a positive power of the prime assigned to
-its position in the decoded instruction list.
+\item Each real instruction root is one of the first eight positive powers of
+its associated prime.  One prime may supply several consecutive positions.
 \item Equal real roots occur in one contiguous block after root sorting.
 \item The bracket matching is noncrossing.
 \end{enumerate}
@@ -470,11 +470,13 @@ Every Polynomial source for a maximal-width truth table has
 
 \begin{proof}
 By Corollary~\ref{cor:roots}, the program contains
-$L=\Omega(T/\log T)$ distinct positive real instruction roots.  Their
-bases are distinct assigned primes, and a prime power is no smaller than its
-base.  After sorting, the $i$th root is therefore at least the $i$th prime:
-any $i$ roots use $i$ distinct prime bases.  The source polynomial is a
-multiple of their distinct-root product.
+$L=\Omega(T/\log T)$ distinct positive real instruction roots.  A prime base
+supplies at most eight distinct real values, one for each allowed exponent.
+After sorting, the $i$th root is therefore at least
+$p_{\lceil i/8\rceil}$.  In particular, for $i\ge16$ it is at least
+$\lceil i/8\rceil+1$, so the weighted sum in
+Theorem~\ref{thm:mass} is still $\Omega(L^2\log L)$.  The source polynomial
+is a multiple of their distinct-root product.
 Theorem~\ref{thm:mass} therefore gives
 \[
  M(f)=\Omega(L^2\log L)

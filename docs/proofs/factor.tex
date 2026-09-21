@@ -39,6 +39,8 @@ Let
   N=\prod_p p^{e_p}
 \]
 be the positive integer spelled by the decimal digits of a Factor source.
+An all-zero digit string instead decodes to the empty program; it is one
+exceptional behaviour and is excluded from the logarithmic notation below.
 For a prime $p$, the residue $p\bmod 11$ selects the Brainfuck instruction
 according to
 \[
@@ -235,12 +237,14 @@ $\Omega(T\log T)$ Factor digits.
 \end{proposition}
 
 \begin{proof}
-A source of $D$ decimal digits has $\log N=O(D)$, so
-Proposition~\ref{prop:count} bounds the number of behaviours represented by
-all such sources by
+Every nonzero digit integer spelled with at most $D$ digits has
+$\log N=O(D)$, so Proposition~\ref{prop:count} bounds the number of its
+behaviours by
 \[
   \exp(O(D/\log D)).
 \]
+Zero-valued sources add only the empty behaviour, which is absorbed by this
+bound.
 There are $2^T$ Boolean truth tables.  If every table had a $D$-digit source,
 then $D/\log D=\Omega(T)$, which implies $D=\Omega(T\log T)$.
 Ignored factors, comments, and leading zeros cannot invalidate the count:

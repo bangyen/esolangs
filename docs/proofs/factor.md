@@ -106,4 +106,5 @@ all `2**T` tables forces
     D = Omega(T log T).
 
 The count covers every encoding: ignored-residue primes, comments and leading
-zeros do not add behaviours. It matches the generated `Theta(T log T)` upper.
+zeros do not add behaviours. The exceptional integer zero adds only the empty
+behaviour. It matches the generated `Theta(T log T)` upper.

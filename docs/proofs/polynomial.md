@@ -751,14 +751,15 @@ characters.**
 Anchor at the top (`|f_D| >= 1`), iterate `u = 0..(L-1)/2` taking `U` to be
 the positions of the `u` largest coefficients below it wherever they sit,
 and the slack certificate forces a `(u+1)`-th coefficient of at least
-`prod_{i > 2u} (p_i - 1)` times the leading one.  Summing logs over `u`,
-every real -- hence every integer -- multiple of `prod_{i<=L} (x - p_i)` of
-every degree has
+`prod_{i > 2u} (r_i - 1)` times the leading one.  Summing logs over `u`,
+every real -- hence every integer -- multiple of the distinct instruction-root
+product has
 
-    mass >= sum_{u <= (L-1)/2} log prod_{i > 2u} (p_i - 1)
-          = sum_i ceil(i/2) log(p_i - 1) = (1/4 - o(1)) L**2 log L
+    mass >= sum_i ceil(i/2) log(r_i - 1) = Omega(L**2 log L).
 
-nats, for every cofactor and every operand sign.  The routing floor puts
+One prime supplies at most the eight values `p**1 .. p**8`, so sorted distinct
+roots satisfy `r_i >= p_ceil(i/8)`; this constant dilation preserves the
+displayed order for every cofactor and operand sign.  The routing floor puts
 `L = Omega(T/log T)` real instruction roots in every program for a
 maximal-width table, so a program whose real instruction roots are *distinct*
 has coefficient digits `Omega(L**2 log L) = Omega(T**2 / log T)`, the dense
@@ -800,8 +801,8 @@ routing position comes from a parent with equal children.  Hence
 real root in one contiguous block.  Draw the noncrossing bracket matches above
 the instruction line and contract each block.  Openers and closers have
 different codes, so no edge is a loop.  After parallel edges are identified,
-the resulting simple incidence graph is outerplanar, hence has at most
-`2L_real - 3` edges.
+the resulting graph is simple bipartite outerplanar -- opener blocks on one
+side, closer blocks on the other -- hence has at most `2L_real - 3` edges.
 
 At most one opener routes in a block.  After its first position, entry is
 either fallthrough from the preceding identical test or a loop back-edge to
