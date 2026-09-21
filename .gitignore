@@ -157,6 +157,13 @@ compile_commands.json
 # scratch audit notes
 notes/
 
+# linked git worktrees
+#   Sessions run in parallel from worktrees under .worktrees/ in the primary
+#   checkout.  They are local scratch, not repo content: without this rule
+#   `git status` shows the whole tree and a broad `git add` can reach into a
+#   nested repo.
+.worktrees/
+
 # scratch markdown
 #   Only untracked files are affected: README.md and everything under docs/
 #   is already tracked, so git keeps them regardless of this pattern.  The

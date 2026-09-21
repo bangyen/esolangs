@@ -157,10 +157,12 @@ apa-proof:
 
 # clean generated: `find -delete` refuses a non-empty directory, so removal
 # goes through `rm -rf`: bytecode, build metadata, and verifier reports.
+# `.venv` and `.worktrees` are pruned -- a linked worktree carries its own
+# environment, and reaching into it would strip that checkout's install.
 clean:
     #!/usr/bin/env bash
-    find . -path ./.venv -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
+    find . \( -path ./.venv -o -path ./.worktrees \) -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
         | xargs -0 rm -rf
-    find . -path ./.venv -prune -o -name "*.pyc" -type f -delete
+    find . \( -path ./.venv -o -path ./.worktrees \) -prune -o -name "*.pyc" -type f -delete
     rm -rf build dist .coverage coverage.xml bandit-report.json .mypy_cache .ruff_cache .pytest_cache
     find src tests -mindepth 1 -type d -empty -delete
