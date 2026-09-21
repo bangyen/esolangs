@@ -14,6 +14,7 @@
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{lemma}[theorem]{Lemma}
 \newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
 \newcommand{\R}{\mathbb R}
 \newcommand{\N}{\mathbb N}
 \newcommand{\Tail}{\operatorname{Tail}}
@@ -318,6 +319,48 @@ $r_i\ge i+1$ therefore gives
 \[
  \sum_{i=1}^L\lceil i/2\rceil\log(r_i-1)=\Omega(L^2\log L).
 \]
+\end{proof}
+
+\begin{proposition}[Confluent analogue]\label{prop:confluent}
+Let $0<y_1<\cdots<y_c\le1/2$ and $e_1,\ldots,e_c\ge1$, put $m=e_1+\cdots+e_c$,
+and let $y_{(1)}\le\cdots\le y_{(m)}$ be the multiset with each $y_i$ repeated
+$e_i$ times.  Let
+\[
+  u_d=\sum_{i=1}^c P_i(d)y_i^d,\qquad \deg P_i<e_i,
+\]
+satisfy $u_0=1$ and $u_z=0$ for a set $Z$ of $m-1$ positive integers with
+leading run $f$.  Then
+\[
+  \Tail(u)\le\prod_{j=1}^{f+1}\frac{y_{(j)}}{1-y_{(j)}}.
+\]
+\end{proposition}
+
+\begin{proof}
+Perturb the repeated nodes into distinct ones: for small $\varepsilon>0$ put
+$y_{i,k}(\varepsilon)=y_i(1-k\varepsilon)$ for $k=0,\ldots,e_i-1$.  These $m$
+values lie in $(0,1/2]$ and are distinct, and the groups stay separated.  For
+each such $\varepsilon$ let $u^{(\varepsilon)}$ be the unique exponential sum
+on these $m$ nodes with $u^{(\varepsilon)}_0=1$ and $u^{(\varepsilon)}_z=0$ for
+$z\in Z$; existence and uniqueness are the Vandermonde argument opening this
+section.  Theorem~\ref{thm:tail} applies with the same $f$ and gives
+\[
+  \Tail(u^{(\varepsilon)})
+  \le\prod_{j=1}^{f+1}\frac{y_{(j)}(\varepsilon)}{1-y_{(j)}(\varepsilon)},
+\]
+where $y_{(1)}(\varepsilon)\le\cdots\le y_{(m)}(\varepsilon)$ is the sorted
+perturbed multiset.
+
+The functions $d\mapsto d^ky_i^d$ form an extended Chebyshev system, for which
+confluent Hermite interpolation is unisolvent~\cite[Chapter~I,
+Theorem~4.1]{karlin-studden}.  Hence, as the nodes coalesce,
+$u^{(\varepsilon)}_d\to u_d$ for every fixed $d$.  Fatou's lemma for series,
+applied to the nonnegative terms $|u^{(\varepsilon)}_d|$, gives
+\[
+  \Tail(u)=\sum_{d\ge1}|u_d|
+  \le\liminf_{\varepsilon\to0}\Tail(u^{(\varepsilon)}).
+\]
+The right side is at most the limit of the displayed products, which is
+$\prod_{j=1}^{f+1}y_{(j)}/(1-y_{(j)})$.
 \end{proof}
 
 \section{Scope}
