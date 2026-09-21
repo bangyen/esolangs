@@ -42,6 +42,13 @@ implemented, so never in the screen.
   survives the computed-label and `COME FROM` wiring, and whether its binary
   I/O routes through the package's stdin convention, is the work.
 
+- **Classic-language audit.**  Spec-read Thue, FRACTRAN, Unlambda, and FALSE
+  against the admission test, using brainfuck, Befunge, Malbolge, Piet,
+  Whitespace, and Super SNUSP as the retained comparison set.  For each
+  candidate, identify the new axis, deterministic semantics, stdin route, and
+  a loop-less Boolean construction or a documented obstruction.  Promote only
+  survivors to ordered interpreter work; record rejections in limitations.
+
 ## Conditional follow-up
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
