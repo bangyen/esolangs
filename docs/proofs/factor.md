@@ -50,15 +50,15 @@ memory; this treats arithmetic on its `O(log Q)`-bit indices as one RAM
 operation. Hoheisel makes both polynomial in `T`.
 
 Let `alpha = log_2 3`. CPython's balanced integer products use Karatsuba at
-scale, and Python 3.14's large decimal render passes through `_pylong` and
-libmpdec. As with Polynomial, a fixed libmpdec eventually exceeds its maximum
-direct transform and recurses with three half-size products. The render's top
-conversion product has balanced `Theta(D)`-digit operands, hence an
-`Omega(D**alpha)` arithmetic term. The encoder combines the two smallest
-bit-width products first. Superlinearity charges powers and merges to the
-final `D` bits geometrically; CPython's lopsided path splits a large operand
-into small-width chunks. Smallest-first merging costs `O(D**alpha)`; rendering
-itself supplies the matching `Theta(D**alpha)`, giving the cold bound
+scale, so the encoder's balanced `D`-bit product carries a `Theta(D**alpha)`
+arithmetic term. Python 3.14's large decimal render passes through `_pylong`
+and libmpdec, but libmpdec only recurses with three half-size products above
+`3 * 2**32` machine words (about `2.5 * 10**11` decimal digits), so every
+generated size stays in its quasi-linear FNT range and rendering adds only
+`O(D log D)`. The encoder combines the two smallest bit-width products first.
+Superlinearity charges powers and merges to the final `D` bits geometrically;
+CPython's lopsided path splits a large operand into small-width chunks.
+Smallest-first merging costs `O(D**alpha)`, giving the cold bound
 
     sum_merge cost(a, b) = O((sum_i leaf_bits_i)**alpha).
 

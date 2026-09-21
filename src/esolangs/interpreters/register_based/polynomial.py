@@ -259,7 +259,7 @@ _PEEL_MODULUS = 18446744073709551629
 #: programs, enumerated against screened: degree 74 is 298ms against
 #: 457ms, degree 118 is 687ms against 479ms -- the crossover -- and then
 #: degree 314 is 5.3s against 0.7s, degree 912 is 78s against 2.6s, and
-#: degree 2770 (dense n=10) extrapolates to ~15 minutes against 44s.
+#: degree 2260 (dense n=10) extrapolates to ~15 minutes against 44s.
 _NTT_MIN_DEGREE = 100
 
 #: The two prime fields the large-degree path finds roots in, as ``(m, c,
@@ -547,8 +547,8 @@ def _peel_instruction_quadratics(
     the roots are ``a ± sqrt(-q)``, one root-finding pass proposes ``a``
     per candidate ``q``, confirmed by the partner root.  Accepted only on
     exact division; everything else stays for ``factor_list``.  Dense n=6
-    degree-254: 3.16s roots, 0.26s candidates (127 for 127 quadratics),
-    0.02s verify, against 35.55s for ``factor_list``.
+    remainder degree-206: 3.16s roots, 0.26s candidates (127 for 127
+    quadratics), 0.02s verify, against 35.55s for ``factor_list``.
     """
     if len(coefficients) < 3:
         return [], coefficients
@@ -617,7 +617,7 @@ def _peel_prime_power_roots(
 
     Horner at each candidate proves the factor, synthetic division deflates;
     anything missed stays in the remainder, so incomplete but never wrong.
-    Dense n=6 (degree 314): 60 roots in 0.66s, 82.65s factoring -> 35.27s.
+    Dense n=6 (degree 264): 58 roots in 0.66s, 82.65s factoring -> 35.27s.
     At large degree the ``screen`` (root of the original mod the NTT fields)
     gates the Horner: 14.6K probes -> ~170 on dense n=8, 48.7s -> under 1s.
     """

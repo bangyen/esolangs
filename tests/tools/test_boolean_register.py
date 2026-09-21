@@ -228,7 +228,7 @@ class TestPolynomial:
 
         Each instruction takes a fresh prime and becomes a polynomial
         factor, so what the interpreter cannot afford per row is
-        instructions.  A scattered n == 11 table needs 2874 under its
+        instructions.  A scattered n == 11 table needs 2417 under its
         cheapest construction and is refused; the message names the count
         rather than ``n``.
 
