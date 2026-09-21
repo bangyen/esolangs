@@ -3,6 +3,13 @@
 \usepackage[a4paper,margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsthm,mathtools}
 \usepackage[hidelinks]{hyperref}
+\hypersetup{
+  pdfauthor={Bangyen Pham},
+  pdftitle={The Worst-Case Text Complexity of the Factor Language},
+  pdfsubject={Descriptional complexity of Boolean functions in Factor},
+  pdfkeywords={Factor, Brainfuck, descriptional complexity, Boolean functions, prime encoding},
+  pdflang={en-US}
+}
 
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{lemma}[theorem]{Lemma}
@@ -24,16 +31,19 @@
 \maketitle
 
 \begin{abstract}
-A Factor program is one decimal integer.  Its prime factorisation encodes a
-Brainfuck program: a prime's residue modulo $11$ selects an instruction and
-its exponent gives the run length.  We prove that the worst-case Factor
-source length for a Boolean truth table of length $T$ is
+A Factor program has decimal digits that spell an integer whose prime
+factorisation encodes a Brainfuck program: a prime's residue modulo $11$
+selects an instruction and its exponent gives the run length.  We prove that
+the worst-case Factor source length for a Boolean truth table of length $T$ is
 $\Theta(T\log T)$.  The upper bound combines a linear-size Brainfuck
 construction with a fixed-modulus short-interval theorem for primes.  The
-lower bound counts every integer encoding of at most $D$ digits, including
-encodings with ignored prime factors, comments, and leading zeros, and shows
-that they realise only $\exp(O(D/\log D))$ behaviours.
+lower bound counts every integer encoding of at most $D$ digits and remains
+valid in the presence of ignored prime factors, comments, and leading zeros;
+these encodings realise only $\exp(O(D/\log D))$ behaviours.
 \end{abstract}
+
+\noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
+Brainfuck; prime encoding; esoteric programming languages.
 
 \section{Encoding model}
 
@@ -306,6 +316,9 @@ language lower bound above.  The reviewed source is archived at
 commit or DOI.  From the repository root, \texttt{just proofs-pdf} rebuilds
 the manuscript and \texttt{just test} runs the branch verification gate.
 
+\paragraph{Data availability.}
+No datasets were generated or analysed in this study.
+
 \begin{thebibliography}{9}
 \bibitem{factor-spec}
 B.~Pham,
@@ -318,7 +331,8 @@ J.~Thorner and A.~Zaman,
 \newblock Refinements to the prime number theorem for arithmetic progressions,
 \newblock \emph{Mathematische Zeitschrift} 306 (2024), article 54,
 \newblock \href{https://doi.org/10.1007/s00209-023-03414-3}
-{doi:10.1007/s00209-023-03414-3}.
+{doi:10.1007/s00209-023-03414-3}; preprint
+\href{https://arxiv.org/abs/2108.10878}{arXiv:2108.10878}.
 \end{thebibliography}
 
 \end{document}

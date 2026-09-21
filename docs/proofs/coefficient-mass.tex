@@ -3,6 +3,13 @@
 \usepackage[a4paper,margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsthm,mathtools}
 \usepackage[hidelinks]{hyperref}
+\hypersetup{
+  pdfauthor={Bangyen Pham},
+  pdftitle={Displaced-Zero Certificates and the Coefficient Mass of Polynomial Multiples},
+  pdfsubject={Lower bounds for the logarithmic coefficient mass of polynomial multiples},
+  pdfkeywords={polynomial multiples, coefficient mass, reduced height, Chebyshev systems, exponential sums},
+  pdflang={en-US}
+}
 
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{lemma}[theorem]{Lemma}
@@ -28,11 +35,14 @@ real polynomial divisible by $\prod_i(x-r_i)$ whose leading coefficient has
 absolute value at least one.  The analytic ingredient bounds the infinite
 $\ell^1$ tail of a normalized exponential sum in terms of the initial run of
 its prescribed positive-integer zeros, with equality characterized.  This
-extends the reduced-height certificate method of Dubickas and Jankauskas and, by
+builds on the reduced-height certificate method of Dubickas and Jankauskas and, by
 iterating certificates that avoid the largest coefficients, controls
 successive coefficient order statistics.  For the first $L$ primes the
 resulting mass bound is $\Omega(L^2\log L)$.
 \end{abstract}
+
+\noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
+height; Chebyshev systems; exponential sums.
 
 \section{Introduction}
 
@@ -50,7 +60,9 @@ $\sum_j|f_j|$.  We study how large $\Lambda(F)$ must be when $F$ is an
 arbitrary-degree multiple of a polynomial with prescribed positive roots.
 
 Reduced length and reduced height minimize those two classical coefficient
-norms over monic multiples~\cite{dubickas,schinzel,dj}.  Dubickas and
+norms over monic multiples~\cite{dubickas,schinzel,schinzel-complex,dj}.
+Prescribed-vanishing problems with low height form a related line of
+work~\cite{bombieri-vaaler}.  Dubickas and
 Jankauskas associate to reciprocal roots and a prescribed zero set $J$ a
 normalized determinant sequence $S_n(J)$.  Their sequence is the
 exponential sum used below; its tail gives a dual lower bound for reduced
@@ -61,7 +73,7 @@ consecutive zero set.  Iterating the corresponding certificates yields a
 distributional bound on many coefficients, not only the largest one.
 
 The zero-counting input is classical Chebyshev-system theory
-\cite{karlin-studden}.  Related sparse-multiple work asks for multiples under
+\cite[Chapter~I, Theorem~4.1]{karlin-studden}.  Related sparse-multiple work asks for multiples under
 prescribed degree, sparsity, and height constraints~\cite{grt}; our bound is
 uniform in the degree and in all additional roots of the multiple.
 
@@ -126,9 +138,11 @@ The induction hypothesis bounds $\Tail(F)$ by the right side of
 \eqref{eq:tail}.  It remains to prove $\Tail(u)<\Tail(F)$.
 
 \medskip\noindent\emph{Sign comparison.}
-Put $\eta=\operatorname{sgn}(F_z)$ and $\mu=|F_z|$.  Away from $Z'$, the
-two sequences $F$ and $G$ have constant relative sign $\eta$: each has
-exactly the simple zeros $Z'$, so both flip at precisely the same indices.
+Put $\eta=\operatorname{sgn}(F_z)$ and $\mu=|F_z|$.  On $(0,\infty)$ and
+away from $Z'$, the two sequences $F$ and $G$ have constant relative sign
+$\eta$: each has exactly the simple zeros $Z'$, so both flip at precisely the
+same indices.  At $d=0$, $u_0=F_0=1$ and $G_0=0$; this anchors the comparison
+below $z$.
 The extra zero of $u$ at $z$ makes $u$ change sign where $F$ does not.
 Hence
 \[
@@ -296,6 +310,9 @@ from Dubickas and Jankauskas~\cite{dj}.  The reviewed source is archived at
 commit or DOI.  From the repository root, \texttt{just proofs-pdf} rebuilds
 the manuscript and \texttt{just test} runs the branch verification gate.
 
+\paragraph{Data availability.}
+No datasets were generated or analysed in this study.
+
 \begin{thebibliography}{9}
 \footnotesize
 \bibitem{karlin-studden}
@@ -316,6 +333,21 @@ A.~Schinzel,
 \newblock \emph{Functiones et Approximatio} 35 (2006), 271--306,
 \newblock \href{https://doi.org/10.7169/facm/1229442629}
 {doi:10.7169/facm/1229442629}.
+
+\bibitem{schinzel-complex}
+A.~Schinzel,
+\newblock The reduced length of a polynomial with complex coefficients,
+\newblock \emph{Acta Arithmetica} 133 (2008), 73--81,
+\newblock \href{https://doi.org/10.4064/AA133-1-5}
+{doi:10.4064/AA133-1-5}.
+
+\bibitem{bombieri-vaaler}
+E.~Bombieri and J.~D. Vaaler,
+\newblock Polynomials with low height and prescribed vanishing,
+\newblock in \emph{Analytic Number Theory and Diophantine Problems},
+Progress in Mathematics 70, Birkh\"auser, 1987, 53--73,
+\newblock \href{https://doi.org/10.1007/978-1-4612-4816-3_3}
+{doi:10.1007/978-1-4612-4816-3\_3}.
 
 \bibitem{dj}
 A.~Dubickas and J.~Jankauskas,
