@@ -789,12 +789,19 @@ above is stated on positions (`m_r`); since the distinct-root theorem bounds
 upgrades the row.  The lemma is proved below; the confluent certificate still
 removes the distinctness hypothesis from the coefficient argument.
 
-**The block-incidence proof.**  A position that always takes one successor splits
-nothing, so `N'(k+1) <= 2 * m_routing + E(k)` with `m_routing` the positions
-taking both successors.  `convert` emits all copies of one exact real root in
-one contiguous block.  Draw the noncrossing bracket matches above the
-instruction line and contract each block.  The resulting simple incidence
-graph is outerplanar, hence has at most `2L_real - 3` edges.
+**The block-incidence proof.**  Follow every reachable execution from one read
+to the next and charge each resulting nonconstant child to the successor taken
+at the last routing position on its path.  The remaining suffix has only
+one-successor real positions, so its location fixes the next read cursor; that
+read overwrites the register, so the cursor fixes the residual.  Each routing
+position is therefore charged at most once per successor.  A path with no
+routing position comes from a parent with equal children.  Hence
+`N'(k+1) <= 2 * m_routing + E(k)`.  `convert` emits all copies of one exact
+real root in one contiguous block.  Draw the noncrossing bracket matches above
+the instruction line and contract each block.  Openers and closers have
+different codes, so no edge is a loop.  After parallel edges are identified,
+the resulting simple incidence graph is outerplanar, hence has at most
+`2L_real - 3` edges.
 
 At most one opener routes in a block.  After its first position, entry is
 either fallthrough from the preceding identical test or a loop back-edge to
