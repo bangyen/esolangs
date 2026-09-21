@@ -3,12 +3,12 @@
 Run:  just proofs   (or python tests/proofs/deep/multiplicity.py)
 
 ``docs/proofs/polynomial.md`` proves "each leading zero buys one root" for an
-exponential sum on *distinct* nodes.  The unconditional language bound is
-``Omega(T**2 / log**2 T)``: the routing floor gives ``m = Omega(T/log T)``
-real instruction *positions*, and the confluent certificate here prices
-``m`` roots with multiplicity as ``Omega(m**2)``, so no distinctness
-hypothesis is needed at that order.  The sharpened routing lemma
-``N' <= 12 * L_real + 2`` closes the extra logarithm.
+exponential sum on *distinct* nodes.  The language bound is
+``Omega(T**2 / log T)``: the routing floor gives ``Omega(T/log T)`` real
+instruction positions, the sharpened routing lemma ``N' <= 12 * L_real + 2``
+forces ``L_real = Omega(T/log T)`` distinct root values, and the distinct-root
+theorem prices them.  The confluent certificate below extends the tail
+comparison to repeated roots as a supplementary check.
 Equal real roots form contiguous blocks.  Contracting those blocks turns the
 noncrossing bracket matching into an outerplanar incidence graph; one opener
 routes per block and one closer per incidence.  ``_check_routing_bound`` pins
@@ -26,8 +26,9 @@ limit step -- that is the Hermite interpolation argument in
 ``docs/proofs/coefficient-mass.tex``, Proposition 3.4 -- it pins the algebraic
 content: the base case is exact, the general bound holds on every certificate
 here, the slack assembly's threshold really is the product over the top units,
-and the integer-root divisibility really does give the root-2 term.  Together
-those give ``mass(F) >= (log10 2)/32 * m**2`` for every multiple.
+and the repeated-root mass floor holds on the products and multiples checked.
+The language bound itself rests on the distinct-root theorem and the
+block-incidence lemma, not on the confluent certificate.
 """
 
 from __future__ import annotations
@@ -227,26 +228,34 @@ def _check_assembly(failures: list[str]) -> int:
 
 
 def _check_mass(failures: list[str]) -> int:
-    """Integer-root divisibility and the final ``c m**2`` bound, exactly."""
+    """Spot-check the repeated-root mass floor, exactly.
+
+    ``mass(F) >= (log10 2)/32 * m**2`` for a monic multiple of
+    ``prod (x - r_i)**e_i`` is a loose constant, so the cases here use
+    ``m >= 6`` to keep it non-vacuous, and evaluate a multiple with a small
+    cofactor as well as the product itself.  This is a diagnostic, not the
+    source of the language bound; that rests on the distinct-root theorem
+    plus the block-incidence lemma.
+    """
     from math import log10
 
     count = 0
-    for roots in ([(2, 3)], [(3, 4)], [(2, 2), (3, 2)]):
-        f = [1]
+    for roots in ([(2, 16)], [(2, 8), (3, 1)], [(2, 2), (3, 2), (5, 2)]):
+        product = [1]
         for r, e in roots:
             for _ in range(e):
-                f = _mul(f, [1, -r])
-        asc = list(reversed(f))
-        for low in range(sum(e for _, e in roots)):
-            div = 1
-            for r, e in roots:
-                if e > low:
-                    div *= r ** (e - low)
-            if asc[low] % div:
-                failures.append(f"divisibility fails {roots} low={low}")
-        mass, m = _mass(f), sum(e for _, e in roots)
-        if mass < (log10(2) / 32) * m * m:
-            failures.append(f"mass {mass} < c m^2 for {roots}")
+                product = _mul(product, [-r, 1])
+        m = sum(e for _, e in roots)
+        threshold = (log10(2) / 32) * m * m
+        if _mass(product) < threshold:
+            failures.append(f"product mass {_mass(product)} < {threshold} for {roots}")
+        for cofactor in ([-2, 1], [-3, 1], [6, -5, 1]):
+            multiple = _mul(product, cofactor)
+            if _mass(multiple) < threshold:
+                failures.append(
+                    f"multiple mass {_mass(multiple)} < {threshold} "
+                    f"for {roots} * {cofactor}"
+                )
         count += 1
     return count
 
@@ -573,7 +582,7 @@ def main() -> int:
     bound = _check_routing_bound(failures)
     print(f"  confluent certificates checked exactly : {certs}")
     print(f"  slack-assembly thresholds checked      : {asm}")
-    print(f"  divisibility + mass(f) >= c m^2 cases  : {mass}")
+    print(f"  repeated-root mass floor cases         : {mass}")
     print(f"  routing-floor bracket facts checked    : {loops}")
     print(f"  sharpened-routing facts checked        : {routing}")
     print(f"  routing block-incidence bound          : {bound}")

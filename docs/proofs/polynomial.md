@@ -780,9 +780,9 @@ bounds instruction positions; the block-incidence refinement below bounds
 distinct root values.
 
 The program is a multiple of its distinct-root product, so the theorem gives
-`Omega(L'**2 log L')` for `L'` distinct real roots.  The refinement forces
-`L' = Omega(T/log T)`.  Independently, the coefficient-divisibility bound
-below prices multiplicity as `Omega(m**2)`.
+`Omega(L'**2 log L')` for `L'` distinct real roots, and the block-incidence
+refinement forces `L' = Omega(T/log T)`.  Repeated roots therefore do not
+evade the bound: the refinement already counts distinct values.
 
 The stronger `Omega(T**2 / log T)` follows from the **sharpened routing lemma**:
 `N'(k+1) <= 12 * L_real + 2`, where `L_real` is the number of distinct
@@ -835,17 +835,13 @@ The distinct-node theorem above is replaced by its confluent analogue,
 zero set `Z` of size `sum e_i - 1`, the tail bound holds with the product read
 over the **expanded multiset** (each `y_i` repeated `e_i` times).  The proof is
 the Hermite limit of the distinct theorem -- perturb the repeated nodes, apply
-the distinct bound, and pass to the limit by Fatou.  This removes the
-distinctness hypothesis from the coefficient argument, so a program whose real
-roots repeat is still priced; with the routing floor's
-`m = Omega(T/log T)` real instruction positions the repeated-root order is
-`Omega(T**2 / log**2 T)`.  The `(log10 2)/32 * m**2` price for a monic
-multiple of `prod (x - r_i)^{e_i}` is the direct coefficient-divisibility
-bound spot-checked in `tests/proofs/deep/multiplicity.py`, not the confluent
-tail bound (whose product is vacuous when one root carries all the
-multiplicity).  `tests/proofs/deep/multiplicity.py` pins the algebraic content
-of the confluent bound on small certificates; it does not re-prove the limit
-step.
+the distinct bound, and pass to the limit by Fatou.  This extends the tail
+comparison to repeated roots.  It is supplementary: the main bound already
+follows from the distinct-root theorem together with the block-incidence
+lemma, which forces distinct values in any program for a maximal-width table.
+`tests/proofs/deep/multiplicity.py` pins the algebraic content of the
+confluent bound on small certificates; it does not re-prove the limit step,
+and no repeated-root mass order is needed for the theorem.
 
 *What the earlier rounds leave behind.*  The routes that did not reach the
 lemma are recorded so they are not rebuilt, and the peel above explains

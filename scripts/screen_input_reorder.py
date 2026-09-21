@@ -5,7 +5,7 @@ three-input tables once, then report ``100 * (1 - sum(min)/sum(identity))``
 where ``min`` is the shortest build over the 6 input orders.  The n=3
 table space is closed under input permutation, so the permuted builds are
 lookups, not builds.  This metric reproduces the deleted ledger's verified
-figures exactly (dig 19.8, flowchart 17.1, modulous 16.4, arrowqueue 12.4).
+figures exactly (dig 19.5, flowchart 16.2, modulous 16.4, arrowqueue 7.2).
 
 Premise, checked by execution: the program built for
 ``permute_truth_table(t, p)``, fed input ``k`` = bit ``p[k]`` of the row,

@@ -89,7 +89,7 @@ def evaluate(
     )
     if terminating:
         # Which of halting and diverging means 1, as data.  It is
-        # ``("halts", "diverges")`` for all three, but reading the order
+        # ``("halts", "diverges")`` for all four, but reading the order
         # rather than assuming it is what keeps this branch language-free.
         encoding = list(facts["answer_encoding"])
         diverges_is = str(encoding.index("diverges"))

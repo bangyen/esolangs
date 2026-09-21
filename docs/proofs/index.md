@@ -22,7 +22,7 @@ What is machine-checked lives in `tests/proofs/`.  `test_ledger.py` holds this
 document to the registry and to itself, and `test_schemes.py` holds each row to
 its scheme's measurable consequence; both are in the fast band and gate every
 push.  `tests/proofs/deep/` holds the proofs themselves, at two depths.
-`all_generators.py` runs a lemma battery against all sixty: every single
+`all_generators.py` runs a lemma battery against all 62: every single
 row of the table demonstrably participates in the emitted program, and the
 construction completes at every arity of a ladder on both table shapes.  That
 is the counting half of each scheme above, and it is what makes "finite object
