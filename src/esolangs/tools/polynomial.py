@@ -26,6 +26,11 @@ from esolangs.tools.helpers import (
 # rows).  Dense n=11 (2910) ran 2048 rows in 267s, 264.5s of it factoring.
 _POLYNOMIAL_MAX_INSTRS = 1934
 
+# Pre-expansion ceiling on a proof-sized upper bound, not the rendered length.
+# Every admitted n <= 10 construction stays below it; it prevents a short
+# instruction list with enormous operands from entering Decimal multiplication.
+_POLYNOMIAL_MAX_ESTIMATED_CHARS = 1_000_000_000
+
 
 # Instruction-count slack the dispatch still renders; selection is on
 # characters, and the two disagree (later instructions take larger primes,
@@ -136,7 +141,27 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
     ``if > 0; input; *= span`` and ``endif; += 1`` are such runs, so a block
     spends three primes, not six.
     """
-    from esolangs.tools._polynomial import primes, render_product
+    from esolangs.tools._polynomial import estimate_product, render_product
+
+    factors = _polynomial_factors(instrs)
+    estimate = estimate_product(factors)
+    if estimate.rendered_chars > _POLYNOMIAL_MAX_ESTIMATED_CHARS:
+        raise GeneratorCapError(
+            "the Polynomial expansion is conservatively bounded at "
+            f"{estimate.rendered_chars} characters and "
+            f"{estimate.peak_decimal_digits} live decimal digits, past the "
+            f"{_POLYNOMIAL_MAX_ESTIMATED_CHARS}-character construction ceiling"
+        )
+    # The expansion is the whole cost past n == 7 -- the factor count is the
+    # degree, and multiplying them in one incremental sweep rescans a
+    # polynomial whose coefficients keep growing.  ``render_product`` cuts
+    # the list into groups and merges them packed; see there.
+    return str(render_product(factors))
+
+
+def _polynomial_factors(instrs: list[list[int]]) -> list[list[int]]:
+    """Encode instructions as factors without expanding their product."""
+    from esolangs.tools._polynomial import primes
 
     groups: list[list[list[int]]] = []
     for instr in instrs:
@@ -154,11 +179,7 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
                 factors.append([1, -2 * a, a * a + p ** (2 * b)])
             else:
                 factors.append([1, -(p ** instr[0])])
-    # The expansion is the whole cost past n == 7 -- the factor count is the
-    # degree, and multiplying them in one incremental sweep rescans a
-    # polynomial whose coefficients keep growing.  ``render_product`` cuts
-    # the list into groups and merges them packed; see there.
-    return str(render_product(factors))
+    return factors
 
 
 def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:

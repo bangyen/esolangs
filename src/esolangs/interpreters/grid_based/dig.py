@@ -252,10 +252,9 @@ class _Machine:
 
         The two effects live here rather than in the transition: this is
         the shell.  ``:`` prints the mole the transition then clears, and
-        the reads ``=`` and ``~`` take a byte here -- ``=`` as a character
-        and ``~`` as a digit.  Both are consulted only when they would
-        actually fire, which for a work command means the underground
-        counter is armed.
+        the reads ``=`` and ``~`` take a line here -- ``=`` as its first
+        character and ``~`` as an integer.  They are consulted only when
+        they can fire, which requires the underground counter to be armed.
         """
         if self._done:
             return
@@ -265,7 +264,7 @@ class _Machine:
         if self.num and char in "=~":
             temp = self.io.input_str()
             if temp:
-                value = ord(temp[0]) if char == "=" else int(temp[0])
+                value = ord(temp[0]) if char == "=" else int(temp)
         elif self.num and char == ":":
             if self.mole < 10:
                 self.io.print_num(self.mole)

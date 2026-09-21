@@ -291,6 +291,9 @@ _EOF_IS_A_HALT: dict[str, str] = {
     "circuit_diagram": "resolves its inputs while laying the grid",
     "flowchart": "reads at the switch, which a program without one skips",
     "s*bleq": "a failed read leaves the cell alone and the program runs on",
+    "malbolge": "an exhausted read is the value 59048, not an error",
+    "packlang": "an exhausted charGet is newline byte 10",
+    "polynomial": "an exhausted input instruction stores -1",
 }
 
 
@@ -318,6 +321,8 @@ def _reading_languages() -> list[str]:
         # the language has no input command to run out of.
         if example.fill is None
         and name not in _EOF_IS_A_HALT
+        # Circlefuck specifies that its input command is a no-op at EOF.
+        and name != "circlefuck"
         # Suptiftam's read sits inside a loop that never ends without one,
         # so an empty stream is a hang rather than a raise.
         and name != "suptiftam"

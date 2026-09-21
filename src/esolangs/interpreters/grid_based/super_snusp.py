@@ -23,9 +23,9 @@ from esolangs.interpreters.randomness import Randomness, draw
 _DIRECTIONS = ((0, 1), (1, 0), (0, -1), (-1, 0))
 _RULD = (3, 0, 1, 2)
 _LURD = (1, 2, 3, 0)
-type _State = tuple[
-    int, int, int, int, tuple[tuple[int, int], ...], tuple[int, ...], bool, bool
-]
+type _Cursor = tuple[int, int, int]
+type _Tape = tuple[int, tuple[tuple[int, int], ...]]
+type _State = tuple[_Cursor, _Tape, tuple[int, ...], bool, bool]
 type _Effect = tuple[str, int] | None
 
 
@@ -89,7 +89,7 @@ def _advance(
     random_offset: int | None = None,
 ) -> tuple[_State, _Effect]:
     """Return the pure next state and an output effect, if this cell emits."""
-    row, col, heading, pointer, cells, values, last_digit, done = state
+    (row, col, heading), (pointer, cells), values, last_digit, done = state
     if done:
         return state, None
     command, value, effect, steps = code[row][col], _read(cells, pointer), None, 1
@@ -101,7 +101,7 @@ def _advance(
         if command == "!":
             steps = 2
         elif command == "'":
-            return (row, col, heading, pointer, cells, values, False, True), None
+            return ((row, col, heading), (pointer, cells), values, False, True), None
         elif command == "#":
             effect = ("num", value)
         elif command == "$":
@@ -198,7 +198,7 @@ def _advance(
     row += d_row * steps
     col += d_col * steps
     done = not (0 <= row < len(code) and 0 <= col < len(code[0]))
-    return (row, col, heading, pointer, cells, values, last_digit, done), effect
+    return ((row, col, heading), (pointer, cells), values, last_digit, done), effect
 
 
 class _Machine:
@@ -220,11 +220,11 @@ class _Machine:
         row, col, heading = (
             (*starts[0], 0) if starts else (len(self.code) - 1, width - 1, 2)
         )
-        self.state: _State = (row, col, heading, 0, (), (), False, False)
+        self.state: _State = ((row, col, heading), (0, ()), (), False, False)
 
     @property
     def halted(self) -> bool:
-        return self.state[7]
+        return self.state[4]
 
     #: ``ip`` is a cell of the program's own rectangle: the first two
     #: parts are a row and a column, and the rest is a heading.  Without
@@ -234,18 +234,19 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...] | None:
-        return None if self.halted else self.state[:3]
+        return None if self.halted else self.state[0]
 
     @property
     def memory(self) -> list[int]:
-        return [value for _, value in self.state[4]]
+        return [value for _, value in self.state[1][1]]
 
     @property
     def stack(self) -> list[object]:
-        return list(self.state[5])
+        return list(self.state[2])
 
     def snapshot(self) -> tuple[object, ...]:
-        return (*self.state, self.io.position())
+        cursor, (pointer, cells), values, digit, done = self.state
+        return (*cursor, pointer, cells, values, digit, done, self.io.position())
 
     # The all-random-outcomes search.  ``_State`` is already the whole
     # machine -- ``done`` included -- so the branching state is that value
@@ -258,7 +259,7 @@ class _Machine:
 
     def branching_halted(self, state: object) -> bool:
         """Report whether ``state`` has left the grid."""
-        return cast(_State, state)[7]
+        return cast(_State, state)[4]
 
     def branching_successors(
         self, state: object, _limit: int
@@ -283,7 +284,7 @@ class _Machine:
         universal hang for a program that stops.
         """
         current = cast(_State, state)
-        row, col, _heading, pointer, cells, values, _digit, _done = current
+        (row, col, _heading), (pointer, cells), values, _digit, _done = current
         command = self.code[row][col]
         if command in ",@":
             return None
@@ -305,7 +306,7 @@ class _Machine:
     def step(self) -> None:
         if self.halted:
             return
-        row, col, _heading, pointer, cells, values, _digit, _done = self.state
+        (row, col, _heading), (pointer, cells), values, _digit, _done = self.state
         command = self.code[row][col]
         char_input = self.io.input_char() if command == "," else None
         number_input = self.io.input_num() if command == "@" else None

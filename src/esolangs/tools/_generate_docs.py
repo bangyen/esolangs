@@ -8,6 +8,7 @@ to hold them, which is why the gates could stop matching wording.
 
 import pathlib
 import re
+from typing import cast
 
 import esolangs
 from esolangs.registry import LANGUAGES, RUNNERS, wiki_url
@@ -60,6 +61,8 @@ _EXAMPLES_START = "<!-- EXAMPLES:START -->"
 _EXAMPLES_END = "<!-- EXAMPLES:END -->"
 _BOOLEAN_COUNT_START = "<!-- BOOLEAN-COUNT:START -->"
 _BOOLEAN_COUNT_END = "<!-- BOOLEAN-COUNT:END -->"
+_PACKAGE_COUNT_START = "<!-- PACKAGE-COUNT:START -->"
+_PACKAGE_COUNT_END = "<!-- PACKAGE-COUNT:END -->"
 _SHAPES_START = "<!-- INPUT-SHAPES:START -->"
 _SHAPES_END = "<!-- INPUT-SHAPES:END -->"
 _API_START = "<!-- PUBLIC-API:START -->"
@@ -90,6 +93,15 @@ _SAMPLE_BITS = [1, 0, 1]
 def _wiki_name(name: str) -> str:
     """Return the esolangs wiki page title for the displayed language name."""
     return name
+
+
+def render_package_count_section() -> str:
+    """Render the total and source-shape counts in the README lead."""
+    return (
+        f"Interpreters and Boolean generators for {len(LANGUAGES)} esoteric "
+        f"languages: {len(RUNNERS)} text and "
+        f"{len(LANGUAGES) - len(RUNNERS)} raster."
+    )
 
 
 def _wiki_link(name: str) -> str:
@@ -133,9 +145,12 @@ def render_languages_section() -> str:
         out.append(description)
         out.append("")
         for name in sorted(groups[prefix]):
+            tier = (
+                "" if LANGUAGES[name].boolean is not None else " *(interpreter-only)*"
+            )
             out.append(
                 f"- [{_wiki_name(name)}]({_wiki_link(name)})"
-                f" ([code]({_source_link(name)}))"
+                f" ([code]({_source_link(name)})){tier}"
             )
         out.append("")
     return "\n".join(out).rstrip()
@@ -225,15 +240,26 @@ def render_input_shapes_section() -> str:
         stdin = repr(esolangs.encode_inputs(name, _SAMPLE_BITS))
         rows.append(f"| {name} | `{record['input_shape']}` | {alphabet} | `{stdin}` |")
     default = repr(esolangs.encode_inputs("brainfuck", _SAMPLE_BITS))
+    embedded = sum(1 for name in LANGUAGES if esolangs.describe(name)["parameterized"])
+    classics = sum(
+        1 for name in LANGUAGES if esolangs.describe(name)["boolean_generator"] is False
+    )
     rows.extend(
         [
             "",
             f"The other {len(reading) - len(odd)} that read stdin take one"
             f" `0`/`1` line per bit -- `{default}`.",
-            f"The remaining {len(LANGUAGES) - len(reading)} read no stdin at all:"
-            " their inputs are",
-            "embedded by `instantiate`.  Call `encode_inputs` rather than"
-            " reading a row off",
+            f"The remaining {embedded} embed their inputs and read no stdin:"
+            " `instantiate` fills them.",
+            *(
+                [
+                    f"The {classics} interpreter-only classics have no"
+                    " generator, so there is no generated stdin to feed."
+                ]
+                if classics
+                else []
+            ),
+            "Call `encode_inputs` rather than reading a row off",
             "this table; it is generated from `describe`, and so is the table.",
         ]
     )
@@ -284,6 +310,7 @@ def render_tui_section() -> str:
     from esolangs import tui
 
     program = esolangs.generate(_TUI_LANGUAGE, _TUI_TABLE)
+    program = cast(str, program)
     stdin = esolangs.encode_inputs(_TUI_LANGUAGE, _TUI_BITS)
     frame = tui.replay(_TUI_LANGUAGE, program, stdin, _TUI_STEP)
     screen = tui.render(frame, height=_TUI_HEIGHT, width=_TUI_WIDTH)
@@ -348,6 +375,11 @@ def update_readme() -> None:
     path = ROOT / "README.md"
     text = path.read_text()
     for start, end, render in (
+        (
+            _PACKAGE_COUNT_START,
+            _PACKAGE_COUNT_END,
+            render_package_count_section,
+        ),
         (_README_START, _README_END, render_languages_section),
         (_EXAMPLES_START, _EXAMPLES_END, render_examples_section),
         (_BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END, render_boolean_count_section),

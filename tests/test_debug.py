@@ -487,9 +487,15 @@ class TestSteppingWarnsAboutStdinToo:
         It has its own test below rather than a branch in this sweep.
         """
         return [
-            name
+            pytest.param(
+                name,
+                # Malbolge's program is the full 59049-cell store, so stepping
+                # it to its halt one instruction at a time is a medium run.
+                marks=pytest.mark.medium if name == "Malbolge" else (),
+            )
             for name in esolangs.list_languages()
-            if esolangs.describe(name)["eof_is_a_value"]
+            if esolangs.describe(name)["boolean_generator"]
+            and esolangs.describe(name)["eof_is_a_value"]
             and not esolangs.describe(name)["parameterized"]
             and name != "Alight"
         ]

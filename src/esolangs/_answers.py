@@ -34,6 +34,9 @@ def encode_inputs(
     # always finds one; ``example_stems`` covers them all and a test pins that.
     name = resolve(language)
     example = _example_for(LANGUAGES[name].id)
+    if example is None:
+        bits = check_bits(bits, "bits")
+        return "".join(f"{bit}\n" for bit in bits)
     if example.fill is not None:
         raise ArgumentError(
             f"{name} embeds its inputs in the program and reads no stdin, so "
@@ -183,6 +186,14 @@ def read_answer(language: str, output: str) -> str:
     if not isinstance(output, str):
         raise ProgramError(f"output must be a string, got {type(output).__name__}")
     example = _example_for(LANGUAGES[name].id)
+    if example is None:
+        raw = output.strip()[-1:]
+        if raw in {"0", "1"}:
+            return raw
+        raise ProgramError(
+            f"{name} produced no answer this could read: expected '0' or '1' "
+            f"as the last character, got {output[-40:]!r}"
+        )
     if example.answer_mode == "termination":
         raise ArgumentError(
             f"{name} answers by terminating, not by printing: run it under a "

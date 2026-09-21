@@ -105,7 +105,24 @@ def _parse(code: str) -> list[_Command]:
     n = len(code)
     while i < n:
         c = code[i]
-        if c in _BARE:
+        if c in "+-" and i + 1 < n and code[i + 1].isdigit():
+            j = i + 1
+            while j < n and code[j].isdigit():
+                j += 1
+            if j < n and (code[j] in _NUMBERED or code[j] in "+-"):
+                num = int(code[i:j])
+                op = code[j]
+                if op in _NUMBERED:
+                    out.append(_Numbered(op, num))
+                elif op == "+":
+                    out.append(_Counted("+", num))
+                else:
+                    out.append(_Counted("-", num))
+                i = j + 1
+            else:
+                out.append(_Counted("+" if c == "+" else "-", 1))
+                i += 1
+        elif c in _BARE:
             out.append(_Counted(c))
             i += 1
         elif c == ";":
@@ -224,9 +241,13 @@ def _advance(
     elif c == "%":
         cells = _set(cells, ptr, 0)
     elif c == "+":
-        cells = _set(cells, ptr, get(cells, ptr) + (cmd.arg or 1))
+        cells = _set(
+            cells, ptr, get(cells, ptr) + (cmd.arg if cmd.arg is not None else 1)
+        )
     elif c == "-":
-        cells = _set(cells, ptr, get(cells, ptr) - (cmd.arg or 1))
+        cells = _set(
+            cells, ptr, get(cells, ptr) - (cmd.arg if cmd.arg is not None else 1)
+        )
     elif c == "?":
         target = marks.get((":", cmd.arg))
         if target is None:

@@ -82,15 +82,15 @@ jobs:
     - name: Check the distribution metadata
       run: uv run --with twine python -m twine check dist/*
 
-    # A wheel that imports and runs is the minimum bar for publishing one.
-    # `list` rather than `--help`: this CLI dispatches on subcommands and
-    # treats an unknown flag as an error, so `--help` exits 2.
+    # Exercise the installed artifact, not the checkout: one text and one
+    # raster verification cover both packaged execution routes end to end.
     - name: The built wheel installs and runs
       run: |
         uv venv /tmp/relcheck
         VIRTUAL_ENV=/tmp/relcheck uv pip install dist/*.whl
         /tmp/relcheck/bin/esolangs list > /dev/null
-        /tmp/relcheck/bin/python -c "import esolangs; print('import ok', esolangs.__name__)"
+        /tmp/relcheck/bin/python -c "import esolangs; assert esolangs.verify('Suffolk', '0110')"
+        /tmp/relcheck/bin/python -c "import esolangs; assert esolangs.verify('Line', '01')"
 
     - uses: actions/upload-artifact@v7
       with:

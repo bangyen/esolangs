@@ -1,5 +1,10 @@
 # Task runner for the project
 
+# Keep uv's cache inside the checkout by default.  Sandboxed worktrees cannot
+# necessarily write ~/.cache, and a documented `just test-quick` should not
+# need permission outside the repository.  An explicit UV_CACHE_DIR still wins.
+export UV_CACHE_DIR := env_var_or_default("UV_CACHE_DIR", justfile_directory() + "/.cache/uv")
+
 # Auto-detect uv - falls back to plain python if not available
 PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python"`
 
@@ -87,6 +92,14 @@ test-lint *args:
 test-bandit *args:
     {{PYTHON}} scripts/verify.py --only bandit {{args}}
 
+# emit repeatable generator size/time/command evidence as JSON
+benchmark language table *args:
+    {{PYTHON}} scripts/benchmark.py "{{language}}" "{{table}}" {{args}}
+
+# create interpreter and test stubs; pass e.g. --category tape_based
+new-language name *args:
+    {{PYTHON}} scripts/new_language.py "{{name}}" {{args}}
+
 # mutation-test one interpreter: what its tests would NOT have caught
 # (not part of `just test` -- it is a few minutes per language)
 # `language` is quoted below: twelve of the sixty-five display names contain
@@ -122,6 +135,17 @@ mutate-gen module *args:
 proofs:
     {{PYTHON}} -m pytest tests/proofs -q
     {{PYTHON}} -m tests.proofs.deep all
+
+# compile the standalone complexity notes; PDFs are ignored generated files
+proofs-pdf:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    command -v tectonic >/dev/null 2>&1 || {
+        echo "tectonic is required (brew install tectonic)" >&2
+        exit 1
+    }
+    tectonic --outdir docs/proofs docs/proofs/factor.tex
+    tectonic --outdir docs/proofs docs/proofs/polynomial.tex
 
 # Not in `just test` or CI: what it guards moves only when APA's head, body,
 # or routing does, so run it then. L2's foreign-leaf sweep at n=9 is 57s of

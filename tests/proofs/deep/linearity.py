@@ -22,9 +22,9 @@ Where the bound sits, measured on both sides:
   and Streetcode at x2.074, with everything else at or under x2.02;
 * the super-linear constructions this repository has already retired measured,
   single-step at n=8 -> 9 on parity, A Painter Ant x3.96, Minifuck
-  x3.53 and 123 x2.43, all of which this bound rejects.  A synthetic `T log T`
-  series measures x2.191 here and is rejected; `T log T / log log T` (Factor's
-  proved floor) measures x2.109 and is not -- the documented blind spot.
+  x3.53 and 123 x2.43, all of which this bound rejects. A synthetic `T log T`
+  series measures x2.191 here and is rejected, while Factor's finite-arity
+  `Theta(T log T)` encoding measures x2.113 -- the documented blind spot.
 
 So it has teeth on both sides and roughly a factor of two of headroom above
 today's worst honest construction.  It is a calibrated regression guard, not a
@@ -186,7 +186,7 @@ def exempt_generators() -> dict[str, str]:
     """Generators the documents already say are not settled as linear.
 
     Read from both ledgers rather than listed here.  The roadmap's audit table
-    holds the open scaling rows; ``proofs.md`` marks the generators whose
+    holds the open scaling rows; ``proofs/index.md`` marks the generators whose
     construction runs into a resource ceiling (``cap``) or has no totality
     argument at all (``exception``).  Closing a row in either document is a
     one-line edit that immediately arms this contract against that generator.
@@ -201,7 +201,7 @@ def exempt_generators() -> dict[str, str]:
     for row in load_ledger().rows:
         for label in ("cap", "exception"):
             if label in row.labels:
-                reasons[row.generator] = f"proofs.md {label} row"
+                reasons[row.generator] = f"proofs/index.md {label} row"
     for name in sorted(load_audit().unsettled):
         reasons[name] = "roadmap scaling audit: open"
     return reasons
@@ -213,7 +213,7 @@ def main() -> int:
     by_display = {lang.name: key for key, lang in BY_BOOLEAN.items()}
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
-    assert len(measured) == len(BY_BOOLEAN) == 59, "not every generator was measured"
+    assert len(measured) == len(BY_BOOLEAN) == 62, "not every generator was measured"
 
     print(f"Scaling contract: {len(measured)} generators, bound x{MAX_GROWTH}\n")
     print(f"  {'generator':30s} {'growth':>7s} {'per entry':>10s}  where")

@@ -72,8 +72,12 @@ class TestTheExceptionalLanguages:
         theirs is refused rather than answered -- ``instantiate`` is where
         their bits go.
         """
-        assert set(example_stems()) == {lang.id for lang in LANGUAGES.values()}
+        assert set(example_stems()) == {
+            lang.id for lang in LANGUAGES.values() if lang.boolean is not None
+        }
         for name in esolangs.list_languages():
+            if not esolangs.describe(name)["boolean_generator"]:
+                continue
             if esolangs.describe(name)["parameterized"]:
                 with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
                     esolangs.encode_inputs(name, [0, 1])
@@ -159,6 +163,8 @@ class TestAnswerMode:
         wrong = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
+            if not facts["boolean_generator"]:
+                continue
             if facts["parameterized"] or facts["answer_mode"] != "output":
                 continue
             program = esolangs.generate(name, XOR)

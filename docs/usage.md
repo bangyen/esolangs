@@ -5,6 +5,10 @@ caller knows nothing about. Every decision below reads a
 [`describe`](#describe) field rather than a language name, so nothing here
 needs a per-language branch.
 
+For a guided example covering text, embedded-input, and raster programs, see
+the [XOR tutorial](tutorial.md). The [compatibility policy](compatibility.md)
+defines which Python, CLI, metadata, and semantic interfaces are stable.
+
 ## The round trip
 
 `evaluate` runs a generated program on every row of its input space and
@@ -67,9 +71,9 @@ esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0\n1\n0\n1\n'
 | Grapheme | `line_per_bit` | `%`/`A` | `'A\n%\nA\n'` |
 | Taglate | `line_per_bit_padded` | `0`/`1` | `'0\n1\n0\n1\n'` |
 
-The other 41 that read stdin take one `0`/`1` line per bit -- `'1\n0\n1\n'`.
-The remaining 14 read no stdin at all: their inputs are
-embedded by `instantiate`.  Call `encode_inputs` rather than reading a row off
+The other 46 that read stdin take one `0`/`1` line per bit -- `'1\n0\n1\n'`.
+The remaining 14 embed their inputs and read no stdin: `instantiate` fills them.
+Call `encode_inputs` rather than reading a row off
 this table; it is generated from `describe`, and so is the table.
 
 <!-- INPUT-SHAPES:END -->
@@ -146,7 +150,7 @@ than marked in the wrong place; the header always shows the raw `ip`.
 ## describe
 
 `describe(language)` returns the record every function above branches on:
-`input_shape`, `input_encoding`, `answer_mode`, `answer_encoding`,
+`source_kind`, `input_shape`, `input_encoding`, `answer_mode`, `answer_encoding`,
 `width_effect`, `parameterized`, `reads_input` and the rest.
 `esolangs describe --json <language>` prints it, and `esolangs list
 --details` reduces it to a marker column -- `gen`, `tmpl`, `ex`.

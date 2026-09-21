@@ -200,9 +200,17 @@ class _Machine:
 
 def run(code: str, io: IO) -> None:
     """Run a Minifuck program."""
-    machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    tape = 0
+    length = _WIDTH
+    ptr = 0
+    ind = 0
+    while ind < len(code):
+        tape, length, ptr, skipped, char, reads = _step(code[ind], tape, length, ptr)
+        ind += 2 if skipped else 1
+        if char is not None:
+            io.print_char(char)
+        elif reads:
+            _, tape, _, _, _ = _load((code, tape, length, ptr, ind), io.input_char())
 
 
 if __name__ == "__main__":

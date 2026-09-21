@@ -78,6 +78,12 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# Generated proof artifacts
+docs/proofs/*.aux
+docs/proofs/*.out
+docs/proofs/*.pdf
+docs/proofs/*.xdv
+
 # PyBuilder
 target/
 

@@ -408,6 +408,8 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
         """The check must not fire on what `encode_inputs` itself produces."""
         noisy = []
         for name in esolangs.list_languages():
+            if not esolangs.describe(name)["boolean_generator"]:
+                continue
             if esolangs.describe(name)["parameterized"]:
                 continue
             stdin = esolangs.encode_inputs(name, [1, 0], "0110")
@@ -637,10 +639,11 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
         shapes = {
             name: str(esolangs.describe(name)["input_shape"])
             for name in esolangs.list_languages()
+            if esolangs.describe(name)["boolean_generator"]
         }
         assert [n for n, s in shapes.items() if s == "one_line"] == ["Clockwise"]
         assert [n for n, s in shapes.items() if s == "row_index"] == ["Fargo"]
-        assert sum(s == "line_per_bit" for s in shapes.values()) == 56
+        assert sum(s == "line_per_bit" for s in shapes.values()) == 61
 
     def test_a_one_line_language_does_catch_a_stray_line(self) -> None:
         """Which is why the help can still claim a shape check at all."""

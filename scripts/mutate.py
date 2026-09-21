@@ -69,6 +69,13 @@ _NOT_REWRITTEN = ("vm", "registry", "tools")
 # ``_score`` checks its exclusions against.
 _INLINED = ("esolangs.exceptions", "esolangs.interpreters.io")
 
+# A companion that is part of the language rather than shared infrastructure.
+# Start mutation here so Streetcode's geometry does not disappear into
+# ``_inlined.py`` with IO and the other dependencies.
+_MUTATION_ROOT = {
+    "grid_based.streetcode": "grid_based._streetcode_geometry",
+}
+
 # How far past the unmutated baseline a single test may run before the alarm
 # in ``_CONFTEST`` fails it.  Both numbers are deliberately generous: the only
 # job here is to come in under mutmut's ``(estimate + 1) * 30`` CPU-second
@@ -337,6 +344,24 @@ def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
     outside the bundle is mutated, so importing the real module is safe.
     """
     if module:
+        # A suite may import the interpreter through its full module path so
+        # monkeypatches hit the same definitions its direct imports exercise.
+        # Repoint that alias too; otherwise the patch lands on the installed
+        # module while the assertion calls the bundle.
+        src = re.sub(
+            rf"import esolangs\.interpreters\.{re.escape(module)} as (\w+)",
+            rf"import {stem} as \1",
+            src,
+        )
+        root = _MUTATION_ROOT.get(module)
+        if root is not None:
+            package, companion = root.rsplit(".", 1)
+            src = re.sub(
+                rf"from esolangs\.interpreters\.{re.escape(package)} import "
+                rf"{re.escape(companion)} as (\w+)",
+                rf"import {stem} as \1",
+                src,
+            )
         # ``from esolangs.<pkg> import <name> as m`` imports the interpreter
         # *module*, not a name inside it.  The bundle is that module, so the
         # rewrite is a plain alias -- repointing it at ``from {stem} import
@@ -372,7 +397,8 @@ def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
         )
     skip = "|".join(_NOT_REWRITTEN)
     return re.sub(
-        rf"from esolangs(?!\.(?:{skip})\b)(?:\.[\w.]+)? import ",
+        rf"from esolangs(?!\.(?:{skip})\b)(?:\.[\w.]+)? import "
+        rf"(?!(?:{skip})\b)",
         f"from {stem} import ",
         src,
     )
@@ -466,9 +492,8 @@ def _split_inlined(bundle: Path, module: str) -> int:
     lines moved.
     """
     text = bundle.read_text()
-    marker = (
-        f"# --- inlined from esolangs/interpreters/{module.replace('.', '/')}.py ---"
-    )
+    root = _MUTATION_ROOT.get(module, module)
+    marker = f"# --- inlined from esolangs/interpreters/{root.replace('.', '/')}.py ---"
     head, sep, tail = text.partition(marker)
     if not sep:
         raise SystemExit(f"no inline marker for {module} in {bundle.name}")

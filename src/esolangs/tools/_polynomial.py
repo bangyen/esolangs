@@ -10,6 +10,8 @@ import decimal
 import sys
 from collections.abc import Iterator
 
+from esolangs.polynomial_resources import GenerationEstimate, estimate_generation
+
 
 @contextlib.contextmanager
 def _digit_limit_for(digits: int) -> Iterator[None]:
@@ -84,6 +86,11 @@ def render_product(factors: list[list[int]]) -> str:
             coeffs = multiply(coeffs, factor)
         return format_coeffs(coeffs)
     return _render_terms(*_packed_product(factors))
+
+
+def estimate_product(factors: list[list[int]]) -> GenerationEstimate:
+    """Return the conservative pre-expansion resource estimate."""
+    return estimate_generation(factors)
 
 
 def _packed_product(factors: list[list[int]]) -> tuple[list[str], bool]:

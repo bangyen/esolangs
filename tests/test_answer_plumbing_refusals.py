@@ -409,7 +409,7 @@ class TestUnknownLanguageAlwaysOffersANextStep:
     def test_a_far_miss_names_the_listing_command(self) -> None:
         """Someone misremembering a name has nothing to be suggested."""
         with pytest.raises(esolangs.UnknownLanguageError, match="esolangs list"):
-            esolangs.describe("Malbolge")
+            esolangs.describe("Gorgonzola")
 
     def test_a_near_miss_still_suggests(self) -> None:
         """The better hint must win where there is one."""

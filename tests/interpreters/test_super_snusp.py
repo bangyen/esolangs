@@ -234,7 +234,7 @@ def test_empty_program_is_rejected() -> None:
 
 def test_advance_short_circuits_once_the_cursor_has_left_the_grid() -> None:
     """A done state is its own successor, so the shell can stop on it."""
-    done = (0, 0, 0, 0, (), (), False, True)
+    done = ((0, 0, 0), (0, ()), (), False, True)
     assert _advance(done, ['"']) == (done, None)
 
 
@@ -257,6 +257,6 @@ def test_advance_refuses_an_input_the_shell_did_not_supply(
     a real end of input.  The guards are the pure function's contract with
     any other caller, and this is what holds them.
     """
-    state = (0, 0, 0, 0, ((0, 5),), (1,), False, False)
+    state = ((0, 0, 0), (0, ((0, 5),)), (1,), False, False)
     with pytest.raises(HaltError):
         _advance(state, [command], random_offset=offset)

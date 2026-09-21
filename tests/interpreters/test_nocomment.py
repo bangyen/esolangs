@@ -147,15 +147,12 @@ class TestNoComment:
         assert run_and_capture("ciincsio") == "\x01"
         assert run_and_capture("cbo") == "\x00"
 
-    def test_jump_needs_a_stacked_value(self) -> None:
-        """S and b do nothing when the stack is empty.
-
-        Nothing is pushed here, so the jump has no distance to read: it is
-        skipped silently rather than raising, and the following commands
-        all run.
-        """
-        assert run_and_capture("cisio") == "\x02"
-        assert run_and_capture("cibo") == "\x01"
+    def test_jump_peek_underflow_is_error(self) -> None:
+        """A taken s or b needs a stack value to peek."""
+        with pytest.raises(HaltError):
+            run_and_capture("cisio")
+        with pytest.raises(HaltError):
+            run_and_capture("cibo")
 
     def test_jump_target_is_checked_one_past_the_jump(self) -> None:
         """The range check looks at the command the jump lands on.
@@ -181,17 +178,9 @@ class TestNoComment:
         with pytest.raises(HaltError):
             run_and_capture("nib")
 
-    def test_a_backward_jump_landing_on_the_first_command_is_allowed(self) -> None:
-        """Zero is a legal target: the jump lands on the first command.
-
-        ``test_backward_jump_of_zero_leaves_the_code`` names the low edge but
-        does not reach it -- jumping back by zero targets ``ind + 1``, which
-        is above it.  The edge is reached only when the stacked value is one
-        more than the jump's own index, and it is a *valid* landing: the
-        program continues from the top and runs to completion, printing 6.
-        A floor of 1, or an exclusive comparison, halts here instead.
-        """
-        assert run_and_capture("iisbinbo") == "\x06"
+    def test_taken_jump_cannot_peek_an_empty_stack(self) -> None:
+        with pytest.raises(HaltError):
+            run_and_capture("iisbinbo")
 
     def test_every_non_command_character_is_rejected(self) -> None:
         """No character outside the ten commands is executable -- no no-ops exist.

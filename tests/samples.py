@@ -173,6 +173,9 @@ RAISES_ON_THE_POST_HALT_STEP: frozenset[str] = frozenset()
 # sides with the same heading; the sweep just leaves the comparison to it.
 NONDETERMINISTIC_AGAINST_RUN = frozenset({"LaserFuck"})
 
+#: Whitespace's "push 0, end" in its own three-token alphabet.
+WHITESPACE_PUSH_ZERO = "    \n\n\n\n"
+
 # language -> (program, stdin)
 SAMPLES: dict[str, tuple[str, str]] = {
     "123": ("3231", ""),
@@ -187,6 +190,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "BF-PDA": ("<@.", ""),
     "BFStack": (">+.", ""),
     "Back": ("-*", ""),
+    "Befunge": ("99*.@", ""),
     "B-tapemark": (">OK!", ""),
     "BIO": ("0ox;0ix{1ox;};1ix;", ""),
     "bit~": ("~(", ""),
@@ -223,6 +227,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Inject": (INJECT_TRUTH_MACHINE, "0\n"),
     "Jaune": ("++^", ""),
     "LaserFuck": ("ÿ   x\n    +\n    o", ""),
+    "Malbolge": ("Q", ""),
     "Minifuck": (".", ""),
     "Minsky Swap": ("+", ""),
     "Modulous": ("[PSH INT 5][DUP][PRT INT]", ""),
@@ -245,4 +250,5 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Taglate": ("abc\ni", ""),
     "Unsquare": ("Io", ""),
     "Vandevelo": ("Nil?", ""),
+    "Whitespace": (WHITESPACE_PUSH_ZERO, ""),
 }

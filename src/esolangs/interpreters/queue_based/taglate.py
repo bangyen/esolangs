@@ -100,7 +100,7 @@ def _pop(state: _State) -> tuple[int, _State]:
 def _push(state: _State, value: int) -> _State:
     """Return ``state`` with ``value`` on the back of the queue."""
     queue, ind = state
-    return ((*queue, value), ind)
+    return ((*queue, value % 65536), ind)
 
 
 def _advance(
@@ -195,7 +195,9 @@ class _Machine:
     def __init__(self, code: list[str], io: IO) -> None:
         """Seed the queue from the first line and tokenize the rest."""
         self.io = io
-        self.queue: tuple[int, ...] = tuple(ord(c) for c in code[0]) if code else ()
+        self.queue: tuple[int, ...] = (
+            tuple(ord(c) % 65536 for c in code[0]) if code else ()
+        )
         self.tokens = _tokens("".join(code[1:]))
         self.match = _match(self.tokens)
         self.ind = 0

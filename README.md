@@ -5,7 +5,12 @@
 [![PyPI](https://img.shields.io/pypi/v/esolangs.svg)](https://pypi.org/project/esolangs/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Interpreters and boolean-circuit generators for 59 esoteric languages.
+<!-- PACKAGE-COUNT:START -->
+
+Interpreters and Boolean generators for 64 esoteric languages: 62 text and 2 raster.
+
+<!-- PACKAGE-COUNT:END -->
+
 `generate` takes a truth table and returns a program computing it;
 `verify` runs that program on every row and checks what it answers.
 
@@ -15,6 +20,10 @@ templates, reading an answer back, the debugger.
 [architecture](https://github.com/bangyen/esolangs/blob/main/docs/architecture.md)
 shows how the registry, generators, interpreters, and answer extraction
 connect.
+[tutorial](https://github.com/bangyen/esolangs/blob/main/docs/tutorial.md)
+walks one truth table through text, template, raster, and debugger interfaces;
+[compatibility](https://github.com/bangyen/esolangs/blob/main/docs/compatibility.md)
+defines the beta package's stable surface.
 [roadmap](https://github.com/bangyen/esolangs/blob/main/docs/roadmap.md) tracks
 live work and
 [limitations](https://github.com/bangyen/esolangs/blob/main/docs/limitations.md)
@@ -26,8 +35,7 @@ Start with the [CLI](#command-line), [Python API](#python-api), or
 ## Command line
 
 ```bash
-just install-dev                 # installs into ./.venv
-source .venv/bin/activate        # ...or prefix each command with `uv run`
+python -m pip install esolangs
 
 esolangs --help
 esolangs list
@@ -36,8 +44,23 @@ printf '0\n1\n' | esolangs run Suffolk program.txt
 
 esolangs generate brainfuck 0110 > bf.txt
 printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
-just test
 ```
+
+The Polynomial interpreter needs the optional mathematics extra:
+`pip install 'esolangs[math]'`.  The other languages install without SymPy.
+
+To work on the repository instead, install its development environment and
+run the quick verification loop:
+
+```bash
+just install-dev
+source .venv/bin/activate        # or prefix each command with `uv run`
+just test-quick
+```
+
+Run `just test` before committing; the
+[contribution guide](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md)
+has the full workflow.
 
 ## Python API
 
@@ -102,7 +125,7 @@ the page.  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#d
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):
-`examples/` holds a truth-table program for each of the 59
+`examples/` holds a truth-table program for each of the 62
 languages with a boolean generator.  It regenerates via
 `scripts/generate.py examples`.
 
@@ -113,7 +136,7 @@ languages with a boolean generator.  It regenerates via
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 59 languages</summary>
+<summary>Show all 62 languages</summary>
 
 ### Grid-based Languages
 
@@ -123,6 +146,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [Alight](https://esolangs.org/wiki/Alight) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/alight.py))
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/arrowqueue.py))
 - [B-tapemark](https://esolangs.org/wiki/B-tapemark) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/b_tapemark.py))
+- [Befunge](https://esolangs.org/wiki/Befunge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/befunge.py))
 - [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/circuit_diagram.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/clockwise.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/dig.py))
@@ -144,6 +168,7 @@ Languages that use a stack for data manipulation.
 - [Grapheme](https://esolangs.org/wiki/Grapheme) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/grapheme.py))
 - [Modulous](https://esolangs.org/wiki/Modulous) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/modulous.py))
 - [Unsquare](https://esolangs.org/wiki/Unsquare) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/unsquare.py))
+- [Whitespace](https://esolangs.org/wiki/Whitespace) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/whitespace.py))
 
 ### Queue-based Languages
 
@@ -201,6 +226,7 @@ Languages that don't fit into the above categories.
 - [Fargo](https://esolangs.org/wiki/Fargo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/fargo.py))
 - [Forbin](https://esolangs.org/wiki/Forbin) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/forbin.py))
 - [Inject](https://esolangs.org/wiki/Inject) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/inject.py))
+- [Malbolge](https://esolangs.org/wiki/Malbolge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/malbolge.py))
 - [Packlang](https://esolangs.org/wiki/Packlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/packlang.py))
 - [Vandevelo](https://esolangs.org/wiki/Vandevelo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/vandevelo.py))
 
@@ -217,7 +243,7 @@ Boolean generators accept a most-significant-input-first binary truth table.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  59 of the
+first; its length implies `n`, so it isn't passed separately.  62 of the
 languages have such a generator, some covering only a documented subset of
 tables.
 

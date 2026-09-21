@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 from esolangs.exceptions import TemplateError, UnknownLanguageError
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
-from esolangs.registry._table import LANGUAGES, Generator, Language
+from esolangs.registry._table import LANGUAGES, Generator, Language, SourceKind
 from esolangs.tools.helpers import MOST_INPUTS, Setters
 
 if TYPE_CHECKING:
@@ -24,6 +24,7 @@ __all__ = [
     "SUGGESTION_CUTOFF",
     "Generator",
     "Language",
+    "SourceKind",
     "canonical_id",
     "example_stems",
     "parameterized_ids",
@@ -51,7 +52,7 @@ BY_BOOLEAN: dict[str, Language] = {
 RUNNERS: dict[str, tuple[str, bool]] = {
     name: (lang.interpreter, lang.split)
     for name, lang in LANGUAGES.items()
-    if lang.interpreter
+    if lang.interpreter and lang.source_kind is SourceKind.TEXT
 }
 
 

@@ -48,6 +48,7 @@ from esolangs.exceptions import (
     InputExhaustedError,
     InputMismatchWarning,
     InterpreterLimitError,
+    MissingDependencyError,
     ProgramError,
     ProgramNotFoundError,
     TemplateError,
@@ -55,6 +56,7 @@ from esolangs.exceptions import (
     UnknownLanguageError,
 )
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.raster import Raster
 from esolangs.registry import (
     LANGUAGES,
     RUNNERS,
@@ -111,8 +113,10 @@ __all__ = [
     "InputMismatchWarning",
     "InterpreterLimitError",
     "LanguageInfo",
+    "MissingDependencyError",
     "ProgramError",
     "ProgramNotFoundError",
+    "Raster",
     "StopReason",
     "TemplateError",
     "TruthTableError",
@@ -140,7 +144,7 @@ def __dir__() -> list[str]:
     return sorted(__all__)
 
 
-def generate(language: str, truth_table: str, width: int | None = None) -> str:
+def generate(language: str, truth_table: str, width: int | None = None) -> str | Raster:
     """Return a program in ``language`` computing ``truth_table``.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first, so its
@@ -158,7 +162,7 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     """
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
-    fn = lang.boolean
+    fn = lang.boolean or lang.raster_boolean
     if fn is None:
         raise UnknownLanguageError(language)
     if not isinstance(truth_table, str):
@@ -167,8 +171,15 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
             f"{type(truth_table).__name__}"
         )
     check_width(width)
-    laid_out = width is not None and _takes_width(fn)
-    slots = str(fn(truth_table, width) if laid_out else fn(truth_table))
+    laid_out = (
+        width is not None and lang.boolean is not None and _takes_width(lang.boolean)
+    )
+    generated = fn(truth_table, width) if laid_out else fn(truth_table)
+    if lang.raster_boolean is not None:
+        if not isinstance(generated, Raster):
+            raise ProgramError(f"{resolved}'s generator did not return a Raster")
+        return generated
+    slots = str(generated)
     if lang.id not in parameterized_ids():
         program = slots if laid_out else wrap_program(slots, lang.id, width)
         return _Tagged(program, resolved)
@@ -186,6 +197,8 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
     A wrapped template passes where the plain one is a single line.
     """
     plain = generate(name, truth_table)
+    if not isinstance(plain, str):
+        return False
     return template == plain or (
         "\n" not in plain and template.replace("\n", "") == plain
     )
@@ -275,7 +288,7 @@ _PATH_CHARS = re.compile(r"^[\w./\\~-]+$")
 _PATH_EXTENSION = re.compile(r"\.[A-Za-z0-9]{1,5}$")
 
 
-def _looks_like_a_path(program: str) -> bool:
+def _looks_like_a_path(program: str | Raster) -> bool:
     """Whether ``program`` is a filename someone meant to open.
 
     A path is legal text in most of these languages
@@ -284,13 +297,15 @@ def _looks_like_a_path(program: str) -> bool:
     in a short extension.  ``.``, ``..`` and ``~`` are accepted as programs
     (``~~`` is two ArrowQueue commands).
     """
+    if not isinstance(program, str):
+        return False
     if "\n" in program or not _PATH_CHARS.match(program):
         return False
     rooted = program.startswith(("/", "./", "../", "~/"))
     return rooted or bool(_PATH_EXTENSION.search(program))
 
 
-def check_runnable(language: str, program: str) -> None:
+def check_runnable(language: str, program: str | Raster) -> None:
     """Reject a program that is a path or an unfilled template.
 
     Both are valid input to an interpreter and each produced a confident
@@ -298,6 +313,8 @@ def check_runnable(language: str, program: str) -> None:
     debugger stepped a template to ``output: '0'``; the CLI's ``debug`` calls it.
     """
     name = resolve(language)
+    if isinstance(program, Raster):
+        return
     if _looks_like_a_path(program):
         raise ProgramError(
             f"program looks like a path, not source: {program!r}. "
@@ -313,8 +330,8 @@ def check_runnable(language: str, program: str) -> None:
 
 
 def check_program(
-    language: str, program: str | os.PathLike[str], stdin: str = ""
-) -> str:
+    language: str, program: str | Raster | os.PathLike[str], stdin: str = ""
+) -> str | Raster:
     """Return ``program`` as source, having checked what can be checked here.
 
     Not a load check: it refuses the wrong *kind* of thing (a path as a
@@ -330,9 +347,15 @@ def check_program(
         run(lang, path, encode_inputs(lang, [0, 1]))
     """
     name = resolve(language)
+    raster = LANGUAGES[name].source_kind.value == "raster"
     if isinstance(program, os.PathLike):
         try:
-            program = pathlib.Path(program).read_text(encoding="utf-8").rstrip("\n")
+            path = pathlib.Path(program)
+            program = (
+                Raster.from_png(path.read_bytes())
+                if raster
+                else path.read_text(encoding="utf-8").rstrip("\n")
+            )
         except FileNotFoundError as exc:
             # Split from the OSError clause below so a caller who passed a
             # Path can write ``except FileNotFoundError`` and have it work.
@@ -347,9 +370,13 @@ def check_program(
             raise ProgramError(
                 f"cannot read {program}: not text (invalid UTF-8 at byte {exc.start})"
             ) from exc
-    if not isinstance(program, str):
+        except ValueError as exc:
+            raise ProgramError(f"cannot read {program}: {exc}") from exc
+    expected = Raster if raster else str
+    if not isinstance(program, expected):
         raise ProgramError(
-            f"program must be a string of source or a Path, got "
+            f"program must be {'a Raster' if raster else 'a string of source'} "
+            f"or a Path, got "
             f"{type(program).__name__}"
         )
     origin = getattr(program, "language", None)
@@ -374,7 +401,7 @@ def check_program(
 
 def run(
     language: str,
-    program: str | os.PathLike[str],
+    program: str | Raster | os.PathLike[str],
     stdin: str = "",
     timeout: float | None = None,
     seed: int | None = None,
@@ -426,11 +453,17 @@ def run(
     # that reaches here is always in ``RUNNERS``.  The guard that used to sit
     # here re-raised the error ``resolve`` had already raised.
     name = resolve(language)
-    module, split = RUNNERS[name]
     program = check_program(name, program, stdin)
-    run_fn = importlib.import_module("esolangs.interpreters." + module).run
+    if isinstance(program, Raster):
+        run_fn = importlib.import_module(f"esolangs.{LANGUAGES[name].id}").run
+        split = False
+    else:
+        module, split = RUNNERS[name]
+        run_fn = importlib.import_module("esolangs.interpreters." + module).run
     io_obj = ScriptedIO(stdin)
-    program_args: str | list[str] = program.splitlines() if split else program
+    program_args: str | list[str] | Raster = (
+        program.splitlines() if split and isinstance(program, str) else program
+    )
     _warn_about_stdin(name, stdin)
     if seed is not None:
         run_fn = _seeded(name, run_fn, seed)
@@ -442,7 +475,7 @@ def run(
         # program run); Qoibl's tokenizer carries its own stack now.
         raise InterpreterLimitError(
             f"the {name} interpreter recursed deeper than CPython's stack "
-            f"limit allows on this program ({len(program)} characters); the "
+            f"limit allows on this program; the "
             f"program is well formed, and sys.setrecursionlimit can raise "
             f"the limit if this interpreter's depth grows with program size"
         ) from exc
@@ -491,7 +524,7 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
 def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., Any]:
     """Bind ``seed`` to ``run_fn``'s random source, refusing where there is none.
 
-    Four languages draw (LaserFuck, Modulous, Painfuck,
+    Five languages draw (Befunge, LaserFuck, Modulous, Painfuck,
     Super SNUSP) and nothing public passed an ``rng``: ten runs of
     ``o+++.`` gave ``3`` five times and nothing five times, while ``make_vm``
     always seeded.  A seed for a language that draws nothing is refused: the
@@ -502,7 +535,7 @@ def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., A
     if "rng" not in inspect.signature(run_fn).parameters:
         raise ArgumentError(
             f"{name} draws no random values, so a seed has nothing to fix; "
-            f"the languages that draw are LaserFuck, "
+            f"the languages that draw are Befunge, LaserFuck, "
             f"Modulous, Painfuck and Super SNUSP"
         )
     from esolangs.interpreters.randomness import Seeded
@@ -553,7 +586,7 @@ def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
 
 def _run(
     run_fn: Callable[..., Any],
-    program: str | list[str],
+    program: str | list[str] | Raster,
     io_obj: ScriptedIO,
     timeout: float | None,
 ) -> None:
@@ -566,7 +599,7 @@ def _run(
 
 def _run_timed_signal(
     run_fn: Callable[..., Any],
-    program: str | list[str],
+    program: str | list[str] | Raster,
     io_obj: ScriptedIO,
     timeout: float,
 ) -> None:

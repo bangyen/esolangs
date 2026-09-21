@@ -19,8 +19,7 @@ import math
 import re
 import sys
 
-import sympy
-
+from esolangs.factor_primes import prime_segments
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.brainfuck import _Machine as _BFMachine
 
@@ -37,6 +36,35 @@ _SIEVE_CHUNK = 20000
 #: per prime.  Pays only once the number dwarfs the chunk product; the
 #: committed examples sit below it.
 _BATCH_BITS = 8192
+
+# The fixed Miller-Rabin witnesses below prove primality only through this
+# range.  Above it, trial division continues to keep the decode exact.
+_EXACT_ISPRIME_LIMIT = 1 << 64
+
+
+def _isprime64(number: int) -> bool:
+    """Return whether ``number < 2**64`` is prime, deterministically."""
+    if number < 2:
+        return False
+    for prime in (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37):
+        if number % prime == 0:
+            return number == prime
+    odd = number - 1
+    shifts = 0
+    while not odd & 1:
+        shifts += 1
+        odd >>= 1
+    for base in (2, 325, 9375, 28178, 450775, 9780504, 179526502):
+        value = pow(base % number, odd, number)
+        if value in (1, number - 1):
+            continue
+        for _ in range(shifts - 1):
+            value = value * value % number
+            if value == number - 1:
+                break
+        else:
+            return False
+    return True
 
 
 def _parse(digits: str) -> int:
@@ -56,28 +84,26 @@ def _parse(digits: str) -> int:
 
 
 def _factorint(number: int) -> dict[int, int]:
-    """Factorize ``number``, dividing small primes out before sympy sees it.
+    """Factorize ``number`` by widening segmented trial division.
 
     The number is a product of many smallish primes (1276 digits for the
     committed example), so walk primes in order and shrink as each divides.
     Never stop at a fixed prime: the residue handed to ``factorint`` is then
     a large composite that sends it to Pollard rho for minutes (a 10000
     ceiling hung the sweep on a 3243-digit program with 80 primes above it).
-    Chunks widen until the residue is prime or gone.  ``isprime`` (BPSW,
-    priced by full width) is asked only after a *barren* chunk and once per
-    residue: three calls cost 60.02s on n=5 parity where the sieve to 58099
-    cost 0.04s; now 60.0s -> 0.04s, examples at 1.4ms.
+    Chunks widen until the residue is prime or gone. Below 2**64, exact
+    ``isprime`` is asked only after a *barren* chunk and once per residue;
+    above it BPSW cannot certify a language decode, so the sieve continues.
     """
     factors: dict[int, int] = {}
-    start = 2
     checked = 0
+    segments = prime_segments(_SIEVE_CHUNK)
     while number > 1:
-        stop = start + _SIEVE_CHUNK
+        _start, _stop, primes = next(segments)
         divided = False
-        primes = list(sympy.sieve.primerange(start, stop))
         # One gcd per chunk: ``number % prime`` costs the width of
-        # ``number``, and a boolean program's integer has Theta(T) digits
-        # and Theta(T) primes -- that product was the load cost.  A prime
+        # ``number``, and a worst-case generated integer has
+        # Theta(T log T) digits and Theta(T) primes.  A prime
         # divides ``number`` iff it divides ``gcd(number, chunk product)``,
         # which is small.  Sound mid-chunk: only other primes are divided out.
         batched = bool(primes) and number.bit_length() >= _BATCH_BITS
@@ -102,18 +128,16 @@ def _factorint(number: int) -> dict[int, int]:
             break
         if divided:
             # Still finding factors: widen rather than pay ``isprime``.
-            start = stop
             continue
-        # Barren: every factor is above the sieve, so BPSW is worth it --
-        # once per value, not per barren chunk.
-        if number != checked:
+        # Barren: the exact small-integer screen is worth it once per value.
+        # Above its proven range, keep trial-dividing to preserve totality.
+        if number != checked and number < _EXACT_ISPRIME_LIMIT:
             checked = number
-            if sympy.isprime(number):
+            if _isprime64(number):
                 factors[number] = factors.get(number, 0) + 1
                 return factors
-        # Composite above the sieve: widen.  ``sympy.factorint`` here would
+        # Composite above the sieve: widen. ``sympy.factorint`` here would
         # send the leftover to Pollard rho for minutes.
-        start = stop
     return factors
 
 

@@ -2,7 +2,7 @@
 
 Run:  just proofs   (or python tests/proofs/deep/all_generators.py)
 
-Every row in ``docs/proofs.md`` gets the lemma battery in
+Every row in ``docs/proofs/index.md`` gets the lemma battery in
 :mod:`tests.proofs.deep._lemmas` instantiated against its own construction and
 its own ledger scheme.  Four generators additionally have a hand-derived proof
 of their *specific* argument in the files beside this one; those are deeper,
@@ -201,7 +201,7 @@ def main() -> int:
         for r in results
         if not core <= {lemma.strip() for lemma in r.passed}
     ]
-    assert len(results) == 59, f"{len(results)} generators, expected 59"
+    assert len(results) == 62, f"{len(results)} generators, expected 62"
     assert not weak, f"core lemmas not established for: {sorted(weak)}"
     print("\nall generator batteries passed")
     return 0

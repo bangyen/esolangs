@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import StrEnum
 
+from esolangs import line as _line
+from esolangs import piet as _piet
 from esolangs import tools as _boolean
+from esolangs.raster import Raster
 from esolangs.registry._slug import canonical_id
 
 # A generator: ``generator(truth_table)`` returns a program computing it.
@@ -15,6 +19,14 @@ from esolangs.registry._slug import canonical_id
 # fact the way a single long line can.  ``...`` keeps both arities callable
 # with the table alone, which is how every width-less caller invokes them.
 Generator = Callable[..., str]
+RasterGenerator = Callable[..., Raster]
+
+
+class SourceKind(StrEnum):
+    """The representation an interpreter consumes."""
+
+    TEXT = "text"
+    RASTER = "raster"
 
 
 @dataclass(frozen=True)
@@ -26,6 +38,8 @@ class Language:
     split: bool = False
     id: str = ""
     boolean: Generator | None = None
+    source_kind: SourceKind = SourceKind.TEXT
+    raster_boolean: RasterGenerator | None = None
 
 
 LANGUAGES: dict[str, Language] = {
@@ -267,6 +281,18 @@ LANGUAGES: dict[str, Language] = {
         id="laserfuck",
         split=True,
     ),
+    "Line": Language(
+        "Line",
+        id="line",
+        source_kind=SourceKind.RASTER,
+        raster_boolean=_line.generate,
+    ),
+    "Piet": Language(
+        "Piet",
+        id="piet",
+        source_kind=SourceKind.RASTER,
+        raster_boolean=_piet.generate,
+    ),
     "SLOW ACV MAMMALIAN": Language(
         "SLOW ACV MAMMALIAN",
         "tape_based.slow_acv_mammalian",
@@ -398,3 +424,31 @@ LANGUAGES: dict[str, Language] = {
         id="vandevelo",
     ),
 }
+
+#: Widely known classics kept for coverage as much as construction.  All
+#: three now carry a generator, but they sit outside the four admission axes:
+#: they are here because a caller expects them, and each is an ordinary
+#: machine in its own costume.  Malbolge's generator caps at nine inputs.
+CLASSICS: dict[str, Language] = {
+    "Befunge": Language(
+        "Befunge",
+        "grid_based.befunge",
+        boolean=_boolean.befunge,
+        id="befunge",
+        split=True,
+    ),
+    "Malbolge": Language(
+        "Malbolge",
+        "other.malbolge",
+        boolean=_boolean.malbolge,
+        id="malbolge",
+    ),
+    "Whitespace": Language(
+        "Whitespace",
+        "stack_based.whitespace",
+        boolean=_boolean.whitespace,
+        id="whitespace",
+    ),
+}
+
+LANGUAGES.update(CLASSICS)

@@ -155,6 +155,10 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
 }
 
 STEPS = [
+    (
+        "generated docs",
+        [*PY, "scripts/check_generated_docs.py"],
+    ),
     ("pre-commit", [*PY, "-m", "pre_commit", "run", "--all-files"]),
     # The only mypy run.  pre-commit has no mypy hook: the mirror's isolated
     # env lacks the scripts' imports, so it could only ever cover src/, and
@@ -193,7 +197,7 @@ STEPS = [
             "tests/line/test_bf_to_line.py",
             "tests/line/test_line_boolean.py",
             "tests/line/test_mask.py",
-            "tests/line/test_png.py",
+            "tests/raster/test_png.py",
             "tests/line/test_simulate.py",
             "-q",
         ],
