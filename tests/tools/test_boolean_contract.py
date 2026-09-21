@@ -756,7 +756,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # refuse and one_two_three's n=4..10 both shapes, which the mark respacing
 # cut by 82% overall.  Minifuck's Pascal inverse restored the n=9 contest.
 #
-# Ten still peaks at 619MB RSS on Polynomial's n=10 dense table, 34MB of
+# Ten still peaks at 619MB RSS on Polynomial's n=10 dense table, 17MB of
 # program text (Circuit Diagram's H-layout, once the peak at 306MB of text,
 # is 8MB and 255MB RSS since it was sized from its lattice).  Of that RSS
 # only 154MB is ever live -- the last merge's 59M-digit product held as a
