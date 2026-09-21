@@ -79,6 +79,25 @@ class TestRewriteImports:
             )
             assert out.strip() == line
 
+    def test_a_top_level_tools_import_is_left_alone(self) -> None:
+        """The skip applies to an imported name as well as a submodule."""
+        script = load_script()
+        line = "from esolangs import tools as boolean_tools"
+        out = script._rewrite_imports(  # noqa: SLF001
+            f"{line}\n", "bundled", "tape_based.factor"
+        )
+        assert out.strip() == line
+
+    def test_a_full_interpreter_module_alias_becomes_the_bundle(self) -> None:
+        """Monkeypatches and direct imports must address the same module."""
+        script = load_script()
+        out = script._rewrite_imports(  # noqa: SLF001
+            "import esolangs.interpreters.register_based.polynomial as module\n",
+            "bundled",
+            "register_based.polynomial",
+        )
+        assert out.strip() == "import bundled as module"
+
     def test_an_ordinary_package_import_is_repointed(self) -> None:
         """The names a bundled suite needs come from the bundle itself."""
         script = load_script()

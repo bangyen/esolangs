@@ -1057,3 +1057,7 @@ class TestContract(SnapshotContract, CycleContract):
     machine = staticmethod(_machine)
     stepping_program = "f(x) = x^2+4"
     halting_program = "f(x) = x^2+4"
+    looping_program = (
+        "f(x) = x^6 - 15872x^5 + 3861086x^4 - 26915422x^3 "
+        "+ 2829220235x^2 - 5639324450x + 13858593750"
+    )
