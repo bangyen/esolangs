@@ -195,7 +195,8 @@ Write
  \sigma=\frac{G_{m+1}}{\widehat F_{m+1}},
 \]
 and set $\Delta_d=\sigma\widehat F_d-E_d$.  The sum $\Delta$ has at most
-$c-2$ zeros unless it vanishes identically.  It vanishes at $m+1$ and when
+$c-2$ real zeros, counted with multiplicity, unless it vanishes identically.
+It vanishes at $m+1$ and when
 $d-1,d\in A$.  At every remaining marked point $a_{j+1}\in Z'$,
 \[
  \Delta_{a_{j+1}}=y_cG_{a_{j+1}-1},\qquad
@@ -207,16 +208,20 @@ $|J|=c-2-r$.  If $J$ is empty, the $r$ forced zeros together with $m+1$
 exceed the zero budget, so $\Delta$ vanishes identically.  Otherwise take
 consecutive $j<j'$ in $J$.  The open interval between their marked points
 contains $j'-j-1$ forced zeros, while the endpoint signs differ by
-$(-1)^{j'-j}$.  The intervening zero count must have the parity of $j'-j$
+$(-1)^{j'-j}$.  The intervening zero multiplicity must have the parity of $j'-j$
 and is therefore at least $j'-j$.  Summing over consecutive members of $J$
-therefore contributes one additional zero beyond the forced zeros.  Adding
-these additional zeros and the zero at $m+1$ gives
+therefore contributes one additional zero multiplicity beyond the forced
+multiplicities.  Adding these contributions and the zero at $m+1$ gives
 \[
  r+(|J|-1)+1=c-2
 \]
-zeros.  This exhausts the zero bound.  Hence all counted zeros are simple and
-there are no others.  Starting at the last marked point and using its
-displayed sign shows $\Delta_d\ge0$ for $d\ge m+1$, so
+zero multiplicities, exhausting the zero bound.  Let $a_{j+1}$ be the last
+marked point indexed by $J$.  Equality in the count leaves no further zeros
+after it and forces every counted zero after it, including $m+1$, to be
+simple; earlier forced zeros need not be simple.  There are $c-j-1$ such
+sign changes from $a_{j+1}$ through $m+1$.  Since the displayed sign at
+$a_{j+1}$ is $(-1)^{c-1-j}$, $\Delta$ is positive immediately after $m+1$.
+It has no later zero, so $\Delta_d\ge0$ for $d\ge m+1$.  Therefore
 $E_d/\widehat F_d\le\sigma$.  The $c$-node sum
 \[
  W_d=\widehat F_{m+1}G_d-G_{m+1}\widehat F_d
