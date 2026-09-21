@@ -76,8 +76,9 @@ uniform bound on the changing residue word; measurements are not that lemma.
 ## Cold parsing
 
 For generated programs, `_factorint` uses the same exact prime stream, bounded
-by `Q`, tests each sieve segment with a gcd, and performs `C` successful
-prime divisions. Decimal parsing, sieving, gcds and divisions are all
+by `Q`, tests a sieve segment with one gcd once the residue is wide
+(`_BATCH_BITS`, and a remainder per prime below it), and performs `C`
+successful prime divisions. Decimal parsing, sieving, gcds and divisions are all
 polynomial in `Q,D,C`; with `Q=T**O(1)`, cold parsing and its
 `O(sqrt(Q) + D + C)` live storage are polynomial in `T`.
 

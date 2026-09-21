@@ -97,9 +97,10 @@ Define
  \mathcal C_F(T)=\max_{t\in\{0,1\}^T}
  \min\{\text{total source characters of }P:P\text{ computes }t\}.
 \]
-Deleting comments and leading zeros never changes execution, so for every
-computing source this minimum equals the minimum number $D$ of decimal digits
-of its positive decoded integer.  All unqualified logarithms below are natural.
+Deleting comments and leading zeros never changes execution, so the minimum
+source length over programs computing $t$ equals the minimum decimal-digit
+count of a positive integer whose decoded program computes $t$.  All
+unqualified logarithms below are natural.
 
 \begin{theorem}\label{thm:main}
 Every $T$-bit truth table has a Factor program of

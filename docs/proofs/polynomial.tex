@@ -203,23 +203,31 @@ We call any table satisfying Lemma~\ref{lem:maximal-width}
 \emph{maximal-width}.
 
 Call an instruction position \emph{routing} if both of its possible
-successors occur on reachable executions between two consecutive reads.
-For a fixed level, follow every reachable execution from one read to the
-next.  A nonconstant residual has not emitted the program's final output:
-doing so would make all of its continuations observationally equal.  Charge a
-resulting nonconstant child to the successor taken at the
-last routing position on its path.  After that successor every reachable
-real position has only one successor, so the program location determines a
-unique next-read cursor; the read overwrites the register, and hence that
-cursor determines the residual.  Thus a routing position receives at most
-one distinct child per successor.  A path containing no routing position has
-the same next-read cursor for both input values and belongs to a residual
-counted by $E(k)$.  Therefore
-\begin{equation}\label{eq:basic-routing}
-  N'(k+1)\le 2m_{\rm route}+E(k),
+successors occur on reachable executions between two consecutive reads, and
+let $m_{\rm route}$ be the number of routing real-instruction positions.  For
+a fixed level, let $D_k$ be the number of distinct cursors at which the $k$th
+read can occur over all executions that reach it.  Before the first read
+there is no input, so $D_1=1$.
+
+A residual after $k$ reads is determined by its cursor together with the
+register, and a read leaves the register at $48$ or $49$; hence
+\begin{equation}\label{eq:residual-cursor}
+  N'(k)\le 2D_k .
 \end{equation}
-where $m_{\rm route}$ is the number of routing real-instruction positions.
-The factor two allows the two outcomes of each routing position.
+Follow an execution back from its $k$th read.  If its path contains a routing
+position, let $(r,s)$ be the last one and the successor taken there: the
+remaining path is routing-free, so every real position on it takes a single
+successor on all reachable executions, and the cursor at the $k$th read is
+fixed by $(r,s)$.  If the path contains no routing position it is
+routing-free throughout, and the cursor is the deterministic image of the
+initial cursor.  Thus every cursor at the $k$th read is either that single
+image or one of the at most $2m_{\rm route}$ cursors fixed by a routing
+position together with a successor, so
+\begin{equation}\label{eq:basic-routing}
+  D_k\le 1+2m_{\rm route},
+  \qquad\text{and hence}\qquad
+  N'(k+1)\le 2+4m_{\rm route}.
+\end{equation}
 
 It is not enough to count positions: repeated roots are legal.  We therefore
 bound routing positions by the number of distinct root values.
@@ -230,7 +238,7 @@ then
 \[
   m_{\rm route}\le 3L
   \quad\text{and hence}\quad
-  N'(k+1)\le 6L+E(k).
+  N'(k+1)\le 12L+2.
 \]
 \end{lemma}
 
