@@ -456,7 +456,7 @@ the $(u+1)$st largest, of size at least the threshold in
 
 For prime roots $p_1<\cdots<p_L$, each $\log(p_i-1)$ appears
 $\lceil i/2\rceil$ times, up to reversing the harmless indexing convention.
-The prime number theorem, or the elementary bound $p_i\ge i+1$, yields
+The prime number theorem~\cite{rs}, or the elementary bound $p_i\ge i+1$, yields
 \[
   \sum_{i=1}^{L}\lceil i/2\rceil\log(p_i-1)
   =\Omega(L^2\log L).
@@ -536,7 +536,7 @@ Encode the resulting $m=O(S)$ instructions in order, using one fresh prime
 per instruction.  Real instructions give linear factors and register
 instructions conjugate quadratic factors; multiplying them gives an integer
 polynomial decoded back to that list.  Instruction exponents are bounded
-constants.  The prime number theorem gives the standard estimate
+constants.  The prime number theorem~\cite{rs} gives the standard estimate
 $p_m=O(m\log m)$ for the largest assigned prime.  Every
 linear or quadratic factor therefore has
 coefficient $\ell^1$ norm $m^{O(1)}$.  Submultiplicativity gives coefficient
@@ -570,6 +570,11 @@ in \texttt{docs/proofs/polynomial.md}.  These computations support the proof but
 bounded search is used as a premise.
 
 \begin{thebibliography}{9}
+\bibitem{rs}
+J.~B. Rosser and L.~Schoenfeld,
+\newblock Approximate formulas for some functions of prime numbers,
+\newblock \emph{Illinois Journal of Mathematics} 6 (1962), 64--94.
+
 \bibitem{grt}
 M.~Giesbrecht, D.~S. Roche, and H.~Tilak,
 \newblock Computing sparse multiples of polynomials,
