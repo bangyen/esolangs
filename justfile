@@ -146,6 +146,7 @@ proofs-pdf:
     }
     tectonic --outdir docs/proofs docs/proofs/factor.tex
     tectonic --outdir docs/proofs docs/proofs/polynomial.tex
+    tectonic --outdir docs/proofs docs/proofs/coefficient-mass.tex
 
 # Not in `just test` or CI: what it guards moves only when APA's head, body,
 # or routing does, so run it then. L2's foreign-leaf sweep at n=9 is 57s of
