@@ -100,16 +100,16 @@ $\Omega(T\log T)$ digits.  Hence $\mathcal C_F(T)=\Theta(T\log T)$.
 
 Factor was introduced in 2020 as a prime-factor encoding of
 Brainfuck~\cite{factor-spec}.  Its specification invokes Dirichlet's theorem
-to ensure an unlimited supply of instruction primes.  Here the issue is
-instead decimal description length: the upper bound needs quantitative
-control of successive instruction primes, while the lower bound counts all
-encodings, including those with ignored factors.
+to ensure an unlimited supply of instruction primes.  We instead study
+decimal description length.  The upper bound requires quantitative control
+of successive instruction primes, while the lower bound counts all encodings,
+including those with ignored factors.
 
 \section{Upper bound}
 
-The Boolean generator first emits a Brainfuck decision tree and then replaces
-each maximal run by one prime power.  The following elementary bound makes
-the construction premise explicit.
+The construction first emits a Brainfuck decision tree and then replaces each
+maximal run by one prime power.  We begin by bounding the size of the decision
+tree.
 
 \begin{lemma}[Decision-tree size]\label{lem:tree}
 Every $T$-bit truth table has a Brainfuck decision-tree program of length
