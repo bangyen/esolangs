@@ -17,7 +17,7 @@ from esolangs.polynomial_resources import GenerationEstimate, estimate_generatio
 def _digit_limit_for(digits: int) -> Iterator[None]:
     """Raise CPython's ``int``/``str`` digit cap to fit ``digits``, then restore.
 
-    The 4300 default is a DoS guard; a 462-instruction table exceeds it.
+    The 4300 default is a DoS guard; a 1382-instruction table exceeds it.
     Same borrow as Factor's ``_parse`` and boolean ``factor``.
     """
     limit = sys.get_int_max_str_digits()

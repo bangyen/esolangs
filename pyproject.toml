@@ -195,7 +195,7 @@ markers = [
     # generator raising only `EsolangError` at twelve inputs, and Factor's
     # thirteen-input program decoding past its retired digit budget -- so
     # they are evidence for
-    # `proofs.md` and `limitations.md` and are not deletable.  What they are
+    # `docs/proofs/index.md` and `limitations.md` and are not deletable.  What they are
     # not is *per-run* evidence: none has ever failed on a change that
     # the rest of the band passed, and each probes an arity nothing else in
     # the suite reaches, so a week is the right sampling interval.
