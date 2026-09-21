@@ -62,13 +62,27 @@ selected prime, and $D$ for the number of decimal digits of $N$.  Then
 Comments and leading zeros change the literal source length but not $N$;
 they can never help a shortest encoding.
 
-Let $T=2^n$ be the length of an $n$-input Boolean truth table.
+Execution uses the standard Brainfuck machine: byte cells wrap modulo $256$,
+the tape grows to the right, a move left from its initial cell stays there,
+and matched brackets have their usual while-loop semantics.  For $n\ge1$ put
+$T=2^n$.  Each input bit is supplied as a separate line containing its ASCII
+digit.  A program
+\emph{computes} a table $t=(t_0,\ldots,t_{T-1})\in\{0,1\}^{2^n}$ if, for every
+$b_1\cdots b_n\in\{0,1\}^n$ in lexicographic order, it terminates and emits
+exactly the character $t_{(b_1\cdots b_n)_2}$, with zero-based subscripts.
+Define
+\[
+ \mathcal C_F(T)=\max_{t\in\{0,1\}^T}
+ \min\{\text{total source characters of }P:P\text{ computes }t\}.
+\]
+Deleting comments and leading zeros never changes execution, so for every
+computing source this minimum equals the minimum number $D$ of decimal digits
+of its positive decoded integer.  All unqualified logarithms below are natural.
 
 \begin{theorem}\label{thm:main}
 Every $T$-bit truth table has a Factor program of
 $O(T\log(T+1))$ decimal digits.  Some $T$-bit truth tables require
-$\Omega(T\log T)$ digits.  Hence the worst-case Factor text complexity is
-$\Theta(T\log T)$.
+$\Omega(T\log T)$ digits.  Hence $\mathcal C_F(T)=\Theta(T\log T)$.
 \end{theorem}
 
 Factor was introduced in 2020 as a prime-factor encoding of
@@ -90,11 +104,11 @@ $C=O(T)$.
 \end{lemma}
 
 \begin{proof}
-Use the generator's identity-order candidate.  It first reads ASCII input into
+Use the following identity-order construction.  It first reads ASCII input into
 cell $2i$, subtracts $48$ to obtain bit $b_i$, and leaves cell $2i+1$ as a
 zero flag.  At a depth-$i$ node, set
-the flag to one and run the one-child inside a loop on $b_i$ that clears both
-$b_i$ and the flag.  Then run the zero-child inside a loop on the flag that
+the flag to one and enter a loop on $b_i$ that clears both $b_i$ and the flag
+before running the one-child.  Then run the zero-child inside a loop on the flag that
 clears it.  Exactly one child runs, and both cells are zero afterward, so
 these fixed bracket gadgets nest recursively and implement the decision tree.
 A one-leaf increments a separate result cell; a zero-leaf does nothing, and
@@ -107,9 +121,9 @@ depth $i$, so all pointer travel is bounded by
 \[
  O(n)+\sum_{i=0}^{n-1}O\bigl(2^i(n-i)\bigr)=O(2^n)=O(T).
 \]
-The fixed node gadgets and the single final output add $O(T)$.  The public
-generator chooses the shortest candidate over input orders, so it is no
-longer than this identity-order construction.
+The fixed node gadgets and the single final output add $O(T)$.  This proves
+existence independently of any implementation; the public generator also
+considers this construction.
 \end{proof}
 
 The encoder replaces each maximal run by one prime power.  It scans
@@ -170,7 +184,8 @@ $\log Q=O(\log(m+1))$.  Equation~\eqref{eq:digits} yields
   =O\bigl(C\log(m+1)\bigr)
   =O\bigl(T\log(T+1)\bigr).
 \]
-Changing logarithm bases proves the digit bound.
+Changing logarithm bases proves the digit bound.  The constructed program has
+an output run, so $m\ge1$.
 \end{proof}
 
 \section{Language lower bound}
@@ -283,7 +298,10 @@ with executable size and parity checks, are recorded in
 \texttt{docs/proofs/factor.md}.  The repository's proof ledger and deep proof suite
 check that the claimed $\Theta(T\log T)$ classification remains attached to
 the Factor generator.  None of those measurements is a premise of the
-language lower bound above.
+language lower bound above.  The reviewed source is archived at
+\url{https://github.com/bangyen/esolangs}; a release should cite an immutable
+commit or DOI.  From the repository root, \texttt{just proofs-pdf} rebuilds
+the manuscript and \texttt{just test} runs the branch verification gate.
 
 \begin{thebibliography}{9}
 \bibitem{factor-spec}
