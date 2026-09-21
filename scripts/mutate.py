@@ -344,6 +344,15 @@ def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
     outside the bundle is mutated, so importing the real module is safe.
     """
     if module:
+        # A suite may import the interpreter through its full module path so
+        # monkeypatches hit the same definitions its direct imports exercise.
+        # Repoint that alias too; otherwise the patch lands on the installed
+        # module while the assertion calls the bundle.
+        src = re.sub(
+            rf"import esolangs\.interpreters\.{re.escape(module)} as (\w+)",
+            rf"import {stem} as \1",
+            src,
+        )
         root = _MUTATION_ROOT.get(module)
         if root is not None:
             package, companion = root.rsplit(".", 1)
@@ -388,7 +397,8 @@ def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
         )
     skip = "|".join(_NOT_REWRITTEN)
     return re.sub(
-        rf"from esolangs(?!\.(?:{skip})\b)(?:\.[\w.]+)? import ",
+        rf"from esolangs(?!\.(?:{skip})\b)(?:\.[\w.]+)? import "
+        rf"(?!(?:{skip})\b)",
         f"from {stem} import ",
         src,
     )
