@@ -93,6 +93,18 @@ class TestPolynomialHelperFunctions:
         # keeps the 1 and still skips the cubic.
         assert _factor_roots((1, -1, 0, -2, 2)) == (_Root(1, 0),)
 
+    def test_factor_skips_a_nonintegral_linear_root(self) -> None:
+        """A rational root is not rounded down into an instruction root."""
+        from esolangs.interpreters.register_based.polynomial import _factor_roots
+
+        assert _factor_roots((2, -5)) == ()
+
+    def test_factor_accepts_integer_root_with_polynomial_content(self) -> None:
+        """Scalar content does not hide a genuine monic integer factor."""
+        from esolangs.interpreters.register_based.polynomial import _factor_roots
+
+        assert _factor_roots((2, -4)) == (_Root(2, 0),)
+
     def test_sanitize_simple_polynomial(self) -> None:
         result = sanitize("f(x) = 3x^2 + x + 7")
         assert result == [3, 1, 7]
@@ -356,7 +368,9 @@ class TestPeelPrimePowerRoots:
             degree = factor.degree()
             if degree == 1:
                 a, b = (int(k) for k in factor.all_coeffs())
-                roots.extend([_Root(-b // a, 0)] * multiplicity)
+                if a != 1:
+                    continue
+                roots.extend([_Root(-b, 0)] * multiplicity)
             elif degree == 2:
                 a, b, c = (int(k) for k in factor.all_coeffs())
                 if a != 1 or b % 2:

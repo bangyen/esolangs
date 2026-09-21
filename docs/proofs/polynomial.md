@@ -668,15 +668,15 @@ and `sgn(F_d G_d)` is the constant `eta := sgn(F_z)` (`G_z = 1 > 0`).  So
 
     tail(F) - tail(u) = mu T_G - 2 sum_{d > z} |u_d|,   T_G := sum_{d>=1} |G_d|.
 
-Writing `T_G = sum_{1 <= d <= z} |G_d| + sum_{d > z} |G_d|` and dropping
-everything below `z` but `|G_z|` turns `tail(u) <= tail(F)` into
+Writing `T_G = sum_{1 <= d <= z} |G_d| + sum_{d > z} |G_d|` shows that the
+following stronger inequality is sufficient for `tail(u) <= tail(F)`:
 
     Gamma_G(z) <= 2 Gamma_F(z),     Gamma_v(z) := (sum_{d >= z} |v_d|) / |v_z|,
 
-and that step is an equivalence, not a slackening: what is dropped,
-`sum_{1 <= d < z} |G_d|`, vanishes exactly when `Z' = {1..z-1}`, i.e. only
-in the `k = 0` case already settled.  So the inequality below is strict for
-every `k >= 1`, which is the equality claim.
+The exact condition has the additional nonnegative term
+`sum_{1 <= d < z} |G_d|` on its right.  The displayed stronger bound closes
+the induction.  Equality in the tail comparison still requires that omitted
+prefix to vanish, which happens only for an all-leading zero set.
 
 *Step 4, one root costs one factor `1/(1 - y_c)`.*  Write `E_d := G_d -
 y_c G_{d-1}`, an exponential sum on the `c - 1` largest roots (the operator
@@ -743,7 +743,7 @@ all `c - 1` of its zeros, hence one-signed above `m + 1`; positive there,
 because only `G` carries `y_c` and so `W_d ~ hat F_{m+1} gamma_c y_c**d`
 with `gamma_c > 0` (`G > 0` past `m`).  Chaining, `E_d / hat F_d <= sigma <=
 G_z / hat F_z` for `d >= z > m`, which is (D).  `tests/proofs/test_negatives.py`
-pins every link -- the identity of step 3, the equivalence of step 4, (C),
+pins every link -- the identity of step 3, the sufficient bound in step 4, (C),
 (D), `W > 0`, and `Delta`'s zero structure -- in exact rationals.
 
 **The bound for distinct real instruction roots: `Omega(T**2 / log T)`

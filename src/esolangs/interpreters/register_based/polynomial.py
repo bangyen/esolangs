@@ -708,7 +708,9 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
         degree = factor.degree()
         if degree == 1:
             a, b = (int(k) for k in factor.all_coeffs())
-            roots.extend([_Root(-b // a, 0)] * multiplicity)
+            if a != 1:
+                continue
+            roots.extend([_Root(-b, 0)] * multiplicity)
         elif degree == 2:
             a, b, c = (int(k) for k in factor.all_coeffs())
             if a != 1 or b % 2:
