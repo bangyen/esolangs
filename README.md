@@ -35,8 +35,7 @@ Start with the [CLI](#command-line), [Python API](#python-api), or
 ## Command line
 
 ```bash
-just install-dev                 # installs into ./.venv
-source .venv/bin/activate        # ...or prefix each command with `uv run`
+python -m pip install esolangs
 
 esolangs --help
 esolangs list
@@ -45,11 +44,23 @@ printf '0\n1\n' | esolangs run Suffolk program.txt
 
 esolangs generate brainfuck 0110 > bf.txt
 printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
-just test
 ```
 
 The Polynomial interpreter needs the optional mathematics extra:
 `pip install 'esolangs[math]'`.  The other languages install without SymPy.
+
+To work on the repository instead, install its development environment and
+run the quick verification loop:
+
+```bash
+just install-dev
+source .venv/bin/activate        # or prefix each command with `uv run`
+just test-quick
+```
+
+Run `just test` before committing; the
+[contribution guide](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md)
+has the full workflow.
 
 ## Python API
 
