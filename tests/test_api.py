@@ -54,9 +54,9 @@ def test_deliberate_error_keeps_partial_output() -> None:
     assert error.__notes__ == ["the program printed 'before' before this"]
 
 
-def test_run_eof_when_input_runs_out() -> None:
+def test_run_warns_when_input_runs_out() -> None:
     program = boolean.circlefuck("10")  # reads one input bit
-    with pytest.raises(EOFError):
+    with pytest.warns(esolangs.InputMismatchWarning, match="read past the end"):
         esolangs.run("Circlefuck", program, stdin="")
 
 

@@ -73,6 +73,11 @@ class TestCoreInstruction:
         # target, so execution stops.
         assert run_bounded("0 0 2 -1") == ""
 
+    def test_special_addresses_are_not_branch_operands(self) -> None:
+        """``c`` is an address, not an operand port."""
+        with pytest.raises(ValueError, match="invalid S\\*bleq branch address"):
+            run_bounded("0 0 -1")
+
     def test_empty_program(self) -> None:
         """An empty program produces no output."""
         assert run_bounded("") == ""

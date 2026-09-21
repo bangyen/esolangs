@@ -53,7 +53,9 @@ def _jaune_linear(truth_table: str) -> str:
 
     # Move a decremented copy of the counter two cells at a time.  When it
     # reaches zero, the adjacent cell is the selected output.
-    out.append("1:2!#>>%&-1?1!2:>^.")
+    # A signed literal now includes ``-1?``; keep the decrement separate
+    # from the label jump with an ignored character.
+    out.append("1:2!#>>%&-x1?1!2:>^.")
     return "".join(out)
 
 

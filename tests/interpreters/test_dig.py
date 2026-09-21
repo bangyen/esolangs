@@ -134,6 +134,15 @@ class TestDigInput:
     def test_integer_input(self) -> None:
         assert run_and_capture([">$~:", " 2 "], inputs=["7"]) == "7"
 
+    def test_integer_input_keeps_all_digits(self) -> None:
+        """``~`` reads an integer, rather than only its first digit."""
+        from esolangs.interpreters.grid_based.dig import _Machine
+
+        machine = _Machine([">$~:", " 2 "], ScriptedIO("12"))
+        for _ in range(3):  # move over, dig, read
+            machine.step()
+        assert machine.mole == 12
+
     def test_character_input(self) -> None:
         assert run_and_capture([">$=:", " 2 "], inputs=["A"]) == "A"
 

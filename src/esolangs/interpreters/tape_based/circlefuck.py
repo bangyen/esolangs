@@ -4,8 +4,7 @@ The tape is the program: cells wrap, ``+``/``-`` adjust, ``,`` reads,
 ``.`` prints, ``[``/``]`` jump to matching brackets, ``@`` halts,
 ``{``/``}`` insert and remove cells.  An empty program or unmatched
 brackets raise :class:`ValueError`; deleting the last cell halts with
-:class:`~esolangs.exceptions.HaltError`; exhausted input raises
-:class:`EOFError`.
+:class:`~esolangs.exceptions.HaltError`; EOF is a no-op.
 
 :func:`_advance` is pure and *reports* one cell's edit and cursors,
 wrapping against the length its own edit produces.  :class:`_Machine`
@@ -16,9 +15,9 @@ observer copies the list.
 
 from __future__ import annotations
 
-import re
 import sys
 from collections.abc import Sequence
+from contextlib import suppress
 from functools import lru_cache
 
 from esolangs.exceptions import HaltError
@@ -50,23 +49,62 @@ type _Move = tuple[int, int, bool, _Edit]
 
 
 def parse(code: str) -> list[int]:
-    """Decode Circlefuck's escape sequences and keep printable commands only."""
-    reg = r"\\(?:\d\d\d|" r"[\dA-F](?:$|[^\d]))"
-    exp = r"((^|[^\\]) |\\( )|(\\)o)"
-
-    for s in re.findall(reg, code):
-        if len(s) == 4:
-            val = oct(int(s[1:]))
-            new = val[2:].zfill(3)
+    """Decode Circlefuck escapes, rejecting a stray backslash."""
+    cells: list[int] = []
+    ind = 0
+    while ind < len(code):
+        char = code[ind]
+        if char != "\\":
+            if 32 < ord(char) < 127:
+                cells.append(ord(char))
+            ind += 1
+            continue
+        ind += 1
+        if ind >= len(code):
+            raise ValueError("invalid Circlefuck escape")
+        tail = code[ind:]
+        if tail.startswith("space"):
+            cells.append(32)
+            ind += 5
+        elif code[ind] == " ":
+            cells.append(32)
+            ind += 1
+        elif code[ind] in "nrtb":
+            cells.append({"n": 10, "r": 13, "t": 9, "b": 8}[code[ind]])
+            ind += 1
+        elif code[ind] == "\\":
+            cells.append(92)
+            ind += 1
+        elif code[ind] == "o":
+            digits = code[ind + 1 : ind + 4]
+            if len(digits) != 3 or any(d not in "01234567" for d in digits):
+                raise ValueError("invalid Circlefuck escape")
+            cells.append(int(digits, 8))
+            ind += 4
+        elif code[ind] == "x":
+            digits = code[ind + 1 : ind + 3]
+            if len(digits) != 2 or any(
+                d not in "0123456789abcdefABCDEF" for d in digits
+            ):
+                raise ValueError("invalid Circlefuck escape")
+            cells.append(int(digits, 16))
+            ind += 3
+        elif code[ind].isdigit():
+            digits = code[ind : ind + 3]
+            if len(digits) == 3 and digits.isdigit():
+                if int(digits) > 255:
+                    raise ValueError("invalid Circlefuck escape")
+                cells.append(int(digits))
+                ind += 3
+            else:
+                cells.append(int(code[ind], 16))
+                ind += 1
+        elif code[ind] in "ABCDEF":
+            cells.append(int(code[ind], 16))
+            ind += 1
         else:
-            new = f"x0{s[1:]}"
-        code = code.replace(s, f"\\{new}")
-
-    code = re.sub(exp, r"\2\3\4", code)
-    code = "".join(c for c in code if 31 < ord(c) < 127)
-    code = bytes(code, "utf-8").decode("unicode_escape")
-
-    return [ord(c) for c in code]
+            raise ValueError("invalid Circlefuck escape")
+    return cells
 
 
 @lru_cache(maxsize=16)
@@ -131,13 +169,13 @@ def _advance(
         edit = ("set", ptr, (cells[ptr] + 1) % 256)
     elif char == "-":
         edit = ("set", ptr, (cells[ptr] - 1) % 256)
-    elif char == ",":
+    elif char == "," and byte is not None:
         # Reduced like ``+`` and ``-`` above: ``input_char`` returns a whole
         # code point, so an input line starting above U+00FF otherwise put
         # that code point into a cell the two arithmetic arms keep in
         # 0..255 -- and left it disagreeing with itself, since the next
         # ``+`` reduced what ``,`` had not.
-        edit = ("set", ptr, (byte if byte is not None else 0) % 256)
+        edit = ("set", ptr, byte % 256)
     elif char in "[]":
         ind = find(cells, ind, ptr)
     elif char == "@":
@@ -148,10 +186,11 @@ def _advance(
     elif char == "{":
         edit = ("insert", ptr, 0)
         size += 1
-        ind += 1
+        ind += ptr <= ind
     elif char == "}":
         edit = ("delete", ptr, 0)
         size -= 1
+        ind -= ptr < ind
         ptr %= size
     return ((ind + 1) % size, ptr, False, edit)
 
@@ -162,6 +201,8 @@ class _Machine:
     ``halted`` is true once the pointer hits ``@``; tape plus pointers
     determine the next step, so a hang is a finite-state cycle.
     """
+
+    eof_is_a_value = True
 
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code``; an empty program is malformed."""
@@ -244,7 +285,8 @@ class _Machine:
                 "so there would be no program left to run"
             )
         if char == ",":
-            byte = self.io.input_char()
+            with suppress(EOFError):
+                byte = self.io.input_char()
         elif char == ".":
             self.io.print_char(chr(cells[self._ptr]))
         self._ind, self._ptr, self._done, edit = _advance(

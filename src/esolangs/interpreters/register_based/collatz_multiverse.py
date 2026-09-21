@@ -206,8 +206,8 @@ def _plain(state: _State, name: str) -> int:
     return ip if name == "lineNumber" else _reg_get(regs, name)
 
 
-def _operand(state: _State, spec: _Operand, pending: list[int]) -> int:
-    """Read one operand, taking any ``input`` value the shell pre-read.
+def _operand(state: _State, spec: _Operand, pending: list[int]) -> tuple[int, int]:
+    """Read one operand and its resolved array index.
 
     ``pending`` is consumed in operand order: index before its name, left to right.
     """
@@ -218,12 +218,12 @@ def _operand(state: _State, spec: _Operand, pending: list[int]) -> int:
     elif index is not None:
         idx = _plain(state, index)
     if name == "input":
-        return pending.pop(0)
+        return pending.pop(0), idx
     if name == "lineNumber":
-        return state[0]
+        return state[0], idx
     if index is not None:
-        return _arr_get(state[2], name, idx)
-    return _reg_get(state[1], name)
+        return _arr_get(state[2], name, idx), idx
+    return _reg_get(state[1], name), idx
 
 
 def _advance(
@@ -240,16 +240,16 @@ def _advance(
     var1, idx1, var2, idx2, var3, idx3, _do_print = line
     pending = list(reads)
 
-    target = _operand(state, (var1, idx1), pending)
-    a = _operand(state, (var2, idx2), pending)
-    b = _operand(state, (var3, idx3), pending)
+    target, target_index = _operand(state, (var1, idx1), pending)
+    a, _ = _operand(state, (var2, idx2), pending)
+    b, _ = _operand(state, (var3, idx3), pending)
     value = target * a + b if target == 0 or target % 2 != 0 else target // 2
 
     next_ip = ip + 1
     if var1 == "lineNumber":
         next_ip = value
     elif idx1 is not None:
-        arrays = _arr_set(arrays, var1, _plain(state, idx1), value)
+        arrays = _arr_set(arrays, var1, target_index, value)
     else:
         regs = _reg_set(regs, var1, value)
     return value, (next_ip, regs, arrays)

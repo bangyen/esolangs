@@ -13,8 +13,8 @@ invalid operations (binary op under two values, ``c`` under three,
 division by zero, unterminated bracket) abort only the innermost scope,
 as the cross-check's discarded status did.  ``,`` raises
 :class:`EOFError` at end of input (the cross-check exits 3) and pushes
-unsigned bytes; ``.`` prints the low byte (``& 0xFF``), so ``.`` on
-``-1`` prints 0xFF.
+Unicode code points; ``.`` prints Unicode scalars. Values outside that range
+retain the reference's byte fallback.
 
 :class:`_Machine` has an explicit call stack (one frame per scope);
 ``halted`` is true once no frame remains and a repeated
@@ -169,7 +169,7 @@ def _advance(state: _State, line: str | None = None) -> _State:
         _top(stack)
         return (stack[:-1], table, frames, error)
     if char == ",":
-        read = tuple(ord(ch) & 0xFF for ch in (line or ""))
+        read = tuple(ord(ch) for ch in (line or ""))
         return ((*stack, *read), table, frames, error)
     if char == ";":
         scope = table.get(_top(stack), "")
@@ -347,7 +347,12 @@ class _Machine:
         if char == ",":
             line = self.io.input_str()
         elif char == "." and stack:
-            self.io.print_char(chr(stack[-1] & 0xFF))
+            value = stack[-1]
+            self.io.print_char(
+                chr(value)
+                if 0 <= value <= 0x10FFFF and not 0xD800 <= value <= 0xDFFF
+                else chr(value & 0xFF)
+            )
 
         self._restore(_advance(state, line))
 

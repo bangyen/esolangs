@@ -110,11 +110,11 @@ def test_empty_program_is_rejected() -> None:
         run([], IO())
 
 
-def test_an_unbounded_push_uses_the_mutable_runtime_stack() -> None:
-    """The hostile-input sweep drives this path to 20,000 stack entries."""
+def test_a_repeated_push_uses_the_mutable_runtime_stack() -> None:
+    """The one-cell source executes once per 80-column playfield lap."""
     machine = _Machine(["1"], IO())
     assert run_until_halt(machine, 20_000) is False
-    assert machine.stack == [1] * 20_000
+    assert machine.stack == [1] * 250
 
 
 def test_a_done_state_is_its_own_successor() -> None:

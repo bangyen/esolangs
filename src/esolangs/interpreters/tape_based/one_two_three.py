@@ -6,10 +6,9 @@ left, wrapping -4 to 0.  ``2`` reads a character into locations 0-7 at
 right.  ``3`` is a NOP below 0; on TRUE it jumps back to the previous
 ``3`` (or the start), on FALSE forward to the next (or the end).  The
 program halts only at the end with the pointer below 0, else loops.
-Locations 0-7 are MSB-first (location 0 is bit 7), as the cross-checks
-and the generator agree, opposite the wiki's little-endian note.
+Locations 0-7 are LSB-first (location 0 is bit 0).
 ``2`` reads a line's first byte and raises :class:`EOFError` when
-exhausted; a program with no commands halts with no output.
+exhausted; comments are NOPs and do not terminate execution.
 :func:`_advance` is pure over an immutable ``_State``; ``2``'s I/O is
 the shell's.
 """
@@ -37,14 +36,14 @@ type _State = tuple[int, int, _Bits, bool]
 
 
 def _byte_of(bits: _Bits) -> int:
-    """Read locations 0-7 as an MSB-first byte (location 0 is bit 7)."""
-    return sum((1 << (7 - i)) for i in range(8) if i in bits)
+    """Read locations 0-7 as an LSB-first byte (location 0 is bit 0)."""
+    return sum(1 << i for i in range(8) if i in bits)
 
 
 def _with_byte(bits: _Bits, value: int) -> _Bits:
-    """Return ``bits`` with locations 0-7 set from ``value``, MSB-first."""
+    """Return ``bits`` with locations 0-7 set from ``value``, LSB-first."""
     return (bits - frozenset(range(8))) | frozenset(
-        i for i in range(8) if value & (1 << (7 - i))
+        i for i in range(8) if value & (1 << i)
     )
 
 
@@ -117,15 +116,15 @@ class _Machine:
     """
 
     def __init__(self, code: str, io: IO) -> None:
-        """Store ``code`` and reset the tape; a command-less program halts."""
+        """Store ``code`` and reset the tape."""
         self.code = code
         # Where each jump lands, scanned once rather than per jump.
         self._landings = _landings(code)
         self.io = io
         self.n = len(code)
-        # A program with no commands can never move, so it is done already.
-        idle = not any(c in "123" for c in code)
-        self.state: _State = (0, _START, frozenset(), idle)
+        # The empty source is the sole immediate terminator; comments are
+        # NOPs and reach the ordinary end-of-program loop at position zero.
+        self.state: _State = (0, _START, frozenset(), not code)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -153,7 +152,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether the run has ended (or has no commands to run)."""
+        """Whether the run has ended at the end of the code below location 0."""
         return self.state[3]
 
     # The VM's language-shaped view: Unbounded bit tape + pointer; ip is the code
@@ -178,7 +177,7 @@ class _Machine:
         return (ip, pos, bits, self.io.position())
 
     def byte(self) -> int:
-        """Read locations 0-7 as an MSB-first byte (location 0 is bit 7)."""
+        """Read locations 0-7 as an LSB-first byte (location 0 is bit 0)."""
         return _byte_of(self.state[2])
 
     def step(self) -> None:

@@ -68,7 +68,7 @@ def _grapheme_push1() -> str:
 
 def _grapheme_push65() -> str:
     """Grapheme code pushing 65 (``ord('A')``, the input normalization constant)."""
-    return "FGF" + "FEF" + "FAF" + "R" + "B"  # 70 - (50 / 10)
+    return "FAF" + "FEF" + "R" + "FGF" + "B"  # 70 - (50 / 10)
 
 
 #: The reserved variable key, holding the 65 that normalizes an input bit.
@@ -103,7 +103,7 @@ def _grapheme_push_key(key: int) -> str:
 
 def _grapheme_push_int(value: int) -> str:
     """Push any nonnegative integer using Grapheme's trailing-zero literals."""
-    return _grapheme_push_key(value * 10) + _grapheme_push_key(10) + "R"
+    return _grapheme_push_key(10) + _grapheme_push_key(value * 10) + "R"
 
 
 def grapheme(truth_table: str) -> str:

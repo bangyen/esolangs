@@ -73,6 +73,10 @@ class TestForth:
         # , reads '0' (48), 6 8 * is 48, - leaves 0
         assert run_program(",68*-.", "0") == "\x00"
 
+    def test_input_and_output_keep_unicode_code_points(self) -> None:
+        assert run_program(",.", "Ā") == "Ā"
+        assert run_program("F1+:*.") == "Ā"
+
     def test_unknown_char_is_ignored(self) -> None:
         # an unknown char does nothing, even with a near-empty stack
         assert run_program("a5.") == "\x05"
