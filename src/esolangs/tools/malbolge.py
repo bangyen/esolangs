@@ -13,9 +13,10 @@ walked over it is ``g(a) = XLAT2[f(a) - 33]``, not the source character;
 ``f(a) = 33 + ((35 - a) % 94)`` is the unique NOP character at address ``a``.
 Every data cell is placed at the address whose ``g`` value is wanted.
 
-The construction caps at nine inputs: the ten-input branch needs an operand
-built at run time (the two comparator targets differ only in di-trit 0, which
-no ``p`` chain can lift), and :func:`malbolge` refuses ``n > 9``.
+The construction caps at ten inputs: the readout cell is injective with
+pairwise gap at least three only through ten bits, and :func:`malbolge`
+refuses ``n > 10``.  Eleven inputs would need a runtime address builder, which
+the source walk's re-encipherment does not admit.
 """
 
 from __future__ import annotations
@@ -29,24 +30,48 @@ from esolangs.tools.helpers import _validate_truth_table
 _WORDS = 3**10
 _ROTATE = 3**9
 
-#: The mixer's four cells and the operation schedule applied once per input
-#: bit.  Cells are ``(kind, index)`` pairs; the schedule runs twice around the
-#: four cells and rotates cell 0, which makes cell 0 injective over nine bits
-#: with pairwise gap at least three and range ``[9828, 59034]``.
+#: The mixer's five cells and the operation schedule applied once per input
+#: bit.  Cells are ``(kind, index)`` pairs (0 = ``p``, 1 = ``*``); the schedule
+#: makes the readout cell injective over ten bits with pairwise gap at least
+#: three, range ``[1083, 59048]``.
 _SCHEDULE = (
-    (0, 0),
     (0, 1),
     (0, 2),
-    (0, 3),
+    (0, 1),
     (0, 0),
     (0, 1),
+    (0, 1),
+    (1, 0),
+    (0, 4),
+    (0, 4),
+    (1, 1),
+    (1, 4),
+    (1, 4),
+    (0, 2),
+)
+#: ``g``-value of the five cells, found by search over source characters and
+#: pinned here; the readout cell is cell 0.
+_INITS = (52, 90, 83, 70, 92)
+#: Operations applied once after the last input bit, spreading the final bit's
+#: difference so the ten-bit map keeps pairwise gap at least three.
+_POST: tuple[tuple[int, int], ...] = (
+    (0, 3),
+    (1, 2),
+    (1, 2),
+    (1, 2),
+    (1, 1),
     (0, 2),
     (0, 3),
+    (0, 1),
+    (1, 1),
+    (1, 1),
+    (0, 1),
+    (1, 0),
+    (1, 3),
+    (0, 0),
+    (1, 0),
     (1, 0),
 )
-#: ``g``-value of the four cells, found by search over source characters and
-#: pinned here; the readout cell is cell 0.
-_INITS = (52, 88, 34, 77)
 #: The preload tail leaves ``A = 28464`` (low byte ``'0'``) in every row: a
 #: cell holding 39 rotated four times, then ``p`` with operands 54 and 60.
 _PRELOAD_VALUE = 39
@@ -104,10 +129,14 @@ def _addr_of(value: int, avoid: tuple[int, ...], low: int = 34) -> int:
     return candidates[0]
 
 
-def _step(state: tuple[int, ...], a: int) -> tuple[int, ...]:
-    """Apply the schedule once, returning the new cell values."""
+def _step(
+    state: tuple[int, ...],
+    a: int,
+    schedule: tuple[tuple[int, int], ...] = _SCHEDULE,
+) -> tuple[int, ...]:
+    """Apply ``schedule`` once, returning the new cell values."""
     cells = list(state)
-    for kind, index in _SCHEDULE:
+    for kind, index in schedule:
         value = _crazy(a, cells[index]) if kind == 0 else _rot(cells[index])
         a = value
         cells[index] = value
@@ -123,10 +152,9 @@ def _skeleton(n: int) -> tuple[dict[int, str], tuple[int, ...]]:
     """Return the table-independent source cells and the row address map."""
     starts = _INITS[0]
     x = _addr_of(starts, (), low=35)
-    y = _addr_of(_INITS[1], (x + 1,))
-    z = _addr_of(_INITS[2], (x + 1, y))
-    w = _addr_of(_INITS[3], (x + 1, y, z))
-    cells = (x, y, z, w)
+    cells = [x]
+    for init in _INITS[1:]:
+        cells.append(_addr_of(init, (x + 1, *cells)))
     operand_cell = x + 1
     if _g(operand_cell) != _STUB_OPERAND:
         raise AssertionError("stub operand moved")
@@ -178,7 +206,8 @@ def _skeleton(n: int) -> tuple[dict[int, str], tuple[int, ...]]:
 
     for i in range(n):
         emit("/")
-        for kind, index in _SCHEDULE:
+        schedule = _SCHEDULE if i < n - 1 else _SCHEDULE + _POST
+        for kind, index in schedule:
             emit("p" if kind == 0 else "*", cells[index])
         if i < n - 1:
             set_d(x - 1)
@@ -196,7 +225,8 @@ def _skeleton(n: int) -> tuple[dict[int, str], tuple[int, ...]]:
     for row in range(1 << n):
         state: tuple[int, ...] = _INITS
         for i in range(n):
-            state = _step(state, 49 if (row >> (n - 1 - i)) & 1 else 48)
+            schedule = _SCHEDULE if i < n - 1 else _SCHEDULE + _POST
+            state = _step(state, 49 if (row >> (n - 1 - i)) & 1 else 48, schedule)
         addresses.append(state[0])
     if len(set(addresses)) != len(addresses):
         raise AssertionError("mixer collided")
@@ -206,16 +236,16 @@ def _skeleton(n: int) -> tuple[dict[int, str], tuple[int, ...]]:
 def malbolge(truth_table: str) -> str:
     """Return a Malbolge program computing ``truth_table``.
 
-    ``n`` is recovered from the table; ``n > 9`` is refused because the
-    ten-input branch needs a run-time operand builder.  The program is the
-    full 59049-cell store, one source stub per row.
+    ``n`` is recovered from the table; ``n > 10`` is refused because the
+    readout cell is injective with pairwise gap three only through ten bits.
+    The program is the full 59049-cell store, one source stub per row.
     """
     n = _validate_truth_table(truth_table)
-    if n > 9:
+    if n > 10:
         raise GeneratorCapError(
-            f"Malbolge builds at most 9 inputs, got {n}: the ten-input "
-            "branch needs a run-time operand builder, which its executed-cell "
-            "re-encipherment does not admit"
+            f"Malbolge builds at most 10 inputs, got {n}: the readout cell is "
+            "injective with pairwise gap three only through ten bits, and an "
+            "eleven-input map needs a run-time address builder"
         )
     code, addresses = _skeleton(n)
     program = dict(code)

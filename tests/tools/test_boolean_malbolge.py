@@ -58,7 +58,7 @@ def test_every_table_up_to_three_inputs(table: str) -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("n", [6, 9])
+@pytest.mark.parametrize("n", [6, 9, 10])
 @pytest.mark.parametrize("shape", [_dense, _parity])
 def test_dense_and_parity_run(n: int, shape: object) -> None:
     """The two worst-case shapes at the top of the supported range."""
@@ -71,7 +71,7 @@ def test_program_is_the_full_store() -> None:
     assert len(boolean.malbolge("0110")) == 3**10
 
 
-def test_ten_inputs_are_refused() -> None:
-    """The mixer is injective with gap three only through nine inputs."""
-    with pytest.raises(GeneratorCapError, match="at most 9 inputs"):
-        boolean.malbolge(_dense(10))
+def test_eleven_inputs_are_refused() -> None:
+    """The mixer is injective with gap three only through ten inputs."""
+    with pytest.raises(GeneratorCapError, match="at most 10 inputs"):
+        boolean.malbolge(_dense(11))
