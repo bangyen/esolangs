@@ -1,0 +1,321 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[hidelinks]{hyperref}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newcommand{\R}{\mathbb R}
+\newcommand{\N}{\mathbb N}
+\newcommand{\Tail}{\operatorname{Tail}}
+
+\title{Displaced-Zero Certificates and the Coefficient Mass of Polynomial Multiples}
+\author{The \texttt{esolangs} project}
+\date{September 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Fix distinct real roots $2\le r_1<\cdots<r_L$.  We prove a
+degree-independent lower bound on the logarithmic coefficient mass of every
+real polynomial divisible by $\prod_i(x-r_i)$ whose leading coefficient has
+absolute value at least one.  The analytic ingredient bounds the infinite
+$\ell^1$ tail of a normalized exponential sum in terms of the initial run of
+its prescribed positive-integer zeros, with equality characterized.  This
+extends the reduced-height certificate method of Dubickas and Jankauskas and, by
+iterating certificates that avoid the largest coefficients, controls
+successive coefficient order statistics.  For the first $L$ primes the
+resulting mass bound is $\Omega(L^2\log L)$.
+\end{abstract}
+
+\section{Introduction}
+
+For $F(x)=\sum_j f_jx^j$, define its logarithmic coefficient mass by
+\[
+  \Lambda(F)=\sum_{j:f_j\ne0}\log^+|f_j|,
+  \qquad \log^+x=\max(0,\log x),
+\]
+where all logarithms are natural.  We call this quantity logarithmic
+coefficient mass.
+This is neither the height $\max_j|f_j|$ nor the length
+$\sum_j|f_j|$.  We study how large $\Lambda(F)$ must be when $F$ is an
+arbitrary-degree multiple of a polynomial with prescribed positive roots.
+
+Reduced length and reduced height minimize those two classical coefficient
+norms over monic multiples~\cite{dubickas,schinzel,dj}.  Dubickas and
+Jankauskas associate to reciprocal roots and a prescribed zero set $J$ a
+normalized determinant sequence $S_n(J)$.  Their sequence is the
+exponential sum used below; its tail gives a dual lower bound for reduced
+height, and they compute the consecutive set $J=\{1,\ldots,c-1\}$
+explicitly~\cite[Section~2]{dj}.  We prove a prefix-sensitive comparison for
+all reciprocal roots at most $1/2$, with equality only for the fully
+consecutive zero set.  Iterating the corresponding certificates yields a
+distributional bound on many coefficients, not only the largest one.
+
+The zero-counting input is classical Chebyshev-system theory
+\cite{karlin-studden}.  Related sparse-multiple work asks for multiples under
+prescribed degree, sparsity, and height constraints~\cite{grt}; our bound is
+uniform in the degree and in all additional roots of the multiple.
+
+\section{A displaced-zero tail theorem}
+
+Let $\rho_1>\cdots>\rho_c\ge2$ and $y_i=\rho_i^{-1}$.  For any
+$Z\subset\N_{>0}$ of size $c-1$, the generalized Vandermonde system uniquely
+determines the sum below.  Indeed, a kernel vector would give a nonzero
+$c$-node exponential sum with the $c$ zeros $\{0\}\cup Z$, contradicting the
+Chebyshev zero bound.
+\[
+  u_d=\sum_{i=1}^c a_i y_i^d,
+  \qquad u_0=1,
+  \qquad u_z=0\quad(z\in Z).
+\]
+
+\begin{theorem}[Displaced-zero comparison]\label{thm:tail}
+Let
+$f=\max\{0\le k\le c-1:\{1,\ldots,k\}\subseteq Z\}$.  Then
+\begin{equation}\label{eq:tail}
+  \Tail(u):=\sum_{d\ge1}|u_d|
+  \le \prod_{i=1}^{f+1}\frac{y_i}{1-y_i}
+  =\frac{1}{\prod_{i=1}^{f+1}(\rho_i-1)}.
+\end{equation}
+Equality holds exactly when $Z=\{1,\ldots,c-1\}$.
+\end{theorem}
+
+A nonzero exponential sum on $r$ distinct positive nodes has at most $r-1$
+real zeros, counted with multiplicity.  This follows by dividing by the
+smallest node to the real power and applying Rolle's theorem inductively.
+Thus an $r$-node sum with $r-1$ specified zeros has no others and changes
+sign at each specified zero.
+
+\begin{proof}
+Induct on the number $c-1-f$ of displaced zeros.  For
+$Z=\{1,\ldots,c-1\}$, put
+\[
+ U(x)=\sum_{d\ge0}u_dx^d
+     =\frac{N(x)}{\prod_i(1-y_ix)},\qquad \deg N\le c-1.
+\]
+The first $c-1$ nonconstant coefficients vanish.  Comparing the coefficient
+of $x^c$ gives, for $d\ge c$,
+\[
+ u_d=(-1)^{c+1}\Bigl(\prod_i y_i\Bigr)
+        h_{d-c}(y_1,\ldots,y_c),
+\]
+where $h_j$ is the complete homogeneous symmetric polynomial.  Hence
+\[
+ \Tail(u)=\Bigl(\prod_i y_i\Bigr)\sum_{j\ge0}h_j(y_1,\ldots,y_c)
+          =\prod_i\frac{y_i}{1-y_i}.
+\]
+
+Now suppose a zero is displaced.  Set $z=\max Z$,
+$Z'=Z\setminus\{z\}$, and $m=\max Z'$, taking $m=0$ if $Z'$ is empty.
+Let $F$ be the sum on $y_1,\ldots,y_{c-1}$ satisfying $F_0=1$ and
+$F|_{Z'}=0$.  Let $G$ be the sum on all $c$ nodes satisfying
+$G|_{\{0\}\cup Z'}=0$ and $G_z=1$.  Then
+\[
+  u=F+\lambda G,\qquad \lambda=-F_z.
+\]
+The induction hypothesis bounds $\Tail(F)$ by the right side of
+\eqref{eq:tail}.  It remains to prove $\Tail(u)<\Tail(F)$.
+
+Put $\eta=\operatorname{sgn}(F_z)$ and $\mu=|F_z|$.  Away from $Z'$, the
+two sequences $F$ and $G$ have constant relative sign $\eta$: each has
+exactly the simple zeros $Z'$, so both flip at precisely the same indices.
+The extra zero of $u$ at $z$ makes $u$ change sign where $F$ does not.
+Hence
+\[
+ |u_d|=\bigl||F_d|-\mu|G_d|\bigr|.
+\]
+Moreover $|F_d|>\mu|G_d|$ below $z$, with the reverse inequality above
+$z$.
+For an exponential sum $V$, write
+\[
+ \Gamma_V(z)=\frac{\sum_{d\ge z}|V_d|}{|V_z|},
+ \qquad A_G=\sum_{1\le d<z}|G_d|.
+\]
+Splitting at $z$ gives
+\begin{equation}\label{eq:split}
+ \Tail(F)-\Tail(u)
+ =\mu\bigl(2\Gamma_F(z)-\Gamma_G(z)+A_G\bigr).
+\end{equation}
+
+We claim
+\begin{equation}\label{eq:gamma}
+ \Gamma_G(z)\le\frac{\Gamma_F(z)}{1-y_c}\le2\Gamma_F(z).
+\end{equation}
+Let $\widehat F_d=\eta F_d>0$ for $d>m$ and
+$E_d=G_d-y_cG_{d-1}$, an exponential sum on the first $c-1$ nodes.  We first
+show
+\begin{equation}\label{eq:drive}
+ \frac{E_d}{\widehat F_d}\le
+ \frac{G_z}{\widehat F_z}\qquad(d\ge z>m).
+\end{equation}
+Write
+\[
+ A=\{0\}\cup Z'=\{a_1=0<\cdots<a_{c-1}=m\},\qquad
+ \sigma=\frac{G_{m+1}}{\widehat F_{m+1}},
+\]
+and set $\Delta_d=\sigma\widehat F_d-E_d$.  The sum $\Delta$ has at most
+$c-2$ zeros unless it vanishes identically.  It vanishes at $m+1$ and when
+$d-1,d\in A$.  At every remaining marked point $a_{j+1}\in Z'$,
+\[
+ \Delta_{a_{j+1}}=y_cG_{a_{j+1}-1},\qquad
+ \operatorname{sgn}\Delta_{a_{j+1}}=(-1)^{c-1-j}.
+\]
+Let $r$ be the number of forced zeros from consecutive pairs and let $J$
+contain the remaining indices $j$ for which $a_{j+1}\in Z'$.  Then
+$|J|=c-2-r$.  If $J$ is empty, the $r$ forced zeros together with $m+1$
+exceed the zero budget, so $\Delta$ vanishes identically.  Otherwise take
+consecutive $j<j'$ in $J$.  The open interval between their marked points
+contains $j'-j-1$ forced zeros, while the endpoint signs differ by
+$(-1)^{j'-j}$.  The intervening zero count must have the parity of $j'-j$
+and is therefore at least $j'-j$.  Summing over consecutive members of $J$
+therefore contributes one additional zero beyond the forced zeros.  Adding
+these additional zeros and the zero at $m+1$ gives
+\[
+ r+(|J|-1)+1=c-2
+\]
+zeros.  This exhausts the zero bound.  Hence all counted zeros are simple and
+there are no others.  Starting at the last marked point and using its
+displayed sign shows $\Delta_d\ge0$ for $d\ge m+1$, so
+$E_d/\widehat F_d\le\sigma$.  The $c$-node sum
+\[
+ W_d=\widehat F_{m+1}G_d-G_{m+1}\widehat F_d
+\]
+vanishes on $Z'\cup\{m+1\}$, exhausting its $c-1$ possible zeros.  It is
+positive beyond $m+1$: asymptotically only $G$ contains the largest node
+$y_c$, with positive coefficient there.  Hence
+$\sigma\le G_z/\widehat F_z$, proving \eqref{eq:drive}.
+
+Induction in $G_d=y_cG_{d-1}+E_d$ now gives
+\[
+ \frac{G_{z+t}}{G_z}
+ \le\sum_{j=0}^t y_c^{t-j}
+       \frac{\widehat F_{z+j}}{\widehat F_z}.
+\]
+Summing over $t$ proves the first inequality in \eqref{eq:gamma}; the second
+uses $y_c\le1/2$.  Finally $A_G>0$: if $z>m+1$, then $G_{m+1}\ne0$; if
+$z=m+1$, displacement leaves a gap below $z$ where $G$ is nonzero.  Thus
+\eqref{eq:split} is strict.  Equality occurs only in the consecutive base
+case.
+\end{proof}
+
+The restriction $\rho_i\ge2$ is substantive.  For $c=2$,
+$y_1=1/10$, $y_2=4/5$, and $Z=\{2\}$, the normalized coefficients are
+$a_1=64/63$ and $a_2=-1/63$, so
+$\Tail(u)=364/2835>1/9=y_1/(1-y_1)$.
+
+\section{Coefficient order statistics}
+
+Let
+\[
+ P(x)=\prod_{i=1}^L(x-r_i),\qquad 2\le r_1<\cdots<r_L,
+\]
+and let $F(x)=\sum_{j=0}^D f_jx^j\in\R[x]$ be a nonzero multiple of $P$.
+
+\begin{lemma}[Slack certificate]\label{lem:slack}
+Assume $|f_D|=1$.  Fix $0\le u\le(L-1)/2$ and any set $U$ of $u$
+coefficient positions below $D$.  Some $j<D$ outside $U$ satisfies
+\[
+ |f_j|\ge\prod_{i=2u+1}^L(r_i-1).
+\]
+\end{lemma}
+
+\begin{proof}
+Put $c=L-u$ and use the $c$ largest roots.  A position $j$ has backward
+distance $d=D-j$.  Choose a $c$-node sum $w_d$ with $w_0=1$ whose $c-1$
+zeros are the distances belonging to $U$ together with the first
+$L-2u-1$ positive distances not occupied by $U$.  A weighted sum of the
+equations $F(r_i)=0$ gives
+\[
+ 1\le\sum_{j<D,\,j\notin U}|f_jw_{D-j}|.
+\]
+The chosen zero set starts with at least $L-2u-1$ consecutive distances, so
+Theorem~\ref{thm:tail} gives
+\[
+ \sum_{j<D,\,j\notin U}|w_{D-j}|
+ \le\frac{1}{\prod_{i=2u+1}^L(r_i-1)}.
+\]
+The conclusion follows.
+\end{proof}
+
+\begin{theorem}[Logarithmic mass]\label{thm:mass}
+If $|f_D|\ge1$, then
+\begin{equation}\label{eq:mass}
+ \Lambda(F)\ge
+ \sum_{u=0}^{\lfloor(L-1)/2\rfloor}
+ \sum_{i=2u+1}^L\log(r_i-1).
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Scale to $|f_D|=1$.  For each $u$, let $U$ contain the positions of the $u$
+largest coefficients below the leading term.  Lemma~\ref{lem:slack} bounds
+the $(u+1)$st largest coefficient by the corresponding product.  Summing
+these logarithms proves \eqref{eq:mass}.  Restoring a leading coefficient of
+absolute value at least one cannot decrease $\Lambda(F)$.
+\end{proof}
+
+\begin{corollary}[Prime roots]
+Assume $|f_D|\ge1$.  If $r_i$ is the $i$th prime, or if the increasing
+$r_i$ are bounded below by the $i$th primes, then
+$\Lambda(F)=\Omega(L^2\log L)$.
+\end{corollary}
+
+\begin{proof}
+The term $\log(r_i-1)$ occurs once for each $u$ with $2u+1\le i$, hence
+exactly $\lceil i/2\rceil$ times in \eqref{eq:mass}.  The elementary bound
+$r_i\ge i+1$ therefore gives
+\[
+ \sum_{i=1}^L\lceil i/2\rceil\log(r_i-1)=\Omega(L^2\log L).
+\]
+\end{proof}
+
+\section{Scope}
+
+Theorem~\ref{thm:mass} concerns normalized coefficient magnitudes, not
+ordinary length or height.  Subject to $|f_D|\ge1$, it is uniform over the
+degree of $F$ and all additional real or complex roots.  The contribution relative to
+reduced-height duality is the displaced-zero comparison and its iteration;
+the normalized determinant sequence and its consecutive-zero evaluation are
+from Dubickas and Jankauskas~\cite{dj}.
+
+\begin{thebibliography}{9}
+\footnotesize
+\bibitem{karlin-studden}
+S.~Karlin and W.~J. Studden,
+\newblock \emph{Tchebycheff Systems: With Applications in Analysis and Statistics},
+\newblock Interscience, New York, 1966.
+
+\bibitem{dubickas}
+A.~Dubickas,
+\newblock Arithmetical properties of powers of algebraic numbers,
+\newblock \emph{Bulletin of the London Mathematical Society} 38 (2006), 70--80,
+\newblock \href{https://doi.org/10.1112/S0024609305017728}
+{doi:10.1112/S0024609305017728}.
+
+\bibitem{schinzel}
+A.~Schinzel,
+\newblock On the reduced length of a polynomial with real coefficients,
+\newblock \emph{Functiones et Approximatio} 35 (2006), 271--306,
+\newblock \href{https://doi.org/10.7169/facm/1229442629}
+{doi:10.7169/facm/1229442629}.
+
+\bibitem{dj}
+A.~Dubickas and J.~Jankauskas,
+\newblock On the reduced height of a polynomial,
+\newblock \emph{Publicationes Mathematicae Debrecen} 71 (2007), 325--348,
+\newblock \href{https://doi.org/10.5486/PMD.2007.3728}
+{doi:10.5486/PMD.2007.3728}.
+
+\bibitem{grt}
+M.~Giesbrecht, D.~S. Roche, and H.~Tilak,
+\newblock Computing sparse multiples of polynomials,
+\newblock \emph{Algorithmica} 64 (2012), 454--480,
+\newblock \href{https://doi.org/10.1007/s00453-012-9652-4}
+{doi:10.1007/s00453-012-9652-4}.
+\end{thebibliography}
+
+\end{document}

@@ -109,7 +109,13 @@ argument translates it into distinct Polynomial roots.  The algebraic half
 is adjacent to work on sparse polynomial multiples~\cite{grt,roche}; unlike
 those algorithmic questions with prescribed degree, sparsity, or height, our
 bound applies to every multiple of the specified root product, independently
-of degree.
+of degree.  More directly, Dubickas and Jankauskas's reduced-height
+certificates use the same normalized exponential sums and compute the
+leading-zero case below~\cite[Section~2]{dj}.  Our analytic contribution is
+the strict comparison with every displaced zero set; iterating the resulting
+certificate controls successive coefficient order statistics rather than
+only the largest coefficient.  This logarithmic coefficient mass differs
+from the reduced length studied by Dubickas and Schinzel~\cite{dubickas,schinzel}.
 
 \section{Routing forces distinct real roots}\label{sec:routing}
 
@@ -250,7 +256,8 @@ and let $Z\subset\N_{>0}$ have $c-1$ elements.  Suppose that
   \qquad u_0=1,
   \qquad u_z=0\quad(z\in Z).
 \]
-Let $f$ be maximal such that $\{1,\ldots,f\}\subseteq Z$.  Then
+Let
+$f=\max\{0\le k\le c-1:\{1,\ldots,k\}\subseteq Z\}$.  Then
 \begin{equation}\label{eq:tail-bound}
   \Tail(u):=\sum_{d\ge1}|u_d|
   \le \prod_{i=1}^{f+1}\frac{y_i}{1-y_i}
@@ -617,6 +624,27 @@ C.~Gröpl, H.~J. Prömel, and A.~Srivastav,
 S.~Karlin and W.~J. Studden,
 \newblock \emph{Tchebycheff Systems: With Applications in Analysis and Statistics},
 \newblock Interscience, New York, 1966.
+
+\bibitem{dj}
+A.~Dubickas and J.~Jankauskas,
+\newblock On the reduced height of a polynomial,
+\newblock \emph{Publicationes Mathematicae Debrecen} 71 (2007), 325--348,
+\newblock \href{https://doi.org/10.5486/PMD.2007.3728}
+{doi:10.5486/PMD.2007.3728}.
+
+\bibitem{dubickas}
+A.~Dubickas,
+\newblock Arithmetical properties of powers of algebraic numbers,
+\newblock \emph{Bulletin of the London Mathematical Society} 38 (2006), 70--80,
+\newblock \href{https://doi.org/10.1112/S0024609305017728}
+{doi:10.1112/S0024609305017728}.
+
+\bibitem{schinzel}
+A.~Schinzel,
+\newblock On the reduced length of a polynomial with real coefficients,
+\newblock \emph{Functiones et Approximatio} 35 (2006), 271--306,
+\newblock \href{https://doi.org/10.7169/facm/1229442629}
+{doi:10.7169/facm/1229442629}.
 
 \bibitem{grt}
 M.~Giesbrecht, D.~S. Roche, and H.~Tilak,
