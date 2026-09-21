@@ -145,8 +145,15 @@ We call any table satisfying Lemma~\ref{lem:maximal-width}
 
 Call an instruction position \emph{routing} if both of its possible
 successors occur on reachable executions between two consecutive reads.
-Positions with only one reachable successor do not split a residual class.
-Consequently,
+For a fixed level, follow every reachable execution from one read to the
+next.  Charge a resulting nonconstant child to the successor taken at the
+last routing position on its path.  After that successor every reachable
+real position has only one successor, so the program location determines a
+unique next-read cursor; the read overwrites the register, and hence that
+cursor determines the residual.  Thus a routing position receives at most
+one distinct child per successor.  A path containing no routing position has
+the same next-read cursor for both input values and belongs to a residual
+counted by $E(k)$.  Therefore
 \begin{equation}\label{eq:basic-routing}
   N'(k+1)\le 2m_{\rm route}+E(k),
 \end{equation}
@@ -171,7 +178,9 @@ Root sorting places every occurrence of one value in a contiguous block.
 Draw each matched control-flow pair as an arc above the instruction line and
 contract each block to a vertex.  The arcs are noncrossing, so after parallel
 edges are identified the block-incidence graph is a simple outerplanar graph.
-It has at most $2L-3$ edges.
+There are no loops: an opener and closer have different instruction codes,
+whereas equal root values decode to the same code.  It therefore has at most
+$2L-3$ edges.
 
 At most one opening instruction routes in each block.  Indeed, after the
 first opener in a block, execution can enter the next equal opener only by
@@ -180,11 +189,13 @@ an equal test.  Both entries certify the same truth value of the unchanged
 register, so the later opener cannot take both successors.
 
 Charge a routing closer to the incidence between its block and its partner's
-opener block.  All closers with the same incidence are consecutive within
-their block.  After the first, entry is either fallthrough with the common
-condition false or a skip landing after the preceding closer, again with that
-condition false; the register is unchanged between them.  Thus each incidence
-is charged at most once.  For $L\ge2$ there are at most $L$ routing openers
+opener block.  Noncrossing implies that the closers with a fixed partner block
+form one interval inside their own block: an intervening closer with a partner
+in another block would interleave the two arc families.  After the first,
+entry is either fallthrough with the common condition false or a skip landing
+after the preceding closer, again with that condition false; all intervening
+positions are equal real tests and do not change the register.  Thus each
+incidence is charged at most once.  For $L\ge2$ there are at most $L$ routing openers
 and at most $2L-3$ routing closers; for $L=1$ the displayed weaker bound is
 immediate.  Substitute this in
 \eqref{eq:basic-routing}.
@@ -297,7 +308,7 @@ $c-1$ nodes.  The required comparison is
 Indeed, induction in the recurrence $G_d=y_cG_{d-1}+E_d$ then gives
 \[
   \frac{G_{z+t}}{G_z}
-  \le\sum_{j=0}^{t}y_c^{,t-j}
+  \le\sum_{j=0}^{t}y_c^{t-j}
        \frac{\widehat F_{z+j}}{\widehat F_z}.
 \]
 All $G_d$ for $d\ge z$ are positive.  Summing in $t$ proves
@@ -313,12 +324,31 @@ and define the $(c-1)$-node exponential sum
 \[
   \Delta_d=\sigma\widehat F_d-E_d.
 \]
-It is either identically zero or has at most $c-2$ real zeros.  It vanishes
-at $m+1$ and at each $d$ for which $d-1,d\in A$.  At every remaining
-$d=a_{j+1}\in Z'$, its nonzero sign is $(-1)^{c-1-j}$.  Between two
-successive such points, parity forces one more zero than the consecutive
-pairs already provide.  In total these are exactly $c-2$ zeros.  They are
-all simple and no zero lies above $m+1$, so $\Delta_d\ge0$ for $d\ge m+1$.
+It is either identically zero or has at most $c-2$ real zeros, counted with
+multiplicity.  It vanishes at $m+1$ and at each $d$ for which
+$d-1,d\in A$.  Let $r$ be the number of these consecutive pairs, and let
+$J$ contain the remaining indices $j$ for which $a_{j+1}\in Z'$.  Then
+$|J|=c-2-r$.  At such a remaining point,
+\[
+ \Delta_{a_{j+1}}=y_cG_{a_{j+1}-1},
+ \qquad
+ \sgn\Delta_{a_{j+1}}=(-1)^{c-1-j}.
+\]
+If $J$ is empty, the $r$ forced zeros together with $m+1$ exceed the zero
+budget, so $\Delta$ is identically zero.  Otherwise take consecutive
+$j<j'$ in $J$.  The open interval between their marked points contains
+$j'-j-1$ forced zeros, while the endpoint signs differ by
+$(-1)^{j'-j}$.  The intervening zero count must therefore have the parity of
+$j'-j$ and is at least $j'-j$, one more than the forced count.  Summing over
+consecutive members of $J$, and adding the $r$ forced zeros and the zero at
+$m+1$, gives
+\[
+ r+(|J|-1)+1=c-2
+\]
+zeros.  This exhausts the zero bound.  Hence all counted zeros are simple and
+there are no others, in particular none above $m+1$.  Starting at the last
+marked point and using its displayed sign shows that the sign after the
+remaining crossings is positive.  Thus $\Delta_d\ge0$ for $d\ge m+1$.
 Thus
 \begin{equation}\label{eq:first-drive}
   \frac{E_d}{\widehat F_d}\le\sigma\qquad(d\ge m+1).
@@ -360,20 +390,21 @@ $D$.  Some position $j<D$ outside $U$ satisfies
 \end{lemma}
 
 \begin{proof}
-Put $c=L-u$ and use the $c$ largest roots.  Read coefficient positions
-backwards from $D$.  Choose a $c$-node exponential sum $w$ with $w_D=1$
-whose $c-1$ zeros occur at the positions in $U$ together with the first
-$L-2u-1$ backward distances not occupied by $U$.  The Vandermonde system is
-nonsingular, and $w$ lies in the row space of the equations $F(r_i)=0$.
-Thus
+Put $c=L-u$ and use the $c$ largest roots.  A coefficient position $j$ has
+backward distance $d=D-j$.  Choose a $c$-node exponential sum $w_d$ with
+$w_0=1$ whose $c-1$ zeros occur at the distances belonging to $U$ together
+with the first $L-2u-1$ positive distances not occupied by $U$.  The
+Vandermonde system is nonsingular.  Since $w_d$ is a linear combination of
+$r_i^{-d}$ over the chosen roots, a correspondingly weighted sum of the
+equations $F(r_i)=0$ gives
 \[
-  1=|f_Dw_D|
-   \le\sum_{j<D,\,j\notin U}|f_jw_j|.
+  1=|f_Dw_0|
+   \le\sum_{j<D,\,j\notin U}|f_jw_{D-j}|.
 \]
 The selected zero set begins with a run of at least $L-2u-1$ backward
 positions.  Theorem~\ref{thm:tail}, applied to the reciprocal roots, gives
 \[
-  \sum_{j<D,\,j\notin U}|w_j|
+  \sum_{j<D,\,j\notin U}|w_{D-j}|
   \le\frac{1}{\prod_{i=2u+1}^{L}(r_i-1)}.
 \]
 If every coefficient outside $U$ were smaller than the right side of

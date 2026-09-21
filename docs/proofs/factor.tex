@@ -71,8 +71,26 @@ $\Theta(T\log T)$.
 
 \section{Generated upper bound}
 
-The Boolean generator first emits a Brainfuck decision tree of length
-$C=O(T)$ and then replaces each maximal run by one prime power.  It scans
+The Boolean generator first emits a Brainfuck decision tree and then replaces
+each maximal run by one prime power.  The following elementary bound makes
+the construction premise explicit.
+
+\begin{lemma}[Decision-tree size]\label{lem:tree}
+Every $T$-bit truth table has a Brainfuck decision-tree program of length
+$C=O(T)$.
+\end{lemma}
+
+\begin{proof}
+Use the full binary decision tree of depth $n$.  Each of its $T-1$ internal
+vertices reads one bit and uses a fixed Brainfuck branch gadget; each of its
+$T$ leaves uses a fixed output gadget.  Lay the gadgets out recursively, with
+one matching bracket pair around each branch.  Every tree edge and vertex
+contributes only a constant number of instructions, so the resulting program
+has $C=O(T)$.  Constant equal subtrees may be folded, but that optimisation is
+not needed for the bound.
+\end{proof}
+
+The encoder replaces each maximal run by one prime power.  It scans
 primes upward and chooses the first prime in the residue class required by
 the next run.  The following standard consequence of the prime number theorem
 in short arithmetic progressions controls this adaptive sequence.
@@ -118,7 +136,8 @@ The generated Factor source has $D=O(T\log(T+1))$ digits.
 \end{proposition}
 
 \begin{proof}
-There are at most $C$ runs.  By Lemma~\ref{lem:adaptive},
+By Lemma~\ref{lem:tree}, $C=O(T)$, and there are at most $C$ runs.  By
+Lemma~\ref{lem:adaptive},
 $\log Q=O(\log(m+1))$.  Equation~\eqref{eq:digits} yields
 \[
   \log N\le C\log Q
