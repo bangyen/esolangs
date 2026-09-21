@@ -8,7 +8,7 @@ exponential sum on *distinct* nodes.  The unconditional language bound is
 real instruction *positions*, and the confluent certificate here prices
 ``m`` roots with multiplicity as ``Omega(m**2)``, so no distinctness
 hypothesis is needed at that order.  The sharpened routing lemma
-``N' <= 6 * L_real + E`` closes the extra logarithm.
+``N' <= 12 * L_real + 2`` closes the extra logarithm.
 Equal real roots form contiguous blocks.  Contracting those blocks turns the
 noncrossing bracket matching into an outerplanar incidence graph; one opener
 routes per block and one closer per incidence.  ``_check_routing_bound`` pins
@@ -300,8 +300,8 @@ def _check_loops(failures: list[str]) -> int:
 def _check_routing(failures: list[str]) -> int:
     """Pin the executed facts behind the sharpened routing lemma.
 
-    ``docs/proofs/polynomial.md`` proves ``N'(k+1) <= 2m + E(k)`` with ``m`` the real
-    instruction *positions* (the routing floor), which with the confluent
+    ``docs/proofs/polynomial.md`` proves ``N'(k+1) <= 2 + 4m`` with ``m`` the
+    real instruction *positions* (the routing floor), which with the confluent
     certificate gives ``Omega(T**2 / log**2 T)``.  The block-incidence bound
     sharpens this to ``Omega(T**2 / log T)``.  This check pins the
     per-instruction facts the routing floor rests on:
@@ -391,10 +391,10 @@ def _check_routing(failures: list[str]) -> int:
 
 
 def _check_routing_bound(failures: list[str]) -> int:
-    """Pin the sharpened routing bound ``N' <= 6 * L_real + E``.
+    """Pin the sharpened routing bound ``N' <= 12 * L_real + 2``.
 
-    The routing floor gives ``N' <= 2m + E`` on real *positions*; the sharper
-    ``N' <= 2 * m_routing + E`` counts only positions that take both
+    The routing floor gives ``N' <= 2 + 4m`` on real *positions*; the sharper
+    ``N' <= 2 + 4 * m_routing`` counts only positions that take both
     successors.  A proposed route -- ``m_routing <= 3 * L_real`` via "at most
     one routing position per (value, condition)" -- is **false**: this check
     runs the refuting table and confirms two routing closers share one value

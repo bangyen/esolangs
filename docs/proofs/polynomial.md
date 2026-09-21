@@ -165,11 +165,11 @@ on `a + p**b i` forces a rational angle, Niven pins `a` to 0 or `p**b`, and
 two factors would need `2*p1**(2*b1) = 2*p2**(2*b2)`.  Descartes: a `t`-term
 real polynomial has at most `t-1` positive roots, so every multiple of a
 product with `m_r` real instruction roots `p**v` has `t >= m_r + 1`.  Real
-instructions cannot be shed -- the routing lemma is a proof: after a read the
-future is a function of position alone, a bracket-free segment reaches one
-destination for both bit values, so `N'(k+1) <= 2B + E(k)`, i.e.
-`B >= (N'(k+1) - E(k))/2` at every level (`N'` non-constant subfunctions per
-level, `E` those with equal halves).  Executed on machine- and tree-shaped
+instructions cannot be shed -- the routing lemma is a proof: a read leaves the
+register at 48 or 49, so a residual is fixed by its cursor and that register
+value, and a routing-free path is deterministic, so `N'(k+1) <= 2 + 4B` with
+`B` the real instruction count, i.e. `B >= (N'(k+1) - 2)/4` at every level
+(`N'` non-constant subfunctions per level).  Executed on machine- and tree-shaped
 builds at n=3..5 over every input; the floor on the dense fixture runs 16,
 52, 128 at n=8, 10, 12, 0.38..0.53 of `T/log2 T`.  The shipped machines put
 the real share at 0.36 of the instruction list.  A loop changes
@@ -781,30 +781,31 @@ distinct root values.
 
 The program is a multiple of its distinct-root product, so the theorem gives
 `Omega(L'**2 log L')` for `L'` distinct real roots.  The refinement forces
-`L' = Omega(T/log T)`.  Independently, the confluent certificate below prices
-multiplicity as `Omega(m**2)`.
+`L' = Omega(T/log T)`.  Independently, the coefficient-divisibility bound
+below prices multiplicity as `Omega(m**2)`.
 
 The stronger `Omega(T**2 / log T)` follows from the **sharpened routing lemma**:
-`N'(k+1) <= c * L_real + E(k)`, where `L_real` is the number of distinct
+`N'(k+1) <= 12 * L_real + 2`, where `L_real` is the number of distinct
 *real* instruction-root values, not instruction positions.  The routing floor
 above is stated on positions (`m_r`); since the distinct-root theorem bounds
 *every multiple* of the distinct-root product, `L_real = Omega(T/log T)` alone
 upgrades the row.  The lemma is proved below; the confluent certificate still
 removes the distinctness hypothesis from the coefficient argument.
 
-**The block-incidence proof.**  Follow every reachable execution from one read
-to the next and charge each resulting nonconstant child to the successor taken
-at the last routing position on its path.  The remaining suffix has only
-one-successor real positions, so its location fixes the next read cursor; that
-read overwrites the register, so the cursor fixes the residual.  Each routing
-position is therefore charged at most once per successor.  A path with no
-routing position comes from a parent with equal children.  Hence
-`N'(k+1) <= 2 * m_routing + E(k)`.  `convert` emits all copies of one exact
-real root in one contiguous block.  Draw the noncrossing bracket matches above
-the instruction line and contract each block.  Openers and closers have
-different codes, so no edge is a loop.  After parallel edges are identified,
-the resulting graph is simple bipartite outerplanar -- opener blocks on one
-side, closer blocks on the other -- hence has at most `2L_real - 3` edges.
+**The block-incidence proof.**  A read leaves the register at 48 or 49, so a
+residual is fixed by its cursor and that value: `N' <= 2D`, with `D` the
+number of distinct cursors at the read.  Follow an execution back from a read.
+If its path has a routing position, the last one and the successor taken fix
+the cursor there, because the remaining path is routing-free and hence
+deterministic; if not, the cursor is the deterministic image of the initial
+cursor.  So the cursors number at most `1 + 2 * m_routing` -- two per routing
+position, one per successor -- and `N'(k+1) <= 2 + 4 * m_routing`.  `convert`
+emits all copies of one exact real root in one contiguous block.  Draw the
+noncrossing bracket matches above the instruction line and contract each
+block.  Openers and closers have different codes, so no edge is a loop.  After
+parallel edges are identified, the resulting graph is simple bipartite
+outerplanar -- opener blocks on one side, closer blocks on the other -- hence
+has at most `2L_real - 3` edges.
 
 At most one opener routes in a block.  After its first position, entry is
 either fallthrough from the preceding identical test or a loop back-edge to
@@ -817,7 +818,7 @@ the preceding closer, again with that condition false; no instruction between
 them changes the register.  Thus an incidence is charged at most once.  For
 `L_real >= 2` this gives `m_routing <= L_real + 2L_real - 3`; for `L_real = 1`,
 the weaker `m_routing <= 3L_real` is immediate.  In every case
-`N'(k+1) <= 6L_real + E(k)`.  The dense-table floor forces
+`N'(k+1) <= 12 * L_real + 2`.  The dense-table floor forces
 `L_real = Omega(T/log T)`.
 
 The smaller "one closer per (value, condition)" charge is false, executed:
@@ -834,13 +835,17 @@ The distinct-node theorem above is replaced by its confluent analogue,
 zero set `Z` of size `sum e_i - 1`, the tail bound holds with the product read
 over the **expanded multiset** (each `y_i` repeated `e_i` times).  The proof is
 the Hermite limit of the distinct theorem -- perturb the repeated nodes, apply
-the distinct bound, and pass to the limit by Fatou.  It gives
-`mass(F) >= (log10 2)/32 * m**2` for a monic multiple of `prod (x - r_i)^{e_i}`
-with `m = sum e_i`, so the repeated-root case is priced at `Omega(m**2)` and
-the language bound is `Omega(T**2 / log**2 T)` with no distinctness
-hypothesis at all.  `tests/proofs/deep/multiplicity.py` pins the algebraic
-content of the confluent bound on small certificates; it does not re-prove the
-limit step.
+the distinct bound, and pass to the limit by Fatou.  This removes the
+distinctness hypothesis from the coefficient argument, so a program whose real
+roots repeat is still priced; with the routing floor's
+`m = Omega(T/log T)` real instruction positions the repeated-root order is
+`Omega(T**2 / log**2 T)`.  The `(log10 2)/32 * m**2` price for a monic
+multiple of `prod (x - r_i)^{e_i}` is the direct coefficient-divisibility
+bound spot-checked in `tests/proofs/deep/multiplicity.py`, not the confluent
+tail bound (whose product is vacuous when one root carries all the
+multiplicity).  `tests/proofs/deep/multiplicity.py` pins the algebraic content
+of the confluent bound on small certificates; it does not re-prove the limit
+step.
 
 *What the earlier rounds leave behind.*  The routes that did not reach the
 lemma are recorded so they are not rebuilt, and the peel above explains

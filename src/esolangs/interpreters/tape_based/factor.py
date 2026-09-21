@@ -70,7 +70,7 @@ def _isprime64(number: int) -> bool:
 def _parse(digits: str) -> int:
     """Read the program's integer, lifting CPython's digit limit to fit it.
 
-    The 4300-digit cap is a DoS guard, not Factor's (n=5 parity is 12565
+    The 4300-digit cap is a DoS guard, not Factor's (n=6 parity is 5934
     digits); raised for this program and put back.
     """
     limit = sys.get_int_max_str_digits()
@@ -86,7 +86,7 @@ def _parse(digits: str) -> int:
 def _factorint(number: int) -> dict[int, int]:
     """Factorize ``number`` by widening segmented trial division.
 
-    The number is a product of many smallish primes (1276 digits for the
+    The number is a product of many smallish primes (435 digits for the
     committed example), so walk primes in order and shrink as each divides.
     Never stop at a fixed prime: the residue handed to ``factorint`` is then
     a large composite that sends it to Pollard rho for minutes (a 10000
