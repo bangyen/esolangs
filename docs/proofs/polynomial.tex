@@ -96,6 +96,8 @@ division, and ``if positive'' with its closing instruction.  The lower bound
 uses only the following structural properties.
 
 \begin{enumerate}
+\item Input is consumed as an ordered stream: the $j$-th read instruction
+receives the $j$-th input bit, whatever the path taken.
 \item Between two input reads the complete state is the pair consisting of
 the register and the instruction cursor.
 \item Each real instruction root is one of the first eight positive powers of
@@ -241,7 +243,8 @@ There are no loops: an opener and closer have different instruction codes,
 whereas equal root values decode to the same code.  It is also bipartite,
 with opener blocks on one side and closer blocks on the other.  A simple
 bipartite outerplanar graph on $L\ge2$ vertices has at most $2L-3$ edges by
-Euler's formula, since every bounded face has length at least four.
+Euler's formula, since every bounded face has length at least four and the
+outer face has length at least two.
 
 At most one opening instruction routes in each block.  Indeed, after the
 first opener in a block, execution can enter the next equal opener only by

@@ -23,11 +23,11 @@ The confluent analogue is::
 and the claim is the *same* tail bound with the product read over the expanded
 multiset (each ``y_i`` repeated ``e_i`` times).  This module does not prove the
 limit step -- that is the Hermite interpolation argument in
-``notes/multiplicity/CONFLUENT_PROOF.md`` -- it pins the algebraic content:
-the base case is exact, the general bound holds on every certificate here, the
-slack assembly's threshold really is the product over the top units, and the
-integer-root divisibility really does give the root-2 term.  Together those
-give ``mass(F) >= (log10 2)/32 * m**2`` for every multiple.
+``docs/proofs/coefficient-mass.tex``, Proposition 3.4 -- it pins the algebraic
+content: the base case is exact, the general bound holds on every certificate
+here, the slack assembly's threshold really is the product over the top units,
+and the integer-root divisibility really does give the root-2 term.  Together
+those give ``mass(F) >= (log10 2)/32 * m**2`` for every multiple.
 """
 
 from __future__ import annotations
@@ -77,15 +77,26 @@ def _u(nodes, coeffs, d: int) -> Fraction:
 
 
 def _A(k: int, y: Fraction) -> Fraction:
-    """``sum_{d>=0} d^k y^d`` for ``k <= 3``, exactly."""
-    o = 1 - y
-    if k == 0:
-        return 1 / o
-    if k == 1:
-        return y / o**2
-    if k == 2:
-        return y * (1 + y) / o**3
-    return y * (1 + 4 * y + y * y) / o**4
+    """``sum_{d>=0} d^k y^d``, exactly, for every ``k``.
+
+    Recurrence ``S_k = y (d/dy) S_{k-1}`` kept as
+    ``S_k = N_k(y) / (1 - y)**(k + 1)``.  A closed form stopping at ``k == 3``
+    would silently use the ``k == 3`` branch for a multiplicity above three.
+    """
+    numerator = [Fraction(1)]
+    for j in range(1, k + 1):
+        derivative = [i * c for i, c in enumerate(numerator)][1:]
+        base = [Fraction(0)] * max(len(derivative) + 1, len(numerator))
+        for i, c in enumerate(derivative):
+            base[i] += c
+            base[i + 1] -= c
+        merged = [Fraction(0)] * max(len(base), len(numerator))
+        for i, c in enumerate(base):
+            merged[i] += c
+        for i, c in enumerate(numerator):
+            merged[i] += j * c
+        numerator = [Fraction(0), *merged]
+    return sum(c * y**e for e, c in enumerate(numerator)) / (1 - y) ** (k + 1)
 
 
 def _tail(nodes, coeffs, zeros) -> Fraction:
@@ -133,8 +144,8 @@ def _mass(coeffs) -> int:
 
 
 #: The certificates checked.  Small enough to stay inside the band budget, wide
-#: enough to see one repeated node, two repeated nodes, a node at 1/2, and a
-#: displaced zero set.
+#: enough to see one repeated node, two repeated nodes, a node at 1/2, a
+#: displaced zero set, and multiplicities past the old ``k == 3`` closed form.
 _CERTIFICATES = [
     ([(Fraction(1, 2), 2)], [1]),
     ([(Fraction(1, 3), 3)], [1, 3]),
@@ -147,6 +158,9 @@ _CERTIFICATES = [
         [(Fraction(1, 6), 2), (Fraction(1, 4), 2), (Fraction(1, 2), 2)],
         [1, 2, 4, 5, 7],
     ),
+    ([(Fraction(1, 4), 4)], [1, 2, 4]),
+    ([(Fraction(1, 7), 6)], [1, 2, 3, 5, 7]),
+    ([(Fraction(1, 9), 5), (Fraction(1, 4), 1)], [1, 2, 4, 5, 6]),
 ]
 
 

@@ -729,11 +729,13 @@ zeros of `Delta` in that open interval, counted with multiplicity, has the
 parity the endpoint signs dictate, which is the parity of `q + 1`: so it is
 at least `q + 1`, one more than the forced ones.  That is `p - 1` further
 zeros in all, distinct from the `r` forced ones and from `m + 1`, and
-`r + (p - 1) + 1 = c - 2` exhausts the budget -- every zero of `Delta` is
-accounted for, all simple, and all at most `m + 1`.  In particular there is
-no zero above `a_{j*+1}` for the largest `j*` in `J` other than the
-consecutive-pair ones and `m + 1`, so counting the `c - 1 - j*` simple
-crossings up from `a_{j*+1}` (sign `(-1)**(c-1-j*)`) past `m + 1` leaves
+`r + (p - 1) + 1 = c - 2` exhausts the zero-multiplicity budget.  The `p - 1`
+extra multiplicities all lie strictly below `a_{j*+1}`, so every zero of
+`Delta` above `a_{j*+1}` -- the `c - 2 - j*` forced marked zeros and the zero
+at `m + 1` -- is simple; earlier forced zeros need not be.  In particular
+there is no zero above `a_{j*+1}` for the largest `j*` in `J` other than those
+`c - 1 - j*` simple ones, so counting the crossings up from `a_{j*+1}`
+(sign `(-1)**(c-1-j*)`) past `m + 1` leaves
 sign `(-1)**(2(c-1-j*)) = +1`.  Hence `Delta >= 0` on `[m+1, inf)`, i.e.
 `E_d / hat F_d <= sigma` there.
 
@@ -826,16 +828,19 @@ positive control for the distinction rather than a refutation of the lemma.
 count on that machine.
 
 **The confluent certificate (multiplicity is free of the extra hypothesis).**
-The distinct-node theorem above is replaced by its confluent analogue, proved
-in `tests/proofs/deep/multiplicity.py` and stated here: for
+The distinct-node theorem above is replaced by its confluent analogue,
+[coefficient-mass](coefficient-mass.tex) Proposition 3.4: for
 `u_d = sum_i P_i(d) y_i^d` with `deg P_i < e_i`, `u_0 = 1`, and `u_z = 0` on a
 zero set `Z` of size `sum e_i - 1`, the tail bound holds with the product read
-over the **expanded multiset** (each `y_i` repeated `e_i` times).  The proof
-is the Hermite limit of the distinct theorem.  It gives
+over the **expanded multiset** (each `y_i` repeated `e_i` times).  The proof is
+the Hermite limit of the distinct theorem -- perturb the repeated nodes, apply
+the distinct bound, and pass to the limit by Fatou.  It gives
 `mass(F) >= (log10 2)/32 * m**2` for a monic multiple of `prod (x - r_i)^{e_i}`
 with `m = sum e_i`, so the repeated-root case is priced at `Omega(m**2)` and
 the language bound is `Omega(T**2 / log**2 T)` with no distinctness
-hypothesis at all.
+hypothesis at all.  `tests/proofs/deep/multiplicity.py` pins the algebraic
+content of the confluent bound on small certificates; it does not re-prove the
+limit step.
 
 *What the earlier rounds leave behind.*  The routes that did not reach the
 lemma are recorded so they are not rebuilt, and the peel above explains
