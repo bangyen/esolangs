@@ -72,6 +72,18 @@ instruction.  Unrecognised roots are ignored, so a source may be any integer
 multiple of the product of its instruction factors.  Repeated recognised
 roots produce repeated instructions.
 
+As a minimal example, $f(x)=x^2+4$ has roots $\pm2i$.  The imaginary
+magnitude $2=2^1$ selects the first register instruction for the prime $2$,
+while the real part $0$ supplies its operand.  This instruction outputs the
+initial register value, the zero byte.  In general the interpreter follows
+the same pipeline:
+\[
+ \text{expanded coefficients}\longrightarrow
+ \text{recognised roots}\longrightarrow
+ \text{sorted instructions}\longrightarrow
+ \text{execution}.
+\]
+
 The machine has an integer register and an instruction cursor.  Its input
 instruction overwrites the register with the next input symbol, $48+b$ for a
 Boolean bit $b$.  Real-root instructions are the bracket-like control-flow
@@ -120,7 +132,10 @@ $\Theta(T^2/\log T)$.
 The lower bound has two independent parts.  Section~\ref{sec:routing} forces
 $\Omega(T/\log T)$ distinct positive roots.  Section~\ref{sec:mass} applies
 the companion coefficient-mass theorem.  Section~\ref{sec:upper} supplies
-the matching construction.
+the matching construction.  Informally, the routing argument says that a
+short instruction alphabet cannot distinguish enough residual truth tables;
+the coefficient-mass theorem then says that supporting the required roots
+forces many coefficient digits.
 
 Residual DAGs are reduced ordered binary decision diagrams under a fixed
 variable order~\cite{bryant}; classical results place the size of an optimal

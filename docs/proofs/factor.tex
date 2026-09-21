@@ -65,6 +65,12 @@ p\bmod 11&1&2&3&4&5&6&7&8\\ \hline
 and the exponent $e_p$ is its run length.  Residues $0,9,10$ are ignored.
 The selected primes are read in increasing order.
 
+For example, $45=3^2\cdot5$.  Since $3\bmod11=3$ and
+$5\bmod11=5$, the source \texttt{45} decodes to \texttt{++.}: two
+increments followed by output.  Starting from a zero cell, it emits the byte
+of value $2$.  This example also illustrates that source order is irrelevant:
+instruction order comes from increasing prime factors.
+
 Write $C=\sum_{p\bmod 11\in\{1,\ldots,8\}}e_p$ for the length of the decoded
 Brainfuck program, $m$ for its number of maximal runs, $Q$ for its largest
 selected prime, and $D$ for the number of decimal digits of $N$.  Then

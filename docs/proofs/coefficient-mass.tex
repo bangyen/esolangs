@@ -102,6 +102,20 @@ $f=\max\{0\le k\le c-1:\{1,\ldots,k\}\subseteq Z\}$.  Then
 Equality holds exactly when $Z=\{1,\ldots,c-1\}$.
 \end{theorem}
 
+For a concrete two-node example, take $(\rho_1,\rho_2)=(3,2)$.  If the
+prescribed zero is consecutive, $Z=\{1\}$, then
+\[
+ u_d=3^{1-d}-2^{1-d},\qquad \Tail(u)=\frac12,
+\]
+so equality holds in \eqref{eq:tail}.  Moving the zero to $Z=\{2\}$ gives
+\[
+ u_d=\frac95\,3^{-d}-\frac45\,2^{-d},\qquad
+ \Tail(u)=\frac3{10}<\frac12.
+\]
+The theorem generalizes this strict loss.  Each displaced zero creates an
+extra sign change relative to a comparison sum, and the proof shows that this
+change reduces the total tail.  It treats the displaced zeros one at a time.
+
 A nonzero exponential sum on $r$ distinct positive nodes has at most $r-1$
 real zeros, counted with multiplicity.  This follows by dividing by the
 smallest node to the real power and applying Rolle's theorem inductively.
