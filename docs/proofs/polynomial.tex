@@ -102,8 +102,8 @@ Its coefficient-digit mass is
   M(f)=\sum_{j:f_j\ne0}\bigl(1+\lfloor\log_{10}|f_j|\rfloor\bigr).
 \]
 Since the serialization contains every coefficient digit, $|f|\ge M(f)$.
-Let worst-case text complexity mean the
-maximum, over these tables, of the minimum $|f|$ of a program computing it.
+The worst-case text complexity is the maximum, over these tables, of the
+minimum $|f|$ of a program computing the table.
 All unqualified logarithms are natural.
 
 \begin{theorem}[Main theorem]\label{thm:main}
@@ -128,9 +128,8 @@ diagram for almost every Boolean function at the same
 $\Theta(T/\log T)$ scale~\cite{wegener,gps}.  Lemma~\ref{lem:maximal-width}
 uses a tailored simultaneous width statistic, and the block-incidence
 argument translates it into distinct Polynomial roots.  The companion
-manuscript places its displaced-zero comparison
-and coefficient-order-statistic argument in the reduced-height
-literature~\cite{coefficient-mass}.
+manuscript relates the displaced-zero comparison and coefficient-order
+statistics to the reduced-height literature~\cite{coefficient-mass}.
 
 \section{Routing forces distinct real roots}\label{sec:routing}
 
