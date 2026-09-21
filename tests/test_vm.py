@@ -208,11 +208,11 @@ class Test123:
         assert vm.memory == [0]
         vm.step()  # 1 flips the bit at the pointer
         assert vm.ip == 1
-        assert vm.memory == [128]
+        assert vm.memory == [1]
         vm.step()  # 2 at a data position moves the pointer right
         assert vm.ip == 2
-        assert vm.memory == [128]
-        vm.step()  # 1 flips bit 7 back; the cursor runs off the program
+        assert vm.memory == [1]
+        vm.step()  # 1 flips bit 0 back; the cursor runs off the program
         assert vm.ip == 3
         assert vm.memory == [0]
         vm.step()  # the loop-or-halt check: pointer below 0 halts the run

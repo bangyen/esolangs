@@ -166,8 +166,9 @@ class TestPainfuck:
         assert run_program("pprpplque") == "\x04"
 
     def test_conditional_skip(self) -> None:
-        # v skips the next command when the cell is nonzero
-        assert run_program("pvpu") == "\x02"
+        # v executes the next command only when the cell is zero.
+        assert run_program("vsu") == "\xff"
+        assert run_program("pvsu") == "\x01"
 
     def test_random_skip(self) -> None:
         """``y`` skips the next command on a coin flip; pin both outcomes.

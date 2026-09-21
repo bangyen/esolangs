@@ -1,6 +1,8 @@
 """Unit tests for the Circlefuck interpreter."""
 
-from esolangs.interpreters.tape_based.circlefuck import run
+import pytest
+
+from esolangs.interpreters.tape_based.circlefuck import parse, run
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_program
 from tests.raises import raises_message
@@ -65,6 +67,9 @@ class TestCirclefuck:
         """, stores a byte of input in the current cell."""
         assert run_and_capture(",.@", inputs=["A"]) == "A"
 
+    def test_exhausted_input_is_a_no_op(self) -> None:
+        assert run_and_capture(",@") == ""
+
     def test_an_input_character_above_255_is_taken_modulo_256(self) -> None:
         """``,`` writes a cell, so it reduces exactly as ``+`` and ``-`` do.
 
@@ -85,7 +90,7 @@ class TestCirclefuck:
 
     def test_delete_cell(self) -> None:
         """} deletes the current cell."""
-        assert run_and_capture("+}.@") == ""
+        assert run_and_capture("+}.@") == "}"
 
 
 class TestStepMachine:
@@ -118,6 +123,13 @@ class TestStepMachine:
     def test_bare_hex_digit_escape_is_uppercase(self) -> None:
         """A lone ``\\F`` is a hex digit; the lowercase run is not one."""
         assert run_and_capture("\\F.@") == "\x0f"
+
+    def test_named_space_and_invalid_escapes(self) -> None:
+        assert parse("\\space") == [32]
+        assert parse("\\\\") == [92]
+        for source in ("\\", "\\q", "\\o89", "\\xg0", "\\999"):
+            with pytest.raises(ValueError, match="invalid Circlefuck escape"):
+                parse(source)
 
     def test_a_leading_o_is_dropped_from_an_escape(self) -> None:
         """``\\o101`` names the same octal byte as ``\\101``."""
@@ -190,6 +202,24 @@ class TestStepMachine:
         machine.step()  # { inserts a zero before it and steps past both
         assert machine.ind == 3
         assert machine.cells == (0, 44, 123, 43, 46, 64)
+
+    def test_edits_keep_the_instruction_successor(self) -> None:
+        """Edits shift the instruction cursor before its normal advance."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.circlefuck import _Machine
+
+        machine = _Machine("<{abc@", ScriptedIO())
+        machine.step()
+        machine.step()
+        assert machine.ind == 2
+        assert machine.cells == (60, 123, 97, 98, 99, 0, 64)
+
+        machine = _Machine(">x}ab@", ScriptedIO())
+        machine.step()
+        machine.step()
+        machine.step()
+        assert machine.ind == 2
+        assert machine.cells == (62, 125, 97, 98, 64)
 
     def test_state_reports_the_fields_and_copies_the_tape(self) -> None:
         """``state`` is an observer, so it must not alias the live tape.

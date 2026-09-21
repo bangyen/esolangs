@@ -85,6 +85,19 @@ class TestLaserFuck:
         # '-' on zero makes -1, which is excluded from output
         assert run_and_capture(["\u00ff}o-x\n   x"]) == ""
 
+    def test_cells_wrap_at_signed_32_bit_bounds(self) -> None:
+        """The fixed-width tape wraps in signed two's-complement order."""
+        from esolangs.interpreters.grid_based.laserfuck import _advance
+        from esolangs.interpreters.persistent import chunked, flatten
+
+        def advance(value: int, op: str) -> int:
+            state = (chunked(((value, 0),)), 0, ((0, 0, 3),), 0, False, (0, 0, 0))
+            tape = _advance(state, op, 0, 0, 3)[0]
+            return next(iter(flatten(tape)))[0]
+
+        assert advance((1 << 31) - 1, "+") == -(1 << 31)
+        assert advance(-(1 << 31), "-") == (1 << 31) - 1
+
     def test_input_reads_whole_line_first_char(self) -> None:
         prog = ["\u00ff}o,x\n   x"]
 

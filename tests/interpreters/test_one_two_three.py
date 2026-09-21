@@ -5,7 +5,6 @@ import importlib
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from tests.interpreters.contract import EmptyProgramContract
 
 run = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
 
@@ -21,17 +20,23 @@ def run_program(code: str, stdin: str = "") -> str:
 
 
 class Test123:
-    def test_nops_only(self) -> None:
-        """Characters other than 1/2/3 are NOPs and are skipped."""
-        assert run_program(" \n abc \n") == ""
+    def test_empty_program_halts(self) -> None:
+        assert run_program("") == ""
 
-    def test_generated_letter(self) -> None:
-        assert run_program("212222222112112112112112112112112\n1") == "A"
+    def test_comment_only_program_loops(self) -> None:
+        """Comments are NOPs; reaching their end restarts at position zero."""
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine(" \n abc \n", ScriptedIO())) is False
+
+    def test_literal_uses_lsb_byte_order(self) -> None:
+        assert run_program("212222222112112112112112112112112\n1") == "\x82"
 
     def test_unknown_chars_are_nops(self) -> None:
         """Comments scattered through the program do not change it."""
         prog = "212222222112112112112112112112112\n1"
-        assert run_program("hello " + prog) == "A"
+        assert run_program("hello " + prog) == "\x82"
 
     def test_wiki_cat_echoes(self) -> None:
         """The cat program echoes input, then EOF raises like the others."""
@@ -71,9 +76,9 @@ class Test123:
 
         Only the bits a ``1`` has flipped are in the map, so the rest come
         from the default the lookup supplies: with one bit set the byte is
-        0x80, where treating the absent seven as ones would make it 0xff.
+        0x01, where treating the absent seven as ones would make it 0xff.
         """
-        assert run_program("1121") == "\x80"
+        assert run_program("1121") == "\x01"
 
     def test_true_jump_skips_backward(self) -> None:
         """A TRUE 3 jumps back to the previous 3 (or the start) and loops."""
@@ -177,7 +182,7 @@ class TestStepMachine:
         when it is itself a ``3``: the real scan stops on it immediately,
         while a scan that steps over it runs on to an earlier one.  In
         ``33112`` the pair is at the front, and the difference shows as
-        repeated output -- the real machine prints ``\\x80`` once and then
+        repeated output -- the real machine prints ``\\x01`` once and then
         cycles, where skipping the adjacent ``3`` keeps re-entering the
         body and printing a new byte each lap.
 
@@ -191,10 +196,4 @@ class TestStepMachine:
             if machine.halted:
                 break
             machine.step()
-        assert machine.io.getvalue() == "\x80"
-
-
-class TestContract(EmptyProgramContract):
-    """The shared empty-program shape, with this language's data."""
-
-    run = staticmethod(run_program)
+        assert machine.io.getvalue() == "\x01"

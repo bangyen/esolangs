@@ -72,6 +72,8 @@ def _advance(state: _State, store: str, byte: int | None = None) -> _State:
     """
     mem, ip, _halted = state
     a, b, c = mem[ip], mem[ip + 1], mem[ip + 2]
+    if c < 0:
+        raise ValueError(f"invalid S*bleq branch address {c}")
     if a == -3 or b == -3:
         # The print already happened in the shell.
         return (mem, ip + 3, False)
