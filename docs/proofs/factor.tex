@@ -71,6 +71,13 @@ $\Omega(T\log T)$ digits.  Hence the worst-case Factor text complexity is
 $\Theta(T\log T)$.
 \end{theorem}
 
+Factor was introduced in 2020 as a prime-factor encoding of
+Brainfuck~\cite{factor-spec}.  Its specification invokes Dirichlet's theorem
+to ensure an unlimited supply of instruction primes.  Here the issue is
+instead decimal description length: the upper bound needs quantitative
+control of successive instruction primes, while the lower bound counts all
+encodings, including those with ignored factors.
+
 \section{Generated upper bound}
 
 The Boolean generator first emits a Brainfuck decision tree and then replaces
@@ -124,7 +131,8 @@ The Hoheisel theorem for arithmetic progressions gives the expected
 asymptotic number of primes in $(X-h,X]$ in every reduced class modulo $q$
 when $q\le(\log X)^A$ and
 $h\ge X^{7/12+\varepsilon}(\log X)^A$; see Thorner and
-Zaman~\cite{thorner-zaman}.  Fix $7/12+\varepsilon<\theta<1$, put
+Zaman~\cite[Section~1.2]{thorner-zaman}.  Fix
+$7/12+\varepsilon<\theta<1$, put
 $X=x+x^\theta$ and $h=x^\theta$.  Since $X\sim x$, the displayed size
 condition holds for all sufficiently large $x$, while
 $(X-h,X]=(x,x+x^\theta]$.  Taking $q=11$ proves the lemma.
@@ -278,6 +286,12 @@ the Factor generator.  None of those measurements is a premise of the
 language lower bound above.
 
 \begin{thebibliography}{9}
+\bibitem{factor-spec}
+B.~Pham,
+\newblock Factor,
+\newblock Esolang Wiki, 2020,
+\newblock \url{https://esolangs.org/w/index.php?title=Factor&oldid=138367}.
+
 \bibitem{thorner-zaman}
 J.~Thorner and A.~Zaman,
 \newblock Refinements to the prime number theorem for arithmetic progressions,
