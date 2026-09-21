@@ -14,7 +14,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.register_based.addsubjump import run
+from esolangs.interpreters.register_based.addsubjump import _assembly, run
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -24,6 +24,132 @@ from tests.interpreters.oisc import memory, run_program
 
 def _run(code, stdin=""):
     return run_program(run, code, stdin=stdin)
+
+
+class TestAssembly:
+    def test_labels_offsets_and_question_mark(self) -> None:
+        code = """
+        -1 @A -1 @A+1
+        @A:65 0 @A-1
+        """
+        assert _assembly(code) == [-1, 4, -1, 5, 65, 0, 3, -7]
+
+    def test_sugar_and_data_directive(self) -> None:
+        code = """
+        IO A
+        IO B
+        IO C
+        IO D
+        IO E IO
+        .data A:65 B:66 C:67 D:68 E:69
+        """
+        assert _assembly(code) == [
+            -1,
+            20,
+            4,
+            -7,
+            -1,
+            21,
+            8,
+            -7,
+            -1,
+            22,
+            12,
+            -7,
+            -1,
+            23,
+            16,
+            -7,
+            -1,
+            24,
+            -1,
+            -7,
+            65,
+            66,
+            67,
+            68,
+            69,
+        ]
+
+    def test_macro_example(self) -> None:
+        code = """
+        def macro A {
+          IO A
+        }
+        macro H
+        @0 @0 @0
+        H:.data 72
+        """
+        assert _assembly(code) == [-1, 8, 4, -7, -7, -7, -7, -7, 72]
+
+    def test_comments_and_explicit_asj(self) -> None:
+        code = """
+        /* block */ ASJ IO value end @0 // line
+        value:.data 65 # tail
+        end:
+        """
+        assert _assembly(code) == [-1, 4, 5, -7, 65]
+
+    def test_macro_local_labels_are_private_per_expansion(self) -> None:
+        code = """
+        def skip A {
+          local: @0 @0 A
+        }
+        skip done
+        skip done
+        done:.data 0
+        """
+        assert _assembly(code) == [-7, -7, 8, -7, -7, -7, 8, -7, 0]
+
+    def test_question_mark_also_works_in_data(self) -> None:
+        assert _assembly(".data 1 ?") == [1, 2]
+
+    def test_a_label_can_prefix_an_empty_macro(self) -> None:
+        code = """
+        def nop {
+        }
+        start: nop
+        .data start
+        """
+        assert _assembly(code) == [0]
+
+    def test_a_label_can_prefix_a_nonempty_macro(self) -> None:
+        code = """
+        def one A {
+          .data A
+        }
+        start: one 7
+        """
+        assert _assembly(code) == [7]
+
+    def test_inline_data_label_can_precede_a_separate_value(self) -> None:
+        assert _assembly(".data A: 1") == [1]
+
+
+class TestAssemblyErrors:
+    @pytest.mark.parametrize(
+        ("code", "message"),
+        [
+            ("def", "malformed .*macro"),
+            ("def bad A { extra", "malformed .*macro"),
+            ("def bad {\n{\n}\n", "nested"),
+            ("def bad {", "missing"),
+            ("def bad {\n}\ndef bad {\n}", "duplicate macro"),
+            ("def loop {\nloop\n}\nloop", "recursive macro"),
+            ("def one A {\n.data A\n}\none", "takes 1 arguments"),
+            ("def bad {\n:label 1 2\n}\nbad", "empty AddSubJump label"),
+            (":bad 1 2", "empty AddSubJump label"),
+            ("IO: 1 2", "duplicate label"),
+            (".data :1", "empty AddSubJump label"),
+            (".data A:1 A:2", "duplicate label"),
+            ("1", "needs 2 to 4 operands"),
+            ("1 2 3 4 5", "needs 2 to 4 operands"),
+            (".data $", "invalid AddSubJump operand"),
+        ],
+    )
+    def test_malformed_assembly_is_rejected(self, code: str, message: str) -> None:
+        with pytest.raises(ValueError, match=message):
+            _assembly(code)
 
 
 class TestInstruction:
@@ -209,7 +335,7 @@ class TestHaltAndErrors:
         assert _run(code) == ""
 
     def test_malformed_token(self) -> None:
-        with pytest.raises(ValueError, match="malformed memory token"):
+        with pytest.raises(ValueError, match="undefined label 'x'"):
             _run("12 -6 x -7")
 
     def test_growing_the_memory_zeroes_the_cells_it_skips(self) -> None:
