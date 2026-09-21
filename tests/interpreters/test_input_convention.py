@@ -321,6 +321,8 @@ def _reading_languages() -> list[str]:
         # the language has no input command to run out of.
         if example.fill is None
         and name not in _EOF_IS_A_HALT
+        # Circlefuck specifies that its input command is a no-op at EOF.
+        and name != "circlefuck"
         # Suptiftam's read sits inside a loop that never ends without one,
         # so an empty stream is a hang rather than a raise.
         and name != "suptiftam"

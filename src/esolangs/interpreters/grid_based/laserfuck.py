@@ -6,7 +6,8 @@ A laser starts at ``o`` with a random heading.  ``>``/``<``/``+``/``-``/
 heading, ``#`` skips, ``x`` deletes the laser, ``*`` splits it
 perpendicular at random.  When no lasers remain the tape is printed:
 decimal by default, byte mode (no separators) when the first grid cell is
-``\xff``; negative cells are excluded.
+``\xff``; negative cells are excluded.  Cells are signed 32-bit values, so
+writes wrap in two's-complement order.
 
 The initial heading and every ``*`` split are drawn from ``rng``, so one
 argument makes a run reproducible; ``None`` draws for real, as the
@@ -53,6 +54,19 @@ type _BranchState = tuple[_Tape, int, _Beams | None, int, bool]
 #: caller strips the result's copy, so the value only has to be constant.
 _NO_POS = (0, 0, 0)
 
+_CELL_BITS = 32
+_CELL_MODULUS = 1 << _CELL_BITS
+_CELL_SIGN = 1 << (_CELL_BITS - 1)
+
+
+def _cell_value(value: int) -> int:
+    """Return ``value`` in the tape's signed 32-bit range.
+
+    The source fixes the cell width but not overflow; two's-complement wrap
+    is the representation-preserving behaviour for a signed fixed-width cell.
+    """
+    return (value + _CELL_SIGN) % _CELL_MODULUS - _CELL_SIGN
+
 
 def _strip_pos(state: _State) -> _BranchState:
     """Drop the reported position from a transition's result."""
@@ -62,7 +76,7 @@ def _strip_pos(state: _State) -> _BranchState:
 
 def _write(tape: _Tape, ptr: int, value: int, touched: int) -> _Tape:
     """Return ``tape`` with the cell at ``ptr`` set and marked."""
-    return put(tape, ptr, (value, touched))
+    return put(tape, ptr, (_cell_value(value), touched))
 
 
 def _move(row: int, col: int, d: int, rows: int) -> tuple[int, int]:

@@ -221,12 +221,12 @@ def _advance(
         pops, a = _pop(view, pops)
         pushes = (_as_num(a) + _as_num(b),)
     elif c == "B":
-        pops, b = _pop(view, pops)
         pops, a = _pop(view, pops)
+        pops, b = _pop(view, pops)
         pushes = (_as_num(a) - _as_num(b),)
     elif c == "R":
-        pops, b = _pop(view, pops)
         pops, a = _pop(view, pops)
+        pops, b = _pop(view, pops)
         if _as_num(b) == 0:
             raise HaltError("division by zero")
         pushes = (_as_num(a) // _as_num(b),)

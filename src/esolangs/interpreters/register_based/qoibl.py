@@ -25,6 +25,14 @@ from esolangs.interpreters.io import IO
 
 INSTRUCTIONS = frozenset({"tt", "we", "qe", "et", "yr", "ry", "rr"})
 OPERATORS = frozenset({"ee", "ey", "ye", "yy"})
+_VARIABLES = 256
+
+
+def _variable(index: int) -> int:
+    """Return a valid Qoibl variable index, rejecting an out-of-range one."""
+    if not 0 <= index < _VARIABLES:
+        raise HaltError(f"variable index {index} is outside 0..{_VARIABLES - 1}")
+    return index
 
 
 def _steal(tokens: list[str], char: str) -> list[str] | None:
@@ -263,7 +271,7 @@ def _eval(expr: list[str], var: _Vars, read: _Read, emit: _Emit) -> tuple[int, _
         ind = expr.index("we", 1)
         target, var = _eval(expr[1:ind], var, read, emit)
         value, var = _eval(expr[ind + 1 : -1], var, read, emit)
-        return 0, {**var, target: value}
+        return 0, {**var, _variable(target): value}
     if op == "rr":
         ind = expr.index("rr", 1)
         cond, var = _eval(expr[1:ind], var, read, emit)
@@ -277,7 +285,7 @@ def _eval(expr: list[str], var: _Vars, read: _Read, emit: _Emit) -> tuple[int, _
         return _arithmetic(expr, var, read, emit)
     if op == "qe":
         key, var = _eval(expr[1:-1], var, read, emit)
-        return var.get(key, 0), var
+        return var.get(_variable(key), 0), var
     if op == "et":
         return read(), var
     # ``tokenize`` only accepts a split under which every statement parses,

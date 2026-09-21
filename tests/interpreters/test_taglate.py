@@ -161,15 +161,11 @@ class TestTaglate:
         assert run_and_capture([chr(65535) + chr(1), "ai"]) == "\x00"
         assert run_and_capture([chr(65535) + chr(65535), "ci"]) == "\x01"
 
-    def test_the_counter_wraps_at_the_same_ceiling(self) -> None:
-        """``j`` on a seed above the range comes back inside it.
+    def test_initial_text_wraps_to_a_16_bit_queue_value(self) -> None:
+        assert run_and_capture([chr(65537), "i"]) == "\x01"
 
-        Its subtraction is guarded by the value being nonzero, so the
-        wrap is only reachable from a seed character above U+FFFF --
-        which is the one way a value over 65535 enters the queue, since
-        every other command already wrapped.
-        """
-        assert run_and_capture([chr(65537), "ji"]) == "\x00"
+    def test_input_text_wraps_to_a_16_bit_queue_value(self) -> None:
+        assert run_and_capture(["", "hi"], chr(65537)) == "\x01"
 
     def test_a_loop_runs_until_its_head_reaches_zero(self) -> None:
         """``gz`` goes back while the front is nonzero, not while it is

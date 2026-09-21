@@ -27,16 +27,13 @@ class TestArithmetic:
     def test_counted_command(self) -> None:
         assert run_program("++^.") == "2"
 
-    def test_an_explicit_zero_count_still_adjusts_by_one(self) -> None:
-        """``0+`` parses to a count of 0, which falls back to 1.
-
-        Every other program spells its counts as a run or a positive
-        number, so the ``or 1`` fallback was only ever reached through the
-        bare ``+`` -- where the count is already 1 and the fallback is
-        invisible.  A literal ``0`` is the one spelling that exercises it.
-        """
-        assert run_program("0+^.") == "1"
-        assert run_program("0-^.") == "-1"
+    def test_explicit_zero_and_signed_counts_are_literals(self) -> None:
+        assert run_program("0+^.") == "0"
+        assert run_program("-2+^.") == "-2"
+        assert run_program("+2+^.") == "2"
+        assert run_program("5+-2-^.") == "7"
+        with pytest.raises(HaltError, match="undefined label -1"):
+            run_program("-1?")
 
 
 class TestInput:

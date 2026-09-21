@@ -609,7 +609,7 @@ class TestRunUntilHaltOrCycle:
 
         # The function decrements the count before Q recurs, so each entry
         # has a different shared stack and reaches the zero base case.
-        program = "H" + "FFTBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
+        program = "H" + "FFTPBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
         code = "FAF" + program
         assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
 

@@ -287,6 +287,16 @@ class TestInput:
         assert run_program(program, "2") == chr(3)
         assert run_program(program, "0") == chr(0)
 
+    def test_an_array_index_can_be_written_from_input(self) -> None:
+        program = "\n".join(
+            [
+                CONSTANTS,
+                "arr[input] = negativeOne x + three, NOT PRINT.",
+                "y = negativeOne x + arr[two], DO PRINT.",
+            ]
+        )
+        assert run_program(program, "2") == chr(3)
+
     def test_an_index_is_read_before_the_operand_it_subscripts(self) -> None:
         """One line can name ``input`` twice, and the order is fixed.
 
