@@ -1,14 +1,14 @@
-\documentclass[10pt]{article}
+\documentclass[11pt]{article}
 
 \usepackage[a4paper,margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsthm,mathtools}
 \usepackage[hidelinks]{hyperref}
 \hypersetup{
   pdfauthor={Bangyen Pham},
-  pdftitle={The Worst-Case Text Complexity of the Factor Language},
+  pdftitle={The Worst-Case Text Complexity of the Factor Esoteric Programming Language},
   pdfsubject={Descriptional complexity of Boolean functions in Factor},
   pdfkeywords={Factor, Brainfuck, descriptional complexity, Boolean functions, prime encoding},
-  pdflang={en-US}
+  pdflang={en-GB}
 }
 
 \newtheorem{theorem}{Theorem}[section]
@@ -31,7 +31,7 @@
 \maketitle
 
 \begin{abstract}
-A Factor program has decimal digits that spell an integer whose prime
+A Factor source denotes a decimal integer whose prime
 factorisation encodes a Brainfuck program: a prime's residue modulo $11$
 selects an instruction and its exponent gives the run length.  We prove that
 the worst-case Factor source length for a Boolean truth table of length $T$ is
@@ -105,7 +105,7 @@ instead decimal description length: the upper bound needs quantitative
 control of successive instruction primes, while the lower bound counts all
 encodings, including those with ignored factors.
 
-\section{Generated upper bound}
+\section{Upper bound}
 
 The Boolean generator first emits a Brainfuck decision tree and then replaces
 each maximal run by one prime power.  The following elementary bound makes
@@ -134,9 +134,7 @@ depth $i$, so all pointer travel is bounded by
 \[
  O(n)+\sum_{i=0}^{n-1}O\bigl(2^i(n-i)\bigr)=O(2^n)=O(T).
 \]
-The fixed node gadgets and the single final output add $O(T)$.  This proves
-existence independently of any implementation; the public generator also
-considers this construction.
+The fixed node gadgets and the single final output add $O(T)$.
 \end{proof}
 
 The encoder replaces each maximal run by one prime power.  It scans
@@ -305,21 +303,20 @@ arbitrary $D$-digit integer is polynomial in $D$.  Generated programs form a
 special family whose factors are enumerated directly; arbitrary balanced
 semiprimes remain outside that guarantee.
 
-The implementation uses exact segmented Eratosthenes enumeration and a
-smallest-first product tree.  Its construction and cold-parse bounds, along
-with executable size and parity checks, are recorded in
-\texttt{docs/proofs/factor.md}.  The repository's proof ledger and deep proof suite
-check that the claimed $\Theta(T\log T)$ classification remains attached to
-the Factor generator.  None of those measurements is a premise of the
-language lower bound above.  The reviewed source is archived at
-\url{https://github.com/bangyen/esolangs}; a release should cite an immutable
-commit or DOI.  From the repository root, \texttt{just proofs-pdf} rebuilds
-the manuscript and \texttt{just test} runs the branch verification gate.
+The reference implementation uses segmented Eratosthenes enumeration and a
+smallest-first product tree.  Executable checks cover generated-program
+semantics, source sizes, and the finite identities used in the construction;
+none is a premise of the language lower bound.
+
+\paragraph{Code availability.}
+Source code and verification scripts are available at
+\url{https://github.com/bangyen/esolangs}.
 
 \paragraph{Data availability.}
 No datasets were generated or analysed in this study.
 
 \begin{thebibliography}{9}
+\small
 \bibitem{factor-spec}
 B.~Pham,
 \newblock Factor,

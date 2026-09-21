@@ -8,7 +8,7 @@
   pdftitle={Displaced-Zero Certificates and the Coefficient Mass of Polynomial Multiples},
   pdfsubject={Lower bounds for the logarithmic coefficient mass of polynomial multiples},
   pdfkeywords={polynomial multiples, coefficient mass, reduced height, Chebyshev systems, exponential sums},
-  pdflang={en-US}
+  pdflang={en-GB}
 }
 
 \newtheorem{theorem}{Theorem}[section]
@@ -32,13 +32,13 @@
 Fix distinct real roots $2\le r_1<\cdots<r_L$.  We prove a
 degree-independent lower bound on the logarithmic coefficient mass of every
 real polynomial divisible by $\prod_i(x-r_i)$ whose leading coefficient has
-absolute value at least one.  The analytic ingredient bounds the infinite
-$\ell^1$ tail of a normalized exponential sum in terms of the initial run of
-its prescribed positive-integer zeros, with equality characterized.  This
-builds on the reduced-height certificate method of Dubickas and Jankauskas and, by
-iterating certificates that avoid the largest coefficients, controls
-successive coefficient order statistics.  For the first $L$ primes the
-resulting mass bound is $\Omega(L^2\log L)$.
+absolute value at least one.  We compare the infinite $\ell^1$ tails of
+normalized exponential sums with prescribed positive-integer zeros and
+characterize equality for consecutive zeros.  Iterating this comparison
+while excluding the largest coefficients bounds successive coefficient
+order statistics.  The argument builds on the reduced-height certificate
+method of Dubickas and Jankauskas.  For the first $L$ primes the resulting
+mass bound is $\Omega(L^2\log L)$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -51,8 +51,7 @@ For $F(x)=\sum_j f_jx^j$, define its logarithmic coefficient mass by
   \Lambda(F)=\sum_{j:f_j\ne0}\log^+|f_j|,
   \qquad \log^+x=\max(0,\log x),
 \]
-where all logarithms are natural.  We call this quantity logarithmic
-coefficient mass.
+where all logarithms are natural.
 Here $\N_{>0}=\{1,2,\ldots\}$, and every asymptotic statement below is for
 $L\to\infty$ with absolute implied constants unless parameters are named.
 This is neither the height $\max_j|f_j|$ nor the length
@@ -305,16 +304,17 @@ ordinary length or height.  Subject to $|f_D|\ge1$, it is uniform over the
 degree of $F$ and all additional real or complex roots.  The contribution relative to
 reduced-height duality is the displaced-zero comparison and its iteration;
 the normalized determinant sequence and its consecutive-zero evaluation are
-from Dubickas and Jankauskas~\cite{dj}.  The reviewed source is archived at
-\url{https://github.com/bangyen/esolangs}; a release should cite an immutable
-commit or DOI.  From the repository root, \texttt{just proofs-pdf} rebuilds
-the manuscript and \texttt{just test} runs the branch verification gate.
+from Dubickas and Jankauskas~\cite{dj}.
+
+\paragraph{Code availability.}
+Source code and verification scripts are available at
+\url{https://github.com/bangyen/esolangs}.
 
 \paragraph{Data availability.}
 No datasets were generated or analysed in this study.
 
 \begin{thebibliography}{9}
-\footnotesize
+\small
 \bibitem{karlin-studden}
 S.~Karlin and W.~J. Studden,
 \newblock \emph{Tchebycheff Systems: With Applications in Analysis and Statistics},
@@ -344,7 +344,8 @@ A.~Schinzel,
 \bibitem{bombieri-vaaler}
 E.~Bombieri and J.~D. Vaaler,
 \newblock Polynomials with low height and prescribed vanishing,
-\newblock in \emph{Analytic Number Theory and Diophantine Problems},
+\newblock in A.~C. Adolphson, J.~B. Conrey, A.~Ghosh, and R.~I. Yager (eds.),
+\emph{Analytic Number Theory and Diophantine Problems},
 Progress in Mathematics 70, Birkh\"auser, 1987, 53--73,
 \newblock \href{https://doi.org/10.1007/978-1-4612-4816-3_3}
 {doi:10.1007/978-1-4612-4816-3\_3}.

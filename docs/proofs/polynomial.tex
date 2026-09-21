@@ -5,10 +5,10 @@
 \usepackage[hidelinks]{hyperref}
 \hypersetup{
   pdfauthor={Bangyen Pham},
-  pdftitle={The Worst-Case Text Complexity of the Polynomial Language},
+  pdftitle={The Worst-Case Text Complexity of the Polynomial Esoteric Programming Language},
   pdfsubject={Descriptional complexity of Boolean functions in Polynomial},
   pdfkeywords={Polynomial language, descriptional complexity, Boolean functions, decision diagrams, polynomial roots},
-  pdflang={en-US}
+  pdflang={en-GB}
 }
 
 \newtheorem{theorem}{Theorem}[section]
@@ -101,7 +101,8 @@ Its coefficient-digit mass is
 \[
   M(f)=\sum_{j:f_j\ne0}\bigl(1+\lfloor\log_{10}|f_j|\rfloor\bigr).
 \]
-Plainly $|f|\ge M(f)$.  Let worst-case text complexity mean the
+Since the serialization contains every coefficient digit, $|f|\ge M(f)$.
+Let worst-case text complexity mean the
 maximum, over these tables, of the minimum $|f|$ of a program computing it.
 All unqualified logarithms are natural.
 
@@ -341,7 +342,7 @@ level.  This sends $48$ to $-(z+r)$ and $49$ to $-(o+r)$.  The skipped blocks
 each increment once, leaving $-z$ or $-o$ at the next level.  Equal children
 instead floor-divide $48+b$ by $50$, obtaining zero, then add $-(z+r)$.  At
 the leaf level the unique active block adjusts the register to $48$ or $49$,
-prints, and parks negative.  Thus induction on the levels proves that
+prints, and leaves the register negative.  Thus induction on the levels proves that
 the machine follows exactly the residual selected by the input and prints its
 table value.  Each state block uses at most six instructions, its brackets
 are local and therefore properly matched, and every operand is $O(S)$.
@@ -370,20 +371,16 @@ The result concerns source length, not the running time of polynomial
 factorisation or of source generation.  It allows arbitrary degrees,
 arbitrary operand signs, repeated roots, and arbitrary unrecognised cofactor
 roots.  It is an existence theorem for the uncapped residual-DAG
-construction; the public generator may impose a resource cap before reaching
-the asymptotic family.
+construction.  Implementation resource limits do not affect the existence
+result.
 
-The companion repository contains executable checks of the finite identities
-used here.  In particular,
-\texttt{tests/proofs/deep/multiplicity.py} checks the block charges,
-outerplanar count, and repeated-root cases.  The longer development record,
-including counterexamples to earlier proof attempts and bounded searches, is
-in \texttt{docs/proofs/polynomial.md}.  These computations support the proof but no
-bounded search is used as a premise.  The reviewed source is archived at
-\url{https://github.com/bangyen/esolangs}; a release should cite an immutable
-commit or DOI.  From the repository root, \texttt{just proofs-pdf} rebuilds
-all companion manuscripts and \texttt{just test} runs the branch verification
-gate.
+Executable checks cover the finite block-counting identities and repeated-root
+cases used here.  They support the proof, but no bounded computation is used
+as a premise.
+
+\paragraph{Code availability.}
+Source code and verification scripts are available at
+\url{https://github.com/bangyen/esolangs}.
 
 \paragraph{Data availability.}
 No datasets were generated or analysed in this study.
@@ -430,7 +427,7 @@ C.~Gröpl, H.~J. Prömel, and A.~Srivastav,
 B.~Pham,
 \newblock Displaced-zero certificates and the coefficient mass of polynomial
 multiples,
-\newblock companion manuscript, September 2026; Theorem~3.2
+\newblock unpublished manuscript submitted concurrently; Theorem~3.2
 (Logarithmic mass).
 
 \end{thebibliography}
