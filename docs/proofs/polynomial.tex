@@ -16,7 +16,7 @@
 \newcommand{\R}{\mathbb R}
 \newcommand{\Z}{\mathbb Z}
 
-\title{A Tight Text-Complexity Bound for the Polynomial Language}
+\title{The Worst-Case Text Complexity of the Polynomial Language}
 \author{The \texttt{esolangs} project}
 \date{September 2026}
 
@@ -46,6 +46,11 @@ A Polynomial source is the expanded form
 \[
   f(x)=\sum_{j=0}^{D} f_jx^j,\qquad f_j\in\Z.
 \]
+It is serialized as \texttt{f(x) = } followed by nonzero monomials in
+descending degree, with decimal coefficients and exponents, as in the
+language specification~\cite{polynomial-spec}; whitespace is permitted
+between tokens.  Throughout, ``program'' means a source in this specified
+expanded form; permissive implementation extensions are outside the model.
 The interpreter factors $f$ over the integers and orders the recognised
 roots by their associated primes.  A positive real root $p^v$ encodes a
 control-flow instruction; a conjugate pair $a\pm p^b i$ encodes a register
@@ -70,13 +75,21 @@ its associated prime.  One prime may supply several consecutive positions.
 \item The bracket matching is noncrossing.
 \end{enumerate}
 
-The length $|f|$ of a source is the number of characters in its expanded
-decimal representation.  Its coefficient-digit mass is
+For Boolean computation, put $T=2^n$ and supply each bit as a separate line
+containing its ASCII digit.  A program computes
+$t=(t_0,\ldots,t_{T-1})\in\{0,1\}^{2^n}$ if, on every
+$b_1\cdots b_n\in\{0,1\}^n$ in lexicographic order, it terminates and emits
+exactly the character $t_{(b_1\cdots b_n)_2}$, with zero-based subscripts.
+The length $|f|$ is the total
+number of characters in the shortest valid expanded serialization of $f$;
+fixed punctuation and optional whitespace affect only lower-order terms.
+Its coefficient-digit mass is
 \[
   M(f)=\sum_{j:f_j\ne0}\bigl(1+\lfloor\log_{10}|f_j|\rfloor\bigr).
 \]
-Plainly $|f|\ge M(f)$.  Let $T=2^n$ be the length of the truth table of an
-$n$-input Boolean function.
+Plainly $|f|\ge M(f)$.  Let worst-case text complexity mean the
+maximum, over these tables, of the minimum $|f|$ of a program computing it.
+All unqualified logarithms are natural.
 
 \begin{theorem}[Main theorem]\label{thm:main}
 There are $n$-input Boolean functions for which every Polynomial program has
@@ -352,10 +365,21 @@ used here.  In particular,
 outerplanar count, and repeated-root cases.  The longer development record,
 including counterexamples to earlier proof attempts and bounded searches, is
 in \texttt{docs/proofs/polynomial.md}.  These computations support the proof but no
-bounded search is used as a premise.
+bounded search is used as a premise.  The reviewed source is archived at
+\url{https://github.com/bangyen/esolangs}; a release should cite an immutable
+commit or DOI.  From the repository root, \texttt{just proofs-pdf} rebuilds
+all companion manuscripts and \texttt{just test} runs the branch verification
+gate.
 
 \begin{thebibliography}{9}
 \small
+\bibitem{polynomial-spec}
+Maedhros777,
+\newblock Polynomial,
+\newblock Esolang Wiki,
+\newblock \href{https://esolangs.org/w/index.php?title=Polynomial\&oldid=192583}
+{permanent revision 192583}.
+
 \bibitem{rs}
 J.~B. Rosser and L.~Schoenfeld,
 \newblock Approximate formulas for some functions of prime numbers,
