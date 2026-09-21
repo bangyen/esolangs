@@ -50,9 +50,9 @@ p\bmod 11&1&2&3&4&5&6&7&8\\ \hline
 and the exponent $e_p$ is its run length.  Residues $0,9,10$ are ignored.
 The selected primes are read in increasing order.
 
-Write $C=\sum e_p$ for the length of the decoded Brainfuck program, $m$ for
-its number of maximal runs, $Q$ for its largest selected prime, and $D$ for
-the number of decimal digits of $N$.  Then
+Write $C=\sum_{p\bmod 11\in\{1,\ldots,8\}}e_p$ for the length of the decoded
+Brainfuck program, $m$ for its number of maximal runs, $Q$ for its largest
+selected prime, and $D$ for the number of decimal digits of $N$.  Then
 \begin{equation}\label{eq:digits}
   \log N=\sum_p e_p\log p,
   \qquad D=\lfloor\log_{10}N\rfloor+1.
@@ -81,13 +81,18 @@ $C=O(T)$.
 \end{lemma}
 
 \begin{proof}
-Use the full binary decision tree of depth $n$.  Each of its $T-1$ internal
-vertices reads one bit and uses a fixed Brainfuck branch gadget; each of its
-$T$ leaves uses a fixed output gadget.  Lay the gadgets out recursively, with
-one matching bracket pair around each branch.  Every tree edge and vertex
-contributes only a constant number of instructions, so the resulting program
-has $C=O(T)$.  Constant equal subtrees may be folded, but that optimisation is
-not needed for the bound.
+Use the generator's identity-order candidate.  It first reads the $n$ bits
+into alternate tape cells, at cost $O(n)$, then traverses the full binary
+decision tree.  A node at depth $i$ tests cell $2i$ with a fixed bracket
+gadget; moving to a child costs $O(1)$.  A constant subtree may instead move
+to the result cell, at distance $O(n-i)$.  There are at most $2^{i+1}$ such
+exits at depth $i$, so all pointer travel is bounded by
+\[
+ O(n)+\sum_{i=0}^{n-1}O\bigl(2^i(n-i)\bigr)=O(2^n)=O(T).
+\]
+The fixed node gadgets and the single final output add $O(T)$.  The public
+generator chooses the shortest candidate over input orders, so it is no
+longer than this identity-order construction.
 \end{proof}
 
 The encoder replaces each maximal run by one prime power.  It scans
@@ -106,10 +111,13 @@ $x_0$ and $\theta<1$ such that every $x\ge x_0$ has a prime
 
 \begin{proof}
 The Hoheisel theorem for arithmetic progressions gives the expected
-asymptotic number of primes in $(x,x+h]$ in every reduced class modulo $q$
-when $q\le(\log x)^A$ and $h\ge x^{7/12+\varepsilon}$; see
-Thorner and Zaman~\cite{thorner-zaman}.  Take $q=11$ and any
-$\theta>7/12$.
+asymptotic number of primes in $(X-h,X]$ in every reduced class modulo $q$
+when $q\le(\log X)^A$ and
+$h\ge X^{7/12+\varepsilon}(\log X)^A$; see Thorner and
+Zaman~\cite{thorner-zaman}.  Fix $7/12+\varepsilon<\theta<1$, put
+$X=x+x^\theta$ and $h=x^\theta$.  Since $X\sim x$, the displayed size
+condition holds for all sufficiently large $x$, while
+$(X-h,X]=(x,x+x^\theta]$.  Taking $q=11$ proves the lemma.
 \end{proof}
 
 \begin{lemma}\label{lem:adaptive}
@@ -147,23 +155,15 @@ $\log Q=O(\log(m+1))$.  Equation~\eqref{eq:digits} yields
 Changing logarithm bases proves the digit bound.
 \end{proof}
 
-For parity, the folded decision tree has $C,m=\Theta(T)$.  Its $m$ selected
-primes are distinct, so
-\[
-  \log N\ge\sum_{i=1}^{m}\log(i+1)=\log((m+1)!)=\Omega(T\log T).
-\]
-Thus the generator's worst case is already $\Theta(T\log T)$.
-
 \section{Language lower bound}
 
-The preceding parity argument concerns one construction.  A language lower
-bound must count every integer that might encode a table.
+A language lower bound must count every integer that might encode a table.
 
 \begin{lemma}[Run bound]\label{lem:runs}
-If a Factor integer satisfies $\log N\le L$ and its decoded program has $m$
-useful prime runs, then
+If a Factor integer satisfies $\log N\le L$ and has $k$ useful prime factors,
+then
 \[
-  m=O(L/\log(L+2)).
+  k=O(L/\log(L+2)).
 \]
 \end{lemma}
 
@@ -171,19 +171,19 @@ useful prime runs, then
 The $i$th useful prime is at least $i+1$, and every useful exponent is at
 least one.  Hence
 \[
-  L\ge\sum_{i=1}^{m}\log(i+1)=\log((m+1)!).
+  L\ge\sum_{i=1}^{k}\log(i+1)=\log((k+1)!).
 \]
-Stirling's bound $\log(m!)=\Theta(m\log(m+1))$ gives the result.
+Stirling's bound $\log(k!)=\Theta(k\log(k+1))$ gives the result.
 \end{proof}
 
 \begin{lemma}[Exponent vectors]\label{lem:vectors}
-Fix $m$ and $L\ge2$.  The number of vectors
-$(e_1,\ldots,e_m)\in\N_{>0}^m$ satisfying
+Fix $k$ and $L\ge2$.  The number of vectors
+$(e_1,\ldots,e_k)\in\N_{>0}^k$ satisfying
 \begin{equation}\label{eq:budget}
-  \sum_{i=1}^{m}e_i\log(i+1)\le L
+  \sum_{i=1}^{k}e_i\log(i+1)\le L
 \end{equation}
 is $\exp(O(L/\log L))$, uniformly for
-$m=O(L/\log L)$.
+$k=O(L/\log L)$.
 \end{lemma}
 
 \begin{proof}
@@ -193,9 +193,9 @@ geometric series give
 \begin{align}
  \#\{f:\text{\eqref{eq:budget}}\}
  &\le e^{sL}
-       \sum_{f_1,\ldots,f_m\ge0}
+       \sum_{f_1,\ldots,f_k\ge0}
        \exp\!\left(-s\sum_i f_i\log(i+1)\right)\\
- &=e^{sL}\prod_{i=1}^{m}
+ &=e^{sL}\prod_{i=1}^{k}
        \left(1-(i+1)^{-s}\right)^{-1}.
 \end{align}
 The first factor has logarithm $L/\log(L+2)$.  To bound the product, split
@@ -220,12 +220,12 @@ distinct behaviours.
 
 \begin{proof}
 Discard ignored-residue prime factors: they do not alter the decoded
-Brainfuck program.  For $m$ useful primes, their increasing order fixes the
+Brainfuck program.  For $k$ useful primes, their increasing order fixes the
 instruction order once their residue classes are chosen.  There are at most
-$8^m$ class words.  Replacing the actual $i$th prime by its lower bound
+$8^k$ class words.  Replacing the actual $i$th prime by its lower bound
 $i+1$ relaxes the size constraint to \eqref{eq:budget}, so
 Lemma~\ref{lem:vectors} bounds the run lengths.  Finally sum over the
-$O(L/\log L)$ possible values of $m$.  The factors $8^m$ and the number of
+$O(L/\log L)$ possible values of $k$.  The factors $8^k$ and the number of
 summands are both absorbed by $\exp(O(L/\log L))$.
 \end{proof}
 
