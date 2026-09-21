@@ -36,8 +36,9 @@ $\Omega(T^2/\log T)$ source characters in every Polynomial program,
 independently of the program's degree, operand signs, and additional roots.
 An explicit residual-DAG construction gives the matching
 $O(T^2/\log T)$ upper bound for every Boolean function.  The main algebraic
-ingredient is a sharp $\ell^1$ bound for exponential sums with prescribed
-integer zeros.  It implies that every real polynomial divisible by $L$
+ingredient is an exact $\ell^1$ tail bound, with equality characterised, for
+exponential sums with prescribed integer zeros.  It implies that every real
+polynomial divisible by $L$
 distinct prime-power roots has coefficient mass
 $\Omega(L^2\log L)$.  A routing argument, sharpened by an outerplanar
 block-incidence bound, forces $L=\Omega(T/\log T)$ distinct real roots in a
@@ -98,6 +99,17 @@ $\Omega(T/\log T)$ distinct positive roots.  Sections~\ref{sec:tail}
 and~\ref{sec:mass} show that every polynomial containing those roots has
 coefficient mass $\Omega(T^2/\log T)$.  Section~\ref{sec:upper} supplies the
 matching construction.
+
+Residual DAGs are reduced ordered binary decision diagrams under a fixed
+variable order~\cite{bryant}; classical results place the size of an optimal
+diagram for almost every Boolean function at the same
+$\Theta(T/\log T)$ scale~\cite{wegener,gps}.  Lemma~\ref{lem:maximal-width}
+uses a tailored simultaneous width statistic, and the block-incidence
+argument translates it into distinct Polynomial roots.  The algebraic half
+is adjacent to work on sparse polynomial multiples~\cite{grt,roche}; unlike
+those algorithmic questions with prescribed degree, sparsity, or height, our
+bound applies to every multiple of the specified root product, independently
+of degree.
 
 \section{Routing forces distinct real roots}\label{sec:routing}
 
@@ -247,8 +259,9 @@ Let $f$ be maximal such that $\{1,\ldots,f\}\subseteq Z$.  Then
 Equality holds exactly when $Z=\{1,\ldots,c-1\}$.
 \end{theorem}
 
-We use the elementary zero bound that a nonzero exponential sum on $r$
-distinct positive nodes has at most $r-1$ real zeros, counted with
+We use the classical Chebyshev-system zero bound~\cite{karlin-studden}: a
+nonzero exponential sum on $r$ distinct positive nodes has at most $r-1$
+real zeros, counted with
 multiplicity.  Divide by the smallest node to the real power and apply
 Rolle's theorem inductively.  In particular, an $r$-node sum with $r-1$
 specified zeros has no others and changes sign at each specified zero.
@@ -570,20 +583,54 @@ in \texttt{docs/proofs/polynomial.md}.  These computations support the proof but
 bounded search is used as a premise.
 
 \begin{thebibliography}{9}
+\small
 \bibitem{rs}
 J.~B. Rosser and L.~Schoenfeld,
 \newblock Approximate formulas for some functions of prime numbers,
-\newblock \emph{Illinois Journal of Mathematics} 6 (1962), 64--94.
+\newblock \emph{Illinois Journal of Mathematics} 6 (1962), 64--94,
+\newblock \href{https://doi.org/10.1215/ijm/1255631807}
+{doi:10.1215/ijm/1255631807}.
+
+\bibitem{bryant}
+R.~E. Bryant,
+\newblock Graph-based algorithms for Boolean function manipulation,
+\newblock \emph{IEEE Transactions on Computers} 35 (1986), 677--691,
+\newblock \href{https://doi.org/10.1109/TC.1986.1676819}
+{doi:10.1109/TC.1986.1676819}.
+
+\bibitem{wegener}
+I.~Wegener,
+\newblock The size of reduced OBDD's and optimal read-once branching programs
+for almost all Boolean functions,
+\newblock \emph{IEEE Transactions on Computers} 43 (1994), 1262--1269,
+\newblock \href{https://doi.org/10.1109/12.324559}
+{doi:10.1109/12.324559}.
+
+\bibitem{gps}
+C.~Gröpl, H.~J. Prömel, and A.~Srivastav,
+\newblock Ordered binary decision diagrams and the Shannon effect,
+\newblock \emph{Discrete Applied Mathematics} 142 (2004), 67--85,
+\newblock \href{https://doi.org/10.1016/j.dam.2003.02.003}
+{doi:10.1016/j.dam.2003.02.003}.
+
+\bibitem{karlin-studden}
+S.~Karlin and W.~J. Studden,
+\newblock \emph{Tchebycheff Systems: With Applications in Analysis and Statistics},
+\newblock Interscience, New York, 1966.
 
 \bibitem{grt}
 M.~Giesbrecht, D.~S. Roche, and H.~Tilak,
 \newblock Computing sparse multiples of polynomials,
-\newblock \emph{Algorithmica} 64 (2012), 454--480.
+\newblock \emph{Algorithmica} 64 (2012), 454--480,
+\newblock \href{https://doi.org/10.1007/s00453-012-9652-4}
+{doi:10.1007/s00453-012-9652-4}.
 
 \bibitem{roche}
 D.~S. Roche,
 \newblock What can (and can't) we do with sparse polynomials?,
-\newblock arXiv:1807.08289, 2018.
+\newblock in \emph{ISSAC 2018}, 25--30,
+\newblock \href{https://doi.org/10.1145/3208976.3209027}
+{doi:10.1145/3208976.3209027}.
 \end{thebibliography}
 
 \end{document}
