@@ -41,12 +41,12 @@ BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
 its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
 ArrowQueue re-enqueue remains open.
 
-Malbolge registers a generator through nine inputs, source-embedded with no
-initializer. A branch-free four-cell mixer (`p,p,p,p,p,p,p,p,r`, inits
-52/88/34/77) folds the row index into a distinct address `h(row)` in
-`[9828, 59034]` with pairwise gap at least three, and a three-cell source stub
-at `h(row)` prints the answer: `p` then `<` for a 1 row, `o` then `<` for a 0
-row, with `A` preloaded to `'0'`.
+Malbolge registers a generator through ten inputs, source-embedded with no
+initializer. A branch-free five-cell mixer (13 operations per input bit, inits
+52/90/83/70/92, then a 16-operation post-map) folds the row index into a
+distinct address `h(row)` in `[1083, 59048]` with pairwise gap at least three,
+and a three-cell source stub at `h(row)` prints the answer: `p` then `<` for a
+1 row, `o` then `<` for a 0 row, with `A` preloaded to `'0'`.
 
 The store is the program. `i`/`j` let the pointer revisit a cell, and a cell
 whose content is the unique NOP character `f(a) = 33 + ((35 - a) % 94)` at its
@@ -56,14 +56,14 @@ cell it executes, so a walked-over cell's value is not `f(a)` but
 `g(a) = XLAT2[f(a) - 33]`; the generator places each state and navigation cell
 at the address whose `g` value it wants and computes `h` against those values.
 
-The shipped construction caps at nine inputs. A ten-input map needs a depth-one
-branch on
-one bit, and the two branch values `crazy(48, V)` and `crazy(49, V)` differ
-only in di-trit 0; every `p` chain preserves that difference, so the targets
-stay adjacent and cannot address two separated code copies. Lifting the
-difference into a high di-trit needs a rotation of `A`, but `*` rotates
-`memory[d]`, not `A`: rotating `A` needs the store the old note called the
-operand builder. `n > 9` is refused with `GeneratorCapError`.
+The shipped construction caps at ten inputs. The mixer's readout cell is
+injective with pairwise gap three only through ten bits; an eleven-input map
+needs a depth-one branch on one bit, and the two branch values `crazy(48, V)`
+and `crazy(49, V)` differ only in di-trit 0, so every `p` chain keeps the
+targets adjacent and they cannot address two separated code copies. Lifting
+the difference into a high di-trit needs a rotation of `A`, but `*` rotates
+`memory[d]`, not `A`: rotating `A` needs a run-time address builder. `n > 10`
+is refused with `GeneratorCapError`.
 
 That construction gap ends before totality. Malbolge has 59,049 cells and
 eight valid decoded instructions at each occupied source cell -- the
@@ -80,7 +80,7 @@ expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 9 | 9 | The ten-input branch's two targets stay adjacent; separating them needs a run-time store. |
+| Malbolge | 10 | 10 | The eleven-input branch's two targets stay adjacent; separating them needs a run-time address builder. |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
@@ -111,7 +111,7 @@ separate axes.
 
 The collection has 64 languages; its floor is 31. All three classics carry
 generators: Befunge and Whitespace loop-less O(T) lookups, Malbolge a
-source-embedded mixer through nine inputs. They are here for coverage, not for
+source-embedded mixer through ten inputs. They are here for coverage, not for
 a new construction axis. Ordinary
 imperative entries with shared-shim generators and no consumer were removed. Nopstacle and
 ZTOALC L left: the former cannot meet embed conventions, the

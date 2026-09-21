@@ -787,14 +787,11 @@ _ARITY_BANDS = (
 # ``test_every_generator_builds_up_to_ten_inputs`` fails and the
 # measurement that put the cap here belongs back in this table, with the
 # phrase its own refusal is built around.
-# Malbolge's mixer is injective with pairwise gap >= 3 only through nine
-# inputs.  The ten-input branch's two targets differ solely in di-trit 0, and
-# no `p` chain can lift that difference into an address the code copies can be
-# placed at without a run-time store, so the generator refuses n > 9.
-_ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {
-    ("malbolge", "dense"): (9, "builds at most 9 inputs"),
-    ("malbolge", "parity"): (9, "builds at most 9 inputs"),
-}
+# Malbolge's five-cell mixer is injective with pairwise gap >= 3 through ten
+# inputs, so it now covers the whole sweep; the eleven-input refusal lives in
+# ``tests/tools/test_boolean_malbolge.py``.  No generator falls short of
+# _MAX_ARITY on either shape any more.
+_ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {}
 
 
 # The two table shapes every generator is built against.  A dense
