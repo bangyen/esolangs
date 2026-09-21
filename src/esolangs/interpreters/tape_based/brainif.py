@@ -56,7 +56,8 @@ def _parse(line: str) -> _Line:
                 return (value, "goto", int(arr[3]))
             return (value, name, 0)
     # A guarded line naming no command is inert but well-formed: it tests
-    # the cell, does nothing, and falls through like any other line.
+    # the cell, does nothing, and falls through like any other line.  The
+    # wiki would error here; recorded in docs/limitations.md.
     return (value, "", 0)
 
 

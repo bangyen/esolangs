@@ -16,6 +16,7 @@ from typing import Literal
 
 from esolangs._validate import check_timeout, check_whole
 from esolangs.exceptions import ArgumentError
+from esolangs.raster import Raster
 from esolangs.vm import VM, make_vm, run_until_halt
 
 #: Why a :meth:`Debugger.run` returned.
@@ -358,13 +359,13 @@ class Debugger:
 
 
 def make_debugger(
-    language: str, program: str | os.PathLike[str], stdin: str = ""
+    language: str, program: str | Raster | os.PathLike[str], stdin: str = ""
 ) -> Debugger:
     """Return a :class:`Debugger` over a fresh :class:`VM` for ``language``.
 
-    ``stdin`` is fed line by line.  Only an unknown name raises
-    :class:`~esolangs.exceptions.UnknownLanguageError` (every language is
-    step-capable); a malformed program raises
+    ``stdin`` is fed line by line.  An unknown name raises
+    :class:`UnknownLanguageError`; a registered raster language raises
+    :class:`ArgumentError` (no step machine).  A malformed program raises
     :class:`~esolangs.exceptions.ProgramError`, and on Clockwise -- which
     reads its whole input while the machine is built -- an underfed stdin
     raises :class:`~esolangs.exceptions.InputExhaustedError` here rather

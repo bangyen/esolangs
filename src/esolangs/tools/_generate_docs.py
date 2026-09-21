@@ -132,7 +132,10 @@ def render_languages_section() -> str:
     count is generated too, so it stays in sync.
     """
     out: list[str] = [
-        f"<summary>Show all {len(RUNNERS)} languages</summary>",
+        # ``RUNNERS`` is the text languages; the two raster languages
+        # (Line, Piet) are named just below the block, so say "text" rather
+        # than let "62" read as the whole registry's 64.
+        f"<summary>Show all {len(RUNNERS)} text languages</summary>",
         "",
     ]
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
@@ -171,7 +174,7 @@ def render_examples_section() -> str:
             " [`examples/`]"
             "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):",
             f"`examples/` holds a truth-table program for each of the {len(BOOLEAN)}",
-            "languages with a boolean generator.  It regenerates via",
+            "text languages with a boolean generator.  It regenerates via",
             "`scripts/generate.py examples`.",
         ]
     )

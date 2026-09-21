@@ -223,6 +223,27 @@ def _deinterlace(
     return rows
 
 
+def _expected_stream_size(
+    width: int, height: int, channels: int, depth: int, interlace: int
+) -> int:
+    """Return the zlib stream length the IHDR dimensions require.
+
+    A corrupt width/height in IHDR otherwise reaches ``_unfilter``'s
+    ``bytearray(height * stride)`` and ``_deinterlace``'s row lists, which
+    the OS kills with SIGKILL before Python can raise ``MemoryError``.
+    """
+    if not interlace:
+        stride = (width * channels * depth + 7) // 8
+        return height * (stride + 1)
+    total = 0
+    for index in range(len(_ADAM7)):
+        pass_width, pass_height = _pass_size(width, height, index)
+        if pass_width and pass_height:
+            stride = (pass_width * channels * depth + 7) // 8
+            total += pass_height * (stride + 1)
+    return total
+
+
 def _decode_png(
     data: bytes,
 ) -> tuple[list[list[int]], int, int, int, int, bytes | None]:
@@ -234,6 +255,15 @@ def _decode_png(
         if kind == b"IHDR":
             header = struct.unpack(">IIBBBBB", body)
         elif kind == b"PLTE":
+            # PNG allows 1..256 RGB entries.  An over-long table made
+            # ``read_grey`` build a >256-byte translate table (a raw
+            # ``ValueError`` from ``bytes.translate``) while ``read_rgb``
+            # silently ignored the extra.  Refuse it once, here.
+            if not body or len(body) % 3 or len(body) > 768:
+                raise ValueError(
+                    f"malformed PLTE chunk: {len(body)} bytes "
+                    f"(want 3..768, a multiple of 3)"
+                )
             palette = body
         elif kind == b"IDAT":
             idat += body
@@ -263,6 +293,14 @@ def _decode_png(
         raise ValueError("palette PNGs cannot be 16-bit")
 
     data_stream = zlib.decompress(bytes(idat))
+    needed = _expected_stream_size(width, height, channels, depth, interlace)
+    if len(data_stream) < needed:
+        # Reject before any allocation grows with the IHDR numbers.
+        raise ValueError(
+            f"IDAT holds {len(data_stream)} bytes but {width}x{height} at "
+            f"depth {depth} needs {needed}; the image is truncated or its "
+            f"IHDR is corrupt"
+        )
     if interlace:
         samples = _deinterlace(data_stream, width, height, channels, depth)
     else:

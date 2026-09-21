@@ -195,7 +195,8 @@ def _run(rest: list[str]) -> None:
     # get from an empty file or the wrong path.  Say so on a terminal, where
     # the alternative is a blank line and no way to tell the two apart; a
     # pipe still receives exactly the empty output.
-    if not program.strip():
+    empty = isinstance(program, str) and not program.strip()
+    if empty:
         # Legal, and almost never what was meant: an empty file is what you
         # get from a redirect that failed or a generate that was never run.
         # Said on stderr, so a pipeline still receives the empty output.
@@ -203,5 +204,5 @@ def _run(rest: list[str]) -> None:
     if not output and sys.stdout.isatty():
         sys.stderr.write(
             f"{language}: the program ran and printed nothing"
-            f"{' (the file is empty)' if not program.strip() else ''}\n"
+            f"{' (the file is empty)' if empty else ''}\n"
         )

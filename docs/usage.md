@@ -141,8 +141,9 @@ more than this tuple.
 run and showing the tape, stack, output and the language's own named state
 beside it, with `--watch-cell`'s history as a row that grows as you step
 and shortens as you go back. `hjkl` move a selector so a breakpoint can be
-set where the run has not reached yet; `t` marks under it and `c` continues
-to the next one. Feed such a run with `--stdin`, since the keys and the
+set where the run has not reached yet; `t` marks under it, `c` continues to
+the next one, `space` steps, `b` steps back, `r` runs to the end and `q`
+quits. Feed such a run with `--stdin`, since the keys and the
 program cannot share one stream. A language whose position is not a place
 in the source -- a call stack, a 3-D point -- is left unhighlighted rather
 than marked in the wrong place; the header always shows the raw `ip`.

@@ -98,7 +98,7 @@ separate axes.
 
 ## Curation
 
-The collection has 62 languages; its floor is 31. All three classics carry
+The collection has 64 languages; its floor is 31. All three classics carry
 generators: Befunge and Whitespace loop-less O(T) lookups, Malbolge a
 source-embedded mixer through nine inputs. They are here for coverage, not for
 a new construction axis. Ordinary
@@ -113,6 +113,10 @@ Super SNUSP and Alight were admitted; Pinyin was rejected.
 ## Specification decisions
 
 - 6-5 accepts operands beyond its specification; generators use `0..35`.
+- Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
+  wiki's "Nth operation" reads one-based.  The generator's labels match this.
+- BrainIf ignores a guarded line naming no command (`if 0 frobnicate`), which
+  the wiki errors on; only the six named commands act.
 - Jaune dispatch to an undefined marker is unspecified.
 - Alight expressions are infix and left-to-right; three-argument `at` mutates.
 - Packlang literals are decimal; its cat cannot receive byte 10 under

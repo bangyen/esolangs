@@ -9,8 +9,8 @@ Implement the surveyed interpreter candidates in this order.  The first four
 are the 2026-09-19 re-run of the `Category:Unimplemented` x
 `Category:Two-dimensional languages` pass (116 pages, up from 111); the
 verdicts are spec reads, not executed generators, so the size question is open
-for every entry.  INTERCAL and Piet are outside that pass -- already
-implemented, so never in the screen.
+for every entry.  Piet is already implemented, so it was never in the screen;
+INTERCAL, listed last, is outside the pass.
 
 - **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
   filed it unread, thinking the `{{:thisthat}}` transclusions hid the node
@@ -181,8 +181,8 @@ implemented, so never in the screen.
 - **Image-source candidates.**  A read of the 129 `Category:Non-textual` pages
   for raster sources only -- music (Fugue, Velato), music-note, and
   steganography pages excluded.  Verdicts are spec reads, not executed
-  generators.  Brainloller and Braincopter are already implemented and not
-  popular enough to clear the collection's alternative admission route.
+  generators.  Brainloller and Braincopter are not popular enough to clear
+  the collection's alternative admission route.
   Deferred: Bytemap (2012, source and data the same self-modifying grid, no
   interpreter yet) and Gifunk (2021, APNG/GIF fungeoid whose IP crosses frames)
   are the

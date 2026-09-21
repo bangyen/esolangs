@@ -52,7 +52,9 @@ def _tokens(code: str) -> list[str]:
 
     A ``C`` not operand to ``7``/``8`` starts a comment to end of line.
     """
-    code = re.sub(r"([^78])C[^\n]*", r"\1", code)
+    # Lookbehind, not a captured character: ``([^78])C`` needed a character
+    # before the ``C``, so a comment on the first line (``C...``) survived.
+    code = re.sub(r"(?<![78])C[^\n]*", "", code)
     toks: list[str] = []
     i = 0
     while i < len(code):

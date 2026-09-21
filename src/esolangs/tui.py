@@ -19,6 +19,8 @@ from dataclasses import dataclass
 from typing import TypeGuard
 
 from esolangs.debugger import Debugger, make_debugger
+from esolangs.exceptions import ArgumentError
+from esolangs.raster import Raster
 
 #: Back to the terminal's own attributes, which ends every marked run.
 _OFF = "\x1b[0m"
@@ -653,7 +655,7 @@ def drive(
 
 def run_tui(
     language: str,
-    program: str,
+    program: str | Raster,
     stdin: str = "",
     max_steps: int = 1_000_000,
     stop: Callable[[Frame], bool] | None = None,
@@ -666,6 +668,12 @@ def run_tui(
     (``self_halts``).  Everything here is raw-mode handling; the stepping is
     :func:`drive`.
     """
+    if isinstance(program, Raster):
+        # A raster language has no step machine; refuse before taking the
+        # terminal.  ``make_debugger`` says the same thing for the batch path.
+        raise ArgumentError(
+            f"{language} is a raster language, which has no step machine"
+        )
     import shutil
     import sys
     import termios

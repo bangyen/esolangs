@@ -437,6 +437,26 @@ class TestBreakpointOptions:
         assert exc.value.code == 2
         assert "must be an integer" in capsys.readouterr().err
 
+    def test_a_negative_cell_breakpoint_index_is_refused(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It reached ``check_whole`` and came out as an "internal error".
+
+        The index half cannot be negative, where the value half may.
+        """
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                [
+                    "debug",
+                    "--break-on-cell=-1=3",
+                    "brainfuck",
+                    _program(tmp_path, "+"),
+                ],
+                capsys,
+            )
+        assert exc.value.code == 2
+        assert "index must not be negative" in capsys.readouterr().err
+
 
 class TestTuiFlag:
     """``--tui`` hands the run to the step-through screen."""

@@ -192,7 +192,17 @@ class TestASeedMakesARunRepeat:
         with pytest.raises(esolangs.ArgumentError, match="draws no random values"):
             esolangs.run("brainfuck", "+++.", "", 5, seed=1)
 
-    def test_the_seven_that_draw_are_the_seven_named(self) -> None:
+    def test_a_seed_of_an_unseedable_type_is_an_argument_error(self) -> None:
+        """``random.Random`` raised a bare TypeError through the public API."""
+        with pytest.raises(esolangs.ArgumentError):
+            esolangs.run("LaserFuck", self.PROGRAM, "", 5, seed=object())
+
+    def test_a_surrogate_string_seed_is_an_argument_error(self) -> None:
+        """A surrogate is a ``UnicodeEncodeError``, also not an EsolangError."""
+        with pytest.raises(esolangs.ArgumentError):
+            esolangs.run("LaserFuck", self.PROGRAM, "", 5, seed="\ud800")
+
+    def test_the_five_that_draw_are_the_five_named(self) -> None:
         """The message lists them, so the list has to be right.
 
         Recomputed from the interpreters rather than trusted, since a
