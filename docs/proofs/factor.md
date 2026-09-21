@@ -11,12 +11,12 @@ exponent is the run length. Put
 - `Q` for the largest selected prime; and
 - `D` for the rendered decimal digits.
 
-If run `i` has exponent `e_i` and prime `p_i`, then exactly
+For a generated encoding, which has no ignored-residue factors, exactly
 
     log N = sum_i e_i log p_i,       D = floor(log10 N) + 1.
 
 The Boolean generator has `C = O(T)` and `m <= C`, where `T` is the table
-length. Parity leaves its folded tree with `C,m = Theta(T)`.
+length.
 
 ## Generated text
 
@@ -32,10 +32,10 @@ Consequently `log Q = O(log(m + 1))` and
 
     D = O(C log(m + 1)) = O(T log(T + 1)).
 
-For parity the selected primes are distinct, so
-`log N >= log(p_1 ... p_m) >= log(m!) = Omega(T log T)`. The generator's
-worst-case output is therefore `Theta(T log T)`. This is not a per-table
-claim: constant subtrees fold and can be much smaller.
+The language lower bound below supplies a table on which every generator must
+spend `Omega(T log T)`, so this generated upper bound is tight in the worst
+case. This is not a per-table claim: constant subtrees fold and can be much
+smaller.
 
 ## Generation time
 
@@ -88,18 +88,18 @@ no polynomial bound in source digits, and no fallback claim is made.
 ## Language lower bound
 
 Put `L = O(D)` for the log of a `D`-character source's digit integer. If its
-decoded behaviour uses `m` primes, its `i`-th one is at least `i + 1`, so
+decoded behaviour uses `k` useful primes, its `i`-th one is at least `i + 1`, so
 
-    sum_i e_i log(i + 1) <= L,       m = O(L/log L).
+    sum_i e_i log(i + 1) <= L,       k = O(L/log L).
 
-For fixed `m`, put `f_i = e_i - 1` and `s = 1/log(L + 2)`. The exponential
+For fixed `k`, put `f_i = e_i - 1` and `s = 1/log(L + 2)`. The exponential
 generating bound for these nonnegative vectors is
 
     exp(sL) product_i (1 - (i + 1)**(-s))**(-1).
 
 Its log is `O(L/log L)`: the first `sqrt(L)` factors contribute only
 `O(sqrt(L) log log L)`, and every later factor contributes `O(1)`, across
-`m = O(L/log L)` positions. Summing over `m` and choosing each useful prime's
+`k = O(L/log L)` positions. Summing over `k` and choosing each useful prime's
 eight command residues preserves `exp(O(D/log D))` behaviours. Hence covering
 all `2**T` tables forces
 

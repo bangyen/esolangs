@@ -137,7 +137,7 @@ and one earlier witness for each gives
   \le \left(\frac{2e q^2}{tB}\right)^t
   =\exp(-\Omega(q\log n)),
 \]
-because $q/B=\Theta(1/n)$.  Constant strings are two ordinary occupancy
+because $q/B=O(1/n)$.  Constant strings are two ordinary occupancy
 bins, so the same bound includes them.
 There are only $n!$ input orders, and
 $\log(n!)=O(n\log n)=o(q\log n)$, so with positive probability every order has
@@ -151,7 +151,9 @@ We call any table satisfying Lemma~\ref{lem:maximal-width}
 Call an instruction position \emph{routing} if both of its possible
 successors occur on reachable executions between two consecutive reads.
 For a fixed level, follow every reachable execution from one read to the
-next.  Charge a resulting nonconstant child to the successor taken at the
+next.  A nonconstant residual has not emitted the program's final output:
+doing so would make all of its continuations observationally equal.  Charge a
+resulting nonconstant child to the successor taken at the
 last routing position on its path.  After that successor every reachable
 real position has only one successor, so the program location determines a
 unique next-read cursor; the read overwrites the register, and hence that
@@ -278,7 +280,7 @@ $F_0=1$ and $F|_{Z'}=0$.  Let $G$ be the sum on all $c$ nodes satisfying
 $G|_{\{0\}\cup Z'}=0$ and $G_z=1$.  Uniqueness in the corresponding
 Vandermonde systems gives
 \[
-  u=F+\lambda G,qquad \lambda=-F_z.
+  u=F+\lambda G,\qquad \lambda=-F_z.
 \]
 The induction hypothesis gives the desired bound for $F$, on the same first
 $f+1$ roots.  It remains to show $\Tail(u)\le\Tail(F)$.
@@ -294,8 +296,12 @@ Writing
 \[
   \Gamma_V(z)=\frac{\sum_{d\ge z}|V_d|}{|V_z|},
 \]
-the resulting exact split of the two tails reduces
-$\Tail(u)\le\Tail(F)$ to
+and putting $A_G=\sum_{1\le d<z}|G_d|$, the resulting exact split is
+\[
+ \Tail(F)-\Tail(u)
+ =\mu\bigl(2\Gamma_F(z)-\Gamma_G(z)+A_G\bigr).
+\]
+It is therefore enough to prove
 \begin{equation}\label{eq:gamma-target}
   \Gamma_G(z)\le2\Gamma_F(z).
 \end{equation}
@@ -373,9 +379,12 @@ $y_c$, with positive coefficient there.  Hence
 Equations \eqref{eq:first-drive} and \eqref{eq:second-drive} give
 \eqref{eq:drive}.
 
-In the displaced case the tail comparison is strict.  Equality throughout
-requires the all-leading zero set treated in the base case.  This completes
-the induction.
+In the displaced case $A_G>0$.  Indeed, if $z>m+1$, then $G_{m+1}\ne0$;
+if $z=m+1$, the absence of a gap below $z$ would make
+$Z=\{1,\ldots,c-1\}$, contrary to displacement, and at any gap $G$ is
+nonzero by the zero bound.  Thus the tail comparison is strict even if
+\eqref{eq:gamma-target} is an equality.  Equality occurs only in the
+all-leading base case.  This completes the induction.
 \end{proof}
 
 \section{From the tail theorem to coefficient mass}\label{sec:mass}
@@ -463,7 +472,9 @@ Every Polynomial source for a maximal-width truth table has
 By Corollary~\ref{cor:roots}, the program contains
 $L=\Omega(T/\log T)$ distinct positive real instruction roots.  Their
 bases are distinct assigned primes, and a prime power is no smaller than its
-base.  The source polynomial is a multiple of their distinct-root product.
+base.  After sorting, the $i$th root is therefore at least the $i$th prime:
+any $i$ roots use $i$ distinct prime bases.  The source polynomial is a
+multiple of their distinct-root product.
 Theorem~\ref{thm:mass} therefore gives
 \[
  M(f)=\Omega(L^2\log L)
