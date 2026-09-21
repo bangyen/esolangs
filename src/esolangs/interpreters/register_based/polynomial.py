@@ -547,7 +547,7 @@ def _peel_instruction_quadratics(
     the roots are ``a ± sqrt(-q)``, one root-finding pass proposes ``a``
     per candidate ``q``, confirmed by the partner root.  Accepted only on
     exact division; everything else stays for ``factor_list``.  Dense n=6
-    remainder degree-206: 3.16s roots, 0.26s candidates (127 for 127
+    remainder degree-206: 3.16s roots, 0.26s candidates (103 for 103
     quadratics), 0.02s verify, against 35.55s for ``factor_list``.
     """
     if len(coefficients) < 3:

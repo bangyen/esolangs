@@ -720,7 +720,7 @@ class TestTheThreadRefusalNamesAWayThrough:
     def test_the_evaluate_route_works_on_a_thread(self) -> None:
         """``timeout=None`` is unbounded for ``run`` and settled here.
 
-        The three diverging languages are proved by a repeated state, so
+        The four diverging languages are proved by a repeated state, so
         ``None`` terminates rather than hanging -- which is what makes it a
         real answer to "how do I do this off the main thread".
         """

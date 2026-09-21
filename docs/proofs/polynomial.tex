@@ -373,7 +373,10 @@ the leaf level the unique active block adjusts the register to $48$ or $49$,
 prints, and leaves the register negative.  Thus induction on the levels proves that
 the machine follows exactly the residual selected by the input and prints its
 table value.  Each state block uses at most six instructions, its brackets
-are local and therefore properly matched, and every operand is $O(S)$.
+are local and therefore properly matched, and every operand is $O(S)$.  An
+update whose operand would be zero is omitted: the language spells a zero
+operand as I/O, and dropping it leaves the register unchanged, which is what
+a zero update does.
 
 Encode the resulting $m=O(S)$ instructions in order, using one fresh prime
 per instruction.  Real instructions give linear factors and register

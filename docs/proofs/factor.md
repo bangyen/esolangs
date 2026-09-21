@@ -53,9 +53,11 @@ Let `alpha = log_2 3`. CPython's balanced integer products use Karatsuba at
 scale, so the encoder's balanced `D`-bit product carries a `Theta(D**alpha)`
 arithmetic term. Python 3.14's large decimal render passes through `_pylong`
 and libmpdec, but libmpdec only recurses with three half-size products above
-`3 * 2**32` machine words (about `2.5 * 10**11` decimal digits), so every
-generated size stays in its quasi-linear FNT range and rendering adds only
-`O(D log D)`. The encoder combines the two smallest bit-width products first.
+`3 * 2**32` machine words (about `2.5 * 10**11` decimal digits), so up to that
+`D` -- far past any generated table -- rendering stays in its quasi-linear FNT
+range and adds only `O(D log D)`. Above it the three-way recurrence is itself
+`Theta(D**alpha)`, so the cold bound is unchanged either way. The encoder
+combines the two smallest bit-width products first.
 Superlinearity charges powers and merges to the final `D` bits geometrically;
 CPython's lopsided path splits a large operand into small-width chunks.
 Smallest-first merging costs `O(D**alpha)`, giving the cold bound

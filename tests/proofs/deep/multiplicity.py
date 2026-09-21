@@ -214,7 +214,11 @@ def _check_assembly(failures: list[str]) -> int:
                 trimmed.append((y, e - take))
         sub = sorted(trimmed)
         c = sum(e for _, e in sub)
-        zeros = list(range(1, c))  # U = {1..u} subsets the early fill
+        # ``U = {m-2u+1, ..., m-u}`` leaves the gap at ``m-2u``, so the
+        # leading run is exactly ``m-2u-1`` and the certificate is tested at
+        # its sharp point, not on an all-leading set (where it is trivial).
+        zeros = list(range(1, m - 2 * u)) + list(range(m - 2 * u + 1, m - u + 1))
+        assert len(zeros) == c - 1
         coeffs = _solve(sub, zeros)
         t = _tail(sub, coeffs, zeros)
         top = _expanded(nodes)[: m - 2 * u]
@@ -228,25 +232,22 @@ def _check_assembly(failures: list[str]) -> int:
 
 
 def _check_mass(failures: list[str]) -> int:
-    """Spot-check the repeated-root mass floor, exactly.
+    """Spot-check that repeated-root products have quadratic mass.
 
-    ``mass(F) >= (log10 2)/32 * m**2`` for a monic multiple of
-    ``prod (x - r_i)**e_i`` is a loose constant, so the cases here use
-    ``m >= 6`` to keep it non-vacuous, and evaluate a multiple with a small
-    cofactor as well as the product itself.  This is a diagnostic, not the
-    source of the language bound; that rests on the distinct-root theorem
-    plus the block-incidence lemma.
+    ``mass(F) >= m*m/8`` for a monic multiple of ``prod (x - r_i)**e_i`` is a
+    loose diagnostic, not the language bound; the cases use ``m >= 16`` so the
+    floor is above the Descartes ``m + 1`` term and the assertion is not
+    automatic.  A multiple with a small cofactor is checked as well as the
+    product itself.
     """
-    from math import log10
-
     count = 0
-    for roots in ([(2, 16)], [(2, 8), (3, 1)], [(2, 2), (3, 2), (5, 2)]):
+    for roots in ([(2, 16)], [(2, 24)], [(2, 8), (3, 8), (5, 8)]):
         product = [1]
         for r, e in roots:
             for _ in range(e):
                 product = _mul(product, [-r, 1])
         m = sum(e for _, e in roots)
-        threshold = (log10(2) / 32) * m * m
+        threshold = m * m / 8
         if _mass(product) < threshold:
             failures.append(f"product mass {_mass(product)} < {threshold} for {roots}")
         for cofactor in ([-2, 1], [-3, 1], [6, -5, 1]):
@@ -310,10 +311,10 @@ def _check_routing(failures: list[str]) -> int:
     """Pin the executed facts behind the sharpened routing lemma.
 
     ``docs/proofs/polynomial.md`` proves ``N'(k+1) <= 2 + 4m`` with ``m`` the
-    real instruction *positions* (the routing floor), which with the confluent
-    certificate gives ``Omega(T**2 / log**2 T)``.  The block-incidence bound
-    sharpens this to ``Omega(T**2 / log T)``.  This check pins the
-    per-instruction facts the routing floor rests on:
+    real instruction *positions* (the routing floor).  The block-incidence
+    bound replaces ``m`` by ``3 * L_real``, sharpening the language bound to
+    ``Omega(T**2 / log T)``.  This check pins the per-instruction facts the
+    routing floor rests on:
 
     * every real instruction has at most two successors, fixed by its bracket
       and independent of the register;

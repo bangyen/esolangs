@@ -109,7 +109,7 @@ significant first, so its length sets the input count: 0110 is two-input
 XOR, 10010110 is three-input.  The program reads one input per line and
 prints the result.
 
-Eighteen languages instead return a *template*: their generators embed the
+Fourteen languages instead return a *template*: their generators embed the
 inputs in the code rather than reading them, leaving a run of `$` per input
 as long as the code that will replace it.  Running one unfilled is refused.
 `esolangs list --details` marks them `tmpl`; pass --bits to get a runnable

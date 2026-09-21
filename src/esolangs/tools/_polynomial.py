@@ -17,7 +17,7 @@ from esolangs.polynomial_resources import GenerationEstimate, estimate_generatio
 def _digit_limit_for(digits: int) -> Iterator[None]:
     """Raise CPython's ``int``/``str`` digit cap to fit ``digits``, then restore.
 
-    The 4300 default is a DoS guard; a 541-instruction table exceeds it.
+    The 4300 default is a DoS guard; a 462-instruction table exceeds it.
     Same borrow as Factor's ``_parse`` and boolean ``factor``.
     """
     limit = sys.get_int_max_str_digits()
@@ -53,7 +53,7 @@ def multiply(a: list[int], b: list[int]) -> list[int]:
 # instead of the incremental ``multiply`` loop.  That loop is cubic in the
 # factor count -- every step rescans a polynomial whose coefficients have
 # grown -- and it owns the whole cost past boolean n == 7: on the dense
-# n=10 fixture (1638 factors, degree 2770, 36.3 MB of text) it spent 18.6s
+# n=10 fixture (1382 factors, degree 2260, 16.9 MB of text) it spent 18.6s
 # multiplying and 4.7s in ``str``.  Below the threshold the loop is cheaper
 # than packing, and keeping it there also keeps the small-table corpus on
 # the path it was measured against.  Measured on random factor lists: at 128
@@ -64,12 +64,12 @@ _PACKED_MIN_FACTORS = 160
 # so their cost falls as ``1 / groups**2``, while each extra merge level
 # moves about the same total digits as the one below it and so costs about
 # the same -- the two balance near a group the size of the threshold above.
-# Measured on dense n=10 (1638 factors): 4 groups 5.77s, 8 groups 5.02s,
+# Measured on dense n=10 (1382 factors): 4 groups 5.77s, 8 groups 5.02s,
 # 16 groups 4.91s, and the leaves are 1.88s / 0.52s / 0.14s of that.
 #
 # The *count* is rounded down to a power of two so the merge tree is
 # balanced.  An odd count leaves a node unpaired, which is carried up and
-# merged against a much larger one later -- at 1638 factors that cost 8.3s
+# merged against a much larger one later -- at 1382 factors that cost 8.3s
 # against 6.3s for the balanced shapes either side of it.
 _PACKED_GROUP_SIZE = 96
 
