@@ -213,6 +213,17 @@ class TestComments:
     def test_a_comment_ends_at_the_newline(self) -> None:
         assert run_and_capture("6C hidden\n66666666A0") == "6"
 
+    def test_a_comment_on_the_first_line(self) -> None:
+        """The ``C`` may be the program's first character.
+
+        The old pattern captured the character before ``C``, so it needed
+        one and a leading comment survived as source.
+        """
+        from esolangs.interpreters.tape_based.six_five import _tokens
+
+        assert _tokens("C hidden") == []
+        assert run_and_capture("C66666666A0\n66666666A0") == "0"
+
     def test_c_after_a_skip_is_its_operand(self) -> None:
         """A ``C`` following ``7``/``8`` is the value 12, not a comment.
 

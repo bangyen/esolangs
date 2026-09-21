@@ -43,6 +43,31 @@ class TestTheDecodeGuardsInProcess:
             cli._read_program(str(tmp_path))  # noqa: SLF001
         assert exc.value.code == 2
 
+    def test_read_program_decodes_a_png(self, tmp_path: Path) -> None:
+        """A raster language's program is a PNG, not UTF-8 text."""
+        from esolangs.raster import Raster
+
+        path = tmp_path / "tiny.png"
+        path.write_bytes(Raster((((0, 0, 0),),)).to_png())
+        assert isinstance(cli._read_program(str(path)), Raster)  # noqa: SLF001
+
+    def test_read_program_refuses_a_corrupt_png(self, tmp_path: Path) -> None:
+        """A PNG signature with nothing behind it is a bad PNG, not text."""
+        path = tmp_path / "bad.png"
+        path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20)
+        with pytest.raises(SystemExit) as exc:
+            cli._read_program(str(path))  # noqa: SLF001
+        assert exc.value.code == 2
+
+    @pytest.mark.medium
+    def test_run_accepts_the_png_generate_wrote(self, tmp_path: Path) -> None:
+        """The CLI used to read the PNG as text and refuse it."""
+        path = tmp_path / "line.png"
+        path.write_bytes(esolangs.generate("Line", "01").to_png())
+        result = run_cli("run", "Line", str(path), stdin="1\n")
+        assert result.returncode == 0
+        assert result.stdout == "1"
+
     def test_read_stdin_refuses_undecodable_bytes(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:

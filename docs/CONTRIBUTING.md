@@ -43,9 +43,10 @@ in.
 `src/esolangs/interpreters/_template.py` is the starting point.  Every
 interpreter:
 
-- Exposes `run(code, io)` with a required `IO` (grid languages get
-  `split=True` in the registry and receive lines).  Prints and reads
-  through `io`; never `print`/`input`.
+- Exposes `run(code, io)` with a required `IO` (most grid languages get
+  `split=True` in the registry and receive lines; A Painter Ant, B-tapemark
+  and EGL take the source whole).  Prints and reads through `io`; never
+  `print`/`input`.
 - Raises `ValueError` for a malformed program and `HaltError` for an
   invalid runtime operation, and terminates by construction: the fuzz
   suites feed random and empty programs.
@@ -62,9 +63,9 @@ interpreter:
   (`suffolk.py` shows one), never to define away invalid operations.
 - Provides a `__main__` block calling `run(data, IO())`.
 
-`tests/test_interpreter_conventions.py` checks the module docstring starts
-`Interpreter for <Language>.` and mentions `EOF`, `HaltError` or
-`ValueError` wherever the interpreter reads input or raises them.
+`tests/test_interpreter_conventions.py` checks the module docstring names
+the language and mentions `EOF`, `HaltError` or `ValueError` wherever the
+interpreter reads input or raises them.
 
 ## Checklist
 

@@ -126,7 +126,7 @@ the page.  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#d
 
 Ready-to-run programs are committed under [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):
 `examples/` holds a truth-table program for each of the 62
-languages with a boolean generator.  It regenerates via
+text languages with a boolean generator.  It regenerates via
 `scripts/generate.py examples`.
 
 <!-- EXAMPLES:END -->
@@ -136,7 +136,7 @@ languages with a boolean generator.  It regenerates via
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 62 languages</summary>
+<summary>Show all 62 text languages</summary>
 
 ### Grid-based Languages
 

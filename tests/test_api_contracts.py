@@ -270,6 +270,12 @@ class TestPackageSurface:
         """Its contract says callers besides ``run`` should use it."""
         assert "check_runnable" in esolangs.__all__
 
+    @pytest.mark.parametrize("language", ["Minifuck", "brainfuck"])
+    def test_check_runnable_refuses_a_non_source(self, language: str) -> None:
+        """An int leaked a TypeError for a template language and passed elsewhere."""
+        with pytest.raises(esolangs.ProgramError, match="string of source"):
+            esolangs.check_runnable(language, 5)  # type: ignore[arg-type]
+
     def test_stdlib_imports_are_not_advertised(self) -> None:
         for leaked in ("importlib", "pathlib", "signal", "threading", "Any"):
             assert leaked not in esolangs.__all__
@@ -368,6 +374,11 @@ class TestInstantiateValidates:
         template = esolangs.generate("Minifuck", XOR)
         with pytest.raises(esolangs.ArgumentError, match="must each be 0 or 1"):
             esolangs.instantiate("Minifuck", template, [2, 0])
+
+    def test_a_non_string_template_is_refused_before_provenance(self) -> None:
+        """With a table, ``_is_template_for`` called ``.replace`` on the value."""
+        with pytest.raises(TemplateError, match="must be the string"):
+            esolangs.instantiate("Minifuck", 5, [1], None, XOR)  # type: ignore[arg-type]
 
 
 class TestNoTwoNamesDisagree:
@@ -528,6 +539,13 @@ class TestSpecAbortsRatherThanReturningNothing:
     def test_it_still_returns_the_text_normally(self) -> None:
         """The abort must not have eaten the ordinary path."""
         assert esolangs.spec("brainfuck").startswith("Interpreter for")
+
+    def test_a_raster_language_returns_its_own_module_docstring(self) -> None:
+        """The raster branch hard-coded ``esolangs.line``, so Piet got Line's."""
+        piet = importlib.import_module("esolangs.piet")
+        line = importlib.import_module("esolangs.line")
+        assert esolangs.spec("Piet") == (piet.__doc__ or "").strip()
+        assert esolangs.spec("Piet") != (line.__doc__ or "").strip()
 
 
 class TestAMissingFileIsAFileNotFoundError:

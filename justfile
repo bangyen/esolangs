@@ -102,10 +102,10 @@ new-language name *args:
 
 # mutation-test one interpreter: what its tests would NOT have caught
 # (not part of `just test` -- it is a few minutes per language)
-# `language` is quoted below: twelve of the sixty-five display names contain
-# a space ("Point Break", "A Painter Ant", "Minsky Swap", ...), and unquoted
-# they split into two arguments -- `just mutate "Point Break"` failed with
-# `unrecognized arguments: Break`, for every one of the twelve.
+# `language` is quoted below: nine of the sixty-four display names contain
+# a space ("A Painter Ant", "Minsky Swap", ...), and unquoted they split
+# into two arguments -- `just mutate "A Painter Ant"` failed with
+# `unrecognized arguments: Painter Ant`, for every one of the nine.
 mutate language *args:
     {{PYTHON}} scripts/mutate.py interpreter "{{language}}" {{args}}
 

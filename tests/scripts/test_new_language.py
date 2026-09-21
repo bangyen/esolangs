@@ -32,3 +32,9 @@ def test_scaffold_refuses_overwrite(
     monkeypatch.setattr(new_language, "ROOT", tmp_path)
     with pytest.raises(FileExistsError, match="refusing to overwrite"):
         new_language.scaffold("Tiny", "other")
+
+
+def test_a_python_keyword_is_refused() -> None:
+    """``class`` scaffolded ``from esolangs.interpreters.other.class import``."""
+    with pytest.raises(ValueError, match="keyword"):
+        new_language._slug("class")  # noqa: SLF001

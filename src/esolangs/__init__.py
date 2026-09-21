@@ -222,6 +222,13 @@ def instantiate(
     """
     check_width(width)
     name = resolve(language)
+    if not isinstance(template, str):
+        # Before the provenance check, which calls ``template.replace`` and
+        # so leaked an ``AttributeError`` for a non-string.
+        raise TemplateError(
+            f"template must be the string generate() returned, got "
+            f"{type(template).__name__}"
+        )
     if truth_table is not None and not _is_template_for(template, name, truth_table):
         # The provenance check a tag cannot make: a hand-written string is
         # untagged by design (a tag cannot survive a file), and
@@ -237,11 +244,6 @@ def instantiate(
         raise TemplateError(
             f"{name} reads its inputs rather than embedding them, so there "
             f"is nothing to instantiate; pass them in as stdin instead"
-        )
-    if not isinstance(template, str):
-        raise TemplateError(
-            f"template must be the string generate() returned, got "
-            f"{type(template).__name__}"
         )
     origin = getattr(template, "language", None)
     if origin is not None and origin != name:
@@ -315,6 +317,14 @@ def check_runnable(language: str, program: str | Raster) -> None:
     name = resolve(language)
     if isinstance(program, Raster):
         return
+    if not isinstance(program, str):
+        # A non-source value otherwise fell through: an ``int`` leaked a
+        # ``TypeError`` from ``char in program`` for a template language and
+        # was silently accepted by every other one.
+        raise ProgramError(
+            f"program must be a string of source or a Raster, got "
+            f"{type(program).__name__}"
+        )
     if _looks_like_a_path(program):
         raise ProgramError(
             f"program looks like a path, not source: {program!r}. "
@@ -427,7 +437,7 @@ def run(
     :class:`~esolangs.exceptions.ExecutionTimeoutError` (a
     :class:`TimeoutError` and a :class:`~esolangs.exceptions.HaltError`; catch
     it, not the base).  It is ``SIGALRM``, so needs a Unix main thread; off it,
-    :meth:`Debugger.run` bounds by stepping.  ``seed`` fixes the four
+    :meth:`Debugger.run` bounds by stepping.  ``seed`` fixes the five
     languages that draw.  An unloadable program raises
     :class:`~esolangs.exceptions.ProgramError`.
     """
@@ -540,7 +550,15 @@ def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., A
         )
     from esolangs.interpreters.randomness import Seeded
 
-    return partial(run_fn, rng=Seeded(seed))
+    try:
+        rng = Seeded(seed)
+    except (TypeError, ValueError) as exc:
+        # ``random.Random`` rejects an unseedable type with TypeError and a
+        # surrogate string with UnicodeEncodeError (a ValueError); either
+        # used to escape the package's "every deliberate error is an
+        # EsolangError".
+        raise ArgumentError(str(exc)) from exc
+    return partial(run_fn, rng=rng)
 
 
 def _keeping_output[E: EsolangError](exc: E, io_obj: ScriptedIO) -> E:

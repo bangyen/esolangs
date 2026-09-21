@@ -77,6 +77,15 @@ class TestTheStdinJudgeIsReachableFromPython:
         with pytest.raises(esolangs.ArgumentError, match="out of range"):
             esolangs.check_stdin("Fargo", "8\n", "00010111")
 
+    def test_a_superscript_digit_is_refused_not_int_parsed(self) -> None:
+        """``"\\u00b2".isdigit()`` is true, but ``int`` rejects it.
+
+        The gate was ``isdigit``, so a Unicode digit reached ``int`` and
+        escaped as a bare ``ValueError``.
+        """
+        with pytest.raises(esolangs.ArgumentError, match="decimal row index"):
+            esolangs.check_stdin("Fargo", "\u00b2", "01")
+
     def test_it_catches_taglates_pad(self) -> None:
         """Its odd input count costs an extra line, and the shape says so."""
         esolangs.check_stdin(

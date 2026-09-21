@@ -108,7 +108,9 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
             wanted += 1
 
     if shape == "row_index":
-        if len(lines) != 1 or not lines[0].isdigit():
+        # ``isdecimal``, not ``isdigit``: a superscript like ``²`` passes
+        # ``isdigit`` and then ``int`` rejects it with a bare ValueError.
+        if len(lines) != 1 or not lines[0].isdecimal():
             raise ArgumentError(
                 f"{name} reads one decimal row index, but stdin is {stdin.strip()!r}"
             )
@@ -174,8 +176,8 @@ def read_answer(language: str, output: str) -> str:
     """Return the answer bit a ``language`` program's ``output`` carries.
 
     Most print it (last non-whitespace character); six dump their state, and
-    two differ -- RAM0's answer is its ``z`` register three lines up, A
-    Painter Ant marks the ant's cell ``o``/``@``.
+    two differ -- RAM0's answer is on its ``z:`` line, A Painter Ant marks
+    the ant's cell ``o``/``@``.
     ``describe(language)["answer_pattern"]`` is the same fact as data (a
     verifier that hardcoded two dumps and forgot a third reported a passing
     language as broken).  A termination-answer language (123, ArrowQueue,

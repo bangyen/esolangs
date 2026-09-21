@@ -33,12 +33,14 @@ from esolangs._vm_views import (
     machine_views,
 )
 from esolangs.exceptions import (
+    ArgumentError,
     InterpreterLimitError,
     ProgramError,
     UnknownLanguageError,
 )
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.registry import RUNNERS, resolve
+from esolangs.raster import Raster
+from esolangs.registry import LANGUAGES, RUNNERS, resolve
 
 
 @runtime_checkable
@@ -854,20 +856,30 @@ def machine_traits(language: str) -> dict[str, bool]:
     }
 
 
-def make_vm(language: str, program: str | os.PathLike[str], stdin: str = "") -> VM:
+def make_vm(
+    language: str, program: str | Raster | os.PathLike[str], stdin: str = ""
+) -> VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
     ``stdin`` is fed line by line; the name resolves case-insensitively via
-    :func:`~esolangs.registry.resolve`, and only a name outside the registry
-    raises :class:`UnknownLanguageError`.  The program and ``stdin`` are
-    checked as :func:`esolangs.run` checks them (an unfilled template
-    otherwise runs to a confident ``'0'``), and the checked value is what
-    reaches the interpreter (:mod:`esolangs._validate`).
+    :func:`~esolangs.registry.resolve`.  A name outside the registry raises
+    :class:`UnknownLanguageError`; a registered raster language (Line, Piet)
+    has no step machine and raises :class:`ArgumentError` instead.  The
+    program and ``stdin`` are checked as :func:`esolangs.run` checks them (an
+    unfilled template otherwise runs to a confident ``'0'``), and the checked
+    value is what reaches the interpreter (:mod:`esolangs._validate`).
     """
     from esolangs import check_program
 
     name = resolve(language)
     if name not in _VM_ADAPTERS:
+        if LANGUAGES[name].source_kind.value == "raster":
+            raise ArgumentError(
+                f"{name} is a raster language, which has no step machine; "
+                f"make_vm and make_debugger step text languages only"
+            )
+        # A text language with no adapter is an internal inconsistency, but
+        # this is the branch that used to name it unknown; keep that.
         raise UnknownLanguageError(language)
     source = check_program(name, program, stdin)
     if not isinstance(source, str):  # guarded by membership in text-only adapters

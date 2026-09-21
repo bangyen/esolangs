@@ -1,4 +1,17 @@
-"""Piet raster interpreter following https://www.dangermouse.net/esoteric/piet.html."""
+"""Piet raster interpreter following https://www.dangermouse.net/esoteric/piet.html.
+
+A program is an image of coloured codels.  The interpreter enters the
+top-left block and follows the direction pointer and codel chooser, running
+the command named by the hue/lightness change from the block left to the
+block entered: hue 0 pushes/pops, 1 adds/subtracts/multiplies, 2
+divides/modulos/nots, 3 compares/rotates/switches, 4 duplicates/rolls/reads
+a number and 5 reads a char or prints a number/char.  A block with no
+colour exit and no white slide ends the run.
+
+Two deviations: a colour outside the 18 standard ones is treated as white,
+and the input commands read the package's line-oriented stdin, so a blank
+line is a value rather than end of input.
+"""
 
 from __future__ import annotations
 

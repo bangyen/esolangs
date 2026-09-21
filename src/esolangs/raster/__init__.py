@@ -6,6 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
 
+from esolangs.exceptions import ProgramError
+
 from . import png
 
 Pixel = tuple[int, int, int]
@@ -70,8 +72,21 @@ class Raster:
 
     @classmethod
     def from_png(cls, data: bytes) -> Raster:
-        """Decode PNG bytes into raster source."""
-        return cls(tuple(tuple(row) for row in png.read_rgb(data)))
+        """Decode PNG bytes into raster source.
+
+        Untrusted bytes: a corrupt chunk used to escape as a bare
+        ``zlib.error``/``struct.error``/``IndexError``/``MemoryError``.
+        Any decode failure is a bad program, so it becomes a
+        :class:`~esolangs.exceptions.ProgramError`.
+        """
+        try:
+            decoded = png.read_rgb(data)
+            # Inside the guard too: a 0x0 image decodes cleanly and then
+            # ``__post_init__`` rejects the empty rows, which is still a bad
+            # PNG rather than a caller error.
+            return cls(tuple(tuple(row) for row in decoded))
+        except Exception as exc:
+            raise ProgramError(f"not a readable PNG: {exc}") from exc
 
     def to_png(self) -> bytes:
         """Encode this raster as PNG bytes."""

@@ -47,3 +47,20 @@ def test_every_raster_language_runs_its_png(language: str, tmp_path: Path) -> No
     path = tmp_path / f"{language.lower()}.png"
     path.write_bytes(program.to_png())
     assert esolangs.run(language, path, "0\n") == "0"
+
+
+@pytest.mark.parametrize("language", RASTER_LANGUAGES)
+def test_a_malformed_png_is_a_program_error(language: str, tmp_path: Path) -> None:
+    """Corrupt bytes escaped the package as zlib/struct/Index/MemoryError.
+
+    A truncated IHDR, a bad IDAT and an oversized dimension each raised a
+    bare stdlib error from inside the decoder; all are a bad program.
+    """
+    truncated = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + b"\x00" * 4
+    assert issubclass(esolangs.ProgramError, ValueError)
+    with pytest.raises(esolangs.ProgramError):
+        Raster.from_png(truncated)
+    path = tmp_path / f"bad-{language.lower()}.png"
+    path.write_bytes(truncated)
+    with pytest.raises(esolangs.ProgramError):
+        esolangs.check_program(language, path)

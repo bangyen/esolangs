@@ -33,6 +33,17 @@ class TestProtocol:
     def test_implements_vm_protocol(self) -> None:
         assert isinstance(esolangs.make_vm("brainfuck", "+"), VM)
 
+    def test_a_raster_language_has_no_step_machine(self) -> None:
+        """Registered, so not ``UnknownLanguageError``; simply not steppable.
+
+        ``Line`` and ``Piet`` are the two registry names outside the text
+        ``RUNNERS``, and the old branch called them unknown.
+        """
+        with pytest.raises(esolangs.ArgumentError, match="raster language"):
+            esolangs.make_vm("Line", esolangs.generate("Line", "01"))
+        with pytest.raises(esolangs.ArgumentError, match="raster language"):
+            esolangs.make_debugger("Piet", "x")
+
 
 class TestBrainfuck:
     def test_tape_and_cursor_evolve(self) -> None:

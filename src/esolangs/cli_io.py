@@ -18,6 +18,11 @@ from esolangs.cli_hints import (
     _decode_note,
 )
 from esolangs.exceptions import EsolangError
+from esolangs.raster import Raster
+
+#: A program file that starts with the PNG signature is an image-language
+#: program, decoded to a :class:`~esolangs.raster.Raster` rather than text.
+_PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
 def _null_context() -> AbstractContextManager[None]:
@@ -81,17 +86,20 @@ class _UnboundedNotice:
         self._timer.cancel()
 
 
-def _read_program(path: str, timeout: float | None = None) -> str:
+def _read_program(path: str, timeout: float | None = None) -> str | Raster:
     """Return the program in ``path``, or exit with a usage error.
 
-    The trailing newline is the file's: CV(N)(C), Grapheme and NoComment
-    reject one, and ``esolangs generate ... > prog.txt`` writes it.
+    A raster language's program is a PNG, so the bytes are read and, when
+    they carry the PNG signature, decoded here; otherwise they are UTF-8
+    text.  The trailing newline is the text file's: CV(N)(C), Grapheme and
+    NoComment reject one, and ``esolangs generate ... > prog.txt`` writes it.
     """
     # The *open* is on the thread as well as the read.  Opening a FIFO
     # blocks until a writer appears, so bounding only the read left the
     # command hanging one line earlier -- which is what a reader saw when
     # ``--timeout 2`` did not stop ``run`` on an unfed pipe.
-    return _bounded_read(path, timeout).rstrip("\n")
+    program = _bounded_read(path, timeout)
+    return program.rstrip("\n") if isinstance(program, str) else program
 
 
 def _note(message: str) -> None:
@@ -99,7 +107,7 @@ def _note(message: str) -> None:
     sys.stderr.write(f"{message}\n")
 
 
-def _bounded_read(path: str, timeout: float | None) -> str:
+def _bounded_read(path: str, timeout: float | None) -> str | Raster:
     """Open and read ``path``, with a size cap and a deadline.
 
     Both on a daemon thread: ``open`` on a FIFO waits for a writer, and
@@ -107,13 +115,27 @@ def _bounded_read(path: str, timeout: float | None) -> str:
     one C call.  The cap is two orders above the largest generated
     program; the deadline is the caller's ``--timeout``.
     """
-    box: list[str | BaseException] = []
+    box: list[str | Raster | BaseException] = []
 
     def _slurp() -> None:
         try:
-            with open(path) as handle:
-                box.append(handle.read(_MAX_PROGRAM_BYTES + 1))
+            with open(path, "rb") as handle:
+                raw = handle.read(_MAX_PROGRAM_BYTES + 1)
         except BaseException as exc:
+            box.append(exc)
+            return
+        if raw.startswith(_PNG_MAGIC):
+            # A raster program; decoding it here means ``run`` and ``debug``
+            # accept the same PNG ``generate`` wrote, rather than reading
+            # its bytes as text and refusing "not text".
+            try:
+                box.append(Raster.from_png(raw))
+            except EsolangError as exc:
+                box.append(exc)
+            return
+        try:
+            box.append(raw.decode("utf-8"))
+        except UnicodeDecodeError as exc:
             box.append(exc)
 
     reader = threading.Thread(target=_slurp, daemon=True)
@@ -134,8 +156,13 @@ def _bounded_read(path: str, timeout: float | None) -> str:
         # ``OSError``, so pointing ``run`` at a PNG used to dump a raw
         # traceback where every other unreadable file gets one clean line.
         _fail(f"cannot read {path}: not text ({_decode_note(result)})")
+    if isinstance(result, EsolangError):
+        # A PNG that did not decode; its ``ProgramError`` names the fault.
+        _fail(str(result))
     if isinstance(result, BaseException):
         raise result
+    if isinstance(result, Raster):
+        return result
     if len(result) > _MAX_PROGRAM_BYTES:
         _fail(
             f"{path} is larger than the {_MAX_PROGRAM_BYTES // 1024} KiB this "
