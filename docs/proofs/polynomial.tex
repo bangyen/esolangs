@@ -287,7 +287,9 @@ $f+1$ roots.  It remains to show $\Tail(u)\le\Tail(F)$.
 
 The zero bound fixes all signs.  Put $\eta=\sgn(F_z)$ and
 $\mu=|F_z|$.  Away from $Z'$, the two sequences $F$ and $G$ have constant
-relative sign $\eta$, while $u$ changes sign at $z$ and $F$ does not.  Hence
+relative sign $\eta$: each has exactly the simple zeros $Z'$ there, so both
+flip at precisely the same indices.  The extra zero of $u$ at $z$ makes $u$
+change sign where $F$ does not.  Hence
 \[
  |u_d|=\bigl||F_d|-\mu|G_d|\bigr|,
 \]
@@ -435,12 +437,15 @@ Every nonzero real multiple $F$ of $P$ satisfies
   \ge \sum_{u=0}^{\lfloor(L-1)/2\rfloor}
        \sum_{i=2u+1}^{L}\log(r_i-1),
 \end{equation}
-after normalising $|f_D|\ge1$, where $\log^+x=\max(0,\log x)$.
+when $|f_D|\ge1$, where $\log^+x=\max(0,\log x)$.
 For the first $L$ primes, or for any increasing prime powers bounded below
 by them, the right side is $\Omega(L^2\log L)$.
 \end{theorem}
 
 \begin{proof}
+Apply Lemma~\ref{lem:slack} to $F/|f_D|$, whose leading coefficient has
+absolute value one.  Restoring the factor $|f_D|\ge1$ cannot decrease any
+$\log^+|f_j|$, so it suffices to prove the claim in that normalisation.
 For each $u$, take $U$ to be the positions of the $u$ largest coefficients
 below the leading term.  Lemma~\ref{lem:slack} produces a new coefficient,
 the $(u+1)$st largest, of size at least the threshold in
@@ -510,10 +515,26 @@ of size $O(T/2^h)=O(T/n)$.  Hence
   S:=\sum_k s_k=O(T/\log T).
 \]
 
-The direct Polynomial encoding of this DAG uses at most six instructions per
-state, so it has $m=O(S)$ instruction factors.  Its operands are $O(S)$,
-its instruction exponents are bounded constants, and its assigned primes are
-at most $p_m=O(m\log m)$.  Every linear or quadratic factor therefore has
+Label the states at every level by $0,\ldots,s_k-1$.  Enter level $k$ with
+register $-j$ when state $j$ is active.  Its blocks are scanned in label
+order: block $j$ increments the register and opens an ``if positive'', so
+exactly block $j$ fires.  That block reads the next bit, overwriting the
+register with $48+b$.  If its child labels are $z,o$, an affine update sends
+$48$ to $-(z+r)$ and $49$ to $-(o+r)$, where $r$ is the number of blocks
+remaining at that level.  The skipped blocks each increment once, leaving
+$-z$ or $-o$ at the next level.  Equal children use division by $50$ followed
+by the same offset.  At the leaf level the unique active block adds $48$ or
+$49$, prints, and parks negative.  Thus induction on the levels proves that
+the machine follows exactly the residual selected by the input and prints its
+table value.  Each state block uses at most six instructions, its brackets
+are local and therefore properly matched, and every operand is $O(S)$.
+
+Encode the resulting $m=O(S)$ instructions in order, using one fresh prime
+per instruction.  Real instructions give linear factors and register
+instructions conjugate quadratic factors; multiplying them gives an integer
+polynomial decoded back to that list.  Instruction exponents are bounded
+constants, and the assigned primes are at most $p_m=O(m\log m)$.  Every
+linear or quadratic factor therefore has
 coefficient $\ell^1$ norm $m^{O(1)}$.  Submultiplicativity gives coefficient
 norm $m^{O(m)}$ for their product, so each expanded coefficient has
 $O(m\log m)$ decimal digits.  There are at most $2m+1$ coefficients, while
