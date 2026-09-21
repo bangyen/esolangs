@@ -310,7 +310,7 @@ part occupies every degree, so its text is `D log D` -- at `D >= L log2 L`
 that is `T log T`, not `T`, and at `D ~ 3L` the `K ~ L/2` large
 coefficients of `D` bits each are `L**2` on their own.  Exact minimum text
 mass over every multiple of `(x-2)(x-3)(x-5)` of degree `<= 8` is the
-product's own 11 digits (z3 optimise, 145 s); larger sizes did not finish.
+product's own 7 digits (z3 optimise, 145 s); larger sizes did not finish.
 
 **The sparse-remainder profile: the chain, one lemma, and the executed
 minima.**  Write the profile as `F = G + tau`, `G` the `K + 1` lowest
@@ -375,7 +375,7 @@ o(1)) prod_{i=K+2}^{L} (p_i - 1)` times its leading coefficient**, the
 `o(1)` exponentially small in the degree.  Exact LP optima (z3 over the
 rationals) converge to it from above: `L = 6, K = 3`: 216, 134, 122, 120.4,
 120.0 at `D = 8, 12, 16, 20, 30` against `(11-1)(13-1) = 120`; `L = 5, K
-= 2`: 244 at `D = 14` against `4 * 6 * 10 = 240`; `L = 4, K = 1`: 24.5
+= 1`: 244 at `D = 14` against `4 * 6 * 10 = 240`; `L = 4, K = 1`: 24.5
 against 24.  Integer z3 on the profile itself, both sides: `L = 5, K = 2`
 unsat at `B = 60`, sat at 80; `L = 6, K = 3` unsat at 120, sat at 160; `L
 = 7, K = 4` unsat at 192, sat at 300 (`D = 14..16`).  Sweeping *every*
