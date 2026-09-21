@@ -8,7 +8,7 @@
   pdftitle={The Worst-Case Text Complexity of the Polynomial Esoteric Programming Language},
   pdfsubject={Descriptional complexity of Boolean functions in Polynomial},
   pdfkeywords={Polynomial language, descriptional complexity, Boolean functions, decision diagrams, polynomial roots},
-  pdflang={en-GB}
+  pdflang={en-US}
 }
 
 \newtheorem{theorem}{Theorem}[section]
@@ -68,11 +68,11 @@ descending degree, with decimal coefficients and exponents, as in the
 language specification~\cite{polynomial-spec}; whitespace is permitted
 between tokens.  Throughout, ``program'' means a source in this specified
 expanded form; permissive implementation extensions are outside the model.
-The interpreter factors $f$ over the integers and orders the recognised
+The interpreter factors $f$ over the integers and orders the recognized
 roots by their associated primes.  A positive real root $p^v$ encodes a
 control-flow instruction; a conjugate pair $a\pm p^b i$ encodes a register
 instruction.  Unrecognised roots are ignored, so a source may be any integer
-multiple of the product of its instruction factors.  Repeated recognised
+multiple of the product of its instruction factors.  Repeated recognized
 roots produce repeated instructions.
 
 As a minimal example, $f(x)=x^2+4$ has roots $\pm2i$.  The imaginary
@@ -82,7 +82,7 @@ initial register value, the zero byte.  In general the interpreter follows
 the same pipeline:
 \[
  \text{expanded coefficients}\longrightarrow
- \text{recognised roots}\longrightarrow
+ \text{recognized roots}\longrightarrow
  \text{sorted instructions}\longrightarrow
  \text{execution}.
 \]
@@ -385,7 +385,7 @@ Theorem~\ref{thm:main}.
 \section{Scope and reproducibility}
 
 The result concerns source length, not the running time of polynomial
-factorisation or of source generation.  It allows arbitrary degrees,
+factorization or of source generation.  It allows arbitrary degrees,
 arbitrary operand signs, repeated roots, and arbitrary unrecognised cofactor
 roots.  It is an existence theorem for the uncapped residual-DAG
 construction.  Implementation resource limits do not affect the existence
@@ -400,7 +400,7 @@ Source code and verification scripts are available at
 \url{https://github.com/bangyen/esolangs}.
 
 \paragraph{Data availability.}
-No datasets were generated or analysed in this study.
+No datasets were generated or analyzed in this study.
 
 \begin{thebibliography}{9}
 \small

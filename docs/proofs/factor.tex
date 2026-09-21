@@ -8,7 +8,7 @@
   pdftitle={The Worst-Case Text Complexity of the Factor Esoteric Programming Language},
   pdfsubject={Descriptional complexity of Boolean functions in Factor},
   pdfkeywords={Factor, Brainfuck, descriptional complexity, Boolean functions, prime encoding},
-  pdflang={en-GB}
+  pdflang={en-US}
 }
 
 \newtheorem{theorem}{Theorem}[section]
@@ -32,14 +32,14 @@
 
 \begin{abstract}
 A Factor source denotes a decimal integer whose prime
-factorisation encodes a Brainfuck program: a prime's residue modulo $11$
+factorization encodes a Brainfuck program: a prime's residue modulo $11$
 selects an instruction and its exponent gives the run length.  We prove that
 the worst-case Factor source length for a Boolean truth table of length $T$ is
 $\Theta(T\log T)$.  The upper bound combines a linear-size Brainfuck
 construction with a fixed-modulus short-interval theorem for primes.  The
 lower bound counts every integer encoding of at most $D$ digits and remains
 valid in the presence of ignored prime factors, comments, and leading zeros;
-these encodings realise only $\exp(O(D/\log D))$ behaviours.
+these encodings realize only $\exp(O(D/\log D))$ behaviors.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -56,7 +56,7 @@ Let
 \]
 be the positive integer spelled by the decimal digits of a Factor source.
 An all-zero digit string instead decodes to the empty program; it is one
-exceptional behaviour and is excluded from the logarithmic notation below.
+exceptional behavior and is excluded from the logarithmic notation below.
 For a prime $p$, the residue $p\bmod 11$ selects the Brainfuck instruction
 according to
 \[
@@ -263,12 +263,12 @@ is $O(1)$.  Lemma~\ref{lem:runs} bounds their number by $O(L/\log L)$.
 Taking logarithms proves the claim; bounded $L$ is absorbed in the constant.
 \end{proof}
 
-\begin{proposition}[Behaviour count]\label{prop:count}
-Factor sources whose digit integers satisfy $\log N\le L$ realise at most
+\begin{proposition}[Behavior count]\label{prop:count}
+Factor sources whose digit integers satisfy $\log N\le L$ realize at most
 \[
   \exp(O(L/\log L))
 \]
-distinct behaviours.
+distinct behaviors.
 \end{proposition}
 
 \begin{proof}
@@ -290,16 +290,16 @@ $\Omega(T\log T)$ Factor digits.
 \begin{proof}
 Every nonzero digit integer spelled with at most $D$ digits has
 $\log N=O(D)$, so Proposition~\ref{prop:count} bounds the number of its
-behaviours by
+behaviors by
 \[
   \exp(O(D/\log D)).
 \]
-Zero-valued sources add only the empty behaviour, which is absorbed by this
+Zero-valued sources add only the empty behavior, which is absorbed by this
 bound.
 There are $2^T$ Boolean truth tables.  If every table had a $D$-digit source,
 then $D/\log D=\Omega(T)$, which implies $D=\Omega(T\log T)$.
 Ignored factors, comments, and leading zeros cannot invalidate the count:
-they add spellings of an already-counted decoded program, not behaviours.
+they add spellings of an already-counted decoded program, not behaviors.
 \end{proof}
 
 Propositions~\ref{prop:upper} and~\ref{prop:lower} prove
@@ -322,7 +322,7 @@ Source code and verification scripts are available at
 \url{https://github.com/bangyen/esolangs}.
 
 \paragraph{Data availability.}
-No datasets were generated or analysed in this study.
+No datasets were generated or analyzed in this study.
 
 \begin{thebibliography}{9}
 \small
