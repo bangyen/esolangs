@@ -83,8 +83,9 @@ $C=O(T)$.
 \end{lemma}
 
 \begin{proof}
-Use the generator's identity-order candidate.  It first reads bit $b_i$ into
-cell $2i$ and leaves cell $2i+1$ as a zero flag.  At a depth-$i$ node, set
+Use the generator's identity-order candidate.  It first reads ASCII input into
+cell $2i$, subtracts $48$ to obtain bit $b_i$, and leaves cell $2i+1$ as a
+zero flag.  At a depth-$i$ node, set
 the flag to one and run the one-child inside a loop on $b_i$ that clears both
 $b_i$ and the flag.  Then run the zero-child inside a loop on the flag that
 clears it.  Exactly one child runs, and both cells are zero afterward, so
