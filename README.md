@@ -244,7 +244,7 @@ Boolean generators accept a most-significant-input-first binary truth table.
 
 The truth table is a binary string of length `2**n`, most-significant input
 first; its length implies `n`, so it isn't passed separately.  62 of the
-languages have such a generator, some covering only a documented subset of
+text languages have such a generator, some covering only a documented subset of
 tables.
 
 <!-- BOOLEAN-COUNT:END -->

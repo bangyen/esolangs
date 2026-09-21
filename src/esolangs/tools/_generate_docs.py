@@ -185,8 +185,8 @@ def render_boolean_count_section() -> str:
             " most-significant input",
             f"first; its length implies `n`, so it isn't passed separately."
             f"  {len(BOOLEAN)} of the",
-            "languages have such a generator, some covering only a documented"
-            " subset of",
+            "text languages have such a generator, some covering only a"
+            " documented subset of",
             "tables.",
         ]
     )

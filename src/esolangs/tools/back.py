@@ -114,8 +114,8 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     template *is* input k: the harness fills the runs in order, so a
     cell-order load would have to carry its permutation some other way.
     The choice costs 2.85 points.  The walk is cheap in absolute
-    terms and shows up at all only because Back's programs are small -- 82
-    characters on average at n=3, against LaserFuck's 326.
+    terms -- ``4n - 2`` pointer moves, 10 of the 220 characters Back's
+    programs average at n=3 -- but visible because the programs are short.
 
     Keeping the ``-``/run pairs intact preserves the equal-width
     embedding: the primer and the run are one unit and are never

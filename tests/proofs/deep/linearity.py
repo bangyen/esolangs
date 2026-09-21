@@ -47,7 +47,7 @@ the failure list below means only "not caught", never "proved linear".
 Regime changes are excluded, not smoothed
 -----------------------------------------
 Generators dispatch, and a route switch moves size by a factor that has
-nothing to do with asymptotics: Circuit Diagram jumps x154 at n=8 when its
+nothing to do with asymptotics: Circuit Diagram jumps x35 at n=8 when its
 H-layout takes over, Streetcode x23 at n=6, and Container
 *drops* from 5674 to 1200 at n=7.  Measuring across one of those reads the
 constant, not the growth -- an earlier draft of this file scored Circuit
