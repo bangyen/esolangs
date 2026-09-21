@@ -15,10 +15,6 @@
 
 \newcommand{\R}{\mathbb R}
 \newcommand{\Z}{\mathbb Z}
-\newcommand{\N}{\mathbb N}
-\newcommand{\supp}{\operatorname{supp}}
-\newcommand{\Tail}{\operatorname{Tail}}
-\newcommand{\sgn}{\operatorname{sgn}}
 
 \title{A Tight Text-Complexity Bound for the Polynomial Language}
 \author{The \texttt{esolangs} project}
@@ -35,11 +31,10 @@ some Boolean functions with truth-table length $T$ require
 $\Omega(T^2/\log T)$ source characters in every Polynomial program,
 independently of the program's degree, operand signs, and additional roots.
 An explicit residual-DAG construction gives the matching
-$O(T^2/\log T)$ upper bound for every Boolean function.  The main algebraic
-ingredient is an exact $\ell^1$ tail bound, with equality characterised, for
-exponential sums with prescribed integer zeros.  It implies that every real
-polynomial divisible by $L$
-distinct prime-power roots has coefficient mass
+$O(T^2/\log T)$ upper bound for every Boolean function.  A companion
+coefficient-mass theorem implies that every real polynomial divisible by $L$
+distinct prime-power roots and having leading coefficient of absolute value
+at least one has logarithmic coefficient mass
 $\Omega(L^2\log L)$.  A routing argument, sharpened by an outerplanar
 block-incidence bound, forces $L=\Omega(T/\log T)$ distinct real roots in a
 program for a maximal-width table.
@@ -95,27 +90,19 @@ $\Theta(T^2/\log T)$.
 \end{theorem}
 
 The lower bound has two independent parts.  Section~\ref{sec:routing} forces
-$\Omega(T/\log T)$ distinct positive roots.  Sections~\ref{sec:tail}
-and~\ref{sec:mass} show that every polynomial containing those roots has
-coefficient mass $\Omega(T^2/\log T)$.  Section~\ref{sec:upper} supplies the
-matching construction.
+$\Omega(T/\log T)$ distinct positive roots.  Section~\ref{sec:mass} applies
+the companion coefficient-mass theorem.  Section~\ref{sec:upper} supplies
+the matching construction.
 
 Residual DAGs are reduced ordered binary decision diagrams under a fixed
 variable order~\cite{bryant}; classical results place the size of an optimal
 diagram for almost every Boolean function at the same
 $\Theta(T/\log T)$ scale~\cite{wegener,gps}.  Lemma~\ref{lem:maximal-width}
 uses a tailored simultaneous width statistic, and the block-incidence
-argument translates it into distinct Polynomial roots.  The algebraic half
-is adjacent to work on sparse polynomial multiples~\cite{grt,roche}; unlike
-those algorithmic questions with prescribed degree, sparsity, or height, our
-bound applies to every multiple of the specified root product, independently
-of degree.  More directly, Dubickas and Jankauskas's reduced-height
-certificates use the same normalized exponential sums and compute the
-leading-zero case below~\cite[Section~2]{dj}.  Our analytic contribution is
-the strict comparison with every displaced zero set; iterating the resulting
-certificate controls successive coefficient order statistics rather than
-only the largest coefficient.  This logarithmic coefficient mass differs
-from the reduced length studied by Dubickas and Schinzel~\cite{dubickas,schinzel}.
+argument translates it into distinct Polynomial roots.  The companion
+manuscript places its displaced-zero comparison
+and coefficient-order-statistic argument in the reduced-height
+literature~\cite{coefficient-mass}.
 
 \section{Routing forces distinct real roots}\label{sec:routing}
 
@@ -239,254 +226,37 @@ $L=\Omega(T/\log T)$ distinct positive real instruction roots.
 Combine \eqref{eq:residual-width} with Lemma~\ref{lem:block}.
 \end{proof}
 
-\section{A tail theorem for exponential sums}\label{sec:tail}
+\section{Coefficient mass from prescribed roots}\label{sec:mass}
 
-The coefficient bound rests on a dual certificate.  We first prove the
-analytic statement that controls its norm.
+The companion paper develops the exponential-sum certificates and proves the
+following degree-independent statement~\cite[Theorem~3.2]{coefficient-mass}.
 
-\begin{theorem}[Each leading zero buys one root]\label{thm:tail}
-Let
+Write
 \[
-  \rho_1>\cdots>\rho_c\ge2,
-  \qquad y_i=\rho_i^{-1},
-\]
-and let $Z\subset\N_{>0}$ have $c-1$ elements.  Suppose that
-\[
-  u_d=\sum_{i=1}^{c}a_i y_i^d,
-  \qquad u_0=1,
-  \qquad u_z=0\quad(z\in Z).
-\]
-Let
-$f=\max\{0\le k\le c-1:\{1,\ldots,k\}\subseteq Z\}$.  Then
-\begin{equation}\label{eq:tail-bound}
-  \Tail(u):=\sum_{d\ge1}|u_d|
-  \le \prod_{i=1}^{f+1}\frac{y_i}{1-y_i}
-  =\frac{1}{\prod_{i=1}^{f+1}(\rho_i-1)}.
-\end{equation}
-Equality holds exactly when $Z=\{1,\ldots,c-1\}$.
-\end{theorem}
-
-We use the classical Chebyshev-system zero bound~\cite{karlin-studden}: a
-nonzero exponential sum on $r$ distinct positive nodes has at most $r-1$
-real zeros, counted with
-multiplicity.  Divide by the smallest node to the real power and apply
-Rolle's theorem inductively.  In particular, an $r$-node sum with $r-1$
-specified zeros has no others and changes sign at each specified zero.
-
-\begin{proof}[Proof of Theorem~\ref{thm:tail}]
-Induct on the number $c-1-f$ of displaced zeros.
-
-If $Z=\{1,\ldots,c-1\}$, put
-\[
-  U(x)=\sum_{d\ge0}u_dx^d
-      =\frac{N(x)}{\prod_i(1-y_ix)},
-  \qquad \deg N\le c-1.
-\]
-The first $c-1$ nonconstant coefficients of $U$ vanish.  Comparing the
-coefficient of $x^c$ gives, for $d\ge c$,
-\[
-  u_d=(-1)^{c+1}\Bigl(\prod_i y_i\Bigr)h_{d-c}(y_1,\ldots,y_c),
-\]
-where $h_j$ is the complete homogeneous symmetric polynomial.  These terms
-have one sign, and therefore
-\[
-  \Tail(u)=\Bigl(\prod_i y_i\Bigr)
-            \sum_{j\ge0}h_j(y_1,\ldots,y_c)
-          =\prod_i\frac{y_i}{1-y_i}.
+  \Lambda(F)=\sum_{j:f_j\ne0}\log^+|f_j|.
 \]
 
-Now assume that a zero is displaced.  Set $z=\max Z$,
-$Z'=Z\setminus\{z\}$, and $m=\max Z'$, with $m=0$ if $Z'$ is empty.  Let
-$F$ be the exponential sum on $y_1,\ldots,y_{c-1}$ satisfying
-$F_0=1$ and $F|_{Z'}=0$.  Let $G$ be the sum on all $c$ nodes satisfying
-$G|_{\{0\}\cup Z'}=0$ and $G_z=1$.  Uniqueness in the corresponding
-Vandermonde systems gives
-\[
-  u=F+\lambda G,\qquad \lambda=-F_z.
-\]
-The induction hypothesis gives the desired bound for $F$, on the same first
-$f+1$ roots.  It remains to show $\Tail(u)\le\Tail(F)$.
-
-The zero bound fixes all signs.  Put $\eta=\sgn(F_z)$ and
-$\mu=|F_z|$.  Away from $Z'$, the two sequences $F$ and $G$ have constant
-relative sign $\eta$: each has exactly the simple zeros $Z'$ there, so both
-flip at precisely the same indices.  The extra zero of $u$ at $z$ makes $u$
-change sign where $F$ does not.  Hence
-\[
- |u_d|=\bigl||F_d|-\mu|G_d|\bigr|,
-\]
-with $|F_d|>\mu|G_d|$ below $z$ and the reverse inequality above $z$.
-Writing
-\[
-  \Gamma_V(z)=\frac{\sum_{d\ge z}|V_d|}{|V_z|},
-\]
-and putting $A_G=\sum_{1\le d<z}|G_d|$, the resulting exact split is
-\[
- \Tail(F)-\Tail(u)
- =\mu\bigl(2\Gamma_F(z)-\Gamma_G(z)+A_G\bigr).
-\]
-It is therefore enough to prove
-\begin{equation}\label{eq:gamma-target}
-  \Gamma_G(z)\le2\Gamma_F(z).
-\end{equation}
-
-We prove the stronger estimate
-\begin{equation}\label{eq:gamma-strong}
-  \Gamma_G(z)\le\frac{\Gamma_F(z)}{1-y_c}.
-\end{equation}
-Let $\widehat F_d=\eta F_d>0$ for $d>m$ and
-$E_d=G_d-y_cG_{d-1}$.  The latter is an exponential sum on the first
-$c-1$ nodes.  The required comparison is
-\begin{equation}\label{eq:drive}
-  \frac{E_d}{\widehat F_d}
-  \le\frac{G_z}{\widehat F_z}
-  \qquad(d\ge z>m).
-\end{equation}
-Indeed, induction in the recurrence $G_d=y_cG_{d-1}+E_d$ then gives
-\[
-  \frac{G_{z+t}}{G_z}
-  \le\sum_{j=0}^{t}y_c^{t-j}
-       \frac{\widehat F_{z+j}}{\widehat F_z}.
-\]
-All $G_d$ for $d\ge z$ are positive.  Summing in $t$ proves
-\eqref{eq:gamma-strong}.  Since $y_c\le1/2$, this implies
-\eqref{eq:gamma-target}.
-
-It remains to verify \eqref{eq:drive}.  Write
-\[
- A=\{0\}\cup Z'=\{a_1=0<\cdots<a_{c-1}=m\},\qquad
- \sigma=\frac{G_{m+1}}{\widehat F_{m+1}},
-\]
-and define the $(c-1)$-node exponential sum
-\[
-  \Delta_d=\sigma\widehat F_d-E_d.
-\]
-It is either identically zero or has at most $c-2$ real zeros, counted with
-multiplicity.  It vanishes at $m+1$ and at each $d$ for which
-$d-1,d\in A$.  Let $r$ be the number of these consecutive pairs, and let
-$J$ contain the remaining indices $j$ for which $a_{j+1}\in Z'$.  Then
-$|J|=c-2-r$.  At such a remaining point,
-\[
- \Delta_{a_{j+1}}=y_cG_{a_{j+1}-1},
- \qquad
- \sgn\Delta_{a_{j+1}}=(-1)^{c-1-j}.
-\]
-If $J$ is empty, the $r$ forced zeros together with $m+1$ exceed the zero
-budget, so $\Delta$ is identically zero.  Otherwise take consecutive
-$j<j'$ in $J$.  The open interval between their marked points contains
-$j'-j-1$ forced zeros, while the endpoint signs differ by
-$(-1)^{j'-j}$.  The intervening zero count must therefore have the parity of
-$j'-j$ and is at least $j'-j$, one more than the forced count.  Summing over
-consecutive members of $J$, and adding the $r$ forced zeros and the zero at
-$m+1$, gives
-\[
- r+(|J|-1)+1=c-2
-\]
-zeros.  This exhausts the zero bound.  Hence all counted zeros are simple and
-there are no others, in particular none above $m+1$.  Starting at the last
-marked point and using its displayed sign shows that the sign after the
-remaining crossings is positive.  Thus $\Delta_d\ge0$ for $d\ge m+1$.
-Thus
-\begin{equation}\label{eq:first-drive}
-  \frac{E_d}{\widehat F_d}\le\sigma\qquad(d\ge m+1).
-\end{equation}
-For the other half, the $c$-node sum
-\[
-  W_d=\widehat F_{m+1}G_d-G_{m+1}\widehat F_d
-\]
-vanishes on $Z'\cup\{m+1\}$.  These are all its $c-1$ possible zeros.  It
-is positive beyond $m+1$: asymptotically only $G$ contains the largest node
-$y_c$, with positive coefficient there.  Hence
-\begin{equation}\label{eq:second-drive}
-  \sigma\le\frac{G_z}{\widehat F_z}\qquad(z>m).
-\end{equation}
-Equations \eqref{eq:first-drive} and \eqref{eq:second-drive} give
-\eqref{eq:drive}.
-
-In the displaced case $A_G>0$.  Indeed, if $z>m+1$, then $G_{m+1}\ne0$;
-if $z=m+1$, the absence of a gap below $z$ would make
-$Z=\{1,\ldots,c-1\}$, contrary to displacement, and at any gap $G$ is
-nonzero by the zero bound.  Thus the tail comparison is strict even if
-\eqref{eq:gamma-target} is an equality.  Equality occurs only in the
-all-leading base case.  This completes the induction.
-\end{proof}
-
-\section{From the tail theorem to coefficient mass}\label{sec:mass}
-
+\begin{theorem}[Coefficient-mass theorem]\label{thm:mass}
 Let
 \[
   P(x)=\prod_{i=1}^{L}(x-r_i),
   \qquad 2\le r_1<\cdots<r_L,
 \]
-and let $F(x)=\sum_{j=0}^{D}f_jx^j\in\R[x]$ be a nonzero multiple of $P$.
-After scaling, assume $|f_D|=1$.
-
-\begin{lemma}[Slack certificate]\label{lem:slack}
-Fix $0\le u\le(L-1)/2$ and any set $U$ of $u$ coefficient positions below
-$D$.  Some position $j<D$ outside $U$ satisfies
-\begin{equation}\label{eq:threshold}
-  |f_j|\ge \prod_{i=2u+1}^{L}(r_i-1).
-\end{equation}
-\end{lemma}
-
-\begin{proof}
-Put $c=L-u$ and use the $c$ largest roots.  A coefficient position $j$ has
-backward distance $d=D-j$.  Choose a $c$-node exponential sum $w_d$ with
-$w_0=1$ whose $c-1$ zeros occur at the distances belonging to $U$ together
-with the first $L-2u-1$ positive distances not occupied by $U$.  The
-Vandermonde system is nonsingular.  Since $w_d$ is a linear combination of
-$r_i^{-d}$ over the chosen roots, a correspondingly weighted sum of the
-equations $F(r_i)=0$ gives
-\[
-  1=|f_Dw_0|
-   \le\sum_{j<D,\,j\notin U}|f_jw_{D-j}|.
-\]
-The selected zero set begins with a run of at least $L-2u-1$ backward
-positions.  Theorem~\ref{thm:tail}, applied to the reciprocal roots, gives
-\[
-  \sum_{j<D,\,j\notin U}|w_{D-j}|
-  \le\frac{1}{\prod_{i=2u+1}^{L}(r_i-1)}.
-\]
-If every coefficient outside $U$ were smaller than the right side of
-\eqref{eq:threshold}, the preceding two displays would contradict each
-other.
-\end{proof}
-
-\begin{theorem}[Mass of every multiple]\label{thm:mass}
-Every nonzero real multiple $F$ of $P$ satisfies
+and let \(F(x)=\sum_{j=0}^{D}f_jx^j\in\R[x]\) be a nonzero multiple of
+\(P\) with \(|f_D|\ge1\).  Then
 \begin{equation}\label{eq:mass-general}
-  \sum_{j:f_j\ne0}\log^+|f_j|
+  \Lambda(F)
   \ge \sum_{u=0}^{\lfloor(L-1)/2\rfloor}
        \sum_{i=2u+1}^{L}\log(r_i-1),
 \end{equation}
-when $|f_D|\ge1$, where $\log^+x=\max(0,\log x)$.
-For the first $L$ primes, or for any increasing prime powers bounded below
-by them, the right side is $\Omega(L^2\log L)$.
+where \(\log^+x=\max(0,\log x)\).
 \end{theorem}
 
-\begin{proof}
-Apply Lemma~\ref{lem:slack} to $F/|f_D|$, whose leading coefficient has
-absolute value one.  Restoring the factor $|f_D|\ge1$ cannot decrease any
-$\log^+|f_j|$, so it suffices to prove the claim in that normalisation.
-For each $u$, take $U$ to be the positions of the $u$ largest coefficients
-below the leading term.  Lemma~\ref{lem:slack} produces a new coefficient,
-the $(u+1)$st largest, of size at least the threshold in
-\eqref{eq:threshold}.  Summing its logarithm over $u$ proves
-\eqref{eq:mass-general}.
-
-For prime roots $p_1<\cdots<p_L$, each $\log(p_i-1)$ appears
-$\lceil i/2\rceil$ times, up to reversing the harmless indexing convention.
-The prime number theorem~\cite{rs}, or the elementary bound $p_i\ge i+1$, yields
-\[
-  \sum_{i=1}^{L}\lceil i/2\rceil\log(p_i-1)
-  =\Omega(L^2\log L).
-\]
-The sharper asymptotic constant is $1/4$ in natural logarithms.
-\end{proof}
-
-The theorem is deliberately stated over $\R$: integrality and the signs of
-the other roots play no role.  Additional roots merely choose another
-multiple $F$ and cannot evade the bound.
+For the first \(L\) primes, or for increasing roots bounded below by them,
+the right side is \(\Omega(L^2\log L)\): each
+\(\log(r_i-1)\) occurs \(\lceil i/2\rceil\) times, and \(r_i\ge i+1\).
+The theorem applies to every real multiple, independently of its degree and
+additional roots.
 
 \begin{corollary}[Polynomial lower bound]\label{cor:lower}
 Every Polynomial source for a maximal-width truth table has
@@ -497,29 +267,26 @@ Every Polynomial source for a maximal-width truth table has
 
 \begin{proof}
 By Corollary~\ref{cor:roots}, the program contains
-$L=\Omega(T/\log T)$ distinct positive real instruction roots.  A prime base
+\(L=\Omega(T/\log T)\) distinct positive real instruction roots.  A prime base
 supplies at most eight distinct real values, one for each allowed exponent.
-After sorting, the $i$th root is therefore at least
-$p_{\lceil i/8\rceil}$.  In particular, for $i\ge16$ it is at least
-$\lceil i/8\rceil+1$, so the weighted sum in
-Theorem~\ref{thm:mass} is still $\Omega(L^2\log L)$.  The source polynomial
-is a multiple of their distinct-root product.
-Theorem~\ref{thm:mass} therefore gives
+After sorting, the \(i\)th root is therefore at least
+\(p_{\lceil i/8\rceil}\).  In particular, for \(i\ge16\) it is at least
+\(\lceil i/8\rceil+1\), so the weighted sum in
+Theorem~\ref{thm:mass} is still \(\Omega(L^2\log L)\).  The source polynomial
+is an integer multiple of their distinct-root product and its leading
+coefficient has absolute value at least one.  Theorem~\ref{thm:mass} gives
 \[
- M(f)=\Omega(L^2\log L)
-     =\Omega\!\left(\frac{T^2}{\log T}\right).
+ \Lambda(f)=\Omega(L^2\log L)
+           =\Omega\!\left(\frac{T^2}{\log T}\right).
 \]
-Since $|f|\ge M(f)$, the result follows.
+Since integer coefficients satisfy
+$M(f)\ge\Lambda(f)/\log 10$ and $|f|\ge M(f)$, the result follows.
 \end{proof}
 
 \begin{remark}[Repeated roots]
 Repeated real roots do not weaken Corollary~\ref{cor:lower}: the
-block-incidence lemma already forces the stated number of \emph{distinct}
-values.  A separate confluent version of Theorem~\ref{thm:tail} follows by a
-Hermite limit, replacing $a_iy_i^d$ with $Q_i(d)y_i^d$ and repeating each
-$y_i$ according to $1+\deg Q_i$.  It yields an independent quadratic mass
-bound in the total multiplicity, but is not needed for the sharp language
-bound.
+block-incidence lemma already forces the stated number of distinct values,
+and Theorem~\ref{thm:mass} applies to their distinct-root product.
 \end{remark}
 
 \section{The matching construction}\label{sec:upper}
@@ -580,9 +347,7 @@ construction; the public generator may impose a resource cap before reaching
 the asymptotic family.
 
 The companion repository contains executable checks of the finite identities
-used above.  In particular,
-\texttt{tests/proofs/test\_negatives.py} checks the tail identities and dual
-thresholds in exact arithmetic, while
+used here.  In particular,
 \texttt{tests/proofs/deep/multiplicity.py} checks the block charges,
 outerplanar count, and repeated-root cases.  The longer development record,
 including counterexamples to earlier proof attempts and bounded searches, is
@@ -620,45 +385,12 @@ C.~Gröpl, H.~J. Prömel, and A.~Srivastav,
 \newblock \href{https://doi.org/10.1016/j.dam.2003.02.003}
 {doi:10.1016/j.dam.2003.02.003}.
 
-\bibitem{karlin-studden}
-S.~Karlin and W.~J. Studden,
-\newblock \emph{Tchebycheff Systems: With Applications in Analysis and Statistics},
-\newblock Interscience, New York, 1966.
+\bibitem{coefficient-mass}
+The \texttt{esolangs} project,
+\newblock Displaced-zero certificates and the coefficient mass of polynomial
+multiples,
+\newblock companion manuscript, September 2026.
 
-\bibitem{dj}
-A.~Dubickas and J.~Jankauskas,
-\newblock On the reduced height of a polynomial,
-\newblock \emph{Publicationes Mathematicae Debrecen} 71 (2007), 325--348,
-\newblock \href{https://doi.org/10.5486/PMD.2007.3728}
-{doi:10.5486/PMD.2007.3728}.
-
-\bibitem{dubickas}
-A.~Dubickas,
-\newblock Arithmetical properties of powers of algebraic numbers,
-\newblock \emph{Bulletin of the London Mathematical Society} 38 (2006), 70--80,
-\newblock \href{https://doi.org/10.1112/S0024609305017728}
-{doi:10.1112/S0024609305017728}.
-
-\bibitem{schinzel}
-A.~Schinzel,
-\newblock On the reduced length of a polynomial with real coefficients,
-\newblock \emph{Functiones et Approximatio} 35 (2006), 271--306,
-\newblock \href{https://doi.org/10.7169/facm/1229442629}
-{doi:10.7169/facm/1229442629}.
-
-\bibitem{grt}
-M.~Giesbrecht, D.~S. Roche, and H.~Tilak,
-\newblock Computing sparse multiples of polynomials,
-\newblock \emph{Algorithmica} 64 (2012), 454--480,
-\newblock \href{https://doi.org/10.1007/s00453-012-9652-4}
-{doi:10.1007/s00453-012-9652-4}.
-
-\bibitem{roche}
-D.~S. Roche,
-\newblock What can (and can't) we do with sparse polynomials?,
-\newblock in \emph{ISSAC 2018}, 25--30,
-\newblock \href{https://doi.org/10.1145/3208976.3209027}
-{doi:10.1145/3208976.3209027}.
 \end{thebibliography}
 
 \end{document}
