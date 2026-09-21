@@ -148,7 +148,7 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str |
     """Return a program in ``language`` computing ``truth_table``.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first, so its
-    length implies ``n``.  Eighteen languages embed their inputs in the
+    length implies ``n``.  Fourteen languages embed their inputs in the
     program text; for those this returns a *template* with each input as a
     run of one character (``$`` unless the language declares another), one
     run per input, exactly as long as the code :func:`instantiate` fills it

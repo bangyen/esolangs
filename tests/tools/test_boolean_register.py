@@ -272,7 +272,7 @@ class TestPolynomial:
     def test_a_dense_eight_input_table_runs_every_row(self) -> None:
         """The arity the old cap refused now builds, and every row answers.
 
-        Dense n == 8 is 541 instructions -- past the old 328, and past
+        Dense n == 8 is 462 instructions -- past the old 328, and past
         ``_NTT_MIN_DEGREE`` once rendered, so this is the suite's
         execution-gate witness for the NTT recovery path *and* for the
         per-program parse cache: the first row pays the factorization
@@ -295,7 +295,7 @@ class TestPolynomial:
         The gate was on ``n`` because a decision tree doubles with it.  The
         state machine merges prefixes with equal residual subfunctions, so a
         table that collapses is cheap at any width: AND-5 was rejected and
-        now builds, and parity -- the tree's worst case, 2298 instructions
+        now builds, and parity -- the tree's worst case, 2553 instructions
         at n == 8 -- is linear here, 11 per input, and renders through
         n == 8.
         """

@@ -229,7 +229,7 @@ def _commands(name: str, table: str) -> int | None:
     halts = None
     if facts["answer_mode"] == "termination":
         # Which bit the language spells by terminating, read rather than
-        # assumed: it is ("halts", "diverges") for all three today.
+        # assumed: it is ("halts", "diverges") for all four today.
         halts = str(list(facts["answer_encoding"]).index("halts"))
     inputs = len(table).bit_length() - 1
     program = generate(name, table, None)

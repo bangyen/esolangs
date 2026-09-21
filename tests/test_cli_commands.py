@@ -112,7 +112,7 @@ class TestTheShellCanJudgeAnAnswer:
     def test_run_judge_reads_a_timeout_as_the_one(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """For the three that answer by diverging, not halting *is* the 1."""
+        """For the four that answer by diverging, not halting *is* the 1."""
         program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
         out = call_main(
             ["run", "--judge", "--timeout", _LOOPS, "123", _program(tmp_path, program)],
