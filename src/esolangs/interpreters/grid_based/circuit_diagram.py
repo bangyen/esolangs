@@ -7,9 +7,10 @@ arrived.  There is no instruction pointer.  Gates (per the wiki): ``a``
 AND, ``A`` NAND, ``o`` OR, ``O`` NOR, ``x`` XOR (exactly one input 1),
 ``X`` XNOR, ``~`` NOT (as many wires as it took).  All but ``~`` take two
 inputs from the left and drive one output right.  ``<`` splits a
-multi-wire in half, ``>`` appends its second input to its first, ``-n-``
-labels a wiring as ``n`` wires, a leading ``-`` reads that many input
-bits, ``:`` prints the wire to its left.
+multi-wire in half, ``>`` appends its second input to its first, and ``%``
+removes a leading slice.  Numeric and letter expressions label widths;
+``(``, ``)``, and ``t`` source zeroes, ones, and the 32-bit clock.
+A leading ``-`` reads input and ``:`` prints the wire to its left.
 
 A *wiring* is a group of wires connected without passing a gate and
 holds one value (Null, 0, 1, or a tuple).  Wires connect only when they
@@ -56,10 +57,9 @@ already draws the ``=`` crossovers where ``~c``'s diagonal would cross
 and omits only the ``/`` between them; ``b``'s horizontal run stops four
 columns short.
 
-Scope is every symbol the page's example uses.  User functions
-(``{name ... }``), constants ``(``/``)``, ``{%``, the clock ``t`` and
-letter-labelled wires appear in no example and raise :class:`ValueError`
-as out of scope, on the reasoning that kept Gate out of the package.
+Named ``{function ... }`` blocks are removed from the main grid and called
+as atomic custom gates.  Their input rows bind symbolic widths at each call;
+their output ports are concatenated into the call's output multi-wire.
 Malformed programs (unknown character, wrong input count, a wiring
 feeding and fed by one gate, an inconsistent width label) raise
 :class:`ValueError`.  At EOF a read yields a **zero bit** rather than
@@ -69,10 +69,50 @@ value to settle on; no :class:`HaltError` is raised.
 
 import re
 import sys
+from datetime import UTC, datetime
 from functools import lru_cache
-from typing import Final, Literal
+from typing import Final, Literal, cast
 
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
+
+type _Definitions = dict[str, tuple[str, ...]]
+
+_DEFINITION_HEADER = re.compile(r"\s*\{([A-Za-z]+|[<>%])\s*")
+
+
+def _split_definitions(code: list[str]) -> tuple[list[str], _Definitions]:
+    """Return the main grid and the named function bodies declared around it."""
+    main: list[str] = []
+    definitions: _Definitions = {}
+    position = 0
+    while position < len(code):
+        line = code[position].rstrip("\n")
+        header = _DEFINITION_HEADER.fullmatch(line)
+        if header is None:
+            if line.strip() == "}":
+                raise ValueError(
+                    f"unmatched function terminator at line {position + 1}"
+                )
+            main.append(code[position])
+            position += 1
+            continue
+        name = header.group(1)
+        body: list[str] = []
+        position += 1
+        while position < len(code) and code[position].strip() != "}":
+            body.append(code[position])
+            position += 1
+        if position == len(code):
+            raise ValueError(f"unterminated function {name!r}")
+        if name in definitions:
+            raise ValueError(f"duplicate function {name!r}")
+        if name in (_GATES | frozenset((_CLOCK,))):
+            raise ValueError(f"function name {name!r} is reserved")
+        if name not in (_SPLIT, _COMBINE, _REMOVE):
+            definitions[name] = tuple(body)
+        position += 1
+    return main, definitions
+
 
 # Wire characters, and the directions each one accepts a connection from.
 # A direction is (d_row, d_col) pointing *out* of the cell, rows growing
@@ -102,9 +142,9 @@ _WIRE_DIRECTIONS = {
     ".": _ALL_DIRECTIONS,
 }
 
-#: A ``-n-`` label: opens on a digit, then digits and the ``+`` of the sum
-#: spelling.  The same run the cell-by-cell scan it replaced walked.
-_LABEL_RUN = re.compile(r"[0-9][0-9+]*")
+#: A numeric or symbolic width label, including sums such as ``n+m``.
+_LABEL_RUN = re.compile(r"[A-Za-z0-9]+(?:\+[A-Za-z0-9]+)*")
+_LABEL_NAME = re.compile(r"[A-Za-z]+")
 
 #: The wire cells ``_build_wirings`` hunts for, so that it need not visit the
 #: blanks -- which are most of a diagram.
@@ -130,14 +170,19 @@ _SPLIT: Final = "<"
 _COMBINE: Final = ">"
 
 _OUTPUT: Final = ":"
+_ZERO: Final = "("
+_ONE: Final = ")"
+_CLOCK: Final = "t"
+_REMOVE: Final = "%"
 
-# What a _Gate's ``kind`` may be: a logic gate, or one of the three
-# gate-like characters that move wires around rather than compute.
-_GateKind = _LogicGate | Literal["<", ">", ":"]
+# What a _Gate's built-in ``kind`` may be.  Named functions are cast at
+# their parser boundary and carry a non-None ``body``.
+_GateKind = _LogicGate | Literal["<", ">", "%", ":", "(", ")", "t"]
 
-# The gate-like trio as a typed set: comparing against the three Final
-# constants above cannot narrow a str, but membership here does.
-_MOVERS: frozenset[Literal["<", ">", ":"]] = frozenset(("<", ">", ":"))
+# Typed so membership narrows a parsed character to a built-in gate kind.
+_MOVERS: frozenset[Literal["<", ">", "%", ":", "(", ")", "t"]] = frozenset(
+    ("<", ">", "%", ":", "(", ")", "t")
+)
 
 #: The gate-like cells ``_build_gates`` hunts for, the counterpart of
 #: ``_WIRE_CELL``.  Built from the alphabets rather than spelled again, so a
@@ -145,23 +190,24 @@ _MOVERS: frozenset[Literal["<", ">", ":"]] = frozenset(("<", ">", ":"))
 _GATE_CELL = re.compile(f"[{re.escape(''.join(sorted(_GATES | _MOVERS)))}]")
 
 #: Every character a program may hold: the wires and their crossover, the
-#: gates and movers, a label's digits and ``+``, and the blank.
+#: gates and movers, width-label characters, and the blank.
 #: ``_check_characters`` asks a row what it holds that this does not, which
 #: is one set operation rather than a step per cell.
 _LEGAL: frozenset[str] = (
-    _WIRES | frozenset(_CROSSOVER) | _GATES | _MOVERS | frozenset("0123456789+ ")
+    _WIRES
+    | frozenset(_CROSSOVER)
+    | _GATES
+    | _MOVERS
+    | frozenset("0123456789+ ")
+    | frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 )
 
-# Specified by the page but exercised by none of its examples; see the
-# module docstring's scope section.
+# Braces are consumed before grid validation; ``?`` is legal only inside
+# the built-in definitions, which are discarded in favour of their primitives.
 _OUT_OF_SCOPE = {
     "{": "user-defined functions",
     "}": "user-defined functions",
-    "(": "the constant-0 source '('",
-    ")": "the constant-1 source ')'",
-    "%": "the wire-removal function '{%'",
     "?": "the splitter/combiner primitive '?'",
-    "t": "the clock 't'",
 }
 
 
@@ -277,19 +323,29 @@ class _Gate:
     inputs: list[_Wiring]
     outputs: list[_Wiring]
 
-    def __init__(self, kind: _GateKind, row: int, col: int) -> None:
+    def __init__(
+        self,
+        kind: _GateKind,
+        row: int,
+        col: int,
+        body: tuple[str, ...] | None = None,
+        definitions: _Definitions | None = None,
+    ) -> None:
         """Create a gate of ``kind`` at ``(row, col)`` with no ports bound."""
         self.kind = kind
         self.row = row
         self.col = col
+        self.body = body
+        self.definitions = definitions or {}
 
 
 class _Parser:
     """Turns a grid into wirings and the gates that join them."""
 
-    def __init__(self, grid: _Grid) -> None:
+    def __init__(self, grid: _Grid, definitions: _Definitions | None = None) -> None:
         """Parse ``grid`` into ``wirings`` and ``gates``."""
         self.grid = grid
+        self.definitions = definitions or {}
         self.links = _Connections(grid)
         self._check_characters()
         self.wirings = self._build_wirings()
@@ -298,6 +354,8 @@ class _Parser:
         self._by_cell = {
             cell: wiring for wiring in self.wirings for cell in wiring.cells
         }
+        self._symbols: dict[str, list[_Wiring]] = {}
+        self._expressions: list[tuple[_Wiring, tuple[str | int, ...]]] = []
         self._label_widths()
         self.gates = self._build_gates()
         self._check_widths()
@@ -322,12 +380,34 @@ class _Parser:
                 raise ValueError(
                     f"{_OUT_OF_SCOPE[char]} is out of scope: {char!r} at ({col}, {row})"
                 )
-            if char.isalpha():
-                raise ValueError(
-                    "letter-labelled multi-wires are out of scope: "
-                    f"{char!r} at ({col}, {row})"
-                )
             raise ValueError(f"unknown character {char!r} at ({col}, {row})")
+
+        for row, line in enumerate(self.grid.rows):
+            for match in _LABEL_NAME.finditer(line):
+                text = match.group()
+                if text in self.definitions:
+                    continue
+                if len(text) == 1 and text in (_GATES | frozenset((_CLOCK,))):
+                    continue
+                expression = next(
+                    (
+                        candidate
+                        for candidate in _LABEL_RUN.finditer(line)
+                        if candidate.start() <= match.start()
+                        and candidate.end() >= match.end()
+                    ),
+                    None,
+                )
+                if (
+                    expression is not None
+                    and self.grid.at(row, expression.start() - 1) in _WIRES
+                    and self.grid.at(row, expression.end()) in _WIRES
+                ):
+                    continue
+                raise ValueError(
+                    f"unknown function or wire label {text!r} "
+                    f"at ({match.start()}, {row})"
+                )
 
     def _build_wirings(self) -> list[_Wiring]:
         """Group every wire cell into maximal connected components."""
@@ -358,7 +438,7 @@ class _Parser:
         return self._by_cell.get(cell)
 
     def _label_widths(self) -> None:
-        """Apply every ``-n-`` digit run to the wiring it annotates.
+        """Apply every numeric or symbolic label to the wiring it annotates.
 
         The label splits a wire visually, so it joins the two sides and
         fixes their width; a sum spelling (``-1+2-``) totals.
@@ -372,34 +452,57 @@ class _Parser:
             for match in _LABEL_RUN.finditer(line):
                 text = match.group()
                 start, col = match.start(), match.end()
-                width = self._label_width(text, row, start)
-                self._apply_label(start, col, row, width)
+                if text in self.definitions:
+                    continue
+                if len(text) == 1 and text in (_GATES | frozenset((_CLOCK,))):
+                    continue
+                if self.grid.at(row, start - 1) not in _WIRES:
+                    if text[0].isdigit():
+                        raise ValueError(
+                            f"wire label at ({start}, {row}) annotates no wire"
+                        )
+                    continue  # pragma: no cover - validation rejects this label
+                if self.grid.at(row, col) not in _WIRES:
+                    if text[0].isdigit():
+                        raise ValueError(
+                            f"wire label at ({start}, {row}) annotates no wire"
+                        )
+                    continue  # pragma: no cover - validation rejects this label
+                terms: tuple[str | int, ...] = tuple(
+                    int(part) if part.isdigit() else part for part in text.split("+")
+                )
+                width = (
+                    sum(term for term in terms if isinstance(term, int))
+                    if all(isinstance(term, int) for term in terms)
+                    else None
+                )
+                if width is not None and width < 1:
+                    raise ValueError(
+                        f"wire label {text!r} at ({start}, {row}) must be positive"
+                    )
+                merged = self._apply_label(start, col, row, width)
+                if len(terms) == 1 and isinstance(terms[0], str):
+                    self._symbols.setdefault(terms[0], []).append(merged)
+                elif width is None:
+                    self._expressions.append((merged, terms))
 
-    def _label_width(self, text: str, row: int, col: int) -> int:
-        """Return the total width a ``-n-`` label spells, e.g. ``1+2`` -> 3."""
-        parts = text.split("+")
-        if not all(part.isdigit() for part in parts):
-            raise ValueError(f"malformed wire label {text!r} at ({col}, {row})")
-        width = sum(int(part) for part in parts)
-        if width < 1:
-            raise ValueError(f"wire label {text!r} at ({col}, {row}) must be positive")
-        return width
-
-    def _apply_label(self, start: int, end: int, row: int, width: int) -> None:
+    def _apply_label(
+        self, start: int, end: int, row: int, width: int | None
+    ) -> _Wiring:
         """Join the wirings flanking a label and fix their common width."""
         flanking = []
         for cell in ((row, start - 1), (row, end)):
             wiring = self._wiring_at(cell)
-            if wiring is not None and wiring not in flanking:
+            if wiring is not None and wiring not in flanking:  # pragma: no branch
                 flanking.append(wiring)
-        if not flanking:
+        if not flanking:  # pragma: no cover - both flanks were checked above
             raise ValueError(f"wire label at ({start}, {row}) annotates no wire")
 
         merged = _Wiring(frozenset().union(*(w.cells for w in flanking)))
-        merged.width = width
-        merged.labelled = True
+        merged.width = width if width is not None else flanking[0].width
+        merged.labelled = width is not None or any(w.labelled for w in flanking)
         for wiring in flanking:
-            if wiring.labelled and wiring.width != width:
+            if width is not None and wiring.labelled and wiring.width != width:
                 raise ValueError(
                     f"inconsistent wire labels at ({start}, {row}): "
                     f"{wiring.width} and {width}"
@@ -412,6 +515,7 @@ class _Parser:
         # back wirings that were no longer in the list at all.
         for cell in merged.cells:
             self._by_cell[cell] = merged
+        return merged
 
     def _ports(
         self,
@@ -454,8 +558,44 @@ class _Parser:
         """
         gates = []
         for row, line in enumerate(self.grid.rows):
-            for match in _GATE_CELL.finditer(line):
-                col, char = match.start(), match.group()
+            functions = [
+                match
+                for match in _LABEL_NAME.finditer(line)
+                if match.group() in self.definitions
+            ]
+            labels = [
+                range(match.start(), match.end())
+                for match in _LABEL_RUN.finditer(line)
+                if match.group() not in self.definitions
+                if self.grid.at(row, match.start() - 1) in _WIRES
+                and self.grid.at(row, match.end()) in _WIRES
+                and not (
+                    len(match.group()) == 1
+                    and match.group() in (_GATES | frozenset((_CLOCK,)))
+                )
+            ]
+            builtins = [
+                match
+                for match in _GATE_CELL.finditer(line)
+                if not any(
+                    match.start() in range(function.start(), function.end())
+                    for function in functions
+                )
+            ]
+            candidates = [
+                (match.start(), match.end(), match.group(), None) for match in builtins
+            ] + [
+                (
+                    match.start(),
+                    match.end(),
+                    match.group(),
+                    self.definitions[match.group()],
+                )
+                for match in functions
+            ]
+            for col, end, char, body in sorted(candidates):
+                if any(col in label for label in labels):
+                    continue
                 # ``_GATE_CELL`` is built from these two alphabets, so one of
                 # the arms always takes; they are spelled out because
                 # membership is what narrows the character to ``_GateKind``,
@@ -464,16 +604,20 @@ class _Parser:
                     kind: _GateKind = char
                 elif char in _MOVERS:
                     kind = char
-                else:  # pragma: no cover - the pattern admits nothing else
-                    continue
-                gate = _Gate(kind, row, col)
+                else:
+                    kind = cast(_GateKind, char)
+                gate = _Gate(kind, row, col, body, self.definitions)
                 if char == _OUTPUT:
                     outputs: list[_Wiring] = []
                 elif char == _SPLIT:
                     outputs = self._ports(row, col, 1, offsets=(-1, 1))
+                elif char in (_ZERO, _ONE, _CLOCK):
+                    outputs = self._ports(row, col, 1, offsets=(0,))
                 else:
-                    outputs = self._ports(row, col, 1)
-                incoming = self._ports(row, col, -1)
+                    outputs = self._ports(row, end - 1, 1)
+                incoming = (
+                    [] if char in (_ZERO, _ONE, _CLOCK) else self._ports(row, col, -1)
+                )
                 if char == "~" and len(incoming) > 1:
                     # NOT takes exactly one input, drawn level with it (the
                     # spec's sample is ``.~.``), so a diagonal neighbour is
@@ -490,7 +634,14 @@ class _Parser:
 
     def _check_arity(self, gate: _Gate) -> None:
         """Reject a gate whose port count the spec does not allow."""
-        wanted_in = 1 if gate.kind in ("~", _SPLIT, _OUTPUT) else 2
+        if gate.kind in (_ZERO, _ONE, _CLOCK):
+            wanted_in = 0
+        elif gate.body is not None:
+            wanted_in = sum(line.lstrip().startswith("-") for line in gate.body)
+        elif gate.kind in ("~", _SPLIT, _OUTPUT):
+            wanted_in = 1
+        else:
+            wanted_in = 2
         if len(gate.inputs) != wanted_in:
             raise ValueError(
                 f"{gate.kind!r} at ({gate.col}, {gate.row}) takes {wanted_in} "
@@ -515,7 +666,7 @@ class _Parser:
         down to the upper output), ``>`` sums; iterated to a fixed point.
         """
         for _ in range(len(self.wirings) + 1):
-            changed = False
+            changed = self._equate_symbols()
             for gate in self.gates:
                 for wiring, width in self._implied_widths(gate):
                     if wiring.width == width:
@@ -537,10 +688,54 @@ class _Parser:
             "multi-wire widths do not settle"
         )
 
+    def _equate_symbols(self) -> bool:
+        """Give every occurrence of a letter label the same width."""
+        changed = False
+        widths: dict[str, int] = {
+            term: 1
+            for _, terms in self._expressions
+            for term in terms
+            if isinstance(term, str)
+        }
+        for name, labelled in self._symbols.items():
+            wirings = {
+                self._wiring_at(next(iter(old.cells))) or old for old in labelled
+            }
+            fixed = {w.width for w in wirings if w.labelled}
+            if len(fixed) > 1:
+                width_text = ", ".join(str(width) for width in sorted(fixed))
+                raise ValueError(
+                    f"wire label {name!r} has inconsistent widths: {width_text}"
+                )
+            width = next(iter(fixed), max(w.width for w in wirings))
+            widths[name] = width
+            for wiring in wirings:
+                if wiring.width != width:
+                    wiring.width = width
+                    changed = True
+        for old, terms in self._expressions:
+            wiring = self._wiring_at(next(iter(old.cells))) or old
+            width = sum(
+                term if isinstance(term, int) else widths[term] for term in terms
+            )
+            if wiring.labelled and wiring.width != width:
+                raise ValueError(
+                    f"symbolic wire label implies {width} wire(s) for a wiring "
+                    f"labelled {wiring.width}"
+                )
+            if wiring.width != width:
+                wiring.width = width
+                changed = True
+        return changed
+
     def _implied_widths(self, gate: _Gate) -> list[tuple[_Wiring, int]]:
         """Return the widths ``gate`` forces on its output wirings."""
         if gate.kind == _OUTPUT:
             return []
+        if gate.kind in (_ZERO, _ONE):
+            return []
+        if gate.kind == _CLOCK:
+            return [(gate.outputs[0], 32)]
         if gate.kind == "~":
             return [(gate.outputs[0], gate.inputs[0].width)]
         if gate.kind == _SPLIT:
@@ -553,6 +748,16 @@ class _Parser:
         if gate.kind == _COMBINE:
             total = gate.inputs[0].width + gate.inputs[1].width
             return [(gate.outputs[0], total)]
+        if gate.kind == _REMOVE:
+            total = gate.inputs[1].width - gate.inputs[0].width
+            if total < 1:
+                raise ValueError(
+                    f"'%' at ({gate.col}, {gate.row}) removes every output wire"
+                )
+            return [(gate.outputs[0], total)]
+        if gate.body is not None:
+            inputs = tuple((0,) * wiring.width for wiring in gate.inputs)
+            return [(gate.outputs[0], len(_evaluate_function(gate, inputs)))]
         return [(gate.outputs[0], 1)]
 
 
@@ -567,8 +772,9 @@ def _compile(
     dict[tuple[int, int], _Wiring],
 ]:
     """Return the validated, read-only topology shared by public runs."""
-    grid = _Grid(list(code))
-    parsed = _Parser(grid)
+    main, definitions = _split_definitions(list(code))
+    grid = _Grid(main)
+    parsed = _Parser(grid, definitions)
     wirings = parsed.wirings
     return (
         grid,
@@ -614,12 +820,114 @@ def _drive(
         ]
     if gate.kind == _COMBINE:
         return [(gate.outputs[0], inputs[0] + inputs[1])]
+    if gate.kind == _REMOVE:
+        return [(gate.outputs[0], inputs[1][len(inputs[0]) :])]
+    if gate.body is not None:
+        return [(gate.outputs[0], _evaluate_function(gate, tuple(inputs)))]
     if gate.kind == _OUTPUT:
         # An output gate drives nothing by definition, and ``step``
         # skips them before firing, so this is a shape rather than a
         # path: it is what lets _apply_gate take only logic gates.
         return []  # pragma: no cover - step() skips these before firing
-    return [(gate.outputs[0], _apply_gate(gate.kind, inputs))]
+    if gate.kind in (_ZERO, _ONE, _CLOCK):
+        return []  # pragma: no cover - sources are loaded before generation one
+    return [(gate.outputs[0], _apply_gate(cast(_LogicGate, gate.kind), inputs))]
+
+
+def _seconds_since_2000() -> int:
+    """Return the current UTC second counted from 2000-01-01."""
+    epoch = datetime(2000, 1, 1, tzinfo=UTC)
+    return int((datetime.now(UTC) - epoch).total_seconds()) & 0xFFFFFFFF
+
+
+def _evaluate_function(
+    gate: _Gate, inputs: tuple[tuple[int, ...], ...]
+) -> tuple[int, ...]:
+    """Evaluate one custom gate atomically for ``inputs``."""
+    if gate.body is None:  # pragma: no cover - callers select custom gates
+        raise ValueError(f"{gate.kind!r} has no function body")
+    bindings: dict[str, int] = {}
+    input_rows = [line for line in gate.body if line.lstrip().startswith("-")]
+    if len(input_rows) != len(inputs):  # pragma: no cover - arity checked earlier
+        raise ValueError(f"function {gate.kind!r} input count changed while running")
+    for line, value in zip(input_rows, inputs, strict=True):
+        labels = [
+            match
+            for match in _LABEL_RUN.finditer(line)
+            if match.start() > 0
+            and line[match.start() - 1] in _WIRES
+            and match.end() < len(line)
+            and line[match.end()] in _WIRES
+        ]
+        if not labels:
+            if len(value) != 1:
+                raise ValueError(
+                    f"function {gate.kind!r} expects a one-wire input, "
+                    f"received {len(value)}"
+                )
+            continue
+        terms = labels[0].group().split("+")
+        if all(term.isdigit() for term in terms):
+            expected = sum(int(term) for term in terms)
+            if expected != len(value):
+                raise ValueError(
+                    f"function {gate.kind!r} expects {expected} input wires, "
+                    f"received {len(value)}"
+                )
+        elif len(terms) == 1 and terms[0].isalpha():
+            old = bindings.setdefault(terms[0], len(value))
+            if old != len(value):
+                raise ValueError(
+                    f"function {gate.kind!r} binds {terms[0]!r} "
+                    f"to both {old} and {len(value)}"
+                )
+        else:
+            raise ValueError(
+                f"function {gate.kind!r} input label must be a number or one name"
+            )
+
+    expanded = []
+    for line in gate.body:
+        pieces: list[str] = []
+        end = 0
+        for match in _LABEL_RUN.finditer(line):
+            if not (
+                match.start() > 0
+                and line[match.start() - 1] in _WIRES
+                and match.end() < len(line)
+                and line[match.end()] in _WIRES
+            ):
+                continue
+            pieces.append(line[end : match.start()])
+            terms = match.group().split("+")
+            pieces.append("+".join(str(bindings.get(term, term)) for term in terms))
+            end = match.end()
+        pieces.append(line[end:])
+        expanded.append("".join(pieces))
+
+    declarations = [
+        line
+        for name, body in gate.definitions.items()
+        for line in (f"{{{name}", *body, "}")
+    ]
+    stdin = "".join(f"{bit}\n" for value in inputs for bit in value)
+    io = ScriptedIO(stdin)
+    machine = _Machine(declarations + expanded, io)
+    seen: set[tuple[object, ...]] = set()
+    emitted: list[str] = []
+    while not machine.halted:
+        snapshot = machine.snapshot()
+        if snapshot in seen:
+            raise ValueError(f"function {gate.kind!r} does not settle")
+        seen.add(snapshot)
+        emitted.extend(
+            _emitted((machine.values, machine.latches), machine.wirings, machine.gates)
+        )
+        machine.step()
+    output = "".join(emitted)
+    if not output or set(output) - {"0", "1"}:
+        raise ValueError(f"function {gate.kind!r} did not return bits")
+    return tuple(int(bit) for bit in output)
 
 
 def _merge(driven: list[tuple[int, ...]]) -> tuple[int, ...]:
@@ -676,7 +984,7 @@ def _generation(
     fired = False
     grown = list(latches)
     for position, gate in enumerate(gates):
-        if gate.kind == _OUTPUT:
+        if gate.kind in (_OUTPUT, _ZERO, _ONE, _CLOCK):
             continue
         slots = list(latches[position])
         live = False
@@ -727,8 +1035,9 @@ class _Machine:
     def __init__(self, code: list[str], io: IO) -> None:
         """Parse ``code`` and read the input its ``-n-`` ports call for."""
         self.io = io
-        grid = _Grid(code)
-        parsed = _Parser(grid)
+        main, definitions = _split_definitions(code)
+        grid = _Grid(main)
+        parsed = _Parser(grid, definitions)
         self.grid = grid
         self.wirings = parsed.wirings
         self.gates = parsed.gates
@@ -746,6 +1055,7 @@ class _Machine:
             (None,) * len(gate.inputs) for gate in self.gates
         )
         self._load_inputs()
+        self._load_sources()
 
     @classmethod
     def _for_run(cls, code: list[str], io: IO) -> "_Machine":
@@ -763,6 +1073,7 @@ class _Machine:
         machine.values = (None,) * len(machine.wirings)
         machine.latches = tuple((None,) * len(gate.inputs) for gate in machine.gates)
         machine._load_inputs()  # noqa: SLF001 -- alternate constructor
+        machine._load_sources()  # noqa: SLF001 -- alternate constructor
         return machine
 
     def _load_inputs(self) -> None:
@@ -804,6 +1115,27 @@ class _Machine:
         except (EOFError, IndexError):
             return 0
         return 1 if value.strip() == "1" else 0
+
+    def _load_sources(self) -> None:
+        """Drive constants and the clock in generation zero."""
+        seconds = _seconds_since_2000()
+        for gate in self.gates:
+            if gate.kind not in (_ZERO, _ONE, _CLOCK):
+                continue
+            wiring = gate.outputs[0]
+            if gate.kind == _CLOCK:
+                value = tuple(int(bit) for bit in f"{seconds:032b}")
+            else:
+                bit = int(gate.kind == _ONE)
+                value = (bit,) * wiring.width
+            position = self.index[id(wiring)]
+            old = self.values[position]
+            driven = [value] if old is None else [old, value]
+            self.values = (
+                *self.values[:position],
+                _merge(driven),
+                *self.values[position + 1 :],
+            )
 
     # The VM's language-shaped view.
 
