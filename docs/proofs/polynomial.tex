@@ -58,10 +58,12 @@ multiple of the product of its instruction factors.  Repeated recognised
 roots produce repeated instructions.
 
 The machine has an integer register and an instruction cursor.  Its input
-instruction overwrites the register with the next input bit.  Real-root
-instructions are the bracket-like control-flow operations; complex-root
-instructions update the register.  The precise instruction table is not
-needed below.  We use only the following properties of the interpreter.
+instruction overwrites the register with the next input symbol, $48+b$ for a
+Boolean bit $b$.  Real-root instructions are the bracket-like control-flow
+operations; complex-root instructions update the register.  The upper bound
+uses input, output, addition and multiplication by an integer, integer floor
+division, and ``if positive'' with its closing instruction.  The lower bound
+uses only the following structural properties.
 
 \begin{enumerate}
 \item Between two input reads the complete state is the pair consisting of
@@ -519,12 +521,13 @@ Label the states at every level by $0,\ldots,s_k-1$.  Enter level $k$ with
 register $-j$ when state $j$ is active.  Its blocks are scanned in label
 order: block $j$ increments the register and opens an ``if positive'', so
 exactly block $j$ fires.  That block reads the next bit, overwriting the
-register with $48+b$.  If its child labels are $z,o$, an affine update sends
-$48$ to $-(z+r)$ and $49$ to $-(o+r)$, where $r$ is the number of blocks
-remaining at that level.  The skipped blocks each increment once, leaving
-$-z$ or $-o$ at the next level.  Equal children use division by $50$ followed
-by the same offset.  At the leaf level the unique active block adds $48$ or
-$49$, prints, and parks negative.  Thus induction on the levels proves that
+register with $48+b$.  If its child labels are $z,o$, multiply by $z-o$ and
+add $-(z+r)-48(z-o)$, where $r$ is the number of blocks remaining at that
+level.  This sends $48$ to $-(z+r)$ and $49$ to $-(o+r)$.  The skipped blocks
+each increment once, leaving $-z$ or $-o$ at the next level.  Equal children
+instead floor-divide $48+b$ by $50$, obtaining zero, then add $-(z+r)$.  At
+the leaf level the unique active block adjusts the register to $48$ or $49$,
+prints, and parks negative.  Thus induction on the levels proves that
 the machine follows exactly the residual selected by the input and prints its
 table value.  Each state block uses at most six instructions, its brackets
 are local and therefore properly matched, and every operand is $O(S)$.
@@ -533,7 +536,8 @@ Encode the resulting $m=O(S)$ instructions in order, using one fresh prime
 per instruction.  Real instructions give linear factors and register
 instructions conjugate quadratic factors; multiplying them gives an integer
 polynomial decoded back to that list.  Instruction exponents are bounded
-constants, and the assigned primes are at most $p_m=O(m\log m)$.  Every
+constants.  The prime number theorem gives the standard estimate
+$p_m=O(m\log m)$ for the largest assigned prime.  Every
 linear or quadratic factor therefore has
 coefficient $\ell^1$ norm $m^{O(1)}$.  Submultiplicativity gives coefficient
 norm $m^{O(m)}$ for their product, so each expanded coefficient has
