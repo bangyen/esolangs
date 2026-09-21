@@ -83,12 +83,19 @@ $C=O(T)$.
 \end{lemma}
 
 \begin{proof}
-Use the generator's identity-order candidate.  It first reads the $n$ bits
-into alternate tape cells, at cost $O(n)$, then traverses the full binary
-decision tree.  A node at depth $i$ tests cell $2i$ with a fixed bracket
-gadget; moving to a child costs $O(1)$.  A constant subtree may instead move
-to the result cell, at distance $O(n-i)$.  There are at most $2^{i+1}$ such
-exits at depth $i$, so all pointer travel is bounded by
+Use the generator's identity-order candidate.  It first reads bit $b_i$ into
+cell $2i$ and leaves cell $2i+1$ as a zero flag.  At a depth-$i$ node, set
+the flag to one and run the one-child inside a loop on $b_i$ that clears both
+$b_i$ and the flag.  Then run the zero-child inside a loop on the flag that
+clears it.  Exactly one child runs, and both cells are zero afterward, so
+these fixed bracket gadgets nest recursively and implement the decision tree.
+A one-leaf increments a separate result cell; a zero-leaf does nothing, and
+one final gadget adds the ASCII-zero offset and prints.
+
+The initial reads cost $O(n)$.  Moving from a node at depth $i$ to a
+nonconstant child costs $O(1)$.  A constant subtree may instead move to the
+result cell, at distance $O(n-i)$.  There are at most $2^{i+1}$ such exits at
+depth $i$, so all pointer travel is bounded by
 \[
  O(n)+\sum_{i=0}^{n-1}O\bigl(2^i(n-i)\bigr)=O(2^n)=O(T).
 \]
