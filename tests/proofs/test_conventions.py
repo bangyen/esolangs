@@ -1,16 +1,11 @@
-"""``docs/roadmap.md``'s conventions audit must agree with the generators.
+"""Every embedding generator holds the embed conventions.
 
-The cheap half parses the table and checks its names and vocabulary; while
-the table is empty (every convention closed) those checks are vacuous, and the
-slow ``test_the_audit_matches_the_programs`` below is the real enforcement.
 The measured half builds every embedding generator, fills every row, and reads
-the two measured conventions off the programs: an absent generator must
-hold both, a ``Holds`` cell must hold, and an open cell must fail -- so a
-fix that lands without its row leaving is caught as well as a regression.
-The other three conventions -- single embed, constant width, slot order --
-are the template object's shape and are checked by its constructor, which
-``generate`` runs for every template; a test here pins that they hold for
-every embedding generator at every arity measured.
+the two measured conventions -- no spaces, uniform -- off the programs; each
+generator must hold both.  The other three -- single embed, constant width,
+slot order -- are the template object's shape and are checked by its
+constructor, which ``generate`` runs for every template; a test here pins that
+they hold for every embedding generator at every arity measured.
 
 Every convention is about the *embed*, the text a fill substitutes for one
 input's run.  It is read off the programs rather than off the fill, since four
@@ -31,9 +26,6 @@ import pytest
 
 from esolangs.registry import BY_BOOLEAN
 from esolangs.tools.examples import BOOLEAN_EXAMPLES, BooleanExample
-from tests.proofs._conventions import HOLDS, LANGUAGE, OPEN, Conventions, load
-
-_VERDICTS = {HOLDS, OPEN, LANGUAGE}
 
 #: The arities every convention is read at.  Five is in the list because it
 #: is where Bitdeque switches to its linear route, which the suite's own
@@ -42,12 +34,6 @@ _ARITIES = (2, 3, 5)
 
 #: A single blank between two non-blank characters: the delimiter shape.
 _DELIMITER = re.compile(r"(?<=\S) (?=\S)")
-
-
-@pytest.fixture(scope="module")
-def audit() -> Conventions:
-    """The parsed conventions audit, read once for the module."""
-    return load()
 
 
 def _embedding() -> dict[str, BooleanExample]:
@@ -117,12 +103,6 @@ def _measure(example: BooleanExample) -> dict[str, bool]:
     return {"No spaces": spaces, "Uniform": len(pairs) == 1}
 
 
-#: The parsed table is empty whenever every convention is closed, which is the
-#: current state.  The parser checks below then have nothing to check, so they
-#: skip rather than pass vacuously; the slow test is the enforcement.
-_CLOSED = not load().rows
-
-
 def test_the_structural_conventions_hold_where_the_template_is_made() -> None:
     """Single embed, constant width and slot order are the template's shape.
 
@@ -141,41 +121,21 @@ def test_the_structural_conventions_hold_where_the_template_is_made() -> None:
                 assert all(len(zero) == len(one) for zero, one in template.setters)
 
 
-@pytest.mark.skipif(_CLOSED, reason="conventions audit is closed")
-def test_the_audit_names_real_embedding_generators(audit: Conventions) -> None:
-    assert set(audit.by_name()) <= set(_embedding())
-
-
-@pytest.mark.skipif(_CLOSED, reason="conventions audit is closed")
-def test_every_verdict_is_a_known_one(audit: Conventions) -> None:
-    for row in audit.rows:
-        assert set(row.verdicts) <= _VERDICTS, row
-
-
-@pytest.mark.skipif(_CLOSED, reason="conventions audit is closed")
-def test_the_audit_holds_only_open_rows(audit: Conventions) -> None:
-    closed = [row.generator for row in audit.rows if not row.is_open]
-    assert not closed, f"rows that hold every convention should leave: {closed}"
-
-
 @pytest.mark.slow  # builds and fills every embedding generator at n=2, 3 and 5
-def test_the_audit_matches_the_programs(audit: Conventions) -> None:
-    rows = audit.by_name()
+def test_every_embedding_generator_holds_both_conventions() -> None:
+    """No open cell is left: both measured conventions hold everywhere.
+
+    The audit that tracked the open set closed, so this reads as one claim
+    over the whole set rather than against a table; a regression is a
+    generator that stops holding one.
+    """
     for name, example in _embedding().items():
         measured = _measure(example)
-        row = rows.get(name)
-        if row is None:
-            failing = [c for c, ok in measured.items() if not ok]
-            assert not failing, f"{name} is absent from the audit but fails {failing}"
-            continue
-        for column, verdict in zip(measured, row.verdicts, strict=True):
-            if verdict == HOLDS:
-                assert measured[column], f"{name}: {column} is {verdict} but fails"
-            else:
-                assert not measured[column], f"{name}: {column} is {verdict} but holds"
+        failing = [column for column, ok in measured.items() if not ok]
+        assert not failing, f"{name} fails {failing}"
 
 
-def test_bitdeque_linear_route_is_one_width(audit: Conventions) -> None:
+def test_bitdeque_linear_route_is_one_width() -> None:
     """The route the equal-width test misses stays at one length.
 
     Its ``EJECT ``/``POP `` units once left 32 lengths for 32 five-input
@@ -184,7 +144,6 @@ def test_bitdeque_linear_route_is_one_width(audit: Conventions) -> None:
     pair, so the row has left the audit.  This pins the arity where the
     route begins.
     """
-    assert "Bitdeque" not in audit.by_name()  # every cell holds
     example = _embedding()["Bitdeque"]
     assert example.fill is not None
     for n in (4, 5):
