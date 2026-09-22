@@ -1091,3 +1091,31 @@ class TestTheDetectorsTakeAVM:
 
         with pytest.raises(TypeError, match="steppable with a snapshot"):
             run_until_halt_or_cycle(object())  # type: ignore[arg-type]
+
+    def test_a_negative_branch_cap_stops_rather_than_exploring_free(self) -> None:
+        """A cap below zero is still a cap.
+
+        ``len(seen) == limit`` against a count rising from zero never
+        matched a negative one, so the branch cap switched itself off and an
+        unbounded graph was explored forever.  The machine here has no halt
+        and a fresh successor every time, so a regression hangs the suite
+        rather than passing quietly.
+        """
+        from esolangs.vm import run_until_halt_or_all_branches_cycle
+
+        class _Unbounded:
+            def branching_snapshot(self) -> int:
+                return 0
+
+            def branching_halted(self, _state: int) -> bool:
+                return False
+
+            def branching_successors(self, state: int, _limit: int) -> list[int]:
+                return [state + 1]
+
+        for limit in (0, -1, -1000):
+            with pytest.raises(TimeoutError, match="branching states"):
+                run_until_halt_or_all_branches_cycle(
+                    _Unbounded(),  # type: ignore[arg-type]
+                    limit=limit,
+                )
