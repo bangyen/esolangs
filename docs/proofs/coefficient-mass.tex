@@ -95,8 +95,8 @@ studied below: its infinite tail is the reciprocal of their dual lower bound
 for the reduced height, their inequality~(8), and they evaluate the
 consecutive set $J=\{1,\ldots,c-1\}$ explicitly under a proviso that the
 $S_n$, $n\ge d$, share one sign.  That proviso they leave as a hypothesis,
-carried through their Corollary~7 and discharged only case by
-case~\cite[Section~2]{dj}; our consecutive base case,
+carried through their Corollary~7~\cite[Section~2]{dj} and discharged only
+case by case~\cite[Sections~3--4]{dj}; our consecutive base case,
 Lemma~\ref{lem:consecutive}, proves it for all positive real nodes by reading
 the sign off the complete homogeneous symmetric polynomials $h_j$.  Their
 $H(P)\ge|P(1)|$ is then the $k=1$ row of Theorem~\ref{thm:order}, and
@@ -1067,9 +1067,10 @@ Every $D$-dependent entry is $O((3/5)^{D})$, so as before the solution
 converges to that of $N$ against $(-2,-3,-5)$, namely
 $(s,E,\sigma)=(4,9,6)$; the last row alone forces $s=4$.  The nonleading
 magnitudes of $G_D$ are $s_D$ exactly $D-2$ times and $|e_D|,|e_D'|$ once
-each, and both exempt coefficients grow like $3^D$ while $s_D\to4$, so they
-are the two largest and $b_3(G_D)=s_D$; this is verified directly for every
-$6\le D\le120$.  Theorem~\ref{thm:order} with $u=2$ gives $b_3\ge4$, and
+each.  The run occupies $D-2\ge3$ positions, so whatever the two exempt
+magnitudes do, the third largest is $s_D$: $b_3(G_D)=s_D$ for every $D\ge6$
+with $s_D>0$, which the limit $s_D\to4$ and a direct check on $6\le D\le120$
+confirm.  Theorem~\ref{thm:order} with $u=2$ gives $b_3\ge4$, and
 $s_D\to4$, which completes \eqref{eq:sharp235}.
 \end{proof}
 
@@ -1113,8 +1114,8 @@ The same happens at $(2,3,4,5)$, sums $1,-11,36,-24$ with
 $\min b_2\approx32.23$, and at $(2,3,5,6)$, sums $1,-13,50,-40$ with
 $\min b_2\approx47.55$.  At $(3,4,5,6)$ the sums are $1,-14,60,-60$, so
 \eqref{eq:partial} holds with equality and the search descends to the bound
-$60$, reaching $60.12$ at that cap.  These figures fall geometrically with the
-cap and are limits, not values at any finite degree.
+$60$, reaching $60.12$ at that cap.  All four are cap-$28$ values, still
+falling geometrically with the cap toward infima no finite degree attains.
 Across the $15$ root sets tried, \eqref{eq:partial} agreed with attainment
 every time, in both directions.
 
@@ -1249,8 +1250,8 @@ outright: the infimum of $b_2$ over monic multiples is exactly the bound, and
 Proposition~\ref{prop:sharp235} does the same for $(2,3,5)$ at $k=2$ and
 $k=3$.  Beyond those root sets the construction behind both can fail, already at
 $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums are $1,-\tfrac{11}2,5$,
-so \eqref{eq:partial} fails and the search returns $5.42$ against the bound
-$5$.  It can also still succeed at $L=4$, as $(3,4,5,6)$ shows.  The remark
+so \eqref{eq:partial} fails and the search returns $5.42$ at degree cap $28$
+against the bound $5$.  It can also still succeed at $L=4$, as $(3,4,5,6)$ shows.  The remark
 after Proposition~\ref{prop:sharp235} records root sets of each kind.
 Beyond that we have only a search, and for $k\ge2$ it is not a single linear
 program.  As $b_k$ is the $k$th largest magnitude, fix the $k-1$ positions
@@ -1263,8 +1264,8 @@ monic multiples of degree at most $L+6$ gives, for roots $(2,3,5)$,
 $\min b_2=8.5178$ against $8$ and $\min b_3=4.1218$ against $4$, both within
 $6.5\%$ of \eqref{eq:order}; for $(2,3)$ it returns $2.0308$.  All three are
 members of the exact families of Propositions~\ref{prop:sharp23}
-and~\ref{prop:sharp235}, which carry them to the bound, so at $L\le3$ the
-gap the search reports is an artifact of its degree cap.  These are floating-point optima at a degree cap,
+and~\ref{prop:sharp235}, which carry them to the bound, so for these three
+root sets the gap the search reports is an artifact of its degree cap.  These are floating-point optima at a degree cap,
 not certified values; the exact statements are \eqref{eq:sharp23} and
 \eqref{eq:sharp235}.
 
