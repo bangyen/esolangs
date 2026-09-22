@@ -37,7 +37,8 @@ a degree-independent bound on each coefficient order statistic: the
 $(u+1)$-st largest nonleading coefficient magnitude is at least
 $\prod_{i=u+1}^L(r_i-1)$.  Summing bounds the logarithmic coefficient mass
 $\Lambda(F)=\sum_j\log^+|f_j|$; for the first $L$ primes this gives
-$\Lambda(F)=(\tfrac12+o(1))L^2\log L$, asymptotically sharp.  The engine is a
+$\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with asymptotic equality for
+$F=\prod_{i=1}^L(x-p_i)$.  The engine is a
 prefix-sensitive comparison of the infinite $\ell^1$ tails of normalized
 exponential sums with prescribed positive-integer zeros, strict unless the
 zeros are consecutive.  We isolate the zero count behind the comparison as an
@@ -100,15 +101,23 @@ asks for multiples under prescribed degree, sparsity and height
 constraints~\cite{grt}; our bound is uniform in the degree and in all
 additional roots of the multiple.
 
-We prove the following.  Theorem~\ref{thm:tail} is the comparison behind
-everything: it bounds the tail of a certificate by the product over its
-leading consecutive zeros and shows the bound is attained only there.  For
-distinct positive roots $2\le r_1<\cdots<r_L$, Lemma~\ref{lem:slack} and
-Theorem~\ref{thm:order} bound all $L$ coefficient order statistics of every
-multiple, and Corollary~\ref{cor:mass} sums them into a lower bound for
-$\Lambda$.  Corollary~\ref{cor:prime} specializes to prime roots and gives an
-asymptotically sharp bound, and Proposition~\ref{prop:confluent} removes the
-distinctness of the nodes.
+The main result is a distributional bound on the coefficient sizes of a
+multiple.  For distinct positive roots $2\le r_1<\cdots<r_L$,
+Theorem~\ref{thm:order}, via the certificate Lemma~\ref{lem:slack}, bounds all
+$L$ coefficient order statistics of every multiple, and
+Corollary~\ref{cor:mass} sums them into a lower bound for $\Lambda$:
+\[
+  b_k(F)\ge\prod_{i=k}^{L}(r_i-1),
+  \qquad
+  \Lambda(F)\ge\sum_{i=1}^{L}i\log(r_i-1),
+  \qquad 1\le k\le L .
+\]
+Its engine is Theorem~\ref{thm:tail}, the comparison behind everything: it
+bounds the tail of a certificate by the product over its leading consecutive
+zeros and shows the bound is attained only there.  Corollary~\ref{cor:prime}
+specializes to prime roots, Corollary~\ref{cor:infimum} sharpens the resulting
+asymptotic to the infimum over normalized multiples, and
+Proposition~\ref{prop:confluent} removes the distinctness of the nodes.
 
 \section{A displaced-zero tail theorem}
 
@@ -183,12 +192,9 @@ $y_1,\ldots,y_c$ with $G_z=1$ and $G|_{\{0\}\cup Z'}=0$.  Write
 $\widehat F_d=\sgn(F_z)F_d$, $E_d=G_d-y_cG_{d-1}$,
 $\sigma=G_{m+1}/\widehat F_{m+1}$, and
 \[
-  \Delta_d=\sigma\widehat F_d-E_d,
+  \Delta_d=\sigma\widehat F_d-E_d.
 \]
-and let $A=\{0\}\cup Z'=\{a_1=0<a_2<\cdots<a_{c-1}=m\}$.  Let $r$ be the
-number of consecutive pairs $\{a_j,a_{j+1}\}=\{d-1,d\}$ in $A$, and
-$J=\{j:a_{j+1}\in Z',\ a_j<a_{j+1}-1\}$, so that $|J|=c-2-r$.  Then
-$\Delta_d\ge0$ for every $d\ge m+1$.
+Then $\Delta_d\ge0$ for every $d\ge m+1$.
 \end{lemma}
 
 \begin{proof}
@@ -201,6 +207,10 @@ $y_1,\ldots,y_{c-1}$: expanding the definition of $G$ gives
 with $b_i=a_i(1-y_c/y_i)$, the $i=c$ term having cancelled.  Hence $\Delta$
 is an exponential sum on $c-1$ nodes, so by the zero bound it is either
 identically zero or has at most $c-2$ real zeros counted with multiplicity.
+
+Relabel $A=\{0\}\cup Z'$ as $a_1=0<a_2<\cdots<a_{c-1}=m$; let $r$ be the
+number of consecutive pairs $\{a_j,a_{j+1}\}=\{d-1,d\}$ in $A$, and
+$J=\{j:a_{j+1}\in Z',\ a_j<a_{j+1}-1\}$, so that $|J|=c-2-r$.
 
 By the zero bound, $G$ has exactly the simple zeros $\{0\}\cup Z'$; on a
 component $(a_j,a_{j+1})$ its sign is $(-1)^{c-1-j}$ because it is positive
@@ -232,9 +242,9 @@ least $q$; hence it is at least $q+1$, one more than the forced zeros.  The
 $p-1$ gaps between consecutive members of $J$ therefore supply
 $r+(p-1)+1=c-2$ units of zero multiplicity in all, once the zero at $m+1$ is
 added, and this exhausts the zero-multiplicity budget of $\Delta$; in
-particular there are no other zeros.  Here the $q+1$ zeros in a gap are
-counted with multiplicity, and the $p-1$ units beyond the forced $q$ are
-distinct from those forced zeros and from one another.
+particular there are no other zeros.  Here the $q+1$ units in a gap are
+counted with multiplicity; the parity supplies one unit beyond the $q$ forced
+ones, possibly at a forced zero.
 
 Every one of the $p-1$ extra multiplicities lies below $a_{j_p+1}$, so every
 zero of $\Delta$ above $a_{j_p+1}$ belongs to the exhaustion just described
@@ -408,10 +418,10 @@ together with the first $L-u-1$ positive distances outside $W$.  The $u$
 positions have distinct distances, so $|W|=u$, and $L-u-1\ge0$ because
 $u\le L-1$; hence $|Z|=c-1$, as required; write $w_d=\sum_i a_iy_i^d$.
 
-The dual-certificate identity is explicit.  Since $F(r_i)=0$ for the $c$
+The dual-certificate identity is explicit.  Since $F(\rho_i)=0$ for the $c$
 chosen roots,
 \[
-  0=\sum_{i=1}^c a_ir_i^{-D}F(r_i)
+  0=\sum_{i=1}^c a_i\rho_i^{-D}F(\rho_i)
    =\sum_{j\le D}f_jw_{D-j}
    =f_D+\sum_{j<D}f_jw_{D-j},
 \]
@@ -515,6 +525,29 @@ and $\frac{L(L+1)}2\log p_L=(\tfrac12+o(1))L^2\log L$ while
 $L^2\log2=o(L^2\log L)$.
 \end{proof}
 
+\begin{corollary}[Sharp prime-root infimum]\label{cor:infimum}
+Let $M_L=\inf\Lambda(F)$, the infimum taken over the normalized multiples of
+$P_L=\prod_{i=1}^L(x-p_i)$.  Then
+\[
+  M_L=\frac12L^2\log L+\frac12L^2\log\log L+O(L^2).
+\]
+\end{corollary}
+
+\begin{proof}
+The lower bound of Corollary~\ref{cor:prime} keeps the $\log\log i$ term:
+\[
+  \Lambda(F)\ge\sum_{i\le L}i\log(p_i-1)
+  =\frac12L^2\log L+\frac12L^2\log\log L+O(L^2),
+\]
+since $\sum_{i\le L}i\log i=\frac12L^2\log L+O(L^2)$ and
+$\sum_{i\le L}i\log\log i=\frac12L^2\log\log L+o(L^2)$.  The matching upper
+bound is the one for $P_L$ from Corollary~\ref{cor:prime},
+\[
+  \Lambda(P_L)\le L^2\log2+\frac{L(L+1)}2\log p_L
+  =\frac12L^2\log L+\frac12L^2\log\log L+O(L^2).
+\]
+\end{proof}
+
 \begin{proposition}[Confluent analogue]\label{prop:confluent}
 Let $0<y_1<\cdots<y_c\le1/2$ and $e_1,\ldots,e_c\ge1$, put $m=e_1+\cdots+e_c$,
 and let $y_{(1)}\le\cdots\le y_{(m)}$ be the multiset with each $y_i$ repeated
@@ -549,8 +582,9 @@ $z_{i,j}=y_ie^{-j\varepsilon}$.  For $0<\varepsilon<\varepsilon_0$ the $m$
 nodes $z_{i,j}$ are distinct, lie in $(0,1/2]$, and stay separated between
 distinct $i$.  Within one group $i$ the change of basis from
 $\{z_{i,j}^{d}\}_{j<e_i}$ to
-$\{\phi_{i,k,\varepsilon}\}_{k<e_i}$ is triangular with unit diagonal,
-hence invertible, and the same function space is spanned either way.
+$\{\phi_{i,k,\varepsilon}\}_{k<e_i}$ is triangular with diagonal entries
+$(-1)^k\varepsilon^{-k}$, hence invertible for $\varepsilon>0$, and the same
+function space is spanned either way.
 
 For such an $\varepsilon$ let $u^{(\varepsilon)}$ be the unique exponential
 sum on the nodes $z_{i,j}$ with $u^{(\varepsilon)}_0=1$ and
@@ -570,9 +604,11 @@ $u^{(\varepsilon)}$ in the $\phi$-basis; they solve
 $M(\varepsilon)a^{(\varepsilon)}=e_0$, where $M(\varepsilon)$ is the
 $m\times m$ matrix with rows indexed by $d\in\{0\}\cup Z$ and columns by
 $(i,k)$, with entry $\phi_{i,k,\varepsilon}(d)$, and $e_0$ is the first
-standard basis vector.  The entries are polynomials in $\varepsilon$, so
-$M(\varepsilon)\to M(0)$ as $\varepsilon\to0$, where
-$\phi_{i,k,0}(d)=d^ky_i^d$ and $M(0)$ is the confluent matrix.  The functions
+standard basis vector.  Each entry
+$\phi_{i,k,\varepsilon}(d)=y_i^d\bigl((1-e^{-\varepsilon d})/\varepsilon\bigr)^k$
+has a removable singularity at $\varepsilon=0$ and extends analytically there
+with limit $d^ky_i^d$, so $M(\varepsilon)\to M(0)$ as $\varepsilon\to0$, where
+$M(0)$ is the confluent matrix.  The functions
 $d\mapsto d^ky_i^d$ form an extended Chebyshev system on $\R$, for which
 confluent Hermite interpolation is unisolvent~\cite[Chapter~I, Theorem~4.1]
 {karlin-studden}; equivalently $M(0)$ is invertible.  Matrix inversion is
