@@ -126,7 +126,7 @@ Its coefficient-digit mass is
 \[
   M(f)=\sum_{j:f_j\ne0}\bigl(1+\lfloor\log_{10}|f_j|\rfloor\bigr).
 \]
-Each nonzero coefficient appears in a monomial whose serialization supplies
+Every nonzero coefficient appears in a monomial whose serialization supplies
 at least $1+\lfloor\log_{10}|f_j|\rfloor$ characters, so $|f|\ge M(f)$.
 The worst-case text complexity is the maximum, over these tables, of the
 minimum $|f|$ of a program computing the table.
@@ -215,7 +215,7 @@ occur, some $t$ children each equal an earlier child.  Choosing those children
 and one earlier witness for each gives
 \[
   \Pr\{\text{at least }q/4\text{ repetitions}\}
-  \le {2q\choose t}(2q/B)^t
+  \le \binom{2q}{t}(2q/B)^t
   \le \left(\frac{4e q^2}{tB}\right)^t
   =\exp(-\Omega(q\log n)),
 \]
