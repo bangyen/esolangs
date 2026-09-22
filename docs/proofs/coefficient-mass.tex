@@ -1121,13 +1121,21 @@ $a=9/10$, $c=12$.  Nine coalescing configurations on distinct nodes behave the
 same way.  There is no conflict: Proposition~\ref{prop:cutoff} rules out
 raising the cutoff in the product as stated, not in this one.
 
-The route to a proof, if there is one, is visible in \eqref{eq:gamma}.  Its
-first inequality $\Gamma_G(z)\le\Gamma_F(z)/(1-y_c)$ needs only $y_c<1$; the
-cutoff is spent entirely on the second, which converts $1/(1-y_c)$ into the
-constant $2$ that \eqref{eq:split} requires.  The slack discarded there is a
-factor $1/(1-y_c)$, the same shape as the factors the repair retains, so the
-natural attempt is to carry the first inequality through the induction without
-ever invoking the second.  None of this is proved here.
+Whatever proves it will not be this argument, though.  In \eqref{eq:gamma}
+the first inequality $\Gamma_G(z)\le\Gamma_F(z)/(1-y_c)$ needs only $y_c<1$,
+and the cutoff is spent entirely on the second, which converts $1/(1-y_c)$
+into the constant $2$ that \eqref{eq:split} requires; that invites carrying
+the first through the induction and never invoking the second.  It does not
+work, because what fails below the cutoff is not the intermediate estimate but
+the conclusion it serves.  The comparison driving Theorem~\ref{thm:tail}---
+that deleting the displaced largest zero together with the largest node
+increases the tail---reverses there.  On nodes $(1/3,1/2,9/10)$ with
+$Z=\{1,3\}$ the deletion takes $\Tail$ from $2.077$ down to $0.500$, and it
+reverses on $30$ of the displaced configurations tried, by factors up to $9$;
+above the cutoff it holds strictly on every displaced set tried, with equality
+exactly at the consecutive one, as the theorem says.  A proof of the repaired
+product therefore needs a different engine, not a sharper one.  None of this
+is proved here.
 
 What is left open is the pointwise extremal problem: for a fixed root
 sequence and a fixed $k$, how closely a multiple can approach
