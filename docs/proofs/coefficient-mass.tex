@@ -92,8 +92,10 @@ set $J$ a normalized determinant sequence $S_n(J)$ with $S_0(J)=1$ and
 $S_k(J)=0$ for $k\in J$~\cite{dj}.  That sequence is the exponential sum $u$
 studied below: its infinite tail is the reciprocal of their dual lower bound
 for the reduced height, their inequality~(8), and they evaluate the
-consecutive set $J=\{1,\ldots,c-1\}$
-explicitly~\cite[Section~2]{dj}.  Their inequality~(8) already excludes a
+consecutive set $J=\{1,\ldots,c-1\}$ explicitly under a proviso that the
+$S_n$, $n\ge d$, share one sign, which they then establish
+separately~\cite[Section~2]{dj}; our consecutive base case instead reads the
+sign off the complete homogeneous symmetric polynomials $h_j$.  Their inequality~(8) already excludes a
 prescribed set of positions from the certificate.  The new ingredient is a
 prefix-sensitive tail estimate for arbitrary prescribed integer zero sets:
 when the largest prescribed zero is displaced, deleting it together with the
@@ -134,8 +136,12 @@ asymptotic to the infimum over monic real multiples,
 Corollary~\ref{cor:near} shows the root product itself is within $O(L^2)$ of
 that infimum for every root set here,
 Proposition~\ref{prop:cutoff} shows that the node cutoff $y_i\le1/2$ in the
-tail theorem cannot be raised, and Proposition~\ref{prop:confluent} carries
-the tail comparison itself to confluent nodes.
+tail theorem cannot be raised, Proposition~\ref{prop:subtwo} shows that the
+standing restriction $r_i\ge2$ cannot be dropped from
+Theorem~\ref{thm:order} itself---an explicit monic multiple of
+$(x-\tfrac65)(x-\tfrac{19}{10})$ has $b_2<r_2-1$---and
+Proposition~\ref{prop:confluent} carries the tail comparison itself to
+confluent nodes.
 
 \section{A displaced-zero tail theorem}
 
@@ -456,7 +462,9 @@ nonzero coefficient vector write $b_1\ge b_2\ge\cdots$ for the magnitudes of
 the coefficients $f_j$ with $j<D$, in decreasing order.
 
 \begin{lemma}[Slack certificate]\label{lem:slack}
-Assume $|f_D|=1$.  Fix $0\le u\le L-1$.  For every set $U$ of $u$
+Assume the roots $2\le r_1<\cdots<r_L$ are distinct and $|f_D|=1$; the
+certificate uses $L$ distinct nodes, and repetitions enter only through the
+perturbation in Theorem~\ref{thm:order}.  Fix $0\le u\le L-1$.  For every set $U$ of $u$
 coefficient positions below $D$, some $j<D$ outside $U$ satisfies
 \[
  |f_j|\ge\prod_{i=u+1}^L(r_i-1).
@@ -489,9 +497,13 @@ Hence, as $|f_D|=1$,
 
 The set $Z$ contains $\{1,\ldots,L-u-1\}$: a distance $t\le L-u-1$ is in
 $W\subseteq Z$ if occupied by $U$, and otherwise is among the first
-$L-u-1$ distances outside $W$.  Thus the leading run of $Z$ is at least
-$L-u-1$, and Theorem~\ref{thm:tail} bounds the tail by the product over the
-$L-u$ largest nodes.  These are $\rho_1,\ldots,\rho_{L-u}$, that is,
+$L-u-1$ distances outside $W$.  Thus the leading run $f$ of $Z$ is at least
+$L-u-1$, and Theorem~\ref{thm:tail} bounds the tail by the product of
+$y_{(j)}/(1-y_{(j)})$ over the $f+1\ge L-u$ smallest reciprocal nodes.  Every
+such factor is at most $1$, since $y_i\le1/2$ is exactly $\rho_i\ge2$, so
+discarding all but the first $L-u$ factors only weakens the bound: the tail is
+at most the product over the $L-u$ largest nodes.  These are
+$\rho_1,\ldots,\rho_{L-u}$, that is,
 $r_L,r_{L-1},\ldots,r_{u+1}$; the last index is
 $L-(L-u)+1=u+1$, which is why the product below starts there.  Therefore
 \[
@@ -596,9 +608,7 @@ $\Lambda(P_L)\le(\tfrac12+o(1))L^2\log L$.
 Write $p_i$ for the $i$th prime, so $r_i\ge p_i\sim i\log i$ and, since
 $r_i-1\ge p_i-1$,
 $\log(r_i-1)\ge\log p_i+O(1/p_i)$.  Drop the nonnegative term
-$(L+1)\log|f_D|$ and collect the index-$i$ terms, which occur in
-\eqref{eq:mass} once for each $u$ with $u+1\le i$, that is, exactly $i$ times.
-Hence
+$(L+1)\log|f_D|$ from \eqref{eq:mass}.  Hence
 \[
  \Lambda(F)\ge\sum_{i=1}^L i\log(r_i-1)
  \ge\sum_{i=2}^L i\bigl(\log i+\log\log i+o(1)\bigr),
@@ -757,9 +767,11 @@ $\phi_{i,k,\varepsilon}(d)=y_i^d\bigl((1-e^{-\varepsilon d})/\varepsilon\bigr)^k
 has a removable singularity at $\varepsilon=0$ and extends analytically there
 with limit $d^ky_i^d$, so $M(\varepsilon)\to M(0)$ as $\varepsilon\to0$, where
 $M(0)$ is the confluent matrix.  The functions
-$d\mapsto d^ky_i^d$ form an extended Chebyshev system on $\R$, for which
-confluent Hermite interpolation is unisolvent~\cite[Chapter~I, Theorem~4.1]
-{karlin-studden}; equivalently $M(0)$ is invertible.  Matrix inversion is
+$d\mapsto d^ky_i^d$ form an extended Chebyshev system on $\R$, and the
+interpolation here is at the $m$ \emph{distinct} points $\{0\}\cup Z$---the
+confluence sits in the basis, not in the nodes---so $M(0)$ is invertible by
+ordinary unisolvence of a Chebyshev system at distinct
+points~\cite[Chapter~I, Theorem~4.1]{karlin-studden}.  Matrix inversion is
 continuous on the open set of invertible matrices, so
 $a^{(\varepsilon)}\to M(0)^{-1}e_0$, and for every fixed $d$,
 \[
@@ -814,6 +826,47 @@ $\Tail(u)\le\liminf_{\varepsilon\to0}\Tail(u^{(\varepsilon)})\le a/(1-a)$,
 contradicting the previous paragraph for large $c$.
 \end{proof}
 
+\begin{proposition}[The root restriction $r_i\ge2$ is necessary]
+\label{prop:subtwo}
+For $L=1$ the bound \eqref{eq:order} holds for every root $r>1$: every
+nonzero multiple of $x-r$ has $b_1>|f_D|(r-1)$.  For $k\ge2$ it fails without
+$r_1\ge2$.  With $r_1=6/5$ and $r_2=19/10$ there is a monic multiple $F$ of
+$(x-r_1)(x-r_2)$ of degree $4$ with
+\[
+  b_2=\frac{740772}{1224775}=0.60482\ldots<\frac9{10}=r_2-1 .
+\]
+\end{proposition}
+
+\begin{proof}
+For $L=1$, $F(r)=0$ gives
+$|f_D|r^D=\bigl|\sum_{j<D}f_jr^j\bigr|\le b_1(r^D-1)/(r-1)$, so
+$b_1\ge|f_D|(r-1)r^D/(r^D-1)>|f_D|(r-1)$, with no use of $r\ge2$.
+
+For the failure put $P=(x-\tfrac65)(x-\tfrac{19}{10})=x^2+p_1x+p_0$ with
+$p_1=-\tfrac{31}{10}$, $p_0=\tfrac{57}{25}$, and let $Q=x^2+q_1x+q_0$ be
+monic, so that $F=PQ$ has
+\[
+  f_0=p_0q_0,\quad f_1=p_0q_1+p_1q_0,\quad f_2=p_0+p_1q_1+q_0,\quad
+  f_3=p_1+q_1,\quad f_4=1 .
+\]
+Imposing $f_0=f_1=f_2$ is two linear equations in $(q_0,q_1)$: the first gives
+$q_1=(p_0-p_1)q_0/p_0$, and substituting it into the second gives
+\[
+  q_0=\frac{p_0^2}{D},\qquad q_1=\frac{p_0(p_0-p_1)}{D},\qquad
+  D=(p_0-p_1)^2+p_0(p_1-1),
+\]
+whence the common value is $f_0=f_1=f_2=p_0^3/D$.  Here
+$D=\tfrac{48991}{2500}>0$, so
+\[
+  q_0=\frac{12996}{48991},\qquad q_1=\frac{30666}{48991},\qquad
+  f_0=f_1=f_2=\frac{740772}{1224775}=0.604822\ldots,
+\]
+while $f_3=p_1+q_1=-\tfrac{1212061}{489910}=-2.474048\ldots$.  The four
+nonleading magnitudes are $|f_3|$ and three copies of $p_0^3/D$, so
+$b_2=p_0^3/D<9/10=r_2-1$, which is what \eqref{eq:order} would assert for
+$u=1$.
+\end{proof}
+
 \section{Scope}
 
 The bounds here concern coefficient magnitudes, not ordinary length or
@@ -831,19 +884,25 @@ Proposition~\ref{prop:confluent} is supplementary: it carries the tail
 theorem to confluent nodes, but Theorem~\ref{thm:order} already reaches
 repeated roots by perturbation, so the main bounds do not depend on it.
 
-Two limits are worth stating plainly.  The coefficient bounds assume
-$r_i\ge2$, inherited from the node cutoff $y_i\le1/2$ of
-Theorem~\ref{thm:tail}; only Lemma~\ref{lem:interlace} is free of it.
-Proposition~\ref{prop:cutoff} shows that cutoff cannot be raised, so roots in
-$(1,2)$ lie outside the reach of this method.  It does not show that the
-bounds themselves fail there; whether they extend to that range is not
-settled here.
+Two limits are worth stating plainly.  Every result above requires
+$r_i\ge2$, and the restriction is not an artifact of the proof but of the
+statement: by Proposition~\ref{prop:subtwo}, \eqref{eq:order} is false for
+roots in $(1,2)$ already at $L=2$, $k=2$.  Only the case $L=1$ survives, where
+the bound holds for every $r>1$.  The method fails in the same place: the tail
+bound rests on the node cutoff $y_i\le1/2$, which Proposition~\ref{prop:cutoff}
+shows cannot be raised.  A bound for roots in $(1,2)$ therefore needs a
+different form, not a wider proof.
 
 What is left open is the pointwise extremal problem: for a fixed root
 sequence and a fixed $k$, how closely a multiple can approach
 \eqref{eq:order}.  Corollary~\ref{cor:infimum} settles the asymptotic form of
 the aggregated question for prime roots, and the multiplier $x+1$ above shows
-that even there the root product need not be the finite-$L$ minimizer.
+that even there the root product need not be the finite-$L$ minimizer.  Linear
+programming over monic multiples of degree at most $L+6$ puts the minimum of
+$b_k$ within $1.5$--$6.5\%$ of \eqref{eq:order} for $k\ge2$---for roots
+$(2,3)$, $\min b_2=2.031$ against $2$, and for $(2,3,5)$, $\min b_2=8.518$
+against $8$ and $\min b_3=4.122$ against $4$---so the gap there, if any, is
+small.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
