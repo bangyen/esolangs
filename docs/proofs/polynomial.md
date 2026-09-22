@@ -225,7 +225,7 @@ not.  The hypothesis is load-bearing: `(x-2)(x-3)(x+2)(x+3) = x^4 - 13x^2 +
 
 **The primorial bound is linear.**  The lowest nonzero coefficient is
 divisible by the primorial of `m`, `Omega(m log m)` digits; with
-`m = T/log2 T` the forced digits over `T` run 0.153, 0.180, 0.198, 0.206,
+`m = floor(T/log2 T)` the forced digits over `T` run 0.153, 0.180, 0.198, 0.206,
 0.220, ... 0.267 at n=6..20, toward `ln 2 / ln 10 = 0.301`.  Matching only;
 cannot be promoted.
 
