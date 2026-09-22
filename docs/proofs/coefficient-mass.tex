@@ -1090,7 +1090,26 @@ factors instead of dropping them produces the $\min$ product above.  What
 stands in the way is then a single step rather than the shape of the
 conclusion---Theorem~\ref{thm:tail} is unavailable below the cutoff, and by
 Proposition~\ref{prop:cutoff} its product form does not extend there
-unchanged.  None of this is proved here.
+unchanged.
+
+The correction that step appears to need is the same one.  With the nodes in
+increasing order $y_1<\cdots<y_c$, replacing the discard in
+Theorem~\ref{thm:tail} by a factor $\max(1,y_i/(1-y_i))$ over the nodes it
+drops, so that
+\[
+  \Tail(u)\le
+  \prod_{i\le f+1}\frac{y_i}{1-y_i}
+  \prod_{i>f+1}\max\Bigl(1,\frac{y_i}{1-y_i}\Bigr),
+\]
+gives a bound that held on all $450$ certificates tried: $70$ with every
+$y_i\le1/2$, $145$ with some $y_i$ above the cutoff, and $235$ on nodes drawn
+anywhere in $(0,1)$, out to $y=18/19$.  The bound as stated fails on $29$ of
+the second group, worst ratio $4.15$, and on $113$ of the third, worst ratio
+$18.42$.  Above the cutoff every added factor is $1$, so the two agree; at a
+consecutive zero set no node is dropped, so equality is retained there, as
+Lemma~\ref{lem:consecutive} requires.  Fed through Lemma~\ref{lem:slack} with
+its discard likewise omitted, this reproduces exactly the $\min$ product
+displayed above.  None of this is proved here.
 
 What is left open is the pointwise extremal problem: for a fixed root
 sequence and a fixed $k$, how closely a multiple can approach
