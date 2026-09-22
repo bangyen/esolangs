@@ -1109,7 +1109,25 @@ $18.42$.  Above the cutoff every added factor is $1$, so the two agree; at a
 consecutive zero set no node is dropped, so equality is retained there, as
 Lemma~\ref{lem:consecutive} requires.  Fed through Lemma~\ref{lem:slack} with
 its discard likewise omitted, this reproduces exactly the $\min$ product
-displayed above.  None of this is proved here.
+displayed above.
+
+It also survives the witness of Proposition~\ref{prop:cutoff}, which is the
+sharpest adversary available: for one node $a$ of multiplicity $c$ with $f=0$
+the repaired product is $(a/(1-a))^c$ against
+$\Tail(u)=(a/c)[1+(a/(1-a))^c]$, so it holds for every $a\in(1/2,1)$ and
+every $c$ with ratio $a/c$, while the stated bound $a/(1-a)$ is already
+exceeded at $a=3/4$, $c=2$ and is short by a factor $2.4\cdot10^9$ at
+$a=9/10$, $c=12$.  Nine coalescing configurations on distinct nodes behave the
+same way.  There is no conflict: Proposition~\ref{prop:cutoff} rules out
+raising the cutoff in the product as stated, not in this one.
+
+The route to a proof, if there is one, is visible in \eqref{eq:gamma}.  Its
+first inequality $\Gamma_G(z)\le\Gamma_F(z)/(1-y_c)$ needs only $y_c<1$; the
+cutoff is spent entirely on the second, which converts $1/(1-y_c)$ into the
+constant $2$ that \eqref{eq:split} requires.  The slack discarded there is a
+factor $1/(1-y_c)$, the same shape as the factors the repair retains, so the
+natural attempt is to carry the first inequality through the induction without
+ever invoking the second.  None of this is proved here.
 
 What is left open is the pointwise extremal problem: for a fixed root
 sequence and a fixed $k$, how closely a multiple can approach
