@@ -12,9 +12,11 @@ than the one they asked for.
 
 import importlib.util
 import re
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -393,3 +395,65 @@ class TestASkippableToolIsStillDeclared:
         """
         source = SCRIPT.read_text(encoding="utf-8")
         assert 'if not have_pylint and "(pylint)" in name:' in source
+
+
+class TestZeroStepsIsNotAPass:
+    """A run that checked nothing must not print what a green run prints.
+
+    ``--only``/``--skip`` filtered ``STEPS`` by name with no validation, so
+    ``--only pytest-typo`` left the runnable list empty, ran nothing, and still
+    printed ``all local checks passed`` at exit 0 -- the gate's success banner
+    on zero evidence.  Every ``justfile`` name matches a real step today, so
+    this was latent; one typo in a target would have made it live.
+    """
+
+    @staticmethod
+    def _parse(argv: list[str]) -> object:
+        verify = load_script()
+        with mock.patch.object(sys, "argv", ["verify.py", *argv]):
+            return verify._parse_only_skip()  # noqa: SLF001
+
+    @pytest.mark.parametrize("flag", ["--only", "--skip"])
+    def test_an_unknown_step_name_is_rejected(
+        self, flag: str, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as caught:
+            self._parse([flag, "pytest-typo"])
+        assert caught.value.code == 2
+        assert "unknown step(s) pytest-typo" in capsys.readouterr().err
+
+    def test_a_real_name_is_accepted(self) -> None:
+        """The positive control: validation does not reject the names in use.
+
+        These two are what ``just test-quick`` passes, so a rule that rejected
+        them would take the blessed fast loop down with it.
+        """
+        only, skip, *_ = self._parse(["--only", "pre-commit,pytest"])  # type: ignore[misc]
+        assert only == {"pre-commit", "pytest"}
+        assert skip is None
+
+    def test_filters_that_cancel_out_fail(
+        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Both names are real, so validation passes and the guard catches it.
+
+        ``main`` is called in process: with ``--only`` it skips scoping, and
+        ``VERIFY_NO_SYNC`` skips the sync, so it reaches the guard and returns
+        without starting a step.  Its two tool probes are stubbed -- they are
+        real subprocesses, and under a loaded suite they alone pushed this
+        test past the fast band's 1s.
+        """
+        verify = load_script()
+        monkeypatch.setenv("VERIFY_NO_SYNC", "1")
+        monkeypatch.setattr(
+            sys, "argv", ["verify.py", "--only", "pytest", "--skip", "pytest"]
+        )
+        monkeypatch.setattr(
+            verify.subprocess,
+            "run",
+            lambda *a, **_: subprocess.CompletedProcess(a[0] if a else [], 0),
+        )
+        assert verify.main() == 1
+        out = capsys.readouterr().out
+        assert "all local checks passed" not in out
+        assert "zero steps" in out
