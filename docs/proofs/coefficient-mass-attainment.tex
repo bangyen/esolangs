@@ -35,18 +35,16 @@ The companion paper~\cite{coefficient-mass} proves that for real roots
 $2\le r_1\le\cdots\le r_L$, repetitions allowed, and $F=\sum_jf_jx^j$ a
 nonzero multiple of $\prod_{i=1}^L(x-r_i)$, the $(u+1)$-st largest
 nonleading coefficient magnitude satisfies
-$b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)$.  This paper studies how tight that
-bound is.  We give explicit monic multiples of $(x-2)(x-3)$ and of
-$(x-2)(x-3)(x-5)$ for which the bound is approached arbitrarily closely, so
-it is an exact infimum at those root sets; we identify a partial-sum
-criterion on the surviving root product under which the same construction
-proves attainment in general, and give root sets where the criterion holds
-and where it fails; we show the standing restriction $r_1\ge2$ cannot be
-dropped once $u\ge1$, already at $L=2$; we show the node cutoff $y_i\le1/2$
-underlying the tail comparison behind the bound cannot be raised; and we
-extend that comparison to confluent (repeated) nodes.  A repaired bound
-below the cutoff is conjectured but not proved, and the converse of the
-partial-sum criterion is left open.
+$b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)$.  We show the bound is an exact
+infimum at $(2,3)$ and $(2,3,5)$, via explicit monic multiples approaching
+it arbitrarily closely, and identify a partial-sum criterion on the
+surviving root product under which the same construction proves attainment
+in general, with root sets where the criterion holds and where it fails.
+The standing restriction $r_1\ge2$ cannot be dropped once $u\ge1$, already
+at $L=2$; the node cutoff $y_i\le1/2$ underlying the tail comparison behind
+the bound cannot be raised; and we extend that comparison to confluent
+(repeated) nodes.  A repaired bound below the cutoff is conjectured but not
+proved, and the converse of the partial-sum criterion is left open.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -83,8 +81,7 @@ step inside the comparison, its Lemma~3.1 is the certificate that converts
 the tail bound into a coefficient bound, and its Corollary~3.6 sharpens the
 resulting asymptotic to an exact infimum for the first $L$ primes.
 
-This paper asks how tight \eqref{eq:order} is, and how far its hypotheses
-can be relaxed.  Section~\ref{sec:extend} extends Theorem~2.2 to confluent
+Section~\ref{sec:extend} extends Theorem~2.2 to confluent
 nodes, shows the node cutoff $y_i\le1/2$ it rests on cannot be raised, and
 shows the standing restriction $r_i\ge2$ in \eqref{eq:order} cannot be
 dropped once $u\ge1$.  Section~\ref{sec:attain} exhibits explicit monic
@@ -547,18 +544,15 @@ the tail bound rests on the node cutoff $y_i\le1/2$, which
 Proposition~\ref{prop:cutoff} shows cannot be raised.  A bound for roots in
 $(1,2)$ with $k\ge2$ therefore needs a different form.
 
-A natural correction is available.  Lemma~3.1's proof discards, for each
-excluded position, a factor $y_i/(1-y_i)$ once it is at most $1$; retaining
-that factor instead gives the candidate bound
+A natural correction is available: Lemma~3.1's proof discards, for each
+excluded position, a factor $y_i/(1-y_i)$ once it is at most $1$, and that
+factor exceeds $1$ precisely when $r_i<2$.  Retaining it instead of dropping
+it gives the candidate bound
 \[
   b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)\prod_{i=1}^{u}\min(r_i-1,1),
 \]
-which reduces to \eqref{eq:order} when every $r_i\ge2$.  It is also exactly
-what the proof of Lemma~3.1 returns if the discard there is not performed: a
-factor
-$y_i/(1-y_i)$ exceeds $1$ precisely when $r_i<2$, so retaining those $u$
-factors instead of dropping them produces the $\min$ product above.  What
-stands in the way is then a single step rather than the shape of the
+which reduces to \eqref{eq:order} when every $r_i\ge2$.  What stands in the
+way of proving it is a single step rather than the shape of the
 conclusion---Theorem~2.2 is unavailable below the cutoff, and by
 Proposition~\ref{prop:cutoff} its product form does not extend there
 unchanged.
