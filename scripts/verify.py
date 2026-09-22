@@ -138,6 +138,15 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     LINE_STEP: ("tests/interpreters/",),
     "duplicate-code check (pylint)": ("src/esolangs/", "scripts/"),
     "dead definitions": ("src/", "scripts/"),
+    # Only a generator, an interpreter (the step counts are executed), or the
+    # baseline itself can move these numbers.
+    "generator size baseline": (
+        "src/esolangs/tools/",
+        "src/esolangs/interpreters/",
+        "scripts/check_generator_sizes.py",
+        "scripts/benchmark.py",
+        "tests/fixtures/generator_sizes.json",
+    ),
     # The union of what the two proofs in this band read: ArrowQueue's lemmas
     # import the generator and nothing else, and BIO's also parse the emitted
     # program and instantiate it through the shipped fill.  The runner is in
@@ -184,6 +193,11 @@ STEPS = [
     # A generator route that was replaced keeps its own tests green, so it
     # never fails; three sat that way.  <1s.
     ("dead definitions", [*PY, "scripts/check_dead_definitions.py"]),
+    # What every generator emits, and how many steps the emitted program
+    # runs, pinned exactly against a committed baseline: the two quantities
+    # the collection's claims rest on, and until this step nothing measured
+    # them outside a hand-run `just benchmark`.  192 measurements, ~3s.
+    ("generator size baseline", [*PY, "scripts/check_generator_sizes.py"]),
     (
         # These also run under the plain `pytest` step above.  Repeated here
         # under `--isolated --no-project`, which installs only pytest, so a

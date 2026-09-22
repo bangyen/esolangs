@@ -20,6 +20,7 @@ import re
 import sys
 
 from esolangs.factor_primes import prime_segments
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.brainfuck import _Machine as _BFMachine
 
@@ -220,6 +221,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read(), IO())
+    script_main(run)

@@ -14,10 +14,10 @@ state once per step.
 from __future__ import annotations
 
 import re
-import sys
 from dataclasses import dataclass, replace
 
 from esolangs.exceptions import HaltError, ProgramError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -187,6 +187,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read(), IO())
+    script_main(run)

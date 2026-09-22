@@ -14,8 +14,8 @@ no specified invalid runtime operation requiring :class:`HaltError`.
 from __future__ import annotations
 
 import re
-import sys
 
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import match_brackets
 from esolangs.interpreters.io import IO
 
@@ -156,5 +156,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    with open(sys.argv[1]) as file:
-        run(file.read(), IO())
+    script_main(run)

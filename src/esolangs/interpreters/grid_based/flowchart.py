@@ -133,10 +133,10 @@ is empty, so a program that reads past the end of its input keeps running
 and simply stops emitting.  No :class:`HaltError` is raised at EOF.
 """
 
-import sys
 from dataclasses import dataclass, field, replace
 from typing import Literal, assert_never
 
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 # Headings, as (d_row, d_col) with rows growing downward.
@@ -846,6 +846,4 @@ def run(code: list[str], io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.readlines(), IO())
+    script_main(run, shape="keep")

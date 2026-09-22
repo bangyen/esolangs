@@ -30,10 +30,10 @@ because the wiki's example uses it.
 from __future__ import annotations
 
 import math
-import sys
 from collections.abc import Hashable
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 __all__ = ["run"]
@@ -483,6 +483,5 @@ def run(code: str, io: IO) -> None:
         machine.step()
 
 
-if __name__ == "__main__":  # pragma: no cover
-    with open(sys.argv[1], encoding="utf-8") as file:
-        run(file.read(), IO())
+if __name__ == "__main__":
+    script_main(run)

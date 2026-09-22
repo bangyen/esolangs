@@ -40,9 +40,9 @@ install-dev:
     # full local check: lint, pytest, bandit, and the verify scripts.
     git config core.hooksPath .githooks
 
-# lint python
 # The formatter is ruff-format, run via pre-commit (and so via `just test`);
 # `ruff check` here catches lint that formatting does not.
+# lint python
 lint-python:
     {{PYTHON}} -m ruff check .
     {{PYTHON}} -m ruff format --check .
@@ -52,10 +52,10 @@ lint-python:
 lint: lint-python
     @echo "All lint checks completed!"
 
-# test (local check: lint, pytest, bandit, verify scripts)
 # Scoped to the files this branch touched; widens to everything when the diff
 # is unreadable or shared machinery moved.  Use `just test-full` to force the
 # whole tree.  Pass --quiet to suppress successful step output.
+# test (local check: lint, pytest, bandit, verify scripts)
 test *args:
     {{PYTHON}} scripts/verify.py {{args}}
 
@@ -78,9 +78,11 @@ test-mid *args:
 # tests a default `just test` leaves to CI.  Prefix PYTEST_ADDOPTS="-m 'not
 # slow'" to skip those.
 
+# pytest only, in full -- including the `slow` band
 test-py *args:
     {{PYTHON}} scripts/verify.py --only pytest {{args}}
 
+# the Line image-language suites, in full
 test-line *args:
     {{PYTHON}} scripts/verify.py --only "Line interpreter suites" {{args}}
 
@@ -96,30 +98,38 @@ test-bandit *args:
 benchmark language table *args:
     {{PYTHON}} scripts/benchmark.py "{{language}}" "{{table}}" {{args}}
 
+# Every language on 2-, 3- and 4-input tables, compared exactly against
+# tests/fixtures/generator_sizes.json.  Pass --update to re-record a change
+# so the diff carries it.  Also a `just test` step ("generator size baseline").
+# check emitted sizes and step counts against the committed baseline
+sizes *args:
+    {{PYTHON}} scripts/check_generator_sizes.py {{args}}
+
 # create interpreter and test stubs; pass e.g. --category tape_based
 new-language name *args:
     {{PYTHON}} scripts/new_language.py "{{name}}" {{args}}
 
-# mutation-test one interpreter: what its tests would NOT have caught
-# (not part of `just test` -- it is a few minutes per language)
+# Not part of `just test` -- it is a few minutes per language.
 # `language` is quoted below: nine of the sixty-four display names contain
 # a space ("A Painter Ant", "Minsky Swap", ...), and unquoted they split
 # into two arguments -- `just mutate "A Painter Ant"` failed with
 # `unrecognized arguments: Painter Ant`, for every one of the nine.
+# mutation-test one interpreter: what its tests would NOT have caught
 mutate language *args:
     {{PYTHON}} scripts/mutate.py interpreter "{{language}}" {{args}}
 
-# the same for one generator, named family/module after where it lives under
-# src/esolangs/tools (e.g. just mutate-gen tools/register).  A bare name works
-# where only one family defines it, and no name is shared today, so in
-# practice every bare name resolves.  Every suite in tests/tools runs; slow
-# tests are deselected unless --slow is passed, since a mutation run pays the
-# suite's cost once per mutant.
+# `module` is family/module after where it lives under src/esolangs/tools
+# (e.g. just mutate-gen tools/register).  A bare name works where only one
+# family defines it, and no name is shared today, so in practice every bare
+# name resolves.  Every suite in tests/tools runs; slow tests are deselected
+# unless --slow is passed, since a mutation run pays the suite's cost once
+# per mutant.
 #
 # The `core` family is the package root -- `just mutate-gen core/tui`,
 # `core/vm`, `core/debug`, `core/cli`.  Those are the modules mutate_one
 # cannot reach: it mutates a dependency-closed bundle, and they sit at the
 # top of the stack rather than at a leaf.
+# the same for one generator
 mutate-gen module *args:
     {{PYTHON}} scripts/mutate.py generator {{module}} {{args}}
 
@@ -156,10 +166,11 @@ proofs-pdf:
 apa-proof:
     {{PYTHON}} tests/proofs/deep/a_painter_ant.py
 
-# clean generated: `find -delete` refuses a non-empty directory, so removal
-# goes through `rm -rf`: bytecode, build metadata, and verifier reports.
-# `.venv` and `.worktrees` are pruned -- a linked worktree carries its own
-# environment, and reaching into it would strip that checkout's install.
+# `find -delete` refuses a non-empty directory, so removal goes through
+# `rm -rf`: bytecode, build metadata, and verifier reports.  `.venv` and
+# `.worktrees` are pruned -- a linked worktree carries its own environment,
+# and reaching into it would strip that checkout's install.
+# clean generated files
 clean:
     #!/usr/bin/env bash
     find . \( -path ./.venv -o -path ./.worktrees \) -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \

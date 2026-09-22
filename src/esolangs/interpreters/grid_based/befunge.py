@@ -13,11 +13,11 @@ to read raises :class:`~esolangs.exceptions.HaltError`.
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Sequence
 from typing import cast
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 
@@ -276,6 +276,4 @@ def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read().splitlines(), IO())
+    script_main(run, shape="strip")

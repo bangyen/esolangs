@@ -33,11 +33,15 @@ def _commands(
         return None
     inputs = len(table).bit_length() - 1
     bits = _bits(row, inputs)
-    source = program
-    stdin = esolangs.encode_inputs(language, bits)
+    # A parameterized language embeds its inputs in the source, and
+    # `encode_inputs` raises for one rather than returning an empty string --
+    # so the branch has to come before the call, not after it.
     if facts["parameterized"]:
         source = esolangs.instantiate(language, program, bits)
         stdin = ""
+    else:
+        source = program
+        stdin = esolangs.encode_inputs(language, bits)
     vm = esolangs.make_vm(language, source, stdin)
     steps = 0
     while not vm.halted and steps < cap:

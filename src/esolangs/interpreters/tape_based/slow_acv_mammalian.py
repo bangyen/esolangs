@@ -10,8 +10,8 @@ undefined there, so it halts.  Exhausted input raises :class:`EOFError`.
 import functools
 import operator
 import re
-import sys
 
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 #: One instant of a run: ``(arrays, ptr, acc, ind, halted)`` -- the 23
@@ -273,7 +273,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.read()
-            run(data, IO())
+    script_main(run)
