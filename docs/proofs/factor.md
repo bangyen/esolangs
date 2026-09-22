@@ -39,9 +39,10 @@ smaller.
 
 ## Generation time
 
-Prime discovery now uses exact segmented Eratosthenes enumeration, not
-`isprime`: above `2**64` SymPy's latter is BPSW and is not a proof of
-primality, while SymPy's own sieve stores machine words. The local sieve keeps
+Prime discovery during generation uses exact segmented Eratosthenes
+enumeration, not `isprime` (`_factorint` below still calls the deterministic
+Miller--Rabin `_isprime64` under `2**64`): above `2**64` SymPy's latter is BPSW
+and is not a proof of primality, while SymPy's own sieve stores machine words. The local sieve keeps
 arbitrary Python integers through `sqrt(Q)`. Segments grow to `sqrt(start)`,
 so composite marking costs `O(Q log log Q)`, revisiting base primes costs
 `O(Q/log Q)`, and extending them by trial division is smaller. Cold prime
@@ -55,7 +56,8 @@ arithmetic term. Python 3.14's large decimal render passes through `_pylong`
 and libmpdec, but libmpdec only recurses with three half-size products above
 `3 * 2**32` machine words (about `2.5 * 10**11` decimal digits), so up to that
 `D` -- far past any generated table -- rendering stays in its quasi-linear FNT
-range and adds only `O(D log D)`. Above it the three-way recurrence is itself
+range and adds `O(M(D) log D) = O(D log**2 D)`. Above it the three-way
+recurrence is itself
 `Theta(D**alpha)`, so the cold bound is unchanged either way. The encoder
 combines the two smallest bit-width products first.
 Superlinearity charges powers and merges to the final `D` bits geometrically;
@@ -64,16 +66,19 @@ Smallest-first merging costs `O(D**alpha)`, giving the cold bound
 
     sum_merge cost(a, b) = O((sum_i leaf_bits_i)**alpha).
 
-For the charging lemma, comparable merges spend the increase of the
-`alpha`-power potential. A lopsided heap item waits while all smaller items
-combine, so it has only one lopsided merge at that scale; its sliced cost
-`O(b * a**(alpha - 1))` is at most the final scale's `O(D**alpha)`.
+The charging lemma is stated, not proved here: comparable merges spend the
+increase of the `alpha`-power potential, and a lopsided heap item waits while
+all smaller items combine, so it has only one lopsided merge at that scale,
+with sliced cost `O(b * a**(alpha - 1))` at most the final scale's
+`O(D**alpha)`.  What is proved is the upper bound
 
-    generation = Theta(T + Q log log Q + D**alpha) = T**O(1).
+    generation = O(T + Q log log Q + D**alpha) = T**O(1).
 
-This is tight in the implementation parameters `Q,D`. Replacing `Q` by
-`Theta(T log T)` would assume an unproved
-uniform bound on the changing residue word; measurements are not that lemma.
+Only the upper bound is claimed: the terms need not balance, so `Theta` is not
+established, and the sieve term can exceed `D**alpha` for the largest `Q` the
+Hoheisel bound permits.  A uniform bound on the changing residue word, which
+would replace `Q` by `Theta(T log T)`, is not available; measurements are not
+that lemma.
 
 ## Cold parsing
 

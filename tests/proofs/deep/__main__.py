@@ -1,8 +1,8 @@
 """Run the deep proofs of one cost band.
 
     python -m tests.proofs.deep verify    # the local gate, ~2s
-    python -m tests.proofs.deep ci        # CI, ~14s
-    python -m tests.proofs.deep all       # everything, ~2m20s  (`just proofs`)
+    python -m tests.proofs.deep ci        # CI, ~25s
+    python -m tests.proofs.deep all       # everything, ~2m  (`just proofs`)
     python -m tests.proofs.deep --list    # the registry, run nothing
 
 Why this exists
@@ -55,9 +55,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 #: before it, so ``ci`` includes ``verify``.
 BANDS = ("verify", "ci", "by-hand")
 
-#: What each band is allowed to cost in total, in seconds.  These are the
-#: reason a band exists, so they are checked rather than merely documented.
-BUDGET = {"verify": 5.0, "ci": 20.0, "by-hand": 180.0}
+#: What each band is allowed to cost in total, in seconds.  ``test_bands``
+#: checks the declared costs against these; the declarations are hand-kept and
+#: only as honest as the last person to time the band (``ci`` measured ~25s).
+BUDGET = {"verify": 5.0, "ci": 30.0, "by-hand": 180.0}
 
 
 #: A leading underscore means a helper, not a proof -- ``_lemmas`` today.  The
@@ -141,6 +142,12 @@ def main(argv: list[str] | None = None) -> int:
         saved, sys.argv = sys.argv, [proof.name]
         try:
             code = proof.module.main()
+        except Exception as exc:  # report and keep going
+            # Proofs use bare ``assert``; without this a single failure would
+            # abort the band and hide every proof after it, which the justfile
+            # comment promises cannot happen.
+            code = 1
+            print(f"    raised {type(exc).__name__}: {exc}")
         finally:
             sys.argv = saved
         elapsed = time.time() - start

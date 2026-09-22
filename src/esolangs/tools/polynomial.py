@@ -94,8 +94,8 @@ def polynomial(truth_table: str) -> str:
     fits = [(cost, build) for cost, build in builders if cost <= _POLYNOMIAL_MAX_INSTRS]
     if not fits:
         raise GeneratorCapError(
-            "the Polynomial boolean generator emits one instruction per "
-            f"prime and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
+            "the Polynomial boolean generator groups instructions onto "
+            f"primes and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
             f"needs {min(cost for cost, _ in builders)} under its cheapest "
             "construction, which costs more per row than checking a table "
             "of this width can afford",
