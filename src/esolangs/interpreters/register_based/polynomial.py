@@ -4,7 +4,8 @@ Polynomial programs are polynomial functions ``f(x) = ...``; real zeroes
 are control flow and complex zeroes register operations on a single
 integer register, in ascending-prime order.  The wiki's cat notes output
 ignores negatives; this clamps to zero (a NUL), and EOF stores -1 as
-specified.
+specified -- as does reading a NUL byte, which keeps the register
+distinguishable from an unset one.
 Malformed programs raise :class:`ValueError`.  No instruction cap: a
 growing register never repeats, and ``esolangs.run``'s ``timeout`` is
 the guard.

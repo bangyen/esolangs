@@ -40,6 +40,20 @@ def test_an_empty_stack_is_a_zero_divisor_like_any_other() -> None:
     assert run_befunge("0/.@", "7\n") == run_befunge("/.@", "7\n")
 
 
+def test_a_zero_divisor_with_nothing_to_read_halts() -> None:
+    """The documented HaltError, through ``run`` rather than ``_advance``.
+
+    ``step`` reads the result before ``_advance`` runs, so the exhausted
+    input raised ``InputExhaustedError`` first and the HaltError below was
+    unreachable from outside.  ``&`` is a plain read and still propagates.
+    """
+    for program in ("10/.@", "/.@", "10%.@"):
+        with pytest.raises(HaltError, match="needs a result"):
+            run_befunge(program)
+    with pytest.raises(EOFError):
+        run_program(run, ["&.@"], suppress_eof=False)
+
+
 def test_a_zero_divisor_reads_the_result() -> None:
     assert run_befunge("10/.@", "7\n") == "7 "
     assert run_befunge("10%.@", "8\n") == "8 "
