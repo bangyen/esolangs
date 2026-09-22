@@ -74,16 +74,13 @@ be carried by many comparable terms, so neither norm alone forces a hierarchy
 of large coefficient magnitudes.  The mass $\Lambda$
 instead accumulates over all coefficients of magnitude exceeding one: it is
 the logarithm of the multiplicative height,
-$\Lambda(F)=\log\prod_{j:f_j\ne0}\max(1,|f_j|)$.  In a fixed integer base $B$
-the quantity $\Lambda(F)/\log B$ approximates the total base-$B$ digit length
-of the nonzero coefficients, agreeing with the encoded length of the
-coefficient vector up to an additive term proportional to the number of
-nonzero coefficients (it is not literal equality); signs, zero entries, and
-the exponent encoding of a sparse representation are accounted for
-separately.  For real coefficients it is a
-mass rather than a literal encoding length.
-It is additive over coefficients, and this is what makes it the natural
-target here.  A multiplicative bound on one coefficient order statistic
+$\Lambda(F)=\log\prod_{j:f_j\ne0}\max(1,|f_j|)$.  For integer coefficients in
+a fixed base $B$ the quantity $\Lambda(F)/\log B$ approximates the total
+base-$B$ digit length of the nonzero coefficients, up to an additive term
+proportional to their number and to the separate cost of signs, zero entries
+and exponents; for real coefficients it is a mass and not a length at all.
+What matters here is that it is additive over coefficients.  A
+multiplicative bound on one coefficient order statistic
 contributes one additive term to $\Lambda$; a bound holding for successive
 order statistics therefore accumulates into a lower bound for $\Lambda$ that
 no statement about a single height parameter can produce.  The results below
@@ -123,15 +120,23 @@ bound for $\Lambda$:
   \Lambda(F)\ge(L+1)\log|f_D|+\sum_{i=1}^{L}i\log(r_i-1),
   \qquad 1\le k\le L .
 \]
+The route is short to describe.  To bound the $(u+1)$-st largest coefficient
+magnitude, exclude an arbitrary set of $u$ coefficient positions; build a
+normalized exponential sum in the reciprocal roots vanishing at those
+positions and at enough initial ones; a bound on its remaining tail then
+forces some coefficient outside the excluded set to be large.  All of the
+difficulty sits in that tail bound.
 Its engine is Theorem~\ref{thm:tail}, the comparison behind everything: it
 bounds the tail of a certificate by the product over its leading consecutive
 zeros and shows the bound is attained only there.  Corollary~\ref{cor:prime}
 specializes to prime roots, Corollary~\ref{cor:infimum} sharpens the resulting
 asymptotic to the infimum over monic real multiples,
 Corollary~\ref{cor:near} shows the root product itself is within $O(L^2)$ of
-that infimum for every root set here, and
-Proposition~\ref{prop:confluent} carries the tail comparison itself to
-confluent nodes.
+that infimum for every root set here,
+Proposition~\ref{prop:cutoff} shows that the node cutoff behind the tail
+theorem---equivalently the standing restriction $r_i\ge2$---cannot be
+relaxed, and Proposition~\ref{prop:confluent} carries the tail comparison
+itself to confluent nodes.
 
 \section{A displaced-zero tail theorem}
 
@@ -207,21 +212,35 @@ it, where the sign-fixing marked points force additional multiplicity across
 each gap between them.
 
 \begin{lemma}[Interlacing of the correction sum]\label{lem:interlace}
-Let $y_1<\cdots<y_c\le1/2$, let $Z'\subset\N_{>0}$ satisfy $|Z'|=c-2$, put
-$m=\max(Z'\cup\{0\})$, and fix $z>m$.  Let $F$ be the sum on
-$y_1,\ldots,y_{c-1}$ with $F_0=1$ and $F|_{Z'}=0$, and $G$ the sum on
-$y_1,\ldots,y_c$ with $G_z=1$ and $G|_{\{0\}\cup Z'}=0$.  Write
-$\widehat F_d=\sgn(F_z)F_d$, $E_d=G_d-y_cG_{d-1}$,
+Let $0<y_1<\cdots<y_c$, let $Z'\subset\N_{>0}$ satisfy $|Z'|=c-2$, and put
+$m=\max(Z'\cup\{0\})$.  Let $\widehat F$ be the exponential sum on
+$y_1,\ldots,y_{c-1}$ vanishing on $Z'$, and $G$ the sum on
+$y_1,\ldots,y_c$ vanishing on $\{0\}\cup Z'$.  Each is determined by those
+conditions up to a scalar and, by the zero bound, has constant sign for
+$d>m$; normalize both to be positive there.  Write $E_d=G_d-y_cG_{d-1}$,
 $\sigma=G_{m+1}/\widehat F_{m+1}$, and
 \[
   \Delta_d=\sigma\widehat F_d-E_d.
 \]
-Then $\Delta_d\ge0$ for every $d\ge m+1$.
+Then $\Delta_d\ge0$ for every $d\ge m+1$.  No upper bound on the nodes is
+needed.
 \end{lemma}
+
+Before the proof, a configuration showing what the counting looks like.  Take
+$c=5$ and $Z'=\{2,4,6\}$, so the marked set is $\{0\}\cup Z'=\{0,2,4,6\}$ and
+$m=6$.  No two marked points are adjacent, so none of them forces a zero of
+$\Delta$; instead $\Delta$ is nonzero at each of $2,4,6$, with signs
+$-1,+1,-1$.  Each of the gaps $(2,4)$ and $(4,6)$ therefore carries an odd
+number of zeros of the $4$-node sum $\Delta$, hence at least one, and with the
+zero at $m+1=7$ that is the whole budget $c-2=3$; nothing is left above $7$,
+where $\Delta$ is positive.  If instead $Z'=\{2,4,5,7\}$ ($c=6$), the adjacent
+pair $\{4,5\}$ forces a zero of $\Delta$ at $5$, and the sign change across
+the longer gap $(4,7)$ forces one further unit of multiplicity in it, possibly
+at $5$ itself.
 
 \begin{proof}
 The sums $E$ and $\widehat F$ both live on the $c-1$ nodes
-$y_1,\ldots,y_{c-1}$: expanding the definition of $G$ gives
+$y_1,\ldots,y_{c-1}$: writing $G_d=\sum_ia_iy_i^d$ gives
 \[
   E_d=\sum_{i=1}^{c-1}a_i(y_i-y_c)y_i^{\,d-1}
       =\sum_{i=1}^{c-1}b_iy_i^d,
@@ -253,8 +272,9 @@ $a_{j+1}-1\notin A$ and $G_{a_{j+1}-1}\ne0$, and
 If $J=\varnothing$ then $r=c-2$, and the forced zeros together with
 $m+1$ give $r+1=c-1>c-2$ zeros, so $\Delta\equiv0$ and the claim is
 immediate.  Assume $J\ne\varnothing$ and order $J=\{j_1<\cdots<j_p\}$, so
-$p=|J|=c-2-r$.  Let $N_\Delta$ be the number of zeros of $\Delta$ counted
-with multiplicity.  Take consecutive $j<j'$ in $J$.  Strictly between
+$p=|J|=c-2-r$.  If $\Delta\equiv0$ the conclusion again holds, so assume
+$\Delta\not\equiv0$; the zero bound then caps its zeros at $c-2$.  Let
+$N_\Delta$ be the number of zeros of $\Delta$ counted with multiplicity.  Take consecutive $j<j'$ in $J$.  Strictly between
 $a_{j+1}$ and $a_{j'+1}$ lie $q=j'-j-1$ marked points of $A$, all with
 indices outside $J$, hence $q$ forced zeros; and the endpoint signs
 $(-1)^{c-1-j}$, $(-1)^{c-1-j'}$ differ by $(-1)^{q+1}$.  A real function
@@ -281,16 +301,6 @@ $a_{j_p+1}$ but those $c-1-j_p$ simple ones, crossing them flips the sign to
 $(-1)^{2(c-1-j_p)}=+1$, and it stays positive.  Thus $\Delta_d\ge0$ for
 $d\ge m+1$.
 \end{proof}
-
-An example shows where the extra multiplicities come from.  Take $c=5$ and
-$Z'=\{2,4,6\}$, so $A=\{0,2,4,6\}$, $r=0$, and $J=\{1,2,3\}$: no marked point
-forces a zero, and every marked point fixes a sign.  Those signs are
-$-1,+1,-1$, so each of the gaps $(2,4)$ and $(4,6)$ carries an odd number of
-zeros of the $4$-node sum $\Delta$, hence at least one, and with the zero at
-$m+1=7$ that is the full budget $c-2=3$.  If instead $Z'=\{2,4,5,7\}$
-($c=6$), the consecutive pair $\{4,5\}$ forces a zero, and the parity across
-the longer gap $(4,7)$ forces one further unit of multiplicity in that gap,
-possibly at the forced zero $5$ itself.
 
 \begin{proof}[Proof of Theorem~\ref{thm:tail}]
 Induct on the number $c-1-f$ of displaced zeros.
@@ -380,17 +390,21 @@ show
 \end{equation}
 Set $A=\{0\}\cup Z'=\{a_1=0<\cdots<a_{c-1}=m\}$,
 $\sigma=G_{m+1}/\widehat F_{m+1}$, and
-$\Delta_d=\sigma\widehat F_d-E_d$.  Lemma~\ref{lem:interlace} applies to this
-data and gives $\Delta_d\ge0$ for $d\ge m+1$, that is,
+$\Delta_d=\sigma\widehat F_d-E_d$.  Both $\widehat F$ and $G$ are positive for
+$d>m$, the latter because $G_z=1$ with $z>m$, so Lemma~\ref{lem:interlace}
+applies and gives $\Delta_d\ge0$ for $d\ge m+1$, that is,
 $E_d/\widehat F_d\le\sigma$ for $d\ge m+1$.  Moreover the $c$-node sum
 \[
   W_d=\widehat F_{m+1}G_d-G_{m+1}\widehat F_d
 \]
 vanishes on $Z'\cup\{m+1\}$, which is $c-1$ points, so by the zero bound
-those are its only zeros; beyond $m+1$ it has constant sign, and that sign is
-positive because asymptotically only $G$ contains the largest node $y_c$,
-with positive coefficient.  Hence $G_d/\widehat F_d>\sigma$ for $d>m+1$,
-while $\sigma=G_z/\widehat F_z$ when $z=m+1$.  Therefore
+those are its only zeros and $W$ has constant sign beyond $m+1$.  That sign is
+positive: writing $G_d=\sum_ia_iy_i^d$, the largest node $y_c$ occurs only in
+$G$, so $W_d\sim\widehat F_{m+1}a_cy_c^{\,d}$ with $\widehat F_{m+1}>0$, and
+$a_c>0$ because $G_d>0$ for $d>m$ forces $a_c\ge0$, while $a_c=0$ would make
+$G$ a sum on the $c-1$ nodes $y_1,\ldots,y_{c-1}$ with the $c-1$ zeros
+$\{0\}\cup Z'$, hence identically zero.  So $G_d/\widehat F_d>\sigma$ for
+$d>m+1$, while $\sigma=G_z/\widehat F_z$ when $z=m+1$.  Therefore
 \[
   \frac{E_d}{\widehat F_d}\le\sigma\le\frac{G_z}{\widehat F_z}
   \qquad(d\ge z>m),
@@ -523,6 +537,21 @@ $b_{u+1}(F_\varepsilon)\ge|f_D|\prod_{i=u+1}^L(r_{i,\varepsilon}-1)$, and lettin
 $\varepsilon\to0$ proves \eqref{eq:order}.
 \end{proof}
 
+\begin{corollary}[Complex multiples]\label{cor:complex}
+Theorem~\ref{thm:order} holds verbatim for a nonzero $F\in\mathbb C[x]$
+divisible by $\prod_{i=1}^L(x-r_i)$.
+\end{corollary}
+
+\begin{proof}
+Write $g=F/f_D=PQ$ with $Q\in\mathbb C[x]$ monic.  Since $P$ is real,
+$\operatorname{Re}g=P\operatorname{Re}Q$ is a monic real multiple of $P$ of
+the same degree $D$, and $|\operatorname{Re}g_j|\le|g_j|$ for every $j$.
+Coefficientwise domination passes to order statistics, so
+Theorem~\ref{thm:order} applied to $\operatorname{Re}g$ gives
+$b_k(g)\ge b_k(\operatorname{Re}g)\ge\prod_{i=k}^L(r_i-1)$; multiplying
+through by $|f_D|$ gives \eqref{eq:order} for $F$.
+\end{proof}
+
 \begin{corollary}[Logarithmic mass]\label{cor:mass}
 Let $r_1\le\cdots\le r_L$ be real with $r_1\ge2$, repetitions allowed, and
 let $F$ be a nonzero multiple of $\prod_{i=1}^L(x-r_i)$ with $|f_D|\ge1$.
@@ -543,6 +572,14 @@ magnitudes are all at least one.  These are $L+1$ distinct positions, so
 using $\log b_{u+1}\ge\log|f_D|+\sum_{i=u+1}^L\log(r_i-1)$ and collecting the
 index-$i$ terms, which occur exactly $i$ times.
 \end{proof}
+
+The two bounds do not degrade together at the bottom of the permitted range.
+For $r_1=\cdots=r_L=2$ every product in \eqref{eq:order} equals $1$, so
+Theorem~\ref{thm:order} still forces $L$ nonleading coefficients of magnitude
+at least $|f_D|$, while \eqref{eq:mass} degenerates to
+$\Lambda(F)\ge(L+1)\log|f_D|$ and says nothing further.  The order-statistic
+bound is the informative one across the whole root range; the mass consequence
+is not.
 
 \begin{corollary}[Prime roots]\label{cor:prime}
 Assume $|f_D|\ge1$ and that the increasing roots $r_i$ are bounded below by
@@ -779,24 +816,33 @@ contradicting the previous paragraph for large $c$.
 
 \section{Scope}
 
-Corollary~\ref{cor:mass} concerns coefficient magnitudes, not ordinary length
-or height.  Subject to $|f_D|\ge1$, it is uniform over the degree of $F$ and
-all additional real or complex roots, and bounds all $L$ order statistics.
-Corollary~\ref{cor:prime} shows the resulting prime-root bound $(1/2+o(1))L^2\log L$ is attained by
-$P_L=\prod_{i=1}^L(x-p_i)$, so it is asymptotically sharp.  In the opposite
-direction, the degree of an integer polynomial of height $H\ge2$ all of whose
-roots are nonzero rationals is at most a constant times $\log H$~\cite{htv},
-and the minimal height of a degree-$n$ polynomial over a fixed number field
-with all roots in $K^\times$ grows exponentially in $n$~\cite{tromp}; the
-bound here constrains neither degree nor height but the additive coefficient
-mass.  The contribution
-relative to reduced-height duality is the prefix-sensitive tail comparison
-and its iteration; the normalized determinant sequence and its
-consecutive-zero evaluation are from Dubickas and Jankauskas~\cite{dj}.  The
-confluent
-Proposition~\ref{prop:confluent} is supplementary: it carries the tail theorem
-to confluent nodes, but Theorem~\ref{thm:order} already reaches repeated roots
-by perturbation, so the main bounds do not depend on it.
+The bounds here concern coefficient magnitudes, not ordinary length or
+height: subject to $|f_D|\ge1$ they are uniform over the degree of $F$ and
+over all additional real or complex roots.  In the opposite direction, the
+degree of an integer polynomial of height $H\ge2$ all of whose roots are
+nonzero rationals is at most a constant times $\log H$~\cite{htv}, and the
+minimal height of a degree-$n$ polynomial over a fixed number field with all
+roots in $K^\times$ grows exponentially in $n$~\cite{tromp}; the bound here
+constrains neither degree nor height but the additive coefficient mass.  The
+contribution relative to reduced-height duality is the prefix-sensitive tail
+comparison and its iteration; the normalized determinant sequence and its
+consecutive-zero evaluation are from Dubickas and Jankauskas~\cite{dj}.
+Proposition~\ref{prop:confluent} is supplementary: it carries the tail
+theorem to confluent nodes, but Theorem~\ref{thm:order} already reaches
+repeated roots by perturbation, so the main bounds do not depend on it.
+
+Two limits are worth stating plainly.  Every result above requires
+$r_i\ge2$, and that restriction is not an artifact of the proof: the tail
+bound rests on the node cutoff $y_i\le1/2$, which
+Proposition~\ref{prop:cutoff} shows cannot be raised, so roots in $(1,2)$ lie
+outside the reach of this method rather than merely outside its current
+statement.
+
+What is left open is the pointwise extremal problem: for a fixed root
+sequence and a fixed $k$, how closely a multiple can approach
+\eqref{eq:order}.  Corollary~\ref{cor:infimum} settles the asymptotic form of
+the aggregated question for prime roots, and the multiplier $x+1$ above shows
+that even there the root product need not be the finite-$L$ minimizer.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
