@@ -254,8 +254,11 @@ class _Machine:
         (col, row, _dx, _dy), grid, _stack, _string, _done = self.state
         command = grid[row][col]
         char_input = self.io.input_char() if command == "~" else None
+        # An empty stack pops as 0, so it is a zero divisor like any other and
+        # must read a result too.  Guarding on a non-empty stack instead made
+        # `0/` read while `/` halted, on the same divisor.
         needs_number = command == "&" or (
-            command in "/%" and bool(self.state[2]) and self.state[2][-1] == 0
+            command in "/%" and (not self.state[2] or self.state[2][-1] == 0)
         )
         number_input = self.io.input_num() if needs_number else None
         random_dir = draw(self._rng, 4) if command == "?" else None
