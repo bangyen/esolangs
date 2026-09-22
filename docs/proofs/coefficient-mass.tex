@@ -77,9 +77,10 @@ the logarithm of the multiplicative height,
 $\Lambda(F)=\log\prod_{j:f_j\ne0}\max(1,|f_j|)$.  In a fixed integer base $B$
 the quantity $\Lambda(F)/\log B$ approximates the total base-$B$ digit length
 of the nonzero coefficients, agreeing with the encoded length of the
-coefficient vector up to a term proportional to the number of coefficients
-encoded; signs, zero entries, and the exponent encoding of a sparse
-representation are accounted for separately.  For real coefficients it is a
+coefficient vector up to an additive term proportional to the number of
+nonzero coefficients (it is not literal equality); signs, zero entries, and
+the exponent encoding of a sparse representation are accounted for
+separately.  For real coefficients it is a
 mass rather than a literal encoding length.
 It is additive over coefficients, and this is what makes it the natural
 target here.  A multiplicative bound on one coefficient order statistic
@@ -159,9 +160,10 @@ $e^{(\sum_i\lambda_i)d}\prod_{i<j}(\lambda_j-\lambda_i)$ is nowhere
 zero~\cite[Chapter~I, Theorem~4.1]{karlin-studden}.  Equivalently, prove the
 bound by induction on $r$: factoring out the largest exponential leaves
 $T=\sum_ia_ie^{(\lambda_i-\lambda_1)d}$, which has the same zeros as the
-original combination and whose derivative is a combination of the remaining
-$r-1$ exponentials, so
-Rolle's theorem and the induction hypothesis give at most $r-1$ zeros.  It is
+original combination and whose derivative is again a combination of distinct
+exponentials, now with one fewer term.  Differentiating once and applying
+Rolle's theorem, then renormalizing by the largest surviving exponential at
+each step and invoking the induction hypothesis, gives at most $r-1$ zeros.  It is
 also the exponential form of Laguerre's extension of Descartes' rule of
 signs~\cite[Part~V]{polya-szego}.  Consequently an $r$-node sum with $r-1$
 prescribed real zeros has exactly those zeros, each is simple, and the sum
@@ -517,7 +519,7 @@ $F_\varepsilon=Q\prod_{i=1}^L(x-r_{i,\varepsilon})$.  The leading coefficient
 is unchanged and the coefficient vector of $F_\varepsilon$ tends to that of
 $F$; an order statistic of a converging tuple is continuous, so
 $b_{u+1}(F_\varepsilon)\to b_{u+1}(F)$.  The distinct case gives
-$b_{u+1}(F_\varepsilon)\ge|f_D|\prod_{i=1}^L(r_{i,\varepsilon}-1)$, and letting
+$b_{u+1}(F_\varepsilon)\ge|f_D|\prod_{i=u+1}^L(r_{i,\varepsilon}-1)$, and letting
 $\varepsilon\to0$ proves \eqref{eq:order}.
 \end{proof}
 
