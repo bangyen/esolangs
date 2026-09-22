@@ -67,8 +67,10 @@ norms over monic multiples~\cite{mignotte,dubickas,schinzel,schinzel-complex,dj}
 the Euclidean analogue is effectively computable~\cite{frw}, and the dual
 problems---a multiple of bounded height, or a root of prescribed multiplicity
 for a restricted-coefficient power series---form a classical
-line~\cite{bombieri-vaaler,bbbp-multiple,bbbp-ray}.  The height $\max_j|f_j|$ and the length
-$\sum_j|f_j|$ are both dominated by a single coefficient.  The mass $\Lambda$
+line~\cite{bombieri-vaaler,bbbp-multiple,bbbp-ray}.  A bound on the height
+$\max_j|f_j|$ concerns a single coefficient, and the length $\sum_j|f_j|$ can
+be carried by many comparable terms, so neither norm alone forces a hierarchy
+of large coefficient magnitudes.  The mass $\Lambda$
 instead accumulates over all coefficients of magnitude exceeding one: it is
 the logarithm of the multiplicative height,
 $\Lambda(F)=\log\prod_{j:f_j\ne0}\max(1,|f_j|)$.  In a fixed base
@@ -87,8 +89,9 @@ the largest one.
 Dubickas and Jankauskas associate to reciprocal roots and a prescribed zero
 set $J$ a normalized determinant sequence $S_n(J)$ with $S_0(J)=1$ and
 $S_k(J)=0$ for $k\in J$~\cite{dj}.  That sequence is the exponential sum $u$
-studied below: its infinite tail yields their dual lower bound for the reduced
-height, and they evaluate the consecutive set $J=\{1,\ldots,c-1\}$
+studied below: its infinite tail is the reciprocal of their dual lower bound
+for the reduced height, their inequality~(8), and they evaluate the
+consecutive set $J=\{1,\ldots,c-1\}$
 explicitly~\cite[Section~2]{dj}.  Our new ingredient is a displaced-zero
 comparison for the $\ell^1$-tail of this certificate: moving a prescribed
 integer zero and the largest reciprocal node together strictly decreases the
@@ -231,20 +234,24 @@ $a_{j+1}-1\notin A$ and $G_{a_{j+1}-1}\ne0$, and
 If $J=\varnothing$ then $r=c-2$, and the forced zeros together with
 $m+1$ give $r+1=c-1>c-2$ zeros, so $\Delta\equiv0$ and the claim is
 immediate.  Assume $J\ne\varnothing$ and order $J=\{j_1<\cdots<j_p\}$, so
-$p=|J|=c-2-r$.  Take consecutive $j<j'$ in $J$.  Strictly between
+$p=|J|=c-2-r$.  Let $N_\Delta$ be the number of zeros of $\Delta$ counted
+with multiplicity.  Take consecutive $j<j'$ in $J$.  Strictly between
 $a_{j+1}$ and $a_{j'+1}$ lie $q=j'-j-1$ marked points of $A$, all with
 indices outside $J$, hence $q$ forced zeros; and the endpoint signs
 $(-1)^{c-1-j}$, $(-1)^{c-1-j'}$ differ by $(-1)^{q+1}$.  A real function
 whose endpoint values differ in sign by $(-1)^{q+1}$ has an odd or even
 number of zeros in the open interval according as $q+1$ is odd or even, so
-the number of zeros in $(a_{j+1},a_{j'+1})$ has the parity of $q+1$ and is at
-least $q$; hence it is at least $q+1$, one more than the forced zeros.  The
-$p-1$ gaps between consecutive members of $J$ therefore supply
-$r+(p-1)+1=c-2$ units of zero multiplicity in all, once the zero at $m+1$ is
-added, and this exhausts the zero-multiplicity budget of $\Delta$; in
-particular there are no other zeros.  Here the $q+1$ units in a gap are
-counted with multiplicity; the parity supplies one unit beyond the $q$ forced
-ones, possibly at a forced zero.
+the number of zeros in $(a_{j+1},a_{j'+1})$, counted with multiplicity, has
+the parity of $q+1$ and is at least $q$; hence it is at least $q+1$, one more
+than the $q$ forced zeros.  The $r$ forced zeros lie at marked points, and the
+parity supplies one additional unit of multiplicity in each of the $p-1$ gaps
+between consecutive members of $J$, possibly at a point already forced.  With
+the zero at $m+1$ this gives
+\[
+  N_\Delta\ge r+(p-1)+1=c-2,
+\]
+which exhausts the zero-multiplicity budget of the $c-1$-node sum $\Delta$; in
+particular there are no other zeros.
 
 Every one of the $p-1$ extra multiplicities lies below $a_{j_p+1}$, so every
 zero of $\Delta$ above $a_{j_p+1}$ belongs to the exhaustion just described
@@ -314,11 +321,12 @@ so it is constant on $(0,z)\setminus Z'$; it is positive at $d=0$, where
 $u_0=F_0=1$ and $G_0=0$.  At $z$, where $G$ does not vanish, only $\sgn u$
 flips, so the sign is negative for all $d>z$.  Hence
 \[
-  |F_d|>\mu|G_d|\quad(1\le d<z),
+  |F_d|>\mu|G_d|\quad(1\le d<z,\ d\notin Z'),
   \qquad
   |F_d|<\mu|G_d|\quad(d>z),
 \]
-with equality only where $|u_d|=0$.  For an exponential sum $V$, write
+with equality exactly at the zeros of $u$: at the points of $Z'$ both sides
+vanish, and at $z$ one has $|F_z|=\mu|G_z|$.  For an exponential sum $V$, write
 \[
   \Gamma_V(z)=\frac{\sum_{d\ge z}|V_d|}{|V_z|},
   \qquad A_G=\sum_{1\le d<z}|G_d|.
@@ -389,7 +397,8 @@ formula and its equality case.
 The restriction $\rho_i\ge2$ is substantive.  For $c=2$,
 $y_1=1/10$, $y_2=4/5$, and $Z=\{2\}$, the normalized coefficients are
 $a_1=64/63$ and $a_2=-1/63$, so
-$\Tail(u)=364/2835>1/9=y_1/(1-y_1)$.
+$\Tail(u)=364/2835>1/9=y_1/(1-y_1)$; Proposition~\ref{prop:cutoff} shows that
+no cutoff larger than $1/2$ is universal.
 
 \section{Coefficient order statistics}
 
@@ -630,6 +639,42 @@ product $\prod_{j=1}^{f+1}y_{(j)}(\varepsilon)/(1-y_{(j)}(\varepsilon))$
 tends to $\prod_{j=1}^{f+1}y_{(j)}/(1-y_{(j)})$.
 \end{proof}
 
+\begin{proposition}[The node cutoff $1/2$ is sharp]\label{prop:cutoff}
+No constant $a>1/2$ can replace $1/2$ in Theorem~\ref{thm:tail} or in
+Proposition~\ref{prop:confluent}: for every $a\in(1/2,1)$ some configuration
+with all nodes in $(0,a]$ violates the bound
+$\Tail(u)\le\prod_{j=1}^{f+1}y_{(j)}/(1-y_{(j)})$.
+\end{proposition}
+
+\begin{proof}
+Take a single node $a\in(1/2,1)$ of multiplicity $c$ and
+$Z=\{2,3,\ldots,c\}$, so the sum is $u_d=a^d\prod_{k=2}^c(1-d/k)$.  Then
+$u_0=1$, the prescribed zeros are exactly $Z$, the leading run is $f=0$, and
+\[
+  u_1=\frac ac,\qquad
+  |u_d|=\frac1c\binom{d-2}{c-1}a^d\quad(d\ge c+1),
+\]
+so, summing the binomial series,
+\[
+  \Tail(u)=\frac ac+\frac{a^{c+1}}{c(1-a)^c}
+  =\frac ac\Bigl[1+\Bigl(\frac a{1-a}\Bigr)^c\Bigr].
+\]
+The bound with $f=0$ would be $a/(1-a)$, but
+\[
+  \frac{\Tail(u)}{a/(1-a)}
+  =\frac{1-a}{c}\Bigl[1+\Bigl(\frac a{1-a}\Bigr)^c\Bigr]\longrightarrow\infty
+\]
+because $a/(1-a)>1$, so $\Tail(u)>a/(1-a)$ for all large $c$.
+
+To transfer the obstruction to distinct nodes, suppose the bound held for
+every configuration with nodes in $(0,a]$.  Coalescing the $c$ nodes near $a$
+as in the proof of Proposition~\ref{prop:confluent} gives sums
+$u^{(\varepsilon)}$ on distinct nodes in $(0,a]$ that satisfy it, and
+$u^{(\varepsilon)}_d\to u_d$ for each $d$.  By Fatou's lemma,
+$\Tail(u)\le\liminf_{\varepsilon\to0}\Tail(u^{(\varepsilon)})\le a/(1-a)$,
+contradicting the previous paragraph for large $c$.
+\end{proof}
+
 \section{Scope}
 
 Corollary~\ref{cor:mass} concerns normalized coefficient magnitudes, not
@@ -638,11 +683,12 @@ degree of $F$ and all additional real or complex roots, and bounds all $L$
 order statistics rather than about half of them.  Corollary~\ref{cor:prime}
 shows the resulting prime-root bound $(1/2+o(1))L^2\log L$ is attained by
 $P_L=\prod_{i=1}^L(x-p_i)$, so it is asymptotically sharp.  In the opposite
-direction, the degree of a polynomial with all roots rational is at most a
-constant times the logarithm of its height~\cite{htv}, and the minimal height
-of a degree-$n$ polynomial splitting over a fixed number field grows
-exponentially in $n$~\cite{tromp}; the bound here constrains neither degree
-nor height but the additive coefficient mass.  The contribution
+direction, the degree of an integer polynomial of height $H\ge2$ all of whose
+roots are nonzero rationals is at most a constant times $\log H$~\cite{htv},
+and the minimal height of a degree-$n$ polynomial over a fixed number field
+with all roots in $K^\times$ grows exponentially in $n$~\cite{tromp}; the
+bound here constrains neither degree nor height but the additive coefficient
+mass.  The contribution
 relative to reduced-height duality is the displaced-zero comparison and its
 iteration; the normalized determinant sequence and its consecutive-zero
 evaluation are from Dubickas and Jankauskas~\cite{dj}.  The confluent

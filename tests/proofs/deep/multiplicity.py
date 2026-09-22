@@ -26,7 +26,7 @@ The confluent analogue is::
 and the claim is the *same* tail bound with the product read over the expanded
 multiset (each ``y_i`` repeated ``e_i`` times).  This module does not prove the
 limit step -- that is the Hermite interpolation argument in
-``docs/proofs/coefficient-mass.tex``, Proposition 3.5 -- it pins the algebraic
+``docs/proofs/coefficient-mass.tex``, Proposition 3.6 -- it pins the algebraic
 content: the base case is exact, the general bound holds on every certificate
 here, the slack assembly's threshold really is the product over the top units,
 and the repeated-root mass floor holds on the products and multiples checked.
