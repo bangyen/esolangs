@@ -200,6 +200,35 @@ class TestStrokeSeparation:
         assert _max_between_stroke_adjacency(program) == 0
 
 
+class TestRunBeforeALoop:
+    """A long straight run before a nested loop, the shape that used to raise.
+
+    A loop-back's ring reaches back along the trunk past the fork by the
+    body's lateral extent, and that direction is longitudinal for the code
+    *before* the fork -- which nothing reserved.  With the stem fixed at 10
+    the ring wrapped into the leading run and the drift guard raised: every
+    depth >= 2 program with 6 or more leading `+` failed (`+++++[>+[>+<-]<-]`
+    rendered, `++++++[...]` did not), taking ordinary multiplier loops with
+    it.  `render._stem_len` sizes the stem to the ring instead.  Asserting on
+    output, not just on rendering, is what makes these cover the geometry:
+    the same run is now drawn somewhere new.
+    """
+
+    @pytest.mark.parametrize("count", [5, 6, 7, 12])
+    def test_a_long_leading_run_before_a_nested_loop(
+        self, count: int, tmp_path: Path
+    ) -> None:
+        """6 was the first count that raised; 5 was the last that drew."""
+        program = "+" * count + "[>+[>+<-]<-]>>."
+        assert _run_bf(program, tmp_path / f"pre{count}.png") == [count]
+
+    @pytest.mark.medium  # 0.5s: the largest drawing in this class
+    def test_a_realistic_multiplier_program(self, tmp_path: Path) -> None:
+        """The `H` of a stock hello-world header -- 8 leading `+`, depth 2."""
+        program = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>."
+        assert _run_bf(program, tmp_path / "hello_h.png") == [72]
+
+
 class TestNestingDepth:
     """Nesting depth is unbounded: loop-backs are constructed, not routed.
 
@@ -212,23 +241,22 @@ class TestNestingDepth:
     competes for space globally, so every depth is a new fight.
 
     `render._loop_return_legs` ended the series by removing the search: a
-    compiled brainfuck goto always ends its own fork's body chain, so its
-    return path is constructed deterministically from measured geometry
-    (wrap the body's bounding box, ride the reserved bay, land on the stem)
-    -- and because `render._subtree_extent`'s dry runs draw the same
-    construction, every ancestor's measured extent contains its children's
-    return paths and reserves room for them recursively.  No routing, no
-    congestion, no ceiling: depths 1-12 all round-trip (verified directly;
-    depth 8 is pinned below as the deep representative, chosen for suite
-    runtime -- rendering itself is ~10ms at any depth, the extract/simulate
-    side is what grows).
+    compiled brainfuck goto's return path is constructed deterministically
+    from measured geometry (wrap the body's bounding box, ride the reserved
+    bay, land on the stem) -- and because `render._subtree_extent`'s dry
+    runs draw the same construction, every ancestor's measured extent
+    contains its children's return paths and reserves room for them
+    recursively.  *Depth* is what that buys: no routing, no congestion, no
+    ceiling in depth, and depths 1-12 all round-trip for the shapes below
+    (depth 8 is pinned as the deep representative, chosen for suite runtime
+    -- rendering is ~40ms even at depth 12, the extract/simulate side is
+    what grows).
 
-    The invariant that survives from the original class is unchanged in
-    substance: a drawing that cannot be completed fails loudly at render
-    time rather than misdrawing.  A compiled program's loop-backs always
-    construct, so :meth:`test_unconstructible_loop_back_raises` pins the
-    invariant by forcing the construction to decline -- the shape a
-    hand-built graph outside the compiled invariants would produce.
+    Depth is not the only axis, and the construction is *not* total over
+    compiled programs -- see `TestUnconstructibleShapes`, which pins the one
+    premise that still fails.  The invariant that survives from the original
+    class is the one that matters: a drawing that cannot be completed fails
+    loudly at render time rather than misdrawing.
     """
 
     def test_three_levels_round_trip(self, tmp_path: Path) -> None:
@@ -308,15 +336,43 @@ class TestNestingDepth:
         built around: an undrawable reconnection must be a loud render-time
         error, because the misdrawn alternative renders happily and then
         fails extraction thousands of unaccounted pixels later (or worse,
-        executes wrongly).  A compiled program's loop-backs always
-        construct, so the decline is forced here -- the shape a hand-built
-        graph outside the compiled invariants (a goto whose target is not an
-        ancestor fork whose body chain it ends, or a body end off its own
-        box perimeter) would produce naturally.
+        executes wrongly).  The decline is forced here rather than drawn
+        from a program, so the raise is covered for every target shape --
+        `TestUnconstructibleShapes` pins the compiled ones that reach it.
         """
         monkeypatch.setattr(render_module, "_loop_return_legs", lambda *_a: None)
         with pytest.raises(ValueError, match="could not be constructed"):
             _run_bf("+++[-].", tmp_path / "unconstructible.png")
+
+
+class TestUnconstructibleShapes:
+    """Compiled programs the construction still declines, pinned as a limit.
+
+    `_loop_return_legs` starts the ring from the body's end and needs that
+    end on the perimeter of the body's own measured box.  A `goto` hangs off
+    the body's *control* tail, which `bf_to_line._control_tail` follows down
+    a nested fork's `zero` arm -- so code after an inner loop ends up inside
+    the box rather than on it, and the construction returns `None`.  The
+    threshold is geometric, not structural: `+[[-][-]+]` draws and
+    `+[[-][-][-]+]` does not; the smallest failing program is `[[[+]][+]+]`.
+    Over 1315 random compiled programs (depth <= 4) 31 fail this way, the
+    same 31 before and after `_stem_len` -- it is a separate, older limit
+    than the leading-run collision `TestRunBeforeALoop` covers.
+
+    Pinned as a raise because that is the invariant: undrawable is loud, not
+    misdrawn.  These assertions are the ones to delete when the premise is
+    lifted.
+    """
+
+    @pytest.mark.parametrize("program", ["[[[+]][+]+]", "+[[-][-][-]+]"])
+    def test_a_body_tail_inside_its_own_box_raises(self, program: str) -> None:
+        with pytest.raises(ValueError, match="could not be constructed"):
+            render(bf_to_line(program))
+
+    @pytest.mark.parametrize("program", ["[[+][+]+]", "+[[-][-]+]"])
+    def test_the_same_shape_one_loop_smaller_still_draws(self, program: str) -> None:
+        """The positive control: the limit is geometric, not "code after a loop"."""
+        assert render(bf_to_line(program)).width > 0
 
 
 class TestCompileErrors:
