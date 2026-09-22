@@ -1064,18 +1064,40 @@ optimum too is attained within an exact family.
 At $D=9$, $s_9=\tfrac{31585}{7663}=4.1217538\ldots$, which is the $b_3$
 optimum of Section~\ref{sec:scope} at the same degree cap.
 
-The route has one limit, observed numerically rather than proved here.  From
-$L=4$ the construction can fail: the
-limit system determines the free prefix as well as the run, and its prefix
-entries need not be bounded by the run value, as they must be if the run is to
-be the $(u+1)$-st largest magnitude.  For $u=1$ and roots $(2,3,5,7)$ the
-limit prefix is $(-14,57)$ against a run value of $48$, and the search returns
-$\min b_2\approx54.97$, well above \eqref{eq:order}; the same happens at
-$(2,3,4,5)$, prefix $(-11,36)$ against $24$ with $\min b_2\approx32.23$, and
-at $(2,3,5,6)$, prefix $(-13,50)$ against $40$ with $\min b_2\approx47.55$.
-At $(3,4,5,6)$ the prefix is $(-14,60)$ against $60$, just admissible, and the
-search returns the bound.  Whether \eqref{eq:order} is an infimum in general
-is therefore open, and these searches suggest it is not.
+Neither family was guessed.  Write $P_u(x)=\prod_{i>u}(x-r_i)$ for the
+surviving roots, $m=L-u$, and let $\widetilde P_u(y)=y^mP_u(1/y)$ be its
+reverse.  In the reversed variables the limit construction is
+\begin{equation}\label{eq:wgen}
+  W(y)=\sum_{d\ge0}w_dy^d=\frac{\widetilde P_u(y)}{1-y},
+\end{equation}
+which vanishes at $y=1/r_i$ for every surviving root because
+$\widetilde P_u$ does.  Its coefficients are therefore the partial sums
+$S_j=c_0+\cdots+c_j$ of the coefficients of $P_u$, and they stabilize at
+$S_m=P_u(1)=(-1)^m\prod_{i>u}(r_i-1)$ once $j\ge m$.  So the free prefix is
+$S_1,\ldots,S_{m-1}$ and the run value is $|S_m|$, which is exactly
+\eqref{eq:order}: the construction reproduces the bound because the sum of the
+coefficients of $P_u$ is $P_u(1)$.
+
+This makes the requirement explicit.  The run is the $(u+1)$-st largest
+magnitude only if no partial sum exceeds the total,
+\begin{equation}\label{eq:partial}
+  |S_j|\le|S_m|\qquad(1\le j<m),
+\end{equation}
+and \eqref{eq:partial} can fail.  At $(2,3,5,7)$ with $u=1$ the coefficients of
+$P_1$ are $1,-15,71,-105$, the partial sums $1,-14,57,-48$, and
+$57>48$; the search returns $\min b_2\approx54.97$, above \eqref{eq:order}.
+The same happens at $(2,3,4,5)$, sums $1,-11,36,-24$ with
+$\min b_2\approx32.23$, and at $(2,3,5,6)$, sums $1,-13,50,-40$ with
+$\min b_2\approx47.55$.  At $(3,4,5,6)$ the sums are $1,-14,60,-60$, so
+\eqref{eq:partial} holds with equality and the search returns the bound.
+Across the $15$ root sets tried, \eqref{eq:partial} agreed with attainment
+every time, in both directions.
+
+When \eqref{eq:partial} holds the construction is available and
+\eqref{eq:order} is an infimum, by the argument of
+Proposition~\ref{prop:sharp235}.  The converse---that failure of
+\eqref{eq:partial} forces the infimum strictly above \eqref{eq:order}---is
+what the searches suggest and what is not proved here.
 
 \section{Scope}\label{sec:scope}
 
