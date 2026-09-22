@@ -31,11 +31,11 @@ selects the pointer, and ``*`` toggles comment mode.
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
-import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import cast
 
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
@@ -435,6 +435,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read(), IO())
+    script_main(run)

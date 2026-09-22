@@ -32,6 +32,7 @@ except ModuleNotFoundError:  # optional ``math`` extra
     sp = None
 
 from esolangs.exceptions import MissingDependencyError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 
@@ -918,7 +919,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.read()
-            run(data, IO())
+    script_main(run)

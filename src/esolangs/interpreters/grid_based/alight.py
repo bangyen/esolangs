@@ -75,10 +75,10 @@ operation.
   way.  ``lamfunc.py`` frames calls for the same reason.
 """
 
-import sys
 from typing import Literal, TypeGuard, cast
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 #: Headings as ``(drow, dcol)`` in screen coordinates -- row grows downward,
@@ -1194,6 +1194,4 @@ def run(code: list[str] | str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read().splitlines(), IO())
+    script_main(run, shape="strip")

@@ -68,11 +68,11 @@ value to settle on; no :class:`HaltError` is raised.
 """
 
 import re
-import sys
 from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Final, Literal, cast
 
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO, ScriptedIO
 
 type _Definitions = dict[str, tuple[str, ...]]
@@ -1192,6 +1192,4 @@ def run(code: list[str], io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.readlines(), IO())
+    script_main(run, shape="keep")

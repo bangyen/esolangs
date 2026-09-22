@@ -13,10 +13,10 @@ point (verified to ten passes); a divergent one is stepped until Brent's
 proves it.
 """
 
-import sys
 from collections.abc import Mapping
 from typing import Literal
 
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 # ``(dx, dy)``; named so a heading stays distinct from its character.
@@ -235,6 +235,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read(), IO())
+    script_main(run)

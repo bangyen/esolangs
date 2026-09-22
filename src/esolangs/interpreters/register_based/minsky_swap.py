@@ -16,8 +16,8 @@ state per ``step()`` and does the one dump on the halting step.
 from __future__ import annotations
 
 import re
-import sys
 
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 #: One instant of a run: ``(ind, ptr, reg, dumped)`` -- the cursor, the
@@ -195,7 +195,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.read()
-            run(data, IO())
+    script_main(run)

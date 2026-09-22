@@ -3,7 +3,14 @@
 import pytest
 
 from esolangs.exceptions import HaltError, ProgramError
-from esolangs.interpreters.other.crement import _advance, _Machine, _parse
+from esolangs.interpreters.other.crement import (
+    _advance,
+    _Instruction,
+    _Machine,
+    _number,
+    _parse,
+    _State,
+)
 from esolangs.vm import run_until_halt_or_cycle
 
 
@@ -80,3 +87,16 @@ def test_negative_target_is_an_explicit_undefined_operation(program: str) -> Non
     machine = _Machine(program)
     with pytest.raises(HaltError, match="negative address"):
         machine.step()
+
+
+def test_a_number_with_no_terms_is_rejected() -> None:
+    """An empty operand parses as a sum of nothing, not as zero."""
+    with pytest.raises(ProgramError, match="at least one term"):
+        _number("", {}, 0)
+
+
+def test_a_negative_pointer_halts() -> None:
+    """``_Machine`` cannot start below zero, so the guard is the transition's."""
+    state = _State(ip=-1, program=(_Instruction("J", 1, 0, 0),))
+    with pytest.raises(HaltError, match="negative address"):
+        _advance(state)

@@ -12,8 +12,7 @@ malformed-line rejection are the shell's.
 
 from __future__ import annotations
 
-import sys
-
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.persistent import (
     Chunked,
@@ -234,7 +233,4 @@ def run(code: list[str], io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.readlines()
-            run(data, IO())
+    script_main(run, shape="keep")

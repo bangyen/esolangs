@@ -17,8 +17,7 @@ transition; :class:`_Machine` rebinds one state per ``step()``.
 
 from __future__ import annotations
 
-import sys
-
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 #: The container values, as an immutable name->value mapping in name order,
@@ -263,9 +262,4 @@ def run(code: list[str], io: IO) -> int | None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.readlines()
-            code = run(data, IO())
-        if code is not None:
-            sys.exit(code)
+    script_main(run, shape="keep")

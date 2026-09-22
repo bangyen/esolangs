@@ -11,9 +11,9 @@ Exhausted input raises :class:`EOFError`, following the package convention.
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 type _Point = tuple[int, int]
@@ -244,5 +244,4 @@ def run(source: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    with open(sys.argv[1]) as file:
-        run(file.read(), IO())
+    script_main(run)

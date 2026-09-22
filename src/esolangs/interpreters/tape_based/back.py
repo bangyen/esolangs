@@ -45,9 +45,9 @@ Malformed programs raise :class:`ValueError`.
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Sequence
 
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 #: ``(row, col, a, b, tape, cell, done)``: an immutable value, rebound per
@@ -233,7 +233,4 @@ def run(code: list[str], io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.readlines()
-            run(data, IO())
+    script_main(run, shape="keep")
