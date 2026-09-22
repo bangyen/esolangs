@@ -36,7 +36,7 @@ nonzero real polynomial $F=\sum_jf_jx^j$ divisible by $\prod_{i=1}^L(x-r_i)$
 we prove a degree-independent bound on each coefficient order statistic: the
 $(u+1)$-st largest nonleading coefficient magnitude is at least
 $|f_D|\prod_{i=u+1}^L(r_i-1)$; the case $u=0$ needs only $r_i>1$.
-For $|f_D|\ge1$ the bounds sum to a lower bound
+The bounds sum to a lower bound
 on the logarithmic coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$; for the
 first $L$ primes this gives
 $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with asymptotic equality for
@@ -121,7 +121,7 @@ The main result is a distributional bound on the coefficient sizes of a
 multiple.  For positive roots $2\le r_1\le\cdots\le r_L$, repetitions
 allowed, Theorem~\ref{thm:order}, via the certificate
 Lemma~\ref{lem:slack}, bounds all $L$ coefficient order statistics of every
-multiple, and for $|f_D|\ge1$ Corollary~\ref{cor:mass} sums them into a lower
+multiple, and Corollary~\ref{cor:mass} sums them into a lower
 bound for $\Lambda$:
 \[
   b_k(F)\ge|f_D|\prod_{i=k}^{L}(r_i-1),
@@ -612,17 +612,16 @@ through by $|f_D|$ gives \eqref{eq:order} for $F$.
 
 \begin{corollary}[Logarithmic mass]\label{cor:mass}
 Let $r_1\le\cdots\le r_L$ be real with $r_1\ge2$, repetitions allowed, and
-let $F$ be a nonzero multiple of $\prod_{i=1}^L(x-r_i)$ with $|f_D|\ge1$.
-Then
+let $F$ be a nonzero multiple of $\prod_{i=1}^L(x-r_i)$.  Then
 \begin{equation}\label{eq:mass}
  \Lambda(F)\ge(L+1)\log|f_D|+\sum_{i=1}^{L}i\log(r_i-1).
 \end{equation}
 \end{corollary}
 
 \begin{proof}
-Each product in \eqref{eq:order} is at least one because $r_i\ge2$, and
-$|f_D|\ge1$, so the leading coefficient and the $L$ largest nonleading
-magnitudes are all at least one.  These are $L+1$ distinct positions, so
+Each product in \eqref{eq:order} is at least one because $r_i\ge2$, so the
+$L$ largest nonleading magnitudes are nonzero, as is $f_D$; since $D\ge L$
+these are $L+1$ distinct positions.  Summing $\log^+\ge\log$ over them alone,
 \[
  \Lambda(F)\ge\log|f_D|+\sum_{u=0}^{L-1}\log b_{u+1}
  \ge(L+1)\log|f_D|+\sum_{i=1}^{L}i\log(r_i-1),
@@ -1145,7 +1144,8 @@ $\Lambda$ itself is additive over coefficients rather than a norm at all.
 The bounds here concern coefficient magnitudes, not ordinary length or
 height: they are uniform over the degree of $F$ and over all additional real
 or complex roots, the hypothesis $|f_D|\ge1$ entering only where the
-order-statistic bounds are summed into $\Lambda$.  In the opposite direction,
+$\log|f_D|$ term is discarded to reach an asymptotic.  In the opposite
+direction,
 the degree of an integer polynomial of height $H\ge2$ all of whose roots are
 nonzero rationals is at most a constant times $\log H$~\cite{htv}, and the
 minimal height of a degree-$n$ polynomial over a fixed number field with all
