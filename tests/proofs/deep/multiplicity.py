@@ -3,13 +3,13 @@
 Run:  just proofs   (or python tests/proofs/deep/multiplicity.py)
 
 ``docs/proofs/polynomial.md`` proves "each leading zero buys one root" for an
-exponential sum on *distinct* nodes.  The language bound is
-``Omega(T**2 / log T)``: the routing floor gives ``Omega(T/log T)`` real
-instruction positions, the sharpened routing lemma ``N' <= 12 * L_real + 2``
-forces ``L_real = Omega(T/log T)`` distinct root values, and the distinct-root
-theorem prices them.  The confluent certificate below extends the tail
-comparison to repeated roots as a supplementary check.
-Equal real roots form contiguous blocks.  Contracting those blocks turns the
+exponential sum on *distinct* nodes.  The language bound would be
+``Omega(T**2 / log T)`` if the sharpened routing lemma ``N' <= 12 * L_real + 2``
+held: it would force ``L_real = Omega(T/log T)`` distinct root values, which the
+distinct-root theorem prices.  That lemma is **false** -- a routing-free suffix
+may cross several reads -- so it is the known gap in ``polynomial.md`` and this
+module pins only what survives it.  Equal real roots form contiguous blocks.
+Contracting those blocks turns the
 noncrossing bracket matching into an outerplanar incidence graph; one opener
 routes per block and one closer per incidence.  ``_check_routing_bound`` pins
 the executed facts, including the counterexample that makes the incidence --
@@ -27,8 +27,9 @@ limit step -- that is the Hermite interpolation argument in
 content: the base case is exact, the general bound holds on every certificate
 here, the slack assembly's threshold really is the product over the top units,
 and the repeated-root mass floor holds on the products and multiples checked.
-The language bound itself rests on the distinct-root theorem and the
-block-incidence lemma, not on the confluent certificate.
+The language bound is conjectural: it needs the distinct-root forcing step,
+which the block-incidence lemma does not supply, and the confluent certificate
+is not on the critical path to it.
 """
 
 from __future__ import annotations
@@ -308,12 +309,13 @@ def _check_loops(failures: list[str]) -> int:
 
 
 def _check_routing(failures: list[str]) -> int:
-    """Pin the executed facts behind the sharpened routing lemma.
+    """Pin the executed facts behind the routing floor.
 
-    ``docs/proofs/polynomial.md`` proves ``N'(k+1) <= 2 + 4m`` with ``m`` the
-    real instruction *positions* (the routing floor).  The block-incidence
-    bound replaces ``m`` by ``3 * L_real``, sharpening the language bound to
-    ``Omega(T**2 / log T)``.  This check pins the per-instruction facts the
+    ``docs/proofs/polynomial.md`` states ``N'(k+1) <= 2 + 4m`` with ``m`` the
+    real instruction *positions* (the routing floor) and then records it as
+    **false**.  The block-incidence bound replaces ``m`` by ``3 * L_real``, but
+    the step from that to the language bound uses the false cursor bound, so it
+    is the known gap.  This check pins only the per-instruction facts the
     routing floor rests on:
 
     * every real instruction has at most two successors, fixed by its bracket
@@ -401,14 +403,16 @@ def _check_routing(failures: list[str]) -> int:
 
 
 def _check_routing_bound(failures: list[str]) -> int:
-    """Pin the sharpened routing bound ``N' <= 12 * L_real + 2``.
+    """Pin the facts around the sharpened routing bound (false as stated).
 
     The routing floor gives ``N' <= 2 + 4m`` on real *positions*; the sharper
     ``N' <= 2 + 4 * m_routing`` counts only positions that take both
     successors.  A proposed route -- ``m_routing <= 3 * L_real`` via "at most
     one routing position per (value, condition)" -- is **false**: this check
     runs the refuting table and confirms two routing closers share one value
-    and one condition.  What survives and is pinned here:
+    and one condition.  The step from ``m_routing`` to ``N'`` is the known gap,
+    so the ``N' <= 12 * L_real + 2`` bound is not claimed.  What survives and
+    is pinned here:
 
     * a back-edge's target is ``opener + 1``; if that is itself a closer, a
       condition-true jump self-loops, so a halting program never routes such a

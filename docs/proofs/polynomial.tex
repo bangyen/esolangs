@@ -15,6 +15,7 @@
 \newtheorem{lemma}[theorem]{Lemma}
 \newtheorem{corollary}[theorem]{Corollary}
 \newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{conjecture}[theorem]{Conjecture}
 \theoremstyle{definition}
 \newtheorem{definition}[theorem]{Definition}
 \theoremstyle{remark}
@@ -257,9 +258,7 @@ bound routing positions by the number of distinct root values.
 If a decoded program contains $L$ distinct real instruction-root values,
 then
 \[
-  m_{\rm route}\le 3L
-  \quad\text{and hence}\quad
-  N'(k+1)\le 12L+2.
+  m_{\rm route}\le 3L .
 \]
 \end{lemma}
 
@@ -290,18 +289,22 @@ after the preceding closer, again with that condition false; all intervening
 positions are equal real tests and do not change the register.  Thus each
 incidence is charged at most once.  For $L\ge2$ there are at most $L$ routing openers
 and at most $2L-3$ routing closers; for $L=1$ the displayed weaker bound is
-immediate.  Substitute this in
-\eqref{eq:basic-routing}.
+immediate.
 \end{proof}
 
-\begin{corollary}\label{cor:roots}
-Every Polynomial program for a maximal-width truth table has
-$L=\Omega(T/\log T)$ distinct positive real instruction roots.
-\end{corollary}
+The further step to $N'(k+1)\le12L+2$ would substitute this into the false
+\eqref{eq:basic-routing}; it is exactly the gap of
+Remark~\ref{rem:routing-gap} and is not proved here.
 
-\begin{proof}
-Combine \eqref{eq:residual-width} with Lemma~\ref{lem:block}.
-\end{proof}
+\begin{conjecture}\label{cor:roots}
+Every Polynomial program for a maximal-width truth table has $L$ distinct
+positive real instruction roots, with $L=\Omega(T/\log T)$.
+\end{conjecture}
+
+The intended proof combines \eqref{eq:residual-width} with
+Lemma~\ref{lem:block} through \eqref{eq:basic-routing}, which is false, so the
+statement is the missing distinct-root forcing step of
+Remark~\ref{rem:routing-gap} rather than a consequence of the block count.
 
 \section{Coefficient mass from prescribed roots}\label{sec:mass}
 
@@ -335,15 +338,15 @@ the right side is \(\Omega(L^2\log L)\): each
 The theorem applies to every real multiple, independently of its degree and
 additional roots.
 
-\begin{corollary}[Polynomial lower bound]\label{cor:lower}
+\begin{conjecture}[Polynomial lower bound]\label{cor:lower}
 Every Polynomial source for a maximal-width truth table has
 \[
   |f|=\Omega(T^2/\log T).
 \]
-\end{corollary}
+\end{conjecture}
 
-\begin{proof}
-By Corollary~\ref{cor:roots}, the program contains
+\begin{proof}[Conditional proof]
+By Conjecture~\ref{cor:roots}, the program contains
 \(L=\Omega(T/\log T)\) distinct positive real instruction roots.  A prime base
 supplies at most eight distinct real values, one for each allowed exponent.
 After sorting, the \(i\)th root is therefore at least
@@ -361,9 +364,11 @@ $M(f)\ge\Lambda(f)/\log 10$ and $|f|\ge M(f)$, the result follows.
 \end{proof}
 
 \begin{remark}[Repeated roots]
-Repeated real roots do not weaken Corollary~\ref{cor:lower}: the
-block-incidence lemma already forces the stated number of distinct values,
-and Theorem~\ref{thm:mass} applies to their distinct-root product.
+Repeated real roots do not weaken Conjecture~\ref{cor:lower}: conditional on
+the distinct-root forcing, Theorem~\ref{thm:mass} applies to the program's
+distinct-root product.  The block-incidence lemma bounds routing positions
+only and does not by itself force those distinct values, as
+Remark~\ref{rem:routing-gap} records.
 \end{remark}
 
 \section{The matching construction}\label{sec:upper}
@@ -414,8 +419,10 @@ exponents and separators contribute only $O(m\log m)$.  Therefore
   |f|=O(m^2\log m)
       =O\!\left(\frac{T^2}{\log T}\right).
 \]
-Together with Corollary~\ref{cor:lower}, this proves
-Theorem~\ref{thm:main}.
+This proves the upper bound of Theorem~\ref{thm:main}.  Adding the
+conjectural lower bound, Conjecture~\ref{cor:lower}, would give the matching
+bound and hence the $\Theta$ statement; that step is open
+(Remark~\ref{rem:routing-gap}).
 
 \section{Scope and reproducibility}
 
