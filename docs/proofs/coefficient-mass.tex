@@ -40,8 +40,8 @@ Summing the bounds lower-bounds the
 logarithmic coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$: for the first $L$
 primes, and $|f_D|\ge1$, $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with
 asymptotic equality for $F=\prod_{i=1}^L(x-p_i)$.  That consequence is sharp in
-order for large roots and empty as the roots approach $2$; the order statistics
-themselves bound at every root set.  The engine is a
+order for large roots and empty as the roots approach $2$, whereas the
+order-statistic bounds hold at every root set.  The engine is a
 prefix-sensitive comparison of the infinite $\ell^1$ tails of normalized
 exponential sums with prescribed positive-integer zeros, strict unless the
 zeros are consecutive.  We isolate the zero count behind the comparison as an
@@ -623,14 +623,46 @@ is not.
 Row $k=1$ is $b_1\ge|P(1)|$, and it is an infimum rather than a minimum already
 for $L=1$: in $F=(x-r)\sum_{k\le m}c_kx^k$ with $c_m=1$, every $|f_j|\le r-1$
 would force $c_{j-1}=rc_j+f_j\ge rc_j-(r-1)$, hence $c_j\ge1$ downward from
-$c_m$ and $|f_0|=r|c_0|\ge r$.  Nor is $|P(1)|$ always the right constant: for
-$P=(x-2)(x-3)$ the infimum over monic multiples is $10/3$
-\cite[Corollary~8]{dj}, against $|P(1)|=2$.  For $k\ge2$ we do not know the
-truth.  Minimizing the $k$th largest magnitude over monic multiples of bounded
-degree is a mixed-integer program; for $(3,5)$, $(5,7)$ and $(2,3,5)$ it stays
-within a few percent of $\prod_{i=k}^L(r_i-1)$, well inside the factor $1.8$ by
-which row $k=1$ misses at $(2,3,5)$.  Whether the rows $k\ge2$ are sharp in
-order is open.
+$c_m$ and $|f_0|=r|c_0|\ge r$.  Nor is it the strongest bound the certificate
+yields.  Theorem~\ref{thm:tail} bounds the tail \emph{above}, and the
+consecutive zero set is where that bound is attained, so the consecutive
+certificate---the one Lemma~\ref{lem:slack} selects when $u=0$---is the one
+giving the weakest coefficient bound; for a fixed $P$ a displaced zero set can
+beat it.  Take $P=(x-2)(x-3)$, nodes $\rho=(3,2)$ and $Z=\{2\}$, whose tail is
+$3/10$ by the example following Theorem~\ref{thm:tail}.  Then \eqref{eq:dual}
+with $U=\varnothing$ gives
+\[
+  b_1\ge10/3
+\]
+for every monic multiple, against $|P(1)|=2$.  This is also why the rows
+$k\ge2$ fare better: there the excluded positions force the zero set off the
+consecutive one.
+
+How much better, we do not know.  Minimizing $b_k$ over monic multipliers of
+bounded degree is a linear program for $k=1$ and a mixed-integer program for
+$k\ge2$; at degree at most $18$, with the indicator cutoff raised until it
+stopped binding, the least values found are
+\begin{center}
+\begin{tabular}{lcrrr}
+\hline
+roots & $k$ & $\prod_{i=k}^L(r_i-1)$ & least $b_k$ & ratio\\
+\hline
+$(2,3)$   & 1 & $2$  & $3.333$  & $1.667$\\
+          & 2 & $2$  & $2.000$  & $1.000$\\
+$(3,5)$   & 1 & $8$  & $8.000$  & $1.000$\\
+          & 2 & $4$  & $4.001$  & $1.000$\\
+$(5,7)$   & 1 & $24$ & $24.000$ & $1.000$\\
+          & 2 & $6$  & $6.077$  & $1.013$\\
+$(2,3,5)$ & 1 & $8$  & $14.588$ & $1.824$\\
+          & 2 & $8$  & $8.008$  & $1.001$\\
+          & 3 & $4$  & $4.032$  & $1.008$\\
+\hline
+\end{tabular}
+\end{center}
+Each entry is read off an actual multiple, so it bounds the infimum above.  The
+rows $k\ge2$ sit within $1.3\%$ of $\prod_{i=k}^L(r_i-1)$ throughout, while
+row $k=1$ misses by a factor $1.82$ at $(2,3,5)$; its entry at $(2,3)$ is the
+$10/3$ just proved.  Whether the rows $k\ge2$ are sharp in order is open.
 
 \begin{corollary}[Prime roots]\label{cor:prime}
 Assume $|f_D|\ge1$ and that the increasing roots $r_i$ are bounded below by
