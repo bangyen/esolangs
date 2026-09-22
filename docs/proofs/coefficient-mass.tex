@@ -1128,12 +1128,10 @@ returns $\min b_2\approx54.97$, above \eqref{eq:order}.
 The same happens at $(2,3,4,5)$, sums $1,-11,36,-24$ with
 $\min b_2\approx32.23$, and at $(2,3,5,6)$, sums $1,-13,50,-40$ with
 $\min b_2\approx47.55$.  At $(3,4,5,6)$ the sums are $1,-14,60,-60$, so
-\eqref{eq:partial} holds with equality and the bound $60$ is approached, the
-exact family of \eqref{eq:wgen} giving $b_2=60.05$ at degree $28$ and
-$60.002$ at degree $40$.  The first three are cap-$28$ search values, falling
-geometrically with the cap; at $(3,4,5,6)$ the double-precision program
-instead stalls past degree $25$, so there the family and not the search
-certifies the descent.
+\eqref{eq:partial} holds with equality and the bound $60$ is approached: the
+search and the family of \eqref{eq:wgen} agree on $b_2=60.05$ at degree $28$,
+and the family gives $60.002$ at degree $40$.  All four are exact cap-$28$
+optima, falling geometrically with the cap.
 Across the $15$ root sets tried, \eqref{eq:partial} agreed with attainment
 every time, in both directions.
 
@@ -1309,23 +1307,28 @@ below $D$ permitted to exceed it; minimizing $\max_j|f_j|$ over the
 remaining positions is then a linear program in the coefficients of the monic
 multiplier $Q$, and the
 minimum over the $\binom{D}{k-1}$ choices of exempt set, and over $\deg Q$,
-is the order-statistic optimum.  Running that search in double precision over
-monic multiples of degree at most $L+6$ gives, for roots $(2,3,5)$,
-$\min b_2=8.5178$ against $8$ and $\min b_3=4.1218$ against $4$, both within
-$6.5\%$ of \eqref{eq:order}; for $(2,3)$ it returns $2.0308$.  All three are
-members of the exact families of Propositions~\ref{prop:sharp23}
+is the order-statistic optimum.  Running that search in exact rational
+arithmetic over monic multiples of degree at most $L+6$ gives, for roots
+$(2,3,5)$, $\min b_2=8.5178$ against $8$ and $\min b_3=4.1218$ against $4$,
+both within $6.5\%$ of \eqref{eq:order}; for $(2,3)$ it returns $2.0308$.
+All three are members of the exact families of Propositions~\ref{prop:sharp23}
 and~\ref{prop:sharp235}, which carry them to the bound, so for these three
-root sets the gap the search reports is an artifact of its degree cap.  These are floating-point optima at a degree cap,
-not certified values; the exact statements are \eqref{eq:sharp23} and
-\eqref{eq:sharp235}.
+root sets the gap the search reports is an artifact of its degree cap---and
+each equals its family member exactly, $t_7$, $t_9$ and $s_9$.  These are
+certified optima at a degree cap, not proofs about the infimum; the exact
+statements are \eqref{eq:sharp23} and \eqref{eq:sharp235}.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.  The numerical optima
 quoted in Section~\ref{sec:scope} come from the finite search described
 there---one linear program per choice of exempt positions and multiplier
-degree, solved in double-precision floating point---and are reproducible from
-that description; the polynomials of Propositions~\ref{prop:sharp23}
-and~\ref{prop:sharp235} are exact and need no computation.  The certificate
+degree, solved in exact rational arithmetic with the optimum certified by a
+dual vector---and are reproducible from that description; the polynomials of
+Propositions~\ref{prop:sharp23} and~\ref{prop:sharp235} are exact and need no
+computation.  Exactness is not a formality here: in double precision the same
+program reports success and returns $184.86$ for $(3,4,5,6)$ at degrees $26$
+to $28$, against the true $60.05$, having silently lost conditioning at
+$6^{26}$.  The certificate
 sweeps reported in Section~\ref{sec:scope} draw their nodes and zero sets at
 random over the stated ranges, so the tallies and worst-case ratios are
 sample-dependent; what resampling reproduces is the qualitative conclusion in
