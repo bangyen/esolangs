@@ -117,7 +117,8 @@ keeps its remainder and
 still reaches `factor_list`, preserving the language's arbitrary-program
 semantics.  `_parse_program` caches recovered instructions, so later machines
 using the same source do not repay the cold cost.  Cold timings on the dense
-fixtures at `n = 5..10`
+fixtures at `n = 5..10`, wall-clock on the development machine and therefore
+machine-dependent,
 were `0.57, 0.72, 1.26, 2.49, 5.15, 17.55` seconds; construction was
 `0.008, 0.018, 0.061, 0.187, 0.587, 2.186` seconds for outputs from 56 KB to
 16.9 MB.  These measurements check which stages dominate; they are not the
