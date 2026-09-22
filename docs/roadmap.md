@@ -199,15 +199,10 @@ step; an answer lands in the paper it extends, and the row leaves.
   `1704/31`, the best certificate with its exempt coefficient escaping, against
   bound 48 and construction 57.  Prove the escaping placement is extremal,
   which reduces the value to an `l^inf` problem over `P~_u H`, then compute it.
-  Repeated roots beyond `(3,3)` are also open.  See the end of Section 3 of
+  Repeated roots beyond `(3,3)` are also open, as is the case where an exempt
+  root lies below 2 and more than `u` partial sums of `P` exceed `|P(1)|`,
+  where the repaired bound need not be sharp.  See the Scope section of
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
-
-- **Repaired bound beyond the cutoff.**  For roots in `(1, 2)` the stated
-  product fails, but keeping the discarded factors,
-  `prod_{i>u} (r_i - 1) * prod_{i<=u} min(r_i - 1, 1)`, survives every
-  seeded draw and the paper's sharpest witness.  The deletion step reverses
-  there, so a proof needs a comparison other than Theorem 2.2's.  See the
-  same Scope section; the sweep's `repaired` column is the regression.
 
 - **Polynomial without input consumption.**  Programs whose read count may
   differ from `n` are only known to need `Omega(T**2 / log**3 T)`, against the
