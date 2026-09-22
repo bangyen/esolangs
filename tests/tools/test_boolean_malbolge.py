@@ -3,12 +3,15 @@
 The construction is the full 59049-cell store.  These tests run the shipped
 programs through the repository interpreter, which is the execution gate: the
 mixer, the re-encipherment-compensated data layout and the answer stubs are
-only known to agree because every row is run.
+only known to agree because every row is run.  Eleven inputs go through the
+pointer cascade; its 256 second-level rows are always among the rows run.
 """
 
 from __future__ import annotations
 
 import hashlib
+import importlib
+from collections.abc import Sequence
 from itertools import product
 
 import pytest
@@ -18,13 +21,15 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.malbolge import run
 
+_module = importlib.import_module("esolangs.tools.malbolge")
 
-def _rows(table: str) -> list[str]:
-    """Return the program's output for every row, in table order."""
+
+def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
+    """Return the program's output for ``rows`` (default: every row) in order."""
     n = len(table).bit_length() - 1
     program = boolean.malbolge(table)
     outputs = []
-    for value in range(1 << n):
+    for value in range(1 << n) if rows is None else rows:
         bits = [(value >> (n - 1 - i)) & 1 for i in range(n)]
         io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
         run(program, io)
@@ -71,7 +76,47 @@ def test_program_is_the_full_store() -> None:
     assert len(boolean.malbolge("0110")) == 3**10
 
 
-def test_eleven_inputs_are_refused() -> None:
-    """The mixer is injective with gap three only through ten inputs."""
-    with pytest.raises(GeneratorCapError, match="at most 10 inputs"):
-        boolean.malbolge(_dense(11))
+def _second_level_rows() -> list[int]:
+    _, level, _, _ = _module._cascade()  # noqa: SLF001
+    return [row for row, lvl in enumerate(level) if lvl == 1]
+
+
+def test_cascade_leaves_128_pairs_to_the_second_decoder() -> None:
+    """The first readout resolves 1792 rows; the second separates the rest."""
+    assert len(_second_level_rows()) == 256
+
+
+def test_eleven_input_tables_differ_in_one_cell_per_row() -> None:
+    """Every row owns one answer cell; the rows a pair shares point at NEXT.
+
+    The all-0 and all-1 tables therefore differ in exactly 2048 of the 59049
+    cells: one per resolved row at level 1, one per row at level 2.
+    """
+    zeros = boolean.malbolge("0" * 2**11)
+    ones = boolean.malbolge("1" * 2**11)
+    assert len(zeros) == len(ones) == 3**10
+    assert sum(a != b for a, b in zip(zeros, ones, strict=True)) == 2**11
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("shape", [_dense, _parity])
+def test_eleven_inputs_sampled(shape: object) -> None:
+    """Every eighth row and every second-level row of the two shapes."""
+    table = shape(11)  # type: ignore[operator]
+    rows = sorted({*range(0, 2**11, 8), *_second_level_rows()})
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.parametrize("shape", [_dense, _parity])
+def test_eleven_inputs_every_row(shape: object) -> None:
+    """The full 2048-row sweep, the cascade's execution gate."""
+    table = shape(11)  # type: ignore[operator]
+    assert _rows(table) == list(table)
+
+
+def test_twelve_inputs_are_refused() -> None:
+    """No searched schedule separates twelve bits across the two levels."""
+    with pytest.raises(GeneratorCapError, match="at most 11 inputs"):
+        boolean.malbolge(_dense(12))

@@ -91,6 +91,11 @@ INTERCAL, listed last, is outside the pass.
   | Malbolge | Exception | Open | Open | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
+  Malbolge cannot be total: its finite source space omits some 18-input truth
+  tables.  Its shipped constructions cover every table through eleven inputs;
+  generation time and size remain open over the reachable gap below that
+  language ceiling.
+
   Factor's adaptive residue sequence is bounded by fixed-modulus Hoheisel:
   its last selected prime `Q` is polynomial in the run count. Worst-case
   generated text and the weighted exponent-vector language floor are both
@@ -103,11 +108,6 @@ INTERCAL, listed last, is outside the pass.
   retain exponential trial-sieve loading. The time bound is naturally
   output-sensitive in the last selected prime `Q` and digit count `D`, without
   assuming a prime-gap conjecture. See [factor](proofs/factor.md).
-
-  Malbolge cannot be total: its finite source space omits some 18-input truth
-  tables.  Its shipped construction covers every table through ten inputs;
-  generation time and size remain open over the reachable gap below that
-  language ceiling.
 
   Polynomial has language-level text complexity `Theta(T**2 / log T)` for
   programs that consume their input.  Equal real

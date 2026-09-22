@@ -53,8 +53,8 @@ BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
 its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
 ArrowQueue re-enqueue remains open.
 
-Malbolge registers a generator through ten inputs, source-embedded with no
-initializer. A branch-free five-cell mixer (13 operations per input bit, inits
+Malbolge registers a generator through eleven inputs, source-embedded with no
+initializer. Through ten, a branch-free five-cell mixer (13 operations per input bit, inits
 52/90/83/70/92, then a 16-operation post-map) folds the row index into a
 distinct address `h(row)` in `[1083, 59048]` with pairwise gap at least three,
 and a three-cell source stub at `h(row)` prints the answer: `p` then `<` for a
@@ -68,21 +68,30 @@ cell it executes, so a walked-over cell's value is not `f(a)` but
 `g(a) = XLAT2[f(a) - 33]`; the generator places each state and navigation cell
 at the address whose `g` value it wants and computes `h` against those values.
 
-The shipped construction caps at ten inputs. The mixer's readout cell is
-injective with pairwise gap three only through ten bits; an eleven-input map
-needs a depth-one branch on one bit, and the two branch values `crazy(48, V)`
-and `crazy(49, V)` differ only in di-trit 0, so every `p` chain keeps the
-targets adjacent and they cannot address two separated code copies. Lifting
-the difference into a high di-trit needs a rotation of `A`, but `*` rotates
-`memory[d]`, not `A`: rotating `A` needs a run-time address builder. `n > 10`
-is refused with `GeneratorCapError`.
+The stub construction stops at ten inputs: no searched mixer is gap-3
+injective at eleven bits (best 1836 of 2048 rows over ~40k schedules whose
+full state stays distinct, and even distinct-only readouts top out at 1862),
+because collisions arrive in low-trit clusters. Eleven inputs ship through a
+two-level pointer cascade that needs only distinct readouts. Each row owns one
+table cell at `X + 1 + k` holding one of the eight source characters the
+loader admits there; the decoder runs `j`, `j`, `i`, so the character `T` names
+the walked-region cell `T + 1` and that cell names the jump. Seventeen pairs
+`[P0, P1]` (`P1 = rot(113)`, `P0` its 0/1-swapped twin, filled by one chained
+`p` over all-1 cells) serve both answers -- `T = a - 1` reaches `P0`, whose
+stub rotates `P1` into `A` (`'1'`); `T = a` reaches `P1`, whose stub prints the
+preloaded `'0'` -- and 24 all-1 cells send the 256 rows the first readout
+leaves in 128 pairs to a second decoder at 29525, which reads a second mixer
+cell that separates all of them. The 58 pointer cells and the residue cover
+(every `h mod 94` must admit a character of each label) were found by
+annealing and are pinned. `n > 11` is refused with `GeneratorCapError`: the
+same search finds no schedule whose two cells separate twelve bits (2400
+survivors, none resolved past level 1).
 
-Counting bounds the whole family, independent of how good the mixer is. A
-correct program needs three cells per row — the row's answer cell, the print
-`<`, and the halt `v` — at pairwise distance at least three or the stubs
-overlap, so `3 * 2**n <= 59049` and therefore `n <= 14`. Source-embedded stubs
-cannot reach the seventeen-input target; only a branching architecture could.
-The eleven-input wall above is the tighter, mixer-specific bound.
+Counting bounds each family, independent of how good the mixer is. A stub
+program needs three cells per row at pairwise distance at least three, so
+`3 * 2**n <= 59049` and `n <= 14`; the cascade needs one table cell per row
+per level above its ~14k cells of code, so `n <= 15`. Neither reaches the
+seventeen-input target.
 
 That construction gap ends before totality. Malbolge has 59,049 cells and
 eight valid decoded instructions at each occupied source cell -- the
@@ -99,7 +108,7 @@ expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 10 | 10 | The eleven-input branch's two targets stay adjacent; separating them needs a run-time address builder. |
+| Malbolge | 11 | 11 | Stubs need gap-3 readouts (none at eleven bits); the two-level cascade needs distinct ones, and no searched schedule separates twelve bits in two cells. |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
@@ -130,7 +139,7 @@ separate axes.
 
 The collection has 64 languages; its floor is 31. All three classics carry
 generators: Befunge and Whitespace loop-less O(T) lookups, Malbolge a
-source-embedded mixer through ten inputs. They are here for coverage, not for
+source-embedded mixer through eleven inputs. They are here for coverage, not for
 a new construction axis. Ordinary
 imperative entries with shared-shim generators and no consumer were removed. Nopstacle and
 ZTOALC L left: the former cannot meet embed conventions, the
