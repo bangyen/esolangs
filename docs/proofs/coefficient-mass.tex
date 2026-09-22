@@ -38,17 +38,18 @@ $(u+1)$-st largest nonleading coefficient magnitude is at least
 $|f_D|\prod_{i=u+1}^L(r_i-1)$; the case $u=0$ needs only $r_i>1$.  At roots
 $(2,3)$ an explicit family attains the $u=1$ bound in the limit, so that bound
 is sharp there.
-Summing the bounds lower-bounds the
-logarithmic coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$: for the first $L$
-primes, and $|f_D|\ge1$, $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with
-asymptotic equality for $F=\prod_{i=1}^L(x-p_i)$.  That consequence is sharp in
-order for large roots and empty as the roots approach $2$, whereas the
-order-statistic bounds hold at every root set.  The engine is a
-prefix-sensitive comparison of the infinite $\ell^1$ tails of normalized
-exponential sums with prescribed positive-integer zeros, strict unless the
-zeros are consecutive.  We isolate the zero count behind the comparison as an
-interlacing lemma.  The argument builds on the reduced-height certificate
-method of Dubickas and Jankauskas.
+Summing these bounds gives a lower bound for the logarithmic coefficient mass
+$\Lambda(F)=\sum_j\log^+|f_j|$.  When the roots are the first $L$ primes and
+$|f_D|\ge1$, this gives $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with
+asymptotic equality for $F=\prod_{i=1}^L(x-p_i)$.  The mass bound is sharp in
+order when the roots are large but becomes empty as they approach $2$; the
+order-statistic bounds, by contrast, say something at every root set.  The
+key tool is a comparison of the infinite $\ell^1$ tails of normalized
+exponential sums with prescribed positive-integer zeros.  The comparison
+depends on the initial run of zeros and is strict unless the zeros are
+consecutive; the zero count behind it is isolated as an interlacing lemma.
+The argument builds on the reduced-height certificate method of Dubickas and
+Jankauskas.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -72,86 +73,80 @@ norms over monic multiples~\cite{dubickas,schinzel,schinzel-complex,dj},
 the Euclidean analogue is effectively computable~\cite{frw}, and dual
 problems---an integer or bounded-height multiple, or a root of prescribed
 multiplicity for a restricted-coefficient power series---form a classical
-line~\cite{mignotte,bombieri-vaaler,bbbp-multiple,bbbp-ray}.  A bound on the height
-$\max_j|f_j|$ concerns a single coefficient, and the length $\sum_j|f_j|$ can
-be carried by many comparable terms, so neither norm alone forces a hierarchy
-of large coefficient magnitudes.  The mass $\Lambda$
-instead accumulates over all coefficients of magnitude exceeding one: it is
-the logarithm of the multiplicative height,
-$\Lambda(F)=\log\prod_{j:f_j\ne0}\max(1,|f_j|)$.  For integer coefficients in
-a fixed base $B$ the quantity $\Lambda(F)/\log B$ approximates the total
-base-$B$ digit length of the nonzero coefficients, up to an additive term
-proportional to their number and to the separate cost of signs, zero entries
-and exponents; for real coefficients it is a mass and not a length at all.
-What matters here is that it is additive over coefficients.  A
-multiplicative bound on one coefficient order statistic
-contributes one additive term to $\Lambda$; a bound holding for successive
-order statistics therefore accumulates into a lower bound for $\Lambda$ that
-no statement about a single height parameter can produce.  The results below
-are in this sense distributional: many coefficients must be large, not merely
-the largest one.
+line~\cite{mignotte,bombieri-vaaler,bbbp-multiple,bbbp-ray}.  The height
+$\max_j|f_j|$ sees only one coefficient, and the length $\sum_j|f_j|$ can be
+spread over many comparable terms, so neither norm forces many coefficients
+to be large at once.  The mass $\Lambda$ does: it adds up the contributions
+of every coefficient of magnitude greater than one, and equals the logarithm
+of the multiplicative height,
+$\Lambda(F)=\log\prod_{j:f_j\ne0}\max(1,|f_j|)$.  For integer coefficients,
+$\Lambda(F)/\log B$ is roughly the total number of base-$B$ digits in the
+nonzero coefficients, up to an additive term proportional to their number and
+ignoring signs, zero entries and exponents; for real coefficients it is
+simply a mass.  The point is that $\Lambda$ is additive over coefficients.  A
+multiplicative bound on one coefficient order statistic adds one term to
+$\Lambda$, so bounds on successive order statistics add up to a lower bound
+for $\Lambda$ that no bound on a single height can give.  In this sense the
+results below are distributional: many coefficients must be large, not just
+the largest.
 
 Dubickas and Jankauskas associate to reciprocal roots and a prescribed zero
 set $J$ a normalized determinant sequence $S_n(J)$ with $S_0(J)=1$ and
-$S_k(J)=0$ for $k\in J$~\cite{dj}.  That sequence is the exponential sum $u$
-studied below: its infinite tail is the reciprocal of their dual lower bound
-for the reduced height, their inequality~(8), and they evaluate the
-consecutive set $J=\{1,\ldots,c-1\}$ explicitly under a proviso that the
-$S_n$, $n\ge d$, share one sign: their $H(P)\ge|P(1)|$ holds ``provided that
-all $S_n$ \ldots have the same sign''~\cite[p.~333]{dj}.  They leave that
-proviso as a hypothesis, carried through their
-Corollary~7~\cite[Section~2]{dj} and discharged only case by
-case~\cite[Sections~3--4]{dj}; our consecutive base case,
+$S_k(J)=0$ for $k\in J$~\cite{dj}.  This sequence is the exponential sum $u$
+studied below, and the reciprocal of its infinite tail is their dual lower
+bound for the reduced height, their inequality~(8).  They evaluate the
+consecutive case $J=\{1,\ldots,c-1\}$ explicitly, on the condition that the
+$S_n$ with $n\ge d$ all have the same sign: their $H(P)\ge|P(1)|$ holds
+``provided that all $S_n$ \ldots have the same sign''~\cite[p.~333]{dj}.
+That condition stays a hypothesis through their
+Corollary~7~\cite[Section~2]{dj} and is checked only case by
+case~\cite[Sections~3--4]{dj}.  Our consecutive base case,
 Lemma~\ref{lem:consecutive}, proves it for all positive real nodes by reading
 the sign off the complete homogeneous symmetric polynomials $h_j$.  Their
-$H(P)\ge|P(1)|$ is then the $k=1$ row of Theorem~\ref{thm:order}, and
-Lemma~\ref{lem:consecutive} is what makes it unconditional; the rows $k\ge2$
-are new.
+bound $H(P)\ge|P(1)|$ is then the $k=1$ row of Theorem~\ref{thm:order},
+made unconditional by Lemma~\ref{lem:consecutive}; the rows $k\ge2$ are new.
 
-Their inequality~(8) already excludes a prescribed set of positions from the
-certificate.  The new ingredient is a
-prefix-sensitive tail estimate for arbitrary prescribed integer zero sets:
-when the largest prescribed zero is displaced, deleting it together with the
-largest reciprocal node strictly increases the tail, whereas displacing a zero
-at fixed nodes is not monotone.
-Iterating the estimate over excluded positions turns that certificate into
-simultaneous lower bounds for successive coefficient order statistics, where
-the earlier certificates controlled a single height parameter.  The
-comparison is strict, with equality exactly for the consecutive zero set.
-Sparse-multiple work
-asks for multiples under prescribed degree, sparsity and height
-constraints~\cite{grt}; our bound is uniform in the degree and in all
-additional roots of the multiple.
+Their inequality~(8) already allows a prescribed set of positions to be
+excluded from the certificate.  What is new here is a tail estimate for
+arbitrary prescribed integer zero sets that depends on their initial run.
+If the largest prescribed zero is displaced, deleting it together with the
+largest reciprocal node strictly increases the tail, even though moving a
+zero at fixed nodes can push the tail either way.  Applying the estimate
+repeatedly over the excluded positions turns one certificate into lower
+bounds for successive coefficient order statistics, where earlier
+certificates controlled only a single height.  The comparison is strict,
+with equality exactly for the consecutive zero set.  Work on sparse
+multiples looks for multiples of prescribed degree, sparsity and
+height~\cite{grt}; our bound is uniform in the degree and in any further
+roots of the multiple.
 
-The main result is a distributional bound on the coefficient sizes of a
-multiple.  For positive roots $2\le r_1\le\cdots\le r_L$, repetitions
-allowed, Theorem~\ref{thm:order}, via the certificate
-Lemma~\ref{lem:slack}, bounds all $L$ coefficient order statistics of every
-multiple, and Corollary~\ref{cor:mass} sums them into a lower
-bound for $\Lambda$:
+The main result bounds how the coefficient sizes of a multiple are
+distributed.  For roots $2\le r_1\le\cdots\le r_L$, repetitions allowed,
+Theorem~\ref{thm:order} (via the certificate of Lemma~\ref{lem:slack})
+bounds all $L$ coefficient order statistics of every multiple, and
+Corollary~\ref{cor:mass} adds them up into a lower bound for $\Lambda$:
 \[
   b_k(F)\ge|f_D|\prod_{i=k}^{L}(r_i-1),
   \qquad
   \Lambda(F)\ge(L+1)\log|f_D|+\sum_{i=1}^{L}i\log(r_i-1),
   \qquad 1\le k\le L .
 \]
-The route is short to describe.  To bound the $(u+1)$-st largest coefficient
-magnitude, exclude an arbitrary set of $u$ coefficient positions; build a
-normalized exponential sum in the reciprocal roots vanishing at those
-positions and at enough initial ones; a bound on its remaining tail then
-forces some coefficient outside the excluded set to be large.  All of the
-difficulty sits in that tail bound.
-Its engine is Theorem~\ref{thm:tail}, the comparison behind everything: it
-bounds the tail of a certificate by the product over its leading consecutive
-zeros and shows the bound is attained only there.
+The idea is simple to state.  To bound the $(u+1)$-st largest coefficient
+magnitude, exclude any $u$ coefficient positions, and build a normalized
+exponential sum in the reciprocal roots that vanishes at those positions and
+at enough initial ones.  A bound on the remaining tail of this sum then
+forces some coefficient outside the excluded set to be large.  All the
+difficulty lies in that tail bound, which is Theorem~\ref{thm:tail}: it
+bounds the tail of a certificate by a product over its initial run of
+consecutive zeros, with equality only when all the zeros are consecutive.
 Corollary~\ref{cor:complex} extends the bound to complex multiples,
 Corollary~\ref{cor:prime} specializes to prime roots,
 Corollary~\ref{cor:infimum} sharpens the resulting asymptotic to the infimum
 over monic real multiples, and
-Corollary~\ref{cor:near} shows the root product itself is within $O(L^2)$ of
-that infimum for every root set here.  Proposition~\ref{prop:sharp23} shows
-the $u=1$ bound is attained in the limit at roots $(2,3)$, so no factor can be
-removed from it in general.
+Corollary~\ref{cor:near} shows that for every root set here the root product
+itself comes within $O(L^2)$ of that infimum.  Proposition~\ref{prop:sharp23}
+shows that the $u=1$ bound is approached at roots $(2,3)$, so it cannot be
+improved by any constant factor in general.
 
 \section{A displaced-zero tail theorem}
 
@@ -237,22 +232,21 @@ so equality holds in \eqref{eq:tail}.  Moving the zero to $Z=\{2\}$ gives
 \[
  u_d=\frac95\,3^{-d}-\frac45\,2^{-d},\qquad \Tail(u)=\frac3{10}<\frac12.
 \]
-Here displacement lowers the tail, but that is not the general behaviour: at
-fixed nodes the comparison is not monotone.  For $(\rho_1,\rho_2)=(5,3)$,
-$Z=\{1\}$ gives $\Tail(u)=1/8$ while $Z=\{2\}$ gives $\Tail(u)=9/64>1/8$, so
-the displaced tail can exceed the consecutive one.  What the theorem proves is
-not fixed-node monotonicity but a comparison in which the largest prescribed
-zero and the largest reciprocal node are removed together, reducing the node
-count.  Each displaced zero creates an extra sign change relative to a
-comparison sum, and the proof shows that this change reduces the total tail.
-It treats the displaced zeros one at a time, peeling the last one.
+Here moving the zero lowers the tail, but that does not happen in general.
+For $(\rho_1,\rho_2)=(5,3)$, $Z=\{1\}$ gives $\Tail(u)=1/8$ while $Z=\{2\}$
+gives $\Tail(u)=9/64>1/8$, so a displaced tail can exceed the consecutive
+one.  The theorem therefore does not compare zero sets at fixed nodes.
+Instead it removes the largest prescribed zero and the largest reciprocal
+node together, which lowers the number of nodes.  Each displaced zero adds a
+sign change relative to a comparison sum, and the proof shows that this sign
+change lowers the total tail.  The proof handles the displaced zeros one at
+a time, starting with the last.
 
 The hard step compares a correction sum at the marked points of the zero set
-with its value just above them.  Two kinds of marked point matter: those that
-force the correction sum to vanish, and those that only fix its sign.  We
-state the comparison separately; its proof is the zero-count argument behind
-it, where the sign-fixing marked points force additional multiplicity across
-each gap between them.
+with its value just past them.  Marked points come in two kinds: some force
+the correction sum to vanish, and others only fix its sign.  We state this
+comparison as a separate lemma.  Its proof is a zero count, in which the
+sign-fixing points force extra zeros in each gap between them.
 
 \begin{lemma}[Interlacing of the correction sum]\label{lem:interlace}
 Let $0<y_1<\cdots<y_c$, let $Z'\subset\N_{>0}$ satisfy $|Z'|=c-2$, and put
@@ -269,18 +263,19 @@ Then $\Delta_d\ge0$ for every $d\ge m+1$.  No upper bound on the nodes is
 needed.
 \end{lemma}
 
-Before the proof, here is a configuration showing what the counting looks like.  Take
+Before the proof, here is an example of the counting.  Take
 $c=5$ and $Z'=\{2,4,6\}$, so the marked set is $\{0\}\cup Z'=\{0,2,4,6\}$ and
 $m=6$.  No two marked points are adjacent, so none of them forces a zero of
-$\Delta$; instead $\Delta$ is nonzero at each of $2,4,6$, with signs
-$-1,+1,-1$.  Each of the gaps $(2,4)$ and $(4,6)$ therefore carries an odd
-number of zeros of the $4$-node sum $\Delta$, hence at least one, and with the
-zero at $m+1=7$ that is the whole budget $c-2=3$; nothing is left above $7$,
-where $\Delta$ is positive.  If instead $Z'=\{2,4,5,7\}$ ($c=6$), the adjacent
-pair $\{4,5\}$ forces a zero of $\Delta$ at $5$, while $\Delta$ is negative at
-both $4$ and $7$.  Equal endpoint signs demand an even number of zeros in
-$(4,7)$, so the one forced zero there is joined by a further unit of
-multiplicity, possibly at $5$ itself.
+$\Delta$.  Instead $\Delta$ is nonzero at $2,4,6$, with signs $-1,+1,-1$.
+So each of the gaps $(2,4)$ and $(4,6)$ contains an odd number of zeros of
+the $4$-node sum $\Delta$, hence at least one.  Together with the zero at
+$m+1=7$ this uses up the whole budget of $c-2=3$ zeros, so there are none
+above $7$, and $\Delta$ is positive there.  If instead $Z'=\{2,4,5,7\}$
+($c=6$), the adjacent pair $\{4,5\}$ forces a zero of $\Delta$ at $5$, while
+$\Delta$ is negative at both $4$ and $7$.  Since the signs at $4$ and $7$
+agree, $(4,7)$ must contain an even number of zeros, so the forced zero at
+$5$ comes with at least one more unit of multiplicity, possibly at $5$
+itself.
 
 \begin{proof}
 The sums $E$ and $\widehat F$ both live on the $c-1$ nodes
@@ -462,17 +457,17 @@ comparison
   \Tail(u)<\Tail(F)
 \end{equation}
 holds.  This is the deletion step, and it is strict: the tail of the $c$-node
-sum $u$ falls below the tail of the $(c-1)$-node comparison sum $F$ that
-keeps the lower zeros $Z'$ and drops the largest prescribed zero together with
-the largest node.  The induction closes, and equality in \eqref{eq:tail} can
-occur only in the base case.
+sum $u$ is smaller than that of the $(c-1)$-node sum $F$, which keeps the
+lower zeros $Z'$ but drops the largest prescribed zero and the largest node.
+This completes the induction, and equality in \eqref{eq:tail} can occur only
+in the base case.
 \end{proof}
 
-The restriction $\rho_i\ge2$ is substantive.  For $c=2$,
+The restriction $\rho_i\ge2$ matters.  For $c=2$,
 $y_1=1/10$, $y_2=4/5$, and $Z=\{2\}$, the normalized coefficients are
 $a_1=64/63$ and $a_2=-1/63$, so
-$\Tail(u)=364/2835>1/9=y_1/(1-y_1)$, so \eqref{eq:tail} fails once a node is
-allowed past the cutoff.
+$\Tail(u)=364/2835>1/9=y_1/(1-y_1)$, so \eqref{eq:tail} fails once a node
+passes the cutoff.
 
 \section{Coefficient order statistics}
 
@@ -617,31 +612,31 @@ using $\log b_{u+1}\ge\log|f_D|+\sum_{i=u+1}^L\log(r_i-1)$ and collecting the
 index-$i$ terms, which occur exactly $i$ times.
 \end{proof}
 
-The two bounds do not degrade together at the bottom of the permitted range.
-For $r_1=\cdots=r_L=2$ every product in \eqref{eq:order} equals $1$, so
-Theorem~\ref{thm:order} still forces $L$ nonleading coefficients of magnitude
-at least $|f_D|$, while \eqref{eq:mass} degenerates to
-$\Lambda(F)\ge(L+1)\log|f_D|$ and says nothing further.  The order-statistic
-bound is the informative one across the whole root range; the mass consequence
-is not.
+At the bottom of the allowed range the two bounds behave differently.  For
+$r_1=\cdots=r_L=2$ every product in \eqref{eq:order} equals $1$, so
+Theorem~\ref{thm:order} still forces $L$ nonleading coefficients of
+magnitude at least $|f_D|$, while \eqref{eq:mass} reduces to
+$\Lambda(F)\ge(L+1)\log|f_D|$ and says nothing more.  The order-statistic
+bound stays informative over the whole root range; the mass bound does not.
 
 \paragraph{Sharpness.}
-Row $k=1$ is $b_1\ge|P(1)|$, and it is an infimum rather than a minimum already
-for $L=1$: in $F=(x-r)\sum_{k\le m}c_kx^k$ with $c_m=1$, every $|f_j|\le r-1$
+Row $k=1$ is $b_1\ge|P(1)|$.  Already for $L=1$ this bound is approached but
+never attained: in $F=(x-r)\sum_{k\le m}c_kx^k$ with $c_m=1$, every $|f_j|\le r-1$
 would force $c_{j-1}=rc_j+f_j\ge rc_j-(r-1)$, hence $c_j\ge1$ downward from
-$c_m$ and $|f_0|=r|c_0|\ge r$.  Nor is it the strongest bound the certificate
-yields.  The consecutive certificate---the one Lemma~\ref{lem:slack} selects
-when $u=0$---need not have the largest or the smallest tail at fixed nodes:
-at nodes $(5,3)$ the displaced $Z=\{2\}$ has the larger tail, and at $(3,2)$
-the smaller one, which beats it.  Take $P=(x-2)(x-3)$, nodes $\rho=(3,2)$ and $Z=\{2\}$, whose tail is
-$3/10$ by the example following Theorem~\ref{thm:tail}.  Then \eqref{eq:dual}
+$c_m$ and $|f_0|=r|c_0|\ge r$.  Nor is it the best bound the certificate
+method gives.  The consecutive certificate, which Lemma~\ref{lem:slack} uses
+when $u=0$, need not have the largest or the smallest tail at fixed nodes:
+at nodes $(5,3)$ the displaced set $Z=\{2\}$ has a larger tail, and at
+$(3,2)$ a smaller one, which gives a better bound.  Take $P=(x-2)(x-3)$,
+nodes $\rho=(3,2)$ and $Z=\{2\}$, whose tail is $3/10$ by the example after
+Theorem~\ref{thm:tail}.  Then \eqref{eq:dual}
 with $U=\varnothing$ gives
 \[
   b_1\ge10/3
 \]
-for every monic multiple, against $|P(1)|=2$; their Corollary~8 evaluates this
-quadratic exactly~\cite{dj}, giving $10/3$, so the row is low by the factor
-$5/3$.
+for every monic multiple, compared with $|P(1)|=2$.  Their Corollary~8
+computes the reduced height of this quadratic exactly~\cite{dj} as $10/3$,
+so here the row is off by a factor of $5/3$.
 
 The rows $k\ge2$, by contrast, can be sharp.
 
@@ -678,20 +673,20 @@ $(r_1,r_2)=(2,3)$ and $u=1$ gives $b_2\ge2$ for every monic multiple, and
 $t_n\to2$.
 \end{proof}
 
-The same method reaches $(2,3,5)$.  Writing the multiple from the top---one
-leading $1$, a short free prefix, a long run of a single value, and the exempt
-coefficients at the bottom---put
+The same construction works for $(2,3,5)$.  Build the multiple from the top
+down, with a leading $1$, a short free prefix, a long run of one repeated
+value, and the exempt coefficients at the bottom:
 \[
   F_D(x)=x^D-a_Dx^{D-1}+t_D\sum_{j=1}^{D-2}x^j+c_D,
   \qquad
   G_D(x)=x^D-s_D\sum_{j=2}^{D-1}x^j+e_Dx+e_D',
 \]
-with the coefficients fixed by vanishing at $2,3,5$.  The exempt slots take
-the large coefficients---$|c_D|\sim3\cdot2^{D-1}$, and $|e_D|,|e_D'|$ of order
-$3^D$---while $a_D\to7$ stays below $t_D$, so $b_2(F_D)=t_D\to8$ and
-$b_3(G_D)=s_D\to4$, the values \eqref{eq:order} asserts at $u=1$ and $u=2$; we
-omit the verification.  Whether the rows $k\ge2$ are sharp in
-general is open.
+with the coefficients determined by vanishing at $2,3,5$.  The large
+coefficients go in the exempt slots, with $|c_D|\sim3\cdot2^{D-1}$ and
+$|e_D|,|e_D'|$ of order $3^D$, while $a_D\to7$ stays below $t_D$.  Hence
+$b_2(F_D)=t_D\to8$ and $b_3(G_D)=s_D\to4$, the values \eqref{eq:order}
+gives at $u=1$ and $u=2$; we omit the verification.  Whether the rows
+$k\ge2$ are sharp in general is open.
 
 \begin{corollary}[Prime roots]\label{cor:prime}
 Assume $|f_D|\ge1$ and that the increasing roots $r_i$ are bounded below by
@@ -754,12 +749,12 @@ bound is the one for $P_L$ from Corollary~\ref{cor:prime},
 \]
 \end{proof}
 
-Multiplication can lower the mass, so $P_L$ need not minimize it even at the
-smallest nontrivial $L$.  From the definition, $P_2=(x-2)(x-3)=x^2-5x+6$ has
-$\Lambda(P_2)=\log30$, while $(x+1)P_2=x^3-4x^2+x+6$ has $\Lambda=\log24$;
-coefficients of magnitude one contribute nothing.  Corollary~\ref{cor:infimum}
-is an asymptotic statement about the infimum $M_L$, not a finite-$L$
-minimization by $P_L$.
+Multiplying by another factor can lower the mass, so $P_L$ need not
+minimize it, even for small $L$.  For example, $P_2=(x-2)(x-3)=x^2-5x+6$ has
+$\Lambda(P_2)=\log30$, while $(x+1)P_2=x^3-4x^2+x+6$ has $\Lambda=\log24$,
+since coefficients of magnitude one contribute nothing.
+Corollary~\ref{cor:infimum} describes the infimum $M_L$ asymptotically; it
+does not say that $P_L$ attains it for any finite $L$.
 
 \begin{corollary}[Near-optimality of the root product]\label{cor:near}
 Let $2\le r_1\le\cdots\le r_L$, repetitions allowed,
@@ -798,13 +793,12 @@ $\binom Lk\le2^L$ and $r_i/(r_i-1)\le2$ because $r_i\ge2$, so the right side
 is at most $(L^2+\frac{L(L+1)}2)\log2=O(L^2)$.
 \end{proof}
 
-The corollary says that no monic multiplier saves more than $O(L^2)$
-logarithmic mass relative to the root product itself.  Whenever $\Lambda(P)$
-grows faster than $L^2$, as for the prime-root product of
-Corollary~\ref{cor:prime}, where $\Lambda(P_L)\sim\frac12L^2\log L$, the
-product $P$ is asymptotically optimal among monic multiples; the infimum
-$M_L$ of Corollary~\ref{cor:infimum} is the sharp form of that statement for
-the first $L$ primes.
+In words, no monic multiplier lowers the mass of the root product by more
+than $O(L^2)$.  So whenever $\Lambda(P)$ grows faster than $L^2$, as for the
+prime-root product of Corollary~\ref{cor:prime} with
+$\Lambda(P_L)\sim\frac12L^2\log L$, the product $P$ is asymptotically optimal
+among monic multiples.  For the first $L$ primes, Corollary~\ref{cor:infimum}
+gives the sharp form of this statement.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
