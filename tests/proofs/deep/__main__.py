@@ -132,6 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"deep proofs: band {args.band!r}, {len(proofs)} proofs, ~{budget:.0f}s\n")
 
     failed = []
+    band_start = time.time()
     for proof in proofs:
         print(f"{'=' * 70}\n=== {proof.name}  [{proof.band}]\n{'=' * 70}")
         start = time.time()
@@ -155,10 +156,23 @@ def main(argv: list[str] | None = None) -> int:
             failed.append(proof.name)
         print(f"--- {proof.name}: {'FAILED' if code else 'ok'} in {elapsed:.1f}s\n")
 
+    wall = time.time() - band_start
     if failed:
         print(f"{len(failed)} of {len(proofs)} deep proofs failed: {', '.join(failed)}")
         return 1
-    print(f"all {len(proofs)} deep proofs in band {args.band!r} passed")
+    # The declared costs are hand-kept; this is the only place the band's real
+    # wall time is compared to its budget.  A warning rather than a failure,
+    # because a loaded CI box would otherwise turn a cost overrun into a flake.
+    ceiling = BUDGET.get(args.band, budget)
+    if wall > ceiling:
+        print(
+            f"warning: band {args.band!r} took {wall:.1f}s, over its {ceiling}s "
+            "budget -- raise BUDGET or the proofs' COST"
+        )
+    print(
+        f"all {len(proofs)} deep proofs in band {args.band!r} passed "
+        f"({wall:.1f}s, budget {ceiling}s)"
+    )
     return 0
 
 

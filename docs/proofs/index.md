@@ -143,8 +143,12 @@ inputs.
 
 The names are the callable entries indexed by `BY_BOOLEAN`.  Rows sharing a
 proof scheme share the proof above; the qualification column records the
-language-specific final step or an exception.  `cap` means theoretically total
-after ignoring the performance/resource ceiling as specified above.
+language-specific final step or an exception.  The Proof column names the
+coverage witness, which need not be the shipped default route (as the
+`parameterized tree` scheme says): a generator may ship a smaller arithmetic
+construction while the named scheme is what proves totality.  `cap` means
+theoretically total after ignoring the performance/resource ceiling as
+specified above.
 
 The Scaling column is the worst-case cost of the construction in `T = 2**n`,
 read from the code rather than measured (the size contract in

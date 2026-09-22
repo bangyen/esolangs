@@ -163,6 +163,22 @@ def _regime_start(series: list[tuple[int, int]]) -> int:
     return start
 
 
+def _ratio(series: list[tuple[int, int]]) -> float | None:
+    """Two-step growth of one ``(arity, size)`` series, past any route change.
+
+    ``None`` when the series has too few rungs for the statistic to mean
+    anything.  Factored out of :func:`measure` so :func:`_self_check` can run
+    the same code on a synthetic series.
+    """
+    if len(series) < MIN_RUNGS:
+        return None
+    start = _regime_start(series)
+    past = [row for row in series if row[0] >= start]
+    if len(past) < MIN_RUNGS:
+        return None
+    return sqrt(past[-1][1] / past[-3][1])
+
+
 def measure(key: str, name: str) -> Growth:
     """Worst per-input growth across both table shapes, past any route change."""
     fn = getattr(boolean, key)
@@ -170,16 +186,31 @@ def measure(key: str, name: str) -> Growth:
     worst = Growth(generator=name, reason="no shape produced enough rungs")
     for shape, make in _SHAPES:
         series = _series(fn, make, top)
-        if len(series) < MIN_RUNGS:
-            continue
-        start = _regime_start(series)
-        past = [row for row in series if row[0] >= start]
-        if len(past) < MIN_RUNGS:
-            continue
-        ratio = sqrt(past[-1][1] / past[-3][1])
-        if worst.ratio is None or ratio > worst.ratio:
+        ratio = _ratio(series)
+        if ratio is not None and (worst.ratio is None or ratio > worst.ratio):
+            start = _regime_start(series)
+            past = [row for row in series if row[0] >= start]
             worst = Growth(name, ratio, shape, past[-1][0], start)
     return worst
+
+
+def _self_check() -> tuple[float, float]:
+    """Run the statistic on a known-linear and a known ``T log T`` series.
+
+    A probe that never fires reports a wall that is not there.  The bound is a
+    calibrated guard, so the guard itself has to be shown to reject something:
+    the ``T log T`` control must exceed :data:`MAX_GROWTH` and the linear one
+    must not.  Returns both measured ratios for the report.
+    """
+    linear = [(n, 2**n) for n in range(1, MAX_ARITY + 1)]
+    linearithmic = [(n, 2**n * n) for n in range(1, MAX_ARITY + 1)]
+    lin = _ratio(linear)
+    nlog = _ratio(linearithmic)
+    assert lin is not None
+    assert nlog is not None
+    assert lin <= MAX_GROWTH, f"linear control read x{lin}"
+    assert nlog > MAX_GROWTH, f"T log T control read x{nlog}"
+    return lin, nlog
 
 
 def exempt_generators() -> dict[str, str]:
@@ -211,6 +242,12 @@ def main() -> int:
     """Measure every generator and check the settled ones against the bound."""
     exempt = exempt_generators()
     by_display = {lang.name: key for key, lang in BY_BOOLEAN.items()}
+
+    lin, nlog = _self_check()
+    print(
+        f"control: linear series x{lin:.3f} inside the bound, "
+        f"T log T series x{nlog:.3f} rejected\n"
+    )
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
     assert len(measured) == len(BY_BOOLEAN) == 62, "not every generator was measured"
