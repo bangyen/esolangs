@@ -561,7 +561,14 @@ class TestCountStatementsOnAdversarialWitnesses:
     an exact multiple, re-verified here): at least ``u + 1`` coefficients
     below the top reach ``prod_{i>u} (p_i - 1)`` (weak) and even
     ``prod_{i>u} p_i / 2`` (strong), the strong count exactly ``u + 1`` at
-    ``u = 0`` on the tail-height minimisers."""
+    ``u = 0`` on the tail-height minimisers.
+
+    The table is frozen deliberately, against the loop-less rule: the vectors
+    are z3 minimisers of an objective no closed form is known for, and a
+    re-run would be slow and solver-version dependent.  Each is re-verified as
+    an exact multiple and against the counts below, so a stale witness fails
+    rather than passes.
+    """
 
     WITNESSES: ClassVar = [
         ((2, 3, 5), [-60, 2, 12, 13, -8, 1, 0, 0, 0]),
