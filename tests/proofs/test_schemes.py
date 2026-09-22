@@ -11,6 +11,8 @@ Many of the twenty-two lookup rows fold a one-dependency table at ``n == 3``,
 which looks like a contradiction until you notice ``n == 3`` sits under every
 crossover -- those rows are measuring the tree route while the ledger names
 the wide one.  Folding therefore cannot be turned into "folds implies `tree`".
+Two rows break the converse as well, and are named in
+:data:`_FOLDS_WITHOUT_TREE` below.
 
 Nor does the converse hold.  A tree may be *deliberately* unfolded: B-tapemark
 and Container's sub-crossover route both keep uniform depth because their
@@ -56,6 +58,15 @@ _FOLD = 0.05
 #: break the read-count contract.  Kept separate from the ledger's own
 #: exemption list because the reason is different: these *have* a tree.
 _UNFOLDED_TREE_ROUTE = frozenset({"Container"})
+
+#: Lookup rows with no tree route that the fold discriminator cannot see:
+#: their *lookup* route is what shrinks a degenerate table, so they fold like a
+#: tree would.  Eval is one linear lookup at every arity and NoComment switches
+#: between two lookups at four inputs.  Named rather than derived because the
+#: proxy is structural and this pair is its known blind spot; a third such row
+#: has to be added here, which is the point -- the equality below then fails
+#: until the prose and this set agree.
+_FOLDS_WITHOUT_TREE = frozenset({"Eval", "NoComment"})
 
 _LOOKUP_SCHEMES = frozenset({"finite lookup", "parameterized lookup", "linear lookup"})
 
@@ -135,12 +146,17 @@ def test_rows_without_a_tree_route_are_the_ones_the_ledger_names(
 ) -> None:
     """Size dispatch names which lookup rows ship no tree route; check it.
 
-    The paragraph claims *most* lookup rows carry a folded tree below a
+    The paragraph claims *some* lookup rows carry a folded tree below a
     crossover and names the exceptions.  Measuring the fold at ``n == 3``
     tells you which rows actually have one, so the named list is falsifiable:
     a row that stops shipping its tree, or a newly linearized generator whose
     tree was dropped without the prose being revisited, moves out of the
     measured set and fails here.
+
+    The fold proxy has a known blind spot: :data:`_FOLDS_WITHOUT_TREE` names
+    the rows whose *lookup* route shrinks a degenerate table, so they fold
+    without having a tree.  The equality is stated with them added back, so a
+    new blind-spot row breaks it until it is named.
     """
     measured_without = {
         row.generator
@@ -148,7 +164,7 @@ def test_rows_without_a_tree_route_are_the_ones_the_ledger_names(
         if set(row.labels) & _LOOKUP_SCHEMES and _fold(_generator(row)) < _FOLD
     }
     documented = set(ledger.no_tree_route) | _UNFOLDED_TREE_ROUTE
-    assert measured_without == documented, (
+    assert measured_without | _FOLDS_WITHOUT_TREE == documented, (
         f"lookup rows measuring no tree route: {sorted(measured_without)}; "
         f"the ledger documents: {sorted(documented)}"
     )
