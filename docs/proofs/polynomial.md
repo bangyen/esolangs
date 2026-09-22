@@ -15,7 +15,9 @@ or a bounded search; the coefficient-mass bound is the theorem under "The slack
 certificate", and the searches that narrowed the question to it are kept
 because they say what is *not* available -- not because anything is still
 being looked for.  `tests/proofs/test_negatives.py` executes the claims
-marked (executed) and pins every link of the proof.
+marked (executed) that it covers; the block-incidence links are pinned in
+`tests/proofs/deep/multiplicity.py`, and a few (executed) markers still name
+scratch probes no test reruns.
 
 The order is intended to be tight for program text.  The uncapped residual-DAG
 construction

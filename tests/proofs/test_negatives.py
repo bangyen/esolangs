@@ -81,6 +81,19 @@ class TestFactoredProgramsAreMisread:
         assert sanitize("f(x) = (x-2)(x-3)(x-5)") == [1, -5]
 
 
+class TestRepeatedRealRootsDecodeToRepeatedInstructions:
+    """``(x-2)^3`` is a legal program decoding to three copies of ``[1]``.
+
+    ``docs/proofs/polynomial.md`` ("Repeated real roots are legal and do not
+    evade the bound") rests the repeated-root case on this: ``convert`` keeps
+    multiplicity and emits one instruction per root, so a repeated root is a
+    repeated instruction rather than a single one.
+    """
+
+    def test_a_cubed_root_decodes_to_three_instructions(self) -> None:
+        assert _parse_program("f(x) = x^3-6x^2+12x-8") == ((1,), (1,), (1,))
+
+
 # --------------------------------------------------------------------------
 # Polynomial multiples cannot change what a program does
 # --------------------------------------------------------------------------
