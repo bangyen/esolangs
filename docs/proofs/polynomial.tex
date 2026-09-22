@@ -49,7 +49,8 @@ at least one has logarithmic coefficient mass
 $\Omega(L^2\log L)$.  A routing argument, sharpened by an
 outerplanar block-incidence bound, forces $L=\Omega(T/\log T)$ distinct real
 roots in a program for a maximal-width table, so the worst-case text
-complexity is $\Theta(T^2/\log T)$ in this model.
+complexity is $\Theta(T^2/\log T)$ in this model.  Without the consumption
+hypothesis the same argument gives the weaker $\Omega(T^2/\log^3 T)$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -153,7 +154,10 @@ the fourth read at different offsets.  Such a list performs a different
 number of reads on different inputs, so it is not a program for an $n$-input
 table in the model of Section~\ref{sec:model}, and the routing proof, which
 uses the exact read count, does not apply to it.  Any variable-read list is
-excluded the same way.
+excluded the same way.  Corollary~\ref{cor:general} covers the general model
+with one extra logarithm: the free read level lets one routing position and
+successor place the $k$th read at any of $k$ offsets, so $D_k\le1+2k\,m_{\rm
+route}$.
 \end{remark}
 
 The lower bound has two independent parts.
@@ -372,6 +376,34 @@ Repeated real roots do not weaken Corollary~\ref{cor:lower}: the
 block-incidence lemma already forces the stated number of distinct values,
 and Theorem~\ref{thm:mass} applies to their distinct-root product.
 \end{remark}
+
+\begin{corollary}[General model]\label{cor:general}
+If a program may halt before consuming its input, every Polynomial source for
+a maximal-width truth table still has
+\[
+  |f|=\Omega(T^2/\log^3 T).
+\]
+\end{corollary}
+
+\begin{proof}
+The continuation from the last routing position $(r,s)$ is still a fixed
+cursor sequence, but without the consumption hypothesis the read level at $r$
+is free.  The $K$th read is the $j$th read of that sequence for some
+$j\in\{1,\dots,K\}$, so each routing position and successor contributes at
+most $K$ cursors:
+\[
+  D_K\le 1+2K\,m_{\rm route}.
+\]
+Take the level $K=n-\lceil\log_2 n\rceil=\Theta(n)$ of
+Lemma~\ref{lem:maximal-width}, where $N'(K)=\Omega(T/\log T)$.  Then
+\eqref{eq:residual-cursor} gives
+$m_{\rm route}=\Omega(T/(K\log T))=\Omega(T/\log^2 T)$,
+Lemma~\ref{lem:block} gives $L=\Omega(T/\log^2 T)$, and
+Theorem~\ref{thm:mass} gives
+\[
+  \Lambda(f)=\Omega(L^2\log L)=\Omega(T^2/\log^3 T).
+\]
+\end{proof}
 
 \section{The matching construction}\label{sec:upper}
 

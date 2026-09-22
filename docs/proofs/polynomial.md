@@ -202,6 +202,16 @@ read levels and the routing-free suffix lands the fourth read at different
 offsets.  It reads a different number of bits on different inputs, so it is
 not a program for an `n`-input table; the lower bound is stated for programs
 that consume the whole input, as the generated machines do.
+
+**General model: one logarithm weaker.**  Drop the consumption hypothesis and
+the read level at the last routing position is free: the `k`th read is the
+`j`th read of the fixed continuation for some `j <= k`, so one routing
+position and successor contributes at most `k` cursors and
+`D_k <= 1 + 2k * m_routing`.  At the `Theta(n)` level of the maximal-width
+lemma this gives `m_routing = Omega(T/log**2 T)`, hence
+`L_real = Omega(T/log**2 T)` and `Omega(T**2/log**3 T)` characters.  The
+counterexample's `D_4 = 4` against `1 + 2*4*1 = 9` is a positive control for
+the relaxed bound; it violates the tight `1 + 2*1 = 3`.
 Executed on machine- and tree-shaped
 builds at n=3..5 over every input; the floor `(N'-2)/4` evaluates to
 7.25, 25.25, 63.5 at n=8, 10, 12, 0.23..0.25 of `T/log2 T` (the older 16, 52,
