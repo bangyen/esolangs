@@ -538,7 +538,7 @@ $L-u-1$, and Theorem~\ref{thm:tail} bounds the tail by the product of
 $y_{(j)}/(1-y_{(j)})$ over the $f+1\ge L-u$ smallest reciprocal nodes.  Every
 such factor is at most $1$, since $y_i\le1/2$ is exactly $\rho_i\ge2$, so
 discarding all but the first $L-u$ factors only weakens the bound: the tail is
-at most the product over the $L-u$ largest nodes.  These are
+at most the product over the $L-u$ smallest reciprocal nodes.  These are
 $\rho_1,\ldots,\rho_{L-u}$, that is,
 $r_L,r_{L-1},\ldots,r_{u+1}$; the last index is
 $L-(L-u)+1=u+1$, which is why the product below starts there.  For $u=0$
@@ -900,19 +900,19 @@ monic, so that $F=PQ$ has
 Imposing $f_0=f_1=f_2$ is two linear equations in $(q_0,q_1)$: the first gives
 $q_1=(p_0-p_1)q_0/p_0$, and substituting it into the second gives
 \[
-  q_0=\frac{p_0^2}{D},\qquad q_1=\frac{p_0(p_0-p_1)}{D},\qquad
-  D=(p_0-p_1)^2+p_0(p_1-1),
+  q_0=\frac{p_0^2}{\delta},\qquad q_1=\frac{p_0(p_0-p_1)}{\delta},\qquad
+  \delta=(p_0-p_1)^2+p_0(p_1-1),
 \]
-whence the common value is $f_0=f_1=f_2=p_0^3/D$.  Here
-$D=\tfrac{225}4>0$, so
+whence the common value is $f_0=f_1=f_2=p_0^3/\delta$.  Here
+$\delta=\tfrac{225}4>0$, so
 \[
   q_0=\frac9{25},\qquad q_1=\frac{18}{25},\qquad
   f_0=f_1=f_2=\frac{81}{50}=1.62,
 \]
 while $f_3=p_1+q_1=-\tfrac{189}{50}=-3.78$, that is,
 $F=x^4-\tfrac{189}{50}x^3+\tfrac{81}{50}x^2+\tfrac{81}{50}x+\tfrac{81}{50}$.
-The four nonleading magnitudes are $|f_3|$ and three copies of $p_0^3/D$, so
-$b_2=p_0^3/D<2=r_2-1$, which is what \eqref{eq:order} would assert for
+The four nonleading magnitudes are $|f_3|$ and three copies of
+$p_0^3/\delta$, so $b_2=p_0^3/\delta<2=r_2-1$, which is what \eqref{eq:order} would assert for
 $u=1$; the second root obeys $r_2\ge2$, so only $r_1$ is out of range.
 \end{proof}
 
@@ -1063,7 +1063,7 @@ whose coefficient matrix tends to
   N=\begin{pmatrix}-2&0&1\\-\tfrac32&\tfrac13&0\\-\tfrac54&0&0\end{pmatrix},
   \qquad \det N=\tfrac5{12}\ne0 .
 \]
-Every $D$-dependent entry is $O((3/5)^{D})$, so as before the solution
+Every $D$-dependent entry is $O((2/3)^{D})$, so as before the solution
 converges to that of $N$ against $(-2,-3,-5)$, namely
 $(s,E,\sigma)=(4,9,6)$; the last row alone forces $s=4$.  The nonleading
 magnitudes of $G_D$ are $s_D$ exactly $D-2$ times and $|e_D|,|e_D'|$ once
