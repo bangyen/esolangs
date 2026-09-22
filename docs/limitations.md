@@ -97,9 +97,20 @@ That construction gap ends before totality. Malbolge has 59,049 cells and
 eight valid decoded instructions at each occupied source cell -- the
 decipherment cycles with the cell index, and `_XLAT1` holds each instruction
 character exactly once -- hence fewer than `sum(8**k for k in range(59050)) <
-2**177151` programs. There are `2**262144` truth tables on 18 inputs, and one
+2**177148` programs. There are `2**262144` truth tables on 18 inputs, and one
 program computes at most one table, so some 18-input tables have no Malbolge
 program. Malbolge is therefore a language exception, not merely a ceiling.
+
+Seventeen -- the registry target -- needs the count under `2**131072`, a
+factor `2**46076` below it, and counting does not get there. A length cut
+needs every answer to rest inside the first 43,690 cells, but cell 58,967
+alone flips row 299 at ten inputs (`0` against `1`, both executed). An
+alphabet cut needs 4 of the 8 characters at a cell to matter: single cells
+realise 5 to 8 distinct behaviours (12 of 20 sampled walked-code cells at 5 or
+more), and an every-line cap of `k` buys `log2(8/k)` bits in all -- one bit at
+`k = 4`. What is left is a dependence cut: every table-computing program's
+answer resting on at most 24,434 cells, the largest `K` with `C(59049, K) *
+8**K < 2**131072`. That one is open.
 
 The no-`i`/`j` model is still dead. Straight-line `c == d` from the reset
 state gives a `p` its own cell's instruction character, one of 94 values in
