@@ -40,11 +40,12 @@ import random
 from fractions import Fraction
 
 #: Cost band; see ``__main__.py``.  Exact rational solves of 450 small
-#: Vandermonde systems, measured 0.15s -- the nodes are unit fractions over
+#: Vandermonde systems, an exact simplex on the two small searches, and the
+#: sign identities to D=40.  Measured 0.6s -- nodes are unit fractions over
 #: small denominators, so the arithmetic stays narrow.  Sits beside
 #: ``multiplicity``, the other coefficient-mass proof, in ``ci``.
 BAND = "ci"
-COST = 0.5
+COST = 1.0
 
 #: Draws are seeded so the printed tallies are quotable.  Changing this
 #: reseeds every count below.
@@ -198,11 +199,192 @@ def _check_controls(failures: list[str]) -> int:
     return checks
 
 
+def _simplex_min_t(rows: list[list[Fraction]], const: list[Fraction]) -> Fraction:
+    """``min t`` over free ``q`` with ``|const_j + rows_j . q| <= t``, exactly.
+
+    Dense tableau, Bland's rule, ``q`` split into a difference of nonnegatives.
+    No phase 1: ``q = 0`` is feasible at ``t = max|const_j|``, so pivoting ``t``
+    into the most negative row clears the right-hand side.  The optimum is
+    re-certified below from the final tableau, so the value does not rest on
+    the pivoting being right.
+    """
+    m = len(rows)
+    n = len(rows[0]) if m else 0
+    ncol = 2 * n + 1 + 2 * m
+    table: list[list[Fraction]] = []
+    for j in range(m):
+        for sgn, rhs in ((1, -const[j]), (-1, const[j])):
+            row = [Fraction(0)] * (ncol + 1)
+            for i in range(n):
+                row[i] = sgn * rows[j][i]
+                row[n + i] = -sgn * rows[j][i]
+            row[2 * n] = Fraction(-1)
+            row[2 * n + 1 + len(table)] = Fraction(1)
+            row[-1] = Fraction(rhs)
+            table.append(row)
+    total = len(table)
+    basis = [2 * n + 1 + r for r in range(total)]
+    z = [Fraction(0)] * (ncol + 1)
+    z[2 * n] = Fraction(1)
+
+    def pivot(r: int, col: int) -> None:
+        pr = table[r]
+        pv = pr[col]
+        if pv != 1:
+            inv = 1 / pv
+            pr[:] = [v * inv for v in pr]
+        for rr in range(total):
+            if rr != r and table[rr][col] != 0:
+                f = table[rr][col]
+                table[rr] = [a - f * b for a, b in zip(table[rr], pr, strict=True)]
+        if z[col] != 0:
+            f = z[col]
+            z[:] = [a - f * b for a, b in zip(z, pr, strict=True)]
+        basis[r] = col
+
+    worst = min(range(total), key=lambda r: table[r][-1])
+    if table[worst][-1] < 0:
+        pivot(worst, 2 * n)
+    while True:
+        col = next((k for k in range(ncol) if z[k] < 0), None)
+        if col is None:
+            break
+        best = None
+        for r in range(total):
+            a = table[r][col]
+            if a > 0:
+                ratio = table[r][-1] / a
+                if best is None or (ratio, basis[r]) < (best[0], basis[best[1]]):
+                    best = (ratio, r)
+        if best is None:  # pragma: no cover -- t >= 0 bounds the program
+            raise RuntimeError("unbounded")
+        pivot(best[1], col)
+    x = [Fraction(0)] * ncol
+    for r in range(total):
+        x[basis[r]] = table[r][-1]
+    q = [x[i] - x[n + i] for i in range(n)]
+    star = -z[-1]
+    y = [z[2 * n + 1 + r] for r in range(total)]
+    # Weak-duality certificate, independent of the pivoting above.
+    values = [const[j] + sum(rows[j][i] * q[i] for i in range(n)) for j in range(m)]
+    assert max(abs(v) for v in values) == star
+    assert all(v >= 0 for v in y)
+    assert sum(y) <= 1
+    y1, y2 = y[0::2], y[1::2]
+    for i in range(n):
+        assert sum((y1[j] - y2[j]) * rows[j][i] for j in range(m)) == 0
+    assert sum((y1[j] - y2[j]) * const[j] for j in range(m)) == star
+    return star
+
+
+def _min_bk(roots: list[Fraction], k: int, cap: int) -> Fraction:
+    """``min b_k`` over monic multiples of degree at most ``cap``, exactly."""
+    import itertools
+
+    poly = [Fraction(1)]
+    for r in roots:  # ascending coefficients
+        nxt = [Fraction(0)] * (len(poly) + 1)
+        for i, c in enumerate(poly):
+            nxt[i] -= r * c
+            nxt[i + 1] += c
+        poly = nxt
+    deg_p = len(roots)
+    best = None
+    for degree in range(max(deg_p, k), cap + 1):
+        n = degree - deg_p
+        for exempt in itertools.combinations(range(degree), k - 1):
+            keep = [j for j in range(degree) if j not in exempt]
+            rows = [
+                [poly[j - i] if 0 <= j - i <= deg_p else Fraction(0) for i in range(n)]
+                for j in keep
+            ]
+            const = [poly[j - n] if 0 <= j - n <= deg_p else Fraction(0) for j in keep]
+            value = _simplex_min_t(rows, const)
+            if best is None or value < best:
+                best = value
+    assert best is not None
+    return best
+
+
+def _check_searches(failures: list[str]) -> int:
+    """Section 4's optima are exactly the family members it says they are.
+
+    The paper reports 2.0308 at ``(2,3)`` and 8.5178, 4.1218 at ``(2,3,5)``,
+    and claims each is the corresponding member of the exact families of
+    ``prop:sharp23`` and ``prop:sharp235``.  Solved in rationals, "is" is
+    literal.  Double precision does not settle this: on the same program at
+    ``(3,4,5,6)`` it reports success and returns 184.86 past degree 25.
+    """
+    t7 = Fraction(2) / (1 - Fraction(2) ** -6 + Fraction(3) ** -7)
+    cases = [
+        ([Fraction(2), Fraction(3)], 2, 8, t7, "t_7"),
+        (
+            [Fraction(2), Fraction(3), Fraction(5)],
+            2,
+            9,
+            Fraction(804576811, 94458820),
+            "t_9",
+        ),
+        ([Fraction(2), Fraction(3), Fraction(5)], 3, 9, Fraction(31585, 7663), "s_9"),
+    ]
+    for roots, k, cap, expected, name in cases:
+        got = _min_bk(roots, k, cap)
+        if got != expected:
+            failures.append(f"min b_{k} at cap {cap} is {got}, not {name} = {expected}")
+    return len(cases)
+
+
+def _check_ordering(failures: list[str]) -> int:
+    """``prop:sharp235``'s ordering, by the sign count rather than a check.
+
+    Descartes forces ``a_D > 0``, ``t_D > 0``, ``c_D < 0``; then
+    ``(r-1)(r-a_D) + t_D = eps_r > 0`` and the rows ``r = 3, 5`` give
+    ``t_D > a_D + 1 > 8``, so the run already beats ``a_D`` and at most
+    ``|c_D|`` can beat the run.  No threshold, no finite check -- this pins
+    the identities the argument runs on.
+    """
+    checked = 0
+    for degree in range(5, 41):
+        rows, rhs = [], []
+        for r in (Fraction(2), Fraction(3), Fraction(5)):
+            rows.append(
+                [
+                    -(r ** (degree - 1)),
+                    sum(r**j for j in range(1, degree - 1)),
+                    Fraction(1),
+                ]
+            )
+            rhs.append(-(r**degree))
+        a, t, c = _solve(rows, rhs)
+        if not (a > 0 and t > 0 and c < 0):
+            failures.append(f"D={degree}: Descartes sign pattern broken")
+        eps = {}
+        for r in (Fraction(3), Fraction(5)):
+            lhs = (r - 1) * (r - a) + t
+            if lhs != r ** (1 - degree) * (r * t + (r - 1) * abs(c)):
+                failures.append(f"D={degree}, r={r}: eps identity fails")
+            eps[r] = lhs
+        e3, e5 = eps[Fraction(3)], eps[Fraction(5)]
+        if not e5 / e3 < 2 * Fraction(3, 5) ** (degree - 1):
+            failures.append(f"D={degree}: eps ratio bound fails")
+        if not t > a + 1 > 8:
+            failures.append(f"D={degree}: t_D > a_D + 1 > 8 fails")
+        mags = sorted([abs(a)] + [t] * (degree - 2) + [abs(c)], reverse=True)
+        if mags[1] != t:
+            failures.append(f"D={degree}: b_2 is not the run")
+        checked += 1
+    return checked
+
+
 def main() -> int:
     failures: list[str] = []
     controls = _check_controls(failures)
+    searches = _check_searches(failures)
+    ordering = _check_ordering(failures)
+    print(f"  positive controls fired                     : {controls}")
+    print(f"  Section 4 optima equal their family members : {searches}")
+    print(f"  sharp235 ordering degrees checked exactly   : {ordering}")
     rng = random.Random(SEED)
-    print(f"  positive controls fired                : {controls}")
     totals = {}
     for label, pool in _POOLS.items():
         stated, repaired, rev, dele = _sweep(pool, 150, rng, failures, label)
