@@ -228,6 +228,24 @@ class TestRunBeforeALoop:
         program = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>."
         assert _run_bf(program, tmp_path / "hello_h.png") == [72]
 
+    @pytest.mark.parametrize("inner", [7, 8, 9])
+    def test_a_run_inside_the_body_at_every_stem_length(
+        self, inner: int, tmp_path: Path
+    ) -> None:
+        """`inner == 8` is where a merge point landed on a walk boundary.
+
+        The stem length `_stem_len` picks moves the loop-back's merge point
+        along the stem with the body's size, and at `inner == 8` it landed
+        exactly `lattice.UNIT * 20` = 400px from where the walk entered the
+        stem -- the ceiling `lattice._walk_segment` used to stop at.  The
+        walk turned that pixel into a vertex, read the merge there, and
+        ended: `extract` raised over 4958 unaccounted pixels.  7 and 9 are
+        the neighbours that always worked, kept as the controls that make
+        this a resonance and not a size limit.
+        """
+        program = "+[>" + "+" * inner + "[>+<-]<-]>>."
+        assert _run_bf(program, tmp_path / f"inner{inner}.png") == [inner]
+
 
 class TestNestingDepth:
     """Nesting depth is unbounded: loop-backs are constructed, not routed.
