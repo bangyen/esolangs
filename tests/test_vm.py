@@ -424,12 +424,12 @@ class TestForth:
 
 class TestAddSubJump:
     def test_memory_and_instruction_pointer(self) -> None:
-        vm = esolangs.make_vm("AddSubJump", "-1 1 0 -7")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [-1, 1, 0, -7], [])
+        vm = esolangs.make_vm("AddSubJump", "-1 1 -1 -7")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [-1, 1, -1, -7], [])
         vm.step()  # write to -1 prints *b = cell 1
         assert vm.output == "\x01"
         assert vm.halted
-        assert vm.ip == -1  # the jump off the special address halts
+        assert vm.ip == -1  # c is the literal target, and -1 is special
         vm.step()  # stepping a halted VM is a no-op
 
 

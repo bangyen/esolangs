@@ -403,8 +403,11 @@ def _advance(state: _State, reads: tuple[int, ...]) -> tuple[int, _State]:
         zf = 1 if value == 0 else 0
         nf = 1 if value < 0 else 0
         cf = vf = 0
-    after = (memory, _ip, cf, zf, nf, vf, fum)
-    return value, (memory, _load(after, c), cf, zf, nf, vf, fum)
+    # ``c`` is the literal destination, not a pointer to one: the wiki's
+    # ``goto c``.  Its truth machine (``loop: IO A loop``) names its own
+    # label as ``c``, and ``end: IO A -1`` halts on the special address --
+    # both nonsense under a dereference, which would jump to ``*(-1) = 0``.
+    return value, (memory, c, cf, zf, nf, vf, fum)
 
 
 class _Machine:
