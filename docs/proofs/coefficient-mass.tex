@@ -36,8 +36,8 @@ nonzero real polynomial $F=\sum_jf_jx^j$ divisible by $\prod_{i=1}^L(x-r_i)$
 we prove a degree-independent bound on each coefficient order statistic: the
 $(u+1)$-st largest nonleading coefficient magnitude is at least
 $|f_D|\prod_{i=u+1}^L(r_i-1)$; the case $u=0$ needs only $r_i>1$.  At roots
-$(2,3)$ an explicit family attains the $u=1$ bound in the limit, so the
-statistics are sharp there.
+$(2,3)$ an explicit family attains the $u=1$ bound in the limit, so that bound
+is sharp there.
 Summing the bounds lower-bounds the
 logarithmic coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$: for the first $L$
 primes, and $|f_D|\ge1$, $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with
@@ -687,9 +687,11 @@ coefficients at the bottom---put
   \qquad
   G_D(x)=x^D-s_D\sum_{j=2}^{D-1}x^j+e_Dx+e_D',
 \]
-with the coefficients fixed by vanishing at $2,3,5$.  Then $b_2(F_D)=t_D\to8$
-and $b_3(G_D)=s_D\to4$, the values \eqref{eq:order} asserts at $u=1$ and
-$u=2$; we omit the verification.  Whether the rows $k\ge2$ are sharp in
+with the coefficients fixed by vanishing at $2,3,5$.  The exempt slots take
+the large coefficients---$|c_D|\sim3\cdot2^{D-1}$, and $|e_D|,|e_D'|$ of order
+$3^D$---while $a_D\to7$ stays below $t_D$, so $b_2(F_D)=t_D\to8$ and
+$b_3(G_D)=s_D\to4$, the values \eqref{eq:order} asserts at $u=1$ and $u=2$; we
+omit the verification.  Whether the rows $k\ge2$ are sharp in
 general is open.
 
 \begin{corollary}[Prime roots]\label{cor:prime}
