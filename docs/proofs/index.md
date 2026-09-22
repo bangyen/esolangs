@@ -202,7 +202,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) |
 | Clockwise | tree | finite grid layout | linear: alternating rectangle of area O(T), exits in walk order |
 | Collatz Multiverse | tree | finite cell placement | linear: folded tree, shortest names deepest, flat appends |
-| Container | finite lookup | the reversed table is one decimal literal divided by ten in a fixed two-bank network | linear: one T-digit literal in a fixed network |
+| Container | finite lookup | the table is the prefix sum of its own steps, summed against a row counter that is live for one tick | linear: one line per step in the table, halting in 2n+2 ticks |
 | Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, and a folded subtree targets the shared self-jump or the line past the end | linear: 3(T - 1) + 2n + 3 lines, span walk |
 | CV(N)(C) | tree | the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts | linear, time n log: greedy order scoring, capped at n <= 10 |
 | Decleq | tree | the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits | linear, time n log: essential_inputs |
