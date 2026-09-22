@@ -94,10 +94,14 @@ $S_k(J)=0$ for $k\in J$~\cite{dj}.  That sequence is the exponential sum $u$
 studied below: its infinite tail is the reciprocal of their dual lower bound
 for the reduced height, their inequality~(8), and they evaluate the
 consecutive set $J=\{1,\ldots,c-1\}$ explicitly under a proviso that the
-$S_n$, $n\ge d$, share one sign, which they then establish
-separately~\cite[Section~2]{dj}; our consecutive base case,
-Lemma~\ref{lem:consecutive}, instead reads the sign off the complete
-homogeneous symmetric polynomials $h_j$, and needs no cutoff on the nodes.
+$S_n$, $n\ge d$, share one sign.  That proviso they leave as a hypothesis,
+carried through their Corollary~7 and discharged only case by
+case~\cite[Section~2]{dj}; our consecutive base case,
+Lemma~\ref{lem:consecutive}, proves it for all positive real nodes by reading
+the sign off the complete homogeneous symmetric polynomials $h_j$.  Their
+$H(P)\ge|P(1)|$ is then the $k=1$ row of Theorem~\ref{thm:order}, and
+Lemma~\ref{lem:consecutive} is what makes it unconditional; the rows $k\ge2$
+are new.
 Their inequality~(8) already excludes a prescribed set of positions from the
 certificate.  The new ingredient is a
 prefix-sensitive tail estimate for arbitrary prescribed integer zero sets:
@@ -1088,8 +1092,13 @@ $S_1,\ldots,S_{m-1}$ and the run value is $|S_m|$, which is exactly
 \eqref{eq:order}: the construction reproduces the bound because the sum of the
 coefficients of $P_u$ is $P_u(1)$.
 
-This makes the requirement explicit.  The run is the $(u+1)$-st largest
-magnitude only if no partial sum exceeds the total,
+This makes the requirement explicit.  At $u=0$ both the criterion and this
+series are already in Dubickas and Jankauskas: their Corollary~7 gives
+$H(P)=|P(1)|$ under the same partial-sum condition, together with the one-sign
+proviso, and exhibits $\widetilde P/(1-y)$ as the extremal
+series~\cite[Corollary~7]{dj}.  What is added here is the passage to $u\ge1$,
+where the $u$ exempt coefficients absorb the $u$ smallest roots.  The run is
+the $(u+1)$-st largest magnitude only if no partial sum exceeds the total,
 \begin{equation}\label{eq:partial}
   |S_j|\le|S_m|\qquad(1\le j<m),
 \end{equation}
