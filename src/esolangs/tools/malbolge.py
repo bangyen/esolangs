@@ -18,7 +18,9 @@ with pairwise gap at least three only through ten bits.  ``n == 11`` uses the
 pointer cascade below instead, which needs only *distinct* readouts: each row
 owns one table cell holding a source character that points at a pointer cell
 in the walked region, and the rows a first readout cannot separate are sent
-through a second decoder that reads a second cell.  ``n > 11`` is refused.
+through a second decoder that reads a second cell.  ``n == 12`` runs the
+same fold over the first eleven inputs and lets the twelfth pick which of two
+paths reads the readout (see below).  ``n > 12`` is refused.
 """
 
 from __future__ import annotations
@@ -372,16 +374,16 @@ _Cascade = tuple[
 ]
 
 
-@cache
-def _cascade() -> _Cascade:
-    """Return the table-independent cascade.
+def _head(
+    extra: tuple[int, ...] = (),
+) -> tuple[_Walker, list[int], dict[str, int], frozenset[int]]:
+    """Build the pointer region and the main code through the eleven-bit fold.
 
-    ``(code, level per row, table address per level and row, label per
-    pointer character)``.  Raises if a table cell lands on code, a stub or
-    another level's cell, or if the second readout fails to separate the
-    rows the first left together.
+    Returns the main walker (``d`` just past the level-1 post-map), the mixer
+    and constant cells, the helper cells and the frozen modified set.  The
+    ``extra`` pointer-region cells are reserved as well.
     """
-    modified: set[int] = set()
+    modified: set[int] = set(extra)
 
     def place(value: int) -> int:
         address = next(
@@ -429,6 +431,44 @@ def _cascade() -> _Cascade:
             main.op("p" if kind == 0 else "*", cell[index])
     for kind, index in _C_POST[0]:
         main.op("p" if kind == 0 else "*", cell[index])
+    return main, cell, helper, frozen
+
+
+def _ops(walker: _Walker, cell: list[int], ops: tuple[tuple[int, int], ...]) -> None:
+    for kind, index in ops:
+        walker.op("p" if kind == 0 else "*", cell[index])
+
+
+def _reserved(code: dict[int, str]) -> frozenset[int]:
+    return frozenset(code) - frozenset(range(_ENTRY))
+
+
+def _labels() -> dict[int, str]:
+    labels: dict[int, str] = {}
+    for a in _PAIRS:
+        labels[a - 1] = "1"
+        labels[a] = "0"
+    nexts = set(_NEXTS)
+    for b in _NEXTS:
+        if b + 1 in nexts:
+            labels[b - 1] = "N"
+    return labels
+
+
+def _stubs() -> dict[int, str]:
+    return {_P0 + 1: "*", _P0 + 2: "<", _P0 + 3: "v", _P1 + 1: "<", _P1 + 2: "v"}
+
+
+@cache
+def _cascade() -> _Cascade:
+    """Return the table-independent cascade.
+
+    ``(code, level per row, table address per level and row, label per
+    pointer character)``.  Raises if a table cell lands on code, a stub or
+    another level's cell, or if the second readout fails to separate the
+    rows the first left together.
+    """
+    main, cell, helper, frozen = _head()
     main.op("*", helper["w"])
     main.op("p", helper["a1"])
     _jump(main, cell[_C_READOUT[0]], _C_OFFSETS[0])
@@ -452,8 +492,8 @@ def _cascade() -> _Cascade:
     code = dict.fromkeys(range(_ENTRY), "o")
     code.update(main.code)
     code.update(dec.code)
-    code.update({_P0 + 1: "*", _P0 + 2: "<", _P0 + 3: "v", _P1 + 1: "<", _P1 + 2: "v"})
-    reserved = frozenset(code) - frozenset(range(_ENTRY))
+    code.update(_stubs())
+    reserved = _reserved(code)
 
     readouts: list[list[int]] = [[], []]
     for row in range(1 << _CASCADE_N):
@@ -480,15 +520,172 @@ def _cascade() -> _Cascade:
             if h < code_end or h in reserved or (lvl == 1 and h in first):
                 raise AssertionError(f"table cell {h} collides at level {lvl + 1}")
 
-    labels: dict[int, str] = {}
-    for a in _PAIRS:
-        labels[a - 1] = "1"
-        labels[a] = "0"
-    nexts = set(_NEXTS)
-    for b in _NEXTS:
-        if b + 1 in nexts:
-            labels[b - 1] = "N"
-    return code, level, tables, labels
+    return code, level, tables, _labels()
+
+
+# ---------------------------------------------------------------------------
+# Twelve inputs: the eleven-bit cascade with a selector for the last bit.
+#
+# The fold above never sees input twelve.  After the level-1 post-map a ``/``
+# reads it and ``p`` writes it into a selector cell ``B``; one ``*`` moves the
+# difference to the top trit, so the two values of ``B`` lie 19683 or 39366
+# apart, and ``p`` carries it into a second selector ``B2``.  ``i`` through
+# ``B`` then runs one of two level-1 *paths*, stored at ``B + 1`` for each
+# value -- code that is never walked, only jumped to.  A path may rewrite the
+# readout before the table jump and picks its own table offset, so the two
+# halves of the rows land on disjoint table cells without a twelve-bit mixer:
+# ``x = 0`` reads cell 0 as the eleven-input build does, ``x = 1`` reads
+# ``neg(cell 0)`` (``p`` with ``A = all-2`` negates every trit) 1945 cells on.
+# The decoder at 29525 selects through ``B2`` the same way, and each level-2
+# path runs its own post-map, searched to separate its half's colliding rows.
+_WIDE_N = 12
+#: Per level, per ``x``: the ops the path runs before the jump (cell index 7
+#: is the all-2 cell, so ``(1, 7)`` sets ``A = all-2``), the readout cell and
+#: the table offset.  Level 1 reads cell 0 for both halves, negated for
+#: ``x = 1``; each level-2 path carries its own searched post-map.
+_W_OPS: tuple[tuple[tuple[tuple[int, int], ...], ...], ...] = (
+    ((), ((1, 7), (0, 0))),
+    (
+        ((1, 7), (1, 7), (0, 3), (0, 6), (0, 2), (1, 0), (0, 6)),
+        ((1, 7), (1, 0), (1, 1), (0, 2), (1, 2), (0, 0), (0, 3), (1, 0), (1, 3)),
+    ),
+)
+_W_READOUT = ((0, 0), (6, 0))
+_W_OFFSETS = ((0, 543), (4, 2))
+#: Selector cells, all free pointer-region cells: ``B`` (level 1), ``B2``
+#: (level 2) and a scratch cell, and the ops that fold input twelve into
+#: them, ``(kind, index)`` run from ``A = '0' + x``.  They were searched so
+#: that the four paths land in free runs of the store, 3**9 apart.
+_W_SELECT = (38, 44, 58, 57)
+_W_SELECT_OPS: tuple[tuple[int, int], ...] = (
+    (0, 0),
+    (0, 0),
+    (1, 0),
+    (1, 2),
+    (0, 0),
+    (1, 0),
+    (0, 3),
+    (0, 1),
+    (1, 1),
+    (1, 1),
+)
+
+_Wide = tuple[
+    dict[int, str],
+    tuple[tuple[int, ...], ...],
+    tuple[tuple[tuple[int, ...], ...], ...],
+    dict[int, str],
+]
+
+
+def _wide_build(
+    select: tuple[int, ...], select_ops: tuple[tuple[int, int], ...]
+) -> _Wide:
+    """Return ``(code, level, tables, labels)`` for twelve inputs.
+
+    ``level[x][row]`` and ``tables[level][x][row]`` are indexed by the last
+    input ``x`` and the eleven-bit prefix ``row``.  Raises if any path, table
+    cell or stub collides.
+    """
+    b, b2 = select[:2]
+    main, cell, helper, frozen = _head(select)
+    main.raw("/")
+    for kind, which in select_ops:
+        main.op("p" if kind == 0 else "*", select[which])
+    main.set_d(b)
+    main.raw("i")
+    code_end = main.c
+
+    values = []
+    for x in (0, 1):
+        state = [_g(a) for a in select]
+        _apply(state, 48 + x, select_ops)
+        values.append(tuple(state[:2]))
+
+    dec = _Walker(_NEXT + 1, 0, frozen)
+    dec.raw("j")
+    dec.raw("j")
+    dec.d = ord(_XLAT2[_char_for("j", _NEXT + 1) - 33]) + 1
+    dec.set_d(b2)
+    dec.raw("i")
+
+    walkers = [dict(main.code), dict(dec.code)]
+    for lvl, preload in ((0, ("a1",)), (1, ("a2", "a2"))):
+        for x in (0, 1):
+            path = _Walker(values[x][lvl] + 1, (b2 if lvl else b) + 1, frozen)
+            _ops(path, cell, _W_OPS[lvl][x])
+            for name in preload:
+                path.op("*", helper["w"])
+                path.op("p", helper[name])
+            _jump(path, cell[_W_READOUT[lvl][x]], _W_OFFSETS[lvl][x])
+            walkers.append(path.code)
+
+    code = dict.fromkeys(range(_ENTRY), "o")
+    for part in walkers:
+        if set(part) & set(code):
+            raise AssertionError(f"paths overlap at {min(set(part) & set(code))}")
+        code.update(part)
+    stubs = _stubs()
+    if set(stubs) & set(code):
+        raise AssertionError("a path overlaps a stub")
+    code.update(stubs)
+    reserved = _reserved(code)
+
+    level: list[list[int]] = [[], []]
+    tables: list[list[list[int]]] = [[[], []], [[], []]]
+    for row in range(1 << _CASCADE_N):
+        cells = [*_C_INITS, 0, 29524, 59048]
+        a = 0
+        for i in range(_CASCADE_N):
+            bit = (row >> (_CASCADE_N - 1 - i)) & 1
+            a = _apply(cells, 49 if bit else 48, _C_SCHEDULE)
+        _apply(cells, a, _C_POST[0])
+        for x in (0, 1):
+            state = list(cells)
+            for lvl in (0, 1):
+                _apply(state, 0, _W_OPS[lvl][x])
+                readout = state[_W_READOUT[lvl][x]]
+                tables[lvl][x].append(readout + 1 + _W_OFFSETS[lvl][x])
+    counts = Counter(tables[0][0] + tables[0][1])
+    for x in (0, 1):
+        level[x] = [0 if counts[h] == 1 else 1 for h in tables[0][x]]
+    first = set(counts)
+    second = [
+        tables[1][x][row]
+        for x in (0, 1)
+        for row in range(1 << _CASCADE_N)
+        if level[x][row]
+    ]
+    if len(set(second)) != len(second):
+        raise AssertionError("second readout collided")
+    for lvl, cells_of_level in ((0, first), (1, second)):
+        for h in cells_of_level:
+            if h < code_end or h >= _WORDS or h in reserved or (lvl and h in first):
+                raise AssertionError(f"table cell {h} collides at level {lvl + 1}")
+    return (
+        code,
+        tuple(tuple(lv) for lv in level),
+        tuple(tuple(tuple(t) for t in tl) for tl in tables),
+        _labels(),
+    )
+
+
+@cache
+def _wide() -> _Wide:
+    return _wide_build(_W_SELECT, _W_SELECT_OPS)
+
+
+def _wide_program(truth_table: str) -> str:
+    code, level, tables, labels = _wide()
+    program = {a: _char_for(op, a) for a, op in code.items()}
+    for x in (0, 1):
+        for row, h in enumerate(tables[0][x]):
+            answer = truth_table[2 * row + x]
+            program[h] = _table_char(h, answer if level[x][row] == 0 else "N", labels)
+            if level[x][row]:
+                h2 = tables[1][x][row]
+                program[h2] = _table_char(h2, answer, labels)
+    return "".join(chr(program.get(a, _char_for("o", a))) for a in range(_WORDS))
 
 
 def _table_char(h: int, label: str, labels: dict[int, str]) -> int:
@@ -516,15 +713,19 @@ def malbolge(truth_table: str) -> str:
     """Return a Malbolge program computing ``truth_table``.
 
     ``n`` is recovered from the table.  Through ten inputs the program is one
-    source stub per row; eleven inputs use the pointer cascade; ``n > 11`` is
-    refused.  Every build is the full 59049-cell store.
+    source stub per row; eleven inputs use the pointer cascade, twelve the
+    cascade with a selector on the last input; ``n > 12`` is refused.  Every
+    build is the full 59049-cell store.
     """
     n = _validate_truth_table(truth_table)
-    if n > _CASCADE_N:
+    if n > _WIDE_N:
         raise GeneratorCapError(
-            f"Malbolge builds at most {_CASCADE_N} inputs, got {n}: no searched "
-            "mixer resolves twelve bits across this cascade's two levels"
+            f"Malbolge builds at most {_WIDE_N} inputs, got {n}: the selector "
+            "splits one input off the eleven-bit fold, and no searched mixer "
+            "folds twelve"
         )
+    if n == _WIDE_N:
+        return _wide_program(truth_table)
     if n == _CASCADE_N:
         return _cascade_program(truth_table)
     code, addresses = _skeleton(n)

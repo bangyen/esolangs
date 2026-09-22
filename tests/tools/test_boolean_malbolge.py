@@ -116,7 +116,37 @@ def test_eleven_inputs_every_row(shape: object) -> None:
     assert _rows(table) == list(table)
 
 
-def test_twelve_inputs_are_refused() -> None:
-    """No searched schedule separates twelve bits across the two levels."""
-    with pytest.raises(GeneratorCapError, match="at most 11 inputs"):
-        boolean.malbolge(_dense(12))
+def _wide_second_level_rows() -> list[int]:
+    _, level, _, _ = _module._wide()  # noqa: SLF001
+    return [2 * row + x for x in (0, 1) for row, lvl in enumerate(level[x]) if lvl]
+
+
+def test_twelve_inputs_split_the_last_off_the_cascade() -> None:
+    """560 of 4096 rows collide at level 1; both halves reach the decoder."""
+    rows = _wide_second_level_rows()
+    assert len(rows) == 560
+    assert {row & 1 for row in rows} == {0, 1}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("shape", [_dense, _parity])
+def test_twelve_inputs_sampled(shape: object) -> None:
+    """Every sixteenth row and every second-level row of the two shapes."""
+    table = shape(12)  # type: ignore[operator]
+    rows = sorted({*range(0, 2**12, 16), *_wide_second_level_rows()})
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.parametrize("shape", [_dense, _parity])
+def test_twelve_inputs_every_row(shape: object) -> None:
+    """The full 4096-row sweep, the selector's execution gate."""
+    table = shape(12)  # type: ignore[operator]
+    assert _rows(table) == list(table)
+
+
+def test_thirteen_inputs_are_refused() -> None:
+    """No searched schedule folds twelve bits, and one selector splits one."""
+    with pytest.raises(GeneratorCapError, match="at most 12 inputs"):
+        boolean.malbolge(_dense(13))
