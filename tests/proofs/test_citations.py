@@ -41,6 +41,10 @@ ENVIRONMENTS = {
 #: checks that this table is complete, so a new citation fails here until it
 #: is listed.
 CITATIONS = {
+    ("coefficient-mass-attainment.tex", "coefficient-mass", "3.5"): (
+        "Proposition",
+        "prop:sharp23",
+    ),
     ("index.md", "coefficient-mass", "3.4"): ("Corollary", "cor:mass"),
     ("polynomial.md", "coefficient-mass-attainment", "2.1"): (
         "Proposition",
@@ -50,7 +54,12 @@ CITATIONS = {
 }
 
 #: The files whose citations the table above has to cover.
-CITING = ("index.md", "polynomial.md", "polynomial.tex")
+CITING = (
+    "coefficient-mass-attainment.tex",
+    "index.md",
+    "polynomial.md",
+    "polynomial.tex",
+)
 
 #: A numbered reference in running text or in a ``\cite`` option.
 _REFERENCE = re.compile(
@@ -145,6 +154,9 @@ def test_every_citation_is_covered() -> None:
 def test_the_cited_titles_are_the_ones_the_papers_name() -> None:
     """The bibliography entry's parenthetical names Corollary 3.4's title."""
     assert _numbering("coefficient-mass")["3.4"][2] == "Logarithmic mass"
+    assert _numbering("coefficient-mass")["3.5"][2] == (
+        "The bound for $b_2$ at roots $(2,3)$ is an infimum"
+    )
     assert _numbering("coefficient-mass-attainment")["2.1"][2] == "Confluent analogue"
     # Compared with whitespace collapsed: the entry is prose, and rewrapping
     # it to fit the margin (``1ab35a6d``) moved the parenthetical onto the
