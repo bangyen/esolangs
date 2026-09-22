@@ -1067,7 +1067,30 @@ by Proposition~\ref{prop:subtwo}, \eqref{eq:order} is false for $k=2$ already
 at $L=2$ and already when only $r_1<2$.  The method fails in the same place:
 the tail bound rests on the node cutoff $y_i\le1/2$, which
 Proposition~\ref{prop:cutoff} shows cannot be raised.  A bound for roots in
-$(1,2)$ with $k\ge2$ therefore needs a different form, not a wider proof.
+$(1,2)$ with $k\ge2$ therefore needs a different form.
+
+The search says which form.  At $L=2$ and $k=2$ the infimum of $b_2$ over
+monic multiples agrees to six decimals with
+\[
+  (r_2-1)\min(r_1-1,1)
+  \qquad\text{for }r_1\in[1.05,2.5],\ r_2\in\{3,5\},
+\]
+and the two searches bracket it: exact multiples $F=QP$, which can only
+over-report an infimum, descend to it geometrically at rate $r_1^{-1}$ per
+degree, while the reversed linear program, which can only under-report it,
+returns it outright.  The general shape suggested is
+\[
+  b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)\prod_{i=1}^{u}\min(r_i-1,1),
+\]
+which reduces to \eqref{eq:order} when every $r_i\ge2$, held in every case
+tried, and is attained at $L=2$.  It is also exactly what the proof of
+Lemma~\ref{lem:slack} returns if the discard there is not performed: a factor
+$y_i/(1-y_i)$ exceeds $1$ precisely when $r_i<2$, so retaining those $u$
+factors instead of dropping them produces the $\min$ product above.  What
+stands in the way is then a single step rather than the shape of the
+conclusion---Theorem~\ref{thm:tail} is unavailable below the cutoff, and by
+Proposition~\ref{prop:cutoff} its product form does not extend there
+unchanged.  None of this is proved here.
 
 What is left open is the pointwise extremal problem: for a fixed root
 sequence and a fixed $k$, how closely a multiple can approach
