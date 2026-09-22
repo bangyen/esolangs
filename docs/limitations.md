@@ -108,7 +108,7 @@ expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 11 | 11 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones; the shipped one has two levels, and over two levels the best searched twelve-bit fold resolves 3,522 of 4,096 rows and leaves 515 after both. A third level is *not* blocked by the pointer region: a four-label cover of all 94 cells coexisting with every helper home and five init cells is SAT (82 cover cells; inits at 40, 70, 73, 74, 107). What is missing is a twelve-bit mixer for it. |
+| Malbolge | 11 | 11 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones; the shipped one has two levels, and over two levels the best searched twelve-bit fold resolves 3,522 of 4,096 rows and leaves 515 after both. A third level is *not* blocked by the pointer region: a four-label cover coexisting with every helper home and five init cells is SAT, and the design space closes exactly — the cover is 82 cells, the 12 free cells are unique, and four init tuples remain. What is missing is a twelve-bit mixer for it; over all four tuples the closest chain still leaves 542. |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
