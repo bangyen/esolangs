@@ -334,17 +334,18 @@ and let \(F(x)=\sum_{j=0}^{D}f_jx^j\in\R[x]\) be a nonzero multiple of
 \(P\) with \(|f_D|\ge1\).  Then
 \begin{equation}\label{eq:mass-general}
   \Lambda(F)
-  \ge \sum_{u=0}^{\lfloor(L-1)/2\rfloor}
-       \sum_{i=2u+1}^{L}\log(r_i-1),
+  \ge \sum_{u=0}^{L-1}
+       \sum_{i=u+1}^{L}\log(r_i-1),
 \end{equation}
 where \(\log^+x=\max(0,\log x)\).
 \end{theorem}
 
 For the first \(L\) primes, or for increasing roots bounded below by them,
-the right side is \(\Omega(L^2\log L)\): each
-\(\log(r_i-1)\) occurs \(\lceil i/2\rceil\) times, and \(r_i\ge i+1\).
-The theorem applies to every real multiple, independently of its degree and
-additional roots.
+the right side is \((1/2+o(1))L^2\log L\): each
+\(\log(r_i-1)\) occurs \(i\) times, and \(r_i\ge i+1\).  The bound is
+asymptotically sharp, attained by \(P_L=\prod_{i=1}^L(x-p_i)\); in particular
+it is \(\Omega(L^2\log L)\).  The theorem applies to every real multiple,
+independently of its degree and additional roots.
 
 \begin{corollary}[Polynomial lower bound]\label{cor:lower}
 Every Polynomial source for a maximal-width truth table has
