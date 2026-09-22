@@ -186,3 +186,38 @@ INTERCAL, listed last, is outside the pass.
   dodges `?`'s random delta.  Rejected: HuePrism (output-only, no input
   interface) and BitCode/PicCode (no interpreter, no numbers); the Minecraft
   ports are game-save media, not a reproducible raster.
+
+## Open problems
+
+Research questions the proofs leave open.  Each names the first executable
+step; an answer lands in the paper it extends, and the row leaves.
+
+- **Converse of the partial-sum criterion.**  The sharpness paper shows the
+  order-statistic bound is an infimum whenever no partial sum of the surviving
+  root product exceeds the total, and leaves open whether failure forces the
+  infimum strictly above it.  Start with `(2,3,5,7)` at `u = 1`, where the
+  construction gives 57 against the bound 48: extend the exact simplex search
+  in `tests/proofs/deep/coefficient_mass.py` past degree 9 and see whether
+  `min b_2` settles above 48.  See the Scope section of
+  [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
+
+- **Repaired bound beyond the cutoff.**  For roots in `(1, 2)` the stated
+  product fails, but keeping the discarded factors,
+  `prod_{i>u} (r_i - 1) * prod_{i<=u} min(r_i - 1, 1)`, survives every
+  seeded draw and the paper's sharpest witness.  The deletion step reverses
+  there, so a proof needs a comparison other than Theorem 2.2's.  See the
+  same Scope section; the sweep's `repaired` column is the regression.
+
+- **Polynomial without input consumption.**  Programs whose read count may
+  differ from `n` are only known to need `Omega(T**2 / log**3 T)`, against the
+  `O(T**2 / log T)` construction.  Close the `log**2` gap: either bound the
+  read offsets reachable from one routing position by less than `k`, or
+  exhibit a variable-read family that routes more cheaply.  See Corollary 3.4
+  of [polynomial](proofs/polynomial.tex).
+
+- **Explicit Factor constants.**  The `Theta(T log T)` upper bound rests on a
+  fixed-modulus Hoheisel theorem with unstated `x_0` and `theta`, so the
+  constant is not computable from the paper.  An explicit short-interval
+  prime count for residues mod 11 would make it so, and would let the
+  measured `D / (T ln T)` be compared against a proven ceiling.  See
+  [factor](proofs/factor.tex).
