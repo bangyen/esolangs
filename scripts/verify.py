@@ -454,6 +454,17 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool, bo
         sys.exit(0)
     only = {s.strip() for s in args.only.split(",") if s.strip()} if args.only else None
     skip = {s.strip() for s in args.skip.split(",") if s.strip()} if args.skip else None
+    # A typo'd name used to filter STEPS down to nothing and print the same
+    # "all local checks passed" a real green run prints -- a gate that ran
+    # zero steps must never look like a gate that passed.
+    known = {name for name, _ in STEPS}
+    for flag, names in (("--only", only), ("--skip", skip)):
+        unknown = sorted((names or set()) - known)
+        if unknown:
+            parser.error(
+                f"{flag}: unknown step(s) {', '.join(unknown)}; "
+                f"--list prints the {len(known)} names"
+            )
     return only, skip, args.full, args.quiet, args.verbose
 
 
@@ -796,6 +807,13 @@ def main() -> int:
         if selected or (only is None and not full):
             gate_cmd.append("--partial")
         gate = (DIFF_COVERAGE_STEP, gate_cmd, env)
+
+    # Name validation catches a typo; this catches the rest (--only X --skip X,
+    # a probe that found no tool).  Zero steps is not a pass.
+    if not runnable:
+        print("=" * 40)
+        print("no checks ran: the filters selected zero steps")
+        return 1
 
     stream = _should_stream(len(runnable), quiet=quiet, verbose=verbose)
     failures, timings, wall = _run_steps(runnable, stream=stream, gate=gate)
