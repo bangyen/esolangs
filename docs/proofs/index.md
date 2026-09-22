@@ -59,10 +59,9 @@ Factor -- proven super-linear at the language level in [factor](factor.md) and
 measuring x2.11 -- is why.  Polynomial's block-incidence lemma forces
 `Omega(T/log T)` distinct real instruction-root values even when roots
 repeat, and the slack certificate prices every multiple of their distinct-root
-product, giving `Omega(T**2 / log T)` for every program that consumes its
-input.  The routing lemma that forces those values needs the whole input to be
-read, because a routing-free suffix can otherwise cross an input-dependent
-number of reads; the generated machines consume the input.  The argument is in
+product, giving `Omega(T**2 / log T)` for every program, whatever its read
+count: only the last two reads before a routing position can carry a residual
+that depends on its next input and not on it alone.  The argument is in
 [polynomial](polynomial.md).
 
 A `linear` row cannot be improved by more than a constant, and the reason is
@@ -228,7 +227,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
 | Packlang | tree | — | linear: folded tree, shortest names deepest, flat pieces |
 | Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
-| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; a program that consumes its input for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
+| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
 | Qoibl | tree | — | linear: span walk, O(1) node tests by halves |
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup | linear: 16-17 tokens per row, unary runs 2T - 2 |
 | ROTfuck | tree | movement search stops after at most eight offsets | linear, time n log: essential_inputs |

@@ -39,8 +39,7 @@ integer polynomial encode the instructions of a one-register machine, while
 the source text lists the polynomial's expanded coefficients.  We prove that
 every Boolean function with truth-table length $T$ has a Polynomial program of
 length $O(T^2/\log T)$, and that some require
-$\Omega(T^2/\log T)$ source characters in every program that consumes its
-input, independently of the program's degree, operand signs, and additional
+$\Omega(T^2/\log T)$ source characters in every program, independently of the program's degree, operand signs, and additional
 roots.
 The explicit residual-DAG construction gives the upper bound.  A
 coefficient-mass theorem, proved separately, implies that every real
@@ -49,8 +48,9 @@ coefficient of absolute value at least one has logarithmic coefficient mass
 $\Omega(L^2\log L)$.  A routing argument, sharpened by an
 outerplanar block-incidence bound, forces $L=\Omega(T/\log T)$ distinct real
 roots in a program for a maximal-width table, so the worst-case text
-complexity is $\Theta(T^2/\log T)$ in this model.  Without the consumption
-hypothesis the same argument gives the weaker $\Omega(T^2/\log^3 T)$.
+complexity is $\Theta(T^2/\log T)$ in this model.  The routing argument
+needs no assumption on the number of reads: a read cursor that routing
+cannot distinguish carries a residual that ignores its next input.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -114,11 +114,10 @@ containing its ASCII digit.  A program computes
 $t=(t_0,\ldots,t_{T-1})\in\{0,1\}^{2^n}$ if, on every
 $b_1\cdots b_n\in\{0,1\}^n$ in lexicographic order, it terminates and emits
 exactly the character $t_{(b_1\cdots b_n)_2}$, with zero-based subscripts.
-Reads consume the input stream in order, and a program for an $n$-input table
-consumes the whole input: every execution performs exactly $n$ reads before it
-halts.  This is the model the upper-bound construction uses, and it is what
-the routing argument below needs; a program that halted after fewer reads
-would compute a function constant on the subcube of unread inputs.
+Reads consume the input stream in order; a read past its end stores $-1$.
+A program may perform different numbers of reads on different inputs, and
+may read past the end.  The upper-bound construction reads exactly $n$ bits
+on every input, but the lower bound does not assume this.
 
 The length $|f|$ is the total
 number of characters in the shortest valid expanded serialization of $f$;
@@ -136,7 +135,7 @@ All unqualified logarithms are natural.
 \begin{theorem}[Main theorem]\label{thm:main}
 Every $n$-input Boolean function has a Polynomial program of length
 $O(T^2/\log T)$, and there are $n$-input Boolean functions for which every
-program that consumes its input has length $\Omega(T^2/\log T)$.  Hence the
+program has length $\Omega(T^2/\log T)$.  Hence the
 worst-case text complexity in the model of Section~\ref{sec:model} is
 $\Theta(T^2/\log T)$.
 \end{theorem}
@@ -165,14 +164,17 @@ statistics to the reduced-height literature~\cite{coefficient-mass}.
 Fix an order of the $n$ input variables.  After the first $k$ reads, each
 input prefix determines a residual Boolean function of the remaining
 $n-k$ variables.  Write $N(k)$ for the number of distinct residuals at that
-level and $N'(k)$ for the nonconstant ones.
+level and $N'(k)$ for the nonconstant ones.  Call a function $g(y_1,\ldots,y_m)$
+\emph{first-essential} if it depends on $y_1$ and is not a function of $y_1$
+alone, and write $N^*(k)$ for the number of distinct first-essential residuals
+at level $k$.
 
 \begin{lemma}[Maximal-width tables]\label{lem:maximal-width}
 For every sufficiently large $n$, there is an $n$-input truth table such
 that, under every variable order, the level $k=n-\lceil\log_2n\rceil-1$
 satisfies
 \begin{equation}\label{eq:residual-width}
-  N'(k+1)=\Omega(T/\log T).
+  N^*(k+1)=\Omega(T/\log T).
 \end{equation}
 \end{lemma}
 
@@ -201,9 +203,19 @@ and one earlier witness for each gives
 \]
 because $q/B=O(1/n)$.  Constant strings are two ordinary occupancy
 bins, so the same bound includes them.
+
+A child fails to be first-essential if its two halves are equal, with
+probability $2^{-R/4}$, or if each half is constant, with probability
+$4\cdot2^{-R/2}$; so it fails with probability $p\le2^{1-R/4}\le2^{1-n/2}$,
+independently across children.  With $t'=\lceil q/8\rceil$,
+\[
+  \Pr\{\text{at least }q/8\text{ children fail}\}
+  \le\binom{2q}{t'}p^{t'}\le(16ep)^{t'}=\exp(-\Omega(qn)).
+\]
+Outside both events, $N^*(k+1)\ge q/2-q/8=3q/8$.
 There are only $n!$ input orders, and
 $\log(n!)=O(n\log n)=o(q\log n)$, so with positive probability every order has
-$N'(k+1)\ge q/2$.  Since $q=\Theta(T/\log T)$, such a table satisfies
+$N^*(k+1)\ge 3q/8$.  Since $q=\Theta(T/\log T)$, such a table satisfies
 \eqref{eq:residual-width}.
 \end{proof}
 
@@ -213,37 +225,54 @@ We call any table satisfying Lemma~\ref{lem:maximal-width}
 Call an instruction position \emph{routing} if both of its possible
 successors occur on reachable executions, and
 let $m_{\rm route}$ be the number of routing real-instruction positions.  For
-a fixed level, let $D_k$ be the number of distinct cursors at which the $k$th
-read can occur over all executions that reach it.  Before the first read
-there is no input, so $D_1=1$.
+a fixed level $k$, let $D^*_k$ be the number of distinct cursors $c$ such that
+some execution performs its $k$th read at $c$ with a first-essential residual.
 
-A residual after $k$ reads is determined by its cursor together with the
-register, and a read leaves the register at $48$ or $49$; hence
+An execution that halts before its $k$th read has a constant residual.
+Otherwise the residual after $k$ reads is determined by the cursor of the
+$k$th read together with the register, and a read of an input bit leaves the
+register at $48$ or $49$; hence
 \begin{equation}\label{eq:residual-cursor}
-  N'(k)\le 2D_k .
+  N^*(k)\le 2D^*_k .
 \end{equation}
 Follow an execution back from its $k$th read.  If its path contains a routing
 position, let $(r,s)$ be the last one and the successor taken there.  From
 $r$ on every real position is non-routing, so its successor is forced, while
-reads and register instructions do not branch; the continuation is a fixed
-cursor sequence, independent of the register, up to the $k$th read.  Under
-consumption, each read cursor $c$ is executed at a single read index
-$\iota(c)$: if two executions read at $c$ after $a<a'$ earlier reads, give
-both the same bit there, so that they share the state $(48+b,c+1)$, and feed
-the first the second's remaining $n-a'-1$ bits followed by anything; it then
-follows the second's trajectory and halts after $n-(a'-a)<n$ reads,
-contradicting consumption.  The reads $c_1,c_2,\ldots$ of the fixed
-continuation therefore have consecutive indices
-$\iota(c_1),\iota(c_1)+1,\ldots$, at most one of them is the $k$th, and the
-cursor of the $k$th read is determined by $(r,s)$.  If the path contains no routing position it is
-routing-free throughout, and the cursor is the deterministic image of the
-initial cursor.  Thus every cursor at the $k$th read is either that single
-image or one of the at most $2m_{\rm route}$ cursors fixed by a routing
-position together with a successor, so
+reads and register instructions do not branch: every execution that takes
+$s$ at $r$ continues along one fixed cursor sequence until the next routing
+position or halt.  Let $c_1,\ldots,c_J$ be the reads on this sequence, so
+that the $k$th read is some $c_j$.  The index $j$ depends on how many reads
+preceded $r$, which may vary between executions, but $c_j$ is among the last
+two reads:
+
+\begin{lemma}[Essential reads]\label{lem:essential}
+If $k\le n-2$ and the residual after the $k$th read at $c_j$ is
+first-essential, then $j\ge J-1$.
+\end{lemma}
+
+\begin{proof}
+Suppose $j\le J-2$.  After $c_j$ the execution follows the fixed sequence and
+reads $y_1=x_{k+1}$ at $c_{j+1}$ and $y_2$ at $c_{j+2}$, with no routing
+position in between.  The read at $c_{j+2}$ overwrites the register, so the
+state after it does not depend on $y_1$.  Between the two reads $y_1$ enters
+only the register, which reaches the cursor only through routing positions,
+of which there are none; so it affects only the output emitted there, say
+$w(y_1)$.  The run's output is $w(y_1)v(y_2,\ldots)$.  If $w(0)$ and $w(1)$
+are empty the residual ignores $y_1$.  Otherwise some $w(y_1)$ is already the
+program's single output character, so $v$ is empty for every continuation,
+each $w(y_1)$ is one character, and the residual is a function of $y_1$
+alone.  A fault between the two reads, such as $0^{-1}$, would occur on a
+reachable input, so a program computing the table has none.
+\end{proof}
+
+If the path contains no routing position, the same holds for the fixed
+sequence from the initial cursor.  Thus every cursor counted by $D^*_k$ is
+one of the last two reads before a routing position and successor, or
+before the first routing position, so
 \begin{equation}\label{eq:basic-routing}
-  D_k\le 1+2m_{\rm route},
+  D^*_k\le 2+4m_{\rm route},
   \qquad\text{and hence}\qquad
-  N'(k+1)\le 2+4m_{\rm route}.
+  N^*(k)\le 4+8m_{\rm route}\qquad(k\le n-2).
 \end{equation}
 
 It is not enough to count positions: repeated roots are legal.  We therefore
@@ -255,7 +284,7 @@ then
 \[
   m_{\rm route}\le 3L
   \quad\text{and hence}\quad
-  N'(k+1)\le 12L+2.
+  N^*(k)\le 24L+4\qquad(k\le n-2).
 \]
 \end{lemma}
 
@@ -295,27 +324,26 @@ $L=\Omega(T/\log T)$ distinct positive real instruction roots.
 \end{corollary}
 
 \begin{proof}
-Combine \eqref{eq:residual-width} with Lemma~\ref{lem:block}.
+The level $k+1=n-\lceil\log_2n\rceil$ of Lemma~\ref{lem:maximal-width} is
+at most $n-2$ once $n\ge3$.  Combine \eqref{eq:residual-width} with
+Lemma~\ref{lem:block}.
 \end{proof}
 
-\begin{remark}[Input consumption is needed]\label{rem:routing-gap}
-The bound \eqref{eq:basic-routing} is false for a decoded program whose read
-count may differ from $n$.  The decoded list
+\begin{remark}[Why essential residuals]\label{rem:routing-gap}
+Counting all read cursors is not enough when the read count varies.  The
+decoded list
 \[
 [5,1],[5],[0,2],[48,2],[2],[0,2],[0,2],[0,2],[0,2],[0,1]
 \]
-has
-$m_{\rm route}=1$ and four distinct cursors at its fourth read: its loop reads
-an input-dependent number of bits, so different executions reach the last
-routing position at different read levels and the routing-free suffix lands
-the fourth read at different offsets.  Such a list performs a different
-number of reads on different inputs, so it is not a program for an $n$-input
-table in the model of Section~\ref{sec:model}, and the routing proof, which
-uses the exact read count, does not apply to it.  Any variable-read list is
-excluded the same way.  Corollary~\ref{cor:general} covers the general model
-with one extra logarithm: the free read level lets one routing position and
-successor place the $k$th read at any of $k$ offsets, so $D_k\le1+2k\,m_{\rm
-route}$.
+has $m_{\rm route}=1$ and four distinct cursors at its fourth read, against
+the $1+2m_{\rm route}=3$ that one fixed read index per cursor would allow:
+its loop reads an input-dependent number of bits, so the routing-free suffix
+lands the fourth read at different offsets.  By
+Lemma~\ref{lem:essential} only the last two reads of that suffix can carry
+first-essential residuals, and here none does: the list prints the last bit
+it reads, so every residual ignores its next input or depends on it alone.  Programs that read exactly $n$
+bits satisfy the sharper $D_k\le1+2m_{\rm route}$ over all cursors, but the
+lower bound does not need it.
 \end{remark}
 
 \section{Coefficient mass from prescribed roots}\label{sec:mass}
@@ -379,34 +407,6 @@ Repeated real roots do not weaken Corollary~\ref{cor:lower}: the
 block-incidence lemma already forces the stated number of distinct values,
 and Theorem~\ref{thm:mass} is stated for roots counted with multiplicity.
 \end{remark}
-
-\begin{corollary}[General model]\label{cor:general}
-If a program's read count may differ from \(n\), every Polynomial source for
-a maximal-width truth table still has
-\[
-  |f|=\Omega(T^2/\log^3 T).
-\]
-\end{corollary}
-
-\begin{proof}
-The continuation from the last routing position $(r,s)$ is still a fixed
-cursor sequence, but without the consumption hypothesis the read level at $r$
-is free.  The $K$th read is the $j$th read of that sequence for some
-$j\in\{1,\dots,K\}$, so each routing position and successor contributes at
-most $K$ cursors:
-\[
-  D_K\le 1+2K\,m_{\rm route}.
-\]
-Take the level $K=n-\lceil\log_2 n\rceil=\Theta(n)$ of
-Lemma~\ref{lem:maximal-width}, where $N'(K)=\Omega(T/\log T)$.  Then
-\eqref{eq:residual-cursor} gives
-$m_{\rm route}=\Omega(T/(K\log T))=\Omega(T/\log^2 T)$,
-Lemma~\ref{lem:block} gives $L=\Omega(T/\log^2 T)$, and
-Theorem~\ref{thm:mass} gives
-\[
-  \Lambda(f)=\Omega(L^2\log L)=\Omega(T^2/\log^3 T).
-\]
-\end{proof}
 
 \section{The matching construction}\label{sec:upper}
 
