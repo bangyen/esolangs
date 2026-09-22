@@ -65,11 +65,11 @@ every asymptotic statement is for $L\to\infty$ with absolute implied
 constants unless parameters are named.
 
 Reduced length and reduced height minimize the two classical coefficient
-norms over monic multiples~\cite{mignotte,dubickas,schinzel,schinzel-complex,dj},
+norms over monic multiples~\cite{dubickas,schinzel,schinzel-complex,dj},
 the Euclidean analogue is effectively computable~\cite{frw}, and the dual
-problems---a multiple of bounded height, or a root of prescribed multiplicity
-for a restricted-coefficient power series---form a classical
-line~\cite{bombieri-vaaler,bbbp-multiple,bbbp-ray}.  A bound on the height
+problems---an integer or bounded-height multiple, or a root of prescribed
+multiplicity for a restricted-coefficient power series---form a classical
+line~\cite{mignotte,bombieri-vaaler,bbbp-multiple,bbbp-ray}.  A bound on the height
 $\max_j|f_j|$ concerns a single coefficient, and the length $\sum_j|f_j|$ can
 be carried by many comparable terms, so neither norm alone forces a hierarchy
 of large coefficient magnitudes.  The mass $\Lambda$
@@ -182,8 +182,9 @@ $\sum_ia_ie^{\lambda_id}$ with distinct $\lambda_i\le0$.  These exponentials
 form a Chebyshev system, because every leading Wronskian
 $W(e^{\lambda_1d},\ldots,e^{\lambda_kd})
 =e^{(\lambda_1+\cdots+\lambda_k)d}\prod_{i<j\le k}(\lambda_j-\lambda_i)$,
-$k\le r$, is nowhere zero~\cite[Chapter~I,
-Theorem~4.1]{karlin-studden}; the full Wronskian alone would not suffice, as
+$k\le r$, is nowhere zero, hence of constant sign, so after normalizing those
+signs the criterion of~\cite[Chapter~XI, Theorem~1.1]{karlin-studden}
+applies; the full Wronskian alone would not suffice, as
 $\{\cos d,\sin d\}$ on $[0,2\pi]$ shows.  Equivalently, prove the
 bound by induction on $r$: factoring out the largest exponential leaves
 $T=\sum_ia_ie^{(\lambda_i-\lambda_1)d}$, which has the same zeros as the
@@ -192,7 +193,8 @@ exponentials, now with one fewer term.  Differentiating once and applying
 Rolle's theorem, then renormalizing by the largest surviving exponential at
 each step and invoking the induction hypothesis, gives at most $r-1$ zeros.  It is
 also the exponential form of Laguerre's extension of Descartes' rule of
-signs~\cite[Part~V]{polya-szego}.  Consequently an $r$-node sum with $r-1$
+signs~\cite[Part~V, Problems~75 and~77]{polya-szego}.  Consequently an
+$r$-node sum with $r-1$
 prescribed real zeros has exactly those zeros, each is simple, and the sum
 changes sign at each of them.
 
