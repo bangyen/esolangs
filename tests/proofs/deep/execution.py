@@ -284,6 +284,24 @@ def _growth(window: list[tuple[int, int]]) -> float:
     return 2.0**slope
 
 
+def _self_check() -> tuple[float, float, float]:
+    """Run the fit on known-linear, ``T log T`` and quadratic command series.
+
+    The bound separates a single pass over the table from a pass per entry, so
+    the probe has to be shown to do both: a linear series must stay inside and
+    the two super-linear series must exceed it.  Without this the contract
+    could report a wall that is not there.  Returns the three fitted ratios.
+    """
+    window = list(range(5, 5 + WINDOW))
+    linear = _growth([(n, 2**n) for n in window])
+    linearithmic = _growth([(n, 2**n * n) for n in window])
+    quadratic = _growth([(n, 4**n) for n in window])
+    assert linear <= MAX_GROWTH, f"linear control read x{linear}"
+    assert linearithmic > MAX_GROWTH, f"T log T control read x{linearithmic}"
+    assert quadratic > MAX_GROWTH, f"quadratic control read x{quadratic}"
+    return linear, linearithmic, quadratic
+
+
 def _regime_start(series: list[tuple[int, int]]) -> int:
     """The arity after the last route change."""
     lo, hi = REGIME_BAND
@@ -319,6 +337,12 @@ def main() -> int:
     exempt = exempt_generators()
     unknown = sorted(set(exempt) - set(by_display))
     assert not unknown, f"exempt names no such generator: {unknown}"
+
+    lin, nlog, quad = _self_check()
+    print(
+        f"control: linear x{lin:.3f} inside, T log T x{nlog:.3f} and "
+        f"quadratic x{quad:.3f} rejected\n"
+    )
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
     assert len(measured) == len(BY_BOOLEAN) == 62, "not every generator was measured"

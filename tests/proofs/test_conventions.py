@@ -1,7 +1,9 @@
 """``docs/roadmap.md``'s conventions audit must agree with the generators.
 
-The cheap half parses the table and checks its names and vocabulary.  The
-measured half builds every embedding generator, fills every row, and reads
+The cheap half parses the table and checks its names and vocabulary; while
+the table is empty (every convention closed) those checks are vacuous, and the
+slow ``test_the_audit_matches_the_programs`` below is the real enforcement.
+The measured half builds every embedding generator, fills every row, and reads
 the two measured conventions off the programs: an absent generator must
 hold both, a ``Holds`` cell must hold, and an open cell must fail -- so a
 fix that lands without its row leaving is caught as well as a regression.
