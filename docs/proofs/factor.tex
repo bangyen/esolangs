@@ -54,9 +54,11 @@ Let
 \[
   N=\prod_p p^{e_p}
 \]
-be the positive integer spelled by the decimal digits of a Factor source.
-An all-zero digit string instead decodes to the empty program; it is one
-exceptional behavior and is excluded from the logarithmic notation below.
+be the positive integer spelled by the decimal digits of a Factor source;
+every other character is a comment.  A source with no digits is read as
+$N=1$, which decodes to the empty program.  An all-zero digit string also
+decodes to the empty program; it is one exceptional behavior and is excluded
+from the logarithmic notation below.
 For a prime $p$, the residue $p\bmod 11$ selects the Brainfuck instruction
 according to
 \[
@@ -90,8 +92,9 @@ and matched brackets have their usual while-loop semantics.  For $n\ge1$ put
 $T=2^n$.  Each input bit is supplied as a separate line containing its ASCII
 digit.  A program
 \emph{computes} a table $t=(t_0,\ldots,t_{T-1})\in\{0,1\}^{2^n}$ if, for every
-$b_1\cdots b_n\in\{0,1\}^n$ in lexicographic order, it terminates and emits
-exactly the character $t_{(b_1\cdots b_n)_2}$, with zero-based subscripts.
+$b_1\cdots b_n\in\{0,1\}^n$, a separate run on the input lines
+$b_1,\ldots,b_n$ terminates and emits exactly the ASCII digit of
+$t_{(b_1\cdots b_n)_2}$, with zero-based subscripts.
 Define
 \[
  \mathcal C_F(T)=\max_{t\in\{0,1\}^T}
@@ -147,14 +150,17 @@ depth $i$, so all pointer travel is bounded by
 The fixed node gadgets and the single final output add $O(T)$.
 \end{proof}
 
+The implementation returns the shorter of this identity-order program and one
+built for a reordered set of variables, so its $C$ is no larger.
+
 The encoder replaces each maximal run by one prime power.  It scans
 primes upward and chooses the first prime in the residue class required by
 the next run.  The following standard consequence of the prime number theorem
 in short arithmetic progressions controls this adaptive sequence.
 
 \begin{lemma}[Fixed-modulus short intervals]\label{lem:short}
-For every reduced residue class $a\pmod {11}$, there are constants
-$x_0$ and $\theta<1$ such that every $x\ge x_0$ has a prime
+There are constants $x_0$ and $\theta<1$ such that for every reduced
+residue class $a\pmod{11}$, every $x\ge x_0$ has a prime
 \[
   p\equiv a\pmod {11},
   \qquad x<p\le x+x^\theta.
@@ -170,17 +176,23 @@ Zaman~\cite[Section~1.2]{thorner-zaman}.  Fix
 $7/12+\varepsilon<\theta<1$, put
 $X=x+x^\theta$ and $h=x^\theta$.  Since $X\sim x$, the displayed size
 condition holds for all sufficiently large $x$, while
-$(X-h,X]=(x,x+x^\theta]$.  Taking $q=11$ proves the lemma.
+$(X-h,X]=(x,x+x^\theta]$.  Taking $q=11$, the count in each of the ten
+reduced classes is $(1+o(1))\,h/(10\log X)$, which is positive for large
+$x$; one $x_0$ serves all eight classes used below.  The constants $x_0$ and
+$\theta$ are not made explicit, and only their existence is used.
 \end{proof}
 
 \begin{lemma}\label{lem:adaptive}
 If $p_i$ is the prime selected for the $i$th run, then
-$p_i=i^{O(1)}$.  In particular, $Q=m^{O(1)}$.
+$p_i=O\bigl(i^{1/(1-\theta)}\bigr)$.  In particular,
+$\log Q=O(\log(m+1))$.
 \end{lemma}
 
 \begin{proof}
-Finitely many primes below $x_0$ change only the implied constant.  Above
-$x_0$, Lemma~\ref{lem:short} gives
+Let $i_0$ be the first index with $p_{i_0}\ge x_0$.  Then
+$i_0\le\pi(x_0)+1$, and $p_{i_0}\le x_0+x_0^\theta$ by Lemma~\ref{lem:short}
+at $x=x_0$, so the indices before $i_0$ change only the implied constant.
+From $i_0$ on, Lemma~\ref{lem:short} gives
 \[
   p_{i+1}\le p_i+p_i^\theta.
 \]
@@ -205,8 +217,7 @@ $\log Q=O(\log(m+1))$.  Equation~\eqref{eq:digits} yields
   =O\bigl(C\log(m+1)\bigr)
   =O\bigl(T\log(T+1)\bigr).
 \]
-Changing logarithm bases proves the digit bound.  The constructed program has
-an output run, so $m\ge1$.
+Changing logarithm bases proves the digit bound.
 \end{proof}
 
 \section{Language lower bound}
@@ -227,7 +238,8 @@ least one.  Hence
 \[
   L\ge\sum_{i=1}^{k}\log(i+1)=\log((k+1)!).
 \]
-Stirling's bound $\log(k!)=\Theta(k\log(k+1))$ gives the result.
+Since $\log((k+1)!)\ge(k+1)\bigl(\log(k+1)-1\bigr)$, this gives
+$k=O(L/\log(L+2))$.
 \end{proof}
 
 \begin{lemma}[Exponent vectors]\label{lem:vectors}
@@ -245,7 +257,7 @@ Put $f_i=e_i-1\ge0$ and $s=1/\log(L+2)$.  Dropping the fixed contribution
 of the ones only enlarges the set.  Markov's exponential bound and the
 geometric series give
 \begin{align}
- \#\{f:\text{\eqref{eq:budget}}\}
+ \#\Bigl\{f\in\N_{\ge0}^k:\sum_if_i\log(i+1)\le L\Bigr\}
  &\le e^{sL}
        \sum_{f_1,\ldots,f_k\ge0}
        \exp\!\left(-s\sum_i f_i\log(i+1)\right)\\
@@ -297,7 +309,7 @@ behaviors by
 \]
 Zero-valued sources add only the empty behavior, which is absorbed by this
 bound.
-There are $2^T$ Boolean truth tables.  If every table had a $D$-digit source,
+There are $2^T$ Boolean truth tables.  If every table had a source of at most $D$ digits,
 then $D/\log D=\Omega(T)$, which implies $D=\Omega(T\log T)$.
 Ignored factors, comments, and leading zeros cannot invalidate the count:
 they add spellings of an already-counted decoded program, not behaviors.

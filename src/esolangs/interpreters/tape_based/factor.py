@@ -55,8 +55,13 @@ def _isprime64(number: int) -> bool:
     while not odd & 1:
         shifts += 1
         odd >>= 1
-    for base in (2, 325, 9375, 28178, 450775, 9780504, 179526502):
-        value = pow(base % number, odd, number)
+    # Sinclair's seven bases, proven for every number below 2**64.  A base
+    # the number divides says nothing, so it is skipped rather than read as
+    # a witness of compositeness (73 divides 450775, for one).
+    for base in (2, 325, 9375, 28178, 450775, 9780504, 1795265022):
+        if base % number == 0:
+            continue
+        value = pow(base, odd, number)
         if value in (1, number - 1):
             continue
         for _ in range(shifts - 1):
