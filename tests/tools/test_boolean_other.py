@@ -22,6 +22,28 @@ from tests.tools.boolean_runners import (
 )
 
 
+def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> str:
+    """Run a Container program under a hard tick budget and return its output.
+
+    :func:`run_container` has no cap, so a program that cannot terminate
+    presents as a hung suite rather than a failing test.  Container's own
+    ``_Machine`` is stepped here instead, which is what makes a tick count an
+    assertion.  Overrunning the budget is an error, not a truncated run.
+    """
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.other.container import _Machine
+
+    stream = ScriptedIO("".join(f"{line}\n" for line in inputs))
+    machine = _Machine(program.splitlines(), stream)
+    for _ in range(budget):
+        if machine.halted:
+            return stream.getvalue()
+        machine.step()
+    if not machine.halted:
+        raise AssertionError(f"still running after {budget} ticks")
+    return stream.getvalue()
+
+
 class TestPacklangLinearTree:
     """Fast structural coverage for Packlang's linear decision tree."""
 
@@ -377,14 +399,50 @@ class TestContainer:
         assert len(generated) == len(set(generated))
         assert program.count("PRINT:") == 1
 
-    def test_packed_decoder_selects_decimal_digits(self) -> None:
-        """The wide-table path divides one packed decimal digit per row."""
-        table = "011" + "0" * 125
-        program = boolean.container(table)
-        assert "A=110:" in program
-        for combo in (0, 1, 2, 3, 17, 63, 64, 127):
-            bits = [(combo >> (6 - i)) & 1 for i in range(7)]
-            assert run_container(program, [str(b) for b in bits]) == table[combo]
+    def test_wide_tables_decode_every_row_inside_a_tick_budget(self) -> None:
+        """A *random dense* wide table answers every row in ``2n + 2`` ticks.
+
+        The cap is the point.  Its predecessor packed the table into one
+        decimal literal and subtracted ten per tick, so the tick count scaled
+        with that literal's magnitude, not its length: 2.2e6 ticks for eight
+        rows at ``n == 3``, hence ~1e126 at ``n == 7``.  The test that stood
+        here ran the same path at ``"011" + "0" * 125``, whose reversed
+        literal is the three digits ``110``, and so only ever exercised the
+        decoder at its cheapest possible input.  A representative table is
+        what discriminates, and the budget turns the old route's
+        non-termination into a failure rather than a hang.
+        """
+        rng = random.Random(20260922)
+        for n in (7, 8):
+            table = "".join(rng.choice("01") for _ in range(1 << n))
+            assert table.count("1") > (1 << n) // 4, "not a dense table"
+            program = boolean.container(table)
+            for combo in range(1 << n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                got = _run_container_capped(program, bits, budget=2 * n + 2)
+                assert got == table[combo], f"n={n} row {combo}"
+
+    def test_name_allocation_steps_over_container_s_own_names(self) -> None:
+        """``_forbin_name`` reaches ``T`` at 45 and ``IN`` at 754, so it collides.
+
+        Both routes draw from one namespace, and the skip is live rather than
+        defensive: a generated container called ``T`` would be the tick
+        counter and a generated ``IN`` would be overwritten by every read.
+        """
+        from esolangs.tools.container import _RESERVED, _allocate_names
+
+        uses = {("node", 0, index): 1000 - index for index in range(800)}
+        names = _allocate_names(uses)
+        assert not _RESERVED & set(names.values())
+        assert len(set(names.values())) == len(uses)
+        # Descending use counts, so the allocation order is the key order.
+        assert [names[key] for key in list(uses)[:3]] == ["a", "b", "c"]
+
+    def test_wide_tables_read_exactly_n_inputs(self) -> None:
+        """The latch-and-gate route still reads one line per input."""
+        program = boolean.container("0110100110010110" * 8)
+        assert program.count("IN>=") == 7  # one latch per input, no rescan
+        assert program.count("PRINT:") == 1
 
     def test_small_tree_uses_one_character_generated_names(self) -> None:
         """Gates and survivors share one compact identifier namespace."""

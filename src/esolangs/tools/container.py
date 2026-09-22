@@ -1,9 +1,37 @@
 """Boolean-function generator for Container."""
 
+from itertools import count, pairwise
+
 from esolangs.tools.forbin import (
     _forbin_name,
 )
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+
+#: The names Container gives its own meaning, which a generated container
+#: may not take.  ``_forbin_name`` draws from a mixed-case alphabet and so
+#: reaches ``T`` at index 45 and ``IN`` at 754 -- both inside the name count
+#: of a wide table, so the collision is live rather than defensive.
+_RESERVED = frozenset({"EXIT", "IN", "OUT", "PRINT", "T"})
+
+
+_Names = dict[tuple[str, int, int], str]
+
+
+def _allocate_names(uses: dict[tuple[str, int, int], int]) -> _Names:
+    """Give the shortest free identifier to the most-referenced container.
+
+    ``uses`` maps a container's key to how many times the emitted program
+    spells its name, so the length saved is the reference count; ties break
+    on the key, keeping the emission deterministic.
+    """
+    identifiers = (_forbin_name(index) for index in count())
+    names: _Names = {}
+    for key in sorted(uses, key=lambda key: (-uses[key], key)):
+        name = next(identifiers)
+        while name in _RESERVED:
+            name = next(identifiers)
+        names[key] = name
+    return names
 
 
 def _container_tree(truth_table: str) -> str:
@@ -57,15 +85,7 @@ def _container_tree(truth_table: str) -> str:
             )
     uses[("output", 0, 0)] = 1 + truth_table.count(wanted)
 
-    reserved = {"EXIT", "IN", "OUT", "PRINT", "T"}
-    identifiers = (_forbin_name(i) for i in range(len(uses) + len(reserved)))
-    ordered = sorted(uses, key=lambda key: (-uses[key], key))
-    names: dict[tuple[str, int, int], str] = {}
-    for key in ordered:
-        name = next(identifiers)
-        while name in reserved:
-            name = next(identifiers)
-        names[key] = name
+    names = _allocate_names(uses)
 
     root = names[("root", 0, 0)]
     output_gate = names[("output", 0, 0)]
@@ -129,132 +149,110 @@ def _container_tree(truth_table: str) -> str:
     return "\n".join(lines)
 
 
-def _container_packed(truth_table: str) -> str:
-    """Build an O(T)-size Container program for the given truth table.
+def _threshold_deltas(truth_table: str, n: int, *, mirror: bool) -> list[int]:
+    """Return the step deltas of the table under one input-weight order.
 
-    The table is one decimal integer whose digits, least significant first,
-    are its rows.  Two banks repeatedly divide it by ten: one loses ten per
-    tick while the other gains one.  After the input-built row counter has
-    requested enough divisions, the remaining digit is the answer.  The two
-    division networks are fixed; only the table literal and the binary input
-    weights grow, totalling O(T) source and construction work.
+    Input ``i`` carries weight ``2**i`` when ``mirror`` (so the row index is
+    the bit-reversal of the table index) and ``2**(n-1-i)`` otherwise.  Entry
+    ``r`` is ``row[r] - row[r-1]``, with entry 0 the base value, so the table
+    is the prefix sum and only the nonzero entries cost a line.
+    """
+
+    def row(index: int) -> int:
+        if mirror:
+            index = int(f"{index:0{n}b}"[::-1], 2)
+        return int(truth_table[index])
+
+    values = [row(index) for index in range(2**n)]
+    return [values[0], *(b - a for a, b in pairwise(values))]
+
+
+def _container_threshold(truth_table: str) -> str:
+    """Build a threshold-sum Container program for the given truth table.
+
+    Halts in ``2n + 2`` ticks whatever the table, and costs one line per
+    *step* in the table rather than one per row.
+
+    Each input bit is latched into its own container; a one-tick gate dip
+    then lets all ``n`` latches add their binary weights to a row counter in
+    a single tick, the same ``value >= gate`` conjunction the tree uses.
+    ``OUT`` is the prefix sum ``base + sum(d[r] for r if row >= r)``, one
+    ``+-1 C>=r`` line per nonzero ``d``, every one firing in the single tick
+    the counter is live.  Whichever of the two weight orders has fewer steps
+    wins: the mirror turns a table that depends only on the last input
+    (``"01" * 2**(n-1)``, every row a step) into one line.
+
+    The predecessor packed the table into a single decimal literal and
+    subtracted ten per tick, so its tick count scaled with that literal's
+    *magnitude* -- measured 2.2e6 ticks at ``n == 3``, hence ~1e126 at
+    ``n == 7``, which is not a program that can be run.
     """
     n = _validate_truth_table(truth_table)
+    mirrored = _threshold_deltas(truth_table, n, mirror=True)
+    plain = _threshold_deltas(truth_table, n, mirror=False)
+    mirror = sum(map(bool, mirrored[1:])) < sum(map(bool, plain[1:]))
+    deltas = mirrored if mirror else plain
+    steps = [(row, delta) for row, delta in enumerate(deltas) if row and delta]
+
+    # The counter is named once per step line and so dominates; the gate is
+    # named once per input.  Assign the shortest names by actual frequency.
+    uses: dict[tuple[str, int, int], int] = {
+        ("count", 0, 0): 1 + len(steps),
+        ("gate", 0, 0): 1 + n,
+    }
+    for bit in range(n):
+        uses[("latch", bit, 0)] = 2
+        uses[("window", bit, 0)] = 2
+    names = _allocate_names(uses)
+    counter = names[("count", 0, 0)]
+    gate = names[("gate", 0, 0)]
+
     lines = ["T:", "+1 T>=T", ":", "+1 T>=0", "-2 T>=1"]
     for k in range(1, n):
         lines.extend((f"+2 T>={2 * k}", f"-2 T>={2 * k + 1}"))
-    lines.append(f"+1 T>={2 * n}")
-    lines.append("IN=50:")
+    lines.append(f"+1 T>={2 * n}")  # cancels the pulse, so there is no n+1th read
+    lines.append("IN=50:")  # a value no real byte matches
 
-    # Lk equals 49 for exactly the tick after input k was read, and 65 at
-    # every other useful tick.  Thus IN>=Lk adds its weight exactly for '1'.
+    # Window k is 49 for exactly the tick input k sits in IN and 65
+    # otherwise, so ``IN>=window`` holds exactly when that bit is a one.
     for k in range(n):
+        window = names[("window", k, 0)]
         lines.extend(
             (
-                f"L{k}=65:",
+                f"{window}=65:",
                 f"-16 T>={2 * k}",
                 f"+32 T>={2 * k + 1}",
                 f"-16 T>={2 * k + 2}",
+                f"{names[('latch', k, 0)]}:",
+                f"+1 IN>={window}",
             )
         )
 
-    # One division exposes row zero as the units digit; the binary input
-    # index adds the number of further divisions.
-    lines.append("COUNT=1:")
-    for k in range(n):
-        lines.append(f"+{2 ** (n - 1 - k)} IN>=L{k}")
-    lines.extend(("-1 NA>=1", "-1 NB>=1"))
-
-    # Reversing the spelling, rather than converting bases, puts row zero in
-    # the units place in one linear string pass.  Leading zeroes may vanish
-    # in the interpreter's integer parse; they denote zero high rows anyway.
-    packed = truth_table[::-1].lstrip("0") or "0"
+    # The gate rests at 2 and dips to 1 for tick ``2n`` alone, so a latch at
+    # 1 clears it exactly then: the counter takes every weight in that one
+    # tick and none after, and is live for tick ``2n + 1`` only.
     lines.extend(
         (
-            f"A={packed}:",
-            "-10 WA>=1",
-            "+1 WB>=1",
-            "-1 NB>=1",
-            "B:",
-            "+1 WA>=1",
-            "-10 WB>=1",
-            "-1 NA>=1",
-            "START:",
-            f"+1 T>={2 * n}",
-            f"-2 T>={2 * n + 1}",
-            f"+1 T>={2 * n + 2}",
-            # NA/NB are one-tick, positive-count continuations.  Subtracting
-            # on COUNT<=0 cancels the event in the same synchronous update.
-            "NA:",
-            "+1 START>=1",
-            "+1 DB>=1",
-            "-1 COUNT<=0",
-            "-1 NA>=1",
-            "NB:",
-            "+1 DA>=1",
-            "-1 COUNT<=0",
-            "-1 NB>=1",
-            "SA:",
-            "+1 DA>=1",
-            "-1 COUNT>=1",
-            "-1 SA>=1",
-            "SB:",
-            "+1 DB>=1",
-            "-1 COUNT>=1",
-            "-1 SB>=1",
-            "FA:",
-            "+1 NA>=1",
-            "-1 DA>=1",
-            "FB:",
-            "+1 NB>=1",
-            "-1 DB>=1",
-            # A work pulse persists while its active dividend is at least 10.
-            "WA:",
-            "+1 FA>=1",
-            "-1 A<=9",
-            "-2 WA>=1",
-            "WB:",
-            "+1 FB>=1",
-            "-1 B<=9",
-            "-2 WB>=1",
-            # Completion is the complementary pulse: active and below ten.
-            "DA:",
-            "+1 FA>=1",
-            "-1 A>=10",
-            "-2 DA>=1",
-            "DB:",
-            "+1 FB>=1",
-            "-1 B>=10",
-            "-2 DB>=1",
-            # Filter the stopping bank's digit into a one pulse.
-            "OA:",
-            "+1 SA>=1",
-            "-1 A<=0",
-            "-1 OA>=1",
-            "OB:",
-            "+1 SB>=1",
-            "-1 B<=0",
-            "-1 OB>=1",
-            "DELAY:",
-            "+1 SA>=1",
-            "+1 SB>=1",
-            "-1 DELAY>=1",
-            "OUT=48:",
-            "+1 OA>=1",
-            "+1 OB>=1",
-            "PRINT:",
-            "+1 DELAY>=1",
-            "-1 PRINT>=1",
-            "EXIT:",
-            "+1 PRINT>=1",
+            f"{gate}=2:",
+            f"-1 T>={2 * n - 1}",
+            f"+2 T>={2 * n}",
+            f"-1 T>={2 * n + 1}",
+            f"{counter}:",
         )
     )
+    for k in range(n):
+        weight = 2**k if mirror else 2 ** (n - 1 - k)
+        lines.append(f"+{weight} {names[('latch', k, 0)]}>={gate}")
+
+    lines.append(f"OUT={_ASCII_ZERO + deltas[0]}:")
+    lines.extend(f"{delta:+d} {counter}>={row}" for row, delta in steps)
+    lines.extend(("PRINT:", f"+1 T>={2 * n + 1}", "EXIT=1:", f"-1 T>={2 * n + 1}"))
     return "\n".join(lines)
 
 
 def container(truth_table: str) -> str:
-    """Build a Container program, switching to the linear packed decoder."""
+    """Build a Container program, switching to the threshold-sum decoder."""
     n = _validate_truth_table(truth_table)
     if n <= 6:
         return _container_tree(truth_table)
-    return _container_packed(truth_table)
+    return _container_threshold(truth_table)
