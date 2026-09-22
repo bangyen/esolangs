@@ -270,7 +270,9 @@ class TestIteratedEliminationThresholds:
     @pytest.mark.parametrize(
         ("roots", "degree", "low", "below", "above"),
         [
-            ((2, 3, 5, 7, 11), 14, 2, 60, 80),
+            # 0.65s alone, 2.9s under `-n auto`: z3 contends with the other
+            # solver tests past the fast band.
+            pytest.param((2, 3, 5, 7, 11), 14, 2, 60, 80, marks=pytest.mark.medium),
             # Z3's branch-and-bound search is CPU-bound.  Under `-n auto`,
             # this case exceeded the medium band's 15s CI ceiling (35.03s);
             # the weekly slow run is its stable home.
