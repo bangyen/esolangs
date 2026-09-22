@@ -184,14 +184,14 @@ statistics to the reduced-height literature~\cite{coefficient-mass}.
 Fix an order of the $n$ input variables.  After the first $k$ reads, each
 input prefix determines a residual Boolean function of the remaining
 $n-k$ variables.  Write $N(k)$ for the number of distinct residuals at that
-level, $N'(k)$ for the nonconstant ones, and $E(k)$ for the residuals whose
-two children are equal.
+level and $N'(k)$ for the nonconstant ones.
 
 \begin{lemma}[Maximal-width tables]\label{lem:maximal-width}
 For every sufficiently large $n$, there is an $n$-input truth table such
-that, under every variable order, some level $k$ satisfies
+that, under every variable order, the level $k=n-\lceil\log_2n\rceil-1$
+satisfies
 \begin{equation}\label{eq:residual-width}
-  N'(k+1)-E(k)=\Omega(T/\log T).
+  N'(k+1)=\Omega(T/\log T).
 \end{equation}
 \end{lemma}
 
@@ -203,13 +203,12 @@ $q=2^k=\Theta(T/n)$ residuals occupy disjoint blocks of the truth table and
 are therefore independent uniform strings of length
 $R=2^\ell\in[2n,4n)$.  Their $2q$ children at level $k+1$ are independent
 uniform strings of length $R/2\in[n,2n)$.  Two prescribed children agree
-with probability $2^{-R/2}$, and a prescribed parent has equal children with
-the same probability.
+with probability $2^{-R/2}$.
 
-If $N'(k+1)-E(k)<q/2$, then either at least $q/4$ parents have equal children
-or the child occupancy experiment has at least $q/4$ repetitions (constant
-children count as repetitions against either constant string).  A binomial
-tail bounds the first event by $\exp(-\Omega(qn))$.  For the second, put
+If $N'(k+1)<q/2$, then the $2q$ children occupy fewer than $q/2$ distinct
+nonconstant values, so the child occupancy experiment has at least
+$3q/2-2\ge q/4$ repetitions (constant children count as repetitions against
+either constant string).  Put
 $B=2^{R/2}\ge T$ and $t=\lceil q/4\rceil$.  If at least $t$ repetitions
 occur, some $t$ children each equal an earlier child.  Choosing those children
 and one earlier witness for each gives
@@ -223,7 +222,7 @@ because $q/B=O(1/n)$.  Constant strings are two ordinary occupancy
 bins, so the same bound includes them.
 There are only $n!$ input orders, and
 $\log(n!)=O(n\log n)=o(q\log n)$, so with positive probability every order has
-$N'(k+1)-E(k)\ge q/2$.  Since $q=\Theta(T/\log T)$, such a table satisfies
+$N'(k+1)\ge q/2$.  Since $q=\Theta(T/\log T)$, such a table satisfies
 \eqref{eq:residual-width}.
 \end{proof}
 
