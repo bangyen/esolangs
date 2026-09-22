@@ -1,16 +1,16 @@
-"""The certificate sweeps behind Section 4 of ``coefficient-mass.tex``.
+"""The certificate sweeps behind the two coefficient-mass papers.
 
 Run:  just proofs   (or python tests/proofs/deep/coefficient_mass.py)
 
-Section 4 of ``docs/proofs/coefficient-mass.tex`` argues three things about
-the displaced-zero tail bound by sweeping random certificates, and the paper
-quotes tallies from that sweep.  Those tallies came from draws nobody kept, so
-the numbers could not be reproduced from the text -- ``Data availability``
-now says only that they are sample-dependent.  This module is the missing
-half: a *seeded* sweep whose counts are stable, so the qualitative claims are
-executed rather than remembered.
+``docs/proofs/coefficient-mass.tex`` proves the displaced-zero tail bound
+(Theorem 2.2) under the node cutoff ``y_i <= 1/2``;
+``docs/proofs/coefficient-mass-attainment.tex`` shows the cutoff cannot be
+raised and that the bound is an infimum at ``(2,3)`` and ``(2,3,5)``.  This
+module is a *seeded* sweep whose counts are stable, so the qualitative claims
+are executed rather than remembered, plus exact checks of every number the
+first paper works out by hand.
 
-The three claims, in the paper's order:
+The sweep's three claims:
 
 * the **repaired** product -- ``prod_{i<=f+1} y/(1-y)`` times
   ``max(1, y/(1-y))`` over the nodes the discard drops -- is never violated,
@@ -111,7 +111,7 @@ def _repaired(nodes: list[Fraction], f: int) -> Fraction:
 
 #: Node pools, in the paper's three groups.  ``below`` is the cutoff regime
 #: ``y_i <= 1/2``; ``mixed`` can place a node above it; ``anywhere`` reaches
-#: ``18/19``, the range Section 4 names.
+#: ``18/19``.
 _POOLS = {
     "y <= 1/2": [Fraction(1, k) for k in range(2, 12)],
     "some y > 1/2": [Fraction(1, k) for k in range(2, 8)]
@@ -307,11 +307,11 @@ def _min_bk(roots: list[Fraction], k: int, cap: int) -> Fraction:
 
 
 def _check_searches(failures: list[str]) -> int:
-    """Section 4's optima are exactly the family members it says they are.
+    """The search optima are exactly the family members they should be.
 
-    The paper reports 2.0308 at ``(2,3)`` and 8.5178, 4.1218 at ``(2,3,5)``,
-    and claims each is the corresponding member of the exact families of
-    ``prop:sharp23`` and ``prop:sharp235``.  Solved in rationals, "is" is
+    The optima 2.0308 at ``(2,3)`` and 8.5178, 4.1218 at ``(2,3,5)`` are the
+    corresponding members of the exact families of ``prop:sharp23`` and
+    ``prop:sharp235``.  Solved in rationals, "is" is
     literal.  Double precision does not settle this: on the same program at
     ``(3,4,5,6)`` it reports success and returns 184.86 past degree 25.
     """
@@ -376,14 +376,85 @@ def _check_ordering(failures: list[str]) -> int:
     return checked
 
 
+def _check_worked_numbers(failures: list[str]) -> int:
+    """Every number ``coefficient-mass.tex`` works out by hand, exactly."""
+    checks = 0
+
+    def tail_of(rhos: list[int], zeros: list[int]) -> Fraction:
+        nodes = sorted(Fraction(1, r) for r in rhos)
+        return _tail(nodes, zeros, _certificate(nodes, zeros))
+
+    # Section 2's two-node examples, and the fixed-node non-monotonicity.
+    for rhos, zeros, want in (
+        ([3, 2], [1], Fraction(1, 2)),
+        ([3, 2], [2], Fraction(3, 10)),
+        ([5, 3], [1], Fraction(1, 8)),
+        ([5, 3], [2], Fraction(9, 64)),
+    ):
+        got = tail_of(rhos, zeros)
+        if got != want:
+            failures.append(f"Tail at {rhos}, Z={zeros} is {got}, not {want}")
+        checks += 1
+
+    # The cutoff witness after thm:tail.
+    high = [Fraction(1, 10), Fraction(4, 5)]
+    a = _certificate(high, [2])
+    if a != [Fraction(64, 63), Fraction(-1, 63)]:
+        failures.append(f"cutoff witness coefficients are {a}")
+    if _tail(high, [2], a) != Fraction(364, 2835):
+        failures.append("cutoff witness tail is not 364/2835")
+    checks += 2
+
+    # lem:consecutive: the h_j formula, term by term, at rational nodes.
+    nodes = [Fraction(1, 7), Fraction(2, 9), Fraction(1, 3), Fraction(3, 5)]
+    c = len(nodes)
+    a = _certificate(nodes, list(range(1, c)))
+    prod = Fraction(1)
+    for y in nodes:
+        prod *= y
+    h = [Fraction(1)]  # h_j by the recurrence over the variables
+    for _ in range(12):
+        h.append(Fraction(0))
+    for y in nodes:
+        for j in range(1, len(h)):
+            h[j] += y * h[j - 1]
+    for d in range(c, c + len(h)):
+        if _u(nodes, a, d) != (-1) ** (c + 1) * prod * h[d - c]:
+            failures.append(f"lem:consecutive formula fails at d={d}")
+    checks += len(h)
+
+    # prop:sharp23: F_n is a monic multiple of (x-2)(x-3) with b_2 = t_n > 2.
+    for n in range(2, 30):
+        t = Fraction(2) / (1 - Fraction(2) ** (1 - n) + Fraction(3) ** -n)
+        a_n = 2 + t * (1 - Fraction(2) ** -n)
+        coeffs = [t] * n + [-a_n, Fraction(1)]  # ascending
+        for r in (2, 3):
+            if sum(cf * r**j for j, cf in enumerate(coeffs)) != 0:
+                failures.append(f"F_{n}({r}) != 0")
+        mags = sorted((abs(cf) for cf in coeffs[:-1]), reverse=True)
+        if not (mags[1] == t > 2):
+            failures.append(f"b_2(F_{n}) is not t_{n} > 2")
+        checks += 1
+
+    # The (x+1)P_2 example: coefficients 1, -4, 1, 6.
+    p2 = [6, -5, 1]
+    prod_poly = [p2[0], p2[0] + p2[1], p2[1] + p2[2], p2[2]]
+    if prod_poly != [6, 1, -4, 1]:
+        failures.append(f"(x+1)P_2 is {prod_poly}")
+    checks += 1
+    return checks
+
+
 def main() -> int:
     failures: list[str] = []
     controls = _check_controls(failures)
     searches = _check_searches(failures)
     ordering = _check_ordering(failures)
+    worked = _check_worked_numbers(failures)
     print(f"  positive controls fired                     : {controls}")
-    print(f"  Section 4 optima equal their family members : {searches}")
+    print(f"  search optima equal their family members    : {searches}")
     print(f"  sharp235 ordering degrees checked exactly   : {ordering}")
+    print(f"  worked numbers of the paper checked exactly : {worked}")
     rng = random.Random(SEED)
     totals = {}
     for label, pool in _POOLS.items():
