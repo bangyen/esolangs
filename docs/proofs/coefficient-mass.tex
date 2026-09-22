@@ -955,6 +955,89 @@ $t_7=\tfrac{279936}{137845}=2.0308027\ldots$, which agrees with the value the
 search of Section~\ref{sec:scope} returns at degree cap $8$; so the numerical
 optimum recorded there is attained within this family.
 
+The same construction reaches $L=3$.  Write the multiple from the top: one
+leading $1$, a short free prefix, a long run of a single value $t$, and $u$
+exempt coefficients at the bottom.  The exempt coefficients grow like
+$r_u^D$ and so survive division by $r^{D-1}$ only at the $u$ smallest roots,
+which they absorb; the run must therefore satisfy the remaining $L-u$ roots
+alone, and its value is what \eqref{eq:order} predicts.
+
+\begin{proposition}[The bound for $b_2$ at roots $(2,3,5)$ is an infimum]
+\label{prop:sharp235}
+For $D\ge5$ let $(a_D,t_D,c_D)$ be the solution of the linear system
+$F_D(2)=F_D(3)=F_D(5)=0$ in
+\[
+  F_D(x)=x^D-a_Dx^{D-1}+t_D\sum_{j=1}^{D-2}x^j+c_D .
+\]
+The system is nonsingular, each $F_D$ is a monic multiple of
+$(x-2)(x-3)(x-5)$ with $b_2(F_D)=t_D$, and $t_D\to8$.  Hence
+\begin{equation}\label{eq:sharp235}
+  \inf_{\substack{Q\in\R[x]\\ Q\text{ monic}}}
+  b_2\bigl(Q(x)(x-2)(x-3)(x-5)\bigr)=8=(r_2-1)(r_3-1),
+\end{equation}
+the value \eqref{eq:order} asserts for $u=1$.
+\end{proposition}
+
+\begin{proof}
+Divide $F_D(r)=0$ by $r^{D-1}$ and sum the geometric progression:
+\[
+  (r-a_D)+\frac{t_D}{r-1}
+  +r^{1-D}\Bigl(c_D-\frac{r\,t_D}{r-1}\Bigr)=0,
+  \qquad r\in\{2,3,5\}.
+\]
+Put $\gamma_D=2^{1-D}c_D$, so that $r^{1-D}c_D=\gamma_D(2/r)^{D-1}$.  In the
+unknowns $(a_D,t_D,\gamma_D)$ the three equations read
+\[
+  \begin{aligned}
+    -a+t\bigl(1-2^{2-D}\bigr)+\gamma&=-2,\\
+    -a+t\bigl(\tfrac12-\tfrac323^{1-D}\bigr)+\gamma(2/3)^{D-1}&=-3,\\
+    -a+t\bigl(\tfrac14-\tfrac545^{1-D}\bigr)+\gamma(2/5)^{D-1}&=-5 .
+  \end{aligned}
+\]
+Every $D$-dependent entry is $O((2/3)^{D})$, so the coefficient matrix tends
+to
+\[
+  M=\begin{pmatrix}-1&1&1\\-1&\tfrac12&0\\-1&\tfrac14&0\end{pmatrix},
+  \qquad \det M=\tfrac14\ne0 .
+\]
+Hence the matrix is invertible for all large $D$ and its inverse converges to
+$M^{-1}$, so $(a_D,t_D,\gamma_D)$ converges to the solution of $M$ against
+$(-2,-3,-5)$.  The last two rows of that limit give
+$-a+\tfrac12t=-3$ and $-a+\tfrac14t=-5$, whence $t=8$ and $a=7$; the first
+row then gives $\gamma=-3$, so $c_D\sim-3\cdot2^{D-1}$.
+
+The nonleading coefficient magnitudes of $F_D$ are $a_D$ once, $t_D$ exactly
+$D-2$ times, and $|c_D|$ once.  Since $a_D\to7$, $t_D\to8$ and
+$|c_D|\to\infty$, for large $D$ the largest is $|c_D|$ and the second largest
+is $t_D$, so $b_2(F_D)=t_D$; this ordering is verified directly for every
+$5\le D\le25$.  Theorem~\ref{thm:order} with $u=1$ gives $b_2\ge8$ for every
+monic multiple, and $t_D\to8$, which is \eqref{eq:sharp235}.
+\end{proof}
+
+At $D=9$, $t_9=\tfrac{804576811}{94458820}=8.5177520\ldots$, the value the
+search of Section~\ref{sec:scope} returns at degree cap $9$, so that numerical
+optimum too is attained within an exact family.
+
+Two limits of this route, both observed numerically rather than proved here.
+Taking two exempt coefficients instead of one, the analogous system for
+\[
+  G_D(x)=x^D-s_D\sum_{j=2}^{D-1}x^j+e_Dx+e_D'
+\]
+at the same roots gives $s_D$ decreasing to $4=r_3-1$, with
+$s_9=\tfrac{31585}{7663}=4.1217538\ldots$ matching the $b_3$ optimum of
+Section~\ref{sec:scope}; here the two exempt coefficients grow like $3^D$ and
+absorb both $2$ and $3$.  From $L=4$, however, the construction can fail: the
+limit system determines the free prefix as well as the run, and its prefix
+entries need not be bounded by the run value, as they must be if the run is to
+be the $(u+1)$-st largest magnitude.  For $u=1$ and roots $(2,3,5,7)$ the
+limit prefix is $(-14,57)$ against a run value of $48$, and the search returns
+$\min b_2\approx54.97$, well above \eqref{eq:order}; the same happens at
+$(2,3,4,5)$, prefix $(-11,36)$ against $24$ with $\min b_2\approx32.23$, and
+at $(2,3,5,6)$, prefix $(-13,50)$ against $40$ with $\min b_2\approx47.55$.
+At $(3,4,5,6)$ the prefix is $(-14,60)$ against $60$, just admissible, and the
+search returns the bound.  Whether \eqref{eq:order} is an infimum in general
+is therefore open, and these searches suggest it is not.
+
 \section{Scope}\label{sec:scope}
 
 The bounds here concern coefficient magnitudes, not ordinary length or
@@ -992,7 +1075,11 @@ sequence and a fixed $k$, how closely a multiple can approach
 the aggregated question for prime roots, and the multiplier $x+1$ above shows
 that even there the root product need not be the finite-$L$ minimizer.  For
 the root pair $(2,3)$ and $k=2$, Proposition~\ref{prop:sharp23} settles it
-outright: the infimum of $b_2$ over monic multiples is exactly the bound.
+outright: the infimum of $b_2$ over monic multiples is exactly the bound, and
+Proposition~\ref{prop:sharp235} does the same for $(2,3,5)$ and $k=2$.  From
+$L=4$ the construction behind both fails, and the remark after
+Proposition~\ref{prop:sharp235} records root sets where the search stays well
+above \eqref{eq:order}.
 Beyond that we have only a search, and for $k\ge2$ it is not a single linear
 program.  As $b_k$ is the $k$th largest magnitude, fix the $k-1$ positions
 below $D$ permitted to exceed it; minimizing $\max_j|f_j|$ over the
@@ -1002,8 +1089,10 @@ minimum over the $\binom{D}{k-1}$ choices of exempt set, and over $\deg Q$,
 is the order-statistic optimum.  Running that search in double precision over
 monic multiples of degree at most $L+6$ gives, for roots $(2,3,5)$,
 $\min b_2=8.5178$ against $8$ and $\min b_3=4.1218$ against $4$, both within
-$6.5\%$ of \eqref{eq:order}; for $(2,3)$ it returns $2.0308$, the degree-$8$
-member of the family above.  These are floating-point optima at a degree cap,
+$6.5\%$ of \eqref{eq:order}; for $(2,3)$ it returns $2.0308$.  All three are
+members of the exact families of Propositions~\ref{prop:sharp23}
+and~\ref{prop:sharp235}, which carry them to the bound, so at $L\le3$ the
+gap the search reports is an artifact of its degree cap.  These are floating-point optima at a degree cap,
 not certified values; the one exact statement among them is
 \eqref{eq:sharp23}.
 
