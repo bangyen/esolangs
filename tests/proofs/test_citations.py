@@ -146,5 +146,8 @@ def test_the_cited_titles_are_the_ones_the_papers_name() -> None:
     """The bibliography entry's parenthetical names Corollary 3.4's title."""
     assert _numbering("coefficient-mass")["3.4"][2] == "Logarithmic mass"
     assert _numbering("coefficient-mass-attainment")["2.1"][2] == "Confluent analogue"
-    bibliography = (PROOFS / "polynomial.tex").read_text()
-    assert "Corollary~3.4\n(Logarithmic mass)" in bibliography
+    # Compared with whitespace collapsed: the entry is prose, and rewrapping
+    # it to fit the margin (``1ab35a6d``) moved the parenthetical onto the
+    # line above without changing what it names.
+    bibliography = " ".join((PROOFS / "polynomial.tex").read_text().split())
+    assert "Corollary~3.4 (Logarithmic mass)" in bibliography
