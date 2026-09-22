@@ -14,6 +14,11 @@ Polynomial's proved wall is in [polynomial](proofs/polynomial.md).
   documented host-recursion limit.
 - Streetcode's four-way junction is an implementation convention: the source
   specifies only a two-road choice.
+- Line and Piet carry a raster source: `generate` returns an
+  `esolangs.raster.Raster`, `run` takes it or a PNG path through the shared
+  codec, and `describe` reports `source_kind="raster"`. They stay outside
+  text-only `RUNNERS` and its VM, step, and fuzz contracts. Line retains its
+  graph for repeated rows; Piet emits and executes the pixels.
 
 ## Source positions
 
