@@ -141,21 +141,13 @@ zeros and shows the bound is attained only there.
 Corollary~\ref{cor:complex} extends the bound to complex multiples,
 Corollary~\ref{cor:prime} specializes to prime roots,
 Corollary~\ref{cor:infimum} sharpens the resulting asymptotic to the infimum
-over monic real multiples,
+over monic real multiples, and
 Corollary~\ref{cor:near} shows the root product itself is within $O(L^2)$ of
-that infimum for every root set here,
-Proposition~\ref{prop:sharp23} shows that for the roots $(2,3)$ the bound on
-$b_2$ is the exact infimum over monic multiples and
-Proposition~\ref{prop:sharp235} shows the same at $(2,3,5)$ for $b_2$ and
-$b_3$,
-Proposition~\ref{prop:cutoff} shows that the node cutoff $y_i\le1/2$ in the
-tail theorem cannot be raised, Proposition~\ref{prop:subtwo} shows that the
-standing restriction $r_i\ge2$ cannot be dropped from
-Theorem~\ref{thm:order} for $k\ge2$---an explicit monic multiple of
-$(x-\tfrac32)(x-3)$ has $b_2<r_2-1$, while the $k=1$ bound holds for every
-$r_i>1$---and
-Proposition~\ref{prop:confluent} carries the tail comparison itself to
-confluent nodes.
+that infimum for every root set here.  A companion paper~\cite{coefficient-mass-attainment}
+takes up attainment: explicit monic multiples approaching \eqref{eq:order}
+at the root sets $(2,3)$ and $(2,3,5)$, the necessity of the node cutoff
+$y_i\le1/2$ and of the standing restriction $r_i\ge2$ for $k\ge2$, and the
+confluent extension of Theorem~\ref{thm:tail}.
 
 \section{A displaced-zero tail theorem}
 
@@ -176,25 +168,16 @@ and signs of an exponential sum refer to this function of the real variable.
 
 \paragraph{Zero bound.}
 A nonzero exponential sum on $r$ distinct positive nodes has at most $r-1$
-real zeros, counted with multiplicity.  This is classical: divide by the
-power of the largest node so the sum becomes a real combination
-$\sum_ia_ie^{\lambda_id}$ with distinct $\lambda_i\le0$.  These exponentials
-form a Chebyshev system, because every leading Wronskian
-$W(e^{\lambda_1d},\ldots,e^{\lambda_kd})
-=e^{(\lambda_1+\cdots+\lambda_k)d}\prod_{i<j\le k}(\lambda_j-\lambda_i)$,
-$k\le r$, is nowhere zero, hence of constant sign, so after normalizing those
-signs the criterion of~\cite[Chapter~XI, Theorem~1.1]{karlin-studden}
-applies; the full Wronskian alone would not suffice, as
-$\{\cos d,\sin d\}$ on $[0,2\pi]$ shows.  Equivalently, prove the
-bound by induction on $r$: factoring out the largest exponential leaves
+real zeros, counted with multiplicity.  Divide by the power of the largest
+node so the sum becomes a real combination $\sum_ia_ie^{\lambda_id}$ with
+distinct $\lambda_i\le0$, and prove the bound by induction on $r$: factoring
+out the largest exponential leaves
 $T=\sum_ia_ie^{(\lambda_i-\lambda_1)d}$, which has the same zeros as the
 original combination and whose derivative is again a combination of distinct
 exponentials, now with one fewer term.  Differentiating once and applying
 Rolle's theorem, then renormalizing by the largest surviving exponential at
-each step and invoking the induction hypothesis, gives at most $r-1$ zeros.  It is
-also the exponential form of Laguerre's extension of Descartes' rule of
-signs~\cite[Part~V, Problems~75 and~77]{polya-szego}.  Consequently an
-$r$-node sum with $r-1$
+each step and invoking the induction hypothesis, gives at most $r-1$ zeros.
+Consequently an $r$-node sum with $r-1$
 prescribed real zeros has exactly those zeros, each is simple, and the sum
 changes sign at each of them.
 
@@ -483,8 +466,9 @@ occur only in the base case.
 The restriction $\rho_i\ge2$ is substantive.  For $c=2$,
 $y_1=1/10$, $y_2=4/5$, and $Z=\{2\}$, the normalized coefficients are
 $a_1=64/63$ and $a_2=-1/63$, so
-$\Tail(u)=364/2835>1/9=y_1/(1-y_1)$; Proposition~\ref{prop:cutoff} shows that
-no cutoff larger than $1/2$ is universal.
+$\Tail(u)=364/2835>1/9=y_1/(1-y_1)$; the companion
+paper~\cite{coefficient-mass-attainment} shows that no cutoff larger than
+$1/2$ is universal.
 
 \section{Coefficient order statistics}
 
@@ -753,597 +737,14 @@ product $P$ is asymptotically optimal among monic multiples; the infimum
 $M_L$ of Corollary~\ref{cor:infimum} is the sharp form of that statement for
 the first $L$ primes.
 
-\begin{proposition}[Confluent analogue]\label{prop:confluent}
-Let $0<y_1<\cdots<y_c\le1/2$ and $e_1,\ldots,e_c\ge1$, put $m=e_1+\cdots+e_c$,
-and let $y_{(1)}\le\cdots\le y_{(m)}$ be the multiset with each $y_i$ repeated
-$e_i$ times.  Let
-\[
-  u_d=\sum_{i=1}^c P_i(d)y_i^d,\qquad \deg P_i<e_i,
-\]
-satisfy $u_0=1$ and $u_z=0$ for a set $Z$ of $m-1$ positive integers with
-leading run $f$.  Then
-\[
-  \Tail(u)\le\prod_{j=1}^{f+1}\frac{y_{(j)}}{1-y_{(j)}}.
-\]
-\end{proposition}
-
-\begin{proof}
-The interpolation system is indexed by the Hermite basis, not by the
-ordinary exponentials, and the two must be kept apart.  For
-$\varepsilon>0$, $i=1,\ldots,c$ and $k=0,\ldots,e_i-1$ put
-\[
-  \phi_{i,k,\varepsilon}(d)
-  =y_i^d\Bigl(\frac{1-e^{-\varepsilon d}}{\varepsilon}\Bigr)^k .
-\]
-For fixed $\varepsilon>0$, the binomial expansion gives
-\[
-  \phi_{i,k,\varepsilon}(d)
-  =\frac1{\varepsilon^k}\sum_{j=0}^{k}(-1)^j\binom{k}{j}
-    \bigl(y_ie^{-j\varepsilon}\bigr)^d,
-\]
-so each $\phi_{i,k,\varepsilon}$ is a finite linear combination of the
-ordinary exponentials $d\mapsto z^d$ at the distinct nodes
-$z_{i,j}=y_ie^{-j\varepsilon}$.  For $0<\varepsilon<\varepsilon_0$ the $m$
-nodes $z_{i,j}$ are distinct, lie in $(0,1/2]$, and stay separated between
-distinct $i$.  Within one group $i$ the change of basis from
-$\{z_{i,j}^{d}\}_{j<e_i}$ to
-$\{\phi_{i,k,\varepsilon}\}_{k<e_i}$ is triangular with diagonal entries
-$(-1)^k\varepsilon^{-k}$, hence invertible for $\varepsilon>0$, and the same
-function space is spanned either way.
-
-For such an $\varepsilon$ let $u^{(\varepsilon)}$ be the unique exponential
-sum on the nodes $z_{i,j}$ with $u^{(\varepsilon)}_0=1$ and
-$u^{(\varepsilon)}_z=0$ for $z\in Z$; existence and uniqueness are the
-Vandermonde argument opening Section~2.  Theorem~\ref{thm:tail} applies with
-the same $f$ and gives
-\[
-  \Tail(u^{(\varepsilon)})
-  \le\prod_{j=1}^{f+1}\frac{y_{(j)}(\varepsilon)}{1-y_{(j)}(\varepsilon)},
-\]
-where $y_{(1)}(\varepsilon)\le\cdots\le y_{(m)}(\varepsilon)$ is the sorted
-perturbed multiset.
-
-It remains to pass to the limit.  Write
-$a^{(\varepsilon)}=(a^{(\varepsilon)}_{i,k})$ for the coefficients of
-$u^{(\varepsilon)}$ in the $\phi$-basis; they solve
-$M(\varepsilon)a^{(\varepsilon)}=e_0$, where $M(\varepsilon)$ is the
-$m\times m$ matrix with rows indexed by $d\in\{0\}\cup Z$ and columns by
-$(i,k)$, with entry $\phi_{i,k,\varepsilon}(d)$, and $e_0$ is the first
-standard basis vector.  Each entry
-$\phi_{i,k,\varepsilon}(d)=y_i^d\bigl((1-e^{-\varepsilon d})/\varepsilon\bigr)^k$
-has a removable singularity at $\varepsilon=0$ and extends analytically there
-with limit $d^ky_i^d$, so $M(\varepsilon)\to M(0)$ as $\varepsilon\to0$, where
-$M(0)$ is the confluent matrix.  The functions
-$d\mapsto d^ky_i^d$ form an extended Chebyshev system on $\R$, and the
-interpolation here is at the $m$ \emph{distinct} points $\{0\}\cup Z$---the
-confluence sits in the basis, not in the nodes---so $M(0)$ is invertible by
-ordinary unisolvence of a Chebyshev system at distinct
-points~\cite[Chapter~I, Theorem~4.1]{karlin-studden}.  Matrix inversion is
-continuous on the open set of invertible matrices, so
-$a^{(\varepsilon)}\to M(0)^{-1}e_0$, and for every fixed $d$,
-\[
-  u^{(\varepsilon)}_d
-  =\sum_{i,k}a^{(\varepsilon)}_{i,k}\phi_{i,k,\varepsilon}(d)
-  \longrightarrow\sum_{i,k}a_{i,k}d^ky_i^d=u_d .
-\]
-Fatou's lemma for series, applied to the nonnegative terms
-$|u^{(\varepsilon)}_d|$, gives
-\[
-  \Tail(u)=\sum_{d\ge1}|u_d|
-  \le\liminf_{\varepsilon\to0}\Tail(u^{(\varepsilon)}).
-\]
-Finally the order statistics of a converging multiset converge, so the
-product $\prod_{j=1}^{f+1}y_{(j)}(\varepsilon)/(1-y_{(j)}(\varepsilon))$
-tends to $\prod_{j=1}^{f+1}y_{(j)}/(1-y_{(j)})$.
-\end{proof}
-
-\begin{proposition}[The node cutoff $1/2$ is sharp]\label{prop:cutoff}
-No constant $a>1/2$ can replace $1/2$ in Theorem~\ref{thm:tail} or in
-Proposition~\ref{prop:confluent}: for every $a\in(1/2,1)$ some configuration
-with all nodes in $(0,a]$ violates the bound
-$\Tail(u)\le\prod_{j=1}^{f+1}y_{(j)}/(1-y_{(j)})$.
-\end{proposition}
-
-\begin{proof}
-Take a single node $a\in(1/2,1)$ of multiplicity $c$ and
-$Z=\{2,3,\ldots,c\}$, so the sum is $u_d=a^d\prod_{k=2}^c(1-d/k)$.  Then
-$u_0=1$, the prescribed zeros are exactly $Z$, the leading run is $f=0$, and
-\[
-  u_1=\frac ac,\qquad
-  |u_d|=\frac1c\binom{d-2}{c-1}a^d\quad(d\ge c+1),
-\]
-so, summing the binomial series,
-\[
-  \Tail(u)=\frac ac+\frac{a^{c+1}}{c(1-a)^c}
-  =\frac ac\Bigl[1+\Bigl(\frac a{1-a}\Bigr)^c\Bigr].
-\]
-The bound with $f=0$ would be $a/(1-a)$, but
-\[
-  \frac{\Tail(u)}{a/(1-a)}
-  =\frac{1-a}{c}\Bigl[1+\Bigl(\frac a{1-a}\Bigr)^c\Bigr]\longrightarrow\infty
-\]
-because $a/(1-a)>1$, so $\Tail(u)>a/(1-a)$ for all large $c$.
-
-To transfer the obstruction to distinct nodes, suppose the bound held for
-every configuration with nodes in $(0,a]$.  Coalescing the $c$ nodes near $a$
-as in the proof of Proposition~\ref{prop:confluent} gives sums
-$u^{(\varepsilon)}$ on distinct nodes in $(0,a]$ that satisfy it, and
-$u^{(\varepsilon)}_d\to u_d$ for each $d$.  By Fatou's lemma,
-$\Tail(u)\le\liminf_{\varepsilon\to0}\Tail(u^{(\varepsilon)})\le a/(1-a)$,
-contradicting the previous paragraph for large $c$.
-\end{proof}
-
-\begin{proposition}[The root restriction $r_1\ge2$ is necessary for $k\ge2$]
-\label{prop:subtwo}
-The $k=1$ case of \eqref{eq:order} holds for every root set $r_i>1$ by
-Theorem~\ref{thm:order}, and for $L=1$ it is strict: every nonzero multiple
-of $x-r$ has $b_1>|f_D|(r-1)$.  For $k\ge2$ the restriction $r_1\ge2$ cannot
-be dropped, already at $L=2$, $k=2$, and already when only $r_1<2$: with
-$r_1=3/2$ and $r_2=3$ there is a monic multiple $F$ of $(x-r_1)(x-r_2)$ of
-degree $4$ with
-\[
-  b_2=\frac{81}{50}=1.62<2=r_2-1 .
-\]
-\end{proposition}
-
-\begin{proof}
-For $L=1$, $F(r)=0$ gives
-$|f_D|r^D=\bigl|\sum_{j<D}f_jr^j\bigr|\le b_1(r^D-1)/(r-1)$, so
-$b_1\ge|f_D|(r-1)r^D/(r^D-1)>|f_D|(r-1)$, with no use of $r\ge2$.
-
-For the failure put $P=(x-\tfrac32)(x-3)=x^2+p_1x+p_0$ with
-$p_1=-\tfrac92$, $p_0=\tfrac92$, and let $Q=x^2+q_1x+q_0$ be
-monic, so that $F=PQ$ has
-\[
-  f_0=p_0q_0,\quad f_1=p_0q_1+p_1q_0,\quad f_2=p_0+p_1q_1+q_0,\quad
-  f_3=p_1+q_1,\quad f_4=1 .
-\]
-Imposing $f_0=f_1=f_2$ is two linear equations in $(q_0,q_1)$: the first gives
-$q_1=(p_0-p_1)q_0/p_0$, and substituting it into the second gives
-\[
-  q_0=\frac{p_0^2}{\delta},\qquad q_1=\frac{p_0(p_0-p_1)}{\delta},\qquad
-  \delta=(p_0-p_1)^2+p_0(p_1-1),
-\]
-whence the common value is $f_0=f_1=f_2=p_0^3/\delta$.  Here
-$\delta=\tfrac{225}4>0$, so
-\[
-  q_0=\frac9{25},\qquad q_1=\frac{18}{25},\qquad
-  f_0=f_1=f_2=\frac{81}{50}=1.62,
-\]
-while $f_3=p_1+q_1=-\tfrac{189}{50}=-3.78$, that is,
-$F=x^4-\tfrac{189}{50}x^3+\tfrac{81}{50}x^2+\tfrac{81}{50}x+\tfrac{81}{50}$.
-The four nonleading magnitudes are $|f_3|$ and three copies of
-$p_0^3/\delta$, so $b_2=p_0^3/\delta<2=r_2-1$, which is what \eqref{eq:order}
-would assert for $u=1$; the second root obeys $r_2\ge2$, so only $r_1$ is out
-of range.
-\end{proof}
-
-\begin{proposition}[The bound for $b_2$ at roots $(2,3)$ is an infimum]
-\label{prop:sharp23}
-For $n\ge2$ put
-\[
-  t_n=\frac{2}{1-2^{1-n}+3^{-n}},
-  \qquad a_n=2+t_n\bigl(1-2^{-n}\bigr),
-  \qquad
-  F_n(x)=x^{n+1}-a_nx^n+t_n\sum_{j=0}^{n-1}x^j .
-\]
-Then each $F_n$ is a monic multiple of $(x-2)(x-3)$ with $b_2(F_n)=t_n$, and
-$t_n$ decreases to $2$.  Hence
-\begin{equation}\label{eq:sharp23}
-  \inf_{\substack{Q\in\R[x]\\ Q\text{ monic}}}
-  b_2\bigl(Q(x)(x-2)(x-3)\bigr)=2,
-\end{equation}
-the value \eqref{eq:order} asserts for $u=1$.  Every $F_n$ has $b_2>2$;
-whether some multiple attains the value $2$ is not settled here.
-\end{proposition}
-
-\begin{proof}
-Summing the geometric progression, $F_n(2)=0$ reads
-$2^{n+1}-a_n2^n+t_n(2^n-1)=0$, that is, $a_n=2+t_n(1-2^{-n})$, which is the
-definition of $a_n$.  Likewise $F_n(3)=0$ reads
-$3^{n+1}-a_n3^n+\tfrac12t_n(3^n-1)=0$, that is,
-$a_n=3+\tfrac12t_n(1-3^{-n})$.  The two expressions for $a_n$ agree exactly
-when $t_n\bigl(\tfrac12-2^{-n}+\tfrac123^{-n}\bigr)=1$, which is the
-definition of $t_n$.  So both $2$ and $3$ are roots of the monic $F_n$.
-
-Write $d_n=1-2^{1-n}+3^{-n}$ for the denominator of $t_n$.  Then $d_n<1$
-because $3^{-n}<2\cdot2^{-n}$, and $d_n\ge\tfrac12$ because
-$2^{1-n}\le\tfrac12$ for $n\ge2$; hence $2<t_n\le4$.  Moreover
-\[
-  d_{n+1}-d_n=2^{-n}-\tfrac23\cdot3^{-n}>0,
-\]
-so $d_n$ increases to $1$ and $t_n$ decreases to $2$.  Finally
-$a_n-t_n=2-t_n2^{-n}\ge2-4\cdot2^{-n}>0$ for $n\ge2$, so the nonleading
-coefficient magnitudes of $F_n$ are $a_n$ once and $t_n$ exactly $n$ times,
-with $a_n>t_n>0$; thus $b_1(F_n)=a_n$ and $b_2(F_n)=t_n$.
-
-Theorem~\ref{thm:order} with $(r_1,r_2)=(2,3)$ and $u=1$ gives $b_2\ge2$ for
-every monic multiple, and $t_n\to2$, which is \eqref{eq:sharp23}.
-\end{proof}
-
-At $n=7$ the degree is $8$ and
-$t_7=\tfrac{279936}{137845}=2.0308027\ldots$, which agrees with the value the
-search of Section~\ref{sec:scope} returns at degree cap $8$; so the numerical
-optimum recorded there is attained within this family.
-
-The same construction reaches $L=3$.  Write the multiple from the top: one
-leading $1$, a short free prefix, a long run of a single value $t$, and $u$
-exempt coefficients at the bottom.  The exempt coefficients grow like
-$r_u^D$ and so survive division by $r^{D-1}$ only at the $u$ smallest roots,
-which they absorb; the run must therefore satisfy the remaining $L-u$ roots
-alone, and its value is what \eqref{eq:order} predicts.
-
-\begin{proposition}[The bounds at roots $(2,3,5)$ are infima]
-\label{prop:sharp235}
-For $D\ge5$ let $(a_D,t_D,c_D)$ be the solution of the linear system
-$F_D(2)=F_D(3)=F_D(5)=0$ in
-\[
-  F_D(x)=x^D-a_Dx^{D-1}+t_D\sum_{j=1}^{D-2}x^j+c_D ,
-\]
-and for $D\ge6$ let $(s_D,e_D,e_D')$ be the solution of
-$G_D(2)=G_D(3)=G_D(5)=0$ in
-\[
-  G_D(x)=x^D-s_D\sum_{j=2}^{D-1}x^j+e_Dx+e_D' .
-\]
-Both systems are nonsingular, $F_D$ and $G_D$ are monic multiples of
-$(x-2)(x-3)(x-5)$ with $b_2(F_D)=t_D$ and $b_3(G_D)=s_D$, and $t_D\to8$,
-$s_D\to4$.  Hence
-\begin{equation}\label{eq:sharp235}
-  \inf_Q b_2\bigl(QP\bigr)=8=(r_2-1)(r_3-1),
-  \qquad
-  \inf_Q b_3\bigl(QP\bigr)=4=r_3-1,
-\end{equation}
-over monic $Q\in\R[x]$, with $P(x)=(x-2)(x-3)(x-5)$: the values
-\eqref{eq:order} asserts for $u=1$ and $u=2$.
-\end{proposition}
-
-\begin{proof}
-Both systems are nonsingular for every $D$ in range.  A kernel vector of the
-first is an $H=-ax^{D-1}+t\sum_{j=1}^{D-2}x^j+c$ vanishing at $2,3,5$, and
-\[
-  (x-1)H=-ax^D+(a+t)x^{D-1}+(c-t)x-c
-\]
-has four terms, hence at most three positive roots by Descartes' rule; but
-$1,2,3,5$ are four, so $H\equiv0$ and $a=t=c=0$.  The second is the same with
-$(x-1)H=-sx^D+(s+e)x^2+(e'-e)x-e'$.
-
-Divide $F_D(r)=0$ by $r^{D-1}$ and sum the geometric progression:
-\[
-  (r-a_D)+\frac{t_D}{r-1}
-  +r^{1-D}\Bigl(c_D-\frac{r\,t_D}{r-1}\Bigr)=0,
-  \qquad r\in\{2,3,5\}.
-\]
-Put $\gamma_D=2^{1-D}c_D$, so that $r^{1-D}c_D=\gamma_D(2/r)^{D-1}$.  In the
-unknowns $(a_D,t_D,\gamma_D)$ the three equations read
-\[
-  \begin{aligned}
-    -a+t\bigl(1-2^{2-D}\bigr)+\gamma&=-2,\\
-    -a+t\bigl(\tfrac12-\tfrac323^{1-D}\bigr)+\gamma(2/3)^{D-1}&=-3,\\
-    -a+t\bigl(\tfrac14-\tfrac545^{1-D}\bigr)+\gamma(2/5)^{D-1}&=-5 .
-  \end{aligned}
-\]
-Every $D$-dependent entry is $O((2/3)^{D})$, so the coefficient matrix tends
-to
-\[
-  M=\begin{pmatrix}-1&1&1\\-1&\tfrac12&0\\-1&\tfrac14&0\end{pmatrix},
-  \qquad \det M=\tfrac14\ne0 .
-\]
-Its inverse therefore converges to
-$M^{-1}$, so $(a_D,t_D,\gamma_D)$ converges to the solution of $M$ against
-$(-2,-3,-5)$.  The last two rows of that limit give
-$-a+\tfrac12t=-3$ and $-a+\tfrac14t=-5$, whence $t=8$ and $a=7$; the first
-row then gives $\gamma=-3$, so $c_D\sim-3\cdot2^{D-1}$.
-
-The ordering is exact for every $D$, not only in the limit.  $F_D$ has the
-three positive roots $2,3,5$, and its coefficient sequence
-$(1,-a_D,t_D,\ldots,t_D,c_D)$ offers three sign changes only if $a_D>0$,
-$t_D>0$ and $c_D<0$, a vanishing entry leaving at most two; so Descartes
-forces all three signs.  Multiplying the displayed equation at $r$ by $r-1$
-gives $(r-1)(r-a_D)+t_D=\varepsilon_r$ with
-$\varepsilon_r=r^{1-D}\bigl(r\,t_D+(r-1)|c_D|\bigr)>0$, and the rows $r=3,5$
-solve to
-\[
-  a_D=7+\tfrac12(\varepsilon_3-\varepsilon_5),\qquad
-  t_D=8+2\varepsilon_3-\varepsilon_5,\qquad
-  t_D-a_D=1+\tfrac32\varepsilon_3-\tfrac12\varepsilon_5 ,
-\]
-where
-$\varepsilon_5/\varepsilon_3=(3/5)^{D-1}(5t_D+4|c_D|)/(3t_D+2|c_D|)
-<2(3/5)^{D-1}<1$.  Hence $t_D>a_D+1>8$: both limits are approached from
-above.  The nonleading magnitudes are $a_D$ once, $t_D$ exactly $D-2\ge3$
-times and $|c_D|$ once, and the run already exceeds $a_D$, so at most one
-entry exceeds $t_D$ and $b_2(F_D)=t_D$.  Theorem~\ref{thm:order} with $u=1$
-gives $b_2\ge8$ for every monic multiple, and $t_D\to8$.
-
-For $G_D$ the two exempt coefficients grow like $3^D$ and must absorb both
-$2$ and $3$, so the rescaling is the one that keeps the equation at $r=2$
-finite: put
-\[
-  E_D=3^{2-D}e_D,
-  \qquad
-  \sigma_D=2^{1-D}\bigl(2e_D+e_D'\bigr).
-\]
-Dividing $G_D(r)=0$ by $r^{D-1}$ and substituting, the exempt terms
-contribute $\sigma_D$ at $r=2$ by definition, $E_D/3+\sigma_D(2/3)^{D-1}$ at
-$r=3$, and $O((3/5)^D)$ at $r=5$.  In the unknowns $(s_D,E_D,\sigma_D)$ the
-system therefore reads
-\[
-  \begin{aligned}
-    -2s\bigl(1-2^{2-D}\bigr)+\sigma&=-2,\\
-    -\tfrac32s\bigl(1-3^{2-D}\bigr)+\tfrac13E+\sigma(2/3)^{D-1}&=-3,\\
-    -\tfrac54s\bigl(1-5^{2-D}\bigr)+O\bigl((3/5)^D\bigr)&=-5,
-  \end{aligned}
-\]
-whose coefficient matrix tends to
-\[
-  N=\begin{pmatrix}-2&0&1\\-\tfrac32&\tfrac13&0\\-\tfrac54&0&0\end{pmatrix},
-  \qquad \det N=\tfrac5{12}\ne0 .
-\]
-Every $D$-dependent entry is $O((2/3)^{D})$, so as before the solution
-converges to that of $N$ against $(-2,-3,-5)$, namely
-$(s,E,\sigma)=(4,9,6)$; the last row alone forces $s=4$.  The nonleading
-magnitudes of $G_D$ are $s_D$ exactly $D-2$ times and $|e_D|,|e_D'|$ once
-each, and the same sign count applies: $(1,-s_D,\ldots,-s_D,e_D,e_D')$ offers
-three changes only if $s_D>0$, so $s_D>0$ for every $D$.  The run then
-occupies $D-2\ge3$ positions, and whatever the two exempt magnitudes do the
-third largest is $s_D$, so $b_3(G_D)=s_D$.
-Theorem~\ref{thm:order} with $u=2$ gives $b_3\ge4$, and
-$s_D\to4$, which completes \eqref{eq:sharp235}.
-\end{proof}
-
-At $D=9$, $t_9=\tfrac{804576811}{94458820}=8.5177520\ldots$, the value the
-search of Section~\ref{sec:scope} returns at degree cap $9$, so that numerical
-optimum too is attained within an exact family.
-
-At $D=9$, $s_9=\tfrac{31585}{7663}=4.1217538\ldots$, which is the $b_3$
-optimum of Section~\ref{sec:scope} at the same degree cap.
-
-Neither family was guessed.  Write $P_u(x)=\prod_{i>u}(x-r_i)$ for the
-surviving roots, $m=L-u$, and let $\widetilde P_u(y)=y^mP_u(1/y)$ be its
-reverse.  In the reversed variables the limit construction is
-\begin{equation}\label{eq:wgen}
-  W(y)=\sum_{d\ge0}w_dy^d=\frac{\widetilde P_u(y)}{1-y},
-\end{equation}
-which vanishes at $y=1/r_i$ for every surviving root because
-$\widetilde P_u$ does.  Its coefficients are therefore the partial sums
-$S_j=c_m+c_{m-1}+\cdots+c_{m-j}$ of the coefficients $c_k$ of $P_u$ read down
-from the leading $c_m=1$, and they stabilize at
-$S_m=P_u(1)=(-1)^m\prod_{i>u}(r_i-1)$ once $j\ge m$.  So the free prefix is
-$S_1,\ldots,S_{m-1}$ and the run value is $|S_m|$, which is exactly
-\eqref{eq:order}: the construction reproduces the bound because the sum of the
-coefficients of $P_u$ is $P_u(1)$.
-
-This makes the requirement explicit.  At $u=0$ both the criterion and this
-series are already in Dubickas and Jankauskas: their Corollary~7 gives
-$H(P)=|P(1)|$ under the same partial-sum condition, together with the one-sign
-proviso, and exhibits $\widetilde P/(1-y)$ as the extremal
-series~\cite[Corollary~7]{dj}.  What is added here is the passage to $u\ge1$,
-where the $u$ exempt coefficients absorb the $u$ smallest roots.  The run is
-the $(u+1)$-st largest magnitude only if no partial sum exceeds the total,
-\begin{equation}\label{eq:partial}
-  |S_j|\le|S_m|\qquad(1\le j<m),
-\end{equation}
-and \eqref{eq:partial} can fail.  At $(2,3,5,7)$ with $u=1$ the coefficients of
-$P_1$ are $1,-15,71,-105$, the partial sums $1,-14,57,-48$, and
-$57>48$; the search of Section~\ref{sec:scope}, run to degree cap $28$,
-returns $\min b_2\approx54.97$, above \eqref{eq:order}.
-The same happens at $(2,3,4,5)$, sums $1,-11,36,-24$ with
-$\min b_2\approx32.23$, and at $(2,3,5,6)$, sums $1,-13,50,-40$ with
-$\min b_2\approx47.55$.  At $(3,4,5,6)$ the sums are $1,-14,60,-60$, so
-\eqref{eq:partial} holds with equality and the bound $60$ is approached: the
-search and the family of \eqref{eq:wgen} agree on $b_2=60.05$ at degree $28$,
-and the family gives $60.002$ at degree $40$.  All four are exact cap-$28$
-optima, falling geometrically with the cap.
-Across the $15$ root sets tried, \eqref{eq:partial} agreed with attainment
-every time, in both directions.
-
-When \eqref{eq:partial} holds and the roots are distinct, \eqref{eq:order} is
-an infimum.  Fix $u$, put $m=L-u$, and write
-$F_D=x^D+\sum_{k=1}^{m-1}a_kx^{D-k}+t\sum_{j=u}^{D-m}x^j+C$ with $\deg C<u$,
-the $L$ unknowns fixed by $F_D(r_i)=0$.  The Descartes step of
-Proposition~\ref{prop:sharp235} carries over, $(x-1)$ times a kernel element
-having $L+1$ terms against the $L+1$ positive roots $1,r_1,\ldots,r_L$.
-Divide by $r_i^D$, sum the run, and trade the exempt coefficients for their
-values $\sigma_i=r_i^{-D}C(r_i)$, a Vandermonde change of variables.  The
-limit system is block triangular, and its surviving rows make the monic
-$(x-1)\widetilde A+t$ of degree $m$, where
-$\widetilde A=x^{m-1}+a_1x^{m-2}+\cdots+a_{m-1}$, vanish at the $m$ surviving
-roots.  So it is $P_u$, and
-\[
-  t=P_u(1),\qquad
-  \widetilde A=\frac{P_u-P_u(1)}{x-1},\qquad
-  \sigma_i=-\frac{r_i^{1-m}P_u(r_i)}{r_i-1}\ne0 ,
-\]
-the coefficients of $\widetilde A$ being the prefix $S_1,\ldots,S_{m-1}$ of
-\eqref{eq:wgen}.  The perturbation is $O((r_u/r_{u+1})^D)$ and every exempt
-coefficient grows like $r_u^D$, so for large $D$ those are the $u$ largest and
-$b_{u+1}\to\max_j|S_j|$, which is $|S_m|$ exactly when \eqref{eq:partial}
-holds.  Distinctness enters three times---the Descartes step, the Vandermonde
-change, and the surviving block---and $r_u<r_{u+1}$ is what kills the cross
-terms and makes the exempt coefficients diverge.  The conclusion can outlive
-it, though.  At $(r,r)$ the
-confluent member $F_D=x^D-t_D\sum_{j=1}^{D-1}x^j+c_D$ fixed by
-$F_D(r)=F_D'(r)=0$ has $b_2(F_D)=t_D$, the run occupying $D-1\ge2$ positions,
-and at $r=3$
-\[
-  t_D=\frac{4D\cdot3^{D-1}}{3^{D-1}(2D-3)+1}\longrightarrow2=r_2-1,
-\]
-so \eqref{eq:order} is an infimum there too, approached at rate $1/D$ rather
-than geometrically.  The converse---that failure of
-\eqref{eq:partial} forces the infimum strictly above \eqref{eq:order}---is
-what the searches suggest and what is not proved here.
-
-It is at least a recognizable question.  In the limit the $u$ exempt
-coefficients are spent absorbing the $u$ smallest roots, so an admissible $W$
-vanishes exactly at the surviving reciprocal nodes, and dividing by
-$\widetilde P_u$ leaves a function analytic on the disc: every admissible $W$
-is $\widetilde P_uH$ with $H(0)=1$, the choice $H=1/(1-y)$ being
-\eqref{eq:wgen}.  The converse therefore asks for
-\[
-  \inf\Bigl\{\ \sup_{d\ge1}|w_d|\ :\ W=\widetilde P_uH,\ H(0)=1\ \Bigr\}
-\]
-and whether it exceeds $|S_m|$ when \eqref{eq:partial} fails.  That is the
-$\ell^\infty$ member of the family this paper works in: reduced length
-minimizes $\ell^1$ over monic multiples~\cite{schinzel}, the minimal Euclidean
-norm is the $\ell^2$ case and is effectively computable~\cite{frw}, and
-$\Lambda$ itself is additive over coefficients rather than a norm at all.
-
-\section{Scope}\label{sec:scope}
-
-The bounds here concern coefficient magnitudes, not ordinary length or
-height: they are uniform over the degree of $F$ and over all additional real
-or complex roots, the hypothesis $|f_D|\ge1$ entering only where the
-$\log|f_D|$ term is discarded to reach an asymptotic.  In the opposite
-direction,
-the degree of an integer polynomial of height $H\ge2$ all of whose roots are
-nonzero rationals is at most a constant times $\log H$~\cite{htv}, and the
-minimal height of a degree-$n$ polynomial over a fixed number field with all
-roots in $K^\times$ grows exponentially in $n$~\cite{tromp}; the bound here
-constrains neither degree nor height but the additive coefficient mass.  The
-contribution relative to reduced-height duality is the prefix-sensitive tail
-comparison and its iteration; the normalized determinant sequence and its
-consecutive-zero evaluation are from Dubickas and Jankauskas~\cite{dj}.
-Proposition~\ref{prop:confluent} is supplementary: it carries the tail
-theorem to confluent nodes, but Theorem~\ref{thm:order} already reaches
-repeated roots by perturbation, so the main bounds do not depend on it.
-
-Two limits are worth stating plainly.  The coefficient bounds for $k\ge2$
-require $r_i\ge2$, inherited from the node cutoff $y_i\le1/2$ of
-Theorem~\ref{thm:tail}.  The cutoff enters in exactly two places, the factor
-$2$ in \eqref{eq:gamma} and the discard of factors at most $1$ in
-Lemma~\ref{lem:slack}, and both matter only for $u\ge1$; the $k=1$ bound is
-free of it, as are Lemma~\ref{lem:consecutive} and
-Lemma~\ref{lem:interlace}.  The restriction is not an artifact of the proof:
-by Proposition~\ref{prop:subtwo}, \eqref{eq:order} is false for $k=2$ already
-at $L=2$ and already when only $r_1<2$.  The method fails in the same place:
-the tail bound rests on the node cutoff $y_i\le1/2$, which
-Proposition~\ref{prop:cutoff} shows cannot be raised.  A bound for roots in
-$(1,2)$ with $k\ge2$ therefore needs a different form.
-
-The search says which form.  At $L=2$ and $k=2$ the infimum of $b_2$ over
-monic multiples agrees to six decimals with
-\[
-  (r_2-1)\min(r_1-1,1)
-  \qquad\text{for }r_1\in[1.05,2.5],\ r_2\in\{3,5\},
-\]
-and the two searches bracket it: exact multiples $F=QP$, which can only
-over-report an infimum, descend to it geometrically at rate $r_1^{-1}$ per
-degree, while the reversed linear program, which can only under-report it,
-returns it outright.  The general shape suggested is
-\[
-  b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)\prod_{i=1}^{u}\min(r_i-1,1),
-\]
-which reduces to \eqref{eq:order} when every $r_i\ge2$, held in every case
-tried, and is attained at $L=2$.  It is also exactly what the proof of
-Lemma~\ref{lem:slack} returns if the discard there is not performed: a factor
-$y_i/(1-y_i)$ exceeds $1$ precisely when $r_i<2$, so retaining those $u$
-factors instead of dropping them produces the $\min$ product above.  What
-stands in the way is then a single step rather than the shape of the
-conclusion---Theorem~\ref{thm:tail} is unavailable below the cutoff, and by
-Proposition~\ref{prop:cutoff} its product form does not extend there
-unchanged.
-
-The correction that step appears to need is the same one.  With the nodes in
-increasing order $y_1<\cdots<y_c$, replacing the discard in
-Theorem~\ref{thm:tail} by a factor $\max(1,y_i/(1-y_i))$ over the nodes it
-drops, so that
-\[
-  \Tail(u)\le
-  \prod_{i\le f+1}\frac{y_i}{1-y_i}
-  \prod_{i>f+1}\max\Bigl(1,\frac{y_i}{1-y_i}\Bigr),
-\]
-gives a bound that held on all $450$ certificates tried: $70$ with every
-$y_i\le1/2$, $145$ with some $y_i$ above the cutoff, and $235$ on nodes drawn
-anywhere in $(0,1)$, out to $y=18/19$.  The bound as stated fails on $29$ of
-the second group, worst ratio $4.15$, and on $113$ of the third, worst ratio
-$18.42$.  Above the cutoff every added factor is $1$, so the two agree; at a
-consecutive zero set no node is dropped, so equality is retained there, as
-Lemma~\ref{lem:consecutive} requires.  Fed through Lemma~\ref{lem:slack} with
-its discard likewise omitted, this reproduces exactly the $\min$ product
-displayed above.
-
-It also survives the witness of Proposition~\ref{prop:cutoff}, which is the
-sharpest adversary available: for one node $a$ of multiplicity $c$ with $f=0$
-the repaired product is $(a/(1-a))^c$ against
-$\Tail(u)=(a/c)[1+(a/(1-a))^c]$, so it holds for every $a\in(1/2,1)$ and
-every $c$, with ratio $(a/c)\bigl(1+((1-a)/a)^c\bigr)\le1/c$, while the stated
-bound $a/(1-a)$ is already
-exceeded at $a=3/4$, $c=2$ and is short by a factor $2.4\cdot10^9$ at
-$a=9/10$, $c=12$.  Nine coalescing configurations on distinct nodes behave the
-same way.  There is no conflict: Proposition~\ref{prop:cutoff} rules out
-raising the cutoff in the product as stated, not in this one.
-
-Whatever proves it will not be this argument, though.  In \eqref{eq:gamma}
-the first inequality $\Gamma_G(z)\le\Gamma_F(z)/(1-y_c)$ needs only $y_c<1$,
-and the cutoff is spent entirely on the second, which converts $1/(1-y_c)$
-into the constant $2$ that \eqref{eq:split} requires; that invites carrying
-the first through the induction and never invoking the second.  It does not
-work, because what fails below the cutoff is not the intermediate estimate but
-the conclusion it serves.  The comparison driving Theorem~\ref{thm:tail}---
-that deleting the displaced largest zero together with the largest node
-increases the tail---reverses there.  On nodes $(1/3,1/2,9/10)$ with
-$Z=\{1,3\}$ the deletion takes $\Tail$ from $2.077$ down to $0.500$, and it
-reverses on $30$ of the displaced configurations tried, by factors up to $9$;
-above the cutoff it holds strictly on every displaced set tried, with equality
-exactly at the consecutive one, as the theorem says.  A proof of the repaired
-product therefore needs a different engine, not a sharper one.  None of this
-is proved here.
-
-What is left open is the pointwise extremal problem: for a fixed root
-sequence and a fixed $k$, how closely a multiple can approach
-\eqref{eq:order}.  Corollary~\ref{cor:infimum} settles the asymptotic form of
-the aggregated question for prime roots, and the multiplier $x+1$ above shows
-that even there the root product need not be the finite-$L$ minimizer.  For
-the root pair $(2,3)$ and $k=2$, Proposition~\ref{prop:sharp23} settles it
-outright: the infimum of $b_2$ over monic multiples is exactly the bound, and
-Proposition~\ref{prop:sharp235} does the same for $(2,3,5)$ at $k=2$ and
-$k=3$.  Beyond those root sets the construction behind both can fail, already
-at $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums are
-$1,-\tfrac{11}2,5$, so \eqref{eq:partial} fails and the search returns $5.42$
-at degree cap $28$ against the bound $5$.  It can also still succeed at $L=4$,
-as $(3,4,5,6)$ shows.  The remark
-after Proposition~\ref{prop:sharp235} records root sets of each kind.
-Beyond that we have only a search, and for $k\ge2$ it is not a single linear
-program.  As $b_k$ is the $k$th largest magnitude, fix the $k-1$ positions
-below $D$ permitted to exceed it; minimizing $\max_j|f_j|$ over the
-remaining positions is then a linear program in the coefficients of the monic
-multiplier $Q$, and the
-minimum over the $\binom{D}{k-1}$ choices of exempt set, and over $\deg Q$,
-is the order-statistic optimum.  Running that search in exact rational
-arithmetic over monic multiples of degree at most $L+6$ gives, for roots
-$(2,3,5)$, $\min b_2=8.5178$ against $8$ and $\min b_3=4.1218$ against $4$,
-both within $6.5\%$ of \eqref{eq:order}; for $(2,3)$ it returns $2.0308$.
-All three are members of the exact families of Propositions~\ref{prop:sharp23}
-and~\ref{prop:sharp235}, which carry them to the bound, so for these three
-root sets the gap the search reports is an artifact of its degree cap---and
-each equals its family member exactly, $t_7$, $t_9$ and $s_9$.  These are
-certified optima at a degree cap, not proofs about the infimum; the exact
-statements are \eqref{eq:sharp23} and \eqref{eq:sharp235}.
-
-\paragraph{Data availability.}
-No datasets were generated or analyzed in this study.  The numerical optima
-quoted in Section~\ref{sec:scope} come from the finite search described
-there---one linear program per choice of exempt positions and multiplier
-degree, solved in exact rational arithmetic with the optimum certified by a
-dual vector---and are reproducible from that description; the polynomials of
-Propositions~\ref{prop:sharp23} and~\ref{prop:sharp235} are exact and need no
-computation.  Exactness is not a formality here: in double precision the same
-program reports success and returns $184.86$ for $(3,4,5,6)$ at degrees $26$
-to $28$, against the true $60.05$, having silently lost conditioning at
-$6^{26}$.  The certificate
-sweeps reported in Section~\ref{sec:scope} draw their nodes and zero sets at
-random over the stated ranges, so the tallies and worst-case ratios are
-sample-dependent; what resampling reproduces is the qualitative conclusion in
-each case---the repaired product was never violated, the stated product was
-violated only above the cutoff, and the deletion step reversed only there.
+A companion paper~\cite{coefficient-mass-attainment} takes up attainment:
+whether \eqref{eq:order} can be approached by an explicit multiple, whether
+the node cutoff $y_i\le1/2$ in Theorem~\ref{thm:tail} and the standing
+restriction $r_i\ge2$ in Theorem~\ref{thm:order} are necessary, and whether
+the tail comparison extends to confluent nodes.
 
 \begin{thebibliography}{9}
 \small
-\bibitem{karlin-studden}
-S.~Karlin and W.~J. Studden,
-\newblock \emph{Tchebycheff Systems: With Applications in Analysis and Statistics},
-\newblock Interscience, New York, 1966.
-
 \bibitem{dubickas}
 A.~Dubickas,
 \newblock Arithmetical properties of powers of algebraic numbers,
@@ -1410,31 +811,17 @@ computable,
 \newblock \href{https://doi.org/10.1006/jagm.1994.1015}
 {doi:10.1006/jagm.1994.1015}.
 
-\bibitem{htv}
-L.~Hajdu, R.~Tijdeman and N.~Varga,
-\newblock On polynomials with only rational roots,
-\newblock \emph{Mathematika} 69 (2023), 867--878,
-\newblock \href{https://doi.org/10.1112/mtk.12209}
-{doi:10.1112/mtk.12209}.
-
 \bibitem{mignotte}
 M.~Mignotte,
 \newblock Sur les multiples des polyn\^omes irr\'eductibles,
 \newblock \emph{Bulletin de la Soci\'et\'e Math\'ematique de Belgique} 27
 (1975), 225--229.
 
-\bibitem{polya-szego}
-G.~P\'olya and G.~Szeg\H{o},
-\newblock \emph{Problems and Theorems in Analysis II},
-\newblock Springer, Berlin, 1976.
-
-\bibitem{tromp}
-T.~Tromp,
-\newblock On the height of polynomials that split completely over a fixed
-number field,
-\newblock arXiv:2509.12064 (2025),
-\newblock \href{https://doi.org/10.48550/arXiv.2509.12064}
-{doi:10.48550/arXiv.2509.12064}.
+\bibitem{coefficient-mass-attainment}
+B.~Pham,
+\newblock Attainment and sharpness of the coefficient order-statistic bound,
+\newblock unpublished companion manuscript included with this submission;
+Theorem~2.2 (Tail comparison), Theorem~3.2 (Coefficient order statistics).
 \end{thebibliography}
 
 \end{document}
