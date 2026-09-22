@@ -119,6 +119,7 @@ consumes the whole input: every execution performs exactly $n$ reads before it
 halts.  This is the model the upper-bound construction uses, and it is what
 the routing argument below needs; a program that halted after fewer reads
 would compute a function constant on the subcube of unread inputs.
+
 The length $|f|$ is the total
 number of characters in the shortest valid expanded serialization of $f$;
 fixed punctuation and optional whitespace affect only lower-order terms.
@@ -430,7 +431,9 @@ level.  This sends $48$ to $-(z+r)$ and $49$ to $-(o+r)$.  The skipped blocks
 each increment once, leaving $-z$ or $-o$ at the next level.  Equal children
 instead floor-divide $48+b$ by $50$, obtaining zero, then add $-(z+r)$.  At
 the leaf level the unique active block adjusts the register to $48$ or $49$,
-prints, and leaves the register negative.  Thus induction on the levels proves that
+prints, and leaves the register negative.
+
+Thus induction on the levels proves that
 the machine follows exactly the residual selected by the input and prints its
 table value.  Each state block uses at most six instructions, its brackets
 are local and therefore properly matched, and every operand is $O(S)$.  An

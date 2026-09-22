@@ -102,6 +102,7 @@ the sign off the complete homogeneous symmetric polynomials $h_j$.  Their
 $H(P)\ge|P(1)|$ is then the $k=1$ row of Theorem~\ref{thm:order}, and
 Lemma~\ref{lem:consecutive} is what makes it unconditional; the rows $k\ge2$
 are new.
+
 Their inequality~(8) already excludes a prescribed set of positions from the
 certificate.  The new ingredient is a
 prefix-sensitive tail estimate for arbitrary prescribed integer zero sets:
@@ -318,7 +319,9 @@ $m+1$ give $r+1=c-1>c-2$ zeros, so $\Delta\equiv0$ and the claim is
 immediate.  Assume $J\ne\varnothing$ and order $J=\{j_1<\cdots<j_p\}$, so
 $p=|J|=c-2-r$.  If $\Delta\equiv0$ the conclusion again holds, so assume
 $\Delta\not\equiv0$; the zero bound then caps its zeros at $c-2$.  Let
-$N_\Delta$ be the number of zeros of $\Delta$ counted with multiplicity.  Take consecutive $j<j'$ in $J$.  Strictly between
+$N_\Delta$ be the number of zeros of $\Delta$ counted with multiplicity.
+
+Take consecutive $j<j'$ in $J$.  Strictly between
 $a_{j+1}$ and $a_{j'+1}$ lie $q=j'-j-1$ marked points of $A$, all with
 indices outside $J$, hence $q$ forced zeros; and the endpoint signs
 $(-1)^{c-1-j}$, $(-1)^{c-1-j'}$ differ by $(-1)^{q+1}$.  A real function
@@ -389,7 +392,9 @@ flips, so the sign is negative for all $d>z$.  Hence
   |F_d|<\mu|G_d|\quad(d>z),
 \]
 with equality exactly at the zeros of $u$: at the points of $Z'$ both sides
-vanish, and at $z$ one has $|F_z|=\mu|G_z|$.  For an exponential sum $V$, write
+vanish, and at $z$ one has $|F_z|=\mu|G_z|$.
+
+For an exponential sum $V$, write
 \[
   \Gamma_V(z)=\frac{\sum_{d\ge z}|V_d|}{|V_z|},
   \qquad A_G=\sum_{1\le d<z}|G_d|.
@@ -412,6 +417,7 @@ show
   \frac{E_d}{\widehat F_d}\le
   \frac{G_z}{\widehat F_z}\qquad(d\ge z>m).
 \end{equation}
+
 Set $A=\{0\}\cup Z'=\{a_1=0<\cdots<a_{c-1}=m\}$,
 $\sigma=G_{m+1}/\widehat F_{m+1}$, and
 $\Delta_d=\sigma\widehat F_d-E_d$.  Both $\widehat F$ and $G$ are positive for
