@@ -121,21 +121,24 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Minsky Swap,
-SLOW ACV MAMMALIAN and Whitespace keep no tree route at all: A Painter Ant's
+the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Eval, Minsky
+Swap, NoComment, SLOW ACV MAMMALIAN and Whitespace keep no tree route at all:
+A Painter Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, Befunge reads one grid cell per table entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
-once the doubling between the input runs is in the text), Minsky Swap's `~`
+once the doubling between the input runs is in the text), Eval is one linear
+lookup at every arity, Minsky Swap's `~`
 cascade routes the index to one of two shared leaves with a one-digit target
-per row, SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
+per row, NoComment switches between two lookups at four inputs,
+SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
 row whatever the table says, and Whitespace halves one literal once per index
 step; none has a subtree to fold.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
-table.  Eval and NoComment have no tree route either: Eval is one linear
-lookup at every arity, and NoComment switches between two lookups at four
-inputs.
+table.  Eval and NoComment fold a degenerate table anyway, because their
+lookup route is what shrinks it; that is why the fold discriminator in
+`test_schemes.py` carries them as documented exceptions.
 
 ## Generator ledger
 
