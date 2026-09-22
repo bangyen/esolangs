@@ -60,6 +60,16 @@ read, because a routing-free suffix can otherwise cross an input-dependent
 number of reads; the generated machines consume the input.  The argument is in
 [polynomial](polynomial.md).
 
+A `linear` row cannot be improved by more than a constant, and the reason is
+the counting argument the Malbolge exception uses below.  A language with `c`
+source characters has fewer than `c**(L+1)` programs of length at most `L`,
+against `2**T` tables of length `T`, so some table needs
+`L >= T / log2(c)` characters -- `T/3` for brainfuck's eight commands.  Every
+`linear` cell is therefore within a constant of optimal for free, which is why
+the Scaling column is worth reading only where it is *not* linear: the two
+rows proven to exceed the floor, Factor at `Theta(T log T)` and Polynomial at
+`Theta(T**2 / log T)`, and the `open` rows that may yet.
+
 ## Proof schemes
 
 **Decision tree.**  Recursively split the table on an input.  A leaf emits its
