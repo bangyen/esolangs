@@ -45,8 +45,10 @@ necessary: when it fails, the infimum lies strictly above the bound.
 The standing restriction $r_1\ge2$ cannot be dropped once $u\ge1$, already
 at $L=2$; the node cutoff $y_i\le1/2$ underlying the tail comparison behind
 the bound cannot be raised; and we extend that comparison to confluent
-(repeated) nodes.  A repaired bound beyond the cutoff is conjectured but not
-proved.
+(repeated) nodes.  Beyond the cutoff we prove a repaired bound that keeps the
+factors $\min(r_i-1,1)$ the original discards.  It holds for every $r_1>1$ and
+is the infimum when the exempt roots lie in $(1,2]$ and the partial sums are
+small, in particular for $b_L$ whenever $r_{L-1}\le2$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -90,7 +92,9 @@ is this paper's own.
 
 Section~\ref{sec:extend} extends Theorem~2.2 to confluent nodes and shows
 that neither the node cutoff $y_i\le1/2$ it rests on nor the standing
-restriction $r_i\ge2$ in \eqref{eq:order} can be relaxed once $u\ge1$.
+restriction $r_i\ge2$ in \eqref{eq:order} can be relaxed once $u\ge1$.  It
+then proves a repaired bound, valid for every $r_1>1$, and shows it is sharp
+when the exempt roots lie in $(1,2]$ and the partial sums are small.
 Section~\ref{sec:attain} shows that the explicit monic multiples of
 $(x-2)(x-3)(x-5)$ approaching \eqref{eq:order} are correctly ordered at every
 degree, identifies the partial-sum criterion
@@ -266,6 +270,131 @@ $p_0^3/\delta$, so $b_2=p_0^3/\delta<2=r_2-1$, which is what \eqref{eq:order}
 would assert for $u=1$; the second root obeys $r_2\ge2$, so only $r_1$ is out
 of range.
 \end{proof}
+
+The restriction belongs to the product, though, not to the roots.  Lemma~3.1
+discards, for each exempt position, a factor $y_i/(1-y_i)$ once it is at most
+$1$, and that factor exceeds $1$ precisely when $r_i<2$.  Keeping it gives a
+bound that holds for every $r_1>1$.
+
+\begin{theorem}[Repaired tail comparison]\label{thm:repaired}
+Let $0<y_1<\cdots<y_c<1$, and let $Z$, $f$ and $u$ be as in Theorem~2.2.
+Then
+\[
+  \Tail(u)\le\prod_{i=1}^{f+1}\frac{y_i}{1-y_i}
+  \prod_{i=f+2}^{c}\max\Bigl(1,\frac{y_i}{1-y_i}\Bigr).
+\]
+\end{theorem}
+
+Within the cutoff every factor of the second product is $1$, and this is
+Theorem~2.2.
+
+\begin{proof}
+Run Theorem~2.2's induction on the number $c-1-f$ of displaced zeros.  The
+base case is Lemma~2.1, which needs only $y_i<1$.  In the displaced step, with
+$z=\max Z\ge1$ and $F$, $G$, $\mu=|F_z|$ as there, the splitting identity
+\[
+  \Tail(F)-\Tail(u)=\mu\bigl(2\Gamma_F(z)-\Gamma_G(z)+A_G\bigr),
+  \qquad
+  \Gamma_V(z)=\frac{\sum_{d\ge z}|V_d|}{|V_z|},
+  \quad A_G=\sum_{1\le d<z}|G_d|\ge0,
+\]
+rests on the zero bound alone, and the first half
+$\Gamma_G(z)\le\Gamma_F(z)/(1-y_c)$ of the correction-ratio bound rests on
+Lemma~2.3, which needs no upper bound on the nodes, and on a geometric series
+in $y_c<1$.  Since $\mu\Gamma_F(z)=\sum_{d\ge z}|F_d|$, together they give
+\[
+  \Tail(u)\le\Tail(F)+\frac{2y_c-1}{1-y_c}\sum_{d\ge z}|F_d| .
+\]
+If $y_c\le1/2$ the correction is at most $0$.  Otherwise it is at most
+$\frac{2y_c-1}{1-y_c}\Tail(F)$, and $1+\frac{2y_c-1}{1-y_c}=\frac{y_c}{1-y_c}$.
+Either way
+\[
+  \Tail(u)\le\max\Bigl(1,\frac{y_c}{1-y_c}\Bigr)\Tail(F).
+\]
+The sum $F$ lives on $y_1,\ldots,y_{c-1}$ and its zero set has the same leading
+run $f$, so the induction hypothesis bounds $\Tail(F)$ by the product over
+those nodes, and the factor for $y_c$ completes the product.
+\end{proof}
+
+The deletion step itself can reverse beyond the cutoff: on nodes
+$(1/3,1/2,9/10)$ with $Z=\{1,3\}$ it takes $\Tail$ from $2.077$ down to $0.500$.
+The factor $\max(1,y_c/(1-y_c))=9$ absorbs the reversal.  The limit argument
+of Proposition~\ref{prop:confluent} carries the theorem to confluent nodes
+unchanged.  At Proposition~\ref{prop:cutoff}'s witness, one node $a$ of
+multiplicity $c$ with $f=0$, it gives $(a/(1-a))^c$ against
+$\Tail(u)=(a/c)[1+(a/(1-a))^c]$, a ratio of at most $1/c$.
+
+\begin{corollary}[Repaired order statistics]\label{cor:repaired}
+Let $r_1\le\cdots\le r_L$ be real with $r_1>1$, repetitions allowed, and let
+$F$ be a nonzero multiple of $\prod_{i=1}^L(x-r_i)$.  Then for every
+$0\le u\le L-1$,
+\begin{equation}\label{eq:repaired}
+  b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)\prod_{i=1}^{u}\min(r_i-1,1),
+\end{equation}
+which is \eqref{eq:order} when $r_u\ge2$.
+\end{corollary}
+
+\begin{proof}
+Follow Lemma~3.1's proof with Theorem~\ref{thm:repaired} in place of
+Theorem~2.2.  The zero set there has leading run $f\ge L-u-1$.  The $L-u$
+smallest nodes are the reciprocals of $r_{u+1},\ldots,r_L$ and contribute
+$\prod_{i>u}(r_i-1)^{-1}$.  Every other node $1/r_i$, $i\le u$, contributes
+either $y_i/(1-y_i)$ or $\max(1,y_i/(1-y_i))$, and both are at most
+$1/\min(r_i-1,1)$.  Repeated roots and a general $f_D$ are handled as in
+Theorem~3.2's proof.  Its perturbation $r_i+i\varepsilon$ keeps every root
+above $1$, and the right side of \eqref{eq:repaired} is continuous in the
+roots.
+\end{proof}
+
+At $(\tfrac32,3)$ the corollary gives $b_2\ge1$, below the $1.62$ of
+Proposition~\ref{prop:subtwo}, and $1$ is the infimum.  More generally the
+repaired bound is attained whenever the $u$ exempt roots lie in $(1,2]$ and
+the partial sums of the whole root product are small enough.  The multiples
+that attain it put the exempt coefficients at the top rather than the
+bottom.  Here $S_j(P)$ are the partial sums of \eqref{eq:wgen} with $u=0$.
+
+\begin{proposition}[Sharpness below $2$]\label{prop:subtwosharp}
+Let $r_1\le\cdots\le r_L$ be real with $r_1>1$, repetitions allowed, put
+$P=\prod_{i=1}^L(x-r_i)$, and let $0\le u\le L-1$.  Let $\sigma$ be the
+$(u+1)$-st largest of $|S_1(P)|,\ldots,|S_{L-1}(P)|$, or $0$ if $u=L-1$.  Then
+\[
+  \inf_Qb_{u+1}(QP)\le\max\bigl(|P(1)|,\sigma\bigr)
+\]
+over monic $Q\in\R[x]$.  If $r_u\le2$ and $\sigma\le|P(1)|$, the infimum is
+$|P(1)|$, which is the value of \eqref{eq:repaired}.  In particular
+$\inf_Qb_L(QP)=|P(1)|$ whenever $r_{L-1}\le2$.
+\end{proposition}
+
+\begin{proof}
+Since $P(0)\ne0$, $x$ is invertible modulo $P$.  For $n\ge1$ let $R_n$ be the
+polynomial of degree less than $L$ with $x^nR_n\equiv1\pmod P$.  Its
+coefficient vector is $T^n$ applied to that of $1$, where $T$ is
+multiplication by $x^{-1}$ on $\R[x]/(P)$.  The eigenvalues of $T$ are the
+$1/r_i<1$, so $R_n\to0$, and for large $n$ we have $R_n(1)\ne1$.  Put
+\[
+  t_n=\frac{P(1)}{1-R_n(1)},\qquad M_n=P+t_nR_n .
+\]
+Then $M_n$ is monic of degree $L$ with $M_n(1)=t_n$, so
+$M_n=(x-1)\widetilde A_n+t_n$ with $\widetilde A_n$ monic of degree $L-1$.
+Moreover $x^nM_n-t_n\equiv x^nP+t_n(x^nR_n-1)\equiv0\pmod P$, and
+$x^nM_n-t_n$ vanishes at $1$, where $P$ does not, so $P$ divides
+\[
+  F_n=\frac{x^nM_n-t_n}{x-1}=x^n\widetilde A_n+t_n\sum_{j=0}^{n-1}x^j .
+\]
+Thus $F_n$ is a monic multiple of $P$.  Its nonleading coefficients are the
+$L-1$ lower coefficients of $\widetilde A_n$, followed by $t_n$ repeated $n$
+times.  At most $u$ of those can exceed the larger of $|t_n|$ and the
+$(u+1)$-st largest lower coefficient of $\widetilde A_n$, so $b_{u+1}(F_n)$ is
+at most that larger value.  As $n\to\infty$, $t_n\to P(1)$ and
+$\widetilde A_n\to(P-P(1))/(x-1)$.  By \eqref{eq:wgen} the lower coefficients
+of that limit are $S_1(P),\ldots,S_{L-1}(P)$, which proves the bound.  If
+$r_u\le2$, every $\min(r_i-1,1)$ with $i\le u$ is $r_i-1$, so the right side
+of \eqref{eq:repaired} is $|P(1)|$.  At $u=L-1$, $\sigma=0$.
+\end{proof}
+
+At $(\tfrac32,10,20)$ with $u=1$, for example, the partial sums are
+$1,-30.5,214.5,-85.5$, so $\sigma=30.5$ and the infimum of $b_2$ is
+$85.5=|P(1)|$.  The stated product $171$ is false there.
 
 \section{Sharpness at explicit root sets}\label{sec:attain}
 
@@ -729,74 +858,21 @@ Proposition~\ref{prop:confluent} is supplementary: it carries the tail
 theorem to confluent nodes, but Theorem~3.2 already reaches
 repeated roots by perturbation, so the main bounds do not depend on it.
 
-Two limits are worth stating plainly.  The coefficient bounds for $k\ge2$
-require $r_i\ge2$, inherited from the node cutoff $y_i\le1/2$ of
-Theorem~2.2.  The cutoff enters in exactly two places, the factor
-$2$ in the correction-ratio bound of Theorem~2.2's proof and the discard of
-factors at most $1$ in
-Lemma~3.1, and both matter only for $u\ge1$; the $k=1$ bound is
-free of it, as are Lemma~2.1 and
-Lemma~2.3.  The restriction is not an artifact of the proof:
-by Proposition~\ref{prop:subtwo}, \eqref{eq:order} is false for $k=2$ already
-at $L=2$ and already when only $r_1<2$.  The method fails in the same place:
-the tail bound rests on the node cutoff $y_i\le1/2$, which
-Proposition~\ref{prop:cutoff} shows cannot be raised.  A bound for roots in
-$(1,2)$ with $k\ge2$ therefore needs a different form.
-
-A natural correction is available: Lemma~3.1's proof discards, for each
-excluded position, a factor $y_i/(1-y_i)$ once it is at most $1$, and that
-factor exceeds $1$ precisely when $r_i<2$.  Retaining it instead of dropping
-it gives the candidate bound
-\[
-  b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)\prod_{i=1}^{u}\min(r_i-1,1),
-\]
-which reduces to \eqref{eq:order} when every $r_i\ge2$.  What stands in the
-way of proving it is a single step rather than the shape of the
-conclusion---Theorem~2.2 is unavailable beyond the cutoff, and by
-Proposition~\ref{prop:cutoff} its product form does not extend there
-unchanged.
-
-The correction that step appears to need is the same one.  With the nodes in
-increasing order $y_1<\cdots<y_c$, replacing the discard in
-Theorem~2.2 by a factor $\max(1,y_i/(1-y_i))$ over the nodes it
-drops,
-\[
-  \Tail(u)\le
-  \prod_{i\le f+1}\frac{y_i}{1-y_i}
-  \prod_{i>f+1}\max\Bigl(1,\frac{y_i}{1-y_i}\Bigr),
-\]
-is conjectured to hold in general.  Within the cutoff every added factor is
-$1$, so the two agree; at a
-consecutive zero set no node is dropped, so equality is retained there, as
-Lemma~2.1 requires.  Fed through Lemma~3.1 with
-its discard likewise omitted, this reproduces exactly the $\min$ product
-displayed above.
-
-It also survives the witness of Proposition~\ref{prop:cutoff}, which is the
-sharpest adversary available: for one node $a$ of multiplicity $c$ with $f=0$
-the repaired product is $(a/(1-a))^c$ against
-$\Tail(u)=(a/c)[1+(a/(1-a))^c]$, so it holds for every $a\in(1/2,1)$ and
-every $c$, with ratio $(a/c)\bigl(1+((1-a)/a)^c\bigr)\le1/c$, while the stated
-bound $a/(1-a)$ is already
-exceeded at $a=3/4$, $c=2$ and is short by a factor $2.35\cdot10^9$ at
-$a=9/10$, $c=12$.  There is no conflict: Proposition~\ref{prop:cutoff} rules out
-raising the cutoff in the product as stated, not in this one.
-
-Whatever proves it will not be this argument, though.  In Theorem~2.2's
-correction-ratio bound $\Gamma_G(z)\le\Gamma_F(z)/(1-y_c)\le2\Gamma_F(z)$,
-the first inequality needs only $y_c<1$,
-and the cutoff is spent entirely on the second, which converts $1/(1-y_c)$
-into the constant $2$ that the proof's strictness step requires; that invites carrying
-the first through the induction and never invoking the second.  It does not
-work, because what fails beyond the cutoff is not the intermediate estimate but
-the conclusion it serves.  The comparison driving Theorem~2.2---
-that deleting the displaced largest zero together with the largest node
-increases the tail---can reverse there: on nodes $(1/3,1/2,9/10)$ with
-$Z=\{1,3\}$ the deletion takes $\Tail$ from $2.077$ down to $0.500$, whereas
-within the cutoff it holds strictly on every displaced set, as the proof of
-Theorem~2.2 shows.  A proof of the repaired
-product therefore needs a different engine, not a sharper one.  None of this
-is proved here.
+In the stated form the coefficient bounds for $k\ge2$ require $r_i\ge2$,
+inherited from the node cutoff $y_i\le1/2$ of Theorem~2.2.  The cutoff enters
+in exactly two places, the factor $2$ in the correction-ratio bound of
+Theorem~2.2's proof and the discard of factors at most $1$ in Lemma~3.1.  Both
+matter only for $u\ge1$.  The $k=1$ bound is free of the cutoff, as are
+Lemma~2.1 and Lemma~2.3.  The restriction is not an artifact of the proof.  By
+Proposition~\ref{prop:subtwo}, \eqref{eq:order} is false for $k=2$ already at
+$L=2$, and already when only $r_1<2$.  By Proposition~\ref{prop:cutoff}, the
+cutoff in the stated product cannot be raised.  Theorem~\ref{thm:repaired}
+removes both uses at once by keeping the factors the discard drops, so
+\eqref{eq:repaired} holds for every $r_1>1$.  By
+Proposition~\ref{prop:subtwosharp} it is the infimum when the exempt roots
+lie in $(1,2]$ and at most $u$ partial sums of $P$ exceed $|P(1)|$.  With an
+exempt root below $2$ and those hypotheses failing, whether it is the infimum
+is open.
 
 The pointwise extremal problem asks, for a fixed root sequence and a fixed
 $k$, how closely a multiple can approach \eqref{eq:order}.

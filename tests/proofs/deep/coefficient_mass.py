@@ -15,7 +15,8 @@ The sweep's three claims:
 
 * the **repaired** product -- ``prod_{i<=f+1} y/(1-y)`` times
   ``max(1, y/(1-y))`` over the nodes the discard drops -- is never violated,
-  at any node range;
+  at any node range, nor is ``thm:repaired``'s step: a deletion raises the
+  tail by at most ``max(1, y_c/(1-y_c))``;
 * the **stated** product of ``thm:tail`` is violated only *above* the cutoff
   ``y_i <= 1/2``, never below it;
 * the **deletion step** driving the theorem -- dropping the largest prescribed
@@ -154,6 +155,12 @@ def _sweep(pool, count, rng, failures, label):
                 deletions += 1
                 if tail >= sub_tail:
                     reversals += 1
+                # thm:repaired's step: the reversal costs at most y_c/(1-y_c).
+                y = nodes[-1]
+                if tail > max(Fraction(1), y / (1 - y)) * sub_tail:
+                    failures.append(
+                        f"{label}: repaired step broken at {nodes}, Z={zeros}"
+                    )
     return stated_bad, repaired_bad, reversals, deletions
 
 
@@ -533,6 +540,58 @@ def _check_converse(failures: list[str]) -> int:
     return checks + 2
 
 
+def _top_multiple(roots: list[Fraction], n: int) -> tuple[Fraction, list[Fraction]]:
+    """prop:subtwosharp's ``F_n`` for distinct roots: ``(t_n, coefficients)``."""
+    size = len(roots)
+    # R_n has degree < L and R_n(r) = r^-n at each root, i.e. x^n R_n = 1 mod P.
+    rn = _solve([[r**k for k in range(size)] for r in roots], [r**-n for r in roots])
+    poly = [Fraction(1)]
+    for r in roots:
+        poly = [
+            a - r * b
+            for a, b in zip([*poly, Fraction(0)], [Fraction(0), *poly], strict=True)
+        ]
+    poly.reverse()  # low to high
+    t = sum(poly) / (1 - sum(rn))
+    num = [Fraction(0)] * n + [
+        c + t * (rn[k] if k < size else 0) for k, c in enumerate(poly)
+    ]
+    num[0] -= t
+    quot, carry = [Fraction(0)] * (len(num) - 1), Fraction(0)
+    for k in range(len(num) - 1, 0, -1):
+        carry += num[k]
+        quot[k - 1] = carry
+    return t, quot
+
+
+def _check_repaired(failures: list[str]) -> int:
+    """cor:repaired and prop:subtwosharp on the paper's two worked root sets."""
+    checks = 0
+    cases = [
+        ([Fraction(3, 2), Fraction(3)], 1, Fraction(1)),
+        ([Fraction(3, 2), Fraction(10), Fraction(20)], 1, Fraction(171, 2)),
+    ]
+    for roots, u, bound in cases:
+        for n in (5, 10, 20, 40):
+            t, coeffs = _top_multiple(roots, n)
+            if any(sum(c * r**k for k, c in enumerate(coeffs)) for r in roots):
+                failures.append(f"top multiple at {roots}, n={n} is not a multiple")
+            mags = sorted((abs(c) for c in coeffs[:-1]), reverse=True)
+            if not bound <= mags[u] <= abs(t) or (
+                n == 40 and abs(t) - bound > Fraction(1, 10**4)
+            ):
+                failures.append(f"b_{u + 1} of the top multiple at {roots}, n={n}")
+            checks += 1
+    if _partial_sums(cases[1][0]) != [
+        1,
+        Fraction(-61, 2),
+        Fraction(429, 2),
+        Fraction(-171, 2),
+    ]:
+        failures.append("(3/2,10,20) partial sums are not 1,-30.5,214.5,-85.5")
+    return checks + 1
+
+
 def main() -> int:
     failures: list[str] = []
     controls = _check_controls(failures)
@@ -540,11 +599,13 @@ def main() -> int:
     ordering = _check_ordering(failures)
     worked = _check_worked_numbers(failures)
     converse = _check_converse(failures)
+    repaired = _check_repaired(failures)
     print(f"  positive controls fired                     : {controls}")
     print(f"  search optima equal their family members    : {searches}")
     print(f"  sharp235 ordering degrees checked exactly   : {ordering}")
     print(f"  worked numbers of the paper checked exactly : {worked}")
     print(f"  converse lemmas checked exactly             : {converse}")
+    print(f"  repaired sharpness checked exactly          : {repaired}")
     rng = random.Random(SEED)
     totals = {}
     for label, pool in _POOLS.items():
@@ -569,7 +630,9 @@ def main() -> int:
         for line in failures:
             print(f"  FAIL: {line}")
         return 1
-    print("  repaired bound unviolated; stated bound and deletion fail only above 1/2")
+    print(
+        "  repaired bound and step hold; stated bound and deletion fail only above 1/2"
+    )
     return 0
 
 
