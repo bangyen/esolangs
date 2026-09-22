@@ -178,14 +178,14 @@ def test_the_execution_exempt_set_is_read_from_both_documents(audit: Audit) -> N
 def test_the_contract_covers_generators_the_original_queue_missed() -> None:
     """The point of the registry-wide contract: it is wider than the queue.
 
-    The roadmap's scaling item enumerated twenty-four languages, and the
-    suite's existing linearity test covered exactly those.  Thirty-eight
+    The roadmap's scaling item enumerated twenty-five languages, and the
+    suite's existing linearity test covered exactly those.  Thirty-seven
     generators were never checked, which is why this exists.
 
     (ZTOALC L, Nopstacle and COD entered the same way and left with their
     languages.)  Growing this number is the contract doing its job, so the
-    assertion is on the *original* twenty-four.
+    assertion is on the *original* twenty-five.
     """
     queue = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
-    assert len(queue) == 24
-    assert len(BY_BOOLEAN) - len(queue) == 38
+    assert len(queue) == 25
+    assert len(BY_BOOLEAN) - len(queue) == 37

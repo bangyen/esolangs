@@ -1051,6 +1051,7 @@ _LINEAR_SCALING = {
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
+    "malbolge",
     "polynomial",
 }
 
@@ -1077,6 +1078,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "inject",
         "jaune",
         "laserfuck",
+        "malbolge",
         "ram0",
         "sbleq",
         "slow_acv_mammalian",
