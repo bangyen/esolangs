@@ -165,6 +165,47 @@ class TestFactorint:
         assert not _isprime64(0)
         assert _isprime64(2)
 
+    def test_primes_dividing_a_witness_base_are_prime(self) -> None:
+        """A base the number divides is skipped, not read as a witness.
+
+        73 divides 450775 and 3089 divides 9780504; unskipped, ``pow(0, ...)``
+        called each of these composite.
+        """
+        import sympy
+
+        from esolangs.interpreters.tape_based.factor import _isprime64
+
+        for number in (73, 193, 3089, 29059, 299210837):
+            assert sympy.isprime(number)
+            assert _isprime64(number), number
+
+    def test_the_witnesses_are_sinclairs_proven_set(self) -> None:
+        """The last base is ``1795265022``, not the truncated ``179526502``.
+
+        Only the full seven-base set is proven for every number below 2**64,
+        so the constant is pinned; the random sweep is a sanity check, not
+        the proof.
+        """
+        import inspect
+
+        from esolangs.interpreters.tape_based import factor as factor_module
+
+        source = inspect.getsource(factor_module._isprime64)  # noqa: SLF001
+        assert "(2, 325, 9375, 28178, 450775, 9780504, 1795265022)" in source
+
+    def test_random_64_bit_odds_agree_with_sympy(self) -> None:
+        """Random odd numbers below 2**64 agree with SymPy's primality test."""
+        import random
+
+        import sympy
+
+        from esolangs.interpreters.tape_based.factor import _isprime64
+
+        rng = random.Random(64)
+        for _ in range(2000):
+            number = rng.randrange(3, 1 << 64) | 1
+            assert _isprime64(number) == sympy.isprime(number), number
+
     @pytest.mark.parametrize(
         "number",
         [
