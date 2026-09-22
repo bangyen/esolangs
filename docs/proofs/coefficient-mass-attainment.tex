@@ -50,7 +50,7 @@ proved, and the converse of the partial-sum criterion is left open.
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
 height; Chebyshev systems; exponential sums.
 
-\noindent\textbf{2020 Mathematics Subject Classification.} Primary 11C08.
+\noindent\textbf{2020 Mathematics Subject Classification.} Primary 11C08; Secondary 26C05, 41A50.
 
 \section{Introduction}
 
@@ -78,8 +78,11 @@ with equality exactly at $Z=\{1,\ldots,c-1\}$; \eqref{eq:order} follows by
 applying this with the excluded coefficient positions supplying $Z$.
 Lemma~2.1 evaluates the consecutive case; Lemma~2.3 supplies the interlacing
 step inside the comparison; Lemma~3.1 converts the tail bound into a
-coefficient bound; Corollary~3.7 sharpens the resulting asymptotic to an
-exact infimum for the first $L$ primes.
+coefficient bound; Corollary~3.6 sharpens the resulting asymptotic to an
+exact infimum for the first $L$ primes.  Throughout, an unqualified Lemma~2.1,
+Theorem~2.2, Lemma~2.3, Lemma~3.1, Theorem~3.2 or Corollary~3.6 is the
+result of that number in~\cite{coefficient-mass}; every other numbered result
+is this paper's own.
 
 Section~\ref{sec:extend} extends Theorem~2.2 to confluent nodes and shows
 that neither the node cutoff $y_i\le1/2$ it rests on nor the standing
@@ -263,7 +266,7 @@ of range.
 At roots $(2,3)$ the certificate paper already settles the question: it
 exhibits monic multiples
 $F_n=x^{n+1}-a_nx^n+t_n\sum_{j=0}^{n-1}x^j$ of $(x-2)(x-3)$ with
-$b_2(F_n)=t_n$ decreasing to $2$~\cite[Proposition~3.5]{coefficient-mass}, so
+$b_2(F_n)=t_n$ decreasing to $2$~\cite[Proposition~4.1]{coefficient-mass}, so
 the $u=1$ bound is an infimum there, approached but never attained.
 
 The same construction reaches $L=3$.  Write the multiple from the top: one
@@ -272,7 +275,7 @@ exempt coefficients at the bottom.  The exempt coefficients grow like
 $r_u^D$ and so survive division by $r^{D-1}$ only at the $u$ smallest roots,
 which they absorb; the run must therefore satisfy the remaining $L-u$ roots
 alone, and its value is what \eqref{eq:order} predicts.  The certificate
-paper proves the two limits below~\cite[Section~3]{coefficient-mass}; what
+paper proves the two limits below~\cite[Section~4]{coefficient-mass}; what
 is added here is that the ordering holds exactly at every degree, with both
 limits approached from above, and the Descartes step that the general
 construction later reuses.
@@ -477,7 +480,7 @@ is $\widetilde P_uH$ with $H(0)=1$, the choice $H=1/(1-y)$ being
 \]
 and whether it exceeds $|S_m|$ when \eqref{eq:partial} fails.  That is the
 $\ell^\infty$ member of the family this paper works in: reduced length
-minimizes $\ell^1$ over monic multiples~\cite{schinzel}, the minimal Euclidean
+minimizes $\ell^1$ over normalized multiples~\cite{schinzel}, the minimal Euclidean
 norm is the $\ell^2$ case and is effectively computable~\cite{frw}, and
 $\Lambda$ itself is additive over coefficients rather than a norm at all.
 
@@ -571,10 +574,11 @@ is proved here.
 
 What is left open is the pointwise extremal problem: for a fixed root
 sequence and a fixed $k$, how closely a multiple can approach
-\eqref{eq:order}.  Corollary~3.7 settles the asymptotic form of
-the aggregated question for prime roots, and the multiplier $x+1$ above shows
+\eqref{eq:order}.  Corollary~3.6 settles the asymptotic form of
+the aggregated question for prime roots, and the multiplier $x+1$
+of~\cite[Section~3]{coefficient-mass} shows
 that even there the root product need not be the finite-$L$ minimizer.  For
-the root pair $(2,3)$ and $k=2$, \cite[Proposition~3.5]{coefficient-mass}
+the root pair $(2,3)$ and $k=2$, \cite[Proposition~4.1]{coefficient-mass}
 settles it outright: the infimum of $b_2$ over monic multiples is exactly the bound, and
 Proposition~\ref{prop:sharp235} does the same for $(2,3,5)$ at $k=2$ and
 $k=3$.  Beyond those root sets the construction behind both can fail, already
@@ -598,7 +602,7 @@ S.~Karlin and W.~J. Studden,
 \bibitem{schinzel}
 A.~Schinzel,
 \newblock On the reduced length of a polynomial with real coefficients,
-\newblock \emph{Functiones et Approximatio} 35 (2006), 271--306,
+\newblock \emph{Functiones et Approximatio Commentarii Mathematici} 35 (2006), 271--306,
 \newblock \href{https://doi.org/10.7169/facm/1229442629}
 {doi:10.7169/facm/1229442629}.
 
@@ -640,8 +644,8 @@ multiples,
 Lemma~2.1 (Consecutive zero set), Theorem~2.2 (Displaced-zero comparison),
 Lemma~2.3 (Interlacing of the correction sum), Lemma~3.1 (Slack
 certificate), Theorem~3.2 (Coefficient order statistics),
-Proposition~3.5 (The bound for $b_2$ at roots $(2,3)$ is an infimum),
-Corollary~3.7 (Sharp prime-root infimum).
+Corollary~3.6 (Sharp prime-root infimum), Proposition~4.1 (The bound for
+$b_2$ at roots $(2,3)$ is an infimum).
 \end{thebibliography}
 
 \end{document}

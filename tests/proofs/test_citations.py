@@ -41,7 +41,7 @@ ENVIRONMENTS = {
 #: checks that this table is complete, so a new citation fails here until it
 #: is listed.
 CITATIONS = {
-    ("coefficient-mass-attainment.tex", "coefficient-mass", "3.5"): (
+    ("coefficient-mass-attainment.tex", "coefficient-mass", "4.1"): (
         "Proposition",
         "prop:sharp23",
     ),
@@ -154,7 +154,7 @@ def test_every_citation_is_covered() -> None:
 def test_the_cited_titles_are_the_ones_the_papers_name() -> None:
     """The bibliography entry's parenthetical names Corollary 3.4's title."""
     assert _numbering("coefficient-mass")["3.4"][2] == "Logarithmic mass"
-    assert _numbering("coefficient-mass")["3.5"][2] == (
+    assert _numbering("coefficient-mass")["4.1"][2] == (
         "The bound for $b_2$ at roots $(2,3)$ is an infimum"
     )
     assert _numbering("coefficient-mass-attainment")["2.1"][2] == "Confluent analogue"
