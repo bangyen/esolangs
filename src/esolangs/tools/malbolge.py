@@ -522,8 +522,9 @@ def malbolge(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     if n > _CASCADE_N:
         raise GeneratorCapError(
-            f"Malbolge builds at most {_CASCADE_N} inputs, got {n}: no searched "
-            "mixer separates twelve bits across the two cascade levels"
+            f"Malbolge builds at most {_CASCADE_N} inputs, got {n}: the pointer "
+            "cover carries three labels, so the cascade has two levels, and no "
+            "searched mixer resolves twelve bits across them"
         )
     if n == _CASCADE_N:
         return _cascade_program(truth_table)
