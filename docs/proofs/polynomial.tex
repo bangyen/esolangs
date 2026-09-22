@@ -15,7 +15,6 @@
 \newtheorem{lemma}[theorem]{Lemma}
 \newtheorem{corollary}[theorem]{Corollary}
 \newtheorem{proposition}[theorem]{Proposition}
-\newtheorem{conjecture}[theorem]{Conjecture}
 \theoremstyle{definition}
 \newtheorem{definition}[theorem]{Definition}
 \theoremstyle{remark}
@@ -39,17 +38,18 @@ In the Polynomial esoteric programming language, the roots of an
 integer polynomial encode the instructions of a one-register machine, while
 the source text lists the polynomial's expanded coefficients.  We prove that
 every Boolean function with truth-table length $T$ has a Polynomial program of
-length $O(T^2/\log T)$, and we conjecture that some require
-$\Omega(T^2/\log T)$ source characters in every program,
-independently of the program's degree, operand signs, and additional roots.
+length $O(T^2/\log T)$, and that some require
+$\Omega(T^2/\log T)$ source characters in every program that consumes its
+input, independently of the program's degree, operand signs, and additional
+roots.
 The explicit residual-DAG construction gives the upper bound.  A companion
 coefficient-mass theorem implies that every real polynomial divisible by $L$
 distinct prime-power roots and having leading coefficient of absolute value
 at least one has logarithmic coefficient mass
-$\Omega(L^2\log L)$.  The intended routing argument, sharpened by an
-outerplanar block-incidence bound, would force $L=\Omega(T/\log T)$ distinct
-real roots in a program for a maximal-width table; its key step is a known gap
-(Remark~\ref{rem:routing-gap}), so the lower bound is not established here.
+$\Omega(L^2\log L)$.  A routing argument, sharpened by an
+outerplanar block-incidence bound, forces $L=\Omega(T/\log T)$ distinct real
+roots in a program for a maximal-width table, so the worst-case text
+complexity is $\Theta(T^2/\log T)$ in this model.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -59,7 +59,7 @@ languages.
 \noindent\textbf{2020 Mathematics Subject Classification.} Primary 68Q17;
 secondary 94D10, 11C08.
 
-\section{The language and the result}
+\section{The language and the result}\label{sec:model}
 
 A Polynomial source is the expanded form
 \[
@@ -113,6 +113,11 @@ containing its ASCII digit.  A program computes
 $t=(t_0,\ldots,t_{T-1})\in\{0,1\}^{2^n}$ if, on every
 $b_1\cdots b_n\in\{0,1\}^n$ in lexicographic order, it terminates and emits
 exactly the character $t_{(b_1\cdots b_n)_2}$, with zero-based subscripts.
+Reads consume the input stream in order, and a program for an $n$-input table
+consumes the whole input: every execution performs exactly $n$ reads before it
+halts.  This is the model the upper-bound construction uses, and it is what
+the routing argument below needs; a program that halted after fewer reads
+would compute a function constant on the subcube of unread inputs.
 The length $|f|$ is the total
 number of characters in the shortest valid expanded serialization of $f$;
 fixed punctuation and optional whitespace affect only lower-order terms.
@@ -128,32 +133,32 @@ All unqualified logarithms are natural.
 
 \begin{theorem}[Main theorem]\label{thm:main}
 Every $n$-input Boolean function has a Polynomial program of length
-$O(T^2/\log T)$.  The matching lower bound --- that there are $n$-input
-Boolean functions for which every Polynomial program has length
-$\Omega(T^2/\log T)$, so that the worst-case text complexity is
-$\Theta(T^2/\log T)$ --- is conjectural; the argument offered for it below has
-a known gap (Remark~\ref{rem:routing-gap}).
+$O(T^2/\log T)$, and there are $n$-input Boolean functions for which every
+program that consumes its input has length $\Omega(T^2/\log T)$.  Hence the
+worst-case text complexity in the model of Section~\ref{sec:model} is
+$\Theta(T^2/\log T)$.
 \end{theorem}
 
-\begin{remark}[Known gap in the lower bound]\label{rem:routing-gap}
-The upper bound of Theorem~\ref{thm:main} is proved in
-Section~\ref{sec:upper}.  The lower bound is not established as written: the
-bound $D_k\le1+2m_{\rm route}$ of Section~\ref{sec:routing} is false, because
-a routing-free suffix may contain several reads, so one routing position and
-successor does not fix the cursor at the $k$th read.  The decoded program
-$[5,1],[5],[0,2],[48,2],[2],[0,2],[0,2],[0,2],[0,2],[0,1]$ has
-$m_{\rm route}=1$ and four distinct cursors at its fourth read.  The valid
-replacement, $N'(k+1)\le2R$ with $R$ the number of read instruction
-positions, forces $R=\Omega(T/\log T)$ instructions but not
-$\Omega(T/\log T)$ distinct root values; supplying that distinct-root forcing
-step is open.  The tight $\Theta(T^2/\log T)$ statement is therefore a
-conjecture, and Section~\ref{sec:routing} is retained only to expose the
-argument that has to be repaired.
+\begin{remark}[Input consumption is needed]\label{rem:routing-gap}
+The bound $D_k\le1+2m_{\rm route}$ of Section~\ref{sec:routing} is false for
+a decoded program that may stop reading early.  The decoded list
+\[
+[5,1],[5],[0,2],[48,2],[2],[0,2],[0,2],[0,2],[0,2],[0,1]
+\]
+has
+$m_{\rm route}=1$ and four distinct cursors at its fourth read: its loop reads
+an input-dependent number of bits, so different executions reach the last
+routing position at different read levels and the routing-free suffix lands
+the fourth read at different offsets.  Such a list performs a different
+number of reads on different inputs, so it is not a program for an $n$-input
+table in the model of Section~\ref{sec:model}, and the routing proof, which
+uses the exact read count, does not apply to it.  Any variable-read list is
+excluded the same way.
 \end{remark}
 
-The intended lower bound has two independent parts.
-Section~\ref{sec:routing} would force $\Omega(T/\log T)$ distinct positive
-roots (this is where the gap of Remark~\ref{rem:routing-gap} lies).
+The lower bound has two independent parts.
+Section~\ref{sec:routing} forces $\Omega(T/\log T)$ distinct positive
+roots.
 Section~\ref{sec:mass} applies
 the companion coefficient-mass theorem.  Section~\ref{sec:upper} supplies
 the matching construction.  Informally, the routing argument says that a
@@ -222,7 +227,7 @@ We call any table satisfying Lemma~\ref{lem:maximal-width}
 \emph{maximal-width}.
 
 Call an instruction position \emph{routing} if both of its possible
-successors occur on reachable executions between two consecutive reads, and
+successors occur on reachable executions, and
 let $m_{\rm route}$ be the number of routing real-instruction positions.  For
 a fixed level, let $D_k$ be the number of distinct cursors at which the $k$th
 read can occur over all executions that reach it.  Before the first read
@@ -234,10 +239,15 @@ register, and a read leaves the register at $48$ or $49$; hence
   N'(k)\le 2D_k .
 \end{equation}
 Follow an execution back from its $k$th read.  If its path contains a routing
-position, let $(r,s)$ be the last one and the successor taken there: the
-remaining path is routing-free, so every real position on it takes a single
-successor on all reachable executions, and the cursor at the $k$th read is
-fixed by $(r,s)$.  If the path contains no routing position it is
+position, let $(r,s)$ be the last one and the successor taken there.  From
+$r$ on every real position is non-routing, so its successor is forced, while
+reads and register instructions do not branch; the continuation is a fixed
+cursor sequence, independent of the register, and reads a fixed number
+$\rho(r,s)$ of further symbols before halting.  The execution consumes its
+input, so it reads exactly $n$ symbols and reached $r$ after $n-\rho(r,s)$ of
+them; the $k$th read therefore sits at the fixed offset
+$k-(n-\rho(r,s))$ of that fixed continuation, and its cursor is determined by
+$(r,s)$.  If the path contains no routing position it is
 routing-free throughout, and the cursor is the deterministic image of the
 initial cursor.  Thus every cursor at the $k$th read is either that single
 image or one of the at most $2m_{\rm route}$ cursors fixed by a routing
@@ -248,9 +258,6 @@ position together with a successor, so
   N'(k+1)\le 2+4m_{\rm route}.
 \end{equation}
 
-\emph{The bound is false; see Remark~\ref{rem:routing-gap}.  The derivation
-is retained so the step to be repaired stays visible.}
-
 It is not enough to count positions: repeated roots are legal.  We therefore
 bound routing positions by the number of distinct root values.
 
@@ -258,7 +265,9 @@ bound routing positions by the number of distinct root values.
 If a decoded program contains $L$ distinct real instruction-root values,
 then
 \[
-  m_{\rm route}\le 3L .
+  m_{\rm route}\le 3L
+  \quad\text{and hence}\quad
+  N'(k+1)\le 12L+2.
 \]
 \end{lemma}
 
@@ -289,22 +298,17 @@ after the preceding closer, again with that condition false; all intervening
 positions are equal real tests and do not change the register.  Thus each
 incidence is charged at most once.  For $L\ge2$ there are at most $L$ routing openers
 and at most $2L-3$ routing closers; for $L=1$ the displayed weaker bound is
-immediate.
+immediate.  Substitute this in \eqref{eq:basic-routing}.
 \end{proof}
 
-The further step to $N'(k+1)\le12L+2$ would substitute this into the false
-\eqref{eq:basic-routing}; it is exactly the gap of
-Remark~\ref{rem:routing-gap} and is not proved here.
+\begin{corollary}\label{cor:roots}
+Every Polynomial program for a maximal-width truth table has
+$L=\Omega(T/\log T)$ distinct positive real instruction roots.
+\end{corollary}
 
-\begin{conjecture}\label{cor:roots}
-Every Polynomial program for a maximal-width truth table has $L$ distinct
-positive real instruction roots, with $L=\Omega(T/\log T)$.
-\end{conjecture}
-
-The intended proof combines \eqref{eq:residual-width} with
-Lemma~\ref{lem:block} through \eqref{eq:basic-routing}, which is false, so the
-statement is the missing distinct-root forcing step of
-Remark~\ref{rem:routing-gap} rather than a consequence of the block count.
+\begin{proof}
+Combine \eqref{eq:residual-width} with Lemma~\ref{lem:block}.
+\end{proof}
 
 \section{Coefficient mass from prescribed roots}\label{sec:mass}
 
@@ -338,15 +342,15 @@ the right side is \(\Omega(L^2\log L)\): each
 The theorem applies to every real multiple, independently of its degree and
 additional roots.
 
-\begin{conjecture}[Polynomial lower bound]\label{cor:lower}
+\begin{corollary}[Polynomial lower bound]\label{cor:lower}
 Every Polynomial source for a maximal-width truth table has
 \[
   |f|=\Omega(T^2/\log T).
 \]
-\end{conjecture}
+\end{corollary}
 
-\begin{proof}[Conditional proof]
-By Conjecture~\ref{cor:roots}, the program contains
+\begin{proof}
+By Corollary~\ref{cor:roots}, the program contains
 \(L=\Omega(T/\log T)\) distinct positive real instruction roots.  A prime base
 supplies at most eight distinct real values, one for each allowed exponent.
 After sorting, the \(i\)th root is therefore at least
@@ -364,11 +368,9 @@ $M(f)\ge\Lambda(f)/\log 10$ and $|f|\ge M(f)$, the result follows.
 \end{proof}
 
 \begin{remark}[Repeated roots]
-Repeated real roots do not weaken Conjecture~\ref{cor:lower}: conditional on
-the distinct-root forcing, Theorem~\ref{thm:mass} applies to the program's
-distinct-root product.  The block-incidence lemma bounds routing positions
-only and does not by itself force those distinct values, as
-Remark~\ref{rem:routing-gap} records.
+Repeated real roots do not weaken Corollary~\ref{cor:lower}: the
+block-incidence lemma already forces the stated number of distinct values,
+and Theorem~\ref{thm:mass} applies to their distinct-root product.
 \end{remark}
 
 \section{The matching construction}\label{sec:upper}
@@ -419,10 +421,8 @@ exponents and separators contribute only $O(m\log m)$.  Therefore
   |f|=O(m^2\log m)
       =O\!\left(\frac{T^2}{\log T}\right).
 \]
-This proves the upper bound of Theorem~\ref{thm:main}.  Adding the
-conjectural lower bound, Conjecture~\ref{cor:lower}, would give the matching
-bound and hence the $\Theta$ statement; that step is open
-(Remark~\ref{rem:routing-gap}).
+Together with Corollary~\ref{cor:lower}, this proves
+Theorem~\ref{thm:main}.
 
 \section{Scope and reproducibility}
 
