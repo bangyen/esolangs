@@ -19,12 +19,15 @@ the exhaustive `n <= 3` and sampled `n <= 10` sweeps in
 arguments below.
 
 What is machine-checked lives in `tests/proofs/`.  `test_ledger.py` holds this
-document to the registry and to itself, and `test_schemes.py` holds each row to
-its scheme's measurable consequence; both are in the fast band and gate every
-push.  `tests/proofs/deep/` holds the proofs themselves, at two depths.
-`all_generators.py` runs a lemma battery against all sixty: every single
-row of the table demonstrably participates in the emitted program, and the
-construction completes at every arity of a ladder on both table shapes.  That
+document to the registry and to itself, and `test_schemes.py` holds each
+lookup and parameterized row to its scheme's measurable consequence (the
+`tree` and `minterms` rows carry no such per-row check); both are in the fast
+band and gate every push.  `tests/proofs/deep/` holds the proofs themselves,
+at two depths.
+`all_generators.py` runs a lemma battery against all 62: every single
+row of the table demonstrably participates in the emitted program at the
+flip-tested arities, and the construction completes at every arity of a ladder
+on both table shapes.  That
 is the counting half of each scheme above, and it is what makes "finite object
 covering every row" checkable per generator.  Four generators -- A Painter Ant,
 ArrowQueue, Container and BIO -- additionally have a hand-derived proof of
@@ -32,10 +35,12 @@ their own specific argument, which no generic battery can reach.
 
 Each proof declares the cost band it runs in, and
 `python -m tests.proofs.deep <band>` selects on that: `verify` is the local
-gate, `ci` adds the registry-wide battery, `all` is everything and is what
-`just proofs` runs.  The bands are what the justfile, the workflow and
+gate, `ci` adds the registry-wide battery, `by-hand` is the expensive set, and
+`all` is everything and is what `just proofs` runs.  The bands are what the
+justfile, the workflow and
 `scripts/verify.py` each invoke, so none of them carries a list of proofs;
-`test_bands.py` holds every band to a cost budget and checks that no file under
+`test_bands.py` holds each band's declared cost budget (a self-declared
+number, not a measured time) and checks that no file under
 `deep/` is missing one.
 
 None of that bounds *size*: the schemes count nodes and entries, so a generator
@@ -47,9 +52,13 @@ document's `cap` and `exception` rows already exempt.  Read its verdicts in one
 direction only: exceeding the bound is evidence, staying inside it is not, and
 Factor -- proven super-linear at the language level in [factor](factor.md) and
 measuring x2.11 -- is why.  Polynomial's block-incidence lemma forces
-`Omega(T/log T)` distinct real instruction-root values even when roots repeat;
-the slack certificate then proves `Omega(T**2 / log T)` for every program.
-The argument is in [polynomial](polynomial.md).
+`Omega(T/log T)` distinct real instruction-root values even when roots
+repeat, and the slack certificate prices every multiple of their distinct-root
+product, giving `Omega(T**2 / log T)` for every program that consumes its
+input.  The routing lemma that forces those values needs the whole input to be
+read, because a routing-free suffix can otherwise cross an input-dependent
+number of reads; the generated machines consume the input.  The argument is in
+[polynomial](polynomial.md).
 
 ## Proof schemes
 
@@ -109,33 +118,40 @@ smaller table and restoring the omitted, equal-width placeholders preserves
 every row.  This is only an optimization unless the cited inner construction
 is itself total.
 
-**Size dispatch.**  Most lookup rows ship two routes: a folded decision tree
+**Size dispatch.**  Some lookup rows ship two routes: a folded decision tree
 for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Malbolge, Minsky Swap,
-SLOW ACV MAMMALIAN and Whitespace keep no tree route at all: A Painter Ant's
+the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Eval, Minsky
+Swap, NoComment, SLOW ACV MAMMALIAN and Whitespace keep no tree route at all:
+A Painter Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, Befunge reads one grid cell per table entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
-once the doubling between the input runs is in the text), Malbolge folds the
-row index through a fixed mixer and prints from one source stub per row so
-the table is the program's data rather than a tree, Minsky Swap's `~`
+once the doubling between the input runs is in the text), Eval is one linear
+lookup at every arity, Minsky Swap's `~`
 cascade routes the index to one of two shared leaves with a one-digit target
-per row, SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
+per row, NoComment switches between two lookups at four inputs,
+SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
 row whatever the table says, and Whitespace halves one literal once per index
 step; none has a subtree to fold.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
-table.
+table.  Eval and NoComment fold a degenerate table anyway, because their
+lookup route is what shrinks it; that is why the fold discriminator in
+`test_schemes.py` carries them as documented exceptions.
 
 ## Generator ledger
 
 The names are the callable entries indexed by `BY_BOOLEAN`.  Rows sharing a
 proof scheme share the proof above; the qualification column records the
-language-specific final step or an exception.  `cap` means theoretically total
-after ignoring the performance/resource ceiling as specified above.
+language-specific final step or an exception.  The Proof column names the
+coverage witness, which need not be the shipped default route (as the
+`parameterized tree` scheme says): a generator may ship a smaller arithmetic
+construction while the named scheme is what proves totality.  `cap` means
+theoretically total after ignoring the performance/resource ceiling as
+specified above.
 
 The Scaling column is the worst-case cost of the construction in `T = 2**n`,
 read from the code rather than measured (the size contract in
@@ -189,7 +205,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: T literal, `.` halvings sum to 2T |
 | Jaune | finite lookup | a spatial table reached with two labels | linear: two cells per row, unary weights sum T - 1 |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T |
-| Malbolge | linear lookup | a branch-free four-cell mixer folds the row index into a distinct address and the source stub there prints the answer, with no initializer | linear: one stub per row, fixed mixer, capped at n <= 9 |
+| Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free four-cell mixer covers every table through nine inputs | measured: fixed 59049-cell store through n <= 9 |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` | linear: mux lookup, constant strings times O(T) counts |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length | linear: cascade routes to two shared leaves, one-digit targets |
 | Modulous | tree | — | linear: span walk, fold digits geometric |
@@ -197,7 +213,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
 | Packlang | tree | — | linear: folded tree, shortest names deepest, flat pieces |
 | Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
-| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
+| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; a program that consumes its input for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
 | Qoibl | tree | — | linear: span walk, O(1) node tests by halves |
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup | linear: 16-17 tokens per row, unary runs 2T - 2 |
 | ROTfuck | tree | movement search stops after at most eight offsets | linear, time n log: essential_inputs |
@@ -212,14 +228,20 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 3D Brainfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
 | 3x | tree | — | linear, time n log: essential_inputs; greedy order scoring, capped |
 | Unsquare | tree | stack arrangement affects size only | linear: span walk, pricer sums geometrically |
-| Vandevelo | minterms | constant-one subtrees drop their suffix literals | linear: amortised peel; sqrt(log T) dual-basis core; proof fallback n 2^n |
+| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | linear: amortised peel; sqrt(log T) dual-basis core; proof fallback n 2^n |
 | Whitespace | linear lookup | the table is one binary literal, halved once per index step | linear: T-bit literal, index halvings |
 
 ## Exceptions and walls
 
-No `exception` row remains: the one such generator, `%^2^-1`, left with its
-language.  Every remaining row is `Total`, or theoretically total past the
-resource ceiling below.
+- Malbolge has 59,049 source cells and exactly eight valid decoded
+  instructions at each occupied cell.  Including shorter programs gives fewer
+  than `sum(8**k for k in range(59050)) < 2**177151` distinct programs, while
+  the 18-input domain has `2**(2**18) = 2**262144` truth tables.  One program
+  computes at most one table, so some 18-input tables have no Malbolge program;
+  no generator can be total under this interpreter's language semantics.
+
+The former exception, `%^2^-1`, left with its language.  Every other row is
+`Total`, or theoretically total past the resource ceiling below.
 
 ### Resource-ceiling audit
 
@@ -265,6 +287,6 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 62 theoretical totality arguments and zero
-open exceptions; every row is `Total` or theoretically total past a resource
-ceiling.
+Accordingly, this ledger records 61 theoretical totality arguments and one
+proved language exception; every other row is `Total` or theoretically total
+past a resource ceiling.

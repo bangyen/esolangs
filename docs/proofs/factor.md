@@ -11,12 +11,12 @@ exponent is the run length. Put
 - `Q` for the largest selected prime; and
 - `D` for the rendered decimal digits.
 
-If run `i` has exponent `e_i` and prime `p_i`, then exactly
+For a generated encoding, which has no ignored-residue factors, exactly
 
     log N = sum_i e_i log p_i,       D = floor(log10 N) + 1.
 
 The Boolean generator has `C = O(T)` and `m <= C`, where `T` is the table
-length. Parity leaves its folded tree with `C,m = Theta(T)`.
+length.
 
 ## Generated text
 
@@ -32,16 +32,17 @@ Consequently `log Q = O(log(m + 1))` and
 
     D = O(C log(m + 1)) = O(T log(T + 1)).
 
-For parity the selected primes are distinct, so
-`log N >= log(p_1 ... p_m) >= log(m!) = Omega(T log T)`. The generator's
-worst-case output is therefore `Theta(T log T)`. This is not a per-table
-claim: constant subtrees fold and can be much smaller.
+The language lower bound below supplies a table on which every generator must
+spend `Omega(T log T)`, so this generated upper bound is tight in the worst
+case. This is not a per-table claim: constant subtrees fold and can be much
+smaller.
 
 ## Generation time
 
-Prime discovery now uses exact segmented Eratosthenes enumeration, not
-`isprime`: above `2**64` SymPy's latter is BPSW and is not a proof of
-primality, while SymPy's own sieve stores machine words. The local sieve keeps
+Prime discovery during generation uses exact segmented Eratosthenes
+enumeration, not `isprime` (`_factorint` below still calls the deterministic
+Miller--Rabin `_isprime64` under `2**64`): above `2**64` SymPy's latter is BPSW
+and is not a proof of primality, while SymPy's own sieve stores machine words. The local sieve keeps
 arbitrary Python integers through `sqrt(Q)`. Segments grow to `sqrt(start)`,
 so composite marking costs `O(Q log log Q)`, revisiting base primes costs
 `O(Q/log Q)`, and extending them by trial division is smaller. Cold prime
@@ -50,34 +51,41 @@ memory; this treats arithmetic on its `O(log Q)`-bit indices as one RAM
 operation. Hoheisel makes both polynomial in `T`.
 
 Let `alpha = log_2 3`. CPython's balanced integer products use Karatsuba at
-scale, and Python 3.14's large decimal render passes through `_pylong` and
-libmpdec. As with Polynomial, a fixed libmpdec eventually exceeds its maximum
-direct transform and recurses with three half-size products. The render's top
-conversion product has balanced `Theta(D)`-digit operands, hence an
-`Omega(D**alpha)` arithmetic term. The encoder combines the two smallest
-bit-width products first. Superlinearity charges powers and merges to the
-final `D` bits geometrically; CPython's lopsided path splits a large operand
-into small-width chunks. Smallest-first merging costs `O(D**alpha)`; rendering
-itself supplies the matching `Theta(D**alpha)`, giving the cold bound
+scale, so the encoder's balanced `D`-bit product carries a `Theta(D**alpha)`
+arithmetic term. Python 3.14's large decimal render passes through `_pylong`
+and libmpdec, but libmpdec only recurses with three half-size products above
+`3 * 2**32` machine words (about `2.5 * 10**11` decimal digits), so up to that
+`D` -- far past any generated table -- rendering stays in its quasi-linear FNT
+range and adds `O(M(D) log D) = O(D log**2 D)`. Above it the three-way
+recurrence is itself
+`Theta(D**alpha)`, so the cold bound is unchanged either way. The encoder
+combines the two smallest bit-width products first.
+Superlinearity charges powers and merges to the final `D` bits geometrically;
+CPython's lopsided path splits a large operand into small-width chunks.
+Smallest-first merging costs `O(D**alpha)`, giving the cold bound
 
     sum_merge cost(a, b) = O((sum_i leaf_bits_i)**alpha).
 
-For the charging lemma, comparable merges spend the increase of the
-`alpha`-power potential. A lopsided heap item waits while all smaller items
-combine, so it has only one lopsided merge at that scale; its sliced cost
-`O(b * a**(alpha - 1))` is at most the final scale's `O(D**alpha)`.
+The charging lemma is stated, not proved here: comparable merges spend the
+increase of the `alpha`-power potential, and a lopsided heap item waits while
+all smaller items combine, so it has only one lopsided merge at that scale,
+with sliced cost `O(b * a**(alpha - 1))` at most the final scale's
+`O(D**alpha)`.  What is proved is the upper bound
 
-    generation = Theta(T + Q log log Q + D**alpha) = T**O(1).
+    generation = O(T + Q log log Q + D**alpha) = T**O(1).
 
-This is tight in the implementation parameters `Q,D`. Replacing `Q` by
-`Theta(T log T)` would assume an unproved
-uniform bound on the changing residue word; measurements are not that lemma.
+Only the upper bound is claimed: the terms need not balance, so `Theta` is not
+established, and the sieve term can exceed `D**alpha` for the largest `Q` the
+Hoheisel bound permits.  A uniform bound on the changing residue word, which
+would replace `Q` by `Theta(T log T)`, is not available; measurements are not
+that lemma.
 
 ## Cold parsing
 
 For generated programs, `_factorint` uses the same exact prime stream, bounded
-by `Q`, tests each sieve segment with a gcd, and performs `C` successful
-prime divisions. Decimal parsing, sieving, gcds and divisions are all
+by `Q`, tests a sieve segment with one gcd once the residue is wide
+(`_BATCH_BITS`, and a remainder per prime below it), and performs `C`
+successful prime divisions. Decimal parsing, sieving, gcds and divisions are all
 polynomial in `Q,D,C`; with `Q=T**O(1)`, cold parsing and its
 `O(sqrt(Q) + D + C)` live storage are polynomial in `T`.
 
@@ -88,22 +96,23 @@ no polynomial bound in source digits, and no fallback claim is made.
 ## Language lower bound
 
 Put `L = O(D)` for the log of a `D`-character source's digit integer. If its
-decoded behaviour uses `m` primes, its `i`-th one is at least `i + 1`, so
+decoded behaviour uses `k` useful primes, its `i`-th one is at least `i + 1`, so
 
-    sum_i e_i log(i + 1) <= L,       m = O(L/log L).
+    sum_i e_i log(i + 1) <= L,       k = O(L/log L).
 
-For fixed `m`, put `f_i = e_i - 1` and `s = 1/log(L + 2)`. The exponential
+For fixed `k`, put `f_i = e_i - 1` and `s = 1/log(L + 2)`. The exponential
 generating bound for these nonnegative vectors is
 
     exp(sL) product_i (1 - (i + 1)**(-s))**(-1).
 
 Its log is `O(L/log L)`: the first `sqrt(L)` factors contribute only
 `O(sqrt(L) log log L)`, and every later factor contributes `O(1)`, across
-`m = O(L/log L)` positions. Summing over `m` and choosing each useful prime's
+`k = O(L/log L)` positions. Summing over `k` and choosing each useful prime's
 eight command residues preserves `exp(O(D/log D))` behaviours. Hence covering
 all `2**T` tables forces
 
     D = Omega(T log T).
 
 The count covers every encoding: ignored-residue primes, comments and leading
-zeros do not add behaviours. It matches the generated `Theta(T log T)` upper.
+zeros do not add behaviours. The exceptional integer zero adds only the empty
+behaviour. It matches the generated `Theta(T log T)` upper.

@@ -1,7 +1,9 @@
 """``docs/roadmap.md``'s conventions audit must agree with the generators.
 
-The cheap half parses the table and checks its names and vocabulary.  The
-measured half builds every embedding generator, fills every row, and reads
+The cheap half parses the table and checks its names and vocabulary; while
+the table is empty (every convention closed) those checks are vacuous, and the
+slow ``test_the_audit_matches_the_programs`` below is the real enforcement.
+The measured half builds every embedding generator, fills every row, and reads
 the two measured conventions off the programs: an absent generator must
 hold both, a ``Holds`` cell must hold, and an open cell must fail -- so a
 fix that lands without its row leaving is caught as well as a regression.
@@ -115,6 +117,12 @@ def _measure(example: BooleanExample) -> dict[str, bool]:
     return {"No spaces": spaces, "Uniform": len(pairs) == 1}
 
 
+#: The parsed table is empty whenever every convention is closed, which is the
+#: current state.  The parser checks below then have nothing to check, so they
+#: skip rather than pass vacuously; the slow test is the enforcement.
+_CLOSED = not load().rows
+
+
 def test_the_structural_conventions_hold_where_the_template_is_made() -> None:
     """Single embed, constant width and slot order are the template's shape.
 
@@ -133,15 +141,18 @@ def test_the_structural_conventions_hold_where_the_template_is_made() -> None:
                 assert all(len(zero) == len(one) for zero, one in template.setters)
 
 
+@pytest.mark.skipif(_CLOSED, reason="conventions audit is closed")
 def test_the_audit_names_real_embedding_generators(audit: Conventions) -> None:
     assert set(audit.by_name()) <= set(_embedding())
 
 
+@pytest.mark.skipif(_CLOSED, reason="conventions audit is closed")
 def test_every_verdict_is_a_known_one(audit: Conventions) -> None:
     for row in audit.rows:
         assert set(row.verdicts) <= _VERDICTS, row
 
 
+@pytest.mark.skipif(_CLOSED, reason="conventions audit is closed")
 def test_the_audit_holds_only_open_rows(audit: Conventions) -> None:
     closed = [row.generator for row in audit.rows if not row.is_open]
     assert not closed, f"rows that hold every convention should leave: {closed}"

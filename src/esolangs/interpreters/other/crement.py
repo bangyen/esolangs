@@ -14,6 +14,7 @@ state once per step.
 from __future__ import annotations
 
 import re
+import sys
 from dataclasses import dataclass, replace
 
 from esolangs.exceptions import HaltError, ProgramError
@@ -183,3 +184,9 @@ def run(code: str, io: IO) -> None:
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            run(file.read(), IO())

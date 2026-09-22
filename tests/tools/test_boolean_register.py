@@ -228,7 +228,7 @@ class TestPolynomial:
 
         Each instruction takes a fresh prime and becomes a polynomial
         factor, so what the interpreter cannot afford per row is
-        instructions.  A scattered n == 11 table needs 2874 under its
+        instructions.  A scattered n == 11 table needs 2417 under its
         cheapest construction and is refused; the message names the count
         rather than ``n``.
 
@@ -242,7 +242,7 @@ class TestPolynomial:
 
         random.seed(0)
         scattered = "".join(random.choice("01") for _ in range(2**11))
-        with pytest.raises(ValueError, match="one instruction per prime"):
+        with pytest.raises(ValueError, match="groups instructions onto primes"):
             boolean.polynomial(scattered)
 
     def test_polynomial_cap_admits_every_n10_table(self) -> None:
@@ -272,7 +272,7 @@ class TestPolynomial:
     def test_a_dense_eight_input_table_runs_every_row(self) -> None:
         """The arity the old cap refused now builds, and every row answers.
 
-        Dense n == 8 is 541 instructions -- past the old 328, and past
+        Dense n == 8 is 462 instructions -- past the old 328, and past
         ``_NTT_MIN_DEGREE`` once rendered, so this is the suite's
         execution-gate witness for the NTT recovery path *and* for the
         per-program parse cache: the first row pays the factorization
@@ -295,7 +295,7 @@ class TestPolynomial:
         The gate was on ``n`` because a decision tree doubles with it.  The
         state machine merges prefixes with equal residual subfunctions, so a
         table that collapses is cheap at any width: AND-5 was rejected and
-        now builds, and parity -- the tree's worst case, 2298 instructions
+        now builds, and parity -- the tree's worst case, 2553 instructions
         at n == 8 -- is linear here, 11 per input, and renders through
         n == 8.
         """

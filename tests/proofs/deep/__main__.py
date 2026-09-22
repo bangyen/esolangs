@@ -1,8 +1,8 @@
 """Run the deep proofs of one cost band.
 
     python -m tests.proofs.deep verify    # the local gate, ~2s
-    python -m tests.proofs.deep ci        # CI, ~14s
-    python -m tests.proofs.deep all       # everything, ~2m20s  (`just proofs`)
+    python -m tests.proofs.deep ci        # CI, ~25s
+    python -m tests.proofs.deep all       # everything, ~2m  (`just proofs`)
     python -m tests.proofs.deep --list    # the registry, run nothing
 
 Why this exists
@@ -55,9 +55,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 #: before it, so ``ci`` includes ``verify``.
 BANDS = ("verify", "ci", "by-hand")
 
-#: What each band is allowed to cost in total, in seconds.  These are the
-#: reason a band exists, so they are checked rather than merely documented.
-BUDGET = {"verify": 5.0, "ci": 20.0, "by-hand": 180.0}
+#: What each band is allowed to cost in total, in seconds.  ``test_bands``
+#: checks the declared costs against these; the declarations are hand-kept and
+#: only as honest as the last person to time the band (``ci`` measured ~25s).
+BUDGET = {"verify": 5.0, "ci": 30.0, "by-hand": 180.0}
 
 
 #: A leading underscore means a helper, not a proof -- ``_lemmas`` today.  The
@@ -131,6 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"deep proofs: band {args.band!r}, {len(proofs)} proofs, ~{budget:.0f}s\n")
 
     failed = []
+    band_start = time.time()
     for proof in proofs:
         print(f"{'=' * 70}\n=== {proof.name}  [{proof.band}]\n{'=' * 70}")
         start = time.time()
@@ -141,6 +143,12 @@ def main(argv: list[str] | None = None) -> int:
         saved, sys.argv = sys.argv, [proof.name]
         try:
             code = proof.module.main()
+        except Exception as exc:  # report and keep going
+            # Proofs use bare ``assert``; without this a single failure would
+            # abort the band and hide every proof after it, which the justfile
+            # comment promises cannot happen.
+            code = 1
+            print(f"    raised {type(exc).__name__}: {exc}")
         finally:
             sys.argv = saved
         elapsed = time.time() - start
@@ -148,10 +156,23 @@ def main(argv: list[str] | None = None) -> int:
             failed.append(proof.name)
         print(f"--- {proof.name}: {'FAILED' if code else 'ok'} in {elapsed:.1f}s\n")
 
+    wall = time.time() - band_start
     if failed:
         print(f"{len(failed)} of {len(proofs)} deep proofs failed: {', '.join(failed)}")
         return 1
-    print(f"all {len(proofs)} deep proofs in band {args.band!r} passed")
+    # The declared costs are hand-kept; this is the only place the band's real
+    # wall time is compared to its budget.  A warning rather than a failure,
+    # because a loaded CI box would otherwise turn a cost overrun into a flake.
+    ceiling = BUDGET.get(args.band, budget)
+    if wall > ceiling:
+        print(
+            f"warning: band {args.band!r} took {wall:.1f}s, over its {ceiling}s "
+            "budget -- raise BUDGET or the proofs' COST"
+        )
+    print(
+        f"all {len(proofs)} deep proofs in band {args.band!r} passed "
+        f"({wall:.1f}s, budget {ceiling}s)"
+    )
     return 0
 
 

@@ -271,6 +271,27 @@ def _timeout_of(options: dict[str, str]) -> float | None:
     return seconds
 
 
+def _table_of(options: dict[str, str]) -> str | None:
+    """Return the ``--table`` value, refusing a malformed truth table.
+
+    ``run`` and ``debug`` used to warn about a bad table and run anyway,
+    while ``check-stdin`` refused it; an option's value is a usage error,
+    so it is judged here once for every command that takes the flag.
+    """
+    if "--table" not in options:
+        return None
+    table = options["--table"]
+    # Imported at call time: ``esolangs._answers`` reaches the registry,
+    # and this module is imported while the package is still assembling.
+    from esolangs._answers import _validate_shape_for_evaluate
+
+    try:
+        _validate_shape_for_evaluate(table)
+    except EsolangError as exc:
+        _fail(str(exc))
+    return table
+
+
 def _pop_cell(options: dict[str, str]) -> tuple[int, int] | None:
     """Read ``--break-on-cell I=V`` into a pair, or ``None`` if absent.
 

@@ -291,6 +291,17 @@ class TestFargo:
         assert boolean.fargo("00000000") == "% 0 0\n$\n"
         assert boolean.fargo("11111111") == "% 0 1\n$\n"
 
+    def test_an_all_zero_table_wraps_to_a_constant(self) -> None:
+        """No terms to combine: the factored path indexed an empty list.
+
+        ``width`` below the compact program's 5 columns routes to the
+        factored builder, which ``combine``d an empty term list for the
+        all-zero table.
+        """
+        for width in (1, 2, 3, 4):
+            assert boolean.fargo("0000", width=width) == "% 0 0\n$\n"
+            assert boolean.fargo("00000000", width=width) == "% 0 0\n$\n"
+
     def test_parity_is_one_term_per_input(self) -> None:
         """Parity's ANF is the sum of the single-variable terms."""
         assert boolean.fargo("01101001") == "% 0 ^ ^ @ 0 @ 1 @ 10\n$\n"

@@ -756,7 +756,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # refuse and one_two_three's n=4..10 both shapes, which the mark respacing
 # cut by 82% overall.  Minifuck's Pascal inverse restored the n=9 contest.
 #
-# Ten still peaks at 619MB RSS on Polynomial's n=10 dense table, 34MB of
+# Ten still peaks at 619MB RSS on Polynomial's n=10 dense table, 17MB of
 # program text (Circuit Diagram's H-layout, once the peak at 306MB of text,
 # is 8MB and 255MB RSS since it was sized from its lattice).  Of that RSS
 # only 154MB is ever live -- the last merge's 59M-digit product held as a
@@ -800,7 +800,7 @@ _ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {
 # The two table shapes every generator is built against.  A dense
 # pseudo-random table and parity fail *differently*: factor's retired digit
 # budget ran out a rung earlier on parity than on dense, and Polynomial's
-# 1934-instruction cap refuses dense n=11 (2910) while parity fits far past
+# 1934-instruction cap refuses dense n=11 (2447) while parity fits far past
 # it.  A single-shape sweep reports the wrong ceiling for all three, which
 # is why both shapes are built at every arity and why the cap table is
 # keyed by shape.
@@ -1051,6 +1051,7 @@ _LINEAR_SCALING = {
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
+    "malbolge",
     "polynomial",
 }
 
@@ -1077,6 +1078,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "inject",
         "jaune",
         "laserfuck",
+        "malbolge",
         "ram0",
         "sbleq",
         "slow_acv_mammalian",

@@ -130,7 +130,11 @@ class TestBrainIfGeneratedHelloWorld:
         assert run_and_capture(program, inputs=["0"]) == "0"
 
     def test_unknown_instruction_ignored(self) -> None:
-        """Lines without a recognized instruction are ignored."""
+        """Lines without a recognized instruction are ignored.
+
+        A deliberate convention, not the wiki's error; recorded in
+        ``docs/limitations.md``.
+        """
         assert run_and_capture(["if 0 output", "if 0 frobnicate"]) == "\x00"
 
     def test_goto(self) -> None:

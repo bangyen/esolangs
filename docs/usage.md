@@ -23,7 +23,7 @@ esolangs.verify("Fargo", "10010110")  # -> True
 ```
 
 Both work for every language -- the four odd input shapes, the template
-languages and the three that answer by diverging included. If you need the
+languages and the four that answer by diverging included. If you need the
 steps rather than the result, they are `generate`, `encode_inputs`, `run`,
 `read_answer`, below.
 
@@ -81,7 +81,7 @@ this table; it is generated from `describe`, and so is the table.
 A shape the checker cannot tell apart from a legitimate one still answers
 the wrong row, which is why the encoder is the interface and the table is
 only a reference. [`src/esolangs/examples/MANIFEST.md`](../src/esolangs/examples/MANIFEST.md)
-lists every language's input column.
+lists every example language's input column.
 
 Stdin is checked against the shape and alphabet a language declares:
 `esolangs run` warns, `esolangs run --judge` refuses, and
@@ -91,7 +91,7 @@ surplus line as well as a missing one.
 
 ## Templates
 
-Eighteen languages embed the inputs in the program rather than reading
+Fourteen languages embed the inputs in the program rather than reading
 them, so `generate` returns a template: the program with each input spelled
 as a run of `$` (a character outside the language), one run per input in
 order and exactly as long as the code that replaces it, so the template is
@@ -103,20 +103,20 @@ one.
 ## Reading the answer
 
 Most languages print the answer, six dump their whole final state with it
-somewhere inside, and three answer by *terminating* -- they halt for a 0 and
+somewhere inside, and four answer by *terminating* -- they halt for a 0 and
 loop forever for a 1. `read_answer` handles the first two; for the third,
 bound the run and catch `ExecutionTimeoutError` as the 1.
 
-`TERMINATION_OUTCOMES` is `("halts", "diverges")`: the `answer_encoding` of
-those three, in the order `describe` gives them, so index 0 is the answer 0
-and `encoding.index("diverges")` is the polarity.
+The `answer_encoding` is `("halts", "diverges")` for those four, in the order
+`describe` gives them, so index 0 is the answer 0 and
+`encoding.index("diverges")` is the polarity.
 
 ## Width
 
 `generate` and the CLI's `--width` bound the columns. Most grids honour it
 by laying themselves out rather than being reflowed;
 `describe(language)["width_effect"]` says which of the three behaviours you
-have, and names the 22 that ignore a width because their newlines are part
+have, and names the 15 that ignore a width because their newlines are part
 of the program.
 
 ## Debugging
@@ -141,8 +141,9 @@ more than this tuple.
 run and showing the tape, stack, output and the language's own named state
 beside it, with `--watch-cell`'s history as a row that grows as you step
 and shortens as you go back. `hjkl` move a selector so a breakpoint can be
-set where the run has not reached yet; `t` marks under it and `c` continues
-to the next one. Feed such a run with `--stdin`, since the keys and the
+set where the run has not reached yet; `t` marks under it, `c` continues to
+the next one, `space` steps, `b` steps back, `r` runs to the end and `q`
+quits. Feed such a run with `--stdin`, since the keys and the
 program cannot share one stream. A language whose position is not a place
 in the source -- a call stack, a 3-D point -- is left unhighlighted rather
 than marked in the wrong place; the header always shows the raw `ip`.

@@ -148,7 +148,7 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str |
     """Return a program in ``language`` computing ``truth_table``.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first, so its
-    length implies ``n``.  Eighteen languages embed their inputs in the
+    length implies ``n``.  Fourteen languages embed their inputs in the
     program text; for those this returns a *template* with each input as a
     run of one character (``$`` unless the language declares another), one
     run per input, exactly as long as the code :func:`instantiate` fills it
@@ -176,9 +176,12 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str |
     )
     generated = fn(truth_table, width) if laid_out else fn(truth_table)
     if lang.raster_boolean is not None:
-        if not isinstance(generated, Raster):
+        if not isinstance(generated, Raster):  # pragma: no cover - registry invariant
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
-        return generated
+        # Tagged the way a text program is ``_Tagged``: a Line raster fed to
+        # Piet otherwise passed ``check_program`` and answered '', a
+        # confident garbage result rather than a refusal.
+        return generated.tagged(resolved)
     slots = str(generated)
     if lang.id not in parameterized_ids():
         program = slots if laid_out else wrap_program(slots, lang.id, width)
@@ -222,6 +225,13 @@ def instantiate(
     """
     check_width(width)
     name = resolve(language)
+    if not isinstance(template, str):
+        # Before the provenance check, which calls ``template.replace`` and
+        # so leaked an ``AttributeError`` for a non-string.
+        raise TemplateError(
+            f"template must be the string generate() returned, got "
+            f"{type(template).__name__}"
+        )
     if truth_table is not None and not _is_template_for(template, name, truth_table):
         # The provenance check a tag cannot make: a hand-written string is
         # untagged by design (a tag cannot survive a file), and
@@ -237,11 +247,6 @@ def instantiate(
         raise TemplateError(
             f"{name} reads its inputs rather than embedding them, so there "
             f"is nothing to instantiate; pass them in as stdin instead"
-        )
-    if not isinstance(template, str):
-        raise TemplateError(
-            f"template must be the string generate() returned, got "
-            f"{type(template).__name__}"
         )
     origin = getattr(template, "language", None)
     if origin is not None and origin != name:
@@ -315,6 +320,14 @@ def check_runnable(language: str, program: str | Raster) -> None:
     name = resolve(language)
     if isinstance(program, Raster):
         return
+    if not isinstance(program, str):
+        # A non-source value otherwise fell through: an ``int`` leaked a
+        # ``TypeError`` from ``char in program`` for a template language and
+        # was silently accepted by every other one.
+        raise ProgramError(
+            f"program must be a string of source or a Raster, got "
+            f"{type(program).__name__}"
+        )
     if _looks_like_a_path(program):
         raise ProgramError(
             f"program looks like a path, not source: {program!r}. "
@@ -340,7 +353,7 @@ def check_program(
     "[")`` returns the program and :func:`make_vm` raises ``ProgramError``.
     :func:`make_vm` calls this, so it cannot build a machine to check.
     :func:`check_stdin` judges ``stdin``'s shape.  A :class:`~pathlib.Path`
-    is read here with its trailing newline stripped (CV(N)(C), Grapheme and
+    is read here with one trailing newline stripped (CV(N)(C), Grapheme and
     NoComment reject one), so the whole call is::
 
         path = pathlib.Path(describe(lang)["examples"][0])
@@ -354,7 +367,7 @@ def check_program(
             program = (
                 Raster.from_png(path.read_bytes())
                 if raster
-                else path.read_text(encoding="utf-8").rstrip("\n")
+                else path.read_text(encoding="utf-8").removesuffix("\n")
             )
         except FileNotFoundError as exc:
             # Split from the OSError clause below so a caller who passed a
@@ -370,6 +383,10 @@ def check_program(
             raise ProgramError(
                 f"cannot read {program}: not text (invalid UTF-8 at byte {exc.start})"
             ) from exc
+        except TypeError as exc:
+            # A ``__fspath__`` returning a non-str makes ``pathlib.Path``
+            # raise TypeError, which escaped the ``EsolangError`` promise.
+            raise ProgramError(f"cannot read {program}: {exc}") from exc
         except ValueError as exc:
             raise ProgramError(f"cannot read {program}: {exc}") from exc
     expected = Raster if raster else str
@@ -427,7 +444,7 @@ def run(
     :class:`~esolangs.exceptions.ExecutionTimeoutError` (a
     :class:`TimeoutError` and a :class:`~esolangs.exceptions.HaltError`; catch
     it, not the base).  It is ``SIGALRM``, so needs a Unix main thread; off it,
-    :meth:`Debugger.run` bounds by stepping.  ``seed`` fixes the four
+    :meth:`Debugger.run` bounds by stepping.  ``seed`` fixes the five
     languages that draw.  An unloadable program raises
     :class:`~esolangs.exceptions.ProgramError`.
     """
@@ -540,7 +557,15 @@ def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., A
         )
     from esolangs.interpreters.randomness import Seeded
 
-    return partial(run_fn, rng=Seeded(seed))
+    try:
+        rng = Seeded(seed)
+    except (TypeError, ValueError) as exc:
+        # ``random.Random`` rejects an unseedable type with TypeError and a
+        # surrogate string with UnicodeEncodeError (a ValueError); either
+        # used to escape the package's "every deliberate error is an
+        # EsolangError".
+        raise ArgumentError(str(exc)) from exc
+    return partial(run_fn, rng=rng)
 
 
 def _keeping_output[E: EsolangError](exc: E, io_obj: ScriptedIO) -> E:

@@ -432,6 +432,41 @@ def test_rgb_rejects_an_index_outside_the_palette() -> None:
         png.read_rgb(blob)
 
 
+def test_rejects_a_malformed_palette_length() -> None:
+    """A PLTE is 1..256 RGB triples; 257 made only one reader complain."""
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(body))
+            + kind
+            + body
+            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+        )
+
+    def blob(plte: bytes) -> bytes:
+        return (
+            png._SIGNATURE  # noqa: SLF001
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, png._PALETTE, 0, 0, 0))  # noqa: SLF001
+            + chunk(b"PLTE", plte)
+            + chunk(b"IDAT", zlib.compress(bytes([0, 0])))
+            + chunk(b"IEND", b"")
+        )
+
+    for plte in (b"", bytes([0, 0, 0]) * 257, bytes([0, 0])):
+        for reader in (png.read_grey, png.read_rgb):
+            with pytest.raises(ValueError, match="malformed PLTE"):
+                reader(blob(plte))
+
+
+def test_a_corrupt_ihdr_dimension_is_refused_before_allocating() -> None:
+    """A flipped width byte used to OOM-kill the process (SIGKILL)."""
+    data = bytearray(png.write_rgb([[(0, 0, 0)]]))
+    data[16] ^= 0x80  # the IHDR width's most significant byte
+    for reader in (png.read_grey, png.read_rgb):
+        with pytest.raises(ValueError, match="IHDR is corrupt"):
+            reader(bytes(data))
+
+
 def test_rejects_an_unknown_row_filter() -> None:
     """A filter byte outside 0-4 is corruption, not something to guess at."""
     with pytest.raises(ValueError, match="row filter"):

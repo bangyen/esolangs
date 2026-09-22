@@ -22,8 +22,8 @@ from esolangs.tools.helpers import (
 
 # Instruction cap.  Analytic n=10 worst case is 1659
 # (``test_polynomial_cap_admits_every_n10_table``); kept at the old 1934,
-# which the interpreter affords (n=10: 1638 instructions, 44s for 1024
-# rows).  Dense n=11 (2910) ran 2048 rows in 267s, 264.5s of it factoring.
+# which the interpreter affords (n=10: 1382 instructions, 44s for 1024
+# rows).  Dense n=11 (2447) ran 2048 rows in 267s, 264.5s of it factoring.
 _POLYNOMIAL_MAX_INSTRS = 1934
 
 # Pre-expansion ceiling on a proof-sized upper bound, not the rendered length.
@@ -94,8 +94,8 @@ def polynomial(truth_table: str) -> str:
     fits = [(cost, build) for cost, build in builders if cost <= _POLYNOMIAL_MAX_INSTRS]
     if not fits:
         raise GeneratorCapError(
-            "the Polynomial boolean generator emits one instruction per "
-            f"prime and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
+            "the Polynomial boolean generator groups instructions onto "
+            f"primes and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
             f"needs {min(cost for cost, _ in builders)} under its cheapest "
             "construction, which costs more per row than checking a table "
             "of this width can afford",

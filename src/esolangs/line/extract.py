@@ -41,7 +41,13 @@ def load_binary(path: str) -> Mask:
             "and see render()'s `scale` for drawings that must survive a "
             "lossy pipeline."
         )
-    return mask_module.from_grey(png.read_grey(data))
+    try:
+        grey = png.read_grey(data)
+    except Exception as exc:
+        # The same decode failures ``Raster.from_png`` wraps; here they used
+        # to escape as a bare ``zlib.error``/``struct.error``.
+        raise ValueError(f"cannot read {path}: {exc}") from exc
+    return mask_module.from_grey(grey)
 
 
 def crop_to_content(mask: Mask, margin: int = 2) -> Mask:

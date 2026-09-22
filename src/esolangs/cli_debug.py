@@ -12,6 +12,7 @@ from esolangs.cli_args import (
     _pop_cell,
     _pop_options,
     _split_positional,
+    _table_of,
     _timeout_of,
 )
 from esolangs.cli_hints import (
@@ -24,12 +25,13 @@ from esolangs.cli_hints import (
 from esolangs.cli_io import _null_context, _read_program, _read_stdin, _UnboundedNotice
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, TemplateError
+from esolangs.raster import Raster
 from esolangs.tui import breakpoint_for, run_tui
 
 
 def _run_tui_session(
     language: str,
-    program: str,
+    program: str | Raster,
     stdin: str,
     options: dict[str, str],
     cell: tuple[int, int] | None,
@@ -76,6 +78,7 @@ def _debug(rest: list[str]) -> None:
     # Before the positional count, matching ``run``: a forgotten number made
     # the language the timeout's value and the complaint landed on the file.
     limit = _timeout_of(options)
+    table = _table_of(options)
     rest = _split_positional(rest, set(), options_taken)
     _check_count("debug", rest, 2)
     language, path = rest[0], rest[1]
@@ -83,6 +86,13 @@ def _debug(rest: list[str]) -> None:
         if name in options and not _is_int(options[name]):
             _fail(f"{name} must be an integer, got {options[name]!r}")
     cell = _pop_cell(options)
+    # ``_pop_cell`` accepts ``-1`` as an integer, and the value half of the
+    # pair may legitimately be negative; the index half may not -- indexing
+    # from the end is not a place a breakpoint can name.  Uncaught, it
+    # reached ``check_whole`` and ``main``'s catch-all, which reported a bug
+    # in esolangs at exit 70 for a typo.
+    if cell is not None and cell[0] < 0:
+        _fail(f"--break-on-cell index must not be negative, got {cell[0]}")
     # A negative cell index is Python list indexing leaking through: it
     # printed cell 0's history under the name -1, which is a wrong answer
     # rather than an empty one.  Every other negative here is refused.
@@ -167,7 +177,7 @@ def _debug(rest: list[str]) -> None:
     # state up to the fault is the thing they asked to see.
     fault = None
     reason = None
-    warning = _shape_warning(describe(language), stdin, options.get("--table"))
+    warning = _shape_warning(describe(language), stdin, table)
     if warning:
         sys.stderr.write(f"{warning}\n")
     # ``run`` gained this last round and ``debug`` did not, so `debug 123

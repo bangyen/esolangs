@@ -19,9 +19,9 @@ directly with ``python -m``.
 ``describe`` and ``read-answer`` are here because the two facts that decided
 every wrong answer this tool ever handed out -- how a language wants its
 input bits, and where in the output its answer sits -- were readable from
-Python and from nowhere else.  A shell user could run all nine of the
+Python and from nowhere else.  A shell user could run all ten of the
 languages that do not simply print their answer, and could not judge one of
-them: A Painter Ant's answer is a mark on one cell of an eleven-line grid.
+them: A Painter Ant's answer is a mark on one cell of its grid.
 
 Exit codes separate the failures a caller handles differently: **2** is a
 usage error (an unknown command, option, or language -- nothing ran), **1**
@@ -60,6 +60,9 @@ from esolangs.cli_args import (
     _pop_options,
     _pop_width,
     _split_positional,
+)
+from esolangs.cli_args import (
+    _table_of as _table_of,
 )
 from esolangs.cli_debug import _debug
 from esolangs.cli_help import (

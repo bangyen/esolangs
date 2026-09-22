@@ -6,6 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
 
+from esolangs.exceptions import ProgramError
+
 from . import png
 
 Pixel = tuple[int, int, int]
@@ -21,6 +23,7 @@ class Raster:
         default=None, repr=False, compare=False
     )
     _payload: object | None = field(default=None, repr=False, compare=False)
+    _language: str | None = field(default=None, repr=False, compare=False)
 
     def __init__(
         self,
@@ -28,11 +31,13 @@ class Raster:
         *,
         _materialize: Callable[[], Rows] | None = None,
         _payload: object | None = None,
+        language: str | None = None,
     ) -> None:
         """Create a raster from pixels or a lazy language-owned renderer."""
         object.__setattr__(self, "_rows", rows)
         object.__setattr__(self, "_materialize", _materialize)
         object.__setattr__(self, "_payload", _payload)
+        object.__setattr__(self, "_language", language)
         self.__post_init__()
 
     def __post_init__(self) -> None:
@@ -61,6 +66,25 @@ class Raster:
         return hash(self.rows)
 
     @property
+    def language(self) -> str | None:
+        """The language :func:`esolangs.generate` tagged this for, if any.
+
+        A PNG read back from disk carries no tag, exactly as a text program
+        written to a file stops being a ``_Tagged``.  ``check_program`` reads
+        this to refuse a cross-language run, which text programs already do.
+        """
+        return self._language
+
+    def tagged(self, language: str) -> Raster:
+        """Return this raster tagged as generated for ``language``."""
+        return Raster(
+            self._rows,
+            _materialize=self._materialize,
+            _payload=self._payload,
+            language=language,
+        )
+
+    @property
     def rows(self) -> Rows:
         """Return RGB rows, materializing lazy source on first access."""
         if self._rows is None:
@@ -70,8 +94,21 @@ class Raster:
 
     @classmethod
     def from_png(cls, data: bytes) -> Raster:
-        """Decode PNG bytes into raster source."""
-        return cls(tuple(tuple(row) for row in png.read_rgb(data)))
+        """Decode PNG bytes into raster source.
+
+        Untrusted bytes: a corrupt chunk used to escape as a bare
+        ``zlib.error``/``struct.error``/``IndexError``/``MemoryError``.
+        Any decode failure is a bad program, so it becomes a
+        :class:`~esolangs.exceptions.ProgramError`.
+        """
+        try:
+            decoded = png.read_rgb(data)
+            # Inside the guard too: a 0x0 image decodes cleanly and then
+            # ``__post_init__`` rejects the empty rows, which is still a bad
+            # PNG rather than a caller error.
+            return cls(tuple(tuple(row) for row in decoded))
+        except Exception as exc:
+            raise ProgramError(f"not a readable PNG: {exc}") from exc
 
     def to_png(self) -> bytes:
         """Encode this raster as PNG bytes."""

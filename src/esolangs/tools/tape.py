@@ -70,7 +70,7 @@ def brainfuck(truth_table: str) -> str:
     inputs (most significant first).  This is :func:`bf_tree`.  A
     branch-free minterm sum used to compete; once the tree folded constant
     subtrees it won on every table at n <= 4 but the two constant ones,
-    where it costs 271 characters at n == 4 against the minterm's 253
+    where it costs 277 characters at n == 4 against the minterm's 253
     (1.1x, down from 2.5x), not worth a second construction.
     """
     return bf_tree(truth_table)

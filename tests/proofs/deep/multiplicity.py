@@ -3,13 +3,16 @@
 Run:  just proofs   (or python tests/proofs/deep/multiplicity.py)
 
 ``docs/proofs/polynomial.md`` proves "each leading zero buys one root" for an
-exponential sum on *distinct* nodes.  The unconditional language bound is
-``Omega(T**2 / log**2 T)``: the routing floor gives ``m = Omega(T/log T)``
-real instruction *positions*, and the confluent certificate here prices
-``m`` roots with multiplicity as ``Omega(m**2)``, so no distinctness
-hypothesis is needed at that order.  The sharpened routing lemma
-``N' <= 6 * L_real + E`` closes the extra logarithm.
-Equal real roots form contiguous blocks.  Contracting those blocks turns the
+exponential sum on *distinct* nodes.  The language bound is
+``Omega(T**2 / log T)``: the routing lemma ``N' <= 2 + 4 * m_routing`` forces
+``m_routing = Omega(T/log T)``, the block-incidence bound ``m_routing <= 3 *
+L_real`` gives ``L_real = Omega(T/log T)`` distinct root values, and the
+distinct-root theorem prices them.  The routing lemma needs the program to
+consume its input: without that, a routing-free suffix may cross an
+input-dependent number of reads, and the decoded counterexample reads a
+variable number of bits, so it is not a program for a fixed-arity table.
+Equal real roots form contiguous blocks.
+Contracting those blocks turns the
 noncrossing bracket matching into an outerplanar incidence graph; one opener
 routes per block and one closer per incidence.  ``_check_routing_bound`` pins
 the executed facts, including the counterexample that makes the incidence --
@@ -23,11 +26,13 @@ The confluent analogue is::
 and the claim is the *same* tail bound with the product read over the expanded
 multiset (each ``y_i`` repeated ``e_i`` times).  This module does not prove the
 limit step -- that is the Hermite interpolation argument in
-``notes/multiplicity/CONFLUENT_PROOF.md`` -- it pins the algebraic content:
-the base case is exact, the general bound holds on every certificate here, the
-slack assembly's threshold really is the product over the top units, and the
-integer-root divisibility really does give the root-2 term.  Together those
-give ``mass(F) >= (log10 2)/32 * m**2`` for every multiple.
+``docs/proofs/coefficient-mass.tex``, Proposition 3.6 -- it pins the algebraic
+content: the base case is exact, the general bound holds on every certificate
+here, the slack assembly's threshold really is the product over the top units,
+and the repeated-root mass floor holds on the products and multiples checked.
+The language bound follows from the distinct-root theorem, the routing lemma,
+and the block-incidence lemma; the confluent certificate is not on the
+critical path to it.
 """
 
 from __future__ import annotations
@@ -77,15 +82,26 @@ def _u(nodes, coeffs, d: int) -> Fraction:
 
 
 def _A(k: int, y: Fraction) -> Fraction:
-    """``sum_{d>=0} d^k y^d`` for ``k <= 3``, exactly."""
-    o = 1 - y
-    if k == 0:
-        return 1 / o
-    if k == 1:
-        return y / o**2
-    if k == 2:
-        return y * (1 + y) / o**3
-    return y * (1 + 4 * y + y * y) / o**4
+    """``sum_{d>=0} d^k y^d``, exactly, for every ``k``.
+
+    Recurrence ``S_k = y (d/dy) S_{k-1}`` kept as
+    ``S_k = N_k(y) / (1 - y)**(k + 1)``.  A closed form stopping at ``k == 3``
+    would silently use the ``k == 3`` branch for a multiplicity above three.
+    """
+    numerator = [Fraction(1)]
+    for j in range(1, k + 1):
+        derivative = [i * c for i, c in enumerate(numerator)][1:]
+        base = [Fraction(0)] * max(len(derivative) + 1, len(numerator))
+        for i, c in enumerate(derivative):
+            base[i] += c
+            base[i + 1] -= c
+        merged = [Fraction(0)] * max(len(base), len(numerator))
+        for i, c in enumerate(base):
+            merged[i] += c
+        for i, c in enumerate(numerator):
+            merged[i] += j * c
+        numerator = [Fraction(0), *merged]
+    return sum(c * y**e for e, c in enumerate(numerator)) / (1 - y) ** (k + 1)
 
 
 def _tail(nodes, coeffs, zeros) -> Fraction:
@@ -133,8 +149,8 @@ def _mass(coeffs) -> int:
 
 
 #: The certificates checked.  Small enough to stay inside the band budget, wide
-#: enough to see one repeated node, two repeated nodes, a node at 1/2, and a
-#: displaced zero set.
+#: enough to see one repeated node, two repeated nodes, a node at 1/2, a
+#: displaced zero set, and multiplicities past the old ``k == 3`` closed form.
 _CERTIFICATES = [
     ([(Fraction(1, 2), 2)], [1]),
     ([(Fraction(1, 3), 3)], [1, 3]),
@@ -147,6 +163,9 @@ _CERTIFICATES = [
         [(Fraction(1, 6), 2), (Fraction(1, 4), 2), (Fraction(1, 2), 2)],
         [1, 2, 4, 5, 7],
     ),
+    ([(Fraction(1, 4), 4)], [1, 2, 4]),
+    ([(Fraction(1, 7), 6)], [1, 2, 3, 5, 7]),
+    ([(Fraction(1, 9), 5), (Fraction(1, 4), 1)], [1, 2, 4, 5, 6]),
 ]
 
 
@@ -199,7 +218,11 @@ def _check_assembly(failures: list[str]) -> int:
                 trimmed.append((y, e - take))
         sub = sorted(trimmed)
         c = sum(e for _, e in sub)
-        zeros = list(range(1, c))  # U = {1..u} subsets the early fill
+        # ``U = {m-2u+1, ..., m-u}`` leaves the gap at ``m-2u``, so the
+        # leading run is exactly ``m-2u-1`` and the certificate is tested at
+        # its sharp point, not on an all-leading set (where it is trivial).
+        zeros = list(range(1, m - 2 * u)) + list(range(m - 2 * u + 1, m - u + 1))
+        assert len(zeros) == c - 1
         coeffs = _solve(sub, zeros)
         t = _tail(sub, coeffs, zeros)
         top = _expanded(nodes)[: m - 2 * u]
@@ -213,26 +236,31 @@ def _check_assembly(failures: list[str]) -> int:
 
 
 def _check_mass(failures: list[str]) -> int:
-    """Integer-root divisibility and the final ``c m**2`` bound, exactly."""
-    from math import log10
+    """Spot-check that repeated-root products have quadratic mass.
 
+    ``mass(F) >= m*m/8`` for a monic multiple of ``prod (x - r_i)**e_i`` is a
+    loose diagnostic, not the language bound; the cases use ``m >= 16`` so the
+    floor is above the Descartes ``m + 1`` term and the assertion is not
+    automatic.  A multiple with a small cofactor is checked as well as the
+    product itself.
+    """
     count = 0
-    for roots in ([(2, 3)], [(3, 4)], [(2, 2), (3, 2)]):
-        f = [1]
+    for roots in ([(2, 16)], [(2, 24)], [(2, 8), (3, 8), (5, 8)]):
+        product = [1]
         for r, e in roots:
             for _ in range(e):
-                f = _mul(f, [1, -r])
-        asc = list(reversed(f))
-        for low in range(sum(e for _, e in roots)):
-            div = 1
-            for r, e in roots:
-                if e > low:
-                    div *= r ** (e - low)
-            if asc[low] % div:
-                failures.append(f"divisibility fails {roots} low={low}")
-        mass, m = _mass(f), sum(e for _, e in roots)
-        if mass < (log10(2) / 32) * m * m:
-            failures.append(f"mass {mass} < c m^2 for {roots}")
+                product = _mul(product, [-r, 1])
+        m = sum(e for _, e in roots)
+        threshold = m * m / 8
+        if _mass(product) < threshold:
+            failures.append(f"product mass {_mass(product)} < {threshold} for {roots}")
+        for cofactor in ([-2, 1], [-3, 1], [6, -5, 1]):
+            multiple = _mul(product, cofactor)
+            if _mass(multiple) < threshold:
+                failures.append(
+                    f"multiple mass {_mass(multiple)} < {threshold} "
+                    f"for {roots} * {cofactor}"
+                )
         count += 1
     return count
 
@@ -284,13 +312,14 @@ def _check_loops(failures: list[str]) -> int:
 
 
 def _check_routing(failures: list[str]) -> int:
-    """Pin the executed facts behind the sharpened routing lemma.
+    """Pin the executed facts behind the routing lemma.
 
-    ``docs/proofs/polynomial.md`` proves ``N'(k+1) <= 2m + E(k)`` with ``m`` the real
-    instruction *positions* (the routing floor), which with the confluent
-    certificate gives ``Omega(T**2 / log**2 T)``.  The block-incidence bound
-    sharpens this to ``Omega(T**2 / log T)``.  This check pins the
-    per-instruction facts the routing floor rests on:
+    ``docs/proofs/polynomial.md`` proves ``N'(k+1) <= 2 + 4 * m_routing`` for
+    programs that consume their input: the routing-free continuation from the
+    last routing position is deterministic and has a fixed read count to halt,
+    so the cursor at the ``k``th read is fixed.  The block-incidence bound
+    replaces ``m_routing`` by ``3 * L_real``, giving the language bound.  This
+    check pins the per-instruction facts the lemma rests on:
 
     * every real instruction has at most two successors, fixed by its bracket
       and independent of the register;
@@ -373,18 +402,70 @@ def _check_routing(failures: list[str]) -> int:
         if len(values) > len(reals):
             failures.append(f"dense n={n}: L_real={len(values)} > m={len(reals)}")
         count += 1
+
+    # Positive control for the repaired lemma: the generated machine consumes
+    # exactly n inputs on every path, and its cursor count obeys
+    # D_k <= 1 + 2*m_routing.  A variable-read list would fail the first check
+    # and is exactly what the counterexample is.
+    import itertools
+
+    from esolangs.interpreters.register_based.polynomial import _parse_program
+
+    def run_all(instrs: list[list[int]], n: int):
+        pairs = _bracket_pairs(instrs)
+        dk: dict[int, set[int]] = {}
+        taken: dict[int, set[int]] = {}
+        for bits in itertools.product((0, 1), repeat=n):
+            reg, ind, pos, k, steps = 0, 0, 0, 0, 0
+            while ind < len(instrs) and steps < 500:
+                steps += 1
+                ins = instrs[ind]
+                one = ins[0]
+                two = ([*ins[1:], 0])[0]
+                byte = None
+                if two and not one and two - 1:
+                    if pos >= n:
+                        return None
+                    byte = bits[pos] + 48
+                    pos += 1
+                    dk.setdefault(k, set()).add(ind)
+                    k += 1
+                if len(ins) == 1:
+                    taken.setdefault(ind, set()).add(
+                        _advance((reg, ind), instrs, None, pairs)[0][1]
+                    )
+                (reg, ind), _ = _advance((reg, ind), instrs, byte, pairs)
+            if ind < len(instrs) or k != n:
+                return None
+        return dk, taken
+
+    for n in (2, 3):
+        cleaned = re.sub(r"[^\df(x)=+-^]", "", polynomial(dense(n)))
+        instrs = [list(ins) for ins in _parse_program(cleaned)]
+        result = run_all(instrs, n)
+        if result is None:
+            failures.append(f"dense n={n} does not consume exactly n inputs")
+            continue
+        dk, taken = result
+        m_routing = sum(1 for s in taken.values() if len(s) > 1)
+        maxd = max((len(s) for s in dk.values()), default=0)
+        if maxd > 1 + 2 * m_routing:
+            failures.append(
+                f"dense n={n}: D={maxd} > 1 + 2*{m_routing} routing positions"
+            )
+        count += 1
     return count
 
 
 def _check_routing_bound(failures: list[str]) -> int:
-    """Pin the sharpened routing bound ``N' <= 6 * L_real + E``.
+    """Pin the facts around the sharpened routing bound.
 
-    The routing floor gives ``N' <= 2m + E`` on real *positions*; the sharper
-    ``N' <= 2 * m_routing + E`` counts only positions that take both
-    successors.  A proposed route -- ``m_routing <= 3 * L_real`` via "at most
+    The routing lemma gives ``N' <= 2 + 4 * m_routing``, and the block
+    structure gives ``m_routing <= 3 * L_real``, hence ``N' <= 12 * L_real +
+    2``.  A proposed shorter route -- ``m_routing <= 3 * L_real`` via "at most
     one routing position per (value, condition)" -- is **false**: this check
     runs the refuting table and confirms two routing closers share one value
-    and one condition.  What survives and is pinned here:
+    and one condition.  What holds and is pinned here:
 
     * a back-edge's target is ``opener + 1``; if that is itself a closer, a
       condition-true jump self-loops, so a halting program never routes such a
@@ -546,6 +627,58 @@ def _check_routing_bound(failures: list[str]) -> int:
     if len(routing) > 3 * real_blocks - 3:
         failures.append("routing positions exceeded block-incidence bound")
     count += 1
+
+    # General model: without input consumption the read level at the last
+    # routing position is free, so the kth read is the jth read of the fixed
+    # continuation for some j <= k, giving D_k <= 1 + 2*k*m_routing.  The doc's
+    # counterexample violates the tight bound and satisfies the relaxed one.
+    counterexample = [
+        [5, 1],
+        [5],
+        [0, 2],
+        [48, 2],
+        [2],
+        [0, 2],
+        [0, 2],
+        [0, 2],
+        [0, 2],
+        [0, 1],
+    ]
+    ce_pairs = _bracket_pairs(counterexample)
+    dk: dict[int, set[int]] = {}
+    ce_taken: dict[int, set[int]] = {}
+    for r in range(256):
+        bits = [(r >> (7 - i)) & 1 for i in range(8)]
+        reg, ind, pos, k, steps = 0, 0, 0, 0, 0
+        while ind < len(counterexample) and steps < 500:
+            steps += 1
+            ins = counterexample[ind]
+            one = ins[0]
+            two = ([*ins[1:], 0])[0]
+            byte = None
+            if two and not one and two - 1:
+                byte = 48 + bits[pos] if pos < 8 else -1
+                if pos < 8:
+                    pos += 1
+                dk.setdefault(k, set()).add(ind)
+                k += 1
+            if len(ins) == 1:
+                ce_taken.setdefault(ind, set()).add(
+                    _advance((reg, ind), counterexample, None, ce_pairs)[0][1]
+                )
+            (reg, ind), _ = _advance((reg, ind), counterexample, byte, ce_pairs)
+    ce_routing = sum(1 for s in ce_taken.values() if len(s) > 1)
+    if ce_routing != 1:
+        failures.append(f"counterexample m_routing changed: {ce_routing}")
+    if len(dk.get(3, ())) <= 1 + 2 * ce_routing:
+        failures.append("counterexample no longer violates the tight bound")
+    for k, cursors in dk.items():
+        relaxed = 1 + 2 * (k + 1) * ce_routing
+        if len(cursors) > relaxed:
+            failures.append(
+                f"counterexample k={k + 1}: D={len(cursors)} > relaxed {relaxed}"
+            )
+    count += 1
     return count
 
 
@@ -559,7 +692,7 @@ def main() -> int:
     bound = _check_routing_bound(failures)
     print(f"  confluent certificates checked exactly : {certs}")
     print(f"  slack-assembly thresholds checked      : {asm}")
-    print(f"  divisibility + mass(f) >= c m^2 cases  : {mass}")
+    print(f"  repeated-root mass floor cases         : {mass}")
     print(f"  routing-floor bracket facts checked    : {loops}")
     print(f"  sharpened-routing facts checked        : {routing}")
     print(f"  routing block-incidence bound          : {bound}")

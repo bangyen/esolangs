@@ -309,6 +309,15 @@ class TestModulous:
         with pytest.raises(ValueError, match="missing operand"):
             run("[JMP]", IO())
 
+    def test_push_string_without_quotes_is_rejected(self) -> None:
+        """``[PSH STR hello]`` has no quoted section to push.
+
+        ``mod.split('"')[1]`` on it raised a bare ``IndexError`` past
+        ``run``'s ``ValueError`` boundary.
+        """
+        with raises_message(ValueError, "missing quoted string in PSH STR hello"):
+            run("[PSH STR hello]", IO())
+
     def test_missing_operand_message_quotes_the_whole_command(self) -> None:
         """The message echoes the command with its tokens spaced normally.
 

@@ -92,7 +92,10 @@ def _factored(masks: list[int], constant: int, n: int) -> str:
     ]
     if constant:
         terms.insert(0, "1")
-    result = combine(terms, "^")
+    # The all-zero table has no terms and no constant, so ``combine`` would
+    # index an empty list.  It is the constant program, same as the compact
+    # path; only the width check sent it here.
+    result = combine(terms, "^") if terms else "0"
     return "\n".join([*lines, f"% 0 {result}", "$", ""])
 
 

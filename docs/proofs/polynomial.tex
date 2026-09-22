@@ -3,6 +3,13 @@
 \usepackage[a4paper,margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsthm,mathtools}
 \usepackage[hidelinks]{hyperref}
+\hypersetup{
+  pdfauthor={Bangyen Pham},
+  pdftitle={The Worst-Case Text Complexity of the Polynomial Esoteric Programming Language},
+  pdfsubject={Descriptional complexity of Boolean functions in Polynomial},
+  pdfkeywords={Polynomial language, descriptional complexity, Boolean functions, decision diagrams, polynomial roots},
+  pdflang={en-US}
+}
 
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{lemma}[theorem]{Lemma}
@@ -15,13 +22,12 @@
 
 \newcommand{\R}{\mathbb R}
 \newcommand{\Z}{\mathbb Z}
-\newcommand{\N}{\mathbb N}
-\newcommand{\supp}{\operatorname{supp}}
-\newcommand{\Tail}{\operatorname{Tail}}
-\newcommand{\sgn}{\operatorname{sgn}}
 
-\title{A Tight Text-Complexity Bound for the Polynomial Language}
-\author{The \texttt{esolangs} project}
+\title{The Worst-Case Text Complexity of the Polynomial Language}
+\author{\shortstack{Bangyen Pham\\
+\small Independent Researcher\\
+\small\href{mailto:bangyenp@gmail.com}{\texttt{bangyenp@gmail.com}}\\
+\small\href{https://orcid.org/0009-0006-9928-2088}{ORCID: 0009-0006-9928-2088}}}
 \date{September 2026}
 
 \begin{document}
@@ -31,71 +37,147 @@
 In the Polynomial esoteric programming language, the roots of an
 integer polynomial encode the instructions of a one-register machine, while
 the source text lists the polynomial's expanded coefficients.  We prove that
-some Boolean functions with truth-table length $T$ require
-$\Omega(T^2/\log T)$ source characters in every Polynomial program,
-independently of the program's degree, operand signs, and additional roots.
-An explicit residual-DAG construction gives the matching
-$O(T^2/\log T)$ upper bound for every Boolean function.  The main algebraic
-ingredient is a sharp $\ell^1$ bound for exponential sums with prescribed
-integer zeros.  It implies that every real polynomial divisible by $L$
-distinct prime-power roots has coefficient mass
-$\Omega(L^2\log L)$.  A routing argument, sharpened by an outerplanar
-block-incidence bound, forces $L=\Omega(T/\log T)$ distinct real roots in a
-program for a maximal-width table.
+every Boolean function with truth-table length $T$ has a Polynomial program of
+length $O(T^2/\log T)$, and that some require
+$\Omega(T^2/\log T)$ source characters in every program that consumes its
+input, independently of the program's degree, operand signs, and additional
+roots.
+The explicit residual-DAG construction gives the upper bound.  A companion
+coefficient-mass theorem implies that every real polynomial divisible by $L$
+distinct prime-power roots and having leading coefficient of absolute value
+at least one has logarithmic coefficient mass
+$\Omega(L^2\log L)$.  A routing argument, sharpened by an
+outerplanar block-incidence bound, forces $L=\Omega(T/\log T)$ distinct real
+roots in a program for a maximal-width table, so the worst-case text
+complexity is $\Theta(T^2/\log T)$ in this model.  Without the consumption
+hypothesis the same argument gives the weaker $\Omega(T^2/\log^3 T)$.
 \end{abstract}
 
-\section{The language and the result}
+\noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
+ordered binary decision diagrams; polynomial roots; esoteric programming
+languages.
+
+\noindent\textbf{2020 Mathematics Subject Classification.} Primary 68Q17;
+secondary 94D10, 11C08.
+
+\section{The language and the result}\label{sec:model}
 
 A Polynomial source is the expanded form
 \[
   f(x)=\sum_{j=0}^{D} f_jx^j,\qquad f_j\in\Z.
 \]
-The interpreter factors $f$ over the integers and orders the recognised
+It is serialized as \texttt{f(x) = } followed by nonzero monomials in
+descending degree, with decimal coefficients and exponents, as in the
+language specification~\cite{polynomial-spec}; whitespace is permitted
+between tokens.  Throughout, ``program'' means a source in this specified
+expanded form; permissive implementation extensions are outside the model.
+The interpreter factors $f$ over the integers and orders the recognized
 roots by their associated primes.  A positive real root $p^v$ encodes a
 control-flow instruction; a conjugate pair $a\pm p^b i$ encodes a register
 instruction.  Unrecognised roots are ignored, so a source may be any integer
-multiple of the product of its instruction factors.  Repeated recognised
+multiple of the product of its instruction factors.  Repeated recognized
 roots produce repeated instructions.
 
+As a minimal example, $f(x)=x^2+4$ has roots $\pm2i$.  The imaginary
+magnitude $2=2^1$ selects the first register instruction for the prime $2$,
+while the real part $0$ supplies its operand.  This instruction outputs the
+initial register value, the zero byte.  In general the interpreter follows
+the same pipeline:
+\[
+ \text{expanded coefficients}\longrightarrow
+ \text{recognized roots}\longrightarrow
+ \text{sorted instructions}\longrightarrow
+ \text{execution}.
+\]
+
 The machine has an integer register and an instruction cursor.  Its input
-instruction overwrites the register with the next input bit.  Real-root
-instructions are the bracket-like control-flow operations; complex-root
-instructions update the register.  The precise instruction table is not
-needed below.  We use only the following properties of the interpreter.
+instruction overwrites the register with the next input symbol, $48+b$ for a
+Boolean bit $b$.  Real-root instructions are the bracket-like control-flow
+operations; complex-root instructions update the register.  The upper bound
+uses input, output, addition and multiplication by an integer, integer floor
+division, and ``if positive'' with its closing instruction.  The lower bound
+uses only the following structural properties.
 
 \begin{enumerate}
+\item Input is consumed as an ordered stream: the $j$-th read instruction
+receives the $j$-th input bit, whatever the path taken.
 \item Between two input reads the complete state is the pair consisting of
 the register and the instruction cursor.
-\item Each real instruction root is a positive power of the prime assigned to
-its position in the decoded instruction list.
+\item Each real instruction root is one of the first eight positive powers of
+its associated prime.  One prime may supply several consecutive positions.
 \item Equal real roots occur in one contiguous block after root sorting.
 \item The bracket matching is noncrossing.
 \end{enumerate}
 
-The length $|f|$ of a source is the number of characters in its expanded
-decimal representation.  Its coefficient-digit mass is
+For Boolean computation, put $T=2^n$ and supply each bit as a separate line
+containing its ASCII digit.  A program computes
+$t=(t_0,\ldots,t_{T-1})\in\{0,1\}^{2^n}$ if, on every
+$b_1\cdots b_n\in\{0,1\}^n$ in lexicographic order, it terminates and emits
+exactly the character $t_{(b_1\cdots b_n)_2}$, with zero-based subscripts.
+Reads consume the input stream in order, and a program for an $n$-input table
+consumes the whole input: every execution performs exactly $n$ reads before it
+halts.  This is the model the upper-bound construction uses, and it is what
+the routing argument below needs; a program that halted after fewer reads
+would compute a function constant on the subcube of unread inputs.
+The length $|f|$ is the total
+number of characters in the shortest valid expanded serialization of $f$;
+fixed punctuation and optional whitespace affect only lower-order terms.
+Its coefficient-digit mass is
 \[
   M(f)=\sum_{j:f_j\ne0}\bigl(1+\lfloor\log_{10}|f_j|\rfloor\bigr).
 \]
-Plainly $|f|\ge M(f)$.  Let $T=2^n$ be the length of the truth table of an
-$n$-input Boolean function.
+Every nonzero coefficient appears in a monomial whose serialization supplies
+at least $1+\lfloor\log_{10}|f_j|\rfloor$ characters, so $|f|\ge M(f)$.
+The worst-case text complexity is the maximum, over these tables, of the
+minimum $|f|$ of a program computing the table.
+All unqualified logarithms are natural.
 
 \begin{theorem}[Main theorem]\label{thm:main}
-There are $n$-input Boolean functions for which every Polynomial program has
-length
-\[
-  \Omega\!\left(\frac{T^2}{\log T}\right).
-\]
 Every $n$-input Boolean function has a Polynomial program of length
-$O(T^2/\log T)$.  Thus the worst-case Polynomial text complexity is
+$O(T^2/\log T)$, and there are $n$-input Boolean functions for which every
+program that consumes its input has length $\Omega(T^2/\log T)$.  Hence the
+worst-case text complexity in the model of Section~\ref{sec:model} is
 $\Theta(T^2/\log T)$.
 \end{theorem}
 
-The lower bound has two independent parts.  Section~\ref{sec:routing} forces
-$\Omega(T/\log T)$ distinct positive roots.  Sections~\ref{sec:tail}
-and~\ref{sec:mass} show that every polynomial containing those roots has
-coefficient mass $\Omega(T^2/\log T)$.  Section~\ref{sec:upper} supplies the
-matching construction.
+\begin{remark}[Input consumption is needed]\label{rem:routing-gap}
+The bound $D_k\le1+2m_{\rm route}$ of Section~\ref{sec:routing} is false for
+a decoded program that may stop reading early.  The decoded list
+\[
+[5,1],[5],[0,2],[48,2],[2],[0,2],[0,2],[0,2],[0,2],[0,1]
+\]
+has
+$m_{\rm route}=1$ and four distinct cursors at its fourth read: its loop reads
+an input-dependent number of bits, so different executions reach the last
+routing position at different read levels and the routing-free suffix lands
+the fourth read at different offsets.  Such a list performs a different
+number of reads on different inputs, so it is not a program for an $n$-input
+table in the model of Section~\ref{sec:model}, and the routing proof, which
+uses the exact read count, does not apply to it.  Any variable-read list is
+excluded the same way.  Corollary~\ref{cor:general} covers the general model
+with one extra logarithm: the free read level lets one routing position and
+successor place the $k$th read at any of $k$ offsets, so $D_k\le1+2k\,m_{\rm
+route}$.
+\end{remark}
+
+The lower bound has two independent parts.
+Section~\ref{sec:routing} forces $\Omega(T/\log T)$ distinct positive
+roots.
+Section~\ref{sec:mass} applies
+the companion coefficient-mass theorem.  Section~\ref{sec:upper} supplies
+the matching construction.  Informally, the routing argument says that a
+short instruction alphabet cannot distinguish enough residual truth tables;
+the coefficient-mass theorem then says that supporting the required roots
+forces many coefficient digits.
+
+Residual DAGs are reduced ordered binary decision diagrams under a fixed
+variable order~\cite{bryant}; classical results place the size of an optimal
+diagram for almost every Boolean function at the same
+$\Theta(T/\log T)$ scale~\cite{wegener,gps}.  Lemma~\ref{lem:maximal-width}
+uses a tailored simultaneous width statistic, and the block-incidence
+argument translates it into distinct Polynomial roots.  The companion
+manuscript relates the displaced-zero comparison and coefficient-order
+statistics to the reduced-height literature~\cite{coefficient-mass}.
 
 \section{Routing forces distinct real roots}\label{sec:routing}
 
@@ -127,13 +209,18 @@ the same probability.
 If $N'(k+1)-E(k)<q/2$, then either at least $q/4$ parents have equal children
 or the child occupancy experiment has at least $q/4$ repetitions (constant
 children count as repetitions against either constant string).  A binomial
-tail bounds the first event by $\exp(-\Omega(qn))$.  For the second, the
-expected number of colliding child pairs is $O(q/n)$; the standard factorial-
-moment bound for the occupancy problem gives
+tail bounds the first event by $\exp(-\Omega(qn))$.  For the second, put
+$B=2^{R/2}\ge T$ and $t=\lceil q/4\rceil$.  If at least $t$ repetitions
+occur, some $t$ children each equal an earlier child.  Choosing those children
+and one earlier witness for each gives
 \[
   \Pr\{\text{at least }q/4\text{ repetitions}\}
-  \le \exp(-\Omega(q\log n)).
+  \le \binom{2q}{t}(2q/B)^t
+  \le \left(\frac{4e q^2}{tB}\right)^t
+  =\exp(-\Omega(q\log n)),
 \]
+because $q/B=O(1/n)$.  Constant strings are two ordinary occupancy
+bins, so the same bound includes them.
 There are only $n!$ input orders, and
 $\log(n!)=O(n\log n)=o(q\log n)$, so with positive probability every order has
 $N'(k+1)-E(k)\ge q/2$.  Since $q=\Theta(T/\log T)$, such a table satisfies
@@ -144,21 +231,36 @@ We call any table satisfying Lemma~\ref{lem:maximal-width}
 \emph{maximal-width}.
 
 Call an instruction position \emph{routing} if both of its possible
-successors occur on reachable executions between two consecutive reads.
-For a fixed level, follow every reachable execution from one read to the
-next.  Charge a resulting nonconstant child to the successor taken at the
-last routing position on its path.  After that successor every reachable
-real position has only one successor, so the program location determines a
-unique next-read cursor; the read overwrites the register, and hence that
-cursor determines the residual.  Thus a routing position receives at most
-one distinct child per successor.  A path containing no routing position has
-the same next-read cursor for both input values and belongs to a residual
-counted by $E(k)$.  Therefore
-\begin{equation}\label{eq:basic-routing}
-  N'(k+1)\le 2m_{\rm route}+E(k),
+successors occur on reachable executions, and
+let $m_{\rm route}$ be the number of routing real-instruction positions.  For
+a fixed level, let $D_k$ be the number of distinct cursors at which the $k$th
+read can occur over all executions that reach it.  Before the first read
+there is no input, so $D_1=1$.
+
+A residual after $k$ reads is determined by its cursor together with the
+register, and a read leaves the register at $48$ or $49$; hence
+\begin{equation}\label{eq:residual-cursor}
+  N'(k)\le 2D_k .
 \end{equation}
-where $m_{\rm route}$ is the number of routing real-instruction positions.
-The factor two allows the two outcomes of each routing position.
+Follow an execution back from its $k$th read.  If its path contains a routing
+position, let $(r,s)$ be the last one and the successor taken there.  From
+$r$ on every real position is non-routing, so its successor is forced, while
+reads and register instructions do not branch; the continuation is a fixed
+cursor sequence, independent of the register, and reads a fixed number
+$\rho(r,s)$ of further symbols before halting.  The execution consumes its
+input, so it reads exactly $n$ symbols and reached $r$ after $n-\rho(r,s)$ of
+them; the $k$th read therefore sits at the fixed offset
+$k-(n-\rho(r,s))$ of that fixed continuation, and its cursor is determined by
+$(r,s)$.  If the path contains no routing position it is
+routing-free throughout, and the cursor is the deterministic image of the
+initial cursor.  Thus every cursor at the $k$th read is either that single
+image or one of the at most $2m_{\rm route}$ cursors fixed by a routing
+position together with a successor, so
+\begin{equation}\label{eq:basic-routing}
+  D_k\le 1+2m_{\rm route},
+  \qquad\text{and hence}\qquad
+  N'(k+1)\le 2+4m_{\rm route}.
+\end{equation}
 
 It is not enough to count positions: repeated roots are legal.  We therefore
 bound routing positions by the number of distinct root values.
@@ -169,7 +271,7 @@ then
 \[
   m_{\rm route}\le 3L
   \quad\text{and hence}\quad
-  N'(k+1)\le 6L+E(k).
+  N'(k+1)\le 12L+2.
 \]
 \end{lemma}
 
@@ -179,8 +281,11 @@ Draw each matched control-flow pair as an arc above the instruction line and
 contract each block to a vertex.  The arcs are noncrossing, so after parallel
 edges are identified the block-incidence graph is a simple outerplanar graph.
 There are no loops: an opener and closer have different instruction codes,
-whereas equal root values decode to the same code.  It therefore has at most
-$2L-3$ edges.
+whereas equal root values decode to the same code.  It is also bipartite,
+with opener blocks on one side and closer blocks on the other.  A simple
+bipartite outerplanar graph on $L\ge2$ vertices has at most $2L-3$ edges by
+Euler's formula, since every bounded face has length at least four and the
+outer face has length at least two.
 
 At most one opening instruction routes in each block.  Indeed, after the
 first opener in a block, execution can enter the next equal opener only by
@@ -197,8 +302,7 @@ after the preceding closer, again with that condition false; all intervening
 positions are equal real tests and do not change the register.  Thus each
 incidence is charged at most once.  For $L\ge2$ there are at most $L$ routing openers
 and at most $2L-3$ routing closers; for $L=1$ the displayed weaker bound is
-immediate.  Substitute this in
-\eqref{eq:basic-routing}.
+immediate.  Substitute this in \eqref{eq:basic-routing}.
 \end{proof}
 
 \begin{corollary}\label{cor:roots}
@@ -210,240 +314,38 @@ $L=\Omega(T/\log T)$ distinct positive real instruction roots.
 Combine \eqref{eq:residual-width} with Lemma~\ref{lem:block}.
 \end{proof}
 
-\section{A tail theorem for exponential sums}\label{sec:tail}
+\section{Coefficient mass from prescribed roots}\label{sec:mass}
 
-The coefficient bound rests on a dual certificate.  We first prove the
-analytic statement that controls its norm.
+The companion paper develops the exponential-sum certificates and proves the
+following degree-independent statement~\cite[Corollary~3.3]{coefficient-mass}.
 
-\begin{theorem}[Each leading zero buys one root]\label{thm:tail}
-Let
+Write
 \[
-  \rho_1>\cdots>\rho_c\ge2,
-  \qquad y_i=\rho_i^{-1},
-\]
-and let $Z\subset\N_{>0}$ have $c-1$ elements.  Suppose that
-\[
-  u_d=\sum_{i=1}^{c}a_i y_i^d,
-  \qquad u_0=1,
-  \qquad u_z=0\quad(z\in Z).
-\]
-Let $f$ be maximal such that $\{1,\ldots,f\}\subseteq Z$.  Then
-\begin{equation}\label{eq:tail-bound}
-  \Tail(u):=\sum_{d\ge1}|u_d|
-  \le \prod_{i=1}^{f+1}\frac{y_i}{1-y_i}
-  =\frac{1}{\prod_{i=1}^{f+1}(\rho_i-1)}.
-\end{equation}
-Equality holds exactly when $Z=\{1,\ldots,c-1\}$.
-\end{theorem}
-
-We use the elementary zero bound that a nonzero exponential sum on $r$
-distinct positive nodes has at most $r-1$ real zeros, counted with
-multiplicity.  Divide by the smallest node to the real power and apply
-Rolle's theorem inductively.  In particular, an $r$-node sum with $r-1$
-specified zeros has no others and changes sign at each specified zero.
-
-\begin{proof}[Proof of Theorem~\ref{thm:tail}]
-Induct on the number $c-1-f$ of displaced zeros.
-
-If $Z=\{1,\ldots,c-1\}$, put
-\[
-  U(x)=\sum_{d\ge0}u_dx^d
-      =\frac{N(x)}{\prod_i(1-y_ix)},
-  \qquad \deg N\le c-1.
-\]
-The first $c-1$ nonconstant coefficients of $U$ vanish.  Comparing the
-coefficient of $x^c$ gives, for $d\ge c$,
-\[
-  u_d=(-1)^{c+1}\Bigl(\prod_i y_i\Bigr)h_{d-c}(y_1,\ldots,y_c),
-\]
-where $h_j$ is the complete homogeneous symmetric polynomial.  These terms
-have one sign, and therefore
-\[
-  \Tail(u)=\Bigl(\prod_i y_i\Bigr)
-            \sum_{j\ge0}h_j(y_1,\ldots,y_c)
-          =\prod_i\frac{y_i}{1-y_i}.
+  \Lambda(F)=\sum_{j:f_j\ne0}\log^+|f_j|.
 \]
 
-Now assume that a zero is displaced.  Set $z=\max Z$,
-$Z'=Z\setminus\{z\}$, and $m=\max Z'$, with $m=0$ if $Z'$ is empty.  Let
-$F$ be the exponential sum on $y_1,\ldots,y_{c-1}$ satisfying
-$F_0=1$ and $F|_{Z'}=0$.  Let $G$ be the sum on all $c$ nodes satisfying
-$G|_{\{0\}\cup Z'}=0$ and $G_z=1$.  Uniqueness in the corresponding
-Vandermonde systems gives
-\[
-  u=F+\lambda G,qquad \lambda=-F_z.
-\]
-The induction hypothesis gives the desired bound for $F$, on the same first
-$f+1$ roots.  It remains to show $\Tail(u)\le\Tail(F)$.
-
-The zero bound fixes all signs.  Put $\eta=\sgn(F_z)$ and
-$\mu=|F_z|$.  Away from $Z'$, the two sequences $F$ and $G$ have constant
-relative sign $\eta$, while $u$ changes sign at $z$ and $F$ does not.  Hence
-\[
- |u_d|=\bigl||F_d|-\mu|G_d|\bigr|,
-\]
-with $|F_d|>\mu|G_d|$ below $z$ and the reverse inequality above $z$.
-Writing
-\[
-  \Gamma_V(z)=\frac{\sum_{d\ge z}|V_d|}{|V_z|},
-\]
-the resulting exact split of the two tails reduces
-$\Tail(u)\le\Tail(F)$ to
-\begin{equation}\label{eq:gamma-target}
-  \Gamma_G(z)\le2\Gamma_F(z).
-\end{equation}
-
-We prove the stronger estimate
-\begin{equation}\label{eq:gamma-strong}
-  \Gamma_G(z)\le\frac{\Gamma_F(z)}{1-y_c}.
-\end{equation}
-Let $\widehat F_d=\eta F_d>0$ for $d>m$ and
-$E_d=G_d-y_cG_{d-1}$.  The latter is an exponential sum on the first
-$c-1$ nodes.  The required comparison is
-\begin{equation}\label{eq:drive}
-  \frac{E_d}{\widehat F_d}
-  \le\frac{G_z}{\widehat F_z}
-  \qquad(d\ge z>m).
-\end{equation}
-Indeed, induction in the recurrence $G_d=y_cG_{d-1}+E_d$ then gives
-\[
-  \frac{G_{z+t}}{G_z}
-  \le\sum_{j=0}^{t}y_c^{t-j}
-       \frac{\widehat F_{z+j}}{\widehat F_z}.
-\]
-All $G_d$ for $d\ge z$ are positive.  Summing in $t$ proves
-\eqref{eq:gamma-strong}.  Since $y_c\le1/2$, this implies
-\eqref{eq:gamma-target}.
-
-It remains to verify \eqref{eq:drive}.  Write
-\[
- A=\{0\}\cup Z'=\{a_1=0<\cdots<a_{c-1}=m\},\qquad
- \sigma=\frac{G_{m+1}}{\widehat F_{m+1}},
-\]
-and define the $(c-1)$-node exponential sum
-\[
-  \Delta_d=\sigma\widehat F_d-E_d.
-\]
-It is either identically zero or has at most $c-2$ real zeros, counted with
-multiplicity.  It vanishes at $m+1$ and at each $d$ for which
-$d-1,d\in A$.  Let $r$ be the number of these consecutive pairs, and let
-$J$ contain the remaining indices $j$ for which $a_{j+1}\in Z'$.  Then
-$|J|=c-2-r$.  At such a remaining point,
-\[
- \Delta_{a_{j+1}}=y_cG_{a_{j+1}-1},
- \qquad
- \sgn\Delta_{a_{j+1}}=(-1)^{c-1-j}.
-\]
-If $J$ is empty, the $r$ forced zeros together with $m+1$ exceed the zero
-budget, so $\Delta$ is identically zero.  Otherwise take consecutive
-$j<j'$ in $J$.  The open interval between their marked points contains
-$j'-j-1$ forced zeros, while the endpoint signs differ by
-$(-1)^{j'-j}$.  The intervening zero count must therefore have the parity of
-$j'-j$ and is at least $j'-j$, one more than the forced count.  Summing over
-consecutive members of $J$, and adding the $r$ forced zeros and the zero at
-$m+1$, gives
-\[
- r+(|J|-1)+1=c-2
-\]
-zeros.  This exhausts the zero bound.  Hence all counted zeros are simple and
-there are no others, in particular none above $m+1$.  Starting at the last
-marked point and using its displayed sign shows that the sign after the
-remaining crossings is positive.  Thus $\Delta_d\ge0$ for $d\ge m+1$.
-Thus
-\begin{equation}\label{eq:first-drive}
-  \frac{E_d}{\widehat F_d}\le\sigma\qquad(d\ge m+1).
-\end{equation}
-For the other half, the $c$-node sum
-\[
-  W_d=\widehat F_{m+1}G_d-G_{m+1}\widehat F_d
-\]
-vanishes on $Z'\cup\{m+1\}$.  These are all its $c-1$ possible zeros.  It
-is positive beyond $m+1$: asymptotically only $G$ contains the largest node
-$y_c$, with positive coefficient there.  Hence
-\begin{equation}\label{eq:second-drive}
-  \sigma\le\frac{G_z}{\widehat F_z}\qquad(z>m).
-\end{equation}
-Equations \eqref{eq:first-drive} and \eqref{eq:second-drive} give
-\eqref{eq:drive}.
-
-In the displaced case the tail comparison is strict.  Equality throughout
-requires the all-leading zero set treated in the base case.  This completes
-the induction.
-\end{proof}
-
-\section{From the tail theorem to coefficient mass}\label{sec:mass}
-
+\begin{theorem}[Coefficient-mass theorem]\label{thm:mass}
 Let
 \[
   P(x)=\prod_{i=1}^{L}(x-r_i),
-  \qquad 2\le r_1<\cdots<r_L,
+  \qquad 2\le r_1\le\cdots\le r_L,
 \]
-and let $F(x)=\sum_{j=0}^{D}f_jx^j\in\R[x]$ be a nonzero multiple of $P$.
-After scaling, assume $|f_D|=1$.
-
-\begin{lemma}[Slack certificate]\label{lem:slack}
-Fix $0\le u\le(L-1)/2$ and any set $U$ of $u$ coefficient positions below
-$D$.  Some position $j<D$ outside $U$ satisfies
-\begin{equation}\label{eq:threshold}
-  |f_j|\ge \prod_{i=2u+1}^{L}(r_i-1).
-\end{equation}
-\end{lemma}
-
-\begin{proof}
-Put $c=L-u$ and use the $c$ largest roots.  A coefficient position $j$ has
-backward distance $d=D-j$.  Choose a $c$-node exponential sum $w_d$ with
-$w_0=1$ whose $c-1$ zeros occur at the distances belonging to $U$ together
-with the first $L-2u-1$ positive distances not occupied by $U$.  The
-Vandermonde system is nonsingular.  Since $w_d$ is a linear combination of
-$r_i^{-d}$ over the chosen roots, a correspondingly weighted sum of the
-equations $F(r_i)=0$ gives
-\[
-  1=|f_Dw_0|
-   \le\sum_{j<D,\,j\notin U}|f_jw_{D-j}|.
-\]
-The selected zero set begins with a run of at least $L-2u-1$ backward
-positions.  Theorem~\ref{thm:tail}, applied to the reciprocal roots, gives
-\[
-  \sum_{j<D,\,j\notin U}|w_{D-j}|
-  \le\frac{1}{\prod_{i=2u+1}^{L}(r_i-1)}.
-\]
-If every coefficient outside $U$ were smaller than the right side of
-\eqref{eq:threshold}, the preceding two displays would contradict each
-other.
-\end{proof}
-
-\begin{theorem}[Mass of every multiple]\label{thm:mass}
-Every nonzero real multiple $F$ of $P$ satisfies
+with repetitions allowed, and let \(F(x)=\sum_{j=0}^{D}f_jx^j\in\R[x]\) be a
+nonzero multiple of \(P\) with \(|f_D|\ge1\).  Then
 \begin{equation}\label{eq:mass-general}
-  \sum_{j:f_j\ne0}\log^+|f_j|
-  \ge \sum_{u=0}^{\lfloor(L-1)/2\rfloor}
-       \sum_{i=2u+1}^{L}\log(r_i-1),
+  \Lambda(F)
+  \ge (L+1)\log|f_D| + \sum_{u=0}^{L-1}
+       \sum_{i=u+1}^{L}\log(r_i-1),
 \end{equation}
-after normalising $|f_D|\ge1$, where $\log^+x=\max(0,\log x)$.
-For the first $L$ primes, or for any increasing prime powers bounded below
-by them, the right side is $\Omega(L^2\log L)$.
+where \(\log^+x=\max(0,\log x)\).
 \end{theorem}
 
-\begin{proof}
-For each $u$, take $U$ to be the positions of the $u$ largest coefficients
-below the leading term.  Lemma~\ref{lem:slack} produces a new coefficient,
-the $(u+1)$st largest, of size at least the threshold in
-\eqref{eq:threshold}.  Summing its logarithm over $u$ proves
-\eqref{eq:mass-general}.
-
-For prime roots $p_1<\cdots<p_L$, each $\log(p_i-1)$ appears
-$\lceil i/2\rceil$ times, up to reversing the harmless indexing convention.
-The prime number theorem, or the elementary bound $p_i\ge i+1$, yields
-\[
-  \sum_{i=1}^{L}\lceil i/2\rceil\log(p_i-1)
-  =\Omega(L^2\log L).
-\]
-The sharper asymptotic constant is $1/4$ in natural logarithms.
-\end{proof}
-
-The theorem is deliberately stated over $\R$: integrality and the signs of
-the other roots play no role.  Additional roots merely choose another
-multiple $F$ and cannot evade the bound.
+For the first \(L\) primes, or for increasing roots bounded below by them,
+the right side is \((1/2+o(1))L^2\log L\): each
+\(\log(r_i-1)\) occurs \(i\) times, and \(r_i\ge i+1\).  The bound is
+asymptotically sharp, attained by \(P_L=\prod_{i=1}^L(x-p_i)\); in particular
+it is \(\Omega(L^2\log L)\).  The theorem applies to every real multiple,
+independently of its degree and additional roots.
 
 \begin{corollary}[Polynomial lower bound]\label{cor:lower}
 Every Polynomial source for a maximal-width truth table has
@@ -454,26 +356,55 @@ Every Polynomial source for a maximal-width truth table has
 
 \begin{proof}
 By Corollary~\ref{cor:roots}, the program contains
-$L=\Omega(T/\log T)$ distinct positive real instruction roots.  Their
-bases are distinct assigned primes, and a prime power is no smaller than its
-base.  The source polynomial is a multiple of their distinct-root product.
-Theorem~\ref{thm:mass} therefore gives
+\(L=\Omega(T/\log T)\) distinct positive real instruction roots.  A prime base
+supplies at most eight distinct real values, one for each allowed exponent.
+After sorting, the \(i\)th root is therefore at least
+\(p_{\lceil i/8\rceil}\).  In particular, for \(i\ge16\) it is at least
+\(\lceil i/8\rceil+1\), so the weighted sum in
+Theorem~\ref{thm:mass} is still \(\Omega(L^2\log L)\).  The source polynomial
+is an integer multiple of their distinct-root product and its leading
+coefficient has absolute value at least one.  Theorem~\ref{thm:mass} gives
 \[
- M(f)=\Omega(L^2\log L)
-     =\Omega\!\left(\frac{T^2}{\log T}\right).
+ \Lambda(f)=\Omega(L^2\log L)
+           =\Omega\!\left(\frac{T^2}{\log T}\right).
 \]
-Since $|f|\ge M(f)$, the result follows.
+Since integer coefficients satisfy
+$M(f)\ge\Lambda(f)/\log 10$ and $|f|\ge M(f)$, the result follows.
 \end{proof}
 
 \begin{remark}[Repeated roots]
 Repeated real roots do not weaken Corollary~\ref{cor:lower}: the
-block-incidence lemma already forces the stated number of \emph{distinct}
-values.  A separate confluent version of Theorem~\ref{thm:tail} follows by a
-Hermite limit, replacing $a_iy_i^d$ with $Q_i(d)y_i^d$ and repeating each
-$y_i$ according to $1+\deg Q_i$.  It yields an independent quadratic mass
-bound in the total multiplicity, but is not needed for the sharp language
-bound.
+block-incidence lemma already forces the stated number of distinct values,
+and Theorem~\ref{thm:mass} is stated for roots counted with multiplicity.
 \end{remark}
+
+\begin{corollary}[General model]\label{cor:general}
+If a program may halt before consuming its input, every Polynomial source for
+a maximal-width truth table still has
+\[
+  |f|=\Omega(T^2/\log^3 T).
+\]
+\end{corollary}
+
+\begin{proof}
+The continuation from the last routing position $(r,s)$ is still a fixed
+cursor sequence, but without the consumption hypothesis the read level at $r$
+is free.  The $K$th read is the $j$th read of that sequence for some
+$j\in\{1,\dots,K\}$, so each routing position and successor contributes at
+most $K$ cursors:
+\[
+  D_K\le 1+2K\,m_{\rm route}.
+\]
+Take the level $K=n-\lceil\log_2 n\rceil=\Theta(n)$ of
+Lemma~\ref{lem:maximal-width}, where $N'(K)=\Omega(T/\log T)$.  Then
+\eqref{eq:residual-cursor} gives
+$m_{\rm route}=\Omega(T/(K\log T))=\Omega(T/\log^2 T)$,
+Lemma~\ref{lem:block} gives $L=\Omega(T/\log^2 T)$, and
+Theorem~\ref{thm:mass} gives
+\[
+  \Lambda(f)=\Omega(L^2\log L)=\Omega(T^2/\log^3 T).
+\]
+\end{proof}
 
 \section{The matching construction}\label{sec:upper}
 
@@ -484,16 +415,37 @@ The residual DAG of a truth table has at most
 states after $k$ reads: the first term counts input prefixes, and the second
 counts Boolean residuals of the remaining width.  Put
 $h=\lfloor\log_2 n\rfloor-1$.  The levels with $n-k\le h$ contribute
-$O(\sqrt T\log n)=O(T/n)$ states; the earlier levels form a geometric tail
+$O(\sqrt T)=O(T/n)$ states; the earlier levels form a geometric tail
 of size $O(T/2^h)=O(T/n)$.  Hence
 \[
   S:=\sum_k s_k=O(T/\log T).
 \]
 
-The direct Polynomial encoding of this DAG uses at most six instructions per
-state, so it has $m=O(S)$ instruction factors.  Its operands are $O(S)$,
-its instruction exponents are bounded constants, and its assigned primes are
-at most $p_m=O(m\log m)$.  Every linear or quadratic factor therefore has
+Label the states at every level by $0,\ldots,s_k-1$.  Enter level $k$ with
+register $-j$ when state $j$ is active.  Its blocks are scanned in label
+order: block $j$ increments the register and opens an ``if positive'', so
+exactly block $j$ fires.  That block reads the next bit, overwriting the
+register with $48+b$.  If its child labels are $z,o$, multiply by $z-o$ and
+add $-(z+r)-48(z-o)$, where $r$ is the number of blocks remaining at that
+level.  This sends $48$ to $-(z+r)$ and $49$ to $-(o+r)$.  The skipped blocks
+each increment once, leaving $-z$ or $-o$ at the next level.  Equal children
+instead floor-divide $48+b$ by $50$, obtaining zero, then add $-(z+r)$.  At
+the leaf level the unique active block adjusts the register to $48$ or $49$,
+prints, and leaves the register negative.  Thus induction on the levels proves that
+the machine follows exactly the residual selected by the input and prints its
+table value.  Each state block uses at most six instructions, its brackets
+are local and therefore properly matched, and every operand is $O(S)$.  An
+update whose operand would be zero is omitted: the language spells a zero
+operand as I/O, and dropping it leaves the register unchanged, which is what
+a zero update does.
+
+Encode the resulting $m=O(S)$ instructions in order, using one fresh prime
+per instruction.  Real instructions give linear factors and register
+instructions conjugate quadratic factors; multiplying them gives an integer
+polynomial decoded back to that list.  Instruction exponents are bounded
+constants.  The prime number theorem~\cite{rs} gives the standard estimate
+$p_m=O(m\log m)$ for the largest assigned prime.  Every
+linear or quadratic factor therefore has
 coefficient $\ell^1$ norm $m^{O(1)}$.  Submultiplicativity gives coefficient
 norm $m^{O(m)}$ for their product, so each expanded coefficient has
 $O(m\log m)$ decimal digits.  There are at most $2m+1$ coefficients, while
@@ -508,32 +460,69 @@ Theorem~\ref{thm:main}.
 \section{Scope and reproducibility}
 
 The result concerns source length, not the running time of polynomial
-factorisation or of source generation.  It allows arbitrary degrees,
-arbitrary operand signs, repeated roots, and arbitrary unrecognised cofactor
+factorization or of source generation.  It allows arbitrary degrees,
+arbitrary operand signs, repeated roots, and arbitrary unrecognized cofactor
 roots.  It is an existence theorem for the uncapped residual-DAG
-construction; the public generator may impose a resource cap before reaching
-the asymptotic family.
+construction.  Implementation resource limits do not affect the existence
+result.
 
-The companion repository contains executable checks of the finite identities
-used above.  In particular,
-\texttt{tests/proofs/test\_negatives.py} checks the tail identities and dual
-thresholds in exact arithmetic, while
-\texttt{tests/proofs/deep/multiplicity.py} checks the block charges,
-outerplanar count, and repeated-root cases.  The longer development record,
-including counterexamples to earlier proof attempts and bounded searches, is
-in \texttt{docs/proofs/polynomial.md}.  These computations support the proof but no
-bounded search is used as a premise.
+Executable checks cover the finite block-counting identities and repeated-root
+cases used here.  They support the proof, but no bounded computation is used
+as a premise.
+
+\paragraph{Code availability.}
+Source code and verification scripts are available at
+\url{https://github.com/bangyen/esolangs}.
+
+\paragraph{Data availability.}
+No datasets were generated or analyzed in this study.
 
 \begin{thebibliography}{9}
-\bibitem{grt}
-M.~Giesbrecht, D.~S. Roche, and H.~Tilak,
-\newblock Computing sparse multiples of polynomials,
-\newblock \emph{Algorithmica} 64 (2012), 454--480.
+\small
+\bibitem{polynomial-spec}
+Maedhros777,
+\newblock Polynomial,
+\newblock Esolang Wiki,
+\newblock \href{https://esolangs.org/w/index.php?title=Polynomial\&oldid=192583}
+{permanent revision 192583}.
 
-\bibitem{roche}
-D.~S. Roche,
-\newblock What can (and can't) we do with sparse polynomials?,
-\newblock arXiv:1807.08289, 2018.
+\bibitem{rs}
+J.~B. Rosser and L.~Schoenfeld,
+\newblock Approximate formulas for some functions of prime numbers,
+\newblock \emph{Illinois Journal of Mathematics} 6 (1962), 64--94,
+\newblock \href{https://doi.org/10.1215/ijm/1255631807}
+{doi:10.1215/ijm/1255631807}.
+
+\bibitem{bryant}
+R.~E. Bryant,
+\newblock Graph-based algorithms for Boolean function manipulation,
+\newblock \emph{IEEE Transactions on Computers} 35 (1986), 677--691,
+\newblock \href{https://doi.org/10.1109/TC.1986.1676819}
+{doi:10.1109/TC.1986.1676819}.
+
+\bibitem{wegener}
+I.~Wegener,
+\newblock The size of reduced OBDD's and optimal read-once branching programs
+for almost all Boolean functions,
+\newblock \emph{IEEE Transactions on Computers} 43 (1994), 1262--1269,
+\newblock \href{https://doi.org/10.1109/12.324559}
+{doi:10.1109/12.324559}.
+
+\bibitem{gps}
+C.~Gröpl, H.~J. Prömel, and A.~Srivastav,
+\newblock Ordered binary decision diagrams and the Shannon effect,
+\newblock \emph{Discrete Applied Mathematics} 142 (2004), 67--85,
+\newblock \href{https://doi.org/10.1016/j.dam.2003.02.003}
+{doi:10.1016/j.dam.2003.02.003}.
+
+\bibitem{coefficient-mass}
+B.~Pham,
+\newblock Displaced-zero certificates and the coefficient mass of polynomial
+multiples,
+\newblock unpublished companion manuscript included with this submission;
+Corollary~3.3
+(Logarithmic mass).
+
 \end{thebibliography}
 
 \end{document}

@@ -380,7 +380,7 @@ class TestStdinCannotHangTheCommandForever:
 class TestTheTimeoutIsABackstopNotAPerRowCost:
     """`verify --help` was a third copy of a claim the package retired.
 
-    It said the three languages answering 1 by not terminating "pay this on
+    It said the four languages answering 1 by not terminating "pay this on
     every 1-row, so a low value is worth setting for them".  That was true
     when written and stopped being true in the change that added the
     divergence proof: those rows are settled by a repeated machine state in

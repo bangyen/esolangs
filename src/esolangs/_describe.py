@@ -166,7 +166,10 @@ def spec(language: str) -> str:
     name = resolve(language)
     lang = LANGUAGES[name]
     if lang.source_kind.value == "raster":
-        interpreter = importlib.import_module("esolangs.line")
+        # The language's own module (``esolangs.line``, ``esolangs.piet``).
+        # Hard-coding ``line`` gave Piet the Line spec, matching neither the
+        # docstring nor how ``run`` resolves the interpreter.
+        interpreter = importlib.import_module(f"esolangs.{lang.id}")
     else:
         module = RUNNERS[name][0]
         interpreter = importlib.import_module("esolangs.interpreters." + module)

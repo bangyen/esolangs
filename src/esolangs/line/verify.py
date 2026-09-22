@@ -16,13 +16,19 @@ from pathlib import Path
 
 from .extract import extract
 
-FIXTURES = Path(__file__).parent / "fixtures"
+# The old ``__file__.parent / "fixtures"`` did not exist.
+FIXTURES = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "line"
 
 
-def main() -> int:
+def main(fixtures: Path = FIXTURES) -> int:
     """Verify round-trip extraction against every fixture, reporting failures."""
+    images = sorted(fixtures.glob("*.png"))
+    if not images:
+        # A positive control: an empty sweep is not a pass.
+        print(f"no fixtures under {fixtures}", file=sys.stderr)
+        return 1
     failures = 0
-    for image in sorted(FIXTURES.glob("*.png")):
+    for image in images:
         try:
             extract(str(image))
             print(f"{image.name}: ok")

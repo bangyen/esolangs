@@ -126,8 +126,8 @@ the page.  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#d
 
 Ready-to-run programs are committed under [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):
 `examples/` holds a truth-table program for each of the 62
-languages with a boolean generator.  It regenerates via
-`scripts/generate.py examples`.
+text languages with a boolean generator.  It regenerates via
+`python scripts/generate.py examples`.
 
 <!-- EXAMPLES:END -->
 
@@ -136,7 +136,7 @@ languages with a boolean generator.  It regenerates via
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 62 languages</summary>
+<summary>Show all 62 text languages</summary>
 
 ### Grid-based Languages
 
@@ -244,7 +244,7 @@ Boolean generators accept a most-significant-input-first binary truth table.
 
 The truth table is a binary string of length `2**n`, most-significant input
 first; its length implies `n`, so it isn't passed separately.  62 of the
-languages have such a generator, some covering only a documented subset of
+text languages have such a generator, some covering only a documented subset of
 tables.
 
 <!-- BOOLEAN-COUNT:END -->

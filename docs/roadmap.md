@@ -9,8 +9,8 @@ Implement the surveyed interpreter candidates in this order.  The first four
 are the 2026-09-19 re-run of the `Category:Unimplemented` x
 `Category:Two-dimensional languages` pass (116 pages, up from 111); the
 verdicts are spec reads, not executed generators, so the size question is open
-for every entry.  INTERCAL and Piet are outside that pass -- already
-implemented, so never in the screen.
+for every entry.  Piet is already implemented, so it was never in the screen;
+INTERCAL, listed last, is outside the pass.
 
 - **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
   filed it unread, thinking the `{{:thisthat}}` transclusions hid the node
@@ -69,7 +69,7 @@ implemented, so never in the screen.
   it the language leaves with its row.  A wall that has not been proved is
   not a lookup table.
 
-  Every generator is audited on four axes.  Totality is the `proofs.md`
+  Every generator is audited on four axes.  Totality is the `proofs/index.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
   totality argument).  Output size is the registry-wide contract
   (`tests/proofs/deep/linearity.py`, per-entry cost to n=12).  Generation
@@ -88,7 +88,13 @@ implemented, so never in the screen.
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
+  | Malbolge | Exception | Open | Open | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
+
+  Malbolge cannot be total: its finite source space omits some 18-input truth
+  tables.  Its shipped construction covers every table through nine inputs;
+  generation time and size remain open over the reachable gap below that
+  language ceiling.
 
   Factor's adaptive residue sequence is bounded by fixed-modulus Hoheisel:
   its last selected prime `Q` is polynomial in the run count. Worst-case
@@ -96,21 +102,23 @@ implemented, so never in the screen.
   `Theta(T log T)`. Prime discovery is now an
   arbitrary-precision segmented sieve, and the decoder uses `isprime` only in
   its proven `< 2**64` range, closing both machine-word and BPSW totality gaps.
-  Cold generation is tightly
-  `Theta(T + Q log log Q + D**log_2(3))` in the documented RAM/byte model;
+  Cold generation is
+  `O(T + Q log log Q + D**log_2(3))` in the documented RAM/byte model;
   generated-family parsing is polynomial in `T`, while arbitrary semiprimes
   retain exponential trial-sieve loading. The time bound is naturally
   output-sensitive in the last selected prime `Q` and digit count `D`, without
   assuming a prime-gap conjecture. See [factor](proofs/factor.md).
 
-  Polynomial has tight language-level text complexity
-  `Theta(T**2 / log T)`.  Equal real
+  Polynomial has language-level text complexity `Theta(T**2 / log T)` for
+  programs that consume their input.  Equal real
   roots form contiguous blocks; their noncrossing opener/closer incidence
-  graph is outerplanar, giving `m_routing < 3L_real` and therefore
-  `L_real = Omega(T/log T)`.  The distinct-root slack certificate then gives
-  the lower bound for every cofactor and operand sign.  The uncapped
+  graph is outerplanar, giving `m_routing < 3L_real`.  The routing lemma gives
+  `L_real = Omega(T/log T)`; it needs the whole input to be read, since a
+  routing-free suffix can otherwise cross an input-dependent number of reads
+  ([proofs/index.md](proofs/index.md)).  The distinct-root slack certificate
+  then gives the lower bound for every cofactor and operand sign.  The uncapped
   residual-DAG construction has `O(T/log T)` instructions and expands to the
-  matching upper bound.  The pre-expansion estimator bounds rendered and live
+  upper bound.  The pre-expansion estimator bounds rendered and live
   decimal digits before the resource cap admits multiplication.  Put
   `alpha = log_2 3`.  Libmpdec's fixed maximum transform makes the uncapped
   root multiplication Karatsuba-with-FNT at scale, and the balanced packed
@@ -181,8 +189,8 @@ implemented, so never in the screen.
 - **Image-source candidates.**  A read of the 129 `Category:Non-textual` pages
   for raster sources only -- music (Fugue, Velato), music-note, and
   steganography pages excluded.  Verdicts are spec reads, not executed
-  generators.  Brainloller and Braincopter are already implemented and not
-  popular enough to clear the collection's alternative admission route.
+  generators.  Brainloller and Braincopter are not popular enough to clear
+  the collection's alternative admission route.
   Deferred: Bytemap (2012, source and data the same self-modifying grid, no
   interpreter yet) and Gifunk (2021, APNG/GIF fungeoid whose IP crosses frames)
   are the

@@ -137,6 +137,24 @@ def test_input_character_and_output_character() -> None:
     assert execute(program, "Z\n") == "Z"
 
 
+def test_input_number_reads_a_blank_line_as_zero() -> None:
+    """A blank line is the package's 0, not a dropped read.
+
+    ``input_num`` is ``int(line)``, which raised on the empty string and was
+    suppressed, so this command pushed nothing where the char command pushed
+    0 -- contradicting the module's own "a blank line is a value".
+    """
+    blank: list[int] = []
+    _command((4, 2), 1, blank, ScriptedIO("\n"))
+    assert blank == [0]
+    number: list[int] = []
+    _command((4, 2), 1, number, ScriptedIO("7\n"))
+    assert number == [7]
+    at_end: list[int] = []
+    _command((4, 2), 1, at_end, ScriptedIO(""))
+    assert at_end == []
+
+
 def test_public_api_runs_a_raster() -> None:
     program = raster(
         (LIGHT_RED, BLACK, BLACK, DARK_MAGENTA),
