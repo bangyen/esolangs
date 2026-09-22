@@ -95,9 +95,11 @@ studied below: its infinite tail is the reciprocal of their dual lower bound
 for the reduced height, their inequality~(8), and they evaluate the
 consecutive set $J=\{1,\ldots,c-1\}$ explicitly under a proviso that the
 $S_n$, $n\ge d$, share one sign, which they then establish
-separately~\cite[Section~2]{dj}; our consecutive base case instead reads the
-sign off the complete homogeneous symmetric polynomials $h_j$.  Their inequality~(8) already excludes a
-prescribed set of positions from the certificate.  The new ingredient is a
+separately~\cite[Section~2]{dj}; our consecutive base case,
+Lemma~\ref{lem:consecutive}, instead reads the sign off the complete
+homogeneous symmetric polynomials $h_j$, and needs no cutoff on the nodes.
+Their inequality~(8) already excludes a prescribed set of positions from the
+certificate.  The new ingredient is a
 prefix-sensitive tail estimate for arbitrary prescribed integer zero sets:
 when the largest prescribed zero is displaced, deleting it together with the
 largest reciprocal node strictly increases the tail, whereas displacing a zero
@@ -138,6 +140,8 @@ Corollary~\ref{cor:infimum} sharpens the resulting asymptotic to the infimum
 over monic real multiples,
 Corollary~\ref{cor:near} shows the root product itself is within $O(L^2)$ of
 that infimum for every root set here,
+Proposition~\ref{prop:sharp23} shows that for the roots $(2,3)$ the bound on
+$b_2$ is the exact infimum over monic multiples,
 Proposition~\ref{prop:cutoff} shows that the node cutoff $y_i\le1/2$ in the
 tail theorem cannot be raised, Proposition~\ref{prop:subtwo} shows that the
 standing restriction $r_i\ge2$ cannot be dropped from
@@ -182,6 +186,42 @@ also the exponential form of Laguerre's extension of Descartes' rule of
 signs~\cite[Part~V]{polya-szego}.  Consequently an $r$-node sum with $r-1$
 prescribed real zeros has exactly those zeros, each is simple, and the sum
 changes sign at each of them.
+
+\begin{lemma}[Consecutive zero set]\label{lem:consecutive}
+Let $0<y_1<\cdots<y_c<1$; no cutoff is imposed on the nodes.  Let $u$ be the
+exponential sum on them with $u_0=1$ and $u_z=0$ for $z\in\{1,\ldots,c-1\}$,
+which exists and is unique by the Vandermonde argument above---it uses only
+that the nodes are distinct and positive.  Then
+\[
+  u_d=(-1)^{c+1}\Bigl(\prod_iy_i\Bigr)h_{d-c}(y_1,\ldots,y_c)
+  \qquad(d\ge c),
+\]
+where $h_j$ is the complete homogeneous symmetric polynomial, so these terms
+are one-signed and
+\[
+  \Tail(u)=\prod_{i=1}^c\frac{y_i}{1-y_i}.
+\]
+\end{lemma}
+
+\begin{proof}
+Put
+\[
+  U(x)=\sum_{d\ge0}u_dx^d=\frac{N(x)}{\prod_i(1-y_ix)},
+  \qquad \deg N\le c-1.
+\]
+The first $c-1$ nonconstant coefficients vanish, so $N(x)-\prod_i(1-y_ix)$
+is a constant multiple of $x^c$; that constant is fixed by the vanishing
+$x^c$ coefficient of $N$ (which has degree at most $c-1$), giving
+\[
+  N(x)=\prod_i(1-y_ix)+(-1)^{c+1}\Bigl(\prod_i y_i\Bigr)x^c .
+\]
+Since $1/\prod_i(1-y_ix)=\sum_{j\ge0}h_j(y_1,\ldots,y_c)x^j$, the displayed
+formula for $u_d$ follows, and summing the one-signed terms gives
+\[
+  \Tail(u)=\Bigl(\prod_i y_i\Bigr)\sum_{j\ge0}h_j(y_1,\ldots,y_c)
+          =\prod_i\frac{y_i}{1-y_i}.
+\]
+\end{proof}
 
 \begin{theorem}[Displaced-zero comparison]\label{thm:tail}
 Let
@@ -315,29 +355,9 @@ $d\ge m+1$.
 \begin{proof}[Proof of Theorem~\ref{thm:tail}]
 Induct on the number $c-1-f$ of displaced zeros.
 
-\emph{Consecutive base case.}  For $Z=\{1,\ldots,c-1\}$, put
-\[
-  U(x)=\sum_{d\ge0}u_dx^d=\frac{N(x)}{\prod_i(1-y_ix)},
-  \qquad \deg N\le c-1.
-\]
-The first $c-1$ nonconstant coefficients vanish, so $N(x)-\prod_i(1-y_ix)$
-is a constant multiple of $x^c$; that constant is fixed by the vanishing
-$x^c$ coefficient of $N$ (which has degree at most $c-1$), giving
-\[
-  N(x)=\prod_i(1-y_ix)+(-1)^{c+1}\Bigl(\prod_i y_i\Bigr)x^c .
-\]
-Since $1/\prod_i(1-y_ix)=\sum_{j\ge0}h_j(y_1,\ldots,y_c)x^j$, it follows that
-for $d\ge c$,
-\[
-  u_d=(-1)^{c+1}\Bigl(\prod_i y_i\Bigr)h_{d-c}(y_1,\ldots,y_c),
-\]
-where $h_j$ is the complete homogeneous symmetric polynomial.  These terms
-are one-signed, so
-\[
-  \Tail(u)=\Bigl(\prod_i y_i\Bigr)\sum_{j\ge0}h_j(y_1,\ldots,y_c)
-          =\prod_i\frac{y_i}{1-y_i},
-\]
-which is \eqref{eq:tail} with $f=c-1$.
+\emph{Consecutive base case.}  For $Z=\{1,\ldots,c-1\}$ this is
+Lemma~\ref{lem:consecutive}, which is \eqref{eq:tail} with $f=c-1$.  The
+standing cutoff $y_c\le1/2$ is not used there.
 
 \emph{Displaced step.}  Suppose $f<c-1$, set $z=\max Z$ (displaced, hence
 $z\ge f+2$), $Z'=Z\setminus\{z\}$, and $m=\max Z'$, taking $m=0$ if $Z'$ is
@@ -513,9 +533,9 @@ at most the product over the $L-u$ largest nodes.  These are
 $\rho_1,\ldots,\rho_{L-u}$, that is,
 $r_L,r_{L-1},\ldots,r_{u+1}$; the last index is
 $L-(L-u)+1=u+1$, which is why the product below starts there.  For $u=0$
-nothing is discarded: there $Z=\{1,\ldots,L-1\}$, so $\Tail(w)$ is the
-consecutive base case of Theorem~\ref{thm:tail}, an exact evaluation needing
-only $y_i<1$, and the bound holds already for $r_1>1$.  Therefore
+nothing is discarded: there $Z=\{1,\ldots,L-1\}$, so $\Tail(w)$ is evaluated
+exactly by Lemma~\ref{lem:consecutive}, which needs only $y_i<1$, and the
+bound holds already for $r_1>1$.  Therefore
 \[
   \sum_{j<D,\ j\notin U}|w_{D-j}|
   \le\sum_{d\ge1}|w_d|=\Tail(w)
@@ -559,8 +579,8 @@ $b_{u+1}(F_\varepsilon)\to b_{u+1}(F)$.  The distinct case gives
 $b_{u+1}(F_\varepsilon)\ge|f_D|\prod_{i=u+1}^L(r_{i,\varepsilon}-1)$, and letting
 $\varepsilon\to0$ proves \eqref{eq:order}.
 
-For $u=0$ the certificate of Lemma~\ref{lem:slack} is the consecutive base
-case of Theorem~\ref{thm:tail}, which needs only $y_i<1$ and discards no
+For $u=0$ the certificate of Lemma~\ref{lem:slack} is evaluated by
+Lemma~\ref{lem:consecutive}, which needs only $y_i<1$ and discards no
 factor, and the perturbation may be run with distinct
 $r_{i,\varepsilon}>1$; so the argument gives \eqref{eq:order} with $u=0$ for
 every root set $r_i>1$.
@@ -887,7 +907,55 @@ $b_2=p_0^3/D<2=r_2-1$, which is what \eqref{eq:order} would assert for
 $u=1$; the second root obeys $r_2\ge2$, so only $r_1$ is out of range.
 \end{proof}
 
-\section{Scope}
+\begin{proposition}[The bound for $b_2$ at roots $(2,3)$ is an infimum]
+\label{prop:sharp23}
+For $n\ge2$ put
+\[
+  t_n=\frac{2}{1-2^{1-n}+3^{-n}},
+  \qquad a_n=2+t_n\bigl(1-2^{-n}\bigr),
+  \qquad
+  F_n(x)=x^{n+1}-a_nx^n+t_n\sum_{j=0}^{n-1}x^j .
+\]
+Then each $F_n$ is a monic multiple of $(x-2)(x-3)$ with $b_2(F_n)=t_n$, and
+$t_n$ decreases to $2$.  Hence
+\begin{equation}\label{eq:sharp23}
+  \inf_{\substack{Q\in\R[x]\\ Q\text{ monic}}}
+  b_2\bigl(Q(x)(x-2)(x-3)\bigr)=2,
+\end{equation}
+the value \eqref{eq:order} asserts for $u=1$.  Every $F_n$ has $b_2>2$;
+whether some multiple attains the value $2$ is not settled here.
+\end{proposition}
+
+\begin{proof}
+Summing the geometric progression, $F_n(2)=0$ reads
+$2^{n+1}-a_n2^n+t_n(2^n-1)=0$, that is, $a_n=2+t_n(1-2^{-n})$, which is the
+definition of $a_n$.  Likewise $F_n(3)=0$ reads
+$3^{n+1}-a_n3^n+\tfrac12t_n(3^n-1)=0$, that is,
+$a_n=3+\tfrac12t_n(1-3^{-n})$.  The two expressions for $a_n$ agree exactly
+when $t_n\bigl(\tfrac12-2^{-n}+\tfrac123^{-n}\bigr)=1$, which is the
+definition of $t_n$.  So both $2$ and $3$ are roots of the monic $F_n$.
+
+Write $d_n=1-2^{1-n}+3^{-n}$ for the denominator of $t_n$.  Then $d_n<1$
+because $3^{-n}<2\cdot2^{-n}$, and $d_n\ge\tfrac12$ because
+$2^{1-n}\le\tfrac12$ for $n\ge2$; hence $2<t_n\le4$.  Moreover
+\[
+  d_{n+1}-d_n=2^{-n}-\tfrac23\cdot3^{-n}>0,
+\]
+so $d_n$ increases to $1$ and $t_n$ decreases to $2$.  Finally
+$a_n-t_n=2-t_n2^{-n}\ge2-4\cdot2^{-n}>0$ for $n\ge2$, so the nonleading
+coefficient magnitudes of $F_n$ are $a_n$ once and $t_n$ exactly $n$ times,
+with $a_n>t_n>0$; thus $b_1(F_n)=a_n$ and $b_2(F_n)=t_n$.
+
+Theorem~\ref{thm:order} with $(r_1,r_2)=(2,3)$ and $u=1$ gives $b_2\ge2$ for
+every monic multiple, and $t_n\to2$, which is \eqref{eq:sharp23}.
+\end{proof}
+
+At $n=7$ the degree is $8$ and
+$t_7=\tfrac{279936}{137845}=2.0308027\ldots$, which agrees with the value the
+search of Section~\ref{sec:scope} returns at degree cap $8$; so the numerical
+optimum recorded there is attained within this family.
+
+\section{Scope}\label{sec:scope}
 
 The bounds here concern coefficient magnitudes, not ordinary length or
 height: they are uniform over the degree of $F$ and over all additional real
@@ -909,8 +977,8 @@ Two limits are worth stating plainly.  The coefficient bounds for $k\ge2$
 require $r_i\ge2$, inherited from the node cutoff $y_i\le1/2$ of
 Theorem~\ref{thm:tail}.  The cutoff enters in exactly two places, the factor
 $2$ in \eqref{eq:gamma} and the discard of factors at most $1$ in
-Lemma~\ref{lem:slack}, and both matter only for $u\ge1$; the $k=1$ bound and
-the consecutive base case of Theorem~\ref{thm:tail} are free of it, as is
+Lemma~\ref{lem:slack}, and both matter only for $u\ge1$; the $k=1$ bound is
+free of it, as are Lemma~\ref{lem:consecutive} and
 Lemma~\ref{lem:interlace}.  The restriction is not an artifact of the proof:
 by Proposition~\ref{prop:subtwo}, \eqref{eq:order} is false for $k=2$ already
 at $L=2$ and already when only $r_1<2$.  The method fails in the same place:
@@ -922,15 +990,30 @@ What is left open is the pointwise extremal problem: for a fixed root
 sequence and a fixed $k$, how closely a multiple can approach
 \eqref{eq:order}.  Corollary~\ref{cor:infimum} settles the asymptotic form of
 the aggregated question for prime roots, and the multiplier $x+1$ above shows
-that even there the root product need not be the finite-$L$ minimizer.  Linear
-programming over monic multiples of degree at most $L+6$ puts the minimum of
-$b_k$ within $1.5$--$6.5\%$ of \eqref{eq:order} for $k\ge2$---for roots
-$(2,3)$, $\min b_2=2.031$ against $2$, and for $(2,3,5)$, $\min b_2=8.518$
-against $8$ and $\min b_3=4.122$ against $4$---so in those cases the bound
-is nearly attained.
+that even there the root product need not be the finite-$L$ minimizer.  For
+the root pair $(2,3)$ and $k=2$, Proposition~\ref{prop:sharp23} settles it
+outright: the infimum of $b_2$ over monic multiples is exactly the bound.
+Beyond that we have only a search, and for $k\ge2$ it is not a single linear
+program.  As $b_k$ is the $k$th largest magnitude, fix the $k-1$ positions
+below $D$ permitted to exceed it; minimizing $\max_j|f_j|$ over the
+remaining positions is then a linear program in the coefficients of the monic
+multiplier $Q$, and the
+minimum over the $\binom{D}{k-1}$ choices of exempt set, and over $\deg Q$,
+is the order-statistic optimum.  Running that search in double precision over
+monic multiples of degree at most $L+6$ gives, for roots $(2,3,5)$,
+$\min b_2=8.5178$ against $8$ and $\min b_3=4.1218$ against $4$, both within
+$6.5\%$ of \eqref{eq:order}; for $(2,3)$ it returns $2.0308$, the degree-$8$
+member of the family above.  These are floating-point optima at a degree cap,
+not certified values; the one exact statement among them is
+\eqref{eq:sharp23}.
 
 \paragraph{Data availability.}
-No datasets were generated or analyzed in this study.
+No datasets were generated or analyzed in this study.  The numerical optima
+quoted in Section~\ref{sec:scope} come from the finite search described
+there---one linear program per choice of exempt positions and multiplier
+degree, solved in double-precision floating point---and are reproducible from
+that description; the polynomials of Proposition~\ref{prop:sharp23} are exact
+and need no computation.
 
 \begin{thebibliography}{9}
 \small
