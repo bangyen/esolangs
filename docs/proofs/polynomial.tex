@@ -42,10 +42,10 @@ length $O(T^2/\log T)$, and that some require
 $\Omega(T^2/\log T)$ source characters in every program that consumes its
 input, independently of the program's degree, operand signs, and additional
 roots.
-The explicit residual-DAG construction gives the upper bound.  A companion
-coefficient-mass theorem implies that every real polynomial divisible by $L$
-distinct prime-power roots and having leading coefficient of absolute value
-at least one has logarithmic coefficient mass
+The explicit residual-DAG construction gives the upper bound.  A
+coefficient-mass theorem, proved separately, implies that every real
+polynomial divisible by $L$ distinct prime-power roots and having leading
+coefficient of absolute value at least one has logarithmic coefficient mass
 $\Omega(L^2\log L)$.  A routing argument, sharpened by an
 outerplanar block-incidence bound, forces $L=\Omega(T/\log T)$ distinct real
 roots in a program for a maximal-width table, so the worst-case text
@@ -164,8 +164,8 @@ route}$.
 The lower bound has two independent parts.
 Section~\ref{sec:routing} forces $\Omega(T/\log T)$ distinct positive
 roots.
-Section~\ref{sec:mass} applies
-the companion coefficient-mass theorem.  Section~\ref{sec:upper} supplies
+Section~\ref{sec:mass} applies the
+coefficient-mass theorem of~\cite{coefficient-mass}.  Section~\ref{sec:upper} supplies
 the matching construction.  Informally, the routing argument says that a
 short instruction alphabet cannot distinguish enough residual truth tables;
 the coefficient-mass theorem then says that supporting the required roots
@@ -176,8 +176,8 @@ variable order~\cite{bryant}; classical results place the size of an optimal
 diagram for almost every Boolean function at the same
 $\Theta(T/\log T)$ scale~\cite{wegener,gps}.  Lemma~\ref{lem:maximal-width}
 uses a tailored simultaneous width statistic, and the block-incidence
-argument translates it into distinct Polynomial roots.  The companion
-manuscript relates the displaced-zero comparison and coefficient-order
+argument translates it into distinct Polynomial roots.  The certificate
+machinery relates the displaced-zero comparison and coefficient-order
 statistics to the reduced-height literature~\cite{coefficient-mass}.
 
 \section{Routing forces distinct real roots}\label{sec:routing}
@@ -316,8 +316,8 @@ Combine \eqref{eq:residual-width} with Lemma~\ref{lem:block}.
 
 \section{Coefficient mass from prescribed roots}\label{sec:mass}
 
-The companion paper develops the exponential-sum certificates and proves the
-following degree-independent statement~\cite[Corollary~3.4]{coefficient-mass}.
+The exponential-sum certificate machinery yields the following
+degree-independent statement~\cite[Corollary~3.4]{coefficient-mass}.
 
 Write
 \[
@@ -517,9 +517,7 @@ C.~Gröpl, H.~J. Prömel, and A.~Srivastav,
 B.~Pham,
 \newblock Displaced-zero certificates and the coefficient mass of polynomial
 multiples,
-\newblock unpublished companion manuscript included with this submission;
-Corollary~3.4
-(Logarithmic mass).
+\newblock manuscript in preparation; Corollary~3.4 (Logarithmic mass).
 
 \end{thebibliography}
 
