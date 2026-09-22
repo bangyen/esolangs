@@ -34,8 +34,8 @@ from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.registry import LANGUAGES, RUNNERS
 
 # The interpreter tree, anchored to this file rather than the working
-# directory: the suite is run from the repo root and from ``extra/``, and a
-# relative path resolves differently in the two.
+# directory, so the sweep finds the same modules wherever pytest was
+# started from.
 _INTERPRETERS = pathlib.Path(__file__).resolve().parents[1] / (
     "src/esolangs/interpreters"
 )
@@ -435,3 +435,81 @@ def test_interpreter_docstrings_follow_the_template() -> None:
         for path in _module_files()
     }
     assert {path: issues for path, issues in failures.items() if issues} == {}
+
+
+class TestEntryPointConventions:
+    """The shared ``__main__`` body stays shared, and declares the right shape.
+
+    Before ``interpreters/_entry.py`` each module carried its own copy of
+    this block, in nine variants; coverage excludes ``if __name__`` blocks,
+    so nothing measured any of them and the variants were invisible.  Two
+    assertions keep that from growing back.
+
+    The second is the one that catches a real mistake.  ``shape`` decides
+    whether ``run`` is handed the whole text or a list of lines, and a wrong
+    value is silent at import, silent under the test suite -- which calls
+    ``run`` directly -- and wrong only for someone running the module or a
+    bundle.  ``run``'s own annotation already says which it takes, so the
+    two are cross-checked here rather than left to agree by luck.
+    """
+
+    @staticmethod
+    def _main_call(path: pathlib.Path) -> ast.Call:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        blocks = [
+            node
+            for node in tree.body
+            if isinstance(node, ast.If)
+            and isinstance(node.test, ast.Compare)
+            and isinstance(node.test.left, ast.Name)
+            and node.test.left.id == "__name__"
+        ]
+        assert len(blocks) == 1, f"{path.name} has {len(blocks)} __main__ blocks"
+        (statement,) = blocks[0].body
+        assert isinstance(statement, ast.Expr)
+        assert isinstance(statement.value, ast.Call)
+        return statement.value
+
+    @pytest.mark.parametrize(
+        "path",
+        _module_files(),
+        ids=lambda path: path.relative_to(_INTERPRETERS).as_posix(),
+    )
+    def test_the_entry_point_delegates(self, path: pathlib.Path) -> None:
+        """The block is one ``script_main(run, ...)`` call and nothing else."""
+        call = self._main_call(path)
+        assert isinstance(call.func, ast.Name)
+        assert call.func.id == "script_main"
+        assert [ast.unparse(arg) for arg in call.args] == ["run"]
+        assert {keyword.arg for keyword in call.keywords} <= {"shape"}
+
+    @pytest.mark.parametrize(
+        "path",
+        _module_files(),
+        ids=lambda path: path.relative_to(_INTERPRETERS).as_posix(),
+    )
+    def test_the_shape_matches_what_run_accepts(self, path: pathlib.Path) -> None:
+        """``text`` goes to a ``str`` parameter, the line shapes to ``list[str]``."""
+        call = self._main_call(path)
+        shape = "text"
+        for keyword in call.keywords:
+            assert isinstance(keyword.value, ast.Constant)
+            shape = keyword.value.value
+        assert shape in ("text", "keep", "strip")
+
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        run = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == _IO_OWNER
+        )
+        annotation = run.args.args[0].annotation
+        assert annotation is not None, f"{path.name}: run's source is unannotated"
+        # Three interpreters accept either form, so membership rather than
+        # equality: the shape has to be among what `run` takes, not the only
+        # thing it takes.
+        accepted = {part.strip() for part in ast.unparse(annotation).split("|")}
+        wanted = "str" if shape == "text" else "list[str]"
+        assert wanted in accepted, (
+            f"{path.name}: shape={shape!r} but run takes {accepted}"
+        )
