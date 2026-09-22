@@ -61,7 +61,7 @@ from tests.tools.test_boolean_contract import _dense, _parity
 #: too broad to re-run on every local edit, cheap enough that CI should never skip
 #: it.
 BAND = "ci"
-COST = 12.0
+COST = 22.0
 
 _SHAPES = (("dense", _dense), ("parity", _parity))
 

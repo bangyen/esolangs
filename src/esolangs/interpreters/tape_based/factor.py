@@ -74,7 +74,9 @@ def _parse(digits: str) -> int:
     digits); raised for this program and put back.
     """
     limit = sys.get_int_max_str_digits()
-    if len(digits) <= limit:
+    # 0 means the process-global limit is already unlimited; lifting it would
+    # raise, and ``set_int_max_str_digits`` rejects any value under 640.
+    if limit == 0 or len(digits) <= limit:
         return int(digits)
     sys.set_int_max_str_digits(len(digits) + 1)
     try:
@@ -90,7 +92,8 @@ def _factorint(number: int) -> dict[int, int]:
     committed example), so walk primes in order and shrink as each divides.
     Never stop at a fixed prime: the residue handed to ``factorint`` is then
     a large composite that sends it to Pollard rho for minutes (a 10000
-    ceiling hung the sweep on a 3243-digit program with 80 primes above it).
+    ceiling left 170 primes inside a 708-digit composite of the n=4 parity
+    number, whose 525 primes reach 17209).
     Chunks widen until the residue is prime or gone. Below 2**64, exact
     ``isprime`` is asked only after a *barren* chunk and once per residue;
     above it BPSW cannot certify a language decode, so the sieve continues.

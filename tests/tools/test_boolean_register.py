@@ -242,7 +242,7 @@ class TestPolynomial:
 
         random.seed(0)
         scattered = "".join(random.choice("01") for _ in range(2**11))
-        with pytest.raises(ValueError, match="one instruction per prime"):
+        with pytest.raises(ValueError, match="groups instructions onto primes"):
             boolean.polynomial(scattered)
 
     def test_polynomial_cap_admits_every_n10_table(self) -> None:

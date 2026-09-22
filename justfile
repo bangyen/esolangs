@@ -126,12 +126,13 @@ mutate-gen module *args:
 # The ledger obligations under tests/proofs are collected by pytest and gate
 # every push. The proofs under deep/ are not, and the runner selects them by
 # the band each one declares rather than by a list kept here: `verify` is what
-# scripts/verify.py runs, `ci` what the workflow runs, `all` everything. ~2m20s,
-# dominated by A Painter Ant at 1m20s, then linearity at 30s and Container at
-# 16s. The runner keeps going after a failure and reports at the end, so
+# scripts/verify.py runs, `ci` what the workflow runs, `all` everything. ~2m,
+# dominated by linearity and execution at 30s each, then all_generators at 22s
+# and Container at 16s. The runner catches a proof's exception and keeps going,
+# reporting at the end, so
 # linearity's standing Forþ finding does not hide the proofs after it.
 # Use `python -m tests.proofs.deep --list` to see the bands.
-# run every executable proof: the ledger obligations and all 7 deep proofs
+# run every executable proof: the ledger obligations and all 8 deep proofs
 proofs:
     {{PYTHON}} -m pytest tests/proofs -q
     {{PYTHON}} -m tests.proofs.deep all

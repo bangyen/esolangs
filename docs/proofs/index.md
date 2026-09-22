@@ -19,12 +19,15 @@ the exhaustive `n <= 3` and sampled `n <= 10` sweeps in
 arguments below.
 
 What is machine-checked lives in `tests/proofs/`.  `test_ledger.py` holds this
-document to the registry and to itself, and `test_schemes.py` holds each row to
-its scheme's measurable consequence; both are in the fast band and gate every
-push.  `tests/proofs/deep/` holds the proofs themselves, at two depths.
+document to the registry and to itself, and `test_schemes.py` holds each
+lookup and parameterized row to its scheme's measurable consequence (the
+`tree` and `minterms` rows carry no such per-row check); both are in the fast
+band and gate every push.  `tests/proofs/deep/` holds the proofs themselves,
+at two depths.
 `all_generators.py` runs a lemma battery against all 62: every single
-row of the table demonstrably participates in the emitted program, and the
-construction completes at every arity of a ladder on both table shapes.  That
+row of the table demonstrably participates in the emitted program at the
+flip-tested arities, and the construction completes at every arity of a ladder
+on both table shapes.  That
 is the counting half of each scheme above, and it is what makes "finite object
 covering every row" checkable per generator.  Four generators -- A Painter Ant,
 ArrowQueue, Container and BIO -- additionally have a hand-derived proof of
@@ -36,7 +39,8 @@ gate, `ci` adds the registry-wide battery, `by-hand` is the expensive set, and
 `all` is everything and is what `just proofs` runs.  The bands are what the
 justfile, the workflow and
 `scripts/verify.py` each invoke, so none of them carries a list of proofs;
-`test_bands.py` holds every band to a cost budget and checks that no file under
+`test_bands.py` holds each band's declared cost budget (a self-declared
+number, not a measured time) and checks that no file under
 `deep/` is missing one.
 
 None of that bounds *size*: the schemes count nodes and entries, so a generator
@@ -47,10 +51,12 @@ every generator to it except those the roadmap's scaling audit or this
 document's `cap` and `exception` rows already exempt.  Read its verdicts in one
 direction only: exceeding the bound is evidence, staying inside it is not, and
 Factor -- proven super-linear at the language level in [factor](factor.md) and
-measuring x2.11 -- is why.  Polynomial's block-incidence lemma forces
-`Omega(T/log T)` distinct real instruction-root values even when roots repeat;
-the slack certificate then proves `Omega(T**2 / log T)` for every program.
-The argument is in [polynomial](polynomial.md).
+measuring x2.11 -- is why.  Polynomial's intended block-incidence lemma would
+force `Omega(T/log T)` distinct real instruction-root values even when roots
+repeat, and the slack certificate would then prove `Omega(T**2 / log T)` for
+every program; the routing step that forces those values is a known gap, so
+that lower bound is not established as written.  The argument is in
+[polynomial](polynomial.md).
 
 ## Proof schemes
 
@@ -110,7 +116,7 @@ smaller table and restoring the omitted, equal-width placeholders preserves
 every row.  This is only an optimization unless the cited inner construction
 is itself total.
 
-**Size dispatch.**  Most lookup rows ship two routes: a folded decision tree
+**Size dispatch.**  Some lookup rows ship two routes: a folded decision tree
 for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
@@ -129,7 +135,9 @@ per row, SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
 row whatever the table says, and Whitespace halves one literal once per index
 step; none has a subtree to fold.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
-table.
+table.  Eval and NoComment have no tree route either: Eval is one linear
+lookup at every arity, and NoComment switches between two lookups at four
+inputs.
 
 ## Generator ledger
 
@@ -198,7 +206,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
 | Packlang | tree | — | linear: folded tree, shortest names deepest, flat pieces |
 | Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
-| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
+| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; the routing step behind the tight lower bound is a known gap ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
 | Qoibl | tree | — | linear: span walk, O(1) node tests by halves |
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup | linear: 16-17 tokens per row, unary runs 2T - 2 |
 | ROTfuck | tree | movement search stops after at most eight offsets | linear, time n log: essential_inputs |
@@ -213,7 +221,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 3D Brainfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
 | 3x | tree | — | linear, time n log: essential_inputs; greedy order scoring, capped |
 | Unsquare | tree | stack arrangement affects size only | linear: span walk, pricer sums geometrically |
-| Vandevelo | minterms | constant-one subtrees drop their suffix literals | linear: amortised peel; sqrt(log T) dual-basis core; proof fallback n 2^n |
+| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | linear: amortised peel; sqrt(log T) dual-basis core; proof fallback n 2^n |
 | Whitespace | linear lookup | the table is one binary literal, halved once per index step | linear: T-bit literal, index halvings |
 
 ## Exceptions and walls

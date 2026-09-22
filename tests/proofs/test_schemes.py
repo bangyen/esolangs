@@ -7,7 +7,7 @@ its construction has that scheme's signature, and a signature is executable.
 Two cautions, both learned by getting them wrong first.
 
 The fold discriminator is a statement about the route *below* the crossover.
-Sixteen of the twenty lookup rows fold a one-dependency table at ``n == 3``,
+Many of the twenty-two lookup rows fold a one-dependency table at ``n == 3``,
 which looks like a contradiction until you notice ``n == 3`` sits under every
 crossover -- those rows are measuring the tree route while the ledger names
 the wide one.  Folding therefore cannot be turned into "folds implies `tree`".

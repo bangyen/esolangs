@@ -37,17 +37,18 @@
 In the Polynomial esoteric programming language, the roots of an
 integer polynomial encode the instructions of a one-register machine, while
 the source text lists the polynomial's expanded coefficients.  We prove that
-some Boolean functions with truth-table length $T$ require
-$\Omega(T^2/\log T)$ source characters in every Polynomial program,
+every Boolean function with truth-table length $T$ has a Polynomial program of
+length $O(T^2/\log T)$, and we conjecture that some require
+$\Omega(T^2/\log T)$ source characters in every program,
 independently of the program's degree, operand signs, and additional roots.
-An explicit residual-DAG construction gives the matching
-$O(T^2/\log T)$ upper bound for every Boolean function.  A companion
+The explicit residual-DAG construction gives the upper bound.  A companion
 coefficient-mass theorem implies that every real polynomial divisible by $L$
 distinct prime-power roots and having leading coefficient of absolute value
 at least one has logarithmic coefficient mass
-$\Omega(L^2\log L)$.  A routing argument, sharpened by an outerplanar
-block-incidence bound, forces $L=\Omega(T/\log T)$ distinct real roots in a
-program for a maximal-width table.
+$\Omega(L^2\log L)$.  The intended routing argument, sharpened by an
+outerplanar block-incidence bound, would force $L=\Omega(T/\log T)$ distinct
+real roots in a program for a maximal-width table; its key step is a known gap
+(Remark~\ref{rem:routing-gap}), so the lower bound is not established here.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -118,24 +119,41 @@ Its coefficient-digit mass is
 \[
   M(f)=\sum_{j:f_j\ne0}\bigl(1+\lfloor\log_{10}|f_j|\rfloor\bigr).
 \]
-Since the serialization contains every coefficient digit, $|f|\ge M(f)$.
+Each nonzero coefficient appears in a monomial whose serialization supplies
+at least $1+\lfloor\log_{10}|f_j|\rfloor$ characters, so $|f|\ge M(f)$.
 The worst-case text complexity is the maximum, over these tables, of the
 minimum $|f|$ of a program computing the table.
 All unqualified logarithms are natural.
 
 \begin{theorem}[Main theorem]\label{thm:main}
-There are $n$-input Boolean functions for which every Polynomial program has
-length
-\[
-  \Omega\!\left(\frac{T^2}{\log T}\right).
-\]
 Every $n$-input Boolean function has a Polynomial program of length
-$O(T^2/\log T)$.  Thus the worst-case Polynomial text complexity is
-$\Theta(T^2/\log T)$.
+$O(T^2/\log T)$.  The matching lower bound --- that there are $n$-input
+Boolean functions for which every Polynomial program has length
+$\Omega(T^2/\log T)$, so that the worst-case text complexity is
+$\Theta(T^2/\log T)$ --- is conjectural; the argument offered for it below has
+a known gap (Remark~\ref{rem:routing-gap}).
 \end{theorem}
 
-The lower bound has two independent parts.  Section~\ref{sec:routing} forces
-$\Omega(T/\log T)$ distinct positive roots.  Section~\ref{sec:mass} applies
+\begin{remark}[Known gap in the lower bound]\label{rem:routing-gap}
+The upper bound of Theorem~\ref{thm:main} is proved in
+Section~\ref{sec:upper}.  The lower bound is not established as written: the
+bound $D_k\le1+2m_{\rm route}$ of Section~\ref{sec:routing} is false, because
+a routing-free suffix may contain several reads, so one routing position and
+successor does not fix the cursor at the $k$th read.  The decoded program
+$[5,1],[5],[0,2],[48,2],[2],[0,2],[0,2],[0,2],[0,2],[0,1]$ has
+$m_{\rm route}=1$ and four distinct cursors at its fourth read.  The valid
+replacement, $N'(k+1)\le2R$ with $R$ the number of read instruction
+positions, forces $R=\Omega(T/\log T)$ instructions but not
+$\Omega(T/\log T)$ distinct root values; supplying that distinct-root forcing
+step is open.  The tight $\Theta(T^2/\log T)$ statement is therefore a
+conjecture, and Section~\ref{sec:routing} is retained only to expose the
+argument that has to be repaired.
+\end{remark}
+
+The intended lower bound has two independent parts.
+Section~\ref{sec:routing} would force $\Omega(T/\log T)$ distinct positive
+roots (this is where the gap of Remark~\ref{rem:routing-gap} lies).
+Section~\ref{sec:mass} applies
 the companion coefficient-mass theorem.  Section~\ref{sec:upper} supplies
 the matching construction.  Informally, the routing argument says that a
 short instruction alphabet cannot distinguish enough residual truth tables;
@@ -228,6 +246,9 @@ position together with a successor, so
   \qquad\text{and hence}\qquad
   N'(k+1)\le 2+4m_{\rm route}.
 \end{equation}
+
+\emph{The bound is false; see Remark~\ref{rem:routing-gap}.  The derivation
+is retained so the step to be repaired stays visible.}
 
 It is not enough to count positions: repeated roots are legal.  We therefore
 bound routing positions by the number of distinct root values.
@@ -354,7 +375,7 @@ The residual DAG of a truth table has at most
 states after $k$ reads: the first term counts input prefixes, and the second
 counts Boolean residuals of the remaining width.  Put
 $h=\lfloor\log_2 n\rfloor-1$.  The levels with $n-k\le h$ contribute
-$O(\sqrt T\log n)=O(T/n)$ states; the earlier levels form a geometric tail
+$O(\sqrt T)=O(T/n)$ states; the earlier levels form a geometric tail
 of size $O(T/2^h)=O(T/n)$.  Hence
 \[
   S:=\sum_k s_k=O(T/\log T).

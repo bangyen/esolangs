@@ -5,18 +5,23 @@ retains implementation bounds, searches, counterexamples, and proof history.
 
 Program text is the expanded coefficient digits of a polynomial whose roots
 encode instructions.  The size and time cells of the roadmap's scaling audit
-are closed here as a language lower bound: every Polynomial program for a
-maximal-width table is `Omega(T**2 / log T)` characters, for every cofactor,
-every operand sign and every degree.  Everything below is proved, executed,
-or a bounded search; the bound itself is the theorem under "The slack
+are intended to close here as a language lower bound: every Polynomial program
+for a maximal-width table would be `Omega(T**2 / log T)` characters, for every
+cofactor,
+every operand sign and every degree.  That lower bound is conjectural: the
+distinct-root forcing step is a known gap (see "Known gap in the routing
+floor").  Everything else below is proved, executed,
+or a bounded search; the coefficient-mass bound is the theorem under "The slack
 certificate", and the searches that narrowed the question to it are kept
 because they say what is *not* available -- not because anything is still
 being looked for.  `tests/proofs/test_negatives.py` executes the claims
 marked (executed) and pins every link of the proof.
 
-The order is tight for program text.  The uncapped residual-DAG construction
-emits `O(T**2 / log T)` characters for every table, so maximal-width tables
-have `Theta(T**2 / log T)` language complexity.  This is an existence theorem,
+The order is intended to be tight for program text.  The uncapped residual-DAG
+construction
+emits `O(T**2 / log T)` characters for every table; the matching
+`Omega(T**2 / log T)` lower bound is conjectural, because the distinct-root
+forcing step it needs is a known gap (see below).  This is an existence theorem,
 not a totality claim for the public generator: its 1934-instruction resource
 cap still refuses some wider tables.  Construction and generated-family cold
 parse time are classified below.
@@ -38,7 +43,7 @@ After `k` reads the residual-DAG construction has at most
 `s_k = min(2**k, 2**(2**(n-k)))` states: the first term counts prefixes and
 the second all Boolean residuals of the remaining width.  With
 `h = floor(log2 n) - 1`, the levels with `n-k <= h` total
-`O(sqrt(T) log n) = O(T/n)`; the other levels form a geometric tail
+`O(sqrt(T)) = O(T/n)`; the other levels form a geometric tail
 `O(T / 2**h) = O(T/n)`.  Thus `S = sum s_k = O(T/log T)`, and the uncapped
 `_polynomial_dag` construction spends at most six instructions per state.
 
@@ -57,7 +62,7 @@ directly assembled, executed machine are pinned by
 ## Construction and cold-parse time
 
 Let `m = O(T/log T)` be the instruction count and
-`L = Theta(T**2/log T)` the maximal-width output length.  Building and
+`L = O(T**2/log T)` the constructed maximal-width output length.  Building and
 deduplicating the residual strings touches `O(T log T)` characters.  Prime
 enumeration and factor construction are polynomial in `m`; expansion owns the
 asymptotics.  A node covering `r` factors has `O(r)` slots of
@@ -89,7 +94,8 @@ Karatsuba recurrence in `_karatsuba_rec_fnt`.
 A cold parse first scans `Theta(L)` source characters and converts the dense
 coefficients to integers.  Write `D` for the degree and `H` for the largest
 coefficient's bit length.  Above the NTT threshold the quadratic lift now
-searches `|a| <= D**2`.  Every generated operand satisfies `|a| = O(D)`:
+searches `|a| <= _ntt_real_bound(D) = max(163841 // 2, D**2)` (so a fixed
+window of 81920 for `100 < D < 287`).  Every generated operand satisfies `|a| = O(D)`:
 tree operands are bounded by their instruction count, while a DAG operand is
 at most its two adjacent levels' state counts plus 48 times their label span.
 Thus every generated factor is proposed and exact division leaves a constant
@@ -133,7 +139,7 @@ in the sector the right-half-plane theorem below does not cover; their
 growth is unchanged in kind (x3.2..3.4 per added input at n=8..10).
 
 Sign freedom is measured near-empty.  On prefixes of the dense n=6 build
-(187 instructions), minimising rendered digits over operand sign patterns
+(161 instructions), minimising rendered digits over operand sign patterns
 (exhaustive to 12 signs, hill-climbing above, one exhaustive minimum missed
 by 0.4%) saves at most 5.2%, shrinking with `m` (ratio 0.96 at m=4, 0.998 at
 m=40); the fitted growth exponent is 2.35 all-positive vs 2.37 minimised, and
@@ -165,21 +171,36 @@ on `a + p**b i` forces a rational angle, Niven pins `a` to 0 or `p**b`, and
 two factors would need `2*p1**(2*b1) = 2*p2**(2*b2)`.  Descartes: a `t`-term
 real polynomial has at most `t-1` positive roots, so every multiple of a
 product with `m_r` real instruction roots `p**v` has `t >= m_r + 1`.  Real
-instructions cannot be shed -- the routing lemma is a proof: a read leaves the
-register at 48 or 49, so a residual is fixed by its cursor and that register
-value, and a routing-free path is deterministic, so `N'(k+1) <= 2 + 4B` with
-`B` the real instruction count, i.e. `B >= (N'(k+1) - 2)/4` at every level
-(`N'` non-constant subfunctions per level).  Executed on machine- and tree-shaped
-builds at n=3..5 over every input; the floor on the dense fixture runs 16,
-52, 128 at n=8, 10, 12, 0.38..0.53 of `T/log2 T`.  The shipped machines put
-the real share at 0.36 of the instruction list.  A loop changes
+instructions cannot be shed -- a read leaves the register at 48 or 49, so a
+residual is fixed by its cursor and that value, giving `N'(k+1) <= 2R` over
+read instruction *positions* `R`.  That forces `R = Omega(T/log T)`
+instructions, not `Omega(T/log T)` distinct root values.  The attempted
+strengthening to `N'(k+1) <= 2 + 4B` with `B` the real instruction count is a
+**known gap** (see below).  Executed on machine- and tree-shaped
+builds at n=3..5 over every input; the stated floor `(N'-2)/4` evaluates to
+7.25, 25.25, 63.5 at n=8, 10, 12, 0.23..0.25 of `T/log2 T` (the older 16, 52,
+128 were the `/2` bound, itself false).  The shipped machines put
+the real share at 0.33..0.36 of the instruction list over n=3..6.  A loop changes
 nothing: entries 7 and 10 leave `while (reg > 0) reg -= 3` in identical
 state, so an exit on the register merges a residue class rather than storing
-it.  Hence every multiple of every dense-table program carries
-`Omega(T/log T)` monomials, `Omega(T)` characters.  Matching, not
+it.  The intended conclusion is that every multiple of every dense-table program carries
+`Omega(T/log T)` monomials, `Omega(T)` characters (not established: see the
+known-gap note below).  Matching, not
 separating: spelling `t` exponents costs `Omega(t log t)`, so O(T) text
 forces `t = O(T/log T)` and the multiple the row needs has
 `t = Theta(T/log T)`.
+
+**Known gap in the routing floor.**  The bound `N'(k+1) <= 2 + 4B` and the
+floor `B >= (N'-2)/4` just stated are false.  A routing-free suffix may
+contain several reads, so the last routing position and the successor taken
+there do not fix the cursor at the `k`th read; the number of reads before
+that position varies with the prefix.  The decoded program
+`[5,1],[5],[0,2],[48,2],[2],[0,2],[0,2],[0,2],[0,2],[0,1]` (a valid expanded
+source) has one routing position and four distinct cursors at its fourth
+read.  The valid replacement is `N'(k+1) <= 2R` over read positions `R`,
+which forces `R = Omega(T/log T)` instructions but not distinct root values.
+The sharpened `N'(k+1) <= 12 L_real + 2` below inherits the same gap, so the
+`Omega(T**2 / log T)` lower bound is not established as written.
 
 **Coefficient mass, right half-plane: `Omega(T^2/log T)`.**  If every root
 has nonnegative real part, `x -> -x` makes every factor's coefficients
@@ -418,8 +439,8 @@ reduces, through the 2x2 Cauchy--Binet expansion `Delta(s, t) = (b - a)
 largest, to the termwise statement `Q_{n-d} Q_{n-1} - Q_{n-d-1} Q_n <=
 psi_d (Q_n**2 - Q_{n-1} Q_{n+1})`, `psi_d = (a**-d - b**-d) / (b - a)`,
 which is an *identity* when only `a, b` are present (`h_n**2 - h_{n-1}
-h_{n+1} = (ab)**n`) and strict below, ratio 0.9995..1.0000 at `L = 3..8`,
-`n <= 40`.  Adding a root smaller than `a` must not raise that ratio;
+h_{n+1} = (ab)**n`) and strict below, ratio below 1 on the checked `L = 3..8`,
+`n <= 40` range.  Adding a root smaller than `a` must not raise that ratio;
 that single inequality, and its `c > 2` analogue through the `c x c`
 minors, is what (b) still needs.  A primal reduction does not work:
 dividing out the small roots turns bounded coefficients into `B *
@@ -608,10 +629,10 @@ in the row space.  The fill is the first `L - 2u - 1` distances outside
 from 1: the leading run is at least `L - 2u - 1` long, and the theorem
 below caps the tail at `1 / prod (rho - 1)` over the `L - 2u` largest
 roots.  So the threshold is at least `prod_{i > 2u} (p_i - 1)` -- proved,
-and measured within `1.0000..1.005` of it for `L = 5..10`, `u <= (L-1)/2`,
-every `U` inside distance 8 and 120 random `U` to distance 40, approached
-from above as `U` goes deep, where the certificate tends to the pure one on
-the `L - 2u` largest roots.  Gaps (a) and (b) are moot on this route: it
+and measured within `1.0000..1.005` of it for deep `U` (`L = 5..10`,
+`u <= (L-1)/2`); shallow `U` sits further above the threshold, the ratio
+falling to the pure certificate on the `L - 2u` largest roots as `U` goes
+deep.  Gaps (a) and (b) are moot on this route: it
 forms no truncated Toeplitz minor, so it needs neither the `c >= 3` skew
 Schur inequality nor a lowest-position exchange argument.
 
@@ -761,13 +782,14 @@ product has
 
 One prime supplies at most the eight values `p**1 .. p**8`, so sorted distinct
 roots satisfy `r_i >= p_ceil(i/8)`; this constant dilation preserves the
-displayed order for every cofactor and operand sign.  The routing floor puts
-`L = Omega(T/log T)` real instruction roots in every program for a
-maximal-width table, so a program whose real instruction roots are *distinct*
-has coefficient digits `Omega(L**2 log L) = Omega(T**2 / log T)`, the dense
+displayed order for every cofactor and operand sign.  The intended routing
+floor would put `L = Omega(T/log T)` real instruction roots in every program
+for a maximal-width table, so a program whose real instruction roots are
+*distinct* would have coefficient digits
+`Omega(L**2 log L) = Omega(T**2 / log T)`, the dense
 product's own order and the right-half-plane theorem's bound without the
-half-plane.  The block-incidence lemma below forces enough distinct roots in
-every program.
+half-plane.  The block-incidence lemma below was to force enough distinct
+roots in every program; that step is a known gap (see below).
 
 **Repeated real roots are legal and do not evade the bound.**
 The slack certificate's theorem is stated for distinct roots (`rho_1 > ... >
@@ -779,33 +801,37 @@ program decoding to `[1], [1], [1]` (executed).  The basic routing lemma
 bounds instruction positions; the block-incidence refinement below bounds
 distinct root values.
 
-The program is a multiple of its distinct-root product, so the theorem gives
-`Omega(L'**2 log L')` for `L'` distinct real roots, and the block-incidence
-refinement forces `L' = Omega(T/log T)`.  Repeated roots therefore do not
-evade the bound: the refinement already counts distinct values.
+The program is a multiple of its distinct-root product, so the theorem would
+give `Omega(L'**2 log L')` for `L'` distinct real roots, and the block-incidence
+refinement was meant to force `L' = Omega(T/log T)`.  Repeated roots therefore
+do not evade the intended bound: the refinement counts distinct values.  That
+refinement is where the gap below lies.
 
-The stronger `Omega(T**2 / log T)` follows from the **sharpened routing lemma**:
-`N'(k+1) <= 12 * L_real + 2`, where `L_real` is the number of distinct
+The stronger `Omega(T**2 / log T)` would follow from the **sharpened routing
+lemma**: `N'(k+1) <= 12 * L_real + 2`, where `L_real` is the number of distinct
 *real* instruction-root values, not instruction positions.  The routing floor
 above is stated on positions (`m_r`); since the distinct-root theorem bounds
 *every multiple* of the distinct-root product, `L_real = Omega(T/log T)` alone
-upgrades the row.  The lemma is proved below; the confluent certificate still
-removes the distinctness hypothesis from the coefficient argument.
+would upgrade the row.  The lemma is attempted below and is not proved; the
+confluent certificate still removes the distinctness hypothesis from the
+coefficient argument.
 
-**The block-incidence proof.**  A read leaves the register at 48 or 49, so a
+**The block-incidence proof (gap at its first step).**  A read leaves the register at 48 or 49, so a
 residual is fixed by its cursor and that value: `N' <= 2D`, with `D` the
 number of distinct cursors at the read.  Follow an execution back from a read.
 If its path has a routing position, the last one and the successor taken fix
 the cursor there, because the remaining path is routing-free and hence
 deterministic; if not, the cursor is the deterministic image of the initial
-cursor.  So the cursors number at most `1 + 2 * m_routing` -- two per routing
-position, one per successor -- and `N'(k+1) <= 2 + 4 * m_routing`.  `convert`
-emits all copies of one exact real root in one contiguous block.  Draw the
-noncrossing bracket matches above the instruction line and contract each
-block.  Openers and closers have different codes, so no edge is a loop.  After
-parallel edges are identified, the resulting graph is simple bipartite
-outerplanar -- opener blocks on one side, closer blocks on the other -- hence
-has at most `2L_real - 3` edges.
+cursor.  This step is **false**: the routing-free suffix can contain reads,
+so the `k`th read is not the same read of that suffix across prefixes, and one
+`(r, s)` yields several cursors.  So the cursors are not bounded by
+`1 + 2 * m_routing`, and `N'(k+1) <= 2 + 4 * m_routing` does not follow; see
+the counterexample in the known-gap note above.  What does survive is the
+block structure: `convert` emits all copies of one exact real root in one
+contiguous block, the noncrossing bracket matches contract to a simple
+bipartite outerplanar graph with at most `2L_real - 3` edges, and the
+per-block routing charges below hold.  Those give `m_routing <= 3L_real`
+directly; they do not bound the number of read cursors.
 
 At most one opener routes in a block.  After its first position, entry is
 either fallthrough from the preceding identical test or a loop back-edge to
@@ -818,8 +844,9 @@ the preceding closer, again with that condition false; no instruction between
 them changes the register.  Thus an incidence is charged at most once.  For
 `L_real >= 2` this gives `m_routing <= L_real + 2L_real - 3`; for `L_real = 1`,
 the weaker `m_routing <= 3L_real` is immediate.  In every case
-`N'(k+1) <= 12 * L_real + 2`.  The dense-table floor forces
-`L_real = Omega(T/log T)`.
+`m_routing <= 3L_real`.  The step from that to `N'(k+1) <= 12 * L_real + 2`
+uses the false cursor bound above, so the dense-table floor does **not** force
+`L_real = Omega(T/log T)`; it gives only `R = Omega(T/log T)` read positions.
 
 The smaller "one closer per (value, condition)" charge is false, executed:
 one contiguous `[2]` block has two routing closers with code-5 partners in
@@ -883,7 +910,7 @@ argument, because it is proved for free positions anywhere.
 give an unconditional algorithm for binomial multiples (the `t = 2`
 case Niven closes here) and, for each fixed `t >= 3`, one needing an a priori
 height bound and no repeated cyclotomic factors.  The mandatory products are
-cyclotomic-free (squared modulus at least 4, measured 58 at smallest over
+cyclotomic-free (squared modulus at least 4, measured 10 at smallest over
 dense n=3..6); what excludes them is `t = Theta(T/log T)` growing with the
 degree -- the case the paper singles out: "Removing these restrictions is
 desirable (though not necessarily possible)", and "we suspect that computing
@@ -931,7 +958,8 @@ add nothing past the primorial: a slope `-1` segment at every `p_i` is met by
 `p_i || f_0` and a term at `x^1`, as in `P` itself.  Checked on 48
 constructed multiples to `L = 7` with a split control.
 
-Totality remains capped.  Text is `Theta(T**2/log T)` and fixed-libmpdec
+Totality remains capped.  Text is `O(T**2/log T)` (the matching lower bound is
+conjectural) and fixed-libmpdec
 generation is `Theta((T**2/log T)**log_2(3))`, with `Theta(T**2)` throughout
 the direct-FNT range admitted by the public cap.  Generated-family cold
 parsing is polynomial; only arbitrary hand-written programs outside its
