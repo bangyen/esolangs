@@ -35,7 +35,9 @@ Fix real roots $2\le r_1\le\cdots\le r_L$, repetitions allowed.  For every
 nonzero real polynomial $F=\sum_jf_jx^j$ divisible by $\prod_{i=1}^L(x-r_i)$
 we prove a degree-independent bound on each coefficient order statistic: the
 $(u+1)$-st largest nonleading coefficient magnitude is at least
-$|f_D|\prod_{i=u+1}^L(r_i-1)$; the case $u=0$ needs only $r_i>1$.
+$|f_D|\prod_{i=u+1}^L(r_i-1)$; the case $u=0$ needs only $r_i>1$.  At roots
+$(2,3)$ an explicit family attains the $u=1$ bound in the limit, so the
+statistics are sharp there.
 Summing the bounds lower-bounds the
 logarithmic coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$: for the first $L$
 primes, and $|f_D|\ge1$, $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with
@@ -147,7 +149,9 @@ Corollary~\ref{cor:prime} specializes to prime roots,
 Corollary~\ref{cor:infimum} sharpens the resulting asymptotic to the infimum
 over monic real multiples, and
 Corollary~\ref{cor:near} shows the root product itself is within $O(L^2)$ of
-that infimum for every root set here.
+that infimum for every root set here.  Proposition~\ref{prop:sharp23} shows
+the $u=1$ bound is attained in the limit at roots $(2,3)$, so no factor can be
+removed from it in general.
 
 \section{A displaced-zero tail theorem}
 
@@ -640,25 +644,46 @@ for every monic multiple, against $|P(1)|=2$; their Corollary~8 evaluates this
 quadratic exactly~\cite{dj}, giving $10/3$, so the row is low by the factor
 $5/3$.
 
-The rows $k\ge2$, by contrast, can be sharp.  For $n\ge2$ put
+The rows $k\ge2$, by contrast, can be sharp.
+
+\begin{proposition}[The bound for $b_2$ at roots $(2,3)$ is an infimum]
+\label{prop:sharp23}
+For $n\ge2$ put
 \[
   t_n=\frac{2}{1-2^{1-n}+3^{-n}},
   \qquad a_n=2+t_n\bigl(1-2^{-n}\bigr),
   \qquad
   F_n(x)=x^{n+1}-a_nx^n+t_n\sum_{j=0}^{n-1}x^j .
 \]
-Each $F_n$ is a monic multiple of $(x-2)(x-3)$: summing the geometric
-progression, $F_n(2)=0$ and $F_n(3)=0$ read $a_n=2+t_n(1-2^{-n})$ and
-$a_n=3+\tfrac12t_n(1-3^{-n})$, which agree exactly at the stated $t_n$.  Since
-$a_n>t_n>0$, the nonleading magnitudes are $a_n$ once and $t_n$ $n$ times, so
-$b_2(F_n)=t_n$, and $t_n$ decreases to $2$---the value \eqref{eq:order}
-asserts at $u=1$.  The row $k=2$ is therefore an infimum there, approached but
-attained by no $F_n$.  A similar construction, omitted, gives infima $8$ and
-$4$ for the rows $k=2$ and $k=3$ at $(2,3,5)$, again the asserted values.
-Whether the rows $k\ge2$ are sharp in general is open.
+Then each $F_n$ is a monic multiple of $(x-2)(x-3)$ with $b_2(F_n)=t_n$, and
+$t_n$ decreases to $2$.  Hence
+\[
+  \inf_{\substack{Q\in\R[x]\\ Q\text{ monic}}}
+  b_2\bigl(Q(x)(x-2)(x-3)\bigr)=2,
+\]
+the value \eqref{eq:order} asserts for $u=1$.  Every $F_n$ has $b_2>2$.
+\end{proposition}
 
-So a row $k\ge2$ can be sharp where row $k=1$ is not: at $(2,3)$ row $2$ is an
-infimum, while row $1$ is low by the factor $5/3$.
+\begin{proof}
+Summing the geometric progression, $F_n(2)=0$ and $F_n(3)=0$ read
+$a_n=2+t_n(1-2^{-n})$ and $a_n=3+\tfrac12t_n(1-3^{-n})$; the two agree exactly
+when $t_n\bigl(\tfrac12-2^{-n}+\tfrac123^{-n}\bigr)=1$, which is the stated
+$t_n$.  Writing $d_n=1-2^{1-n}+3^{-n}$, one has $d_n<1$ because
+$3^{-n}<2\cdot2^{-n}$, and $d_n\ge\tfrac12$ because $2^{1-n}\le\tfrac12$ for
+$n\ge2$, so $2<t_n\le4$; and
+$d_{n+1}-d_n=2^{-n}-\tfrac23\cdot3^{-n}>0$, so $d_n$ increases to $1$ and
+$t_n$ decreases to $2$.  Finally $a_n-t_n=2-t_n2^{-n}\ge2-4\cdot2^{-n}>0$ for
+$n\ge2$, so the nonleading magnitudes are $a_n$ once and $t_n$ exactly $n$
+times with $a_n>t_n>0$; thus $b_2(F_n)=t_n$.  Theorem~\ref{thm:order} with
+$(r_1,r_2)=(2,3)$ and $u=1$ gives $b_2\ge2$ for every monic multiple, and
+$t_n\to2$.
+\end{proof}
+
+A similar construction, omitted, gives infima $8$ and $4$ for the rows $k=2$
+and $k=3$ at $(2,3,5)$, again the asserted values.  Whether the rows $k\ge2$
+are sharp in general is open.  What the two cases together show is that a row
+$k\ge2$ can be sharp where row $k=1$ is not: at $(2,3)$ row $2$ is an infimum,
+while row $1$ is low by the factor $5/3$.
 
 \begin{corollary}[Prime roots]\label{cor:prime}
 Assume $|f_D|\ge1$ and that the increasing roots $r_i$ are bounded below by
