@@ -643,6 +643,19 @@ B` by up to x147 (`(2,3,5)`), x110, x61 over 515 boundary cases each,
 and no two-sided form exists -- boundary `2x2` ratios fall to 0.004 of
 `psi`.  Dead as a route.
 
+**Revision (September 2026): the all-root form supersedes the discarded-root
+route below.**  The committed lemma in [coefficient-mass.tex](coefficient-mass.tex)
+needs no reduction in the number of roots: keeping all `L` nodes makes
+`|Z| = u + (L - u - 1) = L - 1` for every `u <= L - 1`, so the range
+`u <= (L-1)/2` below was an artifact of dropping to `L - u` roots.  The
+committed statement is `b_{u+1} >= prod_{i=u+1}^L (r_i - 1)` for all
+`0 <= u <= L - 1`, the mass sum is `sum_i i log(r_i - 1)`, and the prime
+specialisation is the sharp `(1/2 + o(1)) L**2 log L`, attained by the first
+`L` primes.  The route recorded from here on -- the `L - u` largest roots, the
+`L - 2u` threshold, the `(L**2 / 4) log L` sum -- is the discarded-root form
+kept as history: it proves the same `Omega(L**2 log L)`, one constant weaker,
+and no step of it is load-bearing for the committed bound.
+
 **The slack certificate: the lemma, and the bound.**  Only `sum_u log
 Theta_u = Omega(L**2 log L)` is needed, so give up the `u` primes
 `p_{u+1}..p_{2u}`.  For a free set `U` of size `u <= (L-1)/2` at *any*
