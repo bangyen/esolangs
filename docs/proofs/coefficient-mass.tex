@@ -976,9 +976,9 @@ $G_D(2)=G_D(3)=G_D(5)=0$ in
 \[
   G_D(x)=x^D-s_D\sum_{j=2}^{D-1}x^j+e_Dx+e_D' .
 \]
-Both systems are nonsingular, $F_D$ and $G_D$ are monic multiples of
-$(x-2)(x-3)(x-5)$ with $b_2(F_D)=t_D$ and $b_3(G_D)=s_D$, and $t_D\to8$,
-$s_D\to4$.  Hence
+Both systems are nonsingular and $F_D$, $G_D$ are monic multiples of
+$(x-2)(x-3)(x-5)$; for all large $D$ one has $b_2(F_D)=t_D$ and
+$b_3(G_D)=s_D$, and $t_D\to8$, $s_D\to4$.  Hence
 \begin{equation}\label{eq:sharp235}
   \inf_Q b_2\bigl(QP\bigr)=8=(r_2-1)(r_3-1),
   \qquad
@@ -989,6 +989,15 @@ over monic $Q\in\R[x]$, with $P(x)=(x-2)(x-3)(x-5)$: the values
 \end{proposition}
 
 \begin{proof}
+Both systems are nonsingular for every $D$ in range.  A kernel vector of the
+first is an $H=-ax^{D-1}+t\sum_{j=1}^{D-2}x^j+c$ vanishing at $2,3,5$, and
+\[
+  (x-1)H=-ax^D+(a+t)x^{D-1}+(c-t)x-c
+\]
+has four terms, hence at most three positive roots by Descartes' rule; but
+$1,2,3,5$ are four, so $H\equiv0$ and $a=t=c=0$.  The second is the same with
+$(x-1)H=-sx^D+(s+e)x^2+(e'-e)x-e'$.
+
 Divide $F_D(r)=0$ by $r^{D-1}$ and sum the geometric progression:
 \[
   (r-a_D)+\frac{t_D}{r-1}
@@ -1010,7 +1019,7 @@ to
   M=\begin{pmatrix}-1&1&1\\-1&\tfrac12&0\\-1&\tfrac14&0\end{pmatrix},
   \qquad \det M=\tfrac14\ne0 .
 \]
-Hence the matrix is invertible for all large $D$ and its inverse converges to
+Its inverse therefore converges to
 $M^{-1}$, so $(a_D,t_D,\gamma_D)$ converges to the solution of $M$ against
 $(-2,-3,-5)$.  The last two rows of that limit give
 $-a+\tfrac12t=-3$ and $-a+\tfrac14t=-5$, whence $t=8$ and $a=7$; the first
@@ -1020,7 +1029,7 @@ The nonleading coefficient magnitudes of $F_D$ are $a_D$ once, $t_D$ exactly
 $D-2$ times, and $|c_D|$ once.  Since $a_D\to7$, $t_D\to8$ and
 $|c_D|\to\infty$, for large $D$ the largest is $|c_D|$ and the second largest
 is $t_D$, so $b_2(F_D)=t_D$; this ordering is verified directly for every
-$5\le D\le25$.  Theorem~\ref{thm:order} with $u=1$ gives $b_2\ge8$ for every
+$5\le D\le120$.  Theorem~\ref{thm:order} with $u=1$ gives $b_2\ge8$ for every
 monic multiple, and $t_D\to8$.
 
 For $G_D$ the two exempt coefficients grow like $3^D$ and must absorb both
@@ -1053,7 +1062,7 @@ $(s,E,\sigma)=(4,9,6)$; the last row alone forces $s=4$.  The nonleading
 magnitudes of $G_D$ are $s_D$ exactly $D-2$ times and $|e_D|,|e_D'|$ once
 each, and both exempt coefficients grow like $3^D$ while $s_D\to4$, so they
 are the two largest and $b_3(G_D)=s_D$; this is verified directly for every
-$6\le D\le30$.  Theorem~\ref{thm:order} with $u=2$ gives $b_3\ge4$, and
+$6\le D\le120$.  Theorem~\ref{thm:order} with $u=2$ gives $b_3\ge4$, and
 $s_D\to4$, which completes \eqref{eq:sharp235}.
 \end{proof}
 
@@ -1072,7 +1081,8 @@ reverse.  In the reversed variables the limit construction is
 \end{equation}
 which vanishes at $y=1/r_i$ for every surviving root because
 $\widetilde P_u$ does.  Its coefficients are therefore the partial sums
-$S_j=c_0+\cdots+c_j$ of the coefficients of $P_u$, and they stabilize at
+$S_j=c_m+c_{m-1}+\cdots+c_{m-j}$ of the coefficients $c_k$ of $P_u$ read down
+from the leading $c_m=1$, and they stabilize at
 $S_m=P_u(1)=(-1)^m\prod_{i>u}(r_i-1)$ once $j\ge m$.  So the free prefix is
 $S_1,\ldots,S_{m-1}$ and the run value is $|S_m|$, which is exactly
 \eqref{eq:order}: the construction reproduces the bound because the sum of the
@@ -1085,11 +1095,14 @@ magnitude only if no partial sum exceeds the total,
 \end{equation}
 and \eqref{eq:partial} can fail.  At $(2,3,5,7)$ with $u=1$ the coefficients of
 $P_1$ are $1,-15,71,-105$, the partial sums $1,-14,57,-48$, and
-$57>48$; the search returns $\min b_2\approx54.97$, above \eqref{eq:order}.
+$57>48$; the search of Section~\ref{sec:scope}, run to degree cap $28$,
+returns $\min b_2\approx54.97$, above \eqref{eq:order}.
 The same happens at $(2,3,4,5)$, sums $1,-11,36,-24$ with
 $\min b_2\approx32.23$, and at $(2,3,5,6)$, sums $1,-13,50,-40$ with
 $\min b_2\approx47.55$.  At $(3,4,5,6)$ the sums are $1,-14,60,-60$, so
-\eqref{eq:partial} holds with equality and the search returns the bound.
+\eqref{eq:partial} holds with equality and the search descends to the bound
+$60$, reaching $60.12$ at that cap.  These figures fall geometrically with the
+cap and are limits, not values at any finite degree.
 Across the $15$ root sets tried, \eqref{eq:partial} agreed with attainment
 every time, in both directions.
 
@@ -1191,7 +1204,8 @@ It also survives the witness of Proposition~\ref{prop:cutoff}, which is the
 sharpest adversary available: for one node $a$ of multiplicity $c$ with $f=0$
 the repaired product is $(a/(1-a))^c$ against
 $\Tail(u)=(a/c)[1+(a/(1-a))^c]$, so it holds for every $a\in(1/2,1)$ and
-every $c$ with ratio $a/c$, while the stated bound $a/(1-a)$ is already
+every $c$, with ratio $(a/c)\bigl(1+((1-a)/a)^c\bigr)\le1/c$, while the stated
+bound $a/(1-a)$ is already
 exceeded at $a=3/4$, $c=2$ and is short by a factor $2.4\cdot10^9$ at
 $a=9/10$, $c=12$.  Nine coalescing configurations on distinct nodes behave the
 same way.  There is no conflict: Proposition~\ref{prop:cutoff} rules out
@@ -1221,10 +1235,11 @@ that even there the root product need not be the finite-$L$ minimizer.  For
 the root pair $(2,3)$ and $k=2$, Proposition~\ref{prop:sharp23} settles it
 outright: the infimum of $b_2$ over monic multiples is exactly the bound, and
 Proposition~\ref{prop:sharp235} does the same for $(2,3,5)$ at $k=2$ and
-$k=3$.  From
-$L=4$ the construction behind both fails, and the remark after
-Proposition~\ref{prop:sharp235} records root sets where the search stays well
-above \eqref{eq:order}.
+$k=3$.  Beyond those root sets the construction behind both can fail, already at
+$L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums are $1,-\tfrac{11}2,5$,
+so \eqref{eq:partial} fails and the search returns $5.42$ against the bound
+$5$.  It can also still succeed at $L=4$, as $(3,4,5,6)$ shows.  The remark
+after Proposition~\ref{prop:sharp235} records root sets of each kind.
 Beyond that we have only a search, and for $k\ge2$ it is not a single linear
 program.  As $b_k$ is the $k$th largest magnitude, fix the $k-1$ positions
 below $D$ permitted to exceed it; minimizing $\max_j|f_j|$ over the
@@ -1238,16 +1253,21 @@ $6.5\%$ of \eqref{eq:order}; for $(2,3)$ it returns $2.0308$.  All three are
 members of the exact families of Propositions~\ref{prop:sharp23}
 and~\ref{prop:sharp235}, which carry them to the bound, so at $L\le3$ the
 gap the search reports is an artifact of its degree cap.  These are floating-point optima at a degree cap,
-not certified values; the one exact statement among them is
-\eqref{eq:sharp23}.
+not certified values; the exact statements are \eqref{eq:sharp23} and
+\eqref{eq:sharp235}.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.  The numerical optima
 quoted in Section~\ref{sec:scope} come from the finite search described
 there---one linear program per choice of exempt positions and multiplier
 degree, solved in double-precision floating point---and are reproducible from
-that description; the polynomials of Proposition~\ref{prop:sharp23} are exact
-and need no computation.
+that description; the polynomials of Propositions~\ref{prop:sharp23}
+and~\ref{prop:sharp235} are exact and need no computation.  The certificate
+sweeps reported in Section~\ref{sec:scope} draw their nodes and zero sets at
+random over the stated ranges, so the tallies and worst-case ratios are
+sample-dependent; what resampling reproduces is the qualitative conclusion in
+each case---the repaired product was never violated, the stated product was
+violated only above the cutoff, and the deletion step reversed only there.
 
 \begin{thebibliography}{9}
 \small
