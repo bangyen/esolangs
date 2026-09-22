@@ -39,6 +39,13 @@ dev = [
     "urllib3>=2.7.0",
     "ruff==0.16.5",
     "mypy==2.3.1",
+    # verify.py's duplicate-code step runs `python -m pylint`, and *skips
+    # itself* when the import is missing -- so a checkout without pylint
+    # printed "[skip] duplicate-code check (pylint)" and then "all local
+    # checks passed", with the check never run.  CI has always had it via
+    # `uv run --with pylint`; declaring it here is what makes the local gate
+    # mean what it says.
+    "pylint>=3.0.0",
     "pre-commit>=3.0.0",
     "types-requests",
     "types-setuptools",

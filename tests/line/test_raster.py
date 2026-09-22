@@ -95,3 +95,84 @@ def test_verify_reports_a_fixture_that_does_not_extract(tmp_path: Path) -> None:
 
     (tmp_path / "blank.png").write_bytes(Raster((((0, 0, 0),),)).to_png())
     assert verify.main(tmp_path) == 1
+
+
+def test_verify_passes_on_the_committed_fixtures(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The green path of the fixture sweep, which only its failures had.
+
+    ``test_verify_finds_its_fixtures`` checks the directory is populated and
+    the two tests above drive the failure arms, so the one case the script
+    exists to report -- every fixture extracting cleanly -- was the one it
+    never ran under test.
+    """
+    from esolangs.line import verify
+
+    assert verify.main() == 0
+    out = capsys.readouterr().out
+    assert out
+    assert all(line.endswith(": ok") for line in out.splitlines())
+
+
+def test_a_generated_raster_runs_from_its_retained_graph() -> None:
+    """``run`` short-circuits to the graph when the raster carries one.
+
+    Every other Line test reaches the interpreter through the pixels, so the
+    payload branch -- and with it the graph walker's input and output opcodes
+    -- was never executed.
+    """
+    from esolangs.line import generate
+
+    program = generate("0110")
+    assert program._payload is not None  # noqa: SLF001
+    io = ScriptedIO("1\n0\n")
+    run_line(program, io)
+    assert io.getvalue() == "1"
+
+
+def test_the_graph_walker_matches_the_pixels() -> None:
+    """Both routes answer the same, which is what makes the shortcut safe."""
+    from esolangs.line import generate
+
+    program = generate("0110")
+    through_graph = ScriptedIO("1\n1\n")
+    run_line(program, through_graph)
+
+    through_pixels = ScriptedIO("1\n1\n")
+    run_line(Raster(program.rows), through_pixels)
+
+    assert through_graph.getvalue() == through_pixels.getvalue() == "0"
+
+
+def test_the_graph_walker_decrements() -> None:
+    """``-`` is the one opcode no generated Line program emits."""
+    from esolangs.line import _run_node
+    from esolangs.line.render import Node
+
+    minus = Node("-")
+    minus.next = Node("o")
+    start = Node("+")
+    start.next = minus
+
+    io = ScriptedIO()
+    _run_node(start, io)
+    assert io.getvalue() == "0"
+
+
+def test_the_graph_walker_steps_over_an_opcode_it_does_not_know() -> None:
+    """Characterizing the fall-through: an unknown op advances, silently.
+
+    ``Node.op`` is a plain string, so nothing stops one being built; the
+    walker has no else-arm, and this records that it keeps going rather
+    than raising.
+    """
+    from esolangs.line import _run_node
+    from esolangs.line.render import Node
+
+    start = Node("!")
+    start.next = Node("o")
+
+    io = ScriptedIO()
+    _run_node(start, io)
+    assert io.getvalue() == "0"

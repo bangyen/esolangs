@@ -359,3 +359,37 @@ class TestOutputIsReplayedNotStreamed:
     def test_verbose_streams_the_whole_stack(self) -> None:
         verify = load_script()
         assert verify._should_stream(5, quiet=False, verbose=True)  # noqa: SLF001
+
+
+class TestASkippableToolIsStillDeclared:
+    """A step that skips itself must have its tool in the dev extra.
+
+    ``_run_steps`` drops the duplicate-code step when ``python -m pylint``
+    does not import, and the run still ends "all local checks passed".
+    pylint was in no dependency list -- not the dev extra, not the
+    pre-commit config, not ``just install-dev`` -- and only CI's
+    ``uv run --with pylint`` supplied it.  So a fresh checkout reported a
+    clean gate with the check never run.  ``verify.py`` syncs the dev extra
+    itself, which makes declaring it there the whole fix; this keeps it
+    declared.
+    """
+
+    @staticmethod
+    def _dev_extra() -> list[str]:
+        with (REPO_ROOT / "pyproject.toml").open("rb") as handle:
+            config = tomllib.load(handle)
+        extras = config["project"]["optional-dependencies"]
+        return [str(entry) for entry in extras["dev"]]
+
+    def test_pylint_is_a_dev_dependency(self) -> None:
+        names = {re.split(r"[<>=!\[ ]", entry)[0] for entry in self._dev_extra()}
+        assert "pylint" in names
+
+    def test_the_skip_still_names_pylint(self) -> None:
+        """The positive control: the test above guards a skip that exists.
+
+        If the step stopped skipping itself the assertion would be guarding
+        nothing, and would keep passing.
+        """
+        source = SCRIPT.read_text(encoding="utf-8")
+        assert 'if not have_pylint and "(pylint)" in name:' in source
