@@ -103,6 +103,18 @@ dense, parity, all-0 and all-1 tables. `n > 12` is refused with
 `GeneratorCapError`: no searched schedule folds twelve bits, and splitting a
 second input off needs four paths per level in 3**9-spaced free runs.
 
+Thirteen stalls at level 2, not at the fold. Splitting two inputs off
+gives four level-1 copies (only identity, `neg`, `rot**2` and `neg rot**2`
+clear the code), and 1,755 of 8,192 rows collide; but no searched level-2
+post-map puts a half's 375-530 rows on distinct cells clear of the 8,192
+level-1 ones (the one distinct readout found lands 270 of them on level-1
+cells). A per-bit branching fold resolves more at level 1 (7,052 of 8,192)
+but makes the level-1 cells random, which is worse for avoidance. Sharing
+cells instead -- the decoder reading a character's label `k` cells further
+on -- needs all four answer pairs at a shared cell's residue, and CP-SAT
+proves at most 10 of 94 residues can offer them (0 at `k = 1`, 7 at 2 and
+3, 10 at 5).
+
 A third level needs no fourth label, which is what the layout could not
 afford. A level-2 row whose table cell carries `N` re-enters the decoder at
 29525 with `d = b + 1`, and the cells it already executed have been
