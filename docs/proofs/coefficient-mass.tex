@@ -133,10 +133,9 @@ specializes to prime roots, Corollary~\ref{cor:infimum} sharpens the resulting
 asymptotic to the infimum over monic real multiples,
 Corollary~\ref{cor:near} shows the root product itself is within $O(L^2)$ of
 that infimum for every root set here,
-Proposition~\ref{prop:cutoff} shows that the node cutoff behind the tail
-theorem---equivalently the standing restriction $r_i\ge2$---cannot be
-relaxed, and Proposition~\ref{prop:confluent} carries the tail comparison
-itself to confluent nodes.
+Proposition~\ref{prop:cutoff} shows that the node cutoff $y_i\le1/2$ in the
+tail theorem cannot be raised, and Proposition~\ref{prop:confluent} carries
+the tail comparison itself to confluent nodes.
 
 \section{A displaced-zero tail theorem}
 
@@ -234,9 +233,10 @@ $-1,+1,-1$.  Each of the gaps $(2,4)$ and $(4,6)$ therefore carries an odd
 number of zeros of the $4$-node sum $\Delta$, hence at least one, and with the
 zero at $m+1=7$ that is the whole budget $c-2=3$; nothing is left above $7$,
 where $\Delta$ is positive.  If instead $Z'=\{2,4,5,7\}$ ($c=6$), the adjacent
-pair $\{4,5\}$ forces a zero of $\Delta$ at $5$, and the sign change across
-the longer gap $(4,7)$ forces one further unit of multiplicity in it, possibly
-at $5$ itself.
+pair $\{4,5\}$ forces a zero of $\Delta$ at $5$, while $\Delta$ is negative at
+both $4$ and $7$.  Equal endpoint signs demand an even number of zeros in
+$(4,7)$, so the one forced zero there is joined by a further unit of
+multiplicity, possibly at $5$ itself.
 
 \begin{proof}
 The sums $E$ and $\widehat F$ both live on the $c-1$ nodes
@@ -831,12 +831,12 @@ Proposition~\ref{prop:confluent} is supplementary: it carries the tail
 theorem to confluent nodes, but Theorem~\ref{thm:order} already reaches
 repeated roots by perturbation, so the main bounds do not depend on it.
 
-Two limits are worth stating plainly.  Every result above requires
-$r_i\ge2$, and that restriction is not an artifact of the proof: the tail
-bound rests on the node cutoff $y_i\le1/2$, which
-Proposition~\ref{prop:cutoff} shows cannot be raised, so roots in $(1,2)$ lie
-outside the reach of this method rather than merely outside its current
-statement.
+Two limits are worth stating plainly.  The coefficient bounds assume
+$r_i\ge2$, inherited from the node cutoff $y_i\le1/2$ of
+Theorem~\ref{thm:tail}; only Lemma~\ref{lem:interlace} is free of it.
+Proposition~\ref{prop:cutoff} shows that cutoff cannot be raised, so roots in
+$(1,2)$ lie outside the reach of this method.  It does not show that the
+bounds themselves fail there, and that case is open.
 
 What is left open is the pointwise extremal problem: for a fixed root
 sequence and a fixed $k$, how closely a multiple can approach
