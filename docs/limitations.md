@@ -189,8 +189,7 @@ expressible at any length.
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
 instruction-root values even when roots repeat, and the slack certificate
 prices every multiple of their distinct-root product. The routing lemma that
-forces those values needs the program to consume its whole input, as the
-generated machines do; under that model the language bound is
+forces those values holds for every read count, so the language bound is
 `Theta(T**2 / log T)` for every cofactor and operand sign. See
 [polynomial](proofs/polynomial.md). Factor has a language floor
 `Omega(T log T)`, a weighted exponent-vector count on D-digit integers

@@ -4,13 +4,14 @@ Run:  just proofs   (or python tests/proofs/deep/multiplicity.py)
 
 ``docs/proofs/polynomial.md`` proves "each leading zero buys one root" for an
 exponential sum on *distinct* nodes.  The language bound is
-``Omega(T**2 / log T)``: the routing lemma ``N' <= 2 + 4 * m_routing`` forces
+``Omega(T**2 / log T)``: the routing lemma ``N* <= 4 + 8 * m_routing`` forces
 ``m_routing = Omega(T/log T)``, the block-incidence bound ``m_routing <= 3 *
 L_real`` gives ``L_real = Omega(T/log T)`` distinct root values, and the
-distinct-root theorem prices them.  The routing lemma needs the program to
-consume its input: without that, a routing-free suffix may cross an
-input-dependent number of reads, and the decoded counterexample reads a
-variable number of bits, so it is not a program for a fixed-arity table.
+distinct-root theorem prices them.  ``N*`` counts first-essential residuals,
+those that depend on their next input and not on it alone; only the last two
+reads before a routing position can carry one, whatever the read count.
+``_check_essential_reads`` runs that on variable-read programs, where the
+count over all cursors fails.
 Equal real roots form contiguous blocks.
 Contracting those blocks turns the
 noncrossing bracket matching into an outerplanar incidence graph; one opener
@@ -683,6 +684,118 @@ def _check_routing_bound(failures: list[str]) -> int:
     return count
 
 
+def _residual_cursors(instrs: list[list[int]], n: int):
+    """Return ``(m_routing, all, essential)`` cursor counts per read level.
+
+    ``None`` when some input faults, runs past the step budget, or leaves a
+    bracket unmatched: such a list computes no table.  A read past the input
+    stores -1, as the interpreter does.  ``essential[k]`` counts the cursors
+    of ``k``th reads whose residual is first-essential.
+    """
+    import itertools
+
+    from esolangs.interpreters.register_based.polynomial import (
+        _advance,
+        _bracket_pairs,
+    )
+
+    pairs = _bracket_pairs(instrs)
+    if any(len(i) == 1 and p not in pairs for p, i in enumerate(instrs)):
+        return None
+    runs: dict[tuple[int, ...], tuple[str, list[int]]] = {}
+    succ: dict[int, set[int]] = {}
+    for bits in itertools.product((0, 1), repeat=n):
+        reg, ind, pos, steps, out, reads = 0, 0, 0, 0, "", []
+        while ind < len(instrs):
+            steps += 1
+            if steps > 400:
+                return None
+            ins = instrs[ind]
+            byte = None
+            if ins[1:] == [2] and ins[0] == 0:
+                byte = 48 + bits[pos] if pos < n else -1
+                pos += 1
+                reads.append(ind)
+            if len(ins) == 1:
+                nxt = _advance((reg, ind), instrs, None, pairs)[0][1]
+                succ.setdefault(ind, set()).add(nxt)
+            try:
+                (reg, ind), printed = _advance((reg, ind), instrs, byte, pairs)
+            except (ArithmeticError, ValueError):
+                return None
+            out += printed or ""
+        runs[bits] = (out, reads)
+    routing = sum(len(s) > 1 for s in succ.values())
+    every: dict[int, set[int]] = {}
+    essential: dict[int, set[int]] = {}
+    for k in range(1, n - 1):
+        rest = list(itertools.product((0, 1), repeat=n - k - 1))
+        for pre in itertools.product((0, 1), repeat=k):
+            reads = runs[pre + (0,) * (n - k)][1]
+            if len(reads) < k:
+                continue
+            every.setdefault(k, set()).add(reads[k - 1])
+            g = {(b, *s): runs[(*pre, b, *s)][0] for b in (0, 1) for s in rest}
+            depends = any(g[(0, *s)] != g[(1, *s)] for s in rest)
+            alone = all(g[(b, *s)] == g[(b, *rest[0])] for b in (0, 1) for s in rest)
+            if depends and not alone:
+                essential.setdefault(k, set()).add(reads[k - 1])
+    return routing, every, essential
+
+
+def _check_essential_reads(failures: list[str]) -> int:
+    """Pin the essential-read lemma on variable-read programs.
+
+    ``polynomial.tex`` Lemma 2.2: a ``k``th read (``k <= n-2``) carrying a
+    first-essential residual is one of the last two reads before the next
+    routing position, so ``D*_k <= 2 + 4 * m_routing`` whatever the read count.
+    The counterexample and a seeded slice of its mutants read a variable
+    number of bits; some mutants break the all-cursor ``D_k <= 1 + 2 *
+    m_routing``, and none may break the essential bound.
+    """
+    import random
+
+    base = [[5, 1], [5], [0, 2], [48, 2], [2], [0, 2], [0, 2], [0, 2], [0, 2]]
+    base.append([0, 1])
+    rng = random.Random(2)
+    programs = [(base, 8)]
+    for _ in range(400):
+        p = [list(i) for i in base]
+        for _ in range(rng.randint(1, 4)):
+            j, r = rng.randrange(len(p) + 1), rng.random()
+            if r < 0.4:
+                p.insert(j, [0, 2])
+            elif r < 0.6:
+                p.insert(j, [rng.choice([-49, -48, -1, 1, 2, 48]), rng.randint(1, 5)])
+            elif r < 0.75:
+                p.insert(j, [0, 1])
+            elif r < 0.9:
+                q = rng.randrange(len(p))
+                if len(p[q]) > 1:
+                    p.pop(q)
+            else:
+                a = rng.randrange(len(p) + 1)
+                b = rng.randrange(a, len(p) + 1)
+                op = rng.choice([1, 3, 4, 5, 7, 8])
+                p.insert(b, [6 if op > 4 else 2])
+                p.insert(a, [op])
+        programs.append((p, 5))
+    count = loose = 0
+    for instrs, n in programs:
+        result = _residual_cursors(instrs, n)
+        if result is None:
+            continue
+        routing, every, essential = result
+        count += 1
+        loose += any(len(c) > 1 + 2 * routing for c in every.values())
+        for k, cursors in essential.items():
+            if len(cursors) > 2 + 4 * routing:
+                failures.append(f"{instrs} k={k}: D*={len(cursors)} > 2+4*{routing}")
+    if not loose:
+        failures.append("no mutant breaks the all-cursor bound; slice is vacuous")
+    return count
+
+
 def main() -> int:
     failures: list[str] = []
     certs = _check_certificates(failures)
@@ -691,12 +804,14 @@ def main() -> int:
     loops = _check_loops(failures)
     routing = _check_routing(failures)
     bound = _check_routing_bound(failures)
+    essential = _check_essential_reads(failures)
     print(f"  confluent certificates checked exactly : {certs}")
     print(f"  slack-assembly thresholds checked      : {asm}")
     print(f"  repeated-root mass floor cases         : {mass}")
     print(f"  routing-floor bracket facts checked    : {loops}")
     print(f"  sharpened-routing facts checked        : {routing}")
     print(f"  routing block-incidence bound          : {bound}")
+    print(f"  essential-read programs checked        : {essential}")
     if failures:
         for line in failures:
             print(f"  FAIL: {line}")

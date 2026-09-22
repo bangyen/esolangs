@@ -5,13 +5,11 @@ retains implementation bounds, searches, counterexamples, and proof history.
 
 Program text is the expanded coefficient digits of a polynomial whose roots
 encode instructions.  The size and time cells of the roadmap's scaling audit
-close here as a language lower bound: every Polynomial program that consumes
-its input for a maximal-width table is `Omega(T**2 / log T)` characters, for
-every cofactor,
-every operand sign and every degree.  The distinct-root forcing is the routing
-lemma, which needs the program to consume the whole input -- a routing-free
-suffix can otherwise cross an input-dependent number of reads (see "Input
-consumption is load-bearing").  Everything else below is proved, executed,
+close here as a language lower bound: every Polynomial program for a
+maximal-width table is `Omega(T**2 / log T)` characters, for every cofactor,
+every operand sign, every degree and every read count.  The distinct-root
+forcing is the routing lemma, which counts only read cursors whose residual
+depends on the next input (see "Variable read counts").  Everything else below is proved, executed,
 or a bounded search; the coefficient-mass bound is the theorem under "The slack
 certificate", and the searches that narrowed the question to it are kept
 because they say what is *not* available -- not because anything is still
@@ -23,8 +21,7 @@ scratch probes no test reruns.
 The order is tight for program text in this model.  The uncapped residual-DAG
 construction
 emits `O(T**2 / log T)` characters for every table; the matching
-`Omega(T**2 / log T)` lower bound follows from the routing lemma for programs
-that consume their input.  This is an existence theorem,
+`Omega(T**2 / log T)` lower bound follows from the routing lemma.  This is an existence theorem,
 not a totality claim for the public generator: its 1934-instruction resource
 cap still refuses some wider tables.  Construction and generated-family cold
 parse time are classified below.
@@ -176,52 +173,57 @@ two factors would need `2*p1**(2*b1) = 2*p2**(2*b2)`.  Descartes: a `t`-term
 real polynomial has at most `t-1` positive roots, so every multiple of a
 product with `m_r` real instruction roots `p**v` has `t >= m_r + 1`.  **Routing lemma.**  Real
 instructions cannot be shed, and the routing lemma bounds the cursors at a
-read by the routing positions.  A read leaves the register at 48 or 49, so a
-residual is fixed by its cursor and that value: `N'(k+1) <= 2 D_{k+1}` with
-`D` the number of distinct cursors at the read.  A real instruction is
+read by the routing positions.  Call a residual `g(y_1, ...)` *first-essential*
+when it depends on `y_1` and is not a function of `y_1` alone, and let `N*(k)`
+count the distinct first-essential residuals at level `k`.  The maximal-width
+lemma gives `N*(k+1) >= 3q/8` under every order: a child fails to be
+first-essential with probability at most `2**(1 - n/2)`, independently, so
+more than `q/8` failures has probability `exp(-Omega(q n))`, below `1/n!`.
+An execution that halts before its `k`th read has a constant residual;
+otherwise a read leaves the register at 48 or 49, so a residual is fixed by
+its cursor and that value: `N*(k) <= 2 D*_k`, with `D*_k` the cursors at the
+`k`th read that carry a first-essential residual.  A real instruction is
 *routing* when both successors occur on reachable executions; let `B` be
 their number.  Take an execution to the `k`th read and let `(r, s)` be the
 last routing position on its path and the successor taken there, or none.
 From `r` on every real position is non-routing, so its successor is forced,
 while reads and register instructions do not branch: the continuation is a
-fixed cursor sequence up to the `k`th read.  Because the program consumes its
-input, each read cursor `c` runs at one read index `iota(c)`: two executions
-reading at `c` after `a < a'` reads, given the same bit there, share the state
-`(48+b, c+1)`, so the first, fed the second's remaining bits, would halt after
-`n - (a' - a) < n` reads.  The reads of the fixed continuation therefore have
-consecutive indices, and the cursor of the `k`th read is fixed by `(r,s)`.
-With no routing position the whole path is routing-free and the cursor is the
-deterministic image of the initial one.  Hence
+fixed cursor sequence with reads `c_1, ..., c_J` up to the next routing
+position or halt, and the `k`th read is some `c_j`.  **Essential reads:** if
+`k <= n-2` and the residual is first-essential then `j >= J-1`.  Otherwise
+`y_1` is read at `c_{j+1}` and overwritten at `c_{j+2}` with no routing
+position between, so it reaches only the output `w(y_1)` emitted there; the
+run prints `w(y_1) v(y_2, ...)`, and either `w` is empty (the residual ignores
+`y_1`) or it is the single output character (the residual is a function of
+`y_1` alone).  A fault between the reads would sit on a reachable input.
+With no routing position the same holds from the initial cursor.  Hence
 
-    D_k <= 1 + 2B,   N'(k+1) <= 2 + 4B,   B >= (N'(k+1) - 2) / 4.
+    D*_k <= 2 + 4B,   N*(k) <= 4 + 8B,   B >= (N*(k) - 4) / 8   (k <= n-2).
 
-**Input consumption is load-bearing.**  The lemma needs the exact read count.
-Without it the decoded program
+**Variable read counts.**  Counting every cursor fails when the read count
+varies: the decoded program
 `[5,1],[5],[0,2],[48,2],[2],[0,2],[0,2],[0,2],[0,2],[0,1]` has `B = 1` and
-four distinct cursors at its fourth read: its loop reads an input-dependent
-number of bits, so executions reach the last routing position at different
-read levels and the routing-free suffix lands the fourth read at different
-offsets.  It reads a different number of bits on different inputs, so it is
-not a program for an `n`-input table; the lower bound is stated for programs
-that consume the whole input, as the generated machines do.
-
-**General model: one logarithm weaker.**  Drop the consumption hypothesis and
-the read level at the last routing position is free: the `k`th read is the
-`j`th read of the fixed continuation for some `j <= k`, so one routing
-position and successor contributes at most `k` cursors and
-`D_k <= 1 + 2k * m_routing`.  At the `Theta(n)` level of the maximal-width
-lemma this gives `m_routing = Omega(T/log**2 T)`, hence
-`L_real = Omega(T/log**2 T)` and `Omega(T**2/log**3 T)` characters.  The
-counterexample's `D_4 = 4` against `1 + 2*4*1 = 9` is a positive control for
-the relaxed bound; it violates the tight `1 + 2*1 = 3`.
-Executed on machine- and tree-shaped
-builds at n=3..5 over every input; the floor `(N'-2)/4` evaluates to
+four distinct cursors at its fourth read, against the `1 + 2B = 3` a fixed
+read index per cursor would allow.  Its loop reads an input-dependent number
+of bits, so the routing-free suffix lands the fourth read at different
+offsets.  Only the last two reads of that suffix can carry first-essential
+residuals, and here none does: it prints the last bit it reads (executed).
+An earlier round needed programs to read exactly `n` bits, and without that
+got only `D_k <= 1 + 2k B` and `Omega(T**2/log**3 T)`; the essential-read
+lemma removes the hypothesis.  Programs that read exactly `n` bits still
+satisfy the sharper `D_k <= 1 + 2B` over all cursors, since each read cursor
+then runs at one read index.  Both bounds are executed: on 16,799 random
+terminating programs and 19,080 mutants of the counterexample at n=4..6 over
+every input, `D*_k <= 2 + 4B` never fails, while 3,995 mutants break
+`D_k <= 1 + 2B` (`tests/proofs/deep/multiplicity.py` reruns a seeded slice).
+The consuming bound is executed on machine- and tree-shaped
+builds at n=3..5 over every input; its floor `(N'-2)/4` evaluates to
 7.25, 25.25, 63.5 at n=8, 10, 12, 0.23..0.25 of `T/log2 T` (the older 16, 52,
 128 were the `/2` bound).  The shipped machines put
 the real share at 0.33..0.36 of the instruction list over n=3..6.  A loop changes
 nothing: entries 7 and 10 leave `while (reg > 0) reg -= 3` in identical
 state, so an exit on the register merges a residue class rather than storing
-it.  The conclusion is that every multiple of every consuming dense-table
+it.  The conclusion is that every multiple of every dense-table
 program carries
 `Omega(T/log T)` monomials, `Omega(T)` characters.  Matching, not
 separating: spelling `t` exponents costs `Omega(t log t)`, so O(T) text
@@ -825,7 +827,7 @@ One prime supplies at most the eight values `p**1 .. p**8`, so sorted distinct
 roots satisfy `r_i >= p_ceil(i/8)`; this constant dilation preserves the
 displayed order for every cofactor and operand sign.  The routing
 lemma puts `L = Omega(T/log T)` distinct real instruction roots in every
-consuming program for a maximal-width table, so its coefficient digits are
+program for a maximal-width table, so its coefficient digits are
 `Omega(L**2 log L) = Omega(T**2 / log T)`, the dense
 product's own order and the right-half-plane theorem's bound without the
 half-plane.  The block-incidence lemma below forces those distinct roots.
@@ -845,31 +847,19 @@ The program is a multiple of its distinct-root product, so the theorem gives
 lemma forces `L' = Omega(T/log T)`.  Repeated roots therefore
 do not evade the bound: the refinement counts distinct values.
 
-The sharpened form is `N'(k+1) <= 12 * L_real + 2`, where `L_real` is the
+The sharpened form is `N*(k) <= 24 * L_real + 4`, where `L_real` is the
 number of distinct *real* instruction-root values, not instruction positions.
 The routing lemma is stated on routing positions (`m_r`); since the
 distinct-root theorem bounds *every multiple* of the distinct-root product,
 `L_real = Omega(T/log T)` upgrades the row.  The confluent certificate below
 still removes the distinctness hypothesis from the coefficient argument.
 
-**The block-incidence proof.**  A read leaves the register at 48 or 49, so a
-residual is fixed by its cursor and that value: `N' <= 2D`, with `D` the
-number of distinct cursors at the read.  Follow an execution back from a read.
-If its path has a routing position, let `(r, s)` be the last one and the
-successor taken there.  From `r` on every real position is non-routing, so its
-successor is forced, while reads and register instructions do not branch; the
-continuation is a fixed cursor sequence up to the `k`th read.  The program
-consumes its input, so each read cursor runs at one read index (two read
-levels at one cursor would let an execution halt early), the continuation's
-reads have consecutive indices, and the `k`th read's cursor is fixed by
-`(r,s)`.
-If the path has no routing position the cursor is the deterministic image of
-the initial cursor.  Hence `D <= 1 + 2 * m_routing`, so
-`N'(k+1) <= 2 + 4 * m_routing`.  The block structure then gives
+**The block-incidence proof.**  The routing lemma above gives
+`N*(k) <= 4 + 8 * m_routing` for `k <= n-2`.  The block structure then gives
 `m_routing <= 3L_real`: `convert` emits all copies of one exact real root in
 one contiguous block, the noncrossing bracket matches contract to a simple
 bipartite outerplanar graph with at most `2L_real - 3` edges, and the
-per-block routing charges below hold.  Hence `N'(k+1) <= 12 L_real + 2`.
+per-block routing charges below hold.  Hence `N*(k) <= 24 L_real + 4`.
 
 At most one opener routes in a block.  After its first position, entry is
 either fallthrough from the preceding identical test or a loop back-edge to
@@ -959,7 +949,7 @@ leaves sparse division and divisibility testing as Open Problems 2 and 3.
 
 ## What is closed
 
-The distinct-root bound, for programs that consume their input.  The route the
+The distinct-root bound, for every read count.  The route the
 earlier rounds narrowed to
 -- an O(T)-digit multiple of the mandatory root product with *more* terms than
 the Descartes minimum `L + 1`, cofactor roots of substantially negative
@@ -1000,8 +990,7 @@ add nothing past the primorial: a slope `-1` segment at every `p_i` is met by
 `p_i || f_0` and a term at `x^1`, as in `P` itself.  Checked on 48
 constructed multiples to `L = 7` with a split control.
 
-Totality remains capped.  Text is `Theta(T**2/log T)` for programs that consume
-their input, and fixed-libmpdec
+Totality remains capped.  Text is `Theta(T**2/log T)`, and fixed-libmpdec
 generation is `Theta((T**2/log T)**log_2(3))`, with `Theta(T**2)` throughout
 the direct-FNT range admitted by the public cap.  Generated-family cold
 parsing is polynomial; only arbitrary hand-written programs outside its

@@ -109,13 +109,12 @@ INTERCAL, listed last, is outside the pass.
   output-sensitive in the last selected prime `Q` and digit count `D`, without
   assuming a prime-gap conjecture. See [factor](proofs/factor.md).
 
-  Polynomial has language-level text complexity `Theta(T**2 / log T)` for
-  programs that consume their input.  Equal real
-  roots form contiguous blocks; their noncrossing opener/closer incidence
+  Polynomial has language-level text complexity `Theta(T**2 / log T)`.  Equal
+  real roots form contiguous blocks; their noncrossing opener/closer incidence
   graph is outerplanar, giving `m_routing < 3L_real`.  The routing lemma gives
-  `L_real = Omega(T/log T)`; it needs the whole input to be read, since a
-  routing-free suffix can otherwise cross an input-dependent number of reads
-  ([proofs/index.md](proofs/index.md)).  The distinct-root slack certificate
+  `L_real = Omega(T/log T)` for every read count: only the last two reads
+  before a routing position can carry a residual that depends on its next
+  input and not on it alone.  The distinct-root slack certificate
   then gives the lower bound for every cofactor and operand sign.  The uncapped
   residual-DAG construction has `O(T/log T)` instructions and expands to the
   upper bound.  The pre-expansion estimator bounds rendered and live
@@ -203,13 +202,6 @@ step; an answer lands in the paper it extends, and the row leaves.
   root lies below 2 and more than `u` partial sums of `P` exceed `|P(1)|`,
   where the repaired bound need not be sharp.  See the Scope section of
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
-
-- **Polynomial without input consumption.**  Programs whose read count may
-  differ from `n` are only known to need `Omega(T**2 / log**3 T)`, against the
-  `O(T**2 / log T)` construction.  Close the `log**2` gap: either bound the
-  read offsets reachable from one routing position by less than `k`, or
-  exhibit a variable-read family that routes more cheaply.  See Corollary 3.4
-  of [polynomial](proofs/polynomial.tex).
 
 - **Explicit Factor constants.**  The `Theta(T log T)` upper bound rests on a
   fixed-modulus Hoheisel theorem with unstated `x_0` and `theta`, so the
