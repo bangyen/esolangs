@@ -32,8 +32,9 @@ their own specific argument, which no generic battery can reach.
 
 Each proof declares the cost band it runs in, and
 `python -m tests.proofs.deep <band>` selects on that: `verify` is the local
-gate, `ci` adds the registry-wide battery, `all` is everything and is what
-`just proofs` runs.  The bands are what the justfile, the workflow and
+gate, `ci` adds the registry-wide battery, `by-hand` is the expensive set, and
+`all` is everything and is what `just proofs` runs.  The bands are what the
+justfile, the workflow and
 `scripts/verify.py` each invoke, so none of them carries a list of proofs;
 `test_bands.py` holds every band to a cost budget and checks that no file under
 `deep/` is missing one.

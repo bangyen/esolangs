@@ -82,6 +82,34 @@ class TestInProcess:
         out = call_main(["generate", "Sophie", "0110"], capsys)
         assert esolangs.run("Sophie", out, "0\n1\n") == "1"
 
+    def test_generating_a_raster_writes_png_bytes(
+        self, capsysbinary: pytest.CaptureFixture[bytes]
+    ) -> None:
+        """Raster ``generate`` writes the image to the byte stream.
+
+        ``capsysbinary`` rather than ``capsys``: a PNG is not text, and the
+        command writes it through ``sys.stdout.buffer``.  Run in-process so
+        the coverage gate can see ``cli._generate``'s raster arm at all.
+        """
+        with (
+            patch.object(sys, "argv", ["esolangs", "generate", "Piet", "0110"]),
+            patch.object(sys, "stdin", _FakeStdin("")),
+        ):
+            main()
+        out = capsysbinary.readouterr().out
+        assert out.startswith(b"\x89PNG\r\n\x1a\n")
+        image = esolangs.Raster.from_png(out)
+        assert esolangs.run("Piet", image, "1\n0\n") == "1"
+
+    def test_generate_bits_refuses_a_raster(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A raster program reads its bits from stdin, so ``--bits`` fills nothing."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "Piet", "0110", "--bits", "01"], capsys)
+        assert exc.value.code == 2
+        assert "raster programs read bits" in capsys.readouterr().err
+
     def test_generate_unknown_language(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:

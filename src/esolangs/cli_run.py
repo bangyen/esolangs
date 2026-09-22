@@ -12,6 +12,7 @@ from esolangs.cli_args import (
     _pop_options,
     _seed_of,
     _split_positional,
+    _table_of,
     _timeout_of,
 )
 from esolangs.cli_hints import (
@@ -101,7 +102,7 @@ def _run(rest: list[str]) -> None:
             f"program with that answer will run until you stop it; pass "
             f"--timeout SECONDS to bound it\n"
         )
-    table = options.get("--table")
+    table = _table_of(options)
     warning = _shape_warning(facts, stdin, table)
     if warning and judge:
         # ``--judge`` wants one answer bit, so a bad stdin is a usage error

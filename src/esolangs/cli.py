@@ -61,6 +61,9 @@ from esolangs.cli_args import (
     _pop_width,
     _split_positional,
 )
+from esolangs.cli_args import (
+    _table_of as _table_of,
+)
 from esolangs.cli_debug import _debug
 from esolangs.cli_help import (
     HELP,

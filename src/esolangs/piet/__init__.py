@@ -166,8 +166,20 @@ def _command(
                 if rolls:
                     stack[-depth:] = stack[-rolls:] + stack[-depth:-rolls]
     elif (hue, lightness) == (4, 2):
-        with suppress(EOFError, ValueError):
-            stack.append(io.input_num())
+        # A blank line is the package's 0, and the module docstring promises
+        # it is a value rather than end of input -- but ``input_num`` is
+        # ``int(line)``, which raised on the empty string and was suppressed,
+        # so this command pushed nothing where the char command pushes 0.
+        try:
+            line = io.input_str()
+        except EOFError:
+            pass
+        else:
+            if not line:
+                stack.append(0)
+            else:
+                with suppress(ValueError):
+                    stack.append(int(line))
     elif (hue, lightness) == (5, 0):
         with suppress(EOFError):
             stack.append(io.input_char())

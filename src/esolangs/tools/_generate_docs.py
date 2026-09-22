@@ -175,7 +175,7 @@ def render_examples_section() -> str:
             "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):",
             f"`examples/` holds a truth-table program for each of the {len(BOOLEAN)}",
             "text languages with a boolean generator.  It regenerates via",
-            "`scripts/generate.py examples`.",
+            "`python scripts/generate.py examples`.",
         ]
     )
 

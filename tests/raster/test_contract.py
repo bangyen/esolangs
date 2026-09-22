@@ -20,6 +20,31 @@ def test_raster_type_has_neutral_ownership() -> None:
     assert esolangs.Raster is Raster
 
 
+def test_a_raster_needs_pixels_or_a_materializer() -> None:
+    """Both paths absent is a programmer error, not an empty image."""
+    with pytest.raises(ValueError, match="pixels or a materializer"):
+        Raster()
+
+
+def test_a_raster_hashes_by_pixels() -> None:
+    """It is usable as a mapping key, hashed on its immutable pixels."""
+    first = Raster((((0, 0, 0),),))
+    second = Raster((((0, 0, 0),),))
+    assert hash(first) == hash(second)
+    assert len({first, second}) == 1
+
+
+def test_a_raster_language_has_no_template_to_instantiate() -> None:
+    """``instantiate`` reaches ``_is_template_for`` first, which must refuse it.
+
+    A raster generator returns a :class:`Raster`, not a template string, so
+    the comparison cannot succeed; the refusal has to happen rather than
+    leaking the raster into ``template.replace``.
+    """
+    with pytest.raises(esolangs.TemplateError):
+        esolangs.instantiate("Piet", "not a template", [0], truth_table="0110")
+
+
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
 def test_every_raster_language_generates_shared_source(language: str) -> None:
     program = esolangs.generate(language, "01")

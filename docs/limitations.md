@@ -72,7 +72,7 @@ expressible at any length.
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
 | Malbolge | 9 | 9 | The ten-input branch's two targets stay adjacent; separating them needs a run-time store. |
-| Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. |
+| Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
 instruction-root values even when roots repeat. The slack certificate prices

@@ -127,7 +127,7 @@ the page.  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#d
 Ready-to-run programs are committed under [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):
 `examples/` holds a truth-table program for each of the 62
 text languages with a boolean generator.  It regenerates via
-`scripts/generate.py examples`.
+`python scripts/generate.py examples`.
 
 <!-- EXAMPLES:END -->
 
