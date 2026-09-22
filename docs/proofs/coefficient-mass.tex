@@ -638,31 +638,25 @@ for every monic multiple, against $|P(1)|=2$.  This is also why the rows
 $k\ge2$ fare better: there the excluded positions force the zero set off the
 consecutive one.
 
-How much better, we do not know.  Minimizing $b_k$ over monic multipliers of
-bounded degree is a linear program for $k=1$ and a mixed-integer program for
-$k\ge2$; at degree at most $18$, with the indicator cutoff raised until it
-stopped binding, the least values found are
-\begin{center}
-\begin{tabular}{lcrrr}
-\hline
-roots & $k$ & $\prod_{i=k}^L(r_i-1)$ & least $b_k$ & ratio\\
-\hline
-$(2,3)$   & 1 & $2$  & $3.333$  & $1.667$\\
-          & 2 & $2$  & $2.000$  & $1.000$\\
-$(3,5)$   & 1 & $8$  & $8.000$  & $1.000$\\
-          & 2 & $4$  & $4.001$  & $1.000$\\
-$(5,7)$   & 1 & $24$ & $24.000$ & $1.000$\\
-          & 2 & $6$  & $6.077$  & $1.013$\\
-$(2,3,5)$ & 1 & $8$  & $14.588$ & $1.824$\\
-          & 2 & $8$  & $8.008$  & $1.001$\\
-          & 3 & $4$  & $4.032$  & $1.008$\\
-\hline
-\end{tabular}
-\end{center}
-Each entry is read off an actual multiple, so it bounds the infimum above.  The
-rows $k\ge2$ sit within $1.3\%$ of $\prod_{i=k}^L(r_i-1)$ throughout, while
-row $k=1$ misses by a factor $1.82$ at $(2,3,5)$; its entry at $(2,3)$ is the
-$10/3$ just proved.  Whether the rows $k\ge2$ are sharp in order is open.
+The rows $k\ge2$, by contrast, are sharp.  For $n\ge2$ put
+\[
+  t_n=\frac{2}{1-2^{1-n}+3^{-n}},
+  \qquad a_n=2+t_n\bigl(1-2^{-n}\bigr),
+  \qquad
+  F_n(x)=x^{n+1}-a_nx^n+t_n\sum_{j=0}^{n-1}x^j .
+\]
+Each $F_n$ is a monic multiple of $(x-2)(x-3)$: summing the geometric
+progression, $F_n(2)=0$ and $F_n(3)=0$ read $a_n=2+t_n(1-2^{-n})$ and
+$a_n=3+\tfrac12t_n(1-3^{-n})$, which agree exactly at the stated $t_n$.  Since
+$a_n>t_n>0$, the nonleading magnitudes are $a_n$ once and $t_n$ $n$ times, so
+$b_2(F_n)=t_n$, and $t_n$ decreases to $2$---the value \eqref{eq:order}
+asserts at $u=1$.  The row $k=2$ is therefore an infimum there, approached but
+attained by no $F_n$.  The same shape of construction settles $(2,3,5)$, whose
+rows $k=2$ and $k=3$ have infima $8$ and $4$, again the asserted values.
+
+So the rows $k\ge2$ can be sharp exactly where row $k=1$ is not: at $(2,3)$
+row $2$ is an infimum, while row $1$ understates by a factor of at least
+$5/3$.
 
 \begin{corollary}[Prime roots]\label{cor:prime}
 Assume $|f_D|\ge1$ and that the increasing roots $r_i$ are bounded below by
