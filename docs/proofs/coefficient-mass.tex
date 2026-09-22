@@ -74,11 +74,13 @@ be carried by many comparable terms, so neither norm alone forces a hierarchy
 of large coefficient magnitudes.  The mass $\Lambda$
 instead accumulates over all coefficients of magnitude exceeding one: it is
 the logarithm of the multiplicative height,
-$\Lambda(F)=\log\prod_{j:f_j\ne0}\max(1,|f_j|)$.  In a fixed base
-$\Lambda(F)/\log B$ is the total base-$B$ digit length of the nonzero
-coefficient digits, so it agrees with the encoded length of the coefficient
-vector up to a term proportional to the number of encoded coefficients; for
-real coefficients it is a mass rather than a literal encoding length.
+$\Lambda(F)=\log\prod_{j:f_j\ne0}\max(1,|f_j|)$.  In a fixed integer base $B$
+the quantity $\Lambda(F)/\log B$ approximates the total base-$B$ digit length
+of the nonzero coefficients, agreeing with the encoded length of the
+coefficient vector up to a term proportional to the number of coefficients
+encoded; signs, zero entries, and the exponent encoding of a sparse
+representation are accounted for separately.  For real coefficients it is a
+mass rather than a literal encoding length.
 It is additive over coefficients, and this is what makes it the natural
 target here.  A multiplicative bound on one coefficient order statistic
 contributes one additive term to $\Lambda$; a bound holding for successive
@@ -96,8 +98,9 @@ consecutive set $J=\{1,\ldots,c-1\}$
 explicitly~\cite[Section~2]{dj}.  Their inequality~(8) already excludes a
 prescribed set of positions from the certificate.  The new ingredient is a
 prefix-sensitive tail estimate for arbitrary prescribed integer zero sets:
-moving a prescribed integer zero and the largest reciprocal node together
-strictly decreases the tail, and fixed-node displacement alone need not.
+deleting a prescribed integer zero and the largest reciprocal node together
+strictly decreases the tail, whereas displacing a zero at fixed nodes need
+not.
 Iterating the estimate over excluded positions turns that certificate into
 simultaneous lower bounds for successive coefficient order statistics, where
 the earlier certificates controlled a single height parameter.  The
@@ -123,7 +126,9 @@ Its engine is Theorem~\ref{thm:tail}, the comparison behind everything: it
 bounds the tail of a certificate by the product over its leading consecutive
 zeros and shows the bound is attained only there.  Corollary~\ref{cor:prime}
 specializes to prime roots, Corollary~\ref{cor:infimum} sharpens the resulting
-asymptotic to the infimum over normalized multiples, and
+asymptotic to the infimum over normalized multiples,
+Corollary~\ref{cor:near} shows the root product itself is within $O(L^2)$ of
+that infimum for every root set here, and
 Proposition~\ref{prop:confluent} carries the tail comparison itself to
 confluent nodes.
 
@@ -147,16 +152,20 @@ and signs of an exponential sum refer to this function of the real variable.
 \paragraph{Zero bound.}
 A nonzero exponential sum on $r$ distinct positive nodes has at most $r-1$
 real zeros, counted with multiplicity.  This is classical: divide by the
-power of the largest node so the sum becomes a real combination of
-$e^{\lambda d}$ with distinct $\lambda\le0$; the $r$ exponentials span a
-Chebyshev system, so by Rolle's theorem applied inductively to successive
-derivatives the sum has at most $r-1$ zeros, the final derivative being a
-nonzero multiple of $e^{\lambda_1d}$ and hence zero-free~\cite[Chapter~I,
-Theorem~4.1]{karlin-studden}; it is also the exponential form of Laguerre's
-extension of Descartes' rule of signs~\cite[Part~V]{polya-szego}.
-Consequently an $r$-node
-sum with $r-1$ prescribed real zeros has exactly those zeros, each is simple,
-and the sum changes sign at each of them.
+power of the largest node so the sum becomes a real combination
+$\sum_ia_ie^{\lambda_id}$ with distinct $\lambda_i\le0$.  These exponentials
+form a Chebyshev system, because their Wronskian
+$e^{(\sum_i\lambda_i)d}\prod_{i<j}(\lambda_j-\lambda_i)$ is nowhere
+zero~\cite[Chapter~I, Theorem~4.1]{karlin-studden}.  Equivalently, prove the
+bound by induction on $r$: factoring out the largest exponential leaves
+$T=\sum_ia_ie^{(\lambda_i-\lambda_1)d}$, which has the same zeros as the
+original combination and whose derivative is a combination of the remaining
+$r-1$ exponentials, so
+Rolle's theorem and the induction hypothesis give at most $r-1$ zeros.  It is
+also the exponential form of Laguerre's extension of Descartes' rule of
+signs~\cite[Part~V]{polya-szego}.  Consequently an $r$-node sum with $r-1$
+prescribed real zeros has exactly those zeros, each is simple, and the sum
+changes sign at each of them.
 
 \begin{theorem}[Displaced-zero comparison]\label{thm:tail}
 Let
@@ -270,6 +279,16 @@ $a_{j_p+1}$ but those $c-1-j_p$ simple ones, crossing them flips the sign to
 $(-1)^{2(c-1-j_p)}=+1$, and it stays positive.  Thus $\Delta_d\ge0$ for
 $d\ge m+1$.
 \end{proof}
+
+An example shows where the extra multiplicities come from.  Take $c=5$ and
+$Z'=\{2,4,6\}$, so $A=\{0,2,4,6\}$, $r=0$, and $J=\{1,2,3\}$: no marked point
+forces a zero, and every marked point fixes a sign.  Those signs are
+$-1,+1,-1$, so each of the gaps $(2,4)$ and $(4,6)$ carries an odd number of
+zeros of the $4$-node sum $\Delta$, hence at least one, and with the zero at
+$m+1=7$ that is the full budget $c-2=3$.  If instead $Z'=\{2,4,5,7\}$
+($c=6$), the consecutive pair $\{4,5\}$ forces a zero, and the parity across
+the longer gap $(4,7)$ forces one further unit of multiplicity in that gap,
+possibly at the forced zero $5$ itself.
 
 \begin{proof}[Proof of Theorem~\ref{thm:tail}]
 Induct on the number $c-1-f$ of displaced zeros.
@@ -391,10 +410,17 @@ in \eqref{eq:gamma}; the second uses $y_c\le1/2$.
 zeros $\{0\}\cup Z'$ and none other.  If $z>m+1$, then $m+1<z$ and
 $m+1\notin\{0\}\cup Z'$, so $G_{m+1}\ne0$ and $A_G>0$.  If $z=m+1$, then the
 displacement means $Z'$ does not contain all of $\{1,\ldots,z-1\}$, so some
-$d$ with $1\le d<z$ avoids $\{0\}\cup Z'$, and again $A_G>0$.  Thus the
-difference in \eqref{eq:split} is strictly positive, $\Tail(u)<\Tail(F)$,
-and the induction closes.  Equality in \eqref{eq:tail} can occur only in the
-base case.
+$d$ with $1\le d<z$ avoids $\{0\}\cup Z'$, and again $A_G>0$.  So the
+difference in \eqref{eq:split} is strictly positive, and the one-step
+comparison
+\begin{equation}\label{eq:onestep}
+  \Tail(u)<\Tail(F)
+\end{equation}
+holds.  This is the deletion step, and it is strict: the tail of the $c$-node
+sum $u$ falls below the tail of the $(c-1)$-node comparison sum $F$ that
+keeps the lower zeros $Z'$ and drops the largest prescribed zero together with
+the largest node.  The induction closes, and equality in \eqref{eq:tail} can
+occur only in the base case.
 \end{proof}
 
 The restriction $\rho_i\ge2$ is substantive.  For $c=2$,
@@ -581,6 +607,51 @@ $\Lambda(P_2)=\log30$, while $(x+1)P_2=x^3-4x^2+x+6$ has $\Lambda=\log24$;
 coefficients of magnitude one contribute nothing.  Corollary~\ref{cor:infimum}
 is an asymptotic statement about the infimum $M_L$, not a finite-$L$
 minimization by $P_L$.
+
+\begin{corollary}[Near-optimality of the root product]\label{cor:near}
+Let $2\le r_1\le\cdots\le r_L$, repetitions allowed,
+$P=\prod_{i=1}^L(x-r_i)$, and
+\[
+  M(P)=\inf_{\substack{Q\in\R[x]\\ Q\text{ monic}}}\Lambda(PQ).
+\]
+Then
+\begin{equation}\label{eq:near}
+  0\le\Lambda(P)-M(P)
+  \le\sum_{k=1}^L\log\binom Lk
+    +\sum_{i=1}^L i\log\frac{r_i}{r_i-1}
+  =O(L^2),
+\end{equation}
+with an absolute implied constant.
+\end{corollary}
+
+\begin{proof}
+Taking $Q=1$ gives $M(P)\le\Lambda(P)$, while Corollary~\ref{cor:mass} gives
+$M(P)\ge\sum_{i=1}^L i\log(r_i-1)$, because a monic multiple has $|f_D|=1$.
+In the other direction the nonleading coefficients of $P$ are the elementary
+symmetric sums, and each $k$-fold product of roots is at most the product of
+the $k$ largest, so
+\[
+  e_k(r_1,\ldots,r_L)\le\binom Lk\prod_{i=L-k+1}^{L}r_i .
+\]
+Since $e_k\ge\binom Lk2^k>1$, summing logarithms gives
+\[
+  \Lambda(P)=\sum_{k=1}^L\log e_k(r_1,\ldots,r_L)
+  \le\sum_{k=1}^L\log\binom Lk+\sum_{i=1}^L i\log r_i ,
+\]
+summing over $k$ collecting $\log r_i$ exactly $i$ times.
+Subtracting the lower bound and using
+$\log r_i-\log(r_i-1)=\log\frac{r_i}{r_i-1}$ gives \eqref{eq:near}; finally
+$\binom Lk\le2^L$ and $r_i/(r_i-1)\le2$ because $r_i\ge2$, so the right side
+is at most $(L^2+\frac{L(L+1)}2)\log2=O(L^2)$.
+\end{proof}
+
+The corollary says that no monic multiplier saves more than $O(L^2)$
+logarithmic mass relative to the root product itself.  Whenever $\Lambda(P)$
+grows faster than $L^2$, as for the prime-root product of
+Corollary~\ref{cor:prime}, where $\Lambda(P_L)\sim\frac12L^2\log L$, the
+product $P$ is asymptotically optimal among monic multiples; the infimum
+$M_L$ of Corollary~\ref{cor:infimum} is the sharp form of that statement for
+the first $L$ primes.
 
 \begin{proposition}[Confluent analogue]\label{prop:confluent}
 Let $0<y_1<\cdots<y_c\le1/2$ and $e_1,\ldots,e_c\ge1$, put $m=e_1+\cdots+e_c$,
