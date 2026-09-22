@@ -53,7 +53,7 @@ BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
 its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
 ArrowQueue re-enqueue remains open.
 
-Malbolge registers a generator through eleven inputs, source-embedded with no
+Malbolge registers a generator through twelve inputs, source-embedded with no
 initializer. Through ten, a branch-free five-cell mixer (13 operations per input bit, inits
 52/90/83/70/92, then a 16-operation post-map) folds the row index into a
 distinct address `h(row)` in `[1083, 59048]` with pairwise gap at least three,
@@ -83,8 +83,25 @@ preloaded `'0'` -- and 24 all-1 cells send the 256 rows the first readout
 leaves in 128 pairs to a second decoder at 29525, which reads a second mixer
 cell that separates all of them. The 58 pointer cells and the residue cover
 (every `h mod 94` must admit a character of each label) were found by
-annealing and are pinned. `n > 11` is refused with `GeneratorCapError`: no
-searched schedule separates twelve bits.
+annealing and are pinned.
+
+Twelve inputs ship without a twelve-bit mixer. The fold above runs over the
+first eleven; then `/` reads the twelfth and `p` writes it into a selector
+cell. The crazy operation and `*` act trit by trit, so the two values of a
+selector differ in one trit, and ten searched ops park that trit at the top:
+each selector's two values lie 19,683 apart. `i` through the first selector
+runs one of two level-1 *paths* stored at those addresses -- code that is
+jumped to, never walked. A path may rewrite the readout and picks its own
+table offset, so the halves land on different cells: `x = 0` reads cell 0 as
+the eleven-input build does, `x = 1` reads `neg(cell 0)` (`p` with
+`A = all-2` negates every trit) 543 cells on, and 560 of the 4,096 rows
+collide at level 1 against 512 at eleven inputs doubled. The decoder selects
+through the second selector the same way, and each level-2 path runs its own
+searched post-map that separates its half's colliding rows. The labels and
+the `[P0, P1]`/NEXT layout are unchanged. Executed on all 4,096 rows of the
+dense, parity, all-0 and all-1 tables. `n > 12` is refused with
+`GeneratorCapError`: no searched schedule folds twelve bits, and splitting a
+second input off needs four paths per level in 3**9-spaced free runs.
 
 A third level needs no fourth label, which is what the layout could not
 afford. A level-2 row whose table cell carries `N` re-enters the decoder at
@@ -133,7 +150,7 @@ expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 11 | 11 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones; the shipped one has two levels, and over two levels the best searched twelve-bit fold resolves 3,522 of 4,096 rows and leaves 515 after both. A third level needs no fourth label: the re-entry `i` at offset 9 routes every level-3 row through `mem[b + 10]` (executed), so the inits stay free instead of collapsing to the four tuples a four-label cover forces. What is missing is a twelve-bit mixer; three levels with free inits leave 341 of 4,096. |
+| Malbolge | 12 | 12 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones, and twelve inputs split the last one off it: a selector cell picks one of two jumped-to paths per level, so no mixer ever folds twelve bits. A thirteenth input would need four paths per level placed in free runs 3**9 apart, and the best searched twelve-bit fold still resolves only 3,522 of 4,096 rows at level 1. |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
@@ -164,7 +181,7 @@ separate axes.
 
 The collection has 64 languages; its floor is 31. All three classics carry
 generators: Befunge and Whitespace loop-less O(T) lookups, Malbolge a
-source-embedded mixer through eleven inputs. They are here for coverage, not for
+source-embedded mixer through twelve inputs. They are here for coverage, not for
 a new construction axis. Ordinary
 imperative entries with shared-shim generators and no consumer were removed. Nopstacle and
 ZTOALC L left: the former cannot meet embed conventions, the

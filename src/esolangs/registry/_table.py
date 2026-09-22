@@ -428,7 +428,7 @@ LANGUAGES: dict[str, Language] = {
 #: Widely known classics kept for coverage as much as construction.  All
 #: three now carry a generator, but they sit outside the four admission axes:
 #: they are here because a caller expects them, and each is an ordinary
-#: machine in its own costume.  Malbolge's generator caps at eleven inputs.
+#: machine in its own costume.  Malbolge's generator caps at twelve inputs.
 CLASSICS: dict[str, Language] = {
     "Befunge": Language(
         "Befunge",
