@@ -3,6 +3,9 @@
 ``esolangs.run`` is reached through the package at call time (patchable).
 """
 
+import signal
+import threading
+
 import esolangs
 from esolangs._answers import (
     _validate_shape_for_evaluate,
@@ -12,6 +15,7 @@ from esolangs._answers import (
 from esolangs._describe import describe
 from esolangs._validate import check_timeout
 from esolangs.exceptions import (
+    ArgumentError,
     EsolangError,
     ExecutionTimeoutError,
     InputExhaustedError,
@@ -81,6 +85,19 @@ def evaluate(
         # hatch (the guard is ``SIGALRM``).  Safe: every program here is
         # generated, and the divergers are settled by a repeated state.
         bound = timeout
+    if bound is not None and not (
+        threading.current_thread() is threading.main_thread()
+        and hasattr(signal, "SIGALRM")
+    ):
+        # The termination path drives ``_run`` directly and so never reached
+        # ``run``'s guard: off a main thread it leaked ``signal.signal``'s
+        # bare ValueError.  ``timeout=None`` is the route out, as for
+        # :func:`run`; the divergers are settled by a repeated state.
+        raise ArgumentError(
+            "evaluate's timeout guard uses SIGALRM and needs a Unix main "
+            "thread; off it, pass timeout=None -- a diverging row is "
+            "settled by a repeated machine state rather than waited for"
+        )
     # The width goes to whichever call builds the runnable text: for a
     # template that is ``instantiate`` below, which keeps every input's
     # run whole where a break inside one would destroy it.
@@ -106,7 +123,10 @@ def evaluate(
             source, stdin = program, encode_inputs(name, bits, truth_table)
         try:
             if terminating:
-                if not isinstance(source, str):  # raster languages answer by output
+                if not isinstance(source, str):  # pragma: no cover - see below
+                    # Raster languages answer by output, never by termination,
+                    # so this arm is unreachable metadata; the sibling check
+                    # above carries the same note.
                     raise TypeError("a raster language cannot answer by termination")
                 answers.append(
                     _terminates(name, source, stdin, bound, halts_is, diverges_is)

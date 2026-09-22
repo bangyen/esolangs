@@ -680,3 +680,29 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
         text = " ".join(HELP["check-stdin"].split())
         assert "the wrong number of lines" not in text
         assert "only --table knows how many bits the program wanted" in text
+
+
+class TestTheTableOptionIsValidated:
+    """A malformed ``--table`` warned and ran; every other bad option refused.
+
+    ``run --table 0120`` exited 0 with the complaint on stderr, where
+    ``check-stdin --table 0120`` exited 2.  An option's value is a usage
+    error, so ``_table_of`` judges it once for both commands.
+    """
+
+    def test_no_table_is_none(self) -> None:
+        """``run`` and ``debug`` may be called without the flag."""
+        assert cli._table_of({}) is None  # noqa: SLF001
+
+    def test_a_valid_table_is_returned_unchanged(self) -> None:
+        """The gate must not drop the arity the later checks need."""
+        assert cli._table_of({"--table": "0110"}) == "0110"  # noqa: SLF001
+
+    def test_a_malformed_table_exits_two(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Exit 2, like ``check-stdin`` and every other bad option value."""
+        with pytest.raises(SystemExit) as exc:
+            cli._table_of({"--table": "0120"})  # noqa: SLF001
+        assert exc.value.code == 2
+        assert "truth table" in capsys.readouterr().err

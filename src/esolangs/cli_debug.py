@@ -12,6 +12,7 @@ from esolangs.cli_args import (
     _pop_cell,
     _pop_options,
     _split_positional,
+    _table_of,
     _timeout_of,
 )
 from esolangs.cli_hints import (
@@ -77,6 +78,7 @@ def _debug(rest: list[str]) -> None:
     # Before the positional count, matching ``run``: a forgotten number made
     # the language the timeout's value and the complaint landed on the file.
     limit = _timeout_of(options)
+    table = _table_of(options)
     rest = _split_positional(rest, set(), options_taken)
     _check_count("debug", rest, 2)
     language, path = rest[0], rest[1]
@@ -175,7 +177,7 @@ def _debug(rest: list[str]) -> None:
     # state up to the fault is the thing they asked to see.
     fault = None
     reason = None
-    warning = _shape_warning(describe(language), stdin, options.get("--table"))
+    warning = _shape_warning(describe(language), stdin, table)
     if warning:
         sys.stderr.write(f"{warning}\n")
     # ``run`` gained this last round and ``debug`` did not, so `debug 123

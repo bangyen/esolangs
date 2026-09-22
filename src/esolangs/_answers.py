@@ -65,7 +65,17 @@ def encode_inputs(
             )
     if example.input_shape == "row_index":
         row = sum(bit << (len(bits) - 1 - i) for i, bit in enumerate(bits))
-        return f"{row}\n"
+        try:
+            return f"{row}\n"
+        except ValueError as exc:
+            # CPython caps int->str at 4300 digits, and a row index that wide
+            # names a row no program could read.  It escaped as a bare
+            # ValueError past the "every deliberate error is an EsolangError"
+            # promise (``encode_inputs("Fargo", [1] * 15000)``).
+            raise ArgumentError(
+                f"{name} reads a decimal row index, and {len(bits)} bits name "
+                f"an integer too large to render as one: {exc}"
+            ) from exc
     zero, one = example.alphabet
     padded = [0, *bits] if example.ghost_digit and len(bits) % 2 and bits[1:] else bits
     digits = [one if bit else zero for bit in padded]
@@ -130,11 +140,22 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
                 f"{name} reads one decimal row index, and {lines[0]!r} has a "
                 f"leading zero, which a decimal index never has"
             )
-        if wanted is not None and int(lines[0]) >= 2**wanted:
-            raise ArgumentError(
-                f"{name} row index {lines[0]} is out of range for a "
-                f"{wanted}-input program (0..{2**wanted - 1})"
-            )
+        if wanted is not None:
+            try:
+                index = int(lines[0])
+            except ValueError as exc:
+                # ``isdecimal`` passed, so the only way here is CPython's
+                # 4300-digit int->str cap; the bare ValueError used to reach
+                # the CLI's generic "this is a bug in esolangs" handler.
+                raise ArgumentError(
+                    f"{name} row index has {len(lines[0])} digits, more than "
+                    f"the {wanted}-input program can name (0..{2**wanted - 1})"
+                ) from exc
+            if index >= 2**wanted:
+                raise ArgumentError(
+                    f"{name} row index {lines[0]} is out of range for a "
+                    f"{wanted}-input program (0..{2**wanted - 1})"
+                )
         return
     if shape == "one_line":
         if len(lines) != 1:

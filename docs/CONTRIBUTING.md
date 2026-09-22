@@ -13,8 +13,8 @@ A language earns a place by forcing a point the existing set does not
 already occupy.  Four axes, with what currently sits on each:
 
 - **Construction shape** -- decision tree (the default), minterm sum
-  (`circuit_diagram`), ANF/XOR-of-products (`fargo`, the only one), grid
-  walk (`laserfuck`, `a_painter_ant`, `streetcode`).
+  (`bfstack`, `vandevelo`), ANF/XOR-of-products (`fargo`, and `super_snusp`
+  below five inputs), grid walk (`laserfuck`, `a_painter_ant`, `streetcode`).
 - **Branch mechanism** -- explicit conditional, value-testable jump, skip
   guard, implicit comparator, pointer displacement (`123`).
 - **Answer convention** -- print 0/1, landing colour (`a_painter_ant`),

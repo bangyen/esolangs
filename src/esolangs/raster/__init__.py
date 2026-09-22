@@ -23,6 +23,7 @@ class Raster:
         default=None, repr=False, compare=False
     )
     _payload: object | None = field(default=None, repr=False, compare=False)
+    _language: str | None = field(default=None, repr=False, compare=False)
 
     def __init__(
         self,
@@ -30,11 +31,13 @@ class Raster:
         *,
         _materialize: Callable[[], Rows] | None = None,
         _payload: object | None = None,
+        language: str | None = None,
     ) -> None:
         """Create a raster from pixels or a lazy language-owned renderer."""
         object.__setattr__(self, "_rows", rows)
         object.__setattr__(self, "_materialize", _materialize)
         object.__setattr__(self, "_payload", _payload)
+        object.__setattr__(self, "_language", language)
         self.__post_init__()
 
     def __post_init__(self) -> None:
@@ -61,6 +64,25 @@ class Raster:
     def __hash__(self) -> int:
         """Hash the immutable RGB pixels."""
         return hash(self.rows)
+
+    @property
+    def language(self) -> str | None:
+        """The language :func:`esolangs.generate` tagged this for, if any.
+
+        A PNG read back from disk carries no tag, exactly as a text program
+        written to a file stops being a ``_Tagged``.  ``check_program`` reads
+        this to refuse a cross-language run, which text programs already do.
+        """
+        return self._language
+
+    def tagged(self, language: str) -> Raster:
+        """Return this raster tagged as generated for ``language``."""
+        return Raster(
+            self._rows,
+            _materialize=self._materialize,
+            _payload=self._payload,
+            language=language,
+        )
 
     @property
     def rows(self) -> Rows:
