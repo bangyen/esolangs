@@ -36,11 +36,12 @@ nonzero real polynomial $F=\sum_jf_jx^j$ divisible by $\prod_{i=1}^L(x-r_i)$
 we prove a degree-independent bound on each coefficient order statistic: the
 $(u+1)$-st largest nonleading coefficient magnitude is at least
 $|f_D|\prod_{i=u+1}^L(r_i-1)$; the case $u=0$ needs only $r_i>1$.
-The bounds sum to a lower bound
-on the logarithmic coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$; for the
-first $L$ primes, and $|f_D|\ge1$, this gives
-$\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with asymptotic equality for
-$F=\prod_{i=1}^L(x-p_i)$.  The engine is a
+Summing the bounds lower-bounds the
+logarithmic coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$: for the first $L$
+primes, and $|f_D|\ge1$, $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with
+asymptotic equality for $F=\prod_{i=1}^L(x-p_i)$.  That consequence is sharp in
+order for large roots and empty as the roots approach $2$; the order statistics
+themselves bound at every root set.  The engine is a
 prefix-sensitive comparison of the infinite $\ell^1$ tails of normalized
 exponential sums with prescribed positive-integer zeros, strict unless the
 zeros are consecutive.  We isolate the zero count behind the comparison as an
@@ -165,15 +166,11 @@ and signs of an exponential sum refer to this function of the real variable.
 
 \paragraph{Zero bound.}
 A nonzero exponential sum on $r$ distinct positive nodes has at most $r-1$
-real zeros, counted with multiplicity.  Divide by the power of the largest
-node so the sum becomes a real combination $\sum_ia_ie^{\lambda_id}$ with
-distinct $\lambda_i\le0$, and prove the bound by induction on $r$: factoring
-out the largest exponential leaves
-$T=\sum_ia_ie^{(\lambda_i-\lambda_1)d}$, which has the same zeros as the
-original combination and whose derivative is again a combination of distinct
-exponentials, now with one fewer term.  Differentiating once and applying
-Rolle's theorem, then renormalizing by the largest surviving exponential at
-each step and invoking the induction hypothesis, gives at most $r-1$ zeros.
+real zeros, counted with multiplicity: write it as $\sum_ia_ie^{\lambda_id}$
+with distinct $\lambda_i$, factor out one exponential, and induct on $r$ by
+Rolle's theorem, the derivative being a sum on one fewer
+node~\cite[Part~Five, Ch.~1]{polya-szego}; equivalently, the $e^{\lambda d}$
+form a Chebyshev system~\cite{karlin}.
 Consequently an $r$-node sum with $r-1$
 prescribed real zeros has exactly those zeros, each is simple, and the sum
 changes sign at each of them.
@@ -486,8 +483,8 @@ the coefficients $f_j$ with $j<D$, in decreasing order.
 \begin{lemma}[Slack certificate]\label{lem:slack}
 Assume the roots $2\le r_1<\cdots<r_L$ are distinct and $|f_D|=1$; the
 certificate uses $L$ distinct nodes, and repetitions enter only through the
-perturbation in Theorem~\ref{thm:order}.  Fix $0\le u\le L-1$; for $u=0$ the
-hypothesis $r_1\ge2$ may be weakened to $r_1>1$.  For every set $U$ of $u$
+perturbation in Theorem~\ref{thm:order}.  Fix $0\le u\le L-1$, with $r_1>1$
+in place of $r_1\ge2$ permitted when $u=0$.  For every set $U$ of $u$
 coefficient positions below $D$, some $j<D$ outside $U$ satisfies
 \[
  |f_j|\ge\prod_{i=u+1}^L(r_i-1).
@@ -575,11 +572,8 @@ $b_{u+1}(F_\varepsilon)\to b_{u+1}(F)$.  The distinct case gives
 $b_{u+1}(F_\varepsilon)\ge|f_D|\prod_{i=u+1}^L(r_{i,\varepsilon}-1)$, and letting
 $\varepsilon\to0$ proves \eqref{eq:order}.
 
-For $u=0$ the certificate of Lemma~\ref{lem:slack} is evaluated by
-Lemma~\ref{lem:consecutive}, which needs only $y_i<1$ and discards no
-factor, and the perturbation may be run with distinct
-$r_{i,\varepsilon}>1$; so the argument gives \eqref{eq:order} with $u=0$ for
-every root set $r_i>1$.
+The $u=0$ clause is Lemma~\ref{lem:slack}'s, its perturbation run with distinct
+$r_{i,\varepsilon}>1$.
 \end{proof}
 
 \begin{corollary}[Complex multiples]\label{cor:complex}
@@ -624,6 +618,19 @@ at least $|f_D|$, while \eqref{eq:mass} degenerates to
 $\Lambda(F)\ge(L+1)\log|f_D|$ and says nothing further.  The order-statistic
 bound is the informative one across the whole root range; the mass consequence
 is not.
+
+\paragraph{Sharpness.}
+Row $k=1$ is $b_1\ge|P(1)|$, and it is an infimum rather than a minimum already
+for $L=1$: in $F=(x-r)\sum_{k\le m}c_kx^k$ with $c_m=1$, every $|f_j|\le r-1$
+would force $c_{j-1}=rc_j+f_j\ge rc_j-(r-1)$, hence $c_j\ge1$ downward from
+$c_m$ and $|f_0|=r|c_0|\ge r$.  Nor is $|P(1)|$ always the right constant: for
+$P=(x-2)(x-3)$ the infimum over monic multiples is $10/3$
+\cite[Corollary~8]{dj}, against $|P(1)|=2$.  For $k\ge2$ we do not know the
+truth.  Minimizing the $k$th largest magnitude over monic multiples of bounded
+degree is a mixed-integer program; for $(3,5)$, $(5,7)$ and $(2,3,5)$ it stays
+within a few percent of $\prod_{i=k}^L(r_i-1)$, well inside the factor $1.8$ by
+which row $k=1$ misses at $(2,3,5)$.  Whether the rows $k\ge2$ are sharp in
+order is open.
 
 \begin{corollary}[Prime roots]\label{cor:prime}
 Assume $|f_D|\ge1$ and that the increasing roots $r_i$ are bounded below by
@@ -779,6 +786,18 @@ A.~Dubickas and J.~Jankauskas,
 \newblock \emph{Publicationes Mathematicae Debrecen} 71 (2007), 325--348,
 \newblock \href{https://doi.org/10.5486/PMD.2007.3728}
 {doi:10.5486/PMD.2007.3728}.
+
+\bibitem{polya-szego}
+G.~P\'olya and G.~Szeg\H{o},
+\newblock \emph{Problems and Theorems in Analysis II},
+\newblock Springer, 1976, Part Five, Chapter 1,
+\newblock \href{https://doi.org/10.1007/978-3-642-61905-2}
+{doi:10.1007/978-3-642-61905-2}.
+
+\bibitem{karlin}
+S.~Karlin,
+\newblock \emph{Total Positivity, Volume I},
+\newblock Stanford University Press, 1968.
 
 \bibitem{grt}
 M.~Giesbrecht, D.~S. Roche, and H.~Tilak,
