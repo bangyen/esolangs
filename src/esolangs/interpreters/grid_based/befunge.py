@@ -260,7 +260,17 @@ class _Machine:
         needs_number = command == "&" or (
             command in "/%" and (not self.state[2] or self.state[2][-1] == 0)
         )
-        number_input = self.io.input_num() if needs_number else None
+        number_input = None
+        if needs_number:
+            try:
+                number_input = self.io.input_num()
+            except EOFError:
+                # `&` is a plain read, so its EOF propagates.  A zero divisor
+                # is documented to raise HaltError instead, and the eager read
+                # here fired first -- leaving `_advance`'s HaltError branch
+                # unreachable through `run`.  Hand it the missing result.
+                if command == "&":
+                    raise
         random_dir = draw(self._rng, 4) if command == "?" else None
         self.state, effect = _advance(self.state, char_input, number_input, random_dir)
         if effect:
