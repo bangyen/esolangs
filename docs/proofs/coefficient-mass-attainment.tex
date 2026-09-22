@@ -35,9 +35,9 @@ The certificate paper~\cite{coefficient-mass} proves that for real roots
 $2\le r_1\le\cdots\le r_L$, repetitions allowed, and $F=\sum_jf_jx^j$ a
 nonzero multiple of $\prod_{i=1}^L(x-r_i)$, the $(u+1)$-st largest
 nonleading coefficient magnitude satisfies
-$b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)$.  We show the bound is an exact
-infimum at $(2,3)$ and $(2,3,5)$, via explicit monic multiples approaching
-it arbitrarily closely, and identify a partial-sum criterion on the
+$b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)$, and that it is an infimum at
+$(2,3)$ and $(2,3,5)$.  We show that the $(2,3,5)$ multiples are correctly
+ordered at every degree, approaching the bound from above, and identify a partial-sum criterion on the
 surviving root product under which the same construction proves attainment
 in general, with root sets where the criterion holds and where it fails.
 The standing restriction $r_1\ge2$ cannot be dropped once $u\ge1$, already
@@ -84,9 +84,9 @@ exact infimum for the first $L$ primes.
 Section~\ref{sec:extend} extends Theorem~2.2 to confluent nodes and shows
 that neither the node cutoff $y_i\le1/2$ it rests on nor the standing
 restriction $r_i\ge2$ in \eqref{eq:order} can be relaxed once $u\ge1$.
-Section~\ref{sec:attain} exhibits explicit monic
-multiples of $(x-2)(x-3)$ and of $(x-2)(x-3)(x-5)$ approaching
-\eqref{eq:order} arbitrarily closely, identifies the partial-sum criterion
+Section~\ref{sec:attain} shows that the explicit monic multiples of
+$(x-2)(x-3)(x-5)$ approaching \eqref{eq:order} are correctly ordered at every
+degree, identifies the partial-sum criterion
 behind attainment in general, and reports root sets where the criterion
 holds and where it fails.  Section~\ref{sec:scope} records what is proved
 and what remains open.
@@ -260,55 +260,22 @@ of range.
 
 \section{Attainment at explicit root sets}\label{sec:attain}
 
-\begin{proposition}[The bound for $b_2$ at roots $(2,3)$ is an infimum]
-\label{prop:sharp23}
-For $n\ge2$ put
-\[
-  t_n=\frac{2}{1-2^{1-n}+3^{-n}},
-  \qquad a_n=2+t_n\bigl(1-2^{-n}\bigr),
-  \qquad
-  F_n(x)=x^{n+1}-a_nx^n+t_n\sum_{j=0}^{n-1}x^j .
-\]
-Then each $F_n$ is a monic multiple of $(x-2)(x-3)$ with $b_2(F_n)=t_n$, and
-$t_n$ decreases to $2$.  Hence
-\begin{equation}\label{eq:sharp23}
-  \inf_{\substack{Q\in\R[x]\\ Q\text{ monic}}}
-  b_2\bigl(Q(x)(x-2)(x-3)\bigr)=2,
-\end{equation}
-the value \eqref{eq:order} asserts for $u=1$.  Every $F_n$ has $b_2>2$;
-whether some multiple attains the value $2$ is not settled here.
-\end{proposition}
-
-\begin{proof}
-Summing the geometric progression, $F_n(2)=0$ reads
-$2^{n+1}-a_n2^n+t_n(2^n-1)=0$, that is, $a_n=2+t_n(1-2^{-n})$, which is the
-definition of $a_n$.  Likewise $F_n(3)=0$ reads
-$3^{n+1}-a_n3^n+\tfrac12t_n(3^n-1)=0$, that is,
-$a_n=3+\tfrac12t_n(1-3^{-n})$.  The two expressions for $a_n$ agree exactly
-when $t_n\bigl(\tfrac12-2^{-n}+\tfrac123^{-n}\bigr)=1$, which is the
-definition of $t_n$.  So both $2$ and $3$ are roots of the monic $F_n$.
-
-Write $d_n=1-2^{1-n}+3^{-n}$ for the denominator of $t_n$.  Then $d_n<1$
-because $3^{-n}<2\cdot2^{-n}$, and $d_n\ge\tfrac12$ because
-$2^{1-n}\le\tfrac12$ for $n\ge2$; hence $2<t_n\le4$.  Moreover
-\[
-  d_{n+1}-d_n=2^{-n}-\tfrac23\cdot3^{-n}>0,
-\]
-so $d_n$ increases to $1$ and $t_n$ decreases to $2$.  Finally
-$a_n-t_n=2-t_n2^{-n}\ge2-4\cdot2^{-n}>0$ for $n\ge2$, so the nonleading
-coefficient magnitudes of $F_n$ are $a_n$ once and $t_n$ exactly $n$ times,
-with $a_n>t_n>0$; thus $b_1(F_n)=a_n$ and $b_2(F_n)=t_n$.
-
-Theorem~3.2 with $(r_1,r_2)=(2,3)$ and $u=1$ gives $b_2\ge2$ for
-every monic multiple, and $t_n\to2$, which is \eqref{eq:sharp23}.
-\end{proof}
+At roots $(2,3)$ the certificate paper already settles the question: it
+exhibits monic multiples
+$F_n=x^{n+1}-a_nx^n+t_n\sum_{j=0}^{n-1}x^j$ of $(x-2)(x-3)$ with
+$b_2(F_n)=t_n$ decreasing to $2$~\cite[Proposition~3.5]{coefficient-mass}, so
+the $u=1$ bound is an infimum there, approached but never attained.
 
 The same construction reaches $L=3$.  Write the multiple from the top: one
 leading $1$, a short free prefix, a long run of a single value $t$, and $u$
 exempt coefficients at the bottom.  The exempt coefficients grow like
 $r_u^D$ and so survive division by $r^{D-1}$ only at the $u$ smallest roots,
 which they absorb; the run must therefore satisfy the remaining $L-u$ roots
-alone, and its value is what \eqref{eq:order} predicts.
+alone, and its value is what \eqref{eq:order} predicts.  The certificate
+paper proves the two limits below~\cite[Section~3]{coefficient-mass}; what
+is added here is that the ordering holds exactly at every degree, with both
+limits approached from above, and the Descartes step that the general
+construction later reuses.
 
 \begin{proposition}[The bounds at roots $(2,3,5)$ are infima]
 \label{prop:sharp235}
@@ -607,8 +574,8 @@ sequence and a fixed $k$, how closely a multiple can approach
 \eqref{eq:order}.  Corollary~3.7 settles the asymptotic form of
 the aggregated question for prime roots, and the multiplier $x+1$ above shows
 that even there the root product need not be the finite-$L$ minimizer.  For
-the root pair $(2,3)$ and $k=2$, Proposition~\ref{prop:sharp23} settles it
-outright: the infimum of $b_2$ over monic multiples is exactly the bound, and
+the root pair $(2,3)$ and $k=2$, \cite[Proposition~3.5]{coefficient-mass}
+settles it outright: the infimum of $b_2$ over monic multiples is exactly the bound, and
 Proposition~\ref{prop:sharp235} does the same for $(2,3,5)$ at $k=2$ and
 $k=3$.  Beyond those root sets the construction behind both can fail, already
 at $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums are
@@ -672,8 +639,9 @@ multiples,
 \newblock manuscript in preparation;
 Lemma~2.1 (Consecutive zero set), Theorem~2.2 (Displaced-zero comparison),
 Lemma~2.3 (Interlacing of the correction sum), Lemma~3.1 (Slack
-certificate), Theorem~3.2 (Coefficient order statistics), Corollary~3.7
-(Sharp prime-root infimum).
+certificate), Theorem~3.2 (Coefficient order statistics),
+Proposition~3.5 (The bound for $b_2$ at roots $(2,3)$ is an infimum),
+Corollary~3.7 (Sharp prime-root infimum).
 \end{thebibliography}
 
 \end{document}

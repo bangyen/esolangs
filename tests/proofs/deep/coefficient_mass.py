@@ -5,7 +5,7 @@ Run:  just proofs   (or python tests/proofs/deep/coefficient_mass.py)
 ``docs/proofs/coefficient-mass.tex`` proves the displaced-zero tail bound
 (Theorem 2.2) under the node cutoff ``y_i <= 1/2``;
 ``docs/proofs/coefficient-mass-attainment.tex`` shows the cutoff cannot be
-raised and that the bound is an infimum at ``(2,3)`` and ``(2,3,5)``.  This
+raised and that the ``(2,3,5)`` families are ordered at every degree.  This
 module is a *seeded* sweep whose counts are stable, so the qualitative claims
 are executed rather than remembered, plus exact checks of every number the
 first paper works out by hand.
@@ -310,10 +310,11 @@ def _check_searches(failures: list[str]) -> int:
     """The search optima are exactly the family members they should be.
 
     The optima 2.0308 at ``(2,3)`` and 8.5178, 4.1218 at ``(2,3,5)`` are the
-    corresponding members of the exact families of ``prop:sharp23`` and
-    ``prop:sharp235``.  Solved in rationals, "is" is
-    literal.  Double precision does not settle this: on the same program at
-    ``(3,4,5,6)`` it reports success and returns 184.86 past degree 25.
+    corresponding members of the exact families of ``prop:sharp23`` (in the
+    certificate paper) and ``prop:sharp235`` (in the attainment paper).
+    Solved in rationals, "is" is literal.  Double precision does not settle
+    this: on the same program at ``(3,4,5,6)`` it reports success and returns
+    184.86 past degree 25.
     """
     t7 = Fraction(2) / (1 - Fraction(2) ** -6 + Fraction(3) ** -7)
     cases = [
