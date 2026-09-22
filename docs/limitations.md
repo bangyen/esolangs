@@ -83,12 +83,12 @@ expressible at any length.
 | Malbolge | 9 | 9 | The ten-input branch's two targets stay adjacent; separating them needs a run-time store. |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
-Polynomial's block-incidence lemma would force `Omega(T/log T)` distinct real
+Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
 instruction-root values even when roots repeat, and the slack certificate
-prices every multiple of their distinct-root product. The routing step that
-forces those values is a known gap, so the tight `Theta(T**2 / log T)`
-language bound is conjectural; the upper bound `O(T**2 / log T)` is proved for
-every cofactor and operand sign. See
+prices every multiple of their distinct-root product. The routing lemma that
+forces those values needs the program to consume its whole input, as the
+generated machines do; under that model the language bound is
+`Theta(T**2 / log T)` for every cofactor and operand sign. See
 [polynomial](proofs/polynomial.md). Factor has a language floor
 `Omega(T log T)`, a weighted exponent-vector count on D-digit integers
 ([factor](proofs/factor.md)); its worst-case generated encoding is `Theta(T log T)`.

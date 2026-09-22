@@ -5,12 +5,13 @@ retains implementation bounds, searches, counterexamples, and proof history.
 
 Program text is the expanded coefficient digits of a polynomial whose roots
 encode instructions.  The size and time cells of the roadmap's scaling audit
-are intended to close here as a language lower bound: every Polynomial program
-for a maximal-width table would be `Omega(T**2 / log T)` characters, for every
-cofactor,
-every operand sign and every degree.  That lower bound is conjectural: the
-distinct-root forcing step is a known gap (see "Known gap in the routing
-floor").  Everything else below is proved, executed,
+close here as a language lower bound: every Polynomial program that consumes
+its input for a maximal-width table is `Omega(T**2 / log T)` characters, for
+every cofactor,
+every operand sign and every degree.  The distinct-root forcing is the routing
+lemma, which needs the program to consume the whole input -- a routing-free
+suffix can otherwise cross an input-dependent number of reads (see "Input
+consumption is load-bearing").  Everything else below is proved, executed,
 or a bounded search; the coefficient-mass bound is the theorem under "The slack
 certificate", and the searches that narrowed the question to it are kept
 because they say what is *not* available -- not because anything is still
@@ -19,11 +20,11 @@ marked (executed) that it covers; the block-incidence links are pinned in
 `tests/proofs/deep/multiplicity.py`, and a few (executed) markers still name
 scratch probes no test reruns.
 
-The order is intended to be tight for program text.  The uncapped residual-DAG
+The order is tight for program text in this model.  The uncapped residual-DAG
 construction
 emits `O(T**2 / log T)` characters for every table; the matching
-`Omega(T**2 / log T)` lower bound is conjectural, because the distinct-root
-forcing step it needs is a known gap (see below).  This is an existence theorem,
+`Omega(T**2 / log T)` lower bound follows from the routing lemma for programs
+that consume their input.  This is an existence theorem,
 not a totality claim for the public generator: its 1934-instruction resource
 cap still refuses some wider tables.  Construction and generated-family cold
 parse time are classified below.
@@ -173,37 +174,47 @@ cofactor root dodges the instruction encodings.
 on `a + p**b i` forces a rational angle, Niven pins `a` to 0 or `p**b`, and
 two factors would need `2*p1**(2*b1) = 2*p2**(2*b2)`.  Descartes: a `t`-term
 real polynomial has at most `t-1` positive roots, so every multiple of a
-product with `m_r` real instruction roots `p**v` has `t >= m_r + 1`.  Real
-instructions cannot be shed -- a read leaves the register at 48 or 49, so a
-residual is fixed by its cursor and that value, giving `N'(k+1) <= 2R` over
-read instruction *positions* `R`.  That forces `R = Omega(T/log T)`
-instructions, not `Omega(T/log T)` distinct root values.  The attempted
-strengthening to `N'(k+1) <= 2 + 4B` with `B` the real instruction count is a
-**known gap** (see below).  Executed on machine- and tree-shaped
-builds at n=3..5 over every input; the stated floor `(N'-2)/4` evaluates to
+product with `m_r` real instruction roots `p**v` has `t >= m_r + 1`.  **Routing lemma.**  Real
+instructions cannot be shed, and the routing lemma bounds the cursors at a
+read by the routing positions.  A read leaves the register at 48 or 49, so a
+residual is fixed by its cursor and that value: `N'(k+1) <= 2 D_{k+1}` with
+`D` the number of distinct cursors at the read.  A real instruction is
+*routing* when both successors occur on reachable executions; let `B` be
+their number.  Take an execution to the `k`th read and let `(r, s)` be the
+last routing position on its path and the successor taken there, or none.
+From `r` on every real position is non-routing, so its successor is forced,
+while reads and register instructions do not branch: the continuation is a
+fixed cursor sequence that reads a fixed number `rho(r,s)` of further symbols.
+Because the program consumes its input, the execution reads exactly `n`
+symbols and reached `r` after `n - rho(r,s)` of them, so the `k`th read sits
+at the fixed offset `k - (n - rho(r,s))` and its cursor is fixed by `(r,s)`.
+With no routing position the whole path is routing-free and the cursor is the
+deterministic image of the initial one.  Hence
+
+    D_k <= 1 + 2B,   N'(k+1) <= 2 + 4B,   B >= (N'(k+1) - 2) / 4.
+
+**Input consumption is load-bearing.**  The lemma needs the exact read count.
+Without it the decoded program
+`[5,1],[5],[0,2],[48,2],[2],[0,2],[0,2],[0,2],[0,2],[0,1]` has `B = 1` and
+four distinct cursors at its fourth read: its loop reads an input-dependent
+number of bits, so executions reach the last routing position at different
+read levels and the routing-free suffix lands the fourth read at different
+offsets.  It reads a different number of bits on different inputs, so it is
+not a program for an `n`-input table; the lower bound is stated for programs
+that consume the whole input, as the generated machines do.
+Executed on machine- and tree-shaped
+builds at n=3..5 over every input; the floor `(N'-2)/4` evaluates to
 7.25, 25.25, 63.5 at n=8, 10, 12, 0.23..0.25 of `T/log2 T` (the older 16, 52,
-128 were the `/2` bound, itself false).  The shipped machines put
+128 were the `/2` bound).  The shipped machines put
 the real share at 0.33..0.36 of the instruction list over n=3..6.  A loop changes
 nothing: entries 7 and 10 leave `while (reg > 0) reg -= 3` in identical
 state, so an exit on the register merges a residue class rather than storing
-it.  The intended conclusion is that every multiple of every dense-table program carries
-`Omega(T/log T)` monomials, `Omega(T)` characters (not established: see the
-known-gap note below).  Matching, not
+it.  The conclusion is that every multiple of every consuming dense-table
+program carries
+`Omega(T/log T)` monomials, `Omega(T)` characters.  Matching, not
 separating: spelling `t` exponents costs `Omega(t log t)`, so O(T) text
 forces `t = O(T/log T)` and the multiple the row needs has
 `t = Theta(T/log T)`.
-
-**Known gap in the routing floor.**  The bound `N'(k+1) <= 2 + 4B` and the
-floor `B >= (N'-2)/4` just stated are false.  A routing-free suffix may
-contain several reads, so the last routing position and the successor taken
-there do not fix the cursor at the `k`th read; the number of reads before
-that position varies with the prefix.  The decoded program
-`[5,1],[5],[0,2],[48,2],[2],[0,2],[0,2],[0,2],[0,2],[0,1]` (a valid expanded
-source) has one routing position and four distinct cursors at its fourth
-read.  The valid replacement is `N'(k+1) <= 2R` over read positions `R`,
-which forces `R = Omega(T/log T)` instructions but not distinct root values.
-The sharpened `N'(k+1) <= 12 L_real + 2` below inherits the same gap, so the
-`Omega(T**2 / log T)` lower bound is not established as written.
 
 **Coefficient mass, right half-plane: `Omega(T^2/log T)`.**  If every root
 has nonnegative real part, `x -> -x` makes every factor's coefficients
@@ -213,9 +224,7 @@ the `k` smallest linear constants (checked coefficientwise in integers on
 emitted artifacts and executed right-half-plane multiples).  Summing
 `k = 0..L` gives `(L+1) M / 2` digit mass, with `L` the real instruction-root
 count and `M = Omega(m_r log m_r)` from the distinct primes.  Substituting
-`L = Omega(T/log T)` would make this `Omega(T**2/log T)`, but that
-substitution is the routing-floor step that is not established (see the
-known-gap note below).
+`L = Omega(T/log T)` from the routing lemma makes this `Omega(T**2/log T)`.
 A compensation lemma covered the previous builder's `a = -1..-3` operands: a
 flipped `x^2 - 2bx + c` times an unused `x^2 + 2b'x + c'` is coefficientwise
 nonnegative iff `b' >= b`, `c + c' >= 4bb'`, `b'c >= bc'` (middles at most 6
@@ -236,7 +245,7 @@ cannot be promoted.
 **Compensation cannot be forced from the semantics** (executed).  `[-c, 1]`
 is `[c, 2]`, but `[-c, 3]` (reg *= -c) matches no nonnegative-operand map,
 and a bracket that never fires guards dead code, so a program can carry
-arbitrarily many negative operands against the routing floor's linears.  The
+arbitrarily many negative operands against the routing lemma's linears.  The
 positivity method stops at the sector boundary.
 
 **Exact-magnitude mirrors are mass-negative.**  One negated partner
@@ -265,9 +274,9 @@ with reciprocal-root sum at most 1/2 gains at least `ln 2` per box; a row
 loses at most twice its reciprocal sum (Mertens product `prod (1-1/x)^-1`).
 For powers of distinct primes the lossy rows number `L^0.61` and the sum
 never exceeds `ln ln L + 1`, so `mass(F) >= (ln 2 / 2 - o(1)) L^2` nats.
-Conditioned on `L = Omega(T/log T)` -- the routing-floor step that is not
-established -- every `(L+1)`-term multiple of every dense-table program would
-be `Omega(T^2 / log^2 T)`, for every cofactor and operand sign.
+With `L = Omega(T/log T)` from the routing lemma, every `(L+1)`-term multiple
+of every dense-table program is `Omega(T^2 / log^2 T)`, for every cofactor and
+operand sign.
 Checked in exact integers on every support to degree 12..20 for two to six
 prime powers: never above the true mass, tight in every box step, minimised
 at the dense support `P`, where it reads 0.75..0.83 of `sum_i i log r_(i)`.
@@ -789,14 +798,12 @@ product has
 
 One prime supplies at most the eight values `p**1 .. p**8`, so sorted distinct
 roots satisfy `r_i >= p_ceil(i/8)`; this constant dilation preserves the
-displayed order for every cofactor and operand sign.  The intended routing
-floor would put `L = Omega(T/log T)` real instruction roots in every program
-for a maximal-width table, so a program whose real instruction roots are
-*distinct* would have coefficient digits
+displayed order for every cofactor and operand sign.  The routing
+lemma puts `L = Omega(T/log T)` distinct real instruction roots in every
+consuming program for a maximal-width table, so its coefficient digits are
 `Omega(L**2 log L) = Omega(T**2 / log T)`, the dense
 product's own order and the right-half-plane theorem's bound without the
-half-plane.  The block-incidence lemma below was to force enough distinct
-roots in every program; that step is a known gap (see below).
+half-plane.  The block-incidence lemma below forces those distinct roots.
 
 **Repeated real roots are legal and do not evade the bound.**
 The slack certificate's theorem is stated for distinct roots (`rho_1 > ... >
@@ -804,41 +811,39 @@ rho_c`), and the bound above prices multiples of `prod_{i<=L} (x - p_i)` with
 the `p_i` distinct.  A program need not have distinct real instruction roots:
 `_factor_roots` preserves multiplicity (`[Root(r, 0)] * multiplicity`), and
 `convert` emits one instruction per root, so `f(x) = (x-2)^3` is a legal
-program decoding to `[1], [1], [1]` (executed).  The basic routing lemma
-bounds instruction positions; the block-incidence refinement below bounds
-distinct root values.
+program decoding to `[1], [1], [1]` (executed).  The routing lemma bounds
+cursors by routing positions; the block-incidence refinement below bounds
+routing positions by distinct root values.
 
-The program is a multiple of its distinct-root product, so the theorem would
-give `Omega(L'**2 log L')` for `L'` distinct real roots, and the block-incidence
-refinement was meant to force `L' = Omega(T/log T)`.  Repeated roots therefore
-do not evade the intended bound: the refinement counts distinct values.  That
-refinement is where the gap below lies.
+The program is a multiple of its distinct-root product, so the theorem gives
+`Omega(L'**2 log L')` for `L'` distinct real roots, and the block-incidence
+lemma forces `L' = Omega(T/log T)`.  Repeated roots therefore
+do not evade the bound: the refinement counts distinct values.
 
-The stronger `Omega(T**2 / log T)` would follow from the **sharpened routing
-lemma**: `N'(k+1) <= 12 * L_real + 2`, where `L_real` is the number of distinct
-*real* instruction-root values, not instruction positions.  The routing floor
-above is stated on positions (`m_r`); since the distinct-root theorem bounds
-*every multiple* of the distinct-root product, `L_real = Omega(T/log T)` alone
-would upgrade the row.  The lemma is attempted below and is not proved; the
-confluent certificate still removes the distinctness hypothesis from the
-coefficient argument.
+The sharpened form is `N'(k+1) <= 12 * L_real + 2`, where `L_real` is the
+number of distinct *real* instruction-root values, not instruction positions.
+The routing lemma is stated on routing positions (`m_r`); since the
+distinct-root theorem bounds *every multiple* of the distinct-root product,
+`L_real = Omega(T/log T)` upgrades the row.  The confluent certificate below
+still removes the distinctness hypothesis from the coefficient argument.
 
-**The block-incidence proof (gap at its first step).**  A read leaves the register at 48 or 49, so a
+**The block-incidence proof.**  A read leaves the register at 48 or 49, so a
 residual is fixed by its cursor and that value: `N' <= 2D`, with `D` the
 number of distinct cursors at the read.  Follow an execution back from a read.
-If its path has a routing position, the last one and the successor taken fix
-the cursor there, because the remaining path is routing-free and hence
-deterministic; if not, the cursor is the deterministic image of the initial
-cursor.  This step is **false**: the routing-free suffix can contain reads,
-so the `k`th read is not the same read of that suffix across prefixes, and one
-`(r, s)` yields several cursors.  So the cursors are not bounded by
-`1 + 2 * m_routing`, and `N'(k+1) <= 2 + 4 * m_routing` does not follow; see
-the counterexample in the known-gap note above.  What does survive is the
-block structure: `convert` emits all copies of one exact real root in one
-contiguous block, the noncrossing bracket matches contract to a simple
+If its path has a routing position, let `(r, s)` be the last one and the
+successor taken there.  From `r` on every real position is non-routing, so its
+successor is forced, while reads and register instructions do not branch; the
+continuation is a fixed cursor sequence reading a fixed number `rho(r,s)` of
+further symbols.  The program consumes its input, so the execution reads
+exactly `n` symbols and reached `r` after `n - rho(r,s)`; the `k`th read sits
+at the fixed offset `k - (n - rho(r,s))` and its cursor is fixed by `(r,s)`.
+If the path has no routing position the cursor is the deterministic image of
+the initial cursor.  Hence `D <= 1 + 2 * m_routing`, so
+`N'(k+1) <= 2 + 4 * m_routing`.  The block structure then gives
+`m_routing <= 3L_real`: `convert` emits all copies of one exact real root in
+one contiguous block, the noncrossing bracket matches contract to a simple
 bipartite outerplanar graph with at most `2L_real - 3` edges, and the
-per-block routing charges below hold.  Those give `m_routing <= 3L_real`
-directly; they do not bound the number of read cursors.
+per-block routing charges below hold.  Hence `N'(k+1) <= 12 L_real + 2`.
 
 At most one opener routes in a block.  After its first position, entry is
 either fallthrough from the preceding identical test or a loop back-edge to
@@ -851,9 +856,8 @@ the preceding closer, again with that condition false; no instruction between
 them changes the register.  Thus an incidence is charged at most once.  For
 `L_real >= 2` this gives `m_routing <= L_real + 2L_real - 3`; for `L_real = 1`,
 the weaker `m_routing <= 3L_real` is immediate.  In every case
-`m_routing <= 3L_real`.  The step from that to `N'(k+1) <= 12 * L_real + 2`
-uses the false cursor bound above, so the dense-table floor does **not** force
-`L_real = Omega(T/log T)`; it gives only `R = Omega(T/log T)` read positions.
+`m_routing <= 3L_real`.  With the cursor bound, the dense-table floor forces
+`L_real = Omega(T/log T)`, which is the sharpened routing lemma.
 
 The smaller "one closer per (value, condition)" charge is false, executed:
 one contiguous `[2]` block has two routing closers with code-5 partners in
@@ -872,10 +876,9 @@ the Hermite limit of the distinct theorem -- perturb the repeated nodes, apply
 the distinct bound, and pass to the limit by Fatou.  This extends the tail
 comparison to repeated roots.  It is supplementary: it removes the
 distinctness hypothesis from the coefficient argument, and so removes one
-reason the earlier searches looked necessary.  It does not supply the missing
-distinct-root forcing -- that is the known gap above.  The block-incidence
-lemma was to force distinct values but bounds only routing positions, so the
-main bound does not follow from it alone.
+reason the earlier searches looked necessary.  The distinct-root forcing comes
+from the routing lemma together with the block-incidence bound above, which
+counts distinct values.
 `tests/proofs/deep/multiplicity.py` pins the algebraic content of the
 confluent bound on small certificates; it does not re-prove the limit step,
 and no repeated-root mass order is needed for the theorem.
@@ -930,16 +933,18 @@ leaves sparse division and divisibility testing as Open Problems 2 and 3.
 
 ## What is closed
 
-Nothing on the distinct-root bound.  The route the earlier rounds narrowed to
+The distinct-root bound, for programs that consume their input.  The route the
+earlier rounds narrowed to
 -- an O(T)-digit multiple of the mandatory root product with *more* terms than
 the Descartes minimum `L + 1`, cofactor roots of substantially negative
 real part and inexact magnitude relations to the instruction roots -- has
 no member: the iterated elimination's certificate, in its slack form, is
 proved for free positions anywhere and every degree, so **every** multiple
 of the mandatory distinct-root product carries `Omega(L**2 log L)` coefficient
-digits.  The block-incidence lemma was to supply the reduction from routed
-instructions to distinct real roots; that reduction is the known gap, so it is
-not in hand and the language bound stays conjectural.  The sparse-remainder
+digits.  The routing lemma bounds routed instructions by the cursors at a
+read, and the block-incidence lemma supplies the reduction from routed
+instructions to distinct real roots, so the language bound follows.  The
+sparse-remainder
 profile that survived the searches (`O(1)`
 coefficients of `O(T)` digits, a second at a constant fraction of the
 primorial, and an `O(T/log T)`-term remainder of `O(log T)`-digit terms) is
@@ -969,8 +974,8 @@ add nothing past the primorial: a slope `-1` segment at every `p_i` is met by
 `p_i || f_0` and a term at `x^1`, as in `P` itself.  Checked on 48
 constructed multiples to `L = 7` with a split control.
 
-Totality remains capped.  Text is `O(T**2/log T)` (the matching lower bound is
-conjectural) and fixed-libmpdec
+Totality remains capped.  Text is `Theta(T**2/log T)` for programs that consume
+their input, and fixed-libmpdec
 generation is `Theta((T**2/log T)**log_2(3))`, with `Theta(T**2)` throughout
 the direct-FNT range admitted by the public cap.  Generated-family cold
 parsing is polynomial; only arbitrary hand-written programs outside its

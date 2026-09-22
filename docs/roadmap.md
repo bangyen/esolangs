@@ -109,13 +109,14 @@ INTERCAL, listed last, is outside the pass.
   output-sensitive in the last selected prime `Q` and digit count `D`, without
   assuming a prime-gap conjecture. See [factor](proofs/factor.md).
 
-  Polynomial has language-level text complexity `O(T**2 / log T)`.  Equal real
+  Polynomial has language-level text complexity `Theta(T**2 / log T)` for
+  programs that consume their input.  Equal real
   roots form contiguous blocks; their noncrossing opener/closer incidence
-  graph is outerplanar, giving `m_routing < 3L_real`.  The step from that to
-  `L_real = Omega(T/log T)` rests on a routing bound that is a known gap
-  ([proofs/index.md](proofs/index.md)), so the matching `Omega(T**2 / log T)`
-  lower bound is conjectural; the distinct-root slack certificate would then
-  give it for every cofactor and operand sign.  The uncapped
+  graph is outerplanar, giving `m_routing < 3L_real`.  The routing lemma gives
+  `L_real = Omega(T/log T)`; it needs the whole input to be read, since a
+  routing-free suffix can otherwise cross an input-dependent number of reads
+  ([proofs/index.md](proofs/index.md)).  The distinct-root slack certificate
+  then gives the lower bound for every cofactor and operand sign.  The uncapped
   residual-DAG construction has `O(T/log T)` instructions and expands to the
   upper bound.  The pre-expansion estimator bounds rendered and live
   decimal digits before the resource cap admits multiplication.  Put

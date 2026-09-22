@@ -3,12 +3,15 @@
 Run:  just proofs   (or python tests/proofs/deep/multiplicity.py)
 
 ``docs/proofs/polynomial.md`` proves "each leading zero buys one root" for an
-exponential sum on *distinct* nodes.  The language bound would be
-``Omega(T**2 / log T)`` if the sharpened routing lemma ``N' <= 12 * L_real + 2``
-held: it would force ``L_real = Omega(T/log T)`` distinct root values, which the
-distinct-root theorem prices.  That lemma is **false** -- a routing-free suffix
-may cross several reads -- so it is the known gap in ``polynomial.md`` and this
-module pins only what survives it.  Equal real roots form contiguous blocks.
+exponential sum on *distinct* nodes.  The language bound is
+``Omega(T**2 / log T)``: the routing lemma ``N' <= 2 + 4 * m_routing`` forces
+``m_routing = Omega(T/log T)``, the block-incidence bound ``m_routing <= 3 *
+L_real`` gives ``L_real = Omega(T/log T)`` distinct root values, and the
+distinct-root theorem prices them.  The routing lemma needs the program to
+consume its input: without that, a routing-free suffix may cross an
+input-dependent number of reads, and the decoded counterexample reads a
+variable number of bits, so it is not a program for a fixed-arity table.
+Equal real roots form contiguous blocks.
 Contracting those blocks turns the
 noncrossing bracket matching into an outerplanar incidence graph; one opener
 routes per block and one closer per incidence.  ``_check_routing_bound`` pins
@@ -27,9 +30,9 @@ limit step -- that is the Hermite interpolation argument in
 content: the base case is exact, the general bound holds on every certificate
 here, the slack assembly's threshold really is the product over the top units,
 and the repeated-root mass floor holds on the products and multiples checked.
-The language bound is conjectural: it needs the distinct-root forcing step,
-which the block-incidence lemma does not supply, and the confluent certificate
-is not on the critical path to it.
+The language bound follows from the distinct-root theorem, the routing lemma,
+and the block-incidence lemma; the confluent certificate is not on the
+critical path to it.
 """
 
 from __future__ import annotations
@@ -309,14 +312,14 @@ def _check_loops(failures: list[str]) -> int:
 
 
 def _check_routing(failures: list[str]) -> int:
-    """Pin the executed facts behind the routing floor.
+    """Pin the executed facts behind the routing lemma.
 
-    ``docs/proofs/polynomial.md`` states ``N'(k+1) <= 2 + 4m`` with ``m`` the
-    real instruction *positions* (the routing floor) and then records it as
-    **false**.  The block-incidence bound replaces ``m`` by ``3 * L_real``, but
-    the step from that to the language bound uses the false cursor bound, so it
-    is the known gap.  This check pins only the per-instruction facts the
-    routing floor rests on:
+    ``docs/proofs/polynomial.md`` proves ``N'(k+1) <= 2 + 4 * m_routing`` for
+    programs that consume their input: the routing-free continuation from the
+    last routing position is deterministic and has a fixed read count to halt,
+    so the cursor at the ``k``th read is fixed.  The block-incidence bound
+    replaces ``m_routing`` by ``3 * L_real``, giving the language bound.  This
+    check pins the per-instruction facts the lemma rests on:
 
     * every real instruction has at most two successors, fixed by its bracket
       and independent of the register;
@@ -399,20 +402,70 @@ def _check_routing(failures: list[str]) -> int:
         if len(values) > len(reals):
             failures.append(f"dense n={n}: L_real={len(values)} > m={len(reals)}")
         count += 1
+
+    # Positive control for the repaired lemma: the generated machine consumes
+    # exactly n inputs on every path, and its cursor count obeys
+    # D_k <= 1 + 2*m_routing.  A variable-read list would fail the first check
+    # and is exactly what the counterexample is.
+    import itertools
+
+    from esolangs.interpreters.register_based.polynomial import _parse_program
+
+    def run_all(instrs: list[list[int]], n: int):
+        pairs = _bracket_pairs(instrs)
+        dk: dict[int, set[int]] = {}
+        taken: dict[int, set[int]] = {}
+        for bits in itertools.product((0, 1), repeat=n):
+            reg, ind, pos, k, steps = 0, 0, 0, 0, 0
+            while ind < len(instrs) and steps < 500:
+                steps += 1
+                ins = instrs[ind]
+                one = ins[0]
+                two = ([*ins[1:], 0])[0]
+                byte = None
+                if two and not one and two - 1:
+                    if pos >= n:
+                        return None
+                    byte = bits[pos] + 48
+                    pos += 1
+                    dk.setdefault(k, set()).add(ind)
+                    k += 1
+                if len(ins) == 1:
+                    taken.setdefault(ind, set()).add(
+                        _advance((reg, ind), instrs, None, pairs)[0][1]
+                    )
+                (reg, ind), _ = _advance((reg, ind), instrs, byte, pairs)
+            if ind < len(instrs) or k != n:
+                return None
+        return dk, taken
+
+    for n in (2, 3):
+        cleaned = re.sub(r"[^\df(x)=+-^]", "", polynomial(dense(n)))
+        instrs = [list(ins) for ins in _parse_program(cleaned)]
+        result = run_all(instrs, n)
+        if result is None:
+            failures.append(f"dense n={n} does not consume exactly n inputs")
+            continue
+        dk, taken = result
+        m_routing = sum(1 for s in taken.values() if len(s) > 1)
+        maxd = max((len(s) for s in dk.values()), default=0)
+        if maxd > 1 + 2 * m_routing:
+            failures.append(
+                f"dense n={n}: D={maxd} > 1 + 2*{m_routing} routing positions"
+            )
+        count += 1
     return count
 
 
 def _check_routing_bound(failures: list[str]) -> int:
-    """Pin the facts around the sharpened routing bound (false as stated).
+    """Pin the facts around the sharpened routing bound.
 
-    The routing floor gives ``N' <= 2 + 4m`` on real *positions*; the sharper
-    ``N' <= 2 + 4 * m_routing`` counts only positions that take both
-    successors.  A proposed route -- ``m_routing <= 3 * L_real`` via "at most
+    The routing lemma gives ``N' <= 2 + 4 * m_routing``, and the block
+    structure gives ``m_routing <= 3 * L_real``, hence ``N' <= 12 * L_real +
+    2``.  A proposed shorter route -- ``m_routing <= 3 * L_real`` via "at most
     one routing position per (value, condition)" -- is **false**: this check
     runs the refuting table and confirms two routing closers share one value
-    and one condition.  The step from ``m_routing`` to ``N'`` is the known gap,
-    so the ``N' <= 12 * L_real + 2`` bound is not claimed.  What survives and
-    is pinned here:
+    and one condition.  What holds and is pinned here:
 
     * a back-edge's target is ``opener + 1``; if that is itself a closer, a
       condition-true jump self-loops, so a halting program never routes such a
