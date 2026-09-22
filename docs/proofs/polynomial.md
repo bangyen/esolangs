@@ -211,8 +211,11 @@ nonnegative (`(x-r) -> -(x+r)`; `(x-a)^2+q -> x^2+2ax+(a^2+q)`), products
 cannot cancel, and `|[x^k] F| >= (prod of constants) / (c_1 ... c_k)` for
 the `k` smallest linear constants (checked coefficientwise in integers on
 emitted artifacts and executed right-half-plane multiples).  Summing
-`k = 0..L` gives `(L+1) M / 2` digit mass, with `L = Omega(T/log T)` linears
-by the routing floor and `M = Omega(m_r log m_r)` from the distinct primes.
+`k = 0..L` gives `(L+1) M / 2` digit mass, with `L` the real instruction-root
+count and `M = Omega(m_r log m_r)` from the distinct primes.  Substituting
+`L = Omega(T/log T)` would make this `Omega(T**2/log T)`, but that
+substitution is the routing-floor step that is not established (see the
+known-gap note below).
 A compensation lemma covered the previous builder's `a = -1..-3` operands: a
 flipped `x^2 - 2bx + c` times an unused `x^2 + 2b'x + c'` is coefficientwise
 nonnegative iff `b' >= b`, `c + c' >= 4bb'`, `b'c >= bc'` (middles at most 6
@@ -261,9 +264,10 @@ once the reciprocal-root sum passes 1, which the first five primes do.  A row
 with reciprocal-root sum at most 1/2 gains at least `ln 2` per box; a row
 loses at most twice its reciprocal sum (Mertens product `prod (1-1/x)^-1`).
 For powers of distinct primes the lossy rows number `L^0.61` and the sum
-never exceeds `ln ln L + 1`, so `mass(F) >= (ln 2 / 2 - o(1)) L^2` nats, and
-with `L = Omega(T/log T)` every `(L+1)`-term multiple of every dense-table
-program is `Omega(T^2 / log^2 T)`, for every cofactor and operand sign.
+never exceeds `ln ln L + 1`, so `mass(F) >= (ln 2 / 2 - o(1)) L^2` nats.
+Conditioned on `L = Omega(T/log T)` -- the routing-floor step that is not
+established -- every `(L+1)`-term multiple of every dense-table program would
+be `Omega(T^2 / log^2 T)`, for every cofactor and operand sign.
 Checked in exact integers on every support to degree 12..20 for two to six
 prime powers: never above the true mass, tight in every box step, minimised
 at the dense support `P`, where it reads 0.75..0.83 of `sum_i i log r_(i)`.
@@ -866,9 +870,12 @@ zero set `Z` of size `sum e_i - 1`, the tail bound holds with the product read
 over the **expanded multiset** (each `y_i` repeated `e_i` times).  The proof is
 the Hermite limit of the distinct theorem -- perturb the repeated nodes, apply
 the distinct bound, and pass to the limit by Fatou.  This extends the tail
-comparison to repeated roots.  It is supplementary: the main bound already
-follows from the distinct-root theorem together with the block-incidence
-lemma, which forces distinct values in any program for a maximal-width table.
+comparison to repeated roots.  It is supplementary: it removes the
+distinctness hypothesis from the coefficient argument, and so removes one
+reason the earlier searches looked necessary.  It does not supply the missing
+distinct-root forcing -- that is the known gap above.  The block-incidence
+lemma was to force distinct values but bounds only routing positions, so the
+main bound does not follow from it alone.
 `tests/proofs/deep/multiplicity.py` pins the algebraic content of the
 confluent bound on small certificates; it does not re-prove the limit step,
 and no repeated-root mass order is needed for the theorem.
@@ -930,8 +937,9 @@ real part and inexact magnitude relations to the instruction roots -- has
 no member: the iterated elimination's certificate, in its slack form, is
 proved for free positions anywhere and every degree, so **every** multiple
 of the mandatory distinct-root product carries `Omega(L**2 log L)` coefficient
-digits.  The block-incidence lemma supplies the reduction from routed
-instructions to distinct real roots.  The sparse-remainder
+digits.  The block-incidence lemma was to supply the reduction from routed
+instructions to distinct real roots; that reduction is the known gap, so it is
+not in hand and the language bound stays conjectural.  The sparse-remainder
 profile that survived the searches (`O(1)`
 coefficients of `O(T)` digits, a second at a constant fraction of the
 primorial, and an `O(T/log T)`-term remainder of `O(log T)`-digit terms) is
