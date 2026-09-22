@@ -35,7 +35,14 @@ changing the program.
 ## Boolean generators
 
 Parameterized generators embed each input exactly once. Every emitted
-character is build work. Reordering is optional around a construction, but
+character is build work. Five conventions govern the *embed* -- the text
+standing for one input, not the program around it: one ordered run per input,
+constant width, a single embed, no padded spaces, and a uniform `(zero, one)`
+pair. The first three are the template constructor's shape; the last two are
+measured off filled programs at n=2, 3, 5 by
+`tests/proofs/test_conventions.py`, and every embedding generator holds both.
+A relaxed-width toggle is worth adding only for a smaller executed build; a
+space toggle has no remaining use. Reordering is optional around a construction, but
 its selection cost counts; named candidates are capped at four and the generic
 greedy scorer stops at n=10. Generator constructions may not use BFS or DFS;
 test-only oracles may.

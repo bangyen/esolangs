@@ -144,15 +144,6 @@ INTERCAL, listed last, is outside the pass.
   x2.15 and what these arities separate from noise; they are held linear
   until a wider measurement says otherwise.
 
-- **Boolean generator conventions.**  Five conventions govern the *embed*,
-  the text that stands for one input -- not the program around it.  A
-  template has one ordered run per input, constant width, no padded spaces,
-  and a uniform `(zero, one)` pair.
-  | Language | No spaces | Uniform |
-  | --- | --- | --- |
-  `tests/proofs/test_conventions.py` checks these on dense and parity tables
-  at n=2..6. The table is empty; add a relaxed-width toggle only for a smaller
-  executed build. A space toggle has no remaining use.
 - **ArrowQueue reusable drain.** Ship it only if folding is testable at `n >= 5`.
 
 - **Reorder ArrowQueue inputs.**  The current three-input screen leaves 7.2%
