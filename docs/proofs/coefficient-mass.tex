@@ -62,9 +62,11 @@ every asymptotic statement is for $L\to\infty$ with absolute implied
 constants unless parameters are named.
 
 Reduced length and reduced height minimize the two classical coefficient
-norms over monic multiples~\cite{dubickas,schinzel,schinzel-complex,dj}, and
-prescribed-vanishing problems of low height form a related
-line~\cite{bombieri-vaaler}.  The height $\max_j|f_j|$ and the length
+norms over monic multiples~\cite{mignotte,dubickas,schinzel,schinzel-complex,dj},
+the Euclidean analogue is effectively computable~\cite{frw}, and the dual
+problems---a multiple of bounded height, or a root of prescribed multiplicity
+for a restricted-coefficient power series---form a classical
+line~\cite{bombieri-vaaler,bbbp-multiple,bbbp-ray}.  The height $\max_j|f_j|$ and the length
 $\sum_j|f_j|$ are both dominated by a single coefficient.  The mass $\Lambda$
 instead accumulates over all coefficients of magnitude exceeding one: it is
 the logarithm of the multiplicative height,
@@ -133,7 +135,9 @@ $e^{\lambda d}$ with distinct $\lambda\le0$; the $r$ exponentials span a
 Chebyshev system, so by Rolle's theorem applied inductively to successive
 derivatives the sum has at most $r-1$ zeros, the final derivative being a
 nonzero multiple of $e^{\lambda_1d}$ and hence zero-free~\cite[Chapter~I,
-Theorem~4.1]{karlin-studden}.  Consequently an $r$-node
+Theorem~4.1]{karlin-studden}; it is also the exponential form of Laguerre's
+extension of Descartes' rule of signs~\cite[Part~V]{polya-szego}.
+Consequently an $r$-node
 sum with $r-1$ prescribed real zeros has exactly those zeros, each is simple,
 and the sum changes sign at each of them.
 
@@ -597,7 +601,12 @@ ordinary length or height.  Subject to $|f_D|\ge1$, it is uniform over the
 degree of $F$ and all additional real or complex roots, and bounds all $L$
 order statistics rather than about half of them.  Corollary~\ref{cor:prime}
 shows the resulting prime-root bound $(1/2+o(1))L^2\log L$ is attained by
-$P_L=\prod_{i=1}^L(x-p_i)$, so it is asymptotically sharp.  The contribution
+$P_L=\prod_{i=1}^L(x-p_i)$, so it is asymptotically sharp.  In the opposite
+direction, the degree of a polynomial with all roots rational is at most a
+constant times the logarithm of its height~\cite{htv}, and the minimal height
+of a degree-$n$ polynomial splitting over a fixed number field grows
+exponentially in $n$~\cite{tromp}; the bound here constrains neither degree
+nor height but the additive coefficient mass.  The contribution
 relative to reduced-height duality is the displaced-zero comparison and its
 iteration; the normalized determinant sequence and its consecutive-zero
 evaluation are from Dubickas and Jankauskas~\cite{dj}.  The confluent
@@ -658,6 +667,54 @@ M.~Giesbrecht, D.~S. Roche, and H.~Tilak,
 \newblock \emph{Algorithmica} 64 (2012), 454--480,
 \newblock \href{https://doi.org/10.1007/s00453-012-9652-4}
 {doi:10.1007/s00453-012-9652-4}.
+
+\bibitem{bbbp-multiple}
+F.~Beaucoup, P.~Borwein, D.~W. Boyd and C.~Pinner,
+\newblock Multiple roots of $[-1,1]$ power series,
+\newblock \emph{Journal of the London Mathematical Society} (2) 57 (1998), 135--147,
+\newblock \href{https://doi.org/10.1112/S0024610798005857}
+{doi:10.1112/S0024610798005857}.
+
+\bibitem{bbbp-ray}
+F.~Beaucoup, P.~Borwein, D.~W. Boyd and C.~Pinner,
+\newblock Power series with restricted coefficients and a root on a given ray,
+\newblock \emph{Mathematics of Computation} 67 (1998), 715--736,
+\newblock \href{https://doi.org/10.1090/S0025-5718-98-00960-0}
+{doi:10.1090/S0025-5718-98-00960-0}.
+
+\bibitem{frw}
+M.~Filaseta, M.~L. Robinson and F.~S. Wheeler,
+\newblock The minimal Euclidean norm of an algebraic number is effectively
+computable,
+\newblock \emph{Journal of Algorithms} 16 (1994), 309--333,
+\newblock \href{https://doi.org/10.1006/jagm.1994.1015}
+{doi:10.1006/jagm.1994.1015}.
+
+\bibitem{htv}
+L.~Hajdu, R.~Tijdeman and N.~Varga,
+\newblock On polynomials with only rational roots,
+\newblock \emph{Mathematika} 69 (2023), 867--878,
+\newblock \href{https://doi.org/10.1112/mtk.12209}
+{doi:10.1112/mtk.12209}.
+
+\bibitem{mignotte}
+M.~Mignotte,
+\newblock Sur les multiples des polyn\^omes irr\'eductibles,
+\newblock \emph{Bulletin de la Soci\'et\'e Math\'ematique de Belgique} 27
+(1975), 225--229.
+
+\bibitem{polya-szego}
+G.~P\'olya and G.~Szeg\H{o},
+\newblock \emph{Problems and Theorems in Analysis II},
+\newblock Springer, Berlin, 1976.
+
+\bibitem{tromp}
+T.~Tromp,
+\newblock On the height of polynomials that split completely over a fixed
+number field,
+\newblock arXiv:2509.12064 (2025),
+\newblock \href{https://doi.org/10.48550/arXiv.2509.12064}
+{doi:10.48550/arXiv.2509.12064}.
 \end{thebibliography}
 
 \end{document}
