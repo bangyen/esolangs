@@ -250,7 +250,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 
 - Malbolge has 59,049 source cells and exactly eight valid decoded
   instructions at each occupied cell.  Including shorter programs gives fewer
-  than `sum(8**k for k in range(59050)) < 2**177151` distinct programs, while
+  than `sum(8**k for k in range(59050)) < 2**177148` distinct programs, while
   the 18-input domain has `2**(2**18) = 2**262144` truth tables.  One program
   computes at most one table, so some 18-input tables have no Malbolge program;
   no generator can be total under this interpreter's language semantics.
