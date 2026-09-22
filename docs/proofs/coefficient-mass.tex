@@ -1112,9 +1112,12 @@ returns $\min b_2\approx54.97$, above \eqref{eq:order}.
 The same happens at $(2,3,4,5)$, sums $1,-11,36,-24$ with
 $\min b_2\approx32.23$, and at $(2,3,5,6)$, sums $1,-13,50,-40$ with
 $\min b_2\approx47.55$.  At $(3,4,5,6)$ the sums are $1,-14,60,-60$, so
-\eqref{eq:partial} holds with equality and the search descends to the bound
-$60$, reaching $60.12$ at that cap.  All four are cap-$28$ values, still
-falling geometrically with the cap toward infima no finite degree attains.
+\eqref{eq:partial} holds with equality and the bound $60$ is approached, the
+exact family of \eqref{eq:wgen} giving $b_2=60.05$ at degree $28$ and
+$60.002$ at degree $40$.  The first three are cap-$28$ search values, falling
+geometrically with the cap; at $(3,4,5,6)$ the double-precision program
+instead stalls past degree $25$, so there the family and not the search
+certifies the descent.
 Across the $15$ root sets tried, \eqref{eq:partial} agreed with attainment
 every time, in both directions.
 
