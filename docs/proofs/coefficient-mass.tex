@@ -127,7 +127,7 @@ Its engine is Theorem~\ref{thm:tail}, the comparison behind everything: it
 bounds the tail of a certificate by the product over its leading consecutive
 zeros and shows the bound is attained only there.  Corollary~\ref{cor:prime}
 specializes to prime roots, Corollary~\ref{cor:infimum} sharpens the resulting
-asymptotic to the infimum over normalized multiples,
+asymptotic to the infimum over monic real multiples,
 Corollary~\ref{cor:near} shows the root product itself is within $O(L^2)$ of
 that infimum for every root set here, and
 Proposition~\ref{prop:confluent} carries the tail comparison itself to
@@ -564,9 +564,10 @@ $(L+1)\log|f_D|$ and collect the index-$i$ terms, which occur in
 Hence
 \[
  \Lambda(F)\ge\sum_{i=1}^L i\log(r_i-1)
- \ge\sum_{i=1}^L i\bigl(\log i+\log\log i+o(1)\bigr),
+ \ge\sum_{i=2}^L i\bigl(\log i+\log\log i+o(1)\bigr),
 \]
-and $\sum_{i\le L}i\log i=(\tfrac12+o(1))L^2\log L$, so the remaining terms
+the $i=1$ term being nonnegative, and
+$\sum_{i\le L}i\log i=(\tfrac12+o(1))L^2\log L$, so the remaining terms
 are $o(L^2\log L)$.  This is $\bigl(\tfrac12+o(1)\bigr)L^2\log L$.
 
 For the matching upper bound, the nonleading coefficients of $P_L$ are the
@@ -581,8 +582,11 @@ $L^2\log2=o(L^2\log L)$.
 \end{proof}
 
 \begin{corollary}[Sharp prime-root infimum]\label{cor:infimum}
-Let $M_L=\inf\Lambda(F)$, the infimum taken over the normalized multiples of
-$P_L=\prod_{i=1}^L(x-p_i)$.  Then
+Let $P_L=\prod_{i=1}^L(x-p_i)$ and
+\[
+  M_L=\inf_{\substack{Q\in\R[x]\\ Q\text{ monic}}}\Lambda(QP_L).
+\]
+Then
 \[
   M_L=\frac12L^2\log L+\frac12L^2\log\log L+O(L^2).
 \]
@@ -595,7 +599,7 @@ The lower bound of Corollary~\ref{cor:prime} keeps the $\log\log i$ term:
   =\frac12L^2\log L+\frac12L^2\log\log L+O(L^2),
 \]
 since $\sum_{i\le L}i\log i=\frac12L^2\log L+O(L^2)$ and
-$\sum_{i\le L}i\log\log i=\frac12L^2\log\log L+o(L^2)$.  The matching upper
+$\sum_{2\le i\le L}i\log\log i=\frac12L^2\log\log L+o(L^2)$.  The matching upper
 bound is the one for $P_L$ from Corollary~\ref{cor:prime},
 \[
   \Lambda(P_L)\le L^2\log2+\frac{L(L+1)}2\log p_L
