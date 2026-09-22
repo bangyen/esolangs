@@ -65,6 +65,13 @@ the difference into a high di-trit needs a rotation of `A`, but `*` rotates
 `memory[d]`, not `A`: rotating `A` needs a run-time address builder. `n > 10`
 is refused with `GeneratorCapError`.
 
+Counting bounds the whole family, independent of how good the mixer is. A
+correct program needs three cells per row — the row's answer cell, the print
+`<`, and the halt `v` — at pairwise distance at least three or the stubs
+overlap, so `3 * 2**n <= 59049` and therefore `n <= 14`. Source-embedded stubs
+cannot reach the seventeen-input target; only a branching architecture could.
+The eleven-input wall above is the tighter, mixer-specific bound.
+
 That construction gap ends before totality. Malbolge has 59,049 cells and
 eight valid decoded instructions at each occupied source cell -- the
 decipherment cycles with the cell index, and `_XLAT1` holds each instruction
