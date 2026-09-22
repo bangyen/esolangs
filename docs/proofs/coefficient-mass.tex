@@ -35,9 +35,9 @@ Fix real roots $2\le r_1\le\cdots\le r_L$, repetitions allowed.  For every
 nonzero real polynomial $F=\sum_jf_jx^j$ divisible by $\prod_{i=1}^L(x-r_i)$
 we prove a degree-independent bound on each coefficient order statistic: the
 $(u+1)$-st largest nonleading coefficient magnitude is at least
-$|f_D|\prod_{i=u+1}^L(r_i-1)$; the case $u=0$ needs only $r_i>1$.  At roots
-$(2,3)$ an explicit family attains the $u=1$ bound in the limit, so that bound
-is sharp there.
+$|f_D|\prod_{i=u+1}^L(r_i-1)$; the case $u=0$ needs only $r_i>1$.  Explicit
+families approach the $u=1$ bound at roots $(2,3)$, and the $u=1$ and $u=2$
+bounds at $(2,3,5)$, so those bounds are sharp there.
 Summing these bounds gives a lower bound for the logarithmic coefficient mass
 $\Lambda(F)=\sum_j\log^+|f_j|$.  When the roots are the first $L$ primes and
 $|f_D|\ge1$, this gives $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with
@@ -148,7 +148,8 @@ Corollary~\ref{cor:infimum} sharpens the resulting asymptotic to the infimum
 over monic real multiples, and
 Corollary~\ref{cor:near} shows that for every root set here the root product
 itself comes within $O(L^2)$ of that infimum.  Proposition~\ref{prop:sharp23}
-shows that the $u=1$ bound is approached at roots $(2,3)$, so it cannot be
+shows that the $u=1$ bound is approached at roots $(2,3)$, and the paragraph
+after it does the same for $u=1,2$ at $(2,3,5)$, so these bounds cannot be
 improved by any constant factor in general.
 
 \section{A displaced-zero tail theorem}
@@ -695,16 +696,30 @@ value, and the exempt coefficients at the bottom:
   \qquad
   G_D(x)=x^D-s_D\sum_{j=2}^{D-1}x^j+e_Dx+e_D',
 \]
-with the coefficients determined by vanishing at $2,3,5$.  The large
-coefficients go in the exempt slots, with $|c_D|\sim3\cdot2^{D-1}$ and
-$|e_D|,|e_D'|$ of order $3^D$, while $a_D\to7$ stays below $t_D$.  Hence
-$b_2(F_D)=t_D\to8$ and $b_3(G_D)=s_D\to4$, the values \eqref{eq:order}
-gives at $u=1$ and $u=2$.  The companion
-paper~\cite[Proposition~3.2]{coefficient-mass-attainment} proves this, and
-gives a partial-sum criterion on the surviving root product under which the
-same construction shows \eqref{eq:order} is an infimum, together with root
-sets where the criterion fails.  Whether the rows $k\ge2$ are sharp at every
-root set is open.
+with the coefficients determined by vanishing at $2,3,5$.  Dividing
+$F_D(r)=0$ by $r^{D-1}$ and writing $\gamma_D=c_D2^{1-D}$ gives
+\[
+  r-a_D+t_D\frac{1-r^{2-D}}{r-1}+\gamma_D\Bigl(\frac2r\Bigr)^{D-1}=0,
+  \qquad r\in\{2,3,5\},
+\]
+a linear system in $(a_D,t_D,\gamma_D)$ whose coefficients converge, as
+$D\to\infty$, to those of $2-a+t+\gamma=0$, $3-a+t/2=0$, $5-a+t/4=0$.  That
+limit system has determinant $1/4$ and solution $(a,t,\gamma)=(7,8,-3)$, so
+$(a_D,t_D,\gamma_D)\to(7,8,-3)$.  Hence $|c_D|\sim3\cdot2^{D-1}$ and
+$a_D<t_D$ for large $D$, and the nonleading magnitudes $a_D$, $t_D$ ($D-2$
+times) and $|c_D|$ give $b_2(F_D)=t_D\to8$.  Likewise, with
+$(E_D,E_D')=3^{-D}(e_D,e_D')$, dividing $G_D(r)=0$ by $r^D$ for $r=3,5$ and by
+$3^D$ for $r=2$ gives
+\begin{gather*}
+  1-s_D\frac{1-r^{2-D}}{r-1}+(rE_D+E_D')\Bigl(\frac3r\Bigr)^D=0
+  \qquad(r=3,5),\\
+  \Bigl(\frac23\Bigr)^D\bigl(1-s_D(1-2^{2-D})\bigr)+2E_D+E_D'=0,
+\end{gather*}
+with limit system $1-s/4=0$, $1-s/2+3E+E'=0$, $2E+E'=0$, of determinant
+$-1/4$ and solution $(s,E,E')=(4,1,-2)$.  So $s_D\to4$ while $|e_D|\sim3^D$
+and $|e_D'|\sim2\cdot3^D$, and $b_3(G_D)=s_D\to4$.  These are the values
+\eqref{eq:order} gives at $u=1$ and $u=2$, so both bounds are infima at
+$(2,3,5)$.  Whether the rows $k\ge2$ are sharp at every root set is open.
 
 \begin{corollary}[Prime roots]\label{cor:prime}
 Let $r_1\le\cdots\le r_L$ with $r_i\ge p_i$, the $i$th prime, and let $F$ be
@@ -919,11 +934,6 @@ J.~B. Rosser and L.~Schoenfeld,
 \newblock \emph{Illinois Journal of Mathematics} 6 (1962), 64--94,
 \newblock \href{https://doi.org/10.1215/ijm/1255631807}
 {doi:10.1215/ijm/1255631807}.
-
-\bibitem{coefficient-mass-attainment}
-B.~Pham,
-\newblock Attainment and sharpness of the coefficient order-statistic bound,
-\newblock manuscript in preparation.
 
 \bibitem{mignotte}
 M.~Mignotte,

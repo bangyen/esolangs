@@ -41,10 +41,6 @@ ENVIRONMENTS = {
 #: checks that this table is complete, so a new citation fails here until it
 #: is listed.
 CITATIONS = {
-    ("coefficient-mass.tex", "coefficient-mass-attainment", "3.2"): (
-        "Proposition",
-        "prop:sharp235",
-    ),
     ("index.md", "coefficient-mass", "3.4"): ("Corollary", "cor:mass"),
     ("polynomial.md", "coefficient-mass-attainment", "2.1"): (
         "Proposition",
@@ -54,7 +50,7 @@ CITATIONS = {
 }
 
 #: The files whose citations the table above has to cover.
-CITING = ("coefficient-mass.tex", "index.md", "polynomial.md", "polynomial.tex")
+CITING = ("index.md", "polynomial.md", "polynomial.tex")
 
 #: A numbered reference in running text or in a ``\cite`` option.
 _REFERENCE = re.compile(
