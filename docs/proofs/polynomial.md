@@ -891,13 +891,13 @@ count on that machine.
 
 **The confluent certificate (multiplicity is free of the extra hypothesis).**
 The distinct-node theorem above is replaced by its confluent analogue,
-[coefficient-mass](coefficient-mass.tex) Proposition 3.8: for
-`u_d = sum_i P_i(d) y_i^d` with `deg P_i < e_i`, `u_0 = 1`, and `u_z = 0` on a
-zero set `Z` of size `sum e_i - 1`, the tail bound holds with the product read
-over the **expanded multiset** (each `y_i` repeated `e_i` times).  The proof is
-the Hermite limit of the distinct theorem -- perturb the repeated nodes, apply
-the distinct bound, and pass to the limit by Fatou.  This extends the tail
-comparison to repeated roots.  It is supplementary: it removes the
+[coefficient-mass-attainment](coefficient-mass-attainment.tex) Proposition 2.1:
+for `u_d = sum_i P_i(d) y_i^d` with `deg P_i < e_i`, `u_0 = 1`, and `u_z = 0`
+on a zero set `Z` of size `sum e_i - 1`, the tail bound holds with the product
+read over the **expanded multiset** (each `y_i` repeated `e_i` times).  The
+proof is the Hermite limit of the distinct theorem -- perturb the repeated
+nodes, apply the distinct bound, and pass to the limit by Fatou.  This extends
+the tail comparison to repeated roots.  It is supplementary: it removes the
 distinctness hypothesis from the coefficient argument, and so removes one
 reason the earlier searches looked necessary.  The distinct-root forcing comes
 from the routing lemma together with the block-incidence bound above, which
