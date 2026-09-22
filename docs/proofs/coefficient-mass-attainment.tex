@@ -453,7 +453,9 @@ the $(u+1)$-st largest magnitude only if no partial sum exceeds the total,
 \begin{equation}\label{eq:partial}
   |S_j|\le|S_m|\qquad(1\le j<m),
 \end{equation}
-and \eqref{eq:partial} can fail.  At $(2,3,5,7)$ with $u=1$ the coefficients
+and \eqref{eq:partial} can fail.
+
+At $(2,3,5,7)$ with $u=1$ the coefficients
 of $P_1$ are $1,-15,71,-105$, with partial sums $1,-14,57,-48$; since
 $57>48$, \eqref{eq:partial} fails.  The same happens at $(2,3,4,5)$, sums
 $1,-11,36,-24$, and at $(2,3,5,6)$, sums $1,-13,50,-40$.  At $(3,4,5,6)$, by
@@ -483,8 +485,9 @@ coefficient grows like $r_u^D$, so for large $D$ those are the $u$ largest and
 $b_{u+1}\to\max_j|S_j|$, which is $|S_m|$ exactly when \eqref{eq:partial}
 holds.  Distinctness enters three times---the Descartes step, the Vandermonde
 change, and the surviving block---and $r_u<r_{u+1}$ is what kills the cross
-terms and makes the exempt coefficients diverge.  The conclusion can outlive
-it, though.  At $(r,r)$ the
+terms and makes the exempt coefficients diverge.
+
+The conclusion can outlive it, though.  At $(r,r)$ the
 confluent member $F_D=x^D-t_D\sum_{j=1}^{D-1}x^j+c_D$ fixed by
 $F_D(r)=F_D'(r)=0$ has $b_2(F_D)=t_D$, the run occupying $D-1\ge2$ positions,
 and at $r=3$
