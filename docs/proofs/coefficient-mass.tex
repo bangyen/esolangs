@@ -983,9 +983,9 @@ $G_D(2)=G_D(3)=G_D(5)=0$ in
 \[
   G_D(x)=x^D-s_D\sum_{j=2}^{D-1}x^j+e_Dx+e_D' .
 \]
-Both systems are nonsingular and $F_D$, $G_D$ are monic multiples of
-$(x-2)(x-3)(x-5)$; for all large $D$ one has $b_2(F_D)=t_D$ and
-$b_3(G_D)=s_D$, and $t_D\to8$, $s_D\to4$.  Hence
+Both systems are nonsingular, $F_D$ and $G_D$ are monic multiples of
+$(x-2)(x-3)(x-5)$ with $b_2(F_D)=t_D$ and $b_3(G_D)=s_D$, and $t_D\to8$,
+$s_D\to4$.  Hence
 \begin{equation}\label{eq:sharp235}
   \inf_Q b_2\bigl(QP\bigr)=8=(r_2-1)(r_3-1),
   \qquad
@@ -1032,12 +1032,26 @@ $(-2,-3,-5)$.  The last two rows of that limit give
 $-a+\tfrac12t=-3$ and $-a+\tfrac14t=-5$, whence $t=8$ and $a=7$; the first
 row then gives $\gamma=-3$, so $c_D\sim-3\cdot2^{D-1}$.
 
-The nonleading coefficient magnitudes of $F_D$ are $a_D$ once, $t_D$ exactly
-$D-2$ times, and $|c_D|$ once.  Since $a_D\to7$, $t_D\to8$ and
-$|c_D|\to\infty$, for large $D$ the largest is $|c_D|$ and the second largest
-is $t_D$, so $b_2(F_D)=t_D$; this ordering is verified directly for every
-$5\le D\le120$.  Theorem~\ref{thm:order} with $u=1$ gives $b_2\ge8$ for every
-monic multiple, and $t_D\to8$.
+The ordering is exact for every $D$, not only in the limit.  $F_D$ has the
+three positive roots $2,3,5$, and its coefficient sequence
+$(1,-a_D,t_D,\ldots,t_D,c_D)$ offers three sign changes only if $a_D>0$,
+$t_D>0$ and $c_D<0$, a vanishing entry leaving at most two; so Descartes
+forces all three signs.  Multiplying the displayed equation at $r$ by $r-1$
+gives $(r-1)(r-a_D)+t_D=\varepsilon_r$ with
+$\varepsilon_r=r^{1-D}\bigl(r\,t_D+(r-1)|c_D|\bigr)>0$, and the rows $r=3,5$
+solve to
+\[
+  a_D=7+\tfrac12(\varepsilon_3-\varepsilon_5),\qquad
+  t_D=8+2\varepsilon_3-\varepsilon_5,\qquad
+  t_D-a_D=1+\tfrac32\varepsilon_3-\tfrac12\varepsilon_5 ,
+\]
+where
+$\varepsilon_5/\varepsilon_3=(3/5)^{D-1}(5t_D+4|c_D|)/(3t_D+2|c_D|)
+<2(3/5)^{D-1}<1$.  Hence $t_D>a_D+1>8$: both limits are approached from
+above.  The nonleading magnitudes are $a_D$ once, $t_D$ exactly $D-2\ge3$
+times and $|c_D|$ once, and the run already exceeds $a_D$, so at most one
+entry exceeds $t_D$ and $b_2(F_D)=t_D$.  Theorem~\ref{thm:order} with $u=1$
+gives $b_2\ge8$ for every monic multiple, and $t_D\to8$.
 
 For $G_D$ the two exempt coefficients grow like $3^D$ and must absorb both
 $2$ and $3$, so the rescaling is the one that keeps the equation at $r=2$
@@ -1067,10 +1081,11 @@ Every $D$-dependent entry is $O((2/3)^{D})$, so as before the solution
 converges to that of $N$ against $(-2,-3,-5)$, namely
 $(s,E,\sigma)=(4,9,6)$; the last row alone forces $s=4$.  The nonleading
 magnitudes of $G_D$ are $s_D$ exactly $D-2$ times and $|e_D|,|e_D'|$ once
-each.  The run occupies $D-2\ge3$ positions, so whatever the two exempt
-magnitudes do, the third largest is $s_D$: $b_3(G_D)=s_D$ for every $D\ge6$
-with $s_D>0$, which the limit $s_D\to4$ and a direct check on $6\le D\le120$
-confirm.  Theorem~\ref{thm:order} with $u=2$ gives $b_3\ge4$, and
+each, and the same sign count applies: $(1,-s_D,\ldots,-s_D,e_D,e_D')$ offers
+three changes only if $s_D>0$, so $s_D>0$ for every $D$.  The run then
+occupies $D-2\ge3$ positions, and whatever the two exempt magnitudes do the
+third largest is $s_D$, so $b_3(G_D)=s_D$.
+Theorem~\ref{thm:order} with $u=2$ gives $b_3\ge4$, and
 $s_D\to4$, which completes \eqref{eq:sharp235}.
 \end{proof}
 
@@ -1122,11 +1137,31 @@ certifies the descent.
 Across the $15$ root sets tried, \eqref{eq:partial} agreed with attainment
 every time, in both directions.
 
-When \eqref{eq:partial} holds and the roots are distinct, the construction is
-available and \eqref{eq:order} is an infimum: the argument of
-Proposition~\ref{prop:sharp235} carries over, its Descartes step now reading
-$L+1$ terms against the $L+1$ positive roots $1,r_1,\ldots,r_L$.  That step is
-where distinctness enters, but the conclusion can outlive it.  At $(r,r)$ the
+When \eqref{eq:partial} holds and the roots are distinct, \eqref{eq:order} is
+an infimum.  Fix $u$, put $m=L-u$, and write
+$F_D=x^D+\sum_{k=1}^{m-1}a_kx^{D-k}+t\sum_{j=u}^{D-m}x^j+C$ with $\deg C<u$,
+the $L$ unknowns fixed by $F_D(r_i)=0$.  The Descartes step of
+Proposition~\ref{prop:sharp235} carries over, $(x-1)$ times a kernel element
+having $L+1$ terms against the $L+1$ positive roots $1,r_1,\ldots,r_L$.
+Divide by $r_i^D$, sum the run, and trade the exempt coefficients for their
+values $\sigma_i=r_i^{-D}C(r_i)$, a Vandermonde change of variables.  The
+limit system is block triangular, and its surviving rows make the monic
+$(x-1)\widetilde A+t$ of degree $m$, where
+$\widetilde A=x^{m-1}+a_1x^{m-2}+\cdots+a_{m-1}$, vanish at the $m$ surviving
+roots.  So it is $P_u$, and
+\[
+  t=P_u(1),\qquad
+  \widetilde A=\frac{P_u-P_u(1)}{x-1},\qquad
+  \sigma_i=-\frac{r_i^{1-m}P_u(r_i)}{r_i-1}\ne0 ,
+\]
+the coefficients of $\widetilde A$ being the prefix $S_1,\ldots,S_{m-1}$ of
+\eqref{eq:wgen}.  The perturbation is $O((r_u/r_{u+1})^D)$ and every exempt
+coefficient grows like $r_u^D$, so for large $D$ those are the $u$ largest and
+$b_{u+1}\to\max_j|S_j|$, which is $|S_m|$ exactly when \eqref{eq:partial}
+holds.  Distinctness enters three times---the Descartes step, the Vandermonde
+change, and the surviving block---and $r_u<r_{u+1}$ is what kills the cross
+terms and makes the exempt coefficients diverge.  The conclusion can outlive
+it, though.  At $(r,r)$ the
 confluent member $F_D=x^D-t_D\sum_{j=1}^{D-1}x^j+c_D$ fixed by
 $F_D(r)=F_D'(r)=0$ has $b_2(F_D)=t_D$, the run occupying $D-1\ge2$ positions,
 and at $r=3$
