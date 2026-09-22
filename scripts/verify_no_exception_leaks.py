@@ -52,6 +52,7 @@ _HERE = pathlib.Path(__file__).resolve()
 sys.path.insert(0, str(_ROOT / "src"))
 
 from esolangs.exceptions import EsolangError
+from esolangs.registry import example_stems
 from esolangs.vm import make_vm, run_until_halt
 
 # Exceptions an interpreter is allowed to raise at the API boundary.
@@ -334,10 +335,23 @@ _USE_CACHE = os.environ.get("LEAKSWEEP_CACHE", "1") != "0"
 
 
 def _examples_by_slug() -> dict[str, list[str]]:
-    """Return the shipped example programs keyed by canonical language ID."""
+    """Return the shipped example programs keyed by canonical language ID.
+
+    The filenames are dash-separated display names (``a-painter-ant``) and
+    every lookup here is the underscored slug (``a_painter_ant``), so the
+    two are bridged by ``example_stems()`` rather than by the stem alone.
+    Keying on the stem silently gave sixteen of the sixty-two languages no
+    example to sweep -- the exact failure that helper's docstring warns
+    about -- and a language with no example is swept on generic fragments
+    alone, without the mutations of a real program that find the
+    interesting cases.
+    """
     by_slug: dict[str, list[str]] = {}
-    for path in (_ROOT / "src" / "esolangs" / "examples").glob("*.txt"):
-        by_slug.setdefault(path.stem, []).append(path.read_text())
+    directory = _ROOT / "src" / "esolangs" / "examples"
+    for slug, stem in example_stems().items():
+        path = directory / f"{stem}.txt"
+        if path.exists():
+            by_slug.setdefault(slug, []).append(path.read_text())
     return by_slug
 
 
