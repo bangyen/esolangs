@@ -141,7 +141,9 @@ over monic real multiples,
 Corollary~\ref{cor:near} shows the root product itself is within $O(L^2)$ of
 that infimum for every root set here,
 Proposition~\ref{prop:sharp23} shows that for the roots $(2,3)$ the bound on
-$b_2$ is the exact infimum over monic multiples,
+$b_2$ is the exact infimum over monic multiples and
+Proposition~\ref{prop:sharp235} shows the same at $(2,3,5)$ for $b_2$ and
+$b_3$,
 Proposition~\ref{prop:cutoff} shows that the node cutoff $y_i\le1/2$ in the
 tail theorem cannot be raised, Proposition~\ref{prop:subtwo} shows that the
 standing restriction $r_i\ge2$ cannot be dropped from
@@ -962,20 +964,28 @@ $r_u^D$ and so survive division by $r^{D-1}$ only at the $u$ smallest roots,
 which they absorb; the run must therefore satisfy the remaining $L-u$ roots
 alone, and its value is what \eqref{eq:order} predicts.
 
-\begin{proposition}[The bound for $b_2$ at roots $(2,3,5)$ is an infimum]
+\begin{proposition}[The bounds at roots $(2,3,5)$ are infima]
 \label{prop:sharp235}
 For $D\ge5$ let $(a_D,t_D,c_D)$ be the solution of the linear system
 $F_D(2)=F_D(3)=F_D(5)=0$ in
 \[
-  F_D(x)=x^D-a_Dx^{D-1}+t_D\sum_{j=1}^{D-2}x^j+c_D .
+  F_D(x)=x^D-a_Dx^{D-1}+t_D\sum_{j=1}^{D-2}x^j+c_D ,
 \]
-The system is nonsingular, each $F_D$ is a monic multiple of
-$(x-2)(x-3)(x-5)$ with $b_2(F_D)=t_D$, and $t_D\to8$.  Hence
+and for $D\ge6$ let $(s_D,e_D,e_D')$ be the solution of
+$G_D(2)=G_D(3)=G_D(5)=0$ in
+\[
+  G_D(x)=x^D-s_D\sum_{j=2}^{D-1}x^j+e_Dx+e_D' .
+\]
+Both systems are nonsingular, $F_D$ and $G_D$ are monic multiples of
+$(x-2)(x-3)(x-5)$ with $b_2(F_D)=t_D$ and $b_3(G_D)=s_D$, and $t_D\to8$,
+$s_D\to4$.  Hence
 \begin{equation}\label{eq:sharp235}
-  \inf_{\substack{Q\in\R[x]\\ Q\text{ monic}}}
-  b_2\bigl(Q(x)(x-2)(x-3)(x-5)\bigr)=8=(r_2-1)(r_3-1),
+  \inf_Q b_2\bigl(QP\bigr)=8=(r_2-1)(r_3-1),
+  \qquad
+  \inf_Q b_3\bigl(QP\bigr)=4=r_3-1,
 \end{equation}
-the value \eqref{eq:order} asserts for $u=1$.
+over monic $Q\in\R[x]$, with $P(x)=(x-2)(x-3)(x-5)$: the values
+\eqref{eq:order} asserts for $u=1$ and $u=2$.
 \end{proposition}
 
 \begin{proof}
@@ -1011,22 +1021,51 @@ $D-2$ times, and $|c_D|$ once.  Since $a_D\to7$, $t_D\to8$ and
 $|c_D|\to\infty$, for large $D$ the largest is $|c_D|$ and the second largest
 is $t_D$, so $b_2(F_D)=t_D$; this ordering is verified directly for every
 $5\le D\le25$.  Theorem~\ref{thm:order} with $u=1$ gives $b_2\ge8$ for every
-monic multiple, and $t_D\to8$, which is \eqref{eq:sharp235}.
+monic multiple, and $t_D\to8$.
+
+For $G_D$ the two exempt coefficients grow like $3^D$ and must absorb both
+$2$ and $3$, so the rescaling is the one that keeps the equation at $r=2$
+finite: put
+\[
+  E_D=3^{2-D}e_D,
+  \qquad
+  \sigma_D=2^{1-D}\bigl(2e_D+e_D'\bigr).
+\]
+Dividing $G_D(r)=0$ by $r^{D-1}$ and substituting, the exempt terms
+contribute $\sigma_D$ at $r=2$ by definition, $E_D/3+\sigma_D(2/3)^{D-1}$ at
+$r=3$, and $O((3/5)^D)$ at $r=5$.  In the unknowns $(s_D,E_D,\sigma_D)$ the
+system therefore reads
+\[
+  \begin{aligned}
+    -2s\bigl(1-2^{2-D}\bigr)+\sigma&=-2,\\
+    -\tfrac32s\bigl(1-3^{2-D}\bigr)+\tfrac13E+\sigma(2/3)^{D-1}&=-3,\\
+    -\tfrac54s\bigl(1-5^{2-D}\bigr)+O\bigl((3/5)^D\bigr)&=-5,
+  \end{aligned}
+\]
+whose coefficient matrix tends to
+\[
+  N=\begin{pmatrix}-2&0&1\\-\tfrac32&\tfrac13&0\\-\tfrac54&0&0\end{pmatrix},
+  \qquad \det N=\tfrac5{12}\ne0 .
+\]
+Every $D$-dependent entry is $O((3/5)^{D})$, so as before the solution
+converges to that of $N$ against $(-2,-3,-5)$, namely
+$(s,E,\sigma)=(4,9,6)$; the last row alone forces $s=4$.  The nonleading
+magnitudes of $G_D$ are $s_D$ exactly $D-2$ times and $|e_D|,|e_D'|$ once
+each, and both exempt coefficients grow like $3^D$ while $s_D\to4$, so they
+are the two largest and $b_3(G_D)=s_D$; this is verified directly for every
+$6\le D\le30$.  Theorem~\ref{thm:order} with $u=2$ gives $b_3\ge4$, and
+$s_D\to4$, which completes \eqref{eq:sharp235}.
 \end{proof}
 
 At $D=9$, $t_9=\tfrac{804576811}{94458820}=8.5177520\ldots$, the value the
 search of Section~\ref{sec:scope} returns at degree cap $9$, so that numerical
 optimum too is attained within an exact family.
 
-Two limits of this route, both observed numerically rather than proved here.
-Taking two exempt coefficients instead of one, the analogous system for
-\[
-  G_D(x)=x^D-s_D\sum_{j=2}^{D-1}x^j+e_Dx+e_D'
-\]
-at the same roots gives $s_D$ decreasing to $4=r_3-1$, with
-$s_9=\tfrac{31585}{7663}=4.1217538\ldots$ matching the $b_3$ optimum of
-Section~\ref{sec:scope}; here the two exempt coefficients grow like $3^D$ and
-absorb both $2$ and $3$.  From $L=4$, however, the construction can fail: the
+At $D=9$, $s_9=\tfrac{31585}{7663}=4.1217538\ldots$, which is the $b_3$
+optimum of Section~\ref{sec:scope} at the same degree cap.
+
+The route has one limit, observed numerically rather than proved here.  From
+$L=4$ the construction can fail: the
 limit system determines the free prefix as well as the run, and its prefix
 entries need not be bounded by the run value, as they must be if the run is to
 be the $(u+1)$-st largest magnitude.  For $u=1$ and roots $(2,3,5,7)$ the
@@ -1144,7 +1183,8 @@ the aggregated question for prime roots, and the multiplier $x+1$ above shows
 that even there the root product need not be the finite-$L$ minimizer.  For
 the root pair $(2,3)$ and $k=2$, Proposition~\ref{prop:sharp23} settles it
 outright: the infimum of $b_2$ over monic multiples is exactly the bound, and
-Proposition~\ref{prop:sharp235} does the same for $(2,3,5)$ and $k=2$.  From
+Proposition~\ref{prop:sharp235} does the same for $(2,3,5)$ at $k=2$ and
+$k=3$.  From
 $L=4$ the construction behind both fails, and the remark after
 Proposition~\ref{prop:sharp235} records root sets where the search stays well
 above \eqref{eq:order}.
