@@ -88,7 +88,13 @@ INTERCAL, listed last, is outside the pass.
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
+  | Malbolge | Exception | Open | Open | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
+
+  Malbolge cannot be total: its finite source space omits some 18-input truth
+  tables.  Its shipped construction covers every table through nine inputs;
+  generation time and size remain open over the reachable gap below that
+  language ceiling.
 
   Factor's adaptive residue sequence is bounded by fixed-modulus Hoheisel:
   its last selected prime `Q` is polynomial in the run count. Worst-case
@@ -96,21 +102,22 @@ INTERCAL, listed last, is outside the pass.
   `Theta(T log T)`. Prime discovery is now an
   arbitrary-precision segmented sieve, and the decoder uses `isprime` only in
   its proven `< 2**64` range, closing both machine-word and BPSW totality gaps.
-  Cold generation is tightly
-  `Theta(T + Q log log Q + D**log_2(3))` in the documented RAM/byte model;
+  Cold generation is
+  `O(T + Q log log Q + D**log_2(3))` in the documented RAM/byte model;
   generated-family parsing is polynomial in `T`, while arbitrary semiprimes
   retain exponential trial-sieve loading. The time bound is naturally
   output-sensitive in the last selected prime `Q` and digit count `D`, without
   assuming a prime-gap conjecture. See [factor](proofs/factor.md).
 
-  Polynomial has tight language-level text complexity
-  `Theta(T**2 / log T)`.  Equal real
+  Polynomial has language-level text complexity `O(T**2 / log T)`.  Equal real
   roots form contiguous blocks; their noncrossing opener/closer incidence
-  graph is outerplanar, giving `m_routing < 3L_real` and therefore
-  `L_real = Omega(T/log T)`.  The distinct-root slack certificate then gives
-  the lower bound for every cofactor and operand sign.  The uncapped
+  graph is outerplanar, giving `m_routing < 3L_real`.  The step from that to
+  `L_real = Omega(T/log T)` rests on a routing bound that is a known gap
+  ([proofs/index.md](proofs/index.md)), so the matching `Omega(T**2 / log T)`
+  lower bound is conjectural; the distinct-root slack certificate would then
+  give it for every cofactor and operand sign.  The uncapped
   residual-DAG construction has `O(T/log T)` instructions and expands to the
-  matching upper bound.  The pre-expansion estimator bounds rendered and live
+  upper bound.  The pre-expansion estimator bounds rendered and live
   decimal digits before the resource cap admits multiplication.  Put
   `alpha = log_2 3`.  Libmpdec's fixed maximum transform makes the uncapped
   root multiplication Karatsuba-with-FNT at scale, and the balanced packed
