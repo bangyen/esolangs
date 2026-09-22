@@ -6,7 +6,7 @@
 \hypersetup{
   pdfauthor={Bangyen Pham},
   pdftitle={Displaced-Zero Certificates and the Coefficient Mass of Polynomial Multiples},
-  pdfsubject={Lower bounds for the logarithmic coefficient mass of polynomial multiples},
+  pdfsubject={Lower bounds for the coefficient order statistics and logarithmic coefficient mass of polynomial multiples},
   pdfkeywords={polynomial multiples, coefficient mass, reduced height, Chebyshev systems, exponential sums},
   pdflang={en-US}
 }
@@ -17,7 +17,8 @@
 \newtheorem{proposition}[theorem]{Proposition}
 \newcommand{\R}{\mathbb R}
 \newcommand{\N}{\mathbb N}
-\newcommand{\Tail}{\operatorname{Tail}}
+\DeclareMathOperator{\Tail}{Tail}
+\DeclareMathOperator{\sgn}{sgn}
 
 \title{Displaced-Zero Certificates and the Coefficient Mass of Polynomial Multiples}
 \author{\shortstack{Bangyen Pham\\
@@ -30,16 +31,18 @@
 \maketitle
 
 \begin{abstract}
-Fix distinct real roots $2\le r_1<\cdots<r_L$.  We prove a
-degree-independent lower bound on the logarithmic coefficient mass of every
-real polynomial divisible by $\prod_i(x-r_i)$ whose leading coefficient has
-absolute value at least one.  We compare the infinite $\ell^1$ tails of
-normalized exponential sums with prescribed positive-integer zeros and
-characterize equality for consecutive zeros.  Iterating this comparison
-while excluding the largest coefficients bounds successive coefficient
-order statistics.  The argument builds on the reduced-height certificate
-method of Dubickas and Jankauskas.  For the first $L$ primes the resulting
-mass bound is $\Omega(L^2\log L)$.
+Fix distinct real roots $2\le r_1<\cdots<r_L$.  For every real polynomial
+$F=\sum_jf_jx^j$ divisible by $\prod_{i=1}^L(x-r_i)$ with $|f_D|\ge1$ we prove
+a degree-independent bound on each coefficient order statistic: the
+$(u+1)$-st largest nonleading coefficient magnitude is at least
+$\prod_{i=2u+1}^L(r_i-1)$.  Summing bounds the logarithmic coefficient mass
+$\Lambda(F)=\sum_j\log^+|f_j|$; for the first $L$ primes this gives
+$\Lambda(F)\ge(\tfrac14+o(1))L^2\log L$.  The engine is a prefix-sensitive
+comparison of the infinite $\ell^1$ tails of normalized exponential sums with
+prescribed positive-integer zeros, strict unless the zeros are consecutive.
+We isolate the zero count behind the comparison as an interlacing lemma.
+The argument builds on the reduced-height certificate method of Dubickas and
+Jankauskas.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -54,45 +57,78 @@ For $F(x)=\sum_j f_jx^j$, define its logarithmic coefficient mass by
   \Lambda(F)=\sum_{j:f_j\ne0}\log^+|f_j|,
   \qquad \log^+x=\max(0,\log x),
 \]
-where all logarithms are natural.
-Throughout, $\N_{>0}=\{1,2,\ldots\}$, and every asymptotic statement is for
-$L\to\infty$ with absolute implied constants unless parameters are named.
-Unlike the height $\max_j|f_j|$ and the length $\sum_j|f_j|$, $\Lambda(F)$
-measures only coefficients whose magnitude exceeds one.  We study how large
-$\Lambda(F)$ must be when $F$ is an arbitrary-degree multiple of a polynomial
-with prescribed positive roots.
+where all logarithms are natural.  Throughout, $\N_{>0}=\{1,2,\ldots\}$, and
+every asymptotic statement is for $L\to\infty$ with absolute implied
+constants unless parameters are named.
 
-Reduced length and reduced height minimize those two classical coefficient
-norms over monic multiples~\cite{dubickas,schinzel,schinzel-complex,dj}.
-Prescribed-vanishing problems with low height form a related line of
-work~\cite{bombieri-vaaler}.  Dubickas and
-Jankauskas associate to reciprocal roots and a prescribed zero set $J$ a
-normalized determinant sequence $S_n(J)$.  Their sequence is the
-exponential sum used below; its tail gives a dual lower bound for reduced
-height, and they compute the consecutive set $J=\{1,\ldots,c-1\}$
-explicitly~\cite[Section~2]{dj}.  We prove a prefix-sensitive comparison for
-all reciprocal roots at most $1/2$, with equality only for the fully
-consecutive zero set.  Iterating the corresponding certificates yields a
-distributional bound on many coefficients, not only the largest one.
+Reduced length and reduced height minimize the two classical coefficient
+norms over monic multiples~\cite{dubickas,schinzel,schinzel-complex,dj}, and
+prescribed-vanishing problems of low height form a related
+line~\cite{bombieri-vaaler}.  The height $\max_j|f_j|$ and the length
+$\sum_j|f_j|$ are both dominated by a single coefficient.  The mass $\Lambda$
+instead accumulates over all coefficients of magnitude exceeding one: it is
+the logarithm of the multiplicative height,
+$\Lambda(F)=\log\prod_{j:f_j\ne0}\max(1,|f_j|)$, so in any fixed base it
+counts, up to an additive constant, the digits of the coefficient vector.
+It is additive over coefficients, and this is what makes it the natural
+target here.  A multiplicative bound on one coefficient order statistic
+contributes one additive term to $\Lambda$; a bound holding for successive
+order statistics therefore accumulates into a lower bound for $\Lambda$ that
+no statement about a single height parameter can produce.  The results below
+are in this sense distributional: many coefficients must be large, not merely
+the largest one.
 
-The zero-counting input is classical Chebyshev-system theory
-\cite[Chapter~I, Theorem~4.1]{karlin-studden}.  Related sparse-multiple work
-asks for multiples under prescribed degree, sparsity, and height
+Dubickas and Jankauskas associate to reciprocal roots and a prescribed zero
+set $J$ a normalized determinant sequence $S_n(J)$ with $S_0(J)=1$ and
+$S_k(J)=0$ for $k\in J$~\cite{dj}.  That sequence is the exponential sum $u$
+studied below: its infinite tail yields their dual lower bound for the reduced
+height, and they evaluate the consecutive set $J=\{1,\ldots,c-1\}$
+explicitly~\cite[Section~2]{dj}.  Our new ingredient is a sharp monotonicity
+principle for the $\ell^1$-tail of this certificate under displacement of
+prescribed integer zeros.  To our knowledge, earlier work uses these
+certificates to control a single height parameter, whereas the iterative
+exclusion argument below produces simultaneous lower bounds for successive
+coefficient order statistics.  The displaced-zero comparison is strict, with
+equality exactly for the consecutive zero set.  Sparse-multiple work
+asks for multiples under prescribed degree, sparsity and height
 constraints~\cite{grt}; our bound is uniform in the degree and in all
 additional roots of the multiple.
 
+We prove the following.  Theorem~\ref{thm:tail} is the comparison behind
+everything: it bounds the tail of a certificate by the product over its
+leading consecutive zeros and shows the bound is attained only there.  For
+distinct positive roots $2\le r_1<\cdots<r_L$, Lemma~\ref{lem:slack} and
+Theorem~\ref{thm:order} bound the coefficient order statistics of every
+multiple, and Corollary~\ref{cor:mass} sums them into a lower bound for
+$\Lambda$.  Corollary~\ref{cor:prime} specializes to prime roots, and
+Proposition~\ref{prop:confluent} removes the distinctness of the nodes.
+
 \section{A displaced-zero tail theorem}
 
-Let $\rho_1>\cdots>\rho_c\ge2$ and $y_i=\rho_i^{-1}$.  For any
-$Z\subset\N_{>0}$ of size $c-1$, the generalized Vandermonde system uniquely
-determines the sum below.  Indeed, a kernel vector would give a nonzero
-$c$-node exponential sum with the $c$ zeros $\{0\}\cup Z$, contradicting the
-Chebyshev zero bound.
+Let $\rho_1>\cdots>\rho_c\ge2$ and $y_i=\rho_i^{-1}$, so that
+$0<y_1<y_2<\cdots<y_c\le1/2$.  For any $Z\subset\N_{>0}$ of size $c-1$, the
+generalized Vandermonde system
 \[
   u_d=\sum_{i=1}^c a_i y_i^d,
   \qquad u_0=1,
-  \qquad u_z=0\quad(z\in Z).
+  \qquad u_z=0\quad(z\in Z),
 \]
+determines the coefficients $a_i$ uniquely.  Indeed, a kernel vector would be
+a nonzero $c$-node exponential sum with the $c$ zeros $\{0\}\cup Z$,
+contradicting the zero bound below.  It is convenient to regard the sequence
+$u_0,u_1,\ldots$ as the restriction to $d\in\{0,1,2,\ldots\}$ of the
+real-analytic function $d\mapsto\sum_ia_iy_i^d$; all statements about zeros
+and signs of an exponential sum refer to this function of the real variable.
+
+\paragraph{Zero bound.}
+A nonzero exponential sum on $r$ distinct positive nodes has at most $r-1$
+real zeros, counted with multiplicity.  This is classical: divide by the
+power of the smallest node to make the sum a real combination of $e^{\lambda
+d}$ with distinct $\lambda<0$, apply Rolle's theorem inductively to its
+successive derivatives, and note that the $r$-th derivative has no
+zero~\cite[Chapter~I, Theorem~4.1]{karlin-studden}.  Consequently an $r$-node
+sum with $r-1$ prescribed real zeros has exactly those zeros, each is simple,
+and the sum changes sign at each of them.
 
 \begin{theorem}[Displaced-zero comparison]\label{thm:tail}
 Let
@@ -112,137 +148,211 @@ prescribed zero is consecutive, $Z=\{1\}$, then
 \]
 so equality holds in \eqref{eq:tail}.  Moving the zero to $Z=\{2\}$ gives
 \[
- u_d=\frac95\,3^{-d}-\frac45\,2^{-d},\qquad
- \Tail(u)=\frac3{10}<\frac12.
+ u_d=\frac95\,3^{-d}-\frac45\,2^{-d},\qquad \Tail(u)=\frac3{10}<\frac12.
 \]
 The theorem generalizes this strict loss.  Each displaced zero creates an
 extra sign change relative to a comparison sum, and the proof shows that this
-change reduces the total tail.  It treats the displaced zeros one at a time.
+change reduces the total tail.  It treats the displaced zeros one at a time,
+peeling the last one.
 
-A nonzero exponential sum on $r$ distinct positive nodes has at most $r-1$
-real zeros, counted with multiplicity.  This follows by dividing by the
-smallest node to the real power and applying Rolle's theorem inductively.
-Thus an $r$-node sum with $r-1$ specified zeros has no others and changes
-sign at each specified zero.
+The hard step compares a correction sum at the marked points of the zero set
+with its value just above them.  We state it separately; the proof is the
+zero-count argument that was implicit in the comparison.
+
+\begin{lemma}[Interlacing of the correction sum]\label{lem:interlace}
+Let $y_1<\cdots<y_c\le1/2$, let $Z'\subset\N_{>0}$ satisfy $|Z'|=c-2$, put
+$m=\max(Z'\cup\{0\})$, and fix $z>m$.  Let $F$ be the sum on
+$y_1,\ldots,y_{c-1}$ with $F_0=1$ and $F|_{Z'}=0$, and $G$ the sum on
+$y_1,\ldots,y_c$ with $G_z=1$ and $G|_{\{0\}\cup Z'}=0$.  Write
+$\widehat F_d=\sgn(F_z)F_d$, $E_d=G_d-y_cG_{d-1}$,
+$\sigma=G_{m+1}/\widehat F_{m+1}$, and
+\[
+  \Delta_d=\sigma\widehat F_d-E_d,
+\]
+and let $A=\{0\}\cup Z'=\{a_1=0<a_2<\cdots<a_{c-1}=m\}$.  Let $r$ be the
+number of consecutive pairs $\{a_j,a_{j+1}\}=\{d-1,d\}$ in $A$, and
+$J=\{j:a_{j+1}\in Z',\ a_j<a_{j+1}-1\}$, so that $|J|=c-2-r$.  Then
+$\Delta_d\ge0$ for every $d\ge m+1$.
+\end{lemma}
 
 \begin{proof}
-Induct on the number $c-1-f$ of displaced zeros.  For
-$Z=\{1,\ldots,c-1\}$, put
+The sums $E$ and $\widehat F$ both live on the $c-1$ nodes
+$y_1,\ldots,y_{c-1}$: expanding the definition of $G$ gives
 \[
- U(x)=\sum_{d\ge0}u_dx^d
-     =\frac{N(x)}{\prod_i(1-y_ix)},\qquad \deg N\le c-1.
+  E_d=\sum_{i=1}^{c-1}a_i(y_i-y_c)y_i^{\,d-1}
+      =\sum_{i=1}^{c-1}b_iy_i^d,
 \]
-The first $c-1$ nonconstant coefficients vanish.  Comparing the coefficient
-of $x^c$ gives, for $d\ge c$,
+with $b_i=a_i(1-y_c/y_i)$, the $i=c$ term having cancelled.  Hence $\Delta$
+is an exponential sum on $c-1$ nodes, so by the zero bound it is either
+identically zero or has at most $c-2$ real zeros counted with multiplicity.
+
+By the zero bound, $G$ has exactly the simple zeros $\{0\}\cup Z'$; on a
+component $(a_j,a_{j+1})$ its sign is $(-1)^{c-1-j}$ because it is positive
+past the last zero and flips at each.  We record the zeros of $\Delta$.
+
+First, $\Delta_{m+1}=0$, because $G_m=0$ and $\sigma=G_{m+1}/\widehat
+F_{m+1}$.  Second, if $a_j=a_{j+1}-1$ then $a_j,a_{j+1}\in A$, so
+$G_{a_j}=G_{a_{j+1}}=0$, and $a_{j+1}\in Z'$, so $\widehat F_{a_{j+1}}=0$;
+thus $\Delta_{a_{j+1}}=-E_{a_{j+1}}=-G_{a_{j+1}}+y_cG_{a_{j+1}-1}=0$.  There
+are $r$ such forced zeros, one for each consecutive pair.  At every other
+marked point $a_{j+1}\in Z'$ one has $a_j<a_{j+1}-1$, so
+$a_{j+1}-1\notin A$ and $G_{a_{j+1}-1}\ne0$, and
 \[
- u_d=(-1)^{c+1}\Bigl(\prod_i y_i\Bigr)
-        h_{d-c}(y_1,\ldots,y_c),
-\]
-where $h_j$ is the complete homogeneous symmetric polynomial.  Hence
-\[
- \Tail(u)=\Bigl(\prod_i y_i\Bigr)\sum_{j\ge0}h_j(y_1,\ldots,y_c)
-          =\prod_i\frac{y_i}{1-y_i}.
+  \Delta_{a_{j+1}}=-E_{a_{j+1}}=y_cG_{a_{j+1}-1},
+  \qquad \sgn\Delta_{a_{j+1}}=(-1)^{c-1-j}.
 \]
 
-Now suppose a zero is displaced.  Set $z=\max Z$,
-$Z'=Z\setminus\{z\}$, and $m=\max Z'$, taking $m=0$ if $Z'$ is empty.
-Let $F$ be the sum on $y_1,\ldots,y_{c-1}$ satisfying $F_0=1$ and
-$F|_{Z'}=0$.  Let $G$ be the sum on all $c$ nodes satisfying
+If $J=\varnothing$ then $r=c-2$, and the forced zeros together with
+$m+1$ give $r+1=c-1>c-2$ zeros, so $\Delta\equiv0$ and the claim is
+immediate.  Assume $J\ne\varnothing$ and order $J=\{j_1<\cdots<j_p\}$, so
+$p=|J|=c-2-r$.  Take consecutive $j<j'$ in $J$.  Strictly between
+$a_{j+1}$ and $a_{j'+1}$ lie $q=j'-j-1$ marked points of $A$, all with
+indices outside $J$, hence $q$ forced zeros; and the endpoint signs
+$(-1)^{c-1-j}$, $(-1)^{c-1-j'}$ differ by $(-1)^{q+1}$.  A real function
+whose endpoint values differ in sign by $(-1)^{q+1}$ has an odd or even
+number of zeros in the open interval according as $q+1$ is odd or even, so
+the number of zeros in $(a_{j+1},a_{j'+1})$ has the parity of $q+1$ and is at
+least $q$; hence it is at least $q+1$, one more than the forced zeros.  The
+$p-1$ gaps between consecutive members of $J$ therefore supply
+$r+(p-1)+1=c-2$ units of zero multiplicity in all, once the zero at $m+1$ is
+added, and this exhausts the zero-multiplicity budget of $\Delta$; in
+particular there are no other zeros.  Here the $q+1$ zeros in a gap are
+counted with multiplicity, and the $p-1$ units beyond the forced $q$ are
+distinct from those forced zeros and from one another.
+
+Every one of the $p-1$ extra multiplicities lies below $a_{j_p+1}$, so every
+zero of $\Delta$ above $a_{j_p+1}$ belongs to the exhaustion just described
+and is simple.  There are $c-1-j_p$ of them: the forced zeros at
+$a_{j+1}$ for $j_p<j\le c-2$, and the zero at $m+1$.  Since
+$\sgn\Delta_{a_{j_p+1}}=(-1)^{c-1-j_p}$ and there is no zero above
+$a_{j_p+1}$ but those $c-1-j_p$ simple ones, crossing them flips the sign to
+$(-1)^{2(c-1-j_p)}=+1$, and it stays positive.  Thus $\Delta_d\ge0$ for
+$d\ge m+1$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:tail}]
+Induct on the number $c-1-f$ of displaced zeros.
+
+\emph{Consecutive base case.}  For $Z=\{1,\ldots,c-1\}$, put
+\[
+  U(x)=\sum_{d\ge0}u_dx^d=\frac{N(x)}{\prod_i(1-y_ix)},
+  \qquad \deg N\le c-1.
+\]
+The first $c-1$ nonconstant coefficients vanish, so $N(x)-\prod_i(1-y_ix)$
+is a constant multiple of $x^c$; that constant is fixed by the vanishing
+$x^c$ coefficient of $N$ (which has degree at most $c-1$), giving
+\[
+  N(x)=\prod_i(1-y_ix)+(-1)^{c+1}\Bigl(\prod_i y_i\Bigr)x^c .
+\]
+Since $1/\prod_i(1-y_ix)=\sum_{j\ge0}h_j(y_1,\ldots,y_c)x^j$, it follows that
+for $d\ge c$,
+\[
+  u_d=(-1)^{c+1}\Bigl(\prod_i y_i\Bigr)h_{d-c}(y_1,\ldots,y_c),
+\]
+where $h_j$ is the complete homogeneous symmetric polynomial.  These terms
+are one-signed, so
+\[
+  \Tail(u)=\Bigl(\prod_i y_i\Bigr)\sum_{j\ge0}h_j(y_1,\ldots,y_c)
+          =\prod_i\frac{y_i}{1-y_i},
+\]
+which is \eqref{eq:tail} with $f=c-1$.
+
+\emph{Displaced step.}  Suppose $f<c-1$, set $z=\max Z$ (displaced, hence
+$z\ge f+2$), $Z'=Z\setminus\{z\}$, and $m=\max Z'$, taking $m=0$ if $Z'$ is
+empty.  Let $F$ be the sum on $y_1,\ldots,y_{c-1}$ with $F_0=1$ and
+$F|_{Z'}=0$, and $G$ the sum on all $c$ nodes with
 $G|_{\{0\}\cup Z'}=0$ and $G_z=1$.  Then
 \[
-  u=F+\lambda G,\qquad \lambda=-F_z.
+  u=F+\lambda G,\qquad \lambda=-F_z,
 \]
-The induction hypothesis bounds $\Tail(F)$ by the right side of
-\eqref{eq:tail}.  It remains to prove $\Tail(u)<\Tail(F)$.
+because both sides satisfy the same $c$ interpolation conditions.  The set
+$Z'$ has the same leading run $f$ as $Z$, and $f+1\le c-1$, so the induction
+hypothesis bounds $\Tail(F)$ by the right side of \eqref{eq:tail}.  It
+remains to prove $\Tail(u)<\Tail(F)$.
 
-\medskip\noindent\emph{Sign comparison.}
-Put $\eta=\operatorname{sgn}(F_z)$ and $\mu=|F_z|$.  On $(0,\infty)$ and
-away from $Z'$, the two sequences $F$ and $G$ have constant relative sign
-$\eta$: each has exactly the simple zeros $Z'$, so both flip at precisely the
-same indices.  At $d=0$, $u_0=F_0=1$ and $G_0=0$; this anchors the comparison
-below $z$.
-The extra zero of $u$ at $z$ makes $u$ change sign where $F$ does not.
-Hence
+\emph{Sign comparison.}  By the zero bound, $G$ has exactly the simple zeros
+$\{0\}\cup Z'$ and $F$ exactly $Z'$; below $z$ the sum $u$ has the same simple
+zeros $Z'$ and no others, and at $z$ it has one additional simple zero.  Write
+$\eta=\sgn(F_z)$ and $\mu=|F_z|$, so $u=F-\eta\mu G$.  Since $F$ and $G$ flip
+at exactly the same points of $Z'$, their relative sign
+$\sgn(F_d/G_d)=\eta$ is constant off $Z'$; thus $F_d=\eta\sgn(G_d)|F_d|$ and
+$G_d=\sgn(G_d)|G_d|$, whence
 \[
- |u_d|=\bigl||F_d|-\mu|G_d|\bigr|.
+  u_d=\eta\sgn(G_d)\bigl(|F_d|-\mu|G_d|\bigr),
+  \qquad
+  |u_d|=\bigl||F_d|-\mu|G_d|\bigr|.
 \]
-Moreover $|F_d|>\mu|G_d|$ below $z$, with the reverse inequality above
-$z$.
-For an exponential sum $V$, write
+The sign of $|F_d|-\mu|G_d|$ is therefore that of $\eta\sgn(G_d)u_d$.  Passing
+a point of $Z'$ flips both $\sgn u$ and $\sgn G$, leaving this sign unchanged,
+so it is constant on $(0,z)\setminus Z'$; it is positive at $d=0$, where
+$u_0=F_0=1$ and $G_0=0$.  At $z$, where $G$ does not vanish, only $\sgn u$
+flips, so the sign is negative for all $d>z$.  Hence
 \[
- \Gamma_V(z)=\frac{\sum_{d\ge z}|V_d|}{|V_z|},
- \qquad A_G=\sum_{1\le d<z}|G_d|.
+  |F_d|>\mu|G_d|\quad(1\le d<z),
+  \qquad
+  |F_d|<\mu|G_d|\quad(d>z),
 \]
-Splitting at $z$ gives
+with equality only where $|u_d|=0$.  For an exponential sum $V$, write
+\[
+  \Gamma_V(z)=\frac{\sum_{d\ge z}|V_d|}{|V_z|},
+  \qquad A_G=\sum_{1\le d<z}|G_d|.
+\]
+Splitting $\Tail(F)-\Tail(u)$ at $z$ and using the two displayed
+inequalities, $|F_z|=\mu|G_z|$ and $|G_z|=1$, gives
 \begin{equation}\label{eq:split}
- \Tail(F)-\Tail(u)
- =\mu\bigl(2\Gamma_F(z)-\Gamma_G(z)+A_G\bigr).
+  \Tail(F)-\Tail(u)
+  =\mu\bigl(2\Gamma_F(z)-\Gamma_G(z)+A_G\bigr).
 \end{equation}
 
-We claim
+\emph{The correction ratio.}  We claim
 \begin{equation}\label{eq:gamma}
- \Gamma_G(z)\le\frac{\Gamma_F(z)}{1-y_c}\le2\Gamma_F(z).
+  \Gamma_G(z)\le\frac{\Gamma_F(z)}{1-y_c}\le2\Gamma_F(z).
 \end{equation}
 Let $\widehat F_d=\eta F_d>0$ for $d>m$ and
 $E_d=G_d-y_cG_{d-1}$, an exponential sum on the first $c-1$ nodes.  We first
 show
 \begin{equation}\label{eq:drive}
- \frac{E_d}{\widehat F_d}\le
- \frac{G_z}{\widehat F_z}\qquad(d\ge z>m).
+  \frac{E_d}{\widehat F_d}\le
+  \frac{G_z}{\widehat F_z}\qquad(d\ge z>m).
 \end{equation}
-Write
+Set $A=\{0\}\cup Z'=\{a_1=0<\cdots<a_{c-1}=m\}$,
+$\sigma=G_{m+1}/\widehat F_{m+1}$, and
+$\Delta_d=\sigma\widehat F_d-E_d$.  Lemma~\ref{lem:interlace} applies to this
+data and gives $\Delta_d\ge0$ for $d\ge m+1$, that is,
+$E_d/\widehat F_d\le\sigma$ for $d\ge m+1$.  Moreover the $c$-node sum
 \[
- A=\{0\}\cup Z'=\{a_1=0<\cdots<a_{c-1}=m\},\qquad
- \sigma=\frac{G_{m+1}}{\widehat F_{m+1}},
+  W_d=\widehat F_{m+1}G_d-G_{m+1}\widehat F_d
 \]
-and set $\Delta_d=\sigma\widehat F_d-E_d$.  The sum $\Delta$ has at most
-$c-2$ real zeros, counted with multiplicity, unless it vanishes identically.
-It vanishes at $m+1$ and when
-$d-1,d\in A$.  At every remaining marked point $a_{j+1}\in Z'$,
+vanishes on $Z'\cup\{m+1\}$, which is $c-1$ points, so by the zero bound
+those are its only zeros; beyond $m+1$ it has constant sign, and that sign is
+positive because asymptotically only $G$ contains the largest node $y_c$,
+with positive coefficient.  Hence $G_d/\widehat F_d>\sigma$ for $d>m+1$,
+while $\sigma=G_z/\widehat F_z$ when $z=m+1$.  Therefore
 \[
- \Delta_{a_{j+1}}=y_cG_{a_{j+1}-1},\qquad
- \operatorname{sgn}\Delta_{a_{j+1}}=(-1)^{c-1-j}.
+  \frac{E_d}{\widehat F_d}\le\sigma\le\frac{G_z}{\widehat F_z}
+  \qquad(d\ge z>m),
 \]
-Let $r$ be the number of forced zeros from consecutive pairs and let $J$
-contain the remaining indices $j$ for which $a_{j+1}\in Z'$.  Then
-$|J|=c-2-r$.  If $J$ is empty, the $r$ forced zeros together with $m+1$
-exceed the zero budget, so $\Delta$ vanishes identically.  Otherwise take
-consecutive $j<j'$ in $J$.  The open interval between their marked points
-contains $j'-j-1$ forced zeros, while the endpoint signs differ by
-$(-1)^{j'-j}$.  The intervening zero multiplicity must have the parity of $j'-j$
-and is therefore at least $j'-j$.  Summing over consecutive members of $J$
-therefore contributes one additional zero multiplicity beyond the forced
-multiplicities.  Adding these contributions and the zero at $m+1$ gives
-\[
- r+(|J|-1)+1=c-2
-\]
-zero multiplicities, exhausting the zero bound.  Let $a_{j+1}$ be the last
-marked point indexed by $J$.  Equality in the count leaves no further zeros
-after it and forces every counted zero after it, including $m+1$, to be
-simple; earlier forced zeros need not be simple.  There are $c-j-1$ such
-sign changes from $a_{j+1}$ through $m+1$.  Since the displayed sign at
-$a_{j+1}$ is $(-1)^{c-1-j}$, $\Delta$ is positive immediately after $m+1$.
-It has no later zero, so $\Delta_d\ge0$ for $d\ge m+1$.  Therefore
-$E_d/\widehat F_d\le\sigma$.  The $c$-node sum
-\[
- W_d=\widehat F_{m+1}G_d-G_{m+1}\widehat F_d
-\]
-vanishes on $Z'\cup\{m+1\}$, exhausting its $c-1$ possible zeros.  It is
-positive beyond $m+1$: asymptotically only $G$ contains the largest node
-$y_c$, with positive coefficient there.  Hence
-$\sigma\le G_z/\widehat F_z$, proving \eqref{eq:drive}.
+which is \eqref{eq:drive}.
 
-Induction in $G_d=y_cG_{d-1}+E_d$ now gives
+Induction in $G_d=y_cG_{d-1}+E_d$, with $G_z=1$ and
+\eqref{eq:drive}, gives for $t\ge0$
 \[
- \frac{G_{z+t}}{G_z}
- \le\sum_{j=0}^t y_c^{t-j}
+  \frac{G_{z+t}}{G_z}
+  \le\sum_{j=0}^t y_c^{t-j}
        \frac{\widehat F_{z+j}}{\widehat F_z}.
 \]
-Summing over $t$ proves the first inequality in \eqref{eq:gamma}; the second
-uses $y_c\le1/2$.  Finally $A_G>0$: if $z>m+1$, then $G_{m+1}\ne0$; if
-$z=m+1$, displacement leaves a gap below $z$ where $G$ is nonzero.  Thus
-\eqref{eq:split} is strict.  Equality occurs only in the consecutive base
-case.
+Summing over $t$ (a geometric series in $y_c$) proves the first inequality
+in \eqref{eq:gamma}; the second uses $y_c\le1/2$.
+
+\emph{Strictness.}  It remains to see that $A_G>0$, so that
+\eqref{eq:split} is positive.  By the zero bound, $G$ has exactly the simple
+zeros $\{0\}\cup Z'$ and none other.  If $z>m+1$, then $m+1<z$ and
+$m+1\notin\{0\}\cup Z'$, so $G_{m+1}\ne0$ and $A_G>0$.  If $z=m+1$, then the
+displacement means $Z'$ does not contain all of $\{1,\ldots,z-1\}$, so some
+$d$ with $1\le d<z$ avoids $\{0\}\cup Z'$, and again $A_G>0$.  Thus the
+difference in \eqref{eq:split} is strictly positive, $\Tail(u)<\Tail(F)$,
+and the induction closes.  Equality in \eqref{eq:tail} can occur only in the
+base case.
 \end{proof}
 
 For example, when $c=2$, $\rho_1=3$, $\rho_2=2$, and $Z=\{1\}$, solving
@@ -261,64 +371,119 @@ Let
 \[
  P(x)=\prod_{i=1}^L(x-r_i),\qquad 2\le r_1<\cdots<r_L,
 \]
-and let $F(x)=\sum_{j=0}^D f_jx^j\in\R[x]$ be a nonzero multiple of $P$.
+and let $F(x)=\sum_{j=0}^Df_jx^j\in\R[x]$ be a nonzero multiple of $P$.  For a
+nonzero coefficient vector write $b_1\ge b_2\ge\cdots$ for the magnitudes of
+the coefficients $f_j$ with $j<D$, in decreasing order.
 
 \begin{lemma}[Slack certificate]\label{lem:slack}
-Assume $|f_D|=1$.  Fix $0\le u\le(L-1)/2$ and any set $U$ of $u$
-coefficient positions below $D$.  Some $j<D$ outside $U$ satisfies
+Assume $|f_D|=1$.  Fix $0\le u\le(L-1)/2$.  For every set $U$ of $u$
+coefficient positions below $D$, some $j<D$ outside $U$ satisfies
 \[
  |f_j|\ge\prod_{i=2u+1}^L(r_i-1).
 \]
 \end{lemma}
 
 \begin{proof}
-Put $c=L-u$ and use the $c$ largest roots.  A position $j$ has backward
-distance $d=D-j$.  Choose a $c$-node sum $w_d$ with $w_0=1$ whose $c-1$
-zeros are the distances belonging to $U$ together with the first
-$L-2u-1$ positive distances not occupied by $U$.  A weighted sum of the
-equations $F(r_i)=0$ gives
+Put $c=L-u$ and use the $c$ largest roots $\rho_1=r_L>\rho_2=r_{L-1}>\cdots>
+\rho_c=r_{u+1}$.  A position $j$ has backward distance $d=D-j$.  Let
+$W\subseteq\N_{>0}$ be the set of distances of the positions in $U$, and let
+$w$ be the certificate on these $c$ nodes, with $w_0=1$ and with zero set $Z$
+consisting of $W$ together with the first $L-2u-1$ positive distances outside
+$W$.  The $u$ positions have distinct distances, so $|W|=u$ and this gives
+$|Z|=c-1$, as required; write $w_d=\sum_i a_iy_i^d$.
+
+The dual-certificate identity is explicit.  Since $F(r_i)=0$ for the $c$
+chosen roots,
 \[
- 1\le\sum_{j<D,\,j\notin U}|f_jw_{D-j}|.
+  0=\sum_{i=1}^c a_ir_i^{-D}F(r_i)
+   =\sum_{j\le D}f_jw_{D-j}
+   =f_D+\sum_{j<D}f_jw_{D-j},
 \]
-The chosen zero set starts with at least $L-2u-1$ consecutive distances, so
-Theorem~\ref{thm:tail} gives
+using $w_0=1$.  The terms with $j\in U$ vanish because $D-j\in W\subseteq Z$.
+Hence, as $|f_D|=1$,
+\begin{equation}\label{eq:dual}
+  1\le\sum_{j<D,\ j\notin U}|f_j|\,|w_{D-j}|
+  \le\Bigl(\max_{j<D,\ j\notin U}|f_j|\Bigr)
+        \sum_{j<D,\ j\notin U}|w_{D-j}|.
+\end{equation}
+
+The set $Z$ contains $\{1,\ldots,L-2u-1\}$: a distance $t\le L-2u-1$ is in
+$W\subseteq Z$ if occupied by $U$, and otherwise is among the first
+$L-2u-1$ distances outside $W$.  Thus the leading run of $Z$ is at least
+$L-2u-1$, and Theorem~\ref{thm:tail} bounds the tail by the product over the
+$L-2u$ largest nodes.  These are $\rho_1,\ldots,\rho_{L-2u}$, that is,
+$r_L,r_{L-1},\ldots,r_{2u+1}$; the last index is
+$L-(L-2u)+1=2u+1$, which is why the product below starts there.  Therefore
 \[
- \sum_{j<D,\,j\notin U}|w_{D-j}|
- \le\frac{1}{\prod_{i=2u+1}^L(r_i-1)}.
+  \sum_{j<D,\ j\notin U}|w_{D-j}|
+  \le\sum_{d\ge1}|w_d|=\Tail(w)
+  \le\prod_{i=1}^{L-2u}\frac{\rho_i^{-1}}{1-\rho_i^{-1}}
+  =\frac{1}{\prod_{i=2u+1}^L(r_i-1)}.
 \]
-The conclusion follows.
+Substituting into \eqref{eq:dual} gives
+$1\le\bigl(\max_{j<D,j\notin U}|f_j|\bigr)/\prod_{i=2u+1}^L(r_i-1)$, which is
+the claim.
 \end{proof}
 
-\begin{theorem}[Logarithmic mass]\label{thm:mass}
+\begin{theorem}[Coefficient order statistics]\label{thm:order}
+If $|f_D|\ge1$, then for every $0\le u\le(L-1)/2$,
+\begin{equation}\label{eq:order}
+  b_{u+1}\ge\prod_{i=2u+1}^L(r_i-1).
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Assume first $|f_D|=1$.  The assertion that some $j<D$ outside an arbitrary
+set $U$ of $u$ positions has $|f_j|\ge T$ is equivalent to the assertion that
+at least $u+1$ positions $j<D$ have $|f_j|\ge T$, that is, to
+$b_{u+1}\ge T$: any $U$ of size $u$ misses one of the $u+1$ large positions,
+and conversely the $u$ largest positions form a set $U$ that the
+$(u+1)$-st largest avoids.  Apply this with $T=\prod_{i=2u+1}^L(r_i-1)$ to
+the conclusion of Lemma~\ref{lem:slack}.
+
+For $|f_D|\ge1$, divide by $f_D$.  The quotient has leading coefficient $1$
+and coefficient magnitudes $b_k(F)/|f_D|$, so
+$b_k(F)\ge b_k(F/f_D)\ge T$ for every $k$.
+\end{proof}
+
+\begin{corollary}[Logarithmic mass]\label{cor:mass}
 If $|f_D|\ge1$, then
 \begin{equation}\label{eq:mass}
  \Lambda(F)\ge
  \sum_{u=0}^{\lfloor(L-1)/2\rfloor}
  \sum_{i=2u+1}^L\log(r_i-1).
 \end{equation}
-\end{theorem}
-
-\begin{proof}
-Scale to $|f_D|=1$.  For each $u$, let $U$ contain the positions of the $u$
-largest coefficients below the leading term.  Lemma~\ref{lem:slack} bounds
-the $(u+1)$st largest coefficient by the corresponding product.  Summing
-these logarithms proves \eqref{eq:mass}.  Restoring a leading coefficient of
-absolute value at least one cannot decrease $\Lambda(F)$.
-\end{proof}
-
-\begin{corollary}[Prime roots]
-Assume $|f_D|\ge1$.  If $r_i$ is the $i$th prime, or if the increasing
-$r_i$ are bounded below by the $i$th primes, then
-$\Lambda(F)=\Omega(L^2\log L)$.
 \end{corollary}
 
 \begin{proof}
-The term $\log(r_i-1)$ occurs once for each $u$ with $2u+1\le i$, hence
-exactly $\lceil i/2\rceil$ times in \eqref{eq:mass}.  The elementary bound
-$r_i\ge i+1$ therefore gives
+Each product in \eqref{eq:order} is at least one because $r_i\ge2$, so the
+$(u+1)$ largest magnitudes are all at least one.  Summing the logarithms of
+\eqref{eq:order} over $u$ and observing that
+$\Lambda(F)\ge\sum_{u=0}^{\lfloor(L-1)/2\rfloor}\log b_{u+1}$, the terms on
+the right being a subset of $\sum_j\log^+|f_j|$ in decreasing order,
+gives \eqref{eq:mass}.
+\end{proof}
+
+\begin{corollary}[Prime roots]\label{cor:prime}
+Assume $|f_D|\ge1$ and that the increasing roots $r_i$ are bounded below by
+the $i$th prime.  Then
 \[
- \sum_{i=1}^L\lceil i/2\rceil\log(r_i-1)=\Omega(L^2\log L).
+ \Lambda(F)\ge\Bigl(\frac14+o(1)\Bigr)L^2\log L .
 \]
+In particular $\Lambda(F)=\Omega(L^2\log L)$.
+\end{corollary}
+
+\begin{proof}
+Write $p_i$ for the $i$th prime, so $r_i\ge p_i\sim i\log i$ and
+$\log(r_i-1)=\log p_i+O(1/p_i)$.  A term with index $i$ occurs in
+\eqref{eq:mass} once for each $u$ with $2u+1\le i$, that is, exactly
+$\lceil i/2\rceil$ times.  Hence
+\[
+ \Lambda(F)\ge\sum_{i=1}^L\lceil i/2\rceil\log(r_i-1)
+ =\sum_{i=1}^L\Bigl(\frac i2+O(1)\Bigr)\bigl(\log i+\log\log i+o(1)\bigr),
+\]
+and $\sum_{i\le L}i\log i=(\tfrac12+o(1))L^2\log L$, so the remaining terms
+are $o(L^2\log L)$.  This is $\bigl(\tfrac14+o(1)\bigr)L^2\log L$.
 \end{proof}
 
 \begin{proposition}[Confluent analogue]\label{prop:confluent}
@@ -336,13 +501,14 @@ leading run $f$.  Then
 \end{proposition}
 
 \begin{proof}
-Perturb the repeated nodes into distinct ones: for small $\varepsilon>0$ put
-$y_{i,k}(\varepsilon)=y_i(1-k\varepsilon)$ for $k=0,\ldots,e_i-1$.  These $m$
-values lie in $(0,1/2]$ and are distinct, and the groups stay separated.  For
-each such $\varepsilon$ let $u^{(\varepsilon)}$ be the unique exponential sum
-on these $m$ nodes with $u^{(\varepsilon)}_0=1$ and $u^{(\varepsilon)}_z=0$ for
-$z\in Z$; existence and uniqueness are the Vandermonde argument opening this
-section.  Theorem~\ref{thm:tail} applies with the same $f$ and gives
+For $\varepsilon>0$ and $i=1,\ldots,c$ put $y_{i,k}(\varepsilon)=y_i
+(1-k\varepsilon)$ for $k=0,\ldots,e_i-1$.  For small $\varepsilon$ these $m$
+values lie in $(0,1/2]$, are distinct, and stay separated between distinct
+groups.  For each such $\varepsilon$ let $u^{(\varepsilon)}$ be the unique
+exponential sum on these $m$ distinct nodes with $u^{(\varepsilon)}_0=1$ and
+$u^{(\varepsilon)}_z=0$ for $z\in Z$; existence and uniqueness are the
+Vandermonde argument opening Section~2.  Theorem~\ref{thm:tail} applies with
+the same $f$ and gives
 \[
   \Tail(u^{(\varepsilon)})
   \le\prod_{j=1}^{f+1}\frac{y_{(j)}(\varepsilon)}{1-y_{(j)}(\varepsilon)},
@@ -350,31 +516,46 @@ section.  Theorem~\ref{thm:tail} applies with the same $f$ and gives
 where $y_{(1)}(\varepsilon)\le\cdots\le y_{(m)}(\varepsilon)$ is the sorted
 perturbed multiset.
 
-The functions $d\mapsto d^ky_i^d$ form an extended Chebyshev system, for which
-confluent Hermite interpolation is unisolvent~\cite[Chapter~I,
-Theorem~4.1]{karlin-studden}.  Hence, as the nodes coalesce,
-$u^{(\varepsilon)}_d\to u_d$ for every fixed $d$.  Fatou's lemma for series,
-applied to the nonnegative terms $|u^{(\varepsilon)}_d|$, gives
+It remains to pass to the limit.  For each $\varepsilon$ the coefficients
+$a^{(\varepsilon)}_{i,k}$ solve $M(\varepsilon)a^{(\varepsilon)}=e_0$, where
+$M(\varepsilon)$ is the $m\times m$ matrix with rows indexed by the
+interpolation nodes $d\in\{0\}\cup Z$ and columns by $(i,k)$, with entry
+$d^k y_{i,k}(\varepsilon)^d$, and $e_0$ is the first standard basis vector;
+$M(\varepsilon)$ is invertible for $\varepsilon>0$ because the nodes are
+distinct.  Its entries are polynomials in $\varepsilon$, so
+$M(\varepsilon)\to M(0)$ as $\varepsilon\to0$, where $M(0)$ is the confluent
+matrix with entry $d^ky_i^d$.  The functions $d\mapsto d^ky_i^d$ form an
+extended Chebyshev system on $\R$, for which confluent Hermite interpolation
+is unisolvent~\cite[Chapter~I, Theorem~4.1]{karlin-studden}; equivalently
+$M(0)$ is invertible.  Matrix inversion is continuous on the open set of
+invertible matrices, so $a^{(\varepsilon)}\to M(0)^{-1}e_0$, and for every
+fixed $d$,
+\[
+  u^{(\varepsilon)}_d=\sum_{i,k}a^{(\varepsilon)}_{i,k}d^ky_{i,k}
+  (\varepsilon)^d\longrightarrow\sum_{i,k}a_{i,k}d^ky_i^d=u_d .
+\]
+Fatou's lemma for series, applied to the nonnegative terms
+$|u^{(\varepsilon)}_d|$, gives
 \[
   \Tail(u)=\sum_{d\ge1}|u_d|
   \le\liminf_{\varepsilon\to0}\Tail(u^{(\varepsilon)}).
 \]
-The right side is at most the limit of the displayed products, which is
-$\prod_{j=1}^{f+1}y_{(j)}/(1-y_{(j)})$.
+Finally the order statistics of a converging multiset converge, so the
+product $\prod_{j=1}^{f+1}y_{(j)}(\varepsilon)/(1-y_{(j)}(\varepsilon))$
+tends to $\prod_{j=1}^{f+1}y_{(j)}/(1-y_{(j)})$.
 \end{proof}
 
 \section{Scope}
 
-Theorem~\ref{thm:mass} concerns normalized coefficient magnitudes, not
+Corollary~\ref{cor:mass} concerns normalized coefficient magnitudes, not
 ordinary length or height.  Subject to $|f_D|\ge1$, it is uniform over the
-degree of $F$ and all additional real or complex roots.  The contribution relative to
-reduced-height duality is the displaced-zero comparison and its iteration;
-the normalized determinant sequence and its consecutive-zero evaluation are
-from Dubickas and Jankauskas~\cite{dj}.
-
-\paragraph{Code availability.}
-Source code and verification scripts are available at
-\url{https://github.com/bangyen/esolangs}.
+degree of $F$ and all additional real or complex roots.  The contribution
+relative to reduced-height duality is the displaced-zero comparison and its
+iteration; the normalized determinant sequence and its consecutive-zero
+evaluation are from Dubickas and Jankauskas~\cite{dj}.  The confluent
+Proposition~\ref{prop:confluent} is supplementary: it removes the
+distinctness of the nodes from the certificate, but the distinct-node
+theorem already suffices for the order-statistic and mass bounds.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
