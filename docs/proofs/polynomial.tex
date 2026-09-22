@@ -328,13 +328,13 @@ Write
 Let
 \[
   P(x)=\prod_{i=1}^{L}(x-r_i),
-  \qquad 2\le r_1<\cdots<r_L,
+  \qquad 2\le r_1\le\cdots\le r_L,
 \]
-and let \(F(x)=\sum_{j=0}^{D}f_jx^j\in\R[x]\) be a nonzero multiple of
-\(P\) with \(|f_D|\ge1\).  Then
+with repetitions allowed, and let \(F(x)=\sum_{j=0}^{D}f_jx^j\in\R[x]\) be a
+nonzero multiple of \(P\) with \(|f_D|\ge1\).  Then
 \begin{equation}\label{eq:mass-general}
   \Lambda(F)
-  \ge \sum_{u=0}^{L-1}
+  \ge (L+1)\log|f_D| + \sum_{u=0}^{L-1}
        \sum_{i=u+1}^{L}\log(r_i-1),
 \end{equation}
 where \(\log^+x=\max(0,\log x)\).
@@ -375,7 +375,7 @@ $M(f)\ge\Lambda(f)/\log 10$ and $|f|\ge M(f)$, the result follows.
 \begin{remark}[Repeated roots]
 Repeated real roots do not weaken Corollary~\ref{cor:lower}: the
 block-incidence lemma already forces the stated number of distinct values,
-and Theorem~\ref{thm:mass} applies to their distinct-root product.
+and Theorem~\ref{thm:mass} is stated for roots counted with multiplicity.
 \end{remark}
 
 \begin{corollary}[General model]\label{cor:general}
