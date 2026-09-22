@@ -179,9 +179,12 @@ A nonzero exponential sum on $r$ distinct positive nodes has at most $r-1$
 real zeros, counted with multiplicity.  This is classical: divide by the
 power of the largest node so the sum becomes a real combination
 $\sum_ia_ie^{\lambda_id}$ with distinct $\lambda_i\le0$.  These exponentials
-form a Chebyshev system, because their Wronskian
-$e^{(\sum_i\lambda_i)d}\prod_{i<j}(\lambda_j-\lambda_i)$ is nowhere
-zero~\cite[Chapter~I, Theorem~4.1]{karlin-studden}.  Equivalently, prove the
+form a Chebyshev system, because every leading Wronskian
+$W(e^{\lambda_1d},\ldots,e^{\lambda_kd})
+=e^{(\lambda_1+\cdots+\lambda_k)d}\prod_{i<j\le k}(\lambda_j-\lambda_i)$,
+$k\le r$, is nowhere zero~\cite[Chapter~I,
+Theorem~4.1]{karlin-studden}; the full Wronskian alone would not suffice, as
+$\{\cos d,\sin d\}$ on $[0,2\pi]$ shows.  Equivalently, prove the
 bound by induction on $r$: factoring out the largest exponential leaves
 $T=\sum_ia_ie^{(\lambda_i-\lambda_1)d}$, which has the same zeros as the
 original combination and whose derivative is again a combination of distinct
@@ -384,7 +387,7 @@ zeros $Z'$ and no others, and at $z$ it has one additional simple zero.  Write
 $\eta=\sgn(F_z)$ and $\mu=|F_z|$, so $u=F-\eta\mu G$.  Since $F$ and $G$ flip
 at exactly the same points of $Z'$, their relative sign
 $\sgn(F_d/G_d)=\eta$ is constant off $Z'$; thus $F_d=\eta\sgn(G_d)|F_d|$ and
-$G_d=\sgn(G_d)|G_d|$, whence
+$G_d=\sgn(G_d)|G_d|$ for $d>0$, whence
 \[
   u_d=\eta\sgn(G_d)\bigl(|F_d|-\mu|G_d|\bigr),
   \qquad
