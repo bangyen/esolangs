@@ -193,7 +193,7 @@ that the nodes are distinct and positive.  Then
 where $h_j$ is the complete homogeneous symmetric polynomial, so these terms
 are one-signed and
 \[
-  \Tail(u)=\prod_{i=1}^c\frac{y_i}{1-y_i}.
+  \Tail(u):=\sum_{d\ge1}|u_d|=\prod_{i=1}^c\frac{y_i}{1-y_i}.
 \]
 \end{lemma}
 
@@ -221,7 +221,7 @@ formula for $u_d$ follows, and summing the one-signed terms gives
 Let
 $f=\max\{0\le k\le c-1:\{1,\ldots,k\}\subseteq Z\}$.  Then
 \begin{equation}\label{eq:tail}
-  \Tail(u):=\sum_{d\ge1}|u_d|
+  \Tail(u)=\sum_{d\ge1}|u_d|
   \le \prod_{i=1}^{f+1}\frac{y_i}{1-y_i}
   =\frac{1}{\prod_{i=1}^{f+1}(\rho_i-1)}.
 \end{equation}
@@ -373,7 +373,7 @@ $\{0\}\cup Z'$ and $F$ exactly $Z'$; below $z$ the sum $u$ has the same simple
 zeros $Z'$ and no others, and at $z$ it has one additional simple zero.  Write
 $\eta=\sgn(F_z)$ and $\mu=|F_z|$, so $u=F-\eta\mu G$.  Since $F$ and $G$ flip
 at exactly the same points of $Z'$, their relative sign
-$\sgn(F_d/G_d)=\eta$ is constant off $Z'$; thus $F_d=\eta\sgn(G_d)|F_d|$ and
+$\sgn(F_d/G_d)=\eta$ is constant on $(0,\infty)\setminus Z'$; thus $F_d=\eta\sgn(G_d)|F_d|$ and
 $G_d=\sgn(G_d)|G_d|$ for $d>0$, whence
 \[
   u_d=\eta\sgn(G_d)\bigl(|F_d|-\mu|G_d|\bigr),
@@ -630,11 +630,10 @@ Row $k=1$ is $b_1\ge|P(1)|$, and it is an infimum rather than a minimum already
 for $L=1$: in $F=(x-r)\sum_{k\le m}c_kx^k$ with $c_m=1$, every $|f_j|\le r-1$
 would force $c_{j-1}=rc_j+f_j\ge rc_j-(r-1)$, hence $c_j\ge1$ downward from
 $c_m$ and $|f_0|=r|c_0|\ge r$.  Nor is it the strongest bound the certificate
-yields.  Theorem~\ref{thm:tail} bounds the tail \emph{above}, and the
-consecutive zero set is where that bound is attained, so the consecutive
-certificate---the one Lemma~\ref{lem:slack} selects when $u=0$---is the one
-giving the weakest coefficient bound; for a fixed $P$ a displaced zero set can
-beat it.  Take $P=(x-2)(x-3)$, nodes $\rho=(3,2)$ and $Z=\{2\}$, whose tail is
+yields.  The consecutive certificate---the one Lemma~\ref{lem:slack} selects
+when $u=0$---has no extremal tail among zero sets at fixed nodes: at nodes
+$(5,3)$ the displaced $Z=\{2\}$ has the larger tail, while for a fixed $P$ a
+displaced zero set can also have the smaller one and beat it.  Take $P=(x-2)(x-3)$, nodes $\rho=(3,2)$ and $Z=\{2\}$, whose tail is
 $3/10$ by the example following Theorem~\ref{thm:tail}.  Then \eqref{eq:dual}
 with $U=\varnothing$ gives
 \[
@@ -810,7 +809,7 @@ the first $L$ primes.
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
 
-\begin{thebibliography}{9}
+\begin{thebibliography}{99}
 \small
 \bibitem{dubickas}
 A.~Dubickas,
