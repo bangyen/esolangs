@@ -679,11 +679,18 @@ $(r_1,r_2)=(2,3)$ and $u=1$ gives $b_2\ge2$ for every monic multiple, and
 $t_n\to2$.
 \end{proof}
 
-A similar construction, omitted, gives infima $8$ and $4$ for the rows $k=2$
-and $k=3$ at $(2,3,5)$, again the asserted values.  Whether the rows $k\ge2$
-are sharp in general is open.  What the two cases together show is that a row
-$k\ge2$ can be sharp where row $k=1$ is not: at $(2,3)$ row $2$ is an infimum,
-while row $1$ is low by the factor $5/3$.
+The same method reaches $(2,3,5)$.  Writing the multiple from the top---one
+leading $1$, a short free prefix, a long run of a single value, and the exempt
+coefficients at the bottom---put
+\[
+  F_D(x)=x^D-a_Dx^{D-1}+t_D\sum_{j=1}^{D-2}x^j+c_D,
+  \qquad
+  G_D(x)=x^D-s_D\sum_{j=2}^{D-1}x^j+e_Dx+e_D',
+\]
+with the coefficients fixed by vanishing at $2,3,5$.  Then $b_2(F_D)=t_D\to8$
+and $b_3(G_D)=s_D\to4$, the values \eqref{eq:order} asserts at $u=1$ and
+$u=2$; we omit the verification.  Whether the rows $k\ge2$ are sharp in
+general is open.
 
 \begin{corollary}[Prime roots]\label{cor:prime}
 Assume $|f_D|\ge1$ and that the increasing roots $r_i$ are bounded below by
