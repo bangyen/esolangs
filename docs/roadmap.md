@@ -91,11 +91,6 @@ INTERCAL, listed last, is outside the pass.
   | Malbolge | Exception | Open | Open | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
-  Malbolge cannot be total: its finite source space omits some 18-input truth
-  tables.  Its shipped construction covers every table through nine inputs;
-  generation time and size remain open over the reachable gap below that
-  language ceiling.
-
   Factor's adaptive residue sequence is bounded by fixed-modulus Hoheisel:
   its last selected prime `Q` is polynomial in the run count. Worst-case
   generated text and the weighted exponent-vector language floor are both
@@ -184,12 +179,6 @@ INTERCAL, listed last, is outside the pass.
   index only on the essential ones.  Ship separately per language only if
   the PNG round trip executes and reduces pixels or codels on an exhaustive
   small-table corpus; constants are the positive control.
-
-- **Raster source integration.**  Done for Line and Piet: `generate` returns
-  an `esolangs.raster.Raster`, `run` accepts it or a PNG path through the
-  shared codec, and `describe` reports `source_kind="raster"`.  Raster
-  languages stay outside text-only `RUNNERS` and its VM/step/fuzz contracts.
-  Line retains its graph for repeated rows; Piet emits and executes the pixels.
 
 - **Image-source candidates.**  A read of the 129 `Category:Non-textual` pages
   for raster sources only -- music (Fugue, Velato), music-note, and
