@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import keyword
 import re
 from pathlib import Path
 
@@ -19,9 +20,12 @@ CATEGORIES = (
 
 def _slug(name: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "_", name.casefold()).strip("_")
-    if not slug or slug[0].isdigit():
+    if not slug or slug[0].isdigit() or keyword.iskeyword(slug):
+        # ``class`` passed the old check and scaffolded an import line that
+        # was a SyntaxError.
         raise ValueError(
-            "name must produce a Python identifier beginning with a letter"
+            "name must produce a Python identifier beginning with a letter, "
+            "and not a Python keyword"
         )
     return slug
 

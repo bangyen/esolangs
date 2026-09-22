@@ -70,11 +70,13 @@ def _isprime64(number: int) -> bool:
 def _parse(digits: str) -> int:
     """Read the program's integer, lifting CPython's digit limit to fit it.
 
-    The 4300-digit cap is a DoS guard, not Factor's (n=5 parity is 12565
+    The 4300-digit cap is a DoS guard, not Factor's (n=6 parity is 5934
     digits); raised for this program and put back.
     """
     limit = sys.get_int_max_str_digits()
-    if len(digits) <= limit:
+    # 0 means the process-global limit is already unlimited; lifting it would
+    # raise, and ``set_int_max_str_digits`` rejects any value under 640.
+    if limit == 0 or len(digits) <= limit:
         return int(digits)
     sys.set_int_max_str_digits(len(digits) + 1)
     try:
@@ -86,11 +88,12 @@ def _parse(digits: str) -> int:
 def _factorint(number: int) -> dict[int, int]:
     """Factorize ``number`` by widening segmented trial division.
 
-    The number is a product of many smallish primes (1276 digits for the
+    The number is a product of many smallish primes (435 digits for the
     committed example), so walk primes in order and shrink as each divides.
     Never stop at a fixed prime: the residue handed to ``factorint`` is then
     a large composite that sends it to Pollard rho for minutes (a 10000
-    ceiling hung the sweep on a 3243-digit program with 80 primes above it).
+    ceiling left 170 primes inside a 708-digit composite of the n=4 parity
+    number, whose 525 primes reach 17209).
     Chunks widen until the residue is prime or gone. Below 2**64, exact
     ``isprime`` is asked only after a *barren* chunk and once per residue;
     above it BPSW cannot certify a language decode, so the sieve continues.

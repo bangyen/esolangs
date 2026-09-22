@@ -1,8 +1,15 @@
-\documentclass[10pt]{article}
+\documentclass[11pt]{article}
 
 \usepackage[a4paper,margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsthm,mathtools}
 \usepackage[hidelinks]{hyperref}
+\hypersetup{
+  pdfauthor={Bangyen Pham},
+  pdftitle={The Worst-Case Text Complexity of the Factor Esoteric Programming Language},
+  pdfsubject={Descriptional complexity of Boolean functions in Factor},
+  pdfkeywords={Factor, Brainfuck, descriptional complexity, Boolean functions, prime encoding},
+  pdflang={en-US}
+}
 
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{lemma}[theorem]{Lemma}
@@ -14,23 +21,32 @@
 \newcommand{\N}{\mathbb N}
 
 \title{The Worst-Case Text Complexity of the Factor Language}
-\author{The \texttt{esolangs} project}
+\author{\shortstack{Bangyen Pham\\
+\small Independent Researcher\\
+\small\href{mailto:bangyenp@gmail.com}{\texttt{bangyenp@gmail.com}}\\
+\small\href{https://orcid.org/0009-0006-9928-2088}{ORCID: 0009-0006-9928-2088}}}
 \date{September 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-A Factor program is one decimal integer.  Its prime factorisation encodes a
-Brainfuck program: a prime's residue modulo $11$ selects an instruction and
-its exponent gives the run length.  We prove that the worst-case Factor
-source length for a Boolean truth table of length $T$ is
+A Factor source denotes a decimal integer whose prime
+factorization encodes a Brainfuck program: a prime's residue modulo $11$
+selects an instruction and its exponent gives the run length.  We prove that
+the worst-case Factor source length for a Boolean truth table of length $T$ is
 $\Theta(T\log T)$.  The upper bound combines a linear-size Brainfuck
 construction with a fixed-modulus short-interval theorem for primes.  The
-lower bound counts every integer encoding of at most $D$ digits, including
-encodings with ignored prime factors, comments, and leading zeros, and shows
-that they realise only $\exp(O(D/\log D))$ behaviours.
+lower bound counts every integer encoding of at most $D$ digits and remains
+valid in the presence of ignored prime factors, comments, and leading zeros;
+these encodings realize only $\exp(O(D/\log D))$ behaviors.
 \end{abstract}
+
+\noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
+Brainfuck; prime encoding; esoteric programming languages.
+
+\noindent\textbf{2020 Mathematics Subject Classification.} Primary 68Q17;
+secondary 94D10.
 
 \section{Encoding model}
 
@@ -39,6 +55,8 @@ Let
   N=\prod_p p^{e_p}
 \]
 be the positive integer spelled by the decimal digits of a Factor source.
+An all-zero digit string instead decodes to the empty program; it is one
+exceptional behavior and is excluded from the logarithmic notation below.
 For a prime $p$, the residue $p\bmod 11$ selects the Brainfuck instruction
 according to
 \[
@@ -50,9 +68,15 @@ p\bmod 11&1&2&3&4&5&6&7&8\\ \hline
 and the exponent $e_p$ is its run length.  Residues $0,9,10$ are ignored.
 The selected primes are read in increasing order.
 
-Write $C=\sum e_p$ for the length of the decoded Brainfuck program, $m$ for
-its number of maximal runs, $Q$ for its largest selected prime, and $D$ for
-the number of decimal digits of $N$.  Then
+For example, $45=3^2\cdot5$.  Since $3\bmod11=3$ and
+$5\bmod11=5$, the source \texttt{45} decodes to \texttt{++.}: two
+increments followed by output.  Starting from a zero cell, it emits the byte
+of value $2$.  This example also illustrates that source order is irrelevant:
+instruction order comes from increasing prime factors.
+
+Write $C=\sum_{p\bmod 11\in\{1,\ldots,8\}}e_p$ for the length of the decoded
+Brainfuck program, $m$ for its number of maximal runs, $Q$ for its largest
+selected prime, and $D$ for the number of decimal digits of $N$.  Then
 \begin{equation}\label{eq:digits}
   \log N=\sum_p e_p\log p,
   \qquad D=\lfloor\log_{10}N\rfloor+1.
@@ -60,20 +84,42 @@ the number of decimal digits of $N$.  Then
 Comments and leading zeros change the literal source length but not $N$;
 they can never help a shortest encoding.
 
-Let $T=2^n$ be the length of an $n$-input Boolean truth table.
+Execution uses the standard Brainfuck machine: byte cells wrap modulo $256$,
+the tape grows to the right, a move left from its initial cell stays there,
+and matched brackets have their usual while-loop semantics.  For $n\ge1$ put
+$T=2^n$.  Each input bit is supplied as a separate line containing its ASCII
+digit.  A program
+\emph{computes} a table $t=(t_0,\ldots,t_{T-1})\in\{0,1\}^{2^n}$ if, for every
+$b_1\cdots b_n\in\{0,1\}^n$ in lexicographic order, it terminates and emits
+exactly the character $t_{(b_1\cdots b_n)_2}$, with zero-based subscripts.
+Define
+\[
+ \mathcal C_F(T)=\max_{t\in\{0,1\}^T}
+ \min\{\text{total source characters of }P:P\text{ computes }t\}.
+\]
+Deleting comments and leading zeros never changes execution, so the minimum
+source length over programs computing $t$ equals the minimum decimal-digit
+count of a positive integer whose decoded program computes $t$.  All
+unqualified logarithms below are natural.
 
 \begin{theorem}\label{thm:main}
 Every $T$-bit truth table has a Factor program of
 $O(T\log(T+1))$ decimal digits.  Some $T$-bit truth tables require
-$\Omega(T\log T)$ digits.  Hence the worst-case Factor text complexity is
-$\Theta(T\log T)$.
+$\Omega(T\log T)$ digits.  Hence $\mathcal C_F(T)=\Theta(T\log T)$.
 \end{theorem}
 
-\section{Generated upper bound}
+Factor was introduced in 2020 as a prime-factor encoding of
+Brainfuck~\cite{factor-spec}.  Its specification invokes Dirichlet's theorem
+to ensure an unlimited supply of instruction primes.  We instead study
+decimal description length.  The upper bound requires quantitative control
+of successive instruction primes, while the lower bound counts all encodings,
+including those with ignored factors.
 
-The Boolean generator first emits a Brainfuck decision tree and then replaces
-each maximal run by one prime power.  The following elementary bound makes
-the construction premise explicit.
+\section{Upper bound}
+
+The construction first emits a Brainfuck decision tree and then replaces each
+maximal run by one prime power.  We begin by bounding the size of the decision
+tree.
 
 \begin{lemma}[Decision-tree size]\label{lem:tree}
 Every $T$-bit truth table has a Brainfuck decision-tree program of length
@@ -81,13 +127,24 @@ $C=O(T)$.
 \end{lemma}
 
 \begin{proof}
-Use the full binary decision tree of depth $n$.  Each of its $T-1$ internal
-vertices reads one bit and uses a fixed Brainfuck branch gadget; each of its
-$T$ leaves uses a fixed output gadget.  Lay the gadgets out recursively, with
-one matching bracket pair around each branch.  Every tree edge and vertex
-contributes only a constant number of instructions, so the resulting program
-has $C=O(T)$.  Constant equal subtrees may be folded, but that optimisation is
-not needed for the bound.
+Use the following identity-order construction.  It first reads ASCII input into
+cell $2i$, subtracts $48$ to obtain bit $b_i$, and leaves cell $2i+1$ as a
+zero flag.  At a depth-$i$ node, set
+the flag to one and enter a loop on $b_i$ that clears both $b_i$ and the flag
+before running the one-child.  Then run the zero-child inside a loop on the flag that
+clears it.  Exactly one child runs, and both cells are zero afterward, so
+these fixed bracket gadgets nest recursively and implement the decision tree.
+A one-leaf increments a separate result cell; a zero-leaf does nothing, and
+one final gadget adds the ASCII-zero offset and prints.
+
+The initial reads cost $O(n)$.  Moving from a node at depth $i$ to a
+nonconstant child costs $O(1)$.  A constant subtree may instead move to the
+result cell, at distance $O(n-i)$.  There are at most $2^{i+1}$ such exits at
+depth $i$, so all pointer travel is bounded by
+\[
+ O(n)+\sum_{i=0}^{n-1}O\bigl(2^i(n-i)\bigr)=O(2^n)=O(T).
+\]
+The fixed node gadgets and the single final output add $O(T)$.
 \end{proof}
 
 The encoder replaces each maximal run by one prime power.  It scans
@@ -106,10 +163,14 @@ $x_0$ and $\theta<1$ such that every $x\ge x_0$ has a prime
 
 \begin{proof}
 The Hoheisel theorem for arithmetic progressions gives the expected
-asymptotic number of primes in $(x,x+h]$ in every reduced class modulo $q$
-when $q\le(\log x)^A$ and $h\ge x^{7/12+\varepsilon}$; see
-Thorner and Zaman~\cite{thorner-zaman}.  Take $q=11$ and any
-$\theta>7/12$.
+asymptotic number of primes in $(X-h,X]$ in every reduced class modulo $q$
+when $q\le(\log X)^A$ and
+$h\ge X^{7/12+\varepsilon}(\log X)^A$; see Thorner and
+Zaman~\cite[Section~1.2]{thorner-zaman}.  Fix
+$7/12+\varepsilon<\theta<1$, put
+$X=x+x^\theta$ and $h=x^\theta$.  Since $X\sim x$, the displayed size
+condition holds for all sufficiently large $x$, while
+$(X-h,X]=(x,x+x^\theta]$.  Taking $q=11$ proves the lemma.
 \end{proof}
 
 \begin{lemma}\label{lem:adaptive}
@@ -144,26 +205,19 @@ $\log Q=O(\log(m+1))$.  Equation~\eqref{eq:digits} yields
   =O\bigl(C\log(m+1)\bigr)
   =O\bigl(T\log(T+1)\bigr).
 \]
-Changing logarithm bases proves the digit bound.
+Changing logarithm bases proves the digit bound.  The constructed program has
+an output run, so $m\ge1$.
 \end{proof}
-
-For parity, the folded decision tree has $C,m=\Theta(T)$.  Its $m$ selected
-primes are distinct, so
-\[
-  \log N\ge\sum_{i=1}^{m}\log(i+1)=\log((m+1)!)=\Omega(T\log T).
-\]
-Thus the generator's worst case is already $\Theta(T\log T)$.
 
 \section{Language lower bound}
 
-The preceding parity argument concerns one construction.  A language lower
-bound must count every integer that might encode a table.
+A language lower bound must count every integer that might encode a table.
 
 \begin{lemma}[Run bound]\label{lem:runs}
-If a Factor integer satisfies $\log N\le L$ and its decoded program has $m$
-useful prime runs, then
+If a Factor integer satisfies $\log N\le L$ and has $k$ useful prime factors,
+then
 \[
-  m=O(L/\log(L+2)).
+  k=O(L/\log(L+2)).
 \]
 \end{lemma}
 
@@ -171,19 +225,19 @@ useful prime runs, then
 The $i$th useful prime is at least $i+1$, and every useful exponent is at
 least one.  Hence
 \[
-  L\ge\sum_{i=1}^{m}\log(i+1)=\log((m+1)!).
+  L\ge\sum_{i=1}^{k}\log(i+1)=\log((k+1)!).
 \]
-Stirling's bound $\log(m!)=\Theta(m\log(m+1))$ gives the result.
+Stirling's bound $\log(k!)=\Theta(k\log(k+1))$ gives the result.
 \end{proof}
 
 \begin{lemma}[Exponent vectors]\label{lem:vectors}
-Fix $m$ and $L\ge2$.  The number of vectors
-$(e_1,\ldots,e_m)\in\N_{>0}^m$ satisfying
+Fix $k$ and $L\ge2$.  The number of vectors
+$(e_1,\ldots,e_k)\in\N_{>0}^k$ satisfying
 \begin{equation}\label{eq:budget}
-  \sum_{i=1}^{m}e_i\log(i+1)\le L
+  \sum_{i=1}^{k}e_i\log(i+1)\le L
 \end{equation}
 is $\exp(O(L/\log L))$, uniformly for
-$m=O(L/\log L)$.
+$k=O(L/\log L)$.
 \end{lemma}
 
 \begin{proof}
@@ -193,9 +247,9 @@ geometric series give
 \begin{align}
  \#\{f:\text{\eqref{eq:budget}}\}
  &\le e^{sL}
-       \sum_{f_1,\ldots,f_m\ge0}
+       \sum_{f_1,\ldots,f_k\ge0}
        \exp\!\left(-s\sum_i f_i\log(i+1)\right)\\
- &=e^{sL}\prod_{i=1}^{m}
+ &=e^{sL}\prod_{i=1}^{k}
        \left(1-(i+1)^{-s}\right)^{-1}.
 \end{align}
 The first factor has logarithm $L/\log(L+2)$.  To bound the product, split
@@ -210,22 +264,22 @@ is $O(1)$.  Lemma~\ref{lem:runs} bounds their number by $O(L/\log L)$.
 Taking logarithms proves the claim; bounded $L$ is absorbed in the constant.
 \end{proof}
 
-\begin{proposition}[Behaviour count]\label{prop:count}
-Factor sources whose digit integers satisfy $\log N\le L$ realise at most
+\begin{proposition}[Behavior count]\label{prop:count}
+Factor sources whose digit integers satisfy $\log N\le L$ realize at most
 \[
   \exp(O(L/\log L))
 \]
-distinct behaviours.
+distinct behaviors.
 \end{proposition}
 
 \begin{proof}
 Discard ignored-residue prime factors: they do not alter the decoded
-Brainfuck program.  For $m$ useful primes, their increasing order fixes the
+Brainfuck program.  For $k$ useful primes, their increasing order fixes the
 instruction order once their residue classes are chosen.  There are at most
-$8^m$ class words.  Replacing the actual $i$th prime by its lower bound
+$8^k$ class words.  Replacing the actual $i$th prime by its lower bound
 $i+1$ relaxes the size constraint to \eqref{eq:budget}, so
 Lemma~\ref{lem:vectors} bounds the run lengths.  Finally sum over the
-$O(L/\log L)$ possible values of $m$.  The factors $8^m$ and the number of
+$O(L/\log L)$ possible values of $k$.  The factors $8^k$ and the number of
 summands are both absorbed by $\exp(O(L/\log L))$.
 \end{proof}
 
@@ -235,16 +289,18 @@ $\Omega(T\log T)$ Factor digits.
 \end{proposition}
 
 \begin{proof}
-A source of $D$ decimal digits has $\log N=O(D)$, so
-Proposition~\ref{prop:count} bounds the number of behaviours represented by
-all such sources by
+Every nonzero digit integer spelled with at most $D$ digits has
+$\log N=O(D)$, so Proposition~\ref{prop:count} bounds the number of its
+behaviors by
 \[
   \exp(O(D/\log D)).
 \]
+Zero-valued sources add only the empty behavior, which is absorbed by this
+bound.
 There are $2^T$ Boolean truth tables.  If every table had a $D$-digit source,
 then $D/\log D=\Omega(T)$, which implies $D=\Omega(T\log T)$.
 Ignored factors, comments, and leading zeros cannot invalidate the count:
-they add spellings of an already-counted decoded program, not behaviours.
+they add spellings of an already-counted decoded program, not behaviors.
 \end{proof}
 
 Propositions~\ref{prop:upper} and~\ref{prop:lower} prove
@@ -257,21 +313,33 @@ arbitrary $D$-digit integer is polynomial in $D$.  Generated programs form a
 special family whose factors are enumerated directly; arbitrary balanced
 semiprimes remain outside that guarantee.
 
-The implementation uses exact segmented Eratosthenes enumeration and a
-smallest-first product tree.  Its construction and cold-parse bounds, along
-with executable size and parity checks, are recorded in
-\texttt{docs/proofs/factor.md}.  The repository's proof ledger and deep proof suite
-check that the claimed $\Theta(T\log T)$ classification remains attached to
-the Factor generator.  None of those measurements is a premise of the
-language lower bound above.
+The reference implementation uses segmented Eratosthenes enumeration and a
+smallest-first product tree.  Executable checks cover generated-program
+semantics, source sizes, and the finite identities used in the construction;
+none is a premise of the language lower bound.
+
+\paragraph{Code availability.}
+Source code and verification scripts are available at
+\url{https://github.com/bangyen/esolangs}.
+
+\paragraph{Data availability.}
+No datasets were generated or analyzed in this study.
 
 \begin{thebibliography}{9}
+\small
+\bibitem{factor-spec}
+B.~Pham,
+\newblock Factor,
+\newblock Esolang Wiki, 2020,
+\newblock \url{https://esolangs.org/w/index.php?title=Factor&oldid=138367}.
+
 \bibitem{thorner-zaman}
 J.~Thorner and A.~Zaman,
 \newblock Refinements to the prime number theorem for arithmetic progressions,
 \newblock \emph{Mathematische Zeitschrift} 306 (2024), article 54,
 \newblock \href{https://doi.org/10.1007/s00209-023-03414-3}
-{doi:10.1007/s00209-023-03414-3}.
+{doi:10.1007/s00209-023-03414-3}; preprint
+\href{https://arxiv.org/abs/2108.10878}{arXiv:2108.10878}.
 \end{thebibliography}
 
 \end{document}

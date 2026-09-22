@@ -102,10 +102,10 @@ new-language name *args:
 
 # mutation-test one interpreter: what its tests would NOT have caught
 # (not part of `just test` -- it is a few minutes per language)
-# `language` is quoted below: twelve of the sixty-five display names contain
-# a space ("Point Break", "A Painter Ant", "Minsky Swap", ...), and unquoted
-# they split into two arguments -- `just mutate "Point Break"` failed with
-# `unrecognized arguments: Break`, for every one of the twelve.
+# `language` is quoted below: nine of the sixty-four display names contain
+# a space ("A Painter Ant", "Minsky Swap", ...), and unquoted they split
+# into two arguments -- `just mutate "A Painter Ant"` failed with
+# `unrecognized arguments: Painter Ant`, for every one of the nine.
 mutate language *args:
     {{PYTHON}} scripts/mutate.py interpreter "{{language}}" {{args}}
 
@@ -126,12 +126,13 @@ mutate-gen module *args:
 # The ledger obligations under tests/proofs are collected by pytest and gate
 # every push. The proofs under deep/ are not, and the runner selects them by
 # the band each one declares rather than by a list kept here: `verify` is what
-# scripts/verify.py runs, `ci` what the workflow runs, `all` everything. ~2m20s,
-# dominated by A Painter Ant at 1m20s, then linearity at 30s and Container at
-# 16s. The runner keeps going after a failure and reports at the end, so
+# scripts/verify.py runs, `ci` what the workflow runs, `all` everything. ~2m,
+# dominated by linearity and execution at 30s each, then all_generators at 22s
+# and Container at 16s. The runner catches a proof's exception and keeps going,
+# reporting at the end, so
 # linearity's standing Forþ finding does not hide the proofs after it.
 # Use `python -m tests.proofs.deep --list` to see the bands.
-# run every executable proof: the ledger obligations and all 7 deep proofs
+# run every executable proof: the ledger obligations and all 8 deep proofs
 proofs:
     {{PYTHON}} -m pytest tests/proofs -q
     {{PYTHON}} -m tests.proofs.deep all
@@ -146,6 +147,7 @@ proofs-pdf:
     }
     tectonic --outdir docs/proofs docs/proofs/factor.tex
     tectonic --outdir docs/proofs docs/proofs/polynomial.tex
+    tectonic --outdir docs/proofs docs/proofs/coefficient-mass.tex
 
 # Not in `just test` or CI: what it guards moves only when APA's head, body,
 # or routing does, so run it then. L2's foreign-leaf sweep at n=9 is 57s of
@@ -156,10 +158,12 @@ apa-proof:
 
 # clean generated: `find -delete` refuses a non-empty directory, so removal
 # goes through `rm -rf`: bytecode, build metadata, and verifier reports.
+# `.venv` and `.worktrees` are pruned -- a linked worktree carries its own
+# environment, and reaching into it would strip that checkout's install.
 clean:
     #!/usr/bin/env bash
-    find . -path ./.venv -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
+    find . \( -path ./.venv -o -path ./.worktrees \) -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
         | xargs -0 rm -rf
-    find . -path ./.venv -prune -o -name "*.pyc" -type f -delete
+    find . \( -path ./.venv -o -path ./.worktrees \) -prune -o -name "*.pyc" -type f -delete
     rm -rf build dist .coverage coverage.xml bandit-report.json .mypy_cache .ruff_cache .pytest_cache
     find src tests -mindepth 1 -type d -empty -delete

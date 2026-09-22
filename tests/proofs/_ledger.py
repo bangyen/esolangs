@@ -148,10 +148,11 @@ def load(path: Path | None = None) -> Ledger:
         for match in re.finditer(r"^\*\*(.+?)\.\*\*", schemes, re.MULTILINE)
     }
 
-    # ``exceptions?``: the count reached zero, and the sentence has
-    # to stay grammatical, so the plural cannot be hard-coded here.
+    # An exception may be an open gap or a proved language obstruction.  The
+    # count still has to stay grammatical, so the plural cannot be hard-coded.
     count = re.search(
-        r"records (\d+) theoretical totality arguments and (\w+)\s+open exceptions?",
+        r"records (\d+) theoretical totality arguments and (\w+)\s+"
+        r"(?:open|proved language) exceptions?",
         text,
     )
     assert count, f"{DOC} no longer states its own totals"

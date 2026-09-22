@@ -1,4 +1,17 @@
-"""Piet raster interpreter following https://www.dangermouse.net/esoteric/piet.html."""
+"""Piet raster interpreter following https://www.dangermouse.net/esoteric/piet.html.
+
+A program is an image of coloured codels.  The interpreter enters the
+top-left block and follows the direction pointer and codel chooser, running
+the command named by the hue/lightness change from the block left to the
+block entered: hue 0 pushes/pops, 1 adds/subtracts/multiplies, 2
+divides/modulos/nots, 3 compares/rotates/switches, 4 duplicates/rolls/reads
+a number and 5 reads a char or prints a number/char.  A block with no
+colour exit and no white slide ends the run.
+
+Two deviations: a colour outside the 18 standard ones is treated as white,
+and the input commands read the package's line-oriented stdin, so a blank
+line is a value rather than end of input.
+"""
 
 from __future__ import annotations
 
@@ -153,8 +166,20 @@ def _command(
                 if rolls:
                     stack[-depth:] = stack[-rolls:] + stack[-depth:-rolls]
     elif (hue, lightness) == (4, 2):
-        with suppress(EOFError, ValueError):
-            stack.append(io.input_num())
+        # A blank line is the package's 0, and the module docstring promises
+        # it is a value rather than end of input -- but ``input_num`` is
+        # ``int(line)``, which raised on the empty string and was suppressed,
+        # so this command pushed nothing where the char command pushes 0.
+        try:
+            line = io.input_str()
+        except EOFError:
+            pass
+        else:
+            if not line:
+                stack.append(0)
+            else:
+                with suppress(ValueError):
+                    stack.append(int(line))
     elif (hue, lightness) == (5, 0):
         with suppress(EOFError):
             stack.append(io.input_char())

@@ -367,7 +367,12 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
     if "INT" in mod:
         return ((*stk, int(_operand(arg, 2))), var, ind)
     if "STR" in mod:
-        m = mod.split('"')[1]
+        parts = mod.split('"')
+        if len(parts) < 3:
+            # ``[PSH STR hello]`` has no quoted section, so ``split`` had no
+            # second element and the raw IndexError escaped ``run``.
+            raise ValueError(f"missing quoted string in {' '.join(arg)}")
+        m = parts[1]
         return ((*stk, *[ord(c) for c in m][::-1]), var, ind)
     if "VAR" in mod:
         # The store names its target the same way every other variable op

@@ -39,7 +39,7 @@ commands:
                               the same, printing the table it computed
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
         [--break-at N] [--break-on-cell I=V] [--break-on-output S]
-        <language> <file>
+        [--table T] <language> <file>
                               run under the debugger and report where it
                               stopped, plus any watched cell's history;
                               --tui steps interactively instead, showing the
@@ -109,7 +109,7 @@ significant first, so its length sets the input count: 0110 is two-input
 XOR, 10010110 is three-input.  The program reads one input per line and
 prints the result.
 
-Eighteen languages instead return a *template*: their generators embed the
+Fourteen languages instead return a *template*: their generators embed the
 inputs in the code rather than reading them, leaving a run of `$` per input
 as long as the code that will replace it.  Running one unfilled is refused.
 `esolangs list --details` marks them `tmpl`; pass --bits to get a runnable
@@ -168,11 +168,10 @@ options:
                      *not* terminating -- 123, ArrowQueue, Crement and
                      Vandevelo -- so a timeout there is the answer, not a
                      failure.
-  --seed N           fix the random draws so the run repeats.  Four
-                     languages draw: LaserFuck,
-                     Modulous, Painfuck and Super SNUSP.  A seed
-                     for a language that draws nothing is refused rather
-                     than ignored.
+  --seed N           fix the random draws so the run repeats.  Five
+                     languages draw: Befunge, LaserFuck, Modulous,
+                     Painfuck and Super SNUSP.  A seed for a language
+                     that draws nothing is refused rather than ignored.
   --table TABLE      the truth table the program was generated from.  Adds
                      the bit *count* to the stdin check, which a shape
                      check cannot do alone: three lines fed to a two-input
@@ -323,11 +322,11 @@ examples:
 Read a program's output on stdin and print the answer bit it carries.
 
 For most languages the answer is the last thing printed and this is barely
-more than `tail`.  For nine it is not: six dump their entire final machine
-state, and the answer sits at a fixed place in it -- RAM0's in its `z`
-register three lines from the end, A Painter Ant's as the mark on the ant's
-own cell (`o` for 0, `@` for 1) somewhere in an eleven-line grid.  Working
-that out by hand meant generating all four rows and diffing them.
+more than `tail`.  For ten it is not: six dump their entire final machine
+state, and the answer sits at a fixed place in it -- RAM0's on its `z:`
+line, A Painter Ant's as the mark on the ant's own cell (`o` for 0, `@`
+for 1).  Working that out by hand meant generating all four rows and
+diffing them.
 
 The four languages that answer by terminating have no output to read, so
 they are refused here and named: use `run --judge --timeout S` instead.

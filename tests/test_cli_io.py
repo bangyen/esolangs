@@ -43,6 +43,31 @@ class TestTheDecodeGuardsInProcess:
             cli._read_program(str(tmp_path))  # noqa: SLF001
         assert exc.value.code == 2
 
+    def test_read_program_decodes_a_png(self, tmp_path: Path) -> None:
+        """A raster language's program is a PNG, not UTF-8 text."""
+        from esolangs.raster import Raster
+
+        path = tmp_path / "tiny.png"
+        path.write_bytes(Raster((((0, 0, 0),),)).to_png())
+        assert isinstance(cli._read_program(str(path)), Raster)  # noqa: SLF001
+
+    def test_read_program_refuses_a_corrupt_png(self, tmp_path: Path) -> None:
+        """A PNG signature with nothing behind it is a bad PNG, not text."""
+        path = tmp_path / "bad.png"
+        path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20)
+        with pytest.raises(SystemExit) as exc:
+            cli._read_program(str(path))  # noqa: SLF001
+        assert exc.value.code == 2
+
+    @pytest.mark.medium
+    def test_run_accepts_the_png_generate_wrote(self, tmp_path: Path) -> None:
+        """The CLI used to read the PNG as text and refuse it."""
+        path = tmp_path / "line.png"
+        path.write_bytes(esolangs.generate("Line", "01").to_png())
+        result = run_cli("run", "Line", str(path), stdin="1\n")
+        assert result.returncode == 0
+        assert result.stdout == "1"
+
     def test_read_stdin_refuses_undecodable_bytes(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -655,3 +680,29 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
         text = " ".join(HELP["check-stdin"].split())
         assert "the wrong number of lines" not in text
         assert "only --table knows how many bits the program wanted" in text
+
+
+class TestTheTableOptionIsValidated:
+    """A malformed ``--table`` warned and ran; every other bad option refused.
+
+    ``run --table 0120`` exited 0 with the complaint on stderr, where
+    ``check-stdin --table 0120`` exited 2.  An option's value is a usage
+    error, so ``_table_of`` judges it once for both commands.
+    """
+
+    def test_no_table_is_none(self) -> None:
+        """``run`` and ``debug`` may be called without the flag."""
+        assert cli._table_of({}) is None  # noqa: SLF001
+
+    def test_a_valid_table_is_returned_unchanged(self) -> None:
+        """The gate must not drop the arity the later checks need."""
+        assert cli._table_of({"--table": "0110"}) == "0110"  # noqa: SLF001
+
+    def test_a_malformed_table_exits_two(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Exit 2, like ``check-stdin`` and every other bad option value."""
+        with pytest.raises(SystemExit) as exc:
+            cli._table_of({"--table": "0120"})  # noqa: SLF001
+        assert exc.value.code == 2
+        assert "truth table" in capsys.readouterr().err
