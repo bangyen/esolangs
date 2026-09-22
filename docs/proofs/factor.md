@@ -94,9 +94,28 @@ is the upper bound
 
 Only the upper bound is claimed: the terms need not balance, so `Theta` is not
 established, and the sieve term can exceed `D**alpha` for the largest `Q` the
-Hoheisel bound permits.  A uniform bound on the changing residue word, which
-would replace `Q` by `Theta(T log T)`, is not available; measurements are not
-that lemma.
+Hoheisel bound permits.
+
+Hoheisel is far from tight here, and the gap is measurable.  Walking `m` runs
+and recording the largest selected prime, `Q / (m ln m)` is flat over
+`m = 50..1600`: 12.4 to 12.0 when the requested residues are random, 17.6 to
+14.9 when they are all one class, and 40.0 to 37.0 when an adversary picks, at
+each step, the class whose next prime is farthest.  All three are
+`Theta(m log m)`, differing only in the constant, against the `m**O(1)` the
+Hoheisel route yields.  The one-class row is the positive control: it is the
+case the prime number theorem in arithmetic progressions settles outright, and
+it grows no slower than the other two.  `10 m ln(10 m)` predicts
+`Q/(m ln m) -> 10 + 23/ln m`, which is 12.9 at `m = 3200` against 12.0
+measured.
+
+So the missing lemma is narrower than "a uniform bound on the changing residue
+word".  Only the *sum* of the `m` gaps is needed, not each one, and since the
+walk's step from `p` costs the largest next-prime-in-class gap at `p`, what
+would give `Q = Theta(T log T)` is that every reduced class mod 11 meets
+`(p, p + C log p]` for almost all `p`, with a crude bound on the exceptional
+set.  That is a short-interval statement in progressions, weaker than
+Hoheisel per step but not implied by the prime number theorem in progressions.
+Measurements are still not that lemma.
 
 ## Cold parsing
 
