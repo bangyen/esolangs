@@ -39,14 +39,14 @@ $b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)$.  This paper studies how tight that
 bound is.  We give explicit monic multiples of $(x-2)(x-3)$ and of
 $(x-2)(x-3)(x-5)$ for which the bound is approached arbitrarily closely, so
 it is an exact infimum at those root sets; we identify a partial-sum
-criterion on the surviving root product that predicts attainment in
-general, confirmed in every case tried but proved only where it holds; we
-show the standing restriction $r_1\ge2$ cannot be dropped once $u\ge1$,
-already at $L=2$; we show the node cutoff $y_i\le1/2$ underlying the tail
-comparison behind the bound cannot be raised; and we extend that comparison
-to confluent (repeated) nodes.  Numerical evidence for a repaired bound
-below the cutoff, and the open cases the partial-sum criterion leaves, are
-recorded but not settled.
+criterion on the surviving root product under which the same construction
+proves attainment in general, and give root sets where the criterion holds
+and where it fails; we show the standing restriction $r_1\ge2$ cannot be
+dropped once $u\ge1$, already at $L=2$; we show the node cutoff $y_i\le1/2$
+underlying the tail comparison behind the bound cannot be raised; and we
+extend that comparison to confluent (repeated) nodes.  A repaired bound
+below the cutoff is conjectured but not proved, and the converse of the
+partial-sum criterion is left open.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -91,8 +91,8 @@ dropped once $u\ge1$.  Section~\ref{sec:attain} exhibits explicit monic
 multiples of $(x-2)(x-3)$ and of $(x-2)(x-3)(x-5)$ approaching
 \eqref{eq:order} arbitrarily closely, identifies the partial-sum criterion
 behind attainment in general, and reports root sets where the criterion
-holds and where it fails.  Section~\ref{sec:scope} records what is proved,
-the numerical search backing the open cases, and data availability.
+holds and where it fails.  Section~\ref{sec:scope} records what is proved
+and what remains open.
 
 \section{Extensions and necessity of the hypotheses}\label{sec:extend}
 
@@ -306,11 +306,6 @@ Theorem~3.2 with $(r_1,r_2)=(2,3)$ and $u=1$ gives $b_2\ge2$ for
 every monic multiple, and $t_n\to2$, which is \eqref{eq:sharp23}.
 \end{proof}
 
-At $n=7$ the degree is $8$ and
-$t_7=\tfrac{279936}{137845}=2.0308027\ldots$, which agrees with the value the
-search of Section~\ref{sec:scope} returns at degree cap $8$; so the numerical
-optimum recorded there is attained within this family.
-
 The same construction reaches $L=3$.  Write the multiple from the top: one
 leading $1$, a short free prefix, a long run of a single value $t$, and $u$
 exempt coefficients at the bottom.  The exempt coefficients grow like
@@ -436,13 +431,6 @@ Theorem~3.2 with $u=2$ gives $b_3\ge4$, and
 $s_D\to4$, which completes \eqref{eq:sharp235}.
 \end{proof}
 
-At $D=9$, $t_9=\tfrac{804576811}{94458820}=8.5177520\ldots$, the value the
-search of Section~\ref{sec:scope} returns at degree cap $9$, so that numerical
-optimum too is attained within an exact family.
-
-At $D=9$, $s_9=\tfrac{31585}{7663}=4.1217538\ldots$, which is the $b_3$
-optimum of Section~\ref{sec:scope} at the same degree cap.
-
 Neither family was guessed.  Write $P_u(x)=\prod_{i>u}(x-r_i)$ for the
 surviving roots, $m=L-u$, and let $\widetilde P_u(y)=y^mP_u(1/y)$ be its
 reverse.  In the reversed variables the limit construction is
@@ -468,19 +456,12 @@ the $(u+1)$-st largest magnitude only if no partial sum exceeds the total,
 \begin{equation}\label{eq:partial}
   |S_j|\le|S_m|\qquad(1\le j<m),
 \end{equation}
-and \eqref{eq:partial} can fail.  At $(2,3,5,7)$ with $u=1$ the coefficients of
-$P_1$ are $1,-15,71,-105$, the partial sums $1,-14,57,-48$, and
-$57>48$; the search of Section~\ref{sec:scope}, run to degree cap $28$,
-returns $\min b_2\approx54.97$, above \eqref{eq:order}.
-The same happens at $(2,3,4,5)$, sums $1,-11,36,-24$ with
-$\min b_2\approx32.23$, and at $(2,3,5,6)$, sums $1,-13,50,-40$ with
-$\min b_2\approx47.55$.  At $(3,4,5,6)$ the sums are $1,-14,60,-60$, so
-\eqref{eq:partial} holds with equality and the bound $60$ is approached: the
-search and the family of \eqref{eq:wgen} agree on $b_2=60.05$ at degree $28$,
-and the family gives $60.002$ at degree $40$.  All four are exact cap-$28$
-optima, falling geometrically with the cap.
-Across the $15$ root sets tried, \eqref{eq:partial} agreed with attainment
-every time, in both directions.
+and \eqref{eq:partial} can fail.  At $(2,3,5,7)$ with $u=1$ the coefficients
+of $P_1$ are $1,-15,71,-105$, with partial sums $1,-14,57,-48$; since
+$57>48$, \eqref{eq:partial} fails.  The same happens at $(2,3,4,5)$, sums
+$1,-11,36,-24$, and at $(2,3,5,6)$, sums $1,-13,50,-40$.  At $(3,4,5,6)$, by
+contrast, the sums are $1,-14,60,-60$, so \eqref{eq:partial} holds with
+equality.
 
 When \eqref{eq:partial} holds and the roots are distinct, \eqref{eq:order} is
 an infimum.  Fix $u$, put $m=L-u$, and write
@@ -516,7 +497,7 @@ and at $r=3$
 so \eqref{eq:order} is an infimum there too, approached at rate $1/D$ rather
 than geometrically.  The converse---that failure of
 \eqref{eq:partial} forces the infimum strictly above \eqref{eq:order}---is
-what the searches suggest and what is not proved here.
+not proved here.
 
 It is at least a recognizable question.  In the limit the $u$ exempt
 coefficients are spent absorbing the $u$ smallest roots, so an admissible $W$
@@ -566,22 +547,15 @@ the tail bound rests on the node cutoff $y_i\le1/2$, which
 Proposition~\ref{prop:cutoff} shows cannot be raised.  A bound for roots in
 $(1,2)$ with $k\ge2$ therefore needs a different form.
 
-The search says which form.  At $L=2$ and $k=2$ the infimum of $b_2$ over
-monic multiples agrees to six decimals with
-\[
-  (r_2-1)\min(r_1-1,1)
-  \qquad\text{for }r_1\in[1.05,2.5],\ r_2\in\{3,5\},
-\]
-and the two searches bracket it: exact multiples $F=QP$, which can only
-over-report an infimum, descend to it geometrically at rate $r_1^{-1}$ per
-degree, while the reversed linear program, which can only under-report it,
-returns it outright.  The general shape suggested is
+A natural correction is available.  Lemma~3.1's proof discards, for each
+excluded position, a factor $y_i/(1-y_i)$ once it is at most $1$; retaining
+that factor instead gives the candidate bound
 \[
   b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)\prod_{i=1}^{u}\min(r_i-1,1),
 \]
-which reduces to \eqref{eq:order} when every $r_i\ge2$, held in every case
-tried, and is attained at $L=2$.  It is also exactly what the proof of
-Lemma~3.1 returns if the discard there is not performed: a factor
+which reduces to \eqref{eq:order} when every $r_i\ge2$.  It is also exactly
+what the proof of Lemma~3.1 returns if the discard there is not performed: a
+factor
 $y_i/(1-y_i)$ exceeds $1$ precisely when $r_i<2$, so retaining those $u$
 factors instead of dropping them produces the $\min$ product above.  What
 stands in the way is then a single step rather than the shape of the
@@ -592,17 +566,14 @@ unchanged.
 The correction that step appears to need is the same one.  With the nodes in
 increasing order $y_1<\cdots<y_c$, replacing the discard in
 Theorem~2.2 by a factor $\max(1,y_i/(1-y_i))$ over the nodes it
-drops, so that
+drops,
 \[
   \Tail(u)\le
   \prod_{i\le f+1}\frac{y_i}{1-y_i}
   \prod_{i>f+1}\max\Bigl(1,\frac{y_i}{1-y_i}\Bigr),
 \]
-gives a bound that held on all $450$ certificates tried: $70$ with every
-$y_i\le1/2$, $145$ with some $y_i$ above the cutoff, and $235$ on nodes drawn
-anywhere in $(0,1)$, out to $y=18/19$.  The bound as stated fails on $29$ of
-the second group, worst ratio $4.15$, and on $113$ of the third, worst ratio
-$18.42$.  Above the cutoff every added factor is $1$, so the two agree; at a
+is conjectured to hold in general.  Above the cutoff every added factor is
+$1$, so the two agree; at a
 consecutive zero set no node is dropped, so equality is retained there, as
 Lemma~2.1 requires.  Fed through Lemma~3.1 with
 its discard likewise omitted, this reproduces exactly the $\min$ product
@@ -615,8 +586,7 @@ $\Tail(u)=(a/c)[1+(a/(1-a))^c]$, so it holds for every $a\in(1/2,1)$ and
 every $c$, with ratio $(a/c)\bigl(1+((1-a)/a)^c\bigr)\le1/c$, while the stated
 bound $a/(1-a)$ is already
 exceeded at $a=3/4$, $c=2$ and is short by a factor $2.4\cdot10^9$ at
-$a=9/10$, $c=12$.  Nine coalescing configurations on distinct nodes behave the
-same way.  There is no conflict: Proposition~\ref{prop:cutoff} rules out
+$a=9/10$, $c=12$.  There is no conflict: Proposition~\ref{prop:cutoff} rules out
 raising the cutoff in the product as stated, not in this one.
 
 Whatever proves it will not be this argument, though.  In Theorem~2.2's
@@ -628,10 +598,9 @@ the first through the induction and never invoking the second.  It does not
 work, because what fails below the cutoff is not the intermediate estimate but
 the conclusion it serves.  The comparison driving Theorem~2.2---
 that deleting the displaced largest zero together with the largest node
-increases the tail---reverses there.  On nodes $(1/3,1/2,9/10)$ with
-$Z=\{1,3\}$ the deletion takes $\Tail$ from $2.077$ down to $0.500$, and it
-reverses on $30$ of the displaced configurations tried, by factors up to $9$;
-above the cutoff it holds strictly on every displaced set tried, with equality
+increases the tail---can reverse there: on nodes $(1/3,1/2,9/10)$ with
+$Z=\{1,3\}$ the deletion takes $\Tail$ from $2.077$ down to $0.500$, whereas
+above the cutoff it holds strictly on every displaced set, with equality
 exactly at the consecutive one, as the theorem says.  A proof of the repaired
 product therefore needs a different engine, not a sharper one.  None of this
 is proved here.
@@ -646,43 +615,11 @@ outright: the infimum of $b_2$ over monic multiples is exactly the bound, and
 Proposition~\ref{prop:sharp235} does the same for $(2,3,5)$ at $k=2$ and
 $k=3$.  Beyond those root sets the construction behind both can fail, already
 at $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums are
-$1,-\tfrac{11}2,5$, so \eqref{eq:partial} fails and the search returns $5.42$
-at degree cap $28$ against the bound $5$.  It can also still succeed at $L=4$,
-as $(3,4,5,6)$ shows.  The remark
+$1,-\tfrac{11}2,5$, so \eqref{eq:partial} fails.  It can also still succeed
+at $L=4$, as $(3,4,5,6)$ shows.  The remark
 after Proposition~\ref{prop:sharp235} records root sets of each kind.
-Beyond that we have only a search, and for $k\ge2$ it is not a single linear
-program.  As $b_k$ is the $k$th largest magnitude, fix the $k-1$ positions
-below $D$ permitted to exceed it; minimizing $\max_j|f_j|$ over the
-remaining positions is then a linear program in the coefficients of the monic
-multiplier $Q$, and the
-minimum over the $\binom{D}{k-1}$ choices of exempt set, and over $\deg Q$,
-is the order-statistic optimum.  Running that search in exact rational
-arithmetic over monic multiples of degree at most $L+6$ gives, for roots
-$(2,3,5)$, $\min b_2=8.5178$ against $8$ and $\min b_3=4.1218$ against $4$,
-both within $6.5\%$ of \eqref{eq:order}; for $(2,3)$ it returns $2.0308$.
-All three are members of the exact families of Propositions~\ref{prop:sharp23}
-and~\ref{prop:sharp235}, which carry them to the bound, so for these three
-root sets the gap the search reports is an artifact of its degree cap---and
-each equals its family member exactly, $t_7$, $t_9$ and $s_9$.  These are
-certified optima at a degree cap, not proofs about the infimum; the exact
-statements are \eqref{eq:sharp23} and \eqref{eq:sharp235}.
-
-\paragraph{Data availability.}
-No datasets were generated or analyzed in this study.  The numerical optima
-quoted in Section~\ref{sec:scope} come from the finite search described
-there---one linear program per choice of exempt positions and multiplier
-degree, solved in exact rational arithmetic with the optimum certified by a
-dual vector---and are reproducible from that description; the polynomials of
-Propositions~\ref{prop:sharp23} and~\ref{prop:sharp235} are exact and need no
-computation.  Exactness is not a formality here: in double precision the same
-program reports success and returns $184.86$ for $(3,4,5,6)$ at degrees $26$
-to $28$, against the true $60.05$, having silently lost conditioning at
-$6^{26}$.  The certificate
-sweeps reported in Section~\ref{sec:scope} draw their nodes and zero sets at
-random over the stated ranges, so the tallies and worst-case ratios are
-sample-dependent; what resampling reproduces is the qualitative conclusion in
-each case---the repaired product was never violated, the stated product was
-violated only above the cutoff, and the deletion step reversed only there.
+Beyond $(2,3)$ and $(2,3,5)$, whether \eqref{eq:order} is an infimum at a
+given root set and $k\ge2$ is open in general.
 
 \begin{thebibliography}{9}
 \small
