@@ -192,13 +192,14 @@ INTERCAL, listed last, is outside the pass.
 Research questions the proofs leave open.  Each names the first executable
 step; an answer lands in the paper it extends, and the row leaves.
 
-- **Converse of the partial-sum criterion.**  The sharpness paper shows the
-  order-statistic bound is an infimum whenever no partial sum of the surviving
-  root product exceeds the total, and leaves open whether failure forces the
-  infimum strictly above it.  Start with `(2,3,5,7)` at `u = 1`, where the
-  construction gives 57 against the bound 48: extend the exact simplex search
-  in `tests/proofs/deep/coefficient_mass.py` past degree 9 and see whether
-  `min b_2` settles above 48.  See the Scope section of
+- **The infimum when the partial-sum criterion fails.**  The sharpness paper
+  proves the order-statistic bound is an infimum exactly when the criterion
+  holds (distinct roots), but not what the infimum is otherwise.  At
+  `(2,3,5,7)`, `u = 1`, linear programs give `54.967...`, which matches
+  `1704/31`, the best certificate with its exempt coefficient escaping, against
+  bound 48 and construction 57.  Prove the escaping placement is extremal,
+  which reduces the value to an `l^inf` problem over `P~_u H`, then compute it.
+  Repeated roots beyond `(3,3)` are also open.  See the end of Section 3 of
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
 
 - **Repaired bound beyond the cutoff.**  For roots in `(1, 2)` the stated

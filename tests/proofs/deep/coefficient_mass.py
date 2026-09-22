@@ -5,7 +5,8 @@ Run:  just proofs   (or python tests/proofs/deep/coefficient_mass.py)
 ``docs/proofs/coefficient-mass.tex`` proves the displaced-zero tail bound
 (Theorem 2.2) under the node cutoff ``y_i <= 1/2``;
 ``docs/proofs/coefficient-mass-attainment.tex`` shows the cutoff cannot be
-raised and that the ``(2,3,5)`` families are ordered at every degree.  This
+raised, that the ``(2,3,5)`` families are ordered at every degree, and that
+the partial-sum criterion is necessary as well as sufficient.  This
 module is a *seeded* sweep whose counts are stable, so the qualitative claims
 are executed rather than remembered, plus exact checks of every number the
 first paper works out by hand.
@@ -446,16 +447,104 @@ def _check_worked_numbers(failures: list[str]) -> int:
     return checks
 
 
+def _partial_sums(roots: list[Fraction]) -> list[Fraction]:
+    """``S_0..S_m`` of ``prod (x - r)``, read down from the leading 1."""
+    poly = [Fraction(1)]
+    for r in roots:
+        poly = [*poly, Fraction(0)]
+        for i in range(len(poly) - 1, 0, -1):
+            poly[i] -= r * poly[i - 1]
+    sums, total = [], Fraction(0)
+    for c in poly:
+        total += c
+        sums.append(total)
+    return sums
+
+
+def _elementary(values: list[Fraction]) -> list[Fraction]:
+    e = [Fraction(1)]
+    for v in values:
+        e = [*e, Fraction(0)]
+        for k in range(len(e) - 1, 0, -1):
+            e[k] += v * e[k - 1]
+    return e
+
+
+def _check_converse(failures: list[str]) -> int:
+    """The necessity half of the partial-sum criterion, ``thm:converse``.
+
+    Exact checks of its three lemmas and its worked numbers: the signed
+    partial-sum formula (``lem:signs``), the directional identity
+    ``sum_{d>=n} delta_d = -S_j/Q(1)`` (``lem:improve``), the two failing
+    indices of ``(x-2)P_1`` the ``u = 1, r_1 = 2`` case needs, and the
+    ``(2,3,5,7)`` certificate whose tail ``31/1704`` beats ``1/48``.
+    """
+    from math import comb
+
+    checks = 0
+    rng = random.Random(SEED + 1)
+    fails = 0
+    for _ in range(300):
+        m = rng.randint(1, 6)
+        roots = sorted({Fraction(rng.randint(21, 120), 10) for _ in range(m)})
+        m = len(roots)
+        sums = _partial_sums(roots)
+        e = _elementary([r - 1 for r in roots])
+        for j in range(m):
+            formula = sum(e[k] * comb(m - 1 - k, j - k) for k in range(j + 1))
+            if (-1) ** j * sums[j] != formula or formula <= 0:
+                failures.append(f"lem:signs formula at {roots}, j={j}")
+        if (-1) ** m * sums[m] != e[m]:
+            failures.append(f"lem:signs top sum at {roots}")
+        checks += 1
+        a = sums
+        if any(abs(a[j]) > abs(a[m]) for j in range(1, m)):
+            fails += 1
+            full = _partial_sums([Fraction(2), *roots])
+            bad = [j for j in range(1, m + 1) if abs(full[j]) > abs(full[m + 1])]
+            if len(bad) < 2:
+                failures.append(f"(x-2)P_1 has one failing index at {roots}")
+    if not fails:
+        failures.append("no failing root set drawn; the two-index check is blind")
+
+    for rhos in ([3, 5, 7], [2, 3, 5, 7], [4, 5, 6, 7], [2, 3, 7]):
+        n = len(rhos)
+        nodes = [Fraction(1, r) for r in rhos]
+        sums = _partial_sums([Fraction(r) for r in rhos])
+        for j in range(1, n):
+            delta = _solve(
+                [[y**d for y in nodes] for d in range(n)],
+                [Fraction(int(d == j)) for d in range(n)],
+            )
+            total = sum(ai / (1 - y) for ai, y in zip(delta, nodes, strict=True))
+            head = sum(_u(nodes, delta, d) for d in range(n))
+            if total - head != -sums[j] / sums[n]:
+                failures.append(f"lem:improve identity at {rhos}, j={j}")
+            checks += 1
+
+    nodes = [Fraction(1, 3), Fraction(1, 5), Fraction(1, 7)]
+    a = _certificate(nodes, [1, 3])
+    if _tail(nodes, [1, 3], a) != Fraction(31, 1704) or not Fraction(
+        31, 1704
+    ) < Fraction(1, 48):
+        failures.append("(3,5,7) certificate with zeros {1,3} is not 31/1704")
+    if _partial_sums([Fraction(r) for r in (3, 5, 7)]) != [1, -14, 57, -48]:
+        failures.append("(3,5,7) partial sums are not 1,-14,57,-48")
+    return checks + 2
+
+
 def main() -> int:
     failures: list[str] = []
     controls = _check_controls(failures)
     searches = _check_searches(failures)
     ordering = _check_ordering(failures)
     worked = _check_worked_numbers(failures)
+    converse = _check_converse(failures)
     print(f"  positive controls fired                     : {controls}")
     print(f"  search optima equal their family members    : {searches}")
     print(f"  sharp235 ordering degrees checked exactly   : {ordering}")
     print(f"  worked numbers of the paper checked exactly : {worked}")
+    print(f"  converse lemmas checked exactly             : {converse}")
     rng = random.Random(SEED)
     totals = {}
     for label, pool in _POOLS.items():

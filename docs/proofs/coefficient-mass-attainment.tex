@@ -40,12 +40,13 @@ $(2,3)$ and $(2,3,5)$.  We show that the $(2,3,5)$ multiples are correctly
 ordered at every degree, the $b_2$ family approaching its bound from above,
 and identify a partial-sum criterion on the
 surviving root product under which the same construction shows the bound
-is an infimum in general, with root sets where the criterion holds and where it fails.
+is an infimum in general.  For distinct roots the criterion is also
+necessary: when it fails, the infimum lies strictly above the bound.
 The standing restriction $r_1\ge2$ cannot be dropped once $u\ge1$, already
 at $L=2$; the node cutoff $y_i\le1/2$ underlying the tail comparison behind
 the bound cannot be raised; and we extend that comparison to confluent
 (repeated) nodes.  A repaired bound beyond the cutoff is conjectured but not
-proved, and the converse of the partial-sum criterion is left open.
+proved.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -93,8 +94,8 @@ restriction $r_i\ge2$ in \eqref{eq:order} can be relaxed once $u\ge1$.
 Section~\ref{sec:attain} shows that the explicit monic multiples of
 $(x-2)(x-3)(x-5)$ approaching \eqref{eq:order} are correctly ordered at every
 degree, identifies the partial-sum criterion
-behind the infimum in general, and reports root sets where the criterion
-holds and where it fails.  Section~\ref{sec:scope} records what is proved
+behind the infimum in general, and proves that for distinct roots the bound
+is an infimum exactly when the criterion holds.  Section~\ref{sec:scope} records what is proved
 and what remains open.
 
 \section{Extensions and necessity of the hypotheses}\label{sec:extend}
@@ -478,26 +479,234 @@ and at $r=3$
   t_D=\frac{4D\cdot3^{D-1}}{3^{D-1}(2D-3)+1}\longrightarrow2=r_2-1,
 \]
 so \eqref{eq:order} is an infimum there too, approached at rate $1/D$ rather
-than geometrically.  The converse---that failure of
-\eqref{eq:partial} forces the infimum strictly above \eqref{eq:order}---is
-not proved here.
+than geometrically.
 
-It is at least a recognizable question.  Heuristically, in the limit the $u$
-exempt coefficients are spent absorbing the $u$ smallest roots, so an
-admissible $W$ vanishes at the surviving reciprocal nodes, and dividing by
-$\widetilde P_u$ leaves a function analytic on the disc: an admissible $W$
-should be $\widetilde P_uH$ with $H(0)=1$, the choice $H=1/(1-y)$ being
-\eqref{eq:wgen}.  The converse is then expected to reduce to
+For distinct roots the criterion is also necessary.  The argument runs on
+the dual side of Lemma~3.1.  Put $y_i=1/r_i$, so that
+$1/2\ge y_1>\cdots>y_L>0$, and call an exponential sum
+$v_d=\sum_i\lambda_iy_i^d$ on some of these nodes a \emph{certificate for}
+$X\subset\N_{>0}$ if $v_0=1$ and $v_w=0$ for $w\in X$.  If $F$ is a monic
+multiple of $\prod_{i=1}^L(x-r_i)$ of degree $D$ and $X$ is the set of
+distances $D-j$ of $u$ positions $j$ carrying its $u$ largest nonleading
+magnitudes, the identity in the proof of Lemma~3.1 reads
+$0=1+\sum_{j<D}f_jv_{D-j}$, the terms with $D-j\in X$ vanish, and every other
+$|f_j|$ is at most $b_{u+1}(F)$, so
+\begin{equation}\label{eq:weak}
+  1\le b_{u+1}(F)\,\Tail(v)
+\end{equation}
+for every certificate $v$ for $X$.  Write
+$B=\prod_{i=u+1}^L(r_i-1)^{-1}$.  It therefore suffices to find a
+$\delta>0$ such that every $X$ of size $u$ has a certificate with
+$\Tail(v)\le B-\delta$.  Three lemmas supply the pieces: the partial sums
+alternate in sign, a failing partial sum improves the consecutive
+certificate, and zeros far from the origin cost only the largest nodes.
+
+\begin{lemma}[Signs of the partial sums]\label{lem:signs}
+Let $r_1,\ldots,r_m>1$, let $S_0,\ldots,S_m$ be the partial sums of the
+coefficients of $\prod_{i=1}^m(x-r_i)$ read down from the leading one, and put
+$s_i=r_i-1$.  Then
 \[
-  \inf\Bigl\{\ \sup_{d\ge1}|w_d|\ :\ W=\widetilde P_uH,\ H(0)=1\ \Bigr\}
+  (-1)^jS_j=\sum_{k=0}^{j}e_k(s)\binom{m-1-k}{j-k}>0\quad(0\le j\le m-1),
+  \qquad (-1)^mS_m=e_m(s),
 \]
-and whether it exceeds $|S_m|$ when \eqref{eq:partial} fails.  That is the
-$\ell^\infty$ member of the family this paper works in: reduced length
-minimizes $\ell^1$ over normalized multiples~\cite{schinzel}, its
-integer-polynomial $\ell^2$ analogue, the minimal Euclidean norm of an
-algebraic number, is effectively computable~\cite{frw}, and the logarithmic
-coefficient mass $\Lambda$ of~\cite{coefficient-mass} is additive over
-coefficients rather than a norm at all.
+where $e_k$ is the elementary symmetric polynomial.
+\end{lemma}
+
+\begin{proof}
+By \eqref{eq:wgen}, $S_j$ is the coefficient of $y^j$ in
+$\prod_i(1-r_iy)/(1-y)$, so $(-1)^jS_j$ is the coefficient of $y^j$ in
+$\prod_i(1+r_iy)/(1+y)$.  Writing $1+r_iy=(1+y)+s_iy$ and grouping the
+expansion by the number of factors $s_iy$ chosen,
+\[
+  \frac{\prod_i(1+r_iy)}{1+y}
+  =\sum_{k=0}^{m-1}e_k(s)\,y^k(1+y)^{m-1-k}+e_m(s)\frac{y^m}{1+y}.
+\]
+The terms with $k<m$ are polynomials of degree $m-1$ and contribute
+$e_k(s)\binom{m-1-k}{j-k}$ to $y^j$; the last contributes nothing below $y^m$
+and $e_m(s)$ at $y^m$.  The $k=0$ term alone gives $\binom{m-1}{j}\ge1$.
+\end{proof}
+
+In particular \eqref{eq:partial} reads
+$\sum_{k\le j}e_k(s)\binom{m-1-k}{j-k}\le e_m(s)$ for $1\le j<m$, with
+$s_i=r_i-1$ over the surviving roots; at $(3,5,7)$, $s=(2,4,6)$, the two sums
+are $14$ and $57$ against $e_3(s)=48$.
+
+\begin{lemma}[Improving the consecutive certificate]\label{lem:improve}
+Let $\rho_1,\ldots,\rho_n>1$ be distinct, $Q=\prod_{i=1}^n(x-\rho_i)$ with
+partial sums $S_j(Q)$, and $v^*$ the certificate on the nodes $1/\rho_i$ with
+zero set $\{1,\ldots,n-1\}$, so that $\Tail(v^*)=1/|Q(1)|$ by Lemma~2.1.  If
+$X_0\subseteq\{1,\ldots,n-1\}$ and some $j\in\{1,\ldots,n-1\}\setminus X_0$
+has $|S_j(Q)|>|Q(1)|$, then some certificate for $X_0$ on the same nodes has
+tail less than $1/|Q(1)|$.
+\end{lemma}
+
+\begin{proof}
+Let $\delta$ be the exponential sum on the nodes with $\delta_0=0$ and
+$\delta_i=[i=j]$ for $1\le i\le n-1$; it exists by the Vandermonde argument.
+With $\Pi(x)=\prod_i(1-x/\rho_i)=\sum_s\pi_sx^s$, its generating function is
+$N(x)/\Pi(x)$ with $\deg N\le n-1$, and $N$ is the truncation of
+$\Pi\sum_d\delta_dx^d$ below degree $n$, namely
+$N(x)=\sum_{t=j}^{n-1}\pi_{t-j}x^t$.  Since $\Pi$ is $Q$ times the constant
+$\prod_i(-1/\rho_i)$, evaluating at $x=1$ gives
+\[
+  \sum_{d\ge n}\delta_d=\frac{N(1)}{\Pi(1)}-1
+  =-\frac{\pi_{n-j}+\cdots+\pi_n}{\Pi(1)}
+  =-\frac{S_j(Q)}{Q(1)} .
+\]
+By Lemma~2.1, $v^*_d$ has the constant sign $\sigma=(-1)^{n+1}$ for $d\ge n$
+and $|v^*_d|\ge\bigl(\prod_iy_i\bigr)y_{\max}^{\,d-n}$, while
+$|\delta_d|\le Cy_{\max}^{\,d}$; so for $0<\tau$ small enough
+$v=v^*+t\delta$ with $t=\tau\sigma\sgn\bigl(S_j(Q)/Q(1)\bigr)$ keeps the sign
+$\sigma$ at every $d\ge n$.  It is a certificate for $X_0$, since it vanishes
+on $\{1,\ldots,n-1\}\setminus\{j\}$, and
+\[
+  \Tail(v)=\tau+\sigma\sum_{d\ge n}\bigl(v^*_d+t\delta_d\bigr)
+  =\Tail(v^*)-\tau\Bigl(\Bigl|\frac{S_j(Q)}{Q(1)}\Bigr|-1\Bigr)
+  <\Tail(v^*).
+\]
+\end{proof}
+
+\begin{lemma}[Far zeros]\label{lem:far}
+Let $1>y_1>\cdots>y_L>0$ and $0\le k<L$.  Let $v^\infty$ be a certificate for
+a finite set $X_0$ on $y_{k+1},\ldots,y_L$, and let $E_\nu\subset\N_{>0}$,
+$\nu\ge1$, be sets of size $k$ with $\min E_\nu\to\infty$.  Then for large
+$\nu$ there are certificates $v^{(\nu)}$ for $X_0\cup E_\nu$ on
+$y_1,\ldots,y_L$ with $\Tail(v^{(\nu)}-v^\infty)\to0$.
+\end{lemma}
+
+\begin{proof}
+For $k=0$ take $v^{(\nu)}=v^\infty$.  Put $n=L-k$ and $s=n-1-|X_0|$.  The
+certificates for $X_0$ on $y_{k+1},\ldots,y_L$ form an affine space $\mathcal
+A$ of dimension $s$.  Fix $s+1$ positive integers $q_0,\ldots,q_s$ outside
+$X_0$ and let $v^{[i]}\in\mathcal A$ also vanish at every $q_l$, $l\ne i$.
+Evaluation at $q_0,\ldots,q_s$ maps $\mathcal A$ injectively onto an
+$s$-dimensional affine subspace of $\R^{s+1}$ missing the origin, by the zero
+bound, and sends $v^{[i]}$ to a nonzero multiple of the $i$th unit vector.
+These $s+1$ images are affinely independent, so $v^\infty$ is an affine
+combination of the $v^{[i]}$, and it suffices to treat each $v^{[i]}$.  We may
+thus assume that $v^\infty$ has a zero set $Z_0\supseteq X_0$ of size $n-1$,
+disjoint from $E_\nu$ for large $\nu$.
+
+Let $v^{(\nu)}$ be the certificate on all $L$ nodes with zero set
+$Z_0\cup E_\nu$.  Order the points $0$, then $Z_0$, then
+$E_\nu=\{e_1<\cdots<e_k\}$, and let $A$ be the matrix $(y_j^p)$ with rows
+indexed by these points; by Cramer's rule $v^{(\nu)}_d=\det A(d)/\det A$,
+where $A(d)$ has the row of $0$ replaced by $(y_j^d)_j$.  Expanding both
+along the rows of $E_\nu$,
+\[
+  \det A(d)=\sum_{|J|=k}\varepsilon_J\,\alpha_J\,\beta_J(d),
+  \qquad
+  \alpha_J=\det\bigl(y_j^{e}\bigr)_{e\in E_\nu,\,j\in J},
+  \quad
+  \beta_J(d)=\det\bigl(y_j^{p}\bigr)_{p\in\{d\}\cup Z_0,\,j\notin J},
+\]
+with signs $\varepsilon_J$ independent of $d$ and $\nu$.  For
+$J=\{j_1<\cdots<j_k\}$ every term of $\alpha_J$ is a product
+$\prod_ty_{j_t}^{e_{\pi(t)}}$, the largest being
+$M_J=\prod_ty_{j_t}^{e_{k+1-t}}$, so $|\alpha_J|\le k!\,M_J$.  For
+$J^*=\{1,\ldots,k\}$, $\alpha_{J^*}$ is an alternant, the Vandermonde product
+$\prod_{a<b\le k}(y_a-y_b)$ times a Schur polynomial in $y_1,\ldots,y_k$ with
+nonnegative coefficients that contains the monomial $M_{J^*}/\prod_{t\le
+k}y_t^{k-t}$; hence $|\alpha_{J^*}|\ge cM_{J^*}$ with
+$c=\prod_{a<b\le k}(1-y_b/y_a)>0$.  If $J\ne J^*$ then $y_{j_t}\le y_t$ for
+every $t$, and $j_t\ge k+1$ for some $t$, so
+$M_J\le(y_{k+1}/y_k)^{e_1}M_{J^*}$ and
+\[
+  \eta_\nu=\max_{J\ne J^*}\Bigl|\frac{\alpha_J}{\alpha_{J^*}}\Bigr|
+  \le\frac{k!}{c}\Bigl(\frac{y_{k+1}}{y_k}\Bigr)^{e_1}\longrightarrow0 .
+\]
+The minors $\beta_J(d)$ do not depend on $\nu$, $\beta_{J^*}(0)\ne0$ by the
+zero bound, $v^\infty_d=\beta_{J^*}(d)/\beta_{J^*}(0)$ by Cramer's rule on
+$y_{k+1},\ldots,y_L$, and expanding along the row of $d$ gives
+$\Sigma_J=\sum_{d\ge0}|\beta_J(d)|<\infty$.  Dividing numerator and
+denominator by $\varepsilon_{J^*}\alpha_{J^*}$,
+\[
+  v^{(\nu)}_d-v^\infty_d
+  =\frac{\rho_\nu(d)-v^\infty_d\,\rho_\nu(0)}{\beta_{J^*}(0)+\rho_\nu(0)},
+  \qquad |\rho_\nu(d)|\le\eta_\nu\sum_{J\ne J^*}|\beta_J(d)|,
+\]
+and summing over $d\ge1$,
+$\Tail(v^{(\nu)}-v^\infty)\le\eta_\nu\bigl(1+\Tail(v^\infty)\bigr)
+\sum_{J\ne J^*}\Sigma_J\big/\bigl(|\beta_{J^*}(0)|-|\rho_\nu(0)|\bigr)\to0$.
+\end{proof}
+
+\begin{theorem}[Necessity of the partial-sum criterion]\label{thm:converse}
+Let $2\le r_1<\cdots<r_L$ be distinct and $0\le u\le L-1$.  If
+\eqref{eq:partial} fails, then
+\[
+  \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)>\prod_{i=u+1}^L(r_i-1)
+\]
+over monic $Q\in\R[x]$.  With Proposition~\ref{prop:partial},
+\eqref{eq:order} is the infimum exactly when \eqref{eq:partial} holds.
+\end{theorem}
+
+\begin{proof}
+By \eqref{eq:weak} it suffices to find $\delta>0$ such that every
+$X\subset\N_{>0}$ of size $u$ has a certificate on $y_1,\ldots,y_L$ with
+$\Tail\le B-\delta$.  Suppose not, and take $X_\nu$ whose certificates all
+have $\Tail\ge B-1/\nu$.  Passing to a subsequence, each of the $u$ elements
+of $X_\nu$, in increasing order, is eventually constant or tends to infinity,
+so $X_\nu=X_0\cup E_\nu$ with $X_0$ fixed, $|E_\nu|=k$ and
+$\min E_\nu\to\infty$.  By Lemma~\ref{lem:far}, a certificate $v^\infty$ for
+$X_0$ on $y_{k+1},\ldots,y_L$ with $\Tail(v^\infty)<B$ yields certificates
+for $X_\nu$ with tails tending to $\Tail(v^\infty)$, a contradiction.  So it
+suffices to produce one.  Put $n=L-k$ and $u_0=|X_0|=u-k$.
+
+If $u_0=0$ the nodes are the reciprocals of the surviving roots, and since
+\eqref{eq:partial} fails, Lemma~\ref{lem:improve} with $Q=P_u$ and
+$X_0=\varnothing$ gives $\Tail(v^\infty)<1/|P_u(1)|=B$.
+
+If $u_0\ge1$, take the certificate of Lemma~3.1's proof: zero set $Z$
+consisting of $X_0$ and the first $m-1$ positive integers outside it, so
+$|Z|=n-1$ and the leading run of $Z$ is $f\ge m-1$.  Theorem~2.2 on
+$y_{k+1},\ldots,y_L\le1/2$ bounds $\Tail$ by the product of $1/(r_i-1)$ over
+the $f+1$ largest of $r_{k+1},\ldots,r_L$, with equality only if
+$Z=\{1,\ldots,n-1\}$.  Every factor is at most $1$ and $f+1\ge m$, so
+$\Tail\le B$, strictly unless $Z=\{1,\ldots,n-1\}$ and the factors
+$1/(r_i-1)$, $k<i\le u$, all equal $1$.  The last includes $i=u$, and
+$r_u=2$ forces $u=1$ and $r_1=2$, hence $k=0$ and $X_0=\{w\}$ with
+$w\le L-1$.
+
+In that case $r_1-1=1$, so $1/|P(1)|=B$ for $P=\prod_{i=1}^L(x-r_i)$, and
+Lemma~\ref{lem:improve} with $Q=P$ and $X_0=\{w\}$ needs one
+$j\in\{1,\ldots,L-1\}\setminus\{w\}$ with $|S_j(P)|>|P(1)|$.  Since
+$P=(x-2)P_1$, $S_j(P)=S_j(P_1)-2S_{j-1}(P_1)$, and by
+Lemma~\ref{lem:signs} consecutive partial sums of $P_1$ have opposite signs,
+so $|S_j(P)|=|S_j(P_1)|+2|S_{j-1}(P_1)|$ for $1\le j\le m=L-1$.  As
+\eqref{eq:partial} fails, $|S_i(P_1)|>|P_1(1)|=|P(1)|$ for some $1\le i<m$,
+and then both $j=i$ and $j=i+1$ qualify; one of them is not $w$.
+\end{proof}
+
+The proof also shows how a multiple can approach \eqref{eq:order}.  Outside
+the case $u=1$, $r_1=2$, every placement with an exempt coefficient at
+bounded distance from the top has a certificate with tail below $B$, so
+along any sequence of monic multiples with $b_{u+1}$ tending to the bound all
+$u$ exempt coefficients must move away from the top, as the construction of
+Proposition~\ref{prop:partial} moves them to the bottom.  When
+\eqref{eq:partial} fails, the value of the infimum is not determined.  At
+$(2,3,5,7)$ with $u=1$, floating-point linear programs over every single
+exempt position reach $54.967\ldots$ by degree $20$ and do not move through
+degree $30$, strictly between the bound $48$ and the construction's $57$.
+That is $1704/31$ to the precision of the programs, the reciprocal of the
+tail of the certificate on $(3,5,7)$ with zero set $\{1,3\}$.  At
+$(2,3,4,5,6,7)$ with $u=2$ they reach $443.39\ldots$ against the bound $360$.
+
+In the escaping placement the exempt coefficients absorb the $u$ smallest
+roots, so an admissible limit $W$ vanishes at the surviving reciprocal nodes,
+and dividing by $\widetilde P_u$ leaves a function analytic on the disc:
+$W=\widetilde P_uH$ with $H(0)=1$, the choice $H=1/(1-y)$ being
+\eqref{eq:wgen}.  The numerics suggest that the escaping placement stays
+extremal, so that the infimum is
+\[
+  \inf\Bigl\{\ \sup_{d\ge1}|w_d|\ :\ W=\widetilde P_uH,\ H(0)=1\ \Bigr\},
+\]
+but this is not proved.  That is the $\ell^\infty$ member of the family this
+paper works in: reduced length minimizes $\ell^1$ over normalized
+multiples~\cite{schinzel}, its integer-polynomial $\ell^2$ analogue, the
+minimal Euclidean norm of an algebraic number, is effectively
+computable~\cite{frw}, and the logarithmic coefficient mass $\Lambda$
+of~\cite{coefficient-mass} is additive over coefficients rather than a norm at
+all.
 
 \section{Scope}\label{sec:scope}
 
@@ -589,23 +798,20 @@ Theorem~2.2 shows.  A proof of the repaired
 product therefore needs a different engine, not a sharper one.  None of this
 is proved here.
 
-What is left open is the pointwise extremal problem: for a fixed root
-sequence and a fixed $k$, how closely a multiple can approach
-\eqref{eq:order}.  Corollary~3.6 settles the asymptotic form of
-the aggregated question for prime roots, and the multiplier $x+1$
-of~\cite[Section~3]{coefficient-mass} shows
-that even there the root product need not be the finite-$L$ minimizer.  For
-the root pair $(2,3)$ and $k=2$, \cite[Proposition~4.1]{coefficient-mass}
-settles it outright: the infimum of $b_2$ over monic multiples is exactly the bound, and
-Proposition~\ref{prop:sharp235} does the same for $(2,3,5)$ at $k=2$ and
-$k=3$.  Beyond those root sets the construction behind both can fail, already
-at $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums are
-$1,-\tfrac{11}2,5$, so \eqref{eq:partial} fails.  It can also still succeed
-at $L=4$, as $(3,4,5,6)$ shows.  The paragraph
-before Proposition~\ref{prop:partial} records root sets of each kind.
-Beyond the root sets covered by Proposition~\ref{prop:partial} and the
-confluent pair $(3,3)$, whether \eqref{eq:order} is an infimum at a given
-root set and $k\ge2$ is open in general.
+The pointwise extremal problem asks, for a fixed root sequence and a fixed
+$k$, how closely a multiple can approach \eqref{eq:order}.
+Corollary~3.6 settles the asymptotic form of the aggregated question for
+prime roots, and the multiplier $x+1$ of~\cite[Section~3]{coefficient-mass}
+shows that even there the root product need not be the finite-$L$
+minimizer.  Whether \eqref{eq:order} is itself the infimum is settled for
+distinct roots: by Proposition~\ref{prop:partial} and
+Theorem~\ref{thm:converse} it is exactly when \eqref{eq:partial} holds, as
+at $(2,3)$ and $(2,3,5)$, where~\cite[Proposition~4.1]{coefficient-mass} and
+Proposition~\ref{prop:sharp235} exhibit the multiples, and at $(3,4,5,6)$.
+It fails already at $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums
+are $1,-\tfrac{11}2,5$, so the infimum of $b_2$ exceeds $5$.  Two questions
+remain open: the value of the infimum when \eqref{eq:partial} fails, and
+repeated roots beyond the confluent pair $(3,3)$.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
