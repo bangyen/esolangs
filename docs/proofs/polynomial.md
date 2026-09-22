@@ -184,10 +184,12 @@ their number.  Take an execution to the `k`th read and let `(r, s)` be the
 last routing position on its path and the successor taken there, or none.
 From `r` on every real position is non-routing, so its successor is forced,
 while reads and register instructions do not branch: the continuation is a
-fixed cursor sequence that reads a fixed number `rho(r,s)` of further symbols.
-Because the program consumes its input, the execution reads exactly `n`
-symbols and reached `r` after `n - rho(r,s)` of them, so the `k`th read sits
-at the fixed offset `k - (n - rho(r,s))` and its cursor is fixed by `(r,s)`.
+fixed cursor sequence up to the `k`th read.  Because the program consumes its
+input, each read cursor `c` runs at one read index `iota(c)`: two executions
+reading at `c` after `a < a'` reads, given the same bit there, share the state
+`(48+b, c+1)`, so the first, fed the second's remaining bits, would halt after
+`n - (a' - a) < n` reads.  The reads of the fixed continuation therefore have
+consecutive indices, and the cursor of the `k`th read is fixed by `(r,s)`.
 With no routing position the whole path is routing-free and the cursor is the
 deterministic image of the initial one.  Hence
 
@@ -856,10 +858,11 @@ number of distinct cursors at the read.  Follow an execution back from a read.
 If its path has a routing position, let `(r, s)` be the last one and the
 successor taken there.  From `r` on every real position is non-routing, so its
 successor is forced, while reads and register instructions do not branch; the
-continuation is a fixed cursor sequence reading a fixed number `rho(r,s)` of
-further symbols.  The program consumes its input, so the execution reads
-exactly `n` symbols and reached `r` after `n - rho(r,s)`; the `k`th read sits
-at the fixed offset `k - (n - rho(r,s))` and its cursor is fixed by `(r,s)`.
+continuation is a fixed cursor sequence up to the `k`th read.  The program
+consumes its input, so each read cursor runs at one read index (two read
+levels at one cursor would let an execution halt early), the continuation's
+reads have consecutive indices, and the `k`th read's cursor is fixed by
+`(r,s)`.
 If the path has no routing position the cursor is the deterministic image of
 the initial cursor.  Hence `D <= 1 + 2 * m_routing`, so
 `N'(k+1) <= 2 + 4 * m_routing`.  The block structure then gives

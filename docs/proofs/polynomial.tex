@@ -74,7 +74,7 @@ expanded form; permissive implementation extensions are outside the model.
 The interpreter factors $f$ over the integers and orders the recognized
 roots by their associated primes.  A positive real root $p^v$ encodes a
 control-flow instruction; a conjugate pair $a\pm p^b i$ encodes a register
-instruction.  Unrecognised roots are ignored, so a source may be any integer
+instruction.  Unrecognized roots are ignored, so a source may be any integer
 multiple of the product of its instruction factors.  Repeated recognized
 roots produce repeated instructions.
 
@@ -140,26 +140,6 @@ program that consumes its input has length $\Omega(T^2/\log T)$.  Hence the
 worst-case text complexity in the model of Section~\ref{sec:model} is
 $\Theta(T^2/\log T)$.
 \end{theorem}
-
-\begin{remark}[Input consumption is needed]\label{rem:routing-gap}
-The bound $D_k\le1+2m_{\rm route}$ of Section~\ref{sec:routing} is false for
-a decoded program that may stop reading early.  The decoded list
-\[
-[5,1],[5],[0,2],[48,2],[2],[0,2],[0,2],[0,2],[0,2],[0,1]
-\]
-has
-$m_{\rm route}=1$ and four distinct cursors at its fourth read: its loop reads
-an input-dependent number of bits, so different executions reach the last
-routing position at different read levels and the routing-free suffix lands
-the fourth read at different offsets.  Such a list performs a different
-number of reads on different inputs, so it is not a program for an $n$-input
-table in the model of Section~\ref{sec:model}, and the routing proof, which
-uses the exact read count, does not apply to it.  Any variable-read list is
-excluded the same way.  Corollary~\ref{cor:general} covers the general model
-with one extra logarithm: the free read level lets one routing position and
-successor place the $k$th read at any of $k$ offsets, so $D_k\le1+2k\,m_{\rm
-route}$.
-\end{remark}
 
 The lower bound has two independent parts.
 Section~\ref{sec:routing} forces $\Omega(T/\log T)$ distinct positive
@@ -246,12 +226,16 @@ Follow an execution back from its $k$th read.  If its path contains a routing
 position, let $(r,s)$ be the last one and the successor taken there.  From
 $r$ on every real position is non-routing, so its successor is forced, while
 reads and register instructions do not branch; the continuation is a fixed
-cursor sequence, independent of the register, and reads a fixed number
-$\rho(r,s)$ of further symbols before halting.  The execution consumes its
-input, so it reads exactly $n$ symbols and reached $r$ after $n-\rho(r,s)$ of
-them; the $k$th read therefore sits at the fixed offset
-$k-(n-\rho(r,s))$ of that fixed continuation, and its cursor is determined by
-$(r,s)$.  If the path contains no routing position it is
+cursor sequence, independent of the register, up to the $k$th read.  Under
+consumption, each read cursor $c$ is executed at a single read index
+$\iota(c)$: if two executions read at $c$ after $a<a'$ earlier reads, give
+both the same bit there, so that they share the state $(48+b,c+1)$, and feed
+the first the second's remaining $n-a'-1$ bits followed by anything; it then
+follows the second's trajectory and halts after $n-(a'-a)<n$ reads,
+contradicting consumption.  The reads $c_1,c_2,\ldots$ of the fixed
+continuation therefore have consecutive indices
+$\iota(c_1),\iota(c_1)+1,\ldots$, at most one of them is the $k$th, and the
+cursor of the $k$th read is determined by $(r,s)$.  If the path contains no routing position it is
 routing-free throughout, and the cursor is the deterministic image of the
 initial cursor.  Thus every cursor at the $k$th read is either that single
 image or one of the at most $2m_{\rm route}$ cursors fixed by a routing
@@ -282,10 +266,8 @@ contract each block to a vertex.  The arcs are noncrossing, so after parallel
 edges are identified the block-incidence graph is a simple outerplanar graph.
 There are no loops: an opener and closer have different instruction codes,
 whereas equal root values decode to the same code.  It is also bipartite,
-with opener blocks on one side and closer blocks on the other.  A simple
-bipartite outerplanar graph on $L\ge2$ vertices has at most $2L-3$ edges by
-Euler's formula, since every bounded face has length at least four and the
-outer face has length at least two.
+with opener blocks on one side and closer blocks on the other.  An outerplanar graph on $L\ge2$ vertices has at most $2L-3$ edges, by
+the standard bound applied to each component.
 
 At most one opening instruction routes in each block.  Indeed, after the
 first opener in a block, execution can enter the next equal opener only by
@@ -295,8 +277,10 @@ register, so the later opener cannot take both successors.
 
 Charge a routing closer to the incidence between its block and its partner's
 opener block.  Noncrossing implies that the closers with a fixed partner block
-form one interval inside their own block: an intervening closer with a partner
-in another block would interleave the two arc families.  After the first,
+form one interval inside their own block: nesting would place an
+intervening closer's partner strictly between two openers of the partner
+block, hence inside that contiguous block.  A closer tests its partner
+opener's condition, and a closer whose partner does not loop never jumps.  After the first,
 entry is either fallthrough with the common condition false or a skip landing
 after the preceding closer, again with that condition false; all intervening
 positions are equal real tests and do not change the register.  Thus each
@@ -313,6 +297,26 @@ $L=\Omega(T/\log T)$ distinct positive real instruction roots.
 \begin{proof}
 Combine \eqref{eq:residual-width} with Lemma~\ref{lem:block}.
 \end{proof}
+
+\begin{remark}[Input consumption is needed]\label{rem:routing-gap}
+The bound \eqref{eq:basic-routing} is false for a decoded program whose read
+count may differ from $n$.  The decoded list
+\[
+[5,1],[5],[0,2],[48,2],[2],[0,2],[0,2],[0,2],[0,2],[0,1]
+\]
+has
+$m_{\rm route}=1$ and four distinct cursors at its fourth read: its loop reads
+an input-dependent number of bits, so different executions reach the last
+routing position at different read levels and the routing-free suffix lands
+the fourth read at different offsets.  Such a list performs a different
+number of reads on different inputs, so it is not a program for an $n$-input
+table in the model of Section~\ref{sec:model}, and the routing proof, which
+uses the exact read count, does not apply to it.  Any variable-read list is
+excluded the same way.  Corollary~\ref{cor:general} covers the general model
+with one extra logarithm: the free read level lets one routing position and
+successor place the $k$th read at any of $k$ offsets, so $D_k\le1+2k\,m_{\rm
+route}$.
+\end{remark}
 
 \section{Coefficient mass from prescribed roots}\label{sec:mass}
 
@@ -341,10 +345,10 @@ where \(\log^+x=\max(0,\log x)\).
 \end{theorem}
 
 For the first \(L\) primes, or for increasing roots bounded below by them,
-the right side is \((1/2+o(1))L^2\log L\): each
-\(\log(r_i-1)\) occurs \(i\) times, and \(r_i\ge i+1\).  The bound is
-asymptotically sharp, attained by \(P_L=\prod_{i=1}^L(x-p_i)\); in particular
-it is \(\Omega(L^2\log L)\).  The theorem applies to every real multiple,
+the right side is at least \((1/2+o(1))L^2\log L\): each
+\(\log(r_i-1)\) occurs \(i\) times, and \(r_i\ge i+1\).  The lower bound is
+asymptotically sharp: \(\Lambda(P_L)\le(1/2+o(1))L^2\log L\) for
+\(P_L=\prod_{i=1}^L(x-p_i)\).  The theorem applies to every real multiple,
 independently of its degree and additional roots.
 
 \begin{corollary}[Polynomial lower bound]\label{cor:lower}
@@ -356,12 +360,10 @@ Every Polynomial source for a maximal-width truth table has
 
 \begin{proof}
 By Corollary~\ref{cor:roots}, the program contains
-\(L=\Omega(T/\log T)\) distinct positive real instruction roots.  A prime base
-supplies at most eight distinct real values, one for each allowed exponent.
-After sorting, the \(i\)th root is therefore at least
-\(p_{\lceil i/8\rceil}\).  In particular, for \(i\ge16\) it is at least
-\(\lceil i/8\rceil+1\), so the weighted sum in
-Theorem~\ref{thm:mass} is still \(\Omega(L^2\log L)\).  The source polynomial
+\(L=\Omega(T/\log T)\) distinct positive real instruction roots.  They are
+distinct integers \(\ge2\), so after sorting \(r_i\ge i+1\), and the weighted
+sum in Theorem~\ref{thm:mass} is at least
+\(\sum_{i\le L}i\log i=(1/2+o(1))L^2\log L\).  The source polynomial
 is an integer multiple of their distinct-root product and its leading
 coefficient has absolute value at least one.  Theorem~\ref{thm:mass} gives
 \[
@@ -379,7 +381,7 @@ and Theorem~\ref{thm:mass} is stated for roots counted with multiplicity.
 \end{remark}
 
 \begin{corollary}[General model]\label{cor:general}
-If a program may halt before consuming its input, every Polynomial source for
+If a program's read count may differ from \(n\), every Polynomial source for
 a maximal-width truth table still has
 \[
   |f|=\Omega(T^2/\log^3 T).
