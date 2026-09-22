@@ -35,7 +35,8 @@ Fix real roots $2\le r_1\le\cdots\le r_L$, repetitions allowed.  For every
 nonzero real polynomial $F=\sum_jf_jx^j$ divisible by $\prod_{i=1}^L(x-r_i)$
 we prove a degree-independent bound on each coefficient order statistic: the
 $(u+1)$-st largest nonleading coefficient magnitude is at least
-$|f_D|\prod_{i=u+1}^L(r_i-1)$.  For $|f_D|\ge1$ the bounds sum to a lower bound
+$|f_D|\prod_{i=u+1}^L(r_i-1)$; the case $u=0$ needs only $r_i>1$.
+For $|f_D|\ge1$ the bounds sum to a lower bound
 on the logarithmic coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$; for the
 first $L$ primes this gives
 $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with asymptotic equality for
@@ -130,16 +131,19 @@ forces some coefficient outside the excluded set to be large.  All of the
 difficulty sits in that tail bound.
 Its engine is Theorem~\ref{thm:tail}, the comparison behind everything: it
 bounds the tail of a certificate by the product over its leading consecutive
-zeros and shows the bound is attained only there.  Corollary~\ref{cor:prime}
-specializes to prime roots, Corollary~\ref{cor:infimum} sharpens the resulting
-asymptotic to the infimum over monic real multiples,
+zeros and shows the bound is attained only there.
+Corollary~\ref{cor:complex} extends the bound to complex multiples,
+Corollary~\ref{cor:prime} specializes to prime roots,
+Corollary~\ref{cor:infimum} sharpens the resulting asymptotic to the infimum
+over monic real multiples,
 Corollary~\ref{cor:near} shows the root product itself is within $O(L^2)$ of
 that infimum for every root set here,
 Proposition~\ref{prop:cutoff} shows that the node cutoff $y_i\le1/2$ in the
 tail theorem cannot be raised, Proposition~\ref{prop:subtwo} shows that the
 standing restriction $r_i\ge2$ cannot be dropped from
-Theorem~\ref{thm:order} itself---an explicit monic multiple of
-$(x-\tfrac65)(x-\tfrac{19}{10})$ has $b_2<r_2-1$---and
+Theorem~\ref{thm:order} for $k\ge2$---an explicit monic multiple of
+$(x-\tfrac32)(x-3)$ has $b_2<r_2-1$, while the $k=1$ bound holds for every
+$r_i>1$---and
 Proposition~\ref{prop:confluent} carries the tail comparison itself to
 confluent nodes.
 
@@ -295,7 +299,7 @@ the zero at $m+1$ this gives
 \[
   N_\Delta\ge r+(p-1)+1=c-2,
 \]
-which exhausts the zero-multiplicity budget of the $c-1$-node sum $\Delta$; in
+which exhausts the zero-multiplicity budget of the $(c-1)$-node sum $\Delta$; in
 particular there are no other zeros.
 
 Every one of the $p-1$ extra multiplicities lies below $a_{j_p+1}$, so every
@@ -457,14 +461,17 @@ Let
 \[
  P(x)=\prod_{i=1}^L(x-r_i),\qquad 2\le r_1<\cdots<r_L,
 \]
-and let $F(x)=\sum_{j=0}^Df_jx^j\in\R[x]$ be a nonzero multiple of $P$.  For a
+with the roots distinct for the lemma below (repetitions are handled in
+Theorem~\ref{thm:order}), and let $F(x)=\sum_{j=0}^Df_jx^j\in\R[x]$ be a
+nonzero multiple of $P$.  For a
 nonzero coefficient vector write $b_1\ge b_2\ge\cdots$ for the magnitudes of
 the coefficients $f_j$ with $j<D$, in decreasing order.
 
 \begin{lemma}[Slack certificate]\label{lem:slack}
 Assume the roots $2\le r_1<\cdots<r_L$ are distinct and $|f_D|=1$; the
 certificate uses $L$ distinct nodes, and repetitions enter only through the
-perturbation in Theorem~\ref{thm:order}.  Fix $0\le u\le L-1$.  For every set $U$ of $u$
+perturbation in Theorem~\ref{thm:order}.  Fix $0\le u\le L-1$; for $u=0$ the
+hypothesis $r_1\ge2$ may be weakened to $r_1>1$.  For every set $U$ of $u$
 coefficient positions below $D$, some $j<D$ outside $U$ satisfies
 \[
  |f_j|\ge\prod_{i=u+1}^L(r_i-1).
@@ -505,7 +512,10 @@ discarding all but the first $L-u$ factors only weakens the bound: the tail is
 at most the product over the $L-u$ largest nodes.  These are
 $\rho_1,\ldots,\rho_{L-u}$, that is,
 $r_L,r_{L-1},\ldots,r_{u+1}$; the last index is
-$L-(L-u)+1=u+1$, which is why the product below starts there.  Therefore
+$L-(L-u)+1=u+1$, which is why the product below starts there.  For $u=0$
+nothing is discarded: there $Z=\{1,\ldots,L-1\}$, so $\Tail(w)$ is the
+consecutive base case of Theorem~\ref{thm:tail}, an exact evaluation needing
+only $y_i<1$, and the bound holds already for $r_1>1$.  Therefore
 \[
   \sum_{j<D,\ j\notin U}|w_{D-j}|
   \le\sum_{d\ge1}|w_d|=\Tail(w)
@@ -524,6 +534,7 @@ $0\le u\le L-1$,
 \begin{equation}\label{eq:order}
   b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1).
 \end{equation}
+If instead only $r_1>1$ is assumed, \eqref{eq:order} still holds for $u=0$.
 \end{theorem}
 
 \begin{proof}
@@ -547,6 +558,12 @@ $F$; an order statistic of a converging tuple is continuous, so
 $b_{u+1}(F_\varepsilon)\to b_{u+1}(F)$.  The distinct case gives
 $b_{u+1}(F_\varepsilon)\ge|f_D|\prod_{i=u+1}^L(r_{i,\varepsilon}-1)$, and letting
 $\varepsilon\to0$ proves \eqref{eq:order}.
+
+For $u=0$ the certificate of Lemma~\ref{lem:slack} is the consecutive base
+case of Theorem~\ref{thm:tail}, which needs only $y_i<1$ and discards no
+factor, and the perturbation may be run with distinct
+$r_{i,\varepsilon}>1$; so the argument gives \eqref{eq:order} with $u=0$ for
+every root set $r_i>1$.
 \end{proof}
 
 \begin{corollary}[Complex multiples]\label{cor:complex}
@@ -607,7 +624,7 @@ $\Lambda(P_L)\le(\tfrac12+o(1))L^2\log L$.
 \begin{proof}
 Write $p_i$ for the $i$th prime, so $r_i\ge p_i\sim i\log i$ and, since
 $r_i-1\ge p_i-1$,
-$\log(r_i-1)\ge\log p_i+O(1/p_i)$.  Drop the nonnegative term
+$\log(r_i-1)\ge\log p_i-O(1/p_i)$.  Drop the nonnegative term
 $(L+1)\log|f_D|$ from \eqref{eq:mass}.  Hence
 \[
  \Lambda(F)\ge\sum_{i=1}^L i\log(r_i-1)
@@ -826,14 +843,16 @@ $\Tail(u)\le\liminf_{\varepsilon\to0}\Tail(u^{(\varepsilon)})\le a/(1-a)$,
 contradicting the previous paragraph for large $c$.
 \end{proof}
 
-\begin{proposition}[The root restriction $r_i\ge2$ is necessary]
+\begin{proposition}[The root restriction $r_1\ge2$ is necessary for $k\ge2$]
 \label{prop:subtwo}
-For $L=1$ the bound \eqref{eq:order} holds for every root $r>1$: every
-nonzero multiple of $x-r$ has $b_1>|f_D|(r-1)$.  For $k\ge2$ it fails without
-$r_1\ge2$.  With $r_1=6/5$ and $r_2=19/10$ there is a monic multiple $F$ of
-$(x-r_1)(x-r_2)$ of degree $4$ with
+The $k=1$ case of \eqref{eq:order} holds for every root set $r_i>1$ by
+Theorem~\ref{thm:order}, and for $L=1$ it is strict: every nonzero multiple
+of $x-r$ has $b_1>|f_D|(r-1)$.  For $k\ge2$ the restriction $r_1\ge2$ cannot
+be dropped, already at $L=2$, $k=2$, and already when only $r_1<2$: with
+$r_1=3/2$ and $r_2=3$ there is a monic multiple $F$ of $(x-r_1)(x-r_2)$ of
+degree $4$ with
 \[
-  b_2=\frac{740772}{1224775}=0.60482\ldots<\frac9{10}=r_2-1 .
+  b_2=\frac{81}{50}=1.62<2=r_2-1 .
 \]
 \end{proposition}
 
@@ -842,8 +861,8 @@ For $L=1$, $F(r)=0$ gives
 $|f_D|r^D=\bigl|\sum_{j<D}f_jr^j\bigr|\le b_1(r^D-1)/(r-1)$, so
 $b_1\ge|f_D|(r-1)r^D/(r^D-1)>|f_D|(r-1)$, with no use of $r\ge2$.
 
-For the failure put $P=(x-\tfrac65)(x-\tfrac{19}{10})=x^2+p_1x+p_0$ with
-$p_1=-\tfrac{31}{10}$, $p_0=\tfrac{57}{25}$, and let $Q=x^2+q_1x+q_0$ be
+For the failure put $P=(x-\tfrac32)(x-3)=x^2+p_1x+p_0$ with
+$p_1=-\tfrac92$, $p_0=\tfrac92$, and let $Q=x^2+q_1x+q_0$ be
 monic, so that $F=PQ$ has
 \[
   f_0=p_0q_0,\quad f_1=p_0q_1+p_1q_0,\quad f_2=p_0+p_1q_1+q_0,\quad
@@ -856,23 +875,25 @@ $q_1=(p_0-p_1)q_0/p_0$, and substituting it into the second gives
   D=(p_0-p_1)^2+p_0(p_1-1),
 \]
 whence the common value is $f_0=f_1=f_2=p_0^3/D$.  Here
-$D=\tfrac{48991}{2500}>0$, so
+$D=\tfrac{225}4>0$, so
 \[
-  q_0=\frac{12996}{48991},\qquad q_1=\frac{30666}{48991},\qquad
-  f_0=f_1=f_2=\frac{740772}{1224775}=0.604822\ldots,
+  q_0=\frac9{25},\qquad q_1=\frac{18}{25},\qquad
+  f_0=f_1=f_2=\frac{81}{50}=1.62,
 \]
-while $f_3=p_1+q_1=-\tfrac{1212061}{489910}=-2.474048\ldots$.  The four
-nonleading magnitudes are $|f_3|$ and three copies of $p_0^3/D$, so
-$b_2=p_0^3/D<9/10=r_2-1$, which is what \eqref{eq:order} would assert for
-$u=1$.
+while $f_3=p_1+q_1=-\tfrac{189}{50}=-3.78$, that is,
+$F=x^4-\tfrac{189}{50}x^3+\tfrac{81}{50}x^2+\tfrac{81}{50}x+\tfrac{81}{50}$.
+The four nonleading magnitudes are $|f_3|$ and three copies of $p_0^3/D$, so
+$b_2=p_0^3/D<2=r_2-1$, which is what \eqref{eq:order} would assert for
+$u=1$; the second root obeys $r_2\ge2$, so only $r_1$ is out of range.
 \end{proof}
 
 \section{Scope}
 
 The bounds here concern coefficient magnitudes, not ordinary length or
-height: subject to $|f_D|\ge1$ they are uniform over the degree of $F$ and
-over all additional real or complex roots.  In the opposite direction, the
-degree of an integer polynomial of height $H\ge2$ all of whose roots are
+height: they are uniform over the degree of $F$ and over all additional real
+or complex roots, the hypothesis $|f_D|\ge1$ entering only where the
+order-statistic bounds are summed into $\Lambda$.  In the opposite direction,
+the degree of an integer polynomial of height $H\ge2$ all of whose roots are
 nonzero rationals is at most a constant times $\log H$~\cite{htv}, and the
 minimal height of a degree-$n$ polynomial over a fixed number field with all
 roots in $K^\times$ grows exponentially in $n$~\cite{tromp}; the bound here
@@ -884,16 +905,18 @@ Proposition~\ref{prop:confluent} is supplementary: it carries the tail
 theorem to confluent nodes, but Theorem~\ref{thm:order} already reaches
 repeated roots by perturbation, so the main bounds do not depend on it.
 
-Two limits are worth stating plainly.  Every coefficient bound above
-requires $r_i\ge2$, inherited from the node cutoff $y_i\le1/2$ of
-Theorem~\ref{thm:tail}; only Lemma~\ref{lem:interlace} is free of it.  The
-restriction is not an artifact of the proof: by
-Proposition~\ref{prop:subtwo}, \eqref{eq:order} is false for
-roots in $(1,2)$ already at $L=2$, $k=2$.  Only the case $L=1$ survives, where
-the bound holds for every $r>1$.  The method fails in the same place: the tail
-bound rests on the node cutoff $y_i\le1/2$, which Proposition~\ref{prop:cutoff}
-shows cannot be raised.  A bound for roots in $(1,2)$ therefore needs a
-different form, not a wider proof.
+Two limits are worth stating plainly.  The coefficient bounds for $k\ge2$
+require $r_i\ge2$, inherited from the node cutoff $y_i\le1/2$ of
+Theorem~\ref{thm:tail}.  The cutoff enters in exactly two places, the factor
+$2$ in \eqref{eq:gamma} and the discard of factors at most $1$ in
+Lemma~\ref{lem:slack}, and both matter only for $u\ge1$; the $k=1$ bound and
+the consecutive base case of Theorem~\ref{thm:tail} are free of it, as is
+Lemma~\ref{lem:interlace}.  The restriction is not an artifact of the proof:
+by Proposition~\ref{prop:subtwo}, \eqref{eq:order} is false for $k=2$ already
+at $L=2$ and already when only $r_1<2$.  The method fails in the same place:
+the tail bound rests on the node cutoff $y_i\le1/2$, which
+Proposition~\ref{prop:cutoff} shows cannot be raised.  A bound for roots in
+$(1,2)$ with $k\ge2$ therefore needs a different form, not a wider proof.
 
 What is left open is the pointwise extremal problem: for a fixed root
 sequence and a fixed $k$, how closely a multiple can approach
