@@ -627,6 +627,58 @@ def _check_routing_bound(failures: list[str]) -> int:
     if len(routing) > 3 * real_blocks - 3:
         failures.append("routing positions exceeded block-incidence bound")
     count += 1
+
+    # General model: without input consumption the read level at the last
+    # routing position is free, so the kth read is the jth read of the fixed
+    # continuation for some j <= k, giving D_k <= 1 + 2*k*m_routing.  The doc's
+    # counterexample violates the tight bound and satisfies the relaxed one.
+    counterexample = [
+        [5, 1],
+        [5],
+        [0, 2],
+        [48, 2],
+        [2],
+        [0, 2],
+        [0, 2],
+        [0, 2],
+        [0, 2],
+        [0, 1],
+    ]
+    ce_pairs = _bracket_pairs(counterexample)
+    dk: dict[int, set[int]] = {}
+    ce_taken: dict[int, set[int]] = {}
+    for r in range(256):
+        bits = [(r >> (7 - i)) & 1 for i in range(8)]
+        reg, ind, pos, k, steps = 0, 0, 0, 0, 0
+        while ind < len(counterexample) and steps < 500:
+            steps += 1
+            ins = counterexample[ind]
+            one = ins[0]
+            two = ([*ins[1:], 0])[0]
+            byte = None
+            if two and not one and two - 1:
+                byte = 48 + bits[pos] if pos < 8 else -1
+                if pos < 8:
+                    pos += 1
+                dk.setdefault(k, set()).add(ind)
+                k += 1
+            if len(ins) == 1:
+                ce_taken.setdefault(ind, set()).add(
+                    _advance((reg, ind), counterexample, None, ce_pairs)[0][1]
+                )
+            (reg, ind), _ = _advance((reg, ind), counterexample, byte, ce_pairs)
+    ce_routing = sum(1 for s in ce_taken.values() if len(s) > 1)
+    if ce_routing != 1:
+        failures.append(f"counterexample m_routing changed: {ce_routing}")
+    if len(dk.get(3, ())) <= 1 + 2 * ce_routing:
+        failures.append("counterexample no longer violates the tight bound")
+    for k, cursors in dk.items():
+        relaxed = 1 + 2 * (k + 1) * ce_routing
+        if len(cursors) > relaxed:
+            failures.append(
+                f"counterexample k={k + 1}: D={len(cursors)} > relaxed {relaxed}"
+            )
+    count += 1
     return count
 
 
