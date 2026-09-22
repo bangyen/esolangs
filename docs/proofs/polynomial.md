@@ -830,7 +830,7 @@ count on that machine.
 
 **The confluent certificate (multiplicity is free of the extra hypothesis).**
 The distinct-node theorem above is replaced by its confluent analogue,
-[coefficient-mass](coefficient-mass.tex) Proposition 3.4: for
+[coefficient-mass](coefficient-mass.tex) Proposition 3.5: for
 `u_d = sum_i P_i(d) y_i^d` with `deg P_i < e_i`, `u_0 = 1`, and `u_z = 0` on a
 zero set `Z` of size `sum e_i - 1`, the tail bound holds with the product read
 over the **expanded multiset** (each `y_i` repeated `e_i` times).  The proof is
