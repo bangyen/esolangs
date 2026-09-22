@@ -337,3 +337,34 @@ class TestCompileErrors:
         """`render` needs at least one node, so an all-comment program fails."""
         with pytest.raises(ValueError, match="no recognized commands"):
             bf_to_line("just a comment")
+
+
+class TestALoopThatEndsItsParent:
+    """A ``?`` whose ``zero`` arm is empty needs a node to carry the goto.
+
+    ``_control_tail`` walks to where a chain falls through, descending the
+    ``zero`` arm of a fork.  When an inner loop is the last thing in an
+    outer loop's body that arm is ``None``, and the outer loop-back has
+    nothing to attach to -- so a no-op placeholder is inserted.  Every
+    committed program reaches its loops with something after them, so this
+    is the one shape that needs it.
+    """
+
+    def test_a_nested_loop_at_the_end_of_a_body_compiles(self) -> None:
+        from esolangs.line.bf_to_line import bf_to_line
+
+        node = bf_to_line("+[[-]]")
+        assert node.op == "+"
+
+    def test_the_placeholder_leaves_tape_and_pointer_alone(self) -> None:
+        """A ``>`` then ``<``: the goto attaches after the pointer is back."""
+        from esolangs.line.bf_to_line import _nop
+
+        placeholder = _nop()
+        assert placeholder.op == ">"
+        assert placeholder.next is not None
+        assert placeholder.next.op == "<"
+
+    @pytest.mark.medium
+    def test_it_still_runs_through_the_image(self, tmp_path: Path) -> None:
+        assert _run_bf("+[[-]].", tmp_path / "nested_tail.png") == [0]
