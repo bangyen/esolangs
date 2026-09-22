@@ -37,13 +37,14 @@ nonzero multiple of $\prod_{i=1}^L(x-r_i)$, the $(u+1)$-st largest
 nonleading coefficient magnitude satisfies
 $b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)$, and that it is an infimum at
 $(2,3)$ and $(2,3,5)$.  We show that the $(2,3,5)$ multiples are correctly
-ordered at every degree, approaching the bound from above, and identify a partial-sum criterion on the
-surviving root product under which the same construction proves attainment
-in general, with root sets where the criterion holds and where it fails.
+ordered at every degree, the $b_2$ family approaching its bound from above,
+and identify a partial-sum criterion on the
+surviving root product under which the same construction shows the bound
+is an infimum in general, with root sets where the criterion holds and where it fails.
 The standing restriction $r_1\ge2$ cannot be dropped once $u\ge1$, already
 at $L=2$; the node cutoff $y_i\le1/2$ underlying the tail comparison behind
 the bound cannot be raised; and we extend that comparison to confluent
-(repeated) nodes.  A repaired bound below the cutoff is conjectured but not
+(repeated) nodes.  A repaired bound beyond the cutoff is conjectured but not
 proved, and the converse of the partial-sum criterion is left open.
 \end{abstract}
 
@@ -63,11 +64,12 @@ coefficient $f_D$, its Theorem~3.2 gives, for every $0\le u\le L-1$,
   b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1),
 \end{equation}
 where $b_k$ is the $k$th largest of the nonleading coefficient magnitudes
-$|f_j|$, $j<D$; the case $u=0$ needs only $r_1>1$.  The engine behind
+$|f_j|$, $j<D$, so that \eqref{eq:order} bounds $b_k$ with $k=u+1$; the case
+$u=0$ needs only $r_1>1$.  The engine behind
 \eqref{eq:order} is its Theorem~2.2, a comparison between the infinite
 $\ell^1$ tail of a normalized exponential sum with prescribed zeros and the
 tail of the sum with the same zero count but a consecutive zero set: for
-nodes $y_i=\rho_i^{-1}\le1/2$, $i=1,\ldots,c$, and a zero set $Z$ of size
+nodes $0<y_1<\cdots<y_c\le1/2$, $y_i=\rho_i^{-1}$, and a zero set $Z$ of size
 $c-1$ with leading run $f=\max\{0\le k\le c-1:\{1,\ldots,k\}\subseteq Z\}$,
 the unique exponential sum $u$ on those nodes with $u_0=1$ and $u_z=0$
 ($z\in Z$) satisfies
@@ -78,8 +80,9 @@ with equality exactly at $Z=\{1,\ldots,c-1\}$; \eqref{eq:order} follows by
 applying this with the excluded coefficient positions supplying $Z$.
 Lemma~2.1 evaluates the consecutive case; Lemma~2.3 supplies the interlacing
 step inside the comparison; Lemma~3.1 converts the tail bound into a
-coefficient bound; Corollary~3.6 sharpens the resulting asymptotic to an
-exact infimum for the first $L$ primes.  Throughout, an unqualified Lemma~2.1,
+coefficient bound; Corollary~3.6 shows the resulting lower bound gives the
+infimum of the logarithmic coefficient mass over monic multiples of the first
+$L$ primes up to $O(L^2)$.  Throughout, an unqualified Lemma~2.1,
 Theorem~2.2, Lemma~2.3, Lemma~3.1, Theorem~3.2 or Corollary~3.6 is the
 result of that number in~\cite{coefficient-mass}; every other numbered result
 is this paper's own.
@@ -90,7 +93,7 @@ restriction $r_i\ge2$ in \eqref{eq:order} can be relaxed once $u\ge1$.
 Section~\ref{sec:attain} shows that the explicit monic multiples of
 $(x-2)(x-3)(x-5)$ approaching \eqref{eq:order} are correctly ordered at every
 degree, identifies the partial-sum criterion
-behind attainment in general, and reports root sets where the criterion
+behind the infimum in general, and reports root sets where the criterion
 holds and where it fails.  Section~\ref{sec:scope} records what is proved
 and what remains open.
 
@@ -157,7 +160,9 @@ $\phi_{i,k,\varepsilon}(d)=y_i^d\bigl((1-e^{-\varepsilon d})/\varepsilon\bigr)^k
 has a removable singularity at $\varepsilon=0$ and extends analytically there
 with limit $d^ky_i^d$, so $M(\varepsilon)\to M(0)$ as $\varepsilon\to0$, where
 $M(0)$ is the confluent matrix.  The functions
-$d\mapsto d^ky_i^d$ form an extended Chebyshev system on $\R$, and the
+$d\mapsto d^ky_i^d$ form an extended Chebyshev system on $\R$: a nonzero
+$\sum_iP_i(d)y_i^d$ with $\deg P_i<e_i$ has at most $m-1$ real
+zeros~\cite[Part~Five, Ch.~1]{polya-szego}.  The
 interpolation here is at the $m$ \emph{distinct} points $\{0\}\cup Z$---the
 confluence sits in the basis, not in the nodes---so $M(0)$ is invertible by
 ordinary unisolvence of a Chebyshev system at distinct
@@ -276,8 +281,8 @@ $r_u^D$ and so survive division by $r^{D-1}$ only at the $u$ smallest roots,
 which they absorb; the run must therefore satisfy the remaining $L-u$ roots
 alone, and its value is what \eqref{eq:order} predicts.  The certificate
 paper proves the two limits below~\cite[Section~4]{coefficient-mass}; what
-is added here is that the ordering holds exactly at every degree, with both
-limits approached from above, and the Descartes step that the general
+is added here is that the ordering holds exactly at every degree, with
+$t_D>a_D+1>8$ throughout, and the Descartes step that the general
 construction later reuses.
 
 \begin{proposition}[The bounds at roots $(2,3,5)$ are infima]
@@ -432,8 +437,15 @@ $1,-11,36,-24$, and at $(2,3,5,6)$, sums $1,-13,50,-40$.  At $(3,4,5,6)$, by
 contrast, the sums are $1,-14,60,-60$, so \eqref{eq:partial} holds with
 equality.
 
-When \eqref{eq:partial} holds and the roots are distinct, \eqref{eq:order} is
-an infimum.  Fix $u$, put $m=L-u$, and write
+\begin{proposition}[Partial-sum criterion]\label{prop:partial}
+Let $2\le r_1<\cdots<r_L$ be distinct and $0\le u\le L-1$.  If
+\eqref{eq:partial} holds, then
+$\inf_Qb_{u+1}\bigl(Q\prod_{i=1}^L(x-r_i)\bigr)=\prod_{i=u+1}^L(r_i-1)$ over
+monic $Q\in\R[x]$.
+\end{proposition}
+
+\begin{proof}
+Theorem~3.2 gives $\ge$.  For the other direction put $m=L-u$ and write
 $F_D=x^D+\sum_{k=1}^{m-1}a_kx^{D-k}+t\sum_{j=u}^{D-m}x^j+C$ with $\deg C<u$,
 the $L$ unknowns fixed by $F_D(r_i)=0$.  The Descartes step of
 Proposition~\ref{prop:sharp235} carries over, $(x-1)$ times a kernel element
@@ -456,6 +468,7 @@ $b_{u+1}\to\max_j|S_j|$, which is $|S_m|$ exactly when \eqref{eq:partial}
 holds.  Distinctness enters three times---the Descartes step, the Vandermonde
 change, and the surviving block---and $r_u<r_{u+1}$ is what kills the cross
 terms and makes the exempt coefficients diverge.
+\end{proof}
 
 The conclusion outlives it, though.  At $(r,r)$ the
 confluent member $F_D=x^D-t_D\sum_{j=1}^{D-1}x^j+c_D$ fixed by
@@ -469,34 +482,38 @@ than geometrically.  The converse---that failure of
 \eqref{eq:partial} forces the infimum strictly above \eqref{eq:order}---is
 not proved here.
 
-It is at least a recognizable question.  In the limit the $u$ exempt
-coefficients are spent absorbing the $u$ smallest roots, so an admissible $W$
-vanishes exactly at the surviving reciprocal nodes, and dividing by
-$\widetilde P_u$ leaves a function analytic on the disc: every admissible $W$
-is $\widetilde P_uH$ with $H(0)=1$, the choice $H=1/(1-y)$ being
-\eqref{eq:wgen}.  The converse therefore asks for
+It is at least a recognizable question.  Heuristically, in the limit the $u$
+exempt coefficients are spent absorbing the $u$ smallest roots, so an
+admissible $W$ vanishes at the surviving reciprocal nodes, and dividing by
+$\widetilde P_u$ leaves a function analytic on the disc: an admissible $W$
+should be $\widetilde P_uH$ with $H(0)=1$, the choice $H=1/(1-y)$ being
+\eqref{eq:wgen}.  The converse is then expected to reduce to
 \[
   \inf\Bigl\{\ \sup_{d\ge1}|w_d|\ :\ W=\widetilde P_uH,\ H(0)=1\ \Bigr\}
 \]
 and whether it exceeds $|S_m|$ when \eqref{eq:partial} fails.  That is the
 $\ell^\infty$ member of the family this paper works in: reduced length
-minimizes $\ell^1$ over normalized multiples~\cite{schinzel}, the minimal Euclidean
-norm is the $\ell^2$ case and is effectively computable~\cite{frw}, and
-$\Lambda$ itself is additive over coefficients rather than a norm at all.
+minimizes $\ell^1$ over normalized multiples~\cite{schinzel}, its
+integer-polynomial $\ell^2$ analogue, the minimal Euclidean norm of an
+algebraic number, is effectively computable~\cite{frw}, and the logarithmic
+coefficient mass $\Lambda$ of~\cite{coefficient-mass} is additive over
+coefficients rather than a norm at all.
 
 \section{Scope}\label{sec:scope}
 
 The bounds here concern coefficient magnitudes, not ordinary length or
 height: they are uniform over the degree of $F$ and over all additional real
-or complex roots, the hypothesis $|f_D|\ge1$ entering only where the
-$\log|f_D|$ term is discarded to reach an asymptotic.  In the opposite
+or complex roots, and in~\cite{coefficient-mass} the hypothesis
+$|f_D|\ge1$ enters only where the $\log|f_D|$ term is discarded to reach an
+asymptotic.  In the opposite
 direction,
 the degree of an integer polynomial of height $H\ge2$ all of whose roots are
 nonzero rationals is at most a constant times $\log H$~\cite{htv}, and the
 minimal height of a degree-$n$ polynomial over a fixed number field with all
 roots in $K^\times$ grows exponentially in $n$~\cite{tromp}; the bound here
 constrains neither degree nor height but the additive coefficient mass.  The
-contribution relative to reduced-height duality is the prefix-sensitive tail
+contribution of~\cite{coefficient-mass} relative to reduced-height duality
+is the prefix-sensitive tail
 comparison and its iteration; the normalized determinant sequence and its
 consecutive-zero evaluation are from Dubickas and Jankauskas~\cite{dj}.
 Proposition~\ref{prop:confluent} is supplementary: it carries the tail
@@ -526,7 +543,7 @@ it gives the candidate bound
 \]
 which reduces to \eqref{eq:order} when every $r_i\ge2$.  What stands in the
 way of proving it is a single step rather than the shape of the
-conclusion---Theorem~2.2 is unavailable below the cutoff, and by
+conclusion---Theorem~2.2 is unavailable beyond the cutoff, and by
 Proposition~\ref{prop:cutoff} its product form does not extend there
 unchanged.
 
@@ -539,7 +556,7 @@ drops,
   \prod_{i\le f+1}\frac{y_i}{1-y_i}
   \prod_{i>f+1}\max\Bigl(1,\frac{y_i}{1-y_i}\Bigr),
 \]
-is conjectured to hold in general.  Above the cutoff every added factor is
+is conjectured to hold in general.  Within the cutoff every added factor is
 $1$, so the two agree; at a
 consecutive zero set no node is dropped, so equality is retained there, as
 Lemma~2.1 requires.  Fed through Lemma~3.1 with
@@ -552,7 +569,7 @@ the repaired product is $(a/(1-a))^c$ against
 $\Tail(u)=(a/c)[1+(a/(1-a))^c]$, so it holds for every $a\in(1/2,1)$ and
 every $c$, with ratio $(a/c)\bigl(1+((1-a)/a)^c\bigr)\le1/c$, while the stated
 bound $a/(1-a)$ is already
-exceeded at $a=3/4$, $c=2$ and is short by a factor $2.4\cdot10^9$ at
+exceeded at $a=3/4$, $c=2$ and is short by a factor $2.35\cdot10^9$ at
 $a=9/10$, $c=12$.  There is no conflict: Proposition~\ref{prop:cutoff} rules out
 raising the cutoff in the product as stated, not in this one.
 
@@ -562,13 +579,13 @@ the first inequality needs only $y_c<1$,
 and the cutoff is spent entirely on the second, which converts $1/(1-y_c)$
 into the constant $2$ that the proof's strictness step requires; that invites carrying
 the first through the induction and never invoking the second.  It does not
-work, because what fails below the cutoff is not the intermediate estimate but
+work, because what fails beyond the cutoff is not the intermediate estimate but
 the conclusion it serves.  The comparison driving Theorem~2.2---
 that deleting the displaced largest zero together with the largest node
 increases the tail---can reverse there: on nodes $(1/3,1/2,9/10)$ with
 $Z=\{1,3\}$ the deletion takes $\Tail$ from $2.077$ down to $0.500$, whereas
-above the cutoff it holds strictly on every displaced set, with equality
-exactly at the consecutive one, as the theorem says.  A proof of the repaired
+within the cutoff it holds strictly on every displaced set, as the proof of
+Theorem~2.2 shows.  A proof of the repaired
 product therefore needs a different engine, not a sharper one.  None of this
 is proved here.
 
@@ -584,10 +601,11 @@ Proposition~\ref{prop:sharp235} does the same for $(2,3,5)$ at $k=2$ and
 $k=3$.  Beyond those root sets the construction behind both can fail, already
 at $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums are
 $1,-\tfrac{11}2,5$, so \eqref{eq:partial} fails.  It can also still succeed
-at $L=4$, as $(3,4,5,6)$ shows.  The remark
-after Proposition~\ref{prop:sharp235} records root sets of each kind.
-Beyond $(2,3)$ and $(2,3,5)$, whether \eqref{eq:order} is an infimum at a
-given root set and $k\ge2$ is open in general.
+at $L=4$, as $(3,4,5,6)$ shows.  The paragraph
+before Proposition~\ref{prop:partial} records root sets of each kind.
+Beyond the root sets covered by Proposition~\ref{prop:partial} and the
+confluent pair $(3,3)$, whether \eqref{eq:order} is an infimum at a given
+root set and $k\ge2$ is open in general.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
@@ -598,6 +616,13 @@ No datasets were generated or analyzed in this study.
 S.~Karlin and W.~J. Studden,
 \newblock \emph{Tchebycheff Systems: With Applications in Analysis and Statistics},
 \newblock Interscience, New York, 1966.
+
+\bibitem{polya-szego}
+G.~P\'olya and G.~Szeg\H{o},
+\newblock \emph{Problems and Theorems in Analysis II},
+\newblock Springer, 1976, Part Five, Chapter 1,
+\newblock \href{https://doi.org/10.1007/978-3-642-61905-2}
+{doi:10.1007/978-3-642-61905-2}.
 
 \bibitem{schinzel}
 A.~Schinzel,
