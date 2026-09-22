@@ -144,11 +144,7 @@ Corollary~\ref{cor:prime} specializes to prime roots,
 Corollary~\ref{cor:infimum} sharpens the resulting asymptotic to the infimum
 over monic real multiples, and
 Corollary~\ref{cor:near} shows the root product itself is within $O(L^2)$ of
-that infimum for every root set here.  A companion paper~\cite{coefficient-mass-attainment}
-takes up attainment: explicit monic multiples approaching \eqref{eq:order}
-at the root sets $(2,3)$ and $(2,3,5)$, the necessity of the node cutoff
-$y_i\le1/2$ and of the standing restriction $r_i\ge2$ for $k\ge2$, and the
-confluent extension of Theorem~\ref{thm:tail}.
+that infimum for every root set here.
 
 \section{A displaced-zero tail theorem}
 
@@ -472,9 +468,8 @@ occur only in the base case.
 The restriction $\rho_i\ge2$ is substantive.  For $c=2$,
 $y_1=1/10$, $y_2=4/5$, and $Z=\{2\}$, the normalized coefficients are
 $a_1=64/63$ and $a_2=-1/63$, so
-$\Tail(u)=364/2835>1/9=y_1/(1-y_1)$; the companion
-paper~\cite{coefficient-mass-attainment} shows that no cutoff larger than
-$1/2$ is universal.
+$\Tail(u)=364/2835>1/9=y_1/(1-y_1)$, so \eqref{eq:tail} fails once a node is
+allowed past the cutoff.
 
 \section{Coefficient order statistics}
 
@@ -743,13 +738,6 @@ product $P$ is asymptotically optimal among monic multiples; the infimum
 $M_L$ of Corollary~\ref{cor:infimum} is the sharp form of that statement for
 the first $L$ primes.
 
-A companion paper~\cite{coefficient-mass-attainment} takes up the attainment
-questions previewed in Section~1.
-
-\paragraph{Code availability.}
-Source code and verification scripts are available at
-\url{https://github.com/bangyen/esolangs}.
-
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
 
@@ -826,12 +814,6 @@ M.~Mignotte,
 \newblock Sur les multiples des polyn\^omes irr\'eductibles,
 \newblock \emph{Bulletin de la Soci\'et\'e Math\'ematique de Belgique} 27
 (1975), 225--229.
-
-\bibitem{coefficient-mass-attainment}
-B.~Pham,
-\newblock Attainment and sharpness of the coefficient order-statistic bound,
-\newblock unpublished companion manuscript included with this submission;
-Theorem~2.2 (Tail comparison), Theorem~3.2 (Coefficient order statistics).
 \end{thebibliography}
 
 \end{document}
