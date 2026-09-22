@@ -83,9 +83,23 @@ preloaded `'0'` -- and 24 all-1 cells send the 256 rows the first readout
 leaves in 128 pairs to a second decoder at 29525, which reads a second mixer
 cell that separates all of them. The 58 pointer cells and the residue cover
 (every `h mod 94` must admit a character of each label) were found by
-annealing and are pinned. `n > 11` is refused with `GeneratorCapError`: the
-same search finds no schedule whose two cells separate twelve bits (2400
-survivors, none resolved past level 1).
+annealing and are pinned. `n > 11` is refused with `GeneratorCapError`: no
+searched schedule separates twelve bits.
+
+A third level needs no fourth label, which is what the layout could not
+afford. A level-2 row whose table cell carries `N` re-enters the decoder at
+29525 with `d = b + 1`, and the cells it already executed have been
+re-enciphered: the first nine image to nops and the tenth to an `i`, so every
+level-3 row shares one jump through `mem[b + 10]`. Executed on the shipped
+build: row 800 of the all-zero table prints `0`, and the same row routed
+through the `N` label for cell 95 reads `mem[105]` -- a shipped `[P0, P1]`
+pair -- and prints `1`. Three labels plus an `M` block are SAT once the block
+clears the pointer region (unsat at shift 10 through 20, sat from 40, 9 cells
+free at shift 94), and a shift-104 prefix is spellable: of the first 103
+re-entry cells only nine refuse a plain `o`, and each takes `j`, `p` or `*`.
+What is missing is still a twelve-bit mixer. Three levels with free inits
+leave 341 of 4,096 rows over ~7 CPU-hours (0 hits, control rediscovers the
+shipped n=11 cascade), against 515 for two levels.
 
 Counting bounds each family, independent of how good the mixer is. A stub
 program needs three cells per row at pairwise distance at least three, so
@@ -119,7 +133,7 @@ expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 11 | 11 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones; the shipped one has two levels, and over two levels the best searched twelve-bit fold resolves 3,522 of 4,096 rows and leaves 515 after both. A third level is *not* blocked by the pointer region: a four-label cover coexisting with every helper home and five init cells is SAT, and the design space closes exactly — the cover is 82 cells, the 12 free cells are unique, and four init tuples remain. What is missing is a twelve-bit mixer for it; over all four tuples the closest chain still leaves 542. |
+| Malbolge | 11 | 11 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones; the shipped one has two levels, and over two levels the best searched twelve-bit fold resolves 3,522 of 4,096 rows and leaves 515 after both. A third level needs no fourth label: the re-entry `i` at offset 9 routes every level-3 row through `mem[b + 10]` (executed), so the inits stay free instead of collapsing to the four tuples a four-label cover forces. What is missing is a twelve-bit mixer; three levels with free inits leave 341 of 4,096. |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
