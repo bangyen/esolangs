@@ -204,14 +204,29 @@ step; an answer lands in the paper it extends, and the row leaves.
   infimum when the criterion fails" in
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
 
+- **Factor's leading constant.**  Both sides are now numbers and they
+  bracket `C_F(T)/(T ln T)` between `1/(3 ln 10) = 0.14476` and
+  `35/ln 10 = 15.2003` on GRH (Sections 4 and 5 of
+  [factor](proofs/factor.tex)).  The ratio is exactly `105` in any base, and
+  it factors into `52.5` for the decision tree and `2` for the prime walk, so
+  the number theory is worth at most a factor of two and the order of
+  magnitude sits in the construction.  A `T`-bit table needs at least `T/3`
+  instructions; the tree emits `35T/2`, and Lemma 2.1 is exact and attained by
+  parity, so the slack is in the construction and not its analysis.  First
+  step: emit a Boolean brainfuck program with `cT` runs for some `c < 35/2`
+  and measure it under the encoder, parity being the control.  On the other
+  side, counting spellings is capped at `0.2895` on GRH, so moving the floor
+  past that needs a semantic argument -- distinct programs that compute the
+  same function -- not a better count.
+
 - **Unconditional Factor threshold.**  The digit ceiling is proven through
-  `n = 19` by a sieve to `10**11`, and explicit at every arity on GRH
-  (Section 4 of [factor](proofs/factor.tex)).  Without GRH `x_0` is effective
-  in principle -- `q = 11` has no exceptional zero -- but has no value.  Any
-  explicit `theta < 1` suffices, since `theta` only moves the leading
-  constant.  Both ingredients are in print: Thorner-Zaman's explicit log-free
-  density estimate (`A = 99`) and Kadiri's explicit zero-free region, which
-  covers `q = 11`.  First step: carry Ingham's argument through them for
-  `theta = 98/99`, constant `752.4`.  Weigh it first -- their `10**421` puts
-  `x_0` past any bridge from `10**11`, so the result would be a limsup at an
-  astronomical arity and the practical range would still rest on GRH.
+  `n = 19` by a sieve to `10**11`, and explicit at every arity on GRH.
+  Without GRH `x_0` is effective in principle -- `q = 11` has no exceptional
+  zero -- but has no value.  Both ingredients are in print: Thorner-Zaman's
+  explicit log-free density estimate (`A = 99`) and Kadiri's explicit
+  zero-free region, which covers `q = 11`; carrying Ingham's argument through
+  them gives `theta = 98/99` and constant `752.4`.  Weigh it first, and note
+  the row above prices it: their `10**421` puts `x_0` past any bridge from
+  `10**11`, so the result would be a limsup at an astronomical arity, and even
+  a perfect `theta` is worth only a factor of two against the construction's
+  fifty.
