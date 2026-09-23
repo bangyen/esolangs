@@ -49,7 +49,9 @@ exponential sums with prescribed positive-integer zeros.  The comparison
 depends on the initial run of zeros and is strict unless the zeros are
 consecutive; the zero count behind it is isolated as an interlacing lemma.
 The argument builds on the reduced-height certificate method of Dubickas and
-Jankauskas.
+Jankauskas.  As a by-product, the same-sign hypothesis under which they
+evaluate the consecutive case is shown to hold at all positive nodes, which
+makes their reduced-height bound $H(P)\ge|P(1)|$ unconditional.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -90,6 +92,28 @@ $\Lambda$, so bounds on successive order statistics add up to a lower bound
 for $\Lambda$ that no bound on a single height can give.  In this sense the
 results below are distributional: many coefficients must be large, not just
 the largest.
+
+Because $\log^+$ ignores coefficients of magnitude at most one, $\Lambda$ is
+not scale invariant: $\Lambda(\varepsilon F)\to0$ as $\varepsilon\to0$, so no
+lower bound for $\Lambda$ can hold without fixing a scale.  Every bound below
+is therefore stated relative to the leading coefficient $f_D$, and the
+normalization of interest is the monic one $|f_D|=1$, or more generally
+$|f_D|\ge1$.  This is the normalization already used for the reduced
+height~\cite{dj,dubickas}, and for integer multiples it costs nothing.
+
+It is worth saying what is gained over the standard route through the Mahler
+measure $M$.  A monic multiple $F$ of $\prod_i(x-r_i)$ has
+$M(F)\ge\prod_ir_i$, while Landau's inequality
+$M(F)\le\lVert F\rVert_2\le\sqrt{D+1}\,H(F)$ bounds the height from below, so
+\[
+  \Lambda(F)\ \ge\ \log H(F)\ \ge\ \sum_{i=1}^L\log r_i-\tfrac12\log(D+1).
+\]
+For the first $L$ primes the sum is $\sim L\log L$, so this route gives order
+$L\log L$: it charges only one coefficient, and the number of prescribed
+roots enters once.  Corollary~\ref{cor:prime} gives
+$\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, larger by a factor of order $L$ and
+with no degree term at all, because each of the $L$ roots is charged against
+a coefficient of its own.
 
 Dubickas and Jankauskas associate to reciprocal roots and a prescribed zero
 set $J$ a normalized determinant sequence $S_n(J)$ with $S_0(J)=1$ and
@@ -276,7 +300,18 @@ $\Delta$.  Instead $\Delta$ is nonzero at $2,4,6$, with signs $-1,+1,-1$.
 So each of the gaps $(2,4)$ and $(4,6)$ contains an odd number of zeros of
 the $4$-node sum $\Delta$, hence at least one.  Together with the zero at
 $m+1=7$ this uses up the whole budget of $c-2=3$ zeros, so there are none
-above $7$, and $\Delta$ is positive there.  If instead $Z'=\{2,4,5,7\}$
+above $7$, and $\Delta$ is positive there.  In tabular form, writing
+$\bullet$ for a marked point and listing the sign of $\Delta$ at it:
+\[
+  \begin{array}{c|cccccccc}
+    d & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7\\\hline
+    \text{marked} & \bullet & & \bullet & & \bullet & & \bullet & \\
+    \sgn\Delta_d  &         & & -       & & +       & & -       & 0\\
+    \text{forced zeros in gap} & & & & 0 & & 0 & &
+  \end{array}
+\]
+The two sign changes, across $(2,4)$ and $(4,6)$, each cost a zero; with the
+zero at $7$ that is three, the whole budget.  If instead $Z'=\{2,4,5,7\}$
 ($c=6$), the adjacent pair $\{4,5\}$ forces a zero of $\Delta$ at $5$, while
 $\Delta$ is negative at both $4$ and $7$.  Since the signs at $4$ and $7$
 agree, $(4,7)$ must contain an even number of zeros, so the forced zero at
@@ -767,6 +802,33 @@ with $U=\varnothing$ gives
 for every monic multiple, compared with $|P(1)|=2$.  Corollary~8
 of~\cite{dj} computes the reduced height of this quadratic exactly as
 $10/3$, so here the row is off by a factor of $5/3$.
+
+At these nodes $Z=\{2\}$ is in fact the best choice, so the certificate
+method loses nothing at $(2,3)$: minimizing $\Tail(w)$ over all
+$Z\subset\{1,\ldots,14\}$ with $|Z|=1$ returns $Z=\{2\}$ and the bound
+$10/3$, which is the reduced height.  The optimum need not be displaced---at
+nodes $(5,3)$ the consecutive set is already optimal---and the gain is
+modest.  Minimizing the tail over all $Z$ in the same range gives, against
+$|P(1)|$, the ratios
+\[
+  \begin{array}{c|ccccccc}
+    \text{roots} & (2,3) & (2,5) & (3,5) & (2,3,5) & (2,3,7) & (3,5,7) & (2,3,5,7)\\\hline
+    \text{ratio} & \tfrac53 & \tfrac75 & 1 & \tfrac{31}{17} & \tfrac{41}{23}
+      & \tfrac{71}{62} & \tfrac{39799}{21337}
+  \end{array}
+\]
+all below $2$.  Whether the ratio is bounded in $L$ we do not know.
+
+This optimization is, however, available only in the row $k=1$.  For
+$u\ge1$ the set $U$ of excluded positions is arbitrary, so
+Lemma~\ref{lem:slack} has no control over which distances $W$ the
+certificate must vanish on: the zero set $Z$ is dictated by $U$ apart from
+the free positions, and the tail estimate has to hold for every $Z$ with a
+given leading run.  Theorem~\ref{thm:tail} is exactly an estimate of that
+uniform kind, which is why it is stated in terms of the run $f$ alone.
+Choosing $Z$ to minimize the tail is possible only when $U=\varnothing$.  The
+looseness of the row $k=1$ is thus the price of a bound that covers all $L$
+rows at once.
 
 The rows $k\ge2$, by contrast, can be sharp.
 
