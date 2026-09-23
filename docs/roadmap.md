@@ -225,7 +225,15 @@ step; an answer lands in the paper it extends, and the row leaves.
   with `gain = Tail(F_M) - Tail(p_{M,M+1})` (the deletion step, eq:split) and
   `cost = Tail(p_{g,M+1}) - Tail(p_{M,M+1})` along `ell_{M+1}`, and
   `cost/gain` reaches 0.9991, so every loose bound from eq:gamma fails: the
-  proof must be exact, as the block proof is.  Dead: the half-mass point of
+  proof must be exact, as the block proof is.  First step: prove
+  `eq:chord`, the hypothesis-free chord lemma
+  `Tail(F_M) >= lam Tail(F_{M+1}) + (1-lam) Tail(p_{g,M+1})` with `lam`
+  from `p_{M,M+1} = lam F_{M+1} + (1-lam) p_{g,M+1}` on `ell_{M+1}`
+  (`(M-g)/M` confluent); it says the deletion-step gain `eq:split` is at
+  least the convexity gap along `ell_{M+1}`, it plus the hypothesis gives
+  the `|A| = 1` case, it holds in 4632 exact instances with no hypothesis,
+  and it is an identity for arbitrary nodes in the block case (where it is
+  the NB Lemma 1.5); it does not extend verbatim to `|A| >= 2`.  Dead: the half-mass point of
   `ell_M` (fails at the confluent block `B = {1..24}`, `g = 25`, `M = 50`),
   any fixed window, shifting only the smallest zero above `g` (fails at
   `L = 5`), arbitrary weights with the same decay (the regression form fails
