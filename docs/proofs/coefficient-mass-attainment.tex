@@ -1008,6 +1008,80 @@ in the proof of Theorem~2.2, which bounds $\Tail(v^+)$ by $\Tail(v^-)$ because
 the nodes are at most $1/2$.
 \end{proof}
 
+Where a zero is displaced to is not a search.  Adding one node to a certificate
+and one zero to its zero set moves it along a line, on which the tail is a
+weighted sum of distances.
+
+\begin{lemma}[Sign rule for the pencil]\label{lem:pencil}
+Let $n=L-k-1$, let $A$ be a set of $n-1$ positive integers, let $F$ be the full
+certificate on $y_{k+2},\ldots,y_L$ with zero set $A$, and let $H\ne0$ be an
+exponential sum on $y_{k+1},\ldots,y_L$ with $H_0=0$ and $H_a=0$ for $a\in A$.
+Then $H$ is unique up to scale, the certificates on $y_{k+1},\ldots,y_L$
+vanishing on $A$ are exactly $F+tH$ with $t\in\mathbb R$, and for every $d\ge1$
+with $d\notin A$
+\[
+  \sgn F_d=(-1)^{|\{a\in A\,:\,a<d\}|},\qquad
+  \sgn H_d=\varepsilon\,(-1)^{1+|\{a\in A\,:\,a<d\}|}
+\]
+for one fixed $\varepsilon\in\{\pm1\}$.  In particular $F_dH_d$ has a single
+sign throughout.
+\end{lemma}
+
+\begin{proof}
+$H$ solves $n$ homogeneous conditions in $n+1$ unknowns, a system nonsingular
+by the zero bound, so it is unique up to scale; adding $tH$ to $F$ preserves
+$v_0=1$ and the zeros on $A$, and the dimensions match.  Now $F$ is an
+exponential sum on $n$ nodes with the $n-1$ zeros $A$, so by the zero bound it
+has no others and changes sign at each of them, and $F_0=1>0$.  Likewise $H$ is
+one on $n+1$ nodes with the $n$ zeros $\{0\}\cup A$ and no others; for $d\ge1$
+the count of zeros below $d$ includes the one at $0$.
+\end{proof}
+
+\begin{proposition}[The displaced zero is a weighted median]\label{prop:median}
+In the notation of Lemma~\ref{lem:pencil}, let $N\ge1$ with $N\notin A$.  The
+full certificate on $y_{k+1},\ldots,y_L$ with zero set $A\cup\{N\}$ is
+$F+t_NH$ with $t_N=-F_N/H_N$, and
+\begin{equation}\label{eq:median}
+  \Tail\bigl(A\cup\{N\}\bigr)
+  =\sum_{d\ge1}\Bigl|\,|F_d|-\theta_N|H_d|\,\Bigr|
+  =\sum_{d\ge1}|H_d|\,\Bigl|\theta_N-\frac{|F_d|}{|H_d|}\Bigr|,
+  \qquad\theta_N=\frac{|F_N|}{|H_N|}.
+\end{equation}
+The right-hand side is convex and piecewise linear in $\theta$ with breakpoints
+exactly the $\theta_N$, so
+\[
+  \min_{N\ge1,\;N\notin A}\Tail\bigl(A\cup\{N\}\bigr)
+  =\min_{\theta\ge0}\sum_{d\ge1}|H_d|\,\Bigl|\theta-\frac{|F_d|}{|H_d|}\Bigr|,
+\]
+attained at the weighted median of $\bigl(|F_d|/|H_d|\bigr)_{d\ge1,\,d\notin A}$
+with weights $|H_d|$.
+\end{proposition}
+
+\begin{proof}
+By Lemma~\ref{lem:pencil} the certificates vanishing on $A$ form the line
+$F+tH$, and $t_N$ is the unique parameter killing $N$.  There $t_NH$ opposes
+$F$, so by the sign rule it opposes $F$ at every $d\ge1$, whence
+$|F_d+t_NH_d|=\bigl||F_d|-|t_N|\,|H_d|\bigr|$ with $|t_N|=\theta_N$, which is
+\eqref{eq:median}.  Each summand is $|H_d|$ times the modulus of an affine
+function of $\theta$ vanishing at $|F_d|/|H_d|$, so the sum is convex and
+piecewise linear with those breakpoints and attains its minimum at one of them;
+a weighted sum of distances is minimized at the weighted median.
+\end{proof}
+
+The displacement therefore needs no window, and $N$ need not exceed $\max A$.
+Taking $\theta=0$ in \eqref{eq:median} returns $\Tail(F)$, and the breakpoints
+are positive and tend to $0$, since $|F_d|/|H_d|$ decays like
+$(y_{k+2}/y_{k+1})^d$; so the convex minimum is at most the value at $0$.
+
+\begin{corollary}[A displaced zero always pays for a node]\label{cor:nocut}
+With $F$ and $H$ as in Lemma~\ref{lem:pencil} and nodes anywhere in $(0,1)$,
+some $N$ gives $\Tail(A\cup\{N\})\le\Tail(F)$.
+\end{corollary}
+
+The node cutoff is not needed for this.  For a \emph{fixed} zero set the
+deletion step reverses beyond the cutoff, as on $(1/3,1/2,9/10)$ above; once
+the displaced zero is chosen by Proposition~\ref{prop:median} it cannot.
+
 So \eqref{eq:step} can fail only through a misalignment: the minimizing $Z^-$
 has $g<\max Z^-$ and $g\notin Z^-$, and no zero can be added to $Z^-$ above its
 largest to reach $g$.  Freeing the largest zero does not repair it, because
@@ -1016,13 +1090,24 @@ leaves a consecutive set, where Theorem~2.2 is an equality: at
 $(\tfrac{503}{250},\tfrac{2053}{1000},\tfrac{527}{250},\tfrac{11}5,
 \tfrac{1177}{500})$ with $u=1$ and $X=\{2\}$ that turns $Z^-=\{1,3,6\}$ into
 $\{1,2,3\}$, and no displaced lift of it comes within a factor $1.40$.
-Sliding down the \emph{smallest} zero above $g$ keeps the displacement.
+Sliding down the \emph{smallest} zero above $g$ keeps the displacement.  Nor
+can the slide be dispensed with: adjoining $g$ to $Z^-$ and displacing nothing
+gives a zero set of the right size, but its tail exceeds $\Tail(v^-)$ in $245$
+of the $379$ straddling instances we put to it, at
+$(\tfrac{2013}{1000},\tfrac{257}{125},\tfrac{2127}{1000},\tfrac{1071}{500},
+\tfrac{549}{250})$ with $u=1$ and $X=\{2\}$ by a factor $2.01$.
 
 \begin{conjecture}[Slide-down rule]\label{conj:slide}
 In that case put $z_0=\min\{z\in Z^-:z>g\}$ and
-$A=\bigl(Z^-\setminus\{z_0\}\bigr)\cup\{g\}$, so that $A\supseteq X$.  Then
-some $N>\max A$ makes the full certificate on $y_{k+1},\ldots,y_L$ with zero
-set $A\cup\{N\}$ have tail at most $\Tail(v^-)$.
+$A=\bigl(Z^-\setminus\{z_0\}\bigr)\cup\{g\}$, so that $A\supseteq X$.  Then,
+with $F$ the full certificate on $y_{k+2},\ldots,y_L$ with zero set $A$ and $H$
+as in Lemma~\ref{lem:pencil},
+\begin{equation}\label{eq:slide}
+  \min_{\theta\ge0}\sum_{d\ge1}\Bigl|\,|F_d|-\theta|H_d|\,\Bigr|\le\Tail(v^-);
+\end{equation}
+equivalently, by Proposition~\ref{prop:median}, some $N$ makes the full
+certificate on $y_{k+1},\ldots,y_L$ with zero set $A\cup\{N\}$ have tail at
+most $\Tail(v^-)$.
 \end{conjecture}
 
 With Propositions~\ref{prop:step} and~\ref{prop:stepeasy} the conjecture gives
@@ -1030,11 +1115,13 @@ $T=\tau^*$ outright.  It is the whole remaining content: one added node, one
 zero slid down to $g$, one zero displaced upwards.  At $(2,3,5,7)$ with $u=1$
 and $X=\{2\}$ it is the covering of Proposition~\ref{prop:values}: $Z^-=\{1,3\}$
 slides to $A=\{1,2\}$ and $N=5$ gives $\tfrac{21337}{1910352}<\tfrac{31}{1704}$.
-The displacement stayed short in everything we measured, $N\le\max A+3$, so the
-rule leaves a bounded search rather than an unbounded one.
+In the form \eqref{eq:slide} it leaves no search at all: the left side is one
+weighted median.  We met it in $674$ further straddling instances, in every one
+of which the median fell above $\max A$, so the restriction $N>\max A$ of the
+earlier formulation costs nothing.
 
-A one-parameter search over $N$ is forced only after the slide; the minimizing
-zero set itself is not a consecutive block with one displaced zero.  At
+What the median ranges over is not a one-parameter shape: the minimizing zero
+set itself is not a consecutive block with one displaced zero.  At
 $(2,3,4,5,6)$ with $u=0$ it is $\{1,2,4,6\}$, of tail $\tfrac{41}{12600}$,
 against $0.003847$ for the best block $\{1,2,3\}$ with one displaced zero.
 
@@ -1280,13 +1367,16 @@ The second is now one inequality.  By Proposition~\ref{prop:step} it is the
 single step \eqref{eq:step}, deleting the largest element of the placement, and
 by Proposition~\ref{prop:stepeasy} that step already holds except when the
 minimizing zero set straddles $\max X$; Conjecture~\ref{conj:slide} is what
-covers the straddling case.  We tested \eqref{eq:step} at $47638$ instances
-across two sweeps --- integer root sets to $L=6$, rational ones, and sets
-clustered just above the cutoff --- with no violation, $1017$ of them
-straddling and every one covered by the slide-down rule.  The two alternatives
-are refuted above: deleting $\min X$ rather than $\max X$ fails at $(2,3,4,5)$,
-and freeing $\max Z^-$ rather than the smallest zero above $g$ fails by a
-factor $1.40$.  Proposition~\ref{prop:head} states the same question
+covers the straddling case, in the closed form \eqref{eq:slide}.  We tested
+\eqref{eq:step} at $47638$ instances across two sweeps --- integer root sets to
+$L=6$, rational ones, and sets clustered just above the cutoff --- with no
+violation, $1017$ of them straddling and every one covered by the slide-down
+rule, and \eqref{eq:slide} itself at a further $674$.  Three alternatives are
+refuted above: deleting $\min X$ rather than $\max X$ fails at $(2,3,4,5)$;
+freeing $\max Z^-$ rather than the smallest zero above $g$ fails by a factor
+$1.40$; and adjoining $g$ to $Z^-$ without sliding, which would need no
+displaced zero at all, fails in $245$ of the $379$ straddling instances we put
+to it, by as much as a factor $2.01$.  Proposition~\ref{prop:head} states the same question
 analytically instead, as a bound on the $\max X-1$ coefficients of a deflated
 multiple; by Proposition~\ref{prop:defthresh} that route says nothing pointwise
 once $r_1\le\tfrac{3+\sqrt5}2$, which covers every root set with $r_1=2$.
