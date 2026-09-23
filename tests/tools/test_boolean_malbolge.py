@@ -187,7 +187,66 @@ def test_thirteen_inputs_every_row(shape: object) -> None:
     assert _rows(table) == list(table)
 
 
-def test_fourteen_inputs_are_refused() -> None:
-    """Eight characters per cell hold N and four answers, not sixteen."""
-    with pytest.raises(GeneratorCapError, match="at most 13 inputs"):
-        boolean.malbolge(_dense(14))
+def _fourteen_rows(levels: set[int]) -> list[int]:
+    """Rows of the fourteen-input table whose copy resolves at one of ``levels``."""
+    _, _, level, _, _ = _module._fourteen()  # noqa: SLF001
+    return [
+        8 * row + 2 * copy + last
+        for copy in range(4)
+        for row, lvl in enumerate(level[copy])
+        if lvl in levels
+        for last in (0, 1)
+    ]
+
+
+def test_fourteen_inputs_resolve_in_three_levels() -> None:
+    """5,525 copies own their level-1 cell; 2,185 resolve at level 2, 482 at 3."""
+    _, _, level, _, _ = _module._fourteen()  # noqa: SLF001
+    counts = [sum(lvl == k for per_copy in level for lvl in per_copy) for k in range(3)]
+    assert counts == [5525, 2185, 482]
+
+
+def test_fourteen_inputs_label_every_residue() -> None:
+    """Each cell a copy reads admits N and the four single-cell answers."""
+    _, _, level, tables, labels = _module._fourteen()  # noqa: SLF001
+    for copy in range(4):
+        for row, k in enumerate(level[copy]):
+            for lvl in range(k + 1):
+                h = tables[lvl][copy][row]
+                for label in "N01xn":
+                    _module._table_char(h, label, labels)  # noqa: SLF001
+
+
+def test_fourteen_inputs_second_pass_is_nine_nops_and_a_jump() -> None:
+    """The decoder's cells, once run, decode to nops and then an ``i``."""
+    second = [_module._second_pass(op, a) for a, op in (("j", 29525), ("j", 29526))]  # noqa: SLF001
+    second += [_module._second_pass("o", 29527 + k) for k in range(8)]  # noqa: SLF001
+    assert second == ["o"] * 9 + ["i"]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("shape", [_dense, _parity])
+def test_fourteen_inputs_sampled(shape: object) -> None:
+    """Every 64th row, every level-3 row and every fourth level-2 row."""
+    table = shape(14)  # type: ignore[operator]
+    rows = sorted(
+        {*range(0, 2**14, 64), *_fourteen_rows({2}), *_fourteen_rows({1})[::4]}
+    )
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.parametrize(
+    "shape", [_dense, _parity, lambda n: "0" * 2**n, lambda n: "1" * 2**n]
+)
+def test_fourteen_inputs_every_row(shape: object) -> None:
+    """The full 16,384-row sweep, the three-level cascade's execution gate."""
+    table = shape(14)  # type: ignore[operator]
+    assert _rows(table) == list(table)
+
+
+def test_fifteen_inputs_are_refused() -> None:
+    """A third selector's eight copies would need a fourth cascade level."""
+    with pytest.raises(GeneratorCapError, match="at most 14 inputs"):
+        boolean.malbolge(_dense(15))
