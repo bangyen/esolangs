@@ -15,6 +15,9 @@
 \newtheorem{lemma}[theorem]{Lemma}
 \newtheorem{corollary}[theorem]{Corollary}
 \newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\theoremstyle{plain}
 \newcommand{\R}{\mathbb R}
 \newcommand{\N}{\mathbb N}
 \DeclareMathOperator{\Tail}{Tail}
@@ -961,6 +964,80 @@ elements lie in $Z\cup(\max Z,\infty)$.  Recurse on $(A\cup\{w\},k-1)$ for
 each $w<\max Z$ outside $Z\cup A$.  If the search closes, $T=\tau^*$ and the
 infimum is $1/\tau^*$.
 
+The search collapses to a single step.  One node is added and one zero is
+deleted at a time, and the zero deleted must be the largest.
+
+\begin{proposition}[Step reduction]\label{prop:step}
+Let $1<r_1<\cdots<r_L$ and $0\le u\le L-1$.  Suppose that for every
+$0\le k<u$ and every set $X$ of $u-k$ positive integers
+\begin{equation}\label{eq:step}
+  \tau_k(X)\le\tau_{k+1}\bigl(X\setminus\{\max X\}\bigr).
+\end{equation}
+Then $T=\tau^*$, and the infimum of $b_{u+1}$ is $1/\tau^*$.
+\end{proposition}
+
+\begin{proof}
+Chaining \eqref{eq:step} from $k=0$ upwards, each step deleting the largest
+remaining element, gives
+$\tau(X)=\tau_0(X)\le\tau_u(\varnothing)=\tau^*$ for every $X$ of size $u$, so
+$T\le\tau^*$; Theorem~\ref{thm:value} gives the reverse.
+\end{proof}
+
+Deleting $\min X$ instead is false: at $(2,3,4,5)$ with $u=2$ and
+$X=\{2,3\}$, $\tau_0(\{2,3\})=\tfrac1{24}$ against
+$\tau_1(\{3\})=\tfrac{35}{1128}$, a ratio of $1.34$, while
+$\tau_1(\{2\})=\tfrac1{24}$ meets it.  Theorem~\ref{thm:lift} with $k=1$
+proves \eqref{eq:step} whenever the placement and the certificate it is lifted
+from are aligned.
+
+\begin{proposition}[The step in the aligned cases]\label{prop:stepeasy}
+Let $2\le r_1<\cdots<r_L$, let $X$ be finite and nonempty with $g=\max X$ and
+$X'=X\setminus\{g\}$, and let $v^-$ be a full certificate on
+$y_{k+2},\ldots,y_L$ whose zero set $Z^-$ contains $X'$.  If $g\in Z^-$ or
+$g>\max Z^-$, then some certificate for $X$ on $y_{k+1},\ldots,y_L$ has tail at
+most $\Tail(v^-)$.
+\end{proposition}
+
+\begin{proof}
+Put $Z^+=Z^-\cup\{g\}$ in the second case, and $Z^+=Z^-\cup\{N\}$ with any
+$N>\max Z^-$ in the first.  Either way $Z^+\supseteq X$ has $L-k-1$ elements
+and its largest exceeds all the others, so the full certificate $v^+$ on
+$y_{k+1},\ldots,y_L$ with zero set $Z^+$ is a certificate for $X$; deleting
+that largest zero together with the largest node $y_{k+1}$ is the deletion step
+in the proof of Theorem~2.2, which bounds $\Tail(v^+)$ by $\Tail(v^-)$ because
+the nodes are at most $1/2$.
+\end{proof}
+
+So \eqref{eq:step} can fail only through a misalignment: the minimizing $Z^-$
+has $g<\max Z^-$ and $g\notin Z^-$, and no zero can be added to $Z^-$ above its
+largest to reach $g$.  Freeing the largest zero does not repair it, because
+replacing $\max Z^-$ by $g$ throws away the displacement $Z^-$ earned and
+leaves a consecutive set, where Theorem~2.2 is an equality: at
+$(\tfrac{503}{250},\tfrac{2053}{1000},\tfrac{527}{250},\tfrac{11}5,
+\tfrac{1177}{500})$ with $u=1$ and $X=\{2\}$ that turns $Z^-=\{1,3,6\}$ into
+$\{1,2,3\}$, and no displaced lift of it comes within a factor $1.40$.
+Sliding down the \emph{smallest} zero above $g$ keeps the displacement.
+
+\begin{conjecture}[Slide-down rule]\label{conj:slide}
+In that case put $z_0=\min\{z\in Z^-:z>g\}$ and
+$A=\bigl(Z^-\setminus\{z_0\}\bigr)\cup\{g\}$, so that $A\supseteq X$.  Then
+some $N>\max A$ makes the full certificate on $y_{k+1},\ldots,y_L$ with zero
+set $A\cup\{N\}$ have tail at most $\Tail(v^-)$.
+\end{conjecture}
+
+With Propositions~\ref{prop:step} and~\ref{prop:stepeasy} the conjecture gives
+$T=\tau^*$ outright.  It is the whole remaining content: one added node, one
+zero slid down to $g$, one zero displaced upwards.  At $(2,3,5,7)$ with $u=1$
+and $X=\{2\}$ it is the covering of Proposition~\ref{prop:values}: $Z^-=\{1,3\}$
+slides to $A=\{1,2\}$ and $N=5$ gives $\tfrac{21337}{1910352}<\tfrac{31}{1704}$.
+The displacement stayed short in everything we measured, $N\le\max A+3$, so the
+rule leaves a bounded search rather than an unbounded one.
+
+A one-parameter search over $N$ is forced only after the slide; the minimizing
+zero set itself is not a consecutive block with one displaced zero.  At
+$(2,3,4,5,6)$ with $u=0$ it is $\{1,2,4,6\}$, of tail $\tfrac{41}{12600}$,
+against $0.003847$ for the best block $\{1,2,3\}$ with one displaced zero.
+
 Whether it always closes is a question about one end of a multiple.  Fix the
 placement.  Dividing the exempt roots out of a multiple controls every
 coefficient below the exempt positions, by the geometric sum that proves
@@ -1028,7 +1105,38 @@ The head is a window of $\max X-1$ coefficients, so the hypothesis is a finite
 condition at each placement.  Near-extremality in it is not a convenience.  At
 $(7,11)$ the multiple $F=(x-7)(x-11)(x+5)=x^3-13x^2-13x+385$ has $b_2(F)=13$
 and $X_F=\{3\}$, while $F/(x-7)=x^2-6x-55$ has $b_1=55$: an arbitrary
-multiple's head exceeds its $c$ by a factor above four.
+multiple's head exceeds its $c$ by a factor above four.  How much
+near-extremality it needs is exact, and at the cutoff it needs more than there
+is.
+
+\begin{proposition}[Reach of the deflation route]\label{prop:defthresh}
+Let $u=1$, $X=\{g\}$, and let $F$, $c$ and $Q=F/(x-r_1)$ be as in
+Lemma~\ref{lem:deflate}.  If the exempt coefficient satisfies
+\begin{equation}\label{eq:defthresh}
+  |f_{D-g}|\le c\,\frac{r_1(r_1-2)}{r_1-1},
+\end{equation}
+then $b_1(Q)\le c$, and hence $c\ge1/\tau^*$.  Under the weaker hypothesis
+$|f_{D-g}|\le c$ the same conclusion is immediate, since $F$ is itself a monic
+multiple of $P_1$; \eqref{eq:defthresh} improves on it exactly when
+$r_1>\tfrac{3+\sqrt5}2=2.618\ldots$, and at $r_1=2$ it is empty.
+\end{proposition}
+
+\begin{proof}
+Write $y=1/r_1$ and $w_d=f_{D-d}$, so $|w_d|\le c$ for $1\le d\le D$, $d\ne g$.
+Since $F(r_1)=0$, the coefficient of $Q$ at distance $e$ from its leading one
+is $-\sum_{k>e}w_ky^{\,k-e}$, as in Lemma~\ref{lem:deflate}.  For $e\ge g$ no
+exempt term occurs and the bound $c\,y/(1-y)=c/(r_1-1)\le c$ is the lemma.  For
+$e<g$ the exempt term contributes at most $|w_g|y^{\,g-e}$ and the rest at most
+$c\,y/(1-y)$, so $b_1(Q)\le c$ as soon as
+$|w_g|y^{\,g-e}\le c\bigl(1-\tfrac1{r_1-1}\bigr)=c\,\tfrac{r_1-2}{r_1-1}$ for
+every $e<g$.  The largest weight is $y^{\,1}$, at $e=g-1$, which is
+\eqref{eq:defthresh}.  Finally $r_1(r_1-2)/(r_1-1)>1$ is $r_1^2-3r_1+1>0$.
+\end{proof}
+
+So at every root set with $r_1=2$ --- $(2,3,5,7)$ among them --- no pointwise
+bound on the head closes a placement along this route: the head has to be
+bounded against $c$ through the cancellation between its terms, not term by
+term.
 
 The primal route to the same statement is to insert the zeros one at a time,
 each insertion paid for by one node, and it fails outright.  The full
@@ -1166,10 +1274,23 @@ $\{1,\ldots,10\}$ is covered by a full certificate whose tail is at most the
 least tail of a full certificate on the surviving nodes.  Two things are not
 proved in general: that $\tau^*$ is attained by a full certificate with a
 witness as in \eqref{eq:dualpair}, and that the search always closes, that is,
-that the escaping placement is always extremal.  By
-Proposition~\ref{prop:head} the second is, at each placement, a bound on
-$\max X-1$ coefficients of a deflated multiple.  Repeated roots
-beyond the confluent pair $(3,3)$ also remain open.
+that the escaping placement is always extremal.
+
+The second is now one inequality.  By Proposition~\ref{prop:step} it is the
+single step \eqref{eq:step}, deleting the largest element of the placement, and
+by Proposition~\ref{prop:stepeasy} that step already holds except when the
+minimizing zero set straddles $\max X$; Conjecture~\ref{conj:slide} is what
+covers the straddling case.  We tested \eqref{eq:step} at $47638$ instances
+across two sweeps --- integer root sets to $L=6$, rational ones, and sets
+clustered just above the cutoff --- with no violation, $1017$ of them
+straddling and every one covered by the slide-down rule.  The two alternatives
+are refuted above: deleting $\min X$ rather than $\max X$ fails at $(2,3,4,5)$,
+and freeing $\max Z^-$ rather than the smallest zero above $g$ fails by a
+factor $1.40$.  Proposition~\ref{prop:head} states the same question
+analytically instead, as a bound on the $\max X-1$ coefficients of a deflated
+multiple; by Proposition~\ref{prop:defthresh} that route says nothing pointwise
+once $r_1\le\tfrac{3+\sqrt5}2$, which covers every root set with $r_1=2$.
+Repeated roots beyond the confluent pair $(3,3)$ also remain open.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
