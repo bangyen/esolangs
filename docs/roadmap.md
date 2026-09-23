@@ -226,12 +226,21 @@ step; an answer lands in the paper it extends, and the row leaves.
   the number theory is worth at most a factor of two and the order of
   magnitude sits in the construction.  A `T`-bit table needs at least `T/3`
   instructions; the tree emits `35T/2`, and Lemma 2.1 is exact and attained by
-  parity, so the slack is in the construction and not its analysis.  First
-  step: emit a Boolean brainfuck program with `cT` runs for some `c < 35/2`
-  and measure it under the encoder, parity being the control.  On the other
-  side, counting spellings is capped at `0.2895` on GRH, so moving the floor
-  past that needs a semantic argument -- distinct programs that compute the
-  same function -- not a better count.
+  parity, so the slack is in the construction and not its analysis.  The
+  obvious competitor is a tape lookup, and it is 7x shorter -- 2.5 characters
+  per entry against 17.5, measured to `n = 18` -- but only through `n = 8`:
+  brainfuck cells are 8-bit and wrap, so the index overflows, and at `n = 10`
+  every index below 256 is right and every one at or above it is wrong.  A
+  travelling multi-digit counter repairs it at `ceil(n/8)+1` cells per stop,
+  which is `Theta(T log T)` characters and so worse than the tree.  First
+  step: the other repair -- a stationary counter reached by `[<<]` sentinel
+  scans over data stored as `value+1` -- which keeps `O(1)` code per
+  decrement and so `~2.5T` characters, at `O(T**2)` execution.  That is a
+  language bound, not a generator: `C_F(T)` minimizes over all programs, and
+  the shipped tree keeps its linear execution either way.  On the other side,
+  counting spellings is capped at `0.2895` on GRH, so moving the floor past
+  that needs a semantic argument -- distinct programs that compute the same
+  function -- not a better count.
 
 - **Unconditional Factor threshold.**  The digit ceiling is proven through
   `n = 19` by a sieve to `10**11`, and explicit at every arity on GRH
