@@ -32,32 +32,24 @@
 
 \begin{abstract}
 Fix real roots $2\le r_1\le\cdots\le r_L$, repetitions allowed.  For every
-nonzero real polynomial $F=\sum_jf_jx^j$ of degree $D$, divisible by
+nonzero real polynomial $F=\sum_jf_jx^j$ of degree $D$ divisible by
 $\prod_{i=1}^L(x-r_i)$, the $(u+1)$-st largest nonleading coefficient
-magnitude is at least $|f_D|\prod_{i=u+1}^L(r_i-1)$, a degree-independent
-bound for every order statistic ($u=0$ needs only $r_i>1$).  This is sharp:
-explicit families approach the $u=1$ bound at $(2,3)$ and the $u=1$ and $u=2$
-bounds at $(2,3,5)$ --- but not universally, since at $(\tfrac52,3,\tfrac72)$
-the true $u=1$ infimum is $65/12$, against the bound $5$.  A second bound,
-$b_1\ge|f_D|(r_1+\cdots+r_L)/2$, complements the $u=0$ row: it exceeds the
-first by a factor of order $L$ near $r_i=2$, but is weaker for large roots.
-Summing the order-statistic bounds gives a lower bound for the logarithmic
-coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$, sharp in order for large
-roots --- $(\tfrac12+o(1))L^2\log L$ when $|f_D|\ge1$ at the first $L$
-primes, attained asymptotically by their product --- but empty as the roots
-approach $2$, exactly where the order-statistic bounds remain informative.  A
-separate argument there, by Jensen's formula rather than by certificates,
-supplies a term of order $L^2$ at every root set; together the two pin down,
-for $L\ge8$, the infimum of $\Lambda$ over monic multiples up to absolute
-constants, as $L^2+\sum_ii\log(r_i-1)$.
-The key tool is a comparison of the infinite $\ell^1$ tails of normalized
-exponential sums with prescribed positive-integer zeros: the tail is
-controlled by the initial run of zeros, strictly unless they are consecutive,
-via an interlacing lemma isolating the underlying zero count.  The argument
-extends the reduced-height certificate method of Dubickas and Jankauskas; as
-a by-product, the same-sign hypothesis under which they evaluate the
-consecutive case is shown to hold at all positive nodes, making their bound
-$H(P)\ge|P(1)|$ unconditional there.
+magnitude is at least $|f_D|\prod_{i=u+1}^L(r_i-1)$, uniformly in the
+degree.  The bound is sharp at $(2,3)$ and $(2,3,5)$, and not sharp at
+$(\tfrac52,3,\tfrac72)$, where the $u=1$ infimum is $65/12$ against $5$;
+both sides come from the same certificate.  Summing the rows bounds the
+logarithmic coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$ of a monic
+multiple below by $\sum_ii\log(r_i-1)$, sharp in order at the first $L$
+primes but empty as the roots approach $2$; Jensen's formula supplies a term
+of order $L^2$ there, and together the two give
+$\inf\Lambda\asymp L^2+\sum_ii\log(r_i-1)$ over monic multiples, at every
+root set.  The key tool compares the $\ell^1$ tails of normalized
+exponential sums with prescribed positive-integer zeros: deleting the
+largest zero together with the largest node strictly increases the tail,
+with equality only when the zeros are consecutive.  As a by-product, the
+same-sign hypothesis under which Dubickas and Jankauskas evaluate the
+consecutive case holds at all positive nodes, making their bound
+$H(P)\ge|P(1)|$ unconditional.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -72,7 +64,11 @@ For a nonzero $F(x)=\sum_jf_jx^j$ of degree $D$, define its logarithmic coeffici
   \Lambda(F)=\sum_{j:f_j\ne0}\log^+|f_j|,
   \qquad \log^+x=\max(0,\log x),
 \]
-where all logarithms are natural.  Throughout, $\N_{>0}=\{1,2,\ldots\}$, and
+where all logarithms are natural.  This is the quantity to bound because it
+is additive over coefficients: a lower bound on each of several coefficient
+order statistics adds one term to $\Lambda$, so the order-statistic bounds
+proved below add up to a bound for $\Lambda$ that no bound on a single
+height can give.  Throughout, $\N_{>0}=\{1,2,\ldots\}$, and
 every asymptotic statement is for $L\to\infty$ with absolute implied
 constants unless parameters are named.
 
@@ -93,10 +89,7 @@ $\Lambda(F)=\log\prod_{j:f_j\ne0}\max(1,|f_j|)$.  For integer coefficients,
 $\Lambda(F)/\log B$ is roughly the total number of base-$B$ digits in the
 nonzero coefficients, up to an additive term proportional to their number and
 ignoring signs, zero entries and exponents.  For real coefficients it is
-simply a mass.  The point is that $\Lambda$ is additive over coefficients.  A
-multiplicative bound on one coefficient order statistic adds one term to
-$\Lambda$, so bounds on successive order statistics add up to a lower bound
-for $\Lambda$ that no bound on a single height can give.  In this sense the
+simply a mass.  In this sense the
 results below are distributional: many coefficients must be large, not just
 the largest.
 
@@ -197,7 +190,7 @@ $b_1\ge|f_D|(r_1+\cdots+r_L)/2$, which neither implies nor is implied by the
 product bound.  At $r_i=2$, where \eqref{eq:mass} is empty,
 Proposition~\ref{prop:neartwo} still forces two large coefficients.
 Proposition~\ref{prop:quadratic}, proved by Jensen's formula rather than by a
-certificate, adds the bound $\Lambda(F)\ge L^2/128$ for $L\ge8$ at every root
+certificate, adds the bound $\Lambda(F)\ge L^2/80$ for $L\ge8$ at every root
 set with $r_i\ge2$, and Corollary~\ref{cor:allroots} combines the two into
 $\inf_Q\Lambda(PQ)\asymp L^2+\sum_ii\log(r_i-1)$, uniformly in the root set.
 
@@ -1023,11 +1016,12 @@ are exempted here rather than all being bounded.
 \begin{proposition}[Quadratic mass at every root set]
 \label{prop:quadratic}
 Let $2\le r_1\le\cdots\le r_L$, repetitions allowed.  Every monic real
-multiple $F$ of $\prod_{i=1}^L(x-r_i)$ satisfies
+multiple $F$ of $\prod_{i=1}^L(x-r_i)$ satisfies, for every
+$\tfrac12<\rho<1$,
 \begin{equation}\label{eq:jensen}
-  b_k(F)\ \ge\ \frac{(3/2)^{L-k+1}-1}{4^k-1},\qquad 1\le k\le L,
+  b_k(F)\ \ge\ \frac{(2\rho)^{L-k+1}-1}{(1-\rho)^{-k}-1},\qquad 1\le k\le L,
 \end{equation}
-and hence $\Lambda(F)\ge L^2/128$ for $L\ge8$.
+and hence $\Lambda(F)\ge L^2/80$ for $L\ge8$.
 \end{proposition}
 
 \begin{proof}
@@ -1065,34 +1059,33 @@ integers, so $z_i\ge i$ and
   \le\prod_{i=1}^{k-1}\Bigl(1+\frac di\Bigr)=\binom{d+k-1}{k-1} .
 \]
 Hence $|[t^d]g|\le b_k(F)\binom{d+k-1}{k-1}$ for $d\ge1$, and since
-$\sum_{d\ge0}\binom{d+k-1}{k-1}x^d=(1-x)^{-k}$, taking $x=\tfrac34$ gives
+$\sum_{d\ge0}\binom{d+k-1}{k-1}x^d=(1-x)^{-k}$, taking $x=\rho$ gives
 \[
-  \max_{|t|=3/4}|g(t)|\ \le\ 1+b_k(F)\bigl(4^k-1\bigr).
+  \max_{|t|=\rho}|g(t)|\ \le\ 1+b_k(F)\bigl((1-\rho)^{-k}-1\bigr).
 \]
-Jensen's formula for $g$ on $|t|\le\tfrac34$, with $g(0)=1$ and at least
+Jensen's formula for $g$ on $|t|\le\rho$, with $g(0)=1$ and at least
 $L-k+1$ zeros of modulus at most $\tfrac12$, gives
-$\bigl(\tfrac34/\tfrac12\bigr)^{L-k+1}\le\max_{|t|=3/4}|g|$, that is
-$(3/2)^{L-k+1}\le1+b_k(F)(4^k-1)$, which is \eqref{eq:jensen}.
+$(2\rho)^{L-k+1}\le\max_{|t|=\rho}|g|$, which is \eqref{eq:jensen}.
 
-Now let $L\ge8$ and $1\le k\le\lfloor L/8\rfloor$.  Then
-$(3/2)^{L-k+1}\ge(3/2)^{7L/8}$ and $4^k-1\le4^{L/8}$, so
+Now take $\rho=\tfrac9{10}$, let $L\ge8$ and $1\le k\le\lfloor L/8\rfloor$.  Then
+$(9/5)^{L-k+1}-1\ge(9/5)^{7L/8}\bigl(1-(9/5)^{-7L/8}\bigr)$ and
+$10^k-1\le10^{L/8}$, so
 \[
-  \log b_k(F)\ \ge\ \tfrac78L\log\tfrac32-\tfrac18L\log4
-    +\log\bigl(1-(3/2)^{-7L/8}\bigr)\ \ge\ \tfrac L8 ,
+  \log b_k(F)\ \ge\ \tfrac78L\log\tfrac95-\tfrac18L\log10
+    +\log\bigl(1-(9/5)^{-7L/8}\bigr)\ \ge\ \tfrac L5 ,
 \]
-the numerical values being $\tfrac78\log\tfrac32=0.3548\ldots$ and
-$\tfrac18\log4=0.1732\ldots$, and the last term at least $-0.061$ for
+the numerical values being $\tfrac78\log\tfrac95=0.5143\ldots$ and
+$\tfrac18\log10=0.2878\ldots$, and the last term at least $-0.017$ for
 $L\ge8$.  These $\lfloor L/8\rfloor$ magnitudes sit at distinct positions and
 exceed $1$, and $\lfloor L/8\rfloor\ge L/16$, so
-$\Lambda(F)\ge(L/16)(L/8)=L^2/128$.
-
+$\Lambda(F)\ge(L/16)(L/5)=L^2/80$.
 \end{proof}
 
 Combining this with the certificate bound closes the mass problem to within
 absolute constants over the whole root range.
 
 \begin{corollary}[The mass infimum at every root set]\label{cor:allroots}
-Let $L\ge8$, let $2\le r_1\le\cdots\le r_L$, put $P=\prod_{i=1}^L(x-r_i)$ and
+Let $L\ge2$, let $2\le r_1\le\cdots\le r_L$, put $P=\prod_{i=1}^L(x-r_i)$ and
 $M(P)=\inf\{\Lambda(PQ):Q\in\R[x]\text{ monic}\}$.  Then
 \[
   M(P)\ \asymp\ L^2+\sum_{i=1}^Li\log(r_i-1),
@@ -1102,8 +1095,11 @@ with absolute implied constants.
 
 \begin{proof}
 For the lower bound, Proposition~\ref{prop:quadratic} gives
-$M(P)\ge L^2/128$ and Corollary~\ref{cor:mass} with $|f_D|=1$ gives
-$M(P)\ge\sum_ii\log(r_i-1)$, so $M(P)$ is at least half their sum.
+$M(P)\ge L^2/80$ when $L\ge8$, and \eqref{eq:halfsum} gives
+$b_1\ge L\ge2$, hence $M(P)\ge\log2\ge L^2\log2/49$, when $2\le L\le7$.
+Corollary~\ref{cor:mass} with $|f_D|=1$ gives
+$M(P)\ge\sum_ii\log(r_i-1)$, so $M(P)$ is at least a constant multiple of
+the sum of the two terms.
 For the upper bound take $Q=1$: as in Corollary~\ref{cor:near},
 $\Lambda(P)\le\sum_k\log\binom Lk+\sum_ii\log r_i$, and
 $\sum_ii\log r_i\le\sum_ii\log(r_i-1)+\tfrac{L(L+1)}2\log2$ because
@@ -1116,15 +1112,16 @@ Corollary~\ref{cor:infimum} gives the sharp constant; at $r_i=2$ the sum
 vanishes and the $L^2$ term is everything, so what collapsed in
 \eqref{eq:mass} was the bound and not the quantity.
 
-Three remarks on \eqref{eq:jensen}.  First, it is useful only while $4^k$ has
-not overtaken $(3/2)^{L-k+1}$, that is for $k$ up to a constant multiple of
-$L$; it says nothing about the last rows.  In the first rows, by contrast,
-Proposition~\ref{prop:neartwo} remains the stronger statement for moderate
-$L$: its bound $b_1\ge L$ of \eqref{eq:halfsum} is beaten only once row
-$k=1$ of \eqref{eq:jensen}, which reads $b_1\ge\bigl((3/2)^L-1\bigr)/3$,
-overtakes it, at $L=8$, and is exponential thereafter.  Second, the radius
-$\tfrac34$ is an arbitrary choice in $(\tfrac12,1)$; optimizing it and the
-range of $k$ would improve the constant $1/128$, which we have not pursued.
+Three remarks on \eqref{eq:jensen}.  First, it is useful only while
+$(1-\rho)^{-k}$ has not overtaken $(2\rho)^{L-k+1}$, that is for $k$ up to a
+constant multiple of $L$; it says nothing about the last rows.  In the first
+rows, by contrast, Proposition~\ref{prop:neartwo} remains the stronger
+statement for moderate $L$: its bound $b_1\ge L$ of \eqref{eq:halfsum} is
+beaten only once row $k=1$ of \eqref{eq:jensen} at $\rho=\tfrac9{10}$, which
+reads $b_1\ge\bigl((9/5)^L-1\bigr)/9$, overtakes it, at $L=8$, and is
+exponential thereafter.  Second, the constant $1/80$ comes from one radius
+and one cutoff $k\le L/8$, chosen for clean arithmetic; a sharper choice
+would improve it, and we have not pursued the best value.
 
 Third, the numerical experiments reported below suggest the clean per-row
 statement
@@ -1132,14 +1129,22 @@ statement
   b_k(F)\ \ge\ L-k+1\qquad(1\le k\le L)
 \]
 for every monic multiple of $(x-2)^L$, interpolating between $b_1\ge L$ and
-the trivial $b_L\ge1$.  We could not prove it and leave it as a conjecture;
-its consequence $\Lambda(F)\ge\log L!$ is in any case asymptotically weaker
-than Proposition~\ref{prop:quadratic}, so the interest is in the individual rows.
-The evidence is negative only: for each $L\le7$ we formed $6000$ multiples
-$Q\cdot(x-2)^L$ with $Q$ monic of degree at most $8$ and integer coefficients
-drawn uniformly from $[-4,4]$, computed the order statistics exactly in
-rational arithmetic, and found no counterexample.  A random search cannot
-confirm a lower bound; it can only fail to refute one.
+the trivial $b_L\ge1$.  The first rows are already covered: for
+$k\le L/8$ the proof of Proposition~\ref{prop:quadratic} gives
+$b_k\ge e^{L/5}$, which exceeds $L$ once $L\ge13$.  What is open is the
+remaining rows, $k>L/8$, and all rows for $L\le12$; the consequence
+$\Lambda(F)\ge\log L!$ is in any case asymptotically weaker than
+Proposition~\ref{prop:quadratic}, so the interest is in the individual rows.
+The evidence is negative only, but it is exact over a family rather than
+sampled.  For fixed $L$, fixed $\deg Q$ and a fixed set of $k-1$ exempt
+positions, minimizing the largest remaining coefficient magnitude over monic
+$Q$ is a linear program, and the minimum of these over all exempt sets is the
+infimum of $b_k$ over monic $Q$ of that degree.  We solved every such program
+for $L\le7$, $\deg Q\le7$ and $1\le k\le L$, reconstructing each minimizer
+and recomputing its order statistics.  No infimum fell below $L-k+1$; every
+one was attained at the largest degree tried and so is still decreasing in
+the degree.  A search over bounded degree cannot confirm a lower bound; it
+can only fail to refute one.
 
 What Theorem~\ref{thm:tail} buys is a bound in closed product form that is
 uniform in the excluded set, and that is what the rows $k\ge2$ need: for
