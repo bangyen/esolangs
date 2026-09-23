@@ -92,7 +92,7 @@ INTERCAL, listed last, is outside the pass.
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
   Malbolge cannot be total: its finite source space omits some 18-input truth
-  tables.  Its shipped construction covers every table through nine inputs;
+  tables.  Its shipped constructions cover every table through eleven inputs;
   generation time and size remain open over the reachable gap below that
   language ceiling.
 
@@ -109,13 +109,12 @@ INTERCAL, listed last, is outside the pass.
   output-sensitive in the last selected prime `Q` and digit count `D`, without
   assuming a prime-gap conjecture. See [factor](proofs/factor.md).
 
-  Polynomial has language-level text complexity `Theta(T**2 / log T)` for
-  programs that consume their input.  Equal real
-  roots form contiguous blocks; their noncrossing opener/closer incidence
+  Polynomial has language-level text complexity `Theta(T**2 / log T)`.  Equal
+  real roots form contiguous blocks; their noncrossing opener/closer incidence
   graph is outerplanar, giving `m_routing < 3L_real`.  The routing lemma gives
-  `L_real = Omega(T/log T)`; it needs the whole input to be read, since a
-  routing-free suffix can otherwise cross an input-dependent number of reads
-  ([proofs/index.md](proofs/index.md)).  The distinct-root slack certificate
+  `L_real = Omega(T/log T)` for every read count: only the last two reads
+  before a routing position can carry a residual that depends on its next
+  input and not on it alone.  The distinct-root slack certificate
   then gives the lower bound for every cofactor and operand sign.  The uncapped
   residual-DAG construction has `O(T/log T)` instructions and expands to the
   upper bound.  The pre-expansion estimator bounds rendered and live
@@ -144,15 +143,6 @@ INTERCAL, listed last, is outside the pass.
   x2.15 and what these arities separate from noise; they are held linear
   until a wider measurement says otherwise.
 
-- **Boolean generator conventions.**  Five conventions govern the *embed*,
-  the text that stands for one input -- not the program around it.  A
-  template has one ordered run per input, constant width, no padded spaces,
-  and a uniform `(zero, one)` pair.
-  | Language | No spaces | Uniform |
-  | --- | --- | --- |
-  `tests/proofs/test_conventions.py` checks these on dense and parity tables
-  at n=2..6. The table is empty; add a relaxed-width toggle only for a smaller
-  executed build. A space toggle has no remaining use.
 - **ArrowQueue reusable drain.** Ship it only if folding is testable at `n >= 5`.
 
 - **Reorder ArrowQueue inputs.**  The current three-input screen leaves 7.2%
@@ -180,12 +170,6 @@ INTERCAL, listed last, is outside the pass.
   the PNG round trip executes and reduces pixels or codels on an exhaustive
   small-table corpus; constants are the positive control.
 
-- **Raster source integration.**  Done for Line and Piet: `generate` returns
-  an `esolangs.raster.Raster`, `run` accepts it or a PNG path through the
-  shared codec, and `describe` reports `source_kind="raster"`.  Raster
-  languages stay outside text-only `RUNNERS` and its VM/step/fuzz contracts.
-  Line retains its graph for repeated rows; Piet emits and executes the pixels.
-
 - **Image-source candidates.**  A read of the 129 `Category:Non-textual` pages
   for raster sources only -- music (Fugue, Velato), music-note, and
   steganography pages excluded.  Verdicts are spec reads, not executed
@@ -201,3 +185,43 @@ INTERCAL, listed last, is outside the pass.
   dodges `?`'s random delta.  Rejected: HuePrism (output-only, no input
   interface) and BitCode/PicCode (no interpreter, no numbers); the Minecraft
   ports are game-save media, not a reproducible raster.
+
+## Open problems
+
+Research questions the proofs leave open.  Each names the first executable
+step; an answer lands in the paper it extends, and the row leaves.
+
+- **Extremality of the escaping placement.**  `T = tau*` (escaping exempt
+  coefficients extremal) is now one inequality: the step
+  `tau_k(X) <= tau_{k+1}(X \ {max X})`, which the deletion step of the
+  displaced-zero comparison already proves unless the minimizing zero set
+  straddles `max X`.  First step: prove the slide-down rule that covers the
+  straddling case -- replace the smallest zero above `max X` by `max X`, then
+  displace one zero -- which holds at all `1017` straddling instances among the
+  `47638` tested and at `674` more.  Where the displaced zero goes is no longer
+  a search: adding a node and a zero moves the certificate along a line whose
+  tail is a weighted sum of distances, so the zero lands on a weighted median,
+  and on that line a displaced zero pays for the added node at any nodes in
+  `(0,1)`, with no `1/2` cutoff.  Deleting `min X`, freeing the largest zero,
+  adjoining `max X` without sliding, and a block-plus-one-displaced zero set
+  are each refuted by an exact witness; pointwise deflation says nothing once
+  `r_1 <= (3+sqrt 5)/2`, so every root set with `r_1 = 2` needs cancellation.
+  Also open: that `tau*` is always attained by a full certificate with a
+  multiplier witness.  Repeated roots beyond `(3,3)` are open too, as is the
+  case where
+  an exempt root lies below 2 and more than `u` partial sums of `P` exceed
+  `|P(1)|`, where the repaired bound need not be sharp.  See the section "The
+  infimum when the criterion fails" in
+  [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
+
+- **Unconditional Factor threshold.**  The digit ceiling is proven through
+  `n = 19` by a sieve to `10**11`, and explicit at every arity on GRH
+  (Section 4 of [factor](proofs/factor.tex)).  Without GRH `x_0` is effective
+  in principle -- `q = 11` has no exceptional zero -- but has no value.  Any
+  explicit `theta < 1` suffices, since `theta` only moves the leading
+  constant.  Both ingredients are in print: Thorner-Zaman's explicit log-free
+  density estimate (`A = 99`) and Kadiri's explicit zero-free region, which
+  covers `q = 11`.  First step: carry Ingham's argument through them for
+  `theta = 98/99`, constant `752.4`.  Weigh it first -- their `10**421` puts
+  `x_0` past any bridge from `10**11`, so the result would be a limsup at an
+  astronomical arity and the practical range would still rest on GRH.

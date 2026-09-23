@@ -12,9 +12,11 @@ than the one they asked for.
 
 import importlib.util
 import re
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -359,3 +361,99 @@ class TestOutputIsReplayedNotStreamed:
     def test_verbose_streams_the_whole_stack(self) -> None:
         verify = load_script()
         assert verify._should_stream(5, quiet=False, verbose=True)  # noqa: SLF001
+
+
+class TestASkippableToolIsStillDeclared:
+    """A step that skips itself must have its tool in the dev extra.
+
+    ``_run_steps`` drops the duplicate-code step when ``python -m pylint``
+    does not import, and the run still ends "all local checks passed".
+    pylint was in no dependency list -- not the dev extra, not the
+    pre-commit config, not ``just install-dev`` -- and only CI's
+    ``uv run --with pylint`` supplied it.  So a fresh checkout reported a
+    clean gate with the check never run.  ``verify.py`` syncs the dev extra
+    itself, which makes declaring it there the whole fix; this keeps it
+    declared.
+    """
+
+    @staticmethod
+    def _dev_extra() -> list[str]:
+        with (REPO_ROOT / "pyproject.toml").open("rb") as handle:
+            config = tomllib.load(handle)
+        extras = config["project"]["optional-dependencies"]
+        return [str(entry) for entry in extras["dev"]]
+
+    def test_pylint_is_a_dev_dependency(self) -> None:
+        names = {re.split(r"[<>=!\[ ]", entry)[0] for entry in self._dev_extra()}
+        assert "pylint" in names
+
+    def test_the_skip_still_names_pylint(self) -> None:
+        """The positive control: the test above guards a skip that exists.
+
+        If the step stopped skipping itself the assertion would be guarding
+        nothing, and would keep passing.
+        """
+        source = SCRIPT.read_text(encoding="utf-8")
+        assert 'if not have_pylint and "(pylint)" in name:' in source
+
+
+class TestZeroStepsIsNotAPass:
+    """A run that checked nothing must not print what a green run prints.
+
+    ``--only``/``--skip`` filtered ``STEPS`` by name with no validation, so
+    ``--only pytest-typo`` left the runnable list empty, ran nothing, and still
+    printed ``all local checks passed`` at exit 0 -- the gate's success banner
+    on zero evidence.  Every ``justfile`` name matches a real step today, so
+    this was latent; one typo in a target would have made it live.
+    """
+
+    @staticmethod
+    def _parse(argv: list[str]) -> object:
+        verify = load_script()
+        with mock.patch.object(sys, "argv", ["verify.py", *argv]):
+            return verify._parse_only_skip()  # noqa: SLF001
+
+    @pytest.mark.parametrize("flag", ["--only", "--skip"])
+    def test_an_unknown_step_name_is_rejected(
+        self, flag: str, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as caught:
+            self._parse([flag, "pytest-typo"])
+        assert caught.value.code == 2
+        assert "unknown step(s) pytest-typo" in capsys.readouterr().err
+
+    def test_a_real_name_is_accepted(self) -> None:
+        """The positive control: validation does not reject the names in use.
+
+        These two are what ``just test-quick`` passes, so a rule that rejected
+        them would take the blessed fast loop down with it.
+        """
+        only, skip, *_ = self._parse(["--only", "pre-commit,pytest"])  # type: ignore[misc]
+        assert only == {"pre-commit", "pytest"}
+        assert skip is None
+
+    def test_filters_that_cancel_out_fail(
+        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Both names are real, so validation passes and the guard catches it.
+
+        ``main`` is called in process: with ``--only`` it skips scoping, and
+        ``VERIFY_NO_SYNC`` skips the sync, so it reaches the guard and returns
+        without starting a step.  Its two tool probes are stubbed -- they are
+        real subprocesses, and under a loaded suite they alone pushed this
+        test past the fast band's 1s.
+        """
+        verify = load_script()
+        monkeypatch.setenv("VERIFY_NO_SYNC", "1")
+        monkeypatch.setattr(
+            sys, "argv", ["verify.py", "--only", "pytest", "--skip", "pytest"]
+        )
+        monkeypatch.setattr(
+            verify.subprocess,
+            "run",
+            lambda *a, **_: subprocess.CompletedProcess(a[0] if a else [], 0),
+        )
+        assert verify.main() == 1
+        out = capsys.readouterr().out
+        assert "all local checks passed" not in out
+        assert "zero steps" in out

@@ -1,0 +1,1513 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{
+  pdfauthor={Bangyen Pham},
+  pdftitle={Sharpness of the Coefficient Order-Statistic Bound},
+  pdfsubject={Sharpness and necessity results for the coefficient order-statistic bound on polynomial multiples},
+  pdfkeywords={polynomial multiples, coefficient mass, reduced height, Chebyshev systems, exponential sums},
+  pdflang={en-US}
+}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\theoremstyle{plain}
+\newcommand{\R}{\mathbb R}
+\newcommand{\N}{\mathbb N}
+\DeclareMathOperator{\Tail}{Tail}
+\DeclareMathOperator{\sgn}{sgn}
+
+\title{Sharpness of the Coefficient Order-Statistic Bound}
+\author{\shortstack{Bangyen Pham\\
+\small Independent Researcher\\
+\small\href{mailto:bangyenp@gmail.com}{\texttt{bangyenp@gmail.com}}\\
+\small\href{https://orcid.org/0009-0006-9928-2088}{ORCID: 0009-0006-9928-2088}}}
+\date{September 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The certificate paper~\cite{coefficient-mass} proves that for real roots
+$2\le r_1\le\cdots\le r_L$, repetitions allowed, and $F=\sum_jf_jx^j$ a
+nonzero multiple of $\prod_{i=1}^L(x-r_i)$, the $(u+1)$-st largest
+nonleading coefficient magnitude satisfies
+$b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)$, and that it is an infimum at
+$(2,3)$ and $(2,3,5)$.  We show that the $(2,3,5)$ multiples are correctly
+ordered at every degree, the $b_2$ family approaching its bound from above,
+and identify a partial-sum criterion on the
+surviving root product under which the same construction shows the bound
+is an infimum in general.  For distinct roots the criterion is also
+necessary: when it fails, the infimum lies strictly above the bound.  It is
+then the reciprocal of the worst placement's best certificate tail, and
+lifting certificates computes it at explicit root sets: at $(2,3,5,7)$ it is
+$1704/31$.
+The standing restriction $r_1\ge2$ cannot be dropped once $u\ge1$, already
+at $L=2$; the node cutoff $y_i\le1/2$ underlying the tail comparison behind
+the bound cannot be raised; and we extend that comparison to confluent
+(repeated) nodes.  Beyond the cutoff we prove a repaired bound that keeps the
+factors $\min(r_i-1,1)$ the original discards.  It holds for every $r_1>1$ and
+is the infimum when the exempt roots lie in $(1,2]$ and the partial sums are
+small, in particular for $b_L$ whenever $r_{L-1}\le2$.
+\end{abstract}
+
+\noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
+height; Chebyshev systems; exponential sums.
+
+\noindent\textbf{2020 Mathematics Subject Classification.} Primary 11C08; Secondary 26C05, 41A50.
+
+\section{Introduction}
+
+The certificate paper~\cite{coefficient-mass} proves a degree-independent
+lower bound on the coefficient order statistics of a polynomial multiple.
+For real roots $2\le r_1\le\cdots\le r_L$, repetitions allowed, and $F$ a
+nonzero multiple of $\prod_{i=1}^L(x-r_i)$ of degree $D\ge L$ with leading
+coefficient $f_D$, its Theorem~3.2 gives, for every $0\le u\le L-1$,
+\begin{equation}\label{eq:order}
+  b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1),
+\end{equation}
+where $b_k$ is the $k$th largest of the nonleading coefficient magnitudes
+$|f_j|$, $j<D$, so that \eqref{eq:order} bounds $b_k$ with $k=u+1$; the case
+$u=0$ needs only $r_1>1$.  The engine behind
+\eqref{eq:order} is its Theorem~2.2, a comparison between the infinite
+$\ell^1$ tail of a normalized exponential sum with prescribed zeros and the
+tail of the sum with the same zero count but a consecutive zero set: for
+nodes $0<y_1<\cdots<y_c\le1/2$, $y_i=\rho_i^{-1}$, and a zero set $Z$ of size
+$c-1$ with leading run $f=\max\{0\le k\le c-1:\{1,\ldots,k\}\subseteq Z\}$,
+the unique exponential sum $u$ on those nodes with $u_0=1$ and $u_z=0$
+($z\in Z$) satisfies
+\[
+  \Tail(u)=\sum_{d\ge1}|u_d|\le\prod_{i=1}^{f+1}\frac{y_i}{1-y_i},
+\]
+with equality exactly at $Z=\{1,\ldots,c-1\}$; \eqref{eq:order} follows by
+applying this with the excluded coefficient positions supplying $Z$.
+Lemma~2.1 evaluates the consecutive case; Lemma~2.3 supplies the interlacing
+step inside the comparison; Lemma~3.1 converts the tail bound into a
+coefficient bound; Corollary~3.6 shows the resulting lower bound gives the
+infimum of the logarithmic coefficient mass over monic multiples of the first
+$L$ primes up to $O(L^2)$.  Throughout, an unqualified Lemma~2.1,
+Theorem~2.2, Lemma~2.3, Lemma~3.1, Theorem~3.2 or Corollary~3.6 is the
+result of that number in~\cite{coefficient-mass}; every other numbered result
+is this paper's own.
+
+Section~\ref{sec:extend} extends Theorem~2.2 to confluent nodes and shows
+that neither the node cutoff $y_i\le1/2$ it rests on nor the standing
+restriction $r_i\ge2$ in \eqref{eq:order} can be relaxed once $u\ge1$.  It
+then proves a repaired bound, valid for every $r_1>1$, and shows it is sharp
+when the exempt roots lie in $(1,2]$ and the partial sums are small.
+Section~\ref{sec:attain} shows that the explicit monic multiples of
+$(x-2)(x-3)(x-5)$ approaching \eqref{eq:order} are correctly ordered at every
+degree, identifies the partial-sum criterion
+behind the infimum in general, and proves that for distinct roots the bound
+is an infimum exactly when the criterion holds.  Section~\ref{sec:value}
+computes the infimum when it fails.  Section~\ref{sec:scope} records what is
+proved and what remains open.
+
+\section{Extensions and necessity of the hypotheses}\label{sec:extend}
+
+\begin{proposition}[Confluent analogue]\label{prop:confluent}
+Let $0<y_1<\cdots<y_c\le1/2$ and $e_1,\ldots,e_c\ge1$, put $m=e_1+\cdots+e_c$,
+and let $y_{(1)}\le\cdots\le y_{(m)}$ be the multiset with each $y_i$ repeated
+$e_i$ times.  Let
+\[
+  u_d=\sum_{i=1}^c P_i(d)y_i^d,\qquad \deg P_i<e_i,
+\]
+satisfy $u_0=1$ and $u_z=0$ for a set $Z$ of $m-1$ positive integers with
+leading run $f$.  Then
+\[
+  \Tail(u)\le\prod_{j=1}^{f+1}\frac{y_{(j)}}{1-y_{(j)}}.
+\]
+\end{proposition}
+
+\begin{proof}
+The interpolation system is indexed by the Hermite basis, not by the
+ordinary exponentials, and the two must be kept apart.  For
+$\varepsilon>0$, $i=1,\ldots,c$ and $k=0,\ldots,e_i-1$ put
+\[
+  \phi_{i,k,\varepsilon}(d)
+  =y_i^d\Bigl(\frac{1-e^{-\varepsilon d}}{\varepsilon}\Bigr)^k .
+\]
+For fixed $\varepsilon>0$, the binomial expansion gives
+\[
+  \phi_{i,k,\varepsilon}(d)
+  =\frac1{\varepsilon^k}\sum_{j=0}^{k}(-1)^j\binom{k}{j}
+    \bigl(y_ie^{-j\varepsilon}\bigr)^d,
+\]
+so each $\phi_{i,k,\varepsilon}$ is a finite linear combination of the
+ordinary exponentials $d\mapsto z^d$ at the distinct nodes
+$z_{i,j}=y_ie^{-j\varepsilon}$.  For $0<\varepsilon<\varepsilon_0$ the $m$
+nodes $z_{i,j}$ are distinct, lie in $(0,1/2]$, and stay separated between
+distinct $i$.  Within one group $i$ the change of basis from
+$\{z_{i,j}^{d}\}_{j<e_i}$ to
+$\{\phi_{i,k,\varepsilon}\}_{k<e_i}$ is triangular with diagonal entries
+$(-1)^k\varepsilon^{-k}$, hence invertible for $\varepsilon>0$, and the same
+function space is spanned either way.
+
+For such an $\varepsilon$ let $u^{(\varepsilon)}$ be the unique exponential
+sum on the nodes $z_{i,j}$ with $u^{(\varepsilon)}_0=1$ and
+$u^{(\varepsilon)}_z=0$ for $z\in Z$; existence and uniqueness are the
+Vandermonde argument opening Section~2 of~\cite{coefficient-mass}.  Theorem~2.2 applies with
+the same $f$ and gives
+\[
+  \Tail(u^{(\varepsilon)})
+  \le\prod_{j=1}^{f+1}\frac{y_{(j)}(\varepsilon)}{1-y_{(j)}(\varepsilon)},
+\]
+where $y_{(1)}(\varepsilon)\le\cdots\le y_{(m)}(\varepsilon)$ is the sorted
+perturbed multiset.
+
+It remains to pass to the limit.  Write
+$a^{(\varepsilon)}=(a^{(\varepsilon)}_{i,k})$ for the coefficients of
+$u^{(\varepsilon)}$ in the $\phi$-basis; they solve
+$M(\varepsilon)a^{(\varepsilon)}=e_0$, where $M(\varepsilon)$ is the
+$m\times m$ matrix with rows indexed by $d\in\{0\}\cup Z$ and columns by
+$(i,k)$, with entry $\phi_{i,k,\varepsilon}(d)$, and $e_0$ is the first
+standard basis vector.  Each entry
+$\phi_{i,k,\varepsilon}(d)=y_i^d\bigl((1-e^{-\varepsilon d})/\varepsilon\bigr)^k$
+has a removable singularity at $\varepsilon=0$ and extends analytically there
+with limit $d^ky_i^d$, so $M(\varepsilon)\to M(0)$ as $\varepsilon\to0$, where
+$M(0)$ is the confluent matrix.  The functions
+$d\mapsto d^ky_i^d$ form an extended Chebyshev system on $\R$: a nonzero
+$\sum_iP_i(d)y_i^d$ with $\deg P_i<e_i$ has at most $m-1$ real
+zeros~\cite[Part~Five, Ch.~1]{polya-szego}.  The
+interpolation here is at the $m$ \emph{distinct} points $\{0\}\cup Z$---the
+confluence sits in the basis, not in the nodes---so $M(0)$ is invertible by
+ordinary unisolvence of a Chebyshev system at distinct
+points~\cite[Chapter~I, Theorem~4.1]{karlin-studden}.  Matrix inversion is
+continuous on the open set of invertible matrices, so
+$a^{(\varepsilon)}\to M(0)^{-1}e_0$, and for every fixed $d$,
+\[
+  u^{(\varepsilon)}_d
+  =\sum_{i,k}a^{(\varepsilon)}_{i,k}\phi_{i,k,\varepsilon}(d)
+  \longrightarrow\sum_{i,k}a_{i,k}d^ky_i^d=u_d .
+\]
+Fatou's lemma for series, applied to the nonnegative terms
+$|u^{(\varepsilon)}_d|$, gives
+\[
+  \Tail(u)=\sum_{d\ge1}|u_d|
+  \le\liminf_{\varepsilon\to0}\Tail(u^{(\varepsilon)}).
+\]
+Finally the order statistics of a converging multiset converge, so the
+product $\prod_{j=1}^{f+1}y_{(j)}(\varepsilon)/(1-y_{(j)}(\varepsilon))$
+tends to $\prod_{j=1}^{f+1}y_{(j)}/(1-y_{(j)})$.
+\end{proof}
+
+\begin{proposition}[The node cutoff $1/2$ is sharp]\label{prop:cutoff}
+No constant $a>1/2$ can replace $1/2$ in Theorem~2.2 or in
+Proposition~\ref{prop:confluent}: for every $a\in(1/2,1)$ some configuration
+with all nodes in $(0,a]$ violates the bound
+$\Tail(u)\le\prod_{j=1}^{f+1}y_{(j)}/(1-y_{(j)})$.
+\end{proposition}
+
+\begin{proof}
+Take a single node $a\in(1/2,1)$ of multiplicity $c$ and
+$Z=\{2,3,\ldots,c\}$, so the sum is $u_d=a^d\prod_{k=2}^c(1-d/k)$.  Then
+$u_0=1$, the prescribed zeros are exactly $Z$, the leading run is $f=0$, and
+\[
+  u_1=\frac ac,\qquad
+  |u_d|=\frac1c\binom{d-2}{c-1}a^d\quad(d\ge c+1),
+\]
+so, summing the binomial series,
+\[
+  \Tail(u)=\frac ac+\frac{a^{c+1}}{c(1-a)^c}
+  =\frac ac\Bigl[1+\Bigl(\frac a{1-a}\Bigr)^c\Bigr].
+\]
+The bound with $f=0$ would be $a/(1-a)$, but
+\[
+  \frac{\Tail(u)}{a/(1-a)}
+  =\frac{1-a}{c}\Bigl[1+\Bigl(\frac a{1-a}\Bigr)^c\Bigr]\longrightarrow\infty
+\]
+because $a/(1-a)>1$, so $\Tail(u)>a/(1-a)$ for all large $c$.
+
+To transfer the obstruction to distinct nodes, suppose the bound held for
+every configuration with nodes in $(0,a]$.  Coalescing the $c$ nodes near $a$
+as in the proof of Proposition~\ref{prop:confluent} gives sums
+$u^{(\varepsilon)}$ on distinct nodes in $(0,a]$ that satisfy it, and
+$u^{(\varepsilon)}_d\to u_d$ for each $d$.  By Fatou's lemma,
+$\Tail(u)\le\liminf_{\varepsilon\to0}\Tail(u^{(\varepsilon)})\le a/(1-a)$,
+contradicting the previous paragraph for large $c$.
+\end{proof}
+
+\begin{proposition}[The root restriction $r_1\ge2$ is necessary for $k\ge2$]
+\label{prop:subtwo}
+The $k=1$ case of \eqref{eq:order} holds for every root set $r_i>1$ by
+Theorem~3.2, and for $L=1$ it is strict: every nonzero multiple
+of $x-r$ has $b_1>|f_D|(r-1)$.  For $k\ge2$ the restriction $r_1\ge2$ cannot
+be dropped, already at $L=2$, $k=2$, and already when only $r_1<2$: with
+$r_1=3/2$ and $r_2=3$ there is a monic multiple $F$ of $(x-r_1)(x-r_2)$ of
+degree $4$ with
+\[
+  b_2=\frac{81}{50}=1.62<2=r_2-1 .
+\]
+\end{proposition}
+
+\begin{proof}
+For $L=1$, $F(r)=0$ gives
+$|f_D|r^D=\bigl|\sum_{j<D}f_jr^j\bigr|\le b_1(r^D-1)/(r-1)$, so
+$b_1\ge|f_D|(r-1)r^D/(r^D-1)>|f_D|(r-1)$, with no use of $r\ge2$.
+
+For the failure put $P=(x-\tfrac32)(x-3)=x^2+p_1x+p_0$ with
+$p_1=-\tfrac92$, $p_0=\tfrac92$, and let $Q=x^2+q_1x+q_0$ be
+monic, so that $F=PQ$ has
+\[
+  f_0=p_0q_0,\quad f_1=p_0q_1+p_1q_0,\quad f_2=p_0+p_1q_1+q_0,\quad
+  f_3=p_1+q_1,\quad f_4=1 .
+\]
+Imposing $f_0=f_1=f_2$ is two linear equations in $(q_0,q_1)$: the first gives
+$q_1=(p_0-p_1)q_0/p_0$, and substituting it into the second gives
+\[
+  q_0=\frac{p_0^2}{\delta},\qquad q_1=\frac{p_0(p_0-p_1)}{\delta},\qquad
+  \delta=(p_0-p_1)^2+p_0(p_1-1),
+\]
+whence the common value is $f_0=f_1=f_2=p_0^3/\delta$.  Here
+$\delta=\tfrac{225}4>0$, so
+\[
+  q_0=\frac9{25},\qquad q_1=\frac{18}{25},\qquad
+  f_0=f_1=f_2=\frac{81}{50}=1.62,
+\]
+while $f_3=p_1+q_1=-\tfrac{189}{50}=-3.78$, that is,
+$F=x^4-\tfrac{189}{50}x^3+\tfrac{81}{50}x^2+\tfrac{81}{50}x+\tfrac{81}{50}$.
+The four nonleading magnitudes are $|f_3|$ and three copies of
+$p_0^3/\delta$, so $b_2=p_0^3/\delta<2=r_2-1$, which is what \eqref{eq:order}
+would assert for $u=1$; the second root obeys $r_2\ge2$, so only $r_1$ is out
+of range.
+\end{proof}
+
+The restriction belongs to the product, though, not to the roots.  Lemma~3.1
+discards, for each exempt position, a factor $y_i/(1-y_i)$ once it is at most
+$1$, and that factor exceeds $1$ precisely when $r_i<2$.  Keeping it gives a
+bound that holds for every $r_1>1$.
+
+\begin{theorem}[Repaired tail comparison]\label{thm:repaired}
+Let $0<y_1<\cdots<y_c<1$, and let $Z$, $f$ and $u$ be as in Theorem~2.2.
+Then
+\[
+  \Tail(u)\le\prod_{i=1}^{f+1}\frac{y_i}{1-y_i}
+  \prod_{i=f+2}^{c}\max\Bigl(1,\frac{y_i}{1-y_i}\Bigr).
+\]
+\end{theorem}
+
+Within the cutoff every factor of the second product is $1$, and this is
+Theorem~2.2.
+
+\begin{proof}
+Run Theorem~2.2's induction on the number $c-1-f$ of displaced zeros.  The
+base case is Lemma~2.1, which needs only $y_i<1$.  In the displaced step, with
+$z=\max Z\ge1$ and $F$, $G$, $\mu=|F_z|$ as there, the splitting identity
+\[
+  \Tail(F)-\Tail(u)=\mu\bigl(2\Gamma_F(z)-\Gamma_G(z)+A_G\bigr),
+  \qquad
+  \Gamma_V(z)=\frac{\sum_{d\ge z}|V_d|}{|V_z|},
+  \quad A_G=\sum_{1\le d<z}|G_d|\ge0,
+\]
+rests on the zero bound alone, and the first half
+$\Gamma_G(z)\le\Gamma_F(z)/(1-y_c)$ of the correction-ratio bound rests on
+Lemma~2.3, which needs no upper bound on the nodes, and on a geometric series
+in $y_c<1$.  Since $\mu\Gamma_F(z)=\sum_{d\ge z}|F_d|$, together they give
+\[
+  \Tail(u)\le\Tail(F)+\frac{2y_c-1}{1-y_c}\sum_{d\ge z}|F_d| .
+\]
+If $y_c\le1/2$ the correction is at most $0$.  Otherwise it is at most
+$\frac{2y_c-1}{1-y_c}\Tail(F)$, and $1+\frac{2y_c-1}{1-y_c}=\frac{y_c}{1-y_c}$.
+Either way
+\[
+  \Tail(u)\le\max\Bigl(1,\frac{y_c}{1-y_c}\Bigr)\Tail(F).
+\]
+The sum $F$ lives on $y_1,\ldots,y_{c-1}$ and its zero set has the same leading
+run $f$, so the induction hypothesis bounds $\Tail(F)$ by the product over
+those nodes, and the factor for $y_c$ completes the product.
+\end{proof}
+
+The deletion step itself can reverse beyond the cutoff: on nodes
+$(1/3,1/2,9/10)$ with $Z=\{1,3\}$ it takes $\Tail$ from $2.077$ down to $0.500$.
+The factor $\max(1,y_c/(1-y_c))=9$ absorbs the reversal.  The limit argument
+of Proposition~\ref{prop:confluent} carries the theorem to confluent nodes
+unchanged.  At Proposition~\ref{prop:cutoff}'s witness, one node $a$ of
+multiplicity $c$ with $f=0$, it gives $(a/(1-a))^c$ against
+$\Tail(u)=(a/c)[1+(a/(1-a))^c]$, a ratio of at most $1/c$.
+
+\begin{corollary}[Repaired order statistics]\label{cor:repaired}
+Let $r_1\le\cdots\le r_L$ be real with $r_1>1$, repetitions allowed, and let
+$F$ be a nonzero multiple of $\prod_{i=1}^L(x-r_i)$.  Then for every
+$0\le u\le L-1$,
+\begin{equation}\label{eq:repaired}
+  b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)\prod_{i=1}^{u}\min(r_i-1,1),
+\end{equation}
+which is \eqref{eq:order} when $r_u\ge2$.
+\end{corollary}
+
+\begin{proof}
+Follow Lemma~3.1's proof with Theorem~\ref{thm:repaired} in place of
+Theorem~2.2.  The zero set there has leading run $f\ge L-u-1$.  The $L-u$
+smallest nodes are the reciprocals of $r_{u+1},\ldots,r_L$ and contribute
+$\prod_{i>u}(r_i-1)^{-1}$.  Every other node $1/r_i$, $i\le u$, contributes
+either $y_i/(1-y_i)$ or $\max(1,y_i/(1-y_i))$, and both are at most
+$1/\min(r_i-1,1)$.  Repeated roots and a general $f_D$ are handled as in
+Theorem~3.2's proof.  Its perturbation $r_i+i\varepsilon$ keeps every root
+above $1$, and the right side of \eqref{eq:repaired} is continuous in the
+roots.
+\end{proof}
+
+At $(\tfrac32,3)$ the corollary gives $b_2\ge1$, below the $1.62$ of
+Proposition~\ref{prop:subtwo}, and $1$ is the infimum.  More generally the
+repaired bound is attained whenever the $u$ exempt roots lie in $(1,2]$ and
+the partial sums of the whole root product are small enough.  The multiples
+that attain it put the exempt coefficients at the top rather than the
+bottom.  Here $S_j(P)$ are the partial sums of \eqref{eq:wgen} with $u=0$.
+
+\begin{proposition}[Sharpness below $2$]\label{prop:subtwosharp}
+Let $r_1\le\cdots\le r_L$ be real with $r_1>1$, repetitions allowed, put
+$P=\prod_{i=1}^L(x-r_i)$, and let $0\le u\le L-1$.  Let $\sigma$ be the
+$(u+1)$-st largest of $|S_1(P)|,\ldots,|S_{L-1}(P)|$, or $0$ if $u=L-1$.  Then
+\[
+  \inf_Qb_{u+1}(QP)\le\max\bigl(|P(1)|,\sigma\bigr)
+\]
+over monic $Q\in\R[x]$.  If $r_u\le2$ and $\sigma\le|P(1)|$, the infimum is
+$|P(1)|$, which is the value of \eqref{eq:repaired}.  In particular
+$\inf_Qb_L(QP)=|P(1)|$ whenever $r_{L-1}\le2$.
+\end{proposition}
+
+\begin{proof}
+Since $P(0)\ne0$, $x$ is invertible modulo $P$.  For $n\ge1$ let $R_n$ be the
+polynomial of degree less than $L$ with $x^nR_n\equiv1\pmod P$.  Its
+coefficient vector is $T^n$ applied to that of $1$, where $T$ is
+multiplication by $x^{-1}$ on $\R[x]/(P)$.  The eigenvalues of $T$ are the
+$1/r_i<1$, so $R_n\to0$, and for large $n$ we have $R_n(1)\ne1$.  Put
+\[
+  t_n=\frac{P(1)}{1-R_n(1)},\qquad M_n=P+t_nR_n .
+\]
+Then $M_n$ is monic of degree $L$ with $M_n(1)=t_n$, so
+$M_n=(x-1)\widetilde A_n+t_n$ with $\widetilde A_n$ monic of degree $L-1$.
+Moreover $x^nM_n-t_n\equiv x^nP+t_n(x^nR_n-1)\equiv0\pmod P$, and
+$x^nM_n-t_n$ vanishes at $1$, where $P$ does not, so $P$ divides
+\[
+  F_n=\frac{x^nM_n-t_n}{x-1}=x^n\widetilde A_n+t_n\sum_{j=0}^{n-1}x^j .
+\]
+Thus $F_n$ is a monic multiple of $P$.  Its nonleading coefficients are the
+$L-1$ lower coefficients of $\widetilde A_n$, followed by $t_n$ repeated $n$
+times.  At most $u$ of those can exceed the larger of $|t_n|$ and the
+$(u+1)$-st largest lower coefficient of $\widetilde A_n$, so $b_{u+1}(F_n)$ is
+at most that larger value.  As $n\to\infty$, $t_n\to P(1)$ and
+$\widetilde A_n\to(P-P(1))/(x-1)$.  By \eqref{eq:wgen} the lower coefficients
+of that limit are $S_1(P),\ldots,S_{L-1}(P)$, which proves the bound.  If
+$r_u\le2$, every $\min(r_i-1,1)$ with $i\le u$ is $r_i-1$, so the right side
+of \eqref{eq:repaired} is $|P(1)|$.  At $u=L-1$, $\sigma=0$.
+\end{proof}
+
+At $(\tfrac32,10,20)$ with $u=1$, for example, the partial sums are
+$1,-30.5,214.5,-85.5$, so $\sigma=30.5$ and the infimum of $b_2$ is
+$85.5=|P(1)|$.  The stated product $171$ is false there.
+
+\section{Sharpness at explicit root sets}\label{sec:attain}
+
+At roots $(2,3)$ the certificate paper already settles the question: it
+exhibits monic multiples
+$F_n=x^{n+1}-a_nx^n+t_n\sum_{j=0}^{n-1}x^j$ of $(x-2)(x-3)$ with
+$b_2(F_n)=t_n$ decreasing to $2$~\cite[Proposition~4.1]{coefficient-mass}, so
+the $u=1$ bound is an infimum there, approached but never attained.
+
+The same construction reaches $L=3$.  Write the multiple from the top: one
+leading $1$, a short free prefix, a long run of a single value $t$, and $u$
+exempt coefficients at the bottom.  The exempt coefficients grow like
+$r_u^D$ and so survive division by $r^{D-1}$ only at the $u$ smallest roots,
+which they absorb; the run must therefore satisfy the remaining $L-u$ roots
+alone, and its value is what \eqref{eq:order} predicts.  The certificate
+paper proves the two limits below~\cite[Section~4]{coefficient-mass}; what
+is added here is that the ordering holds exactly at every degree, with
+$t_D>a_D+1>8$ throughout, and the Descartes step that the general
+construction later reuses.
+
+\begin{proposition}[The bounds at roots $(2,3,5)$ are infima]
+\label{prop:sharp235}
+For $D\ge5$ let $(a_D,t_D,c_D)$ be the solution of the linear system
+$F_D(2)=F_D(3)=F_D(5)=0$ in
+\[
+  F_D(x)=x^D-a_Dx^{D-1}+t_D\sum_{j=1}^{D-2}x^j+c_D ,
+\]
+and for $D\ge6$ let $(s_D,e_D,e_D')$ be the solution of
+$G_D(2)=G_D(3)=G_D(5)=0$ in
+\[
+  G_D(x)=x^D-s_D\sum_{j=2}^{D-1}x^j+e_Dx+e_D' .
+\]
+Both systems are nonsingular, $F_D$ and $G_D$ are monic multiples of
+$(x-2)(x-3)(x-5)$ with $b_2(F_D)=t_D$ and $b_3(G_D)=s_D$, and $t_D\to8$,
+$s_D\to4$.  Hence
+\begin{equation}\label{eq:sharp235}
+  \inf_Q b_2\bigl(QP\bigr)=8=(r_2-1)(r_3-1),
+  \qquad
+  \inf_Q b_3\bigl(QP\bigr)=4=r_3-1,
+\end{equation}
+over monic $Q\in\R[x]$, with $P(x)=(x-2)(x-3)(x-5)$: the values
+\eqref{eq:order} asserts for $u=1$ and $u=2$.
+\end{proposition}
+
+\begin{proof}
+Both systems are nonsingular for every $D$ in range.  A kernel vector of the
+first is an $H=-ax^{D-1}+t\sum_{j=1}^{D-2}x^j+c$ vanishing at $2,3,5$, and
+\[
+  (x-1)H=-ax^D+(a+t)x^{D-1}+(c-t)x-c
+\]
+has four terms, hence at most three positive roots by Descartes' rule; but
+$1,2,3,5$ are four, so $H\equiv0$ and $a=t=c=0$.  The second is the same with
+$(x-1)H=-sx^D+(s+e)x^2+(e'-e)x-e'$.
+
+Divide $F_D(r)=0$ by $r^{D-1}$ and sum the geometric progression:
+\[
+  (r-a_D)+\frac{t_D}{r-1}
+  +r^{1-D}\Bigl(c_D-\frac{r\,t_D}{r-1}\Bigr)=0,
+  \qquad r\in\{2,3,5\}.
+\]
+Put $\gamma_D=2^{1-D}c_D$, so that $r^{1-D}c_D=\gamma_D(2/r)^{D-1}$.  In the
+unknowns $(a_D,t_D,\gamma_D)$ the three equations read
+\[
+  \begin{aligned}
+    -a+t\bigl(1-2^{2-D}\bigr)+\gamma&=-2,\\
+    -a+t\bigl(\tfrac12-\tfrac323^{1-D}\bigr)+\gamma(2/3)^{D-1}&=-3,\\
+    -a+t\bigl(\tfrac14-\tfrac545^{1-D}\bigr)+\gamma(2/5)^{D-1}&=-5 .
+  \end{aligned}
+\]
+Every $D$-dependent entry is $O((2/3)^{D})$, so the coefficient matrix tends
+to
+\[
+  M=\begin{pmatrix}-1&1&1\\-1&\tfrac12&0\\-1&\tfrac14&0\end{pmatrix},
+  \qquad \det M=\tfrac14\ne0 .
+\]
+Its inverse therefore converges to
+$M^{-1}$, so $(a_D,t_D,\gamma_D)$ converges to the solution of $M$ against
+$(-2,-3,-5)$.  The last two rows of that limit give
+$-a+\tfrac12t=-3$ and $-a+\tfrac14t=-5$, whence $t=8$ and $a=7$; the first
+row then gives $\gamma=-3$, so $c_D\sim-3\cdot2^{D-1}$.
+
+The ordering is exact for every $D$, not only in the limit.  $F_D$ has the
+three positive roots $2,3,5$, and its coefficient sequence
+$(1,-a_D,t_D,\ldots,t_D,c_D)$ offers three sign changes only if $a_D>0$,
+$t_D>0$ and $c_D<0$, a vanishing entry leaving at most two; so Descartes
+forces all three signs.  Multiplying the displayed equation at $r$ by $r-1$
+gives $(r-1)(r-a_D)+t_D=\varepsilon_r$ with
+$\varepsilon_r=r^{1-D}\bigl(r\,t_D+(r-1)|c_D|\bigr)>0$, and the rows $r=3,5$
+solve to
+\[
+  a_D=7+\tfrac12(\varepsilon_3-\varepsilon_5),\qquad
+  t_D=8+2\varepsilon_3-\varepsilon_5,\qquad
+  t_D-a_D=1+\tfrac32\varepsilon_3-\tfrac12\varepsilon_5 ,
+\]
+where
+$\varepsilon_5/\varepsilon_3=(3/5)^{D-1}(5t_D+4|c_D|)/(3t_D+2|c_D|)
+<2(3/5)^{D-1}<1$.  Hence $t_D>a_D+1>8$: both limits are approached from
+above.  The nonleading magnitudes are $a_D$ once, $t_D$ exactly $D-2\ge3$
+times and $|c_D|$ once, and the run already exceeds $a_D$, so at most one
+entry exceeds $t_D$ and $b_2(F_D)=t_D$.  Theorem~3.2 with $u=1$
+gives $b_2\ge8$ for every monic multiple, and $t_D\to8$.
+
+For $G_D$ the two exempt coefficients grow like $3^D$ and must absorb both
+$2$ and $3$, so the rescaling is the one that keeps the equation at $r=2$
+finite: put
+\[
+  E_D=3^{2-D}e_D,
+  \qquad
+  \sigma_D=2^{1-D}\bigl(2e_D+e_D'\bigr).
+\]
+Dividing $G_D(r)=0$ by $r^{D-1}$ and substituting, the exempt terms
+contribute $\sigma_D$ at $r=2$ by definition, $E_D/3+\sigma_D(2/3)^{D-1}$ at
+$r=3$, and $O((3/5)^D)$ at $r=5$.  In the unknowns $(s_D,E_D,\sigma_D)$ the
+system therefore reads
+\[
+  \begin{aligned}
+    -2s\bigl(1-2^{2-D}\bigr)+\sigma&=-2,\\
+    -\tfrac32s\bigl(1-3^{2-D}\bigr)+\tfrac13E+\sigma(2/3)^{D-1}&=-3,\\
+    -\tfrac54s\bigl(1-5^{2-D}\bigr)+O\bigl((3/5)^D\bigr)&=-5,
+  \end{aligned}
+\]
+whose coefficient matrix tends to
+\[
+  N=\begin{pmatrix}-2&0&1\\-\tfrac32&\tfrac13&0\\-\tfrac54&0&0\end{pmatrix},
+  \qquad \det N=\tfrac5{12}\ne0 .
+\]
+Every $D$-dependent entry is $O((2/3)^{D})$, so as before the solution
+converges to that of $N$ against $(-2,-3,-5)$, namely
+$(s,E,\sigma)=(4,9,6)$; the last row alone forces $s=4$.  The nonleading
+magnitudes of $G_D$ are $s_D$ exactly $D-2$ times and $|e_D|,|e_D'|$ once
+each, and the same sign count applies: $(1,-s_D,\ldots,-s_D,e_D,e_D')$ offers
+three changes only if $s_D>0$, so $s_D>0$ for every $D$.  The run then
+occupies $D-2\ge3$ positions, and whatever the two exempt magnitudes do the
+third largest is $s_D$, so $b_3(G_D)=s_D$.
+Theorem~3.2 with $u=2$ gives $b_3\ge4$, and
+$s_D\to4$, which completes \eqref{eq:sharp235}.
+\end{proof}
+
+Neither family was guessed.  Write $P_u(x)=\prod_{i>u}(x-r_i)$ for the
+surviving roots, $m=L-u$, and let $\widetilde P_u(y)=y^mP_u(1/y)$ be its
+reverse.  In the reversed variables the limit construction is
+\begin{equation}\label{eq:wgen}
+  W(y)=\sum_{d\ge0}w_dy^d=\frac{\widetilde P_u(y)}{1-y},
+\end{equation}
+which vanishes at $y=1/r_i$ for every surviving root because
+$\widetilde P_u$ does.  Its coefficients are therefore the partial sums
+$S_j=c_m+c_{m-1}+\cdots+c_{m-j}$ of the coefficients $c_k$ of $P_u$ read down
+from the leading $c_m=1$, and they stabilize at
+$S_m=P_u(1)=(-1)^m\prod_{i>u}(r_i-1)$ once $j\ge m$.  So the free prefix is
+$S_1,\ldots,S_{m-1}$ and the run value is $|S_m|$, which is exactly
+\eqref{eq:order}: the construction reproduces the bound because the sum of the
+coefficients of $P_u$ is $P_u(1)$.
+
+This makes the requirement explicit.  At $u=0$ both the criterion and this
+series are already in Dubickas and Jankauskas: their Corollary~7 gives
+$H(P)=|P(1)|$ under the same partial-sum condition, together with the one-sign
+proviso, and exhibits $\widetilde P/(1-y)$ as the extremal
+series~\cite[Corollary~7]{dj}.  What is added here is the passage to $u\ge1$,
+where the $u$ exempt coefficients absorb the $u$ smallest roots.  The run is
+the $(u+1)$-st largest magnitude only if no partial sum exceeds the total,
+\begin{equation}\label{eq:partial}
+  |S_j|\le|S_m|\qquad(1\le j<m),
+\end{equation}
+and \eqref{eq:partial} can fail.
+
+At $(2,3,5,7)$ with $u=1$ the coefficients
+of $P_1$ are $1,-15,71,-105$, with partial sums $1,-14,57,-48$; since
+$57>48$, \eqref{eq:partial} fails.  The same happens at $(2,3,4,5)$, sums
+$1,-11,36,-24$, and at $(2,3,5,6)$, sums $1,-13,50,-40$.  At $(3,4,5,6)$, by
+contrast, the sums are $1,-14,60,-60$, so \eqref{eq:partial} holds with
+equality.
+
+\begin{proposition}[Partial-sum criterion]\label{prop:partial}
+Let $2\le r_1<\cdots<r_L$ be distinct and $0\le u\le L-1$.  If
+\eqref{eq:partial} holds, then
+$\inf_Qb_{u+1}\bigl(Q\prod_{i=1}^L(x-r_i)\bigr)=\prod_{i=u+1}^L(r_i-1)$ over
+monic $Q\in\R[x]$.
+\end{proposition}
+
+\begin{proof}
+Theorem~3.2 gives $\ge$.  For the other direction put $m=L-u$ and write
+$F_D=x^D+\sum_{k=1}^{m-1}a_kx^{D-k}+t\sum_{j=u}^{D-m}x^j+C$ with $\deg C<u$,
+the $L$ unknowns fixed by $F_D(r_i)=0$.  The Descartes step of
+Proposition~\ref{prop:sharp235} carries over, $(x-1)$ times a kernel element
+having $L+1$ terms against the $L+1$ positive roots $1,r_1,\ldots,r_L$.
+Divide by $r_i^D$, sum the run, and trade the exempt coefficients for their
+values $\sigma_i=r_i^{-D}C(r_i)$, a Vandermonde change of variables.  The
+limit system is block triangular, and its surviving rows make the monic
+$(x-1)\widetilde A+t$ of degree $m$, where
+$\widetilde A=x^{m-1}+a_1x^{m-2}+\cdots+a_{m-1}$, vanish at the $m$ surviving
+roots.  So it is $P_u$, and
+\[
+  t=P_u(1),\qquad
+  \widetilde A=\frac{P_u-P_u(1)}{x-1},\qquad
+  \sigma_i=-\frac{r_i^{1-m}P_u(r_i)}{r_i-1}\ne0 ,
+\]
+the coefficients of $\widetilde A$ being the prefix $S_1,\ldots,S_{m-1}$ of
+\eqref{eq:wgen}.  The perturbation is $O((r_u/r_{u+1})^D)$ and every exempt
+coefficient grows like $r_u^D$, so for large $D$ those are the $u$ largest and
+$b_{u+1}\to\max_j|S_j|$, which is $|S_m|$ exactly when \eqref{eq:partial}
+holds.  Distinctness enters three times---the Descartes step, the Vandermonde
+change, and the surviving block---and $r_u<r_{u+1}$ is what kills the cross
+terms and makes the exempt coefficients diverge.
+\end{proof}
+
+The conclusion outlives it, though.  At $(r,r)$ the
+confluent member $F_D=x^D-t_D\sum_{j=1}^{D-1}x^j+c_D$ fixed by
+$F_D(r)=F_D'(r)=0$ has $b_2(F_D)=t_D$, the run occupying $D-1\ge2$ positions,
+and at $r=3$
+\[
+  t_D=\frac{4D\cdot3^{D-1}}{3^{D-1}(2D-3)+1}\longrightarrow2=r_2-1,
+\]
+so \eqref{eq:order} is an infimum there too, approached at rate $1/D$ rather
+than geometrically.
+
+For distinct roots the criterion is also necessary.  The argument runs on
+the dual side of Lemma~3.1.  Put $y_i=1/r_i$, so that
+$1/2\ge y_1>\cdots>y_L>0$, and call an exponential sum
+$v_d=\sum_i\lambda_iy_i^d$ on some of these nodes a \emph{certificate for}
+$X\subset\N_{>0}$ if $v_0=1$ and $v_w=0$ for $w\in X$.  If $F$ is a monic
+multiple of $\prod_{i=1}^L(x-r_i)$ of degree $D$ and $X$ is the set of
+distances $D-j$ of $u$ positions $j$ carrying its $u$ largest nonleading
+magnitudes, the identity in the proof of Lemma~3.1 reads
+$0=1+\sum_{j<D}f_jv_{D-j}$, the terms with $D-j\in X$ vanish, and every other
+$|f_j|$ is at most $b_{u+1}(F)$, so
+\begin{equation}\label{eq:weak}
+  1\le b_{u+1}(F)\,\Tail(v)
+\end{equation}
+for every certificate $v$ for $X$.  Write
+$B=\prod_{i=u+1}^L(r_i-1)^{-1}$.  It therefore suffices to find a
+$\delta>0$ such that every $X$ of size $u$ has a certificate with
+$\Tail(v)\le B-\delta$.  Three lemmas supply the pieces: the partial sums
+alternate in sign, a failing partial sum improves the consecutive
+certificate, and zeros far from the origin cost only the largest nodes.
+
+\begin{lemma}[Signs of the partial sums]\label{lem:signs}
+Let $r_1,\ldots,r_m>1$, let $S_0,\ldots,S_m$ be the partial sums of the
+coefficients of $\prod_{i=1}^m(x-r_i)$ read down from the leading one, and put
+$s_i=r_i-1$.  Then
+\[
+  (-1)^jS_j=\sum_{k=0}^{j}e_k(s)\binom{m-1-k}{j-k}>0\quad(0\le j\le m-1),
+  \qquad (-1)^mS_m=e_m(s),
+\]
+where $e_k$ is the elementary symmetric polynomial.
+\end{lemma}
+
+\begin{proof}
+By \eqref{eq:wgen}, $S_j$ is the coefficient of $y^j$ in
+$\prod_i(1-r_iy)/(1-y)$, so $(-1)^jS_j$ is the coefficient of $y^j$ in
+$\prod_i(1+r_iy)/(1+y)$.  Writing $1+r_iy=(1+y)+s_iy$ and grouping the
+expansion by the number of factors $s_iy$ chosen,
+\[
+  \frac{\prod_i(1+r_iy)}{1+y}
+  =\sum_{k=0}^{m-1}e_k(s)\,y^k(1+y)^{m-1-k}+e_m(s)\frac{y^m}{1+y}.
+\]
+The terms with $k<m$ are polynomials of degree $m-1$ and contribute
+$e_k(s)\binom{m-1-k}{j-k}$ to $y^j$; the last contributes nothing below $y^m$
+and $e_m(s)$ at $y^m$.  The $k=0$ term alone gives $\binom{m-1}{j}\ge1$.
+\end{proof}
+
+In particular \eqref{eq:partial} reads
+$\sum_{k\le j}e_k(s)\binom{m-1-k}{j-k}\le e_m(s)$ for $1\le j<m$, with
+$s_i=r_i-1$ over the surviving roots; at $(3,5,7)$, $s=(2,4,6)$, the two sums
+are $14$ and $57$ against $e_3(s)=48$.
+
+\begin{lemma}[Improving the consecutive certificate]\label{lem:improve}
+Let $\rho_1,\ldots,\rho_n>1$ be distinct, $Q=\prod_{i=1}^n(x-\rho_i)$ with
+partial sums $S_j(Q)$, and $v^*$ the certificate on the nodes $1/\rho_i$ with
+zero set $\{1,\ldots,n-1\}$, so that $\Tail(v^*)=1/|Q(1)|$ by Lemma~2.1.  If
+$X_0\subseteq\{1,\ldots,n-1\}$ and some $j\in\{1,\ldots,n-1\}\setminus X_0$
+has $|S_j(Q)|>|Q(1)|$, then some certificate for $X_0$ on the same nodes has
+tail less than $1/|Q(1)|$.
+\end{lemma}
+
+\begin{proof}
+Let $\delta$ be the exponential sum on the nodes with $\delta_0=0$ and
+$\delta_i=[i=j]$ for $1\le i\le n-1$; it exists by the Vandermonde argument.
+With $\Pi(x)=\prod_i(1-x/\rho_i)=\sum_s\pi_sx^s$, its generating function is
+$N(x)/\Pi(x)$ with $\deg N\le n-1$, and $N$ is the truncation of
+$\Pi\sum_d\delta_dx^d$ below degree $n$, namely
+$N(x)=\sum_{t=j}^{n-1}\pi_{t-j}x^t$.  Since $\Pi$ is $Q$ times the constant
+$\prod_i(-1/\rho_i)$, evaluating at $x=1$ gives
+\[
+  \sum_{d\ge n}\delta_d=\frac{N(1)}{\Pi(1)}-1
+  =-\frac{\pi_{n-j}+\cdots+\pi_n}{\Pi(1)}
+  =-\frac{S_j(Q)}{Q(1)} .
+\]
+By Lemma~2.1, $v^*_d$ has the constant sign $\sigma=(-1)^{n+1}$ for $d\ge n$
+and $|v^*_d|\ge\bigl(\prod_iy_i\bigr)y_{\max}^{\,d-n}$, while
+$|\delta_d|\le Cy_{\max}^{\,d}$; so for $0<\tau$ small enough
+$v=v^*+t\delta$ with $t=\tau\sigma\sgn\bigl(S_j(Q)/Q(1)\bigr)$ keeps the sign
+$\sigma$ at every $d\ge n$.  It is a certificate for $X_0$, since it vanishes
+on $\{1,\ldots,n-1\}\setminus\{j\}$, and
+\[
+  \Tail(v)=\tau+\sigma\sum_{d\ge n}\bigl(v^*_d+t\delta_d\bigr)
+  =\Tail(v^*)-\tau\Bigl(\Bigl|\frac{S_j(Q)}{Q(1)}\Bigr|-1\Bigr)
+  <\Tail(v^*).
+\]
+\end{proof}
+
+\begin{lemma}[Far zeros]\label{lem:far}
+Let $1>y_1>\cdots>y_L>0$ and $0\le k<L$.  Let $v^\infty$ be a certificate for
+a finite set $X_0$ on $y_{k+1},\ldots,y_L$, and let $E_\nu\subset\N_{>0}$,
+$\nu\ge1$, be sets of size $k$ with $\min E_\nu\to\infty$.  Then for large
+$\nu$ there are certificates $v^{(\nu)}$ for $X_0\cup E_\nu$ on
+$y_1,\ldots,y_L$ with $\Tail(v^{(\nu)}-v^\infty)\to0$.
+\end{lemma}
+
+\begin{proof}
+For $k=0$ take $v^{(\nu)}=v^\infty$.  Put $n=L-k$ and $s=n-1-|X_0|$.  The
+certificates for $X_0$ on $y_{k+1},\ldots,y_L$ form an affine space $\mathcal
+A$ of dimension $s$.  Fix $s+1$ positive integers $q_0,\ldots,q_s$ outside
+$X_0$ and let $v^{[i]}\in\mathcal A$ also vanish at every $q_l$, $l\ne i$.
+Evaluation at $q_0,\ldots,q_s$ maps $\mathcal A$ injectively onto an
+$s$-dimensional affine subspace of $\R^{s+1}$ missing the origin, by the zero
+bound, and sends $v^{[i]}$ to a nonzero multiple of the $i$th unit vector.
+These $s+1$ images are affinely independent, so $v^\infty$ is an affine
+combination of the $v^{[i]}$, and it suffices to treat each $v^{[i]}$.  We may
+thus assume that $v^\infty$ has a zero set $Z_0\supseteq X_0$ of size $n-1$,
+disjoint from $E_\nu$ for large $\nu$.
+
+Let $v^{(\nu)}$ be the certificate on all $L$ nodes with zero set
+$Z_0\cup E_\nu$.  Order the points $0$, then $Z_0$, then
+$E_\nu=\{e_1<\cdots<e_k\}$, and let $A$ be the matrix $(y_j^p)$ with rows
+indexed by these points; by Cramer's rule $v^{(\nu)}_d=\det A(d)/\det A$,
+where $A(d)$ has the row of $0$ replaced by $(y_j^d)_j$.  Expanding both
+along the rows of $E_\nu$,
+\[
+  \det A(d)=\sum_{|J|=k}\varepsilon_J\,\alpha_J\,\beta_J(d),
+  \qquad
+  \alpha_J=\det\bigl(y_j^{e}\bigr)_{e\in E_\nu,\,j\in J},
+  \quad
+  \beta_J(d)=\det\bigl(y_j^{p}\bigr)_{p\in\{d\}\cup Z_0,\,j\notin J},
+\]
+with signs $\varepsilon_J$ independent of $d$ and $\nu$.  For
+$J=\{j_1<\cdots<j_k\}$ every term of $\alpha_J$ is a product
+$\prod_ty_{j_t}^{e_{\pi(t)}}$, the largest being
+$M_J=\prod_ty_{j_t}^{e_{k+1-t}}$, so $|\alpha_J|\le k!\,M_J$.  For
+$J^*=\{1,\ldots,k\}$, $\alpha_{J^*}$ is an alternant, the Vandermonde product
+$\prod_{a<b\le k}(y_a-y_b)$ times a Schur polynomial in $y_1,\ldots,y_k$ with
+nonnegative coefficients that contains the monomial $M_{J^*}/\prod_{t\le
+k}y_t^{k-t}$; hence $|\alpha_{J^*}|\ge cM_{J^*}$ with
+$c=\prod_{a<b\le k}(1-y_b/y_a)>0$.  If $J\ne J^*$ then $y_{j_t}\le y_t$ for
+every $t$, and $j_t\ge k+1$ for some $t$, so
+$M_J\le(y_{k+1}/y_k)^{e_1}M_{J^*}$ and
+\[
+  \eta_\nu=\max_{J\ne J^*}\Bigl|\frac{\alpha_J}{\alpha_{J^*}}\Bigr|
+  \le\frac{k!}{c}\Bigl(\frac{y_{k+1}}{y_k}\Bigr)^{e_1}\longrightarrow0 .
+\]
+The minors $\beta_J(d)$ do not depend on $\nu$, $\beta_{J^*}(0)\ne0$ by the
+zero bound, $v^\infty_d=\beta_{J^*}(d)/\beta_{J^*}(0)$ by Cramer's rule on
+$y_{k+1},\ldots,y_L$, and expanding along the row of $d$ gives
+$\Sigma_J=\sum_{d\ge0}|\beta_J(d)|<\infty$.  Dividing numerator and
+denominator by $\varepsilon_{J^*}\alpha_{J^*}$,
+\[
+  v^{(\nu)}_d-v^\infty_d
+  =\frac{\rho_\nu(d)-v^\infty_d\,\rho_\nu(0)}{\beta_{J^*}(0)+\rho_\nu(0)},
+  \qquad |\rho_\nu(d)|\le\eta_\nu\sum_{J\ne J^*}|\beta_J(d)|,
+\]
+and summing over $d\ge1$,
+$\Tail(v^{(\nu)}-v^\infty)\le\eta_\nu\bigl(1+\Tail(v^\infty)\bigr)
+\sum_{J\ne J^*}\Sigma_J\big/\bigl(|\beta_{J^*}(0)|-|\rho_\nu(0)|\bigr)\to0$.
+\end{proof}
+
+\begin{theorem}[Necessity of the partial-sum criterion]\label{thm:converse}
+Let $2\le r_1<\cdots<r_L$ be distinct and $0\le u\le L-1$.  If
+\eqref{eq:partial} fails, then
+\[
+  \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)>\prod_{i=u+1}^L(r_i-1)
+\]
+over monic $Q\in\R[x]$.  With Proposition~\ref{prop:partial},
+\eqref{eq:order} is the infimum exactly when \eqref{eq:partial} holds.
+\end{theorem}
+
+\begin{proof}
+By \eqref{eq:weak} it suffices to find $\delta>0$ such that every
+$X\subset\N_{>0}$ of size $u$ has a certificate on $y_1,\ldots,y_L$ with
+$\Tail\le B-\delta$.  Suppose not, and take $X_\nu$ whose certificates all
+have $\Tail\ge B-1/\nu$.  Passing to a subsequence, each of the $u$ elements
+of $X_\nu$, in increasing order, is eventually constant or tends to infinity,
+so $X_\nu=X_0\cup E_\nu$ with $X_0$ fixed, $|E_\nu|=k$ and
+$\min E_\nu\to\infty$.  By Lemma~\ref{lem:far}, a certificate $v^\infty$ for
+$X_0$ on $y_{k+1},\ldots,y_L$ with $\Tail(v^\infty)<B$ yields certificates
+for $X_\nu$ with tails tending to $\Tail(v^\infty)$, a contradiction.  So it
+suffices to produce one.  Put $n=L-k$ and $u_0=|X_0|=u-k$.
+
+If $u_0=0$ the nodes are the reciprocals of the surviving roots, and since
+\eqref{eq:partial} fails, Lemma~\ref{lem:improve} with $Q=P_u$ and
+$X_0=\varnothing$ gives $\Tail(v^\infty)<1/|P_u(1)|=B$.
+
+If $u_0\ge1$, take the certificate of Lemma~3.1's proof: zero set $Z$
+consisting of $X_0$ and the first $m-1$ positive integers outside it, so
+$|Z|=n-1$ and the leading run of $Z$ is $f\ge m-1$.  Theorem~2.2 on
+$y_{k+1},\ldots,y_L\le1/2$ bounds $\Tail$ by the product of $1/(r_i-1)$ over
+the $f+1$ largest of $r_{k+1},\ldots,r_L$, with equality only if
+$Z=\{1,\ldots,n-1\}$.  Every factor is at most $1$ and $f+1\ge m$, so
+$\Tail\le B$, strictly unless $Z=\{1,\ldots,n-1\}$ and the factors
+$1/(r_i-1)$, $k<i\le u$, all equal $1$.  The last includes $i=u$, and
+$r_u=2$ forces $u=1$ and $r_1=2$, hence $k=0$ and $X_0=\{w\}$ with
+$w\le L-1$.
+
+In that case $r_1-1=1$, so $1/|P(1)|=B$ for $P=\prod_{i=1}^L(x-r_i)$, and
+Lemma~\ref{lem:improve} with $Q=P$ and $X_0=\{w\}$ needs one
+$j\in\{1,\ldots,L-1\}\setminus\{w\}$ with $|S_j(P)|>|P(1)|$.  Since
+$P=(x-2)P_1$, $S_j(P)=S_j(P_1)-2S_{j-1}(P_1)$, and by
+Lemma~\ref{lem:signs} consecutive partial sums of $P_1$ have opposite signs,
+so $|S_j(P)|=|S_j(P_1)|+2|S_{j-1}(P_1)|$ for $1\le j\le m=L-1$.  As
+\eqref{eq:partial} fails, $|S_i(P_1)|>|P_1(1)|=|P(1)|$ for some $1\le i<m$,
+and then both $j=i$ and $j=i+1$ qualify; one of them is not $w$.
+\end{proof}
+
+The proof also shows how a multiple can approach \eqref{eq:order}.  Outside
+the case $u=1$, $r_1=2$, every placement with an exempt coefficient at
+bounded distance from the top has a certificate with tail below $B$, so
+along any sequence of monic multiples with $b_{u+1}$ tending to the bound all
+$u$ exempt coefficients must move away from the top, as the construction of
+Proposition~\ref{prop:partial} moves them to the bottom.  When \eqref{eq:partial} fails, Section~\ref{sec:value} computes the
+infimum.
+
+\section{The infimum when the criterion fails}\label{sec:value}
+
+Keep the notation of Theorem~\ref{thm:converse}: $r_1<\cdots<r_L$ are
+distinct, $y_i=1/r_i$, and $m=L-u$.  For finite $X\subset\N_{>0}$ and
+$0\le k<L$ put
+\[
+  \tau_k(X)=\inf\bigl\{\Tail(v):v\text{ a certificate for }X\text{ on }
+  y_{k+1},\ldots,y_L\bigr\},
+  \quad \tau(X)=\tau_0(X),\quad \tau^*=\tau_u(\varnothing).
+\]
+A certificate on $c$ nodes is \emph{full} if it has $c-1$ prescribed zeros.
+It is then unique, and by the zero bound it has no other zeros and keeps one
+sign past the largest.  By \eqref{eq:weak} every monic multiple $F$ has
+$b_{u+1}(F)\ge1/\tau(X_F)$, where $X_F$ holds the distances from the top of
+its $u$ largest nonleading coefficients.  So the infimum is set by the worst
+placement.  The first result says that it is exactly that, and that exempt
+coefficients escaping to the bottom cost $\tau^*$, the best tail on the
+surviving roots alone.
+
+\begin{theorem}[The infimum as a placement game]\label{thm:value}
+Let $1<r_1<\cdots<r_L$ and $0\le u\le L-1$.  Then
+\[
+  \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)=\frac1T,
+  \qquad T=\sup_{|X|=u}\tau(X)\ge\tau^*,
+\]
+over monic $Q\in\R[x]$.
+\end{theorem}
+
+\begin{proof}
+The lower bound $b_{u+1}(F)\ge1/\tau(X_F)\ge1/T$ is \eqref{eq:weak}.
+
+For the upper bound fix $X$ with $|X|=u$ and $D\ge\max(L,\max X)$, and let
+$\tau_D(X)$ be the least $\sum_{d=1}^D|v_d|$ over certificates $v$ for $X$.
+It is positive, since a certificate vanishing at $1,\ldots,D$ would vanish
+identically.  Minimizing the largest $|f_j|$ over the positions $j<D$ with
+$D-j\notin X$, subject to $F=x^D+\sum_{j<D}f_jx^j$ vanishing at every $r_i$,
+is a feasible linear program.  Write $\mu_i$ for the multiplier of
+$F(r_i)=0$, and put $\lambda_i=-\mu_ir_i^D$ and $v_d=\sum_i\lambda_iy_i^d$.
+The coefficient of $f_j$ in the Lagrangian is then $-v_{D-j}$, and the dual
+program is to maximize $v_0$ subject to $v_d=0$ for $d\in X$ and
+$\sum_{d\le D,\,d\notin X}|v_d|\le1$.  Its value is $1/\tau_D(X)$.  By
+linear-programming duality some monic multiple of degree $D$ has every
+coefficient off the $u$ positions of $X$ at most $1/\tau_D(X)$ in magnitude,
+so its $b_{u+1}$ is at most $1/\tau_D(X)$.
+
+Two limits finish the proof.  First, $\tau_D(X)$ is nondecreasing in $D$ and
+at most $\tau(X)$.  Take minimizers $v^{(D)}=\sum_i\lambda^{(D)}_iy_i^d$.
+Their values at $L$ fixed points of $\{0,1,\ldots\}\setminus X$, one of them
+$0$, are bounded by $\max(1,\tau(X))$.  The matrix $(y_i^d)$ at $L$ distinct
+points is nonsingular by the zero bound, so the $\lambda^{(D)}$ are bounded.
+A subsequence converges to a certificate $v$ for $X$ with
+$\sum_{d\le N}|v_d|\le\lim_D\tau_D(X)$ for every $N$, whence
+$\tau(X)\le\Tail(v)\le\lim_D\tau_D(X)$.  So the infimum is at most $1/\tau(X)$
+for every $X$, that is, at most $1/T$.
+
+Second, put $E_\nu=\{\nu+1,\ldots,\nu+u\}$ and suppose
+$\tau(E_\nu)\le\tau^*-\varepsilon$ along a subsequence.  Take certificates
+$v^\nu=\sum_i\lambda^\nu_iy_i^d$ for $E_\nu$ with
+$\Tail(v^\nu)\le\tau^*-\varepsilon/2$.  For $\nu\ge L$ their values at
+$0,\ldots,L-1$ are bounded, so we may assume $\lambda^\nu\to\lambda$.  The $u$
+equations $v^\nu_e=0$, $e\in E_\nu$, read
+$A_\nu\lambda^\nu_{\le u}=-R_\nu\lambda^\nu_{>u}$ with
+$A_\nu=(y_j^e)_{e\in E_\nu,\,j\le u}$ and
+$R_\nu=(y_j^e)_{e\in E_\nu,\,j>u}$.  By Cramer's rule each entry of
+$A_\nu^{-1}R_\nu$ is, up to sign, a ratio $\alpha_J/\alpha_{J^*}$ of the
+minors in the proof of Lemma~\ref{lem:far}, with $k=u$ and $J\ne J^*$.  So it
+is at most $\eta_\nu\to0$, and $\lambda_{\le u}=0$.  Then
+$v=\sum_{i>u}\lambda_iy_i^d$ is a certificate on the surviving nodes, and as
+before $\Tail(v)\le\tau^*-\varepsilon/2$, against the definition of $\tau^*$.
+Hence $\liminf_\nu\tau(E_\nu)\ge\tau^*$, and $T\ge\tau^*$.
+\end{proof}
+
+Lemma~\ref{lem:far} supplies the reverse inequality, so $\tau(E_\nu)\to\tau^*$:
+the escaping placement costs exactly $\tau^*$.  There is also a dual side.  If
+$v=\sum_{i>u}\lambda_iy_i^d$ is a certificate on the surviving nodes and $w$
+is a bounded sequence with $w_0=1$ whose series $W(y)=\sum_dw_dy^d$ vanishes
+at $y_{u+1},\ldots,y_L$, then $0=\sum_i\lambda_iW(y_i)=\sum_dw_dv_d$, so
+\begin{equation}\label{eq:dualpair}
+  1\le\sup_{d\ge1}|w_d|\cdot\Tail(v).
+\end{equation}
+Such $W$ are the $\widetilde P_uH$ with $H(0)=1$.  Taking
+$H=\widetilde M/(1-y)$ for a monic $M\in\R[x]$ with reverse $\widetilde M$
+makes $w_d$ the partial sums $S_d(P_uM)$, as in \eqref{eq:wgen}.  So
+\begin{equation}\label{eq:multiplier}
+  \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)\le\frac1{\tau^*}
+  \le\max_{j\ge1}\bigl|S_j(P_uM)\bigr|
+  \qquad\text{for every monic }M\in\R[x].
+\end{equation}
+At $M=1$ this is the construction of Proposition~\ref{prop:partial}.  A
+witness $W$ with $\sup_{d\ge1}|w_d|=1/\Tail(v)$ proves that $v$ attains
+$\tau^*$.
+
+Whether $T=\tau^*$, so that the escaping placement is extremal, comes down to
+covering the finite placements.  The deletion step of Theorem~2.2 lifts a
+certificate on fewer nodes to one on all of them.
+
+\begin{theorem}[Lifting]\label{thm:lift}
+Let $2\le r_1<\cdots<r_L$ and $0\le k\le u$, and let $v$ be a full
+certificate on $y_{k+1},\ldots,y_L$ with zero set $Z$ and $g=\max Z$ ($g=0$
+if $Z$ is empty).  Then $\tau(X)\le\Tail(v)$ for every $X$ of size $u$ with
+$X\subseteq Z\cup(g,\infty)$ and $|X\setminus Z|\le k$.  The inequality is
+strict if $k\ge1$ and the padded set $Z^+$ below is not $\{1,\ldots,L-1\}$.
+\end{theorem}
+
+\begin{proof}
+Add to $Z\cup X$ integers above $\max(Z\cup X)$ until it has $L-1$ elements,
+and call the result $Z^+$.  It exceeds $Z$ by $k$ elements, all above $g$.
+The full certificate $v^+$ on $y_1,\ldots,y_L$ with zero set $Z^+$ is a
+certificate for $X$.  Delete the largest zero of $Z^+$ together with the
+largest node $y_1$.  The nodes are at most $1/2$, so the deletion step in the
+proof of Theorem~2.2 bounds $\Tail(v^+)$ by the tail of the full certificate
+on $y_2,\ldots,y_L$ with the remaining zeros, strictly unless
+$Z^+=\{1,\ldots,L-1\}$.  In that case Lemma~2.1 gives the two tails as
+products that differ by the factor $1/(r_1-1)\le1$.  Repeat $k$ times.  Each
+removed zero is the largest remaining, because the added ones all exceed $g$,
+and the last step lands on $v$.
+\end{proof}
+
+\begin{corollary}[One exempt coefficient]\label{cor:uone}
+Let $2\le r_1<\cdots<r_L$ and $u=1$, and suppose $\tau^*$ is attained by a
+full certificate on $y_2,\ldots,y_L$ with zero set $Z^*$ and $g=\max Z^*$.
+Then
+\[
+  \inf_Qb_2\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)
+  =\frac1{\max\bigl(\tau^*,\ \max_{w\in G}\tau(\{w\})\bigr)},
+  \qquad G=\{1,\ldots,g-1\}\setminus Z^*.
+\]
+\end{corollary}
+
+\begin{proof}
+Here $T=\sup_w\tau(\{w\})$.  If $w\notin G$, then $w\in Z^*$ or $w>g$, and
+Theorem~\ref{thm:lift} with $k=1$ gives $\tau(\{w\})\le\tau^*$.  Since
+$T\ge\tau^*$ by Theorem~\ref{thm:value}, the maximum is $T$.
+\end{proof}
+
+For $u\ge2$ the same covering is a finite search.  Start from
+$(A,k)=(\varnothing,u)$.  Choose a full certificate on $y_{k+1},\ldots,y_L$
+whose zero set $Z$ contains $A$ and whose tail is at most $\tau^*$.  By
+Theorem~\ref{thm:lift} it covers every $X\supseteq A$ whose other $k$
+elements lie in $Z\cup(\max Z,\infty)$.  Recurse on $(A\cup\{w\},k-1)$ for
+each $w<\max Z$ outside $Z\cup A$.  If the search closes, $T=\tau^*$ and the
+infimum is $1/\tau^*$.
+
+The search collapses to a single step.  One node is added and one zero is
+deleted at a time, and the zero deleted must be the largest.
+
+\begin{proposition}[Step reduction]\label{prop:step}
+Let $1<r_1<\cdots<r_L$ and $0\le u\le L-1$.  Suppose that for every
+$0\le k<u$ and every set $X$ of $u-k$ positive integers
+\begin{equation}\label{eq:step}
+  \tau_k(X)\le\tau_{k+1}\bigl(X\setminus\{\max X\}\bigr).
+\end{equation}
+Then $T=\tau^*$, and the infimum of $b_{u+1}$ is $1/\tau^*$.
+\end{proposition}
+
+\begin{proof}
+Chaining \eqref{eq:step} from $k=0$ upwards, each step deleting the largest
+remaining element, gives
+$\tau(X)=\tau_0(X)\le\tau_u(\varnothing)=\tau^*$ for every $X$ of size $u$, so
+$T\le\tau^*$; Theorem~\ref{thm:value} gives the reverse.
+\end{proof}
+
+Deleting $\min X$ instead is false: at $(2,3,4,5)$ with $u=2$ and
+$X=\{2,3\}$, $\tau_0(\{2,3\})=\tfrac1{24}$ against
+$\tau_1(\{3\})=\tfrac{35}{1128}$, a ratio of $1.34$, while
+$\tau_1(\{2\})=\tfrac1{24}$ meets it.  Theorem~\ref{thm:lift} with $k=1$
+proves \eqref{eq:step} whenever the placement and the certificate it is lifted
+from are aligned.
+
+\begin{proposition}[The step in the aligned cases]\label{prop:stepeasy}
+Let $2\le r_1<\cdots<r_L$, let $X$ be finite and nonempty with $g=\max X$ and
+$X'=X\setminus\{g\}$, and let $v^-$ be a full certificate on
+$y_{k+2},\ldots,y_L$ whose zero set $Z^-$ contains $X'$.  If $g\in Z^-$ or
+$g>\max Z^-$, then some certificate for $X$ on $y_{k+1},\ldots,y_L$ has tail at
+most $\Tail(v^-)$.
+\end{proposition}
+
+\begin{proof}
+Put $Z^+=Z^-\cup\{g\}$ in the second case, and $Z^+=Z^-\cup\{N\}$ with any
+$N>\max Z^-$ in the first.  Either way $Z^+\supseteq X$ has $L-k-1$ elements
+and its largest exceeds all the others, so the full certificate $v^+$ on
+$y_{k+1},\ldots,y_L$ with zero set $Z^+$ is a certificate for $X$; deleting
+that largest zero together with the largest node $y_{k+1}$ is the deletion step
+in the proof of Theorem~2.2, which bounds $\Tail(v^+)$ by $\Tail(v^-)$ because
+the nodes are at most $1/2$.
+\end{proof}
+
+Where a zero is displaced to is not a search.  Adding one node to a certificate
+and one zero to its zero set moves it along a line, on which the tail is a
+weighted sum of distances.
+
+\begin{lemma}[Sign rule for the pencil]\label{lem:pencil}
+Let $n=L-k-1$, let $A$ be a set of $n-1$ positive integers, let $F$ be the full
+certificate on $y_{k+2},\ldots,y_L$ with zero set $A$, and let $H\ne0$ be an
+exponential sum on $y_{k+1},\ldots,y_L$ with $H_0=0$ and $H_a=0$ for $a\in A$.
+Then $H$ is unique up to scale, the certificates on $y_{k+1},\ldots,y_L$
+vanishing on $A$ are exactly $F+tH$ with $t\in\mathbb R$, and for every $d\ge1$
+with $d\notin A$
+\[
+  \sgn F_d=(-1)^{|\{a\in A\,:\,a<d\}|},\qquad
+  \sgn H_d=\varepsilon\,(-1)^{1+|\{a\in A\,:\,a<d\}|}
+\]
+for one fixed $\varepsilon\in\{\pm1\}$.  In particular $F_dH_d$ has a single
+sign throughout.
+\end{lemma}
+
+\begin{proof}
+$H$ solves $n$ homogeneous conditions in $n+1$ unknowns, a system nonsingular
+by the zero bound, so it is unique up to scale; adding $tH$ to $F$ preserves
+$v_0=1$ and the zeros on $A$, and the dimensions match.  Now $F$ is an
+exponential sum on $n$ nodes with the $n-1$ zeros $A$, so by the zero bound it
+has no others and changes sign at each of them, and $F_0=1>0$.  Likewise $H$ is
+one on $n+1$ nodes with the $n$ zeros $\{0\}\cup A$ and no others; for $d\ge1$
+the count of zeros below $d$ includes the one at $0$.
+\end{proof}
+
+\begin{proposition}[The displaced zero is a weighted median]\label{prop:median}
+In the notation of Lemma~\ref{lem:pencil}, let $N\ge1$ with $N\notin A$.  The
+full certificate on $y_{k+1},\ldots,y_L$ with zero set $A\cup\{N\}$ is
+$F+t_NH$ with $t_N=-F_N/H_N$, and
+\begin{equation}\label{eq:median}
+  \Tail\bigl(A\cup\{N\}\bigr)
+  =\sum_{d\ge1}\Bigl|\,|F_d|-\theta_N|H_d|\,\Bigr|
+  =\sum_{d\ge1}|H_d|\,\Bigl|\theta_N-\frac{|F_d|}{|H_d|}\Bigr|,
+  \qquad\theta_N=\frac{|F_N|}{|H_N|}.
+\end{equation}
+The right-hand side is convex and piecewise linear in $\theta$ with breakpoints
+exactly the $\theta_N$, so
+\[
+  \min_{N\ge1,\;N\notin A}\Tail\bigl(A\cup\{N\}\bigr)
+  =\min_{\theta\ge0}\sum_{d\ge1}|H_d|\,\Bigl|\theta-\frac{|F_d|}{|H_d|}\Bigr|,
+\]
+attained at the weighted median of $\bigl(|F_d|/|H_d|\bigr)_{d\ge1,\,d\notin A}$
+with weights $|H_d|$.
+\end{proposition}
+
+\begin{proof}
+By Lemma~\ref{lem:pencil} the certificates vanishing on $A$ form the line
+$F+tH$, and $t_N$ is the unique parameter killing $N$.  There $t_NH$ opposes
+$F$, so by the sign rule it opposes $F$ at every $d\ge1$, whence
+$|F_d+t_NH_d|=\bigl||F_d|-|t_N|\,|H_d|\bigr|$ with $|t_N|=\theta_N$, which is
+\eqref{eq:median}.  Each summand is $|H_d|$ times the modulus of an affine
+function of $\theta$ vanishing at $|F_d|/|H_d|$, so the sum is convex and
+piecewise linear with those breakpoints and attains its minimum at one of them;
+a weighted sum of distances is minimized at the weighted median.
+\end{proof}
+
+The median is an order statistic, because the points it ranges over are
+already sorted by $d$.
+
+\begin{lemma}[The ratio is monotone]\label{lem:ratio}
+In the notation of Lemma~\ref{lem:pencil}, $d\mapsto|F_d|/|H_d|$ is strictly
+decreasing on $\{d\ge0:d\notin A\}$.
+\end{lemma}
+
+\begin{proof}
+For $c\in\mathbb R$ the sequence $H-cF$ is an exponential sum on the $n+1$
+nodes $y_{k+1},\ldots,y_L$, and is not identically zero, since $F$ gives weight
+$0$ to $y_{k+1}$ and $H$ does not.  By the zero bound it has at most $n$ real
+zeros with multiplicity, and it vanishes on $A$, which is $n-1$ of them.  So
+$\Phi=H/F$ takes each value at most once off $A$, and takes none of them at an
+$a\in A$ as well, as that would be a second zero there.  On each component of
+$[0,\infty)\setminus A$ the ratio $\Phi$ is continuous, and $F$ and $H$ have a
+simple zero at each $a\in A$, so $\Phi$ extends continuously across it.  Being
+continuous and injective on $[0,\infty)$, $\Phi$ is strictly monotone; and
+$\Phi(0)=0$ because $H_0=0$, while $|\Phi(d)|\to\infty$ because $|H_d|$ decays
+like $y_{k+1}^d$ and $|F_d|$ like $y_{k+2}^d$, with $y_{k+2}<y_{k+1}$.
+\end{proof}
+
+\begin{corollary}[The displaced zero is a half-mass point]\label{cor:halfmass}
+The minimum in Proposition~\ref{prop:median} is attained at
+\[
+  N=\max\Bigl\{d\ge1,\ d\notin A\ :\
+  \sum_{e\ge d}|H_e|\ \ge\ \tfrac12\sum_{e\ge1}|H_e|\Bigr\}.
+\]
+\end{corollary}
+
+\begin{proof}
+By Lemma~\ref{lem:ratio} the order of the points $|F_d|/|H_d|$ is the reverse
+of the order of $d$, so the weights $|H_d|$ of Proposition~\ref{prop:median}
+accumulate from the largest $d$ downwards.
+\end{proof}
+
+The displacement therefore needs no window, and $N$ need not exceed $\max A$.
+Taking $\theta=0$ in \eqref{eq:median} returns $\Tail(F)$, and the breakpoints
+are positive and tend to $0$, since $|F_d|/|H_d|$ decays like
+$(y_{k+2}/y_{k+1})^d$; so the convex minimum is at most the value at $0$.
+
+\begin{corollary}[A displaced zero always pays for a node]\label{cor:nocut}
+With $F$ and $H$ as in Lemma~\ref{lem:pencil} and nodes anywhere in $(0,1)$,
+some $N$ gives $\Tail(A\cup\{N\})\le\Tail(F)$.
+\end{corollary}
+
+The node cutoff is not needed for this.  For a \emph{fixed} zero set the
+deletion step reverses beyond the cutoff, as on $(1/3,1/2,9/10)$ above; once
+the displaced zero is chosen by Proposition~\ref{prop:median} it cannot.
+
+So \eqref{eq:step} can fail only through a misalignment: the minimizing $Z^-$
+has $g<\max Z^-$ and $g\notin Z^-$, and no zero can be added to $Z^-$ above its
+largest to reach $g$.  Freeing the largest zero does not repair it, because
+replacing $\max Z^-$ by $g$ throws away the displacement $Z^-$ earned and
+leaves a consecutive set, where Theorem~2.2 is an equality: at
+$(\tfrac{503}{250},\tfrac{2053}{1000},\tfrac{527}{250},\tfrac{11}5,
+\tfrac{1177}{500})$ with $u=1$ and $X=\{2\}$ that turns $Z^-=\{1,3,6\}$ into
+$\{1,2,3\}$, and no displaced lift of it comes within a factor $1.40$.
+Sliding down the \emph{smallest} zero above $g$ keeps the displacement.  Nor
+can the slide be dispensed with: adjoining $g$ to $Z^-$ and displacing nothing
+gives a zero set of the right size, but its tail exceeds $\Tail(v^-)$ in $245$
+of the $379$ straddling instances we put to it, at
+$(\tfrac{2013}{1000},\tfrac{257}{125},\tfrac{2127}{1000},\tfrac{1071}{500},
+\tfrac{549}{250})$ with $u=1$ and $X=\{2\}$ by a factor $2.01$.
+
+Both the slide and the displacement are choices of a point on one line, and
+that line carries its own minimum.  Fix $B$ and $g$ and let
+\[
+  \mathcal P=\bigl\{v \text{ on } y_{k+1},\ldots,y_L\ :\ v_0=1,\
+  v_b=0\ (b\in B)\bigr\},
+\]
+a two-parameter family on which $\Tail$ is convex.  Two lines in it meet at the
+full certificate on $y_{k+2},\ldots,y_L$ with zero set $B\cup\{g\}$: the
+certificates that also kill $g$, and those that give weight $0$ to $y_{k+1}$.
+
+\begin{conjecture}[A placement costs no more than a node]\label{conj:plane}
+Let $2\le r_1<\cdots<r_L$, let $B$ be a set of $L-k-2$ positive integers and
+let $g\ge1$ with $g\notin B$.  Then
+\begin{equation}\label{eq:plane}
+  \min\{\Tail(v):v\in\mathcal P,\ v_g=0\}
+  \ \le\
+  \min\{\Tail(v):v\in\mathcal P,\ \lambda_{k+1}=0\}.
+\end{equation}
+\end{conjecture}
+
+The left side is the weighted median of Proposition~\ref{prop:median}, with
+$A=B\cup\{g\}$; the right side is the least tail of a full certificate on
+$y_{k+2},\ldots,y_L$ whose zero set contains $B$.
+
+\begin{proposition}\label{prop:planestep}
+Conjecture~\ref{conj:plane} implies \eqref{eq:step}, hence $T=\tau^*$.
+\end{proposition}
+
+\begin{proof}
+Given $X$ with $g=\max X$, let $Z^-$ attain $\tau_{k+1}(X\setminus\{g\})$ and
+drop from it one element not in $X$, and not equal to $g$ unless $g\in Z^-$, to
+leave $B$.  The right side of \eqref{eq:plane} is then at most
+$\Tail(Z^-)=\tau_{k+1}(X\setminus\{g\})$, while every $v$ counted on the left
+vanishes on $B\cup\{g\}\supseteq X$, so the left side is at least
+$\tau_k(X)$.  Now apply Proposition~\ref{prop:step}.
+\end{proof}
+
+So the case analysis disappears: \eqref{eq:plane} is one inequality between two
+lines through a common point, quantified over all $B$ and $g$, with no
+hypothesis that $Z^-$ minimizes anything.  It contains
+Proposition~\ref{prop:stepeasy}, which is the deletion step applied to the
+point of the first line that also kills $\max B\cup\{e\}$, and it is what fails
+to follow from that step when $g$ straddles.  We met \eqref{eq:plane} in $5700$
+pairs $(B,g)$ over integer and rational root sets without a failure.  Any proof
+must use the cutoff: with nodes allowed anywhere in $(0,1)$ it fails in $1606$
+of $4756$ pairs, by as much as a factor $18.3$.
+
+What the median ranges over is not a one-parameter shape: the minimizing zero
+set itself is not a consecutive block with one displaced zero.  At
+$(2,3,4,5,6)$ with $u=0$ it is $\{1,2,4,6\}$, of tail $\tfrac{41}{12600}$,
+against $0.003847$ for the best block $\{1,2,3\}$ with one displaced zero.
+
+Whether it always closes is a question about one end of a multiple.  Fix the
+placement.  Dividing the exempt roots out of a multiple controls every
+coefficient below the exempt positions, by the geometric sum that proves
+\eqref{eq:order}.
+
+\begin{lemma}[Deflation]\label{lem:deflate}
+Let $2\le r_1<\cdots<r_L$, let $F=\sum_jf_jx^j$ be a monic multiple of
+$\prod_{i=1}^L(x-r_i)$ of degree $D$, let $X\subset\{1,\ldots,D\}$ be
+nonempty, and put $c=\max\{|f_{D-d}|:1\le d\le D,\ d\notin X\}$.  Then
+$Q=F\big/\prod_{i\le u}(x-r_i)$ is a monic multiple of $P_u$, and every
+coefficient of $Q$ at distance $e\ge\max X$ from its leading one satisfies
+\[
+  |q|\le\frac{c}{\prod_{i\le u}(r_i-1)}\le c .
+\]
+\end{lemma}
+
+\begin{proof}
+Take $u=1$ first, with $r=r_1$ and $Q=\sum_jq_jx^j$.  Comparing coefficients
+in $F=(x-r)Q$ gives $f_j=q_{j-1}-rq_j$, so $q_j=(q_{j-1}-f_j)/r$ and,
+unwinding to $q_{-1}=0$,
+\[
+  q_j=-\sum_{i\le j}f_i\,r^{\,i-j-1}.
+\]
+The coefficient of $Q$ at distance $e$ from its leading one is $q_{D-1-e}$,
+and the $f_i$ that sum reads have $i\le D-1-e$, that is, distance $D-i\ge e+1$
+from the leading coefficient of $F$.  If $e\ge\max X$ then none of them is
+exempt and none is $f_D$, so each $|f_i|\le c$ and
+$|q_{D-1-e}|\le c\sum_{k\ge1}r^{-k}=c/(r-1)$.
+
+For $u>1$ apply that case to $F$ and $r_1$: the quotient $Q_1$ is a monic
+multiple of $\prod_{i\ge2}(x-r_i)$ whose coefficients at distance $\ge\max X$
+from its leading one are at most $c/(r_1-1)$ in magnitude.  The same
+computation with $r_2$ reads only coefficients of $Q_1$ at distance
+$\ge\max X+1$, so it applies with $c$ replaced by $c/(r_1-1)$.  Iterating
+over $i\le u$ gives the product, and each $r_i-1\ge1$.
+\end{proof}
+
+What the lemma leaves uncovered is the head: the $\max X-1$ coefficients of
+$Q$ nearer the top than the highest exempt position.  There $q$ is a
+geometric combination of the leading coefficients of $F$, the exempt ones
+among them, and nothing bounds it termwise.  At a fixed placement that is the
+whole question.
+
+\begin{proposition}[The head carries the question]\label{prop:head}
+Let $2\le r_1<\cdots<r_L$ be distinct, $0\le u\le L-1$, and $X$ a set of $u$
+positive integers.  Suppose that for every $\varepsilon>0$ some monic
+multiple $F$ of $\prod_{i=1}^L(x-r_i)$ has $c\le1/\tau(X)+\varepsilon$, with
+$c$ as in Lemma~\ref{lem:deflate}, and $|q|\le c$ at each coefficient of
+$Q=F/\prod_{i\le u}(x-r_i)$ at distance less than $\max X$ from its leading
+one.  Then $\tau(X)\le\tau^*$.  If this holds at every $X$ of size $u$ then
+$T=\tau^*$ and the infimum of $b_{u+1}$ is $1/\tau^*$.
+\end{proposition}
+
+\begin{proof}
+With Lemma~\ref{lem:deflate} the hypothesis reads $b_1(Q)\le c$.
+Theorem~\ref{thm:value} applied to the roots $r_{u+1},\ldots,r_L$ with $u=0$
+gives $\inf b_1=1/\tau^*$ over monic multiples of $P_u$, the supremum there
+running over the single placement $X=\varnothing$.  So
+$1/\tau^*\le b_1(Q)\le1/\tau(X)+\varepsilon$ for every $\varepsilon>0$, that
+is $\tau(X)\le\tau^*$.  Taking the supremum over $X$ gives $T\le\tau^*$, and
+Theorem~\ref{thm:value} gives the reverse.
+\end{proof}
+
+The head is a window of $\max X-1$ coefficients, so the hypothesis is a finite
+condition at each placement.  Near-extremality in it is not a convenience.  At
+$(7,11)$ the multiple $F=(x-7)(x-11)(x+5)=x^3-13x^2-13x+385$ has $b_2(F)=13$
+and $X_F=\{3\}$, while $F/(x-7)=x^2-6x-55$ has $b_1=55$: an arbitrary
+multiple's head exceeds its $c$ by a factor above four.  How much
+near-extremality it needs is exact, and at the cutoff it needs more than there
+is.
+
+\begin{proposition}[Reach of the deflation route]\label{prop:defthresh}
+Let $u=1$, $X=\{g\}$, and let $F$, $c$ and $Q=F/(x-r_1)$ be as in
+Lemma~\ref{lem:deflate}.  If the exempt coefficient satisfies
+\begin{equation}\label{eq:defthresh}
+  |f_{D-g}|\le c\,\frac{r_1(r_1-2)}{r_1-1},
+\end{equation}
+then $b_1(Q)\le c$, and hence $c\ge1/\tau^*$.  Under the weaker hypothesis
+$|f_{D-g}|\le c$ the same conclusion is immediate, since $F$ is itself a monic
+multiple of $P_1$; \eqref{eq:defthresh} improves on it exactly when
+$r_1>\tfrac{3+\sqrt5}2=2.618\ldots$, and at $r_1=2$ it is empty.
+\end{proposition}
+
+\begin{proof}
+Write $y=1/r_1$ and $w_d=f_{D-d}$, so $|w_d|\le c$ for $1\le d\le D$, $d\ne g$.
+Since $F(r_1)=0$, the coefficient of $Q$ at distance $e$ from its leading one
+is $-\sum_{k>e}w_ky^{\,k-e}$, as in Lemma~\ref{lem:deflate}.  For $e\ge g$ no
+exempt term occurs and the bound $c\,y/(1-y)=c/(r_1-1)\le c$ is the lemma.  For
+$e<g$ the exempt term contributes at most $|w_g|y^{\,g-e}$ and the rest at most
+$c\,y/(1-y)$, so $b_1(Q)\le c$ as soon as
+$|w_g|y^{\,g-e}\le c\bigl(1-\tfrac1{r_1-1}\bigr)=c\,\tfrac{r_1-2}{r_1-1}$ for
+every $e<g$.  The largest weight is $y^{\,1}$, at $e=g-1$, which is
+\eqref{eq:defthresh}.  Finally $r_1(r_1-2)/(r_1-1)>1$ is $r_1^2-3r_1+1>0$.
+\end{proof}
+
+So at every root set with $r_1=2$ --- $(2,3,5,7)$ among them --- no pointwise
+bound on the head closes a placement along this route: the head has to be
+bounded against $c$ through the cancellation between its terms, not term by
+term.
+
+The primal route to the same statement is to insert the zeros one at a time,
+each insertion paid for by one node, and it fails outright.  The full
+certificate on $(\tfrac13,\tfrac15,\tfrac17)$ with zero set $\{1,3\}$ has
+tail $\tfrac{31}{1704}$; adding the node $\tfrac12$ and the zero $2$ gives
+the full certificate on all four nodes with the consecutive zero set
+$\{1,2,3\}$, of tail $\tfrac1{48}$, so the tail rose although a node was
+gained---Theorem~2.2's equality case absorbed it.  Barring consecutive zero
+sets does not repair the step.  At $(2,\tfrac94,\tfrac52,3)$ the full
+certificate on $(\tfrac49,\tfrac25,\tfrac13)$ with zero set $\{1,4\}$ has
+tail $\tfrac{11608}{84555}=0.13728\ldots$, and adding the node $\tfrac12$ and
+the zero $2$ gives the zero set $\{1,2,4\}$ and tail
+$\tfrac{108}{755}=0.14304\ldots$.  This is what Theorem~\ref{thm:lift} buys
+with its hypothesis $X\subseteq Z\cup(g,\infty)$, and why the covering below
+it is a search.
+
+\begin{proposition}[Two infima]\label{prop:values}
+Over monic $Q\in\R[x]$,
+\begin{align*}
+  \inf_Qb_2\bigl(Q\,(x-2)(x-3)(x-5)(x-7)\bigr)
+    &=\frac{1704}{31}=54.967\ldots,\\
+  \inf_Qb_3\Bigl(Q\prod_{r=2}^7(x-r)\Bigr)
+    &=\frac{114840}{259}=443.397\ldots,
+\end{align*}
+against the bounds $48$ and $360$ of \eqref{eq:order} and the values $57$ and
+$480$ of the construction.  Neither infimum is attained.
+\end{proposition}
+
+\begin{proof}
+At $(2,3,5,7)$ the full certificate on $(\tfrac13,\tfrac15,\tfrac17)$ with
+zero set $\{1,3\}$ is
+$v^*_d=(81\cdot3^{-d}-625\cdot5^{-d}+686\cdot7^{-d})/142$.  It has
+$v^*_2=-\tfrac1{71}$, is positive past $3$, and has tail $\tfrac{31}{1704}$.
+The multiplier $M=x+\tfrac9{62}$ gives
+\[
+  \frac{\widetilde P_1(y)\,(1+\tfrac9{62}y)}{1-y}
+  =1-\tfrac{859}{62}y+\tfrac{1704}{31}y^2-\tfrac{2463}{62}y^3
+   -\tfrac{1704}{31}\sum_{d\ge4}y^d ,
+\]
+so by \eqref{eq:dualpair} $\tau^*=\tfrac{31}{1704}$, with $Z^*=\{1,3\}$ and
+$G=\{2\}$.  The full certificate on all four nodes with zero set $\{1,2,5\}$
+has tail $\tfrac{21337}{1910352}<\tfrac{31}{1704}$, and
+Corollary~\ref{cor:uone} gives the first value.
+
+At $(2,\ldots,7)$ with $u=2$ the full certificate on
+$(\tfrac14,\ldots,\tfrac17)$ with zero set $\{1,2,4\}$ has
+$v^*_3=\tfrac1{638}$, is negative past $4$, and has tail
+$\tfrac{259}{114840}$.  The multiplier $M=x+\tfrac{60}{259}$ gives the
+partial sums $1$, $-\tfrac{5379}{259}$, $\tfrac{5666}{37}$,
+$-\tfrac{114840}{259}$, $\tfrac{64440}{259}$ and then $\tfrac{114840}{259}$
+forever, so $\tau^*=\tfrac{259}{114840}$ with $Z^*=\{1,2,4\}$.  The search
+closes in two steps.  Theorem~\ref{thm:lift} with $k=2$ covers every
+$X\not\ni3$.  The full certificate on $(\tfrac13,\ldots,\tfrac17)$ with zero
+set $\{1,2,3,5\}$, of tail $\tfrac{31}{36720}$, covers every $\{3,x\}$ except
+$\{3,4\}$.  The full certificate on all six nodes with zero set
+$\{1,2,3,4,7\}$, of tail $\tfrac{119261}{193623120}$, covers $\{3,4\}$.
+
+Neither infimum is attained, because $\tau(X)<\tau^*$ for every $X$.  Each
+covering above either lifts with $k\ge1$ onto a padded zero set that is not
+consecutive, which is strict by Theorem~\ref{thm:lift}, or has tail below
+$\tau^*$ outright.  So every multiple $F$ has
+$b_{u+1}(F)\ge1/\tau(X_F)>1/\tau^*$.
+\end{proof}
+
+In both cases the extremal series is the construction of
+Proposition~\ref{prop:partial} applied to $P_uM$ rather than $P_u$, and the
+factor $x+\beta$ has a negative root.  It raises the total $|P_u(1)M(1)|$
+above $|P_u(1)|$ but brings every partial sum within it, so \eqref{eq:partial}
+holds for the product.  Complementary slackness explains the shape.  Past the
+largest zero $g$ of $v^*$ the witness is constant, so $(1-y)W$ is a
+polynomial of degree $g+1$ and $\deg M=g+1-m$, which is $1$ both times.
+
+This is the $\ell^\infty$ member of the family this paper works in.  Reduced
+length minimizes $\ell^1$ over normalized multiples~\cite{schinzel}.  Its
+integer-polynomial $\ell^2$ analogue, the minimal Euclidean norm of an
+algebraic number, is effectively computable~\cite{frw}.  The logarithmic
+coefficient mass $\Lambda$ of~\cite{coefficient-mass} is additive over
+coefficients rather than a norm at all.
+
+\section{Scope}\label{sec:scope}
+
+The bounds here concern coefficient magnitudes, not ordinary length or
+height: they are uniform over the degree of $F$ and over all additional real
+or complex roots, and in~\cite{coefficient-mass} the hypothesis
+$|f_D|\ge1$ enters only where the $\log|f_D|$ term is discarded to reach an
+asymptotic.  In the opposite
+direction,
+the degree of an integer polynomial of height $H\ge2$ all of whose roots are
+nonzero rationals is at most a constant times $\log H$~\cite{htv}, and the
+minimal height of a degree-$n$ polynomial over a fixed number field with all
+roots in $K^\times$ grows exponentially in $n$~\cite{tromp}; the bound here
+constrains neither degree nor height but the additive coefficient mass.  The
+contribution of~\cite{coefficient-mass} relative to reduced-height duality
+is the prefix-sensitive tail
+comparison and its iteration; the normalized determinant sequence and its
+consecutive-zero evaluation are from Dubickas and Jankauskas~\cite{dj}.
+Proposition~\ref{prop:confluent} is supplementary: it carries the tail
+theorem to confluent nodes, but Theorem~3.2 already reaches
+repeated roots by perturbation, so the main bounds do not depend on it.
+
+In the stated form the coefficient bounds for $k\ge2$ require $r_i\ge2$,
+inherited from the node cutoff $y_i\le1/2$ of Theorem~2.2.  The cutoff enters
+in exactly two places, the factor $2$ in the correction-ratio bound of
+Theorem~2.2's proof and the discard of factors at most $1$ in Lemma~3.1.  Both
+matter only for $u\ge1$.  The $k=1$ bound is free of the cutoff, as are
+Lemma~2.1 and Lemma~2.3.  The restriction is not an artifact of the proof.  By
+Proposition~\ref{prop:subtwo}, \eqref{eq:order} is false for $k=2$ already at
+$L=2$, and already when only $r_1<2$.  By Proposition~\ref{prop:cutoff}, the
+cutoff in the stated product cannot be raised.  Theorem~\ref{thm:repaired}
+removes both uses at once by keeping the factors the discard drops, so
+\eqref{eq:repaired} holds for every $r_1>1$.  By
+Proposition~\ref{prop:subtwosharp} it is the infimum when the exempt roots
+lie in $(1,2]$ and at most $u$ partial sums of $P$ exceed $|P(1)|$.  With an
+exempt root below $2$ and those hypotheses failing, whether it is the infimum
+is open.
+
+The pointwise extremal problem asks, for a fixed root sequence and a fixed
+$k$, how closely a multiple can approach \eqref{eq:order}.
+Corollary~3.6 settles the asymptotic form of the aggregated question for
+prime roots, and the multiplier $x+1$ of~\cite[Section~3]{coefficient-mass}
+shows that even there the root product need not be the finite-$L$
+minimizer.  Whether \eqref{eq:order} is itself the infimum is settled for
+distinct roots: by Proposition~\ref{prop:partial} and
+Theorem~\ref{thm:converse} it is exactly when \eqref{eq:partial} holds, as
+at $(2,3)$ and $(2,3,5)$, where~\cite[Proposition~4.1]{coefficient-mass} and
+Proposition~\ref{prop:sharp235} exhibit the multiples, and at $(3,4,5,6)$.
+It fails already at $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums
+are $1,-\tfrac{11}2,5$, so the infimum of $b_2$ exceeds $5$.  When
+\eqref{eq:partial} fails, Theorem~\ref{thm:value} gives the infimum as $1/T$,
+and Theorem~\ref{thm:lift} reduces $T=\tau^*$ to a finite search, which
+closes at $(2,3,5,7)$ and $(2,\ldots,7)$ (Proposition~\ref{prop:values}) and
+at $2119$ further root sets we tried with $u\le4$---integer, rational, and
+clustered just above the cutoff---where every one of $40405$ placements inside
+$\{1,\ldots,10\}$ is covered by a full certificate whose tail is at most the
+least tail of a full certificate on the surviving nodes.  Two things are not
+proved in general: that $\tau^*$ is attained by a full certificate with a
+witness as in \eqref{eq:dualpair}, and that the search always closes, that is,
+that the escaping placement is always extremal.
+
+The second is now one inequality.  By Proposition~\ref{prop:step} it is the
+single step \eqref{eq:step}, deleting the largest element of the placement, and
+by Proposition~\ref{prop:stepeasy} that step already holds except when the
+minimizing zero set straddles $\max X$; Conjecture~\ref{conj:plane} is what
+covers the straddling case, and by Proposition~\ref{prop:planestep} it gives
+\eqref{eq:step} with no case analysis at all.  We tested
+\eqref{eq:step} at $47638$ instances across two sweeps --- integer root sets to
+$L=6$, rational ones, and sets clustered just above the cutoff --- with no
+violation, $1017$ of them straddling and every one covered by the slide-down
+rule, a further $674$ in its median form, and \eqref{eq:plane} itself at
+$5700$ pairs $(B,g)$.  Three alternatives are
+refuted above: deleting $\min X$ rather than $\max X$ fails at $(2,3,4,5)$;
+freeing $\max Z^-$ rather than the smallest zero above $g$ fails by a factor
+$1.40$; and adjoining $g$ to $Z^-$ without sliding, which would need no
+displaced zero at all, fails in $245$ of the $379$ straddling instances we put
+to it, by as much as a factor $2.01$.  Proposition~\ref{prop:head} states the same question
+analytically instead, as a bound on the $\max X-1$ coefficients of a deflated
+multiple; by Proposition~\ref{prop:defthresh} that route says nothing pointwise
+once $r_1\le\tfrac{3+\sqrt5}2$, which covers every root set with $r_1=2$.
+Repeated roots beyond the confluent pair $(3,3)$ also remain open.
+
+\paragraph{Data availability.}
+No datasets were generated or analyzed in this study.
+
+\begin{thebibliography}{9}
+\small
+\bibitem{karlin-studden}
+S.~Karlin and W.~J. Studden,
+\newblock \emph{Tchebycheff Systems: With Applications in Analysis and Statistics},
+\newblock Interscience, New York, 1966.
+
+\bibitem{polya-szego}
+G.~P\'olya and G.~Szeg\H{o},
+\newblock \emph{Problems and Theorems in Analysis II},
+\newblock Springer, 1976, Part Five, Chapter 1,
+\newblock \href{https://doi.org/10.1007/978-3-642-61905-2}
+{doi:10.1007/978-3-642-61905-2}.
+
+\bibitem{schinzel}
+A.~Schinzel,
+\newblock On the reduced length of a polynomial with real coefficients,
+\newblock \emph{Functiones et Approximatio Commentarii Mathematici} 35 (2006), 271--306,
+\newblock \href{https://doi.org/10.7169/facm/1229442629}
+{doi:10.7169/facm/1229442629}.
+
+\bibitem{dj}
+A.~Dubickas and J.~Jankauskas,
+\newblock On the reduced height of a polynomial,
+\newblock \emph{Publicationes Mathematicae Debrecen} 71 (2007), 325--348,
+\newblock \href{https://doi.org/10.5486/PMD.2007.3728}
+{doi:10.5486/PMD.2007.3728}.
+
+\bibitem{frw}
+M.~Filaseta, M.~L. Robinson and F.~S. Wheeler,
+\newblock The minimal Euclidean norm of an algebraic number is effectively
+computable,
+\newblock \emph{Journal of Algorithms} 16 (1994), 309--333,
+\newblock \href{https://doi.org/10.1006/jagm.1994.1015}
+{doi:10.1006/jagm.1994.1015}.
+
+\bibitem{htv}
+L.~Hajdu, R.~Tijdeman and N.~Varga,
+\newblock On polynomials with only rational roots,
+\newblock \emph{Mathematika} 69 (2023), 867--878,
+\newblock \href{https://doi.org/10.1112/mtk.12209}
+{doi:10.1112/mtk.12209}.
+
+\bibitem{tromp}
+T.~Tromp,
+\newblock On the height of polynomials that split completely over a fixed
+number field,
+\newblock arXiv:2509.12064 (2025),
+\newblock \href{https://doi.org/10.48550/arXiv.2509.12064}
+{doi:10.48550/arXiv.2509.12064}.
+
+\bibitem{coefficient-mass}
+B.~Pham,
+\newblock Displaced-zero certificates and the coefficient mass of polynomial
+multiples,
+\newblock manuscript in preparation;
+Lemma~2.1 (Consecutive zero set), Theorem~2.2 (Displaced-zero comparison),
+Lemma~2.3 (Interlacing of the correction sum), Lemma~3.1 (Slack
+certificate), Theorem~3.2 (Coefficient order statistics),
+Corollary~3.6 (Sharp prime-root infimum), Proposition~4.1 (The bound for
+$b_2$ at roots $(2,3)$ is an infimum).
+\end{thebibliography}
+
+\end{document}

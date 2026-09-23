@@ -15,9 +15,8 @@ cross-check exits 3); ``i`` raises :class:`EOFError` when exhausted.
 
 from __future__ import annotations
 
-import sys
-
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 #: The largest value ``o`` can print as a character, and the surrogate range
@@ -218,6 +217,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read(), IO())
+    script_main(run)

@@ -13,11 +13,11 @@ to read raises :class:`~esolangs.exceptions.HaltError`.
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Sequence
 from typing import cast
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 
@@ -254,10 +254,23 @@ class _Machine:
         (col, row, _dx, _dy), grid, _stack, _string, _done = self.state
         command = grid[row][col]
         char_input = self.io.input_char() if command == "~" else None
+        # An empty stack pops as 0, so it is a zero divisor like any other and
+        # must read a result too.  Guarding on a non-empty stack instead made
+        # `0/` read while `/` halted, on the same divisor.
         needs_number = command == "&" or (
-            command in "/%" and bool(self.state[2]) and self.state[2][-1] == 0
+            command in "/%" and (not self.state[2] or self.state[2][-1] == 0)
         )
-        number_input = self.io.input_num() if needs_number else None
+        number_input = None
+        if needs_number:
+            try:
+                number_input = self.io.input_num()
+            except EOFError:
+                # `&` is a plain read, so its EOF propagates.  A zero divisor
+                # is documented to raise HaltError instead, and the eager read
+                # here fired first -- leaving `_advance`'s HaltError branch
+                # unreachable through `run`.  Hand it the missing result.
+                if command == "&":
+                    raise
         random_dir = draw(self._rng, 4) if command == "?" else None
         self.state, effect = _advance(self.state, char_input, number_input, random_dir)
         if effect:
@@ -276,6 +289,4 @@ def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read().splitlines(), IO())
+    script_main(run, shape="strip")

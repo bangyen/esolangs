@@ -39,7 +39,13 @@ $\Theta(T\log T)$.  The upper bound combines a linear-size Brainfuck
 construction with a fixed-modulus short-interval theorem for primes.  The
 lower bound counts every integer encoding of at most $D$ digits and remains
 valid in the presence of ignored prime factors, comments, and leading zeros;
-these encodings realize only $\exp(O(D/\log D))$ behaviors.
+these encodings realize only $\exp(O(D/\log D))$ behaviors.  The tree's
+constant is exact, the walk's leading constant is explicit, and a sieve of
+the classes modulo $11$ through $10^{11}$ gives a proven digit ceiling at
+every arity up to $19$.  Beyond that arity the threshold is effective in
+principle, the modulus admitting no exceptional zero, and an explicit
+short-interval theorem on GRH makes it numerical: the ceiling is then
+$24.6\,T\log T$ at every arity, falling to $35/\log 10<15.21$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -54,9 +60,11 @@ Let
 \[
   N=\prod_p p^{e_p}
 \]
-be the positive integer spelled by the decimal digits of a Factor source.
-An all-zero digit string instead decodes to the empty program; it is one
-exceptional behavior and is excluded from the logarithmic notation below.
+be the positive integer spelled by the decimal digits of a Factor source;
+every other character is a comment.  A source with no digits is read as
+$N=1$, which decodes to the empty program.  An all-zero digit string also
+decodes to the empty program; it is one exceptional behavior and is excluded
+from the logarithmic notation below.
 For a prime $p$, the residue $p\bmod 11$ selects the Brainfuck instruction
 according to
 \[
@@ -90,8 +98,9 @@ and matched brackets have their usual while-loop semantics.  For $n\ge1$ put
 $T=2^n$.  Each input bit is supplied as a separate line containing its ASCII
 digit.  A program
 \emph{computes} a table $t=(t_0,\ldots,t_{T-1})\in\{0,1\}^{2^n}$ if, for every
-$b_1\cdots b_n\in\{0,1\}^n$ in lexicographic order, it terminates and emits
-exactly the character $t_{(b_1\cdots b_n)_2}$, with zero-based subscripts.
+$b_1\cdots b_n\in\{0,1\}^n$, a separate run on the input lines
+$b_1,\ldots,b_n$ terminates and emits exactly the ASCII digit of
+$t_{(b_1\cdots b_n)_2}$, with zero-based subscripts.
 Define
 \[
  \mathcal C_F(T)=\max_{t\in\{0,1\}^T}
@@ -122,30 +131,54 @@ maximal run by one prime power.  We begin by bounding the size of the decision
 tree.
 
 \begin{lemma}[Decision-tree size]\label{lem:tree}
-Every $T$-bit truth table has a Brainfuck decision-tree program of length
-$C=O(T)$.
+For $n\ge2$, every $T$-bit truth table has a Brainfuck decision-tree program
+of length
+\[
+  C\le\tfrac{35}{2}T+55n+25,
+\]
+with equality for parity.
 \end{lemma}
 
 \begin{proof}
-Use the following identity-order construction.  It first reads ASCII input into
-cell $2i$, subtracts $48$ to obtain bit $b_i$, and leaves cell $2i+1$ as a
-zero flag.  At a depth-$i$ node, set
-the flag to one and enter a loop on $b_i$ that clears both $b_i$ and the flag
-before running the one-child.  Then run the zero-child inside a loop on the flag that
-clears it.  Exactly one child runs, and both cells are zero afterward, so
-these fixed bracket gadgets nest recursively and implement the decision tree.
-A one-leaf increments a separate result cell; a zero-leaf does nothing, and
-one final gadget adds the ASCII-zero offset and prints.
-
-The initial reads cost $O(n)$.  Moving from a node at depth $i$ to a
-nonconstant child costs $O(1)$.  A constant subtree may instead move to the
-result cell, at distance $O(n-i)$.  There are at most $2^{i+1}$ such exits at
-depth $i$, so all pointer travel is bounded by
+Use the following identity-order construction.  For each input in turn, a
+preamble reads its ASCII digit into cell $2i$ with \texttt{,} and subtracts
+$48$ to obtain bit $b_i$, leaving cell $2i+1$ as a zero flag.  A node at depth
+$i$ is entered at cell $2i$ and left at cell $2i+1$, both zero on exit:
 \[
- O(n)+\sum_{i=0}^{n-1}O\bigl(2^i(n-i)\bigr)=O(2^n)=O(T).
+  \texttt{>+<[->-}\;A\;\texttt{]>[-}\;B\;\texttt{]}.
 \]
-The fixed node gadgets and the single final output add $O(T)$.
+The first loop runs on $b_i$ and clears it and the flag, so the one-branch
+$A$ runs exactly when $b_i=1$; the second runs on the surviving flag, so the
+zero-branch $B$ runs exactly when $b_i=0$.  The branch $A$ must end at cell
+$2i$ and $B$ at cell $2i+1$.  A nonconstant child is
+$A=\texttt{>}S\texttt{<<<}$ or $B=\texttt{>}S\texttt{<<}$, where $S$ is its
+node.  A constant-one child moves to the result cell $2n$, increments it and
+returns, costing $4(n-i)$ in $A$ and $4(n-i)-1$ in $B$; a constant-zero child
+costs one \texttt{<} in $A$ and nothing in $B$.  After the root, one final
+gadget moves to the result cell, adds the ASCII-zero offset and prints.
+
+Let $F(k)$ bound the length of a node of height $k=n-i$ that is not the
+root.  Its own characters number $12$.  At height $1$ both children are
+single rows, and they differ because the node's subtree is not constant, so
+$F(1)=12+4+0=12+1+3=16$.  At height $k\ge2$ a child costs at most
+$\max\{F(k-1)+4,4k\}$ in $A$ and $\max\{F(k-1)+3,4k-1\}$ in $B$.  By
+induction $F(k-1)+19=35\cdot2^{k-2}$, and then $F(k-1)\ge4k-4$, so
+\[
+  F(k)\le12+2F(k-1)+7,
+  \qquad
+  F(k)\le35\cdot2^{k-1}-19.
+\]
+The root obeys the same bound unless the table is constant, when it costs at
+most $12+8n-1\le35\cdot2^{n-1}-19$ for $n\ge2$.  The preamble costs
+$49n+2(n-1)$, the return to cell $0$ costs $2(n-1)$, and the final gadget
+costs $(2n-1)+48+1$.  Adding $35\cdot2^{n-1}-19$ gives the displayed bound.
+Parity has no constant subtree above the leaves, so every inequality is an
+equality.
 \end{proof}
+
+The implementation returns the shorter of this identity-order program and one
+built for a reordered set of variables, so its $C$ is no larger.  At $n=1$ the
+constant-one table costs $118$ characters, three above the displayed formula.
 
 The encoder replaces each maximal run by one prime power.  It scans
 primes upward and chooses the first prime in the residue class required by
@@ -153,8 +186,8 @@ the next run.  The following standard consequence of the prime number theorem
 in short arithmetic progressions controls this adaptive sequence.
 
 \begin{lemma}[Fixed-modulus short intervals]\label{lem:short}
-For every reduced residue class $a\pmod {11}$, there are constants
-$x_0$ and $\theta<1$ such that every $x\ge x_0$ has a prime
+There are constants $x_0$ and $\theta<1$ such that for every reduced
+residue class $a\pmod{11}$, every $x\ge x_0$ has a prime
 \[
   p\equiv a\pmod {11},
   \qquad x<p\le x+x^\theta.
@@ -170,17 +203,23 @@ Zaman~\cite[Section~1.2]{thorner-zaman}.  Fix
 $7/12+\varepsilon<\theta<1$, put
 $X=x+x^\theta$ and $h=x^\theta$.  Since $X\sim x$, the displayed size
 condition holds for all sufficiently large $x$, while
-$(X-h,X]=(x,x+x^\theta]$.  Taking $q=11$ proves the lemma.
+$(X-h,X]=(x,x+x^\theta]$.  Taking $q=11$, the count in each of the ten
+reduced classes is $(1+o(1))\,h/(10\log X)$, which is positive for large
+$x$; one $x_0$ serves all eight classes used below.  The constants $x_0$ and
+$\theta$ are not made explicit, and only their existence is used.
 \end{proof}
 
 \begin{lemma}\label{lem:adaptive}
 If $p_i$ is the prime selected for the $i$th run, then
-$p_i=i^{O(1)}$.  In particular, $Q=m^{O(1)}$.
+$p_i=O\bigl(i^{1/(1-\theta)}\bigr)$.  In particular,
+$\log Q=O(\log(m+1))$.
 \end{lemma}
 
 \begin{proof}
-Finitely many primes below $x_0$ change only the implied constant.  Above
-$x_0$, Lemma~\ref{lem:short} gives
+Let $i_0$ be the first index with $p_{i_0}\ge x_0$.  Then
+$i_0\le\pi(x_0)+1$, and $p_{i_0}\le x_0+x_0^\theta$ by Lemma~\ref{lem:short}
+at $x=x_0$, so the indices before $i_0$ change only the implied constant.
+From $i_0$ on, Lemma~\ref{lem:short} gives
 \[
   p_{i+1}\le p_i+p_i^\theta.
 \]
@@ -205,9 +244,255 @@ $\log Q=O(\log(m+1))$.  Equation~\eqref{eq:digits} yields
   =O\bigl(C\log(m+1)\bigr)
   =O\bigl(T\log(T+1)\bigr).
 \]
-Changing logarithm bases proves the digit bound.  The constructed program has
-an output run, so $m\ge1$.
+Changing logarithm bases proves the digit bound.
 \end{proof}
+
+\section{Explicit constants}
+
+Proposition~\ref{prop:upper} hides two constants: the tree's, which
+Lemma~\ref{lem:tree} makes exact, and the prime walk's, which depends on the
+unstated $x_0$ and $\theta$ of Lemma~\ref{lem:short}.  The walk's leading
+constant is explicit even so; its threshold is not.
+
+\begin{corollary}[Leading constant]\label{cor:leading}
+For every $\theta$ admissible in Lemma~\ref{lem:short}, the generated
+sources satisfy
+\[
+  \limsup_{T\to\infty}\;\max_{t\in\{0,1\}^T}\frac{D(t)}{T\log T}
+  \le\frac{35}{2(1-\theta)\log10}.
+\]
+Every $\theta>7/12$ is admissible, so the limit superior is at most
+$42/\log10<18.25$.
+\end{corollary}
+
+\begin{proof}
+The proof of Lemma~\ref{lem:adaptive} gives
+$p_i^{1-\theta}\le p_{i_0}^{1-\theta}+(1-\theta)i$, hence
+$\log Q\le(1-\theta)^{-1}\log m+O(1)$.  With $m\le C$ and
+Lemma~\ref{lem:tree},
+$\log N\le C\log Q\le\frac{35}{2}T\bigl((1-\theta)^{-1}\log T+O(1)\bigr)
++O(n\log T)$.  Divide by $\log10$.  The proof of Lemma~\ref{lem:short}
+accepts every $\theta>7/12$, and $\frac{35}{2}\cdot\frac{12}{5}=42$.
+\end{proof}
+
+The constant $O(1)$ above contains $x_0$, so the corollary does not say at
+which $T$ the ceiling takes hold.  For the arities that can be generated in
+practice a computation replaces it; Section~\ref{sec:grh} covers the rest on
+GRH.  The ineffectivity is an artifact of the quotation, not of the modulus.
+
+\begin{remark}[Effectivity at a fixed modulus]\label{rem:effective}
+Lemma~\ref{lem:short} carries an ineffective $x_0$ only because it is quoted
+from a theorem uniform in $q$.  At the fixed modulus $11$ the one ineffective
+ingredient of a Hoheisel argument is Siegel's lower bound for $L(1,\chi)$ at a
+real character, and the only real character modulo $11$ is the Legendre
+symbol, odd because $11\equiv3\pmod 4$.  Its field $\mathbb Q(\sqrt{-11})$ has
+class number $1$ and two units, so the class-number formula gives
+\[
+  L(1,\chi)=\frac{2\pi h}{w\sqrt{11}}=\frac{\pi}{\sqrt{11}}=0.94722\ldots,
+\]
+which excludes an exceptional zero outright.  So $x_0$ is effective in
+principle at this modulus; what the literature does not supply is a value for
+it.  Under GRH one is available.
+\end{remark}
+
+\begin{lemma}[Computed class gaps]\label{lem:computed}
+Put $c=8.62$ and $X=10^{11}-10^4$.  For every real $0\le x\le X$ and every
+$a\in\{1,\ldots,8\}$ there is a prime
+\[
+  p\equiv a\pmod{11},
+  \qquad x<p\le x+c\log^2\max(x,37).
+\]
+\end{lemma}
+
+\begin{proof}
+A segmented sieve through $10^{11}$ records, for each class, every pair of
+consecutive primes $q<p$ of the class.  On $q\le x<p$ the ratio
+$(p-x)/\log^2\max(x,37)$ is nonincreasing, so its supremum is the value at
+$x=q$; the largest such value is $8.6184$, attained by the class-$2$ pair
+$4{,}160{,}719<4{,}162{,}721$.  Before a class's first prime, which is at
+most $37$, the gap is at most $37<c\log^237$.  Every class has a prime in
+$(X,10^{11}]$, so each $x\le X$ has its next class prime inside the sieved
+range.
+\end{proof}
+
+\begin{proposition}[Computed ceiling]\label{prop:computed}
+Let a table's program have $C$ instructions, and let $y\ge37$ satisfy
+$37+(C-1)c\log^2y\le y\le X$.  Then $Q\le y$ and
+\[
+  D\le\lfloor C\log_{10}y\rfloor+1.
+\]
+\end{proposition}
+
+\begin{proof}
+The first selected prime is at most $37$.  By induction on $i\le m$,
+$p_i\le37+(i-1)c\log^2y$: this is at most $y\le X$, so
+Lemma~\ref{lem:computed} applies at $x=p_i$ and gives
+$p_{i+1}\le p_i+c\log^2y$.  Hence $Q\le37+(m-1)c\log^2y\le y$ because
+$m\le C$.  Finally $\log N\le C\log Q$.
+\end{proof}
+
+With $C\le\frac{35}{2}T+55n+25$ the least admissible $y$ is below $X$ for
+every $n\le19$.  At $n=13$, for instance, $y=498{,}168{,}370$ and
+$D\le1{,}253{,}292$, so $D/(T\log T)\le16.98$ over all $2^{8192}$ tables;
+parity, which attains the tree bound, measures $966{,}568$ digits, or
+$13.09$.  The ceiling falls to $14.19$ at $n=19$.  In this range each step
+of the walk is polylogarithmic rather than a power of $p_i$, so the ceiling
+tends towards $\frac{35}{2}/\log10\approx7.60$ rather than
+Corollary~\ref{cor:leading}'s $18.25$, but slowly: $\log_{10}y$ exceeds
+$\log_{10}C$ by $\log_{10}(c\log^2y)$.
+
+\section{An effective threshold on GRH}\label{sec:grh}
+
+Lemma~\ref{lem:computed} stops at $10^{11}$, so Proposition~\ref{prop:computed}
+stops at $n=19$.  The generalized Riemann hypothesis carries the walk the rest
+of the way with constants that are still explicit, because the one
+short-interval theorem for progressions that is explicit on GRH has, at
+$q=11$, a threshold five orders of magnitude \emph{below} the sieved range.
+The two therefore overlap, and no $x$ is left uncovered.
+
+\begin{lemma}[Explicit short intervals on GRH]\label{lem:grh}
+Assume GRH for $\zeta$ and for the Dirichlet $L$-functions of the characters
+modulo $11$, and put
+\[
+  h(t)=10\bigl(\tfrac12\log t+\log11+12\bigr)\sqrt t .
+\]
+Then for every $a\in\{1,\ldots,8\}$ and every $x\ge10^{11}$ there is a prime
+\[
+  p\equiv a\pmod{11},\qquad x<p\le x+2h(2x).
+\]
+\end{lemma}
+
+\begin{proof}
+Dudek, Greni\'e and Molteni~\cite[Thm.~1.1]{dgm} prove on GRH that for
+$q\ge3$, $(a,q)=1$, and the row $(\alpha,\delta,\rho,m)=(\frac12,1,12,23)$ of
+their Table~1, every
+\[
+  h\ge\varphi(q)\bigl(\alpha\log x+\delta\log q+\rho\bigr)\sqrt x,
+  \qquad x\ge(m\varphi(q)\log q)^2
+\]
+admits a prime $p\equiv a\pmod q$ with $|p-x|<h$.  At $q=11$ we have
+$\varphi(q)=10$, the displayed $h$ is theirs, and the threshold is
+$(230\log11)^2<3.05\cdot10^5$.
+
+The quantity $h(2x)/x=10\sqrt2\bigl(\frac12\log2x+\log11+12\bigr)/\sqrt x$
+decreases for $x\ge e^2$ and equals $1.23\cdot10^{-3}$ at $x=10^{11}$, so
+$h(2x)\le x$ throughout $x\ge10^{11}$.  Put $c=x+h(2x)$, so that
+$x\le c\le2x$.  Then $h(c)\le h(2x)$ because $h$ increases, whence
+$c-h(c)\ge x$.  Applying the quoted theorem at $c\ge x\ge3.05\cdot10^5$ gives
+a prime $p\equiv a\pmod{11}$ with $|p-c|<h(c)$, and therefore
+\[
+  x\le c-h(c)<p<c+h(c)\le x+2h(2x).\qedhere
+\]
+\end{proof}
+
+\begin{proposition}[Effective ceiling on GRH]\label{prop:grh}
+Assume the hypothesis of Lemma~\ref{lem:grh} and let a table's program have
+$C$ instructions.  With $c=8.62$ and $X=10^{11}-10^4$ as in
+Lemma~\ref{lem:computed}, put
+\[
+  K=\Bigl\lfloor\frac{X-37}{c\log^2X}\Bigr\rfloor=18\,083\,227 .
+\]
+For $C\le K$ use Proposition~\ref{prop:computed}.  Otherwise let
+$U\ge\sqrt{10^{11}}$ satisfy
+\[
+  \sqrt{10^{11}}+(C-K)\bigl(10\sqrt2\log U+\beta\bigr)\le U,
+  \qquad
+  \beta=10\sqrt2\bigl(\tfrac12\log2+\log11+12\bigr)=208.52\ldots
+\]
+Then $Q\le U^2$ and $D\le\lfloor2C\log_{10}U\rfloor+1$.
+\end{proposition}
+
+\begin{proof}
+Let $p_1<\cdots<p_m$ be the selected primes, $m\le C$.  The induction of
+Proposition~\ref{prop:computed} gives $p_i\le37+(i-1)c\log^2X$ for as long as
+the right side stays at or below $X$, which by the definition of $K$ covers
+$i\le K$; so $p_K\le X<10^{11}$.
+
+Put $B_0=10^{11}$ and $B_{j+1}=B_j+2h(2B_j)$.  If $p\le B_j$ then the least
+prime of any reduced class exceeding $p$ is at most $B_{j+1}$: apply
+Lemma~\ref{lem:grh} at $x=\max(p,10^{11})\le B_j$, which yields a class prime
+in $(x,x+2h(2x)]\subseteq(p,B_{j+1}]$.  Hence $p_{K+j}\le B_j$ for every
+$j\ge0$ by induction, the base being $p_K\le B_0$.
+
+Write $u_j=\sqrt{B_j}$.  From $\sqrt{a+b}\le\sqrt a+b/(2\sqrt a)$ and
+$\tfrac12\log B_j=\log u_j$,
+\[
+  u_{j+1}\le u_j+\frac{h(2B_j)}{\sqrt{B_j}}
+         = u_j+10\sqrt2\log u_j+\beta .
+\]
+So if $u_j\le U$ then $u_{j+1}\le u_j+10\sqrt2\log U+\beta$, and induction
+gives $u_j\le\sqrt{10^{11}}+j(10\sqrt2\log U+\beta)\le U$ for every
+$j\le C-K$.  Since $m-K\le C-K$, we get $Q=p_m\le B_{m-K}\le U^2$, and
+$\log N\le C\log Q\le2C\log U$.
+\end{proof}
+
+\begin{corollary}\label{cor:grh}
+On the same hypothesis the generated sources satisfy
+$D\le24.6\,T\log T$ for every $n\ge8$, and
+\[
+  \limsup_{T\to\infty}\;\max_{t\in\{0,1\}^T}\frac{D(t)}{T\log T}
+  \le\frac{35}{\log10}<15.21 .
+\]
+\end{corollary}
+
+\begin{proof}
+The fixed point of Proposition~\ref{prop:grh} has
+$U=(C-K)(10\sqrt2\log U+\beta)(1+o(1))$, so $\log U=\log C+O(\log\log C)$ and
+$D\le2C\log_{10}U$ gives, with $C\le\frac{35}{2}T+55n+25$ and
+$\log C=\log T+O(1)$, the stated limit superior; $\frac{35}{2}\cdot2=35$.
+The uniform bound is the larger of the two rules' maxima over $n\ge8$: the
+computed ceiling peaks at $24.56$ at $n=8$, and the GRH ceiling, which takes
+over at $n=20$, peaks at $24.06$ at $n=22$ and decreases from there.
+\end{proof}
+
+Because $K$ runs are spent before Lemma~\ref{lem:grh} is invoked at all, the
+GRH ceiling is weaker than the computed one wherever the latter applies, and
+the crossover is exactly the sieve's edge:
+
+\begin{center}
+\begin{tabular}{r|cccc|cccccc}
+$n$ & 13 & 16 & 19 & 20 & 22 & 25 & 30 & 60 & $10^3$ & $10^6$\\ \hline
+$D/(T\log T)$ & 16.98 & 15.31 & 14.19 & 20.46 & 24.06 & 23.27 & 22.01 & 18.75
+& 15.47 & 15.20
+\end{tabular}
+\end{center}
+
+\noindent
+The first three columns are Lemma~\ref{lem:computed}'s; the rest are
+Proposition~\ref{prop:grh}'s.  The approach to $35/\log10$ is slow because
+$\log U$ exceeds $\log C$ by $\log(10\sqrt2\log U+\beta)$.  GRH also improves
+Corollary~\ref{cor:leading}'s leading constant, $18.25$ falling to $15.21$,
+since a square-root gap bound is the case $\theta=\frac12$ of
+Lemma~\ref{lem:short} and $\frac{35}{2(1-\theta)}=35$.
+
+\begin{remark}[Removing GRH]\label{rem:unconditional}
+The ingredients for an unconditional explicit $\theta$ are in print, though we
+have not assembled them.  Thorner and Zaman~\cite[Thm.~1.2]{tz-density} prove
+the explicit log-free density estimate
+\[
+  N(\sigma,Q)\le10^{88}\bigl(10^{421}Q^{99}\bigr)^{1-\sigma},
+  \qquad Q\ge3,\quad \sigma\ge\tfrac{39}{40},
+\]
+in which $N(\sigma,Q)$ counts the zeros with $|\gamma|\le Q$ of every
+primitive $L$-function of modulus at most $Q$; taking $Q=\max(T,11)$ bounds
+the zeros of our ten characters, wastefully but validly.
+Kadiri~\cite{kadiri} gives an explicit zero-free region for Dirichlet
+$L$-functions over $3\le q\le400000$, and Remark~\ref{rem:effective} disposes
+of the exceptional zero at $q=11$.  Ingham's argument turns a density
+exponent $A$ into primes in $(x,x+x^\theta]$ for every $\theta>1-1/A$, so
+Corollary~\ref{cor:leading} would read
+\[
+  \limsup_{T\to\infty}\;\max_{t\in\{0,1\}^T}\frac{D(t)}{T\log T}
+  \le\frac{35A}{2\log10}.
+\]
+At $A=99$ this is $\theta=\frac{98}{99}$ and a constant of $752.5$, against
+$18.25$ for Huxley's ineffective $A=\frac{12}{5}$ and $15.21$ for GRH's
+$A=2$.  The constant is not the whole cost: the $10^{88}$ and $10^{421}$ put
+$x_0$ far above $10^{11}$, so Lemma~\ref{lem:computed} could not bridge to it
+and the assembled statement would be a limit superior past an astronomical
+arity rather than a ceiling at every arity, which is what
+Proposition~\ref{prop:grh} already gives.
+\end{remark}
 
 \section{Language lower bound}
 
@@ -227,7 +512,8 @@ least one.  Hence
 \[
   L\ge\sum_{i=1}^{k}\log(i+1)=\log((k+1)!).
 \]
-Stirling's bound $\log(k!)=\Theta(k\log(k+1))$ gives the result.
+Since $\log((k+1)!)\ge(k+1)\bigl(\log(k+1)-1\bigr)$, this gives
+$k=O(L/\log(L+2))$.
 \end{proof}
 
 \begin{lemma}[Exponent vectors]\label{lem:vectors}
@@ -245,7 +531,7 @@ Put $f_i=e_i-1\ge0$ and $s=1/\log(L+2)$.  Dropping the fixed contribution
 of the ones only enlarges the set.  Markov's exponential bound and the
 geometric series give
 \begin{align}
- \#\{f:\text{\eqref{eq:budget}}\}
+ \#\Bigl\{f\in\N_{\ge0}^k:\sum_if_i\log(i+1)\le L\Bigr\}
  &\le e^{sL}
        \sum_{f_1,\ldots,f_k\ge0}
        \exp\!\left(-s\sum_i f_i\log(i+1)\right)\\
@@ -297,7 +583,7 @@ behaviors by
 \]
 Zero-valued sources add only the empty behavior, which is absorbed by this
 bound.
-There are $2^T$ Boolean truth tables.  If every table had a $D$-digit source,
+There are $2^T$ Boolean truth tables.  If every table had a source of at most $D$ digits,
 then $D/\log D=\Omega(T)$, which implies $D=\Omega(T\log T)$.
 Ignored factors, comments, and leading zeros cannot invalidate the count:
 they add spellings of an already-counted decoded program, not behaviors.
@@ -318,10 +604,6 @@ smallest-first product tree.  Executable checks cover generated-program
 semantics, source sizes, and the finite identities used in the construction;
 none is a premise of the language lower bound.
 
-\paragraph{Code availability.}
-Source code and verification scripts are available at
-\url{https://github.com/bangyen/esolangs}.
-
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
 
@@ -332,6 +614,30 @@ B.~Pham,
 \newblock Factor,
 \newblock Esolang Wiki, 2020,
 \newblock \url{https://esolangs.org/w/index.php?title=Factor&oldid=138367}.
+
+\bibitem{dgm}
+A.~W.~Dudek, L.~Greni\'e, and G.~Molteni,
+\newblock Explicit short intervals for primes in arithmetic progressions on
+GRH,
+\newblock \emph{International Journal of Number Theory} 15 (2019), no.~4,
+825--862,
+\newblock \href{https://doi.org/10.1142/S1793042119500441}
+{doi:10.1142/S1793042119500441}; preprint
+\href{https://arxiv.org/abs/1606.08616}{arXiv:1606.08616}.
+
+\bibitem{kadiri}
+H.~Kadiri,
+\newblock Explicit zero-free regions for Dirichlet $L$-functions,
+\newblock \emph{Mathematika} 64 (2018), no.~2, 445--474,
+\newblock \href{https://doi.org/10.1112/S0025579318000025}
+{doi:10.1112/S0025579318000025}.
+
+\bibitem{tz-density}
+J.~Thorner and A.~Zaman,
+\newblock An explicit version of Bombieri's log-free density estimate and
+S\'ark\"ozy's theorem for shifted primes,
+\newblock preprint,
+\newblock \href{https://arxiv.org/abs/2208.11123}{arXiv:2208.11123}.
 
 \bibitem{thorner-zaman}
 J.~Thorner and A.~Zaman,

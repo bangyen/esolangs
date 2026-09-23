@@ -17,10 +17,10 @@ lifted out of the recursion.
 
 import functools
 import re
-import sys
 from collections.abc import Callable, Mapping, Sequence
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 INSTRUCTIONS = frozenset({"tt", "we", "qe", "et", "yr", "ry", "rr"})
@@ -439,7 +439,4 @@ def run(code: list[str] | str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.readlines()
-            run(data, IO())
+    script_main(run, shape="keep")

@@ -1075,3 +1075,13 @@ class TestContract(SnapshotContract, CycleContract):
         "f(x) = x^6 - 15872x^5 + 3861086x^4 - 26915422x^3 "
         "+ 2829220235x^2 - 5639324450x + 13858593750"
     )
+
+
+def test_bracket_scan_steps_over_a_multi_root_instruction() -> None:
+    """Only single-root entries are brackets; the scan walks past the rest.
+
+    Every program the generator emits pairs its brackets adjacently, so the
+    skip arc had no executed case: ``[1, 2]`` below is an ordinary
+    instruction standing between an opener and its match.
+    """
+    assert polynomial_module.brackets([[5], [1, 2], [2]], 0) == 2

@@ -3,6 +3,11 @@
 Standalone complexity proofs are [Factor](factor.tex) and
 [Polynomial](polynomial.tex).  Their Markdown companions retain implementation
 bounds, measurements, counterexamples, and the development record.
+Polynomial's lower bound cites one result it does not prove:
+Corollary 3.4 of [coefficient-mass](coefficient-mass.tex), the companion
+manuscript bounding the coefficient mass of a polynomial multiple.
+`tests/proofs/test_citations.py` holds the numbered cross-references
+between the three to the labels they name.
 
 This ledger answers one question: for every exported Boolean generator and
 every truth table of length `2**n`, does its construction produce a program
@@ -54,11 +59,20 @@ Factor -- proven super-linear at the language level in [factor](factor.md) and
 measuring x2.11 -- is why.  Polynomial's block-incidence lemma forces
 `Omega(T/log T)` distinct real instruction-root values even when roots
 repeat, and the slack certificate prices every multiple of their distinct-root
-product, giving `Omega(T**2 / log T)` for every program that consumes its
-input.  The routing lemma that forces those values needs the whole input to be
-read, because a routing-free suffix can otherwise cross an input-dependent
-number of reads; the generated machines consume the input.  The argument is in
+product, giving `Omega(T**2 / log T)` for every program, whatever its read
+count: only the last two reads before a routing position can carry a residual
+that depends on its next input and not on it alone.  The argument is in
 [polynomial](polynomial.md).
+
+A `linear` row cannot be improved by more than a constant, and the reason is
+the counting argument the Malbolge exception uses below.  A language with `c`
+source characters has fewer than `c**(L+1)` programs of length at most `L`,
+against `2**T` tables of length `T`, so some table needs
+`L >= T / log2(c)` characters -- `T/3` for brainfuck's eight commands.  Every
+`linear` cell is therefore within a constant of optimal for free, which is why
+the Scaling column is worth reading only where it is *not* linear: the two
+rows proven to exceed the floor, Factor at `Theta(T log T)` and Polynomial at
+`Theta(T**2 / log T)`, and the `open` rows that may yet.
 
 ## Proof schemes
 
@@ -187,7 +201,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) |
 | Clockwise | tree | finite grid layout | linear: alternating rectangle of area O(T), exits in walk order |
 | Collatz Multiverse | tree | finite cell placement | linear: folded tree, shortest names deepest, flat appends |
-| Container | finite lookup | the reversed table is one decimal literal divided by ten in a fixed two-bank network | linear: one T-digit literal in a fixed network |
+| Container | finite lookup | the table is the prefix sum of its own steps, summed against a row counter that is live for one tick | linear: one line per step in the table, halting in 2n+2 ticks |
 | Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, and a folded subtree targets the shared self-jump or the line past the end | linear: 3(T - 1) + 2n + 3 lines, span walk |
 | CV(N)(C) | tree | the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts | linear, time n log: greedy order scoring, capped at n <= 10 |
 | Decleq | tree | the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits | linear, time n log: essential_inputs |
@@ -205,7 +219,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: T literal, `.` halvings sum to 2T |
 | Jaune | finite lookup | a spatial table reached with two labels | linear: two cells per row, unary weights sum T - 1 |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T |
-| Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free four-cell mixer covers every table through nine inputs | measured: fixed 59049-cell store through n <= 9 |
+| Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, and answer stubs that read the last input cover thirteen | measured: fixed 59049-cell store through n <= 13 |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` | linear: mux lookup, constant strings times O(T) counts |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length | linear: cascade routes to two shared leaves, one-digit targets |
 | Modulous | tree | — | linear: span walk, fold digits geometric |
@@ -213,7 +227,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
 | Packlang | tree | — | linear: folded tree, shortest names deepest, flat pieces |
 | Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
-| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; a program that consumes its input for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
+| Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
 | Qoibl | tree | — | linear: span walk, O(1) node tests by halves |
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup | linear: 16-17 tokens per row, unary runs 2T - 2 |
 | ROTfuck | tree | movement search stops after at most eight offsets | linear, time n log: essential_inputs |
@@ -235,7 +249,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 
 - Malbolge has 59,049 source cells and exactly eight valid decoded
   instructions at each occupied cell.  Including shorter programs gives fewer
-  than `sum(8**k for k in range(59050)) < 2**177151` distinct programs, while
+  than `sum(8**k for k in range(59050)) < 2**177148` distinct programs, while
   the 18-input domain has `2**(2**18) = 2**262144` truth tables.  One program
   computes at most one table, so some 18-input tables have no Malbolge program;
   no generator can be total under this interpreter's language semantics.

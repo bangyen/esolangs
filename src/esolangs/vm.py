@@ -183,7 +183,9 @@ def run_until_halt_or_all_branches_cycle(
         state = pending.pop()
         if state in seen:
             continue
-        if len(seen) == limit:
+        # `>=`: a negative limit never equals a count rising from zero, so
+        # the cap switched itself off and the caller hung.
+        if len(seen) >= limit:
             raise TimeoutError(
                 f"undecided after {limit} branching states: the reachable "
                 "graph may be unbounded"
@@ -567,7 +569,7 @@ def run_until_halt(
     while not machine.halted:
         if stop is not None and stop():
             return False
-        if limit is not None and steps == limit:
+        if limit is not None and steps >= limit:
             return False
         machine.step()
         steps += 1

@@ -20,9 +20,8 @@ a meaning the wiki does not give them.
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
-import sys
-
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 # Headings as (drow, dcol), in the order the ``^>'<`` glyphs select
@@ -285,7 +284,4 @@ def run(
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.readlines()
-            run(data, IO())
+    script_main(run, shape="keep")

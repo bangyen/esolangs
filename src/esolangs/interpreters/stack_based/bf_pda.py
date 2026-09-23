@@ -11,8 +11,7 @@ state and the transition is total; an empty or unbalanced program raises
 
 from __future__ import annotations
 
-import sys
-
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import match_brackets
 from esolangs.interpreters.io import IO
 
@@ -118,6 +117,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read(), IO())
+    script_main(run)
