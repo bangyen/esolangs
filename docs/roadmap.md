@@ -228,7 +228,17 @@ step; an answer lands in the paper it extends, and the row leaves.
   `L = 10`, all violating the hypothesis): `Tail(Z^-) <= Tail(F_1)` implies
   the chord, which with `prop:shift` closes the case.  Prove THAT.  The
   hypothesis equals the mass form `sum_{d<=M}|H_d| >= sum_{d>M}|H_d|` for
-  the `(L-1)`-node sum `H` vanishing on `{0} u C`.  Dead: the
+  the `(L-1)`-node sum `H` vanishing on `{0} u C` -- indeed `F_M - F_1 =
+  alpha H` (one-dimensional space) and the GAP IDENTITY `T1 - TM =
+  |alpha| (mass_le - mass_gt)` holds exactly at every tier to `L = 10`.
+  Dead for it: first-order convexity (`Tail` IS convex along `[F_1, w]`
+  and `TM - Tp >= DD` always, but `DD >= D` fails 1089/1600 at `L = 9`,
+  64 under the hypothesis, so no supporting hyperplane works); and any
+  hypothesis-free bound of `(1-lam)(T1 - Tw)` by `|alpha| mass_le` (it
+  would prove the chord unconditionally, which the failures refute -- the
+  far mass MUST enter); and `BELOW * mass_gt >= (-ABOVE) * mass_le`, which
+  passes `L <= 7` and fails at `L = 9` and `L = 10` (the c<=7 trap again).
+  Dead: the
   half-mass point of
   `ell_M`, any fixed window, shifting only the smallest zero above `g`,
   arbitrary weights with the same decay, Schur/LPP positivity (the cleared
