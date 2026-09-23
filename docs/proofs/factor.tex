@@ -491,14 +491,15 @@ $2n_k\log_2(1+\sqrt2)\le k+\log_2(3+2\sqrt2)+o(1)$, that is
 $2n_k/k\le1/\log_2(1+\sqrt2)+O(1/k)$.  Put $S=M=n_k$.
 
 Number the vectors position by position, the values at a position in the
-order $0,1,-1,2,-2,\ldots$: the rank of a vector is the number of vectors
-that precede it, and a value's contribution at position $i$ is the number of
-completions of the shorter prefixes, which the recurrence supplies, so that
-ranking and unranking are $O(SM)$ table lookups each.  A group of $k$
-entries $t_{gk},\ldots,t_{gk+k-1}$ is the integer $b_g=\sum_{j<k}t_{gk+j}2^j$,
-and it is laid out as $[W][c_1]\cdots[c_S]$: a walk cell and the vector of
-rank $b_g$, a negative entry stored as $256-|v|$.  Drawing a group costs
-$S+1$ moves and at most $M$ marks, so the table costs at most $(S+1+M)T/k$
+order $0$, $1$, $-1$, $2$, $-2$, \ldots: the rank of a vector is the
+number of vectors that precede it, and a value's contribution at position
+$i$ is the number of completions of the shorter prefixes, which the
+recurrence supplies, so that ranking and unranking are $O(SM)$ table
+lookups each.  A group of $k$ entries $t_{gk},\ldots,t_{gk+k-1}$ is the
+integer $b_g=\sum_{j<k}t_{gk+j}2^j$, and it is laid out as
+$[W][c_1]\cdots[c_S]$: a walk cell and the vector of rank $b_g$, a
+negative entry stored as $256-|v|$.  Drawing a group costs $S+1$ moves
+and at most $M$ marks, so the table costs at most $(S+1+M)T/k$
 characters.
 
 The top $n-\log_2k$ bits select the group by the chain of
@@ -845,7 +846,7 @@ $(\tfrac{15}{14}+o(1))\,C\log T$ unconditionally; divide by $\log10$.
 \end{proof}
 
 The same lemma halves the earlier limits: the tree's is
-$\frac{35}{2\log10}<7.61$ on GRH and Lemma~\ref{lem:pack}'s is $0.437$.  It
+$35/(2\log10)<7.61$ on GRH and Lemma~\ref{lem:pack}'s is $0.437$.  It
 says nothing about thresholds; the per-arity ceilings of
 Proposition~\ref{prop:grh} stand as the explicit statement.
 
