@@ -1068,6 +1068,42 @@ piecewise linear with those breakpoints and attains its minimum at one of them;
 a weighted sum of distances is minimized at the weighted median.
 \end{proof}
 
+The median is an order statistic, because the points it ranges over are
+already sorted by $d$.
+
+\begin{lemma}[The ratio is monotone]\label{lem:ratio}
+In the notation of Lemma~\ref{lem:pencil}, $d\mapsto|F_d|/|H_d|$ is strictly
+decreasing on $\{d\ge0:d\notin A\}$.
+\end{lemma}
+
+\begin{proof}
+For $c\in\mathbb R$ the sequence $H-cF$ is an exponential sum on the $n+1$
+nodes $y_{k+1},\ldots,y_L$, and is not identically zero, since $F$ gives weight
+$0$ to $y_{k+1}$ and $H$ does not.  By the zero bound it has at most $n$ real
+zeros with multiplicity, and it vanishes on $A$, which is $n-1$ of them.  So
+$\Phi=H/F$ takes each value at most once off $A$, and takes none of them at an
+$a\in A$ as well, as that would be a second zero there.  On each component of
+$[0,\infty)\setminus A$ the ratio $\Phi$ is continuous, and $F$ and $H$ have a
+simple zero at each $a\in A$, so $\Phi$ extends continuously across it.  Being
+continuous and injective on $[0,\infty)$, $\Phi$ is strictly monotone; and
+$\Phi(0)=0$ because $H_0=0$, while $|\Phi(d)|\to\infty$ because $|H_d|$ decays
+like $y_{k+1}^d$ and $|F_d|$ like $y_{k+2}^d$, with $y_{k+2}<y_{k+1}$.
+\end{proof}
+
+\begin{corollary}[The displaced zero is a half-mass point]\label{cor:halfmass}
+The minimum in Proposition~\ref{prop:median} is attained at
+\[
+  N=\max\Bigl\{d\ge1,\ d\notin A\ :\
+  \sum_{e\ge d}|H_e|\ \ge\ \tfrac12\sum_{e\ge1}|H_e|\Bigr\}.
+\]
+\end{corollary}
+
+\begin{proof}
+By Lemma~\ref{lem:ratio} the order of the points $|F_d|/|H_d|$ is the reverse
+of the order of $d$, so the weights $|H_d|$ of Proposition~\ref{prop:median}
+accumulate from the largest $d$ downwards.
+\end{proof}
+
 The displacement therefore needs no window, and $N$ need not exceed $\max A$.
 Taking $\theta=0$ in \eqref{eq:median} returns $\Tail(F)$, and the breakpoints
 are positive and tend to $0$, since $|F_d|/|H_d|$ decays like
@@ -1097,28 +1133,52 @@ of the $379$ straddling instances we put to it, at
 $(\tfrac{2013}{1000},\tfrac{257}{125},\tfrac{2127}{1000},\tfrac{1071}{500},
 \tfrac{549}{250})$ with $u=1$ and $X=\{2\}$ by a factor $2.01$.
 
-\begin{conjecture}[Slide-down rule]\label{conj:slide}
-In that case put $z_0=\min\{z\in Z^-:z>g\}$ and
-$A=\bigl(Z^-\setminus\{z_0\}\bigr)\cup\{g\}$, so that $A\supseteq X$.  Then,
-with $F$ the full certificate on $y_{k+2},\ldots,y_L$ with zero set $A$ and $H$
-as in Lemma~\ref{lem:pencil},
-\begin{equation}\label{eq:slide}
-  \min_{\theta\ge0}\sum_{d\ge1}\Bigl|\,|F_d|-\theta|H_d|\,\Bigr|\le\Tail(v^-);
+Both the slide and the displacement are choices of a point on one line, and
+that line carries its own minimum.  Fix $B$ and $g$ and let
+\[
+  \mathcal P=\bigl\{v \text{ on } y_{k+1},\ldots,y_L\ :\ v_0=1,\
+  v_b=0\ (b\in B)\bigr\},
+\]
+a two-parameter family on which $\Tail$ is convex.  Two lines in it meet at the
+full certificate on $y_{k+2},\ldots,y_L$ with zero set $B\cup\{g\}$: the
+certificates that also kill $g$, and those that give weight $0$ to $y_{k+1}$.
+
+\begin{conjecture}[A placement costs no more than a node]\label{conj:plane}
+Let $2\le r_1<\cdots<r_L$, let $B$ be a set of $L-k-2$ positive integers and
+let $g\ge1$ with $g\notin B$.  Then
+\begin{equation}\label{eq:plane}
+  \min\{\Tail(v):v\in\mathcal P,\ v_g=0\}
+  \ \le\
+  \min\{\Tail(v):v\in\mathcal P,\ \lambda_{k+1}=0\}.
 \end{equation}
-equivalently, by Proposition~\ref{prop:median}, some $N$ makes the full
-certificate on $y_{k+1},\ldots,y_L$ with zero set $A\cup\{N\}$ have tail at
-most $\Tail(v^-)$.
 \end{conjecture}
 
-With Propositions~\ref{prop:step} and~\ref{prop:stepeasy} the conjecture gives
-$T=\tau^*$ outright.  It is the whole remaining content: one added node, one
-zero slid down to $g$, one zero displaced upwards.  At $(2,3,5,7)$ with $u=1$
-and $X=\{2\}$ it is the covering of Proposition~\ref{prop:values}: $Z^-=\{1,3\}$
-slides to $A=\{1,2\}$ and $N=5$ gives $\tfrac{21337}{1910352}<\tfrac{31}{1704}$.
-In the form \eqref{eq:slide} it leaves no search at all: the left side is one
-weighted median.  We met it in $674$ further straddling instances, in every one
-of which the median fell above $\max A$, so the restriction $N>\max A$ of the
-earlier formulation costs nothing.
+The left side is the weighted median of Proposition~\ref{prop:median}, with
+$A=B\cup\{g\}$; the right side is the least tail of a full certificate on
+$y_{k+2},\ldots,y_L$ whose zero set contains $B$.
+
+\begin{proposition}\label{prop:planestep}
+Conjecture~\ref{conj:plane} implies \eqref{eq:step}, hence $T=\tau^*$.
+\end{proposition}
+
+\begin{proof}
+Given $X$ with $g=\max X$, let $Z^-$ attain $\tau_{k+1}(X\setminus\{g\})$ and
+drop from it one element not in $X$, and not equal to $g$ unless $g\in Z^-$, to
+leave $B$.  The right side of \eqref{eq:plane} is then at most
+$\Tail(Z^-)=\tau_{k+1}(X\setminus\{g\})$, while every $v$ counted on the left
+vanishes on $B\cup\{g\}\supseteq X$, so the left side is at least
+$\tau_k(X)$.  Now apply Proposition~\ref{prop:step}.
+\end{proof}
+
+So the case analysis disappears: \eqref{eq:plane} is one inequality between two
+lines through a common point, quantified over all $B$ and $g$, with no
+hypothesis that $Z^-$ minimizes anything.  It contains
+Proposition~\ref{prop:stepeasy}, which is the deletion step applied to the
+point of the first line that also kills $\max B\cup\{e\}$, and it is what fails
+to follow from that step when $g$ straddles.  We met \eqref{eq:plane} in $5700$
+pairs $(B,g)$ over integer and rational root sets without a failure.  Any proof
+must use the cutoff: with nodes allowed anywhere in $(0,1)$ it fails in $1606$
+of $4756$ pairs, by as much as a factor $18.3$.
 
 What the median ranges over is not a one-parameter shape: the minimizing zero
 set itself is not a consecutive block with one displaced zero.  At
@@ -1366,12 +1426,14 @@ that the escaping placement is always extremal.
 The second is now one inequality.  By Proposition~\ref{prop:step} it is the
 single step \eqref{eq:step}, deleting the largest element of the placement, and
 by Proposition~\ref{prop:stepeasy} that step already holds except when the
-minimizing zero set straddles $\max X$; Conjecture~\ref{conj:slide} is what
-covers the straddling case, in the closed form \eqref{eq:slide}.  We tested
+minimizing zero set straddles $\max X$; Conjecture~\ref{conj:plane} is what
+covers the straddling case, and by Proposition~\ref{prop:planestep} it gives
+\eqref{eq:step} with no case analysis at all.  We tested
 \eqref{eq:step} at $47638$ instances across two sweeps --- integer root sets to
 $L=6$, rational ones, and sets clustered just above the cutoff --- with no
 violation, $1017$ of them straddling and every one covered by the slide-down
-rule, and \eqref{eq:slide} itself at a further $674$.  Three alternatives are
+rule, a further $674$ in its median form, and \eqref{eq:plane} itself at
+$5700$ pairs $(B,g)$.  Three alternatives are
 refuted above: deleting $\min X$ rather than $\max X$ fails at $(2,3,4,5)$;
 freeing $\max Z^-$ rather than the smallest zero above $g$ fails by a factor
 $1.40$; and adjoining $g$ to $Z^-$ without sliding, which would need no
