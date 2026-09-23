@@ -206,7 +206,11 @@ step; an answer lands in the paper it extends, and the row leaves.
 
 - **Effective Factor threshold.**  The tree constant is exact, the walk's
   leading constant is at most `42/ln 10`, and a sieve through `10**11` proves
-  a digit ceiling through `n = 19`; beyond that the ceiling's threshold rests
-  on the ineffective `x_0` of fixed-modulus Hoheisel.  An explicit
-  short-interval prime count for residues mod 11 would close it.  See
+  a digit ceiling through `n = 19`.  Beyond that the threshold is effective in
+  principle -- `q = 11` admits no exceptional zero, `L(1, chi) = pi/sqrt 11` --
+  but unconditionally still has no value.  On GRH it has one: Dudek-Grenie-
+  Molteni's explicit short intervals have threshold `3.05e5` at `q = 11`,
+  under the sieved range, so the two overlap and the walk is quadratic,
+  giving `D <= 24.6 T ln T` at every `n >= 8` and `35/ln 10 < 15.21`
+  asymptotically.  Removing GRH needs an explicit mod-11 Hoheisel.  See
   [factor](proofs/factor.tex).

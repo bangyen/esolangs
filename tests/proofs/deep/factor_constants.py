@@ -14,6 +14,8 @@ window that lets ``X_GAP`` stop ``10**4`` short of the sieved end.
 L1  the tree bound, exhaustive at n = 2, 3, sampled above, parity exact.
 L2  the class-gap constant on a Python-sieved prefix, and the end window.
 L3  the resulting digit ceiling holds for parity, and so does its ``Q``.
+L4  the GRH short-interval threshold falls inside the sieved range, and the
+    resulting walk's ceiling is 24.6 T ln T over n >= 8.
 """
 
 from __future__ import annotations
@@ -141,6 +143,78 @@ def check_ceiling() -> list[str]:
     return lines
 
 
+#: Dudek-Grenie-Molteni, IJNT 15 (2019) 825-862, Thm 1.1, Table 1 row
+#: ``(alpha, delta, rho, m) = (1/2, 1, 12, 23)`` at ``q = 11``.
+PHI, LNQ = 10, math.log(11)
+ALPHA, DELTA, RHO, MPAR = 0.5, 1.0, 12.0, 23.0
+#: Runs the sieve rule alone spends climbing from 37 to ``X_GAP``.
+K_SIEVE = math.floor((X_GAP - FIRST) / (GAP_C * math.log(X_GAP) ** 2))
+#: ``u_(j+1) <= u_j + A ln u_j + BETA`` for ``u = sqrt(B)``.
+A_GRH = PHI * math.sqrt(2) * 2 * ALPHA
+BETA = PHI * math.sqrt(2) * (ALPHA * math.log(2) + DELTA * LNQ + RHO)
+
+
+def dgm_h(t: float) -> float:
+    """The DGM half-width at ``q = 11``: ``10(ln t/2 + ln 11 + 12) sqrt t``."""
+    return PHI * (ALPHA * math.log(t) + DELTA * LNQ + RHO) * math.sqrt(t)
+
+
+def grh_ceiling(runs: int) -> tuple[float, int] | None:
+    """``(U, D)`` from the GRH walk, or None when the sieve already covers."""
+    left = runs - K_SIEVE
+    if left <= 0:
+        return None
+    root = math.sqrt(SIEVED)
+    u = root
+    for _ in range(6000):  # rises to the largest fixed point
+        u = root + left * (A_GRH * math.log(u) + BETA)
+    assert root + left * (A_GRH * math.log(u) + BETA) <= u + 1e-6, runs
+    return u, math.floor(2 * runs * math.log10(u)) + 1
+
+
+def check_grh() -> list[str]:
+    """L4  the GRH threshold overlaps the sieve, and its ceiling."""
+    lines = []
+    threshold = (MPAR * PHI * LNQ) ** 2
+    assert threshold < SIEVED, threshold
+    lines.append(f"DGM threshold {threshold:,.0f} < sieved {SIEVED:,}, so they overlap")
+
+    # Recentring at c = x + h(2x) needs h(2x) <= x, decreasing from 10**11.
+    assert dgm_h(2 * SIEVED) <= SIEVED
+    lines.append(f"h(2x)/x = {dgm_h(2 * SIEVED) / SIEVED:.2e} <= 1 at x = 10**11")
+    assert K_SIEVE == 18_083_227, K_SIEVE
+    assert abs(BETA - 208.5183) < 1e-3, BETA
+
+    # The closed form dominates direct iteration of B -> B + 2h(2B).
+    b = float(SIEVED)
+    steps = 20_000
+    for _ in range(steps):
+        b += 2 * dgm_h(2 * b)
+    closed = grh_ceiling(K_SIEVE + steps)
+    assert closed is not None
+    assert math.sqrt(b) <= closed[0], (b, closed)
+    lines.append(
+        f"{steps:,} direct steps: sqrt B = {math.sqrt(b):,.0f} <= {closed[0]:,.0f}"
+    )
+
+    # The ceiling at every arity: sieve below, GRH above, 24.6 over n >= 8.
+    worst = 0.0
+    for n in (13, 16, 19, 20, 22, 25, 30, 60):
+        runs = int(tree_bound(n))
+        grh = grh_ceiling(runs)
+        if grh is None:
+            digits, rule = ceiling(n)[1], "sieve"
+        else:
+            digits, rule = grh[1], "GRH"
+        ratio = digits / (2**n * n * math.log(2))
+        worst = max(worst, ratio)
+        lines.append(f"n={n:<3} {rule:>5}  D/(T ln T) <= {ratio:6.2f}")
+    assert worst <= 24.6, worst
+    assert 35 / math.log(10) < 15.21
+    lines.append(f"worst over the row {worst:.2f} <= 24.6; limsup 35/ln 10 = 15.20")
+    return lines
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--bound", type=int, default=10**7)
@@ -152,6 +226,8 @@ def main(argv: list[str] | None = None) -> int:
     print("\n".join(check_window()))
     print("L3  digit ceiling on parity")
     print("\n".join(check_ceiling()))
+    print("L4  the GRH threshold and its ceiling")
+    print("\n".join(check_grh()))
     return 0
 
 
