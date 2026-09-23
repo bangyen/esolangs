@@ -1312,14 +1312,14 @@ point but to shift every zero above $g$ up by one:
 \end{equation}
 for every $a\in A$ with $a+1\notin A$, the left side on
 $y_{k+1},\ldots,y_L$ and the others on $y_{k+2},\ldots,y_L$.
-We have no proof of \eqref{eq:shift}, and no counterexample: it holds in all
+For $|A|=1$ it is proved below (Corollary~\ref{cor:shiftone}).  For
+$|A|\ge2$ we have no proof, and no counterexample: it holds in all
 $7023$ instances satisfying its hypothesis among $8523$ tried with $L\le9$,
 over the clustered nodes $\tfrac12-(i-1)\cdot10^{-4}$ with $g\le7$ and $A$
 within $6$ of $g$, and over $300$ random node sets at $L=7$, while $283$
-instances without the hypothesis violate the conclusion; for $|A|=1$ it holds
-in $6015$ further instances with $L\le7$.  The largest ratio seen is
-$0.9993$, at the clustered nodes with $B_0=\{1,2,3,4\}$, $g=5$, $A=\{10\}$,
-against $1$ in the confluent limit.
+instances without the hypothesis violate the conclusion.  The largest
+ratio seen is $0.9993$, at the clustered nodes with $B_0=\{1,2,3,4\}$,
+$g=5$, $A=\{10\}$, against $1$ in the confluent limit.
 
 \begin{proposition}[The shift]\label{prop:shift}
 \begin{enumerate}
@@ -1403,39 +1403,152 @@ replaced by arbitrary positive weights the case $|A|=1$ of \eqref{eq:shift}
 fails, so the exponential-sum structure of $H$ and the cutoff on $y_{k+1}$,
 which enters only through $\theta$, are both essential.
 
-The hypothesis can be separated from the geometry.  The three points
-$F_{M+1}$, $p_{M,M+1}$ and $w=p_{g,M+1}$ lie on $\ell_{M+1}$ in that order,
-so $p_{M,M+1}=\lambda F_{M+1}+(1-\lambda)w$ for one $\lambda\in(0,1)$, which
-is $(M-g)/M$ in the confluent limit.  If
+The hypothesis can be separated from the geometry, and the geometry is a
+theorem.  Write $F_M(d)$, $w(d)$ and so on for values at $d$, and
+$E(d)$ for the value of an exponential sum $E$.
+
+\begin{proposition}[The chord lemma]\label{prop:chord}
+Let $B_0$ be a set of $L-k-3$ positive integers, $g>\max B_0$ and $M>g$.
+Let $F_M$ and $F_{M+1}$ be the full certificates on $y_{k+2},\ldots,y_L$
+with zero sets $B_0\cup\{M\}$ and $B_0\cup\{M+1\}$, and $w$ and $p$ the full
+certificates on $y_{k+1},\ldots,y_L$ with zero sets $B_0\cup\{g,M+1\}$ and
+$B_0\cup\{M,M+1\}$.  Then $p=\lambda F_{M+1}+(1-\lambda)w$ for one
+$\lambda\in(0,1)$, and
 \begin{equation}\label{eq:chord}
   \Tail(F_M)\ \ge\ \lambda\,\Tail(F_{M+1})+(1-\lambda)\,\Tail(w),
 \end{equation}
-then $\Tail(F_M)\le\Tail(F_{M+1})$ gives $\Tail(w)\le\Tail(F_M)$ at once.
-\eqref{eq:chord} carries no hypothesis, and it is exact: writing
-$\Tail(F_M)-\Tail(w)$ through the deletion step from $F_M$ to $p_{M,M+1}$
-and the convexity of $\Tail$ along $\ell_{M+1}$,
+with equality if and only if $y_{k+1}=\tfrac12$ and $B_0=\{1,\ldots,g-1\}$.
+\end{proposition}
+
+\begin{proof}
+\emph{Order.}  Apply Lemma~\ref{lem:pencil} and Proposition~\ref{prop:median}
+with $A=B_0\cup\{M+1\}$ and $F=F_{M+1}$, and call the direction $K$: then
+$p=F_{M+1}+t_MK$ and $w=F_{M+1}+t_gK$ with $t_N=-F_{M+1}(N)/K(N)$.  By the
+sign rule $t_M$ and $t_g$ have one sign, and by Lemma~\ref{lem:ratio}
+$|t_M|<|t_g|$, as $g<M$.  So $p=\lambda F_{M+1}+(1-\lambda)w$ with
+$\lambda=1-t_M/t_g\in(0,1)$.
+
+\emph{Signs.}  Put $\sigma=(-1)^{|B_0|}$ and $b=\max B_0$, or $b=0$ if
+$B_0$ is empty.  Each of the four certificates is full, so by the zero bound
+it has exactly its prescribed zeros, all simple, and it is positive at $0$.
+Below $g$ all four have the sign $(-1)^{|B_0\cap(0,d)|}$ at $d$, and on the
+intervals $(b,g)$, $(g,M)$, $(M,M+1)$, $(M+1,\infty)$ the signs are
+$\sigma,\sigma,-\sigma,-\sigma$ for $F_M$; $\sigma,\sigma,\sigma,-\sigma$ for
+$F_{M+1}$; $\sigma,-\sigma,-\sigma,\sigma$ for $w$; and
+$\sigma,\sigma,-\sigma,\sigma$ for $p$.
+
+\emph{Decomposition.}  Put $\delta_e=|F_M(e)|-|p(e)|$ and
+$\gamma_d=\lambda|F_{M+1}(d)|+(1-\lambda)|w(d)|-|p(d)|$, so that the left
+side of \eqref{eq:chord} minus the right is
+$\sum_{e\ge1}\delta_e-\sum_{d\ge1}\gamma_d$; and let $G=F_M-p$ and
+$E(d)=G(d-1)+2(1-\lambda)w(d)$, exponential sums on $y_{k+1},\ldots,y_L$.
+For $d\le g$ the values $F_{M+1}(d)$ and $w(d)$ have one sign or vanish, so
+$\gamma_d=0$.  For $g<d\le M$ they are opposed and $p(d)$ sides with
+$F_{M+1}(d)$, so $|p(d)|=\lambda|F_{M+1}(d)|-(1-\lambda)|w(d)|$ and
+$\gamma_d=2(1-\lambda)|w(d)|=-2(1-\lambda)\sigma w(d)$, while $F_M$ and $p$
+have sign $\sigma$ or vanish on $[g,M]$, so $\delta_{d-1}=\sigma G(d-1)$.
+Hence $\delta_{d-1}-\gamma_d=\sigma E(d)$ for $g<d\le M+1$, both sides being
+$0$ at $d=M+1$.  For $d\ge M+2$ the values of $w$ and $p$ have sign $\sigma$
+and those of $F_M$ and $F_{M+1}$ sign $-\sigma$, so
+$\gamma_d=2\lambda|F_{M+1}(d)|=-2\lambda\sigma F_{M+1}(d)$ and
+$\delta_e=-\sigma\bigl(F_M(e)+p(e)\bigr)$ for $e\ge M+1$; since $p$,
+$F_{M+1}$ and $w$ vanish at $M+1$ and $p=\lambda F_{M+1}+(1-\lambda)w$,
 \[
-  \Tail(F_M)-\Tail(w)
-  =\frac{\lambda}{1-\lambda}\bigl(\Tail(F_{M+1})-\Tail(F_M)\bigr)
-   +\frac{\delta-\gamma}{1-\lambda},
+  \sum_{e\ge M+1}\delta_e-\sum_{d\ge M+2}\gamma_d
+  =-\sigma\sum_{e\ge M+1}\bigl(F_M(e)-p(e)\bigr)
+   -2(1-\lambda)\sigma\sum_{d\ge M+2}w(d)
+  =-\sigma\sum_{d\ge M+2}E(d).
 \]
-with $\delta=\Tail(F_M)-\Tail(p_{M,M+1})>0$ the gain of the deletion step and
-$\gamma=\lambda\Tail(F_{M+1})+(1-\lambda)\Tail(w)-\Tail(p_{M,M+1})\ge0$ the
-convexity gap, so \eqref{eq:chord} says $\delta\ge\gamma$: the deletion
-step earns at least the convexity gap.  It holds in $4632$ exact instances
-with $L\le7$ and every $M>g$, with equality exactly in the block case
-$B_0=\{1,\ldots,k\}$, $g=k+1$ with $y_{k+1}=\tfrac12$, where it is an
-identity for arbitrary nodes below the cutoff and strict once
-$y_{k+1}<\tfrac12$; in the confluent limit it is the closed form of
-$\E|D-M|$ in the proof of Proposition~\ref{prop:shift}, whose part (3) is its
-consequence.  It is tied to the shift by one: the analogous relation with
-$M+2$ in place of $M+1$, or with $g\ne k+1$ in the block case, fails in both
-directions, and the chord statement with several zeros above $g$ fails
-without the hypothesis of \eqref{eq:shift}.  It is also tied to the integers:
-with the zeros of $B_0$ allowed to be real, \eqref{eq:chord} fails already in
-the confluent limit at $B_0=\{1,\tfrac52\}$, $g=3$, $M=6$, so no argument by
-convexity or continuity in the zero positions can prove it, and a proof must
-use the empty integer slots below $g$.
+Altogether
+\begin{equation}\label{eq:chordsplit}
+  \Tail(F_M)-\lambda\Tail(F_{M+1})-(1-\lambda)\Tail(w)
+  =\sum_{e<g}\delta_e+\sigma\sum_{g<d\le M+1}E(d)-\sigma\sum_{d\ge M+2}E(d),
+\end{equation}
+and it remains to show that each of the three terms is nonnegative.
+
+\emph{The first term.}  $G$ is an exponential sum on the $L-k$ nodes with
+the $L-k-1$ zeros $\{0\}\cup B_0\cup\{M\}$, so by the zero bound it has no
+others and changes sign at each.  Its weight on $y_{k+1}$ is minus that of
+$p$, which has the sign $\sigma$ of $p$ at infinity, so $G$ has sign
+$-\sigma$ on $(M,\infty)$, as does $F_M$; the two change sign together at
+$B_0$ and at $M$, so they agree in sign everywhere.  On $(0,M)$ the values
+of $F_M$ and $p$ also agree in sign, so $\delta_e=|G(e)|\ge0$ for $e<M$,
+with $\delta_e=0$ exactly for $e\in B_0$.
+
+\emph{Zeros of $E$.}  $E(M+1)=G(M)+2(1-\lambda)w(M+1)=0$.  Let
+$S=\{0\}\cup B_0\cup\{g\}$; if $d-1\in S$ and $d\in S$ then
+$G(d-1)=0=w(d)$ and $E(d)=0$.  Let $S$ consist of $m$ maximal runs of
+consecutive integers $R_1,\ldots,R_m$, with $0\in R_1$ and $g\in R_m$; the
+pairs give $|S|-m=L-k-1-m$ zeros, and with $M+1$ there are $L-k-m$ known
+zeros.  At the start $q=r+1$ of each gap, where $r\in S$, $r<g$ and
+$r+1\notin S$, we have $E(q)=2(1-\lambda)w(q)\ne0$, of sign
+$(-1)^{|B_0\cap(0,q)|}$.  The weight of $F_M$ on $y_{k+1}$ is $0$, so the
+weight of $E$ on $y_{k+1}$ is $(1-\lambda)(2-1/y_{k+1})$ times that of $w$,
+which has the sign $\sigma$ of $w$ at infinity.  If $y_{k+1}<\tfrac12$ this
+weight has sign $-\sigma$, $E$ has sign $-\sigma$ at infinity, and by the
+zero bound $E$ has at most $L-k-1$ real zeros with multiplicity; if
+$y_{k+1}=\tfrac12$ the weight is $0$, and $E$ is a sum on $L-k-1$ nodes with
+at most $L-k-2$ zeros unless it vanishes identically.
+
+\emph{Counting.}  Suppose first $m\ge2$, with gap starts
+$q_1<\cdots<q_{m-1}$.  For $1\le j\le m-2$ the run $R_{j+1}\subseteq B_0$
+lies in $(q_j,q_{j+1})$, supplies $|R_{j+1}|-1$ known zeros there, and the
+signs of $E$ at $q_j$ and $q_{j+1}$ differ by the factor $(-1)^{|R_{j+1}|}$,
+so $E$ has at least $|R_{j+1}|$ zeros in $(q_j,q_{j+1})$, counted with
+multiplicity.  The run $R_1$ supplies $|R_1|-1$ zeros below $q_1$, and
+beyond $q_{m-1}$ the known zeros are $a+1,\ldots,g$ with $a=\min R_m$, and
+$M+1$: $|R_m|$ of them.  In all, at least $|S|-1=L-k-2$.  At $q_{m-1}$ the
+sign of $E$ is $(-1)^{|B_0|-|R_m|+1}=\sigma(-1)^{|R_m|-1}$.  If
+$y_{k+1}<\tfrac12$, the sign $-\sigma$ at infinity makes the number of zeros
+beyond $q_{m-1}$ congruent to $|R_m|$ modulo $2$, and since the total is at
+most $L-k-1$ that number is $|R_m|$ or $|R_m|+1$; so it is $|R_m|$.  If
+$y_{k+1}=\tfrac12$ the total is at most $L-k-2$, so again exactly the known
+zeros occur.  Either way the zeros of $E$ beyond $q_{m-1}$ are
+$a+1,\ldots,g,M+1$, all simple, and from the sign at $q_{m-1}$, $E$ has sign
+$\sigma$ on $(g,M+1)$ and $-\sigma$ on $(M+1,\infty)$.  If $m=1$, that is
+$B_0=\{1,\ldots,g-1\}$, the known zeros $1,\ldots,g,M+1$ number $L-k-1$.
+For $y_{k+1}<\tfrac12$ they are all the zeros, simple, and the sign $-\sigma$
+at infinity gives $\sigma$ on $(g,M+1)$; for $y_{k+1}=\tfrac12$ the bound
+$L-k-2$ forces $E\equiv0$.
+
+So $\sigma E(d)\ge0$ for $g<d\le M+1$ and $\sigma E(d)\le0$ for $d\ge M+2$,
+and \eqref{eq:chordsplit} proves \eqref{eq:chord}.  The first term of
+\eqref{eq:chordsplit} vanishes exactly when $B_0=\{1,\ldots,g-1\}$; then
+$E\equiv0$ if $y_{k+1}=\tfrac12$, and otherwise $\sigma E(g+1)>0$.
+\end{proof}
+
+\begin{corollary}[The shift with one zero above $g$]\label{cor:shiftone}
+In the setting of Proposition~\ref{prop:chord}, $\Tail(w)\le\Tail(F_M)$
+whenever $\Tail(F_M)\le\Tail(F_{M+1})$.  So \eqref{eq:shift} holds for
+$|A|=1$.  Consequently \eqref{eq:step} holds at each $X$ such that
+$X\setminus\{\max X\}$ has a minimizing zero set with at most one element
+above $\max X$.
+\end{corollary}
+
+\begin{proof}
+By \eqref{eq:chord} and the hypothesis,
+$\Tail(F_M)\ge\lambda\Tail(F_M)+(1-\lambda)\Tail(w)$, and $\lambda<1$.  With
+$A=\{M\}$ this is \eqref{eq:shift}, by part (2) of
+Proposition~\ref{prop:shift}; part (1) turns it into \eqref{eq:step}, and
+Proposition~\ref{prop:stepeasy} covers a minimizer with no element above
+$\max X$.
+\end{proof}
+
+The proof of Proposition~\ref{prop:chord} counts integer slots: the zeros
+of $E$ pinned at consecutive pairs of $\{0\}\cup B_0\cup\{g\}$, and its
+signs pinned at the gap starts, are what fix its sign on $(g,M+1)$.  With
+the elements of $B_0$ allowed to be real the count is unavailable, and
+\eqref{eq:chord} is in fact false there, already in the confluent limit at
+$B_0=\{1,\tfrac52\}$, $g=3$, $M=6$.  The cutoff enters once, through the
+sign of the weight of $E$ on $y_{k+1}$, and for $y_{k+1}>\tfrac12$ that sign
+flips.  In the block case $B_0=\{1,\ldots,g-1\}$ with $y_{k+1}=\tfrac12$ the
+sum $E$ vanishes identically, and \eqref{eq:chord} is the identity behind
+part (3) of Proposition~\ref{prop:shift}, the closed form of $\E|D-M|$.
+What remains of \eqref{eq:shift} is $|A|\ge2$.  There the chord through
+$F_{A+1}$ and $p_{g,A+1}$ is not enough on its own: the analogous
+inequality fails without the hypothesis of \eqref{eq:shift}, and the single
+hypothesis $\Tail(B_0\cup A)\le\Tail(B_0\cup(A+1))$ is not enough either,
+so the per-move hypotheses have to enter the count.
 What the median ranges over is not a one-parameter shape: the minimizing zero
 set itself is not a consecutive block with one displaced zero.  At
 $(2,3,4,5,6)$ with $u=0$ it is $\{1,2,4,6\}$, of tail $\tfrac{41}{12600}$,
@@ -1679,8 +1792,8 @@ proved in general: that $\tau^*$ is attained by a full certificate with a
 witness as in \eqref{eq:dualpair}, and that the search always closes, that is,
 that the escaping placement is always extremal.
 
-The second was reduced to one inequality, and the inequality has the right
-hypothesis but no proof.  By Proposition~\ref{prop:step} it is the single
+The second was reduced to one inequality, proved when a single zero of the
+minimizer lies above $\max X$.  By Proposition~\ref{prop:step} it is the single
 step \eqref{eq:step}, deleting the largest element of the placement; by
 Proposition~\ref{prop:stepeasy} the step holds except when the minimizing
 zero set straddles $\max X$, and by Proposition~\ref{prop:slide} the
@@ -1698,9 +1811,11 @@ the minimizing certificate against the new node; what remains is a gap below
 $\max X$.  There the displaced zero is not the half-mass point but a shift:
 \eqref{eq:shift} moves every zero above $\max X$ up by one, under the
 hypothesis that no single such move lowers the tail, which minimality
-supplies (Proposition~\ref{prop:shift}); it holds in every one of $7023$
-instances with the hypothesis at $L\le9$, fails without it, and is sharp at
-the confluent block, where it is proved.  Three alternatives are refuted
+supplies (Proposition~\ref{prop:shift}).  With one zero above $\max X$ it
+is proved, through the chord lemma (Proposition~\ref{prop:chord} and
+Corollary~\ref{cor:shiftone}); with several it holds in every one of
+$7023$ instances with the hypothesis at $L\le9$ and fails without it, and
+it is sharp at the confluent block.  Three alternatives are refuted
 above: deleting $\min X$ rather than $\max X$ fails at $(2,3,4,5)$; freeing
 $\max Z^-$ rather than the smallest zero above $g$ fails by a factor $1.40$;
 and adjoining $g$ to $Z^-$ without sliding, which would need no displaced
