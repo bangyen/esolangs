@@ -39,7 +39,8 @@ $|f_D|\prod_{i=u+1}^L(r_i-1)$; the case $u=0$ needs only $r_i>1$.  Explicit
 families approach the $u=1$ bound at roots $(2,3)$, and the $u=1$ and $u=2$
 bounds at $(2,3,5)$, so those bounds are sharp there.  Sharpness is not
 universal: at roots $(\tfrac52,3,\tfrac72)$ the exact $u=1$ infimum is
-$65/12$, against the bound $5$.
+$65/12$, against the bound $5$, and the row $u=0$ can be improved by a factor
+of order $L$, to $b_1\ge(r_1+\cdots+r_L)/2$ when the roots are at least $2$.
 Summing these bounds gives a lower bound for the logarithmic coefficient mass
 $\Lambda(F)=\sum_j\log^+|f_j|$.  When the roots are the first $L$ primes and
 $|f_D|\ge1$, this gives $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with
@@ -183,8 +184,9 @@ $(\tfrac52,3,\tfrac72)$ as $65/12$, above the value $5$ that
 \eqref{eq:order} gives, and obtains both the improved lower bound and the
 matching family from the same certificate machinery.  Nor is the loss
 bounded: Proposition~\ref{prop:unbounded} exhibits distinct roots at which
-the best certificate bound for $b_1$ exceeds $|P(1)|$ by a factor of order
-$L$.
+the best certificate bound for $b_1$ exceeds $|P(1)|$ by a factor at least of
+order $L$, and gives the uniform bound $b_1\ge(r_1+\cdots+r_L)/2$, which the
+product bound does not imply.
 
 \section{A displaced-zero tail theorem}
 
@@ -676,6 +678,13 @@ magnitude at least $|f_D|$, while \eqref{eq:mass} reduces to
 $\Lambda(F)\ge(L+1)\log|f_D|$ and says nothing more.  The order-statistic
 bound stays informative over the whole root range; the mass bound does not.
 
+Even at $r_i=2$ the collapse is not total, though, and it is the certificate
+rather than \eqref{eq:order} that shows this: by \eqref{eq:halfsum} below,
+every monic multiple has $b_1\ge L$, so $\Lambda(F)\ge\log L$ there.  That
+recovers only one coefficient.  Whether a comparable choice of zero set
+rescues the rows $k\ge2$ near $r_i=2$, and with them the mass bound, we leave
+open.
+
 \begin{corollary}[Prime roots]\label{cor:prime}
 Let $r_1\le\cdots\le r_L$ with $r_i\ge p_i$, the $i$th prime, and let $F$ be
 a nonzero multiple of $\prod_{i=1}^L(x-r_i)$ with $|f_D|\ge1$.  Then
@@ -837,20 +846,26 @@ sets and not a general phenomenon.
 
 \begin{proposition}[The row $k=1$ can be loose by an arbitrary factor]
 \label{prop:unbounded}
-Let $2\le r_1<\cdots<r_L$, put $B=\prod_{i=1}^L(r_i-1)$ and
-$S=\sum_{i=1}^Lr_i$.  Then every monic multiple $F$ of $\prod_i(x-r_i)$
-satisfies
+Let $1<r_1\le\cdots\le r_L$, repetitions allowed, and put
+$B=\prod_{i=1}^L(r_i-1)$ and $S=\sum_{i=1}^Lr_i$.  Then every monic multiple
+$F$ of $\prod_i(x-r_i)$ satisfies
 \[
   b_1(F)\ \ge\ \frac{SB}{B+1},
 \]
-which exceeds the value $B=|P(1)|$ given by \eqref{eq:order} at $u=0$ by the
-factor $S/(B+1)$.  For $r_i=2+iL^{-3}$, which are distinct and at least $2$,
-this factor is $\sim L$.  So the ratio between the best certificate bound and
-$|P(1)|$ is unbounded in $L$, already for distinct roots.
+whose ratio to the value $B=|P(1)|$ given by \eqref{eq:order} at $u=0$ is
+$S/(B+1)$.  If moreover $r_i\ge2$ for every $i$, then $B\ge1$ and hence
+\begin{equation}\label{eq:halfsum}
+  b_1(F)\ \ge\ \frac S2=\frac{r_1+\cdots+r_L}2 .
+\end{equation}
+Neither \eqref{eq:halfsum} nor the row $u=0$ of \eqref{eq:order} implies the
+other.  For $r_i=2+iL^{-3}$ the ratio $S/(B+1)$ is $\sim L$, so the ratio
+between the best certificate bound and $|P(1)|$ is unbounded in $L$, already
+for distinct roots.
 \end{proposition}
 
 \begin{proof}
-Take $Z=\{2,\ldots,L\}$, of size $L-1$, and let $w$ be the certificate on the
+Assume first that the roots are distinct.  Take $Z=\{2,\ldots,L\}$, of size
+$L-1$, and let $w$ be the certificate on the
 nodes $y_i=r_i^{-1}$, so $w_0=1$ and $w_2=\cdots=w_L=0$.  Write
 $W(t)=\sum_{d\ge0}w_dt^d=N(t)/D(t)$ with $D(t)=\prod_i(1-y_it)$ and
 $\deg N\le L-1$.  Then $N(t)-(1+w_1t)D(t)$ has degree at most $L+1$ and is
@@ -875,7 +890,20 @@ $w_{L+1+j}=(-1)^{L+1}e_L(y)h_j(y)/S$, which is one-signed, so
   =\frac{1+B^{-1}}S .
 \]
 The dual-certificate identity in the proof of Lemma~\ref{lem:slack}, applied
-with $U=\varnothing$ and this $w$, gives $b_1(F)\ge1/\Tail(w)=SB/(B+1)$.
+with $U=\varnothing$ and this $w$, gives $b_1(F)\ge1/\Tail(w)=SB/(B+1)$.  The
+computation used only $0<y_i<1$, that is $r_i>1$.
+
+For repetitions, perturb as in Theorem~\ref{thm:order}: the roots
+$r_{i,\varepsilon}=r_i+i\varepsilon$ are distinct and exceed $1$, the
+coefficient vector of $F_\varepsilon$ tends to that of $F$ so
+$b_1(F_\varepsilon)\to b_1(F)$, and $B$ and $S$ are continuous in the roots.
+Letting $\varepsilon\to0$ gives the bound in general.
+
+If every $r_i\ge2$ then each $r_i-1\ge1$, so $B\ge1$; as $B\mapsto B/(B+1)$
+increases, $B/(B+1)\ge\tfrac12$ and \eqref{eq:halfsum} follows.  Neither
+bound dominates: at $r=(3,5)$ one has $S/2=4<8=B$, while at $r=(2,\ldots,2)$
+one has $S/2=L>1=B$.
+
 Finally, for $r_i=2+iL^{-3}$ one has
 $\log B=\sum_i\log(1+iL^{-3})=O(L^{-1})$, so $B\to1$, while
 $S=2L+O(L^{-1})$; hence $S/(B+1)\sim L$.
@@ -884,7 +912,9 @@ $S=2L+O(L^{-1})$; hence $S/(B+1)\sim L$.
 At those roots \eqref{eq:order} gives $b_1\ge B\to1$, which is nearly vacuous,
 while the certificate above gives $b_1\gtrsim L$: the product bound collapses
 as the roots approach $2$, but the number of roots still forces a large
-coefficient.  The zero set $Z=\{2,\ldots,L\}$ used here is not always
+coefficient.  The repeated case is the cleanest instance.  Every monic
+multiple of $(x-2)^L$ has $b_1\ge L$ by \eqref{eq:halfsum}, where the row
+$u=0$ of \eqref{eq:order} gives only $1$.  The zero set $Z=\{2,\ldots,L\}$ used here is not always
 optimal---at $(2,3,5)$ it gives $80/9$, against $248/17$ for
 $Z=\{1,3\}$---but it suffices to settle the boundedness question.
 
