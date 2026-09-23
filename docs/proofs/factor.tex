@@ -39,7 +39,10 @@ $\Theta(T\log T)$.  The upper bound combines a linear-size Brainfuck
 construction with a fixed-modulus short-interval theorem for primes.  The
 lower bound counts every integer encoding of at most $D$ digits and remains
 valid in the presence of ignored prime factors, comments, and leading zeros;
-these encodings realize only $\exp(O(D/\log D))$ behaviors.
+these encodings realize only $\exp(O(D/\log D))$ behaviors.  The tree's
+constant is exact, the walk's leading constant is explicit, and a sieve of
+the classes modulo $11$ through $10^{11}$ gives a proven digit ceiling at
+every arity up to $19$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -125,33 +128,54 @@ maximal run by one prime power.  We begin by bounding the size of the decision
 tree.
 
 \begin{lemma}[Decision-tree size]\label{lem:tree}
-Every $T$-bit truth table has a Brainfuck decision-tree program of length
-$C=O(T)$.
+For $n\ge2$, every $T$-bit truth table has a Brainfuck decision-tree program
+of length
+\[
+  C\le\tfrac{35}{2}T+55n+25,
+\]
+with equality for parity.
 \end{lemma}
 
 \begin{proof}
-Use the following identity-order construction.  It first reads ASCII input into
-cell $2i$, subtracts $48$ to obtain bit $b_i$, and leaves cell $2i+1$ as a
-zero flag.  At a depth-$i$ node, set
-the flag to one and enter a loop on $b_i$ that clears both $b_i$ and the flag
-before running the one-child.  Then run the zero-child inside a loop on the flag that
-clears it.  Exactly one child runs, and both cells are zero afterward, so
-these fixed bracket gadgets nest recursively and implement the decision tree.
-A one-leaf increments a separate result cell; a zero-leaf does nothing, and
-one final gadget adds the ASCII-zero offset and prints.
-
-The initial reads cost $O(n)$.  Moving from a node at depth $i$ to a
-nonconstant child costs $O(1)$.  A constant subtree may instead move to the
-result cell, at distance $O(n-i)$.  There are at most $2^{i+1}$ such exits at
-depth $i$, so all pointer travel is bounded by
+Use the following identity-order construction.  For each input in turn, a
+preamble reads its ASCII digit into cell $2i$ with \texttt{,} and subtracts
+$48$ to obtain bit $b_i$, leaving cell $2i+1$ as a zero flag.  A node at depth
+$i$ is entered at cell $2i$ and left at cell $2i+1$, both zero on exit:
 \[
- O(n)+\sum_{i=0}^{n-1}O\bigl(2^i(n-i)\bigr)=O(2^n)=O(T).
+  \texttt{>+<[->-}\;A\;\texttt{]>[-}\;B\;\texttt{]}.
 \]
-The fixed node gadgets and the single final output add $O(T)$.
+The first loop runs on $b_i$ and clears it and the flag, so the one-branch
+$A$ runs exactly when $b_i=1$; the second runs on the surviving flag, so the
+zero-branch $B$ runs exactly when $b_i=0$.  The branch $A$ must end at cell
+$2i$ and $B$ at cell $2i+1$.  A nonconstant child is
+$A=\texttt{>}S\texttt{<<<}$ or $B=\texttt{>}S\texttt{<<}$, where $S$ is its
+node.  A constant-one child moves to the result cell $2n$, increments it and
+returns, costing $4(n-i)$ in $A$ and $4(n-i)-1$ in $B$; a constant-zero child
+costs one \texttt{<} in $A$ and nothing in $B$.  After the root, one final
+gadget moves to the result cell, adds the ASCII-zero offset and prints.
+
+Let $F(k)$ bound the length of a node of height $k=n-i$ that is not the
+root.  Its own characters number $12$.  At height $1$ both children are
+single rows, and they differ because the node's subtree is not constant, so
+$F(1)=12+4+0=12+1+3=16$.  At height $k\ge2$ a child costs at most
+$\max\{F(k-1)+4,4k\}$ in $A$ and $\max\{F(k-1)+3,4k-1\}$ in $B$.  By
+induction $F(k-1)+19=35\cdot2^{k-2}$, and then $F(k-1)\ge4k-4$, so
+\[
+  F(k)\le12+2F(k-1)+7,
+  \qquad
+  F(k)\le35\cdot2^{k-1}-19.
+\]
+The root obeys the same bound unless the table is constant, when it costs at
+most $12+8n-1\le35\cdot2^{n-1}-19$ for $n\ge2$.  The preamble costs
+$49n+2(n-1)$, the return to cell $0$ costs $2(n-1)$, and the final gadget
+costs $(2n-1)+48+1$.  Adding $35\cdot2^{n-1}-19$ gives the displayed bound.
+Parity has no constant subtree above the leaves, so every inequality is an
+equality.
 \end{proof}
 
 The implementation returns the shorter of this identity-order program and one
-built for a reordered set of variables, so its $C$ is no larger.
+built for a reordered set of variables, so its $C$ is no larger.  At $n=1$ the
+constant-one table costs $118$ characters, three above the displayed formula.
 
 The encoder replaces each maximal run by one prime power.  It scans
 primes upward and chooses the first prime in the residue class required by
@@ -219,6 +243,87 @@ $\log Q=O(\log(m+1))$.  Equation~\eqref{eq:digits} yields
 \]
 Changing logarithm bases proves the digit bound.
 \end{proof}
+
+\section{Explicit constants}
+
+Proposition~\ref{prop:upper} hides two constants: the tree's, which
+Lemma~\ref{lem:tree} makes exact, and the prime walk's, which depends on the
+unstated $x_0$ and $\theta$ of Lemma~\ref{lem:short}.  The walk's leading
+constant is explicit even so; its threshold is not.
+
+\begin{corollary}[Leading constant]\label{cor:leading}
+For every $\theta$ admissible in Lemma~\ref{lem:short}, the generated
+sources satisfy
+\[
+  \limsup_{T\to\infty}\;\max_{t\in\{0,1\}^T}\frac{D(t)}{T\log T}
+  \le\frac{35}{2(1-\theta)\log10}.
+\]
+Every $\theta>7/12$ is admissible, so the limit superior is at most
+$42/\log10<18.25$.
+\end{corollary}
+
+\begin{proof}
+The proof of Lemma~\ref{lem:adaptive} gives
+$p_i^{1-\theta}\le p_{i_0}^{1-\theta}+(1-\theta)i$, hence
+$\log Q\le(1-\theta)^{-1}\log m+O(1)$.  With $m\le C$ and
+Lemma~\ref{lem:tree},
+$\log N\le C\log Q\le\frac{35}{2}T\bigl((1-\theta)^{-1}\log T+O(1)\bigr)
++O(n\log T)$.  Divide by $\log10$.  The proof of Lemma~\ref{lem:short}
+accepts every $\theta>7/12$, and $\frac{35}{2}\cdot\frac{12}{5}=42$.
+\end{proof}
+
+The constant $O(1)$ above contains $x_0$, so the corollary does not say at
+which $T$ the ceiling takes hold.  An effective version would need a
+Hoheisel theorem for residues modulo $11$ with explicit $x_0$ and $\theta$;
+as far as we know, the explicit short-interval results in the literature are
+for primes without a congruence condition.  For the arities
+that can be generated in practice a computation replaces it.
+
+\begin{lemma}[Computed class gaps]\label{lem:computed}
+Put $c=8.62$ and $X=10^{11}-10^4$.  For every real $0\le x\le X$ and every
+$a\in\{1,\ldots,8\}$ there is a prime
+\[
+  p\equiv a\pmod{11},
+  \qquad x<p\le x+c\log^2\max(x,37).
+\]
+\end{lemma}
+
+\begin{proof}
+A segmented sieve through $10^{11}$ records, for each class, every pair of
+consecutive primes $q<p$ of the class.  On $q\le x<p$ the ratio
+$(p-x)/\log^2\max(x,37)$ is nonincreasing, so its supremum is the value at
+$x=q$; the largest such value is $8.6184$, attained by the class-$2$ pair
+$4{,}160{,}719<4{,}162{,}721$.  Before a class's first prime, which is at
+most $37$, the gap is at most $37<c\log^237$.  Every class has a prime in
+$(X,10^{11}]$, so each $x\le X$ has its next class prime inside the sieved
+range.
+\end{proof}
+
+\begin{proposition}[Computed ceiling]\label{prop:computed}
+Let a table's program have $C$ instructions, and let $y\ge37$ satisfy
+$37+(C-1)c\log^2y\le y\le X$.  Then $Q\le y$ and
+\[
+  D\le\lfloor C\log_{10}y\rfloor+1.
+\]
+\end{proposition}
+
+\begin{proof}
+The first selected prime is at most $37$.  By induction on $i\le m$,
+$p_i\le37+(i-1)c\log^2y$: this is at most $y\le X$, so
+Lemma~\ref{lem:computed} applies at $x=p_i$ and gives
+$p_{i+1}\le p_i+c\log^2y$.  Hence $Q\le37+(m-1)c\log^2y\le y$ because
+$m\le C$.  Finally $\log N\le C\log Q$.
+\end{proof}
+
+With $C\le\frac{35}{2}T+55n+25$ the least admissible $y$ is below $X$ for
+every $n\le19$.  At $n=13$, for instance, $y=498{,}168{,}370$ and
+$D\le1{,}253{,}292$, so $D/(T\log T)\le16.98$ over all $2^{8192}$ tables;
+parity, which attains the tree bound, measures $966{,}568$ digits, or
+$13.09$.  The ceiling falls to $14.19$ at $n=19$.  In this range each step
+of the walk is polylogarithmic rather than a power of $p_i$, so the ceiling
+tends towards $\frac{35}{2}/\log10\approx7.60$ rather than
+Corollary~\ref{cor:leading}'s $18.25$, but slowly: $\log_{10}y$ exceeds
+$\log_{10}C$ by $\log_{10}(c\log^2y)$.
 
 \section{Language lower bound}
 

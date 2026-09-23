@@ -203,9 +203,9 @@ step; an answer lands in the paper it extends, and the row leaves.
   where the repaired bound need not be sharp.  See the Scope section of
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
 
-- **Explicit Factor constants.**  The `Theta(T log T)` upper bound rests on a
-  fixed-modulus Hoheisel theorem with unstated `x_0` and `theta`, so the
-  constant is not computable from the paper.  An explicit short-interval
-  prime count for residues mod 11 would make it so, and would let the
-  measured `D / (T ln T)` be compared against a proven ceiling.  See
+- **Effective Factor threshold.**  The tree constant is exact, the walk's
+  leading constant is at most `42/ln 10`, and a sieve through `10**11` proves
+  a digit ceiling through `n = 19`; beyond that the ceiling's threshold rests
+  on the ineffective `x_0` of fixed-modulus Hoheisel.  An explicit
+  short-interval prime count for residues mod 11 would close it.  See
   [factor](proofs/factor.tex).
