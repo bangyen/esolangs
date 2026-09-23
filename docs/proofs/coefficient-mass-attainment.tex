@@ -1548,21 +1548,40 @@ What remains of \eqref{eq:shift} is $|A|\ge2$.  The chord does not
 extend: write $M$ for the end of the first run of $A$, $C=B_0\cup A\setminus\{M\}$
 for the common zeros, $F_1$ for the sum with zeros $C\cup\{M+1\}$ on the
 small nodes and $w$ for the one with zeros $C\cup\{g,M+1\}$ on all $c$
-nodes.  The identity \eqref{eq:chordsplit} holds verbatim with $B_0$
-replaced by $C$, its first term is still nonnegative, but $E$ is now short
-one forced zero for every run of $A$ above $M+1$, so its sign beyond $M+1$
-is not pinned, and $\Tail(B_0\cup A)\ge\lambda\Tail(F_1)+(1-\lambda)\Tail(w)$
-fails: at the clustered nodes with $L=9$, $B_0=\{1,2,3,5,6\}$, $g=7$,
-$A=\{8,12\}$ the right side exceeds the left by $19\%$ of it, the whole
-excess sitting in the far term.  No fixed pair of weights works in its
-place: the feasible weight on $F_1$ is at most $0.683$ at $L\le7$ and at
-least $0.794$ at $L=9$.  What does hold, in every instance tried, is the
-sharp hypothesis-free form $\Tail(B_0\cup A)\ge\min(\Tail(F_1),\Tail(w))$,
-and every chord failure has $\Tail(B_0\cup A)>\Tail(F_1)$.  A proof
-therefore has to split cases: either the far sign of $E$ is pinned and
-the chord argument goes through, or the unpinned run supplies a sign
-change of $E$ beyond $M+1$ that must be shown to force
-$\Tail(B_0\cup A)>\Tail(F_1)$.
+nodes.  Then \eqref{eq:chordsplit} holds with $B_0$ replaced by $C$ but
+with a \emph{local} sign: the coefficient of $E(d)$ is
+$s_d=\sigma(-1)^{\#(C\cap(g,d))}$ rather than the constant $\sigma=(-1)^{|B_0|}$,
+because each zero of $C$ above $g$ flips the sign of $w$ as $d$ passes it,
+and the forced zeros of $E$ are the pairs $d-1\in\{0\}\cup C\cup\{M\}$,
+$d\in C\cup\{g,M+1\}$.  A zero of $A$ that sits above $M+1$ with no
+predecessor forces nothing, so $E$ is short one zero for every run of $A$
+above $M+1$, its sign there is not pinned, and
+$\Tail(B_0\cup A)\ge\lambda\Tail(F_1)+(1-\lambda)\Tail(w)$ fails: at the
+clustered nodes with $L=9$, $B_0=\{1,2,3,5,6\}$, $g=7$, $A=\{8,12\}$ the
+right side exceeds the left by $19\%$ of it, the whole excess sitting in
+the far term.  No fixed pair of weights works in its place: the feasible
+weight on $F_1$ is at most $0.683$ at $L\le7$ and at least $0.794$ at
+$L=9$.  Splitting on whether the far sign is pinned does not help either.
+Termwise pinning, $s_dE(d)\le0$ for all $d\ge M+2$, does imply the chord
+by the argument of Proposition~\ref{prop:chord}, and no pinned instance
+violates it; but pinning was never once observed with a gapped $A$, and
+the unpinned instances do not in bulk violate the hypothesis of
+Proposition~\ref{prop:shift}
+($552$ of the $1515$ unpinned instances at $L=9$ satisfy it, for example
+$y_0=\tfrac12$, $B_0=\{2,3,4,6,7\}$, $g=8$, $A=\{11,13\}$), so the
+unpinned branch cannot be closed by contradicting it.  What survives is
+the chord read conditionally: in every instance tried, $L\le10$ and
+$|A|\le3$, the hypothesis $\Tail(B_0\cup A)\le\Tail(F_1)$ forces
+$\Tail(B_0\cup A)\ge\lambda\Tail(F_1)+(1-\lambda)\Tail(w)$, with least
+relative slack $0.063$, while every one of the $150$ chord failures at
+$L=10$ violates it.  Since Proposition~\ref{prop:shift} supplies that
+hypothesis and the chord gives $\Tail(w)\le\Tail(B_0\cup A)$, which is
+\eqref{eq:shift},
+a proof of this conditional chord would close the case; the hypothesis is
+equivalent to the mass statement $\sum_{d\le M}|H_d|\ge\sum_{d>M}|H_d|$
+for the $(L-1)$-node sum $H$ vanishing on $\{0\}\cup C$.  The
+hypothesis-free form $\Tail(B_0\cup A)\ge\min(\Tail(F_1),\Tail(w))$ also
+holds in every instance tried.
 What the median ranges over is not a one-parameter shape: the minimizing zero
 set itself is not a consecutive block with one displaced zero.  At
 $(2,3,4,5,6)$ with $u=0$ it is $\{1,2,4,6\}$, of tail $\tfrac{41}{12600}$,
