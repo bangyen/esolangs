@@ -20,6 +20,7 @@
 \theoremstyle{plain}
 \newcommand{\R}{\mathbb R}
 \newcommand{\N}{\mathbb N}
+\newcommand{\E}{\mathbb E}
 \DeclareMathOperator{\Tail}{Tail}
 \DeclareMathOperator{\sgn}{sgn}
 
@@ -1210,8 +1211,8 @@ the same $B$, $g$, $M$ give
   \min_{N}\Tail\bigl(B\cup\{4,N\}\bigr)
   =\Tail\bigl(\{1,2,3,4,10,11,12,13\}\bigr)=\tfrac3{143}
   =\tfrac{36}{35}\Tail\bigl(B\cup\{6\}\bigr),
-  \qquad \Tail\bigl(B\cup\{6\}\bigr)=\tfrac{35}{1716}.
 \]
+where $\Tail(B\cup\{6\})=\tfrac{35}{1716}$.
 \end{proposition}
 
 \begin{proof}
@@ -1236,57 +1237,171 @@ not settled either: the half-mass point $N'$ of $\ell_M$ wins in most
 straddling instances, but at the confluent limit with $B=\{1,\ldots,24\}$,
 $g=25$ and $M=50$, where $M$ is the minimizer on $\ell_\infty$, the vertex
 $p_{gN'}$ has $N'=55$ and tail $1.031\,\Tail(F_M)$ while $p_{g,51}$ meets
-$\Tail(F_M)$ exactly and $p_{g,52}$ falls below it.  What does hold, at every
-$g$ and $M$, is the slide from a zero set whose part below $g$ is an initial
-segment, by a certificate that is not a vertex at all: smoothing $F_M$ against
-the new node.
+$\Tail(F_M)$ exactly and $p_{g,52}$ falls below it.  What does hold, at every $g$ and whatever lies above it, is the step from a
+zero set whose part below $g$ is an initial segment, by a certificate that is
+not a vertex at all: smoothing the minimizing certificate against the new
+node.
 
-\begin{theorem}[The slide from an initial segment]\label{thm:slideinitial}
+\begin{theorem}[The step from an initial segment]\label{thm:slideinitial}
 Let $y_1,\ldots,y_{c-1}\in(0,1)$ be distinct, let $y_c\in(0,\tfrac12]$ be a
-further node, let $B=\{1,\ldots,k\}$ with $k=c-3$, and let $g>k$ and $M>g$.
-Let $F_M$ be the full certificate on $y_1,\ldots,y_{c-1}$ with zero set
-$B\cup\{M\}$.  Then some certificate on all $c$ nodes vanishing on
-$B\cup\{g\}$ has tail at most $\Tail(F_M)$, so \eqref{eq:slide} holds; and
-for $g=k+1$ the tail is at most $\tfrac{y_c}{1-y_c}\Tail(F_M)$.
+further node, let $Z^-$ be a set of $c-2$ positive integers and $g\notin Z^-$
+with $Z^-\cap(0,g)=\{1,\ldots,k\}$, and let $F$ be the full certificate on
+$y_1,\ldots,y_{c-1}$ with zero set $Z^-$.  Then some certificate on all $c$
+nodes vanishing on $\{1,\ldots,k\}\cup\{g\}$ has tail at most $\Tail(F)$, and
+for $g=k+1$ at most $\tfrac{y_c}{1-y_c}\Tail(F)$.  If $Z^-$ has a single
+element $M$ above $g$, the certificate can be taken full, with zero set
+$\{1,\ldots,k\}\cup\{g,N\}$, so \eqref{eq:slide} holds for
+$B=\{1,\ldots,k\}$.
 \end{theorem}
 
 \begin{proof}
-Write $F_M(x)=\sum_dF_{M,d}x^d=N(x)/\prod_{i<c}(1-y_ix)$ with $\deg N\le c-2$,
-and put
+Write $F(x)=\sum_dF_dx^d=N(x)/\prod_{i<c}(1-y_ix)$ with $\deg N\le c-2$, and
+put
 \[
-  v(x)=\frac{1-y_cxF_M(x)}{1-y_cx}
+  v(x)=\frac{1-y_cxF(x)}{1-y_cx}
       =\frac{\prod_{i<c}(1-y_ix)-y_cxN(x)}{\prod_{i\le c}(1-y_ix)} .
 \]
 The numerator has degree at most $c-1$ and the poles are simple, so $v$ is an
 exponential sum on the $c$ nodes; expanding, $v_0=1$ and
 \[
-  v_d=-\sum_{1\le j<d}F_{M,j}\,y_c^{\,d-j}\qquad(d\ge1).
+  v_d=-\sum_{1\le j<d}F_j\,y_c^{\,d-j}\qquad(d\ge1).
 \]
-For $b\le k$ every $j<b$ lies in $B$, so $v_b=0$: $v\in\mathcal P$.  Summing
-the geometric factors,
-$\Tail(v)\le\sum_{j\ge1}|F_{M,j}|\sum_{i\ge1}y_c^i
-=\tfrac{y_c}{1-y_c}\Tail(F_M)\le\Tail(F_M)$, the one use of the cutoff.  At
-$d=g$ the sum runs over $k<j<g$; by the zero bound $F_M$ has exactly the zeros
-$B\cup\{M\}$, so it keeps one sign on $(k,M)$, and $v_g$ is either $0$, when
-$g=k+1$, or of the sign opposite to $F_{M,g}$.  In the first case $v\in\ell_g$
-already.  In the second the segment from $F_M$ to $v$ in $\mathcal P$ crosses
-$\ell_g$ at $w=(1-\lambda)F_M+\lambda v$ with
-$\lambda=F_{M,g}/(F_{M,g}-v_g)\in(0,1)$, and convexity gives
-$\Tail(w)\le\max(\Tail(F_M),\Tail(v))=\Tail(F_M)$.  By
-Proposition~\ref{prop:median} the minimum over $\ell_g$ is at a vertex
-$p_{gN}$, which is then a full certificate with the claimed tail.
+For $b\le k+1$ every $j<b$ lies in $Z^-$, so $v_b=0$.  Summing the geometric
+factors,
+$\Tail(v)\le\sum_{j\ge1}|F_j|\sum_{i\ge1}y_c^i
+=\tfrac{y_c}{1-y_c}\Tail(F)\le\Tail(F)$, the one use of the cutoff.  This
+settles $g=k+1$.  For $g>k+1$ the sum for $v_g$ runs over $k<j<g$; by the
+zero bound $F$ has exactly the zeros $Z^-$, so it keeps one sign from $k$ to
+the least element of $Z^-$ above $g$, or to infinity if there is none, and
+$v_g$ has the sign opposite to $F_g$.  The segment from $F$ to $v$ consists of sums on the
+$c$ nodes with $v_0=1$ vanishing on $\{1,\ldots,k\}$, and it crosses the
+hyperplane $v_g=0$ at $w=(1-\lambda)F+\lambda v$ with
+$\lambda=F_g/(F_g-v_g)\in(0,1)$; $\Tail$ is convex, so
+$\Tail(w)\le\max(\Tail(F),\Tail(v))=\Tail(F)$.  When $Z^-=\{1,\ldots,k\}\cup\{M\}$
+the whole segment lies in $\mathcal P$ for $B=\{1,\ldots,k\}$, so $w\in\ell_g$,
+and by Proposition~\ref{prop:median} the minimum over $\ell_g$ is at a vertex
+$p_{gN}$, a full certificate with the claimed tail.
 \end{proof}
 
-Only the new node is held to the cutoff, and the others may exceed it; with
+Since $\tau_k(X)$ is an infimum over all certificates for $X$, the theorem
+proves \eqref{eq:step} at every $X$ whose minimizer for $X'$ has an initial
+segment below $\max X$, whatever its zeros above.  It does not need
+minimality: at the root set of Proposition~\ref{prop:slidefails}, where the
+slide from $\{1,2,3,6,11,12,13\}$ to $g=4$ fails on every vertex, the smoothed
+certificate vanishes on $\{1,2,3,4\}$ with tail $0.82$ times the tail of that
+zero set, and for $g=5$ the crossing point has tail $0.48$ times it.  Only the
+new node is held to the cutoff, and the others may exceed it; with
 $y_c>\tfrac12$ the conclusion fails in $59$ of $114$ instances tried, so the
 hypothesis is the right one.  The factor $\tfrac{y_c}{1-y_c}$ is sharp: at the
 confluent limit with all nodes at $\tfrac12$, $g=k+1$ and $M=2k+2$ the ratio in
 \eqref{eq:slide} is $(2k+3)/(2k+4)$ for $k\le8$, exactly, where
 $\Tail(B\cup\{M\})=\binom{2k+2}{k+1}4^{-k-1}$.  The construction does not
-reach a $B$ with a gap below $g$, where $v_b=-\sum_{j<b,\,j\notin B}F_{M,j}y_c^{b-j}$
-need not vanish at the first $b$ above the gap, nor a $B$ with elements above
-$M$, which is where Proposition~\ref{prop:slidefails} lives; in
-$24312$ instances with $B\subset(0,g)$ we found no failure.
+reach a gap below $g$, where
+$v_b=-\sum_{j<b,\,j\notin Z^-}F_jy_c^{b-j}$ need not vanish at the first
+element of $Z^-$ above the gap.
+
+What remains is one inequality with the right hypothesis, and the hypothesis
+is the part of minimality that the counterexample lacks.  Write
+$Z^-=B_0\cup A$ with $B_0=Z^-\cap(0,g)$ and $A=Z^-\cap(g,\infty)$, and
+$A+1=\{a+1:a\in A\}$.  The rule is not to displace one zero to a half-mass
+point but to shift every zero above $g$ up by one:
+\begin{equation}\label{eq:shift}
+  \Tail\bigl(B_0\cup\{g\}\cup(A+1)\bigr)\le\Tail(B_0\cup A)
+  \quad\text{whenever}\quad
+  \Tail(B_0\cup A)\le\Tail\bigl(B_0\cup A\setminus\{a\}\cup\{a+1\}\bigr)
+\end{equation}
+for every $a\in A$ with $a+1\notin A$, the left side on
+$y_{k+1},\ldots,y_L$ and the others on $y_{k+2},\ldots,y_L$.
+We have no proof of \eqref{eq:shift}, and no counterexample: it holds in all
+$7023$ instances satisfying its hypothesis among $8523$ tried with $L\le9$,
+over the clustered nodes $\tfrac12-(i-1)\cdot10^{-4}$ with $g\le7$ and $A$
+within $6$ of $g$, and over $300$ random node sets at $L=7$, while $283$
+instances without the hypothesis violate the conclusion; for $|A|=1$ it holds
+in $6015$ further instances with $L\le7$.  The largest ratio seen is
+$0.9993$, at the clustered nodes with $B_0=\{1,2,3,4\}$, $g=5$, $A=\{10\}$,
+against $1$ in the confluent limit.
+
+\begin{proposition}[The shift]\label{prop:shift}
+\begin{enumerate}
+\item If $Z^-$ attains $\tau_{k+1}(X')$ with $g\notin Z^-$ and $g<\max Z^-$,
+  then the hypothesis of \eqref{eq:shift} holds at $Z^-$, and
+  \eqref{eq:shift} gives \eqref{eq:step} at $X$.
+\item For $A=\{M\}$ the hypothesis is $\Tail(F_M)\le\Tail(F_{M+1})$, that is,
+  at least half the mass $\sum_{d\notin B_0}|H_d|$ of the direction $H$ of
+  $\ell_\infty$ lies at $d\le M$; the conclusion is
+  $\Tail(p_{g,M+1})\le\Tail(F_M)$.
+\item In the confluent limit with all nodes at $\tfrac12$, $B_0=\{1,\ldots,k\}$,
+  $g=k+1$ and $A=\{M\}$, the hypothesis and the conclusion of
+  \eqref{eq:shift} are both equivalent to $M\ge2k+2$, and the conclusion is an
+  equality exactly at $M=2k+2$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(1) Every $a\in A$ exceeds $g=\max X$, so $a\notin X'$ and
+$Z^-\setminus\{a\}\cup\{a+1\}$ is a zero set of the right size containing
+$X'$ when $a+1\notin Z^-$; minimality of $Z^-$ is the hypothesis.  The left
+side of \eqref{eq:shift} is the tail of a full certificate vanishing on
+$B_0\cup\{g\}\supseteq X$, so it is at least $\tau_k(X)$, and the right side
+is $\tau_{k+1}(X')$.
+
+(2) Apply Lemma~\ref{lem:pencil} and Proposition~\ref{prop:median} on
+$y_{k+2},\ldots,y_L$ with $A=B_0$, so that $H$ is the sum on those nodes
+vanishing on $\{0\}\cup B_0$: $F_M$ and $F_{M+1}$ are the points
+$\theta_M>\theta_{M+1}$ of \eqref{eq:median}, between which the breakpoints
+below $\theta$ are exactly those with $d>M$, by Lemma~\ref{lem:ratio}; so
+$\Tail(F_{M+1})-\Tail(F_M)
+=(\theta_M-\theta_{M+1})\bigl(\sum_{d\le M}|H_d|-\sum_{d>M}|H_d|\bigr)$.
+
+(3) Let $D$ have $\Pr(D=d)=\binom{d-1}{k}2^{-d}$ for $d\ge k+1$, the number of
+fair coin tosses to the $(k+1)$st head, with mean $2k+2$, and let $G$ be an
+independent geometric variable, $\Pr(G=j)=2^{-j}$ for $j\ge1$, so that $D+G$
+is the number of tosses to the $(k+2)$nd head.  The certificate with zero set
+$\{1,\ldots,k\}\cup\{M\}$ is $d\mapsto(-1)^k\Pr(D=d)(1-d/M)$, and since
+$(d-k-1)\binom{d-1}{k}=(k+1)\binom{d-1}{k+1}$, the one with zero set
+$\{1,\ldots,k+1\}\cup\{N\}$ is $d\mapsto(-1)^{k+1}\Pr(D+G=d)(1-d/N)$; hence
+$\Tail(\{1,\ldots,k\}\cup\{M\})=\E|D-M|/M$ and
+$\Tail(\{1,\ldots,k+1\}\cup\{N\})=\E|D+G-N|/N$.  For integers $x$ and $N$ a
+direct sum gives $\E|x+G-N|=|x-N|-2+4\cdot2^{-(N-x)_+}$, and
+$\E|D-m-1|-\E|D-m|=2\Pr(D\le m)-1$.  With $N=M+1$, conditioning on $D$ and
+using $\sum_{d\le M}\binom{d-1}{k}=\binom{M}{k+1}$,
+\[
+  (M+1)\Tail\bigl(\{1,\ldots,k+1\}\cup\{M+1\}\bigr)
+  =\E|D-M|+1-2\Pr(D\le M)+2\binom{M}{k+1}2^{-M},
+\]
+while $(M+1)\Tail(\{1,\ldots,k\}\cup\{M+1\})=\E|D-M|+2\Pr(D\le M)-1$.  Next,
+$(2k+2-d)\Pr(D=d)=(k+1)2^{-d}\bigl[\binom{d-1}{k}-\binom{d-1}{k+1}\bigr]$ by
+Pascal's rule, and summing over $d\le M$ telescopes against the two
+head-count events to $(k+1)\binom{M}{k+1}2^{-M}$; with
+$\E|D-M|=(2k+2-M)+2\sum_{d\le M}(M-d)\Pr(D=d)$ this gives
+\[
+  \E|D-M|=(M-2k-2)\bigl(2\Pr(D\le M)-1\bigr)+2(k+1)\binom{M}{k+1}2^{-M}.
+\]
+Substituting, the hypothesis $\E|D-M|\le M(2\Pr(D\le M)-1)$ and the
+conclusion $M(1-2\Pr(D\le M))+2M\binom{M}{k+1}2^{-M}\le\E|D-M|$ both reduce
+to $\binom{M}{k+1}2^{-M}\le2\Pr(D\le M)-1$.  In terms of the number $S$ of
+heads in $M$ tosses, $\Pr(D\le M)=\Pr(S\ge k+1)$ and
+$\binom{M}{k+1}2^{-M}=\Pr(S=k+1)$, so the condition is
+$\Pr(S\ge k+2)\ge\Pr(S\le k)=\Pr(S\ge M-k)$, which holds exactly when
+$M-k\ge k+2$, with equality exactly when $M=2k+2$.
+\end{proof}
+
+The confluent block is therefore the case where \eqref{eq:shift} is sharp, and
+its hypothesis is exactly what the conclusion needs.  Away from it there is
+room: at the same $B_0$ and $g$ with $M>2k+2$ the ratio falls below $1$, and
+at $M=2k+2$ the vertex $p_{g,M+2}$, which is the smoothed certificate of
+Theorem~\ref{thm:slideinitial} there, reaches $(2k+3)/(2k+4)$.  The plane
+$\mathcal P$ makes the shape of the question visible.  With $H$ as in (2),
+$K$ the sum on $y_{k+1},\ldots,y_L$ vanishing on $\{0\}\cup B_0\cup\{M+1\}$,
+$\theta_d=K_d/H_d$ and $\rho_d=-F_{M,d}/H_d$, every $v\in\mathcal P$ is
+$v_d=H_d(\alpha+\beta\theta_d-\rho_d)$, so
+$\Tail(v)=\sum_{d\notin B_0}|H_d|\,|\alpha+\beta\theta_d-\rho_d|$ is the
+weighted $\ell^1$ error of an affine fit to $\rho$ against $\theta$; the
+points $F_a$ are the constant fits, $p_{ab}$ the chords, and the zero bound
+makes $\rho$ a concave function of $\theta$.  With the weights $|H_d|$
+replaced by arbitrary positive weights the case $|A|=1$ of \eqref{eq:shift}
+fails, so the exponential-sum structure of $H$ and the cutoff on $y_{k+1}$,
+which enters only through $\theta$, are both essential.
 What the median ranges over is not a one-parameter shape: the minimizing zero
 set itself is not a consecutive block with one displaced zero.  At
 $(2,3,4,5,6)$ with $u=0$ it is $\{1,2,4,6\}$, of tail $\tfrac{41}{12600}$,
@@ -1530,32 +1645,37 @@ proved in general: that $\tau^*$ is attained by a full certificate with a
 witness as in \eqref{eq:dualpair}, and that the search always closes, that is,
 that the escaping placement is always extremal.
 
-The second was reduced to one inequality and the inequality is false.  By
-Proposition~\ref{prop:step} it is the single step \eqref{eq:step}, deleting
-the largest element of the placement; by Proposition~\ref{prop:stepeasy} the
-step holds except when the minimizing zero set straddles $\max X$, and by
-Proposition~\ref{prop:slide} the straddling case is the slide inequality
-\eqref{eq:slide}, which Proposition~\ref{prop:slidealigned} proves when either
-minimizer involved sits at or below $\max X$.  In the remaining case
-\eqref{eq:slide} fails, at nine nodes clustered just below the cutoff
-(Proposition~\ref{prop:slidefails}), so no argument that ignores the
-minimality of the zero set being slid can prove \eqref{eq:step}.  The step
-itself has no known counterexample: none in $47638$ instances to $L=6$, in
-$1352$ further steps, or among all placements of size $L-2$ inside
-$\{1,\ldots,15\}$ at the clustered nodes with $L\le8$.
-Theorem~\ref{thm:slideinitial} proves the slide whenever the zero set below
-$\max X$ is an initial segment, by smoothing the minimizing certificate
-against the new node; a gap below $\max X$, or zeros above the slid one, is
-what remains, and the displaced zero is then not the half-mass point.  Three
-alternatives are refuted above: deleting $\min X$ rather than $\max X$ fails
-at $(2,3,4,5)$; freeing $\max Z^-$ rather than the smallest zero above $g$
-fails by a factor $1.40$; and adjoining $g$ to $Z^-$ without sliding, which
-would need no displaced zero at all, fails in $245$ of the $379$ straddling
-instances we put to it, by as much as a factor $2.01$.  Proposition~\ref{prop:head} states the same question
-analytically instead, as a bound on the $\max X-1$ coefficients of a deflated
-multiple; by Proposition~\ref{prop:defthresh} that route says nothing pointwise
-once $r_1\le\tfrac{3+\sqrt5}2$, which covers every root set with $r_1=2$.
-Repeated roots beyond the confluent pair $(3,3)$ also remain open.
+The second was reduced to one inequality, and the inequality has the right
+hypothesis but no proof.  By Proposition~\ref{prop:step} it is the single
+step \eqref{eq:step}, deleting the largest element of the placement; by
+Proposition~\ref{prop:stepeasy} the step holds except when the minimizing
+zero set straddles $\max X$, and by Proposition~\ref{prop:slide} the
+straddling case is the slide inequality \eqref{eq:slide}, which
+Proposition~\ref{prop:slidealigned} proves when either minimizer involved sits
+at or below $\max X$.  In the remaining case \eqref{eq:slide} fails, at nine
+nodes clustered just below the cutoff (Proposition~\ref{prop:slidefails}), so
+no argument that ignores the minimality of the zero set being slid can prove
+\eqref{eq:step}.  The step itself has no known counterexample: none in
+$47638$ instances to $L=6$, in $1352$ further steps, or among all placements
+of size $L-2$ inside $\{1,\ldots,15\}$ at the clustered nodes with $L\le8$.
+Theorem~\ref{thm:slideinitial} proves the step whenever the minimizing zero
+set below $\max X$ is an initial segment, whatever lies above, by smoothing
+the minimizing certificate against the new node; what remains is a gap below
+$\max X$.  There the displaced zero is not the half-mass point but a shift:
+\eqref{eq:shift} moves every zero above $\max X$ up by one, under the
+hypothesis that no single such move lowers the tail, which minimality
+supplies (Proposition~\ref{prop:shift}); it holds in every one of $7023$
+instances with the hypothesis at $L\le9$, fails without it, and is sharp at
+the confluent block, where it is proved.  Three alternatives are refuted
+above: deleting $\min X$ rather than $\max X$ fails at $(2,3,4,5)$; freeing
+$\max Z^-$ rather than the smallest zero above $g$ fails by a factor $1.40$;
+and adjoining $g$ to $Z^-$ without sliding, which would need no displaced
+zero at all, fails in $245$ of the $379$ straddling instances we put to it,
+by as much as a factor $2.01$.  Proposition~\ref{prop:head} states the same
+question analytically instead, as a bound on the $\max X-1$ coefficients of a
+deflated multiple; by Proposition~\ref{prop:defthresh} that route says nothing
+pointwise once $r_1\le\tfrac{3+\sqrt5}2$, which covers every root set with
+$r_1=2$.  Repeated roots beyond the confluent pair $(3,3)$ also remain open.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.

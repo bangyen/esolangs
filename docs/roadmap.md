@@ -193,34 +193,45 @@ step; an answer lands in the paper it extends, and the row leaves.
 
 - **Extremality of the escaping placement.**  `T = tau*` (escaping exempt
   coefficients extremal) is still the step `tau_k(X) <= tau_{k+1}(X \ {max
-  X})`, which has no known counterexample, but the one inequality it was
-  reduced to is FALSE.  The slide (slide the smallest zero `M` of the
-  minimizer above `g` down to `g`, add the node, displace one zero to the
-  half-mass point) fails at nine nodes `1/2 - i*10^-4` with
-  `B = {1,2,3,11,12,13}`, `g = 4`, `M = 6`: every point of the slid line is
-  `1.026x` the target, `36/35` in the confluent limit; its universal form
-  fails already at `(2,3,5,7)`, `B = {3}`, `g = 2` (`1/48` vs `31/1704`).
-  Proved: the slide holds whenever the minimizer on the small node set or the
-  half-mass point of `B u {M}` sits at or below `g` (convexity along one
-  line), and for every `B = {1..k}` an initial segment, all `g > k`, `M > g`
-  (`thm:slideinitial`: smooth `F_M` against the new node,
-  `v = (1 - y_c x F_M)/(1 - y_c x)`, tail `<= y_c/(1-y_c)` times the target,
-  sign at `g` opposite to `F_M`, so the segment crosses the slid line; sharp
-  at the confluent block, ratio `(2k+3)/(2k+4)`).  Left: `B` with a gap
-  below `g` (0 failures in 24,312 instances with `B` below `g`) and `B` with
-  elements above `M` at genuine minimizers only (the counterexample's zero
-  set is never a minimizer: for `X' = {1,2,3}` it is `{1,2,3,6,8,12,17}` and
-  the step holds at ratio `0.70`).  Not a rule: the half-mass point `N'` of
-  `ell_M` fails at the confluent block `B = {1..24}`, `g = 25`, `M = 50`
-  (1.031x) although `M` is the minimizer there, while `N = M+1` meets the
-  target exactly; no fixed window for the displaced zero works either.
-  First step: extend the smoothing certificate past a gap -- the failure is
-  only that `v_b = -sum_{j<b, j notin B} F_{M,j} y_c^{b-j}` need not vanish
-  at the first `b` above the gap.  Dead: deleting `min X`, freeing the
-  largest zero, adjoining without sliding, block-plus-one zero sets, a
-  real-valued zero position, arbitrary weights with the same decay, the
-  abstract convex-curve model, pointwise deflation at
-  `r_1 <= (3+sqrt 5)/2`.
+  X})`, which has no known counterexample.  The step is proved unless the
+  minimizer `Z^-` for `X' = X \ {g}` straddles `g = max X` with a gap
+  below `g`: `prop:stepeasy` (aligned), `prop:slidealigned` (a minimizer at
+  or below `g`), and `thm:slideinitial` (smooth the minimizing certificate
+  against the new node, `v = (1 - y_c x F)/(1 - y_c x)`, tail
+  `<= y_c/(1-y_c)` times the target; it vanishes on the initial segment and
+  has the opposite sign at `g`, so the segment to `F` crosses `v_g = 0`
+  inside the certificates for `X`, whatever zeros lie above `g`).  The slide
+  with all other zeros fixed is FALSE (nine nodes `1/2 - i*10^-4`,
+  `B = {1,2,3,11,12,13}`, `g = 4`, `M = 6`, every point of the slid line
+  `1.026x`), so the one inequality is now `eq:shift`: with `B_0 = Z^- n (0,g)`
+  and `A = Z^- n (g, inf)`, `Tail_c(B_0 u {g} u (A+1)) <= Tail_{c-1}(Z^-)`
+  whenever no single move `a -> a+1` (`a in A`) lowers the tail, which
+  minimality gives; `prop:shift` proves that it implies the step, that for
+  `|A| = 1` the hypothesis is the half-mass condition
+  `sum_{d<=M}|H_d| >= sum_{d>M}|H_d|` on the `ell_inf` direction, and the
+  confluent block case (`B_0 = {1..k}`, `g = k+1`, `A = {M}`: hypothesis and
+  conclusion both `<=> M >= 2k+2`, equality iff `M = 2k+2`, by the
+  negative-binomial identities).  Evidence: 0 failures in 7023 instances
+  with the hypothesis at `L <= 9` (clustered and random nodes, `|A| <= 5`),
+  283 failures without it; `|A| = 1`: 0 in 6015 more at `L <= 7` and 0 in
+  468 confluent gap instances; worst ratio 0.9993 (clustered
+  `B_0 = {1,2,3,4}`, `g = 5`, `A = {10}`), 1 at the confluent block.
+  Structure for a proof: on the plane `P = {v_0 = 1, v_{B_0} = 0}` every
+  certificate is `v_d = H_d (alpha + beta theta_d - rho_d)` with
+  `theta = K/H` (`K` the `c`-node hom on `{0} u B_0 u {M+1}`) and
+  `rho = -F_M/H`, both monotone in `d` and `rho` concave in `theta` by the
+  zero bound, so `Tail` is a weighted `l^1` affine regression, `F_a` the
+  constant fits, `p_{ab}` the chords; the `|A| = 1` case is `cost <= gain`
+  with `gain = Tail(F_M) - Tail(p_{M,M+1})` (the deletion step, eq:split) and
+  `cost = Tail(p_{g,M+1}) - Tail(p_{M,M+1})` along `ell_{M+1}`, and
+  `cost/gain` reaches 0.9991, so every loose bound from eq:gamma fails: the
+  proof must be exact, as the block proof is.  Dead: the half-mass point of
+  `ell_M` (fails at the confluent block `B = {1..24}`, `g = 25`, `M = 50`),
+  any fixed window, shifting only the smallest zero above `g` (fails at
+  `L = 5`), arbitrary weights with the same decay (the regression form fails
+  for them), deleting `min X`, freeing the largest zero, adjoining without
+  sliding, block-plus-one zero sets, a real-valued zero position, pointwise
+  deflation at `r_1 <= (3+sqrt 5)/2`.
   Also open: that `tau*` is always attained by a full certificate with a
   multiplier witness.  Repeated roots beyond `(3,3)` are open too, as is the
   case where an exempt root lies below 2 and more than `u` partial sums of
