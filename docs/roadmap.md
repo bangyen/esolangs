@@ -204,13 +204,11 @@ step; an answer lands in the paper it extends, and the row leaves.
   infimum when the criterion fails" in
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
 
-- **Effective Factor threshold.**  The tree constant is exact, the walk's
-  leading constant is at most `42/ln 10`, and a sieve through `10**11` proves
-  a digit ceiling through `n = 19`.  Beyond that the threshold is effective in
-  principle -- `q = 11` admits no exceptional zero, `L(1, chi) = pi/sqrt 11` --
-  but unconditionally still has no value.  On GRH it has one: Dudek-Grenie-
-  Molteni's explicit short intervals have threshold `3.05e5` at `q = 11`,
-  under the sieved range, so the two overlap and the walk is quadratic,
-  giving `D <= 24.6 T ln T` at every `n >= 8` and `35/ln 10 < 15.21`
-  asymptotically.  Removing GRH needs an explicit mod-11 Hoheisel.  See
-  [factor](proofs/factor.tex).
+- **Unconditional Factor threshold.**  The digit ceiling is proven through
+  `n = 19` by a sieve to `10**11`, and explicit at every arity on GRH
+  (Section 4 of [factor](proofs/factor.tex)).  Without GRH `x_0` is effective
+  in principle -- `q = 11` has no exceptional zero -- but has no value.  Any
+  explicit `theta < 1` suffices, since `theta` only moves the leading
+  constant.  First step: an explicit zero-density estimate for the ten
+  `L`-functions mod 11, against a known explicit zero-free region; the
+  explicit short-interval results in the literature are congruence-free.
