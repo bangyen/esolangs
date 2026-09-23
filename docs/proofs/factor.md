@@ -32,6 +32,40 @@ Consequently `log Q = O(log(m + 1))` and
 
     D = O(C log(m + 1)) = O(T log(T + 1)).
 
+## Explicit constants
+
+The tree is exact: for `n >= 2`, `C <= 35T/2 + 55n + 25`, and parity attains
+it (each non-root node costs 12 own characters plus 4 or 3 to enter and leave
+a child, or `4(n - i)` for a one-leaf, so `F(k) + 19 = 35 * 2**(k - 1)`).
+The walk's leading constant is explicit though its threshold is not: from
+`p_i**(1 - theta) <= p_(i0)**(1 - theta) + (1 - theta) i`,
+
+    limsup D / (T ln T) <= 35 / (2 (1 - theta) ln 10) <= 42 / ln 10 < 18.25
+
+for every admissible `theta > 7/12`.  An effective threshold needs a mod-11
+Hoheisel theorem with explicit `x_0`; the explicit short-interval results we
+know are for primes without a congruence condition.
+
+For practical arities a sieve replaces it.  `scripts/factor_class_gaps.c` ran
+through `10**11` (14 minutes): every class `1..8` has a prime in
+`(x, x + 8.62 ln**2 max(x, 37)]` for `x <= 10**11 - 10**4`, the maximum ratio
+8.6184 being class 2 at 4,160,719.  Any `y` with
+`37 + (C - 1) 8.62 ln**2 y <= y <= 10**11 - 10**4` then bounds `Q`, and
+`D <= floor(C log10 y) + 1`.  With the tree bound this is a proven ceiling
+over all tables through `n = 19`:
+
+| n | ceiling D/(T ln T) | parity D/(T ln T) |
+| --- | --- | --- |
+| 8 | 24.56 | 16.99 |
+| 10 | 20.06 | 14.75 |
+| 13 | 16.98 | 13.09 |
+| 16 | 15.31 | |
+| 19 | 14.19 | |
+
+`tests/proofs/deep/factor_constants.py` re-checks the tree bound, the gap
+constant on a sieved prefix holding its maximum, the end window, and the
+ceiling against parity.
+
 The language lower bound below supplies a table on which every generator must
 spend `Omega(T log T)`, so this generated upper bound is tight in the worst
 case. This is not a per-table claim: constant subtrees fold and can be much
