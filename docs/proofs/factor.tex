@@ -19,6 +19,8 @@
 \newtheorem{remark}[theorem]{Remark}
 
 \newcommand{\N}{\mathbb N}
+\newcommand{\CF}{\mathcal C_F}
+\newcommand{\Zeros}{\mathcal Z}
 
 \title{The Worst-Case Text Complexity of the Factor Language}
 \author{\shortstack{Bangyen Pham\\
@@ -90,7 +92,8 @@ according to
 \[
 \begin{array}{c|cccccccc}
 p\bmod 11&1&2&3&4&5&6&7&8\\ \hline
-\text{instruction}&>&<&+&-&.&,&[&]
+\text{instruction}&\texttt{>}&\texttt{<}&\texttt{+}&\texttt{-}
+  &\texttt{.}&\texttt{,}&\texttt{[}&\texttt{]}
 \end{array}
 \]
 and the exponent $e_p$ is its run length.  Residues $0,9,10$ are ignored.
@@ -123,7 +126,7 @@ $b_1,\ldots,b_n$ terminates and emits exactly the ASCII digit of
 $t_{(b_1\cdots b_n)_2}$, with zero-based subscripts.
 Define
 \[
- \mathcal C_F(T)=\max_{t\in\{0,1\}^T}
+ \CF(T)=\max_{t\in\{0,1\}^T}
  \min\{\text{total source characters of }P:P\text{ computes }t\}.
 \]
 Deleting comments and leading zeros never changes execution, so the minimum
@@ -134,7 +137,7 @@ unqualified logarithms below are natural.
 \begin{theorem}\label{thm:main}
 Every $T$-bit truth table has a Factor program of
 $O(T\log(T+1))$ decimal digits.  Some $T$-bit truth tables require
-$\Omega(T\log T)$ digits.  Hence $\mathcal C_F(T)=\Theta(T\log T)$.
+$\Omega(T\log T)$ digits.  Hence $\CF(T)=\Theta(T\log T)$.
 \end{theorem}
 
 Factor was introduced in 2020 as a prime-factor encoding of
@@ -297,7 +300,7 @@ accepts every $\theta>7/12$, and $\frac{35}{2}\cdot\frac{12}{5}=42$.
 
 The constant $\frac{35}{2}$ above is the decision tree's, and the tree is not
 the cheapest program.  A table can be carried as data on the tape and indexed,
-which trades execution time for length; since $\mathcal C_F(T)$ minimizes over
+which trades execution time for length; since $\CF(T)$ minimizes over
 all programs, that trade is free here.  The obstacle is that a Brainfuck cell
 holds one byte, so an index into $T$ cells does not fit in a cell once
 $n>8$.  Chaining removes it: split the index into chunks of at most eight
@@ -450,7 +453,7 @@ sides.\qedhere
 \begin{corollary}[Leading constant, improved]\label{cor:chain}
 For every $\theta$ admissible in Lemma~\ref{lem:short},
 \[
-  \limsup_{T\to\infty}\;\frac{\mathcal C_F(T)}{T\log T}
+  \limsup_{T\to\infty}\;\frac{\CF(T)}{T\log T}
   \le\frac{1.006}{(1-\theta)\log10},
 \]
 which is $1.05$ at $\theta=\frac7{12}$ and $0.874$ on GRH.
@@ -463,7 +466,7 @@ $\log N\le C\log Q\le C(1-\theta)^{-1}\log T\,(1+o(1))$.
 \end{proof}
 
 The construction's walk is quadratic in $T$ where the tree is linear, so it
-is a statement about $\mathcal C_F(T)$ and not a replacement generator; the
+is a statement about $\CF(T)$ and not a replacement generator; the
 implementation keeps the tree, whose per-arity ceilings Section~\ref{sec:grh}
 makes explicit.
 
@@ -583,7 +586,7 @@ A segmented sieve through $10^{11}$ records, for each class, every pair of
 consecutive primes $q<p$ of the class.  On $q\le x<p$ the ratio
 $(p-x)/\log^2\max(x,37)$ is nonincreasing, so its supremum is the value at
 $x=q$; the largest such value is $8.6184$, attained by the class-$2$ pair
-$4{,}160{,}719<4{,}162{,}721$.  Before a class's first prime, which is at
+$4\,160\,719<4\,162\,721$.  Before a class's first prime, which is at
 most $37$, the gap is at most $37<c\log^237$.  Every class has a prime in
 $(X,10^{11}]$, so each $x\le X$ has its next class prime inside the sieved
 range.
@@ -606,9 +609,9 @@ $m\le C$.  Finally $\log N\le C\log Q$.
 \end{proof}
 
 With $C\le\frac{35}{2}T+55n+25$ the least admissible $y$ is below $X$ for
-every $n\le19$.  At $n=13$, for instance, $y=498{,}168{,}370$ and
-$D\le1{,}253{,}292$, so $D/(T\log T)\le16.98$ over all $2^{8192}$ tables;
-parity, which attains the tree bound, measures $966{,}568$ digits, or
+every $n\le19$.  At $n=13$, for instance, $y=498\,168\,370$ and
+$D\le1\,253\,292$, so $D/(T\log T)\le16.98$ over all $2^{8192}$ tables;
+parity, which attains the tree bound, measures $966\,568$ digits, or
 $13.09$.  The ceiling falls to $14.19$ at $n=19$.  In this range each step
 of the walk is polylogarithmic rather than a power of $p_i$, so the ceiling
 tends towards $\frac{35}{2}/\log10\approx7.60$ rather than
@@ -797,8 +800,8 @@ $[X,2X)$, number $O(X/\log X)$.
 Let $p_1<\cdots<p_m$ be the primes the encoder selects for a program of $m$
 runs, whatever the runs' classes.  Then
 \[
-  p_m\le m\log^4m\ \text{ on GRH}\qquad\text{and}\qquad
-  p_m\le m^{15/14+\varepsilon}\ \text{ unconditionally}
+  p_m\le m\log^4m\quad\text{on GRH}\qquad\text{and}\qquad
+  p_m\le m^{15/14+\varepsilon}\quad\text{unconditionally}
 \]
 for $m\ge m_0$, respectively $m\ge m_0(\varepsilon)$, the latter
 ineffective, uniformly in the program.  Hence $\log Q\le(1+o(1))\log m$ on
@@ -828,12 +831,12 @@ large $m$.  Below the threshold $Q$ is bounded by a constant.
 
 \begin{corollary}[Leading constant, final]\label{cor:final}
 \[
-  \limsup_{T\to\infty}\frac{\mathcal C_F(T)}{T\log T}
-  \le\frac{1}{\log_2(1+\sqrt2)\,\log10}=0.34155\ldots\ \text{ on GRH},
+  \limsup_{T\to\infty}\frac{\CF(T)}{T\log T}
+  \le\frac{1}{\log_2(1+\sqrt2)\,\log10}=0.34155\ldots\quad\text{on GRH},
 \]
 and unconditionally
 \[
-  \limsup_{T\to\infty}\frac{\mathcal C_F(T)}{T\log T}
+  \limsup_{T\to\infty}\frac{\CF(T)}{T\log T}
   \le\frac{15}{14}\cdot\frac{1}{\log_2(1+\sqrt2)\,\log10}=0.36595\ldots
 \]
 \end{corollary}
@@ -855,7 +858,7 @@ explicit threshold, though a far weaker one: the smoothed explicit formula
 of Dudek, Greni\'e and Molteni is unconditional, Thorner and Zaman's explicit
 log-free density estimate controls the zeros near $\sigma=1$, Kadiri's
 zero-free regions cut them off, and an explicit zero count handles the rest.
-Let $\mathcal Z$ be the multiset of nontrivial zeros $\rho=\beta+i\gamma$ of
+Let $\Zeros$ be the multiset of nontrivial zeros $\rho=\beta+i\gamma$ of
 $\zeta$ and of the nine $L(s,\chi)$ with $\chi$ nonprincipal modulo $11$,
 all primitive since $11$ is prime, and let $N_{11}(t)$ count those with
 $|\gamma|\le t$.
@@ -863,9 +866,9 @@ $|\gamma|\le t$.
 \begin{lemma}[Zeros of the ten $L$-functions]\label{lem:zeros}
 For $t\ge e$,
 $N_{11}(t)\le\frac{10t}{\pi}\log\frac{11t}{2\pi e}+3\log(11t)+81$.
-Every $\rho\in\mathcal Z$ with $|\gamma|\le t$ has
+Every $\rho\in\Zeros$ with $|\gamma|\le t$ has
 $\beta\le1-1/(5.70\log(11t))$.  For $Q\ge11$ and $\sigma\ge\frac{39}{40}$,
-at most $10^{88}(10^{421}Q^{99})^{1-\sigma}$ elements of $\mathcal Z$ have
+at most $10^{88}(10^{421}Q^{99})^{1-\sigma}$ elements of $\Zeros$ have
 $\beta>\sigma$ and $|\gamma|\le Q$.
 \end{lemma}
 
@@ -921,15 +924,15 @@ $\Delta f(x)=f(x+h)-2f(x)+f(x-h)$.  Orthogonality gives
   \sum_{n\equiv a\ (11)}\Lambda(n)K(x-n)
   =\frac1{10}\sum_\chi\bar\chi(a)\,\Delta\psi^{(1)}_\chi(x),
 \]
-and Lemmas 3.1 and 3.2 of Dudek, Greni\'e and Molteni~\cite{dgm}, which
+and Lemmas~3.1 and~3.2 of Dudek, Greni\'e and Molteni~\cite{dgm}, which
 assume only $x\ge100$ and $h\le\frac56x$, evaluate the right side as
 \[
   \frac{h^2}{10}+\vartheta\Bigl[\frac1{10}\sum_\chi\Bigl|\Delta
-  \sum_{\rho\in\mathcal Z_\chi}\frac{x^{\rho+1}}{\rho(\rho+1)}\Bigr|
+  \sum_{\rho\in\Zeros_\chi}\frac{x^{\rho+1}}{\rho(\rho+1)}\Bigr|
   +1.36\,\frac{h^2}x+\frac{6h^2}{x(x-1)}+h\log2x\Bigr],
   \qquad|\vartheta|\le1,
 \]
-where $\mathcal Z_\chi$ is the zero set of the primitive character inducing
+where $\Zeros_\chi$ is the zero set of the primitive character inducing
 $\chi$, so of $\zeta$ for the principal one; the last term is their
 Lemma~3.1 with $\omega(11)=1$, and $1.36$ bounds their
 $1.7\,|\delta_{\pm1}(a)-\frac2{10}|$.
@@ -940,15 +943,15 @@ $|\Delta f(x)|\le h^2X^{\beta-1}$; also
 $|\Delta f(x)|\le4X^{\beta+1}/|\rho(\rho+1)|\le4X^2/\gamma^2$.  Using the
 first bound for $|\gamma|\le T$ and the second beyond,
 \[
-  \sum_\chi\Bigl|\Delta\sum_{\rho\in\mathcal Z_\chi}
+  \sum_\chi\Bigl|\Delta\sum_{\rho\in\Zeros_\chi}
   \frac{x^{\rho+1}}{\rho(\rho+1)}\Bigr|
-  \le h^2\sum_{\substack{\rho\in\mathcal Z\\|\gamma|\le T}}X^{\beta-1}
-  +4X^2\sum_{\substack{\rho\in\mathcal Z\\|\gamma|>T}}\gamma^{-2}.
+  \le h^2\sum_{\substack{\rho\in\Zeros\\|\gamma|\le T}}X^{\beta-1}
+  +4X^2\sum_{\substack{\rho\in\Zeros\\|\gamma|>T}}\gamma^{-2}.
 \]
 Partial summation against Lemma~\ref{lem:zeros} bounds the tail by
 $2\int_T^\infty N_{11}(t)t^{-3}\,dt
 \le\frac{20}\pi\frac{\log(11T/2\pi)}T+\frac{3\log(11T)+82.5}{T^2}$.
-For the near sum let $N(\sigma)$ count the $\rho\in\mathcal Z$ with
+For the near sum let $N(\sigma)$ count the $\rho\in\Zeros$ with
 $\beta>\sigma$ and $|\gamma|\le T$; by Lemma~\ref{lem:zeros} at $Q=T\ge11$
 it vanishes for $\sigma\ge1-\eta$ and is at most $cB^{1-\sigma}$ for
 $\sigma\ge\frac{39}{40}$.  The zeros with $\beta\le\frac{39}{40}$
@@ -1093,14 +1096,14 @@ $k=O(L/\log L)$.
 Put $f_i=e_i-1\ge0$ and $s=1/\log(L+2)$.  Dropping the fixed contribution
 of the ones only enlarges the set.  Markov's exponential bound and the
 geometric series give
-\begin{align}
+\begin{align*}
  \#\Bigl\{f\in\N_{\ge0}^k:\sum_if_i\log(i+1)\le L\Bigr\}
  &\le e^{sL}
        \sum_{f_1,\ldots,f_k\ge0}
        \exp\!\left(-s\sum_i f_i\log(i+1)\right)\\
  &=e^{sL}\prod_{i=1}^{k}
        \left(1-(i+1)^{-s}\right)^{-1}.
-\end{align}
+\end{align*}
 The first factor has logarithm $L/\log(L+2)$.  To bound the product, split
 at $i=\lfloor\sqrt L\rfloor$.  For $i$ below the split,
 \[
@@ -1204,7 +1207,7 @@ $\log q_K=(1+o(1))\log L$, so $sL=(\log8+o(1))L/\log L$.  For the sum, fix
 $\varepsilon>0$.  When $i\ge K^{1-\varepsilon}$ we have
 $\log q_i\ge(1-\varepsilon+o(1))\log q_K$, hence
 $q_i^{\,s}\ge8^{1-\varepsilon+o(1)}$ and the $i$th term is at most
-$\delta(\varepsilon):=\log\bigl(7/(8^{1-\varepsilon}-1)\bigr)$, which tends
+$\delta(\varepsilon)\coloneqq\log\bigl(7/(8^{1-\varepsilon}-1)\bigr)$, which tends
 to $0$ with $\varepsilon$.  The remaining $K^{1-\varepsilon}=o(K)$ terms are
 each at most $\log7-\log(s\log q_i)=O(\log\log L)$.  The sum is therefore at
 most $K\delta(\varepsilon)+o(K)$; letting $L\to\infty$ and then
@@ -1214,7 +1217,7 @@ $\varepsilon\to0$ makes it $o(L/\log L)$.  Substituting into
 
 \begin{proposition}[Explicit floor]\label{prop:floor}
 \[
-  \liminf_{T\to\infty}\;\frac{\mathcal C_F(T)}{T\log T}
+  \liminf_{T\to\infty}\;\frac{\CF(T)}{T\log T}
   \;\ge\;\frac{1}{3\log10}=0.14476\ldots
 \]
 \end{proposition}
@@ -1242,7 +1245,7 @@ a cancelling pair.
 \begin{proposition}[Reduced words]\label{prop:reduced}
 Let $\lambda=6.3877\ldots$ be the largest root of $x^3-4x^2-14x-8$.  Then
 \[
-  \liminf_{T\to\infty}\;\frac{\mathcal C_F(T)}{T\log T}
+  \liminf_{T\to\infty}\;\frac{\CF(T)}{T\log T}
   \;\ge\;\frac{1}{\log_2(1+\lambda)\,\log10}=0.15052\ldots
 \]
 \end{proposition}
@@ -1304,8 +1307,8 @@ $\delta>0$.
 \begin{remark}[Where the constant stands]\label{rem:gap}
 On GRH,
 \[
-  0.1505\;\le\;\liminf_{T\to\infty}\frac{\mathcal C_F(T)}{T\log T}
-  \;\le\;\limsup_{T\to\infty}\frac{\mathcal C_F(T)}{T\log T}\;\le\;0.3416,
+  0.1505\;\le\;\liminf_{T\to\infty}\frac{\CF(T)}{T\log T}
+  \;\le\;\limsup_{T\to\infty}\frac{\CF(T)}{T\log T}\;\le\;0.3416,
 \]
 a ratio of $2.27$; without GRH the upper bound is $0.3660$, with an
 ineffective threshold where Corollary~\ref{cor:uncond} is explicit at $19181$.  Number theory
