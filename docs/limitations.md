@@ -150,8 +150,8 @@ mixer, and every free window cell whose `g` is at least 81 is a trampoline:
 `p` with `A = all-2` leaves `K2(g)` in 162..242, so a `j` through it lands
 inside the window. That cuts a path's navigation from ~56 cells per op to
 ~14, and the main code to ~8,000 cells. A path is still too long for one free
-run of the store (table cells leave runs of at most 871), so it is two or
-three *segments* linked by `i` through a window cell holding the next
+run of the store (table cells leave runs of at most ~1,100), so it is three or
+four *segments* linked by `i` through a window cell holding the next
 segment's address: rotations of the cell's own `g`, or of `K(g)` from an
 adjacent supply cell, land on a grid coarse enough to search, and the init
 writes them in rotation sweeps. `n > 14` is refused with
