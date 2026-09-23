@@ -213,11 +213,17 @@ step; an answer lands in the paper it extends, and the row leaves.
   zeros above it in the minimizer.  Evidence: 0 failures in 7023 instances
   with the hypothesis at `L <= 9` (clustered and random nodes, `|A| <= 5`),
   283 failures without it; worst ratio 0.9993.  What is known about it: the
-  chord through `F_{A+1}` and `p_{g,A+1}` fails without the hypothesis, and
-  the single hypothesis `Tail(Z^-) <= Tail(B_0 u (A+1))` is not enough (1
-  failure), so the per-move hypotheses must enter the zero count; the
-  natural candidate is the `E`-construction of `prop:chord` with the
-  per-move differences in place of `delta`.  Dead: the half-mass point of
+  chord of `prop:chord` does NOT extend (with `M` the end of the first run
+  of `A` and the other zeros common, `E` is short one forced zero per run
+  above `M+1`, and the chord fails at `L = 9`, clustered nodes,
+  `B_0 = {1,2,3,5,6}`, `g = 7`, `A = {8,12}`, by 19%, all in the far
+  term); no fixed weights work either (feasible weight <= 0.683 at
+  `L <= 7`, >= 0.794 at `L = 9`).  What holds in every instance is the
+  sharp form `Tail(Z^-) >= min(Tail(F_1), Tail(w))`, and every chord
+  failure has `Tail(Z^-) > Tail(F_1)`; the single hypothesis
+  `Tail(Z^-) <= Tail(B_0 u (A+1))` is not enough (1 failure).  A proof
+  must split cases on whether the far sign of `E` is pinned.  Dead: the
+  half-mass point of
   `ell_M`, any fixed window, shifting only the smallest zero above `g`,
   arbitrary weights with the same decay, Schur/LPP positivity (the cleared
   polynomial has thousands of negative terms even at the cutoff), deleting
