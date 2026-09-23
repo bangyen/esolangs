@@ -45,11 +45,7 @@ the classes modulo $11$ through $10^{11}$ gives a proven digit ceiling at
 every arity up to $19$.  Beyond that arity the threshold is effective in
 principle, the modulus admitting no exceptional zero, and an explicit
 short-interval theorem on GRH makes it numerical: the ceiling is then
-$24.6\,T\log T$ at every arity, falling to $35/\log 10<15.21$.  Running the
-count with the instruction primes themselves makes the lower bound explicit
-too, at $1/(3\log10)$, so the constant is bracketed within a factor of $105$;
-we show that a factor of at most $2$ of that gap is number theory and locate
-the rest in the decision tree.
+$24.6\,T\log T$ at every arity, falling to $35/\log 10<15.21$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -595,115 +591,6 @@ they add spellings of an already-counted decoded program, not behaviors.
 
 Propositions~\ref{prop:upper} and~\ref{prop:lower} prove
 Theorem~\ref{thm:main}.
-
-Proposition~\ref{prop:lower} leaves its constant inside the $\Omega$.  What
-hides it is the Markov parameter of Lemma~\ref{lem:vectors}, chosen there
-only to make the exponent $O(L/\log L)$; placing it at the saddle instead
-makes the constant explicit, and it is $\log8$ --- one instruction letter per
-unit of run length.  We state the count with the instruction primes
-themselves, writing $q_i$ for the $i$th prime whose residue modulo $11$ lies
-in $\{1,\ldots,8\}$, so that $q_1,q_2,\ldots=2,3,5,7,13,\ldots$ and, by the
-prime number theorem for progressions, $q_i=\frac54 i\log i\,(1+o(1))$.  The
-crude bound $p_i\ge i+1$ of Lemma~\ref{lem:runs} yields the same constant,
-since $\log(i+1)$ and $\log q_i$ agree to leading order; it only approaches
-it more slowly.
-
-\begin{lemma}[Refined behavior count]\label{lem:count8}
-Factor sources whose digit integers satisfy $\log N\le L$ realize at most
-$\exp\bigl((\log8+o(1))L/\log L\bigr)$ distinct behaviors.
-\end{lemma}
-
-\begin{proof}
-Discard the ignored-residue factors; they do not alter the decoded program.
-A behavior is determined by that program, a string over the eight instruction
-letters, whose maximal runs we write $a_1^{e_1}\cdots a_k^{e_k}$ with
-$a_i\ne a_{i+1}$.  The primes carrying the runs increase and are useful, so
-the $i$th is at least $q_i$ and
-\begin{equation}\label{eq:qbudget}
-  L\;\ge\;\sum_{i=1}^{k}e_i\log q_i .
-\end{equation}
-There are at most $8\cdot7^{k-1}$ class words, and $k\le K$, where $K$ is
-the largest index with $\sum_{i\le K}\log q_i\le L$.  Hence the number of
-behaviors is at most
-$\sum_{k\le K}8\cdot7^{k-1}\,\#\{e\in\N_{>0}^k:\eqref{eq:qbudget}\}$.
-For $s>0$, Markov's exponential bound and the geometric series give
-\[
-  \#\{e\in\N_{>0}^k:\eqref{eq:qbudget}\}
-  \le e^{sL}\prod_{i=1}^{k}\bigl(q_i^{\,s}-1\bigr)^{-1}.
-\]
-Choose $s=\log8/\log q_K$.  Then $q_i^{\,s}\le8$ for every $i\le K$, so each
-factor $7/(q_i^{\,s}-1)$ is at least $1$ and the sum over $k$ is at most $K$
-times its $k=K$ term:
-\begin{equation}\label{eq:saddle}
-  \log\#\text{behaviors}
-  \;\le\;\log\tfrac{8K}{7}+sL
-      +\sum_{i=1}^{K}\Bigl(\log7-\log\bigl(q_i^{\,s}-1\bigr)\Bigr).
-\end{equation}
-From $\log q_i=\log i+O(\log\log i)$ and
-$\sum_{i\le K}\log q_i=K\log K\,(1+o(1))$ we get $K=(1+o(1))L/\log L$ and
-$\log q_K=(1+o(1))\log L$, so $sL=(\log8+o(1))L/\log L$.  For the sum, fix
-$\varepsilon>0$.  When $i\ge K^{1-\varepsilon}$ we have
-$\log q_i\ge(1-\varepsilon+o(1))\log q_K$, hence
-$q_i^{\,s}\ge8^{1-\varepsilon+o(1)}$ and the $i$th term is at most
-$\delta(\varepsilon):=\log\bigl(7/(8^{1-\varepsilon}-1)\bigr)$, which tends
-to $0$ with $\varepsilon$.  The remaining $K^{1-\varepsilon}=o(K)$ terms are
-each at most $\log7-\log(s\log q_i)=O(\log\log L)$.  The sum is therefore at
-most $K\delta(\varepsilon)+o(K)$; letting $L\to\infty$ and then
-$\varepsilon\to0$ makes it $o(L/\log L)$.  Substituting into
-\eqref{eq:saddle} proves the claim.
-\end{proof}
-
-\begin{proposition}[Explicit floor]\label{prop:floor}
-\[
-  \liminf_{T\to\infty}\;\max_{t\in\{0,1\}^T}\frac{D(t)}{T\log T}
-  \;\ge\;\frac{1}{3\log10}=0.14476\ldots
-\]
-\end{proposition}
-
-\begin{proof}
-Suppose every $T$-bit table has a source of at most $D$ digits.  Counting
-decimal strings alone gives $2^T\le10^D$, so $D\ge T\log2/\log10$ and
-$\log D=\log T+O(1)$.  A source of $D$ digits has $\log N\le D\log10$, so
-Lemma~\ref{lem:count8} gives
-\[
-  T\log2\;\le\;\bigl(\log8+o(1)\bigr)\frac{D\log10}{\log(D\log10)}
-  \;=\;\bigl(\log8+o(1)\bigr)\frac{D\log10}{\log T}.
-\]
-Rearranging and using $\log2/\log8=\frac13$ gives
-$D\ge(1-o(1))\,T\log T/(3\log10)$.
-\end{proof}
-
-The exponent $\log8$ is the right one, which caps what this route can ever
-prove.
-
-\begin{remark}[The counting route is nearly exhausted]\label{rem:cap}
-There are $8^{\ell}$ strings of length $\ell$, and Lemma~\ref{lem:adaptive}
-spells any of them with at most $\ell$ runs and largest prime
-$Q=O(\ell^{1/(1-\theta)})$, so each costs at most
-$\ell\log Q=(1+o(1))\ell\log\ell/(1-\theta)$.  Hence at least
-$\exp\bigl((1-\theta+o(1))\log8\cdot L/\log L\bigr)$ strings have cost at
-most $L$, and Lemma~\ref{lem:count8} is tight to the factor $1-\theta$.  Any
-argument that bounds behaviors by counting spellings is therefore capped at
-\[
-  \frac{1}{3(1-\theta)\log10},
-\]
-namely $0.2895$ on GRH and $0.3474$ at $\theta=\frac7{12}$.  Passing that
-requires counting behaviors rather than spellings, that is, exploiting the
-distinct Brainfuck programs that compute the same function.
-\end{remark}
-
-\begin{remark}[Where the two orders of magnitude are]\label{rem:gap}
-Corollary~\ref{cor:grh} and Proposition~\ref{prop:floor} bracket the
-constant of $\mathcal C_F(T)/(T\log T)$ between $1/(3\log10)$ and
-$35/\log10$, a ratio of exactly $105$ in any base.  It factors.  Since there
-are only $8^{\ell}$ programs of length $\ell$, a $T$-bit table needs at least
-$T/3$ instructions, while Lemma~\ref{lem:tree} emits $\frac{35}{2}T$ of
-them: a factor of $52.5$.  The remaining factor of $2$ is
-Lemma~\ref{lem:grh}: the walk pays $\log Q=2\log U$ per run because a
-square-root gap squares the last prime, where gaps of size $\log p$ would
-pay $\log U$.  So at most a factor of $2$ of the gap is number theory, and
-the rest is the decision tree.
-\end{remark}
 
 \section{Scope and reproducibility}
 
