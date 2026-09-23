@@ -47,10 +47,11 @@ principle, the modulus admitting no exceptional zero, and an explicit
 short-interval theorem on GRH makes it numerical: the ceiling is then
 $24.6\,T\log T$ at every arity, falling to $35/\log 10<15.21$.  Carrying the
 table as tape data and chaining one byte-sized index digit per level beats
-the tree's constant sevenfold, giving $2.532\,T$ characters and a limit
-superior of $2.20$ on GRH.  Running the count with the instruction primes
+the tree's constant, and letting one walk cell serve a whole group of
+entries beats it again, giving $1.516\,T$ characters and a limit superior
+of $1.32$ on GRH.  Running the count with the instruction primes
 themselves makes the lower bound explicit too, at $1/(3\log10)$, so the
-constant is bracketed within a factor of $15.2$, of which a factor of $2$ is
+constant is bracketed within a factor of $9.1$, of which a factor of $2$ is
 number theory and the rest is the construction.
 \end{abstract}
 
@@ -323,27 +324,72 @@ which is printed after adding $48$.
 
 For the count: the walk is $B_{m-1}-2$ characters, the set entries at most
 $T/2$, the hop loops $3\sum_{j<m-1}B_j+O(m)$, and reading the chunks
-$O(n)$.  Since $\sum_{j\le m-2}B_j=(B_{m-1}-2)/(r-1)\,(1+o(1))$, the total is
+$O(n)$.  Since $\sum_{j\le m-2}B_j=2(T-1)/(r-1)+O(T/r^2)$, the total is
 \[
   \Bigl(2+\frac{2}{r-1}\Bigr)T+\frac{T}{2}
-  +\frac{6T}{r-1}+O(n)
-  =\Bigl(\frac52+\frac{8}{255}\Bigr)T+O(n),
+  +\frac{6T}{r-1}+O\!\left(\frac{T}{r^2}\right)+O(n)
+  =\Bigl(\frac52+\frac{8}{255}\Bigr)T+O\!\left(\frac{T}{r^2}\right)+O(n).
 \]
-and $\frac52+\frac{8}{255}=2.5314\ldots<2.532$.
+Here $\frac52+\frac{8}{255}=2.53137\ldots$ and the $r^{-2}$ terms contribute
+a further $9.3\cdot10^{-5}\,T$, so the total is below $2.532\,T$.
+\end{proof}
+
+Two cells an entry is more than the hop needs.  The counter hop requires a
+zero cell beside what it addresses, but only at the granularity it
+addresses, so the leaf level can address \emph{groups} and let a decision
+tree finish the job.
+
+\begin{lemma}[Grouped lookup]\label{lem:group}
+Every $T$-bit truth table has a Brainfuck program of at most
+$1.516\,T+o(T)$ characters.
+\end{lemma}
+
+\begin{proof}
+Fix $k=2^{g}$ and lay the table out in groups
+\[
+  [W][S_0][S_1][d_0]\cdots[d_{k-1}],
+\]
+of $k+3$ cells for $k$ entries.  Run the chain of Lemma~\ref{lem:chain} on
+the top $n-g$ index bits with the groups as its leaf level, so its hop
+stride there is $k+3$ and it touches only the cells $W$, which are zero; the
+seat step at that level moves by the stride rather than by $2$, a group's
+anchor being its first cell rather than two before its last.
+
+The walk leaves the pointer on the $W$ of the selected group.  Resolve the
+remaining $g$ bits by a decision tree over that group, entered and left on
+$W$: a node reads its bit into $S_0$ and raises a flag in $S_1$, then
+\[
+  \texttt{[->-<<}\;\textit{high}\;\texttt{>]}\qquad
+  \texttt{>[-<<}\;\textit{low}\;\texttt{>>]<<},
+\]
+where each subtree returns to $W$ with $S_0=S_1=0$, so both brackets close
+on a zero.  A leaf steps right to its data cell, adds $48$, prints, clears
+the cell and steps back; under the complement it instead holds $49$ on $W$
+and drains the stored bit into it.  The tree is emitted once, after the
+walk, not once per group, and is $O(k^2)$ characters.
+
+Counting as in Lemma~\ref{lem:chain}, the span is
+$(1+3/k)(1+\frac1{255})T$, the set entries cost at most $T/2$ under the
+complement, and the hops $3/255$ of the span.  Taking $k=\lfloor\log
+T\rfloor$ makes the tree $O(\log^2T)$ and $3/k=o(1)$, leaving
+\[
+  \Bigl(1+\tfrac1{255}\Bigr)\Bigl(1+\tfrac3{255}\Bigr)T+\frac T2+o(T)
+  =1.51573\ldots T+o(T).\qedhere
+\]
 \end{proof}
 
 \begin{corollary}[Leading constant, improved]\label{cor:chain}
 For every $\theta$ admissible in Lemma~\ref{lem:short},
 \[
-  \limsup_{T\to\infty}\;\max_{t\in\{0,1\}^T}\frac{D(t)}{T\log T}
-  \le\frac{2.532}{(1-\theta)\log10},
+  \limsup_{T\to\infty}\;\frac{\mathcal C_F(T)}{T\log T}
+  \le\frac{1.516}{(1-\theta)\log10},
 \]
-which is $2.64$ at $\theta=\frac7{12}$ and $2.20$ on GRH.
+which is $1.58$ at $\theta=\frac7{12}$ and $1.32$ on GRH.
 \end{corollary}
 
 \begin{proof}
-Repeat the proof of Corollary~\ref{cor:leading} with Lemma~\ref{lem:chain} in
-place of Lemma~\ref{lem:tree}, so that $C\le2.532\,T+O(\log T)$ and
+Repeat the proof of Corollary~\ref{cor:leading} with Lemma~\ref{lem:group}
+in place of Lemma~\ref{lem:tree}, so that $C\le1.516\,T+o(T)$ and
 $\log N\le C\log Q\le C(1-\theta)^{-1}\log T\,(1+o(1))$.
 \end{proof}
 
@@ -728,7 +774,7 @@ $\varepsilon\to0$ makes it $o(L/\log L)$.  Substituting into
 
 \begin{proposition}[Explicit floor]\label{prop:floor}
 \[
-  \liminf_{T\to\infty}\;\max_{t\in\{0,1\}^T}\frac{D(t)}{T\log T}
+  \liminf_{T\to\infty}\;\frac{\mathcal C_F(T)}{T\log T}
   \;\ge\;\frac{1}{3\log10}=0.14476\ldots
 \]
 \end{proposition}
@@ -768,17 +814,18 @@ distinct Brainfuck programs that compute the same function.
 \begin{remark}[Where the two orders of magnitude are]\label{rem:gap}
 Corollary~\ref{cor:chain} and Proposition~\ref{prop:floor} bracket the
 constant of $\mathcal C_F(T)/(T\log T)$ between $1/(3\log10)=0.1447\ldots$
-and $2.532/\log10=1.0997\ldots$ on GRH, a ratio of $15.2$.  It factors.
+and $1.516/\log10=0.6583\ldots$ on GRH, a ratio of $9.1$.  It factors.
 Since there are only $8^{\ell}$ programs of length $\ell$, a $T$-bit table
-needs at least $T/3$ instructions, while Lemma~\ref{lem:chain} emits
-$2.532\,T$ of them: a factor of $7.6$.  The remaining factor of $2$ is
+needs at least $T/3$ instructions, while Lemma~\ref{lem:group} emits
+$1.516\,T$ of them: a factor of $4.5$.  The remaining factor of $2$ is
 Lemma~\ref{lem:grh}: the walk pays $\log Q=2\log U$ per run because a
 square-root gap squares the last prime, where gaps of size $\log p$ would
 pay $\log U$.  Against the decision tree the first factor was $52.5$, so
-the lookup takes most of what separated the two bounds; what is left is a
-factor of $7.6$ in the construction, of which the $T/2$ spent marking the
-set entries is the largest single piece, and a factor of $2$ in the number
-theory.
+the lookup takes most of what separated the two bounds.  Of the $1.516$,
+one unit is the move onto each entry's cell and a half is the mark on each
+set entry; nothing else reaches a fiftieth.  Lowering it further therefore
+means storing more than one entry per cell, which costs a unary write, and
+the remaining factor of $2$ is number theory.
 \end{remark}
 
 \section{Scope and reproducibility}

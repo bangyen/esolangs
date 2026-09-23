@@ -20,6 +20,8 @@ L5  the behavior count's exponent is ln 8, so the floor is 1/(3 ln 10) and
     the constant is bracketed within a factor of 105 against the tree.
 L6  the chained tape lookup runs, and emits 2.532 characters an entry,
     which closes that bracket to 15.2.
+L7  one walk cell per group of entries, the last bits resolved by a tree
+    emitted once, brings that to 1.516 an entry and the bracket to 9.1.
 """
 
 from __future__ import annotations
@@ -40,7 +42,7 @@ from esolangs.tools.tape import _BF_RESIDUE, brainfuck
 #: Cost band; see ``__main__.py``.  The parity encodings to n = 11 and the
 #: prefix sieve dominate.
 BAND = "by-hand"
-COST = 2.0
+COST = 2.6
 
 #: The computed class-gap constant and the range it was verified over.
 GAP_C = 8.62
@@ -315,13 +317,14 @@ def check_floor() -> list[str]:
 RADIX_BITS = 8
 
 
-def chain_layout(n: int) -> tuple[list[int], list[int], int]:
+def chain_layout(n: int, leaf: int = 2) -> tuple[list[int], list[int], int]:
     """``(chunk sizes top-down, hop stride per level, cells spanned)``.
 
-    The short chunk goes second from the top.  A hop loop is ``3*stride``
+    ``leaf`` is the stride the bottom level hops by: a walk/data pair for
+    Lemma "Chained lookup", a whole group for Lemma "Grouped lookup".  The
+    short chunk goes second from the top, since a hop loop is ``3*stride``
     characters and the top stride is the span over the top radix, so a small
-    radix on top costs three times what the same radix costs at the leaf,
-    where it only wastes scratch.
+    radix on top costs three times what it costs at the leaf.
     """
     levels = max(1, -(-n // RADIX_BITS))
     rest = n - RADIX_BITS * (levels - 1)
@@ -331,7 +334,7 @@ def chain_layout(n: int) -> tuple[list[int], list[int], int]:
         sizes = [RADIX_BITS, rest]
     else:
         sizes = [RADIX_BITS, rest] + [RADIX_BITS] * (levels - 2)
-    blocks = [2]
+    blocks = [leaf]
     for size in reversed(sizes):
         blocks.append((1 << size) * blocks[-1] + 2)
     strides = [blocks[len(sizes) - 1 - k] for k in range(len(sizes))]
@@ -373,7 +376,8 @@ def bf_chain(truth_table: str) -> str:
             out.append("[->++<]>[-<+>]<>,")
             out.append("-" * 48)
             out.append("[-<+>]<")
-        out.append("[-<<+>>]<<")
+        seat = strides[k] if k == len(sizes) - 1 else 2
+        out.append("[-" + "<" * seat + "+" + ">" * seat + "]" + "<" * seat)
         hop = "<" * strides[k]
         out.append(f"[[-{hop}+{'>' * strides[k]}]{hop}-]")
     out.append("+" * 49 + ">[-<->]<." if flip else ">" + "+" * 48 + ".")
@@ -387,6 +391,85 @@ def chain_length(n: int, ones: int, size: int) -> int:
     for k, size_k in enumerate(sizes):
         total += 72 * size_k + 10 + 3 * strides[k] + 7
     return total + (58 if ones * 2 > size else 50)
+
+
+#: A group is ``[W][S0][S1][d_0]..[d_(k-1)]``; the three are its walk cell
+#: and the two scratch cells the selector runs in.
+GROUP_SCRATCH = 3
+
+
+def group_cell(x: int, n: int, bits: int) -> int:
+    """The cell holding entry ``x`` under the grouped layout."""
+    sizes, strides, _ = chain_layout(n - bits, (1 << bits) + GROUP_SCRATCH)
+    group, within = x >> bits, x & ((1 << bits) - 1)
+    digits, rest = [], group
+    for size in reversed(sizes):
+        digits.append(rest & ((1 << size) - 1))
+        rest >>= size
+    digits.reverse()
+    start = 0
+    for k, size in enumerate(sizes):
+        start += ((1 << size) - 1 - digits[k]) * strides[k]
+    return start + GROUP_SCRATCH + within
+
+
+def group_selector(bits: int, *, flip: bool) -> str:
+    """The decision tree over one group, entered and left on its walk cell."""
+
+    def leaf(index: int) -> str:
+        out, back = ">" * (GROUP_SCRATCH + index), "<" * (GROUP_SCRATCH + index)
+        if not flip:
+            return out + "+" * 48 + ".[-]" + back
+        return "+" * 49 + out + "[-" + back + "-" + out + "]" + back + ".[-]"
+
+    def node(depth: int, base: int) -> str:
+        if depth == bits:
+            return leaf(base)
+        half = 1 << (bits - depth - 1)
+        high, low = node(depth + 1, base + half), node(depth + 1, base)
+        return ">," + "-" * 48 + f">+<[->-<<{high}>]>[-<<{low}>>]<<"
+
+    return node(0, 0)
+
+
+def bf_group(truth_table: str, bits: int) -> str:
+    """The grouped tape lookup of Lemma "Grouped lookup"."""
+    n = int(math.log2(len(truth_table)))
+    bits = min(bits, n)
+    sizes, strides, span = chain_layout(n - bits, (1 << bits) + GROUP_SCRATCH)
+    flip = truth_table.count("1") * 2 > len(truth_table)
+    cells = [0] * span
+    for x, bit in enumerate(truth_table):
+        cells[group_cell(x, n, bits)] = int(bit) ^ flip
+
+    out, anchor = [], span - 2
+    for cell in range(anchor + 1):
+        if cells[cell]:
+            out.append("+")
+        if cell < anchor:
+            out.append(">")
+    for k, size in enumerate(sizes):
+        for _ in range(size):
+            out.append("[->++<]>[-<+>]<>,")
+            out.append("-" * 48)
+            out.append("[-<+>]<")
+        seat = strides[k] if k == len(sizes) - 1 else 2
+        out.append("[-" + "<" * seat + "+" + ">" * seat + "]" + "<" * seat)
+        hop = "<" * strides[k]
+        out.append(f"[[-{hop}+{'>' * strides[k]}]{hop}-]")
+    out.append(group_selector(bits, flip=flip))
+    return "".join(out)
+
+
+def group_length(n: int, ones: int, size: int, bits: int) -> int:
+    """Closed form for what :func:`bf_group` emits."""
+    bits = min(bits, n)
+    sizes, strides, span = chain_layout(n - bits, (1 << bits) + GROUP_SCRATCH)
+    total = span - 2 + min(ones, size - ones)
+    for k, size_k in enumerate(sizes):
+        seat = strides[k] if k == len(sizes) - 1 else 2
+        total += 72 * size_k + 3 * seat + 4 + 3 * strides[k] + 7
+    return total + len(group_selector(bits, flip=ones * 2 > size))
 
 
 def check_chain() -> list[str]:
@@ -435,6 +518,60 @@ def check_chain() -> list[str]:
     return lines
 
 
+def check_group() -> list[str]:
+    """L7  the grouped lookup: it runs, and its constant is 1.516."""
+    from tests.tools.boolean_runners import run_bf
+
+    lines, rng = [], random.Random(23)
+    for bits in (2, 4, 8):
+        for n in range(1, 13):
+            table = parity(n)
+            emitted = len(bf_group(table, bits))
+            assert emitted == group_length(n, table.count("1"), 1 << n, bits), (n, bits)
+    lines.append("emitted length matches the closed form, n = 1..12, k = 4, 16, 256")
+
+    runs = 0
+    for bits in (1, 2, 4):
+        for n in range(1, 7):
+            size = 1 << n
+            for table in ("0" * size, "1" * size, parity(n)):
+                program = bf_group(table, bits)
+                for k in range(size):
+                    inputs = [str((k >> (n - 1 - j)) & 1) for j in range(n)]
+                    assert run_bf(program, inputs) == table[k], (bits, n, k)
+                    runs += 1
+    lines.append(f"exhaustive: {runs} executions over n = 1..6, k = 2, 4, 16")
+
+    runs = 0
+    for n in (9, 10, 12):
+        size = 1 << n
+        for table in (parity(n), "1" * size):
+            program = bf_group(table, 8)
+            for k in [255, 256, 257, size - 1, *rng.sample(range(size), 5)]:
+                inputs = [str((k >> (n - 1 - j)) & 1) for j in range(n)]
+                assert run_bf(program, inputs) == table[k], (n, k)
+                runs += 1
+    lines.append(f"sampled at k = 256: {runs} executions at n = 9, 10, 12")
+
+    # The selector is O(k**2) and emitted once, so k may grow with T; at
+    # k = log T it vanishes and the span tends to (1 + 1/255) T.
+    worst = max(
+        group_length(n, 1 << (n - 1), 1 << n, bits) / (1 << n)
+        for n, bits in ((32, 10), (64, 14))
+    )
+    assert worst < 1.516, worst
+    limit = (1 + 1 / 255) * (1 + 3 / 255) + 0.5
+    assert abs(limit - 1.51573) < 1e-5, limit
+    limsup = 2 * limit / math.log(10)
+    assert limsup < 1.317, limsup
+    lines.append(f"chars/entry {worst:.5f}, limit {limit:.5f}, limsup {limsup:.4f}")
+    lines.append(
+        f"bracket {FLOOR:.5f} .. {limsup:.4f} is {limsup / FLOOR:.1f}x"
+        f"  = {limit * 3:.2f} construction x 2 walk"
+    )
+    return lines
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--bound", type=int, default=10**7)
@@ -452,6 +589,8 @@ def main(argv: list[str] | None = None) -> int:
     print("\n".join(check_floor()))
     print("L6  the chained lookup and its constant")
     print("\n".join(check_chain()))
+    print("L7  the grouped lookup and its constant")
+    print("\n".join(check_group()))
     return 0
 
 

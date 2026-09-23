@@ -370,12 +370,64 @@ what is emitted for `n = 1..14`, runs every input of every table at
 `n = 1..6` (378 executions) and samples `n = 9, 10, 12` around the byte
 boundary that broke the single-cell version.
 
-**The bracket is now 15.2x**, and it factors as `7.6` for the construction
-against `2` for the number theory. Of the `7.6`, the `T/2` spent marking set
-entries is the largest single piece: the data pass is already within `2/255`
-of one move per cell, so a leaner construction has to stop spending a
-character per set entry, not a character per cell.
-
 The walk is quadratic in `T` where the tree is linear, so this is a statement
 about the language and not a replacement generator; the shipped generator
 keeps the tree, and Section 4's per-arity ceilings describe that tree.
+
+## Grouping: one walk cell per k entries
+
+Two cells an entry is more than the hop needs. The hop wants a zero cell
+beside what it addresses -- but only at the granularity it *addresses*. So
+address groups:
+
+    [W][S0][S1][d_0] ... [d_(k-1)]     k + 3 cells for k entries
+
+The chain runs on the top `n - g` bits with groups as its leaf level, hop
+stride `k + 3`. Its seat step there moves by the stride, not by 2: above the
+leaf an anchor sits two cells before its block's end, but a group's anchor is
+its *first* cell. That off-by-a-stride is the one thing that has to change.
+
+The last `g = log2 k` bits are then resolved by a decision tree over the
+group, **emitted once after the walk rather than once per group**, so its
+`O(k**2)` characters are a constant. Each node reads its bit into `S0`,
+raises a flag in `S1`, and runs one of
+
+    [->-<< HIGH >]      >[-<< LOW >>]<<
+
+with each subtree returning to `W` and both scratch cells zero, so the
+brackets close on a zero. A leaf steps right to its data cell, adds 48,
+prints, clears and steps back -- the program is over, but the brackets above
+it still have to read zero.
+
+Cost:
+
+    span   (1 + 3/k)(1 + 1/255) T    one move per cell
+    ones                    T/2      one '+' per set entry, capped by the flip
+    hops        3/255 of the span
+    selector          O(k**2)        once, not per group
+                 -----------
+                 1.5157 T   as k grows
+
+Taking `k = log T` kills both the `3/k` and the selector, so
+
+    C_F(T) <= 1.516 T + o(T),   limsup D/(T ln T) <= 1.3165 < 1.317 on GRH
+
+against the ungrouped `2.1989`. Measured chars an entry on parity:
+
+    n       T          tree     chain     g=4     g=6     g=8
+    16     65,536   17.5138    2.5503  1.7587  1.7710  3.0433
+    18    262,144   17.5039    2.5446  1.7163  1.6127  1.9091
+    20  1,048,576   17.5011    2.5348  1.7053  1.5727  1.6201
+
+Larger `k` is better asymptotically and worse at small `n`, exactly as the
+`O(k**2)` selector says. L7 pins the closed form for `k = 4, 16, 256`, runs
+every input of every table at `n = 1..6` for `k = 2, 4, 16` (1134
+executions), and samples `n = 9, 10, 12` at `k = 256`.
+
+**The bracket is now 9.1x**, factoring as `4.55` construction against `2`
+number theory. Of the `1.516`, one unit is the move onto each entry's cell
+and a half is the mark on each set entry; nothing else reaches a fiftieth.
+Going lower means storing more than one entry per cell, which buys span at
+the price of a unary write -- with `-` reaching 255 in one character, two or
+three entries a cell is the balance point, and it needs arithmetic on the
+cell rather than a static branch.
