@@ -120,41 +120,48 @@ each hub holds a source character rotated until it names a free stub. The
 three `p` over source characters swaps `'0'` and `'1'`, so the `not x` stub
 runs two and then, through a third character that names a pointer cell, a
 third over that cell's chain value. Executed on all 8,192 rows of the dense,
-parity, all-0 and all-1 tables. `n > 13` is refused with `GeneratorCapError`:
-fourteen needs sixteen two-input answers against a cell's eight characters,
-or a second selector, and that is where splitting stalls.
+parity, all-0 and all-1 tables.
 
-Splitting a second input off stalls at level 2, not at the fold. Two inputs off
-gives four level-1 copies (only identity, `neg`, `rot**2` and `neg rot**2`
-clear the code), and 1,755 of 8,192 rows collide; but no searched level-2
-post-map puts a half's 375-530 rows on distinct cells clear of the 8,192
-level-1 ones (the one distinct readout found lands 270 of them on level-1
-cells). A per-bit branching fold resolves more at level 1 (7,052 of 8,192)
-but makes the level-1 cells random, which is worse for avoidance. Sharing
-cells instead -- the decoder reading a character's label `k` cells further
-on -- needs all four answer pairs at a shared cell's residue, and CP-SAT
-proves at most 10 of 94 residues can offer them (0 at `k = 1`, 7 at 2 and
-3, 10 at 5).
+Fourteen inputs split a second input off and let cells be shared. Input
+twelve selects one of two paths as before; each path folds input thirteen
+into one shared selector cell and selects one of four *sub-paths*, one per
+copy. A copy rewrites the readout by searched ops over the mixer cells and
+three mask constants (`p` with `A = 52487` swaps the top trit and the low
+eight and fixes the second, so the readout stays clear of the code and the
+decoder without an offset), and 5,525 of the 8,192 copies own their level-1
+cell. The one-shot rule that stalled a second selector -- every level-2 cell
+distinct and clear of level 1 -- is dropped: a cell read by two copies, at
+whatever levels, holds `N`, and the sharers read a second cell and then a
+third, until each owns one (2,185 resolve at level 2, 482 at level 3; the
+fixpoint over all reads was searched by annealing on excess reads, and
+sharing pushed the count from 2,065 unresolved to 0). A third read passes
+the decoder at 29525 a second time; its cells have been re-enciphered, and
+at residues 9 through 17 `j` and `o` both image to nops while at residue 18
+`o` images to `i`, so the second pass runs nine nops and jumps through
+`mem[V + 11]` for the N hub `V` it came through, a handler that selects the
+level-3 copy. The selector cell serves every level: a sub-path rewrites it
+by a searched chain of constant `p` and `*` to the copy's level-2 address,
+a level-2 path likewise to the level-3 address, so the decoder and the
+handler both jump through the one cell.
 
-A third level needs no fourth label, which is what the layout could not
-afford. A level-2 row whose table cell carries `N` re-enters the decoder at
-29525 with `d = b + 1`, and the cells it already executed have been
-re-enciphered: the first nine image to nops and the tenth to an `i`, so every
-level-3 row shares one jump through `mem[b + 10]`. Executed on the shipped
-build: row 800 of the all-zero table prints `0`, and the same row routed
-through the `N` label for cell 95 reads `mem[105]` -- a shipped `[P0, P1]`
-pair -- and prints `1`. Three labels plus an `M` block are SAT once the block
-clears the pointer region (unsat at shift 10 through 20, sat from 40, 9 cells
-free at shift 94), and a shift-104 prefix is spellable: of the first 103
-re-entry cells only nine refuse a plain `o`, and each takes `j`, `p` or `*`.
-What is missing is still a twelve-bit mixer. Three levels with free inits
-leave 341 of 4,096 rows over ~7 CPU-hours (0 hits, control rediscovers the
-shipped n=11 cascade), against 515 for two levels.
+Paths are jumped to, never walked, so every cell they touch costs a walk
+over `o` and `j`. The cells they use are packed into 163..243 with the
+mixer, and every free window cell whose `g` is at least 81 is a trampoline:
+`p` with `A = all-2` leaves `K2(g)` in 162..242, so a `j` through it lands
+inside the window. That cuts a path's navigation from ~56 cells per op to
+~14, and the main code to ~8,000 cells. A path is still too long for one free
+run of the store (table cells leave runs of at most 871), so it is two or
+three *segments* linked by `i` through a window cell holding the next
+segment's address: rotations of the cell's own `g`, or of `K(g)` from an
+adjacent supply cell, land on a grid coarse enough to search, and the init
+writes them in rotation sweeps. `n > 14` is refused with
+`GeneratorCapError`: a third selector's eight copies would need a fourth
+cascade level, and the decoder's second pass is the last its cells afford.
 
 Counting bounds each family, independent of how good the mixer is. A stub
 program needs three cells per row at pairwise distance at least three, so
 `3 * 2**n <= 59049` and `n <= 14`; the cascade needs one table cell per row
-per level above its ~14k cells of code, so `n <= 15`. Neither reaches the
+per level above its ~9k cells of code, so `n <= 15`. Neither reaches the
 seventeen-input target.
 
 That construction gap ends before totality. Malbolge has 59,049 cells and
@@ -183,7 +190,7 @@ expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 13 | 13 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones; twelve inputs split the last one off it through a selector, so no mixer ever folds twelve bits, and thirteen let the answer stub read the last input, so a table cell names one of four one-input answers. Fourteen needs sixteen answers against a cell's eight characters, or a second selector, whose four level-1 copies leave no level-2 post-map room. |
+| Malbolge | 14 | 14 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones; twelve inputs split the last one off it through a selector, so no mixer ever folds twelve bits; thirteen let the answer stub read the last input, so a table cell names one of four one-input answers; fourteen split a second input off and let shared cells hold `N` at any level, so a third read re-enters the decoder. Fifteen needs a fourth level, and the decoder's second pass is the last its cells afford. |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
