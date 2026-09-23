@@ -1424,12 +1424,18 @@ $\gamma=\lambda\Tail(F_{M+1})+(1-\lambda)\Tail(w)-\Tail(p_{M,M+1})\ge0$ the
 convexity gap, so \eqref{eq:chord} says $\delta\ge\gamma$: the deletion
 step earns at least the convexity gap.  It holds in $4632$ exact instances
 with $L\le7$ and every $M>g$, with equality exactly in the block case
-$B_0=\{1,\ldots,k\}$, $g=k+1$, where it is an identity for arbitrary nodes;
-there it is Lemma~1.5 of the confluent computation above, and
-Proposition~\ref{prop:shift}(3) is its consequence.  It is tied to the shift
-by one: the analogous relation with $M+2$ in place of $M+1$, or with $g\ne k+1$
-in the block case, fails in both directions, and the chord statement with
-several zeros above $g$ fails without the hypothesis of \eqref{eq:shift}.
+$B_0=\{1,\ldots,k\}$, $g=k+1$ with $y_{k+1}=\tfrac12$, where it is an
+identity for arbitrary nodes below the cutoff and strict once
+$y_{k+1}<\tfrac12$; in the confluent limit it is the closed form of
+$\E|D-M|$ in the proof of Proposition~\ref{prop:shift}, whose part (3) is its
+consequence.  It is tied to the shift by one: the analogous relation with
+$M+2$ in place of $M+1$, or with $g\ne k+1$ in the block case, fails in both
+directions, and the chord statement with several zeros above $g$ fails
+without the hypothesis of \eqref{eq:shift}.  It is also tied to the integers:
+with the zeros of $B_0$ allowed to be real, \eqref{eq:chord} fails already in
+the confluent limit at $B_0=\{1,\tfrac52\}$, $g=3$, $M=6$, so no argument by
+convexity or continuity in the zero positions can prove it, and a proof must
+use the empty integer slots below $g$.
 What the median ranges over is not a one-parameter shape: the minimizing zero
 set itself is not a consecutive block with one displaced zero.  At
 $(2,3,4,5,6)$ with $u=0$ it is $\{1,2,4,6\}$, of tail $\tfrac{41}{12600}$,
