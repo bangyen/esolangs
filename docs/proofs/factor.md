@@ -299,7 +299,7 @@ where to work:
 
 So the number theory -- the part this paper's Sections 3 and 4 spent -- is
 worth at most a factor of 2 more. The order of magnitude is in the
-construction.
+construction, and the next section spends most of it.
 
 ### The counting route is nearly exhausted
 
@@ -316,3 +316,66 @@ Still fifty times under the ceiling. Moving the floor further means counting
 *behaviours* rather than spellings -- that is, using the fact that many
 distinct Brainfuck programs compute the same function. That is a semantic
 argument, not a counting one.
+
+## The chained lookup
+
+The tree's `17.5` characters an entry is not the language's price. Carry the
+table as tape data and index it: `C_F(T)` minimizes over all programs, so
+paying execution time for length is free here.
+
+The obstacle is that a brainfuck cell holds a byte, so an index into `T`
+cells stops fitting at `n = 8`. Measured, not guessed: a single-cell index is
+right for every index below 256 and wrong for every index at or above it.
+**Chaining removes the cap** -- split the index into chunks of at most eight
+bits, one per level of a tree of blocks, and read each chunk from the input
+at the place its level needs it, so no counter is ever carried.
+
+Blocks are `B[-1] = 2` and `B[j] = 256 B[j-1] + 2`; a block is 256
+sub-blocks then two scratch cells, its *anchor*, and a leaf block is 256
+pairs of a walk cell and a data cell. From an anchor, two cells left is the
+last sub-block's anchor and
+
+    [[- <*B[j-1] + >*B[j-1] ] <*B[j-1] -]
+
+hops one sub-block left per unit, landing on sub-block `255 - digit`. The hop
+only ever touches anchors, which are scratch, so the data survives it, and
+the landing cell is left zero -- which is why the data is laid out reversed
+at every level.
+
+Cost, with the complement stored when ones are in the majority:
+
+    span      (2 + 2/255) T      the data pass, one move per cell
+    ones              T/2        one '+' per set entry, capped by the flip
+    hops           6T/255        3 characters per stride, summed over levels
+                  ------------
+                  2.5314 T
+
+so `limsup D/(T ln T) <= 2 * 2.5315/ln 10 = 2.1989 < 2.20` on GRH, against
+the tree's `15.2003`. The short chunk goes *second from the top*: a hop loop
+is `3 * stride` characters and the top stride is the span over the top radix,
+so a small radix on top costs three times what it costs at the leaf, where it
+only wastes scratch. Getting that wrong put `n = 18` at 4.03 characters an
+entry instead of 2.55.
+
+Measured against the tree, on parity:
+
+    n       T           tree        chain   ratio   chain/T
+    12      4,096      72,365      11,808    6.13     2.883
+    16     65,536   1,147,785     167,136    6.87     2.550
+    18    262,144   4,588,535     667,039    6.88     2.545
+    20  1,048,576  18,351,205   2,657,911    6.90     2.535
+
+L6 in `tests/proofs/deep/factor_constants.py` pins the closed form against
+what is emitted for `n = 1..14`, runs every input of every table at
+`n = 1..6` (378 executions) and samples `n = 9, 10, 12` around the byte
+boundary that broke the single-cell version.
+
+**The bracket is now 15.2x**, and it factors as `7.6` for the construction
+against `2` for the number theory. Of the `7.6`, the `T/2` spent marking set
+entries is the largest single piece: the data pass is already within `2/255`
+of one move per cell, so a leaner construction has to stop spending a
+character per set entry, not a character per cell.
+
+The walk is quadratic in `T` where the tree is linear, so this is a statement
+about the language and not a replacement generator; the shipped generator
+keeps the tree, and Section 4's per-arity ceilings describe that tree.

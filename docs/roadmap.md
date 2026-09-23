@@ -218,29 +218,22 @@ step; an answer lands in the paper it extends, and the row leaves.
   infimum when the criterion fails" in
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
 
-- **Factor's leading constant.**  Both sides are now numbers and they
-  bracket `C_F(T)/(T ln T)` between `1/(3 ln 10) = 0.14476` and
-  `35/ln 10 = 15.2003` on GRH (Sections 4 and 5 of
-  [factor](proofs/factor.tex)).  The ratio is exactly `105` in any base, and
-  it factors into `52.5` for the decision tree and `2` for the prime walk, so
-  the number theory is worth at most a factor of two and the order of
-  magnitude sits in the construction.  A `T`-bit table needs at least `T/3`
-  instructions; the tree emits `35T/2`, and Lemma 2.1 is exact and attained by
-  parity, so the slack is in the construction and not its analysis.  The
-  obvious competitor is a tape lookup, and it is 7x shorter -- 2.5 characters
-  per entry against 17.5, measured to `n = 18` -- but only through `n = 8`:
-  brainfuck cells are 8-bit and wrap, so the index overflows, and at `n = 10`
-  every index below 256 is right and every one at or above it is wrong.  A
-  travelling multi-digit counter repairs it at `ceil(n/8)+1` cells per stop,
-  which is `Theta(T log T)` characters and so worse than the tree.  First
-  step: the other repair -- a stationary counter reached by `[<<]` sentinel
-  scans over data stored as `value+1` -- which keeps `O(1)` code per
-  decrement and so `~2.5T` characters, at `O(T**2)` execution.  That is a
-  language bound, not a generator: `C_F(T)` minimizes over all programs, and
-  the shipped tree keeps its linear execution either way.  On the other side,
-  counting spellings is capped at `0.2895` on GRH, so moving the floor past
-  that needs a semantic argument -- distinct programs that compute the same
-  function -- not a better count.
+- **Factor's leading constant.**  Both sides are numbers and they bracket
+  `C_F(T)/(T ln T)` between `1/(3 ln 10) = 0.14476` and `2.532/ln 10 =
+  1.0997` on GRH, a ratio of `15.2` (Sections 3 and 5 of
+  [factor](proofs/factor.tex)).  The decision tree's `35T/2` is not the
+  language's price: a chained tape lookup emits `2.532T`, closing the
+  construction factor from `52.5` to `7.6`, with the remaining `2` the
+  square-root walk.  Of the `7.6`, the `T/2` spent marking set entries is the
+  largest single piece -- the data pass is already within `2/255` of one move
+  per cell, so a leaner construction has to stop spending a character per set
+  entry, not per cell.  First step: pack several entries per cell, which
+  costs `+` runs to build and so needs a decompression loop that earns them
+  back.  Note the lookup's walk is quadratic where the tree is linear; that
+  is admissible because `C_F(T)` minimizes over all programs, and the shipped
+  generator keeps the tree.  On the other side, counting spellings is capped
+  at `0.2895` on GRH, so moving the floor past that needs a semantic argument
+  -- distinct programs that compute the same function -- not a better count.
 
 - **Unconditional Factor threshold.**  The digit ceiling is proven through
   `n = 19` by a sieve to `10**11`, and explicit at every arity on GRH

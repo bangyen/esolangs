@@ -17,7 +17,9 @@ L3  the resulting digit ceiling holds for parity, and so does its ``Q``.
 L4  the GRH short-interval threshold falls inside the sieved range, and the
     resulting walk's ceiling is 24.6 T ln T over n >= 8.
 L5  the behavior count's exponent is ln 8, so the floor is 1/(3 ln 10) and
-    the constant is bracketed within a factor of 105.
+    the constant is bracketed within a factor of 105 against the tree.
+L6  the chained tape lookup runs, and emits 2.532 characters an entry,
+    which closes that bracket to 15.2.
 """
 
 from __future__ import annotations
@@ -296,14 +298,139 @@ def check_floor() -> list[str]:
     assert abs(CEILING / FLOOR - 105) < 1e-9, CEILING / FLOOR
     assert abs((35 / 2) / (1 / 3) * 2 - 105) < 1e-9
     lines.append(
-        f"floor {FLOOR:.5f} <= C_F/(T ln T) <= {CEILING:.4f} on GRH"
-        f"  ratio {CEILING / FLOOR:.0f} = 52.5 runs x 2 walk"
+        f"floor {FLOOR:.5f}, tree ceiling {CEILING:.4f} on GRH"
+        f"  ratio {CEILING / FLOOR:.0f} = 52.5 runs x 2 walk; L6 cuts the runs"
     )
     # Counting spellings is capped at 1/(3(1-theta) ln 10).
     cap = 1 / (3 * 0.5 * math.log(10))
     assert abs(cap - 0.2895296) < 1e-6, cap
     lines.append(
         f"spelling-count cap on GRH {cap:.4f}, still {CEILING / cap:.0f}x below"
+    )
+    return lines
+
+
+#: A brainfuck cell holds one byte, so an index digit gets at most eight bits
+#: and the chained lookup takes one level per digit.
+RADIX_BITS = 8
+
+
+def chain_layout(n: int) -> tuple[list[int], list[int], int]:
+    """``(chunk sizes top-down, hop stride per level, cells spanned)``.
+
+    The short chunk goes second from the top.  A hop loop is ``3*stride``
+    characters and the top stride is the span over the top radix, so a small
+    radix on top costs three times what the same radix costs at the leaf,
+    where it only wastes scratch.
+    """
+    levels = max(1, -(-n // RADIX_BITS))
+    rest = n - RADIX_BITS * (levels - 1)
+    if levels == 1:
+        sizes = [n]
+    elif levels == 2:
+        sizes = [RADIX_BITS, rest]
+    else:
+        sizes = [RADIX_BITS, rest] + [RADIX_BITS] * (levels - 2)
+    blocks = [2]
+    for size in reversed(sizes):
+        blocks.append((1 << size) * blocks[-1] + 2)
+    strides = [blocks[len(sizes) - 1 - k] for k in range(len(sizes))]
+    return sizes, strides, blocks[-1]
+
+
+def chain_cell(x: int, n: int) -> int:
+    """The cell holding entry ``x`` under :func:`chain_layout`."""
+    sizes, strides, _ = chain_layout(n)
+    digits, rest = [], x
+    for size in reversed(sizes):
+        digits.append(rest & ((1 << size) - 1))
+        rest >>= size
+    digits.reverse()
+    start = 0
+    for k, size in enumerate(sizes):
+        index = (1 << size) - 1 - digits[k]
+        start += index * strides[k] if k < len(sizes) - 1 else 2 * index
+    return start + 1
+
+
+def bf_chain(truth_table: str) -> str:
+    """The chained tape lookup of Lemma "Chained lookup"."""
+    n = int(math.log2(len(truth_table)))
+    sizes, strides, span = chain_layout(n)
+    flip = truth_table.count("1") * 2 > len(truth_table)
+    cells = [0] * span
+    for x, bit in enumerate(truth_table):
+        cells[chain_cell(x, n)] = int(bit) ^ flip
+
+    out, anchor = [], span - 2
+    for cell in range(anchor + 1):
+        if cells[cell]:
+            out.append("+")
+        if cell < anchor:
+            out.append(">")
+    for k, size in enumerate(sizes):
+        for _ in range(size):
+            out.append("[->++<]>[-<+>]<>,")
+            out.append("-" * 48)
+            out.append("[-<+>]<")
+        out.append("[-<<+>>]<<")
+        hop = "<" * strides[k]
+        out.append(f"[[-{hop}+{'>' * strides[k]}]{hop}-]")
+    out.append("+" * 49 + ">[-<->]<." if flip else ">" + "+" * 48 + ".")
+    return "".join(out)
+
+
+def chain_length(n: int, ones: int, size: int) -> int:
+    """Closed form for what :func:`bf_chain` emits."""
+    sizes, strides, span = chain_layout(n)
+    total = span - 2 + min(ones, size - ones)
+    for k, size_k in enumerate(sizes):
+        total += 72 * size_k + 10 + 3 * strides[k] + 7
+    return total + (58 if ones * 2 > size else 50)
+
+
+def check_chain() -> list[str]:
+    """L6  the chained lookup: it runs, and its constant is 2.532."""
+    from tests.tools.boolean_runners import run_bf
+
+    lines, rng = [], random.Random(17)
+    for n in range(1, 15):
+        table = parity(n)
+        assert len(bf_chain(table)) == chain_length(n, table.count("1"), 1 << n), n
+    lines.append("emitted length matches the closed form, n = 1..14")
+
+    runs = 0
+    for n in range(1, 7):
+        size = 1 << n
+        for table in ("0" * size, "1" * size, parity(n)):
+            program = bf_chain(table)
+            for k in range(size):
+                bits = [str((k >> (n - 1 - j)) & 1) for j in range(n)]
+                assert run_bf(program, bits) == table[k], (n, table, k)
+                runs += 1
+    lines.append(f"exhaustive: {runs} executions over n = 1..6, all correct")
+
+    # Past n = 8 a one-cell index would wrap; these are the indices that
+    # caught it, so the sample always includes them.
+    runs = 0
+    for n in (9, 10, 12):
+        size = 1 << n
+        for table in (parity(n), "1" * size):
+            program = bf_chain(table)
+            for k in [255, 256, 257, size - 1, *rng.sample(range(size), 6)]:
+                bits = [str((k >> (n - 1 - j)) & 1) for j in range(n)]
+                assert run_bf(program, bits) == table[k], (n, k)
+                runs += 1
+    lines.append(f"sampled past the byte: {runs} executions at n = 9, 10, 12")
+
+    worst = max(chain_length(n, 1 << (n - 1), 1 << n) / (1 << n) for n in (24, 64))
+    assert worst < 2.532, worst
+    limsup = 2 * worst / math.log(10)
+    assert limsup < 2.20, limsup
+    lines.append(f"worst chars/entry {worst:.5f} < 2.532, limsup {limsup:.4f} < 2.20")
+    lines.append(
+        f"bracket {FLOOR:.5f} .. {limsup:.4f} is {limsup / FLOOR:.1f}x,"
+        f" was {CEILING / FLOOR:.0f}x on the tree"
     )
     return lines
 
@@ -323,6 +450,8 @@ def main(argv: list[str] | None = None) -> int:
     print("\n".join(check_grh()))
     print("L5  the lower bound's leading constant")
     print("\n".join(check_floor()))
+    print("L6  the chained lookup and its constant")
+    print("\n".join(check_chain()))
     return 0
 
 
