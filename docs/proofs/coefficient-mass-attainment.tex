@@ -961,6 +961,90 @@ elements lie in $Z\cup(\max Z,\infty)$.  Recurse on $(A\cup\{w\},k-1)$ for
 each $w<\max Z$ outside $Z\cup A$.  If the search closes, $T=\tau^*$ and the
 infimum is $1/\tau^*$.
 
+Whether it always closes is a question about one end of a multiple.  Fix the
+placement.  Dividing the exempt roots out of a multiple controls every
+coefficient below the exempt positions, by the geometric sum that proves
+\eqref{eq:order}.
+
+\begin{lemma}[Deflation]\label{lem:deflate}
+Let $2\le r_1<\cdots<r_L$, let $F=\sum_jf_jx^j$ be a monic multiple of
+$\prod_{i=1}^L(x-r_i)$ of degree $D$, let $X\subset\{1,\ldots,D\}$ be
+nonempty, and put $c=\max\{|f_{D-d}|:1\le d\le D,\ d\notin X\}$.  Then
+$Q=F\big/\prod_{i\le u}(x-r_i)$ is a monic multiple of $P_u$, and every
+coefficient of $Q$ at distance $e\ge\max X$ from its leading one satisfies
+\[
+  |q|\le\frac{c}{\prod_{i\le u}(r_i-1)}\le c .
+\]
+\end{lemma}
+
+\begin{proof}
+Take $u=1$ first, with $r=r_1$ and $Q=\sum_jq_jx^j$.  Comparing coefficients
+in $F=(x-r)Q$ gives $f_j=q_{j-1}-rq_j$, so $q_j=(q_{j-1}-f_j)/r$ and,
+unwinding to $q_{-1}=0$,
+\[
+  q_j=-\sum_{i\le j}f_i\,r^{\,i-j-1}.
+\]
+The coefficient of $Q$ at distance $e$ from its leading one is $q_{D-1-e}$,
+and the $f_i$ that sum reads have $i\le D-1-e$, that is, distance $D-i\ge e+1$
+from the leading coefficient of $F$.  If $e\ge\max X$ then none of them is
+exempt and none is $f_D$, so each $|f_i|\le c$ and
+$|q_{D-1-e}|\le c\sum_{k\ge1}r^{-k}=c/(r-1)$.
+
+For $u>1$ apply that case to $F$ and $r_1$: the quotient $Q_1$ is a monic
+multiple of $\prod_{i\ge2}(x-r_i)$ whose coefficients at distance $\ge\max X$
+from its leading one are at most $c/(r_1-1)$ in magnitude.  The same
+computation with $r_2$ reads only coefficients of $Q_1$ at distance
+$\ge\max X+1$, so it applies with $c$ replaced by $c/(r_1-1)$.  Iterating
+over $i\le u$ gives the product, and each $r_i-1\ge1$.
+\end{proof}
+
+What the lemma leaves uncovered is the head: the $\max X-1$ coefficients of
+$Q$ nearer the top than the highest exempt position.  There $q$ is a
+geometric combination of the leading coefficients of $F$, the exempt ones
+among them, and nothing bounds it termwise.  At a fixed placement that is the
+whole question.
+
+\begin{proposition}[The head carries the question]\label{prop:head}
+Let $2\le r_1<\cdots<r_L$ be distinct, $0\le u\le L-1$, and $X$ a set of $u$
+positive integers.  Suppose that for every $\varepsilon>0$ some monic
+multiple $F$ of $\prod_{i=1}^L(x-r_i)$ has $c\le1/\tau(X)+\varepsilon$, with
+$c$ as in Lemma~\ref{lem:deflate}, and $|q|\le c$ at each coefficient of
+$Q=F/\prod_{i\le u}(x-r_i)$ at distance less than $\max X$ from its leading
+one.  Then $\tau(X)\le\tau^*$.  If this holds at every $X$ of size $u$ then
+$T=\tau^*$ and the infimum of $b_{u+1}$ is $1/\tau^*$.
+\end{proposition}
+
+\begin{proof}
+With Lemma~\ref{lem:deflate} the hypothesis reads $b_1(Q)\le c$.
+Theorem~\ref{thm:value} applied to the roots $r_{u+1},\ldots,r_L$ with $u=0$
+gives $\inf b_1=1/\tau^*$ over monic multiples of $P_u$, the supremum there
+running over the single placement $X=\varnothing$.  So
+$1/\tau^*\le b_1(Q)\le1/\tau(X)+\varepsilon$ for every $\varepsilon>0$, that
+is $\tau(X)\le\tau^*$.  Taking the supremum over $X$ gives $T\le\tau^*$, and
+Theorem~\ref{thm:value} gives the reverse.
+\end{proof}
+
+The head is a window of $\max X-1$ coefficients, so the hypothesis is a finite
+condition at each placement.  Near-extremality in it is not a convenience.  At
+$(7,11)$ the multiple $F=(x-7)(x-11)(x+5)=x^3-13x^2-13x+385$ has $b_2(F)=13$
+and $X_F=\{3\}$, while $F/(x-7)=x^2-6x-55$ has $b_1=55$: an arbitrary
+multiple's head exceeds its $c$ by a factor above four.
+
+The primal route to the same statement is to insert the zeros one at a time,
+each insertion paid for by one node, and it fails outright.  The full
+certificate on $(\tfrac13,\tfrac15,\tfrac17)$ with zero set $\{1,3\}$ has
+tail $\tfrac{31}{1704}$; adding the node $\tfrac12$ and the zero $2$ gives
+the full certificate on all four nodes with the consecutive zero set
+$\{1,2,3\}$, of tail $\tfrac1{48}$, so the tail rose although a node was
+gained---Theorem~2.2's equality case absorbed it.  Barring consecutive zero
+sets does not repair the step.  At $(2,\tfrac94,\tfrac52,3)$ the full
+certificate on $(\tfrac49,\tfrac25,\tfrac13)$ with zero set $\{1,4\}$ has
+tail $\tfrac{11608}{84555}=0.13728\ldots$, and adding the node $\tfrac12$ and
+the zero $2$ gives the zero set $\{1,2,4\}$ and tail
+$\tfrac{108}{755}=0.14304\ldots$.  This is what Theorem~\ref{thm:lift} buys
+with its hypothesis $X\subseteq Z\cup(g,\infty)$, and why the covering below
+it is a search.
+
 \begin{proposition}[Two infima]\label{prop:values}
 Over monic $Q\in\R[x]$,
 \[
@@ -1075,10 +1159,15 @@ are $1,-\tfrac{11}2,5$, so the infimum of $b_2$ exceeds $5$.  When
 \eqref{eq:partial} fails, Theorem~\ref{thm:value} gives the infimum as $1/T$,
 and Theorem~\ref{thm:lift} reduces $T=\tau^*$ to a finite search, which
 closes at $(2,3,5,7)$ and $(2,\ldots,7)$ (Proposition~\ref{prop:values}) and
-at each of $139$ further integer root sets we tried with $u\le2$.  Two things
-are not proved in general: that $\tau^*$ is attained by a full certificate
-with a witness as in \eqref{eq:dualpair}, and that the search always closes,
-that is, that the escaping placement is always extremal.  Repeated roots
+at $2119$ further root sets we tried with $u\le4$---integer, rational, and
+clustered just above the cutoff---where every one of $40405$ placements inside
+$\{1,\ldots,10\}$ is covered by a full certificate whose tail is at most the
+least tail of a full certificate on the surviving nodes.  Two things are not
+proved in general: that $\tau^*$ is attained by a full certificate with a
+witness as in \eqref{eq:dualpair}, and that the search always closes, that is,
+that the escaping placement is always extremal.  By
+Proposition~\ref{prop:head} the second is, at each placement, a bound on
+$\max X-1$ coefficients of a deflated multiple.  Repeated roots
 beyond the confluent pair $(3,3)$ also remain open.
 
 \paragraph{Data availability.}
