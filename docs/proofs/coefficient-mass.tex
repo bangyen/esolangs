@@ -47,9 +47,11 @@ $\Lambda(F)=\sum_j\log^+|f_j|$.  When the roots are the first $L$ primes and
 $|f_D|\ge1$, this gives $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with
 asymptotic equality for $F=\prod_{i=1}^L(x-p_i)$.  The mass bound is sharp in
 order when the roots are large but becomes empty as they approach $2$; the
-order-statistic bounds, by contrast, say something at every root set.  At
-$r_i=2$ the mass is nonetheless of order $L^2$, the same order as for the
-root product, which we prove by a separate Jensen-formula argument.  The
+order-statistic bounds, by contrast, say something at every root set.  A
+separate argument, by Jensen's formula rather than by certificates, adds a
+term of order $L^2$ valid at every root set, and the two together determine
+the infimum of $\Lambda$ over monic multiples up to absolute constants, as
+$L^2+\sum_ii\log(r_i-1)$.  The
 key tool is a comparison of the infinite $\ell^1$ tails of normalized
 exponential sums with prescribed positive-integer zeros.  The comparison
 depends on the initial run of zeros and is strict unless the zeros are
@@ -191,8 +193,11 @@ the best certificate bound for $b_1$ exceeds $|P(1)|$ by a factor at least of
 order $L$, and gives the uniform bound
 $b_1\ge|f_D|(r_1+\cdots+r_L)/2$, which neither implies nor is implied by the
 product bound.  At $r_i=2$, where \eqref{eq:mass} is empty,
-Proposition~\ref{prop:neartwo} still forces two large coefficients and
-Proposition~\ref{prop:quadratic} shows the mass is of order $L^2$.
+Proposition~\ref{prop:neartwo} still forces two large coefficients.
+Proposition~\ref{prop:quadratic}, proved by Jensen's formula rather than by a
+certificate, adds the bound $\Lambda(F)\ge L^2/128$ at every root set with
+$r_i\ge2$, and Corollary~\ref{cor:allroots} combines the two into
+$\inf_Q\Lambda(PQ)\asymp L^2+\sum_ii\log(r_i-1)$, uniformly in the root set.
 
 \section{A displaced-zero tail theorem}
 
@@ -689,9 +694,11 @@ rather than \eqref{eq:order} that shows this: by \eqref{eq:halfsum} in
 Proposition~\ref{prop:unbounded}, every monic multiple of $(x-2)^L$ has
 $b_1\ge L$.  Proposition~\ref{prop:neartwo} recovers the second coefficient
 as well, giving $\Lambda(F)\ge\log\bigl(L(L-1)\bigr)$ where \eqref{eq:mass}
-gives nothing, and Proposition~\ref{prop:quadratic} shows that the mass at
-$r_i=2$ is in fact of order $L^2$.  So it is the bound \eqref{eq:mass}, not
-the mass itself, that collapses there.
+gives nothing.  Proposition~\ref{prop:quadratic} goes further: the infimum of
+$\Lambda$ over monic multiples is of order $L^2$ there, and indeed at every
+root set with $r_i\ge2$.  So it is the bound \eqref{eq:mass}, not the quantity
+it bounds, that collapses.  Corollary~\ref{cor:allroots} states the combined
+result.
 
 \begin{corollary}[Prime roots]\label{cor:prime}
 Let $r_1\le\cdots\le r_L$ with $r_i\ge p_i$, the $i$th prime, and let $F$ be
@@ -999,42 +1006,51 @@ and $L-1\ge1$, so $\Lambda(F)\ge\log L+\log(L-1)$.
 
 So at $r_i=2$ the certificate recovers two coefficients, not one, and the
 mass bound $\Lambda(F)\ge\log\bigl(L(L-1)\bigr)$ replaces the empty bound of
-\eqref{eq:mass}.  In fact far more is true, by an argument of a different
-kind: the mass at $r_i=2$ grows quadratically, which is the same order as for
-the root product itself.  The proof below uses Jensen's formula rather than a
-certificate, and we include it because it settles the growth question that
-Proposition~\ref{prop:neartwo} raises.
+\eqref{eq:mass}.  In fact far more is true, and at every root set, not only at
+$r_i=2$: the infimum of the mass over monic multiples is of order $L^2$
+throughout the range where \eqref{eq:mass} degenerates.  The proof uses
+Jensen's formula rather than a certificate.  It is close in spirit to the
+work of Beaucoup, Borwein, Boyd and Pinner on how high a zero a power series
+with constant term $1$ and bounded coefficients can have at a prescribed
+point~\cite{bbbp-multiple,bbbp-ray}; the difference is that $k-1$ coefficients
+are exempted here rather than all being bounded.
 
-\begin{proposition}[The mass at $r_i=2$ grows quadratically]
+\begin{proposition}[Quadratic mass at every root set]
 \label{prop:quadratic}
-Every monic multiple $F$ of $(x-2)^L$ satisfies
+Let $2\le r_1\le\cdots\le r_L$, repetitions allowed.  Every monic real
+multiple $F$ of $\prod_{i=1}^L(x-r_i)$ satisfies
 \begin{equation}\label{eq:jensen}
   b_k(F)\ \ge\ \frac{(3/2)^{L-k+1}-1}{4^k-1},\qquad 1\le k\le L,
 \end{equation}
-and hence $\Lambda(F)\ge L^2/128$ for $L\ge8$.  Since
-$\Lambda\bigl((x-2)^L\bigr)\le2L^2\log2$,
-\[
-  \inf_{\substack{Q\in\R[x]\\ Q\text{ monic}}}\Lambda\bigl(Q(x)(x-2)^L\bigr)
-  =\Theta(L^2).
-\]
+and hence $\Lambda(F)\ge L^2/128$ for $L\ge8$.
 \end{proposition}
 
 \begin{proof}
 Let $D=\deg F$ and let $A(t)=t^DF(1/t)=\sum_{d=0}^Df_{D-d}t^d$ be the
-reciprocal polynomial, so $A(0)=f_D=1$ and $A$ has a zero of order at least
-$L$ at $t=\tfrac12$.
+reciprocal polynomial, so $A(0)=f_D=1$, while $A(1/r_i)=r_i^{-D}F(r_i)=0$, so
+$A$ has at least $L$ zeros in $(0,\tfrac12]$ counted with multiplicity,
+namely the $1/r_i$.
+
+For a real polynomial $h$ and an integer $z\ge1$ put $T_zh=h-(t/z)h'$, so that
+$[t^d](T_zh)=(1-d/z)[t^d]h$: the operator annihilates the coefficient at
+$t^z$ and fixes the constant term.  It also satisfies
+\[
+  T_zh=-\frac{t^{z+1}}z\bigl(t^{-z}h\bigr)' .
+\]
+If $h$ has $m$ zeros in an interval $I\subset(0,\infty)$, counted with
+multiplicity, then so does $t^{-z}h$, and by Rolle's theorem its derivative
+has at least $m-1$ zeros in the convex hull of them, hence in $I$; the factor
+$-t^{z+1}/z$ contributes no zero in $I$.  So $T_zh$ retains at least $m-1$
+zeros in $I$.
 
 Fix $k$ and let $z_1<\cdots<z_{k-1}$ be the backward distances $D-j$ of the
-positions $j<D$ carrying the $k-1$ largest nonleading magnitudes.  With
-$\mathcal D=t\,d/dt$, so that $\mathcal Dt^d=dt^d$, put
+positions $j<D$ carrying the $k-1$ largest nonleading magnitudes.  Put
+$g=T_{z_{k-1}}\cdots T_{z_1}A$, so that
 \[
-  g(t)=\prod_{i=1}^{k-1}\Bigl(1-\frac{\mathcal D}{z_i}\Bigr)A(t),
-  \qquad\text{so}\qquad
   [t^d]g=[t^d]A\prod_{i=1}^{k-1}\Bigl(1-\frac d{z_i}\Bigr).
 \]
-Then $g(0)=1$, the coefficients at $d=z_1,\ldots,z_{k-1}$ vanish, and $g$ has
-a zero of order at least $L-k+1$ at $\tfrac12$, since for a zero away from the
-origin each factor lowers the order by at most one.
+Then $g(0)=1$, the coefficients at $d=z_1,\ldots,z_{k-1}$ vanish, and by the
+previous paragraph $g$ has at least $L-k+1$ zeros in $(0,\tfrac12]$.
 
 If $d\ge1$ and $d\notin\{z_i\}$ then $|[t^d]A|=|f_{D-d}|\le b_k(F)$, that
 position not being among the $k-1$ largest.  The $z_i$ are distinct positive
@@ -1049,7 +1065,7 @@ $\sum_{d\ge0}\binom{d+k-1}{k-1}x^d=(1-x)^{-k}$, taking $x=\tfrac34$ gives
   \max_{|t|=3/4}|g(t)|\ \le\ 1+b_k(F)\bigl(4^k-1\bigr).
 \]
 Jensen's formula for $g$ on $|t|\le\tfrac34$, with $g(0)=1$ and at least
-$L-k+1$ zeros at $\tfrac12$, gives
+$L-k+1$ zeros of modulus at most $\tfrac12$, gives
 $\bigl(\tfrac34/\tfrac12\bigr)^{L-k+1}\le\max_{|t|=3/4}|g|$, that is
 $(3/2)^{L-k+1}\le1+b_k(F)(4^k-1)$, which is \eqref{eq:jensen}.
 
@@ -1065,26 +1081,59 @@ $L\ge8$.  These $\lfloor L/8\rfloor$ magnitudes sit at distinct positions and
 exceed $1$, and $\lfloor L/8\rfloor\ge L/16$, so
 $\Lambda(F)\ge(L/16)(L/8)=L^2/128$.
 
-For the upper bound the nonleading coefficients of $(x-2)^L$ are
-$2^j\binom Lj$ in magnitude, so
-$\Lambda\bigl((x-2)^L\bigr)=\sum_{j=1}^L\bigl(j\log2+\log\binom Lj\bigr)
-\le\tfrac{L(L+1)}2\log2+L^2\log2\le2L^2\log2$.
 \end{proof}
 
-Two remarks.  First, \eqref{eq:jensen} is useful only while $4^k$ has not
-overtaken $(3/2)^{L-k+1}$, that is for $k$ up to a constant multiple of $L$;
-it says nothing about the last rows.  Proposition~\ref{prop:neartwo}, by
-contrast, is a statement about $b_2$ for every $L\ge2$, and for small $L$ it
-is the stronger of the two.  Second, the computations behind the table above
-suggest the clean per-row statement
+Combining this with the certificate bound closes the mass problem to within
+absolute constants over the whole root range.
+
+\begin{corollary}[The mass infimum at every root set]\label{cor:allroots}
+Let $L\ge8$, let $2\le r_1\le\cdots\le r_L$, put $P=\prod_{i=1}^L(x-r_i)$ and
+$M(P)=\inf\{\Lambda(PQ):Q\in\R[x]\text{ monic}\}$.  Then
+\[
+  M(P)\ \asymp\ L^2+\sum_{i=1}^Li\log(r_i-1),
+\]
+with absolute implied constants.
+\end{corollary}
+
+\begin{proof}
+For the lower bound, Proposition~\ref{prop:quadratic} gives
+$M(P)\ge L^2/128$ and Corollary~\ref{cor:mass} with $|f_D|=1$ gives
+$M(P)\ge\sum_ii\log(r_i-1)$, so $M(P)$ is at least half their sum.
+For the upper bound take $Q=1$: as in Corollary~\ref{cor:near},
+$\Lambda(P)\le\sum_k\log\binom Lk+\sum_ii\log r_i$, and
+$\sum_ii\log r_i\le\sum_ii\log(r_i-1)+\tfrac{L(L+1)}2\log2$ because
+$r_i/(r_i-1)\le2$, so
+$\Lambda(P)\le2L^2\log2+\sum_ii\log(r_i-1)$.
+\end{proof}
+
+The two terms take turns.  For the first $L$ primes the sum dominates and
+Corollary~\ref{cor:infimum} gives the sharp constant; at $r_i=2$ the sum
+vanishes and the $L^2$ term is everything, so what collapsed in
+\eqref{eq:mass} was the bound and not the quantity.
+
+Three remarks on \eqref{eq:jensen}.  First, it is useful only while $4^k$ has
+not overtaken $(3/2)^{L-k+1}$, that is for $k$ up to a constant multiple of
+$L$; it says nothing about the last rows, where
+Proposition~\ref{prop:neartwo} remains the stronger statement.  Its row $k=1$
+reads $b_1\ge\bigl((3/2)^L-1\bigr)/3$, which overtakes the bound $b_1\ge L$ of
+\eqref{eq:halfsum} at $L=8$ and is exponential thereafter.  Second, the radius
+$\tfrac34$ is an arbitrary choice in $(\tfrac12,1)$; optimizing it and the
+range of $k$ would improve the constant $1/128$, which we have not pursued.
+
+Third, the numerical experiments reported below suggest the clean per-row
+statement
 \[
   b_k(F)\ \ge\ L-k+1\qquad(1\le k\le L)
 \]
-for every monic multiple of $(x-2)^L$, which we have verified for $L\le7$ by
-random search and which would interpolate between $b_1\ge L$ and the trivial
-$b_L\ge1$.  We leave it as a conjecture.  Its consequence
-$\Lambda(F)\ge\log L!$ is weaker than Proposition~\ref{prop:quadratic}, so
-the interest is in the individual rows rather than in the mass.
+for every monic multiple of $(x-2)^L$, interpolating between $b_1\ge L$ and
+the trivial $b_L\ge1$.  We could not prove it and leave it as a conjecture;
+its consequence $\Lambda(F)\ge\log L!$ is in any case weaker than
+Proposition~\ref{prop:quadratic}, so the interest is in the individual rows.
+The evidence is negative only: for each $L\le7$ we formed $6000$ multiples
+$Q\cdot(x-2)^L$ with $Q$ monic of degree at most $8$ and integer coefficients
+drawn uniformly from $[-4,4]$, computed the order statistics exactly in
+rational arithmetic, and found no counterexample.  A random search cannot
+confirm a lower bound; it can only fail to refute one.
 
 What Theorem~\ref{thm:tail} buys is a bound in closed product form that is
 uniform in the excluded set, and that is what the rows $k\ge2$ need: for
