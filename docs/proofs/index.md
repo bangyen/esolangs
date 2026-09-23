@@ -220,7 +220,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: T literal, `.` halvings sum to 2T |
 | Jaune | finite lookup | a spatial table reached with two labels | linear: two cells per row, unary weights sum T - 1 |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T |
-| Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs a two-level pointer cascade covers eleven, and a selector that splits the last input off that cascade covers twelve | measured: fixed 59049-cell store through n <= 12 |
+| Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, and answer stubs that read the last input cover thirteen | measured: fixed 59049-cell store through n <= 13 |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` | linear: mux lookup, constant strings times O(T) counts |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length | linear: cascade routes to two shared leaves, one-digit targets |
 | Modulous | tree | — | linear: span walk, fold digits geometric |

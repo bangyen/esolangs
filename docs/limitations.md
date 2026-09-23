@@ -53,7 +53,7 @@ BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
 its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
 ArrowQueue re-enqueue remains open.
 
-Malbolge registers a generator through twelve inputs, source-embedded with no
+Malbolge registers a generator through thirteen inputs, source-embedded with no
 initializer. Through ten, a branch-free five-cell mixer (13 operations per input bit, inits
 52/90/83/70/92, then a 16-operation post-map) folds the row index into a
 distinct address `h(row)` in `[1083, 59048]` with pairwise gap at least three,
@@ -99,11 +99,32 @@ collide at level 1 against 512 at eleven inputs doubled. The decoder selects
 through the second selector the same way, and each level-2 path runs its own
 searched post-map that separates its half's colliding rows. The labels and
 the `[P0, P1]`/NEXT layout are unchanged. Executed on all 4,096 rows of the
-dense, parity, all-0 and all-1 tables. `n > 12` is refused with
-`GeneratorCapError`: no searched schedule folds twelve bits, and splitting a
-second input off needs four paths per level in 3**9-spaced free runs.
+dense, parity, all-0 and all-1 tables.
 
-Thirteen stalls at level 2, not at the fold. Splitting two inputs off
+Thirteen inputs keep that build and hand the last input to the answer stub.
+A table cell now names one of four answers as a function of it -- `0`, `1`,
+`x` or `not x` -- or `N`, so every residue needs five of its eight
+characters. The `[P0, P1]` pairs and NEXT runs cannot afford that (CP-SAT:
+infeasible with only the mixer blocked), so every label is a single pointer
+cell and the decoder takes one more hop: `j` to the table cell, `j` to its
+pointer cell `T + 1`, `j` to the *hub* `V + 1` that cell names, `i` through
+the hub. `d` is then `V + 2` on every row, so a stub may read the source
+characters after its hub. The pointer region holds only the 89 label cells
+and the mixer; helpers, selectors and seeds move to walked cells above 127,
+and navigation becomes a shortest path over `o` and `j` through every cell of
+known value, which also brings the main code down from 15,398 cells to 9,677.
+A label's cells are one chained `p` over all-1 cells from a rotated walked
+seed, so they hold `s` and `f(s)` alternately and ten hubs serve five labels;
+each hub holds a source character rotated until it names a free stub. The
+`1` stub runs `p` over the two characters after its hub. No run of one to
+three `p` over source characters swaps `'0'` and `'1'`, so the `not x` stub
+runs two and then, through a third character that names a pointer cell, a
+third over that cell's chain value. Executed on all 8,192 rows of the dense,
+parity, all-0 and all-1 tables. `n > 13` is refused with `GeneratorCapError`:
+fourteen needs sixteen two-input answers against a cell's eight characters,
+or a second selector, and that is where splitting stalls.
+
+Splitting a second input off stalls at level 2, not at the fold. Two inputs off
 gives four level-1 copies (only identity, `neg`, `rot**2` and `neg rot**2`
 clear the code), and 1,755 of 8,192 rows collide; but no searched level-2
 post-map puts a half's 375-530 rows on distinct cells clear of the 8,192
@@ -162,7 +183,7 @@ expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 12 | 12 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones, and twelve inputs split the last one off it: a selector cell picks one of two jumped-to paths per level, so no mixer ever folds twelve bits. A thirteenth input would need four paths per level placed in free runs 3**9 apart, and the best searched twelve-bit fold still resolves only 3,522 of 4,096 rows at level 1. |
+| Malbolge | 13 | 13 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones; twelve inputs split the last one off it through a selector, so no mixer ever folds twelve bits, and thirteen let the answer stub read the last input, so a table cell names one of four one-input answers. Fourteen needs sixteen answers against a cell's eight characters, or a second selector, whose four level-1 copies leave no level-2 post-map room. |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
@@ -193,7 +214,7 @@ separate axes.
 
 The collection has 64 languages; its floor is 31. All three classics carry
 generators: Befunge and Whitespace loop-less O(T) lookups, Malbolge a
-source-embedded mixer through twelve inputs. They are here for coverage, not for
+source-embedded mixer through thirteen inputs. They are here for coverage, not for
 a new construction axis. Ordinary
 imperative entries with shared-shim generators and no consumer were removed. Nopstacle and
 ZTOALC L left: the former cannot meet embed conventions, the

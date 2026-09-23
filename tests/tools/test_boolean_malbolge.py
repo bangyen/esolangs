@@ -146,7 +146,48 @@ def test_twelve_inputs_every_row(shape: object) -> None:
     assert _rows(table) == list(table)
 
 
-def test_thirteen_inputs_are_refused() -> None:
-    """No searched schedule folds twelve bits, and one selector splits one."""
-    with pytest.raises(GeneratorCapError, match="at most 12 inputs"):
-        boolean.malbolge(_dense(13))
+def _thirteen_second_level_rows() -> list[int]:
+    _, _, level, _, _ = _module._thirteen()  # noqa: SLF001
+    return [
+        4 * row + 2 * x + last
+        for x in (0, 1)
+        for row, lvl in enumerate(level[x])
+        if lvl
+        for last in (0, 1)
+    ]
+
+
+def test_thirteen_inputs_label_every_residue() -> None:
+    """Each table cell's residue admits all five single-cell labels."""
+    _, _, level, tables, labels = _module._thirteen()  # noqa: SLF001
+    for x in (0, 1):
+        for row, h in enumerate(tables[0][x]):
+            wanted = "N01xn" if level[x][row] else "01xn"
+            for label in wanted:
+                _module._table_char(h, label, labels)  # noqa: SLF001
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("shape", [_dense, _parity])
+def test_thirteen_inputs_sampled(shape: object) -> None:
+    """Every thirty-second row and every second-level row of the two shapes."""
+    table = shape(13)  # type: ignore[operator]
+    rows = sorted({*range(0, 2**13, 32), *_thirteen_second_level_rows()})
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.parametrize(
+    "shape", [_dense, _parity, lambda n: "0" * 2**n, lambda n: "1" * 2**n]
+)
+def test_thirteen_inputs_every_row(shape: object) -> None:
+    """The full 8192-row sweep, the four-answer labels' execution gate."""
+    table = shape(13)  # type: ignore[operator]
+    assert _rows(table) == list(table)
+
+
+def test_fourteen_inputs_are_refused() -> None:
+    """Eight characters per cell hold N and four answers, not sixteen."""
+    with pytest.raises(GeneratorCapError, match="at most 13 inputs"):
+        boolean.malbolge(_dense(14))
