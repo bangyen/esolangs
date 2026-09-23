@@ -104,6 +104,52 @@ ineffective 18.25, since a square-root gap is `theta = 1/2` and
 Through `n = 19` the sieve is stronger; the GRH ceiling peaks at 24.06 at
 `n = 22` and falls from there.
 
+## The walk pays one logarithm a run
+
+The ceilings above charge the walk `ln Q = 2 ln U` a run on GRH, twice what
+a prime walked past every `ln p` would cost, because the short-interval
+theorem is applied at every step at its worst case.  The walk crosses each
+gap between consecutive class primes at most once, so `m` steps advance at
+most `m` typical gaps plus the total length of the atypical ones, and a
+second moment makes that total `o(x)`.
+
+Call `x` bad for the class `a` and the length `h` if `(x, x + h]` has no
+prime `= a mod 11`.  On GRH, with `h(X) = ceil(ln**3 (2X))`, the integers of
+`[X, 2X)` bad for some class number `O(X/ln X)`: Prachar's generalization of
+Selberg's theorem (Topics in Number Theory, Debrecen 1974, 267-280), in
+Harm's form (arXiv:2507.15334, Cor 2.10), gives
+`sum_a int_X^(2X) |Delta pi(u, h', 11, a)|**2 du << h' X` for
+`h' >= 11 ln**(2+eps)(11X)`, and a bad `x` makes `|Delta pi| >= h'/(10 ln 3X)`
+on a unit window of `u`, so the bad `x` number `<< X ln**2 X / h' << X/ln X`.
+Unconditionally, with `h(X) = ceil(121 (2X)**(1/15 + eps))`, they number
+`O_eps(X/ln X)` with an ineffective constant: Koukoulopoulos (IJNT 11 (2015)
+1499-1521, Thm 1.3) gives, for `Q**2 <= h/x**(1/15 + eps)`, all but
+`O(Qx/ln**A x)` pairs `(q, n)` with `q <= Q`, `n <= x` a weight
+`>= c h/phi(q)` of class primes in `(n, n + h]` for every class.
+
+The encoder makes `p_(i+1)` the least class prime above `p_i`, so every `x`
+in `[p_i, p_(i+1) - h(x))` is bad for that class, and
+
+    p_(i+1) - p_i <= h(p_m) + 1 + #{x in [p_i, p_(i+1)) bad},
+    p_m <= m (h(p_m) + 1) + O(p_m/ln p_m) <= 3 m h(p_m)
+
+for large `m`, uniformly in the classes.  Hence
+
+    p_m <= m ln**4 m   on GRH,      p_m <= m**(15/14 + eps)   unconditionally,
+
+that is `ln Q <= (1 + o(1)) ln m` on GRH and `(15/14 + o(1)) ln m` without
+it.  With the enumerative lookup below, `C <= (1/log2(1 + sqrt 2) + o(1)) T`
+and `m <= C`, so
+
+    limsup D/(T ln T) <= 1/(log2(1 + sqrt 2) ln 10) = 0.34155   on GRH
+                      <= 15/14 of that              = 0.36595   unconditionally
+
+(the latter ineffective).  The same lemma halves the earlier limits: the
+tree's `35/ln 10 = 15.20` becomes `35/(2 ln 10) = 7.60` on GRH and packing's
+`0.874` becomes `0.437`.  It says nothing about thresholds; the per-arity
+ceilings above stand as the explicit statement.  L11 in
+`tests/proofs/deep/factor_drawing.py` pins `0.34155`.
+
 ## Without GRH
 
 Assembled, unconditionally (Lemma "Unconditional explicit short intervals"
@@ -221,14 +267,9 @@ it grows no slower than the other two.  `10 m ln(10 m)` predicts
 `Q/(m ln m) -> 10 + 23/ln m`, which is 12.9 at `m = 3200` against 12.0
 measured.
 
-So the missing lemma is narrower than "a uniform bound on the changing residue
-word".  Only the *sum* of the `m` gaps is needed, not each one, and since the
-walk's step from `p` costs the largest next-prime-in-class gap at `p`, what
-would give `Q = Theta(T log T)` is that every reduced class mod 11 meets
-`(p, p + C log p]` for almost all `p`, with a crude bound on the exceptional
-set.  That is a short-interval statement in progressions, weaker than
-Hoheisel per step but not implied by the prime number theorem in progressions.
-Measurements are still not that lemma.
+Hoheisel per step is the wrong tool: only the *sum* of the `m` gaps matters,
+and the walk crosses each gap once.  The almost-all lemma above makes that
+`Q <= m ln**4 m` on GRH; the measurement says the true order is `m ln m`.
 
 ## Cold parsing
 
@@ -303,40 +344,34 @@ The convergence is slow either way, the correction being of order
 and 2.0899 at `10**80`, with the saddle `s ln q_K` sitting on `ln 8` to four
 places throughout.
 
-### What the bracket says
+### Reduced words
 
-    floor   1/(3 ln 10) = 0.14476
-    ceiling 35/ln 10    = 15.2003   (GRH, Section 4)
+`ln 8` is right for spellings: there are `8**l` strings of length `l`, and by
+the walk lemma each is spelled for `(1 + o(1)) l ln l` on GRH, so the count
+is tight to `1 + o(1)`.  The floor moves only by counting behaviours rather
+than spellings, and the first step is free: a shortest source contains none
+of the adjacent pairs `+-`, `-+`, `><`, `][`, `[]`.  The first three are
+identities (`><` because a move right always succeeds; `<>` is not one at
+the leftmost cell); a `]` is left on a zero cell, so a `[` after it skips its
+bracket, dead with its body; an entered `[]` never terminates, so in a
+program that terminates on every input it is never entered and dead too.
+Deleting never raises the cost: each surviving run is a union of consecutive
+old runs, and the prime of its first old run keeps the primes increasing and
+in class.  The class words are then walks in the graph on the eight
+instructions without loops and without those five arcs, `O(k**8 lambda**k)`
+of them at length `k - 1`, `lambda` the Perron root of the adjacency matrix,
+whose characteristic polynomial is
 
-a ratio of exactly **105**, in any base. It factors, and the factors say
-where to work:
+    x**2 (x + 1)**2 (x + 2) (x**3 - 4x**2 - 14x - 8),    lambda = 6.38776.
 
-- **52.5x is the decision tree.** There are only `8**l` programs of length
-  `l`, so a `T`-bit table needs at least `T/3` instructions. The tree emits
-  `35T/2`. That is the whole of `(35/2)/(1/3) = 52.5`.
-- **2x is number theory.** The GRH walk pays `ln Q = 2 ln U` per run, because
-  a square-root gap squares the last prime; gaps of size `ln p` would pay
-  `ln U`.
+With `s = ln(1 + lambda)/ln q_K` every factor `lambda/(q_i**s - 1)` is at
+least 1 and the saddle argument goes through with `ln(1 + lambda)` for
+`ln 8`:
 
-So the number theory -- the part this paper's Sections 3 and 4 spent -- is
-worth at most a factor of 2 more. The order of magnitude is in the
-construction, and the next section spends most of it.
+    D >= (1 - o(1)) T ln T / (log2(1 + lambda) ln 10) = 0.15053 T ln T.
 
-### The counting route is nearly exhausted
-
-`ln 8` is not loose. There are `8**l` strings of length `l`, and the adaptive
-walk spells any of them with at most `l` runs and largest prime
-`O(l**(1/(1-theta)))`, so each costs at most `(1 + o(1)) l ln l/(1 - theta)`.
-At least `exp((1 - theta + o(1)) ln 8 * L/ln L)` strings therefore fit in `L`,
-so the count is tight up to the factor `1 - theta`, and any argument that
-bounds behaviours by counting spellings is capped at
-
-    1/(3(1 - theta) ln 10)  =  0.2895 on GRH,  0.3474 at theta = 7/12.
-
-Still fifty times under the ceiling. Moving the floor further means counting
-*behaviours* rather than spellings -- that is, using the fact that many
-distinct Brainfuck programs compute the same function. That is a semantic
-argument, not a counting one.
+L12 in `tests/proofs/deep/factor_drawing.py` finds `lambda` by power
+iteration, checks it against the cubic, and pins the floor.
 
 ## The chained lookup
 
@@ -471,7 +506,9 @@ old cost trade places:
                     -----------
                     1.0059 T   as k grows
 
-    C_F(T) <= 1.006 T + o(T),   limsup D/(T ln T) <= 0.8737 on GRH
+    C_F(T) <= 1.006 T + o(T),   limsup D/(T ln T) <= 0.437 on GRH
+
+(`0.874` with the square-root gap bound applied at every step).
 
 The `(1 + 1/255)` that rode along in the grouped count is gone: each level
 adds two cells to a block of `256(k+3)`, and `k` now grows.
@@ -509,9 +546,6 @@ the closed form over `n = 2..12` and `k = 2..32`, runs every input of every
 table at `n = 1..6` for `k = 1, 2, 4` (1480 executions), and samples
 `n = 9, 10, 12` at `k = 128`.
 
-**The bracket is now 6.04x**, factoring as `3.02` construction against `2`
-number theory.
-
 ### The packing family bottoms out
 
 `m` entries a cell need `2**m` distinct values, and the cheapest `2**m` of
@@ -523,8 +557,108 @@ Note `m = 1` gives `1.500`, which is the grouped constant less its walk
 overhead -- the two cost models agree where they overlap. The minimum is
 `1.0`, attained twice, and there is nothing further down this road.
 
-What the remaining `3.02` is, stated plainly: the counting floor allows three
-bits a character, because a character picks one of eight instructions, and
-this construction extracts one. Half its characters step the pointer, which
-carries no table data at all; the other half carry two bits between them.
-Closing that factor means a layout in which every character is data.
+Packing stops at one character an entry because a cell spells its value
+alone.
+
+## The enumerative lookup
+
+Spell a whole group of `k = 2**bits` entries as one integer vector of `S`
+cells with L1 norm at most `M`.  There are `D(S, M)` of them, the Delannoy
+numbers
+
+    D(S, M) = D(S-1, M) + D(S, M-1) + D(S-1, M-1),   D(S, 0) = D(0, M) = 1,
+
+with `D(n, n) = (3 + 2 sqrt 2)**(n - o(n))`.  Rank the vectors position by
+position, the values at a position in the order `0, 1, -1, 2, -2, ...`; a
+group's `k` bits are one integer `b`, and the group is laid out as
+`[W][c_1] ... [c_S]`, a walk cell and the vector of rank `b`, a negative
+entry stored as `256 - |v|`.  Drawing a group is `S + 1` moves and at most
+`M` marks, so the table costs `(S + 1 + M)/k` an entry, for any `(S, M)` with
+`D(S, M) >= 2**k`:
+
+    k = 16    (S, M) = (6, 9)     D = 75,517      1.000 an entry
+    k = 32    (12, 16)                            0.906
+    k = 64    (25, 28)                            0.844
+    limit     1/log2(1 + sqrt 2)                  0.7864
+
+The chain selects the group on the top `n - bits` bits with stride `S + 1`.
+The last `bits` are read by a decoder entered on `W`, which re-ranks the
+vector to its right by the recurrence and prints the selected bit of the
+rank.  Ours is 18,385 characters at `(S, M, k) = (6, 9, 16)`: two-byte
+arithmetic, the tables `D(s, m) mod 2**16` spelled into a workspace to the
+right of the group -- cells of other groups, which this run does not need
+(`tests/proofs/deep/_delannoy_decoder.py`).
+
+The chain's hop at level `j` is `3 B[j-1]` characters of runs, `3T/255` over
+all levels -- `Theta(T)`, more than the code saves.  Replace each run by a
+scan.  After its anchor pair every block above the groups gets one rail cell
+per level, `z_1 .. z_L`, `L = O(log T)`; the rail `z_l` of a level-`l` block
+is 1 unless the block is last among its siblings, and every other rail is 0.
+A leftward move by one level-`l` block, from its `z_l`: step to the
+`z_(l-1)` of its last sub-block, move left by one level-`(l-1)` block, repeat
+that move while the cell reached is nonzero, then step to `z_l`.  The loop
+runs over the sub-blocks, whose `z_(l-1)` are 1 except on the last, which it
+never tests, and on into the parent's left neighbour, whose `z_(l-1)` is 0;
+the moves nested inside that last crossing land on the neighbour's lower
+rails, 0 too.  The rightward move mirrors this and stops on the last
+sub-block, whose `z_(l-1)` is 0.  A level-`l` move is two level-`(l-1)` moves
+and `O(L)` characters, so all hops together cost `O(2**L B_1) =
+O(T**(1/8) log T)` instead of `3T/255`.
+
+Count: groups `(S + 1 + M) T/k`; the `O(T/(256k))` blocks above them at
+`L + 3` cells and at most one mark each; the decoder `O(k**3)`; hops and
+chunk reads `o(T)`.  With `k` the largest power of two below `ln**2 T`
+everything but the groups is `O(T/ln T)`, so
+
+    C_F(T) <= (1/log2(1 + sqrt 2) + o(1)) T = (0.7865 + o(1)) T.
+
+L10 in `tests/proofs/deep/factor_drawing.py` runs the layout exhaustively at
+radix 4, so that four nested scan levels execute (6102 executions with a
+tree decoder, 400 with the rank decoder at `k = 8, 16`), pins the emitted
+length to the closed form for `n <= 12` at radix 4 and 256, and evaluates
+the closed form at `n = 40`, radix 256: `1.002` an entry at `(6, 9, 16)`,
+`0.907` at `(12, 16, 32)`, `0.844` at `(25, 28, 64)`, the excess over the
+table being the rails.  L11 pins the best `(S, M)` per `k` and the limit.
+
+## Drawing floor
+
+The enumerative lookup is as short as any program of its kind.  Let a family
+computing every `T`-bit table be a table-dependent word `X` over `><+-`
+followed by one of at most `2**o(T)` decoders.  `X` reads and prints
+nothing and leaves cells `0..c` holding `u_0..u_c`, zeros beyond, the
+pointer at most `|X|` in; the state and the decoder fix the behaviour.
+Reaching the state costs at least `c` moves and
+`|u_j| = min(u_j, 256 - u_j)` marks a cell, so `c + sum_j |u_j| <= C`.  For
+`0 < z < 1`, `sum_(u mod 256) z**|u| <= (1 + z)/(1 - z)`, so the states of
+cost at most `C` number at most
+
+    (C + 1) z**(-C) (1 + z)/(1 - z) sum_c (z (1 + z)/(1 - z))**c,
+
+convergent when `z (1 + z) < 1 - z`, that is `z < sqrt 2 - 1`.  Hence
+`2**T <= 2**o(T) K_delta (sqrt 2 - 1 - delta)**(-C)` and some table needs
+
+    |X| >= (1 - o(1)) T / log2(1 + sqrt 2) = 0.7864 T.
+
+Within this model the character constant is exact.  The digit constant is
+not quite: a run of length `e` on `q_i` costs `e ln q_i`, less than `e ln T`
+for small `i`, and the count with the four drawing letters has exponent
+`ln 4`, a digit floor of `1/(2 ln 10) = 0.217` in the model.
+
+## What the bracket says
+
+    floor    1/(log2(1 + lambda) ln 10)   = 0.1505
+    ceiling  1/(log2(1 + sqrt 2) ln 10)   = 0.3416   on GRH,  0.3660 unconditional
+
+a ratio of `2.27`.  Number theory no longer separates the two: the walk pays
+one logarithm a run, which is what the count charges, and the unconditional
+`15/14` is the exponent `1/15` of the best almost-all result in
+progressions.  Nor does the tape: a program that carries the table as data
+behind a fixed decoder spends `T/log2(1 + sqrt 2)` characters on it, and the
+enumerative lookup spends no more.
+
+What is left is a question about Brainfuck.  The behaviours of programs of
+`C` characters number between `(1 + sqrt 2)**C`, the tapes a drawing
+reaches, and `(1 + lambda)**C`, the reduced words; the floor rises exactly
+as far as that count falls.  The ceiling falls only if control flow carries
+data denser than a drawing, more than `log2(1 + sqrt 2) = 1.27` bits a
+character, where the decision tree carries `1/17.5`.

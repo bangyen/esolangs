@@ -53,10 +53,19 @@ table as tape data and chaining one byte-sized index digit per level beats
 the tree's constant, and letting one walk cell serve a whole group of
 entries beats it again; spelling two entries in one byte with signed values
 then halves the span for half a character a cell, giving $1.006\,T$
-characters and a limit superior of $0.874$ on GRH.  Running the count with
-the instruction primes themselves makes the lower bound explicit too, at
-$1/(3\log10)$, so the constant is bracketed within a factor of $6.0$, of
-which a factor of $2$ is number theory and the rest is the construction.
+characters; and an enumerative code, one Delannoy-numbered vector per group
+of entries, reaches $T/\log_2(1+\sqrt2)=0.787\,T$, which is what any program
+that carries the table as tape data behind a fixed decoder must spend, since
+a drawing of $C$ characters reaches only $(1+\sqrt2)^{C+o(C)}$ tapes.  The
+walk's factor of two was an artifact of applying a worst-case gap bound at
+every step: the walk crosses each large gap once, so a second moment for
+primes in short progressions makes it pay one logarithm a run, exactly on
+GRH and within $15/14$ unconditionally.  Running the count with the
+instruction primes themselves makes the lower bound explicit too, and
+counting only the words free of the five cancelling adjacencies lifts it to
+$1/(\log_2(1+\lambda)\log10)=0.1505$ with $\lambda=6.388$ their growth rate.
+The constant is thus bracketed between $0.1505$ and $0.3416$ on GRH, a ratio
+of $2.27$, and what separates the two is a question about Brainfuck alone.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -458,6 +467,86 @@ is a statement about $\mathcal C_F(T)$ and not a replacement generator; the
 implementation keeps the tree, whose per-arity ceilings Section~\ref{sec:grh}
 makes explicit.
 
+Packing stops at one character an entry because a cell spells its value
+alone.  Spelling a whole group of entries as one vector, with a budget on the
+marks shared across its cells, does better, and it does as well as any
+program that carries the table as tape data can
+(Proposition~\ref{prop:drawing}).
+
+\begin{lemma}[Enumerative lookup]\label{lem:draw}
+Every $T$-bit truth table has a Brainfuck program of at most
+\[
+  \Bigl(\frac{1}{\log_2(1+\sqrt2)}+o(1)\Bigr)T=(0.7865+o(1))\,T
+\]
+characters.
+\end{lemma}
+
+\begin{proof}
+Let $D(S,M)$ be the number of integer vectors $(v_1,\ldots,v_S)$ with
+$\sum_i|v_i|\le M$, a Delannoy number: $D(S,M)=D(S-1,M)+D(S,M-1)+D(S-1,M-1)$
+with $D(S,0)=D(0,M)=1$, and $D(n,n)=(3+2\sqrt2)^{n-o(n)}$ with
+$D(n,n)/D(n-1,n-1)\to3+2\sqrt2$.  Fix $k$, a power of two, and let $n_k$ be
+least with $D(n_k,n_k)\ge2^k$; then
+$2n_k\log_2(1+\sqrt2)\le k+\log_2(3+2\sqrt2)+o(1)$, that is
+$2n_k/k\le1/\log_2(1+\sqrt2)+O(1/k)$.  Put $S=M=n_k$.
+
+Number the vectors position by position, the values at a position in the
+order $0,1,-1,2,-2,\ldots$: the rank of a vector is the number of vectors
+that precede it, and a value's contribution at position $i$ is the number of
+completions of the shorter prefixes, which the recurrence supplies, so that
+ranking and unranking are $O(SM)$ table lookups each.  A group of $k$
+entries $t_{gk},\ldots,t_{gk+k-1}$ is the integer $b_g=\sum_{j<k}t_{gk+j}2^j$,
+and it is laid out as $[W][c_1]\cdots[c_S]$: a walk cell and the vector of
+rank $b_g$, a negative entry stored as $256-|v|$.  Drawing a group costs
+$S+1$ moves and at most $M$ marks, so the table costs at most $(S+1+M)T/k$
+characters.
+
+The top $n-\log_2k$ bits select the group by the chain of
+Lemma~\ref{lem:chain}, with the groups as its leaf level and stride $S+1$.
+The last $\log_2k$ bits are read by a decoder entered on $W$, which computes
+the rank of the vector to its right by the recurrence and prints the
+selected bit of it; its workspace is the cells to the right of the group,
+which belong to other groups and are not needed by this run.  For fixed
+$S,M,k$ the decoder is one program; ours spells the $SM$ table entries as
+byte pairs and runs fixed multi-byte routines over them, $O(SMk)$ characters.
+
+What remains is the chain's own cost: the hop at level $j$ is $3B_{j-1}$
+characters of runs, $3T/255$ over all levels, which is $\Theta(T)$.  Replace
+each stride-long run by a scan.  After its anchor pair give every block above
+the groups one rail cell per level, $z_1,\ldots,z_L$, where $L=O(\log T)$ is
+the number of levels; the rail $z_\ell$ of a level-$\ell$ block is $1$
+unless the block is the last among its siblings, and every other rail is
+$0$.  Moving by one level-$1$ block is a run of $B_1=256(S+1)+L+2$
+characters.  Moving left by one level-$\ell$ block, $\ell\ge2$, from its
+$z_\ell$: step to the $z_{\ell-1}$ of its last sub-block, move left by one
+level-$(\ell-1)$ block, repeat that move while the cell reached is nonzero,
+then step to $z_\ell$.  The loop runs over the sub-blocks, whose
+$z_{\ell-1}$ are $1$ except on the last one, which it never tests, and on
+into the parent's left neighbour, a level-$\ell$ block whose $z_{\ell-1}$
+is $0$; the moves nested inside that last crossing land on the neighbour's
+lower rails, which are $0$ too, so each stops where it should.  The
+rightward move mirrors this and stops on the last sub-block, whose
+$z_{\ell-1}$ is $0$.  A level-$\ell$ move is thus two level-$(\ell-1)$
+moves and $O(L)$ characters, $O(2^\ell B_1)$ in all, and the hops of every
+level together cost $O(2^LB_1)=O(T^{1/8}\log T)$.
+
+Count.  The groups: $(S+1+M)T/k$.  The blocks above them number
+$O(T/(256k))$ and cost $L+3$ cells and at most one mark each,
+$O(T\log T/k)$.  The decoder: $O(k^3)$.  Hops and chunk reads: $o(T)$.
+With $k$ the largest power of two below $\log^2T$ everything but the groups
+is $O(T/\log T)$, and $(S+1+M)/k=2n_k/k+1/k\le1/\log_2(1+\sqrt2)+O(1/k)$.
+\end{proof}
+
+At a fixed group size the best pair need not be square: $k=16$ takes
+$(S,M)=(6,9)$, $D(6,9)=75\,517\ge2^{16}$, at $(S+1+M)/k=1.000$; $k=32$
+takes $(12,16)$ at $0.906$ and $k=64$ takes $(25,28)$ at $0.844$.  The
+check runs the layout exhaustively at radix $4$, so that four levels of
+nested scans execute, and the rank decoder at $(6,9,16)$ with two-byte
+arithmetic; the closed form gives $1.002$ characters an entry at $n=40$ and
+radix $256$, the excess being the rails.  Lemma~\ref{lem:walk} below then
+removes the factor $1/(1-\theta)$ from Corollary~\ref{cor:chain};
+Corollary~\ref{cor:final} collects the result.
+
 The constant $O(1)$ above contains $x_0$, so the corollary does not say at
 which $T$ the ceiling takes hold.  For the arities that can be generated in
 practice a computation replaces it; Section~\ref{sec:grh} covers the rest,
@@ -648,6 +737,117 @@ $\log U$ exceeds $\log C$ by $\log(10\sqrt2\log U+\beta)$.  GRH also improves
 Corollary~\ref{cor:leading}'s leading constant, $18.25$ falling to $15.21$,
 since a square-root gap bound is the case $\theta=\frac12$ of
 Lemma~\ref{lem:short} and $\frac{35}{2(1-\theta)}=35$.
+
+\subsection*{The walk pays one logarithm a run}
+
+Corollaries~\ref{cor:leading} and~\ref{cor:grh} charge the walk
+$\log Q=2\log U$ a run on GRH, twice what a prime walked past every $\log p$
+would cost, because the short-interval theorem is applied at every step at
+its worst case.  The walk does not meet the worst case at every step: it
+crosses each gap between consecutive class primes at most once, so what it
+advances in $m$ steps is at most $m$ typical gaps plus the total length of
+the atypical ones, and a second moment makes that total $o(x)$.
+
+\begin{lemma}[Almost all short intervals in progressions]\label{lem:almost}
+Call an integer $x$ bad for the class $a$ and the length $h$ if $(x,x+h]$
+contains no prime $p\equiv a\pmod{11}$.
+\begin{enumerate}
+\item[(i)] Assume GRH for the $L$-functions modulo $11$.  With
+$h(X)=\lceil\log^3(2X)\rceil$, the integers of $[X,2X)$ bad for some class
+$a\in\{1,\ldots,8\}$ and the length $h(X)$ number $O(X/\log X)$.
+\item[(ii)] Unconditionally, for each $\varepsilon>0$ and
+$h(X)=\lceil121\,(2X)^{1/15+\varepsilon}\rceil$ they number
+$O_\varepsilon(X/\log X)$, with an ineffective constant.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(i) Prachar's generalization of Selberg's theorem~\cite{prachar}, in the form
+of Harm~\cite[Cor.~2.10]{harm}: on GRH, for $h'\in[q\log^{2+\varepsilon}(qX),X]$,
+\[
+  \sum_{a\bmod q}^{\ast}\int_X^{2X}\bigl|\Delta\pi(u,h',q,a)\bigr|^2\,du\ll h'X,
+  \qquad
+  \Delta\pi(u,h',q,a)=\sum_{\substack{u-h'<p\le u\\ p\equiv a\ (q)}}1
+  -\frac1{\varphi(q)}\int_{u-h'}^{u}\frac{dt}{\log t},
+\]
+the sum over the reduced classes.  Take $q=11$ and $h'=h(X)-1$, which lies in
+the range for large $X$.  If $x\in[X,2X)$ is bad for $a$ and $h(X)$, then
+for every $u\in[x+h(X)-1,\,x+h(X))$ the window $(u-h',u]$ lies inside
+$(x,x+h(X)]$ and holds no class prime, so
+$|\Delta\pi(u,h',11,a)|\ge h'/(10\log3X)$ for large $X$.  Hence the bad
+integers of $[X,2X)$ number at most
+\[
+  \frac{100\log^2(3X)}{h'^{\,2}}
+  \Bigl(\int_X^{2X}+\int_{2X}^{4X}\Bigr)|\Delta\pi(u,h',11,a)|^2\,du
+  \ll\frac{X\log^2X}{h'}\ll\frac{X}{\log X}.
+\]
+
+(ii) Koukoulopoulos~\cite[Thm.~1.3]{kouk}: fix $\varepsilon$; for $x\ge h\ge2$
+and $1\le Q^2\le h/x^{1/15+\varepsilon}$ there is $c=c(\varepsilon)>0$ such
+that, for every $A>0$, the pairs $(q,n)$ with $q\le Q$, $n\le x$ and
+$\sum_{n<p\le n+h,\ p\equiv a\ (q)}\log p\ge ch/\varphi(q)$ for every $a$
+coprime to $q$ number $Qx+O(Qx/\log^Ax)$.  With $Q=11$, $x=2X$ and $h=h(X)$
+the hypothesis $121\le h/(2X)^{1/15+\varepsilon}$ holds, so the integers
+$n\le2X$ at which the modulus $11$ fails, among them every bad integer of
+$[X,2X)$, number $O(X/\log X)$.
+\end{proof}
+
+\begin{lemma}[One logarithm a run]\label{lem:walk}
+Let $p_1<\cdots<p_m$ be the primes the encoder selects for a program of $m$
+runs, whatever the runs' classes.  Then
+\[
+  p_m\le m\log^4m\ \text{ on GRH}\qquad\text{and}\qquad
+  p_m\le m^{15/14+\varepsilon}\ \text{ unconditionally}
+\]
+for $m\ge m_0$, respectively $m\ge m_0(\varepsilon)$, the latter
+ineffective, uniformly in the program.  Hence $\log Q\le(1+o(1))\log m$ on
+GRH and $\log Q\le(\tfrac{15}{14}+o(1))\log m$ unconditionally.
+\end{lemma}
+
+\begin{proof}
+Extend $h$ of Lemma~\ref{lem:almost} to all integers by $h(x)=h(X)$ for
+$x\in[X,2X)$, $X$ a power of two; it is nondecreasing.  The encoder makes
+$p_{i+1}$ the least prime of the class $a$ of the next run exceeding $p_i$,
+so every integer $x$ with $p_i\le x$ and $x+h(x)<p_{i+1}$ is bad for $a$;
+the exceptions in $[p_i,p_{i+1})$ satisfy $x\ge p_{i+1}-h(p_{i+1})$, so
+\[
+  p_{i+1}-p_i\le h(p_m)+1+\#\{x\in[p_i,p_{i+1}):x\text{ bad for }a\}.
+\]
+Summing over $i$ and over the eight classes,
+$p_m-p_1\le m\,(h(p_m)+1)+\sum_a\#\{x<p_m:x\text{ bad for }a\}$, and by
+Lemma~\ref{lem:almost} over the dyadic ranges below $p_m$ the last sum is
+$O(p_m/\log p_m)$.  So $p_m\le3m\,h(p_m)$ once $m$ is large, the threshold
+independent of the classes.  On GRH $h(p_m)\le\log^3(4p_m)+1$, so
+$\log p_m\le\log m+3\log\log p_m+O(1)$, whence
+$\log p_m\le\log m+3\log\log m+O(1)$ and $p_m\le m\log^4m$ for large $m$.
+Unconditionally $h(p_m)\le121(4p_m)^{1/15+\varepsilon}+1$, so
+$p_m^{14/15-\varepsilon}\le c\,m$ and $p_m\le m^{15/14+3\varepsilon}$ for
+large $m$.  Below the threshold $Q$ is bounded by a constant.
+\end{proof}
+
+\begin{corollary}[Leading constant, final]\label{cor:final}
+\[
+  \limsup_{T\to\infty}\frac{\mathcal C_F(T)}{T\log T}
+  \le\frac{1}{\log_2(1+\sqrt2)\,\log10}=0.34155\ldots\ \text{ on GRH},
+\]
+and unconditionally
+\[
+  \limsup_{T\to\infty}\frac{\mathcal C_F(T)}{T\log T}
+  \le\frac{15}{14}\cdot\frac{1}{\log_2(1+\sqrt2)\,\log10}=0.36595\ldots
+\]
+\end{corollary}
+
+\begin{proof}
+The program of Lemma~\ref{lem:draw} has $C\le(1/\log_2(1+\sqrt2)+o(1))T$
+characters and $m\le C$ runs, so by Lemma~\ref{lem:walk}
+$\log N\le C\log Q\le(1+o(1))\,C\log T$ on GRH and
+$(\tfrac{15}{14}+o(1))\,C\log T$ unconditionally; divide by $\log10$.
+\end{proof}
+
+The same lemma halves the earlier limits: the tree's is
+$\frac{35}{2\log10}<7.61$ on GRH and Lemma~\ref{lem:pack}'s is $0.437$.  It
+says nothing about thresholds; the per-arity ceilings of
+Proposition~\ref{prop:grh} stand as the explicit statement.
 
 Without GRH the ingredients are also in print, and they assemble into an
 explicit threshold, though a far weaker one: the smoothed explicit formula
@@ -1031,46 +1231,102 @@ Rearranging and using $\log2/\log8=\frac13$ gives
 $D\ge(1-o(1))\,T\log T/(3\log10)$.
 \end{proof}
 
-The exponent $\log8$ is the right one, which caps what this route can ever
-prove.
+The exponent $\log8$ is the right one for spellings: there are $8^\ell$
+strings of length $\ell$, and by Lemma~\ref{lem:walk} each is spelled for
+$(1+o(1))\ell\log\ell$ on GRH, so Lemma~\ref{lem:count8} is tight to the
+factor $1+o(1)$.  The floor moves only by counting behaviors rather than
+spellings.  The first step of that is free: a shortest source never contains
+a cancelling pair.
 
-\begin{remark}[The counting route is nearly exhausted]\label{rem:cap}
-There are $8^{\ell}$ strings of length $\ell$, and Lemma~\ref{lem:adaptive}
-spells any of them with at most $\ell$ runs and largest prime
-$Q=O(\ell^{1/(1-\theta)})$, so each costs at most
-$\ell\log Q=(1+o(1))\ell\log\ell/(1-\theta)$.  Hence at least
-$\exp\bigl((1-\theta+o(1))\log8\cdot L/\log L\bigr)$ strings have cost at
-most $L$, and Lemma~\ref{lem:count8} is tight to the factor $1-\theta$.  Any
-argument that bounds behaviors by counting spellings is therefore capped at
+\begin{proposition}[Reduced words]\label{prop:reduced}
+Let $\lambda=6.3877\ldots$ be the largest root of $x^3-4x^2-14x-8$.  Then
 \[
-  \frac{1}{3(1-\theta)\log10},
+  \liminf_{T\to\infty}\;\frac{\mathcal C_F(T)}{T\log T}
+  \;\ge\;\frac{1}{\log_2(1+\lambda)\,\log10}=0.15052\ldots
 \]
-namely $0.2895$ on GRH and $0.3474$ at $\theta=\frac7{12}$.  Passing that
-requires counting behaviors rather than spellings, that is, exploiting the
-distinct Brainfuck programs that compute the same function.
-\end{remark}
+\end{proposition}
 
-\begin{remark}[Where the two orders of magnitude are]\label{rem:gap}
-Corollary~\ref{cor:chain} and Proposition~\ref{prop:floor} bracket the
-constant of $\mathcal C_F(T)/(T\log T)$ between $1/(3\log10)=0.1447\ldots$
-and $1.006/\log10=0.4369\ldots$ on GRH, a ratio of $6.0$.  It factors.
-Since there are only $8^{\ell}$ programs of length $\ell$, a $T$-bit table
-needs at least $T/3$ instructions, while Lemma~\ref{lem:pack} emits
-$1.006\,T$ of them: a factor of $3.0$.  The remaining factor of $2$ is
-Lemma~\ref{lem:grh}: the walk pays $\log Q=2\log U$ per run because a
-square-root gap squares the last prime, where gaps of size $\log p$ would
-pay $\log U$.  Against the decision tree the first factor was $52.5$, so
-the lookup takes almost all of what separated the two bounds.
+\begin{proof}
+A shortest source for a table decodes to a program containing none of the
+adjacent pairs \texttt{+-}, \texttt{-+}, \texttt{><}, \texttt{][},
+\texttt{[]}.  The first three are identities, \texttt{><} because a move
+right always succeeds (\texttt{<>} is not one at the leftmost cell).  A
+\texttt{]} is left on a zero cell, so a \texttt{[} that follows it skips
+its bracket, which is dead together with its body.  An entered \texttt{[]}
+never terminates, so in a program that terminates on every input it is
+never entered and is dead too.  Deleting characters never raises the cost:
+each surviving run is a union of consecutive old runs, and giving it the
+prime of its first old run keeps the primes increasing and in class, with
+run lengths at most the old sums.  In the count of Lemma~\ref{lem:count8}
+the class words are therefore walks in the graph on the eight instructions
+without loops and without these five arcs; those of length $k-1$ number
+$O(k^8\lambda^{k})$ with $\lambda$ the Perron root of its adjacency matrix,
+whose characteristic polynomial is
+$x^2(x+1)^2(x+2)(x^3-4x^2-14x-8)$.  With $s=\log(1+\lambda)/\log q_K$ in
+place of $\log8/\log q_K$ every factor $\lambda/(q_i^{\,s}-1)$ is at least
+$1$ and the proof of Lemma~\ref{lem:count8} goes through with
+$\log(1+\lambda)$ for $\log8$: the sources with $\log N\le L$ realize at
+most $\exp\bigl((\log(1+\lambda)+o(1))L/\log L\bigr)$ behaviors, and the
+proof of Proposition~\ref{prop:floor} gives
+$D\ge(1-o(1))\,T\log T/(\log_2(1+\lambda)\log10)$.
+\end{proof}
 
-What is left of it is easy to say.  The counting floor allows three bits a
-character, since a character chooses among eight instructions, and
-Lemma~\ref{lem:pack} extracts one: half its characters step the pointer
-across the tape, which carries no table data at all, and the other half
-carry the two bits of a cell between them.  Closing that factor of $3$ means
-a layout whose every character is data, and the packing family cannot give
-one -- its price per entry $(1+2^{m-2})/m$ is already at its minimum.  The
-remaining factor of $2$ is number theory, and Remark~\ref{rem:cap} caps what
-the counting side can contribute to either.
+On the other side, the construction of Lemma~\ref{lem:draw} is as short as
+any program of its kind.
+
+\begin{proposition}[Drawing floor]\label{prop:drawing}
+Let a family of programs computing every $T$-bit table consist of a
+table-dependent word $X$ over $\{\texttt{>},\texttt{<},\texttt{+},\texttt{-}\}$
+followed by a program drawn from a set of at most $2^{o(T)}$ programs.  Then
+some table needs $|X|\ge(1-o(1))\,T/\log_2(1+\sqrt2)$.
+\end{proposition}
+
+\begin{proof}
+On every input $X$ reads and prints nothing and leaves the same state: cells
+$0,\ldots,c$ holding bytes $u_0,\ldots,u_c$, zeros beyond, and the pointer
+at some $\pi\le|X|$.  The state and the program after $X$ determine the
+behavior, so the tables number at most $2^{o(T)}$ times the number of states
+reachable with $|X|\le C$.  Reaching a state costs at least $c$ moves and
+$|u_j|=\min(u_j,256-u_j)$ marks on cell $j$, so $c+\sum_j|u_j|\le C$.  For
+$0<z<1$, since $\sum_{u\bmod256}z^{|u|}\le(1+z)/(1-z)$, the states number at
+most
+\[
+  (C+1)\sum_{c\le C}z^{-(C-c)}\Bigl(\frac{1+z}{1-z}\Bigr)^{c+1}
+  \le(C+1)\,z^{-C}\,\frac{1+z}{1-z}\sum_{c\ge0}\Bigl(z\,\frac{1+z}{1-z}\Bigr)^{c},
+\]
+and the series converges when $z(1+z)<1-z$, that is $z<\sqrt2-1$.  Taking
+$z=\sqrt2-1-\delta$ gives $2^T\le2^{o(T)}\,K_\delta\,(\sqrt2-1-\delta)^{-C}$,
+so $C\ge(1-o(1))\,T/\log_2\bigl((\sqrt2-1-\delta)^{-1}\bigr)$ for every
+$\delta>0$.
+\end{proof}
+
+\begin{remark}[Where the constant stands]\label{rem:gap}
+On GRH,
+\[
+  0.1505\;\le\;\liminf_{T\to\infty}\frac{\mathcal C_F(T)}{T\log T}
+  \;\le\;\limsup_{T\to\infty}\frac{\mathcal C_F(T)}{T\log T}\;\le\;0.3416,
+\]
+a ratio of $2.27$; without GRH the upper bound is $0.3660$, with an
+ineffective threshold where Corollary~\ref{cor:uncond} is explicit at $19181$.  Number theory
+no longer separates the two.  Lemma~\ref{lem:walk} charges the walk what
+the count charges a run, one logarithm, and the unconditional loss of
+$15/14$ is the exponent $1/15$ of the best almost-all result in
+progressions.  Nor does the tape: a program that carries the table as data
+behind a fixed decoder spends $T/\log_2(1+\sqrt2)$ characters on it by
+Proposition~\ref{prop:drawing}, and Lemma~\ref{lem:draw} spends no more, so
+in that model the character count is settled.  Its digit count is not quite:
+a run of length $e$ on the prime $q_i$ costs $e\log q_i$, less than
+$e\log T$ when $i$ is small, and the count of Lemma~\ref{lem:count8} with
+the four drawing letters has exponent $\log4$, a digit floor of
+$1/(2\log10)=0.217$ within the model.
+
+What separates $0.1505$ from $0.3416$ is a question about Brainfuck.  The
+behaviors of programs of $C$ characters number between $(1+\sqrt2)^{C}$,
+the tapes a drawing reaches, and $(1+\lambda)^{C}$, the reduced words; the
+floor rises exactly as far as that count falls.  The ceiling falls only if
+control flow can carry data denser than a drawing, at more than
+$\log_2(1+\sqrt2)=1.27$ bits a character, where the decision tree carries
+$1/17.5$.
 \end{remark}
 
 \section{Scope and reproducibility}
@@ -1128,6 +1384,12 @@ Riemann,
 \newblock \emph{Acta Arithmetica} 117 (2005), no.~4, 303--339,
 \newblock \href{https://doi.org/10.4064/aa117-4-1}{doi:10.4064/aa117-4-1}.
 
+\bibitem{harm}
+M.~Harm,
+\newblock Refinements for primes in short arithmetic progressions,
+\newblock preprint,
+\newblock \href{https://arxiv.org/abs/2507.15334}{arXiv:2507.15334}.
+
 \bibitem{kadiri}
 H.~Kadiri,
 \newblock Explicit zero-free regions for Dirichlet $L$-functions,
@@ -1141,6 +1403,22 @@ T.~Khale,
 $L$-functions,
 \newblock preprint,
 \newblock \href{https://arxiv.org/abs/2210.06457}{arXiv:2210.06457}.
+
+\bibitem{kouk}
+D.~Koukoulopoulos,
+\newblock Primes in short arithmetic progressions,
+\newblock \emph{International Journal of Number Theory} 11 (2015), no.~5,
+1499--1521,
+\newblock \href{https://doi.org/10.1142/S1793042115500645}
+{doi:10.1142/S1793042115500645}; preprint
+\href{https://arxiv.org/abs/1405.6592}{arXiv:1405.6592}.
+
+\bibitem{prachar}
+K.~Prachar,
+\newblock Generalisation of a theorem of A.~Selberg on primes in short
+intervals,
+\newblock in \emph{Topics in Number Theory} (Debrecen, 1974), Colloquia
+Mathematica Societatis J\'anos Bolyai 13, North-Holland, 1976, pp.~267--280.
 
 \bibitem{tz-density}
 J.~Thorner and A.~Zaman,
