@@ -193,57 +193,37 @@ step; an answer lands in the paper it extends, and the row leaves.
 
 - **Extremality of the escaping placement.**  `T = tau*` (escaping exempt
   coefficients extremal) is still the step `tau_k(X) <= tau_{k+1}(X \ {max
-  X})`, which has no known counterexample.  The step is proved unless the
-  minimizer `Z^-` for `X' = X \ {g}` straddles `g = max X` with a gap
-  below `g`: `prop:stepeasy` (aligned), `prop:slidealigned` (a minimizer at
-  or below `g`), and `thm:slideinitial` (smooth the minimizing certificate
-  against the new node, `v = (1 - y_c x F)/(1 - y_c x)`, tail
-  `<= y_c/(1-y_c)` times the target; it vanishes on the initial segment and
-  has the opposite sign at `g`, so the segment to `F` crosses `v_g = 0`
-  inside the certificates for `X`, whatever zeros lie above `g`).  The slide
-  with all other zeros fixed is FALSE (nine nodes `1/2 - i*10^-4`,
-  `B = {1,2,3,11,12,13}`, `g = 4`, `M = 6`, every point of the slid line
-  `1.026x`), so the one inequality is now `eq:shift`: with `B_0 = Z^- n (0,g)`
-  and `A = Z^- n (g, inf)`, `Tail_c(B_0 u {g} u (A+1)) <= Tail_{c-1}(Z^-)`
-  whenever no single move `a -> a+1` (`a in A`) lowers the tail, which
-  minimality gives; `prop:shift` proves that it implies the step, that for
-  `|A| = 1` the hypothesis is the half-mass condition
-  `sum_{d<=M}|H_d| >= sum_{d>M}|H_d|` on the `ell_inf` direction, and the
-  confluent block case (`B_0 = {1..k}`, `g = k+1`, `A = {M}`: hypothesis and
-  conclusion both `<=> M >= 2k+2`, equality iff `M = 2k+2`, by the
-  negative-binomial identities).  Evidence: 0 failures in 7023 instances
+  X})`, which has no known counterexample.  Write the minimizer for
+  `X' = X \ {g}`, `g = max X`, as `Z^- = B_0 u A` with `B_0` below `g` and
+  `A` above.  The step is PROVED when `B_0` is an initial segment
+  (`thm:slideinitial`, any `A`), when `A` is empty (`prop:stepeasy`), and
+  when `|A| = 1` (`cor:shiftone`): the shift-by-one inequality `eq:shift`
+  (`Tail_c(B_0 u {g} u (A+1)) <= Tail_{c-1}(Z^-)` whenever no single move
+  `a -> a+1` lowers the tail, which minimality gives, `prop:shift`) follows
+  for `A = {M}` from the hypothesis-free chord lemma `prop:chord`:
+  `Tail(F_M) >= lam Tail(F_{M+1}) + (1-lam) Tail(p_{g,M+1})` with `lam` from
+  `p_{M,M+1} = lam F_{M+1} + (1-lam) p_{g,M+1}` on `ell_{M+1}`.  Its proof:
+  the difference equals `sum_{e<g} delta_e + sigma sum_{g<d<=M+1} E(d) -
+  sigma sum_{d>=M+2} E(d)` (`eq:chordsplit`) with `E(d) = (F_M - p)(d-1) +
+  2(1-lam) w(d)`, an exponential sum whose zeros at the consecutive pairs of
+  `{0} u B_0 u {g}` and at `M+1`, signs at the gap starts, and weight on the
+  new node (sign fixed by the cutoff `y <= 1/2`) pin its sign on the window
+  by the zero bound; equality iff the block `B_0 = {1..g-1}` at the cutoff.
+  OPEN: `eq:shift` with `|A| >= 2`, i.e. a gap below `g` and at least two
+  zeros above it in the minimizer.  Evidence: 0 failures in 7023 instances
   with the hypothesis at `L <= 9` (clustered and random nodes, `|A| <= 5`),
-  283 failures without it; `|A| = 1`: 0 in 6015 more at `L <= 7` and 0 in
-  468 confluent gap instances; worst ratio 0.9993 (clustered
-  `B_0 = {1,2,3,4}`, `g = 5`, `A = {10}`), 1 at the confluent block.
-  Structure for a proof: on the plane `P = {v_0 = 1, v_{B_0} = 0}` every
-  certificate is `v_d = H_d (alpha + beta theta_d - rho_d)` with
-  `theta = K/H` (`K` the `c`-node hom on `{0} u B_0 u {M+1}`) and
-  `rho = -F_M/H`, both monotone in `d` and `rho` concave in `theta` by the
-  zero bound, so `Tail` is a weighted `l^1` affine regression, `F_a` the
-  constant fits, `p_{ab}` the chords; the `|A| = 1` case is `cost <= gain`
-  with `gain = Tail(F_M) - Tail(p_{M,M+1})` (the deletion step, eq:split) and
-  `cost = Tail(p_{g,M+1}) - Tail(p_{M,M+1})` along `ell_{M+1}`, and
-  `cost/gain` reaches 0.9991, so every loose bound from eq:gamma fails: the
-  proof must be exact, as the block proof is.  First step: prove
-  `eq:chord`, the hypothesis-free chord lemma
-  `Tail(F_M) >= lam Tail(F_{M+1}) + (1-lam) Tail(p_{g,M+1})` with `lam`
-  from `p_{M,M+1} = lam F_{M+1} + (1-lam) p_{g,M+1}` on `ell_{M+1}`
-  (`(M-g)/M` confluent); it says the deletion-step gain `eq:split` is at
-  least the convexity gap along `ell_{M+1}`, it plus the hypothesis gives
-  the `|A| = 1` case, it holds in 4632 exact instances with no hypothesis,
-  and it is an identity in the block case exactly when the new node is at
-  the cutoff `1/2` (strict below it; confluently it is the NB closed form of
-  `E|D-M|`); it does not extend verbatim to `|A| >= 2`, and it is FALSE for
-  real zero positions (confluent `B_0 = {1, 5/2}`, `g = 3`, `M = 6`), so a
-  proof must count the empty integer slots below `g`, not argue by
-  convexity or continuity in the zeros.  Dead: the half-mass point of
-  `ell_M` (fails at the confluent block `B = {1..24}`, `g = 25`, `M = 50`),
-  any fixed window, shifting only the smallest zero above `g` (fails at
-  `L = 5`), arbitrary weights with the same decay (the regression form fails
-  for them), deleting `min X`, freeing the largest zero, adjoining without
-  sliding, block-plus-one zero sets, a real-valued zero position, pointwise
-  deflation at `r_1 <= (3+sqrt 5)/2`.
+  283 failures without it; worst ratio 0.9993.  What is known about it: the
+  chord through `F_{A+1}` and `p_{g,A+1}` fails without the hypothesis, and
+  the single hypothesis `Tail(Z^-) <= Tail(B_0 u (A+1))` is not enough (1
+  failure), so the per-move hypotheses must enter the zero count; the
+  natural candidate is the `E`-construction of `prop:chord` with the
+  per-move differences in place of `delta`.  Dead: the half-mass point of
+  `ell_M`, any fixed window, shifting only the smallest zero above `g`,
+  arbitrary weights with the same decay, Schur/LPP positivity (the cleared
+  polynomial has thousands of negative terms even at the cutoff), deleting
+  `min X`, freeing the largest zero, adjoining without sliding,
+  block-plus-one zero sets, real-valued zero positions (`eq:chord` is false
+  there), pointwise deflation at `r_1 <= (3+sqrt 5)/2`.
   Also open: that `tau*` is always attained by a full certificate with a
   multiplier witness.  Repeated roots beyond `(3,3)` are open too, as is the
   case where an exempt root lies below 2 and more than `u` partial sums of
