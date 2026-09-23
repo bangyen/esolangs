@@ -213,16 +213,22 @@ step; an answer lands in the paper it extends, and the row leaves.
   zeros above it in the minimizer.  Evidence: 0 failures in 7023 instances
   with the hypothesis at `L <= 9` (clustered and random nodes, `|A| <= 5`),
   283 failures without it; worst ratio 0.9993.  What is known about it: the
-  chord of `prop:chord` does NOT extend (with `M` the end of the first run
-  of `A` and the other zeros common, `E` is short one forced zero per run
-  above `M+1`, and the chord fails at `L = 9`, clustered nodes,
-  `B_0 = {1,2,3,5,6}`, `g = 7`, `A = {8,12}`, by 19%, all in the far
-  term); no fixed weights work either (feasible weight <= 0.683 at
-  `L <= 7`, >= 0.794 at `L = 9`).  What holds in every instance is the
-  sharp form `Tail(Z^-) >= min(Tail(F_1), Tail(w))`, and every chord
-  failure has `Tail(Z^-) > Tail(F_1)`; the single hypothesis
-  `Tail(Z^-) <= Tail(B_0 u (A+1))` is not enough (1 failure).  A proof
-  must split cases on whether the far sign of `E` is pinned.  Dead: the
+  chord of `prop:chord` does NOT extend.  With `M` the end of the first run
+  of `A` and `C` the other zeros, `eq:chordsplit` holds with `B_0 -> C`
+  only with the LOCAL sign `s_d = sigma (-1)^{#(C n (g,d))}` (the global
+  `sigma` form is false in every instance); `E` is short one forced zero
+  per run of `A` above `M+1`, and the chord fails at `L = 9`, clustered
+  nodes, `B_0 = {1,2,3,5,6}`, `g = 7`, `A = {8,12}`, by 19%, all in the far
+  term.  No fixed weights work (<= 0.683 at `L <= 7`, >= 0.794 at `L = 9`).
+  The case split on whether the far sign is pinned is DEAD: pinned implies
+  the chord (never violated) but pinning never occurs with a gapped `A`,
+  and unpinned does NOT imply the hypothesis fails (552 of 1515 unpinned
+  at `L = 9` satisfy it).  What DOES hold, 0 failures at `L <= 10` and
+  `|A| <= 3` (least relative slack 0.063, against 150 chord failures at
+  `L = 10`, all violating the hypothesis): `Tail(Z^-) <= Tail(F_1)` implies
+  the chord, which with `prop:shift` closes the case.  Prove THAT.  The
+  hypothesis equals the mass form `sum_{d<=M}|H_d| >= sum_{d>M}|H_d|` for
+  the `(L-1)`-node sum `H` vanishing on `{0} u C`.  Dead: the
   half-mass point of
   `ell_M`, any fixed window, shifting only the smallest zero above `g`,
   arbitrary weights with the same decay, Schur/LPP positivity (the cleared
