@@ -32,34 +32,32 @@
 
 \begin{abstract}
 Fix real roots $2\le r_1\le\cdots\le r_L$, repetitions allowed.  For every
-nonzero real polynomial $F=\sum_jf_jx^j$ divisible by $\prod_{i=1}^L(x-r_i)$
-we prove a degree-independent bound on each coefficient order statistic: the
-$(u+1)$-st largest nonleading coefficient magnitude is at least
-$|f_D|\prod_{i=u+1}^L(r_i-1)$; the case $u=0$ needs only $r_i>1$.  Explicit
-families approach the $u=1$ bound at roots $(2,3)$, and the $u=1$ and $u=2$
-bounds at $(2,3,5)$, so those bounds are sharp there.  Sharpness is not
-universal: at roots $(\tfrac52,3,\tfrac72)$ the exact $u=1$ infimum is
-$65/12$, against the bound $5$.  The row $u=0$ is complemented by
-$b_1\ge|f_D|(r_1+\cdots+r_L)/2$, which exceeds it by a factor of order $L$ as
-the roots approach $2$ and is weaker than it for large roots.
-Summing these bounds gives a lower bound for the logarithmic coefficient mass
-$\Lambda(F)=\sum_j\log^+|f_j|$.  When the roots are the first $L$ primes and
-$|f_D|\ge1$, this gives $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with
-asymptotic equality for $F=\prod_{i=1}^L(x-p_i)$.  The mass bound is sharp in
-order when the roots are large but becomes empty as they approach $2$; the
-order-statistic bounds, by contrast, say something at every root set.  A
-separate argument, by Jensen's formula rather than by certificates, adds a
-term of order $L^2$ valid at every root set, and the two together determine
-the infimum of $\Lambda$ over monic multiples up to absolute constants, as
-$L^2+\sum_ii\log(r_i-1)$.  The
-key tool is a comparison of the infinite $\ell^1$ tails of normalized
-exponential sums with prescribed positive-integer zeros.  The comparison
-depends on the initial run of zeros and is strict unless the zeros are
-consecutive; the zero count behind it is isolated as an interlacing lemma.
-The argument builds on the reduced-height certificate method of Dubickas and
-Jankauskas.  As a by-product, the same-sign hypothesis under which they
-evaluate the consecutive case is shown to hold at all positive nodes, which
-makes their reduced-height bound $H(P)\ge|P(1)|$ unconditional.
+nonzero real polynomial $F=\sum_jf_jx^j$ of degree $D$, divisible by
+$\prod_{i=1}^L(x-r_i)$, the $(u+1)$-st largest nonleading coefficient
+magnitude is at least $|f_D|\prod_{i=u+1}^L(r_i-1)$, a degree-independent
+bound for every order statistic ($u=0$ needs only $r_i>1$).  This is sharp:
+explicit families approach the $u=1$ bound at $(2,3)$ and the $u=1$ and $u=2$
+bounds at $(2,3,5)$ --- but not universally, since at $(\tfrac52,3,\tfrac72)$
+the true $u=1$ infimum is $65/12$, against the bound $5$.  A second bound,
+$b_1\ge|f_D|(r_1+\cdots+r_L)/2$, complements the $u=0$ row: it exceeds the
+first by a factor of order $L$ near $r_i=2$, but is weaker for large roots.
+Summing the order-statistic bounds gives a lower bound for the logarithmic
+coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$, sharp in order for large
+roots --- $(\tfrac12+o(1))L^2\log L$ when $|f_D|\ge1$ at the first $L$
+primes, attained asymptotically by their product --- but empty as the roots
+approach $2$, exactly where the order-statistic bounds remain informative.  A
+separate argument there, by Jensen's formula rather than by certificates,
+supplies a term of order $L^2$ at every root set; together the two pin down,
+for $L\ge8$, the infimum of $\Lambda$ over monic multiples up to absolute
+constants, as $L^2+\sum_ii\log(r_i-1)$.
+The key tool is a comparison of the infinite $\ell^1$ tails of normalized
+exponential sums with prescribed positive-integer zeros: the tail is
+controlled by the initial run of zeros, strictly unless they are consecutive,
+via an interlacing lemma isolating the underlying zero count.  The argument
+extends the reduced-height certificate method of Dubickas and Jankauskas; as
+a by-product, the same-sign hypothesis under which they evaluate the
+consecutive case is shown to hold at all positive nodes, making their bound
+$H(P)\ge|P(1)|$ unconditional there.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -69,7 +67,7 @@ height; Chebyshev systems; exponential sums.
 
 \section{Introduction}
 
-For $F(x)=\sum_j f_jx^j$, define its logarithmic coefficient mass by
+For a nonzero $F(x)=\sum_jf_jx^j$ of degree $D$, define its logarithmic coefficient mass by
 \[
   \Lambda(F)=\sum_{j:f_j\ne0}\log^+|f_j|,
   \qquad \log^+x=\max(0,\log x),
@@ -81,7 +79,8 @@ constants unless parameters are named.
 Reduced length and reduced height minimize the two classical coefficient
 norms over normalized multiples (monic ones for the reduced height; for the
 reduced length, those with leading or constant coefficient
-one)~\cite{dubickas,schinzel,schinzel-ii,schinzel-complex,dj}, the Euclidean analogue is effectively computable~\cite{frw}, and dual
+one)~\cite{dubickas,schinzel,schinzel-ii,schinzel-complex,dj}.  The Euclidean
+analogue is effectively computable~\cite{frw}.  Dual
 problems---an integer or bounded-height multiple, or a root of prescribed
 multiplicity for a restricted-coefficient power series---form a classical
 line~\cite{mignotte,bombieri-vaaler,bbbp-multiple,bbbp-ray}.  The height
@@ -93,7 +92,7 @@ of the multiplicative height,
 $\Lambda(F)=\log\prod_{j:f_j\ne0}\max(1,|f_j|)$.  For integer coefficients,
 $\Lambda(F)/\log B$ is roughly the total number of base-$B$ digits in the
 nonzero coefficients, up to an additive term proportional to their number and
-ignoring signs, zero entries and exponents; for real coefficients it is
+ignoring signs, zero entries and exponents.  For real coefficients it is
 simply a mass.  The point is that $\Lambda$ is additive over coefficients.  A
 multiplicative bound on one coefficient order statistic adds one term to
 $\Lambda$, so bounds on successive order statistics add up to a lower bound
@@ -158,7 +157,7 @@ distributed.  For roots $2\le r_1\le\cdots\le r_L$, repetitions allowed,
 Theorem~\ref{thm:order} (via the certificate of Lemma~\ref{lem:slack})
 bounds all $L$ coefficient order statistics of every multiple, and
 Corollary~\ref{cor:mass} adds them up into a lower bound for $\Lambda$.
-Writing $D=\deg F$ and $b_k(F)$ for the $k$-th largest of the nonleading
+Writing $b_k(F)$ for the $k$-th largest of the nonleading
 coefficient magnitudes $|f_j|$, $j<D$,
 \[
   b_k(F)\ge|f_D|\prod_{i=k}^{L}(r_i-1),
@@ -174,12 +173,15 @@ forces some coefficient outside the excluded set to be large.  All the
 difficulty lies in that tail bound, which is Theorem~\ref{thm:tail}: it
 bounds the tail of a certificate by a product over its initial run of
 consecutive zeros, with equality only when all the zeros are consecutive.
-Corollary~\ref{cor:complex} extends the bound to complex multiples,
+
+Several consequences follow directly.  Corollary~\ref{cor:complex} extends the bound to complex multiples,
 Corollary~\ref{cor:prime} specializes to prime roots,
 Corollary~\ref{cor:infimum} sharpens the resulting asymptotic to the infimum
 over monic real multiples, and
 Corollary~\ref{cor:near} shows that for every root set here the root product
-itself comes within $O(L^2)$ of that infimum.  Section~\ref{sec:sharp}
+itself comes within $O(L^2)$ of that infimum.
+
+Section~\ref{sec:sharp} turns to sharpness.  It
 shows that the $u=1$ bound is approached at roots $(2,3)$
 (Proposition~\ref{prop:sharp23}) and the $u=1$ and $u=2$ bounds at
 $(2,3,5)$, so these bounds cannot be improved by any constant factor in
@@ -195,8 +197,8 @@ $b_1\ge|f_D|(r_1+\cdots+r_L)/2$, which neither implies nor is implied by the
 product bound.  At $r_i=2$, where \eqref{eq:mass} is empty,
 Proposition~\ref{prop:neartwo} still forces two large coefficients.
 Proposition~\ref{prop:quadratic}, proved by Jensen's formula rather than by a
-certificate, adds the bound $\Lambda(F)\ge L^2/128$ at every root set with
-$r_i\ge2$, and Corollary~\ref{cor:allroots} combines the two into
+certificate, adds the bound $\Lambda(F)\ge L^2/128$ for $L\ge8$ at every root
+set with $r_i\ge2$, and Corollary~\ref{cor:allroots} combines the two into
 $\inf_Q\Lambda(PQ)\asymp L^2+\sum_ii\log(r_i-1)$, uniformly in the root set.
 
 \section{A displaced-zero tail theorem}
@@ -585,7 +587,7 @@ The set $Z$ contains $\{1,\ldots,L-u-1\}$: a distance $t\le L-u-1$ is in
 $W\subseteq Z$ if occupied by $U$, and otherwise is among the first
 $L-u-1$ distances outside $W$.  Thus the leading run $f$ of $Z$ is at least
 $L-u-1$, and Theorem~\ref{thm:tail} bounds the tail by the product of
-$y_{(j)}/(1-y_{(j)})$ over the $f+1\ge L-u$ smallest reciprocal nodes.  Every
+$y_i/(1-y_i)$ over the $f+1\ge L-u$ smallest reciprocal nodes $y_1,\ldots,y_{f+1}$.  Every
 such factor is at most $1$, since $y_i\le1/2$ is exactly $\rho_i\ge2$, so
 discarding all but the first $L-u$ factors only weakens the bound: the tail is
 at most the product over the $L-u$ smallest reciprocal nodes.  These are
@@ -820,7 +822,10 @@ gives the sharp form of this statement.
 How close is Theorem~\ref{thm:order} to optimal?  Row $k=1$ is $b_1\ge|P(1)|$.  Already for $L=1$ this bound is approached but
 never attained: in $F=(x-r)\sum_{k\le m}c_kx^k$ with $c_m=1$, every $|f_j|\le r-1$
 would force $c_{j-1}=rc_j+f_j\ge rc_j-(r-1)$, hence $c_j\ge1$ downward from
-$c_m$ and $|f_0|=r|c_0|\ge r$.
+$c_m$ and $|f_0|=r|c_0|\ge r$.  It is approached: taking
+$c_j=1+\varepsilon-\varepsilon r^{m-j}$ with $\varepsilon=1/(r^m-1)$ gives
+$c_0=0$ and $|f_j|=(r-1)(1+\varepsilon)$ for $1\le j\le m$, so $b_1\to r-1$
+as $m\to\infty$.
 
 Nor is row $k=1$ the best bound the certificate method gives.  The consecutive certificate, which Lemma~\ref{lem:slack} uses
 when $u=0$, need not have the largest or the smallest tail at fixed nodes:
@@ -934,8 +939,8 @@ $u=0$ of \eqref{eq:order} gives only $1$.  The zero set $Z=\{2,\ldots,L\}$ used 
 optimal---at $(2,3,5)$ it gives $80/9$, against $248/17$ for
 $Z=\{1,3\}$---but it suffices to settle the boundedness question.
 
-A different choice of zero set reaches the second coefficient as well, which
-answers part of the question raised after Corollary~\ref{cor:mass}.
+A different choice of zero set reaches the second coefficient as well,
+supplying the second coefficient promised after Corollary~\ref{cor:mass}.
 
 \begin{proposition}[Two large coefficients at the bottom of the range]
 \label{prop:neartwo}
@@ -1113,10 +1118,11 @@ vanishes and the $L^2$ term is everything, so what collapsed in
 
 Three remarks on \eqref{eq:jensen}.  First, it is useful only while $4^k$ has
 not overtaken $(3/2)^{L-k+1}$, that is for $k$ up to a constant multiple of
-$L$; it says nothing about the last rows, where
-Proposition~\ref{prop:neartwo} remains the stronger statement.  Its row $k=1$
-reads $b_1\ge\bigl((3/2)^L-1\bigr)/3$, which overtakes the bound $b_1\ge L$ of
-\eqref{eq:halfsum} at $L=8$ and is exponential thereafter.  Second, the radius
+$L$; it says nothing about the last rows.  In the first rows, by contrast,
+Proposition~\ref{prop:neartwo} remains the stronger statement for moderate
+$L$: its bound $b_1\ge L$ of \eqref{eq:halfsum} is beaten only once row
+$k=1$ of \eqref{eq:jensen}, which reads $b_1\ge\bigl((3/2)^L-1\bigr)/3$,
+overtakes it, at $L=8$, and is exponential thereafter.  Second, the radius
 $\tfrac34$ is an arbitrary choice in $(\tfrac12,1)$; optimizing it and the
 range of $k$ would improve the constant $1/128$, which we have not pursued.
 
@@ -1127,8 +1133,8 @@ statement
 \]
 for every monic multiple of $(x-2)^L$, interpolating between $b_1\ge L$ and
 the trivial $b_L\ge1$.  We could not prove it and leave it as a conjecture;
-its consequence $\Lambda(F)\ge\log L!$ is in any case weaker than
-Proposition~\ref{prop:quadratic}, so the interest is in the individual rows.
+its consequence $\Lambda(F)\ge\log L!$ is in any case asymptotically weaker
+than Proposition~\ref{prop:quadratic}, so the interest is in the individual rows.
 The evidence is negative only: for each $L\le7$ we formed $6000$ multiples
 $Q\cdot(x-2)^L$ with $Q$ monic of degree at most $8$ and integer coefficients
 drawn uniformly from $[-4,4]$, computed the order statistics exactly in
