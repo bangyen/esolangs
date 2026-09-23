@@ -192,28 +192,38 @@ Research questions the proofs leave open.  Each names the first executable
 step; an answer lands in the paper it extends, and the row leaves.
 
 - **Extremality of the escaping placement.**  `T = tau*` (escaping exempt
-  coefficients extremal) is now one inequality: the step
-  `tau_k(X) <= tau_{k+1}(X \ {max X})`, which the deletion step of the
-  displaced-zero comparison already proves unless the minimizing zero set
-  straddles `max X`.  First step: prove that a placement costs no more than a
-  node.  Fix a zero set `B` and a position `g`; among the certificates on the
-  larger node set with `v_0 = 1` and `v_B = 0`, those that also kill `g` reach
-  a tail at most that of those refusing the new node.  That is one inequality
-  between two lines through a common point, with no case split and no
-  minimality hypothesis, and it implies the step outright; `5700` pairs
-  `(B, g)` hold, and it fails by up to `18.3x` once nodes pass `1/2`, so a
-  proof must use the cutoff.  Where the displaced zero goes is settled, not
-  searched: it is the half-mass point of `|H|` from the top, because
-  `|F_d|/|H_d|` is strictly decreasing -- `H - cF` already vanishes on `B`, so
-  the zero bound leaves it one further zero.  Deleting `min X`, freeing the
-  largest zero, adjoining `max X` without sliding, and a block-plus-one
-  displaced zero set are each refuted by an exact witness; deflation says
-  nothing pointwise once
-  `r_1 <= (3+sqrt 5)/2`, so every root set with `r_1 = 2` needs cancellation.
+  coefficients extremal) is still the step `tau_k(X) <= tau_{k+1}(X \ {max
+  X})`, which has no known counterexample, but the one inequality it was
+  reduced to is FALSE.  The slide (slide the smallest zero `M` of the
+  minimizer above `g` down to `g`, add the node, displace one zero to the
+  half-mass point) fails at nine nodes `1/2 - i*10^-4` with
+  `B = {1,2,3,11,12,13}`, `g = 4`, `M = 6`: every point of the slid line is
+  `1.026x` the target, `36/35` in the confluent limit; its universal form
+  fails already at `(2,3,5,7)`, `B = {3}`, `g = 2` (`1/48` vs `31/1704`).
+  Proved: the slide holds whenever the minimizer on the small node set or the
+  half-mass point of `B u {M}` sits at or below `g` (convexity along one
+  line), and for every `B = {1..k}` an initial segment, all `g > k`, `M > g`
+  (`thm:slideinitial`: smooth `F_M` against the new node,
+  `v = (1 - y_c x F_M)/(1 - y_c x)`, tail `<= y_c/(1-y_c)` times the target,
+  sign at `g` opposite to `F_M`, so the segment crosses the slid line; sharp
+  at the confluent block, ratio `(2k+3)/(2k+4)`).  Left: `B` with a gap
+  below `g` (0 failures in 24,312 instances with `B` below `g`) and `B` with
+  elements above `M` at genuine minimizers only (the counterexample's zero
+  set is never a minimizer: for `X' = {1,2,3}` it is `{1,2,3,6,8,12,17}` and
+  the step holds at ratio `0.70`).  Not a rule: the half-mass point `N'` of
+  `ell_M` fails at the confluent block `B = {1..24}`, `g = 25`, `M = 50`
+  (1.031x) although `M` is the minimizer there, while `N = M+1` meets the
+  target exactly; no fixed window for the displaced zero works either.
+  First step: extend the smoothing certificate past a gap -- the failure is
+  only that `v_b = -sum_{j<b, j notin B} F_{M,j} y_c^{b-j}` need not vanish
+  at the first `b` above the gap.  Dead: deleting `min X`, freeing the
+  largest zero, adjoining without sliding, block-plus-one zero sets, a
+  real-valued zero position, arbitrary weights with the same decay, the
+  abstract convex-curve model, pointwise deflation at
+  `r_1 <= (3+sqrt 5)/2`.
   Also open: that `tau*` is always attained by a full certificate with a
   multiplier witness.  Repeated roots beyond `(3,3)` are open too, as is the
-  case where
-  an exempt root lies below 2 and more than `u` partial sums of `P` exceed
-  `|P(1)|`, where the repaired bound need not be sharp.  See the section "The
-  infimum when the criterion fails" in
+  case where an exempt root lies below 2 and more than `u` partial sums of
+  `P` exceed `|P(1)|`, where the repaired bound need not be sharp.  See the
+  section "The infimum when the criterion fails" in
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
