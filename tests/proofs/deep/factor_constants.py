@@ -212,6 +212,16 @@ def check_grh() -> list[str]:
     assert worst <= 24.6, worst
     assert 35 / math.log(10) < 15.21
     lines.append(f"worst over the row {worst:.2f} <= 24.6; limsup 35/ln 10 = 15.20")
+
+    # A density exponent A gives theta > 1 - 1/A, hence 35A/(2 ln 10).  Both
+    # shipped constants are on this curve, which is why it can be quoted for
+    # Thorner-Zaman's explicit A = 99.
+    def from_exponent(a: float) -> float:
+        return 35 * a / (2 * math.log(10))
+
+    assert abs(from_exponent(12 / 5) - 42 / math.log(10)) < 1e-9  # Huxley
+    assert abs(from_exponent(2.0) - 35 / math.log(10)) < 1e-9  # GRH
+    lines.append(f"density exponent A = 99 gives {from_exponent(99):.1f}")
     return lines
 
 

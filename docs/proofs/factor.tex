@@ -465,6 +465,35 @@ Corollary~\ref{cor:leading}'s leading constant, $18.25$ falling to $15.21$,
 since a square-root gap bound is the case $\theta=\frac12$ of
 Lemma~\ref{lem:short} and $\frac{35}{2(1-\theta)}=35$.
 
+\begin{remark}[Removing GRH]\label{rem:unconditional}
+The ingredients for an unconditional explicit $\theta$ are in print, though we
+have not assembled them.  Thorner and Zaman~\cite[Thm.~1.2]{tz-density} prove
+the explicit log-free density estimate
+\[
+  N(\sigma,Q)\le10^{88}\bigl(10^{421}Q^{99}\bigr)^{1-\sigma},
+  \qquad Q\ge3,\quad \sigma\ge\tfrac{39}{40},
+\]
+in which $N(\sigma,Q)$ counts the zeros with $|\gamma|\le Q$ of every
+primitive $L$-function of modulus at most $Q$; taking $Q=\max(T,11)$ bounds
+the zeros of our ten characters, wastefully but validly.
+Kadiri~\cite{kadiri} gives an explicit zero-free region for Dirichlet
+$L$-functions over $3\le q\le400000$, and Remark~\ref{rem:effective} disposes
+of the exceptional zero at $q=11$.  Ingham's argument turns a density
+exponent $A$ into primes in $(x,x+x^\theta]$ for every $\theta>1-1/A$, so
+Corollary~\ref{cor:leading} would read
+\[
+  \limsup_{T\to\infty}\;\max_{t\in\{0,1\}^T}\frac{D(t)}{T\log T}
+  \le\frac{35A}{2\log10}.
+\]
+At $A=99$ this is $\theta=\frac{98}{99}$ and a constant of $752.5$, against
+$18.25$ for Huxley's ineffective $A=\frac{12}{5}$ and $15.21$ for GRH's
+$A=2$.  The constant is not the whole cost: the $10^{88}$ and $10^{421}$ put
+$x_0$ far above $10^{11}$, so Lemma~\ref{lem:computed} could not bridge to it
+and the assembled statement would be a limit superior past an astronomical
+arity rather than a ceiling at every arity, which is what
+Proposition~\ref{prop:grh} already gives.
+\end{remark}
+
 \section{Language lower bound}
 
 A language lower bound must count every integer that might encode a table.
@@ -595,6 +624,20 @@ GRH,
 \newblock \href{https://doi.org/10.1142/S1793042119500441}
 {doi:10.1142/S1793042119500441}; preprint
 \href{https://arxiv.org/abs/1606.08616}{arXiv:1606.08616}.
+
+\bibitem{kadiri}
+H.~Kadiri,
+\newblock Explicit zero-free regions for Dirichlet $L$-functions,
+\newblock \emph{Mathematika} 64 (2018), no.~2, 445--474,
+\newblock \href{https://doi.org/10.1112/S0025579318000025}
+{doi:10.1112/S0025579318000025}.
+
+\bibitem{tz-density}
+J.~Thorner and A.~Zaman,
+\newblock An explicit version of Bombieri's log-free density estimate and
+S\'ark\"ozy's theorem for shifted primes,
+\newblock preprint,
+\newblock \href{https://arxiv.org/abs/2208.11123}{arXiv:2208.11123}.
 
 \bibitem{thorner-zaman}
 J.~Thorner and A.~Zaman,
