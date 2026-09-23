@@ -102,8 +102,27 @@ ineffective 18.25, since a square-root gap is `theta = 1/2` and
 | D/(T ln T) | 16.98 | 15.31 | 14.19 | 20.46 | 24.06 | 23.27 | 22.01 | 18.75 | 15.47 | 15.20 |
 
 Through `n = 19` the sieve is stronger; the GRH ceiling peaks at 24.06 at
-`n = 22` and falls from there.  Unconditionally the threshold is still only
-effective in principle: an explicit mod-11 Hoheisel would replace GRH here.
+`n = 22` and falls from there.
+
+## Removing GRH
+
+The ingredients are in print, unassembled.  Thorner-Zaman (arXiv:2208.11123,
+Thm 1.2) give the explicit log-free density estimate
+`N(sigma, Q) <= 10**88 (10**421 Q**99)**(1 - sigma)` for `Q >= 3`,
+`sigma >= 39/40`; `Q = max(T, 11)` bounds our ten characters, wastefully.
+Kadiri (Mathematika 64 (2018) 445-474) has the explicit zero-free region over
+`3 <= q <= 400000`, and `q = 11` has no exceptional zero.  Ingham's argument
+turns a density exponent `A` into `theta > 1 - 1/A`, so
+
+    limsup D/(T ln T) <= 35 A / (2 ln 10)
+
+-- checked against both shipped constants: `A = 12/5` (Huxley) is the
+ineffective `42/ln 10 = 18.24`, `A = 2` (GRH) is `35/ln 10 = 15.20`.  At
+`A = 99` that is `theta = 98/99` and `752.4`.  The constant is not the whole
+cost: `10**88` and `10**421` put `x_0` far above `10**11`, so the sieve cannot
+bridge to it and the assembled result would be a limsup past an astronomical
+arity, not a ceiling at every arity.  The practical range would still rest on
+the sieve and GRH.
 
 The language lower bound below supplies a table on which every generator must
 spend `Omega(T log T)`, so this generated upper bound is tight in the worst
