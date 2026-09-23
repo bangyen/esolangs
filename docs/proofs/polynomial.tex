@@ -15,13 +15,12 @@
 \newtheorem{lemma}[theorem]{Lemma}
 \newtheorem{corollary}[theorem]{Corollary}
 \newtheorem{proposition}[theorem]{Proposition}
-\theoremstyle{definition}
-\newtheorem{definition}[theorem]{Definition}
 \theoremstyle{remark}
 \newtheorem{remark}[theorem]{Remark}
 
 \newcommand{\R}{\mathbb R}
 \newcommand{\Z}{\mathbb Z}
+\newcommand{\mroute}{m_{\mathrm{route}}}
 
 \title{The Worst-Case Text Complexity of the Polynomial Language}
 \author{\shortstack{Bangyen Pham\\
@@ -224,7 +223,7 @@ We call any table satisfying Lemma~\ref{lem:maximal-width}
 
 Call an instruction position \emph{routing} if both of its possible
 successors occur on reachable executions, and
-let $m_{\rm route}$ be the number of routing real-instruction positions.  For
+let $\mroute$ be the number of routing real-instruction positions.  For
 a fixed level $k$, let $D^*_k$ be the number of distinct cursors $c$ such that
 some execution performs its $k$th read at $c$ with a first-essential residual.
 
@@ -270,9 +269,9 @@ sequence from the initial cursor.  Thus every cursor counted by $D^*_k$ is
 one of the last two reads before a routing position and successor, or
 before the first routing position, so
 \begin{equation}\label{eq:basic-routing}
-  D^*_k\le 2+4m_{\rm route},
+  D^*_k\le 2+4\mroute,
   \qquad\text{and hence}\qquad
-  N^*(k)\le 4+8m_{\rm route}\qquad(k\le n-2).
+  N^*(k)\le 4+8\mroute\qquad(k\le n-2).
 \end{equation}
 
 It is not enough to count positions: repeated roots are legal.  We therefore
@@ -282,7 +281,7 @@ bound routing positions by the number of distinct root values.
 If a decoded program contains $L$ distinct real instruction-root values,
 then
 \[
-  m_{\rm route}\le 3L
+  \mroute\le 3L
   \quad\text{and hence}\quad
   N^*(k)\le 24L+4\qquad(k\le n-2).
 \]
@@ -335,15 +334,16 @@ decoded list
 \[
 [5,1],[5],[0,2],[48,2],[2],[0,2],[0,2],[0,2],[0,2],[0,1]
 \]
-has $m_{\rm route}=1$ and four distinct cursors at its fourth read, against
-the $1+2m_{\rm route}=3$ that one fixed read index per cursor would allow:
+has $\mroute=1$ and four distinct cursors at its fourth read, against
+the $1+2\mroute=3$ that one fixed read index per cursor would allow:
 its loop reads an input-dependent number of bits, so the routing-free suffix
 lands the fourth read at different offsets.  By
 Lemma~\ref{lem:essential} only the last two reads of that suffix can carry
 first-essential residuals, and here none does: the list prints the last bit
 it reads, so every residual ignores its next input or depends on it alone.  Programs that read exactly $n$
-bits satisfy the sharper $D_k\le1+2m_{\rm route}$ over all cursors, but the
-lower bound does not need it.
+bits have at most $1+2\mroute$ distinct $k$th-read cursors, counting
+all of them and not only the first-essential ones, but the lower bound
+does not need it.
 \end{remark}
 
 \section{Coefficient mass from prescribed roots}\label{sec:mass}
@@ -420,7 +420,7 @@ $h=\lfloor\log_2 n\rfloor-1$.  The levels with $n-k\le h$ contribute
 $O(\sqrt T)=O(T/n)$ states; the earlier levels form a geometric tail
 of size $O(T/2^h)=O(T/n)$.  Hence
 \[
-  S:=\sum_k s_k=O(T/\log T).
+  S\coloneqq\sum_k s_k=O(T/\log T).
 \]
 
 Label the states at every level by $0,\ldots,s_k-1$.  Enter level $k$ with
@@ -509,7 +509,7 @@ for almost all Boolean functions,
 {doi:10.1109/12.324559}.
 
 \bibitem{gps}
-C.~Gröpl, H.~J. Prömel, and A.~Srivastav,
+C.~Gr\"opl, H.~J. Pr\"omel, and A.~Srivastav,
 \newblock Ordered binary decision diagrams and the Shannon effect,
 \newblock \emph{Discrete Applied Mathematics} 142 (2004), 67--85,
 \newblock \href{https://doi.org/10.1016/j.dam.2003.02.003}
