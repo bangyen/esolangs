@@ -42,7 +42,10 @@ valid in the presence of ignored prime factors, comments, and leading zeros;
 these encodings realize only $\exp(O(D/\log D))$ behaviors.  The tree's
 constant is exact, the walk's leading constant is explicit, and a sieve of
 the classes modulo $11$ through $10^{11}$ gives a proven digit ceiling at
-every arity up to $19$.
+every arity up to $19$.  Beyond that arity the threshold is effective in
+principle, the modulus admitting no exceptional zero, and an explicit
+short-interval theorem on GRH makes it numerical: the ceiling is then
+$24.6\,T\log T$ at every arity, falling to $35/\log 10<15.21$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -273,11 +276,24 @@ accepts every $\theta>7/12$, and $\frac{35}{2}\cdot\frac{12}{5}=42$.
 \end{proof}
 
 The constant $O(1)$ above contains $x_0$, so the corollary does not say at
-which $T$ the ceiling takes hold.  An effective version would need a
-Hoheisel theorem for residues modulo $11$ with explicit $x_0$ and $\theta$;
-as far as we know, the explicit short-interval results in the literature are
-for primes without a congruence condition.  For the arities
-that can be generated in practice a computation replaces it.
+which $T$ the ceiling takes hold.  For the arities that can be generated in
+practice a computation replaces it; Section~\ref{sec:grh} covers the rest on
+GRH.  The ineffectivity is an artifact of the quotation, not of the modulus.
+
+\begin{remark}[Effectivity at a fixed modulus]\label{rem:effective}
+Lemma~\ref{lem:short} carries an ineffective $x_0$ only because it is quoted
+from a theorem uniform in $q$.  At the fixed modulus $11$ the one ineffective
+ingredient of a Hoheisel argument is Siegel's lower bound for $L(1,\chi)$ at a
+real character, and the only real character modulo $11$ is the Legendre
+symbol, odd because $11\equiv3\pmod 4$.  Its field $\mathbb Q(\sqrt{-11})$ has
+class number $1$ and two units, so the class-number formula gives
+\[
+  L(1,\chi)=\frac{2\pi h}{w\sqrt{11}}=\frac{\pi}{\sqrt{11}}=0.94722\ldots,
+\]
+which excludes an exceptional zero outright.  So $x_0$ is effective in
+principle at this modulus; what the literature does not supply is a value for
+it.  Under GRH one is available.
+\end{remark}
 
 \begin{lemma}[Computed class gaps]\label{lem:computed}
 Put $c=8.62$ and $X=10^{11}-10^4$.  For every real $0\le x\le X$ and every
@@ -324,6 +340,130 @@ of the walk is polylogarithmic rather than a power of $p_i$, so the ceiling
 tends towards $\frac{35}{2}/\log10\approx7.60$ rather than
 Corollary~\ref{cor:leading}'s $18.25$, but slowly: $\log_{10}y$ exceeds
 $\log_{10}C$ by $\log_{10}(c\log^2y)$.
+
+\section{An effective threshold on GRH}\label{sec:grh}
+
+Lemma~\ref{lem:computed} stops at $10^{11}$, so Proposition~\ref{prop:computed}
+stops at $n=19$.  The generalized Riemann hypothesis carries the walk the rest
+of the way with constants that are still explicit, because the one
+short-interval theorem for progressions that is explicit on GRH has, at
+$q=11$, a threshold five orders of magnitude \emph{below} the sieved range.
+The two therefore overlap, and no $x$ is left uncovered.
+
+\begin{lemma}[Explicit short intervals on GRH]\label{lem:grh}
+Assume GRH for $\zeta$ and for the Dirichlet $L$-functions of the characters
+modulo $11$, and put
+\[
+  h(t)=10\bigl(\tfrac12\log t+\log11+12\bigr)\sqrt t .
+\]
+Then for every $a\in\{1,\ldots,8\}$ and every $x\ge10^{11}$ there is a prime
+\[
+  p\equiv a\pmod{11},\qquad x<p\le x+2h(2x).
+\]
+\end{lemma}
+
+\begin{proof}
+Dudek, Greni\'e and Molteni~\cite[Thm.~1.1]{dgm} prove on GRH that for
+$q\ge3$, $(a,q)=1$, and the row $(\alpha,\delta,\rho,m)=(\frac12,1,12,23)$ of
+their Table~1, every
+\[
+  h\ge\varphi(q)\bigl(\alpha\log x+\delta\log q+\rho\bigr)\sqrt x,
+  \qquad x\ge(m\varphi(q)\log q)^2
+\]
+admits a prime $p\equiv a\pmod q$ with $|p-x|<h$.  At $q=11$ we have
+$\varphi(q)=10$, the displayed $h$ is theirs, and the threshold is
+$(230\log11)^2<3.05\cdot10^5$.
+
+The quantity $h(2x)/x=10\sqrt2\bigl(\frac12\log2x+\log11+12\bigr)/\sqrt x$
+decreases for $x\ge e^2$ and equals $1.23\cdot10^{-3}$ at $x=10^{11}$, so
+$h(2x)\le x$ throughout $x\ge10^{11}$.  Put $c=x+h(2x)$, so that
+$x\le c\le2x$.  Then $h(c)\le h(2x)$ because $h$ increases, whence
+$c-h(c)\ge x$.  Applying the quoted theorem at $c\ge x\ge3.05\cdot10^5$ gives
+a prime $p\equiv a\pmod{11}$ with $|p-c|<h(c)$, and therefore
+\[
+  x\le c-h(c)<p<c+h(c)\le x+2h(2x).\qedhere
+\]
+\end{proof}
+
+\begin{proposition}[Effective ceiling on GRH]\label{prop:grh}
+Assume the hypothesis of Lemma~\ref{lem:grh} and let a table's program have
+$C$ instructions.  With $c=8.62$ and $X=10^{11}-10^4$ as in
+Lemma~\ref{lem:computed}, put
+\[
+  K=\Bigl\lfloor\frac{X-37}{c\log^2X}\Bigr\rfloor=18\,083\,227 .
+\]
+For $C\le K$ use Proposition~\ref{prop:computed}.  Otherwise let
+$U\ge\sqrt{10^{11}}$ satisfy
+\[
+  \sqrt{10^{11}}+(C-K)\bigl(10\sqrt2\log U+\beta\bigr)\le U,
+  \qquad
+  \beta=10\sqrt2\bigl(\tfrac12\log2+\log11+12\bigr)=208.52\ldots
+\]
+Then $Q\le U^2$ and $D\le\lfloor2C\log_{10}U\rfloor+1$.
+\end{proposition}
+
+\begin{proof}
+Let $p_1<\cdots<p_m$ be the selected primes, $m\le C$.  The induction of
+Proposition~\ref{prop:computed} gives $p_i\le37+(i-1)c\log^2X$ for as long as
+the right side stays at or below $X$, which by the definition of $K$ covers
+$i\le K$; so $p_K\le X<10^{11}$.
+
+Put $B_0=10^{11}$ and $B_{j+1}=B_j+2h(2B_j)$.  If $p\le B_j$ then the least
+prime of any reduced class exceeding $p$ is at most $B_{j+1}$: apply
+Lemma~\ref{lem:grh} at $x=\max(p,10^{11})\le B_j$, which yields a class prime
+in $(x,x+2h(2x)]\subseteq(p,B_{j+1}]$.  Hence $p_{K+j}\le B_j$ for every
+$j\ge0$ by induction, the base being $p_K\le B_0$.
+
+Write $u_j=\sqrt{B_j}$.  From $\sqrt{a+b}\le\sqrt a+b/(2\sqrt a)$ and
+$\tfrac12\log B_j=\log u_j$,
+\[
+  u_{j+1}\le u_j+\frac{h(2B_j)}{\sqrt{B_j}}
+         = u_j+10\sqrt2\log u_j+\beta .
+\]
+So if $u_j\le U$ then $u_{j+1}\le u_j+10\sqrt2\log U+\beta$, and induction
+gives $u_j\le\sqrt{10^{11}}+j(10\sqrt2\log U+\beta)\le U$ for every
+$j\le C-K$.  Since $m-K\le C-K$, we get $Q=p_m\le B_{m-K}\le U^2$, and
+$\log N\le C\log Q\le2C\log U$.
+\end{proof}
+
+\begin{corollary}\label{cor:grh}
+On the same hypothesis the generated sources satisfy
+$D\le24.6\,T\log T$ for every $n\ge8$, and
+\[
+  \limsup_{T\to\infty}\;\max_{t\in\{0,1\}^T}\frac{D(t)}{T\log T}
+  \le\frac{35}{\log10}<15.21 .
+\]
+\end{corollary}
+
+\begin{proof}
+The fixed point of Proposition~\ref{prop:grh} has
+$U=(C-K)(10\sqrt2\log U+\beta)(1+o(1))$, so $\log U=\log C+O(\log\log C)$ and
+$D\le2C\log_{10}U$ gives, with $C\le\frac{35}{2}T+55n+25$ and
+$\log C=\log T+O(1)$, the stated limit superior; $\frac{35}{2}\cdot2=35$.
+The uniform bound is the larger of the two rules' maxima over $n\ge8$: the
+computed ceiling peaks at $24.56$ at $n=8$, and the GRH ceiling, which takes
+over at $n=20$, peaks at $24.06$ at $n=22$ and decreases from there.
+\end{proof}
+
+Because $K$ runs are spent before Lemma~\ref{lem:grh} is invoked at all, the
+GRH ceiling is weaker than the computed one wherever the latter applies, and
+the crossover is exactly the sieve's edge:
+
+\begin{center}
+\begin{tabular}{r|cccc|cccccc}
+$n$ & 13 & 16 & 19 & 20 & 22 & 25 & 30 & 60 & $10^3$ & $10^6$\\ \hline
+$D/(T\log T)$ & 16.98 & 15.31 & 14.19 & 20.46 & 24.06 & 23.27 & 22.01 & 18.75
+& 15.47 & 15.20
+\end{tabular}
+\end{center}
+
+\noindent
+The first three columns are Lemma~\ref{lem:computed}'s; the rest are
+Proposition~\ref{prop:grh}'s.  The approach to $35/\log10$ is slow because
+$\log U$ exceeds $\log C$ by $\log(10\sqrt2\log U+\beta)$.  GRH also improves
+Corollary~\ref{cor:leading}'s leading constant, $18.25$ falling to $15.21$,
+since a square-root gap bound is the case $\theta=\frac12$ of
+Lemma~\ref{lem:short} and $\frac{35}{2(1-\theta)}=35$.
 
 \section{Language lower bound}
 
@@ -445,6 +585,16 @@ B.~Pham,
 \newblock Factor,
 \newblock Esolang Wiki, 2020,
 \newblock \url{https://esolangs.org/w/index.php?title=Factor&oldid=138367}.
+
+\bibitem{dgm}
+A.~W.~Dudek, L.~Greni\'e, and G.~Molteni,
+\newblock Explicit short intervals for primes in arithmetic progressions on
+GRH,
+\newblock \emph{International Journal of Number Theory} 15 (2019), no.~4,
+825--862,
+\newblock \href{https://doi.org/10.1142/S1793042119500441}
+{doi:10.1142/S1793042119500441}; preprint
+\href{https://arxiv.org/abs/1606.08616}{arXiv:1606.08616}.
 
 \bibitem{thorner-zaman}
 J.~Thorner and A.~Zaman,

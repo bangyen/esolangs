@@ -42,9 +42,14 @@ The walk's leading constant is explicit though its threshold is not: from
 
     limsup D / (T ln T) <= 35 / (2 (1 - theta) ln 10) <= 42 / ln 10 < 18.25
 
-for every admissible `theta > 7/12`.  An effective threshold needs a mod-11
-Hoheisel theorem with explicit `x_0`; the explicit short-interval results we
-know are for primes without a congruence condition.
+for every admissible `theta > 7/12`.  That `x_0` is ineffective only because
+the quoted theorem is uniform in `q`.  At the fixed modulus 11 the sole
+ineffective ingredient is Siegel's bound for `L(1, chi)` at a real character,
+and the only real character mod 11 is the Legendre symbol, odd since
+`11 = 3 mod 4`; `Q(sqrt(-11))` has class number 1 and two units, so
+`L(1, chi) = 2 pi h / (w sqrt 11) = pi / sqrt 11 = 0.94722...`.  No
+exceptional zero, so the threshold is effective in principle -- what is
+missing is a value.
 
 For practical arities a sieve replaces it.  `scripts/factor_class_gaps.c` ran
 through `10**11` (14 minutes): every class `1..8` has a prime in
@@ -65,6 +70,40 @@ over all tables through `n = 19`:
 `tests/proofs/deep/factor_constants.py` re-checks the tree bound, the gap
 constant on a sieved prefix holding its maximum, the end window, and the
 ceiling against parity.
+
+## A value for the threshold, on GRH
+
+Dudek, Grenie and Molteni (IJNT 15 (2019) 825-862, Thm 1.1) prove on GRH that
+`h >= phi(q)(a ln x + d ln q + r) sqrt x` and `x >= (m phi(q) ln q)**2` put a
+prime `= a mod q` within `h` of `x`.  Their row `(1/2, 1, 12, 23)` at `q = 11`
+has threshold `(230 ln 11)**2 < 3.05e5` -- five orders of magnitude *below*
+the sieved `10**11`, so the two overlap and no `x` is uncovered.  Recentring
+at `c = x + h(2x)` (legal since `h(2x)/x` falls to `1.2e-3` by `10**11`) turns
+the two-sided statement one-sided:
+
+    p_(i+1) <= p_i + 2 h(2 p_i),   h(t) = 10(ln t / 2 + ln 11 + 12) sqrt t.
+
+Concavity in `u = sqrt p` gives `u_(i+1) <= u_i + 10 sqrt 2 ln u_i + 208.52`,
+so `Q = O(m**2 ln**2 m)` and `ln Q <= 2 ln m + O(ln ln m)`: the walk is
+quadratic rather than Hoheisel's `m**2.4`.  The first
+`K = floor((X - 37) / (8.62 ln**2 X)) = 18,083,227` runs are spent climbing to
+`10**11` under the sieve rule, so for `C > K` any `U >= sqrt(10**11)` with
+`sqrt(10**11) + (C - K)(10 sqrt 2 ln U + 208.52) <= U` bounds `Q <= U**2` and
+`D <= floor(2 C log10 U) + 1`.  Hence, on GRH,
+
+    D <= 24.6 T ln T for every n >= 8,   limsup D/(T ln T) <= 35 / ln 10 < 15.21
+
+-- an explicit ceiling at every arity, and a better constant than the
+ineffective 18.25, since a square-root gap is `theta = 1/2` and
+`35/(2(1 - theta)) = 35`.  The two rules cross exactly at the sieve's edge:
+
+| n | 13 | 16 | 19 | 20 | 22 | 25 | 30 | 60 | 10**3 | 10**6 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| D/(T ln T) | 16.98 | 15.31 | 14.19 | 20.46 | 24.06 | 23.27 | 22.01 | 18.75 | 15.47 | 15.20 |
+
+Through `n = 19` the sieve is stronger; the GRH ceiling peaks at 24.06 at
+`n = 22` and falls from there.  Unconditionally the threshold is still only
+effective in principle: an explicit mod-11 Hoheisel would replace GRH here.
 
 The language lower bound below supplies a table on which every generator must
 spend `Omega(T log T)`, so this generated upper bound is tight in the worst
