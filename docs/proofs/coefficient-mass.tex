@@ -181,7 +181,10 @@ general.  They are not sharp at every root set, however:
 Proposition~\ref{prop:nonsharp} evaluates the $u=1$ infimum at roots
 $(\tfrac52,3,\tfrac72)$ as $65/12$, above the value $5$ that
 \eqref{eq:order} gives, and obtains both the improved lower bound and the
-matching family from the same certificate machinery.
+matching family from the same certificate machinery.  Nor is the loss
+bounded: Proposition~\ref{prop:unbounded} exhibits distinct roots at which
+the best certificate bound for $b_1$ exceeds $|P(1)|$ by a factor of order
+$L$.
 
 \section{A displaced-zero tail theorem}
 
@@ -823,7 +826,67 @@ $|P(1)|$, the ratios
       & \tfrac{71}{62} & \tfrac{39799}{21337}
   \end{array}
 \]
-all below $2$.  Whether the ratio is bounded in $L$ we do not know.
+all below $2$.  These minima were computed in exact rational arithmetic, over
+all $Z$ of the required size contained in $\{1,\ldots,R\}$ with $R=14$ for
+$L=2$, $R=11$ for $L=3$ and $R=10$ for $L=4$; in each case the minimizing
+$Z$ lies well inside that range and does not change when $R$ is enlarged,
+the tails increasing again for large $\max Z$.
+
+The ratios above stay below $2$, but that is a feature of these small root
+sets and not a general phenomenon.
+
+\begin{proposition}[The row $k=1$ can be loose by an arbitrary factor]
+\label{prop:unbounded}
+Let $2\le r_1<\cdots<r_L$, put $B=\prod_{i=1}^L(r_i-1)$ and
+$S=\sum_{i=1}^Lr_i$.  Then every monic multiple $F$ of $\prod_i(x-r_i)$
+satisfies
+\[
+  b_1(F)\ \ge\ \frac{SB}{B+1},
+\]
+which exceeds the value $B=|P(1)|$ given by \eqref{eq:order} at $u=0$ by the
+factor $S/(B+1)$.  For $r_i=2+iL^{-3}$, which are distinct and at least $2$,
+this factor is $\sim L$.  So the ratio between the best certificate bound and
+$|P(1)|$ is unbounded in $L$, already for distinct roots.
+\end{proposition}
+
+\begin{proof}
+Take $Z=\{2,\ldots,L\}$, of size $L-1$, and let $w$ be the certificate on the
+nodes $y_i=r_i^{-1}$, so $w_0=1$ and $w_2=\cdots=w_L=0$.  Write
+$W(t)=\sum_{d\ge0}w_dt^d=N(t)/D(t)$ with $D(t)=\prod_i(1-y_it)$ and
+$\deg N\le L-1$.  Then $N(t)-(1+w_1t)D(t)$ has degree at most $L+1$ and is
+divisible by $t^{L+1}$, hence equals $\kappa t^{L+1}$, so
+\[
+  W(t)=1+w_1t+\frac{\kappa t^{L+1}}{D(t)} .
+\]
+The coefficient of $t^L$ in $N$ vanishes, which reads
+\[
+  (-1)^Le_L(y)+w_1(-1)^{L-1}e_{L-1}(y)=0,
+  \qquad\text{while}\qquad
+  e_{L-1}(y)=e_L(y)\sum_{i}y_i^{-1}=e_L(y)\,S,
+\]
+so that $w_1=1/S$.  Then
+$\kappa=-w_1[t^L]D(t)=(-1)^{L+1}e_L(y)/S$, and $D(t)=e_L(y)\prod_i(r_i-t)$,
+so the last term is $(-1)^{L+1}t^{L+1}/\bigl(S\prod_i(r_i-t)\bigr)$.
+Expanding $1/D(t)=\sum_{j\ge0}h_j(y)t^j$ gives
+$w_{L+1+j}=(-1)^{L+1}e_L(y)h_j(y)/S$, which is one-signed, so
+\[
+  \Tail(w)=w_1+\frac{e_L(y)}S\sum_{j\ge0}h_j(y)
+  =\frac1S+\frac1S\prod_{i}\frac{y_i}{1-y_i}
+  =\frac{1+B^{-1}}S .
+\]
+The dual-certificate identity in the proof of Lemma~\ref{lem:slack}, applied
+with $U=\varnothing$ and this $w$, gives $b_1(F)\ge1/\Tail(w)=SB/(B+1)$.
+Finally, for $r_i=2+iL^{-3}$ one has
+$\log B=\sum_i\log(1+iL^{-3})=O(L^{-1})$, so $B\to1$, while
+$S=2L+O(L^{-1})$; hence $S/(B+1)\sim L$.
+\end{proof}
+
+At those roots \eqref{eq:order} gives $b_1\ge B\to1$, which is nearly vacuous,
+while the certificate above gives $b_1\gtrsim L$: the product bound collapses
+as the roots approach $2$, but the number of roots still forces a large
+coefficient.  The zero set $Z=\{2,\ldots,L\}$ used here is not always
+optimal---at $(2,3,5)$ it gives $80/9$, against $248/17$ for
+$Z=\{1,3\}$---but it suffices to settle the boundedness question.
 
 What Theorem~\ref{thm:tail} buys is a bound in closed product form that is
 uniform in the excluded set, and that is what the rows $k\ge2$ need: for
@@ -836,7 +899,7 @@ no closed form.  Proposition~\ref{prop:nonsharp} below carries out this
 optimization for a single root set and improves \eqref{eq:order} there, which
 shows that the rows $k\ge2$ are not sharp in general.
 
-The rows $k\ge2$, by contrast, can be sharp.
+They can, however, be sharp.
 
 \begin{proposition}[The bound for $b_2$ at roots $(2,3)$ is an infimum]
 \label{prop:sharp23}
@@ -923,7 +986,10 @@ infimum is not attained.
 The nodes are $\rho=(\tfrac72,3,\tfrac52)$ and
 $y=(\tfrac27,\tfrac13,\tfrac25)$, with $c=3$ and $y_c=\tfrac25\le\tfrac12$.
 
-\emph{Lower bound.}  Let $F$ be a monic multiple of $P$ of degree $D$ and let
+\emph{Lower bound.}  This is the optimization described above: the excluded
+set $U$ is a single position, and we place the one free zero differently
+according to where that position sits, then take the worst case.  Let $F$ be
+a monic multiple of $P$ of degree $D$ and let
 $j<D$ be a position with $|f_j|=b_1(F)$; put $z=D-j\ge1$.  For any
 certificate $w$ on these nodes with $w_0=1$ and $w_z=0$, the identity in the
 proof of Lemma~\ref{lem:slack}, applied with $U=\{j\}$, gives
