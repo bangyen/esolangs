@@ -35,21 +35,23 @@ Fix real roots $2\le r_1\le\cdots\le r_L$, repetitions allowed.  For every
 nonzero real polynomial $F=\sum_jf_jx^j$ of degree $D$ divisible by
 $\prod_{i=1}^L(x-r_i)$, the $(u+1)$-st largest nonleading coefficient
 magnitude is at least $|f_D|\prod_{i=u+1}^L(r_i-1)$, uniformly in the
-degree.  The bound is sharp at $(2,3)$ and $(2,3,5)$, and not sharp at
-$(\tfrac52,3,\tfrac72)$, where the $u=1$ infimum is $65/12$ against $5$;
+degree.  The rows $u\ge1$ are sharp at $(2,3)$ and $(2,3,5)$, and not sharp
+at $(\tfrac52,3,\tfrac72)$, where the $u=1$ infimum is $65/12$ against $5$;
 both sides come from the same certificate.  Summing the rows bounds the
 logarithmic coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$ of a monic
 multiple below by $\sum_ii\log(r_i-1)$, sharp in order at the first $L$
 primes but empty as the roots approach $2$; Jensen's formula supplies a term
 of order $L^2$ there, and together the two give
 $\inf\Lambda\asymp L^2+\sum_ii\log(r_i-1)$ over monic multiples, at every
-root set.  The key tool compares the $\ell^1$ tails of normalized
-exponential sums with prescribed positive-integer zeros: deleting the
-largest zero together with the largest node strictly increases the tail,
-with equality only when the zeros are consecutive.  As a by-product, the
-same-sign hypothesis under which Dubickas and Jankauskas evaluate the
-consecutive case holds at all positive nodes, making their bound
-$H(P)\ge|P(1)|$ unconditional.
+root set with $L\ge2$.  The key tool compares the $\ell^1$ tails of
+normalized exponential sums with prescribed positive-integer zeros: deleting
+the largest zero together with the largest node strictly increases the tail,
+and iterating gives a product bound over the initial run of consecutive
+zeros, with equality only when all the zeros are consecutive.  As a
+by-product, the same-sign hypothesis under which Dubickas and Jankauskas
+evaluate the consecutive case holds at all distinct positive nodes, making
+their bound $H(P)\ge|P(1)|$ unconditional for distinct real roots greater
+than one.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -102,9 +104,10 @@ $|f_D|\ge1$.  This is the normalization already used for the reduced
 height~\cite{dj,dubickas}, and for integer multiples it costs nothing.
 
 It is worth saying what is gained over the standard route through the Mahler
-measure $M$.  A monic multiple $F$ of $\prod_i(x-r_i)$ has
-$M(F)\ge\prod_ir_i$, while Landau's inequality
-$M(F)\le\lVert F\rVert_2\le\sqrt{D+1}\,H(F)$ bounds the height from below, so
+measure $\mathcal M$.  A monic multiple $F$ of $\prod_i(x-r_i)$ has
+$\mathcal M(F)\ge\prod_ir_i$, while Landau's inequality
+$\mathcal M(F)\le\lVert F\rVert_2\le\sqrt{D+1}\,H(F)$ bounds the height from
+below, so
 \[
   \Lambda(F)\ \ge\ \log H(F)\ \ge\ \sum_{i=1}^L\log r_i-\tfrac12\log(D+1).
 \]
@@ -120,16 +123,17 @@ set $J$ a normalized determinant sequence $S_n(J)$ with $S_0(J)=1$ and
 $S_k(J)=0$ for $k\in J$~\cite{dj}.  This sequence is the exponential sum $u$
 studied below, and the reciprocal of its infinite tail is their dual lower
 bound for the reduced height, their inequality~(8).  They evaluate the
-consecutive case $J=\{1,\ldots,c-1\}$ explicitly, on the condition that the
-$S_n$ with $n\ge d$ all have the same sign: their $H(P)\ge|P(1)|$ holds
+consecutive case $J=\{1,\ldots,c-1\}$ explicitly, on the condition that all
+$S_n$ with $n$ large have the same sign: their $H(P)\ge|P(1)|$ holds
 ``provided that all $S_n$ \ldots have the same sign''~\cite[p.~333]{dj}.
 That condition stays a hypothesis through their
 Corollary~7~\cite[Section~2]{dj} and is checked only case by
 case~\cite[Sections~3--4]{dj}.  Our consecutive base case,
-Lemma~\ref{lem:consecutive}, proves it for all positive real nodes by reading
-the sign off the complete homogeneous symmetric polynomials $h_j$.  Their
-bound $H(P)\ge|P(1)|$ is then the $k=1$ row of Theorem~\ref{thm:order},
-made unconditional by Lemma~\ref{lem:consecutive}; the rows $k\ge2$ are new.
+Lemma~\ref{lem:consecutive}, proves it for all distinct positive real nodes
+by reading the sign off the complete homogeneous symmetric polynomials $h_j$.
+Their bound $H(P)\ge|P(1)|$ is then the $k=1$ row of
+Theorem~\ref{thm:order}, made unconditional by Lemma~\ref{lem:consecutive}
+for distinct real roots greater than one; the rows $k\ge2$ are new.
 
 Their inequality~(8) already allows a prescribed set of positions to be
 excluded from the certificate.  What is new here is a tail estimate for
@@ -139,8 +143,8 @@ largest reciprocal node strictly increases the tail, even though moving a
 zero at fixed nodes can push the tail either way.  Applying the estimate
 repeatedly over the excluded positions turns one certificate into lower
 bounds for successive coefficient order statistics, where earlier
-certificates controlled only a single height.  The comparison is strict,
-with equality exactly for the consecutive zero set.  Work on sparse
+certificates controlled only a single height.  The deletion comparison is strict, and
+the resulting product bound has equality exactly for the consecutive zero set.  Work on sparse
 multiples looks for multiples of prescribed degree, sparsity and
 height~\cite{grt}; our bound is uniform in the degree and in any further
 roots of the multiple.
@@ -160,8 +164,8 @@ coefficient magnitudes $|f_j|$, $j<D$,
 \]
 The idea is simple to state.  To bound the $(u+1)$-st largest coefficient
 magnitude, exclude any $u$ coefficient positions, and build a normalized
-exponential sum in the reciprocal roots that vanishes at those positions and
-at enough initial ones.  A bound on the remaining tail of this sum then
+exponential sum in the reciprocal roots, the certificate, that vanishes at
+those positions and at enough initial ones.  A bound on the remaining tail of this sum then
 forces some coefficient outside the excluded set to be large.  All the
 difficulty lies in that tail bound, which is Theorem~\ref{thm:tail}: it
 bounds the tail of a certificate by a product over its initial run of
@@ -172,7 +176,8 @@ Corollary~\ref{cor:prime} specializes to prime roots,
 Corollary~\ref{cor:infimum} sharpens the resulting asymptotic to the infimum
 over monic real multiples, and
 Corollary~\ref{cor:near} shows that for every root set here the root product
-itself comes within $O(L^2)$ of that infimum.
+itself comes within $O(L^2)$ of the corresponding infimum over monic
+multiples.
 
 Section~\ref{sec:sharp} turns to sharpness.  It
 shows that the $u=1$ bound is approached at roots $(2,3)$
@@ -190,9 +195,10 @@ $b_1\ge|f_D|(r_1+\cdots+r_L)/2$, which neither implies nor is implied by the
 product bound.  At $r_i=2$, where \eqref{eq:mass} is empty,
 Proposition~\ref{prop:neartwo} still forces two large coefficients.
 Proposition~\ref{prop:quadratic}, proved by Jensen's formula rather than by a
-certificate, adds the bound $\Lambda(F)\ge L^2/80$ for $L\ge8$ at every root
-set with $r_i\ge2$, and Corollary~\ref{cor:allroots} combines the two into
-$\inf_Q\Lambda(PQ)\asymp L^2+\sum_ii\log(r_i-1)$, uniformly in the root set.
+certificate, adds the bound $\Lambda(F)\ge L^2/80$ for monic multiples when
+$L\ge8$, at every root set with $r_i\ge2$, and Corollary~\ref{cor:allroots}
+combines the two into $\inf_Q\Lambda(PQ)\asymp L^2+\sum_ii\log(r_i-1)$,
+uniformly in the root set once $L\ge2$.
 
 \section{A displaced-zero tail theorem}
 
@@ -218,12 +224,12 @@ with distinct $\lambda_i$, factor out one exponential, and induct on $r$ by
 Rolle's theorem, the derivative being a sum on one fewer
 node~\cite[Part~Five, Ch.~1]{polya-szego}; equivalently, the $e^{\lambda d}$
 form a Chebyshev system~\cite{karlin}.
-Consequently an $r$-node sum with $r-1$
-prescribed real zeros has exactly those zeros, each is simple, and the sum
+Consequently a nonzero $r$-node sum with $r-1$
+distinct prescribed real zeros has exactly those zeros, each is simple, and the sum
 changes sign at each of them.
 
 \begin{lemma}[Consecutive zero set]\label{lem:consecutive}
-Let $0<y_1<\cdots<y_c<1$; no cutoff is imposed on the nodes.  Let $u$ be the
+Let $0<y_1<\cdots<y_c<1$; no cutoff $y_c\le1/2$ is imposed.  Let $u$ be the
 exponential sum on them with $u_0=1$ and $u_z=0$ for $z\in\{1,\ldots,c-1\}$;
 it exists and is unique by the Vandermonde argument above, which needs only
 distinct positive nodes.  Then
@@ -261,7 +267,8 @@ formula for $u_d$ follows, and summing the one-signed terms gives
 \begin{theorem}[Displaced-zero comparison]\label{thm:tail}
 Let $\rho_1>\cdots>\rho_c\ge2$, $y_i=\rho_i^{-1}$, $Z\subset\N_{>0}$ with
 $|Z|=c-1$, and $u$ be as above, and let
-$f=\max\{0\le k\le c-1:\{1,\ldots,k\}\subseteq Z\}$.  Then
+$f=\max\{0\le k\le c-1:\{1,\ldots,k\}\subseteq Z\}$, the leading run of
+$Z$; the zeros of $Z$ outside $\{1,\ldots,f\}$ are called displaced.  Then
 \begin{equation}\label{eq:tail}
   \Tail(u)=\sum_{d\ge1}|u_d|
   \le \prod_{i=1}^{f+1}\frac{y_i}{1-y_i}
@@ -427,7 +434,8 @@ $\{0\}\cup Z'$ and $F$ exactly $Z'$; below $z$ the sum $u$ has the same simple
 zeros $Z'$ and no others, and at $z$ it has one additional simple zero.  Write
 $\eta=\sgn(F_z)$ and $\mu=|F_z|$, so $u=F-\eta\mu G$.  Since $F$ and $G$ flip
 at exactly the same points of $Z'$, their relative sign
-$\sgn(F_d/G_d)=\eta$ is constant on $(0,\infty)\setminus Z'$; thus $F_d=\eta\sgn(G_d)|F_d|$ and
+$\sgn(F_d/G_d)$ is constant on $(0,\infty)\setminus Z'$, and evaluating at
+$d=z$, where $G_z=1$, shows it equals $\eta$; thus $F_d=\eta\sgn(G_d)|F_d|$ and
 $G_d=\sgn(G_d)|G_d|$ for $d>0$, whence
 \[
   u_d=\eta\sgn(G_d)\bigl(|F_d|-\mu|G_d|\bigr),
@@ -480,14 +488,14 @@ $d>m$, the latter because $G_z=1$ with $z>m$, so Lemma~\ref{lem:interlace}
 applies and gives $\Delta_d\ge0$ for $d\ge m+1$, that is,
 $E_d/\widehat F_d\le\sigma$ for $d\ge m+1$.  Moreover the $c$-node sum
 \[
-  W_d=\widehat F_{m+1}G_d-G_{m+1}\widehat F_d
+  \Psi_d=\widehat F_{m+1}G_d-G_{m+1}\widehat F_d
 \]
 vanishes on $Z'\cup\{m+1\}$, which is $c-1$ points.  It is not identically
 zero, since its $y_c$-coefficient $\widehat F_{m+1}a_c$ is nonzero (shown
-next), so by the zero bound those are its only zeros and $W$ has constant
+next), so by the zero bound those are its only zeros and $\Psi$ has constant
 sign beyond $m+1$.  That sign is
 positive: writing $G_d=\sum_ia_iy_i^d$, the largest node $y_c$ occurs only in
-$G$, so $W_d\sim\widehat F_{m+1}a_cy_c^{\,d}$ with $\widehat F_{m+1}>0$, and
+$G$, so $\Psi_d\sim\widehat F_{m+1}a_cy_c^{\,d}$ with $\widehat F_{m+1}>0$, and
 $a_c>0$ because $G_d>0$ for $d>m$ forces $a_c\ge0$, while $a_c=0$ would make
 $G$ a sum on the $c-1$ nodes $y_1,\ldots,y_{c-1}$ with the $c-1$ zeros
 $\{0\}\cup Z'$, hence identically zero.  So $G_d/\widehat F_d>\sigma$ for
@@ -529,7 +537,7 @@ in the base case.
 The restriction $\rho_i\ge2$ matters.  For $c=2$,
 $y_1=1/10$, $y_2=4/5$, and $Z=\{2\}$, the normalized coefficients are
 $a_1=64/63$ and $a_2=-1/63$, so
-$\Tail(u)=364/2835>1/9=y_1/(1-y_1)$, so \eqref{eq:tail} fails once a node
+$\Tail(u)=52/405>1/9=y_1/(1-y_1)$, so \eqref{eq:tail} fails once a node
 passes the cutoff.
 
 \section{Coefficient order statistics}
@@ -745,12 +753,13 @@ Then
 Corollary~\ref{cor:mass} with $r_i=p_i$ and $|f_D|=1$ gives, for every monic
 multiple $F$ of $P_L$,
 \[
-  \Lambda(F)\ge\sum_{i\le L}i\log(p_i-1)
+  \Lambda(F)\ge\sum_{2\le i\le L}i\log(p_i-1)
   =\frac12L^2\log L+\frac12L^2\log\log L+O(L^2),
 \]
-since $i\log i<p_i<i(\log i+\log\log i)$ for $i\ge6$~\cite{rosser-schoenfeld}
-gives $\log(p_i-1)=\log i+\log\log i+O(1)$, and
-$\sum_{i\le L}i\log i=\frac12L^2\log L+O(L^2)$ and
+the $i=1$ term being zero, since
+$i\log i<p_i<i(\log i+\log\log i)$ for $i\ge6$~\cite{rosser-schoenfeld}
+gives $\log(p_i-1)=\log i+\log\log i+O(1)$ for $i\ge2$, and
+$\sum_{2\le i\le L}i\log i=\frac12L^2\log L+O(L^2)$ and
 $\sum_{2\le i\le L}i\log\log i=\frac12L^2\log\log L+o(L^2)$.  The matching upper
 bound is the one for $P_L$ from Corollary~\ref{cor:prime},
 \[
@@ -953,9 +962,9 @@ first bound is \eqref{eq:halfsum}, whose right side $S/2$ tends to $L$.
 For the second, let $z$ be the backward distance of a position attaining
 $b_1(F)$ and apply the identity of Lemma~\ref{lem:slack} with $U$ that single
 position: any certificate $w$ with $w_z=0$ gives $1\le b_2(F)\Tail(w)$.  Write
-$E_k=e_k(r_1,\ldots,r_L)$, so $E_1=S$ and $E_L=\prod_ir_i$, and recall
-$e_L(y)=1/E_L$, $e_{L-1}(y)=S/E_L$, $e_{L-2}(y)=E_2/E_L$ and
-$\sum_{j\ge0}h_j(y)=\prod_i(1-y_i)^{-1}=E_L/B$.
+$e_k(r)=e_k(r_1,\ldots,r_L)$, so $e_1(r)=S$ and $e_L(r)=\prod_ir_i$, and
+recall $e_L(y)=1/e_L(r)$, $e_{L-1}(y)=S/e_L(r)$, $e_{L-2}(y)=e_2(r)/e_L(r)$
+and $\sum_{j\ge0}h_j(y)=\prod_i(1-y_i)^{-1}=e_L(r)/B$.
 
 \emph{Case $z=1$.}  Take $Z=\{1,\ldots,L\}\setminus\{2\}$, so $w_0=1$,
 $w_1=w_3=\cdots=w_L=0$ and $w_2$ is free.  As in
@@ -977,10 +986,10 @@ of degree $j$, while $e_{L-1}(y)=\sum_ie_L(y)/y_i\ge e_L(y)/y_L$.  Summing,
 \[
   \Tail(w)=|w_2|\Bigl(1+\Bigl[\sum_{j\ge0}h_j(y)\Bigr]
                        \bigl(e_{L-1}(y)-e_L(y)\bigr)\Bigr)
-  =\frac1{E_2}\Bigl(1+\frac{S-1}B\Bigr)
-  =\frac{B+S-1}{E_2B} .
+  =\frac1{e_2(r)}\Bigl(1+\frac{S-1}B\Bigr)
+  =\frac{B+S-1}{e_2(r)\,B} .
 \]
-As every $r_i\to2$ we have $B\to1$, $S\to2L$ and $E_2\to2L(L-1)$, so
+As every $r_i\to2$ we have $B\to1$, $S\to2L$ and $e_2(r)\to2L(L-1)$, so
 $\Tail(w)\to1/(L-1)$.
 
 \emph{Case $2\le z\le L$.}  Take $Z=\{2,\ldots,L\}$.  By
@@ -1212,15 +1221,15 @@ limit system has determinant $1/4$ and solution $(a,t,\gamma)=(7,8,-3)$, so
 $(a_D,t_D,\gamma_D)\to(7,8,-3)$.  Hence $|c_D|\sim3\cdot2^{D-1}$ and
 $a_D<t_D$ for large $D$, and the nonleading magnitudes $a_D$, $t_D$ ($D-2$
 times) and $|c_D|$ give $b_2(F_D)=t_D\to8$.  Likewise, with
-$(E_D,E_D')=3^{-D}(e_D,e_D')$, dividing $G_D(r)=0$ by $r^D$ for $r=3,5$ and by
+$(\hat e_D,\hat e_D')=3^{-D}(e_D,e_D')$, dividing $G_D(r)=0$ by $r^D$ for $r=3,5$ and by
 $3^D$ for $r=2$ gives
 \begin{gather*}
-  1-s_D\frac{1-r^{2-D}}{r-1}+(rE_D+E_D')\Bigl(\frac3r\Bigr)^D=0
+  1-s_D\frac{1-r^{2-D}}{r-1}+(r\hat e_D+\hat e_D')\Bigl(\frac3r\Bigr)^D=0
   \qquad(r=3,5),\\
-  \Bigl(\frac23\Bigr)^D\bigl(1-s_D(1-2^{2-D})\bigr)+2E_D+E_D'=0,
+  \Bigl(\frac23\Bigr)^D\bigl(1-s_D(1-2^{2-D})\bigr)+2\hat e_D+\hat e_D'=0,
 \end{gather*}
-with limit system $1-s/4=0$, $1-s/2+3E+E'=0$, $2E+E'=0$, of determinant
-$-1/4$ and solution $(s,E,E')=(4,1,-2)$.  So $s_D\to4$ while $|e_D|\sim3^D$
+with limit system $1-s/4=0$, $1-s/2+3\hat e+\hat e'=0$, $2\hat e+\hat e'=0$,
+of determinant $-1/4$ and solution $(s,\hat e,\hat e')=(4,1,-2)$.  So $s_D\to4$ while $|e_D|\sim3^D$
 and $|e_D'|\sim2\cdot3^D$, and $b_3(G_D)=s_D\to4$.  These are the values
 \eqref{eq:order} gives at $u=1$ and $u=2$, so both bounds are infima at
 $(2,3,5)$.
@@ -1340,8 +1349,8 @@ A.~Schinzel,
 A.~Schinzel,
 \newblock The reduced length of a polynomial with complex coefficients,
 \newblock \emph{Acta Arithmetica} 133 (2008), 73--81,
-\newblock \href{https://doi.org/10.4064/AA133-1-5}
-{doi:10.4064/AA133-1-5}.
+\newblock \href{https://doi.org/10.4064/aa133-1-5}
+{doi:10.4064/aa133-1-5}.
 
 \bibitem{bombieri-vaaler}
 E.~Bombieri and J.~D. Vaaler,
