@@ -219,21 +219,25 @@ step; an answer lands in the paper it extends, and the row leaves.
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
 
 - **Factor's leading constant.**  Both sides are numbers and they bracket
-  `C_F(T)/(T ln T)` between `1/(3 ln 10) = 0.14476` and `2.532/ln 10 =
-  1.0997` on GRH, a ratio of `15.2` (Sections 3 and 5 of
-  [factor](proofs/factor.tex)).  The decision tree's `35T/2` is not the
-  language's price: a chained tape lookup emits `2.532T`, closing the
-  construction factor from `52.5` to `7.6`, with the remaining `2` the
-  square-root walk.  Of the `7.6`, the `T/2` spent marking set entries is the
-  largest single piece -- the data pass is already within `2/255` of one move
-  per cell, so a leaner construction has to stop spending a character per set
-  entry, not per cell.  First step: pack several entries per cell, which
-  costs `+` runs to build and so needs a decompression loop that earns them
-  back.  Note the lookup's walk is quadratic where the tree is linear; that
-  is admissible because `C_F(T)` minimizes over all programs, and the shipped
-  generator keeps the tree.  On the other side, counting spellings is capped
-  at `0.2895` on GRH, so moving the floor past that needs a semantic argument
-  -- distinct programs that compute the same function -- not a better count.
+  `C_F(T)/(T ln T)` between `1/(3 ln 10) = 0.14476` and `1.516/ln 10 =
+  0.6583` on GRH, a ratio of `9.1` (Sections 3 and 5 of
+  [factor](proofs/factor.tex)).  The decision tree's `35T/2` was never the
+  language's price: a chained tape lookup emits `2.532T`, and letting one
+  walk cell serve a group of `k` entries -- the last `log2 k` bits resolved
+  by a tree emitted once, not per group -- brings it to `1.516T`.  The
+  construction factor is down from `52.5` to `4.55`; the other `2` is the
+  square-root walk.  Of the `1.516`, one unit is the move onto each entry's
+  cell and a half is the mark on each set entry, and nothing else reaches a
+  fiftieth.  First step: store several entries per cell, which buys span at
+  the price of a unary write -- with `-` reaching 255 in one character the
+  balance is two or three entries a cell, worth about `1.0T`, but selecting
+  within a cell needs arithmetic rather than the static branch the group
+  tree uses.  Note the lookup's walk is quadratic where the tree is linear;
+  that is admissible because `C_F(T)` minimizes over all programs, and the
+  shipped generator keeps the tree.  On the other side, counting spellings
+  is capped at `0.2895` on GRH, so moving the floor past that needs a
+  semantic argument -- distinct programs that compute the same function --
+  not a better count.
 
 - **Unconditional Factor threshold.**  The digit ceiling is proven through
   `n = 19` by a sieve to `10**11`, and explicit at every arity on GRH
