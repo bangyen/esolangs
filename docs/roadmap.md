@@ -195,16 +195,20 @@ step; an answer lands in the paper it extends, and the row leaves.
   coefficients extremal) is now one inequality: the step
   `tau_k(X) <= tau_{k+1}(X \ {max X})`, which the deletion step of the
   displaced-zero comparison already proves unless the minimizing zero set
-  straddles `max X`.  First step: prove the slide-down rule that covers the
-  straddling case -- replace the smallest zero above `max X` by `max X`, then
-  displace one zero -- which holds at all `1017` straddling instances among the
-  `47638` tested and at `674` more.  Where the displaced zero goes is no longer
-  a search: adding a node and a zero moves the certificate along a line whose
-  tail is a weighted sum of distances, so the zero lands on a weighted median,
-  and on that line a displaced zero pays for the added node at any nodes in
-  `(0,1)`, with no `1/2` cutoff.  Deleting `min X`, freeing the largest zero,
-  adjoining `max X` without sliding, and a block-plus-one-displaced zero set
-  are each refuted by an exact witness; pointwise deflation says nothing once
+  straddles `max X`.  First step: prove that a placement costs no more than a
+  node.  Fix a zero set `B` and a position `g`; among the certificates on the
+  larger node set with `v_0 = 1` and `v_B = 0`, those that also kill `g` reach
+  a tail at most that of those refusing the new node.  That is one inequality
+  between two lines through a common point, with no case split and no
+  minimality hypothesis, and it implies the step outright; `5700` pairs
+  `(B, g)` hold, and it fails by up to `18.3x` once nodes pass `1/2`, so a
+  proof must use the cutoff.  Where the displaced zero goes is settled, not
+  searched: it is the half-mass point of `|H|` from the top, because
+  `|F_d|/|H_d|` is strictly decreasing -- `H - cF` already vanishes on `B`, so
+  the zero bound leaves it one further zero.  Deleting `min X`, freeing the
+  largest zero, adjoining `max X` without sliding, and a block-plus-one
+  displaced zero set are each refuted by an exact witness; deflation says
+  nothing pointwise once
   `r_1 <= (3+sqrt 5)/2`, so every root set with `r_1 = 2` needs cancellation.
   Also open: that `tau*` is always attained by a full certificate with a
   multiplier witness.  Repeated roots beyond `(3,3)` are open too, as is the
