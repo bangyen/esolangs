@@ -1577,10 +1577,28 @@ relative slack $0.063$, while every one of the $150$ chord failures at
 $L=10$ violates it.  Since Proposition~\ref{prop:shift} supplies that
 hypothesis and the chord gives $\Tail(w)\le\Tail(B_0\cup A)$, which is
 \eqref{eq:shift},
-a proof of this conditional chord would close the case; the hypothesis is
-equivalent to the mass statement $\sum_{d\le M}|H_d|\ge\sum_{d>M}|H_d|$
-for the $(L-1)$-node sum $H$ vanishing on $\{0\}\cup C$.  The
-hypothesis-free form $\Tail(B_0\cup A)\ge\min(\Tail(F_1),\Tail(w))$ also
+a proof of this conditional chord would close the case.  Both $F_M$ and
+$F_1$ take the value $1$ at $0$ and vanish on $C$, so their difference is
+a multiple of the single $(L-1)$-node sum $H$ vanishing on $\{0\}\cup C$:
+$F_M-F_1=\alpha H$.  In every instance tried the tails then obey the gap
+identity
+\begin{equation}\label{eq:gapmass}
+  \Tail(F_1)-\Tail(F_M)=|\alpha|\Bigl(\sum_{d\le M}|H_d|-\sum_{d>M}|H_d|\Bigr),
+\end{equation}
+so the hypothesis is exactly the mass statement
+$\sum_{d\le M}|H_d|\ge\sum_{d>M}|H_d|$, and the conditional chord reads
+$|\alpha|(\sum_{d\le M}|H_d|-\sum_{d>M}|H_d|)\le(1-\lambda)(\Tail(F_1)-\Tail(w))$.
+Two routes to it are closed.  First, $\Tail$ is convex along the segment
+$[F_1,w]$, with defect $D=\lambda\Tail(F_1)+(1-\lambda)\Tail(w)-\Tail(p)$
+at $p$, and the directional bound $\Tail(F_M)-\Tail(p)\ge DD$ along $G$
+does hold; but $DD\ge D$ fails, in $1089$ of the $1600$ instances at $L=9$
+and in $64$ of those under the hypothesis, so no supporting-hyperplane
+argument can give the chord.  Second, no hypothesis-free lower bound of
+$(1-\lambda)(\Tail(F_1)-\Tail(w))$ by $|\alpha|\sum_{d\le M}|H_d|$ can
+exist: with \eqref{eq:gapmass} it would give the chord unconditionally,
+which the failures above refute.  The far mass $\sum_{d>M}|H_d|$ has to
+enter.  The hypothesis-free form
+$\Tail(B_0\cup A)\ge\min(\Tail(F_1),\Tail(w))$ also
 holds in every instance tried.
 What the median ranges over is not a one-parameter shape: the minimizing zero
 set itself is not a consecutive block with one displaced zero.  At
