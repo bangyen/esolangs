@@ -197,9 +197,13 @@ step; an answer lands in the paper it extends, and the row leaves.
   displaced-zero comparison already proves unless the minimizing zero set
   straddles `max X`.  First step: prove the slide-down rule that covers the
   straddling case -- replace the smallest zero above `max X` by `max X`, then
-  displace one zero upward -- which holds at all `1017` straddling instances
-  among the `47638` tested, the displacement never past `max A + 3`.  Deleting
-  `min X`, freeing the largest zero, and a block-plus-one-displaced zero set
+  displace one zero -- which holds at all `1017` straddling instances among the
+  `47638` tested and at `674` more.  Where the displaced zero goes is no longer
+  a search: adding a node and a zero moves the certificate along a line whose
+  tail is a weighted sum of distances, so the zero lands on a weighted median,
+  and on that line a displaced zero pays for the added node at any nodes in
+  `(0,1)`, with no `1/2` cutoff.  Deleting `min X`, freeing the largest zero,
+  adjoining `max X` without sliding, and a block-plus-one-displaced zero set
   are each refuted by an exact witness; pointwise deflation says nothing once
   `r_1 <= (3+sqrt 5)/2`, so every root set with `r_1 = 2` needs cancellation.
   Also open: that `tau*` is always attained by a full certificate with a
