@@ -788,7 +788,7 @@ _ARITY_BANDS = (
 # measurement that put the cap here belongs back in this table, with the
 # phrase its own refusal is built around.
 # Malbolge's five-cell mixer is injective with pairwise gap >= 3 through ten
-# inputs, so it now covers the whole sweep; the thirteen-input refusal lives in
+# inputs, so it now covers the whole sweep; the fourteen-input refusal lives in
 # ``tests/tools/test_boolean_malbolge.py``.  No generator falls short of
 # _MAX_ARITY on either shape any more.
 _ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {}
