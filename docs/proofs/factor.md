@@ -424,10 +424,86 @@ Larger `k` is better asymptotically and worse at small `n`, exactly as the
 every input of every table at `n = 1..6` for `k = 2, 4, 16` (1134
 executions), and samples `n = 9, 10, 12` at `k = 256`.
 
-**The bracket is now 9.1x**, factoring as `4.55` construction against `2`
-number theory. Of the `1.516`, one unit is the move onto each entry's cell
-and a half is the mark on each set entry; nothing else reaches a fiftieth.
-Going lower means storing more than one entry per cell, which buys span at
-the price of a unary write -- with `-` reaching 255 in one character, two or
-three entries a cell is the balance point, and it needs arithmetic on the
-cell rather than a static branch.
+Of the `1.516`, one unit is the move onto each entry's cell and a half is the
+mark on each set entry; nothing else reaches a fiftieth. So the span is the
+thing to attack.
+
+## Packing: two entries to a byte
+
+A cell is a byte, and `-` from zero writes 255. Read that as `-1` and the
+unary write is no longer monotone in the bit pattern: the four patterns of a
+pair can be spelled by any injection into `{-1, 0, 1, 2}`, whose costs are
+`{1, 0, 1, 2}`. Pick the injection by frequency -- commonest pattern to `0`,
+next two to `+-1`, rarest to `2`. With `f1 >= f2 >= f3 >= f4` the cost is
+`f2 + f3 + 2 f4`, which under that ordering peaks when all four are equally
+common, so **one character a cell, worst case**. That also subsumes the
+complement trick: complementing the table permutes the patterns and leaves
+the frequencies alone.
+
+So the span halves and the writes stay at `T/2`, and the two halves of the
+old cost trade places:
+
+    span   (1/2)(1 + 3/k)(1 + o(1)) T   one move per cell, k+3 cells for 2k entries
+    pairs                      T/2      worst case, one character a cell
+    hops           3/255 of the span
+    selector             O(k**2)        once, not per group
+                    -----------
+                    1.0059 T   as k grows
+
+    C_F(T) <= 1.006 T + o(T),   limsup D/(T ln T) <= 0.8737 on GRH
+
+The `(1 + 1/255)` that rode along in the grouped count is gone: each level
+adds two cells to a block of `256(k+3)`, and `k` now grows.
+
+Selecting within a cell needs arithmetic, not the static branch the group
+tree uses -- but only one branch's worth, because the tree can be made to
+*park* rather than print. Each leaf moves its cell's byte onto `W`:
+
+    >^(3+i) [- <^(3+i) + >^(3+i) ] <^(3+i)
+
+The tree's two arms already reunite on `W` with both scratch cells zero, and
+none of its brackets tests `W`, so after the tree the pointer sits on `W`
+holding the selected byte -- and the decode is emitted **once**, not per
+leaf. Raise `W` by one so `v` arrives as `u = v + 1` in `0..3`, read the last
+index bit, and switch:
+
+    s_j = >+<[->-< s_(j+1) ]>[-< e_j >]<        s_3 = e_3
+
+Entering the bracket means `u != 0`; the body decrements `u` once and
+`s_(j+1)` drives it to zero, so the body runs exactly once and the bracket
+closes. `e_j` prints and then clears `W` -- every enclosing bracket has to
+retest a zero on the way out.
+
+Worst-case chars an entry:
+
+    n         T          g=5     g=6     g=7     g=8     g=9
+    16    65,536      1.1593  1.1564  1.2698  1.7066  3.3773
+    20 1,048,576      1.1046  1.0600  1.0449  1.0619  1.1608
+    24    1.7e7       1.1021  1.0554  1.0337  1.0205  1.0211
+    32    4.3e9       1.1018  1.0550  1.0327  1.0178  1.0119
+
+Parity is cheaper than the bound, since it uses only two of the four
+patterns: `0.7949` an entry at `n = 20`, against `1.5727` grouped. L8 pins
+the closed form over `n = 2..12` and `k = 2..32`, runs every input of every
+table at `n = 1..6` for `k = 1, 2, 4` (1480 executions), and samples
+`n = 9, 10, 12` at `k = 128`.
+
+**The bracket is now 6.04x**, factoring as `3.02` construction against `2`
+number theory.
+
+### The packing family bottoms out
+
+`m` entries a cell need `2**m` distinct values, and the cheapest `2**m` of
+them cost `2**(2m-2)` characters in total, so the price per entry is
+
+    (1 + 2**(m-2)) / m     m=1: 1.500  m=2: 1.000  m=3: 1.000  m=4: 1.250
+
+Note `m = 1` gives `1.500`, which is the grouped constant less its walk
+overhead -- the two cost models agree where they overlap. The minimum is
+`1.0`, attained twice, and there is nothing further down this road.
+
+What the remaining `3.02` is, stated plainly: the counting floor allows three
+bits a character, because a character picks one of eight instructions, and
+this construction extracts one. Half its characters step the pointer, which
+carries no table data at all; the other half carry two bits between them.
+Closing that factor means a layout in which every character is data.

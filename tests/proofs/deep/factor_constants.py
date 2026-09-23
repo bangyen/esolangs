@@ -22,6 +22,8 @@ L6  the chained tape lookup runs, and emits 2.532 characters an entry,
     which closes that bracket to 15.2.
 L7  one walk cell per group of entries, the last bits resolved by a tree
     emitted once, brings that to 1.516 an entry and the bracket to 9.1.
+L8  a signed encoding puts two entries in a byte, which halves the span
+    for half a character a cell: 1.006 an entry, and the bracket 6.04.
 """
 
 from __future__ import annotations
@@ -42,7 +44,7 @@ from esolangs.tools.tape import _BF_RESIDUE, brainfuck
 #: Cost band; see ``__main__.py``.  The parity encodings to n = 11 and the
 #: prefix sieve dominate.
 BAND = "by-hand"
-COST = 2.6
+COST = 2.9
 
 #: The computed class-gap constant and the range it was verified over.
 GAP_C = 8.62
@@ -572,6 +574,209 @@ def check_group() -> list[str]:
     return lines
 
 
+#: Cell values for a pair of entries, cheapest first.  A cell is a byte, so
+#: ``-`` reaches 255 -- that is -1 -- in one character, and the four patterns
+#: can be spelled for 0, 1, 1, 2 rather than 0, 1, 2, 3.
+PACK_VALUES = (0, 1, 255, 2)
+
+
+def pack_layout(n: int, bits: int) -> tuple[list[int], list[int], int]:
+    """As :func:`chain_layout`, with a packed group as the leaf stride."""
+    return chain_layout(n - bits, (1 << (bits - 1)) + GROUP_SCRATCH)
+
+
+def pack_cell(x: int, n: int, bits: int) -> tuple[int, int]:
+    """``(cell holding entry x, which of the cell's two entries it is)``."""
+    sizes, strides, _ = pack_layout(n, bits)
+    group, within = x >> bits, x & ((1 << bits) - 1)
+    digits, rest = [], group
+    for size in reversed(sizes):
+        digits.append(rest & ((1 << size) - 1))
+        rest >>= size
+    digits.reverse()
+    start = sum(
+        ((1 << size) - 1 - digits[k]) * strides[k] for k, size in enumerate(sizes)
+    )
+    return start + GROUP_SCRATCH + (within >> 1), within & 1
+
+
+def pack_encoding(truth_table: str) -> dict[int, int]:
+    """Spell the commonest pair with 0, the rarest with 2.
+
+    Frequencies sort, so the cost is ``f2 + f3 + 2 f4`` with ``f1 >= .. >= f4``,
+    which is largest when the four patterns are equally common and the table
+    pays one character a cell.  This subsumes the complement trick: flipping
+    the table permutes the patterns and leaves the frequencies alone.
+    """
+    counts = [0, 0, 0, 0]
+    for x in range(0, len(truth_table), 2):
+        counts[int(truth_table[x]) * 2 + int(truth_table[x + 1])] += 1
+    order = sorted(range(4), key=lambda pattern: -counts[pattern])
+    return {pattern: PACK_VALUES[i] for i, pattern in enumerate(order)}
+
+
+def pack_switch(table: dict[int, int], bit: int) -> str:
+    """Decode the parked value; entered and left on the walk cell, zeroed."""
+    inverse = {value: pattern for pattern, value in table.items()}
+
+    def emit(pattern: int) -> str:
+        # Leave the cell at zero: every enclosing ']' retests it.
+        return "+" * (48 + ((pattern >> (1 - bit)) & 1)) + ".[-]"
+
+    def case(j: int) -> str:
+        # The walk cell was raised by one, so value v arrives as v + 1.
+        out = emit(inverse[(j - 1) % 256])
+        if j == len(PACK_VALUES) - 1:
+            return out
+        return ">+<[->-<" + case(j + 1) + "]>[-<" + out + ">]<"
+
+    return case(0)
+
+
+def pack_selector(table: dict[int, int], bits: int) -> str:
+    """The group's tree parks a byte on the walk cell; one decode follows."""
+
+    def leaf(index: int) -> str:
+        home, back = ">" * (GROUP_SCRATCH + index), "<" * (GROUP_SCRATCH + index)
+        return home + "[-" + back + "+" + home + "]" + back
+
+    def node(depth: int, base: int) -> str:
+        if depth == bits - 1:
+            return leaf(base)
+        half = 1 << (bits - 2 - depth)
+        high, low = node(depth + 1, base + half), node(depth + 1, base)
+        return ">," + "-" * 48 + f">+<[->-<<{high}>]>[-<<{low}>>]<<"
+
+    high, low = pack_switch(table, 1), pack_switch(table, 0)
+    return node(0, 0) + "+>," + "-" * 48 + f">+<[->-<<{high}>]>[-<<{low}>>]<<"
+
+
+def pack_selector_length(table: dict[int, int], bits: int) -> int:
+    """Closed form for :func:`pack_selector`, which is quadratic in ``k``."""
+    k = 1 << (bits - 1)
+    leaves = 2 * k * k + 14 * k
+    both = len(pack_switch(table, 1)) + len(pack_switch(table, 0))
+    return leaves + 71 * (k - 1) + 72 + both
+
+
+def bf_pack(truth_table: str, bits: int) -> str:
+    """The packed tape lookup of Lemma "Packed lookup"."""
+    n = int(math.log2(len(truth_table)))
+    sizes, strides, span = pack_layout(n, bits)
+    table = pack_encoding(truth_table)
+    cells = [0] * span
+    for x in range(0, len(truth_table), 2):
+        cell, _ = pack_cell(x, n, bits)
+        cells[cell] = table[int(truth_table[x]) * 2 + int(truth_table[x + 1])]
+
+    out, anchor = [], span - 2
+    for cell in range(anchor + 1):
+        value = cells[cell]
+        out.append("+" * value if value < 128 else "-" * (256 - value))
+        if cell < anchor:
+            out.append(">")
+    for k, size in enumerate(sizes):
+        for _ in range(size):
+            out.append("[->++<]>[-<+>]<>,")
+            out.append("-" * 48)
+            out.append("[-<+>]<")
+        seat = strides[k] if k == len(sizes) - 1 else 2
+        out.append("[-" + "<" * seat + "+" + ">" * seat + "]" + "<" * seat)
+        hop = "<" * strides[k]
+        out.append(f"[[-{hop}+{'>' * strides[k]}]{hop}-]")
+    out.append(pack_selector(table, bits))
+    return "".join(out)
+
+
+def pack_length(n: int, bits: int, writes: int, table: dict[int, int]) -> int:
+    """Closed form for what :func:`bf_pack` emits."""
+    sizes, strides, span = pack_layout(n, bits)
+    total = span - 2 + writes
+    for k, size in enumerate(sizes):
+        seat = strides[k] if k == len(sizes) - 1 else 2
+        total += 72 * size + 3 * seat + 4 + 3 * strides[k] + 7
+    return total + pack_selector_length(table, bits)
+
+
+def even_patterns(n: int) -> str:
+    """The table that costs the most: all four pairs equally often."""
+    out = []
+    for x in range(1 << n):
+        pattern = (x >> 1) % 4
+        out.append(str((pattern >> 1) if x % 2 == 0 else (pattern & 1)))
+    return "".join(out)
+
+
+def check_pack() -> list[str]:
+    """L8  two entries to a cell: it runs, and its constant is 1.006."""
+    from tests.tools.boolean_runners import run_bf
+
+    lines, rng = [], random.Random(29)
+    for bits in (2, 3, 4, 6):
+        for n in range(bits, 13):
+            for table in ("0" * (1 << n), parity(n), even_patterns(n)):
+                code = pack_encoding(table)
+                writes = sum(
+                    min(code[p], 256 - code[p]) if code[p] else 0
+                    for x in range(0, len(table), 2)
+                    for p in (int(table[x]) * 2 + int(table[x + 1]),)
+                )
+                assert pack_length(n, bits, writes, code) == len(bf_pack(table, bits))
+    lines.append("emitted length matches the closed form, n = 2..12, k = 2..32")
+
+    runs = 0
+    for bits in (1, 2, 3):
+        for n in range(bits, 7):
+            size = 1 << n
+            for table in ("0" * size, "1" * size, parity(n), even_patterns(n)):
+                program = bf_pack(table, bits)
+                for k in range(size):
+                    inputs = [str((k >> (n - 1 - j)) & 1) for j in range(n)]
+                    assert run_bf(program, inputs) == table[k], (bits, n, k)
+                    runs += 1
+    lines.append(f"exhaustive: {runs} executions over n = 1..6, k = 1, 2, 4")
+
+    runs = 0
+    for n in (9, 10, 12):
+        size = 1 << n
+        for table in (parity(n), even_patterns(n)):
+            program = bf_pack(table, 8)
+            for k in [0, 255, 256, size - 1, *rng.sample(range(size), 5)]:
+                inputs = [str((k >> (n - 1 - j)) & 1) for j in range(n)]
+                assert run_bf(program, inputs) == table[k], (n, k)
+                runs += 1
+    lines.append(f"sampled at k = 128: {runs} executions at n = 9, 10, 12")
+
+    # Worst case is one character a cell, and k may grow with T because the
+    # selector is emitted once; at k = log T only the walk's overhead is left.
+    code = dict(enumerate(PACK_VALUES))
+    worst = min(
+        pack_length(n, bits, 1 << (n - 1), code) / (1 << n)
+        for n, bits in ((32, 7), (64, 8), (80, 9))
+    )
+    assert worst < 1.012, worst
+    limit = 0.5 * (1 + 3 / 255) + 0.5
+    assert abs(limit - 1.00588) < 1e-5, limit
+    limsup = 2 * limit / math.log(10)
+    assert limsup < 0.874, limsup
+    lines.append(f"chars/entry {worst:.5f}, limit {limit:.5f}, limsup {limsup:.4f}")
+    lines.append(
+        f"bracket {FLOOR:.5f} .. {limsup:.4f} is {limsup / FLOOR:.2f}x"
+        f"  = {limit * 3:.2f} construction x 2 walk"
+    )
+
+    # The family bottoms out here: m entries a cell need 2**m values, the
+    # cheapest of which cost 2**(2m-2) characters in total.
+    costs = {m: (1 + 2 ** (m - 2)) / m for m in range(1, 6)}
+    assert min(costs, key=lambda m: costs[m]) == 2, costs
+    assert abs(costs[2] - costs[3]) < 1e-12, costs
+    lines.append(
+        "per entry (1 + 2**(m-2))/m over m = 1..5: "
+        + ", ".join(f"{costs[m]:.3f}" for m in sorted(costs))
+    )
+    return lines
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--bound", type=int, default=10**7)
@@ -591,6 +796,8 @@ def main(argv: list[str] | None = None) -> int:
     print("\n".join(check_chain()))
     print("L7  the grouped lookup and its constant")
     print("\n".join(check_group()))
+    print("L8  two entries to a cell")
+    print("\n".join(check_pack()))
     return 0
 
 
