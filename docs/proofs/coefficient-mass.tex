@@ -39,8 +39,9 @@ $|f_D|\prod_{i=u+1}^L(r_i-1)$; the case $u=0$ needs only $r_i>1$.  Explicit
 families approach the $u=1$ bound at roots $(2,3)$, and the $u=1$ and $u=2$
 bounds at $(2,3,5)$, so those bounds are sharp there.  Sharpness is not
 universal: at roots $(\tfrac52,3,\tfrac72)$ the exact $u=1$ infimum is
-$65/12$, against the bound $5$, and the row $u=0$ can be improved by a factor
-of order $L$, to $b_1\ge(r_1+\cdots+r_L)/2$ when the roots are at least $2$.
+$65/12$, against the bound $5$.  The row $u=0$ is complemented by
+$b_1\ge|f_D|(r_1+\cdots+r_L)/2$, which exceeds it by a factor of order $L$ as
+the roots approach $2$ and is weaker than it for large roots.
 Summing these bounds gives a lower bound for the logarithmic coefficient mass
 $\Lambda(F)=\sum_j\log^+|f_j|$.  When the roots are the first $L$ primes and
 $|f_D|\ge1$, this gives $\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, with
@@ -185,8 +186,9 @@ $(\tfrac52,3,\tfrac72)$ as $65/12$, above the value $5$ that
 matching family from the same certificate machinery.  Nor is the loss
 bounded: Proposition~\ref{prop:unbounded} exhibits distinct roots at which
 the best certificate bound for $b_1$ exceeds $|P(1)|$ by a factor at least of
-order $L$, and gives the uniform bound $b_1\ge(r_1+\cdots+r_L)/2$, which the
-product bound does not imply.
+order $L$, and gives the uniform bound
+$b_1\ge|f_D|(r_1+\cdots+r_L)/2$, which neither implies nor is implied by the
+product bound.
 
 \section{A displaced-zero tail theorem}
 
@@ -679,11 +681,11 @@ $\Lambda(F)\ge(L+1)\log|f_D|$ and says nothing more.  The order-statistic
 bound stays informative over the whole root range; the mass bound does not.
 
 Even at $r_i=2$ the collapse is not total, though, and it is the certificate
-rather than \eqref{eq:order} that shows this: by \eqref{eq:halfsum} below,
-every monic multiple has $b_1\ge L$, so $\Lambda(F)\ge\log L$ there.  That
-recovers only one coefficient.  Whether a comparable choice of zero set
-rescues the rows $k\ge2$ near $r_i=2$, and with them the mass bound, we leave
-open.
+rather than \eqref{eq:order} that shows this: by \eqref{eq:halfsum} in
+Proposition~\ref{prop:unbounded}, every monic multiple of $(x-2)^L$ has
+$b_1\ge L$.  Proposition~\ref{prop:neartwo} recovers the second coefficient
+as well, giving $\Lambda(F)\ge\log\bigl(L(L-1)\bigr)$ where \eqref{eq:mass}
+gives nothing.  Whether all $L$ rows survive there is open.
 
 \begin{corollary}[Prime roots]\label{cor:prime}
 Let $r_1\le\cdots\le r_L$ with $r_i\ge p_i$, the $i$th prime, and let $F$ be
@@ -858,7 +860,8 @@ $S/(B+1)$.  If moreover $r_i\ge2$ for every $i$, then $B\ge1$ and hence
   b_1(F)\ \ge\ \frac S2=\frac{r_1+\cdots+r_L}2 .
 \end{equation}
 Neither \eqref{eq:halfsum} nor the row $u=0$ of \eqref{eq:order} implies the
-other.  For $r_i=2+iL^{-3}$ the ratio $S/(B+1)$ is $\sim L$, so the ratio
+other.  For a general nonzero leading coefficient both right sides acquire a
+factor $|f_D|$, as in Theorem~\ref{thm:order}.  For $r_i=2+iL^{-3}$ the ratio $S/(B+1)$ is $\sim L$, so the ratio
 between the best certificate bound and $|P(1)|$ is unbounded in $L$, already
 for distinct roots.
 \end{proposition}
@@ -917,6 +920,76 @@ multiple of $(x-2)^L$ has $b_1\ge L$ by \eqref{eq:halfsum}, where the row
 $u=0$ of \eqref{eq:order} gives only $1$.  The zero set $Z=\{2,\ldots,L\}$ used here is not always
 optimal---at $(2,3,5)$ it gives $80/9$, against $248/17$ for
 $Z=\{1,3\}$---but it suffices to settle the boundedness question.
+
+A different choice of zero set reaches the second coefficient as well, which
+answers part of the question raised after Corollary~\ref{cor:mass}.
+
+\begin{proposition}[Two large coefficients at the bottom of the range]
+\label{prop:neartwo}
+Let $L\ge2$.  Every monic multiple $F$ of $(x-2)^L$ satisfies
+\[
+  b_1(F)\ge L,\qquad b_2(F)\ge L-1,
+  \qquad\text{hence}\qquad
+  \Lambda(F)\ge\log\bigl(L(L-1)\bigr).
+\]
+\end{proposition}
+
+\begin{proof}
+By the perturbation of Theorem~\ref{thm:order} it suffices to bound $b_1$ and
+$b_2$ for distinct roots $2<r_1<\cdots<r_L$ and let every $r_i\to2$.  The
+first bound is \eqref{eq:halfsum}, whose right side $S/2$ tends to $L$.
+
+For the second, let $z$ be the backward distance of a position attaining
+$b_1(F)$ and apply the identity of Lemma~\ref{lem:slack} with $U$ that single
+position: any certificate $w$ with $w_z=0$ gives $1\le b_2(F)\Tail(w)$.  Write
+$E_k=e_k(r_1,\ldots,r_L)$, so $E_1=S$ and $E_L=\prod_ir_i$, and recall
+$e_L(y)=1/E_L$, $e_{L-1}(y)=S/E_L$, $e_{L-2}(y)=E_2/E_L$ and
+$\sum_{j\ge0}h_j(y)=\prod_i(1-y_i)^{-1}=E_L/B$.
+
+\emph{Case $z=1$.}  Take $Z=\{1,\ldots,L\}\setminus\{2\}$, so $w_0=1$,
+$w_1=w_3=\cdots=w_L=0$ and $w_2$ is free.  As in
+Proposition~\ref{prop:unbounded}, $\bigl(W(t)-(1+w_2t^2)\bigr)D(t)$ is
+divisible by $t^{L+1}$ and has degree at most $L+2$, so
+\[
+  W(t)=1+w_2t^2+\frac{(\kappa+\lambda t)\,t^{L+1}}{D(t)} .
+\]
+Comparing the coefficients of $t^L$, $t^{L+1}$ and $t^{L+2}$ gives
+\[
+  w_2=-\frac{e_L(y)}{e_{L-2}(y)},\qquad
+  \kappa=w_2(-1)^Le_{L-1}(y),\qquad
+  \lambda=-w_2(-1)^Le_L(y),
+\]
+so that $w_d=w_2(-1)^L\bigl(e_{L-1}(y)h_{d-L-1}(y)-e_L(y)h_{d-L-2}(y)\bigr)$
+for $d\ge L+1$.  These terms are one-signed: $h_j\ge y_Lh_{j-1}$, since
+multiplying each monomial of degree $j-1$ by $y_L$ gives distinct monomials
+of degree $j$, while $e_{L-1}(y)=\sum_ie_L(y)/y_i\ge e_L(y)/y_L$.  Summing,
+\[
+  \Tail(w)=|w_2|\Bigl(1+\bigl(e_{L-1}(y)-e_L(y)\bigr)\sum_{j\ge0}h_j(y)\Bigr)
+  =\frac1{E_2}\Bigl(1+\frac{S-1}B\Bigr)
+  =\frac{B+S-1}{E_2B} .
+\]
+As every $r_i\to2$ we have $B\to1$, $S\to2L$ and $E_2\to2L(L-1)$, so
+$\Tail(w)\to1/(L-1)$.
+
+\emph{Case $2\le z\le L$.}  Take $Z=\{2,\ldots,L\}$.  By
+Proposition~\ref{prop:unbounded}, $\Tail(w)=(1+B^{-1})/S\to1/L$.
+
+\emph{Case $z>L$.}  Take $Z=\{2,\ldots,L-1\}\cup\{z\}$, whose largest element
+is $z$.  The deletion step in the proof of Theorem~\ref{thm:tail} removes $z$
+together with the largest reciprocal node, leaving exactly the certificate of
+Proposition~\ref{prop:unbounded} on the $L-1$ largest roots; so
+$\Tail(w)<(1+B'^{-1})/S'$, where $B'\to1$ and $S'\to2(L-1)$, and the limit is
+again $1/(L-1)$.
+
+In each case $\Tail(w)$ tends to at most $1/(L-1)$, so $b_2(F)\ge L-1$ in the
+limit.  Finally $b_1$ and $b_2$ are attained at distinct positions and
+$L-1\ge1$, so $\Lambda(F)\ge\log L+\log(L-1)$.
+\end{proof}
+
+So at $r_i=2$ the certificate recovers two coefficients, not one, and the
+mass bound $\Lambda(F)\ge\log\bigl(L(L-1)\bigr)$ replaces the empty bound of
+\eqref{eq:mass}.  Whether all $L$ rows can be recovered there, which would
+give $\Lambda(F)\gg L\log L$, remains open.
 
 What Theorem~\ref{thm:tail} buys is a bound in closed product form that is
 uniform in the excluded set, and that is what the rows $k\ge2$ need: for
