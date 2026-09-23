@@ -34,8 +34,8 @@
 Fix real roots $2\le r_1\le\cdots\le r_L$, repetitions allowed.  For every
 nonzero real polynomial $F=\sum_jf_jx^j$ of degree $D$ divisible by
 $\prod_{i=1}^L(x-r_i)$, the $k$-th largest nonleading coefficient
-magnitude is at least $|f_D|\prod_{i=k}^L(r_i-1)$, uniformly in the
-degree.  The rows $k\ge2$ are sharp at $(2,3)$ and $(2,3,5)$, and not sharp
+magnitude is at least $|f_D|\prod_{i=k}^L(r_i-1)$ for $1\le k\le L$,
+uniformly in the degree.  The rows $k\ge2$ are sharp at $(2,3)$ and $(2,3,5)$, and not sharp
 at $(\tfrac52,3,\tfrac72)$, where the $k=2$ infimum is $65/12$ against $5$;
 both sides come from the same certificate.  Summing the rows bounds the
 logarithmic coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$ of a monic
@@ -150,8 +150,8 @@ coefficient magnitudes $|f_j|$, $j<D$,
   \qquad
   \Lambda(F)\ge(L+1)\log|f_D|+\sum_{i=1}^{L}i\log(r_i-1).
 \]
-Both bounds are uniform in the degree and in any further roots of the
-multiple.  The idea is simple to state.  To bound the $k$-th largest
+The first inequality at a given $k$ is the row $k$.  Both bounds are uniform
+in the degree and in any further roots of the multiple.  The idea is simple to state.  To bound the $k$-th largest
 coefficient magnitude, exclude any $k-1$ coefficient positions, and build a
 normalized exponential sum in the reciprocal roots, the certificate, that
 vanishes at those positions and at enough initial ones.  A bound on the
@@ -194,7 +194,7 @@ bounded: Proposition~\ref{prop:unbounded} exhibits distinct roots at which
 a certificate bound for $b_1$ exceeds $|P(1)|$ by a factor at least of
 order $L$, and gives the uniform bound
 $b_1\ge|f_D|(r_1+\cdots+r_L)/2$, which neither implies nor is implied by the
-product bound.  At $r_i=2$, where \eqref{eq:mass} is empty,
+product bound.  At $r_i=2$, where \eqref{eq:mass} degenerates,
 Proposition~\ref{prop:neartwo} still forces two large coefficients.
 Proposition~\ref{prop:quadratic}, proved by Jensen's formula rather than by a
 certificate, adds the bound $\Lambda(F)\ge L^2/80$ for monic multiples when
@@ -299,8 +299,9 @@ sign change relative to a comparison sum, and the proof shows that this sign
 change lowers the total tail.  The proof handles the displaced zeros one at
 a time, starting with the last.
 
-The hard step compares a correction sum at the marked points of the zero set
-with its value just past them.  Marked points come in two kinds: some force
+The hard step compares a correction sum at the prescribed zeros of the zero
+set (the marked points of Lemma~\ref{lem:interlace}) with its value just past
+them.  Marked points come in two kinds: some force
 the correction sum to vanish, and others only fix its sign.  We state this
 comparison as a separate lemma.  Its proof is a zero count, in which the
 sign-fixing points force extra zeros in each gap between them.
@@ -387,9 +388,9 @@ $N_\Delta$ be the number of zeros of $\Delta$ counted with multiplicity.
 
 Take consecutive $j<j'$ in $J$.  Strictly between
 $\alpha_{j+1}$ and $\alpha_{j'+1}$ lie the $q=j'-j-1$ marked points
-$\alpha_{j+2},\ldots,\alpha_{j'}$; none of their indices $j+1,\ldots,j'-1$ is
-in $J$, so each is preceded by an adjacent marked point and carries a forced
-zero; and the endpoint signs
+$\alpha_{j+2},\ldots,\alpha_{j'}$; none of $j+1,\ldots,j'-1$ lies in $J$, so
+each $\alpha_{i+1}$ with $j<i<j'$ has $\alpha_i=\alpha_{i+1}-1$ adjacent and
+carries a forced zero; and the endpoint signs
 $(-1)^{c-1-j}$, $(-1)^{c-1-j'}$ differ by $(-1)^{q+1}$.  A real-analytic
 function, not identically zero, whose endpoint values are nonzero and differ
 in sign by $(-1)^{q+1}$ has an odd or even
@@ -494,7 +495,7 @@ $\sigma=G_{m+1}/\widehat F_{m+1}$, and
 $\Delta_d=\sigma\widehat F_d-E_d$.  Both $\widehat F$ and $G$ are positive for
 $d>m$, the latter because $G_z=1$ with $z>m$, so Lemma~\ref{lem:interlace}
 applies and gives $\Delta_d\ge0$ for $d\ge m+1$, that is,
-$E_d/\widehat F_d\le\sigma$ for $d\ge m+1$.  Moreover, writing $G_d=\sum_ia_iy_i^d$, the coefficient $a_c$ of the largest
+$E_d/\widehat F_d\le\sigma$ for $d\ge m+1$.  Next, writing $G_d=\sum_ia_iy_i^d$, the coefficient $a_c$ of the largest
 node is positive: $G_d>0$ for $d>m$ forces $a_c\ge0$, and $a_c=0$ would make
 $G$ a sum on the $c-1$ nodes $y_1,\ldots,y_{c-1}$ with the $c-1$ zeros
 $\{0\}\cup Z'$, hence identically zero.  Consider the $c$-node sum
@@ -545,8 +546,8 @@ The restriction $\rho_i\ge2$ matters.  For $c=2$,
 $y_1=1/10$, $y_2=4/5$, and $Z=\{2\}$, the normalized coefficients are
 $a_1=64/63$ and $a_2=-1/63$, so
 $\Tail(w)=52/405>1/9=y_1/(1-y_1)$: \eqref{eq:tail} fails once a node
-passes the cutoff.  The cutoff enters the proof at two places only, through
-$1/(1-y_c)\le2$ in \eqref{eq:gamma} and through the factors discarded in
+passes the cutoff.  The cutoff enters the argument at two places only: $1/(1-y_c)\le2$ in
+\eqref{eq:gamma} here, and the factors discarded in the proof of
 Lemma~\ref{lem:slack} below; whether $2$ is the true threshold we have not
 determined.
 
@@ -702,14 +703,15 @@ Theorem~\ref{thm:order} still forces $L$ nonleading coefficients of
 magnitude at least $|f_D|$, while \eqref{eq:mass} reduces to
 $\Lambda(F)\ge(L+1)\log|f_D|$ and says nothing more.  The order-statistic
 bound stays informative over the whole root range; the mass bound does not.
-Section~\ref{sec:sharp} shows that the collapse is in the bound and not in
-$\Lambda$: Propositions~\ref{prop:unbounded}, \ref{prop:neartwo} and
-\ref{prop:quadratic} recover, at $r_i=2$, first $b_1\ge L$, then
+Section~\ref{sec:sharp} shows that this degeneration is in the bound and not
+in $\Lambda$: Propositions~\ref{prop:unbounded}, \ref{prop:neartwo} and
+\ref{prop:quadratic} recover for monic multiples, at $r_i=2$, first
+$b_1\ge L$, then
 $b_2\ge L-1$, and finally a mass of order $L^2$.
 
 \begin{corollary}[Prime roots]\label{cor:prime}
 Let $r_1\le\cdots\le r_L$ with $r_i\ge p_i$, the $i$th prime, and let $F$ be
-a nonzero multiple of $\prod_{i=1}^L(x-r_i)$ with $|f_D|\ge1$.  Then
+a nonzero real multiple of $\prod_{i=1}^L(x-r_i)$ with $|f_D|\ge1$.  Then
 \[
  \Lambda(F)\ge\Bigl(\frac12+o(1)\Bigr)L^2\log L .
 \]
@@ -826,13 +828,15 @@ gives the sharp form of this statement.
 \section{Sharpness}\label{sec:sharp}
 
 How close is Theorem~\ref{thm:order} to optimal?  This section treats the
-first row, then the bottom of the root range, where \eqref{eq:mass}
-degenerates, and finally the rows $k\ge2$.
+first row; then the bottom of the root range, where \eqref{eq:mass}
+degenerates, together with the $L^2$ term that repairs it at every root set;
+and finally the rows $k\ge2$.
 
 \subsection{The first row}
 
-Row $k=1$ is $b_1\ge|P(1)|$.  Already for $L=1$ this bound is approached but
-never attained: in $F=(x-r)\sum_{k\le m}c_kx^k$ with $c_m=1$, every $|f_j|\le r-1$
+For a monic multiple, row $k=1$ of \eqref{eq:order} is
+$b_1\ge\prod_i(r_i-1)=|P(1)|$.  Already for $L=1$ this bound is approached but
+never attained: in $F=(x-r)\sum_{i\le m}c_ix^i$ with $c_m=1$, every $|f_j|\le r-1$
 would force $c_{j-1}=rc_j+f_j\ge rc_j-(r-1)$, hence $c_j\ge1$ downward from
 $c_m$ and $|f_0|=r|c_0|\ge r$.  It is approached: taking
 $c_j=1+\varepsilon-\varepsilon r^{m-j}$ with $\varepsilon=1/(r^m-1)$ gives
@@ -841,8 +845,7 @@ as $m\to\infty$.
 
 Nor is row $k=1$ the best bound the certificate method gives.  The
 consecutive certificate, which Lemma~\ref{lem:slack} uses when $u=0$, need
-not have the smallest tail at fixed nodes (see the example after
-Theorem~\ref{thm:tail}).  Take $P=(x-2)(x-3)$,
+not have the smallest tail at fixed nodes.  Take $P=(x-2)(x-3)$,
 nodes $\rho=(3,2)$ and $Z=\{2\}$, whose tail is $3/10$ by the example after
 Theorem~\ref{thm:tail}.  Then \eqref{eq:dual}
 with $U=\varnothing$ gives
@@ -891,7 +894,7 @@ $S/(B+1)$.  If moreover $r_i\ge2$ for every $i$, then $B\ge1$ and hence
 \begin{equation}\label{eq:halfsum}
   b_1(F)\ \ge\ \frac S2=\frac{r_1+\cdots+r_L}2 .
 \end{equation}
-Neither \eqref{eq:halfsum} nor the row $u=0$ of \eqref{eq:order} implies the
+Neither \eqref{eq:halfsum} nor the row $k=1$ of \eqref{eq:order} implies the
 other.  For a general nonzero leading coefficient both right sides acquire a
 factor $|f_D|$, as in Theorem~\ref{thm:order}.  For $r_i=2+iL^{-3}$ the ratio $S/(B+1)$ is $\sim L$, so the ratio
 between a certificate bound and $|P(1)|$ is unbounded in $L$, already
@@ -954,7 +957,7 @@ $Z=\{1,3\}$---but it suffices to settle the boundedness question.
 \subsection{The bottom of the range}
 
 At $r_i=2$ the certificate of Proposition~\ref{prop:unbounded} gives
-$b_1\ge L$, where the row $u=0$ of \eqref{eq:order} gives only $1$.  A
+$b_1\ge L$, where the row $k=1$ of \eqref{eq:order} gives only $1$.  A
 different choice of zero set reaches the second coefficient as well.
 
 \begin{proposition}[Two large coefficients at the bottom of the range]
@@ -1015,16 +1018,17 @@ Proposition~\ref{prop:unbounded} on the $L-1$ largest roots; so
 $\Tail(w)<(1+B'^{-1})/S'$, where $B'\to1$ and $S'\to2(L-1)$, and the limit is
 again $1/(L-1)$.
 
-The three bounds hold for every $\varepsilon$ and none of the three tails
-depends on $z$, so for each $\varepsilon$ the multiple $F_\varepsilon$
+The three bounds hold for every $\varepsilon$ and none of the three tail
+bounds depends on $z$, so for each $\varepsilon$ the multiple $F_\varepsilon$
 satisfies $b_2(F_\varepsilon)\ge1/T_\varepsilon$, where $T_\varepsilon$ is
-the largest of the three tails.  Since $T_\varepsilon\to1/(L-1)$
+the largest of the three bounds.  Since $T_\varepsilon\to1/(L-1)$
 and $b_2(F_\varepsilon)\to b_2(F)$, letting $\varepsilon\to0$ gives
 $b_2(F)\ge L-1$.  Finally $b_1$ and $b_2$ are attained at distinct positions
 and $L-1\ge1$, so $\Lambda(F)\ge\log L+\log(L-1)$.
 \end{proof}
 
-Far more is true, and at every root set, not only at $r_i=2$: the infimum of the mass over monic multiples is of order $L^2$
+Proposition~\ref{prop:neartwo} recovers two coefficients at $r_i=2$.  Far
+more is true, and at every root set, not only at $r_i=2$: the infimum of the mass over monic multiples is of order $L^2$
 throughout the range where \eqref{eq:mass} degenerates.  The proof uses
 Jensen's formula rather than a certificate.  It is close in spirit to the
 work of Beaucoup, Borwein, Boyd and Pinner on how high a zero a power series
@@ -1044,9 +1048,9 @@ and hence $\Lambda(F)\ge L^2/80$ for $L\ge8$.
 \end{proposition}
 
 \begin{proof}
-Let $D=\deg F$ and let $A(t)=t^DF(1/t)=\sum_{d=0}^Df_{D-d}t^d$ be the
-reciprocal polynomial, so $A(0)=f_D=1$, while $A(1/r_i)=r_i^{-D}F(r_i)=0$, so
-$A$ has at least $L$ zeros in $(0,\tfrac12]$ counted with multiplicity,
+Let $D=\deg F$ and let $F^*(t)=t^DF(1/t)=\sum_{d=0}^Df_{D-d}t^d$ be the
+reciprocal polynomial, so $F^*(0)=f_D=1$, while
+$F^*(1/r_i)=r_i^{-D}F(r_i)=0$, so $F^*$ has at least $L$ zeros in $(0,\tfrac12]$ counted with multiplicity,
 namely the $1/r_i$.
 
 For a real polynomial $h$ and an integer $z\ge1$ put $T_zh=h-(t/z)h'$, so that
@@ -1063,14 +1067,14 @@ zeros in $I$.
 
 Fix $k$ and let $z_1<\cdots<z_{k-1}$ be the backward distances $D-j$ of the
 positions $j<D$ carrying the $k-1$ largest nonleading magnitudes.  Put
-$g=T_{z_{k-1}}\cdots T_{z_1}A$, so that
+$g=T_{z_{k-1}}\cdots T_{z_1}F^*$, so that
 \[
-  [t^d]g=[t^d]A\prod_{i=1}^{k-1}\Bigl(1-\frac d{z_i}\Bigr).
+  [t^d]g=[t^d]F^*\prod_{i=1}^{k-1}\Bigl(1-\frac d{z_i}\Bigr).
 \]
 Then $g(0)=1$, the coefficients at $d=z_1,\ldots,z_{k-1}$ vanish, and by the
 previous paragraph $g$ has at least $L-k+1$ zeros in $(0,\tfrac12]$.
 
-If $d\ge1$ and $d\notin\{z_i\}$ then $|[t^d]A|=|f_{D-d}|\le b_k(F)$, that
+If $d\ge1$ and $d\notin\{z_i\}$ then $|[t^d]F^*|=|f_{D-d}|\le b_k(F)$, that
 position not being among the $k-1$ largest.  The $z_i$ are distinct positive
 integers, so $z_i\ge i$ and
 \[
@@ -1151,12 +1155,11 @@ the trivial $b_L\ge1$.  The first rows are already covered: for
 $k\le L/8$ the proof of Proposition~\ref{prop:quadratic} gives
 $b_k\ge e^{L/5}$, which exceeds $L$ once $L\ge13$;
 Proposition~\ref{prop:neartwo} covers $k=1,2$ and Theorem~\ref{thm:order}
-the row $k=L$.  What remains open are the rows $L/8<k\le L-1$, and
-$3\le k\le L-1$ for $L\le12$; the consequence
+the row $k=L$.  What remains open are the rows $\max(2,L/8)<k\le L-1$; the consequence
 $\Lambda(F)\ge\log L!$ is in any case asymptotically weaker than
 Proposition~\ref{prop:quadratic}, so the interest is in the individual rows.
-The evidence is negative only, but it is exact over a family rather than
-sampled.  For fixed $L$, fixed $\deg Q$ and a fixed set of $k-1$ exempt
+The evidence is only the absence of a counterexample, but it is exact over
+a family rather than sampled.  For fixed $L$, fixed $\deg Q$ and a fixed set of $k-1$ exempt
 positions, minimizing the largest remaining coefficient magnitude over monic
 $Q$ is a linear program, and the minimum of these over all exempt sets is the
 infimum of $b_k$ over monic $Q$ of that degree.  We solved every such program
@@ -1167,9 +1170,10 @@ the bounded-degree values need not be the infimum over all degrees.  A
 search over bounded degree cannot confirm a lower bound; it can only fail to
 refute one.
 
-\subsection{The rows $k\ge2$}
+\subsection{The rows \texorpdfstring{$k\ge2$}{k at least 2}}
 
-What Theorem~\ref{thm:tail} buys is a bound in closed product form that is
+We turn to the rows $k\ge2$ of \eqref{eq:order}.  What
+Theorem~\ref{thm:tail} buys is a bound in closed product form that is
 uniform in the excluded set, and that is what the rows $k\ge2$ need: for
 $u\ge1$ the set $U$ is arbitrary, so the distances $W$ on which the
 certificate must vanish are forced, and only the remaining $L-u-1$ zeros are
@@ -1393,7 +1397,7 @@ computable,
 {doi:10.1006/jagm.1994.1015}.
 
 \bibitem{grt}
-M.~Giesbrecht, D.~S. Roche, and H.~Tilak,
+M.~Giesbrecht, D.~S. Roche and H.~Tilak,
 \newblock Computing sparse multiples of polynomials,
 \newblock \emph{Algorithmica} 64 (2012), 454--480,
 \newblock \href{https://doi.org/10.1007/s00453-012-9652-4}
