@@ -1544,11 +1544,25 @@ sign of the weight of $E$ on $y_{k+1}$, and for $y_{k+1}>\tfrac12$ that sign
 flips.  In the block case $B_0=\{1,\ldots,g-1\}$ with $y_{k+1}=\tfrac12$ the
 sum $E$ vanishes identically, and \eqref{eq:chord} is the identity behind
 part (3) of Proposition~\ref{prop:shift}, the closed form of $\E|D-M|$.
-What remains of \eqref{eq:shift} is $|A|\ge2$.  There the chord through
-$F_{A+1}$ and $p_{g,A+1}$ is not enough on its own: the analogous
-inequality fails without the hypothesis of \eqref{eq:shift}, and the single
-hypothesis $\Tail(B_0\cup A)\le\Tail(B_0\cup(A+1))$ is not enough either,
-so the per-move hypotheses have to enter the count.
+What remains of \eqref{eq:shift} is $|A|\ge2$.  The chord does not
+extend: write $M$ for the end of the first run of $A$, $C=B_0\cup A\setminus\{M\}$
+for the common zeros, $F_1$ for the sum with zeros $C\cup\{M+1\}$ on the
+small nodes and $w$ for the one with zeros $C\cup\{g,M+1\}$ on all $c$
+nodes.  The identity \eqref{eq:chordsplit} holds verbatim with $B_0$
+replaced by $C$, its first term is still nonnegative, but $E$ is now short
+one forced zero for every run of $A$ above $M+1$, so its sign beyond $M+1$
+is not pinned, and $\Tail(B_0\cup A)\ge\lambda\Tail(F_1)+(1-\lambda)\Tail(w)$
+fails: at the clustered nodes with $L=9$, $B_0=\{1,2,3,5,6\}$, $g=7$,
+$A=\{8,12\}$ the right side exceeds the left by $19\%$ of it, the whole
+excess sitting in the far term.  No fixed pair of weights works in its
+place: the feasible weight on $F_1$ is at most $0.683$ at $L\le7$ and at
+least $0.794$ at $L=9$.  What does hold, in every instance tried, is the
+sharp hypothesis-free form $\Tail(B_0\cup A)\ge\min(\Tail(F_1),\Tail(w))$,
+and every chord failure has $\Tail(B_0\cup A)>\Tail(F_1)$.  A proof
+therefore has to split cases: either the far sign of $E$ is pinned and
+the chord argument goes through, or the unpinned run supplies a sign
+change of $E$ beyond $M+1$ that must be shown to force
+$\Tail(B_0\cup A)>\Tail(F_1)$.
 What the median ranges over is not a one-parameter shape: the minimizing zero
 set itself is not a consecutive block with one displaced zero.  At
 $(2,3,4,5,6)$ with $u=0$ it is $\{1,2,4,6\}$, of tail $\tfrac{41}{12600}$,
