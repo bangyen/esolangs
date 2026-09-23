@@ -191,42 +191,33 @@ INTERCAL, listed last, is outside the pass.
 Research questions the proofs leave open.  Each names the first executable
 step; an answer lands in the paper it extends, and the row leaves.
 
-- **Extremality of the escaping placement.**  The sharpness paper now gives
-  the infimum when the partial-sum criterion fails as `1/T`, `T` the worst
-  exempt placement's best certificate tail, and a lifting lemma reduces
-  `T = tau*` (escaping exempt coefficients extremal) to a finite search.  It
-  closes at `(2,3,5,7)` (`1704/31`), `(2,...,7)` with `u = 2`
-  (`114840/259`), and 139 further integer root sets.  Prove it always closes,
-  and that `tau*` is always attained by a full certificate with a multiplier
-  witness.  Repeated roots beyond `(3,3)` are also open, as is the case where
+- **Extremality of the escaping placement.**  `T = tau*` (escaping exempt
+  coefficients extremal) is now one inequality: the step
+  `tau_k(X) <= tau_{k+1}(X \ {max X})`, which the deletion step of the
+  displaced-zero comparison already proves unless the minimizing zero set
+  straddles `max X`.  First step: prove the slide-down rule that covers the
+  straddling case -- replace the smallest zero above `max X` by `max X`, then
+  displace one zero upward -- which holds at all `1017` straddling instances
+  among the `47638` tested, the displacement never past `max A + 3`.  Deleting
+  `min X`, freeing the largest zero, and a block-plus-one-displaced zero set
+  are each refuted by an exact witness; pointwise deflation says nothing once
+  `r_1 <= (3+sqrt 5)/2`, so every root set with `r_1 = 2` needs cancellation.
+  Also open: that `tau*` is always attained by a full certificate with a
+  multiplier witness.  Repeated roots beyond `(3,3)` are open too, as is the
+  case where
   an exempt root lies below 2 and more than `u` partial sums of `P` exceed
   `|P(1)|`, where the repaired bound need not be sharp.  See the section "The
   infimum when the criterion fails" in
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
 
-- **Factor's leading constant.**  Both sides are now numbers and they
-  bracket `C_F(T)/(T ln T)` between `1/(3 ln 10) = 0.14476` and
-  `35/ln 10 = 15.2003` on GRH (Sections 4 and 5 of
-  [factor](proofs/factor.tex)).  The ratio is exactly `105` in any base, and
-  it factors into `52.5` for the decision tree and `2` for the prime walk, so
-  the number theory is worth at most a factor of two and the order of
-  magnitude sits in the construction.  A `T`-bit table needs at least `T/3`
-  instructions; the tree emits `35T/2`, and Lemma 2.1 is exact and attained by
-  parity, so the slack is in the construction and not its analysis.  First
-  step: emit a Boolean brainfuck program with `cT` runs for some `c < 35/2`
-  and measure it under the encoder, parity being the control.  On the other
-  side, counting spellings is capped at `0.2895` on GRH, so moving the floor
-  past that needs a semantic argument -- distinct programs that compute the
-  same function -- not a better count.
-
 - **Unconditional Factor threshold.**  The digit ceiling is proven through
-  `n = 19` by a sieve to `10**11`, and explicit at every arity on GRH.
-  Without GRH `x_0` is effective in principle -- `q = 11` has no exceptional
-  zero -- but has no value.  Both ingredients are in print: Thorner-Zaman's
-  explicit log-free density estimate (`A = 99`) and Kadiri's explicit
-  zero-free region, which covers `q = 11`; carrying Ingham's argument through
-  them gives `theta = 98/99` and constant `752.4`.  Weigh it first, and note
-  the row above prices it: their `10**421` puts `x_0` past any bridge from
-  `10**11`, so the result would be a limsup at an astronomical arity, and even
-  a perfect `theta` is worth only a factor of two against the construction's
-  fifty.
+  `n = 19` by a sieve to `10**11`, and explicit at every arity on GRH
+  (Section 4 of [factor](proofs/factor.tex)).  Without GRH `x_0` is effective
+  in principle -- `q = 11` has no exceptional zero -- but has no value.  Any
+  explicit `theta < 1` suffices, since `theta` only moves the leading
+  constant.  Both ingredients are in print: Thorner-Zaman's explicit log-free
+  density estimate (`A = 99`) and Kadiri's explicit zero-free region, which
+  covers `q = 11`.  First step: carry Ingham's argument through them for
+  `theta = 98/99`, constant `752.4`.  Weigh it first -- their `10**421` puts
+  `x_0` past any bridge from `10**11`, so the result would be a limsup at an
+  astronomical arity and the practical range would still rest on GRH.
