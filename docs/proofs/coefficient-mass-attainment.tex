@@ -41,7 +41,10 @@ ordered at every degree, the $b_2$ family approaching its bound from above,
 and identify a partial-sum criterion on the
 surviving root product under which the same construction shows the bound
 is an infimum in general.  For distinct roots the criterion is also
-necessary: when it fails, the infimum lies strictly above the bound.
+necessary: when it fails, the infimum lies strictly above the bound.  It is
+then the reciprocal of the worst placement's best certificate tail, and
+lifting certificates computes it at explicit root sets: at $(2,3,5,7)$ it is
+$1704/31$.
 The standing restriction $r_1\ge2$ cannot be dropped once $u\ge1$, already
 at $L=2$; the node cutoff $y_i\le1/2$ underlying the tail comparison behind
 the bound cannot be raised; and we extend that comparison to confluent
@@ -99,8 +102,9 @@ Section~\ref{sec:attain} shows that the explicit monic multiples of
 $(x-2)(x-3)(x-5)$ approaching \eqref{eq:order} are correctly ordered at every
 degree, identifies the partial-sum criterion
 behind the infimum in general, and proves that for distinct roots the bound
-is an infimum exactly when the criterion holds.  Section~\ref{sec:scope} records what is proved
-and what remains open.
+is an infimum exactly when the criterion holds.  Section~\ref{sec:value}
+computes the infimum when it fails.  Section~\ref{sec:scope} records what is
+proved and what remains open.
 
 \section{Extensions and necessity of the hypotheses}\label{sec:extend}
 
@@ -811,31 +815,213 @@ the case $u=1$, $r_1=2$, every placement with an exempt coefficient at
 bounded distance from the top has a certificate with tail below $B$, so
 along any sequence of monic multiples with $b_{u+1}$ tending to the bound all
 $u$ exempt coefficients must move away from the top, as the construction of
-Proposition~\ref{prop:partial} moves them to the bottom.  When
-\eqref{eq:partial} fails, the value of the infimum is not determined.  At
-$(2,3,5,7)$ with $u=1$, floating-point linear programs over every single
-exempt position reach $54.967\ldots$ by degree $20$ and do not move through
-degree $30$, strictly between the bound $48$ and the construction's $57$.
-That is $1704/31$ to the precision of the programs, the reciprocal of the
-tail of the certificate on $(3,5,7)$ with zero set $\{1,3\}$.  At
-$(2,3,4,5,6,7)$ with $u=2$ they reach $443.39\ldots$ against the bound $360$.
+Proposition~\ref{prop:partial} moves them to the bottom.  When \eqref{eq:partial} fails, Section~\ref{sec:value} computes the
+infimum.
 
-In the escaping placement the exempt coefficients absorb the $u$ smallest
-roots, so an admissible limit $W$ vanishes at the surviving reciprocal nodes,
-and dividing by $\widetilde P_u$ leaves a function analytic on the disc:
-$W=\widetilde P_uH$ with $H(0)=1$, the choice $H=1/(1-y)$ being
-\eqref{eq:wgen}.  The numerics suggest that the escaping placement stays
-extremal, so that the infimum is
+\section{The infimum when the criterion fails}\label{sec:value}
+
+Keep the notation of Theorem~\ref{thm:converse}: $r_1<\cdots<r_L$ are
+distinct, $y_i=1/r_i$, and $m=L-u$.  For finite $X\subset\N_{>0}$ and
+$0\le k<L$ put
 \[
-  \inf\Bigl\{\ \sup_{d\ge1}|w_d|\ :\ W=\widetilde P_uH,\ H(0)=1\ \Bigr\},
+  \tau_k(X)=\inf\bigl\{\Tail(v):v\text{ a certificate for }X\text{ on }
+  y_{k+1},\ldots,y_L\bigr\},
+  \qquad \tau(X)=\tau_0(X),\qquad \tau^*=\tau_u(\varnothing).
 \]
-but this is not proved.  That is the $\ell^\infty$ member of the family this
-paper works in: reduced length minimizes $\ell^1$ over normalized
-multiples~\cite{schinzel}, its integer-polynomial $\ell^2$ analogue, the
-minimal Euclidean norm of an algebraic number, is effectively
-computable~\cite{frw}, and the logarithmic coefficient mass $\Lambda$
-of~\cite{coefficient-mass} is additive over coefficients rather than a norm at
-all.
+A certificate on $c$ nodes is \emph{full} if it has $c-1$ prescribed zeros.
+It is then unique, and by the zero bound it has no other zeros and keeps one
+sign past the largest.  By \eqref{eq:weak} every monic multiple $F$ has
+$b_{u+1}(F)\ge1/\tau(X_F)$, where $X_F$ holds the distances from the top of
+its $u$ largest nonleading coefficients.  So the infimum is set by the worst
+placement.  The first result says that it is exactly that, and that exempt
+coefficients escaping to the bottom cost $\tau^*$, the best tail on the
+surviving roots alone.
+
+\begin{theorem}[The infimum as a placement game]\label{thm:value}
+Let $1<r_1<\cdots<r_L$ and $0\le u\le L-1$.  Then
+\[
+  \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)=\frac1T,
+  \qquad T=\sup_{|X|=u}\tau(X)\ge\tau^*,
+\]
+over monic $Q\in\R[x]$.
+\end{theorem}
+
+\begin{proof}
+The lower bound $b_{u+1}(F)\ge1/\tau(X_F)\ge1/T$ is \eqref{eq:weak}.
+
+For the upper bound fix $X$ with $|X|=u$ and $D\ge\max(L,\max X)$, and let
+$\tau_D(X)$ be the least $\sum_{d=1}^D|v_d|$ over certificates $v$ for $X$.
+It is positive, since a certificate vanishing at $1,\ldots,D$ would vanish
+identically.  Minimizing the largest $|f_j|$ over the positions $j<D$ with
+$D-j\notin X$, subject to $F=x^D+\sum_{j<D}f_jx^j$ vanishing at every $r_i$,
+is a feasible linear program.  Write $\mu_i$ for the multiplier of
+$F(r_i)=0$, and put $\lambda_i=-\mu_ir_i^D$ and $v_d=\sum_i\lambda_iy_i^d$.
+The coefficient of $f_j$ in the Lagrangian is then $-v_{D-j}$, and the dual
+program is to maximize $v_0$ subject to $v_d=0$ for $d\in X$ and
+$\sum_{d\le D,\,d\notin X}|v_d|\le1$.  Its value is $1/\tau_D(X)$.  By
+linear-programming duality some monic multiple of degree $D$ has every
+coefficient off the $u$ positions of $X$ at most $1/\tau_D(X)$ in magnitude,
+so its $b_{u+1}$ is at most $1/\tau_D(X)$.
+
+Two limits finish the proof.  First, $\tau_D(X)$ is nondecreasing in $D$ and
+at most $\tau(X)$.  Take minimizers $v^{(D)}=\sum_i\lambda^{(D)}_iy_i^d$.
+Their values at $L$ fixed points of $\{0,1,\ldots\}\setminus X$, one of them
+$0$, are bounded by $\max(1,\tau(X))$.  The matrix $(y_i^d)$ at $L$ distinct
+points is nonsingular by the zero bound, so the $\lambda^{(D)}$ are bounded.
+A subsequence converges to a certificate $v$ for $X$ with
+$\sum_{d\le N}|v_d|\le\lim_D\tau_D(X)$ for every $N$, whence
+$\tau(X)\le\Tail(v)\le\lim_D\tau_D(X)$.  So the infimum is at most $1/\tau(X)$
+for every $X$, that is, at most $1/T$.
+
+Second, put $E_\nu=\{\nu+1,\ldots,\nu+u\}$ and suppose
+$\tau(E_\nu)\le\tau^*-\varepsilon$ along a subsequence.  Take certificates
+$v^\nu=\sum_i\lambda^\nu_iy_i^d$ for $E_\nu$ with
+$\Tail(v^\nu)\le\tau^*-\varepsilon/2$.  For $\nu\ge L$ their values at
+$0,\ldots,L-1$ are bounded, so we may assume $\lambda^\nu\to\lambda$.  The $u$
+equations $v^\nu_e=0$, $e\in E_\nu$, read
+$A_\nu\lambda^\nu_{\le u}=-R_\nu\lambda^\nu_{>u}$ with
+$A_\nu=(y_j^e)_{e\in E_\nu,\,j\le u}$ and
+$R_\nu=(y_j^e)_{e\in E_\nu,\,j>u}$.  By Cramer's rule each entry of
+$A_\nu^{-1}R_\nu$ is, up to sign, a ratio $\alpha_J/\alpha_{J^*}$ of the
+minors in the proof of Lemma~\ref{lem:far}, with $k=u$ and $J\ne J^*$.  So it
+is at most $\eta_\nu\to0$, and $\lambda_{\le u}=0$.  Then
+$v=\sum_{i>u}\lambda_iy_i^d$ is a certificate on the surviving nodes, and as
+before $\Tail(v)\le\tau^*-\varepsilon/2$, against the definition of $\tau^*$.
+Hence $\liminf_\nu\tau(E_\nu)\ge\tau^*$, and $T\ge\tau^*$.
+\end{proof}
+
+Lemma~\ref{lem:far} supplies the reverse inequality, so $\tau(E_\nu)\to\tau^*$:
+the escaping placement costs exactly $\tau^*$.  There is also a dual side.  If
+$v=\sum_{i>u}\lambda_iy_i^d$ is a certificate on the surviving nodes and $w$
+is a bounded sequence with $w_0=1$ whose series $W(y)=\sum_dw_dy^d$ vanishes
+at $y_{u+1},\ldots,y_L$, then $0=\sum_i\lambda_iW(y_i)=\sum_dw_dv_d$, so
+\begin{equation}\label{eq:dualpair}
+  1\le\sup_{d\ge1}|w_d|\cdot\Tail(v).
+\end{equation}
+Such $W$ are the $\widetilde P_uH$ with $H(0)=1$.  Taking
+$H=\widetilde M/(1-y)$ for a monic $M\in\R[x]$ with reverse $\widetilde M$
+makes $w_d$ the partial sums $S_d(P_uM)$, as in \eqref{eq:wgen}.  So
+\begin{equation}\label{eq:multiplier}
+  \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)\le\frac1{\tau^*}
+  \le\max_{j\ge1}\bigl|S_j(P_uM)\bigr|
+  \qquad\text{for every monic }M\in\R[x].
+\end{equation}
+At $M=1$ this is the construction of Proposition~\ref{prop:partial}.  A
+witness $W$ with $\sup_{d\ge1}|w_d|=1/\Tail(v)$ proves that $v$ attains
+$\tau^*$.
+
+Whether $T=\tau^*$, so that the escaping placement is extremal, comes down to
+covering the finite placements.  The deletion step of Theorem~2.2 lifts a
+certificate on fewer nodes to one on all of them.
+
+\begin{theorem}[Lifting]\label{thm:lift}
+Let $2\le r_1<\cdots<r_L$ and $0\le k\le u$, and let $v$ be a full
+certificate on $y_{k+1},\ldots,y_L$ with zero set $Z$ and $g=\max Z$ ($g=0$
+if $Z$ is empty).  Then $\tau(X)\le\Tail(v)$ for every $X$ of size $u$ with
+$X\subseteq Z\cup(g,\infty)$ and $|X\setminus Z|\le k$.  The inequality is
+strict if $k\ge1$ and the padded set $Z^+$ below is not $\{1,\ldots,L-1\}$.
+\end{theorem}
+
+\begin{proof}
+Add to $Z\cup X$ integers above $\max(Z\cup X)$ until it has $L-1$ elements,
+and call the result $Z^+$.  It exceeds $Z$ by $k$ elements, all above $g$.
+The full certificate $v^+$ on $y_1,\ldots,y_L$ with zero set $Z^+$ is a
+certificate for $X$.  Delete the largest zero of $Z^+$ together with the
+largest node $y_1$.  The nodes are at most $1/2$, so the deletion step in the
+proof of Theorem~2.2 bounds $\Tail(v^+)$ by the tail of the full certificate
+on $y_2,\ldots,y_L$ with the remaining zeros, strictly unless
+$Z^+=\{1,\ldots,L-1\}$.  In that case Lemma~2.1 gives the two tails as
+products that differ by the factor $1/(r_1-1)\le1$.  Repeat $k$ times.  Each
+removed zero is the largest remaining, because the added ones all exceed $g$,
+and the last step lands on $v$.
+\end{proof}
+
+\begin{corollary}[One exempt coefficient]\label{cor:uone}
+Let $2\le r_1<\cdots<r_L$ and $u=1$, and suppose $\tau^*$ is attained by a
+full certificate on $y_2,\ldots,y_L$ with zero set $Z^*$ and $g=\max Z^*$.
+Then
+\[
+  \inf_Qb_2\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)
+  =\frac1{\max\bigl(\tau^*,\ \max_{w\in G}\tau(\{w\})\bigr)},
+  \qquad G=\{1,\ldots,g-1\}\setminus Z^*.
+\]
+\end{corollary}
+
+\begin{proof}
+Here $T=\sup_w\tau(\{w\})$.  If $w\notin G$, then $w\in Z^*$ or $w>g$, and
+Theorem~\ref{thm:lift} with $k=1$ gives $\tau(\{w\})\le\tau^*$.  Since
+$T\ge\tau^*$ by Theorem~\ref{thm:value}, the maximum is $T$.
+\end{proof}
+
+For $u\ge2$ the same covering is a finite search.  Start from
+$(A,k)=(\varnothing,u)$.  Choose a full certificate on $y_{k+1},\ldots,y_L$
+whose zero set $Z$ contains $A$ and whose tail is at most $\tau^*$.  By
+Theorem~\ref{thm:lift} it covers every $X\supseteq A$ whose other $k$
+elements lie in $Z\cup(\max Z,\infty)$.  Recurse on $(A\cup\{w\},k-1)$ for
+each $w<\max Z$ outside $Z\cup A$.  If the search closes, $T=\tau^*$ and the
+infimum is $1/\tau^*$.
+
+\begin{proposition}[Two infima]\label{prop:values}
+Over monic $Q\in\R[x]$,
+\[
+  \inf_Qb_2\bigl(Q\,(x-2)(x-3)(x-5)(x-7)\bigr)=\frac{1704}{31}=54.967\ldots,
+  \qquad
+  \inf_Qb_3\Bigl(Q\prod_{r=2}^7(x-r)\Bigr)=\frac{114840}{259}=443.397\ldots,
+\]
+against the bounds $48$ and $360$ of \eqref{eq:order} and the values $57$ and
+$480$ of the construction.  Neither infimum is attained.
+\end{proposition}
+
+\begin{proof}
+At $(2,3,5,7)$ the full certificate on $(\tfrac13,\tfrac15,\tfrac17)$ with
+zero set $\{1,3\}$ is
+$v^*_d=(81\cdot3^{-d}-625\cdot5^{-d}+686\cdot7^{-d})/142$.  It has
+$v^*_2=-\tfrac1{71}$, is positive past $3$, and has tail $\tfrac{31}{1704}$.
+The multiplier $M=x+\tfrac9{62}$ gives
+\[
+  \frac{\widetilde P_1(y)\,(1+\tfrac9{62}y)}{1-y}
+  =1-\tfrac{859}{62}y+\tfrac{1704}{31}y^2-\tfrac{2463}{62}y^3
+   -\tfrac{1704}{31}\sum_{d\ge4}y^d ,
+\]
+so by \eqref{eq:dualpair} $\tau^*=\tfrac{31}{1704}$, with $Z^*=\{1,3\}$ and
+$G=\{2\}$.  The full certificate on all four nodes with zero set $\{1,2,5\}$
+has tail $\tfrac{21337}{1910352}<\tfrac{31}{1704}$, and
+Corollary~\ref{cor:uone} gives the first value.
+
+At $(2,\ldots,7)$ with $u=2$ the full certificate on
+$(\tfrac14,\ldots,\tfrac17)$ with zero set $\{1,2,4\}$ has
+$v^*_3=\tfrac1{638}$, is negative past $4$, and has tail
+$\tfrac{259}{114840}$.  The multiplier $M=x+\tfrac{60}{259}$ gives the
+partial sums $1$, $-\tfrac{5379}{259}$, $\tfrac{5666}{37}$,
+$-\tfrac{114840}{259}$, $\tfrac{64440}{259}$ and then $\tfrac{114840}{259}$
+forever, so $\tau^*=\tfrac{259}{114840}$ with $Z^*=\{1,2,4\}$.  The search
+closes in two steps.  Theorem~\ref{thm:lift} with $k=2$ covers every
+$X\not\ni3$.  The full certificate on $(\tfrac13,\ldots,\tfrac17)$ with zero
+set $\{1,2,3,5\}$, of tail $\tfrac{31}{36720}$, covers every $\{3,x\}$ except
+$\{3,4\}$.  The full certificate on all six nodes with zero set
+$\{1,2,3,4,7\}$, of tail $\tfrac{119261}{193623120}$, covers $\{3,4\}$.
+
+Neither infimum is attained, because $\tau(X)<\tau^*$ for every $X$.  Each
+covering above either lifts with $k\ge1$ onto a padded zero set that is not
+consecutive, which is strict by Theorem~\ref{thm:lift}, or has tail below
+$\tau^*$ outright.  So every multiple $F$ has
+$b_{u+1}(F)\ge1/\tau(X_F)>1/\tau^*$.
+\end{proof}
+
+In both cases the extremal series is the construction of
+Proposition~\ref{prop:partial} applied to $P_uM$ rather than $P_u$, and the
+factor $x+\beta$ has a negative root.  It raises the total $|P_u(1)M(1)|$
+above $|P_u(1)|$ but brings every partial sum within it, so \eqref{eq:partial}
+holds for the product.  Complementary slackness explains the shape.  Past the
+largest zero $g$ of $v^*$ the witness is constant, so $(1-y)W$ is a
+polynomial of degree $g+1$ and $\deg M=g+1-m$, which is $1$ both times.
+
+This is the $\ell^\infty$ member of the family this paper works in.  Reduced
+length minimizes $\ell^1$ over normalized multiples~\cite{schinzel}.  Its
+integer-polynomial $\ell^2$ analogue, the minimal Euclidean norm of an
+algebraic number, is effectively computable~\cite{frw}.  The logarithmic
+coefficient mass $\Lambda$ of~\cite{coefficient-mass} is additive over
+coefficients rather than a norm at all.
 
 \section{Scope}\label{sec:scope}
 
@@ -885,9 +1071,15 @@ Theorem~\ref{thm:converse} it is exactly when \eqref{eq:partial} holds, as
 at $(2,3)$ and $(2,3,5)$, where~\cite[Proposition~4.1]{coefficient-mass} and
 Proposition~\ref{prop:sharp235} exhibit the multiples, and at $(3,4,5,6)$.
 It fails already at $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums
-are $1,-\tfrac{11}2,5$, so the infimum of $b_2$ exceeds $5$.  Two questions
-remain open: the value of the infimum when \eqref{eq:partial} fails, and
-repeated roots beyond the confluent pair $(3,3)$.
+are $1,-\tfrac{11}2,5$, so the infimum of $b_2$ exceeds $5$.  When
+\eqref{eq:partial} fails, Theorem~\ref{thm:value} gives the infimum as $1/T$,
+and Theorem~\ref{thm:lift} reduces $T=\tau^*$ to a finite search, which
+closes at $(2,3,5,7)$ and $(2,\ldots,7)$ (Proposition~\ref{prop:values}) and
+at each of $139$ further integer root sets we tried with $u\le2$.  Two things
+are not proved in general: that $\tau^*$ is attained by a full certificate
+with a witness as in \eqref{eq:dualpair}, and that the search always closes,
+that is, that the escaping placement is always extremal.  Repeated roots
+beyond the confluent pair $(3,3)$ also remain open.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.

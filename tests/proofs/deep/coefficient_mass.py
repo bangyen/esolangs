@@ -6,7 +6,8 @@ Run:  just proofs   (or python tests/proofs/deep/coefficient_mass.py)
 (Theorem 2.2) under the node cutoff ``y_i <= 1/2``;
 ``docs/proofs/coefficient-mass-attainment.tex`` shows the cutoff cannot be
 raised, that the ``(2,3,5)`` families are ordered at every degree, and that
-the partial-sum criterion is necessary as well as sufficient.  This
+the partial-sum criterion is necessary as well as sufficient, and computes
+the infimum at two root sets where it fails.  This
 module is a *seeded* sweep whose counts are stable, so the qualitative claims
 are executed rather than remembered, plus exact checks of every number the
 first paper works out by hand.
@@ -42,12 +43,13 @@ import random
 from fractions import Fraction
 
 #: Cost band; see ``__main__.py``.  Exact rational solves of 450 small
-#: Vandermonde systems, an exact simplex on the two small searches, and the
-#: sign identities to D=40.  Measured 0.6s -- nodes are unit fractions over
+#: Vandermonde systems, an exact simplex on the small searches, and the
+#: sign identities to D=40.  Measured 1.8s, most of it the degree-12
+#: ``(2,3,5,7)`` program of ``_check_value`` -- nodes are unit fractions over
 #: small denominators, so the arithmetic stays narrow.  Sits beside
 #: ``multiplicity``, the other coefficient-mass proof, in ``ci``.
 BAND = "ci"
-COST = 1.0
+COST = 2.0
 
 #: Draws are seeded so the printed tallies are quotable.  Changing this
 #: reseeds every count below.
@@ -540,6 +542,72 @@ def _check_converse(failures: list[str]) -> int:
     return checks + 2
 
 
+def _series(roots: list[Fraction], beta: Fraction, terms: int) -> list[Fraction]:
+    """Coefficients of ``~P(y) (1 + beta y) / (1 - y)``: partial sums of ``P M``."""
+    return _partial_sums([*roots, -beta])[:terms]
+
+
+def _check_value(failures: list[str]) -> int:
+    """``sec:value``: the two infima of ``prop:values`` and the lifting behind them.
+
+    Each ``tau*`` is pinned from both sides: a full certificate with that
+    tail, and a multiplier ``M = x + beta`` whose partial sums stay within
+    ``1/tau*`` (``eq:dualpair``).  Every exempt placement is then covered by a
+    certificate with a smaller tail, the lifted ones checked directly out to
+    distance 30, and the exact linear program to degree 12 (55.98) sits strictly
+    between ``1/tau*`` and the construction.
+    """
+    checks = 0
+    cases = [
+        ((3, 5, 7), [1, 3], Fraction(9, 62), Fraction(31, 1704), 57),
+        ((4, 5, 6, 7), [1, 2, 4], Fraction(60, 259), Fraction(259, 114840), 480),
+    ]
+    for rhos, zeros, beta, tau, built in cases:
+        nodes = [Fraction(1, r) for r in rhos]
+        a = _certificate(nodes, zeros)
+        if _tail(nodes, zeros, a) != tau:
+            failures.append(f"{rhos} certificate on {zeros} is not {tau}")
+        sums = _partial_sums([Fraction(r) for r in rhos])
+        if max(abs(v) for v in sums[1:]) != built:
+            failures.append(f"{rhos} construction is not {built}")
+        series = _series([Fraction(r) for r in rhos], beta, len(rhos) + 2)
+        if abs(series[-1]) != 1 / tau or any(abs(v) > 1 / tau for v in series[1:]):
+            failures.append(f"{rhos} witness x+{beta} does not certify {1 / tau}")
+        checks += 2
+
+    # (2,3,5,7), u = 1: every single placement against 31/1704.
+    nodes = [Fraction(1, r) for r in (2, 3, 5, 7)]
+    tau = Fraction(31, 1704)
+    cover = {1: [1, 3, 4], 2: [1, 2, 5], 3: [1, 3, 4]}
+    for pos in range(1, 31):
+        zeros = cover.get(pos, [1, 3, pos])
+        t = _tail(nodes, zeros, _certificate(nodes, zeros))
+        if not t < tau:
+            failures.append(f"(2,3,5,7) placement {pos} has tail {t} >= 31/1704")
+        checks += 1
+    if _tail(nodes, [1, 2, 5], _certificate(nodes, [1, 2, 5])) != Fraction(
+        21337, 1910352
+    ):
+        failures.append("(2,3,5,7) certificate on {1,2,5} is not 21337/1910352")
+
+    # (2,...,7), u = 2: the two covering certificates below the lifted one.
+    tau = Fraction(259, 114840)
+    for rhos, zeros, t in (
+        ((3, 4, 5, 6, 7), [1, 2, 3, 5], Fraction(31, 36720)),
+        ((2, 3, 4, 5, 6, 7), [1, 2, 3, 4, 7], Fraction(119261, 193623120)),
+    ):
+        nodes = [Fraction(1, r) for r in rhos]
+        got = _tail(nodes, zeros, _certificate(nodes, zeros))
+        if got != t or not got < tau:
+            failures.append(f"{rhos} cover on {zeros} is {got}, not {t} < tau*")
+        checks += 1
+
+    got = _min_bk([Fraction(r) for r in (2, 3, 5, 7)], 2, 12)
+    if not Fraction(1704, 31) < got < 57:
+        failures.append(f"min b_2 at (2,3,5,7), degree <= 12, is {got}")
+    return checks + 1
+
+
 def _top_multiple(roots: list[Fraction], n: int) -> tuple[Fraction, list[Fraction]]:
     """prop:subtwosharp's ``F_n`` for distinct roots: ``(t_n, coefficients)``."""
     size = len(roots)
@@ -600,12 +668,14 @@ def main() -> int:
     worked = _check_worked_numbers(failures)
     converse = _check_converse(failures)
     repaired = _check_repaired(failures)
+    value = _check_value(failures)
     print(f"  positive controls fired                     : {controls}")
     print(f"  search optima equal their family members    : {searches}")
     print(f"  sharp235 ordering degrees checked exactly   : {ordering}")
     print(f"  worked numbers of the paper checked exactly : {worked}")
     print(f"  converse lemmas checked exactly             : {converse}")
     print(f"  repaired sharpness checked exactly          : {repaired}")
+    print(f"  infima past the criterion checked exactly   : {value}")
     rng = random.Random(SEED)
     totals = {}
     for label, pool in _POOLS.items():
