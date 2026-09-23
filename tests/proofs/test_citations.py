@@ -155,7 +155,7 @@ def test_the_cited_titles_are_the_ones_the_papers_name() -> None:
     """The bibliography entry's parenthetical names Corollary 3.4's title."""
     assert _numbering("coefficient-mass")["3.4"][2] == "Logarithmic mass"
     assert _numbering("coefficient-mass")["4.5"][2] == (
-        "The bound for $b_2$ at roots $(2,3)$ is an infimum"
+        "Sharpness of the row $k=2$ at $(2,3)$"
     )
     assert _numbering("coefficient-mass-attainment")["2.1"][2] == "Confluent analogue"
     # Compared with whitespace collapsed: the entry is prose, and rewrapping

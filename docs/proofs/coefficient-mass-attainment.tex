@@ -1134,52 +1134,159 @@ $(\tfrac{2013}{1000},\tfrac{257}{125},\tfrac{2127}{1000},\tfrac{1071}{500},
 \tfrac{549}{250})$ with $u=1$ and $X=\{2\}$ by a factor $2.01$.
 
 Both the slide and the displacement are choices of a point on one line, and
-that line carries its own minimum.  Fix $B$ and $g$ and let
+that line carries its own minimum.  Fix a set $B$ of $L-k-3$ positive
+integers and let
 \[
   \mathcal P=\bigl\{v \text{ on } y_{k+1},\ldots,y_L\ :\ v_0=1,\
   v_b=0\ (b\in B)\bigr\},
 \]
-a two-parameter family on which $\Tail$ is convex.  Two lines in it meet at the
-full certificate on $y_{k+2},\ldots,y_L$ with zero set $B\cup\{g\}$: the
-certificates that also kill $g$, and those that give weight $0$ to $y_{k+1}$.
+a two-parameter family on which $\Tail$ is convex.  For $a\notin B$ write
+$\ell_a=\{v\in\mathcal P:v_a=0\}$, and $\ell_\infty$ for the certificates in
+$\mathcal P$ giving weight $0$ to $y_{k+1}$, that is, the full certificates on
+$y_{k+2},\ldots,y_L$ whose zero set contains $B$.  Each $\ell_a$ is a pencil as
+in Lemma~\ref{lem:pencil}, so $\Tail$ restricted to it is the convex function
+of Proposition~\ref{prop:median}, minimized at the half-mass point of
+Corollary~\ref{cor:halfmass}; two of these lines meet in the full certificate
+with zero set $B\cup\{a,b\}$, which we write $p_{ab}$, and $\ell_a$ meets
+$\ell_\infty$ in the full certificate $F_a$ on $y_{k+2},\ldots,y_L$ with zero
+set $B\cup\{a\}$.  The slide-down rule is then one inequality between a line
+and a point.
 
-\begin{conjecture}[A placement costs no more than a node]\label{conj:plane}
-Let $2\le r_1<\cdots<r_L$, let $B$ be a set of $L-k-2$ positive integers and
-let $g\ge1$ with $g\notin B$.  Then
-\begin{equation}\label{eq:plane}
-  \min\{\Tail(v):v\in\mathcal P,\ v_g=0\}
-  \ \le\
-  \min\{\Tail(v):v\in\mathcal P,\ \lambda_{k+1}=0\}.
+\begin{proposition}[Slide reduction]\label{prop:slide}
+Let $2\le r_1<\cdots<r_L$, let $X$ be finite with $g=\max X$ and
+$X'=X\setminus\{g\}$, and let $Z^-$ attain $\tau_{k+1}(X')$ with $g\notin Z^-$
+and $g<\max Z^-$.  Put $M=\min\{z\in Z^-:z>g\}$ and $B=Z^-\setminus\{M\}$.  If
+\begin{equation}\label{eq:slide}
+  \min\{\Tail(v):v\in\ell_g\}\ \le\ \Tail(F_M),
 \end{equation}
-\end{conjecture}
-
-The left side is the weighted median of Proposition~\ref{prop:median}, with
-$A=B\cup\{g\}$; the right side is the least tail of a full certificate on
-$y_{k+2},\ldots,y_L$ whose zero set contains $B$.
-
-\begin{proposition}\label{prop:planestep}
-Conjecture~\ref{conj:plane} implies \eqref{eq:step}, hence $T=\tau^*$.
+then \eqref{eq:step} holds at $X$.
 \end{proposition}
 
 \begin{proof}
-Given $X$ with $g=\max X$, let $Z^-$ attain $\tau_{k+1}(X\setminus\{g\})$ and
-drop from it one element not in $X$, and not equal to $g$ unless $g\in Z^-$, to
-leave $B$.  The right side of \eqref{eq:plane} is then at most
-$\Tail(Z^-)=\tau_{k+1}(X\setminus\{g\})$, while every $v$ counted on the left
-vanishes on $B\cup\{g\}\supseteq X$, so the left side is at least
-$\tau_k(X)$.  Now apply Proposition~\ref{prop:step}.
+$B$ has $L-k-3$ elements, $g$ and $M$ lie outside it and no element of $B$
+lies between them.  Every $v\in\ell_g$ vanishes on $B\cup\{g\}\supseteq X$,
+because $X'\subseteq Z^-$ and $M>g=\max X$ puts $M$ outside $X$; so the left
+side of \eqref{eq:slide} is at least $\tau_k(X)$, while
+$\Tail(F_M)=\Tail(Z^-)=\tau_{k+1}(X')$.
 \end{proof}
 
-So the case analysis disappears: \eqref{eq:plane} is one inequality between two
-lines through a common point, quantified over all $B$ and $g$, with no
-hypothesis that $Z^-$ minimizes anything.  It contains
-Proposition~\ref{prop:stepeasy}, which is the deletion step applied to the
-point of the first line that also kills $\max B\cup\{e\}$, and it is what fails
-to follow from that step when $g$ straddles.  We met \eqref{eq:plane} in $5700$
-pairs $(B,g)$ over integer and rational root sets without a failure.  Any proof
-must use the cutoff: with nodes allowed anywhere in $(0,1)$ it fails in $1606$
-of $4756$ pairs, by as much as a factor $18.3$.
+Together with Proposition~\ref{prop:stepeasy} this covers every case of
+\eqref{eq:step}, and two alignments of the minimizers settle
+\eqref{eq:slide} by convexity alone.
 
+\begin{proposition}[Two aligned cases of the slide]\label{prop:slidealigned}
+Let $B$, $g<M$ be as in \eqref{eq:slide}, let $M^*$ minimize $\Tail(F_a)$
+over $a\notin B$, and let $N'$ be the half-mass point of
+Corollary~\ref{cor:halfmass} for $A=B\cup\{M\}$ on $y_{k+1},\ldots,y_L$.
+\begin{enumerate}
+\item If $M^*\le g$, then $\Tail(F_g)\le\Tail(F_M)$, and \eqref{eq:slide}
+  holds by Corollary~\ref{cor:nocut}.
+\item If $N'\le g$, then $\Tail(p_{gM})\le\Tail(F_M)$: adjoining $g$ to $Z^-$
+  costs nothing, and \eqref{eq:slide} holds.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+On $\ell_\infty$ the points $F_a$ are ordered by $a$ (Lemma~\ref{lem:ratio}
+applied on $y_{k+2},\ldots,y_L$), so in the first case $F_g$ lies between
+$F_{M^*}$ and $F_M$, and convexity of $\Tail$ along the line gives
+$\Tail(F_g)\le\max(\Tail(F_{M^*}),\Tail(F_M))=\Tail(F_M)$.  On $\ell_M$ the
+points $p_{Ma}$ are ordered by $a$ with $F_M$ at the end, so in the second case
+$p_{gM}$ lies between $F_M$ and the minimizer $p_{MN'}$, and convexity gives
+$\Tail(p_{gM})\le\Tail(F_M)$.
+\end{proof}
+
+The remaining case, $M^*>g$ and $N'>g$, is where the slide must displace.
+There \eqref{eq:slide} is false in general.
+
+\begin{proposition}[The slide fails for a general zero set]\label{prop:slidefails}
+Let $L=9$, $k=0$, $y_i=\tfrac12-(i-1)\cdot10^{-4}$, $B=\{1,2,3,11,12,13\}$,
+$g=4$ and $M=6$.  Then $M=M^*$, and every $v\in\ell_g$ has
+$\Tail(v)\ge1.026\,\Tail(F_M)$.  In the confluent limit of
+Proposition~\ref{prop:confluent} with all nine nodes at $\tfrac12$, where the
+full certificate with zero set $Z$ is $d\mapsto2^{-d}\prod_{z\in Z}(1-d/z)$,
+the same $B$, $g$, $M$ give
+\[
+  \min_{N}\Tail\bigl(B\cup\{4,N\}\bigr)
+  =\Tail\bigl(\{1,2,3,4,10,11,12,13\}\bigr)=\tfrac3{143}
+  =\tfrac{36}{35}\Tail\bigl(B\cup\{6\}\bigr),
+  \qquad \Tail\bigl(B\cup\{6\}\bigr)=\tfrac{35}{1716}.
+\]
+\end{proposition}
+
+\begin{proof}
+Exact rational arithmetic.  The minimum over $\ell_g$ is at its half-mass
+point $N=10$ by Corollary~\ref{cor:halfmass}, and the tails at $N\le40$ were
+also compared directly; in the confluent case every $N\le399$ was checked and
+the limit $N\to\infty$ is $\Tail(B\cup\{4\})=2.01\,\Tail(B\cup\{6\})$.
+\end{proof}
+
+So the case analysis does not disappear.  The hypothesis
+Proposition~\ref{prop:slide} actually supplies, that $B\cup\{M\}$ is a
+minimizer of $\tau_{k+1}$, is stronger than the hypothesis of
+\eqref{eq:slide}, and at the root set of Proposition~\ref{prop:slidefails} it
+is not met: the minimizer for $X'=\{1,2,3\}$ on $y_2,\ldots,y_9$ is
+$\{1,2,3,6,8,12,17\}$, and \eqref{eq:step} holds at $X=\{1,2,3,4\}$ with ratio
+$0.70$.  We know no root set at which \eqref{eq:step} fails: none among
+$47638$ instances over integer, rational and clustered root sets to $L=6$,
+none among $1352$ further steps with $u\le3$, and none among the $9828$
+placements of size $L-2$ inside $\{1,\ldots,15\}$ on the clustered nodes
+$\tfrac12-(i-1)\cdot10^{-4}$ with $L\le8$.  Where the displaced zero goes is
+not settled either: the half-mass point $N'$ of $\ell_M$ wins in most
+straddling instances, but at the confluent limit with $B=\{1,\ldots,24\}$,
+$g=25$ and $M=50$, where $M$ is the minimizer on $\ell_\infty$, the vertex
+$p_{gN'}$ has $N'=55$ and tail $1.031\,\Tail(F_M)$ while $p_{g,51}$ meets
+$\Tail(F_M)$ exactly and $p_{g,52}$ falls below it.  What does hold, at every
+$g$ and $M$, is the slide from a zero set whose part below $g$ is an initial
+segment, by a certificate that is not a vertex at all: smoothing $F_M$ against
+the new node.
+
+\begin{theorem}[The slide from an initial segment]\label{thm:slideinitial}
+Let $y_1,\ldots,y_{c-1}\in(0,1)$ be distinct, let $y_c\in(0,\tfrac12]$ be a
+further node, let $B=\{1,\ldots,k\}$ with $k=c-3$, and let $g>k$ and $M>g$.
+Let $F_M$ be the full certificate on $y_1,\ldots,y_{c-1}$ with zero set
+$B\cup\{M\}$.  Then some certificate on all $c$ nodes vanishing on
+$B\cup\{g\}$ has tail at most $\Tail(F_M)$, so \eqref{eq:slide} holds; and
+for $g=k+1$ the tail is at most $\tfrac{y_c}{1-y_c}\Tail(F_M)$.
+\end{theorem}
+
+\begin{proof}
+Write $F_M(x)=\sum_dF_{M,d}x^d=N(x)/\prod_{i<c}(1-y_ix)$ with $\deg N\le c-2$,
+and put
+\[
+  v(x)=\frac{1-y_cxF_M(x)}{1-y_cx}
+      =\frac{\prod_{i<c}(1-y_ix)-y_cxN(x)}{\prod_{i\le c}(1-y_ix)} .
+\]
+The numerator has degree at most $c-1$ and the poles are simple, so $v$ is an
+exponential sum on the $c$ nodes; expanding, $v_0=1$ and
+\[
+  v_d=-\sum_{1\le j<d}F_{M,j}\,y_c^{\,d-j}\qquad(d\ge1).
+\]
+For $b\le k$ every $j<b$ lies in $B$, so $v_b=0$: $v\in\mathcal P$.  Summing
+the geometric factors,
+$\Tail(v)\le\sum_{j\ge1}|F_{M,j}|\sum_{i\ge1}y_c^i
+=\tfrac{y_c}{1-y_c}\Tail(F_M)\le\Tail(F_M)$, the one use of the cutoff.  At
+$d=g$ the sum runs over $k<j<g$; by the zero bound $F_M$ has exactly the zeros
+$B\cup\{M\}$, so it keeps one sign on $(k,M)$, and $v_g$ is either $0$, when
+$g=k+1$, or of the sign opposite to $F_{M,g}$.  In the first case $v\in\ell_g$
+already.  In the second the segment from $F_M$ to $v$ in $\mathcal P$ crosses
+$\ell_g$ at $w=(1-\lambda)F_M+\lambda v$ with
+$\lambda=F_{M,g}/(F_{M,g}-v_g)\in(0,1)$, and convexity gives
+$\Tail(w)\le\max(\Tail(F_M),\Tail(v))=\Tail(F_M)$.  By
+Proposition~\ref{prop:median} the minimum over $\ell_g$ is at a vertex
+$p_{gN}$, which is then a full certificate with the claimed tail.
+\end{proof}
+
+Only the new node is held to the cutoff, and the others may exceed it; with
+$y_c>\tfrac12$ the conclusion fails in $59$ of $114$ instances tried, so the
+hypothesis is the right one.  The factor $\tfrac{y_c}{1-y_c}$ is sharp: at the
+confluent limit with all nodes at $\tfrac12$, $g=k+1$ and $M=2k+2$ the ratio in
+\eqref{eq:slide} is $(2k+3)/(2k+4)$ for $k\le8$, exactly, where
+$\Tail(B\cup\{M\})=\binom{2k+2}{k+1}4^{-k-1}$.  The construction does not
+reach a $B$ with a gap below $g$, where $v_b=-\sum_{j<b,\,j\notin B}F_{M,j}y_c^{b-j}$
+need not vanish at the first $b$ above the gap, nor a $B$ with elements above
+$M$, which is where Proposition~\ref{prop:slidefails} lives; in
+$24312$ instances with $B\subset(0,g)$ we found no failure.
 What the median ranges over is not a one-parameter shape: the minimizing zero
 set itself is not a consecutive block with one displaced zero.  At
 $(2,3,4,5,6)$ with $u=0$ it is $\{1,2,4,6\}$, of tail $\tfrac{41}{12600}$,
@@ -1423,22 +1530,28 @@ proved in general: that $\tau^*$ is attained by a full certificate with a
 witness as in \eqref{eq:dualpair}, and that the search always closes, that is,
 that the escaping placement is always extremal.
 
-The second is now one inequality.  By Proposition~\ref{prop:step} it is the
-single step \eqref{eq:step}, deleting the largest element of the placement, and
-by Proposition~\ref{prop:stepeasy} that step already holds except when the
-minimizing zero set straddles $\max X$; Conjecture~\ref{conj:plane} is what
-covers the straddling case, and by Proposition~\ref{prop:planestep} it gives
-\eqref{eq:step} with no case analysis at all.  We tested
-\eqref{eq:step} at $47638$ instances across two sweeps --- integer root sets to
-$L=6$, rational ones, and sets clustered just above the cutoff --- with no
-violation, $1017$ of them straddling and every one covered by the slide-down
-rule, a further $674$ in its median form, and \eqref{eq:plane} itself at
-$5700$ pairs $(B,g)$.  Three alternatives are
-refuted above: deleting $\min X$ rather than $\max X$ fails at $(2,3,4,5)$;
-freeing $\max Z^-$ rather than the smallest zero above $g$ fails by a factor
-$1.40$; and adjoining $g$ to $Z^-$ without sliding, which would need no
-displaced zero at all, fails in $245$ of the $379$ straddling instances we put
-to it, by as much as a factor $2.01$.  Proposition~\ref{prop:head} states the same question
+The second was reduced to one inequality and the inequality is false.  By
+Proposition~\ref{prop:step} it is the single step \eqref{eq:step}, deleting
+the largest element of the placement; by Proposition~\ref{prop:stepeasy} the
+step holds except when the minimizing zero set straddles $\max X$, and by
+Proposition~\ref{prop:slide} the straddling case is the slide inequality
+\eqref{eq:slide}, which Proposition~\ref{prop:slidealigned} proves when either
+minimizer involved sits at or below $\max X$.  In the remaining case
+\eqref{eq:slide} fails, at nine nodes clustered just below the cutoff
+(Proposition~\ref{prop:slidefails}), so no argument that ignores the
+minimality of the zero set being slid can prove \eqref{eq:step}.  The step
+itself has no known counterexample: none in $47638$ instances to $L=6$, in
+$1352$ further steps, or among all placements of size $L-2$ inside
+$\{1,\ldots,15\}$ at the clustered nodes with $L\le8$.
+Theorem~\ref{thm:slideinitial} proves the slide whenever the zero set below
+$\max X$ is an initial segment, by smoothing the minimizing certificate
+against the new node; a gap below $\max X$, or zeros above the slid one, is
+what remains, and the displaced zero is then not the half-mass point.  Three
+alternatives are refuted above: deleting $\min X$ rather than $\max X$ fails
+at $(2,3,4,5)$; freeing $\max Z^-$ rather than the smallest zero above $g$
+fails by a factor $1.40$; and adjoining $g$ to $Z^-$ without sliding, which
+would need no displaced zero at all, fails in $245$ of the $379$ straddling
+instances we put to it, by as much as a factor $2.01$.  Proposition~\ref{prop:head} states the same question
 analytically instead, as a bound on the $\max X-1$ coefficients of a deflated
 multiple; by Proposition~\ref{prop:defthresh} that route says nothing pointwise
 once $r_1\le\tfrac{3+\sqrt5}2$, which covers every root set with $r_1=2$.
@@ -1506,8 +1619,8 @@ multiples,
 Lemma~2.1 (Consecutive zero set), Theorem~2.2 (Displaced-zero comparison),
 Lemma~2.3 (Interlacing of the correction sum), Lemma~3.1 (Slack
 certificate), Theorem~3.2 (Coefficient order statistics),
-Corollary~3.6 (Sharp prime-root infimum), Proposition~4.5 (The bound for
-$b_2$ at roots $(2,3)$ is an infimum).
+Corollary~3.6 (Sharp prime-root infimum), Proposition~4.5 (Sharpness of the
+row $k=2$ at $(2,3)$).
 \end{thebibliography}
 
 \end{document}
