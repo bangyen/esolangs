@@ -191,16 +191,17 @@ INTERCAL, listed last, is outside the pass.
 Research questions the proofs leave open.  Each names the first executable
 step; an answer lands in the paper it extends, and the row leaves.
 
-- **The infimum when the partial-sum criterion fails.**  The sharpness paper
-  proves the order-statistic bound is an infimum exactly when the criterion
-  holds (distinct roots), but not what the infimum is otherwise.  At
-  `(2,3,5,7)`, `u = 1`, linear programs give `54.967...`, which matches
-  `1704/31`, the best certificate with its exempt coefficient escaping, against
-  bound 48 and construction 57.  Prove the escaping placement is extremal,
-  which reduces the value to an `l^inf` problem over `P~_u H`, then compute it.
-  Repeated roots beyond `(3,3)` are also open, as is the case where an exempt
-  root lies below 2 and more than `u` partial sums of `P` exceed `|P(1)|`,
-  where the repaired bound need not be sharp.  See the Scope section of
+- **Extremality of the escaping placement.**  The sharpness paper now gives
+  the infimum when the partial-sum criterion fails as `1/T`, `T` the worst
+  exempt placement's best certificate tail, and a lifting lemma reduces
+  `T = tau*` (escaping exempt coefficients extremal) to a finite search.  It
+  closes at `(2,3,5,7)` (`1704/31`), `(2,...,7)` with `u = 2`
+  (`114840/259`), and 139 further integer root sets.  Prove it always closes,
+  and that `tau*` is always attained by a full certificate with a multiplier
+  witness.  Repeated roots beyond `(3,3)` are also open, as is the case where
+  an exempt root lies below 2 and more than `u` partial sums of `P` exceed
+  `|P(1)|`, where the repaired bound need not be sharp.  See the section "The
+  infimum when the criterion fails" in
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
 
 - **Effective Factor threshold.**  The tree constant is exact, the walk's
