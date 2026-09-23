@@ -42,10 +42,13 @@ valid in the presence of ignored prime factors, comments, and leading zeros;
 these encodings realize only $\exp(O(D/\log D))$ behaviors.  The tree's
 constant is exact, the walk's leading constant is explicit, and a sieve of
 the classes modulo $11$ through $10^{11}$ gives a proven digit ceiling at
-every arity up to $19$.  Beyond that arity the threshold is effective in
-principle, the modulus admitting no exceptional zero, and an explicit
-short-interval theorem on GRH makes it numerical: the ceiling is then
-$24.6\,T\log T$ at every arity, falling to $35/\log 10<15.21$.  Carrying the
+every arity up to $19$.  Beyond that arity an explicit short-interval
+theorem on GRH makes the threshold numerical: the ceiling is then
+$24.6\,T\log T$ at every arity, falling to $35/\log 10<15.21$.
+Unconditionally, an explicit log-free density estimate and explicit
+zero-free regions at the modulus $11$ give a threshold with a value,
+$x_0>e^{15900}$, and a ceiling of $3.05\cdot10^4\,T\log T$ at every arity,
+falling below $19181$.  Carrying the
 table as tape data and chaining one byte-sized index digit per level beats
 the tree's constant, and letting one walk cell serve a whole group of
 entries beats it again; spelling two entries in one byte with signed values
@@ -457,8 +460,9 @@ makes explicit.
 
 The constant $O(1)$ above contains $x_0$, so the corollary does not say at
 which $T$ the ceiling takes hold.  For the arities that can be generated in
-practice a computation replaces it; Section~\ref{sec:grh} covers the rest on
-GRH.  The ineffectivity is an artifact of the quotation, not of the modulus.
+practice a computation replaces it; Section~\ref{sec:grh} covers the rest,
+on GRH and without.  The ineffectivity is an artifact of the quotation, not
+of the modulus.
 
 \begin{remark}[Effectivity at a fixed modulus]\label{rem:effective}
 Lemma~\ref{lem:short} carries an ineffective $x_0$ only because it is quoted
@@ -471,8 +475,8 @@ class number $1$ and two units, so the class-number formula gives
   L(1,\chi)=\frac{2\pi h}{w\sqrt{11}}=\frac{\pi}{\sqrt{11}}=0.94722\ldots,
 \]
 which excludes an exceptional zero outright.  So $x_0$ is effective in
-principle at this modulus; what the literature does not supply is a value for
-it.  Under GRH one is available.
+principle at this modulus.  Lemma~\ref{lem:uncond} assembles a value from
+the literature; under GRH a far smaller one is available.
 \end{remark}
 
 \begin{lemma}[Computed class gaps]\label{lem:computed}
@@ -521,7 +525,7 @@ tends towards $\frac{35}{2}/\log10\approx7.60$ rather than
 Corollary~\ref{cor:leading}'s $18.25$, but slowly: $\log_{10}y$ exceeds
 $\log_{10}C$ by $\log_{10}(c\log^2y)$.
 
-\section{An effective threshold on GRH}\label{sec:grh}
+\section{Effective thresholds}\label{sec:grh}
 
 Lemma~\ref{lem:computed} stops at $10^{11}$, so Proposition~\ref{prop:computed}
 stops at $n=19$.  The generalized Riemann hypothesis carries the walk the rest
@@ -645,34 +649,212 @@ Corollary~\ref{cor:leading}'s leading constant, $18.25$ falling to $15.21$,
 since a square-root gap bound is the case $\theta=\frac12$ of
 Lemma~\ref{lem:short} and $\frac{35}{2(1-\theta)}=35$.
 
-\begin{remark}[Removing GRH]\label{rem:unconditional}
-The ingredients for an unconditional explicit $\theta$ are in print, though we
-have not assembled them.  Thorner and Zaman~\cite[Thm.~1.2]{tz-density} prove
-the explicit log-free density estimate
+Without GRH the ingredients are also in print, and they assemble into an
+explicit threshold, though a far weaker one: the smoothed explicit formula
+of Dudek, Greni\'e and Molteni is unconditional, Thorner and Zaman's explicit
+log-free density estimate controls the zeros near $\sigma=1$, Kadiri's
+zero-free regions cut them off, and an explicit zero count handles the rest.
+Let $\mathcal Z$ be the multiset of nontrivial zeros $\rho=\beta+i\gamma$ of
+$\zeta$ and of the nine $L(s,\chi)$ with $\chi$ nonprincipal modulo $11$,
+all primitive since $11$ is prime, and let $N_{11}(t)$ count those with
+$|\gamma|\le t$.
+
+\begin{lemma}[Zeros of the ten $L$-functions]\label{lem:zeros}
+For $t\ge e$,
+$N_{11}(t)\le\frac{10t}{\pi}\log\frac{11t}{2\pi e}+3\log(11t)+81$.
+Every $\rho\in\mathcal Z$ with $|\gamma|\le t$ has
+$\beta\le1-1/(5.70\log(11t))$.  For $Q\ge11$ and $\sigma\ge\frac{39}{40}$,
+at most $10^{88}(10^{421}Q^{99})^{1-\sigma}$ elements of $\mathcal Z$ have
+$\beta>\sigma$ and $|\gamma|\le Q$.
+\end{lemma}
+
+\begin{proof}
+Bennett, Martin, O'Bryant and Rechnitzer~\cite[Cor.~1.2]{bmor-count} give,
+for a character of conductor $q>1$ and $t\ge5/7$, at most
+$\frac t\pi\log\frac{qt}{2\pi e}+0.247\log(qt)+6.894$ zeros with
+$|\gamma|\le t$; Hasanalizade, Shen and Wong~\cite[Cor.~1.2]{hsw} give, for
+$t\ge e$, at most
+$\frac t{2\pi}\log\frac t{2\pi e}+0.1038\log t+0.2573\log\log t+9.3675$
+zeros of $\zeta$ with $0<\gamma\le t$, and the zeros of $\zeta$ come in
+conjugate pairs.  Nine of the first and twice the second sum to at most the
+stated bound, since $\log\log t\le\log t\le\log(11t)$ and
+$2.946\log(11t)+80.79\le3\log(11t)+81$.
+
+Kadiri~\cite[Thm.~1.1]{kadiri} proves $L(s,\chi)\ne0$ for
+$\Re s\ge1-1/(5.60\log(q\max(1,|\Im s|)))$ when $\chi$ is a nonprincipal
+primitive character modulo $3\le q\le400000$, with no exceptional zero,
+and~\cite{kadiri-zeta} $\zeta(s)\ne0$ for $\Re s\ge1-1/(5.70\log|\Im s|)$,
+$|\Im s|\ge2$; $\zeta$ has no zero with $|\gamma|<14$.  Both regions
+contain $\Re s\ge1-1/(5.70\log(11t))$ on $|\Im s|\le t$.
+
+Thorner and Zaman~\cite[Thm.~1.2]{tz-density} bound by
+$10^{88}(10^{421}Q^{99})^{1-\sigma}$, for $Q\ge3$ and
+$\sigma\ge\frac{39}{40}$, the number of zeros with $\beta>\sigma$ and
+$|\gamma|\le Q$ of all primitive Dirichlet $L$-functions of modulus at most
+$Q$; ours have moduli $1$ and $11$.
+\end{proof}
+
+\begin{lemma}[Unconditional explicit short intervals]\label{lem:uncond}
+Put $A_0=2\bigl(99+5.70\log(4\cdot10^{88})\bigr)=2523.75\ldots$.  Let
+$A>A_0$ and let $x$ satisfy
+\begin{equation}\label{eq:uncond}
+  \Bigl(1-\frac{A_0}{A}\Bigr)\log x\ge1262\log\log x+3758,
+  \qquad
+  \log x\ge\frac A5 .
+\end{equation}
+Then for every reduced residue $a$ modulo $11$ there is a prime
+$p\equiv a\pmod{11}$ with $|p-x|<x^{1-1/A}$.
+\end{lemma}
+
+\begin{proof}
+Put $h=x^{1-1/A}$, $X=x+h$, $T=x^{2/A}\log x$, $\eta=1/(5.70\log(11T))$,
+$c=10^{88}$, $B=10^{421}T^{99}$ and $K(u)=\max(h-|u|,0)$.  The second
+condition gives $h\le e^{-1/5}x\le\frac56x$, so $X\le2x$ and $x-h\ge x/6$;
+the first, with $A>A_0$, forces $\log x\ge1262\log\log x+3758$, so
+$\log x>15900$.
+
+For $\chi$ modulo $11$ let
+$\psi^{(1)}_\chi(y)=\sum_{n\le y}\chi(n)\Lambda(n)(y-n)$ and
+$\Delta f(x)=f(x+h)-2f(x)+f(x-h)$.  Orthogonality gives
 \[
-  N(\sigma,Q)\le10^{88}\bigl(10^{421}Q^{99}\bigr)^{1-\sigma},
-  \qquad Q\ge3,\quad \sigma\ge\tfrac{39}{40},
+  \sum_{n\equiv a\ (11)}\Lambda(n)K(x-n)
+  =\frac1{10}\sum_\chi\bar\chi(a)\,\Delta\psi^{(1)}_\chi(x),
 \]
-in which $N(\sigma,Q)$ counts the zeros with $|\gamma|\le Q$ of every
-primitive $L$-function of modulus at most $Q$; taking $Q=\max(T,11)$ bounds
-the zeros of our ten characters, wastefully but validly.
-Kadiri~\cite{kadiri} gives an explicit zero-free region for Dirichlet
-$L$-functions over $3\le q\le400000$, and Remark~\ref{rem:effective} disposes
-of the exceptional zero at $q=11$.  Ingham's argument turns a density
-exponent $A$ into primes in $(x,x+x^\theta]$ for every $\theta>1-1/A$, so
-Corollary~\ref{cor:leading} would read
+and Lemmas 3.1 and 3.2 of Dudek, Greni\'e and Molteni~\cite{dgm}, which
+assume only $x\ge100$ and $h\le\frac56x$, evaluate the right side as
+\[
+  \frac{h^2}{10}+\vartheta\Bigl[\frac1{10}\sum_\chi\Bigl|\Delta
+  \sum_{\rho\in\mathcal Z_\chi}\frac{x^{\rho+1}}{\rho(\rho+1)}\Bigr|
+  +1.36\,\frac{h^2}x+\frac{6h^2}{x(x-1)}+h\log2x\Bigr],
+  \qquad|\vartheta|\le1,
+\]
+where $\mathcal Z_\chi$ is the zero set of the primitive character inducing
+$\chi$, so of $\zeta$ for the principal one; the last term is their
+Lemma~3.1 with $\omega(11)=1$, and $1.36$ bounds their
+$1.7\,|\delta_{\pm1}(a)-\frac2{10}|$.
+
+For $f(y)=y^{\rho+1}/(\rho(\rho+1))$ we have $f''(y)=y^{\rho-1}$ and
+$\Delta f(x)=\int_0^h(h-u)\bigl(f''(x+u)+f''(x-u)\bigr)\,du$, so
+$|\Delta f(x)|\le h^2X^{\beta-1}$; also
+$|\Delta f(x)|\le4X^{\beta+1}/|\rho(\rho+1)|\le4X^2/\gamma^2$.  Using the
+first bound for $|\gamma|\le T$ and the second beyond,
+\[
+  \sum_\chi\Bigl|\Delta\sum_{\rho\in\mathcal Z_\chi}
+  \frac{x^{\rho+1}}{\rho(\rho+1)}\Bigr|
+  \le h^2\sum_{\substack{\rho\in\mathcal Z\\|\gamma|\le T}}X^{\beta-1}
+  +4X^2\sum_{\substack{\rho\in\mathcal Z\\|\gamma|>T}}\gamma^{-2}.
+\]
+Partial summation against Lemma~\ref{lem:zeros} bounds the tail by
+$2\int_T^\infty N_{11}(t)t^{-3}\,dt
+\le\frac{20}\pi\frac{\log(11T/2\pi)}T+\frac{3\log(11T)+82.5}{T^2}$.
+For the near sum let $N(\sigma)$ count the $\rho\in\mathcal Z$ with
+$\beta>\sigma$ and $|\gamma|\le T$; by Lemma~\ref{lem:zeros} at $Q=T\ge11$
+it vanishes for $\sigma\ge1-\eta$ and is at most $cB^{1-\sigma}$ for
+$\sigma\ge\frac{39}{40}$.  The zeros with $\beta\le\frac{39}{40}$
+contribute at most $N_{11}(T)X^{-1/40}$, and partial summation over
+$\sigma\in(\frac{39}{40},1]$ gives for the rest
+\begin{multline*}
+  X^{-1/40}N(\tfrac{39}{40})
+  +\log X\int_{39/40}^{1-\eta}N(\sigma)X^{\sigma-1}\,d\sigma\\
+  \le N_{11}(T)X^{-1/40}+c\log X\int_\eta^{\infty}\Bigl(\frac BX\Bigr)^u du
+  \le N_{11}(T)X^{-1/40}+2c\Bigl(\frac BX\Bigr)^\eta,
+\end{multline*}
+the last step because \eqref{eq:uncond} gives $X\ge B^2$, so
+$\log X\le2\log(X/B)$.
+
+Prime powers $p^k$, $k\ge2$, in $(x-h,x+h)$ carry weight at most $h$ and
+$\Lambda(p^k)\le\frac12\log X$; for each $k$ the primes $p$ lie in an
+interval of length at most $2h/(k(x-h)^{1-1/k})$, so there are at most
+$h/\sqrt{x-h}+\log_2X\,\bigl(1+2h/(3(x-h)^{2/3})\bigr)$ of them.  Removing
+them, a prime $p\equiv a\pmod{11}$ with $|p-x|<h$ exists as soon as
+\begin{multline*}
+  2N_{11}(T)X^{-1/40}+2c\Bigl(\frac BX\Bigr)^\eta
+  +\frac{4X^2}{h^2}\Bigl(\frac{20}\pi\frac{\log(11T/2\pi)}T
+  +\frac{3\log(11T)+82.5}{T^2}\Bigr)\\
+  +\frac{13.6}x+\frac{60}{x(x-1)}+\frac{10\log2x}h
+  +5\log X\Bigl(\frac1{\sqrt{x-h}}+\log_2X\Bigl(\frac1h
+  +\frac2{3(x-h)^{2/3}}\Bigr)\Bigr)<1 .
+\end{multline*}
+The second term is at most $\frac12$ when $(x/B)^\eta\ge4c$, that is,
+$\log x-421\log10-99\log T\ge5.70\log(4c)\log(11T)$; with
+$\log T=\frac2A\log x+\log\log x$ this is
+$(1-A_0/A)\log x\ge1261.9\log\log x+3757.9$, which is the first
+condition of \eqref{eq:uncond}, and it implies $X\ge B^2$.  In the third
+term $4X^2/h^2\le4(1+x^{-1/A})^2x^{2/A}$ and $x^{2/A}/T=1/\log x$, so it is
+at most
+$4(1+x^{-1/A})^2\bigl(\frac{20}\pi\frac{0.57+\frac2A\log x+\log\log x}{\log x}
++\frac{3\log(11T)+82.5}{x^{2/A}\log^2x}\bigr)<0.13$, since
+$x^{-1/A}\le e^{-1/5}$, $\frac2A<\frac1{1261}$, $\log x>15900$ and
+$x^{2/A}\ge e^{2/5}$.  The first
+term is $\exp\bigl(-\log x(\frac1{40}-\frac2A)+O(\log\log x)\bigr)<10^{-100}$,
+and the remaining terms are smaller still.
+\end{proof}
+
+\begin{proposition}[Unconditional ceiling]\label{prop:uncond}
+Let $A>A_0$ and let $x_0$ satisfy \eqref{eq:uncond}.  A program with $C$
+instructions has $Q\le\bigl((2x_0)^{1/A}+4C/A\bigr)^A$ and
+\[
+  D\le\Bigl\lfloor CA\log_{10}\Bigl((2x_0)^{1/A}+\frac{4C}A\Bigr)\Bigr\rfloor+1 .
+\]
+\end{proposition}
+
+\begin{proof}
+Put $\theta=1-1/A$ and $r=1/A$.  Given $y\ge x_0$, apply
+Lemma~\ref{lem:uncond} at $x=y+(2y)^\theta\le2y$: the prime found satisfies
+$p>x-x^\theta\ge y$ and $p<x+x^\theta\le y+2(2y)^\theta<y+4y^\theta$.  So
+every $y\ge x_0$ has a prime of each class in $(y,y+4y^\theta)$.  If no
+selected prime exceeds $x_0$ then $Q\le x_0$.  Otherwise let $p_{i_0}$ be
+the first that does; it is the least prime of its class above
+$p_{i_0-1}<x_0$, hence $p_{i_0}<x_0+4x_0^\theta\le2x_0$, and for $i\ge i_0$
+the bound $p_{i+1}\le p_i+4p_i^\theta$ gives
+$p_{i+1}^r-p_i^r\le rp_i^{r-1}\cdot4p_i^\theta=4r$ by concavity.  Thus
+$Q^r\le(2x_0)^r+4r(m-i_0)\le(2x_0)^r+4rC$, and $\log N\le C\log Q$.
+\end{proof}
+
+\begin{corollary}\label{cor:uncond}
+Unconditionally, $D\le3.05\cdot10^4\,T\log T$ for every $n\ge8$, and
 \[
   \limsup_{T\to\infty}\;\max_{t\in\{0,1\}^T}\frac{D(t)}{T\log T}
-  \le\frac{35A}{2\log10}.
+  \le\frac{35A_0}{2\log10}<19181 .
 \]
-At $A=99$ this is $\theta=\frac{98}{99}$ and a constant of $752.5$, against
-$18.25$ for Huxley's ineffective $A=\frac{12}{5}$ and $15.21$ for GRH's
-$A=2$.  The constant is not the whole cost: the $10^{88}$ and $10^{421}$ put
-$x_0$ far above $10^{11}$, so Lemma~\ref{lem:computed} could not bridge to it
-and the assembled statement would be a limit superior past an astronomical
-arity rather than a ceiling at every arity, which is what
-Proposition~\ref{prop:grh} already gives.
-\end{remark}
+\end{corollary}
+
+\begin{proof}
+For $n\le19$ the computed ceiling is at most $24.56$.  For $n\ge20$ take
+$A=4000$, for which the least $\log x_0$ admitted by \eqref{eq:uncond} is
+$46967$, so $(2x_0)^{1/A}<1.26\cdot10^5<T/4$, while
+$4C/A\le0.0175\,T+0.0011\,T$; hence
+$\log_{10}\bigl((2x_0)^{1/A}+4C/A\bigr)\le\log_{10}T-0.301$, and with
+$C\le\frac{35}2T+55n+25$ and $(55n+25)/(\frac{35}2T)\le1/(2n)$ this gives
+$D\le\frac{35}2\cdot4000\,T\log_{10}T+1$, which is the uniform bound.  For
+the limit superior fix any $A>A_0$: $\log Q\le A\log(4C/A)+o(1)$, so
+$D/(T\log T)\le\frac{35}2A/\log10+o(1)$, and $A\to A_0$.
+\end{proof}
+
+The threshold is astronomical, $x_0>e^{15900}$ at every $A$, and the
+constant is three orders of magnitude above GRH's, so the practical
+statement stays with Proposition~\ref{prop:grh}; what
+Lemma~\ref{lem:uncond} settles is that Lemma~\ref{lem:short}'s $x_0$ and
+$\theta$ have values.  Per arity, with the $A$ that minimizes
+Proposition~\ref{prop:uncond} at the least admissible $x_0$:
+
+\begin{center}
+\begin{tabular}{r|ccccccc}
+$n$ & 20 & 22 & 25 & 30 & 60 & $10^3$ & $10^6$\\ \hline
+$D/(T\log T)$ & 24\,500 & 24\,050 & 23\,480 & 22\,800 & 21\,060 & 19\,330
+& 19\,200\\
+$A$ & 4339 & 4170 & 3879 & 3638 & 3035 & 2556 & 2525
+\end{tabular}
+\end{center}
+
+\noindent
+Nine tenths of $A_0$ is Thorner and Zaman's $10^{88}$ passed through
+Kadiri's $5.70$, and the leading $2$ is the Fej\'er kernel, whose
+$\gamma^{-2}$ decay makes the tail cost $T\approx x^{2/A}$ rather than
+$x^{1/A}$: a sharper cutoff would halve $A_0$, and a Vinogradov--Korobov
+region, explicit for Dirichlet $L$-functions since Khale~\cite{khale},
+would let $A$ approach $2\cdot99$, a limit superior below $1505$, at a
+larger threshold still.
 
 \section{Language lower bound}
 
@@ -924,6 +1106,28 @@ GRH,
 {doi:10.1142/S1793042119500441}; preprint
 \href{https://arxiv.org/abs/1606.08616}{arXiv:1606.08616}.
 
+\bibitem{bmor-count}
+M.~A.~Bennett, G.~Martin, K.~O'Bryant, and A.~Rechnitzer,
+\newblock Counting zeros of Dirichlet $L$-functions,
+\newblock \emph{Mathematics of Computation} 90 (2021), no.~329, 1455--1482,
+\newblock \href{https://doi.org/10.1090/mcom/3599}{doi:10.1090/mcom/3599};
+preprint \href{https://arxiv.org/abs/2005.02989}{arXiv:2005.02989}.
+
+\bibitem{hsw}
+E.~Hasanalizade, Q.~Shen, and P.-J.~Wong,
+\newblock Counting zeros of the Riemann zeta function,
+\newblock \emph{Journal of Number Theory} 235 (2022), 219--241,
+\newblock \href{https://doi.org/10.1016/j.jnt.2021.06.032}
+{doi:10.1016/j.jnt.2021.06.032}; preprint
+\href{https://arxiv.org/abs/2107.06506}{arXiv:2107.06506}.
+
+\bibitem{kadiri-zeta}
+H.~Kadiri,
+\newblock Une r\'egion explicite sans z\'eros pour la fonction $\zeta$ de
+Riemann,
+\newblock \emph{Acta Arithmetica} 117 (2005), no.~4, 303--339,
+\newblock \href{https://doi.org/10.4064/aa117-4-1}{doi:10.4064/aa117-4-1}.
+
 \bibitem{kadiri}
 H.~Kadiri,
 \newblock Explicit zero-free regions for Dirichlet $L$-functions,
@@ -931,12 +1135,21 @@ H.~Kadiri,
 \newblock \href{https://doi.org/10.1112/S0025579318000025}
 {doi:10.1112/S0025579318000025}.
 
+\bibitem{khale}
+T.~Khale,
+\newblock An explicit Vinogradov--Korobov zero-free region for Dirichlet
+$L$-functions,
+\newblock preprint,
+\newblock \href{https://arxiv.org/abs/2210.06457}{arXiv:2210.06457}.
+
 \bibitem{tz-density}
 J.~Thorner and A.~Zaman,
 \newblock An explicit version of Bombieri's log-free density estimate and
 S\'ark\"ozy's theorem for shifted primes,
-\newblock preprint,
-\newblock \href{https://arxiv.org/abs/2208.11123}{arXiv:2208.11123}.
+\newblock \emph{Forum Mathematicum} 36 (2024), no.~4, 1059--1080,
+\newblock \href{https://doi.org/10.1515/forum-2023-0091}
+{doi:10.1515/forum-2023-0091}; preprint
+\href{https://arxiv.org/abs/2208.11123}{arXiv:2208.11123}.
 
 \bibitem{thorner-zaman}
 J.~Thorner and A.~Zaman,

@@ -104,25 +104,46 @@ ineffective 18.25, since a square-root gap is `theta = 1/2` and
 Through `n = 19` the sieve is stronger; the GRH ceiling peaks at 24.06 at
 `n = 22` and falls from there.
 
-## Removing GRH
+## Without GRH
 
-The ingredients are in print, unassembled.  Thorner-Zaman (arXiv:2208.11123,
-Thm 1.2) give the explicit log-free density estimate
-`N(sigma, Q) <= 10**88 (10**421 Q**99)**(1 - sigma)` for `Q >= 3`,
-`sigma >= 39/40`; `Q = max(T, 11)` bounds our ten characters, wastefully.
-Kadiri (Mathematika 64 (2018) 445-474) has the explicit zero-free region over
-`3 <= q <= 400000`, and `q = 11` has no exceptional zero.  Ingham's argument
-turns a density exponent `A` into `theta > 1 - 1/A`, so
+Assembled, unconditionally (Lemma "Unconditional explicit short intervals"
+and Corollary after it in the paper).  Dudek-Grenie-Molteni's smoothed
+formula (their Lemmas 3.1-3.2, Fejer kernel of width `h`) is unconditional;
+it needs the zero sum over `zeta` and the nine `L(s, chi)` mod 11 below
+`h**2/10`.  Zeros with `|gamma| <= T` cost `h**2 X**(beta - 1)` each:
+Thorner-Zaman (Forum Math 36 (2024), Thm 1.2) count those near `sigma = 1`,
+`N(sigma) <= 10**88 (10**421 T**99)**(1 - sigma)`, and Kadiri's regions
+(`R = 5.60` for `L`, `5.70` for `zeta`) cut them off at
+`1 - 1/(5.70 ln 11T)`.  Zeros above `T` cost `4X**2/gamma**2` each, summed
+by the explicit counts of Bennett-Martin-O'Bryant-Rechnitzer and
+Hasanalizade-Shen-Wong; that `1/gamma**2` tail forces `T ~ x**(2/A)`, which
+is where the leading `2` comes from.  Result: with
 
-    limsup D/(T ln T) <= 35 A / (2 ln 10)
+    A_0 = 2 (99 + 5.70 ln(4 * 10**88)) = 2523.75...
 
--- checked against both shipped constants: `A = 12/5` (Huxley) is the
-ineffective `42/ln 10 = 18.24`, `A = 2` (GRH) is `35/ln 10 = 15.20`.  At
-`A = 99` that is `theta = 98/99` and `752.4`.  The constant is not the whole
-cost: `10**88` and `10**421` put `x_0` far above `10**11`, so the sieve cannot
-bridge to it and the assembled result would be a limsup past an astronomical
-arity, not a ceiling at every arity.  The practical range would still rest on
-the sieve and GRH.
+every `A > A_0` and every `x` with
+`(1 - A_0/A) ln x >= 1262 ln ln x + 3758` and `ln x >= A/5` has a prime of
+every class mod 11 within `x**(1 - 1/A)` of `x`.  Nine tenths of `A_0` is
+the `10**88` through the `5.70`.  The walk then gives
+`Q <= ((2 x_0)**(1/A) + 4C/A)**A`, hence
+
+    D <= 3.05e4 T ln T for every n >= 8,   limsup D/(T ln T) <= 35 A_0/(2 ln 10) < 19181
+
+and, per arity with the best `A`:
+
+| n | 20 | 22 | 25 | 30 | 60 | 10**3 | 10**6 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| D/(T ln T) | 24500 | 24050 | 23480 | 22800 | 21060 | 19330 | 19200 |
+| A | 4339 | 4170 | 3879 | 3638 | 3035 | 2556 | 2525 |
+
+The threshold is `x_0 > e**15900` at every `A`, and the constant is three
+orders of magnitude above GRH's 24.6, so the practical statement stays on
+GRH; what closed is that `x_0` and `theta` have values.  A sharper cutoff
+than the Fejer kernel would halve `A_0`; Khale's explicit Vinogradov-Korobov
+region (arXiv:2210.06457) would let `A` approach `198`, limsup below 1505,
+at a larger threshold.  `tests/proofs/deep/factor_constants.py` evaluates
+the full inequality, not just the sufficient condition, at every `A` in the
+table and on a sweep above each threshold.
 
 The language lower bound below supplies a table on which every generator must
 spend `Omega(T log T)`, so this generated upper bound is tight in the worst

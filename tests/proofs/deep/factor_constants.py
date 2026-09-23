@@ -24,6 +24,8 @@ L7  one walk cell per group of entries, the last bits resolved by a tree
     emitted once, brings that to 1.516 an entry and the bracket to 9.1.
 L8  a signed encoding puts two entries in a byte, which halves the span
     for half a character a cell: 1.006 an entry, and the bracket 6.04.
+L9  the unconditional short-interval lemma's inequality holds at and above
+    its threshold, and gives 3.05e4 T ln T at every arity, 19181 in the limit.
 """
 
 from __future__ import annotations
@@ -222,14 +224,157 @@ def check_grh() -> list[str]:
     lines.append(f"worst over the row {worst:.2f} <= 24.6; limsup 35/ln 10 = 15.20")
 
     # A density exponent A gives theta > 1 - 1/A, hence 35A/(2 ln 10).  Both
-    # shipped constants are on this curve, which is why it can be quoted for
-    # Thorner-Zaman's explicit A = 99.
+    # shipped constants are on this curve.
     def from_exponent(a: float) -> float:
         return 35 * a / (2 * math.log(10))
 
     assert abs(from_exponent(12 / 5) - 42 / math.log(10)) < 1e-9  # Huxley
     assert abs(from_exponent(2.0) - 35 / math.log(10)) < 1e-9  # GRH
-    lines.append(f"density exponent A = 99 gives {from_exponent(99):.1f}")
+    assert from_exponent(A_UNCOND) < 19181, from_exponent(A_UNCOND)
+    lines.append(f"unconditional A_0 = {A_UNCOND:.2f}: {from_exponent(A_UNCOND):.1f}")
+    return lines
+
+
+#: Lemma "Unconditional explicit short intervals": theta = 1 - 1/A for every
+#: A > A_UNCOND, once ln x clears the threshold below.  The 99 and 10**88 are
+#: Thorner-Zaman's (Forum Math 36 (2024), Thm 1.2), the 5.70 Kadiri's zeta
+#: region (Acta Arith 117 (2005)), which contains her R = 5.60 L-region at
+#: q = 11; the 4 is the half of the main term the near zeros may spend, and
+#: the 2 is the Fejer kernel's 1/gamma**2 tail, which needs T ~ x**(2/A).
+R_ZFR = 5.70
+LOG_C_TZ = 88 * math.log(10)
+A_UNCOND = 2 * (99 + R_ZFR * (math.log(4) + LOG_C_TZ))
+
+
+def uncond_admits(exponent: float, lnx: float) -> bool:
+    """The lemma's two conditions on ``ln x`` at density exponent ``A``."""
+    return (1 - A_UNCOND / exponent) * lnx >= 1262 * math.log(
+        lnx
+    ) + 3758 and lnx >= exponent / 5
+
+
+def uncond_least_lnx(exponent: float) -> float:
+    """Least ``ln x`` the lemma admits at ``A``; the conditions are an up-set."""
+    lo, hi = 500.0, 1e9
+    assert uncond_admits(exponent, hi)
+    assert not uncond_admits(exponent, lo)
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        if uncond_admits(exponent, mid):
+            hi = mid
+        else:
+            lo = mid
+    return hi
+
+
+def uncond_error_terms(exponent: float, lnx: float) -> dict[str, float]:
+    """Each term of the lemma's final inequality at ``x = e**lnx``, all of
+    which must sum below 1; computed in logs, since ``T`` and ``x`` overflow."""
+    ln11 = math.log(11)
+    logh = (1 - 1 / exponent) * lnx
+    logt = 2 * lnx / exponent + math.log(lnx)
+    logx_plus = lnx + math.log1p(math.exp(-lnx / exponent))  # X = x + h
+    eta = 1 / (R_ZFR * (ln11 + logt))
+    logb = 421 * math.log(10) + 99 * logt
+    assert logx_plus >= 2 * logb  # X >= B**2, so ln X <= 2 ln(X/B)
+    near = 2 * math.exp(LOG_C_TZ + eta * (logb - lnx))
+    # N_11(T) <= (10T/pi) ln(11T/2 pi e) + 3 ln 11T + 81, in the log.
+    log_n11 = (
+        math.log(10 / math.pi)
+        + logt
+        + math.log(logt + math.log(11 / (2 * math.pi * math.e)))
+    )
+    log_n11 += math.log1p((3 * (logt + ln11) + 81) / math.exp(min(log_n11, 700)))
+    trivial = 2 * math.exp(log_n11 - lnx / 40)
+    lt1 = math.log(20 / math.pi) + math.log(math.log(11 / (2 * math.pi)) + logt) - logt
+    lt2 = math.log(3 * (logt + ln11) + 82.5) - 2 * logt
+    tail = 4 * math.exp(
+        2 * logx_plus - 2 * logh + lt1 + math.log1p(math.exp(lt2 - lt1))
+    )
+    small = 13.6 * math.exp(-lnx) + 60 * math.exp(-2 * lnx) / (1 - math.exp(-lnx))
+    small += 10 * (lnx + math.log(2)) * math.exp(-logh)
+    logxmh = lnx + math.log1p(-math.exp(logh - lnx))  # x - h
+    kmax = logx_plus / math.log(2)
+    powers = (
+        5
+        * logx_plus
+        * (
+            math.exp(-logxmh / 2)
+            + kmax * (math.exp(-logh) + (2 / 3) * math.exp(-2 * logxmh / 3))
+        )
+    )
+    # DGM's preconditions: x >= 100, h <= 5x/6; and T >= 11 for Thorner-Zaman.
+    assert lnx >= math.log(100)
+    assert logh <= lnx + math.log(5 / 6)
+    assert logt >= ln11
+    return {
+        "near": near,
+        "trivial": trivial,
+        "tail": tail,
+        "small": small,
+        "powers": powers,
+    }
+
+
+def uncond_ceiling(n: int, exponent: float, lnx0: float) -> float:
+    """``D/(T ln T)`` from Proposition "Unconditional ceiling" at arity n."""
+    per_t = 17.5 + ((55 * n + 25) / 2.0**n if n < 1000 else 0.0)  # C/T
+    logc = math.log(per_t) + n * math.log(2)
+    a, b = (lnx0 + math.log(2)) / exponent, math.log(4 / exponent) + logc
+    logq = exponent * (max(a, b) + math.log1p(math.exp(-abs(a - b))))
+    return per_t * logq / (math.log(10) * n * math.log(2))
+
+
+def check_unconditional() -> list[str]:
+    """L9  the unconditional threshold: the inequality, the ceiling, the row."""
+    limsup = 35 * A_UNCOND / (2 * math.log(10))
+    lines = [f"A_0 = {A_UNCOND:.4f}, limsup 35 A_0/(2 ln 10) = {limsup:.1f}"]
+    assert abs(A_UNCOND - 2523.757) < 1e-3, A_UNCOND
+    # Every A > A_0 has a threshold, and at it the full inequality holds with
+    # room: the near zeros spend their half, the tail under 0.13 (0.046 at
+    # A = 10**5, where ln x = A/5 binds and h is a fifth of x), the rest
+    # nothing.  Swept above the threshold too, since the lemma is for all x.
+    for exponent in (2525.0, 2600.0, 3000.0, 4000.0, 4339.0, 1e4, 1e5):
+        lnx0 = uncond_least_lnx(exponent)
+        assert lnx0 > 15900, (exponent, lnx0)
+        for factor in (1, 1.01, 1.5, 3, 10, 100):
+            terms = uncond_error_terms(exponent, factor * lnx0)
+            total = sum(terms.values())
+            assert total < 1, (exponent, factor, terms)
+            assert terms["near"] <= 0.5 + 1e-9, terms
+            assert terms["tail"] < 0.13, terms
+            assert terms["trivial"] + terms["small"] + terms["powers"] < 1e-100, terms
+        terms = uncond_error_terms(exponent, lnx0)
+        lines.append(
+            f"A={exponent:>8.0f}  ln x0={lnx0:>12.1f}  sum={sum(terms.values()):.4f}"
+        )
+
+    # Corollary: A = 4000 gives the uniform 3.05e4 over n >= 20, because
+    # (2 x0)^(1/A) < 1.26e5 < T/4 there and 4C/A < 0.0186 T.
+    lnx0 = uncond_least_lnx(4000)
+    assert abs(lnx0 - 46967) < 1, lnx0
+    assert math.exp((lnx0 + math.log(2)) / 4000) < 1.26e5 < 2**20 / 4
+    assert 4 * tree_bound(20) / 4000 < 0.0186 * 2**20
+    assert 35 / 2 * 4000 / math.log(10) < 3.05e4
+    for n in range(20, 80):
+        assert uncond_ceiling(n, 4000, lnx0) < 3.05e4, n
+
+    # The per-arity row, each entry the best A on a geometric grid; the
+    # values printed in the paper are these rounded up to three digits.
+    grid = [2524.5 + 0.5 * 1.05**k for k in range(330)]
+    expected = {
+        20: 24500,
+        22: 24050,
+        25: 23480,
+        30: 22800,
+        60: 21060,
+        1000: 19330,
+        10**6: 19200,
+    }
+    for n, printed in expected.items():
+        best, best_a = min((uncond_ceiling(n, a, uncond_least_lnx(a)), a) for a in grid)
+        assert printed - 60 < best <= printed, (n, best, printed)
+        lines.append(f"n={n:<8} A={best_a:>6.0f}  D/(T ln T) <= {best:,.0f}")
     return lines
 
 
@@ -798,6 +943,8 @@ def main(argv: list[str] | None = None) -> int:
     print("\n".join(check_group()))
     print("L8  two entries to a cell")
     print("\n".join(check_pack()))
+    print("L9  the unconditional threshold")
+    print("\n".join(check_unconditional()))
     return 0
 
 
