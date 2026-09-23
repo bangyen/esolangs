@@ -16,6 +16,8 @@ L2  the class-gap constant on a Python-sieved prefix, and the end window.
 L3  the resulting digit ceiling holds for parity, and so does its ``Q``.
 L4  the GRH short-interval threshold falls inside the sieved range, and the
     resulting walk's ceiling is 24.6 T ln T over n >= 8.
+L5  the behavior count's exponent is ln 8, so the floor is 1/(3 ln 10) and
+    the constant is bracketed within a factor of 105.
 """
 
 from __future__ import annotations
@@ -225,6 +227,87 @@ def check_grh() -> list[str]:
     return lines
 
 
+#: The eight instruction residues; the other three classes are ignored.
+USEFUL = tuple(range(1, 9))
+#: Proposition "Explicit floor" and Corollary "GRH ceiling", as constants.
+FLOOR = 1 / (3 * math.log(10))
+CEILING = 35 / math.log(10)
+
+
+def useful_logs(count: int) -> list[float]:
+    """``ln q_i`` for the first ``count`` primes with residue in 1..8 mod 11."""
+    out: list[float] = []
+    for _lo, _hi, segment in prime_segments(1 << 14):
+        for p in segment:
+            if p % 11 in USEFUL:
+                out.append(math.log(p))
+                if len(out) == count:
+                    return out
+    raise AssertionError("prime_segments is unbounded")  # pragma: no cover
+
+
+def count_rate(logq: list[float], budget: float) -> tuple[float, int]:
+    """The behavior count's exponent at the saddle, per ``L/ln L``.
+
+    The proof takes ``s = ln 8/ln q_K`` with ``K`` the largest run count the
+    budget affords, so every ``q_i**s <= 8`` and the sum over run counts is at
+    most ``K`` times its last term.
+    """
+    total, k = 0.0, 0
+    while k < len(logq) and total + logq[k] <= budget:
+        total += logq[k]
+        k += 1
+    assert k < len(logq), "prime table too short for this budget"
+    s = math.log(8) / logq[k - 1]
+    tail = math.fsum(math.log(7) - math.log(math.expm1(s * c)) for c in logq[:k])
+    bound = s * budget + tail + math.log(8 * k / 7)
+    return bound / (budget / math.log(budget)), k
+
+
+def check_floor() -> list[str]:
+    """L5  the lower bound's leading constant, and the gap it leaves."""
+    lines = []
+    logq = useful_logs(12_000)
+    head = [round(math.exp(c)) for c in logq[:5]]
+    assert head == [2, 3, 5, 7, 13], head
+    lines.append(f"q_1..q_5 = {head}, ln 8 = {math.log(8):.5f}")
+
+    # The exponent descends towards ln 8 from above; the correction is of
+    # order lnln L/ln L, so L = 10**5 is still 10% high.
+    rates = []
+    for exponent in (3, 4, 5):
+        rate, k = count_rate(logq, 10.0**exponent)
+        rates.append(rate)
+        lines.append(f"L=10**{exponent}  K={k:>6,}  exponent/(L/ln L) = {rate:.4f}")
+    assert rates == sorted(rates, reverse=True), rates
+    assert rates[-1] < 2.30, rates
+    assert min(rates) > math.log(8), rates
+
+    # Same constant from the crude p_i >= i+1, approached more slowly.
+    crude = [math.log(i + 1) for i in range(1, 16_000)]
+    crude_rate, _ = count_rate(crude, 10.0**5)
+    assert crude_rate > rates[-1], (crude_rate, rates[-1])
+    lines.append(
+        f"crude p_i >= i+1 at L=10**5: {crude_rate:.4f}, above {rates[-1]:.4f}"
+    )
+
+    # The bracket and its factorization.
+    assert abs(FLOOR - 0.1447648) < 1e-6, FLOOR
+    assert abs(CEILING / FLOOR - 105) < 1e-9, CEILING / FLOOR
+    assert abs((35 / 2) / (1 / 3) * 2 - 105) < 1e-9
+    lines.append(
+        f"floor {FLOOR:.5f} <= C_F/(T ln T) <= {CEILING:.4f} on GRH"
+        f"  ratio {CEILING / FLOOR:.0f} = 52.5 runs x 2 walk"
+    )
+    # Counting spellings is capped at 1/(3(1-theta) ln 10).
+    cap = 1 / (3 * 0.5 * math.log(10))
+    assert abs(cap - 0.2895296) < 1e-6, cap
+    lines.append(
+        f"spelling-count cap on GRH {cap:.4f}, still {CEILING / cap:.0f}x below"
+    )
+    return lines
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--bound", type=int, default=10**7)
@@ -238,6 +321,8 @@ def main(argv: list[str] | None = None) -> int:
     print("\n".join(check_ceiling()))
     print("L4  the GRH threshold and its ceiling")
     print("\n".join(check_grh()))
+    print("L5  the lower bound's leading constant")
+    print("\n".join(check_floor()))
     return 0
 
 
