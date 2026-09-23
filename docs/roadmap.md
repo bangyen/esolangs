@@ -239,15 +239,3 @@ step; an answer lands in the paper it extends, and the row leaves.
   counting spellings is capped at `0.2895` on GRH, so moving the floor past
   that needs a semantic argument -- distinct programs that compute the same
   function -- not a better count.
-
-- **Unconditional Factor threshold.**  The digit ceiling is proven through
-  `n = 19` by a sieve to `10**11`, and explicit at every arity on GRH
-  (Section 4 of [factor](proofs/factor.tex)).  Without GRH `x_0` is effective
-  in principle -- `q = 11` has no exceptional zero -- but has no value.  Any
-  explicit `theta < 1` suffices, since `theta` only moves the leading
-  constant.  Both ingredients are in print: Thorner-Zaman's explicit log-free
-  density estimate (`A = 99`) and Kadiri's explicit zero-free region, which
-  covers `q = 11`.  First step: carry Ingham's argument through them for
-  `theta = 98/99`, constant `752.4`.  Weigh it first -- their `10**421` puts
-  `x_0` past any bridge from `10**11`, so the result would be a limsup at an
-  astronomical arity and the practical range would still rest on GRH.
