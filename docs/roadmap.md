@@ -232,8 +232,12 @@ step; an answer lands in the paper it extends, and the row leaves.
   (`(M-g)/M` confluent); it says the deletion-step gain `eq:split` is at
   least the convexity gap along `ell_{M+1}`, it plus the hypothesis gives
   the `|A| = 1` case, it holds in 4632 exact instances with no hypothesis,
-  and it is an identity for arbitrary nodes in the block case (where it is
-  the NB Lemma 1.5); it does not extend verbatim to `|A| >= 2`.  Dead: the half-mass point of
+  and it is an identity in the block case exactly when the new node is at
+  the cutoff `1/2` (strict below it; confluently it is the NB closed form of
+  `E|D-M|`); it does not extend verbatim to `|A| >= 2`, and it is FALSE for
+  real zero positions (confluent `B_0 = {1, 5/2}`, `g = 3`, `M = 6`), so a
+  proof must count the empty integer slots below `g`, not argue by
+  convexity or continuity in the zeros.  Dead: the half-mass point of
   `ell_M` (fails at the confluent block `B = {1..24}`, `g = 25`, `M = 50`),
   any fixed window, shifting only the smallest zero above `g` (fails at
   `L = 5`), arbitrary weights with the same decay (the regression form fails
