@@ -26,6 +26,10 @@ L8  a signed encoding puts two entries in a byte, which halves the span
     for half a character a cell: 1.006 an entry, and the bracket 6.04.
 L9  the unconditional short-interval lemma's inequality holds at and above
     its threshold, and gives 3.05e4 T ln T at every arity, 19181 in the limit.
+
+    ``factor_drawing.py`` (L10-L12) takes it on: an enumerative code, the
+    walk paying one logarithm a run, and reduced words bring the bracket
+    to 0.1505 .. 0.3416 on GRH, 2.27x.
 """
 
 from __future__ import annotations
