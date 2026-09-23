@@ -154,32 +154,36 @@ class TestAssemblyErrors:
 
 class TestInstruction:
     def test_output_a_memory_cell(self) -> None:
-        # The wiki's example: -1 1 0 -7 outputs memory address 1; here the
-        # value cell is at address 4 and *c = memory[0] = -1 halts.
-        assert _run("-1 4 0 -7 65") == "A"
+        # The wiki's example -1 1 0 -7 outputs memory address 1 and then
+        # jumps to the *literal* address 0, which loops; here the value cell
+        # is at address 4 and c = -1 is a special address, so the run ends.
+        assert _run("-1 4 -1 -7 65") == "A"
 
     def test_adds_through_the_constant_one(self) -> None:
         # memory[12] += 1 twice (d = -7 is the constant 0, so the += branch),
-        # then output and halt (c = -8 reads the constant -1, a special
-        # address).  Jump targets come from data cells 13/14.
+        # then output and halt (c = -8 is a special address).
         code = memory(
             [
-                [12, -6, 13, -7],
-                [12, -6, 14, -7],
+                [12, -6, 4, -7],
+                [12, -6, 8, -7],
                 [-1, 12, -8, -7],
-            ],
-            {13: 4, 14: 8},
+            ]
         )
         assert _run(code) == "\x02"
 
     def test_subtracts_when_the_selector_is_positive(self) -> None:
         # d = -6 is the constant 1, so the -= branch fires: 0 - 1 = -1.
-        code = memory([[12, -6, 13, -6], [-1, 12, -8, -7]], {13: 4})
+        code = memory([[12, -6, 4, -6], [-1, 12, -8, -7]])
         assert _run(code) == "\xff"
 
-    def test_jumps_via_a_data_cell(self) -> None:
-        # The increment's *c = memory[13] = 4 sends the pointer to ip 4.
-        code = memory([[12, -6, 13, -7], [-1, 12, -8, -7]], {13: 4})
+    def test_the_jump_target_is_literal(self) -> None:
+        """``c`` is the destination itself, not a cell holding it.
+
+        The increment's c = 8 skips the instruction at ip 4 outright.  Were
+        ``c`` dereferenced the pointer would go to memory[8] = -1 and the run
+        would halt with no output at all, so the two semantics disagree here.
+        """
+        code = memory([[12, -6, 8, -7], [-1, -8, -1, -7], [-1, 12, -8, -7]])
         assert _run(code) == "\x01"
 
 
@@ -188,12 +192,11 @@ class TestSpecialAddresses:
         # -6 = 1, -7 = 0, -8 = -1: memory[30] = 1 + 0 + (-1) = 0.
         code = memory(
             [
-                [30, -6, 20, -7],
-                [30, -7, 21, -7],
-                [30, -8, 22, -7],
+                [30, -6, 4, -7],
+                [30, -7, 8, -7],
+                [30, -8, 12, -7],
                 [-1, 30, -8, -7],
-            ],
-            {20: 4, 21: 8, 22: 12},
+            ]
         )
         assert _run(code) == "\x00"
 
@@ -205,12 +208,12 @@ class TestSpecialAddresses:
         at one is dropped rather than landing in memory or raising.  The
         program then prints, so the run is observed to continue.
         """
-        code = memory([[-5, -6, 20, -7], [-1, -7, -8, -7]], {20: 4})
+        code = memory([[-5, -6, 4, -7], [-1, -7, -8, -7]])
         assert _run(code) == "\x00"
 
     def test_input_byte_is_added_to_the_target(self) -> None:
         # memory[12] starts 0, so reading -1 (as *b) adds the input byte.
-        code = memory([[12, -1, 13, -7], [-1, 12, -8, -7]], {13: 4})
+        code = memory([[12, -1, 4, -7], [-1, 12, -8, -7]])
         assert _run(code, "X") == "X"
 
     def test_input_running_out_raises_eof(self) -> None:
@@ -223,10 +226,9 @@ class TestSpecialAddresses:
         # Without touching -9 the zero flag stays 0 even after a +0 result.
         code = memory(
             [
-                [12, -7, 13, -7],
+                [12, -7, 4, -7],
                 [-1, 12, -8, -7],
-            ],
-            {13: 4},
+            ]
         )
         assert _run(code) == "\x00"
 
@@ -235,12 +237,11 @@ class TestSpecialAddresses:
         # flag (-3) into a cell, and output it.
         code = memory(
             [
-                [-9, -6, 40, -7],
-                [30, -7, 41, -7],
-                [31, -3, 42, -7],
+                [-9, -6, 4, -7],
+                [30, -7, 8, -7],
+                [31, -3, 12, -7],
                 [-1, 31, -8, -7],
-            ],
-            {40: 4, 41: 8, 42: 12},
+            ]
         )
         assert _run(code) == "\x01"
 
@@ -248,12 +249,11 @@ class TestSpecialAddresses:
         # Under flag mode, 0 - 1 = -1 sets the negative flag (-4).
         code = memory(
             [
-                [-9, -6, 40, -7],
-                [30, -6, 41, -6],
-                [31, -4, 42, -7],
+                [-9, -6, 4, -7],
+                [30, -6, 8, -6],
+                [31, -4, 12, -7],
                 [-1, 31, -8, -7],
-            ],
-            {40: 4, 41: 8, 42: 12},
+            ]
         )
         assert _run(code) == "\x01"
 
@@ -267,22 +267,37 @@ class TestTruncatedInstruction:
     one cell shorter each time.
     """
 
+    @staticmethod
+    def _once(code: str) -> tuple[str, int]:
+        """Run one instruction and return its output and the new pointer.
+
+        A truncated instruction's absent ``c`` reads 0, and 0 is a literal
+        jump back to the start, so these programs loop rather than halt:
+        they are stepped once instead of run.
+        """
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+
+        machine = _Machine(code, ScriptedIO())
+        machine.step()
+        return machine.io.getvalue(), machine.ip
+
     def test_a_missing_operand_reads_as_zero(self) -> None:
         # One cell: b, c and d are all absent, so each reads 0. a is -1, so
-        # the instruction prints *b = memory[0] = -1, a byte of 0xff.
-        assert _run("-1") == "\xff"
+        # the instruction prints *b = memory[0] = -1, a byte of 0xff, and
+        # the absent c sends the pointer to 0.
+        assert self._once("-1") == ("\xff", 0)
 
     def test_the_second_operand_is_the_first_that_can_be_present(self) -> None:
         # Two cells: b exists (address 4, an absent cell, so 0) while c and
         # d do not. Printing *b gives NUL rather than the -1 above.
-        assert _run("-1 4") == "\x00"
+        assert self._once("-1 4") == ("\x00", 0)
         # ... and b really is read, not defaulted: -6 is the constant 1.
-        assert _run("-1 -6") == "\x01"
+        assert self._once("-1 -6") == ("\x01", 0)
 
-    def test_a_present_third_operand_still_ends_the_run(self) -> None:
-        # Three cells: c exists and holds 0, so the jump goes to memory[0]
-        # = -1, a special address, which halts.
-        assert _run("-1 4 0") == "\x00"
+    def test_a_present_third_operand_is_the_literal_target(self) -> None:
+        # Three cells: c exists and holds -1, a special address, which
+        # halts. d is still absent and reads 0, so the += branch runs.
+        assert _run("-1 4 -1") == "\x00"
 
 
 class TestFlags:
@@ -297,10 +312,7 @@ class TestFlags:
     @staticmethod
     def _flag(op: int, flag: int) -> str:
         """Turn the mode on, apply ``op`` to cell 12, then print ``flag``."""
-        return memory(
-            [[-9, -6, 13, -7], [12, op, 14, -6], [-1, flag, 15, -7]],
-            {13: 4, 14: 8, 15: -1},
-        )
+        return memory([[-9, -6, 4, -7], [12, op, 8, -6], [-1, flag, -1, -7]])
 
     def test_negative_flag_follows_the_sign_of_the_result(self) -> None:
         """``NF`` is set when the result is below zero, and only then."""
@@ -324,14 +336,14 @@ class TestFlags:
 
     def test_flags_do_not_update_while_the_mode_is_off(self) -> None:
         """The mode starts at zero, so a negative result leaves ``NF`` clear."""
-        code = memory([[12, -6, 13, -6], [-1, -4, 14, -7]], {13: 4, 14: -1})
+        code = memory([[12, -6, 4, -6], [-1, -4, -1, -7]])
         assert _run(code) == "\x00"
 
 
 class TestHaltAndErrors:
     def test_jump_off_the_end_halts(self) -> None:
-        # The jump target (a data cell) is huge, past the memory.
-        code = memory([[12, -6, 13, -7]], {13: 1000})
+        # The jump target is huge, past the memory.
+        code = memory([[12, -6, 1000, -7]])
         assert _run(code) == ""
 
     def test_malformed_token(self) -> None:
@@ -347,7 +359,7 @@ class TestHaltAndErrors:
         the way to 20: it must read as zero, and the memory must stop at
         21 cells rather than run one over.
         """
-        code = memory([[20, -6, 13, -7], [-1, 19, 14, -7]], {13: 4, 14: -1})
+        code = memory([[20, -6, 4, -7], [-1, 19, -1, -7]])
         assert _run(code) == "\x00"
 
     def test_a_write_at_the_first_absent_address_still_grows(self) -> None:
@@ -357,7 +369,7 @@ class TestHaltAndErrors:
         is exactly the edge the comparison sits on: a check that waited for
         the address to exceed the length would index off the end here.
         """
-        code = memory([[15, -6, 13, -7], [-1, 15, 14, -7]], {13: 4, 14: -1})
+        code = memory([[15, -6, 4, -7], [-1, 15, -1, -7]], {14: 0})
         assert _run(code) == "\x01"
 
     def test_the_largest_allocatable_address_is_the_last_one_that_works(
@@ -372,10 +384,10 @@ class TestHaltAndErrors:
         halts, and says so.
         """
         ceiling = 1 << 24
-        assert _run(memory([[ceiling - 1, -6, 13, -7]], {13: -1})) == ""
+        assert _run(memory([[ceiling - 1, -6, -1, -7]])) == ""
 
         with pytest.raises(HaltError) as caught:
-            _run(memory([[ceiling, -6, 13, -7]], {13: -1}))
+            _run(memory([[ceiling, -6, -1, -7]]))
         assert str(caught.value) == f"memory address {ceiling} is too large"
 
     def test_carry_and_overflow_flags_read_as_zero(self) -> None:
@@ -383,17 +395,16 @@ class TestHaltAndErrors:
         # interpreter, so copying them into cells prints two NUL bytes.
         code = memory(
             [
-                [31, -2, 44, -7],
-                [32, -5, 45, -7],
-                [-1, 31, 46, -7],
+                [31, -2, 4, -7],
+                [32, -5, 8, -7],
+                [-1, 31, 12, -7],
                 [-1, 32, -8, -7],
-            ],
-            {44: 4, 45: 8, 46: 12},
+            ]
         )
         assert _run(code) == "\x00\x00"
 
     def test_comments_and_blank_lines_are_ignored(self) -> None:
-        base = memory([[31, -6, 45, -7], [-1, 31, -8, -7]], {45: 4})
+        base = memory([[31, -6, 4, -7], [-1, 31, -8, -7]])
         code = "# a comment\n\n" + base + " # trailing comment\n"
         assert _run(code) == "\x01"
 
@@ -407,9 +418,9 @@ class TestStepMachine:
     def test_step_tracks_ip_and_memory(self) -> None:
         from esolangs.interpreters.register_based.addsubjump import _Machine
 
-        machine = _Machine("-1 1 0 -7", ScriptedIO())
-        assert (machine.ip, list(machine.memory)) == (0, [-1, 1, 0, -7])
-        machine.step()  # writes *b to I/O and jumps via *c (a special address)
+        machine = _Machine("-1 1 -1 -7", ScriptedIO())
+        assert (machine.ip, list(machine.memory)) == (0, [-1, 1, -1, -7])
+        machine.step()  # writes *b to I/O and jumps to c, a special address
         assert machine.io.getvalue() == "\x01"
         assert machine.ip == -1
         assert machine.halted
@@ -485,12 +496,11 @@ class TestStepMachine:
 
         code = memory(
             [
-                [-9, -6, 40, -7],
-                [30, -7, 41, -7],
-                [31, -3, 42, -7],
+                [-9, -6, 4, -7],
+                [30, -7, 8, -7],
+                [31, -3, 12, -7],
                 [-1, 31, -8, -7],
-            ],
-            {40: 4, 41: 8, 42: 12},
+            ]
         )
         machine = _Machine(code, ScriptedIO())
         assert (machine.cf, machine.zf, machine.nf, machine.vf, machine.fum) == (
@@ -514,6 +524,109 @@ class TestStepMachine:
         assert machine.stack == []
 
 
+# The wiki's assembler ships an ``IFZ`` macro; this repo's dialect has the
+# ``def`` blocks but no macro library, so the two wiki programs below carry
+# their own.  ``IFZ X Z P`` is "goto Z if *X == 0, else goto P": it copies
+# ``*X`` under flag-update mode so ZF answers the test, then adds or
+# subtracts 4 from a goto's own ``c`` cell to pick one of two trampolines
+# four cells either side of its resting value.  Each trampoline undoes the
+# move before jumping, so the macro is re-entrant -- the hello-world loop
+# runs it thirteen times.
+_IFZ = """
+def IFZ X Z P {
+  T2 T2 ? @1
+  T2 X ?
+  g+2 D4 ? ZF
+  g: @0 @0 g+8
+  g+2 D4 ?
+  @0 @0 Z
+  g+2 D4 ? @1
+  @0 @0 P
+  D4:.data 4
+  T2:.data 0
+}
+"""
+
+_CMP = """
+def CMP A B {
+  temp temp ? @1
+  temp A ?
+  temp B ? @1
+}
+"""
+
+# The wiki's truth machine, verbatim but for two things: the ``FUM`` line
+# that arms IFZ's zero test, and cell B, which holds -48 so that the
+# comparison sees the digit and not its ASCII byte (this repo's port reads
+# bytes; the wiki program assumes a numeric read).  The jump structure --
+# ``loop:`` naming itself as ``c``, ``end:`` halting on the literal -1 -- is
+# the wiki's and is exactly what the literal semantics buys.
+_TRUTH_MACHINE = (
+    _IFZ
+    + """
+FUM @1
+A IO
+B A
+IFZ B end loop
+loop: IO A loop
+end: IO A -1
+A:.data 0
+B:.data -48
+"""
+)
+
+# The wiki's hello world.  ``start+1`` replaces the wiki's literal ``1``
+# (the ``FUM`` line shifts every address by one instruction) and ``temp``
+# is declared in the program because macro-local labels are private per
+# expansion, so CMP's result has to be a shared name.
+_HELLO_WORLD = (
+    _IFZ
+    + _CMP
+    + """
+FUM @1
+start: IO H
+start+1 @1
+CMP start+1 E
+IFZ temp IO start
+.data H: 72 101 108 108 111 44 32 119 111 114 108 100 33 E:E
+temp:.data 0
+"""
+)
+
+
+def _capped(code: str, stdin: str, cap: int) -> tuple[str, bool, int]:
+    """Run at most ``cap`` instructions; return output, halted, steps taken."""
+    from esolangs.interpreters.register_based.addsubjump import _Machine
+
+    machine = _Machine(code, ScriptedIO(stdin))
+    steps = 0
+    while not machine.halted and steps < cap:
+        machine.step()
+        steps += 1
+    return machine.io.getvalue(), machine.halted, steps
+
+
+class TestWikiPrograms:
+    """The wiki's own two programs, which only run under ``goto c``.
+
+    Both are load-bearing for the jump semantics: the truth machine's loop
+    is ``loop: IO A loop``, a literal self-reference, and both halt with
+    ``c = -1``.  Dereferencing ``c`` would send -1 to memory[0] instead.
+    """
+
+    def test_truth_machine_prints_zero_and_halts(self) -> None:
+        assert _capped(_TRUTH_MACHINE, "0", 100) == ("0", True, 10)
+
+    def test_truth_machine_loops_on_one(self) -> None:
+        # Capped rather than waited out: the loop is one instruction, so a
+        # thousand steps is a thousand ones and no halt.
+        output, halted, steps = _capped(_TRUTH_MACHINE, "1", 1000)
+        assert (output, halted, steps) == ("1" * 991, False, 1000)
+
+    def test_hello_world(self) -> None:
+        assert _capped(_HELLO_WORLD, "", 10_000) == ("Hello, world!", True, 144)
+
+
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.register_based.addsubjump import _Machine
@@ -526,5 +639,5 @@ class TestContract(EmptyProgramContract, CycleContract):
 
     run = staticmethod(_run)
     machine = staticmethod(_machine)
-    halting_program = "-1 1 0 -7"
+    halting_program = "-1 1 -1 -7"
     looping_program = "0 0 0 0"

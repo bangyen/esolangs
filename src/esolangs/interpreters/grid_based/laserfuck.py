@@ -14,9 +14,9 @@ argument makes a run reproducible; ``None`` draws for real, as the
 cross-check does.  Exhausted input raises :class:`EOFError`.
 """
 
-import sys
 from typing import cast
 
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.persistent import (
     Chunked,
@@ -436,6 +436,4 @@ def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.readlines(), IO())
+    script_main(run, shape="keep")

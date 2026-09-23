@@ -9,8 +9,7 @@ module docstring shape ``tests/test_interpreter_conventions.py`` checks --
 are listed under "Interpreter conventions" in ``docs/CONTRIBUTING.md``.
 """
 
-import sys
-
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 #: The whole run state as an immutable value, so ``snapshot`` can hand it
@@ -98,6 +97,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read(), IO())
+    script_main(run)

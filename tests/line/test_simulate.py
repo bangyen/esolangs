@@ -49,6 +49,20 @@ def test_lattice_probe_length_is_derived_from_unit() -> None:
     assert default == max(1, lattice.UNIT * 3 // 4)
 
 
+def test_a_straight_run_is_walked_to_its_end_however_long() -> None:
+    """`_walk_segment` has no fixed ceiling: stopping short invents a vertex.
+
+    A 600px column, longer than the `UNIT * 20` = 400px ceiling this used to
+    carry.  The ceiling made an arbitrary pixel into a walked vertex, and
+    `_classify` reads whatever happens to be there -- on
+    `+[>++++++++[>+<-]<-]>>.` a loop-back's merge point sat exactly 400px up
+    the fork's stem, so the walk ended there and lost 4958 of 5577 pixels.
+    """
+    height, width = 640, 3
+    column = Mask(height, width, [0b010 if 10 <= y < 610 else 0 for y in range(height)])
+    assert lattice._walk_segment(column, 10, 1, 4) == (609, 1)  # noqa: SLF001 - unit under test
+
+
 def _io(inputs: list[int]) -> tuple[IO, list[int]]:
     outputs: list[int] = []
     values: Iterator[int] = iter(inputs)

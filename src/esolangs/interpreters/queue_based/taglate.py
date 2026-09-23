@@ -18,9 +18,8 @@ keeps the RFC 3986 unreserved set and ``%XX``-encodes the rest
 :class:`EOFError`.
 """
 
-import sys
-
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
@@ -270,6 +269,4 @@ def run(code: list[str], io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.readlines(), IO())
+    script_main(run, shape="keep")

@@ -128,3 +128,25 @@ class TestRunUntilHalt:
         vm = esolangs.make_vm("brainfuck", "++++++++[>++++++++<-]>+.")
         assert run_until_halt(vm, 5) is False
         assert vm.output == ""
+
+    def test_a_negative_budget_stops_rather_than_running_free(self) -> None:
+        """A cap below zero is still a cap.
+
+        The test was ``steps == limit`` against a count rising from zero, so
+        a negative limit never matched and the bound switched itself off --
+        turning the one detector meant to stop a runaway into the runaway.
+        Checked on a program that never halts, so a regression hangs the
+        suite rather than passing quietly.
+        """
+        from esolangs.vm import run_until_halt
+
+        for limit in (-1, -1000):
+            assert run_until_halt(esolangs.make_vm("brainfuck", "+[]"), limit) is False
+
+    def test_a_zero_budget_still_takes_no_step(self) -> None:
+        """The positive control: the boundary the ``>=`` must not move."""
+        from esolangs.vm import run_until_halt
+
+        vm = esolangs.make_vm("brainfuck", "++++++++[>++++++++<-]>+.")
+        assert run_until_halt(vm, 0) is False
+        assert vm.output == ""

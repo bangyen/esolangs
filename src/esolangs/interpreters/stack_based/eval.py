@@ -43,10 +43,10 @@ it, because Eval's commands are one character wide.
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Hashable
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 #: A value on a stack: Eval's stacks hold both.
@@ -318,7 +318,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.read()
-            run(data, IO())
+    script_main(run)

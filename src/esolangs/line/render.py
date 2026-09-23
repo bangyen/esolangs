@@ -245,8 +245,10 @@ def _leg_cells(
     return cells
 
 
-# Stem `_layout` walks into a `?` node's branch point; a loop-back lands
-# inside it at `_RETURN_STEM_T`, so the landing diagonal must fit.
+# Floor on the stem `_layout` walks into a `?` node's branch point; a
+# loop-back lands inside it at `_RETURN_STEM_T`, so the landing diagonal
+# must fit.  A fork whose body loops back gets a longer stem
+# (:func:`_stem_len`).
 _STEM_LEN = 10
 
 
@@ -332,7 +334,10 @@ def _arm_spacing(arm: Node | None) -> int:
     Far enough that the subtree's measured reach back toward the trunk
     clears it, plus :data:`_BRANCH_SPACING` as floor and margin.  No sibling
     term: ``reach_back`` already puts each box on its own side, and a lateral
-    term amplified with depth (7760x3800 vs ~1600 at depth 3).  A
+    term amplified with depth (7760x3800 vs ~1600 at depth 3).  The arm's
+    *lateral* reach is the fork's own trunk direction, reserved by
+    :func:`_stem_len` instead, where it costs one stem rather than a
+    depth-amplified box.  A
     goto-carrying arm adds one :data:`_GOTO_CORRIDOR`, which guarantees
     :func:`_loop_return_legs` a bay of ``_BRANCH_SPACING + _GOTO_CORRIDOR``
     = 8 -- exactly the lane at :data:`_DIAGONAL_APPROACH` plus
@@ -353,10 +358,51 @@ def _arm_spacing(arm: Node | None) -> int:
 # `_CLEARANCE` against ink on the box edge.
 _RING_OFFSET = _CLEARANCE + 1
 
-# Where a loop-back lands on the stem, from the fork vertex.  Any interior
-# offset works (the landing geometry is reserved); the midpoint keeps the
-# diagonal clear of both stem ends.
+# Where a loop-back lands on the stem, measured back from the fork vertex.
+# Any interior offset works (the landing geometry is reserved); half the
+# floor keeps the diagonal clear of both stem ends at every stem length.
 _RETURN_STEM_T = _STEM_LEN // 2
+
+
+def _returns_to(node: Node | None, target: Node, seen: set[int] | None = None) -> bool:
+    """Whether a ``goto`` inside ``node``'s chain jumps back to ``target``.
+
+    Mirrors :func:`_layout`'s walk: a ``?`` hands off to its two arms and a
+    ``goto`` ends its chain, so neither's ``next`` is followed.
+    """
+    if seen is None:
+        seen = set()
+    while node is not None and id(node) not in seen:
+        seen.add(id(node))
+        if node.goto is not None:
+            return node.goto is target
+        if node.op == "?":
+            return _returns_to(node.zero, target, seen) or _returns_to(
+                node.nonzero, target, seen
+            )
+        node = node.next
+    return False
+
+
+def _stem_len(node: Node) -> int:
+    """How far :func:`_layout` runs a ``?``'s stem before its branch point.
+
+    A loop-back's ring reaches ``hi_x`` back along the trunk from the vertex
+    (:func:`_loop_return_legs`), and that direction is *lateral* in the body
+    arm's own frame -- the one direction :func:`_arm_spacing` deliberately
+    does not reserve.  Nothing else reserves it either, so at
+    :data:`_STEM_LEN` the ring wrapped back past the fork into the straight
+    run drawn before it and the drift guard raised: every depth >= 2 program
+    with a leading run of 6 or more `+` failed (5 cleared it, 6 did not).
+    Sizing the stem to the ring instead keeps the wrap inside the stem's own
+    span, which the fork's measured extent already covers.  Only a fork its
+    own body loops back to pays it, so a goto-free program -- and any fork
+    whose ring is shorter than the floor -- renders pixel-identically.
+    """
+    if not _returns_to(node.nonzero, node):
+        return _STEM_LEN
+    _, _, _, x1 = _subtree_extent(node.nonzero)
+    return max(_STEM_LEN, x1 + _RING_OFFSET + _CLEARANCE)
 
 
 def _loop_return_legs(
@@ -374,16 +420,18 @@ def _loop_return_legs(
     :data:`_RING_OFFSET` out, walk the ring to the corner nearest the stem
     (never crossing the arm stroke at ``x = 0``), ride the bay, and close
     with a :data:`_DIAGONAL_APPROACH` diagonal (a ``"merge"`` to the
-    extractor, not a fork).  ``None`` when a premise fails, which only a
-    hand-built graph produces; :func:`_layout` rejects it loudly.
+    extractor, not a fork).
+
+    ``None`` when a premise fails, and compiled programs do reach it: the
+    body's end must sit on ``B0``'s perimeter, and a ``goto`` hanging off a
+    control tail that ran down a nested fork's ``zero`` arm can end up
+    inside the box instead (``[[[+]][+]+]`` is the smallest; 31 of 1315
+    random compiled programs at depth <= 4).  :func:`_layout` rejects it
+    loudly rather than drawing through ink.
     """
-    stem_start, h = entries[id(target)]
+    vertex, h = entries[id(target)]
     a_h = _turn_left(h)
     arm_run = _arm_spacing(target.nonzero)
-    vertex = (
-        stem_start[0] + h[0] * _STEM_LEN,
-        stem_start[1] + h[1] * _STEM_LEN,
-    )
     entry_pt = (vertex[0] + a_h[0] * arm_run, vertex[1] + a_h[1] * arm_run)
     y0, y1, x0, x1 = _subtree_extent(target.nonzero)
 
@@ -408,7 +456,7 @@ def _loop_return_legs(
     if bay_y < axis_y + _DIAGONAL_APPROACH:
         return None
 
-    tgt_x = _STEM_LEN - _RETURN_STEM_T
+    tgt_x = _RETURN_STEM_T
     approach = (axis_y + _DIAGONAL_APPROACH, tgt_x + _DIAGONAL_APPROACH)
 
     # Enter the bay via the rear corner `(bay_y, hi_x)` so no bay segment
@@ -459,8 +507,8 @@ def _layout(
 ) -> None:
     """Lay out ``node``'s chain from ``cursor``'s current point.
 
-    ``entries`` maps a ``?``'s ``id`` to its stem's ``(stem_start, heading)``;
-    a ``goto`` reconnects inside that stem at :data:`_RETURN_STEM_T`.
+    ``entries`` maps a ``?``'s ``id`` to its ``(vertex, heading)``; a
+    ``goto`` reconnects on the stem :data:`_RETURN_STEM_T` behind the vertex.
     ``depth`` is informational.  ``measuring`` runs the layout for
     :func:`_subtree_extent`: nested ``goto`` returns are drawn in both modes,
     and only a ``goto`` whose fork is outside the chain is terminal.
@@ -469,9 +517,8 @@ def _layout(
         entries = {}
     while node is not None:
         if node.op == "?":
-            stem_start = (cursor.y, cursor.x)
-            cursor.advance(cursor.heading, _STEM_LEN)
-            entries[id(node)] = (stem_start, cursor.heading)
+            cursor.advance(cursor.heading, _stem_len(node))
+            entries[id(node)] = ((cursor.y, cursor.x), cursor.heading)
             right, left = cursor.branch()
             right.advance(right.heading, _arm_spacing(node.zero))
             right.finish()
@@ -505,8 +552,11 @@ def _layout(
                 legs = _loop_return_legs((cursor.y, cursor.x), node.goto, entries)
             if legs is not None and cursor.occupied is not None:
                 # Drift guard, real mode only: the construction never reads
-                # ink, so a hand-built graph must be caught, not drawn
-                # through.  Endpoints (body tip, stem merge) are legitimate ink.
+                # ink, so anything it did not reserve must be caught, not
+                # drawn through.  This is what fired on the ring wrapping
+                # into a long run drawn before the fork, now reserved by
+                # `_stem_len`.  Endpoints (body tip, stem merge) are
+                # legitimate ink.
                 cells = _leg_cells((cursor.y, cursor.x), legs)
                 if any(c in cursor.occupied for c in cells[1:-1]):
                     legs = None
@@ -518,8 +568,10 @@ def _layout(
             if measuring:
                 # Target outside this measured subtree: the owner draws it.
                 return
-            # Only a hand-built graph (target not an ancestor fork, or body
-            # end off its box) gets here.  Never draw a reconnection through ink.
+            # Target not an ancestor fork, or the body's end off its own
+            # box -- a hand-built graph, or a compiled body whose tail sits
+            # inside the box (see `_loop_return_legs`).  Never draw a
+            # reconnection through ink.
             raise ValueError(
                 "loop-back could not be constructed for this goto -- its "
                 "target must be an ancestor '?' fork whose body chain the "

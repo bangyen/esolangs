@@ -3,12 +3,15 @@
 The construction is the full 59049-cell store.  These tests run the shipped
 programs through the repository interpreter, which is the execution gate: the
 mixer, the re-encipherment-compensated data layout and the answer stubs are
-only known to agree because every row is run.
+only known to agree because every row is run.  Eleven inputs go through the
+pointer cascade; its 256 second-level rows are always among the rows run.
 """
 
 from __future__ import annotations
 
 import hashlib
+import importlib
+from collections.abc import Sequence
 from itertools import product
 
 import pytest
@@ -18,13 +21,15 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.malbolge import run
 
+_module = importlib.import_module("esolangs.tools.malbolge")
 
-def _rows(table: str) -> list[str]:
-    """Return the program's output for every row, in table order."""
+
+def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
+    """Return the program's output for ``rows`` (default: every row) in order."""
     n = len(table).bit_length() - 1
     program = boolean.malbolge(table)
     outputs = []
-    for value in range(1 << n):
+    for value in range(1 << n) if rows is None else rows:
         bits = [(value >> (n - 1 - i)) & 1 for i in range(n)]
         io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
         run(program, io)
@@ -58,7 +63,7 @@ def test_every_table_up_to_three_inputs(table: str) -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("n", [6, 9])
+@pytest.mark.parametrize("n", [6, 9, 10])
 @pytest.mark.parametrize("shape", [_dense, _parity])
 def test_dense_and_parity_run(n: int, shape: object) -> None:
     """The two worst-case shapes at the top of the supported range."""
@@ -71,7 +76,118 @@ def test_program_is_the_full_store() -> None:
     assert len(boolean.malbolge("0110")) == 3**10
 
 
-def test_ten_inputs_are_refused() -> None:
-    """The mixer is injective with gap three only through nine inputs."""
-    with pytest.raises(GeneratorCapError, match="at most 9 inputs"):
-        boolean.malbolge(_dense(10))
+def _second_level_rows() -> list[int]:
+    _, level, _, _ = _module._cascade()  # noqa: SLF001
+    return [row for row, lvl in enumerate(level) if lvl == 1]
+
+
+def test_cascade_leaves_128_pairs_to_the_second_decoder() -> None:
+    """The first readout resolves 1792 rows; the second separates the rest."""
+    assert len(_second_level_rows()) == 256
+
+
+def test_eleven_input_tables_differ_in_one_cell_per_row() -> None:
+    """Every row owns one answer cell; the rows a pair shares point at NEXT.
+
+    The all-0 and all-1 tables therefore differ in exactly 2048 of the 59049
+    cells: one per resolved row at level 1, one per row at level 2.
+    """
+    zeros = boolean.malbolge("0" * 2**11)
+    ones = boolean.malbolge("1" * 2**11)
+    assert len(zeros) == len(ones) == 3**10
+    assert sum(a != b for a, b in zip(zeros, ones, strict=True)) == 2**11
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("shape", [_dense, _parity])
+def test_eleven_inputs_sampled(shape: object) -> None:
+    """Every eighth row and every second-level row of the two shapes."""
+    table = shape(11)  # type: ignore[operator]
+    rows = sorted({*range(0, 2**11, 8), *_second_level_rows()})
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.parametrize("shape", [_dense, _parity])
+def test_eleven_inputs_every_row(shape: object) -> None:
+    """The full 2048-row sweep, the cascade's execution gate."""
+    table = shape(11)  # type: ignore[operator]
+    assert _rows(table) == list(table)
+
+
+def _wide_second_level_rows() -> list[int]:
+    _, level, _, _ = _module._wide()  # noqa: SLF001
+    return [2 * row + x for x in (0, 1) for row, lvl in enumerate(level[x]) if lvl]
+
+
+def test_twelve_inputs_split_the_last_off_the_cascade() -> None:
+    """560 of 4096 rows collide at level 1; both halves reach the decoder."""
+    rows = _wide_second_level_rows()
+    assert len(rows) == 560
+    assert {row & 1 for row in rows} == {0, 1}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("shape", [_dense, _parity])
+def test_twelve_inputs_sampled(shape: object) -> None:
+    """Every sixteenth row and every second-level row of the two shapes."""
+    table = shape(12)  # type: ignore[operator]
+    rows = sorted({*range(0, 2**12, 16), *_wide_second_level_rows()})
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.parametrize("shape", [_dense, _parity])
+def test_twelve_inputs_every_row(shape: object) -> None:
+    """The full 4096-row sweep, the selector's execution gate."""
+    table = shape(12)  # type: ignore[operator]
+    assert _rows(table) == list(table)
+
+
+def _thirteen_second_level_rows() -> list[int]:
+    _, _, level, _, _ = _module._thirteen()  # noqa: SLF001
+    return [
+        4 * row + 2 * x + last
+        for x in (0, 1)
+        for row, lvl in enumerate(level[x])
+        if lvl
+        for last in (0, 1)
+    ]
+
+
+def test_thirteen_inputs_label_every_residue() -> None:
+    """Each table cell's residue admits all five single-cell labels."""
+    _, _, level, tables, labels = _module._thirteen()  # noqa: SLF001
+    for x in (0, 1):
+        for row, h in enumerate(tables[0][x]):
+            wanted = "N01xn" if level[x][row] else "01xn"
+            for label in wanted:
+                _module._table_char(h, label, labels)  # noqa: SLF001
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("shape", [_dense, _parity])
+def test_thirteen_inputs_sampled(shape: object) -> None:
+    """Every thirty-second row and every second-level row of the two shapes."""
+    table = shape(13)  # type: ignore[operator]
+    rows = sorted({*range(0, 2**13, 32), *_thirteen_second_level_rows()})
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.parametrize(
+    "shape", [_dense, _parity, lambda n: "0" * 2**n, lambda n: "1" * 2**n]
+)
+def test_thirteen_inputs_every_row(shape: object) -> None:
+    """The full 8192-row sweep, the four-answer labels' execution gate."""
+    table = shape(13)  # type: ignore[operator]
+    assert _rows(table) == list(table)
+
+
+def test_fourteen_inputs_are_refused() -> None:
+    """Eight characters per cell hold N and four answers, not sixteen."""
+    with pytest.raises(GeneratorCapError, match="at most 13 inputs"):
+        boolean.malbolge(_dense(14))

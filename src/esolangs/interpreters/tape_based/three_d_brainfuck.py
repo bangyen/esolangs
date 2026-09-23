@@ -19,9 +19,9 @@ the instruction pointer leaves the source line; an exact-state loop is
 proved by the hang detector, unbounded growth by the ``run()`` backstop.
 """
 
-import sys
 from collections.abc import Mapping
 
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import match_brackets as _matches
 from esolangs.interpreters.io import IO
 
@@ -196,6 +196,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read(), IO())
+    script_main(run)

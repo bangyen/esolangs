@@ -15,9 +15,9 @@ holding the two I/O tokens and ``A``'s range check.
 from __future__ import annotations
 
 import re
-import sys
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 #: The largest value ``A`` can print.  Outputting a cell outside the valid
@@ -232,7 +232,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.read()
-            run(data, IO())
+    script_main(run)

@@ -15,12 +15,12 @@ observer copies the list.
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Sequence
 from contextlib import suppress
 from functools import lru_cache
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
@@ -310,7 +310,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.read()
-            run(data, IO())
+    script_main(run)

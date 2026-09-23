@@ -15,7 +15,7 @@ from esolangs.tools.clockwise import clockwise as clockwise
 # it by this name.  Re-exported in the ``x as x`` form so a caller that
 # does not care where a piece lives need not know.
 from esolangs.tools.container import (
-    _container_packed as _container_packed,
+    _container_threshold as _container_threshold,
 )
 from esolangs.tools.container import container as container
 from esolangs.tools.flowchart import (

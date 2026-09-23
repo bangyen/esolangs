@@ -43,18 +43,14 @@ def _ink(mask: Mask, y: int, x: int) -> bool:
     return 0 <= y < h and 0 <= x < w and bool(mask[y, x])
 
 
-# render.py's _UNIT.  Only an upper bound for _walk_segment; the band
-# probe reads real lengths, which run a pixel or two off it.
+# render.py's _UNIT.  Only the probe's scale; the band reads real lengths,
+# which run a pixel or two off it, and no run is capped at a multiple of it.
 UNIT = 20
 
 # Stay one quarter-unit inside the nominal corner spacing.  At UNIT=20 this
 # preserves the measured 15px probe; deriving it keeps the same clearance when
 # a smaller lattice unit is introduced.
 _PROBE_LENGTH = max(1, UNIT * 3 // 4)
-
-# Where _walk_segment gives up on a corrupted image.  Generous: a merged
-# `+`/`-` run has no ceiling, and multiplication.png's longest is ~60px.
-_MAX_SEGMENT = UNIT * 20
 
 
 def _band_lit(mask: Mask, y: int, x: int, direction: int) -> bool:
@@ -107,16 +103,21 @@ def _walk_segment(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]
     """Follow a stroke's own center pixels to this segment's true endpoint.
 
     Advances while the exact next pixel is ink -- not the band, which
-    overshoots onto a neighbouring leg within its lateral reach.
+    overshoots onto a neighbouring leg within its lateral reach.  Runs to
+    the run's real end, with no length ceiling: it terminates because every
+    step moves one pixel closer to an edge and off-mask reads as
+    background.  A ceiling (it was ``UNIT * 20`` = 400px) *invents a vertex*
+    mid-run, and ``_classify`` then reads whatever sits there -- 400px up
+    ``+[>++++++++[>+<-]<-]>>.``'s stem sits a loop-back's merge point, so
+    the walk ended there, 4958 of 5577 pixels short.
     """
     dy, dx = _DIRS[direction]
     py, px = y, x
-    for _ in range(_MAX_SEGMENT):
+    while True:
         ny, nx = py + dy, px + dx
         if not _ink(mask, ny, nx):
             return py, px
         py, px = ny, nx
-    return py, px
 
 
 def find_start(

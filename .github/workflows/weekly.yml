@@ -72,3 +72,42 @@ jobs:
     # command that report prints.
     - name: Test with pytest (full suite, including the slow band)
       run: uv run pytest -n auto
+
+  # Generation *time* is the one axis the per-PR gate cannot judge: it is
+  # machine- and load-dependent, and a threshold loose enough not to flake on
+  # a shared runner is loose enough to miss the regression it is there for.
+  # So it is recorded, not gated.  One job, one interpreter, best-of-five:
+  # the artifact is the trend, and `just benchmark` is how a suspicion gets
+  # checked by hand afterwards.  The exact half of the same sweep -- emitted
+  # size and step count -- is gated per-PR by `just test`'s "generator size
+  # baseline" step instead.
+  timings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.14"
+
+    - name: Install dependencies
+      run: uv sync --extra dev --python 3.14
+
+    # `--timings` writes the full sweep; the run still fails if the exact
+    # fields drifted, which on `main` would mean the gate was bypassed.
+    - name: Sweep every generator
+      run: >
+        uv run python scripts/check_generator_sizes.py
+        --repeat 5 --timings generator-timings.json
+
+    - name: Upload the timings
+      uses: actions/upload-artifact@v7
+      with:
+        name: generator-timings
+        path: generator-timings.json
+        retention-days: 90

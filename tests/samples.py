@@ -184,7 +184,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "6-5": ("55A", ""),
     "A Painter Ant": ("Pnn", ""),
     "Algebraic Programming Language": ("a + 1", "41\n"),
-    "AddSubJump": ("-1 1 0 -7", ""),
+    "AddSubJump": ("-1 1 -1 -7", ""),
     "Alight": ("begin;var c;set c 65;out c;end;", ""),
     "ArrowQueue": ("~*+", "0"),
     "BF-PDA": ("<@.", ""),

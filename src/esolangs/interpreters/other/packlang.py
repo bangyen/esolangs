@@ -89,10 +89,10 @@ Further decisions for gaps the wiki leaves open:
 """
 
 import re
-import sys
 from collections.abc import Callable
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 # There is no recursion ceiling.  A call pushes a frame rather than
@@ -1132,6 +1132,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read(), IO())
+    script_main(run)

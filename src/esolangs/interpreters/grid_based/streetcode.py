@@ -25,11 +25,11 @@ empty line sets the cell to 0.
 """
 
 import functools
-import sys
 from collections.abc import Mapping
 from typing import Literal, Self, assert_never
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.grid_based._streetcode_geometry import (
     _DELTA,
     _NO_LATCHES,
@@ -691,7 +691,4 @@ def run(code: list[str], io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.readlines()
-            run(data, IO())
+    script_main(run, shape="keep")

@@ -44,11 +44,11 @@ stack.
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 from typing import Literal, NoReturn
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
 # The parse tree, as tuples discriminated by their first element.  Four
@@ -930,6 +930,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            run(file.read(), IO())
+    script_main(run)

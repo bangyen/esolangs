@@ -54,6 +54,14 @@ jobs:
     - name: Check for definitions nothing reads
       run: uv run python scripts/check_dead_definitions.py
 
+    # Emitted size and step count for every language on 2-, 3- and 4-input
+    # tables, compared exactly against the committed baseline.  They are the
+    # numbers the collection's claims are made of, and before this nothing
+    # measured them outside a hand-run `just benchmark`.  Generation *time*
+    # is not gated here -- see weekly.yml's `timings` job for why.  ~5s.
+    - name: Check generator sizes against the baseline
+      run: uv run python scripts/check_generator_sizes.py
+
     - name: Check for duplicated code blocks
       run: >
         uv run --with pylint python -m pylint --disable=all
@@ -139,7 +147,16 @@ jobs:
       #
       # `--cov-branch` is free on this leg (see the table above) and the gate
       # below needs the arcs.
-      run: uv run pytest -n auto -m "not slow" --cov --cov-branch --cov-report=xml --cov-report=term-missing
+      #
+      # `--cov-fail-under` is a drift floor, not a target: this band measures
+      # 99% today, and the two points of slack absorb a slow-only path moving
+      # under a line the fast band cannot reach.  It lives here rather than in
+      # pyproject's `[tool.coverage.report]` because a local `just test` run
+      # is scoped -- `verify.py`'s `_scoped_coverage` narrows measurement to
+      # the touched files -- and a shared floor would read that subset as a
+      # collapse.  The changed-line gate below is the per-PR check; this only
+      # catches whole-tree erosion.
+      run: uv run pytest -n auto -m "not slow" --cov --cov-branch --cov-report=xml --cov-report=term-missing --cov-fail-under=97
 
     # The fast suite cannot judge pre-existing lines covered only by a slow
     # test, so `--partial` reports those whole-file gaps without blocking.

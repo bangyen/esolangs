@@ -13,9 +13,8 @@ past the end are zero.  Execution halts off the end of the program or on
 a negative jump target.  Malformed programs raise :class:`ValueError`.
 """
 
-import sys
-
 from esolangs._validate import check_address
+from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
 
@@ -194,7 +193,4 @@ def run(code: str, io: IO, store: str = "a") -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.read()
-            run(data, IO())
+    script_main(run)

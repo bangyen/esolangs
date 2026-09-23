@@ -29,6 +29,31 @@ def test_division_and_modulo_truncate_toward_zero() -> None:
     assert run_befunge("07-2 %.@") == "-1 "
 
 
+def test_an_empty_stack_is_a_zero_divisor_like_any_other() -> None:
+    """The implicit 0 and an explicit one take the same path.
+
+    ``step`` used to ask for a result only when the stack was non-empty, so
+    ``0/`` read while ``/`` -- popping the very same 0 -- halted instead.
+    """
+    assert run_befunge("/.@", "7\n") == "7 "
+    assert run_befunge("%.@", "8\n") == "8 "
+    assert run_befunge("0/.@", "7\n") == run_befunge("/.@", "7\n")
+
+
+def test_a_zero_divisor_with_nothing_to_read_halts() -> None:
+    """The documented HaltError, through ``run`` rather than ``_advance``.
+
+    ``step`` reads the result before ``_advance`` runs, so the exhausted
+    input raised ``InputExhaustedError`` first and the HaltError below was
+    unreachable from outside.  ``&`` is a plain read and still propagates.
+    """
+    for program in ("10/.@", "/.@", "10%.@"):
+        with pytest.raises(HaltError, match="needs a result"):
+            run_befunge(program)
+    with pytest.raises(EOFError):
+        run_program(run, ["&.@"], suppress_eof=False)
+
+
 def test_a_zero_divisor_reads_the_result() -> None:
     assert run_befunge("10/.@", "7\n") == "7 "
     assert run_befunge("10%.@", "8\n") == "8 "

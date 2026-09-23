@@ -279,3 +279,146 @@ def test_boolean_example(name: str) -> None:
         # for a program that prints two bytes.
         return
     assert got == expected
+
+
+class TestTheWritersWriteWhatTheBuildersBuild:
+    """The side-effecting half of ``_generate_examples``.
+
+    Everything above tests the text these functions produce; nothing ran the
+    functions that put it on disk, because doing so in the repo would
+    rewrite the committed examples.  Pointing ``EXAMPLES`` at a tmp
+    directory runs them for real instead -- this is the script that
+    regenerates every committed example, so a fault here corrupts the files
+    the whole suite treats as ground truth.
+    """
+
+    @staticmethod
+    def _redirect(monkeypatch: pytest.MonkeyPatch, target: Path) -> object:
+        from esolangs.tools import _generate_examples
+
+        monkeypatch.setattr(_generate_examples, "EXAMPLES", target)
+        return _generate_examples
+
+    def test_write_set_writes_every_boolean_example(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        module = self._redirect(monkeypatch, tmp_path / "examples")
+        module.write_set("boolean")  # type: ignore[attr-defined]
+
+        written = {path.stem for path in (tmp_path / "examples").glob("*.txt")}
+        expected = {stem for stem, _ in module.boolean_programs()}  # type: ignore[attr-defined]
+        assert written == expected
+        assert (tmp_path / "examples" / "MANIFEST.md").is_file()
+
+    def test_each_file_is_the_program_plus_one_newline(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The interpreters strip that newline; the file has to carry it."""
+        module = self._redirect(monkeypatch, tmp_path / "examples")
+        module.write_set("boolean")  # type: ignore[attr-defined]
+
+        for stem, generated in module.boolean_programs():  # type: ignore[attr-defined]
+            text = (tmp_path / "examples" / f"{stem}.txt").read_text(encoding="utf-8")
+            assert text == generated.rstrip("\n") + "\n"
+
+    def test_a_second_write_reports_unchanged(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Rerunning is a no-op, which is what makes it safe to run habitually."""
+        module = self._redirect(monkeypatch, tmp_path / "examples")
+        module.write_set("boolean")  # type: ignore[attr-defined]
+        capsys.readouterr()
+        module.write_set("boolean")  # type: ignore[attr-defined]
+
+        lines = capsys.readouterr().out.splitlines()
+        assert lines
+        assert all(line.startswith("unchanged") for line in lines if ".txt" in line)
+
+    def test_the_manifest_written_is_the_manifest_built(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        module = self._redirect(monkeypatch, tmp_path / "examples")
+        (tmp_path / "examples").mkdir()
+        module.write_boolean_manifest()  # type: ignore[attr-defined]
+
+        written = (tmp_path / "examples" / "MANIFEST.md").read_text(encoding="utf-8")
+        assert written == module.boolean_manifest_text()  # type: ignore[attr-defined]
+
+    def test_main_with_no_arguments_writes_every_set(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        module = self._redirect(monkeypatch, tmp_path / "examples")
+        monkeypatch.setattr(sys, "argv", ["generate.py"])
+        assert module.main() == 0  # type: ignore[attr-defined]
+        assert (tmp_path / "examples" / "MANIFEST.md").is_file()
+
+    def test_main_accepts_one_named_set(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        module = self._redirect(monkeypatch, tmp_path / "examples")
+        monkeypatch.setattr(sys, "argv", ["generate.py", "boolean"])
+        assert module.main() == 0  # type: ignore[attr-defined]
+        assert list((tmp_path / "examples").glob("*.txt"))
+
+    def test_main_refuses_an_unknown_set(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``choices`` is what keeps a typo from writing nothing silently."""
+        module = self._redirect(monkeypatch, tmp_path / "examples")
+        monkeypatch.setattr(sys, "argv", ["generate.py", "nope"])
+        with pytest.raises(SystemExit):
+            module.main()  # type: ignore[attr-defined]
+
+
+class TestTheManifestEdges:
+    """Three branches the committed data never takes, driven directly."""
+
+    def test_a_row_with_no_inputs_reads_as_none(self) -> None:
+        """A program that reads nothing has no row to spell."""
+        from dataclasses import dataclass
+
+        from esolangs.tools._generate_examples import _logical_row
+
+        @dataclass
+        class _Stub:
+            fill: object = None
+            inputs: tuple[str, ...] = ()
+
+        assert _logical_row("brainfuck", _Stub()) == "(none)"
+
+    def test_the_notes_section_is_omitted_when_nothing_is_noted(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Every committed example carries the section, so it is forced here."""
+        import dataclasses
+
+        from esolangs.tools import _generate_examples
+        from esolangs.tools.examples import BOOLEAN_EXAMPLES
+
+        stem, example = next(iter(sorted(BOOLEAN_EXAMPLES.items())))
+        unnoted = {stem: dataclasses.replace(example, note="")}
+        monkeypatch.setattr(_generate_examples, "BOOLEAN_EXAMPLES", unnoted)
+
+        text = _generate_examples.boolean_manifest_text()
+        assert "## Notes" not in text
+        assert f"`{stem}.txt`" in text
+
+    def test_only_the_boolean_set_writes_a_manifest(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``SETS`` has one entry today; the guard is for when it has two."""
+        from esolangs.tools import _generate_examples
+
+        monkeypatch.setattr(_generate_examples, "EXAMPLES", tmp_path / "examples")
+        monkeypatch.setattr(
+            _generate_examples,
+            "SETS",
+            {"other": lambda: iter([("probe", "+")])},
+        )
+        _generate_examples.write_set("other")
+
+        assert (tmp_path / "examples" / "probe.txt").read_text() == "+\n"
+        assert not (tmp_path / "examples" / "MANIFEST.md").exists()

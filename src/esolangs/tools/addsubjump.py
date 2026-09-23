@@ -33,7 +33,11 @@ def _addsubjump_packed(truth_table: str) -> str:
     """Emit a linear-size packed-table decoder for AddSubJump."""
     n = _validate_truth_table(truth_table)
     chunk_width = max(n, 1)
-    instructions: list[tuple[int | str, int | str, str, int | str]] = []
+    # ``c`` is a literal destination (the wiki's ``goto c``), so a label or
+    # ``"next"`` resolves straight into the operand and an ``int`` is already
+    # one.  A computed jump is therefore a *write* to an instruction's own
+    # ``c`` cell, which is what :func:`branch_positive` does below.
+    instructions: list[tuple[int | str, int | str, str | int, int | str]] = []
     labels: dict[str, int] = {}
     values: dict[str, int] = {
         "ZERO": 0,
@@ -50,14 +54,15 @@ def _addsubjump_packed(truth_table: str) -> str:
         "Q": 0,
         "R": 0,
         "OUT": _ASCII_ZERO,
-        "HALT": -8,
     }
     branch_id = 0
 
     def mark(name: str) -> None:
         labels[name] = len(instructions)
 
-    def emit(a: int | str, b: int | str, target: str, d: int | str = "ZERO") -> int:
+    def emit(
+        a: int | str, b: int | str, target: str | int, d: int | str = "ZERO"
+    ) -> int:
         instructions.append((a, b, target, d))
         return len(instructions) - 1
 
@@ -72,20 +77,22 @@ def _addsubjump_packed(truth_table: str) -> str:
         nonlocal branch_id
         tag = branch_id
         branch_id += 1
-        jump_cell = f"BRANCH{tag}"
+        at = len(instructions)
+        # The jump cell is the ``c`` operand of the dispatch instruction
+        # itself -- there is no indirect jump to hide it behind now.
+        jump_cell = 4 * (at + 1) + 2
         positive_trampoline = f"branch_{tag}_positive"
         zero_trampoline = f"branch_{tag}_zero"
         emit(jump_cell, "FOUR", "next", cell)
-        emit("ZERO", "ZERO", "@" + jump_cell)
+        # The trampolines are two instructions apart; their midpoint is the
+        # value from which adding/subtracting FOUR selects either one.
+        emit("ZERO", "ZERO", 4 * (at + 3))
         mark(positive_trampoline)
         emit(jump_cell, "FOUR", "next")
         emit("ZERO", "ZERO", positive)
         mark(zero_trampoline)
         emit(jump_cell, "FOUR", "next", "ONE")
         emit("ZERO", "ZERO", zero)
-        # The trampolines are two instructions apart; their midpoint is the
-        # value from which adding/subtracting FOUR selects either one.
-        values[jump_cell] = 4 * (labels[positive_trampoline] + 1)
 
     # Read every input once and form its binary row index.
     for _ in range(n):
@@ -139,7 +146,7 @@ def _addsubjump_packed(truth_table: str) -> str:
     emit("TABLE", "Q", "div_init")
     mark("output")
     emit("OUT", "R", "next")
-    emit(-1, "OUT", "@HALT")
+    emit(-1, "OUT", -8)  # print, then halt on the special address
 
     # Pack n adjacent rows per cell.  Both each value and each cell address
     # have O(log T) digits, while there are O(T/log T) cells.
@@ -151,11 +158,7 @@ def _addsubjump_packed(truth_table: str) -> str:
         for start in range(0, len(truth_table), chunk_width)
     ]
 
-    target_names = [f"TARGET{i}" for i in range(len(instructions))]
     names = list(values)
-    for target_name in target_names:
-        if target_name not in values:
-            names.append(target_name)
     names.extend(f"CHUNK{i}" for i in range(len(chunks)))
     base = 4 * len(instructions)
     address = {name: base + i for i, name in enumerate(names)}
@@ -167,14 +170,11 @@ def _addsubjump_packed(truth_table: str) -> str:
             return address[value] if isinstance(value, str) else int(value)
 
         if target == "next":
-            target_value = 4 * (i + 1)
-        elif target.startswith("@"):
-            target_value = None
+            c = 4 * (i + 1)
+        elif isinstance(target, int):
+            c = target
         else:
-            target_value = 4 * labels[target]
-        target_cell = target_names[i]
-        memory[address[target_cell]] = target_value if target_value is not None else 0
-        c = address[target[1:]] if target.startswith("@") else address[target_cell]
+            c = 4 * labels[target]
         memory[4 * i : 4 * i + 4] = [operand(a), operand(b), c, operand(d)]
 
     for name, value in values.items():
@@ -202,8 +202,11 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     n = _validate_truth_table(truth_table)
 
     instructions: list[list[Any]] = []
-    next_cells: list[str | None] = []
-    values: dict[str, int | tuple[str, int]] = {}
+    values: dict[str, int] = {}
+    # ``c`` is a literal destination, so a branch target is resolved into the
+    # operand rather than into a cell the jump dereferences.  ``targets`` maps
+    # a forward-reference name to the instruction index it will land on.
+    targets: dict[str, int] = {}
     # The operand names in the order the instructions mention them, recorded
     # as they are emitted.  The numbering pass below wants exactly this list
     # and used to recover it by re-scanning every operand of every
@@ -213,10 +216,9 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     def emit(a: object, b: object, c: object, d: int) -> int:
         idx = len(instructions)
-        next_cells.append(f"NEXT{idx}" if c == "next" else None)
         instructions.append([a, b, c, d])
-        for v in (a, b, c):
-            if isinstance(v, str) and v != "next":
+        for v in (a, b):
+            if isinstance(v, str):
                 named.append(v)
         return idx
 
@@ -225,7 +227,6 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # fixed addresses hold the operands repeated throughout the tree:
     # D48=4, D49=5, U=6 and C48=8.
     instructions += [[_ASCII_ZERO, _ASCII_ONE, 0, 0], [-_ASCII_ZERO, 0, 0, 0]]
-    next_cells += [None, None]
 
     stored = stored_inputs(truth_table, perm)
 
@@ -268,22 +269,21 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             return
         base = len(instructions)
         bit = f"B{perm[level]}"
-        jump = f"J{base}"
-        # Two instructions precede the trampolines, so the jump cell starts
-        # at the zero trampoline two slots on.
-        values[jump] = ("t0", base + 2)
-        emit(jump, bit, "next", -7)  # J += B, the hoisted bit this node tests
-        emit(6, 6, jump, -7)  # goto *J
+        # The jump cell is the goto's own ``c`` operand: with a literal
+        # destination the only computed jump is a self-modifying one.  It
+        # rests on the zero trampoline two slots on, and ``B`` (0 or 4) moves
+        # it to the one trampoline.
+        jump = 4 * (base + 1) + 2
+        emit(jump, bit, "next", -7)  # c of the goto += B, the hoisted bit
+        emit(6, 6, ("init", 4 * (base + 2)), -7)  # goto, target patched above
         ztarget = f"Z{base}"
         otarget = f"O{base}"
         emit(6, 6, ztarget, -7)  # zero trampoline
         emit(6, 6, otarget, -7)  # one trampoline
-        zstart = len(instructions)
+        targets[ztarget] = len(instructions)
         build(level + 1, lo, lo + half)
-        ostart = len(instructions)
+        targets[otarget] = len(instructions)
         build(level + 1, lo + half, hi)
-        values[ztarget] = ("addr", zstart)
-        values[otarget] = ("addr", ostart)
 
     build(0, 0, 2**n)
 
@@ -306,28 +306,19 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         names.setdefault(name, len(names))
     for name in values:
         cell(name)
-    for nc in next_cells:
-        if nc:
-            cell(nc)
 
     mem = [0] * (base_data + len(names))
     for i, ins in enumerate(instructions):
-        row = []
-        for v in ins:
-            if v == "next":
-                ncname = next_cells[i]
-                if ncname is None:
-                    raise AssertionError("no next cell for instruction")
-                row.append(cell(ncname))
-            elif isinstance(v, str):
-                row.append(cell(v))
-            else:
-                row.append(v)
-        mem[4 * i : 4 * i + 4] = row
+        a, b, c, d = ins
+        if c == "next":
+            # Instruction 0 jumps over the two data blocks that follow it.
+            c = 12 if i == 0 else 4 * (i + 1)
+        elif isinstance(c, tuple):
+            c = c[1]
+        elif isinstance(c, str):
+            c = 4 * targets[c]
+        row = [cell(v) if isinstance(v, str) else v for v in (a, b)]
+        mem[4 * i : 4 * i + 4] = [*row, c, d]
     for name, val in values.items():
-        idx = cell(name)
-        mem[idx] = 4 * val[1] if isinstance(val, tuple) else val
-    for i, nc in enumerate(next_cells):
-        if nc:
-            mem[cell(nc)] = 12 if i == 0 else 4 * (i + 1)
+        mem[cell(name)] = val
     return " ".join(map(str, mem))

@@ -138,6 +138,15 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     LINE_STEP: ("tests/interpreters/",),
     "duplicate-code check (pylint)": ("src/esolangs/", "scripts/"),
     "dead definitions": ("src/", "scripts/"),
+    # Only a generator, an interpreter (the step counts are executed), or the
+    # baseline itself can move these numbers.
+    "generator size baseline": (
+        "src/esolangs/tools/",
+        "src/esolangs/interpreters/",
+        "scripts/check_generator_sizes.py",
+        "scripts/benchmark.py",
+        "tests/fixtures/generator_sizes.json",
+    ),
     # The union of what the two proofs in this band read: ArrowQueue's lemmas
     # import the generator and nothing else, and BIO's also parse the emitted
     # program and instantiate it through the shipped fill.  The runner is in
@@ -184,6 +193,11 @@ STEPS = [
     # A generator route that was replaced keeps its own tests green, so it
     # never fails; three sat that way.  <1s.
     ("dead definitions", [*PY, "scripts/check_dead_definitions.py"]),
+    # What every generator emits, and how many steps the emitted program
+    # runs, pinned exactly against a committed baseline: the two quantities
+    # the collection's claims rest on, and until this step nothing measured
+    # them outside a hand-run `just benchmark`.  192 measurements, ~3s.
+    ("generator size baseline", [*PY, "scripts/check_generator_sizes.py"]),
     (
         # These also run under the plain `pytest` step above.  Repeated here
         # under `--isolated --no-project`, which installs only pytest, so a
@@ -440,6 +454,17 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool, bo
         sys.exit(0)
     only = {s.strip() for s in args.only.split(",") if s.strip()} if args.only else None
     skip = {s.strip() for s in args.skip.split(",") if s.strip()} if args.skip else None
+    # A typo'd name used to filter STEPS down to nothing and print the same
+    # "all local checks passed" a real green run prints -- a gate that ran
+    # zero steps must never look like a gate that passed.
+    known = {name for name, _ in STEPS}
+    for flag, names in (("--only", only), ("--skip", skip)):
+        unknown = sorted((names or set()) - known)
+        if unknown:
+            parser.error(
+                f"{flag}: unknown step(s) {', '.join(unknown)}; "
+                f"--list prints the {len(known)} names"
+            )
     return only, skip, args.full, args.quiet, args.verbose
 
 
@@ -782,6 +807,13 @@ def main() -> int:
         if selected or (only is None and not full):
             gate_cmd.append("--partial")
         gate = (DIFF_COVERAGE_STEP, gate_cmd, env)
+
+    # Name validation catches a typo; this catches the rest (--only X --skip X,
+    # a probe that found no tool).  Zero steps is not a pass.
+    if not runnable:
+        print("=" * 40)
+        print("no checks ran: the filters selected zero steps")
+        return 1
 
     stream = _should_stream(len(runnable), quiet=quiet, verbose=verbose)
     failures, timings, wall = _run_steps(runnable, stream=stream, gate=gate)
