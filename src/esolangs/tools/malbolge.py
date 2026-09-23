@@ -31,6 +31,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Callable
 from functools import cache
+from itertools import product
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.other.malbolge import _XLAT1, _XLAT2, _crazy
@@ -753,7 +754,13 @@ _T_SEEDS = {"0": (53, 3), "1": (103, 5), "x": (70, 5), "N": (48, 4), "n": (59, 4
 _T_STUBS = {"0": "<v", "x": "/<v", "1": "pp<v", "n": "/ppjp<v"}
 #: Hub cells each label reads, from ``V + 1``, including the ``j`` target the
 #: builder escapes through after writing the hub.
-_T_HUB_CELLS = {"0": 2, "x": 2, "1": 3, "N": 3, "n": 5}
+_T_HUB_CELLS: dict[str, int | tuple[int, ...]] = {
+    "0": 2,
+    "x": 2,
+    "1": 3,
+    "N": 3,
+    "n": 5,
+}
 #: Fresh all-1 and all-2 cells just past the pointer region, for the paths.
 _T_LOW = (128, 129)
 _T_HELPERS = {"z1": 40, "z0": 37, "w": 80, "v": 78, "a1": 69}
@@ -843,13 +850,22 @@ def _t_hubs(
     values: dict[int, int],
     label: dict[int, str],
     avoid: set[int],
-    hub_cells: dict[str, int] = _T_HUB_CELLS,
+    hub_cells: dict[str, int | tuple[int, ...]] = _T_HUB_CELLS,
 ) -> tuple[dict[int, int], dict[int, str], dict[int, int]]:
-    """Return hub and data characters, stub code and rotations per hub."""
+    """Return hub and data characters, stub code and rotations per hub.
+
+    ``hub_cells`` gives, per label, how many cells past a hub are reserved
+    or exactly which offsets are.
+    """
     hubs = {values[p]: label[p] for p in sorted(values)}
     reserved: set[int] = set()
     for v, lab in sorted(hubs.items()):
-        cells = set(range(v + 1, v + 1 + hub_cells[lab]))
+        span = hub_cells[lab]
+        cells = (
+            set(range(v + 1, v + 1 + span))
+            if isinstance(span, int)
+            else {v + o for o in span}
+        )
         if cells & (avoid | reserved):
             raise AssertionError(f"hub {v} collides")
         reserved |= cells
@@ -1155,12 +1171,17 @@ _F_LEVELS: tuple[tuple[tuple[tuple[tuple[int, int], ...], int, int], ...], ...] 
 )
 #: Path code budgets: the input-twelve paths, then per level, copy and
 #: segment; every selector, chain and link value was cleared for its length.
-#: A sub-path or level-2 path is three segments (the copy's ops; the chain
-#: for the next level and the preload; the table jump), a level-3 path two.
+#: A sub-path or level-2 path is one segment per run of the copy's ops --
+#: the first at the address the selector or the chain derives -- then the
+#: chain for the next level with the preload, then the table jump; a level-3
+#: path folds the last two together.  The tables leave few free runs long
+#: enough to link into, and a link costs a window cell that nothing else can
+#: then use, so the ops are cut into as many segments as this tuple gives.
 _F_PATH_LEN12 = 0
 _F_SEG_LEN: tuple[tuple[tuple[int, ...], ...], ...] = ((), (), ())
-#: Segment links, in order: per copy the sub-path's second and third
-#: segment, then the level-2 path's, then the level-3 path's second.  Each is
+#: Segment links, in order: per copy the sub-path's second to fourth
+#: segment, then the level-2 path's, then the level-3 path's second and
+#: third.  Each is
 #: a window cell's ``g`` value (below 81, so never a trampoline), the constant
 #: ``p`` run over it first (``K2``/``K1``/``K0`` from an adjacent supply cell
 #: holding all-2, all-1 or 0; empty for none) and the rotations after; the
@@ -1176,9 +1197,12 @@ _F_SUB_CHAINS: tuple[str, str] = ("", "")
 _F_LEVEL_CHAINS: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())
 _F_SEEDS = _T_SEEDS
 #: N hubs hold all-1 twice, then the handler pointer at ``V + 11`` and the
-#: handler's own ``j`` character at ``V + 12``.
-_F_HUB_CELLS = {**_T_HUB_CELLS, "N": 12}
+#: handler's own ``j`` character at ``V + 12``; the second pass only walks
+#: ``d`` over the cells between, so those stay free for anything.
+_F_HUB_CELLS: dict[str, int | tuple[int, ...]] = {**_T_HUB_CELLS, "N": (1, 2, 11, 12)}
 _F_DECODER_NOPS = 8
+#: Handlers may sit in the free band between the main code and the tables.
+_F_HANDLER_FLOOR = 8600
 #: The window path cells and trampolines are packed into.
 _F_WINDOW = (163, 244)
 
@@ -1282,15 +1306,23 @@ def _f_handler(
     target: int,
     mem: dict[int, int | None],
     data: dict[int, int],
-) -> tuple[int, dict[int, str]]:
+) -> tuple[str, dict[int, str]]:
     """Place the level-3 handler an N hub ``v`` reaches on the second pass.
 
-    Returns the rotations that turn the character at ``v + 11`` into the
-    handler's address minus one, and the handler's code.
+    Returns the chain of constant ``p`` and ``*`` that turns the character
+    at ``v + 11`` into the handler's address minus one, and the handler's
+    code.  Rotations alone land on block boundaries, where the tables are
+    dense, so short chains are tried in order of length.
     """
-    for char in _valid_chars(v + 11):
-        for k, s in _rotations(char):
-            if s < _T_FLOOR:
+    chains = [""]
+    for length in range(1, 5):
+        chains += [
+            " ".join(ops) for ops in product(("rot", "K2", "K1", "K0"), repeat=length)
+        ]
+    for chain in chains:
+        for char in _valid_chars(v + 11):
+            s = _chain(char, chain)
+            if s < _F_HANDLER_FLOOR or s + 60 >= _WORDS:
                 continue
             handler = _Planner(s + 1, v + 12, mem, dict(data))
             handler.goto(target)
@@ -1300,7 +1332,7 @@ def _f_handler(
                 continue
             data.update(handler.data)
             data[v + 11] = char
-            return k, handler.code
+            return chain, handler.code
     raise AssertionError(f"no handler for hub {v}")  # pragma: no cover
 
 
@@ -1364,14 +1396,18 @@ def _fourteen() -> _Thirteen:
     helper["z0"] = walked(_T_HELPERS["z0"])
     out = walked(_F_SELECT13[0])
     scratch = [[walked(g) for g in per_path[0]] for per_path in _F_SELECT13[1]]
-    links = [walked(g) for g, _, _ in _F_LINKS]
+    links = []
     supplies: dict[int, str] = {}
-    for link, (_, link_kind, _) in zip(links, _F_LINKS, strict=True):
+    for g, link_kind, _ in _F_LINKS:
+        link = walked(g)
         if link_kind:
-            if link - 1 in used:
-                raise AssertionError(f"link {link} has no free supply cell")
+            # A supply cell must sit just before the link: take the next
+            # address with this ``g`` if the first one's predecessor is used.
+            while link - 1 in used:
+                link = walked(g, packed=False)
             used.add(link - 1)
             supplies[link] = link_kind.split()[0]
+        links.append(link)
     for name in ("z1", "w", "v"):
         helper[name] = walked(_T_HELPERS[name], packed=False)
     select12 = [walked(v, packed=False) for v in _F_SELECT12[0]]
@@ -1404,9 +1440,11 @@ def _fourteen() -> _Thirteen:
         _apply(state, 48 + x, _F_SELECT12[1])
         twelve.append(state[_F_SELECT12[2]])
     # ``targets[c][lvl]``: the segment starts of copy ``c``'s path at ``lvl``.
-    link_of = {(0, c, k): 2 * c + k for c in range(4) for k in range(2)}
-    link_of.update({(1, c, k): 8 + 2 * c + k for c in range(4) for k in range(2)})
-    link_of.update({(2, c, 0): 16 + c for c in range(4)})
+    link_of: dict[tuple[int, int, int], int] = {}
+    for lvl in range(3):
+        for c in range(4):
+            for k in range(len(_F_SEG_LEN[lvl][c]) - 1):
+                link_of[lvl, c, k] = len(link_of)
     targets: list[list[list[int]]] = []
     for c in range(4):
         v = _chain(_f_selected(c >> 1, c & 1), _F_SUB_CHAINS[c >> 1])
@@ -1495,14 +1533,17 @@ def _fourteen() -> _Thirteen:
             main.raw("p")
             main.hub(pointer[v], v, 2)
             main.raw("p")
-            turns, code_of = _f_handler(v, reserved | set(handlers), out, mem, data)
+            chain, code_of = _f_handler(v, reserved | set(handlers), out, mem, data)
             reserved |= set(data)
-            hub_turns[v] = turns
             handlers.update(code_of)
+            for op in chain.split():
+                if op != "rot":
+                    main.op("*", helper[{"K0": "z0", "K1": "all1", "K2": "all2"}[op]])
+                main.hub(pointer[v], v, 11)
+                main.raw("*" if op == "rot" else "p")
     for v, turns in sorted(hub_turns.items()):
-        offset = 11 if label[pointer[v]] == "N" else 1
         for _ in range(turns):
-            main.hub(pointer[v], v, offset)
+            main.hub(pointer[v], v)
             main.raw("*")
     for _ in range(_CASCADE_N):
         main.raw("/")
@@ -1550,8 +1591,13 @@ def _fourteen() -> _Thirteen:
         for c in range(4):
             ops, readout, offset = _F_LEVELS[lvl][c]
 
-            def run_ops(path: _Planner, ops: _Ops = ops) -> None:
-                _t_ops(path, cell, ops)
+            def piece(part: _Ops) -> Callable[[_Planner], None]:
+                """Return a step running part of the copy's ops."""
+
+                def run_ops(seg: _Planner) -> None:
+                    _t_ops(seg, cell, part)
+
+                return run_ops
 
             def chain_and_preload(path: _Planner, lvl: int = lvl, c: int = c) -> None:
                 if lvl < 2:
@@ -1569,10 +1615,15 @@ def _fourteen() -> _Thirteen:
                 chain_and_preload(path)
                 jump(path)
 
+            runs = len(_F_SEG_LEN[lvl][c]) - (2 if lvl < 2 else 1)
+            pieces = [
+                piece(ops[k * len(ops) // runs : (k + 1) * len(ops) // runs])
+                for k in range(runs)
+            ]
             steps: list[Callable[[_Planner], None]] = (
-                [run_ops, chain_and_preload, jump]
+                [*pieces, chain_and_preload, jump]
                 if lvl < 2
-                else [run_ops, preload_and_jump]
+                else [*pieces, preload_and_jump]
             )
             d = out + 1
             for k, step in enumerate(steps):
