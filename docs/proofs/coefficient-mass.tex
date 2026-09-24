@@ -3539,6 +3539,250 @@ because Lemma~\ref{lem:farappend} needs a bound on the number of appended
 zeros; for $r>2$, Theorems~\ref{thm:rowsfinite} and~\ref{thm:rowsrec} give
 all $L$ at once.
 
+\subsection{Monotone prefix values}\label{sec:prefixmono}
+
+The conjectured value of the rows is $\min_{i\le k}1/\nu_i(n)$ (after
+Corollary~\ref{cor:belowtwo}).  This subsection shows that the prefix values
+$\nu_i(n)$ decrease geometrically in $i$, for every $r>1$ and every $n$
+(Theorem~\ref{thm:prefixmono}).  So at $r\ge2$ the conjectured value is the
+top row for every $n$, and the conjecture there says exactly that rows equal
+the top row (Corollary~\ref{cor:prefixmono}).  The tool is a positive kernel
+that \emph{dilates} a zero set instead of translating it.  This is the move
+suggested at the end of Section~\ref{sec:rowsfinite}, where translating the
+zeros past a block of exempted positions at the lowest hole fails near
+$r=2$.  Lemma~\ref{lem:dilation} gives the exact cost of translation for
+comparison.
+
+Write $x^{\overline m}=x(x+1)\cdots(x+m-1)$ for the rising factorial, with
+$x^{\overline0}=1$.  For each $d$, the polynomials $x^{\overline m}$ with
+$m\le d$ form a basis of the real polynomials of degree at most $d$, and
+$0^{\overline m}=0$ for $m\ge1$.
+
+\begin{lemma}[A dilation kernel]\label{lem:polyakernel}
+Let $i\ge1$.  For integers $s\ge i+1$ and $i\le u\le s-1$ put
+\[
+  K_i(s,u)=\binom{u-1}{i-1}\Big/\binom{s-1}{i} .
+\]
+Then, for every $m\ge0$,
+\[
+  \sum_{u=i}^{s-1}K_i(s,u)\,u^{\overline m}=\frac i{i+m}\,s^{\overline m} .
+\]
+In particular $K_i(s,\cdot)$ is a probability distribution on $[i,s-1]$.
+Consequently, if $p=\sum_mc_mx^{\overline m}$ is a real polynomial and
+$\hat p=\sum_m\frac i{i+m}\,c_mx^{\overline m}$, then $\deg\hat p\le\deg p$,
+$\hat p(0)=p(0)$, and $\hat p(s)=\sum_{u=i}^{s-1}K_i(s,u)\,p(u)$ for every
+$s\ge i+1$.
+\end{lemma}
+
+\begin{proof}
+Since $u^{\overline m}=(u+m-1)!/(u-1)!$,
+\[
+  \binom{u-1}{i-1}u^{\overline m}
+  =\frac{(u+m-1)!}{(i-1)!\,(u-i)!}
+  =\frac{(i+m-1)!}{(i-1)!}\binom{u+m-1}{i+m-1}.
+\]
+By the hockey-stick identity,
+$\sum_{u=i}^{s-1}\binom{u+m-1}{i+m-1}=\binom{s+m-1}{i+m}$.  Moreover
+\[
+  \binom{s+m-1}{i+m}\Big/\binom{s-1}i=\frac{(s+m-1)!}{(s-1)!}\cdot
+  \frac{i!}{(i+m)!}=s^{\overline m}\,\frac{i!}{(i+m)!},
+\]
+and $\frac{(i+m-1)!}{(i-1)!}\cdot\frac{i!}{(i+m)!}=\frac i{i+m}$.  This is the
+identity.  The case $m=0$ says that $K_i(s,\cdot)$ has total mass $1$, and it
+is nonnegative.  The last claim follows by linearity, and
+$\hat p(0)=c_0=p(0)$ because $0^{\overline m}=0$ for $m\ge1$.
+\end{proof}
+
+In the negative-binomial language of the paragraph on roots between one
+and two, $K_i(s,\cdot)$ is the law of the time of the $i$-th success given
+that the $(i+1)$-st success occurs at time $s$.  In that language the next
+theorem says that the minimal absolute moment $m_i(n)=\inf_p\mathbb
+E|p(X_i)|$ does not increase with $i$.
+
+\begin{theorem}[Prefix values decrease]\label{thm:prefixmono}
+Let $r>1$ and $n\ge1$.  Then for every $i\ge1$
+\[
+  \nu_{i+1}(n)\le a\,\nu_i(n),\qquad\text{equivalently}\qquad
+  m_{i+1}(n)\le m_i(n).
+\]
+Hence $\nu_i(n)\le a^{i-1}\nu_1(n)=a^{i-1}/\beta_r(n)$ for all $i\ge1$.
+The constant $a$ is attained at $n=1$.
+\end{theorem}
+
+\begin{proof}
+Let $p$ be real with $\deg p\le n-1$ and $p(0)=1$, and let $\hat p$ be as in
+Lemma~\ref{lem:polyakernel}.  Then $\deg\hat p\le n-1$ and $\hat p(0)=1$, so
+$\hat p$ is admissible for $\nu_{i+1}(n)$.  The weight
+$\binom{s-1}ir^{-s}$ vanishes for $s\le i$.  For $s\ge i+1$ the lemma gives
+$|\hat p(s)|\le\sum_{u=i}^{s-1}K_i(s,u)|p(u)|$.  Since
+$\binom{s-1}iK_i(s,u)=\binom{u-1}{i-1}$, exchanging the order of summation
+(all terms are nonnegative) gives
+\[
+  \sum_{s\ge1}\binom{s-1}ir^{-s}|\hat p(s)|
+  \le\sum_{u\ge i}\binom{u-1}{i-1}|p(u)|\sum_{s>u}r^{-s}
+  =a\sum_{u\ge1}\binom{u-1}{i-1}r^{-u}|p(u)| ,
+\]
+because $\sum_{s>u}r^{-s}=r^{-u}/(r-1)$.  The left side is at least
+$\nu_{i+1}(n)$.  Taking the infimum over $p$ gives
+$\nu_{i+1}(n)\le a\nu_i(n)$, and with $\nu_i=a^im_i$ this is
+$m_{i+1}(n)\le m_i(n)$.  Iterating from $\nu_1(n)=1/\beta_r(n)$ gives the
+second claim.  For $n=1$ the only admissible polynomial is $p=1$, and
+$\nu_i(1)=\sum_s\binom{s-1}{i-1}r^{-s}=a^i$.
+\end{proof}
+
+\begin{corollary}[Consequences for the rows]\label{cor:prefixmono}
+Let $r>1$, $n,k\ge1$ and $L=n+k-1$.
+\begin{enumerate}
+\item[(a)] If $r\ge2$, then $\min_{1\le i\le k}1/\nu_i(n)=\beta_r(n)$.  So for
+$r\ge2$ the conjecture stated after Corollary~\ref{cor:belowtwo} is exactly
+the statement $V_r(L,k)=\beta_r(n)$ for all $L$ and $k$.  In particular the
+index $i^*=1$ in Corollary~\ref{cor:rowstreevals}(a),(b) is forced.
+\item[(b)] $\beta_r(n+j)\ge(r-1)^j\beta_r(n)$ for all $j\ge0$.
+\item[(c)] Let $Z\supseteq[1,\ell]$ be finite with $|Z|\le n-1$.  Let $F$ be a
+monic multiple of $(x-r)^L$, and suppose that its $k-1$ largest nonleading
+magnitudes can be placed at backward distances forming a set
+$S\subseteq[1,\ell+k-1]$, as in Proposition~\ref{prop:rowvalue}(a).  Then
+\[
+  b_k(F)\ \ge\ \frac{(r-1)^{k-1}}{\Phi_r(Z)} .
+\]
+In particular, if $\Phi_r(Z)=1/\beta_r(n)$, then
+$b_k(F)\ge(r-1)^{k-1}\beta_r(n)$ for every such $F$.
+\end{enumerate}
+\end{corollary}
+
+\begin{proof}
+(a) For $r\ge2$ we have $a\le1$, so Theorem~\ref{thm:prefixmono} gives
+$\nu_i(n)\le\nu_1(n)$ for every $i$, and the minimum of $1/\nu_i(n)$ is
+$1/\nu_1(n)=\beta_r(n)$.  In Corollary~\ref{cor:rowstreevals} the value
+$1/\nu_{i^*}(n)$ is this minimum.
+
+(b) A polynomial of degree at most $n$ that vanishes at $1$ is admissible
+for $\mu_r(\varnothing,n+1)$.  So
+$1/\beta_r(n+1)=\mu_r(\varnothing,n+1)\le\mu_r(\{1\},n+1)=\nu_2(n)\le
+a\nu_1(n)=a/\beta_r(n)$.  Iterate.
+
+(c) We have $\ell\le|Z|\le n-1$.  Write $Z=[1,\ell]\cup Y$ with $Y\subset(\ell,\infty)$, so
+$|Y|\le n-1-\ell$.  For $s\ge1$, $|r_Z(s)|=\binom{s-1}\ell|r_Y(s)|$.  Here $r_Y$
+has degree at most $n-1-\ell$ and $r_Y(0)=1$.  So
+$\Phi_r(Z)\ge\nu_{\ell+1}(n-\ell)$, and Theorem~\ref{thm:prefixmono} gives
+$\nu_{\ell+k}(n-\ell)\le a^{k-1}\nu_{\ell+1}(n-\ell)\le a^{k-1}\Phi_r(Z)$.
+Now let $p$ be real with $\deg p\le n-\ell-1$ and $p(0)=1$, and put
+$q=r_{[1,\ell+k-1]}\,p$.  Then $\deg q\le L-1$, $q(0)=1$, and $q$ vanishes on
+$[1,\ell+k-1]\supseteq S$.  Also
+$\Phi_r(q)=\sum_s\binom{s-1}{\ell+k-1}r^{-s}|p(s)|$.  Proposition~\ref{prop:rowvalue}(a)
+gives $b_k(F)\,\Phi_r(q)\ge1$.  Taking the infimum over $p$ gives
+$b_k(F)\ge1/\nu_{\ell+k}(n-\ell)\ge(r-1)^{k-1}/\Phi_r(Z)$.
+\end{proof}
+
+Part (a) turns into a theorem the remark after
+Corollary~\ref{cor:belowtwo} that, at $r\ge2$, the conjecture puts the
+minimum at $i=1$.  For every $n$ and $k$, the prefix sets
+$S=[1,i-1]$ completed by a far block (the sets of the upper bound in
+Theorem~\ref{thm:prefixrows}) are never worse for the multiple than the far
+block alone.  Part (c) says the same for every $F$ whose large coefficients
+all sit among the top $\ell+k-1$ positions, where $\ell$ is the initial run
+of any good top-row set.  For $r>2$ these $F$ even satisfy
+$b_k(F)\ge(r-1)^{k-1}\beta_r(n)$, far above the row value
+$V_r(L,k)\le\beta_r(n)$.  So the hard exempted sets are those that meet
+the holes of the good zero sets.  For $1<r<2$ the theorem gives
+$\nu_k(n)\le a^{k-1}\nu_1(n)$, and it gives that $m_k(n)$ does not increase
+in $k$.  In Corollary~\ref{cor:belowtwo} this means that $(r-1)^{-k}$ times
+the leading term $(r-1)^k/m_k(n)$ of $V_r(L,k)$ does not decrease in $k$.
+
+The dilation should be compared with the translation that the chain of
+Theorem~\ref{thm:rowsfinite} performs at the lowest hole.
+
+\begin{lemma}[Translating past the lowest hole]\label{lem:dilation}
+Let $W=[1,\ell]\cup Y$ be finite with $Y\subset[\ell+2,\infty)$, put
+$w(t)=|r_W(t)|r^{-t}$, and for $x\ge0$ let $W^{(x)}=[1,\ell+x]\cup(Y+x)$.
+Then
+\[
+  \Phi_r\bigl(W^{(x)}\bigr)=\frac{r^{-x}}{\prod_{z\in W}(1+x/z)}
+  \sum_{t\ge1}\binom{t+x-1}x\,w(t).
+  \tag{D}\label{eq:dilation}
+\]
+In particular, with $h=\ell+1$,
+\[
+  \Phi_r\bigl(\mathrm{ins}(W,h)\bigr)=
+  \frac{\Phi_r(W)+\Phi_r(W\cup\{h\})}{r\prod_{y\in Y}(1+1/y)} .
+\]
+\end{lemma}
+
+\begin{proof}
+$r_{W^{(x)}}$ vanishes on $[1,\ell+x]$.  Let $t\ge\ell+1$.  Then
+$|r_{[1,\ell+x]}(t+x)|=\binom{t+x-1}{\ell+x}$, and expanding the factorials
+gives
+\[
+  \binom{t+x-1}{\ell+x}\binom{\ell+x}x=\binom{t-1}\ell\binom{t+x-1}x
+  =\frac{(t+x-1)!}{\ell!\,x!\,(t-1-\ell)!} .
+\]
+Also $|r_{Y+x}(t+x)|=\prod_{y\in Y}|y-t|/(y+x)=|r_Y(t)|\prod_{y\in
+Y}y/(y+x)$, and $\binom{\ell+x}x=\prod_{z=1}^{\ell}(1+x/z)$.  So
+\[
+  |r_{W^{(x)}}(t+x)|=\frac{\binom{t+x-1}x}{\prod_{z\in W}(1+x/z)}\,
+  |r_W(t)|,
+\]
+using $|r_W(t)|=\binom{t-1}\ell|r_Y(t)|$.  Multiply by $r^{-t-x}$ and sum
+over $t\ge\ell+1$.  The terms $t\le\ell$ of \eqref{eq:dilation} vanish because
+$w(t)=0$ there.
+
+For $x=1$ the set $W^{(1)}$ is $\mathrm{ins}(W,h)$.  Moreover
+$\prod_{z\in W}(1+1/z)=h\prod_{y\in Y}(1+1/y)$.  Since $w(t)=0$ for
+$t<h$ and $|1-t/h|=t/h-1$ for $t\ge h$,
+\[
+  \Phi_r(W\cup\{h\})=\sum_tw(t)\Bigl(\frac th-1\Bigr)
+  =\frac1h\sum_ttw(t)-\Phi_r(W).
+\]
+Insert this into \eqref{eq:dilation}.
+\end{proof}
+
+For $W=Z_0$ the sets $W^{(x)}$ are the uniform shifts $Z_0^{(x,\ldots,x)}$
+of Lemma~\ref{lem:holestates}.  They are the states reached when the
+exempted positions begin with a block at the lowest hole.  By \eqref{eq:dilation},
+translating the zeros costs the $w$-average of
+$\binom{t+x-1}xr^{-x}/\prod_{z}(1+x/z)$.  This factor is large when the
+mass of $w$ sits far to the right of the zeros.  At $r=2$, $Z_0=\{2\}$ it
+reproduces $\Phi_2([1,x]\cup\{x+2\})\to1$ from
+Section~\ref{sec:rowsfinite}.
+
+Re-optimizing costs at most $a^x$.  Let $n-1=|Z_0|$ and
+$Z_0=[1,\ell]\cup Y$ with $Y\subset[\ell+2,\infty)$.  The sets $W'=[1,\ell+x]\cup Y'$ with
+$Y'\subset(\ell+x,\infty)$ and $|Y'|=n-1-\ell$ have infimum
+$\nu_{\ell+x+1}(n-\ell)$ of $\Phi_r$ (Lemma~\ref{lem:intzeros}, with the zeros at least $\ell+x+1$).  By Theorem~\ref{thm:prefixmono}, this infimum is at most
+$a^x\nu_{\ell+1}(n-\ell)\le a^x\Phi_r(Z_0)$.
+
+So for $r>2$ a cut of Theorem~\ref{thm:rowsrec} at a uniform shift, at
+$t'=\ell+x$, always admits a set $W'$ with
+$W'\cap[1,t']=Z_0^{(x,\ldots,x)}\cap[1,t']$, $|W'|=|Z_0^{(x,\ldots,x)}|$ and
+$\Phi_r(W')<\Phi_r(Z_0)$.  Only the recursive certification of $(W',t')$
+remains to be done.  This agrees with the observation, after
+Corollary~\ref{cor:rowsfiniteranges}, that the re-optimized witness after
+such a cut has much smaller $\Phi_r$.
+
+The dilation does not extend to holes above the lowest one.  The part of
+the zero set below such a hole is not a full run, and the kernel of
+Lemma~\ref{lem:polyakernel} does not apply.  One could hope for another
+kernel that works for a general exempted set $S$ and all $n$ at once.
+Suppose $K\ge0$ is a kernel from $\N_{>0}\setminus S$ to $\N_{>0}$ such
+that, for every polynomial $p$, the function $s\mapsto\sum_uK(s,u)p(u)$
+agrees on $\N_{>0}\setminus S$ with a polynomial $\hat p$ with
+$\deg\hat p\le\deg p$ and $\hat p(0)=p(0)$.  Suppose also that its
+push-forward of the weight $|r_S(s)|r^{-s}$ is at most $r^{-u}$.  Then, as in
+the proof of Theorem~\ref{thm:prefixmono}, $\mu_r(S,n+|S|)\le1/\beta_r(n)$
+for every $n$.  No such kernel exists when $S\ne\varnothing$ and
+$1\notin S$.  Indeed, $K$ is stochastic, since $\hat1=1$.  The polynomial
+$\hat x$ has degree at most $1$ and vanishes at $0$, so it is $\lambda x$.
+At $s=1$ we get $\lambda=\sum_uK(1,u)u\ge1$.  By Jensen's inequality,
+$\sum_uK(s,u)\theta^u\ge\theta^{\lambda s}\ge\theta^s$ for $\theta>1$.
+Integrating against the weight gives
+\[
+  \sum_{s\notin S}|r_S(s)|y^s\ \le\ \sum_{u\ge1}y^u,\qquad y=\theta/r<1 .
+\]
+Since $|r_S(s)|\ge c\,s^{|S|}$ for large $s$ and some $c>0$, the left side
+is at least a constant times $(1-y)^{-|S|-1}$ as $y\to1$, while the right
+side is $y/(1-y)$.  This is a contradiction.  So for a general exempted set
+a dilation must depend on $n$.
+
 \section{Complex roots}\label{sec:complexroots}
 
 Everything so far prescribes real roots.  This section shows that complex
