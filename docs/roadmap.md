@@ -338,12 +338,13 @@ step; an answer lands in the paper it extends, and the row leaves.
   extended to all `n` by an interval-arithmetic rate certificate
   (`sec:rootbelowfour`, `thm:rootbelowfour`): all rows for `r >= 25/7`,
   the second row for `r >= 10/3`, and for `r >= 13/4` except `n = 11, 12`.
-  Open for `r < 25/7` (method limit near 3.55; second row near 3.2): the
-  conjecture `V_r(L,k) = min_i 1/nu_i(n)` for all `n`, equivalent at
-  `r >= 2` to `Phi_r(ins(W_T, first gap)) <= Phi_r(W_T)` at constrained
-  minimizers (for the second row, `1 + rho(Z_0) <= r Pi_Y`; `rho(Z_0) <=
-  r - 1` would also settle `prop:dilatecross`'s class for all `k`);
-  `1 < r < 2` with `n >> k`.
+  CLOSED for every root `r >= 2` (`sec:allrowstwo`, `thm:allrowstwo`):
+  first-order optimality of a truncated minimizer in one direction bounds
+  the insertion at any gap above the constraints (`lem:optins`,
+  `lem:truncvertex`), which is the hypothesis of `cor:crossreduce`, so
+  `V_r(L,k) = beta_r(L-k+1)` for all `k`, `L`; for `1 < r < 2` the same
+  proof gives `V_r(L,k) >= (r-1)**(k-1) beta_r(L-k+1)`, exact at `k = L`.
+  Open: the conjectured value `min_i 1/nu_i(n)` for `1 < r < 2`.
 
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all

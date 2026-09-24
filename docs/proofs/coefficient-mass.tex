@@ -2138,7 +2138,8 @@ $r=2.2$ ($h=3$, $t_0=13$), so the constant $\frac52$ is not the limit of
 the method.
 
 \paragraph{Rows equal the top row.}
-For $r\ge2$ we conjecture $V_r(L,k)=\beta_r(L-k+1)$: exempting $k-1$
+For $r\ge2$ we conjecture $V_r(L,k)=\beta_r(L-k+1)$, and
+Theorem~\ref{thm:allrowstwo} proves it: exempting $k-1$
 positions exactly offsets $k-1$ of the $L$ zeros at $r$.  In the form of
 Proposition~\ref{prop:rowvalue}(b), this says that every finite $S$ admits
 $Z\supseteq S$ with $|Z|\le|S|+n-1$ and $\Phi_r(Z)\le\mu_r(\varnothing,n)$.
@@ -4023,7 +4024,8 @@ $T\subseteq[1,7]$ with $|T|\le3$ at $n=5$;
 \item $r=\frac52$: $0.64$, and $r=3$: $0.60$, at $n=5$.
 \end{itemize}
 No minimizer reached the edge of its window.  At $r=2$ the worst cases have $W_T\cap[1,h-1]$ an initial run.
-We have no proof of the hypothesis for all $n$, even for $T=\varnothing$.
+Lemma~\ref{lem:optins} proves the hypothesis in a truncated form at every
+$r\ge2$, and Theorem~\ref{thm:allrowstwo} deduces the conclusion there.
 
 \paragraph{Trees without their last level.}
 Theorem~\ref{thm:crossing} also shortens the trees of
@@ -4999,6 +5001,251 @@ all rows and near $3.2$ for the second row (the remarks after
 Corollary~\ref{cor:rootfourfinite}).  At $r_0=\frac{16}5$ the certificate for
 the second row did not close even for $N_0=2000$ within six rounds.  Closer to these limits the box
 certificate needs a larger $N_0$, and the exact check must then reach $N_0-1$.
+Section~\ref{sec:allrowstwo} proves all rows at every $r\ge2$ by another
+argument.
+
+\subsection{All rows at every root at least \texorpdfstring{$2$}{2}}\label{sec:allrowstwo}
+
+Sections~\ref{sec:bigroot}--\ref{sec:rootbelowfour} prove that rows equal the
+top row by bounding the hole product of a top-row optimum.  That route stops
+near $r=3.55$.  This subsection takes another route and proves the
+conjecture stated after Corollary~\ref{cor:belowtwo} at every root $r\ge2$
+(Theorem~\ref{thm:allrowstwo}).  The hole product plays no role.  We verify
+the hypothesis of Corollary~\ref{cor:crossreduce}, in a truncated form, by a
+first-order optimality argument.
+
+The idea is as follows.  Insert at a gap $c$ of a minimizer $W$.  The zeros of $W$
+above $c$ move up by one, and above $c$ the new polynomial is essentially
+the old one shifted by one position.  Measured against the first moment
+$\sum_ss|r_W(s)|r^{-s}$, the shift costs exactly the factor $1/r$.  The
+first moment is in turn bounded by optimality, in the direction that trades
+the leading coefficient of $r_{\mathrm{ins}(W,c)}$ against that of $s\,r_W$.
+
+For $D\in\N_{>0}\cup\{\infty\}$ and a real polynomial $q$ put
+\[
+  \Phi_{r,D}(q)=\sum_{s=1}^{D}|q(s)|\,r^{-s},\qquad
+  \Phi_{r,D}^{<c}(q)=\sum_{1\le s<c,\ s\le D}|q(s)|\,r^{-s},\qquad
+  \Phi_{r,D}^{>c}(q)=\sum_{c<s\le D}|q(s)|\,r^{-s},
+\]
+and let $\mu_{r,D}(S,L)$ be the infimum of $\Phi_{r,D}(q)$ over real $q$ with
+$\deg q\le L-1$, $q(0)=1$ and $q|_S=0$.  This is the truncated quantity of the
+proof of Proposition~\ref{prop:rowvalue}(b), and
+$\Phi_{r,\infty}=\Phi_r$, $\mu_{r,\infty}=\mu_r$.  For a finite
+$W\subset\N_{>0}$ and an integer $c\ge1$ with $c\notin W$ put
+$A_c=r_{W\cap[1,c-1]}$ and $B_c=r_{W\cap(c,\infty)}$, so $r_W=A_cB_c$.  Since
+$\mathrm{ins}(W,c)=(W\cap[1,c-1])\cup\{c\}\cup\{w+1:w\in W,\ w>c\}$ and
+$1-s/(b+1)=(1-(s-1)/b)\,b/(b+1)$,
+\[
+  r_{\mathrm{ins}(W,c)}(s)=A_c(s)\Bigl(1-\frac sc\Bigr)\frac{B_c(s-1)}{B_c(-1)},
+  \qquad B_c(-1)=\prod_{w\in W,\ w>c}\Bigl(1+\frac1w\Bigr).
+\]
+
+\begin{lemma}[Vertex minimizers of truncated problems]\label{lem:truncvertex}
+Let $r>1$, let $S\subset\N_{>0}$ be finite, let $L>|S|$, and let $D$ be an
+integer with $D\ge L+\max(S\cup\{0\})$.  Then some $W$ with
+$S\subseteq W\subseteq[1,D]$ and $|W|=L-1$ satisfies
+$\Phi_{r,D}(r_W)=\mu_{r,D}(S,L)$.
+\end{lemma}
+
+\begin{proof}
+This is the argument of Lemma~\ref{lem:intzeros}.  Put $d=L-1-|S|$ and
+$N=[1,D]\setminus S$, so $|N|\ge D-|S|\ge L>d$.  Every admissible $q$
+factors as $q=r_Sp$ with $\deg p\le d$ and $p(0)=1$.  Moreover
+$\Phi_{r,D}(q)=f(p):=\sum_{s\in N}\omega(s)|p(s)|$ with
+$\omega(s)=|r_S(s)|r^{-s}>0$ on $N$.  If $d=0$, then $p=1$ and $W=S$.  Let
+$d\ge1$.  For each sign vector $(\epsilon_s)_{s\in N}$, the cell
+$\{p:\deg p\le d,\ p(0)=1,\ \epsilon_sp(s)\ge0\ (s\in N)\}$ contains no line.
+Indeed, a direction $e$ of a line has $e(0)=0$, $\deg e\le d$ and $e|_N=0$,
+so $e=0$.  On the cell $f$ is affine and nonnegative, so its minimum there is
+attained at a vertex.  A vertex satisfies $d$ linearly independent equations
+$p(y)=0$ with $y\in N$.  So $p=\prod_{y\in Y}(1-s/y)$ for a set $Y\subseteq N$
+of $d$ integers.  The finitely many cells cover all admissible $p$.  So the
+minimum of $f$ is attained at such a $p$, and $W=S\cup Y$ works.
+\end{proof}
+
+\begin{lemma}[Inserting at a gap of a minimizer]\label{lem:optins}
+Let $r>1$ and $D\in\N_{>0}\cup\{\infty\}$.  Let $T\subseteq W$ be finite
+subsets of $\N_{>0}$, put $L=|W|+1$, and suppose that
+$\varphi:=\Phi_{r,D}(r_W)=\mu_{r,D}(T,L)$.  Let $c\ge1$ be an integer with
+$c\notin W$ and $c>\max T$ ($\max\varnothing=0$), and put
+$Q=r_{\mathrm{ins}(W,c)}$.  Then
+\[
+  \Phi_{r,D}(Q)\le\frac{\varphi+(r-2)\,\Phi_{r,D}^{<c}(Q)}{r-1},
+  \qquad
+  \Phi_{r,D}^{<c}(Q)\le\Phi_{r,D}^{<c}(r_W)\le\varphi .
+\]
+In particular $\Phi_{r,D}(Q)\le\max\{1,a\}\,\varphi$, and
+$\Phi_{r,D}(Q)\le\varphi$ if $r\ge2$.
+\end{lemma}
+
+\begin{proof}
+Write $P=r_W$, $A=A_c$, $B=B_c$ and $\kappa=1/(cB(-1))>0$.  The zeros of $A$
+lie in $[1,c-1]$, and those of $B$ are integers greater than $c$.  So $B>0$ on
+$[-1,c)$, and $B(s-1)B(s)\ge0$ for every integer $s$, since $B$ does not
+change sign between consecutive integers.
+
+\emph{Step 1: signs.}  Let $1\le s<c$.  Then $P(s)Q(s)=A(s)^2(1-s/c)B(s)B(s-1)/B(-1)\ge0$.  If
+$A(s)\ne0$, then
+\[
+  \frac{|Q(s)|}{|P(s)|}=\frac{c-s}c\prod_{w\in W,\ w>c}g(w),\qquad
+  g(w)=\frac{(w+1-s)\,w}{(w-s)(w+1)}=1+\frac s{(w-s)(w+1)} .
+\]
+The factor $g$ exceeds $1$ and decreases in $w$.  The $m$ elements of $W$
+above $c$ are at least $c+1,\ldots,c+m$, so the product is at most
+$\prod_{j=1}^mg(c+j)=\frac{(c+m+1-s)(c+1)}{(c+1-s)(c+m+1)}\le\frac{c+1}{c+1-s}$.
+Since $(c-s)(c+1)\le c(c+1-s)$, we get $|Q(s)|\le|P(s)|$.  If $A(s)=0$, then
+$P(s)=Q(s)=0$.  So $Q$ has the sign of $P$ below $c$, and
+$\Phi_{r,D}^{<c}(Q)\le\Phi_{r,D}^{<c}(P)\le\varphi$.  Next, $Q(c)=0$.  For
+$s>c$ we have $P(s)Q(s)=A(s)^2(1-s/c)B(s)B(s-1)/B(-1)\le0$.
+
+\emph{Step 2: the shift.}  Let $s>c$ and $u=s-1\ge c$.  Every factor
+$(u+1-z)/(u-z)$ with $z\le c-1$ exceeds $1$, so
+\[
+  \frac{|A(u+1)|}{|A(u)|}=\prod_{z\in W\cap[1,c-1]}\frac{u+1-z}{u-z}
+  \le\prod_{z=1}^{c-1}\frac{u+1-z}{u-z}=\frac u{u+1-c} .
+\]
+Hence $|A(s)|(s-c)\le(s-1)|A(s-1)|$, and
+$|Q(s)|r^{-s}\le\frac\kappa r(s-1)|P(s-1)|r^{-(s-1)}$.  Put
+$M=\sum_{1\le u\le D}u|P(u)|r^{-u}$, which is finite, and split it as
+$M=M_<+M_\ge$ according to $u<c$ or $u\ge c$.  Summing over $c<s\le D$ gives
+\[
+  \Phi_{r,D}^{>c}(Q)\le\frac\kappa r\,M_\ge .
+\]
+
+\emph{Step 3: optimality.}  The leading coefficient of $Q$ is $-\kappa$ times
+that of $P$, and $\deg Q=\deg P+1=L$.  So $E=P-Q-\kappa sP$ has
+$\deg E\le L-1$ and $E(0)=0$.  It vanishes on $T$, because $T\subseteq W\cap[1,c-1]$
+consists of zeros of $A$.  Hence, for $\varepsilon>0$, the polynomial
+\[
+  q_\varepsilon=P+\varepsilon E=(1+\varepsilon-\varepsilon\kappa s)P-\varepsilon Q
+\]
+is admissible for $\mu_{r,D}(T,L)$, and $\Phi_{r,D}(q_\varepsilon)\ge\varphi$.
+Let $\varepsilon\le1/(\kappa c)$.  For $1\le s<c$ we have
+$1+\varepsilon-\varepsilon\kappa s\ge\varepsilon$, and by Step~1
+$|q_\varepsilon(s)|=(1+\varepsilon-\varepsilon\kappa s)|P(s)|-\varepsilon|Q(s)|$.
+For $s\ge c$, $|q_\varepsilon(s)|\le|1+\varepsilon-\varepsilon\kappa s||P(s)|+\varepsilon|Q(s)|$.
+Moreover
+$|1+\varepsilon-\varepsilon\kappa s|\le1+\varepsilon-\varepsilon\kappa s+2\varepsilon\kappa s\,[\varepsilon\kappa s>1]$.
+Summing over $s\le D$ gives
+\[
+  \varphi\le(1+\varepsilon)\varphi-\varepsilon\kappa M
+  -\varepsilon\Phi_{r,D}^{<c}(Q)+\varepsilon\Phi_{r,D}^{>c}(Q)
+  +2\varepsilon\kappa\!\!\sum_{s>1/(\varepsilon\kappa),\ s\le D}\!\!s|P(s)|r^{-s}.
+\]
+Divide by $\varepsilon$ and let $\varepsilon\to0$.  The last sum tends to $0$
+(it is empty for small $\varepsilon$ when $D<\infty$), so
+\[
+  \kappa M+\Phi_{r,D}^{<c}(Q)\le\varphi+\Phi_{r,D}^{>c}(Q).
+\]
+
+\emph{Step 4.}  By Step~2 the last inequality gives
+$\kappa M_<+\kappa M_\ge(1-1/r)\le\varphi-\Phi_{r,D}^{<c}(Q)$.  So
+$\frac\kappa rM_\ge\le(\varphi-\Phi_{r,D}^{<c}(Q))/(r-1)$.  Since $Q(c)=0$,
+\[
+  \Phi_{r,D}(Q)=\Phi_{r,D}^{<c}(Q)+\Phi_{r,D}^{>c}(Q)
+  \le\Phi_{r,D}^{<c}(Q)+\frac{\varphi-\Phi_{r,D}^{<c}(Q)}{r-1}
+  =\frac{\varphi+(r-2)\Phi_{r,D}^{<c}(Q)}{r-1}.
+\]
+For $r\ge2$ use $\Phi_{r,D}^{<c}(Q)\le\varphi$.  For $r<2$ drop the
+nonpositive term.
+\end{proof}
+
+Only the optimality of $W$ in the single direction $E$ is used, and the
+lemma fails without it, already at the first gap.  For
+$Z=\{1,2,4,5,7,8,11,13\}$ at $r=2$ an exact computation gives
+$\Phi_2(\mathrm{ins}(Z,3))>\frac75\Phi_2(Z)$.  The example after
+Proposition~\ref{prop:insertion} at $r=\frac{23}{10}$ also inserts at the first gap.
+
+\begin{theorem}[All rows at every root at least $2$]\label{thm:allrowstwo}
+Let $r>1$ and $n\ge1$.  For every finite $S\subset\N_{>0}$,
+\[
+  \mu_r\bigl(S,|S|+n\bigr)\le\frac{\max\{1,a\}^{|S|}}{\beta_r(n)} .
+\]
+Consequently $V_r(L,k)\ge\min\{1,r-1\}^{k-1}\beta_r(L-k+1)$ for all
+$1\le k\le L$.  In particular, for every $r\ge2$, every $n\ge1$ and every
+$L\ge n$,
+\[
+  V_r(L,L-n+1)=\beta_r(n).
+\]
+\end{theorem}
+
+\begin{proof}
+Put $\lambda=\max\{1,a\}$.  We show by induction on $|S|$ that
+\[
+  \mu_{r,D}\bigl(S,|S|+n\bigr)\le\lambda^{|S|}\mu_{r,D}(\varnothing,n)
+  \qquad\text{for every integer }D\ge|S|+n+\max(S\cup\{0\}).
+\]
+For $S=\varnothing$ there is nothing to show.  Let $S\ne\varnothing$, and put
+$\sigma=\max S$, $T=S\setminus\{\sigma\}$ and $t=\max(T\cup\{0\})$.  Then $D$
+is admissible for $T$ as well.  By Lemma~\ref{lem:truncvertex}, some $W$ with
+$T\subseteq W\subseteq[1,D]$ and $|W|=|T|+n-1$ has
+$\Phi_{r,D}(r_W)=\mu_{r,D}(T,|T|+n)$.  Let $h=h_t(W)$ and
+$W'=\mathrm{ins}(W,h)$.  The proof of Theorem~\ref{thm:crossing} uses only
+the pointwise inequality $|q(s)|\le\lambda'|q_1(s)|+(1-\lambda')|q_2(s)|$ of
+Lemma~\ref{lem:crossing}(a).  So it applies to the truncated sums, and gives
+\[
+  \mu_{r,D}\bigl(T\cup\{\sigma\},|W|+2\bigr)\le
+  \max\bigl\{\Phi_{r,D}(r_W),\ \Phi_{r,D}(r_{W'})\bigr\}.
+\]
+Here $|W|+2=|S|+n$.  Lemma~\ref{lem:optins} applies with this $T$ and $W$
+and with $c=h$, since $h\notin W$ and $h>t$.  It gives
+$\Phi_{r,D}(r_{W'})\le\lambda\,\Phi_{r,D}(r_W)$.  Hence
+$\mu_{r,D}(S,|S|+n)\le\lambda\,\mu_{r,D}(T,|T|+n)$, and the induction
+hypothesis concludes.
+
+Truncated sums are at most full ones, so
+$\mu_{r,D}(\varnothing,n)\le\mu_r(\varnothing,n)=1/\beta_r(n)$.  The proof of
+Proposition~\ref{prop:rowvalue}(b) shows that $\mu_{r,D}(S,L)\to\mu_r(S,L)$
+as $D\to\infty$.  This gives the first claim.  Now let $1\le k\le L$ and
+$n=L-k+1$.  Proposition~\ref{prop:rowvalue}(b) gives
+$V_r(L,k)=\inf_{|S|=k-1}1/\mu_r(S,L)\ge\lambda^{-(k-1)}\beta_r(n)$, and
+$\lambda^{-1}=\min\{1,r-1\}$.  For $r\ge2$ this is $\beta_r(n)$, and
+Proposition~\ref{prop:rowvalue}(c) gives the reverse inequality.
+\end{proof}
+
+By Corollary~\ref{cor:prefixmono}(a), the theorem proves the conjecture stated
+after Corollary~\ref{cor:belowtwo} at every root $r\ge2$.  So the rows at a
+single root $r\ge2$ are
+\[
+  V_r(L,k)=\beta_r(L-k+1)\qquad(1\le k\le L),
+\]
+the top row of a multiple of $(x-r)^{L-k+1}$.  At $r=2$ this sharpens
+Theorem~\ref{thm:everyrow} to $b_k(F)\ge\beta_2(L-k+1)$, as anticipated in
+the paragraph on rows equal to the top row.  The theorem contains
+Theorems~\ref{thm:bigroot}, \ref{thm:rootfour} and~\ref{thm:rootbelowfour}.
+It also contains every identity $V_r(L,L-n+1)=\beta_r(n)$ with $r\ge2$ in
+Corollaries~\ref{cor:rowstopranges}, \ref{cor:rowspiranges},
+\ref{cor:rowsfiniteranges}, \ref{cor:rowstreevals}, \ref{cor:crosstreevals},
+\ref{cor:bigrootfinite} and~\ref{cor:rootfourfinite}, and in the ranges
+listed after Corollary~\ref{cor:secondrow}.  What remains open at a single root $r\ge2$ is
+the value of $\beta_r(n)$ itself.  It is known in closed form where
+Theorem~\ref{thm:rowstop} applies, and otherwise through optima certified by
+Proposition~\ref{prop:toprowcert}.
+
+For $1<r<2$ the theorem gives $V_r(L,k)\ge(r-1)^{k-1}\beta_r(L-k+1)$.  By
+Corollary~\ref{cor:lastrowr} this is an equality for $k=L$, where both sides
+are $(r-1)^L$.  The conjectured value $\min_{i\le k}1/\nu_i(n)$ is at least
+$(r-1)^{k-1}\beta_r(n)$ by Theorem~\ref{thm:prefixmono}.
+
+Lemma~\ref{lem:optins} with $D=\infty$ and $T=\varnothing$ applies to every
+top-row optimum $Z_0$ (Lemma~\ref{lem:topzero}(a)) and every hole $c$ of
+$Z_0$.  For $r\ge2$ it gives $\Phi_r(\mathrm{ins}(Z_0,c))\le\Phi_r(Z_0)$ at
+every hole, whatever $\Pi(Z_0)$ is.  At the first hole $c=\ell+1$ we have
+$Z_0\supseteq[1,\ell]$, so $\Phi_r^{<c}(r_{\mathrm{ins}(Z_0,c)})=0$ and
+$\Phi_r(\mathrm{ins}(Z_0,\ell+1))\le\Phi_r(Z_0)/(r-1)$.  In the notation of
+Corollary~\ref{cor:secondrow} this reads
+\[
+  \frac{1+\rho}{r\,\Pi_Y}\le\frac1{r-1}
+\]
+for every $r>1$.  The ratios reported there satisfy this bound.  At $r=2$,
+$n=2$ the ratio is $1$, so the bound is attained.  At $r=3$ the ratio is at
+most $0.47<\frac12$ for $4\le n\le42$.  The same lemma also recovers
+Theorem~\ref{thm:prefixmono}.  Take $T=[1,i-1]$, a set $W$ given by
+Lemma~\ref{lem:truncvertex} for $\mu_{r,D}([1,i-1],i-1+m)$, and $c=h_{i-1}(W)$.  Then
+$W\supseteq[1,c-1]$, so $\Phi_{r,D}^{<c}(r_{\mathrm{ins}(W,c)})=0$.  Also
+$\mathrm{ins}(W,c)\supseteq[1,i]$.  So
+$\mu_{r,D}([1,i],i+m)\le a\,\mu_{r,D}([1,i-1],i-1+m)$, and letting
+$D\to\infty$ gives $\nu_{i+1}(m)\le a\,\nu_i(m)$.
 
 \section{Complex roots}\label{sec:complexroots}
 
