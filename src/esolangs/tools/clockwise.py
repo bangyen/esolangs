@@ -55,9 +55,12 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     def stacks(bit: int, stacked: int) -> bool:
         """Whether this level composes its children vertically.
 
-        The alternation ends flat, so the last level pairs two leaves.
+        Alternating from the bottom -- the last two levels and the root
+        flat -- beats every other schedule searched to ``n == 14``.
         """
-        return bit % 2 == n % 2 if alternating else bit < stacked
+        if not alternating:
+            return bit < stacked
+        return 0 < bit <= n - 3 and (n - bit) % 2 == 1
 
     def constant(bit: int, combo: int) -> bool:
         """Whether every row this subtree covers agrees.
@@ -131,7 +134,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
 
     root = spine(stacked)
     # Spend the hoist's slack on the root's displacement, so the gap lands
-    # between the subtrees where the zero-branch already sets row lengths.
+    # where the zero-branch already sets row lengths.
     slack = root - shape(0, 0, stacked)[0]
     hoist = root >= 8
     # Hoisting the root's reads onto row 0 retires six rows of spine; a
