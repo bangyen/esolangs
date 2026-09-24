@@ -346,11 +346,26 @@ step; an answer lands in the paper it extends, and the row leaves.
   exchange lemma (sorted pairing maximises the monomial); pointwise
   domination giving `N_J/N_J* <= max(1/min E, e^{-kappa min E/2})` at EQUAL
   profile; and the aligned-cut case `alpha_J* != 0` for every `E` from
-  `prop:altratio`.  MISSING, both free of the competitor `J`: (L)
-  NON-CANCELLATION `|alpha_J*(E)| >= c N_J*(E)` (observed: the log ratio
-  stayed in [-20,0] with NO drift in `n`), and (C') the cross-profile
-  comparison `N_J/N_J* -> 0`, where the two maximising partitions differ so
-  the `Delta` deficiencies do not cancel.  NEGATIVE RESULT -- do NOT retry
+  `prop:altratio`.  Round 16 then PROVED (C') FOR THE SORTED
+  PARTITIONS: the `u`-th function of `J` in growth order never precedes that
+  of `J*`, the true node mismatches are the prefix intervals
+  `(c_j(J), c*_j]`, every deficiency `delta(u,v)^{-1} = g_u/(g_u - g_v)` is
+  `<= 2 g_v`, and the pair `(u,v)` CHARGES to slot `v`, which such a pair
+  always forces into the mismatch set; a slot is charged `<= k-1` times, so
+  `W_J/W_J* <= 2^{k-1} n^{abar+k-1} e^{-kappa n}` -- reproving the geometric
+  rate at a split profile.  REMAINING: (G) `N_J <= C(N) W_J` (the sorted
+  partition attains the max up to a constant) -- observed, constant `<= 32.4`
+  over 4000 instances at `N = 9,10,12`, no growth in `min E` or spread; with
+  (G), (C') follows since `N_J* >= W_J*` for free.  And (L)
+  `|alpha_J*| >= c N_J*` is still OPEN -- observed `>= 3.2e-3` and INCREASING
+  in `n`.  NEGATIVE RESULT, exact witness -- the sorted partition is NOT even
+  the largest term, so (L) cannot come from termwise domination and must come
+  from SIGNS: at `z = (1/3,1/4)`, `m = (2,2)`, `k = 3`,
+  `E = {n,n+1,n+2}`, the partition `({n,n+2},{n+1})` beats the sorted
+  `({n+1,n+2},{n})` by exactly `3*2*(1/4)*(n+1)/n` = 1.575 at `n=20`, tending
+  to `2 z_2/z_1 = 3/2`, with the runner-up a fixed 2/3 of the max forever
+  (I re-derived this ratio by hand: sorted `(1/3)^43 (1/4)^20 * 20` vs
+  `(1/3)^42 * 2 * (1/4)^21 * 21`).  NEGATIVE RESULT -- do NOT retry
   the cluster/Laplace route: two clusters with the SAME profile but different
   exponent assignments compete at a ratio the separation bounds only by a
   CONSTANT, so no termwise domination exists there however small `tau` is.  And with gaps `floor(sqrt n)` and
