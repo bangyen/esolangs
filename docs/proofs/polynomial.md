@@ -122,6 +122,120 @@ were `0.57, 0.72, 1.26, 2.49, 5.15, 17.55` seconds; construction was
 16.9 MB.  These measurements check which stages dominate; they are not the
 asymptotic proof.
 
+## Explicit constants
+
+The companion to `polynomial.tex` Section "Explicit constants"
+(`prop:bracket`).
+
+Put `C_P(n)` = max over tables of min `|f|`, and normalise by
+`T**2/n = T**2/log2 T`. The bracket is
+
+    log10(2)/1152 = 2.61e-4  <=  liminf C_P n/T**2  <=  211/2 log10(2) = 31.8
+    log10(2)/288  = 1.05e-3  <=  limsup C_P n/T**2  <=  422 log10(2)   = 127.1
+
+For `T**2/ln T` units, multiply by `ln 2`: `1.81e-4 .. 22.0` and
+`7.25e-4 .. 88.1`.
+
+Per `n`, put `j1 = min{j : 2**j + j >= n}`, `nu = n / 2**j1` (in
+`(1/2, 1 + j1/2**j1]`), `n = 2**(j1-1) + j1 - 1 + s` and `u = 2**-s`. Then the
+normalised size lies between `log10(2) nu**2 / 288` and
+`log10(2) nu**2 (422 + 924u + 494u**2)`. The lower side carries relative
+error `O(log n / n)` and the upper side `O(1/n)`. The two sides differ by
+the factor `288 (422 + 924u + 494u**2)`, which is 121,536 for most `n` and
+at most 290,160. So the order is settled and the constant is not.
+
+**Lower side: four links.**
+
+1. *Width, exact.* Reads consume the stream in order, so only the natural
+   variable order counts, and the table is chosen outright (no union bound
+   over `n!` orders). At level `n - j` the `2**(n-j)` blocks can be any
+   distinct first-essential strings. There are
+   `E_j = 2**(2**j) - 2**(2**(j-1)) - 2` of these, so
+   `N_n = max_j min(2**(n-j), E_j) = nu T/n (1 + o(1))` is attained.
+2. *Cursor count `3 + 6B` (was `4 + 8B`).* The cursor `c_(J-1)` carries at
+   most one first-essential residual. The read at `c_J` overwrites the
+   register with no routing in between, so the output is
+   `w(b_k) v(y_1, ...)` with `v` free of `b_k`. A first-essential residual
+   needs `w` empty, so it equals `v` for both register values. `c_J` keeps
+   its two residuals.
+3. *Block incidence `2L - 2` (was `3L - 3`).* The graph is bipartite
+   (openers against closers) as well as outerplanar. A 2-connected block's
+   outer Hamiltonian cycle alternates sides, so `a_i = b_i` and
+   `E_i <= 3a_i - 2`. Summing over the block-cut tree gives
+   `E <= a + 2b - 2`, hence `m_routing <= a + E <= 2L - 2`. Links 2 and 3
+   together give `N*(k) <= 12 L_real - 9`.
+4. *Mass, exact `1/2`.* `Lambda >= sum_i i log i >= (L**2/2)(log L - 1/2)`,
+   which is sharp at the first `L` primes. For every `n >= 6`, with
+   `L = ceil((N_n + 9)/12)`:
+   `C_P(n) >= L**2 (2 ln L - 1) / (4 ln 10)`.
+
+**Upper side.** A chained block
+(`+=1; if; input; *=span or //=50; +=delta; endif`) has 10 roots. Their
+modulus exponents are `b = 1` five times, `b = 2` three times, and `b = 3`
+or `4` twice. Let `Phi = sum_i i b_(i)`, taken in sorted order.
+
+* Then `Phi <= (311 S'**2 - (10S' - 2Y)**2)/2`, where `Y` counts the
+  equal-children (`//=`) blocks.
+* On the doubling levels the deficits obey `f_(k+1) >= 2f_k + Y_k`, so each
+  such block costs a state. Above the crossing level there are at most
+  `R_n` of them.
+* The maximum is at `S' = S_n` and `Y = R_n`, which gives
+  `Phi_n = (311 S_n**2 - (10 S_n - 2 R_n)**2)/2`.
+* The coefficients satisfy `|e_k| <= C(D,k) prod(top-k |rho|)`.
+  Rearrangement bounds `sum_i i log|rho|_(i)` by
+  `Phi log P + D sum log(1 + |a|/p**b)`.
+* Primes carry at most 3 instructions and `|a| <= 50 S_n + n + 60`, so the
+  correction is `O(S**2)`. Also `log P = n log 2 + O(1)`.
+* Hence `|f| <= (1 + O(1/n)) n log10(2) Phi_n`. Substituting
+  `S_n = (2 + 2u) q_j1` and `R_n = 2u q_j1` gives the closed form.
+
+**Where the gap sits** (at `u -> 0`):
+`121,536 = 12**2 (routing) x 4 (levels: (S/W)**2) x 2 x 105.5 (profile)`.
+
+* The routing factor is lossy. Both per-cursor caps are attained, and the
+  graph bound `a + E = 2V - 2` is attained (ladders). The measured ratios
+  are `N*/L_real <= 0.2` and `N*/B <= 0.5` on 2,536 table programs at
+  n = 3..5.
+* The levels factor exists because a cursor can serve several levels when
+  the read count varies. So counting sees `W`, not `S`.
+* The profile factor comes from the construction: 80% of its degree is
+  complex register roots, which the real-node certificate cannot charge.
+  The worst-case profile bound is 105.5; random tables measure about 76.
+
+**Exact ingredients:** the width, the mass `1/2`, and the logarithms to
+first order.
+
+**The roadmap's sharp form is already in hand.** Its gap (a) is
+`coefficient-mass.tex` Lemma 3.1, the all-root form, which holds for every
+free set `U`, at every degree, with no `o(1)`. It is the mass `1/2`,
+already exact, so it cannot narrow the bracket. The open questions are
+combinatorial:
+
+* a routing lemma with constant near 2 roots per state;
+* a mass bound for the roots `a +- p**b i`;
+* cursor sharing across levels.
+
+**Measured** (uncapped `_polynomial_dag`, one seeded random table per n):
+
+| n  | chars       | chars n/T**2 | vs `Phi log P / ln 10` |
+|----|-------------|-------------:|------------------------|
+| 8  | 1,491,142   | 182          | 9% under               |
+| 9  | 4,641,290   | 159          | 9% under               |
+| 10 | 16,389,823  | 156          | 8% under               |
+| 11 | 53,746,303  | 141          | 7% under               |
+| 12 | 170,483,303 | 122          | 7% under               |
+
+* The constant is still falling at these sizes, because
+  `log P / log T = 1.19` at n = 12.
+* `Lambda` is 0.94 of the rearrangement bound.
+* The explicit floor is `5..6e5` times smaller at n = 10..12.
+
+(executed: the outerplanar bound exhaustively to `V = 9`; the per-cursor
+caps, `m_routing <= 2L - 2` and `N* <= 12L - 9` on every input of 2,536
+programs; the profile identity and the monotonicity step in exact
+rationals; the scratch scripts are `polyconst/{widths,checks,groups,measure}.py`,
+which no test reruns.)
+
 ## The text is not construction-forced
 
 Negative operands are **legal**: `convert` puts no sign condition on a complex

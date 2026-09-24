@@ -461,6 +461,250 @@ exponents and separators contribute only $O(m\log m)$.  Therefore
 Together with Corollary~\ref{cor:lower}, this proves
 Theorem~\ref{thm:main}.
 
+\section{Explicit constants}\label{sec:constants}
+
+Theorem~\ref{thm:main} is a statement of order.  This section tracks the
+constants through both halves.  Write
+\[
+  C_P(n)=\max_{t\in\{0,1\}^{T}}\ \min\{|f|:f\text{ computes }t\},
+  \qquad T=2^n,
+\]
+and normalize by $T^2/n=T^2/\log_2T$.  Two small sharpenings of the routing
+argument are proved first; neither changes the order.
+
+\begin{lemma}[One residual below the last read]\label{lem:essential-sharp}
+In the setting of Lemma~\ref{lem:essential}, let $k\le n-2$ and suppose the
+$k$th read is at $c_{J-1}$.  If the residual after it is first-essential,
+then that residual does not depend on the bit just read.  Consequently
+\[
+  N^*(k)\le 3+6\mroute\qquad(k\le n-2).
+\]
+\end{lemma}
+
+\begin{proof}
+Let $b$ be the bit read at $c_{J-1}$.  From there the execution follows the
+fixed routing-free sequence to $c_J$ and performs no read in between.  At
+$c_J$ it reads $y_1$, and this read overwrites the register.  So the state
+after $c_J$ is $(c_J,48+y_1)$ whatever $b$ was, and the output after the
+$k$th read has the form $w(b)\,v(y_1,y_2,\ldots)$.  Here $w(b)$ is what is
+printed between the two reads, and $v$ does not depend on $b$.  A fault
+between the reads would lie on a reachable input.  If $w(b)$ is nonempty it
+is the program's single output character, and the residual is constant.  A
+first-essential residual therefore has $w(b)$ empty and equals $v$, for
+either value of $b$.
+
+Now count cursors by segment.  There are at most $2\mroute+1$ segments:
+one for each routing position and successor taken there, and one from the
+initial cursor.  By Lemma~\ref{lem:essential}, each segment contributes
+only the two cursors $c_J$ and $c_{J-1}$.  The last read $c_J$ carries at
+most two first-essential residuals, one for each register value $48$ or
+$49$, as in~\eqref{eq:residual-cursor}.  By the first paragraph, $c_{J-1}$
+carries at most one.  Hence $N^*(k)\le3(2\mroute+1)$.
+\end{proof}
+
+\begin{lemma}[Bipartite block incidence]\label{lem:bipartite}
+If a decoded program has $L\ge2$ distinct real root values, then
+$\mroute\le 2L-2$, and hence $N^*(k)\le 12L-9$ for $k\le n-2$.
+\end{lemma}
+
+\begin{proof}
+Let $a$ and $b$ be the numbers of opener blocks and closer blocks, so
+$L=a+b$.  Let $G$ be the block-incidence graph of Lemma~\ref{lem:block},
+with $E$ edges.  That proof bounds the routing positions by $a+E$.  $G$ is
+simple, outerplanar and bipartite, with parts of sizes $a$ and $b$.  We
+claim that $E\le a+2b-2$ whenever $E\ge1$.
+
+First take a $2$-connected block of $G$ with $V_i\ge3$ vertices.  Its outer
+face is a Hamiltonian cycle, and this cycle alternates between the two
+parts, so $a_i=b_i$.  Every inner face has length at least~$4$.  Euler's
+formula then gives $2E_i\ge4(F_i-1)+V_i$ and hence
+$E_i\le(3V_i-4)/2=a_i+2b_i-2$.  A bridge has $a_i=b_i=1$ and $E_i=1$, so it
+satisfies the same bound.
+
+In a connected component, cut vertices are counted once in each block that
+contains them.  The total overcount is $x+y$, where $x$ comes from openers
+and $y$ from closers, and it equals the number of blocks minus one.
+Summing over the blocks gives
+\[
+  E\le(a+x)+2(b+y)-2(x+y+1)=a+2b-2-x\le a+2b-2 .
+\]
+Components without edges only increase the right side, and further
+components each subtract another~$2$.  If $E=0$, then $\mroute\le a\le L$.
+Otherwise $\mroute\le a+E\le2(a+b)-2$.  Substitute this in
+Lemma~\ref{lem:essential-sharp}.
+\end{proof}
+
+The count $a+E=2V-2$ is attained, for instance by a chain of $4$-cycles.
+So the graph step is sharp.  It is the passage from segments to cursors
+that is lossy (Remark~\ref{rem:bracket}).
+
+\begin{proposition}[Explicit bracket]\label{prop:bracket}
+For $2\le j\le n$ put $q_j=2^{n-j}$ and
+$E_j=2^{2^j}-2^{2^{j-1}}-2$, and let
+\[
+  N_n=\max_{2\le j\le n}\min(q_j,E_j),\qquad
+  s_k=\min\bigl(2^k,2^{2^{n-k}}\bigr),\qquad
+  S_n=\sum_{k<n}s_k .
+\]
+Let $k_1$ be the largest $k$ with $s_k=2^k$, let $R_n=\sum_{k_1<k<n}s_k$,
+and let $\Phi_n=\tfrac12\bigl(311S_n^2-(10S_n-2R_n)^2\bigr)$.  Then:
+\begin{enumerate}
+\item for every $n\ge6$ (where $N_n\ge10$), with $L_n=\lceil(N_n+9)/12\rceil$,
+\[
+  C_P(n)\ \ge\ \frac1{\log10}\sum_{i=1}^{L_n}i\log i
+        \ \ge\ \frac{L_n^2(2\log L_n-1)}{4\log10};
+\]
+\item every $n$-input table has a program with
+\[
+  |f|\le\bigl(1+O(1/n)\bigr)\,n\log_{10}2\cdot\Phi_n .
+\]
+\end{enumerate}
+Put $j_1=\min\{j:2^j+j\ge n\}$, $\nu_n=n/2^{j_1}$, write
+$n=2^{j_1-1}+j_1-1+s$ with $s\ge1$, and let $u=2^{-s}$.  Then
+\begin{equation}\label{eq:bracket-n}
+  \Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)\frac{\log_{10}2}{288}\,\nu_n^2
+  \ \le\ \frac{C_P(n)\,n}{T^2}\ \le\
+  \bigl(1+o(1)\bigr)\log_{10}2\;\nu_n^2\bigl(422+924u+494u^2\bigr),
+\end{equation}
+and consequently
+\[
+  \frac{\log_{10}2}{1152}\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \le\frac{211}{2}\log_{10}2,
+  \qquad
+  \frac{\log_{10}2}{288}\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \le422\log_{10}2 .
+\]
+Numerically, $2.61\cdot10^{-4}\le\liminf\le31.8$ and
+$1.05\cdot10^{-3}\le\limsup\le127.1$.
+\end{proposition}
+
+\begin{proof}
+\emph{Lower bound.}  Reads consume the input stream in order, so the
+residuals that matter are those of the natural variable order.  The table
+can therefore be chosen outright, and Lemma~\ref{lem:maximal-width}'s union
+bound over orders is not needed.  Fix the maximizing $j$ and $K=n-j\le n-2$.
+The level-$K$ residuals are the $q_j$ consecutive blocks of length $2^j$
+and may be prescribed independently.  Exactly $E_j$ strings of that length
+are first-essential: we exclude the $2^{2^{j-1}}$ strings with equal
+halves, and the two further strings whose halves are distinct constants.
+Prescribing $\min(q_j,E_j)$ distinct first-essential blocks gives a table
+with $N^*(K)=N_n$.
+
+A program with $L\le1$ distinct real values has $\mroute\le1$ and so
+$N^*(K)\le9<N_n$; hence $L\ge2$, and Lemma~\ref{lem:bipartite} gives
+$L\ge L_n$ distinct real instruction roots.
+They are distinct integers at least~$2$, so $r_i-1\ge i$ after sorting.
+Theorem~\ref{thm:mass} and $|f|\ge M(f)\ge\Lambda(f)/\log10$ give the first
+inequality.  The second is
+$\sum_{i\le L}i\log i\ge\int_1^Lx\log x\,dx$.
+
+For the asymptotic form, note that $2^{j}\ge n-j$ exactly when $j\ge j_1$.
+So $q_{j_1}\le 2^{2^{j_1}}$, and $\min(q_{j_1},E_{j_1})=q_{j_1}(1+o(1))$.
+Also $2^{2^{j_1-1}}=2^{1-s}q_{j_1}\le q_{j_1}$, and $q_j$ halves as $j$
+grows.  Hence $N_n=q_{j_1}(1+o(1))=\nu_nT/n\,(1+o(1))$.  Then
+$\log L_n=n\log2-O(\log n)$, which gives the left side
+of~\eqref{eq:bracket-n}.
+
+\emph{Upper bound.}  We use the construction of Section~\ref{sec:upper},
+with primes shared along runs of nondecreasing decode key, as the generator
+does; each prime then carries at most three instructions.  A chained state
+block is
+\[
+  \mathord{+}\!=1,\ \text{if}>0,\ \text{input},\
+  \mathord{*}\!=\text{span}\ \text{or}\ /\!/\!=50,\
+  \mathord{+}\!=\delta,\ \text{endif}.
+\]
+Its ten roots have moduli $|a+p^bi|$ or $p^v$, with exponent $b$ (or $v$)
+equal to $1$ five times, $2$ three times, and $3$ or $4$ twice; the value
+$4$ arises only for a state with equal children.  Omitted instructions
+only remove roots, and the leaves add $O(1)$ roots.
+
+For a multiset of positive exponents let $\Phi=\sum_ii\,b_{(i)}$, taken in
+increasing order.  Suppose there are $S'$ chained blocks, $Y$ of them with
+equal children.  A direct summation gives
+$\Phi\le\frac12\bigl(311S'^2-(10S'-2Y)^2\bigr)+O(S')$.
+
+Next we bound $Y$.  Let $w_k$ be the widths and $f_k=s_k-w_k$ the
+deficits, and let $Y_k$ count the equal-children states at level $k$.  For
+$k<k_1$ we have $s_{k+1}=2s_k$ and $w_{k+1}\le2w_k-Y_k$, so
+$f_{k+1}\ge2f_k+Y_k$, and $f_0=0$.  Hence
+$S'\le S_n-\sum_{k<k_1}Y_k$.  For $k\ge k_1$ we have
+$Y_k\le w_{k+1}$, so $\sum_{k\ge k_1}Y_k\le R_n+2$.  Put
+$g=311S'^2-(10S'-2Y)^2$.  It increases in $Y$ for $Y\le S'$.  Along
+$S'=S_n-t$, $Y=R_n+t$ its derivative in~$t$ is
+$2(-191S_n+167t-24R_n)<0$.  Hence $\Phi\le\Phi_n+O(S_n)$.
+
+Every nonleading coefficient is an elementary symmetric function of the
+$D\le10S_n+O(1)$ roots, and all moduli exceed~$1$, so
+\[
+  \Lambda(f)\le\sum_{k}\log\binom Dk+\sum_{i}i\log|\rho|_{(i)} ,
+\]
+the second sum taken over the moduli in increasing order.
+
+Write $\log|\rho|\le b\log P+\varepsilon_\rho$, where $P$ is the largest
+prime and $\varepsilon_\rho=\log(1+|a|/p^b)$.  By the rearrangement
+inequality the second sum is at most $\Phi\log P+D\sum_\rho\varepsilon_\rho$.
+
+The operands satisfy $|a|\le A=50S_n+n+60$.  A root with $p\ge A$ has
+$\varepsilon_\rho\le\log2$.  At most $6\pi(A)=O(S_n/\log S_n)$ roots have
+$p<A$, and each has $\varepsilon_\rho\le\log(1+A)$.  So
+$D\sum\varepsilon_\rho=O(S_n^2)$.  Also $\sum_k\log\binom Dk=O(S_n^2)$.
+There are $O(S_n)$ primes, so~\cite{rs} gives $\log P=n\log2+O(1)$, while
+$\Phi_n\ge50S_n^2$.  Therefore $\Lambda(f)\le(1+O(1/n))\,n\log2\cdot\Phi_n$.
+
+Rendering adds at most $D+1$ digits and $O(D\log D)$ further characters.
+Dividing by $\log10$ proves the second item.
+
+Finally, $k_1=n-j_1$, so
+$S_n=2q_{j_1}-1+R_n$.  The sum $R_n$ is dominated by its first term, so
+$R_n=2^{2^{j_1-1}}(1+o(1))=2u\,q_{j_1}(1+o(1))$.  With $q_{j_1}=\nu_nT/n$,
+substitution gives
+$\Phi_nn^2/T^2=\nu_n^2(422+924u+494u^2)(1+o(1))$.
+
+Along $n=2^{j}+j$ we have $\nu_n\to1$ and $u\to0$.  Along
+$n=2^{j-1}+2j$ we have $\nu_n\to\frac12$ and $u\to0$.  For every $n$,
+$\nu_n>\frac12$, and $\nu_n\le1+j_1/2^{j_1}$.  The bound
+$\nu_n^2(422+924u+494u^2)$ tends to $422$ along the first sequence and to
+$105.5$ along the second.  It never exceeds $422+o(1)$: large $\nu_n$ needs
+$s\approx 2^{j_1-1}$, and at $s=1$ its value is about
+$\frac14\cdot1007.5$.  This proves the limit statements.
+\end{proof}
+
+\begin{remark}[What the bracket says]\label{rem:bracket}
+At every $n$ the two sides of~\eqref{eq:bracket-n} differ by the factor
+$288(422+924u+494u^2)$.  This is $121{,}536$ for most $n$ ($u\to0$) and at
+most $290{,}160$ (at $s=1$).  So Proposition~\ref{prop:bracket} fixes the
+order, but it does not fix the constant.  At $u\to0$ the factor splits as
+\[
+  121{,}536\ =\ 12^2\ \times\ 4\ \times\ 2\cdot105.5 .
+\]
+\begin{itemize}
+\item \emph{$12^2$: routing.}  The lower bound credits one distinct real
+root to every $12$ first-essential residuals at one level.  The
+construction spends two per state.  Both per-cursor caps in
+Lemma~\ref{lem:essential-sharp} are attained, and so is the graph bound in
+Lemma~\ref{lem:bipartite}.  The loss comes from combining them.
+\item \emph{$4=(S_n/q_{j_1})^2$: levels.}  The lower bound uses a single
+level.  The construction pays for all of them.  Counting cannot add levels,
+because one cursor may serve residuals at several levels when the read
+count varies.
+\item \emph{$2\cdot105.5$: roots the certificate does not see.}  The mass
+constant $\frac12$ of Theorem~\ref{thm:mass} is sharp: the product of the
+first $L$ primes attains it~\cite[Corollary~3.6]{coefficient-mass}.  The
+logarithms satisfy $\log L\sim\log P\sim\log T$.  But the certificate
+charges only real roots.  In the construction, $80\%$ of the degree
+consists of the complex register roots, and it pays
+$\Phi_n/S_n^2\le105.5$ against $\frac12$.  Random tables measure about
+$76$.
+\end{itemize}
+In particular, the order-statistic bound for arbitrary free positions
+(\cite[Lemma~3.1]{coefficient-mass}) is already the sharp form of the mass
+step.  No sharpening of that step can move the bracket by more than the
+factor it already has, which is exact.  What remains is combinatorial: a
+routing lemma with a constant near the construction's, and a coefficient
+mass bound for the complex instruction roots.
+\end{remark}
+
 \section{Scope and reproducibility}
 
 The result concerns source length, not the running time of polynomial
