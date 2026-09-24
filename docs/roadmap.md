@@ -92,7 +92,7 @@ INTERCAL, listed last, is outside the pass.
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
   Malbolge cannot be total: its finite source space omits some 18-input truth
-  tables.  Its shipped constructions cover every table through eleven inputs;
+  tables.  Its shipped constructions cover every table through fourteen inputs;
   generation time and size remain open over the reachable gap below that
   language ceiling.
 
@@ -410,3 +410,105 @@ step; an answer lands in the paper it extends, and the row leaves.
   `P` exceed `|P(1)|`, where the repaired bound need not be sharp.  See the
   section "The infimum when the criterion fails" in
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
+  The companion question -- which root sets make `eq:order` an infimum for
+  `k >= 2` (`coefficient-mass.tex`, end of the sharpness section) -- is
+  settled for distinct roots by the partial-sum criterion
+  (`prop:partial`, `thm:converse`) and is open exactly where this row is:
+  repeated roots, pending confluent `thm:converse`.
+
+- **Factor's constant.**  On GRH, `0.1505 <= C_F(T)/(T log T) <= 0.3416`, a
+  ratio of 2.27 (`rem:gap` in [factor](proofs/factor.tex)); without GRH the
+  ceiling is `0.3660`.  Number theory no longer separates the two: the gap is
+  whether Brainfuck programs of `C` characters have nearer `(1+sqrt 2)**C`
+  behaviours (the tapes a drawing reaches) or `(1+lambda)**C`,
+  `lambda = 6.388` (the words free of the five cancelling adjacencies).  The
+  floor rises as far as that count falls; the ceiling falls only if control
+  flow carries more than `log2(1+sqrt 2) = 1.27` bits a character.  Within
+  the drawing model the digit floor is `1/(2 log 10) = 0.217`, not yet met
+  by `lem:draw`'s digit count.  Small-`C` enumeration does not settle it:
+  over reduced words to `C = 10` (wrapping cells, left-clipped pointer,
+  0/1 input bytes), drawings grow at 2.420 by `C = 16`, as `prop:drawing`
+  says, but loops overtake them near `C = 11` and the I/O-only and
+  full-prefix behaviour ratios are still climbing (4.09 and 4.52 at
+  `C = 10`), so any fitted base is a lower estimate.  DEAD: quotienting
+  loop-free I/O-free segments by their tape effect -- the transfer matrix
+  over `.,[]` gives base 7.371 against 7.388, a floor of 0.1507; the
+  count lives in short segments between separators.  Forbidding local
+  patterns whose deletion preserves behaviour (the paper's count admits
+  only deletions, so `[+]` -> `[-]` is not sound) barely helps either:
+  a dead `+`/`-` before a clear loop and never-exiting pointer-neutral
+  loops to body length 9 give 7.3787, floor 0.15062; adding `+,`/`-,`
+  gives 7.1102, floor 0.1535, but that rule is sound only if `,` at end
+  of input fails (the repo's interpreter raises `EOFError`), a convention
+  `factor.tex` must state before relying on it.  A real gain needs a
+  global equivalence argument, not a forbidden-pattern list.
+
+- **Malbolge's first unreachable arity.**  Counting proves some 18-input
+  table has no Malbolge program; 17 needs the program count a further
+  `2**46076` down, and the length and alphabet cuts are dead
+  ([limitations](limitations.md), Malbolge).  The live route is a dependence
+  cut over the 24,434-cell threshold (the largest `K` with
+  `C(59049, K) * 8**K < 2**131072`), but NOT per program: `'o'*59046 +
+  '/<v'` computes the one-input identity and every one of its cells flips
+  it, so some program for a table can depend on all 59,049.  With full
+  stores a cell's first access is always a read, so dependent cells are
+  touched cells; in the shipped constructions every sampled touched cell
+  is dependent (3,416 at `n = 4`, 9,308 at 10, 16,650 at 11, at least
+  19,007 at 12).  What survives is a cut over ONE program per table -- a
+  normal form that strips nop runs and padding -- or a count of
+  descriptions rather than of flip-sensitive cells.  Either way it is a
+  density lemma: 17 inputs need 2.22 bits a cell against the 3 a cell
+  holds, so every program must waste 0.78 bits a cell (the shipped builds
+  store 0.14).  Next step: measure bits per cell of the tables computed
+  by a scaled-down Malbolge (`3**6`..`3**7` cells, same decode and
+  re-encipher) as the store grows; near 3 kills the route.  The shipped
+  constructions reach 14 inputs (four copies over a three-level cascade);
+  between them and 17 the least unreachable arity is unknown in both
+  directions.
+
+- **Intermediate rows of `b_k`.**  `b_k(F) >= L - k + 1` for every monic
+  multiple of `(x-2)**L` is proved for `k = 1, 2` (`prop:neartwo`),
+  `k = L` (`thm:order`) and `k <= L/8` once `L >= 13`
+  (`prop:quadratic`); the rows `max(2, L/8) < k <= L - 1` are open, with
+  exact LP sweeps as the only evidence ([coefficient-mass](proofs/coefficient-mass.tex)).
+  The dual is `max |q(0)| / sum_{s not in S} |q(s)| 2**-s` over `q` of
+  degree `< L` vanishing on the exempt distances `S`.  Its tightest `S` is
+  the bottom `k - 1` positions, each costing one degree of `q`, so the
+  limit of row `k` at `L` is row 1 at `L - k + 1`; rows `L - 1` and `L` are
+  asymptotically sharp, the rest carry growing slack, and tight duals are
+  `prod_{z in Z} (1 - s/z)` with integer `Z` containing `S`.  PROVED from
+  `sum_{s>=1} |prod_{z=2}^{n} (1 - s/z)| 2**-s = 1/n`:
+  `b_k >= (L-k+1) / prod_{u in S} max(1, D/u - 1)`, so the row holds
+  whenever the top `k - 1` coefficients all lie in the lower half of the
+  degrees.  The open rows now REDUCE to one `D`-free lemma: `T(n)`, for
+  every finite set `A` of positive integers some real `r` of degree
+  `<= |A| + n - 1` with `r(0) = 1`, `r = 0` on `A` and
+  `sum_{s>=1} |r(s)| 2**-s <= 1/n`.  `T(L-k+1)` implies row `k` at every
+  `D` (take `A` the exempt distances below `D/2` and multiply by
+  `prod (1 - s/u)` over the rest, each factor at most 1 on `1..D`), and is
+  necessary as `D -> oo`; `A` empty is the identity above.  Checked in
+  exact rationals for every `A` in `{1..12}`, `|A| <= 4`, `n <= 4`: the
+  empty set is always the worst `A` (`n` times the optimum 1, 1, 1.212,
+  1.461), nonempty `A` carrying slack at least 1.33.  Next step: prove
+  that adjoining a zero to `A` never lowers the optimum.  DEAD: zeros
+  scaled with `|A|` (`A = {11, 12}`, `n = 3`: 0.78), `Z = {2..n}`,
+  first-free, odd and shifted-past-`S` choices, and trading one exempt
+  point for one degree (it can lose a factor 4).  Floating LPs (HiGHS) report values below the
+  bound from `D = 30`; check large-`D` optima with exact rational duals.
+
+- **Polynomial's sharp constant.**  The language bound is proved by the
+  slack certificate; the sharp form -- a coefficient of at least
+  `(1 - o(1)) prod_{i>u} (p_i - 1)` with `u` coefficients free -- would
+  give its constant, and has two gaps ([polynomial](proofs/polynomial.md), "The
+  iterated elimination"): (a) the certificate is proved only for free
+  positions `U = {0..K}`, though sweeps put the least threshold there for
+  every `U`; (b) it is asymptotic in `D`, and the finite-`D` statement
+  reduces to the skew-Schur inequality
+  `s_{((d-c+1)**(c-1))} s_{lambda_B/mu} >= (prod rho)**(d-c+2) s_{lambda_A/mu}`,
+  now proved for every `c` (Schur-positive by Pieri and dual Pieri; see
+  *General `c`* in [polynomial](proofs/polynomial.md)), which closes (b).
+  Left: (a).  Untested route: the certificate entries for any `U` are
+  ratios of Schur functions `s_{lambda(U)}(r)`, so minimality at
+  `U = {0..u-1}` is a monotonicity statement for such ratios as one part
+  moves up -- the shape of the Lam--Postnikov--Pylyavskyy inequality
+  `s_mu s_nu <= s_{mu v nu} s_{mu ^ nu}`.

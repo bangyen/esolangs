@@ -53,7 +53,7 @@ BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
 its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
 ArrowQueue re-enqueue remains open.
 
-Malbolge registers a generator through thirteen inputs, source-embedded with no
+Malbolge registers a generator through fourteen inputs, source-embedded with no
 initializer. Through ten, a branch-free five-cell mixer (13 operations per input bit, inits
 52/90/83/70/92, then a 16-operation post-map) folds the row index into a
 distinct address `h(row)` in `[1083, 59048]` with pairwise gap at least three,
@@ -122,41 +122,42 @@ runs two and then, through a third character that names a pointer cell, a
 third over that cell's chain value. Executed on all 8,192 rows of the dense,
 parity, all-0 and all-1 tables.
 
-Fourteen inputs split a second input off and let cells be shared. Input
-twelve selects one of two paths as before; each path folds input thirteen
-into one shared selector cell and selects one of four *sub-paths*, one per
-copy. A copy rewrites the readout by searched ops over the mixer cells and
-three mask constants (`p` with `A = 52487` swaps the top trit and the low
-eight and fixes the second, so the readout stays clear of the code and the
-decoder without an offset), and 5,525 of the 8,192 copies own their level-1
-cell. The one-shot rule that stalled a second selector -- every level-2 cell
-distinct and clear of level 1 -- is dropped: a cell read by two copies, at
-whatever levels, holds `N`, and the sharers read a second cell and then a
-third, until each owns one (2,185 resolve at level 2, 482 at level 3; the
-fixpoint over all reads was searched by annealing on excess reads, and
-sharing pushed the count from 2,065 unresolved to 0). A third read passes
-the decoder at 29525 a second time; its cells have been re-enciphered, and
-at residues 9 through 17 `j` and `o` both image to nops while at residue 18
-`o` images to `i`, so the second pass runs nine nops and jumps through
-`mem[V + 11]` for the N hub `V` it came through, a handler that selects the
-level-3 copy. The selector cell serves every level: a sub-path rewrites it
-by a searched chain of constant `p` and `*` to the copy's level-2 address,
-a level-2 path likewise to the level-3 address, so the decoder and the
-handler both jump through the one cell.
+Fourteen inputs keep the thirteen-input answer stub and add a second
+selected input. Inputs twelve and thirteen pick one of four *copies* of the
+eleven-bit table, and a copy reads one cell per level: a cell read by two rows
+holds `N`, and its readers go on to their next level. Copies differ only in
+which readout cell they jump through, so all twelve readouts -- four copies,
+three levels -- are computed by the walked main code before the last two
+inputs are read: a searched run of ops over the mixer and three extra cells
+now and then `p`s `A` into a prepared readout cell. A level-1 or level-2 cell
+is prepared with a top trit of 2, so its readouts lie at 19683 or above,
+clear of the code; a level-3 readout goes through two cells, 42646 and
+16402, which pin its top two trits to 0 and 2, so it lands in 13122..19682
+where no other level reads. The selector is then only a four-way jump per
+level: both inputs are folded into one cell, `p` over three prepared cells
+turns it into each level's *stub* address, and a stub walks `d` to its
+readout cell and makes the table jump. `A` is set to `'0'` once, before the
+first stub, because nothing between there and the answer stub touches it.
 
-Paths are jumped to, never walked, so every cell they touch costs a walk
-over `o` and `j`. The cells they use are packed into 163..243 with the
-mixer, and every free window cell whose `g` is at least 81 is a trampoline:
-`p` with `A = all-2` leaves `K2(g)` in 162..242, so a `j` through it lands
-inside the window. That cuts a path's navigation from ~56 cells per op to
-~14, and the main code to ~8,000 cells. A path is still too long for one free
-run of the store (table cells leave runs of at most ~1,100), so it is three or
-four *segments* linked by `i` through a window cell holding the next
-segment's address: rotations of the cell's own `g`, or of `K(g)` from an
-adjacent supply cell, land on a grid coarse enough to search, and the init
-writes them in rotation sweeps. `n > 14` is refused with
-`GeneratorCapError`: a third selector's eight copies would need a fourth
-cascade level, and the decoder's second pass is the last its cells afford.
+Levels resolve bottom-up: every row reads its level-1 cell, and a row whose
+cell another row reads moves on to its next, which may push another row on
+in turn. The readout ops were annealed a level at a time -- level 1 alone,
+then level 2 with level 1 frozen, then level 3 -- and 7,427 of the 8,192
+copies own their level-1 cell, 685 resolve at level 2 and 80 at level 3,
+whose own region leaves them room. A third read passes the decoder a second
+time; its cells have been re-enciphered, and at residues 9 through 17 `j` and
+`o` both image to nops while at residue 18 `o` images to `i`, so the second
+pass runs nine nops and jumps through `mem[V + 11]` for the N hub `V` it came
+through, a handler that jumps through the level-3 selector. At 29525 the
+decoder would sit among the level-1 cells, so the N hubs hold 13168 and it
+runs from 13169, the same residue. The cells the readout ops touch are packed
+into 163..243 with ten trampolines (`p` with `A = all-2` over a walked cell
+whose `g` is at least 81 leaves `K2(g)` in 162..242, so a `j` through it
+lands inside the window), which keeps the main code near 12,000 cells, under
+the level-3 region. Executed on all 16,384 rows of the dense, parity, all-0
+and all-1 tables. `n > 14` is refused with `GeneratorCapError`: eight copies
+would put 16,384 first reads in the 39,366 cells above the code, and the
+decoder's second pass is the last level its cells afford.
 
 Counting bounds each family, independent of how good the mixer is. A stub
 program needs three cells per row at pairwise distance at least three, so
@@ -192,7 +193,7 @@ expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 13 | 13 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones; twelve inputs split the last one off it through a selector, so no mixer ever folds twelve bits; thirteen let the answer stub read the last input, so a table cell names one of four one-input answers; fourteen would split a second input off and let shared cells hold `N` at any level, so a third read re-enters the decoder, but that route's annealed constants are not searched out yet, so it refuses. Fifteen needs a fourth level, and the decoder's second pass is the last its cells afford. |
+| Malbolge | 14 | 14 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones; twelve inputs split the last one off it through a selector, so no mixer ever folds twelve bits; thirteen let the answer stub read the last input, so a table cell names one of four one-input answers; fourteen compute four copies' readouts up front, pick one with inputs twelve and thirteen, and let shared cells hold `N` at any level, so a third read re-enters the decoder. Fifteen would need eight copies and a fourth level, and the decoder's second pass is the last its cells afford. |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
@@ -228,7 +229,7 @@ separate axes.
 
 The collection has 64 languages; its floor is 31. All three classics carry
 generators: Befunge and Whitespace loop-less O(T) lookups, Malbolge a
-source-embedded mixer through thirteen inputs. They are here for coverage, not for
+source-embedded mixer through fourteen inputs. They are here for coverage, not for
 a new construction axis. Ordinary
 imperative entries with shared-shim generators and no consumer were removed. Nopstacle and
 ZTOALC L left: the former cannot meet embed conventions, the
