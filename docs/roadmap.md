@@ -236,10 +236,16 @@ step; an answer lands in the paper it extends, and the row leaves.
   polygon (`thm:archnewton`) gives rows and mass `sum j log(rho_j/3)` for
   every complex multiple once moduli grow by a factor 9 (`cor:separated`),
   so one prime with distinct exponents is CLOSED (`cor:oneprime`), and
-  at most `g` moduli per annulus `[R, 9R]` costs a factor `g**2`.  Open:
-  rows `k >= 2` or an `Omega(K**2 log)` mass for many pairs in one annulus,
-  as Polynomial's register roots `a +- p**b i` over many primes (coprime
-  norms), uniformly in `K`.
+  at most `g` moduli per annulus `[R, 9R]` costs a factor `g**2`.  Crowded
+  roots in a thin sector are CLOSED (`lem:sectorcount`, `thm:thinsector`,
+  `thm:thingauss`: the argument principle forces a real crossing
+  polynomial with `K/2` large roots unless the degree is `>> K/delta`,
+  which block charging pays), so register roots `a +- p**b i` with bounded
+  `|a|` in one annulus get `Omega(K**2 log R)` at any density of primes
+  (`cor:thinregister`).  Open: wide sectors (`|a_j|` comparable to
+  `c_j`, where the angle mechanism lives) and the cross terms
+  `K_s K_t log t` between annuli (a mass bound for real roots of both
+  signs would give them).
 
 - **Polynomial's routing constant.**  CLOSED in
   [polynomial](proofs/polynomial.tex): the next-read count `thm:count`
