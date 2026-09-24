@@ -176,3 +176,7 @@ notes/
 # scripts/verify_no_exception_leaks.py: clean-sweep fingerprints
 .leaksweep-cache.json
 .leaksweep-cache.tmp
+
+# .githooks: local hooks stay untracked; only the shared pre-push is versioned
+.githooks/*
+!.githooks/pre-push
