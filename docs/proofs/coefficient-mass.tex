@@ -184,10 +184,8 @@ $k=2$ infimum is $65/12$ against the value $5$ of the row
 (Proposition~\ref{prop:nonsharp}).  The companion
 paper~\cite{coefficient-mass-attainment} characterizes the root sets at which
 a row is an infimum by a partial-sum criterion, repeated roots included.
-Finally, for multiples of $(x-2)^L$ we conjecture $b_k\ge L-k+1$ for every
-row, and prove it for all multiples whose $k-1$ largest nonleading
-coefficients do not include all three of $f_{D-1},f_{D-2},f_{D-3}$
-(Proposition~\ref{prop:rowsfree}).
+Finally, every monic multiple of $(x-2)^L$ has $b_k\ge L-k+1$ for every
+row $1\le k\le L$ (Theorem~\ref{thm:everyrow}).
 
 \paragraph{Conventions.}
 All logarithms are natural, $\N_{>0}=\{1,2,\ldots\}$, and every asymptotic
@@ -822,7 +820,7 @@ How close is Theorem~\ref{thm:order} to optimal?  This section treats the
 first row; then the bottom of the root range, where \eqref{eq:mass}
 degenerates, together with the $L^2$ term that repairs it at every root set;
 then the rows $k\ge2$; and finally, at the roots $r_i=2$, a degree-free
-reformulation of the rows that proves most cases of the conjecture
+reformulation of the rows that proves the per-row bound
 $b_k\ge L-k+1$ stated in Section~\ref{sec:bottom}.
 
 \subsection{The first row}
@@ -1131,7 +1129,7 @@ thereafter.  Second, the constant $1/80$ comes from one radius
 and one cutoff $k\le L/8$, chosen for clean arithmetic; a sharper choice
 would improve it, and we have not pursued the best value.
 
-Third, for monic multiples of $(x-2)^L$ we conjecture the per-row
+Third, for monic multiples of $(x-2)^L$ we prove the per-row
 statement
 \[
   b_k(F)\ \ge\ L-k+1\qquad(1\le k\le L),
@@ -1141,20 +1139,10 @@ which interpolates between $b_1\ge L$ and the row $b_L\ge1$ of
 Proposition~\ref{prop:neartwo} gives $k=1,2$, Theorem~\ref{thm:order} gives
 $k=L$, and for $k\le L/8$ the proof of Proposition~\ref{prop:quadratic}
 gives $b_k\ge e^{L/5}$, which exceeds $L$ once $L\ge13$.
-Proposition~\ref{prop:rowsfree} at the end of this section proves every row
-for every $F$ whose $k-1$ largest nonleading coefficients do not include all
-three of $f_{D-1},f_{D-2},f_{D-3}$; what remains open are the multiples for
-which they do, in the rows $\max(2,L/8)<k\le L-1$.  The consequence
+Theorem~\ref{thm:everyrow} at the end of this section proves every row.
+The consequence
 $\Lambda(F)\ge\log L!$ is asymptotically weaker than
 Proposition~\ref{prop:quadratic}, so the interest is in the individual rows.
-The conjecture is also supported by exact computation.  For fixed $L$,
-fixed $\deg Q$ and a fixed set of $k-1$ exempt positions, minimizing the
-largest remaining coefficient magnitude over monic $Q$ is a linear program,
-and the least of these minima over all exempt sets is the infimum of $b_k$
-over monic $Q$ of that degree.  For $L\le7$, $\deg Q\le7$ and $1\le k\le L$
-no such infimum falls below $L-k+1$.  Since the smallest value always
-occurred at the largest degree tried, this is evidence rather than proof: a
-search over bounded degree can only fail to refute a lower bound.
 
 \subsection{The rows \texorpdfstring{$k\ge2$}{k at least 2}}
 
@@ -1341,7 +1329,7 @@ alone.
 
 \subsection{A \texorpdfstring{$D$}{D}-free form of the rows}
 
-We return to the conjecture $b_k\ge L-k+1$ for monic multiples of
+We return to the rows $b_k\ge L-k+1$ for monic multiples of
 $(x-2)^L$ from the third remark after Corollary~\ref{cor:allroots}.  At a
 single root of multiplicity $L$ the certificates of Section~3 are replaced
 by their confluent limits, polynomials in $s$ times $2^{-s}$, and the
@@ -1532,31 +1520,173 @@ $|Z|\le L-1$, and $\{1,2,3\}\not\subseteq S$ is the hypothesis on the
 positions.
 \end{proof}
 
-\paragraph{What remains.}
-The rows $\max(2,L/8)<k\le L-1$ remain open only for multiples whose three
-nonleading coefficients next to the leading one are all among the $k-1$
-largest, that is, for $T(n)$ with $A\supseteq\{1,2,3\}$.  The construction
-above works with the first $h$ holes kept, for any $h$ (keeping more holes
-costs no degree), and reduces $T(n)$ for a set $A$ with leading run $j$ to
+\paragraph{The top three positions.}
+There remains $T(n)$ for $A\supseteq\{1,2,3\}$, that is, a leading run
+$j\ge3$.  The construction is the one above with the first $j+1$ holes kept.
+The two parts of $\Phi$ that appear in the proof of Lemma~\ref{lem:holeint}
+are bounded separately: the values at the kept holes by comparison with the
+consecutive block $\{j+1,\ldots,2j+1\}$, and the tail beyond $x$ by a Beta
+integral.  Throughout, $j\ge0$, $C=\{c_1<\cdots<c_{j+1}\}\subset\N_{>0}$ with
+$c_1=j+1$, $m=c_{j+1}$, $k\ge0$, $x=m+k$, $P=\{1,\ldots,x\}\setminus C$ and
+$r=r_P$.  Then $m\ge2j+1$, and by the proof of Lemma~\ref{lem:holeint}
+$\Phi(P)=H(C,k)+T(C,k)$, where
 \[
-  \int_0^1v^{k}M_C(v)\,dv\le\frac1{k+1}\qquad(k\ge n-1),
+  H(C,k)=\sum_{c\in C}|r(c)|\,2^{-c},\qquad
+  T(C,k)=\sum_{s>x}|r(s)|\,2^{-s}
+        =\sum_{s>x}\binom{s-1}x2^{-s}\prod_{c\in C}\frac c{s-c}.
 \]
-$C$ the first $h$ holes of $A$; only $k\ge1$ is needed, $k=0$ being
-Lemma~\ref{lem:confdel}.  Write $\beta_0,\ldots,\beta_{m-1}$ for the
-Bernstein coefficients of $M_C$ in degree $m-1$ and
-$\hat\beta_i=\max_{i'\ge i}\beta_{i'}$.  Then $M_C\le\sum_i\hat\beta_iB_i$,
-a nonincreasing polynomial, so Chebyshev's inequality gives
-$(k+1)\int_0^1v^kM_C\le\frac1m\sum_i\hat\beta_i$ for every $k\ge0$.  With
-$h=j+1$ this criterion $\frac1m\sum_i\hat\beta_i\le1$ holds in exact
-arithmetic for all $C$ with $j\le7$ and $c_{j+1}\le j+12$, and for fixed
-$m$ every $\beta_i$ is largest at the configuration
-$\{j+1\}\cup\{m-j+1,\ldots,m\}$ (checked for $13014$ one-step moves of an
-inner hole).  But the criterion fails for large $j$: at $j=60$,
-$C=\{61\}\cup\{241,\ldots,300\}$ it equals $1.03$, while
-$\sup_{k}(k+1)\int_0^1v^kM_C\approx0.17$ there.  So the moment inequalities
-appear to hold with room to spare, and a proof must use more than the
-Bernstein coefficients.  The equality case $k=0$ is
-$C=\{j+1,\ldots,2j+1\}$, with $M_C=\frac{(2j+1)!}{j!^24^j}(1-v^2)^j$.
+
+\begin{lemma}[Values at the kept holes]\label{lem:holevals}
+$H(C,k)\le\dfrac1{2(k+1)}$.
+\end{lemma}
+
+\begin{proof}
+Fix $1\le i\le j+1$, put $c=c_i$ and $i'=j+1-i$, the number of kept holes
+above $c$, and write $|r(c)|=\prod_{p\in P}|p-c|/p$.
+
+\emph{Factors below $c$.}  $P\cap[1,c)$ consists of $\{1,\ldots,j\}$ and a
+set $\Lambda\subseteq\{j+2,\ldots,c-1\}$ that avoids the $i-2$ holes
+$c_2,\ldots,c_{i-1}$, so $|\Lambda|=a:=c-j-i$.  The factor $(c-p)/p$ is
+positive and decreasing in $p$ on $p<c$, so the product over $\Lambda$ is at
+most the product over the $a$ smallest candidates $j+2,\ldots,j+1+a$.
+Together with $p\le j$ this is $\prod_{p=1}^{q}(c-p)/p=\binom{c-1}q$ at
+$q=j+1+a=c-i+1$, divided by the factor $(c-j-1)/(j+1)$ of the missing
+$p=j+1$; as $\binom{c-1}{c-i+1}=\binom{c-1}{i-2}$, this gives
+\[
+  \prod_{p\in P,\,p<c}\frac{c-p}p\le\lambda_i(c):=
+  \frac{j+1}{c-j-1}\binom{c-1}{i-2}\quad(i\ge2),\qquad\lambda_1(j+1)=1,
+\]
+the second because for $i=1$ the product is
+$\prod_{p=1}^{j}(j+1-p)/p=1$.
+
+\emph{Factors above $c$.}  $P\cap(c,x]$ is $(c,x]$ with the $i'$ holes
+$c_{i+1},\ldots,c_{j+1}$ removed.  The factor $(p-c)/p$ lies in $(0,1)$ and
+increases with $p$, so the product is at most the product over the
+$x-c-i'$ largest integers of $(c,x]$, which is
+$\prod_{p=c+i'+1}^{x}(p-c)/p=\binom{c+i'}c\big/\binom xc$.  Since
+$m\ge c+i'$, we have $x\ge c+i'+k$, and hence
+\[
+  2^{-c}|r(c)|\le U_i(c):=2^{-c}\lambda_i(c)
+        \binom{c+i'}c\Big/\binom{c+i'+k}c .
+\]
+
+\emph{Moving $c$ down.}  For $i\ge2$ and $c\ge j+i$,
+\[
+  \frac{U_i(c+1)}{U_i(c)}
+  =\frac{c-j-1}{2(c-j)}\cdot\frac c{c-i+2}\cdot\frac{c+i'+1}{c+i'+k+1}
+  \le\frac c{2(c-i+2)}\le1,
+\]
+the last step because $c\ge j+i\ge2i-1$ (as $i\le j+1$).  Since
+$c_i\ge j+i$, we get $2^{-c_i}|r(c_i)|\le U_i(j+i)$ for every $i$; for $i=1$
+this is the bound itself.
+
+\emph{The block.}  For $C^\circ=\{j+1,\ldots,2j+1\}$ with the same $k$, all
+three bounds are equalities: $\Lambda=\varnothing$, the holes above
+$c_i^\circ=j+i$ are $j+i+1,\ldots,2j+1$, and $x^\circ=2j+1+k=c_i^\circ+i'+k$.
+So $2^{-c_i}|r_P(c_i)|\le2^{-c_i^\circ}|r_{P^\circ}(c_i^\circ)|$ term by term,
+and $H(C,k)\le H(C^\circ,k)$.  By the proof of Lemma~\ref{lem:holeint},
+$H(C^\circ,k)=\int_0^1v^k\sum_{c\in C^\circ}|w_c|2^{-c}v^{2j+1-c}(1-v)^{c-1}\,dv$
+with $|w_{j+i}|=(2j+1)!/\bigl(j!\,(i-1)!\,(j+1-i)!\bigr)$, and the binomial
+theorem gives
+\[
+  \sum_{i=1}^{j+1}|w_{j+i}|2^{-j-i}v^{j+1-i}(1-v)^{j+i-1}
+  =\frac{(2j+1)!}{j!^2\,2^{j+1}}(1-v)^j\Bigl(v+\frac{1-v}2\Bigr)^j
+  =\frac{\gamma_j}2(1-v^2)^j,
+\]
+where $\gamma_j=(2j+1)!/(j!^24^j)$ satisfies
+$\int_0^1\gamma_j(1-v^2)^j\,dv=1$.  The function $(1-v^2)^j$ is
+nonincreasing and $v^k$ is nondecreasing, so Chebyshev's integral inequality
+gives $H(C^\circ,k)\le\frac12\int_0^1v^k\,dv=\frac1{2(k+1)}$.
+\end{proof}
+
+\begin{lemma}[The tail beyond the kept holes]\label{lem:holetail}
+If $j\ge1$ and $k\ge1$, then $T(C,k)\le\dfrac{j+1}{e\,j\,(k+1)}$.
+\end{lemma}
+
+\begin{proof}
+Let $s>x$.  Every $c\in C$ is below $s$, and $c/(s-c)$ increases with $c$.
+Since $c_1=j+1$ and $c_i\le m-(j+1-i)$ for $i\ge2$,
+\[
+  \prod_{c\in C}\frac c{s-c}
+  \le\frac{j+1}{s-j-1}\prod_{l=1}^{j}\frac{m-j+l}{s-m+j-l}
+  =\frac{j+1}{s-j-1}\binom mj\Big/\binom{s-m-1+j}j .
+\]
+Apply $1/\binom Nj=(N+1)\int_0^1t^j(1-t)^{N-j}\,dt$ with $N=s-m-1+j$, and
+note that $N+1=s-m+j\le s-j-1$ because $m\ge2j+1$:
+\[
+  \prod_{c\in C}\frac c{s-c}\le(j+1)\binom mj\int_0^1t^j(1-t)^{s-m-1}\,dt .
+\]
+Multiply by $\binom{s-1}x2^{-s}$ and sum over $s>x$.  With
+$\sum_{s>x}\binom{s-1}xy^s=\bigl(y/(1-y)\bigr)^{x+1}$ at $y=(1-t)/2$, the
+sum of $\binom{s-1}x2^{-s}(1-t)^{s-m-1}$ is
+$(1-t)^{-m-1}\bigl((1-t)/(1+t)\bigr)^{x+1}$, so
+\[
+  T(C,k)\le(j+1)\binom mj\int_0^1t^j
+     \Bigl(\frac{1-t}{1+t}\Bigr)^k(1+t)^{-m-1}\,dt .
+\]
+Now $(1-t)/(1+t)\le e^{-2t}$, since $\log\frac{1+t}{1-t}\ge2t$, and for
+$k\ge1$, $(k+1)e^{-2kt}\le2k\,e^{-2kt}\le1/(et)$, since $ye^{-y}\le1/e$.
+Extending the integral to $(0,\infty)$,
+\[
+  (k+1)\,T(C,k)\le\frac{j+1}e\binom mj\int_0^\infty t^{j-1}(1+t)^{-m-1}\,dt
+  =\frac{j+1}e\binom mj\,\mathrm B(j,m-j+1)=\frac{j+1}{e\,j}.
+\]
+\end{proof}
+
+\begin{proposition}[Rows at the top three positions]\label{prop:rowstop}
+Let $n\ge1$ and let $A\subset\N_{>0}$ be finite with $\{1,2,3\}\subseteq A$.
+Then some finite $Z\supseteq A$ has $|Z|\le|A|+n-1$ and $\Phi(Z)\le1/n$.
+\end{proposition}
+
+\begin{proof}
+For $n=1$ take $Z=A$ and use Lemma~\ref{lem:confdel}.  Let $n\ge2$, let
+$j\ge3$ be the leading run of $A$, and let $c_1=j+1<c_2<\cdots$ be the
+positive integers outside $A$.  Keep $C=\{c_1,\ldots,c_{j+1}\}$, fill the
+next $n-1$ holes, and put
+\[
+  x=c_{j+n},\qquad P=\{1,\ldots,x\}\setminus C,\qquad Z=P\cup A .
+\]
+Then $P\supseteq A\cap[1,x]$, the elements of $Z\setminus A$ are the $n-1$
+filled holes $c_{j+2},\ldots,c_{j+n}$, and $|Z|\le|A|+n-1$.  As in the proof
+of Proposition~\ref{prop:rowsfree}, adding the elements of $Z$ above $x$ to
+$P$ one at a time never produces a set $\{1,\ldots,t\}$, because the hole
+$j+1$ lies below them, so Lemma~\ref{lem:confdel} gives
+$\Phi(Z)\le\Phi(P)$.  Put $m=c_{j+1}$ and $k=x-m\ge n-1\ge1$.  By
+Lemmas~\ref{lem:holevals} and~\ref{lem:holetail},
+\[
+  \Phi(P)=H(C,k)+T(C,k)\le\frac1{k+1}\Bigl(\frac12+\frac{j+1}{e\,j}\Bigr)
+  \le\frac1{k+1}\Bigl(\frac12+\frac4{3e}\Bigr)<\frac1{k+1}\le\frac1n,
+\]
+because $(j+1)/j\le4/3$ for $j\ge3$ and $8<3e$.
+\end{proof}
+
+\begin{theorem}[Every row at the root $2$]\label{thm:everyrow}
+Let $L\ge1$ and let $F$ be a monic multiple of $(x-2)^L$.  Then
+\[
+  b_k(F)\ \ge\ L-k+1\qquad(1\le k\le L).
+\]
+\end{theorem}
+
+\begin{proof}
+Since $\deg F\ge L\ge k$, there are at least $k$ nonleading positions.  Let
+$S$ be the set of backward distances of $k-1$ positions carrying the $k-1$
+largest nonleading magnitudes, and $n=L-k+1$.  Proposition~\ref{prop:rowsfree}
+if $\{1,2,3\}\not\subseteq S$, and Proposition~\ref{prop:rowstop} otherwise,
+give $Z\supseteq S$ with $|Z|\le|S|+n-1=L-1$ and $\Phi(Z)\le1/n$, and
+Lemma~\ref{lem:rowcert} gives $b_k(F)\ge n$.
+\end{proof}
+
+The row $k=L$ is the trivial $b_L\ge1$, and summing the rows gives only
+$\Lambda(F)\ge\log L!$, which Proposition~\ref{prop:quadratic} already
+exceeds for large $L$; the content of Theorem~\ref{thm:everyrow} is the
+individual rows.  The bound $\frac12+\frac{j+1}{ej}$ in the proof of
+Proposition~\ref{prop:rowstop} is far from tight: in exact arithmetic the
+largest value of $(k+1)\Phi(P)$ with $j\ge3$ and $k\ge1$ that we found is
+$\frac{35}{64}=0.546\ldots$, at the block $C=\{4,5,6,7\}$ with $k=1$.  For
+$j\le2$ the
+tail bound of Lemma~\ref{lem:holetail} exceeds $\frac12$ and the argument
+does not close; that is why Proposition~\ref{prop:rowsfree} keeps different
+holes there.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.

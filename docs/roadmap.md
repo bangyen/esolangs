@@ -233,21 +233,14 @@ step; an answer lands in the paper it extends, and the row leaves.
   between them and 17 the least unreachable arity is unknown in both
   directions.
 
-- **Intermediate rows of `b_k`.**  `b_k(F) >= L - k + 1` for monic
-  multiples of `(x-2)**L` now holds for every row and degree
-  (`prop:rowsfree` in [coefficient-mass](proofs/coefficient-mass.tex))
-  unless `f_{D-1}, f_{D-2}, f_{D-3}` are all among the `k - 1` largest: the
-  certificate `r_Z(D - x d/dx)` (`lem:rowcert`) reduces row `k` to `T(n)`,
-  a confluent deletion lemma (`lem:confdel`) and an exact hole integral
-  (`lem:holeint`) prove `T(n)` whenever `{1,2,3}` is not in `A`.  Open:
-  `A` containing `{1,2,3}` (leading run `j >= 3`), which reduces to the
-  moments `int_0^1 v**k M_C <= 1/(k+1)`, `C` the first `j+1` holes.  They
-  hold in every case computed (worst `(k+1) Phi` about 0.75, tiny for large
-  `j`).  DEAD: the Bernstein-majorant criterion (fails at `j = 60`,
-  `C = {61} u [241, 300]`: 1.03 against a true 0.17), single crossing of
-  `M_C - 1`, pointwise `M_C <= 1`, monotonicity of the moments in hole
-  position, adjoining a zero never lowering the optimum (`A = {3,4,5}`,
-  `a = 2`), dividing `F` by `x - 2`.
+- **Intermediate rows of `b_k`.**  CLOSED: every monic multiple of
+  `(x-2)**L` has `b_k >= L - k + 1` for every row and degree
+  (`thm:everyrow` in [coefficient-mass](proofs/coefficient-mass.tex)).  The
+  certificate `r_Z(D - x d/dx)` (`lem:rowcert`) reduces row `k` to a
+  `D`-free statement `T(n)`; `prop:rowsfree` proves it when `{1,2,3}` is
+  not exempt, and `prop:rowstop` otherwise, bounding the values at the
+  kept holes by the consecutive block (`lem:holevals`) and the tail by a
+  Beta integral (`lem:holetail`): `(k+1) Phi <= 1/2 + 4/(3e) < 1`.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
