@@ -322,11 +322,16 @@ step; an answer lands in the paper it extends, and the row leaves.
   (`cor:crossreduce`); crossing trees give `V_2(L,k) = beta_2(n)` up to
   `k = 10` (`cor:crosstreevals`); and one arbitrary position above an
   initial block is settled for all `n` (`prop:dilatecross`).  CLOSED for
-  every root `r >= 9/2` (`sec:bigroot`, `thm:bigroot`): every top-row
+  every root `r >= 4` (`sec:bigroot`, `thm:bigroot` at `r >= 9/2`;
+  `sec:rootfour`, `thm:rootfour` via block bounds on the hole product,
+  `lem:holeblock`): every top-row
   optimum has hole product `<= r - 1` for all `n` (largest-zero median
   `lem:topzero`, first hole `lem:firsthole`, Jensen `lem:jensentop`), so all
   rows equal the top row; also `r >= 4` for `n <= 1000` and `r in {13/4,
-  7/2}` for `n <= 50` (`cor:bigrootfinite`).  Open for `r < 9/2`: the
+  7/2}` for `n <= 50` (`cor:bigrootfinite`); all rows for `r >= 18/5`,
+  `n <= 300`, and the second row for `r >= 10/3`, `n <= 300`, via a tail
+  mean bound (`lem:tailmean`, `cor:secondtail`, `cor:rootfourfinite`).
+  Open for `r < 4`: the
   conjecture `V_r(L,k) = min_i 1/nu_i(n)` for all `n`, equivalent at
   `r >= 2` to `Phi_r(ins(W_T, first gap)) <= Phi_r(W_T)` at constrained
   minimizers (for the second row, `1 + rho(Z_0) <= r Pi_Y`; `rho(Z_0) <=
