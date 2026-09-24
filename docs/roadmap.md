@@ -113,7 +113,7 @@ INTERCAL, listed last, is outside the pass.
 
   Polynomial has language-level text complexity `Theta(T**2 / log T)`.  Equal
   real roots form contiguous blocks; their noncrossing opener/closer incidence
-  graph is outerplanar, giving `m_routing < 3L_real`.  The routing lemma gives
+  graph is outerplanar and bipartite, giving `m_routing <= 2L_real - 2`.  The routing lemma gives
   `L_real = Omega(T/log T)` for every read count: only the last two reads
   before a routing position can carry a residual that depends on its next
   input and not on it alone.  The distinct-root slack certificate

@@ -36,20 +36,23 @@
 In the Polynomial esoteric programming language, the roots of an
 integer polynomial encode the instructions of a one-register machine, while
 the source text lists the polynomial's expanded coefficients.  We prove that
-every Boolean function with truth-table length $T$ has a Polynomial program of
-length $O(T^2/\log T)$, and that some require
-$\Omega(T^2/\log T)$ source characters in every program, independently of the program's degree, operand signs, and additional
-roots.
-The explicit residual-DAG construction gives the upper bound.  A
-coefficient-mass theorem, proved separately, implies that every real
-polynomial divisible by $L$ distinct prime-power roots and having leading
-coefficient of absolute value at least one has logarithmic coefficient mass
-$\Omega(L^2\log L)$.  A routing argument, sharpened by an
-outerplanar block-incidence bound, forces $L=\Omega(T/\log T)$ distinct real
-roots in a program for a maximal-width table, so the worst-case text
-complexity is $\Theta(T^2/\log T)$ in this model.  The routing argument
-needs no assumption on the number of reads: a read cursor that routing
-cannot distinguish carries a residual that ignores its next input.
+the worst-case text complexity of $n$-input Boolean functions is
+$\Theta(T^2/\log T)$, where $T=2^n$ is the truth-table length: every table
+has a Polynomial program of length $O(T^2/\log T)$, and some tables require
+$\Omega(T^2/\log T)$ source characters in every program, independently of the
+program's degree, operand signs, and additional roots.  The upper bound is
+an explicit residual-DAG construction.  For the lower bound, a routing
+argument forces $\Omega(T/\log T)$ distinct positive real roots in every
+program for a suitable table, with no assumption on the number of reads, and
+a coefficient-mass theorem, proved separately, shows that a real polynomial
+divisible by $L$ distinct prime-power roots and having leading coefficient
+of absolute value at least one has logarithmic coefficient mass
+$\Omega(L^2\log L)$.  Tracking the constants, the worst-case length $C_P(n)$
+satisfies
+$\log_{10}2/1152\le\liminf C_P(n)\,n/T^2\le105.5\log_{10}2$ and
+$\log_{10}2/288\le\limsup C_P(n)\,n/T^2\le422\log_{10}2$: the order is
+settled, but the constant is determined only up to a factor of about
+$1.2\cdot10^5$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -127,8 +130,8 @@ Its coefficient-digit mass is
 \]
 Every nonzero coefficient appears in a monomial whose serialization supplies
 at least $1+\lfloor\log_{10}|f_j|\rfloor$ characters, so $|f|\ge M(f)$.
-The worst-case text complexity is the maximum, over these tables, of the
-minimum $|f|$ of a program computing the table.
+The worst-case text complexity $C_P(n)$ is the maximum, over these tables, of
+the minimum $|f|$ of a program computing the table.
 All unqualified logarithms are natural.
 
 \begin{theorem}[Main theorem]\label{thm:main}
@@ -136,142 +139,136 @@ Every $n$-input Boolean function has a Polynomial program of length
 $O(T^2/\log T)$, and there are $n$-input Boolean functions for which every
 program has length $\Omega(T^2/\log T)$.  Hence the
 worst-case text complexity in the model of Section~\ref{sec:model} is
-$\Theta(T^2/\log T)$.
+$C_P(n)=\Theta(T^2/\log T)$.
 \end{theorem}
 
-The lower bound has two independent parts.
-Section~\ref{sec:routing} forces $\Omega(T/\log T)$ distinct positive
-roots.
-Section~\ref{sec:mass} applies the
-coefficient-mass theorem of~\cite{coefficient-mass}.  Section~\ref{sec:upper} supplies
-the matching construction.  Informally, the routing argument says that a
-short instruction alphabet cannot distinguish enough residual truth tables;
-the coefficient-mass theorem then says that supporting the required roots
-forces many coefficient digits.
+The theorem concerns source length, not the running time of polynomial
+factorization or of source generation.  It allows arbitrary degrees,
+arbitrary operand signs, repeated roots, and arbitrary unrecognized cofactor
+roots, and its upper half is an existence statement for the uncapped
+residual-DAG construction; implementation resource limits do not affect it.
+
+The lower bound has two independent parts.  Section~\ref{sec:routing} shows
+that a short instruction alphabet cannot distinguish enough residual truth
+tables, so a suitable table forces $\Omega(T/\log T)$ distinct positive real
+roots.  Section~\ref{sec:mass} applies the coefficient-mass theorem
+of~\cite{coefficient-mass}: supporting that many roots forces
+$\Omega(T^2/\log T)$ coefficient digits.  Section~\ref{sec:upper} supplies
+the matching construction, and Section~\ref{sec:constants} tracks the
+constants through both halves (Proposition~\ref{prop:bracket}):
+\[
+  \frac{\log_{10}2}{1152}\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \le\frac{211}{2}\log_{10}2,
+  \qquad
+  \frac{\log_{10}2}{288}\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \le422\log_{10}2 .
+\]
+Remark~\ref{rem:bracket} locates the gap between the two sides.
 
 Residual DAGs are reduced ordered binary decision diagrams under a fixed
 variable order~\cite{bryant}; classical results place the size of an optimal
 diagram for almost every Boolean function at the same
-$\Theta(T/\log T)$ scale~\cite{wegener,gps}.  Lemma~\ref{lem:maximal-width}
-uses a tailored simultaneous width statistic, and the block-incidence
-argument translates it into distinct Polynomial roots.  The certificate
-machinery relates the displaced-zero comparison and coefficient-order
-statistics to the reduced-height literature~\cite{coefficient-mass}.
+$\Theta(T/\log T)$ scale~\cite{wegener,gps}.  Here the input stream fixes the
+order, and Lemma~\ref{lem:maximal-width} uses a tailored width statistic,
+the number of first-essential residuals at one level, which the
+block-incidence argument translates into distinct Polynomial roots.  The
+certificate machinery relates the displaced-zero comparison and
+coefficient-order statistics to the reduced-height
+literature~\cite{coefficient-mass}.
 
 \section{Routing forces distinct real roots}\label{sec:routing}
 
-Fix an order of the $n$ input variables.  After the first $k$ reads, each
-input prefix determines a residual Boolean function of the remaining
-$n-k$ variables.  Write $N(k)$ for the number of distinct residuals at that
-level and $N'(k)$ for the nonconstant ones.  Call a function $g(y_1,\ldots,y_m)$
+The $k$th read of every execution receives the $k$th input bit $b_k$.  After
+$k$ reads the prefix $b_1\cdots b_k$ therefore determines a residual Boolean
+function of the remaining $n-k$ bits: in the truth table, the block of
+$2^{n-k}$ consecutive entries indexed by the prefix.  Only this natural
+variable order matters.  Call a function $g(y_1,\ldots,y_m)$
 \emph{first-essential} if it depends on $y_1$ and is not a function of $y_1$
-alone, and write $N^*(k)$ for the number of distinct first-essential residuals
-at level $k$.
+alone, and write $N^*(k)$ for the number of distinct first-essential
+residuals at level $k$.
 
 \begin{lemma}[Maximal-width tables]\label{lem:maximal-width}
-For every sufficiently large $n$, there is an $n$-input truth table such
-that, under every variable order, the level $k=n-\lceil\log_2n\rceil-1$
-satisfies
+Let $n\ge2$.  For $2\le j\le n$ put $q_j=2^{n-j}$ and
+$E_j=2^{2^j}-2^{2^{j-1}}-2$, and let
+$N_n=\max_{2\le j\le n}\min(q_j,E_j)$.  Some $n$-input truth table has
+$N^*(K)=N_n$ at a level $K\le n-2$, and
 \begin{equation}\label{eq:residual-width}
-  N^*(k+1)=\Omega(T/\log T).
+  N_n\ge\frac{T}{4n}=\Omega\!\left(\frac{T}{\log T}\right).
 \end{equation}
 \end{lemma}
 
 \begin{proof}
-Choose a truth table uniformly at random.  Put
-$\ell=\lceil\log_2 n\rceil+1$ and expose the residuals after
-$k=n-\ell$ variables.  For any fixed variable order, the
-$q=2^k=\Theta(T/n)$ residuals occupy disjoint blocks of the truth table and
-are therefore independent uniform strings of length
-$R=2^\ell\in[2n,4n)$.  Their $2q$ children at level $k+1$ are independent
-uniform strings of length $R/2\in[n,2n)$.  Two prescribed children agree
-with probability $2^{-R/2}$.
+Fix a maximizing $j$ and put $K=n-j\le n-2$.  The level-$K$ residuals are
+the $q_j$ consecutive blocks of length $2^j$, and they may be prescribed
+independently.  A string of that length fails to be first-essential exactly
+when its halves are equal ($2^{2^{j-1}}$ strings) or are distinct constants
+(two strings), so $E_j$ strings are first-essential.  Prescribing
+$\min(q_j,E_j)$ distinct first-essential blocks, and the remaining blocks
+arbitrarily, gives $N^*(K)=N_n$.
 
-If $N'(k+1)<q/2$, then the $2q$ children occupy fewer than $q/2$ distinct
-nonconstant values, so the child occupancy experiment has at least
-$3q/2-2\ge q/4$ repetitions (constant children count as repetitions against
-either constant string).  Put
-$B=2^{R/2}\ge T$ and $t=\lceil q/4\rceil$.  If at least $t$ repetitions
-occur, some $t$ children each equal an earlier child.  Choosing those children
-and one earlier witness for each gives
-\[
-  \Pr\{\text{at least }q/4\text{ repetitions}\}
-  \le \binom{2q}{t}(2q/B)^t
-  \le \left(\frac{4e q^2}{tB}\right)^t
-  =\exp(-\Omega(q\log n)),
-\]
-because $q/B=O(1/n)$.  Constant strings are two ordinary occupancy
-bins, so the same bound includes them.
-
-A child fails to be first-essential if its two halves are equal, with
-probability $2^{-R/4}$, or if each half is constant, with probability
-$4\cdot2^{-R/2}$; so it fails with probability $p\le2^{1-R/4}\le2^{1-n/2}$,
-independently across children.  With $t'=\lceil q/8\rceil$,
-\[
-  \Pr\{\text{at least }q/8\text{ children fail}\}
-  \le\binom{2q}{t'}p^{t'}\le(16ep)^{t'}=\exp(-\Omega(qn)).
-\]
-Outside both events, $N^*(k+1)\ge q/2-q/8=3q/8$.
-There are only $n!$ input orders, and
-$\log(n!)=O(n\log n)=o(q\log n)$, so with positive probability every order has
-$N^*(k+1)\ge 3q/8$.  Since $q=\Theta(T/\log T)$, such a table satisfies
-\eqref{eq:residual-width}.
+For~\eqref{eq:residual-width} take $j=\lceil\log_2n\rceil+1$, which lies in
+$[2,n]$.  Since $2^j\ge2n$,
+$E_j\ge2^{2^j-1}-2\ge2^{2n-1}-2\ge2^n\ge q_j$, so
+$N_n\ge q_j\ge2^{n-\log_2n-2}=T/(4n)$.
 \end{proof}
 
-We call any table satisfying Lemma~\ref{lem:maximal-width}
-\emph{maximal-width}.
+We call such a table, together with its level $K$, \emph{maximal-width}.
+Since $q_j$ doubles with $n$, $N_n$ is nondecreasing in $n$; for instance
+$N_6=10$.
 
 Call an instruction position \emph{routing} if both of its possible
-successors occur on reachable executions, and
-let $\mroute$ be the number of routing real-instruction positions.  For
-a fixed level $k$, let $D^*_k$ be the number of distinct cursors $c$ such that
-some execution performs its $k$th read at $c$ with a first-essential residual.
+successors occur on reachable executions, and let $\mroute$ be the number of
+routing real-instruction positions.
 
 An execution that halts before its $k$th read has a constant residual.
 Otherwise the residual after $k$ reads is determined by the cursor of the
 $k$th read together with the register, and a read of an input bit leaves the
-register at $48$ or $49$; hence
-\begin{equation}\label{eq:residual-cursor}
-  N^*(k)\le 2D^*_k .
-\end{equation}
-Follow an execution back from its $k$th read.  If its path contains a routing
-position, let $(r,s)$ be the last one and the successor taken there.  From
-$r$ on every real position is non-routing, so its successor is forced, while
+register at $48$ or $49$; so each cursor carries at most two residuals at
+level~$k$.  Follow an execution back from its $k$th read.  If its path
+contains a routing position, let $(r,s)$ be the last one and the successor
+taken there; otherwise let the path start at the initial cursor.  From that
+point every real position is non-routing, so its successor is forced, while
 reads and register instructions do not branch: every execution that takes
-$s$ at $r$ continues along one fixed cursor sequence until the next routing
-position or halt.  Let $c_1,\ldots,c_J$ be the reads on this sequence, so
-that the $k$th read is some $c_j$.  The index $j$ depends on how many reads
-preceded $r$, which may vary between executions, but $c_j$ is among the last
-two reads:
+$s$ at $r$ (or starts at the initial cursor) continues along one fixed
+cursor sequence, a \emph{segment}, until the next routing position or halt.
+There are at most $2\mroute+1$ segments.  Let $c_1,\ldots,c_J$ be the reads
+on the segment, so that the $k$th read is some $c_j$.  The index $j$ depends
+on how many reads preceded the segment, which may vary between executions,
+but only the last two reads matter:
 
 \begin{lemma}[Essential reads]\label{lem:essential}
-If $k\le n-2$ and the residual after the $k$th read at $c_j$ is
-first-essential, then $j\ge J-1$.
+Let $k\le n-2$, and suppose the residual after the $k$th read, at $c_j$, is
+first-essential.  Then $j\ge J-1$.  If moreover $j=J-1$, the residual depends
+only on the segment, not on the bits read so far.
 \end{lemma}
 
 \begin{proof}
-Suppose $j\le J-2$.  After $c_j$ the execution follows the fixed sequence and
-reads $y_1=x_{k+1}$ at $c_{j+1}$ and $y_2$ at $c_{j+2}$, with no routing
-position in between.  The read at $c_{j+2}$ overwrites the register, so the
-state after it does not depend on $y_1$.  Between the two reads $y_1$ enters
-only the register, which reaches the cursor only through routing positions,
-of which there are none; so it affects only the output emitted there, say
-$w(y_1)$.  The run's output is $w(y_1)v(y_2,\ldots)$.  If $w(0)$ and $w(1)$
-are empty the residual ignores $y_1$.  Otherwise some $w(y_1)$ is already the
-program's single output character, so $v$ is empty for every continuation,
-each $w(y_1)$ is one character, and the residual is a function of $y_1$
-alone.  A fault between the two reads, such as $0^{-1}$, would occur on a
-reachable input, so a program computing the table has none.
+Suppose $j\le J-1$.  Between $c_j$ and $c_{j+1}$ the execution performs no
+read and passes no routing position.  A fault there, such as $0^{-1}$, would
+occur on a reachable input, so a program computing the table has none.  The
+read at $c_{j+1}$ receives $y_1=b_{k+1}$ and overwrites the register, so the
+state after it is $(c_{j+1},48+y_1)$, and the output from $c_{j+1}$ on is a
+function $v(y_1,y_2,\ldots)$ determined by the segment.  Between the two
+reads the bit $b=b_k$ enters only the register, which reaches the cursor
+only through routing positions, of which there are none; so $b$ affects only
+what is printed there, say $w(b)$.  If the run prints before $c_{j+1}$, that
+character is the program's single output and the residual is constant.  So a
+first-essential residual equals $v$, whatever $b$ and the earlier bits were.
+This proves the second claim.
+
+If $j\le J-2$, apply the same reasoning to the reads $c_{j+1}$ and
+$c_{j+2}$: $v=w'(y_1)\,v'(y_2,\ldots)$.  If $w'(y_1)$ is empty for both
+values, $v$ ignores $y_1$.  Otherwise some $w'(y_1)$ is already the single
+output character, so $v'$ is empty for every continuation, each $w'(y_1)$ is
+one character, and $v$ is a function of $y_1$ alone.  Either way $v$ is not
+first-essential, a contradiction.
 \end{proof}
 
-If the path contains no routing position, the same holds for the fixed
-sequence from the initial cursor.  Thus every cursor counted by $D^*_k$ is
-one of the last two reads before a routing position and successor, or
-before the first routing position, so
+By Lemma~\ref{lem:essential}, a first-essential residual at level $k$ sits at
+one of the last two reads of a segment: at most two at $c_J$, one for each
+register value, and at most one at $c_{J-1}$.  Hence
 \begin{equation}\label{eq:basic-routing}
-  D^*_k\le 2+4\mroute,
-  \qquad\text{and hence}\qquad
-  N^*(k)\le 4+8\mroute\qquad(k\le n-2).
+  N^*(k)\le3(2\mroute+1)=3+6\mroute\qquad(k\le n-2).
 \end{equation}
 
 It is not enough to count positions: repeated roots are legal.  We therefore
@@ -281,9 +278,9 @@ bound routing positions by the number of distinct root values.
 If a decoded program contains $L$ distinct real instruction-root values,
 then
 \[
-  \mroute\le 3L
+  \mroute\le\max(L,\,2L-2)
   \quad\text{and hence}\quad
-  N^*(k)\le 24L+4\qquad(k\le n-2).
+  N^*(k)\le\max(9,\,12L-9)\qquad(k\le n-2).
 \]
 \end{lemma}
 
@@ -291,41 +288,69 @@ then
 Root sorting places every occurrence of one value in a contiguous block.
 Draw each matched control-flow pair as an arc above the instruction line and
 contract each block to a vertex.  The arcs are noncrossing, so after parallel
-edges are identified the block-incidence graph is a simple outerplanar graph.
-There are no loops: an opener and closer have different instruction codes,
-whereas equal root values decode to the same code.  It is also bipartite,
-with opener blocks on one side and closer blocks on the other.  An outerplanar graph on $L\ge2$ vertices has at most $2L-3$ edges, by
-the standard bound applied to each component.
+edges are identified the block-incidence graph $G$ is a simple outerplanar
+graph, with $E$ edges.  There are no loops: an opener and closer have
+different instruction codes, whereas equal root values decode to the same
+code.  For the same reason $G$ is bipartite, with the $a$ opener blocks on
+one side and the $b$ closer blocks on the other, and $a+b\le L$.
 
-At most one opening instruction routes in each block.  Indeed, after the
-first opener in a block, execution can enter the next equal opener only by
-falling through its predecessor or by a loop edge landing immediately after
-an equal test.  Both entries certify the same truth value of the unchanged
-register, so the later opener cannot take both successors.
+\emph{Routing positions number at most $a+E$.}  At most one opening
+instruction routes in each block.  Indeed, after the first opener in a
+block, execution can enter the next equal opener only by falling through its
+predecessor or by a loop edge landing immediately after an equal test.  Both
+entries certify the same truth value of the unchanged register, so the later
+opener cannot take both successors.  Charge a routing closer to the
+incidence between its block and its partner's opener block.  Noncrossing
+implies that the closers with a fixed partner block form one interval inside
+their own block: nesting would place an intervening closer's partner
+strictly between two openers of the partner block, hence inside that
+contiguous block.  A closer tests its partner opener's condition, and a
+closer whose partner does not loop never jumps.  After the first closer of
+the interval, entry is either fallthrough with the common condition false or
+a skip landing after the preceding closer, again with that condition false;
+all intervening positions are equal real tests and do not change the
+register.  Thus each incidence is charged at most once.
 
-Charge a routing closer to the incidence between its block and its partner's
-opener block.  Noncrossing implies that the closers with a fixed partner block
-form one interval inside their own block: nesting would place an
-intervening closer's partner strictly between two openers of the partner
-block, hence inside that contiguous block.  A closer tests its partner
-opener's condition, and a closer whose partner does not loop never jumps.  After the first,
-entry is either fallthrough with the common condition false or a skip landing
-after the preceding closer, again with that condition false; all intervening
-positions are equal real tests and do not change the register.  Thus each
-incidence is charged at most once.  For $L\ge2$ there are at most $L$ routing openers
-and at most $2L-3$ routing closers; for $L=1$ the displayed weaker bound is
-immediate.  Substitute this in \eqref{eq:basic-routing}.
+\emph{If $E\ge1$, then $E\le a+2b-2$.}  First take a $2$-connected block of
+$G$ with $V_i\ge3$ vertices.  Its outer face is a Hamiltonian cycle, and this
+cycle alternates between the two parts, so $a_i=b_i$.  Every inner face has
+length at least~$4$.  Euler's formula then gives $2E_i\ge4(F_i-1)+V_i$ and
+hence $E_i\le(3V_i-4)/2=a_i+2b_i-2$.  A bridge has $a_i=b_i=1$ and $E_i=1$,
+so it satisfies the same bound.  In a connected component, cut vertices are
+counted once in each block that contains them.  The total overcount is
+$x+y$, where $x$ comes from openers and $y$ from closers, and it equals the
+number of blocks minus one.  Summing over the blocks gives
+\[
+  E\le(a+x)+2(b+y)-2(x+y+1)=a+2b-2-x\le a+2b-2 .
+\]
+Components without edges only increase the right side, and further
+components with edges each subtract another~$2$.
+
+If $E=0$, then $\mroute\le a\le L$.  Otherwise
+$\mroute\le a+E\le2(a+b)-2\le2L-2$.  Substitute this
+in~\eqref{eq:basic-routing}.
 \end{proof}
 
+The graph step is sharp: $a+E=2(a+b)-2$ is attained, for instance by a chain
+of $4$-cycles glued at closer blocks.  It is the passage from segments to
+cursors in~\eqref{eq:basic-routing} that is lossy
+(Remark~\ref{rem:bracket}).
+
 \begin{corollary}\label{cor:roots}
-Every Polynomial program for a maximal-width truth table has
-$L=\Omega(T/\log T)$ distinct positive real instruction roots.
+Let $n\ge6$.  Every Polynomial program for a maximal-width truth table has at
+least
+\[
+  L_n=\left\lceil\frac{N_n+9}{12}\right\rceil\ \ge\ \frac{T}{48n}
+\]
+distinct positive real instruction roots; in particular
+$L=\Omega(T/\log T)$.
 \end{corollary}
 
 \begin{proof}
-The level $k+1=n-\lceil\log_2n\rceil$ of Lemma~\ref{lem:maximal-width} is
-at most $n-2$ once $n\ge3$.  Combine \eqref{eq:residual-width} with
-Lemma~\ref{lem:block}.
+The level $K$ of Lemma~\ref{lem:maximal-width} satisfies $K\le n-2$, and
+$N^*(K)=N_n\ge N_6=10$.  Lemma~\ref{lem:block} gives
+$\max(9,12L-9)\ge N_n$, hence $12L-9\ge N_n$, and
+\eqref{eq:residual-width} gives $(N_n+9)/12\ge T/(48n)$.
 \end{proof}
 
 \begin{remark}[Why essential residuals]\label{rem:routing-gap}
@@ -340,21 +365,20 @@ its loop reads an input-dependent number of bits, so the routing-free suffix
 lands the fourth read at different offsets.  By
 Lemma~\ref{lem:essential} only the last two reads of that suffix can carry
 first-essential residuals, and here none does: the list prints the last bit
-it reads, so every residual ignores its next input or depends on it alone.  Programs that read exactly $n$
-bits have at most $1+2\mroute$ distinct $k$th-read cursors, counting
-all of them and not only the first-essential ones, but the lower bound
-does not need it.
+it reads, so every residual ignores its next input or depends on it alone.
+Programs that read exactly $n$ bits have at most $1+2\mroute$ distinct
+$k$th-read cursors, counting all of them and not only the first-essential
+ones, but the lower bound does not need it.
 \end{remark}
 
 \section{Coefficient mass from prescribed roots}\label{sec:mass}
 
-The exponential-sum certificate machinery yields the following
-degree-independent statement~\cite[Corollary~3.4]{coefficient-mass}.
-
 Write
 \[
-  \Lambda(F)=\sum_{j:f_j\ne0}\log^+|f_j|.
+  \Lambda(F)=\sum_{j:f_j\ne0}\log^+|f_j|,\qquad \log^+x=\max(0,\log x).
 \]
+The exponential-sum certificate machinery yields the following
+degree-independent statement~\cite[Corollary~3.4]{coefficient-mass}.
 
 \begin{theorem}[Coefficient-mass theorem]\label{thm:mass}
 Let
@@ -367,15 +391,14 @@ nonzero multiple of \(P\) with \(|f_D|\ge1\).  Then
 \begin{equation}\label{eq:mass-general}
   \Lambda(F)
   \ge (L+1)\log|f_D| + \sum_{u=0}^{L-1}
-       \sum_{i=u+1}^{L}\log(r_i-1),
+       \sum_{i=u+1}^{L}\log(r_i-1).
 \end{equation}
-where \(\log^+x=\max(0,\log x)\).
 \end{theorem}
 
-For the first \(L\) primes, or for increasing roots bounded below by them,
-the right side is at least \((1/2+o(1))L^2\log L\): each
-\(\log(r_i-1)\) occurs \(i\) times, and \(r_i\ge i+1\).  The lower bound is
-asymptotically sharp: \(\Lambda(P_L)\le(1/2+o(1))L^2\log L\) for
+Each \(\log(r_i-1)\) occurs \(i\) times on the right.  For the first \(L\)
+primes, or for increasing roots bounded below by them, \(r_i\ge i+1\) and
+the right side is at least \((1/2+o(1))L^2\log L\).  This is asymptotically
+sharp: \(\Lambda(P_L)\le(1/2+o(1))L^2\log L\) for
 \(P_L=\prod_{i=1}^L(x-p_i)\).  The theorem applies to every real multiple,
 independently of its degree and additional roots.
 
@@ -464,92 +487,19 @@ Theorem~\ref{thm:main}.
 \section{Explicit constants}\label{sec:constants}
 
 Theorem~\ref{thm:main} is a statement of order.  This section tracks the
-constants through both halves.  Write
-\[
-  C_P(n)=\max_{t\in\{0,1\}^{T}}\ \min\{|f|:f\text{ computes }t\},
-  \qquad T=2^n,
-\]
-and normalize by $T^2/n=T^2/\log_2T$.  Two small sharpenings of the routing
-argument are proved first; neither changes the order.
-
-\begin{lemma}[One residual below the last read]\label{lem:essential-sharp}
-In the setting of Lemma~\ref{lem:essential}, let $k\le n-2$ and suppose the
-$k$th read is at $c_{J-1}$.  If the residual after it is first-essential,
-then that residual does not depend on the bit just read.  Consequently
-\[
-  N^*(k)\le 3+6\mroute\qquad(k\le n-2).
-\]
-\end{lemma}
-
-\begin{proof}
-Let $b$ be the bit read at $c_{J-1}$.  From there the execution follows the
-fixed routing-free sequence to $c_J$ and performs no read in between.  At
-$c_J$ it reads $y_1$, and this read overwrites the register.  So the state
-after $c_J$ is $(c_J,48+y_1)$ whatever $b$ was, and the output after the
-$k$th read has the form $w(b)\,v(y_1,y_2,\ldots)$.  Here $w(b)$ is what is
-printed between the two reads, and $v$ does not depend on $b$.  A fault
-between the reads would lie on a reachable input.  If $w(b)$ is nonempty it
-is the program's single output character, and the residual is constant.  A
-first-essential residual therefore has $w(b)$ empty and equals $v$, for
-either value of $b$.
-
-Now count cursors by segment.  There are at most $2\mroute+1$ segments:
-one for each routing position and successor taken there, and one from the
-initial cursor.  By Lemma~\ref{lem:essential}, each segment contributes
-only the two cursors $c_J$ and $c_{J-1}$.  The last read $c_J$ carries at
-most two first-essential residuals, one for each register value $48$ or
-$49$, as in~\eqref{eq:residual-cursor}.  By the first paragraph, $c_{J-1}$
-carries at most one.  Hence $N^*(k)\le3(2\mroute+1)$.
-\end{proof}
-
-\begin{lemma}[Bipartite block incidence]\label{lem:bipartite}
-If a decoded program has $L\ge2$ distinct real root values, then
-$\mroute\le 2L-2$, and hence $N^*(k)\le 12L-9$ for $k\le n-2$.
-\end{lemma}
-
-\begin{proof}
-Let $a$ and $b$ be the numbers of opener blocks and closer blocks, so
-$L=a+b$.  Let $G$ be the block-incidence graph of Lemma~\ref{lem:block},
-with $E$ edges.  That proof bounds the routing positions by $a+E$.  $G$ is
-simple, outerplanar and bipartite, with parts of sizes $a$ and $b$.  We
-claim that $E\le a+2b-2$ whenever $E\ge1$.
-
-First take a $2$-connected block of $G$ with $V_i\ge3$ vertices.  Its outer
-face is a Hamiltonian cycle, and this cycle alternates between the two
-parts, so $a_i=b_i$.  Every inner face has length at least~$4$.  Euler's
-formula then gives $2E_i\ge4(F_i-1)+V_i$ and hence
-$E_i\le(3V_i-4)/2=a_i+2b_i-2$.  A bridge has $a_i=b_i=1$ and $E_i=1$, so it
-satisfies the same bound.
-
-In a connected component, cut vertices are counted once in each block that
-contains them.  The total overcount is $x+y$, where $x$ comes from openers
-and $y$ from closers, and it equals the number of blocks minus one.
-Summing over the blocks gives
-\[
-  E\le(a+x)+2(b+y)-2(x+y+1)=a+2b-2-x\le a+2b-2 .
-\]
-Components without edges only increase the right side, and further
-components each subtract another~$2$.  If $E=0$, then $\mroute\le a\le L$.
-Otherwise $\mroute\le a+E\le2(a+b)-2$.  Substitute this in
-Lemma~\ref{lem:essential-sharp}.
-\end{proof}
-
-The count $a+E=2V-2$ is attained, for instance by a chain of $4$-cycles.
-So the graph step is sharp.  It is the passage from segments to cursors
-that is lossy (Remark~\ref{rem:bracket}).
+constants through both halves, normalizing $C_P(n)$ by
+$T^2/n=T^2/\log_2T$.  The lower side is Corollary~\ref{cor:roots} with
+Theorem~\ref{thm:mass}; the upper side counts the exponents of the roots
+that the construction of Section~\ref{sec:upper} uses.
 
 \begin{proposition}[Explicit bracket]\label{prop:bracket}
-For $2\le j\le n$ put $q_j=2^{n-j}$ and
-$E_j=2^{2^j}-2^{2^{j-1}}-2$, and let
-\[
-  N_n=\max_{2\le j\le n}\min(q_j,E_j),\qquad
-  s_k=\min\bigl(2^k,2^{2^{n-k}}\bigr),\qquad
-  S_n=\sum_{k<n}s_k .
-\]
-Let $k_1$ be the largest $k$ with $s_k=2^k$, let $R_n=\sum_{k_1<k<n}s_k$,
-and let $\Phi_n=\tfrac12\bigl(311S_n^2-(10S_n-2R_n)^2\bigr)$.  Then:
+Let $N_n$ be as in Lemma~\ref{lem:maximal-width}, $L_n$ as in
+Corollary~\ref{cor:roots}, and $s_k$ as in Section~\ref{sec:upper}.  Put
+$S_n=\sum_{k<n}s_k$, let $k_1$ be the largest $k$ with $s_k=2^k$, let
+$R_n=\sum_{k_1<k<n}s_k$, and let
+$\Phi_n=\tfrac12\bigl(311S_n^2-(10S_n-2R_n)^2\bigr)$.  Then:
 \begin{enumerate}
-\item for every $n\ge6$ (where $N_n\ge10$), with $L_n=\lceil(N_n+9)/12\rceil$,
+\item for every $n\ge6$,
 \[
   C_P(n)\ \ge\ \frac1{\log10}\sum_{i=1}^{L_n}i\log i
         \ \ge\ \frac{L_n^2(2\log L_n-1)}{4\log10};
@@ -579,21 +529,9 @@ $1.05\cdot10^{-3}\le\limsup\le127.1$.
 \end{proposition}
 
 \begin{proof}
-\emph{Lower bound.}  Reads consume the input stream in order, so the
-residuals that matter are those of the natural variable order.  The table
-can therefore be chosen outright, and Lemma~\ref{lem:maximal-width}'s union
-bound over orders is not needed.  Fix the maximizing $j$ and $K=n-j\le n-2$.
-The level-$K$ residuals are the $q_j$ consecutive blocks of length $2^j$
-and may be prescribed independently.  Exactly $E_j$ strings of that length
-are first-essential: we exclude the $2^{2^{j-1}}$ strings with equal
-halves, and the two further strings whose halves are distinct constants.
-Prescribing $\min(q_j,E_j)$ distinct first-essential blocks gives a table
-with $N^*(K)=N_n$.
-
-A program with $L\le1$ distinct real values has $\mroute\le1$ and so
-$N^*(K)\le9<N_n$; hence $L\ge2$, and Lemma~\ref{lem:bipartite} gives
-$L\ge L_n$ distinct real instruction roots.
-They are distinct integers at least~$2$, so $r_i-1\ge i$ after sorting.
+\emph{Lower bound.}  By Corollary~\ref{cor:roots}, every program for a
+maximal-width table has $L\ge L_n$ distinct real instruction roots.  They
+are distinct integers at least~$2$, so $r_i-1\ge i$ after sorting.
 Theorem~\ref{thm:mass} and $|f|\ge M(f)\ge\Lambda(f)/\log10$ give the first
 inequality.  The second is
 $\sum_{i\le L}i\log i\ge\int_1^Lx\log x\,dx$.
@@ -680,10 +618,10 @@ order, but it does not fix the constant.  At $u\to0$ the factor splits as
 \]
 \begin{itemize}
 \item \emph{$12^2$: routing.}  The lower bound credits one distinct real
-root to every $12$ first-essential residuals at one level.  The
-construction spends two per state.  Both per-cursor caps in
-Lemma~\ref{lem:essential-sharp} are attained, and so is the graph bound in
-Lemma~\ref{lem:bipartite}.  The loss comes from combining them.
+root to every $12$ first-essential residuals at one level
+(Lemma~\ref{lem:block}).  The construction spends two per state.  Both
+per-cursor caps behind~\eqref{eq:basic-routing} are attained, and so is the
+graph bound in Lemma~\ref{lem:block}.  The loss comes from combining them.
 \item \emph{$4=(S_n/q_{j_1})^2$: levels.}  The lower bound uses a single
 level.  The construction pays for all of them.  Counting cannot add levels,
 because one cursor may serve residuals at several levels when the read
@@ -699,21 +637,12 @@ $76$.
 \end{itemize}
 In particular, the order-statistic bound for arbitrary free positions
 (\cite[Lemma~3.1]{coefficient-mass}) is already the sharp form of the mass
-step.  No sharpening of that step can move the bracket by more than the
-factor it already has, which is exact.  What remains is combinatorial: a
+step, and no sharpening of it narrows the bracket.  What remains is a
 routing lemma with a constant near the construction's, and a coefficient
 mass bound for the complex instruction roots.
 \end{remark}
 
-\section{Scope and reproducibility}
-
-The result concerns source length, not the running time of polynomial
-factorization or of source generation.  It allows arbitrary degrees,
-arbitrary operand signs, repeated roots, and arbitrary unrecognized cofactor
-roots.  It is an existence theorem for the uncapped residual-DAG
-construction.  Implementation resource limits do not affect the existence
-result.
-
+\paragraph{Reproducibility.}
 Executable checks cover the finite block-counting identities and repeated-root
 cases used here.  They support the proof, but no bounded computation is used
 as a premise.
