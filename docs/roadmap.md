@@ -214,6 +214,44 @@ step; an answer lands in the paper it extends, and the row leaves.
   finite); (ii) the shift hypothesis in its run-end wording (0
   violations in 550 instances).
 
+- **Coefficient mass at complex roots.**  Every mass bound so far prescribes
+  real roots; `cor:complex` allows a complex multiple `F` but not complex
+  roots.  Polynomial's register instructions are conjugate pairs
+  `a +- p**b i`, 80% of the construction's degree and the factor 211 of the
+  constant bracket.  Wanted: an order-statistic (or at least logarithmic
+  mass) lower bound for monic multiples of `prod (x**2 - 2a x + a**2 +
+  p**(2b))`, uniform in the degree, sharp up to `O(L**2)` at the pairs the
+  generator emits.  First step: the dual certificate for one pair is an
+  exponential sum on `rho**-d cos(d theta)`; find the analogue of the
+  displaced-zero comparison `thm:tail` for such sums.
+
+- **Polynomial's routing constant.**  `lem:block` and `eq:basic-routing`
+  credit one distinct real root per 12 first-essential residuals at one
+  level; the construction spends 2 per state, and pays for every level
+  where the bound uses one (factors `12**2` and `4` of the bracket).  Both
+  per-cursor caps and the bipartite graph bound are attained separately, so
+  a better constant needs a joint argument; and whether one cursor can
+  really serve residuals at several levels when read counts vary is open.
+  First step: search small programs for a cursor carrying first-essential
+  residuals at two levels.
+
+- **Every row at other roots.**  `thm:everyrow` proves `b_k >= L - k + 1`
+  for monic multiples of `(x-2)**L` only.  Generalize: the per-row bound for
+  `(x-r)**L`, `r > 1` (the certificate `r_Z(D - x d/dx)` at `x = r` weights
+  `r**-s`; `lem:holeint`'s substitution changes), and then for general root
+  multisets in the rows where `eq:order` is not sharp.
+
+- **Brainfuck behaviour count.**  Recorded in commit `9f81099` when the
+  Factor constant work was cut: a drawing (word over `><+-`) of `C`
+  characters reaches at most `(1 + sqrt 2)**(C + o(C))` tapes, attained by a
+  Delannoy-ranked code, while words free of the five cancelling adjacencies
+  number `(1 + lambda)**C`, `lambda = 6.388`.  Pin the exponential growth
+  rate of distinct behaviours (input-output functions on bounded inputs) of
+  `C`-character programs: enumeration to `C = 10` has I/O-only and
+  full-prefix ratios still climbing (4.09, 4.52), so fitted bases are lower
+  estimates, and forbidden-pattern lists stop near 7.37.  A global
+  equivalence argument is needed.
+
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further
   `2**46076` down, and the length and alphabet cuts are dead
@@ -257,5 +295,4 @@ step; an answer lands in the paper it extends, and the row leaves.
   first-essential residuals, against 2 per state in the construction), `4`
   levels (the lower bound uses one), and `211` for the complex register roots
   that carry 80% of the construction's degree and that the real-node
-  certificate does not charge.  Next step: a coefficient-mass bound for the
-  complex instruction roots `a +- p**b i` (start from `cor:complex`).
+  certificate does not charge.  See the next two rows.
