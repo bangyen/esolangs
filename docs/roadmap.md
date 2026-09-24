@@ -260,10 +260,15 @@ step; an answer lands in the paper it extends, and the row leaves.
   (`prop:oneholegen`) giving `thm:rowsgen`, which beats `eq:order`; the top
   row at any roots is bracketed by `prop:toprowgen`; and rows equal the top
   row exactly in explicit ranges (`thm:rowstop`, `cor:rowstopranges`).
-  Open: the conjecture `V_r(L,k) = min_i 1/nu_i(n)` (at `r >= 2`: rows
-  equal the top row), which for `r >= 5/2` reduces to the insertion
-  inequality of `prop:insertion`, and the hole shift
-  `T_h(R) <= T_(h-1)(R')` at several roots.
+  The hole shift at several roots is CLOSED for roots `>= 5/2`
+  (`lem:holeshiftgen`, `thm:rowsgenfull`); insertion holds at holes with
+  `prod_(c >= h) (1 + 1/c) <= r - 1` (`lem:insertpi`), so rows equal the
+  top row whenever a top-row optimum has hole product `<= r - 1`
+  (`thm:rowspi`, exact top rows by `prop:toprowcert`), proved for every
+  `n <= 10` at `r >= 3` and at points up to `n = 24` (`cor:rowspiranges`).
+  Open: the conjecture `V_r(L,k) = min_i 1/nu_i(n)` in general (the
+  insertion inequality beyond hole product `r - 1`, `2 <= r < 5/2`, and
+  `1 < r < 2` with `n >> k`).
 
 - **Brainfuck behaviour count.**  Recorded in commit `9f81099` when the
   Factor constant work was cut: a drawing (word over `><+-`) of `C`

@@ -2692,6 +2692,347 @@ $r\in\{2,\frac{21}{10},\frac94\}$, $n\le6$ and all $S\subseteq[1,12]$ with
 $|S|\le4$, a witness $Z\supseteq S$ with $|Z|=|S|+n-1$ had
 $\Phi_r(Z)\le0.80\,\Phi_r(Z_0)$, where $Z_0$ is the best top-row set found.
 
+\subsection{Moving holes at several roots, and inserting into sets with few holes}
+
+This subsection proves two of the steps left open above.  At several roots
+all at least $\frac52$, the hole moves from $h$ to $h-1$
+(Lemma~\ref{lem:holeshiftgen}), so Theorem~\ref{thm:rowsgen} becomes
+$b_k\ge|f_D|\max_c1/T_c(R_n)$ (Theorem~\ref{thm:rowsgenfull}).  At a single
+root, the insertion inequality of Proposition~\ref{prop:insertion} holds at
+every hole $h$ with $\prod_{c\ge h}(1+1/c)\le r-1$, the product over the holes
+(Lemma~\ref{lem:insertpi}).  Hence every row is at least $1/\Phi_r(Z_0)$ for
+each $Z_0$ whose hole product is at most $r-1$ (Theorem~\ref{thm:rowspi}).
+With an exact certificate for the top row (Proposition~\ref{prop:toprowcert}),
+this proves that rows equal the top row for $r\ge3$ and $4\le n\le10$
+(Corollary~\ref{cor:rowspiranges}).  Together with
+Corollaries~\ref{cor:tworowsr} and~\ref{cor:rowstopranges}, this covers every
+$n\le10$ at $r\ge3$.
+
+\begin{lemma}[Moving the hole at several roots]\label{lem:holeshiftgen}
+Let $R$ be a multiset of $m\ge2$ reals, let $\rho=\min R\ge2$, let $R'$ be $R$
+with one copy of $\rho$ removed, and let $2\le h\le m$ and $t_0=m-h$.  If
+$S_\rho(d+1,t_0)\le S_\rho(d,t_0)$ for $1\le d\le h-1$, then
+\[
+  T_h(R)\le T_{h-1}(R') .
+\]
+By Lemma~\ref{lem:shift} the hypothesis holds for every $h$ when
+$\rho\ge\frac52$, and for $h=2$ when $\rho\ge2$.
+\end{lemma}
+
+\begin{proof}
+Put $s=\rho-1\ge1$, $m'=m-1$, $j=h-1$, so $1\le j\le m'$, and write
+$E_i=e_i(R')$ (zero for $i>m'$), $Q'=Q(R')$ and $p_i=|P_i(R')|$ for
+$1\le i\le m'+1$.  By Lemma~\ref{lem:partialsums}, $P_i(R')$ has the sign
+$(-1)^{i-1}$ for these $i$.
+
+\emph{Reduction.}  We have $e_h(R)=E_h+\rho E_j$ and $Q(R)=sQ'$.  The
+polynomial $P_h(R)$ is the coefficient of $u^{h-1}$ in
+$(1-\rho u)\prod_{\rho'\in R'}(1-\rho'u)/(1-u)$, so
+$P_h(R)=P_h(R')-\rho P_j(R')$ and $|P_h(R)|=p_h+\rho p_j$.  Also
+$P_h(R')-P_j(R')=(-1)^jE_j$ gives $p_h+p_j=E_j$.  By
+Proposition~\ref{prop:oneholegen},
+\[
+  T_h(R)=\frac{sQ'+p_h+\rho p_j}{sQ'(E_h+\rho E_j)},\qquad
+  T_j(R')=\frac{Q'+p_j}{Q'E_j}.
+\]
+Clear the positive denominators and substitute $p_h=E_j-p_j$ and $\rho=s+1$.
+The claim $T_h(R)\le T_j(R')$ becomes $\Delta\ge0$, where
+\[
+  \Delta=s\,(Q'+p_j)\,(E_{j+1}+sE_j)-E_j^2 .
+\]
+More precisely, $s(Q')^2E_je_h(R)\bigl(T_j(R')-T_h(R)\bigr)=Q'\Delta$.
+
+\emph{Expansion about $\rho$.}  Write the elements of $R'$ as $\rho+y_i$ with
+$y_i\ge0$, and put $g_l=e_l(y)\ge0$ and $M_l=m'-l$ for $0\le l\le m'$.  Write
+$\rho^M$ for the multiset of $M$ copies of $\rho$.  The identities
+$\prod_i(1+(\rho+y_i)u)=\sum_lg_lu^l(1+\rho u)^{M_l}$ and
+$\prod_i(s+y_i)=\sum_lg_ls^{M_l}$ give
+\[
+  E_i=\sum_lg_l\,e_{i-l}(\rho^{M_l}),\qquad Q'=\sum_lg_l\,s^{M_l}.
+\]
+Next, $\prod_i(1-(\rho+y_i)u)/(1-u)=\sum_l(-1)^lg_lu^l(1-\rho u)^{M_l}/(1-u)$
+gives
+\[
+  P_i(R')=\sum_{l<i}(-1)^lg_l\,P_{i-l}(\rho^{M_l}).
+\]
+Here $1\le i-l\le M_l+1$.  By Lemma~\ref{lem:partialsums} (for $M_l=0$,
+$P_1(\varnothing)=1$), every term has the sign $(-1)^{i-1}$, so
+$p_i=\sum_{l<i}g_l|P_{i-l}(\rho^{M_l})|$.  Hence
+\[
+  E_j=\sum_lg_l\epsilon_l,\qquad E_{j+1}+sE_j=\sum_lg_l\kappa_l,\qquad
+  Q'+p_j=\sum_lg_l\alpha_l,
+\]
+with nonnegative coefficients
+\[
+  \epsilon_l=e_{j-l}(\rho^{M_l}),\qquad
+  \kappa_l=e_{j+1-l}(\rho^{M_l})+s\,e_{j-l}(\rho^{M_l}),\qquad
+  \alpha_l=s^{M_l}+|P_{j-l}(\rho^{M_l})| .
+\]
+In $\alpha_l$ the second term is absent when $l\ge j$.
+
+\emph{The diagonal.}  We claim $\epsilon_l^2\le s\alpha_l\kappa_l$ for every
+$l$.
+\begin{itemize}
+\item If $l>j$, then $\epsilon_l=0$.
+\item If $l=j$, then $\epsilon_l=1$, $\alpha_l=s^{M_l}$ and $\kappa_l\ge s$,
+so $s\alpha_l\kappa_l\ge s^{M_l+2}\ge1$.
+\item If $l<j$, put $d=j-l\ge1$ and $M=M_l$, so $d\le M$.  Then
+$s\alpha_l\kappa_l-\epsilon_l^2$ is the quantity $\Delta$ of the reduction for
+the multiset $\rho^{M+1}$ (in place of $R$) and the index $d+1$ (in place of
+$h$).  By the reduction it has the sign of
+$T_d(\rho^M)-T_{d+1}(\rho^{M+1})=S_\rho(d,M-d)-S_\rho(d+1,M-d)$
+(Proposition~\ref{prop:oneholegen}), and $M-d=m'-j=t_0$.  This is nonnegative
+by hypothesis.
+\end{itemize}
+
+\emph{Conclusion.}  By the diagonal claim and the Cauchy--Schwarz inequality,
+\[
+  E_j=\sum_lg_l\epsilon_l\le\sum_lg_l\sqrt{s\alpha_l\kappa_l}
+  \le\Bigl(s\sum_lg_l\alpha_l\Bigr)^{1/2}\Bigl(\sum_lg_l\kappa_l\Bigr)^{1/2},
+\]
+which is $E_j^2\le s(Q'+p_j)(E_{j+1}+sE_j)$, that is, $\Delta\ge0$.
+
+For the last sentence of the lemma: Lemma~\ref{lem:shift} gives
+$S_\rho(d+1,t_0)\le S_\rho(d,t_0)$ for all $d\ge1$ when $\rho\ge\frac52$, and
+for $d=1$ when $\rho\ge2$.
+\end{proof}
+
+\begin{theorem}[Rows at several roots at least $\frac52$]\label{thm:rowsgenfull}
+Let $\frac52\le r_1\le\cdots\le r_L$, let $F$ be a nonzero real multiple of
+$\prod_{i=1}^L(x-r_i)$, $1\le k\le L$ and $n=L-k+1$, and let $R_n$ be the $n$
+largest roots, as in Theorem~\ref{thm:rowsgen}.  Then
+\[
+  b_k(F)\ \ge\ |f_D|\max_{1\le c\le n}\frac1{T_c(R_n)} .
+\]
+If moreover $X(z,z')\le\max_c1/T_c(R_n)$ for all $1\le z<z'\le n$, with $X$
+as in Proposition~\ref{prop:toprowgen} for $R=R_n$, then
+$b_k(F)\ge|f_D|\,\beta(R_n)$.
+\end{theorem}
+
+\begin{proof}
+Fix $c$ and $h$ with $c<h\le c+k-1$.  The smallest element of
+$R_{h+n-c}$ is one of the $r_i$, so it is at least $\frac52$, and removing it
+leaves $R_{h-1+n-c}$.  Lemma~\ref{lem:holeshiftgen} gives
+$T_h(R_{h+n-c})\le T_{h-1}(R_{h-1+n-c})$.  Repeating this down to $h=c$ gives
+$T_h(R_{h+n-c})\le T_c(R_n)$.  So the inner minimum in
+Theorem~\ref{thm:rowsgen} is attained at $h=c$, which proves the first claim.
+Under the extra hypothesis, Proposition~\ref{prop:toprowgen} gives
+$\beta(R_n)=\max_c1/T_c(R_n)$.
+\end{proof}
+
+At equal roots the bound is the $B_r(n)$ of Theorem~\ref{thm:everyrowr}.  The
+second part says that every row is at least the top row of
+$\prod_{i\ge k}(x-r_i)$ whenever that top row is attained by one hole.
+
+We now return to a single root $r$.  For a finite $Z\subset\N_{>0}$, its
+\emph{holes} are the elements of $[1,\max Z]\setminus Z$.  Put
+\[
+  \Pi(Z)=\prod_{c\text{ a hole of }Z}\Bigl(1+\frac1c\Bigr),\qquad
+  \Pi_h(Z)=\prod_{c\text{ a hole of }Z,\ c\ge h}\Bigl(1+\frac1c\Bigr).
+\]
+The empty product is $1$.
+
+\begin{lemma}[Inserting at a hole]\label{lem:insertpi}
+Let $r>1$, let $Z\subset\N_{>0}$ be finite, and let $h$ be a hole of $Z$.  Then
+\[
+  \Phi_r\bigl(\mathrm{ins}(Z,h)\bigr)\le\max\{1,\,a\,\Pi_h(Z)\}\,\Phi_r(Z).
+\]
+In particular $\Phi_r(\mathrm{ins}(Z,h))\le\Phi_r(Z)$ whenever
+$\Pi_h(Z)\le r-1$.
+\end{lemma}
+
+\begin{proof}
+Let $x=\max Z$, let $C$ be the set of holes, $m=\max C<x$ and $k=x-m\ge1$, so
+$Z=[1,m+k]\setminus C$.  Write $C_<=\{c\in C:c<h\}$ and
+$C_\ge=\{c\in C:c\ge h\}$.  Then $\mathrm{ins}(Z,h)=[1,m+1+k]\setminus C'$ with
+\[
+  C'=C_<\cup\{c+1:c\in C_\ge\}.
+\]
+Indeed the elements below $h$ are kept, $h$ is added, and every $z>h$ in
+$Z$ moves to $z+1$.  So $\max C'=m+1$, and the number of filled positions
+above the largest hole is again $k$.
+
+Put $G=at$, $F=(1+at)/r$ and $u=(1-t)/r$ for $t\in[0,1]$.  Then $F-G=u\ge0$
+and $G,F\le a$.  Since $r^{-c}(at)^{m-c}(1+at)^{c-1}=r^{-1}G^{m-c}F^{c-1}$ and
+$r^{-c}t^{m-c}(1-t)^{c-1}=r^{-1}t^{m-c}u^{c-1}$, Lemma~\ref{lem:holeintr}
+reads
+\[
+  \Phi_r(Z)=\frac1r\int_0^1t^k\Bigl(a^{k+1}\Omega_C(G,F)+\Theta_C(t)\Bigr)dt,
+\]
+where
+\[
+  \Omega_C(X,Y)=\sum_{c\in C}w_cX^{m-c}Y^{c-1},\qquad
+  \Theta_C(t)=\sum_{c\in C}|w_c|\,t^{m-c}u^{c-1},
+\]
+and $w_c=\prod_{c'\in C}c'\big/\prod_{c'\in C\setminus\{c\}}(c-c')$.
+The same formula holds for $\mathrm{ins}(Z,h)$, with $C'$, $m+1$ and the same
+$k$.  We compare the two integrands pointwise.  Note that
+$\prod_{c\in C'}c\big/\prod_{c\in C}c=\Pi_h(Z)$.
+
+\emph{The tail term.}  For a finite set $A$ of reals let
+$[A]f=\sum_{c\in A}f(c)/\prod_{c'\in A\setminus\{c\}}(c-c')$ be the divided
+difference.  For $0<X\le Y$ put $\lambda=Y/X\ge1$.  Then
+$\Omega_C(X,Y)=(\prod_{c\in C}c)\,X^mY^{-1}[C](\lambda^z)$.  By the
+Hermite--Genocchi formula,
+$[c_1,\ldots,c_\nu]f=\int_{\Delta}f^{(\nu-1)}(\theta_1c_1+\cdots+\theta_\nu c_\nu)\,d\theta$,
+over the standard simplex $\Delta$.  For $f(z)=\lambda^z$ the integrand is
+$(\log\lambda)^{\nu-1}\lambda^{\theta\cdot c}\ge0$.  List $C$ and $C'$
+increasingly, so that $c'_i=c_i$ or $c_i+1$.  Then
+$\theta\cdot c'\le\theta\cdot c+1$, and hence
+$0\le[C'](\lambda^z)\le\lambda\,[C](\lambda^z)$.  Therefore
+\[
+  0\le\Omega_{C'}(X,Y)\le\Pi_h(Z)\,X\lambda\,\Omega_C(X,Y)=\Pi_h(Z)\,Y\,\Omega_C(X,Y).
+\]
+At $X=G$ and $Y=F$ (for $t>0$, and at $t=0$ by continuity) this gives
+$\Omega_{C'}(G,F)\le a\,\Pi_h(Z)\,\Omega_C(G,F)$.
+
+\emph{The hole term.}  Let $c\in C_<$.  Then $c$ is also a hole of $C'$, and
+\[
+  \frac{|w'_c|}{|w_c|}=\prod_{c'\in C_\ge}\frac{(c'+1)(c'-c)}{c'(c'+1-c)}\le1 .
+\]
+Its monomial $t^{m+1-c}u^{c-1}$ is $t$ times the old one.  Now let
+$c\in C_\ge$.  Then
+\[
+  \frac{|w'_{c+1}|}{|w_c|}=\Pi_h(Z)\prod_{c'\in C_<}\frac{c-c'}{c+1-c'}\le\Pi_h(Z),
+\]
+and its monomial $t^{m-c}u^{c}$ is $u$ times the old one.  Since $t\le1$ and
+$u\le1/r<a$, we get $\Theta_{C'}\le\max\{1,a\Pi_h(Z)\}\,\Theta_C$.
+
+Both parts of the integrand are therefore multiplied by at most
+$\max\{1,a\Pi_h(Z)\}$.
+\end{proof}
+
+For one hole, $\Pi_h=(h+1)/h$, and the lemma is Lemma~\ref{lem:shift}
+together with the deletion of the top zero.  The lemma is useful when the
+holes at and above $h$ are few or far out.  An insertion moves holes only
+upward, and that is what makes it usable along the whole chain of
+Proposition~\ref{prop:insertion}.
+
+\begin{theorem}[Rows from zero sets with a small hole product]\label{thm:rowspi}
+Let $r\ge2$ and $n\ge1$, and let $Z_0\subset\N_{>0}$ be finite with
+$|Z_0|\le n-1$ and $\Pi(Z_0)\le r-1$.  Then every monic multiple $F$ of
+$(x-r)^L$, $L\ge n$, satisfies
+\[
+  b_{L-n+1}(F)\ \ge\ \frac1{\Phi_r(Z_0)} .
+\]
+Consequently, if $\beta_r(n)=1/\Phi_r(Z_0)$ for such a $Z_0$, then
+$V_r(L,L-n+1)=\beta_r(n)$ for every $L\ge n$.
+\end{theorem}
+
+\begin{proof}
+Let $k=L-n+1$, and let $S=\{s_1<\cdots<s_{k-1}\}$ be the exempted set of
+Proposition~\ref{prop:rowvalue}(a).  Build $Z_1,\ldots,Z_{k-1}$ as follows:
+\begin{itemize}
+\item if $s_j\in Z_{j-1}$, put $Z_j=Z_{j-1}$;
+\item if $s_j\notin Z_{j-1}$ and $s_j<\max Z_{j-1}$, then $s_j$ is a hole;
+put $Z_j=\mathrm{ins}(Z_{j-1},s_j)$;
+\item otherwise put $Z_j=Z_{j-1}\cup\{s_j\}$.
+\end{itemize}
+Each step adds at most one element and moves only elements larger than
+$s_j$.  So $Z_j\supseteq\{s_1,\ldots,s_j\}$ and $|Z_j|\le|Z_0|+j$.
+
+Once a step of the third kind occurs, $s_j=\max Z_j$, and every later step is
+of the third kind.  Each such step does not increase $\Phi_r$, by
+Lemma~\ref{lem:confdelr} with $r\ge2$.
+
+Before that, steps of the first two kinds keep the number of holes.  An
+insertion at a hole $h$ keeps the holes below $h$ and moves those at or above
+$h$ up by one.  So if $c_1<c_2<\cdots$ are the holes of $Z_0$ and
+$c^{(j)}_1<c^{(j)}_2<\cdots$ those of $Z_j$, then $c^{(j)}_i\ge c_i$.
+Hence at an insertion step
+\[
+  \Pi_{s_j}(Z_{j-1})\le\prod_i\Bigl(1+\frac1{c^{(j-1)}_i}\Bigr)
+  \le\prod_i\Bigl(1+\frac1{c_i}\Bigr)=\Pi(Z_0)\le r-1,
+\]
+and Lemma~\ref{lem:insertpi} gives $\Phi_r(Z_j)\le\Phi_r(Z_{j-1})$.
+
+Thus $Z_{k-1}\supseteq S$, $|Z_{k-1}|\le n-1+k-1=L-1$ and
+$\Phi_r(Z_{k-1})\le\Phi_r(Z_0)$, and Proposition~\ref{prop:rowvalue}(a) gives
+the bound.  The last claim follows with Proposition~\ref{prop:rowvalue}(c).
+\end{proof}
+
+To apply the theorem one needs the top row exactly.  The upper-bound
+construction of Proposition~\ref{prop:toprowgen} works with any polynomial
+multiplier.
+
+\begin{proposition}[An exact certificate for the top row]\label{prop:toprowcert}
+Let $r>1$, $n\ge2$, and let $Z_0\subset\N_{>0}$ have $|Z_0|=n-1$ and
+$M=\max Z_0$.  Suppose that some real $p$ with $p(0)=1$ and $\deg p\le M+1-n$
+has the following property.  Write $N(y)=p(y)(1-ry)^n=\sum_jN_jy^j$ and
+$g_z=\sum_{j\le z}N_j$.  Suppose $|g_z|\le1/\Phi_r(Z_0)$ for
+$1\le z\le M+1$.  Then $\beta_r(n)=1/\Phi_r(Z_0)$.
+\end{proposition}
+
+\begin{proof}
+Proposition~\ref{prop:rowvalue}(a) with $k=1$ and $Z=Z_0$ gives
+$\beta_r(n)\ge1/\Phi_r(Z_0)$.  For the other direction, the upper-bound part of
+the proof of Proposition~\ref{prop:toprowgen} uses only $N(0)=1$ and the
+divisibility of $N$ by $(1-ry)^n$.  It gives
+$\beta_r(n)\le\sup_{z\ge1}|g_z|$.  Since $\deg N\le M+1$, $g_z=N(1)=g_{M+1}$ for
+$z\ge M+1$, so the supremum is $\max_{1\le z\le M+1}|g_z|$.
+\end{proof}
+
+The polynomial $p$ is found from complementary slackness.  The $M+2-n$
+equations $g_s=-\beta\,\sgn r_{Z_0}(s)$ for $s\in[1,M+1]\setminus Z_0$ are
+linear in the coefficients of $p$ and in $\beta$.  Their solution has
+$\beta=1/\Phi_r(Z_0)$, because
+$\sum_{s\ge1}g_sr_{Z_0}(s)r^{-s}=-1$.  It then remains to check $|g_s|\le\beta$
+on $Z_0$.  For example, at $r=2$ this proves the values
+$\beta_2(3)=\frac{40}{11}$, $\beta_2(4)=\frac{672}{115}$ and
+$\beta_2(5)=\frac{10368}{851}$ quoted after Corollary~\ref{cor:tworowsr}, with
+$Z_0=\{2,5\}$, $\{1,3,7\}$ and $\{1,3,6,9\}$.
+
+\begin{corollary}[Rows equal the top row, explicit ranges]\label{cor:rowspiranges}
+For every $L\ge n$, $V_r(L,L-n+1)=\beta_r(n)$ in each of the following cases:
+\begin{enumerate}
+\item[(a)] $4\le n\le7$ and $r\ge\frac{23}8$;
+\item[(b)] $8\le n\le10$ and $r\ge3$;
+\item[(c)] $r=3$ and $n\le24$; $r=\frac72$ and $n\le23$; $r=4$ and $n\le20$; $r=5$ and $n\le14$.
+\end{enumerate}
+For instance, $\beta_3(4)=\frac{3240}{97}$, $\beta_3(5)=\frac{31104}{307}$,
+$\beta_3(6)=\frac{1399680}{5387}$ and $\beta_3(7)=\frac{55112400}{67549}$,
+attained at $Z_0=\{1,3,5\}$, $\{1,2,4,6\}$, $\{1,2,3,5,8\}$ and
+$\{1,2,3,5,7,10\}$.
+\end{corollary}
+
+\begin{proof}
+In each case we exhibit finitely many sets $Z_0$ with $|Z_0|=n-1$.  For
+every $r$ in the range, one of them satisfies $\Pi(Z_0)\le r-1$ and the
+hypothesis of Proposition~\ref{prop:toprowcert}.  Theorem~\ref{thm:rowspi}
+then applies.
+
+For (c) this is a finite exact computation at each point.  For (a) and (b)
+the $p$ of Proposition~\ref{prop:toprowcert} is the solution of the linear
+system above, so its coefficients are rational functions of $r$.  Every
+condition becomes a polynomial inequality in $r$, together with the
+nonvanishing of the determinant of the system.  The real roots of all these
+polynomials above the threshold cut the half-line into intervals, and on each
+interval one set is checked at a rational sample point.  At each root, one
+uses a set that is valid on an adjacent interval and whose determinant does
+not vanish there (checked by exact division by the minimal polynomial), and
+continuity carries the inequalities over.  This is the same kind of exact
+real-root computation as in Corollary~\ref{cor:rowstopranges}.
+\end{proof}
+
+Corollary~\ref{cor:rowspiranges} contains the cases $4\le n\le8$ of
+Corollary~\ref{cor:rowstopranges} for $r\ge3$ (and for $r\ge\frac{23}8$ when
+$n\le7$).  Below those thresholds of Corollary~\ref{cor:rowstopranges}, the
+top-row optimum has two or more holes, and the corollary is new there.  The
+limit $r\ge3$ is where the method stops, not where the rows stop being equal
+to the top row.  Along the exactly certified optima, $\Pi(Z_0)$ behaves as
+follows:
+\begin{itemize}
+\item at $r=3$ it rises from $1.6$ to about $1.99$ as $n$ goes from $5$ to
+$24$;
+\item at $r=\frac72$ it stays near $1.7$ for $n\le23$;
+\item at $r=4$ it stays between $1.25$ and $1.6$ for $n\le20$;
+\item at $r=\frac52$ it is between $1.86$ and $2.35$ for $n\le14$, far above
+$\frac32$.
+\end{itemize}
+If, for some $r_0\ge3$, every $n$ has a top-row optimum with
+$\Pi(Z_0)\le r-1$ for all $r\ge r_0$, then Theorem~\ref{thm:rowspi} proves
+that rows equal the top row for every $r\ge r_0$.
+
 \section{Complex roots}\label{sec:complexroots}
 
 Everything so far prescribes real roots.  This section shows that complex
