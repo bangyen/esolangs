@@ -1049,7 +1049,8 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
 # after an O(T) construction or a language-wide lower bound; it enters when
 # the construction is read super-linear, whatever the twelve doublings
 # measure.  Streetcode left: its per-level hall was the
-# ``Theta(T log T)`` source and the alternating-axis H-tree replaced it.
+# ``Theta(T log T)`` source, and the tree it hung off has since gone too --
+# the table is one street cell per entry and the inputs address it.
 _LINEAR_SCALING = {
     "a_painter_ant",
     "addsubjump",
@@ -1192,4 +1193,6 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         if name not in _DOCUMENTED_SIZES and LANGUAGES[name].boolean is not None
     )
     assert biggest[0] < 600_000, biggest
-    assert biggest[1] == "Streetcode"
+    # Streetcode led by an order of magnitude until its tree became a flat
+    # lookup; the two left are within 2% (Malbolge's store is fixed at 59049).
+    assert biggest[1] in {"B-tapemark", "Malbolge"}, biggest

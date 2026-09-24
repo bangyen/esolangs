@@ -134,7 +134,9 @@ is itself total.
 
 **Size dispatch.**  Some lookup rows ship two routes: a folded decision tree
 for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
-and the lookup above it.  Each route is total on its own domain and the lookup
+and the lookup above it.  Streetcode builds both at five inputs and keeps
+the shorter, so its crossover is where the two meet rather than a constant.
+Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
@@ -245,7 +247,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 6-5 | finite lookup | past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks | linear, time n log: greedy order scoring, capped at n <= 10 |
 | SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; the five lightest weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf | linear: per-node landing search sized in O(1), not an O(weight) dry build |
 | Sophie | tree | — | linear, time n log: shared-state build, n 2**n state characters |
-| Streetcode | tree | — | linear: alternating-axis H-tree, area Theta(T) |
+| Streetcode | linear lookup | the street writes one cell per entry, then each input's mouth forks on its bit and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry | linear: nine rows of street, ~1.8T columns |
 | Suffolk | linear lookup | a countdown built from the row index reads zero exactly on the rows below it, so counting the table's rising and falling steps against it telescopes to the indexed entry | linear, time n log: essential_inputs |
 | Super SNUSP | tree | each folding pass removes at least one pending unit | linear: one `*` per entry; ANF only below five inputs |
 | Taglate | tree | — | linear, time n log: essential_inputs |
