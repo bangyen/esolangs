@@ -418,33 +418,6 @@ step; an answer lands in the paper it extends, and the row leaves.
   (`prop:partial`, `thm:converse`) and is open exactly where this row is:
   repeated roots, pending confluent `thm:converse`.
 
-- **Factor's constant.**  On GRH, `0.1505 <= C_F(T)/(T log T) <= 0.3416`, a
-  ratio of 2.27 (`rem:gap` in [factor](proofs/factor.tex)); without GRH the
-  ceiling is `0.3660`.  Number theory no longer separates the two: the gap is
-  whether Brainfuck programs of `C` characters have nearer `(1+sqrt 2)**C`
-  behaviours (the tapes a drawing reaches) or `(1+lambda)**C`,
-  `lambda = 6.388` (the words free of the five cancelling adjacencies).  The
-  floor rises as far as that count falls; the ceiling falls only if control
-  flow carries more than `log2(1+sqrt 2) = 1.27` bits a character.  Within
-  the drawing model the digit floor is `1/(2 log 10) = 0.217`, not yet met
-  by `lem:draw`'s digit count.  Small-`C` enumeration does not settle it:
-  over reduced words to `C = 10` (wrapping cells, left-clipped pointer,
-  0/1 input bytes), drawings grow at 2.420 by `C = 16`, as `prop:drawing`
-  says, but loops overtake them near `C = 11` and the I/O-only and
-  full-prefix behaviour ratios are still climbing (4.09 and 4.52 at
-  `C = 10`), so any fitted base is a lower estimate.  DEAD: quotienting
-  loop-free I/O-free segments by their tape effect -- the transfer matrix
-  over `.,[]` gives base 7.371 against 7.388, a floor of 0.1507; the
-  count lives in short segments between separators.  Forbidding local
-  patterns whose deletion preserves behaviour (the paper's count admits
-  only deletions, so `[+]` -> `[-]` is not sound) barely helps either:
-  a dead `+`/`-` before a clear loop and never-exiting pointer-neutral
-  loops to body length 9 give 7.3787, floor 0.15062; adding `+,`/`-,`
-  gives 7.1102, floor 0.1535, but that rule is sound only if `,` at end
-  of input fails (the repo's interpreter raises `EOFError`), a convention
-  `factor.tex` must state before relying on it.  A real gain needs a
-  global equivalence argument, not a forbidden-pattern list.
-
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further
   `2**46076` down, and the length and alphabet cuts are dead

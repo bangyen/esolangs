@@ -204,12 +204,6 @@ forces those values holds for every read count, so the language bound is
 [polynomial](proofs/polynomial.md). Factor has a language floor
 `Omega(T log T)`, a weighted exponent-vector count on D-digit integers
 ([factor](proofs/factor.md)); its worst-case generated encoding is `Theta(T log T)`.
-The constant of `C_F(T)/(T ln T)` lies in `[0.1505, 0.3416]` on GRH
-(`0.3660` unconditionally): the floor counts words free of the five
-cancelling adjacencies, the ceiling is a tape lookup whose drawing is as
-short as any drawing can be, and the walk pays one logarithm a run. What
-separates them is a Brainfuck question, how many behaviors `C` characters
-have, not a Factor one.
 
 ### Scaling
 
