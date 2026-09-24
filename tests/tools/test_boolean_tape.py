@@ -294,6 +294,23 @@ class TestFactor:
             run_bf(code, io)
             assert io.getvalue() == table[combo], f"inputs {bits}"
 
+    def test_builds_above_the_greedy_order_cap(self) -> None:
+        """Past ``_GREEDY_ORDER_MAX_ARITY`` only the identity order is built.
+
+        The generator scores two input orders by digits and keeps the better;
+        above the cap the greedy order is not searched at all, which is a path
+        of its own.  AND11 takes it cheaply -- the tree folds to one leaf, so
+        this is 1330 digits and a 2ms build rather than parity's 425ms.
+        """
+        from esolangs.tools.helpers import _GREEDY_ORDER_MAX_ARITY
+
+        n = _GREEDY_ORDER_MAX_ARITY + 1
+        table = "0" * (2**n - 1) + "1"
+        program = boolean.factor(table)
+        assert program.isdigit()
+        assert run_factor(program, ["1"] * n) == "1"
+        assert run_factor(program, ["0"] * n) == "0"
+
     def test_sparse_tables_stay_small_at_n_four(self) -> None:
         """Sparse tables (few one-rows) encode a short brainfuck program,
         so they stay well under the digit cap even at n == 4."""
