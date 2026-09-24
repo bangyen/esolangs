@@ -96,24 +96,15 @@ drift.
 step 14, redrawn by `tui.render` every time this file is generated:
 
 ```
-Flowchart  step 14  ip (9, 7, 1, 0)  running
+Flowchart  step 14  ip (1, 33, 1, 0)  running
 --------------------------------------------------------------------------
- 5 |     ┌───< >───┐
- 6 |     │         │
- 7 |    / /       / /
- 8 |     │         │
- 9 |   ┌< >─┐    ┌< >─┐
-10 |   │    │    │    │
-11 |  { ]  [ }  [ }  { ]
-12 |   │    │    │    │
-13 |  \ \  \ \  \ \  \ \
-14 |   │    │    │    │
-15 | (( ))(( ))(( ))(( ))
+1 | (( ))\ \/{ }\───────────────┐    ┌< ]─┐
+2 |               (( ))\ \\{ }/< >/ /┴───< >/ /\[ ]/{ ]\[ ]/[ >\[ ]/[ }\[
 --------------------------------------------------------------------------
-memory   (empty)
+memory   0 1 1 0
 stack    (empty)
 output   ''
-views    deques={}  pointers=[_Pointer(row=9, col=7, d=(1, 0), reg=1, dequ
+views    deques={0: [0, 1], 1: [1, 0]}  pointers=[_Pointer(row=1, col=33,
 hjkl move | t break | space step | c continue | r run | b back | q quit
 ```
 

@@ -436,16 +436,16 @@
   },
   "Flowchart": {
    "0110": {
-    "commands": 20,
-    "source_units": 247
+    "commands": 19,
+    "source_units": 118
    },
    "01101001": {
-    "commands": 27,
-    "source_units": 606
+    "commands": 37,
+    "source_units": 179
    },
    "0110100110010110": {
-    "commands": 34,
-    "source_units": 1395
+    "commands": 69,
+    "source_units": 284
    }
   },
   "Forbin": {
