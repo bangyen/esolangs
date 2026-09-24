@@ -227,8 +227,14 @@ step; an answer lands in the paper it extends, and the row leaves.
   degree (`thm:gausscharge`), so the mass infimum is a finite computation
   per root set (`cor:gaussfinite`), certified at four sets with `a != 0`
   (`prop:gaussinst`); no multisection or ray reduces them
-  (`prop:gaussnotransfer`).  Open: rows `k >= 2` or an `Omega(K**2 log)`
-  mass for pairs `a +- p**b i`, `a != 0`, uniformly in `K`.
+  (`prop:gaussnotransfer`).  `q`-adic Newton polygons give an
+  unconditional mass bound (`thm:padicmass`) that pays `sum j log rho_j`,
+  within a factor 4, on circles of prime-power norm (`cor:padiccircle`);
+  carry sizes alone cap at linear mass (`prop:carrylimit`), row 2 is a
+  rounding-recurrence question (`lem:gaussround`), and rows need
+  `0 < |a_j| < c_j` (`prop:gaussrowsfail`).  Open: rows `k >= 2` or an
+  `Omega(K**2 log)` mass for pairs `a +- p**b i`, `a != 0`, uniformly in
+  `K` (squarefree or coprime norms).
 
 - **Polynomial's routing constant.**  CLOSED in
   [polynomial](proofs/polynomial.tex): the next-read count `thm:count`
