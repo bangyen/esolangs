@@ -240,16 +240,16 @@
   },
   "CV(N)(C)": {
    "0110": {
-    "commands": 113,
-    "source_units": 453
+    "commands": 22,
+    "source_units": 43
    },
    "01101001": {
-    "commands": 119,
-    "source_units": 913
+    "commands": 24,
+    "source_units": 75
    },
    "0110100110010110": {
-    "commands": 121,
-    "source_units": 1833
+    "commands": 28,
+    "source_units": 138
    }
   },
   "Circlefuck": {
