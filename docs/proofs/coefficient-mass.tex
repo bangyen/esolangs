@@ -5520,7 +5520,10 @@ multiple of degree $O(K)$ pays $(\pi/\delta-o(1))K\log R$, which
 $x^N-\rho^N$ attains, and a bound of order $K^2\log R$ at Gaussian roots in a
 sector of fixed width reduces to excluding integer multiples in which the
 sector holds at most about its equidistributed share of the large zeros
-(Corollary~\ref{cor:widedisc}).
+(Corollary~\ref{cor:widedisc}).  Proposition~\ref{prop:skeletonreduction}
+gives a second sufficient condition, which is purely Diophantine: the sector
+contains few Gaussian integers that are zeros, to high relative precision,
+of an integer polynomial with few terms.
 
 \emph{Across annuli.}  Theorem~\ref{thm:thinreal}, applied to the roots of
 modulus at least $s$ for each $s$, charges each thin tail with the sharp
@@ -6029,6 +6032,153 @@ $\alpha^N\in\R$, then $\alpha/\bar\alpha$ is a root of unity in
 $\mathbb Q(i)$, so $\alpha^4\in\R$ and $\arg\alpha\in\frac\pi4\mathbb Z$.
 Whether some less symmetric integer multiple does the same is the wide-sector
 question, and it needs integrality beyond Theorem~\ref{thm:gausscharge}.
+
+\paragraph{Sparse skeletons.}
+Corollary~\ref{cor:widedisc} describes a cheap multiple by the angles of its
+large zeros.  Its coefficients give a second, arithmetic description.  On
+$|z|\ge R>1$ a polynomial of small mass agrees, up to a relative error
+$|z|^{-t}$, with a polynomial that has few terms below its top $t+1$
+degrees.  At Gaussian roots the error is measured in Gaussian integers.
+
+\begin{lemma}[Sparse skeletons]\label{lem:skeleton}
+Let $B=\sum_{k=0}^db_kx^k\in\mathbb C[x]$ have degree $d\ge1$ and
+$|b_d|\ge1$, let $R>1$, and let $t\ge0$ be an integer.  Put
+\[
+  J=\{k:\ b_k\ne0,\ |b_k|\ge R^{d-t-k}\},\qquad
+  S=\sum_{k\in J}b_kx^k,\qquad E=B-S .
+\]
+Then $J$ contains every $k\ge d-t$ with $b_k\ne0$, in particular $d$.  The
+number $m$ of elements $k<d-t$ of $J$ satisfies
+$m(m+1)/2\le\Lambda(B)/\log R$, so $S$ has at most $t+1+m$ nonzero
+coefficients.  Moreover $|E(z)|<d\,|z|^{d-t}$ for every $z$ with
+$|z|\ge R$, and $S,E\in\mathbb Z[x]$ if $B\in\mathbb Z[x]$.
+\end{lemma}
+
+\begin{proof}
+If $k\ge d-t$ and $b_k\ne0$, then $|b_k|\ge1\ge R^{d-t-k}$, so $k\in J$.
+If $k\in J$ and $k<d-t$, then $|b_k|\ge R^{d-t-k}>1$, so
+$\log^+|b_k|\ge(d-t-k)\log R$.  The $m$ numbers $d-t-k$ are distinct
+positive integers, so their sum is at least $m(m+1)/2$, while the
+corresponding $\log^+|b_k|$ sum to at most $\Lambda(B)$.  Every nonzero
+term $b_kz^k$ of $E$ has $k<d-t$ and $|b_k|<R^{d-t-k}$.  For $|z|\ge R$ this
+gives $|b_kz^k|<R^{d-t-k}|z|^k\le|z|^{d-t}$, and there are at most $d-t\le d$
+such terms.
+\end{proof}
+
+For $x^N-\rho^N$ with $\rho\ge R$ the skeleton $S$ is the whole polynomial.
+In general $S$ keeps the top $t+1$ coefficients and at most $m$ deeper
+ones, and on $|z|\ge R$ every term of $E$ is smaller than the top term by
+the factor $|z|^{-t}$.
+
+\begin{corollary}[Skeletons at Gaussian roots]\label{cor:gaussskeleton}
+In the setting of Section~\ref{sec:gaussian}, let $R>2$ with
+$\rho_{\min}\ge R$, let $F\in\mathbb Z[x]$ be nonzero and divisible by $P$,
+let $B$ be a block of $F$ (Lemma~\ref{lem:gaussblocks}), of degree $d$, and
+let $t\ge0$ be an integer.  Then $d\le\Lambda(F)/\log(R/2)$.  The polynomial
+$S\in\mathbb Z[x]$ of Lemma~\ref{lem:skeleton} for $B$, $R$ and $t$ has
+degree $d$ and at most $t+1+m$ nonzero coefficients, where
+$m(m+1)/2\le\Lambda(F)/\log R$, and
+\[
+  S(\alpha_j)\in\mathbb Z[i],\qquad
+  |S(\alpha_j)|<d\,\rho_j^{\,d-t}\qquad(1\le j\le K).
+\]
+If $\Lambda(F)\le\varepsilon K^2\log R$ with $\varepsilon>0$, then
+$m<\sqrt{2\varepsilon}\,K$.
+\end{corollary}
+
+\begin{proof}
+By Lemma~\ref{lem:gaussblocks}, $B\in\mathbb Z[x]$ is divisible by $P$,
+$|b_d|\ge1$ and $\Lambda(B)\le\Lambda(F)$.  Theorem~\ref{thm:gausscharge},
+with $\rho_{\min}\ge R>2$, gives
+$\Lambda(F)\ge\Lambda(B)\ge d\log(\rho_{\min}/2)\ge d\log(R/2)$.
+Lemma~\ref{lem:skeleton} applies to $B$ because $d\ge2K\ge1$.  $S$ has
+degree $d$ because $d\in J$.  Since $B(\alpha_j)=0$, we have
+$S(\alpha_j)=-E(\alpha_j)$; this is a Gaussian integer because
+$S\in\mathbb Z[x]$ and $\alpha_j\in\mathbb Z[i]$, and $|\alpha_j|=\rho_j\ge R$
+gives the bound.  Finally, if $m\ge1$ then
+$m^2<m(m+1)\le2\Lambda(F)/\log R\le2\varepsilon K^2$.
+\end{proof}
+
+So each $\alpha_j$ is a zero of the integer polynomial $S$ up to a relative
+error $d\rho_j^{-t}$ against its top term $b_d\alpha_j^d$.  If
+$\Lambda(F)=o(K^2\log R)$, then all but $o(K)$ of the nonzero coefficients
+of $S$ lie in its top $t+1$ degrees.  This gives a sufficient condition for
+the wide-sector bound as a Diophantine statement about polynomials with few
+terms, in which neither $P$ nor the angles of the other zeros appear.  Fix $\varphi$,
+$\delta$ and $R>2$.  We say that \emph{(H) holds with constants $C\ge1$ and
+$0<c<1$} if, for every integer $s\ge1$ and every $S\in\mathbb Z[x]$ of
+degree $D\ge1$ with at most $s$ nonzero coefficients, at most $Cs$ Gaussian
+integers $\alpha$ satisfy
+\[
+  |\alpha|\ge R,\qquad|\arg\alpha-\varphi|\le\delta,\qquad
+  |S(\alpha)|<D\,|\alpha|^{D-\lceil cs\rceil}.
+\]
+
+\begin{proposition}[A Diophantine sufficient condition]\label{prop:skeletonreduction}
+In the setting of Section~\ref{sec:gaussian}, let $R>2$, and suppose that
+every $\alpha_j$ has $|\alpha_j|\ge R$ and $|\arg\alpha_j-\varphi|\le\delta$,
+and that (H) holds with constants $C$ and $c$.  Then every nonzero
+$F\in\mathbb Z[x]$ divisible by $P$ satisfies
+\[
+  \Lambda(F)\ \ge\ \frac{u(u-1)}2\log R,\qquad
+  u=(1-c)\Bigl(\frac KC-1\Bigr).
+\]
+In particular, if (H) holds with constants independent of $R$, then
+$\Lambda(F)\ge\bigl(\frac{(1-c)^2}{2C^2}-o(1)\bigr)K^2\log R$ as $K\to\infty$,
+uniformly in $R$.
+\end{proposition}
+
+\begin{proof}
+Let $m^*\ge0$ be the largest integer with
+$m^*(m^*+1)/2\le\Lambda(F)/\log R$, and put
+$t=\lceil c(m^*+1)/(1-c)\rceil$ and $s=t+1+m^*$.  Then
+$cs=c(t+1+m^*)\le t$, since this is equivalent to $c(m^*+1)\le(1-c)t$; so
+$\lceil cs\rceil\le t$.  Let $B$ be a block of $F$ and $S$ as in
+Corollary~\ref{cor:gaussskeleton} with this $t$.  It has degree $d$ and at
+most $t+1+m\le s$ nonzero coefficients, since $m\le m^*$ by the maximality
+of $m^*$.  Since $\rho_j\ge R>1$, every $\alpha_j$ satisfies
+$|S(\alpha_j)|<d\rho_j^{\,d-t}\le d\rho_j^{\,d-\lceil cs\rceil}$.  The $K$
+distinct $\alpha_j$ therefore satisfy the three conditions of (H), and
+\[
+  K\ \le\ Cs\ \le\ C\Bigl(\frac{c(m^*+1)}{1-c}+2+m^*\Bigr)
+  =C\Bigl(\frac{m^*+1}{1-c}+1\Bigr),
+\]
+that is, $m^*+1\ge u$.  If $u\le1$ the claim holds because its right side
+is at most $0$.  Otherwise $m^*\ge u-1>0$, and
+$\Lambda(F)\ge\frac{m^*(m^*+1)}2\log R\ge\frac{(u-1)u}2\log R$.
+\end{proof}
+
+Some precision beyond $|\alpha|^{-1}$ is necessary, so (H) can hold only
+with $c>\frac12$.  Let $N\ge2$ and let $\rho\ge10N$ be an integer.  Let
+$\alpha$ be a Gaussian integer nearest to $w=\rho e^{2\pi il/N}$.  Then
+$|\alpha-w|\le\frac{\sqrt2}2$ and $|\alpha|\ge\rho-1$, so
+\[
+  |\alpha^N-\rho^N|=|\alpha^N-w^N|\le\tfrac{\sqrt2}2N(\rho+1)^{N-1}<N|\alpha|^{N-1},
+\]
+since
+\[
+  \Bigl(\frac{\rho+1}{\rho-1}\Bigr)^{N-1}\le e^{2(N-1)/(\rho-1)}\le e^{1/4}<\sqrt2 .
+\]
+Consecutive points $w$ are $2\rho\sin(\pi/N)\ge4\rho/N\ge40$ apart, so
+these $\alpha$ are distinct.  Rounding moves the argument by less than
+$2/\rho$.  So as $N\to\infty$ with $\rho\ge\max(10N,R+1)$, the number of these $\alpha$
+in the sector grows like $\delta N/\pi$, while $S=x^N-\rho^N$ has $s=2$
+terms and $\lceil2c\rceil=1$ for $c\le\frac12$.  With precision
+$|\alpha|^{-2}$ or better the rounding errors must be corrected, and each
+further term of $S$ corrects only about one real condition.  A count of
+parameters therefore suggests that (H) holds for every $c>\frac12$ with a
+suitable $C$.  We do not know whether it does, even for exact zeros
+$S(\alpha)=0$.  For those, bounds that do not depend on the degree of $S$ go
+back to the gap principle~\cite{lenstra-lacunary}, but (H) asks for a bound
+linear in the number of terms.  The exact case would not suffice here in
+any event, since the skeleton $S$ is not a multiple of $P$.  Weighted
+lattice reduction over integer multiples of degree up to
+$2K+\frac{5\pi K}{2\delta}$ found no multiple of smaller mass than $P$.  The
+runs used evenly spread root sets and nearly polygonal ones, with
+$2\le K\le8$ and $\frac\pi8\le\delta\le\frac\pi4$.  For $K\ge6$ this
+$\Lambda(P)\approx K(2K+1)\log R$ is more than twice the linear term
+$\pi K\log R/\delta$ of Corollary~\ref{cor:widegauss}.  This is weak
+evidence, since lattice reduction does not minimize $\Lambda$.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
