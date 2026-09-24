@@ -73,7 +73,7 @@ class TestFlowchart:
 
     @pytest.mark.medium
     def test_wide_deque_lookup_executes_every_row(self) -> None:
-        """Opposite-end discards leave exactly the indexed answer."""
+        """The cursor walk lands on exactly the indexed answer's deque."""
         n = 6
         table = "".join(str((row.bit_count() ^ (row >> 2)) & 1) for row in range(2**n))
         program = boolean.flowchart(table)
@@ -82,9 +82,24 @@ class TestFlowchart:
             assert run_flowchart(program, bits) == table[row], row
 
     def test_wide_deque_lookup_scales_linearly(self) -> None:
-        """The five-row layout grows no faster than its table doubles."""
+        """The two-row layout grows no faster than its table doubles."""
         sizes = [len(boolean.flowchart("01" * (2 ** (n - 1)))) for n in range(7, 11)]
         assert all(b <= 2 * a for a, b in pairwise(sizes))
+
+    def test_a_repeated_answer_is_set_once_and_pushed_twice(self) -> None:
+        """A run of equal entries shares one set node and still answers.
+
+        Neither the push nor the deque step touches the register, so the
+        preload only re-sets it where the table changes; an alternating
+        table (the one the scaling test uses) never exercises that, which is
+        why this one repeats.
+        """
+        table = "0011" * 8
+        program = boolean.flowchart(table)
+        assert program.count("[ }") + program.count("{ ]") < len(table)
+        for row in (0, 1, 2, 3, 17, 30, 31):
+            bits = [str((row >> (4 - i)) & 1) for i in range(5)]
+            assert run_flowchart(program, bits) == table[row], row
 
     def test_tree_depth_matches_input_count(self) -> None:
         """One ``/ /`` read node sits on each path from entry to a leaf."""
