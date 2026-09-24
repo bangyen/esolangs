@@ -2429,16 +2429,268 @@ $(m,B)=(3,100)$.  So distinct moduli do not help either; what the
 imaginary axis provides in Corollary~\ref{cor:imag} is not closeness of the
 angles but exact membership, which makes $R(x^2)$ a polynomial in $x^2$.
 
-\paragraph{What remains open.}  Between the two regimes: pairs
-$a_j\pm ic_j$ with $a_j\ne0$ that are not orbits of a multisection, under an
-arithmetic hypothesis that excludes item 1 of
-Proposition~\ref{prop:noangle} (for instance Gaussian integers with
-distinct prime-power imaginary parts).  In the small linear programs we ran
-(monic multiples of degree at most $2K+6$), generic such pairs, for example
-$(a,c)=(1,5),(-2,7),(3,11)$, keep $b_2$ above $\prod_{j\ge2}(\rho_j^2-1)$,
-but we have no proof, and
-Proposition~\ref{prop:noangle} shows that any proof must use more than the
-moduli and the angles' distance to the axis.
+\subsection{Gaussian-integer roots}\label{sec:gaussian}
+
+Proposition~\ref{prop:noangle} rules out bounds in terms of moduli and
+angles.  For roots in $\mathbb Z[i]$ and integer multiples there is one more
+piece of information: an integer polynomial takes Gaussian-integer values at
+them, and a nonzero Gaussian integer has modulus at least one.  This
+subsection shows what that buys.  It does not give the rows $k\ge2$ at
+Gaussian pairs, but it reduces the mass problem to multiples of bounded
+degree, which makes it a finite computation for each root set
+(Corollary~\ref{cor:gaussfinite}), and it certifies the imaginary-pair
+charge $\sum_jj\log(c_j^2-1)$ at explicit root sets with $a_j\ne0$
+(Proposition~\ref{prop:gaussinst}).  Proposition~\ref{prop:gaussnotransfer}
+records why the exact reductions of this section cannot be used at such
+roots.
+
+Throughout, $\alpha_1,\ldots,\alpha_K\in\mathbb Z[i]$ are distinct, with
+$\alpha_j=a_j+ic_j$ and $c_j\ge1$; put $\rho_j=|\alpha_j|$,
+$\rho_{\min}=\min_j\rho_j$ and
+\[
+  P=\prod_{j=1}^K(x-\alpha_j)(x-\bar\alpha_j)
+   =\prod_{j=1}^K\bigl(x^2-2a_jx+a_j^2+c_j^2\bigr)\in\mathbb Z[x],
+\]
+a monic polynomial with $2K$ distinct roots and $P(0)\ne0$.  For
+$F=\sum_{i=0}^Df_ix^i$ and $0\le m\le D+1$ write
+\[
+  R_m=\sum_{i<m}f_ix^i,\qquad G_m=\sum_{i\ge m}f_ix^{i-m},\qquad
+  F=R_m+x^mG_m .
+\]
+We call $m\in\{1,\ldots,D\}$ a \emph{split} of $F$.  A split is \emph{clean
+at} $\alpha$ if $G_m(\alpha)=0$, and \emph{$P$-clean} if it is clean at every
+$\alpha_j$.  A polynomial $B\in\mathbb Z[x]$ is \emph{$P$-irreducible} if
+$B(0)\ne0$ and no split of $B$ is $P$-clean.
+
+\begin{lemma}[Gaussian carries]\label{lem:gausscarry}
+Let $F\in\mathbb Z[x]$ have degree $D$, let $\alpha\in\mathbb Z[i]$ with
+$F(\alpha)=0$, $\rho=|\alpha|$, and let $1\le m\le D$.  Then
+$G_m(\alpha)\in\mathbb Z[i]$ and $R_m(\alpha)=-\alpha^mG_m(\alpha)$.  If the
+split $m$ is not clean at $\alpha$, then $|R_m(\alpha)|\ge\rho^m$, and if
+moreover $\rho>2$, some $i<m$ has
+\[
+  |f_i|\ \ge\ (\rho/2)^{m-i}.
+\]
+\end{lemma}
+
+\begin{proof}
+$G_m$ has integer coefficients, so $G_m(\alpha)\in\mathbb Z[i]$, and
+$0=F(\alpha)=R_m(\alpha)+\alpha^mG_m(\alpha)$.  If $G_m(\alpha)\ne0$ it is a
+nonzero Gaussian integer, so $|G_m(\alpha)|\ge1$ and
+$|R_m(\alpha)|=\rho^m|G_m(\alpha)|\ge\rho^m$.  If every $i<m$ had
+$|f_i|<(\rho/2)^{m-i}$, then
+$|R_m(\alpha)|\le\sum_{i<m}|f_i|\rho^i<\rho^m\sum_{i<m}2^{i-m}<\rho^m$, a
+contradiction.
+\end{proof}
+
+The lemma is the Gaussian form of the gap principle for lacunary
+polynomials~\cite{lenstra-lacunary}: across a run of small coefficients a
+root of $F$ must be a root of both parts.  Here it is used at every split,
+not only at long gaps.
+
+\begin{lemma}[Blocks]\label{lem:gaussblocks}
+Every nonzero $F\in\mathbb Z[x]$ divisible by $P$ can be written
+\[
+  F=\sum_{s=1}^rx^{e_s}B_s,\qquad e_s+\deg B_s<e_{s+1},
+\]
+with every $B_s\in\mathbb Z[x]$ $P$-irreducible and divisible by $P$.
+Consequently $\Lambda(F)=\sum_s\Lambda(B_s)$, $|\operatorname{lead}B_s|\ge1$,
+and $b_k(F)\ge b_k(B_s)$ for every $s$ and $k$.
+\end{lemma}
+
+\begin{proof}
+Write $F=x^eF_0$ with $F_0(0)\ne0$; since $P(0)\ne0$, $P\mid F_0$.  Induct
+on $\deg F_0$.  If no split of $F_0$ is $P$-clean, $F_0$ itself is the only
+block.  Otherwise let $m$ be a $P$-clean split: $G_m(\alpha_j)=0$ for all
+$j$, hence $R_m(\alpha_j)=F_0(\alpha_j)-\alpha_j^mG_m(\alpha_j)=0$, and by
+reality of the coefficients also $R_m(\bar\alpha_j)=G_m(\bar\alpha_j)=0$.
+Since $P$ is monic in $\mathbb Z[x]$ with $2K$ distinct roots, division with
+remainder in $\mathbb Z[x]$ shows $P\mid R_m$ and $P\mid G_m$ in
+$\mathbb Z[x]$.  Both are nonzero ($R_m(0)=F_0(0)$, and $G_m$ has the leading
+coefficient of $F_0$) and of smaller degree than $F_0$; $R_m(0)\ne0$, and
+$G_m$ is handled after removing a power of $x$.  Their supports lie in
+$[0,m-1]$ and $[m,\deg F_0]$, so the decompositions given by induction
+concatenate.  The supports of the $x^{e_s}B_s$ are disjoint and cover that of
+$F$, which gives the additivity of $\Lambda$ and the inclusion of the
+nonleading magnitudes of each $B_s$ among those of $F$ (the leading
+coefficient of $B_s$, $s<r$, is a nonleading coefficient of $F$).
+\end{proof}
+
+\begin{theorem}[Degree charging]\label{thm:gausscharge}
+Assume $\rho_{\min}>2$, and let $B\in\mathbb Z[x]$ be $P$-irreducible and
+divisible by $P$, of degree $d$.  Then
+\[
+  \sum_{i<d}\log^+|b_i|\ \ge\ d\log\frac{\rho_{\min}}2,
+  \qquad\text{so}\qquad
+  \Lambda(B)\ \ge\ \log|b_d|+d\log\frac{\rho_{\min}}2 .
+\]
+Hence every nonzero $F\in\mathbb Z[x]$ divisible by $P$ has
+$\Lambda(F)\ge\sum_s(\deg B_s)\log(\rho_{\min}/2)$ over its blocks.
+\end{theorem}
+
+\begin{proof}
+Every split $m\in\{1,\ldots,d\}$ of $B$ is unclean at some $\alpha_j$, with
+$\rho_j\ge\rho_{\min}$, so by Lemma~\ref{lem:gausscarry} there is $i<m$ with
+$|b_i|\ge(\rho_{\min}/2)^{m-i}$.  For a fixed $i$, the splits charged to it
+this way have distinct $m-i\ge1$ with
+$(m-i)\log(\rho_{\min}/2)\le\log|b_i|$, so there are at most
+$\log^+|b_i|/\log(\rho_{\min}/2)$ of them.  All $d$ splits are charged, which
+is the first inequality.  The rest follows from $\log^+|b_d|\ge\log|b_d|$ and
+Lemma~\ref{lem:gaussblocks}.
+\end{proof}
+
+Compare Proposition~\ref{prop:noangle}: $x^{2M}+\rho^{2M}$ pays
+$\Lambda=2M\log\rho$ for its degree $2M$, which the theorem allows; what the
+theorem forbids, at Gaussian roots, is a block of large degree and small
+mass.  So a cheap multiple of a Gaussian pair product, if one exists, has
+small degree, and this is what makes the mass problem finite.
+
+\begin{corollary}[Finite reduction of the mass problem]\label{cor:gaussfinite}
+Assume $\rho_{\min}>2$ and let $X>0$.
+\begin{enumerate}
+\item If every $P$-irreducible $B\in\mathbb Z[x]$ divisible by $P$ with
+$\deg B<X/\log(\rho_{\min}/2)$ has $\Lambda(B)\ge X$, then every nonzero
+$F\in\mathbb Z[x]$ divisible by $P$ has $\Lambda(F)\ge X$.
+\item The infimum of $\Lambda(F)$ over nonzero $F\in\mathbb Z[x]$ divisible by
+$P$ is a minimum, attained by a $P$-irreducible multiple of degree at most
+$\Lambda(P)/\log(\rho_{\min}/2)$ whose coefficients have modulus at most
+$e^{\Lambda(P)}$; in particular it is computable.
+\end{enumerate}
+\end{corollary}
+
+\begin{proof}
+1.  Let $B$ be any block of $F$ (Lemma~\ref{lem:gaussblocks}).  If
+$\deg B<X/\log(\rho_{\min}/2)$ then $\Lambda(F)\ge\Lambda(B)\ge X$ by
+hypothesis; otherwise Theorem~\ref{thm:gausscharge} gives
+$\Lambda(F)\ge\Lambda(B)\ge\deg B\cdot\log(\rho_{\min}/2)\ge X$.
+
+2.  $P$ itself competes, so the infimum is at most $\Lambda(P)$.  If
+$\Lambda(F)\le\Lambda(P)$, any block $B$ of $F$ has $\Lambda(B)\le\Lambda(F)$,
+degree at most $\Lambda(P)/\log(\rho_{\min}/2)$ by
+Theorem~\ref{thm:gausscharge}, and $\log^+|b_i|\le\Lambda(P)$ for every $i$.
+There are finitely many such integer polynomials.
+\end{proof}
+
+For the certificates below, rows at one degree control all smaller degrees.
+
+\begin{lemma}[Rows are monotone in the degree]\label{lem:rowmono}
+For $d\ge2K$ and $k\ge1$ let $\beta_k(d)$ be the infimum of $b_k(G)$ over
+monic $G\in\R[x]$ of degree $d$ divisible by $P$.  Then
+$\beta_k(d+1)\le\beta_k(d)$, and every $B\in\mathbb Z[x]$ divisible by $P$
+with $\deg B\le d$ has $b_k(B)\ge|\operatorname{lead}B|\,\beta_k(d)\ge\beta_k(d)$.
+\end{lemma}
+
+\begin{proof}
+$xG$ has the same nonzero coefficients as $G$.  For $B$, the polynomial
+$B/\operatorname{lead}B$ is a monic real multiple of $P$ of degree $\deg B$, and
+$b_k$ scales by $|\operatorname{lead}B|\ge1$.
+\end{proof}
+
+\begin{proposition}[Certified instances]\label{prop:gaussinst}
+Every nonzero $F\in\mathbb Z[x]$ divisible by the product of the displayed
+Gaussian pairs satisfies the displayed bound, which exceeds the charge
+$\sum_jj\log(c_{(j)}^2-1)$ that Corollary~\ref{cor:imag} makes for the
+purely imaginary pairs $\pm ic_j$ with the same imaginary parts:
+\[
+\begin{array}{lll}
+\text{pairs} & \Lambda(F)\ \ge & \sum_jj\log(c_{(j)}^2-1)\\[2pt]
+1\pm5i,\ -2\pm7i & 11.09 & 10.92\\
+1\pm5i,\ -2\pm7i,\ 3\pm11i & 26.20 & 25.28\\
+1\pm97i,\ -2\pm101i,\ 3\pm103i & 58.22 & 55.42\\
+1\pm1009i,\ -2\pm1013i,\ 3\pm1019i,\ -4\pm1021i & 139.8 & 138.5
+\end{array}
+\]
+\end{proposition}
+
+\begin{proof}
+Let $X$ be the right-hand charge and $d_0$ the least integer with
+$d_0\log(\rho_{\min}/2)\ge X$, that is, with
+$(\rho_{\min}^2/4)^{d_0}\ge\prod_j(c_{(j)}^2-1)^{2j}$, an integer comparison:
+$d_0=12,28,15,23$ for the four sets in order ($\rho_{\min}^2=26,26,9410,
+1018082$).  A block of degree at least $d_0$ has
+$\Lambda\ge d_0\log(\rho_{\min}/2)$, which exceeds $11.23$, $26.20$,
+$58.22$ and $143.1$ respectively (Theorem~\ref{thm:gausscharge}).  A block $B$ of degree at most $d_0-1$ has,
+by Lemma~\ref{lem:rowmono},
+$\Lambda(B)\ge\log|\operatorname{lead}B|+\sum_{k\le K}\log^+b_k(B)
+\ge\sum_{k\le K}\log^+\beta_k(d_0-1)$, the $K$ largest nonleading magnitudes
+sitting at distinct positions.  For each $k$ and each set $U$ of $k-1$
+excluded positions, $\min\max_{j\notin U}|f_j|$ over monic multiples of degree
+$d_0-1$ is a linear program with rational data, which we solved in exact
+rational arithmetic, each optimum re-certified by a weak-duality
+certificate.  The minima over $U$ are
+\[
+  \beta_1(11)\ge1304.02,\quad\beta_2(11)\ge50.73
+\]
+for the first set, so $\Lambda(B)\ge\log(1304.02\cdot50.73)>11.09$, and
+\[
+  \beta_1(14)\ge1.0189\cdot10^{12},\quad\beta_2(14)\ge3.931\cdot10^8,\quad
+  \beta_3(14)\ge9.878\cdot10^7
+\]
+for the third, so $\Lambda(B)>65.8$.  For the second set,
+$\beta_1(27)\ge161134$, $\beta_2(27)\ge6652.3$, $\beta_3(27)\ge504.6$, so
+$\Lambda(B)>27.01$; for the fourth,
+$\beta_1(22)\ge1.1308\cdot10^{24}$, $\beta_2(22)\ge4.386\cdot10^{18}$,
+$\beta_3(22)\ge1.082\cdot10^{18}$, so $\Lambda(B)>139.8$.  Lemma~\ref{lem:gaussblocks} gives
+$\Lambda(F)\ge\Lambda(B)$ for any block $B$ of $F$.
+\end{proof}
+
+At these roots the rows exceed the imaginary rows of
+Corollary~\ref{cor:imag}, some by far: $\beta_3(14)\approx9.9\cdot10^7$
+against $c_{(3)}^2-1=10608$ for the second set, and for $1\pm5i$, $-2\pm7i$,
+$3\pm11i$ the exact value $\beta_3(27)\ge504.6$ exceeds $c_{(3)}^2-1=120$,
+and floating-point linear programs up to degree $12$ give a fourth
+coefficient near $124$, which three purely imaginary pairs never force.  The bottleneck in the certificates is
+the degree-charging side, not the rows.
+
+\begin{proposition}[No exact transfer at register-type pairs]
+\label{prop:gaussnotransfer}
+Let $\alpha=a+ic\in\mathbb Z[i]$ with $ac\ne0$ and $|a|\ne|c|$.
+\begin{enumerate}
+\item No power $\alpha^m$, $m\ge1$, is real.  Hence no real-rooted
+$R\in\R[y]$ and $m\ge1$ have $(x-\alpha)\mid R(x^m)$:
+Theorem~\ref{thm:transfer} cannot turn such a pair into real roots.
+\item If $\alpha'=a'+ic'$ has $0<|a|<c$, $0<|a'|<c'$, and $c,c'$ are powers of
+distinct primes, then $\alpha,\alpha'$ do not lie on a common ray, so
+Corollary~\ref{cor:ray} does not apply to the two pairs together.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+1.  If $\alpha^m$ were real, $(\alpha/\bar\alpha)^m=1$, so $\alpha/\bar\alpha$
+would be a root of unity in $\mathbb Q(i)$, hence one of $\pm1,\pm i$.  The
+values $\pm1$ make $\alpha$ real or purely imaginary; $\pm i$ make
+$\alpha^2=\pm i|\alpha|^2$, so $a^2=c^2$.  All are excluded.  A root $\alpha$
+of $R(x^m)$ has $\alpha^m$ a root of $R$.
+
+2.  A common ray means $a/c=a'/c'$, so $ac'=a'c$; as $\gcd(c,c')=1$, $c\mid a$,
+contradicting $0<|a|<c$.
+\end{proof}
+
+In Polynomial's construction the register operands satisfy $|a|\le A$, and
+all but $O(\pi(A))$ register roots $a\pm p^bi$ have $p>A$.  Among those,
+two roots with distinct primes are covered by item~2, and two with one prime
+and exponents $b<b'$ would need $a'=ap^{b'-b}$, impossible for
+$0<|a|,|a'|\le A<p$.  So neither exact reduction of this section reaches
+them.
+
+\paragraph{What remains open.}  Rows $k\ge2$, or a mass bound of order
+$\sum_jj\log\rho_j$, for pairs $a_j\pm ic_j\in\mathbb Z[i]$ with $a_j\ne0$ and
+general $K$.  By Corollary~\ref{cor:gaussfinite} a mass bound $X$ needs to be
+proved only for $P$-irreducible multiples of degree below
+$X/\log(\rho_{\min}/2)$, which for $X$ of the target order
+$\sum_jj\log(c_j^2-1)$ is about $K(K+1)\log c_{\max}/\log(\rho_{\min}/2)$;
+beyond that degree Theorem~\ref{thm:gausscharge} pays.  In that range the
+angle mechanism of Proposition~\ref{prop:noangle} is not excluded, since it
+needs degree only about $\pi K/\delta$ for pairs within $\delta$ of the
+imaginary axis.  Perturbing the certificate of Corollary~\ref{cor:imag} to the
+nodes $1/\alpha_j$ did not close the gap either: the excluded coefficients
+are unbounded, so the certificate must vanish there exactly, and the
+correction needed for that is controlled only through the individual
+certificate coefficients, which can be as large as an inverse Vandermonde
+determinant in the close nodes $c_j^{-2}$; we obtained smallness only when
+$D\max_j|a_j|/c_j$ is below that size, which integrality ($|a_j|\ge1$)
+rules out.  Proposition~\ref{prop:gaussinst} settles
+individual root sets; the question is a uniform statement in $K$.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
@@ -2501,6 +2753,12 @@ M.~Giesbrecht, D.~S. Roche and H.~Tilak,
 S.~Karlin,
 \newblock \emph{Total Positivity, Volume I},
 \newblock Stanford University Press, 1968.
+
+\bibitem{lenstra-lacunary}
+H.~W. Lenstra, Jr.,
+\newblock Finding small degree factors of lacunary polynomials,
+\newblock in \emph{Number Theory in Progress}, Vol.~1 (Zakopane, 1997),
+de Gruyter, 1999, 267--276.
 
 \bibitem{mignotte}
 M.~Mignotte,
