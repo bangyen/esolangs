@@ -1,13 +1,14 @@
 # Boolean-generator coverage proofs
 
-Standalone complexity proofs are [Factor](factor.tex) and
-[Polynomial](polynomial.tex).  Their Markdown companions retain implementation
-bounds, measurements, counterexamples, and the development record.
+The standalone complexity proof is [Polynomial](polynomial.tex); its
+Markdown companion retains implementation bounds, measurements,
+counterexamples, and the development record.  Factor's `Theta(T log T)` is
+short enough to live in [factor](factor.md) alone.
 Polynomial's lower bound cites one result it does not prove:
 Corollary 3.4 of [coefficient-mass](coefficient-mass.tex), the companion
 manuscript bounding the coefficient mass of a polynomial multiple.
 `tests/proofs/test_citations.py` holds the numbered cross-references
-between the three to the labels they name.
+between them to the labels they name.
 
 This ledger answers one question: for every exported Boolean generator and
 every truth table of length `2**n`, does its construction produce a program

@@ -155,7 +155,6 @@ proofs-pdf:
         echo "tectonic is required (brew install tectonic)" >&2
         exit 1
     }
-    tectonic --outdir docs/proofs docs/proofs/factor.tex
     tectonic --outdir docs/proofs docs/proofs/polynomial.tex
     tectonic --outdir docs/proofs docs/proofs/coefficient-mass.tex
     tectonic --outdir docs/proofs docs/proofs/coefficient-mass-attainment.tex
