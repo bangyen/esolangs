@@ -2042,13 +2042,40 @@ $(2,3,3)$ and $3.0\cdot10^{-30}$ at $(3,3,5)$ with $u=2$, both at $n_0=140$.
 Theorem~\ref{thm:value} uses only $E_\nu=\{\nu+1,\ldots,\nu+u\}$, of diameter
 $u-1$, so it carries to confluent nodes.  What does not yet carry is
 Theorem~\ref{thm:converse}, whose proof allows the elements of $E_\nu$ to
-separate: for gaps that are $O(1)$ or at least $c\min E_\nu$ a Laplace
-expansion over the groups reduces to Proposition~\ref{prop:conffar}, but a
-group whose diameter grows strictly between $1$ and $\min E_\nu$ is not
-covered.  In that regime $\eta_\nu$ was still $\Theta(1/\min E_\nu)$ in every
-configuration we computed---with gaps $\lfloor\sqrt n\rfloor$ and $N=10$,
-$\eta_\nu\min E_\nu$ ran to $1.000$ at $k=4$ and $2.98$ at $k=6$---so the
-lemma is expected to hold there too.
+separate.  That case reduces to one scale-free inequality.  The expansion in
+Proposition~\ref{prop:conffar} is in fact exact for every $E$: with
+$n=\min E$ and $F=E-n$,
+\[
+  \alpha_J(E)=\Lambda_J(n)\sum_{\mathbf b}
+  \Bigl(\prod_{(i,a)\in J}\tbinom a{b_{i,a}}\Bigr)n^{-|\mathbf b|}
+  W_{\mathbf b}(F),
+  \qquad
+  W_{\mathbf b}(F)=\det\bigl(f^{\,b_{i,a}}z_i^{\,f}\bigr)_{f\in F},
+\]
+a sum of boundedly many terms, so all dependence on the shape of $E$ sits in
+the $W_{\mathbf b}(F)$.  Suppose that for each node set and each bound on the
+exponents there is a $C$ with
+\begin{equation}\label{eq:altratio}
+  |W_{\mathbf B}(F)|\le C\,(1+\max F)^{\,j}\,|W(F;\mathbf k)|,
+  \qquad
+  j=\sum_i\Bigl(\textstyle\sum B_i-\binom{k_i}2\Bigr),
+\end{equation}
+for every finite set $F$ of distinct non-negative integers.  The reference
+$W(F;\mathbf k)$ never vanishes, by the zero bound.  Feeding
+\eqref{eq:altratio} into the exact expansion makes the tail geometric once
+$\max F\le\tau n$ for a small $\tau$ depending only on the nodes, which gives
+$\alpha_{J^*}(E)\ne0$ and $\eta=O(1/\min E)$ for an arbitrary gap structure,
+and so closes the lemma.  Inequality \eqref{eq:altratio} holds at a single
+node, where $W_{\mathbf B}/W(F;\mathbf k)$ is a Schur polynomial $s_\mu(F)$
+with $|\mu|=j$, and the case $\min F\gg\operatorname{diam}F$ reduces to
+$\min F=0$; what is open is $\min F=0$ with
+$\max F\asymp\operatorname{diam}F$.  It held in $29872$ exact instances at
+$N\le12$ and $|F|\le8$, the worst ratio being $14.3$, and the ratio converges
+rather than creeping: at $F=(S,S{+}1,S{+}3,S{+}6,S{+}10,S{+}15)$ it rises to
+its predicted limit $12$ as $S$ grows.  Consistently, $\eta_\nu$ was still
+$\Theta(1/\min E_\nu)$ in the uncovered regime---with gaps
+$\lfloor\sqrt n\rfloor$ and $N=10$, $\eta_\nu\min E_\nu$ ran to $1.000$ at
+$k=4$ and $2.98$ at $k=6$---so the lemma is expected to hold there too.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.

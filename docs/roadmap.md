@@ -299,12 +299,32 @@ step; an answer lands in the paper it extends, and the row leaves.
   -> +-1 with error falling exactly 10x per decade of `n`.
   CONSEQUENCE: confluent `thm:value` is CLOSED -- it uses only
   `E_nu = {nu+1..nu+u}`, diameter `u-1`.  STILL OPEN: confluent
-  `thm:converse`, whose proof lets the elements of `E_nu` separate.  Gaps
-  that are `O(1)` or `>= c min E` reduce to `prop:conffar` by a Laplace
-  expansion over groups; a group of diameter growing strictly between `1`
-  and `min E` is NOT covered.  But with gaps `floor(sqrt n)` and `N=10`,
-  `eta * min E` ran to 1.000 at `k=4` and 2.98 at `k=6` (verify12b.py), so
-  the rate there is the same `Theta(1/min E)` and the lemma is expected TRUE.
+  `thm:converse`, whose proof lets the elements of `E_nu` separate.  Round 13
+  REDUCED that to ONE scale-free inequality.  PROVED there: the cluster
+  expansion is EXACT for every `E` (no fixed-`F` hypothesis) --
+  `alpha_J(E) = Lambda_J(n) sum_b (prod C(a,b_ia)) n^{-|b|} W_b(F)` with
+  `n = min E`, `F = E - n`, boundedly many terms -- so ALL dependence on the
+  shape of `E` sits in the `W_b(F)`.  PROVED: `W(F;k)` never vanishes (its
+  SIGN is a column-ordering convention -- I checked 400 instances, 0 zero,
+  and the sign is constant across `F` for each of 50 profiles, so the
+  "positivity" claim is convention, the content is nonvanishing).  PROVED
+  (Lemma B): the inequality `eq:altratio`,
+  `|W_B(F)| <= C (1 + max F)^j |W(F;k)|` with
+  `j = sum_i (sum B_i - C(k_i,2))`, IMPLIES the whole open case -- it makes
+  the tail geometric once `max F <= tau n`, giving `alpha_J* != 0` and
+  `eta = O(1/min E)` for ARBITRARY gap structure.  PROVED: `eq:altratio` at a
+  single node (the ratio is a Schur polynomial `s_mu(F)`, `|mu| = j`), and
+  `min F >> diam F` reduces to `min F = 0` (depth-1 recursion, constants do
+  not compound).  OPEN: `eq:altratio` at `min F = 0`,
+  `max F ~ diam F`.  Observed in 29872 exact instances at `N <= 12`,
+  `|F| <= 8`, worst ratio 14.3, and the constant CONVERGES rather than
+  creeping (at `F = (S,S+1,S+3,S+6,S+10,S+15)` it rises to its predicted
+  limit 12).  My own independent sweep: worst ratio 10.06, 0 vanishing.
+  Also unproved, and much weaker, is ingredient (L):
+  `W(F;k') <= e^{o(n)} W(F;k)` across two profiles at the same `F`, needed
+  only for the differing-profile branch.  And with gaps `floor(sqrt n)` and
+  `N=10`, `eta * min E` ran to 1.000 at `k=4` and 2.98 at `k=6`
+  (verify12b.py), the same `Theta(1/min E)`, so the lemma is expected TRUE.
   DEAD: `|alpha_J*| ~ M_J* prod_{same-node}(1 - e_s/e_t)` (fails at `k>=6`,
   ratio 4e-16 at `N=11, k=10`; exact for `k<=5`, another small-size trap).
   Also open is the
