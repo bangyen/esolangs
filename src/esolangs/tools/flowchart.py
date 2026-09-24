@@ -183,9 +183,10 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     """Build a Flowchart program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Wide
-    unconstrained programs preload the table into one deque and each input
-    pops half the remaining answers from one end (fewer than ``2T`` pops,
-    five rows: O(T)).  Small or width-constrained programs draw a decision
+    unconstrained programs preload a pair of answers onto each deque and let
+    the input walk the deque cursor to the pair it wants (two rows, O(T):
+    about 11 characters an entry, where popping halves of one deque cost
+    80).  Small or width-constrained programs draw a decision
     tree: ``/ /`` reads a bit, ``< >`` switches, each leaf sets, prints and
     halts.  Leaves sit flush on one ``(( ))`` pitch (dropping the gutter
     took ``n = 4`` from 2444 to 1557 chars).  The tree draws ``2**n - 1``
@@ -215,61 +216,86 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
 
 
 def _flowchart_deque(truth_table: str) -> str:
-    """Select one preloaded answer by discarding opposite deque halves."""
+    r"""Address one preloaded answer by walking the deque cursor to it.
+
+    Entries ``2j`` and ``2j + 1`` are pushed onto deque ``j`` in that order,
+    so the preload leaves the cursor on ``T / 2 - 1`` and the first ``n - 1``
+    bits walk it back: a zero at level ``k`` steps the cursor down by
+    ``2 ** (n - 2 - k)`` and a one leaves it alone.  The last bit needs no
+    step at all -- the pair sharing a deque is one at each end, so it picks
+    ``\{ }/`` or ``/{ }\`` and halves both the ``[ >`` run and the walk.
+    Discarding halves of one deque instead needed a pop node on *both* arms
+    of every switch, so a unit of selection cost two five-character nodes
+    rather than one three-character ``< ]`` on the arm that moves and a bare
+    rail on the arm that does not.
+
+    Two rows, not five, and the pointer runs east to west.  Only one arm of
+    a switch leaves the spine, so the drawing needs one row above it rather
+    than two on each side; running westwards puts the selector in the low
+    columns, which is what keeps that upper row short -- a line is padded
+    out to its last non-space cell, so a selector drawn east of the preload
+    would have charged the preload's width twice.
+    """
     cells: dict[tuple[int, int], str] = {}
-    main = 2
+    spine = 1
+    col = 0
 
-    def put(x: int, y: int, text: str) -> None:
+    def west(text: str) -> int:
+        """Place ``text`` on the spine ending at ``col``; return its left end."""
+        nonlocal col
+        left = col - len(text) + 1
         for offset, char in enumerate(text):
-            key = (x + offset, y)
-            if key in cells:
-                raise AssertionError(f"two Flowchart cells at {key}")
-            cells[key] = char
+            cells[(left + offset, spine)] = char
+        col = left - 1
+        return left
 
-    def chain(x: int, y: int, nodes: list[str]) -> int:
-        for node in nodes:
-            put(x, y, node)
-            x += len(node)
-            put(x, y, "─")
-            x += 1
-        return x
+    def paint(start: int, row: int, text: str) -> None:
+        for offset, char in enumerate(text):
+            cells[(start + offset, row)] = char
 
-    x = 0
-    x = chain(x, main, ["( )"])
-    preload: list[str] = []
-    for bit in truth_table:
-        preload.extend(("[ }" if bit == "1" else "{ ]", "\\[ ]/"))
-    x = chain(x, main, preload)
+    west("( )")
+    # ``\[ ]/`` and ``[ >`` both leave the register alone, so a run of equal
+    # entries is set once and pushed however many times it is long.
+    register: str | None = None
+    for index, bit in enumerate(truth_table):
+        if register != bit:
+            west("[ }" if bit == "1" else "{ ]")
+            register = bit
+        west("\\[ ]/")
+        if index % 2 and index + 1 < len(truth_table):
+            west("[ >")
 
     n = len(truth_table).bit_length() - 1
-    for level in range(n):
-        x = chain(x, main, ["/ /"])
-        switch = x
-        put(switch, main, "< >")
-        middle = switch + 1
-        put(middle, main - 1, "│")
-        put(middle, main + 1, "│")
-        put(middle, main - 2, "┌")
-        put(middle, main + 2, "└")
+    for level in range(n - 1):
+        west("/ /")
+        switch = west("< >")
+        # Travelling west a switch sends 1 straight on and 0 up, and the
+        # rail west of the switch is the one-branch's bypass.
+        count = 1 << (n - 2 - level)
+        junction = col - 3 * count
+        paint(switch, spine - 1, "─┐")
+        paint(junction + 1, spine - 1, "< ]" * count)
+        paint(junction + 1, spine, "─" * (3 * count))
+        cells[(junction, spine - 1)] = "┌"
+        cells[(junction, spine)] = "┴"
+        col = junction - 1
 
-        count = 1 << (n - 1 - level)
-        top = chain(middle + 1, main - 2, ["/{ }\\"] * count + ["[ }"])
-        bottom = chain(middle + 1, main + 2, ["\\{ }/"] * count + ["{ ]"])
-        if top != bottom:  # pragma: no cover - paired node widths are equal
-            raise AssertionError("Flowchart selector arms have different widths")
-        end = top
-        put(end, main - 2, "┐")
-        put(end, main + 2, "┘")
-        put(end, main - 1, "│")
-        put(end, main + 1, "│")
-        put(end - 1, main, "< >")
-        put(end + 2, main, "─")
-        x = end + 3
+    # The last bit picks an end rather than a deque: the pair sharing a deque
+    # was pushed even entry first, so its odd half is the top.
+    west("/ /")
+    switch = west("< >")
+    cells[(switch + 1, spine - 1)] = "┐"
+    west("\\{ }/")
+    west("\\ \\")
+    tail = west("(( ))")
+    paint(tail - 1, spine - 1, "─" * (switch - tail + 2))
+    paint(tail - 6, spine - 1, "/{ }\\")
+    paint(tail - 9, spine - 1, "\\ \\")
+    paint(tail - 14, spine - 1, "(( ))")
 
-    x = chain(x, main, ["\\{ }/", "\\ \\"])
-    put(x, main, "(( ))")
-    width = max(col for col, _ in cells) + 1
-    grid = [[" "] * width for _ in range(5)]
-    for (col, row), char in cells.items():
-        grid[row][col] = char
+    left = min(x for x, _ in cells)
+    width = max(x for x, _ in cells) - left + 1
+    grid = [[" "] * width for _ in range(2)]
+    for (x, row), char in cells.items():
+        grid[row][x - left] = char
     return "\n".join("".join(row).rstrip() for row in grid)
