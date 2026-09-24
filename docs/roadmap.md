@@ -214,26 +214,23 @@ step; an answer lands in the paper it extends, and the row leaves.
   placement need not be extremal there (it fails at `(11/10, 3, 5, 7)`,
   `u = 1`, where `prop:uoneall` still makes it finite).
 
-- **Coefficient mass at complex roots.**  Every mass bound so far prescribes
-  real roots; `cor:complex` allows a complex multiple `F` but not complex
-  roots.  Polynomial's register instructions are conjugate pairs
-  `a +- p**b i`, 80% of the construction's degree and the factor 211 of the
-  constant bracket.  Wanted: an order-statistic (or at least logarithmic
-  mass) lower bound for monic multiples of `prod (x**2 - 2a x + a**2 +
-  p**(2b))`, uniform in the degree, sharp up to `O(L**2)` at the pairs the
-  generator emits.  First step: the dual certificate for one pair is an
-  exponential sum on `rho**-d cos(d theta)`; find the analogue of the
-  displaced-zero comparison `thm:tail` for such sums.
+- **Coefficient mass at complex roots.**  Purely imaginary pairs are CLOSED
+  ([coefficient-mass](proofs/coefficient-mass.tex) `thm:transfer`,
+  `cor:imag`: by multisection a pair `+-ci` is worth exactly one real root
+  `c**2`, rows, mass and sharpness included), and the first row holds at
+  every root set (`prop:rowone`).  Beyond that no bound can depend on the
+  moduli and the angles alone (`prop:noangle`: `x**(2M) + rho**(2M)`).
+  Open: rows `k >= 2` or an `Omega(K**2 log)` mass for pairs `a +- p**b i`,
+  `a != 0`, the Gaussian-integer register roots; any proof must use their
+  arithmetic.
 
-- **Polynomial's routing constant.**  `lem:block` and `eq:basic-routing`
-  credit one distinct real root per 12 first-essential residuals at one
-  level; the construction spends 2 per state, and pays for every level
-  where the bound uses one (factors `12**2` and `4` of the bracket).  Both
-  per-cursor caps and the bipartite graph bound are attained separately, so
-  a better constant needs a joint argument; and whether one cursor can
-  really serve residuals at several levels when read counts vary is open.
-  First step: search small programs for a cursor carrying first-essential
-  residuals at two levels.
+- **Polynomial's routing constant.**  `lem:input` credits one distinct
+  input root per 3 first-essential residuals at one level; the construction
+  spends one per state (measured `N*/K_in <= 0.4`), and pays for every level
+  where the bound uses one (factors `3**2` and `4` of the bracket).  Whether
+  one cursor can really serve first-essential residuals at several levels
+  when read counts vary is open.  First step: search small programs for a
+  cursor carrying first-essential residuals at two levels.
 
 - **Every row at other roots.**  `thm:everyrow` proves `b_k >= L - k + 1`
   for monic multiples of `(x-2)**L` only.  Generalize: the per-row bound for
@@ -286,13 +283,10 @@ step; an answer lands in the paper it extends, and the row leaves.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
-  liminf in `[log10(2)/1152, 105.5 log10(2)]`, limsup in
-  `[log10(2)/288, 422 log10(2)]`, a factor 121,536 for most `n`.  The mass
-  step is not the gap: the order-statistic bound for arbitrary free positions
-  (coefficient-mass `lem:slack`, Theorem 3.2) is already exact, and its
-  constant `1/2` is sharp (`cor:infimum`), so the old gap (a) was closed
-  there.  The gap is `12**2` routing (one distinct real root per 12
-  first-essential residuals, against 2 per state in the construction), `4`
-  levels (the lower bound uses one), and `211` for the complex register roots
-  that carry 80% of the construction's degree and that the real-node
-  certificate does not charge.  See the next two rows.
+  liminf in `[log10(2)/18, 105.5 log10(2)]`, limsup in
+  `[(2/9) log10(2), 422 log10(2)]`, a factor 1899 for most `n` (down from
+  121,536 by charging the input pairs: `lem:input`, `cor:imag`).  The gap is
+  `3**2` routing (one input value per 3 first-essential residuals, against
+  one per state), `4` levels (the lower bound uses one), and `105.5/2` for
+  the register and real roots the lower bound does not charge.  See the
+  complex-roots and routing rows.
