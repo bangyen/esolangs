@@ -305,12 +305,14 @@ step; an answer lands in the paper it extends, and the row leaves.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
-  liminf in `[log10(2)/2, 105.5 log10(2)]`, limsup in
-  `[2 log10(2), 422 log10(2)]`, a factor 211 for most `n` (down from
-  121,536: input pairs charged by `cor:imag`, routing exact by
-  `thm:count`).  The gap is `4` levels (the construction pays one input per
-  state at every level; the minimum input count sits between the widest
-  level and the smallest automaton agreeing with the table on `{0,1}**n`)
-  and `105.5/2` for the register and real roots the lower bound does not
-  charge (see the complex-roots row).  First step: a construction that
-  shares input states across levels.
+  liminf in `[2 log10(2), 525/8 log10(2)]`, limsup in
+  `[2 log10(2), 5821/32 log10(2)]`, a factor 32.8 / 91.0 (down from 211).
+  Lower side: counting with the relabelling symmetry (`lem:gapauto`,
+  `prop:counting`) forces `T/(n+4)` input values for every `n >= 7`.
+  Upper side: automaton programs with a shared threshold decoder
+  (`lem:decoder`, `prop:dfaprog`, profile `525/8` per state squared,
+  `lem:profile`) and a stripped automaton with `3/2 T/n` states near
+  `nu = 1` (`lem:strip`).  Open: levels (the worst-case minimum automaton
+  near `nu = 1`, in `[1, 3/2] T/n`) and profile (`525/16` against mass `2`;
+  the register and real roots the lower bound does not charge, see the
+  complex-roots row).
