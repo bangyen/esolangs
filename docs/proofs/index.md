@@ -211,7 +211,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Eval | linear lookup | fixed reversed stack order selects the indexed row | linear: T literal plus halving `;` runs under T |
 | Factor | tree | Brainfuck tree followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence | lower bound: tight language and generated Theta(T log T) ([factor](factor.md)) |
 | Fargo | tree | finite folded layout | linear, time n log: Moebius transform, n passes over 2**n |
-| Flowchart | finite lookup | a five-row deque preloads `2**n` answers and discards opposite halves | linear: 2T preload nodes and T arm cells on five rows |
+| Flowchart | finite lookup | a pair of answers per deque, and the input walks the deque cursor to the pair it wants | linear: T pushes, `T/2 - 1` cursor steps, two rows |
 | Forbin | tree | — | linear, time n log: greedy order scoring, capped at n <= 10 |
 | Forþ | tree | — | linear: span walk, constant dispatch, step literals geometric |
 | Grapheme | tree | arbitrary integer variable keys remove the old 24 one-letter-key ceiling | linear, time n log: essential_inputs |
