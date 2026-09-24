@@ -230,9 +230,11 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
     from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
+    from esolangs.tools.dimensional import _dimensional_ordered
     from esolangs.tools.egl import _egl_ordered
     from esolangs.tools.helpers import _decision_tree_program
     from esolangs.tools.other import _forbin_ordered
+    from esolangs.tools.painfuck import _painfuck_ordered
     from esolangs.tools.parameterized import (
         _bitdeque_ordered,
         _ram0_ordered,
@@ -242,6 +244,7 @@ def _reordering_generators() -> list[object]:
         _circlefuck_ordered,
         _jaune_ordered,
     )
+    from esolangs.tools.three_d_brainfuck import _three_d_ordered
 
     entries: list[tuple[str, object, object]] = [
         (
@@ -254,11 +257,9 @@ def _reordering_generators() -> list[object]:
             boolean.brainfuck,
             lambda t, p: _decision_tree_program(t, ">", "<", p),
         ),
-        (
-            "dimensional",
-            boolean.dimensional,
-            lambda t, p: _decision_tree_program(t, ">0", "<0", p),
-        ),
+        ("dimensional", boolean.dimensional, _dimensional_ordered),
+        ("painfuck", boolean.painfuck, _painfuck_ordered),
+        ("three_d_brainfuck", boolean.three_d_brainfuck, _three_d_ordered),
         ("egl", boolean.egl, _egl_ordered),
         ("ram0", boolean.ram0, _ram0_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
