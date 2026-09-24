@@ -351,7 +351,11 @@ step; an answer lands in the paper it extends, and the row leaves.
   squared, `lem:effprofile`) on a bounded stripped automaton
   (`lem:bstrip`) and a trie-banded automaton (`lem:trieband`,
   `lem:bandtrie`) with `(1 + o(1)) T/n` states for every `n`, so levels
-  are CLOSED.  Open: profile (`325/16` against mass `2`; sources neither even nor odd pay
-  mass `4`, `rem:parity`, so the lower factor 2 hangs on even or odd
-  sources; the register and real roots are not charged, see the
-  complex-roots row).
+  are CLOSED.  Open: profile (`325/16` against mass `2`).  Sources neither
+  even nor odd pay mass `4` (`rem:parity`); even or odd sources add and
+  subtract only right after a read (`lem:symruns`), so every source built
+  as in the upper side already pays `4` (`cor:symm`).  Per-state blocks
+  cannot beat `325/8` (`lem:onestep`: after a read and one instruction the
+  runs part only at a zero test; `rem:floor`), so a lower upper constant
+  needs programs of another kind; the register and real roots are not
+  charged, see the complex-roots row.
