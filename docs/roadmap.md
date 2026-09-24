@@ -249,9 +249,15 @@ step; an answer lands in the paper it extends, and the row leaves.
   `prop:bothsignssharp`).  For real multiples the two rays are one real
   crossing polynomial, localized annulus by annulus (`lem:localcross`), so
   thin tails at the imaginary axis get the sharp constant of `cor:imag`,
-  `(1-eps)**2 K**2 log R` (`thm:thinreal`, `cor:thingaussreal`).  Open:
-  wide sectors (`|a_j|` comparable to `c_j`, where the angle mechanism
-  lives) and the cross terms `K_s K_t log t` between annuli, which follow
+  `(1-eps)**2 K**2 log R` (`thm:thinreal`, `cor:thingaussreal`).  Wide
+  sectors (`sec:widesectors`): for multiples of degree `O(K)` the order is
+  `min(K**2, K/delta) log R` with both constants sharp (`thm:widesector`,
+  `cor:wideconst`; `x^N - rho^N` attains `pi/delta`, `prop:widesharp`), so
+  `c K**2 log R` is false over the reals; at Gaussian roots
+  `(pi/delta - o(1)) K log R` holds unconditionally (`cor:widegauss`), and
+  `K**2` there reduces to excluding integer multiples whose large zeros are
+  nearly equidistributed in angle (`cor:widedisc`).  Open: that Gaussian
+  `K**2` question and the cross terms `K_s K_t log t` between annuli, which follow
   (`cor:conjcross`) from the conjectured rows at real roots of both signs,
   `b_k >= |f_D| prod_{i >= 2k-1} (rho_i - 1)` (`eq:bothrows`; certified
   exactly on 145 random instances, never violated in high precision), and
