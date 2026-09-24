@@ -8,8 +8,11 @@ encode instructions.  The size and time cells of the roadmap's scaling audit
 close here as a language lower bound: every Polynomial program for a
 maximal-width table is `Omega(T**2 / log T)` characters, for every cofactor,
 every operand sign, every degree and every read count.  The distinct-root
-forcing is the routing lemma, which counts only read cursors whose residual
-depends on the next input (see "Variable read counts").  Everything else below is proved, executed,
+forcing is the next-read count (`thm:count` in the paper): a first-essential
+residual is fixed by the cursor of the next read, which must end its gap, so
+the program has at least as many distinct input values and distinct real
+values as the widest level has first-essential residuals.  The older routing
+lemma below (see "Variable read counts") is kept as history.  Everything else below is proved, executed,
 or a bounded search; the coefficient-mass bound is the theorem under "The slack
 certificate", and the searches that narrowed the question to it are kept
 because they say what is *not* available -- not because anything is still
@@ -335,19 +338,19 @@ The companion to `polynomial.tex` Section "Explicit constants"
 Put `C_P(n)` = max over tables of min `|f|`, and normalise by
 `T**2/n = T**2/log2 T`. The bracket is
 
-    log10(2)/18   = 1.67e-2  <=  liminf C_P n/T**2  <=  211/2 log10(2) = 31.8
-    2/9 log10(2)  = 6.69e-2  <=  limsup C_P n/T**2  <=  422 log10(2)   = 127.1
+    log10(2)/2    = 0.150  <=  liminf C_P n/T**2  <=  211/2 log10(2) = 31.76
+    2 log10(2)    = 0.602  <=  limsup C_P n/T**2  <=  422 log10(2)   = 127.03
 
-For `T**2/ln T` units, multiply by `ln 2`: `1.16e-2 .. 22.0` and
-`4.64e-2 .. 88.1`.
+For `T**2/ln T` units, multiply by `ln 2`: `0.104 .. 22.0` and
+`0.417 .. 88.1`.
 
 Per `n`, put `j1 = min{j : 2**j + j >= n}`, `nu = n / 2**j1` (in
 `(1/2, 1 + j1/2**j1]`), `n = 2**(j1-1) + j1 - 1 + s` and `u = 2**-s`. Then the
-normalised size lies between `(2/9) log10(2) nu**2` and
+normalised size lies between `2 log10(2) nu**2` and
 `log10(2) nu**2 (422 + 924u + 494u**2)`. The lower side carries relative
 error `O(log n / n)` and the upper side `O(1/n)`. The two sides differ by
-the factor `(9/2)(422 + 924u + 494u**2)`, which is 1899 for most `n` and
-at most 4533.75. So the order is settled and the constant is not.
+the factor `(422 + 924u + 494u**2)/2`, which is 211 for most `n` and
+at most 503.75. So the order is settled and the constant is not.
 
 **Lower side: three links.**
 
@@ -357,14 +360,17 @@ at most 4533.75. So the order is settled and the constant is not.
    distinct first-essential strings. There are
    `E_j = 2**(2**j) - 2**(2**(j-1)) - 2` of these, so
    `N_n = max_j min(2**(n-j), E_j) = nu T/n (1 + o(1))` is attained.
-2. *Input incidence `N* <= 3K` (`lem:input`).* Input instructions are the
-   purely imaginary pairs `+-p**b i`, `2 <= b <= 6`, and equal roots sort
-   into one block. Reads do not jump, so inside a block of `s` equal reads
-   the read at `q_i` is followed by the one at `q_(i+1)`: before `q_(s-1)`
-   the next two reads erase both the register and `y_1`, so no
-   first-essential residual sits there; `q_(s-1)` carries at most one and
-   `q_s` two. So a maximal-width table forces `K_n = ceil(N_n/3)` distinct
-   input values.
+2. *Next read, `N*(k) <= min(K_in, L)` (`lem:nextread`, `thm:count`).* A
+   first-essential residual after `k` reads equals the function computed from
+   the cursor `c` of the `(k+1)`-st read, because that read erases the bit
+   still in the register. `c` must be the last read of its gap (a maximal run
+   of register instructions) and a real instruction must follow: otherwise
+   the straight line after `c` prints (a function of `y_1` alone) or reads
+   again (ignores `y_1`). Equal input roots sit inside one gap and equal real
+   roots inside one real run, so distinct residuals need distinct input
+   values and distinct real values: `K_in >= N_n` and `L >= N_n`. Sharp:
+   a mod-`(2**K - 1)` automaton compiled one read per state has
+   `N*(K) = K_in = 2**K - 1 > T/(6n) - 1` (`prop:sharp`).
 3. *Mass, exact per pair.* By multisection
    ([coefficient-mass](coefficient-mass.tex) Corollary 5.3)
    a multiple of `prod (x**2 + c_j**2)` has an even or odd part that is a
@@ -373,9 +379,10 @@ at most 4533.75. So the order is settled and the constant is not.
    with exponent `>= 2` is at least `(j+2)**2/4` (`lem:ppow`), so for every
    `n >= 6`: `C_P(n) >= (2 K**2 ln K - (5/2) K (K+1)) / ln 10`.
 
-The older real-root route (`12 L - 9` routing, mass `1/2`) is 64 times
-weaker: `N*(k) <= 3 + 6 m_route` with `m_route <= 2L - 2` for the
-bipartite outerplanar block-incidence graph.
+The real-root route (`L >= N_n` with mass `1/2`) is 4 times weaker. The
+older routing lemmas (`N* <= 3 + 6 m_route`, block incidence
+`m_route <= 2L - 2`, and `N* <= 3 K_in`) are superseded by the next-read
+count.
 
 **Upper side.** A chained block
 (`+=1; if; input; *=span or //=50; +=delta; endif`) has 10 roots. Their
@@ -398,13 +405,16 @@ or `4` twice. Let `Phi = sum_i i b_(i)`, taken in sorted order.
   `S_n = (2 + 2u) q_j1` and `R_n = 2u q_j1` gives the closed form.
 
 **Where the gap sits** (at `u -> 0`):
-`1899 = 3**2 (routing) x 4 (levels: (S/W)**2) x 105.5/2 (profile)`.
+`211 = 1**2 (routing) x 4 (levels: (S/W)**2) x 105.5/2 (profile)`.
 
-* The routing factor: the construction spends one input per state, the
-  bound credits one per 3 residuals. Measured `N*/K_in <= 0.4` on 3,761
-  generator programs at n = 3..5.
-* The levels factor exists because a cursor can serve several levels when
-  the read count varies. So counting sees `W`, not `S`.
+* Routing is exact: one input value per first-essential residual, attained
+  (`prop:sharp`).
+* The levels factor: one input root can serve first-essential residuals at
+  `n - Theta(log n)` levels (`rem:levels`), so summing `N*(k)` over levels
+  cannot be charged to distinct inputs. The minimum input count lies
+  between the widest level and the smallest automaton agreeing with the
+  table on `{0,1}**n`; the construction pays the full leveled DAG. SAT data
+  (n = 5): 9 inputs suffice against a leveled DAG of 21 states.
 * The profile factor: the input pairs give mass constant 2, the
   construction pays up to 105.5 (random tables about 76). The rest is the
   arithmetic register roots `a +- p**b i`, `a != 0`, and the real roots,
@@ -419,9 +429,9 @@ free set `U`, at every degree, with no `o(1)`. It is the mass `1/2`,
 already exact, so it cannot narrow the bracket. The open questions are
 combinatorial:
 
-* a routing lemma with constant near 2 roots per state;
 * a mass bound for the roots `a +- p**b i`;
-* cursor sharing across levels.
+* a construction sharing input states across levels (or a multi-level
+  lower bound, which counting automata cannot give).
 
 **Measured** (uncapped `_polynomial_dag`, one seeded random table per n):
 
@@ -436,7 +446,8 @@ combinatorial:
 * The constant is still falling at these sizes, because
   `log P / log T = 1.19` at n = 12.
 * `Lambda` is 0.94 of the rearrangement bound.
-* The explicit floor is `5..6e5` times smaller at n = 10..12.
+* The real-root explicit floor was `5..6e5` times smaller at n = 10..12;
+  the input-root bound raises it by 576 asymptotically.
 
 (executed: the outerplanar bound exhaustively to `V = 9`; the per-cursor
 caps, `m_routing <= 2L - 2` and `N* <= 12L - 9` on every input of 2,536
