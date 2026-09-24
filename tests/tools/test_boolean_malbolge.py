@@ -280,6 +280,18 @@ def test_fourteen_inputs_every_row(shape: object) -> None:
     assert _rows(table, build=_module._fourteen_program) == list(table)  # noqa: SLF001
 
 
+def test_fourteen_inputs_dispatch_once_the_levels_land(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Filling ``_F_LEVELS`` is all it takes to route fourteen inputs."""
+    monkeypatch.setattr(_module, "_F_LEVELS", ((0,), (0,), (0,)))
+    monkeypatch.setattr(_module, "_fourteen_program", lambda table: f"built {table}")
+    table = _dense(14)
+    assert boolean.malbolge(table) == f"built {table}"
+    with pytest.raises(GeneratorCapError, match="at most 13 inputs"):
+        boolean.malbolge(_dense(15))
+
+
 @pytest.mark.parametrize("n", [14, 15])
 def test_past_thirteen_inputs_is_refused(n: int) -> None:
     """Fourteen's constants are pending; fifteen needs a fourth cascade level."""
