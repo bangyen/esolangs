@@ -384,9 +384,8 @@ step; an answer lands in the paper it extends, and the row leaves.
   store 0.14).  Next step: measure bits per cell of the tables computed
   by a scaled-down Malbolge (`3**6`..`3**7` cells, same decode and
   re-encipher) as the store grows; near 3 kills the route.  The `n = 14`
-  route is not shipped despite [limitations](limitations.md): its
-  constants (`_F_LEVELS`, `_F_LINKS`) are empty and every 14-input table
-  raises `IndexError` in `_f_tables`.  Between the shipped
+  route is written but refused: its annealed constants (`_F_SELECT12`,
+  `_F_SELECT13`, `_F_LEVELS`, `_F_LINKS`) are still placeholders.  Between the shipped
   constructions and 17 the least unreachable arity is unknown in both
   directions.
 
