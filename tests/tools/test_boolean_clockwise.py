@@ -67,8 +67,9 @@ class TestClockwise:
 
         The tree's turns are relative, so its absolute column never
         matters; a spine further right is pure padding.  It only has to
-        clear the ``2**(n + 1) - 1`` columns its leftward branches span,
-        leaving column 0 for the closing corner.
+        clear the columns its leftward branches span -- three for the pair
+        of leaves at the bottom and twice the child's for every level above
+        -- or the hoist's eight, leaving column 0 for the closing corner.
         """
         program = boolean.clockwise(table)
         rows = program.splitlines()
@@ -76,7 +77,7 @@ class TestClockwise:
         grid = [row.ljust(width) for row in rows]
         dead = [x for x in range(width) if all(row[x] == " " for row in grid)]
         assert not dead, f"dead columns {dead}"
-        assert width == 2 ** (n + 1) + 1
+        assert width == max(3 * 2 ** (n - 1), 8) + 1
 
     def test_constant_subtrees_narrow_the_ring(self) -> None:
         """A folded subtree spends no displacement, so the grid narrows.
@@ -164,13 +165,13 @@ class TestClockwise:
     def test_stacked_leaves_leave_by_rows_of_their_own(self) -> None:
         """A stacked tree's leaves finish on different rows, and column 0 closes.
 
-        The flat ring funnels every leaf along one shared bottom row into
-        the corner.  Stacking breaks that by construction -- a leaf below
-        another ends lower -- so the exits are per-row instead: each ends at
-        a ``!`` in column 0, which only turns a path whose accumulator the
-        leaf's own ``S`` left at zero, and the ``+`` above it puts the
-        accumulator back so the climb passes the exits above without
-        turning on them.
+        The flat ring funnels its leaves into the corner along the two rows
+        a pair shares, one per sibling.  Stacking breaks that by
+        construction -- a leaf below another ends lower -- so the exits are
+        per-row instead: each ends at a ``!`` in column 0, which only turns
+        a path whose accumulator the ``S`` to its left dropped to zero, and
+        the ``+`` above it puts the accumulator back so the climb passes the
+        exits above without turning on them.
         """
         table = "01101001"
         flat = boolean.clockwise(table)
@@ -180,9 +181,9 @@ class TestClockwise:
             rows = program.splitlines()
             return sorted({y for y, row in enumerate(rows) if row[:1] == "!"})
 
-        assert len(exit_rows(flat)) == 1, "a flat ring closes through one row"
-        assert len(exit_rows(stacked)) > 1, "stacking must spread the exits"
-        for y in exit_rows(stacked):
+        assert len(exit_rows(flat)) == 2, "a flat ring closes through a pair's rows"
+        assert len(exit_rows(stacked)) > 2, "stacking must spread the exits"
+        for y in exit_rows(flat) + exit_rows(stacked):
             assert stacked.splitlines()[y - 1][:1] == "+", (
                 f"exit row {y} has no '+' above it to re-arm the climb"
             )
