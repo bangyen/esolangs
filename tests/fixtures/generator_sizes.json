@@ -30,16 +30,16 @@
   },
   "3x": {
    "0110": {
-    "commands": 225,
-    "source_units": 310
+    "commands": 132,
+    "source_units": 132
    },
    "01101001": {
-    "commands": 340,
-    "source_units": 681
+    "commands": 208,
+    "source_units": 208
    },
    "0110100110010110": {
-    "commands": 518,
-    "source_units": 1397
+    "commands": 327,
+    "source_units": 327
    }
   },
   "6-5": {

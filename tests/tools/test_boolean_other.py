@@ -607,32 +607,36 @@ class TestThreeX:
         parity8 = "".join(str(i.bit_count() & 1) for i in range(2**8))
         assert len(boolean.three_x(parity8)) < 2 * len(boolean.three_x(parity7))
 
-    def test_digit_constant_encodings(self) -> None:
-        """The base-3 digit seeds are the closed-form minimal programs."""
+    def test_constant_ladder_is_the_grammar_shortest_first(self) -> None:
+        """Keys are the shortest ``C ::= 3 | C C C x`` programs, by length."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.three_x import run
         from esolangs.tools import other
 
-        assert other._const(0) == "333x"  # noqa: SLF001
-        assert other._const(1) == "3333x3x"  # noqa: SLF001
-        assert other._const(2) == "3333x3x3333x3x3x"  # noqa: SLF001
+        codes = other._constants(13)  # noqa: SLF001
+        assert [len(c) for c in codes] == [1, 4, 7, 7] + [10] * 4 + [13] * 5
+        values = []
+        for code in codes:
+            io = ScriptedIO("")
+            run(code + "!", io)  # each leaves exactly one value on the stack
+            values.append(io.getvalue().strip())
+        assert values[0] == "3"
+        assert len(set(values)) == len(values)  # a key has to be distinct
 
-    def test_base_three_digits_accumulate(self) -> None:
-        """Each base-3 digit past the first appends the 3v+d affine step."""
+    def test_constant_ladder_only_ever_extends(self) -> None:
+        """More names append to the cache; 30 of them still fit 16 characters."""
         from esolangs.tools import other
 
-        # 12 is "110" in base 3: seed 1, then d=1, then d=0.  Each transform
-        # adds exactly one `#` (the swap before the `x`), and no seed has one.
-        twelve = other._const(12)  # noqa: SLF001
-        assert twelve.startswith(other._const(1))  # noqa: SLF001
-        assert twelve.count("#") == 2
+        first = other._constants(4)  # noqa: SLF001
+        longer = other._constants(30)  # noqa: SLF001
+        assert longer[:4] == first
+        assert len(longer[-1]) <= 16
 
-    def test_formula_scales_logarithmically(self) -> None:
-        """The closed form grows with the digit count, not the value."""
-        from esolangs.tools import other
-
-        small, large = other._const(100), other._const(1_000_000)  # noqa: SLF001
-        assert len(small) < 120  # 100 is "10201": 5 digits
-        assert len(large) < 350  # 1_000_000 is 13 base-3 digits
-        assert len(large) < len(small) * 4
+    def test_bit_copies_replace_a_guarded_pair(self) -> None:
+        """A subtree that *is* one of its bits collapses to one write."""
+        # The identity on input 1 at n=2: no guard, one copy of the stored bit.
+        program = boolean.three_x("0011")
+        assert "(" not in program
 
 
 class TestGeneratorEdgePaths:
