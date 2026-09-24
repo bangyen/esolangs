@@ -331,14 +331,16 @@ step; an answer lands in the paper it extends, and the row leaves.
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
   inputs, repo model: clipped tape, `,` at EOF an error) of `C`-character
-  programs: `4.1963 <= liminf B(C)**(1/C) <= limsup <= 7.0601`, from
+  programs: `4.1858 <= liminf B(C)**(1/C) <= limsup <= 7.0601`, from
   `[2.414, 7.388]`.  Upper: behaviour-preserving shortlex rewriting (dead
   loops, clears, diverging bodies, excursion commutation) and an exactly
   certified Perron bound on the irreducible words; the old `7.388` counted
   `[]` as removable, which is unsound when programs may diverge.  Lower:
   token families decodable from their event sequences, with reads sent to
   the nearest cell whose value is never printed again and nested loops
-  attached to prints (three local rules make brackets decodable), certified by a Collatz-Wielandt vector; loop-free programs alone
+  attached to prints (four local rules make brackets decodable; the fourth, a
+  read in every loop body, closes a gap where a read-free loop diverges and
+  hides its output, lowering the old 4.1963), certified by a Collatz-Wielandt vector; loop-free programs alone
   lie in `[4.061, 2 + sqrt 5 = 4.236]`.  A single fixed input gives `>= 3.366`.
   Open: the limit.  Local rules have saturated near 7.06, so the upper side
   needs a global equivalence argument; the lower side needs a decodable
