@@ -44,8 +44,8 @@ $(2,3)$ and $(2,3,5)$.  We show that the $(2,3,5)$ multiples are correctly
 ordered at every degree, the $b_2$ family approaching its bound from above,
 and identify a partial-sum criterion on the
 surviving root product under which the same construction shows the bound
-is an infimum in general.  For distinct roots the criterion is also
-necessary: when it fails, the infimum lies strictly above the bound.  It is
+is an infimum in general.  The criterion is also necessary, repeated
+roots included: when it fails, the infimum lies strictly above the bound.  It is
 then the reciprocal of the worst placement's best certificate tail, and
 lifting certificates computes it at explicit root sets: at $(2,3,5,7)$ it is
 $1704/31$.
@@ -105,7 +105,7 @@ when the exempt roots lie in $(1,2]$ and the partial sums are small.
 Section~\ref{sec:attain} shows that the explicit monic multiples of
 $(x-2)(x-3)(x-5)$ approaching \eqref{eq:order} are correctly ordered at every
 degree, identifies the partial-sum criterion
-behind the infimum in general, and proves that for distinct roots the bound
+behind the infimum in general, and proves that, repeated roots included, the bound
 is an infimum exactly when the criterion holds.  Section~\ref{sec:value}
 computes the infimum when it fails.  Section~\ref{sec:scope} records what is
 proved and what remains open.
@@ -196,6 +196,58 @@ $|u^{(\varepsilon)}_d|$, gives
 Finally the order statistics of a converging multiset converge, so the
 product $\prod_{j=1}^{f+1}y_{(j)}(\varepsilon)/(1-y_{(j)}(\varepsilon))$
 tends to $\prod_{j=1}^{f+1}y_{(j)}/(1-y_{(j)})$.
+\end{proof}
+
+\begin{lemma}[Strictness at confluent nodes]\label{lem:confstrict}
+In Proposition~\ref{prop:confluent} the inequality is strict unless
+$Z=\{1,\ldots,m-1\}$.
+\end{lemma}
+
+\begin{proof}
+Suppose $Z\ne\{1,\ldots,m-1\}$.  Then $f\le m-2$, the largest element
+$z=\max Z$ satisfies $z\ge m$, and $Z'=Z\setminus\{z\}$ has the same leading
+run $f$.  Keep the perturbed nodes $z_{i,j}=y_ie^{-j\varepsilon}$ of the
+proof of Proposition~\ref{prop:confluent}; the largest of them is
+$y_c$ itself ($j=0$), and it is strictly larger than all the others.  Run the
+displaced step of the proof of Theorem~2.2 once at these $m$ distinct nodes:
+$F^{(\varepsilon)}$ is the sum on the perturbed nodes other than $y_c$ with
+$F^{(\varepsilon)}_0=1$ and $F^{(\varepsilon)}|_{Z'}=0$, $G^{(\varepsilon)}$
+the sum on all of them with $G^{(\varepsilon)}|_{\{0\}\cup Z'}=0$ and
+$G^{(\varepsilon)}_z=1$, and $\mu_\varepsilon=|F^{(\varepsilon)}_z|$.  The
+splitting identity and the correction-ratio bound
+$\Gamma_G(z)\le2\Gamma_F(z)$ there (all nodes are at most $1/2$) give
+\[
+  \Tail(u^{(\varepsilon)})
+  \le\Tail(F^{(\varepsilon)})-\mu_\varepsilon A_{G^{(\varepsilon)}},
+  \qquad
+  A_{G^{(\varepsilon)}}=\sum_{1\le d<z}|G^{(\varepsilon)}_d| .
+\]
+Theorem~2.2 on the $m-1$ nodes of $F^{(\varepsilon)}$ bounds
+$\Tail(F^{(\varepsilon)})$ by the product over their $f+1\le m-1$ smallest
+members, which are the $f+1$ smallest of all $m$ perturbed nodes because the
+one removed is the largest.  So
+$\Tail(u^{(\varepsilon)})\le\prod_{j\le f+1}y_{(j)}(\varepsilon)/(1-y_{(j)}(\varepsilon))
+-\mu_\varepsilon A_{G^{(\varepsilon)}}$.
+
+Now let $\varepsilon\to0$.  The sums $F^{(\varepsilon)}$ and
+$G^{(\varepsilon)}$ are interpolants at the distinct points $\{0\}\cup Z'$
+and $\{0\}\cup Z$ in spaces spanned by functions of the form
+$\phi_{i,k,\varepsilon}$ (for the group of $y_c$, which has lost its top
+member, with $y_c$ replaced by $y_ce^{-\varepsilon}$), so exactly as in the
+proof of Proposition~\ref{prop:confluent} they converge pointwise to the
+confluent interpolants: $F^{(0)}$ in the Hermite space of the multiset with one
+copy of $y_c$ removed, with $F^{(0)}_0=1$ and $F^{(0)}|_{Z'}=0$, and $G^{(0)}$
+in the full Hermite space, with $G^{(0)}|_{\{0\}\cup Z'}=0$ and $G^{(0)}_z=1$.
+By the P\'olya--Szeg\H o zero bound $F^{(0)}$, a nonzero element of an
+$(m-1)$-dimensional Hermite space with the $m-2$ zeros $Z'$, has no other real
+zero, so $F^{(0)}_z\ne0$; likewise $G^{(0)}$ vanishes only on
+$\{0\}\cup Z'$, and since $|Z'|=m-2<z-1$ some $1\le d<z$ avoids $Z'$, so
+$A_{G^{(0)}}>0$.  By Fatou's lemma, as in Proposition~\ref{prop:confluent},
+\[
+  \Tail(u)\le\liminf_{\varepsilon\to0}\Tail(u^{(\varepsilon)})
+  \le\prod_{j=1}^{f+1}\frac{y_{(j)}}{1-y_{(j)}}-|F^{(0)}_z|\,A_{G^{(0)}}
+  <\prod_{j=1}^{f+1}\frac{y_{(j)}}{1-y_{(j)}} .
+\]
 \end{proof}
 
 \begin{proposition}[The node cutoff $1/2$ is sharp]\label{prop:cutoff}
@@ -703,6 +755,19 @@ on $\{1,\ldots,n-1\}\setminus\{j\}$, and
 \]
 \end{proof}
 
+\paragraph{Lemma~\ref{lem:improve} with repetitions.}  The lemma holds with
+repetitions allowed among the $\rho_i$, the nodes being replaced by the
+Hermite space of $Q$.  The proof of Lemma~2.1 is a generating-function
+computation that uses only the denominator $\prod_i(1-y_ix)$, so with
+repetitions it still gives
+$v^*_d=(-1)^{n+1}(\prod_iy_i)h_{d-n}(y)$ for $d\ge n$ and
+$\Tail(v^*)=1/|Q(1)|$; the sum $\delta$ is given explicitly by its generating
+function $N(x)/\Pi(x)$, and the evaluation at $x=1$ is unchanged.  The only
+change is in the domination: if $y_{\max}$ has multiplicity $\mu$, then
+$h_{d-n}(y)\ge\binom{d-n+\mu-1}{\mu-1}y_{\max}^{\,d-n}$ while
+$|\delta_d|\le C(1+d)^{\mu-1}y_{\max}^{\,d}$, so $|\delta_d/v^*_d|$ is still
+bounded for $d\ge n$, and a small $\tau$ keeps the sign of $v^*$.
+
 \begin{lemma}[Far zeros]\label{lem:far}
 Let $1>y_1>\cdots>y_L>0$ and $0\le k<L$.  Let $v^\infty$ be a certificate for
 a finite set $X_0$ on $y_{k+1},\ldots,y_L$, and let $E_\nu\subset\N_{>0}$,
@@ -880,145 +945,198 @@ $C=|c_0|^{-1}\sum_{|\alpha|\le j}|c_{\mathbf B,\alpha}|z_p^{-|\alpha|}$,
 finite because the exponent sets range over a finite family.
 \end{proof}
 
-\begin{proposition}[Non-cancellation at a simple cut]\label{prop:nocancel}
-Keep the notation of Propositions~\ref{prop:conffar} and \ref{prop:altratio},
-and let $J^*$ be the first $k$ functions in growth order, so that its
-exponents are the full initial segments $\{0,\ldots,m_i-1\}$ at the nodes
-preceding the cut node $u$ and a top segment at $u$.  Assume the cut is
-\emph{simple}, $k_u=1$, and put $s=m_u-1$.  Index the $k$ columns of $J^*$ by
-$c$, with node $i(c)$ and exponent $b_c$, let $\hat c$ be the column at $u$,
-and set
-\[
-  \Phi(g)=\det\bigl(M_{wc}(g)\bigr)_{0\le w\le k-1,\;1\le c\le k},
-  \qquad
-  M_{wc}(g)=\begin{cases}
-    (g+w)^{\,s}z_u^{\,w},&c=\hat c,\\[2pt]
-    w^{\,b_c}z_{i(c)}^{\,w},&c\ne\hat c.
-  \end{cases}
-\]
-Write $E=\{e_1<\cdots<e_k\}$, $\lambda_v=e_{k+1-v}-(k-v)$, and let $Z$ be the
-confluent point of $J^*$.  Then
-\begin{equation}\label{eq:kostka}
-  \alpha_{J^*}(E)=\pm\sum_\gamma K_{\lambda\gamma}\,Z^\gamma\,\Phi(\gamma_{\hat c}),
-\end{equation}
-$\Phi$ is a polynomial of degree $s$ whose leading coefficient is
-$\pm W(\{0,\ldots,k-1\};\mathbf k)\ne0$, and there are $g_0$ and
-$0<c_1\le C_1$, depending only on $z$, $\mathbf m$ and $k$, such that every
-$k$-set $E$ with $\min E\ge g_0$ satisfies
-\begin{equation}\label{eq:nocancel}
-  c_1(\min E)^{\,s}\,|W(E;\mathbf k)|\le|\alpha_{J^*}(E)|
-  \le C_1(\max E)^{\,s}\,|W(E;\mathbf k)| .
-\end{equation}
-In particular $\alpha_{J^*}(E)\ne0$, with no restriction on the gaps of $E$.
-\end{proposition}
+The minor estimates of Lemma~\ref{lem:far} and
+Proposition~\ref{prop:conffar} can be bypassed altogether.  What the far-zero
+argument needs is only that zeros far out cannot be produced by the leading
+functions, and that is a Descartes rule at infinity.  Let $\mathcal C$ be the
+set of functions $x\mapsto R(x)w^x$ with $R\in\R(x)$ nonzero and $w>0$, each
+considered on a half-line beyond the real poles of $R$.  It is a group under
+multiplication; each member has finitely many zeros, so it is eventually of
+one sign; the quotient of two members,
+$(R_1/R_2)(w_1/w_2)^x$, has a limit in $[-\infty,\infty]$ as $x\to\infty$;
+and the derivative of a nonconstant member lies in $\mathcal C$, because
+$(Rw^x)'=(R'+R\log w)w^x$ and, writing $R=p/q$, the numerator
+$p'q-pq'+pq\log w$ of $R'+R\log w$ has a term of degree $\deg p+\deg q$ that
+the other two cannot cancel when $w\ne1$, while $R'\ne0$ for nonconstant $R$
+when $w=1$.
+
+\begin{lemma}[Descartes at infinity]\label{lem:infinity}
+Let $\varphi_1,\ldots,\varphi_M\in\mathcal C$ satisfy
+$\varphi_{j+1}(x)/\varphi_j(x)\to0$ as $x\to\infty$.  Let
+$c^{(\nu)}\in\R^M$ converge to $c\ne0$, let $j_0$ be the least index with
+$c_{j_0}\ne0$, and let $n_\nu\to\infty$.  Then for all large $\nu$ the
+function $f_\nu=\sum_jc^{(\nu)}_j\varphi_j$ has at most $j_0-1$ zeros in
+$[n_\nu,\infty)$.
+\end{lemma}
 
 \begin{proof}
-Put $x_c=e^{t_c}$, so that $x_c\partial_{x_c}=\partial_{t_c}$ and the operator
-$\Theta_{\mathbf B}$ of Proposition~\ref{prop:altratio} becomes the
-constant-coefficient $\partial_t^{\,\mathbf b}$.  As there,
-$\alpha_{J^*}(E)=\bigl[\partial_t^{\,\mathbf b}\det(e^{e_rt_c})\bigr]_{t=T}$
-with $T_c=\log z_{i(c)}$, and $\det(x_c^{\,e_r})=\pm s_\lambda(x)V(x)$.
-Expand both factors into monomials,
-$s_\lambda(x)=\sum_\gamma K_{\lambda\gamma}x^\gamma$ and
-$V(x)=\sum_\sigma\operatorname{sgn}\sigma\prod_cx_c^{\,k-\sigma(c)}$.  Since
-$\partial_t^{\,\mathbf b}e^{\langle v,t\rangle}
-=\bigl(\prod_cv_c^{\,b_c}\bigr)e^{\langle v,t\rangle}$, the term indexed by
-$(\gamma,\sigma)$ contributes, at $t=T$,
+Induct on $j_0$, for all such families at once.  Every ratio
+$\varphi_j/\varphi_1$, $j\ge2$, is a product of consecutive ratios and tends
+to $0$.  If $j_0=1$ then on $[n_\nu,\infty)$
 \[
-  K_{\lambda\gamma}\operatorname{sgn}\sigma\;Z^\gamma
-  \prod_c\bigl(\gamma_c+k-\sigma(c)\bigr)^{b_c}z_{i(c)}^{\,k-\sigma(c)} .
+  \Bigl|\frac{f_\nu}{\varphi_1}-c^{(\nu)}_1\Bigr|
+  \le\max_j|c^{(\nu)}_j|\sum_{j\ge2}\sup_{x\ge n_\nu}
+  \Bigl|\frac{\varphi_j(x)}{\varphi_1(x)}\Bigr|\longrightarrow0,
 \]
-Summing over $\sigma$ with its sign is a determinant whose rows are indexed by
-$w=k-\sigma(c)\in\{0,\ldots,k-1\}$, namely
-$\det\bigl((\gamma_c+w)^{b_c}z_{i(c)}^{\,w}\bigr)$.  In that determinant only
-$\gamma_{\hat c}$ matters: at a node $i\ne u$ the exponents $b_c$ run over the
-full segment $\{0,\ldots,k_i-1\}$, and $(\gamma_c+w)^{b_c}$ is a monic
-polynomial of degree $b_c$ in $w$, so expressing that node's block of columns
-in the basis $w^0,\ldots,w^{k_i-1}$ is a unitriangular change of basis and
-leaves the determinant unchanged.  This gives \eqref{eq:kostka}.
+while $c^{(\nu)}_1\to c_1\ne0$, so $f_\nu$ has no zero there for large $\nu$.
 
-Expanding $(g+w)^s=\sum_t\binom stg^{\,s-t}w^t$ and using multilinearity in
-the column $\hat c$ writes $\Phi(g)=\sum_t\binom stD_tg^{\,s-t}$, where $D_t$
-is the same determinant with the cut column replaced by $w^tz_u^{\,w}$.  The
-coefficient of $g^s$ is $D_0$, whose columns are $w^{\,b_c}z_{i(c)}^{\,w}$
-with the cut exponent $0$; as $k_u=1$, every node now carries a full initial
-segment, so $D_0=\pm W(\{0,\ldots,k-1\};\mathbf k)$, nonzero by
-Proposition~\ref{prop:altratio}.
-
-Finally, $K_{\lambda\gamma}\ne0$ forces $\lambda_k\le\gamma_v\le\lambda_1$,
-the lower bound because
-$s_\lambda=(x_1\cdots x_k)^{\lambda_k}s_{\lambda-\lambda_k}$; and
-$\lambda_k=\min E$ while $\lambda_1=\max E-(k-1)$.  Since $\Phi$ has a nonzero
-leading coefficient it has a largest real zero; let $g_0$ exceed it.  On
-$[g_0,\infty)$ the function $|\Phi(g)|/g^{\,s}$ is continuous and strictly
-positive with limit $|D_0|>0$, so its infimum $c_1'$ is positive and its
-supremum $C_1'$ finite.  Once $\min E\ge g_0$ every $\gamma$ occurring in
-\eqref{eq:kostka} has $\gamma_{\hat c}\ge g_0$, so all the numbers
-$\Phi(\gamma_{\hat c})$ share one sign while $K_{\lambda\gamma}Z^\gamma\ge0$:
-the sum does not cancel, and
-\[
-  c_1'(\min E)^{\,s}s_\lambda(Z)\le|\alpha_{J^*}(E)|
-  \le C_1'(\max E)^{\,s}s_\lambda(Z).
-\]
-Proposition~\ref{prop:altratio} gives $|W(E;\mathbf k)|=|c_0|\,s_\lambda(Z)$;
-dividing by $|c_0|$ yields \eqref{eq:nocancel}.
+If $j_0\ge2$, then $c_1=0$.  Put $\chi_j=(\varphi_j/\varphi_1)'$ for
+$2\le j\le M$.  Each $\varphi_j/\varphi_1$ tends to $0$ and is not constant,
+so $\chi_j\in\mathcal C$.  For $2\le j<M$ the functions
+$\varphi_{j+1}/\varphi_1$ and $\varphi_j/\varphi_1$ tend to $0$, their
+quotient $\varphi_{j+1}/\varphi_j$ tends to $0$, and the quotient
+$\chi_{j+1}/\chi_j$ of their derivatives lies in $\mathcal C$ and so has a
+limit $\ell\in[-\infty,\infty]$, while $\chi_j$ is eventually nonzero.
+L'H\^opital's rule then gives $\varphi_{j+1}/\varphi_j\to\ell$, so $\ell=0$:
+the family $\chi_2,\ldots,\chi_M$ satisfies the hypothesis.  Its coefficient
+vectors $(c^{(\nu)}_2,\ldots,c^{(\nu)}_M)$ converge to $(c_2,\ldots,c_M)$,
+whose first nonzero entry has index $j_0-1$ in the new family, so by induction
+$(f_\nu/\varphi_1)'=\sum_{j\ge2}c^{(\nu)}_j\chi_j$ has at most $j_0-2$ zeros
+in $[n_\nu,\infty)$ for large $\nu$.  If $f_\nu$ had $j_0$ zeros there, so
+would $f_\nu/\varphi_1$, and Rolle's theorem would give $j_0-1$ zeros of its
+derivative between them.
 \end{proof}
 
-The threshold $g_0$ is genuinely needed, and the bound is sharp at it.  At the
-roots $(3,3,4,4)$ with $u=3$, where $z=(\tfrac13,\tfrac14)$ and both
-multiplicities are $2$, one computes $\Phi(g)=(6-g)/432$, so $g_0=7$; and
-$\alpha_{J^*}$ does vanish at $E=\{6,7,8\}$, the one singular triple recorded
-below.  The hypothesis $k_u=1$ is also not removable: it is what makes $\Phi$
-a function of a single coordinate, and hence of constant sign far out.
+\begin{proposition}[Far zeros at repeated roots]\label{prop:farrep}
+Let $r_1\le\cdots\le r_L$ with $r_1>1$, repetitions allowed, let
+$z_1>\cdots>z_p$ be the distinct values of $1/r_i$ with multiplicities $m_i$,
+and let $\psi_1,\ldots,\psi_L$ be the Hermite basis $d^az_i^d$,
+$0\le a<m_i$, ordered by growth: $z$ descending, and $a$ descending within a
+node.  For $0\le k\le L$ let
+$\mathcal H_k=\operatorname{span}\{\psi_{k+1},\ldots,\psi_L\}$, and call
+$v\in\mathcal H_k$ a certificate for $X$ on $\mathcal H_k$ if $v_0=1$ and
+$v_x=0$ for $x\in X$.  Fix $0\le k<L$, and let $E_\nu$ be $k$-sets of positive
+integers with $\min E_\nu\to\infty$.
+\begin{enumerate}
+\item[(a)] If $f_\nu\in\mathcal H_0$ vanishes on $E_\nu$ and its coefficient
+vector has sup-norm $1$, its coefficients on $\psi_1,\ldots,\psi_k$ tend to
+$0$.
+\item[(b)] With $J^*=\{1,\ldots,k\}$ and
+$\alpha_J(E)=\det(\psi_j(e))_{e\in E,\,j\in J}$, for large $\nu$ one has
+$\alpha_{J^*}(E_\nu)\ne0$, and
+$\eta_\nu=\max_{J\ne J^*}|\alpha_J(E_\nu)/\alpha_{J^*}(E_\nu)|\to0$.
+\item[(c)] If $v^\infty$ is a certificate for a finite set $X_0$ on
+$\mathcal H_k$, then for large $\nu$ there are certificates $v^{(\nu)}$ for
+$X_0\cup E_\nu$ on $\mathcal H_0$ with $\Tail(v^{(\nu)}-v^\infty)\to0$.
+\end{enumerate}
+\end{proposition}
+
+Removing the first $k$ functions removes whole blocks at the largest nodes
+and, at the node where the cut falls, the top exponents; so $\mathcal H_k$ is
+the Hermite space of the multiset $r_{k+1},\ldots,r_L$, and by the zero bound
+for exponential polynomials~\cite[Part~Five, Ch.~1]{polya-szego} a nonzero
+element of $\mathcal H_k$ has at most $L-k-1$ real zeros.  For distinct roots
+$\mathcal H_k$ is the span of $y_{k+1}^d,\ldots,y_L^d$, and (c) is
+Lemma~\ref{lem:far}.
+
+\begin{proof}
+(a) Otherwise, along a subsequence, the coefficient vectors converge to some
+$c$ with a nonzero coordinate among the first $k$, so the least index $j_0$
+with $c_{j_0}\ne0$ is at most $k$.  Each $\psi_j(x)=x^az_i^x$ lies in
+$\mathcal C$, and consecutive ratios are $1/x$ within a node and
+$x^{m_{i+1}-1}(z_{i+1}/z_i)^x$ across nodes, both tending to $0$.  By
+Lemma~\ref{lem:infinity} with $n_\nu=\min E_\nu$, $f_\nu$ has at most
+$j_0-1\le k-1$ zeros in $[\min E_\nu,\infty)$ for large $\nu$, but it vanishes
+on the $k$ points of $E_\nu$.
+
+(b) If $\alpha_{J^*}(E_\nu)=0$ along a subsequence, a combination of
+$\psi_1,\ldots,\psi_k$ of sup-norm $1$ vanishes on $E_\nu$, against (a).
+Otherwise let $T_\nu=\alpha_{J^*}(E_\nu)^{-1}(\psi_j(e))_{e\in E_\nu,\,j\le L}$,
+a $k\times L$ matrix whose first $k$ columns form the identity; by Cramer's
+rule $\alpha_J/\alpha_{J^*}$ is the minor of $T_\nu$ on the columns $J$.  For
+$l>k$ the function $\psi_l-\sum_{j\le k}(T_\nu)_{jl}\psi_j$ vanishes on
+$E_\nu$; its coefficient vector has sup-norm $\max(1,t)$ with
+$t=\max_j|(T_\nu)_{jl}|$, so by (a) $t/\max(1,t)\to0$, that is $t\to0$.
+Every $J\ne J^*$ contains some $l>k$, so its minor is a determinant with a
+column tending to $0$ and the others bounded, and $\eta_\nu\to0$.
+
+(c) Put $n=L-k$ and $s=n-1-|X_0|\ge0$, the zero bound in $\mathcal H_k$
+giving $|X_0|\le n-1$, and fix $s$ positive integers $Q$ outside $X_0$.  For
+large $\nu$ the $L$ points of $Y_\nu=\{0\}\cup X_0\cup Q\cup E_\nu$ are
+distinct, so there is a unique $v^{(\nu)}\in\mathcal H_0$ with
+$v^{(\nu)}_0=1$, $v^{(\nu)}|_{X_0}=0$, $v^{(\nu)}_q=v^\infty_q$ for $q\in Q$
+and $v^{(\nu)}|_{E_\nu}=0$; it is a certificate for $X_0\cup E_\nu$, and
+$v^\infty$ is the unique element of $\mathcal H_k$ meeting the same
+conditions at the $n$ points $\{0\}\cup X_0\cup Q$.  Let $c^{(\nu)}$ be the
+coefficient vector of $v^{(\nu)}$.  If $\|c^{(\nu)}\|_\infty\to\infty$ along
+a subsequence, then $v^{(\nu)}/\|c^{(\nu)}\|_\infty$ has, by (a) and
+compactness, a limit $g\in\mathcal H_k$ of sup-norm $1$ vanishing at the $n$
+points $\{0\}\cup X_0\cup Q$, against the zero bound.  So the $c^{(\nu)}$ are
+bounded, and also $\|c^{(\nu)}\|_\infty\ge1$ because $v^{(\nu)}_0=1$; by (a)
+their first $k$ coordinates tend to $0$, so every limit point is the
+coefficient vector of an element of $\mathcal H_k$ meeting the $n$ conditions
+of $v^\infty$, that is, of $v^\infty$.  Hence $c^{(\nu)}\to c^\infty$, and
+\[
+  \Tail(v^{(\nu)}-v^\infty)\le\sum_{j=1}^L|c^{(\nu)}_j-c^\infty_j|
+  \sum_{d\ge1}|\psi_j(d)|\longrightarrow0 .
+\]
+\end{proof}
 
 \begin{theorem}[Necessity of the partial-sum criterion]\label{thm:converse}
-Let $2\le r_1<\cdots<r_L$ be distinct and $0\le u\le L-1$.  If
+Let $2\le r_1\le\cdots\le r_L$, repetitions allowed, and $0\le u\le L-1$.  If
 \eqref{eq:partial} fails, then
 \[
   \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)>\prod_{i=u+1}^L(r_i-1)
 \]
-over monic $Q\in\R[x]$.  With Proposition~\ref{prop:partial},
+over monic $Q\in\R[x]$.  With Corollary~\ref{cor:charrep},
 \eqref{eq:order} is the infimum exactly when \eqref{eq:partial} holds.
 \end{theorem}
 
 \begin{proof}
-By \eqref{eq:weak} it suffices to find $\delta>0$ such that every
-$X\subset\N_{>0}$ of size $u$ has a certificate on $y_1,\ldots,y_L$ with
-$\Tail\le B-\delta$.  Suppose not, and take $X_\nu$ whose certificates all
-have $\Tail\ge B-1/\nu$.  Passing to a subsequence, each of the $u$ elements
-of $X_\nu$, in increasing order, is eventually constant or tends to infinity,
-so $X_\nu=X_0\cup E_\nu$ with $X_0$ fixed, $|E_\nu|=k$ and
-$\min E_\nu\to\infty$.  By Lemma~\ref{lem:far}, a certificate $v^\infty$ for
-$X_0$ on $y_{k+1},\ldots,y_L$ with $\Tail(v^\infty)<B$ yields certificates
-for $X_\nu$ with tails tending to $\Tail(v^\infty)$, a contradiction.  So it
-suffices to produce one.  Put $n=L-k$ and $u_0=|X_0|=u-k$.
+Use the notation of Proposition~\ref{prop:farrep}.  If $F$ is a monic
+multiple of $P=\prod_i(x-r_i)$ of degree $D$ and $v\in\mathcal H_0$, then
+$\sum_{j\le D}f_jv_{D-j}=0$: for $\psi=d^az^d$ with $z=1/r$, expanding
+$(D-j)^a$ in powers of $j$ writes $\sum_jf_j(D-j)^ar^{j-D}$ as a combination
+of the values $\bigl((x\,d/dx)^bF\bigr)(r)$, $b\le a$, which vanish because
+$r$ is a root of multiplicity greater than $a$.  So \eqref{eq:weak} holds
+for every certificate on $\mathcal H_0$, and, as in the distinct case, it
+suffices to find $\delta>0$ such that every $X\subset\N_{>0}$ of size $u$ has
+a certificate on $\mathcal H_0$ with $\Tail\le B-\delta$.  Suppose not, and
+take $X_\nu$ whose certificates on $\mathcal H_0$ all have
+$\Tail\ge B-1/\nu$.  Passing to a subsequence, $X_\nu=X_0\cup E_\nu$ with
+$X_0$ fixed, $|E_\nu|=k$ and $\min E_\nu\to\infty$.  By
+Proposition~\ref{prop:farrep}(c), a certificate $v^\infty$ for $X_0$ on
+$\mathcal H_k$ with $\Tail(v^\infty)<B$ yields certificates for $X_\nu$
+with tails tending to $\Tail(v^\infty)$, a contradiction; so it suffices to
+produce one.  Put
+$n=L-k$, $m=L-u$ and $u_0=|X_0|=u-k$; recall that $\mathcal H_k$ is the
+Hermite space of $r_{k+1},\ldots,r_L$.
 
-If $u_0=0$ the nodes are the reciprocals of the surviving roots, and since
-\eqref{eq:partial} fails, Lemma~\ref{lem:improve} with $Q=P_u$ and
-$X_0=\varnothing$ gives $\Tail(v^\infty)<1/|P_u(1)|=B$.
+If $u_0=0$, $\mathcal H_u$ is the Hermite space of the roots of $P_u$, and
+since \eqref{eq:partial} fails, Lemma~\ref{lem:improve} (with repetitions)
+for $Q=P_u$ and $X_0=\varnothing$ gives $\Tail(v^\infty)<1/|P_u(1)|=B$.
 
-If $u_0\ge1$, take the certificate of Lemma~3.1's proof: zero set $Z$
-consisting of $X_0$ and the first $m-1$ positive integers outside it, so
-$|Z|=n-1$ and the leading run of $Z$ is $f\ge m-1$.  Theorem~2.2 on
-$y_{k+1},\ldots,y_L\le1/2$ bounds $\Tail$ by the product of $1/(r_i-1)$ over
-the $f+1$ largest of $r_{k+1},\ldots,r_L$, with equality only if
-$Z=\{1,\ldots,n-1\}$.  Every factor is at most $1$ and $f+1\ge m$, so
-$\Tail\le B$, strictly unless $Z=\{1,\ldots,n-1\}$ and the factors
-$1/(r_i-1)$, $k<i\le u$, all equal $1$.  The last includes $i=u$, and
-$r_u=2$ forces $u=1$ and $r_1=2$, hence $k=0$ and $X_0=\{w\}$ with
-$w\le L-1$.
+If $u_0\ge1$, take the certificate of Lemma~3.1's proof on $\mathcal H_k$:
+zero set $Z$ consisting of $X_0$ and the first $m-1$ positive integers
+outside it, so $|Z|=n-1$ and its leading run is $f\ge m-1$.
+Proposition~\ref{prop:confluent}, with nodes at most $1/2$, bounds $\Tail$ by
+the product of $1/(r_i-1)$ over the $f+1$ largest of $r_{k+1},\ldots,r_L$,
+strictly unless $Z=\{1,\ldots,n-1\}$ by Lemma~\ref{lem:confstrict}.  Every
+factor is at most $1$ and $f+1\ge m$, so $\Tail\le B$, strictly unless
+$Z=\{1,\ldots,n-1\}$ and $r_{k+1}=\cdots=r_u=2$.  In that case
+$X_0\subseteq\{1,\ldots,n-1\}$ and $Q=\prod_{i>k}(x-r_i)=(x-2)^{u_0}P_u$
+has $|Q(1)|=|P_u(1)|=1/B$, so Lemma~\ref{lem:improve} (with repetitions) for
+$Q$ and $X_0$ finishes the proof once some $j\in\{1,\ldots,n-1\}\setminus X_0$
+has $|S_j(Q)|>|Q(1)|$.
 
-In that case $r_1-1=1$, so $1/|P(1)|=B$ for $P=\prod_{i=1}^L(x-r_i)$, and
-Lemma~\ref{lem:improve} with $Q=P$ and $X_0=\{w\}$ needs one
-$j\in\{1,\ldots,L-1\}\setminus\{w\}$ with $|S_j(P)|>|P(1)|$.  Since
-$P=(x-2)P_1$, $S_j(P)=S_j(P_1)-2S_{j-1}(P_1)$, and by
-Lemma~\ref{lem:signs} consecutive partial sums of $P_1$ have opposite signs,
-so $|S_j(P)|=|S_j(P_1)|+2|S_{j-1}(P_1)|$ for $1\le j\le m=L-1$.  As
-\eqref{eq:partial} fails, $|S_i(P_1)|>|P_1(1)|=|P(1)|$ for some $1\le i<m$,
-and then both $j=i$ and $j=i+1$ qualify; one of them is not $w$.
+For a monic $R$ with all roots above $1$ let
+$\mathcal A(R)=\{1\le j\le\deg R-1:|S_j(R)|>|R(1)|\}$.  The coefficients of
+$(x-2)R$ read from the top are $c_l-2c_{l-1}$, so
+$S_j((x-2)R)=S_j(R)-2S_{j-1}(R)$, and by Lemma~\ref{lem:signs}
+$(-1)^jS_j(R)>0$ for $0\le j\le\deg R$; hence
+$|S_j((x-2)R)|=|S_j(R)|+2|S_{j-1}(R)|$ for $1\le j\le\deg R$, while
+$|((x-2)R)(1)|=|R(1)|$.  Thus $j\in\mathcal A(R)$ puts both $j$ and $j+1$ in
+$\mathcal A((x-2)R)$.  Since \eqref{eq:partial} fails, $\mathcal A(P_u)$
+contains some $i\le m-1$, and $u_0$ applications give
+$\{i,i+1,\ldots,i+u_0\}\subseteq\mathcal A(Q)\subseteq\{1,\ldots,n-1\}$.
+These are $u_0+1$ integers and $X_0$ has only $u_0$ elements.
 \end{proof}
 
-The proof also shows how a multiple can approach \eqref{eq:order}.  Outside
+For distinct roots the equality case forces $u=1$, $r_1=2$ and $k=0$, and
+the argument above is the one given before for that case; with repetitions
+it also covers $r_1=\cdots=r_u=2$ for any $u$ and any $k<u$.
+
+For distinct roots the proof also shows how a multiple can approach \eqref{eq:order}.  Outside
 the case $u=1$, $r_1=2$, every placement with an exempt coefficient at
 bounded distance from the top has a certificate with tail below $B$, so
 along any sequence of monic multiples with $b_{u+1}$ tending to the bound all
@@ -2070,6 +2188,31 @@ algebraic number, is effectively computable~\cite{frw}.  The logarithmic
 coefficient mass $\Lambda$ of~\cite{coefficient-mass} is additive over
 coefficients rather than a norm at all.
 
+\begin{corollary}[The criterion at repeated roots]\label{cor:charrep}
+Let $2\le r_1\le\cdots\le r_L$, repetitions allowed, and $0\le u\le L-1$.
+Then \eqref{eq:order} is the infimum of $b_{u+1}$ over monic multiples of
+$\prod_i(x-r_i)$ exactly when \eqref{eq:partial} holds; no alignment
+$r_u<r_{u+1}$ is needed.
+\end{corollary}
+
+\begin{proof}
+Necessity is Theorem~\ref{thm:converse}.  For sufficiency use
+Theorem~\ref{thm:value}, which carries to repeated roots: in its first half
+the constraints $F(r_i)=0$ become $((x\,d/dx)^aF)(r_i)=0$, $a<m_i$, the dual
+variables again assemble into an element of $\mathcal H_0$ because
+$d\mapsto(D-d)^ay_i^{d}$ and $d^ay_i^d$ span the same space, and the
+compactness step uses unisolvence of $\mathcal H_0$ at $L$ distinct points;
+in its second half the entries of $A_\nu^{-1}R_\nu$ are the ratios of
+Proposition~\ref{prop:farrep}(b), which tend to $0$ for every sequence with
+$\min E_\nu\to\infty$.  So the infimum is $1/T$ with $T\ge\tau^*$, where
+$\tau^*$ is the least tail of a certificate on $\mathcal H_u$.  The dual
+pairing \eqref{eq:dualpair} holds on $\mathcal H_u$, since
+$\sum_dw_dd^ay^d=((y\,d/dy)^aW)(y)$ vanishes at $y=1/r_i$ for $a<m_i$ when
+$\widetilde P_u$ divides $W$; with $M=1$ in \eqref{eq:multiplier} it gives
+$1/\tau^*\le\max_{j\ge1}|S_j(P_u)|$, which is $|P_u(1)|=1/B$ under
+\eqref{eq:partial}.  Hence $T\ge B$, while Theorem~3.2 gives $T\le B$.
+\end{proof}
+
 \section{Scope}\label{sec:scope}
 
 The bounds here concern coefficient magnitudes, not ordinary length or
@@ -2112,9 +2255,9 @@ $k$, how closely a multiple can approach \eqref{eq:order}.
 Corollary~3.6 settles the asymptotic form of the aggregated question for
 prime roots, and the multiplier $x+1$ of~\cite[Section~3]{coefficient-mass}
 shows that even there the root product need not be the finite-$L$
-minimizer.  Whether \eqref{eq:order} is itself the infimum is settled for
-distinct roots: by Proposition~\ref{prop:partial} and
-Theorem~\ref{thm:converse} it is exactly when \eqref{eq:partial} holds, as
+minimizer.  Whether \eqref{eq:order} is itself the infimum is settled: by
+Proposition~\ref{prop:partial}, Theorem~\ref{thm:converse} and
+Corollary~\ref{cor:charrep} it is exactly when \eqref{eq:partial} holds, as
 at $(2,3)$ and $(2,3,5)$, where~\cite[Proposition~4.5]{coefficient-mass} and
 Proposition~\ref{prop:sharp235} exhibit the multiples, and at $(3,4,5,6)$.
 It fails already at $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums
@@ -2163,133 +2306,30 @@ by as much as a factor $2.01$.  Proposition~\ref{prop:head} states the same
 question analytically instead, as a bound on the $\max X-1$ coefficients of a
 deflated multiple; by Proposition~\ref{prop:defthresh} that route says nothing
 pointwise once $r_1\le\tfrac{3+\sqrt5}2$, which covers every root set with
-$r_1=2$.  Repeated roots beyond the confluent pair $(3,3)$ are open only on one side.  In the Hermite basis $d^ay_i^d$,
-ordered by growth, the substitutions are routine: Descartes' rule counts with
-multiplicity, so the sign count in Proposition~\ref{prop:partial} is unchanged;
-the Vandermonde change of variables there becomes Hermite interpolation on a
-multiset, still bijective; and the unisolvence and positivity steps of
-Theorem~\ref{thm:value} are the confluent matrix $M(0)$ of
-Proposition~\ref{prop:confluent} and the P\'olya--Szeg\H o bound.
-Proposition~\ref{prop:partial} does need the cut to be aligned with the
-blocks, $r_u<r_{u+1}$, for its perturbation term.  What does not carry is the
-minor estimate in the proof of Lemma~\ref{lem:far}, which
-Theorem~\ref{thm:value} reuses verbatim: the constant
-$c=\prod_{a<b\le k}(1-y_b/y_a)$ vanishes as soon as two nodes coincide, so the
-lower bound $|\alpha_{J^*}|\ge cM_{J^*}$ says nothing, and $\alpha_{J^*}$ can
-vanish outright.  At the roots $(3,3,4,4)$ with $u=3$ the leading functions are
-$d(\tfrac13)^d,(\tfrac13)^d,d(\tfrac14)^d$, whose exponent set at the node
-$\tfrac14$ is not an initial segment, and
+$r_1=2$.  Repeated roots are settled on both sides.  In the Hermite basis $d^ay_i^d$,
+ordered by growth, Descartes' rule counts with multiplicity, Hermite
+interpolation on a multiset replaces the Vandermonde change of variables, and
+the unisolvence and positivity steps are the confluent matrix $M(0)$ of
+Proposition~\ref{prop:confluent} and the P\'olya--Szeg\H o bound.  The one
+step that does not carry is the minor estimate in the proof of
+Lemma~\ref{lem:far}: the constant $c=\prod_{a<b\le k}(1-y_b/y_a)$ vanishes as
+soon as two nodes coincide, and $\alpha_{J^*}$ can vanish outright---at the
+roots $(3,3,4,4)$ with $u=3$ the leading functions
+$d(\tfrac13)^d,(\tfrac13)^d,d(\tfrac14)^d$ have the combination
 $\tfrac{2187}{16384}d(\tfrac13)^d-\tfrac{15309}{8192}(\tfrac13)^d+d(\tfrac14)^d$
-vanishes at $d=6,7,8$: exactly one singular $E$ among the $286$ triples in
-$\{1,\ldots,13\}$, and none with $\min E\ge21$.  Proposition~\ref{prop:conffar} replaces that estimate whenever $E_\nu$ has
-bounded diameter.  The degeneracy is harmless asymptotically because the
-leading term of a gapped alternant is a positive multiple $\kappa_J$ of the
-ungapped one, so a gap moves only the power of $n$: the rate is
-$\Theta(1/\min E)$ when the cut falls inside a multiplicity block---exactly
-$1/(n_0+1)$ at $(3,3)$, $(2,2)$, and $(3,3,5)$ and $(3,3,4,4)$ with
-$u=1$---and geometric at an aligned cut, where it is $2.1\cdot10^{-23}$ at
-$(2,3,3)$ and $3.0\cdot10^{-30}$ at $(3,3,5)$ with $u=2$, both at $n_0=140$.
-Theorem~\ref{thm:value} uses only $E_\nu=\{\nu+1,\ldots,\nu+u\}$, of diameter
-$u-1$, so it carries to confluent nodes.  What does not yet carry is
-Theorem~\ref{thm:converse}, whose proof allows the elements of $E_\nu$ to
-separate.  That case reduces to one scale-free inequality.  The expansion in
-Proposition~\ref{prop:conffar} is in fact exact for every $E$: with
-$n=\min E$ and $F=E-n$,
-\[
-  \alpha_J(E)=\Lambda_J(n)\sum_{\mathbf b}
-  \Bigl(\prod_{(i,a)\in J}\tbinom a{b_{i,a}}\Bigr)n^{-|\mathbf b|}
-  W_{\mathbf b}(F),
-  \qquad
-  W_{\mathbf b}(F)=\det\bigl(f^{\,b_{i,a}}z_i^{\,f}\bigr)_{f\in F},
-\]
-a sum of boundedly many terms, so all dependence on the shape of $E$ sits in
-the $W_{\mathbf b}(F)$.  Proposition~\ref{prop:altratio} bounds each
-$W_{\mathbf B}(F)$ against the ungapped $W(F;\mathbf k)$ by
-$C(1+\max F)^j$, and shows that $W(F;\mathbf k)$ never vanishes.  Feeding
-that into the exact expansion makes the tail geometric once
-$\max F\le\tau n$ for a small $\tau$ depending only on the nodes, which gives
-$\alpha_{J^*}(E)\ne0$ and $\eta=O(1/\min E)$ for an arbitrary gap structure
-inside that range.  The comparison of two profiles at the same $F$ that the
-remaining branch needs also follows, since
-$W(F;\mathbf k)=\pm c_0s_\lambda(Z)$ with $\lambda$ depending only on $F$:
-both confluent points have all coordinates in $[z_p,z_1]$, so the ratio of
-the two Schur values is at most $(z_1/z_p)^{|\lambda|}$ with
-$|\lambda|\le k\max F\le k\tau n$, and $\tau$ may be shrunk until this is
-beaten by the factor $e^{-\kappa n}$ a differing profile already gives.  An arbitrary $E$ is
-better handled by expanding over the nodes than over clusters of points.
-Laplace-expanding $\alpha_J(E)$ along the column groups of each node, the
-factor $z_i^e$ is common to a whole row and pulls out:
-\[
-  \alpha_J(E)=\sum_{E=\bigsqcup_iE_i,\;|E_i|=k_i}
-  \varepsilon(E_\bullet)\prod_iz_i^{\sigma(E_i)}\mathcal D_i(E_i),
-  \qquad
-  \mathcal D_i(E_i)=\det\bigl(e^{a}\bigr)_{e\in E_i,\,a\in A_i},
-\]
-with $\sigma(E_i)=\sum_{e\in E_i}e$, so that all dependence on the nodes is an
-explicit monomial and each $\mathcal D_i$ is a plain generalized Vandermonde.
-Writing $\mathcal D_i=\pm s_{\mu(A_i)}(E_i)V(E_i)$ and
-$V(E_i)=\bigl(\prod_ue_{(u)}^{\,k_i-u}\bigr)\Delta(E_i)$ with
-$\Delta(E_i)=\prod_{e<e'\in E_i}(1-e/e')$, monomial positivity gives the
-two-sided bound
-$\Pi(E_i,A_i)\Delta(E_i)\le|\mathcal D_i(E_i)|\le
-C_N\Pi(E_i,A_i)\Delta(E_i)$, where $\Pi$ pairs the sorted points with the
-sorted exponents; the lower bound is attained.  In particular
-$\mathcal D_i\ne0$ always.  Setting
-$\mathcal N_J(E)=\max_{E_\bullet}\prod_iz_i^{\sigma(E_i)}\Pi(E_i,A_i)
-\Delta(E_i)$, one gets $|\alpha_J(E)|\le C\mathcal N_J(E)$, and the sorted
-pairing maximises the monomial, so for $J\ne J^*$ the ratio
-$\mathcal N_J/\mathcal N_{J^*}$ is at most
-$\max\{1/\min E,e^{-\kappa\min E/2}\}$ at equal profiles---again the two
-observed rates.  Across differing profiles the comparison of the
-growth-sorted partitions is settled: listing $J$ in growth order, its $u$th
-function never precedes the $u$th function of $J^*$, and the slots where the
-nodes actually differ form the intervals $(c_j(J),c^*_j]$ of prefix counts.
-Every deficiency $\delta(u,v)^{-1}=g_u/(g_u-g_v)$ is at most $2g_v$, and the
-pair $(u,v)$ can be charged to the slot $v$, which such a pair always forces
-into that mismatch set; since a slot is charged at most $k-1$ times,
-\[
-  \frac{W_J}{W_{J^*}}\le\prod_{u\in U}
-  \Bigl[2^{\,k-1}g_u^{\,\bar a+k-1}e^{-\kappa g_u}\Bigr]
-  \le2^{\,k-1}n^{\,\bar a+k-1}e^{-\kappa n},
-  \qquad n=\min E,
-\]
-the mismatch set $U$ being nonempty exactly when the profiles differ.  This
-reproves the geometric rate at a split profile.  What is missing is that the
-growth-sorted partition attains $\mathcal N_J$ up to a constant, after which
-the displayed bound gives the cross-profile comparison; and, separately, that
-the node expansion does not cancel at $J^*$, that is
-$|\alpha_{J^*}(E)|\ge c\,\mathcal N_{J^*}(E)$.  The latter cannot be had by
-domination: the growth-sorted partition need not even be the largest term.
-At $z=(\tfrac13,\tfrac14)$ with both multiplicities $2$, $k=3$ and
-$E=\{n,n+1,n+2\}$, the partition splitting $\{n,n+2\}$ off beats the sorted
-one by $3\cdot2\cdot\tfrac14\cdot\tfrac{n+1}{n}$, which is $1.575$ at $n=20$
-and tends to $\tfrac32$, while the runner-up stays a fixed fraction of the
-maximum.  So at least two terms remain of the same order however large
-$\min E$ is, and non-cancellation must come from signs rather than size.
-Proposition~\ref{prop:nocancel} supplies exactly that when the cut is simple:
-in the Kostka expansion \eqref{eq:kostka} the whole dependence on $E$ sits in
-one fixed polynomial $\Phi$ of a single coordinate, all weights
-$K_{\lambda\gamma}Z^\gamma$ are nonnegative, and every $\gamma$ that occurs
-has $\gamma_{\hat c}\ge\min E$, so beyond the largest zero of $\Phi$ nothing
-cancels at all.  That leaves $\alpha_{J^*}\ne0$ and the two-sided estimate
-\eqref{eq:nocancel} for every $E$ with $\min E\ge g_0$, arbitrary gaps
-included.  Beyond a simple cut the argument stops, and not for want of
-effort: once $k_u\ge2$ the polynomial $\Phi$ has $k_u$ arguments and is no
-longer of one sign far out, even after symmetrising over the cut block, which
-is the only symmetry the weights admit.  At $z=(\tfrac12,\tfrac13,\tfrac14)$
-with all multiplicities $3$ and $k=5$, the symmetrised
-$\Phi^{\mathrm{sym}}$ is positive along the ray $(t,3t)$ and negative along
-$(t,4t)$ for every $t$ tested up to $10^5$, so the sign depends on the spread
-within the cut block and not on its scale.  What would remain is the
-comparison of the Kostka mass carried by the spread $\gamma$'s with the rest,
-a finite question about $\Phi^{\mathrm{sym}}$ alone.  A decomposition of $E$ into clusters of small relative diameter does
-not help: two clusters carrying the same profile but different exponent
-assignments compete at a ratio the separation bounds only by a constant, so
-no termwise domination is available there however small the relative diameter
-is taken.  Throughout, $\eta$ was still $\Theta(1/\min E)$ in every
-configuration we computed---with gaps $\lfloor\sqrt n\rfloor$ and $N=10$,
-$\eta\min E$ ran to $1.000$ at $k=4$ and $2.98$ at $k=6$, and $\log\eta$ fell
-by $\log2$ per doubling of $\min E$ at a split cut.
+vanishing at $d=6,7,8$; among the triples in $\{1,\ldots,50\}$ with
+$\min E<21$ or diameter at most $30$ it is the only singular one.  Proposition~\ref{prop:farrep} avoids
+minors altogether: zeros far out cannot be produced by the leading
+functions (Lemma~\ref{lem:infinity}), so the space of sums vanishing on
+$E_\nu$ converges to $\mathcal H_k$ whatever the shape of $E_\nu$, and
+$\alpha_{J^*}(E)\ne0$ with $\eta\to0$ once $\min E$ is large.  This gives
+Theorem~\ref{thm:converse} and, with Theorem~\ref{thm:value},
+Corollary~\ref{cor:charrep}.  It gives no rate.  Proposition~\ref{prop:conffar}
+supplies the rate when $E_\nu$ has bounded diameter---$\Theta(1/\min E)$ when
+the cut falls inside a multiplicity block, geometric at an aligned cut---and
+throughout our computations $\eta$ stayed $\Theta(1/\min E)$ at a split cut
+even with gaps $\lfloor\sqrt n\rfloor$, linear gaps and geometric spacing, but
+a rate for arbitrary $E$ is not proved.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
