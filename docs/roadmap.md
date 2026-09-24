@@ -312,11 +312,21 @@ step; an answer lands in the paper it extends, and the row leaves.
   values shrink, `nu_(i+1)(n) <= nu_i(n)/(r-1)` for every `r > 1` and `n`
   (`thm:prefixmono`), so at `r >= 2` the conjecture is exactly "rows equal
   the top row", and exempted sets inside the initial run of a good zero set
-  are settled for all `n` (`cor:prefixmono`).  Open: the conjecture
-  `V_r(L,k) = min_i 1/nu_i(n)` for all `n` (at `r = 3`, `Pi(Z_0)` exceeds
-  2 from `n = 25`; at `r = 2` the chain fails outright and only single
-  rows are known; exempted positions at holes above the lowest one;
-  `1 < r < 2` with `n >> k`).
+  are settled for all `n` (`cor:prefixmono`).  Crossing (`sec:crossing`):
+  admissible polynomials form a convex set and an insertion flips every
+  later sign (`lem:crossing`, `lem:insflip`), so one insertion at the first
+  gap covers every later exempted position (`thm:crossing`, all `r > 1`);
+  the second row is exact from one inequality per `n` (`cor:secondrow`:
+  `r = 2` to `n <= 30`, `r = 3` to `42`, `r = 4` to `50`); the conjecture
+  reduces to the first-gap insertion at constrained minimizers
+  (`cor:crossreduce`); crossing trees give `V_2(L,k) = beta_2(n)` up to
+  `k = 10` (`cor:crosstreevals`); and one arbitrary position above an
+  initial block is settled for all `n` (`prop:dilatecross`).  Open: the
+  conjecture `V_r(L,k) = min_i 1/nu_i(n)` for all `n`, now equivalent at
+  `r >= 2` to `Phi_r(ins(W_T, first gap)) <= Phi_r(W_T)` at constrained
+  minimizers (for the second row, `1 + rho(Z_0) <= r Pi_Y`; `rho(Z_0) <=
+  r - 1` would also settle `prop:dilatecross`'s class for all `k`);
+  `1 < r < 2` with `n >> k`.
 
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
