@@ -220,9 +220,13 @@ step; an answer lands in the paper it extends, and the row leaves.
   `c**2`, rows, mass and sharpness included), and the first row holds at
   every root set (`prop:rowone`).  Beyond that no bound can depend on the
   moduli and the angles alone (`prop:noangle`: `x**(2M) + rho**(2M)`).
-  Open: rows `k >= 2` or an `Omega(K**2 log)` mass for pairs `a +- p**b i`,
-  `a != 0`, the Gaussian-integer register roots; any proof must use their
-  arithmetic.
+  At Gaussian-integer pairs, integer multiples split into blocks
+  (`lem:gausscarry`, `lem:gaussblocks`) each paying `log(rho_min/2)` per
+  degree (`thm:gausscharge`), so the mass infimum is a finite computation
+  per root set (`cor:gaussfinite`), certified at four sets with `a != 0`
+  (`prop:gaussinst`); no multisection or ray reduces them
+  (`prop:gaussnotransfer`).  Open: rows `k >= 2` or an `Omega(K**2 log)`
+  mass for pairs `a +- p**b i`, `a != 0`, uniformly in `K`.
 
 - **Polynomial's routing constant.**  CLOSED in
   [polynomial](proofs/polynomial.tex): the next-read count `thm:count`
