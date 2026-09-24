@@ -422,13 +422,17 @@ def decision_tree_tokens[Token](
     return out
 
 
-def decision_tree_program(truth_table: str, right: str, left: str) -> str:
-    """Build a brainfuck-family decision-tree program for ``truth_table``.
+#: Brainfuck's move tokens.  This builder used to take them as parameters so
+#: Dimensional could pass ``>0``/``<0``; Dimensional builds its own reads and
+#: print around :func:`decision_tree_body` now, and every call here passes
+#: these, so they are named rather than threaded.
+_RIGHT, _LEFT = ">", "<"
 
-    Brainfuck's own construction, and now only its own: Dimensional used to
-    share it under ``>0``/``<0`` move tokens, and builds from its own
-    dimensions instead.  The tokens stay parameters because the contract
-    suite drives the builder directly.  Each input is normalized into cell
+
+def decision_tree_program(truth_table: str) -> str:
+    """Build brainfuck's decision-tree program for ``truth_table``.
+
+    Each input is normalized into cell
     ``2i`` with its flag at ``2i + 1``: a node sets the flag, tests ``[b]``
     and clears the flag inside, then tests ``[flag]`` for the zero side,
     so exactly one side fires and both cells are left zero.  O(2**n).
@@ -440,10 +444,7 @@ def decision_tree_program(truth_table: str, right: str, left: str) -> str:
     its input the same way.  Factor most wants this: it refuses tables
     whose integer encoding exceeds Python's digit limit.
     """
-    return best_input_order(
-        truth_table,
-        lambda table, perm: _decision_tree_program(table, right, left, perm),
-    )
+    return best_input_order(truth_table, _decision_tree_program)
 
 
 def move_text(start: int, target: int, right: str, left: str) -> str:
@@ -524,12 +525,7 @@ def decision_tree_body(
     return "".join(cells), pos
 
 
-def _decision_tree_program(
-    truth_table: str,
-    right: str,
-    left: str,
-    perm: tuple[int, ...],
-) -> str:
+def _decision_tree_program(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one input order's program; see :func:`decision_tree_program`.
 
     ``truth_table`` is already permuted; ``perm`` is spent only in the cell
@@ -543,7 +539,7 @@ def _decision_tree_program(
     def move(target: int) -> None:
         nonlocal pos
         delta = target - pos
-        cells.append(right * delta if delta >= 0 else left * -delta)
+        cells.append(_RIGHT * delta if delta >= 0 else _LEFT * -delta)
         pos = target
 
     # read bits b_i at cell 2i, leaving the flag cells (1, 3, ...) zero
@@ -556,14 +552,14 @@ def _decision_tree_program(
             move(pos + 2)
 
     # The tree itself, which Factor also builds around its own prologue.
-    body, pos = decision_tree_body(truth_table, right, left, perm, pos)
+    body, pos = decision_tree_body(truth_table, _RIGHT, _LEFT, perm, pos)
     cells.append(body)
 
     # One print, below the tree.  Exactly one leaf fires, leaving 0 or 1 in
     # the result cell, so the ASCII offset is paid once here instead of at
     # every leaf -- which is what the whole tree used to spend most of its
     # characters on.
-    cells.append(move_text(pos, 2 * n, right, left))
+    cells.append(move_text(pos, 2 * n, _RIGHT, _LEFT))
     cells.append("+" * _ASCII_ZERO)
     cells.append(".")
     return "".join(cells)

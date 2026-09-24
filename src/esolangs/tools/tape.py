@@ -87,4 +87,4 @@ def bf_tree(truth_table: str) -> str:
     characters against the minterm evaluator's O(n * 2**n); XOR-n measures
     0.2K..4.9K at n = 2..8 against the minterm's 1.4K..33M.
     """
-    return decision_tree_program(truth_table, ">", "<")
+    return decision_tree_program(truth_table)
