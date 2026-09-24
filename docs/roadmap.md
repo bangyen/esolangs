@@ -333,11 +333,27 @@ step; an answer lands in the paper it extends, and the row leaves.
   also falls out: `lambda` depends only on `F`, both confluent points have
   coordinates in `[z_p, z_1]`, so the two Schur values differ by at most
   `(z_1/z_p)^{|lambda|}`, `|lambda| <= k max F <= k tau n`, and `tau` shrinks
-  until `e^{-kappa n}` beats it.  WHAT IS LEFT is only the ASSEMBLY: an
-  arbitrary `E` splits at its gaps above `tau min E` into clusters of
-  relative diameter `<= (k-1) tau` separated by `> tau min E`, and the
-  Laplace expansion over clusters was carried out only for relative diameters
-  tending to 0, not merely small.  And with gaps `floor(sqrt n)` and
+  until `e^{-kappa n}` beats it.  WHAT IS LEFT, after round 15, is
+  TWO isolated items in a BETTER FRAME -- expand over NODES, not clusters.
+  PROVED there: the node expansion
+  `alpha_J(E) = sum_{E = u E_i} eps prod_i z_i^{sigma(E_i)} D_i(E_i)`,
+  `D_i(E_i) = det(e^a)`, exact for every `E`, so all node dependence is an
+  explicit monomial and each `D_i` is a PLAIN generalized Vandermonde; the
+  two-sided bound `Pi*Delta <= |D_i| <= C_N*Pi*Delta` with
+  `V(E_i) = (prod e_(u)^{k_i-u}) Delta(E_i)`, `Delta = prod (1 - e/e')`, `Pi`
+  the sorted pairing (I VERIFIED this: 600 instances, lower bound ATTAINED at
+  ratio exactly 1.000000, upper max 3304, 0 vanishing -- verify15.py); the
+  exchange lemma (sorted pairing maximises the monomial); pointwise
+  domination giving `N_J/N_J* <= max(1/min E, e^{-kappa min E/2})` at EQUAL
+  profile; and the aligned-cut case `alpha_J* != 0` for every `E` from
+  `prop:altratio`.  MISSING, both free of the competitor `J`: (L)
+  NON-CANCELLATION `|alpha_J*(E)| >= c N_J*(E)` (observed: the log ratio
+  stayed in [-20,0] with NO drift in `n`), and (C') the cross-profile
+  comparison `N_J/N_J* -> 0`, where the two maximising partitions differ so
+  the `Delta` deficiencies do not cancel.  NEGATIVE RESULT -- do NOT retry
+  the cluster/Laplace route: two clusters with the SAME profile but different
+  exponent assignments compete at a ratio the separation bounds only by a
+  CONSTANT, so no termwise domination exists there however small `tau` is.  And with gaps `floor(sqrt n)` and
   `N=10`, `eta * min E` ran to 1.000 at `k=4` and 2.98 at `k=6`
   (verify12b.py), the same `Theta(1/min E)`, so the lemma is expected TRUE.
   DEAD: `|alpha_J*| ~ M_J* prod_{same-node}(1 - e_s/e_t)` (fails at `k>=6`,
