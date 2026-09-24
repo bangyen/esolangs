@@ -255,7 +255,7 @@ def _reordering_generators() -> list[object]:
         (
             "brainfuck",
             boolean.brainfuck,
-            lambda t, p: _decision_tree_program(t, ">", "<", p),
+            _decision_tree_program,
         ),
         ("dimensional", boolean.dimensional, _dimensional_ordered),
         ("painfuck", boolean.painfuck, _painfuck_ordered),
@@ -354,7 +354,7 @@ def test_greedy_order_never_grows_a_wide_program() -> None:
     n = 8
     table = "0" * (2**n - 1) + "1"
     assert len(boolean.brainfuck(table)) <= len(
-        _decision_tree_program(table, ">", "<", tuple(range(n)))
+        _decision_tree_program(table, tuple(range(n)))
     )
 
 
@@ -471,7 +471,7 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     from esolangs.tools.helpers import _decision_tree_program
 
     lengths = {
-        perm: len(_decision_tree_program("00010111", ">", "<", perm))
+        perm: len(_decision_tree_program("00010111", perm))
         for perm in permutations(range(3))
     }
     assert lengths == {
@@ -485,9 +485,9 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
 
     # One and two inputs, where the tape is short enough that an off-by-one
     # in the move would still land inside it.
-    assert len(_decision_tree_program("01", ">", "<", (0,))) == 115
-    assert len(_decision_tree_program("0110", ">", "<", (0, 1))) == 205
-    assert len(_decision_tree_program("0110", ">", "<", (1, 0))) == 211
+    assert len(_decision_tree_program("01", (0,))) == 115
+    assert len(_decision_tree_program("0110", (0, 1))) == 205
+    assert len(_decision_tree_program("0110", (1, 0))) == 211
 
 
 # The shape each boolean generator's construction takes, which decides which
