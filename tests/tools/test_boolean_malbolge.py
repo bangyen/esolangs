@@ -53,6 +53,25 @@ def _parity(n: int) -> str:
     return "".join(str(row.bit_count() & 1) for row in range(2**n))
 
 
+#: How many items each ``every_row`` sweep is split into, per shape.
+#:
+#: A sweep is execution, not build: a thirteen-input row is 12.1ms of which
+#: the load is 1%, so that shape alone is ~100s.  As one item per shape the
+#: sweeps pinned one worker each while the constant shapes finished at once
+#: and the rest idled, so the wall was the longest single item; split, the
+#: work spreads and the wall falls to the total over the worker count.  The
+#: thirteen-input sweep went 103.9s -> 56.9s on ten workers, and the whole
+#: weekly band 103.5s -> 82.5s.  Rebuilding per part is free -- the build is
+#: 0.17s, 0.2% of a sweep.  Strided rather than blocked so the parts cost the
+#: same, and their union is still every row.
+#:
+#: Four is where the band bottoms out: eight parts measured 83.6s, no better,
+#: because the remaining wall is the band's total work over the cores it has
+#: rather than the longest item.  Raising this past the core count buys
+#: nothing.
+_SWEEP_PARTS = 4
+
+
 @pytest.mark.parametrize(
     "table",
     ["".join(bits) for n in (1, 2, 3) for bits in product("01", repeat=2**n)],
@@ -109,11 +128,13 @@ def test_eleven_inputs_sampled(shape: object) -> None:
 
 @pytest.mark.slow
 @pytest.mark.weekly
+@pytest.mark.parametrize("part", range(_SWEEP_PARTS))
 @pytest.mark.parametrize("shape", [_dense, _parity])
-def test_eleven_inputs_every_row(shape: object) -> None:
+def test_eleven_inputs_every_row(shape: object, part: int) -> None:
     """The full 2048-row sweep, the cascade's execution gate."""
     table = shape(11)  # type: ignore[operator]
-    assert _rows(table) == list(table)
+    rows = range(part, 2**11, _SWEEP_PARTS)
+    assert _rows(table, rows) == [table[row] for row in rows]
 
 
 def _wide_second_level_rows() -> list[int]:
@@ -139,11 +160,13 @@ def test_twelve_inputs_sampled(shape: object) -> None:
 
 @pytest.mark.slow
 @pytest.mark.weekly
+@pytest.mark.parametrize("part", range(_SWEEP_PARTS))
 @pytest.mark.parametrize("shape", [_dense, _parity])
-def test_twelve_inputs_every_row(shape: object) -> None:
+def test_twelve_inputs_every_row(shape: object, part: int) -> None:
     """The full 4096-row sweep, the selector's execution gate."""
     table = shape(12)  # type: ignore[operator]
-    assert _rows(table) == list(table)
+    rows = range(part, 2**12, _SWEEP_PARTS)
+    assert _rows(table, rows) == [table[row] for row in rows]
 
 
 def _thirteen_second_level_rows() -> list[int]:
@@ -178,13 +201,15 @@ def test_thirteen_inputs_sampled(shape: object) -> None:
 
 @pytest.mark.slow
 @pytest.mark.weekly
+@pytest.mark.parametrize("part", range(_SWEEP_PARTS))
 @pytest.mark.parametrize(
     "shape", [_dense, _parity, lambda n: "0" * 2**n, lambda n: "1" * 2**n]
 )
-def test_thirteen_inputs_every_row(shape: object) -> None:
+def test_thirteen_inputs_every_row(shape: object, part: int) -> None:
     """The full 8192-row sweep, the four-answer labels' execution gate."""
     table = shape(13)  # type: ignore[operator]
-    assert _rows(table) == list(table)
+    rows = range(part, 2**13, _SWEEP_PARTS)
+    assert _rows(table, rows) == [table[row] for row in rows]
 
 
 def _fourteen_rows(levels: set[int]) -> list[int]:
