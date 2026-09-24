@@ -2124,15 +2124,44 @@ $W(F;\mathbf k)=\pm c_0s_\lambda(Z)$ with $\lambda$ depending only on $F$:
 both confluent points have all coordinates in $[z_p,z_1]$, so the ratio of
 the two Schur values is at most $(z_1/z_p)^{|\lambda|}$ with
 $|\lambda|\le k\max F\le k\tau n$, and $\tau$ may be shrunk until this is
-beaten by the factor $e^{-\kappa n}$ a differing profile already gives.  What
-is left is the assembly: an arbitrary $E$ splits, at its gaps exceeding
-$\tau\min E$, into clusters of relative diameter at most $(k-1)\tau$
-separated by more than $\tau\min E$, and the Laplace expansion over those
-clusters has been carried out only when the clusters' relative diameters tend
-to $0$, not merely when they are small.  In the regime this last step
-concerns, $\eta_\nu$ was still $\Theta(1/\min E_\nu)$ in every configuration
-we computed---with gaps $\lfloor\sqrt n\rfloor$ and $N=10$,
-$\eta_\nu\min E_\nu$ ran to $1.000$ at $k=4$ and $2.98$ at $k=6$.
+beaten by the factor $e^{-\kappa n}$ a differing profile already gives.  An arbitrary $E$ is
+better handled by expanding over the nodes than over clusters of points.
+Laplace-expanding $\alpha_J(E)$ along the column groups of each node, the
+factor $z_i^e$ is common to a whole row and pulls out:
+\[
+  \alpha_J(E)=\sum_{E=\bigsqcup_iE_i,\;|E_i|=k_i}
+  \varepsilon(E_\bullet)\prod_iz_i^{\sigma(E_i)}\mathcal D_i(E_i),
+  \qquad
+  \mathcal D_i(E_i)=\det\bigl(e^{a}\bigr)_{e\in E_i,\,a\in A_i},
+\]
+with $\sigma(E_i)=\sum_{e\in E_i}e$, so that all dependence on the nodes is an
+explicit monomial and each $\mathcal D_i$ is a plain generalized Vandermonde.
+Writing $\mathcal D_i=\pm s_{\mu(A_i)}(E_i)V(E_i)$ and
+$V(E_i)=\bigl(\prod_ue_{(u)}^{\,k_i-u}\bigr)\Delta(E_i)$ with
+$\Delta(E_i)=\prod_{e<e'\in E_i}(1-e/e')$, monomial positivity gives the
+two-sided bound
+$\Pi(E_i,A_i)\Delta(E_i)\le|\mathcal D_i(E_i)|\le
+C_N\Pi(E_i,A_i)\Delta(E_i)$, where $\Pi$ pairs the sorted points with the
+sorted exponents; the lower bound is attained.  In particular
+$\mathcal D_i\ne0$ always.  Setting
+$\mathcal N_J(E)=\max_{E_\bullet}\prod_iz_i^{\sigma(E_i)}\Pi(E_i,A_i)
+\Delta(E_i)$, one gets $|\alpha_J(E)|\le C\mathcal N_J(E)$, and the sorted
+pairing maximises the monomial, so for $J\ne J^*$ the ratio
+$\mathcal N_J/\mathcal N_{J^*}$ is at most
+$\max\{1/\min E,e^{-\kappa\min E/2}\}$ at equal profiles---again the two
+observed rates.  Two things are then missing, both free of the competitor
+$J$: that $|\alpha_{J^*}(E)|\ge c\,\mathcal N_{J^*}(E)$, that is, that the
+node expansion does not cancel at $J^*$; and the comparison of
+$\mathcal N_J$ with $\mathcal N_{J^*}$ across differing profiles, where the
+two maximising partitions differ and the $\Delta$ deficiencies no longer
+cancel.  A decomposition of $E$ into clusters of small relative diameter does
+not help: two clusters carrying the same profile but different exponent
+assignments compete at a ratio the separation bounds only by a constant, so
+no termwise domination is available there however small the relative diameter
+is taken.  Throughout, $\eta$ was still $\Theta(1/\min E)$ in every
+configuration we computed---with gaps $\lfloor\sqrt n\rfloor$ and $N=10$,
+$\eta\min E$ ran to $1.000$ at $k=4$ and $2.98$ at $k=6$, and $\log\eta$ fell
+by $\log2$ per doubling of $\min E$ at a split cut.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
