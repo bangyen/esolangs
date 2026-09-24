@@ -181,7 +181,9 @@ realise 5 to 8 distinct behaviours (12 of 20 sampled walked-code cells at 5 or
 more), and an every-line cap of `k` buys `log2(8/k)` bits in all -- one bit at
 `k = 4`. What is left is a dependence cut: every table-computing program's
 answer resting on at most 24,434 cells, the largest `K` with `C(59049, K) *
-8**K < 2**131072`. That one is open.
+8**K < 2**131072`. Per program it is false: `'o'*59046 + '/<v'` computes
+the one-input identity and every cell flips it, so only a cut over one
+normal-form program per table remains open.
 
 The no-`i`/`j` model is still dead. Straight-line `c == d` from the reset
 state gives a `p` its own cell's instruction character, one of 94 values in
