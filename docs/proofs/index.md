@@ -138,8 +138,8 @@ and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Eval, Minsky
-Swap, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN and Whitespace keep no
-tree route at all:
+Swap, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN, Suffolk and Whitespace
+keep no tree route at all:
 A Painter Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, Befunge reads one grid cell per table entry with `g`, BIO's
@@ -152,12 +152,14 @@ cascade routes the index to one of two shared leaves with a one-digit target
 per row, NoComment switches between two lookups at four inputs, Qoibl divides one
 literal by the power of two its reads build,
 SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
-row whatever the table says, and Whitespace halves one literal once per index
-step; none has a subtree to fold.  Container's sub-crossover route is a
+row whatever the table says, Suffolk sweeps a countdown past every row, and
+Whitespace halves one literal once per index step; none has a subtree to
+fold.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
-table.  Eval and NoComment fold a degenerate table anyway, because their
-lookup route is what shrinks it; that is why the fold discriminator in
-`test_schemes.py` carries them as documented exceptions.
+table.  Eval, NoComment and Suffolk fold a degenerate table anyway, because
+their lookup route is what shrinks it -- Suffolk through `essential_inputs`,
+which halves the sweep per input dropped; that is why the fold discriminator
+in `test_schemes.py` carries them as documented exceptions.
 
 ## Generator ledger
 
@@ -239,7 +241,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit as a 256-multiple weight on array 16; one trampoline lands the indexed 256-token leaf | linear: per-node landing search sized in O(1), not an O(weight) dry build |
 | Sophie | tree | — | linear, time n log: shared-state build, n 2**n state characters |
 | Streetcode | tree | — | linear: alternating-axis H-tree, area Theta(T) |
-| Suffolk | tree | — | linear, time n log: essential_inputs |
+| Suffolk | linear lookup | a countdown built from the row index reads zero exactly on the rows below it, so counting the table's rising and falling steps against it telescopes to the indexed entry | linear, time n log: essential_inputs |
 | Super SNUSP | tree | each folding pass removes at least one pending unit | linear: one `*` per entry; ANF only below five inputs |
 | Taglate | tree | — | linear, time n log: essential_inputs |
 | 3D Brainfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |

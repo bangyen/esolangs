@@ -786,16 +786,16 @@
   },
   "Suffolk": {
    "0110": {
-    "commands": 1493,
-    "source_units": 1001
+    "commands": 742,
+    "source_units": 591
    },
    "01101001": {
-    "commands": 2583,
-    "source_units": 1895
+    "commands": 925,
+    "source_units": 774
    },
    "0110100110010110": {
-    "commands": 4077,
-    "source_units": 3193
+    "commands": 1138,
+    "source_units": 987
    }
   },
   "Super SNUSP": {
