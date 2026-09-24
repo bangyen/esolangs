@@ -344,7 +344,15 @@ step; an answer lands in the paper it extends, and the row leaves.
   `lem:truncvertex`), which is the hypothesis of `cor:crossreduce`, so
   `V_r(L,k) = beta_r(L-k+1)` for all `k`, `L`; for `1 < r < 2` the same
   proof gives `V_r(L,k) >= (r-1)**(k-1) beta_r(L-k+1)`, exact at `k = L`.
-  Open: the conjectured value `min_i 1/nu_i(n)` for `1 < r < 2`.
+  For `1 < r < 2` one polynomial serves every exempted set
+  (`sec:onepoly`, `lem:prefixpush`, `thm:onepoly`) and prefix values are
+  supermultiplicative (`lem:prefixshift`), so the conjecture holds for
+  every `k` whenever `beta_r(n) <= 1` (`thm:onepolyrows`), e.g.
+  `r <= 1 + 1/n` for `n <= 10` (`cor:onepolyranges`), plus exact rows
+  from one certificate (`cor:onepolyexact`).  Open: the conjectured value
+  `min_i 1/nu_i(n)` for `1 < r < 2` when `beta_r(n) > 1`; the insertion
+  route and the natural one-step reduction both fail there (exact
+  counterexamples in `sec:onepoly`).
 
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
