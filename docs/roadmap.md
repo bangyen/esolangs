@@ -332,3 +332,53 @@ step; an answer lands in the paper it extends, and the row leaves.
   `P` exceed `|P(1)|`, where the repaired bound need not be sharp.  See the
   section "The infimum when the criterion fails" in
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
+  The companion question -- which root sets make `eq:order` an infimum for
+  `k >= 2` (`coefficient-mass.tex`, end of the sharpness section) -- is
+  settled for distinct roots by the partial-sum criterion
+  (`prop:partial`, `thm:converse`) and is open exactly where this row is:
+  repeated roots, pending confluent `thm:converse`.
+
+- **Factor's constant.**  On GRH, `0.1505 <= C_F(T)/(T log T) <= 0.3416`, a
+  ratio of 2.27 (`rem:gap` in [factor](proofs/factor.tex)); without GRH the
+  ceiling is `0.3660`.  Number theory no longer separates the two: the gap is
+  whether Brainfuck programs of `C` characters have nearer `(1+sqrt 2)**C`
+  behaviours (the tapes a drawing reaches) or `(1+lambda)**C`,
+  `lambda = 6.388` (the words free of the five cancelling adjacencies).  The
+  floor rises as far as that count falls; the ceiling falls only if control
+  flow carries more than `log2(1+sqrt 2) = 1.27` bits a character.  First
+  step: enumerate distinct tape behaviours of every reduced word at small
+  `C` and fit the growth rate between the two bases.  Within the drawing
+  model the digit floor is `1/(2 log 10) = 0.217`, not yet met by
+  `lem:draw`'s digit count.
+
+- **Malbolge's first unreachable arity.**  Counting proves some 18-input
+  table has no Malbolge program; 17 needs the program count a further
+  `2**46076` down, and the length and alphabet cuts are dead
+  ([limitations](limitations.md), Malbolge).  The live route is a dependence
+  cut: every table-computing program's answer rests on at most 24,434 cells
+  (the largest `K` with `C(59049, K) * 8**K < 2**131072`).  First step:
+  measure, over the shipped constructions and random walked-code programs,
+  how many cells an answer depends on (flip-test each cell, as cell 58,967
+  was), and look for a structural reason the dependence set is bounded.
+  Between the shipped constructions and 17 the least unreachable arity is
+  unknown in both directions.
+
+- **Intermediate rows of `b_k`.**  `b_k(F) >= L - k + 1` for every monic
+  multiple of `(x-2)**L` is proved for `k = 1, 2` (`prop:neartwo`),
+  `k = L` (`thm:order`) and `k <= L/8` once `L >= 13`
+  (`prop:quadratic`); the rows `max(2, L/8) < k <= L - 1` are open, with
+  exact LP sweeps as the only evidence ([coefficient-mass](proofs/coefficient-mass.tex)).
+  First step: extract the LP duals at the tightest exempt sets and see
+  whether they share a closed form in `k`, as the `k <= 2` certificates do.
+
+- **Polynomial's sharp constant.**  The language bound is proved by the
+  slack certificate; the sharp form -- a coefficient of at least
+  `(1 - o(1)) prod_{i>u} (p_i - 1)` with `u` coefficients free -- would
+  give its constant, and has two gaps ([polynomial](proofs/polynomial.md), "The
+  iterated elimination"): (a) the certificate is proved only for free
+  positions `U = {0..K}`, though sweeps put the least threshold there for
+  every `U`; (b) it is asymptotic in `D`, and the finite-`D` statement
+  reduces to the skew-Schur inequality
+  `s_{((d-c+1)**(c-1))} s_{lambda_B/mu} >= (prod rho)**(d-c+2) s_{lambda_A/mu}`,
+  measured but proved only at `c = 2`.  First step: (b) at `c = 3`, where the
+  skew shapes are small enough to expand by Jacobi--Trudi by hand.
