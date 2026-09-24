@@ -151,7 +151,6 @@ MIN_RUNGS = 3
 #: to the lowest arity that still clears MIN_RUNGS past its last route change.
 MAX_ARITY = 12
 ARITY_OVERRIDE = {
-    "b_tapemark": 11,
     "circuit_diagram": 10,
     "factor": 11,
     "polynomial": 9,

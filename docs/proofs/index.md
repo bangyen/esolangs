@@ -137,16 +137,18 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Collatz
-Multiverse, EGL, Eval, Minsky Swap, NoComment, Packlang, Qoibl, SLOW ACV
-MAMMALIAN, Suffolk and Whitespace keep no tree route at all: A Painter Ant's
+the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
+Collatz Multiverse, EGL, Eval, Minsky Swap, NoComment, Packlang, Qoibl, SLOW
+ACV MAMMALIAN, Suffolk and Whitespace keep no tree route at all: A Painter
+Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, Befunge reads one grid cell per table entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
-once the doubling between the input runs is in the text), Collatz Multiverse
-writes one cell per four table rows at every arity, EGL paints one cell an
-entry and walks a pointer to it, Eval is one linear
+once the doubling between the input runs is in the text), B-tapemark copies
+one mark per row onto the blank grid and walks the pointer to it, Collatz
+Multiverse writes one cell per four table rows at every arity, EGL paints one
+cell an entry and walks a pointer to it, Eval is one linear
 lookup at every arity, Packlang paints one array block and indexes it at every
 arity, Minsky Swap's `~`
 cascade routes the index to one of two shared leaves with a one-digit target
@@ -195,7 +197,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Algebraic Programming Language | minterms | base-26 names are unbounded | linear, time n log: greedy order scoring, capped at n <= 10 |
 | Alight | finite lookup | inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches | linear: one T-character literal, O(n) Horner reads |
 | ArrowQueue | parameterized lookup | one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages | linear: 6n + 3T rows, three per entry |
-| B-tapemark | tree | reflected finite grid; indexed table spans preserve the same leaves without recursive copies | linear: T - 1 fixed-footprint nodes, rows rendered from their cells |
+| B-tapemark | finite lookup | the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on | linear: 3T copy cells, T pointer steps, one stage per input |
 | Back | parameterized tree | — | linear: leaf moves sum geometrically, sparse row render |
 | Befunge | finite lookup | the grid is the table, one cell per entry, read by `g` at the Horner index | linear: T table cells, one g at the index |
 | BF-PDA | parameterized tree | — | linear: span walk, leaf drains sum geometrically |

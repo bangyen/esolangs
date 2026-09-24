@@ -6,21 +6,34 @@ from dataclasses import dataclass, field
 
 from esolangs.tools.helpers import _validate_truth_table
 
-#: Column of the digit-emitting block within a branch gadget, and so the
-#: per-level stride: the corridor sits one column right of it, the children
-#: one right of that.  The beam from ``(4, -2)`` runs rightward over blank
-#: cells to reach the block, and the block's rows (-2 to 0) miss the
-#: gadget's own column-7 cells (rows 2 to 4), so 7 places it as far left as
-#: it goes: at 6 the turn lands inside the swap path and the program stops
-#: halting.  ``render`` drops wholly blank columns, so the two this saves
-#: are only a saving because every gadget shares them -- moving the block
-#: from 10 to 8 changed nothing at all.
-_DIGIT_COLUMN = 7
+#: Rows one branch stage occupies, and so the stride between stages.
+_STAGE_ROWS = 7
+
+#: The stage, row by row, with its run of ``|`` left out.  The two ``*``
+#: copy a ``\`` and a ``%`` onto the blank grid beside the pointer, ``-``
+#: reads the input digit into the pointer's own cell, and ``0`` compares:
+#: a match swaps onto the copied pair, which turns the beam and swaps
+#: straight back, so the answers leave the compare travelling in different
+#: directions.  They rejoin at the last row's ``*``, which skips the arm
+#: the other one turns on.
+_STAGE = (
+    "|/    \\",
+    "*\\-|\\ 0",
+    "\\   | |",
+    "\\|*%/ \\|\\",
+    "    /",
+    "/   /*  /",
+    "|",
+)
+
+#: Column the run of ``|`` starts at, clear of the cells the untaken side
+#: uses to rejoin.
+_RUN_COLUMN = 9
 
 
 @dataclass
 class _Builder:
-    """Place a collision-free mirror-swap decision tree."""
+    """Place cells on the program grid and render the result."""
 
     cells: dict[tuple[int, int], str] = field(default_factory=dict)
 
@@ -30,77 +43,41 @@ class _Builder:
         if previous != char:
             raise AssertionError(f"layout collision at {(x, y)}")
 
-    def node(
-        self,
-        table: str,
-        depth: int,
-        x: int,
-        y: int,
-        start: int = 0,
-        stop: int | None = None,
-    ) -> None:
-        """Place one branch and its descendants."""
-        if stop is None:
-            stop = len(table)
-        # ``*`` builds a backslash/% path on the blank grid.  A vertical 0
-        # match swaps onto it, turns right, then swaps back; a 1 stays on the
-        # source grid.  Both cases reach distinct rightward paths.
-        for offset in range(3):
-            self.put(x + offset, y, "|")
-        placements = {
-            (3, 0): "\\",
-            (3, 1): "|",
-            (3, 2): "*",
-            (3, 3): "\\",
-            (3, 4): "\\",
-            (4, 4): "|",
-            (5, 4): "*",
-            (6, 4): "%",
-            (7, 4): "/",
-            (7, 3): "|",
-            (7, 2): "\\",
-            (6, 2): "|",
-            (5, 2): "-",
-            (4, 2): "\\",
-            (4, -2): "/",
-            (_DIGIT_COLUMN, -2): "\\",
-            (_DIGIT_COLUMN, -1): "0",
-            (_DIGIT_COLUMN, 0): "\\",
-        }
-        for (dx, dy), char in placements.items():
-            self.put(x + dx, y + dy, char)
+    def row(self, x: int, y: int, text: str) -> None:
+        """Place ``text`` rightwards from ``(x, y)``, skipping its blanks."""
+        for offset, char in enumerate(text):
+            if char != " ":
+                self.put(x + offset, y, char)
 
-        zero = (x + _DIGIT_COLUMN + 1, y - 1)
-        one = (x + _DIGIT_COLUMN + 1, y)
-        if depth == 1:
-            for point, result in ((zero, table[start]), (one, table[start + 1])):
-                self.put(*point, result)
-                self.put(point[0] + 1, point[1], "!")
-            return
+    def stage(self, x: int, y: int, weight: int) -> None:
+        """Place one input's branch, whose ``0`` side adds ``weight``.
 
-        gap = 8 * 2 ** (depth - 1)
-        for point, mirror, target_y in (
-            (zero, "/", y - gap),
-            (one, "\\", y + gap),
-        ):
-            self.put(*point, mirror)
-            self.put(point[0], target_y, mirror)
-        middle = (start + stop) // 2
-        self.node(table, depth - 1, x + _DIGIT_COLUMN + 2, y - gap, start, middle)
-        self.node(table, depth - 1, x + _DIGIT_COLUMN + 2, y + gap, middle, stop)
+        The beam arrives and leaves downwards, and only the ``0`` side
+        crosses the run of ``|``, which is what moves the pointer.
+        """
+        for offset, line in enumerate(_STAGE):
+            self.row(x, y + offset, line)
+        for offset in range(weight):
+            self.put(x + _RUN_COLUMN + offset, y + 1, "|")
+        turn = x + _RUN_COLUMN + weight
+        self.put(turn, y + 1, "\\")
+        self.put(turn, y + 4, "/")
 
     def render(self, *, reflect: bool = False) -> str:
         """Render after removing wholly blank rows and columns.
 
-        ``reflect`` mirrors the program horizontally, directional symbols
-        included.  Each row is drawn from its own cells, only as long as
-        its last one, so the cost is the output's size rather than the
-        bounding box (rows by the ``12n`` columns).
+        Each row is drawn from its own cells, only as long as its last
+        one, so the cost is the output's size rather than its bounding box.
+        Dropping an empty row or column cannot move a beam: a blank cell is
+        a no-op wherever it sits.  ``reflect`` mirrors the grid top to
+        bottom, mirrors included, which leaves every row's length alone; a
+        horizontal mirror is as faithful and is not offered, because it
+        moves every ragged edge to the left, where it is rendered.
         """
         xs = sorted({x for x, _ in self.cells})
-        ys = sorted({y for _, y in self.cells})
-        column = {x: len(xs) - 1 - i if reflect else i for i, x in enumerate(xs)}
-        symbols = {">": "<", "<": ">", "/": "\\", "\\": "/"} if reflect else {}
+        ys = sorted({y for _, y in self.cells}, reverse=reflect)
+        column = {x: i for i, x in enumerate(xs)}
+        symbols = {"/": "\\", "\\": "/"} if reflect else {}
         rows: dict[int, dict[int, str]] = {y: {} for y in ys}
         for (x, y), char in self.cells.items():
             rows[y][column[x]] = symbols.get(char, char)
@@ -117,20 +94,39 @@ class _Builder:
 def b_tapemark(truth_table: str, width: int | None = None) -> str:
     """Build a B-tapemark program computing ``truth_table``.
 
-    The tree is reflected before rendering.  Its long branch corridors then
-    occupy trailing rather than leading blanks, so ``rstrip`` removes them;
-    the remaining text is linear in the tree rather than its bounding box.
+    The table is copied onto the blank grid one cell per row, the inputs
+    walk the mark pointer to the row they name, and ``+`` prints the mark
+    it ends on.  A requested ``width`` selects the mirrored grid: the copy
+    is one line as long as the table, so no narrower bound can be honoured
+    by any orientation.
     """
     depth = _validate_truth_table(truth_table)
+    size = len(truth_table)
     builder = _Builder()
-    builder.put(-1, 0, ">")
-    builder.node(truth_table, depth, 0, 0)
-    if width is not None:
-        # The raw orientation is the alternate width-requested layout.  Both
-        # orientations have the same intrinsic width; only their ragged area
-        # differs, so neither can honour a bound the other cannot.
-        return builder.render()
-    # Digits only print while travelling horizontally, so a quarter-turn is
-    # not equivalent.  Reflection preserves every heading while moving the
-    # tree's triangular padding to the right edge, where it is not rendered.
-    return builder.render(reflect=True)
+
+    # Rightmost row first: the beam runs leftwards and the pointer trails
+    # it, ``*`` copying the digit it skips and ``|`` stepping the pointer.
+    for index, bit in enumerate(truth_table):
+        builder.row(1 + 3 * (size - 1 - index), 0, f"|{bit}*")
+    builder.put(3 * size + 1, 0, "<")
+
+    # The copy leaves the pointer on the table's row, where nothing is
+    # blank, and a stage needs blank cells to read and copy into: so the
+    # pointer climbs clear and the stages walk it back down a row apiece,
+    # landing on the table again exactly as they run out.
+    builder.put(0, 0, "\\")
+    for step in range(1, 2 * depth + 1):
+        builder.put(0, -step, "|")
+    builder.put(0, -2 * depth - 1, "\\")
+    builder.put(-1, -2 * depth - 1, "/")
+
+    for stage, weight in enumerate(2**place for place in reversed(range(depth))):
+        builder.stage(-1, 1 + _STAGE_ROWS * stage, weight)
+
+    # A stage adds one to the pointer whichever way it branches, so the
+    # walk overshoots the addressed row by one per stage but the first.
+    tail = 1 + _STAGE_ROWS * depth
+    builder.put(-1, tail, "/")
+    builder.row(-depth - 1, tail, "+" + "|" * (depth - 1))
+    builder.put(-depth - 2, tail, "!")
+    return builder.render(reflect=width is not None)
