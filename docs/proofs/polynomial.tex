@@ -48,10 +48,10 @@ divisible by $L$ distinct prime-power roots and having leading coefficient
 of absolute value at least one has logarithmic coefficient mass
 $\Omega(L^2\log L)$.  Tracking the constants, the worst-case length $C_P(n)$
 satisfies
-$2\log_{10}2\le\liminf C_P(n)\,n/T^2\le\tfrac{525}8\log_{10}2$ and
-$2\log_{10}2\le\limsup C_P(n)\,n/T^2\le\tfrac{5821}{32}\log_{10}2$: the
+$2\log_{10}2\le\liminf C_P(n)\,n/T^2\le\tfrac{325}8\log_{10}2$ and
+$2\log_{10}2\le\limsup C_P(n)\,n/T^2\le\tfrac{2925}{32}\log_{10}2$: the
 order is settled, but the constant is determined only up to a factor of
-about $33$ at the limit inferior and $91$ at the limit superior.
+about $20$ at the limit inferior and $46$ at the limit superior.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -162,10 +162,10 @@ the matching construction, and Section~\ref{sec:constants} tracks the
 constants through both halves (Proposition~\ref{prop:bracket}):
 \[
   2\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
-  \le\frac{525}{8}\log_{10}2,
+  \le\frac{325}{8}\log_{10}2,
   \qquad
   2\log_{10}2\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
-  \le\frac{5821}{32}\log_{10}2 .
+  \le\frac{2925}{32}\log_{10}2 .
 \]
 Remark~\ref{rem:bracket} locates the gap between the two sides.
 
@@ -686,6 +686,86 @@ of length $\ell$ and the number of tuples of functions of
 $n-\ell-di$ bits.
 \end{proof}
 
+% (after the proof of Lemma lem:strip)
+
+In Lemma~\ref{lem:strip} a canonical word $u$ is reached after $|u|+di$ bits
+for every $i$, so about a fraction $1/d$ of the tree can see the end of the
+input.  Bounding the number of stripped copies removes this: the few words
+that begin with many copies of $c$ are sent to a separate residual DAG.
+
+\begin{lemma}[Bounded stripped automaton]\label{lem:bstrip}
+Let $d\ge1$, $c\in\{0,1\}^d$, and let $L,I\ge0$ be integers with
+$d\le L$ and $L+dI<n$.  For a word $w$ with $|w|\le n$ define $\tau(w)$ as follows.
+\begin{enumerate}
+\item If $w=c^ic'$ with $i\le I$ and $c'$ a proper prefix of $c$, then
+$\tau(w)=(\mathrm{copy},i,|c'|)$.
+\item If $w$ begins with $c^{I+1}$, then $\tau(w)=(\mathrm{tail},|w|,r_w)$, where $r_w$ is
+the residual of the table after $w$.
+\item Otherwise write $w=c^iu$ with $i\le I$ maximal; then $u$ is nonempty, does not
+begin with $c$ and is not a prefix of $c$.  Put $\tau(w)=u$ if $|u|\le L$ (a
+\emph{tree state}), and $\tau(w)=(|u|,V_I(u))$ if $|u|>L$ (a \emph{deep state}),
+where $V_I(u)$ is the tuple of residuals after the prefixes $c^iu$, $0\le i\le I$,
+$|c^iu|\le n$.
+\end{enumerate}
+Then $\tau(wb)$ depends only on $\tau(w)$ and $b$, and $\tau(w)$ with $|w|=n$ determines
+the table value at $w$; so the values of $\tau$ are the states of an automaton that
+computes the table.  Moreover:
+\begin{enumerate}
+\item[(a)] no tree state is $\tau(w)$ for a word $w$ of length $n$;
+\item[(b)] if $u$ is a tree state with $|u|\ge2$ whose prefix $u^-$ of length $|u|-1$
+is not a prefix of $c$, then $u^-$ is a tree state and $(u^-,b)$, with $b$ the last
+letter of $u$, is the only pair of a state and a bit that the automaton sends to $u$;
+and no pair is sent to the start state $\tau(\varepsilon)=(\mathrm{copy},0,0)$;
+\item[(c)] there are at most $\kappa_\ell=2^\ell-[\ell\ge d]\,2^{\ell-d}$ tree states and
+at most $\min\bigl(\kappa_\ell,2^{E_{d,I}(n-\ell)}\bigr)$ deep states $(\ell,V)$ at level
+$\ell$, with $E_{d,I}(m)=\sum_{0\le i\le\min(I,m/d)}2^{m-di}\le E_d(m)$; there are
+$d(I+1)$ copy states, and at most $S_{n'}+2$ tail states, where $n'=n-d(I+1)$ and
+$S_m=\sum_{k<m}\min(2^k,2^{2^{m-k}})$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+The three cases are disjoint: in case~1, $|w|<d(I+1)$, and in case~3, $u$ is not a
+proper prefix of $c$ by exclusion of case~1 and is not empty, since $w=c^i$ with
+$i\le I$ is in case~1.
+
+\emph{Transitions.}  Let $w=c^ic'$ be in case~1, $|c'|=k$, and let $\gamma$ be the
+$(k+1)$st letter of $c$.  If $b=\gamma$ and $k+1<d$, then $\tau(wb)=(\mathrm{copy},i,k+1)$;
+if $b=\gamma$ and $k+1=d$, then $wb=c^{i+1}$, which is $(\mathrm{copy},i+1,0)$ for
+$i<I$ and a tail state for $i=I$.  If $b\ne\gamma$, then $c'b$ is not a prefix of
+$c$, does not begin with $c$, and has length at most $d\le L$, so
+$\tau(wb)=c'b$.  In case~2, $wb$ is in case~2 and $r_{wb}$ is the half of $r_w$
+selected by $b$.  In case~3, $wb=c^i(ub)$: if $|u|\ge d$, then $ub$ begins with
+$c$ exactly when $u$ does, and if $|u|<d$, then $u$ differs from the prefix of $c$
+of its length, and so does $ub$; either way $ub$ neither begins with $c$ nor is
+a prefix of $c$, so $i$ is still the number of leading copies of $c$ in $wb$.
+Hence $\tau(wb)=ub$ if $|u|<L$, and otherwise $\tau(wb)=(|u|+1,V_I(ub))$, where
+$V_I(ub)$ arises from $V_I(u)$ by restricting every entry to first bit $b$ and
+dropping the entries of length $0$.  In every case $\tau(wb)$ is a function of
+$\tau(w)$ and $b$.
+
+\emph{Values.}  Let $|w|=n$.  In case~1 the state determines $w$.  In case~2
+the residual $r_w$ is the value.  In case~3, $|u|=n-di\ge n-dI>L$, which proves~(a),
+and the entry of $V_I(u)$ with $|c^iu|=n$ is the value; it is identified by its
+index $i=(n-|u|)/d$.
+
+(b)  If the automaton sends $(s,b')$ to $u$, then $s=\tau(w')$ and
+$\tau(w'b')=u$ for some $w'$, so $w'b'=c^iu$ with $i$ maximal, $b'=b$ and
+$w'=c^iu^-$.  The word $u^-$ is nonempty, is not a prefix of $c$ by hypothesis,
+and does not begin with $c$ (if $|u^-|\ge d$ it begins with $c$ exactly when $u$
+does); so $\tau(w')=u^-$.  No word $w'b'$ has $\tau(w'b')=\tau(\varepsilon)$,
+since $\tau(v)=(\mathrm{copy},0,0)$ only for $v=\varepsilon$.
+
+(c)  Tree states at level $\ell$ are words of length $\ell$ that do not begin with
+$c$.  A deep state at level $\ell$ is determined by a word $u$ of that kind, and also
+by a tuple of Boolean functions of $n-\ell-di$ bits.  A tail state $(k,r)$ has
+$k\ge d(I+1)$, and $r$ is determined by the last $k-d(I+1)$ letters of the word and
+is a function of $n-k$ bits; so there are at most
+$\min(2^{k-d(I+1)},2^{2^{n-k}})$ of them at each $k$, which sums to at most
+$S_{n'}+2$.
+\end{proof}
+
+
 For $d$ large, Lemma~\ref{lem:strip} is the residual DAG.  The program for an
 automaton needs a way to turn the bit read into the next state that does
 not depend on the order of the states.  A single multiplication does it,
@@ -783,11 +863,154 @@ holds $-\lambda$, and $\mathord{*}\!=-1$, $\mathord{+}\!=48$ and an output
 print it.  The start value is $-1$, the code of the root.
 \end{proof}
 
-Every construction here was compiled and run with the interpreter's
-\texttt{\_advance} on all $2^n$ inputs for $n\le11$: random, maximal-width,
-parity and constant tables, $d=1,2,3$ and the leveled form.  Several were
-also expanded to source, parsed back to the same list, and run through the
-public entry point.
+% (after the proof of Proposition prop:dfaprog)
+
+The programs of Proposition~\ref{prop:dfaprog} spend a multiplication (exponent
+$3$) and half an increment per state.  The next construction spends neither on
+most states.  A state whose two successors have no other predecessor branches to
+them in place, inside its own block, and a state that hands its successors to the
+loop encodes both of them in one addition; the bit read then enters only through
+its parity, which a shared decoder reads.
+
+\begin{lemma}[Additive decoder]\label{lem:adddec}
+Let $W\ge2$ and $G=28$.  For $0\le z,o<W$ and $\rho\in\{1,2\}$ put
+$m(z,o,\rho)=(zW+o+W)G+\rho$, and let $m^*=(W^2+W)G$, $N=2m^*+51$ and
+$N'=m^*+27$.  The list $\mathrm{Dec}_W$ of $34$ instructions
+\[
+\begin{aligned}
+ &\mathord{*}\!=-1,\ \mathord{*}\!=N+1,\ \mathord{\%}\!=2N,\ \mathord{+}\!=-N,\\
+ &\text{if}<0\,\{\ \mathord{+}\!=N,\ /\!/\!=2,\ /\!/\!=G,\ \mathord{+}\!=-W,\
+   /\!/\!=W,\ \mathord{*}\!=-1,\ \mathord{+}\!=-1\ \},\\
+ &\text{if}>0\,\{\ \mathord{+}\!=1,\ /\!/\!=2,\ \mathord{*}\!=N'+1,\
+   \mathord{\%}\!=GN',\ \mathord{+}\!=-26N',\\
+ &\qquad\text{if}<0\,\{\ \mathord{+}\!=26N',\ \mathord{\%}\!=N',\ /\!/\!=G,\
+   \mathord{+}\!=-W,\ \mathord{\%}\!=W,\ \mathord{*}\!=-1,\ \mathord{+}\!=-1\ \},\\
+ &\qquad\text{if}>0\,\{\ /\!/\!=N',\ \mathord{+}\!=1\ \}\ \},\\
+ &\mathord{+}\!=1
+\end{aligned}
+\]
+has operands of size $O(W^2)$ and no zero operand, and with $m=m(z,o,\rho)$ it sends
+the register value $-(2m-b)$, $b\in\{0,1\}$, to $-z$ if $b=0$ and to $-o$ if $b=1$, and
+the value $-(2m+49)$ to $\rho+1$.
+\end{lemma}
+
+\begin{proof}
+For integers $0\le x<N$ and $k\ge1$ we have $x(N+1)\bmod kN=x+N\,(x\bmod k)$, since
+$xN\bmod kN=N(x\bmod k)$ and $x+N(x\bmod k)<kN$.  The three kinds of input are
+$-w$ with $w=2m'-\beta$, where $(m',\beta)=(m,b)$ for $-(2m-b)$ and
+$(m',\beta)=(m+25,1)$ for $-(2m+49)$.  Since $m\equiv\rho\pmod G$, the residue
+$m'\bmod G$ is $\rho\in\{1,2\}$ in the first two cases and $\rho+25\in\{26,27\}$ in
+the third, and $1\le w\le2m^*+49<N$ and $m'<m^*+25<N'$.
+
+The first line gives $w+N\beta-N$.  If $\beta=0$ this is $w-N<0$, and the first
+bracket computes $w$, $m'=w/2$, $m'/\!/G=zW+o+W$, then $zW+o$, $z$, and ends with
+$-z-1<0$, so the second test fails.  If $\beta=1$ the value is $w>0$: the first test
+fails, and the second bracket computes $w+1=2m'$, $m'$ and
+$m'+N'(m'\bmod G)-26N'$.  For the residues $1,2$ this is negative, and the inner
+first bracket computes $m'+N'(m'\bmod G)$, $m'$, $zW+o+W$, $zW+o$, $o$, and ends
+with $-o-1<0$, so the inner second test fails.  For the residues $26,27$ it is at
+least $m'>0$, the inner first test fails, and the inner second bracket computes
+$\rho-1$ and then $\rho$.  The last addition gives $-z$, $-o$ or $\rho+1$.  All
+divisions and remainders act on nonnegative values, where Python's semantics are
+the arithmetic ones.
+\end{proof}
+
+\begin{proposition}[Embedded automaton programs]\label{prop:embprog}
+Let an automaton with states $Q$, start $q_0$ and transitions $\delta$ compute an
+$n$-input table, where $Q$ is the set of states reached after at most $n$ bits and
+$\delta(q,b)$ is defined whenever $q$ is reached after fewer than $n$ bits.  Let
+$E\subseteq Q$ contain every state reached after $n$ bits, with its label $\lambda$.
+Let $F\subseteq Q\setminus E$ be a set of states such that for $q\in F$ and
+$b\in\{0,1\}$ the state $\delta(q,b)$ is defined, differs from $q_0$, and $(q,b)$ is
+the only pair that $\delta$ sends to it.  Call the states $\delta(q,b)$, $q\in F$,
+\emph{embedded} and the others \emph{dispatched}.  Then the table has a program
+consisting of $O(1)$ fixed instructions and, for every state $q$,
+\begin{itemize}
+\item an input, followed by $\mathord{+}\!=-48$ if $q\in F$ and by one addition
+$\mathord{+}\!=a_q$ with $|a_q|=O(W^2)$ otherwise, $W$ as below;
+\item one opener, $\text{if}>0$ or $\text{if}=0$, and one closing bracket, where the
+two successors of a state of $F$ get one opener of each kind, and so do the two
+members of each group below;
+\end{itemize}
+and one $\mathord{+}\!=2$ for each group of two dispatched states (the last group may
+have one member).  Here $W=2\lceil D/2\rceil+1$ with $D$ the number of dispatched states.
+\end{proposition}
+
+\begin{proof}
+\emph{Structure.}  An embedded state has exactly one predecessor pair, from a state of
+$F$.  A cycle of such edges contains no state reached from $q_0$ through an edge
+entering the cycle from outside, since every state on it has its only predecessor on
+the cycle; as every state is reached from $q_0$ and $q_0$ is dispatched, there is no
+such cycle.  So the edges from $F$ form a forest whose roots are dispatched, and
+every embedded state lies below exactly one dispatched root.  If $q\notin F$ then
+$\delta(q,b)$, when defined, is dispatched: an embedded state has its only
+predecessor pair in $F\times\{0,1\}$.
+
+\emph{Program.}  Number the dispatched states $1,\dots,D$; the number of $q$ is its
+code $c(q)$.  Group the codes as $(1,2),(3,4),\dots$, and let $R=2\lceil D/2\rceil$ and
+$W=R+1$.  For a dispatched $q$ in group $g$ put $D_q=R-2g$, and let an embedded state
+inherit $D_q$ from its root.  Put $c(\cdot)=0$ for an undefined successor, and for
+$q\notin F$ put
+\[
+  m_q=m\bigl(c(\delta(q,0)),\,c(\delta(q,1)),\,1+[q\in E]\,\lambda(q)\bigr)
+\]
+with $m$ from Lemma~\ref{lem:adddec}.  The block of $q$ is
+\[
+ B(q)=\begin{cases}
+ \text{input},\ \mathord{+}\!=-48,\ \text{if}>0\,\{B(\delta(q,1))\},\
+   \text{if}=0\,\{B(\delta(q,0))\}, & q\in F,\\
+ \text{input},\ \mathord{+}\!=-48-2m_q-D_q, & q\notin F,
+ \end{cases}
+\]
+finite because the forest is.  Group $g$ is
+$\mathord{+}\!=2,\ \text{if}>0\,\{B(q)\},\ \text{if}=0\,\{B(q')\}$ with
+$c(q)=2g-1$, $c(q')=2g$, and the program is
+\[
+ \mathord{+}\!=-c(q_0),\quad
+ \text{while}<0\,\{\ \text{group }1,\ \dots,\ \text{group }\lceil D/2\rceil,\
+   \mathrm{Dec}_W\ \},\quad
+ \mathord{\%}\!=2,\ \mathord{+}\!=48,\ \text{output}.
+\]
+Every operand is nonzero, and $|48+2m_q+D_q|=O(W^2)$.
+
+\emph{Run.}  Fix an input and let $q_k$ be the state after its first $k$ bits.  We
+show: if a pass of the loop starts with register $-c(q_k)$, $q_k$ dispatched, then it
+reads the bits $k+1,\dots,k'+1$ for the first $k'\ge k$ with $q_{k'}\notin F$ (and, if
+$k'=n$, the end of input instead of bit $n+1$), and ends with register
+$-c(q_{k'+1})$ if $k'<n$, or with $\lambda(q_n)+2$ if $k'=n$.  In group $g$ the
+tested value is $2g-c(q_k)$.  It is at most $-1$ before the group of $q_k$; in that
+group it is $1$ at the $\text{if}>0$ when $c(q_k)=2g-1$, and $0$ at the $\text{if}=0$
+when $c(q_k)=2g$; so exactly the block of $q_k$ is entered.  Inside, a state
+$q_j\in F$ is not in $E$, so $j<n$ and it reads bit $j+1=b$; the register becomes
+$b$ after $\mathord{+}\!=-48$, and exactly the block of $q_{j+1}=\delta(q_j,b)$ is
+entered.  The state $q_{k'}\notin F$ reads bit $k'+1$, or the end of input, which
+happens only when $k'=n$; since $F\cap E=\emptyset$ and $q_n\in E$, the end of input
+is never read inside a state of $F$.  The register becomes $-2m_q+b-D_q$, or
+$-2m_q-49-D_q$ at the end of input.  From there on the pass executes only
+the tests $\text{if}=0$ of the enclosing blocks (after the block of a
+$1$-successor comes the test of the $0$-successor, and after that nothing inside
+the enclosing block), the $D_q$ remaining increments and the later
+group tests.  The value stays at most $-2m_q+1<0$, so nothing fires, and the decoder
+receives $-(2m_q-b)$ or $-(2m_q+49)$.  By Lemma~\ref{lem:adddec} it returns
+$-c(\delta(q_{k'},b))=-c(q_{k'+1})$, whose state is dispatched as shown above and
+has code at least $1$, or $1+[q_n\in E]\lambda(q_n)+1=\lambda(q_n)+2$.
+
+The first pass starts with $-c(q_0)$.  So the passes consume the input from left to
+right; after the pass that reads the end of input the register is
+$\lambda(q_n)+2>0$, the loop ends, and the program prints $48+\lambda(q_n)$, the
+table value.  Before that every pass ends with a negative register, and the loop
+repeats.
+\end{proof}
+
+Every construction of this section, and Lemma~\ref{lem:bstrip} with
+Proposition~\ref{prop:embprog}, was compiled and run with the interpreter's
+\texttt{\_advance} on all $2^n$ inputs for $n\le11$: random, maximal-width, parity,
+constant and last-two-bits tables, $d=1,2,3$ with several $L$ and $I$ (including
+$I=0$ and the largest $I$), the leveled form, and the transition and uniqueness
+properties of Lemma~\ref{lem:bstrip}, (a) and (b), were checked on the same runs.
+Several programs were also expanded to source, parsed back to the same list, and
+run through the public entry point.
+
 
 \section{Explicit constants}\label{sec:constants}
 
@@ -799,8 +1022,8 @@ $\max(N_n,\lceil T/(n+4)\rceil)$ of them, and the imaginary-pair form
 of the coefficient-mass theorem~\cite[Corollary~5.3]{coefficient-mass}
 prices each pair $\pm ci$ as one real root $c^2$.  This beats the
 real roots with Theorem~\ref{thm:mass} by a factor $4$.  The upper side
-counts the exponents of the roots that the automaton programs of
-Proposition~\ref{prop:dfaprog} use.
+counts the effective exponents of the roots of the automaton programs of
+Proposition~\ref{prop:embprog}.
 
 For a multiset of positive root exponents let $\Phi=\sum_ii\,b_{(i)}$, taken
 in increasing order.
@@ -832,13 +1055,60 @@ and this equals $\frac{S^2}2\bigl(4C_4^2-C_1^2-C_2^2-C_3^2\bigr)$.  The
 $O(n)$ other roots shift ranks by $O(n)$.
 \end{proof}
 
+% (Section sec:constants, after the proof of Lemma lem:profile)
+
+For the programs of Proposition~\ref{prop:embprog} the multiplications are gone,
+but the additions $\mathord{+}\!=a_q$ carry operands of size $W^2$, and a root
+$a\pm p^bi$ has modulus at most $2\max(|a|,p^b)$.  We therefore assign to every root an
+\emph{effective exponent}: $v$ for a real root $p^v$; $b$ for a root $a\pm p^bi$ of an
+input or of an addition with operand $O(1)$; $2$ for the root of an addition
+$\mathord{+}\!=a_q$; and $8$ for every root of the $O(1)$ fixed instructions.
+Let $\Phi_{\rm e}=\sum_ii\,e_{(i)}$, taken over the effective exponents in increasing
+order.
+
+\begin{lemma}[Effective profile]\label{lem:effprofile}
+Let a program of Proposition~\ref{prop:embprog} have $S$ states, of which $aS$ are not
+in $F$ and $xS$ are dispatched.  Then
+\[
+  \Phi_{\rm e}=g(a,x)\,S^2+O(S),\qquad
+  g(a,x)=\tfrac12\Bigl(4(6+x)^2-2\bigl(\tfrac{11}2+x\bigr)^2-\bigl(\tfrac52-2a+x\bigr)^2\Bigr).
+\]
+In particular $g(\frac12,0)=\frac{325}8$, and $g\bigl(\frac{1+\delta}2,\delta\bigr)=\frac{325}8+13\delta+\delta^2$.
+\end{lemma}
+
+\begin{proof}
+Every state has an input (two roots of effective exponent $2$), a closing bracket
+($2$), an opener, and two roots of effective exponent $1$ (from $\mathord{+}\!=-48$)
+if it lies in $F$ and $2$ (from $\mathord{+}\!=a_q$) otherwise.  Every state has
+exactly one opener, and the openers come in pairs $\{\text{if}>0,\text{if}=0\}$, of
+exponents $1$ and $4$, except for at most one.  Every dispatched state has one root
+$1$ from the $\mathord{+}\!=2$ of its group, except for $O(1)$.  So, per state, there
+are $c_1=\frac12+2(1-a)+x$ roots of effective exponent $1$, $c_2=3+2a$ of exponent
+$2$ and $c_4=\frac12$ of exponent $4$, up to $O(1/S)$, and $O(1)$ further roots of
+effective exponent at most $8$ come from the fixed instructions.  With
+$C_1=c_1$, $C_2=c_1+c_2=\frac{11}2+x$ and $C_4=6+x$, sorting puts the exponent-$b$
+roots at the consecutive ranks $C_{b'}S<i\le C_bS$, $b'$ the next smaller exponent,
+and summing $i$ over these blocks gives
+\[
+ \Phi_{\rm e}=\tfrac{S^2}2\bigl(C_1^2+2(C_2^2-C_1^2)+4(C_4^2-C_2^2)\bigr)+O(S)
+ =\tfrac{S^2}2\bigl(4C_4^2-2C_2^2-C_1^2\bigr)+O(S);
+\]
+the $O(1)$ further roots change ranks by $O(1)$.
+\end{proof}
+
+
+% REPLACES Proposition prop:bracket (statement and proof)
+
 \begin{proposition}[Explicit bracket]\label{prop:bracket}
-Let $N_n$ be as in Lemma~\ref{lem:maximal-width},
-$v_j$ as in Lemma~\ref{lem:ppow}, and $s_k$ as in Section~\ref{sec:upper}.  Put
-$S_n=\sum_{k<n}s_k$ and $K_n=\max\bigl(N_n,\lceil T/(n+4)\rceil\bigr)$, and for
-$d\ge1$ let $h_{d,n}$ and $e_{d,n}$ bound the numbers of states of
-Lemma~\ref{lem:strip} with $d\nmid n-\ell$ and with $d\mid n-\ell$, as
-there with $L=d$, and $\varphi_{d,n}=e_{d,n}/(h_{d,n}+e_{d,n})$.  Then:
+Let $N_n$ be as in Lemma~\ref{lem:maximal-width}, $v_j$ as in Lemma~\ref{lem:ppow},
+$S_m$ and $E_{d,I}$ as in Lemma~\ref{lem:bstrip},
+$K_n=\max\bigl(N_n,\lceil T/(n+4)\rceil\bigr)$ and $g$ as in Lemma~\ref{lem:effprofile}.
+For $d\in\{1,2\}$, $d\le L$ and $L+dI<n$ put $\kappa_\ell$ as in Lemma~\ref{lem:bstrip},
+\[
+ Y=d(I+1)+\sum_{\ell=L+1}^{n}\min\bigl(\kappa_\ell,2^{E_{d,I}(n-\ell)}\bigr)+S_{n-d(I+1)}+2,
+ \qquad S=Y+\sum_{\ell=1}^{L}\kappa_\ell,
+\]
+and let $\Phi_{d,L,I}=g(a,x)S^2$ with $aS=Y+\kappa_L$ and $xS=Y$.  Then:
 \begin{enumerate}
 \item for every $n\ge7$,
 \[
@@ -847,26 +1117,30 @@ there with $L=d$, and $\varphi_{d,n}=e_{d,n}/(h_{d,n}+e_{d,n})$.  Then:
 \]
 \item every $n$-input table has a program with
 \[
-  |f|\le\bigl(1+O(1/n)\bigr)\,n\log_{10}2\cdot\Phi^*_n,\quad
-  \Phi^*_n=\min\Bigl(\tfrac{525}8S_n^2,\ \min_{d\ge1}f(\varphi_{d,n})(h_{d,n}+e_{d,n})^2\Bigr)+O(nS_n).
+  |f|\le\bigl(1+O(1/n)\bigr)\,n\log_{10}2\cdot\Phi^*_n,\qquad
+  \Phi^*_n=\min_{d,L,I}\bigl(\Phi_{d,L,I}+O(S)\bigr).
 \]
 \end{enumerate}
 Put $j_1=\min\{j:2^j+j\ge n\}$, $\nu_n=n/2^{j_1}$, write
-$n=2^{j_1-1}+j_1-1+s$ with $s\ge1$, and let $u=2^{-s}$.  Then
+$n=2^{j_1-1}+j_1-1+s$ with $s\ge1$, and let $u=2^{-s}$ and $\delta=\frac{u/2}{1+u/2}$.
+Then
 \begin{equation}\label{eq:bracket-n}
   \Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)2\log_{10}2
   \ \le\ \frac{C_P(n)\,n}{T^2}\ \le\
-  \bigl(1+o(1)\bigr)\log_{10}2\cdot\min\Bigl(\tfrac{525}2\nu_n^2(1+u)^2,\ \tfrac94f_{j_1}\nu_n^2\Bigr),
+  \bigl(1+o(1)\bigr)\log_{10}2\cdot\min(U_1,U_2),
 \end{equation}
-where the second term is present when $n\ge\frac452^{j_1}$, and
-$f_j=\frac{5821}{72}$ for even $j$, $f_j=\frac{1315}{18}$ for odd $j$.
-Consequently
+where
 \[
-  2\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}\le\frac{525}8\log_{10}2,
-  \qquad
-  2\log_{10}2\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}\le\frac{5821}{32}\log_{10}2 .
+  U_1=4\nu_n^2\bigl(1+\tfrac u2\bigr)^2\bigl(\tfrac{325}8+13\delta+\delta^2\bigr),
+  \qquad U_2=\tfrac94\cdot\tfrac{325}8\,\nu_n^2,
 \]
-Numerically, $0.602\le\liminf\le19.76$ and $0.602\le\limsup\le54.76$.
+and $U_2$ is present only when $n\ge\frac7{10}2^{j_1}$.  Consequently
+\[
+  2\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}\le\frac{325}8\log_{10}2,
+  \qquad
+  2\log_{10}2\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}\le\frac{2925}{32}\log_{10}2 .
+\]
+Numerically, $0.602\le\liminf\le12.23$ and $0.602\le\limsup\le27.52$.
 \end{proposition}
 
 \begin{proof}
@@ -893,63 +1167,87 @@ With $K=K_n\ge T/(n+4)$ and $\log K\ge n\log2-\log(n+4)$, the right side
 is at least $2\bigl(\tfrac n{n+4}\bigr)^2\log_{10}2\,\bigl(1-O(\tfrac{\log n}n)\bigr)T^2/n$,
 which is the left side of~\eqref{eq:bracket-n}.
 
-\emph{Upper bound, item 2.}  Proposition~\ref{prop:dfaprog} applied to the
-residual DAG, or to the automaton of Lemma~\ref{lem:strip} with $L=d$ and
-$E$ the states with $d\mid n-\ell$, gives programs whose exponent multisets
-are those of Lemma~\ref{lem:profile}, with $O(n)$ further roots.  There are
-$S_n$ states in the first case and at most $h_{d,n}+e_{d,n}$ in the
-second, and $\Phi$ only grows when a state of $Q\setminus E$ is moved to $E$
-or a state is added.
+\emph{Upper bound, item 2.}  Fix $d,L,I$ and a table.  Apply
+Proposition~\ref{prop:embprog} to the automaton of Lemma~\ref{lem:bstrip}, with $E$ the
+states $\tau(w)$, $|w|=n$, and $F$ the tree states $u$ with $|u|<L$.  By
+Lemma~\ref{lem:bstrip}(a) no tree state lies in $E$.  The successors of $u\in F$ are the
+tree states $ub$, which have length at least $2$ and whose prefix $u$ is not a prefix of
+$c$; by Lemma~\ref{lem:bstrip}(b) their only predecessor pair is $(u,b)$, and they are
+not the start.  So the hypotheses hold.  The states outside $F$ are the tree states of
+level $L$, the copy, deep and tail states; the dispatched states are the copy, deep and
+tail states and the at most $d$ tree states $c'b$ with $c'$ a proper prefix of $c$.
+By Lemma~\ref{lem:bstrip}(c), the multiset of effective exponents is contained, up to
+$O(1)$ states and $O(1)$ roots, in the one with $Y$
+states outside $F$ and dispatched, $\kappa_L$ tree states of level $L$ and
+$\kappa_\ell$ branching states at each level $\ell<L$, each with one opener, half of them
+$\text{if}>0$; at every level $\ell>d$ the tree words ending in $0$ and in $1$ are
+equally many.  The computation of Lemma~\ref{lem:effprofile} gives $g(a,x)S^2+O(S)$ for
+that multiset, and $\Phi_{\rm e}$ only grows when a root is added or an exponent raised,
+so $\Phi_{\rm e}\le\Phi_{d,L,I}+O(S)$.
 
-Every nonleading coefficient is an elementary symmetric function of the
-$D=O(S_n)$ roots, and all moduli exceed~$1$, so
+Every nonleading coefficient of the source is an elementary symmetric function of
+its $D=O(S)$ roots, all of modulus greater than~$1$, so
 \[
   \Lambda(f)\le\sum_{k}\log\binom Dk+\sum_{i}i\log|\rho|_{(i)} ,
 \]
-the second sum taken over the moduli in increasing order.  Write
-$\log|\rho|\le b\log P+\varepsilon_\rho$, where $P$ is the largest prime and
-$\varepsilon_\rho=\log(1+|a|/p^b)$.  By the rearrangement inequality the
-second sum is at most $\Phi\log P+D\sum_\rho\varepsilon_\rho$.  Consecutive
-instructions share a prime when their decode keys do not decrease, and at
-most four share one, so there are $O(S_n)$ primes and~\cite{rs} gives
-$\log P=n\log2+O(1)$.  The operands are $O(S_n^3)$, and apart from $O(1)$
-decoder instructions only the multiplications, of exponent $3$, carry
-operands above $O(1)$; so only the $O(S_n/\log S_n)$ roots whose prime is
-below a fixed multiple of $S_n$ have $\varepsilon_\rho>\log2$, and each has
-$\varepsilon_\rho=O(\log S_n)$.  Hence $D\sum\varepsilon_\rho=O(S_n^2)$, and
-also $\sum_k\log\binom Dk=O(S_n^2)$.  Rendering adds at most $D+1$ digits and
-$O(D\log D)$ further characters.  Dividing by $\log10$ proves the second
-item.
+the second sum over the moduli in increasing order.  The encoder uses at most one
+prime per instruction, so the largest prime is $P=O(S\log S)$.  It suffices to
+treat triples with $S=O(T/n)$.  Indeed $g$ increases in $x\ge0$ and in
+$a\in[0,\frac54]$, and $a\ge\frac12$ because
+$\kappa_L=\sum_{\ell<L}\kappa_\ell+1$; so $\Phi_{d,L,I}\ge g(\frac12,0)S^2=\frac{325}8S^2$,
+while the triples used below have $\Phi_{d,L,I}=O(T^2/n^2)$.  Then
+$\log P\le n\log2+O(1)$.  The operands of the additions
+$\mathord{+}\!=a_q$ are $O(W^2)=O(S^2)$, those of the fixed instructions $O(W^2)$, and
+all others $O(1)$.  Hence every root satisfies $\log|\rho|\le e(\rho)\,n\log2+O(1)$
+with $e(\rho)$ its effective exponent, and by domination of the sorted sequences
+$\sum_ii\log|\rho|_{(i)}\le n\log2\cdot\Phi_{\rm e}+O(D^2)$.  Also
+$\sum_k\log\binom Dk\le D^2\log2$.  Rendering adds at most $D+1$ digits and
+$O(D\log D)$ further characters, and $\Phi_{d,L,I}\ge S^2$; dividing by $\log10$
+proves the second item.
 
-\emph{Asymptotics.}  As $2^{j}\ge n-j$ exactly when $j\ge j_1$, the levels
-$k<n-j_1$ have $s_k=2^k$, and $S_n=2q_{j_1}(1+u)(1+o(1))$ with
-$q_{j_1}=2^{n-j_1}=\nu_nT/n$.  So the first term is
-$\frac{525}8S_n^2n^2/T^2=\frac{525}2\nu_n^2(1+u)^2(1+o(1))$.  For
-the second, take $d=2$ and $j=j_1$, so $\kappa_\ell=\frac342^\ell$ and
-$E_2(m)=(2^{m+2}-2^{m\bmod2})/3$.  Since $n\le2^j+j$ and
-$E_2(j)\ge\frac432^j-\frac23$, level $n-j$ has $\kappa\le2^{E_2}$.  If
-$n\ge\frac452^j$ and $j\ge7$, every level $\ell>n-j$ has at most
-$2^{E_2(j-1)}\le2^{\frac232^j}$ states, together at most
-$j\,2^{\frac232^j}=o(2^{n-j})$, because
-$\frac452^j-j-\frac232^j-\log_2j\to\infty$.  So
-$h+e=\frac322^{n-j}(1+o(1))=\frac32\nu_nT/n\,(1+o(1))$.  The states with
-$2\mid n-\ell$ at levels $\ell\le n-j$ are a fraction $\frac23$ of them when
-$j$ is even and $\frac13$ when $j$ is odd.  This gives the term
-$\frac94f_{j_1}\nu_n^2$.
+\emph{Asymptotics.}  As $2^j+j\ge n$ exactly when $j\ge j_1$, we have
+$2^{j_1-1}+j_1-1<n$, and $j_1=\log_2n+O(1)$; put $j=j_1$ and $q=2^{n-j}=\nu_nT/n$.
 
-For the limits, the first term tends to $\frac{525}8$ along
-$n=2^{j-1}+2j$, where $\nu_n\to\frac12$ and $u\to0$.  For the limit
-superior, suppose $n<\frac452^{j_1}$, so $\nu_n<\frac45$.  Either $s\le6$,
-and then $\nu_n\to\frac12$ and $\nu_n(1+u)\le\frac34+o(1)$; or $u\le2^{-7}$,
-and then $\nu_n(1+u)<0.81$.  Both are below $\sqrt{5821/8400}=0.8324\ldots$,
-where $\frac{525}2x^2=\frac{5821}{32}$.  Otherwise the second term applies,
-with $\frac94f_{j_1}\le\frac{5821}{32}$ and $\nu_n\le1+j_1/2^{j_1}$.
+The term $U_1$: $d=1$, $c=0$, $L=n-j+1$, $I=j-2$, so $L+I=n-1$.  Here
+$\kappa_\ell=2^{\ell-1}$ and $\sum_{\ell\le L}\kappa_\ell=2^L-1$, with $2^L=2q$.  As
+$E_{1,I}(m)\le2^{m+1}-1$ and $2^{j-1}=L-s$, level $L+1$ has at most
+$2^{2^{j-1}-1}=\frac u2\,2^L$ deep states, and each of the at most $j$ deeper
+levels at most $2^{2^{j-2}}=2^{(L-s)/2}$.  The tail has $n'=n-j+1=L$ and at most
+$S_L+2=O(2^L/L)$ states, and there are $O(j)$ copy states.  So
+$S=2q(1+\frac u2+o(1))$, $x=\delta+o(1)$ and $a=\frac{1+\delta}2+o(1)$, and
+Lemma~\ref{lem:effprofile} gives $U_1$, since
+$(Sn/T)^2=4\nu_n^2(1+\frac u2)^2(1+o(1))$.
+
+The term $U_2$: $d=2$, $c=00$, $L=n-j$, $I=\lceil j/2\rceil-1$, so $L+2I\le n-1$.  Here
+$\kappa_\ell=3\cdot2^{\ell-2}$ for $\ell\ge2$ and
+$\sum_{\ell\le L}\kappa_\ell=\frac32\,2^L(1+o(1))$.  Every deep level has at most
+$2^{E_2(j-1)}\le2^{\frac23 2^j}$ states, since $E_2(m)\le\frac432^m$; if
+$n\ge\frac7{10}2^j$, then $\frac232^j+\log_2j-(n-j)\le j+\log_2j-\frac1{30}2^j\to-\infty$,
+so the deep states number $o(2^{n-j})$.  The tail has $n'=n-2\lceil j/2\rceil\le L$
+and $O(2^L/L)$ states, and there are $O(j)$ copy states.  So
+$S=\frac32q(1+o(1))$, $x=o(1)$ and $a=\frac12+o(1)$, since level $L$ carries half of
+the tree, and $g\to\frac{325}8$ gives $U_2$.  In both cases
+$S=O(T/n)$, and the error $O(S)$ in $\Phi^*_n$ is $o(S^2)$.
+
+For the limits, along $n=2^{j-1}+2j$ we have $s=j+1$, so $u\to0$ and $\nu_n\to\frac12$,
+and $U_1$ tends to $\frac{325}8$.  For the limit superior, if
+$n\ge\frac7{10}2^{j_1}$, then $U_2$ is at most
+$\frac94\cdot\frac{325}8\bigl(1+j_1/2^{j_1}\bigr)^2\to\frac{2925}{32}$.  Otherwise
+$\nu_n<\frac7{10}$; if $s\le6$, then $\nu_n\to\frac12$, $u\le\frac12$ and
+$\delta\le\frac15$, and $U_1$ is at most
+$(\frac54)^2(\frac{325}8+\frac{13}5+\frac1{25})+o(1)<68$; if $s\ge7$, then
+$u\le2^{-7}$, $\delta<2^{-8}$, and $U_1$ is at most
+$4(0.7)^2(1+2^{-8})^2(\frac{325}8+\frac{13}{256}+2^{-16})+o(1)<81$.  Both are below
+$\frac{2925}{32}=91.4\ldots$.
 \end{proof}
+
+
+% REPLACES Remark rem:bracket
 
 \begin{remark}[What the bracket says]\label{rem:bracket}
 The two sides of~\eqref{eq:bracket-n} differ by the factor
-$\frac{525}{16}=32.8$ at the limit inferior and $\frac{5821}{64}=90.95$ at
-the limit superior.  So Proposition~\ref{prop:bracket} fixes the order, but
+$\frac{325}{16}=20.3$ at the limit inferior and $\frac{2925}{64}=45.7$ at the
+limit superior.  So Proposition~\ref{prop:bracket} fixes the order, but
 it does not fix the constant.  The factor splits as follows.
 \begin{itemize}
 \item \emph{Routing contributes nothing.}  The lower bound credits one input
@@ -957,38 +1255,55 @@ root value to every first-essential residual at one level
 (Theorem~\ref{thm:count}), and Proposition~\ref{prop:sharp} shows the credit
 cannot be raised.
 \item \emph{Levels: $(S/(T/n))^2\in[1,\frac94]$.}  The lower bound charges
-$T/n$ input values (Proposition~\ref{prop:counting}).  The residual DAG has
-$S_n=2\nu_n(1+u)T/n$ states, which is $T/n$ when $\nu_n\to\frac12$: there the
-state count is sharp to first order.  Near $\nu_n=1$ the DAG pays $2T/n$ and
-the stripped automaton of Lemma~\ref{lem:strip} pays $\frac32T/n$, for every
-table.  For general $d$ its cost oscillates like
-$2^{\{\log_2n-\log_2(1-2^{-d})^{-1}\}}$, and the phases $d=2$ and $d=\infty$
-leave the worst point at $\frac32$.  Whether some automaton does better for
-all tables near $\nu_n=1$ is open; the true minimum lies in
-$[1,\frac32]\cdot T/n$.
-\item \emph{Profile: $f/2$, from $\frac{525}{16}$ to $\frac{5821}{144}$.}
-The lower bound charges each input pair as one real root $c^2$, which is
-exact for pairs alone~\cite[Corollary~5.3]{coefficient-mass}, and
+$T/n$ input values (Proposition~\ref{prop:counting}).  The bounded stripped automaton
+with $d=1$ has $2\nu_n(1+\frac u2)T/n$ states, which is $T/n$ when $\nu_n\to\frac12$
+and $u\to0$: there the state count is sharp to first order.  Near $\nu_n=1$ the
+automaton with $d=2$ pays $\frac32T/n$ for every table, and the residual DAG $2T/n$.
+Whether some automaton does better for all tables near $\nu_n=1$ is open; the true
+minimum lies in $[1,\frac32]\cdot T/n$.
+\item \emph{Profile: $g/2=\frac{325}{16}$ at both limits.}  The lower bound charges
+each input pair as one real root $c^2$, which is exact for pairs
+alone~\cite[Corollary~5.3]{coefficient-mass}, and
 $\sum_{j\le K}j\log v_j^2\sim2K^2\log K$ gives the mass constant $2$.  The
-construction pays $f(\varphi)$ per state squared: $\frac{525}8$ counts the
-reads ($2,2$), the brackets ($1$ or $4$, and $2$), a multiplication
-($3,3$), and half an increment ($1,1$).  The threshold decoder of
-Lemma~\ref{lem:decoder} removes a per-state addition and the equal-children
-case, and the paired dispatch shares the increment.  States that can read
-the end of input pay $\text{if}=0$ instead of $\text{if}>0$, which gives the
-factor $f(\frac23)/f(0)=1.232$ at the limit superior.  Within this
-block-dispatch design a state needs a multiplication to separate its two
-children, since one register only allows threshold tests.
+construction pays $g=\frac{325}8$ per state squared: an input ($2,2$), a closing
+bracket ($2$), an opener ($1$ or $4$), and either $\mathord{+}\!=-48$ ($1,1$) or one
+addition that encodes both successor codes (effective $2,2$), the latter for half of the
+states.  Bounding the number of stripped copies (Lemma~\ref{lem:bstrip}) keeps the end
+of input away from the tree, so no state pays for it at leading order, and the
+dispatch increments are paid only by the $o(S)$ dispatched states.
 \end{itemize}
-Charging the forced real roots together with the input pairs would help,
-but the multisection proof of~\cite[Corollary~5.3]{coefficient-mass} needs
-$P=R(x^2)$ with all roots of $R$ of one sign.  The real roots $p^v$ break
-the first condition, and passing to $F(x)F(-x)$ breaks the second.  The
-order-statistic bound for arbitrary free positions
-(\cite[Lemma~3.1]{coefficient-mass}) is already sharp
-(\cite[Corollary~3.6]{coefficient-mass}), so no sharpening of the mass step
-alone narrows the bracket.
+Charging the forced real roots together with the input pairs would help, but the
+multisection proof of~\cite[Corollary~5.3]{coefficient-mass} needs $P=R(x^2)$ with
+all roots of $R$ of one sign.  The real roots $p^v$ break the first condition, and
+passing to $F(x)F(-x)$ breaks the second.  The order-statistic bound for arbitrary
+free positions (\cite[Lemma~3.1]{coefficient-mass}) is already sharp
+(\cite[Corollary~3.6]{coefficient-mass}), so no sharpening of the mass step alone
+narrows the bracket.  Remark~\ref{rem:parity} shows that the pair charge doubles
+unless the source is even or odd.
 \end{remark}
+
+% (new, after rem:bracket)
+
+\begin{remark}[Even and odd sources]\label{rem:parity}
+Write a source as $f(x)=E_0(x^2)+xE_1(x^2)$.  If $f$ is divisible by
+$\prod_j(x^2+c_j^2)$, then by the multisection lemma~\cite[Lemma~5.1]{coefficient-mass}
+both $E_0$ and $E_1$ are multiples of $R(y)=\prod_j(y+c_j^2)$.  If $f$ is neither even
+nor odd, both are nonzero, and both have integer coefficients, hence leading
+coefficients of absolute value at least $1$.  Theorem~\ref{thm:mass}, applied to
+$E_\varepsilon(-y)$, a multiple of $\prod_j(y-c_j^2)$ with the same coefficient
+magnitudes, gives $\Lambda(E_\varepsilon)\ge\sum_jj\log(c_{(j)}^2-1)$ for
+$\varepsilon=0,1$, and $\Lambda(f)=\Lambda(E_0)+\Lambda(E_1)$ gives
+\[
+  \Lambda(f)\ \ge\ 2\sum_{j}j\log(c_{(j)}^2-1).
+\]
+So every source for the table of item~1 of Proposition~\ref{prop:bracket} that is
+neither even nor odd has length at least $(4-o(1))\log_{10}2\cdot T^2/n$, twice
+the bound there.  An even or odd source has, with every root $\rho$, also the root
+$-\rho$; its decoded program therefore contains the instruction $(-a,b)$ with every
+register instruction $(a,b)$, $a\ne0$.  Whether such symmetric sources can be
+optimal is what separates the lower constant $2$ from $4$.
+\end{remark}
+
 
 \paragraph{Reproducibility.}
 Executable checks cover the finite block-counting identities and repeated-root
