@@ -27,6 +27,15 @@
 # and uses the all-zero sha for the local side of a deletion, so a push whose
 # refs are *all* deletions can be waved through.  A mixed push (some deletes,
 # some updates) still runs the checks.
+refs="$(cat)"
+
+# A local, untracked pre-push.local (gitignored with the rest of .githooks)
+# runs first and sees the same refs; a nonzero exit stops the push.
+local_hook="$(dirname "$0")/pre-push.local"
+if [ -x "$local_hook" ]; then
+    printf '%s\n' "$refs" | "$local_hook" "$@" || exit 1
+fi
+
 deleting_only=1
 saw_ref=0
 
@@ -36,7 +45,9 @@ while read -r _local_ref local_sha _remote_ref _remote_sha; do
     case "$local_sha" in
         *[!0]*) deleting_only=0 ;;
     esac
-done
+done <<EOF
+$refs
+EOF
 
 if [ "$saw_ref" -eq 1 ] && [ "$deleting_only" -eq 1 ]; then
     echo "pre-push: deletion only, skipping local checks"
