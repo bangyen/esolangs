@@ -497,10 +497,10 @@ _MINTERM_SHAPED = {
 # Neither model describes these.  ``minifuck`` is a route search over a
 # grid, not a sum and not a tree.
 #
-# ``b_tapemark`` is a tree, but a deliberately *unfolded* one, so the
-# folding discriminator does not apply: its nodes read the input, and
-# collapsing a constant subtree would drop that subtree's reads and break
-# the read-count contract above.  ``slow_acv_mammalian`` is a branch-free
+# ``b_tapemark`` copies the whole table onto the blank grid, one mark per
+# row, and each input walks the mark pointer by its weight -- so every table
+# of one arity renders to the same length and a 0% fold is its construction
+# working.  ``slow_acv_mammalian`` is a branch-free
 # chain into a flat leaf table -- every table of one arity renders to the
 # same length, so a 0% fold is its construction working.
 #
