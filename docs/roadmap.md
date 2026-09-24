@@ -243,9 +243,16 @@ step; an answer lands in the paper it extends, and the row leaves.
   `n = L-k+1`, and the one-hole bound `B_r(n)` for `r >= 5/2`); the last two
   rows are exact (`cor:tworowsr`), the last row for every `r > 1`
   (`cor:lastrowr`), and `thm:tailgen`/`cor:ordergen` extend `thm:tail` and
-  `eq:order` to all roots above 1.  Open: the rows `1 < k < L` for
-  `1 < r < 2` (only `(r-1)**L` is proved), general root multisets, and the
-  conjecture `V_r(L,k) = beta_r(L-k+1)` (rows equal the top row).
+  `eq:order` to all roots above 1.  For `1 < r < 2` the rows are pinned up
+  to a factor `1 + O(k**(n-1/2) theta**k)` (`thm:prefixrows`,
+  `cor:belowtwo`); at several roots the one-hole tail has a closed form
+  (`prop:oneholegen`) giving `thm:rowsgen`, which beats `eq:order`; the top
+  row at any roots is bracketed by `prop:toprowgen`; and rows equal the top
+  row exactly in explicit ranges (`thm:rowstop`, `cor:rowstopranges`).
+  Open: the conjecture `V_r(L,k) = min_i 1/nu_i(n)` (at `r >= 2`: rows
+  equal the top row), which for `r >= 5/2` reduces to the insertion
+  inequality of `prop:insertion`, and the hole shift
+  `T_h(R) <= T_(h-1)(R')` at several roots.
 
 - **Brainfuck behaviour count.**  Recorded in commit `9f81099` when the
   Factor constant work was cut: a drawing (word over `><+-`) of `C`

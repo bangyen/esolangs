@@ -2166,8 +2166,531 @@ the rows in between.  In a numerical search at $r=\frac32$ and $\frac74$
 with $L\le5$, $S\subseteq[1,8]$ and zero sets in a window, the worst
 exempted set is $S=[1,k-1]$ in all but one case, and the approximate row
 values at $r=\frac32$, $L=5$ are $2.98,\,1.99,\,0.80,\,0.20,\,\frac1{32}$
-for $k=1,\ldots,5$ (the last is exact).  We have not determined these
-rows.
+for $k=1,\ldots,5$ (the last is exact).  Theorem~\ref{thm:prefixrows} below
+determines these rows up to a factor tending to $1$.
+
+\subsection{Rows below two, at several roots, and rows equal to the top row}
+
+This subsection keeps the notation of the previous one.  It adds three
+things.  For $1<r<2$ it identifies the rows up to a factor tending to $1$
+(Theorem~\ref{thm:prefixrows}, Corollary~\ref{cor:belowtwo}).  For several
+roots it evaluates the one-hole certificate in closed form and derives a
+row bound (Proposition~\ref{prop:oneholegen}, Theorem~\ref{thm:rowsgen}).
+Finally it proves that rows equal the top row at $r\ge\frac52$ whenever an
+explicit criterion holds (Theorem~\ref{thm:rowstop}), and it reduces the
+general conjecture to a single insertion inequality
+(Proposition~\ref{prop:insertion}).
+
+\paragraph{Rows through prefix sets.}
+For $i\ge1$ and $n\ge1$ put
+\[
+  \nu_i(n)=\inf\Bigl\{\sum_{s\ge1}\binom{s-1}{i-1}r^{-s}|p(s)|:\
+  p\in\R[s],\ \deg p\le n-1,\ p(0)=1\Bigr\},
+\]
+so $\nu_1(n)=\mu_r(\varnothing,n)=1/\beta_r(n)$.  Since
+$|r_{[1,i-1]}(s)|=\binom{s-1}{i-1}$ for $s\ge1$, we have
+$\nu_i(n)=\mu_r([1,i-1],i+n-1)$.  In the negative-binomial form of the
+paragraph on roots between one and two, $\nu_i(n)=a^im_i(n)$, where
+$m_i(n)=\inf_p\mathbb E|p(X_i)|$ and $X_i$ counts the trials up to the
+$i$-th success at success probability $1-1/r$.  So $1/\nu_i(n)$ is a top-row
+value for a transformed measure.  Put also
+\[
+  W_k(s)=\binom{s-1}{\min(k-1,\lfloor(s-1)/2\rfloor)},\qquad
+  \Omega_k(n)=\inf_p\sum_{s\ge1}W_k(s)r^{-s}|p(s)|,\qquad
+  E_k(r)=\sum_{s=1}^{2k-2}\binom{s-1}{\lfloor(s-1)/2\rfloor}r^{-s},
+\]
+with $p$ as in $\nu_i$.  Since the binomial coefficients are unimodal,
+$W_k(s)=\max\{\binom{s-1}j:0\le j\le\min(k-1,s-1)\}$.
+
+\begin{lemma}[Integer zero sets suffice]\label{lem:intzeros}
+Let $i,n\ge1$ and let $\omega(s)\ge0$ ($s\ge1$) vanish for $s<i$, be
+positive for $s\ge i$, and satisfy $\sum_s\omega(s)s^{n-1}<\infty$.  Then
+$\inf_p\sum_s\omega(s)|p(s)|$, over real $p$ with $\deg p\le n-1$ and
+$p(0)=1$, equals the infimum over the polynomials
+$p=\prod_{y\in Y}(1-s/y)$ with $Y$ a set of $n-1$ integers at least $i$.
+\end{lemma}
+
+\begin{proof}
+Let $D\ge i+n$ and $f_D(p)=\sum_{s=i}^D\omega(s)|p(s)|$ on the affine space
+$\mathcal A=\{\deg p\le n-1,\ p(0)=1\}$ of dimension $n-1$.  On each cell
+$\{p\in\mathcal A:\ \epsilon_sp(s)\ge0,\ i\le s\le D\}$
+($\epsilon_s=\pm1$), $f_D$ is linear and nonnegative.  Each cell is
+pointed, because a polynomial of degree at most $n-1$ that vanishes at $0$
+and at the $D-i+1\ge n$ points $[i,D]$ is zero.  So the minimum of $f_D$ over
+a cell is attained at a vertex.  A vertex satisfies $n-1$ linearly
+independent equations $p(y)=0$ with $y\in[i,D]$, so
+$p=\prod_{y\in Y}(1-s/y)$ with $|Y|=n-1$.
+
+Hence some such $p_D$ has $f_D(p_D)=\min_{\mathcal A}f_D\le
+\sum_s\omega(s)|p(s)|$ for all $p\in\mathcal A$.  Since
+$|p_D(s)|\le(1+s)^{n-1}$, the full sum at $p_D$ exceeds $f_D(p_D)$ by at
+most $\tau_D=\sum_{s>D}\omega(s)(1+s)^{n-1}\to0$.  So the infimum lies
+between $\min f_D$ and $\min f_D+\tau_D$, and the truncated minima increase
+to it.
+\end{proof}
+
+\begin{lemma}[A uniform bound on the exempted factor]\label{lem:rowpointwise}
+Let $S\subset\N_{>0}$ be finite, $s\ge1$, and $j_s=|S\cap[1,s-1]|$.  Then
+$|r_S(s)|\le\binom{s-1}{j_s}$.  If $|S|\le k-1$, then
+$|r_S(s)|\le W_k(s)$, and $W_k(s)=\binom{s-1}{k-1}$ for $s\ge2k-1$.
+\end{lemma}
+
+\begin{proof}
+Let $\sigma_1<\cdots<\sigma_{j}$ be the elements of $S$ below $s$, so
+$\sigma_l\ge l$ and $j=j_s\le s-1$.  The factor $(s-x)/x$ decreases in $x$, so
+$|1-s/\sigma_l|\le(s-l)/l$.  Every $\sigma\in S$ with $\sigma\ge s$ has
+$0\le1-s/\sigma<1$.  Hence
+$|r_S(s)|\le\prod_{l\le j}(s-l)/l=\binom{s-1}j$.  The rest follows from
+$j_s\le\min(k-1,s-1)$, unimodality, and the fact that
+$\lfloor(s-1)/2\rfloor\ge k-1$ exactly when $s\ge2k-1$.
+\end{proof}
+
+\begin{theorem}[Rows through prefix sets]\label{thm:prefixrows}
+Let $r>1$, $1\le k\le L$ and $n=L-k+1$.  Then
+\begin{equation}\label{eq:prefixsandwich}
+  \frac1{\nu_k(n)+E_k(r)}\ \le\ \frac1{\Omega_k(n)}\ \le\ V_r(L,k)\ \le\
+  \min_{1\le i\le k}\frac1{\nu_i(n)} .
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+\emph{Upper bound.}  Fix $1\le i\le k$ and, for large $N$, put
+$S_N=[1,i-1]\cup[N+1,N+k-i]$, so $|S_N|=k-1$.  A real $q$ with
+$\deg q\le L-1$, $q(0)=1$ and $q|_{S_N}=0$ factors as
+$q=r_{[1,i-1]}\pi_Nq_0$ with $\pi_N(s)=\prod_{\sigma=N+1}^{N+k-i}(1-s/\sigma)$,
+$\deg q_0\le n-1$ and $q_0(0)=1$.  For $s\le M<N$ we have
+$\pi_N(s)\ge(1-M/N)^{k-i}$, so
+\[
+  \Phi_r(q)\ge\Bigl(1-\frac MN\Bigr)^{k-i}\nu_{i,M}(n),
+\]
+where $\nu_{i,M}$ is $\nu_i$ with the sum cut at $s\le M$.
+Proposition~\ref{prop:rowvalue}(b) gives
+$V_r(L,k)\le1/\mu_r(S_N,L)$.  Let $N\to\infty$, then $M\to\infty$.  The
+proof of Lemma~\ref{lem:intzeros} gives $\nu_{i,M}(n)\to\nu_i(n)$, so
+$V_r(L,k)\le1/\nu_i(n)$.
+
+\emph{Lower bound.}  Let $F$ and $S$ be as in
+Proposition~\ref{prop:rowvalue}(a), so $|S|=k-1$.  For any $p$ as in
+$\Omega_k$, the polynomial $q=r_Sp$ is admissible there, and by
+Lemma~\ref{lem:rowpointwise}
+\[
+  \Phi_r(q)\le\sum_sW_k(s)r^{-s}|p(s)| .
+\]
+Taking the infimum over $p$ gives $b_k(F)\ge1/\Omega_k(n)$.
+
+Now take $p=\prod_{y\in Y}(1-s/y)$ with $|Y|=n-1$ and $Y\subset[k,\infty)$.
+For $1\le s\le2k-2\le2y$ every factor satisfies $|1-s/y|\le1$, so
+$|p(s)|\le1$.  For $s\ge2k-1$, $W_k(s)=\binom{s-1}{k-1}$.  Hence
+\[
+  \sum_sW_k(s)r^{-s}|p(s)|\le E_k(r)+\sum_{s\ge1}\binom{s-1}{k-1}r^{-s}|p(s)| .
+\]
+By Lemma~\ref{lem:intzeros} with $\omega(s)=\binom{s-1}{k-1}r^{-s}$ and
+$i=k$, the infimum of the last sum over such $p$ is $\nu_k(n)$.  This gives
+$\Omega_k(n)\le\nu_k(n)+E_k(r)$.
+\end{proof}
+
+The upper bound says that the prefix sets $S=[1,i-1]$, completed by a far
+block, are admissible exempted sets.  The lower bound compares every $S$
+with the prefix $[1,k-1]$.  The loss $E_k(r)$ comes from the first $2k-2$
+positions only.  For $r<2$ it is exponentially small against $\nu_k(n)$.
+
+\begin{lemma}[The negative-binomial mass]\label{lem:nbmass}
+Let $r>1$, $k,n\ge1$, $\varpi=1-1/r$, and let $M_k$ be a mode of the
+negative-binomial law $P(t)=\binom{t-1}{k-1}\varpi^k r^{-(t-k)}$, $t\ge k$.
+Then $M_k\le(k-1)r/(r-1)+1$, and
+\[
+  \frac{\nu_k(n)}{a^k}=m_k(n)\ \ge\
+  \frac{(n-1)!\,P(M_k)}{r^{n-1}\bigl(2(M_k+n-1)\bigr)^{n-1}},
+  \qquad
+  P(M_k)\ge\frac3{4\bigl(4\sqrt{kr}/(r-1)+1\bigr)} .
+\]
+\end{lemma}
+
+\begin{proof}
+First, $\binom{s-1}{k-1}r^{-s}=a^kP(s)$, which gives $\nu_k=a^km_k$.  The
+ratio $P(t+1)/P(t)=t/(r(t-k+1))$ is at least $1/r$.  It is at least $1$
+exactly when $t\le(k-1)/\varpi$, which locates the mode.
+
+Let $t_l=M_k+l$ for $0\le l\le n-1$, and let $\ell_l$ be the Lagrange basis
+on these nodes.  Then
+$|\ell_l(0)|=\prod_{l'\ne l}t_{l'}/|l-l'|\le(M_k+n-1)^{n-1}/(l!\,(n-1-l)!)$.
+Evaluating $1=p(0)=\sum_l\ell_l(0)p(t_l)$ gives
+$\max_l|p(t_l)|\ge(n-1)!/(2(M_k+n-1))^{n-1}$.  Moreover
+$P(t_l)\ge r^{-(n-1)}P(M_k)$.
+
+The law has variance $\sigma^2=kr/(r-1)^2$.  By Chebyshev's inequality at
+least $\frac34$ of its mass lies within $2\sigma$ of the mean, on at most
+$4\sigma+1$ integers.  So the mode carries at least $3/(4(4\sigma+1))$.
+\end{proof}
+
+\begin{corollary}[Rows for roots between one and two]\label{cor:belowtwo}
+Let $1<r<2$ and $\theta=4(r-1)/r^2<1$.  For all $1\le k\le L$ and $n=L-k+1$,
+\[
+  1\ \ge\ \frac{V_r(L,k)\,m_k(n)}{(r-1)^k}\ \ge\
+  \frac1{1+\varepsilon},\qquad
+  \varepsilon\le\frac{r^2\,\theta^k}{4(2-r)\,m_k(n)} .
+\]
+With Lemma~\ref{lem:nbmass}, $\varepsilon\le C_{r,n}k^{n-1/2}\theta^k$.  So
+for fixed $n$ (indeed for $n=o(k/\log k)$),
+$V_r(L,k)=(1+o(1))(r-1)^k/m_k(n)$ as $k\to\infty$, and the exempted set
+$S=[1,k-1]$ is asymptotically the worst.
+\end{corollary}
+
+\begin{proof}
+Theorem~\ref{thm:prefixrows} with $i=k$ gives the upper bound, and
+$1/(\nu_k+E_k)=(1/\nu_k)/(1+E_k/\nu_k)$ gives the lower one.  Since
+$\binom{s-1}{\lfloor(s-1)/2\rfloor}\le2^{s-1}$ and $2/r>1$,
+\[
+  E_k(r)\le\frac12\sum_{s=1}^{2k-2}\Bigl(\frac2r\Bigr)^s\le
+  \frac{(2/r)^{2k-1}}{2(2/r-1)}=\frac{r^2}{4(2-r)}\Bigl(\frac4{r^2}\Bigr)^k .
+\]
+Finally $E_k/\nu_k=(r-1)^kE_k/m_k$, and $\theta<1$ is $(r-2)^2>0$.
+\end{proof}
+
+For $r\ge2$ the loss $E_k(r)$ is not small and
+Theorem~\ref{thm:prefixrows} adds nothing to Theorem~\ref{thm:everyrowr}.
+At the same time $\theta\to1$ as $r\to2$, and for small $L$ the bound of
+Corollary~\ref{cor:ordergen} is better.  We conjecture
+$V_r(L,k)=\min_{1\le i\le k}1/\nu_i(n)$ for every $r>1$.  The evidence is a
+floating-point linear-programming search over exempted sets.  For
+$r\in\{1.1,1.25,1.5,1.75,1.9\}$, $n\le4$ and all $S\subseteq[1,10]$ with
+$|S|\le3$, no $S$ gave a value below the upper bound
+of~\eqref{eq:prefixsandwich}.
+
+At $r\ge2$ the conjecture says the minimum sits at $i=1$, that is, rows
+equal the top row.  At $r=\frac32$ and $L\le8$ the minimum is at $i=k$
+except for $(L,k)=(6,2),(8,2),(8,3)$, where it is at $i=1$.  For $n\ge2$
+at $r=1.9$ and $n\ge3$ at $r=1.75$ it is at $i=1$.  This explains the
+exception noted in the previous paragraph: there the worst exempted set lies
+far out.
+
+\paragraph{One kept hole at several roots.}
+For a multiset $R=(\rho_1,\ldots,\rho_m)$ of reals greater than $1$ write
+$e_j(R)$ for its elementary symmetric functions and $R-1=(\rho_i-1)_i$.  Put
+\[
+  Q(R)=\prod_{i=1}^m(\rho_i-1),\qquad
+  P_h(R)=\sum_{i=0}^{h-1}(-1)^ie_i(R),
+\]
+and, for $1\le h\le m$,
+\begin{equation}\label{eq:Tgen}
+  T_h(R)=\frac{Q(R)+\sum_{i=0}^{h-1}\binom{m-1-i}{h-1-i}e_i(R-1)}
+             {Q(R)\,e_h(R)} .
+\end{equation}
+
+\begin{lemma}[Partial sums]\label{lem:partialsums}
+For $1\le h\le m$,
+$(-1)^{h-1}P_h(R)=\sum_{i=0}^{h-1}\binom{m-1-i}{h-1-i}e_i(R-1)>0$.  Also
+$P_{m+1}(R)=\prod_i(1-\rho_i)$, so $|P_{m+1}(R)|=Q(R)$.
+\end{lemma}
+
+\begin{proof}
+$P_h(R)$ is the coefficient of $u^{h-1}$ in $\prod_i(1-\rho_iu)/(1-u)$.
+Writing $1-\rho_iu=(1-u)-(\rho_i-1)u$ gives
+\[
+  \frac{\prod_i(1-\rho_iu)}{1-u}=
+  \sum_{i=0}^m(-1)^ie_i(R-1)\,u^i(1-u)^{m-1-i}.
+\]
+For $h\le m$ only $i\le h-1\le m-1$ contributes to $u^{h-1}$, with
+$(-1)^i\cdot(-1)^{h-1-i}\binom{m-1-i}{h-1-i}$.  The last claim is the value
+of $\prod_i(1-\rho_iu)$ at $u=1$.
+\end{proof}
+
+\begin{proposition}[One hole at arbitrary roots]\label{prop:oneholegen}
+Let $\rho_1,\ldots,\rho_m>1$ be distinct, $R=(\rho_i)$, $1\le h\le m$, and
+let $w$ be the exponential sum on the nodes $y_i=1/\rho_i$ with $w_0=1$ and
+$w_z=0$ for $z\in[1,m]\setminus\{h\}$.  Then $|w_h|=1/e_h(R)$, the terms
+$w_d$ with $d>m$ have one sign, and
+\[
+  \Tail(w)=\frac1{e_h(R)}\Bigl(1+\frac{|P_h(R)|}{Q(R)}\Bigr)=T_h(R).
+\]
+For $R=(r,\ldots,r)$ the right side equals
+$S_r(h,m-h)=\Phi_r([1,m]\setminus\{h\})$ of Lemma~\ref{lem:holeintr}.
+\end{proposition}
+
+\begin{proof}
+By the zero bound, $w$ exists, is unique, and has exactly the $m-1$
+prescribed zeros, all of them simple.  So $w$ has one sign on $(m,\infty)$.
+Let $E(X)=\prod_i(1-y_iX)=\sum_j(-1)^je_j(y)X^j$ and
+$U(X)=\sum_{d\ge0}w_dX^d=N(X)/E(X)$ with $\deg N\le m-1$, and write
+$U=1+w_hX^h+T$ with $T=\sum_{d>m}w_dX^d$.
+
+The coefficient of $X^m$ in $N=(1+w_hX^h)E+TE$ vanishes, so
+$w_h=(-1)^{h+1}e_m(y)/e_{m-h}(y)$.  The coefficients beyond $X^m$ vanish
+as well, so
+$T=-w_hX^h\sum_{j>m-h}(-1)^je_j(y)X^j\big/E(X)$.  This is analytic for
+$|X|<1/\max y_i$, so it may be evaluated at $X=1$.  By one-signedness,
+\[
+  \Tail(w)=|w_h|+|T(1)|
+  =|w_h|\Bigl(1+\Bigl|\sum_{j>m-h}(-1)^je_j(y)\Bigr|\Big/E(1)\Bigr).
+\]
+With $e_j(y)=e_{m-j}(R)/\prod_i\rho_i$ this reads
+\[
+  |w_h|=\frac1{e_h(R)},\qquad
+  \Bigl|\sum_{j>m-h}(-1)^je_j(y)\Bigr|=\frac{|P_h(R)|}{\prod_i\rho_i},\qquad
+  E(1)=\frac{Q(R)}{\prod_i\rho_i},
+\]
+and Lemma~\ref{lem:partialsums} converts $|P_h(R)|$ into the numerator
+of~\eqref{eq:Tgen}.
+
+For a single root, take the nodes $y_i=\frac1r-(m-i)\epsilon$ of the proof
+of Lemma~\ref{lem:confdel}.  Its limit gives
+$\Tail(w^\epsilon)\to\Phi_r([1,m]\setminus\{h\})$ (as in
+Lemma~\ref{lem:confdelr}), while $T_h$ is continuous.
+\end{proof}
+
+The case $h=1$ is $T_1(R)=(1+Q(R))/(Q(R)\sum_i\rho_i)$, the several-root
+form of $\psi_r(m)$.  The case $h=m$ is $T_m(R)=1/Q(R)$, which is
+\eqref{eq:order} with $u=0$.
+
+\begin{theorem}[Rows at several roots]\label{thm:rowsgen}
+Let $2\le r_1\le\cdots\le r_L$, let $F$ be a nonzero real multiple of
+$\prod_{i=1}^L(x-r_i)$, $1\le k\le L$ and $n=L-k+1$, and let
+$R_m=(r_{L-m+1},\ldots,r_L)$ be the $m$ largest roots.  Then
+\[
+  b_k(F)\ \ge\ |f_D|\max_{1\le c\le n}\ \min_{c\le h\le c+k-1}
+  \frac1{T_h(R_{h+n-c})} .
+\]
+The term $c=n$ is \eqref{eq:order}.  For $r_1=\cdots=r_L=r\ge\frac52$ the
+right side is $B_r(n)$.
+\end{theorem}
+
+\begin{proof}
+Let the roots be distinct and $f_D=1$, and let $W$ be the set of backward
+distances of $k-1$ positions carrying the $k-1$ largest nonleading
+magnitudes.  Let $c_1<c_2<\cdots$ be the positive integers outside $W$ and
+fix $c$.  Put
+\[
+  Z=W\cup\{c_i:\ i\le n,\ i\ne c\},\qquad h=c_c,\qquad x=c_n,
+\]
+so $|Z|=L-1$ and $c\le h\le c+k-1$.  Let $w$ be the sum on all $L$
+reciprocal roots with $w_0=1$ and $w|_Z=0$.  The dual identity
+\eqref{eq:dual} of Lemma~\ref{lem:slack} gives $1\le b_k(F)\Tail(w)$,
+because $w$ vanishes at the $k-1$ exempted distances.
+
+Now delete the largest zero repeatedly, each time together with the largest
+remaining node, that is, the smallest remaining root.  First delete the
+elements of $W$ above $x$, then $x,x-1,\ldots,h+n-c+1$.  Every set met
+before a deletion contains an element larger than $h$ and misses $h$, so it
+is not an initial segment.  The deletion step in the proof of
+Theorem~\ref{thm:tail} (nodes at most $\frac12$) makes the tail smaller at
+each step.  The last set is $[1,h+n-c]\setminus\{h\}$ on the reciprocals of
+$R_{h+n-c}$, since $x\ge h+n-c$.  By Proposition~\ref{prop:oneholegen},
+$\Tail(w)\le T_h(R_{h+n-c})$.
+
+Repeated roots follow by the perturbation in the proof of
+Theorem~\ref{thm:order}, because $T_h$ is continuous in the roots.
+
+For $c=n$ the value is $1/T_h(R_h)=Q(R_h)\ge Q(R_n)$, since $h\ge n$ and
+every factor is at least $1$.  For equal roots,
+$T_h(R_{h+n-c})=S_r(h,n-c)$, and Lemma~\ref{lem:shift} gives
+$\max_hS_r(h,n-c)=S_r(c,n-c)$.
+\end{proof}
+
+At distinct roots the minimum over $h$ need not sit at $h=c$.  The one step
+that is proved in general is the move of a hole from $2$ to $1$.
+
+\begin{lemma}[Moving the hole from $2$ to $1$]\label{lem:holetwo}
+Let $R$ be a multiset of $m\ge2$ reals, all at least $2$, and let $R'$ be
+$R$ with one element $\rho$ removed.  Then $T_2(R)\le T_1(R')$.
+\end{lemma}
+
+\begin{proof}
+Write $s=\rho-1\ge1$, $Q'=Q(R')\ge1$, $E_1=e_1(R')$ and $E_2=e_2(R')$.  By
+\eqref{eq:Tgen}, $T_2(R)=(sQ'+E_1+s)/(sQ'(E_2+(s+1)E_1))$ and
+$T_1(R')=(Q'+1)/(Q'E_1)$.  After clearing denominators the claim is
+$E_1^2\le s(Q'+1)E_2+s^2(Q'+1)E_1$, and with $s\ge1$ it suffices that
+$E_1^2\le(Q'+1)(E_1+E_2)$.
+
+Now $E_1^2=\sum_j\rho_j'^2+2E_2$ and $(Q'+1)E_2\ge2E_2$.  Also
+$\sum_j\rho_j'^2\le(\max_j\rho_j')E_1\le(Q'+1)E_1$, because
+$Q'\ge\max_j\rho'_j-1$ when all factors are at least $1$.
+\end{proof}
+
+\begin{corollary}[Several roots, away from the top two positions]\label{cor:rowsgenfree}
+In the setting of Theorem~\ref{thm:rowsgen}, suppose that the $k-1$ largest
+nonleading magnitudes can be chosen at positions not including both $D-1$
+and $D-2$.  Then
+\[
+  b_k(F)\ \ge\ |f_D|\,\frac{\bigl(\sum_{i=k}^Lr_i\bigr)\,Q}{Q+1},
+  \qquad Q=\prod_{i=k}^L(r_i-1).
+\]
+\end{corollary}
+
+\begin{proof}
+In the proof of Theorem~\ref{thm:rowsgen} take $c=1$.  Then $h=c_1\le2$.
+If $h=1$ the bound is $1/T_1(R_n)$.  If $h=2$, Lemma~\ref{lem:holetwo}
+applied to $R_{n+1}$ and its smallest root gives
+$T_2(R_{n+1})\le T_1(R_n)$.
+\end{proof}
+
+At $r_i=2$ this is $b_k\ge n$ for such positions, as in
+Proposition~\ref{prop:rowsfree}.  For equal roots it is the target
+$\psi_r(n)$ of Proposition~\ref{prop:psirows} for $j\le1$.  The general
+step $T_h(R)\le T_{h-1}(R')$ ($R'$ without the smallest root) would make
+the bound of Theorem~\ref{thm:rowsgen} equal to
+$\max_c1/T_c(R_n)$, the several-root form of $B_r(n)$.  In about $15{,}000$
+random exact tests with smallest root at least $\frac52$ it held, with
+largest ratio $0.75$, attained near equal roots.  It fails
+at equal roots near $2.2$, as Lemma~\ref{lem:shift} does.
+
+\paragraph{The top row, and rows equal to it.}
+Put $\beta(R)=\inf b_1(F)$ over monic real multiples $F$ of
+$\prod_i(x-\rho_i)$, so $\beta_r(n)=\beta(r,\ldots,r)$.  With
+$A_z=P_{z+1}(R)$ for $0\le z\le m$ (so $A_0=1$ and $|A_m|=Q(R)$), consider
+the $m+1$ affine functions
+\[
+  \ell_0(\lambda)=A_m(1+\lambda),\qquad
+  \ell_z(\lambda)=A_z+\lambda A_{z-1}\quad(1\le z\le m),
+\]
+and write $\ell_z=\alpha_z+\lambda\gamma_z$.  Every $\gamma_z\neq0$ by
+Lemma~\ref{lem:partialsums}.  Put
+$X(z,z')=|\alpha_z\gamma_{z'}-\alpha_{z'}\gamma_z|/(|\gamma_z|+|\gamma_{z'}|)$.
+
+\begin{proposition}[The top row at arbitrary roots]\label{prop:toprowgen}
+For every multiset $R$ of $m$ reals greater than $1$,
+\[
+  \max_{1\le c\le m}\frac1{T_c(R)}\ \le\ \beta(R)\ \le\
+  U(R):=\min_{\lambda\in\R}\max_{0\le z\le m}|\ell_z(\lambda)|
+  =\max_{0\le z<z'\le m}X(z,z'),
+\]
+and $X(0,c)=1/T_c(R)$.  Hence $\beta(R)=\max_c1/T_c(R)$ whenever
+$X(z,z')\le\max_c1/T_c(R)$ for all $1\le z<z'\le m$.
+\end{proposition}
+
+\begin{proof}
+\emph{Lower bound.}  For distinct roots, the dual identity \eqref{eq:dual}
+with the one-hole sum of Proposition~\ref{prop:oneholegen} gives
+$1\le b_1(F)T_c(R)$.  Repeated roots follow by perturbation.
+
+\emph{Upper bound.}  Fix $\lambda$ and let
+\[
+  N(y)=(1+\lambda y)\prod_i(1-\rho_iy)=\sum_{j=0}^{m+1}N_jy^j .
+\]
+Its partial sums are $\sum_{j\le z}N_j=\ell_z(\lambda)$ for $1\le z\le m$
+and $\ell_0(\lambda)=N(1)$ for $z\ge m+1$.  For $K\ge m+1$ let
+$h_j=1$ for $0\le j\le K$, $h_j=(2K-j)/K$ for $K\le j\le2K$ and $h_j=0$
+beyond, and let $\widetilde G(y)=N(y)\sum_jh_jy^j=\sum_sg_sy^s$.
+
+The polynomial $F(x)=x^{\deg\widetilde G}\widetilde G(1/x)$ is monic,
+because $g_0=1$.  It is divisible by $\prod_i(x-\rho_i)$, repetitions
+included, because $N$ is divisible by $\prod_i(1-\rho_iy)$.  Its nonleading
+coefficients are $g_1,g_2,\ldots$.  For $s\le K$, $g_s$ is the partial sum
+up to $s$, so it is $\ell_s(\lambda)$ or $\ell_0(\lambda)$.  For $s>K$,
+$h_{s-j}=h_s+O(j/K)$ gives $|g_s|\le|\ell_0(\lambda)|+K^{-1}\sum_jj|N_j|$.
+Letting $K\to\infty$ gives $\beta(R)\le\max_z|\ell_z(\lambda)|$ for every
+$\lambda$.
+
+\emph{The minimax.}  For two indices,
+$|\alpha_z\gamma_{z'}-\alpha_{z'}\gamma_z|
+=|\gamma_{z'}\ell_z(\lambda)-\gamma_z\ell_{z'}(\lambda)|
+\le(|\gamma_z|+|\gamma_{z'}|)\max(|\ell_z|,|\ell_{z'}|)$, with equality at
+the crossing point.  So $X(z,z')$ is the minimax of that pair.  The
+sublevel sets $\{\lambda:|\ell_z(\lambda)|\le t\}$ are compact intervals,
+and by Helly's theorem on the line they have a common point once they meet
+pairwise; this gives $U(R)=\max X$.
+
+Finally, $X(0,c)=Q|A_{c-1}-A_c|/(Q+|A_{c-1}|)=Qe_c(R)/(Q+|P_c(R)|)$, which
+is $1/T_c(R)$ by Lemma~\ref{lem:partialsums}.
+\end{proof}
+
+At $\lambda=0$ the functions $\ell_z$ are the partial sums of the
+coefficients of $\prod_i(x-\rho_i)$ and $\ell_0=\pm Q(R)$.  This recovers
+the criterion quoted after Proposition~\ref{prop:nonsharp}: if every partial
+sum has absolute value at most $Q(R)$, then $\beta(R)=Q(R)$.  For a single
+root, write $X_r(z,z')$ for $X(z,z')$ at $R=(r,\ldots,r)$ of length $n$,
+with $A_z=\sum_{j\le z}\binom nj(-r)^j$.
+
+\begin{theorem}[Rows equal the top row]\label{thm:rowstop}
+Let $r\ge\frac52$ and $n\ge1$, and suppose $X_r(z,z')\le B_r(n)$ for all
+$1\le z<z'\le n$.  Then for every $L\ge n$ and $k=L-n+1$,
+\[
+  V_r(L,k)=\beta_r(n)=B_r(n)=\max_{1\le c\le n}\frac1{S_r(c,n-c)} .
+\]
+\end{theorem}
+
+\begin{proof}
+Theorem~\ref{thm:everyrowr} gives $V_r(L,k)\ge B_r(n)$, and
+Proposition~\ref{prop:rowvalue}(c) gives $V_r(L,k)\le\beta_r(n)$.  By
+Proposition~\ref{prop:toprowgen} with $T_c(r,\ldots,r)=S_r(c,n-c)$
+(Proposition~\ref{prop:oneholegen}), $\beta_r(n)\le U=\max\{B_r(n),
+\max X_r(z,z')\}=B_r(n)$.
+\end{proof}
+
+\begin{corollary}[Explicit ranges]\label{cor:rowstopranges}
+The hypothesis of Theorem~\ref{thm:rowstop}, and hence
+$V_r(L,L-n+1)=\beta_r(n)=B_r(n)$ for all $L$, holds for
+\[
+  n=3,\ r\ge\tfrac{13}5;\quad n=4,\ r\ge\tfrac{16}5;\quad n=5,\ r\ge\tfrac{39}{10};\quad
+  n=6,\ r\ge\tfrac{47}{10};\quad n=7,\ r\ge\tfrac{53}{10};\quad n=8,\ r\ge6 .
+\]
+\end{corollary}
+
+\begin{proof}
+With the known sign $(-1)^z$ of $A_z$ (Lemma~\ref{lem:partialsums}), each
+inequality $X_r(z,z')\le1/S_r(c,n-c)$ is a pair of polynomial inequalities
+in $r$.  For each $n$ and each pair $z<z'$, the real roots above the stated
+threshold of all these polynomials cut the half-line into intervals.  No
+polynomial changes sign inside an interval, and on each interval one $c$
+satisfies both inequalities at a rational sample point.  This is a finite
+exact computation (real-root isolation over $\mathbb Q$).
+\end{proof}
+
+For $n\le2$ the rows are Corollary~\ref{cor:tworowsr}.  In floating point
+the least $r$ with the hypothesis is about $2.60$, $3.19$, $3.85$, $4.6$,
+$5.2$, $5.9$, $6.6$, $7.2$ for $n=3,\ldots,10$.  The best $c$ is $n-2$,
+$n-1$ or $n$ there.  Above roughly $r\approx n$ it is $c=n$, where
+$\beta_r(n)=(r-1)^n$ and the rows follow already from \eqref{eq:order}.
+Below the threshold $U_r(n)>B_r(n)$.  There the optimal top-row zero sets
+have two or more holes (for instance $\{1,2,4,6\}$ at $(r,n)=(3,5)$), and
+$B_r(n)\le V_r\le\beta_r(n)\le U_r(n)$ is all we know.
+
+The general conjecture reduces to one inequality.  For finite
+$Z\subset\N_{>0}$ and $\tau\ge1$ let
+\[
+  \mathrm{ins}(Z,\tau)=\{z\in Z:z<\tau\}\cup\{\tau\}\cup\{z+1:z\in Z,\ z\ge\tau\}.
+\]
+
+\begin{proposition}[Insertion implies rows equal the top row]\label{prop:insertion}
+Let $r>1$ and suppose that $\Phi_r(\mathrm{ins}(Z,\tau))\le\Phi_r(Z)$ for
+every finite $Z\subset\N_{>0}$ and every $\tau\ge1$.  Then
+$V_r(L,k)=\beta_r(L-k+1)$ for all $1\le k\le L$.
+\end{proposition}
+
+\begin{proof}
+Let $S=\{s_1<\cdots<s_{k-1}\}$ be the exempted set of
+Proposition~\ref{prop:rowvalue}(a), and let $Z_0\subset\N_{>0}$ have
+$|Z_0|=n-1$.  Put $Z_j=\mathrm{ins}(Z_{j-1},s_j)$.  Each insertion adds
+$s_j$ and moves only elements at least $s_j$, so it keeps
+$s_1,\ldots,s_{j-1}$.  Thus $Z_{k-1}\supseteq S$,
+$|Z_{k-1}|=L-1$, and $\Phi_r(Z_{k-1})\le\Phi_r(Z_0)$.
+Proposition~\ref{prop:rowvalue}(a) gives $b_k(F)\ge1/\Phi_r(Z_0)$.
+
+The infimum of $\Phi_r(Z_0)$ over such $Z_0$ is $\mu_r(\varnothing,n)$, by
+Lemma~\ref{lem:intzeros} with $\omega(s)=r^{-s}$.  So
+$b_k(F)\ge\beta_r(n)$, and Proposition~\ref{prop:rowvalue}(c) gives the
+reverse inequality.
+\end{proof}
+
+The composite map $Z_0\mapsto Z_{k-1}$ keeps $S$ and sends the $z$-th
+positive integer outside $\varnothing$ to the $z$-th one outside $S$.  On
+one-hole sets the hypothesis is Lemma~\ref{lem:shift} together with
+Lemma~\ref{lem:confdelr}, and Proposition~\ref{prop:oneholerows} is this
+argument for $Z_0=[1,n]\setminus\{c\}$.
+
+The hypothesis fails for every $r<2$, since
+$\Phi_r(\{1\})=a\,\Phi_r(\varnothing)$.  It also fails at
+$r=2,\frac94,\frac{23}{10}$.  In exact arithmetic
+$\Phi_2(\mathrm{ins}(\{1,3,4,6\},1))=\frac{63}{50}\Phi_2(\{1,3,4,6\})$.
+For $r=\frac94$ a set in $[1,19]$ with $\tau=1$ gives the ratio
+$1.044$.  For $r=\frac{23}{10}$ the set $[1,23]\cup\{30,34,36,38,41,49,52,53,61\}$
+with $\tau=24$ gives $1.018$.  In random tests with sets up to $140$ it held
+at every $r\ge\frac52$ tried, with ratio below $0.98$; the maxima occur at
+$\tau=\max Z$, where it is Lemma~\ref{lem:confdelr}.
+
+The conjecture itself survived an exact search.  For
+$r\in\{2,\frac{21}{10},\frac94\}$, $n\le6$ and all $S\subseteq[1,12]$ with
+$|S|\le4$, a witness $Z\supseteq S$ with $|Z|=|S|+n-1$ had
+$\Phi_r(Z)\le0.80\,\Phi_r(Z_0)$, where $Z_0$ is the best top-row set found.
 
 \section{Complex roots}\label{sec:complexroots}
 
