@@ -20,6 +20,10 @@ _CLOCKWISE_UPPER = 10
 # the accumulator's low bit, so the 0 or 1 a node inherits needs no ``S``.
 _CLOCKWISE_LEVEL = 8
 
+# Columns a turn gadget spends when it carries a child's reads: the turn
+# around, the seven ``.`` on the way back, and the corner that turns down.
+_CLOCKWISE_GADGET = 9
+
 
 def clockwise(truth_table: str, width: int | None = None) -> str:
     """Build a Clockwise program computing the given truth table.
@@ -39,6 +43,12 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     which the exit ``?`` reads as nonzero.  Every exit row ends at a ``!``
     on column 0 that turns a zero accumulator up the left edge, with ``+``
     above it, so leaves finish on different rows.
+
+    Reads laid down a column cost seven rows; laid along a row they cost
+    only columns, and the turn gadget already walks a row.  So a node whose
+    one-branch has nine columns of gap spends them on a wider gadget and
+    reads its child's seven bits on the way back, leaving the child its
+    ``?`` alone.  That pays where siblings stack and their rows add.
 
     A node can send its one-branch to its own column or one column left and
     *stack* the subtrees (one column per level, doubling the height).  Wide
@@ -84,33 +94,61 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
             return False
         return leafy(bit + 1, combo << 1) and leafy(bit + 1, (combo << 1) | 1)
 
-    shapes: dict[tuple[int, int, int], tuple[int, int]] = {}
+    def gap(bit: int, combo: int, stacked: int) -> int:
+        """Return the columns between this node's spine and its one-branch."""
+        if stacks(bit, stacked) or paired(bit, combo, stacked):
+            return 1
+        return max(2, shape(bit + 1, combo << 1, stacked, hoisted=False)[0])
 
-    def shape(bit: int, combo: int, stacked: int) -> tuple[int, int]:
+    shapes: dict[tuple[int, int, int, bool], tuple[int, int]] = {}
+    hoists: dict[tuple[int, int, int, bool], bool] = {}
+
+    def shape(bit: int, combo: int, stacked: int, *, hoisted: bool) -> tuple[int, int]:
         """Report the columns and rows this subtree needs, spine on the right.
 
         A leaf is one column, padded to its skipped rows so siblings share a
         row.  Stacked: one more column than the one-branch, rows of both.
+        ``hoisted`` means the parent's turn gadget already read this node's
+        seven bits, so the node is its ``?`` alone rather than eight rows.
         """
-        key = (bit, combo, stacked)
+        key = (bit, combo, stacked, hoisted)
         if key not in shapes:
             if leafy(bit, combo):
                 shapes[key] = (1, _CLOCKWISE_LEVEL * (n - bit) + _CLOCKWISE_LEAF)
-            else:
-                one = shape(bit + 1, (combo << 1) | 1, stacked)
-                zero = shape(bit + 1, combo << 1, stacked)
+                return shapes[key]
+            own = 1 if hoisted else _CLOCKWISE_LEVEL
+            best: tuple[int, int] | None = None
+            choice = False
+            for hoist_one in (False, True):
+                step = gap(bit, combo, stacked)
+                # A hoisted child's own turn gadget shares the row this
+                # node's left leg runs along, so it has to sit past the
+                # corner that leg turns at -- a whole gadget to the left.
+                if hoist_one and (
+                    leafy(bit + 1, (combo << 1) | 1)
+                    or gap(bit + 1, (combo << 1) | 1, stacked) < _CLOCKWISE_GADGET
+                ):
+                    continue
+                one = shape(bit + 1, (combo << 1) | 1, stacked, hoisted=hoist_one)
+                zero = shape(bit + 1, combo << 1, stacked, hoisted=False)
+                # The read run overhangs the one-branch by a gadget's width.
+                wide = max(one[0], _CLOCKWISE_GADGET) if hoist_one else one[0]
                 if stacks(bit, stacked):
-                    shapes[key] = (
-                        max(3, one[0] + 1, zero[0]),
-                        _CLOCKWISE_LEVEL + one[1] + zero[1],
+                    cand = (
+                        max(3, wide + 1, zero[0]),
+                        own + one[1] + zero[1],
                     )
                 else:
                     # A pair guards itself, so the one-branch needs no gap.
-                    step = 1 if paired(bit, combo, stacked) else max(2, zero[0])
-                    shapes[key] = (
-                        step + max(1, one[0] - 1) + 1,
-                        _CLOCKWISE_LEVEL + max(one[1], zero[1]),
+                    cand = (
+                        step + max(1, wide - 1) + 1,
+                        own + max(one[1], zero[1]),
                     )
+                if best is None or cand[0] * cand[1] < best[0] * best[1]:
+                    best, choice = cand, hoist_one
+            assert best is not None  # ``hoist_one`` false is always allowed.
+            shapes[key] = best
+            hoists[key] = choice
         return shapes[key]
 
     def spine(stacked: int) -> int:
@@ -118,7 +156,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
 
         Column 0 is the ring's; the hoist trades seven columns for seven rows.
         """
-        root = shape(0, 0, stacked)[0]
+        root = shape(0, 0, stacked, hoisted=True)[0]
         if 2 ** (n + 1) >= 8 and (width is None or width >= 9):
             root = max(root, 8)
         return root
@@ -133,13 +171,12 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
                 break
 
     root = spine(stacked)
+    hoist = root >= 8
     # Spend the hoist's slack on the root's displacement, so the gap lands
     # where the zero-branch already sets row lengths.
-    slack = root - shape(0, 0, stacked)[0]
-    hoist = root >= 8
-    # Hoisting the root's reads onto row 0 retires six rows of spine; a
-    # seventh would put the turn gadget where the reads now sit.
-    shift = _CLOCKWISE_LEVEL - 2 if hoist else 0
+    base = shape(0, 0, stacked, hoisted=hoist)[0]
+    root = max(root, base)
+    slack = root - base
 
     cells: dict[tuple[int, int], str] = {}
     exits: list[tuple[int, int]] = []
@@ -177,10 +214,20 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
                 place((x, y + i), ch)
         exits.append((x, y + _CLOCKWISE_UPPER + drop))
 
-    def build(bit: int, x: int, y: int, combo: int, drop: int = 2) -> None:
+    def build(
+        bit: int,
+        x: int,
+        y: int,
+        combo: int,
+        drop: int = 2,
+        *,
+        hoisted: bool = False,
+    ) -> None:
         """Lay the subtree for ``combo`` at ``bit``, spine head at ``(x, y)``.
 
         ``drop`` is 0 for the one-branch of a pair, which exits two rows up.
+        ``hoisted`` means the reads are already on the row above, so ``y`` is
+        the ``?``'s own row rather than the first of seven ``.``.
         """
         if leafy(bit, combo):
             # Folded: the skipped levels still spend seven ``.`` (Clockwise
@@ -192,33 +239,48 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
                 place((x, y + _CLOCKWISE_LEVEL * level + 7), "S")
             leaf(x, y + _CLOCKWISE_LEVEL * (n - bit), combo << (n - bit), drop)
             return
-        if bit == 0 and hoist:
+        if bit == 0 and hoisted:
             # The seven reads sit on row 0, left of the corner ``R``; the
             # node's ``?`` is all that is left of its spine.
             for i in range(7):
                 place((x - 7 + i, 0), ".")
-        else:
+        elif not hoisted:
             for i in range(7):
                 place((x, y + i), ".")
-        place((x, y + 7), "?")
-        one = shape(bit + 1, (combo << 1) | 1, stacked)
-        zero = shape(bit + 1, combo << 1, stacked)
+        turn = y if hoisted else y + 7
+        place((x, turn), "?")
+        lift = hoists[(bit, combo, stacked, hoisted)]
+        one = shape(bit + 1, (combo << 1) | 1, stacked, hoisted=lift)
+        zero = shape(bit + 1, combo << 1, stacked, hoisted=False)
         # Stacked: one column, zero-branch below; flat: past the span, shared rows.
         pair = paired(bit, combo, stacked)
         step = 1 if stacks(bit, stacked) or pair else max(2, zero[0])
         xn = x - step - (slack if bit == 0 else 0)
         # b=1: '?' turns the pointer aside, then three R's turn it down; the
         # corner's 'S', crossed twice, hands the child an even accumulator.
-        place((xn, y + 7), "S")
-        place((xn - 1, y + 7), "R")
-        place((xn - 1, y + 6), "R")
-        place((xn, y + 6), "R")
-        build(bit + 1, xn, y + 8, (combo << 1) | 1, 0 if pair else 2)
+        if lift:
+            # The child's seven reads ride the way back: 'S' clears the
+            # accumulator on the way out (off the column the return turns
+            # down, which would clear the bit just read), the far corner
+            # turns up and back, and the reads land before the last corner.
+            back = xn - _CLOCKWISE_GADGET + 1
+            place((xn - 1, turn), "S")
+            place((back, turn), "R")
+            place((back, turn - 1), "R")
+            for i in range(7):
+                place((back + 1 + i, turn - 1), ".")
+            place((xn, turn - 1), "R")
+        else:
+            place((xn, turn), "S")
+            place((xn - 1, turn), "R")
+            place((xn - 1, turn - 1), "R")
+            place((xn, turn - 1), "R")
+        build(bit + 1, xn, turn + 1, (combo << 1) | 1, 0 if pair else 2, hoisted=lift)
         below = one[1] if stacks(bit, stacked) else 0
         # b=0: fall down this column, past the one-branch when it stacks
-        build(bit + 1, x, y + 8 + below, combo << 1)
+        build(bit + 1, x, turn + 1 + below, combo << 1)
 
-    build(0, root, 1 - shift, 0)
+    build(0, root, 2 if hoist else 1, 0, 2, hoisted=hoist)
 
     for x, y in exits:
         # Drop a passing path to zero so it does not turn on a leaf's exit.
