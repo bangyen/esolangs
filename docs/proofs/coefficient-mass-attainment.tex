@@ -1959,7 +1959,34 @@ by as much as a factor $2.01$.  Proposition~\ref{prop:head} states the same
 question analytically instead, as a bound on the $\max X-1$ coefficients of a
 deflated multiple; by Proposition~\ref{prop:defthresh} that route says nothing
 pointwise once $r_1\le\tfrac{3+\sqrt5}2$, which covers every root set with
-$r_1=2$.  Repeated roots beyond the confluent pair $(3,3)$ also remain open.
+$r_1=2$.  Repeated roots beyond the confluent pair $(3,3)$ also remain open, and the
+obstruction is a single quantitative step.  In the Hermite basis $d^ay_i^d$,
+ordered by growth, the substitutions are routine: Descartes' rule counts with
+multiplicity, so the sign count in Proposition~\ref{prop:partial} is unchanged;
+the Vandermonde change of variables there becomes Hermite interpolation on a
+multiset, still bijective; and the unisolvence and positivity steps of
+Theorem~\ref{thm:value} are the confluent matrix $M(0)$ of
+Proposition~\ref{prop:confluent} and the P\'olya--Szeg\H o bound.
+Proposition~\ref{prop:partial} does need the cut to be aligned with the
+blocks, $r_u<r_{u+1}$, for its perturbation term.  What does not carry is the
+minor estimate in the proof of Lemma~\ref{lem:far}, which
+Theorem~\ref{thm:value} reuses verbatim: the constant
+$c=\prod_{a<b\le k}(1-y_b/y_a)$ vanishes as soon as two nodes coincide, so the
+lower bound $|\alpha_{J^*}|\ge cM_{J^*}$ says nothing, and $\alpha_{J^*}$ can
+vanish outright.  At the roots $(3,3,4,4)$ with $u=3$ the leading functions are
+$d(\tfrac13)^d,(\tfrac13)^d,d(\tfrac14)^d$, whose exponent set at the node
+$\tfrac14$ is not an initial segment, and
+$\tfrac{2187}{16384}d(\tfrac13)^d-\tfrac{15309}{8192}(\tfrac13)^d+d(\tfrac14)^d$
+vanishes at $d=6,7,8$: exactly one singular $E$ among the $286$ triples in
+$\{1,\ldots,13\}$, and none with $\min E\ge21$.  The decay also degrades.  When
+the cut falls inside a multiplicity block the supremum of $\eta$ over the sets
+of size $u$ in a window is $\Theta(1/\min E)$---exactly $1/(n_0+1)$ at $(3,3)$,
+$(2,2)$, and $(3,3,5)$ and $(3,3,4,4)$ with $u=1$---against the geometric rate
+at an aligned cut, where it is $2.1\cdot10^{-23}$ at $(2,3,3)$ and
+$3.0\cdot10^{-30}$ at $(3,3,5)$ with $u=2$, both at $n_0=140$.  The conclusion
+$\eta_\nu\to0$ survived in every configuration we computed, so the lemma is
+expected to hold; what is missing is a proof of it that tolerates a degenerate
+alternant, in place of the geometric estimate.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
