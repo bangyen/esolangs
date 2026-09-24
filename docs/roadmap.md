@@ -72,7 +72,9 @@ INTERCAL, listed last, is outside the pass.
   Every generator is audited on four axes.  Totality is the `proofs/index.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
   totality argument).  Output size is the registry-wide contract
-  (`tests/proofs/deep/linearity.py`, per-entry cost to n=12).  Generation
+  (`tests/proofs/deep/linearity.py`, the successive-difference ratio over
+  three same-parity arities to n=12, which is four for any `a*T + b` and so
+  reads the growth rather than the prologue).  Generation
   time and execution time are measured by hand: the fitted growth per
   added input over the top five arities, best of three, execution on the
   worst sampled parity row with loading excluded, and a figure on a run

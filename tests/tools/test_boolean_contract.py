@@ -811,6 +811,33 @@ def _dense(n: int) -> str:
     return "".join(bits[: 2**n])
 
 
+def _nested_dense(n: int) -> str:
+    """A dense table whose every arity *extends* the one below it.
+
+    :func:`_dense` seeds on ``n``, so its tables at consecutive arities are
+    independent draws: how much of each one folds is an accident of that
+    draw, and a statistic comparing two arities reads the difference between
+    two unrelated tables as growth.  That is fine for the coverage sweeps,
+    which want one hard table per arity and pin its size, but it is noise to
+    anything measuring a *series* -- re-drawing the tables moves the scaling
+    contract's reading by +-2% for the generators whose size depends on the
+    table at all.
+
+    Here one stream is drawn once and every arity takes a prefix of it, so
+    ``_nested_dense(n)`` restricted to ``x_n = 0`` is exactly
+    ``_nested_dense(n - 1)``.  The arities then form a family of functions
+    rather than a sample, which is what a growth measurement needs.
+    """
+    digest = hashlib.sha256(b"nested-dense").digest()
+    bits: list[str] = []
+    block = 0
+    while len(bits) < 2**n:
+        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+        bits.extend(str(byte & 1) for byte in digest)
+        block += 1
+    return "".join(bits[: 2**n])
+
+
 def _parity(n: int) -> str:
     """Parity -- the table with no constant subtree above a single row."""
     return "".join(str(bin(row).count("1") & 1) for row in range(2**n))
