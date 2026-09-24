@@ -6,9 +6,10 @@ import sys
 from esolangs.factor_primes import prime_segments
 
 # Every language whose construction reads on its own owns a file; what is
-# left here is brainfuck and the four dialects built directly on it.  The
-# rest are re-exported so this module stays the import site the package and
-# tests already use.
+# left here is brainfuck and Factor, which is brainfuck's program under an
+# integer encoding rather than a construction of its own.  The rest are
+# re-exported so this module stays the import site the package and tests
+# already use.
 from esolangs.tools.brainif import brainif as brainif
 
 # The strategies live in their own modules, but this one is the
@@ -149,8 +150,8 @@ def factor(truth_table: str) -> str:
 def bf_tree(truth_table: str) -> str:
     """Build a decision-tree brainfuck program for the given truth table.
 
-    :func:`decision_tree_program`, shared with :func:`dimensional_tree`:
-    O(2**n) characters against the minterm evaluator's O(n * 2**n); XOR-n
-    measures 0.2K..4.9K at n = 2..8 against the minterm's 1.4K..33M.
+    :func:`decision_tree_program`, whose only caller this now is: O(2**n)
+    characters against the minterm evaluator's O(n * 2**n); XOR-n measures
+    0.2K..4.9K at n = 2..8 against the minterm's 1.4K..33M.
     """
     return decision_tree_program(truth_table, ">", "<")

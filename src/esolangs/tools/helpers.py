@@ -395,8 +395,8 @@ def decision_tree_tokens[Token](
     positional heap (Eval, Forth pin children at ``2i+1``/``2i+2``); skip a
     child (AddSubJump, Jaune descend into one half -- 24 of 256 tables came
     out longer at ``n == 3``); Lamfunc's plain string; the grid generators'
-    plane.  Contrast :func:`decision_tree_program`, which shares a whole
-    construction between two dialects.
+    plane.  Contrast :func:`decision_tree_program`, which carries a whole
+    construction rather than a walk its caller fills in.
     """
     n = _validate_truth_table(truth_table)
     constant = constant_span_test(truth_table)
@@ -425,8 +425,10 @@ def decision_tree_tokens[Token](
 def decision_tree_program(truth_table: str, right: str, left: str) -> str:
     """Build a brainfuck-family decision-tree program for ``truth_table``.
 
-    Shared by Brainfuck and Dimensional, differing only in the move tokens
-    (``>``/``<`` vs ``>0``/``<0``).  Each input is normalized into cell
+    Brainfuck's own construction, and now only its own: Dimensional used to
+    share it under ``>0``/``<0`` move tokens, and builds from its own
+    dimensions instead.  The tokens stay parameters because the contract
+    suite drives the builder directly.  Each input is normalized into cell
     ``2i`` with its flag at ``2i + 1``: a node sets the flag, tests ``[b]``
     and clears the flag inside, then tests ``[flag]`` for the zero side,
     so exactly one side fires and both cells are left zero.  O(2**n).
