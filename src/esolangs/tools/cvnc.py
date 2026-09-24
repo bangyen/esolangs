@@ -326,11 +326,12 @@ def cvnc(truth_table: str) -> str:
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
     program reads ``n`` lines and prints ``0`` or ``1``.  One read and one
-    ``ɰ``/``ʋ`` branch per level, every leaf printing with ``θ`` and jumping
-    to the one shared halt gadget.  Every input order is measured and the
-    shortest wins.  A program not shorter than the gadget's reach gets one
-    more squaring, repeated until it fits; the contest is run once, since
-    the gadget is a fixed-size prologue rather than part of any leaf.
+    ``ɰ``/``ʋ`` branch per level, every leaf printing with ``θ`` and
+    jumping to the one shared halt gadget.  The identity and greedy read
+    orders are both built, and the shorter wins.  A program not shorter
+    than the gadget's reach gets one more squaring, repeated until it
+    fits; the contest is run once, since the gadget is a fixed-size
+    prologue rather than part of any leaf.
     """
     # For the refusal only; the arity is not needed below.
     _validate_truth_table(truth_table)
