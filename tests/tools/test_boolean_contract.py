@@ -231,7 +231,6 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 def _reordering_generators() -> list[object]:
     from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
     from esolangs.tools.dimensional import _dimensional_ordered
-    from esolangs.tools.egl import _egl_ordered
     from esolangs.tools.other import _forbin_ordered
     from esolangs.tools.painfuck import _painfuck_ordered
     from esolangs.tools.parameterized import (
@@ -260,7 +259,6 @@ def _reordering_generators() -> list[object]:
         ("dimensional", boolean.dimensional, _dimensional_ordered),
         ("painfuck", boolean.painfuck, _painfuck_ordered),
         ("three_d_brainfuck", boolean.three_d_brainfuck, _three_d_ordered),
-        ("egl", boolean.egl, _egl_ordered),
         ("ram0", boolean.ram0, _ram0_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
         (
@@ -573,6 +571,7 @@ _UNSHAPED = {
     "befunge",
     "bio",
     "alight",
+    "egl",  # one painted grid cell per entry, walked to by weighted guards
     "malbolge",
     "minsky_swap",
     "b_tapemark",
