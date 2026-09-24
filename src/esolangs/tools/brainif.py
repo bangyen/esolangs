@@ -209,8 +209,29 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     return "\n".join(lines)
 
 
+#: The two bytes a strip cell carries, standing in for ``'0'`` and ``'1'``.
+#: Any pair of distinct non-zero values does, since only the traversal
+#: guards read them; 1 and 2 are the cheapest to climb to.  Zero stays the
+#: mark of an untouched scratch cell and so cannot be one of them.
+_STRIP_ZERO = 1
+_STRIP_ONE = 2
+
+
 def _brainif_linear(truth_table: str, width: int | None) -> str:
-    """Emit a linear spatial lookup for BrainIf."""
+    """Emit a linear spatial lookup for BrainIf.
+
+    The strip carries 1 and 2 rather than ``'0'`` and ``'1'``.  BrainIf
+    cannot write a constant -- a cell climbs by ``if v increment`` lines,
+    one per value passed -- so spelling an ASCII digit into every cell cost
+    a 48-line climb per table entry, which was the whole construction: 915
+    characters an entry at twelve inputs, against 125 for everything else
+    the strip needs.  Nothing before the final ``output`` cares what the
+    bytes *are*, only that the two differ and neither is zero, so the climb
+    happens once at the end on the single selected cell instead of ``T``
+    times during the build.  The end is two climbs, not one: they converge
+    -- every value below 48 lands on 48 -- so the selected cell branches on
+    its own value first and each side climbs to its own digit.
+    """
     n = _validate_truth_table(truth_table)
     lines: list[str] = []
     labels: dict[str, int] = {}
@@ -226,16 +247,15 @@ def _brainif_linear(truth_table: str, width: int | None) -> str:
     layout = "0" * n + truth_table
     for bit in layout:
         emit("if 0 move right")
-        for value in range(_ASCII_ZERO):
-            emit(f"if {value} increment")
+        emit("if 0 increment")
         if bit == "1":
-            emit(f"if {_ASCII_ZERO} increment")
-        emit(f"if {_ASCII_ZERO} move right")
-        emit(f"if {_ASCII_ONE} move right")
+            emit(f"if {_STRIP_ZERO} increment")
+        emit(f"if {_STRIP_ZERO} move right")
+        emit(f"if {_STRIP_ONE} move right")
     for _ in layout:
         emit("if 0 move left")
-        emit(f"if {_ASCII_ZERO} move left")
-        emit(f"if {_ASCII_ONE} move left")
+        emit(f"if {_STRIP_ZERO} move left")
+        emit(f"if {_STRIP_ONE} move left")
 
     # Input is read at the current scratch cell.  A one walks its binary
     # weight in scratch/output pairs; a zero stays for the next read.
@@ -247,23 +267,35 @@ def _brainif_linear(truth_table: str, width: int | None) -> str:
         emit(f"if {_ASCII_ONE} goto @{one}")
         emit(f"if {_ASCII_ZERO} goto @{zero}")
         mark(zero)
+        # The first guard reads the input byte just stored in the scratch
+        # cell; the pair after it steps over a strip cell of either value.
         emit(f"if {_ASCII_ZERO} move right")
-        emit(f"if {_ASCII_ZERO} move right")
-        emit(f"if {_ASCII_ONE} move right")
+        emit(f"if {_STRIP_ZERO} move right")
+        emit(f"if {_STRIP_ONE} move right")
         emit(f"if 0 goto @{after}")
         mark(one)
         weight = 1 + (1 << (n - 1 - i))
         for step in range(weight):
             guard = _ASCII_ONE if step == 0 else 0
             emit(f"if {guard} move right")
-            emit(f"if {_ASCII_ZERO} move right")
-            emit(f"if {_ASCII_ONE} move right")
+            emit(f"if {_STRIP_ZERO} move right")
+            emit(f"if {_STRIP_ONE} move right")
         mark(after)
 
-    # Every route ends on a fresh zero scratch cell.
+    # Every route ends on a fresh zero scratch cell, one step short of the
+    # selected strip cell.  That cell holds 1 or 2 and has to be printed as
+    # a digit, so it branches on its own value and each side climbs alone.
     emit("if 0 move right")
-    emit(f"if {_ASCII_ZERO} output")
+    emit(f"if {_STRIP_ZERO} goto @zero_out")
+    for value in range(_STRIP_ONE, _ASCII_ONE):
+        emit(f"if {value} increment")
     emit(f"if {_ASCII_ONE} output")
+    emit(f"if {_ASCII_ONE} goto @done")
+    mark("zero_out")
+    for value in range(_STRIP_ZERO, _ASCII_ZERO):
+        emit(f"if {value} increment")
+    emit(f"if {_ASCII_ZERO} output")
+    mark("done")
     emit("")
     for i, line in enumerate(lines):
         if "goto @" in line:
