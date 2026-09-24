@@ -539,16 +539,21 @@ def _extend_plans(maxval: int) -> None:
         _PLAN[m] = (best[0], plan)
 
 
-def _cm_constants(needed: Iterable[int]) -> list[str]:
+def _cm_constants(needed: Iterable[int], zero: str = "zero") -> list[str]:
     """Lines building Collatz Multiverse constants for the values in ``needed``.
 
     ``k1``/``k2`` bootstrap from ``negativeOne``; the rest use
     :func:`_extend_plans`'s two-line trick.  Only referenced constants are built.
+
+    ``zero`` names the never-written register the language reads as 0.  It is
+    a parameter because the name is free -- any register never assigned reads
+    as 0 -- and a caller that spells zero on most of its lines wants the
+    shortest spelling.
     """
     need = sorted(n for n in set(needed) if n > 2)
     lines = [
         "k1 = negativeOne x + negativeOne, NOT PRINT.",
-        "k1 = negativeOne x + zero, NOT PRINT.",
+        f"k1 = negativeOne x + {zero}, NOT PRINT.",
         "k2 = negativeOne x + negativeOne, NOT PRINT.",
         "k2 = negativeOne x + k1, NOT PRINT.",
     ]
@@ -566,7 +571,7 @@ def _cm_constants(needed: Iterable[int]) -> list[str]:
             b, a, c = decomp[n]
             lines.append(f"k{n} = negativeOne x + k{b}, NOT PRINT.")
             if c == 0:
-                lines.append(f"k{n} = k{a} x + zero, NOT PRINT.")
+                lines.append(f"k{n} = k{a} x + {zero}, NOT PRINT.")
             else:
                 lines.append(f"k{n} = k{a} x + k{c}, NOT PRINT.")
     return lines
