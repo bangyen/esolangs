@@ -3825,7 +3825,10 @@ and the proof uses only the largest node $1/\rho_1$.  Two limits of the method
 are worth recording.  First, Lemma~\ref{lem:sparecert} alone cannot give the
 constant $1$: for one excluded distance the least $\|\nu\|_1$ is
 $1+|h_{m-2}|/\max(|h_m|,|h_{m-1}|)$, and for the roots $2,-2,R$ and even $m$
-this tends to $5$ as $R\to\infty$, while $(\rho_1-1)(\rho_2-1)=1$.  Second,
+this tends to $5$ as $R\to\infty$, while $(\rho_1-1)(\rho_2-1)=1$.
+The loss is in the estimate $\|\Delta\|_1\le\|\nu\|_1\prod_i(|r_i|-1)^{-1}$
+and not in the row: at these roots the row holds with the constant $1$
+(Theorem~\ref{thm:secondrowsharp} below).  Second,
 for $k\ge3$ Lemma~\ref{lem:sparecert} and
 Proposition~\ref{prop:sparedescartes} reduce \eqref{eq:bothrows}, up to a
 factor $(2\kappa)^{2k-2}$, to the bound
@@ -3854,6 +3857,182 @@ at the worst configurations found by a floating-point search near modulus
 $2$.  The largest values of $N_{2k-2}(y;W)/\prod_{j\le2k-2}\rho_j$ were
 $\frac54$ for $k=2$ (the limit above), $1.49$ for $k=3$ and $0.91$ for $k=4$,
 so \eqref{eq:nuconj} with $\kappa=1.12$ is consistent with all the data.
+
+\paragraph{Mixing certificates.}  The estimate
+$\|\Delta\|_1\le\|\nu\|_1\prod_i(|r_i|-1)^{-1}$ at the end of the proof of
+Lemma~\ref{lem:sparecert} is where the constant is lost.  Certificates of
+sub-multisets of the roots can instead be averaged, and averaging does not
+increase the norm.  For a nonempty sub-multiset $A$ of the roots write
+$P_A=\prod_{i\in A}(x-r_i)$ and
+\[
+  C_A=\frac{x^{|A|}}{P_A}=\sum_{d\ge0}\gamma^A_dx^d,\qquad
+  \gamma^A_d=(-1)^{|A|}\Bigl(\prod_{i\in A}y_i\Bigr)h_{d-|A|}(A),
+\]
+the consecutive certificate of Lemma~\ref{lem:consecutive} on the nodes of
+$A$; here $h_n(A)$ is the complete homogeneous polynomial in the $y_i$,
+$i\in A$, and the formula for $\gamma^A_d$ follows from
+$1/P_A=(-1)^{|A|}(\prod_{i\in A}y_i)\sum_nh_n(A)x^n$.
+
+\begin{lemma}[Mixing certificates]\label{lem:mixcert}
+Let $F\in\R[x]$ be a nonzero multiple of $P=\prod_{i=1}^L(x-r_i)$, with $r_i$
+real, $|r_i|>1$, repetitions allowed.  Let $A_1,\ldots,A_p$ be nonempty
+sub-multisets of the roots, $\theta_1,\ldots,\theta_p\ge0$ with
+$\sum_q\theta_q=1$, and let $W$ be a set of positive integers with
+$\sum_q\theta_q\gamma^{A_q}_z=0$ for $z\in W$.  If $U$ is the set of positions
+$j<D$ with $D-j\in W$, then
+\[
+  \max_{j<D,\ j\notin U}|f_j|\ \ge\ |f_D|\,\min_q\prod_{i\in A_q}(|r_i|-1).
+\]
+\end{lemma}
+
+\begin{proof}
+Since $P_A$ is monic, $1-C_A=(P_A-x^{|A|})/P_A$ with a numerator of degree
+below $|A|$; as $P_A$ divides $F$, the product $(1-C_A)F$ is a polynomial of
+degree below $D$.  So $[x^D]\bigl((1-C_A)F\bigr)=0$, that is,
+$f_D=\sum_{d\ge1}\gamma^A_df_{D-d}$, because $\gamma^A_0=0$.  Averaging these
+identities with the weights $\theta_q$ gives $f_D=\sum_{d\ge1}\delta_df_{D-d}$
+with $\delta=\sum_q\theta_q\gamma^{A_q}$, and $\delta_z=0$ for $z\in W$.  Hence
+$|f_D|\le\max_{j<D,j\notin U}|f_j|\cdot\sum_q\theta_q\|C_{A_q}\|_1$, and
+$\|C_A\|_1\le\prod_{i\in A}\|x/(x-r_i)\|_1=\prod_{i\in A}(|r_i|-1)^{-1}$.
+\end{proof}
+
+\begin{theorem}[The second row, sharper]\label{thm:secondrowsharp}
+Let $F\in\mathbb C[x]$ be a nonzero multiple of $\prod_{i=1}^L(x-r_i)$, $L\ge3$,
+with $r_i$ real, $|r_i|>1$, repetitions allowed.
+\begin{enumerate}
+\item[(i)] If $r_a\ge2$ and $r_b\le-2$ for two indices $a\ne b$, then
+\[
+  b_2(F)\ \ge\ |f_D|\prod_{i\ne a,b}(|r_i|-1).
+\]
+In particular, if all $|r_i|\ge2$ and two roots of opposite signs have the
+moduli $\rho_1,\rho_2$, then \eqref{eq:bothrows} holds for $k=2$.
+\item[(ii)] If all $|r_i|\ge2$ and $\rho_1\le\cdots\le\rho_L$ are the moduli,
+then
+\[
+  b_2(F)\ \ge\ |f_D|\min\Bigl(\frac{\rho_2-1}{1+6\rho_2},
+  \frac{(\rho_1-1)(\rho_2-1)}{1+6\rho_1}\Bigr)\prod_{i=3}^L(\rho_i-1)
+  \ \ge\ \frac{|f_D|}{13}\prod_{i=3}^L(\rho_i-1).
+\]
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+For complex $F$ apply the real case to $\operatorname{Re}(F/f_D)$, as in the
+proof of Corollary~\ref{cor:complex}; so let $F$ be real, and let $Y$ denote
+the multiset of all roots.  As in the proof of Theorem~\ref{thm:order}, it
+suffices to show that for every position $u<D$ some $j<D$, $j\ne u$, has
+$|f_j|$ at least the claimed bound.  Put $z=D-u\ge1$ and $n=z-L$.
+
+(i) Let $B=Y\setminus\{a,b\}$, which is nonempty as $L\ge3$.  Every $A$ with
+$B\subseteq A\subseteq Y$ has
+$\prod_{i\in A}(|r_i|-1)\ge\prod_{i\in B}(|r_i|-1)$, because
+$|r_a|-1\ge1$ and $|r_b|-1\ge1$; so by Lemma~\ref{lem:mixcert} it suffices to
+average certificates $C_A$ of such $A$ so that the coefficient of $x^z$
+vanishes.  If $n<0$ then $\gamma^Y_z=0$, and $C_Y$ alone will do.  If $n\ge0$
+is even, then
+\[
+  \gamma^Y_z=(-1)^L\Bigl(\prod_{i\in Y}y_i\Bigr)h_n(Y),\qquad
+  \gamma^B_z=(-1)^L\Bigl(\prod_{i\in B}y_i\Bigr)h_{n+2}(B),
+\]
+both complete homogeneous polynomials are positive by
+Lemma~\ref{lem:evenh} (or because $h_0=1$), and the two coefficients have
+opposite signs because $y_ay_b<0$.  So
+$\theta\gamma^Y_z+(1-\theta)\gamma^B_z=0$ for some $\theta\in[0,1]$.  If $n$
+is odd, then $n+1\ge2$ is even,
+$\gamma^{Y\setminus\{a\}}_z=(-1)^{L-1}(\prod_{i\ne a}y_i)h_{n+1}(Y\setminus\{a\})$
+and likewise for $b$; both $h_{n+1}$ are positive, and the two coefficients
+have opposite signs because $y_b/y_a<0$.  Again a convex combination has
+vanishing coefficient of $x^z$.
+
+(ii) Put $m=z-L+2$.  If $m\le1$, then $\gamma^Y_z=0$ and $C_Y$ gives
+$|f_j|\ge|f_D|\prod_i(\rho_i-1)$.  If $m\ge3$ is odd, the certificate
+$\nu=x^2-(h_{m-2}/h_{m-1})x$ of the proof of Theorem~\ref{thm:secondrow} has
+$\|\nu\|_1\le1+6\rho_1$ by Lemma~\ref{lem:evenh}, and Lemma~\ref{lem:sparecert}
+gives the bound $(\rho_1-1)(\rho_2-1)/(1+6\rho_1)$ times
+$\prod_{i\ge3}(\rho_i-1)$.  Let $m\ge2$ be even, let $r_a$ be a root of modulus
+$\rho_1$ and $A=Y\setminus\{a\}$; the largest node of $A$ has modulus
+$1/\rho_2$.  Put $\beta=-h_{m-1}(A)/h_m(A)$, so that $|\beta|\le6\rho_2$ by
+Lemma~\ref{lem:evenh}, and
+\[
+  \Delta=\frac{x^{L-2}(x+\beta)}{P_A}=\sum_{d\ge0}\delta_dx^d,\qquad
+  \delta_z=(-1)^{L-1}\Bigl(\prod_{i\in A}y_i\Bigr)
+  \bigl(h_{m-1}(A)+\beta h_m(A)\bigr)=0 .
+\]
+As $P_A$ is monic of degree $L-1$ and $L-2\ge1$, the argument of
+Lemma~\ref{lem:mixcert} gives $f_D=\sum_{d\ge1}\delta_df_{D-d}$.  Writing
+$\Delta=\bigl(x^{L-2}/P_{A\setminus\{b\}}\bigr)\cdot(x+\beta)/(x-r_b)$ with
+$|r_b|=\rho_2$, and using $\|(x+\beta)/(x-r)\|_1\le(1+|\beta|)/(|r|-1)$, we
+get $\|\Delta\|_1\le(1+6\rho_2)(\rho_2-1)^{-1}\prod_{i\ge3}(\rho_i-1)^{-1}$,
+which is the first term of the minimum.  Finally $(1+6\rho)/(\rho-1)$
+decreases for $\rho>1$, and
+$(\rho_1-1)(\rho_2-1)/(1+6\rho_1)\ge(\rho_1-1)^2/(1+6\rho_1)$, which increases;
+both give $\frac1{13}$ at $\rho=2$.
+\end{proof}
+
+Part (i) is sharp in the sense that it has the constant $1$ of
+\eqref{eq:bothrows}, although it uses no quantitative form of
+Lemma~\ref{lem:evenh}, only the positivity of $h_{2n}$.  At the roots
+$2,-2,R$, where the best $\nu$ in Lemma~\ref{lem:sparecert} costs a factor
+tending to $5$, part (i) gives $b_2\ge|f_D|(R-1)$.  The same averaging of the
+certificates $C_A$ can fail when the two roots of smallest modulus have the same
+sign and the odd complete homogeneous polynomial that appears in the proof has
+the wrong sign.  Part (ii) is then the fallback, and it improves the factor
+$65$ of Theorem~\ref{thm:secondrow} to $13$ by using, for even $m$, one spare
+root instead of two.
+
+\paragraph{Rows $k\ge3$.}  Two remarks narrow the open bound
+\eqref{eq:nuconj}.  First, it has an equivalent form without the factor
+$\prod_j\rho_j$.  In the notation of the proof of
+Proposition~\ref{prop:sparedescartes}, let $S$ be the multiset of the $2k-2$
+nodes of largest modulus, $Y'$ the remaining nodes and $Y=Y'\cup S$, and put
+$\chi_l=\sum_{z\in W}\lambda_zh_{m_z-l}(Y)$ and
+$\omega=\sum_{z\in W}\lambda_zh_{m_z}(Y')$.  Multiplying
+$\sum_nh_n(Y)x^n$ by $\prod_{s\in S}(1-sx)$ gives $\sum_nh_n(Y')x^n$, so
+$\omega=\sum_{i=0}^{2k-2}(-1)^ie_i(S)\chi_i$, where
+$\sum_i|e_i(S)|\le\prod_{s\in S}(1+|s|)\le(\frac32)^{2k-2}$ and
+$|e_{2k-2}(S)|=\prod_{j\le2k-2}\rho_j^{-1}$.  With the linear programming
+description of $N_{2k-2}(y;W)-1$ as the largest $|\chi_{2k-2}|$ subject to
+$|\chi_l|\le1$ for $l<2k-2$, it follows that \eqref{eq:nuconj} holds for some
+$\kappa$ if and only if, for some constant $B$, all node sets, all $W$ and all $\lambda$,
+\begin{equation}\label{eq:nucore}
+  \Bigl|\sum_{z\in W}\lambda_zh_{m_z}(Y')\Bigr|\ \le\ B^{2k-2}
+  \max_{0\le l<2k-2}\Bigl|\sum_{z\in W}\lambda_zh_{m_z-l}(Y)\Bigr| .
+\end{equation}
+Precisely, \eqref{eq:nuconj} gives \eqref{eq:nucore} with
+$B^{2k-2}=\kappa^{2k-2}+(\frac32)^{2k-2}$, and \eqref{eq:nucore} gives
+\eqref{eq:nuconj} with $\kappa^{2k-2}=1+B^{2k-2}+(\frac32)^{2k-2}$.  In the
+probabilistic language of the proof of Lemma~\ref{lem:evenh},
+\eqref{eq:nucore} compares $\mathbb E\,g(Z')$ with
+$\mathbb E\,g^{(l)}(Z'+\sum_{s\in S}sX_s)$, $l<2k-2$, for the
+$(k-1)$-term polynomial $g(u)=\sum_z\lambda_zu^{m_z}/m_z!$ and
+$Z'=\sum_{y\in Y'}yX_y$.  Second, the remark after Corollary~\ref{cor:conjcross} shows that the
+applications only need
+\eqref{eq:nuconj} with $\kappa^{2k-2}$ replaced by $C^L$.
+
+Averaging, as in part (i) of Theorem~\ref{thm:secondrowsharp}, looks like the
+right mechanism for all rows when the signs are balanced.  We conjecture the
+following.  Let $F$ be a nonzero real multiple of $\prod_{i=1}^L(x-r_i)$ with $r_i$ real,
+$|r_i|\ge2$, let $2\le k\le\lceil L/2\rceil$, and suppose that $2k-2$ roots of
+moduli $\rho_1,\ldots,\rho_{2k-2}$ can be chosen with exactly $k-1$ of them
+positive.  Then for every set $W$ of
+$k-1$ positive integers some convex combination of the certificates $C_A$,
+where $A$ runs over the sub-multisets that contain all the other $L-2k+2$
+roots (each has $\|C_A\|_1\le\prod_{i\ge2k-1}(\rho_i-1)^{-1}$), has vanishing coefficients at $W$.  By Lemma~\ref{lem:mixcert}, this
+would give \eqref{eq:bothrows} for the row $k$, with the constant $1$.
+For $k=2$ this is part (i) of Theorem~\ref{thm:secondrowsharp}.  We tested it
+with a floating-point linear program, on random root sets with the $2k-2$
+smallest moduli between $2$ and $6$ and the others up to about $190$, exact
+pairs $\pm s$ and near-pairs included, and random $W\subset[1,80]$.  The combination
+existed in all $550$ balanced instances with $k=3$, all $270$ with $k=4$ and
+all $40$ with $k=5$.  For some unbalanced splits it does not exist.  With the
+roots $2.319,-2.351,2.519,2.569,-2.595,-2.646$ and $W=\{14,26\}$ ($k=3$,
+three positive spare roots), an exact rational vector certifies, by Farkas'
+lemma, that no convex combination of the sixteen certificates $C_A$ vanishes
+on $W$.  The row itself is not in doubt there: in floating point, the least
+$\|x^c\nu/P\|_1$ over the admissible $\nu$ of Lemma~\ref{lem:sparecert} is about
+$0.06\prod_{i\ge5}(\rho_i-1)^{-1}$.  Such unbalanced cases, and the case of one sign
+among the smallest roots, therefore need a quantitative argument like
+part (ii).  The conjecture would not settle \eqref{eq:bothrows} by itself.
 
 \subsection{Gaussian-integer roots}\label{sec:gaussian}
 
@@ -4848,8 +5027,9 @@ repetitions allowed, and moduli $\rho_1\le\cdots\le\rho_L$,
   b_k(F)\ \ge\ |f_D|\prod_{i=2k-1}^{L}(\rho_i-1)\qquad
   \bigl(1\le k\le\lceil L/2\rceil\bigr).
 \end{equation}
-The row $k=1$ is Proposition~\ref{prop:rowone}, and the row $k=2$ holds up to
-the factor $65$ (Theorem~\ref{thm:secondrow}); for roots of one sign
+The row $k=1$ is Proposition~\ref{prop:rowone}, and the row $k=2$ holds up to the factor $13$, and with the factor $1$ when
+the two roots of smallest modulus have opposite signs
+(Theorem~\ref{thm:secondrowsharp}); for roots of one sign
 \eqref{eq:bothrows} is weaker than Theorem~\ref{thm:order}; for pairs
 $\pm s_j$ it follows from the multisection transfer, since
 $s^2-1\ge(s-1)^2$; and it is what \eqref{eq:bothrowsbound} gives, up to the
@@ -4942,7 +5122,17 @@ Corollary~\ref{cor:conjmass}, such a factor costs
 $\frac12\lceil L/2\rceil(\lceil L/2\rceil-1)\log C=O(L^2)$ there, and
 $O\bigl((\sum_\ell M_\ell)^2\bigr)$ in Corollary~\ref{cor:conjcross}; this is
 of lower order than the main terms as soon as the moduli, respectively the
-radii $A_\ell$, tend to infinity.
+radii $A_\ell$, tend to infinity.  A factor $C^L$ in every row costs at most
+$\lceil L/2\rceil L\log C$, which is again $O(L^2)$, so for these applications
+\eqref{eq:nuconj} may be weakened to
+$N_{2k-2}(y;W)\le C^L\prod_{j\le2k-2}\rho_j$.  The number of spare roots is
+less flexible.  With $2k-2+a$ spare roots in the $k$-th row, $a\ge0$ fixed,
+the factor $\log(\rho_i-1)$ is counted at least $\lceil i/2\rceil-\lceil a/2\rceil$ times.
+The loss is at most $\lceil a/2\rceil\sum_i\log(\rho_i-1)$.  By Chebyshev's sum
+inequality this is at most $4\lceil a/2\rceil/L$ times the main term of
+Corollary~\ref{cor:conjmass}.  With $\alpha k$ spare roots, $\alpha>2$, it is
+counted only about $i/\alpha$ times, and a fixed fraction $1-2/\alpha$ of the
+main term is lost.
 
 For Gaussian roots in $\mathbb Z[i]$ and $F\in\mathbb Z[x]$ the degree
 hypothesis is removed as in Corollary~\ref{cor:thingaussreal}: a block of
