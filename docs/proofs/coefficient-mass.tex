@@ -5009,6 +5009,12 @@ Theorem~\ref{thm:archnewton} gives no more.  Carry sizes, even at several
 roots, cannot close the gap (Proposition~\ref{prop:carrylimit}); what is needed
 is a lower bound for the residuals of the rounding recurrence of
 Lemma~\ref{lem:gaussround} and its analogues with $k-1$ free coefficients.
+Section~\ref{sec:widesectors} below makes the angle mechanism exact: every
+multiple of degree $O(K)$ pays $(\pi/\delta-o(1))K\log R$, which
+$x^N-\rho^N$ attains, and a bound of order $K^2\log R$ at Gaussian roots in a
+sector of fixed width reduces to excluding integer multiples in which the
+sector holds at most about its equidistributed share of the large zeros
+(Corollary~\ref{cor:widedisc}).
 
 \emph{Across annuli.}  Theorem~\ref{thm:thinreal}, applied to the roots of
 modulus at least $s$ for each $s$, charges each thin tail with the sharp
@@ -5153,6 +5159,370 @@ exact vanishing, and by transference they are as hard to find as the
 bound itself.  Proposition~\ref{prop:gaussinst} settles individual root sets;
 the question is a uniform statement in $K$ for crowded moduli at wide
 angles, and the cross terms between annuli.
+
+\subsection{Sectors of every width}\label{sec:widesectors}
+
+The loss $dE(\delta')/\pi$ in Lemma~\ref{lem:sectorcount} is what confines
+Theorems~\ref{thm:thinsector} and~\ref{thm:thinreal} to thin sectors.  This
+subsection replaces it by $\delta'n/\pi$, where $n$ counts only the zeros of
+modulus above the inner arc, plus a degree term that becomes small when the
+inner radius is averaged over a long range of scales.  The rate
+$\delta'/\pi$ is the share of a sector of opening $2\delta'$ in a full turn,
+so the crossings measure how far the large zeros crowd into the sector beyond
+their equidistributed share, and $x^N-\rho^N$ shows that no smaller rate is
+possible.  The outcome describes, up to lower-order terms, what the angle
+mechanism of Proposition~\ref{prop:noangle} costs at every width.  $K$ zeros of modulus at least $R$ in a
+sector of half-width $\delta<\pi/2$ cost either about $\frac12m^2\log R$,
+where $m$ is the excess of $K$ over the share $\delta n/\pi$, or about
+$n\log R$ through the Mahler measure.  So every multiple of degree $O(K)$
+pays $(\pi/\delta-o(1))K\log R$, and this constant is attained
+(Theorem~\ref{thm:widesector}, Corollary~\ref{cor:wideconst},
+Proposition~\ref{prop:widesharp}).  At Gaussian roots the degree is paid for
+by Theorem~\ref{thm:gausscharge}, which makes the bound unconditional
+(Corollary~\ref{cor:widegauss}).  In wide sectors the analogue
+$\Lambda\ge cK^2\log R$ of Theorem~\ref{thm:thinreal} is therefore false for
+real multiples, the correct order being $\min(K^2,K/\delta)\log R$, and at
+Gaussian roots it reduces to excluding integer multiples in which the sector
+holds at most about its equidistributed share of the large zeros
+(Corollary~\ref{cor:widedisc}).
+
+For $0<\delta\le\pi/2$ put
+\[
+  \kappa(\delta)=\frac1\pi\int_0^1\min\Bigl(2\arcsin q,\ \frac{2\delta q}{1-q}\Bigr)\frac{dq}q .
+\]
+The integrand increases with $\delta$ and is at most $2\arcsin(q)/q$, so
+$\kappa$ is increasing and, by dominated convergence, continuous.  Since
+$\int_0^1\arcsin(q)\,dq/q=\int_0^{\pi/2}s\cot s\,ds=-\int_0^{\pi/2}\log\sin s\,ds
+=\frac\pi2\log2$, we have $\kappa(\delta)\le\log2$; and bounding
+$2\arcsin q\le\pi q$ and splitting at $q=1-2\delta/\pi$,
+\[
+  \kappa(\delta)\ \le\ \frac1\pi\Bigl(\int_0^{1-2\delta/\pi}\frac{2\delta\,dq}{1-q}
+  +\int_{1-2\delta/\pi}^1\pi\,dq\Bigr)
+  =\frac{2\delta}\pi\Bigl(1+\log\frac\pi{2\delta}\Bigr).
+\]
+
+\begin{lemma}[Sharp crossings next to a sector]\label{lem:sharpcross}
+Let $B\in\mathbb C[x]$ be nonzero of degree $d$, let $\varphi\in\R$ and
+$0<\delta'\le\pi/2$, and suppose that $B$ has no zero other than $0$ on the
+rays $\arg z=\varphi\pm\delta'$.  Let $0<a<b$ and
+$\varepsilon=\kappa(\delta')d/\log(b/a)$.  There is $r_1\in[a,b)$, different
+from the modulus of every zero of $B$, with the following property.  Let $n$
+be the number of zeros of $B$ of modulus greater than $r_1$, and $N$ the
+number of those in the open sector $|\arg z-\varphi|<\delta'$, both counted
+with multiplicity.  For $\psi\in\R$ and $\theta\in\R$ put
+$h_\theta(r)=\operatorname{Im}\bigl(e^{-i\theta}B(re^{i\psi})\bigr)$.
+\begin{enumerate}
+\item There is $\psi\in\{\varphi-\delta',\varphi+\delta'\}$ such that for
+every $\theta$ the polynomial $h_\theta$ has at least
+$N-\delta'n/\pi-\varepsilon-1$ distinct zeros in $(r_1,\infty)$.
+\item If $B\in\R[x]$, $\varphi=\frac\pi2$ and $\psi=\frac\pi2-\delta'$, then
+for every $\theta$ the polynomial $h_\theta$ has at least
+$2N-2\delta'n/\pi-2\varepsilon-2$ distinct real zeros $r$ with $|r|>r_1$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+For $r>0$ let $\Gamma_r$ and $\Delta_\beta(r)$ be as in the proof of
+Lemma~\ref{lem:sectorcount}, let $[\,\cdot\,]$ be the indicator of a
+condition, and for $\beta\ne0$ with $|\beta|\ne r$ put
+$q=\min(|\beta|/r,r/|\beta|)<1$.  We claim
+\[
+  \bigl|\Delta_\beta(r)-2\delta'[\,|\beta|<r\,]\bigr|\ \le\
+  c(q)=\min\Bigl(2\arcsin q,\ \frac{2\delta'q}{1-q}\Bigr).
+\]
+If $|\beta|<r$, write $re^{it}-\beta=re^{it}(1-w)$ with
+$w=(\beta/r)e^{-it}$; if $|\beta|>r$, write $re^{it}-\beta=-\beta(1-w)$ with
+$w=(r/\beta)e^{it}$.  In both cases $|w|=q<1$, so $1-w$ stays in the disc of
+radius $q$ about $1$, where the principal argument is continuous and at most
+$\arcsin q$ in absolute value.  So $\Delta_\beta(r)-2\delta'[\,|\beta|<r\,]$
+is the change of $\operatorname{Arg}(1-w)$ along $\Gamma_r$, which is at most
+$2\arcsin q$ in absolute value; and since $dw/dt=\mp iw$, the derivative
+$\frac{d}{dt}\operatorname{Arg}(1-w)=\operatorname{Im}\frac{\pm iw}{1-w}$ is at most $q/(1-q)$ in
+absolute value, over a range of length $2\delta'$.  For $\beta=0$,
+$\Delta_0(r)=2\delta'$ exactly.
+
+Let $\beta_1,\ldots,\beta_d$ be the zeros of $B$ with multiplicity (all but
+the zero at $0$ are in the sum below) and
+$S(r)=\sum_{\beta_l\ne0}c(q_l(r))$.  For each $\beta_l\ne0$,
+\[
+  \int_{-\infty}^{\infty}c\bigl(q_l(e^u)\bigr)\,du
+  =2\int_0^\infty c(e^{-v})\,dv=2\int_0^1c(q)\frac{dq}q=2\pi\kappa(\delta'),
+\]
+so $\int_{\log a}^{\log b}S(e^u)\,du\le2\pi\kappa(\delta')d$ and
+$S(e^u)\le2\pi\varepsilon$ on a subset of $[\log a,\log b)$ of positive
+measure.  Choose $r_1=e^u$ there, different from every $|\beta_l|$.
+
+Put $X_1=N-\delta'n/\pi-\varepsilon-1$ and $X_2=2X_1$, and choose $\eta>0$
+with $\lceil X_1-\eta\rceil=\lceil X_1\rceil$ and
+$\lceil X_2-2\eta\rceil=\lceil X_2\rceil$.  Since $c(q)\le\pi q$, $S(r)\to0$ as
+$r\to\infty$; choose $r_2$ larger than $r_1$ and every $|\beta_l|$ with
+$S(r_2)\le2\pi\eta$.  Let $\psi_\pm=\varphi\pm\delta'$ and let $\Delta_\pm$ be
+the change of a continuous argument of $B(re^{i\psi_\pm})$ as $r$ increases
+from $r_1$ to $r_2$.  The region
+$W=\{r_1<|z|<r_2,\ |\arg z-\varphi|<\delta'\}$ has no zero of $B$ on its
+boundary and contains exactly $N$ zeros.  With $\Delta_{\rm arc}(r)$ as in
+the proof of Lemma~\ref{lem:sectorcount}, the argument principle gives
+$2\pi N=\Delta_-+\Delta_{\rm arc}(r_2)-\Delta_+-\Delta_{\rm arc}(r_1)$.  By
+the claim,
+$\Delta_{\rm arc}(r)=\sum_l\Delta_{\beta_l}(r)=2\delta'\#\{l:|\beta_l|<r\}+\epsilon(r)$
+with $|\epsilon(r)|\le S(r)$, and
+$\#\{l:|\beta_l|<r_2\}-\#\{l:|\beta_l|<r_1\}=n$.  Hence
+\[
+  |\Delta_-|+|\Delta_+|\ \ge\ |\Delta_--\Delta_+|
+  \ \ge\ 2\pi N-2\delta'n-S(r_1)-S(r_2)
+  \ \ge\ 2\pi N-2\delta'n-2\pi\varepsilon-2\pi\eta .
+\]
+By the last paragraph of the proof of Lemma~\ref{lem:sectorcount}, for every
+$\theta'$ there are at least $|\Delta_\pm|/\pi-1$ distinct
+$r\in(r_1,r_2)$ at which $e^{-i\theta'}B(re^{i\psi_\pm})$ is real.
+
+1.  Let $\psi$ be the ray with the larger $|\Delta_\pm|$.  Then
+$|\Delta_\psi|/\pi-1\ge X_1-\eta$, so every $h_\theta$ has at least
+$\lceil X_1-\eta\rceil=\lceil X_1\rceil\ge X_1$ distinct zeros in
+$(r_1,\infty)$.
+
+2.  As in the proof of Lemma~\ref{lem:localcross}, the ray $\psi_-=\psi$ with
+$\theta'=\theta$ gives positive zeros of $h_\theta$, and for $r<0$,
+$re^{i\psi}=\overline{|r|e^{i\psi_+}}$ gives
+$h_\theta(r)=-\operatorname{Im}\bigl(e^{i\theta}B(|r|e^{i\psi_+})\bigr)$, so the
+ray $\psi_+$ with $\theta'=-\theta$ gives negative zeros.  Together there are
+at least $(|\Delta_-|+|\Delta_+|)/\pi-2\ge X_2-2\eta$ of them, hence at least
+$\lceil X_2\rceil$.
+\end{proof}
+
+The loss is charged only to the $n$ zeros above the inner arc, at the
+equidistribution rate $\delta'/\pi$; the degree enters only through
+$\varepsilon$.  With $b/a=2$, as in Lemma~\ref{lem:sectorcount}, the total
+loss is at most
+$d\bigl(\delta'/\pi+2\delta'(1+\log\frac\pi{2\delta'})/(\pi\log2)\bigr)$,
+already about half of $dE(\delta')/\pi$; with $\log(b/a)$ large it tends to
+$\delta'n/\pi$.
+
+\begin{theorem}[Sectors of every width]\label{thm:widesector}
+Let $B\in\mathbb C[x]$ have degree $d$ and $|b_d|\ge1$, let $\varphi\in\R$,
+$0<\delta<\pi/2$, $T>1$ and $R\ge3T$, and suppose that $B$ has at least $K$
+zeros, counted with multiplicity, in
+$\{z:|z|\ge R,\ |\arg z-\varphi|\le\delta\}$.  Put
+$e=\kappa(\delta)d/\log T$ and, for $\nu\ge0$,
+$g(\nu)=\nu\log(R/T)-\log(\nu+1)-1$.  For every integer $m\ge0$,
+\[
+  \Lambda(B)\ \ge\ \min\Bigl\{\frac{m(m+1)}2\log\Bigl(\frac RT-1\Bigr),\
+  g(\nu_m)\Bigr\},\qquad
+  \nu_m=\frac\pi\delta\,(K-1-m-e)^+ .
+\]
+If moreover $B\in\R[x]$, $\varphi=\frac\pi2$ and $R\ge4T$, then for every
+integer $m\ge1$,
+\[
+  \Lambda(B)\ \ge\ \min\Bigl\{\Bigl\lfloor\frac{(m+1)^2}4\Bigr\rfloor\log\frac R{2T}
+  -\frac12\Bigl\lceil\frac m2\Bigr\rceil\Bigl(\Bigl\lceil\frac m2\Bigr\rceil+3\Bigr)\log2,\
+  g(\nu'_m)\Bigr\},
+\]
+where $\nu'_m=\frac\pi{2\delta}(2K-2-2e-m)^+$.
+\end{theorem}
+
+\begin{proof}
+Choose $\delta'\in(\delta,\pi/2)$ such that no zero of $B$ other than $0$ lies
+on the rays $\arg z=\varphi\pm\delta'$; all but finitely many values qualify.
+Apply Lemma~\ref{lem:sharpcross} with $a=R/T$ and $b=R$, so
+$\varepsilon'=\kappa(\delta')d/\log T$; the $K$ zeros have modulus at least
+$R>r_1$ and lie in the open sector, so $N\ge K$.  Note $r_1\ge R/T\ge3$, and
+$g$ is increasing on $[0,\infty)$, as $g'(\nu)=\log(R/T)-1/(\nu+1)>0$.
+
+\emph{Mahler measure.}  Suppose $n\ge1$ and let
+$B^*(t)=t^dB(1/t)=\sum_kb_{d-k}t^k$, so $B^*(0)=b_d$ and the nonzero zeros of
+$B^*$ are the $1/\beta$, $\beta\ne0$ a zero of $B$.  Jensen's formula on
+$|t|=\varrho=n/(n+1)\ge\frac12$, where the $n$ points $1/\beta$ with
+$|\beta|>r_1$ lie in $|t|<1/3$ and each contributes $\log(\varrho|\beta|)\ge\log(\varrho r_1)$,
+and every other contribution is nonnegative, gives
+\[
+  \log\max_{|t|=\varrho}|B^*(t)|\ \ge\ \log|b_d|+n\log(\varrho r_1)\ \ge\ n\log r_1-1,
+\]
+using $n\log\frac{n+1}n\le1$.  On the other side
+$\max_{|t|=\varrho}|B^*|\le\max_i|b_i|\sum_k\varrho^k=(n+1)\max_i|b_i|$.  So
+$\Lambda(B)\ge\log\max_i|b_i|\ge n\log r_1-\log(n+1)-1\ge g(n)$.
+
+\emph{Crossings.}  Choose $\theta$ with $e^{-i\theta}b_de^{id\psi}=i|b_d|$.  As
+in the proof of Theorem~\ref{thm:thinsector}, $h=h_\theta$ is real of degree
+$d$ with leading coefficient $|b_d|\ge1$ and $|h_k|\le|b_k|$, so
+$\Lambda(B)\ge\Lambda(h)$.
+
+For the first bound let $X_1=N-\delta'n/\pi-\varepsilon'-1$.  If $X_1\ge m$, then by
+item~1 of Lemma~\ref{lem:sharpcross} $h$ has $m$ distinct zeros larger than
+$r_1\ge3$, and Theorem~\ref{thm:order} with Corollary~\ref{cor:mass} gives
+$\Lambda(h)\ge\sum_{i=1}^mi\log(\varrho_i-1)\ge\frac{m(m+1)}2\log(R/T-1)$.
+Otherwise $n>(\pi/\delta')(K-1-m-\varepsilon')$.  If the right side is positive,
+$n\ge1$ and $\Lambda(B)\ge g(n)\ge g(\nu_m(\delta'))$, where $\nu_m(\delta')$
+is $\nu_m$ with $\delta'$ and $\varepsilon'$ in place of $\delta$ and $e$; if not,
+$\nu_m(\delta')=0$ and $g(0)=-1<0\le\Lambda(B)$.  So the first bound holds with
+$\nu_m(\delta')$, for all admissible $\delta'$ arbitrarily close to $\delta$;
+as $\delta'\downarrow\delta$, $\kappa(\delta')\to\kappa(\delta)$ and
+$\nu_m(\delta')\to\nu_m$, and $g$ is continuous.
+
+For the second bound let $X_2=2N-2\delta'n/\pi-2\varepsilon'-2$.  If $X_2\ge m$,
+then by item~2 of Lemma~\ref{lem:sharpcross} $h$ has $m$ distinct real zeros of
+modulus greater than $r_1\ge R/T\ge4$, and Corollary~\ref{cor:bothsignsmass},
+with $R/T$ in place of $R$, applied to these $m$ zeros, with the terms in
+$\log|b_d|\ge0$ dropped, gives the first term.  Otherwise
+$n>(\pi/(2\delta'))(2K-2-2\varepsilon'-m)$, and we conclude as before.
+\end{proof}
+
+The first term is the thin-sector mechanism, now at every width; the second
+is the angle mechanism.  If the zeros of $B$ of modulus above $R/T$ are few,
+for instance if $B=PQ$ with $P$ the product of $K$ conjugate pairs in the
+sector and all zeros of $Q$ in $|z|\le R/T$, then $n\le2K$ and the
+theorem with the largest admissible $m$ gives
+$\Lambda(B)\ge\frac12\bigl((1-\frac{2\delta}\pi)K-e-2\bigr)^2\log(R/T-1)$, and at
+the imaginary axis about $(1-\frac{2\delta}\pi)^2K^2\log R$.  So in a sector of any
+width short of a half-plane a cheap multiple needs about
+$(\frac\pi\delta-2)K$ further zeros of modulus comparable to $R$, which the
+Mahler term charges linearly.
+
+\begin{corollary}[The constant $\pi/\delta$]\label{cor:wideconst}
+In Theorem~\ref{thm:widesector} suppose $d\le\lambda K$ with $\lambda>0$, let
+$0<\varepsilon\le\frac12$, and take $T=\exp(\kappa(\delta)\lambda/\varepsilon)$,
+assuming $R\ge3T$.  Then
+\[
+  \Lambda(B)\ \ge\ \min\Bigl\{\frac{\varepsilon^2K^2}2\log\Bigl(\frac RT-1\Bigr),\
+  \frac\pi\delta\bigl((1-2\varepsilon)K-2\bigr)\log\frac RT
+  -\log\Bigl(\frac{\pi K}\delta+1\Bigr)-1\Bigr\}.
+\]
+Consequently, for fixed $\delta$ and $\lambda$,
+$\Lambda(B)\ge(\pi/\delta-o(1))K\log R$ as $K\to\infty$ and $R\to\infty$.
+If $B$ is real, $\varphi=\frac\pi2$ and $R\ge4T$, the same holds with the first
+term replaced by $\varepsilon^2K^2\log(R/(2T))-\frac12(\varepsilon K+1)(\varepsilon K+4)\log2$.
+\end{corollary}
+
+\begin{proof}
+Here $e\le\kappa(\delta)\lambda K/\log T=\varepsilon K$.  Take
+$m=\lceil\varepsilon K\rceil\le\varepsilon K+1$: then
+$\frac{m(m+1)}2\ge\frac{\varepsilon^2K^2}2$ and
+$K-1-m-e\ge(1-2\varepsilon)K-2=:\nu_0\delta/\pi$.  Since $g$ is increasing,
+$g(\nu_m)\ge g(\nu_0^+)$, and $g(\nu_0)\ge\nu_0\log(R/T)-\log(\pi K/\delta+1)-1$
+because $\nu_0\le\pi K/\delta$; if $\nu_0<0$ the claimed bound is negative.
+For the limit take $\varepsilon=\max(K^{-1/3},(\log R)^{-1/2})$: then
+$\log T=O((\log R)^{1/2})$, the first term is at least
+$\frac12K^{4/3}\log(R/T-1)$, which exceeds the second for large $K$, and the second is
+$(\pi/\delta)(1-o(1))K\log R$.  For the real case take $m=\lceil2\varepsilon K\rceil$
+in the second bound of Theorem~\ref{thm:widesector}: then
+$2K-2-2e-m\ge2((1-2\varepsilon)K-2)+1$, $\lfloor(m+1)^2/4\rfloor\ge\varepsilon^2K^2$ and
+$\lceil m/2\rceil=\lceil\varepsilon K\rceil\le\varepsilon K+1$.
+\end{proof}
+
+\begin{proposition}[Sharpness of $\pi/\delta$]\label{prop:widesharp}
+Let $\varphi\in\R$, $0<\delta\le\pi$, $K\ge1$, $\rho\ge1$ and
+$N=\lceil\pi K/\delta\rceil$.  The monic polynomial $x^N-\rho^N$ has at least
+$K$ zeros in $\{z:|z|=\rho,\ |\arg z-\varphi|\le\delta\}$, degree
+$N\le\pi K/\delta+1$, and
+\[
+  \Lambda(x^N-\rho^N)=N\log\rho\ \le\ \Bigl(\frac{\pi K}\delta+1\Bigr)\log\rho .
+\]
+It is real, and integral when $\rho^N\in\mathbb Z$.  If $0<\varphi-\delta$
+and $\varphi+\delta<\pi$, it is a real multiple of $K$ conjugate pairs
+$\beta_j,\bar\beta_j$ with $\beta_j$ in the sector.
+\end{proposition}
+
+\begin{proof}
+The zeros $\rho e^{2\pi il/N}$ have arguments spaced by $2\pi/N$, so a closed
+arc of length $2\delta$ contains at least $\lfloor\delta N/\pi\rfloor\ge K$ of
+them.  The only nonleading nonzero coefficient is $-\rho^N$.  Under the last
+hypothesis the $K$ zeros are nonreal, and their conjugates are zeros of the
+real polynomial $x^N-\rho^N$.
+\end{proof}
+
+Its degree is at most $(\pi/\delta+1)K$, so Corollary~\ref{cor:wideconst}
+applies with $\lambda=\pi/\delta+1$: the constant $\pi/\delta$ of the angle
+mechanism is sharp in every sector.  The thin-sector term is sharp too: on a
+common ray, $\prod_j(x-\rho_je^{i\varphi})$ with $\rho_j\in[R,2R]$ has
+$\Lambda\le\frac{K(K+1)}2\log(2R)+K^2\log2$, and at the imaginary axis
+$\prod_j(x^2+c_j^2)$ matches the second bound of Theorem~\ref{thm:widesector}
+(the remark after Theorem~\ref{thm:thinreal}).  So for complex multiples of
+degree $O(K)$ the infimum of $\Lambda$ is of order $\min(K^2,K/\delta)\log R$
+as $R\to\infty$, with both constants attained in the limit.  In a wide sector, with $\delta$
+fixed, it is linear in $K$, and
+$\Lambda\ge cK^2\log R$ fails already for the monic real multiple $x^N-\rho^N$.
+For real multiples of conjugate pairs at an angle $\varphi\ne\frac\pi2$ the
+constant $\frac12$ of the first term is not known to be sharp: both members of a
+pair can be charged only at the imaginary axis, and the products give larger
+constants, for instance $\frac32$ from $\prod_j(x^3+\rho_j^3)$ at
+$\varphi=\frac\pi3$.
+
+\begin{corollary}[Gaussian roots in sectors of every width]\label{cor:widegauss}
+In the setting of Section~\ref{sec:gaussian}, let $\varphi\in\R$,
+$0<\delta<\pi/2$, $T>1$, $R\ge4T$ and $\lambda>0$, suppose that every
+$\alpha_j$ has $|\alpha_j|\ge R$ and $|\arg\alpha_j-\varphi|\le\delta$, and put
+$e=\kappa(\delta)\lambda K/\log T$.  Every nonzero $F\in\mathbb Z[x]$ divisible
+by $P$ satisfies, for every integer $m\ge0$,
+\[
+  \Lambda(F)\ \ge\ \min\Bigl\{\lambda K\log\frac R2,\
+  \frac{m(m+1)}2\log\Bigl(\frac RT-1\Bigr),\ g(\nu_m)\Bigr\},
+\]
+with $g$ and $\nu_m$ as in Theorem~\ref{thm:widesector}, and, if
+$\varphi=\frac\pi2$, the same with the second and third terms replaced by those
+of the second bound there, for every integer $m\ge1$.  In particular, for fixed
+$\delta$, $\Lambda(F)\ge(\pi/\delta-o(1))K\log R$ as $K\to\infty$ and
+$R\to\infty$.
+\end{corollary}
+
+\begin{proof}
+Let $B$ be a block of $F$ (Lemma~\ref{lem:gaussblocks}), of degree $d$; it is
+real, $|b_d|\ge1$, it vanishes at the $K$ distinct $\alpha_j$, and
+$\Lambda(F)\ge\Lambda(B)$.  If $d\ge\lambda K$, Theorem~\ref{thm:gausscharge}
+with $\rho_{\min}\ge R>2$ gives $\Lambda(B)\ge\lambda K\log(R/2)$.  Otherwise
+$\kappa(\delta)d/\log T\le e$, and Theorem~\ref{thm:widesector} applies to $B$;
+its bounds only improve when $e$ decreases, since $\nu_m$ and $\nu'_m$ then
+increase and $g$ is increasing.  For the last statement take
+$\lambda=\pi/\delta$ and argue as in Corollary~\ref{cor:wideconst}.
+\end{proof}
+
+For thin sectors the choice $T=(e\pi/(2\delta))^{2/\varepsilon}$, which
+makes $\kappa(\delta)\pi/(\delta\log T)\le\varepsilon$, turns the linear term
+$\pi K\log(R/2)/(2E(2\delta))$ of Theorem~\ref{thm:thingauss} into
+$(\pi/\delta)(1-O(\varepsilon))K\log R$ as $R\to\infty$, a gain of the factor $2E(2\delta)/\delta\ge23$ and of the
+logarithm in $E$.  When $\delta$ is as small as a power of $1/R$, as for register roots,
+$\log T$ is comparable to $\log R$, and Theorems~\ref{thm:thingauss}
+and~\ref{thm:thinreal} with $T=2$ remain preferable.
+
+The obstruction left at Gaussian roots is the equidistribution of large
+zeros, and it can be isolated as an inequality of Erd\H{o}s--Tur\'an type.
+
+\begin{corollary}[Crowding costs quadratically]\label{cor:widedisc}
+Let $B\in\mathbb C[x]$ have degree $d$ and $|b_d|\ge1$, let $\varphi\in\R$,
+$0<\delta<\pi/2$, $T>1$ and $R\ge3T$.  Let $K$ be the number of zeros of $B$
+in $\{z:|z|\ge R,\ |\arg z-\varphi|\le\delta\}$ and $n_T$ the number of zeros
+of modulus greater than $R/T$, both with multiplicity.  Then
+\[
+  K\ \le\ \frac\delta\pi\,n_T+\frac{\kappa(\delta)d}{\log T}+1
+  +\sqrt{\frac{2\Lambda(B)}{\log(R/T-1)}} .
+\]
+\end{corollary}
+
+\begin{proof}
+With $\delta'$, $r_1$, $n$ and $X_1$ as in the proof of
+Theorem~\ref{thm:widesector}, $n\le n_T$ because $r_1\ge R/T$, so
+$X_1\ge K-\delta'n_T/\pi-\varepsilon'-1$.  If $X_1>0$, then $h$ has
+$m=\lceil X_1\rceil$ distinct zeros larger than $r_1$, and
+$\Lambda(B)\ge\frac{m(m+1)}2\log(R/T-1)>\frac{X_1^2}2\log(R/T-1)$.  So
+$X_1<\sqrt{2\Lambda(B)/\log(R/T-1)}$ in all cases; let $\delta'\downarrow\delta$.
+\end{proof}
+
+So a sector can hold more than its equidistributed share $\delta n_T/\pi$ of
+the large zeros only at a mass quadratic in the excess, and, by the Mahler
+term in the proof of Theorem~\ref{thm:widesector}, $n_T$ large zeros cost
+$n_T\log(R/T)-O(\log n_T)$.  At Gaussian roots in a sector of fixed width,
+apply the corollary to a block $B$ of $F$, of degree
+$d\le\Lambda(F)/\log(R/2)$ by Theorem~\ref{thm:gausscharge}: if
+$\Lambda(F)=o(K^2\log R)$ and $\log T=o(\log R)$, then
+$K\le(\delta/\pi)n_T+\kappa(\delta)d/\log T+o(K)$.  So a bound
+$\Lambda(F)\ge cK^2\log R$ follows once integer multiples of $P$ are excluded
+in which the sector holds at most about its equidistributed share of the large
+zeros, up to the degree term.  Over $\R$ the polynomial $x^N-\rho^N$ of
+Proposition~\ref{prop:widesharp} is such a multiple, and every argument of
+this subsection applies to it verbatim.  At Gaussian roots it is not available
+off the axes and the diagonals.  If $\alpha\in\mathbb Z[i]$ and
+$\alpha^N\in\R$, then $\alpha/\bar\alpha$ is a root of unity in
+$\mathbb Q(i)$, so $\alpha^4\in\R$ and $\arg\alpha\in\frac\pi4\mathbb Z$.
+Whether some less symmetric integer multiple does the same is the wide-sector
+question, and it needs integrality beyond Theorem~\ref{thm:gausscharge}.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
