@@ -48,9 +48,9 @@ divisible by $L$ distinct prime-power roots and having leading coefficient
 of absolute value at least one has logarithmic coefficient mass
 $\Omega(L^2\log L)$.  Tracking the constants, the worst-case length $C_P(n)$
 satisfies
-$2\log_{10}2\le\liminf C_P(n)\,n/T^2\le\limsup C_P(n)\,n/T^2\le\tfrac{325}8\log_{10}2$:
+$3\log_{10}2\le\liminf C_P(n)\,n/T^2\le\limsup C_P(n)\,n/T^2\le\tfrac{325}8\log_{10}2$:
 the order is settled, but the constant is determined only up to a factor of
-about $20$.
+about $13.5$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -160,7 +160,7 @@ $\Omega(T^2/\log T)$ coefficient digits.  Section~\ref{sec:upper} supplies
 the matching construction, and Section~\ref{sec:constants} tracks the
 constants through both halves (Proposition~\ref{prop:bracket}):
 \[
-  2\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  3\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
   \le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
   \le\frac{325}{8}\log_{10}2 .
 \]
@@ -1147,7 +1147,11 @@ Corollary~\ref{cor:roots} and Proposition~\ref{prop:counting} force
 $\max(N_n,\lceil T/(n+4)\rceil)$ of them, and the imaginary-pair form
 of the coefficient-mass theorem~\cite[Corollary~5.3]{coefficient-mass}
 prices each pair $\pm ci$ as one real root $c^2$.  This beats the
-real roots with Theorem~\ref{thm:mass} by a factor $4$.  The upper side
+real roots with Theorem~\ref{thm:mass} by a factor $4$.
+For even and odd sources the forced real roots can be charged as well
+(Lemma~\ref{lem:evensigns}), and sources that are neither even nor odd pay the input
+charge twice (Remark~\ref{rem:parity}); together this gives the lower constant $3$.
+The upper side
 counts the effective exponents of the roots of the automaton programs of
 Proposition~\ref{prop:embprog}.
 
@@ -1223,6 +1227,69 @@ the $O(1)$ further roots change ranks by $O(1)$.
 
 
 
+For an even or odd source the real instruction roots can be charged together with the
+input pairs.  For a polynomial $F$ write $\beta_k(F)$ for the $k$th largest of the
+magnitudes of its nonleading coefficients.
+
+\begin{lemma}[Real roots of even and odd sources]\label{lem:evensigns}
+Let $f$ be an even or odd source whose decoded program has at least $Q\ge1$ distinct
+input root values and at least $Q$ distinct real instruction roots, and let $v_j$ be as
+in Lemma~\ref{lem:ppow}.  Then
+\[
+  \Lambda(f)\ \ge\ \sum_{j=1}^{Q}(Q+1-j)\log\frac{v_j^2(j+1)^2}4-\frac{\log2}2\,Q(Q+3)
+  \ \ge\ 3Q^2\log Q-7Q(Q+1).
+\]
+\end{lemma}
+
+\begin{proof}
+Write $f(x)=x^\varepsilon E(x^2)$ with $\varepsilon\in\{0,1\}$ and $E\in\Z[y]$.  The
+nonzero coefficients of $f$ and $E$ are the same, so $\Lambda(f)=\Lambda(E)$, and the
+leading coefficient of $E$ has absolute value at least $1$.  If $\pm ci$, $c=p^b$, is an
+input root, then $f(ci)=0$ and $ci\ne0$ give $E(-c^2)=0$; if $r=p^v$ is a real
+instruction root, $f(r)=0$ gives $E(r^2)=0$.  Choose $Q$ distinct input values and $Q$
+distinct real instruction roots.  Squaring is injective on positive numbers, so $E$ is
+divisible by $\prod_{i=1}^Q(y-a_i)\prod_{i=1}^Q(y+c_i)$, where $a_1>\cdots>a_Q$ are the
+squares of the chosen real roots and $c_1>\cdots>c_Q$ the squares of the chosen input
+values.  All $a_i\ge4$ and all $c_i\ge16$.
+
+Apply the rows at real roots of both signs~\cite[Theorem~5.10]{coefficient-mass} to $E$,
+with $\rho=\frac12$; as the leading coefficient of $E$ has absolute value at least $1$,
+for $1\le k\le Q$
+\[
+  \beta_k(E)\ \ge\ \frac{\Pi_k-1}{2^k-1},\qquad
+  \Pi_k=\prod_{i=k}^{Q}\frac{a_i}2\prod_{i=k}^{Q}\frac{c_i}2\ \ge\ 16 .
+\]
+So $\Pi_k-1\ge\Pi_k/2$ and $\log\beta_k(E)\ge\log\Pi_k-(k+1)\log2$.  The $Q$ largest
+nonleading magnitudes sit at distinct positions, so
+\[
+  \Lambda(E)\ \ge\ \sum_{k=1}^Q\log\beta_k(E)
+  \ \ge\ \sum_{i=1}^Q i\Bigl(\log\frac{a_i}2+\log\frac{c_i}2\Bigr)-\frac{\log2}2\,Q(Q+3),
+\]
+because $\log(a_i/2)$ and $\log(c_i/2)$ occur in the rows $k\le i$.  Now $a_i$ is the
+$i$th largest of $Q$ distinct squares of integers at least $2$, so
+$a_i\ge(Q+2-i)^2$, and $c_i$ is the square of the $i$th largest of $Q$ distinct elements
+of $\{p^b:b\ge2\}$, so $c_i\ge v_{Q+1-i}^2$.  Substituting $j=Q+1-i$ gives the first
+inequality.
+
+For the second, $v_j\ge(j+2)^2/4$ (Lemma~\ref{lem:ppow}) gives
+$\log\bigl(v_j^2(j+1)^2/4\bigr)\ge6\log j-6\log2$.  Also
+$\sum_{j=1}^{Q}(Q+1-j)\log j=\sum_{m=1}^{Q}\log m!$, and
+$\log m!\ge\int_1^m\log x\,dx=m\log m-m+1$ and
+$\sum_{m\le Q}m\log m\ge\int_1^Qx\log x\,dx$ give
+\[
+  \sum_{m=1}^{Q}\log m!\ \ge\ \frac{Q^2}2\log Q-\frac{Q^2}4+\frac14-\frac{Q(Q+1)}2+Q
+  \ \ge\ \frac{Q^2}2\log Q-\frac34Q^2 .
+\]
+So the right side of the first inequality is at least
+$3Q^2\log Q-\frac92Q^2-3\log2\,Q(Q+1)-\frac{\log2}2Q(Q+3)$, and
+$\frac92+\frac72\log2<6.93$ and $3\log2+\frac32\log2<3.12$ give the second.
+\end{proof}
+
+The rows of~\cite[Theorem~5.10]{coefficient-mass} drop the largest roots of each sign,
+not the smallest, and this costs only $O(Q^2)$ here because all the moduli are
+polynomial in $Q$.  The input pairs contribute $2Q^2\log Q$, as in
+Proposition~\ref{prop:bracket} below, and the real instruction roots add $Q^2\log Q$.
+
 \begin{proposition}[Explicit bracket]\label{prop:bracket}
 Let $N_n$ be as in Lemma~\ref{lem:maximal-width}, $v_j$ as in Lemma~\ref{lem:ppow},
 $K_n=\max\bigl(N_n,\lceil T/(n+4)\rceil\bigr)$ and $g$ as in Lemma~\ref{lem:effprofile}.
@@ -1241,10 +1308,13 @@ as there,
 $S=Y+\sum_k(2^{L_k+1}-2)$ and $Z=\sum_k2^{L_k}$.  In both cases let
 $\Phi_{\mathcal A}=g(a,x)S^2$ with $aS=Y+Z$ and $xS=Y$.  Then:
 \begin{enumerate}
-\item for every $n\ge7$,
+\item for every $n\ge7$, with $K=K_n$, $Q=K-1$, $\sigma_K=\sum_{j=1}^{K}j\log(v_j^2-1)$
+and $\tau_Q=\sum_{j=1}^{Q}(Q+1-j)\log\frac{v_j^2(j+1)^2}4-\frac{\log2}2Q(Q+3)$,
 \[
-  C_P(n)\ \ge\ \frac1{\log10}\sum_{j=1}^{K_n}j\log(v_j^2-1)
-        \ \ge\ \frac{2K_n^2\log K_n-\frac52K_n(K_n+1)}{\log10};
+  \begin{aligned}
+  C_P(n)&\ \ge\ \frac{\max\bigl(\sigma_K,\min(2\sigma_K,\tau_Q)\bigr)}{\log10}\\
+  &\ \ge\ \frac{\max\bigl(2K^2\log K-\frac52K(K+1),\ 3Q^2\log Q-7Q(Q+1)\bigr)}{\log10};
+  \end{aligned}
 \]
 \item every $n$-input table has a program with
 \[
@@ -1256,28 +1326,42 @@ table.
 \end{enumerate}
 Moreover
 \begin{equation}\label{eq:bracket-n}
-  \Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)2\log_{10}2
+  \Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)3\log_{10}2
   \ \le\ \frac{C_P(n)\,n}{T^2}\ \le\
   \Bigl(1+O\bigl(\tfrac{(\log n)^2}n\bigr)\Bigr)\frac{325}8\log_{10}2 .
 \end{equation}
 Consequently
 \[
-  2\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  3\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
   \le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}\le\frac{325}8\log_{10}2 ;
 \]
-numerically, both limits lie in $[0.602,12.23]$.
+numerically, both limits lie in $[0.903,12.23]$.
 \end{proposition}
 
 \begin{proof}
-\emph{Lower bound.}  By Corollary~\ref{cor:roots} and
-Proposition~\ref{prop:counting}, some table needs at least $K_n$ distinct
-input root values $\pm c_ji$ in every program.  Each $x^2+c_j^2$ divides the
-source $f$, so their product does, and $|f_D|\ge1$ as $f$ has integer
-coefficients.  The $c_j$ are distinct elements of $\{p^b:b\ge2\}$, so the
-$j$th smallest is at least $v_j\ge4$, and $c_j^2\ge16$.
-By~\cite[Corollary~5.3]{coefficient-mass},
-$\Lambda(f)\ge\sum_{j\le K_n}j\log(c_{(j)}^2-1)\ge\sum_{j\le K_n}j\log(v_j^2-1)$,
-and $|f|\ge M(f)\ge\Lambda(f)/\log10$ gives the first inequality.
+\emph{Lower bound.}  Put $K=K_n$ and $Q=K-1$.  If $K=N_n$, take the table of
+Corollary~\ref{cor:roots}: every program for it has at least $K$ distinct input root
+values and at least $K$ distinct real instruction roots.  Otherwise
+$K=\lceil T/(n+4)\rceil\le Z_n+1$, and we take the table of
+Proposition~\ref{prop:counting}: every program for it has at least $Z_n+1\ge K$ read gaps,
+hence at least $K$ distinct input root values.  Every gap except possibly the last one of
+the list is followed by a real instruction, and, as in the proof of
+Theorem~\ref{thm:count}, distinct gaps are followed by distinct real runs, which consist
+of whole runs of equal real roots; so there are at least $Q$ distinct real instruction
+roots.
+
+Let $f$ be a source for this table, and let $\pm c_ji$ be its input roots.  Each
+$x^2+c_j^2$ divides $f$, so their product does, and $|f_D|\ge1$ as $f$ has integer
+coefficients.  The $c_j$ are distinct elements of $\{p^b:b\ge2\}$, so the $j$th smallest
+is at least $v_j\ge4$, and $c_j^2\ge16$.  By~\cite[Corollary~5.3]{coefficient-mass},
+$\Lambda(f)\ge\sum_{j\le K}j\log(c_{(j)}^2-1)\ge\sigma_K$.  If $f$ is neither even nor odd,
+Remark~\ref{rem:parity} gives $\Lambda(f)\ge2\sigma_K$: write $f=E_0(x^2)+xE_1(x^2)$; by
+the multisection lemma~\cite[Lemma~5.1]{coefficient-mass} both $E_\varepsilon$ are
+nonzero integer multiples of $\prod_j(y+c_j^2)$, Theorem~\ref{thm:mass} applied to
+$E_\varepsilon(-y)$ gives $\Lambda(E_\varepsilon)\ge\sigma_K$, and
+$\Lambda(f)=\Lambda(E_0)+\Lambda(E_1)$.  If $f$ is even or odd, Lemma~\ref{lem:evensigns}
+gives $\Lambda(f)\ge\tau_Q$.  Now $|f|\ge M(f)\ge\Lambda(f)/\log10$ gives the first
+inequality.
 
 For the second, Lemma~\ref{lem:ppow} gives
 $v_j^2-1\ge(j+2)^4/16-1\ge\frac{65}{1296}(j+2)^4$, the last because
@@ -1285,12 +1369,18 @@ $(j+2)^4\ge81$.  So $\log(v_j^2-1)\ge4\log j-\log\frac{1296}{65}$, and
 $\log\frac{1296}{65}<2.993$.  With
 $\sum_{j\le K}j\log j\ge\int_1^Kx\log x\,dx=\frac{K^2}2\log K-\frac{K^2}4+\frac14$,
 \[
-  \sum_{j\le K}j\log(v_j^2-1)\ \ge\ 2K^2\log K-K^2-1.4965\,K(K+1)
+  \sigma_K\ \ge\ 2K^2\log K-K^2-1.4965\,K(K+1)
   \ \ge\ 2K^2\log K-\tfrac52K(K+1).
 \]
-With $K=K_n\ge T/(n+4)$ and $\log K\ge n\log2-\log(n+4)$, the right side
-is at least $2\bigl(\tfrac n{n+4}\bigr)^2\log_{10}2\,\bigl(1-O(\tfrac{\log n}n)\bigr)T^2/n$,
-which is the left side of~\eqref{eq:bracket-n}.
+Lemma~\ref{lem:evensigns} gives $\tau_Q\ge3Q^2\log Q-7Q(Q+1)$, and
+$2\sigma_K\ge4K^2\log K-5K(K+1)$ is at least this too: for $Q\le12$,
+$3Q^2\log Q-7Q(Q+1)$ is negative, as $3Q\log Q<7(Q+1)$ there, and for $Q\ge13$
+\[
+  4K^2\log K-5K(K+1)-3Q^2\log Q+7Q(Q+1)\ \ge\ K^2\log K+2K^2-12K\ >\ 0 .
+\]
+With $Q\ge T/(n+4)-1$ and $\log Q\ge n\log2-\log(n+4)-O(n2^{-n})$, the term
+$3Q^2\log Q-7Q(Q+1)$ is at least $3\log2\,\bigl(1-O(\tfrac{\log n}n)\bigr)T^2/n$; dividing
+by $\log10$ gives the left side of~\eqref{eq:bracket-n}.
 
 \emph{Upper bound, item 2.}  Fix an automaton $\mathcal A$ of either kind and a table.
 
@@ -1393,7 +1483,7 @@ of~\eqref{eq:bracket-n}.  The limits follow.
 
 
 \begin{remark}[What the bracket says]\label{rem:bracket}
-The two sides of~\eqref{eq:bracket-n} differ by the factor $\frac{325}{16}=20.3$, at
+The two sides of~\eqref{eq:bracket-n} differ by the factor $\frac{325}{24}=13.5$, at
 both limits.  So Proposition~\ref{prop:bracket} fixes the order, but it does not fix the
 constant.  The factor splits as follows.
 \begin{itemize}
@@ -1413,10 +1503,13 @@ the lengths of the leaves of the band, and so this number can be placed just bel
 depth of the tree.  The bounded stripped automaton offers only the numbers
 $2^{n-L-1}(1-2^{-d(I+1)})/(1-2^{-d})$.  At small $n$ it can still be the better of the two,
 which is why item~2 of Proposition~\ref{prop:bracket} takes the minimum over both.
-\item \emph{Profile: $g/2=\frac{325}{16}$.}  The lower bound charges
+\item \emph{Profile: $g/3=\frac{325}{24}$.}  The lower bound charges
 each input pair as one real root $c^2$, which is exact for pairs
 alone~\cite[Corollary~5.3]{coefficient-mass}, and
-$\sum_{j\le K}j\log v_j^2\sim2K^2\log K$ gives the mass constant $2$.  The
+$\sum_{j\le K}j\log v_j^2\sim2K^2\log K$ gives the mass constant $2$.  A source
+that is neither even nor odd pays this twice (Remark~\ref{rem:parity}), and an even or
+odd source pays it once, plus the constant $1$ of its real instruction roots
+(Lemma~\ref{lem:evensigns}): hence the lower constant $3$.  The
 construction pays $g=\frac{325}8$ per state squared: an input ($2,2$), a closing
 bracket ($2$), an opener ($1$ or $4$), and either $\mathord{+}\!=-48$ ($1,1$) or one
 addition that encodes both successor codes (effective $2,2$), the latter for half of the
@@ -1427,14 +1520,22 @@ Remark~\ref{rem:floor} shows why rearranging these blocks does not lower $g$, an
 Corollary~\ref{cor:symm} these programs, which are neither even nor odd, are already
 subject to the lower constant $4$.
 \end{itemize}
-Charging the forced real roots together with the input pairs would help, but the
-multisection proof of~\cite[Corollary~5.3]{coefficient-mass} needs $P=R(x^2)$ with
-all roots of $R$ of one sign.  The real roots $p^v$ break the first condition, and
-passing to $F(x)F(-x)$ breaks the second.  The order-statistic bound for arbitrary
-free positions (\cite[Lemma~3.1]{coefficient-mass}) is already sharp
-(\cite[Corollary~3.6]{coefficient-mass}), so no sharpening of the mass step alone
-narrows the bracket.  Remark~\ref{rem:parity} shows that the pair charge doubles
-unless the source is even or odd.
+Charging the forced real roots together with the input pairs is what
+Lemma~\ref{lem:evensigns} does for even and odd sources, where $f=x^\varepsilon E(x^2)$
+and $E$ carries both families on the real line, the inputs as negative roots $-c^2$ and
+the real roots as positive roots $r^2$.  The rows at real roots of both
+signs~\cite[Theorem~5.10]{coefficient-mass} charge the two signs separately.  Charging
+them as one sorted family with the weights $\lceil i/2\rceil$, as the conjectured
+rows~\cite[(21)]{coefficient-mass} would, is worth only about $\frac72Q^2\log Q$ at the
+least admissible root values, still below $4$.  For sources that are neither even nor
+odd the multisection proof of~\cite[Corollary~5.3]{coefficient-mass} needs $P=R(x^2)$
+with all roots of $R$ of one sign; the real roots $p^v$ break the first condition, and
+passing to $F(x)F(-x)$ breaks the second, but these sources already pay $4$.  The
+order-statistic bound for arbitrary free positions (\cite[Lemma~3.1]{coefficient-mass})
+is already sharp (\cite[Corollary~3.6]{coefficient-mass}).  So a lower constant above
+$3$ needs a charge for the register roots of even and odd sources, which in $E$ are the
+complex roots $(a\pm p^bi)^2$; bounds for such roots at arbitrary angles are open
+(\cite[Section~5]{coefficient-mass}).
 \end{remark}
 
 
@@ -1451,14 +1552,13 @@ $\varepsilon=0,1$, and $\Lambda(f)=\Lambda(E_0)+\Lambda(E_1)$ gives
   \Lambda(f)\ \ge\ 2\sum_{j}j\log(c_{(j)}^2-1).
 \]
 So every source for the table of item~1 of Proposition~\ref{prop:bracket} that is
-neither even nor odd has length at least $(4-o(1))\log_{10}2\cdot T^2/n$, twice
-the bound there.  An even or odd source has, with every root $\rho$, also the root
+neither even nor odd has length at least $(4-o(1))\log_{10}2\cdot T^2/n$, four thirds of the bound there.  An even or odd source has, with every root $\rho$, also the root
 $-\rho$; its decoded program therefore contains the instruction $(-a,b)$ with every
 register instruction $(a,b)$, $a\ne0$.  Lemma~\ref{lem:symruns} restricts such sources further: their additions and
 subtractions change the register only right after reads, in the run of the read, and
 Corollary~\ref{cor:symm} gives the constant $4$ to every source with a run of nonzero sum.
-Whether even or odd sources can be optimal is what separates the lower constant $2$
-from $4$.
+By Lemma~\ref{lem:evensigns} even and odd sources pay at least the constant $3$, and
+whether they can come below $4$ is what separates the lower constant $3$ from $4$.
 \end{remark}
 
 \begin{lemma}[Symmetric runs]\label{lem:symruns}
@@ -1516,7 +1616,7 @@ With one prime per instruction, as in the encoder of Section~\ref{sec:upper}, ev
 addition $\mathord{+}\!=a$, $a\ne0$, is such a run by itself; so for that table every
 source built as in Section~\ref{sec:upper} needs twice the lower bound of
 Proposition~\ref{prop:bracket}.
-The mass constant $2$ can only be approached by even or odd sources, and by
+Only even or odd sources can come below the constant $4$, and by
 Lemma~\ref{lem:symruns} these change the register additively only right after a read,
 inside the run of that read: between two reads they route with tests and with runs of
 multiplications, floor divisions, remainders and powers, whose roots have exponent at
