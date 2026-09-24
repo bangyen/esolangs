@@ -3783,6 +3783,447 @@ is at least a constant times $(1-y)^{-|S|-1}$ as $y\to1$, while the right
 side is $y/(1-y)$.  This is a contradiction.  So for a general exempted set
 a dilation must depend on $n$.
 
+\subsection{Crossing an exempted position}\label{sec:crossing}
+
+By Corollary~\ref{cor:prefixmono}(a), for $r\ge2$ the conjecture on the
+rows is the statement $V_r(L,k)=\beta_r(n)$.  The chains of
+Theorems~\ref{thm:rowspi}, \ref{thm:rowsfinite} and~\ref{thm:rowsrec} insert
+a zero at every exempted position that is a hole, and each insertion has to
+be paid for.  This subsection shows that the last exempted position costs at
+most one insertion, made at a place that does not depend on that position.
+Two facts give this.  The polynomials admissible for
+Proposition~\ref{prop:rowvalue}(a) with $\Phi_r\le\varphi$ form a convex set,
+so a position is covered as soon as two admissible polynomials take opposite
+signs there (Lemma~\ref{lem:crossing}).  And an insertion reverses the sign
+of $r_W$ at every later position that lies in neither set
+(Lemma~\ref{lem:insflip}).
+
+The consequences are these.
+\begin{itemize}
+\item One inequality covers all later positions at once
+(Theorem~\ref{thm:crossing}), for every $r>1$.
+\item The second row follows from a single inequality for each $n$.  This
+gives $V_r(n+1,2)=\beta_r(n)$ in many new cases, among them $r=2$ for every
+$n\le30$ (Corollary~\ref{cor:secondrow}).
+\item The conjecture at $r\ge2$ reduces to one insertion at constrained
+minimizers, made at the first gap above the exempted positions only
+(Corollary~\ref{cor:crossreduce}).
+\item The finite trees of Theorem~\ref{thm:rowstree} lose their last level
+(Theorem~\ref{thm:crosstree}).  At $r=2$ this gives many new rows
+(Corollary~\ref{cor:crosstreevals}).
+\item Combined with the dilation of Section~\ref{sec:prefixmono}, it gives a
+bound valid for every $n$ and $k$ for the exempted sets all of whose elements
+but the largest lie in $[1,\ell+k-2]$ (Proposition~\ref{prop:dilatecross}).
+\end{itemize}
+
+For a finite $W\subset\N_{>0}$ and an integer $t\ge0$ put
+\[
+  h_t(W)=\min\{x\in\N:\ x>t,\ x\notin W\},
+\]
+the first gap of $W$ above $t$.  Every integer in $(t,h_t(W))$ lies in $W$.
+If $h>\max W$ then $\mathrm{ins}(W,h)=W\cup\{h\}$.
+
+\begin{lemma}[Crossing]\label{lem:crossing}
+Let $r>1$, $L\ge1$, $\varphi>0$, let $T\subset\N_{>0}$ be finite and
+$\sigma\in\N_{>0}\setminus T$.
+\begin{enumerate}
+\item[(a)] Let $q_1,q_2$ be real polynomials with $\deg q_i\le L-1$,
+$q_i(0)=1$, $q_i|_T=0$ and $\Phi_r(q_i)\le\varphi$.  If
+$q_1(\sigma)q_2(\sigma)\le0$, then $|T|+1<L$ and
+$\mu_r(T\cup\{\sigma\},L)\le\varphi$.
+\item[(b)] For every real polynomial $Q$ and all reals $0<y\le\sigma'$,
+\[
+  \Phi_r\bigl(Q\cdot(1-s/\sigma')\bigr)\le
+  \max\bigl\{\Phi_r(Q),\ \Phi_r\bigl(Q\cdot(1-s/y)\bigr)\bigr\}.
+\]
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(a) If $q_1(\sigma)=0$ put $q=q_1$, and if $q_2(\sigma)=0$ put $q=q_2$.
+Otherwise $\lambda=q_2(\sigma)/(q_2(\sigma)-q_1(\sigma))$ lies in $(0,1)$;
+put $q=\lambda q_1+(1-\lambda)q_2$.  Then $q(\sigma)=0$, $q(0)=1$, $q|_T=0$
+and $\deg q\le L-1$.  Moreover
+$|q(s)|\le\lambda|q_1(s)|+(1-\lambda)|q_2(s)|$ for every $s$, so
+$\Phi_r(q)\le\varphi$.  The polynomial $q$ is nonzero and vanishes at the
+$|T|+1$ points of $T\cup\{\sigma\}$, so $|T|+1\le L-1$, and $q$ is admissible
+for $\mu_r(T\cup\{\sigma\},L)$.
+
+(b) With $\lambda=y/\sigma'\in(0,1]$ we have
+$1-s/\sigma'=(1-\lambda)+\lambda(1-s/y)$.  So
+$|Q(s)(1-s/\sigma')|\le(1-\lambda)|Q(s)|+\lambda|Q(s)(1-s/y)|$ for every $s$.
+Multiply by $r^{-s}$ and sum.
+\end{proof}
+
+\begin{lemma}[An insertion reverses the later signs]\label{lem:insflip}
+Let $W\subset\N_{>0}$ be finite, let $h\in\N_{>0}\setminus W$ and
+$W'=\mathrm{ins}(W,h)$.  Then:
+\begin{itemize}
+\item $W'\cap[1,h-1]=W\cap[1,h-1]$, $h\in W'$ and $|W'|=|W|+1$;
+\item for every integer $\sigma>h$ with $\sigma\notin W\cup W'$,
+$r_W(\sigma)\,r_{W'}(\sigma)<0$.
+\end{itemize}
+\end{lemma}
+
+\begin{proof}
+The first three claims are the definition of $\mathrm{ins}$ (as $h\notin W$,
+the elements of $W$ that are at least $h$ exceed $h$).  For a finite $Z$ and
+an integer $\sigma\notin Z$, the factor $1-\sigma/z$ of $r_Z(\sigma)$ is
+negative exactly when $z<\sigma$, so $r_Z(\sigma)$ has the sign
+$(-1)^{|Z\cap[1,\sigma-1]|}$.
+
+Let $\sigma>h$ with $\sigma\notin W\cup W'$, and put
+$A=|W\cap[1,h-1]|$ and $B=|W\cap[h+1,\sigma-2]|$.  The elements of $W'$
+above $h$ are the $w+1$ with $w\in W$, $w>h$.  Those below $\sigma$ come
+from $w\le\sigma-2$, so $|W'\cap[1,\sigma-1]|=A+1+B$.  Next,
+$|W\cap[1,\sigma-1]|=A+B+[\sigma-1\in W]$, since $h\notin W$.  If
+$\sigma-1\in W$, then $\sigma-1\ne h$, so $\sigma-1>h$ and $\sigma\in W'$,
+which is excluded.  So $|W\cap[1,\sigma-1]|=A+B$, and the two counts differ
+by one.
+\end{proof}
+
+\begin{theorem}[One insertion covers every later position]\label{thm:crossing}
+Let $r>1$, let $t\ge0$ be an integer, let $W\subset\N_{>0}$ be finite, let
+$T\subseteq W\cap[1,t]$ and $h=h_t(W)$.  Then for every integer $\sigma>t$,
+\[
+  \mu_r\bigl(T\cup\{\sigma\},\,|W|+2\bigr)\ \le\
+  \max\bigl\{\Phi_r(W),\ \Phi_r(\mathrm{ins}(W,h))\bigr\}.
+\]
+Consequently, let $F$ be a monic multiple of $(x-r)^L$, let $S$ be the
+exempted set of Proposition~\ref{prop:rowvalue}(a) with $|S|=k-1\ge1$, and
+let $t=\max(S\setminus\{\max S\})$ ($t=0$ if $k=2$).  If $W\supseteq S\setminus\{\max S\}$
+and $|W|\le L-2$, then
+\[
+  b_k(F)\ \ge\ \frac1{\max\{\Phi_r(W),\,\Phi_r(\mathrm{ins}(W,h_t(W)))\}} .
+\]
+\end{theorem}
+
+\begin{proof}
+Put $W'=\mathrm{ins}(W,h)$.  The polynomials $r_W$ and $r_{W'}$ have degree
+at most $|W|+1$, take the value $1$ at $0$, and vanish on $T$, because
+$T\subseteq W\cap[1,t]\subseteq W\cap[1,h-1]\subseteq W'$.  If $\sigma<h$,
+then $\sigma\in(t,h)\subseteq W$ and $r_W$ vanishes at $\sigma$.  If
+$\sigma=h$, then $r_{W'}$ vanishes at $\sigma$.  If $\sigma>h$ and
+$\sigma\in W\cup W'$, one of the two vanishes at $\sigma$.  Otherwise
+$r_W(\sigma)r_{W'}(\sigma)<0$ by Lemma~\ref{lem:insflip}.  In every case
+Lemma~\ref{lem:crossing}(a), with $L=|W|+2$ and
+$\varphi=\max\{\Phi_r(W),\Phi_r(W')\}$, gives the first claim.
+
+For the second, apply the first with $T=S\setminus\{\max S\}$ and
+$\sigma=\max S$.  This gives polynomials $q$ with $\deg q\le|W|+1\le L-1$,
+$q(0)=1$, $q|_S=0$ and $\Phi_r(q)$ arbitrarily close to
+$\mu_r(S,|W|+2)$.  Proposition~\ref{prop:rowvalue}(a) gives
+$b_k(F)\Phi_r(q)\ge1$ for each of them.
+\end{proof}
+
+No condition on $r$ is needed.  When $h>\max W$ the second set is
+$W\cup\{h\}$, and for $r\ge2$ Lemma~\ref{lem:confdelr} gives
+$\Phi_r(W\cup\{h\})\le\Phi_r(W)$.  So a set $W$ without gaps in
+$(t,\max W]$ handles every later position for free, which is the third rule
+of the chain of Theorem~\ref{thm:rowspi}.  The theorem lets that chain stop
+one step early.  Instead of inserting at the last exempted position, it
+inserts once at the first gap above the previous ones, and for all later
+positions at the same time.
+
+\paragraph{The second row.}
+For $k=2$ there is nothing before the exempted position, and the theorem
+reduces to one inequality per $n$.  Its right-hand side is explicit by
+Lemma~\ref{lem:dilation}.
+
+\begin{corollary}[The second row from one insertion]\label{cor:secondrow}
+Let $r>1$ and $n\ge1$.  Let $Z=[1,\ell]\cup Y$ be finite with
+$Y\subset[\ell+2,\infty)$ and $|Z|\le n-1$, and put
+$\Pi_Y=\prod_{y\in Y}(1+1/y)$ and
+$\rho=\Phi_r(Z\cup\{\ell+1\})/\Phi_r(Z)$.  Then
+\[
+  \Phi_r\bigl(\mathrm{ins}(Z,\ell+1)\bigr)=\frac{1+\rho}{r\,\Pi_Y}\,\Phi_r(Z)
+  \qquad\text{and}\qquad
+  V_r(n+1,2)\ \ge\ \frac1{\Phi_r(Z)\max\{1,(1+\rho)/(r\Pi_Y)\}} .
+\]
+In particular, if $\Phi_r(Z)=1/\beta_r(n)$ and $1+\rho\le r\Pi_Y$, then
+$V_r(n+1,2)=\beta_r(n)$.
+\end{corollary}
+
+\begin{proof}
+The identity is the second formula of Lemma~\ref{lem:dilation} with $W=Z$.
+The first gap of $Z$ above $0$ is $h_0(Z)=\ell+1$, and $|Z|\le n-1=L-2$ for
+$L=n+1$.  So Theorem~\ref{thm:crossing} with $k=2$ gives the lower bound for
+every monic multiple of $(x-r)^{n+1}$.  The upper bound
+$V_r(n+1,2)\le\beta_r(n)$ is Proposition~\ref{prop:rowvalue}(c).
+\end{proof}
+
+The condition $1+\rho\le r\Pi_Y$ says that the mean of $s$ under the weight
+$|r_Z(s)|r^{-s}$ is at most $r(\ell+1)\Pi_Y$, since
+$\rho=\sum_s(s/(\ell+1)-1)|r_Z(s)|r^{-s}/\Phi_r(Z)$.  We checked it in exact
+arithmetic at top-row optima $Z_0$ certified by
+Proposition~\ref{prop:toprowcert}.  This gives $V_r(n+1,2)=\beta_r(n)$ for
+\[
+  r=2,\ n\le30;\quad r=\tfrac94,\ n\le32;\quad r=\tfrac52,\ n\le36;\quad
+  r=3,\ n\le42;\quad r=4,\ n\le50;\quad r=\tfrac{19}{10},\ n\le19;
+\]
+and for $r=\frac74$ with $n\in\{4,6,7,8,10,11,12,13,16,17\}$.  At $r=2$ the ratio
+$(1+\rho)/(2\Pi_Y)$ is $1$ at $n=2$, where $Z_0=\{2\}$ and
+$\Phi_2(\{1,3\})=\Phi_2(\{2\})=\frac12$.  It is $0.93$ at $n=4$ and at most
+$0.78$ for $5\le n\le30$.  At $r=3$ it is at most $0.47$ for $4\le n\le42$.  For
+$r=2$ this extends Corollary~\ref{cor:rowstreevals}(a) with $k=2$ from
+$n\le14$ to $n\le30$, and it needs one exact inequality per $n$ instead of a
+tree.  Below $r=2$ the criterion fails at some $n$: at $r=\frac74$ for
+$n\in\{2,3,5,9,14,15\}$, at $r=\frac32$ for every $n\le12$, and at
+$r=\frac54$ for every $n\le8$.  There the append steps are not free.  At
+$r=\frac74$ with $n=2$, at $r=\frac32$ with $n\le4$ and at $r=\frac54$
+with $n\le8$, the minimizing index of Corollary~\ref{cor:rowstreevals} is
+$i^*=2$, so no criterion with target $\beta_r(n)$ can hold there.
+
+\paragraph{The conjecture reduces to the first gap.}
+The re-optimizing chain replaces, after each exempted position, the current
+set by a minimizer for the positions seen so far.  By
+Theorem~\ref{thm:crossing} it needs only the following inequality at each
+step.
+
+\begin{corollary}[Reduction to the first gap]\label{cor:crossreduce}
+Let $r>1$ and $n\ge1$.  Suppose that every finite $T\subset\N_{>0}$ admits
+a set $W_T\supseteq T$ with $|W_T|\le|T|+n-1$,
+$\Phi_r(W_T)=\mu_r(T,|T|+n)$ and
+\[
+  \Phi_r\bigl(\mathrm{ins}(W_T,h_{\max T}(W_T))\bigr)\le\Phi_r(W_T)
+  \qquad(\max\varnothing=0).
+\]
+Then $\mu_r(S,|S|+n)\le1/\beta_r(n)$ for every finite $S$, and
+$V_r(L,L-n+1)=\beta_r(n)$ for every $L\ge n$.
+\end{corollary}
+
+\begin{proof}
+Let $S\ne\varnothing$ be finite, $\sigma=\max S$ and $T=S\setminus\{\sigma\}$.
+Theorem~\ref{thm:crossing} with $W=W_T$ and $t=\max T$ gives
+$\mu_r(S,|W_T|+2)\le\Phi_r(W_T)=\mu_r(T,|T|+n)$.  Since
+$|W_T|+2\le|S|+n$ and $\mu_r(S,\cdot)$ does not increase when more degree is
+allowed, $\mu_r(S,|S|+n)\le\mu_r(T,|T|+n)$.  By induction on $|S|$,
+$\mu_r(S,|S|+n)\le\mu_r(\varnothing,n)=1/\beta_r(n)$.
+Proposition~\ref{prop:rowvalue}(b) with $k=|S|+1$ then gives
+$V_r(L,k)\ge\beta_r(n)$, and (c) gives the reverse inequality.
+\end{proof}
+
+When $h_{\max T}(W_T)>\max W_T$ the hypothesis is $\Phi_r(W_T\cup\{h\})\le\Phi_r(W_T)$,
+which holds for $r\ge2$ by Lemma~\ref{lem:confdelr}.  So at $r\ge2$ only
+constrained minimizers with a gap above $\max T$ matter, and only their first
+gap.  This is much weaker than the hypothesis of
+Proposition~\ref{prop:insertion}, which asks for every $Z$ and every $\tau$
+and fails at $r=2$, $\frac94$ and $\frac{23}{10}$ (the remarks after that
+proposition).  It is also weaker than asking for the insertion at every hole
+of $W_T$ above $\max T$.  When $T=[1,j]$, $W_T$ is a minimizer for
+$\nu_{j+1}(n)$ of the form $[1,\ell]\cup Y$ with $\ell\ge j$ and
+$Y\subset[\ell+2,\infty)$, and the hypothesis is the inequality
+$1+\rho\le r\Pi_Y$ of Corollary~\ref{cor:secondrow} for $Z=W_T$.  In
+floating point, with minimizers found by exhaustive search in a window, the
+largest ratio $\Phi_r(\mathrm{ins}(W_T,h))/\Phi_r(W_T)$ was:
+\begin{itemize}
+\item $r=2$: $0.940$ over all $T\subseteq[1,9]$ with $|T|\le3$ at $n=4$
+(attained at $T=\{2,3\}$, $W_T=\{1,2,3,7,11\}$); $0.859$ over all
+$T\subseteq[1,7]$ with $|T|\le3$ at $n=5$;
+\item $r=\frac52$: $0.64$, and $r=3$: $0.60$, at $n=5$.
+\end{itemize}
+No minimizer reached the edge of its window.  At $r=2$ the worst cases have $W_T\cap[1,h-1]$ an initial run.
+We have no proof of the hypothesis for all $n$, even for $T=\varnothing$.
+
+\paragraph{Trees without their last level.}
+Theorem~\ref{thm:crossing} also shortens the trees of
+Theorem~\ref{thm:rowstree}.  Fix $r>1$ and $\varphi>0$.  For a finite $W$
+and $j\ge1$, call an integer $\theta>\max W$ a \emph{$j$-threshold} of $W$
+if $\Phi_r(W\cup U)\le\Phi_r(W)$ for every finite $U\subset[\theta,\infty)$
+with $|U|\le j$.  For $r\ge2$, $\theta=\max W+1$ is a $j$-threshold for
+every $j$, by Lemma~\ref{lem:confdelr}.  For every $r>1$,
+Lemma~\ref{lem:farappend} with $u=j$ gives one.  Consider pairs $(W,t)$ of
+a finite $W\subset\N_{>0}$ with $\Phi_r(W)\le\varphi$ and an integer $t\ge0$,
+and define safety by induction on $j$.
+\begin{itemize}
+\item $(W,t)$ is \emph{$1$-safe} if
+$\Phi_r(\mathrm{ins}(W,h_t(W)))\le\varphi$.
+\item For $j\ge2$, $(W,t)$ is \emph{$j$-safe} if $W$ has a $j$-threshold
+$\theta$ such that every integer $x$ with $t<x<\theta$ satisfies the
+following.  If $x\in W$, the pair $(W,x)$ is $(j-1)$-safe.  If $x\notin W$,
+some $(j-1)$-safe pair $(W_x,x)$ has $|W_x|\le|W|+1$ and
+$(W\cap[1,t])\cup\{x\}\subseteq W_x$.
+\end{itemize}
+
+\begin{theorem}[Crossing trees]\label{thm:crosstree}
+Let $r>1$, $n\ge1$, $k\ge2$ and $\varphi>0$, and let $Z_0\subset\N_{>0}$
+with $|Z_0|\le n-1$ be such that $(Z_0,0)$ is $(k-1)$-safe.  Then every
+monic multiple $F$ of $(x-r)^{n+k-1}$ has $b_k(F)\ge1/\varphi$, that is,
+$V_r(n+k-1,k)\ge1/\varphi$.
+\end{theorem}
+
+\begin{proof}
+We show by induction on $j$ that, if $(W,t)$ is $j$-safe, then
+\[
+  \mu_r\bigl((W\cap[1,t])\cup U,\ |W|+j+1\bigr)\le\varphi
+\]
+for every $U\subset(t,\infty)$ with $|U|=j$.  For $j=1$ this is
+Theorem~\ref{thm:crossing} with $T=W\cap[1,t]$.  Let $j\ge2$, let $\theta$
+be as in the definition, and let $x=\min U$ and $U'=U\setminus\{x\}$.
+\begin{itemize}
+\item If $x\ge\theta$, then $U\subset[\theta,\infty)$ and
+$\Phi_r(W\cup U)\le\Phi_r(W)\le\varphi$, with $|W\cup U|=|W|+j$.
+\item If $x<\theta$ and $x\in W$, the induction hypothesis for $(W,x)$ and
+$U'\subset(x,\infty)$ bounds $\mu_r((W\cap[1,x])\cup U',|W|+j)$ by
+$\varphi$.  The set $(W\cap[1,x])\cup U'$ contains $(W\cap[1,t])\cup U$.
+\item If $x<\theta$ and $x\notin W$, the induction hypothesis for $(W_x,x)$
+bounds $\mu_r((W_x\cap[1,x])\cup U',|W_x|+j)$ by $\varphi$.  Here
+$W_x\cap[1,x]\supseteq(W\cap[1,t])\cup\{x\}$ and $|W_x|+j\le|W|+j+1$.
+\end{itemize}
+In each case the claim follows, since $\mu_r(S,L)$ can only decrease when
+points are removed from $S$ or when $L$ grows.  For
+$(Z_0,0)$ and $U=S$, the exempted set of Proposition~\ref{prop:rowvalue}(a)
+with $|S|=k-1$, this gives $\mu_r(S,n+k-1)\le\varphi$, since
+$|Z_0|+k\le n+k-1$.  Proposition~\ref{prop:rowvalue}(a) gives the bound.
+\end{proof}
+
+The recursion is finite: each level branches over the finitely many $x$ in
+$(t,\theta)$, and there are $k-1$ levels.  The last level is a single
+inequality, where Theorem~\ref{thm:rowstree} branches over every position
+below a threshold.  For $r\ge2$ with $\theta=\max W+1$, a pair with
+$t\ge\max W$ is $j$-safe for every $j$: for $j\ge2$ there is no $x$ to check,
+and for $j=1$ the inserted set is $W\cup\{t+1\}$.  For $k=2$ the theorem is
+Corollary~\ref{cor:secondrow}.
+
+\begin{corollary}[Rows at the root $2$ from crossing trees]\label{cor:crosstreevals}
+$V_2(L,k)=\beta_2(L-k+1)$ for every $L$ with $n=L-k+1$ in the following
+ranges: $k=3$, $n\le30$; $k=4$, $n\le22$; $k=5$, $n\le18$; $k=6$, $n\le13$;
+$k=7$, $n\le10$; $k=8$, $n\le9$; $k=9$, $n\le8$; $k=10$, $n\le7$.
+\end{corollary}
+
+\begin{proof}
+Take $\varphi=\Phi_2(Z_0)$ for a top-row optimum $Z_0$ certified by
+Proposition~\ref{prop:toprowcert}, so that $1/\varphi=\beta_2(n)$, and
+$\theta=\max W+1$.  For $x\notin W$ the set $W_x$ is $\mathrm{ins}(W,x)$ or,
+if that fails, a local re-optimization of $\mathrm{ins}(W,x)$ with the elements
+of $(W\cap[1,t])\cup\{x\}$ held fixed.  Every inequality
+$\Phi_2(W_x)\le\varphi$ and every $1$-safety inequality was checked in exact
+arithmetic.  Theorem~\ref{thm:crosstree} gives $V_2(L,k)\ge\beta_2(n)$, and
+Proposition~\ref{prop:rowvalue}(c) gives the reverse inequality.  The
+largest recursion ($k=10$, $n=7$) has about $5\cdot10^4$ nodes.
+\end{proof}
+
+This extends Corollary~\ref{cor:rowstreevals}(a).  There the ranges were
+$k=3$, $n\le12$; $k=4$, $n\le8$; $k=5$, $n\le5$; $k=6$, $n\le4$, and the
+largest tree had about $5.4\cdot10^5$ nodes.
+
+\paragraph{Dilate, then cross.}
+Combined with the dilation kernel of Lemma~\ref{lem:polyakernel},
+Theorem~\ref{thm:crossing} admits one arbitrary exempted position on top of
+an initial block, for every $n$.  For $i\ge1$ write
+$\omega_i(s)=\binom{s-1}{i-1}r^{-s}$, so that
+$\Phi_r([1,i-1]\cup Y)=\sum_s\omega_i(s)|r_Y(s)|$ for
+$Y\subset[i,\infty)$.  The first step is to track the weight with one binomial
+index more through the kernel.
+
+\begin{lemma}[The excess weight under the kernel]\label{lem:excess}
+Let $r>1$, $i\ge1$, let $p$ be a real polynomial and let $\hat p$ be as in
+Lemma~\ref{lem:polyakernel}.  Then
+\[
+  \sum_{s\ge1}\omega_{i+2}(s)|\hat p(s)|\ \le\
+  \frac a{i+1}\sum_{u\ge1}\bigl(i\,\omega_{i+1}(u)+a\,\omega_i(u)\bigr)|p(u)| .
+\]
+\end{lemma}
+
+\begin{proof}
+$\omega_{i+2}(s)=0$ for $s\le i+1$.  For $s\ge i+2$,
+Lemma~\ref{lem:polyakernel} gives
+$|\hat p(s)|\le\sum_{u=i}^{s-1}K_i(s,u)|p(u)|$, and
+\[
+  \omega_{i+2}(s)K_i(s,u)=\frac{\binom{s-1}{i+1}}{\binom{s-1}i}
+  \binom{u-1}{i-1}r^{-s}=\frac{s-1-i}{i+1}\binom{u-1}{i-1}r^{-s} .
+\]
+This vanishes at $s=i+1$, so the sum may run over all $s>u$.  For $u\ge i$,
+$\sum_{s>u}(s-1-i)r^{-s}=r^{-u}\sum_{m\ge1}(u-i-1+m)r^{-m}=ar^{-u}(u-i+a)$,
+using $\sum_{m\ge1}r^{-m}=a$ and $\sum_{m\ge1}mr^{-m}=a(1+a)$.  All terms are
+nonnegative, so exchanging the sums gives
+\[
+  \sum_s\omega_{i+2}(s)|\hat p(s)|\le\frac a{i+1}\sum_{u\ge i}
+  \binom{u-1}{i-1}(u-i+a)r^{-u}|p(u)| .
+\]
+Finally $\binom{u-1}{i-1}(u-i)=i\binom{u-1}i$.
+\end{proof}
+
+\begin{proposition}[Dilate, then cross]\label{prop:dilatecross}
+Let $r>1$, $n\ge1$, $k\ge2$ and $m=k-2$.  Let $Z=[1,\ell]\cup Y$ with
+$Y\subset[\ell+2,\infty)$ and $|Z|\le n-1$, and put
+$\rho=\Phi_r(Z\cup\{\ell+1\})/\Phi_r(Z)$.  Let $F$ be a monic multiple of
+$(x-r)^{n+k-1}$ whose exempted set $S$
+(Proposition~\ref{prop:rowvalue}(a)) satisfies
+$S\setminus\{\max S\}\subseteq[1,\ell+m]$.  Then
+\[
+  b_k(F)\ \ge\ \frac{(r-1)^m}{\Phi_r(Z)}\cdot
+  \frac1{\max\bigl\{1,\ ((\ell+1)\rho+ma)/(\ell+m+1)\bigr\}}
+  \ \ge\ \frac{(r-1)^{k-2}}{\max\{1,a,\rho\}\,\Phi_r(Z)} .
+\]
+\end{proposition}
+
+\begin{proof}
+Put $p_0=r_Y$ and, for $0\le j<m$, let $p_{j+1}=\hat p_j$ be given by
+Lemma~\ref{lem:polyakernel} with index $i=\ell+1+j$.  Each $p_j$ has degree
+at most $|Y|$ and $p_j(0)=1$.  Put
+$A_j=\sum_s\omega_{\ell+1+j}(s)|p_j(s)|$ and
+$B_j=\sum_s\omega_{\ell+2+j}(s)|p_j(s)|$.  Then $A_0=\Phi_r(Z)$ and
+$B_0=\Phi_r(Z\cup\{\ell+1\})=\rho A_0$, because $\ell+1\notin Y$.  The
+proof of Theorem~\ref{thm:prefixmono} gives $A_{j+1}\le aA_j$, hence
+$A_j\le a^jA_0$.  Lemma~\ref{lem:excess} with $i=\ell+1+j$ gives
+\[
+  B_{j+1}\le\frac a{\ell+2+j}\bigl((\ell+1+j)B_j+aA_j\bigr).
+\]
+By induction on $j$ this yields
+$B_j\le a^j\bigl((\ell+1)B_0+jaA_0\bigr)/(\ell+1+j)$: inserting the bound for
+$B_j$ and $A_j\le a^jA_0$ into the right side gives
+$a^{j+1}((\ell+1)B_0+(j+1)aA_0)/(\ell+2+j)$.
+
+Let $J=\ell+m+1$ and $Q=r_{[1,J-1]}\,p_m$.  Since
+$|r_{[1,J-1]}(s)|=\binom{s-1}{J-1}$,
+\[
+  \Phi_r(Q)=A_m\le a^m\Phi_r(Z),\qquad
+  \Phi_r\bigl(Q\cdot(1-s/J)\bigr)=B_m\le a^m\,\frac{(\ell+1)\rho+ma}{J}\,\Phi_r(Z).
+\]
+Also $\deg Q\le\ell+m+|Y|\le n+m-1$ and $Q(0)=1$.  Let $\sigma=\max S$.  If
+$\sigma\le J-1$, then $Q$ vanishes on $S$.  Otherwise
+$Q\cdot(1-s/\sigma)$ vanishes on $S$ and has degree at most $n+m=L-1$, where
+$L=n+k-1$.  By Lemma~\ref{lem:crossing}(b) with $y=J\le\sigma$, its
+$\Phi_r$ is at most $\max\{A_m,B_m\}$.  Proposition~\ref{prop:rowvalue}(a)
+gives the first bound.  For the second, $((\ell+1)\rho+ma)/(\ell+m+1)$ is an
+average of $\rho$ and $a$.
+\end{proof}
+
+For $m=0$ the set $S$ is a single arbitrary position.  The proposition then
+gives $b_2\ge1/(\max\{1,\rho\}\,\Phi_r(Z))$, and
+Corollary~\ref{cor:secondrow} improves the maximum to
+$\max\{1,(1+\rho)/(r\Pi_Y)\}$.  For $m\ge1$ the proposition
+extends Corollary~\ref{cor:prefixmono}(c) at the price of one position of the
+window.  There, all $k-1$ positions lie in $[1,\ell+k-1]$ and the bound is
+$(r-1)^{k-1}/\Phi_r(Z)$.  Here $k-2$ positions lie in $[1,\ell+k-2]$, the
+last one is arbitrary, and the loss is the factor
+$(r-1)\max\{1,a,\rho\}$ at most.  The bound holds for every $n$ and every
+$Z$ of this form, optimal or not.  With a top-row optimum it reads as
+follows.
+\begin{itemize}
+\item \emph{All $n$, $r>2$.}  If $Z_0=[1,\ell]\cup Y$ is a top-row optimum
+and $\rho=\rho(Z_0)$, every such $F$ has
+$b_k(F)\ge(r-1)^{k-2}\beta_r(n)/\max\{1,\rho\}$.  This is at least
+$\beta_r(n)$ as soon as $(r-1)^{k-2}\ge\rho$.
+\item \emph{All $k$ at once.}  If $r\ge2$ and $\rho(Z_0)\le r-1$, then
+$b_k(F)\ge\beta_r(n)$ for every $k\ge2$ and every $F$ with
+$|S\setminus[1,\ell+k-2]|\le1$.  For $k\ge3$ this is because
+$a^m((\ell+1)\rho+ma)\le a^{m-1}(\ell+1)+ma^{m+1}\le\ell+1+m$.  For $k=2$ it
+is Corollary~\ref{cor:secondrow}, since $1+\rho\le r\le r\Pi_Y$.
+\end{itemize}
+In exact arithmetic at the certified optima of Corollary~\ref{cor:secondrow},
+$\max_n\rho(Z_0)$ is $1.41$ at $r=\frac52$ ($n\le36$), $1.02$ at $r=3$ ($n\le42$)
+and $0.70$ at $r=4$ ($n\le50$).  So $\rho(Z_0)\le r-1$ holds throughout these
+ranges.  At $r=\frac94$ it fails for most $n$ (the maximum is $1.65$).  At
+$r=2$, $\rho(Z_0)$ lies between $1.27$ and $2$ for $n\le30$, and
+$\rho\le r-1$ fails.  A proof of $\rho(Z_0)\le r-1$ for all $n$ would give, for every
+$n$, both the second row and the exempted sets of the proposition.  So would
+a proof of the weaker $1+\rho(Z_0)\le r\Pi_Y$ for the second row alone.
+Both are statements about the top-row optimum only.  As in
+Section~\ref{sec:prefixmono}, they seem to need control of the zero
+distribution of $Z_0$ that we do not have.
+
 \section{Complex roots}\label{sec:complexroots}
 
 Everything so far prescribes real roots.  This section shows that complex
