@@ -357,8 +357,40 @@ step; an answer lands in the paper it extends, and the row leaves.
   partition attains the max up to a constant) -- observed, constant `<= 32.4`
   over 4000 instances at `N = 9,10,12`, no growth in `min E` or spread; with
   (G), (C') follows since `N_J* >= W_J*` for free.  And (L)
-  `|alpha_J*| >= c N_J*` is still OPEN -- observed `>= 3.2e-3` and INCREASING
-  in `n`.  NEGATIVE RESULT, exact witness -- the sorted partition is NOT even
+  `|alpha_J*| >= c N_J*` is now PROVED AT A SIMPLE CUT (`k_u = 1`), round 17,
+  `prop:nocancel`: in logarithmic coordinates the Euler operator is constant
+  coefficient, so expanding both `s_lambda` and `V` into monomials collapses
+  the whole `E`-dependence into ONE fixed polynomial,
+  `alpha_J*(E) = +- sum_gamma K_{lambda gamma} Z^gamma Phi(gamma_chat)`, with
+  `Phi(g) = det((g[c=chat]+w)^{b_c} z_{i(c)}^w)` free of `E`.  Only the cut
+  coordinate survives, because at a non-cut node the exponents form a FULL
+  initial segment and `(gamma_c+w)^{b_c}` is monic of degree `b_c` in `w`, so
+  that block is a unitriangular change of basis.  `Phi` has degree
+  `s = m_u - 1` with leading coefficient the UNGAPPED alternant
+  `W({0..k-1};k) != 0`, hence one sign past its largest zero `g_0`; every
+  `gamma` has `gamma_chat >= lambda_k = min E`, and every weight
+  `K Z^gamma >= 0`, so for `min E >= g_0` there is NO cancellation and
+  `c1 (min E)^s |W(E;k)| <= |alpha_J*(E)| <= C1 (max E)^s |W(E;k)|`,
+  arbitrary gaps.  I VERIFIED all of it independently (verify17*.py): the
+  identity is EXACT (ratio exactly 1) on 4 configurations up to `N = 9`, both
+  `k_u = 1` and `k_u = 2`, including `0 = 0` at the singular `E = {6,7,8}`;
+  `W(E;k)/s_lambda(Z)` is constant; the support claim holds; `|D_0|` equals
+  the ungapped alternant in all 6 configs; and the lower bound is SHARP --
+  2400 sets over `N = 4..12`, 0 vanishing, min ratio exactly 1.0000 attained
+  at `min E = g_0`.  Round 17's own displayed constant (`1/2 |D_0| g^s` for
+  `g >= g_0`) is WRONG -- it conflates the sign-definiteness threshold with
+  the leading-term-domination one and fails at ratio 0.116; the fix is
+  `c1 = inf_{g >= g_0} |Phi(g)|/g^s`, positive since the ratio is continuous
+  and positive with limit `|D_0| > 0`.  `g_0 = 7` is EXACT at `(3,3,4,4)`,
+  `u = 3`: `Phi(g) = (6-g)/432` and `alpha_J*` vanishes at `min E = 6`.
+  NEGATIVE RESULT, do NOT retry the sign route for `k_u >= 2`: `Phi` then has
+  `k_u` arguments and changes sign far out even after symmetrising over the
+  cut block (the only symmetry the weights have).  At `z = (1/2,1/3,1/4)`,
+  `m = (3,3,3)`, `k = 5`, `Phi^sym` is POSITIVE along the ray `(t,3t)` and
+  NEGATIVE along `(t,4t)` for every `t` up to `1e5` -- I reproduced the
+  witness exactly (`Phi^sym(50,200) = -859/93312`); the sign turns on the
+  SPREAD inside the cut block, not on the scale.  What is left there is the
+  Kostka mass carried by spread `gamma`'s, a finite question about `Phi^sym`.  NEGATIVE RESULT, exact witness -- the sorted partition is NOT even
   the largest term, so (L) cannot come from termwise domination and must come
   from SIGNS: at `z = (1/3,1/4)`, `m = (2,2)`, `k = 3`,
   `E = {n,n+1,n+2}`, the partition `({n,n+2},{n+1})` beats the sorted
@@ -378,106 +410,3 @@ step; an answer lands in the paper it extends, and the row leaves.
   `P` exceed `|P(1)|`, where the repaired bound need not be sharp.  See the
   section "The infimum when the criterion fails" in
   [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
-  The companion question -- which root sets make `eq:order` an infimum for
-  `k >= 2` (`coefficient-mass.tex`, end of the sharpness section) -- is
-  settled for distinct roots by the partial-sum criterion
-  (`prop:partial`, `thm:converse`) and is open exactly where this row is:
-  repeated roots, pending confluent `thm:converse`.
-
-- **Factor's constant.**  On GRH, `0.1505 <= C_F(T)/(T log T) <= 0.3416`, a
-  ratio of 2.27 (`rem:gap` in [factor](proofs/factor.tex)); without GRH the
-  ceiling is `0.3660`.  Number theory no longer separates the two: the gap is
-  whether Brainfuck programs of `C` characters have nearer `(1+sqrt 2)**C`
-  behaviours (the tapes a drawing reaches) or `(1+lambda)**C`,
-  `lambda = 6.388` (the words free of the five cancelling adjacencies).  The
-  floor rises as far as that count falls; the ceiling falls only if control
-  flow carries more than `log2(1+sqrt 2) = 1.27` bits a character.  Within
-  the drawing model the digit floor is `1/(2 log 10) = 0.217`, not yet met
-  by `lem:draw`'s digit count.  Small-`C` enumeration does not settle it:
-  over reduced words to `C = 10` (wrapping cells, left-clipped pointer,
-  0/1 input bytes), drawings grow at 2.420 by `C = 16`, as `prop:drawing`
-  says, but loops overtake them near `C = 11` and the I/O-only and
-  full-prefix behaviour ratios are still climbing (4.09 and 4.52 at
-  `C = 10`), so any fitted base is a lower estimate.  DEAD: quotienting
-  loop-free I/O-free segments by their tape effect -- the transfer matrix
-  over `.,[]` gives base 7.371 against 7.388, a floor of 0.1507; the
-  count lives in short segments between separators.  Forbidding local
-  patterns whose deletion preserves behaviour (the paper's count admits
-  only deletions, so `[+]` -> `[-]` is not sound) barely helps either:
-  a dead `+`/`-` before a clear loop and never-exiting pointer-neutral
-  loops to body length 9 give 7.3787, floor 0.15062; adding `+,`/`-,`
-  gives 7.1102, floor 0.1535, but that rule is sound only if `,` at end
-  of input fails (the repo's interpreter raises `EOFError`), a convention
-  `factor.tex` must state before relying on it.  A real gain needs a
-  global equivalence argument, not a forbidden-pattern list.
-
-- **Malbolge's first unreachable arity.**  Counting proves some 18-input
-  table has no Malbolge program; 17 needs the program count a further
-  `2**46076` down, and the length and alphabet cuts are dead
-  ([limitations](limitations.md), Malbolge).  The live route is a dependence
-  cut over the 24,434-cell threshold (the largest `K` with
-  `C(59049, K) * 8**K < 2**131072`), but NOT per program: `'o'*59046 +
-  '/<v'` computes the one-input identity and every one of its cells flips
-  it, so some program for a table can depend on all 59,049.  With full
-  stores a cell's first access is always a read, so dependent cells are
-  touched cells; in the shipped constructions every sampled touched cell
-  is dependent (3,416 at `n = 4`, 9,308 at 10, 16,650 at 11, at least
-  19,007 at 12).  What survives is a cut over ONE program per table -- a
-  normal form that strips nop runs and padding -- or a count of
-  descriptions rather than of flip-sensitive cells.  Either way it is a
-  density lemma: 17 inputs need 2.22 bits a cell against the 3 a cell
-  holds, so every program must waste 0.78 bits a cell (the shipped builds
-  store 0.14).  Next step: measure bits per cell of the tables computed
-  by a scaled-down Malbolge (`3**6`..`3**7` cells, same decode and
-  re-encipher) as the store grows; near 3 kills the route.  The `n = 14`
-  route is written but refused: its annealed constants (`_F_SELECT12`,
-  `_F_SELECT13`, `_F_LEVELS`, `_F_LINKS`) are still placeholders.  Between the shipped
-  constructions and 17 the least unreachable arity is unknown in both
-  directions.
-
-- **Intermediate rows of `b_k`.**  `b_k(F) >= L - k + 1` for every monic
-  multiple of `(x-2)**L` is proved for `k = 1, 2` (`prop:neartwo`),
-  `k = L` (`thm:order`) and `k <= L/8` once `L >= 13`
-  (`prop:quadratic`); the rows `max(2, L/8) < k <= L - 1` are open, with
-  exact LP sweeps as the only evidence ([coefficient-mass](proofs/coefficient-mass.tex)).
-  The dual is `max |q(0)| / sum_{s not in S} |q(s)| 2**-s` over `q` of
-  degree `< L` vanishing on the exempt distances `S`.  Its tightest `S` is
-  the bottom `k - 1` positions, each costing one degree of `q`, so the
-  limit of row `k` at `L` is row 1 at `L - k + 1`; rows `L - 1` and `L` are
-  asymptotically sharp, the rest carry growing slack, and tight duals are
-  `prod_{z in Z} (1 - s/z)` with integer `Z` containing `S`.  PROVED from
-  `sum_{s>=1} |prod_{z=2}^{n} (1 - s/z)| 2**-s = 1/n`:
-  `b_k >= (L-k+1) / prod_{u in S} max(1, D/u - 1)`, so the row holds
-  whenever the top `k - 1` coefficients all lie in the lower half of the
-  degrees.  The open rows now REDUCE to one `D`-free lemma: `T(n)`, for
-  every finite set `A` of positive integers some real `r` of degree
-  `<= |A| + n - 1` with `r(0) = 1`, `r = 0` on `A` and
-  `sum_{s>=1} |r(s)| 2**-s <= 1/n`.  `T(L-k+1)` implies row `k` at every
-  `D` (take `A` the exempt distances below `D/2` and multiply by
-  `prod (1 - s/u)` over the rest, each factor at most 1 on `1..D`), and is
-  necessary as `D -> oo`; `A` empty is the identity above.  Checked in
-  exact rationals for every `A` in `{1..12}`, `|A| <= 4`, `n <= 4`: the
-  empty set is always the worst `A` (`n` times the optimum 1, 1, 1.212,
-  1.461), nonempty `A` carrying slack at least 1.33.  Next step: prove
-  that adjoining a zero to `A` never lowers the optimum.  DEAD: zeros
-  scaled with `|A|` (`A = {11, 12}`, `n = 3`: 0.78), `Z = {2..n}`,
-  first-free, odd and shifted-past-`S` choices, and trading one exempt
-  point for one degree (it can lose a factor 4).  Floating LPs (HiGHS) report values below the
-  bound from `D = 30`; check large-`D` optima with exact rational duals.
-
-- **Polynomial's sharp constant.**  The language bound is proved by the
-  slack certificate; the sharp form -- a coefficient of at least
-  `(1 - o(1)) prod_{i>u} (p_i - 1)` with `u` coefficients free -- would
-  give its constant, and has two gaps ([polynomial](proofs/polynomial.md), "The
-  iterated elimination"): (a) the certificate is proved only for free
-  positions `U = {0..K}`, though sweeps put the least threshold there for
-  every `U`; (b) it is asymptotic in `D`, and the finite-`D` statement
-  reduces to the skew-Schur inequality
-  `s_{((d-c+1)**(c-1))} s_{lambda_B/mu} >= (prod rho)**(d-c+2) s_{lambda_A/mu}`,
-  now proved for every `c` (Schur-positive by Pieri and dual Pieri; see
-  *General `c`* in [polynomial](proofs/polynomial.md)), which closes (b).
-  Left: (a).  Untested route: the certificate entries for any `U` are
-  ratios of Schur functions `s_{lambda(U)}(r)`, so minimality at
-  `U = {0..u-1}` is a monotonicity statement for such ratios as one part
-  moves up -- the shape of the Lam--Postnikov--Pylyavskyy inequality
-  `s_mu s_nu <= s_{mu v nu} s_{mu ^ nu}`.

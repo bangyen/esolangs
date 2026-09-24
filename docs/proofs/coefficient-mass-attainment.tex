@@ -880,6 +880,97 @@ $C=|c_0|^{-1}\sum_{|\alpha|\le j}|c_{\mathbf B,\alpha}|z_p^{-|\alpha|}$,
 finite because the exponent sets range over a finite family.
 \end{proof}
 
+\begin{proposition}[Non-cancellation at a simple cut]\label{prop:nocancel}
+Keep the notation of Propositions~\ref{prop:conffar} and \ref{prop:altratio},
+and let $J^*$ be the first $k$ functions in growth order, so that its
+exponents are the full initial segments $\{0,\ldots,m_i-1\}$ at the nodes
+preceding the cut node $u$ and a top segment at $u$.  Assume the cut is
+\emph{simple}, $k_u=1$, and put $s=m_u-1$.  Index the $k$ columns of $J^*$ by
+$c$, with node $i(c)$ and exponent $b_c$, let $\hat c$ be the column at $u$,
+and set
+\[
+  \Phi(g)=\det\bigl(M_{wc}(g)\bigr)_{0\le w\le k-1,\;1\le c\le k},
+  \qquad
+  M_{wc}(g)=\begin{cases}
+    (g+w)^{\,s}z_u^{\,w},&c=\hat c,\\[2pt]
+    w^{\,b_c}z_{i(c)}^{\,w},&c\ne\hat c.
+  \end{cases}
+\]
+Write $E=\{e_1<\cdots<e_k\}$, $\lambda_v=e_{k+1-v}-(k-v)$, and let $Z$ be the
+confluent point of $J^*$.  Then
+\begin{equation}\label{eq:kostka}
+  \alpha_{J^*}(E)=\pm\sum_\gamma K_{\lambda\gamma}\,Z^\gamma\,\Phi(\gamma_{\hat c}),
+\end{equation}
+$\Phi$ is a polynomial of degree $s$ whose leading coefficient is
+$\pm W(\{0,\ldots,k-1\};\mathbf k)\ne0$, and there are $g_0$ and
+$0<c_1\le C_1$, depending only on $z$, $\mathbf m$ and $k$, such that every
+$k$-set $E$ with $\min E\ge g_0$ satisfies
+\begin{equation}\label{eq:nocancel}
+  c_1(\min E)^{\,s}\,|W(E;\mathbf k)|\le|\alpha_{J^*}(E)|
+  \le C_1(\max E)^{\,s}\,|W(E;\mathbf k)| .
+\end{equation}
+In particular $\alpha_{J^*}(E)\ne0$, with no restriction on the gaps of $E$.
+\end{proposition}
+
+\begin{proof}
+Put $x_c=e^{t_c}$, so that $x_c\partial_{x_c}=\partial_{t_c}$ and the operator
+$\Theta_{\mathbf B}$ of Proposition~\ref{prop:altratio} becomes the
+constant-coefficient $\partial_t^{\,\mathbf b}$.  As there,
+$\alpha_{J^*}(E)=\bigl[\partial_t^{\,\mathbf b}\det(e^{e_rt_c})\bigr]_{t=T}$
+with $T_c=\log z_{i(c)}$, and $\det(x_c^{\,e_r})=\pm s_\lambda(x)V(x)$.
+Expand both factors into monomials,
+$s_\lambda(x)=\sum_\gamma K_{\lambda\gamma}x^\gamma$ and
+$V(x)=\sum_\sigma\operatorname{sgn}\sigma\prod_cx_c^{\,k-\sigma(c)}$.  Since
+$\partial_t^{\,\mathbf b}e^{\langle v,t\rangle}
+=\bigl(\prod_cv_c^{\,b_c}\bigr)e^{\langle v,t\rangle}$, the term indexed by
+$(\gamma,\sigma)$ contributes, at $t=T$,
+\[
+  K_{\lambda\gamma}\operatorname{sgn}\sigma\;Z^\gamma
+  \prod_c\bigl(\gamma_c+k-\sigma(c)\bigr)^{b_c}z_{i(c)}^{\,k-\sigma(c)} .
+\]
+Summing over $\sigma$ with its sign is a determinant whose rows are indexed by
+$w=k-\sigma(c)\in\{0,\ldots,k-1\}$, namely
+$\det\bigl((\gamma_c+w)^{b_c}z_{i(c)}^{\,w}\bigr)$.  In that determinant only
+$\gamma_{\hat c}$ matters: at a node $i\ne u$ the exponents $b_c$ run over the
+full segment $\{0,\ldots,k_i-1\}$, and $(\gamma_c+w)^{b_c}$ is a monic
+polynomial of degree $b_c$ in $w$, so expressing that node's block of columns
+in the basis $w^0,\ldots,w^{k_i-1}$ is a unitriangular change of basis and
+leaves the determinant unchanged.  This gives \eqref{eq:kostka}.
+
+Expanding $(g+w)^s=\sum_t\binom stg^{\,s-t}w^t$ and using multilinearity in
+the column $\hat c$ writes $\Phi(g)=\sum_t\binom stD_tg^{\,s-t}$, where $D_t$
+is the same determinant with the cut column replaced by $w^tz_u^{\,w}$.  The
+coefficient of $g^s$ is $D_0$, whose columns are $w^{\,b_c}z_{i(c)}^{\,w}$
+with the cut exponent $0$; as $k_u=1$, every node now carries a full initial
+segment, so $D_0=\pm W(\{0,\ldots,k-1\};\mathbf k)$, nonzero by
+Proposition~\ref{prop:altratio}.
+
+Finally, $K_{\lambda\gamma}\ne0$ forces $\lambda_k\le\gamma_v\le\lambda_1$,
+the lower bound because
+$s_\lambda=(x_1\cdots x_k)^{\lambda_k}s_{\lambda-\lambda_k}$; and
+$\lambda_k=\min E$ while $\lambda_1=\max E-(k-1)$.  Since $\Phi$ has a nonzero
+leading coefficient it has a largest real zero; let $g_0$ exceed it.  On
+$[g_0,\infty)$ the function $|\Phi(g)|/g^{\,s}$ is continuous and strictly
+positive with limit $|D_0|>0$, so its infimum $c_1'$ is positive and its
+supremum $C_1'$ finite.  Once $\min E\ge g_0$ every $\gamma$ occurring in
+\eqref{eq:kostka} has $\gamma_{\hat c}\ge g_0$, so all the numbers
+$\Phi(\gamma_{\hat c})$ share one sign while $K_{\lambda\gamma}Z^\gamma\ge0$:
+the sum does not cancel, and
+\[
+  c_1'(\min E)^{\,s}s_\lambda(Z)\le|\alpha_{J^*}(E)|
+  \le C_1'(\max E)^{\,s}s_\lambda(Z).
+\]
+Proposition~\ref{prop:altratio} gives $|W(E;\mathbf k)|=|c_0|\,s_\lambda(Z)$;
+dividing by $|c_0|$ yields \eqref{eq:nocancel}.
+\end{proof}
+
+The threshold $g_0$ is genuinely needed, and the bound is sharp at it.  At the
+roots $(3,3,4,4)$ with $u=3$, where $z=(\tfrac13,\tfrac14)$ and both
+multiplicities are $2$, one computes $\Phi(g)=(6-g)/432$, so $g_0=7$; and
+$\alpha_{J^*}$ does vanish at $E=\{6,7,8\}$, the one singular triple recorded
+below.  The hypothesis $k_u=1$ is also not removable: it is what makes $\Phi$
+a function of a single coordinate, and hence of constant sign far out.
+
 \begin{theorem}[Necessity of the partial-sum criterion]\label{thm:converse}
 Let $2\le r_1<\cdots<r_L$ be distinct and $0\le u\le L-1$.  If
 \eqref{eq:partial} fails, then
@@ -2174,7 +2265,24 @@ $E=\{n,n+1,n+2\}$, the partition splitting $\{n,n+2\}$ off beats the sorted
 one by $3\cdot2\cdot\tfrac14\cdot\tfrac{n+1}{n}$, which is $1.575$ at $n=20$
 and tends to $\tfrac32$, while the runner-up stays a fixed fraction of the
 maximum.  So at least two terms remain of the same order however large
-$\min E$ is, and non-cancellation must come from signs rather than size.  A decomposition of $E$ into clusters of small relative diameter does
+$\min E$ is, and non-cancellation must come from signs rather than size.
+Proposition~\ref{prop:nocancel} supplies exactly that when the cut is simple:
+in the Kostka expansion \eqref{eq:kostka} the whole dependence on $E$ sits in
+one fixed polynomial $\Phi$ of a single coordinate, all weights
+$K_{\lambda\gamma}Z^\gamma$ are nonnegative, and every $\gamma$ that occurs
+has $\gamma_{\hat c}\ge\min E$, so beyond the largest zero of $\Phi$ nothing
+cancels at all.  That leaves $\alpha_{J^*}\ne0$ and the two-sided estimate
+\eqref{eq:nocancel} for every $E$ with $\min E\ge g_0$, arbitrary gaps
+included.  Beyond a simple cut the argument stops, and not for want of
+effort: once $k_u\ge2$ the polynomial $\Phi$ has $k_u$ arguments and is no
+longer of one sign far out, even after symmetrising over the cut block, which
+is the only symmetry the weights admit.  At $z=(\tfrac12,\tfrac13,\tfrac14)$
+with all multiplicities $3$ and $k=5$, the symmetrised
+$\Phi^{\mathrm{sym}}$ is positive along the ray $(t,3t)$ and negative along
+$(t,4t)$ for every $t$ tested up to $10^5$, so the sign depends on the spread
+within the cut block and not on its scale.  What would remain is the
+comparison of the Kostka mass carried by the spread $\gamma$'s with the rest,
+a finite question about $\Phi^{\mathrm{sym}}$ alone.  A decomposition of $E$ into clusters of small relative diameter does
 not help: two clusters carrying the same profile but different exponent
 assignments compete at a ratio the separation bounds only by a constant, so
 no termwise domination is available there however small the relative diameter
