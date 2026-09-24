@@ -504,9 +504,14 @@ class TestDig:
                     assert run_dig(program, [str(bit) for bit in bits]) == table[combo]
 
     def test_alternating_layout_has_linear_area(self) -> None:
-        """Two more levels quadruple entries and at most quadruple text."""
-        sizes = [len(boolean.dig("01" * (2 ** (n - 1)))) for n in (7, 9)]
-        assert sizes[1] <= 4 * sizes[0]
+        """Text per entry stays under a constant as the arity grows.
+
+        The rectangle approaches thirty cells an entry from *above* -- a
+        node is four cells and its operands sit beside it -- so "two more
+        levels at most quadruple" is not the contract; the constant is.
+        """
+        sizes = [len(boolean.dig("01" * (2 ** (n - 1)))) / 2**n for n in (7, 9, 11)]
+        assert max(sizes) < 30
 
     @pytest.mark.parametrize(
         ("table", "n"),

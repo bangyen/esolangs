@@ -222,40 +222,105 @@ def _dig_clear(
 _DIG_DIRECTIONS = ((-1, 0), (0, 1), (1, 0), (0, -1))
 
 
+# The alternating layout's branch: arm, read a bit, store it, turn on it.
+# Its count is not in the block at all -- ``$`` takes the first digit of up,
+# right, down, left, so a digit beside the ``$`` serves, and the cell the
+# count would have occupied is a whole cell off every node.
+_DIG_ALT_BRANCH = "$~;#"
+
+
+# Two work commands is what either block arms: read and store, or set and
+# print.  The command after them runs with the counter back at zero, which
+# is what ``#`` and ``@`` need.
+_DIG_COUNT = "2"
+
+
+# The block's last cell, the one children attach to.
+_DIG_END = len(_DIG_ALT_BRANCH) - 1
+
+
+def _dig_alt_clear(
+    cells: dict[tuple[int, int], str],
+    reads: list[tuple[tuple[int, int], tuple[int, int]]],
+    corridors: list[tuple[tuple[int, int], int, int]],
+) -> None:
+    """Refuse an alternating grid whose operands or corridors are crossed.
+
+    Moving the operands out of the blocks puts loose digits next to cells
+    another node owns, so which digit a ``$`` or ``#`` reaches first is no
+    longer local to its own block; and the bounds are a rectangle, so they
+    do not by themselves say a mole's fall is clear.  Both are checked
+    against the finished grid rather than argued.
+    """
+    for point, wanted in reads:
+        for offset in _DIG_DIRECTIONS:
+            beside = (point[0] + offset[0], point[1] + offset[1])
+            char = cells.get(beside)
+            if char is not None and char in _DIG_DIGITS:
+                if beside != wanted:
+                    raise AssertionError(
+                        f"{cells[point]!r} at {point} reads {beside} before {wanted}"
+                    )
+                break
+        else:
+            raise AssertionError(f"{cells[point]!r} at {point} has no operand")
+    for start, heading, distance in corridors:
+        for count in range(1, distance):
+            char = cells.get(
+                (
+                    start[0] + _DIG_DIRECTIONS[heading][0] * count,
+                    start[1] + _DIG_DIRECTIONS[heading][1] * count,
+                )
+            )
+            if char is not None and char in _DIG_OPAQUE:
+                raise AssertionError(f"a mole from {start} meets {char!r} on its way")
+
+
 def _dig_alternating(truth_table: str, n: int) -> str:
     """Lay a full Dig tree with its branch axis rotating at every level.
 
     Children enter on the local y-axis, placed just beyond the parent's
     most-backward cell; width and height swap and one doubles per level, so
-    the rectangle is O(2**n).
+    the rectangle is O(2**n).  A node is four cells long, not five: its
+    operands are digits beside the block rather than in it, and the side is
+    lateral, where a level already spends room on its children.
     """
-    # Bounds of a complete m-level subtree entered east, inclusive and local
-    # to its first ``$``: (min_x, max_x, min_y, max_y).  Leaves and branch
-    # blocks are both five cells long.
-    bounds = [(0, 4, 0, 0)]
+    # Bounds of a complete m-level subtree, inclusive and local to its first
+    # ``$``: (min_x, max_x, min_y, max_y), x along the heading.  Both blocks
+    # are four cells long and carry their operands one cell off to a side the
+    # heading picks, so a node reaches one row past its own line either way
+    # and the box is a cell wider in y than the block.
+    bounds = [(0, _DIG_END, -1, 1)]
     for _ in range(n):
         min_x, max_x, min_y, max_y = bounds[-1]
         distance = 1 - min_x
         bounds.append(
             (
-                min(0, 4 + min_y, 4 - max_y),
-                max(4, 4 + max_y, 4 - min_y),
-                -(distance + max_x),
-                distance + max_x,
+                min(0, _DIG_END + min_y, _DIG_END - max_y),
+                max(_DIG_END, _DIG_END + max_y, _DIG_END - min_y),
+                min(-1, -(distance + max_x)),
+                max(1, distance + max_x),
             )
         )
 
     cells: dict[tuple[int, int], str] = {}
+    # Each ``$`` and ``#`` against the cell it must read, and the blank runs
+    # a mole falls along between a ``#`` and its child.
+    reads: list[tuple[tuple[int, int], tuple[int, int]]] = []
+    corridors: list[tuple[tuple[int, int], int, int]] = []
 
     def place(point: tuple[int, int], char: str) -> None:
         if point in cells:
             raise AssertionError(f"two cells at {point}: {cells[point]!r} and {char!r}")
         cells[point] = char
 
-    def text(point: tuple[int, int], heading: int, code: str) -> None:
+    def step(point: tuple[int, int], heading: int, count: int = 1) -> tuple[int, int]:
         dr, dc = _DIG_DIRECTIONS[heading]
+        return (point[0] + dr * count, point[1] + dc * count)
+
+    def text(point: tuple[int, int], heading: int, code: str) -> None:
         for offset, char in enumerate(code):
-            place((point[0] + dr * offset, point[1] + dc * offset), char)
+            place(step(point, heading, offset), char)
 
     def node(
         level: int,
@@ -263,25 +328,44 @@ def _dig_alternating(truth_table: str, n: int) -> str:
         heading: int,
         lo: int,
         hi: int,
+        bit: int,
     ) -> None:
+        # The operand digits sit one cell off the block.  Nothing the mole
+        # executes lives there, so they cost no length: the lateral room a
+        # level already spends on its children absorbs them.  Which side is
+        # forced -- ``$`` and its neighbours take the first digit of up,
+        # right, down, left, so the operand goes on the lower-numbered of the
+        # two sides and a stray digit opposite it can never be read first.
+        side = min((heading + 1) % 4, (heading - 1) % 4)
+        count = step(point, side)
+        place(count, _DIG_COUNT)
+        reads.append((point, count))
         if level == n:
-            text(point, heading, f"$3{truth_table[lo]}:@")
+            # The mole still carries the bit the last branch read, so the
+            # table entry is reached without a digit command of its own:
+            # adding it to a zero or multiplying it into a one is the same
+            # one cell, and which of the two is decided by the branch above.
+            text(point, heading, f"${'+' if bit == 0 else '*'}:@")
+            value = step(count, heading)
+            place(value, truth_table[lo])
+            reads.append((step(point, heading), value))
             return
-        text(point, heading, _DIG_BRANCH)
-        dr, dc = _DIG_DIRECTIONS[heading]
-        end = (point[0] + 4 * dr, point[1] + 4 * dc)
+        text(point, heading, _DIG_ALT_BRANCH)
+        end = step(point, heading, _DIG_END)
+        reads.append((end, step(end, heading, -1)))
         half = (lo + hi) // 2
         distance = 1 - bounds[n - level - 1][0]
-        for bit, child_bounds in ((0, (lo, half)), (1, (half, hi))):
-            child_heading = (heading - 1) % 4 if bit == 0 else (heading + 1) % 4
-            cr, cc = _DIG_DIRECTIONS[child_heading]
-            child = (end[0] + distance * cr, end[1] + distance * cc)
-            node(level + 1, child, child_heading, *child_bounds)
+        for child_bit, child_bounds in ((0, (lo, half)), (1, (half, hi))):
+            child_heading = (heading + (1 if child_bit else -1)) % 4
+            corridors.append((end, child_heading, distance))
+            child = step(end, child_heading, distance)
+            node(level + 1, child, child_heading, *child_bounds, child_bit)
 
     # Build locally with the root heading east.  Its ray from the west is
     # empty by the same bounds recurrence, so an external L-shaped entry can
     # reach it without crossing the tree.
-    node(0, (0, 0), 1, 0, len(truth_table))
+    node(0, (0, 0), 1, 0, len(truth_table), 0)
+    _dig_alt_clear(cells, reads, corridors)
     min_row = min(row for row, _ in cells)
     min_col = min(col for _, col in cells)
     row_shift, col_shift = 2 - min_row, 2 - min_col
