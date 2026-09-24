@@ -128,16 +128,16 @@
   },
   "B-tapemark": {
    "0110": {
-    "commands": 61,
-    "source_units": 252
+    "commands": 59,
+    "source_units": 227
    },
    "01101001": {
-    "commands": 101,
-    "source_units": 706
+    "commands": 98,
+    "source_units": 636
    },
    "0110100110010110": {
-    "commands": 155,
-    "source_units": 1684
+    "commands": 151,
+    "source_units": 1517
    }
   },
   "BF-PDA": {
@@ -282,16 +282,16 @@
   },
   "Clockwise": {
    "0110": {
-    "commands": 74,
-    "source_units": 255
+    "commands": 66,
+    "source_units": 233
    },
    "01101001": {
-    "commands": 112,
-    "source_units": 621
+    "commands": 94,
+    "source_units": 440
    },
    "0110100110010110": {
-    "commands": 166,
-    "source_units": 1479
+    "commands": 138,
+    "source_units": 1026
    }
   },
   "Collatz Multiverse": {
