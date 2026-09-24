@@ -246,8 +246,20 @@ step; an answer lands in the paper it extends, and the row leaves.
   `min X`, freeing the largest zero, adjoining without sliding,
   block-plus-one zero sets, real-valued zero positions (`eq:chord` is false
   there), pointwise deflation at `r_1 <= (3+sqrt 5)/2`.
-  Also open: that `tau*` is always attained by a full certificate with a
-  multiplier witness.  Repeated roots beyond `(3,3)` are open too, as is the
+  That `tau*` is always attained by a full certificate with a multiplier
+  witness is now PROVED (`prop:attain`): the tail is a norm, so the infimum
+  is attained; a minimiser with fewer than `m-1` zeros can be moved along a
+  direction that keeps its zeros until it gains one, the move being finite
+  because the zero bound makes the sign of the kink parameter eventually
+  constant; the multipliers come from the nonsingularity of the exponents
+  `{0} u Z`; and the witness is constant past `max Z`, so `(1-y)W` is a
+  polynomial and its cofactor a monic `M`.  It needs only distinct nodes in
+  `(0,1)` -- no `r_1 >= 2` cutoff.  The same proof runs in the confluent
+  basis `d^a y^d`, where the zero bound is Polya-Szego; checked exactly with
+  witnesses on 9 repeated-root sets.  Repeated roots beyond `(3,3)` are open on the
+  PLACEMENT side only (`u >= 1`; at `(3,3)`, `u = 0` and `tau* = 5/24`, so
+  the infimum of `b_1` is 24/5): a proof needs confluent analogues of
+  `prop:partial`, `thm:converse` and `thm:value`.  Also open is the
   case where an exempt root lies below 2 and more than `u` partial sums of
   `P` exceed `|P(1)|`, where the repaired bound need not be sharp.  See the
   section "The infimum when the criterion fails" in

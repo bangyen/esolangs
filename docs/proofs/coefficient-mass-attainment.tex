@@ -912,7 +912,90 @@ makes $w_d$ the partial sums $S_d(P_uM)$, as in \eqref{eq:wgen}.  So
 \end{equation}
 At $M=1$ this is the construction of Proposition~\ref{prop:partial}.  A
 witness $W$ with $\sup_{d\ge1}|w_d|=1/\Tail(v)$ proves that $v$ attains
+$\tau^*$.  Such a witness always exists.
+
+\begin{proposition}[Attainment with a multiplier witness]\label{prop:attain}
+Write $m=L-u$.  Then $\tau^*$ is attained by a full certificate $v$ on
+$y_{u+1},\ldots,y_L$.  At any such $v$ there are reals $s_d$ with
+$|s_d|\le1$, $s_d=\sgn(v_d)$ whenever $v_d\ne0$, and
+$\sum_{d\ge1}s_dy_i^d=\tau^*$ for $u<i\le L$; then $w_0=1$,
+$w_d=-s_d/\tau^*$ is a witness as in \eqref{eq:dualpair} attaining equality,
+and it is $\widetilde P_u\widetilde M/(1-y)$ for a monic $M$, so
+\eqref{eq:multiplier} is an equality at that $M$.
+\end{proposition}
+
+\begin{proof}
+A certificate for $\varnothing$ on the surviving nodes is a
+$\lambda\in\R^m$ with $\sum_i\lambda_i=1$, writing
+$v_d(\lambda)=\sum_{i>u}\lambda_iy_i^d$; put $f(\lambda)=\Tail(v(\lambda))$.
+
+\emph{The infimum is attained.}  Since $|v_d|\le\sum_i|\lambda_i|y_i^d$ and
+the nodes lie in $(0,1)$, $f$ is finite, and it is homogeneous and
+subadditive.  If $f(\lambda)=0$ then $v_d=0$ for $1\le d\le m$, a Vandermonde
+system in the $\lambda_i$ with distinct nonzero nodes, so $\lambda=0$.  Thus
+$f$ is a norm, hence continuous and coercive, and it attains its minimum on
+the closed nonempty affine set $\{\sum_i\lambda_i=1\}$; that minimum is
 $\tau^*$.
+
+\emph{Some minimiser is full.}  Let $\lambda$ minimise, let
+$Z=\{d\ge1:v_d=0\}$, and suppose $|Z|\le m-2$.  The conditions
+$\sum_ih_i=0$ and $v_d(h)=0$ for $d\in Z$ are at most $m-1$ linear
+conditions on $h\in\R^m$, so some $h\ne0$ meets them.  As $v_d(h)=0$ on $Z$,
+\[
+  \varphi(t)=f(\lambda+th)=\sum_{d\notin Z}\bigl|v_d+tv_d(h)\bigr|,
+\]
+and each term is differentiable at $t=0$ with difference quotients dominated
+by the summable $|v_d(h)|$, so $\varphi$ is differentiable there and
+minimality gives $\varphi'(0)=\sum_{d\notin Z}\sgn(v_d)v_d(h)=0$.
+Subtracting that vanishing linear term,
+\[
+  \varphi(t)-\varphi(0)=\sum_{d\notin Z}
+  \bigl(|v_d+tv_d(h)|-|v_d|-t\sgn(v_d)v_d(h)\bigr),
+\]
+all of whose terms are nonnegative, the $d$-th vanishing exactly while
+$v_d+tv_d(h)$ keeps the sign of $v_d$, that is for $t$ between $0$ and
+$t_d=-v_d/v_d(h)$ (no condition when $v_d(h)=0$).  Neither $v(\lambda)$ nor
+$v(h)$ vanishes identically, so by the zero bound each has constant nonzero
+sign past its largest zero, and hence $t_d$ has one sign for all large $d$.
+On the other side lie only finitely many $t_d$, all nonzero, so the nearest
+of them is at a positive distance $t^*$, and $t^*$ is finite because
+otherwise $\varphi$ would be constant on a half-line, against coercivity.
+On the interval from $0$ to $t^*$ every term above vanishes, so
+$\varphi(t^*)=\varphi(0)$: the certificate $\lambda+t^*h$ still minimises,
+keeps every zero of $Z$, and has gained one.  The zero bound caps the zeros
+at $m-1$, so iterating reaches a full minimiser.
+
+\emph{The multipliers.}  Let $\lambda$ be a full minimiser with zero set
+$Z$, $|Z|=m-1$, and set $s_d=\sgn(v_d)$ for $d\notin Z$.  A nontrivial real
+combination of the $m$ distinct powers $y^d$, $d\in\{0\}\cup Z$, has at most
+$m-1$ positive zeros, so the matrix $(y_i^d)_{i>u,\,d\in\{0\}\cup Z}$ is
+nonsingular.  Hence there are unique reals $(s_d)_{d\in Z}$ and $\theta$
+with $\sum_{d\ge1}s_dy_i^d=\theta$ for every surviving $i$, the series
+converging because the $s_d$ are bounded.  Pairing with any $h$ with
+$\sum_ih_i=0$ gives $\sum_{d\ge1}s_dv_d(h)=\theta\sum_ih_i=0$, while
+minimality gives
+\[
+  0\le f'(\lambda;h)=\sum_{d\notin Z}\sgn(v_d)v_d(h)+\sum_{d\in Z}|v_d(h)|,
+\]
+so subtracting the pairing leaves
+$0\le\sum_{d\in Z}\bigl(|v_d(h)|-s_dv_d(h)\bigr)$.  By the same
+nonsingularity $h\mapsto(v_d(h))_{d\in Z}$ carries $\{\sum_ih_i=0\}$ onto
+$\R^{m-1}$, so taking the preimages of $\pm e_d$ gives $|s_d|\le1$ on $Z$.
+Finally $\sum_{d\ge1}s_dv_d=\sum_i\lambda_i\sum_{d\ge1}s_dy_i^d=\theta$,
+while $v_d=0$ on $Z$ makes the left side $\sum_{d\notin Z}|v_d|=\Tail(v)$,
+so $\theta=\tau^*$.
+
+\emph{The witness is a monic multiplier.}  Put $w_0=1$ and
+$w_d=-s_d/\tau^*$.  Then $W(y_i)=1-\tau^*/\tau^*=0$ at every surviving node,
+and $\sup_{d\ge1}|w_d|=1/\tau^*$ since $|s_d|=1$ off $Z$ and $|s_d|\le1$ on
+it, so \eqref{eq:dualpair} is an equality.  Past $g=\max Z$ the sign of
+$v_d$ is constant by the zero bound, so $w_d$ is constant there and
+$(1-y)W(y)$ is a polynomial of degree at most $g+1$, vanishing at the $m$
+surviving nodes and equal to $1$ at $0$.  Dividing out those nodes writes it
+as $\widetilde P_uN$ with $N(0)=1$, and the reverse of $N$ is a monic $M$ of
+degree at most $g+1-m$ with $N=\widetilde M$.
+\end{proof}
+
 
 Whether $T=\tau^*$, so that the escaping placement is extremal, comes down to
 covering the finite placements.  The deletion step of Theorem~2.2 lifts a
@@ -1838,12 +1921,13 @@ closes at $(2,3,5,7)$ and $(2,\ldots,7)$ (Proposition~\ref{prop:values}) and
 at $2119$ further root sets we tried with $u\le4$---integer, rational, and
 clustered just above the cutoff---where every one of $40405$ placements inside
 $\{1,\ldots,10\}$ is covered by a full certificate whose tail is at most the
-least tail of a full certificate on the surviving nodes.  Two things are not
-proved in general: that $\tau^*$ is attained by a full certificate with a
-witness as in \eqref{eq:dualpair}, and that the search always closes, that is,
-that the escaping placement is always extremal.
+least tail of a full certificate on the surviving nodes.  Attainment by a full certificate
+with a witness as in \eqref{eq:dualpair} is
+Proposition~\ref{prop:attain}.  What is not proved in general is that the
+search always closes, that is, that the escaping placement is always
+extremal.
 
-The second was reduced to one inequality, proved when a single zero of the
+That was reduced to one inequality, proved when a single zero of the
 minimizer lies above $\max X$.  By Proposition~\ref{prop:step} it is the single
 step \eqref{eq:step}, deleting the largest element of the placement; by
 Proposition~\ref{prop:stepeasy} the step holds except when the minimizing
