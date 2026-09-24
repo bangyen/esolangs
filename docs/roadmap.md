@@ -335,16 +335,16 @@ step; an answer lands in the paper it extends, and the row leaves.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
-  liminf in `[2 log10(2), 325/8 log10(2)]`, limsup in
-  `[2 log10(2), 2925/32 log10(2)]`, a factor 20.3 / 45.7 (down from 211).
+  both limits in `[2 log10(2), 325/8 log10(2)]`, a factor 20.3 (down
+  from 211).
   Lower side: counting with the relabelling symmetry (`lem:gapauto`,
   `prop:counting`) forces `T/(n+4)` input values for every `n >= 7`.
   Upper side: embedded automaton programs with an additive decoder
   (`lem:adddec`, `prop:embprog`, effective profile `325/8` per state
   squared, `lem:effprofile`) on a bounded stripped automaton
-  (`lem:bstrip`) with `3/2 T/n` states near `nu = 1`.  Open: levels (the
-  worst-case minimum automaton near `nu = 1`, in `[1, 3/2] T/n`) and
-  profile (`325/16` against mass `2`; sources neither even nor odd pay
+  (`lem:bstrip`) and a trie-banded automaton (`lem:trieband`,
+  `lem:bandtrie`) with `(1 + o(1)) T/n` states for every `n`, so levels
+  are CLOSED.  Open: profile (`325/16` against mass `2`; sources neither even nor odd pay
   mass `4`, `rem:parity`, so the lower factor 2 hangs on even or odd
   sources; the register and real roots are not charged, see the
   complex-roots row).

@@ -338,20 +338,14 @@ The companion to `polynomial.tex` Section "Explicit constants"
 Put `C_P(n)` = max over tables of min `|f|`, and normalise by
 `T**2/n = T**2/log2 T`. The bracket is
 
-    2 log10(2) = 0.602  <=  liminf C_P n/T**2  <=  325/8 log10(2)   = 12.23
-    2 log10(2) = 0.602  <=  limsup C_P n/T**2  <=  2925/32 log10(2) = 27.52
+    2 log10(2) = 0.602  <=  liminf C_P n/T**2  <=  limsup C_P n/T**2
+                        <=  325/8 log10(2) = 12.23
 
-For `T**2/ln T` units, multiply by `ln 2`: `0.417 .. 8.48` and
-`0.417 .. 19.07`.
+For `T**2/ln T` units, multiply by `ln 2`: `0.417 .. 8.48`.
 
-Per `n`, put `j1 = min{j : 2**j + j >= n}`, `nu = n / 2**j1` (in
-`(1/2, 1 + j1/2**j1]`), `n = 2**(j1-1) + j1 - 1 + s` and `u = 2**-s`. Then the
-normalised size lies between `2 log10(2)` and
-`log10(2) min(4 nu**2 (1+u/2)**2 (325/8 + 13 delta + delta**2), (9/4)(325/8) nu**2)`,
-with `delta = (u/2)/(1+u/2)`, the second term when `n >= (7/10) 2**j1`. The
-lower side carries relative error `O(log n / n)`. The two sides differ by
-`325/16 = 20.3` at the liminf and `2925/64 = 45.7` at the limsup.
-So the order is settled and the constant is not.
+For every `n`,
+`(1 - O(log n / n)) 2 log10 2 <= C_P n/T**2 <= (1 + O((log n)**2/n)) 325/8 log10 2`,
+a factor `325/16 = 20.3` at both limits. So the order is settled and the constant is not.
 
 **Lower side: three links.**
 
@@ -407,6 +401,12 @@ states outside the branching set and `x` the dispatched share;
   `325/8 + 13 delta + delta**2`;
 * `d = 2`, `L = n-j1`, `I = ceil(j1/2)-1`: `(3/2) nu T/n` states when
   `n >= (7/10) 2**j1`, profile `325/8`.
+* the trie-banded automaton (`lem:trieband`, `lem:bandtrie`): leaves of a
+  trie grouped in bands of distinct lengths share one tree; a deep state
+  below band `k` records `C = 2**(h-1) (1+y)` bits, `y` the binary fraction
+  whose digits are the band's leaf lengths, placed just below the tree
+  depth; `(1 + O((log n)**2/n)) T/n` states for every `n`, which settles the
+  asymptotics (the stripped automata stay better for `n` up to about 100).
 
 All constructions were compiled and run on every input for `n <= 11` (the
 `lem:bstrip` properties asserted on every run), and round-tripped through
@@ -417,11 +417,8 @@ source for `n <= 7`. Rendered lengths against the first compiler: 0.85 at
 
 * Routing is exact: one input value per first-essential residual, attained
   (`prop:sharp`).
-* Levels, `(S/(T/n))**2` in `[1, 9/4]`: counting charges `T/n` inputs; the
-  DAG pays `T/n` at `nu -> 1/2` (sharp there) and `2T/n` near `nu = 1`,
-  where the stripped automaton pays `3/2 T/n` for every table. The true
-  worst-case minimum near `nu = 1` is in `[1, 3/2] T/n` (`rem:levels`,
-  `rem:levels-count`; SAT data at n = 5: 9 inputs against a DAG of 21).
+* Levels contribute nothing: counting charges `T/(n+4)` inputs, and the
+  trie-banded automaton has `(1 + o(1)) T/n` states for every table.
 * Profile, `g/2 = 325/16` at both limits: the input pairs give mass
   constant 2; the arithmetic register roots `a +- p**b i`, `a != 0`, and the
   real roots are not charged. A source that is neither even nor odd has both
@@ -435,7 +432,6 @@ Lemma 3.1) is already sharp (Corollary 3.6), so the mass step alone cannot
 narrow the bracket. Open:
 
 * a mass bound for the roots `a +- p**b i` (roadmap, complex roots);
-* the minimum automaton size near `nu = 1`, in `[1, 3/2] T/n`;
 * a profile below `325/8`;
 * whether even or odd sources can be optimal (lower constant 2 or 4).
 
