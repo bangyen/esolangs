@@ -31,8 +31,8 @@ parse time are classified below.
 The input instruction *overwrites* the register, so between reads every bit
 about earlier inputs lives in the cursor alone: just before the k-th read the
 reachable configurations number at most twice the instruction count, and a
-maximal-width table needs Omega(T/log T) residual classes under every read
-order.  Every Polynomial program for such a table carries `m = Omega(T/log T)`
+maximal-width table needs Omega(T/log T) residual classes (the input stream
+fixes the read order).  Every Polynomial program for such a table carries `m = Omega(T/log T)`
 instructions whatever its operands.  The step is sound: a state is exactly
 `(register, cursor)`, the input arm
 assigns rather than combines, and the instruction list is never rewritten.
@@ -290,9 +290,10 @@ instructions cannot be shed, and the routing lemma bounds the cursors at a
 read by the routing positions.  Call a residual `g(y_1, ...)` *first-essential*
 when it depends on `y_1` and is not a function of `y_1` alone, and let `N*(k)`
 count the distinct first-essential residuals at level `k`.  The maximal-width
-lemma gives `N*(k+1) >= 3q/8` under every order: a child fails to be
-first-essential with probability at most `2**(1 - n/2)`, independently, so
-more than `q/8` failures has probability `exp(-Omega(q n))`, below `1/n!`.
+lemma prescribes the table directly: the input stream fixes the variable
+order, so at the level `n - j` of `N_n` (see "Explicit constants") the blocks
+are chosen as distinct first-essential strings, giving `N*(K) = N_n >=
+T/(4n)` for `n >= 6`.
 An execution that halts before its `k`th read has a constant residual;
 otherwise a read leaves the register at 48 or 49, so a residual is fixed by
 its cursor and that value: `N*(k) <= 2 D*_k`, with `D*_k` the cursors at the
@@ -310,9 +311,12 @@ position between, so it reaches only the output `w(y_1)` emitted there; the
 run prints `w(y_1) v(y_2, ...)`, and either `w` is empty (the residual ignores
 `y_1`) or it is the single output character (the residual is a function of
 `y_1` alone).  A fault between the reads would sit on a reachable input.
-With no routing position the same holds from the initial cursor.  Hence
+The same argument one read later shows `c_{J-1}` carries at most one
+first-essential residual: the read at `c_J` overwrites the bit it read, so
+the residual depends only on the segment.  With no routing position the same
+holds from the initial cursor.  Hence, over at most `2B + 1` segments,
 
-    D*_k <= 2 + 4B,   N*(k) <= 4 + 8B,   B >= (N*(k) - 4) / 8   (k <= n-2).
+    N*(k) <= 3 + 6B,   B >= (N*(k) - 3) / 6   (k <= n-2).
 
 **Variable read counts.**  Counting every cursor fails when the read count
 varies: the decoded program
@@ -1009,7 +1013,8 @@ the preceding closer, again with that condition false; no instruction between
 them changes the register.  Thus an incidence is charged at most once.  For
 `L_real >= 2` this gives `m_routing <= L_real + 2L_real - 3`; for `L_real = 1`,
 the weaker `m_routing <= 3L_real` is immediate.  In every case
-`m_routing <= 3L_real`.  With the cursor bound, the dense-table floor forces
+`m_routing <= 3L_real`; bipartiteness sharpens this to `2L_real - 2`
+("Explicit constants").  With the cursor bound, the dense-table floor forces
 `L_real = Omega(T/log T)`, which is the sharpened routing lemma.
 
 The smaller "one closer per (value, condition)" charge is false, executed:
