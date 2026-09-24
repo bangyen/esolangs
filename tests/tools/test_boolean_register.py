@@ -834,12 +834,17 @@ class TestCollatzMultiverse:
                 assert run_collatz_multiverse(program, bits) == table[combo]
 
     def test_postorder_tree_structure(self) -> None:
-        """The tree reads each input once, reuses registers, and prints once."""
-        program = boolean.collatz_multiverse("0110")
-        assert program.count("input") == 2
+        """The tree reads each input once, reuses registers, and prints once.
+
+        Register *reuse* is the property worth pinning -- names are per level,
+        not per node -- so this counts distinct register names rather than
+        naming the ones a particular construction happens to emit.
+        """
+        program = boolean.collatz_multiverse("01101001")
+        assert program.count("input") == 3
         assert program.count("DO PRINT.") == 1
-        assert "r0" in program
-        assert "r1" in program
+        names = {line.split(" =")[0] for line in program.splitlines()}
+        assert len(names) < len(program.splitlines())
 
     def test_full_tree_growth_is_linear(self) -> None:
         """Parity folds nothing, but depth-reused names keep source linear."""

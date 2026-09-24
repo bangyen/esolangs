@@ -222,74 +222,84 @@ def collatz_multiverse(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    A postorder Shannon tree combines child bits as
-    ``(!x & zero) | (x & one)``. Registers are reused by recursion depth;
-    every write first clears its destination because Collatz assignment
-    otherwise depends on the destination's old parity. Short names belong to
-    the deepest, most repeated levels, keeping the emitted source O(T).
+    A postorder Shannon tree combines child bits as ``(!x & zero) | (x &
+    one)``, reusing registers by depth so the source stays O(T).  For a
+    destination holding 0 or 1, ``d = A x + B`` is ``d := B + d*A`` -- a
+    multiply-add in the destination, not a conditional.  So ``d = z x + s``
+    copies ``s`` over whatever ``d`` held, the same line with ``d`` preloaded
+    with a bit is a two-way select, and writing a subtree's result into the
+    parent's accumulator collapses its "and with !x" to one line.
     """
     n = _validate_truth_table(truth_table)
     if all(c == truth_table[0] for c in truth_table):
-        # A constant table needs no evaluation, but the reads are the language's
-        # interface: skipping them would leave the caller's bits unread on the
-        # input stream and drop the prompts a prompting interpreter emits.  So
-        # read every input, discard it, and print the constant.
+        # A constant table needs no evaluation, but the reads are the
+        # interface: skipping them strands the caller's bits and the prompts.
         const = _ASCII_ZERO + int(truth_table[0])
         lines = _cm_constants({const})
         lines += [f"b{i} = negativeOne x + input, NOT PRINT." for i in range(n)]
         lines.append(f"out = negativeOne x + k{const}, DO PRINT.")
         return "\n".join(lines)
 
-    lines = _cm_constants({_ASCII_ZERO})
-    inputs = [f"b{n - 1 - depth}" for depth in range(n)]
-    for name in inputs:
-        lines.append(f"{name} = negativeOne x + input, NOT PRINT.")
-
-    def clear(dst: str) -> None:
-        lines.append(f"{dst} = zero x + zero, NOT PRINT.")
-
-    def assign(dst: str, src: str) -> None:
-        clear(dst)
-        lines.append(f"{dst} = negativeOne x + {src}, NOT PRINT.")
-
-    def negate(dst: str, src: str) -> None:
-        assign(dst, src)
-        lines.append(f"{dst} = negativeOne x + k1, NOT PRINT.")
-
-    def conjunction(dst: str, x: str, y: str) -> None:
-        assign(dst, x)
-        lines.append(f"{dst} = {y} x + zero, NOT PRINT.")
-
     changes = [0]
     for previous, current in pairwise(truth_table):
         changes.append(changes[-1] + (previous != current))
 
-    def tree(start: int, end: int, depth: int) -> str:
-        if changes[start] == changes[end - 1]:
-            return "k1" if truth_table[start] == "1" else "zero"
-        half = (start + end) // 2
-        zero = tree(start, half, depth + 1)
-        index = n - 1 - depth
-        saved = f"l{index}"
-        if zero not in {"zero", "k1"}:
-            assign(saved, zero)
-            zero = saved
-        one = tree(half, end, depth + 1)
-        inverted = f"i{index}"
-        left = f"a{index}"
-        right = f"c{index}"
-        result = f"r{index}"
-        negate(inverted, inputs[depth])
-        conjunction(left, inverted, zero)
-        conjunction(right, inputs[depth], one)
-        assign(result, left)
-        lines.append(f"{result} = k1 x + {right}, NOT PRINT.")
-        return result
+    body: list[str] = []
+    negated: set[int] = set()
 
-    result = tree(0, 1 << n, 0)
-    out = "out"
-    assign(out, result)
-    lines.append(f"{out} = k1 x + k48, DO PRINT.")
+    def tree(start: int, end: int, depth: int, dst: str) -> str:
+        """Emit the subtree over ``truth_table[start:end]``, preferring ``dst``.
+
+        Returns where the value landed: ``dst`` when a selecting line was
+        emitted, else an existing register or constant.  Reading that return
+        is what lets a child write straight into its parent's accumulator.
+        """
+        if changes[start] == changes[end - 1]:
+            return "k1" if truth_table[start] == "1" else "z"
+        half = (start + end) // 2
+        index = n - 1 - depth
+        inverted, accumulator = f"i{index}", f"a{index}"
+        # The zero child, masked by !x.  ``a`` is level-local, so the mask
+        # survives the one child's deeper call.
+        low = tree(start, half, depth + 1, accumulator)
+        if low == "z":
+            masked = "z"
+        elif low == "k1":
+            negated.add(index)
+            masked = inverted
+        else:
+            negated.add(index)
+            if low != accumulator:
+                body.append(f"{accumulator} = z x + {inverted}, NOT PRINT.")
+                body.append(f"{accumulator} = {low} x + z, NOT PRINT.")
+            else:
+                body.append(f"{accumulator} = {inverted} x + z, NOT PRINT.")
+            masked = accumulator
+        high = tree(half, end, depth + 1, f"r{index}")
+        if high == "z":
+            # ``x & 0`` is 0, so the masked zero child is already the answer.
+            return masked
+        if masked == "z" and high == "k1":
+            # The node *is* the input bit, and ``b`` is never written again.
+            return f"b{index}"
+        # ``dst`` holds the input bit; the mask is 0 when it is 1, so the
+        # disjoint arms make the add an or.
+        body.append(f"{dst} = z x + b{index}, NOT PRINT.")
+        body.append(f"{dst} = {high} x + {masked}, NOT PRINT.")
+        return dst
+
+    result = tree(0, 1 << n, 0, "o")
+
+    lines = _cm_constants({_ASCII_ZERO}, zero="z")
+    for index in reversed(range(n)):
+        lines.append(f"b{index} = z x + input, NOT PRINT.")
+    for index in sorted(negated):
+        lines.append(f"i{index} = z x + b{index}, NOT PRINT.")
+        lines.append(f"i{index} = negativeOne x + k1, NOT PRINT.")
+    lines += body
+    if result != "o":
+        lines.append(f"o = z x + {result}, NOT PRINT.")
+    lines.append(f"o = k1 x + k{_ASCII_ZERO}, DO PRINT.")
     return "\n".join(lines)
 
 
