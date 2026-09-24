@@ -1688,6 +1688,277 @@ tail bound of Lemma~\ref{lem:holetail} exceeds $\frac12$ and the argument
 does not close; that is why Proposition~\ref{prop:rowsfree} keeps different
 holes there.
 
+\section{Complex roots}\label{sec:complexroots}
+
+Everything so far prescribes real roots.  This section shows that complex
+roots split into two regimes.  Roots that come in full orbits of
+$x\mapsto\zeta x$, $\zeta^m=1$, over real values of $x^m$, in particular
+purely imaginary conjugate pairs $\pm ic$, reduce \emph{exactly} to real
+roots: the infimum of every order statistic and of $\Lambda$ over monic
+multiples is the same as for the real roots $c^2$
+(Theorem~\ref{thm:transfer}, Corollary~\ref{cor:imag}).  Without such
+structure nothing beyond the first row survives: the first row holds at
+every root set (Proposition~\ref{prop:rowone}), but the rows $k\ge2$ and every
+mass bound of more than linear order fail for pairs lying within any fixed
+angle of the imaginary axis (Proposition~\ref{prop:noangle}).
+
+\begin{lemma}[Multisection]\label{lem:multisection}
+Let $m\ge1$, let $R\in\mathbb C[y]$ with $R(0)\ne0$, and put $P(x)=R(x^m)$.  Write
+a polynomial $F\in\mathbb C[x]$ as
+\[
+  F(x)=\sum_{\varepsilon=0}^{m-1}x^\varepsilon E_\varepsilon(x^m),
+  \qquad E_\varepsilon(y)=\sum_{i\ge0}f_{mi+\varepsilon}\,y^i .
+\]
+If $P$ divides $F$, then $R$ divides every $E_\varepsilon$.  If $F$ and $R$
+are real, so are the $E_\varepsilon$.
+\end{lemma}
+
+\begin{proof}
+Let $\zeta=e^{2\pi i/m}$.  Since $P(\zeta^kx)=R(\zeta^{km}x^m)=P(x)$, the
+polynomial $P$ divides $F(\zeta^kx)$ for every $k$, hence divides
+\[
+  \frac1m\sum_{k=0}^{m-1}\zeta^{-k\varepsilon}F(\zeta^kx)
+  =x^\varepsilon E_\varepsilon(x^m).
+\]
+As $R(0)\ne0$, $P(0)\ne0$, so $x^\varepsilon$ is coprime to $P$ and
+$R(x^m)\mid E_\varepsilon(x^m)$.  Divide in $\mathbb C[y]$:
+$E_\varepsilon=RQ+S$ with $\deg S<\deg R$.  Then $R(x^m)$ divides
+$S(x^m)$, whose degree $m\deg S$ is smaller than $m\deg R$, so $S=0$.
+Reality of $E_\varepsilon$ is clear from its coefficients.
+\end{proof}
+
+\begin{theorem}[Multisection transfer]\label{thm:transfer}
+Let $m$, $R$ and $P=R(x^m)$ be as in Lemma~\ref{lem:multisection}, and let
+$F$ be a nonzero multiple of $P$ of degree $D$.  For the residue
+$\varepsilon\equiv D\pmod m$, the polynomial $E_\varepsilon$ is a multiple of
+$R$ of degree $(D-\varepsilon)/m$ with leading coefficient $f_D$, and
+\[
+  b_k(F)\ge b_k(E_\varepsilon)\quad(k\ge1),\qquad
+  \Lambda(F)\ge\Lambda(E_\varepsilon).
+\]
+Conversely, for every multiple $G$ of $R$ the polynomial $G(x^m)$ is a
+multiple of $P$ with the same nonzero coefficients.  Consequently, for
+$\Phi=b_k$ (any fixed $k$) and for $\Phi=\Lambda$,
+\[
+  \inf\{\Phi(F):F\text{ monic},\ P\mid F\}
+  =\inf\{\Phi(G):G\text{ monic},\ R\mid G\},
+\]
+over complex multiples, and also over real multiples when $R$ is real.
+\end{theorem}
+
+\begin{proof}
+By Lemma~\ref{lem:multisection}, $R\mid E_\varepsilon$.  The top coefficient
+of $F$ sits at $D=m\cdot\frac{D-\varepsilon}m+\varepsilon$, so it is the
+coefficient of $y^{(D-\varepsilon)/m}$ in $E_\varepsilon$, and no higher
+coefficient of $E_\varepsilon$ is nonzero.  The nonleading coefficients of
+$E_\varepsilon$ are the $f_j$ with $j\equiv\varepsilon$, $j<D$: a
+sub-multiset of the nonleading coefficients of $F$.  The $k$-th largest
+element of a sub-multiset is at most the $k$-th largest of the whole, and
+$\Lambda$ is a sum of nonnegative terms over coefficients; this gives the
+two inequalities.  Monicity passes from $F$ to $E_\varepsilon$, which gives
+$\ge$ between the infima.  For the converse, $R\mid G$ gives
+$R(x^m)\mid G(x^m)$, and $G(x^m)$ has the coefficients of $G$ spread out
+with zeros between them, so $b_k$ and $\Lambda$ are unchanged, and
+$G(x^m)$ is monic when $G$ is.  This gives $\le$.
+\end{proof}
+
+The case $m=2$, $R(y)=\prod_j(y+c_j^2)$ is the case of purely imaginary
+conjugate pairs; the sign change $y\mapsto-y$ turns $R$ into a product of
+linear factors at the positive roots $c_j^2$ without changing any
+coefficient magnitude.
+
+\begin{corollary}[Purely imaginary pairs]\label{cor:imag}
+Let $c_1\le\cdots\le c_K$ be positive reals, repetitions allowed, put
+$P_{\rm im}=\prod_{j=1}^K(x^2+c_j^2)$ and
+$P_{\rm re}=\prod_{j=1}^K(y-c_j^2)$, and let $F\in\mathbb C[x]$ be a nonzero
+multiple of $P_{\rm im}$.
+\begin{enumerate}
+\item If $c_1^2\ge2$, then for $1\le k\le K$,
+\[
+  b_k(F)\ \ge\ |f_D|\prod_{j=k}^K(c_j^2-1),
+\]
+and the $k$ magnitudes may be taken among the positions $j\equiv D\pmod2$.
+The row $k=1$ holds for $c_1>1$.
+\item If $c_1^2\ge2$ and $|f_D|\ge1$, then
+\[
+  \Lambda(F)\ \ge\ (K+1)\log|f_D|+\sum_{j=1}^Kj\log(c_j^2-1).
+\]
+\item For $\Phi=b_k$ and $\Phi=\Lambda$, the infimum of $\Phi$ over monic
+(real or complex) multiples of $P_{\rm im}$ equals its infimum over monic
+multiples of $P_{\rm re}$.  In particular, with $c_1^2\ge2$ and $K\ge2$,
+\[
+  \inf_{Q\text{ monic}}\Lambda(P_{\rm im}Q)\ \asymp\
+  K^2+\sum_{j=1}^Kj\log(c_j^2-1)
+\]
+with the absolute constants of Corollary~\ref{cor:allroots};
+$\Lambda(F)\ge K^2/80$ for monic $F$ when $K\ge8$; and the row $k=2$ is an
+infimum at $(c_1^2,c_2^2)=(2,3)$, the rows $k=2,3$ at
+$(c_1^2,c_2^2,c_3^2)=(2,3,5)$.
+\end{enumerate}
+\end{corollary}
+
+\begin{proof}
+Apply Theorem~\ref{thm:transfer} with $m=2$ and $R(y)=\prod_j(y+c_j^2)$;
+$R(0)\ne0$.  The multiple $E_\varepsilon$ of $R$ has leading coefficient
+$f_D$, and $\tilde E(y)=E_\varepsilon(-y)$ is a multiple of $P_{\rm re}$
+with leading coefficient $\pm f_D$ and the same coefficient magnitudes.  For
+real $F$, Theorem~\ref{thm:order} (with Corollary~\ref{cor:complex} for complex $F$) applied to
+$\tilde E$ at the roots $c_j^2\ge2$ gives item~1, since
+$b_k(F)\ge b_k(\tilde E)$ and the positions of $\tilde E$ are those
+$j\equiv D\pmod 2$ of $F$; the clause $c_1>1$ is the $u=0$ clause of
+Theorem~\ref{thm:order}.  Item~2 is Corollary~\ref{cor:mass} applied to $\tilde E$, together with
+$\Lambda(F)\ge\Lambda(\tilde E)$.  Item~3 is the equality of infima in
+Theorem~\ref{thm:transfer}, composed with the magnitude-preserving
+bijection $G(y)\mapsto\pm G(-y)$ between monic multiples of $R$ and of
+$P_{\rm re}$; the three quoted statements are Corollary~\ref{cor:allroots},
+Proposition~\ref{prop:quadratic} and Propositions~\ref{prop:sharp23} and~\ref{prop:sharp235} of the real-root theory at
+the roots $c_j^2$.
+\end{proof}
+
+Thus a purely imaginary pair $\pm ic$ is worth exactly one real root $c^2$:
+the pair has two roots of modulus $c$, and the mass charges $\log c^2$ once
+at its rank.  This is the right count.  By item~3 the product
+$P_{\rm im}$ itself is within $O(K^2)$ of the infimum
+(Corollary~\ref{cor:near}), and $\Lambda(P_{\rm im})=\Lambda(P_{\rm re})$; so a
+bound of the form $\sum_{i\le2K}i\log\rho_{(i)}$ over the $2K$ roots
+counted separately, which would be about twice as large, is false already
+for $P_{\rm im}$.
+
+The same proof applies to every factor of the form $R(x^m)$ with $R$ real
+and all roots of $R$ of one sign: the real roots $\pm r$ in pairs
+($R=\prod(y-r_j^2)$), or the $m$-th roots of $\pm s_j$ for fixed $m$.  One
+more reduction needs no multisection.
+
+\begin{corollary}[Roots on a common ray]\label{cor:ray}
+Let $\theta\in\R$ and $\rho_1\le\cdots\le\rho_K$ with $\rho_1\ge2$, and let
+$F\in\mathbb C[x]$ be a nonzero multiple of $\prod_j(x-\rho_je^{i\theta})$.  Then
+$b_k(F)\ge|f_D|\prod_{j\ge k}(\rho_j-1)$ for $1\le k\le K$.  In
+particular this holds for a real $F$ divisible by
+$\prod_j(x^2-2\rho_j\cos\theta\,x+\rho_j^2)$.
+\end{corollary}
+
+\begin{proof}
+$G(x)=F(e^{i\theta}x)$ has coefficients $f_je^{ij\theta}$, of the same
+magnitudes, and is divisible by $\prod_j(x-\rho_j)$; apply
+Corollary~\ref{cor:complex}.
+\end{proof}
+
+A common ray charges each pair once, with $\log(\rho-1)$ in place of
+$\log(\rho^2-1)$; the imaginary axis is special because it carries both
+members of each pair.
+
+\begin{proposition}[The first row at arbitrary roots]\label{prop:rowone}
+Let $\alpha_1,\ldots,\alpha_N\in\mathbb C$, repetitions allowed, with
+$\rho_j=|\alpha_j|$, and let $F\in\mathbb C[x]$ be a nonzero multiple of
+$\prod_j(x-\alpha_j)$.
+\begin{enumerate}
+\item If every $\rho_j>1$, then $b_1(F)\ge|f_D|\prod_{j=1}^N(\rho_j-1)$.
+\item For every $0<r<1$,
+$b_1(F)\ge|f_D|\,\frac{1-r}{r}\bigl(r^N\mathcal M-1\bigr)$, where
+$\mathcal M=\prod_j\max(1,\rho_j)$; with $r=N/(N+1)$,
+$b_1(F)\ge|f_D|\,(\mathcal M/e-1)/N$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+Let $F^*(t)=t^DF(1/t)=\sum_{d=0}^Df_{D-d}t^d$ and $\beta_j=1/\alpha_j$
+where $\alpha_j\ne0$.
+
+\emph{Item 1.}  Here every $\alpha_j\ne0$, and if $(x-\alpha)^\mu\mid F$
+then $F^*(t)=(1-\alpha t)^\mu\,t^{D-\mu}H(1/t)$ with $F=(x-\alpha)^\mu H$, so
+$\chi(t)=\prod_j(t-\beta_j)$ divides $F^*$.  Put
+$B(s)=\prod_j(1-\beta_js)=s^N\chi(1/s)$, let $c=-[s^N]B$, and let
+$v_d=[s^d]V$ for $V=(B+cs^N)/B=1+cs^N/B$.  The numerator $A=B+cs^N$ has
+degree at most $N-1$, so $BV=A$ gives, for every $n\ge N$,
+$\sum_{k=0}^N[s^k]B\;v_{n-k}=0$, that is,
+$\sum_{i=0}^N\chi_iv_{m'+i}=0$ for every $m'\ge0$, where
+$\chi=\sum_i\chi_it^i$.  Writing $F^*=\chi h$,
+\[
+  \sum_{d}v_df_{D-d}
+  =\sum_{m'}h_{m'}\sum_i\chi_iv_{m'+i}=0 .
+\]
+Since $v_0=1$, $|f_D|\le b_1(F)\sum_{d\ge1}|v_d|$.  Now
+$|c|=\prod_j|\beta_j|=\prod_j\rho_j^{-1}$, and the coefficients of $1/B$ are
+dominated in modulus by those of $\prod_j(1-|\beta_j|s)^{-1}$, whose sum is
+$\prod_j(1-\rho_j^{-1})^{-1}$.  Hence
+$\sum_{d\ge1}|v_d|\le\prod_j\rho_j^{-1}(1-\rho_j^{-1})^{-1}
+=\prod_j(\rho_j-1)^{-1}$.
+
+\emph{Item 2.}  $F^*(0)=f_D\ne0$, and $F^*$ vanishes at every $\beta_j$
+(counted with multiplicity, as in item 1).  Jensen's formula on $|t|\le r$
+gives
+\[
+  \log\max_{|t|=r}|F^*|\ \ge\ \log|f_D|+\sum_{j:\rho_j>1/r}\log(r\rho_j)
+  \ \ge\ \log|f_D|+\sum_{j}\log\bigl(r\max(1,\rho_j)\bigr),
+\]
+since each omitted or added term is $\le0$ on the right.  On the other side
+$\max_{|t|=r}|F^*|\le|f_D|+b_1(F)\sum_{d\ge1}r^d
+=|f_D|+b_1(F)\,r/(1-r)$.  Rearranging gives the first bound; for
+$r=N/(N+1)$, $(1-r)/r=1/N$ and $r^N=(1+1/N)^{-N}\ge e^{-1}$.
+\end{proof}
+
+For real roots $r_j>1$ item 1 is the row $k=1$ of Theorem~\ref{thm:order}.  Both items
+are of the size of the Mahler measure: they charge each root once, as
+$\log\rho_j$, and do not give a second large coefficient.  At arbitrary
+angles nothing more is true.
+
+\begin{proposition}[No angle-uniform rows beyond the first]
+\label{prop:noangle}
+\leavevmode
+\begin{enumerate}
+\item Let $M\ge3$ be odd, $\rho>1$, and $0<\delta<\pi/2$.  The monic
+polynomial $x^{2M}+\rho^{2M}$ is divisible by the product of the
+$K=2\lfloor\delta M/\pi\rfloor+1$ conjugate pairs of modulus $\rho$ with
+arguments $\pm(\frac\pi2+t\frac\pi M)$, $|t|\le\delta M/\pi$, all within
+$\delta$ of the imaginary axis; yet
+\[
+  b_2(x^{2M}+\rho^{2M})=0,\qquad
+  \Lambda(x^{2M}+\rho^{2M})=2M\log\rho\le\frac\pi\delta(K+1)\log\rho .
+\]
+\item For $m\ge2$ and $B\ge1$, the polynomial $x^{2m}+x+B$ has no real
+root, so its roots form $m$ conjugate pairs, and $b_2=1$,
+$\Lambda=\log B$.
+\end{enumerate}
+In particular, no bound $b_2(F)\ge\phi(\rho_1,\ldots,\rho_K)>0$ in terms of
+the moduli of the prescribed pairs alone, not even for pairs within a fixed
+angle $\delta$ of the imaginary axis, and no bound
+$\Lambda(F)\ge c\,K^2\log\rho$ for $K$ pairs of modulus $\rho$ within a
+fixed angle $\delta$, can hold for all monic multiples.
+\end{proposition}
+
+\begin{proof}
+1.  The roots of $x^{2M}+\rho^{2M}$ are $\rho e^{i\pi(2l+1)/(2M)}$; for
+$M$ odd, $l=(M-1)/2+t$ gives the argument $\frac\pi2+t\frac\pi M$, and the
+conjugate root has the negated argument.  The integers $t$ with
+$|t|\le\delta M/\pi$ number $K$.  The only nonleading nonzero coefficient
+is $\rho^{2M}$, so $b_2=0$ and $\Lambda=2M\log\rho$.  Finally
+$K\ge2\delta M/\pi-1$ gives $2M\le\pi(K+1)/\delta$.
+
+2.  For real $x$ with $|x|\ge1$, $x^{2m}+x\ge|x|^{2m}-|x|\ge0$, and for
+$|x|<1$, $x^{2m}+x>-1$; so $x^{2m}+x+B>0$ when $B\ge1$.  The coefficients are
+$1,1,B$.
+
+For the final sentence, item 1 with $\delta M\ge\pi$, so $K\ge3$, has $b_2=0$ while every
+$\rho_j=\rho$ is fixed, and letting $M\to\infty$ at fixed $\delta$ gives
+$K\to\infty$ with $\Lambda=O_\delta(K\log\rho)$.
+\end{proof}
+
+Item 2 has distinct moduli: numerically $(2.1477,2.1545,2.1611)$ at
+$(m,B)=(3,100)$.  So distinct moduli do not help either; what the
+imaginary axis provides in Corollary~\ref{cor:imag} is not closeness of the
+angles but exact membership, which makes $R(x^2)$ a polynomial in $x^2$.
+
+\paragraph{What remains open.}  Between the two regimes: pairs
+$a_j\pm ic_j$ with $a_j\ne0$ that are not orbits of a multisection, under an
+arithmetic hypothesis that excludes item 1 of
+Proposition~\ref{prop:noangle} (for instance Gaussian integers with
+distinct prime-power imaginary parts).  In the small linear programs we ran
+(monic multiples of degree at most $2K+6$), generic such pairs, for example
+$(a,c)=(1,5),(-2,7),(3,11)$, keep $b_2$ above $\prod_{j\ge2}(\rho_j^2-1)$,
+but we have no proof, and
+Proposition~\ref{prop:noangle} shows that any proof must use more than the
+moduli and the angles' distance to the axis.
+
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
 

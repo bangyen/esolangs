@@ -49,10 +49,10 @@ divisible by $L$ distinct prime-power roots and having leading coefficient
 of absolute value at least one has logarithmic coefficient mass
 $\Omega(L^2\log L)$.  Tracking the constants, the worst-case length $C_P(n)$
 satisfies
-$\log_{10}2/1152\le\liminf C_P(n)\,n/T^2\le105.5\log_{10}2$ and
-$\log_{10}2/288\le\limsup C_P(n)\,n/T^2\le422\log_{10}2$: the order is
+$\log_{10}2/18\le\liminf C_P(n)\,n/T^2\le105.5\log_{10}2$ and
+$\tfrac29\log_{10}2\le\limsup C_P(n)\,n/T^2\le422\log_{10}2$: the order is
 settled, but the constant is determined only up to a factor of about
-$1.2\cdot10^5$.
+$1.9\cdot10^3$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -109,6 +109,9 @@ the register and the instruction cursor.
 its associated prime.  One prime may supply several consecutive positions.
 \item Equal real roots occur in one contiguous block after root sorting.
 \item The bracket matching is noncrossing.
+\item An input instruction has the purely imaginary roots $\pm ci$ with
+$c=p^b$, $p$ prime, $2\le b\le6$, and equal roots of every kind, not only
+real ones, occur in one contiguous block after root sorting.
 \end{enumerate}
 
 For Boolean computation, put $T=2^n$ and supply each bit as a separate line
@@ -157,10 +160,10 @@ $\Omega(T^2/\log T)$ coefficient digits.  Section~\ref{sec:upper} supplies
 the matching construction, and Section~\ref{sec:constants} tracks the
 constants through both halves (Proposition~\ref{prop:bracket}):
 \[
-  \frac{\log_{10}2}{1152}\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \frac{\log_{10}2}{18}\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
   \le\frac{211}{2}\log_{10}2,
   \qquad
-  \frac{\log_{10}2}{288}\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \frac29\log_{10}2\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
   \le422\log_{10}2 .
 \]
 Remark~\ref{rem:bracket} locates the gap between the two sides.
@@ -353,6 +356,44 @@ $\max(9,12L-9)\ge N_n$, hence $12L-9\ge N_n$, and
 \eqref{eq:residual-width} gives $(N_n+9)/12\ge T/(48n)$.
 \end{proof}
 
+The input reads give a sharper count than the real roots.
+
+\begin{lemma}[Input incidence]\label{lem:input}
+If a decoded program contains $K$ distinct input root values, then
+$N^*(k)\le3K$ for every $k\le n-2$.
+\end{lemma}
+
+\begin{proof}
+The residual after the $k$th read is determined by the cursor $q$ of that
+read and the register, which is $48$ or $49$.  The positions carrying one
+input root value are consecutive, say $q_1<\cdots<q_s$, and each is a read.
+Reads do not jump, so after a read at $q_i$, $i<s$, the next instruction
+executed is the read at $q_{i+1}$.  Let the $k$th read be at $q_i$, and let
+$y_1,y_2$ be the next two input bits, which exist as $k\le n-2$.
+
+If $i\le s-1$, the read at $q_{i+1}$ overwrites the register before anything
+is printed or tested, so the residual at $q_i$ does not depend on the
+register: at most one residual.  If $i\le s-2$, the read at $q_{i+2}$
+likewise overwrites $48+y_1$ before it is used, so the residual does not
+depend on $y_1$ and is not first-essential.  Hence the block carries at most
+$2$ first-essential residuals at $q_s$, at most $1$ at $q_{s-1}$, and none
+elsewhere.  Every first-essential residual at level $k$ arises at some read
+cursor, which lies in one of the $K$ blocks.
+\end{proof}
+
+\begin{lemma}[Prime powers]\label{lem:ppow}
+Let $v_1<v_2<\cdots$ enumerate $\{p^b:p\text{ prime},\ b\ge2\}$.  Then
+$v_j\ge(j+2)^2/4$ for every $j$.
+\end{lemma}
+
+\begin{proof}
+The map $p^b\mapsto(p^{\lfloor b/2\rfloor},\,b\bmod2)$ is injective, since
+$p^{\lfloor b/2\rfloor}$ is a prime power with exponent at least $1$ and so
+determines $p$ and $\lfloor b/2\rfloor$.  Its first component lies in
+$[2,\sqrt{p^b}]$.  So at most $2(\lfloor\sqrt X\rfloor-1)$ elements are at
+most $X$.  Taking $X=v_j$ gives $j\le2(\sqrt{v_j}-1)$.
+\end{proof}
+
 \begin{remark}[Why essential residuals]\label{rem:routing-gap}
 Counting all read cursors is not enough when the read count varies.  The
 decoded list
@@ -488,21 +529,24 @@ Theorem~\ref{thm:main}.
 
 Theorem~\ref{thm:main} is a statement of order.  This section tracks the
 constants through both halves, normalizing $C_P(n)$ by
-$T^2/n=T^2/\log_2T$.  The lower side is Corollary~\ref{cor:roots} with
-Theorem~\ref{thm:mass}; the upper side counts the exponents of the roots
+$T^2/n=T^2/\log_2T$.  The lower side charges the input roots:
+Lemma~\ref{lem:input} forces them, and the imaginary-pair form of the
+coefficient-mass theorem~\cite[Corollary~5.3]{coefficient-mass} prices each
+pair $\pm ci$ as one real root $c^2$.  This beats Corollary~\ref{cor:roots}
+with Theorem~\ref{thm:mass} by a factor $64$.  The upper side counts the exponents of the roots
 that the construction of Section~\ref{sec:upper} uses.
 
 \begin{proposition}[Explicit bracket]\label{prop:bracket}
-Let $N_n$ be as in Lemma~\ref{lem:maximal-width}, $L_n$ as in
-Corollary~\ref{cor:roots}, and $s_k$ as in Section~\ref{sec:upper}.  Put
+Let $N_n$ be as in Lemma~\ref{lem:maximal-width}, $K_n=\lceil N_n/3\rceil$,
+$v_j$ as in Lemma~\ref{lem:ppow}, and $s_k$ as in Section~\ref{sec:upper}.  Put
 $S_n=\sum_{k<n}s_k$, let $k_1$ be the largest $k$ with $s_k=2^k$, let
 $R_n=\sum_{k_1<k<n}s_k$, and let
 $\Phi_n=\tfrac12\bigl(311S_n^2-(10S_n-2R_n)^2\bigr)$.  Then:
 \begin{enumerate}
 \item for every $n\ge6$,
 \[
-  C_P(n)\ \ge\ \frac1{\log10}\sum_{i=1}^{L_n}i\log i
-        \ \ge\ \frac{L_n^2(2\log L_n-1)}{4\log10};
+  C_P(n)\ \ge\ \frac1{\log10}\sum_{j=1}^{K_n}j\log(v_j^2-1)
+        \ \ge\ \frac{2K_n^2\log K_n-\frac52K_n(K_n+1)}{\log10};
 \]
 \item every $n$-input table has a program with
 \[
@@ -512,35 +556,49 @@ $\Phi_n=\tfrac12\bigl(311S_n^2-(10S_n-2R_n)^2\bigr)$.  Then:
 Put $j_1=\min\{j:2^j+j\ge n\}$, $\nu_n=n/2^{j_1}$, write
 $n=2^{j_1-1}+j_1-1+s$ with $s\ge1$, and let $u=2^{-s}$.  Then
 \begin{equation}\label{eq:bracket-n}
-  \Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)\frac{\log_{10}2}{288}\,\nu_n^2
+  \Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)\frac29\log_{10}2\;\nu_n^2
   \ \le\ \frac{C_P(n)\,n}{T^2}\ \le\
   \bigl(1+o(1)\bigr)\log_{10}2\;\nu_n^2\bigl(422+924u+494u^2\bigr),
 \end{equation}
 and consequently
 \[
-  \frac{\log_{10}2}{1152}\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \frac{\log_{10}2}{18}\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
   \le\frac{211}{2}\log_{10}2,
   \qquad
-  \frac{\log_{10}2}{288}\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \frac29\log_{10}2\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
   \le422\log_{10}2 .
 \]
-Numerically, $2.61\cdot10^{-4}\le\liminf\le31.8$ and
-$1.05\cdot10^{-3}\le\limsup\le127.1$.
+Numerically, $1.67\cdot10^{-2}\le\liminf\le31.8$ and
+$6.69\cdot10^{-2}\le\limsup\le127.1$.
 \end{proposition}
 
 \begin{proof}
-\emph{Lower bound.}  By Corollary~\ref{cor:roots}, every program for a
-maximal-width table has $L\ge L_n$ distinct real instruction roots.  They
-are distinct integers at least~$2$, so $r_i-1\ge i$ after sorting.
-Theorem~\ref{thm:mass} and $|f|\ge M(f)\ge\Lambda(f)/\log10$ give the first
-inequality.  The second is
-$\sum_{i\le L}i\log i\ge\int_1^Lx\log x\,dx$.
+\emph{Lower bound.}  Take a program for a maximal-width table.  Since
+$N^*(K)=N_n$ at a level $K\le n-2$, Lemma~\ref{lem:input} gives at least
+$K_n$ distinct input root values $\pm c_ji$.  Each $x^2+c_j^2$ divides the
+source $f$, so their product does, and $|f_D|\ge1$ as $f$ has integer
+coefficients.  The $c_j$ are distinct elements of $\{p^b:b\ge2\}$, so the
+$j$th smallest is at least $v_j\ge4$, and $c_j^2\ge16$.
+By~\cite[Corollary~5.3]{coefficient-mass},
+$\Lambda(f)\ge\sum_{j\le K_n}j\log(c_{(j)}^2-1)\ge\sum_{j\le K_n}j\log(v_j^2-1)$,
+and $|f|\ge M(f)\ge\Lambda(f)/\log10$ gives the first inequality.
+
+For the second, Lemma~\ref{lem:ppow} gives
+$v_j^2-1\ge(j+2)^4/16-1\ge\frac{65}{1296}(j+2)^4$, the last because
+$(j+2)^4\ge81$.  So $\log(v_j^2-1)\ge4\log j-\log\frac{1296}{65}$, and
+$\log\frac{1296}{65}<2.993$.  With
+$\sum_{j\le K}j\log j\ge\int_1^Kx\log x\,dx=\frac{K^2}2\log K-\frac{K^2}4+\frac14$,
+\[
+  \sum_{j\le K}j\log(v_j^2-1)\ \ge\ 2K^2\log K-K^2-1.4965\,K(K+1)
+  \ \ge\ 2K^2\log K-\tfrac52K(K+1).
+\]
 
 For the asymptotic form, note that $2^{j}\ge n-j$ exactly when $j\ge j_1$.
 So $q_{j_1}\le 2^{2^{j_1}}$, and $\min(q_{j_1},E_{j_1})=q_{j_1}(1+o(1))$.
 Also $2^{2^{j_1-1}}=2^{1-s}q_{j_1}\le q_{j_1}$, and $q_j$ halves as $j$
 grows.  Hence $N_n=q_{j_1}(1+o(1))=\nu_nT/n\,(1+o(1))$.  Then
-$\log L_n=n\log2-O(\log n)$, which gives the left side
+$\log K_n=n\log2-O(\log n)$, and the right side of the second inequality is
+$(1-O(\log n/n))\cdot2(N_n/3)^2\,n\log2/\log10$, which gives the left side
 of~\eqref{eq:bracket-n}.
 
 \emph{Upper bound.}  We use the construction of Section~\ref{sec:upper},
@@ -610,36 +668,34 @@ $\frac14\cdot1007.5$.  This proves the limit statements.
 
 \begin{remark}[What the bracket says]\label{rem:bracket}
 At every $n$ the two sides of~\eqref{eq:bracket-n} differ by the factor
-$288(422+924u+494u^2)$.  This is $121{,}536$ for most $n$ ($u\to0$) and at
-most $290{,}160$ (at $s=1$).  So Proposition~\ref{prop:bracket} fixes the
+$\frac92(422+924u+494u^2)$.  This is $1899$ for most $n$ ($u\to0$) and at
+most $4533.75$ (at $s=1$).  So Proposition~\ref{prop:bracket} fixes the
 order, but it does not fix the constant.  At $u\to0$ the factor splits as
 \[
-  121{,}536\ =\ 12^2\ \times\ 4\ \times\ 2\cdot105.5 .
+  1899\ =\ 3^2\ \times\ 4\ \times\ \tfrac{105.5}{2} .
 \]
 \begin{itemize}
-\item \emph{$12^2$: routing.}  The lower bound credits one distinct real
-root to every $12$ first-essential residuals at one level
-(Lemma~\ref{lem:block}).  The construction spends two per state.  Both
-per-cursor caps behind~\eqref{eq:basic-routing} are attained, and so is the
-graph bound in Lemma~\ref{lem:block}.  The loss comes from combining them.
+\item \emph{$3^2$: routing.}  The lower bound credits one input root value
+to every $3$ first-essential residuals at one level
+(Lemma~\ref{lem:input}).  The construction spends one input per state.
 \item \emph{$4=(S_n/q_{j_1})^2$: levels.}  The lower bound uses a single
 level.  The construction pays for all of them.  Counting cannot add levels,
 because one cursor may serve residuals at several levels when the read
 count varies.
-\item \emph{$2\cdot105.5$: roots the certificate does not see.}  The mass
-constant $\frac12$ of Theorem~\ref{thm:mass} is sharp: the product of the
-first $L$ primes attains it~\cite[Corollary~3.6]{coefficient-mass}.  The
-logarithms satisfy $\log L\sim\log P\sim\log T$.  But the certificate
-charges only real roots.  In the construction, $80\%$ of the degree
-consists of the complex register roots, and it pays
-$\Phi_n/S_n^2\le105.5$ against $\frac12$.  Random tables measure about
-$76$.
+\item \emph{$105.5/2$: roots the certificate does not see.}  Each input pair
+$\pm p^bi$ is charged as the real root $p^{2b}$, which is sharp for pairs
+alone~\cite[Corollary~5.3]{coefficient-mass}, and
+$\sum_{j\le K}j\log v_j^2\sim2K^2\log K$ gives the mass constant $2$.  The
+construction pays $\Phi_n/S_n^2\le105.5$; random tables measure about $76$.
+The difference is the arithmetic register roots $a\pm p^bi$ with $a\ne0$
+and the real roots, which the lower bound does not charge.
 \end{itemize}
-In particular, the order-statistic bound for arbitrary free positions
-(\cite[Lemma~3.1]{coefficient-mass}) is already the sharp form of the mass
-step, and no sharpening of it narrows the bracket.  What remains is a
-routing lemma with a constant near the construction's, and a coefficient
-mass bound for the complex instruction roots.
+The real-root route (Corollary~\ref{cor:roots} with Theorem~\ref{thm:mass})
+gives a lower constant smaller by $64$: routing $12^2$ in place of $3^2$ and
+mass $\frac12$ in place of $2$.  The order-statistic bound for arbitrary free
+positions (\cite[Lemma~3.1]{coefficient-mass}) is already sharp
+(\cite[Corollary~3.6]{coefficient-mass}), so no sharpening of the mass step
+alone narrows the bracket.
 \end{remark}
 
 \paragraph{Reproducibility.}
