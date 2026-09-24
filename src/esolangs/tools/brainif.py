@@ -29,10 +29,8 @@ class _If:
 class _MoveLeft:
     """An ``if <char> move left`` line that also *defines* ``label``.
 
-    BrainIf reads its inputs from the far cell back toward the answer, so a
-    branch steps *left* onto the next input.  There is no rightward mirror:
-    the build walks out over zeroed cells before the tree runs, and every
-    branch after that walks down, so one direction is all the tree needs.
+    There is no rightward mirror: the build walks out over zeroed cells
+    before the tree runs, and every branch after that walks down.
     """
 
     char: int
@@ -66,44 +64,38 @@ def brainif(truth_table: str, width: int | None = None) -> str:
 
     The answer byte is built *first*, on cell 0: 48 ``increment`` lines
     once, rather than a climb per digit.  There is no way to copy a byte in
-    BrainIf, and a climb of ``if v increment`` lines converges -- every
-    entry value 0..47 leaves it holding 48 -- so one climb cannot serve both
-    digits however it is entered.  Two climbs is 48 + 49 lines, which used
-    to dominate: a ``11110000`` program was 97 increments out of 153 lines.
+    BrainIf, and a climb converges -- every entry value 0..47 leaves it
+    holding 48 -- so one climb cannot serve both digits however it is
+    entered.  Two climbs is 48 + 49 lines, which used to dominate: a
+    ``11110000`` program was 97 increments out of 153 lines.
 
     Building first also fixes which way the tape runs.  The pointer steps
     out over cells that are still zero, where one ``if 0 move right``
-    advances exactly one cell -- no digit is around to fire the next line
-    too -- and the tree then reads its inputs from that far cell back down
-    toward the answer.  So a level is a read, two branch tests, and a step
-    left, and a leaf is *there* already: the reads have carried the pointer
-    home, and it adds one iff its entry is a ``1`` before joining a two-line
-    tail.
+    advances exactly one cell, and the tree reads its inputs from that far
+    cell back down toward the answer.  So a level is a read, two branch
+    tests and a step left, and a leaf is *there* already, adding one iff its
+    entry is a ``1`` before joining a two-line tail.
 
-    That is what makes the tree foldable.  A subtree whose rows all agree
-    becomes a leaf rather than branching on bits that cannot change the
-    answer -- and since a leaf spends no moves getting to the answer, the
-    saving is not handed back.  The skipped levels' *reads* still happen:
-    consumption must not depend on the table, or a caller feeding several
-    programs from one stream would desync.  An earlier arrangement built the
-    answer past the inputs and had each leaf walk out to it, which cost two
-    lines per skipped level and cancelled the fold exactly.
+    That is what makes the tree foldable: a subtree whose rows all agree
+    becomes a leaf, and since a leaf spends no moves reaching the answer the
+    saving is not handed back.  The skipped levels' *reads* still happen, or
+    a caller feeding several programs from one stream would desync.  An
+    earlier arrangement built the answer past the inputs and had each leaf
+    walk out to it, costing two lines per skipped level -- exactly the fold.
     """
     n = _validate_truth_table(truth_table)
     if len(truth_table) > 16:
-        return _brainif_linear(truth_table, width)
+        return _brainif_linear(truth_table)
     # Initial zero skips the two-line output trampoline.  Leaves later return
-    # with 48/49 to line 2, where one of the two guards forwards to the wide
-    # output-tail address; that address is rendered twice instead of per leaf.
+    # with 48/49 to line 2, whose guards forward to the wide output-tail
+    # address -- rendered twice, rather than once per leaf.
     entries: list[_Entry] = [
         _Cmd("if 0 goto 4"),
         _Cmd(f"if {_ASCII_ZERO} goto OUT0"),
         _Cmd(f"if {_ASCII_ONE} goto OUT0"),
     ]
     # The answer byte goes on cell 0 and the inputs above it, read from the
-    # far end back down.  Building first means stepping out over cells that
-    # are still zero, where one ``if 0 move right`` advances exactly one
-    # cell -- no digit is around to fire the next line as well.
+    # far end back down.
     entries += [_Cmd(f"if {v} increment") for v in range(_ASCII_ZERO)]
     entries.append(_Cmd(f"if {_ASCII_ZERO} move right"))
     entries += [_Cmd("if 0 move right") for _ in range(n - 1)]
@@ -117,9 +109,7 @@ def brainif(truth_table: str, width: int | None = None) -> str:
         if rest == 0 or constant(lo, hi):
             # Consume the inputs this path never branched on, which walks
             # the pointer the rest of the way home; then add one iff the
-            # answer is a 1 and join the tail.  Reading them is not optional:
-            # a program whose input count depended on its table would desync
-            # a caller feeding several programs from one stream.
+            # answer is a 1 and join the tail.
             out: list[_Entry] = []
             for _ in range(rest):
                 out.append(_Cmd("if 0 input"))
@@ -196,10 +186,8 @@ def brainif(truth_table: str, width: int | None = None) -> str:
             _: _End = entry
             lines.append("")
     if width is not None and any(len(line) > width for line in lines):
-        # The interpreter recognizes commands by substring, so these are the
-        # language's short spellings, not abbreviations invented by the
-        # generator.  Line count is unchanged; the resolved goto targets stay
-        # valid.
+        # The language's own short spellings, as the linear path uses
+        # throughout: line count is unchanged, so goto targets stay valid.
         lines = [
             line.replace("increment", "inc")
             .replace("move right", "right")
@@ -209,103 +197,93 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     return "\n".join(lines)
 
 
-#: The two bytes a strip cell carries, standing in for ``'0'`` and ``'1'``.
-#: Any pair of distinct non-zero values does, since only the traversal
-#: guards read them; 1 and 2 are the cheapest to climb to.  Zero stays the
-#: mark of an untouched scratch cell and so cannot be one of them.
-_STRIP_ZERO = 1
-_STRIP_ONE = 2
+#: The two values a strip cell carries, standing in for ``'0'`` and ``'1'``.
+#: Only the traversal guards read them before the end, so any distinct pair
+#: does -- and the cheapest starts at the zero the cell already holds.
+_STRIP_ZERO = 0
+_STRIP_ONE = 1
 
 
-def _brainif_linear(truth_table: str, width: int | None) -> str:
+def _brainif_linear(truth_table: str) -> str:
     """Emit a linear spatial lookup for BrainIf.
 
-    The strip carries 1 and 2 rather than ``'0'`` and ``'1'``.  BrainIf
-    cannot write a constant -- a cell climbs by ``if v increment`` lines,
-    one per value passed -- so spelling an ASCII digit into every cell cost
-    a 48-line climb per table entry, which was the whole construction: 915
-    characters an entry at twelve inputs, against 125 for everything else
-    the strip needs.  Nothing before the final ``output`` cares what the
-    bytes *are*, only that the two differ and neither is zero, so the climb
-    happens once at the end on the single selected cell instead of ``T``
-    times during the build.  The end is two climbs, not one: they converge
-    -- every value below 48 lands on 48 -- so the selected cell branches on
-    its own value first and each side climbs to its own digit.
+    Strip and scratch cells alternate, so a step is position-independent:
+    three guarded moves cross one strip cell of either value.
+
+    The strip carries 0 and 1, not ``'0'`` and ``'1'``.  BrainIf cannot
+    write a constant -- a cell climbs by ``if v inc`` lines, one per value
+    passed -- so an ASCII digit per cell was a 48-line climb an entry, the
+    whole 915-character construction.  Only the final ``output`` cares what
+    the bytes are, so the climb happens once, on the selected cell.  It is
+    two climbs: they converge -- every value below 48 lands on 48 -- so that
+    cell branches on its own value first.
+
+    The pointer never walks the strip twice.  The build runs left to right
+    and the *selection* right to left, from the far end, reading the index
+    in complement: a ``1`` stays put and a ``0`` walks its weight.  Rewinding
+    to the origin first was a third O(T) pass, three lines an entry, for
+    nothing the walk could not do backwards.
+
+    Commands take the language's short forms: the interpreter matches by
+    substring and the wiki spells them this way, so the tree path's
+    ``increment``/``move right`` are habit, not BrainIf's ask.
     """
     n = _validate_truth_table(truth_table)
     lines: list[str] = []
     labels: dict[str, int] = {}
 
-    def emit(line: str) -> None:
-        lines.append(line)
-
     def mark(name: str) -> None:
         labels[name] = len(lines) + 1
 
-    # Scratch and output cells alternate.  Every output is initialized once;
-    # the pointer then returns through the same O(T) strip.
-    layout = "0" * n + truth_table
-    for bit in layout:
-        emit("if 0 move right")
-        emit("if 0 increment")
-        if bit == "1":
-            emit(f"if {_STRIP_ZERO} increment")
-        emit(f"if {_STRIP_ZERO} move right")
-        emit(f"if {_STRIP_ONE} move right")
-    for _ in layout:
-        emit("if 0 move left")
-        emit(f"if {_STRIP_ZERO} move left")
-        emit(f"if {_STRIP_ONE} move left")
+    def cross(guard: int) -> None:
+        """Step one scratch/strip pair left, entered on a cell holding ``guard``."""
+        lines.append(f"if {guard} left")
+        lines.append(f"if {_STRIP_ZERO} left")
+        lines.append(f"if {_STRIP_ONE} left")
 
-    # Input is read at the current scratch cell.  A one walks its binary
-    # weight in scratch/output pairs; a zero stays for the next read.
+    # The table, then one padding pair per input for the walk to spend on
+    # each read.  A ``0`` entry is two identical moves: the cell it leaves
+    # behind is the zero it arrived at.
+    for bit in truth_table + "0" * n:
+        lines.append("if 0 right")
+        if bit == "1":
+            lines.append(f"if {_STRIP_ZERO} inc")
+            lines.append(f"if {_STRIP_ONE} right")
+        else:
+            lines.append(f"if {_STRIP_ZERO} right")
+
+    # Input is read at the current scratch cell, the build's far end.  Every
+    # input spends one pair, so the reads land on distinct cells; a zero
+    # spends its binary weight on top of that.  A walk's first step enters
+    # on the byte just read, every later one on a zero.
     for i in range(n):
-        one = f"input_{i}_one"
-        zero = f"input_{i}_zero"
+        far = f"input_{i}_far"
         after = f"input_{i}_after"
-        emit("if 0 input")
-        emit(f"if {_ASCII_ONE} goto @{one}")
-        emit(f"if {_ASCII_ZERO} goto @{zero}")
-        mark(zero)
-        # The first guard reads the input byte just stored in the scratch
-        # cell; the pair after it steps over a strip cell of either value.
-        emit(f"if {_ASCII_ZERO} move right")
-        emit(f"if {_STRIP_ZERO} move right")
-        emit(f"if {_STRIP_ONE} move right")
-        emit(f"if 0 goto @{after}")
-        mark(one)
-        weight = 1 + (1 << (n - 1 - i))
-        for step in range(weight):
-            guard = _ASCII_ONE if step == 0 else 0
-            emit(f"if {guard} move right")
-            emit(f"if {_STRIP_ZERO} move right")
-            emit(f"if {_STRIP_ONE} move right")
+        lines.append("if 0 input")
+        lines.append(f"if {_ASCII_ZERO} goto @{far}")
+        cross(_ASCII_ONE)
+        lines.append(f"if 0 goto @{after}")
+        mark(far)
+        for step in range(1 + (1 << (n - 1 - i))):
+            cross(_ASCII_ZERO if step == 0 else 0)
         mark(after)
 
-    # Every route ends on a fresh zero scratch cell, one step short of the
-    # selected strip cell.  That cell holds 1 or 2 and has to be printed as
-    # a digit, so it branches on its own value and each side climbs alone.
-    emit("if 0 move right")
-    emit(f"if {_STRIP_ZERO} goto @zero_out")
-    for value in range(_STRIP_ONE, _ASCII_ONE):
-        emit(f"if {value} increment")
-    emit(f"if {_ASCII_ONE} output")
-    emit(f"if {_ASCII_ONE} goto @done")
-    mark("zero_out")
+    # Every route ends one step right of the selected strip cell, which
+    # holds 0 or 1 and has to print as a digit.
+    lines.append("if 0 left")
+    lines.append(f"if {_STRIP_ONE} goto @one_out")
     for value in range(_STRIP_ZERO, _ASCII_ZERO):
-        emit(f"if {value} increment")
-    emit(f"if {_ASCII_ZERO} output")
+        lines.append(f"if {value} inc")
+    lines.append(f"if {_ASCII_ZERO} output")
+    lines.append(f"if {_ASCII_ZERO} goto @done")
+    mark("one_out")
+    for value in range(_STRIP_ONE, _ASCII_ONE):
+        lines.append(f"if {value} inc")
+    lines.append(f"if {_ASCII_ONE} output")
     mark("done")
-    emit("")
+    lines.append("")
     for i, line in enumerate(lines):
         if "goto @" in line:
             head, name = line.split("goto @")
             lines[i] = f"{head}goto {labels[name]}"
-    if width is not None and any(len(line) > width for line in lines):
-        lines = [
-            line.replace("increment", "inc")
-            .replace("move right", "right")
-            .replace("move left", "left")
-            for line in lines
-        ]
     return "\n".join(lines)
