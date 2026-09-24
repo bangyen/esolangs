@@ -6984,7 +6984,9 @@ sector holds at most about its equidistributed share of the large zeros
 (Corollary~\ref{cor:widedisc}).  Proposition~\ref{prop:skeletonreduction}
 gives a second sufficient condition, which is purely Diophantine: the sector
 contains few Gaussian integers that are zeros, to high relative precision,
-of an integer polynomial with few terms.
+of an integer polynomial with few terms; it has to be restricted to degrees
+$O(s^2)$ and to sectors inside an open half-plane
+(Propositions~\ref{prop:Hfails} and~\ref{prop:skeletoncap}).
 
 \emph{Across annuli.}  Theorem~\ref{thm:thinreal}, applied to the roots of
 modulus at least $s$ for each $s$, charges each thin tail with the sharp
@@ -7610,7 +7612,8 @@ $\Lambda(F)\ge\frac{m^*(m^*+1)}2\log R\ge\frac{(u-1)u}2\log R$.
 \end{proof}
 
 Some precision beyond $|\alpha|^{-1}$ is necessary, so (H) can hold only
-with $c>\frac12$.  Let $N\ge2$ and let $\rho\ge10N$ be an integer.  Let
+with $c>\frac12$ (as stated it holds for no constants at all; see
+Section~\ref{sec:Hstatus}).  Let $N\ge2$ and let $\rho\ge10N$ be an integer.  Let
 $\alpha$ be a Gaussian integer nearest to $w=\rho e^{2\pi il/N}$.  Then
 $|\alpha-w|\le\frac{\sqrt2}2$ and $|\alpha|\ge\rho-1$, so
 \[
@@ -7640,6 +7643,188 @@ $2\le K\le8$ and $\frac\pi8\le\delta\le\frac\pi4$.  For $K\ge6$ this
 $\Lambda(P)\approx K(2K+1)\log R$ is more than twice the linear term
 $\pi K\log R/\delta$ of Corollary~\ref{cor:widegauss}.  This is weak
 evidence, since lattice reduction does not minimize $\Lambda$.
+
+\subsection{What hypothesis (H) must exclude}\label{sec:Hstatus}
+
+Hypothesis~(H) before Proposition~\ref{prop:skeletonreduction} bounds the
+Gaussian near-zeros of polynomials with $s$ terms for \emph{every} degree $D$.
+As stated it is false for all constants $C$ and $c$: the freedom in $D$, with
+or without the factor $D$ in its precision, lets a binomial of huge degree have
+many Gaussian integers of one circle as near-zeros
+(Proposition~\ref{prop:Hfails}).  The proposition only needs polynomials of
+degree $O(s^2)$, because Theorem~\ref{thm:gausscharge} bounds the degree of a
+block by its mass (Proposition~\ref{prop:skeletoncap}).  Below this degree cap two
+obstructions remain, both from clusters of Gaussian integers at a zero of
+high multiplicity.  They exclude $c<\frac12$ in every sector, and every $c<1$ in
+sectors that contain a real direction.  What remains open is the capped
+hypothesis for $\frac12\le c<1$ in sectors inside an open half-plane.
+
+For $M\ge0$ and $0\le j\le2M$ put
+$\gamma_{M,j}=(2+i)^j(2-i)^{2M-j}$.  These have norm $25^M$, and
+$\gamma_{M,j}=(2-i)^{2M}\beta^j$ with $\beta=\frac{2+i}{2-i}=\frac{3+4i}5$.
+Let $\psi=\arg\beta=2\arctan\frac12$; since $\arg(2-i)=-\psi/2$,
+\[
+  \arg\gamma_{M,j}\equiv(j-M)\,\psi\pmod{2\pi}.
+\]
+The number $\beta$ is a zero of $5z^2-6z+5$, which is irreducible over
+$\mathbb Q$ because $\beta\notin\R$.  It is therefore not an algebraic integer,
+and so not a root of unity.  In particular the $\gamma_{M,j}$ with
+$0\le j\le2M$ are distinct.
+
+\begin{lemma}[Many Gaussian integers on one circle in a sector]\label{lem:normcircle}
+Let $\varphi\in\R$, $0<\delta<\pi$ and $L\ge1$ an integer.  There is $M_0$
+such that for every $M\ge M_0$ at least $\lfloor\delta L/\pi\rfloor$ of the
+numbers $\gamma_{M,j}$, $0\le j\le2M$, satisfy $|\arg\gamma_{M,j}-\varphi|\le\delta$.
+\end{lemma}
+
+\begin{proof}
+Of the $L+1$ points $j\psi$ modulo $2\pi$ ($0\le j\le L$), two, with indices
+$j<j'$, are at circular distance at most $2\pi/(L+1)$.  So $h=j'-j\in[1,L]$
+has $h\psi\equiv\varepsilon\pmod{2\pi}$ with $0<|\varepsilon|\le2\pi/L$; here
+$\varepsilon\ne0$ because $\beta^h\ne1$.  Since
+$\bar\gamma_{M,j}=\gamma_{M,2M-j}$, conjugation maps our set to itself and
+replaces $\varphi$ by $-\varphi$ and $\varepsilon$ by $-\varepsilon$, so we may
+assume $\varepsilon>0$.  Put
+$m=\lfloor2\delta/\varepsilon\rfloor\ge\lfloor\delta L/\pi\rfloor$,
+$k_1=\lceil2\pi/\varepsilon\rceil$, and let $M_0$ be such that $2M_0\ge h(k_1+m)$.
+Let $M\ge M_0$ and $y_k=-M\psi+k\varepsilon$.  The $k_1$ arcs
+$[y_k,y_k+\varepsilon)$, $0\le k<k_1$, have total length at least $2\pi$ and
+are consecutive, so one of them contains $\varphi-\delta$ modulo $2\pi$.  With
+$k_0=k+1\le k_1$ we get $y_{k_0}\in(\varphi-\delta,\varphi-\delta+\varepsilon]$ modulo
+$2\pi$, and hence
+$y_{k_0+l}\in(\varphi-\delta,\varphi-\delta+(l+1)\varepsilon]\subseteq[\varphi-\delta,\varphi+\delta]$
+for $0\le l<m$.  Now $y_k\equiv\arg\gamma_{M,kh}$, and $kh\le(k_1+m)h\le2M$
+for $k\le k_0+m-1$.  So the $m$ distinct numbers $\gamma_{M,kh}$,
+$k_0\le k<k_0+m$, lie in the sector.
+\end{proof}
+
+\begin{proposition}[Hypothesis (H) fails]\label{prop:Hfails}
+Let $\varphi\in\R$, $0<\delta<\frac\pi2$, $R>2$, $C\ge1$ and $0<c<1$.
+In each item below, $S\in\mathbb Z[x]$ has degree $D\ge1$ and at most $s$
+nonzero coefficients, and more than $Cs$ Gaussian integers $\alpha$ satisfy
+$|\alpha|\ge R$ and $|\arg\alpha-\varphi|\le\delta$ together with the displayed
+inequality.
+\begin{enumerate}
+\item (Degree.)  $s=2$, $S=x^N-\rho^N$ with $\rho=5^M$ and $N=2\rho^2+1$, and
+$|S(\alpha)|<D|\alpha|^{D-\lceil cs\rceil}$.  So (H) fails with constants $C$
+and $c$.
+\item (Degree, without the factor $D$.)  $s=2$, $S=x^N-\rho^N$ with $\rho=5^M$
+and suitable $N$, and $|S(\alpha)|<|\alpha|^{D-\lceil cs\rceil}$.
+\item (Cluster at a nonreal point.)  If $c<\frac12$: $s=2t+1$ and
+$S=(x^2-2ax+a^2+b^2)^t$ with $a+ib\in\mathbb Z[i]$ and $t\ge2$, so that
+$D=2t\le s(s+1)/2$, and $|S(\alpha)|<|\alpha|^{D-\lceil cs\rceil}$.
+\item (Cluster at a real point.)  If $k\pi\in[\varphi-\delta,\varphi+\delta]$ for
+some integer $k$: $s=t+1$ and $S=(x-(-1)^k\rho)^t$ with $\rho\in\mathbb Z$ and
+$t\ge2$, so that $D=t\le s(s+1)/2$, and $|S(\alpha)|<|\alpha|^{D-\lceil cs\rceil}$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+1.  Fix $L$ with $\lfloor\delta L/\pi\rfloor>2C$, and take $M\ge M_0$
+(Lemma~\ref{lem:normcircle}) with $\rho=5^M\ge R$.  The lemma gives more than
+$2C=Cs$ numbers $\alpha=\gamma_{M,j}$ in the sector, all with $|\alpha|=\rho\ge R$.
+Since $c<1$ we have $\lceil2c\rceil\le2$, so
+\[
+  |S(\alpha)|\le|\alpha|^N+\rho^N=2\rho^2\,\rho^{N-2}<N\rho^{N-2}
+  \le D|\alpha|^{D-\lceil cs\rceil}.
+\]
+
+2.  Take $L$, $M$ and the same numbers $\gamma_{M,j}$ as in item~1.  By
+Dirichlet's theorem, for $Q=\lceil2\pi M\rho^2\rceil+1$ there are integers
+$1\le N\le Q$ and $p$ with $|N\psi-2\pi p|<2\pi/Q$.  For every
+$0\le j\le2M$ the number $\theta=(j-M)(N\psi-2\pi p)$ is congruent to
+$N\arg\gamma_{M,j}$ modulo $2\pi$, and $|\theta|<2\pi M/Q<\rho^{-2}$.  Hence
+\[
+  |\gamma_{M,j}^N-\rho^N|=\rho^N|e^{i\theta}-1|\le\rho^N|\theta|<\rho^{N-2}
+  \le|\gamma_{M,j}|^{N-\lceil cs\rceil}.
+\]
+
+3.  Fix an integer $t\ge2$ with $t>2/(1-2c)$, and put $e=1-2c-2/t\in(0,1)$ and
+$u=\lceil c(2t+1)\rceil$.  Then $u<2ct+c+1<2ct+2$, so
+$D-u>2t-2ct-2=t(1+e)\ge0$.  For $T\ge1$ let $w=a+ib$ be a Gaussian integer
+nearest to $Te^{i\varphi}$.  Put $\rho=|w|\ge T-1$ and $r_0=(\rho/2)^e/7$.  As
+$T\to\infty$ we have $|\arg w-\varphi|\le\arcsin(1/(\sqrt2T))\to0$,
+$r_0\to\infty$ and $r_0/\rho\to0$.  So for large $T$ we may assume
+$|\arg w-\varphi|\le\delta/2$, $r_0/\rho\le\sin(\delta/2)$, $\rho\ge2R$,
+$r_0\ge3$ and $r_0^2>C(2t+1)$.  The polynomial $S=((x-w)(x-\bar w))^t$ has integer
+coefficients, degree $2t$ and at most $2t+1$ nonzero coefficients.
+
+Let $\alpha\in\mathbb Z[i]$ with $|\alpha-w|\le r_0$.  Then $r_0\le\rho/2$ gives
+$|\alpha|\ge\rho/2\ge R$.  The shift of the argument is at most
+$\arcsin(r_0/\rho)\le\delta/2$, so $\alpha$ lies in the sector.  Also
+$|\alpha-\bar w|\le r_0+2\rho\le3\rho$, and $3\rho r_0<(\rho/2)^{1+e}$, so
+\[
+  |S(\alpha)|\le(3\rho r_0)^t<(\rho/2)^{t(1+e)}\le(\rho/2)^{D-u}\le|\alpha|^{D-u},
+\]
+using $\rho/2\ge1$ and $D-u>t(1+e)$.  The square $\{w+k+il:|k|,|l|\le q\}$
+with $q=\lfloor r_0/\sqrt2\rfloor$ lies in the disc and contains
+$(2q+1)^2\ge(\sqrt2r_0-1)^2\ge r_0^2>Cs$ Gaussian integers, since $r_0\ge3$.
+
+4.  The map $\alpha\mapsto-\alpha$, with $S(x)\mapsto S(-x)$, preserves the
+number of terms, the degree and $|S(\alpha)|$, and moves the sector by $\pi$.  So
+we may assume $k$ even, i.e.\ that the sector contains the direction $0$, and
+take $\varphi\in[-\delta,\delta]$.  The map $\alpha\mapsto\bar\alpha$ preserves
+$|S(\alpha)|$ for real $S$, so we may take $\varphi\ge0$; then
+$[0,\delta]\subseteq[\varphi-\delta,\varphi+\delta]$.  Fix an integer $t\ge2$ with
+$t>2/(1-c)$, and put $e=1-c-2/t\in(0,1)$ and $u=\lceil c(t+1)\rceil<ct+2$.  Then
+$D-u=t-u>te>0$.  Let $\rho$ be a large integer, $r_0=(\rho/2)^e/2$, and
+$S=(x-\rho)^t$.  For large $\rho$ we have $r_0\le\rho\sin\delta$, $r_0\le\rho/2$,
+$\rho\ge2R$ and $r_0^2>2C(t+1)$.  Let $\alpha\in\mathbb Z[i]$ with
+$|\alpha-\rho|\le r_0$ and $\operatorname{Im}\alpha\ge0$.  Then
+$|\alpha|\ge\rho/2\ge R$ and $0\le\arg\alpha\le\arcsin(r_0/\rho)\le\delta$, and
+\[
+  |S(\alpha)|\le r_0^t<(\rho/2)^{te}\le(\rho/2)^{D-u}\le|\alpha|^{D-u}.
+\]
+With $q=\lfloor r_0/\sqrt2\rfloor$ the points $\rho+k+il$, $|k|\le q$,
+$0\le l\le q$, are $(2q+1)(q+1)\ge(q+1)^2>r_0^2/2>C(t+1)=Cs$ such $\alpha$.
+\end{proof}
+
+So (H) holds for no constants, and Proposition~\ref{prop:skeletonreduction}
+has a hypothesis that is never satisfied.  Its proof uses (H) only for the
+skeleton of a block, however, and the degree of a block is bounded by its
+mass.  For $R>2$ put $\ell_R=\log R/\log(R/2)>1$.  We say that \emph{(H) holds
+with constants $C$ and $c$ below the degree cap} if the defining property of
+(H) holds for every $s\ge1$ and every $S\in\mathbb Z[x]$ with at most $s$
+nonzero coefficients and degree $1\le D\le\ell_Rs(s+1)/2$.
+
+\begin{proposition}[The Diophantine condition below the degree cap]\label{prop:skeletoncap}
+Proposition~\ref{prop:skeletonreduction} remains true if (H) is replaced by
+(H) below the degree cap.
+\end{proposition}
+
+\begin{proof}
+Let $m^*$, $t$ and $s=t+1+m^*$ be as in the proof of
+Proposition~\ref{prop:skeletonreduction}, and let $B$ be a block of $F$, of degree $d$.
+The skeleton $S$ has degree $d$.  By Corollary~\ref{cor:gaussskeleton},
+$d\le\Lambda(F)/\log(R/2)$.  By the maximality of $m^*$,
+$\Lambda(F)<\frac12(m^*+1)(m^*+2)\log R$.  Since $s\ge m^*+1$, this gives
+\[
+  d\ <\ \ell_R\,\frac{(m^*+1)(m^*+2)}2\ \le\ \ell_R\,\frac{s(s+1)}2 .
+\]
+So $S$ is one of the polynomials for which the capped hypothesis is assumed,
+and the rest of the proof is unchanged.
+\end{proof}
+
+Items~1 and~2 of Proposition~\ref{prop:Hfails} need $D>2\rho^2$ at $s=2$,
+so the cap excludes them.  The rounding example before this subsection also
+has $s=2$ and unbounded $D$.  Below the cap it only shows that $C$ must be of order
+$\delta/c$ when $c\le\frac12$, and item~3 supersedes it.  Items~3 and~4 are
+not excluded by the cap.  In both, $S$ vanishes to order $t$ at one point $w$,
+and every Gaussian integer within a positive power of $\rho$ of $w$ is a
+near-zero.  At a nonreal $w$ this takes $2t+1$ terms, and the conjugate factor
+$|\alpha-\bar w|\approx2|\operatorname{Im}w|$ costs a power of $\rho$ per unit of
+multiplicity; at a real $w$ it takes $t+1$ terms and there is no conjugate factor.
+This is where the thresholds $\frac12$ and $1$ come from.  Such clusters
+among the $\alpha_j$ are covered by Theorem~\ref{thm:thingauss} only when
+$r^3$ is at most about $\rho$, since a cluster of radius $r$ holds up to
+about $r^2$ Gaussian integers in an angle of about $r/\rho$.  So the skeleton route can only give the
+$K^2\log R$ bound when two conditions hold.  First, the sector satisfies
+$0<\varphi-\delta<\varphi+\delta<\pi$.  Second, (H) holds below the cap with some
+$c\in[\frac12,1)$.  The count of parameters after
+Proposition~\ref{prop:skeletonreduction} is consistent with this restricted
+hypothesis for every $c>\frac12$.  A Siegel-lemma count also fits it: $s$
+coefficients of sizes $\rho^{O(s)}$ can place about $s/(4c)$ generic points
+to precision $\rho^{-cs}$.  We do not know a proof in any range of $c$.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
