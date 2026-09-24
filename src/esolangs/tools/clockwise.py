@@ -24,6 +24,16 @@ _CLOCKWISE_LEVEL = 8
 # around, the seven ``.`` on the way back, and the corner that turns down.
 _CLOCKWISE_GADGET = 9
 
+# Where a node's seven reads go: down its column, on the parent's turn
+# gadget, or on an excursion of its own -- three rows, and both legs reading,
+# four out and three back.  The column an excursion drops out of has to stay
+# clear on the way out, which makes seven the narrowest run that holds seven.
+_PLAIN, _HOISTED, _EXCURSED = 0, 1, 2
+_CLOCKWISE_EXCURSION = 3
+_CLOCKWISE_REACH = 7
+_CLOCKWISE_OUT = 4
+_CLOCKWISE_OWN = (_CLOCKWISE_LEVEL, 1, _CLOCKWISE_EXCURSION)
+
 
 def clockwise(truth_table: str, width: int | None = None) -> str:
     """Build a Clockwise program computing the given truth table.
@@ -45,18 +55,18 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     above it, so leaves finish on different rows.
 
     Reads laid down a column cost seven rows; laid along a row they cost
-    only columns, and the turn gadget already walks a row.  So a node whose
-    one-branch has nine columns of gap spends them on a wider gadget and
-    reads its child's seven bits on the way back, leaving the child its
-    ``?`` alone.  That pays where siblings stack and their rows add.
+    only columns.  So a node whose one-branch has nine columns of gap widens
+    its turn gadget and reads the child's bits on the way back, and its
+    zero-branch drops past the gadget to run the same C the other way up,
+    three rows rather than eight.  Both want room, and the second wants it
+    where the first has already left the row it turns on clear.
 
     A node can send its one-branch to its own column or one column left and
     *stack* the subtrees (one column per level, doubling the height).  Wide
     default tables alternate the two per level, so width and height are each
     O(sqrt(T)) and the rectangle O(T); explicit widths stack the shallowest
     levels first.  A constant subtree narrows the ring but keeps its seven
-    reads per level and cannot narrow past the hoist (seven free columns for
-    the root's reads) unless asked.
+    reads per level and cannot narrow past the hoist unless asked.
     """
     n = _validate_truth_table(truth_table)
     alternating = width is None and n > 4
@@ -65,12 +75,14 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     def stacks(bit: int, stacked: int) -> bool:
         """Whether this level composes its children vertically.
 
-        Alternating from the bottom -- the last two levels and the root
-        flat -- beats every other schedule searched to ``n == 14``.
+        Alternating from the bottom, last three levels flat: the exhaustive
+        mask sweep's optimum at ``n == 10`` and within 0.7% at 9 and 11.  The
+        tail is three, not the two an excursion-free tree wanted, because the
+        third flat level is what buys the seven columns one reaches across.
         """
         if not alternating:
             return bit < stacked
-        return 0 < bit <= n - 3 and (n - bit) % 2 == 1
+        return bit <= n - 3 and (n - bit) % 2 == 0
 
     def constant(bit: int, combo: int) -> bool:
         """Whether every row this subtree covers agrees.
@@ -94,62 +106,73 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
             return False
         return leafy(bit + 1, combo << 1) and leafy(bit + 1, (combo << 1) | 1)
 
-    def gap(bit: int, combo: int, stacked: int) -> int:
-        """Return the columns between this node's spine and its one-branch."""
-        if stacks(bit, stacked) or paired(bit, combo, stacked):
-            return 1
-        return max(2, shape(bit + 1, combo << 1, stacked, hoisted=False)[0])
+    shapes: dict[tuple[int, int, int, int], tuple[int, int]] = {}
+    plans: dict[tuple[int, int, int, int], tuple[int, int, int]] = {}
 
-    shapes: dict[tuple[int, int, int, bool], tuple[int, int]] = {}
-    hoists: dict[tuple[int, int, int, bool], bool] = {}
-
-    def shape(bit: int, combo: int, stacked: int, *, hoisted: bool) -> tuple[int, int]:
+    def shape(bit: int, combo: int, stacked: int, mode: int) -> tuple[int, int]:
         """Report the columns and rows this subtree needs, spine on the right.
 
         A leaf is one column, padded to its skipped rows so siblings share a
         row.  Stacked: one more column than the one-branch, rows of both.
-        ``hoisted`` means the parent's turn gadget already read this node's
-        seven bits, so the node is its ``?`` alone rather than eight rows.
+        ``_HOISTED`` is the parent's gadget carrying this node's reads, one
+        row; ``_EXCURSED`` is its own run, three rows and a spine one left.
         """
-        key = (bit, combo, stacked, hoisted)
+        key = (bit, combo, stacked, mode)
         if key not in shapes:
             if leafy(bit, combo):
                 shapes[key] = (1, _CLOCKWISE_LEVEL * (n - bit) + _CLOCKWISE_LEAF)
                 return shapes[key]
-            own = 1 if hoisted else _CLOCKWISE_LEVEL
+            own = _CLOCKWISE_OWN[mode]
+            tight = stacks(bit, stacked) or paired(bit, combo, stacked)
             best: tuple[int, int] | None = None
-            choice = False
-            for hoist_one in (False, True):
-                step = gap(bit, combo, stacked)
-                # A hoisted child's own turn gadget shares the row this
-                # node's left leg runs along, so it has to sit past the
-                # corner that leg turns at -- a whole gadget to the left.
-                if hoist_one and (
-                    leafy(bit + 1, (combo << 1) | 1)
-                    or gap(bit + 1, (combo << 1) | 1, stacked) < _CLOCKWISE_GADGET
-                ):
+            plan = (_PLAIN, _PLAIN, 1)
+            for hoist_one in (_PLAIN, _HOISTED):
+                if hoist_one and leafy(bit + 1, (combo << 1) | 1):
                     continue
-                one = shape(bit + 1, (combo << 1) | 1, stacked, hoisted=hoist_one)
-                zero = shape(bit + 1, combo << 1, stacked, hoisted=False)
-                # The read run overhangs the one-branch by a gadget's width.
-                wide = max(one[0], _CLOCKWISE_GADGET) if hoist_one else one[0]
-                if stacks(bit, stacked):
-                    cand = (
-                        max(3, wide + 1, zero[0]),
-                        own + one[1] + zero[1],
-                    )
-                else:
-                    # A pair guards itself, so the one-branch needs no gap.
-                    cand = (
-                        step + max(1, wide - 1) + 1,
-                        own + max(one[1], zero[1]),
-                    )
-                if best is None or cand[0] * cand[1] < best[0] * best[1]:
-                    best, choice = cand, hoist_one
+                one = shape(bit + 1, (combo << 1) | 1, stacked, hoist_one)
+                # A hoisted child's own gadget shares the row this node's
+                # left leg runs along, so it sits a gadget further left.
+                one_key = (bit + 1, (combo << 1) | 1, stacked, hoist_one)
+                if hoist_one and plans[one_key][2] < _CLOCKWISE_GADGET:
+                    continue
+                for zero_mode in (_PLAIN, _EXCURSED):
+                    # An excursion runs over rows the one-branch has
+                    # finished with, which a leaf has none of.
+                    if zero_mode == _EXCURSED and leafy(bit + 1, combo << 1):
+                        continue
+                    zero = shape(bit + 1, combo << 1, stacked, zero_mode)
+                    step = 1 if tight else max(2, zero[0])
+                    # The read run overhangs the one-branch by a gadget's width.
+                    wide = max(one[0], _CLOCKWISE_GADGET) if hoist_one else one[0]
+                    if stacks(bit, stacked):
+                        cand = (
+                            max(3, wide + 1, zero[0]),
+                            own + one[1] + zero[1],
+                        )
+                    else:
+                        # A pair guards itself, so the one-branch needs no gap.
+                        cand = (
+                            step + max(1, wide - 1) + 1,
+                            own + max(one[1], zero[1]),
+                        )
+                    if mode == _EXCURSED:
+                        # The run out doubles as the row this node's own
+                        # left leg turns on, so that corner has to clear it.
+                        if step < _CLOCKWISE_REACH - 1:
+                            continue
+                        cand = (max(cand[0] + 1, _CLOCKWISE_REACH), cand[1])
+                    if best is None or cand[0] * cand[1] < best[0] * best[1]:
+                        best, plan = cand, (hoist_one, zero_mode, step)
             if best is None:
-                raise AssertionError("no shape; hoist_one false always fits")
+                if mode != _EXCURSED:
+                    raise AssertionError("no shape; the plain pair always fits")
+                # Nothing fits: price the excursion out off the plain route,
+                # which the caller always has.  A constant instead would be
+                # large enough at one arity and cheap at the next.
+                flat = shape(bit, combo, stacked, _PLAIN)
+                best = (flat[0] + _CLOCKWISE_REACH, flat[1] * 2)
             shapes[key] = best
-            hoists[key] = choice
+            plans[key] = plan
         return shapes[key]
 
     def spine(stacked: int) -> int:
@@ -157,7 +180,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
 
         Column 0 is the ring's; the hoist trades seven columns for seven rows.
         """
-        root = shape(0, 0, stacked, hoisted=True)[0]
+        root = shape(0, 0, stacked, _HOISTED)[0]
         if 2 ** (n + 1) >= 8 and (width is None or width >= 9):
             root = max(root, 8)
         return root
@@ -172,10 +195,10 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
                 break
 
     root = spine(stacked)
-    hoist = root >= 8
+    hoist = _HOISTED if root >= 8 else _PLAIN
     # Spend the hoist's slack on the root's displacement, so the gap lands
     # where the zero-branch already sets row lengths.
-    base = shape(0, 0, stacked, hoisted=hoist)[0]
+    base = shape(0, 0, stacked, hoist)[0]
     root = max(root, base)
     slack = root - base
 
@@ -222,13 +245,14 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         combo: int,
         drop: int = 2,
         *,
-        hoisted: bool = False,
+        mode: int = _PLAIN,
     ) -> None:
         """Lay the subtree for ``combo`` at ``bit``, spine head at ``(x, y)``.
 
         ``drop`` is 0 for the one-branch of a pair, which exits two rows up.
-        ``hoisted`` means the reads are already on the row above, so ``y`` is
-        the ``?``'s own row rather than the first of seven ``.``.
+        Any ``mode`` but ``_PLAIN`` means the reads are already behind the
+        pointer, so ``y`` is the ``?``'s own row rather than the first of
+        seven ``.``.
         """
         if leafy(bit, combo):
             # Folded: the skipped levels still spend seven ``.`` (Clockwise
@@ -240,22 +264,20 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
                 place((x, y + _CLOCKWISE_LEVEL * level + 7), "S")
             leaf(x, y + _CLOCKWISE_LEVEL * (n - bit), combo << (n - bit), drop)
             return
-        if bit == 0 and hoisted:
+        if bit == 0 and mode == _HOISTED:
             # The seven reads sit on row 0, left of the corner ``R``; the
             # node's ``?`` is all that is left of its spine.
             for i in range(7):
                 place((x - 7 + i, 0), ".")
-        elif not hoisted:
+        elif mode == _PLAIN:
             for i in range(7):
                 place((x, y + i), ".")
-        turn = y if hoisted else y + 7
+        turn = y if mode != _PLAIN else y + 7
         place((x, turn), "?")
-        lift = hoists[(bit, combo, stacked, hoisted)]
-        one = shape(bit + 1, (combo << 1) | 1, stacked, hoisted=lift)
-        zero = shape(bit + 1, combo << 1, stacked, hoisted=False)
+        lift, dive, step = plans[(bit, combo, stacked, mode)]
+        one = shape(bit + 1, (combo << 1) | 1, stacked, lift)
         # Stacked: one column, zero-branch below; flat: past the span, shared rows.
         pair = paired(bit, combo, stacked)
-        step = 1 if stacks(bit, stacked) or pair else max(2, zero[0])
         xn = x - step - (slack if bit == 0 else 0)
         # b=1: '?' turns the pointer aside, then three R's turn it down; the
         # corner's 'S', crossed twice, hands the child an even accumulator.
@@ -276,12 +298,28 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
             place((xn - 1, turn), "R")
             place((xn - 1, turn - 1), "R")
             place((xn, turn - 1), "R")
-        build(bit + 1, xn, turn + 1, (combo << 1) | 1, 0 if pair else 2, hoisted=lift)
+        build(bit + 1, xn, turn + 1, (combo << 1) | 1, 0 if pair else 2, mode=lift)
         below = one[1] if stacks(bit, stacked) else 0
+        if dive == _EXCURSED:
+            # b=0: fall a row past the one-branch -- which leaves this
+            # node's own turn row clear -- then the same C the other way up,
+            # reading on both legs and dropping down the column kept clear.
+            back = x - _CLOCKWISE_REACH + 1
+            head = turn + below + 1
+            place((x, head + 1), "R")
+            place((back, head + 1), "R")
+            place((back, head), "R")
+            for i in range(_CLOCKWISE_OUT):
+                place((back + 1 + i, head + 1), ".")
+            for i in range(7 - _CLOCKWISE_OUT):
+                place((back + 1 + i, head), ".")
+            place((x - 1, head), "R")
+            build(bit + 1, x - 1, head + 2, combo << 1, mode=dive)
+            return
         # b=0: fall down this column, past the one-branch when it stacks
         build(bit + 1, x, turn + 1 + below, combo << 1)
 
-    build(0, root, 2 if hoist else 1, 0, 2, hoisted=hoist)
+    build(0, root, 2 if hoist else 1, 0, 2, mode=hoist)
 
     for x, y in exits:
         # Drop a passing path to zero so it does not turn on a leaf's exit.
