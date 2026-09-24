@@ -232,11 +232,15 @@ step; an answer lands in the paper it extends, and the row leaves.
   when read counts vary is open.  First step: search small programs for a
   cursor carrying first-essential residuals at two levels.
 
-- **Every row at other roots.**  `thm:everyrow` proves `b_k >= L - k + 1`
-  for monic multiples of `(x-2)**L` only.  Generalize: the per-row bound for
-  `(x-r)**L`, `r > 1` (the certificate `r_Z(D - x d/dx)` at `x = r` weights
-  `r**-s`; `lem:holeint`'s substitution changes), and then for general root
-  multisets in the rows where `eq:order` is not sharp.
+- **Every row at other roots.**  For `r >= 2` the per-row bound is
+  generalized ([coefficient-mass](proofs/coefficient-mass.tex)
+  `thm:everyrowr`: `b_k >= max((r-1)**n, n r (r-1)**n/((r-1)**n + 1))`,
+  `n = L-k+1`, and the one-hole bound `B_r(n)` for `r >= 5/2`); the last two
+  rows are exact (`cor:tworowsr`), the last row for every `r > 1`
+  (`cor:lastrowr`), and `thm:tailgen`/`cor:ordergen` extend `thm:tail` and
+  `eq:order` to all roots above 1.  Open: the rows `1 < k < L` for
+  `1 < r < 2` (only `(r-1)**L` is proved), general root multisets, and the
+  conjecture `V_r(L,k) = beta_r(L-k+1)` (rows equal the top row).
 
 - **Brainfuck behaviour count.**  Recorded in commit `9f81099` when the
   Factor constant work was cut: a drawing (word over `><+-`) of `C`
