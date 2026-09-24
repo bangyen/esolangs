@@ -61,12 +61,13 @@ _UNFOLDED_TREE_ROUTE = frozenset({"Container"})
 
 #: Lookup rows with no tree route that the fold discriminator cannot see:
 #: their *lookup* route is what shrinks a degenerate table, so they fold like a
-#: tree would.  Eval is one linear lookup at every arity and NoComment switches
-#: between two lookups at four inputs.  Named rather than derived because the
+#: tree would.  Eval is one linear lookup at every arity, NoComment switches
+#: between two lookups at four inputs, and Suffolk's sweep shortens with every
+#: input ``essential_inputs`` drops.  Named rather than derived because the
 #: proxy is structural and this pair is its known blind spot; a third such row
 #: has to be added here, which is the point -- the equality below then fails
 #: until the prose and this set agree.
-_FOLDS_WITHOUT_TREE = frozenset({"Eval", "NoComment"})
+_FOLDS_WITHOUT_TREE = frozenset({"Eval", "NoComment", "Suffolk"})
 
 _LOOKUP_SCHEMES = frozenset({"finite lookup", "parameterized lookup", "linear lookup"})
 

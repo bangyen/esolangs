@@ -407,7 +407,7 @@ class TestSuffolk:
         for n in (8, 9, 10):
             table = "".join(str((i * 73 + i.bit_count()) & 1) for i in range(2**n))
             sizes.append(len(boolean.suffolk(table)))
-        assert sizes == [15_205, 24_291, 40_749]
+        assert sizes == [2211, 3224, 5087]
         assert sizes[2] < 2 * sizes[1]
 
     @pytest.mark.parametrize(
@@ -444,36 +444,41 @@ class TestSuffolk:
         for table in ("00", "11"):
             assert boolean.suffolk(table).count(",") == 1  # n == 1
 
-    def test_dense_tables_evaluate_the_complement(self) -> None:
-        """A table with more ones than zeros is evaluated from its zero rows.
+    def test_size_tracks_steps_rather_than_ones(self) -> None:
+        """Cost is one op per *step* of a half-table, not per one-row.
 
-        Cost is one minterm block per evaluated row, so before this the
-        length rose monotonically with the ones-count.  Now it peaks at half
-        and falls again -- the signature of picking whichever row-set is
-        smaller -- which is what this pins.
+        The countdown sweep emits an op only where consecutive rows differ,
+        counting the drop off the end of each half, so the ones-count does
+        not price a table: the step profile fixes the length exactly, and
+        one one and seven ones land in different groups only because their
+        steps fall in different halves.  This replaces a pin on the retired
+        minterm route, whose cost rose with the evaluated row-set instead.
 
         **Every table here depends on all three inputs**, which the prefix
         family ``1^k 0^(8-k)`` does not: ``11110000`` ignores two of them,
-        and since dependency reduction (10) shipped it is the *cheapest*
-        table of the seven rather than the dearest, so the peak-at-half
-        signature reads as broken when it is only being measured through a
-        second optimization.  Holding the arity fixed isolates the
-        complement, which is what this test is about.
+        so dependency reduction rather than the sweep would be measured.
         """
         tables = (
             "10000000",  # 1 one
-            "10010000",  # 2
-            "11100000",  # 3
-            "11101000",  # 4
-            "11111000",  # 5
-            "11111001",  # 6
-            "11111110",  # 7
+            "10010000",  # 2 ones
+            "11100000",  # 3 ones
+            "11101000",  # 4 ones
+            "11111000",  # 5 ones
+            "11111001",  # 6 ones
+            "11111110",  # 7 ones
         )
-        lengths = [len(boolean.suffolk(table)) for table in tables]
-        assert lengths[3] == max(lengths)  # four ones is the worst case
-        assert lengths[6] < lengths[3]  # seven ones is cheaper than four
-        # and roughly as cheap as its one-one mirror image
-        assert abs(lengths[6] - lengths[0]) < lengths[0] // 4
+        groups: dict[tuple[int, ...], set[int]] = {}
+        for table in tables:
+            half = len(table) // 2
+            profile = tuple(
+                sum(a != b for a, b in zip(part, f"{part[1:]}0", strict=True))
+                for part in (table[:half], table[half:])
+            )
+            groups.setdefault(profile, set()).add(len(boolean.suffolk(table)))
+        assert sorted(groups) == [(1, 0), (1, 1), (1, 3), (3, 0)]
+        assert all(len(sizes) == 1 for sizes in groups.values())  # profile fixes it
+        assert min(groups[(1, 0)]) < min(groups[(3, 0)])  # more steps cost more
+        assert min(groups[(1, 1)]) < min(groups[(1, 3)])
 
     @pytest.mark.parametrize(
         "table",
