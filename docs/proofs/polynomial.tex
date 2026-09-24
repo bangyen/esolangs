@@ -1423,6 +1423,9 @@ addition that encodes both successor codes (effective $2,2$), the latter for hal
 states.  No tree state can see the end of the input (Lemma~\ref{lem:trieband}(a)), so no
 state pays for it at leading order, and the dispatched states, which pay the dispatch
 increments, are $o(S)$.
+Remark~\ref{rem:floor} shows why rearranging these blocks does not lower $g$, and by
+Corollary~\ref{cor:symm} these programs, which are neither even nor odd, are already
+subject to the lower constant $4$.
 \end{itemize}
 Charging the forced real roots together with the input pairs would help, but the
 multisection proof of~\cite[Corollary~5.3]{coefficient-mass} needs $P=R(x^2)$ with
@@ -1451,9 +1454,148 @@ So every source for the table of item~1 of Proposition~\ref{prop:bracket} that i
 neither even nor odd has length at least $(4-o(1))\log_{10}2\cdot T^2/n$, twice
 the bound there.  An even or odd source has, with every root $\rho$, also the root
 $-\rho$; its decoded program therefore contains the instruction $(-a,b)$ with every
-register instruction $(a,b)$, $a\ne0$.  Whether such symmetric sources can be
-optimal is what separates the lower constant $2$ from $4$.
+register instruction $(a,b)$, $a\ne0$.  Lemma~\ref{lem:symruns} restricts such sources further: their additions and
+subtractions change the register only right after reads, in the run of the read, and
+Corollary~\ref{cor:symm} gives the constant $4$ to every source with a run of nonzero sum.
+Whether even or odd sources can be optimal is what separates the lower constant $2$
+from $4$.
 \end{remark}
+
+\begin{lemma}[Symmetric runs]\label{lem:symruns}
+Let $f$ be an even or odd source.  For a prime $p$ and $1\le b\le6$ let $R_{p,b}$ be the
+list of decoded instructions $[a,b]$ of $p$ (roots $a\pm p^bi$), with multiplicity, in the
+interpreter's order of increasing $a$, and let $R_p=R_{p,1}R_{p,2}\cdots R_{p,6}$.
+\begin{enumerate}
+\item For every $a\ne0$, $[a,b]$ and $[-a,b]$ occur in $R_{p,b}$ equally often.
+\item $R_p$ is a contiguous part of the program without control instructions, and every
+execution that reaches an instruction of $R_p$ has entered $R_p$ at its first instruction
+and runs through all of $R_p$ before the next control instruction.
+\item Whenever $R_p$ runs, the additions of $R_{p,1}$ change the register by $0$ in total
+(an output among them prints the register minus $\sum_{a>0}a$), and so do the
+subtractions of $R_{p,2}$ if $R_{p,2}$ contains no input; if it does, the register after
+$R_{p,2}$ is the last value read minus the sum of the positive $a$ in $R_{p,2}$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+1.  As $f(-x)=\pm f(x)$, the map $\rho\mapsto-\rho$ permutes the roots of $f$ preserving
+multiplicities.  It sends the conjugate pair $a\pm p^bi$ of $[a,b]$ to the pair
+$-a\pm p^bi$ of $[-a,b]$; whether a pair is recognized depends only on $p^b$.
+
+2.  Recognized roots are sorted by the prime, then the imaginary part, then the real
+part.  So the real roots of $p$, which are the control instructions of $p$, come first,
+then $R_{p,1},\dots,R_{p,6}$, then everything of larger primes.  Execution starts at the
+first instruction, moves by one, and jumps only to the instruction after a control
+instruction (the partner of a bracket); none of these lies inside $R_p$ except its first
+instruction.  Inside $R_p$ there is no control instruction, so a run that enters it
+continues to its end.
+
+3.  By 1 the operands of the additions of $R_{p,1}$ sum to $0$, and by 2 they are all
+executed, in increasing order, with at most an output (at $a=0$) between the negative and
+the positive ones.  The same holds for $R_{p,2}$ without input.  With an input $[0,2]$
+(repeated $m$ times, $m$ reads) the subtractions before it are overwritten, and those after
+it are the $[a,2]$ with $a>0$.
+\end{proof}
+
+\begin{corollary}[Uncancelled runs]\label{cor:symm}
+Let $f$ be a source for the table of item~1 of Proposition~\ref{prop:bracket}.  If for
+some prime $p$ the operands of the additions $[a,1]$ of $p$ have a nonzero sum, or $p$
+has no input $[0,2]$ and the operands of its subtractions $[a,2]$ have a nonzero sum,
+then
+\[
+  |f|\ \ge\ \bigl(4-o(1)\bigr)\log_{10}2\cdot\frac{T^2}n .
+\]
+\end{corollary}
+
+\begin{proof}
+By Lemma~\ref{lem:symruns}, parts 1 and 3, $f$ is neither even nor odd, and
+Remark~\ref{rem:parity} applies.
+\end{proof}
+
+With one prime per instruction, as in the encoder of Section~\ref{sec:upper}, every
+addition $\mathord{+}\!=a$, $a\ne0$, is such a run by itself; so for that table every
+source built as in Section~\ref{sec:upper} needs twice the lower bound of
+Proposition~\ref{prop:bracket}.
+The mass constant $2$ can only be approached by even or odd sources, and by
+Lemma~\ref{lem:symruns} these change the register additively only right after a read,
+inside the run of that read: between two reads they route with tests and with runs of
+multiplications, floor divisions, remainders and powers, whose roots have exponent at
+least $3$.  In particular they have no increments with which to dispatch, as the programs
+of Propositions~\ref{prop:dfaprog} and~\ref{prop:embprog} do.
+
+The next lemma is the reason why the construction pays an opener of exponent $4$ at half
+of its states.
+
+\begin{lemma}[One instruction after a read]\label{lem:onestep}
+Let $[a,b]$, $a\ne0$, be a register instruction, and let $v_y$ be the register after it
+is executed on $48+y$, $y\in\{0,1\}$.  Then $v_0$ and $v_1$ do not have strictly opposite
+signs.  Consequently, if neither is $0$, every test takes the same branch on $v_0$ and on
+$v_1$.
+\end{lemma}
+
+\begin{proof}
+For $b=1,2$ the values are consecutive integers.  For $b=3$ both have the sign of $a$.
+For $b=4$, $\lfloor(48+y)/a\rfloor$ is at least $0$ if $a>0$ and at most $-1$ if $a<0$.
+For $b=5$ the remainder lies in $[0,a)$ if $a>0$ and in $(a,0]$ if $a<0$.  For $b=6$ both
+values are positive (reals if $a<0$).  The tests ($\text{if}$ or $\text{while}$ with
+$>0$, $<0$, $=0$) depend only on the sign.
+\end{proof}
+
+After a read the register is $48$ or $49$, so every test agrees on the two runs until
+the first instruction $[a,b]$ with $a\ne0$; by Lemma~\ref{lem:onestep}, if that is the only one before
+the runs reach different cursors, they part at a test at which one of them has the value
+$0$.  A test that fires on $0$ is $\text{if}=0$ or $\text{while}=0$, of exponents $4$ and
+$8$.
+
+\begin{remark}[The profile of per-state blocks]\label{rem:floor}
+The programs of Proposition~\ref{prop:embprog} give every state one input, one register
+instruction, one opener and one closing bracket, and every state is entered through its
+own opener, which fires.  Two features of this shape are forced, and the local
+alternatives to them all have a larger profile than the $\frac{325}8$ of
+Lemma~\ref{lem:effprofile}.
+\begin{itemize}
+\item \emph{Openers.}  At a state of $F$ the two runs part after one register
+instruction, so by the paragraph above one of its two successors is entered through an
+opener that fires on $0$, of exponent at least $4$.  These are $|F|$ openers, and
+$|F|\le S/2$ is about $S/2$ for the automata of Lemma~\ref{lem:trieband}.  Avoiding them
+costs a second register instruction at each state of $F$: with $\mathord{+}\!=1$ between
+the two successor blocks, both entered by $\text{if}>0$, the profile is
+$\frac{89}2=44.5$; with $\mathord{+}\!=-49$, $\text{if}<0$ and $\mathord{+}\!=1$,
+$\text{if}>0$ it is $\frac{197}4=49.25$.
+\item \emph{Additions.}  Every embedded state has its only predecessor pair in $F$, so
+$2|F|\le S$ and at least half of the states lie outside $F$.  For the automata of
+Lemma~\ref{lem:trieband} with the parameters of Proposition~\ref{prop:bracket}, which do
+not depend on the table, the program is determined by the numbering of the $D$
+dispatched states and by the operands $a_q$ of the states outside $F$.  Counting the
+$2^T$ tables against these data, all but a vanishing fraction of the tables have
+$\sum_q\log_2(2|a_q|+1)\ge T-O(S\log n+D\log D)=(1-o(1))T$.  There are
+$(\frac12+o(1))S$ states outside $F$ and $S=(1+o(1))T/n$, so their operands have
+$\log|a_q|\ge(2-o(1))\,n\log2$ on average: effective exponent $2$ (replacing exponents by
+their average does not increase $\Phi_{\rm e}$, since the sum of the $k$ largest
+exponents can only decrease).  Deep
+states recording $\theta n$ bits with $\theta<1$ make the operands smaller and the
+automaton larger: the profile per $(T/n)^2$ is then at least
+$(\frac{293}8+4\theta)/\theta^2>\frac{325}8$.
+\item \emph{Other shapes.}  Dispatching every state, with its two successors at adjacent
+codes so that an addition of size $O(S)$ suffices, costs an increment per group:
+$\frac{421}8$.  Chains, with one embedded successor and a code for the other, cost
+$\frac{103}2$.  A fraction $h$ of states whose $0$-successor is reached by falling
+through to a later $\text{if}=0$ block saves those openers, but by the same count the
+automaton then has at least $(1+h-o(1))T/n$ states, and the profile per $(T/n)^2$
+exceeds $\frac{325}8$ for every $h>0$.  The
+even version of the construction, with $\text{input},\mathord{-}\!=a$ in one run as
+Lemma~\ref{lem:symruns} requires, has $\Lambda(f)=\Lambda(E)$ with profile $\frac{237}4$
+in the exponents of the roots of $E$.
+\end{itemize}
+A first-essential state needs an input pair of exponent $2$ and a register pair (by the
+paragraph above), and two inputs without a control instruction between them run one
+after the other, so that the first bit is overwritten before any test sees it.  A state with one register pair of exponent $1$, an opener
+$\text{if}>0$ and a closing bracket would give $\frac{63}2$; the difference
+$\frac{325}8-\frac{63}2=\frac{73}8$ comes from the two forced features above.  Lowering
+the upper constant therefore needs programs of another kind, not a rearrangement of these
+blocks.
+\end{remark}
+
 
 
 \paragraph{Reproducibility.}
