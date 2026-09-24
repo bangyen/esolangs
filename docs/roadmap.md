@@ -345,31 +345,55 @@ step; an answer lands in the paper it extends, and the row leaves.
   behaviours (the tapes a drawing reaches) or `(1+lambda)**C`,
   `lambda = 6.388` (the words free of the five cancelling adjacencies).  The
   floor rises as far as that count falls; the ceiling falls only if control
-  flow carries more than `log2(1+sqrt 2) = 1.27` bits a character.  First
-  step: enumerate distinct tape behaviours of every reduced word at small
-  `C` and fit the growth rate between the two bases.  Within the drawing
-  model the digit floor is `1/(2 log 10) = 0.217`, not yet met by
-  `lem:draw`'s digit count.
+  flow carries more than `log2(1+sqrt 2) = 1.27` bits a character.  Within
+  the drawing model the digit floor is `1/(2 log 10) = 0.217`, not yet met
+  by `lem:draw`'s digit count.  Small-`C` enumeration does not settle it:
+  over reduced words to `C = 10` (wrapping cells, left-clipped pointer,
+  0/1 input bytes), drawings grow at 2.420 by `C = 16`, as `prop:drawing`
+  says, but loops overtake them near `C = 11` and the I/O-only and
+  full-prefix behaviour ratios are still climbing (4.09 and 4.52 at
+  `C = 10`), so any fitted base is a lower estimate.  DEAD: quotienting
+  loop-free I/O-free segments by their tape effect -- the transfer matrix
+  over `.,[]` gives base 7.371 against 7.388, a floor of 0.1507; the
+  count lives in short segments between separators.  The gain must come
+  from bracket equivalences (dead, idempotent or state-returning loops).
 
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further
   `2**46076` down, and the length and alphabet cuts are dead
   ([limitations](limitations.md), Malbolge).  The live route is a dependence
-  cut: every table-computing program's answer rests on at most 24,434 cells
-  (the largest `K` with `C(59049, K) * 8**K < 2**131072`).  First step:
-  measure, over the shipped constructions and random walked-code programs,
-  how many cells an answer depends on (flip-test each cell, as cell 58,967
-  was), and look for a structural reason the dependence set is bounded.
-  Between the shipped constructions and 17 the least unreachable arity is
-  unknown in both directions.
+  cut over the 24,434-cell threshold (the largest `K` with
+  `C(59049, K) * 8**K < 2**131072`), but NOT per program: `'o'*59046 +
+  '/<v'` computes the one-input identity and every one of its cells flips
+  it, so some program for a table can depend on all 59,049.  With full
+  stores a cell's first access is always a read, so dependent cells are
+  touched cells; in the shipped constructions every sampled touched cell
+  is dependent (3,416 at `n = 4`, 9,308 at 10, 16,650 at 11, at least
+  19,007 at 12).  What survives is a cut over ONE program per table -- a
+  normal form that strips nop runs and padding -- or a count of
+  descriptions rather than of flip-sensitive cells.  Between the shipped
+  constructions and 17 the least unreachable arity is unknown in both
+  directions.
 
 - **Intermediate rows of `b_k`.**  `b_k(F) >= L - k + 1` for every monic
   multiple of `(x-2)**L` is proved for `k = 1, 2` (`prop:neartwo`),
   `k = L` (`thm:order`) and `k <= L/8` once `L >= 13`
   (`prop:quadratic`); the rows `max(2, L/8) < k <= L - 1` are open, with
   exact LP sweeps as the only evidence ([coefficient-mass](proofs/coefficient-mass.tex)).
-  First step: extract the LP duals at the tightest exempt sets and see
-  whether they share a closed form in `k`, as the `k <= 2` certificates do.
+  The dual is `max |q(0)| / sum_{s not in S} |q(s)| 2**-s` over `q` of
+  degree `< L` vanishing on the exempt distances `S`.  Its tightest `S` is
+  the bottom `k - 1` positions, each costing one degree of `q`, so the
+  limit of row `k` at `L` is row 1 at `L - k + 1`; rows `L - 1` and `L` are
+  asymptotically sharp, the rest carry growing slack, and tight duals are
+  `prod_{z in Z} (1 - s/z)` with integer `Z` containing `S`.  PROVED from
+  `sum_{s>=1} |prod_{z=2}^{n} (1 - s/z)| 2**-s = 1/n`:
+  `b_k >= (L-k+1) / prod_{u in S} max(1, D/u - 1)`, so the row holds
+  whenever the top `k - 1` coefficients all lie in the lower half of the
+  degrees.  OPEN: an exempt distance `u < D/2` from the top, where the good
+  certificates put their free zeros near `2k`, the mean of the weight
+  `C(s-1, k-1) 2**-s`; `Z = {2..n}`, first-free, odd, and shifted-past-`S`
+  choices all fail there.  Floating LPs (HiGHS) report values below the
+  bound from `D = 30`; check large-`D` optima with exact rational duals.
 
 - **Polynomial's sharp constant.**  The language bound is proved by the
   slack certificate; the sharp form -- a coefficient of at least
@@ -380,5 +404,14 @@ step; an answer lands in the paper it extends, and the row leaves.
   every `U`; (b) it is asymptotic in `D`, and the finite-`D` statement
   reduces to the skew-Schur inequality
   `s_{((d-c+1)**(c-1))} s_{lambda_B/mu} >= (prod rho)**(d-c+2) s_{lambda_A/mu}`,
-  measured but proved only at `c = 2`.  First step: (b) at `c = 3`, where the
-  skew shapes are small enough to expand by Jacobi--Trudi by hand.
+  measured but proved only at `c = 2` in the doc.  The inequality holds for
+  every `c` and positive real `rho`: complementing `mu` in the `b**c` box
+  (`b = n - c + 1`, `k = d - c + 1`) gives `s_{lambda_B/mu} = e_c s_beta`
+  and `s_{lambda_A/mu} = sum s_eta` over horizontal `k`-strips `beta/eta`,
+  while dual Pieri for `h_k(1/rho) s_beta` sums over all `gamma` in `Z**c`
+  interlacing `beta`, so `LHS - RHS = e_c**(k+1) sum_{gamma_c < 0}
+  s_{gamma + (k+1)**c}`, Schur-positive, and empty exactly in the interior.
+  Checked exactly against the determinants in 942 cases (`c = 2, 3, 4`).
+  Left for (b): write it into [polynomial](proofs/polynomial.md) and check
+  the Cauchy--Binet step and cyclic-shift reduction that carry it to every
+  `C`; (a) is untouched.
