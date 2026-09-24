@@ -766,6 +766,34 @@ def test_already_multiline_programs_are_left_alone() -> None:
     assert wrap_program(program, "decleq", 4) == program
 
 
+@pytest.mark.parametrize(
+    ("program", "token"),
+    [
+        ("+=30.", "=30"),
+        ("+:x.", ":x"),
+        ("+>~3.", ">~3"),
+        ("+!12.", "!12"),
+        ("+?7.", "?7"),
+        ("+$4.", "$4"),
+        ("+{2}.", "{2"),
+    ],
+)
+def test_dimensional_keeps_every_operand_with_its_command(
+    program: str, token: str
+) -> None:
+    """A break inside any of these changes what the program does.
+
+    ``_number`` takes an optional ``~`` and a digit run for ``<``, ``>``,
+    ``$``, ``{``, ``?`` and ``!``; ``=`` takes exactly two hex digits and
+    ``:`` exactly one character.  The pattern named only ``[<>]\\d+``, so
+    all seven split -- but generated programs use just ``=``, and the one
+    committed example is wrapped where nothing lands mid-token, so only
+    ``=30`` ever failed and the other six sat latent.  Width 1 forces a
+    break at every boundary the pattern allows.
+    """
+    assert token in wrap_program(program, "dimensional", 1).split("\n")
+
+
 def test_wrap_tokens_refuses_a_pattern_that_does_not_tile() -> None:
     """A pattern that drops characters returns the program unwrapped.
 
