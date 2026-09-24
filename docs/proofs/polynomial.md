@@ -338,100 +338,90 @@ The companion to `polynomial.tex` Section "Explicit constants"
 Put `C_P(n)` = max over tables of min `|f|`, and normalise by
 `T**2/n = T**2/log2 T`. The bracket is
 
-    log10(2)/2    = 0.150  <=  liminf C_P n/T**2  <=  211/2 log10(2) = 31.76
-    2 log10(2)    = 0.602  <=  limsup C_P n/T**2  <=  422 log10(2)   = 127.03
+    2 log10(2) = 0.602  <=  liminf C_P n/T**2  <=  525/8 log10(2)   = 19.76
+    2 log10(2) = 0.602  <=  limsup C_P n/T**2  <=  5821/32 log10(2) = 54.76
 
-For `T**2/ln T` units, multiply by `ln 2`: `0.104 .. 22.0` and
-`0.417 .. 88.1`.
+For `T**2/ln T` units, multiply by `ln 2`: `0.417 .. 13.7` and
+`0.417 .. 38.0`.
 
 Per `n`, put `j1 = min{j : 2**j + j >= n}`, `nu = n / 2**j1` (in
 `(1/2, 1 + j1/2**j1]`), `n = 2**(j1-1) + j1 - 1 + s` and `u = 2**-s`. Then the
-normalised size lies between `2 log10(2) nu**2` and
-`log10(2) nu**2 (422 + 924u + 494u**2)`. The lower side carries relative
-error `O(log n / n)` and the upper side `O(1/n)`. The two sides differ by
-the factor `(422 + 924u + 494u**2)/2`, which is 211 for most `n` and
-at most 503.75. So the order is settled and the constant is not.
+normalised size lies between `2 log10(2)` and
+`log10(2) min((525/2) nu**2 (1+u)**2, (9/4) f_j1 nu**2)`, the second term
+when `n >= (4/5) 2**j1`, with `f_j = 5821/72` (even `j`) or `1315/18`
+(odd). The lower side carries relative error `O(log n / n)`. The two sides
+differ by `525/16 = 32.8` at the liminf and `5821/64 = 91.0` at the limsup.
+So the order is settled and the constant is not.
 
 **Lower side: three links.**
 
-1. *Width, exact.* Reads consume the stream in order, so only the natural
-   variable order counts, and the table is chosen outright (no union bound
-   over `n!` orders). At level `n - j` the `2**(n-j)` blocks can be any
-   distinct first-essential strings. There are
-   `E_j = 2**(2**j) - 2**(2**(j-1)) - 2` of these, so
-   `N_n = max_j min(2**(n-j), E_j) = nu T/n (1 + o(1))` is attained.
-2. *Next read, `N*(k) <= min(K_in, L)` (`lem:nextread`, `thm:count`).* A
-   first-essential residual after `k` reads equals the function computed from
-   the cursor `c` of the `(k+1)`-st read, because that read erases the bit
-   still in the register. `c` must be the last read of its gap (a maximal run
-   of register instructions) and a real instruction must follow: otherwise
-   the straight line after `c` prints (a function of `y_1` alone) or reads
-   again (ignores `y_1`). Equal input roots sit inside one gap and equal real
-   roots inside one real run, so distinct residuals need distinct input
-   values and distinct real values: `K_in >= N_n` and `L >= N_n`. Sharp:
-   a mod-`(2**K - 1)` automaton compiled one read per state has
-   `N*(K) = K_in = 2**K - 1 > T/(6n) - 1` (`prop:sharp`).
-3. *Mass, exact per pair.* By multisection
+1. *Input count.* Either a maximal-width table (`lem:maximal-width`,
+   `N_n = nu T/n (1 + o(1))` first-essential residuals at one level, each
+   needing its own input value by the next-read count `thm:count`), or
+   counting (`prop:counting`): between reads a program is an automaton over
+   its read gaps (`lem:gapauto`: per gap a skip count `m <= n+1`, two
+   targets, an end-of-input label), the `z!` renumberings of one automaton
+   give the same table, so at most
+   `B_n(Z) = (Z+1)(Z+3)(3(n+1))**Z (Z+3)**(2Z) / Z!` tables have `<= Z` read
+   gaps, and some table needs more than `T/(n+4)` input values (`n >= 7`;
+   asymptotically `T/(n + log2 3e)`). Distinct read gaps have distinct last
+   input roots. So `K_n = max(N_n, ceil(T/(n+4)))` input values are forced.
+   Next-read is sharp: a mod-`(2**K - 1)` automaton compiled one read per
+   state has `N*(K) = K_in = 2**K - 1 > T/(6n) - 1` (`prop:sharp`).
+2. *Mass, exact per pair.* By multisection
    ([coefficient-mass](coefficient-mass.tex) Corollary 5.3)
    a multiple of `prod (x**2 + c_j**2)` has an even or odd part that is a
    multiple of `prod (y + c_j**2)` with the same leading coefficient, so each
-   pair is charged exactly as the real root `c**2`. The `j`-th prime power
-   with exponent `>= 2` is at least `(j+2)**2/4` (`lem:ppow`), so for every
-   `n >= 6`: `C_P(n) >= (2 K**2 ln K - (5/2) K (K+1)) / ln 10`.
+   pair is charged exactly as the real root `c**2`.
+3. *Prime powers.* The `j`-th prime power with exponent `>= 2` is at least
+   `(j+2)**2/4` (`lem:ppow`), so for every `n >= 7`:
+   `C_P(n) >= (2 K**2 ln K - (5/2) K (K+1)) / ln 10` with `K = K_n`.
 
-The real-root route (`L >= N_n` with mass `1/2`) is 4 times weaker. The
-older routing lemmas (`N* <= 3 + 6 m_route`, block incidence
-`m_route <= 2L - 2`, and `N* <= 3 K_in`) are superseded by the next-read
-count.
+The real-root route (`L >= N_n` with mass `1/2`) is 4 times weaker.
 
-**Upper side.** A chained block
-(`+=1; if; input; *=span or //=50; +=delta; endif`) has 10 roots. Their
-modulus exponents are `b = 1` five times, `b = 2` three times, and `b = 3`
-or `4` twice. Let `Phi = sum_i i b_(i)`, taken in sorted order.
+**Upper side.** Automaton programs (`prop:dfaprog`): a shared 17-instruction
+threshold decoder (`lem:decoder`) turns `-alpha_q (48+b) + D` into the next
+state's code, each state's `*=A` operand encoding both child codes; two
+states share one `+=2`, one firing on `if>0` and the other on `if==0`;
+states that can see end of input use `+=1; if==0` and output the parity of
+their operand. Per-state exponent profile gives
+`Phi = f(phi) S**2 + O(nS)` (`lem:profile`),
+`f(phi) = (4(7+phi)**2 - ((3+phi)**2 + (9+phi)**2 + (13+phi)**2)/4)/2`,
+`f(0) = 525/8` (old chained block: 105.5). Automata:
 
-* Then `Phi <= (311 S'**2 - (10S' - 2Y)**2)/2`, where `Y` counts the
-  equal-children (`//=`) blocks.
-* On the doubling levels the deficits obey `f_(k+1) >= 2f_k + Y_k`, so each
-  such block costs a state. Above the crossing level there are at most
-  `R_n` of them.
-* The maximum is at `S' = S_n` and `Y = R_n`, which gives
-  `Phi_n = (311 S_n**2 - (10 S_n - 2 R_n)**2)/2`.
-* The coefficients satisfy `|e_k| <= C(D,k) prod(top-k |rho|)`.
-  Rearrangement bounds `sum_i i log|rho|_(i)` by
-  `Phi log P + D sum log(1 + |a|/p**b)`.
-* Primes carry at most 3 instructions and `|a| <= 50 S_n + n + 60`, so the
-  correction is `O(S**2)`. Also `log P = n log 2 + O(1)`.
-* Hence `|f| <= (1 + O(1/n)) n log10(2) Phi_n`. Substituting
-  `S_n = (2 + 2u) q_j1` and `R_n = 2u q_j1` gives the closed form.
+* the residual DAG, read level by level: `S_n = 2 nu (1+u) T/n` states;
+* the stripped automaton (`lem:strip`): remove leading copies of a word `c`
+  of length `d` and switch to residual tuples past level `d`; with `d = 2`,
+  `(3/2) nu T/n` states when `n >= (4/5) 2**j1`, a fraction `2/3` or `1/3`
+  of them able to see end of input.
 
-**Where the gap sits** (at `u -> 0`):
-`211 = 1**2 (routing) x 4 (levels: (S/W)**2) x 105.5/2 (profile)`.
+Operands are `O(S**3)`, only the multiplications carry large ones, so the
+passage `Phi -> |f|` costs `1 + O(1/n)` as before. All constructions were
+compiled and run on every input for `n <= 11`, and round-tripped through
+source for `n <= 6`.
+
+**Where the gap sits.**
 
 * Routing is exact: one input value per first-essential residual, attained
   (`prop:sharp`).
-* The levels factor: one input root can serve first-essential residuals at
-  `n - Theta(log n)` levels (`rem:levels`), so summing `N*(k)` over levels
-  cannot be charged to distinct inputs. The minimum input count lies
-  between the widest level and the smallest automaton agreeing with the
-  table on `{0,1}**n`; the construction pays the full leveled DAG. SAT data
-  (n = 5): 9 inputs suffice against a leveled DAG of 21 states.
-* The profile factor: the input pairs give mass constant 2, the
-  construction pays up to 105.5 (random tables about 76). The rest is the
-  arithmetic register roots `a +- p**b i`, `a != 0`, and the real roots,
-  which the lower bound does not charge.
+* Levels, `(S/(T/n))**2` in `[1, 9/4]`: counting charges `T/n` inputs; the
+  DAG pays `T/n` at `nu -> 1/2` (sharp there) and `2T/n` near `nu = 1`,
+  where the stripped automaton pays `3/2 T/n` for every table. The true
+  worst-case minimum near `nu = 1` is in `[1, 3/2] T/n` (`rem:levels`,
+  `rem:levels-count`; SAT data at n = 5: 9 inputs against a DAG of 21).
+* Profile, `f/2` from `525/16` to `5821/144`: the input pairs give mass
+  constant 2; the arithmetic register roots `a +- p**b i`, `a != 0`, and the
+  real roots are not charged. Joint charging is not available from the
+  current certificates: multisection needs `P = R(x**2)`, which the real
+  roots break.
 
-**Exact ingredients:** the width, the per-pair mass (multisection), and the
-logarithms to first order.
+The order-statistic bound for free positions (`coefficient-mass.tex`
+Lemma 3.1) is already sharp (Corollary 3.6), so the mass step alone cannot
+narrow the bracket. Open:
 
-**The roadmap's sharp form is already in hand.** Its gap (a) is
-`coefficient-mass.tex` Lemma 3.1, the all-root form, which holds for every
-free set `U`, at every degree, with no `o(1)`. It is the mass `1/2`,
-already exact, so it cannot narrow the bracket. The open questions are
-combinatorial:
-
-* a mass bound for the roots `a +- p**b i`;
-* a construction sharing input states across levels (or a multi-level
-  lower bound, which counting automata cannot give).
+* a mass bound for the roots `a +- p**b i` (roadmap, complex roots);
+* the minimum automaton size near `nu = 1`, in `[1, 3/2] T/n`;
+* a profile below `525/8` outside block dispatch.
 
 **Measured** (uncapped `_polynomial_dag`, one seeded random table per n):
 
@@ -442,6 +432,10 @@ combinatorial:
 | 10 | 16,389,823  | 156          | 8% under               |
 | 11 | 53,746,303  | 141          | 7% under               |
 | 12 | 170,483,303 | 122          | 7% under               |
+
+The table measures the old chained-block DAG; the new constructions are
+0.62 of its length at n = 10 (d = 2) and longer below n = 9, where the
+decoders dominate.
 
 * The constant is still falling at these sizes, because
   `log P / log T = 1.19` at n = 12.
