@@ -256,7 +256,10 @@ step; an answer lands in the paper it extends, and the row leaves.
   `c K**2 log R` is false over the reals; at Gaussian roots
   `(pi/delta - o(1)) K log R` holds unconditionally (`cor:widegauss`), and
   `K**2` there reduces to excluding integer multiples whose large zeros are
-  nearly equidistributed in angle (`cor:widedisc`).  Open: that Gaussian
+  nearly equidistributed in angle (`cor:widedisc`), and also follows from a
+  Diophantine property (H) of sparse integer polynomials with many
+  near-zeros in `Z[i]` (`lem:skeleton`, `prop:skeletonreduction`; (H)
+  fails for `c <= 1/2`, open otherwise).  Open: that Gaussian
   `K**2` question and the cross terms `K_s K_t log t` between annuli, which follow
   (`cor:conjcross`) from the conjectured rows at real roots of both signs,
   `b_k >= |f_D| prod_{i >= 2k-1} (rho_i - 1)` (`eq:bothrows`; certified
