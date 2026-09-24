@@ -124,8 +124,9 @@ roots): the worst placement of the $u$ largest
 coefficients is the one in which they escape to the bottom, and the infimum
 depends on the surviving roots alone.  At $(2,3,5,7)$ with $u=1$ it is
 $1704/31$ against the bound $48$, and at $(2,\ldots,7)$ with $u=2$ it is
-$114840/259$ against $360$; neither is attained
-(Proposition~\ref{prop:values}).
+$114840/259$ against $360$; neither is attained,
+and no infimum of $b_{u+1}$ over monic multiples ever is
+(Theorem~\ref{thm:noattain}).
 
 \emph{Roots below $2$.}  The restriction $r_1\ge2$ cannot be dropped once
 $u\ge1$, already at $L=2$ (Proposition~\ref{prop:subtwo}).  Keeping the
@@ -1129,11 +1130,112 @@ the roots $(3,3,4,4)$ with $k=3$ the leading functions
 $d(\tfrac13)^d,(\tfrac13)^d,d(\tfrac14)^d$ have the combination
 $\tfrac{2187}{16384}d(\tfrac13)^d-\tfrac{15309}{8192}(\tfrac13)^d+d(\tfrac14)^d$
 vanishing at $d=6,7,8$.  This is why Proposition~\ref{prop:farrep} is proved
-through Lemma~\ref{lem:infinity} rather than by estimating minors.  When $E$ has bounded diameter an
-expansion of the confluent alternants gives
-$\eta=O(1/\min E)$ if the cut after $\psi_k$ falls inside a multiplicity
-block, and a geometric rate if it falls between blocks; for arbitrary $E$ no
-rate is proved, and none is needed.
+through Lemma~\ref{lem:infinity} rather than by estimating minors.
+
+Lemma~\ref{lem:infinity} is qualitative, but its proof carries a rate,
+because in $\mathcal C$ a ratio that tends to $0$ does so at least like
+$1/x$: if $R(x)w^x\to0$ with $R\in\R(x)$, then either $w<1$, and
+$|R(x)|w^x\le C_\theta\theta^x$ for every $\theta\in(w,1)$, or $w=1$ and
+$\deg R<0$, so $|R(x)|\le C/x$.  Call $w$ the \emph{base} of $Rw^x$; it is
+well defined, since $R_1w_1^x=R_2w_2^x$ forces $w_1=w_2$, and bases multiply.
+
+\begin{lemma}[Descartes at infinity with a rate]\label{lem:infinityrate}
+Let $\varphi_1,\ldots,\varphi_M\in\mathcal C$ satisfy
+$\varphi_{j+1}/\varphi_j\to0$, let $1\le k<M$, and let $w\le1$ be the base
+of $\varphi_{k+1}/\varphi_k$.  Put $\omega(n)=1/n$ if $w=1$, and
+$\omega(n)=\theta^n$ for a fixed $\theta\in(w,1)$ if $w<1$.  Then there are
+$x_0$ and $C$ such that for every $n\ge x_0$ and every $c\in\R^M$ for which
+$f=\sum_jc_j\varphi_j$ has $k$ distinct zeros in $[n,\infty)$,
+\[
+  \max_{j\le k}|c_j|\le C\,\omega(n)\max_{j>k}|c_j| .
+\]
+\end{lemma}
+
+\begin{proof}
+Choose $x_0$ beyond every real zero and pole of the finitely many members of
+$\mathcal C$ that occur below (the $\varphi_j$, their ratios, and the
+families built from them in at most $k$ steps), so that all are smooth and
+of constant sign on $[x_0,\infty)$.  Two bounds on $[x_0,\infty)$ are used.
+First, $|\varphi_j/\varphi_1|\le C$ for every $j$, as these ratios tend to
+$0$ or equal $1$.  Second, $|\varphi_j(x)/\varphi_1(x)|\le C\omega(x)$ for
+$j>k$: if $w=1$ this is the remark above, since the ratio tends to $0$; if
+$w<1$, write
+$\varphi_j/\varphi_1=(\varphi_j/\varphi_{k+1})(\varphi_{k+1}/\varphi_k)
+(\varphi_k/\varphi_1)$, where the outer factors are bounded and the middle
+one has base $w$.  As $\omega$ decreases, $\sup_{x\ge n}|\varphi_j/\varphi_1|
+\le C\omega(n)$ for $j>k$.
+
+Induct on $k$, for all such families at once.  Let $e_1<\cdots<e_k$ be zeros
+of $f$ in $[n,\infty)$.  If $k=1$, $f(e_1)=0$ gives
+$c_1=-\sum_{j\ge2}c_j\varphi_j(e_1)/\varphi_1(e_1)$, so
+$|c_1|\le(M-1)C\omega(n)\max_{j>1}|c_j|$.  If $k\ge2$, put
+$\chi_j=(\varphi_j/\varphi_1)'$ for $2\le j\le M$.  By the proof of
+Lemma~\ref{lem:infinity}, $\chi_j\in\mathcal C$ and
+$\chi_{j+1}/\chi_j\to0$.  The base of $\chi_{k+1}/\chi_k$ is that of
+$(\varphi_{k+1}/\varphi_1)/(\varphi_k/\varphi_1)=\varphi_{k+1}/\varphi_k$,
+namely $w$, because differentiation keeps the base: $(Rw^x)'=(R'+R\log w)w^x$.
+By Rolle's theorem $(f/\varphi_1)'=\sum_{j\ge2}c_j\chi_j$ has a zero in each
+$(e_i,e_{i+1})$, so $k-1$ distinct zeros in $[n,\infty)$, and the induction
+hypothesis for $\chi_2,\ldots,\chi_M$, whose cut after its $(k-1)$-st member
+has base $w$ again, gives $\max_{2\le j\le k}|c_j|\le
+C\omega(n)\max_{j>k}|c_j|$.  Finally $f(e_1)=0$ gives
+\[
+  |c_1|\le\sum_{j=2}^{k}|c_j|\Bigl|\frac{\varphi_j(e_1)}{\varphi_1(e_1)}\Bigr|
+  +\sum_{j>k}|c_j|\Bigl|\frac{\varphi_j(e_1)}{\varphi_1(e_1)}\Bigr|
+  \le C'\omega(n)\max_{j>k}|c_j| .
+\]
+\end{proof}
+
+\begin{proposition}[The rate of far zeros]\label{prop:farrate}
+In the setting of Proposition~\ref{prop:farrep}, let $E$ range over
+$k$-sets of positive integers and put $n=\min E$.  There are $n_0$ and $C$,
+depending on the roots and $k$, such that for $n\ge n_0$ one has
+$\alpha_{J^*}(E)\ne0$ and
+\[
+  \eta(E)=\max_{J\ne J^*}\Bigl|\frac{\alpha_J(E)}{\alpha_{J^*}(E)}\Bigr|
+  \le\frac Cn .
+\]
+If the cut after $\psi_k$ falls between blocks, so that $\psi_k=z_q^d$ and
+$\psi_{k+1}=d^{m_{q+1}-1}z_{q+1}^d$, then $\eta(E)\le C_\theta\theta^n$ for
+every $\theta\in(z_{q+1}/z_q,1)$.
+\end{proposition}
+
+\begin{proof}
+The $\psi_j$ lie in $\mathcal C$ with $\psi_{j+1}/\psi_j\to0$ (proof of
+Proposition~\ref{prop:farrep}(a)), and $\psi_{k+1}/\psi_k$ is $1/x$ when
+the cut falls inside a block and has base $z_{q+1}/z_q<1$ when it falls
+between blocks.  Let $x_0,C$ be as in Lemma~\ref{lem:infinityrate}, with
+$\omega(n)\le C''/n$ in either case, and $n\ge x_0$.  A combination of
+$\psi_1,\ldots,\psi_k$ vanishing on $E$ has, by the lemma with $c_j=0$ for
+$j>k$, all coefficients $0$; so $\alpha_{J^*}(E)\ne0$.  For $l>k$ let
+$T_{jl}$ be the entries of the matrix $T$ of the proof of
+Proposition~\ref{prop:farrep}(b); then
+$\psi_l-\sum_{j\le k}T_{jl}\psi_j$ vanishes on $E$, and the lemma gives
+$|T_{jl}|\le C\omega(n)$.  By Cramer's rule $\alpha_J/\alpha_{J^*}$ is the
+minor of $T$ on the columns $J$; the columns in $J\cap J^*$ are unit vectors,
+so up to sign the minor is the determinant of the $s\times s$ block of $T$ on
+the rows $J^*\setminus J$ and the columns $J\setminus J^*$, $s\ge1$, which is
+at most $s!(C\omega(n))^s\le k!\,C\omega(n)$ once $C\omega(n)\le1$.
+\end{proof}
+
+\paragraph{The rate in part (c).}\label{rem:farratec}
+The same bound gives a rate in Proposition~\ref{prop:farrep}(c):
+$\Tail(v^{(\nu)}-v^\infty)=O(\omega(\min E_\nu))$.  Indeed $v^{(\nu)}$
+vanishes on $E_\nu$ and its coefficient vector is bounded (proof of (c)), so
+its first $k$ coordinates are $O(\omega)$ by Lemma~\ref{lem:infinityrate};
+the others then solve the interpolation problem of $v^\infty$ at the $n$
+fixed points $\{0\}\cup X_0\cup Q$ in $\mathcal H_k$ with data moved by
+$O(\omega)$, and that problem has a fixed invertible matrix.  With $X_0$
+empty and $k=u$, this is the rate $\tau(E_\nu)\to\tau^*$ at which the
+escaping placement is approached from above.
+
+For distinct roots every cut falls between blocks, and the proposition gives
+the geometric rate with any $\theta>y_{k+1}/y_k$; the direct estimate of
+the minors (a Schur polynomial against a Vandermonde product) gives it with
+$\theta=y_{k+1}/y_k$ and an explicit constant.  At repeated roots the rate
+$1/n$ cannot be improved when the cut falls inside a block: for $k=1$ and
+$\psi_1=d^az^d$, $\psi_2=d^{a-1}z^d$ one has $\alpha_{\{2\}}/\alpha_{\{1\}}
+=1/e$ at $E=\{e\}$.
 
 \begin{theorem}[Necessity of the partial-sum criterion]\label{thm:converse}
 Let $2\le r_1\le\cdots\le r_L$, repetitions allowed, and $0\le u\le L-1$.  If
@@ -2019,6 +2121,41 @@ The proof of Lemma~\ref{lem:attainX}, with the changes listed in the proof
 of Proposition~\ref{prop:attainrep}.
 \end{proof}
 
+\begin{theorem}[No infimum is attained]\label{thm:noattain}
+Let $1<r_1\le\cdots\le r_L$, repetitions allowed, and $0\le u\le L-1$.  Every
+monic multiple $F$ of $P=\prod_i(x-r_i)$ has
+\[
+  b_{u+1}(F)>\frac1T=\inf_Qb_{u+1}(QP),
+\]
+with $T$ as in Theorem~\ref{thm:valuerep}.  In particular the infima of
+Propositions~\ref{prop:values} and~\ref{prop:valuesrep}, and the
+bound \eqref{eq:order} whenever it is the infimum, are not attained.
+\end{theorem}
+
+\begin{proof}
+Let $F$ have degree $D$ and let $X=X_F$ hold the distances $D-j$ of $u$
+positions $j<D$ carrying its $u$ largest nonleading magnitudes.  The identity
+behind \eqref{eq:weak} involves only $v_1,\ldots,v_D$: for a certificate $v$
+for $X$ on $\mathcal H_0$, $0=\sum_{j\le D}f_jv_{D-j}$ (first paragraph of
+the proof of Theorem~\ref{thm:converse}) gives
+\[
+  1\le b_{u+1}(F)\sum_{d=1}^{D}|v_d| .
+\]
+By Lemma~\ref{lem:attainXrep} with $k=0$, $\tau(X)$ is attained by a
+full certificate $v$.  It is a nonzero element of $\mathcal H_0$, so it has
+at most $L-1$ real zeros and $v_d\ne0$ for some $d>D$.  Hence
+$\sum_{d\le D}|v_d|<\Tail(v)=\tau(X)\le T$, and $b_{u+1}(F)>1/T$.  The last
+sentence holds because each of those infima is $1/T$
+(Theorems~\ref{thm:valuerep} and~\ref{thm:extremalrep}, and
+Corollary~\ref{cor:charrep}).
+\end{proof}
+
+The only input is that a certificate has infinite support while a multiple
+has finite degree.  So attainment is never the question; what remains is
+whether a finite placement already costs the full $\tau^*$, that is whether
+$T=\tau^*$ is a maximum, which for distinct roots is what the strict clause
+of Theorem~\ref{thm:lift} decides in Proposition~\ref{prop:values}.
+
 \begin{theorem}[The escaping placement is extremal]\label{thm:extremal}
 Let $2\le r_1<\cdots<r_L$ and $0\le u\le L-1$.  Then \eqref{eq:step} holds for
 every $0\le k<u$ and every set $X$ of $u-k$ positive integers.  Consequently
@@ -2279,7 +2416,8 @@ set $\{1,2,3,5\}$, of tail $\tfrac{31}{36720}$, covers every $\{3,x\}$ except
 $\{3,4\}$.  The full certificate on all six nodes with zero set
 $\{1,2,3,4,7\}$, of tail $\tfrac{119261}{193623120}$, covers $\{3,4\}$.
 
-Neither infimum is attained, because $\tau(X)<\tau^*$ for every $X$.  Each
+Neither infimum is attained (Theorem~\ref{thm:noattain}), and more:
+$\tau(X)<\tau^*$ for every $X$.  Each
 covering above either lifts with $k\ge1$ onto a padded zero set that is not
 consecutive, which is strict by Theorem~\ref{thm:lift}, or has tail below
 $\tau^*$ outright.  So every multiple $F$ has
@@ -2319,12 +2457,214 @@ so by \eqref{eq:dualpair} on $\mathcal H_1$, $\tau^*=\tfrac1{24}$ and
 $\tfrac2{27}$, and Theorem~\ref{thm:extremalrep} gives the values.
 \end{proof}
 
-\paragraph{What the limit does not give.}  Theorem~\ref{thm:extremalrep}
-needs only non-strict inequalities, which is why the coalescence limit
-suffices.  Whether these infima are attained would need the strict clause of
-Theorem~\ref{thm:lift} at repeated roots, which we have not carried over; an
-exact search finds, at both root sets, a certificate with tail below
-$\tau^*$ for every placement $X\subseteq\{1,\ldots,30\}$.
+\paragraph{Strict covering.}  Keep $2\le r_1\le\cdots\le r_L$, repetitions
+allowed, and the Hermite spaces $\mathcal H_k$; write $m=L-u$ and
+$B=1/|P_u(1)|$.  Two strict steps carry the strict clause of
+Theorem~\ref{thm:lift} to repeated roots.  The first is the deletion
+step of Theorem~2.2 with its margin kept through the coalescence limit.
+
+\begin{lemma}[Strict deletion at confluent nodes]\label{lem:deletestrict}
+In the setting of Lemma~\ref{lem:coalesce} let $y_c\le\tfrac12$, put
+$n=\dim\mathcal H$, and let $Z^+$ be a set of $n-1$ positive integers with
+$z=\max Z^+$ and $Z'=Z^+\setminus\{z\}$.  Let $v^+\in\mathcal H$ and
+$v^-\in\mathcal H_-$ be the full certificates with zero sets $Z^+$ and $Z'$,
+and $G\in\mathcal H$ the element with $G|_{\{0\}\cup Z'}=0$ and $G_z=1$.  If
+$Z^+\ne\{1,\ldots,n-1\}$, then
+\[
+  \Tail(v^+)\le\Tail(v^-)-|v^-_z|\sum_{1\le d<z}|G_d|<\Tail(v^-);
+\]
+if $Z^+=\{1,\ldots,n-1\}$, then $\Tail(v^+)=\tfrac{y_c}{1-y_c}\Tail(v^-)$.
+\end{lemma}
+
+\begin{proof}
+For $Z^+\ne\{1,\ldots,n-1\}$ the proof of Lemma~\ref{lem:confstrict}, at
+the perturbed nodes $N_\varepsilon$ of Lemma~\ref{lem:coalesce}, gives
+$\Tail(v^{+,\varepsilon})\le\Tail(F^{(\varepsilon)})-\mu_\varepsilon
+A_{G^{(\varepsilon)}}$, where $F^{(\varepsilon)}$ is the full certificate on
+$N^-_\varepsilon$ with zero set $Z'$.  Instead of bounding
+$\Tail(F^{(\varepsilon)})$ by a product, let $\varepsilon\to0$: by
+Lemma~\ref{lem:coalesce}, applied to $\mathcal H$ and to $\mathcal H_-$,
+$\Tail(v^{+,\varepsilon})\to\Tail(v^+)$ and
+$\Tail(F^{(\varepsilon)})\to\Tail(v^-)$, while
+$\mu_\varepsilon=|F^{(\varepsilon)}_z|\to|v^-_z|$ and the finite sums
+$A_{G^{(\varepsilon)}}$ tend to $\sum_{1\le d<z}|G_d|$.  That margin is
+positive exactly as in Lemma~\ref{lem:confstrict}: $v^-_z\ne0$ by the
+zero bound, and $G$ vanishes only on $\{0\}\cup Z'$ while $|Z'|=n-2<z-1$.
+For the consecutive set, Lemma~2.1 with repetitions (the paragraph after
+Lemma~\ref{lem:improve}) gives the two tails as $1/|Q(1)|$ for the monic
+polynomials $Q$ of the two multisets of roots, which differ by the factor
+$x-1/y_c$.
+\end{proof}
+
+The second step handles a placement at the first gap of a certificate's zero
+set, where the run chord is an equality at $r=2$.
+
+\begin{lemma}[The first gap]\label{lem:firstgap}
+Let $0\le k<L-1$, $n=\dim\mathcal H_{k+1}=L-k-1$, and let $F$ be a full
+certificate on $\mathcal H_{k+1}$ whose zero set $Z$ is not
+$\{1,\ldots,n-1\}$, with leading run $f$.  Then some certificate on
+$\mathcal H_k$ vanishing on $\{1,\ldots,f+1\}$ has tail less than
+$\Tail(F)$.
+\end{lemma}
+
+\begin{proof}
+Let $y=1/r_{k+1}\le\tfrac12$ be the node that $\mathcal H_k$ has in addition,
+and $\Pi_k(x)=\prod_{i>k}(1-x/r_i)$.  The elements of $\mathcal H_k$ are the
+sequences with generating function $N/\Pi_k$, $\deg N\le n$, and
+$\Pi_k=(1-yx)\Pi_{k+1}$.  With $F(x)=\sum_dF_dx^d$, as in the paragraph after
+Theorem~\ref{thm:extremalrep} put
+\[
+  v(x)=\frac{1-yxF(x)}{1-yx}\in\mathcal H_k,\qquad
+  v_0=1,\quad v_d=-\sum_{1\le j<d}F_jy^{d-j}\ (d\ge1).
+\]
+Since $F_1=\cdots=F_f=0$, $v$ vanishes on $\{1,\ldots,f+1\}$, and
+\[
+  \Tail(v)\le\sum_{j\ge1}|F_j|\sum_{d>j}y^{d-j}=\frac{y}{1-y}\Tail(F)
+  \le\Tail(F),
+\]
+the first inequality being strict as soon as the $F_j$, $j\ge1$, take both
+signs, since then some $v_d$ sums terms of both signs.  So
+$\Tail(v)<\Tail(F)$ unless $y=\tfrac12$ and $F_j$ has one sign $\sigma'$ for
+all $j\ge1$ with $F_j\ne0$; assume this.  Then $v_d$ has the sign
+$\sigma=-\sigma'$ for every $d\ge f+2$, as $F_{f+1}\ne0$.  As
+$Z\ne\{1,\ldots,n-1\}$, $f\le n-2$, so $h=x^{f+2}/\Pi_k$ lies in
+$\mathcal H_k$; it vanishes at $0,\ldots,f+1$, and
+$\sum_{d\ge0}h_d=1/\Pi_k(1)>0$.  We claim $|h_d|\le C|v_d|$ for $d\ge f+2$.
+Let $e\ge1$ be the multiplicity of $y$ among $r_{k+1},\ldots,r_L$; all
+nodes are at most $y$, so $|h_d|\le C(1+d)^{e-1}y^d$.  If $e=1$,
+$|v_d|\ge|F_{f+1}|y^{d-f-1}$.  If $e\ge2$, $y$ is the largest node of
+$\mathcal H_{k+1}$ with multiplicity $e-1$, and the coordinate $\omega$ of $F$
+on $d^{e-2}y^d$ is nonzero, for otherwise $F$ would lie in $\mathcal H_{k+2}$,
+of dimension $n-1$, with the $n-1$ zeros $Z$; so $|F_j|\ge c\,j^{e-2}y^j$ for
+large $j$, and $|v_d|=\sum_{j<d}|F_j|y^{d-j}\ge c'd^{e-1}y^d$ for large $d$.
+As $v_d\ne0$ for all $d\ge f+2$, the claim follows.  For $|t|<1/C$ every
+$v_d+th_d$, $d\ge f+2$, keeps the sign $\sigma$, so
+\[
+  \Tail(v+th)=\sigma\sum_{d\ge f+2}(v_d+th_d)
+  =\Tail(v)+\frac{t\sigma}{\Pi_k(1)} ,
+\]
+and $t=-\sigma/(2C)$ gives a certificate $v+th$ on $\mathcal H_k$, vanishing
+on $\{1,\ldots,f+1\}$, with tail below $\Tail(v)\le\Tail(F)$.
+\end{proof}
+
+\begin{theorem}[Strict covering at repeated roots]\label{thm:strictrep}
+Let $2\le r_1\le\cdots\le r_L$, repetitions allowed, and $1\le u\le L-1$.  If
+\eqref{eq:partial} fails, or $r_u>2$, then $\tau(X)<\tau^*$ for every set
+$X$ of $u$ positive integers.
+\end{theorem}
+
+\begin{proof}
+Let $x=\min X$.  Theorem~\ref{thm:extremalrep} chains
+$\tau(X)=\tau_0(X)\le\tau_1(\cdot)\le\cdots\le\tau_{u-1}(\{x\})$, each step
+deleting the largest remaining element, so it suffices to show
+$\tau_{u-1}(\{x\})<\tau_u(\varnothing)=\tau^*$.  Let $F$ be a full
+minimiser for $\tau^*$ on $\mathcal H_u$ (Proposition~\ref{prop:attainrep}),
+with zero set $Z^*$ of size $m-1$, $g=\max Z^*$ ($g=0$ if $m=1$) and leading
+run $f$.  If $Z^*=\{1,\ldots,m-1\}$ then $\tau^*=\Tail(F)=B$, which forces
+\eqref{eq:partial} (when it fails, Lemma~\ref{lem:improve} with
+repetitions gives $\tau^*<B$), and hence $r_u>2$.  Apply
+Lemma~\ref{lem:deletestrict} to $\mathcal H=\mathcal H_{u-1}$, whose largest
+node is $1/r_u$, and $\mathcal H_-=\mathcal H_u$.
+
+\emph{$x\in Z^*$ or $x>g$.}  Put $Z^+=Z^*\cup\{g+1\}$ in the first case and
+$Z^+=Z^*\cup\{x\}$ in the second.  The full certificate $v^+$ on
+$\mathcal H_{u-1}$ with zero set $Z^+$ vanishes at $x$, and
+$Z^+\setminus\{\max Z^+\}=Z^*$, so Lemma~\ref{lem:deletestrict} gives
+$\Tail(v^+)<\Tail(F)$: either $Z^+$ is not consecutive, or it is, and then
+$Z^*=\{1,\ldots,m-1\}$, $r_u>2$, and the factor is
+$1/(r_u-1)<1$.
+
+\emph{$x\notin Z^*$ and $x<g$, with $Z^*\cap(0,x)\ne\{1,\ldots,x-1\}$.}  Put
+$B_0=Z^*\cap(0,x)$ and $A=Z^*\cap(x,\infty)\ne\varnothing$.  By
+Proposition~\ref{prop:runchordrep} with $k=u-1$ and $g$ replaced by $x$,
+which is strict because $B_0\ne\{1,\ldots,x-1\}$,
+$\Tail(F)>\sum_j\lambda_j\Tail(F_j)+\mu\Tail(w)$, and every neighbour $F_j$
+is a certificate for $\varnothing$ on $\mathcal H_u$, so
+$\Tail(F_j)\ge\tau^*=\Tail(F)$.  Hence $\Tail(w)<\Tail(F)$, and $w$ vanishes
+at $x$.
+
+\emph{$x\notin Z^*$, $x<g$ and $Z^*\cap(0,x)=\{1,\ldots,x-1\}$.}  Then
+$x=f+1$ and $Z^*\ne\{1,\ldots,m-1\}$, and Lemma~\ref{lem:firstgap} with
+$k=u-1$ gives a certificate on $\mathcal H_{u-1}$ vanishing at $x$ with tail
+below $\Tail(F)$.
+\end{proof}
+
+When \eqref{eq:partial} holds and $r_u=2$ a placement can cost $\tau^*$
+exactly.  Put $Q_k=(x-2)^{u-k}P_u$; if $r_1=\cdots=r_u=2$ this is
+$\prod_{i>k}(x-r_i)$, and $|Q_k(1)|=|P_u(1)|$.
+
+\begin{theorem}[When a placement costs $\tau^*$]\label{thm:attainchar}
+Let $2\le r_1\le\cdots\le r_L$, repetitions allowed, $1\le u\le L-1$, and
+$P=\prod_i(x-r_i)$.  Some set $X$ of $u$ positive integers has
+$\tau(X)=\tau^*$ if and only if $r_u=2$ and
+\begin{equation}\label{eq:partialP}
+  |S_j(P)|\le|P(1)|\qquad(1\le j\le m-1),
+\end{equation}
+and then $X=\{m,m+1,\ldots,L-1\}$ is the only one.
+\end{theorem}
+
+\begin{proof}
+For a monic $R$ with roots above $1$, the proof of
+Theorem~\ref{thm:converse} gives
+$|S_j((x-2)R)|=|S_j(R)|+2|S_{j-1}(R)|$ for $1\le j\le\deg R$ and
+$|((x-2)R)(1)|=|R(1)|$.  So \eqref{eq:partialP} implies \eqref{eq:partial},
+and if $r_u>2$ or \eqref{eq:partial} fails, Theorem~\ref{thm:strictrep}
+leaves no such $X$.  Assume now $r_1=\cdots=r_u=2$ and \eqref{eq:partial};
+then $\tau^*=B$ (proof of Corollary~\ref{cor:charrep}), and every
+$\tau_k(X)\le B$ by the chain of Theorem~\ref{thm:extremalrep}.  Write
+$\mathcal A(R)$ as in the proof of Theorem~\ref{thm:converse}.  The same
+identity gives $\deg R\in\mathcal A((x-2)R)$, since
+$|S_{\deg R}((x-2)R)|=|R(1)|+2|S_{\deg R-1}(R)|$, and it puts $j,j+1$ in
+$\mathcal A((x-2)R)$ for $j\in\mathcal A(R)$; so
+$\mathcal A(Q_k)\supseteq\{m,\ldots,L-k-1\}$.  We show by descending
+induction on $k\le u$: for every set $X$ of $u-k$ positive integers,
+$\tau_k(X)=B$ if and only if $X=\{m,\ldots,L-k-1\}$ and
+\eqref{eq:partialP} holds with $Q_k$ in place of $P$.  At $k=u$ this is
+$\tau^*=B$ and \eqref{eq:partial}.  Let $k<u$.
+
+\emph{$X\subseteq\{1,\ldots,L-k-1\}$.}  If $X\ne\{m,\ldots,L-k-1\}$, some
+$j\in\{m,\ldots,L-k-1\}\subseteq\mathcal A(Q_k)$ lies outside $X$, as both
+sets have $u-k$ elements; if $X=\{m,\ldots,L-k-1\}$ and the condition fails
+for $Q_k$, some $j\le m-1$ lies in $\mathcal A(Q_k)\setminus X$.  Either
+way Lemma~\ref{lem:improve} with repetitions, for $Q_k$ and $X_0=X$,
+gives $\tau_k(X)<1/|Q_k(1)|=B$.  If $X=\{m,\ldots,L-k-1\}$ and the condition
+holds, put $W(y)=\widetilde Q_k(y)/(1-y)$: its coefficients are $w_0=1$,
+$w_d=S_d(Q_k)$, and $w_d=Q_k(1)$ for $d\ge L-k$, so $|w_d|\le|Q_k(1)|$ for
+every $d\ge1$ outside $X$.  Since $\widetilde Q_k$ divides $W$,
+$\sum_dw_dv_d=0$ for every $v\in\mathcal H_k$ (proof of
+Corollary~\ref{cor:charrep}), and for a certificate for $X$ this gives
+$1\le|Q_k(1)|\Tail(v)$.  So $\tau_k(X)\ge B$, hence $=B$.
+
+\emph{$\max X>L-k-1$.}  Put $X'=X\setminus\{\max X\}$.  By
+Theorem~\ref{thm:extremalrep}, $\tau_k(X)\le\tau_{k+1}(X')$, which by
+induction is below $B$ unless $X'=\{m,\ldots,L-k-2\}$.  In that case the
+consecutive full certificate $F$ on $\mathcal H_{k+1}$ with zero set
+$\{1,\ldots,L-k-2\}\supseteq X'$ has tail $1/|Q_{k+1}(1)|=B$ by Lemma~2.1, and
+$Z^+=\{1,\ldots,L-k-2\}\cup\{\max X\}$ is not consecutive, so
+Lemma~\ref{lem:deletestrict} gives a certificate for $X$ on $\mathcal H_k$
+with tail below $B$.  Such $X$ are not $\{m,\ldots,L-k-1\}$, as claimed.
+
+At $k=0$, $Q_0=P$ and the claim is the theorem.
+\end{proof}
+
+\begin{corollary}\label{cor:valuesrepstrict}
+At $(2,3,3,5)$ and $(2,3,3,3)$ with $u=1$, every placement has
+$\tau(\{x\})<\tau^*$, so every monic multiple has $b_2>24$, resp.\
+$b_2>\tfrac{27}2$, already because of its placement.
+\end{corollary}
+
+\begin{proof}
+\eqref{eq:partial} fails at both (partial sums $1,-10,29,-16$ and
+$1,-8,19,-8$), so Theorem~\ref{thm:strictrep} applies; the covering is
+\eqref{eq:weak}.
+\end{proof}
+
+At $(2,4,5)$ with $u=1$, by contrast, \eqref{eq:partialP} reads
+$|S_1(P)|=10\le12=|P(1)|$, and $\tau(\{2\})=\tau^*=\tfrac1{12}$; the
+infimum $12$ is still not attained, by Theorem~\ref{thm:noattain}.  The
+condition \eqref{eq:partialP} holds at $(2,3)$, $(2,6,6)$, $(2,7,8,9)$ and
+$(2,2,4,5)$ with $u=2$, and fails at $(2,3,4)$ and $(2,5,6,7)$, where
+\eqref{eq:partial} holds.
 
 In both cases the extremal series is the construction of
 Proposition~\ref{prop:partial} applied to $P_uM$ rather than $P_u$, and the
@@ -2737,6 +3077,10 @@ $r_1>1$, and Theorem~\ref{thm:twosidedsharp}, Corollary~\ref{cor:repairedsharp}
 and their repeated-root forms (Theorem~\ref{thm:twosidedsharprep},
 Corollary~\ref{cor:repairedsharprep}) say when they are attained.  The shift of Corollary~\ref{cor:shiftrun}
 also holds with its hypothesis at run ends (Corollary~\ref{cor:shiftend}).
+No infimum is attained (Theorem~\ref{thm:noattain}); at roots at least~$2$ a
+placement reaches $\tau^*$ exactly in the case of
+Theorem~\ref{thm:attainchar}, and Proposition~\ref{prop:farrate} gives
+the rate $O(1/\min E)$ of far zeros.
 
 \paragraph{Open questions.}
 \begin{itemize}
@@ -2746,18 +3090,6 @@ $(\tfrac{11}{10},3,5,7)$ the escaping placement is not extremal, so
 Proposition~\ref{prop:step} is unavailable.  For $u=1$,
 Proposition~\ref{prop:uoneall} reduces $T$ to finitely many placements; for
 $u\ge2$ computing $T$ remains a search.
-\item[(ii)] \emph{Attainment at repeated roots.}  At distinct roots the
-strict clause of Theorem~\ref{thm:lift} shows the infima of
-Proposition~\ref{prop:values} are not attained.  At repeated roots it is not
-carried over, so whether the infima of Proposition~\ref{prop:valuesrep} are
-attained is open, though an exact search finds a certificate with tail below
-$\tau^*$ for every placement inside $\{1,\ldots,30\}$.
-\item[(iii)] \emph{The rate of far zeros.}  Proposition~\ref{prop:farrep}
-gives $\eta\to0$ for every shape of $E$ but no rate.  The rate
-$O(1/\min E)$ is known at bounded diameter when the cut falls inside a
-multiplicity block, and $\eta$ stayed $\Theta(1/\min E)$ in every
-configuration computed, including gaps $\lfloor\sqrt n\rfloor$ and geometric
-spacing; a rate for arbitrary $E$ is not proved, and no result here needs one.
 \end{itemize}
 
 \paragraph{Relation to the literature.}  The bounds here concern coefficient
