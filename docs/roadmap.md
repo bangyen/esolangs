@@ -207,12 +207,12 @@ step; an answer lands in the paper it extends, and the row leaves.
   infimum exactly under `prop:subtwosharp`'s hypotheses; the two-sided bound
   `min(|P(1)|, |P_u(1)|)` of `cor:twosided` beats it when the exempt roots
   straddle 2, with its own criterion `thm:twosidedsharp`).  Repeated roots are CLOSED too (`thm:extremalrep`,
-  `thm:twosidedsharprep`, via the coalescence limit `lem:coalesce`).  Left,
-  none load-bearing: (i) below the cutoff with `u >= 2` the value `1/T` is a
-  search, and the escaping placement need not be extremal there (it fails
-  at `(11/10, 3, 5, 7)`, `u = 1`, where `prop:uoneall` still makes it
-  finite); (ii) the shift hypothesis in its run-end wording (0
-  violations in 550 instances).
+  `thm:twosidedsharprep`, via the coalescence limit `lem:coalesce`), and so
+  is the shift with its hypothesis at run ends (`cor:shiftend`, via the
+  three-point bound `lem:threepoint`).  Left, not load-bearing: below the
+  cutoff with `u >= 2` the value `1/T` is a search, and the escaping
+  placement need not be extremal there (it fails at `(11/10, 3, 5, 7)`,
+  `u = 1`, where `prop:uoneall` still makes it finite).
 
 - **Coefficient mass at complex roots.**  Every mass bound so far prescribes
   real roots; `cor:complex` allows a complex multiple `F` but not complex
