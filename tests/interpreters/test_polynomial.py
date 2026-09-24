@@ -499,12 +499,12 @@ class TestFactorRootsRejections:
         """``x**2 + 4`` is ``(x - 0)**2 + 2**2``, so it yields its pair."""
         assert _factor_roots((1, 0, 4)) == (_Root(0, 2), _Root(0, -2))
 
-    def test_a_pair_the_peels_miss_is_decoded_by_factor_list(self) -> None:
+    def test_a_pair_the_peels_miss_is_decoded_by_the_remainder_search(self) -> None:
         """A real part past the peel's bound still decodes, one stage later.
 
         ``_peel_instruction_quadratics`` only accepts a real part within
         ``_PEEL_MAX_REAL_PART``, so a wider one survives into the remainder
-        and is recovered by ``factor_list`` instead -- the path that makes
+        and is recovered by ``_remainder_roots`` instead -- the path that makes
         the peels pure head starts rather than the whole search.
         """
         from esolangs.interpreters.register_based.polynomial import (
@@ -525,7 +525,7 @@ class TestPeelQuadraticsFallback:
 
     The modular factor list is the whole search, so if sympy refuses it the
     function hands the coefficients back untouched and the caller's own
-    ``factor_list`` still sees everything.
+    ``_remainder_roots`` still sees everything.
     """
 
     def test_a_refused_factorization_returns_the_input(
@@ -906,12 +906,14 @@ class TestNttRecovery:
         pairs = pairs[: max((_NTT_MIN_DEGREE // 2) + 2, math.isqrt(wide) + 1)]
         coefficients = self._program([*pairs, (wide, 9)], [])
 
+        import esolangs.interpreters.register_based.polynomial as module
+
         def no_fallback(*_args, **_kwargs):
             raise AssertionError(
-                "generated-envelope factors must not reach factor_list"
+                "generated-envelope factors must not reach the remainder search"
             )
 
-        monkeypatch.setattr(sp, "factor_list", no_fallback)
+        monkeypatch.setattr(module, "_remainder_roots", no_fallback)
 
         _factor_roots.cache_clear()
         recovered = _factor_roots(tuple(coefficients))
@@ -932,13 +934,15 @@ class TestNttRecovery:
             _ntt_real_bound,
             _Root,
         )
+        from esolangs.interpreters.register_based.polynomial import (
+            _remainder_roots as original,
+        )
 
         pairs = [(3, p * p) for p in sp.primerange(2, 800)]
         pairs = pairs[: (_NTT_MIN_DEGREE // 2) + 2]
         degree = 2 * (len(pairs) + 1)
         wide = _ntt_real_bound(degree) + 1
         coefficients = self._program([*pairs, (wide, 9)], [])
-        original = sp.factor_list
         called = False
 
         def recording_fallback(*args, **kwargs):
@@ -946,7 +950,10 @@ class TestNttRecovery:
             called = True
             return original(*args, **kwargs)
 
-        monkeypatch.setattr(sp, "factor_list", recording_fallback)
+        monkeypatch.setattr(
+            "esolangs.interpreters.register_based.polynomial._remainder_roots",
+            recording_fallback,
+        )
         _factor_roots.cache_clear()
         recovered = _factor_roots(tuple(coefficients))
         assert called
