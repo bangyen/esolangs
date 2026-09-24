@@ -29,20 +29,18 @@ class TestParameterizedOneTwoThree:
     """Input-by-substitution boolean generator for the no-input language 123.
 
     123's ``2`` reads real stdin, so a decision tree cannot read its inputs;
-    the generator embeds them instead, ``1`` for a one and ``2`` for a zero.
-    Like ArrowQueue the answer is the termination convention -- halt for a
-    ``0`` entry, loop for a ``1`` -- decided by state-cycle detection.
+    the generator embeds them, ``1`` for a one and ``2`` for a zero.  Like
+    ArrowQueue the answer is the termination convention -- halt for a ``0``
+    entry, loop for a ``1`` -- decided by state-cycle detection.
 
-    ``the limitations ledger`` had this route capped at the monotone tables.
-    That ceiling was the displacement-neutral ``12``/``21`` setter's, not the
-    language's: the +-1 fill used here breaks position lockstep, so XOR and
-    NAND come out too and all sixteen two-input tables are covered.
+    The recorded monotone ceiling was the displacement-neutral ``12``/``21``
+    setter's, not the language's: the +-1 fill breaks position lockstep, so
+    XOR and NAND come out too and all sixteen two-input tables are covered.
 
     Every arity is *constructed*; the stored plan tables are retired.  Small
-    arities build in ``one_two_three`` from a bare-fill seed and a separation
-    law, wider tables in ``one_two_three_construct``.  Neither route replays
-    what it emitted, so the sweeps here are the execution gate: every
-    ``n <= 3`` row against a per-command run of the interpreter.
+    arities build in ``one_two_three``, wider ones in
+    ``one_two_three_construct``.  Neither replays what it emitted, so the
+    sweeps here are the execution gate: every ``n <= 3`` row run per command.
     """
 
     def run(self, program: str) -> str:
@@ -119,7 +117,7 @@ class TestParameterizedOneTwoThree:
         closed form, which makes the gate affordable (95s to 0.28s at five
         inputs) -- but a batched cycle detector sampling the wrong events
         could call a loop a halt, so every row through three inputs is
-        checked both ways here.
+        checked both ways.
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.one_two_three import _Machine
@@ -154,15 +152,13 @@ class TestParameterizedOneTwoThree:
     def test_the_replay_gate_agrees_on_programs_it_did_not_build(self) -> None:
         """The batched executor is checked against arbitrary 123 code.
 
-        ``_replay_verdict`` batches maximal runs into closed form, and every
-        other test drives it on programs the construction *built* -- a
-        narrow shape where the pointer stays in range and the reads never
-        fire.  An executor wrong outside that shape agrees on all of them
-        and still ships, so random programs over the three commands are
-        compared against a per-command run of :class:`_Machine`, which
-        shares no code with the batching.  A program that reads stdin, or
-        that neither halts nor repeats a state inside the budget, is
-        skipped on both sides.  Fixed seed: 177 comparable, zero disagree.
+        Every other test drives ``_replay_verdict`` on programs the
+        construction *built*, where the pointer stays in range and the
+        reads never fire; an executor wrong outside that shape passes all
+        of them.  So random programs over the three commands are compared
+        against :class:`_Machine`, which shares no code with the batching.
+        Reads-stdin and budget-exceeding programs are skipped both sides.
+        Fixed seed: 177 comparable, zero disagree.
         """
 
         from esolangs.interpreters.io import ScriptedIO
@@ -204,12 +200,10 @@ class TestParameterizedOneTwoThree:
     def test_the_construction_emits_an_exact_template(self) -> None:
         """``construct`` itself, pinned -- not the small route.
 
-        The two exact-template tests above go through
-        ``parameterized.one_two_three``, which sends ``n <= 3`` to the
-        separation-law route and never enters this module at all.  So the
-        wider construction had no golden of its own, and a plan that
-        emitted three bytes more per table, or two fewer, changed nothing
-        any test compared.
+        The exact-template tests above go through
+        ``parameterized.one_two_three``, so the wider construction had no
+        golden of its own: a plan emitting three bytes more per table, or
+        two fewer, changed nothing any test compared.
         """
         from esolangs.tools.one_two_three_construct import construct
 
@@ -276,27 +270,33 @@ class TestParameterizedOneTwoThree:
         assert len(sizes) == 1, (table, sizes)
 
     @pytest.mark.parametrize(
-        ("table", "length"),
+        ("table", "length", "route"),
         [
-            ("00000000", 63),
-            ("10000000", 359),
-            ("00010111", 201),
-            ("01101001", 151),
+            ("00000000", 63, "small"),
+            ("10000000", 155, "wide"),
+            ("00010111", 201, "small"),
+            ("01101001", 151, "small"),
         ],
     )
-    def test_three_inputs_take_the_small_route(self, table: str, length: int) -> None:
-        """``n == 3`` builds from the separation law, not the wide route.
+    def test_three_inputs_take_the_shorter_route(
+        self, table: str, length: int, route: str
+    ) -> None:
+        """``n == 3`` builds both routes and keeps the shorter program.
 
-        Both routes emit a *correct* template, so the choice is invisible
-        to every truth-table assertion above.  Over all 256 three-input
-        tables the small route still wins on the mean, 201.6 bytes against
-        214.9, but no longer on every table: the fill-as-splitter chain is
-        the smaller of the two on 98 of the 256, ratio 0.43x to 2.45x.  The
-        mean is what pins the boundary at ``n > 3``.
+        Both are correct, so only size sees the choice.  The small route
+        still wins the mean, 201.6 bytes against 214.9 -- that is what pins
+        the crossover at ``n > 3`` -- but it stopped winning every table
+        once the wide chain gave up pre-painting, so gating the chain out
+        by arity would cost size on 98 of the 256.  These four straddle it.
         """
         from esolangs.tools import parameterized
+        from esolangs.tools.one_two_three import _construct_small, _in_name_order
+        from esolangs.tools.one_two_three_construct import _construct_linear
 
-        assert len(parameterized.one_two_three(table)) == length
+        small = len(_in_name_order(_construct_small(table, 3), 3))
+        wide = len(_in_name_order(_construct_linear(table, 3), 3))
+        assert (wide < small) == (route == "wide"), (small, wide)
+        assert len(parameterized.one_two_three(table)) == length == min(small, wide)
 
     @pytest.mark.slow
     def test_the_separation_law_is_the_least_mean(self) -> None:
@@ -416,11 +416,18 @@ class TestParameterizedOneTwoThree:
                     bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                     program = self.instantiate(template, bits)
                     assert self.run(program) == table[combo], (n, table, bits)
+        from esolangs.tools.one_two_three import _construct_small, _in_name_order
+
         tables = [format(value, "08b") for value in range(256)]
         wide = [len(_construct_linear(table, 3)) for table in tables]
-        small = [len(one_two_three(table)) for table in tables]
+        small = [len(_in_name_order(_construct_small(table, 3), 3)) for table in tables]
         assert [sum(wide), sum(small)] == [55004, 51609]
         assert sum(a < b for a, b in zip(wide, small, strict=True)) == 98
+        # ``one_two_three`` is the pointwise minimum of the two, so naming
+        # it as one side would compare a route with the contest holding it.
+        built = [len(one_two_three(table)) for table in tables]
+        assert built == [min(a, b) for a, b in zip(wide, small, strict=True)]
+        assert sum(built) == 46703
 
     @pytest.mark.parametrize(
         ("table", "template"),
@@ -446,16 +453,13 @@ class TestParameterizedOneTwoThree:
     ) -> None:
         """``b.test()`` after the paints is conditional, and the flag varies.
 
-        Of the 276 tables through three inputs, 10 need no paint at all,
-        so the flag is genuinely two-valued.  Forcing it either way leaves
-        every template correct, so only the emitted size sees it, and the
-        total is asserted rather than one table because the effect is
-        spread across the sweep.  It also pins the separation law's price,
-        52826 characters against the retired schedules' 40608 and the wide
-        route's 56902 -- the law gives up 1.30x to delete the table and
-        keeps only 1.08x over the route that needs none, down from 3.95x
-        before the splitter learned to replay.  (A template is exactly as
-        long as the programs it fills to, so these are program sizes.)
+        Of the 276 tables through three inputs, 10 need no paint at all, so
+        the flag is genuinely two-valued; forcing it either way leaves every
+        template correct, so only size sees it, and the total is asserted
+        because the effect is spread across the sweep.  It also pins the two
+        routes' joint cost: 47902 characters, against 52826 when the
+        separation law served every three-input table alone and the wide
+        route's 56902.  (A template is as long as the programs it fills to.)
         """
         from esolangs.tools import parameterized
 
@@ -464,7 +468,7 @@ class TestParameterizedOneTwoThree:
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
                 total += len(parameterized.one_two_three(table))
-        assert total == 52826
+        assert total == 47902
 
     def test_a_seed_with_even_positions_is_refused(self) -> None:
         """The junky verdict rejects a seed whose rows are not distinct odd.
@@ -538,11 +542,11 @@ class TestParameterizedOneTwoThree:
 
         ``_leftover`` is a closed form for the tape a level leaves above a
         row's landing cell and the shields are planted off it, so a wrong
-        cell there is a wrong verdict, not a bigger template.  Re-derived
-        here on an exact row model: a clear bit escapes on pass one, a set
-        bit on pass three (the split is ``3*d - (d + 2)``, which is what
-        halves the walk), every row lands on ``start + 2*bit_reverse(r)``,
-        and every cell above matches the closed form.
+        cell is a wrong verdict, not a bigger template.  Re-derived on an
+        exact row model: a clear bit escapes on pass one, a set bit on pass
+        three (the split is ``3*d - (d + 2)``, which halves the walk), every
+        row lands on ``start + 2*bit_reverse(r)``, and every cell above
+        matches the closed form.
         """
         from esolangs.tools.one_two_three_construct import (
             _exec_run,
@@ -735,10 +739,9 @@ class TestParameterizedOneTwoThree:
         """Four distinct rows pinned to all four ring cells cannot escape.
 
         ``_normalize`` steps every live row together, so four *different*
-        rows sitting one each on -1, -2, -3 and 0 never converge: the round
-        that frees the -3 row re-occupies -4 -> 0 while another stays put.
-        Contrived -- real builds keep the rows in lockstep -- but the
-        function must terminate on it rather than spin.
+        rows one each on -1, -2, -3 and 0 never converge: the round freeing
+        the -3 row re-occupies -4 -> 0 while another stays put.  Contrived --
+        real builds keep rows in lockstep -- but it must terminate, not spin.
         """
         from esolangs.tools.one_two_three_construct import (
             ConstructError,
@@ -1053,10 +1056,9 @@ class TestParameterizedOneTwoThree:
         """``2`` from inside the ring batches too, and a plain token is a char.
 
         The ring case is decided by its first step -- -1 and -2 land on 0 --
-        after which the rest is a plain right-walk, and it charges the budget
-        like every other closed form.  ``apply_token`` resolves an input
-        fill against the row's own bits; a plain token is passed straight
-        through.
+        after which the rest is a plain right-walk charging the budget like
+        every other closed form.  ``apply_token`` resolves an input fill
+        against the row's own bits; a plain token passes straight through.
         """
         from esolangs.tools.one_two_three_construct import (
             _WORK_BUDGET,
@@ -1082,10 +1084,9 @@ class TestParameterizedOneTwoThree:
         """``2`` at -3 would read real input, so the move is rejected.
 
         The harness runs on an empty script, so a read is fatal rather than
-        merely wrong -- the builder has to decline the candidate that
-        reached this cell instead of emitting it.  The neighbouring
-        positions are the contrast: -2 lands on 0 (printing a junk byte no
-        snapshot sees) and anything else is a plain step right.
+        merely wrong: the builder declines the candidate that reached this
+        cell.  The neighbours are the contrast -- -2 lands on 0 (printing a
+        junk byte no snapshot sees), anything else is a plain step right.
         """
         from esolangs.tools.one_two_three_construct import (
             _WORK_BUDGET,
@@ -1114,11 +1115,10 @@ class TestParameterizedOneTwoThree:
     def test_closing_walks_only_when_a_row_sits_on_a_true_cell(self) -> None:
         """``_close`` emits the walk it needs and nothing when already clean.
 
-        A fresh builder starts every row on cell 0 with a blank tape, which
-        is already a FALSE cell, so the close is free.  Flipping cell 0
-        first forces the walk, and the emitted ``2``s are what carry every
-        row to a clean cell -- emitting none there would leave the next
-        segment starting on a TRUE cell.
+        A fresh builder starts every row on cell 0 with a blank tape, already
+        a FALSE cell, so the close is free.  Flipping cell 0 forces the walk,
+        and the emitted ``2``s carry every row to a clean cell -- none there
+        would leave the next segment starting on a TRUE cell.
         """
         from esolangs.tools.one_two_three_construct import (
             _RING,
