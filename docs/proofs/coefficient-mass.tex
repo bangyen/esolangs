@@ -3196,24 +3196,336 @@ and exponents $b<b'$ would need $a'=ap^{b'-b}$, impossible for
 $0<|a|,|a'|\le A<p$.  So neither exact reduction of this section reaches
 them.
 
+The remaining results of this subsection record what joint integrality at
+several roots does and does not give.  Lemma~\ref{lem:gausswindow} rewrites
+cleanliness in terms of the cofactor $F/P$, Lemma~\ref{lem:gausspartial} is
+the several-root form of Lemma~\ref{lem:gausscarry}, and
+Proposition~\ref{prop:carrylimit} shows that carry sizes alone cannot give more
+than linear mass.  Lemma~\ref{lem:gaussround} identifies the rows with a
+problem about a rounding recurrence.  Theorem~\ref{thm:padicmass} is an
+unconditional mass bound from $q$-adic Newton polygons; it pays the charge
+$\sum_jj\log\rho_j$, up to a factor at most $4$, for Gaussian pairs of one
+common prime-power norm
+(Corollary~\ref{cor:padiccircle}), the configuration that the angle mechanism
+of Proposition~\ref{prop:noangle} would need, but only a linear charge for
+pairwise coprime norms.  Proposition~\ref{prop:gaussrowsfail} shows that the
+rows need the register hypothesis.
+
+\begin{lemma}[Cofactor windows]\label{lem:gausswindow}
+Let $F=PQ$ with $Q=\sum_tq_tx^t\in\mathbb Z[x]$ and $Q(0)\ne0$; put $q_t=0$
+for $t<0$ and for $t>\deg Q$, and let $D=\deg F$ and $1\le m\le D$.  The
+polynomial
+\[
+  E_m=\sum_{t=m-2K}^{m-1}q_t\sum_{s=m-t}^{2K}p_s\,x^{s+t-m}\ \in\mathbb Z[x],
+  \qquad P=\sum_{s=0}^{2K}p_sx^s,
+\]
+has degree less than $2K$ and depends only on $q_{m-2K},\ldots,q_{m-1}$, and
+\[
+  G_m=x^{-m}P\sum_{t\ge m}q_tx^t+E_m,\qquad G_m(\alpha_j)=E_m(\alpha_j)\quad(1\le j\le K).
+\]
+The split $m$ is $P$-clean if and only if $q_{m-2K}=\cdots=q_{m-1}=0$.  Hence
+$F$ is $P$-irreducible if and only if $Q$ has no $2K$ consecutive zero
+coefficients $q_t,\ldots,q_{t+2K-1}$ with $0<t$ and $t+2K-1<\deg Q$.
+\end{lemma}
+
+\begin{proof}
+Write $Q_{<m}=\sum_{t<m}q_tx^t$.  Since $P\,(Q-Q_{<m})$ has no terms below
+$x^m$, the terms of $F$ from $x^m$ on are those of $P(Q-Q_{<m})$ plus those
+of $PQ_{<m}$, and the latter are
+$\sum_{t<m}q_t\sum_{s\ge m-t}p_sx^{s+t}=x^mE_m$; the constraint $s\le2K$ forces
+$t\ge m-2K$, and $s+t-m\le2K-1$.  This is the displayed formula, and
+$P(\alpha_j)=0$ gives $G_m(\alpha_j)=E_m(\alpha_j)$.  The split is $P$-clean
+if and only if $E_m$ vanishes at the $2K$ distinct roots of $P$, that is, if and
+only if $E_m=0$, as $\deg E_m<2K$.  The coefficient of $x^{2K-1-r}$ in $E_m$
+($0\le r<2K$) is $q_{m-1-r}p_{2K}$ plus a combination of
+$q_{m-r},\ldots,q_{m-1}$, and $p_{2K}=1$; so $E_m=0$ if and only if
+$q_{m-1}=\cdots=q_{m-2K}=0$.  For $1\le m\le D$ the window
+$\{m-2K,\ldots,m-1\}$ meets $\{0,\ldots,\deg Q\}$, and it contains no
+nonzero coefficient exactly when it avoids $0$ and $\deg Q$ (where
+$q_0,q_{\deg Q}\ne0$) and $Q$ vanishes on it.  Finally $F(0)=P(0)Q(0)\ne0$.
+\end{proof}
+
+So the blocks of Lemma~\ref{lem:gaussblocks} are the pieces of $Q$ between
+runs of at least $2K$ zero coefficients, and the carry vector
+$(G_m(\alpha_j))_j$ at a split is the image of a window of $2K$ consecutive
+coefficients of $Q$ under a fixed injective linear map.
+
+\begin{lemma}[Partially clean splits]\label{lem:gausspartial}
+Let $F\in\mathbb Z[x]$ be divisible by $P$, let $1\le m\le\deg F$, let
+$J=\{j:G_m(\alpha_j)\ne0\}$, and put
+$P_{J^c}=\prod_{l\notin J}(x-\alpha_l)(x-\bar\alpha_l)$.  Then $P_{J^c}$
+divides $R_m$ and $G_m$ in $\mathbb Z[x]$, and for every $j\in J$
+\[
+  |G_m(\alpha_j)|\ \ge\ |P_{J^c}(\alpha_j)|
+  =\prod_{l\notin J}|\alpha_j-\alpha_l|\,|\alpha_j-\bar\alpha_l|
+  \ \ge\ \prod_{l\notin J}(c_j+c_l),
+  \qquad |R_m(\alpha_j)|\ \ge\ \rho_j^m\,|P_{J^c}(\alpha_j)|.
+\]
+If moreover $\rho_j>2$, some $i<m$ has
+$|f_i|\ge(\rho_j/2)^{m-i}\,|P_{J^c}(\alpha_j)|$.
+\end{lemma}
+
+\begin{proof}
+For $l\notin J$, $G_m(\alpha_l)=0$ and, $G_m$ being real,
+$G_m(\bar\alpha_l)=0$; these $2|J^c|$ roots are distinct, and $P_{J^c}$ is
+monic in $\mathbb Z[x]$, so division with remainder gives $G_m=P_{J^c}H$ with
+$H\in\mathbb Z[x]$.  Also $R_m=F-x^mG_m$ vanishes at the same points, so
+$P_{J^c}\mid R_m$.  For $j\in J$, $H(\alpha_j)\in\mathbb Z[i]$ and
+$H(\alpha_j)\ne0$ because $G_m(\alpha_j)\ne0$; so $|H(\alpha_j)|\ge1$ and
+$|G_m(\alpha_j)|\ge|P_{J^c}(\alpha_j)|$.  Distinct Gaussian integers have
+$|\alpha_j-\alpha_l|\ge1$, and
+$|\alpha_j-\bar\alpha_l|=|(a_j-a_l)+i(c_j+c_l)|\ge c_j+c_l$.  The bound on
+$R_m$ is $R_m(\alpha_j)=-\alpha_j^mG_m(\alpha_j)$, and the last claim follows
+from it exactly as in Lemma~\ref{lem:gausscarry}.
+\end{proof}
+
+This is the form in which integrality at several roots enters a single split.
+The product $\prod_{j\in J}|G_m(\alpha_j)|^2=\prod_{j\in J}N(G_m(\alpha_j))$ is
+a nonzero integer, but its lower bound $1$ already follows from the factors
+one at a time.  The gain comes only from the roots at which the split
+\emph{is} clean, and it is absent at splits that are clean at no root, which
+is the case of $P$ itself and of every multiple built from it without gaps.
+
+\begin{proposition}[What carry sizes cannot see]\label{prop:carrylimit}
+Let $d\ge1$, and let numbers $1\le W_j(m)\le(2\rho_{\max})^{2K}$ be given for
+$1\le m\le d$ and $1\le j\le K$.  Put $W=\lceil\max_{j,m}W_j(m)\rceil$ and
+$Z=\lceil W\rho_{\max}^d\rceil$.  The polynomial $\tilde F=Z+Wx^d$, whose parts
+at the split $m$ are $\tilde R_m=Z$ and $\tilde G_m=Wx^{d-m}$, satisfies
+\[
+  |\tilde R_m(\alpha_j)|\ge\rho_j^m\,W_j(m),\qquad
+  |\tilde G_m(\alpha_j)|\ge W_j(m)\qquad(1\le m\le d,\ 1\le j\le K),
+\]
+and $\Lambda(\tilde F)\le(d+4K+3)\log(2\rho_{\max})$.  The factors
+$|P_{J^c}(\alpha_j)|$ of Lemma~\ref{lem:gausspartial} are admissible $W_j(m)$.
+\end{proposition}
+
+\begin{proof}
+$|\tilde R_m(\alpha_j)|=Z\ge W\rho_{\max}^d\ge\rho_j^mW_j(m)$ and
+$|\tilde G_m(\alpha_j)|=W\rho_j^{d-m}\ge W_j(m)$.  Next $Z\le2W\rho_{\max}^d$
+and $W\le2(2\rho_{\max})^{2K}$, so
+$\Lambda(\tilde F)=\log Z+\log W\le d\log\rho_{\max}+4K\log(2\rho_{\max})+3\log2$.
+Finally
+$|P_{J^c}(\alpha_j)|\le\prod_l(\rho_j+\rho_l)^2\le(2\rho_{\max})^{2K}$.
+\end{proof}
+
+$\tilde F$ is not a multiple of $P$.  The point is that every consequence of
+Lemmas~\ref{lem:gausscarry} and~\ref{lem:gausspartial} that uses only these
+inequalities, such as the charging in Theorem~\ref{thm:gausscharge} or a
+lower bound for $\max_{i<m}|f_i|$ at each split, holds for $\tilde F$ too.  So
+it gives at most $O((d+K)\log\rho_{\max})$, which is linear in $K$ for
+blocks of degree $O(K)$, while Corollary~\ref{cor:gaussfinite} shows that
+blocks of degree $O(K^2)$ are the only ones that matter.  Such per-split bounds
+up to $P(0)$ are moreover witnessed by a single coefficient, since
+$|f_0|\ge P(0)=\prod_j\rho_j^2$ whenever $F(0)\ne0$.  A mass bound of order
+$\sum_jj\log\rho_j$ has to use the exact arithmetic of $F$, not only the
+sizes of its carries.
+
+The exact arithmetic is a rounding recurrence.  Write $F=PQ$ with
+$Q(0)\ne0$.  Then $f_m=P(0)q_m+\sum_{s=1}^{2K}p_sq_{m-s}$ for every $m$, so a
+small coefficient $f_m$ determines $q_m$ from the $2K$ coefficients below it.
+
+\begin{lemma}[Rounding rigidity]\label{lem:gaussround}
+Let $F=PQ$ with $Q\in\mathbb Z[x]$, $Q(0)\ne0$, $D=\deg F$, and put $q_t=0$ for
+$t<0$ and $t>\deg Q$.  If $0<m\le D$ and $|f_m|<P(0)/2$, then $q_m$ is the
+integer nearest to $-P(0)^{-1}\sum_{s=1}^{2K}p_sq_{m-s}$.  In particular, if
+$b_2(F)<X\le P(0)/2$, then $F=P\,Q_t$, where $t=q_0$ and $Q_t$ is the
+orbit of the recurrence
+\[
+  q_m=\Bigl\lfloor-\frac1{P(0)}\sum_{s=1}^{2K}p_sq_{m-s}\Bigr\rceil
+  \qquad(m\ge1),\qquad q_{-1}=\cdots=q_{-2K}=0,\ q_0=t,
+\]
+stopped at its first run of $2K$ zeros; here $\lfloor y\rceil$ is an integer
+nearest to $y$ (a tie gives a residual $P(0)/2\ge X$, so it does not matter
+how ties are broken).  Conversely, every $t\ne0$ whose orbit
+reaches $2K$ consecutive zeros and all of whose residuals
+$r_m=\sum_{s=0}^{2K}p_sq_{m-s}$, $0<m<\deg(PQ_t)$, satisfy $|r_m|<X$ gives a
+multiple $PQ_t$ with $b_2<X$.
+\end{lemma}
+
+\begin{proof}
+The identity for $f_m$ is the convolution $F=PQ$ with $p_0=P(0)$.  If
+$|f_m|<P(0)/2$, then $q_m$ lies within less than $\frac12$ of
+$-P(0)^{-1}\sum_{s\ge1}p_sq_{m-s}$, which determines it.  If
+$b_2(F)<X\le P(0)/2$, at most one nonleading coefficient has modulus at
+least $X$, and $|f_0|=P(0)|q_0|\ge P(0)$ is one; so every $f_m$ with
+$0<m<D$ is below $P(0)/2$, and $q_1,q_2,\ldots$ are the orbit.  A window of
+$2K$ zeros makes every later term zero, and $q_{\deg Q}\ne0$, so the first
+such run starts at $\deg Q+1$.  The coefficients of $PQ_t$ at $0<m<\deg(PQ_t)$ are the
+residuals, which gives the converse.
+\end{proof}
+
+So the second row at Gaussian pairs is a Diophantine question about one
+contracting integer recurrence (a symmetric shift radix system with
+parameter $(p_{2K},\ldots,p_1)/P(0)$): how small can all its residuals be
+along an orbit that dies?  Enumerating $1\le t\le2\cdot10^5$ (exact
+arithmetic; $-t$ gives $-F$) gives the least value $b_2=51$ at
+$1\pm5i,\ -2\pm7i$, attained at $t=20$ in degree $6$ (the exact rational LP
+of Proposition~\ref{prop:gaussinst} gives $\beta_2(11)\ge50.73$), and for
+$1\pm97i,\ -2\pm101i$ the minimum over this range is $b_2(P)=19607$, against
+$14715$ for $\pm97i,\ \pm101i$ and the imaginary row $101^2-1=10200$.  For
+$1\pm97i,\ -2\pm101i,\ 3\pm103i$ and $t\le5\cdot10^4$ it is
+$b_2(P)=393226160$, which matches $\beta_2(14)\ge3.931\cdot10^8$ of
+Proposition~\ref{prop:gaussinst}.  Such enumerations do not certify a
+bound, since $t$ is unbounded.
+
+Newton polygons give an unconditional bound that uses divisibility instead
+of carries.  For a prime $q$ fix an extension $w$ of the $q$-adic valuation to
+$\overline{\mathbb Q}$, normalized by $w(q)=1$.
+
+\begin{theorem}[Mass from $q$-adic Newton polygons]\label{thm:padicmass}
+Let $F\in\mathbb Z[x]$ be nonzero and let $\beta_1,\ldots,\beta_n$ be nonzero
+roots of $F$, each listed at most as often as its multiplicity.  Let
+$u_1<\cdots<u_r$ be the distinct positive values among the $w(\beta_i)$, and
+$M_s=\sum_{i:\,w(\beta_i)=u_s}w(\beta_i)$.  Then $F$ has nonzero coefficients
+at $r+1$ distinct positions $y_1>\cdots>y_{r+1}$ with
+$v_q(f_{y_t})\ge\sum_{s<t}M_s$, so
+\[
+  \sum_{i:\,f_i\ne0}v_q(f_i)\ \ge\ \sum_{s=1}^r(r+1-s)\,M_s .
+\]
+Summing over the primes,
+\[
+  \Lambda(F)\ \ge\ \sum_q\log q\sum_{s=1}^{r_q}(r_q+1-s)\,M_{q,s}.
+\]
+\end{theorem}
+
+\begin{proof}
+Let $N$ be the lower convex hull of the points $(i,v_q(f_i))$, $f_i\ne0$;
+its vertices are such points.  Removing a power of $x$ only translates $N$,
+so we may read the theorem below for $F/x^e$, $e$ the order of $F$ at $0$.  By the Newton polygon theorem over the
+completion of $\overline{\mathbb Q}$ at $w$, a segment of $N$ of slope $-u$ and
+horizontal length $\ell$ corresponds to exactly $\ell$ roots of $F$ (with
+multiplicity) of valuation $u$, and slopes increase from left to right.  For
+$1\le t\le r$ let $y_t$ be the vertex at which the valuations of the
+segments change from at least $u_t$ (on the left) to less than $u_t$ (on the
+right), with $y_t=D$ if there is no segment on the right, and let $y_{r+1}$ be
+the leftmost vertex.  A segment of valuation exactly $u_t$ exists, and it lies
+to the right of $y_{t+1}$ and to the left of $y_t$; hence
+$y_1>\cdots>y_{r+1}$.  Reading $N$ from the right end,
+\[
+  v_q(f_{y_t})=N(y_t)=v_q(f_D)+\sum_{\text{roots }\gamma,\ w(\gamma)<u_t}w(\gamma)
+  =N(y_0)+\sum_{\text{roots }\gamma,\ 0\le w(\gamma)<u_t}w(\gamma),
+\]
+where $y_0$ is the vertex separating negative from nonnegative valuations
+($y_0=D$ if there is none), so that $N(y_0)=v_q(f_{y_0})\ge0$.  The roots of
+$F$ include the $\beta_i$, so the last sum is at least $\sum_{s<t}M_s$ (for
+$t=r+1$ it is at least $\sum_{s\le r}M_s$).  Summing over $t$ gives the
+displayed inequality.  For the mass, $\log|f_i|\ge\sum_qv_q(f_i)\log q$ for
+every nonzero $f_i\in\mathbb Z$, so
+$\Lambda(F)\ge\sum_i\sum_qv_q(f_i)\log q$, and the inner sums over each $q$
+are bounded as above.
+\end{proof}
+
+For a multiple $F$ of $P$ take the $\beta_i$ to be the $2K$ roots
+$\alpha_j,\bar\alpha_j$.  For $q\equiv1\pmod4$, $q=\mathfrak q\bar{\mathfrak q}$,
+choose $w$ through $\mathfrak q$, so $w(\alpha)=v_{\mathfrak q}(\alpha)$ and
+$w(\bar\alpha)=v_{\bar{\mathfrak q}}(\alpha)$; for $q\equiv3\pmod4$,
+$w(\alpha_j)=w(\bar\alpha_j)=v_q(\gcd(a_j,c_j))$; for $q=2$,
+$w(\alpha)=\frac12v_{1+i}(\alpha)$.  When the norms
+$N_j=a_j^2+c_j^2$ are pairwise coprime and the $\alpha_j$ primitive, every
+$r_q\le1$ and the theorem gives $\Lambda(F)\ge\sum_j\log N_j$, the first
+row.  It is strong when many roots share a prime with different valuations.
+
+\begin{corollary}[Circles of prime-power norm]\label{cor:padiccircle}
+Let $q\equiv1\pmod4$ be prime, $n\ge1$, and let every $\alpha_j$ have norm
+$q^n$, so $\rho_j=q^{n/2}$.  Put
+$m_j=\max(v_{\mathfrak q}(\alpha_j),v_{\bar{\mathfrak q}}(\alpha_j))$, let
+$m_{(1)}>\cdots>m_{(g)}$ be the distinct values and $n_t$ the number of $j$
+with $m_j=m_{(t)}$.  Then $n_t\le4$, and every nonzero $F\in\mathbb Z[x]$
+divisible by $P$ has
+\[
+  \Lambda(F)\ \ge\ \frac n2\log q\sum_{t=1}^gt\,n_t
+  \ \ge\ \frac{K+4}{4(K+1)}\sum_{j=1}^Kj\log\rho_j ,
+\]
+with $\Lambda(F)\ge\sum_jj\log\rho_j$ when all $n_t=1$, that is, when no
+quotient $\alpha_j/\alpha_l$ or $\alpha_j/\bar\alpha_l$ ($j\ne l$) is a
+unit.
+\end{corollary}
+
+\begin{proof}
+The roots $\alpha_j,\bar\alpha_j$ have valuations $v_{\mathfrak q}(\alpha_j)$
+and $n-v_{\mathfrak q}(\alpha_j)$, whose maximum is $m_j\ge n/2$.  A positive
+valuation larger than $m_{(t)}$ is some $m_{(t')}$ with $t'<t$, because every
+other valuation is at most $n/2\le m_{(t)}$, with equality only if it equals
+$m_{(t)}$.  So in Theorem~\ref{thm:padicmass} the value $m_{(t)}$ carries the
+weight $t$, and its $M$ is at least $m_{(t)}n_t\ge\frac n2n_t$.  The Gaussian
+integers of norm $q^n$ whose two valuations are $\{m,n-m\}$ are
+$\varepsilon\pi^m\bar\pi^{n-m}$ and $\varepsilon\pi^{n-m}\bar\pi^m$, with
+$\mathfrak q=(\pi)$ and $\varepsilon$ a unit: at most eight numbers, closed
+under conjugation, so at most four of them have positive imaginary part.  Hence $n_t\le4$.  With $K=4g'+h$, $0\le h<4$, the sum
+$\sum_ttn_t$ under $n_t\le4$ is least for $n_1=\cdots=n_{g'}=4$,
+$n_{g'+1}=h$, where it equals $2g'(g'+1)+(g'+1)h$, which exceeds
+$K(K+4)/8$ by $h(4-h)/8\ge0$.  Finally
+$\sum_jj\log\rho_j=\frac n2\log q\cdot\frac{K(K+1)}2$, and
+$\sum_ttn_t=K(K+1)/2$ when all $n_t=1$.
+\end{proof}
+
+For example, the Gaussian integers of norm $5^n$ lie on one circle at
+angles in arithmetic progression, as $(2+i)^k(2-i)^{n-k}$, which is the
+configuration the angle mechanism of Proposition~\ref{prop:noangle} would
+need.  The corollary makes every integer multiple pay at least
+$\sum_jj\log\rho_j$ there.  For squarefree norms every $m_j=1$, and the
+theorem gives only $2\sum_j\log\rho_j$.
+
+\begin{proposition}[The rows need the register hypothesis]
+\label{prop:gaussrowsfail}
+\leavevmode
+\begin{enumerate}
+\item For $c\ge2$,
+$x^4+4c^4=(x^2-2cx+2c^2)(x^2+2cx+2c^2)$ is the product of the two pairs
+$\pm c+ic$ and has $b_2=0$.
+\item For $2\le a<c$, the pairs $a+ic$, $-a+ic$, $c+ia$, $-c+ia$ are distinct,
+all imaginary parts are at least $2$, and their product is
+$x^8-2\operatorname{Re}(\alpha^4)\,x^4+|\alpha|^8$ with $\alpha=a+ic$; so
+$b_3=0$ with $K=4$.
+\item If every $\alpha_j$ has $a_jc_j\ne0$ and $|a_j|\ne|c_j|$, then every
+nonzero $F\in\mathbb Z[x]$ divisible by $P$ has $b_2(F)\ge1$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+1.  Multiply out.  2.  The eight numbers $\pm\alpha,\pm i\alpha,\pm\bar\alpha,
+\pm i\bar\alpha$ are the roots of
+$(x^4-\alpha^4)(x^4-\bar\alpha^4)=x^8-2\operatorname{Re}(\alpha^4)x^4+|\alpha|^8$.
+They are distinct: $\alpha=\varepsilon\bar\alpha$ for a unit $\varepsilon$
+would need $ac=0$ or $|a|=|c|$.  The four with positive imaginary part are
+$a+ic$, $-\bar\alpha=-a+ic$, $i\bar\alpha=c+ia$ and $i\alpha=-c+ia$.
+3.  If $b_2(F)=0$, $F$ has at most one nonzero nonleading coefficient, and it
+has one since $P\nmid x^D$.  So $F=x^e(f_Dx^n+f_e)$ with $n\ge1$, and
+$\alpha_1^n=-f_e/f_D$ is real, contradicting
+Proposition~\ref{prop:gaussnotransfer}.
+\end{proof}
+
+So any statement of the rows $k\ge2$ at Gaussian pairs has to use
+$0<|a_j|<c_j$, or distinct imaginary parts; the mass bound is not affected,
+since items~1 and~2 have $\Lambda$ of the order $\sum_jj\log\rho_j$.  An exact
+search over trinomials $Ax^n+Bx^e+C$ with $n\le80$ found none vanishing at two
+pairs $a\pm ic$, $a'\pm ic'$ with $0<|a|<c$, $0<|a'|<c'$, $c\ne c'\le40$, so
+at those pairs $b_3\ge1$ as well.
+
 \paragraph{What remains open.}  Rows $k\ge2$, or a mass bound of order
-$\sum_jj\log\rho_j$, for pairs $a_j\pm ic_j\in\mathbb Z[i]$ with $a_j\ne0$ and
-general $K$.  By Corollary~\ref{cor:gaussfinite} a mass bound $X$ needs to be
-proved only for $P$-irreducible multiples of degree below
-$X/\log(\rho_{\min}/2)$, which for $X$ of the target order
-$\sum_jj\log(c_j^2-1)$ is about $K(K+1)\log c_{\max}/\log(\rho_{\min}/2)$;
-beyond that degree Theorem~\ref{thm:gausscharge} pays.  In that range the
-angle mechanism of Proposition~\ref{prop:noangle} is not excluded, since it
-needs degree only about $\pi K/\delta$ for pairs within $\delta$ of the
-imaginary axis.  Perturbing the certificate of Corollary~\ref{cor:imag} to the
-nodes $1/\alpha_j$ did not close the gap either: the excluded coefficients
-are unbounded, so the certificate must vanish there exactly, and the
-correction needed for that is controlled only through the individual
-certificate coefficients, which can be as large as an inverse Vandermonde
-determinant in the close nodes $c_j^{-2}$; we obtained smallness only when
-$D\max_j|a_j|/c_j$ is below that size, which integrality ($|a_j|\ge1$)
-rules out.  Proposition~\ref{prop:gaussinst} settles
-individual root sets; the question is a uniform statement in $K$.
+$\sum_jj\log\rho_j$, for pairs $a_j\pm ic_j\in\mathbb Z[i]$ with $0<|a_j|<c_j$
+and general $K$.  By Corollary~\ref{cor:gaussfinite} a mass bound $X$ needs to
+be proved only for $P$-irreducible multiples of degree below
+$X/\log(\rho_{\min}/2)$, that is, by Lemma~\ref{lem:gausswindow}, for
+$F=PQ$ with $Q$ free of runs of $2K$ zeros and $\deg Q=O(K^2)$.  In that
+range the angle mechanism of Proposition~\ref{prop:noangle} is not excluded
+for pairs within $\delta\gg1/K$ of the imaginary axis.  Exactly equal moduli
+are excluded when the common norm is a prime power
+(Corollary~\ref{cor:padiccircle}), but not for squarefree norms, and not for
+nearly equal moduli; pairwise coprime norms, the case of the register roots,
+get only the first row from Theorem~\ref{thm:padicmass}.  Carry sizes, even
+at several roots, cannot close the gap (Proposition~\ref{prop:carrylimit}); what is
+needed is a lower bound for the residuals of the rounding recurrence of
+Lemma~\ref{lem:gaussround} and its analogues with $k-1$ free coefficients.
+Perturbing the certificate of Corollary~\ref{cor:imag} to the nodes
+$1/\alpha_j$ did not help either: the excluded coefficients are unbounded, so
+the certificate must vanish there exactly, and the correction is controlled
+only through certificate coefficients as large as an inverse Vandermonde
+determinant in the close nodes $c_j^{-2}$.  Integral certificates (vectors of
+the dual of the lattice of multiples) replace the normalization but not the
+exact vanishing, and by transference they are as hard to find as the
+bound itself.  Proposition~\ref{prop:gaussinst} settles individual root sets;
+the question is a uniform statement in $K$.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
