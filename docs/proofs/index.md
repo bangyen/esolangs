@@ -137,16 +137,16 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, EGL, Eval, Minsky
-Swap, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN, Suffolk and Whitespace
-keep no tree route at all:
-A Painter Ant's
+the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Collatz
+Multiverse, EGL, Eval, Minsky Swap, NoComment, Packlang, Qoibl, SLOW ACV
+MAMMALIAN, Suffolk and Whitespace keep no tree route at all: A Painter Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, Befunge reads one grid cell per table entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
-once the doubling between the input runs is in the text), EGL paints one cell
-an entry and walks a pointer to it, Eval is one linear
+once the doubling between the input runs is in the text), Collatz Multiverse
+writes one cell per four table rows at every arity, EGL paints one cell an
+entry and walks a pointer to it, Eval is one linear
 lookup at every arity, Packlang paints one array block and indexes it at every
 arity, Minsky Swap's `~`
 cascade routes the index to one of two shared leaves with a one-digit target
@@ -157,9 +157,11 @@ row whatever the table says, Suffolk sweeps a countdown past every row, and
 Whitespace halves one literal once per index step; none has a subtree to
 fold.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
-table.  Eval, NoComment and Suffolk fold a degenerate table anyway, because
-their lookup route is what shrinks it -- Suffolk through `essential_inputs`,
-which halves the sweep per input dropped; that is why the fold discriminator
+table.  Collatz Multiverse, Eval, NoComment and Suffolk fold a degenerate
+table anyway, because their lookup route is what shrinks it -- Suffolk through
+`essential_inputs`, which halves the sweep per input dropped, and Collatz
+Multiverse because a table with few distinct nibbles needs fewer cell
+constants and a shorter decoder; that is why the fold discriminator
 in `test_schemes.py` carries them as documented exceptions.
 
 ## Generator ledger
@@ -206,7 +208,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Circlefuck | tree | its local shape guard is equivalent to the shared guard | linear, time n log: essential-input byte compare; greedy candidate's walk |
 | Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) |
 | Clockwise | tree | finite grid layout | linear: alternating rectangle of area O(T), exits in walk order |
-| Collatz Multiverse | tree | finite cell placement | linear: folded tree, 3 lines a node, mask folded into child writes |
+| Collatz Multiverse | finite lookup | an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it | linear: one line per four rows, a 64-cell decoder, 3n index lines |
 | Container | finite lookup | the table is the prefix sum of its own steps, summed against a row counter that is live for one tick | linear: one line per step in the table, halting in 2n+2 ticks |
 | Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, and a folded subtree targets the shared self-jump or the line past the end | linear: 3(T - 1) + 2n + 3 lines, span walk |
 | CV(N)(C) | tree | the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts | linear, time n log: greedy order scoring, capped at n <= 10 |
