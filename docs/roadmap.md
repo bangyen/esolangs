@@ -277,13 +277,36 @@ step; an answer lands in the paper it extends, and the row leaves.
   `Theta(1/min E)` -- exactly `1/(n0+1)` at `(3,3)`, `(2,2)`, and
   `(3,3,5)`/`(3,3,4,4)` with `u = 1` -- when the cut falls INSIDE a
   multiplicity block, against geometric at an aligned cut (2.1e-23 at
-  `(2,3,3)`, 3.0e-30 at `(3,3,5)` `u = 2`, `n0 = 140`).  But `eta -> 0`
-  held in all 9 configurations swept, so the lemma is expected TRUE: what
-  is needed is a proof tolerating a degenerate alternant.  Sketch not yet
-  carried out: expand `det(psi_j(e_t))` over node-assignments, factor each
-  within-node group as `Vandermonde(E_pi) * s_lambda(E_pi)`, and note Cramer
-  makes only single swaps matter, giving ratios `s_mu/s_lambda` with
-  `|mu| = |lambda| - 1`, homogeneous of degree -1, hence `O(1/min E)`.
+  `(2,3,3)`, 3.0e-30 at `(3,3,5)` `u = 2`, `n0 = 140`).  Round 12 then PROVED
+  the replacement (`prop:conffar`, commit below) for `E` of BOUNDED DIAMETER,
+  which is a CLUSTER EXPANSION: write `E = {n+f : f in F}` with `F` fixed,
+  pull `z_i^n` and `n^a` out of each column to get
+  `Lambda_J(n) = (prod z_i^{n k_i}) n^{P(J)}`, then expand
+  `(1+f/n)^a = sum_b C(a,b)(f/n)^b` multilinearly.  Columns at one node that
+  pick the same `b` are equal, so `sum b >= sum_i C(k_i,2)` with equality only
+  at `{0..k_i-1}`, giving
+  `alpha_J = +- Lambda_J n^{-sum C(k_i,2)} [kappa_J W(F;k) + O(1/n)]` with
+  `kappa_J = prod_i prod_{t<t'}(a_t' - a_t)/prod_{s<k_i} s! > 0` and
+  `W(F;k) = det(f^b z_i^f)` the UNGAPPED alternant, nonzero by Polya-Szego.
+  So the degeneracy is harmless: a gapped alternant's leading term is a
+  POSITIVE MULTIPLE of the ungapped one, and a gap only moves the power of
+  `n`.  `J*` greedily fills the largest nodes and takes the TOP exponent
+  segment at the cut node, so it uniquely maximises both `sum k_i log z_i`
+  (others lose `kappa = min log(z_i/z_{i+1})`) and `P`; hence
+  `Lambda_J/Lambda_J* <= 1/n` at equal profile and `<= n^{Nk} e^{-kappa n}`
+  otherwise.  VERIFIED independently (tmp/esc/verify12.py, exact Fractions,
+  N=10, z=1/2,1/3,1/5, mults 3,4,3, gapped `J` included): alpha/prediction
+  -> +-1 with error falling exactly 10x per decade of `n`.
+  CONSEQUENCE: confluent `thm:value` is CLOSED -- it uses only
+  `E_nu = {nu+1..nu+u}`, diameter `u-1`.  STILL OPEN: confluent
+  `thm:converse`, whose proof lets the elements of `E_nu` separate.  Gaps
+  that are `O(1)` or `>= c min E` reduce to `prop:conffar` by a Laplace
+  expansion over groups; a group of diameter growing strictly between `1`
+  and `min E` is NOT covered.  But with gaps `floor(sqrt n)` and `N=10`,
+  `eta * min E` ran to 1.000 at `k=4` and 2.98 at `k=6` (verify12b.py), so
+  the rate there is the same `Theta(1/min E)` and the lemma is expected TRUE.
+  DEAD: `|alpha_J*| ~ M_J* prod_{same-node}(1 - e_s/e_t)` (fails at `k>=6`,
+  ratio 4e-16 at `N=11, k=10`; exact for `k<=5`, another small-size trap).
   Also open is the
   case where an exempt root lies below 2 and more than `u` partial sums of
   `P` exceed `|P(1)|`, where the repaired bound need not be sharp.  See the
