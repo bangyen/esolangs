@@ -404,10 +404,20 @@ step; an answer lands in the paper it extends, and the row leaves.
   `sum_{s>=1} |prod_{z=2}^{n} (1 - s/z)| 2**-s = 1/n`:
   `b_k >= (L-k+1) / prod_{u in S} max(1, D/u - 1)`, so the row holds
   whenever the top `k - 1` coefficients all lie in the lower half of the
-  degrees.  OPEN: an exempt distance `u < D/2` from the top, where the good
-  certificates put their free zeros near `2k`, the mean of the weight
-  `C(s-1, k-1) 2**-s`; `Z = {2..n}`, first-free, odd, and shifted-past-`S`
-  choices all fail there.  Floating LPs (HiGHS) report values below the
+  degrees.  The open rows now REDUCE to one `D`-free lemma: `T(n)`, for
+  every finite set `A` of positive integers some real `r` of degree
+  `<= |A| + n - 1` with `r(0) = 1`, `r = 0` on `A` and
+  `sum_{s>=1} |r(s)| 2**-s <= 1/n`.  `T(L-k+1)` implies row `k` at every
+  `D` (take `A` the exempt distances below `D/2` and multiply by
+  `prod (1 - s/u)` over the rest, each factor at most 1 on `1..D`), and is
+  necessary as `D -> oo`; `A` empty is the identity above.  Checked in
+  exact rationals for every `A` in `{1..12}`, `|A| <= 4`, `n <= 4`: the
+  empty set is always the worst `A` (`n` times the optimum 1, 1, 1.212,
+  1.461), nonempty `A` carrying slack at least 1.33.  Next step: prove
+  that adjoining a zero to `A` never lowers the optimum.  DEAD: zeros
+  scaled with `|A|` (`A = {11, 12}`, `n = 3`: 0.78), `Z = {2..n}`,
+  first-free, odd and shifted-past-`S` choices, and trading one exempt
+  point for one degree (it can lose a factor 4).  Floating LPs (HiGHS) report values below the
   bound from `D = 30`; check large-`D` optima with exact rational duals.
 
 - **Polynomial's sharp constant.**  The language bound is proved by the
