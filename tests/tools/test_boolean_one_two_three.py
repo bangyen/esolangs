@@ -33,15 +33,14 @@ class TestParameterizedOneTwoThree:
     Like ArrowQueue the answer is the termination convention -- halt for a
     ``0`` entry, loop for a ``1`` -- decided by state-cycle detection.
 
-    ``the limitations ledger`` had this route capped at the monotone tables.  That
-    ceiling was the displacement-neutral ``12``/``21`` setter's, not the
+    ``the limitations ledger`` had this route capped at the monotone tables.
+    That ceiling was the displacement-neutral ``12``/``21`` setter's, not the
     language's: the +-1 fill used here breaks position lockstep, so XOR and
     NAND come out too and all sixteen two-input tables are covered.
 
-    Every arity is *constructed* -- the stored plan tables that used to
-    serve ``n <= 3`` are retired (see git history).  Small arities build
-    in ``one_two_three`` from a bare-fill seed and a separation law;
-    wider tables go to ``one_two_three_construct``.  Neither route replays
+    Every arity is *constructed*; the stored plan tables are retired.  Small
+    arities build in ``one_two_three`` from a bare-fill seed and a separation
+    law, wider tables in ``one_two_three_construct``.  Neither route replays
     what it emitted, so the sweeps here are the execution gate: every
     ``n <= 3`` row against a per-command run of the interpreter.
     """
@@ -68,9 +67,8 @@ class TestParameterizedOneTwoThree:
     def test_the_tables_walls_md_called_unreachable(self) -> None:
         """XOR and NAND build, against the recorded monotone ceiling.
 
-        These are the two the monotonicity argument specifically forbids: a
-        set bit can only add a pass under the neutral setter, so the looping
-        set is upward-closed and neither table can appear.  Both are here.
+        The monotonicity argument forbids these: a set bit can only add a
+        pass under the neutral setter, so the looping set is upward-closed.
         """
         from esolangs.tools import parameterized
 
@@ -86,11 +84,9 @@ class TestParameterizedOneTwoThree:
         """No emitted row marches the pointer right forever.
 
         ``run_until_halt_or_cycle`` never returns on unbounded growth, so a
-        template with such a row would hang the suite rather than report a 1.
-        Every looping row must therefore revisit a state, which this checks
-        by bounding the pointer: a run that neither halts nor cycles within
-        the budget, while pushing the pointer past the program, is exactly
-        the shape that must not ship.
+        template with such a row hangs the suite rather than report a 1.
+        Every looping row must revisit a state: a run that neither halts nor
+        cycles within the budget is exactly the shape that must not ship.
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.one_two_three import _Machine
@@ -120,11 +116,10 @@ class TestParameterizedOneTwoThree:
         """The construction's replay gate matches a per-command run.
 
         ``_replay_verdict`` executes a maximal ``1``/``2`` run at a time in
-        closed form, which is what makes the gate affordable (95s to 0.28s
-        at five inputs).  That is only safe if it decides exactly what the
-        real interpreter decides, so every row of every emitted template
-        through three inputs is checked both ways here -- a batched cycle
-        detector sampling the wrong events could call a loop a halt.
+        closed form, which makes the gate affordable (95s to 0.28s at five
+        inputs) -- but a batched cycle detector sampling the wrong events
+        could call a loop a halt, so every row through three inputs is
+        checked both ways here.
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.one_two_three import _Machine
@@ -159,21 +154,15 @@ class TestParameterizedOneTwoThree:
     def test_the_replay_gate_agrees_on_programs_it_did_not_build(self) -> None:
         """The batched executor is checked against arbitrary 123 code.
 
-        ``_replay_verdict`` is a general 123 interpreter -- it batches
-        maximal runs into closed form -- but every other test drives it on
-        programs the construction *built*, which are a narrow, well-behaved
-        shape: the pointer stays in range, the reads never fire, the loops
-        are the ones the plan laid.  An executor that is wrong outside that
-        shape agrees on all of them and still ships.
-
-        Random programs over the three commands close that.  The comparison
-        is against a per-command run of :class:`_Machine`, which shares no
-        code with the batching, and both sides are treated alike: a program
-        that reads stdin, or that neither halts nor repeats a state inside
-        the budget, is skipped rather than counted as a disagreement.
-
-        Sampled at a fixed seed so a failure is reproducible; the baseline
-        is 177 comparable programs and zero disagreements.
+        ``_replay_verdict`` batches maximal runs into closed form, and every
+        other test drives it on programs the construction *built* -- a
+        narrow shape where the pointer stays in range and the reads never
+        fire.  An executor wrong outside that shape agrees on all of them
+        and still ships, so random programs over the three commands are
+        compared against a per-command run of :class:`_Machine`, which
+        shares no code with the batching.  A program that reads stdin, or
+        that neither halts nor repeats a state inside the budget, is
+        skipped on both sides.  Fixed seed: 177 comparable, zero disagree.
         """
 
         from esolangs.interpreters.io import ScriptedIO
@@ -268,10 +257,10 @@ class TestParameterizedOneTwoThree:
     def test_a_wider_table_is_constructed(self) -> None:
         """A four-input table builds through the constructed route.
 
-        This used to assert a :class:`ValueError`: the recorded reason was
-        that an inert embed shifts the pointer phase the plan decodes.
-        That bound one decode shape, not the language, so the gate fell.
-        Every row is replayed here on the real interpreter.
+        This used to assert a :class:`ValueError`, on the recorded reason
+        that an inert embed shifts the pointer phase the plan decodes --
+        one decode shape's bound, not the language's.  Every row is
+        replayed here on the real interpreter.
         """
         from esolangs.tools import parameterized
 
@@ -298,14 +287,12 @@ class TestParameterizedOneTwoThree:
     def test_three_inputs_take_the_small_route(self, table: str, length: int) -> None:
         """``n == 3`` builds from the separation law, not the wide route.
 
-        Both routes emit a *correct* template, so every truth-table
-        assertion above passes either way and the choice is invisible to
-        them.  Swept over all 256 three-input tables the small route still
-        wins on the mean, 201.6 bytes against 240.9, but no longer on every
-        table: since the wide route became a fill-as-splitter chain it is
-        the smaller of the two on 63 of the 256, and the per-table ratio
-        runs 0.51x to 2.71x.  The mean is what pins the boundary at
-        ``n > 3``; see ``test_the_wide_route_is_bigger_where_they_overlap``.
+        Both routes emit a *correct* template, so the choice is invisible
+        to every truth-table assertion above.  Over all 256 three-input
+        tables the small route still wins on the mean, 201.6 bytes against
+        214.9, but no longer on every table: the fill-as-splitter chain is
+        the smaller of the two on 98 of the 256, ratio 0.43x to 2.45x.  The
+        mean is what pins the boundary at ``n > 3``.
         """
         from esolangs.tools import parameterized
 
@@ -316,12 +303,10 @@ class TestParameterizedOneTwoThree:
         """The law's constants are re-derived, not trusted.
 
         ``_LAWS`` claims one selection rule at every arity: over constant
-        walk seeds and alternating pure-test displacement vectors, the
-        law with the least mean template length.  This re-runs that sweep
-        at ``n <= 2`` and checks the shipped constants win it, so a
-        hand-edited constant fails here rather than shipping quietly.
-        ``n == 3`` is left to the exhaustive build sweep -- its domain is
-        13 laws over 256 tables, minutes rather than seconds.
+        walk seeds and alternating pure-test displacement vectors, the law
+        with the least mean template length.  Re-running that sweep at
+        ``n <= 2`` fails a hand-edited constant rather than shipping it;
+        ``n == 3`` is 13 laws over 256 tables, minutes rather than seconds.
         """
         from itertools import product
 
@@ -415,10 +400,10 @@ class TestParameterizedOneTwoThree:
         """The chain four inputs and up really emit, gated and compared.
 
         ``construct`` sends ``n <= 3`` to the modelled pipeline, so the wide
-        chain had neither an exhaustive gate of its own nor an honest size
-        comparison.  Both are here: every row of every table through three
-        inputs on the real interpreter, and a *mean* rather than witnesses
-        -- the chain is smaller on 63 of the 256.
+        chain needs its own exhaustive gate and its own honest comparison:
+        every row of every table through three inputs on the real
+        interpreter, and a *mean* rather than witnesses -- the chain is the
+        smaller on 98 of the 256.
         """
         from esolangs.tools.one_two_three import one_two_three
         from esolangs.tools.one_two_three_construct import _construct_linear
@@ -434,8 +419,8 @@ class TestParameterizedOneTwoThree:
         tables = [format(value, "08b") for value in range(256)]
         wide = [len(_construct_linear(table, 3)) for table in tables]
         small = [len(one_two_three(table)) for table in tables]
-        assert [sum(wide), sum(small)] == [61686, 51609]
-        assert sum(a < b for a, b in zip(wide, small, strict=True)) == 63
+        assert [sum(wide), sum(small)] == [55004, 51609]
+        assert sum(a < b for a, b in zip(wide, small, strict=True)) == 98
 
     @pytest.mark.parametrize(
         ("table", "template"),
@@ -447,13 +432,10 @@ class TestParameterizedOneTwoThree:
     def test_the_emitted_template_is_exact(self, table: str, template: str) -> None:
         """The construction is deterministic down to the byte.
 
-        ``_construct_small`` builds one prototype per arity, so there is
-        no candidate field and no tie-break: the emission is a function
-        of the law and the table alone.  Pinning two templates exactly is
-        what turns "deterministic" from a claim into a check -- a change
-        to the law's constants, or to the order its tests fire in, moves
-        these bytes even where it leaves every truth-table assertion
-        passing.
+        ``_construct_small`` builds one prototype per arity, so the
+        emission is a function of the law and the table alone.  A change to
+        the law's constants, or to the order its tests fire in, moves these
+        bytes even where every truth-table assertion still passes.
         """
         from esolangs.tools import parameterized
 
@@ -465,18 +447,15 @@ class TestParameterizedOneTwoThree:
         """``b.test()`` after the paints is conditional, and the flag varies.
 
         Of the 276 tables through three inputs, 10 need no paint at all,
-        so the flag is genuinely two-valued rather than a constant
-        dressed as one.  Forcing it either way leaves every template
-        correct -- the extra or missing test costs or saves commands
-        without changing the verdict -- so only the emitted size sees it.
-        The total is asserted rather than one table because the flag's
-        effect is spread across the whole sweep; it also pins the
-        separation law's price, 52826 characters against the retired
-        schedules' 40608 and the wide constructor's 208690 -- the law
-        gives up 1.30x to delete the table and keeps 3.95x over the route
-        that needs none.  (A template is exactly as long as the programs
-        it fills to, so these are program sizes; the figures were first
-        taken with four-character placeholders, 2412 more over this sweep.)
+        so the flag is genuinely two-valued.  Forcing it either way leaves
+        every template correct, so only the emitted size sees it, and the
+        total is asserted rather than one table because the effect is
+        spread across the sweep.  It also pins the separation law's price,
+        52826 characters against the retired schedules' 40608 and the wide
+        route's 56902 -- the law gives up 1.30x to delete the table and
+        keeps only 1.08x over the route that needs none, down from 3.95x
+        before the splitter learned to replay.  (A template is exactly as
+        long as the programs it fills to, so these are program sizes.)
         """
         from esolangs.tools import parameterized
 
@@ -491,13 +470,9 @@ class TestParameterizedOneTwoThree:
         """The junky verdict rejects a seed whose rows are not distinct odd.
 
         The paint offsets are collision-free only because every live row
-        sits at a distinct *odd* position -- two rows sharing an offset
-        would have to sit one cell apart, which odd-and-distinct forbids.
-        So the precondition is what the collision-freedom argument rests
-        on.  The shipped law separates to odd positions at every arity,
-        so no build reaches the raise; the state is constructed here
-        instead, which is what keeps the guard checked rather than
-        merely asserted.
+        sits at a distinct *odd* position: two rows sharing an offset would
+        sit one cell apart, which odd-and-distinct forbids.  The shipped law
+        separates to odd at every arity, so the state is built by hand here.
         """
         from esolangs.tools.one_two_three import (
             _WORK_BUDGET,
@@ -519,13 +494,11 @@ class TestParameterizedOneTwoThree:
     def test_every_pipeline_stage_fires_on_one_table(self) -> None:
         """A single table exercises each stage the docstring describes.
 
-        ``00111000`` has 1-rows above 0-rows, so its build takes the
-        shield paints as well as the embed, separation, kill, and
-        endgame — a witness that every stage is on a real trajectory,
-        not only inferred from ``construct()``'s success.  The paints
-        go through ``_paint_all``, which emits the whole campaign at
-        once; ``_paint`` itself is the small-arity route's, covered by
-        ``test_paint_marks_one_cell_and_restores_every_position``.
+        ``00111000`` has 1-rows above 0-rows, so its build takes the shield
+        paints as well as the embed, separation, kill, and endgame -- every
+        stage on a real trajectory, not inferred from ``construct()``'s
+        success.  The paints go through ``_paint_all``; ``_paint`` itself is
+        the small-arity route's, covered by the test two below.
         """
         from esolangs.tools import one_two_three_construct as construct_mod
 
@@ -558,13 +531,58 @@ class TestParameterizedOneTwoThree:
             program = self.instantiate(template, bits)
             assert self.run(program) == "00111000"[combo], bits
 
+    def test_a_set_bit_replays_three_times_and_leaves_what_leftover_says(
+        self,
+    ) -> None:
+        """The splitter's contract, re-simulated: 3 passes, and the leftovers.
+
+        ``_leftover`` is a closed form for the tape a level leaves above a
+        row's landing cell and the shields are planted off it, so a wrong
+        cell there is a wrong verdict, not a bigger template.  Re-derived
+        here on an exact row model: a clear bit escapes on pass one, a set
+        bit on pass three (the split is ``3*d - (d + 2)``, which is what
+        halves the walk), every row lands on ``start + 2*bit_reverse(r)``,
+        and every cell above matches the closed form.
+        """
+        from esolangs.tools.one_two_three_construct import (
+            _exec_run,
+            _leftover,
+            _on_mark,
+            _Row,
+            _run_parts,
+            _segment,
+            _walk,
+            _work,
+        )
+
+        for n in (1, 2, 3, 4, 5):
+            _work[0] = 10**9
+            bits = [tuple(map(int, format(r, f"0{n}b"))) for r in range(2**n)]
+            rows = [_Row(b) for b in bits]
+            for i in range(n):
+                segment = _segment(i)[: -len("33")]
+                for row in rows:
+                    code = segment.replace(_X, ONE if row.bits[i] else ZERO)
+                    passes = 0
+                    while passes == 0 or _on_mark(row):
+                        passes += 1
+                        for part in _run_parts(code):
+                            _exec_run(row, part[0], len(part))
+                    assert passes == (3 if row.bits[i] else 1), (n, i, row.bits)
+            start = sum(_walk(i) + 2 for i in range(n))
+            for r, row in enumerate(rows):
+                spread = int(format(r, f"0{n}b")[::-1], 2)
+                assert row.pos == start + 2 * spread, (n, r, row.pos)
+                for off in range(1, 2 * _walk(n - 1) + 3):
+                    marked = bool(row.tape >> (row.pos + off + _RING) & 1)
+                    assert marked == _leftover(n, row.bits[-1], off), (n, r, off)
+
     def test_the_searched_routes_worst_tables_build_at_once(self) -> None:
         """The tables that starved the searched verdict are ordinary now.
 
         ``1000110011010101`` and ``0100000011001001`` each burned a whole
         four-input budget under a searched verdict.  The wide route plans
-        instead of searching, so both are ordinary emissions; each is
-        checked row by row on the interpreter.
+        instead of searching; each is checked row by row on the interpreter.
         """
         from esolangs.tools.one_two_three_construct import construct
 
@@ -581,9 +599,9 @@ class TestParameterizedOneTwoThree:
         """Pin one mixed table from the exhaustive constructor sweep.
 
         The exhaustive four-input sweep is a one-shot script rather than a
-        suite entry -- 65536 tables, 1048576 rows, 130s through the replay
-        oracle.  This witness keeps a gate local to the suite: all sixteen
-        rows halt or revisit an exact state, never through a fuel limit.
+        suite entry -- 65536 tables, 1048576 rows through the replay oracle.
+        This witness keeps a gate local to the suite: all sixteen rows halt
+        or revisit an exact state, never through a fuel limit.
         """
         from esolangs.tools.one_two_three_construct import construct
 
@@ -598,9 +616,8 @@ class TestParameterizedOneTwoThree:
         """``_paint(k)`` flips exactly cell ``pos + k`` per row, in place.
 
         The shield algebra rests on this: two walk-descend blocks whose
-        stripes cancel everywhere but the top cell.  Checked across rows
-        at distinct positions with junk tapes, for the ``k == 1`` short
-        form and a spread of wider offsets.
+        stripes cancel everywhere but the top cell.  Checked across rows at
+        distinct positions with junk tapes, ``k == 1`` and wider offsets.
         """
         from esolangs.tools.one_two_three_construct import (
             _RING,
@@ -669,11 +686,10 @@ class TestParameterizedOneTwoThree:
     def test_the_verdict_checks_its_position_preconditions(self) -> None:
         """A state violating the parity law raises instead of emitting.
 
-        The shield algebra needs every live position distinct and odd;
-        separation has delivered that at every probed arity, but the
-        verdict re-checks rather than assumes, so a wider arity that
-        ever broke the parity would raise — never hand out a template
-        whose fates the plan cannot vouch for.
+        The shield algebra needs every live position distinct and odd, and
+        separation delivers that at every probed arity -- but the verdict
+        re-checks rather than assumes, so an arity that broke the parity
+        would raise instead of handing out an unvouched template.
         """
         from esolangs.tools.one_two_three_construct import (
             _WORK_BUDGET,
@@ -701,10 +717,9 @@ class TestParameterizedOneTwoThree:
     def test_an_exhausted_work_budget_is_declined(self) -> None:
         """A table that would build still raises once the work runs out.
 
-        ``_work`` is deterministic (simulated commands, not wall clock),
-        so shrinking :data:`_WORK_BUDGET` reproduces the exhausted-budget
-        branch instantly and exactly -- the same path a genuinely
-        unconvergent search would take, without paying for one.
+        ``_work`` is deterministic (simulated commands, not wall clock), so
+        shrinking :data:`_WORK_BUDGET` reproduces the exhausted-budget branch
+        exactly -- the path an unconvergent search takes, without paying one.
         """
         from esolangs.tools import one_two_three_construct as construct_mod
 
@@ -719,13 +734,11 @@ class TestParameterizedOneTwoThree:
     def test_normalize_reports_a_live_locked_ring(self) -> None:
         """Four distinct rows pinned to all four ring cells cannot escape.
 
-        ``_normalize`` steps every live row together (one shared ``1`` or
-        ``2`` per round), so four *different* rows already sitting one
-        each on -1, -2, -3 and 0 never converge on a single move: the
-        round that frees the -3 row re-occupies -4 -> 0 while another
-        stays put, so the occupied set does not shrink.  This is a
-        contrived state (real builds keep all rows in lockstep), but the
-        function must still terminate on it rather than spin.
+        ``_normalize`` steps every live row together, so four *different*
+        rows sitting one each on -1, -2, -3 and 0 never converge: the round
+        that frees the -3 row re-occupies -4 -> 0 while another stays put.
+        Contrived -- real builds keep the rows in lockstep -- but the
+        function must terminate on it rather than spin.
         """
         from esolangs.tools.one_two_three_construct import (
             ConstructError,
@@ -752,10 +765,9 @@ class TestParameterizedOneTwoThree:
     def test_close_reports_no_clean_cell_in_range(self) -> None:
         """A row TRUE on every cell in the search window has no exit.
 
-        ``_close`` walks right looking for a position where every live
-        row is simultaneously on a FALSE cell; a row whose tape covers
-        the whole search window can never supply one, so the search
-        must give up rather than walk forever.
+        ``_close`` walks right for a position where every live row is
+        simultaneously on a FALSE cell; a row whose tape covers the whole
+        search window supplies none, so the search must give up.
         """
         from esolangs.tools.one_two_three_construct import (
             ConstructError,
@@ -780,10 +792,9 @@ class TestParameterizedOneTwoThree:
     def test_fixpoint_reports_a_non_converging_rerun(self) -> None:
         """A segment that never revisits a state within the cap gives up.
 
-        A dense tape lets a single ``2`` keep the row TRUE at every
-        position while it marches right forever, so the rerun neither
-        escapes nor repeats within the fixpoint cap -- the shape a
-        genuinely diverging candidate segment would take.
+        A dense tape lets a single ``2`` keep the row TRUE at every position
+        while it marches right forever, so the rerun neither escapes nor
+        repeats within the cap -- a diverging candidate segment's shape.
         """
         from esolangs.tools.one_two_three_construct import (
             ConstructError,
@@ -828,10 +839,9 @@ class TestParameterizedOneTwoThree:
     def test_test_reports_a_kill_that_never_fires(self) -> None:
         """``test(kills=...)`` refuses a close where a victim tested FALSE.
 
-        A kill whose victim never lands on a TRUE cell would silently
-        leave the row alive; the close must report it instead, because
-        every adopted kill claims one specific row is now provably
-        looping.
+        A kill whose victim never lands on a TRUE cell leaves the row alive;
+        the close must report it, because every adopted kill claims one
+        specific row is now provably looping.
         """
         from esolangs.tools.one_two_three_construct import (
             ConstructError,
@@ -879,11 +889,9 @@ class TestParameterizedOneTwoThree:
     def test_an_empty_table_is_declined(self) -> None:
         """A table implying zero inputs raises rather than building nothing.
 
-        ``"1"`` is a well-formed truth table of length ``2**0``, so it
-        clears the power-of-two check and is refused on arity instead.
-        123 used to carry its own message for this; the rule is now the
-        shared validator's, since every boolean generator owes it (see
-        ``test_boolean_contract``), so this asserts the shared wording.
+        ``"1"`` is a well-formed truth table of length ``2**0``, so it clears
+        the power-of-two check and is refused on arity instead.  The rule is
+        the shared validator's, so this asserts the shared wording.
         """
         from esolangs.tools import parameterized
 
@@ -915,8 +923,7 @@ class TestParameterizedOneTwoThree:
         The batched paths exist so a long run costs O(1) instead of ``w``
         trips through ``_exec_char``, but the budget counts *simulated
         commands* and must not depend on which path ran them.  Each case
-        below is the shape that selects one path, with the budget set just
-        under what that path is about to charge.
+        selects one path, with the budget just under its charge.
         """
         from esolangs.tools.one_two_three_construct import (
             _exec_char,
@@ -955,12 +962,9 @@ class TestParameterizedOneTwoThree:
         """Parking is what makes a template halt, so failing it must raise.
 
         A state with no survivors is already parked.  Four occupied residues
-        mod 4 take the ring round -- rows of equal residue land on the same
-        cell and fuse, so a class has to be freed before the descent can
-        collapse them.  The convergence allowance is ``64 * 2**n + 64``
-        passes, and a builder carrying a small ``n`` beside rows spread far
-        wider than that ``n`` implies is what outlasts it: the guard is a
-        real exit, not decoration.
+        mod 4 take the ring round -- rows of equal residue fuse, so a class
+        has to be freed first.  The allowance is ``64 * 2**n + 64`` passes,
+        which a small ``n`` beside far wider rows outlasts: a real exit.
         """
         from esolangs.tools.one_two_three_construct import (
             _WORK_BUDGET,
@@ -1015,15 +1019,11 @@ class TestParameterizedOneTwoThree:
         """A 1-row is decided by cycle detection, not by halting.
 
         A 1-row does not halt -- it is the loop the kill built -- so the
-        verdict comes from Brent's cycle detection rather than from the
-        machine stopping.  Both readings of that row are pinned here: the
-        real interpreter's, which is the shipped contract, and
-        :func:`_replay_verdict`'s, the in-module executor the suite uses
-        elsewhere.  They must agree, and the 1-row must be the looping one.
+        verdict comes from Brent's cycle detection.  Both readings are
+        pinned: the real interpreter's, which is the shipped contract, and
+        :func:`_replay_verdict`'s, which the suite uses elsewhere.
         """
-        from esolangs.tools.one_two_three_construct import (
-            construct,
-        )
+        from esolangs.tools.one_two_three_construct import construct
         from tests.tools.one_two_three_support import _replay_verdict
 
         template = construct("01")
