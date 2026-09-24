@@ -821,6 +821,65 @@ $\alpha_J/\alpha_{J^*}=(\kappa_J/\kappa_{J^*})(\Lambda_J/\Lambda_{J^*})
 $O(n^{Nk}e^{-\kappa n})$.  Hence $\eta_\nu\to0$.
 \end{proof}
 
+\begin{proposition}[Alternant ratio]\label{prop:altratio}
+Let $z_1>\cdots>z_p$ lie in $(0,1)$ and fix $\bar a$.  For a finite set $F$
+of distinct non-negative integers, a profile $\mathbf k$ with
+$\sum_ik_i=|F|$, and exponent sets $B_i\subseteq\{0,\ldots,\bar a\}$ with
+$|B_i|=k_i$, put
+$W_{\mathbf B}(F)=\det(f^{\,b}z_i^{\,f})_{f\in F,\,(i,b)}$, write
+$B^0_i=\{0,\ldots,k_i-1\}$ and $W(F;\mathbf k)=W_{\mathbf B^0}(F)$, and set
+$j=\sum_i\bigl(\sum B_i-\binom{k_i}2\bigr)\ge0$.  Then $W(F;\mathbf k)\ne0$,
+and there is $C=C(z,\bar a,\mathbf k)$, independent of $F$, with
+\[
+  |W_{\mathbf B}(F)|\le C\,(1+\max F)^{\,j}\,|W(F;\mathbf k)| .
+\]
+\end{proposition}
+
+\begin{proof}
+Give each of the $k$ columns its own variable: let
+$M(x)=(x_{i,b}^{\,f})_{f\in F,\,(i,b)}$ and let $Z_{\mathbf B}$ be the point
+$x_{i,b}=z_i$ for all $b\in B_i$.  Since $(x\partial_x)^bx^f=f^bx^f$ acts on a
+single column and the determinant is multilinear in columns,
+\[
+  W_{\mathbf B}(F)=\bigl[\Theta_{\mathbf B}\det M(x)\bigr]_{x=Z_{\mathbf B}},
+  \qquad
+  \Theta_{\mathbf B}=\prod_{(i,b)}\bigl(x_{i,b}\partial_{x_{i,b}}\bigr)^{b},
+\]
+an operator of order $\sum_i\sum B_i=M_0+j$ with
+$M_0=\sum_i\binom{k_i}2$.  By the bialternant identity
+$\det M(x)=\pm s_\lambda(x)V(x)$, where $V$ is the Vandermonde of the $k$
+variables and $\lambda_u=f_{k+1-u}-(k-u)$ for $F=\{f_1<\cdots<f_k\}$, so that
+$\lambda_1=\max F-(k-1)$.
+
+Now $V$ is divisible by the $M_0$ linear forms $x_{i,b}-x_{i,b'}$ with
+$b\ne b'$ in $B_i$, each vanishing at $Z_{\mathbf B}$, so every partial of $V$
+of order below $M_0$ vanishes there.  Writing
+$\Theta_{\mathbf B}=\sum_\beta(\text{monomial})\partial^\beta$ with
+$|\beta|\le M_0+j$ and applying Leibniz to $s_\lambda V$, a term survives only
+if $|\beta-\alpha|\ge M_0$, hence only if $|\alpha|\le j$.  Therefore
+\begin{equation}\label{eq:altexp}
+  W_{\mathbf B}(F)=\sum_{|\alpha|\le j}c_{\mathbf B,\alpha}\,
+  (\partial^\alpha s_\lambda)(Z),
+\end{equation}
+with $Z$ the confluent point and coefficients $c_{\mathbf B,\alpha}$ that do
+not depend on $F$.  For $\mathbf B=\mathbf B^0$ one has $j=0$, so only
+$\alpha=0$ survives and $W(F;\mathbf k)=\pm c_0s_\lambda(Z)$ with $c_0\ne0$;
+as $s_\lambda$ has nonnegative coefficients and $Z>0$, this gives
+$W(F;\mathbf k)\ne0$ and fixes its sign.
+
+Finally $s_\lambda(x)=\sum_\gamma K_{\lambda\gamma}x^\gamma$ with
+$K_{\lambda\gamma}\ge0$ and every $\gamma_v\le\lambda_1$, since a
+semistandard tableau repeats no entry in a column and $\lambda$ has
+$\lambda_1$ columns.  Differentiating term by term at the positive point $Z$,
+\[
+  0\le(\partial^\alpha s_\lambda)(Z)\le(\lambda_1/z_p)^{|\alpha|}s_\lambda(Z).
+\]
+Substituting this in \eqref{eq:altexp}, using $\lambda_1\le\max F$ and
+$|\alpha|\le j$, and dividing by $|c_0|$ gives the claim with
+$C=|c_0|^{-1}\sum_{|\alpha|\le j}|c_{\mathbf B,\alpha}|z_p^{-|\alpha|}$,
+finite because the exponent sets range over a finite family.
+\end{proof}
+
 \begin{theorem}[Necessity of the partial-sum criterion]\label{thm:converse}
 Let $2\le r_1<\cdots<r_L$ be distinct and $0\le u\le L-1$.  If
 \eqref{eq:partial} fails, then
@@ -1423,7 +1482,7 @@ $p_{gN}$, a full certificate with the claimed tail.
 Since $\tau_k(X)$ is an infimum over all certificates for $X$, the theorem
 proves \eqref{eq:step} at every $X$ whose minimizer for $X'$ has an initial
 segment below $\max X$, whatever its zeros above.  It does not need
-minimality: at the root set of Proposition~\ref{prop:slidefails}, where the
+minimality: at the root set of Proposition~\ref{prop:slidefails}, where a
 slide from $\{1,2,3,6,11,12,13\}$ to $g=4$ fails on every vertex, the smoothed
 certificate vanishes on $\{1,2,3,4\}$ with tail $0.82$ times the tail of that
 zero set, and for $g=5$ the crossing point has tail $0.48$ times it.  Only the
@@ -2053,29 +2112,27 @@ $n=\min E$ and $F=E-n$,
   W_{\mathbf b}(F)=\det\bigl(f^{\,b_{i,a}}z_i^{\,f}\bigr)_{f\in F},
 \]
 a sum of boundedly many terms, so all dependence on the shape of $E$ sits in
-the $W_{\mathbf b}(F)$.  Suppose that for each node set and each bound on the
-exponents there is a $C$ with
-\begin{equation}\label{eq:altratio}
-  |W_{\mathbf B}(F)|\le C\,(1+\max F)^{\,j}\,|W(F;\mathbf k)|,
-  \qquad
-  j=\sum_i\Bigl(\textstyle\sum B_i-\binom{k_i}2\Bigr),
-\end{equation}
-for every finite set $F$ of distinct non-negative integers.  The reference
-$W(F;\mathbf k)$ never vanishes, by the zero bound.  Feeding
-\eqref{eq:altratio} into the exact expansion makes the tail geometric once
+the $W_{\mathbf b}(F)$.  Proposition~\ref{prop:altratio} bounds each
+$W_{\mathbf B}(F)$ against the ungapped $W(F;\mathbf k)$ by
+$C(1+\max F)^j$, and shows that $W(F;\mathbf k)$ never vanishes.  Feeding
+that into the exact expansion makes the tail geometric once
 $\max F\le\tau n$ for a small $\tau$ depending only on the nodes, which gives
-$\alpha_{J^*}(E)\ne0$ and $\eta=O(1/\min E)$ for an arbitrary gap structure,
-and so closes the lemma.  Inequality \eqref{eq:altratio} holds at a single
-node, where $W_{\mathbf B}/W(F;\mathbf k)$ is a Schur polynomial $s_\mu(F)$
-with $|\mu|=j$, and the case $\min F\gg\operatorname{diam}F$ reduces to
-$\min F=0$; what is open is $\min F=0$ with
-$\max F\asymp\operatorname{diam}F$.  It held in $29872$ exact instances at
-$N\le12$ and $|F|\le8$, the worst ratio being $14.3$, and the ratio converges
-rather than creeping: at $F=(S,S{+}1,S{+}3,S{+}6,S{+}10,S{+}15)$ it rises to
-its predicted limit $12$ as $S$ grows.  Consistently, $\eta_\nu$ was still
-$\Theta(1/\min E_\nu)$ in the uncovered regime---with gaps
-$\lfloor\sqrt n\rfloor$ and $N=10$, $\eta_\nu\min E_\nu$ ran to $1.000$ at
-$k=4$ and $2.98$ at $k=6$---so the lemma is expected to hold there too.
+$\alpha_{J^*}(E)\ne0$ and $\eta=O(1/\min E)$ for an arbitrary gap structure
+inside that range.  The comparison of two profiles at the same $F$ that the
+remaining branch needs also follows, since
+$W(F;\mathbf k)=\pm c_0s_\lambda(Z)$ with $\lambda$ depending only on $F$:
+both confluent points have all coordinates in $[z_p,z_1]$, so the ratio of
+the two Schur values is at most $(z_1/z_p)^{|\lambda|}$ with
+$|\lambda|\le k\max F\le k\tau n$, and $\tau$ may be shrunk until this is
+beaten by the factor $e^{-\kappa n}$ a differing profile already gives.  What
+is left is the assembly: an arbitrary $E$ splits, at its gaps exceeding
+$\tau\min E$, into clusters of relative diameter at most $(k-1)\tau$
+separated by more than $\tau\min E$, and the Laplace expansion over those
+clusters has been carried out only when the clusters' relative diameters tend
+to $0$, not merely when they are small.  In the regime this last step
+concerns, $\eta_\nu$ was still $\Theta(1/\min E_\nu)$ in every configuration
+we computed---with gaps $\lfloor\sqrt n\rfloor$ and $N=10$,
+$\eta_\nu\min E_\nu$ ran to $1.000$ at $k=4$ and $2.98$ at $k=6$.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.

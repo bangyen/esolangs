@@ -315,14 +315,29 @@ step; an answer lands in the paper it extends, and the row leaves.
   `eta = O(1/min E)` for ARBITRARY gap structure.  PROVED: `eq:altratio` at a
   single node (the ratio is a Schur polynomial `s_mu(F)`, `|mu| = j`), and
   `min F >> diam F` reduces to `min F = 0` (depth-1 recursion, constants do
-  not compound).  OPEN: `eq:altratio` at `min F = 0`,
-  `max F ~ diam F`.  Observed in 29872 exact instances at `N <= 12`,
-  `|F| <= 8`, worst ratio 14.3, and the constant CONVERGES rather than
-  creeping (at `F = (S,S+1,S+3,S+6,S+10,S+15)` it rises to its predicted
-  limit 12).  My own independent sweep: worst ratio 10.06, 0 vanishing.
-  Also unproved, and much weaker, is ingredient (L):
-  `W(F;k') <= e^{o(n)} W(F;k)` across two profiles at the same `F`, needed
-  only for the differing-profile branch.  And with gaps `floor(sqrt n)` and
+  not compound).  Round 14 PROVED `eq:altratio` OUTRIGHT
+  (`prop:altratio`): give each COLUMN its own variable, so
+  `W_B(F) = [Theta_B det M(x)]` at the confluent point with
+  `Theta_B = prod (x d/dx)^b` of order `M_0 + j`, `M_0 = sum C(k_i,2)`; by
+  the bialternant identity `det M(x) = +- s_lambda(x) V(x)` with
+  `lambda_u = f_{k+1-u} - (k-u)`; `V` is divisible by the `M_0` forms
+  `x_{i,b} - x_{i,b'}` that VANISH at the confluent point, so Leibniz leaves
+  only `|alpha| <= j` derivatives of `s_lambda`, giving
+  `W_B(F) = sum_{|alpha|<=j} c_{B,alpha} (d^alpha s_lambda)(Z)` with `c`
+  INDEPENDENT of `F`; and `s_lambda` is monomial-positive with every exponent
+  `<= lambda_1`, so `d^alpha s_lambda(Z) <= (lambda_1/z_p)^{|alpha|}
+  s_lambda(Z)`.  At `j = 0` this also re-proves `W(F;k) = +- c_0 s_lambda(Z)
+  != 0`.  I VERIFIED the crux independently (verify14.py): `W(F;k)/s_lambda(Z)`
+  is the CONSTANT `-1/53204107681274414062500000000` over 10 sets `F` with
+  `max F` from 11 to 371, `z=(1/2,1/3,1/5)`, `k=(3,4,3)`.  Ingredient (L)
+  also falls out: `lambda` depends only on `F`, both confluent points have
+  coordinates in `[z_p, z_1]`, so the two Schur values differ by at most
+  `(z_1/z_p)^{|lambda|}`, `|lambda| <= k max F <= k tau n`, and `tau` shrinks
+  until `e^{-kappa n}` beats it.  WHAT IS LEFT is only the ASSEMBLY: an
+  arbitrary `E` splits at its gaps above `tau min E` into clusters of
+  relative diameter `<= (k-1) tau` separated by `> tau min E`, and the
+  Laplace expansion over clusters was carried out only for relative diameters
+  tending to 0, not merely small.  And with gaps `floor(sqrt n)` and
   `N=10`, `eta * min E` ran to 1.000 at `k=4` and 2.98 at `k=6`
   (verify12b.py), the same `Theta(1/min E)`, so the lemma is expected TRUE.
   DEAD: `|alpha_J*| ~ M_J* prod_{same-node}(1 - e_s/e_t)` (fails at `k>=6`,
