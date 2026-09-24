@@ -48,7 +48,9 @@ is an infimum in general.  The criterion is also necessary, repeated
 roots included: when it fails, the infimum lies strictly above the bound.  It is
 then the reciprocal of the worst placement's best certificate tail, and
 lifting certificates computes it at explicit root sets: at $(2,3,5,7)$ it is
-$1704/31$.
+$1704/31$.  For distinct roots the escaping placement is always the worst,
+so the infimum is the reciprocal of the least certificate tail on the
+surviving roots alone.
 The standing restriction $r_1\ge2$ cannot be dropped once $u\ge1$, already
 at $L=2$; the node cutoff $y_i\le1/2$ underlying the tail comparison behind
 the bound cannot be raised; and we extend that comparison to confluent
@@ -1362,13 +1364,16 @@ Theorem~\ref{thm:lift} with $k=1$ gives $\tau(\{w\})\le\tau^*$.  Since
 $T\ge\tau^*$ by Theorem~\ref{thm:value}, the maximum is $T$.
 \end{proof}
 
+By Theorem~\ref{thm:extremal} the maximum is always $\tau^*$, so the
+infimum of $b_2$ is $1/\tau^*$.
+
 For $u\ge2$ the same covering is a finite search.  Start from
 $(A,k)=(\varnothing,u)$.  Choose a full certificate on $y_{k+1},\ldots,y_L$
 whose zero set $Z$ contains $A$ and whose tail is at most $\tau^*$.  By
 Theorem~\ref{thm:lift} it covers every $X\supseteq A$ whose other $k$
 elements lie in $Z\cup(\max Z,\infty)$.  Recurse on $(A\cup\{w\},k-1)$ for
 each $w<\max Z$ outside $Z\cup A$.  If the search closes, $T=\tau^*$ and the
-infimum is $1/\tau^*$.
+infimum is $1/\tau^*$; by Theorem~\ref{thm:extremal} it always closes.
 
 The search collapses to a single step.  One node is added and one zero is
 deleted at a time, and the zero deleted must be the largest.
@@ -1633,11 +1638,7 @@ minimizer of $\tau_{k+1}$, is stronger than the hypothesis of
 \eqref{eq:slide}, and at the root set of Proposition~\ref{prop:slidefails} it
 is not met: the minimizer for $X'=\{1,2,3\}$ on $y_2,\ldots,y_9$ is
 $\{1,2,3,6,8,12,17\}$, and \eqref{eq:step} holds at $X=\{1,2,3,4\}$ with ratio
-$0.70$.  We know no root set at which \eqref{eq:step} fails: none among
-$47638$ instances over integer, rational and clustered root sets to $L=6$,
-none among $1352$ further steps with $u\le3$, and none among the $9828$
-placements of size $L-2$ inside $\{1,\ldots,15\}$ on the clustered nodes
-$\tfrac12-(i-1)\cdot10^{-4}$ with $L\le8$.  Where the displaced zero goes is
+$0.70$.  Theorem~\ref{thm:extremal} below proves \eqref{eq:step} in general.  Where the displaced zero goes is
 not settled either: the half-mass point $N'$ of $\ell_M$ wins in most
 straddling instances, but at the confluent limit with $B=\{1,\ldots,24\}$,
 $g=25$ and $M=50$, where $M$ is the minimizer on $\ell_\infty$, the vertex
@@ -1717,14 +1718,13 @@ point but to shift every zero above $g$ up by one:
 \end{equation}
 for every $a\in A$ with $a+1\notin A$, the left side on
 $y_{k+1},\ldots,y_L$ and the others on $y_{k+2},\ldots,y_L$.
-For $|A|=1$ it is proved below (Corollary~\ref{cor:shiftone}).  For
-$|A|\ge2$ we have no proof, and no counterexample: it holds in all
-$7023$ instances satisfying its hypothesis among $8523$ tried with $L\le9$,
-over the clustered nodes $\tfrac12-(i-1)\cdot10^{-4}$ with $g\le7$ and $A$
-within $6$ of $g$, and over $300$ random node sets at $L=7$, while $283$
-instances without the hypothesis violate the conclusion.  The largest
-ratio seen is $0.9993$, at the clustered nodes with $B_0=\{1,2,3,4\}$,
-$g=5$, $A=\{10\}$, against $1$ in the confluent limit.
+For $|A|=1$ it is proved below (Corollary~\ref{cor:shiftone}), and whenever
+no two elements of $A$ are consecutive by Corollary~\ref{cor:shiftrun}.  For
+runs of length at least two Corollary~\ref{cor:shiftrun} proves it with a
+hypothesis that moves the start of each run past its end instead;
+minimality supplies that form equally, and it is the one
+Theorem~\ref{thm:extremal} uses.  In the stated wording it held in every
+one of $550$ further instances tried.
 
 \begin{proposition}[The shift]\label{prop:shift}
 \begin{enumerate}
@@ -1949,68 +1949,239 @@ sign of the weight of $E$ on $y_{k+1}$, and for $y_{k+1}>\tfrac12$ that sign
 flips.  In the block case $B_0=\{1,\ldots,g-1\}$ with $y_{k+1}=\tfrac12$ the
 sum $E$ vanishes identically, and \eqref{eq:chord} is the identity behind
 part (3) of Proposition~\ref{prop:shift}, the closed form of $\E|D-M|$.
-What remains of \eqref{eq:shift} is $|A|\ge2$.  The chord does not
-extend: write $M$ for the end of the first run of $A$, $C=B_0\cup A\setminus\{M\}$
-for the common zeros, $F_1$ for the sum with zeros $C\cup\{M+1\}$ on the
-small nodes and $w$ for the one with zeros $C\cup\{g,M+1\}$ on all $c$
-nodes.  Then \eqref{eq:chordsplit} holds with $B_0$ replaced by $C$ but
-with a \emph{local} sign: the coefficient of $E(d)$ is
-$s_d=\sigma(-1)^{\#(C\cap(g,d))}$ rather than the constant $\sigma=(-1)^{|B_0|}$,
-because each zero of $C$ above $g$ flips the sign of $w$ as $d$ passes it,
-and the forced zeros of $E$ are the pairs $d-1\in\{0\}\cup C\cup\{M\}$,
-$d\in C\cup\{g,M+1\}$.  A zero of $A$ that sits above $M+1$ with no
-predecessor forces nothing, so $E$ is short one zero for every run of $A$
-above $M+1$, its sign there is not pinned, and
-$\Tail(B_0\cup A)\ge\lambda\Tail(F_1)+(1-\lambda)\Tail(w)$ fails: at the
-clustered nodes with $L=9$, $B_0=\{1,2,3,5,6\}$, $g=7$, $A=\{8,12\}$ the
-right side exceeds the left by $19\%$ of it, the whole excess sitting in
-the far term.  No fixed pair of weights works in its place: the feasible
-weight on $F_1$ is at most $0.683$ at $L\le7$ and at least $0.794$ at
-$L=9$.  Splitting on whether the far sign is pinned does not help either.
-Termwise pinning, $s_dE(d)\le0$ for all $d\ge M+2$, does imply the chord
-by the argument of Proposition~\ref{prop:chord}, and no pinned instance
-violates it; but pinning was never once observed with a gapped $A$, and
-the unpinned instances do not in bulk violate the hypothesis of
-Proposition~\ref{prop:shift}
-($552$ of the $1515$ unpinned instances at $L=9$ satisfy it, for example
-$y_0=\tfrac12$, $B_0=\{2,3,4,6,7\}$, $g=8$, $A=\{11,13\}$), so the
-unpinned branch cannot be closed by contradicting it.  What survives is
-the chord read conditionally: in every instance tried, $L\le10$ and
-$|A|\le3$, the hypothesis $\Tail(B_0\cup A)\le\Tail(F_1)$ forces
-$\Tail(B_0\cup A)\ge\lambda\Tail(F_1)+(1-\lambda)\Tail(w)$, with least
-relative slack $0.063$, while every one of the $150$ chord failures at
-$L=10$ violates it.  Since Proposition~\ref{prop:shift} supplies that
-hypothesis and the chord gives $\Tail(w)\le\Tail(B_0\cup A)$, which is
-\eqref{eq:shift},
-a proof of this conditional chord would close the case.  Both $F_M$ and
-$F_1$ take the value $1$ at $0$ and vanish on $C$, so their difference is
-a multiple of the single $(L-1)$-node sum $H$ vanishing on $\{0\}\cup C$:
-$F_M-F_1=\alpha H$.  In every instance tried the tails then obey the gap
-identity
-\begin{equation}\label{eq:gapmass}
-  \Tail(F_1)-\Tail(F_M)=|\alpha|\Bigl(\sum_{d\le M}|H_d|-\sum_{d>M}|H_d|\Bigr),
+The chord does extend, once every run of $A$ is moved at once and every run
+contributes its own neighbour.  Write $A$ as the disjoint union of its maximal
+runs of consecutive integers $[s_1,e_1],\ldots,[s_p,e_p]$, so that
+$A+1=\bigcup_j[s_j+1,e_j+1]$.  The neighbour of $B_0\cup A$ belonging to the
+$j$th run is the zero set obtained by moving its first element past its last,
+\[
+  Z_j=(B_0\cup A)\setminus\{s_j\}\cup\{e_j+1\},
+\]
+which shifts that run up by one; for a run of length one it is the move
+$a\to a+1$ of \eqref{eq:shift}.  Shifting every run at once is the left side of
+\eqref{eq:shift}.
+
+\begin{proposition}[The run chord]\label{prop:runchord}
+Let $y_{k+1}\le\tfrac12$, let $g\ge1$, let $B_0\subseteq\{1,\ldots,g-1\}$ and
+let $A$ be a nonempty set of integers above $g$ with
+$|B_0|+|A|=L-k-2$, with runs $[s_j,e_j]$ and neighbours $Z_j$ as above.  Let
+$F$ and $F_j$ be the full certificates on $y_{k+2},\ldots,y_L$ with zero sets
+$Z=B_0\cup A$ and $Z_j$, and $w$ the full certificate on $y_{k+1},\ldots,y_L$
+with zero set $W=B_0\cup\{g\}\cup(A+1)$.  Then there are
+$\lambda_1,\ldots,\lambda_p,\mu>0$ with $\sum_j\lambda_j+\mu=1$ such that
+\begin{equation}\label{eq:runchord}
+  \Tail(F)\ \ge\ \sum_{j=1}^p\lambda_j\Tail(F_j)+\mu\,\Tail(w),
 \end{equation}
-so the hypothesis is exactly the mass statement
-$\sum_{d\le M}|H_d|\ge\sum_{d>M}|H_d|$, and the conditional chord reads
-$|\alpha|(\sum_{d\le M}|H_d|-\sum_{d>M}|H_d|)\le(1-\lambda)(\Tail(F_1)-\Tail(w))$.
-Two routes to it are closed.  First, $\Tail$ is convex along the segment
-$[F_1,w]$, with defect $D=\lambda\Tail(F_1)+(1-\lambda)\Tail(w)-\Tail(p)$
-at $p$, and the directional bound $\Tail(F_M)-\Tail(p)\ge DD$ along $G$
-does hold; but $DD\ge D$ fails, in $1089$ of the $1600$ instances at $L=9$
-and in $64$ of those under the hypothesis, so no supporting-hyperplane
-argument can give the chord.  Second, no hypothesis-free lower bound of
-$(1-\lambda)(\Tail(F_1)-\Tail(w))$ by $|\alpha|\sum_{d\le M}|H_d|$ can
-exist: with \eqref{eq:gapmass} it would give the chord unconditionally,
-which the failures above refute.  The far mass $\sum_{d>M}|H_d|$ has to
-enter.  The hypothesis-free form
-$\Tail(B_0\cup A)\ge\min(\Tail(F_1),\Tail(w))$ also
-holds in every instance tried.
+with equality if and only if $y_{k+1}=\tfrac12$ and $B_0=\{1,\ldots,g-1\}$.
+\end{proposition}
+
+For $A=\{M\}$ this is Proposition~\ref{prop:chord}, with $\lambda_1=\lambda$,
+$\mu=1-\lambda$ and $F_1=F_{M+1}$.
+
+\begin{proof}
+\emph{Signs.}  For an integer $d\ge0$ put
+$\varphi(d)=(-1)^{|Z\cap(0,d)|}$.  Each of $F$, $F_j$, $w$ is full, so by the
+zero bound it has exactly its prescribed zeros, all simple, and it is positive
+at $0$; its sign at a point $d$ outside its zero set is $-1$ to the number of
+its zeros below $d$.  Hence $F(d)=\varphi(d)|F(d)|$.  For an integer $d$,
+$|Z_j\cap(0,d)|-|Z\cap(0,d)|=[e_j+1<d]-[s_j<d]$, which vanishes unless
+$s_j<d\le e_j+1$, and those $d$ lie in $Z_j$; so $F_j(d)=\varphi(d)|F_j(d)|$
+for every integer $d\ge0$.  Since $|(A+1)\cap(0,d)|=|A\cap(0,d-1)|$,
+\[
+  |W\cap(0,d)|=|Z\cap(0,d)|+[g<d]-[d-1\in A],
+\]
+and $d-1\in A$ puts $d$ in $W$; so
+\begin{equation}\label{eq:runsigns}
+  w(d)=\varphi(d)|w(d)|\quad(d\le g),\qquad
+  w(d)=-\varphi(d)|w(d)|\quad(d>g).
+\end{equation}
+In words: the $F_j$ keep the signs of $F$ at every integer, and $w$ keeps them
+below $g$ and reverses them above.
+
+\emph{The combination.}  At a run start $s_i$ we have $F_j(s_i)=0$ for $j\ne
+i$, as $s_i\in Z_j$; $F_i(s_i)\ne0$, as $s_i\notin Z_i$; and $w(s_i)\ne0$,
+as $s_i>g$ and $s_i-1\notin A$ keep $s_i$ out of $W$.  Put
+$\rho_i=|w(s_i)|/|F_i(s_i)|$, $\mu=1/(1+\sum_i\rho_i)$, $\lambda_i=\mu\rho_i$
+and
+\[
+  q=\sum_{j=1}^p\lambda_jF_j+\mu w .
+\]
+Then $q(0)=1$, and by \eqref{eq:runsigns}
+$q(s_i)=\varphi(s_i)\bigl(\lambda_i|F_i(s_i)|-\mu|w(s_i)|\bigr)=0$.  Every
+other point of $Z$ lies in $B_0$ or in $A\cap(A+1)$, hence in every $Z_j$ and
+in $W$, so $q$ vanishes on all of $Z$.  Let $\omega$ be the weight of $w$ on
+$y_{k+1}$.  It is nonzero, for otherwise $w$ would be a sum on $L-k-1$ nodes
+with the $L-k-1$ zeros $W$; and since $y_{k+1}$ is the largest node and $w$ has
+the sign $(-1)^{|W|}=(-1)^{L-k-1}$ past $\max W$, $\sgn\omega=(-1)^{L-k-1}$.
+The sum $G=F-q$ on $y_{k+1},\ldots,y_L$ has weight $-\mu\omega\ne0$ on
+$y_{k+1}$ and vanishes on the $L-k-1$ points $\{0\}\cup Z$, so by the zero
+bound these are its only zeros and all are simple.  For large $d$ its sign is
+$-\sgn\omega=(-1)^{L-k}=(-1)^{|Z|}$, which is $\varphi(d)$ there; as $G$ and
+$\varphi$ change sign exactly at the points of $Z$,
+\begin{equation}\label{eq:runG}
+  \varphi(d)G(d)=|G(d)|\qquad(d\ge0).
+\end{equation}
+
+\emph{Decomposition.}  Put $\delta_d=|F(d)|-|q(d)|$ and
+$\gamma_d=\sum_j\lambda_j|F_j(d)|+\mu|w(d)|-|q(d)|$, so that, all the series
+converging absolutely, the left side of \eqref{eq:runchord} minus the right is
+$D=\sum_{d\ge1}(\delta_d-\gamma_d)$.  For $1\le d\le g$ every term of $q(d)$
+has the sign $\varphi(d)$ or vanishes, so $\gamma_d=0$ and
+$\delta_d=\varphi(d)(F(d)-q(d))=\varphi(d)G(d)$.  For $d>g$ write
+$P=\sum_j\lambda_j|F_j(d)|$ and $Q=\mu|w(d)|$; by \eqref{eq:runsigns}
+$q(d)=\varphi(d)(P-Q)$, so $\gamma_d=P+Q-|P-Q|$ and
+\[
+  \delta_d-\gamma_d=|F(d)|-P-Q=\varphi(d)G(d)-2\mu|w(d)| ,
+\]
+whatever the sign of $P-Q$.  Hence
+\[
+  D=\sum_{d\ge1}\varphi(d)G(d)-2\mu\sum_{d>g}|w(d)| .
+\]
+Since $G(0)=0$, and $\varphi(d)\ne\varphi(d-1)$ only when $d-1\in Z$, where $G$
+vanishes, $\sum_{d\ge1}\varphi(d)G(d)=\sum_{d\ge1}\varphi(d)G(d-1)$.  With
+\eqref{eq:runsigns} and \eqref{eq:runG} this gives
+\begin{equation}\label{eq:runsplit}
+  \Tail(F)-\sum_j\lambda_j\Tail(F_j)-\mu\Tail(w)
+  =\sum_{d=1}^{g}|G(d-1)|+\sum_{d>g}\varphi(d)E(d),
+  \qquad E(d)=G(d-1)+2\mu\,w(d),
+\end{equation}
+and it remains to show $\varphi(d)E(d)\ge0$ for every integer $d>g$.
+
+\emph{Zeros of $E$.}  $E$ is an exponential sum on $y_{k+1},\ldots,y_L$, and
+its weight on $y_{k+1}$ is $\mu\omega(2-1/y_{k+1})$.  It vanishes at every $d$
+with $d-1\in\{0\}\cup Z$ and $d\in W$.  With $S=\{0\}\cup B_0\cup\{g\}$ that
+covers every $d$ with $d-1,d\in S$, and every $d\in A+1$.  Let $S$ consist of
+the maximal runs $R_1,\ldots,R_m$ of consecutive integers, $0\in R_1$ and
+$g\in R_m$.  At a gap start $q=r+1$ with $r\in S$, $r<g$, $q\notin S$, we have
+$G(q-1)=0$ and $q\notin W$, so $E(q)=2\mu w(q)\ne0$, of sign $\varphi(q)$ by
+\eqref{eq:runsigns}.
+
+\emph{Counting.}  Suppose first $m\ge2$, with gap starts
+$q_1<\cdots<q_{m-1}$, and $E\not\equiv0$.  As in the proof of
+Proposition~\ref{prop:chord}, $R_1$ supplies $|R_1|-1$ zeros below $q_1$; for
+$1\le j\le m-2$ the run $R_{j+1}\subseteq B_0$ supplies $|R_{j+1}|-1$ zeros in
+$(q_j,q_{j+1})$, and since
+$\varphi(q_{j+1})=\varphi(q_j)(-1)^{|R_{j+1}|}$ that interval holds at least
+$|R_{j+1}|$ zeros counted with multiplicity; and beyond $q_{m-1}$ lie the known
+zeros $a+1,\ldots,g$, with $a=\min R_m$, and the $|A|$ points of $A+1$.  In
+all $E$ has at least $|S|-2+|A|=|B_0|+|A|=L-k-2$ zeros, of which at least
+$|R_m|-1+|A|$ lie in $(q_{m-1},\infty)$.  At $q_{m-1}$ the sign of $E$ is
+$\varphi(q_{m-1})=(-1)^{|B_0|-|R_m|+1}$.  If $y_{k+1}<\tfrac12$ the weight on
+$y_{k+1}$ is nonzero, $E$ has at most $L-k-1$ zeros, hence at most
+$|R_m|+|A|$ in $(q_{m-1},\infty)$, and its sign at infinity is
+$-\sgn\omega=(-1)^{|B_0|+|A|}$; the number of its zeros in
+$(q_{m-1},\infty)$ is then congruent to $|R_m|-1+|A|$ modulo $2$, so it is
+exactly $|R_m|-1+|A|$.  If $y_{k+1}=\tfrac12$ the weight vanishes, $E$ is a sum
+on $L-k-1$ nodes with at most $L-k-2$ zeros, and again only the known zeros
+occur.  Either way the zeros of $E$ beyond $q_{m-1}$ are exactly
+$a+1,\ldots,g$ and the points of $A+1$, all simple.  So for an integer $d>g$
+outside $A+1$, where $d-1\notin A$ and hence $|(A+1)\cap(0,d)|=|A\cap(0,d)|$,
+\[
+  \sgn E(d)=(-1)^{|B_0|-|R_m|+1}(-1)^{|R_m|-1}(-1)^{|A\cap(0,d)|}
+  =(-1)^{|Z\cap(0,d)|}=\varphi(d),
+\]
+while $E$ vanishes on $A+1$.  If $m=1$, that is $B_0=\{1,\ldots,g-1\}$, the
+known zeros $1,\ldots,g$ and $A+1$ number $L-k-1$.  For $y_{k+1}<\tfrac12$ they
+are all the zeros, simple, and counting down from the sign
+$(-1)^{|B_0|+|A|}$ at infinity gives $\sgn E(d)=\varphi(d)$ for $d>g$ outside
+$A+1$ as before; for $y_{k+1}=\tfrac12$ the bound $L-k-2$ forces
+$E\equiv0$.
+
+So $\varphi(d)E(d)\ge0$ for every $d>g$, and \eqref{eq:runsplit} proves
+\eqref{eq:runchord}.  Its first term vanishes exactly when $G$ vanishes on
+$\{1,\ldots,g-1\}$, that is when $B_0=\{1,\ldots,g-1\}$; then $E\equiv0$ if
+$y_{k+1}=\tfrac12$, and otherwise $\varphi(g+1)E(g+1)>0$, as $g+1\notin A+1$.
+\end{proof}
+
+Only the new node is held to the cutoff, and only through the sign of
+$2-1/y_{k+1}$; the nodes $y_{k+2},\ldots,y_L$ may be any distinct reals in
+$(0,y_{k+1})$.  The proof also shows why the single chord of
+Proposition~\ref{prop:chord} breaks for $|A|\ge2$: with one neighbour only,
+the other runs of $A$ are not shifted in $w$, and $E$ loses the zeros they
+would force.
+
+\begin{corollary}[The shift]\label{cor:shiftrun}
+In the setting of Proposition~\ref{prop:runchord},
+\begin{equation}\label{eq:shiftrun}
+  \Tail\bigl(B_0\cup\{g\}\cup(A+1)\bigr)\le\Tail(B_0\cup A)
+  \quad\text{whenever}\quad
+  \Tail(B_0\cup A)\le\Tail\bigl(B_0\cup A\setminus\{s\}\cup\{e+1\}\bigr)
+\end{equation}
+for every run $[s,e]$ of $A$, the left side on $y_{k+1},\ldots,y_L$ and the
+others on $y_{k+2},\ldots,y_L$.  When no two elements of $A$ are consecutive
+this is \eqref{eq:shift}.
+\end{corollary}
+
+\begin{proof}
+By \eqref{eq:runchord} and the hypothesis,
+$\Tail(F)\ge(1-\mu)\Tail(F)+\mu\Tail(w)$, and $\mu>0$.
+\end{proof}
+
+The hypothesis is again what minimality supplies.  For that we need
+minimisers at every placement, and the argument of
+Proposition~\ref{prop:attain} gives them.
+
+\begin{lemma}[Full minimisers]\label{lem:attainX}
+Let $0\le k<L$ and let $X$ be a set of at most $L-k-1$ positive integers.  Then
+$\tau_k(X)$ is attained by a full certificate on $y_{k+1},\ldots,y_L$ whose
+zero set contains $X$.
+\end{lemma}
+
+\begin{proof}
+Run the first two steps of the proof of Proposition~\ref{prop:attain} on the
+affine set $\{\lambda:\sum_i\lambda_i=1,\ v_x(\lambda)=0\ (x\in X)\}$ in place
+of $\{\sum_i\lambda_i=1\}$.  It is closed, and nonempty because it contains the
+full certificate of any zero set of size $L-k-1$ containing $X$, so the norm
+$f$ attains its minimum on it.  If a minimiser has a zero set $Z\supseteq X$
+with $|Z|\le L-k-2$, the conditions $\sum_ih_i=0$ and $v_d(h)=0$ for $d\in Z$
+are at most $L-k-1$ linear conditions on $h\in\R^{L-k}$, so some $h\ne0$ meets
+them, and the move $\lambda+th$ of that proof keeps the tail and every zero of
+$Z$, and so every point of $X$, until it gains a zero.  The zero bound caps
+the zeros at $L-k-1$.
+\end{proof}
+
+\begin{theorem}[The escaping placement is extremal]\label{thm:extremal}
+Let $2\le r_1<\cdots<r_L$ and $0\le u\le L-1$.  Then \eqref{eq:step} holds for
+every $0\le k<u$ and every set $X$ of $u-k$ positive integers.  Consequently
+$T=\tau^*$, and
+\[
+  \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)=\frac1{\tau^*}
+  =\min_M\max_{j\ge1}\bigl|S_j(P_uM)\bigr|
+\]
+over monic $Q,M\in\R[x]$.
+\end{theorem}
+
+\begin{proof}
+Fix $k$ and $X$, and put $g=\max X$ and $X'=X\setminus\{g\}$.  By
+Lemma~\ref{lem:attainX} on $y_{k+2},\ldots,y_L$, $\tau_{k+1}(X')$ is attained
+by a full certificate $F$ with a zero set $Z^-\supseteq X'$ of size $L-k-2$.
+If $g\in Z^-$ or $g>\max Z^-$, Proposition~\ref{prop:stepeasy} gives
+\eqref{eq:step}.  Otherwise put $B_0=Z^-\cap(0,g)$, which contains $X'$, and
+$A=Z^-\cap(g,\infty)\ne\varnothing$.  For a run $[s,e]$ of $A$, the set
+$Z^-\setminus\{s\}\cup\{e+1\}$ has $L-k-2$ elements and contains $X'$, as
+$s>g$, so its full certificate is a certificate for $X'$ and its tail is at
+least $\tau_{k+1}(X')=\Tail(F)$.  The node $y_{k+1}=1/r_{k+1}$ is at most
+$\tfrac12$, so Corollary~\ref{cor:shiftrun} applies: the full certificate $w$
+on $y_{k+1},\ldots,y_L$ with zero set $B_0\cup\{g\}\cup(A+1)\supseteq X$ has
+$\Tail(w)\le\Tail(F)$, whence $\tau_k(X)\le\Tail(w)\le\tau_{k+1}(X')$.
+Proposition~\ref{prop:step} then gives $T=\tau^*$ and the value $1/\tau^*$,
+and Proposition~\ref{prop:attain} makes \eqref{eq:multiplier} an equality at
+some monic $M$.
+\end{proof}
+
+So when \eqref{eq:partial} fails the infimum is always $1/\tau^*$: the
+covering search after Corollary~\ref{cor:uone} always closes, and
+Corollary~\ref{cor:uone} reads $\inf_Qb_2=1/\tau^*$.  The hypothesis of
+\eqref{eq:shiftrun} differs from that of \eqref{eq:shift} only on runs of
+length at least two, where it moves the start of the run instead of its end;
+minimality supplies both, and only the former enters the proof.
 What the median ranges over is not a one-parameter shape: the minimizing zero
 set itself is not a consecutive block with one displaced zero.  At
 $(2,3,4,5,6)$ with $u=0$ it is $\{1,2,4,6\}$, of tail $\tfrac{41}{12600}$,
 against $0.003847$ for the best block $\{1,2,3\}$ with one displaced zero.
 
-Whether it always closes is a question about one end of a multiple.  Fix the
+That it always closes can also be put analytically, as a question about one
+end of a multiple.  Fix the
 placement.  Dividing the exempt roots out of a multiple controls every
 coefficient below the exempt positions, by the geometric sum that proves
 \eqref{eq:order}.
@@ -2263,50 +2434,30 @@ Proposition~\ref{prop:sharp235} exhibit the multiples, and at $(3,4,5,6)$.
 It fails already at $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums
 are $1,-\tfrac{11}2,5$, so the infimum of $b_2$ exceeds $5$.  When
 \eqref{eq:partial} fails, Theorem~\ref{thm:value} gives the infimum as $1/T$,
-and Theorem~\ref{thm:lift} reduces $T=\tau^*$ to a finite search, which
-closes at $(2,3,5,7)$ and $(2,\ldots,7)$ (Proposition~\ref{prop:values}) and
-at $2119$ further root sets we tried with $u\le4$---integer, rational, and
-clustered just above the cutoff---where every one of $40405$ placements inside
-$\{1,\ldots,10\}$ is covered by a full certificate whose tail is at most the
-least tail of a full certificate on the surviving nodes.  Attainment by a full certificate
-with a witness as in \eqref{eq:dualpair} is
-Proposition~\ref{prop:attain}.  What is not proved in general is that the
-search always closes, that is, that the escaping placement is always
-extremal.
-
-That was reduced to one inequality, proved when a single zero of the
-minimizer lies above $\max X$.  By Proposition~\ref{prop:step} it is the single
-step \eqref{eq:step}, deleting the largest element of the placement; by
-Proposition~\ref{prop:stepeasy} the step holds except when the minimizing
-zero set straddles $\max X$, and by Proposition~\ref{prop:slide} the
-straddling case is the slide inequality \eqref{eq:slide}, which
-Proposition~\ref{prop:slidealigned} proves when either minimizer involved sits
-at or below $\max X$.  In the remaining case \eqref{eq:slide} fails, at nine
-nodes clustered just below the cutoff (Proposition~\ref{prop:slidefails}), so
-no argument that ignores the minimality of the zero set being slid can prove
-\eqref{eq:step}.  The step itself has no known counterexample: none in
-$47638$ instances to $L=6$, in $1352$ further steps, or among all placements
-of size $L-2$ inside $\{1,\ldots,15\}$ at the clustered nodes with $L\le8$.
-Theorem~\ref{thm:slideinitial} proves the step whenever the minimizing zero
-set below $\max X$ is an initial segment, whatever lies above, by smoothing
-the minimizing certificate against the new node; what remains is a gap below
-$\max X$.  There the displaced zero is not the half-mass point but a shift:
-\eqref{eq:shift} moves every zero above $\max X$ up by one, under the
-hypothesis that no single such move lowers the tail, which minimality
-supplies (Proposition~\ref{prop:shift}).  With one zero above $\max X$ it
-is proved, through the chord lemma (Proposition~\ref{prop:chord} and
-Corollary~\ref{cor:shiftone}); with several it holds in every one of
-$7023$ instances with the hypothesis at $L\le9$ and fails without it, and
-it is sharp at the confluent block.  Three alternatives are refuted
-above: deleting $\min X$ rather than $\max X$ fails at $(2,3,4,5)$; freeing
-$\max Z^-$ rather than the smallest zero above $g$ fails by a factor $1.40$;
-and adjoining $g$ to $Z^-$ without sliding, which would need no displaced
-zero at all, fails in $245$ of the $379$ straddling instances we put to it,
-by as much as a factor $2.01$.  Proposition~\ref{prop:head} states the same
-question analytically instead, as a bound on the $\max X-1$ coefficients of a
-deflated multiple; by Proposition~\ref{prop:defthresh} that route says nothing
-pointwise once $r_1\le\tfrac{3+\sqrt5}2$, which covers every root set with
-$r_1=2$.  Repeated roots are settled on both sides.  In the Hermite basis $d^ay_i^d$,
+and for distinct roots Theorem~\ref{thm:extremal} shows $T=\tau^*$: the
+escaping placement is always extremal, so the infimum is
+$1/\tau^*=\min_M\max_{j\ge1}|S_j(P_uM)|$, computed from the surviving roots
+alone, and the finite search of Theorem~\ref{thm:lift} always closes, as it
+does at $(2,3,5,7)$ and $(2,\ldots,7)$ (Proposition~\ref{prop:values}).
+Attainment by a full certificate with a witness as in \eqref{eq:dualpair} is
+Proposition~\ref{prop:attain}.  The route to Theorem~\ref{thm:extremal} is
+Proposition~\ref{prop:step}, which reduces it to the single step
+\eqref{eq:step}, deleting the largest element of the placement, and
+Proposition~\ref{prop:stepeasy}, which settles the step unless the minimizing
+zero set $Z^-$ straddles $g=\max X$.  In the straddling case the naive
+inequalities fail: the slide \eqref{eq:slide} fails at nine clustered nodes
+(Proposition~\ref{prop:slidefails}), deleting $\min X$ rather than $\max X$
+fails at $(2,3,4,5)$, freeing $\max Z^-$ rather than the smallest zero above
+$g$ fails by a factor $1.40$, and adjoining $g$ without sliding fails by as
+much as a factor $2.01$.  What works is to shift every run of zeros above $g$
+up by one, and the run chord (Proposition~\ref{prop:runchord}) compares that
+shift against one neighbour per run; minimality of $Z^-$ supplies the
+hypothesis, and the cutoff enters only through the sign of $2-1/y_{k+1}$.
+Theorem~\ref{thm:slideinitial} and Proposition~\ref{prop:chord} are the
+special cases $B_0$ initial and $|A|=1$.  Proposition~\ref{prop:head}
+states the same question analytically, as a bound on the $\max X-1$
+coefficients of a deflated multiple; by Proposition~\ref{prop:defthresh}
+that route says nothing pointwise once $r_1\le\tfrac{3+\sqrt5}2$.  Repeated roots are settled on both sides.  In the Hermite basis $d^ay_i^d$,
 ordered by growth, Descartes' rule counts with multiplicity, Hermite
 interpolation on a multiset replaces the Vandermonde change of variables, and
 the unisolvence and positivity steps are the confluent matrix $M(0)$ of

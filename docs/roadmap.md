@@ -193,88 +193,18 @@ INTERCAL, listed last, is outside the pass.
 Research questions the proofs leave open.  Each names the first executable
 step; an answer lands in the paper it extends, and the row leaves.
 
-- **Extremality of the escaping placement.**  `T = tau*` (escaping exempt
-  coefficients extremal) is still the step `tau_k(X) <= tau_{k+1}(X \ {max
-  X})`, which has no known counterexample.  Write the minimizer for
-  `X' = X \ {g}`, `g = max X`, as `Z^- = B_0 u A` with `B_0` below `g` and
-  `A` above.  The step is PROVED when `B_0` is an initial segment
-  (`thm:slideinitial`, any `A`), when `A` is empty (`prop:stepeasy`), and
-  when `|A| = 1` (`cor:shiftone`): the shift-by-one inequality `eq:shift`
-  (`Tail_c(B_0 u {g} u (A+1)) <= Tail_{c-1}(Z^-)` whenever no single move
-  `a -> a+1` lowers the tail, which minimality gives, `prop:shift`) follows
-  for `A = {M}` from the hypothesis-free chord lemma `prop:chord`:
-  `Tail(F_M) >= lam Tail(F_{M+1}) + (1-lam) Tail(p_{g,M+1})` with `lam` from
-  `p_{M,M+1} = lam F_{M+1} + (1-lam) p_{g,M+1}` on `ell_{M+1}`.  Its proof:
-  the difference equals `sum_{e<g} delta_e + sigma sum_{g<d<=M+1} E(d) -
-  sigma sum_{d>=M+2} E(d)` (`eq:chordsplit`) with `E(d) = (F_M - p)(d-1) +
-  2(1-lam) w(d)`, an exponential sum whose zeros at the consecutive pairs of
-  `{0} u B_0 u {g}` and at `M+1`, signs at the gap starts, and weight on the
-  new node (sign fixed by the cutoff `y <= 1/2`) pin its sign on the window
-  by the zero bound; equality iff the block `B_0 = {1..g-1}` at the cutoff.
-  OPEN: `eq:shift` with `|A| >= 2`, i.e. a gap below `g` and at least two
-  zeros above it in the minimizer.  Evidence: 0 failures in 7023 instances
-  with the hypothesis at `L <= 9` (clustered and random nodes, `|A| <= 5`),
-  283 failures without it; worst ratio 0.9993.  What is known about it: the
-  chord of `prop:chord` does NOT extend.  With `M` the end of the first run
-  of `A` and `C` the other zeros, `eq:chordsplit` holds with `B_0 -> C`
-  only with the LOCAL sign `s_d = sigma (-1)^{#(C n (g,d))}` (the global
-  `sigma` form is false in every instance); `E` is short one forced zero
-  per run of `A` above `M+1`, and the chord fails at `L = 9`, clustered
-  nodes, `B_0 = {1,2,3,5,6}`, `g = 7`, `A = {8,12}`, by 19%, all in the far
-  term.  No fixed weights work (<= 0.683 at `L <= 7`, >= 0.794 at `L = 9`).
-  The case split on whether the far sign is pinned is DEAD: pinned implies
-  the chord (never violated) but pinning never occurs with a gapped `A`,
-  and unpinned does NOT imply the hypothesis fails (552 of 1515 unpinned
-  at `L = 9` satisfy it).  What DOES hold, 0 failures at `L <= 10` and
-  `|A| <= 3` (least relative slack 0.063, against 150 chord failures at
-  `L = 10`, all violating the hypothesis): `Tail(Z^-) <= Tail(F_1)` implies
-  the chord, which with `prop:shift` closes the case.  Prove THAT.  The
-  hypothesis equals the mass form `sum_{d<=M}|H_d| >= sum_{d>M}|H_d|` for
-  the `(L-1)`-node sum `H` vanishing on `{0} u C` -- indeed `F_M - F_1 =
-  alpha H` (one-dimensional space) and the GAP IDENTITY `T1 - TM =
-  |alpha| (mass_le - mass_gt)` holds exactly at every tier to `L = 10`.
-  Dead for it: first-order convexity (`Tail` IS convex along `[F_1, w]`
-  and `TM - Tp >= DD` always, but `DD >= D` fails 1089/1600 at `L = 9`,
-  64 under the hypothesis, so no supporting hyperplane works); and any
-  hypothesis-free bound of `(1-lam)(T1 - Tw)` by `|alpha| mass_le` (it
-  would prove the chord unconditionally, which the failures refute -- the
-  far mass MUST enter); and `BELOW * mass_gt >= (-ABOVE) * mass_le`, which
-  passes `L <= 7` and fails at `L = 9` and `L = 10` (the c<=7 trap again).
-  Dead: the
-  half-mass point of
-  `ell_M`, any fixed window, shifting only the smallest zero above `g`,
-  arbitrary weights with the same decay, Schur/LPP positivity (the cleared
-  polynomial has thousands of negative terms even at the cutoff), deleting
-  `min X`, freeing the largest zero, adjoining without sliding,
-  block-plus-one zero sets, real-valued zero positions (`eq:chord` is false
-  there), pointwise deflation at `r_1 <= (3+sqrt 5)/2`.
-  That `tau*` is always attained by a full certificate with a multiplier
-  witness is now PROVED (`prop:attain`): the tail is a norm, so the infimum
-  is attained; a minimiser with fewer than `m-1` zeros can be moved along a
-  direction that keeps its zeros until it gains one, the move being finite
-  because the zero bound makes the sign of the kink parameter eventually
-  constant; the multipliers come from the nonsingularity of the exponents
-  `{0} u Z`; and the witness is constant past `max Z`, so `(1-y)W` is a
-  polynomial and its cofactor a monic `M`.  It needs only distinct nodes in
-  `(0,1)` -- no `r_1 >= 2` cutoff.  The same proof runs in the confluent
-  basis `d^a y^d`, where the zero bound is Polya-Szego; checked exactly with
-  witnesses on 9 repeated-root sets.  Repeated roots are CLOSED: confluent
-  `thm:converse` and `cor:charrep` (eq:order is the infimum exactly when
-  eq:partial holds, no alignment needed) go through `lem:infinity`, a
-  Descartes rule at infinity for an asymptotic scale of `R(x) w^x`, which
-  gives `alpha_J* != 0` and `eta -> 0` for every shape of `E` (`prop:farrep`)
-  without the minor estimates (G) and (L); `lem:confstrict` supplies the
-  strict tail bound.  No rate for `eta` at arbitrary `E` is proved (observed
-  `Theta(1/min E)`), and nothing needs one.
-  Also open is the
-  case where an exempt root lies below 2 and more than `u` partial sums of
-  `P` exceed `|P(1)|`, where the repaired bound need not be sharp.  See the
-  section "The infimum when the criterion fails" in
-  [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
-  The companion question -- which root sets make `eq:order` an infimum for
-  `k >= 2` (`coefficient-mass.tex`, end of the sharpness section) -- is
-  settled by the partial-sum criterion, repeated roots included
-  (`prop:partial`, `thm:converse`, `cor:charrep`).
+- **The repaired bound below 2.**  Extremality of the escaping placement is
+  CLOSED for distinct roots (`thm:extremal`, via the run chord
+  `prop:runchord`: shift every run of zeros above `g` by one and compare
+  with one neighbour per run), and the partial-sum criterion is CLOSED at
+  repeated roots (`thm:converse`, `cor:charrep`, via the Descartes rule at
+  infinity `lem:infinity`).  Still open: the case where an exempt root lies
+  below 2 and more than `u` partial sums of `P` exceed `|P(1)|`, where the
+  repaired bound need not be sharp (section "The infimum when the criterion
+  fails" in
+  [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex));
+  and, optionally, extremality at repeated roots and `eq:shift` in its
+  run-end wording (0 violations in 550 instances).
 
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further
