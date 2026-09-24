@@ -1155,7 +1155,10 @@ the trivial $b_L\ge1$.  The first rows are already covered: for
 $k\le L/8$ the proof of Proposition~\ref{prop:quadratic} gives
 $b_k\ge e^{L/5}$, which exceeds $L$ once $L\ge13$;
 Proposition~\ref{prop:neartwo} covers $k=1,2$ and Theorem~\ref{thm:order}
-the row $k=L$.  What remains open are the rows $\max(2,L/8)<k\le L-1$; the consequence
+the row $k=L$.  Proposition~\ref{prop:rowsfree} at the end of this section proves every row for every $F$
+whose $k-1$ largest nonleading coefficients do not include all three of
+$f_{D-1},f_{D-2},f_{D-3}$; what remains open are the multiples for which
+they do, in the rows $\max(2,L/8)<k\le L-1$.  The consequence
 $\Lambda(F)\ge\log L!$ is in any case asymptotically weaker than
 Proposition~\ref{prop:quadratic}, so the interest is in the individual rows.
 The evidence is only the absence of a counterexample, but it is exact over
@@ -1345,6 +1348,221 @@ with $|c_D|>h_D$; hence $b_2(F_D)=h_D\to\tfrac{65}{12}$.
 So sharpness of the rows $k\ge2$ depends on the root set: it holds at
 $(2,3)$ and $(2,3,5)$ and fails at $(\tfrac52,3,\tfrac72)$.  Characterizing
 the root sets at which \eqref{eq:order} is an infimum is open.
+
+\subsection{A \texorpdfstring{$D$}{D}-free form of the rows}
+
+For a finite set $Z\subset\N_{>0}$ put
+\[
+  r_Z(s)=\prod_{z\in Z}\Bigl(1-\frac sz\Bigr),\qquad
+  \Phi(Z)=\sum_{s\ge1}|r_Z(s)|\,2^{-s},
+\]
+so $r_Z(0)=1$, $\deg r_Z=|Z|$, and $\Phi(\varnothing)=1$.  The rows reduce to
+the following statement about $\Phi$.
+
+\begin{lemma}[Certificate for a row]\label{lem:rowcert}
+Let $F$ be a monic multiple of $(x-2)^L$ of degree $D$, let $1\le k\le L$,
+let $S$ be the set of backward distances $D-j$ of $k-1$ positions $j<D$
+carrying the $k-1$ largest nonleading magnitudes, and put $n=L-k+1$.  If
+some finite $Z\supseteq S$ with $|Z|\le L-1$ has $\Phi(Z)\le1/n$, then
+$b_k(F)\ge n$.
+\end{lemma}
+
+\begin{proof}
+Write $\theta=x\,d/dx$ and $q=r_Z$, of degree at most $L-1$.  Since
+$q(D-\theta)x^j=q(D-j)x^j$ and each application of $\theta$ lowers the order
+of the zero of $F$ at $2$ by at most one, $(q(D-\theta)F)(2)=0$, that is
+$\sum_{j\le D}f_jq(D-j)2^{j}=0$.  Dividing by $2^D$ and using $f_D=q(0)=1$
+and $q=0$ on $S$,
+\[
+  1=\Bigl|\sum_{1\le s\le D,\ s\notin S}f_{D-s}\,q(s)2^{-s}\Bigr|
+   \le b_k(F)\sum_{s\ge1}|q(s)|2^{-s}=b_k(F)\,\Phi(Z)\le\frac{b_k(F)}n,
+\]
+because every position outside the $k-1$ largest has magnitude at most
+$b_k(F)$.
+\end{proof}
+
+So row $k$ at $L$ follows, for every $D$, from the statement $T(n)$ with
+$n=L-k+1$: \emph{for every finite $A\subset\N_{>0}$ there is a finite
+$Z\supseteq A$ with $|Z|\le|A|+n-1$ and $\Phi(Z)\le1/n$.}  Two tools
+evaluate $\Phi$.
+
+\begin{lemma}[Deleting the largest zero]\label{lem:confdel}
+If $Z\ne\varnothing$ and $Z\ne\{1,\ldots,|Z|\}$, then
+$\Phi(Z)\le\Phi(Z\setminus\{\max Z\})$.  Moreover
+$\Phi(\{1,\ldots,\ell\})=1$ for every $\ell\ge0$, so $\Phi(Z)\le1$ for every
+$Z$.
+\end{lemma}
+
+\begin{proof}
+Put $c=|Z|+1$ and $Z'=Z\setminus\{\max Z\}$.  For small $\varepsilon>0$ take
+the nodes $y_i=\tfrac12-(c-i)\varepsilon$, so $0<y_1<\cdots<y_c=\tfrac12$,
+let $w^\varepsilon$ be the sum on $y_1,\ldots,y_c$ with $w_0=1$ and
+$w|_Z=0$, and $F^\varepsilon$ the sum on $y_1,\ldots,y_{c-1}$ with $F_0=1$
+and $F|_{Z'}=0$.  As $Z$ is not $\{1,\ldots,c-1\}$, the deletion step in the
+proof of Theorem~\ref{thm:tail} gives $\Tail(w^\varepsilon)<\Tail(F^\varepsilon)$.
+
+Now let $\varepsilon\to0$.  Write $w^\varepsilon_d=\sum_{i=1}^c\alpha_i
+[y_1,\ldots,y_i](y^d)$ in Newton form, the bracket being the divided
+difference of $y\mapsto y^d$, equal to $h_{d-i+1}(y_1,\ldots,y_i)$.  The
+$c$ interpolation conditions at $d\in\{0\}\cup Z$ form a linear system for
+$\alpha$ whose matrix tends to the matrix with entries
+$\binom d{i-1}2^{-(d-i+1)}$; that limit is invertible, because
+$\binom d{i-1}$, $i\le c$, is a basis of the polynomials of degree below
+$c$ and such a polynomial vanishing at the $c$ points $\{0\}\cup Z$ is zero.
+Hence $\alpha$ stays bounded and converges, and since
+$0\le h_{d-i+1}(y_1,\ldots,y_i)\le\binom d{i-1}2^{-(d-i+1)}$, the terms
+$|w^\varepsilon_d|$ are dominated by $Cd^{\,c}2^{-d}$.  The limit
+$w^0_d=p(d)2^{-d}$ has $\deg p<c$, $p(0)=1$ and $p|_Z=0$, so $p=r_Z$, and by
+dominated convergence $\Tail(w^\varepsilon)\to\Phi(Z)$.  Likewise
+$\Tail(F^\varepsilon)\to\Phi(Z')$, which proves the inequality.
+
+Finally $|r_{\{1,\ldots,\ell\}}(s)|=\binom{s-1}\ell$ for $s>\ell$ and $0$ for
+$1\le s\le\ell$, and $\sum_{s>\ell}\binom{s-1}\ell2^{-s}=1$.  Deleting the
+largest element repeatedly from any $Z$ stops at its leading run
+$\{1,\ldots,\ell\}$, never passing through an initial segment before, so
+$\Phi(Z)\le1$.
+\end{proof}
+
+The last clause is the row $k=L$ ($n=1$) in $D$-free form.  For the other
+rows we compute $\Phi$ exactly on sets that are full up to a few holes.
+
+\begin{lemma}[Hole integral]\label{lem:holeint}
+Let $C\subset\N_{>0}$ be finite and nonempty, $m=\max C$, and for
+$c\in C$ put $w_c=\prod_{c'\in C}c'\big/\prod_{c'\in C\setminus\{c\}}(c-c')$.
+For every $x\ge m$,
+\[
+  \Phi\bigl(\{1,\ldots,x\}\setminus C\bigr)=\int_0^1v^{x-m}M_C(v)\,dv,
+  \qquad
+  M_C(v)=\sum_{c\in C}2^{-c}v^{m-c}\bigl(w_c(1+v)^{c-1}+|w_c|(1-v)^{c-1}\bigr).
+\]
+\end{lemma}
+
+\begin{proof}
+Let $P=\{1,\ldots,x\}\setminus C$ and $r=r_P$.  For $s>x$ every factor of
+$r(s)$ is negative and
+$|r(s)|=\binom{s-1}x\prod_{c\in C}\frac c{s-c}=\binom{s-1}x\sum_{c\in C}\frac{w_c}{s-c}$,
+the last step by partial fractions.  Using $\frac1{s-c}=\int_0^1u^{s-c-1}du$,
+$\sum_{s>x}\binom{s-1}x y^s=y^{x+1}(1-y)^{-x-1}$ and then $v=u/(2-u)$,
+\[
+  \sum_{s>x}\binom{s-1}x\frac{2^{-s}}{s-c}
+  =\int_0^1\frac{u^{x-c}\,du}{(2-u)^{x+1}}
+  =2^{-c}\int_0^1v^{x-c}(1+v)^{c-1}\,dv .
+\]
+For $s\le x$, $r(s)=0$ unless $s\in C$, and for $c\in C$,
+\[
+  |r(c)|=\frac{\prod_{p\le x,\,p\ne c}|p-c|/p}{\prod_{c'\in C\setminus\{c\}}|c'-c|/c'}
+  =\frac1{\binom xc}\cdot\frac{|w_c|}c
+  =|w_c|\int_0^1v^{x-c}(1-v)^{c-1}\,dv .
+\]
+Summing the finitely many series gives the formula.
+\end{proof}
+
+For $C=\{1\}$ and $C=\{2\}$ one finds $M_C\equiv1$, so
+\begin{equation}\label{eq:onehole}
+  \Phi(\{2,\ldots,x\})=\frac1x,\qquad
+  \Phi(\{1,\ldots,x\}\setminus\{2\})=\frac1{x-1};
+\end{equation}
+the first is the identity
+$\sum_{s\ge1}|\prod_{z=2}^n(1-s/z)|2^{-s}=1/n$ behind
+Proposition~\ref{prop:unbounded}.  For $C=\{3,b\}$ with $b\ge4$,
+$w_b=-w_3=3b/(b-3)$, and with $(1+v)^2-(1-v)^2=4v$,
+\begin{equation}\label{eq:twohole}
+  M_{\{3,b\}}(v)=\frac{3b}{b-3}\Bigl(2^{-b}\bigl((1+v)^{b-1}+(1-v)^{b-1}\bigr)
+                   -\tfrac12v^{b-2}\Bigr).
+\end{equation}
+
+\begin{lemma}[Two holes]\label{lem:twohole}
+For $b\ge4$ and $k\ge0$,
+$\Phi(\{1,\ldots,b+k\}\setminus\{3,b\})\le1/(k+1)$.
+\end{lemma}
+
+\begin{proof}
+For $b=4$, \eqref{eq:twohole} is $\tfrac32(1-v^2)$, and
+$\int_0^1v^k\tfrac32(1-v^2)\,dv=\frac3{(k+1)(k+3)}\le\frac1{k+1}$.  Let
+$b\ge5$ and expand $M=M_{\{3,b\}}$ in the Bernstein basis
+$B_i=\binom{b-1}iv^i(1-v)^{b-1-i}$, $0\le i\le b-1$.  From
+$1+v=(1-v)+2v$ we get
+$2^{-b}(1+v)^{b-1}=\sum_i2^{-(b-i)}B_i$; also $(1-v)^{b-1}=B_0$ and
+$v^{b-2}=B_{b-1}+B_{b-2}/(b-1)$.  So $M=\frac{3b}{b-3}\sum_i\gamma_iB_i$ with
+\[
+  \gamma_0=2^{1-b},\quad
+  \gamma_i=2^{-(b-i)}\ (1\le i\le b-3),\quad
+  \gamma_{b-2}=\frac{b-3}{4(b-1)},\quad
+  \gamma_{b-1}=0 .
+\]
+Every coefficient $\frac{3b}{b-3}\gamma_i$ is at most $1$: the largest
+candidates are $\frac{3b}{8(b-3)}\le1$ (as $b\ge5$) and $\frac{3b}{4(b-1)}\le1$.
+Since the $B_i$ are nonnegative and sum to $1$, $0\le M\le1$ on $[0,1]$, and
+Lemma~\ref{lem:holeint} gives
+$\Phi\le\int_0^1v^k\,dv=1/(k+1)$.
+\end{proof}
+
+\begin{proposition}[Rows away from the top three positions]\label{prop:rowsfree}
+Let $n\ge1$ and let $A\subset\N_{>0}$ be finite with
+$\{1,2,3\}\not\subseteq A$.  Then some finite $Z\supseteq A$ has
+$|Z|\le|A|+n-1$ and $\Phi(Z)\le1/n$.  Consequently, if $F$ is a monic
+multiple of $(x-2)^L$ of degree $D$ and $1\le k\le L$, and the $k-1$ largest
+nonleading magnitudes can be chosen at positions not including all of
+$D-1,D-2,D-3$, then $b_k(F)\ge L-k+1$.
+\end{proposition}
+
+\begin{proof}
+For $n=1$ take $Z=A$ and use Lemma~\ref{lem:confdel}.  Let $n\ge2$, let $j$
+be the leading run of $A$ (so $j\le2$), and let $c_1=j+1<c_2<\cdots$ be the
+positive integers outside $A$.  Keep the holes
+$K=\{1\}$, $\{2\}$, $\{3,c_2\}$ for $j=0,1,2$, fill the next $n-1$ of them,
+and put
+\[
+  x=c_{|K|+n-1},\qquad P=\{1,\ldots,x\}\setminus K,\qquad Z=P\cup A .
+\]
+Then $P\supseteq A\cap[1,x]$, the elements of $Z\setminus A$ are the $n-1$
+filled holes, and $|Z|\le|A|+n-1$.
+
+\emph{From $Z$ to $P$.}  List the elements of $Z$ above $x$ increasingly and
+add them to $P$ one at a time.  Every set so obtained has the hole
+$\min K\le3$ below an element larger than it, so it is not of the form
+$\{1,\ldots,t\}$; reading the additions backwards, Lemma~\ref{lem:confdel}
+gives $\Phi(Z)\le\Phi(P)$.
+
+\emph{The base.}  For $j=0$, $P=\{2,\ldots,x\}$ with $x=c_n\ge n$, and
+\eqref{eq:onehole} gives $\Phi(P)=1/x\le1/n$.  For $j=1$,
+$P=\{1,\ldots,x\}\setminus\{2\}$ with $x=c_n\ge n+1$, and
+$\Phi(P)=1/(x-1)\le1/n$.  For $j=2$ put $b=c_2\ge4$; the $n-1$ filled holes
+exceed $b$, so $x\ge b+n-1$.  The sets
+$\{1,\ldots,t\}\setminus\{3,b\}$, $b+n-1\le t\le x$, contain $b+1$ and miss
+$3$, so Lemma~\ref{lem:confdel} and Lemma~\ref{lem:twohole} with $k=n-1$ give
+$\Phi(P)\le\Phi(\{1,\ldots,b+n-1\}\setminus\{3,b\})\le1/n$.
+
+The consequence is Lemma~\ref{lem:rowcert} with $A=S$: here $|S|=k-1$, so
+$|Z|\le L-1$, and $\{1,2,3\}\not\subseteq S$ is the hypothesis on the
+positions.
+\end{proof}
+
+\paragraph{What remains.}
+The rows $\max(2,L/8)<k\le L-1$ remain open only for multiples whose three
+nonleading coefficients next to the leading one are all among the $k-1$
+largest, that is, for $T(n)$ with $A\supseteq\{1,2,3\}$.  The construction
+above works with the first $h$ holes kept, for any $h$ (keeping more holes
+costs no degree), and reduces $T(n)$ for a set $A$ with leading run $j$ to
+\[
+  \int_0^1v^{k}M_C(v)\,dv\le\frac1{k+1}\qquad(k\ge n-1),
+\]
+$C$ the first $h$ holes of $A$; only $k\ge1$ is needed, $k=0$ being
+Lemma~\ref{lem:confdel}.  Write $\beta_0,\ldots,\beta_{m-1}$ for the
+Bernstein coefficients of $M_C$ in degree $m-1$ and
+$\hat\beta_i=\max_{i'\ge i}\beta_{i'}$.  Then $M_C\le\sum_i\hat\beta_iB_i$,
+a nonincreasing polynomial, so Chebyshev's inequality gives
+$(k+1)\int_0^1v^kM_C\le\frac1m\sum_i\hat\beta_i$ for every $k\ge0$.  With
+$h=j+1$ this criterion $\frac1m\sum_i\hat\beta_i\le1$ holds in exact
+arithmetic for all $C$ with $j\le7$ and $c_{j+1}\le j+12$, and for fixed
+$m$ every $\beta_i$ is largest at the configuration
+$\{j+1\}\cup\{m-j+1,\ldots,m\}$ (checked for $13014$ one-step moves of an
+inner hole).  But the criterion fails for large $j$: at $j=60$,
+$C=\{61\}\cup\{241,\ldots,300\}$ it equals $1.03$, while
+$\sup_{k}(k+1)\int_0^1v^kM_C\approx0.17$ there.  So the moment inequalities
+appear to hold with room to spare, and a proof must use more than the
+Bernstein coefficients.  The equality case $k=0$ is
+$C=\{j+1,\ldots,2j+1\}$, with $M_C=\frac{(2j+1)!}{j!^24^j}(1-v^2)^j$.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.

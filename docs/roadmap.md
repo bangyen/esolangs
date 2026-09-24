@@ -233,35 +233,21 @@ step; an answer lands in the paper it extends, and the row leaves.
   between them and 17 the least unreachable arity is unknown in both
   directions.
 
-- **Intermediate rows of `b_k`.**  `b_k(F) >= L - k + 1` for every monic
-  multiple of `(x-2)**L` is proved for `k = 1, 2` (`prop:neartwo`),
-  `k = L` (`thm:order`) and `k <= L/8` once `L >= 13`
-  (`prop:quadratic`); the rows `max(2, L/8) < k <= L - 1` are open, with
-  exact LP sweeps as the only evidence ([coefficient-mass](proofs/coefficient-mass.tex)).
-  The dual is `max |q(0)| / sum_{s not in S} |q(s)| 2**-s` over `q` of
-  degree `< L` vanishing on the exempt distances `S`.  Its tightest `S` is
-  the bottom `k - 1` positions, each costing one degree of `q`, so the
-  limit of row `k` at `L` is row 1 at `L - k + 1`; rows `L - 1` and `L` are
-  asymptotically sharp, the rest carry growing slack, and tight duals are
-  `prod_{z in Z} (1 - s/z)` with integer `Z` containing `S`.  PROVED from
-  `sum_{s>=1} |prod_{z=2}^{n} (1 - s/z)| 2**-s = 1/n`:
-  `b_k >= (L-k+1) / prod_{u in S} max(1, D/u - 1)`, so the row holds
-  whenever the top `k - 1` coefficients all lie in the lower half of the
-  degrees.  The open rows now REDUCE to one `D`-free lemma: `T(n)`, for
-  every finite set `A` of positive integers some real `r` of degree
-  `<= |A| + n - 1` with `r(0) = 1`, `r = 0` on `A` and
-  `sum_{s>=1} |r(s)| 2**-s <= 1/n`.  `T(L-k+1)` implies row `k` at every
-  `D` (take `A` the exempt distances below `D/2` and multiply by
-  `prod (1 - s/u)` over the rest, each factor at most 1 on `1..D`), and is
-  necessary as `D -> oo`; `A` empty is the identity above.  Checked in
-  exact rationals for every `A` in `{1..12}`, `|A| <= 4`, `n <= 4`: the
-  empty set is always the worst `A` (`n` times the optimum 1, 1, 1.212,
-  1.461), nonempty `A` carrying slack at least 1.33.  Next step: prove
-  that adjoining a zero to `A` never lowers the optimum.  DEAD: zeros
-  scaled with `|A|` (`A = {11, 12}`, `n = 3`: 0.78), `Z = {2..n}`,
-  first-free, odd and shifted-past-`S` choices, and trading one exempt
-  point for one degree (it can lose a factor 4).  Floating LPs (HiGHS) report values below the
-  bound from `D = 30`; check large-`D` optima with exact rational duals.
+- **Intermediate rows of `b_k`.**  `b_k(F) >= L - k + 1` for monic
+  multiples of `(x-2)**L` now holds for every row and degree
+  (`prop:rowsfree` in [coefficient-mass](proofs/coefficient-mass.tex))
+  unless `f_{D-1}, f_{D-2}, f_{D-3}` are all among the `k - 1` largest: the
+  certificate `r_Z(D - x d/dx)` (`lem:rowcert`) reduces row `k` to `T(n)`,
+  a confluent deletion lemma (`lem:confdel`) and an exact hole integral
+  (`lem:holeint`) prove `T(n)` whenever `{1,2,3}` is not in `A`.  Open:
+  `A` containing `{1,2,3}` (leading run `j >= 3`), which reduces to the
+  moments `int_0^1 v**k M_C <= 1/(k+1)`, `C` the first `j+1` holes.  They
+  hold in every case computed (worst `(k+1) Phi` about 0.75, tiny for large
+  `j`).  DEAD: the Bernstein-majorant criterion (fails at `j = 60`,
+  `C = {61} u [241, 300]`: 1.03 against a true 0.17), single crossing of
+  `M_C - 1`, pointwise `M_C <= 1`, monotonicity of the moments in hole
+  position, adjoining a zero never lowering the optimum (`A = {3,4,5}`,
+  `a = 2`), dividing `F` by `x - 2`.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
