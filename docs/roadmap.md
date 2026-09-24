@@ -193,18 +193,22 @@ INTERCAL, listed last, is outside the pass.
 Research questions the proofs leave open.  Each names the first executable
 step; an answer lands in the paper it extends, and the row leaves.
 
-- **The repaired bound below 2.**  Extremality of the escaping placement is
-  CLOSED for distinct roots (`thm:extremal`, via the run chord
-  `prop:runchord`: shift every run of zeros above `g` by one and compare
-  with one neighbour per run), and the partial-sum criterion is CLOSED at
-  repeated roots (`thm:converse`, `cor:charrep`, via the Descartes rule at
-  infinity `lem:infinity`).  Still open: the case where an exempt root lies
-  below 2 and more than `u` partial sums of `P` exceed `|P(1)|`, where the
-  repaired bound need not be sharp (section "The infimum when the criterion
-  fails" in
-  [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex));
-  and, optionally, extremality at repeated roots and `eq:shift` in its
-  run-end wording (0 violations in 550 instances).
+- **Coefficient-mass sharpness, residue.**  CLOSED in
+  [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex):
+  extremality of the escaping placement for distinct roots `>= 2`
+  (`thm:extremal`, run chord), the partial-sum criterion at repeated roots
+  (`thm:converse`, `cor:charrep`, Descartes at infinity), and the repaired
+  bound below 2 (`cor:repairedsharp`: with an exempt root below 2 it is the
+  infimum exactly under `prop:subtwosharp`'s hypotheses; the two-sided bound
+  `min(|P(1)|, |P_u(1)|)` of `cor:twosided` beats it when the exempt roots
+  straddle 2, with its own criterion `thm:twosidedsharp`).  Left, none
+  load-bearing: (i) below the cutoff with `u >= 2` the value `1/T` is a
+  search, and the escaping placement need not be extremal there (it fails
+  at `(11/10, 3, 5, 7)`, `u = 1`, where `prop:uoneall` still makes it
+  finite); (ii) `thm:extremal` and `thm:twosidedsharp` at repeated roots
+  (`prop:farrep` should replace `lem:far`; the run chord's zero count and
+  the two-sided equality clause assume distinct nodes); (iii) `eq:shift`
+  in its run-end wording (0 violations in 550 instances).
 
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further
