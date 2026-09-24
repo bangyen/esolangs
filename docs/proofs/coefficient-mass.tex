@@ -3032,6 +3032,512 @@ $\frac32$.
 If, for some $r_0\ge3$, every $n$ has a top-row optimum with
 $\Pi(Z_0)\le r-1$ for all $r\ge r_0$, then Theorem~\ref{thm:rowspi} proves
 that rows equal the top row for every $r\ge r_0$.
+Section~\ref{sec:rowsfinite} removes the condition on $\Pi(Z_0)$ at the
+price of a finite computation (Theorem~\ref{thm:rowsfinite}).
+
+\subsection{Finite certificates for the rows}\label{sec:rowsfinite}
+
+Theorem~\ref{thm:rowspi} needs $\Pi(Z_0)\le r-1$ for a top-row optimum
+$Z_0$.  Along the certified optima this fails for $r<3$ once $n$ is
+moderately large, and at $r=3$ it fails for most $n\ge25$.  This subsection removes the hypothesis
+at the price of a finite computation.  The insertion chain of
+Theorem~\ref{thm:rowspi} only ever produces sets obtained from $Z_0$ by
+shifting its holes upward (Lemma~\ref{lem:holestates}).  Once the holes at and
+above the insertion point have product at most $r-1$, every further step is
+free by Lemma~\ref{lem:insertpi}.  So for $r>2$ only finitely many shifted
+sets have to be compared with $Z_0$ (Theorem~\ref{thm:rowsfinite}), and
+the comparison is monotone in $r$ (Lemma~\ref{lem:rmono}), so it can be
+carried out on whole intervals of roots.  For a fixed number of exempted
+positions a second reduction works at every $r>1$, including $r=2$ and
+$1<r<2$.  Exempted positions far beyond a witness can simply be appended
+(Lemma~\ref{lem:farappend}), and the remaining positions form a finite tree
+(Theorem~\ref{thm:rowstree}).
+
+\paragraph{Hole shifts.}
+Let $Z_0\subset\N_{>0}$ be finite with holes $c_1<\cdots<c_\nu$ ($\nu\ge0$)
+and $M=\max Z_0$.  For a nondecreasing sequence $E=(e_1,\ldots,e_\nu)$ of
+nonnegative integers put
+\[
+  Z_0^E=[1,M+e_\nu]\setminus\{c_1+e_1,\ldots,c_\nu+e_\nu\}
+\]
+(for $\nu=0$ the only sequence is empty and $Z_0^E=Z_0$).  Since
+$c_i+e_i<c_{i+1}+e_{i+1}$ and $c_\nu+e_\nu<M+e_\nu$, the holes of $Z_0^E$
+are exactly the $c_i+e_i$, its maximum is $M+e_\nu$, and
+$|Z_0^E|=|Z_0|+e_\nu$.  Write $\mathbf 1_{\ge i}$ for the sequence with ones
+in the positions $i,\ldots,\nu$ and zeros before.
+
+\begin{lemma}[The chain moves holes]\label{lem:holestates}
+For $1\le i\le\nu$ and $h=c_i+e_i$,
+\[
+  \mathrm{ins}(Z_0^E,h)=Z_0^{E+\mathbf 1_{\ge i}},\qquad
+  \Pi_h(Z_0^E)=\prod_{l=i}^{\nu}\Bigl(1+\frac1{c_l+e_l}\Bigr).
+\]
+\end{lemma}
+
+\begin{proof}
+The insertion keeps the elements below $h$, adds $h$, and moves every element
+above $h$ up by one; so the holes $c_l+e_l$ with $l<i$ stay, and the top
+moves from $M+e_\nu$ to $M+e_\nu+1$.  An integer $p>h+1$ lies in the new
+set exactly when $p-1$ lies in $Z_0^E$, so the new holes above $h+1$ are
+the $c_l+e_l+1$ with $l>i$.  The integer $h+1$ lies in the new set exactly
+when $h\in Z_0^E$, which is false, so $h+1=c_i+e_i+1$ is a hole.  The second
+formula is the definition of $\Pi_h$, the holes at or above $h$ being the
+$c_l+e_l$ with $l\ge i$.
+\end{proof}
+
+For $r>2$ and $1\le i\le\nu$ put
+\[
+  \pi_i(x)=\prod_{l=i}^{\nu}\Bigl(1+\frac1{c_l+x}\Bigr),\qquad
+  x_i^*=\min\{x\in\N:\ \pi_i(x)\le r-1\}.
+\]
+These are finite because $\pi_i(x)\to1<r-1$, and $x_1^*\ge x_2^*\ge\cdots$
+because $\pi_{i+1}\le\pi_i$.  Let $F_r(Z_0)$ be the set of nondecreasing
+$E$ with
+\[
+  e_i\le\max(e_{i-1},x_i^*)\qquad(1\le i\le\nu,\ e_0=0).
+\]
+By induction $e_i\le x_1^*$, so $F_r(Z_0)$ is finite; it is $\{0\}$ when
+$\Pi(Z_0)=\pi_1(0)\le r-1$.
+
+\begin{theorem}[Rows from finitely many shifted sets]\label{thm:rowsfinite}
+Let $r>2$, $n\ge1$, and let $Z_0\subset\N_{>0}$ be finite with
+$|Z_0|\le n-1$ and
+\[
+  \Phi_r(Z_0^E)\le\Phi_r(Z_0)\qquad\text{for every }E\in F_r(Z_0).
+\]
+Then every monic multiple $F$ of $(x-r)^L$, $L\ge n$, satisfies
+$b_{L-n+1}(F)\ge1/\Phi_r(Z_0)$.  If moreover $\beta_r(n)=1/\Phi_r(Z_0)$,
+then $V_r(L,L-n+1)=\beta_r(n)$ for every $L\ge n$.
+\end{theorem}
+
+\begin{proof}
+\emph{The chain.}  Let $k=L-n+1$, let $S=\{s_1<\cdots<s_{k-1}\}$ be the
+exempted set of Proposition~\ref{prop:rowvalue}(a), and build
+$Z_1,\ldots,Z_{k-1}$ from $Z_0$ by the three rules of the proof of
+Theorem~\ref{thm:rowspi}.  Up to the first step of the third kind every
+$Z_j$ has the form $Z_0^{D}$: a step of the first kind changes nothing,
+and a step of the second kind inserts at a hole $c_i+d_i$ of $Z_0^D$, which
+gives $Z_0^{D+\mathbf 1_{\ge i}}$ by Lemma~\ref{lem:holestates}.  After
+that, every step adds an element above the current maximum, which does not
+increase $\Phi_r$ by Lemma~\ref{lem:confdelr}, as $r\ge2$.  So
+$Z_{k-1}\supseteq S$, $|Z_{k-1}|\le L-1$, and
+$\Phi_r(Z_{k-1})\le\Phi_r(Z_0^D)$ for some nondecreasing $D\ge0$.  By
+Proposition~\ref{prop:rowvalue}(a) it suffices to show
+$\Phi_r(Z_0^D)\le\Phi_r(Z_0)$ for every such $D$.
+
+\emph{A path to $D$.}  Put $d_0=0$ and, for $1\le i\le\nu$ and
+$d_{i-1}\le x\le d_i$,
+\[
+  E^{(i,x)}=(d_1,\ldots,d_{i-1},x,\ldots,x).
+\]
+Then $E^{(1,0)}=0$, $E^{(i,d_i)}=E^{(i+1,d_i)}$, $E^{(\nu,d_\nu)}=D$, and
+$E^{(i,x+1)}=E^{(i,x)}+\mathbf 1_{\ge i}$.  Walking through
+$i=1,\ldots,\nu$ and $x=d_{i-1},\ldots,d_i-1$ gives a sequence of steps from
+$0$ to $D$, and by Lemma~\ref{lem:holestates} the step $(i,x)$ is the
+insertion at the hole $c_i+x$ of $Z_0^{E^{(i,x)}}$, whose hole product at
+and above that hole is $\pi_i(x)$.  Call the step \emph{free} if
+$x\ge x_i^*$.  Then $a\pi_i(x)\le1$, and Lemma~\ref{lem:insertpi} shows that
+a free step does not increase $\Phi_r$.
+
+\emph{After a free step all steps are free.}  Let $(i,x)$ be free.  The
+later steps of stage $i$ have larger $x$.  A step $(i',x')$ with $i'>i$ has
+$x'\ge d_{i'-1}\ge d_i\ge x+1>x_i^*\ge x_{i'}^*$.
+
+\emph{The stopping state.}  Let $E$ be the state just before the first free
+step, or $E=D$ if no step is free.  Then $\Phi_r(Z_0^D)\le\Phi_r(Z_0^E)$,
+and we show $E\in F_r(Z_0)$, which finishes the proof.  For every stage $l$
+that contains only steps that are not free, either $d_l=d_{l-1}$ or the last
+step $(l,d_l-1)$ has $d_l-1<x_l^*$; in both cases $d_l\le\max(d_{l-1},x_l^*)$.
+If no step is free this applies to every $l$ and $E=D\in F_r(Z_0)$.
+Otherwise let the first free step be $(i,x)$.  All stages $l<i$ contain only
+steps that are not free, and the steps $(i,x')$ with $d_{i-1}\le x'<x$
+are not free, so $x=\max(d_{i-1},x_i^*)$.  So
+$E=(d_1,\ldots,d_{i-1},x,\ldots,x)$ satisfies the defining inequalities at
+the positions $l<i$, at $i$ with equality, and trivially at the positions
+$l>i$.
+
+The last claim follows with Proposition~\ref{prop:rowvalue}(c).
+\end{proof}
+
+When $\Pi(Z_0)\le r-1$ the set $F_r(Z_0)$ is $\{0\}$ and this is
+Theorem~\ref{thm:rowspi} (for $r>2$).  The next lemma turns a check at finitely
+many roots into a check on intervals.
+
+\begin{lemma}[Monotonicity in the root]\label{lem:rmono}
+For every finite $Z$, $r\mapsto\Phi_r(Z)$ is decreasing on $(1,\infty)$.
+For fixed $Z_0$ each $x_i^*$ is nonincreasing in $r>2$, so
+$F_r(Z_0)\subseteq F_{r'}(Z_0)$ for $r\ge r'>2$.  Consequently, if
+$2<A\le B$ and
+\[
+  \Phi_A(Z_0^E)\le\Phi_B(Z_0)\qquad\text{for every }E\in F_A(Z_0),
+\]
+then the hypothesis of Theorem~\ref{thm:rowsfinite} holds for every
+$r\in[A,B]$.
+\end{lemma}
+
+\begin{proof}
+$\Phi_r(Z)=\sum_{s\ge1}|r_Z(s)|r^{-s}$ with $r_Z$ independent of $r$ and
+not identically zero on $\N_{>0}$.  The thresholds $x_i^*$ are defined by
+$\pi_i(x)\le r-1$ with $\pi_i$ independent of $r$, and the defining
+inequalities of $F_r(Z_0)$ weaken as the $x_i^*$ grow.  For $r\in[A,B]$ and
+$E\in F_r(Z_0)\subseteq F_A(Z_0)$,
+$\Phi_r(Z_0^E)\le\Phi_A(Z_0^E)\le\Phi_B(Z_0)\le\Phi_r(Z_0)$.
+\end{proof}
+
+\paragraph{Cutting the chain.}
+Near $r=2$ the shifted sets $Z_0^E$ with $E=(x,\ldots,x)$ can exceed
+$\Phi_r(Z_0)$ (see the remarks after
+Corollary~\ref{cor:rowsfiniteranges}).  Such a state is reached by
+inserting a block of exempted positions at the lowest hole, and there the
+chain may re-optimize the zeros above the block.  To state this, let $W$ be
+finite and $t\ge0$, and let $c_1<\cdots<c_\nu$ be the holes of $W$ above
+$t$.  Define $W^E$, $\pi_i$ and $x_i^*$ as above with these holes, the holes
+of $W$ at most $t$ staying in place, and call the sets
+$E^{(i,x)}=(e_1,\ldots,e_{i-1},x,\ldots,x)$, $x\ge e_{i-1}$, the
+\emph{states}; the \emph{step} $(i,x)$ leads from $E^{(i,x)}$ to
+$E^{(i,x+1)}$, and it is free if $x\ge x_i^*$.  Put
+$\lambda_i(x)=\max\{1,a\pi_i(x)\}$ and define $\Lambda_i(x)$ for
+$1\le i\le\nu+1$ and $x\ge0$ by $\Lambda_{\nu+1}\equiv1$, $\Lambda_i(x)=1$
+for $x\ge x_i^*$, and
+\[
+  \Lambda_i(x)=\max\{\Lambda_{i+1}(x),\ \lambda_i(x)\Lambda_i(x+1)\}
+  \qquad(x<x_i^*).
+\]
+A state $E'$ lies \emph{beyond} the state $E=E^{(i,x)}$ if $e'_l=e_l$ for
+$l<i$ and $e'_i\ge x$; these are the states whose path, in the stage order
+of the proof of Theorem~\ref{thm:rowsfinite}, passes through $E$.
+
+\begin{lemma}[Loss along a path]\label{lem:lossbound}
+Let $r>2$.  If $E'$ lies beyond $E=E^{(i,x)}$, then
+$\Phi_r(W^{E'})\le\Lambda_i(x)\,\Phi_r(W^E)$.
+\end{lemma}
+
+\begin{proof}
+The path from $E$ to $E'$ is a sequence of steps and stage advances.  By
+Lemmas~\ref{lem:holestates} and~\ref{lem:insertpi}, a step $(i',x')$
+multiplies $\Phi_r$ by at most $\lambda_{i'}(x')$, which is $1$ when the
+step is free.  After a free step all later steps are free, as in the proof
+of Theorem~\ref{thm:rowsfinite}.  So the product of the factors along the
+path is at most the largest such product over all continuations from
+$(i,x)$, which is $\Lambda_i(x)$ by its recursion.
+\end{proof}
+
+Call $(W,t)$ \emph{settled} if for every finite $S'\subset(t,\infty)$ some
+$W'\supseteq(W\cap[1,t])\cup S'$ has $|W'|\le|W|+|S'|$ and
+$\Phi_r(W')\le\Phi_r(Z_0)$.
+
+\begin{theorem}[Recursive certificate]\label{thm:rowsrec}
+Let $r>2$, $n\ge1$, let $Z_0\subset\N_{>0}$ be finite with $|Z_0|\le n-1$,
+and let $\mathcal P$ be a finite set of pairs $(W,t)$ containing $(Z_0,0)$.
+Suppose that every $(W,t)\in\mathcal P$ has $\Phi_r(W)\le\Phi_r(Z_0)$ and
+comes with two sets $\mathcal C$ (cuts) and $\mathcal G$ (secured states)
+of states, each reached by a step that is not free, such that
+\begin{itemize}
+\item every $E=E^{(i,x)}\in\mathcal G$ has
+$\Lambda_i(x)\Phi_r(W^E)\le\Phi_r(Z_0)$;
+\item for every $E\in\mathcal C$, reached by the step $(i,x-1)$, and
+$t'=c_i+x-1$, some $(W',t')\in\mathcal P$ has
+$W'\cap[1,t']=W^E\cap[1,t']$ and $|W'|=|W^E|$;
+\item $\Phi_r(W^E)\le\Phi_r(Z_0)$ for every state $E$ reached by a path of
+steps that are not free, and lying beyond no element of
+$\mathcal C\cup\mathcal G$.
+\end{itemize}
+Then $(Z_0,0)$ is settled, and every monic multiple $F$ of $(x-r)^L$,
+$L\ge n$, satisfies $b_{L-n+1}(F)\ge1/\Phi_r(Z_0)$.
+\end{theorem}
+
+\begin{proof}
+Since $t'=c_i+x-1>t$, we may show that every $(W,t)\in\mathcal P$ is
+settled by induction downward in $t$.  Let $S'\subset(t,\infty)$ be finite,
+and run the chain of the proof of Theorem~\ref{thm:rowsfinite} from $W$ on
+the elements of $S'$ in increasing order.  By Lemma~\ref{lem:holestates},
+which applies verbatim to the holes above $t$, up to the first step of the
+third kind the chain visits sets $W^E$.  Two consecutive insertions happen
+at increasing positions, so the insertions occur in stage order: the hole
+index never decreases and, within a stage, the level increases.  Let $D$ be
+the final shift, and follow the path to $D$.
+
+If the path passes through some $E\in\mathcal C$, reached by the step
+$(i,x-1)$, then right after the insertion at $t'=c_i+x-1$ the chain holds
+$W^E$, and every element of $S'$ processed so far lies in $W^E\cap[1,t']$.
+Take $(W',t')\in\mathcal P$ as in the hypothesis.  It is settled by
+induction, so $S''=S'\cap(t',\infty)$ yields
+$W''\supseteq(W^E\cap[1,t'])\cup S''\supseteq(W\cap[1,t])\cup S'$ with
+$\Phi_r(W'')\le\Phi_r(Z_0)$ and $|W''|\le|W^E|+|S''|\le|W|+|S'|$, since
+$|W^E|$ exceeds $|W|$ by the number of insertions so far.  Here
+$W^E\cap[1,t]=W\cap[1,t]$ because only holes above $t$ move.
+
+Otherwise, if the first state on the path that lies in
+$\mathcal C\cup\mathcal G$ exists, it lies in $\mathcal G$, and
+Lemma~\ref{lem:lossbound} gives $\Phi_r(W^D)\le\Phi_r(Z_0)$.  If there is
+no such state, then the stopping state of the proof of
+Theorem~\ref{thm:rowsfinite} is reached by a path of steps that are not free
+and lies beyond no element of $\mathcal C\cup\mathcal G$, so
+$\Phi_r(W^D)\le\Phi_r(W^{E_{\rm stop}})\le\Phi_r(Z_0)$.  In both cases the
+elements appended afterwards do not increase $\Phi_r$
+(Lemma~\ref{lem:confdelr}), and the final set contains
+$(W\cap[1,t])\cup S'$ and has at most $|W|+|S'|$ elements.
+
+For $(Z_0,0)$ and $S'=S$, the exempted set of
+Proposition~\ref{prop:rowvalue}(a), this gives a witness with at most
+$n-1+|S|=L-1$ elements.
+\end{proof}
+
+Theorem~\ref{thm:rowsfinite} is the case $\mathcal P=\{(Z_0,0)\}$,
+$\mathcal C=\mathcal G=\varnothing$: the states reached by paths of steps
+that are not free are exactly the elements of $F_r(Z_0)$.  The secured
+states only shorten the computation.
+
+\begin{corollary}[Rows equal the top row, finite certificates]\label{cor:rowsfiniteranges}
+For every $L\ge n$, $V_r(L,L-n+1)=\beta_r(n)$ in each of the following cases:
+\begin{enumerate}
+\item[(a)] $n=3$ and $r\ge\frac{103}{50}$; $n=4$ and $r\ge\frac{209}{100}$;
+$n=5$ and $r\ge\frac{213}{100}$; $n=6$ and $r\ge\frac{43}{20}$; $n=7$ and $r\ge\frac{11}5$;
+\item[(b)] $r=\frac{11}5$ and $n\le10$; $r=\frac94$ and $n\le13$;
+$r=\frac{23}{10}$ and $n\le15$; $r=\frac{12}5$ and $n\le18$; $r=\frac52$ and
+$n\le25$; $r=\frac{11}4$ and $n\le18$; $r=3$ and $n\le45$; $r=\frac72$ and
+$n\le 45$; $r=4$ and $n\le 40$;
+\item[(c)] $r=\frac{21}{10}$ and $n\le7$; $r=\frac{11}5$ and $11\le n\le 14$.
+\end{enumerate}
+\end{corollary}
+
+\begin{proof}
+For $n\le2$ this is Corollary~\ref{cor:tworowsr}.  In each remaining case
+we exhibit finitely many sets $Z_0$ with $|Z_0|=n-1$ and check, for every
+$r$ in the range, that one of them satisfies the hypothesis of
+Proposition~\ref{prop:toprowcert} and the hypothesis of
+Theorem~\ref{thm:rowsfinite}; in case (c) the hypothesis of
+Theorem~\ref{thm:rowsrec} replaces the latter, with $\mathcal P$ consisting of
+$(Z_0,0)$ and at most one pair obtained by a cut at the lowest hole.  For (b) and
+(c) these are finite exact computations at a point.  For (a) the first hypothesis is checked on the whole
+half-line exactly as in the proof of Corollary~\ref{cor:rowspiranges}
+(without the condition on $\Pi$).  This cuts the half-line at finitely many
+algebraic points into pieces, each with a certified $Z_0$.  On each piece,
+enclosed in a rational interval $[A,B]$, the second hypothesis is checked by
+Lemma~\ref{lem:rmono}, after bisecting $[A,B]$ where needed; on the last,
+unbounded piece it is automatic once $r-1\ge\Pi(Z_0)$.  At a cut point one
+uses a set that is certified and checked on an adjacent piece and whose
+determinant does not vanish at the point.  All comparisons of $\Phi$ are
+exact, with $\Phi_r(Z)$ written as a rational number: the finitely many
+terms $s\le\max Z$ are summed directly, and the rest by the finite-difference
+formula $\sum_{s>M}r_Z(s)y^s=y^{M+1}\sum_j\Delta^jr_Z(M+1)\,y^j/(1-y)^{j+1}$,
+$y=1/r$, using that $r_Z$ has one sign beyond $M=\max Z$.
+\end{proof}
+
+\paragraph{What the computations show.}
+The largest ratios $\Phi_r(Z_0^E)/\Phi_r(Z_0)$ over $F_r(Z_0)$ occur mostly
+at uniform shifts $E=(x,\ldots,x)$, that is, for an exempted block starting
+at the lowest hole of $Z_0$, and every ratio above $1$ that we met occurs
+there.  At $r=3$ the ratio is
+below $0.41$ for $n\le45$, and at $r=\frac52$ it is below $0.64$ for
+$n\le25$.  It rises as $r$ decreases: it is $0.71$ at $r=\frac94$, $0.78$
+at $r=\frac{11}5$ and $n=10$, and $1.03$ at $r=\frac{11}5$ and $n=11$.  At
+$r=\frac{21}{10}$ it is $1.12$ and $1.26$ for $n=5,6$, and at
+$r=\frac{41}{20}$ it is already $1.03$ for $n=3$.  At $r=\frac{21}{10}$
+($5\le n\le7$) and at $r=\frac{11}5$ ($11\le n\le14$),
+Theorem~\ref{thm:rowsrec} succeeds with at most one cut, at the lowest hole;
+this gives (c).  After the cut the re-optimized witness has much smaller
+$\Phi_r$, and the secured states keep the search to at most a few million
+states.
+
+The hole product of the certified optima grows slowly.  At $r=3$ it
+exceeds $r-1=2$ for $n=25,26,27$ and $31\le n\le45$ (it is $2.06$ at
+$n=45$), so Theorem~\ref{thm:rowspi} does not apply there.  Even so,
+$|F_3(Z_0)|\le3$ for these $n$.  At $r=\frac72$ and $r=4$ the hole
+product stays below $1.80$ ($n\le45$) and $1.64$ ($n\le40$), well below
+$r-1$, so there Theorem~\ref{thm:rowspi} applies directly; if this persists
+for all $n$, the rows equal the top row for every $n$ at these roots.  At $r=\frac52$, $\Pi(Z_0)\approx2.4$
+against $r-1=\frac32$ for $19\le n\le25$, and $|F_{5/2}(Z_0)|$ grows to
+about $2\cdot10^5$.
+
+Near $r=2$ translating the holes is the wrong move.  An exempted block
+$[c_1,c_1+x-1]$ acts like the prefix weight $\binom{s-1}{x}r^{-s}$ of
+Theorem~\ref{thm:prefixrows}, under which good zero sets are dilated rather
+than translated.  At $r=2$ every $x_i^*$ is infinite, and the chain fails
+outright.  For $n=2$, $Z_0=\{2\}$ has $\Phi_2(Z_0)=\frac12$, but
+Lemma~\ref{lem:holeintr} gives
+\[
+  \Phi_2\bigl(Z_0^{(x)}\bigr)=\Phi_2\bigl([1,x]\cup\{x+2\}\bigr)
+  =\frac{x+2^{-x}}{x+2}\ \longrightarrow\ 1,
+\]
+although $V_2(L,L-1)=2$ by Corollary~\ref{cor:tworowsr}.  At $r=2$ the
+certificates below therefore treat one row at a time.
+
+\paragraph{Far exempted positions.}
+For a fixed number of exempted positions there is a second reduction, which
+does not use Lemma~\ref{lem:insertpi} and so works for every $r>1$.
+
+\begin{lemma}[Appending far zeros]\label{lem:farappend}
+Let $r>1$, let $W\subset\N_{>0}$ be finite and nonempty with $d=|W|$ and
+$x=\max W$, let $u\ge1$, and let $D>d/(r-1)$ be an integer.  Put
+$\rho=(1+d/D)/r<1$ and $s_0=x+D$.  Suppose that $\tau\ge s_0$ satisfies
+$y:=\rho(1+1/\tau)^u<1$ and
+\begin{equation}\tag{FA}\label{eq:farappend}
+  \frac y{1-y}\ \le\ \sum_{j=0}^{\tau-s_0}\rho^{-j}\Bigl(1-\frac j\tau\Bigr).
+\end{equation}
+Then \eqref{eq:farappend} holds for every larger $\tau$, and
+$\Phi_r(W\cup U)\le\Phi_r(W)$ for every finite $U$ with $\min U\ge\tau$ and
+$|U|\le u$.
+\end{lemma}
+
+\begin{proof}
+As $\tau$ grows the left side of \eqref{eq:farappend} decreases, and the right
+side gains a nonnegative term while each $1-j/\tau$ grows.
+
+Put $w(s)=|r_W(s)|r^{-s}$ and $\pi(s)=\prod_{v\in U}(1-s/v)$, so that
+$\Phi_r(W\cup U)=\sum_sw(s)|\pi(s)|$.  Let $\tau'=\min U\ge\tau$.  For
+$s\le\tau'$ every factor of $\pi(s)$ lies in $[0,1]$ and one of them is
+$1-s/\tau'$, so $|\pi(s)|\le1-s/\tau'$.  For $s>\tau'$ every factor has
+absolute value at most $\max(1,s/v-1)\le s/\tau'$, so
+$|\pi(s)|\le(s/\tau')^u$.  Hence
+\[
+  \Phi_r(W\cup U)-\Phi_r(W)\le-\sum_{s\le\tau'}w(s)\frac s{\tau'}
+     +\sum_{s>\tau'}w(s)\Bigl(\frac s{\tau'}\Bigr)^u .
+\]
+For $s>x$,
+\[
+  \frac{w(s+1)}{w(s)}=\frac1r\prod_{z\in W}\Bigl(1+\frac1{s-z}\Bigr)
+  \le\frac1r\prod_{i=1}^{d}\Bigl(1+\frac1{s-x-1+i}\Bigr)
+  =\frac1r\cdot\frac{s-x+d}{s-x},
+\]
+because $1+1/(s-z)$ increases with $z<s$ and the $i$-th largest element of
+$W$ is at most $x-i+1$.  So $w(s+1)\le\rho\,w(s)$ for $s\ge s_0$, and
+$w(\tau')>0$.  With $(1+j/\tau')^u\le(1+1/\tau')^{uj}\le(1+1/\tau)^{uj}$,
+\[
+  \sum_{s>\tau'}w(s)\Bigl(\frac s{\tau'}\Bigr)^u\le w(\tau')\sum_{j\ge1}y^j
+  =w(\tau')\frac y{1-y},\qquad
+  \sum_{s\le\tau'}w(s)\frac s{\tau'}\ge w(\tau')
+     \sum_{j=0}^{\tau'-s_0}\rho^{-j}\Bigl(1-\frac j{\tau'}\Bigr),
+\]
+the second because $w(\tau'-j)\ge\rho^{-j}w(\tau')$ for $\tau'-j\ge s_0$.
+By \eqref{eq:farappend} at $\tau'$ the difference is at most $0$.
+\end{proof}
+
+\begin{theorem}[A finite tree for a fixed row]\label{thm:rowstree}
+Let $r>1$, $n,k\ge1$ and $\varphi>0$.  Let $\mathcal T$ be a family of finite
+sets $T\subset\N_{>0}$ with $|T|\le k-1$ and $\varnothing\in\mathcal T$.
+Suppose that every $T\in\mathcal T$ carries a set $W_T\supseteq T$ with
+$|W_T|\le n-1+|T|$ and $\Phi_r(W_T)\le\varphi$, and, if $|T|<k-1$, an
+integer $\theta_T$ such that
+\begin{itemize}
+\item Lemma~\ref{lem:farappend} applies to $W_T$, $u=k-1-|T|$ and
+$\tau=\theta_T$, and
+\item $T\cup\{\sigma\}\in\mathcal T$ for every integer $\sigma$ with
+$\max T<\sigma<\theta_T$ ($\max\varnothing=0$).
+\end{itemize}
+Then every monic multiple $F$ of $(x-r)^{n+k-1}$ has $b_k(F)\ge1/\varphi$,
+that is, $V_r(n+k-1,k)\ge1/\varphi$.
+\end{theorem}
+
+\begin{proof}
+Let $S=\{s_1<\cdots<s_{k-1}\}$ be the exempted set of
+Proposition~\ref{prop:rowvalue}(a), $T_j=\{s_1,\ldots,s_j\}$, and let $j$
+be largest with $T_0,\ldots,T_j\in\mathcal T$.  If $j=k-1$, then $W_{T_j}$
+contains $S$ and has at most $n+k-2$ elements.  Otherwise
+$s_{j+1}\ge\theta_{T_j}$, since else $T_{j+1}\in\mathcal T$.  Then
+$U=\{s_{j+1},\ldots,s_{k-1}\}$ has $\min U\ge\theta_{T_j}>\max W_{T_j}$ and
+$|U|=k-1-j$, so $W_{T_j}\cup U\supseteq S$ has at most $n+k-2$ elements
+and, by Lemma~\ref{lem:farappend},
+$\Phi_r(W_{T_j}\cup U)\le\Phi_r(W_{T_j})\le\varphi$.  In both cases
+Proposition~\ref{prop:rowvalue}(a) gives $b_k(F)\ge1/\varphi$.
+\end{proof}
+
+The tree is finite: $\theta_T$ depends only on $W_T$ and $u$, and each chain
+$\varnothing\subset T_1\subset\cdots$ in $\mathcal T$ has at most $k$
+members.  The natural target is $\varphi=\max_{i\le k}\nu_i(n)$, the value
+conjectured after Corollary~\ref{cor:belowtwo}; the matching upper bound
+needs the exact value of one $\nu_i(n)$, which the construction of
+Proposition~\ref{prop:toprowcert} gives with exempted positions.
+
+\begin{proposition}[An exact certificate with exempted positions]\label{prop:toprowcertS}
+Let $r>1$, $L\ge2$, and let $S\subseteq Z\subset\N_{>0}$ with $|Z|=L-1$ and
+$M=\max Z$.  Suppose that some real $p$ with $p(0)=1$ and
+$\deg p\le M+1-L$ has the following property: with
+$N(y)=p(y)(1-ry)^L=\sum_jN_jy^j$ and $g_z=\sum_{j\le z}N_j$, we have
+$|g_z|\le1/\Phi_r(Z)$ for every $z\in[1,M+1]\setminus S$.  Then
+$\mu_r(S,L)=\Phi_r(Z)$ and $V_r(L,|S|+1)\le1/\Phi_r(Z)$.
+\end{proposition}
+
+\begin{proof}
+The construction in the proof of Proposition~\ref{prop:toprowgen} uses only
+$N(0)=1$ and the divisibility of $N$ by $(1-ry)^L$.  For each $K\ge M+1$ it
+gives a monic multiple of $(x-r)^L$ whose nonleading coefficient at backward
+distance $s$ is $g_s$ for $s\le K$ (with $g_s=g_{M+1}$ for $s>M+1$), and
+at most $\beta+C/K$ in absolute value beyond, where
+$\beta=\max_{z\notin S}|g_z|\le1/\Phi_r(Z)$.  The $|S|$ positions at the
+distances in $S$ can carry at most the $|S|$ largest magnitudes, so
+$b_{|S|+1}\le\beta+C/K$ for this multiple, and $V_r(L,|S|+1)\le1/\Phi_r(Z)$.
+For any real $q$ with $\deg q\le L-1$, $q(0)=1$ and $q|_S=0$, the identity
+of Proposition~\ref{prop:rowvalue}(a) for this multiple gives
+$1\le(\beta+C/K)\Phi_r(q)$, so $\mu_r(S,L)\ge1/\beta\ge\Phi_r(Z)$; and
+$\mu_r(S,L)\le\Phi_r(r_Z)=\Phi_r(Z)$.
+\end{proof}
+
+As for Proposition~\ref{prop:toprowcert}, $p$ is found from the
+complementary slackness equations $g_s=-\beta\sgn r_Z(s)$ for
+$s\in[1,M+1]\setminus Z$, whose solution has $\beta=1/\Phi_r(Z)$; the
+positions in $S$ are not constrained.  For $S=\varnothing$ this is
+Proposition~\ref{prop:toprowcert}.
+
+\begin{corollary}[Single rows, including $r\le2$]\label{cor:rowstreevals}
+Write $n=L-k+1$.  The conjectured value
+$V_r(L,k)=\min_{1\le i\le k}1/\nu_i(n)$ holds in each of the following
+cases, and the minimum is attained at the index $i^*$ stated.
+\begin{enumerate}
+\item[(a)] $r=2$ with $k=2$, $n\le14$; $k=3$, $n\le12$; $k=4$, $n\le8$;
+$k=5$, $n\le5$; $k=6$, $n\le4$.  Here $i^*=1$, so
+$V_2(L,k)=\beta_2(L-k+1)$; for instance every monic multiple of $(x-2)^4$
+has $b_2\ge\frac{40}{11}$, and every monic multiple of $(x-2)^5$ has
+$b_2\ge\frac{672}{115}$ and $b_3\ge\frac{40}{11}$.
+\item[(b)] $r\in\{\frac{41}{20},\frac{21}{10}\}$ with $k=2$, $n\le12$ and
+$k=3$, $n\le9$; here $i^*=1$.
+\item[(c)] $r\in\{\frac{19}{10},\frac74,\frac32\}$ with $k=2$, $n\le12$;
+$k=3$, $n\le9$; $k=4$, $n\le6$.  Here $i^*=1$, except $i^*=k$ for $n=2$ at
+$r=\frac74$, and at $r=\frac32$ for $n\le4$ ($k=2$) and $n\le5$ ($k=3,4$).
+\item[(d)] $r=\frac54$ with $k=2$, $n\le12$ ($i^*=2$ for $n\le10$ and
+$i^*=1$ for $n=11,12$); $k=3$, $n\le9$ ($i^*=3$); $k=4$, $n\le4$ ($i^*=4$).
+\item[(e)] $r=\frac{11}{10}$ with $k=2$, $n\le12$ ($i^*=2$); $k=3$,
+$n\le 7$ ($i^*=3$).
+\end{enumerate}
+
+\end{corollary}
+
+\begin{proof}
+For each case we exhibit the data of Theorem~\ref{thm:rowstree} with
+$\varphi=\Phi_r(Z^*)$, where $Z^*\supseteq[1,i^*-1]$ has $|Z^*|=n+i^*-2$ and
+satisfies the hypothesis of Proposition~\ref{prop:toprowcertS} with
+$S=[1,i^*-1]$ and $L=n+i^*-1$ (for $i^*=1$ this is
+Proposition~\ref{prop:toprowcert}).  So $\varphi=\nu_{i^*}(n)$, and
+Theorem~\ref{thm:rowstree} gives $V_r(L,k)\ge1/\nu_{i^*}(n)$, while
+Theorem~\ref{thm:prefixrows} gives $V_r(L,k)\le\min_{i\le k}1/\nu_i(n)$.
+Hence $V_r(L,k)=1/\nu_{i^*}(n)=\min_i1/\nu_i(n)$.  The root witness is a
+top-row optimum $Z_0$ with $\Phi_r(Z_0)\le\varphi$; the witnesses $W_T$ are
+found by a local search and every inequality $\Phi_r(W_T)\le\varphi$ is
+checked in exact arithmetic, as are the certificates and the thresholds
+$\theta_T$ (condition~\eqref{eq:farappend} at $\tau=\theta_T$, for some
+$D$).  The largest tree has about $5.4\cdot10^5$ nodes ($r=2$, $k=6$,
+$n=4$).
+\end{proof}
+
+At $r=2$ these rows sharpen Theorem~\ref{thm:everyrow}, since
+$\beta_2(n)>n$ for $n\ge3$.  At $r=\frac32$ and $L=5$ all five rows are now
+exact: the approximate values $2.98,\,1.99,\,0.80,\,0.20,\,\frac1{32}$
+quoted in the paragraph on roots between one and two are
+\[
+  \frac{215233605}{72256243},\quad \frac{172186884}{86336203},\quad
+  \frac{2657205}{3318724},\quad \frac{2302911}{11419568},\quad \frac1{32},
+\]
+the first by Proposition~\ref{prop:toprowcert} with $Z_0=\{2,5,9,16\}$, the
+last by Corollary~\ref{cor:lastrowr}, and the others by (c), with
+$i^*=k$ and $Z^*=\{1,4,9,16\}$, $\{1,2,8,15\}$, $\{1,2,3,13\}$.  In the cases computed at $r<2$ the minimizing
+index is always $1$ or $k$: the worst exempted set is either the prefix
+$[1,k-1]$ or a far block, as observed numerically after
+Corollary~\ref{cor:belowtwo}, and the far block wins once $n$ is large
+compared with $k$ (at $r=\frac{11}{10}$ this has not yet happened for
+$n\le12$).  Theorem~\ref{thm:rowstree} treats one row at a time,
+because Lemma~\ref{lem:farappend} needs a bound on the number of appended
+zeros; for $r>2$, Theorems~\ref{thm:rowsfinite} and~\ref{thm:rowsrec} give
+all $L$ at once.
 
 \section{Complex roots}\label{sec:complexroots}
 
