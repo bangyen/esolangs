@@ -232,7 +232,6 @@ def _reordering_generators() -> list[object]:
     from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
     from esolangs.tools.dimensional import _dimensional_ordered
     from esolangs.tools.egl import _egl_ordered
-    from esolangs.tools.helpers import _decision_tree_program
     from esolangs.tools.other import _forbin_ordered
     from esolangs.tools.painfuck import _painfuck_ordered
     from esolangs.tools.parameterized import (
@@ -241,6 +240,7 @@ def _reordering_generators() -> list[object]:
     )
     from esolangs.tools.tape import (
         _ASCII_ZERO,
+        _bf_ordered,
         _circlefuck_ordered,
         _jaune_ordered,
     )
@@ -255,7 +255,7 @@ def _reordering_generators() -> list[object]:
         (
             "brainfuck",
             boolean.brainfuck,
-            _decision_tree_program,
+            _bf_ordered,
         ),
         ("dimensional", boolean.dimensional, _dimensional_ordered),
         ("painfuck", boolean.painfuck, _painfuck_ordered),
@@ -349,13 +349,11 @@ def test_reorder_permutation_preserves_the_function() -> None:
 
 def test_greedy_order_never_grows_a_wide_program() -> None:
     """The identity candidate keeps the greedy heuristic from growing output."""
-    from esolangs.tools.helpers import _decision_tree_program
+    from esolangs.tools.tape import _bf_ordered
 
     n = 8
     table = "0" * (2**n - 1) + "1"
-    assert len(boolean.brainfuck(table)) <= len(
-        _decision_tree_program(table, tuple(range(n)))
-    )
+    assert len(boolean.brainfuck(table)) <= len(_bf_ordered(table, tuple(range(n))))
 
 
 def test_order_selection_builds_at_most_two_candidates() -> None:
@@ -468,11 +466,10 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """
     from itertools import permutations
 
-    from esolangs.tools.helpers import _decision_tree_program
+    from esolangs.tools.tape import _bf_ordered
 
     lengths = {
-        perm: len(_decision_tree_program("00010111", perm))
-        for perm in permutations(range(3))
+        perm: len(_bf_ordered("00010111", perm)) for perm in permutations(range(3))
     }
     assert lengths == {
         (0, 1, 2): 299,
@@ -485,9 +482,9 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
 
     # One and two inputs, where the tape is short enough that an off-by-one
     # in the move would still land inside it.
-    assert len(_decision_tree_program("01", (0,))) == 115
-    assert len(_decision_tree_program("0110", (0, 1))) == 205
-    assert len(_decision_tree_program("0110", (1, 0))) == 211
+    assert len(_bf_ordered("01", (0,))) == 115
+    assert len(_bf_ordered("0110", (0, 1))) == 205
+    assert len(_bf_ordered("0110", (1, 0))) == 211
 
 
 # The shape each boolean generator's construction takes, which decides which
