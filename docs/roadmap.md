@@ -242,10 +242,19 @@ step; an answer lands in the paper it extends, and the row leaves.
   polynomial with `K/2` large roots unless the degree is `>> K/delta`,
   which block charging pays), so register roots `a +- p**b i` with bounded
   `|a|` in one annulus get `Omega(K**2 log R)` at any density of primes
-  (`cor:thinregister`).  Open: wide sectors (`|a_j|` comparable to
-  `c_j`, where the angle mechanism lives) and the cross terms
-  `K_s K_t log t` between annuli (a mass bound for real roots of both
-  signs would give them).
+  (`cor:thinregister`).  Real roots of both signs (`sec:bothsigns`):
+  Rolle on each half-line gives rows charging one root of each sign per
+  excluded coefficient (`thm:bothsigns`) and mass
+  `floor((L+1)**2/4) log(R/2)`, sharp at `+-s_j` (`cor:bothsignsmass`,
+  `prop:bothsignssharp`).  For real multiples the two rays are one real
+  crossing polynomial, localized annulus by annulus (`lem:localcross`), so
+  thin tails at the imaginary axis get the sharp constant of `cor:imag`,
+  `(1-eps)**2 K**2 log R` (`thm:thinreal`, `cor:thingaussreal`).  Open:
+  wide sectors (`|a_j|` comparable to `c_j`, where the angle mechanism
+  lives) and the cross terms `K_s K_t log t` between annuli, which follow
+  (`cor:conjcross`) from the conjectured rows at real roots of both signs,
+  `b_k >= |f_D| prod_{i >= 2k-1} (rho_i - 1)` (`eq:bothrows`; certified
+  exactly on 145 random instances, never violated in high precision).
 
 - **Polynomial's routing constant.**  CLOSED in
   [polynomial](proofs/polynomial.tex): the next-read count `thm:count`
