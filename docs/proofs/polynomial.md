@@ -338,14 +338,14 @@ The companion to `polynomial.tex` Section "Explicit constants"
 Put `C_P(n)` = max over tables of min `|f|`, and normalise by
 `T**2/n = T**2/log2 T`. The bracket is
 
-    2 log10(2) = 0.602  <=  liminf C_P n/T**2  <=  limsup C_P n/T**2
+    3 log10(2) = 0.903  <=  liminf C_P n/T**2  <=  limsup C_P n/T**2
                         <=  325/8 log10(2) = 12.23
 
-For `T**2/ln T` units, multiply by `ln 2`: `0.417 .. 8.48`.
+For `T**2/ln T` units, multiply by `ln 2`: `0.626 .. 8.48`.
 
 For every `n`,
-`(1 - O(log n / n)) 2 log10 2 <= C_P n/T**2 <= (1 + O((log n)**2/n)) 325/8 log10 2`,
-a factor `325/16 = 20.3` at both limits. So the order is settled and the constant is not.
+`(1 - O(log n / n)) 3 log10 2 <= C_P n/T**2 <= (1 + O((log n)**2/n)) 325/8 log10 2`,
+a factor `325/24 = 13.5` at both limits. So the order is settled and the constant is not.
 
 **Lower side: three links.**
 
@@ -419,13 +419,15 @@ source for `n <= 7`. Rendered lengths against the first compiler: 0.85 at
   (`prop:sharp`).
 * Levels contribute nothing: counting charges `T/(n+4)` inputs, and the
   trie-banded automaton has `(1 + o(1)) T/n` states for every table.
-* Profile, `g/2 = 325/16` at both limits: the input pairs give mass
-  constant 2; the arithmetic register roots `a +- p**b i`, `a != 0`, and the
-  real roots are not charged. A source that is neither even nor odd has both
-  multisection parts nonzero multiples of `prod (y + c_j**2)`, so it pays
-  constant 4 (`rem:parity`); the factor 2 hangs on even or odd sources. Joint charging is not available from the
-  current certificates: multisection needs `P = R(x**2)`, which the real
-  roots break.
+* Profile, `g/3 = 325/24` at both limits: the input pairs give mass
+  constant 2. A source that is neither even nor odd has both multisection
+  parts nonzero multiples of `prod (y + c_j**2)`, so it pays constant 4
+  (`rem:parity`). An even or odd source is `x^e E(x**2)` with
+  `Lambda(f) = Lambda(E)`; in `E` the inputs are negative roots `-c**2` and
+  the forced real roots positive roots `r**2`, and the both-signs rows
+  (`coefficient-mass.tex` Theorem 5.10) add constant 1 (`lem:evensigns`).
+  So every source pays 3. The register roots `(a +- p**b i)**2` of `E` are
+  not charged; that is what separates 3 from 4.
 
 The order-statistic bound for free positions (`coefficient-mass.tex`
 Lemma 3.1) is already sharp (Corollary 3.6), so the mass step alone cannot
