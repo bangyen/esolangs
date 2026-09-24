@@ -767,6 +767,60 @@ $\Tail(v^{(\nu)}-v^\infty)\le\eta_\nu\bigl(1+\Tail(v^\infty)\bigr)
 \sum_{J\ne J^*}\Sigma_J\big/\bigl(|\beta_{J^*}(0)|-|\rho_\nu(0)|\bigr)\to0$.
 \end{proof}
 
+\begin{proposition}[Confluent far zeros]\label{prop:conffar}
+Let $z_1>\cdots>z_p$ lie in $(0,1)$ with multiplicities $m_i$, put
+$N=\sum_im_i$ and $\kappa=\min_{i<p}\log(z_i/z_{i+1})>0$, and order the
+Hermite basis $\psi_{i,a}(d)=d^az_i^d$, $0\le a<m_i$, by growth: $z$
+descending, and $a$ descending within a node.  Fix $0\le k<N$, let $J^*$ be
+the first $k$ functions, and for a $k$-set $E$ put
+$\alpha_J(E)=\det(\psi_j(e))_{e\in E,\,j\in J}$.  If $E_\nu=\{n_\nu+f:f\in
+F\}$ with $F$ fixed and $n_\nu\to\infty$, then $\alpha_{J^*}(E_\nu)\ne0$ for
+large $\nu$ and
+$\eta_\nu=\max_{J\ne J^*}|\alpha_J/\alpha_{J^*}|\to0$.
+\end{proposition}
+
+\begin{proof}
+Write $A_i(J)$ for the exponents of $J$ at $z_i$, $k_i=|A_i(J)|$ and
+$P(J)=\sum_{(i,a)\in J}a$.  Pulling $z_i^{n}$ and $n^{a}$ out of each column,
+\[
+  \alpha_J(E)=\Lambda_J(n)\det\bigl((e/n)^az_i^{\,e-n}\bigr)_{e\in E,\,(i,a)\in J},
+  \qquad
+  \Lambda_J(n)=\Bigl(\prod_iz_i^{nk_i}\Bigr)n^{P(J)} .
+\]
+The order fills the largest nodes greedily, so $J^*$ is the unique maximiser
+of $\sum_ik_i\log z_i$ and any other profile loses at least $\kappa$; and
+among $J$ with the profile of $J^*$ the set $A_i(J^*)$ is the top $k_i$
+exponents at $z_i$, so $P(J)\le P(J^*)-1$.  Hence
+$\Lambda_J/\Lambda_{J^*}\le n^{Nk}e^{-\kappa n}$ if the profiles differ and
+$\Lambda_J/\Lambda_{J^*}\le1/n$ otherwise.
+
+Now put $e=n+f$ and expand $(1+f/n)^a=\sum_b\binom ab(f/n)^b$ multilinearly.
+Two columns at the same node that choose the same $b$ are equal, so the
+exponents chosen at $z_i$ are distinct and $\sum b\ge\sum_i\binom{k_i}2$, with
+equality only for $\{0,\ldots,k_i-1\}$ at every node.  That term carries
+$\prod_i\det\bigl(\binom{a_t}s\bigr)_{t,s<k_i}=\kappa_J$, where
+\[
+  \kappa_J=\prod_i\frac{\prod_{t<t'}\bigl(a^{(i)}_{t'}-a^{(i)}_t\bigr)}
+                       {\prod_{s<k_i}s!}>0 ,
+\]
+so, $F$ being fixed,
+\[
+  \alpha_J(E_\nu)=\pm\Lambda_J(n)\,n^{-\sum_i\binom{k_i}2}
+  \bigl[\kappa_JW(F;\mathbf k)+O(1/n)\bigr],
+  \qquad
+  W(F;\mathbf k)=\det\bigl(f^bz_i^{\,f}\bigr)_{f\in F,\,b<k_i}.
+\]
+Here $W(F;\mathbf k)$ is the alternant of \emph{full initial} exponent
+segments, nonzero at distinct $f$ by the zero bound for exponential
+polynomials, as for $M(0)$ in Proposition~\ref{prop:confluent}.  So
+$\alpha_{J^*}(E_\nu)\ne0$ for large $\nu$.  The factors
+$n^{-\sum_i\binom{k_i}2}$ and $W(F;\mathbf k)$ depend only on the profile, so
+for $J$ of the profile of $J^*$,
+$\alpha_J/\alpha_{J^*}=(\kappa_J/\kappa_{J^*})(\Lambda_J/\Lambda_{J^*})
+(1+O(1/n))=O(1/n)$, while a differing profile gives
+$O(n^{Nk}e^{-\kappa n})$.  Hence $\eta_\nu\to0$.
+\end{proof}
+
 \begin{theorem}[Necessity of the partial-sum criterion]\label{thm:converse}
 Let $2\le r_1<\cdots<r_L$ be distinct and $0\le u\le L-1$.  If
 \eqref{eq:partial} fails, then
@@ -1959,8 +2013,7 @@ by as much as a factor $2.01$.  Proposition~\ref{prop:head} states the same
 question analytically instead, as a bound on the $\max X-1$ coefficients of a
 deflated multiple; by Proposition~\ref{prop:defthresh} that route says nothing
 pointwise once $r_1\le\tfrac{3+\sqrt5}2$, which covers every root set with
-$r_1=2$.  Repeated roots beyond the confluent pair $(3,3)$ also remain open, and the
-obstruction is a single quantitative step.  In the Hermite basis $d^ay_i^d$,
+$r_1=2$.  Repeated roots beyond the confluent pair $(3,3)$ are open only on one side.  In the Hermite basis $d^ay_i^d$,
 ordered by growth, the substitutions are routine: Descartes' rule counts with
 multiplicity, so the sign count in Proposition~\ref{prop:partial} is unchanged;
 the Vandermonde change of variables there becomes Hermite interpolation on a
@@ -1978,15 +2031,24 @@ $d(\tfrac13)^d,(\tfrac13)^d,d(\tfrac14)^d$, whose exponent set at the node
 $\tfrac14$ is not an initial segment, and
 $\tfrac{2187}{16384}d(\tfrac13)^d-\tfrac{15309}{8192}(\tfrac13)^d+d(\tfrac14)^d$
 vanishes at $d=6,7,8$: exactly one singular $E$ among the $286$ triples in
-$\{1,\ldots,13\}$, and none with $\min E\ge21$.  The decay also degrades.  When
-the cut falls inside a multiplicity block the supremum of $\eta$ over the sets
-of size $u$ in a window is $\Theta(1/\min E)$---exactly $1/(n_0+1)$ at $(3,3)$,
-$(2,2)$, and $(3,3,5)$ and $(3,3,4,4)$ with $u=1$---against the geometric rate
-at an aligned cut, where it is $2.1\cdot10^{-23}$ at $(2,3,3)$ and
-$3.0\cdot10^{-30}$ at $(3,3,5)$ with $u=2$, both at $n_0=140$.  The conclusion
-$\eta_\nu\to0$ survived in every configuration we computed, so the lemma is
-expected to hold; what is missing is a proof of it that tolerates a degenerate
-alternant, in place of the geometric estimate.
+$\{1,\ldots,13\}$, and none with $\min E\ge21$.  Proposition~\ref{prop:conffar} replaces that estimate whenever $E_\nu$ has
+bounded diameter.  The degeneracy is harmless asymptotically because the
+leading term of a gapped alternant is a positive multiple $\kappa_J$ of the
+ungapped one, so a gap moves only the power of $n$: the rate is
+$\Theta(1/\min E)$ when the cut falls inside a multiplicity block---exactly
+$1/(n_0+1)$ at $(3,3)$, $(2,2)$, and $(3,3,5)$ and $(3,3,4,4)$ with
+$u=1$---and geometric at an aligned cut, where it is $2.1\cdot10^{-23}$ at
+$(2,3,3)$ and $3.0\cdot10^{-30}$ at $(3,3,5)$ with $u=2$, both at $n_0=140$.
+Theorem~\ref{thm:value} uses only $E_\nu=\{\nu+1,\ldots,\nu+u\}$, of diameter
+$u-1$, so it carries to confluent nodes.  What does not yet carry is
+Theorem~\ref{thm:converse}, whose proof allows the elements of $E_\nu$ to
+separate: for gaps that are $O(1)$ or at least $c\min E_\nu$ a Laplace
+expansion over the groups reduces to Proposition~\ref{prop:conffar}, but a
+group whose diameter grows strictly between $1$ and $\min E_\nu$ is not
+covered.  In that regime $\eta_\nu$ was still $\Theta(1/\min E_\nu)$ in every
+configuration we computed---with gaps $\lfloor\sqrt n\rfloor$ and $N=10$,
+$\eta_\nu\min E_\nu$ ran to $1.000$ at $k=4$ and $2.98$ at $k=6$---so the
+lemma is expected to hold there too.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
