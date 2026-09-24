@@ -558,6 +558,11 @@ _REDUCING = {
 # says; a one-dependency table only spares it the flat edges' adjustments,
 # which is 4.4% once the doubling between the input runs is in the text.
 #
+# ``qoibl`` is the same class as ``whitespace``: the whole table is one
+# binary literal and the reads build the power of two that divides it down,
+# so the only thing a one-dependency table spares is the literal's leading
+# zeros.
+#
 # ``befunge`` and ``whitespace`` are branch-free lookups of the same class:
 # Befunge writes one grid cell per table entry and reads it with ``g``, and
 # Whitespace halves one literal once per index step, so two tables with the
@@ -573,6 +578,7 @@ _UNSHAPED = {
     "b_tapemark",
     "minifuck",
     "one_two_three",
+    "qoibl",
     "slow_acv_mammalian",
     "container",
     "whitespace",
