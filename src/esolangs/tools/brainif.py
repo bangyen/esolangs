@@ -197,87 +197,91 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     return "\n".join(lines)
 
 
-#: The two values a strip cell carries, standing in for ``'0'`` and ``'1'``.
-#: Only the traversal guards read them before the end, so any distinct pair
-#: does -- and the cheapest starts at the zero the cell already holds.
-_STRIP_ZERO = 0
-_STRIP_ONE = 1
+def _strip(index: int, bit: int) -> int:
+    """Return the value cell ``index`` carries for ``bit``: 0/1 even, 2/3 odd."""
+    return 2 * (index % 2) + bit
 
 
 def _brainif_linear(truth_table: str) -> str:
     """Emit a linear spatial lookup for BrainIf.
 
-    Strip and scratch cells alternate, so a step is position-independent:
-    three guarded moves cross one strip cell of either value.
+    One cell an entry.  A cell's value carries its bit *and* its parity --
+    ``{0, 1}`` even, ``{2, 3}`` odd -- so a step left is two guarded moves,
+    one per value the cell it leaves can hold.  The scratch cell this
+    replaces made a step three lines and the tape twice as long; four
+    distinct values is the fewest a period-2 scheme can use, so 1.5 ``inc``
+    lines a cell is the floor for the build.
 
-    The strip carries 0 and 1, not ``'0'`` and ``'1'``.  BrainIf cannot
-    write a constant -- a cell climbs by ``if v inc`` lines, one per value
-    passed -- so an ASCII digit per cell was a 48-line climb an entry, the
-    whole 915-character construction.  Only the final ``output`` cares what
-    the bytes are, so the climb happens once, on the selected cell.  It is
-    two climbs: they converge -- every value below 48 lands on 48 -- so that
-    cell branches on its own value first.
+    The pointer's parity is a compile-time constant wherever a gadget reads
+    it.  Input ``i`` walks ``1 + 2**(n-1-i)`` cells, even for every ``i`` but
+    the last; the last walk ends *on* the answer cell, which nothing crosses.
+    So only the output routine is parity-blind, and it costs nothing to make
+    so: it sends 1 and 3 to the one-branch and climbs from whichever of 0/2
+    it finds, a climb that converges anyway.
 
-    The pointer never walks the strip twice.  The build runs left to right
-    and the *selection* right to left, from the far end, reading the index
-    in complement: a ``1`` stays put and a ``0`` walks its weight.  Rewinding
-    to the origin first was a third O(T) pass, three lines an entry, for
-    nothing the walk could not do backwards.
+    The strip carries 0..3, not ``'0'``/``'1'``.  BrainIf cannot write a
+    constant -- a cell climbs by ``if v inc`` lines, one per value passed --
+    so an ASCII digit an entry was a 48-line climb an entry.  Only the final
+    ``output`` cares what the byte is, so the climb happens once.
+
+    The build runs left to right and the selection right to left, from the
+    far end, reading the index in complement: a ``1`` stays put and a ``0``
+    walks its weight.  One padding cell an input keeps every read strictly
+    right of the answer cell, so a read never clobbers the entry it selects.
 
     Commands take the language's short forms: the interpreter matches by
-    substring and the wiki spells them this way, so the tree path's
-    ``increment``/``move right`` are habit, not BrainIf's ask.
+    substring and the wiki spells them this way.
     """
     n = _validate_truth_table(truth_table)
+    cells = truth_table + "0" * n
     lines: list[str] = []
     labels: dict[str, int] = {}
 
     def mark(name: str) -> None:
         labels[name] = len(lines) + 1
 
-    def cross(guard: int) -> None:
-        """Step one scratch/strip pair left, entered on a cell holding ``guard``."""
-        lines.append(f"if {guard} left")
-        lines.append(f"if {_STRIP_ZERO} left")
-        lines.append(f"if {_STRIP_ONE} left")
+    def cross(parity: int) -> None:
+        """Step one cell left, entered on a cell of the given parity."""
+        lines.append(f"if {2 * parity} left")
+        lines.append(f"if {2 * parity + 1} left")
 
-    # The table, then one padding pair per input for the walk to spend on
-    # each read.  A ``0`` entry is two identical moves: the cell it leaves
-    # behind is the zero it arrived at.
-    for bit in truth_table + "0" * n:
-        lines.append("if 0 right")
-        if bit == "1":
-            lines.append(f"if {_STRIP_ZERO} inc")
-            lines.append(f"if {_STRIP_ONE} right")
-        else:
-            lines.append(f"if {_STRIP_ZERO} right")
+    # The table, then one padding cell per input.  Padding takes the cheaper
+    # bit; the last cell needs no ``right``, since the walk starts there.
+    for index, bit in enumerate(cells):
+        value = _strip(index, int(bit))
+        lines += [f"if {passed} inc" for passed in range(value)]
+        if index + 1 < len(cells):
+            lines.append(f"if {value} right")
 
-    # Input is read at the current scratch cell, the build's far end.  Every
-    # input spends one pair, so the reads land on distinct cells; a zero
-    # spends its binary weight on top of that.  A walk's first step enters
-    # on the byte just read, every later one on a zero.
+    # A read overwrites the cell it lands on, so its guard is the pair that
+    # cell's parity admits.  The first step off it is one line, not two: the
+    # byte just read says which branch is running.
+    parity = (len(cells) - 1) % 2
     for i in range(n):
-        far = f"input_{i}_far"
-        after = f"input_{i}_after"
-        lines.append("if 0 input")
+        far, after = f"far_{i}", f"after_{i}"
+        lines.append(f"if {2 * parity} input")
+        lines.append(f"if {2 * parity + 1} input")
         lines.append(f"if {_ASCII_ZERO} goto @{far}")
-        cross(_ASCII_ONE)
-        lines.append(f"if 0 goto @{after}")
+        lines.append(f"if {_ASCII_ONE} left")
+        lines.append(f"if {2 * (1 - parity)} goto @{after}")
+        lines.append(f"if {2 * (1 - parity) + 1} goto @{after}")
         mark(far)
-        for step in range(1 + (1 << (n - 1 - i))):
-            cross(_ASCII_ZERO if step == 0 else 0)
+        lines.append(f"if {_ASCII_ZERO} left")
+        for k in range(1 << (n - 1 - i)):
+            cross((1 - parity + k) % 2)
         mark(after)
+        parity = 1 - parity
 
-    # Every route ends one step right of the selected strip cell, which
-    # holds 0 or 1 and has to print as a digit.
-    lines.append("if 0 left")
-    lines.append(f"if {_STRIP_ONE} goto @one_out")
-    for value in range(_STRIP_ZERO, _ASCII_ZERO):
+    # The walk ends on the selected cell, whose parity is the one thing the
+    # construction does not know; both climbs converge, so neither cares.
+    lines.append("if 1 goto @one_out")
+    lines.append("if 3 goto @one_out")
+    for value in range(_ASCII_ZERO):
         lines.append(f"if {value} inc")
     lines.append(f"if {_ASCII_ZERO} output")
     lines.append(f"if {_ASCII_ZERO} goto @done")
     mark("one_out")
-    for value in range(_STRIP_ONE, _ASCII_ONE):
+    for value in range(1, _ASCII_ONE):
         lines.append(f"if {value} inc")
     lines.append(f"if {_ASCII_ONE} output")
     mark("done")
