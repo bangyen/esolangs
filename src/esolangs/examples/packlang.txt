@@ -1,21 +1,11 @@
 Package : IO {
-  Char x1;
-  Char x0;
-  Integer(0, 1, 1, 0) acc;
+  Char i;
+  Char d;
+  Char c;
+  Array(Char,4) t;
   Integer main {
-    INIT acc;
-    charGet(x1);
-    charGet(x0);
-    If !(x1 ^ 48) Then {
-    }
-    If x1 ^ 48 Then {
-    If !(x0 ^ 48) Then {
-    }
-    If x0 ^ 48 Then {
-    INCR acc;
-    }
-    }
-    charPut(48 ^ acc);
-    0;
+  While i Do{DECR i;INCR d;INCR d;}charGet(c);If c^48Then{INCR d;}
+  While d Do{DECR d;INCR i;INCR i;}charGet(c);If c^48Then{INCR i;}
+  INCR t(3);charPut(48^t(i));0;
   }
 } truthTable;

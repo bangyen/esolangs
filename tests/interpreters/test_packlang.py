@@ -660,17 +660,25 @@ class TestBooleanGenerator:
             run(packlang(table), io)
             assert io.position() == n, table
 
-    def test_the_construction_is_a_folded_decision_tree(self) -> None:
-        """Complementary guards branch, while constant subtrees disappear."""
-        assert packlang("0001").count("If ") == 4
-        assert packlang("0110").count("If ") == 6
-        assert packlang("01101001").count("If ") == 14
-        assert packlang("1111").count("If ") == 0
-        assert packlang("1111").count("INCR acc") == 1
-        assert packlang("0000").count("INCR acc") == 0
+    def test_the_construction_paints_only_the_rows_that_differ(self) -> None:
+        """One write per row the block does not already hold.
 
-    def test_full_tree_growth_is_linear(self) -> None:
-        """Parity forces the full tree, whose emitted size still doubles."""
+        This replaces a pin on the decision tree that used to be emitted
+        (four ``If``s for ``0001``, one ``INCR acc`` per folded leaf).  That
+        counted a spelling; what the construction actually claims is this
+        cost, so it is the claim asserted now.
+        """
+        assert packlang("0001").count("INCR t(") == 1
+        assert packlang("0110").count("INCR t(") == 2
+        assert packlang("01101001").count("INCR t(") == 4
+        assert packlang("0000").count("INCR t(") == 0
+        # A block that is all ones is filled by a loop instead, and then
+        # has no zero to punch back out.
+        assert packlang("1111").count("INCR t(") == 1
+        assert packlang("1111").count("DECR t(") == 0
+
+    def test_full_table_growth_is_linear(self) -> None:
+        """Parity paints half the rows, and its emitted size still doubles."""
         sizes = []
         for n in (7, 8):
             table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
