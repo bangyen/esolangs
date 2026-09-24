@@ -6,9 +6,14 @@ from esolangs.tools.helpers import (
     constant_span_test,
 )
 
-# Cells in a leaf: seven ';', the four '+' the worst parity costs, and the
-# '?' that leaves; '+' pads the cheaper leaves to the same row.
-_CLOCKWISE_LEAF = 12
+# Rows a leaf spends: ten for the digit (seven ';' and the three '+' the
+# worst parity costs), then the two exit rows a pair shares.
+_CLOCKWISE_LEAF = 13
+
+# Where the upper of a leaf's two exit rows sits.  A pair's one-branch turns
+# there and holds 'S' two rows down; its zero-branch does the reverse, so each
+# zeroes the other's escaping accumulator without a column of its own.
+_CLOCKWISE_UPPER = 10
 
 
 # Rows one level spends: seven '.' and the '?' that turns.  A read clears
@@ -30,27 +35,29 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     needs no ``S`` to clear the 0 or 1 it inherits; at each node ``?`` turns
     by ``acc`` quarter-turns, so a zero continues down the spine and a one
     turns into its own column.  A leaf prints seven bits with ``;`` (``+``
-    flips a bit's parity; ``'0'`` and ``'1'`` differ by one ``+``) and
-    leaves on the ``+`` a digit always spends, which the exit ``?`` reads
-    as nonzero.  Every exit row ends at a ``!`` on
-    column 0 that turns a zero accumulator up the left edge, with ``+`` above
-    it, so leaves finish on different rows.
+    flips a bit's parity) and leaves on the ``+`` a digit always spends,
+    which the exit ``?`` reads as nonzero.  Every exit row ends at a ``!``
+    on column 0 that turns a zero accumulator up the left edge, with ``+``
+    above it, so leaves finish on different rows.
 
-    A node can send its one-branch to its own column (width ``2 ** (n + 1)``
-    unstacked) or one column left and *stack* the subtrees (one column per
-    level, doubling the height).  Wide default tables alternate the two per
-    level, so width and height are each O(sqrt(T)) and the rectangle O(T);
-    explicit widths stack the shallowest levels first.  A constant subtree
-    narrows the ring but keeps its seven reads per level and cannot narrow
-    past the hoist (seven free columns for the root's reads) unless asked.
+    A node can send its one-branch to its own column or one column left and
+    *stack* the subtrees (one column per level, doubling the height).  Wide
+    default tables alternate the two per level, so width and height are each
+    O(sqrt(T)) and the rectangle O(T); explicit widths stack the shallowest
+    levels first.  A constant subtree narrows the ring but keeps its seven
+    reads per level and cannot narrow past the hoist (seven free columns for
+    the root's reads) unless asked.
     """
     n = _validate_truth_table(truth_table)
     alternating = width is None and n > 4
     constant_span = constant_span_test(truth_table)
 
     def stacks(bit: int, stacked: int) -> bool:
-        """Whether this level composes its children vertically."""
-        return bit % 2 == 0 if alternating else bit < stacked
+        """Whether this level composes its children vertically.
+
+        The alternation ends flat, so the last level pairs two leaves.
+        """
+        return bit % 2 == n % 2 if alternating else bit < stacked
 
     def constant(bit: int, combo: int) -> bool:
         """Whether every row this subtree covers agrees.
@@ -68,14 +75,19 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         """Whether this subtree stops here, either at ``n`` or on a fold."""
         return bit == n or (bit > 0 and constant(bit, combo))
 
+    def paired(bit: int, combo: int, stacked: int) -> bool:
+        """Whether this node's children are two leaves that guard each other."""
+        if stacks(bit, stacked) or leafy(bit, combo):
+            return False
+        return leafy(bit + 1, combo << 1) and leafy(bit + 1, (combo << 1) | 1)
+
     shapes: dict[tuple[int, int, int], tuple[int, int]] = {}
 
     def shape(bit: int, combo: int, stacked: int) -> tuple[int, int]:
         """Report the columns and rows this subtree needs, spine on the right.
 
         A leaf is one column, padded to its skipped rows so siblings share a
-        row.  Stacked: one more column than the one-branch, rows of both.  Flat:
-        the one-branch clear of the zero-branch's span (two columns at least).
+        row.  Stacked: one more column than the one-branch, rows of both.
         """
         key = (bit, combo, stacked)
         if key not in shapes:
@@ -90,7 +102,8 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
                         _CLOCKWISE_LEVEL + one[1] + zero[1],
                     )
                 else:
-                    step = max(2, zero[0])
+                    # A pair guards itself, so the one-branch needs no gap.
+                    step = 1 if paired(bit, combo, stacked) else max(2, zero[0])
                     shapes[key] = (
                         step + max(1, one[0] - 1) + 1,
                         _CLOCKWISE_LEVEL + max(one[1], zero[1]),
@@ -121,8 +134,8 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     # between the subtrees where the zero-branch already sets row lengths.
     slack = root - shape(0, 0, stacked)[0]
     hoist = root >= 8
-    # Hoisting the root's reads onto row 0 retires six rows of spine: the
-    # seventh would put the turn gadget on row 0, where the reads now sit.
+    # Hoisting the root's reads onto row 0 retires six rows of spine; a
+    # seventh would put the turn gadget where the reads now sit.
     shift = _CLOCKWISE_LEVEL - 2 if hoist else 0
 
     cells: dict[tuple[int, int], str] = {}
@@ -138,33 +151,33 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
             raise AssertionError(f"two cells at {node}: {cells[node]!r} and {ch!r}")
         cells[node] = ch
 
-    def leaf(x: int, y: int, combo: int, acc: int | None) -> None:
-        """Print the answer at ``(x, y)``, inheriting ``acc``.
+    def leaf(x: int, y: int, combo: int, drop: int) -> None:
+        """Print the answer at ``(x, y)``, ``drop`` rows below the upper exit.
 
-        ``acc`` is ``None`` when a folded chain's reads leave it up to the
-        input, and an ``S`` has to clear it.
+        The accumulator arrives even, so a digit costs three '+' at most.
         """
         # Seven ';' print acc % 2 each, MSB first; '+' flips the parity.
         result = int(truth_table[combo])
         code = ""
-        if acc is None:
-            code, acc = "S", 0
+        acc = 0
         for bit in format(_ASCII_ZERO + result, "07b"):
             if acc % 2 != int(bit):
                 code += "+"
                 acc += 1
             code += ";"
-        # The exit '?' turns on any nonzero accumulator, and the two '+'
-        # every digit spends leave one, so '+' both pads and keeps it.
-        code += "+" * (_CLOCKWISE_LEAF - len(code) - 1) + "?"
+        # An exit '?' turns on any nonzero accumulator, which the digit's
+        # own '+' leave; the lower exit rebuilds one past its guarding 'S'.
+        code += " " * (_CLOCKWISE_UPPER - len(code))
+        code += "? S" if drop == 0 else "S+?"
         for i, ch in enumerate(code):
-            place((x, y + i), ch)
-        exits.append((x, y + _CLOCKWISE_LEAF - 1))
+            if ch != " ":
+                place((x, y + i), ch)
+        exits.append((x, y + _CLOCKWISE_UPPER + drop))
 
-    def build(bit: int, x: int, y: int, combo: int, acc: int | None = 0) -> None:
+    def build(bit: int, x: int, y: int, combo: int, drop: int = 2) -> None:
         """Lay the subtree for ``combo`` at ``bit``, spine head at ``(x, y)``.
 
-        ``acc`` is 1 when the parent's ``?`` turned here, else 0.
+        ``drop`` is 0 for the one-branch of a pair, which exits two rows up.
         """
         if leafy(bit, combo):
             # Folded: the skipped levels still spend seven ``.`` (Clockwise
@@ -174,9 +187,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
                 for i in range(7):
                     place((x, y + _CLOCKWISE_LEVEL * level + i), ".")
                 place((x, y + _CLOCKWISE_LEVEL * level + 7), "S")
-            if n > bit:
-                acc = None
-            leaf(x, y + _CLOCKWISE_LEVEL * (n - bit), combo << (n - bit), acc)
+            leaf(x, y + _CLOCKWISE_LEVEL * (n - bit), combo << (n - bit), drop)
             return
         if bit == 0 and hoist:
             # The seven reads sit on row 0, left of the corner ``R``; the
@@ -190,23 +201,28 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         one = shape(bit + 1, (combo << 1) | 1, stacked)
         zero = shape(bit + 1, combo << 1, stacked)
         # Stacked: one column, zero-branch below; flat: past the span, shared rows.
-        step = 1 if stacks(bit, stacked) else max(2, zero[0])
+        pair = paired(bit, combo, stacked)
+        step = 1 if stacks(bit, stacked) or pair else max(2, zero[0])
         xn = x - step - (slack if bit == 0 else 0)
-        # b=1: '?' turns the pointer aside, then three R's turn it down
-        place((xn, y + 7), " ")
+        # b=1: '?' turns the pointer aside, then three R's turn it down; the
+        # corner's 'S', crossed twice, hands the child an even accumulator.
+        place((xn, y + 7), "S")
         place((xn - 1, y + 7), "R")
         place((xn - 1, y + 6), "R")
         place((xn, y + 6), "R")
-        build(bit + 1, xn, y + 8, (combo << 1) | 1, 1)
+        build(bit + 1, xn, y + 8, (combo << 1) | 1, 0 if pair else 2)
         below = one[1] if stacks(bit, stacked) else 0
         # b=0: fall down this column, past the one-branch when it stacks
-        build(bit + 1, x, y + 8 + below, combo << 1, 0)
+        build(bit + 1, x, y + 8 + below, combo << 1)
 
     build(0, root, 1 - shift, 0)
 
     for x, y in exits:
         # Drop a passing path to zero so it does not turn on a leaf's exit.
-        place((x - 1, y), "S")
+        # A pair's zero-branch already has its sibling's 'S' to the left.
+        if (x - 1, y) not in cells:
+            place((x - 1, y), "S")
+        assert cells[(x - 1, y)] == "S", f"exit at {(x, y)} is not guarded"
     for y in {y for _, y in exits}:
         # The ring closes up column 0: '!' turns a zero accumulator up,
         # the '+' above restores it past every exit.  ``place`` refuses a
