@@ -35,23 +35,22 @@ Fix real roots $2\le r_1\le\cdots\le r_L$, repetitions allowed.  For every
 nonzero real polynomial $F=\sum_jf_jx^j$ of degree $D$ divisible by
 $\prod_{i=1}^L(x-r_i)$, the $k$-th largest nonleading coefficient
 magnitude is at least $|f_D|\prod_{i=k}^L(r_i-1)$ for $1\le k\le L$,
-uniformly in the degree.  The rows $k\ge2$ are sharp at $(2,3)$ and $(2,3,5)$, and not sharp
-at $(\tfrac52,3,\tfrac72)$, where the $k=2$ infimum is $65/12$ against $5$;
-both sides come from the same certificate.  Summing the rows bounds the
-logarithmic coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$ of a monic
-multiple below by $\sum_ii\log(r_i-1)$, sharp in order at the first $L$
-primes but degenerate as the roots approach $2$; Jensen's formula supplies a term
-of order $L^2$ there, and together the two give
-$\inf\Lambda\asymp L^2+\sum_ii\log(r_i-1)$ over monic multiples, at every
-root set with $L\ge2$.  The key tool compares the $\ell^1$ tails of
-normalized exponential sums with prescribed positive-integer zeros: deleting
-the largest zero together with the largest node strictly increases the tail,
-and iterating gives a product bound over the initial run of consecutive
-zeros, with equality only when all the zeros are consecutive.  As a
-by-product, the same-sign hypothesis under which Dubickas and Jankauskas
-evaluate the consecutive case holds at all distinct positive nodes, making
-their bound $H(P)\ge|P(1)|$ unconditional for distinct real roots greater
-than one.
+uniformly in the degree.  Summing these rows bounds the logarithmic
+coefficient mass $\Lambda(F)=\sum_j\log^+|f_j|$ of a monic multiple below by
+$\sum_ii\log(r_i-1)$, sharp in order at the first $L$ primes but degenerate
+as the roots approach $2$; a Jensen-formula bound of order $L^2$ repairs
+this, giving $\inf\Lambda\asymp L^2+\sum_ii\log(r_i-1)$ over monic
+multiples at every root set with $L\ge2$.  The rows $k\ge2$ are
+sharp at $(2,3)$ and $(2,3,5)$, and not sharp at $(\tfrac52,3,\tfrac72)$,
+where the $k=2$ infimum is $65/12$ against $5$.  The key tool compares the
+$\ell^1$ tails of normalized exponential sums with prescribed
+positive-integer zeros: deleting the largest zero together with the largest
+node strictly increases the tail, and iterating gives a product bound over
+the initial run of consecutive zeros, with equality only when all the zeros
+are consecutive.  As a by-product, the same-sign hypothesis under which
+Dubickas and Jankauskas evaluate the consecutive case holds at all distinct
+positive nodes, making their bound $H(P)\ge|P(1)|$ unconditional for
+distinct real roots greater than one.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -61,146 +60,139 @@ height; Chebyshev systems; exponential sums.
 
 \section{Introduction}
 
-For a nonzero $F(x)=\sum_jf_jx^j$ of degree $D$, define its logarithmic coefficient mass by
+For a nonzero $F(x)=\sum_jf_jx^j$ of degree $D$, define its logarithmic
+coefficient mass by
 \[
   \Lambda(F)=\sum_{j:f_j\ne0}\log^+|f_j|,
   \qquad \log^+x=\max(0,\log x),
 \]
-where all logarithms are natural.  This is the quantity to bound because it
-is additive over coefficients: a lower bound on each of several coefficient
-order statistics adds one term to $\Lambda$, so the order-statistic bounds
-proved below add up to a bound for $\Lambda$ that no bound on a single
-height can give.  Throughout, $\N_{>0}=\{1,2,\ldots\}$, and
-every asymptotic statement is for $L\to\infty$ with absolute implied
-constants unless parameters are named.
+the logarithm of the multiplicative height $\prod_{j:f_j\ne0}\max(1,|f_j|)$.
+The height $\max_j|f_j|$ sees only one coefficient, and the length
+$\sum_j|f_j|$ can be spread over many comparable terms, so neither norm
+forces many coefficients to be large at once.  The mass does: it is additive
+over coefficients, so lower bounds on several coefficient order statistics
+add up to a lower bound for $\Lambda$ that no bound on a single height can
+give.  For integer coefficients, $\Lambda(F)/\log B$ is roughly the total
+number of base-$B$ digits of the nonzero coefficients.  Since $\log^+$
+ignores coefficients of magnitude at most one, $\Lambda(\varepsilon F)\to0$
+as $\varepsilon\to0$, so every bound below is stated relative to the
+leading coefficient $f_D$; the case of interest is the monic one, or more
+generally $|f_D|\ge1$, which is also the normalization of the reduced
+height~\cite{dj} and costs nothing for integer multiples.
 
-Reduced length and reduced height minimize the two classical coefficient
-norms over normalized multiples (monic ones for the reduced height; for the
-reduced length, those with leading or constant coefficient
-one)~\cite{dubickas,schinzel,schinzel-ii,schinzel-complex,dj}.  The Euclidean
-analogue is effectively computable~\cite{frw}.  Dual
-problems---an integer or bounded-height multiple, or a root of prescribed
-multiplicity for a restricted-coefficient power series---form a classical
-line~\cite{mignotte,bombieri-vaaler,bbbp-multiple,bbbp-ray}.  Work on sparse
-multiples looks for multiples of prescribed degree, sparsity and
-height~\cite{grt}.  The height
-$\max_j|f_j|$ sees only one coefficient, and the length $\sum_j|f_j|$ can be
-spread over many comparable terms, so neither norm forces many coefficients
-to be large at once.  The mass $\Lambda$ does: it adds up the contributions
-of every coefficient of magnitude greater than one, and equals the logarithm
-of the multiplicative height,
-$\Lambda(F)=\log\prod_{j:f_j\ne0}\max(1,|f_j|)$.  For integer coefficients,
-$\Lambda(F)/\log B$ is roughly the total number of base-$B$ digits in the
-nonzero coefficients, up to an additive term proportional to their number and
-ignoring signs, zero entries and exponents.  For real coefficients it is
-simply a mass.  In this sense the
-results below are distributional: many coefficients must be large, not just
-the largest.
-
-Because $\log^+$ ignores coefficients of magnitude at most one, $\Lambda$ is
-not scale invariant: $\Lambda(\varepsilon F)\to0$ as $\varepsilon\to0$, so no
-lower bound for $\Lambda$ can hold without fixing a scale.  Every bound below
-is therefore stated relative to the leading coefficient $f_D$, and the
-normalization of interest is the monic one $|f_D|=1$, or more generally
-$|f_D|\ge1$.  This is the normalization already used for the reduced
-height~\cite{dj}, and for integer multiples it costs nothing.
-
-It is worth saying what is gained over the standard route through the Mahler
-measure $\mathcal M$.  A monic multiple $F$ of $\prod_i(x-r_i)$ has
-$\mathcal M(F)\ge\prod_ir_i$, while Landau's inequality
-$\mathcal M(F)\le\lVert F\rVert_2\le\sqrt{D+1}\,H(F)$ bounds the height from
-below, so
+\paragraph{Main results.}
+Let $2\le r_1\le\cdots\le r_L$ be real, repetitions allowed, let
+$P=\prod_{i=1}^L(x-r_i)$, and let $F$ be a nonzero real multiple of $P$.
+Write $b_k(F)$ for the $k$-th largest of the nonleading coefficient
+magnitudes $|f_j|$, $j<D$.  Theorem~\ref{thm:order} and
+Corollary~\ref{cor:mass} give
 \[
-  \Lambda(F)\ \ge\ \log H(F)\ \ge\ \sum_{i=1}^L\log r_i-\tfrac12\log(D+1).
-\]
-For the first $L$ primes the sum is $\sim L\log L$, so this route gives order
-$L\log L$: it charges only one coefficient, and the number of prescribed
-roots enters once.  Corollary~\ref{cor:prime} gives
-$\Lambda(F)\ge(\tfrac12+o(1))L^2\log L$, larger by a factor of order $L$ and
-with no degree term at all, because each of the $L$ roots is charged against
-a coefficient of its own.
-
-Dubickas and Jankauskas associate to reciprocal roots and a prescribed zero
-set $J$ a normalized determinant sequence $S_n(J)$ with $S_0(J)=1$ and
-$S_k(J)=0$ for $k\in J$~\cite{dj}.  This sequence is the exponential sum $w$
-studied below, and the reciprocal of its infinite tail is their dual lower
-bound for the reduced height, their inequality~(8).  They evaluate the
-consecutive case $J=\{1,\ldots,c-1\}$ explicitly, on the condition that all
-$S_n$ with $n$ large have the same sign: their $H(P)\ge|P(1)|$ holds
-``provided that all $S_n$ \ldots have the same sign''~\cite[p.~333]{dj}.
-That condition stays a hypothesis through their
-Corollary~7~\cite[Section~2]{dj} and is checked only case by
-case~\cite[Sections~3--4]{dj}.  Our consecutive base case,
-Lemma~\ref{lem:consecutive}, proves it for all distinct positive real nodes
-by reading the sign off the complete homogeneous symmetric polynomials $h_j$.
-Their bound $H(P)\ge|P(1)|$ is then the $k=1$ row of
-Theorem~\ref{thm:order}, made unconditional by Lemma~\ref{lem:consecutive}
-for distinct real roots greater than one; the rows $k\ge2$ are new.
-
-The main result bounds how the coefficient sizes of a multiple are
-distributed.  For roots $2\le r_1\le\cdots\le r_L$, repetitions allowed,
-Theorem~\ref{thm:order} (via the certificate of Lemma~\ref{lem:slack})
-bounds all $L$ coefficient order statistics of every multiple, and
-Corollary~\ref{cor:mass} adds them up into a lower bound for $\Lambda$.
-Writing $b_k(F)$ for the $k$-th largest of the nonleading
-coefficient magnitudes $|f_j|$, $j<D$,
-\[
-  b_k(F)\ge|f_D|\prod_{i=k}^{L}(r_i-1),
+  b_k(F)\ge|f_D|\prod_{i=k}^{L}(r_i-1)
   \quad(1\le k\le L),
   \qquad
   \Lambda(F)\ge(L+1)\log|f_D|+\sum_{i=1}^{L}i\log(r_i-1).
 \]
-The first inequality at a given $k$ is the row $k$.  Both bounds are uniform
-in the degree and in any further roots of the multiple.  The idea is simple to state.  To bound the $k$-th largest
-coefficient magnitude, exclude any $k-1$ coefficient positions, and build a
+We call the first inequality at a given $k$ the row $k$.  Both bounds are
+uniform in the degree and in any further roots of the multiple, and they
+extend to complex multiples (Corollary~\ref{cor:complex}).  The row $k=1$
+holds for all $r_1>1$.  For the first $L$ primes the mass bound is
+$\Lambda(F)\ge(\frac12+o(1))L^2\log L$ (Corollary~\ref{cor:prime}), and the
+infimum over monic multiples is
+$\frac12L^2\log L+\frac12L^2\log\log L+O(L^2)$ (Corollary~\ref{cor:infimum}).
+For every root set the product $P$ itself comes within $O(L^2)$ of the
+infimum of $\Lambda$ over monic multiples (Corollary~\ref{cor:near}).  As
+the roots approach $2$ the mass bound degenerates; a separate argument by
+Jensen's formula gives $\Lambda(F)\ge L^2/80$ for monic multiples when
+$L\ge8$ (Proposition~\ref{prop:quadratic}), and together
+\[
+  \inf_{Q\text{ monic}}\Lambda(PQ)\ \asymp\ L^2+\sum_{i=1}^Li\log(r_i-1)
+  \qquad(L\ge2),
+\]
+with absolute constants (Corollary~\ref{cor:allroots}).
+
+For comparison, the standard route through the Mahler measure
+$\mathcal M$ gives much less.  A monic multiple $F$ of $P$ has
+$\mathcal M(F)\ge\prod_ir_i$, and Landau's inequality
+$\mathcal M(F)\le\lVert F\rVert_2\le\sqrt{D+1}\,H(F)$ gives
+\[
+  \Lambda(F)\ \ge\ \log H(F)\ \ge\ \sum_{i=1}^L\log r_i-\tfrac12\log(D+1),
+\]
+which at the first $L$ primes is of order $L\log L$: it charges one
+coefficient, and the number of prescribed roots enters once.
+Corollary~\ref{cor:prime} is larger by a factor of order $L$ and has no
+degree term, because each of the $L$ roots is charged against a coefficient
+of its own.
+
+\paragraph{Method.}
+To bound $b_k$, exclude any $k-1$ coefficient positions and build a
 normalized exponential sum in the reciprocal roots, the certificate, that
 vanishes at those positions and at enough initial ones.  A bound on the
-remaining tail of this sum, the sum of the magnitudes of its later terms,
-then forces some coefficient outside the excluded set to be large.  All the
-difficulty lies in that tail bound, which is Theorem~\ref{thm:tail}: it
-bounds the tail of a certificate by a product over its initial run of
-consecutive zeros, with equality only when all the zeros are consecutive.
+$\ell^1$ tail of this sum then forces some coefficient outside the excluded
+set to be large (Lemma~\ref{lem:slack}).  All the difficulty lies in the
+tail bound, Theorem~\ref{thm:tail}: it bounds the tail of a certificate by a
+product over the initial run of consecutive zeros of its zero set, with
+equality only when all the zeros are consecutive.  Its engine is a strict
+deletion step: if the largest prescribed zero is displaced, that is, not part
+of that run, deleting it together with the largest reciprocal node strictly
+increases the tail, even though moving a zero at fixed nodes can push the
+tail either way.  Because the resulting bound is uniform in the zero set, it
+applies to every choice of excluded positions, and this is what turns
+certificates, which earlier controlled only a single height, into bounds on
+all the order statistics $b_1,\ldots,b_L$.
 
-Inequality~(8) of~\cite{dj} already allows a prescribed set of positions to
-be excluded from the certificate.  What is new here is a tail estimate for
-arbitrary prescribed integer zero sets that depends on their initial run of
-consecutive zeros.  If the largest prescribed zero is displaced, that is,
-not part of that run, deleting it together with the largest reciprocal node
-strictly increases the tail, even though moving a zero at fixed nodes can
-push the tail either way.  Applying the estimate repeatedly over the
-excluded positions turns one certificate into lower bounds for successive
-coefficient order statistics, where earlier certificates controlled only a
-single height.
+\paragraph{Relation to earlier work.}
+Reduced length and reduced height minimize the two classical coefficient
+norms over normalized multiples (monic ones for the reduced height; for the
+reduced length, those with leading or constant coefficient
+one)~\cite{dubickas,schinzel,schinzel-ii,schinzel-complex,dj}.  The Euclidean
+analogue is effectively computable~\cite{frw}.  Dual problems---an integer or
+bounded-height multiple, or a root of prescribed multiplicity for a
+restricted-coefficient power series---form a classical
+line~\cite{mignotte,bombieri-vaaler,bbbp-multiple,bbbp-ray}, and work on
+sparse multiples looks for multiples of prescribed degree, sparsity and
+height~\cite{grt}.
 
-Several consequences follow directly.  Corollary~\ref{cor:complex} extends the bound to complex multiples,
-Corollary~\ref{cor:prime} specializes to prime roots,
-Corollary~\ref{cor:infimum} sharpens the resulting asymptotic to the infimum
-over monic real multiples, and
-Corollary~\ref{cor:near} shows that for every root set here the root product
-itself comes within $O(L^2)$ of the corresponding infimum over monic
-multiples.
+Closest to this paper, Dubickas and Jankauskas associate to reciprocal roots
+and a prescribed zero set $J$ a normalized determinant sequence $S_n(J)$
+with $S_0(J)=1$ and $S_k(J)=0$ for $k\in J$~\cite{dj}.  This sequence is the
+exponential sum $w$ studied below, the reciprocal of its infinite tail is
+their dual lower bound for the reduced height, their inequality~(8), and
+that inequality already allows a prescribed set of positions to be excluded.
+They evaluate the consecutive case $J=\{1,\ldots,c-1\}$ explicitly, on the
+condition that all $S_n$ with $n$ large have the same sign: their
+$H(P)\ge|P(1)|$ holds ``provided that all $S_n$ \ldots have the same
+sign''~\cite[p.~333]{dj}.  That condition stays a hypothesis through their
+Corollary~7~\cite[Section~2]{dj} and is checked only case by
+case~\cite[Sections~3--4]{dj}.  Lemma~\ref{lem:consecutive} proves it for all
+distinct positive real nodes by reading the sign off the complete homogeneous
+symmetric polynomials $h_j$, so their bound $H(P)\ge|P(1)|$, the row $k=1$ of
+Theorem~\ref{thm:order}, holds unconditionally for distinct real roots
+greater than one.  What is new here is the tail estimate for arbitrary
+integer zero sets, and with it the rows $k\ge2$.
 
-Section~\ref{sec:sharp} turns to sharpness.  It
-shows that the $k=2$ bound is approached at roots $(2,3)$
-(Proposition~\ref{prop:sharp23}) and the $k=2$ and $k=3$ bounds at
-$(2,3,5)$ (Proposition~\ref{prop:sharp235}), so these bounds cannot be
-improved by any constant factor in general.  They are not sharp at every
-root set, however:
-Proposition~\ref{prop:nonsharp} evaluates the $k=2$ infimum at roots
-$(\tfrac52,3,\tfrac72)$ as $65/12$, above the value $5$ that
-\eqref{eq:order} gives, and obtains both the improved lower bound and the
-matching family from the same certificate machinery.  Nor is the loss
-bounded: Proposition~\ref{prop:unbounded} exhibits distinct roots at which
-a certificate bound for $b_1$ exceeds $|P(1)|$ by a factor at least of
-order $L$, and gives the uniform bound
-$b_1\ge|f_D|(r_1+\cdots+r_L)/2$, which neither implies nor is implied by the
-product bound.  At $r_i=2$, where \eqref{eq:mass} degenerates,
-Proposition~\ref{prop:neartwo} still forces two large coefficients.
-Proposition~\ref{prop:quadratic}, proved by Jensen's formula rather than by a
-certificate, adds the bound $\Lambda(F)\ge L^2/80$ for monic multiples when
-$L\ge8$, at every root set with $r_i\ge2$, and Corollary~\ref{cor:allroots}
-combines the two into $\inf_Q\Lambda(PQ)\asymp L^2+\sum_ii\log(r_i-1)$,
-uniformly in the root set once $L\ge2$.
+\paragraph{Sharpness.}
+Section~\ref{sec:sharp} asks how close the rows are to optimal.  The loss
+in the row $k=1$ is unbounded: at suitable distinct
+roots a certificate bound for $b_1$ exceeds $|P(1)|$ by a factor of order
+$L$, and every monic multiple has $b_1\ge(r_1+\cdots+r_L)/2$
+(Proposition~\ref{prop:unbounded}).  At $r_i=2$, where the mass bound
+degenerates, Proposition~\ref{prop:neartwo} forces two large coefficients.
+The rows $k\ge2$ are infima at $(2,3)$ (Proposition~\ref{prop:sharp23}) and
+$(2,3,5)$ (Proposition~\ref{prop:sharp235}), so they cannot be improved by
+any constant factor in general, but not at $(\tfrac52,3,\tfrac72)$, where the
+$k=2$ infimum is $65/12$ against the value $5$ of the row
+(Proposition~\ref{prop:nonsharp}).  The companion
+paper~\cite{coefficient-mass-attainment} characterizes the root sets at which
+a row is an infimum by a partial-sum criterion, repeated roots included.
+Finally, for multiples of $(x-2)^L$ we conjecture $b_k\ge L-k+1$ for every
+row, and prove it for all multiples whose $k-1$ largest nonleading
+coefficients do not include all three of $f_{D-1},f_{D-2},f_{D-3}$
+(Proposition~\ref{prop:rowsfree}).
+
+\paragraph{Conventions.}
+All logarithms are natural, $\N_{>0}=\{1,2,\ldots\}$, and every asymptotic
+statement is for $L\to\infty$ with absolute implied constants unless
+parameters are named.
 
 \section{A displaced-zero tail theorem}
 
@@ -293,18 +285,16 @@ Here moving the zero lowers the tail, but that does not happen in general.
 For $(\rho_1,\rho_2)=(5,3)$, $Z=\{1\}$ gives $\Tail(w)=1/8$ while $Z=\{2\}$
 gives $\Tail(w)=9/64>1/8$, so a displaced tail can exceed the consecutive
 one.  The theorem therefore does not compare zero sets at fixed nodes.
-Instead it removes the largest prescribed zero and the largest reciprocal
-node together, which lowers the number of nodes.  Each displaced zero adds a
-sign change relative to a comparison sum, and the proof shows that this sign
-change lowers the total tail.  The proof handles the displaced zeros one at
-a time, starting with the last.
+Instead its proof removes the displaced zeros one at a time, starting with
+the largest, each time together with the largest reciprocal node; each
+displaced zero adds a sign change relative to a comparison sum, and this
+sign change lowers the total tail.
 
-The hard step compares a correction sum at the prescribed zeros of the zero
-set (the marked points of Lemma~\ref{lem:interlace}) with its value just past
-them.  Marked points come in two kinds: some force
-the correction sum to vanish, and others only fix its sign.  We state this
-comparison as a separate lemma.  Its proof is a zero count, in which the
-sign-fixing points force extra zeros in each gap between them.
+The hard step compares a correction sum at the prescribed zeros (the marked
+points of Lemma~\ref{lem:interlace}) with its value just past them.  Marked
+points come in two kinds: some force the correction sum to vanish, and
+others only fix its sign.  The proof of the lemma is a zero count, in which
+the sign-fixing points force extra zeros in each gap between them.
 
 \begin{lemma}[Interlacing of the correction sum]\label{lem:interlace}
 Let $c\ge2$ and $0<y_1<\cdots<y_c$, let $Z'\subset\N_{>0}$ satisfy $|Z'|=c-2$, and put
@@ -322,7 +312,7 @@ Then $\Delta_d\ge0$ for every $d\ge m+1$.  No upper bound on the nodes is
 needed.
 \end{lemma}
 
-Before the proof, here is an example of the counting.  Take
+To illustrate the counting in the proof, take
 $c=5$ and $Z'=\{2,4,6\}$, so the marked set is $\{0\}\cup Z'=\{0,2,4,6\}$ and
 $m=6$.  No two marked points are adjacent, so none of them forces a zero of
 $\Delta$.  Instead $\Delta$ is nonzero at $2,4,6$, with signs $-1,+1,-1$.
@@ -546,10 +536,11 @@ The restriction $\rho_i\ge2$ matters.  For $c=2$,
 $y_1=1/10$, $y_2=4/5$, and $Z=\{2\}$, the normalized coefficients are
 $a_1=64/63$ and $a_2=-1/63$, so
 $\Tail(w)=52/405>1/9=y_1/(1-y_1)$: \eqref{eq:tail} fails once a node
-passes the cutoff.  The cutoff enters the argument at two places only: $1/(1-y_c)\le2$ in
-\eqref{eq:gamma} here, and the factors discarded in the proof of
-Lemma~\ref{lem:slack} below; whether $2$ is the true threshold we have not
-determined.
+passes the cutoff.  The cutoff enters the argument at two places only:
+$1/(1-y_c)\le2$ in \eqref{eq:gamma} here, and the factors discarded in the
+proof of Lemma~\ref{lem:slack} below.  It cannot be relaxed: the companion
+paper~\cite{coefficient-mass-attainment} shows that for every $a>1/2$ some
+nodes in $(0,a]$ violate \eqref{eq:tail}.
 
 \section{Coefficient order statistics}
 
@@ -830,7 +821,9 @@ gives the sharp form of this statement.
 How close is Theorem~\ref{thm:order} to optimal?  This section treats the
 first row; then the bottom of the root range, where \eqref{eq:mass}
 degenerates, together with the $L^2$ term that repairs it at every root set;
-and finally the rows $k\ge2$.
+then the rows $k\ge2$; and finally, at the roots $r_i=2$, a degree-free
+reformulation of the rows that proves most cases of the conjecture
+$b_k\ge L-k+1$ stated in Section~\ref{sec:bottom}.
 
 \subsection{The first row}
 
@@ -857,13 +850,13 @@ of~\cite{dj}, a closed formula for the reduced height of $(x-a)(x-b)$,
 evaluates at $(a,b)=(3,2)$ to $10/3$, so here the row is off by a factor of
 $5/3$.
 
-At these nodes $Z=\{2\}$ is in fact the best choice, so the certificate
-method loses nothing at $(2,3)$: minimizing $\Tail(w)$ over all
-$Z\subset\{1,\ldots,14\}$ with $|Z|=1$ returns $Z=\{2\}$ and the bound
-$10/3$, which is the reduced height.  The optimum need not be displaced---at
-nodes $(5,3)$ the consecutive set is already optimal---and the gain is
-modest.  Minimizing the tail over all $Z$ in the same range gives, against
-$|P(1)|$, the ratios
+Since $10/3$ is the reduced height, $Z=\{2\}$ is the best zero set at these
+nodes, and the certificate method loses nothing at $(2,3)$.  The optimum need
+not be displaced---at nodes $(5,3)$ the consecutive set is already
+optimal---and at small root sets the gain is modest.  The least tail over
+zero sets in a bounded range, computed in exact arithmetic (the minimizers
+lie well inside the range), gives the following ratios of the certificate
+bound to $|P(1)|$:
 \[
   \begin{array}{c|ccccccc}
     \text{roots} & (2,3) & (2,5) & (3,5) & (2,3,5) & (2,3,7) & (3,5,7) & (2,3,5,7)\\\hline
@@ -871,15 +864,8 @@ $|P(1)|$, the ratios
       & \tfrac{71}{62} & \tfrac{39799}{21337}
   \end{array}
 \]
-all below $2$.  These minima were computed in exact rational arithmetic, over
-all $Z$ of the required size contained in $\{1,\ldots,R\}$ with $R=14$ for
-$L=2$, $R=11$ for $L=3$ and $R=10$ for $L=4$; in each case the minimizing
-$Z$ lies well inside that range and is unchanged when $R$ is enlarged to
-$30$, $18$ and $14$ respectively, the tails increasing again for large
-$\max Z$.
-
-The ratios above stay below $2$, but that is a feature of these small root
-sets and not a general phenomenon.
+They stay below $2$, but that is a feature of these small root sets and
+not a general phenomenon.
 
 \begin{proposition}[Unbounded looseness of the row $k=1$]
 \label{prop:unbounded}
@@ -954,7 +940,7 @@ coefficient.  The zero set $Z=\{2,\ldots,L\}$ used here is not always
 optimal---at $(2,3,5)$ it gives $80/9$, against $248/17$ for
 $Z=\{1,3\}$---but it suffices to settle the boundedness question.
 
-\subsection{The bottom of the range}
+\subsection{The bottom of the range}\label{sec:bottom}
 
 At $r_i=2$ the certificate of Proposition~\ref{prop:unbounded} gives
 $b_1\ge L$, where the row $k=1$ of \eqref{eq:order} gives only $1$.  A
@@ -1145,48 +1131,43 @@ thereafter.  Second, the constant $1/80$ comes from one radius
 and one cutoff $k\le L/8$, chosen for clean arithmetic; a sharper choice
 would improve it, and we have not pursued the best value.
 
-Third, the numerical experiments reported below suggest the clean per-row
+Third, for monic multiples of $(x-2)^L$ we conjecture the per-row
 statement
 \[
-  b_k(F)\ \ge\ L-k+1\qquad(1\le k\le L)
+  b_k(F)\ \ge\ L-k+1\qquad(1\le k\le L),
 \]
-for every monic multiple of $(x-2)^L$, interpolating between $b_1\ge L$ and
-the trivial $b_L\ge1$.  The first rows are already covered: for
-$k\le L/8$ the proof of Proposition~\ref{prop:quadratic} gives
-$b_k\ge e^{L/5}$, which exceeds $L$ once $L\ge13$;
-Proposition~\ref{prop:neartwo} covers $k=1,2$ and Theorem~\ref{thm:order}
-the row $k=L$.  Proposition~\ref{prop:rowsfree} at the end of this section proves every row for every $F$
-whose $k-1$ largest nonleading coefficients do not include all three of
-$f_{D-1},f_{D-2},f_{D-3}$; what remains open are the multiples for which
-they do, in the rows $\max(2,L/8)<k\le L-1$.  The consequence
-$\Lambda(F)\ge\log L!$ is in any case asymptotically weaker than
+which interpolates between $b_1\ge L$ and the row $b_L\ge1$ of
+\eqref{eq:order}.  Several rows are already covered:
+Proposition~\ref{prop:neartwo} gives $k=1,2$, Theorem~\ref{thm:order} gives
+$k=L$, and for $k\le L/8$ the proof of Proposition~\ref{prop:quadratic}
+gives $b_k\ge e^{L/5}$, which exceeds $L$ once $L\ge13$.
+Proposition~\ref{prop:rowsfree} at the end of this section proves every row
+for every $F$ whose $k-1$ largest nonleading coefficients do not include all
+three of $f_{D-1},f_{D-2},f_{D-3}$; what remains open are the multiples for
+which they do, in the rows $\max(2,L/8)<k\le L-1$.  The consequence
+$\Lambda(F)\ge\log L!$ is asymptotically weaker than
 Proposition~\ref{prop:quadratic}, so the interest is in the individual rows.
-The evidence is only the absence of a counterexample, but it is exact over
-a family rather than sampled.  For fixed $L$, fixed $\deg Q$ and a fixed set of $k-1$ exempt
-positions, minimizing the largest remaining coefficient magnitude over monic
-$Q$ is a linear program, and the minimum of these over all exempt sets is the
-infimum of $b_k$ over monic $Q$ of that degree.  We solved every such program
-for $L\le7$, $\deg Q\le7$ and $1\le k\le L$, reconstructing each minimizer
-and recomputing its order statistics.  No minimum fell below $L-k+1$, and
-in every case the smallest value occurred at the largest degree tried, so
-the bounded-degree values need not be the infimum over all degrees.  A
-search over bounded degree cannot confirm a lower bound; it can only fail to
-refute one.
+The conjecture is also supported by exact computation.  For fixed $L$,
+fixed $\deg Q$ and a fixed set of $k-1$ exempt positions, minimizing the
+largest remaining coefficient magnitude over monic $Q$ is a linear program,
+and the least of these minima over all exempt sets is the infimum of $b_k$
+over monic $Q$ of that degree.  For $L\le7$, $\deg Q\le7$ and $1\le k\le L$
+no such infimum falls below $L-k+1$.  Since the smallest value always
+occurred at the largest degree tried, this is evidence rather than proof: a
+search over bounded degree can only fail to refute a lower bound.
 
 \subsection{The rows \texorpdfstring{$k\ge2$}{k at least 2}}
 
-We turn to the rows $k\ge2$ of \eqref{eq:order}.  What
-Theorem~\ref{thm:tail} buys is a bound in closed product form that is
-uniform in the excluded set, and that is what the rows $k\ge2$ need: for
-$u\ge1$ the set $U$ is arbitrary, so the distances $W$ on which the
-certificate must vanish are forced, and only the remaining $L-u-1$ zeros are
-ours to place.  Lemma~\ref{lem:slack} places them at the first available
-distances.  That choice is convenient, not optimal, and the free zeros may be
-placed anywhere; the resulting bound is then the worst case over $U$ and has
-no closed form.  Proposition~\ref{prop:nonsharp} below carries out this
-optimization for a single root set and improves \eqref{eq:order} there, which
-shows that the rows $k\ge2$ are not sharp in general.  They can, however,
-be sharp.
+For $u\ge1$ the excluded set $U$ in Lemma~\ref{lem:slack} is arbitrary, so
+the distances $W$ on which the certificate must vanish are forced and only
+the remaining $L-u-1$ zeros are ours to place.  What Theorem~\ref{thm:tail}
+buys is a bound in closed product form that is uniform in $U$.
+Lemma~\ref{lem:slack} places the free zeros at the first available
+distances; that choice is convenient, not optimal.  Placing them optimally
+for each $U$ gives a better bound, the worst case over $U$, with no closed
+form in general.  Proposition~\ref{prop:nonsharp} below carries this out
+at one root set and improves \eqref{eq:order} there.  First, two root sets
+at which the rows are sharp.
 
 \begin{proposition}[Sharpness of the row $k=2$ at $(2,3)$]
 \label{prop:sharp23}
@@ -1266,10 +1247,10 @@ and $|q_D'|\sim2\cdot3^D$, and $b_3(G_D)=s_D\to4$.  Theorem~\ref{thm:order} give
 $b_3\ge4$ for every monic multiple, so both are infima.
 \end{proof}
 
-They are not infima at every root set.  The next proposition computes one
-row exactly and finds it strictly above \eqref{eq:order}; the certificate
-machinery itself supplies both the improved lower bound and the matching
-construction.
+The rows are not infima at every root set.  The next proposition computes
+one row exactly and finds it strictly above \eqref{eq:order}; the
+certificate machinery supplies both the improved lower bound and the
+matching construction.
 
 \begin{proposition}[Non-sharpness of the row $k=2$ at $(\tfrac52,3,\tfrac72)$]
 \label{prop:nonsharp}
@@ -1346,12 +1327,25 @@ with $|c_D|>h_D$; hence $b_2(F_D)=h_D\to\tfrac{65}{12}$.
 \end{proof}
 
 So sharpness of the rows $k\ge2$ depends on the root set: it holds at
-$(2,3)$ and $(2,3,5)$ and fails at $(\tfrac52,3,\tfrac72)$.  Characterizing
-the root sets at which \eqref{eq:order} is an infimum is open.
+$(2,3)$ and $(2,3,5)$ and fails at $(\tfrac52,3,\tfrac72)$.  The companion
+paper~\cite{coefficient-mass-attainment} characterizes the root sets at
+which \eqref{eq:order} is an infimum.  For $2\le r_1\le\cdots\le r_L$,
+repeated roots included, the row $k=u+1$ is the infimum of $b_{u+1}(PQ)$
+over monic $Q$ exactly when no partial sum of the coefficients of
+$P_u=\prod_{i>u}(x-r_i)$, read down from the leading one, exceeds their
+total $P_u(1)$ in absolute value.  At $(\tfrac52,3,\tfrac72)$ with $u=1$ the
+first partial sum of $(x-3)(x-\tfrac72)$ is $-\tfrac{11}2$, against
+$P_1(1)=5$.  When the criterion fails and the roots are distinct, that paper
+also evaluates the infimum, which then depends on $r_{u+1},\ldots,r_L$
+alone.
 
 \subsection{A \texorpdfstring{$D$}{D}-free form of the rows}
 
-For a finite set $Z\subset\N_{>0}$ put
+We return to the conjecture $b_k\ge L-k+1$ for monic multiples of
+$(x-2)^L$ from the third remark after Corollary~\ref{cor:allroots}.  At a
+single root of multiplicity $L$ the certificates of Section~3 are replaced
+by their confluent limits, polynomials in $s$ times $2^{-s}$, and the
+degree $D$ drops out of the problem.  For a finite set $Z\subset\N_{>0}$ put
 \[
   r_Z(s)=\prod_{z\in Z}\Bigl(1-\frac sz\Bigr),\qquad
   \Phi(Z)=\sum_{s\ge1}|r_Z(s)|\,2^{-s},
@@ -1631,6 +1625,11 @@ M.~Mignotte,
 \newblock Sur les multiples des polyn\^omes irr\'eductibles,
 \newblock \emph{Bulletin de la Soci\'et\'e Math\'ematique de Belgique} 27
 (1975), 225--229.
+
+\bibitem{coefficient-mass-attainment}
+B.~Pham,
+\newblock Sharpness of the coefficient order-statistic bound,
+\newblock manuscript in preparation.
 
 \bibitem{polya-szego}
 G.~P\'olya and G.~Szeg\H{o},
