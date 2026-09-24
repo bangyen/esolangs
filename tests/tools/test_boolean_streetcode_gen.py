@@ -27,32 +27,36 @@ class TestStreetcode:
     # the whole grid: nine in one test is 2.5s locally and over the band on a
     # slower runner.  The build is 0.03s of that, so splitting costs nothing.
     @pytest.mark.parametrize("combo", [0, 1, 2, 17, 31, 32, 47, 62, 63])
-    def test_linear_h_tree_executes_wide_rows(self, combo: int) -> None:
-        """The alternating-axis layout reaches both sides of every level."""
+    def test_the_flat_lookup_addresses_every_entry(self, combo: int) -> None:
+        """Each input's room walks the pointer by its own weight.
+
+        A room sized from the wrong level, or a walk that lands one cell
+        out, still computes most rows: the rows it breaks are the ones whose
+        index needs that weight.  Six inputs is the smallest arity where the
+        lookup is the route at all.
+        """
         n = 6
         table = "".join(str(index.bit_count() & 1) for index in range(2**n))
         program = boolean.streetcode(table)
         bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
         assert run_streetcode(program, [str(bit) for bit in bits]) == table[combo]
 
-    def test_h_tree_rectangle_is_linear(self) -> None:
-        """Alternating axes bound the rendered rectangle, not just live roads.
+    def test_the_flat_lookup_is_nine_rows_at_every_arity(self) -> None:
+        """The layout is a street, so the rectangle is linear by its height.
 
-        Extended to n=11 (roadmap): the per-row hall that carried
-        a `log T` factor is gone, and the fixed per-T constants below still
-        hold one arity past where they were first pinned.
-
-        The constants restate the branch pitch: the rectangle goes as its
-        square, so dropping it from 16 to its measured floor of 8
-        (:data:`~esolangs.tools.streetcode._H_PITCH`) took the rectangle from
-        1113 to 325 cells per leaf and the source from 979 to 248 chars.
+        The tree it replaced spent area on both axes; this spends it on one.
+        Nine rows is the shape -- a room's roof, its two lanes, its floor,
+        the stalk, the street's kerb, its two lanes and its sill -- and the
+        columns are the fill plus the rooms, so the rectangle is the
+        per-entry constant times a fixed height.
         """
         for n in range(6, 12):
             table = "".join(str(index.bit_count() & 1) for index in range(2**n))
             program = boolean.streetcode(table)
             rows = program.splitlines()
-            assert len(rows) * max(map(len, rows)) <= 400 * 2**n
-            assert len(program) <= 280 * 2**n
+            assert len(rows) == 9, n
+            assert len(rows) * max(map(len, rows)) <= 18 * 2**n + 3200, n
+            assert len(program) <= 11 * 2**n + 3000, n
 
     def test_compact_layout_compares_both_rotations(self) -> None:
         """Rotation strips the dense tree's leading triangular padding."""
@@ -316,3 +320,16 @@ class TestStreetcode:
         table = "01011010"
         assert _streetcode_orders(table, 3)[0] == (0, 1, 2)
         assert len(_streetcode_orders(table, 3)) <= 2
+
+
+def test_a_width_past_the_crossover_still_chooses_a_shape() -> None:
+    """The flat lookup is wide, so a width is a choice between two rotations.
+
+    Only building is timed here: the arity is past the crossover, where the
+    width branch has no narrow shape to fall back on, and a width it cannot
+    meet has to return the narrower rotation rather than the shorter one.
+    """
+    table = "0110100110010110" * 4
+    both = (boolean.streetcode(table), _columns(boolean.streetcode(table)))
+    assert boolean.streetcode(table, 10_000) == both[0]
+    assert _columns(boolean.streetcode(table, 1)) <= both[1]

@@ -1,10 +1,15 @@
 """Boolean-function generator for Streetcode.
 
-A decision tree from labelled loop strips (:func:`_streetcode_strip`),
-per-level blocks joined side by side.  Each per-input strip walks a cell
-by 48 (an ASCII digit to a bit, a fresh cell to a digit); its hallway
-loop spends the 48 as unary cells, 29 rows by 4 columns.  The shared-lap
-construction uses a product ring mirrored from the text generator.
+Through five inputs, a decision tree from labelled loop strips
+(:func:`_streetcode_strip`), per-level blocks joined side by side.  Each
+per-input strip walks a cell by 48 (an ASCII digit to a bit, a fresh cell
+to a digit); its hallway loop spends the 48 as unary cells, 29 rows by 4
+columns.  The shared-lap construction uses a product ring mirrored from
+the text generator.
+
+From six inputs the tree goes away: the table is written one cell per
+entry and the inputs address it (:func:`_streetcode_flat`), which is nine
+rows of street however many entries there are.
 """
 
 from collections.abc import Callable
@@ -95,8 +100,7 @@ def _streetcode_strip(before: str, block: list[str]) -> list[str]:
     """Build a labeled loop room: ``before`` runs as instructions, then ``block``.
 
     ``before`` is both the label and the instructions driven to reach the
-    room; it sits beside the loop, since its trailing ``^`` is what the
-    junction at the mouth reads.
+    room; its trailing ``^`` is what the junction at the mouth reads.
     """
     width = len(before)
     wall = "-" * width
@@ -283,18 +287,11 @@ def _streetcode_lift(rows: list[str]) -> list[str]:
     kept = [c for c in range(width) if not (start <= c < end)]
     grid = [[row[c] for c in kept] for row in grid]
 
-    # Write it into row 1 reversed, ending against the eastern wall.
-    #
-    # The wall is found rather than assumed to be the last column.  A block
-    # hanging below the street can be wider than the street itself, and
-    # ``width`` above is the widest row of the *whole* grid -- so for a
-    # table whose tree runs past its street, ``len(grid[0]) - 2`` named a
-    # column east of the street's own ``+`` and the prefix was written
-    # outside the walls.  The result was a row two columns longer than the
-    # border above it, which the interpreter rejects as not two-wide.
-    # ``generate("Streetcode", "0001", 20)`` was one: four of the sixteen
-    # two-input tables, at every width up to 35, where the narrow shape is
-    # the one selected.
+    # Write it into row 1 reversed, ending against the eastern wall, which
+    # is found rather than assumed to be the last column: a block hanging
+    # below the street can be wider than the street, and ``width`` is the
+    # widest row of the whole grid.  ``generate("Streetcode", "0001", 20)``
+    # was one of four two-input tables whose prefix landed outside the wall.
     east = "".join(grid[0]).rindex("+") - 1
     for i, char in enumerate(prefix):
         grid[1][east - i] = char
@@ -495,169 +492,119 @@ def _streetcode_rotate(program: str) -> str:
     return "\n".join(row.ljust(width)[::-1].rstrip() for row in reversed(rows))
 
 
-_H_DIR = {"E": (0, 1), "S": (1, 0), "W": (0, -1), "N": (-1, 0)}
-_H_LEFT = {"E": "N", "N": "W", "W": "S", "S": "E"}
-_H_RIGHT = {value: key for key, value in _H_LEFT.items()}
+# The flat lookup's nine rows, top to bottom.  The stalk is three cells deep
+# because at two the mouth stops being a junction and the turn into the room
+# is forced on both passes.
+_ROOF, _UP, _DOWN, _FLOOR, _STALK, _KERB, _WEST, _EAST, _SILL = range(9)
+
+# Where the flat lookup starts being offered: at five it wins on the dense
+# and parity shapes and loses on a table that folds, so both are compared.
+_FLAT_FROM = 5
+
+# ``I`` and the 48 ``~`` behind it: a junction tests a cell for zero and an
+# ASCII digit is 48 or 49, so the read has to be walked down to its bit.
+_READ_RUN = 49
+
+# The finish, driven east to west and so written backwards: ``_`` onto the
+# answer cell, 48 ``^`` to lift its bit to a digit, then print and halt.
+_TAIL = ";O" + "^" * 48 + "_"
 
 
-def _streetcode_h_rect(r0: int, r1: int, c0: int, c1: int) -> set[tuple[int, int]]:
-    """Return the cells in one half-open rectangle."""
-    return {(r, c) for r in range(r0, r1) for c in range(c0, c1)}
+def _streetcode_mouths(n: int, first: int) -> list[tuple[int, int, int]]:
+    """Return each level's mouth column, room width and leftward walk.
+
+    Level ``k`` skips ``2 ** (n - 1 - k)`` cells, so the rooms halve going
+    east and the narrow ones are spaced by their read run instead.  A room
+    holds two cells per column and one more than the walk, for the ``^``
+    that steers the exit.  The gap to the next mouth is sized from the room
+    *that* mouth carries, since a room hangs west of its own: sized from
+    this one's the rooms overlap from eight inputs up, where a room first
+    outgrows the read run, and the grid stops rendering.
+    """
+    walks = [1 << level for level in range(n)]
+    rooms = [max(2, -(-(walk + 1) // 2)) for walk in walks]
+    mouths = []
+    col = first
+    for step, (walk, room) in enumerate(zip(walks, rooms, strict=True)):
+        mouths.append((col, room, walk))
+        if step + 1 < n:
+            col += max(_READ_RUN + 2, rooms[step + 1] + 2)
+    mouths.reverse()
+    return mouths
 
 
-def _streetcode_h_corridor(
-    one: tuple[int, int], two: tuple[int, int]
-) -> set[tuple[int, int]]:
-    """Return a two-cell-wide axis-aligned corridor between two anchors."""
-    r0, c0 = one
-    r1, c1 = two
-    if r0 == r1:
-        return _streetcode_h_rect(r0, r0 + 2, min(c0, c1), max(c0, c1) + 2)
-    if c0 != c1:  # pragma: no cover - the H layout changes one axis per edge
-        raise AssertionError("an H-tree corridor must be axis-aligned")
-    return _streetcode_h_rect(min(r0, r1), max(r0, r1) + 2, c0, c0 + 2)
+def _streetcode_room(
+    grid: dict[tuple[int, int], str], mouth: int, room: int, walk: int
+) -> None:
+    """Draw one level's side room, its stalk, and the read run east of it.
+
+    The room is a dead end: up the stalk's eastern lane, west along the
+    upper lane, hairpin, back east along the lower one, so its two lanes run
+    ``2 * room`` cells in that order.  The walk's ``_`` fill them and the
+    ``^`` after them leaves the cell CP lands on nonzero, which is what
+    steers the merge back west -- a merge re-reads the cell, and on a zero
+    it would rejoin the street heading east instead.
+    """
+    east = mouth + 1
+    west = east - room + 1
+    grid[_ROOF, west - 1] = grid[_ROOF, east + 1] = "+"
+    for col in range(west, east + 1):
+        grid[_ROOF, col] = "-"
+    for row in (_UP, _DOWN):
+        grid[row, west - 1] = grid[row, east + 1] = "|"
+        for col in range(west, east + 1):
+            grid[row, col] = " "
+    grid[_FLOOR, west - 1] = grid[_FLOOR, mouth - 1] = "+"
+    for col in range(west, mouth - 1):
+        grid[_FLOOR, col] = "-"
+    grid[_FLOOR, east + 1] = grid[_STALK, east + 1] = "|"
+    grid[_STALK, mouth - 1] = "|"
+    grid[_KERB, mouth - 1] = grid[_KERB, east + 1] = "+"
+    for row in (_FLOOR, _STALK, _KERB):
+        grid[row, mouth] = grid[row, east] = " "
+    drive = [(_DOWN, east), (_UP, east)]
+    drive += [(_UP, col) for col in range(east - 1, west - 1, -1)]
+    drive += [(_DOWN, col) for col in range(west, east)]
+    for row, col in drive[:walk]:
+        grid[row, col] = "_"
+    grid[drive[walk]] = "^"
+    grid[_WEST, mouth + _READ_RUN + 1] = "I"
+    for col in range(mouth + 2, mouth + _READ_RUN + 1):
+        grid[_WEST, col] = "~"
 
 
-def _streetcode_h_lane(anchor: tuple[int, int], direction: str) -> tuple[int, int]:
-    """Return the right-hand lane cell at a two-by-two junction."""
-    r, c = anchor
-    return {"E": (r + 1, c), "S": (r, c), "W": (r, c + 1), "N": (r + 1, c + 1)}[
-        direction
-    ]
+def _streetcode_flat(truth_table: str, n: int) -> str:
+    """Build the table as cells and drive to the one the inputs address.
 
-
-def _streetcode_h_render(
-    open_cells: set[tuple[int, int]],
-    glyphs: dict[tuple[int, int], str],
-    fixed_walls: dict[tuple[int, int], str],
-) -> str:
-    """Render a two-wide road union, retaining the normalizer's inner walls."""
-    border = {
-        (r + dr, c + dc)
-        for r, c in open_cells
-        for dr in (-1, 0, 1)
-        for dc in (-1, 0, 1)
-        if (r + dr, c + dc) not in open_cells
-    }
-    cells = open_cells | border | fixed_walls.keys()
-    lo_r = min(r for r, _ in cells)
-    lo_c = min(c for _, c in cells)
-    hi_r = max(r for r, _ in cells)
-    hi_c = max(c for _, c in cells)
-    rows: list[str] = []
-    for r in range(lo_r, hi_r + 1):
-        row: list[str] = []
-        for c in range(lo_c, hi_c + 1):
-            pos = (r, c)
-            if pos in fixed_walls:
-                row.append(fixed_walls[pos])
-            elif pos in open_cells:
-                row.append(glyphs.get(pos, " "))
-            elif pos not in border:
-                row.append(" ")
-            else:
-                vertical = (r - 1, c) in open_cells or (r + 1, c) in open_cells
-                horizontal = (r, c - 1) in open_cells or (r, c + 1) in open_cells
-                row.append("+" if vertical == horizontal else "-" if vertical else "|")
-        rows.append("".join(row).rstrip())
-    return "\n".join(rows)
-
-
-# The H-tree's leaf-level branch pitch, doubling every second level.  Eight
-# is a measured floor, not a round number: the rendered rectangle goes as its
-# square, and every smaller pitch was tried.  Seven and every other odd pitch
-# puts the leaf level a cell out of phase with the doubled levels above it and
-# the grid no longer renders ("wall turns without a corner"); six renders but
-# the car misdrives, because two roads a single wall apart merge into one
-# junction.  Eight is the smallest pitch that both renders and routes.
-_H_PITCH = 8
-
-# The leaf arm: the corridor past the last junction, which has to reach the
-# third of the leaf's three glyphs (``~O;`` at steps 2, 3 and 4).  Two is
-# measured to misdrive, so three is the floor.
-_H_ARM = 3
-
-
-def _streetcode_h_layout(
-    truth_table: str, n: int
-) -> tuple[set[tuple[int, int]], dict[tuple[int, int], str]]:
-    """Return an alternating-axis decision tree whose rectangle is O(T)."""
-    cells: set[tuple[int, int]] = set()
-    glyphs: dict[tuple[int, int], str] = {}
-    # This bound exceeds the western radius, keeping the tree east of column
-    # zero and leaving the input normalizer a private region.  One pitch of
-    # slack is all there is: at ``6 * (1 << (n // 2))`` the normalizer's roads
-    # reach the tree's and the grid stops rendering.
-    root = (0, _H_PITCH * (1 << (n // 2)))
-    cells |= _streetcode_h_corridor((0, 0), root)
-
-    def descend(prefix: str, anchor: tuple[int, int], direction: str) -> None:
-        remaining = n - len(prefix)
-        if not remaining:
-            dr, dc = _H_DIR[direction]
-            end = (anchor[0] + _H_ARM * dr, anchor[1] + _H_ARM * dc)
-            cells.update(_streetcode_h_corridor(anchor, end))
-            at = _streetcode_h_lane(anchor, direction)
-            commands = (
-                "~" if truth_table[int(prefix, 2)] == "0" else " ",
-                "O",
-                ";",
-            )
-            for step, char in enumerate(commands, 2):
-                glyphs[(at[0] + step * dr, at[1] + step * dc)] = char
-            return
-
-        distance = _H_PITCH * (1 << ((remaining - 1) // 2))
-        for bit, branch in (("0", _H_LEFT[direction]), ("1", _H_RIGHT[direction])):
-            br, bc = _H_DIR[branch]
-            child = (anchor[0] + distance * br, anchor[1] + distance * bc)
-            cells.update(_streetcode_h_corridor(anchor, child))
-            # A junction tests the current input.  Both exits advance CP to
-            # the next input (or the prepared output cell) before the child.
-            at = _streetcode_h_lane(anchor, branch)
-            glyphs[(at[0] + 2 * br, at[1] + 2 * bc)] = "="
-            descend(prefix + bit, child, branch)
-
-    descend("", root, "E")
-    return cells, glyphs
-
-
-def _streetcode_h_program(truth_table: str, n: int) -> str:
-    """Attach the shared input normalizer to the linear-area H-tree."""
-    cells, glyphs = _streetcode_h_layout(truth_table, n)
-    rows = _streetcode_shared(n)
-    width = max(map(len, rows))
-    padded = [row.ljust(width) for row in rows]
-    normalizer_open: set[tuple[int, int]] = set()
-    for r, row in enumerate(padded):
-        walls = [c for c, char in enumerate(row) if char in "+-|"]
-        if not walls:
-            continue
-        # Rows 1 and 2 are the two open-ended street lanes.  Every other row
-        # is bounded by its first and last wall; inner walls remain fixed
-        # below, so including an island's blank interior cannot join a road.
-        stop = width if r in (1, 2) else walls[-1]
-        normalizer_open.update(
-            (r, c) for c in range(walls[0] + 1, stop) if row[c] not in "+-|"
-        )
-
-    # Row 2 is the normalizer's eastbound driving lane; join its open end to
-    # row 1 of the H-tree's incoming road.
-    east = max(c for r, c in normalizer_open if r == 2)
-    shift = (-1, -east)
-    fixed_walls = {
-        (r + shift[0], c + shift[1]): char
-        for r, row in enumerate(padded)
-        for c, char in enumerate(row)
-        if char in "+-|"
-    }
-    for r, c in normalizer_open:
-        pos = (r + shift[0], c + shift[1])
-        cells.add(pos)
-        char = padded[r][c]
-        if char != " ":
-            glyphs[pos] = char
-    return _streetcode_h_render(cells, glyphs, fixed_walls)
+    Cell ``c`` holds entry ``T - 1 - c``, written by the eastbound lane; the
+    westbound lane then reads input ``k`` and forks at level ``k``'s mouth,
+    whose room walks CP left by ``2 ** (n - 1 - k)`` when the bit is one.
+    CP lands on ``T - index``, one east of the answer, and every cell an
+    ``I`` overwrites is east of that.  The fill's last ``^`` leaves cell
+    ``T`` nonzero, which is what drives the fill past the mouths.
+    """
+    fill = "".join(("^" if bit == "1" else "") + "=" for bit in reversed(truth_table))
+    fill += "^"
+    mouths = _streetcode_mouths(n, max(len(fill) + 3, len(_TAIL) + 1))
+    width = mouths[0][0] + _READ_RUN + 2
+    grid: dict[tuple[int, int], str] = {}
+    for col in range(width + 2):
+        grid[_KERB, col] = grid[_SILL, col] = "-"
+    for row, char in ((_KERB, "+"), (_SILL, "+"), (_WEST, "|"), (_EAST, "|")):
+        grid[row, 0] = grid[row, width + 1] = char
+    for col in range(1, width + 1):
+        grid[_WEST, col] = grid[_EAST, col] = " "
+    for mouth, room, walk in mouths:
+        _streetcode_room(grid, mouth, room, walk)
+    for step, char in enumerate(_TAIL):
+        grid[_WEST, mouths[-1][0] - len(_TAIL) + step] = char
+    grid[_EAST, 1] = "C"
+    for step, char in enumerate(fill):
+        grid[_EAST, 2 + step] = char
+    return "\n".join(
+        "".join(grid.get((row, col), " ") for col in range(width + 2)).rstrip()
+        for row in range(_SILL + 1)
+    )
 
 
 def _streetcode_hallway_program(n: int, tree: list[str]) -> str:
@@ -691,31 +638,30 @@ def _streetcode_shared_programs(truth_table: str, n: int, tree: list[str]) -> li
 def streetcode(truth_table: str, width: int | None = None) -> str:
     """Build a Streetcode program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n``, MSB first.  At six
-    inputs and above the tree is an alternating-axis H-tree (both dimensions
-    O(sqrt(T)), source O(T)); smaller tables stack.  Each input is read
-    through a loop walking its ASCII value down to a bit
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.  From
+    six inputs there is no tree at all: the table becomes one cell per entry
+    and the inputs address it (:func:`_streetcode_flat`).  Below that, each
+    input is read through a loop walking its ASCII value down to a bit
     (:func:`_streetcode_populate`), then a tree (:func:`_streetcode_tree`)
     whose T-junctions apply the ambiguous-turn rule; a loader loop ramps a
-    cell to ``'0'`` so every leaf prints directly.  The leading run then
-    moves to the oncoming lane (:func:`_streetcode_lift`).  The compact shape
-    is also compared with its 180-degree rotation, and the tree splits in
-    whichever input order is shortest -- a placement, since halls test cells
-    positionally (:func:`_streetcode_shared`); the hallway is built only
-    when a width is requested.  ``width`` chooses among the shapes rather
+    cell to ``'0'`` so every leaf prints directly, and the leading run moves
+    to the oncoming lane (:func:`_streetcode_lift`).  Shapes are compared
+    with their 180-degree rotations, and the tree splits in whichever input
+    order is shortest -- a placement, since halls test cells positionally
+    (:func:`_streetcode_shared`).  ``width`` chooses among the shapes rather
     than reflowing (rows are streets); the narrowest wins when none fits.
     """
     n = _validate_truth_table(truth_table)
     if n >= 6:
-        program = _streetcode_h_program(truth_table, n)
-        h_rotated = _streetcode_rotate(program)
+        flat = _streetcode_flat(truth_table, n)
+        turned = _streetcode_rotate(flat)
         if width is None:
-            return shortest(program, h_rotated)
-        fitting = [p for p in (program, h_rotated) if _streetcode_columns(p) <= width]
+            return shortest(flat, turned)
+        fitting = [p for p in (flat, turned) if _streetcode_columns(p) <= width]
         return (
             shortest(*fitting)
             if fitting
-            else min((program, h_rotated), key=_streetcode_columns)
+            else min((flat, turned), key=_streetcode_columns)
         )
     tree = _streetcode_tree(truth_table)
     # The per-input loops trade rows for columns, so only width selection
@@ -723,18 +669,14 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     # n <= 3 and every sampled n == 4 table, while its fixed setup wins more
     # decisively as the input count grows.
     programs = [_streetcode_hallway_program(n, tree)] if width is not None else []
-    # The shared shape is not lifted.  Its prefix reads every input and seeds
-    # three more cells, which makes it as long as the street it heads, so a
-    # westbound run of it crosses the loops' own mouths -- and at each one CP
-    # names a cell that nothing has seeded yet, because the prefix is the only
-    # code that has run.  No ordering of the seeds avoids that: the cells CP
-    # walks over are exactly the ones the prefix has not reached.
-    #
-    # It is built once per input order.  The identity comes first, so a table
-    # no reorder improves keeps the program it already emitted -- ties are
-    # settled by :func:`~esolangs.tools.wrap.shortest`, which keeps its first
-    # argument.
+    # The shared shape is not lifted: its prefix is as long as the street it
+    # heads, so a westbound run of it crosses the loops' own mouths, and at
+    # each one CP names a cell nothing has seeded yet.  No ordering of the
+    # seeds avoids that.  It is built once per input order, identity first,
+    # so a table no reorder improves keeps the program it already emitted.
     programs.extend(_streetcode_shared_programs(truth_table, n, tree))
+    if n >= _FLAT_FROM:
+        programs.append(_streetcode_flat(truth_table, n))
     if width is not None:
         fitting = [p for p in programs if _streetcode_columns(p) <= width]
         if fitting:

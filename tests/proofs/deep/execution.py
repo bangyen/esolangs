@@ -142,7 +142,6 @@ ARITY_OVERRIDE = {
     "flowchart": 8,
     "one_two_three": 8,
     "polynomial": 7,
-    "streetcode": 6,
 }
 
 #: Generators this contract cannot measure at all, with the reason.
