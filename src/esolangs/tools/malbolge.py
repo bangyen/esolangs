@@ -21,9 +21,10 @@ in the walked region, and the rows a first readout cannot separate are sent
 through a second decoder that reads a second cell.  ``n == 12`` runs the
 same fold over the first eleven inputs and lets the twelfth pick which of two
 paths reads the readout (see below), ``n == 13`` keeps that build and lets
-the answer stub read the thirteenth, and ``n == 14`` folds inputs twelve and
-thirteen into a four-way selector over a three-level cascade.  ``n > 14`` is
-refused.
+the answer stub read the thirteenth.  ``n == 14`` is written -- inputs twelve
+and thirteen folded into a four-way selector over a three-level cascade --
+but its annealed constants have not been searched out, so ``n > 13`` is
+refused until they are.
 """
 
 from __future__ import annotations
@@ -1018,19 +1019,18 @@ def malbolge(truth_table: str) -> str:
     ``n`` is recovered from the table.  Through ten inputs the program is one
     source stub per row; eleven inputs use the pointer cascade, twelve the
     cascade with a selector on the last input, thirteen that build with the
-    last input read by the answer stub, fourteen two selectors and a
-    three-level cascade; ``n > 14`` is refused.  Every build is the full
+    last input read by the answer stub; ``n > 13`` is refused (fourteen's
+    route is written but its constants are not).  Every build is the full
     59049-cell store.
     """
     n = _validate_truth_table(truth_table)
-    if n > _FOURTEEN_N:
+    if n > _THIRTEEN_N:
         raise GeneratorCapError(
-            f"Malbolge builds at most {_FOURTEEN_N} inputs, got {n}: a third "
-            "selector's eight copies would need a fourth cascade level, and "
-            "the decoder's second pass is the last one its cells afford"
+            f"Malbolge builds at most {_THIRTEEN_N} inputs, got {n}: the "
+            f"{_FOURTEEN_N}-input cascade's annealed constants have not been "
+            "searched out, and a third selector's eight copies would need a "
+            "fourth cascade level"
         )
-    if n == _FOURTEEN_N:
-        return _fourteen_program(truth_table)
     if n == _THIRTEEN_N:
         return _thirteen_program(truth_table)
     if n == _WIDE_N:

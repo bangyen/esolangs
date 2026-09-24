@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from itertools import product
 
 import pytest
@@ -24,10 +24,18 @@ from esolangs.interpreters.other.malbolge import run
 _module = importlib.import_module("esolangs.tools.malbolge")
 
 
-def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
-    """Return the program's output for ``rows`` (default: every row) in order."""
+def _rows(
+    table: str,
+    rows: Sequence[int] | None = None,
+    build: Callable[[str], str] = boolean.malbolge,
+) -> list[str]:
+    """Return the program's output for ``rows`` (default: every row) in order.
+
+    ``build`` defaults to the public generator; the fourteen-input tests pass
+    the unexported route, which the generator refuses until its constants land.
+    """
     n = len(table).bit_length() - 1
-    program = boolean.malbolge(table)
+    program = build(table)
     outputs = []
     for value in range(1 << n) if rows is None else rows:
         bits = [(value >> (n - 1 - i)) & 1 for i in range(n)]
@@ -251,7 +259,8 @@ def test_fourteen_inputs_sampled(shape: object) -> None:
     rows = sorted(
         {*range(0, 2**14, 64), *_fourteen_rows({2}), *_fourteen_rows({1})[::4]}
     )
-    assert _rows(table, rows) == [table[row] for row in rows]
+    built = _rows(table, rows, _module._fourteen_program)  # noqa: SLF001
+    assert built == [table[row] for row in rows]
 
 
 @pytest.mark.slow
@@ -268,10 +277,11 @@ def test_fourteen_inputs_sampled(shape: object) -> None:
 def test_fourteen_inputs_every_row(shape: object) -> None:
     """The full 16,384-row sweep, the three-level cascade's execution gate."""
     table = shape(14)  # type: ignore[operator]
-    assert _rows(table) == list(table)
+    assert _rows(table, build=_module._fourteen_program) == list(table)  # noqa: SLF001
 
 
-def test_fifteen_inputs_are_refused() -> None:
-    """A third selector's eight copies would need a fourth cascade level."""
-    with pytest.raises(GeneratorCapError, match="at most 14 inputs"):
-        boolean.malbolge(_dense(15))
+@pytest.mark.parametrize("n", [14, 15])
+def test_past_thirteen_inputs_is_refused(n: int) -> None:
+    """Fourteen's constants are pending; fifteen needs a fourth cascade level."""
+    with pytest.raises(GeneratorCapError, match="at most 13 inputs"):
+        boolean.malbolge(_dense(n))
