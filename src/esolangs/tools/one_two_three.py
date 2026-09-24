@@ -49,6 +49,7 @@ from esolangs.tools.one_two_three_construct import (
     _ZERO,
     ConstructError,
     _Builder,
+    _construct_linear,
     _endgame,
     _on_mark,
     _paint,
@@ -70,28 +71,24 @@ PAIR = (ZERO, ONE)
 #:
 #: Both parts are one *shape*, not a set of answers.  The seed walks the
 #: same distance before every fill, so it is a single number; separation
-#: is then a sequence of pure tests alternating ``"1"``-runs and
-#: ``"2"``-runs, one displacement each, with no raw repositioning part
-#: at all.  Every displacement is closed by its own ``33``: rows whose
-#: tested cell is marked re-run the segment and escape, rows whose cell
-#: is clear skip, and that split is what separates -- the rows differ in
-#: their *marks* after a bare fill, not in their positions, so a walk
-#: alone can never split them (a halving-gap law of the retired
-#: synchronized pipeline's shape fails here for exactly that reason).
+#: alternates ``"1"``-runs and ``"2"``-runs, one displacement each, with
+#: no raw repositioning.  Every displacement is closed by its own ``33``:
+#: rows whose tested cell is marked re-run the segment and escape, rows
+#: whose cell is clear skip.  That split is what separates -- rows differ
+#: in their *marks* after a bare fill, not their positions, so a walk
+#: alone can never split them.
 type _Law = tuple[int, tuple[int, ...]]
 
 #: The separation law per small arity.
 #:
 #: These are *derived* constants, not a frozen search log: over constant
 #: seeds and alternating displacement vectors, each is the law with the
-#: least mean template length, which is one selection rule applied
-#: identically at every arity.  ``test_the_separation_law_is_the_least_mean``
-#: re-derives all three by that sweep rather than trusting them.  At
-#: ``n == 3`` the domain is genuinely tight -- 13 laws cover all 256
-#: tables and the winner leads the runner-up by 18% -- which is why one
-#: law replaces what were ten hand-swept schedules.  A law that failed a
-#: table could only raise, never mis-emit, and the suite's exhaustive
-#: ``n <= 3`` sweep re-proves coverage and correctness every run.
+#: least mean template length, one selection rule applied at every arity.
+#: ``test_the_separation_law_is_the_least_mean`` re-derives all three
+#: rather than trusting them.  At ``n == 3`` the domain is tight -- 13
+#: laws cover all 256 tables, the winner leading by 18% -- which is why
+#: one law replaces ten hand-swept schedules.  A failing law could only
+#: raise, never mis-emit, and the exhaustive sweep re-proves both.
 _LAWS: dict[int, _Law] = {
     1: (0, ()),
     2: (2, (3, 2, 4)),
@@ -211,4 +208,10 @@ def one_two_three(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     if n > 3:
         return _in_name_order(construct(truth_table), n)
-    return _in_name_order(_construct_small(truth_table, n), n)
+    # The wide chain is the smaller of the two on 98 of the 256 three-input
+    # tables since it gave up pre-painting, so it competes here instead of
+    # being gated out by arity.  The mean still sets the crossover above.
+    # No guard on the chain: ``test_the_wide_route_is_exhaustive_and_loses_
+    # on_the_mean`` builds it for every table through three inputs.
+    candidates = (_construct_small(truth_table, n), _construct_linear(truth_table, n))
+    return _in_name_order(min(candidates, key=len), n)
