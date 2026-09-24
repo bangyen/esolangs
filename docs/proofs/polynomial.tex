@@ -48,9 +48,10 @@ divisible by $L$ distinct prime-power roots and having leading coefficient
 of absolute value at least one has logarithmic coefficient mass
 $\Omega(L^2\log L)$.  Tracking the constants, the worst-case length $C_P(n)$
 satisfies
-$3\log_{10}2\le\liminf C_P(n)\,n/T^2\le\limsup C_P(n)\,n/T^2\le\tfrac{325}8\log_{10}2$:
+$\tfrac{49}{16}\log_{10}2\le\liminf C_P(n)\,n/T^2$ and
+$\tfrac{13}4\log_{10}2\le\limsup C_P(n)\,n/T^2\le\tfrac{325}8\log_{10}2$:
 the order is settled, but the constant is determined only up to a factor of
-about $13.5$.
+about $13.3$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -160,8 +161,8 @@ $\Omega(T^2/\log T)$ coefficient digits.  Section~\ref{sec:upper} supplies
 the matching construction, and Section~\ref{sec:constants} tracks the
 constants through both halves (Proposition~\ref{prop:bracket}):
 \[
-  3\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
-  \le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \frac{49}{16}\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2},\qquad
+  \frac{13}{4}\log_{10}2\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
   \le\frac{325}{8}\log_{10}2 .
 \]
 Remark~\ref{rem:bracket} locates the gap between the two sides.
@@ -1151,6 +1152,12 @@ real roots with Theorem~\ref{thm:mass} by a factor $4$.
 For even and odd sources the forced real roots can be charged as well
 (Lemma~\ref{lem:evensigns}), and sources that are neither even nor odd pay the input
 charge twice (Remark~\ref{rem:parity}); together this gives the lower constant $3$.
+In an even or odd source the two runs after a first-essential read can part only at a
+register value $0$, and the branch that carries the $0$ must pass a whole run of equal
+real roots of exponent at least $2$ (Lemma~\ref{lem:zerowit}).  Tables whose residuals at
+one level have pairwise distinct halves force about $\mu_nT/n$ of these, with
+$\mu_n\in[\frac14,\frac12]$ up to $O(\log n/n)$ (Lemma~\ref{lem:halves}), and they pay like
+input pairs: the lower constant becomes $3+\mu_n^2$.
 The upper side
 counts the effective exponents of the roots of the automaton programs of
 Proposition~\ref{prop:embprog}.
@@ -1233,11 +1240,20 @@ magnitudes of its nonleading coefficients.
 
 \begin{lemma}[Real roots of even and odd sources]\label{lem:evensigns}
 Let $f$ be an even or odd source whose decoded program has at least $Q\ge1$ distinct
-input root values and at least $Q$ distinct real instruction roots, and let $v_j$ be as
-in Lemma~\ref{lem:ppow}.  Then
+input root values and at least $Q$ distinct real instruction roots, at least $N$ of which,
+$0\le N\le Q$, are of the form $p^v$ with $v\ge2$, and let $v_j$ be as in
+Lemma~\ref{lem:ppow}.  Then
 \[
-  \Lambda(f)\ \ge\ \sum_{j=1}^{Q}(Q+1-j)\log\frac{v_j^2(j+1)^2}4-\frac{\log2}2\,Q(Q+3)
-  \ \ge\ 3Q^2\log Q-7Q(Q+1).
+  \Lambda(f)\ \ge\ \tau_{Q,N}=\tau_Q+2\sum_{i=1}^{N}i\log^+\frac{v_{N+1-i}}{Q+2-i},
+\]
+where
+\[
+  \tau_Q=\sum_{j=1}^{Q}(Q+1-j)\log\frac{v_j^2(j+1)^2}4-\frac{\log2}2\,Q(Q+3),
+\]
+and, if $N\ge1$,
+\[
+  \tau_Q\ \ge\ 3Q^2\log Q-7Q(Q+1),\qquad
+  \tau_{Q,N}\ \ge\ \tau_Q+2N^2\log N-N(N+1)\log(Q+1)-4.39\,N(N+1).
 \]
 \end{lemma}
 
@@ -1246,11 +1262,12 @@ Write $f(x)=x^\varepsilon E(x^2)$ with $\varepsilon\in\{0,1\}$ and $E\in\Z[y]$. 
 nonzero coefficients of $f$ and $E$ are the same, so $\Lambda(f)=\Lambda(E)$, and the
 leading coefficient of $E$ has absolute value at least $1$.  If $\pm ci$, $c=p^b$, is an
 input root, then $f(ci)=0$ and $ci\ne0$ give $E(-c^2)=0$; if $r=p^v$ is a real
-instruction root, $f(r)=0$ gives $E(r^2)=0$.  Choose $Q$ distinct input values and $Q$
-distinct real instruction roots.  Squaring is injective on positive numbers, so $E$ is
-divisible by $\prod_{i=1}^Q(y-a_i)\prod_{i=1}^Q(y+c_i)$, where $a_1>\cdots>a_Q$ are the
-squares of the chosen real roots and $c_1>\cdots>c_Q$ the squares of the chosen input
-values.  All $a_i\ge4$ and all $c_i\ge16$.
+instruction root, $f(r)=0$ gives $E(r^2)=0$.  Choose $Q$ distinct input values, and $Q$
+distinct real instruction roots among which $N$ have exponent at least $2$.  Squaring is
+injective on positive numbers, so $E$ is divisible by
+$\prod_{i=1}^Q(y-a_i)\prod_{i=1}^Q(y+c_i)$, where $a_1>\cdots>a_Q$ are the squares of the
+chosen real roots and $c_1>\cdots>c_Q$ the squares of the chosen input values.  All
+$a_i\ge4$ and all $c_i\ge16$.
 
 Apply the rows at real roots of both signs~\cite[Theorem~5.10]{coefficient-mass} to $E$,
 with $\rho=\frac12$; as the leading coefficient of $E$ has absolute value at least $1$,
@@ -1265,13 +1282,16 @@ nonleading magnitudes sit at distinct positions, so
   \Lambda(E)\ \ge\ \sum_{k=1}^Q\log\beta_k(E)
   \ \ge\ \sum_{i=1}^Q i\Bigl(\log\frac{a_i}2+\log\frac{c_i}2\Bigr)-\frac{\log2}2\,Q(Q+3),
 \]
-because $\log(a_i/2)$ and $\log(c_i/2)$ occur in the rows $k\le i$.  Now $a_i$ is the
-$i$th largest of $Q$ distinct squares of integers at least $2$, so
-$a_i\ge(Q+2-i)^2$, and $c_i$ is the square of the $i$th largest of $Q$ distinct elements
-of $\{p^b:b\ge2\}$, so $c_i\ge v_{Q+1-i}^2$.  Substituting $j=Q+1-i$ gives the first
-inequality.
+because $\log(a_i/2)$ and $\log(c_i/2)$ occur in the rows $k\le i$.  Now $c_i$ is the
+square of the $i$th largest of $Q$ distinct elements of $\{p^b:b\ge2\}$, so
+$c_i\ge v_{Q+1-i}^2$.  Next, $\sqrt{a_i}$ is the $i$th largest of $Q$ distinct integers at
+least $2$, so $\sqrt{a_i}\ge Q+2-i$; and for $i\le N$ it is at least the $i$th largest of
+the $N$ chosen roots of exponent at least $2$, which are distinct elements of
+$\{p^b:b\ge2\}$, so $\sqrt{a_i}\ge v_{N+1-i}$.  Hence
+$\log(a_i/2)\ge\log\frac{(Q+2-i)^2}2+2\log^+\frac{v_{N+1-i}}{Q+2-i}$ for $i\le N$.
+Substituting $j=Q+1-i$, so that $Q+2-i=j+1$, gives $\Lambda(f)\ge\tau_{Q,N}$.
 
-For the second, $v_j\ge(j+2)^2/4$ (Lemma~\ref{lem:ppow}) gives
+For the bound on $\tau_Q$, $v_j\ge(j+2)^2/4$ (Lemma~\ref{lem:ppow}) gives
 $\log\bigl(v_j^2(j+1)^2/4\bigr)\ge6\log j-6\log2$.  Also
 $\sum_{j=1}^{Q}(Q+1-j)\log j=\sum_{m=1}^{Q}\log m!$, and
 $\log m!\ge\int_1^m\log x\,dx=m\log m-m+1$ and
@@ -1280,15 +1300,29 @@ $\sum_{m\le Q}m\log m\ge\int_1^Qx\log x\,dx$ give
   \sum_{m=1}^{Q}\log m!\ \ge\ \frac{Q^2}2\log Q-\frac{Q^2}4+\frac14-\frac{Q(Q+1)}2+Q
   \ \ge\ \frac{Q^2}2\log Q-\frac34Q^2 .
 \]
-So the right side of the first inequality is at least
-$3Q^2\log Q-\frac92Q^2-3\log2\,Q(Q+1)-\frac{\log2}2Q(Q+3)$, and
-$\frac92+\frac72\log2<6.93$ and $3\log2+\frac32\log2<3.12$ give the second.
+So $\tau_Q\ge3Q^2\log Q-\frac92Q^2-3\log2\,Q(Q+1)-\frac{\log2}2Q(Q+3)$, and
+$\frac92+\frac72\log2<6.93$ and $3\log2+\frac32\log2<3.12$ give $\tau_Q\ge3Q^2\log Q-7Q(Q+1)$.
+
+For the bound on $\tau_{Q,N}$, $N\ge1$, use $\log^+x\ge\log x$, $Q+2-i\le Q+1$ and
+$v_{N+1-i}\ge(N+3-i)^2/4$:
+\[
+  2\sum_{i=1}^Ni\log^+\frac{v_{N+1-i}}{Q+2-i}
+  \ \ge\ 4\sum_{i=1}^Ni\log(N+3-i)-N(N+1)\bigl(2\log2+\log(Q+1)\bigr).
+\]
+With $m=N+1-i$, $\sum_{i\le N}i\log(N+3-i)=\sum_{m\le N}(N+1-m)\log(m+2)
+\ge\sum_{m\le N}\log m!\ge\frac{N^2}2\log N-\frac34N^2$, as above.  So the sum is at least
+$2N^2\log N-3N^2-2\log2\,N(N+1)-N(N+1)\log(Q+1)$, and $3+2\log2<4.39$.
 \end{proof}
 
 The rows of~\cite[Theorem~5.10]{coefficient-mass} drop the largest roots of each sign,
 not the smallest, and this costs only $O(Q^2)$ here because all the moduli are
 polynomial in $Q$.  The input pairs contribute $2Q^2\log Q$, as in
-Proposition~\ref{prop:bracket} below, and the real instruction roots add $Q^2\log Q$.
+Proposition~\ref{prop:bracket} below, and the real instruction roots add $Q^2\log Q$ when
+they are primes.  A real root $p^v$ with $v\ge2$ has a square $p^{2v}\ge v_j^2$ as large as
+that of an input value, and $N$ of them raise the contribution of the real roots to
+$(Q^2+N^2)\log Q$ at leading order: they are the largest real roots, and the reversed
+weights of the rows give them the weights $1,\dots,N$.  Lemma~\ref{lem:zerowit} below
+supplies such roots.
 
 \begin{proposition}[Explicit bracket]\label{prop:bracket}
 Let $N_n$ be as in Lemma~\ref{lem:maximal-width}, $v_j$ as in Lemma~\ref{lem:ppow},
@@ -1316,6 +1350,16 @@ and $\tau_Q=\sum_{j=1}^{Q}(Q+1-j)\log\frac{v_j^2(j+1)^2}4-\frac{\log2}2Q(Q+3)$,
   &\ \ge\ \frac{\max\bigl(2K^2\log K-\frac52K(K+1),\ 3Q^2\log Q-7Q(Q+1)\bigr)}{\log10};
   \end{aligned}
 \]
+Moreover, for every $n\ge9$, with $K'=\lceil T/(n+4)\rceil$, $Q'=K'-1$ and
+$N=2^{n-j_n}-1$, $j_n$ as in Lemma~\ref{lem:halves}, and $\tau_{Q,N}$ as in
+Lemma~\ref{lem:evensigns},
+\[
+  \begin{aligned}
+  C_P(n)&\ \ge\ \frac{\min\bigl(2\sigma_{K'},\tau_{Q',N}\bigr)}{\log10}
+  \ \ge\ \frac{\min\bigl(4K'^2\log K'-5K'(K'+1),\ \theta_n\bigr)}{\log10},\\
+  \theta_n&=3Q'^2\log Q'-7Q'(Q'+1)+2N^2\log N-N(N+1)\log(Q'+1)-4.39N(N+1);
+  \end{aligned}
+\]
 \item every $n$-input table has a program with
 \[
   |f|\le\bigl(1+O(1/n)\bigr)\,n\log_{10}2\cdot\Phi^*_n,\qquad
@@ -1326,16 +1370,19 @@ table.
 \end{enumerate}
 Moreover
 \begin{equation}\label{eq:bracket-n}
-  \Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)3\log_{10}2
+  \Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)\bigl(3+\mu_n^2\bigr)\log_{10}2
   \ \le\ \frac{C_P(n)\,n}{T^2}\ \le\
-  \Bigl(1+O\bigl(\tfrac{(\log n)^2}n\bigr)\Bigr)\frac{325}8\log_{10}2 .
+  \Bigl(1+O\bigl(\tfrac{(\log n)^2}n\bigr)\Bigr)\frac{325}8\log_{10}2 ,
 \end{equation}
+where $\mu_n=n2^{-j_n}$ has $\frac14-O(\frac{\log n}n)<\mu_n\le\frac12$, and
+$\mu_n\to\frac12$ along a subsequence, by Lemma~\ref{lem:halves}.
 Consequently
 \[
-  3\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
-  \le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}\le\frac{325}8\log_{10}2 ;
+  \frac{49}{16}\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2},\qquad
+  \frac{13}4\log_{10}2\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}\le\frac{325}8\log_{10}2 ;
 \]
-numerically, both limits lie in $[0.903,12.23]$.
+numerically, the lower limit is at least $0.921$ and the upper limit lies in
+$[0.978,12.23]$.
 \end{proposition}
 
 \begin{proof}
@@ -1378,9 +1425,33 @@ $3Q^2\log Q-7Q(Q+1)$ is negative, as $3Q\log Q<7(Q+1)$ there, and for $Q\ge13$
 \[
   4K^2\log K-5K(K+1)-3Q^2\log Q+7Q(Q+1)\ \ge\ K^2\log K+2K^2-12K\ >\ 0 .
 \]
-With $Q\ge T/(n+4)-1$ and $\log Q\ge n\log2-\log(n+4)-O(n2^{-n})$, the term
-$3Q^2\log Q-7Q(Q+1)$ is at least $3\log2\,\bigl(1-O(\tfrac{\log n}n)\bigr)T^2/n$; dividing
-by $\log10$ gives the left side of~\eqref{eq:bracket-n}.
+With $Q\ge T/(n+4)-1$ and $\log Q\ge n\log2-\log(n+4)-O(n2^{-n})$, the term $3Q^2\log Q-7Q(Q+1)$ is at least
+$3\log2\,\bigl(1-O(\tfrac{\log n}n)\bigr)T^2/n$.
+
+For the second display of item~1 take the table of Lemma~\ref{lem:halves}.  Every
+program for it has at least $K'$ distinct input root values, and, as above, at least $Q'$
+distinct real instruction roots.  If the source is even or odd, Lemma~\ref{lem:zerowit},
+applied to the $2^{n-j_n}-1$ residuals of Lemma~\ref{lem:halves}, gives at least $N$ real
+instruction roots $p^v$ with $v\ge2$; and $N\le Q'$, since $2^{j_n}\ge2n\ge n+4$ gives
+$N<T/(n+4)$.  So Lemma~\ref{lem:evensigns} with $Q=Q'$ and this $N$ gives
+$\Lambda(f)\ge\tau_{Q',N}$, while a source that is neither even nor odd has
+$\Lambda(f)\ge2\sigma_{K'}$ as above.  The closed forms are those of $\sigma_{K'}$ and of
+Lemma~\ref{lem:evensigns}, and $\theta_n$ adds the two bounds there.
+
+For the asymptotics, $Q'\ge T/(n+4)-1$, $N\ge\mu_nT/n-1$ with $\mu_n>\frac15$ for large
+$n$, $j_n=O(\log n)$ and $\log(Q'+1)\le n\log2$.  So $\log N\ge(n-j_n)\log2-1$ and
+\[
+  \begin{aligned}
+  2N^2\log N-N(N+1)\log(Q'+1)&\ \ge\ N^2(n-2j_n)\log2-2N^2-Nn\log2\\
+  &\ \ge\ \mu_n^2\log2\,\Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)\frac{T^2}n ,
+  \end{aligned}
+\]
+and $4.39N(N+1)=O(T^2/n^2)$.  With the bound for $3Q'^2\log Q'-7Q'(Q'+1)$ above,
+$\theta_n$ is at least $(3+\mu_n^2)\log2\,(1-O(\frac{\log n}n))T^2/n$.  The other
+entry of the minimum is at least $4\log2\,(1-O(\frac{\log n}n))T^2/n$, which is larger,
+since $\mu_n\le\frac12$.
+Dividing by $\log10$ gives the left side of~\eqref{eq:bracket-n}; the limits follow from
+the bounds on $\mu_n$ in Lemma~\ref{lem:halves}.
 
 \emph{Upper bound, item 2.}  Fix an automaton $\mathcal A$ of either kind and a table.
 
@@ -1483,8 +1554,9 @@ of~\eqref{eq:bracket-n}.  The limits follow.
 
 
 \begin{remark}[What the bracket says]\label{rem:bracket}
-The two sides of~\eqref{eq:bracket-n} differ by the factor $\frac{325}{24}=13.5$, at
-both limits.  So Proposition~\ref{prop:bracket} fixes the order, but it does not fix the
+The two sides of~\eqref{eq:bracket-n} differ by the factor $\frac{325}{8(3+\mu_n^2)}$; between the limits this is at most
+$\frac{650}{49}=13.3$, and along the $n$ with $\mu_n\to\frac12$ it tends to
+$\frac{25}2=12.5$.  So Proposition~\ref{prop:bracket} fixes the order, but it does not fix the
 constant.  The factor splits as follows.
 \begin{itemize}
 \item \emph{Routing contributes nothing.}  The lower bound credits one input
@@ -1503,13 +1575,15 @@ the lengths of the leaves of the band, and so this number can be placed just bel
 depth of the tree.  The bounded stripped automaton offers only the numbers
 $2^{n-L-1}(1-2^{-d(I+1)})/(1-2^{-d})$.  At small $n$ it can still be the better of the two,
 which is why item~2 of Proposition~\ref{prop:bracket} takes the minimum over both.
-\item \emph{Profile: $g/3=\frac{325}{24}$.}  The lower bound charges
+\item \emph{Profile: $g/(3+\mu_n^2)$.}  The lower bound charges
 each input pair as one real root $c^2$, which is exact for pairs
 alone~\cite[Corollary~5.3]{coefficient-mass}, and
 $\sum_{j\le K}j\log v_j^2\sim2K^2\log K$ gives the mass constant $2$.  A source
 that is neither even nor odd pays this twice (Remark~\ref{rem:parity}), and an even or
 odd source pays it once, plus the constant $1$ of its real instruction roots
-(Lemma~\ref{lem:evensigns}): hence the lower constant $3$.  The
+(Lemma~\ref{lem:evensigns}): hence the lower constant $3$.  The real roots of exponent at
+least $2$ that the zero branches force (Lemma~\ref{lem:zerowit}) pay like input pairs,
+and for the tables of Lemma~\ref{lem:halves} they add $\mu_n^2$.  The
 construction pays $g=\frac{325}8$ per state squared: an input ($2,2$), a closing
 bracket ($2$), an opener ($1$ or $4$), and either $\mathord{+}\!=-48$ ($1,1$) or one
 addition that encodes both successor codes (effective $2,2$), the latter for half of the
@@ -1532,9 +1606,16 @@ odd the multisection proof of~\cite[Corollary~5.3]{coefficient-mass} needs $P=R(
 with all roots of $R$ of one sign; the real roots $p^v$ break the first condition, and
 passing to $F(x)F(-x)$ breaks the second, but these sources already pay $4$.  The
 order-statistic bound for arbitrary free positions (\cite[Lemma~3.1]{coefficient-mass})
-is already sharp (\cite[Corollary~3.6]{coefficient-mass}).  So a lower constant above
-$3$ needs a charge for the register roots of even and odd sources, which in $E$ are the
-complex roots $(a\pm p^bi)^2$; bounds for such roots at arbitrary angles are open
+is already sharp (\cite[Corollary~3.6]{coefficient-mass}).  Lemma~\ref{lem:zerowit}
+goes past $3$ without charging register roots: every first-essential residual of a family
+with pairwise distinct halves forces its own real root $p^v$ with $v\ge2$, and these pay
+like input pairs.  At one level such a family has at most $(\frac12+o(1))T/n$ members,
+because its $2|\mathcal G|$ halves are distinct functions of the same $n-K-1$ bits; and the
+argument does not prevent the zero branches of residuals at different levels, or of
+residuals with a common half, from merging.  So this route stops at $3+\frac14$.
+Reaching $4$ needs about $T/n$ real roots of exponent at least $2$, or a charge for the
+register roots of even and odd sources, which in $E$ are the complex roots
+$(a\pm p^bi)^2$; bounds for such roots at arbitrary angles are open
 (\cite[Section~5]{coefficient-mass}).
 \end{remark}
 
@@ -1551,14 +1632,15 @@ $\varepsilon=0,1$, and $\Lambda(f)=\Lambda(E_0)+\Lambda(E_1)$ gives
 \[
   \Lambda(f)\ \ge\ 2\sum_{j}j\log(c_{(j)}^2-1).
 \]
-So every source for the table of item~1 of Proposition~\ref{prop:bracket} that is
-neither even nor odd has length at least $(4-o(1))\log_{10}2\cdot T^2/n$, four thirds of the bound there.  An even or odd source has, with every root $\rho$, also the root
+So every source for a table of item~1 of Proposition~\ref{prop:bracket} that is
+neither even nor odd has length at least $(4-o(1))\log_{10}2\cdot T^2/n$, more than the bound there.  An even or odd source has, with every root $\rho$, also the root
 $-\rho$; its decoded program therefore contains the instruction $(-a,b)$ with every
 register instruction $(a,b)$, $a\ne0$.  Lemma~\ref{lem:symruns} restricts such sources further: their additions and
 subtractions change the register only right after reads, in the run of the read, and
 Corollary~\ref{cor:symm} gives the constant $4$ to every source with a run of nonzero sum.
-By Lemma~\ref{lem:evensigns} even and odd sources pay at least the constant $3$, and
-whether they can come below $4$ is what separates the lower constant $3$ from $4$.
+By Lemma~\ref{lem:evensigns} even and odd sources pay at least the constant $3$, and, for
+the tables of Lemma~\ref{lem:halves}, at least $3+\mu_n^2$ by Lemma~\ref{lem:zerowit};
+whether they can come below $4$ is what separates the lower constants from $4$.
 \end{remark}
 
 \begin{lemma}[Symmetric runs]\label{lem:symruns}
@@ -1598,7 +1680,7 @@ it are the $[a,2]$ with $a>0$.
 \end{proof}
 
 \begin{corollary}[Uncancelled runs]\label{cor:symm}
-Let $f$ be a source for the table of item~1 of Proposition~\ref{prop:bracket}.  If for
+Let $f$ be a source for a table of item~1 of Proposition~\ref{prop:bracket}.  If for
 some prime $p$ the operands of the additions $[a,1]$ of $p$ have a nonzero sum, or $p$
 has no input $[0,2]$ and the operands of its subtractions $[a,2]$ have a nonzero sum,
 then
@@ -1613,9 +1695,8 @@ Remark~\ref{rem:parity} applies.
 \end{proof}
 
 With one prime per instruction, as in the encoder of Section~\ref{sec:upper}, every
-addition $\mathord{+}\!=a$, $a\ne0$, is such a run by itself; so for that table every
-source built as in Section~\ref{sec:upper} needs twice the lower bound of
-Proposition~\ref{prop:bracket}.
+addition $\mathord{+}\!=a$, $a\ne0$, is such a run by itself; so for such a table every source built as in Section~\ref{sec:upper} needs the constant
+$4$, more than the lower bound of Proposition~\ref{prop:bracket}.
 Only even or odd sources can come below the constant $4$, and by
 Lemma~\ref{lem:symruns} these change the register additively only right after a read,
 inside the run of that read: between two reads they route with tests and with runs of
@@ -1646,6 +1727,141 @@ the first instruction $[a,b]$ with $a\ne0$; by Lemma~\ref{lem:onestep}, if that 
 the runs reach different cursors, they part at a test at which one of them has the value
 $0$.  A test that fires on $0$ is $\text{if}=0$ or $\text{while}=0$, of exponents $4$ and
 $8$.
+
+For even and odd sources the two runs always part at a $0$, whatever the instructions
+between the read and the test, and the branch that carries the $0$ leaves a trace among
+the real roots.  Here, as in Lemmas~\ref{lem:symruns} and~\ref{lem:onestep}, register
+arithmetic is read exactly: a negative power $r^a$, $a<0$, is the rational number
+$1/r^{-a}$, and floor division, remainder and the tests act on it.  Recall the control
+codes of a real root $p^v$: for $v=1,\dots,8$ it is $\text{if}>0$, a closing bracket,
+$\text{if}<0$, $\text{if}=0$, $\text{while}>0$, a closing bracket, $\text{while}<0$ and
+$\text{while}=0$.  An opener whose test fails continues after its partner; a closing
+bracket whose partner is a $\text{while}$ whose test holds continues after that partner,
+and every other closing bracket continues after itself.  Call a maximal run of equal real
+roots a \emph{block}; by property~(4) of Section~\ref{sec:model} the blocks correspond to
+the distinct real instruction roots.
+
+\begin{lemma}[Zero witnesses]\label{lem:zerowit}
+Let $f$ be an even or odd source for an $n$-input table, let $K\le n-2$, and let
+$\mathcal G$ be a set of first-essential residuals at level $K$ whose $2|\mathcal G|$
+halves $g(0,\cdot)$, $g(1,\cdot)$, $g\in\mathcal G$, are pairwise distinct.  Then the
+decoded program has at least $|\mathcal G|$ distinct real instruction roots $p^v$ with
+$v\ge2$.
+\end{lemma}
+
+\begin{proof}
+\emph{The two runs.}  Let $g\in\mathcal G$ be the residual after the prefix $w$, and let
+$c$ be the common cursor of the $(K+1)$st read (Lemma~\ref{lem:nextread}); it is the last
+read of its gap.  For $y\in\{0,1\}$ let $\rho_y$ be the run from $(c+1,48+y)$; up to its
+next read it is the run of the program on every input that extends $wy$.  Run $\rho_0$ and
+$\rho_1$ side by side while their cursors agree.  As in the proof of
+Lemma~\ref{lem:nextread}, neither reads, prints, halts or faults there: a common read
+would make $g$ independent of its first variable, a print would make it a function of
+that variable alone, and a program that computes the table neither faults nor halts
+without printing.  As it halts on every input, the cursors eventually differ, and they
+first differ after a control instruction $t$, since a register instruction moves both
+cursors by one.
+
+\emph{A common half-line.}  We claim that at every control instruction up to $t$ the two
+registers lie in a common closed half-line, $[0,\infty)$ or $(-\infty,0]$.  Let $c$ lie in
+$R_{p,b}$, $b\ge2$, in the notation of Lemma~\ref{lem:symruns}.  After $c$ the runs
+execute the instructions $[a,b]$ of $R_{p,b}$ with $a>0$, then all of
+$R_{p,b+1},\dots,R_{p,6}$, and then, between control instructions, whole lists $R_q$
+(Lemma~\ref{lem:symruns}, part~2), without reads or prints.  If $b=2$ the first part
+subtracts the same sum from $48+y$, which leaves two consecutive integers.  If $b\ge3$ the
+registers $48,49$ are both positive.  Every other register instruction on the way is a
+multiplication by $a\ne0$, a floor division by $a\ne0$, which is monotone and fixes $0$, a
+remainder by $a$, whose values lie in $[0,a)$ or in $(a,0]$, or a power with exponent
+$a\ne0$, which for $a>0$ is monotone and fixes $0$ or has nonnegative values, and for
+$a<0$ is defined only at nonzero values (at $0$ it faults) and keeps each open half-line
+inside one open half-line.  Each of them maps two values in a common closed half-line to
+two such values.  The additions of a whole $R_{q,1}$, and the subtractions of a whole
+$R_{q,2}$ without a read, change the register by $0$ in total (Lemma~\ref{lem:symruns},
+part~1).  This proves the claim.  A test depends only on whether the register is
+positive, negative or $0$, and two values in a common closed half-line are told apart only
+if exactly one of them is $0$.  So at $t$ exactly one register is $0$.  Call that run the
+\emph{zero branch} of $g$, and let $z_g$ be its bit.
+
+\emph{The zero branch.}  From $t$ to its next read the zero branch has the register $0$
+whenever it is at a control instruction: multiplications, floor divisions, remainders and
+positive powers keep $0$, a negative power of $0$ would fault, and whole addition and
+subtraction blocks add $0$.  If the zero branches of $g\ne g'$ were ever in the same
+state, cursor and register, they would continue identically on the same remaining
+$n-K-1$ bits, and $g(z_g,\cdot)=g'(z_{g'},\cdot)$; this is excluded.  With the register $0$, openers $p^4$
+and $p^8$ are passed (the run continues after them), openers $p^1,p^3,p^5,p^7$ fail, so
+that the run continues after their partner, a closing bracket whose own test (if any)
+fails at $0$, and a closing bracket continues after itself unless its partner is a
+$\text{while}=0$, in which case the run continues after that partner.  Say that the zero
+branch \emph{passes} an instruction if it continues right after it, having executed it or
+having jumped to it.  Every instruction of a block of $p^4$ or $p^8$ that the zero branch
+reaches is passed.
+
+\emph{The witness.}  Let $x_g$ be the first instruction of code $2$, $4$, $6$ or $8$ that
+the zero branch passes from $t$ on.  It exists: if $t$ has code $4$ or $8$ it is $t$; if
+$t$ has code $1,3,5,7$ it is the partner of $t$; if $t$ is a closing bracket, its partner is
+a $\text{while}$ (otherwise $t$ tests nothing), and $x_g$ is $t$ or, for a
+$\text{while}=0$, the partner of $t$.  If the block of $x_g$ has code $4$ or $8$, the zero
+branch passes the rest of it; let $W_g$ be that block.  If it is a block of closing
+brackets, the zero branch continues through it, passing each of them, until it either
+passes its last one, and then $W_g$ is that block, or meets one whose partner is a
+$\text{while}=0$; it then jumps to that partner and passes the rest of its block, which
+has code $8$, and $W_g$ is that block.  In every case the zero branch of $g$ reaches the
+instruction after $W_g$ with the register $0$.  If $W_g=W_{g'}$, the zero branches of $g$
+and $g'$ both reach this state, which was excluded above.  So the blocks $W_g$,
+$g\in\mathcal G$, are distinct, and each consists of a real root $p^v$ with
+$v\in\{2,4,6,8\}$.
+\end{proof}
+
+The halves of the residuals at one level can be made distinct at the price of a factor
+about $2$ in their number, and the counting argument of Proposition~\ref{prop:counting}
+still applies inside the family of such tables.
+
+\begin{lemma}[Tables with distinct halves]\label{lem:halves}
+Let $n\ge9$, let $j_n$ be the least integer $j\ge2$ with
+$2^{j-1}\ge n-2j+2\lceil\log_2n\rceil+4$, and put $K=n-j_n$.  Then $K\le n-2$, and some
+$n$-input table has no program with fewer than $\lceil T/(n+4)\rceil$ distinct input root
+values and has $2^K-1$ first-essential residuals at level $K$ whose halves are pairwise
+distinct.  Moreover $\mu_n=n2^{-j_n}$ satisfies
+\[
+  \frac n{4(n+2\lceil\log_2n\rceil+2)}\ <\ \mu_n\ \le\ \frac12,
+\]
+and $\mu_n\to\frac12$ along a subsequence.
+\end{lemma}
+
+\begin{proof}
+Put $\ell=\lceil\log_2n\rceil$.  The integer $j=\ell+2$ has $2^{j-1}\ge2n\ge
+n-2j+2\ell+4=n$, so $j_n\le\ell+2\le n$, and $j_n\ge3$ since $2<n+2\ell$.  Hence $K\le n-2$,
+and $2^{j_n-1}\ge n-2j_n+2\ell+4\ge n$ gives $\mu_n\le\frac12$.  By minimality
+$2^{j_n-2}<n-2j_n+2\ell+6\le n+2\ell+2$, which gives the lower bound on $\mu_n$.  For
+$m\ge4$ let $n_m$ be the largest $n$ with $n+2\lceil\log_2n\rceil\le2^{m-1}+2m-4$; then
+$j_{n_m}\le m$, so $\mu_{n_m}\ge n_m2^{-m}$, and $n_m+1+2\lceil\log_2(n_m+1)\rceil>
+2^{m-1}+2m-4$ gives $n_m2^{-m}\to\frac12$.
+
+Put $q=2^K$, $h=2^{j_n-1}$ and $S=2^h$.  Since $j_n\le\ell+2$,
+$h\ge n-2j_n+2\ell+4\ge K+2$, so $4q\le S$.  Let $\mathcal F$ be the set of tables whose
+$q$ blocks of length $2h$ at level $K$ have $2q$ pairwise distinct halves.  A table is the
+concatenation of these halves, so $|\mathcal F|=\prod_{i=0}^{2q-1}(S-i)$, and
+$\log_2(1-x)\ge-2x$ for $0\le x\le\frac12$ gives
+\[
+  \log_2|\mathcal F|\ \ge\ 2qh-\frac2S\sum_{i<2q}i\ \ge\ T-\frac{4q^2}S,\qquad
+  \frac{4q^2}S=2^{2K+2-h}\le2^{n-2-2\ell}\le\frac T{4n^2}.
+\]
+Let $Z=\lfloor T/(n+4)\rfloor$.  The proof of Proposition~\ref{prop:counting} gives
+$\log_2B_n(Z)<T-0.97\,T/(n+4)+2\log_2(Z+3)+6\log_2e<T-0.97\,T/(n+4)+2n+9$.  For $n\ge9$,
+$T/(4n^2)\le0.07\,T/(n+4)$ and $0.9\,T/(n+4)>2n+9$, so $B_n(Z)<|\mathcal F|$.  As programs
+with at most $Z$ read gaps compute at most $B_n(Z)$ tables, some table in $\mathcal F$ has
+no such program, and, as there, every program for it has at least
+$Z+1\ge\lceil T/(n+4)\rceil$ input root values.  In it a block depends on its first
+variable, as its halves differ, and it is a function of that variable alone only when
+both halves are constant, which happens for at most one block.  The other $q-1$ blocks
+are the required residuals.
+\end{proof}
+
+For large $n$ the table of Lemma~\ref{lem:halves} has $K=n-\log_2n-O(1)$, and while
+$j_n$ stays constant $\mu_n=n2^{-j_n}$ runs up from about $\frac14$ to about $\frac12$.
+The implementation evaluates a negative power in binary floating
+point, and a later block of additions with operands near $2^{53}$ can round a register
+across $0$; the exact reading above does not cover that rounding.
 
 \begin{remark}[The profile of per-state blocks]\label{rem:floor}
 The programs of Proposition~\ref{prop:embprog} give every state one input, one register
