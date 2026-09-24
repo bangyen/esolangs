@@ -138,15 +138,16 @@ and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Eval, Minsky
-Swap, NoComment, Qoibl, SLOW ACV MAMMALIAN and Whitespace keep no tree route
-at all:
+Swap, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN and Whitespace keep no
+tree route at all:
 A Painter Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, Befunge reads one grid cell per table entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
 once the doubling between the input runs is in the text), Eval is one linear
-lookup at every arity, Minsky Swap's `~`
+lookup at every arity, Packlang paints one array block and indexes it at every
+arity, Minsky Swap's `~`
 cascade routes the index to one of two shared leaves with a one-digit target
 per row, NoComment switches between two lookups at four inputs, Qoibl divides one
 literal by the power of two its reads build,
@@ -227,7 +228,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Modulous | tree | — | linear: span walk, fold digits geometric |
 | NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells | linear, time n log: essential_inputs |
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
-| Packlang | tree | — | linear: folded tree, shortest names deepest, flat pieces |
+| Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: one write per differing row, block-bounded index digits |
 | Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
 | Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
 | Qoibl | linear lookup | the table is one binary literal, divided by the power of two the reads build | linear: T-bit literal, one squaring statement per input |
