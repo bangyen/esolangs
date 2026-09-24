@@ -59,12 +59,16 @@ class TestDimensional:
             got = run_dimensional(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_moves_are_pinned_to_dimension_zero(self) -> None:
-        """A bare >/< would take its dimension from the cell's value."""
+    def test_every_move_names_its_dimension(self) -> None:
+        """A bare >/< would take its dimension from the cell's value.
+
+        The generator gives each input its own dimension, so the digits
+        vary; what has to hold is that no move is left bare.
+        """
         program = boolean.dimensional("0110")
-        rest = program.replace(">0", "").replace("<0", "")
-        assert ">" not in rest
-        assert "<" not in rest
+        for index, char in enumerate(program):
+            if char in "><":
+                assert program[index + 1 :][:1].isdigit(), f"bare move at {index}"
 
     def test_scales_beyond_the_old_reference_cap(self) -> None:
         """The v3.0 interpreter's unbounded cells lift the old n <= 12 cap."""
