@@ -1014,7 +1014,7 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "SLOW ACV MAMMALIAN": (456_394, 798_829, 1.8),
     "bit~": (28_210, 56_676, 2.0),
     "123": (22_964, 45_728, 2.0),
-    "Factor": (17_613, 36_339, 2.1),
+    "Factor": (16_711, 35_323, 2.1),
 }
 
 
