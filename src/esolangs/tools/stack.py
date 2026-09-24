@@ -361,52 +361,66 @@ def modulous(truth_table: str) -> str:
     return "".join(pieces)
 
 
-def _bfstack_encoder(n: int) -> str:
+def _bfstack_encoder(n: int, *, preset: bool) -> str:
     """BFStack code turning the n inputs into the number ``1 + sum(bit*2^k)``.
 
     ``,`` reads, 48 ``-``s normalize, ``[<+w>]`` adds the weight.  The ``+1``
     keeps the result nonzero so the decoder's outer ``[`` always runs.
+    ``preset`` starts the result at 1 for the subtracting decoder.
     """
-    prog = ">>+"  # result cell (0) below the accumulator (1)
+    # Result cell (0, or 1 when the decoder subtracts) below the accumulator.
+    prog = ">+>+" if preset else ">>+"
     for k in range(n):
         weight = 2 ** (n - 1 - k)
         prog += "," + "-" * _ASCII_ZERO + "[" + "<" + "+" * weight + ">" + "]" + "<"
     return prog
 
 
-def _bfstack_decoder(truth_table: str) -> str:
-    """BFStack code mapping the encoded number to the table's result.
+def _bfstack_cascade(rows: list[int], payload: str) -> str:
+    """Nest subtractions over ``rows``, running ``payload`` off the list.
 
-    Cumulative subtraction: the inner ``[<+>]`` sets 1 only when the number
-    survives every zero-row subtraction.
+    Reaching zero on a listed row leaves that row's ``[`` unentered, so
+    ``payload`` runs exactly when the encoded number is not in ``rows``.
     """
-    zeros = [k + 1 for k, ch in enumerate(truth_table) if ch == "0"]
-    if not zeros:
-        return "[<+>]"  # always 1
+    if not rows:
+        return payload
     prog = "["
     prev = 0
-    for z in zeros:
-        prog += "-" * (z - prev) + "["
-        prev = z
-    prog += "[<+>]"
-    prog += "]" * (len(zeros) + 1)
-    return prog
+    for row in rows:
+        prog += "-" * (row - prev) + "["
+        prev = row
+    return prog + payload + "]" * (len(rows) + 1)
+
+
+def _bfstack_decoder(truth_table: str) -> tuple[str, bool]:
+    """Return the decoder, and whether the result must start at 1.
+
+    A listed row costs the gap to the one before it and two brackets, so
+    listing the *zero* rows made a mostly-zero table the expensive case --
+    backwards, the all-zero function being the cheapest there is: at twelve
+    inputs it cost 17,091 characters against 4,801 for the all-one table.
+    Listing the one rows instead inverts the cascade, which starting the
+    result at 1 and subtracting undoes.  Ties keep the direct form.
+    """
+    zeros = [k + 1 for k, ch in enumerate(truth_table) if ch == "0"]
+    ones = [k + 1 for k, ch in enumerate(truth_table) if ch == "1"]
+    direct = _bfstack_cascade(zeros, "[<+>]")
+    # One character dearer than it looks: the preset ``+`` in the encoder.
+    inverted = _bfstack_cascade(ones, "[<->]")
+    if len(inverted) + 1 < len(direct):
+        return inverted, True
+    return direct, False
 
 
 def bfstack(truth_table: str) -> str:
     """Build a BFStack program computing the given truth table.
 
     No branching: encode the inputs as ``1 + sum(bit*2^k)``, then nested
-    ``[`` loops set the result to 1 unless the number is a zero row.
+    ``[`` loops single out the rows of whichever result value is rarer.
     """
     n = _validate_truth_table(truth_table)
-    return (
-        _bfstack_encoder(n)
-        + _bfstack_decoder(truth_table)
-        + "<"
-        + "+" * _ASCII_ZERO
-        + "."
-    )
+    decoder, preset = _bfstack_decoder(truth_table)
+    return _bfstack_encoder(n, preset=preset) + decoder + "<" + "+" * _ASCII_ZERO + "."
 
 
 def unsquare(truth_table: str) -> str:
