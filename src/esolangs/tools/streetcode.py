@@ -563,22 +563,39 @@ def _streetcode_h_render(
     return "\n".join(rows)
 
 
+# The H-tree's leaf-level branch pitch, doubling every second level.  Eight
+# is a measured floor, not a round number: the rendered rectangle goes as its
+# square, and every smaller pitch was tried.  Seven and every other odd pitch
+# puts the leaf level a cell out of phase with the doubled levels above it and
+# the grid no longer renders ("wall turns without a corner"); six renders but
+# the car misdrives, because two roads a single wall apart merge into one
+# junction.  Eight is the smallest pitch that both renders and routes.
+_H_PITCH = 8
+
+# The leaf arm: the corridor past the last junction, which has to reach the
+# third of the leaf's three glyphs (``~O;`` at steps 2, 3 and 4).  Two is
+# measured to misdrive, so three is the floor.
+_H_ARM = 3
+
+
 def _streetcode_h_layout(
     truth_table: str, n: int
 ) -> tuple[set[tuple[int, int]], dict[tuple[int, int], str]]:
     """Return an alternating-axis decision tree whose rectangle is O(T)."""
     cells: set[tuple[int, int]] = set()
     glyphs: dict[tuple[int, int], str] = {}
-    # This bound exceeds the western radius by eight cells, keeping the tree
-    # east of column zero and leaving the input normalizer a private region.
-    root = (0, 16 * (1 << (n // 2)))
+    # This bound exceeds the western radius, keeping the tree east of column
+    # zero and leaving the input normalizer a private region.  One pitch of
+    # slack is all there is: at ``6 * (1 << (n // 2))`` the normalizer's roads
+    # reach the tree's and the grid stops rendering.
+    root = (0, _H_PITCH * (1 << (n // 2)))
     cells |= _streetcode_h_corridor((0, 0), root)
 
     def descend(prefix: str, anchor: tuple[int, int], direction: str) -> None:
         remaining = n - len(prefix)
         if not remaining:
             dr, dc = _H_DIR[direction]
-            end = (anchor[0] + 7 * dr, anchor[1] + 7 * dc)
+            end = (anchor[0] + _H_ARM * dr, anchor[1] + _H_ARM * dc)
             cells.update(_streetcode_h_corridor(anchor, end))
             at = _streetcode_h_lane(anchor, direction)
             commands = (
@@ -590,7 +607,7 @@ def _streetcode_h_layout(
                 glyphs[(at[0] + step * dr, at[1] + step * dc)] = char
             return
 
-        distance = 16 * (1 << ((remaining - 1) // 2))
+        distance = _H_PITCH * (1 << ((remaining - 1) // 2))
         for bit, branch in (("0", _H_LEFT[direction]), ("1", _H_RIGHT[direction])):
             br, bc = _H_DIR[branch]
             child = (anchor[0] + distance * br, anchor[1] + distance * bc)
