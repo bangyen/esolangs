@@ -225,7 +225,8 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         # A pair's zero-branch already has its sibling's 'S' to the left.
         if (x - 1, y) not in cells:
             place((x - 1, y), "S")
-        assert cells[(x - 1, y)] == "S", f"exit at {(x, y)} is not guarded"
+        if cells[(x - 1, y)] != "S":
+            raise AssertionError(f"exit at {(x, y)} is not guarded")
     for y in {y for _, y in exits}:
         # The ring closes up column 0: '!' turns a zero accumulator up,
         # the '+' above restores it past every exit.  ``place`` refuses a
