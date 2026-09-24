@@ -41,8 +41,18 @@ def limits() -> tuple[float, float]:
     return FAST_LIMIT * CI_SCALE, MEDIUM_LIMIT * CI_SCALE
 
 
-def violation(markers: set[str], duration: float) -> str | None:
-    """Return the cost-band violation for ``duration``, if any."""
+# How far past its band a descheduled test is still excused.
+_STARVED_SLACK = CI_SCALE
+
+
+def violation(
+    markers: set[str], duration: float, cpu: float | None = None
+) -> str | None:
+    """Return the cost-band violation for ``duration``, if any.
+
+    A measured ``cpu`` only excuses an overrun, never causes one, because
+    ``process_time`` sums threads: a pool reads a multiple of its own wall.
+    """
     if markers & {"slow", "weekly"}:
         return None
     fast_limit, medium_limit = limits()
@@ -52,6 +62,8 @@ def violation(markers: set[str], duration: float) -> str | None:
         else ("fast", fast_limit, "medium")
     )
     if duration <= limit:
+        return None
+    if cpu is not None and cpu <= limit and duration <= limit * _STARVED_SLACK:
         return None
     return (
         f"{duration:.2f}s exceeds the {band} band limit of {limit:g}s; "
