@@ -854,10 +854,11 @@ class TestBrainIf:
 class TestRotfuck:
     """The ROTfuck boolean generator.
 
-    ROTfuck rotates the program after every command, so the generator lays
-    out ``[ body ]`` blocks whose ``]`` is a phantom encoded at the ``[``-fire
-    seek state; both the skip and body paths re-converge in the same rotation
-    state because every body length is 7 (mod 8).
+    ROTfuck rotates the program after every command, so a loop only works if
+    its every pass reads the same commands: the generator pins each loop's
+    cycle to 0 (mod 8) and reaches its back-jump target through a phantom
+    that is never executed.  On that it builds a tape lookup -- the table in
+    the even cells, a variable-distance pointer walk over the odd ones.
     """
 
     @pytest.mark.parametrize(
@@ -894,6 +895,23 @@ class TestRotfuck:
                 got = run_rotfuck(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
+    @pytest.mark.parametrize("n", [6, 7, 8])
+    def test_a_second_index_digit_still_selects_the_right_entry(self, n: int) -> None:
+        """The arity where the index stops fitting in one walk.
+
+        A cell is a byte, so the index is carried six bits at a time: one
+        walk per digit, each read only once the walk before it has landed.
+        Six inputs still fit in one digit and seven do not, so this brackets
+        the boundary -- and it is not a boundary any smaller table can
+        reach, which is why the truth-table sweeps above cannot see it.
+        """
+        table = "".join(str(bin(row).count("1") & 1) for row in range(2**n))
+        program = boolean.rotfuck(table)
+        for combo in (0, 1, 2**n - 1, 2**n - 2, 2 ** (n - 1), 2 ** (n - 1) - 1):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_rotfuck(program, [str(b) for b in bits])
+            assert got == table[combo], f"n={n} inputs {bits}"
+
     def test_the_rotation_cycle_is_the_documented_one(self) -> None:
         """``+ -> - -> > -> < -> , -> . -> [ -> ] -> +``, and it is a cycle.
 
@@ -913,72 +931,80 @@ class TestRotfuck:
             assert _rotfuck_rot(char, 8) == char, char
             assert _rotfuck_rot(char, 0) == char, char
 
-    def test_a_body_command_never_shows_as_a_bracket(self) -> None:
-        """The allowed set at each offset is exactly the non-bracket rotations.
+    def test_a_command_never_shows_as_a_bracket_inside_a_seek(self) -> None:
+        """A command's rotation, seen from a seek's, must not be a bracket.
 
-        A body command at relative offset ``j`` is read as
-        ``rot^-j(cmd)`` while the ``[`` seeks its partner, so a command
-        that shows as ``[`` or ``]`` there would move the seek's depth
-        count and the block would pair with the wrong bracket.  The two
+        A seek reads the whole program at one fixed rotation, so a command
+        that executes ``d`` steps after that rotation shows there as
+        ``rot^-d`` of itself.  Showing as a bracket moves the seek's depth
+        count and pairs the loop with the wrong character, which leaves a
+        program that still runs and computes something else.  The two
         offsets that matter most are 2 and 3, where only two of the four
-        commands survive -- and they exclude *different* ones, which is
-        what makes the padding necessary rather than cosmetic.
+        commands survive -- and they exclude *different* ones, which is what
+        makes the padding necessary rather than cosmetic.
         """
-        from esolangs.tools.rotfuck import _rotfuck_allowed, _rotfuck_rot
+        from esolangs.tools.rotfuck import _rotfuck_rot, _shows
 
-        for offset in range(8):
-            allowed = _rotfuck_allowed(offset)
-            assert allowed == [
-                c for c in "+-><" if _rotfuck_rot(c, -offset) not in "[]"
-            ], offset
-        assert _rotfuck_allowed(2) == [">", "<"]
-        assert _rotfuck_allowed(3) == ["+", "<"]
-        assert _rotfuck_allowed(4) == ["+", "-"]
+        for seek in range(8):
+            for rot in range(8):
+                for cmd in "+-><":
+                    assert _shows(cmd, seek, rot) == (
+                        _rotfuck_rot(cmd, seek - rot) in "[]"
+                    ), (cmd, seek, rot)
+        assert [c for c in "+-><" if not _shows(c, 0, 2)] == [">", "<"]
+        assert [c for c in "+-><" if not _shows(c, 0, 3)] == ["+", "<"]
+        assert [c for c in "+-><" if not _shows(c, 0, 4)] == ["+", "-"]
 
-    def test_a_neutral_pad_exists_and_is_net_zero_at_every_offset(self) -> None:
-        """Padding shifts the offset by two without moving the tape.
+    def test_every_pad_is_invisible_and_they_are_shortest_first(self) -> None:
+        """Padding shifts the rotation without shifting anything else.
 
-        Both characters have to be legal *at their own* offsets, and at
-        offsets 2 and 3 exactly one of the four candidate pairs qualifies,
-        so the choice is forced there rather than preferred.  The pair is
-        also net-neutral by construction -- ``+-`` and ``><`` undo
-        themselves -- which is what lets it be inserted anywhere.
+        A pad is what moves a command off a rotation where it would read as
+        a bracket, so it has to leave every cell and the pointer where it
+        found them -- and never step left of where it started, because
+        ``<`` clamps at cell zero and a pad that reached past the caller's
+        cell would not be neutral there.  Length runs shortest first, since
+        padding is pure cost.
         """
-        from esolangs.tools.rotfuck import _rotfuck_allowed, _rotfuck_neutral
+        from esolangs.tools.rotfuck import _PADS
 
-        for offset in range(8):
-            pad = _rotfuck_neutral(offset)
-            assert pad in ("+-", "-+", "><", "<>"), offset
-            assert set(pad) in ({"+", "-"}, {"<", ">"}), offset
-            for i, char in enumerate(pad):
-                assert char in _rotfuck_allowed((offset + i) % 8), (offset, char)
-        # Forced where only one candidate is legal, so these are the pad.
-        assert _rotfuck_neutral(2) == "><"
-        assert _rotfuck_neutral(3) == "+-"
+        assert _PADS[0] in ("+-", "-+", "><")
+        assert list(_PADS) == sorted(_PADS, key=len)
+        for pad in _PADS:
+            cells: dict[int, int] = {}
+            at = low = 0
+            for char in pad:
+                assert char in "+-><", pad
+                at += (char == ">") - (char == "<")
+                low = min(low, at)
+                cells[at] = cells.get(at, 0) + (char == "+") - (char == "-")
+            assert at == 0, pad
+            assert low == 0, pad
+            assert not any(cells.values()), pad
 
-    def test_every_body_is_seven_mod_eight_and_offset_legal(self) -> None:
-        """The two invariants the block layout rests on, over many bodies.
+    @pytest.mark.parametrize("trips", range(7))
+    def test_a_loop_leaves_the_rotation_where_it_found_it(self, trips: int) -> None:
+        """The invariant every loop rests on, checked by running one.
 
-        A body of length ``L`` with ``L + 1 == 0 (mod 8)`` puts the skip
-        path and the body path in the same rotation state after the block,
-        which is what lets the blocks be laid end to end.  Every command in
-        it must also sit at an offset where it does not read as a bracket.
-        Neither is visible in a truth-table check: a body that breaks
-        either still runs, it just re-converges in the wrong state.
+        A loop's trip count is data, so the rotation it exits at must not
+        depend on it -- otherwise every command after the loop means
+        something else for a different input.  The generator gets that by
+        padding each loop's cycle to 0 (mod 8).  Here a drain loop runs
+        ``trips`` times and the *same* trailing ``+`` run and ``.`` follow
+        it: if the exit rotation moved with the trip count, that tail would
+        not still be a print of the right character.
         """
-        from esolangs.tools.rotfuck import _rotfuck_allowed, _rotfuck_body
+        from esolangs.tools.helpers import _ASCII_ZERO
+        from esolangs.tools.rotfuck import _Builder
 
-        for guard in range(6):
-            for target in range(6):
-                if guard == target:
-                    continue
-                for op in ("+", "-"):
-                    body = _rotfuck_body(guard, target, op)
-                    assert (len(body) + 1) % 8 == 0, (guard, target, op)
-                    for j, char in enumerate(body):
-                        assert char in _rotfuck_allowed(j % 8), (guard, target, j)
-                    assert body.count(">") - body.count("<") == 0, (guard, target)
-                    assert op in body, (guard, target, op)
+        out = _Builder()
+        out.travel(2)
+        out.emit("+" * trips)
+        out.travel(4)
+        out.drain("-<<+>>>>++")
+        out.travel(0)
+        out.emit("+" * _ASCII_ZERO)
+        out.emit(".")
+        assert run_rotfuck(out.text(), []) == str(trips)
 
     def test_the_program_is_only_command_characters(self) -> None:
         """Nothing but the eight commands is emitted.
@@ -995,26 +1021,25 @@ class TestRotfuck:
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("01", 193),
-            ("10", 191),
-            ("0001", 340),
-            ("0110", 371),
-            ("11110000", 299),
-            ("01101001", 660),
+            ("01", 224),
+            ("10", 224),
+            ("0001", 390),
+            ("0110", 391),
+            ("11110000", 228),
+            ("01101001", 571),
         ],
     )
     def test_the_emitted_length_is_exact(self, table: str, length: int) -> None:
         """The layout is deterministic down to the character.
 
         Several ways of getting this wrong leave a *correct* program: a
-        move loop that emits a redundant ``><`` when the pointer is
-        already home, a pad count taken mod 9 rather than mod 8 (which
-        adds a whole 8-cycle and so preserves the length invariant), or a
-        stray separator the interpreter reads as a comment.  None of them
-        changes an answer, and a loose size bound only catches them by
-        luck, so the lengths are pinned exactly.
+        pad taken at four characters where two would have hidden, a cycle
+        padded to 8 (mod 8) rather than 0 (which is the same rotation and
+        so still runs), or a travel that walks the pointer home when it is
+        already there.  None of them changes an answer, and a loose size
+        bound only catches them by luck, so the lengths are pinned.
 
-        ``11110000`` also carries dependency reduction: it builds a one-input
-        Gray walk, 299 characters against ``01101001``'s 660.
+        ``11110000`` also carries dependency reduction: it lays out a
+        two-entry table, 228 characters against ``01101001``'s 571.
         """
         assert len(boolean.rotfuck(table)) == length

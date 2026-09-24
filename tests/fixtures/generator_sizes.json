@@ -716,16 +716,16 @@
   },
   "ROTfuck": {
    "0110": {
-    "commands": 355,
-    "source_units": 371
+    "commands": 1080,
+    "source_units": 391
    },
    "01101001": {
-    "commands": 620,
-    "source_units": 660
+    "commands": 2776,
+    "source_units": 571
    },
    "0110100110010110": {
-    "commands": 1107,
-    "source_units": 1171
+    "commands": 7522,
+    "source_units": 753
    }
   },
   "S*bleq": {
