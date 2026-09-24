@@ -1193,6 +1193,7 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         if name not in _DOCUMENTED_SIZES and LANGUAGES[name].boolean is not None
     )
     assert biggest[0] < 600_000, biggest
-    # Streetcode led by an order of magnitude until its tree became a flat
-    # lookup; the two left are within 2% (Malbolge's store is fixed at 59049).
-    assert biggest[1] in {"B-tapemark", "Malbolge"}, biggest
+    # Streetcode and B-tapemark each led here until their trees became flat
+    # lookups.  SLOW ACV MAMMALIAN leads now at 115707, roughly twice
+    # Malbolge's fixed 59049 store, so one name is stable where a set was not.
+    assert biggest[1] == "SLOW ACV MAMMALIAN", biggest
