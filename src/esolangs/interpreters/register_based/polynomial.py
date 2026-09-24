@@ -11,12 +11,16 @@ growing register never repeats, and ``esolangs.run``'s ``timeout`` is
 the guard.
 
 Root recovery is exact: ``[a, b]`` is ``(x-a)^2 + p**(2*b)`` and ``[v]``
-is ``x - p**v``, so the monic integer polynomial is factored over the
-integers and the values read off (a real root ``p**v`` passes 2**53 at
-``p**8`` for ``p >= 100``, where ``complex`` would round).  Past
+is ``x - p**v``, so the Gaussian integer roots are recovered exactly and
+the values read off (a real root ``p**v`` passes 2**53 at ``p**8`` for
+``p >= 100``, where ``complex`` would round).  Past
 :data:`_NTT_MIN_DEGREE` candidates come from roots modulo two small
 prime fields found by NTT (:func:`_roots_mod`); acceptance is exact
-division either way.  :func:`_advance` is pure over ``(register,
+division either way.  Whatever the peels leave, and every sparse source,
+goes through ``p``-adic lifting and a 2-D lattice
+(:func:`_dense_gaussian_roots`) behind the gap lemma
+(:func:`_gap_chunks`), so a cold parse is polynomial in the source length
+for every source.  :func:`_advance` is pure over ``(register,
 cursor)``; the instructions are factored once when the machine is built.
 """
 
@@ -35,6 +39,7 @@ except ModuleNotFoundError:  # optional ``math`` extra
 from esolangs.exceptions import MissingDependencyError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.tape_based.factor import _isprime64
 
 
 def _require_sympy() -> Any:
@@ -111,40 +116,175 @@ def convert(pre: Sequence[complex | _Root]) -> list[list[int]]:
     """Convert polynomial roots to instruction codes using prime encoding.
 
     Compares plain integers, so an exact :class:`_Root` matches however wide.
+    A real root ``p**v`` (``1 <= v <= 8``) is ``[v]``; a root ``a + p**b i``
+    (``1 <= b <= 6``) is ``[a, b]``; anything else is dropped.  The codes
+    come out grouped by ascending ``p`` and, within one prime, in
+    ``(imag, real)`` order -- what scanning every integer up to the largest
+    root did, but with each root recognised by its integer ``v``-th roots and
+    a proven primality test, so the cost is polynomial in the roots' bits
+    rather than in their values.
     """
-    rounded_roots = [(round(k.real), round(k.imag)) for k in pre]
-    # Sort by imaginary part, then by real part
-    sorted_roots = sorted(rounded_roots, key=lambda x: (x[1], x[0]))
-    post: list[list[int]] = []
-    num = 2
+    keyed: list[tuple[int, int, int, list[int]]] = []
+    for root in pre:
+        real, imag = round(root.real), round(root.imag)
+        if imag:
+            match = _prime_power(imag, _PEEL_MAX_IMAGINARY_EXPONENT)
+            if match is not None:
+                keyed.append((match[0], imag, real, [real, match[1]]))
+        else:
+            match = _prime_power(real, _PEEL_MAX_EXPONENT)
+            if match is not None:
+                keyed.append((match[0], 0, real, [match[1]]))
+    keyed.sort(key=lambda entry: entry[:3])
+    return [entry[3] for entry in keyed]
 
-    # A prime power p**v (v >= 1) is always >= p, so once num exceeds the
-    # largest root magnitude no further root can match.
-    if rounded_roots:
-        limit = max(max(abs(im), abs(real)) for real, im in rounded_roots)
-    else:
-        limit = 0
 
-    while sorted_roots and num <= limit + 1:
-        if not prime(num):
-            num += 1
-            continue
-        for root in sorted_roots[:]:  # Use slice to avoid modification during iteration
-            real, im = root
-            if im:
-                for val in range(1, 7):
-                    if im == num**val:
-                        sorted_roots.remove(root)
-                        post.append([real, val])
-                        break
-            else:
-                for val in range(1, 9):
-                    if real == num**val:
-                        sorted_roots.remove(root)
-                        post.append([val])
-                        break
-        num += 1
-    return post
+def _integer_root(number: int, degree: int) -> int:
+    """Return ``floor(number ** (1 / degree))`` for ``number >= 0``, exactly.
+
+    Integer Newton from above: ``O(log number)`` steps of ``degree``-th
+    powers, so polynomial in the bit length however wide ``number`` is.
+    """
+    if number < 2 or degree == 1:
+        return number
+    guess = 1 << -(-number.bit_length() // degree)
+    while True:
+        better = ((degree - 1) * guess + number // guess ** (degree - 1)) // degree
+        if better >= guess:
+            return guess
+        guess = better
+
+
+def _prime_power(number: int, max_exponent: int) -> tuple[int, int] | None:
+    """Return ``(p, v)`` with ``number == p**v``, ``p`` prime, ``v <= max_exponent``.
+
+    ``None`` otherwise.  The representation is unique, so the first ``v``
+    whose integer root is an exact prime is the answer.
+    """
+    if number < 2:
+        return None
+    for exponent in range(1, max_exponent + 1):
+        base = _integer_root(number, exponent)
+        if base < 2:
+            break
+        if base**exponent == number and _is_proven_prime(base):
+            return base, exponent
+    return None
+
+
+#: Below this, Factor's :func:`_isprime64` is a proof: Miller--Rabin with Sinclair's
+#: seven bases is deterministic through ``2**64``.  Above it SymPy's
+#: ``isprime`` is BPSW -- a compositeness verdict is still a witness, but
+#: "prime" is not a proof -- so a probable prime there is certified by
+#: :func:`_aks` before it is believed.
+_EXACT_ISPRIME_LIMIT = 1 << 64
+
+
+def _is_proven_prime(number: int) -> bool:
+    """Return whether ``number`` is prime, with a proof in every range.
+
+    Deterministic Miller--Rabin below :data:`_EXACT_ISPRIME_LIMIT`; above
+    it BPSW screens composites (its "composite" is a witness) and AKS
+    certifies the rest, so the answer is never probabilistic.
+    """
+    if number < _EXACT_ISPRIME_LIMIT:
+        return _isprime64(number)
+    if not _require_sympy().isprime(number):
+        return False
+    return _aks(number)
+
+
+def _totient(number: int) -> int:
+    """Euler's phi by trial division; only ever called on AKS's small ``r``."""
+    result, rest, factor = number, number, 2
+    while factor * factor <= rest:
+        if rest % factor == 0:
+            while rest % factor == 0:
+                rest //= factor
+            result -= result // factor
+        factor += 1
+    if rest > 1:
+        result -= result // rest
+    return result
+
+
+def _cyclic_mul(left: list[int], right: list[int], modulus: int) -> list[int]:
+    """Multiply in ``Z_modulus[x] / (x**r - 1)`` by Kronecker substitution.
+
+    Both operands are ``r`` reduced residues; one big-integer product
+    replaces the ``r**2`` coefficient products.
+    """
+    size = len(left)
+    width = (2 * modulus.bit_length() + size.bit_length() + 8) // 8
+    packed_left = int.from_bytes(
+        b"".join(k.to_bytes(width, "little") for k in left), "little"
+    )
+    packed_right = int.from_bytes(
+        b"".join(k.to_bytes(width, "little") for k in right), "little"
+    )
+    raw = (packed_left * packed_right).to_bytes(width * 2 * size, "little")
+    out = [0] * size
+    for index in range(2 * size - 1):
+        value = int.from_bytes(raw[index * width : (index + 1) * width], "little")
+        if value:
+            out[index % size] += value
+    return [k % modulus for k in out]
+
+
+def _aks(number: int) -> bool:
+    """Agrawal--Kayal--Saxena: a deterministic polynomial-time primality proof.
+
+    ``L = number.bit_length() >= log2 number`` stands in for the logarithm,
+    which only strengthens both conditions: ``r`` has ``ord_r(number) > L**2``
+    and the congruence is checked for ``a <= isqrt(phi(r) * L**2)``, which is
+    at least ``sqrt(phi(r)) log2 number`` and still below ``r``.  Slow in
+    practice past ``2**64`` -- it is the certificate the proof needs, reached
+    only by a BPSW probable prime that large.
+    """
+    if number < 2:
+        return False
+    bits = number.bit_length()
+    for exponent in range(2, bits + 1):
+        if _integer_root(number, exponent) ** exponent == number:
+            return False
+    square = bits * bits
+    modulus = 2
+    while True:
+        if math.gcd(modulus, number) == 1:
+            value, order = number % modulus, 1
+            while order <= square and value != 1:
+                value = value * number % modulus
+                order += 1
+            if order > square:
+                break
+        modulus += 1
+    for base in range(2, min(modulus, number - 1) + 1):
+        if 1 < math.gcd(base, number) < number:
+            return False
+    if number <= modulus:
+        return True
+    limit = math.isqrt(_totient(modulus) * square)
+    shift = number % modulus
+    for base in range(1, limit + 1):
+        # (x + base)**number modulo (x**modulus - 1, number), square-and-multiply.
+        power = [0] * modulus
+        power[0] = 1
+        factor = [0] * modulus
+        factor[0] = base % number
+        factor[1 % modulus] += 1
+        exponent = number
+        while exponent:
+            if exponent & 1:
+                power = _cyclic_mul(power, factor, number)
+            exponent >>= 1
+            if exponent:
+                factor = _cyclic_mul(factor, factor, number)
+        expected = [0] * modulus
+        expected[shift] = 1
+        expected[0] = (expected[0] + base) % number
+        if power != expected:
+            return False
+    return True
 
 
 def sanitize(code: str) -> list[int]:
@@ -153,29 +293,61 @@ def sanitize(code: str) -> list[int]:
     CPython's 4300-digit cap is raised to the widest number here and put
     back, as the generator's ``format_coeffs`` does.
     """
+    return _with_digit_limit(_sanitize, code)
+
+
+def sanitize_terms(code: str) -> dict[int, int]:
+    """Parse polynomial string into its sparse ``{degree: coefficient}`` map.
+
+    Exactly the terms :func:`sanitize` densifies (an empty map is its
+    ``[0]``), without the ``max_degree + 1`` list: ``x^1000000000000 - 1``
+    is two entries here and a terabyte there.
+    """
+    return _with_digit_limit(_sanitize_terms, code)
+
+
+def _with_digit_limit[T](parse: Callable[[str], T], code: str) -> T:
+    """Run ``parse`` with CPython's digit cap lifted past ``code``'s widest number."""
     longest = max((len(run) for run in re.findall(r"\d+", code)), default=0)
     limit = sys.get_int_max_str_digits()
     if longest <= limit:
-        return _sanitize(code)
+        return parse(code)
     sys.set_int_max_str_digits(longest + 1)
     try:
-        return _sanitize(code)
+        return parse(code)
     finally:
         sys.set_int_max_str_digits(limit)
 
 
 def _sanitize(code: str) -> list[int]:
     """Parse polynomial string into coefficient list."""
+    terms = _sanitize_terms(code)
+    # If no terms found, return [0]
+    if not terms:
+        return [0]
+
+    # Build coefficient list from highest to lowest degree
+    max_degree = max(terms.keys())
+    return [terms.get(degree, 0) for degree in range(max_degree, -1, -1)]
+
+
+def _sanitize_terms(code: str) -> dict[int, int]:
+    """Parse polynomial string into ``{degree: coefficient}``, sparse.
+
+    The last term written for a degree wins, and the last bare number is
+    the constant even over an explicit ``x^0``.  Zero coefficients are
+    kept: ``0x^5`` still sets the dense list's length.
+    """
     # Remove "f(x) = " prefix (with or without surrounding spaces)
     match = re.match(r"f\(x\)\s*=\s*(.*)", code)
     if not match:
-        return [0]
+        return {}
 
     code = match.group(1).strip()
 
     # Handle simple cases
     if not code or code == "0":
-        return [0]
+        return {}
 
     # Normalize the polynomial string
     code = code.replace(" ", "")
@@ -185,7 +357,7 @@ def _sanitize(code: str) -> list[int]:
     code = re.sub(r"x([+-])", r"x^1\1", code)  # x+ -> x^1+
 
     # Find all terms with their degrees and coefficients
-    terms = {}
+    terms: dict[int, int] = {}
 
     # Find x^n terms first
     for match in re.finditer(r"(-?\d*)x\^(\d+)", code):
@@ -207,13 +379,7 @@ def _sanitize(code: str) -> list[int]:
         coeff = int(match.group(0))
         terms[0] = coeff
 
-    # If no terms found, return [0]
-    if not terms:
-        return [0]
-
-    # Build coefficient list from highest to lowest degree
-    max_degree = max(terms.keys())
-    return [terms.get(degree, 0) for degree in range(max_degree, -1, -1)]
+    return terms
 
 
 #: Largest exponent a real instruction's root can carry, from the
@@ -654,16 +820,366 @@ def _peel_prime_power_roots(
     return found, coefficients
 
 
-@functools.lru_cache(maxsize=256)
-def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
-    """Recover the instruction roots by factoring the monic integer polynomial.
+#: A Gaussian integer ``re + im*i`` as an exact pair.
+type _Gaussian = tuple[int, int]
 
-    Both peels run first (exact divisions, remainders kept), so
-    ``factor_list`` sees only what neither recognised -- on a generated
-    program usually nothing.  Past :data:`_NTT_MIN_DEGREE` the candidates
-    are screened through the fields' root sets; same acceptance.
+#: Sparse polynomial: ``(exponent, coefficient)`` pairs, exponents ascending,
+#: coefficients nonzero.
+type _Terms = list[tuple[int, int]]
+
+
+def _gaussian_pow(base: _Gaussian, exponent: int) -> _Gaussian:
+    """Return ``base**exponent`` in ``Z[i]`` by square-and-multiply."""
+    result_re, result_im = 1, 0
+    base_re, base_im = base
+    while exponent:
+        if exponent & 1:
+            result_re, result_im = (
+                result_re * base_re - result_im * base_im,
+                result_re * base_im + result_im * base_re,
+            )
+        exponent >>= 1
+        if exponent:
+            base_re, base_im = (
+                base_re * base_re - base_im * base_im,
+                2 * base_re * base_im,
+            )
+    return result_re, result_im
+
+
+def _sparse_value(chunk: _Terms, point: _Gaussian) -> _Gaussian:
+    """Evaluate ``sum c * x**(e - e_0)`` at ``point``: sparse Horner in ``Z[i]``."""
+    value_re, value_im = chunk[-1][1], 0
+    for index in range(len(chunk) - 2, -1, -1):
+        step_re, step_im = _gaussian_pow(point, chunk[index + 1][0] - chunk[index][0])
+        value_re, value_im = (
+            value_re * step_re - value_im * step_im + chunk[index][1],
+            value_re * step_im + value_im * step_re,
+        )
+    return value_re, value_im
+
+
+def _gap_chunks(terms: _Terms) -> list[_Terms]:
+    """Cut a sparse polynomial at every gap no root of norm >= 4 can bridge.
+
+    With ``S`` the absolute coefficient sum of the chunk so far and ``g``
+    the next gap, ``2**g > S`` (equivalently ``g >= S.bit_length()``) forces
+    every Gaussian integer root ``alpha`` with ``|alpha| >= 2`` of what is
+    left to be a root of both sides: if the upper part were nonzero at
+    ``alpha`` it would be a nonzero Gaussian integer, so ``|alpha|**g`` could
+    not exceed ``S``.  Inside a chunk every gap is below
+    ``log2(t * H) + 1``, which bounds the chunk's degree.
+    """
+    chunks: list[_Terms] = []
+    current: _Terms = [terms[0]]
+    mass = abs(terms[0][1])
+    for exponent, coefficient in terms[1:]:
+        if exponent - current[-1][0] >= mass.bit_length():
+            chunks.append(current)
+            current, mass = [], 0
+        current.append((exponent, coefficient))
+        mass += abs(coefficient)
+    chunks.append(current)
+    return chunks
+
+
+def _vanishes_at(terms: _Terms, point: _Gaussian) -> bool:
+    """Whether the sparse polynomial is zero at ``point`` (``|point| >= 2``).
+
+    Exact: by :func:`_gap_chunks` the polynomial vanishes there iff every
+    chunk does, and each chunk has polynomially bounded degree however
+    large the exponents.
+    """
+    return bool(terms) and all(
+        _sparse_value(chunk, point) == (0, 0) for chunk in _gap_chunks(terms)
+    )
+
+
+def _sparse_multiplicity(terms: _Terms, point: _Gaussian) -> int:
+    """Return the multiplicity of the root ``point`` (``|point| >= 2``).
+
+    For ``alpha != 0`` the multiplicity is the least ``j`` with
+    ``(x d/dx)**j f (alpha) != 0``: ``(x d/dx)**j`` is ``x**j d**j/dx**j``
+    plus lower derivatives, a unitriangular change.  The operator keeps the
+    support and multiplies each coefficient by its exponent, so every
+    iterate is sparse too; Hajos' lemma stops the loop within ``t - 1``.
+    """
+    multiplicity = 0
+    while _vanishes_at(terms, point):
+        multiplicity += 1
+        terms = [(e, c * e) for e, c in terms if e]
+    return multiplicity
+
+
+def _mod_rem(dividend: list[int], divisor: list[int], prime: int) -> list[int]:
+    """Remainder of ``dividend / divisor`` over GF(``prime``), descending lists."""
+    rest = [k % prime for k in dividend]
+    inverse = pow(divisor[0], -1, prime)
+    size = len(divisor)
+    while len(rest) >= size:
+        factor = rest[0] * inverse % prime
+        if factor:
+            for index in range(1, size):
+                rest[index] = (rest[index] - factor * divisor[index]) % prime
+        rest.pop(0)
+    while rest and not rest[0]:
+        rest.pop(0)
+    return rest
+
+
+def _squarefree_mod(coefficients: list[int], prime: int) -> bool:
+    """Whether reduction mod ``prime`` keeps the degree and stays squarefree."""
+    reduced = [k % prime for k in coefficients]
+    if not reduced[0]:
+        return False
+    degree = len(reduced) - 1
+    left = reduced
+    right = [k * (degree - i) % prime for i, k in enumerate(reduced[:-1])]
+    while right and not right[0]:
+        right.pop(0)
+    if not right:
+        # The derivative vanishes mod p: a p-th power, never squarefree.
+        return degree == 0
+    while right:
+        left, right = right, _mod_rem(left, right, prime)
+    return len(left) == 1
+
+
+def _value_mod(coefficients: list[int], point: int, modulus: int) -> int:
+    """Horner mod ``modulus``."""
+    value = 0
+    for coefficient in coefficients:
+        value = (value * point + coefficient) % modulus
+    return value
+
+
+def _hensel_lift(
+    coefficients: list[int], roots: list[int], prime: int, target: int
+) -> list[int]:
+    """Lift simple roots mod ``prime`` to roots mod ``target`` (a power of it).
+
+    Newton's iteration doubles the precision each step because the
+    derivative is a unit at a simple root.  The coefficients are reduced
+    once per precision, not once per root.
+    """
+    degree = len(coefficients) - 1
+    derivative = [k * (degree - i) for i, k in enumerate(coefficients[:-1])]
+    modulus = prime
+    while modulus < target:
+        modulus = min(modulus * modulus, target)
+        reduced = [k % modulus for k in coefficients]
+        slope_poly = [k % modulus for k in derivative]
+        roots = [
+            (
+                root
+                - _value_mod(reduced, root, modulus)
+                * pow(_value_mod(slope_poly, root, modulus), -1, modulus)
+            )
+            % modulus
+            for root in roots
+        ]
+    return roots
+
+
+def _round_div(numerator: int, denominator: int) -> int:
+    """Nearest integer to ``numerator / denominator`` (``denominator > 0``)."""
+    return (2 * numerator + denominator) // (2 * denominator)
+
+
+def _dot(left: tuple[int, int], right: tuple[int, int]) -> int:
+    """Euclidean inner product in ``Z**2``."""
+    return left[0] * right[0] + left[1] * right[1]
+
+
+def _gauss_reduce(
+    first: tuple[int, int], second: tuple[int, int]
+) -> tuple[tuple[int, int], tuple[int, int]]:
+    """Lagrange--Gauss reduction: ``|b1| <= |b2|`` and ``|<b1, b2>| <= |b1|**2/2``."""
+    if _dot(first, first) > _dot(second, second):
+        first, second = second, first
+    while True:
+        mu = _round_div(_dot(first, second), _dot(first, first))
+        second = (second[0] - mu * first[0], second[1] - mu * first[1])
+        if _dot(second, second) >= _dot(first, first):
+            return first, second
+        first, second = second, first
+
+
+def _nearest_plane(
+    basis: tuple[tuple[int, int], tuple[int, int]], target: tuple[int, int]
+) -> tuple[int, int]:
+    """Return ``target`` minus Babai's nearest-plane lattice vector, exactly.
+
+    On a Lagrange--Gauss-reduced basis of a lattice whose minimum exceeds
+    ``sqrt(16/3) B``, a coset vector of norm at most ``B`` is the one
+    returned: both roundings are forced (see the proof in
+    ``docs/proofs/polynomial.md``).
+    """
+    first, second = basis
+    gram11, gram12 = _dot(first, first), _dot(first, second)
+    determinant = gram11 * _dot(second, second) - gram12 * gram12
+    along_second = _round_div(
+        _dot(target, second) * gram11 - gram12 * _dot(target, first), determinant
+    )
+    rest = (target[0] - along_second * second[0], target[1] - along_second * second[1])
+    along_first = _round_div(_dot(rest, first), gram11)
+    return rest[0] - along_first * first[0], rest[1] - along_first * first[1]
+
+
+def _root_prime(coefficients: list[int]) -> int:
+    """Return the least prime ``p = 1 (mod 4)`` keeping ``coefficients`` squarefree.
+
+    ``p`` must not divide the leading coefficient or the discriminant, and
+    only ``O(d (d + log H))`` primes do, so ``p`` is polynomial in the input.
+    ``1 (mod 4)`` gives ``sqrt(-1)`` in the ``p``-adic integers.
+    """
+    candidate = 5
+    while not (prime(candidate) and _squarefree_mod(coefficients, candidate)):
+        candidate += 4
+    return candidate
+
+
+def _dense_gaussian_roots(coefficients: list[int]) -> set[_Gaussian]:
+    """Return every nonzero Gaussian integer root of a dense integer polynomial.
+
+    Deterministic and polynomial time, no factorization over ``Z``: take the
+    squarefree part; pick the least prime ``p = 1 (mod 4)`` that keeps it
+    squarefree of full degree; find its roots mod ``p`` by exhausting GF(p)
+    (``p`` is polynomially bounded); Hensel-lift each to ``P = p**k > 16
+    B**2`` with ``B`` Cauchy's root bound; a root ``a + c i`` maps to
+    ``a + c*iota`` for a fixed ``iota = sqrt(-1) mod P``, so ``(a, c)`` is the
+    short vector of a coset of ``{(u, v): u + v*iota = 0 (mod P)}`` --
+    determinant ``P``, minimum at least ``sqrt(P)`` -- and nearest-plane
+    rounding on a reduced basis returns it.  Every candidate is checked by
+    exact evaluation, so the set is exactly the roots.
     """
     sp = _require_sympy()
+    start = 0
+    while start < len(coefficients) and not coefficients[start]:
+        start += 1
+    stop = len(coefficients)
+    while stop > start and not coefficients[stop - 1]:
+        stop -= 1
+    poly = coefficients[start:stop]
+    if len(poly) < 2:
+        return set()
+    squarefree = [int(k) for k in sp.Poly(poly, sp.Symbol("x")).sqf_part().all_coeffs()]
+    if len(squarefree) < 2:
+        return set()
+    lead = abs(poly[0])
+    bound = 1 + -(-max(abs(k) for k in poly[1:]) // lead)
+    base = _root_prime(squarefree)
+    residues = [r for r in range(base) if not _value_mod(squarefree, r, base)]
+    if not residues:
+        return set()
+    modulus = base
+    while modulus <= 16 * bound * bound:
+        modulus *= base
+    iota = next(r for r in range(2, base) if (r * r + 1) % base == 0)
+    (iota,) = _hensel_lift([1, 0, 1], [iota], base, modulus)
+    basis = _gauss_reduce((modulus, 0), ((-iota) % modulus, 1))
+    terms = [(len(poly) - 1 - i, k) for i, k in enumerate(poly) if k][::-1]
+    found: set[_Gaussian] = set()
+    for lifted in _hensel_lift(squarefree, residues, base, modulus):
+        candidate = _nearest_plane(basis, (lifted, 0))
+        if candidate != (0, 0) and _sparse_value(terms, candidate) == (0, 0):
+            found.add(candidate)
+    return found
+
+
+def _sparse_roots(terms: dict[int, int]) -> list[_Root]:
+    """Return the Gaussian integer roots of norm >= 4 of a sparse polynomial.
+
+    With multiplicity, in the shape :func:`_factor_roots` reports them (a
+    real root repeated, a pair ``(a, c), (a, -c)`` repeated), and in time
+    polynomial in the source length however large the exponents: cut at
+    the unbridgeable gaps (:func:`_gap_chunks`), find the roots of one chunk
+    (:func:`_dense_gaussian_roots`) -- every root of the whole is one of
+    them -- and keep those at which every chunk of every needed
+    ``(x d/dx)**j f`` vanishes (:func:`_sparse_multiplicity`).  Every
+    instruction root has norm at least 4, so nothing :func:`convert` reads
+    is lost; the unit-sized roots, whose powers do not shrink the gap
+    argument, are left out.  An identically zero map has no roots here; the
+    caller owns that case.
+    """
+    items = sorted((e, c) for e, c in terms.items() if c)
+    if len(items) < 2:
+        return []
+    chunks = _gap_chunks(items)
+    if any(len(chunk) < 2 for chunk in chunks):
+        # A lone monomial chunk is nonzero at every alpha != 0.
+        return []
+    seed = min(chunks, key=lambda chunk: chunk[-1][0] - chunk[0][0])
+    low = seed[0][0]
+    dense = [0] * (seed[-1][0] - low + 1)
+    for exponent, coefficient in seed:
+        dense[len(dense) - 1 - (exponent - low)] = coefficient
+    roots: list[_Root] = []
+    for real, imag in sorted(
+        _dense_gaussian_roots(dense), key=lambda r: (abs(r[1]), r)
+    ):
+        if imag < 0 or real * real + imag * imag < 4:
+            continue
+        multiplicity = _sparse_multiplicity(items, (real, imag))
+        if imag:
+            roots.extend([_Root(real, imag), _Root(real, -imag)] * multiplicity)
+        else:
+            roots.extend([_Root(real, 0)] * multiplicity)
+    return roots
+
+
+def _remainder_roots(coefficients: list[int]) -> list[_Root]:
+    """Every integer and Gaussian root of what the peels left, with multiplicity.
+
+    Replaces the ``factor_list`` fallback (Zassenhaus, exponential in the
+    worst case) by :func:`_dense_gaussian_roots` and exact division, and
+    reports what it did: each integer root repeated, each non-real pair
+    ``(a, c), (a, -c)`` with ``c > 0`` repeated, integers first.
+    """
+    start = 0
+    while start < len(coefficients) and not coefficients[start]:
+        start += 1
+    rest = coefficients[start:]
+    if len(rest) <= 1:
+        return []
+    zeros = 0
+    while not rest[-1]:
+        rest = rest[:-1]
+        zeros += 1
+    reals: list[_Root] = [_Root(0, 0)] * zeros
+    pairs: list[_Root] = []
+    for real, imag in sorted(_dense_gaussian_roots(rest)):
+        if imag < 0:
+            continue
+        if imag:
+            while (quotient := _divide_quadratic(rest, real, imag * imag)) is not None:
+                pairs.extend([_Root(real, imag), _Root(real, -imag)])
+                rest = quotient
+            continue
+        while len(rest) > 1:
+            deflated = [rest[0]]
+            for coefficient in rest[1:]:
+                deflated.append(coefficient + deflated[-1] * real)
+            if deflated.pop():
+                break
+            reals.append(_Root(real, 0))
+            rest = deflated
+    return reals + pairs
+
+
+@functools.lru_cache(maxsize=256)
+def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
+    """Recover every integer and Gaussian integer root, with multiplicity.
+
+    Both peels run first (exact divisions, remainders kept), so the general
+    search sees only what neither recognised -- on a generated program
+    usually nothing.  Past :data:`_NTT_MIN_DEGREE` the candidates are
+    screened through the fields' root sets; same acceptance.  What is left
+    goes to :func:`_remainder_roots`, deterministic polynomial time; it
+    replaced a ``factor_list`` whose Zassenhaus recombination is
+    exponential in the worst case.
+    """
+    _require_sympy()
     if len(coefficients) - 1 > _NTT_MIN_DEGREE:
         from esolangs.polynomial_resources import estimate_cold_parse
 
@@ -702,30 +1218,7 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
     if len(remainder) <= 1:
         return tuple(roots)
 
-    x = sp.Symbol("x")
-    poly = sp.Poly.from_list(remainder, x)
-    _, factors = sp.factor_list(poly)
-
-    for factor, multiplicity in factors:
-        degree = factor.degree()
-        if degree == 1:
-            a, b = (int(k) for k in factor.all_coeffs())
-            if a != 1:
-                continue
-            roots.extend([_Root(-b, 0)] * multiplicity)
-        elif degree == 2:
-            a, b, c = (int(k) for k in factor.all_coeffs())
-            if a != 1 or b % 2:
-                continue
-            real = -b // 2
-            q = c - real * real
-            if q < 0:
-                continue
-            imag = math.isqrt(q)
-            if imag * imag != q:
-                continue
-            roots.extend([_Root(real, imag), _Root(real, -imag)] * multiplicity)
-        # higher-degree factors encode no instruction; skip
+    roots.extend(_remainder_roots(remainder))
     return tuple(roots)
 
 
@@ -734,19 +1227,40 @@ def _find_roots(coefficients: list[int]) -> list[_Root]:
     return list(_factor_roots(tuple(coefficients)))
 
 
+#: A source whose degree is at most this many times its length is parsed
+#: densely, through :func:`_find_roots` and its peels; the dense list is then
+#: linear in the source.  Anything sparser -- ``x^1000000000000 - 1`` --
+#: goes to :func:`_sparse_roots`, whose cost does not see the degree.
+_DENSE_DEGREE_PER_CHAR = 2
+
+
 @functools.lru_cache(maxsize=4)
 def _parse_program(code: str) -> tuple[tuple[int, ...], ...]:
     """Recover the instruction list from a program's source, once.
 
     Keyed on the source: re-parsing a tens-of-megabytes program cost 0.9s
-    per row on dense n=8.
+    per row on dense n=8.  Polynomial time in the source length for every
+    source (``docs/proofs/polynomial.md``, "Cold parsing of arbitrary
+    programs"): a dense source takes the peels, a sparse one never builds
+    its coefficient list.
     """
     cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
     if cleaned_code[:5] != "f(x)=":
         raise ValueError("Polynomial program must start with 'f(x) = '")
-    coefficients = sanitize(cleaned_code)
-    roots = [k for k in _find_roots(coefficients) if k.imag >= 0]
-    return tuple(tuple(instr) for instr in convert(roots))
+    _require_sympy()
+    terms = sanitize_terms(cleaned_code)
+    degree = max(terms, default=0)
+    if degree <= _DENSE_DEGREE_PER_CHAR * len(cleaned_code):
+        dense = [terms.get(power, 0) for power in range(degree, -1, -1)]
+        roots = _find_roots(dense)
+    elif not any(terms.values()):
+        # The dense list would be ``degree + 1`` zeros, and the real peel
+        # divides ``x - 2`` out of zero ``degree`` times: ``degree`` copies
+        # of code ``[1]``, an output as long as the degree itself.
+        return ((1,),) * degree
+    else:
+        roots = _sparse_roots(terms)
+    return tuple(tuple(instr) for instr in convert([k for k in roots if k.imag >= 0]))
 
 
 #: The arithmetic instructions, in the order their codes select them.

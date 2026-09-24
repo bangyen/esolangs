@@ -70,7 +70,7 @@ def estimate_generation(factors: list[list[int]]) -> GenerationEstimate:
 
 
 def estimate_cold_parse(coeffs: list[int]) -> ColdParseEstimate:
-    """Bound the implemented fast peel; do not price its factoring fallback."""
+    """Bound the implemented fast peel; do not price the remainder root search."""
     from esolangs.interpreters.register_based.polynomial import (
         _NTT_FIELDS,
         _ntt_real_bound,
@@ -102,7 +102,8 @@ def estimate_cold_parse(coeffs: list[int]) -> ColdParseEstimate:
     candidate_words = candidate_count * words_per_candidate
     peak_words = field_points + (degree + 1) * coefficient_digits + candidate_words
     # Coefficients alone carry no provenance or factor-shape certificate.
-    # Any nonconstant arbitrary program may leave a remainder for factor_list.
+    # Any nonconstant arbitrary program may leave a remainder for
+    # _remainder_roots, polynomial in the source but not priced here.
     fallback_possible = degree > 0
     return ColdParseEstimate(
         degree,
