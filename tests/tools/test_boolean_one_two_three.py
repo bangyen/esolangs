@@ -40,10 +40,9 @@ class TestParameterizedOneTwoThree:
 
     Every arity is *constructed* -- the stored plan tables that used to
     serve ``n <= 3`` are retired (see git history).  Small arities build
-    in ``one_two_three`` from a bare-fill seed and frozen separation
-    schedules; wider tables go through ``one_two_three_construct``
-    unchanged.  Both routes replay every row on the real interpreter
-    before returning a template, and the sweeps here re-check every
+    in ``one_two_three`` from a bare-fill seed and a separation law;
+    wider tables go to ``one_two_three_construct``.  Neither route replays
+    what it emitted, so the sweeps here are the execution gate: every
     ``n <= 3`` row against a per-command run of the interpreter.
     """
 
@@ -121,16 +120,11 @@ class TestParameterizedOneTwoThree:
         """The construction's replay gate matches a per-command run.
 
         ``_replay_verdict`` executes a maximal ``1``/``2`` run at a time in
-        closed form instead of one command at a time, which is what makes
-        the gate affordable on a six-input template (95s to 0.28s at five
-        inputs).  That batching is only safe if it decides exactly what the
-        real interpreter decides, so every row of every emitted template through
-        three inputs is checked both ways here -- against a per-command run
-        of :class:`_Machine`, not against the builder's own model, which
-        shares no code with either.
-
-        Divergence is the case worth pinning: a batched cycle detector that
-        sampled the wrong events could miss a loop and call it a halt.
+        closed form, which is what makes the gate affordable (95s to 0.28s
+        at five inputs).  That is only safe if it decides exactly what the
+        real interpreter decides, so every row of every emitted template
+        through three inputs is checked both ways here -- a batched cycle
+        detector sampling the wrong events could call a loop a halt.
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.one_two_three import _Machine
@@ -276,14 +270,8 @@ class TestParameterizedOneTwoThree:
 
         This used to assert a :class:`ValueError`: the recorded reason was
         that an inert embed shifts the pointer phase the plan decodes.
-        That bound the phase-decode shape, not the language — the
-        constructed route re-synchronizes every instantiation's pointer
-        after each embed (see ``one_two_three_construct``) — so the gate
-        fell.  Every row of the template is replayed here on the real
-        interpreter, the same execution gate the generator itself applies
-        before returning.  A build that drains the deterministic work
-        budget still raises rather than emitting; ``docs/limitations.md``
-        records the coverage.
+        That bound one decode shape, not the language, so the gate fell.
+        Every row is replayed here on the real interpreter.
         """
         from esolangs.tools import parameterized
 
@@ -312,11 +300,12 @@ class TestParameterizedOneTwoThree:
 
         Both routes emit a *correct* template, so every truth-table
         assertion above passes either way and the choice is invisible to
-        them.  It is worth a great deal though: swept over all 256
-        three-input tables, the wide constructor's template is larger on
-        every one of them, from 1.86x up to 9.55x (``00000010`` is 94 bytes
-        small against 898 wide).  These lengths pin the routing boundary at
-        ``n > 3``.
+        them.  Swept over all 256 three-input tables the small route still
+        wins on the mean, 201.6 bytes against 240.9, but no longer on every
+        table: since the wide route became a fill-as-splitter chain it is
+        the smaller of the two on 63 of the 256, and the per-table ratio
+        runs 0.51x to 2.71x.  The mean is what pins the boundary at
+        ``n > 3``; see ``test_the_wide_route_is_bigger_where_they_overlap``.
         """
         from esolangs.tools import parameterized
 
@@ -421,18 +410,32 @@ class TestParameterizedOneTwoThree:
             _best_mean, best_walk, best_disps = ranked[0]
             assert (best_walk, best_disps) == _LAWS[n], (n, ranked[:3])
 
-    def test_the_wide_route_is_bigger_where_they_overlap(self) -> None:
-        """The small route earns its place at the arity they share.
+    @pytest.mark.medium  # 2120 rows of the real interpreter, 0.9s
+    def test_the_wide_route_is_exhaustive_and_loses_on_the_mean(self) -> None:
+        """The chain four inputs and up really emit, gated and compared.
 
-        The routing boundary is only defensible if the two constructions
-        are actually compared at an arity both can serve, which this does
-        directly rather than through the emitted length above.
+        ``construct`` sends ``n <= 3`` to the modelled pipeline, so the wide
+        chain had neither an exhaustive gate of its own nor an honest size
+        comparison.  Both are here: every row of every table through three
+        inputs on the real interpreter, and a *mean* rather than witnesses
+        -- the chain is smaller on 63 of the 256.
         """
         from esolangs.tools.one_two_three import one_two_three
-        from esolangs.tools.one_two_three_construct import construct
+        from esolangs.tools.one_two_three_construct import _construct_linear
 
-        for table in ("00000000", "00000001", "01101001"):
-            assert len(construct(table)) > len(one_two_three(table)), table
+        for n in (1, 2, 3):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                template = _construct_linear(table, n)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    program = self.instantiate(template, bits)
+                    assert self.run(program) == table[combo], (n, table, bits)
+        tables = [format(value, "08b") for value in range(256)]
+        wide = [len(_construct_linear(table, 3)) for table in tables]
+        small = [len(one_two_three(table)) for table in tables]
+        assert [sum(wide), sum(small)] == [61686, 51609]
+        assert sum(a < b for a, b in zip(wide, small, strict=True)) == 63
 
     @pytest.mark.parametrize(
         ("table", "template"),
@@ -558,12 +561,10 @@ class TestParameterizedOneTwoThree:
     def test_the_searched_routes_worst_tables_build_at_once(self) -> None:
         """The tables that starved the searched verdict are ordinary now.
 
-        ``1000110011010101`` burned a whole four-input budget under one
-        mark geometry and ``0100000011001001`` exhausted the other —
-        the pair that forced the old geometry probe.  The planned
-        verdict never anchors a test on a mark cell, so a single
-        geometry serves both; each build is checked row by row on the
-        interpreter.
+        ``1000110011010101`` and ``0100000011001001`` each burned a whole
+        four-input budget under a searched verdict.  The wide route plans
+        instead of searching, so both are ordinary emissions; each is
+        checked row by row on the interpreter.
         """
         from esolangs.tools.one_two_three_construct import construct
 
@@ -579,11 +580,10 @@ class TestParameterizedOneTwoThree:
     def test_a_dense_four_input_sweep_witness_stays_exact(self) -> None:
         """Pin one mixed table from the exhaustive constructor sweep.
 
-        The exhaustive four-input sweep was a one-shot script rather than
-        a suite entry -- 65536 tables is far past what a run can pay.  This
-        one-table witness keeps its execution gate local: all sixteen rows
-        must halt or revisit an exact interpreter
-        state with the table's verdict, never pass through a fuel limit.
+        The exhaustive four-input sweep is a one-shot script rather than a
+        suite entry -- 65536 tables, 1048576 rows, 130s through the replay
+        oracle.  This witness keeps a gate local to the suite: all sixteen
+        rows halt or revisit an exact state, never through a fuel limit.
         """
         from esolangs.tools.one_two_three_construct import construct
 
