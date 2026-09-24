@@ -48,10 +48,9 @@ divisible by $L$ distinct prime-power roots and having leading coefficient
 of absolute value at least one has logarithmic coefficient mass
 $\Omega(L^2\log L)$.  Tracking the constants, the worst-case length $C_P(n)$
 satisfies
-$2\log_{10}2\le\liminf C_P(n)\,n/T^2\le\tfrac{325}8\log_{10}2$ and
-$2\log_{10}2\le\limsup C_P(n)\,n/T^2\le\tfrac{2925}{32}\log_{10}2$: the
-order is settled, but the constant is determined only up to a factor of
-about $20$ at the limit inferior and $46$ at the limit superior.
+$2\log_{10}2\le\liminf C_P(n)\,n/T^2\le\limsup C_P(n)\,n/T^2\le\tfrac{325}8\log_{10}2$:
+the order is settled, but the constant is determined only up to a factor of
+about $20$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -162,10 +161,8 @@ the matching construction, and Section~\ref{sec:constants} tracks the
 constants through both halves (Proposition~\ref{prop:bracket}):
 \[
   2\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
-  \le\frac{325}{8}\log_{10}2,
-  \qquad
-  2\log_{10}2\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
-  \le\frac{2925}{32}\log_{10}2 .
+  \le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \le\frac{325}{8}\log_{10}2 .
 \]
 Remark~\ref{rem:bracket} locates the gap between the two sides.
 
@@ -520,9 +517,9 @@ Counting automata with $Z$ states gives about $2Z\log_2Z$ bits, but the
 $Z!$ renumberings of one automaton compute the same table, and removing
 them leaves $Z\log_2Z+O(Z\log n)$ bits.  So counting certifies about
 $T/n$ read gaps (Proposition~\ref{prop:counting}), not $T/(2n)$.  This is
-$N_n/\nu_n\ge N_n$, and the construction of Section~\ref{sec:upper}
-matches it up to the factor $\frac32$ (Proposition~\ref{prop:dfaprog} with
-Lemma~\ref{lem:strip}).
+$N_n/\nu_n\ge N_n$, and the automata of Lemmas~\ref{lem:trieband}
+and~\ref{lem:bandtrie} match it up to a factor $1+O((\log n)^2/n)$, for every table
+(Proposition~\ref{prop:bracket}).
 \end{remark}
 
 \section{Coefficient mass from prescribed roots}\label{sec:mass}
@@ -686,7 +683,6 @@ of length $\ell$ and the number of tuples of functions of
 $n-\ell-di$ bits.
 \end{proof}
 
-% (after the proof of Lemma lem:strip)
 
 In Lemma~\ref{lem:strip} a canonical word $u$ is reached after $|u|+di$ bits
 for every $i$, so about a fraction $1/d$ of the tree can see the end of the
@@ -764,6 +760,135 @@ is a function of $n-k$ bits; so there are at most
 $\min(2^{k-d(I+1)},2^{2^{n-k}})$ of them at each $k$, which sums to at most
 $S_{n'}+2$.
 \end{proof}
+
+Lemma~\ref{lem:bstrip} lets one tree stand for the prefixes $c^iu$, $i\le I$.  A deep
+state just below the tree then records $2^{n-L-1}(1-2^{-d(I+1)})/(1-2^{-d})$ bits, and the
+tree must be deep enough that this number stays below $L$.  Few such numbers are
+available, and where none of them lies just below $L$ the tree is up to twice as deep as
+needed; this is why the bracket used $\frac32T/n$ states when $N_n$ is close to $T/n$.
+The next lemma lets any leaves of a trie share one tree, as long as their lengths differ.
+The number of recorded bits is then a sum of distinct powers of two, which can be placed
+just below the depth of the tree for every $n$.
+
+\begin{lemma}[Trie-banded automaton]\label{lem:trieband}
+Let $\mathcal T$ be a finite set of words of length less than $n$ that contains the empty
+word and, with every nonempty word, its prefix of length one less.  A \emph{leaf} is a
+word $\ell\notin\mathcal T$ whose prefix of length $|\ell|-1$ lies in $\mathcal T$.  Let
+the leaves be split into a set $\Lambda_0$ of \emph{tail roots} and \emph{bands}
+$\Lambda_1,\dots,\Lambda_K$, where the leaves of one band have distinct lengths, and let
+$L_1,\dots,L_K\ge0$ satisfy $|\ell|+L_k<n$ for $\ell\in\Lambda_k$.  Every word
+$w\notin\mathcal T$ has exactly one leaf as a prefix; write $w=\ell v$.  For $|w|\le n$ put
+\[
+ \tau(w)=\begin{cases}
+ w & \text{if }w\in\mathcal T\ \text{(a \emph{trie state})},\\
+ (\mathrm{tail},|w|,r_w) & \text{if }\ell\in\Lambda_0,\\
+ (k,v) & \text{if }\ell\in\Lambda_k,\ |v|\le L_k\ \text{(a \emph{tree state})},\\
+ (k,|v|,V_k(v)) & \text{if }\ell\in\Lambda_k,\ |v|>L_k\ \text{(a \emph{deep state})},
+ \end{cases}
+\]
+where $r_x$ is the residual of the table after $x$, and $V_k(v)$ is the tuple of the
+residuals $r_{\ell'v}$, indexed by the leaves $\ell'\in\Lambda_k$ with $|\ell'v|\le n$.
+Then $\tau(wb)$ depends only on $\tau(w)$ and $b$, and $\tau(w)$ with $|w|=n$ determines
+the table value at $w$; so the values of $\tau$ are the states of an automaton that
+computes the table.  Moreover:
+\begin{enumerate}
+\item[(a)] no trie or tree state is $\tau(w)$ for a word $w$ of length $n$;
+\item[(b)] if $u$ is a trie state other than the start state $\tau(\varepsilon)=\varepsilon$,
+or a tree state $(k,v)$ with $|v|\ge1$, then exactly one pair of a state and a bit is sent
+to $u$, namely $(u^-,b)$, respectively $((k,v^-),b)$, where $x^-$ is $x$ without its last
+letter $b$; and no pair is sent to $\varepsilon$;
+\item[(c)] for $\lambda\le L_k$ there are $2^\lambda$ tree states $(k,v)$ with
+$|v|=\lambda$; for $\lambda>L_k$ there are at most $\min\bigl(2^\lambda,2^{e_k(\lambda)}\bigr)$
+deep states $(k,\lambda,V)$; and for every $\lambda$ there are at most
+$\min\bigl(t(\lambda),2^{2^{n-\lambda}}\bigr)$ tail states $(\mathrm{tail},\lambda,r)$, where
+\[
+ e_k(\lambda)=\sum_{\ell\in\Lambda_k,\ |\ell|+\lambda\le n}2^{\,n-|\ell|-\lambda},
+ \qquad
+ t(\lambda)=\sum_{\ell\in\Lambda_0,\ |\ell|\le\lambda}2^{\lambda-|\ell|}.
+\]
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+\emph{Leaf prefixes.}  The prefixes of $w$ that lie in $\mathcal T$ are those of length at
+most some $t$, because $\mathcal T$ contains $\varepsilon$ and is closed under deleting the
+last letter, and $t<|w|$ as $w\notin\mathcal T$.  A leaf that is a prefix of $w$ is not in
+$\mathcal T$ while its prefix of length one less is, so its length is $t+1$; and the
+prefix of length $t+1$ is a leaf.
+
+\emph{Transitions.}  Let $w\in\mathcal T$.  Then $wb$ is a trie state or a leaf, and in
+the second case $\tau(wb)$ is $(\mathrm{tail},|wb|,r_{wb})$ or $(k,\varepsilon)$; either
+way it is a function of $w$ and $b$.  Let $w=\ell v\notin\mathcal T$; then $wb=\ell(vb)$
+has the same leaf.  If $\ell\in\Lambda_0$, then $r_{wb}$ is the half of $r_w$ selected by
+$b$.  If $\ell\in\Lambda_k$ and $|v|<L_k$, then $\tau(wb)=(k,vb)$.  If $|v|\ge L_k$, then
+$\tau(wb)=(k,|v|+1,V_k(vb))$, and $V_k(vb)$ arises from the residuals $r_{\ell'v}$ by
+restricting each to first bit $b$ and dropping those with $|\ell'v|=n$; these residuals
+are the entries of $V_k(v)$ if $|v|>L_k$, and are determined by $v$ if $|v|=L_k$, where
+the state is $(k,v)$.
+
+\emph{Values.}  Let $|w|=n$; then $w\notin\mathcal T$.  If $\ell\in\Lambda_0$, the
+residual $r_w$ is the value.  If $\ell\in\Lambda_k$, then $|v|=n-|\ell|>L_k$, so $\tau(w)$
+is a deep state.  Its tuple contains the value $r_{\ell v}$ at the index $\ell$, and $\ell$
+is the only leaf of $\Lambda_k$ of length $n-|v|$, because the leaves of a band have
+distinct lengths.  This proves the claim and~(a).
+
+(b)  If $\tau(w'b')=u\in\mathcal T$, then $w'b'=u$, so $b'=b$ and $\tau(w')=u^-$.  If
+$\tau(w'b')=(k,v)$ with $|v|\ge1$, then $w'b'=\ell v$ with $\ell\in\Lambda_k$, so $b'=b$
+and $w'=\ell v^-$, whose leaf is $\ell$; hence $\tau(w')=(k,v^-)$.  Finally
+$\tau(x)=\varepsilon$ only for $x=\varepsilon$.
+
+(c)  The tree states of band $k$ at level $\lambda$ are the pairs $(k,v)$ with
+$|v|=\lambda$.  A deep state $(k,\lambda,V)$ is determined by a word $v$ of length
+$\lambda$, and also by $V$, a tuple of Boolean functions of $n-|\ell|-\lambda$ bits,
+$\ell\in\Lambda_k$.  A tail state $(\mathrm{tail},\lambda,r)$ is determined by a word of
+length $\lambda$ that begins with a tail root, the tail roots being no prefixes of each
+other, and also by $r$, a function of $n-\lambda$ bits.
+\end{proof}
+
+The bands are filled by building the trie level by level.
+
+\begin{lemma}[Band tries]\label{lem:bandtrie}
+Let $r\ge1$, $J\subseteq\{1,\dots,r\}$ and $m=|J|+1$, and let $t_0\ge1$ and
+$A\ge t_0+r+1$ be integers.  There are a set $\mathcal T$ as in Lemma~\ref{lem:trieband},
+whose words have length less than $A$, and a split of its leaves into tail roots and
+bands, such that
+\begin{enumerate}
+\item every band consists of one leaf of some length $s$ with $t_0<s\le A-r$ and, for
+every $j\in J$, one leaf of length $s+j$;
+\item the tail roots have length $A$, and their number $N_A$ satisfies
+$2^{-A}N_A<\bigl(1-\frac1{2m}\bigr)^{A-r-t_0}+2^{-t_0}$;
+\item $|\mathcal T|<2^A$, and there are fewer than $2^A$ bands.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Put $N_0=1$, and for $s=1,\dots,A$ in turn let $B_s=D_s=0$ if $s\le t_0$, and otherwise
+\[
+ D_s=\sum_{j\in J,\ s-j>t_0}B_{s-j},\qquad
+ B_s=\begin{cases}\lfloor N_{s-1}/m\rfloor&\text{if }s\le A-r,\\0&\text{if }s>A-r,\end{cases}
+\]
+and in all cases $N_s=2N_{s-1}-B_s-D_s$.  We claim $N_s\ge N_{s-1}$.  This is clear for
+$s\le t_0$.  If it holds below some $s>t_0$, then $B_{s-j}\le N_{s-j-1}/m\le N_{s-1}/m$
+for $j\in J$, so $B_s+D_s\le(1+|J|)N_{s-1}/m=N_{s-1}$, which is the claim at $s$.
+
+Build $\mathcal T$ by levels.  It contains $\varepsilon$.  For $1\le s\le A$ the $N_{s-1}$
+words of $\mathcal T$ of length $s-1$ have $2N_{s-1}=N_s+B_s+D_s$ one-letter extensions.
+If $s<A$, put $N_s$ of them into $\mathcal T$; the other $B_s+D_s$ are leaves, $B_s$ of
+them \emph{anchors} and $D_s$ \emph{digits}.  If $s=A$, all $2N_{A-1}$ extensions are
+leaves: $B_A=0$ anchors, $D_A$ digits and $N_A$ tail roots.  Every anchor of length $s$
+opens a band.  By the definition of $D_s$, the digits of length $s$ can be matched
+one-to-one with the pairs (an anchor of length $s-j$, $j\in J$); each digit joins the band
+of its anchor.  This gives item~1, since anchors have lengths $t_0<s\le A-r$.  The words of
+$\mathcal T$ have length less than $A$, and number $\sum_{s<A}N_s\le\sum_{s<A}2^s<2^A$; the
+bands number $\sum_sB_s\le\sum_{s\le A}2^{s-1}<2^A$.
+
+For item~2 let $M_s=2^{-s}N_s$.  Then $M_{t_0}=1$ and
+$M_s=M_{s-1}-2^{-s}(B_s+D_s)\le M_{s-1}$.  For $t_0<s\le A-r$ we have
+$B_s>N_{s-1}/m-1$, so $M_s<(1-\frac1{2m})M_{s-1}+2^{-s}$, and by induction
+$M_s<(1-\frac1{2m})^{s-t_0}+\sum_{t_0<s'\le s}2^{-s'}$.  Hence
+$2^{-A}N_A=M_A\le M_{A-r}<(1-\frac1{2m})^{A-r-t_0}+2^{-t_0}$.
+\end{proof}
+
 
 
 For $d$ large, Lemma~\ref{lem:strip} is the residual DAG.  The program for an
@@ -863,7 +988,6 @@ holds $-\lambda$, and $\mathord{*}\!=-1$, $\mathord{+}\!=48$ and an output
 print it.  The start value is $-1$, the code of the root.
 \end{proof}
 
-% (after the proof of Proposition prop:dfaprog)
 
 The programs of Proposition~\ref{prop:dfaprog} spend a multiplication (exponent
 $3$) and half an increment per state.  The next construction spends neither on
@@ -1002,14 +1126,16 @@ table value.  Before that every pass ends with a negative register, and the loop
 repeats.
 \end{proof}
 
-Every construction of this section, and Lemma~\ref{lem:bstrip} with
-Proposition~\ref{prop:embprog}, was compiled and run with the interpreter's
+Every construction of this section, and Lemmas~\ref{lem:bstrip} and~\ref{lem:trieband}
+with Proposition~\ref{prop:embprog}, was compiled and run with the interpreter's
 \texttt{\_advance} on all $2^n$ inputs for $n\le11$: random, maximal-width, parity,
-constant and last-two-bits tables, $d=1,2,3$ with several $L$ and $I$ (including
-$I=0$ and the largest $I$), the leveled form, and the transition and uniqueness
-properties of Lemma~\ref{lem:bstrip}, (a) and (b), were checked on the same runs.
-Several programs were also expanded to source, parsed back to the same list, and
-run through the public entry point.
+constant and last-two-bits tables; for Lemma~\ref{lem:bstrip} $d=1,2,3$ with several $L$
+and $I$ (including $I=0$ and the largest $I$), and the leveled form; for
+Lemma~\ref{lem:trieband} the tries of Lemma~\ref{lem:bandtrie} with several $r$, $J$,
+$t_0$, $A$ and the depths $L_k$ of Proposition~\ref{prop:bracket}, and random tries with
+random bands and depths.  The transition and uniqueness properties, (a) and (b) of both
+lemmas, were checked on the same runs.  Several programs were also expanded to source,
+parsed back to the same list, and run through the public entry point.
 
 
 \section{Explicit constants}\label{sec:constants}
@@ -1055,7 +1181,6 @@ and this equals $\frac{S^2}2\bigl(4C_4^2-C_1^2-C_2^2-C_3^2\bigr)$.  The
 $O(n)$ other roots shift ranks by $O(n)$.
 \end{proof}
 
-% (Section sec:constants, after the proof of Lemma lem:profile)
 
 For the programs of Proposition~\ref{prop:embprog} the multiplications are gone,
 but the additions $\mathord{+}\!=a_q$ carry operands of size $W^2$, and a root
@@ -1097,18 +1222,24 @@ the $O(1)$ further roots change ranks by $O(1)$.
 \end{proof}
 
 
-% REPLACES Proposition prop:bracket (statement and proof)
 
 \begin{proposition}[Explicit bracket]\label{prop:bracket}
 Let $N_n$ be as in Lemma~\ref{lem:maximal-width}, $v_j$ as in Lemma~\ref{lem:ppow},
-$S_m$ and $E_{d,I}$ as in Lemma~\ref{lem:bstrip},
 $K_n=\max\bigl(N_n,\lceil T/(n+4)\rceil\bigr)$ and $g$ as in Lemma~\ref{lem:effprofile}.
-For $d\in\{1,2\}$, $d\le L$ and $L+dI<n$ put $\kappa_\ell$ as in Lemma~\ref{lem:bstrip},
+For an automaton of Lemma~\ref{lem:bstrip} with $d\in\{1,2\}$, $d\le L$ and $L+dI<n$, put
+$\kappa_\ell$, $S_m$ and $E_{d,I}$ as there, and
 \[
  Y=d(I+1)+\sum_{\ell=L+1}^{n}\min\bigl(\kappa_\ell,2^{E_{d,I}(n-\ell)}\bigr)+S_{n-d(I+1)}+2,
- \qquad S=Y+\sum_{\ell=1}^{L}\kappa_\ell,
+ \qquad S=Y+\sum_{\ell=1}^{L}\kappa_\ell,\qquad Z=\kappa_L.
 \]
-and let $\Phi_{d,L,I}=g(a,x)S^2$ with $aS=Y+\kappa_L$ and $xS=Y$.  Then:
+For an automaton of Lemma~\ref{lem:trieband} with every $L_k\ge1$, put, with $e_k$ and $t$
+as there,
+\[
+ Y=|\mathcal T|+K+\sum_{k=1}^K\sum_{\lambda>L_k}\min\bigl(2^\lambda,2^{e_k(\lambda)}\bigr)
+   +\sum_{\lambda\le n}\min\bigl(t(\lambda),2^{2^{n-\lambda}}\bigr),
+\]
+$S=Y+\sum_k(2^{L_k+1}-2)$ and $Z=\sum_k2^{L_k}$.  In both cases let
+$\Phi_{\mathcal A}=g(a,x)S^2$ with $aS=Y+Z$ and $xS=Y$.  Then:
 \begin{enumerate}
 \item for every $n\ge7$,
 \[
@@ -1118,29 +1249,23 @@ and let $\Phi_{d,L,I}=g(a,x)S^2$ with $aS=Y+\kappa_L$ and $xS=Y$.  Then:
 \item every $n$-input table has a program with
 \[
   |f|\le\bigl(1+O(1/n)\bigr)\,n\log_{10}2\cdot\Phi^*_n,\qquad
-  \Phi^*_n=\min_{d,L,I}\bigl(\Phi_{d,L,I}+O(S)\bigr).
+  \Phi^*_n=\min_{\mathcal A}\bigl(\Phi_{\mathcal A}+O(S)\bigr),
 \]
+the minimum over the parameters of both kinds of automata, which do not depend on the
+table.
 \end{enumerate}
-Put $j_1=\min\{j:2^j+j\ge n\}$, $\nu_n=n/2^{j_1}$, write
-$n=2^{j_1-1}+j_1-1+s$ with $s\ge1$, and let $u=2^{-s}$ and $\delta=\frac{u/2}{1+u/2}$.
-Then
+Moreover
 \begin{equation}\label{eq:bracket-n}
   \Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)2\log_{10}2
   \ \le\ \frac{C_P(n)\,n}{T^2}\ \le\
-  \bigl(1+o(1)\bigr)\log_{10}2\cdot\min(U_1,U_2),
+  \Bigl(1+O\bigl(\tfrac{(\log n)^2}n\bigr)\Bigr)\frac{325}8\log_{10}2 .
 \end{equation}
-where
+Consequently
 \[
-  U_1=4\nu_n^2\bigl(1+\tfrac u2\bigr)^2\bigl(\tfrac{325}8+13\delta+\delta^2\bigr),
-  \qquad U_2=\tfrac94\cdot\tfrac{325}8\,\nu_n^2,
+  2\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}\le\frac{325}8\log_{10}2 ;
 \]
-and $U_2$ is present only when $n\ge\frac7{10}2^{j_1}$.  Consequently
-\[
-  2\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}\le\frac{325}8\log_{10}2,
-  \qquad
-  2\log_{10}2\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}\le\frac{2925}{32}\log_{10}2 .
-\]
-Numerically, $0.602\le\liminf\le12.23$ and $0.602\le\limsup\le27.52$.
+numerically, both limits lie in $[0.602,12.23]$.
 \end{proposition}
 
 \begin{proof}
@@ -1167,8 +1292,9 @@ With $K=K_n\ge T/(n+4)$ and $\log K\ge n\log2-\log(n+4)$, the right side
 is at least $2\bigl(\tfrac n{n+4}\bigr)^2\log_{10}2\,\bigl(1-O(\tfrac{\log n}n)\bigr)T^2/n$,
 which is the left side of~\eqref{eq:bracket-n}.
 
-\emph{Upper bound, item 2.}  Fix $d,L,I$ and a table.  Apply
-Proposition~\ref{prop:embprog} to the automaton of Lemma~\ref{lem:bstrip}, with $E$ the
+\emph{Upper bound, item 2.}  Fix an automaton $\mathcal A$ of either kind and a table.
+
+For Lemma~\ref{lem:bstrip}, apply Proposition~\ref{prop:embprog} with $E$ the
 states $\tau(w)$, $|w|=n$, and $F$ the tree states $u$ with $|u|<L$.  By
 Lemma~\ref{lem:bstrip}(a) no tree state lies in $E$.  The successors of $u\in F$ are the
 tree states $ub$, which have length at least $2$ and whose prefix $u$ is not a prefix of
@@ -1177,13 +1303,28 @@ not the start.  So the hypotheses hold.  The states outside $F$ are the tree sta
 level $L$, the copy, deep and tail states; the dispatched states are the copy, deep and
 tail states and the at most $d$ tree states $c'b$ with $c'$ a proper prefix of $c$.
 By Lemma~\ref{lem:bstrip}(c), the multiset of effective exponents is contained, up to
-$O(1)$ states and $O(1)$ roots, in the one with $Y$
-states outside $F$ and dispatched, $\kappa_L$ tree states of level $L$ and
-$\kappa_\ell$ branching states at each level $\ell<L$, each with one opener, half of them
-$\text{if}>0$; at every level $\ell>d$ the tree words ending in $0$ and in $1$ are
-equally many.  The computation of Lemma~\ref{lem:effprofile} gives $g(a,x)S^2+O(S)$ for
+$O(1)$ states and $O(1)$ roots, in the one with $Y$ states outside $F$ and dispatched,
+$Z=\kappa_L$ tree states of level $L$, and $\kappa_\ell$ branching states at each level
+$\ell<L$, each with one opener, half of them $\text{if}>0$; at every level $\ell>d$ the
+tree words ending in $0$ and in $1$ are equally many.
+
+For Lemma~\ref{lem:trieband}, apply Proposition~\ref{prop:embprog} with $E$ the states
+$\tau(w)$, $|w|=n$, and $F$ the trie states whose two successors are trie states, together
+with the tree states $(k,v)$ with $|v|<L_k$.  By Lemma~\ref{lem:trieband}(a) no state of
+$F$ lies in $E$.  The successors of a state of $F$ are trie states other than
+$\varepsilon$, or tree states $(k,v)$ with $|v|\ge1$; by Lemma~\ref{lem:trieband}(b) each
+has a single predecessor pair, from that state, and none is the start $\varepsilon$.  So
+the hypotheses hold.  The tree states $(k,v)$ with $|v|\ge1$ are embedded, and every
+dispatched state is a trie state, a band root $(k,\varepsilon)$, a deep or a tail state.
+By Lemma~\ref{lem:trieband}(c), the multiset of effective exponents is contained, up to
+$O(1)$ roots, in the one with $Y$ states outside $F$ and dispatched, $Z$ tree states of the
+levels $L_k$, and $2^\lambda$ branching states at each level $1\le\lambda<L_k$ of each
+band, each with one opener, half of them $\text{if}>0$, because the words $v$ of length
+$\lambda\ge1$ ending in $0$ and in $1$ are equally many.
+
+In both cases the computation of Lemma~\ref{lem:effprofile} gives $g(a,x)S^2+O(S)$ for
 that multiset, and $\Phi_{\rm e}$ only grows when a root is added or an exponent raised,
-so $\Phi_{\rm e}\le\Phi_{d,L,I}+O(S)$.
+so $\Phi_{\rm e}\le\Phi_{\mathcal A}+O(S)$.
 
 Every nonleading coefficient of the source is an elementary symmetric function of
 its $D=O(S)$ roots, all of modulus greater than~$1$, so
@@ -1192,85 +1333,96 @@ its $D=O(S)$ roots, all of modulus greater than~$1$, so
 \]
 the second sum over the moduli in increasing order.  The encoder uses at most one
 prime per instruction, so the largest prime is $P=O(S\log S)$.  It suffices to
-treat triples with $S=O(T/n)$.  Indeed $g$ increases in $x\ge0$ and in
-$a\in[0,\frac54]$, and $a\ge\frac12$ because
-$\kappa_L=\sum_{\ell<L}\kappa_\ell+1$; so $\Phi_{d,L,I}\ge g(\frac12,0)S^2=\frac{325}8S^2$,
-while the triples used below have $\Phi_{d,L,I}=O(T^2/n^2)$.  Then
-$\log P\le n\log2+O(1)$.  The operands of the additions
-$\mathord{+}\!=a_q$ are $O(W^2)=O(S^2)$, those of the fixed instructions $O(W^2)$, and
-all others $O(1)$.  Hence every root satisfies $\log|\rho|\le e(\rho)\,n\log2+O(1)$
-with $e(\rho)$ its effective exponent, and by domination of the sorted sequences
+treat automata with $S=O(T/n)$.  Indeed $g$ increases in $x\ge0$ and in
+$a\in[0,\frac54]$, and $\frac12\le a\le1$: for Lemma~\ref{lem:bstrip} because
+$\kappa_L=\sum_{\ell<L}\kappa_\ell+1$, and for Lemma~\ref{lem:trieband} because
+$2^{L_k}\ge\frac12(2^{L_k+1}-2)$ and $L_k\ge1$.  So
+$\Phi_{\mathcal A}\ge g(\frac12,0)S^2=\frac{325}8S^2$, while the automata used below have
+$\Phi_{\mathcal A}=O(T^2/n^2)$.  Then $\log P\le n\log2+O(1)$.  The operands of the
+additions $\mathord{+}\!=a_q$ are $O(W^2)=O(S^2)$, those of the fixed instructions
+$O(W^2)$, and all others $O(1)$.  Hence every root satisfies
+$\log|\rho|\le e(\rho)\,n\log2+O(1)$ with $e(\rho)$ its effective exponent, and by
+domination of the sorted sequences
 $\sum_ii\log|\rho|_{(i)}\le n\log2\cdot\Phi_{\rm e}+O(D^2)$.  Also
 $\sum_k\log\binom Dk\le D^2\log2$.  Rendering adds at most $D+1$ digits and
-$O(D\log D)$ further characters, and $\Phi_{d,L,I}\ge S^2$; dividing by $\log10$
+$O(D\log D)$ further characters, and $\Phi_{\mathcal A}\ge S^2$; dividing by $\log10$
 proves the second item.
 
-\emph{Asymptotics.}  As $2^j+j\ge n$ exactly when $j\ge j_1$, we have
-$2^{j_1-1}+j_1-1<n$, and $j_1=\log_2n+O(1)$; put $j=j_1$ and $q=2^{n-j}=\nu_nT/n$.
+\emph{Upper bound, asymptotics.}  Let $n$ be large and put $\lambda_0=\lceil\log_2n\rceil$,
+$t_0=\sigma=\lambda_0$ and $A=t_0+\lambda_0+\lceil2(\lambda_0+1)\log n\rceil$.  Let $h$
+be the largest integer with $2^{h-1}\le n^*$, where $n^*=n-h-A-\sigma$; as $n^*$ decreases
+in $h$, it exists, and $h\ge2$ for large $n$.  By maximality $2^h>n-(h+1)-A-\sigma=n^*-1$,
+so $x=n^*/2^{h-1}\in[1,2]$.  Put $r=h-1$, so $1\le r\le\lambda_0$, let
+$y=\min\bigl(\lfloor(x-1)2^r\rfloor,2^r-1\bigr)2^{-r}$, and let $J\subseteq\{1,\dots,r\}$
+be the set with $y=\sum_{j\in J}2^{-j}$.  Then
+\[
+ C=2^{h-1}(1+y)\quad\text{satisfies}\quad n^*-1\le C\le n^* :
+\]
+$y\le x-1$ gives $C\le n^*$; if $x<2$ then $y>x-1-2^{-r}$ and $C>n^*-2^{h-1-r}=n^*-1$; if
+$x=2$ then $C=2^h-1=n^*-1$.
 
-The term $U_1$: $d=1$, $c=0$, $L=n-j+1$, $I=j-2$, so $L+I=n-1$.  Here
-$\kappa_\ell=2^{\ell-1}$ and $\sum_{\ell\le L}\kappa_\ell=2^L-1$, with $2^L=2q$.  As
-$E_{1,I}(m)\le2^{m+1}-1$ and $2^{j-1}=L-s$, level $L+1$ has at most
-$2^{2^{j-1}-1}=\frac u2\,2^L$ deep states, and each of the at most $j$ deeper
-levels at most $2^{2^{j-2}}=2^{(L-s)/2}$.  The tail has $n'=n-j+1=L$ and at most
-$S_L+2=O(2^L/L)$ states, and there are $O(j)$ copy states.  So
-$S=2q(1+\frac u2+o(1))$, $x=\delta+o(1)$ and $a=\frac{1+\delta}2+o(1)$, and
-Lemma~\ref{lem:effprofile} gives $U_1$, since
-$(Sn/T)^2=4\nu_n^2(1+\frac u2)^2(1+o(1))$.
-
-The term $U_2$: $d=2$, $c=00$, $L=n-j$, $I=\lceil j/2\rceil-1$, so $L+2I\le n-1$.  Here
-$\kappa_\ell=3\cdot2^{\ell-2}$ for $\ell\ge2$ and
-$\sum_{\ell\le L}\kappa_\ell=\frac32\,2^L(1+o(1))$.  Every deep level has at most
-$2^{E_2(j-1)}\le2^{\frac23 2^j}$ states, since $E_2(m)\le\frac432^m$; if
-$n\ge\frac7{10}2^j$, then $\frac232^j+\log_2j-(n-j)\le j+\log_2j-\frac1{30}2^j\to-\infty$,
-so the deep states number $o(2^{n-j})$.  The tail has $n'=n-2\lceil j/2\rceil\le L$
-and $O(2^L/L)$ states, and there are $O(j)$ copy states.  So
-$S=\frac32q(1+o(1))$, $x=o(1)$ and $a=\frac12+o(1)$, since level $L$ carries half of
-the tree, and $g\to\frac{325}8$ gives $U_2$.  In both cases
-$S=O(T/n)$, and the error $O(S)$ in $\Phi^*_n$ is $o(S^2)$.
-
-For the limits, along $n=2^{j-1}+2j$ we have $s=j+1$, so $u\to0$ and $\nu_n\to\frac12$,
-and $U_1$ tends to $\frac{325}8$.  For the limit superior, if
-$n\ge\frac7{10}2^{j_1}$, then $U_2$ is at most
-$\frac94\cdot\frac{325}8\bigl(1+j_1/2^{j_1}\bigr)^2\to\frac{2925}{32}$.  Otherwise
-$\nu_n<\frac7{10}$; if $s\le6$, then $\nu_n\to\frac12$, $u\le\frac12$ and
-$\delta\le\frac15$, and $U_1$ is at most
-$(\frac54)^2(\frac{325}8+\frac{13}5+\frac1{25})+o(1)<68$; if $s\ge7$, then
-$u\le2^{-7}$, $\delta<2^{-8}$, and $U_1$ is at most
-$4(0.7)^2(1+2^{-8})^2(\frac{325}8+\frac{13}{256}+2^{-16})+o(1)<81$.  Both are below
-$\frac{2925}{32}=91.4\ldots$.
+Take $\mathcal T$ and the bands of Lemma~\ref{lem:bandtrie} with these $r,J,t_0,A$, and give
+the band whose shortest leaf has length $s$ the depth $L_k=n-h-s$.  For
+$\ell\in\Lambda_k$, $|\ell|+L_k\le s+r+n-h-s=n-1$, and $L_k\ge n-h-A=n^*+\sigma\ge1$; so
+Lemma~\ref{lem:trieband} applies, and
+$e_k(L_k+1)=\sum_{j\in\{0\}\cup J}2^{\,h-1-j}=C$.  We bound the terms of $S$.
+\begin{itemize}
+\item The band has mass $\mu_k=\sum_{\ell\in\Lambda_k}2^{-|\ell|}=2^{-s}(1+y)$, so
+$2^{L_k+1}=2^{\,n-h+1-s}=2^n\mu_k/C$.  The leaves are no prefixes of each other, so
+$\sum_k\mu_k\le1$ and $\sum_k(2^{L_k+1}-2)<2^n/C$.
+\item The deep states of level $L_k+1$ number at most $2^C\le2^{n^*}\le2^{L_k-\sigma}$,
+in all at most $2^{-\sigma-1}2^n/C\le2^n/(2nC)$.  At the levels $L_k+t$, $t\ge2$, the
+exponent is $e_k=2^{1-t}C\le n/2$; with fewer than $2^A$ bands and at most $n$ levels,
+these deep states number less than $n2^{A+n/2}$.
+\item The tail roots have length $A$, and since $m\le r+1\le\lambda_0+1$ and
+$A-r-t_0\ge2(\lambda_0+1)\log n$, Lemma~\ref{lem:bandtrie} gives
+$2^{-A}N_A<e^{-\log n}+2^{-t_0}\le2/n$.  At a level $\lambda\le n-\lambda_0+3$ there are
+at most $2^{\lambda-A}N_A$ tail states, together at most $(2/n)2^{\,n-\lambda_0+4}\le32T/n^2$;
+at each of the at most $\lambda_0$ higher levels, $2^{n-\lambda}\le2^{\lambda_0-4}\le n/8$,
+so there are at most $2^{n/8}$.
+\item $|\mathcal T|+K<2^{A+1}$.
+\end{itemize}
+Since $A=O((\log n)^2)$, $h,\sigma=O(\log n)$ and $C\ge n^*-1=n-O((\log n)^2)$, this gives
+$Y=O(T/n^2)$ and $S\le\bigl(1+O((\log n)^2/n)\bigr)T/n$.  Also
+$Z=\frac12(S-Y)+K$, so $a=\frac12+O(1/n)$ and $x=O(1/n)$, and
+$g(a,x)=\frac{325}8+O(1/n)$, $g$ being a polynomial.  Item~2 gives
+$C_P(n)\le\bigl(1+O((\log n)^2/n)\bigr)\frac{325}8\log_{10}2\cdot T^2/n$, the right side
+of~\eqref{eq:bracket-n}.  The limits follow.
 \end{proof}
 
 
-% REPLACES Remark rem:bracket
 
 \begin{remark}[What the bracket says]\label{rem:bracket}
-The two sides of~\eqref{eq:bracket-n} differ by the factor
-$\frac{325}{16}=20.3$ at the limit inferior and $\frac{2925}{64}=45.7$ at the
-limit superior.  So Proposition~\ref{prop:bracket} fixes the order, but
-it does not fix the constant.  The factor splits as follows.
+The two sides of~\eqref{eq:bracket-n} differ by the factor $\frac{325}{16}=20.3$, at
+both limits.  So Proposition~\ref{prop:bracket} fixes the order, but it does not fix the
+constant.  The factor splits as follows.
 \begin{itemize}
 \item \emph{Routing contributes nothing.}  The lower bound credits one input
 root value to every first-essential residual at one level
 (Theorem~\ref{thm:count}), and Proposition~\ref{prop:sharp} shows the credit
 cannot be raised.
-\item \emph{Levels: $(S/(T/n))^2\in[1,\frac94]$.}  The lower bound charges
-$T/n$ input values (Proposition~\ref{prop:counting}).  The bounded stripped automaton
-with $d=1$ has $2\nu_n(1+\frac u2)T/n$ states, which is $T/n$ when $\nu_n\to\frac12$
-and $u\to0$: there the state count is sharp to first order.  Near $\nu_n=1$ the
-automaton with $d=2$ pays $\frac32T/n$ for every table, and the residual DAG $2T/n$.
-Whether some automaton does better for all tables near $\nu_n=1$ is open; the true
-minimum lies in $[1,\frac32]\cdot T/n$.
-\item \emph{Profile: $g/2=\frac{325}{16}$ at both limits.}  The lower bound charges
+\item \emph{Levels contribute nothing.}  The lower bound charges $T/(n+4)$ input values
+(Proposition~\ref{prop:counting}).  For every $n$ and every table, the automaton of
+Lemmas~\ref{lem:trieband} and~\ref{lem:bandtrie} used in the proof has
+$(1+O((\log n)^2/n))T/n$ states, and its program has one input value per state.  So
+$(S/(T/n))^2\to1$: the worst-case minimal automaton has $(1+o(1))T/n$ states, and the
+earlier gap for the $n$ with $N_n$ close to $T/n$, between $T/n$ and the $\frac32T/n$ of
+the bounded stripped automaton with $d=2$, is closed.  What closes it is the choice of the bands: a deep state
+below band $k$ records $e_k(L_k+1)=2^{h-1}(1+y)$ bits, $y$ has the binary digits given by
+the lengths of the leaves of the band, and so this number can be placed just below the
+depth of the tree.  The bounded stripped automaton offers only the numbers
+$2^{n-L-1}(1-2^{-d(I+1)})/(1-2^{-d})$.  At small $n$ it can still be the better of the two,
+which is why item~2 of Proposition~\ref{prop:bracket} takes the minimum over both.
+\item \emph{Profile: $g/2=\frac{325}{16}$.}  The lower bound charges
 each input pair as one real root $c^2$, which is exact for pairs
 alone~\cite[Corollary~5.3]{coefficient-mass}, and
 $\sum_{j\le K}j\log v_j^2\sim2K^2\log K$ gives the mass constant $2$.  The
 construction pays $g=\frac{325}8$ per state squared: an input ($2,2$), a closing
 bracket ($2$), an opener ($1$ or $4$), and either $\mathord{+}\!=-48$ ($1,1$) or one
 addition that encodes both successor codes (effective $2,2$), the latter for half of the
-states.  Bounding the number of stripped copies (Lemma~\ref{lem:bstrip}) keeps the end
-of input away from the tree, so no state pays for it at leading order, and the
-dispatch increments are paid only by the $o(S)$ dispatched states.
+states.  No tree state can see the end of the input (Lemma~\ref{lem:trieband}(a)), so no
+state pays for it at leading order, and the dispatched states, which pay the dispatch
+increments, are $o(S)$.
 \end{itemize}
 Charging the forced real roots together with the input pairs would help, but the
 multisection proof of~\cite[Corollary~5.3]{coefficient-mass} needs $P=R(x^2)$ with
@@ -1282,7 +1434,6 @@ narrows the bracket.  Remark~\ref{rem:parity} shows that the pair charge doubles
 unless the source is even or odd.
 \end{remark}
 
-% (new, after rem:bracket)
 
 \begin{remark}[Even and odd sources]\label{rem:parity}
 Write a source as $f(x)=E_0(x^2)+xE_1(x^2)$.  If $f$ is divisible by
