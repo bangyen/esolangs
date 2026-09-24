@@ -1,6 +1,7 @@
 """Shared fixtures for the esolangs test suite."""
 
 import contextlib
+import time
 from collections.abc import Generator
 from pathlib import Path
 
@@ -50,6 +51,20 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         item.add_marker(pytest.mark.timeout(hard_ceiling(markers)))
 
 
+#: CPU time the call phase spent, read back when its band is checked.
+_CPU_TIME = pytest.StashKey[float]()
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_call(item: pytest.Item) -> Generator[None, object, object]:
+    """Record the call's CPU time, so a starved test can be told from a slow one."""
+    started = time.process_time()
+    try:
+        return (yield)
+    finally:
+        item.stash[_CPU_TIME] = time.process_time() - started
+
+
 @pytest.hookimpl(wrapper=True)
 def pytest_runtest_makereport(
     item: pytest.Item, call: pytest.CallInfo[object]
@@ -60,7 +75,7 @@ def pytest_runtest_makereport(
     if report.when != "call" or not report.passed:
         return report
     markers = {marker.name for marker in item.iter_markers()}
-    message = violation(markers, report.duration)
+    message = violation(markers, report.duration, item.stash.get(_CPU_TIME, None))
     if message is not None:
         report.outcome = "failed"
         report.longrepr = message
