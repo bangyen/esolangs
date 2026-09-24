@@ -744,16 +744,16 @@
   },
   "SLOW ACV MAMMALIAN": {
    "0110": {
-    "commands": 3583,
-    "source_units": 40555
+    "commands": 2917,
+    "source_units": 23330
    },
    "01101001": {
-    "commands": 4644,
-    "source_units": 58472
+    "commands": 3562,
+    "source_units": 28055
    },
    "0110100110010110": {
-    "commands": 6314,
-    "source_units": 81510
+    "commands": 4590,
+    "source_units": 40837
    }
   },
   "Sophie": {
