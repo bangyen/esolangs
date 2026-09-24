@@ -562,9 +562,14 @@ class TestTheCoordinateOrderIsRowThenColumn:
 
         The other half of the pincer: these cannot move along a row first,
         so the component that changes is the row.
+
+        Flowchart is asked for a width: unconstrained it now answers with
+        the two-row deque lookup, whose entry node sits on a row and steps
+        along it, and only the tree the width brings back starts downward.
         """
+        widths = {"Flowchart": 1}
         for name in ("Dig", "Flowchart", "LaserFuck", "Streetcode"):
-            program, stdin = _row_for(name)
+            program, stdin = _row_for(name, widths.get(name))
             before, after = _first_move_pair(name, program, stdin)
             assert before[0] != after[0], name
             assert before[1] == after[1], name
@@ -576,10 +581,14 @@ class TestTheCoordinateOrderIsRowThenColumn:
         assert "not stable within" in doc  # the older warning survives
 
 
-def _row_for(name: str) -> tuple[str, str]:
+def _row_for(name: str, width: int | None = None) -> tuple[str, str]:
     """A runnable program and its stdin for a two-input table."""
     table = "0110"
-    program = esolangs.generate(name, table)
+    program = (
+        esolangs.generate(name, table)
+        if width is None
+        else esolangs.generate(name, table, width)
+    )
     if esolangs.describe(name)["parameterized"]:
         return esolangs.instantiate(name, program, [0, 0]), ""
     return program, esolangs.encode_inputs(name, [0, 0], table)

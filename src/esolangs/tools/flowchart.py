@@ -186,18 +186,24 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     unconstrained programs preload a pair of answers onto each deque and let
     the input walk the deque cursor to the pair it wants (two rows, O(T):
     about 11 characters an entry, where popping halves of one deque cost
-    80).  Small or width-constrained programs draw a decision
-    tree: ``/ /`` reads a bit, ``< >`` switches, each leaf sets, prints and
-    halts.  Leaves sit flush on one ``(( ))`` pitch (dropping the gutter
-    took ``n = 4`` from 2444 to 1557 chars).  The tree draws ``2**n - 1``
-    read nodes but any run executes ``n``, so a folded leaf carries its
+    80).  Width-constrained programs, and the few small tables that fold,
+    draw a decision tree: ``/ /`` reads a bit, ``< >`` switches, each leaf
+    sets, prints and halts.  Leaves sit flush on one ``(( ))`` pitch
+    (dropping the gutter took ``n = 4`` from 2444 to 1557 chars).  The tree
+    draws ``2**n - 1`` read nodes but any run executes ``n``, so a folded
+    leaf carries its
     skipped reads -- spatial duplication like an unrolled brainfuck branch,
     not the once-only rule of ``tools.parameterized``, since Flowchart reads
     input.  A deque-first construction (a ``4n``-row prologue, relying on
-    FIFO pop-bottom) was verified and shelved.  Without a width both
-    layouts are built and the shorter wins; ``width`` under ``2 ** n``
+    FIFO pop-bottom) was verified and shelved.  Without a width all three
+    layouts are built and the shortest wins.  Once the deque form came down
+    to its two rows it took the small arities too -- at ``n = 4`` it is 284
+    characters against the tree's 1395, and it wins every table at
+    ``n = 2, 3, 4`` bar the two constants, which fold to a single leaf the
+    deque still has to spell out entry by entry.  ``width`` under ``2 ** n``
     stacks the tree (:func:`_flowchart_stacked`) at ``n + 5`` columns, and
-    under that floor the narrower is returned.
+    under that floor the narrower is returned; the deque is never a
+    candidate there, its two rows being as long as the table.
     """
     _validate_truth_table(truth_table)
     if len(truth_table) > 16 and width is None:
@@ -207,7 +213,7 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
         return flat
     stacked = _flowchart_render(_flowchart_stacked(truth_table))
     if width is None:
-        return min((flat, stacked), key=len)
+        return min((flat, stacked, _flowchart_deque(truth_table)), key=len)
     if max(len(line) for line in stacked.split("\n")) < max(
         len(line) for line in flat.split("\n")
     ):
