@@ -205,7 +205,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, and a folded subtree targets the shared self-jump or the line past the end | linear: 3(T - 1) + 2n + 3 lines, span walk |
 | CV(N)(C) | tree | the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts | linear, time n log: greedy order scoring, capped at n <= 10 |
 | Decleq | tree | the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits | linear, time n log: essential_inputs |
-| Dig | tree | finite cell placement | linear: axis-swapping rectangle of area O(T), five cells per node |
+| Dig | tree | finite cell placement | linear: axis-swapping rectangle of area O(T), four-cell nodes with side operands |
 | Dimensional | tree | `decision_tree_program` with dimensional moves | linear: decision_tree_program with dimensional moves |
 | EGL | tree | — | linear, time n log: greedy order scoring, capped at n <= 10 |
 | Eval | linear lookup | fixed reversed stack order selects the indexed row | linear: T literal plus halving `;` runs under T |
