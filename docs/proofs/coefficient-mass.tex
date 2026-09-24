@@ -3607,6 +3607,254 @@ $\frac78L$, so for $L\ge16$
 with $\frac78\log\frac95=0.5143\ldots$ and $\frac1{16}\log10=0.1439\ldots$;
 there are $\lfloor L/16\rfloor\ge L/32$ such rows, so $\Lambda(F)\ge L^2/96$.
 
+\paragraph{Spare roots.}  Theorem~\ref{thm:bothsigns} drops, for each excluded
+position, the largest root of each sign.  The rest of this subsection sets up
+certificates that drop the smallest roots instead, as \eqref{eq:bothrows}
+below asks, and proves the row $k=2$ up to a constant factor.  Write
+$\|A\|_1$ for the sum of the absolute values of the coefficients of a
+polynomial or power series $A$; it is submultiplicative, and for $|r|>1$
+\[
+  \Bigl\|\frac x{x-r}\Bigr\|_1=\Bigl\|\frac1{x-r}\Bigr\|_1=\frac1{|r|-1}.
+\]
+As in Lemma~\ref{lem:consecutive}, $h_n$ denotes the complete homogeneous
+symmetric polynomial of degree $n$, with $h_n=0$ for $n<0$.
+
+\begin{lemma}[Certificates with spare roots]\label{lem:sparecert}
+Let $F\in\R[x]$ be a nonzero multiple of $P=\prod_{i=1}^L(x-r_i)$, with
+$r_i$ real, $|r_i|>1$, repetitions allowed, and put $y_i=1/r_i$ and
+$h_n=h_n(y_1,\ldots,y_L)$.  Let $1\le K\le L-1$ and $c=L-K$, let $W$ be a
+set of positive integers, and let $\nu=\sum_{l=0}^K\nu_lx^l$ with $\nu_K=1$
+satisfy
+\begin{equation}\label{eq:sparecond}
+  \sum_{l=0}^K\nu_l\,h_{z-c-l}=0\qquad(z\in W).
+\end{equation}
+Let $U$ be the set of positions $j<D$ with $D-j\in W$.  Then
+\[
+  \max_{j<D,\ j\notin U}|f_j|\ \ge\ |f_D|\,
+  \frac{\prod_{i=1}^L(|r_i|-1)}{\|\nu\|_1}.
+\]
+\end{lemma}
+
+\begin{proof}
+Let $\Delta(x)=x^c\nu(x)/P(x)=\sum_{d\ge0}\delta_dx^d$, a power series since
+$P(0)\ne0$, with $\delta_0=0$ as $c\ge1$.  Since $x^c\nu$ is monic of degree
+$L$, $1-\Delta=N/P$ with $\deg N\le L-1$.  If $F=PQ$ then $(1-\Delta)F=NQ$ has
+degree at most $D-1$, so $[x^D]\bigl((1-\Delta)F\bigr)=0$, that is,
+\[
+  f_D=\sum_{d=1}^D\delta_d\,f_{D-d}.
+\]
+This is the identity of Lemma~\ref{lem:slack}, with repeated roots allowed.
+From $P(x)=\prod_i(-r_i)\prod_i(1-y_ix)$ we get
+$1/P(x)=(-1)^L(\prod_iy_i)\sum_{n\ge0}h_nx^n$, so
+$\delta_z=(-1)^L(\prod_iy_i)\sum_l\nu_lh_{z-c-l}=0$ for $z\in W$.  Hence
+$|f_D|\le\max_{j<D,j\notin U}|f_j|\cdot\|\Delta\|_1$.  Finally split the roots
+into the $c$ roots of a factor $P_1$ and the $K$ roots of $P_2=P/P_1$; then
+$\Delta=(x^c/P_1)\sum_l\nu_l\,x^l/P_2$, and for $0\le l\le K$ the series
+$x^l/P_2$ is a product of $l$ factors $x/(x-r)$ and $K-l$ factors $1/(x-r)$,
+$r$ running over the roots of $P_2$.  So
+$\|\Delta\|_1\le\|\nu\|_1\prod_{i=1}^L(|r_i|-1)^{-1}$.
+\end{proof}
+
+With $\nu=x^K$, \eqref{eq:sparecond} holds for every $z\le L-1$, and $\Delta$
+is the consecutive certificate of Lemma~\ref{lem:consecutive} on all $L$
+nodes.  The point of the lemma is that the $K$ free coefficients of $\nu$ can
+pay for excluded positions, while the price $\|\nu\|_1$ is compared with the
+product over all roots.  For roots of one sign, $K=k-1$ free coefficients can
+meet $k-1$ conditions; for both signs one needs $K=2k-2$, and this is exactly
+Descartes' rule of signs.
+
+\begin{proposition}[Two spare roots per excluded position]
+\label{prop:sparedescartes}
+Let $y_1,\ldots,y_L$ be nonzero reals, $k\ge1$, $2k-2\le K\le L-1$,
+$c=L-K$, and let $W$ be a set of at most $k-1$ positive integers.  Then some
+$\nu$ of degree $K$ with $\nu_K=1$ satisfies \eqref{eq:sparecond}.  If all
+$y_i>0$, then $k-1\le K\le L-1$ suffices.  The bound $2k-2$ cannot be lowered:
+for $L=2$, $(y_1,y_2)=(\frac12,-\frac12)$, $K=1$ and $W=\{4\}$ there is no
+such $\nu$.
+\end{proposition}
+
+\begin{proof}
+Put $m_z=z-c$.  A row of \eqref{eq:sparecond} with $m_z<0$ is identically
+zero, so we may assume $m_z\ge0$ for all $z\in W$.  The affine system
+\eqref{eq:sparecond} in $\nu_0,\ldots,\nu_{K-1}$ is solvable unless some
+$(\lambda_z)_{z\in W}$ has
+\[
+  \chi_l=\sum_{z\in W}\lambda_zh_{m_z-l}
+\]
+equal to $0$ for $0\le l<K$ and different from $0$ for $l=K$.  Suppose
+$\chi_l=0$ for $l<K$.  Let $N=\max_zm_z$, $Y(x)=\prod_i(1-y_ix)$ and
+$\Lambda(x)=\sum_z\lambda_zx^{N-m_z}$, a polynomial of degree at most $N$ with
+at most $k-1$ terms.  The power series $\Lambda/Y=\sum_n\sigma_nx^n$ has
+$\sigma_n=\sum_z\lambda_zh_{n-N+m_z}$, so $\chi_l=\sigma_{N-l}$; we must show
+$\sigma_{N-K}=0$, which is trivial if $N<K$.  Let
+$T=\sum_{n\le N}\sigma_nx^n$; by assumption $\deg T\le N-K$.  Since
+$Y\cdot(\Lambda/Y-T)$ has only terms of degree above $N$,
+\[
+  A:=YT=\Lambda+x^{N+1}R,\qquad \deg R\le N-K+L-(N+1)=c-1 .
+\]
+If $T\ne0$ then $A\ne0$ (as $Y(0)=1$), and $A$ vanishes at the $L$ nonzero
+reals $1/y_i$, with multiplicity.  By Descartes' rule, the number of positive
+and of negative zeros of $A$ is at most the number of sign changes $V$ of the
+coefficient sequence $(a_j)$ of $A$ and $V^-$ of $((-1)^ja_j)$.  A pair of
+consecutive nonzero coefficients $a_d,a_{d'}$, $d<d'$, contributes at most
+$\min(2,d'-d)$ to $V+V^-$, since for $d'=d+1$ exactly one of the two sequences
+changes sign there.  The pairs inside the degrees $N+1,\ldots,N+c$ contribute
+at most $c-1$ in total; every other pair has its left member among the at
+most $k-1$ coefficients of $\Lambda$ and contributes at most $2$.  So
+$L\le V+V^-\le c-1+2(k-1)\le L-1$, a contradiction.  Hence $T=0$ and
+$\sigma_{N-K}=0$.  If all $y_i>0$, all zeros of $A$ are positive and
+$L\le V\le c-1+(k-1)$, which fails once $K\ge k-1$.  In the example, $c=1$,
+$m=3$, and \eqref{eq:sparecond} reads $h_2+\nu_0h_3=0$, while
+$h_n(\frac12,-\frac12)=2^{-n}$ for even $n$ and $0$ for odd $n$.
+\end{proof}
+
+The proposition is qualitative.  For $k=2$ it can be made quantitative with
+the following positivity of complete homogeneous polynomials of even degree,
+which is due to Hunter~\cite{hunter}; we need it with explicit constants.
+
+\begin{lemma}[Truncated exponentials]\label{lem:truncexp}
+Let $e_n(u)=\sum_{i=0}^nu^i/i!$ and let $n\ge2$ be even.  For every real $u$,
+\[
+  e_n(u)>0,\qquad e_{n-2}(u)\le16\,e_n(u),\qquad |e_{n-1}(u)|\le6\,e_n(u).
+\]
+\end{lemma}
+
+\begin{proof}
+For $u\ge0$ we have $0<e_{n-2}(u)\le e_{n-1}(u)\le e_n(u)$.  Let $u=-a$ with
+$a>0$.  As $n$ is even,
+$\frac d{da}\bigl(e^ae_n(-a)\bigr)=e^a\bigl(e_n(-a)-e_{n-1}(-a)\bigr)=e^aa^n/n!$,
+so
+\[
+  e_n(-a)=e^{-a}+\frac1{n!}\int_0^a(a-v)^ne^{-v}\,dv
+  \ \ge\ e^{-a}+\frac{a^{n+1}}{n!}\int_0^1(1-w)^{n+a}\,dw
+  =e^{-a}+\frac{a^{n+1}}{(n+a+1)\,n!},
+\]
+using $e^{-aw}\ge(1-w)^a$.  In particular $e_n(-a)>0$, and
+\begin{equation}\label{eq:truncexp1}
+  \frac{a^n}{n!}\le\Bigl(1+\frac{n+1}a\Bigr)e_n(-a).
+\end{equation}
+Let $\beta=0.278$, so that $\beta e^{1+\beta}=0.9978\ldots<1$.  Since
+$a^je^a$ increases in $a>0$ and $n!\ge\sqrt{2\pi n}\,(n/e)^n$, for
+$0<a\le\beta n$
+\begin{equation}\label{eq:truncexp2}
+  \frac{a^n}{n!}\le e^{-a}\,\frac{(\beta e^{1+\beta})^n}{\sqrt{2\pi n}}\le e^{-a},
+  \qquad
+  \frac{a^{n-1}}{(n-1)!}\le e^{-a}\,\frac{(\beta n)^ne^{\beta n}}{\beta\,n!}
+  \le\frac{e^{-a}}{\beta\sqrt{2\pi n}} .
+\end{equation}
+
+\emph{The odd index.}  $e_{n-1}(-a)=e_n(-a)-a^n/n!$, so
+$|e_{n-1}(-a)|\le\max\bigl(e_n(-a),a^n/n!\bigr)$.  If $a\le\beta n$,
+\eqref{eq:truncexp2} gives $a^n/n!\le e_n(-a)$.  If $a>\beta n$ and $n\ge4$,
+\eqref{eq:truncexp1} gives $a^n/n!\le(1+\frac5{4\beta})e_n(-a)\le5.5\,e_n(-a)$.
+If $n=2$, $a^2/2\le(a-1)^2+1=2e_2(-a)$.
+
+\emph{The index $n-2$.}  $e_{n-2}(-a)=e_n(-a)+\frac{a^{n-1}}{(n-1)!}(1-\frac an)$.
+If $a\ge n$ this is at most $e_n(-a)$.  If $n=2$, $e_0=1\le2e_2(-a)$ because
+$e_2(-a)=\frac12\bigl((a-1)^2+1\bigr)$.  Let $n\ge4$ and $a<n$.  If
+$a\le\beta n$, \eqref{eq:truncexp2} bounds the extra term by
+$e^{-a}/(\beta\sqrt{8\pi})\le e_n(-a)$, as $\beta\sqrt{8\pi}=1.39\ldots$.  If
+$\beta n<a<n$, write $a=\alpha n$; by \eqref{eq:truncexp1} the extra term is
+\[
+  \frac{a^n}{n!}\cdot\frac{n-a}a\le\frac{(n+a+1)(n-a)}{a^2}\,e_n(-a)
+  \le\Bigl(\frac5{4\alpha^2}-\frac1{4\alpha}-1\Bigr)e_n(-a)
+  \le14.3\,e_n(-a),
+\]
+since $1/n\le\frac14$ and the bracket decreases in $\alpha\in(0,1)$.  So
+$e_{n-2}(-a)\le15.3\,e_n(-a)$.
+\end{proof}
+
+\begin{lemma}[Even complete homogeneous polynomials]\label{lem:evenh}
+Let $y_1,\ldots,y_L$ be real, not all $0$, let $T=\max_i|y_i|$ and
+$h_n=h_n(y_1,\ldots,y_L)$.  For every even $n\ge2$,
+\[
+  h_n>0,\qquad T^2h_{n-2}\le16\,h_n,\qquad T\,|h_{n-1}|\le6\,h_n .
+\]
+\end{lemma}
+
+\begin{proof}
+Let $X_1,\ldots,X_L$ be independent exponential random variables of mean
+$1$.  Expanding and using $\mathbb E X^a=a!$,
+$\mathbb E\bigl[(\sum_iy_iX_i)^j\bigr]=j!\,h_j$ for every $j\ge0$.  Replacing
+$y$ by $-y$ multiplies $h_j$ by $(-1)^j$ and changes none of the claims, so we
+may assume $y_1=T>0$.  For real $r$,
+$\mathbb E(TX_1+r)^j=\sum_i\binom jiT^ii!\,r^{j-i}=j!\,T^je_j(r/T)$.
+Conditioning on $R=\sum_{i\ge2}y_iX_i$, which is independent of $X_1$, gives
+$h_j=\mathbb E\bigl[T^je_j(R/T)\bigr]$ for all $j$, and
+Lemma~\ref{lem:truncexp}, applied pointwise at $u=R/T$, gives the three
+claims.
+\end{proof}
+
+\begin{theorem}[The second row at real roots of both signs]\label{thm:secondrow}
+Let $F\in\mathbb C[x]$ be a nonzero multiple of $\prod_{i=1}^L(x-r_i)$,
+$L\ge3$, with $r_i$ real, $|r_i|\ge2$, repetitions allowed, and moduli
+$\rho_1\le\cdots\le\rho_L$.  Then
+\[
+  b_2(F)\ \ge\ |f_D|\,\frac{(\rho_1-1)(\rho_2-1)}{1+16\rho_1^2}
+  \prod_{i=3}^L(\rho_i-1)
+  \ \ge\ \frac{|f_D|}{65}\prod_{i=3}^L(\rho_i-1).
+\]
+\end{theorem}
+
+\begin{proof}
+For complex $F$ apply the real case to $\operatorname{Re}(F/f_D)$, as in the
+proof of Corollary~\ref{cor:complex}; so let $F$ be real.  As in the proof of
+Theorem~\ref{thm:order}, it suffices to show that for every position $u<D$
+some $j<D$, $j\ne u$, has $|f_j|$ at least the first bound.  Put $z=D-u$,
+$K=2$, $c=L-2$, $m=z-c$, $y_i=1/r_i$ and $h_n=h_n(y_1,\ldots,y_L)$, so that
+$T=\max_i|y_i|=1/\rho_1$.  Define
+\[
+  \nu=\begin{cases}
+    x^2 & m\le1,\\[2pt]
+    x^2-h_{m-2}/h_m & m\ge2\text{ even},\\[2pt]
+    x^2-(h_{m-2}/h_{m-1})\,x & m\ge3\text{ odd}.
+  \end{cases}
+\]
+The denominators are positive by Lemma~\ref{lem:evenh}, and in each case
+$\sum_l\nu_lh_{m-l}=0$, which is \eqref{eq:sparecond} for $W=\{z\}$ (for
+$m\le1$ because $h_{m-2}=0$).  By Lemma~\ref{lem:evenh},
+$h_{m-2}/h_m\le16\rho_1^2$ for even $m$ and $|h_{m-2}|/h_{m-1}\le6\rho_1$ for
+odd $m$, so $\|\nu\|_1\le1+16\rho_1^2$, as $\rho_1\ge2$.
+Lemma~\ref{lem:sparecert} with $U=\{u\}$ gives the first bound.  For the
+second, $(\rho_1-1)(\rho_2-1)\ge(\rho_1-1)^2$, and $(\rho-1)^2/(1+16\rho^2)$
+increases for $\rho\ge1$, with value $1/65$ at $\rho=2$.
+\end{proof}
+
+The spare roots are the two of smallest modulus, as in \eqref{eq:bothrows},
+and the proof uses only the largest node $1/\rho_1$.  Two limits of the method
+are worth recording.  First, Lemma~\ref{lem:sparecert} alone cannot give the
+constant $1$: for one excluded distance the least $\|\nu\|_1$ is
+$1+|h_{m-2}|/\max(|h_m|,|h_{m-1}|)$, and for the roots $2,-2,R$ and even $m$
+this tends to $5$ as $R\to\infty$, while $(\rho_1-1)(\rho_2-1)=1$.  Second,
+for $k\ge3$ Lemma~\ref{lem:sparecert} and
+Proposition~\ref{prop:sparedescartes} reduce \eqref{eq:bothrows}, up to a
+factor $(2\kappa)^{2k-2}$, to the bound
+\begin{equation}\label{eq:nuconj}
+  N_{2k-2}(y;W)\ \le\ \kappa^{2k-2}\prod_{j=1}^{2k-2}\rho_j
+  \qquad(|W|\le k-1)
+\end{equation}
+for the least $\|\nu\|_1=:N_{2k-2}(y;W)$ over the $\nu$ of
+Proposition~\ref{prop:sparedescartes}, the spare roots being those of
+moduli $\rho_1,\ldots,\rho_{2k-2}$; indeed
+$\prod_{j\le2k-2}(\rho_j-1)\ge2^{2-2k}\prod_{j\le2k-2}\rho_j$.
+Theorem~\ref{thm:secondrow} is \eqref{eq:nuconj} for $k=2$ with
+$\kappa^2=\frac{65}4$.  By linear programming duality,
+$N_{2k-2}(y;W)-1$ is the largest $|\chi_{2k-2}|$ over the $\lambda$ with
+$|\chi_l|\le1$ for $l<2k-2$, in the notation of the proof of
+Proposition~\ref{prop:sparedescartes}: \eqref{eq:nuconj} says that a
+combination of $k-1$ shifted copies of $(h_n)$ cannot be small at $2k-2$
+consecutive places and large at the next one, which is a quantitative form of
+the sign count in that proof.  For $k=2$ the pivot was an $h$ of even index, chosen by
+the parity of $m$; for $k\ge3$ the determinants of the square subsystems of
+\eqref{eq:sparecond} are skew Schur functions in variables of both signs,
+which have no sign, and we have no substitute for Lemma~\ref{lem:evenh}.  We computed $N_{2k-2}(y;W)$ exactly, by enumerating the
+supports of the basic solutions of the linear program, on random rational
+root sets with near-pairs $r,-r(1+\eta)$ and moduli between $2$ and $16$, and
+at the worst configurations found by a floating-point search near modulus
+$2$.  The largest values of $N_{2k-2}(y;W)/\prod_{j\le2k-2}\rho_j$ were
+$\frac54$ for $k=2$ (the limit above), $1.49$ for $k=3$ and $0.91$ for $k=4$,
+so \eqref{eq:nuconj} with $\kappa=1.12$ is consistent with all the data.
+
 \subsection{Gaussian-integer roots}\label{sec:gaussian}
 
 Proposition~\ref{prop:noangle} rules out bounds in terms of moduli and
@@ -4600,11 +4848,15 @@ repetitions allowed, and moduli $\rho_1\le\cdots\le\rho_L$,
   b_k(F)\ \ge\ |f_D|\prod_{i=2k-1}^{L}(\rho_i-1)\qquad
   \bigl(1\le k\le\lceil L/2\rceil\bigr).
 \end{equation}
-The row $k=1$ is Proposition~\ref{prop:rowone}; for roots of one sign
-\eqref{eq:bothrows} is weaker than Theorem~\ref{thm:order}; for pairs $\pm s_j$
-it follows from the multisection transfer, since
+The row $k=1$ is Proposition~\ref{prop:rowone}, and the row $k=2$ holds up to
+the factor $65$ (Theorem~\ref{thm:secondrow}); for roots of one sign
+\eqref{eq:bothrows} is weaker than Theorem~\ref{thm:order}; for pairs
+$\pm s_j$ it follows from the multisection transfer, since
 $s^2-1\ge(s-1)^2$; and it is what \eqref{eq:bothrowsbound} gives, up to the
-factors $\rho$ and $(1-\rho)^{-k}$, when all moduli are equal.  In exact
+factors $\rho$ and $(1-\rho)^{-k}$, when all moduli are equal.  Up to a factor
+$(2\kappa)^{2k-2}$ in the $k$-th row, \eqref{eq:bothrows} follows from the
+bound \eqref{eq:nuconj} on certificates with $2k-2$ spare roots, whose
+qualitative form is Proposition~\ref{prop:sparedescartes}.  In exact
 rational arithmetic, for random root sets with $3\le L\le6$, near-pairs
 $r,-r(1+\eta)$ included, and random excluded sets, one of the three zero sets
 $W\cup\{\text{first free distances}\}$, $W\cup(W-1)\cup\{\ldots\}$ and
@@ -4683,6 +4935,15 @@ first sum, and $\Lambda(B)\ge\Lambda(h)$.  The second inequality uses
 $\lceil x/2\rceil\ge x/2$.  For the last statement, $M_\ell\ge2(1-\varepsilon)K_\ell$.
 \end{proof}
 
+Both corollaries need \eqref{eq:bothrows} only up to a factor $C^{k-1}$
+in the $k$-th row, with an absolute constant $C$; \eqref{eq:nuconj} would give
+$C=4\kappa^2$.  Summing the rows as in the proof of
+Corollary~\ref{cor:conjmass}, such a factor costs
+$\frac12\lceil L/2\rceil(\lceil L/2\rceil-1)\log C=O(L^2)$ there, and
+$O\bigl((\sum_\ell M_\ell)^2\bigr)$ in Corollary~\ref{cor:conjcross}; this is
+of lower order than the main terms as soon as the moduli, respectively the
+radii $A_\ell$, tend to infinity.
+
 For Gaussian roots in $\mathbb Z[i]$ and $F\in\mathbb Z[x]$ the degree
 hypothesis is removed as in Corollary~\ref{cor:thingaussreal}: a block of
 degree $d$ with $2dE(\delta')/\pi+2>2\varepsilon\min_\ell K_\ell$ pays
@@ -4759,6 +5020,13 @@ M.~Giesbrecht, D.~S. Roche and H.~Tilak,
 \newblock \emph{Algorithmica} 64 (2012), 454--480,
 \newblock \href{https://doi.org/10.1007/s00453-012-9652-4}
 {doi:10.1007/s00453-012-9652-4}.
+
+\bibitem{hunter}
+D.~B. Hunter,
+\newblock The positive-definiteness of the complete symmetric functions of
+even order,
+\newblock \emph{Mathematical Proceedings of the Cambridge Philosophical
+Society} 82 (1977), 255--258.
 
 \bibitem{karlin}
 S.~Karlin,
