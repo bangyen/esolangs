@@ -146,7 +146,8 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
                     )
                 if best is None or cand[0] * cand[1] < best[0] * best[1]:
                     best, choice = cand, hoist_one
-            assert best is not None  # ``hoist_one`` false is always allowed.
+            if best is None:
+                raise AssertionError("no shape; hoist_one false always fits")
             shapes[key] = best
             hoists[key] = choice
         return shapes[key]
