@@ -688,16 +688,16 @@
   },
   "Qoibl": {
    "0110": {
-    "commands": 18,
-    "source_units": 573
+    "commands": 4,
+    "source_units": 196
    },
    "01101001": {
-    "commands": 36,
-    "source_units": 1192
+    "commands": 5,
+    "source_units": 265
    },
    "0110100110010110": {
-    "commands": 70,
-    "source_units": 2363
+    "commands": 6,
+    "source_units": 336
    }
   },
   "RAM0": {

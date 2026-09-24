@@ -138,7 +138,8 @@ and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Eval, Minsky
-Swap, NoComment, SLOW ACV MAMMALIAN and Whitespace keep no tree route at all:
+Swap, NoComment, Qoibl, SLOW ACV MAMMALIAN and Whitespace keep no tree route
+at all:
 A Painter Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, Befunge reads one grid cell per table entry with `g`, BIO's
@@ -147,7 +148,8 @@ table only spares it the flat edges' adjustments, under the fold threshold
 once the doubling between the input runs is in the text), Eval is one linear
 lookup at every arity, Minsky Swap's `~`
 cascade routes the index to one of two shared leaves with a one-digit target
-per row, NoComment switches between two lookups at four inputs,
+per row, NoComment switches between two lookups at four inputs, Qoibl divides one
+literal by the power of two its reads build,
 SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
 row whatever the table says, and Whitespace halves one literal once per index
 step; none has a subtree to fold.  Container's sub-crossover route is a
@@ -228,7 +230,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Packlang | tree | — | linear: folded tree, shortest names deepest, flat pieces |
 | Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
 | Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
-| Qoibl | tree | — | linear: span walk, O(1) node tests by halves |
+| Qoibl | linear lookup | the table is one binary literal, divided by the power of two the reads build | linear: T-bit literal, one squaring statement per input |
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup | linear: 16-17 tokens per row, unary runs 2T - 2 |
 | ROTfuck | tree | movement search stops after at most eight offsets | linear, time n log: essential_inputs |
 | S*bleq | finite lookup | packed chunks decoded after the hoisted read block | linear: T/n packed chunks of n bits, O(n) decoder |
