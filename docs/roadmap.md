@@ -259,7 +259,32 @@ step; an answer lands in the paper it extends, and the row leaves.
   witnesses on 9 repeated-root sets.  Repeated roots beyond `(3,3)` are open on the
   PLACEMENT side only (`u >= 1`; at `(3,3)`, `u = 0` and `tau* = 5/24`, so
   the infimum of `b_1` is 24/5): a proof needs confluent analogues of
-  `prop:partial`, `thm:converse` and `thm:value`.  Also open is the
+  `prop:partial`, `thm:converse` and `thm:value`.  Round 11 REDUCED that to
+  ONE step.  In the Hermite basis `d^a y^d` ordered by growth, Descartes
+  counts with multiplicity, the Vandermonde change of variables becomes
+  Hermite interpolation on a multiset, and `thm:value`'s unisolvence and
+  positivity steps are `prop:confluent`'s `M(0)` and Polya-Szego -- all
+  routine; `prop:partial` needs only the extra hypothesis that the cut is
+  ALIGNED with the blocks (`r_u < r_{u+1}`).  The one step that FAILS is the
+  minor estimate inside `lem:far`, which `thm:value` reuses verbatim:
+  `c = prod (1 - y_b/y_a)` is 0 the moment two nodes coincide, so
+  `|alpha_{J*}| >= c M_{J*}` is vacuous, and `alpha_{J*}` can vanish outright
+  -- at `(3,3,4,4)`, `u = 3`, the span of `d(1/3)^d, (1/3)^d, d(1/4)^d` has
+  `(2187/16384) d(1/3)^d - (15309/8192)(1/3)^d + d(1/4)^d` zero at
+  `d = 6,7,8` (the ONLY singular triple in `{1..13}`; none with
+  `min E >= 21`; the full 4-function basis has no singular 4-subset of
+  `{0..11}`).  The rate degrades too: `sup eta` over a window is
+  `Theta(1/min E)` -- exactly `1/(n0+1)` at `(3,3)`, `(2,2)`, and
+  `(3,3,5)`/`(3,3,4,4)` with `u = 1` -- when the cut falls INSIDE a
+  multiplicity block, against geometric at an aligned cut (2.1e-23 at
+  `(2,3,3)`, 3.0e-30 at `(3,3,5)` `u = 2`, `n0 = 140`).  But `eta -> 0`
+  held in all 9 configurations swept, so the lemma is expected TRUE: what
+  is needed is a proof tolerating a degenerate alternant.  Sketch not yet
+  carried out: expand `det(psi_j(e_t))` over node-assignments, factor each
+  within-node group as `Vandermonde(E_pi) * s_lambda(E_pi)`, and note Cramer
+  makes only single swaps matter, giving ratios `s_mu/s_lambda` with
+  `|mu| = |lambda| - 1`, homogeneous of degree -1, hence `O(1/min E)`.
+  Also open is the
   case where an exempt root lies below 2 and more than `u` partial sums of
   `P` exceed `|P(1)|`, where the repaired bound need not be sharp.  See the
   section "The infimum when the criterion fails" in
