@@ -1043,7 +1043,6 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "Polynomial": (1_589_968, 5_016_851, 3.2),
     "SLOW ACV MAMMALIAN": (456_394, 798_829, 1.8),
     "bit~": (8_177, 16_448, 2.0),
-    "123": (22_964, 45_728, 2.0),
     "Factor": (16_711, 35_323, 2.1),
 }
 
