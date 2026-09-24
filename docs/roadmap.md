@@ -308,10 +308,15 @@ step; an answer lands in the paper it extends, and the row leaves.
   (`cor:rowsfiniteranges`); for every `r > 1` a finite tree with far
   appends (`lem:farappend`, `thm:rowstree`, `prop:toprowcertS`) decides
   single rows exactly, `r = 2` and `r < 2` included (`cor:rowstreevals`;
-  all five rows of `(x - 3/2)**5`).  Open: the conjecture
+  all five rows of `(x - 3/2)**5`).  A dilation kernel shows the prefix
+  values shrink, `nu_(i+1)(n) <= nu_i(n)/(r-1)` for every `r > 1` and `n`
+  (`thm:prefixmono`), so at `r >= 2` the conjecture is exactly "rows equal
+  the top row", and exempted sets inside the initial run of a good zero set
+  are settled for all `n` (`cor:prefixmono`).  Open: the conjecture
   `V_r(L,k) = min_i 1/nu_i(n)` for all `n` (at `r = 3`, `Pi(Z_0)` exceeds
   2 from `n = 25`; at `r = 2` the chain fails outright and only single
-  rows are known; `1 < r < 2` with `n >> k`).
+  rows are known; exempted positions at holes above the lowest one;
+  `1 < r < 2` with `n >> k`).
 
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
