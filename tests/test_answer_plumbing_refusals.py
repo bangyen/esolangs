@@ -801,8 +801,14 @@ class TestTheCallersSignalsAreTheirOwn:
 class TestEvaluateCanRunOffTheMainThread:
     """The wall-clock guard is a signal, and there was no way to opt out."""
 
+    @pytest.mark.medium
     def test_an_explicit_none_means_unbounded(self) -> None:
-        """As it does in ``run``; here the same word meant "use the default"."""
+        """As it does in ``run``; here the same word meant "use the default".
+
+        Banded ``medium`` for its cost, not its speed: five verifies is ~0.92s
+        against the fast band's 1s, so a loaded machine tips it over and fails
+        a push that has nothing to do with the change being pushed.
+        """
         import concurrent.futures as cf
 
         names = ["brainfuck", "Suffolk", "123", "A Painter Ant", "Fargo"]
