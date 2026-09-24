@@ -41,16 +41,15 @@ paper~\cite{coefficient-mass} proves that the $(u+1)$-st largest nonleading
 coefficient magnitude satisfies $b_{u+1}\ge|f_D|\prod_{i>u}(r_i-1)$.  We show
 that this bound is the infimum over monic multiples exactly when no partial
 sum of the coefficients of the surviving factor $P_u=\prod_{i>u}(x-r_i)$
-exceeds their total, repeated roots included.  When this criterion fails and
-the roots are distinct, the placement in which the exempt coefficients escape
+exceeds their total, repeated roots included.  When this criterion fails, the placement in which the exempt coefficients escape
 to the bottom is always extremal, so the infimum is the reciprocal of the
 least $\ell^1$ tail of a certificate on the surviving roots alone,
 equivalently the least, over monic multipliers $M$, of the largest partial
 sum of the coefficients of $P_uM$; at $(2,3,5,7)$ it is $1704/31$.  Below $2$
 the bound can fail once $u\ge1$, and the node cutoff $1/2$ of the underlying tail comparison cannot
 be raised.  For every $r_1>1$ we prove a repaired bound and a sharper
-two-sided bound $b_{u+1}\ge|f_D|\min(|P(1)|,|P_u(1)|)$, and for distinct
-roots we determine exactly when each is the infimum.  We also extend the tail
+two-sided bound $b_{u+1}\ge|f_D|\min(|P(1)|,|P_u(1)|)$, and determine
+exactly when each is the infimum, repeated roots included.  We also extend the tail
 comparison to confluent nodes, with strictness.
 \end{abstract}
 
@@ -112,14 +111,16 @@ bottom; at $(2,3,5)$ they are correctly ordered at every degree
 (Proposition~\ref{prop:sharp235}).  The criterion holds at $(3,4,5,6)$ and
 fails at $(2,3,5,7)$ with $u=1$.
 
-\emph{The value.}  For distinct $2\le r_1<\cdots<r_L$ let $\tau^*$ be the
+\emph{The value.}  For $2\le r_1\le\cdots\le r_L$ let $\tau^*$ be the
 least tail $\sum_{d\ge1}|v_d|$ of an exponential sum
-$v_d=\sum_{i>u}\lambda_ir_i^{-d}$ with $v_0=1$.  Then
+$v_d=\sum_{i>u}\lambda_ir_i^{-d}$ with $v_0=1$ (for repeated roots, of an
+element of their Hermite space).  Then
 \[
   \inf_Qb_{u+1}(QP)=\frac1{\tau^*}=\min_M\max_{j\ge1}\bigl|S_j(P_uM)\bigr|
 \]
 over monic $M\in\R[x]$ (Theorems~\ref{thm:value} and~\ref{thm:extremal},
-Proposition~\ref{prop:attain}): the worst placement of the $u$ largest
+Proposition~\ref{prop:attain}, and Theorem~\ref{thm:extremalrep} at repeated
+roots): the worst placement of the $u$ largest
 coefficients is the one in which they escape to the bottom, and the infimum
 depends on the surviving roots alone.  At $(2,3,5,7)$ with $u=1$ it is
 $1704/31$ against the bound $48$, and at $(2,\ldots,7)$ with $u=2$ it is
@@ -132,9 +133,9 @@ factors that Lemma~3.1 discards gives the repaired bound \eqref{eq:repaired}
 for every $r_1>1$ (Corollary~\ref{cor:repaired}), and a two-sided tail
 comparison gives the sharper
 $b_{u+1}\ge|f_D|\min(|P(1)|,|P_u(1)|)$ (Corollary~\ref{cor:twosided}), which
-improves \eqref{eq:repaired} exactly when $r_1<2<r_u$.  For distinct roots,
-Theorem~\ref{thm:twosidedsharp} and Corollary~\ref{cor:repairedsharp} say
-exactly when these bounds are the infimum.  At any distinct roots above $1$
+improves \eqref{eq:repaired} exactly when $r_1<2<r_u$.  Theorem~\ref{thm:twosidedsharp} and Corollary~\ref{cor:repairedsharp},
+repeated roots included (Theorem~\ref{thm:twosidedsharprep}), say exactly
+when these bounds are the infimum.  At any distinct roots above $1$
 the infimum is the reciprocal of the worst placement's best tail
 (Theorem~\ref{thm:value}), but below $2$ the escaping placement need not be
 extremal; for $u=1$ the value is still a finite computation
@@ -294,6 +295,50 @@ $A_{G^{(0)}}>0$.  By Fatou's lemma, as in Proposition~\ref{prop:confluent},
   <\prod_{j=1}^{f+1}\frac{y_{(j)}}{1-y_{(j)}} .
 \]
 \end{proof}
+
+\begin{lemma}[Coalescence]\label{lem:coalesce}
+Let $0<y_1<\cdots<y_c<1$ carry multiplicities $e_i\ge1$, $m=\sum_ie_i$, let
+$\mathcal H$ be their Hermite space and $\mathcal H_-$ that of the multiset
+with one copy of $y_c$ removed.  For $\varepsilon>0$ let $N_\varepsilon$ be
+the multiset of nodes $y_ie^{-j\varepsilon}$, $0\le j<e_i$, and
+$N_\varepsilon^-=N_\varepsilon\setminus\{y_c\}$; for small $\varepsilon$ the
+members of $N_\varepsilon$ are distinct, lie in $(0,y_c]$, and $y_c$ is the
+largest.  Fix a set $Y$ of $m$ (respectively $m-1$) distinct nonnegative
+integers and values $b\in\R^Y$, let $v$ be the element of $\mathcal H$
+(respectively $\mathcal H_-$) with $v|_Y=b$, and $v^\varepsilon$ the
+exponential sum on $N_\varepsilon$ (respectively $N^-_\varepsilon$) with
+$v^\varepsilon|_Y=b$.  Then for small $\varepsilon$ there are $C,K$ with
+\[
+  |v^\varepsilon_d|\le C(1+d)^Ky_c^{\,d}\qquad(d\ge0),
+\]
+and $v^\varepsilon_d\to v_d$ for every $d$.  Consequently
+$\sum_{d\in I}|v^\varepsilon_d|\to\sum_{d\in I}|v_d|$ for every
+$I\subseteq\N$; in particular $\Tail(v^\varepsilon)\to\Tail(v)$.
+\end{lemma}
+
+\begin{proof}
+For $\mathcal H$ this is the limit argument of the proof of
+Proposition~\ref{prop:confluent}: in the basis
+$\phi_{i,k,\varepsilon}(d)=y_i^d\bigl((1-e^{-\varepsilon d})/\varepsilon\bigr)^k$
+the coefficient vectors $a^{(\varepsilon)}$ of $v^\varepsilon$ solve
+$M(\varepsilon)a^{(\varepsilon)}=b$ with $M(\varepsilon)\to M(0)$ invertible,
+so they converge and are bounded.  For $\mathcal H_-$ the group of $y_c$ has
+lost its member $j=0$; the remaining nodes are
+$y'e^{-(j-1)\varepsilon}$, $1\le j<e_c$, with $y'=y_ce^{-\varepsilon}$, so
+the same construction at the node $y'$ with multiplicity $e_c-1$ gives the
+basis $y'^d\bigl((1-e^{-\varepsilon d})/\varepsilon\bigr)^k$, $k<e_c-1$,
+whose entries are continuous at $\varepsilon=0$ with limits $d^ky_c^d$, and
+the argument is the same.  Since $0\le1-e^{-x}\le x$, every basis function is
+bounded by $d^ky_i^d\le d^ky_c^d$ uniformly in $\varepsilon$, which gives the
+bound with $K=\max_ie_i-1$ and $C$ the bound on
+$\sum|a^{(\varepsilon)}_{i,k}|$.  The dominating sequence is summable because
+$y_c<1$, so dominated convergence gives the last claim.
+\end{proof}
+
+Every non-strict inequality between tails of interpolants at fixed integer
+points, proved for distinct nodes, therefore passes to confluent nodes; the
+strict ones need a margin that survives the limit, as in
+Lemma~\ref{lem:confstrict}.
 
 \begin{proposition}[The node cutoff $1/2$ is sharp]\label{prop:cutoff}
 No constant $a>1/2$ can replace $1/2$ in Theorem~2.2 or in
@@ -518,8 +563,73 @@ induction hypothesis at $t=0$ bounds by $\max(\Pi_{f+1},\Pi_{c-1})=\Pi_{f+1}$.
 Either way the bound holds, strictly.
 \end{proof}
 
-The same limit argument as for Theorem~\ref{thm:repaired} carries the
-non-strict inequality to confluent nodes.  Read on root sets, the maximum of
+For a multiset $y_{(1)}\le\cdots\le y_{(m)}$ in $(0,1)$ put
+$q_{(j)}=y_{(j)}/(1-y_{(j)})$ and $\Pi_j=\prod_{i\le j}q_{(i)}$, and for a
+certificate $u$ with zero set $Z$ put $S(u)=\sum_{d>\max Z}|u_d|$.
+
+\begin{proposition}[Two-sided comparison at confluent nodes]
+\label{prop:twosidedconf}
+Let $0<y_1<\cdots<y_c<1$ with multiplicities $e_i$, $m=\sum_ie_i$, and let
+$u$ be the element of their Hermite space with $u_0=1$ and $u|_Z=0$ for a
+set $Z$ of $m-1$ positive integers with leading run $f$.  Then for every
+$t\ge0$
+\[
+  \Tail(u)+t\,S(u)\le\max\bigl(\Pi_{f+1},(1+t)\Pi_m\bigr),
+\]
+with equality exactly when $Z=\{1,\ldots,m-1\}$.
+\end{proposition}
+
+\begin{proof}
+If $Z=\{1,\ldots,m-1\}$, Lemma~2.1 with repetitions (the paragraph after
+Lemma~\ref{lem:improve}) gives $u_d=0$ for $1\le d<m$, one sign past $m-1$,
+and $S(u)=\Tail(u)=\Pi_m=\Pi_{f+1}$; both sides are $(1+t)\Pi_m$.
+
+Otherwise $z=\max Z\ge m$ and $Z'=Z\setminus\{z\}$ has the same leading run
+$f\le m-2$.  Take $N_\varepsilon$ as in Lemma~\ref{lem:coalesce}, let
+$u^{(\varepsilon)}$ be the sum on $N_\varepsilon$ with the conditions of
+$u$, and run the displaced step of the proof of Theorem~\ref{thm:twosided}
+at these $m$ distinct nodes, deleting $z$ together with the largest node
+$y_c$: $F^{(\varepsilon)}$ is the sum on $N^-_\varepsilon$ with
+$F^{(\varepsilon)}_0=1$ and $F^{(\varepsilon)}|_{Z'}=0$, $G^{(\varepsilon)}$
+the sum on $N_\varepsilon$ with $G^{(\varepsilon)}|_{\{0\}\cup Z'}=0$ and
+$G^{(\varepsilon)}_z=1$, $\mu_\varepsilon=|F^{(\varepsilon)}_z|$ and
+$\Sigma_{G}=\sum_{1\le d<z}|G_d|$.  The identity of that proof and the first
+half of the correction-ratio bound, which needs no cutoff, give with
+$t'=q_c(1+t)-1$, $q_c=y_c/(1-y_c)$,
+\[
+  \Tail(u^{(\varepsilon)})+t\,S(u^{(\varepsilon)})
+  \le\Tail(F^{(\varepsilon)})+t'\sum_{d\ge z}|F^{(\varepsilon)}_d|
+     -\mu_\varepsilon\Sigma_{G^{(\varepsilon)}} .
+\]
+The nodes of $F^{(\varepsilon)}$ are the $m-1$ smallest members of
+$N_\varepsilon$, so, writing $\Pi_j(\varepsilon)$ for the products over the
+sorted $N_\varepsilon$, Theorem~\ref{thm:twosided} for $F^{(\varepsilon)}$
+bounds the first two terms by $\max(\Pi_{f+1}(\varepsilon),
+(1+t')\Pi_{m-1}(\varepsilon))=\max(\Pi_{f+1}(\varepsilon),(1+t)\Pi_m(\varepsilon))$
+if $t'\ge0$, and by $\Pi_{f+1}(\varepsilon)$ if $t'<0$, exactly as in that
+proof.  Hence
+\[
+  \Tail(u^{(\varepsilon)})+t\,S(u^{(\varepsilon)})
+  \le\max\bigl(\Pi_{f+1}(\varepsilon),(1+t)\Pi_m(\varepsilon)\bigr)
+     -\mu_\varepsilon\Sigma_{G^{(\varepsilon)}} .
+\]
+Let $\varepsilon\to0$.  By Lemma~\ref{lem:coalesce} (with $I=\N_{>0}$ and
+$I=(z,\infty)$) the left side tends to $\Tail(u)+tS(u)$;
+$F^{(\varepsilon)}\to F^{(0)}$, the element of the Hermite space of the
+multiset with one copy of $y_c$ removed with $F^{(0)}_0=1$,
+$F^{(0)}|_{Z'}=0$; and $G^{(\varepsilon)}\to G^{(0)}$ pointwise.  As in the
+proof of Lemma~\ref{lem:confstrict}, the zero bound gives $F^{(0)}_z\ne0$,
+and $G^{(0)}$ vanishes only on $\{0\}\cup Z'$, while $|Z'|=m-2<z-1$ leaves
+some $1\le d<z$ outside $Z'$; so the finite sums
+$\mu_\varepsilon\Sigma_{G^{(\varepsilon)}}$ tend to
+$|F^{(0)}_z|\Sigma_{G^{(0)}}>0$.  The products converge, and the inequality
+is strict in the limit.
+\end{proof}
+
+With $t=0$ and all nodes at most $1/2$, where $\Pi_{f+1}\ge\Pi_m$, this is
+Proposition~\ref{prop:confluent} with Lemma~\ref{lem:confstrict}.  Read on
+root sets as in the proof of Corollary~\ref{cor:twosided}, it gives
+\eqref{eq:twosided} at repeated roots without perturbing the roots.  Read on root sets, the maximum of
 two products becomes the minimum of two root products.
 
 \begin{corollary}[Two-sided order statistics]\label{cor:twosided}
@@ -1301,6 +1411,102 @@ $1/\tau^*\le\max_{j\ge1}|S_j(P_u)|$, which is $|P_u(1)|=1/B$ under
 \eqref{eq:partial}.  Hence $T\ge B$, while Theorem~3.2 gives $T\le B$.
 \end{proof}
 
+\paragraph{Hermite spaces.}  For real roots
+$1<r_1\le\cdots\le r_L$, repetitions allowed, $\mathcal H_k$ is the Hermite
+space of the multiset $r_{k+1},\ldots,r_L$ as in
+Proposition~\ref{prop:farrep}: the span of $d\mapsto d^az^d$, $z=1/r$ a
+distinct value among them and $a$ below its multiplicity there, ordered by
+growth.  Its dimension is $L-k$, and by the P\'olya--Szeg\H o zero bound a
+nonzero element has at most $L-k-1$ real zeros counted with multiplicity.
+A \emph{certificate for $X$ on $\mathcal H_k$} is a $v\in\mathcal H_k$ with
+$v_0=1$ and $v|_X=0$; it is \emph{full} if it is prescribed $L-k-1$ zeros.  A
+full certificate is unique (unisolvence at distinct points), has no other
+real zero, changes sign at each prescribed zero and keeps one sign past the
+largest.  For finite $X\subset\N_{>0}$ put
+\[
+  \tau_k(X)=\inf\{\Tail(v):v\text{ a certificate for }X\text{ on }\mathcal H_k\},
+  \qquad \tau(X)=\tau_0(X),\qquad \tau^*=\tau_u(\varnothing).
+\]
+For distinct roots these are the quantities of Section~\ref{sec:value}.  The top basis function $\psi_{k+1}$ of $\mathcal H_k$ is
+$d^{e-1}y^d$, where $y=1/r_{k+1}$ is the largest node of $\mathcal H_k$ and
+$e$ its multiplicity there; $\mathcal H_{k+1}$ is the span of the others.
+
+\begin{theorem}[The placement game at repeated roots]\label{thm:valuerep}
+Let $1<r_1\le\cdots\le r_L$, repetitions allowed, and $0\le u\le L-1$.  Then
+\[
+  \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)=\frac1T,
+  \qquad T=\sup_{|X|=u}\tau(X)\ge\tau^*,
+\]
+over monic $Q\in\R[x]$.
+\end{theorem}
+
+\begin{proof}
+The lower bound is \eqref{eq:weak}, which holds for every certificate on
+$\mathcal H_0$ by the first paragraph of the proof of
+Theorem~\ref{thm:converse}.
+
+For the upper bound fix $X$ with $|X|=u$ and $D\ge\max(L,\max X)$, and let
+$\tau_D(X)$ be the least $\sum_{d=1}^D|v_d|$ over certificates $v$ for $X$
+on $\mathcal H_0$; it is positive because a nonzero element of
+$\mathcal H_0$ has at most $L-1$ zeros.  Write $m_i$ for the multiplicity of
+$r_i$ and $\theta=x\,d/dx$.  Since $r_i\ne0$, $F=x^D+\sum_{j<D}f_jx^j$ is a
+multiple of $P$ exactly when
+$(\theta^aF)(r_i)=\sum_{j\le D}f_jj^ar_i^j=0$ for $a<m_i$.  Minimising the
+largest $|f_j|$ over the positions $j<D$ with $D-j\notin X$ subject to these
+constraints is a feasible linear program ($x^{D-L}P$ is feasible).  With
+multipliers $\mu_{i,a}$ put
+$v_d=-\sum_{i,a}\mu_{i,a}r_i^D(D-d)^ay_i^d$; then the coefficient of $f_j$ in
+the Lagrangian is $-v_{D-j}$, and as $\{(D-d)^a\}_{a<m_i}$ and
+$\{d^a\}_{a<m_i}$ span the same polynomials, $\mu\mapsto v$ is a linear
+bijection onto $\mathcal H_0$.  The dual program is to maximise $v_0$
+subject to $v|_X=0$ and $\sum_{d\le D,\,d\notin X}|v_d|\le1$, with value
+$1/\tau_D(X)$, so some monic multiple of degree $D$ has
+$b_{u+1}\le1/\tau_D(X)$.  The limit $\tau_D(X)\uparrow\tau(X)$ is the
+compactness step of the proof of Theorem~\ref{thm:value}, using unisolvence
+of $\mathcal H_0$ at $L$ distinct points; so the infimum is at most $1/T$.
+
+For $T\ge\tau^*$ put $E_\nu=\{\nu+1,\ldots,\nu+u\}$ and suppose
+$\tau(E_\nu)\le\tau^*-\varepsilon$ along a subsequence; take certificates
+$v^\nu$ for $E_\nu$ on $\mathcal H_0$ with
+$\Tail(v^\nu)\le\tau^*-\varepsilon/2$.  For $\nu\ge L$ their values at
+$0,\ldots,L-1$ are bounded, so their coefficient vectors $c^\nu$ are bounded,
+and $\|c^\nu\|_\infty$ is bounded below because $v^\nu_0=1$.
+Proposition~\ref{prop:farrep}(a) with $k=u$, applied to
+$v^\nu/\|c^\nu\|_\infty$, sends the coordinates of $c^\nu$ on
+$\psi_1,\ldots,\psi_u$ to $0$.  A convergent subsequence therefore has a
+limit $v\in\mathcal H_u$ with $v_0=1$, and by Fatou's lemma
+$\Tail(v)\le\tau^*-\varepsilon/2$, against the definition of $\tau^*$.
+\end{proof}
+
+\begin{proposition}[Attainment at repeated roots]\label{prop:attainrep}
+In the setting of Theorem~\ref{thm:valuerep}, $\tau^*$ is attained by a full
+certificate on $\mathcal H_u$, and some monic $M\in\R[x]$ has
+$\max_{j\ge1}|S_j(P_uM)|=1/\tau^*$; moreover
+$\max_{j\ge1}|S_j(P_uM)|\ge1/\tau^*$ for every monic $M$.
+\end{proposition}
+
+\begin{proof}
+Run the proof of Proposition~\ref{prop:attain} on $\mathcal H_u$, with the
+coefficient vector $\lambda$ in the Hermite basis, the constraint $v_0=1$ in
+place of $\sum_i\lambda_i=1$, and directions $h$ with $h_0=0$.  $\Tail$ is a
+norm on $\mathcal H_u$ (an element vanishing at $1,\ldots,m$ vanishes), a
+nonzero element has finitely many real zeros and so one sign for large $d$,
+and the zero bound caps the zeros at $m-1$; so the first two steps hold
+verbatim.  At a full minimiser with zero set $Z$, unisolvence at
+$\{0\}\cup Z$ gives unique $(s_d)_{d\in Z}$ and $\theta$ with
+$\sum_{d\ge1}s_dh_d=\theta h_0$ for all $h\in\mathcal H_u$ (with
+$s_d=\sgn v_d$ off $Z$), and makes $h\mapsto(h_d)_{d\in Z}$ map
+$\{h_0=0\}$ onto $\R^{m-1}$; so $|s_d|\le1$ and $\theta=\tau^*$ as there.
+Put $w_0=1$, $w_d=-s_d/\tau^*$.  Then $\sum_dw_dh_d=0$ on $\mathcal H_u$;
+with $h=d^ay_i^d$ this reads $((y\,d/dy)^aW)(y_i)=0$ for $a$ below the
+multiplicity of $y_i$, so $W$ vanishes there to that order.  Past $\max Z$
+the sign of $v$ is constant, $(1-y)W$ is a polynomial divisible by
+$\widetilde P_u=\prod_{i>u}(1-r_iy)$ with value $1$ at $0$, and the quotient
+is $\widetilde M$ for a monic $M$, whose partial sums $S_j(P_uM)$ are the
+$w_j$.  The last claim is \eqref{eq:dualpair} on $\mathcal H_u$ (proof of
+Corollary~\ref{cor:charrep}).
+\end{proof}
+
 \subsection*{The escaping placement is extremal}
 
 Whether $T=\tau^*$, so that the escaping placement is extremal, comes down to
@@ -1607,6 +1813,17 @@ $Z$, and so every point of $X$, until it gains a zero.  The zero bound caps
 the zeros at $L-k-1$.
 \end{proof}
 
+\begin{lemma}[Full minimisers at repeated roots]\label{lem:attainXrep}
+Let $1<r_1\le\cdots\le r_L$, $0\le k<L$, and let $X$ be a set of at most
+$L-k-1$ positive integers.  Then $\tau_k(X)$ is attained by a full
+certificate on $\mathcal H_k$ whose zero set contains $X$.
+\end{lemma}
+
+\begin{proof}
+The proof of Lemma~\ref{lem:attainX}, with the changes listed in the proof
+of Proposition~\ref{prop:attainrep}.
+\end{proof}
+
 \begin{theorem}[The escaping placement is extremal]\label{thm:extremal}
 Let $2\le r_1<\cdots<r_L$ and $0\le u\le L-1$.  Then \eqref{eq:step} holds for
 every $0\le k<u$ and every set $X$ of $u-k$ positive integers.  Consequently
@@ -1635,6 +1852,142 @@ Proposition~\ref{prop:step} then gives $T=\tau^*$ and the value $1/\tau^*$,
 and Proposition~\ref{prop:attain} makes \eqref{eq:multiplier} an equality at
 some monic $M$.
 \end{proof}
+
+\paragraph{Repeated roots.}  For the rest of this subsection $2\le r_1\le\cdots\le r_L$, repetitions allowed, so every node is at most $1/2$.
+Fix $0\le k<L-1$ and write $n=L-k-1=\dim\mathcal H_{k+1}$.  For
+Lemma~\ref{lem:coalesce} applied to the nodes of $\mathcal H_k$, the largest
+node is $y=1/r_{k+1}\le\tfrac12$, $\mathcal H$ is $\mathcal H_k$ and
+$\mathcal H_-$ is $\mathcal H_{k+1}$; at level $\varepsilon$ the nodes
+$N_\varepsilon$ are distinct, $y$ is the largest of them, and the others lie
+in $(0,y)$, which is all that Theorem~2.2's deletion step and
+Proposition~\ref{prop:runchord} ask of the nodes.  An object at level
+$\varepsilon$ (a full certificate or a combination of such) carries a
+superscript $\varepsilon$, and its limit, given by
+Lemma~\ref{lem:coalesce}, the superscript $0$.
+
+\begin{proposition}[The step in the aligned cases, repeated roots]
+\label{prop:stepeasyrep}
+Let $X$ be finite and nonempty, $g=\max X$, $X'=X\setminus\{g\}$, and let
+$v^-$ be a full certificate on $\mathcal H_{k+1}$ whose zero set $Z^-$
+contains $X'$.  If $g\in Z^-$ or $g>\max Z^-$, then some certificate for $X$
+on $\mathcal H_k$ has tail at most $\Tail(v^-)$.
+\end{proposition}
+
+\begin{proof}
+Form $Z^+$ as in Proposition~\ref{prop:stepeasy}; its largest element
+exceeds the others and $Z^+\setminus\{\max Z^+\}=Z^-$.  At level
+$\varepsilon$ the full certificates $v^{+,\varepsilon}$ on $N_\varepsilon$
+with zero set $Z^+$ and $v^{-,\varepsilon}$ on $N^-_\varepsilon$ with zero
+set $Z^-$ satisfy $\Tail(v^{+,\varepsilon})\le\Tail(v^{-,\varepsilon})$: by
+the deletion step of Theorem~2.2 if $Z^+$ is not $\{1,\ldots,n\}$, the
+largest node being at most $\tfrac12$, and by Lemma~2.1, which gives the
+ratio $y/(1-y)\le1$, if it is.  By Lemma~\ref{lem:coalesce} both tails
+converge, to $\Tail(v^+)$ and $\Tail(v^-)$, where $v^+$ is the full
+certificate on $\mathcal H_k$ with zero set $Z^+\supseteq X$.
+\end{proof}
+
+\begin{proposition}[The run chord at repeated roots]\label{prop:runchordrep}
+Let $g\ge1$, $B_0\subseteq\{1,\ldots,g-1\}$ and $A$ a nonempty set of
+integers above $g$ with $|B_0|+|A|=n-1$, with runs $[s_j,e_j]$ and
+neighbours $Z_j$ as before Proposition~\ref{prop:runchord}.  Let $F$ and
+$F_j$ be the full certificates on $\mathcal H_{k+1}$ with zero sets
+$Z=B_0\cup A$ and $Z_j$, and $w$ the full certificate on $\mathcal H_k$ with
+zero set $W=B_0\cup\{g\}\cup(A+1)$.  Then there are
+$\lambda_1,\ldots,\lambda_p,\mu>0$ with $\sum_j\lambda_j+\mu=1$ and
+\[
+  \Tail(F)\ \ge\ \sum_{j=1}^p\lambda_j\Tail(F_j)+\mu\,\Tail(w),
+\]
+with equality if and only if $r_{k+1}=2$ and $B_0=\{1,\ldots,g-1\}$.
+\end{proposition}
+
+\begin{proof}
+At level $\varepsilon$ Proposition~\ref{prop:runchord} applies, with the
+weights of its proof: $\rho^\varepsilon_i=|w^\varepsilon(s_i)|/
+|F_i^\varepsilon(s_i)|$, $\mu^\varepsilon=1/(1+\sum_i\rho^\varepsilon_i)$,
+$\lambda^\varepsilon_i=\mu^\varepsilon\rho^\varepsilon_i$.  By
+Lemma~\ref{lem:coalesce}, $w^\varepsilon(s_i)\to w^0(s_i)$ and
+$F_i^\varepsilon(s_i)\to F_i^0(s_i)$, where $w^0=w$ and $F_i^0=F_i$ are the
+full certificates above.  Both limits are nonzero by the zero bound, since
+$s_i\notin W$ and $s_i\notin Z_i$ (see the proof of
+Proposition~\ref{prop:runchord}).  So the weights converge to
+$\lambda_i=\mu\rho_i>0$ and $\mu=1/(1+\sum_i\rho_i)>0$, and the tails
+converge; this proves the inequality.
+
+For the equality clause pass to the limit in \eqref{eq:runsplit}.  With
+$q^\varepsilon=\sum_j\lambda^\varepsilon_jF^\varepsilon_j+\mu^\varepsilon
+w^\varepsilon$, $G^\varepsilon=F^\varepsilon-q^\varepsilon$ and
+$E^\varepsilon(d)=G^\varepsilon(d-1)+2\mu^\varepsilon w^\varepsilon(d)$,
+that identity and the proof of Proposition~\ref{prop:runchord} give
+\[
+  \Tail(F^\varepsilon)-\sum_j\lambda^\varepsilon_j\Tail(F^\varepsilon_j)
+  -\mu^\varepsilon\Tail(w^\varepsilon)
+  =\sum_{d=1}^g|G^\varepsilon(d-1)|+\sum_{d>g}\varphi(d)E^\varepsilon(d),
+  \qquad\varphi(d)E^\varepsilon(d)\ge0 .
+\]
+All terms converge, the last sum by dominated convergence
+(Lemma~\ref{lem:coalesce}), so the defect $\Delta$ of the proposition equals
+$\sum_{d=1}^g|G^0(d-1)|+\sum_{d>g}\varphi(d)E^0(d)$ with every
+$\varphi(d)E^0(d)\ge0$.  Let $\omega$ be the coordinate of $w$ on the top
+basis function $\psi_{k+1}$ of $\mathcal H_k$; it is nonzero, since otherwise
+$w\in\mathcal H_{k+1}$, of dimension $n$, would have the $n$ zeros $W$.  The
+$F$'s lie in $\mathcal H_{k+1}$, so $G^0\in\mathcal H_k$ has coordinate
+$-\mu\omega\ne0$ on $\psi_{k+1}$; it vanishes on the $n$ points
+$\{0\}\cup Z$ and so nowhere else.  Hence the first sum is positive unless
+$\{1,\ldots,g-1\}\subseteq Z$, that is $B_0=\{1,\ldots,g-1\}$.  In that
+case, if $r_{k+1}>2$: the shift $d\mapsto G^0(d-1)$ maps $\mathcal H_k$ to
+itself and multiplies the coordinate on $\psi_{k+1}=d^{e-1}y^d$ by $1/y$,
+because $(d-1)^ay^{d-1}=y^{-1}(d^a+\text{lower powers})y^d$; so $E^0$ has
+coordinate $\mu\omega(2-1/y)\ne0$ on $\psi_{k+1}$ and at most $n$ zeros.  It
+vanishes at $1,\ldots,g$ and on $A+1$, which are $g+|A|=n$ points, so
+$E^0(g+1)\ne0$, as $g+1\notin A+1$, and $\varphi(g+1)E^0(g+1)>0$.  If
+$r_{k+1}=2$ and $B_0=\{1,\ldots,g-1\}$, every level is an equality by
+Proposition~\ref{prop:runchord}, and so is the limit.
+\end{proof}
+
+\begin{corollary}[The shift at repeated roots]\label{cor:shiftrep}
+In the setting of Proposition~\ref{prop:runchordrep}, if
+$\Tail(F)\le\Tail(F_j)$ for every run, then $\Tail(w)\le\Tail(F)$.
+\end{corollary}
+
+\begin{proof}
+As for Corollary~\ref{cor:shiftrun}:
+$\Tail(F)\ge(1-\mu)\Tail(F)+\mu\Tail(w)$ with $\mu>0$.
+\end{proof}
+
+\begin{theorem}[The escaping placement is extremal at repeated roots]
+\label{thm:extremalrep}
+Let $2\le r_1\le\cdots\le r_L$, repetitions allowed, and $0\le u\le L-1$.
+Then \eqref{eq:step} holds on the Hermite spaces, that is
+$\tau_k(X)\le\tau_{k+1}(X\setminus\{\max X\})$ for every $0\le k<u$ and every
+set $X$ of $u-k$ positive integers.  Consequently $T=\tau^*$, and
+\[
+  \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)=\frac1{\tau^*}
+  =\min_M\max_{j\ge1}\bigl|S_j(P_uM)\bigr|
+\]
+over monic $Q,M\in\R[x]$, with $\tau^*$ the least tail of a certificate on
+the Hermite space $\mathcal H_u$ of the surviving roots.
+\end{theorem}
+
+\begin{proof}
+Word for word the proof of Theorem~\ref{thm:extremal}, with
+Lemma~\ref{lem:attainXrep}, Proposition~\ref{prop:stepeasyrep} and
+Corollary~\ref{cor:shiftrep} in place of Lemma~\ref{lem:attainX},
+Proposition~\ref{prop:stepeasy} and Corollary~\ref{cor:shiftrun}: the
+minimiser $F$ for $\tau_{k+1}(X')$ is full on $\mathcal H_{k+1}$ with zero set
+$Z^-\supseteq X'$; in the aligned cases Proposition~\ref{prop:stepeasyrep}
+gives \eqref{eq:step}; otherwise each neighbour $Z^-\setminus\{s\}\cup\{e+1\}$
+contains $X'$, so minimality gives the hypothesis of
+Corollary~\ref{cor:shiftrep}, and $w$ is a certificate for $X$ on
+$\mathcal H_k$ with $\Tail(w)\le\Tail(F)$.  Chaining as in
+Proposition~\ref{prop:step} gives $\tau(X)\le\tau^*$ for all $|X|=u$, so
+$T=\tau^*$ by Theorem~\ref{thm:valuerep}, and
+Proposition~\ref{prop:attainrep} gives the multiplier form.
+\end{proof}
+
+In particular the proof of Corollary~\ref{cor:charrep} may cite
+Theorem~\ref{thm:valuerep} for its first sentence, and when
+\eqref{eq:partial} fails the infimum at repeated roots at least $2$ is
+$1/\tau^*$.
 
 So when \eqref{eq:partial} fails the infimum is always $1/\tau^*$, and
 Corollary~\ref{cor:uone} reads $\inf_Qb_2=1/\tau^*$.  The minimizing zero
@@ -1737,6 +2090,46 @@ consecutive, which is strict by Theorem~\ref{thm:lift}, or has tail below
 $\tau^*$ outright.  So every multiple $F$ has
 $b_{u+1}(F)\ge1/\tau(X_F)>1/\tau^*$.
 \end{proof}
+
+\begin{proposition}[An infimum at a repeated root]\label{prop:valuesrep}
+Over monic $Q\in\R[x]$,
+\[
+  \inf_Qb_2\bigl(Q\,(x-2)(x-3)^2(x-5)\bigr)=24,
+  \qquad
+  \inf_Qb_2\bigl(Q\,(x-2)(x-3)^3\bigr)=\tfrac{27}2,
+\]
+against the bounds $16$ and $8$ of \eqref{eq:order} and the values $29$ and
+$19$ of the construction ($\max_j|S_j(P_1)|$).
+\end{proposition}
+
+\begin{proof}
+Here $u=1$ and $\mathcal H_1$ is the Hermite space of $(3,3,5)$, resp.\
+$(3,3,3)$.  The full certificate with zero set $\{1,3\}$ is
+\[
+  v^*_d=\frac{(24d-99)3^{-d}+125\cdot5^{-d}}{26},
+  \qquad\text{resp.}\qquad
+  v^*_d=\frac{(d-1)(d-3)}3\,3^{-d};
+\]
+the first has $v^*_2=-\tfrac1{39}$ and is positive past $3$, the second is
+$-\tfrac1{27}$ at $2$ and positive past $3$, and summing
+$\sum_dd^ay^d$ in closed form gives the tails $\tfrac1{24}$ and
+$\tfrac2{27}$.  The multipliers $M=x+\tfrac12$ and $M=x+\tfrac{11}{16}$
+give the partial sums
+\[
+  1,-\tfrac{19}2,24,-\tfrac32,-24,-24,\ldots
+  \qquad\text{and}\qquad
+  1,-\tfrac{117}{16},\tfrac{27}2,\tfrac{81}{16},-\tfrac{27}2,-\tfrac{27}2,\ldots,
+\]
+so by \eqref{eq:dualpair} on $\mathcal H_1$, $\tau^*=\tfrac1{24}$ and
+$\tfrac2{27}$, and Theorem~\ref{thm:extremalrep} gives the values.
+\end{proof}
+
+\paragraph{What the limit does not give.}  Theorem~\ref{thm:extremalrep}
+needs only non-strict inequalities, which is why the coalescence limit
+suffices.  Whether these infima are attained would need the strict clause of
+Theorem~\ref{thm:lift} at repeated roots, which we have not carried over; an
+exact search finds, at both root sets, a certificate with tail below
+$\tau^*$ for every placement $X\subseteq\{1,\ldots,30\}$.
 
 In both cases the extremal series is the construction of
 Proposition~\ref{prop:partial} applied to $P_uM$ rather than $P_u$, and the
@@ -1888,6 +2281,90 @@ $|P(1)|=\min(|P(1)|,|P_u(1)|)$ and $\pi\le r_1-1<1$, so by
 Theorem~\ref{thm:twosidedsharp} it is the infimum exactly when
 $\sigma\le|P(1)|$.  If $r_1\ge2$ it is \eqref{eq:order}, settled by
 Proposition~\ref{prop:partial} and Theorem~\ref{thm:converse}.
+\end{proof}
+
+\begin{theorem}[When the two-sided bound is the infimum, repeated roots]
+\label{thm:twosidedsharprep}
+Theorem~\ref{thm:twosidedsharp} holds verbatim for $1<r_1\le\cdots\le r_L$,
+repetitions allowed: with $\pi=\prod_{i\le u}(r_i-1)$ and $\sigma$ as in
+Proposition~\ref{prop:subtwosharp},
+$\inf_Qb_{u+1}(QP)=\min(|P(1)|,|P_u(1)|)$ if and only if either $\pi\le1$
+and $\sigma\le|P(1)|$, or $\pi\ge1$ and \eqref{eq:partial} holds for $P_u$;
+otherwise the infimum is strictly larger.
+\end{theorem}
+
+\begin{proof}
+Write $R=\min(|P(1)|,|P_u(1)|)$; Corollary~\ref{cor:twosided} gives
+$\inf\ge R$ at repeated roots.  Sufficiency: if $\pi\le1$ and
+$\sigma\le|P(1)|$, Proposition~\ref{prop:subtwosharp}, which allows
+repetitions, gives $\inf\le|P(1)|=R$; if $\pi\ge1$ and \eqref{eq:partial}
+holds, Theorem~\ref{thm:valuerep} and Proposition~\ref{prop:attainrep} with
+$M=1$ give $\inf\le1/\tau^*\le\max_j|S_j(P_u)|=|P_u(1)|=R$.
+
+Necessity.  Suppose neither condition holds.  As in the proof of
+Theorem~\ref{thm:twosidedsharp}, by \eqref{eq:weak} on $\mathcal H_0$ and
+Proposition~\ref{prop:farrep}(c), which allows repetitions and needs only
+$r_1>1$, it suffices to find, for every $0\le k\le u$ and every $X_0$ of size
+$u-k$, a certificate for $X_0$ on $\mathcal H_k$ with tail below $1/R$.  Let
+$Z$ consist of $X_0$ and the first $m-1$ positive integers outside it,
+$m=L-u$; it has $L-k-1$ elements and leading run $f\ge m-1$.  In increasing
+order the nodes of $\mathcal H_k$ are $1/r_L\le\cdots\le1/r_{k+1}$, so the
+products $\Pi_j=\prod_{i>L-j}(r_i-1)^{-1}$, $j\le L-k$, are those of all $L$
+roots, and Proposition~\ref{prop:twosidedconf} with $t=0$ bounds the tail of
+the full certificate by $\max(\Pi_{f+1},\Pi_{L-k})$, strictly unless
+$Z=\{1,\ldots,L-k-1\}$.  The increments
+$\delta_j=\log\Pi_j-\log\Pi_{j-1}=-\log(r_{L-j+1}-1)$ are nondecreasing in
+$j$, so $\log\Pi_j$ is convex and
+$\max(\Pi_{f+1},\Pi_{L-k})\le\max(\Pi_m,\Pi_L)=1/R$, since
+$m\le f+1\le L-k\le L$.  So the tail is below $1/R$ unless $Z$ is
+consecutive and $\Pi_{L-k}=\max(\Pi_m,\Pi_L)$.
+
+\emph{Endpoints.}  If $k=u$ and $\Pi_m\ge\Pi_L$, or $k=0$ and
+$\Pi_L\ge\Pi_m$, the last two paragraphs of the proof of
+Theorem~\ref{thm:twosidedsharp} apply unchanged, with
+Lemma~\ref{lem:improve} with repetitions.
+
+\emph{Interior.}  Let $0<k<u$ with $\Pi_{L-k}=\max(\Pi_m,\Pi_L)$, and put
+$j=L-k$.  If $\delta_{j+1}>0$ then $\delta_i>0$ for all $i>j$ and
+$\Pi_L>\Pi_j$; so $\delta_{j+1}\le0$, hence $\delta_i\le0$ for
+$m<i\le j$, and $\Pi_j\ge\Pi_m$ forces $\delta_i=0$ there; then
+$\delta_{j+1}\ge\delta_j=0$, so $\delta_{j+1}=0$, and $\Pi_L\le\Pi_j$ with
+nonnegative $\delta_i$ for $i>j$ forces those to vanish too.  So every
+$\delta_i$, $m<i\le L$, is $0$: $r_1=\cdots=r_u=2$.  Then $\pi=1$, and as the
+conditions fail, \eqref{eq:partial} fails for $P_u$, all roots are at least
+$2$, and $Z=\{1,\ldots,L-k-1\}$ contains $X_0$.  This is the equality case of
+the proof of Theorem~\ref{thm:converse}: with
+$Q=\prod_{i>k}(x-r_i)=(x-2)^{u-k}P_u$, the set $\mathcal A(Q)$ there contains
+$u-k+1$ integers of $\{1,\ldots,L-k-1\}$, one of them outside $X_0$, and
+Lemma~\ref{lem:improve} with repetitions gives a certificate for $X_0$ on
+$\mathcal H_k$ with tail below $1/|Q(1)|=1/|P_u(1)|=1/R$.
+\end{proof}
+
+\paragraph{The tie.}  The interior case is empty for distinct roots, where
+the $\delta_j$ increase strictly, and the proof of
+Theorem~\ref{thm:twosidedsharp} asserts $\Pi_{L-k}<1/R$ for $0<k<u$.  At
+repeated roots that assertion fails, but only at $r_1=\cdots=r_u=2$, where
+the criterion itself does not change.  At $(2,2,3,5,7)$ with $u=2$, $k=1$ and
+$X_0=\{1\}$, the full certificate on the Hermite space of $(2,3,5,7)$ with
+the consecutive zero set $\{1,2,3\}$ has tail exactly $\tfrac1{48}=1/R$
+(Lemma~2.1), with $R=|P(1)|=|P_2(1)|=48$ and $\pi=1$.  There the strict
+bound comes from the partial sums $1,-16,85,-162,48$ of
+$(x-2)(x-3)(x-5)(x-7)$, not from convexity; an exact search gives tail
+$0.536/48$ for $X_0=\{1\}$ and $\{2\}$, and $0.634/48$ for $\{3\}$.  So no
+counterexample to the verbatim statement exists: the only new equality case
+is absorbed by the $(x-2)$ argument of Theorem~\ref{thm:converse}.
+
+\begin{corollary}[When the repaired bound is the infimum, repeated roots]
+\label{cor:repairedsharprep}
+Corollary~\ref{cor:repairedsharp} holds verbatim for
+$1<r_1\le\cdots\le r_L$, repetitions allowed.
+\end{corollary}
+
+\begin{proof}
+Its proof, with Theorem~\ref{thm:twosidedsharprep} in place of
+Theorem~\ref{thm:twosidedsharp}, and Theorem~\ref{thm:converse} with
+Corollary~\ref{cor:charrep} in place of Proposition~\ref{prop:partial} with
+Theorem~\ref{thm:converse} when $r_1\ge2$.
 \end{proof}
 
 When the criterion fails, Theorem~\ref{thm:value} still computes the
@@ -2058,11 +2535,12 @@ for $u\ge2$ the value $1/T$ remains a search.
 
 \paragraph{What is proved.}  For roots at least $2$ the question whether
 \eqref{eq:order} is the infimum is settled, repeated roots included
-(Theorem~\ref{thm:converse}, Corollary~\ref{cor:charrep}), and for distinct
-roots so is the value when it is not (Theorem~\ref{thm:extremal}).  Below
-$2$, \eqref{eq:repaired} and \eqref{eq:twosided} hold for every $r_1>1$, and
-for distinct roots Theorem~\ref{thm:twosidedsharp} and
-Corollary~\ref{cor:repairedsharp} say when they are attained.
+(Theorem~\ref{thm:converse}, Corollary~\ref{cor:charrep}), and so is the
+value when it is not (Theorems~\ref{thm:extremal} and~\ref{thm:extremalrep}).
+Below $2$, \eqref{eq:repaired} and \eqref{eq:twosided} hold for every
+$r_1>1$, and Theorem~\ref{thm:twosidedsharp}, Corollary~\ref{cor:repairedsharp}
+and their repeated-root forms (Theorem~\ref{thm:twosidedsharprep},
+Corollary~\ref{cor:repairedsharprep}) say when they are attained.
 
 \paragraph{Open questions.}
 \begin{itemize}
@@ -2072,12 +2550,7 @@ $(\tfrac{11}{10},3,5,7)$ the escaping placement is not extremal, so
 Proposition~\ref{prop:step} is unavailable.  For $u=1$,
 Proposition~\ref{prop:uoneall} reduces $T$ to finitely many placements; for
 $u\ge2$ computing $T$ remains a search.
-\item[(ii)] \emph{Repeated roots.}  The criterion is settled at repeated roots, but
-Theorem~\ref{thm:extremal}, Theorem~\ref{thm:twosidedsharp} and the first
-part of Corollary~\ref{cor:repairedsharp} are proved for distinct roots only:
-the lifting, the pencil and the run chord all use full certificates on
-distinct nodes.
-\item[(iii)] \emph{The shift at run ends.}  The hypothesis of
+\item[(ii)] \emph{The shift at run ends.}  The hypothesis of
 Corollary~\ref{cor:shiftrun} moves the start of each run of $A$ past its end.
 The variant that moves the end instead,
 $\Tail(B_0\cup A)\le\Tail(B_0\cup A\setminus\{a\}\cup\{a+1\})$ for every

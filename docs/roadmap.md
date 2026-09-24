@@ -206,13 +206,12 @@ step; an answer lands in the paper it extends, and the row leaves.
   bound below 2 (`cor:repairedsharp`: with an exempt root below 2 it is the
   infimum exactly under `prop:subtwosharp`'s hypotheses; the two-sided bound
   `min(|P(1)|, |P_u(1)|)` of `cor:twosided` beats it when the exempt roots
-  straddle 2, with its own criterion `thm:twosidedsharp`).  Left, none
-  load-bearing: (i) below the cutoff with `u >= 2` the value `1/T` is a
+  straddle 2, with its own criterion `thm:twosidedsharp`).  Repeated roots are CLOSED too (`thm:extremalrep`,
+  `thm:twosidedsharprep`, via the coalescence limit `lem:coalesce`).  Left,
+  none load-bearing: (i) below the cutoff with `u >= 2` the value `1/T` is a
   search, and the escaping placement need not be extremal there (it fails
   at `(11/10, 3, 5, 7)`, `u = 1`, where `prop:uoneall` still makes it
-  finite); (ii) `thm:extremal` and `thm:twosidedsharp` at repeated roots
-  (the run chord's zero count and the two-sided equality clause assume
-  distinct nodes); (iii) the shift hypothesis in its run-end wording (0
+  finite); (ii) the shift hypothesis in its run-end wording (0
   violations in 550 instances).
 
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
