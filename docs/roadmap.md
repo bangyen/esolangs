@@ -276,16 +276,21 @@ step; an answer lands in the paper it extends, and the row leaves.
   insertion inequality beyond hole product `r - 1`, `2 <= r < 5/2`, and
   `1 < r < 2` with `n >> k`).
 
-- **Brainfuck behaviour count.**  Recorded in commit `9f81099` when the
-  Factor constant work was cut: a drawing (word over `><+-`) of `C`
-  characters reaches at most `(1 + sqrt 2)**(C + o(C))` tapes, attained by a
-  Delannoy-ranked code, while words free of the five cancelling adjacencies
-  number `(1 + lambda)**C`, `lambda = 6.388`.  Pin the exponential growth
-  rate of distinct behaviours (input-output functions on bounded inputs) of
-  `C`-character programs: enumeration to `C = 10` has I/O-only and
-  full-prefix ratios still climbing (4.09, 4.52), so fitted bases are lower
-  estimates, and forbidden-pattern lists stop near 7.37.  A global
-  equivalence argument is needed.
+- **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
+  brackets the growth rate of distinct behaviours (input-output maps on all
+  inputs, repo model: clipped tape, `,` at EOF an error) of `C`-character
+  programs: `3.8751 <= liminf B(C)**(1/C) <= limsup <= 7.0601`, from
+  `[2.414, 7.388]`.  Upper: behaviour-preserving shortlex rewriting (dead
+  loops, clears, diverging bodies, excursion commutation) and an exactly
+  certified Perron bound on the irreducible words; the old `7.388` counted
+  `[]` as removable, which is unsound when programs may diverge.  Lower:
+  loop-free token families decodable from their event sequences, certified
+  by a Collatz-Wielandt vector; loop-free programs alone lie in
+  `[3.875, 2 + sqrt 5 = 4.236]`.  A single fixed input gives `>= 3.366`.
+  Open: the limit.  Local rules have saturated near 7.06, so the upper side
+  needs a global equivalence argument; the lower side needs a decodable
+  loop gadget beating `4.236` (the census with loops is at 4.14 and
+  rising at `C = 11`).
 
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further
