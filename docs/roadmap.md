@@ -206,9 +206,9 @@ step; an answer lands in the paper it extends, and the row leaves.
   search, and the escaping placement need not be extremal there (it fails
   at `(11/10, 3, 5, 7)`, `u = 1`, where `prop:uoneall` still makes it
   finite); (ii) `thm:extremal` and `thm:twosidedsharp` at repeated roots
-  (`prop:farrep` should replace `lem:far`; the run chord's zero count and
-  the two-sided equality clause assume distinct nodes); (iii) `eq:shift`
-  in its run-end wording (0 violations in 550 instances).
+  (the run chord's zero count and the two-sided equality clause assume
+  distinct nodes); (iii) the shift hypothesis in its run-end wording (0
+  violations in 550 instances).
 
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further
