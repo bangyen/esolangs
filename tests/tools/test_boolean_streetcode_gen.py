@@ -41,13 +41,18 @@ class TestStreetcode:
         Extended to n=11 (roadmap): the per-row hall that carried
         a `log T` factor is gone, and the fixed per-T constants below still
         hold one arity past where they were first pinned.
+
+        The constants restate the branch pitch: the rectangle goes as its
+        square, so dropping it from 16 to its measured floor of 8
+        (:data:`~esolangs.tools.streetcode._H_PITCH`) took the rectangle from
+        1113 to 325 cells per leaf and the source from 979 to 248 chars.
         """
         for n in range(6, 12):
             table = "".join(str(index.bit_count() & 1) for index in range(2**n))
             program = boolean.streetcode(table)
             rows = program.splitlines()
-            assert len(rows) * max(map(len, rows)) <= 1_700 * 2**n
-            assert len(program) <= 1_100 * 2**n
+            assert len(rows) * max(map(len, rows)) <= 400 * 2**n
+            assert len(program) <= 280 * 2**n
 
     def test_compact_layout_compares_both_rotations(self) -> None:
         """Rotation strips the dense tree's leading triangular padding."""
