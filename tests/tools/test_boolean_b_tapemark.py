@@ -41,10 +41,10 @@ def test_three_input_tables(table: str) -> None:
 
 def test_measured_sizes() -> None:
     assert [len(tools.b_tapemark("0" * (2**n))) for n in range(1, 5)] == [
-        60,
-        252,
-        706,
-        1684,
+        54,
+        227,
+        636,
+        1517,
     ]
 
 

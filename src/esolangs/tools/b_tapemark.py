@@ -6,6 +6,17 @@ from dataclasses import dataclass, field
 
 from esolangs.tools.helpers import _validate_truth_table
 
+#: Column of the digit-emitting block within a branch gadget, and so the
+#: per-level stride: the corridor sits one column right of it, the children
+#: one right of that.  The beam from ``(4, -2)`` runs rightward over blank
+#: cells to reach the block, and the block's rows (-2 to 0) miss the
+#: gadget's own column-7 cells (rows 2 to 4), so 7 places it as far left as
+#: it goes: at 6 the turn lands inside the swap path and the program stops
+#: halting.  ``render`` drops wholly blank columns, so the two this saves
+#: are only a saving because every gadget shares them -- moving the block
+#: from 10 to 8 changed nothing at all.
+_DIGIT_COLUMN = 7
+
 
 @dataclass
 class _Builder:
@@ -52,15 +63,15 @@ class _Builder:
             (5, 2): "-",
             (4, 2): "\\",
             (4, -2): "/",
-            (10, -2): "\\",
-            (10, -1): "0",
-            (10, 0): "\\",
+            (_DIGIT_COLUMN, -2): "\\",
+            (_DIGIT_COLUMN, -1): "0",
+            (_DIGIT_COLUMN, 0): "\\",
         }
         for (dx, dy), char in placements.items():
             self.put(x + dx, y + dy, char)
 
-        zero = (x + 11, y - 1)
-        one = (x + 11, y)
+        zero = (x + _DIGIT_COLUMN + 1, y - 1)
+        one = (x + _DIGIT_COLUMN + 1, y)
         if depth == 1:
             for point, result in ((zero, table[start]), (one, table[start + 1])):
                 self.put(*point, result)
@@ -75,8 +86,8 @@ class _Builder:
             self.put(*point, mirror)
             self.put(point[0], target_y, mirror)
         middle = (start + stop) // 2
-        self.node(table, depth - 1, x + 12, y - gap, start, middle)
-        self.node(table, depth - 1, x + 12, y + gap, middle, stop)
+        self.node(table, depth - 1, x + _DIGIT_COLUMN + 2, y - gap, start, middle)
+        self.node(table, depth - 1, x + _DIGIT_COLUMN + 2, y + gap, middle, stop)
 
     def render(self, *, reflect: bool = False) -> str:
         """Render after removing wholly blank rows and columns.
