@@ -209,10 +209,12 @@ step; an answer lands in the paper it extends, and the row leaves.
   straddle 2, with its own criterion `thm:twosidedsharp`).  Repeated roots are CLOSED too (`thm:extremalrep`,
   `thm:twosidedsharprep`, via the coalescence limit `lem:coalesce`), and so
   is the shift with its hypothesis at run ends (`cor:shiftend`, via the
-  three-point bound `lem:threepoint`).  Left, not load-bearing: below the
-  cutoff with `u >= 2` the value `1/T` is a search, and the escaping
-  placement need not be extremal there (it fails at `(11/10, 3, 5, 7)`,
-  `u = 1`, where `prop:uoneall` still makes it finite).
+  three-point bound `lem:threepoint`).  Below the cutoff the value is a
+  finite computation for every `u` (`thm:finite`: `T` is a max over
+  placements in `[1, u(L-u)Delta]` of minima over zero sets within
+  `(L-1-u)Delta` of the placement; e.g. `(11/10, 3, 5, 7)`, `u = 2`:
+  `inf b_3 = 294156/21995` at `X = {2,4}`).  Attainment and the far-zero
+  rate are settled too (`thm:noattain`, `thm:attainchar`, `prop:farrate`).
 
 - **Coefficient mass at complex roots.**  Purely imaginary pairs are CLOSED
   ([coefficient-mass](proofs/coefficient-mass.tex) `thm:transfer`,

@@ -139,8 +139,10 @@ repeated roots included (Theorem~\ref{thm:twosidedsharprep}), say exactly
 when these bounds are the infimum.  At any distinct roots above $1$
 the infimum is the reciprocal of the worst placement's best tail
 (Theorem~\ref{thm:value}), but below $2$ the escaping placement need not be
-extremal; for $u=1$ the value is still a finite computation
-(Proposition~\ref{prop:uoneall}).
+extremal; the value is still a finite computation, a maximum over placements
+in an explicit window of minima over finitely many zero sets
+(Proposition~\ref{prop:uoneall} for $u=1$, Theorem~\ref{thm:finite} for
+every $u$).
 
 \emph{The tail comparison.}  Theorem~2.2 extends to confluent nodes
 (Proposition~\ref{prop:confluent}), strictly unless the zero set is
@@ -3063,8 +3065,373 @@ exceeds even that product, $1$.  At $(\tfrac{11}{10},3,5,7)$ the surviving
 roots are those of $(2,3,5,7)$, so $\tau^*=\tfrac{31}{1704}$, but
 $\tau(\{5\})=\tfrac{96935}{3398808}>\tau^*$: the finite placement beats the
 escaping one, and \eqref{eq:step} fails at $k=0$, $X=\{5\}$.  Below the
-cutoff Proposition~\ref{prop:step} can therefore not be applied as is, and
-for $u\ge2$ the value $1/T$ remains a search.
+cutoff Proposition~\ref{prop:step} can therefore not be applied as is;
+Theorem~\ref{thm:finite} below replaces the search by a finite computation
+for every $u$.
+
+\subsection*{The value below the cutoff is a finite computation}
+
+Theorem~\ref{thm:value} gives the infimum as $1/T$ at all distinct roots
+above $1$, and below the cutoff $T$ can exceed $\tau^*$.  We show that $T$ is
+nevertheless a maximum over placements in an explicit window of minima over
+finitely many zero sets, every one of which is an exact finite sum plus a
+geometric tail.  Placements that leave the window are handled by
+Proposition~\ref{prop:farrep}: a block of $j$ exempt coefficients that
+escapes costs $\tau_j$ of what is left, and once the block is far enough out
+it costs strictly less.  The one-node pencil of Lemma~\ref{lem:pencil}
+drives both steps, and the far zeros enter only through a perturbation
+estimate for generalized Vandermonde determinants.
+
+Throughout, $1<r_1<\cdots<r_L$ are distinct, $y_i=1/r_i$, and for an
+exponential sum $H$ and a set $I\subseteq\N_{>0}$ we write
+$\mu_H(I)=\sum_{d\in I}|H_d|$, so that $\Tail(H)=\mu_H([1,\infty))$.  Put
+\[
+  q=\max_{1\le i<L}\frac{y_{i+1}}{y_i}<1,\qquad
+  C_n=\prod_{1\le a<b\le n}\bigl(1-q^{b-a}\bigr),\qquad
+  K=\frac{(L-1)!}{C_{L-1}^2},
+\]
+let $W_p=\{y_{L-p},\ldots,y_L\}$ be the $p+1$ smallest nodes, and
+\[
+  \Gamma=\max_{1\le p\le L-1}\ \sum_{\nu\in W_p}\
+  \prod_{\mu\in W_p\setminus\{\nu\}}\frac{1+\mu}{|\nu-\mu|}.
+\]
+Let $\Delta$ be the least integer $\Delta\ge L$ with
+\begin{equation}\label{eq:Delta}
+  \frac{y_1^{\Delta}}{1-y_1}\le\frac1{3\Gamma},\qquad
+  Kq^{\Delta+1}\le\frac12,\qquad
+  Kq^{\Delta+1}\Bigl(8+\frac{4(L-1)}{y_L}\Bigr)\le\frac{1-y_1}{2\Gamma}.
+\end{equation}
+It depends on the roots alone; at $(\tfrac{11}{10},3,5,7)$ it is $111$, at
+$(\tfrac65,\tfrac32,3,5)$ it is $103$ and at $(\tfrac32,3,5,7)$ it is $64$.
+
+\begin{lemma}[The pencil step]\label{lem:pencilstep}
+In the notation of Lemma~\ref{lem:pencil}, let $N\ge1$ with $N\notin A$ and
+$\theta_N=|F_N|/|H_N|$.  Then
+\[
+  \Tail\bigl(A\cup\{N\}\bigr)-\Tail(F)
+  =\theta_N\bigl(\mu_H((N,\infty))-\mu_H([1,N])\bigr)
+   -2\sum_{d>N}|F_d| ,
+\]
+so $\Tail(A\cup\{N\})<\Tail(F)$ whenever
+$\mu_H((N,\infty))\le\mu_H([1,N])$.  If the full certificate with zero set
+$A\cup\{N\}$ has the least tail among the certificates on
+$y_{k+1},\ldots,y_L$ vanishing on $A$, then
+$\mu_H([N,\infty))\ge\mu_H([1,N))$.
+\end{lemma}
+
+\begin{proof}
+Put $\rho_d=|F_d|/|H_d|$ for $d\ge1$ outside $A$.  By
+Lemma~\ref{lem:ratio} $\rho_d>\theta_N$ for $d<N$ and $\rho_d<\theta_N$ for
+$d>N$, so \eqref{eq:median} gives
+\[
+  \Tail\bigl(A\cup\{N\}\bigr)
+  =\sum_{d<N}\bigl(|F_d|-\theta_N|H_d|\bigr)
+   +\sum_{d>N}\bigl(\theta_N|H_d|-|F_d|\bigr),
+\]
+the sums over $d\ge1$ outside $A$, where $H$ vanishes anyway.  Subtracting
+$\Tail(F)=\sum_{d<N}|F_d|+\theta_N|H_N|+\sum_{d>N}|F_d|$ gives the identity.
+The last sum is positive, since $F$ has finitely many zeros.  For the second
+claim, the certificates vanishing on $A$ with $tH$ opposing $F$ have tail
+$\varphi(\theta)=\sum_d|H_d|\,|\theta-\rho_d|$ by the proof of
+Proposition~\ref{prop:median}, and for $\theta$ slightly above $\theta_N$,
+\[
+  \varphi(\theta)-\varphi(\theta_N)
+  =(\theta-\theta_N)\bigl(\mu_H([N,\infty))-\mu_H([1,N))\bigr),
+\]
+because $\rho_d\le\theta_N$ exactly for $d\ge N$.  Minimality at
+$\theta_N$ makes the bracket nonnegative.
+\end{proof}
+
+The next lemma is the quantitative form of Proposition~\ref{prop:farrep}(a)
+for the pencil: zeros placed far out, together with as many new top nodes,
+barely change it.  Fix a set $P_0\ni0$ of $p\le L-1$ nonnegative integers
+with $x=\max P_0$, put $W=W_p$ with largest node $w_0=y_{L-p}$, and let $Q$
+be the sum on $W$ vanishing on $P_0$ with coefficient $1$ on $w_0$.  For
+$0\le s\le L-1-p$ let $Z=\{y_{L-p-s},\ldots,y_{L-p-1}\}$ be the $s$ nodes
+just above $W$, and for a set $E$ of $s$ integers above $x$ let $H$ be the
+sum on $Z\cup W$ vanishing on $P_0\cup E$ with coefficient $1$ on $w_0$.
+Both exist and are unique: a sum on $p$ (respectively $p+s$) of the nodes
+vanishing at $p$ (respectively $p+s$) points is zero by the zero bound, so
+the coefficient on $w_0$ cannot vanish and the remaining coefficients solve a
+nonsingular system.  Write $Q=\sum_{\nu\in W}q_\nu\nu^d$,
+$H=\sum_{\nu\in Z\cup W}h_\nu\nu^d$ and $S_Q=\sum_{\nu\in W}|q_\nu|\nu$.
+
+\begin{lemma}[Far zeros barely move the pencil]\label{lem:laplace}
+In this setting $S_Q\le\Gamma\,\mu_Q([1,p+1])$.  If $s\ge1$, $e_1=\min E$
+and $\rho=Kq^{e_1-x}\le\frac12$, then
+\[
+  \sum_{d\ge1}|H_d-Q_d|
+  \le\frac{S_Q}{1-y_1}\Bigl(4\rho+\frac{2(L-1)Kq^{e_1}}{y_L}\Bigr).
+\]
+\end{lemma}
+
+\begin{proof}
+\emph{The mass of $Q$.}  Put $c_\nu=q_\nu\nu$, so that
+$Q_d=\sum_\nu c_\nu\nu^{d-1}$.  The Lagrange polynomial
+$\ell_\nu(t)=\prod_{\mu\ne\nu}(t-\mu)/(\nu-\mu)=\sum_i\ell_{\nu,i}t^i$ of the
+nodes $W$ satisfies $c_\nu=\sum_{i=0}^{p}\ell_{\nu,i}Q_{i+1}$, and its
+coefficients have absolute sum at most $\prod_{\mu\ne\nu}(1+\mu)/|\nu-\mu|$.
+Summing over $\nu$ gives $S_Q\le\Gamma\max_{1\le d\le p+1}|Q_d|
+\le\Gamma\mu_Q([1,p+1])$.
+
+\emph{Determinants.}  For a set $R$ of distinct nonnegative integers and a
+set $S$ of $|R|$ nodes let $D(R,S)=\det(\sigma^r)$, and let $m(R,S)$ be the
+product of $\sigma^r$ over the pairing of the $t$th largest node with the
+$t$th largest exponent.  Every term of the determinant is at most $m(R,S)$
+by the rearrangement inequality, so $|D(R,S)|\le|S|!\,m(R,S)$.  Conversely
+$D(R,S)$ is, up to sign, a Schur polynomial, which has nonnegative
+coefficients and contains the monomial of the pairing above, times the
+Vandermonde product $\prod_{a<b}(\sigma_a-\sigma_b)$ (nodes decreasing); so
+$|D(R,S)|\ge c(S)\,m(R,S)$ with $c(S)=\prod_{a<b}(1-\sigma_b/\sigma_a)$.
+Consecutive nodes of any subset of our list have ratio at most $q$, so
+$c(S)\ge C_{|S|}\ge C_{L-1}$.
+
+\emph{The monomial comparison.}  Let $Y$ be a set of $p+s$ nodes with $s$
+largest $Z_Y$ and $p$ smallest $B_Y$, and let $S\subseteq Y$ have $s$
+elements, $S^c=Y\setminus S$.  The $t$th largest of $S$ is at most that of
+$Z_Y$, the $t$th largest of $S^c$ at least that of $B_Y$, and
+$\prod S\prod S^c=\prod Z_Y\prod B_Y$.  Since every exponent of $E$ is at
+least $e_1$ and every exponent of $P_0$ at most $x$,
+\begin{equation}\label{eq:monocomp}
+  \frac{m(E,S)\,m(P_0,S^c)}{m(E,Z_Y)\,m(P_0,B_Y)}
+  \le\Bigl(\frac{\prod S}{\prod Z_Y}\Bigr)^{e_1}
+     \Bigl(\frac{\prod S^c}{\prod B_Y}\Bigr)^{x}
+  =\Bigl(\frac{\prod S}{\prod Z_Y}\Bigr)^{e_1-x}\le q^{e_1-x}
+\end{equation}
+when $S\ne Z_Y$, as some element of $S$ is then at most $q$ times the
+corresponding element of $Z_Y$.
+
+\emph{Cramer and Laplace.}  Let $N'=(Z\cup W)\setminus\{w_0\}$ and
+$W'=W\setminus\{w_0\}$.  The coefficients $h_\nu$, $\nu\in N'$, solve the
+system with matrix $\mathsf M=(\nu^r)_{r\in P_0\cup E,\ \nu\in N'}$ and
+right-hand side $(-w_0^r)$, and the $q_\nu$, $\nu\in W'$, the system with
+matrix $\mathsf M_0=(\nu^r)_{r\in P_0,\ \nu\in W'}$.  By Cramer's rule
+$h_\nu=-\det\mathsf M^{(\nu)}/\det\mathsf M$ and
+$q_\nu=-\det\mathsf M_0^{(\nu)}/\det\mathsf M_0$, where ${}^{(\nu)}$
+replaces the column of $\nu$ by that of $w_0$.  Expand $\det\mathsf M$ and
+$\det\mathsf M^{(\nu)}$ along the $s$ rows $E$: each is a signed sum, over the
+$s$-sets $S$ of columns, of $D(E,S)$ times the complementary minor on the
+rows $P_0$, the sign depending only on the positions.
+
+For $\det\mathsf M$ ($Y=N'$, $Z_Y=Z$, $B_Y=W'$) the term $S=Z$ is
+$\pm D(E,Z)\det\mathsf M_0$, and by \eqref{eq:monocomp} and the two
+determinant bounds every other term is at most
+\[
+  \frac{s!\,p!\,q^{e_1-x}}{c(Z)\,c(W')}\,\bigl|D(E,Z)\det\mathsf M_0\bigr| ;
+\]
+there are $\binom{p+s}{s}-1$ of them, $(p+s)!\le(L-1)!$ and
+$c(Z)c(W')\ge C_{L-1}^2$, so
+\[
+  \det\mathsf M=\pm D(E,Z)\det\mathsf M_0\,(1+\epsilon_0),
+  \qquad|\epsilon_0|\le\rho .
+\]
+For $\nu\in W'$ ($Y=(Z\cup W)\setminus\{\nu\}$,
+$Z_Y=Z$, $B_Y=W\setminus\{\nu\}$) the term $S=Z$ is
+$\pm D(E,Z)\det\mathsf M_0^{(\nu)}$ with the same sign, and
+$\det\mathsf M_0^{(\nu)}=\pm D(P_0,W\setminus\{\nu\})\ne0$; the same count
+gives the same form with some $|\epsilon_\nu|\le\rho$.  As the signs agree,
+\[
+  h_\nu=q_\nu\frac{1+\epsilon_\nu}{1+\epsilon_0},\qquad
+  |h_\nu-q_\nu|\le|q_\nu|\frac{2\rho}{1-\rho}\le4\rho|q_\nu|
+  \qquad(\nu\in W').
+\]
+For $\nu\in Z$ no term of $\det\mathsf M^{(\nu)}$ has $S=Z$.  Its columns are
+the nodes $Y=(Z\cup W)\setminus\{\nu\}$, whose $p$ smallest are $W'$, and
+now $\prod S\prod S^c=\prod Z\prod W'\cdot w_0/\nu$ while
+$\prod S\le\prod Z\cdot w_0/\nu$.  The argument of \eqref{eq:monocomp}
+bounds each term's monomial by
+$(\prod S/\prod Z)^{e_1-x}(w_0/\nu)^x\,m(E,Z)m(P_0,W')\le
+q^{e_1}m(E,Z)m(P_0,W')$, so
+\[
+  |h_\nu|\le\binom{p+s}{s}\frac{s!\,p!\,q^{e_1}}{c(Z)c(W')(1-\rho)}
+  \le2Kq^{e_1}\qquad(\nu\in Z).
+\]
+Finally, as $h_{w_0}=q_{w_0}=1$, $\nu/(1-\nu)\le1/(1-y_1)$ and
+$S_Q\ge w_0\ge y_L$,
+\[
+  \sum_{d\ge1}|H_d-Q_d|\le\sum_{\nu\in W'}|h_\nu-q_\nu|\frac{\nu}{1-\nu}
+  +\sum_{\nu\in Z}|h_\nu|\frac{\nu}{1-\nu}
+  \le\frac{4\rho S_Q+2sKq^{e_1}}{1-y_1},
+\]
+and $s\le L-1$, $1\le S_Q/y_L$.
+\end{proof}
+
+\begin{lemma}[Mass criterion]\label{lem:masscrit}
+In the setting of Lemma~\ref{lem:laplace}, let $M\ge x+\Delta$.  For every
+$0\le s\le L-1-p$, every set $E$ of $s$ integers above $M$ and every $N>M$,
+\[
+  \mu_H([N,\infty))<\mu_H([1,N)).
+\]
+\end{lemma}
+
+\begin{proof}
+Let $\varepsilon=\sum_{d\ge1}|H_d-Q_d|$, which is $0$ if $s=0$.  Otherwise
+$e_1-x\ge\Delta+1$, so $\rho\le Kq^{\Delta+1}\le\frac12$ by \eqref{eq:Delta},
+and Lemma~\ref{lem:laplace} with $q^{e_1}\le q^{e_1-x}$ and the third
+condition of \eqref{eq:Delta} gives $2\varepsilon\le S_Q/(2\Gamma)$.  Next,
+$w_0\le y_1$ and $M\ge\Delta$ give
+\[
+  \mu_Q((M,\infty))\le\sum_{\nu\in W}|q_\nu|\frac{\nu^{M+1}}{1-\nu}
+  \le\frac{w_0^{M}}{1-w_0}S_Q\le\frac{S_Q}{3\Gamma},
+\]
+while $M\ge\Delta\ge L\ge p+1$ and Lemma~\ref{lem:laplace} give
+$\mu_Q([1,M])\ge S_Q/\Gamma$.  As $N>M$,
+\[
+  \mu_H([1,N))-\mu_H([N,\infty))
+  \ge\mu_Q([1,M])-\mu_Q((M,\infty))-2\varepsilon
+  \ge\frac{S_Q}{\Gamma}\Bigl(1-\frac13-\frac12\Bigr)>0 .
+\]
+\end{proof}
+
+The pencils met below are all of this form.  If $F$ is a full certificate
+on $y_{k+2},\ldots,y_L$ with zero set $A$, its pencil $H$ of
+Lemma~\ref{lem:pencil} lives on the $L-k$ smallest nodes and vanishes on
+$\{0\}\cup A$; splitting $A$ into the part $A_0$ at most some $x$ and the
+part $E$ above it puts $H$ in the setting of Lemma~\ref{lem:laplace} with
+$P_0=\{0\}\cup A_0$ and $s=|E|$, since $p+1+s=|A|+2=L-k$.
+
+\begin{lemma}[Zero sets of minimisers]\label{lem:zerobound}
+Let $0\le k<L$, let $X$ be a set of at most $L-k-1$ positive integers, and
+$x_0=\max(X\cup\{0\})$.  Every full certificate on $y_{k+1},\ldots,y_L$
+attaining $\tau_k(X)$ has its zero set in
+$\{1,\ldots,x_0+(L-k-1-|X|)\Delta\}$.  In particular $\tau_k(X)$ is the least
+tail of the finitely many full certificates on $y_{k+1},\ldots,y_L$ whose zero
+sets contain $X$ and lie in that window.
+\end{lemma}
+
+\begin{proof}
+Let $v$ attain $\tau_k(X)$ with zero set $A\supseteq X$, $|A|=L-k-1$, and
+put $n=|A\setminus X|$ and $M_i=x_0+i\Delta$.  If each of the $n$ windows
+$(M_i,M_{i+1}]$, $0\le i<n$, meets $A$, all $n$ elements of $A\setminus X$
+lie in $(M_0,M_n]$ and we are done.  Otherwise let the window $(M_i,M_{i+1}]$
+miss $A$, put $A_0=A\cap[1,M_i]\supseteq X$ and $A_1=A\cap(M_{i+1},\infty)$,
+and suppose $A_1\ne\varnothing$.  Its largest element $a^*=\max A$ exceeds
+$x_0$, so $a^*\notin X$.  Let $F'$ be the full certificate on
+$y_{k+2},\ldots,y_L$ with zero set $A\setminus\{a^*\}$ and $H'$ its pencil.
+Every certificate vanishing on $A\setminus\{a^*\}\supseteq X$ is one for $X$,
+so $v$ has the least tail among them, and Lemma~\ref{lem:pencilstep} gives
+$\mu_{H'}([a^*,\infty))\ge\mu_{H'}([1,a^*))$.  But $H'$ is the sum of
+Lemma~\ref{lem:laplace} with $P_0=\{0\}\cup A_0$, whose maximum is at most
+$M_i$, and $E=A_1\setminus\{a^*\}$, above $M_{i+1}=M_i+\Delta$; so
+Lemma~\ref{lem:masscrit} with $M=M_{i+1}$ and $N=a^*$ gives the reverse
+strict inequality.  Hence $A_1=\varnothing$ and $A\subseteq[1,M_i]$.  The
+last sentence follows from Lemma~\ref{lem:attainX}.
+\end{proof}
+
+\begin{lemma}[Far blocks]\label{lem:farblock}
+Let $1\le j\le L-1$, let $X'$ be a set of at most $L-1-j$ positive integers,
+$x_0=\max(X'\cup\{0\})$, and let $E$ be a set of $j$ integers above
+$x_0+(L-j-|X'|)\Delta$.  Then $\tau(X'\cup E)<\tau_j(X')$.
+\end{lemma}
+
+\begin{proof}
+By Lemmas~\ref{lem:attainX} and~\ref{lem:zerobound}, $\tau_j(X')$ is
+attained by a full certificate $F^0$ on $y_{j+1},\ldots,y_L$ with zero set
+$A\supseteq X'$ and $\max A\le x_0+(L-j-1-|X'|)\Delta=:M-\Delta$.  Let
+$e_1<\cdots<e_j$ be the elements of $E$, all above $M$.  For
+$0\le s<j$ let $F^{s+1}$ be the full certificate on $y_{j-s},\ldots,y_L$
+with zero set $A\cup\{e_1,\ldots,e_{s+1}\}$.  It is obtained from $F^s$ by
+adding the node $y_{j-s}$ and the zero $e_{s+1}\notin A\cup\{e_1,\ldots,e_s\}$,
+and the pencil of that step is the sum of Lemma~\ref{lem:laplace} with
+$P_0=\{0\}\cup A$, $p=L-j$, and the $s$ far zeros $e_1,\ldots,e_s$.  By
+Lemma~\ref{lem:masscrit} with $N=e_{s+1}$ its mass satisfies
+$\mu_H((N,\infty))\le\mu_H([N,\infty))<\mu_H([1,N))\le\mu_H([1,N])$, so
+Lemma~\ref{lem:pencilstep} gives $\Tail(F^{s+1})<\Tail(F^s)$.  After $j$
+steps $F^j$ is a certificate on all $L$ nodes for $X'\cup E$, and
+$\tau(X'\cup E)\le\Tail(F^j)<\Tail(F^0)=\tau_j(X')$.
+\end{proof}
+
+\begin{lemma}[Escaped blocks are limits]\label{lem:escape}
+Let $0\le j\le u\le L-1$ and let $X'$ be a set of $u-j$ positive integers.
+Then $T\ge\tau_j(X')$.
+\end{lemma}
+
+\begin{proof}
+For $j=0$ this is the definition of $T$.  For $j\ge1$ put
+$E_\nu=\{\nu+1,\ldots,\nu+j\}$; it suffices that
+$\limsup_\nu\tau(X'\cup E_\nu)\ge\tau_j(X')$.  This is the second half of the
+proof of Theorem~\ref{thm:value} with $X'$ carried along.  If
+$\tau(X'\cup E_\nu)\le\tau_j(X')-\varepsilon$ for all large $\nu$, take
+certificates $v^\nu=\sum_i\lambda^\nu_iy_i^d$ for $X'\cup E_\nu$ with tails at
+most $\tau_j(X')-\varepsilon/2$.  Their values at $L$ fixed points of
+$\{0,1,\ldots\}\setminus X'$, one of them $0$, are bounded once $E_\nu$ lies
+beyond those points, so the $\lambda^\nu$ are bounded and a subsequence
+converges to some $\lambda$.  The equations $v^\nu_e=0$, $e\in E_\nu$, read
+$A_\nu\lambda^\nu_{\le j}=-R_\nu\lambda^\nu_{>j}$, and the entries of
+$A_\nu^{-1}R_\nu$ are ratios $\alpha_J/\alpha_{J^*}$ of
+Proposition~\ref{prop:farrep}(b) with $k=j$, which tend to $0$; so
+$\lambda_{\le j}=0$.  The limit is then a certificate for $X'$ on
+$y_{j+1},\ldots,y_L$ with tail at most $\tau_j(X')-\varepsilon/2$, by
+Fatou's lemma, which is absurd.
+\end{proof}
+
+\begin{theorem}[The value below the cutoff is finite]\label{thm:finite}
+Let $1<r_1<\cdots<r_L$ and $0\le u\le L-1$, and put $N=u(L-u)\Delta$ with
+$\Delta$ as in \eqref{eq:Delta}.  Then
+\[
+  T=\max\Bigl\{\tau_j(X'):\ 0\le j\le u,\ X'\subseteq\{1,\ldots,N\},\
+  |X'|=u-j\Bigr\},
+\]
+where each $\tau_j(X')$ is the least tail of the full certificates on
+$y_{j+1},\ldots,y_L$ whose zero sets $A$ satisfy
+$X'\subseteq A\subseteq\{1,\ldots,\max(X'\cup\{0\})+(L-1-u)\Delta\}$.  So
+\[
+  \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)=\frac1T
+\]
+is a maximum of minima over explicit finite families of tails, each an exact
+finite sum plus a geometric tail, rational when the roots are.  Moreover
+$\tau(X)<T$ for every placement $X$ of size $u$ not contained in
+$\{1,\ldots,N\}$, so the supremum defining $T$ is attained by a placement
+exactly when the maximum is attained with $j=0$.
+\end{theorem}
+
+\begin{proof}
+Every member of the family is at most $T$ by Lemma~\ref{lem:escape}.
+Conversely let $|X|=u$ and $N_i=i(L-u)\Delta$.  If each of the $u$ windows
+$(N_i,N_{i+1}]$, $0\le i<u$, meets $X$, then $X\subseteq[1,N_u]$ and $\tau(X)$
+is a member with $j=0$.  Otherwise take the least window $(N_i,N_{i+1}]$
+missing $X$, and put $X'=X\cap[1,N_i]$ and $E=X\cap(N_{i+1},\infty)$.  If
+$E=\varnothing$, again $X\subseteq[1,N]$.  If not, $j=|E|\ge1$,
+$|X'|=u-j\le L-1-j$, and
+$\max(X'\cup\{0\})+(L-j-|X'|)\Delta\le N_i+(L-u)\Delta=N_{i+1}<\min E$, so
+Lemma~\ref{lem:farblock} gives $\tau(X)<\tau_j(X')$, a member.  Hence $T$ is
+the maximum, and $\tau(X)<T$ whenever $X\not\subseteq[1,N]$, because then
+$E\ne\varnothing$.  The description of $\tau_j(X')$ is
+Lemma~\ref{lem:zerobound} with $k=j$, since $L-j-1-|X'|=L-1-u$.  The tail of
+a full certificate with zero set $A$ is the finite sum up to $\max A$ plus the
+modulus of a geometric series, as it keeps one sign beyond $\max A$.  The
+value is Theorem~\ref{thm:value}.  Finally, a placement $X$ with
+$\tau(X)=T$ lies in $\{1,\ldots,N\}$ and is a member with $j=0$, and a
+member with $j=0$ is a placement.
+\end{proof}
+
+The infimum itself is never attained (Theorem~\ref{thm:noattain}); the
+last clause says whether some finite placement already costs the full
+$T$.
+
+\paragraph{Examples.}  At $u=1$ the theorem is a cruder, uniform form of
+Proposition~\ref{prop:uoneall}, and run literally it returns the values in
+the table above.  At $u=2$ the maximiser can be a finite placement with no
+escaping block, at a value strictly between the two-sided bound and the
+escaping value.  At $(\tfrac{11}{10},3,5,7)$, where $\Delta=111$ and $N=444$,
+the family has $98791$ members; the maximum is $\tau(\{2,4\})$, attained by
+the full certificate with zero set $\{2,4,5\}$ and certified by the
+multipliers of Proposition~\ref{prop:attain}, so
+\[
+  \inf_Qb_3\Bigl(Q\,(x-\tfrac{11}{10})(x-3)(x-5)(x-7)\Bigr)
+  =\frac{294156}{21995}=13.37\ldots,
+\]
+against the two-sided bound $\tfrac{24}5$ and the escaping value
+$1/\tau^*=24$.  At $(\tfrac65,\tfrac32,3,5)$ ($\Delta=103$) the maximum is
+$\tau(\{1,2\})$, with zero set $\{1,2,9\}$, and the infimum of $b_3$ is
+$\tfrac{5678061913476}{1142868634255}=4.968\ldots$, against $\tfrac45$ and
+$8$.  At $(\tfrac32,3,5,7)$ the maximum $\tfrac1{24}$ is attained both by the
+escaping pair and by $X=\{2,3\}$, and the infimum of $b_3$ is the two-sided
+bound $24$, as Theorem~\ref{thm:twosidedsharp} predicts; at $(2,3,5,7)$
+only the escaping pair attains $\tfrac1{24}$, as Theorem~\ref{thm:extremal}
+requires.  The window is far
+from sharp: in all three cases every minimising zero set lies within $9$ of
+its placement, against the proven $(L-1-u)\Delta\ge64$.
 
 \section{Scope and open questions}\label{sec:scope}
 
@@ -3080,17 +3447,17 @@ also holds with its hypothesis at run ends (Corollary~\ref{cor:shiftend}).
 No infimum is attained (Theorem~\ref{thm:noattain}); at roots at least~$2$ a
 placement reaches $\tau^*$ exactly in the case of
 Theorem~\ref{thm:attainchar}, and Proposition~\ref{prop:farrate} gives
-the rate $O(1/\min E)$ of far zeros.
+the rate $O(1/\min E)$ of far zeros.  Below $2$ the value is a finite
+computation for every $u$ (Theorem~\ref{thm:finite}).
 
-\paragraph{Open questions.}
-\begin{itemize}
-\item[(i)] \emph{Below the cutoff with $u\ge2$.}  Theorem~\ref{thm:value} gives the
-infimum as $1/T$ for all distinct roots above $1$, but at
-$(\tfrac{11}{10},3,5,7)$ the escaping placement is not extremal, so
-Proposition~\ref{prop:step} is unavailable.  For $u=1$,
-Proposition~\ref{prop:uoneall} reduces $T$ to finitely many placements; for
-$u\ge2$ computing $T$ remains a search.
-\end{itemize}
+\paragraph{Open questions.}  None of the following is needed for the results
+above.  Theorem~\ref{thm:finite} makes $T$ a finite computation for every
+$u$, but its window $N=u(L-u)\Delta$ is far from sharp: at
+$(\tfrac{11}{10},3,5,7)$ with $u=2$ it is $444$, while every minimising zero
+set lies within $9$ of its placement.  Whether the maximising pair
+$(j,X')$ can be located as directly as the half-mass point of
+Proposition~\ref{prop:uoneall} does for $u=1$, and whether
+Theorem~\ref{thm:finite} holds at repeated roots below the cutoff, are open.
 
 \paragraph{Relation to the literature.}  The bounds here concern coefficient
 magnitudes, not ordinary length or height: they are uniform over the degree
