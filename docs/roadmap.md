@@ -254,7 +254,12 @@ step; an answer lands in the paper it extends, and the row leaves.
   lives) and the cross terms `K_s K_t log t` between annuli, which follow
   (`cor:conjcross`) from the conjectured rows at real roots of both signs,
   `b_k >= |f_D| prod_{i >= 2k-1} (rho_i - 1)` (`eq:bothrows`; certified
-  exactly on 145 random instances, never violated in high precision).
+  exactly on 145 random instances, never violated in high precision), and
+  would follow up to a constant factor per row, which suffices, from a
+  norm bound `eq:nuconj` on certificates with `2k-2` spare roots
+  (`lem:sparecert`; qualitatively Descartes, `prop:sparedescartes`).  The
+  row `k = 2` is proved up to a factor 65 (`thm:secondrow`, via Hunter
+  positivity with constants, `lem:evenh`).
 
 - **Polynomial's routing constant.**  CLOSED in
   [polynomial](proofs/polynomial.tex): the next-read count `thm:count`
