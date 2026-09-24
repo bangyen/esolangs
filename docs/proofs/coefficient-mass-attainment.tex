@@ -2149,12 +2149,32 @@ $\mathcal N_J(E)=\max_{E_\bullet}\prod_iz_i^{\sigma(E_i)}\Pi(E_i,A_i)
 pairing maximises the monomial, so for $J\ne J^*$ the ratio
 $\mathcal N_J/\mathcal N_{J^*}$ is at most
 $\max\{1/\min E,e^{-\kappa\min E/2}\}$ at equal profiles---again the two
-observed rates.  Two things are then missing, both free of the competitor
-$J$: that $|\alpha_{J^*}(E)|\ge c\,\mathcal N_{J^*}(E)$, that is, that the
-node expansion does not cancel at $J^*$; and the comparison of
-$\mathcal N_J$ with $\mathcal N_{J^*}$ across differing profiles, where the
-two maximising partitions differ and the $\Delta$ deficiencies no longer
-cancel.  A decomposition of $E$ into clusters of small relative diameter does
+observed rates.  Across differing profiles the comparison of the
+growth-sorted partitions is settled: listing $J$ in growth order, its $u$th
+function never precedes the $u$th function of $J^*$, and the slots where the
+nodes actually differ form the intervals $(c_j(J),c^*_j]$ of prefix counts.
+Every deficiency $\delta(u,v)^{-1}=g_u/(g_u-g_v)$ is at most $2g_v$, and the
+pair $(u,v)$ can be charged to the slot $v$, which such a pair always forces
+into that mismatch set; since a slot is charged at most $k-1$ times,
+\[
+  \frac{W_J}{W_{J^*}}\le\prod_{u\in U}
+  \Bigl[2^{\,k-1}g_u^{\,\bar a+k-1}e^{-\kappa g_u}\Bigr]
+  \le2^{\,k-1}n^{\,\bar a+k-1}e^{-\kappa n},
+  \qquad n=\min E,
+\]
+the mismatch set $U$ being nonempty exactly when the profiles differ.  This
+reproves the geometric rate at a split profile.  What is missing is that the
+growth-sorted partition attains $\mathcal N_J$ up to a constant, after which
+the displayed bound gives the cross-profile comparison; and, separately, that
+the node expansion does not cancel at $J^*$, that is
+$|\alpha_{J^*}(E)|\ge c\,\mathcal N_{J^*}(E)$.  The latter cannot be had by
+domination: the growth-sorted partition need not even be the largest term.
+At $z=(\tfrac13,\tfrac14)$ with both multiplicities $2$, $k=3$ and
+$E=\{n,n+1,n+2\}$, the partition splitting $\{n,n+2\}$ off beats the sorted
+one by $3\cdot2\cdot\tfrac14\cdot\tfrac{n+1}{n}$, which is $1.575$ at $n=20$
+and tends to $\tfrac32$, while the runner-up stays a fixed fraction of the
+maximum.  So at least two terms remain of the same order however large
+$\min E$ is, and non-cancellation must come from signs rather than size.  A decomposition of $E$ into clusters of small relative diameter does
 not help: two clusters carrying the same profile but different exponent
 assignments compete at a ratio the separation bounds only by a constant, so
 no termwise domination is available there however small the relative diameter
