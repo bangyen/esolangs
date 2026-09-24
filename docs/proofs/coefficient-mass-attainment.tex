@@ -35,32 +35,23 @@
 \maketitle
 
 \begin{abstract}
-The certificate paper~\cite{coefficient-mass} proves that for real roots
-$2\le r_1\le\cdots\le r_L$, repetitions allowed, and $F=\sum_jf_jx^j$ a
-nonzero multiple of $\prod_{i=1}^L(x-r_i)$, the $(u+1)$-st largest
-nonleading coefficient magnitude satisfies
-$b_{u+1}\ge|f_D|\prod_{i=u+1}^L(r_i-1)$, and that it is an infimum at
-$(2,3)$ and $(2,3,5)$.  We show that the $(2,3,5)$ multiples are correctly
-ordered at every degree, the $b_2$ family approaching its bound from above,
-and identify a partial-sum criterion on the
-surviving root product under which the same construction shows the bound
-is an infimum in general.  The criterion is also necessary, repeated
-roots included: when it fails, the infimum lies strictly above the bound.  It is
-then the reciprocal of the worst placement's best certificate tail, and
-lifting certificates computes it at explicit root sets: at $(2,3,5,7)$ it is
-$1704/31$.  For distinct roots the escaping placement is always the worst,
-so the infimum is the reciprocal of the least certificate tail on the
-surviving roots alone.
-The standing restriction $r_1\ge2$ cannot be dropped once $u\ge1$, already
-at $L=2$; the node cutoff $y_i\le1/2$ underlying the tail comparison behind
-the bound cannot be raised; and we extend that comparison to confluent
-(repeated) nodes.  Beyond the cutoff we prove a repaired bound that keeps the
-factors $\min(r_i-1,1)$ the original discards.  It holds for every $r_1>1$ and
-is the infimum when the exempt roots lie in $(1,2]$ and the partial sums are
-small, in particular for $b_L$ whenever $r_{L-1}\le2$; with an exempt root
-below $2$ it is the infimum only then, and a two-sided bound
-$b_{u+1}\ge|f_D|\min(|P(1)|,|P_u(1)|)$ improves it whenever the exempt roots
-straddle $2$.
+For real roots $2\le r_1\le\cdots\le r_L$ and a nonzero multiple $F$ of
+$\prod_{i=1}^L(x-r_i)$ with leading coefficient $f_D$, the companion
+paper~\cite{coefficient-mass} proves that the $(u+1)$-st largest nonleading
+coefficient magnitude satisfies $b_{u+1}\ge|f_D|\prod_{i>u}(r_i-1)$.  We show
+that this bound is the infimum over monic multiples exactly when no partial
+sum of the coefficients of the surviving factor $P_u=\prod_{i>u}(x-r_i)$
+exceeds their total, repeated roots included.  When this criterion fails and
+the roots are distinct, the placement in which the exempt coefficients escape
+to the bottom is always extremal, so the infimum is the reciprocal of the
+least $\ell^1$ tail of a certificate on the surviving roots alone,
+equivalently the least, over monic multipliers $M$, of the largest partial
+sum of the coefficients of $P_uM$; at $(2,3,5,7)$ it is $1704/31$.  Below $2$
+the bound can fail once $u\ge1$, and the node cutoff $1/2$ of the underlying tail comparison cannot
+be raised.  For every $r_1>1$ we prove a repaired bound and a sharper
+two-sided bound $b_{u+1}\ge|f_D|\min(|P(1)|,|P_u(1)|)$, and for distinct
+roots we determine exactly when each is the infimum.  We also extend the tail
+comparison to confluent nodes, with strictness.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -102,20 +93,69 @@ Theorem~2.2, Lemma~2.3, Lemma~3.1, Theorem~3.2 or Corollary~3.6 is the
 result of that number in~\cite{coefficient-mass}; every other numbered result
 is this paper's own.
 
-Section~\ref{sec:extend} extends Theorem~2.2 to confluent nodes and shows
-that neither the node cutoff $y_i\le1/2$ it rests on nor the standing
-restriction $r_i\ge2$ in \eqref{eq:order} can be relaxed once $u\ge1$.  It
-then proves a repaired bound, valid for every $r_1>1$, and shows it is sharp
-when the exempt roots lie in $(1,2]$ and the partial sums are small.
-Section~\ref{sec:attain} shows that the explicit monic multiples of
-$(x-2)(x-3)(x-5)$ approaching \eqref{eq:order} are correctly ordered at every
-degree, identifies the partial-sum criterion
-behind the infimum in general, and proves that, repeated roots included, the bound
-is an infimum exactly when the criterion holds.  Section~\ref{sec:value}
-computes the infimum when it fails.  Section~\ref{sec:scope} records what is
-proved and what remains open.
+\paragraph{Main results.}  Write $P=\prod_{i=1}^L(x-r_i)$, let
+$P_u=\prod_{i>u}(x-r_i)$ be the factor of the $m=L-u$ surviving roots, and let
+$S_j(P_u)$ be the partial sums of its coefficients read down from the leading
+one, so that $S_j(P_u)=P_u(1)=(-1)^m\prod_{i>u}(r_i-1)$ once $j\ge m$.  All
+infima below are of $b_{u+1}(QP)$ over monic $Q\in\R[x]$.
 
-\section{Extensions and necessity of the hypotheses}\label{sec:extend}
+\emph{The criterion.}  For $2\le r_1\le\cdots\le r_L$, repetitions allowed,
+\eqref{eq:order} is the infimum if and only if
+\[
+  |S_j(P_u)|\le|P_u(1)|\qquad(1\le j<m),
+\]
+which is condition \eqref{eq:partial} below (Proposition~\ref{prop:partial},
+Theorem~\ref{thm:converse} and Corollary~\ref{cor:charrep}).  The multiples
+approaching the bound carry a short prefix $S_1(P_u),\ldots,S_{m-1}(P_u)$, a
+long run of the value $P_u(1)$, and the $u$ exempt coefficients at the
+bottom; at $(2,3,5)$ they are correctly ordered at every degree
+(Proposition~\ref{prop:sharp235}).  The criterion holds at $(3,4,5,6)$ and
+fails at $(2,3,5,7)$ with $u=1$.
+
+\emph{The value.}  For distinct $2\le r_1<\cdots<r_L$ let $\tau^*$ be the
+least tail $\sum_{d\ge1}|v_d|$ of an exponential sum
+$v_d=\sum_{i>u}\lambda_ir_i^{-d}$ with $v_0=1$.  Then
+\[
+  \inf_Qb_{u+1}(QP)=\frac1{\tau^*}=\min_M\max_{j\ge1}\bigl|S_j(P_uM)\bigr|
+\]
+over monic $M\in\R[x]$ (Theorems~\ref{thm:value} and~\ref{thm:extremal},
+Proposition~\ref{prop:attain}): the worst placement of the $u$ largest
+coefficients is the one in which they escape to the bottom, and the infimum
+depends on the surviving roots alone.  At $(2,3,5,7)$ with $u=1$ it is
+$1704/31$ against the bound $48$, and at $(2,\ldots,7)$ with $u=2$ it is
+$114840/259$ against $360$; neither is attained
+(Proposition~\ref{prop:values}).
+
+\emph{Roots below $2$.}  The restriction $r_1\ge2$ cannot be dropped once
+$u\ge1$, already at $L=2$ (Proposition~\ref{prop:subtwo}).  Keeping the
+factors that Lemma~3.1 discards gives the repaired bound \eqref{eq:repaired}
+for every $r_1>1$ (Corollary~\ref{cor:repaired}), and a two-sided tail
+comparison gives the sharper
+$b_{u+1}\ge|f_D|\min(|P(1)|,|P_u(1)|)$ (Corollary~\ref{cor:twosided}), which
+improves \eqref{eq:repaired} exactly when $r_1<2<r_u$.  For distinct roots,
+Theorem~\ref{thm:twosidedsharp} and Corollary~\ref{cor:repairedsharp} say
+exactly when these bounds are the infimum.  At any distinct roots above $1$
+the infimum is the reciprocal of the worst placement's best tail
+(Theorem~\ref{thm:value}), but below $2$ the escaping placement need not be
+extremal; for $u=1$ the value is still a finite computation
+(Proposition~\ref{prop:uoneall}).
+
+\emph{The tail comparison.}  Theorem~2.2 extends to confluent nodes
+(Proposition~\ref{prop:confluent}), strictly unless the zero set is
+consecutive (Lemma~\ref{lem:confstrict}), which is what the criterion needs
+at repeated roots; and its node cutoff $y_i\le1/2$ cannot be raised
+(Proposition~\ref{prop:cutoff}).
+
+\paragraph{Organisation.}  Section~\ref{sec:extend} collects the tail
+comparisons: the confluent extension, the necessity of the hypotheses, and
+the repaired and two-sided bounds.  Section~\ref{sec:criterion} proves the
+partial-sum criterion.  Section~\ref{sec:value} computes the infimum when the
+criterion fails and proves that the escaping placement is extremal.
+Section~\ref{sec:subtwo} decides when the bounds below $2$ are attained.
+Section~\ref{sec:scope} lists what remains open and the relation to the
+literature.
+
+\section{Tail comparisons and the hypotheses}\label{sec:extend}
 
 \begin{proposition}[Confluent analogue]\label{prop:confluent}
 Let $0<y_1<\cdots<y_c\le1/2$ and $e_1,\ldots,e_c\ge1$, put $m=e_1+\cdots+e_c$,
@@ -336,7 +376,11 @@ would assert for $u=1$; the second root obeys $r_2\ge2$, so only $r_1$ is out
 of range.
 \end{proof}
 
-The restriction belongs to the product, though, not to the roots.  Lemma~3.1
+The restriction belongs to the product, though, not to the roots.  The
+cutoff $y_i\le1/2$ enters the proof of \eqref{eq:order} in exactly two
+places, the factor $2$ in the correction-ratio bound of Theorem~2.2's proof
+and the discard of factors at most $1$ in Lemma~3.1, and both matter only for
+$u\ge1$; Lemma~2.1, Lemma~2.3 and the case $u=0$ are free of it.  Lemma~3.1
 discards, for each exempt position, a factor $y_i/(1-y_i)$ once it is at most
 $1$, and that factor exceeds $1$ precisely when $r_i<2$.  Keeping it gives a
 bound that holds for every $r_1>1$.
@@ -411,61 +455,11 @@ above $1$, and the right side of \eqref{eq:repaired} is continuous in the
 roots.
 \end{proof}
 
-At $(\tfrac32,3)$ the corollary gives $b_2\ge1$, below the $1.62$ of
-Proposition~\ref{prop:subtwo}, and $1$ is the infimum.  More generally the
-repaired bound is attained whenever the $u$ exempt roots lie in $(1,2]$ and
-the partial sums of the whole root product are small enough.  The multiples
-that attain it put the exempt coefficients at the top rather than the
-bottom.  Here $S_j(P)$ are the partial sums of \eqref{eq:wgen} with $u=0$.
-
-\begin{proposition}[Sharpness below $2$]\label{prop:subtwosharp}
-Let $r_1\le\cdots\le r_L$ be real with $r_1>1$, repetitions allowed, put
-$P=\prod_{i=1}^L(x-r_i)$, and let $0\le u\le L-1$.  Let $\sigma$ be the
-$(u+1)$-st largest of $|S_1(P)|,\ldots,|S_{L-1}(P)|$, or $0$ if $u=L-1$.  Then
-\[
-  \inf_Qb_{u+1}(QP)\le\max\bigl(|P(1)|,\sigma\bigr)
-\]
-over monic $Q\in\R[x]$.  If $r_u\le2$ and $\sigma\le|P(1)|$, the infimum is
-$|P(1)|$, which is the value of \eqref{eq:repaired}.  In particular
-$\inf_Qb_L(QP)=|P(1)|$ whenever $r_{L-1}\le2$.
-\end{proposition}
-
-\begin{proof}
-Since $P(0)\ne0$, $x$ is invertible modulo $P$.  For $n\ge1$ let $R_n$ be the
-polynomial of degree less than $L$ with $x^nR_n\equiv1\pmod P$.  Its
-coefficient vector is $T^n$ applied to that of $1$, where $T$ is
-multiplication by $x^{-1}$ on $\R[x]/(P)$.  The eigenvalues of $T$ are the
-$1/r_i<1$, so $R_n\to0$, and for large $n$ we have $R_n(1)\ne1$.  Put
-\[
-  t_n=\frac{P(1)}{1-R_n(1)},\qquad M_n=P+t_nR_n .
-\]
-Then $M_n$ is monic of degree $L$ with $M_n(1)=t_n$, so
-$M_n=(x-1)\widetilde A_n+t_n$ with $\widetilde A_n$ monic of degree $L-1$.
-Moreover $x^nM_n-t_n\equiv x^nP+t_n(x^nR_n-1)\equiv0\pmod P$, and
-$x^nM_n-t_n$ vanishes at $1$, where $P$ does not, so $P$ divides
-\[
-  F_n=\frac{x^nM_n-t_n}{x-1}=x^n\widetilde A_n+t_n\sum_{j=0}^{n-1}x^j .
-\]
-Thus $F_n$ is a monic multiple of $P$.  Its nonleading coefficients are the
-$L-1$ lower coefficients of $\widetilde A_n$, followed by $t_n$ repeated $n$
-times.  At most $u$ of those can exceed the larger of $|t_n|$ and the
-$(u+1)$-st largest lower coefficient of $\widetilde A_n$, so $b_{u+1}(F_n)$ is
-at most that larger value.  As $n\to\infty$, $t_n\to P(1)$ and
-$\widetilde A_n\to(P-P(1))/(x-1)$.  By \eqref{eq:wgen} the lower coefficients
-of that limit are $S_1(P),\ldots,S_{L-1}(P)$, which proves the bound.  If
-$r_u\le2$, every $\min(r_i-1,1)$ with $i\le u$ is $r_i-1$, so the right side
-of \eqref{eq:repaired} is $|P(1)|$.  At $u=L-1$, $\sigma=0$.
-\end{proof}
-
-At $(\tfrac32,10,20)$ with $u=1$, for example, the partial sums are
-$1,-30.5,214.5,-85.5$, so $\sigma=30.5$ and the infimum of $b_2$ is
-$85.5=|P(1)|$.  The stated product $171$ is false there.
-
 The repaired bound is itself not the end of the story.  It pays
 $\max(1,y_i/(1-y_i))$ for every node outside the leading run, and when the
 exempt roots straddle $2$ it pays for the small ones without letting the large
 ones pay back.  Keeping the whole product in one piece gives a sharper bound,
-and with it the answer to when the infimum is reached.  Write
+and Section~\ref{sec:subtwo} uses it to decide when the infimum is reached.  Write
 $q_i=y_i/(1-y_i)$ and $\Pi_j=\prod_{i\le j}q_i$ for nodes
 $0<y_1<\cdots<y_c<1$, and for a full certificate $u$ with zero set $Z$ put
 $S(u)=\sum_{d>\max Z}|u_d|$, with $\max\varnothing=0$: the mass past the last
@@ -560,152 +554,14 @@ Otherwise $r_1<2<r_u$, the first is below $1$, and it is below
 $\prod_{i\le u}s_i$ by the factor $\prod_{p<i\le u}s_i\ge s_u>1$.
 \end{proof}
 
-At $(\tfrac32,\tfrac52,4)$ with $u=2$, \eqref{eq:repaired} gives $b_3\ge\tfrac32$
-and \eqref{eq:twosided} gives $b_3\ge\tfrac94=|P(1)|$, which is the infimum by
-Proposition~\ref{prop:subtwosharp} ($\sigma=0$ at $u=L-1$).  Whether
-\eqref{eq:twosided} is attained is decided by the two constructions already in
-hand, one for each side of the minimum.
+Section~\ref{sec:subtwo} decides when \eqref{eq:repaired} and
+\eqref{eq:twosided} are attained.
 
-\begin{theorem}[When the two-sided bound is the infimum]\label{thm:twosidedsharp}
-Let $1<r_1<\cdots<r_L$ be distinct and $0\le u\le L-1$, put
-$\pi=\prod_{i\le u}(r_i-1)$, and let $\sigma$ be as in
-Proposition~\ref{prop:subtwosharp}.  Then, over monic $Q\in\R[x]$,
-\[
-  \inf_Qb_{u+1}(QP)=\min\bigl(|P(1)|,|P_u(1)|\bigr)
-\]
-if and only if either $\pi\le1$ and $\sigma\le|P(1)|$, or $\pi\ge1$ and
-\eqref{eq:partial} holds for $P_u$.  Otherwise the infimum is strictly larger.
-\end{theorem}
+\section{The partial-sum criterion}\label{sec:criterion}
 
-\begin{proof}
-Write $R=\min(|P(1)|,|P_u(1)|)$; Corollary~\ref{cor:twosided} gives
-$\inf\ge R$.  If $\pi\le1$ then $R=|P(1)|$, and if also $\sigma\le|P(1)|$,
-Proposition~\ref{prop:subtwosharp} gives $\inf\le|P(1)|$.  If $\pi\ge1$ then
-$R=|P_u(1)|$, and if \eqref{eq:partial} holds, \eqref{eq:multiplier} at $M=1$
-gives $\inf\le\max_{j\ge1}|S_j(P_u)|=|P_u(1)|$, since the partial sums
-stabilize at $S_m(P_u)=P_u(1)$.  Neither step uses $r_1\ge2$:
-Theorem~\ref{thm:value} and \eqref{eq:multiplier} assume only $1<r_1$.
-
-Conversely suppose neither condition holds.  By \eqref{eq:weak} every monic
-multiple has $b_{u+1}\ge1/\tau(X_F)$, so it suffices to show
-$T=\sup_{|X|=u}\tau(X)<1/R$.  Exactly as in the proof of
-Theorem~\ref{thm:converse}, a sequence $X_\nu$ with $\tau(X_\nu)\to1/R$ has a
-subsequence $X_\nu=X_0\cup E_\nu$ with $|E_\nu|=k$ and $\min E_\nu\to\infty$,
-and Lemma~\ref{lem:far}, which needs only nodes in $(0,1)$, turns a
-certificate for $X_0$ on $y_{k+1},\ldots,y_L$ with tail below $1/R$ into
-certificates for $X_\nu$ whose tails tend to it.  So it suffices to find, for
-every $0\le k\le u$ and every $X_0$ of size $u-k$, such a certificate.
-
-Take the zero set $Z$ of $X_0$ and the first $m-1$ positive integers outside
-it, of size $L-k-1$ and leading run $f\ge m-1$.  On the nodes
-$y_{k+1},\ldots,y_L$ the products $\Pi_j$ are the same as on all $L$ nodes for
-$j\le L-k$, so Theorem~\ref{thm:twosided} bounds the tail by
-$\max(\Pi_{f+1},\Pi_{L-k})$, strictly unless $Z$ is consecutive.  With
-distinct roots the increments of $\log\Pi_j$ increase strictly, so
-$j\mapsto\log\Pi_j$ is strictly convex, and since $m\le f+1\le L-k\le L$,
-\[
-  \max(\Pi_{f+1},\Pi_{L-k})\le\max(\Pi_m,\Pi_L)=1/R,
-\]
-with $\Pi_{L-k}<1/R$ unless $L-k$ is an endpoint $m$ or $L$ carrying the
-maximum.  So the tail is below $1/R$ except when $Z=\{1,\ldots,L-k-1\}$ and
-either $k=u$ and $\Pi_m\ge\Pi_L$, or $k=0$ and $\Pi_L\ge\Pi_m$.
-
-If $k=u$ and $\Pi_m\ge\Pi_L$, that is $\pi\ge1$, then $X_0=\varnothing$ and the
-tail is $1/|P_u(1)|=1/R$; as $\pi\ge1$, \eqref{eq:partial} fails for $P_u$, and
-Lemma~\ref{lem:improve} with $Q=P_u$ and $X_0=\varnothing$ gives a certificate
-with tail below $1/R$.  If $k=0$ and $\Pi_L\ge\Pi_m$, that is $\pi\le1$, then
-$X_0\subseteq\{1,\ldots,L-1\}$ and the tail is $1/|P(1)|=1/R$; as $\pi\le1$,
-$\sigma>|P(1)|$, so at least $u+1$ indices $j\in\{1,\ldots,L-1\}$ have
-$|S_j(P)|>|P(1)|$, one of them outside $X_0$, and Lemma~\ref{lem:improve} with
-$Q=P$ gives a certificate for $X_0$ with tail below $1/R$.  (For $u=0$ both
-cases are $k=0$, $X_0=\varnothing$, and either argument applies.)
-\end{proof}
-
-For $r_1\ge2$ one has $\pi\ge1$, with $\pi=1$ only at $u=0$ or at $u=1$,
-$r_1=2$, and the theorem is Proposition~\ref{prop:partial} with
-Theorem~\ref{thm:converse}: at $u=1$, $r_1=2$ the proof of
-Theorem~\ref{thm:converse} shows that $\sigma\le|P(1)|$ already forces
-\eqref{eq:partial}.  Below $2$ it answers the question left by
-Proposition~\ref{prop:subtwosharp}.
-
-\begin{corollary}[When the repaired bound is the infimum]\label{cor:repairedsharp}
-Let $1<r_1<\cdots<r_L$ be distinct and $1\le u\le L-1$.  Then
-\eqref{eq:repaired} is the infimum of $b_{u+1}$ over monic multiples if and
-only if either $r_u\le2$ and $\sigma\le|P(1)|$, or $r_1\ge2$ and
-\eqref{eq:partial} holds.  In particular, with an exempt root below $2$ it is
-the infimum exactly under the hypotheses of
-Proposition~\ref{prop:subtwosharp}; when $r_1<2<r_u$ it is never the
-infimum, even with repeated roots.
-\end{corollary}
-
-\begin{proof}
-If $r_1<2<r_u$, Corollary~\ref{cor:twosided} puts every $b_{u+1}$ at or above
-a value strictly larger than \eqref{eq:repaired}; that argument allows
-repeated roots.  If $r_u\le2$ and $r_1<2$, then \eqref{eq:repaired} is
-$|P(1)|=\min(|P(1)|,|P_u(1)|)$ and $\pi\le r_1-1<1$, so by
-Theorem~\ref{thm:twosidedsharp} it is the infimum exactly when
-$\sigma\le|P(1)|$.  If $r_1\ge2$ it is \eqref{eq:order}, settled by
-Proposition~\ref{prop:partial} and Theorem~\ref{thm:converse}.
-\end{proof}
-
-When the criterion fails, Theorem~\ref{thm:value} still computes the
-infimum as $1/T$: its proof never uses the cutoff.  What does use it is the
-covering, through the deletion step in Theorem~\ref{thm:lift}, and below $2$
-the escaping placement need not be extremal.  For one exempt coefficient the
-covering survives, with the half-mass point of
-Corollary~\ref{cor:halfmass}, which needs no cutoff, in place of $\max Z^*$.
-
-\begin{proposition}[One exempt coefficient at any roots]\label{prop:uoneall}
-Let $1<r_1<\cdots<r_L$ and $u=1$, let $\tau^*$ be attained by the full
-certificate $v^*$ on $y_2,\ldots,y_L$ with zero set $Z^*$
-(Proposition~\ref{prop:attain}), and let $N'$ be the half-mass point of
-Corollary~\ref{cor:halfmass} for $k=0$ and $A=Z^*$, so that $F=v^*$ and $H$ is
-the sum on all $L$ nodes vanishing on $\{0\}\cup Z^*$.  Then
-\[
-  \inf_Qb_2\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)
-  =\frac1{\max\bigl(\tau^*,\ \max_{w\in G}\tau(\{w\})\bigr)},
-  \qquad G=\{1,\ldots,N'-1\}\setminus Z^*.
-\]
-\end{proposition}
-
-\begin{proof}
-By \eqref{eq:median} the tail along the pencil is
-$\varphi(\theta)=\sum_{d\ge1}|H_d|\,\bigl|\theta-|F_d|/|H_d|\bigr|$, with
-$\varphi(0)=\Tail(v^*)=\tau^*$.  All breakpoints are positive, so the right
-derivative at $0$ is $-\sum_{d\notin Z^*}|H_d|<0$, and the convex $\varphi$
-has its minimum, at $\theta_{N'}$, below $\tau^*$.  For $0<\theta\le
-\theta_{N'}$ convexity gives $\varphi(\theta)\le(1-s)\tau^*+s\varphi(\theta_{N'})
-<\tau^*$ with $s=\theta/\theta_{N'}$.  By Lemma~\ref{lem:ratio},
-$\theta_N=|F_N|/|H_N|$ is positive and decreasing in $N\notin Z^*$, so
-$\Tail(Z^*\cup\{N\})<\tau^*$ for every $N\ge N'$ outside $Z^*$.  That full
-certificate is one for $\{w\}$ when $w=N$, and, taking $N=N'$, when
-$w\in Z^*$.  So $\tau(\{w\})<\tau^*$ for $w\notin G$, and $T\ge\tau^*$ by
-Theorem~\ref{thm:value}.
-\end{proof}
-
-Exact values, each $\tau$ certified by a dual multiplier as in
-Proposition~\ref{prop:attain} and every $\tau(\{w\})$, $w\in G$, computed:
-\[
-\begin{array}{lcccc}
-  (r_i) & \eqref{eq:repaired} & \eqref{eq:twosided} & \inf b_2 & \text{extremal}\\\hline
-  (\tfrac32,10,20) & \tfrac{171}2 & \tfrac{171}2 & \tfrac{171}2 & w=2\\
-  (\tfrac32,3,4) & 3 & 3 & 6 & \text{escaping}\\
-  (\tfrac32,3,5,7) & 24 & 24 & \tfrac{1704}{31} & \text{escaping}\\
-  (\tfrac{11}{10},3,5,7) & \tfrac{24}5 & \tfrac{24}5 & \tfrac{3398808}{96935}=35.06\ldots & w=5\\
-  (\tfrac65,\tfrac32,3) & \tfrac15 & \tfrac15 & \tfrac{23688369}{19164415}=1.236\ldots & w=1
-\end{array}
-\]
-At $(\tfrac32,3,4)$ the infimum is the product $(r_2-1)(r_3-1)$ that
-\eqref{eq:order} would assert, twice \eqref{eq:repaired}: the exempt root is
-absorbed as if it were at least $2$.  At $(\tfrac65,\tfrac32,3)$ the infimum
-exceeds even that product, $1$.  At $(\tfrac{11}{10},3,5,7)$ the surviving
-roots are those of $(2,3,5,7)$, so $\tau^*=\tfrac{31}{1704}$, but
-$\tau(\{5\})=\tfrac{96935}{3398808}>\tau^*$: the finite placement beats the
-escaping one, and \eqref{eq:step} fails at $k=0$, $X=\{5\}$.  Below the
-cutoff Proposition~\ref{prop:step} can therefore not be applied as is, and
-for $u\ge2$ the value $1/T$ remains a search.
-
-\section{Sharpness at explicit root sets}\label{sec:attain}
+This section proves that \eqref{eq:order} is the infimum exactly when the
+partial-sum condition \eqref{eq:partial} holds.  The condition comes out of
+an explicit construction, which we first carry out at $(2,3,5)$.
 
 At roots $(2,3)$ the certificate paper already settles the question: it
 exhibits monic multiples
@@ -874,7 +730,9 @@ of $P_1$ are $1,-15,71,-105$, with partial sums $1,-14,57,-48$; since
 $57>48$, \eqref{eq:partial} fails.  The same happens at $(2,3,4,5)$, sums
 $1,-11,36,-24$, and at $(2,3,5,6)$, sums $1,-13,50,-40$.  At $(3,4,5,6)$, by
 contrast, the sums are $1,-14,60,-60$, so \eqref{eq:partial} holds with
-equality.
+equality.  It can fail already at $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the
+partial sums are $1,-\tfrac{11}2,5$, so by Theorem~\ref{thm:converse} below
+the infimum of $b_2$ exceeds $5$.
 
 \begin{proposition}[Partial-sum criterion]\label{prop:partial}
 Let $2\le r_1<\cdots<r_L$ be distinct and $0\le u\le L-1$.  If
@@ -909,7 +767,8 @@ change, and the surviving block---and $r_u<r_{u+1}$ is what kills the cross
 terms and makes the exempt coefficients diverge.
 \end{proof}
 
-The conclusion outlives it, though.  At $(r,r)$ the
+The conclusion does not need distinct roots (Corollary~\ref{cor:charrep}),
+and at repeated roots the approach can be slower.  At $(r,r)$ the
 confluent member $F_D=x^D-t_D\sum_{j=1}^{D-1}x^j+c_D$ fixed by
 $F_D(r)=F_D'(r)=0$ has $b_2(F_D)=t_D$, the run occupying $D-1\ge2$ positions,
 and at $r=3$
@@ -919,8 +778,11 @@ and at $r=3$
 so \eqref{eq:order} is an infimum there too, approached at rate $1/D$ rather
 than geometrically.
 
-For distinct roots the criterion is also necessary.  The argument runs on
-the dual side of Lemma~3.1.  Put $y_i=1/r_i$, so that
+\subsection*{Necessity}
+
+The criterion is also necessary, repeated roots included.  The argument runs
+on the dual side of Lemma~3.1; we set it up for distinct roots, and the proof
+of Theorem~\ref{thm:converse} carries it to repeated roots.  Put $y_i=1/r_i$, so that
 $1/2\ge y_1>\cdots>y_L>0$, and call an exponential sum
 $v_d=\sum_i\lambda_iy_i^d$ on some of these nodes a \emph{certificate for}
 $X\subset\N_{>0}$ if $v_0=1$ and $v_w=0$ for $w\in X$.  If $F$ is a monic
@@ -935,9 +797,11 @@ $|f_j|$ is at most $b_{u+1}(F)$, so
 for every certificate $v$ for $X$.  Write
 $B=\prod_{i=u+1}^L(r_i-1)^{-1}$.  It therefore suffices to find a
 $\delta>0$ such that every $X$ of size $u$ has a certificate with
-$\Tail(v)\le B-\delta$.  Three lemmas supply the pieces: the partial sums
-alternate in sign, a failing partial sum improves the consecutive
-certificate, and zeros far from the origin cost only the largest nodes.
+$\Tail(v)\le B-\delta$.  Three ingredients supply the pieces: the partial
+sums alternate in sign (Lemma~\ref{lem:signs}), a failing partial sum
+improves the consecutive certificate (Lemma~\ref{lem:improve}), and zeros far
+from the origin cost only the largest nodes
+(Proposition~\ref{prop:farrep}).
 
 \begin{lemma}[Signs of the partial sums]\label{lem:signs}
 Let $r_1,\ldots,r_m>1$, let $S_0,\ldots,S_m$ be the partial sums of the
@@ -1017,187 +881,9 @@ $h_{d-n}(y)\ge\binom{d-n+\mu-1}{\mu-1}y_{\max}^{\,d-n}$ while
 $|\delta_d|\le C(1+d)^{\mu-1}y_{\max}^{\,d}$, so $|\delta_d/v^*_d|$ is still
 bounded for $d\ge n$, and a small $\tau$ keeps the sign of $v^*$.
 
-\begin{lemma}[Far zeros]\label{lem:far}
-Let $1>y_1>\cdots>y_L>0$ and $0\le k<L$.  Let $v^\infty$ be a certificate for
-a finite set $X_0$ on $y_{k+1},\ldots,y_L$, and let $E_\nu\subset\N_{>0}$,
-$\nu\ge1$, be sets of size $k$ with $\min E_\nu\to\infty$.  Then for large
-$\nu$ there are certificates $v^{(\nu)}$ for $X_0\cup E_\nu$ on
-$y_1,\ldots,y_L$ with $\Tail(v^{(\nu)}-v^\infty)\to0$.
-\end{lemma}
-
-\begin{proof}
-For $k=0$ take $v^{(\nu)}=v^\infty$.  Put $n=L-k$ and $s=n-1-|X_0|$.  The
-certificates for $X_0$ on $y_{k+1},\ldots,y_L$ form an affine space $\mathcal
-A$ of dimension $s$.  Fix $s+1$ positive integers $q_0,\ldots,q_s$ outside
-$X_0$ and let $v^{[i]}\in\mathcal A$ also vanish at every $q_l$, $l\ne i$.
-Evaluation at $q_0,\ldots,q_s$ maps $\mathcal A$ injectively onto an
-$s$-dimensional affine subspace of $\R^{s+1}$ missing the origin, by the zero
-bound, and sends $v^{[i]}$ to a nonzero multiple of the $i$th unit vector.
-These $s+1$ images are affinely independent, so $v^\infty$ is an affine
-combination of the $v^{[i]}$, and it suffices to treat each $v^{[i]}$.  We may
-thus assume that $v^\infty$ has a zero set $Z_0\supseteq X_0$ of size $n-1$,
-disjoint from $E_\nu$ for large $\nu$.
-
-Let $v^{(\nu)}$ be the certificate on all $L$ nodes with zero set
-$Z_0\cup E_\nu$.  Order the points $0$, then $Z_0$, then
-$E_\nu=\{e_1<\cdots<e_k\}$, and let $A$ be the matrix $(y_j^p)$ with rows
-indexed by these points; by Cramer's rule $v^{(\nu)}_d=\det A(d)/\det A$,
-where $A(d)$ has the row of $0$ replaced by $(y_j^d)_j$.  Expanding both
-along the rows of $E_\nu$,
-\[
-  \det A(d)=\sum_{|J|=k}\varepsilon_J\,\alpha_J\,\beta_J(d),
-  \qquad
-  \alpha_J=\det\bigl(y_j^{e}\bigr)_{e\in E_\nu,\,j\in J},
-  \quad
-  \beta_J(d)=\det\bigl(y_j^{p}\bigr)_{p\in\{d\}\cup Z_0,\,j\notin J},
-\]
-with signs $\varepsilon_J$ independent of $d$ and $\nu$.  For
-$J=\{j_1<\cdots<j_k\}$ every term of $\alpha_J$ is a product
-$\prod_ty_{j_t}^{e_{\pi(t)}}$, the largest being
-$M_J=\prod_ty_{j_t}^{e_{k+1-t}}$, so $|\alpha_J|\le k!\,M_J$.  For
-$J^*=\{1,\ldots,k\}$, $\alpha_{J^*}$ is an alternant, the Vandermonde product
-$\prod_{a<b\le k}(y_a-y_b)$ times a Schur polynomial in $y_1,\ldots,y_k$ with
-nonnegative coefficients that contains the monomial $M_{J^*}/\prod_{t\le
-k}y_t^{k-t}$; hence $|\alpha_{J^*}|\ge cM_{J^*}$ with
-$c=\prod_{a<b\le k}(1-y_b/y_a)>0$.  If $J\ne J^*$ then $y_{j_t}\le y_t$ for
-every $t$, and $j_t\ge k+1$ for some $t$, so
-$M_J\le(y_{k+1}/y_k)^{e_1}M_{J^*}$ and
-\[
-  \eta_\nu=\max_{J\ne J^*}\Bigl|\frac{\alpha_J}{\alpha_{J^*}}\Bigr|
-  \le\frac{k!}{c}\Bigl(\frac{y_{k+1}}{y_k}\Bigr)^{e_1}\longrightarrow0 .
-\]
-The minors $\beta_J(d)$ do not depend on $\nu$, $\beta_{J^*}(0)\ne0$ by the
-zero bound, $v^\infty_d=\beta_{J^*}(d)/\beta_{J^*}(0)$ by Cramer's rule on
-$y_{k+1},\ldots,y_L$, and expanding along the row of $d$ gives
-$\Sigma_J=\sum_{d\ge0}|\beta_J(d)|<\infty$.  Dividing numerator and
-denominator by $\varepsilon_{J^*}\alpha_{J^*}$,
-\[
-  v^{(\nu)}_d-v^\infty_d
-  =\frac{\rho_\nu(d)-v^\infty_d\,\rho_\nu(0)}{\beta_{J^*}(0)+\rho_\nu(0)},
-  \qquad |\rho_\nu(d)|\le\eta_\nu\sum_{J\ne J^*}|\beta_J(d)|,
-\]
-and summing over $d\ge1$,
-$\Tail(v^{(\nu)}-v^\infty)\le\eta_\nu\bigl(1+\Tail(v^\infty)\bigr)
-\sum_{J\ne J^*}\Sigma_J\big/\bigl(|\beta_{J^*}(0)|-|\rho_\nu(0)|\bigr)\to0$.
-\end{proof}
-
-\begin{proposition}[Confluent far zeros]\label{prop:conffar}
-Let $z_1>\cdots>z_p$ lie in $(0,1)$ with multiplicities $m_i$, put
-$N=\sum_im_i$ and $\kappa=\min_{i<p}\log(z_i/z_{i+1})>0$, and order the
-Hermite basis $\psi_{i,a}(d)=d^az_i^d$, $0\le a<m_i$, by growth: $z$
-descending, and $a$ descending within a node.  Fix $0\le k<N$, let $J^*$ be
-the first $k$ functions, and for a $k$-set $E$ put
-$\alpha_J(E)=\det(\psi_j(e))_{e\in E,\,j\in J}$.  If $E_\nu=\{n_\nu+f:f\in
-F\}$ with $F$ fixed and $n_\nu\to\infty$, then $\alpha_{J^*}(E_\nu)\ne0$ for
-large $\nu$ and
-$\eta_\nu=\max_{J\ne J^*}|\alpha_J/\alpha_{J^*}|\to0$.
-\end{proposition}
-
-\begin{proof}
-Write $A_i(J)$ for the exponents of $J$ at $z_i$, $k_i=|A_i(J)|$ and
-$P(J)=\sum_{(i,a)\in J}a$.  Pulling $z_i^{n}$ and $n^{a}$ out of each column,
-\[
-  \alpha_J(E)=\Lambda_J(n)\det\bigl((e/n)^az_i^{\,e-n}\bigr)_{e\in E,\,(i,a)\in J},
-  \qquad
-  \Lambda_J(n)=\Bigl(\prod_iz_i^{nk_i}\Bigr)n^{P(J)} .
-\]
-The order fills the largest nodes greedily, so $J^*$ is the unique maximiser
-of $\sum_ik_i\log z_i$ and any other profile loses at least $\kappa$; and
-among $J$ with the profile of $J^*$ the set $A_i(J^*)$ is the top $k_i$
-exponents at $z_i$, so $P(J)\le P(J^*)-1$.  Hence
-$\Lambda_J/\Lambda_{J^*}\le n^{Nk}e^{-\kappa n}$ if the profiles differ and
-$\Lambda_J/\Lambda_{J^*}\le1/n$ otherwise.
-
-Now put $e=n+f$ and expand $(1+f/n)^a=\sum_b\binom ab(f/n)^b$ multilinearly.
-Two columns at the same node that choose the same $b$ are equal, so the
-exponents chosen at $z_i$ are distinct and $\sum b\ge\sum_i\binom{k_i}2$, with
-equality only for $\{0,\ldots,k_i-1\}$ at every node.  That term carries
-$\prod_i\det\bigl(\binom{a_t}s\bigr)_{t,s<k_i}=\kappa_J$, where
-\[
-  \kappa_J=\prod_i\frac{\prod_{t<t'}\bigl(a^{(i)}_{t'}-a^{(i)}_t\bigr)}
-                       {\prod_{s<k_i}s!}>0 ,
-\]
-so, $F$ being fixed,
-\[
-  \alpha_J(E_\nu)=\pm\Lambda_J(n)\,n^{-\sum_i\binom{k_i}2}
-  \bigl[\kappa_JW(F;\mathbf k)+O(1/n)\bigr],
-  \qquad
-  W(F;\mathbf k)=\det\bigl(f^bz_i^{\,f}\bigr)_{f\in F,\,b<k_i}.
-\]
-Here $W(F;\mathbf k)$ is the alternant of \emph{full initial} exponent
-segments, nonzero at distinct $f$ by the zero bound for exponential
-polynomials, as for $M(0)$ in Proposition~\ref{prop:confluent}.  So
-$\alpha_{J^*}(E_\nu)\ne0$ for large $\nu$.  The factors
-$n^{-\sum_i\binom{k_i}2}$ and $W(F;\mathbf k)$ depend only on the profile, so
-for $J$ of the profile of $J^*$,
-$\alpha_J/\alpha_{J^*}=(\kappa_J/\kappa_{J^*})(\Lambda_J/\Lambda_{J^*})
-(1+O(1/n))=O(1/n)$, while a differing profile gives
-$O(n^{Nk}e^{-\kappa n})$.  Hence $\eta_\nu\to0$.
-\end{proof}
-
-\begin{proposition}[Alternant ratio]\label{prop:altratio}
-Let $z_1>\cdots>z_p$ lie in $(0,1)$ and fix $\bar a$.  For a finite set $F$
-of distinct non-negative integers, a profile $\mathbf k$ with
-$\sum_ik_i=|F|$, and exponent sets $B_i\subseteq\{0,\ldots,\bar a\}$ with
-$|B_i|=k_i$, put
-$W_{\mathbf B}(F)=\det(f^{\,b}z_i^{\,f})_{f\in F,\,(i,b)}$, write
-$B^0_i=\{0,\ldots,k_i-1\}$ and $W(F;\mathbf k)=W_{\mathbf B^0}(F)$, and set
-$j=\sum_i\bigl(\sum B_i-\binom{k_i}2\bigr)\ge0$.  Then $W(F;\mathbf k)\ne0$,
-and there is $C=C(z,\bar a,\mathbf k)$, independent of $F$, with
-\[
-  |W_{\mathbf B}(F)|\le C\,(1+\max F)^{\,j}\,|W(F;\mathbf k)| .
-\]
-\end{proposition}
-
-\begin{proof}
-Give each of the $k$ columns its own variable: let
-$M(x)=(x_{i,b}^{\,f})_{f\in F,\,(i,b)}$ and let $Z_{\mathbf B}$ be the point
-$x_{i,b}=z_i$ for all $b\in B_i$.  Since $(x\partial_x)^bx^f=f^bx^f$ acts on a
-single column and the determinant is multilinear in columns,
-\[
-  W_{\mathbf B}(F)=\bigl[\Theta_{\mathbf B}\det M(x)\bigr]_{x=Z_{\mathbf B}},
-  \qquad
-  \Theta_{\mathbf B}=\prod_{(i,b)}\bigl(x_{i,b}\partial_{x_{i,b}}\bigr)^{b},
-\]
-an operator of order $\sum_i\sum B_i=M_0+j$ with
-$M_0=\sum_i\binom{k_i}2$.  By the bialternant identity
-$\det M(x)=\pm s_\lambda(x)V(x)$, where $V$ is the Vandermonde of the $k$
-variables and $\lambda_u=f_{k+1-u}-(k-u)$ for $F=\{f_1<\cdots<f_k\}$, so that
-$\lambda_1=\max F-(k-1)$.
-
-Now $V$ is divisible by the $M_0$ linear forms $x_{i,b}-x_{i,b'}$ with
-$b\ne b'$ in $B_i$, each vanishing at $Z_{\mathbf B}$, so every partial of $V$
-of order below $M_0$ vanishes there.  Writing
-$\Theta_{\mathbf B}=\sum_\beta(\text{monomial})\partial^\beta$ with
-$|\beta|\le M_0+j$ and applying Leibniz to $s_\lambda V$, a term survives only
-if $|\beta-\alpha|\ge M_0$, hence only if $|\alpha|\le j$.  Therefore
-\begin{equation}\label{eq:altexp}
-  W_{\mathbf B}(F)=\sum_{|\alpha|\le j}c_{\mathbf B,\alpha}\,
-  (\partial^\alpha s_\lambda)(Z),
-\end{equation}
-with $Z$ the confluent point and coefficients $c_{\mathbf B,\alpha}$ that do
-not depend on $F$.  For $\mathbf B=\mathbf B^0$ one has $j=0$, so only
-$\alpha=0$ survives and $W(F;\mathbf k)=\pm c_0s_\lambda(Z)$ with $c_0\ne0$;
-as $s_\lambda$ has nonnegative coefficients and $Z>0$, this gives
-$W(F;\mathbf k)\ne0$ and fixes its sign.
-
-Finally $s_\lambda(x)=\sum_\gamma K_{\lambda\gamma}x^\gamma$ with
-$K_{\lambda\gamma}\ge0$ and every $\gamma_v\le\lambda_1$, since a
-semistandard tableau repeats no entry in a column and $\lambda$ has
-$\lambda_1$ columns.  Differentiating term by term at the positive point $Z$,
-\[
-  0\le(\partial^\alpha s_\lambda)(Z)\le(\lambda_1/z_p)^{|\alpha|}s_\lambda(Z).
-\]
-Substituting this in \eqref{eq:altexp}, using $\lambda_1\le\max F$ and
-$|\alpha|\le j$, and dividing by $|c_0|$ gives the claim with
-$C=|c_0|^{-1}\sum_{|\alpha|\le j}|c_{\mathbf B,\alpha}|z_p^{-|\alpha|}$,
-finite because the exponent sets range over a finite family.
-\end{proof}
-
-The minor estimates of Lemma~\ref{lem:far} and
-Proposition~\ref{prop:conffar} can be bypassed altogether.  What the far-zero
-argument needs is only that zeros far out cannot be produced by the leading
-functions, and that is a Descartes rule at infinity.  Let $\mathcal C$ be the
+Zeros far from the origin cost only the largest nodes because the leading
+functions of the basis cannot produce them, and that is a Descartes rule at
+infinity.  Let $\mathcal C$ be the
 set of functions $x\mapsto R(x)w^x$ with $R\in\R(x)$ nonzero and $w>0$, each
 considered on a half-line beyond the real poles of $R$.  It is a group under
 multiplication; each member has finitely many zeros, so it is eventually of
@@ -1275,8 +961,9 @@ and, at the node where the cut falls, the top exponents; so $\mathcal H_k$ is
 the Hermite space of the multiset $r_{k+1},\ldots,r_L$, and by the zero bound
 for exponential polynomials~\cite[Part~Five, Ch.~1]{polya-szego} a nonzero
 element of $\mathcal H_k$ has at most $L-k-1$ real zeros.  For distinct roots
-$\mathcal H_k$ is the span of $y_{k+1}^d,\ldots,y_L^d$, and (c) is
-Lemma~\ref{lem:far}.
+$\mathcal H_k$ is the span of
+$y_{k+1}^d,\ldots,y_L^d$, the case Sections~\ref{sec:value}
+and~\ref{sec:subtwo} use.
 
 \begin{proof}
 (a) Otherwise, along a subsequence, the coefficient vectors converge to some
@@ -1320,6 +1007,23 @@ of $v^\infty$, that is, of $v^\infty$.  Hence $c^{(\nu)}\to c^\infty$, and
   \sum_{d\ge1}|\psi_j(d)|\longrightarrow0 .
 \]
 \end{proof}
+
+For distinct roots, part (b) also has a direct proof with a rate.  Every
+term of $\alpha_J(E)$, $J=\{j_1<\cdots<j_k\}$, is a product
+$\prod_ty_{j_t}^{e_{\pi(t)}}$ for $E=\{e_1<\cdots<e_k\}$, and $\alpha_{J^*}$ is a
+Vandermonde product times a Schur polynomial with nonnegative coefficients;
+comparing the largest terms gives
+$\eta\le(k!/c)(y_{k+1}/y_k)^{\min E}$ with $c=\prod_{a<b\le k}(1-y_b/y_a)$.
+At repeated roots $c$ vanishes, and $\alpha_{J^*}$ can vanish outright: at
+the roots $(3,3,4,4)$ with $k=3$ the leading functions
+$d(\tfrac13)^d,(\tfrac13)^d,d(\tfrac14)^d$ have the combination
+$\tfrac{2187}{16384}d(\tfrac13)^d-\tfrac{15309}{8192}(\tfrac13)^d+d(\tfrac14)^d$
+vanishing at $d=6,7,8$.  This is why Proposition~\ref{prop:farrep} is proved
+through Lemma~\ref{lem:infinity} rather than by estimating minors.  When $E$ has bounded diameter an
+expansion of the confluent alternants gives
+$\eta=O(1/\min E)$ if the cut after $\psi_k$ falls inside a multiplicity
+block, and a geometric rate if it falls between blocks; for arbitrary $E$ no
+rate is proved, and none is needed.
 
 \begin{theorem}[Necessity of the partial-sum criterion]\label{thm:converse}
 Let $2\le r_1\le\cdots\le r_L$, repetitions allowed, and $0\le u\le L-1$.  If
@@ -1381,22 +1085,23 @@ $\{i,i+1,\ldots,i+u_0\}\subseteq\mathcal A(Q)\subseteq\{1,\ldots,n-1\}$.
 These are $u_0+1$ integers and $X_0$ has only $u_0$ elements.
 \end{proof}
 
-For distinct roots the equality case forces $u=1$, $r_1=2$ and $k=0$, and
-the argument above is the one given before for that case; with repetitions
-it also covers $r_1=\cdots=r_u=2$ for any $u$ and any $k<u$.
+For distinct roots the equality case $Z=\{1,\ldots,n-1\}$,
+$r_{k+1}=\cdots=r_u=2$ arises only for $u=1$, $r_1=2$ and $k=0$; with
+repetitions it also covers $r_1=\cdots=r_u=2$ for any $u$ and any $k<u$.
 
-For distinct roots the proof also shows how a multiple can approach \eqref{eq:order}.  Outside
+For distinct roots the proof also shows how a multiple can approach
+\eqref{eq:order}.  Outside
 the case $u=1$, $r_1=2$, every placement with an exempt coefficient at
 bounded distance from the top has a certificate with tail below $B$, so
 along any sequence of monic multiples with $b_{u+1}$ tending to the bound all
 $u$ exempt coefficients must move away from the top, as the construction of
-Proposition~\ref{prop:partial} moves them to the bottom.  When \eqref{eq:partial} fails, Section~\ref{sec:value} computes the
-infimum.
+Proposition~\ref{prop:partial} moves them to the bottom.  When
+\eqref{eq:partial} fails, Section~\ref{sec:value} computes the infimum.
 
 \section{The infimum when the criterion fails}\label{sec:value}
 
-Keep the notation of Theorem~\ref{thm:converse}: $r_1<\cdots<r_L$ are
-distinct, $y_i=1/r_i$, and $m=L-u$.  For finite $X\subset\N_{>0}$ and
+Keep the notation of the necessity argument in
+Section~\ref{sec:criterion}: $r_1<\cdots<r_L$ are distinct, $y_i=1/r_i$, and $m=L-u$.  For finite $X\subset\N_{>0}$ and
 $0\le k<L$ put
 \[
   \tau_k(X)=\inf\bigl\{\Tail(v):v\text{ a certificate for }X\text{ on }
@@ -1457,15 +1162,16 @@ equations $v^\nu_e=0$, $e\in E_\nu$, read
 $A_\nu\lambda^\nu_{\le u}=-R_\nu\lambda^\nu_{>u}$ with
 $A_\nu=(y_j^e)_{e\in E_\nu,\,j\le u}$ and
 $R_\nu=(y_j^e)_{e\in E_\nu,\,j>u}$.  By Cramer's rule each entry of
-$A_\nu^{-1}R_\nu$ is, up to sign, a ratio $\alpha_J/\alpha_{J^*}$ of the
-minors in the proof of Lemma~\ref{lem:far}, with $k=u$ and $J\ne J^*$.  So it
-is at most $\eta_\nu\to0$, and $\lambda_{\le u}=0$.  Then
+$A_\nu^{-1}R_\nu$ is, up to sign, a ratio $\alpha_J/\alpha_{J^*}$ of
+Proposition~\ref{prop:farrep}(b), whose basis is $y_1^d,\ldots,y_L^d$ for
+distinct roots, with $k=u$ and $J\ne J^*$.  So it is at most $\eta_\nu\to0$, and $\lambda_{\le u}=0$.  Then
 $v=\sum_{i>u}\lambda_iy_i^d$ is a certificate on the surviving nodes, and as
 before $\Tail(v)\le\tau^*-\varepsilon/2$, against the definition of $\tau^*$.
 Hence $\liminf_\nu\tau(E_\nu)\ge\tau^*$, and $T\ge\tau^*$.
 \end{proof}
 
-Lemma~\ref{lem:far} supplies the reverse inequality, so $\tau(E_\nu)\to\tau^*$:
+Proposition~\ref{prop:farrep}(c) with $k=u$ and $X_0=\varnothing$ supplies the
+reverse inequality, so $\tau(E_\nu)\to\tau^*$:
 the escaping placement costs exactly $\tau^*$.  There is also a dual side.  If
 $v=\sum_{i>u}\lambda_iy_i^d$ is a certificate on the surviving nodes and $w$
 is a bounded sequence with $w_0=1$ whose series $W(y)=\sum_dw_dy^d$ vanishes
@@ -1567,6 +1273,35 @@ as $\widetilde P_uN$ with $N(0)=1$, and the reverse of $N$ is a monic $M$ of
 degree at most $g+1-m$ with $N=\widetilde M$.
 \end{proof}
 
+The dual side also settles sufficiency of the criterion at repeated roots,
+where the construction of Proposition~\ref{prop:partial} is not available.
+
+\begin{corollary}[The criterion at repeated roots]\label{cor:charrep}
+Let $2\le r_1\le\cdots\le r_L$, repetitions allowed, and $0\le u\le L-1$.
+Then \eqref{eq:order} is the infimum of $b_{u+1}$ over monic multiples of
+$\prod_i(x-r_i)$ exactly when \eqref{eq:partial} holds; no alignment
+$r_u<r_{u+1}$ is needed.
+\end{corollary}
+
+\begin{proof}
+Necessity is Theorem~\ref{thm:converse}.  For sufficiency use
+Theorem~\ref{thm:value}, which carries to repeated roots: in its first half
+the constraints $F(r_i)=0$ become $((x\,d/dx)^aF)(r_i)=0$, $a<m_i$, the dual
+variables again assemble into an element of $\mathcal H_0$ because
+$d\mapsto(D-d)^ay_i^{d}$ and $d^ay_i^d$ span the same space, and the
+compactness step uses unisolvence of $\mathcal H_0$ at $L$ distinct points;
+in its second half the entries of $A_\nu^{-1}R_\nu$ are the ratios of
+Proposition~\ref{prop:farrep}(b), which tend to $0$ for every sequence with
+$\min E_\nu\to\infty$.  So the infimum is $1/T$ with $T\ge\tau^*$, where
+$\tau^*$ is the least tail of a certificate on $\mathcal H_u$.  The dual
+pairing \eqref{eq:dualpair} holds on $\mathcal H_u$, since
+$\sum_dw_dd^ay^d=((y\,d/dy)^aW)(y)$ vanishes at $y=1/r_i$ for $a<m_i$ when
+$\widetilde P_u$ divides $W$; with $M=1$ in \eqref{eq:multiplier} it gives
+$1/\tau^*\le\max_{j\ge1}|S_j(P_u)|$, which is $|P_u(1)|=1/B$ under
+\eqref{eq:partial}.  Hence $T\ge B$, while Theorem~3.2 gives $T\le B$.
+\end{proof}
+
+\subsection*{The escaping placement is extremal}
 
 Whether $T=\tau^*$, so that the escaping placement is extremal, comes down to
 covering the finite placements.  The deletion step of Theorem~2.2 lifts a
@@ -1594,6 +1329,19 @@ removed zero is the largest remaining, because the added ones all exceed $g$,
 and the last step lands on $v$.
 \end{proof}
 
+The hypothesis $X\subseteq Z\cup(g,\infty)$ matters: inserting zeros one at a
+time, each insertion paid for by one node, fails outright.  The full
+certificate on $(\tfrac13,\tfrac15,\tfrac17)$ with zero set $\{1,3\}$ has
+tail $\tfrac{31}{1704}$; adding the node $\tfrac12$ and the zero $2$ gives
+the full certificate on all four nodes with the consecutive zero set
+$\{1,2,3\}$, of tail $\tfrac1{48}$, so the tail rose although a node was
+gained---Theorem~2.2's equality case absorbed it.  Barring consecutive zero
+sets does not repair the step.  At $(2,\tfrac94,\tfrac52,3)$ the full
+certificate on $(\tfrac49,\tfrac25,\tfrac13)$ with zero set $\{1,4\}$ has
+tail $\tfrac{11608}{84555}=0.13728\ldots$, and adding the node $\tfrac12$ and
+the zero $2$ gives the zero set $\{1,2,4\}$ and tail
+$\tfrac{108}{755}=0.14304\ldots$.
+
 \begin{corollary}[One exempt coefficient]\label{cor:uone}
 Let $2\le r_1<\cdots<r_L$ and $u=1$, and suppose $\tau^*$ is attained by a
 full certificate on $y_2,\ldots,y_L$ with zero set $Z^*$ and $g=\max Z^*$.
@@ -1614,16 +1362,8 @@ $T\ge\tau^*$ by Theorem~\ref{thm:value}, the maximum is $T$.
 By Theorem~\ref{thm:extremal} the maximum is always $\tau^*$, so the
 infimum of $b_2$ is $1/\tau^*$.
 
-For $u\ge2$ the same covering is a finite search.  Start from
-$(A,k)=(\varnothing,u)$.  Choose a full certificate on $y_{k+1},\ldots,y_L$
-whose zero set $Z$ contains $A$ and whose tail is at most $\tau^*$.  By
-Theorem~\ref{thm:lift} it covers every $X\supseteq A$ whose other $k$
-elements lie in $Z\cup(\max Z,\infty)$.  Recurse on $(A\cup\{w\},k-1)$ for
-each $w<\max Z$ outside $Z\cup A$.  If the search closes, $T=\tau^*$ and the
-infimum is $1/\tau^*$; by Theorem~\ref{thm:extremal} it always closes.
-
-The search collapses to a single step.  One node is added and one zero is
-deleted at a time, and the zero deleted must be the largest.
+For general $u$ the question $T=\tau^*$ reduces to a single step, in which
+one node is added and one zero is deleted, the largest.
 
 \begin{proposition}[Step reduction]\label{prop:step}
 Let $1<r_1<\cdots<r_L$ and $0\le u\le L-1$.  Suppose that for every
@@ -1666,9 +1406,501 @@ in the proof of Theorem~2.2, which bounds $\Tail(v^+)$ by $\Tail(v^-)$ because
 the nodes are at most $1/2$.
 \end{proof}
 
-Where a zero is displaced to is not a search.  Adding one node to a certificate
-and one zero to its zero set moves it along a line, on which the tail is a
-weighted sum of distances.
+So \eqref{eq:step} is left open only when a minimizing zero set $Z^-$ for
+$X\setminus\{\max X\}$ straddles $g=\max X$: $g\notin Z^-$ and
+$g<\max Z^-$.  In that case the rule is not to displace one zero but to shift
+every zero above $g$ up by one.  Write $Z^-=B_0\cup A$ with
+$B_0=Z^-\cap(0,g)$ and $A=Z^-\cap(g,\infty)$, and $A+1=\{a+1:a\in A\}$.
+Write $A$ as the disjoint union of its maximal runs of consecutive integers
+$[s_1,e_1],\ldots,[s_p,e_p]$, so that
+$A+1=\bigcup_j[s_j+1,e_j+1]$.  The neighbour of $B_0\cup A$ belonging to the
+$j$th run is the zero set obtained by moving its first element past its last,
+\[
+  Z_j=(B_0\cup A)\setminus\{s_j\}\cup\{e_j+1\},
+\]
+which shifts that run up by one; for a run of length one it is the move
+$a\to a+1$.  Shifting every run at once and adjoining $g$ gives the zero set
+$B_0\cup\{g\}\cup(A+1)$ of the step.
+
+\begin{proposition}[The run chord]\label{prop:runchord}
+Let $y_{k+1}\le\tfrac12$, let $g\ge1$, let $B_0\subseteq\{1,\ldots,g-1\}$ and
+let $A$ be a nonempty set of integers above $g$ with
+$|B_0|+|A|=L-k-2$, with runs $[s_j,e_j]$ and neighbours $Z_j$ as above.  Let
+$F$ and $F_j$ be the full certificates on $y_{k+2},\ldots,y_L$ with zero sets
+$Z=B_0\cup A$ and $Z_j$, and $w$ the full certificate on $y_{k+1},\ldots,y_L$
+with zero set $W=B_0\cup\{g\}\cup(A+1)$.  Then there are
+$\lambda_1,\ldots,\lambda_p,\mu>0$ with $\sum_j\lambda_j+\mu=1$ such that
+\begin{equation}\label{eq:runchord}
+  \Tail(F)\ \ge\ \sum_{j=1}^p\lambda_j\Tail(F_j)+\mu\,\Tail(w),
+\end{equation}
+with equality if and only if $y_{k+1}=\tfrac12$ and $B_0=\{1,\ldots,g-1\}$.
+\end{proposition}
+
+\begin{proof}
+\emph{Signs.}  For an integer $d\ge0$ put
+$\varphi(d)=(-1)^{|Z\cap(0,d)|}$.  Each of $F$, $F_j$, $w$ is full, so by the
+zero bound it has exactly its prescribed zeros, all simple, and it is positive
+at $0$; its sign at a point $d$ outside its zero set is $-1$ to the number of
+its zeros below $d$.  Hence $F(d)=\varphi(d)|F(d)|$.  For an integer $d$,
+$|Z_j\cap(0,d)|-|Z\cap(0,d)|=[e_j+1<d]-[s_j<d]$, which vanishes unless
+$s_j<d\le e_j+1$, and those $d$ lie in $Z_j$; so $F_j(d)=\varphi(d)|F_j(d)|$
+for every integer $d\ge0$.  Since $|(A+1)\cap(0,d)|=|A\cap(0,d-1)|$,
+\[
+  |W\cap(0,d)|=|Z\cap(0,d)|+[g<d]-[d-1\in A],
+\]
+and $d-1\in A$ puts $d$ in $W$; so
+\begin{equation}\label{eq:runsigns}
+  w(d)=\varphi(d)|w(d)|\quad(d\le g),\qquad
+  w(d)=-\varphi(d)|w(d)|\quad(d>g).
+\end{equation}
+In words: the $F_j$ keep the signs of $F$ at every integer, and $w$ keeps them
+below $g$ and reverses them above.
+
+\emph{The combination.}  At a run start $s_i$ we have $F_j(s_i)=0$ for $j\ne
+i$, as $s_i\in Z_j$; $F_i(s_i)\ne0$, as $s_i\notin Z_i$; and $w(s_i)\ne0$,
+as $s_i>g$ and $s_i-1\notin A$ keep $s_i$ out of $W$.  Put
+$\rho_i=|w(s_i)|/|F_i(s_i)|$, $\mu=1/(1+\sum_i\rho_i)$, $\lambda_i=\mu\rho_i$
+and
+\[
+  q=\sum_{j=1}^p\lambda_jF_j+\mu w .
+\]
+Then $q(0)=1$, and by \eqref{eq:runsigns}
+$q(s_i)=\varphi(s_i)\bigl(\lambda_i|F_i(s_i)|-\mu|w(s_i)|\bigr)=0$.  Every
+other point of $Z$ lies in $B_0$ or in $A\cap(A+1)$, hence in every $Z_j$ and
+in $W$, so $q$ vanishes on all of $Z$.  Let $\omega$ be the weight of $w$ on
+$y_{k+1}$.  It is nonzero, for otherwise $w$ would be a sum on $L-k-1$ nodes
+with the $L-k-1$ zeros $W$; and since $y_{k+1}$ is the largest node and $w$ has
+the sign $(-1)^{|W|}=(-1)^{L-k-1}$ past $\max W$, $\sgn\omega=(-1)^{L-k-1}$.
+The sum $G=F-q$ on $y_{k+1},\ldots,y_L$ has weight $-\mu\omega\ne0$ on
+$y_{k+1}$ and vanishes on the $L-k-1$ points $\{0\}\cup Z$, so by the zero
+bound these are its only zeros and all are simple.  For large $d$ its sign is
+$-\sgn\omega=(-1)^{L-k}=(-1)^{|Z|}$, which is $\varphi(d)$ there; as $G$ and
+$\varphi$ change sign exactly at the points of $Z$,
+\begin{equation}\label{eq:runG}
+  \varphi(d)G(d)=|G(d)|\qquad(d\ge0).
+\end{equation}
+
+\emph{Decomposition.}  Put $\delta_d=|F(d)|-|q(d)|$ and
+$\gamma_d=\sum_j\lambda_j|F_j(d)|+\mu|w(d)|-|q(d)|$, so that, all the series
+converging absolutely, the left side of \eqref{eq:runchord} minus the right is
+$D=\sum_{d\ge1}(\delta_d-\gamma_d)$.  For $1\le d\le g$ every term of $q(d)$
+has the sign $\varphi(d)$ or vanishes, so $\gamma_d=0$ and
+$\delta_d=\varphi(d)(F(d)-q(d))=\varphi(d)G(d)$.  For $d>g$ write
+$P=\sum_j\lambda_j|F_j(d)|$ and $Q=\mu|w(d)|$; by \eqref{eq:runsigns}
+$q(d)=\varphi(d)(P-Q)$, so $\gamma_d=P+Q-|P-Q|$ and
+\[
+  \delta_d-\gamma_d=|F(d)|-P-Q=\varphi(d)G(d)-2\mu|w(d)| ,
+\]
+whatever the sign of $P-Q$.  Hence
+\[
+  D=\sum_{d\ge1}\varphi(d)G(d)-2\mu\sum_{d>g}|w(d)| .
+\]
+Since $G(0)=0$, and $\varphi(d)\ne\varphi(d-1)$ only when $d-1\in Z$, where $G$
+vanishes, $\sum_{d\ge1}\varphi(d)G(d)=\sum_{d\ge1}\varphi(d)G(d-1)$.  With
+\eqref{eq:runsigns} and \eqref{eq:runG} this gives
+\begin{equation}\label{eq:runsplit}
+  \Tail(F)-\sum_j\lambda_j\Tail(F_j)-\mu\Tail(w)
+  =\sum_{d=1}^{g}|G(d-1)|+\sum_{d>g}\varphi(d)E(d),
+  \qquad E(d)=G(d-1)+2\mu\,w(d),
+\end{equation}
+and it remains to show $\varphi(d)E(d)\ge0$ for every integer $d>g$.
+
+\emph{Zeros of $E$.}  $E$ is an exponential sum on $y_{k+1},\ldots,y_L$, and
+its weight on $y_{k+1}$ is $\mu\omega(2-1/y_{k+1})$.  It vanishes at every $d$
+with $d-1\in\{0\}\cup Z$ and $d\in W$.  With $S=\{0\}\cup B_0\cup\{g\}$ that
+covers every $d$ with $d-1,d\in S$, and every $d\in A+1$.  Let $S$ consist of
+the maximal runs $R_1,\ldots,R_m$ of consecutive integers, $0\in R_1$ and
+$g\in R_m$.  At a gap start $q=r+1$ with $r\in S$, $r<g$, $q\notin S$, we have
+$G(q-1)=0$ and $q\notin W$, so $E(q)=2\mu w(q)\ne0$, of sign $\varphi(q)$ by
+\eqref{eq:runsigns}.
+
+\emph{Counting.}  Suppose first $m\ge2$, with gap starts
+$q_1<\cdots<q_{m-1}$, and $E\not\equiv0$.  The run $R_1$ supplies $|R_1|-1$
+zeros below $q_1$; for
+$1\le j\le m-2$ the run $R_{j+1}\subseteq B_0$ supplies $|R_{j+1}|-1$ zeros in
+$(q_j,q_{j+1})$, and since
+$\varphi(q_{j+1})=\varphi(q_j)(-1)^{|R_{j+1}|}$ that interval holds at least
+$|R_{j+1}|$ zeros counted with multiplicity; and beyond $q_{m-1}$ lie the known
+zeros $a+1,\ldots,g$, with $a=\min R_m$, and the $|A|$ points of $A+1$.  In
+all $E$ has at least $|S|-2+|A|=|B_0|+|A|=L-k-2$ zeros, of which at least
+$|R_m|-1+|A|$ lie in $(q_{m-1},\infty)$.  At $q_{m-1}$ the sign of $E$ is
+$\varphi(q_{m-1})=(-1)^{|B_0|-|R_m|+1}$.  If $y_{k+1}<\tfrac12$ the weight on
+$y_{k+1}$ is nonzero, $E$ has at most $L-k-1$ zeros, hence at most
+$|R_m|+|A|$ in $(q_{m-1},\infty)$, and its sign at infinity is
+$-\sgn\omega=(-1)^{|B_0|+|A|}$; the number of its zeros in
+$(q_{m-1},\infty)$ is then congruent to $|R_m|-1+|A|$ modulo $2$, so it is
+exactly $|R_m|-1+|A|$.  If $y_{k+1}=\tfrac12$ the weight vanishes, $E$ is a sum
+on $L-k-1$ nodes with at most $L-k-2$ zeros, and again only the known zeros
+occur.  Either way the zeros of $E$ beyond $q_{m-1}$ are exactly
+$a+1,\ldots,g$ and the points of $A+1$, all simple.  So for an integer $d>g$
+outside $A+1$, where $d-1\notin A$ and hence $|(A+1)\cap(0,d)|=|A\cap(0,d)|$,
+\[
+  \sgn E(d)=(-1)^{|B_0|-|R_m|+1}(-1)^{|R_m|-1}(-1)^{|A\cap(0,d)|}
+  =(-1)^{|Z\cap(0,d)|}=\varphi(d),
+\]
+while $E$ vanishes on $A+1$.  If $m=1$, that is $B_0=\{1,\ldots,g-1\}$, the
+known zeros $1,\ldots,g$ and $A+1$ number $L-k-1$.  For $y_{k+1}<\tfrac12$ they
+are all the zeros, simple, and counting down from the sign
+$(-1)^{|B_0|+|A|}$ at infinity gives $\sgn E(d)=\varphi(d)$ for $d>g$ outside
+$A+1$ as before; for $y_{k+1}=\tfrac12$ the bound $L-k-2$ forces
+$E\equiv0$.
+
+So $\varphi(d)E(d)\ge0$ for every $d>g$, and \eqref{eq:runsplit} proves
+\eqref{eq:runchord}.  Its first term vanishes exactly when $G$ vanishes on
+$\{1,\ldots,g-1\}$, that is when $B_0=\{1,\ldots,g-1\}$; then $E\equiv0$ if
+$y_{k+1}=\tfrac12$, and otherwise $\varphi(g+1)E(g+1)>0$, as $g+1\notin A+1$.
+\end{proof}
+
+Only the new node is held to the cutoff, and only through the sign of
+$2-1/y_{k+1}$; the nodes $y_{k+2},\ldots,y_L$ may be any distinct reals in
+$(0,y_{k+1})$; for $y_{k+1}>\tfrac12$ that sign flips.  The proof counts
+integer slots: the zeros of $E$ pinned at consecutive pairs of
+$\{0\}\cup B_0\cup\{g\}$, and its signs pinned at the gap starts, are what fix
+its sign above $g$.  With the elements of $B_0$ allowed to be real the count
+is unavailable, and \eqref{eq:runchord} is in fact false there, already for
+$A=\{6\}$ in the confluent limit at $B_0=\{1,\tfrac52\}$, $g=3$.  Shifting
+every run at once matters too: with a single neighbour the other runs of $A$
+are not shifted in $w$, and $E$ loses the zeros they would force.
+
+\begin{corollary}[The shift]\label{cor:shiftrun}
+In the setting of Proposition~\ref{prop:runchord},
+\begin{equation}\label{eq:shiftrun}
+  \Tail\bigl(B_0\cup\{g\}\cup(A+1)\bigr)\le\Tail(B_0\cup A)
+  \quad\text{whenever}\quad
+  \Tail(B_0\cup A)\le\Tail\bigl(B_0\cup A\setminus\{s\}\cup\{e+1\}\bigr)
+\end{equation}
+for every run $[s,e]$ of $A$, the left side on $y_{k+1},\ldots,y_L$ and the
+others on $y_{k+2},\ldots,y_L$.
+\end{corollary}
+
+\begin{proof}
+By \eqref{eq:runchord} and the hypothesis,
+$\Tail(F)\ge(1-\mu)\Tail(F)+\mu\Tail(w)$, and $\mu>0$.
+\end{proof}
+
+The hypothesis cannot simply be dropped.  In the confluent limit with all
+nodes at $\tfrac12$, $B_0=\{1,\ldots,k\}$, $g=k+1$ and $A=\{M\}$, a
+coin-tossing computation shows that the hypothesis and the conclusion of
+\eqref{eq:shiftrun} are both equivalent to $M\ge2k+2$, the conclusion being
+an equality exactly at $M=2k+2$.
+
+The hypothesis is what minimality supplies.  For that we need
+minimisers at every placement, and the argument of
+Proposition~\ref{prop:attain} gives them.
+
+\begin{lemma}[Full minimisers]\label{lem:attainX}
+Let $0\le k<L$ and let $X$ be a set of at most $L-k-1$ positive integers.  Then
+$\tau_k(X)$ is attained by a full certificate on $y_{k+1},\ldots,y_L$ whose
+zero set contains $X$.
+\end{lemma}
+
+\begin{proof}
+Run the first two steps of the proof of Proposition~\ref{prop:attain} on the
+affine set $\{\lambda:\sum_i\lambda_i=1,\ v_x(\lambda)=0\ (x\in X)\}$ in place
+of $\{\sum_i\lambda_i=1\}$.  It is closed, and nonempty because it contains the
+full certificate of any zero set of size $L-k-1$ containing $X$, so the norm
+$f$ attains its minimum on it.  If a minimiser has a zero set $Z\supseteq X$
+with $|Z|\le L-k-2$, the conditions $\sum_ih_i=0$ and $v_d(h)=0$ for $d\in Z$
+are at most $L-k-1$ linear conditions on $h\in\R^{L-k}$, so some $h\ne0$ meets
+them, and the move $\lambda+th$ of that proof keeps the tail and every zero of
+$Z$, and so every point of $X$, until it gains a zero.  The zero bound caps
+the zeros at $L-k-1$.
+\end{proof}
+
+\begin{theorem}[The escaping placement is extremal]\label{thm:extremal}
+Let $2\le r_1<\cdots<r_L$ and $0\le u\le L-1$.  Then \eqref{eq:step} holds for
+every $0\le k<u$ and every set $X$ of $u-k$ positive integers.  Consequently
+$T=\tau^*$, and
+\[
+  \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)=\frac1{\tau^*}
+  =\min_M\max_{j\ge1}\bigl|S_j(P_uM)\bigr|
+\]
+over monic $Q,M\in\R[x]$.
+\end{theorem}
+
+\begin{proof}
+Fix $k$ and $X$, and put $g=\max X$ and $X'=X\setminus\{g\}$.  By
+Lemma~\ref{lem:attainX} on $y_{k+2},\ldots,y_L$, $\tau_{k+1}(X')$ is attained
+by a full certificate $F$ with a zero set $Z^-\supseteq X'$ of size $L-k-2$.
+If $g\in Z^-$ or $g>\max Z^-$, Proposition~\ref{prop:stepeasy} gives
+\eqref{eq:step}.  Otherwise put $B_0=Z^-\cap(0,g)$, which contains $X'$, and
+$A=Z^-\cap(g,\infty)\ne\varnothing$.  For a run $[s,e]$ of $A$, the set
+$Z^-\setminus\{s\}\cup\{e+1\}$ has $L-k-2$ elements and contains $X'$, as
+$s>g$, so its full certificate is a certificate for $X'$ and its tail is at
+least $\tau_{k+1}(X')=\Tail(F)$.  The node $y_{k+1}=1/r_{k+1}$ is at most
+$\tfrac12$, so Corollary~\ref{cor:shiftrun} applies: the full certificate $w$
+on $y_{k+1},\ldots,y_L$ with zero set $B_0\cup\{g\}\cup(A+1)\supseteq X$ has
+$\Tail(w)\le\Tail(F)$, whence $\tau_k(X)\le\Tail(w)\le\tau_{k+1}(X')$.
+Proposition~\ref{prop:step} then gives $T=\tau^*$ and the value $1/\tau^*$,
+and Proposition~\ref{prop:attain} makes \eqref{eq:multiplier} an equality at
+some monic $M$.
+\end{proof}
+
+So when \eqref{eq:partial} fails the infimum is always $1/\tau^*$, and
+Corollary~\ref{cor:uone} reads $\inf_Qb_2=1/\tau^*$.  The minimizing zero
+set need not be a consecutive block with one displaced zero.  At
+$(2,3,4,5,6)$ with $u=0$ it is $\{1,2,4,6\}$, of tail $\tfrac{41}{12600}$,
+against $0.003847$ for the best block $\{1,2,3\}$ with one displaced zero.
+
+\paragraph{Naive steps fail.}  The shift of every run cannot be replaced by a
+simpler move.  Replacing $\max Z^-$ by $g$ throws away the displacement
+$Z^-$ earned and can leave a consecutive set, where Theorem~2.2 is an
+equality: at $(\tfrac{503}{250},\tfrac{2053}{1000},\tfrac{527}{250},
+\tfrac{11}5,\tfrac{1177}{500})$ with $u=1$ and $X=\{2\}$ that turns
+$Z^-=\{1,3,6\}$ into $\{1,2,3\}$, and no displaced lift of it comes within a
+factor $1.40$.  Adjoining $g$ to $Z^-$ and displacing nothing gives a zero
+set of the right size, but at $(\tfrac{2013}{1000},\tfrac{257}{125},
+\tfrac{2127}{1000},\tfrac{1071}{500},\tfrac{549}{250})$ with $u=1$ and
+$X=\{2\}$ its tail exceeds that of $Z^-$ by a factor $2.01$.  Sliding the
+smallest zero $M$ of $Z^-$ above $g$ down to $g$, and letting one further zero
+move freely, fails as well, even when $M$ is the best choice with
+$B=Z^-\setminus\{M\}$ fixed: at $L=9$, $k=0$,
+$y_i=\tfrac12-(i-1)\cdot10^{-4}$, $B=\{1,2,3,11,12,13\}$, $g=4$ and $M=6$,
+every certificate on all nine nodes vanishing on $B\cup\{4\}$ has tail at
+least $1.026$ times that of the full certificate on $y_2,\ldots,y_9$ with zero
+set $B\cup\{6\}$, and in the confluent limit with all nine nodes at
+$\tfrac12$, where the full certificate with zero set $Z$ is
+$d\mapsto2^{-d}\prod_{z\in Z}(1-d/z)$, the ratio is exactly
+$\tfrac3{143}\big/\tfrac{35}{1716}=\tfrac{36}{35}$ (exact rational
+arithmetic).  There $B\cup\{6\}$ is not a minimizer: the minimizer for
+$X'=\{1,2,3\}$ on $y_2,\ldots,y_9$ is $\{1,2,3,6,8,12,17\}$, and
+\eqref{eq:step} holds at $X=\{1,2,3,4\}$ with ratio $0.70$.  Minimality of
+$Z^-$ is what the proof of Theorem~\ref{thm:extremal} uses.
+
+When $Z^-\cap(0,g)$ is an initial segment $\{1,\ldots,k'\}$ an explicit
+certificate does the step, without minimality.  Let $F(x)=\sum_dF_dx^d$ be
+the generating function of any full certificate with such a zero set
+$Z^-\not\ni g$, and $y\le\tfrac12$ the new node.  Then
+$v(x)=(1-yxF(x))/(1-yx)$ is an exponential sum on all the nodes with
+$v_0=1$ and $v_d=-\sum_{1\le j<d}F_jy^{d-j}$, so it vanishes on
+$\{1,\ldots,k'+1\}$ and $\Tail(v)\le\tfrac{y}{1-y}\Tail(F)\le\Tail(F)$.
+For $g>k'+1$, $F$ keeps one sign on $(k',g]$, so $v_g$ and $F_g$ have
+opposite signs, and the segment from $F$ to $v$ crosses $v_g=0$ at a
+certificate vanishing on $\{1,\ldots,k'\}\cup\{g\}$ with tail at most
+$\Tail(F)$, by convexity.  Only the new node is held to the cutoff.
+
+\subsection*{Two examples}
+
+For $u\ge2$ the covering of Theorem~\ref{thm:lift} is also a finite
+certificate of the value.  Start from $(A,k)=(\varnothing,u)$.  Choose a full
+certificate on $y_{k+1},\ldots,y_L$ whose zero set $Z$ contains $A$ and whose
+tail is at most $\tau^*$.  By Theorem~\ref{thm:lift} it covers every
+$X\supseteq A$ whose other $k$ elements lie in $Z\cup(\max Z,\infty)$.
+Recurse on $(A\cup\{w\},k-1)$ for each $w<\max Z$ outside $Z\cup A$.  By
+Theorem~\ref{thm:extremal} the search always closes, and where the lifts are
+strict it also shows that the infimum is not attained.
+
+\begin{proposition}[Two infima]\label{prop:values}
+Over monic $Q\in\R[x]$,
+\begin{align*}
+  \inf_Qb_2\bigl(Q\,(x-2)(x-3)(x-5)(x-7)\bigr)
+    &=\frac{1704}{31}=54.967\ldots,\\
+  \inf_Qb_3\Bigl(Q\prod_{r=2}^7(x-r)\Bigr)
+    &=\frac{114840}{259}=443.397\ldots,
+\end{align*}
+against the bounds $48$ and $360$ of \eqref{eq:order} and the values $57$ and
+$480$ of the construction.  Neither infimum is attained.
+\end{proposition}
+
+\begin{proof}
+At $(2,3,5,7)$ the full certificate on $(\tfrac13,\tfrac15,\tfrac17)$ with
+zero set $\{1,3\}$ is
+$v^*_d=(81\cdot3^{-d}-625\cdot5^{-d}+686\cdot7^{-d})/142$.  It has
+$v^*_2=-\tfrac1{71}$, is positive past $3$, and has tail $\tfrac{31}{1704}$.
+The multiplier $M=x+\tfrac9{62}$ gives
+\[
+  \frac{\widetilde P_1(y)\,(1+\tfrac9{62}y)}{1-y}
+  =1-\tfrac{859}{62}y+\tfrac{1704}{31}y^2-\tfrac{2463}{62}y^3
+   -\tfrac{1704}{31}\sum_{d\ge4}y^d ,
+\]
+so by \eqref{eq:dualpair} $\tau^*=\tfrac{31}{1704}$, with $Z^*=\{1,3\}$ and
+$G=\{2\}$.  The full certificate on all four nodes with zero set $\{1,2,5\}$
+has tail $\tfrac{21337}{1910352}<\tfrac{31}{1704}$, and
+Corollary~\ref{cor:uone} gives the first value.
+
+At $(2,\ldots,7)$ with $u=2$ the full certificate on
+$(\tfrac14,\ldots,\tfrac17)$ with zero set $\{1,2,4\}$ has
+$v^*_3=\tfrac1{638}$, is negative past $4$, and has tail
+$\tfrac{259}{114840}$.  The multiplier $M=x+\tfrac{60}{259}$ gives the
+partial sums $1$, $-\tfrac{5379}{259}$, $\tfrac{5666}{37}$,
+$-\tfrac{114840}{259}$, $\tfrac{64440}{259}$ and then $\tfrac{114840}{259}$
+forever, so $\tau^*=\tfrac{259}{114840}$ with $Z^*=\{1,2,4\}$.  The search
+closes in two steps.  Theorem~\ref{thm:lift} with $k=2$ covers every
+$X\not\ni3$.  The full certificate on $(\tfrac13,\ldots,\tfrac17)$ with zero
+set $\{1,2,3,5\}$, of tail $\tfrac{31}{36720}$, covers every $\{3,x\}$ except
+$\{3,4\}$.  The full certificate on all six nodes with zero set
+$\{1,2,3,4,7\}$, of tail $\tfrac{119261}{193623120}$, covers $\{3,4\}$.
+
+Neither infimum is attained, because $\tau(X)<\tau^*$ for every $X$.  Each
+covering above either lifts with $k\ge1$ onto a padded zero set that is not
+consecutive, which is strict by Theorem~\ref{thm:lift}, or has tail below
+$\tau^*$ outright.  So every multiple $F$ has
+$b_{u+1}(F)\ge1/\tau(X_F)>1/\tau^*$.
+\end{proof}
+
+In both cases the extremal series is the construction of
+Proposition~\ref{prop:partial} applied to $P_uM$ rather than $P_u$, and the
+factor $x+\beta$ has a negative root.  It raises the total $|P_u(1)M(1)|$
+above $|P_u(1)|$ but brings every partial sum within it, so \eqref{eq:partial}
+holds for the product.  Complementary slackness explains the shape.  Past the
+largest zero $g$ of $v^*$ the witness is constant, so $(1-y)W$ is a
+polynomial of degree $g+1$ and $\deg M=g+1-m$, which is $1$ both times.
+
+\section{Below the cutoff}\label{sec:subtwo}
+
+This section decides when the bounds \eqref{eq:repaired} and
+\eqref{eq:twosided} of Section~\ref{sec:extend} are the infimum.  They
+differ from \eqref{eq:order} only when an exempt root lies below $2$.
+
+At $(\tfrac32,3)$ Corollary~\ref{cor:repaired} gives $b_2\ge1$, below the $1.62$ of
+Proposition~\ref{prop:subtwo}, and $1$ is the infimum.  More generally the
+repaired bound is attained whenever the $u$ exempt roots lie in $(1,2]$ and
+the partial sums of the whole root product are small enough.  The multiples
+that attain it put the exempt coefficients at the top rather than the
+bottom.  Here $S_j(P)$ are the partial sums of \eqref{eq:wgen} with $u=0$.
+
+\begin{proposition}[Sharpness below $2$]\label{prop:subtwosharp}
+Let $r_1\le\cdots\le r_L$ be real with $r_1>1$, repetitions allowed, put
+$P=\prod_{i=1}^L(x-r_i)$, and let $0\le u\le L-1$.  Let $\sigma$ be the
+$(u+1)$-st largest of $|S_1(P)|,\ldots,|S_{L-1}(P)|$, or $0$ if $u=L-1$.  Then
+\[
+  \inf_Qb_{u+1}(QP)\le\max\bigl(|P(1)|,\sigma\bigr)
+\]
+over monic $Q\in\R[x]$.  If $r_u\le2$ and $\sigma\le|P(1)|$, the infimum is
+$|P(1)|$, which is the value of \eqref{eq:repaired}.  In particular
+$\inf_Qb_L(QP)=|P(1)|$ whenever $r_{L-1}\le2$.
+\end{proposition}
+
+\begin{proof}
+Since $P(0)\ne0$, $x$ is invertible modulo $P$.  For $n\ge1$ let $R_n$ be the
+polynomial of degree less than $L$ with $x^nR_n\equiv1\pmod P$.  Its
+coefficient vector is $T^n$ applied to that of $1$, where $T$ is
+multiplication by $x^{-1}$ on $\R[x]/(P)$.  The eigenvalues of $T$ are the
+$1/r_i<1$, so $R_n\to0$, and for large $n$ we have $R_n(1)\ne1$.  Put
+\[
+  t_n=\frac{P(1)}{1-R_n(1)},\qquad M_n=P+t_nR_n .
+\]
+Then $M_n$ is monic of degree $L$ with $M_n(1)=t_n$, so
+$M_n=(x-1)\widetilde A_n+t_n$ with $\widetilde A_n$ monic of degree $L-1$.
+Moreover $x^nM_n-t_n\equiv x^nP+t_n(x^nR_n-1)\equiv0\pmod P$, and
+$x^nM_n-t_n$ vanishes at $1$, where $P$ does not, so $P$ divides
+\[
+  F_n=\frac{x^nM_n-t_n}{x-1}=x^n\widetilde A_n+t_n\sum_{j=0}^{n-1}x^j .
+\]
+Thus $F_n$ is a monic multiple of $P$.  Its nonleading coefficients are the
+$L-1$ lower coefficients of $\widetilde A_n$, followed by $t_n$ repeated $n$
+times.  At most $u$ of those can exceed the larger of $|t_n|$ and the
+$(u+1)$-st largest lower coefficient of $\widetilde A_n$, so $b_{u+1}(F_n)$ is
+at most that larger value.  As $n\to\infty$, $t_n\to P(1)$ and
+$\widetilde A_n\to(P-P(1))/(x-1)$.  By \eqref{eq:wgen} the lower coefficients
+of that limit are $S_1(P),\ldots,S_{L-1}(P)$, which proves the bound.  If
+$r_u\le2$, every $\min(r_i-1,1)$ with $i\le u$ is $r_i-1$, so the right side
+of \eqref{eq:repaired} is $|P(1)|$.  At $u=L-1$, $\sigma=0$.
+\end{proof}
+
+At $(\tfrac32,10,20)$ with $u=1$, for example, the partial sums are
+$1,-30.5,214.5,-85.5$, so $\sigma=30.5$ and the infimum of $b_2$ is
+$85.5=|P(1)|$, while \eqref{eq:order} would assert $171$.
+
+At $(\tfrac32,\tfrac52,4)$ with $u=2$, \eqref{eq:repaired} gives $b_3\ge\tfrac32$
+and \eqref{eq:twosided} gives $b_3\ge\tfrac94=|P(1)|$, which is the infimum by
+Proposition~\ref{prop:subtwosharp} ($\sigma=0$ at $u=L-1$).  Whether
+\eqref{eq:twosided} is attained is decided by the two constructions already in
+hand, one for each side of the minimum.
+
+\begin{theorem}[When the two-sided bound is the infimum]\label{thm:twosidedsharp}
+Let $1<r_1<\cdots<r_L$ be distinct and $0\le u\le L-1$, put
+$\pi=\prod_{i\le u}(r_i-1)$, and let $\sigma$ be as in
+Proposition~\ref{prop:subtwosharp}.  Then, over monic $Q\in\R[x]$,
+\[
+  \inf_Qb_{u+1}(QP)=\min\bigl(|P(1)|,|P_u(1)|\bigr)
+\]
+if and only if either $\pi\le1$ and $\sigma\le|P(1)|$, or $\pi\ge1$ and
+\eqref{eq:partial} holds for $P_u$.  Otherwise the infimum is strictly larger.
+\end{theorem}
+
+\begin{proof}
+Write $R=\min(|P(1)|,|P_u(1)|)$; Corollary~\ref{cor:twosided} gives
+$\inf\ge R$.  If $\pi\le1$ then $R=|P(1)|$, and if also $\sigma\le|P(1)|$,
+Proposition~\ref{prop:subtwosharp} gives $\inf\le|P(1)|$.  If $\pi\ge1$ then
+$R=|P_u(1)|$, and if \eqref{eq:partial} holds, \eqref{eq:multiplier} at $M=1$
+gives $\inf\le\max_{j\ge1}|S_j(P_u)|=|P_u(1)|$, since the partial sums
+stabilize at $S_m(P_u)=P_u(1)$.  Neither step uses $r_1\ge2$:
+Theorem~\ref{thm:value} and \eqref{eq:multiplier} assume only $1<r_1$.
+
+Conversely suppose neither condition holds.  By \eqref{eq:weak} every monic
+multiple has $b_{u+1}\ge1/\tau(X_F)$, so it suffices to show
+$T=\sup_{|X|=u}\tau(X)<1/R$.  Exactly as in the proof of
+Theorem~\ref{thm:converse}, a sequence $X_\nu$ with $\tau(X_\nu)\to1/R$ has a
+subsequence $X_\nu=X_0\cup E_\nu$ with $|E_\nu|=k$ and $\min E_\nu\to\infty$,
+and Proposition~\ref{prop:farrep}(c), which needs only $r_1>1$, turns a
+certificate for $X_0$ on $y_{k+1},\ldots,y_L$ with tail below $1/R$ into
+certificates for $X_\nu$ whose tails tend to it.  So it suffices to find, for
+every $0\le k\le u$ and every $X_0$ of size $u-k$, such a certificate.
+
+Take the zero set $Z$ of $X_0$ and the first $m-1$ positive integers outside
+it, of size $L-k-1$ and leading run $f\ge m-1$.  On the nodes
+$y_{k+1},\ldots,y_L$ the products $\Pi_j$ are the same as on all $L$ nodes for
+$j\le L-k$, so Theorem~\ref{thm:twosided} bounds the tail by
+$\max(\Pi_{f+1},\Pi_{L-k})$, strictly unless $Z$ is consecutive.  With
+distinct roots the increments of $\log\Pi_j$ increase strictly, so
+$j\mapsto\log\Pi_j$ is strictly convex, and since $m\le f+1\le L-k\le L$,
+\[
+  \max(\Pi_{f+1},\Pi_{L-k})\le\max(\Pi_m,\Pi_L)=1/R,
+\]
+with $\Pi_{L-k}<1/R$ unless $L-k$ is an endpoint $m$ or $L$ carrying the
+maximum.  So the tail is below $1/R$ except when $Z=\{1,\ldots,L-k-1\}$ and
+either $k=u$ and $\Pi_m\ge\Pi_L$, or $k=0$ and $\Pi_L\ge\Pi_m$.
+
+If $k=u$ and $\Pi_m\ge\Pi_L$, that is $\pi\ge1$, then $X_0=\varnothing$ and the
+tail is $1/|P_u(1)|=1/R$; as $\pi\ge1$, \eqref{eq:partial} fails for $P_u$, and
+Lemma~\ref{lem:improve} with $Q=P_u$ and $X_0=\varnothing$ gives a certificate
+with tail below $1/R$.  If $k=0$ and $\Pi_L\ge\Pi_m$, that is $\pi\le1$, then
+$X_0\subseteq\{1,\ldots,L-1\}$ and the tail is $1/|P(1)|=1/R$; as $\pi\le1$,
+$\sigma>|P(1)|$, so at least $u+1$ indices $j\in\{1,\ldots,L-1\}$ have
+$|S_j(P)|>|P(1)|$, one of them outside $X_0$, and Lemma~\ref{lem:improve} with
+$Q=P$ gives a certificate for $X_0$ with tail below $1/R$.  (For $u=0$ both
+cases are $k=0$, $X_0=\varnothing$, and either argument applies.)
+\end{proof}
+
+For $r_1\ge2$ one has $\pi\ge1$, with $\pi=1$ only at $u=0$ or at $u=1$,
+$r_1=2$, and the theorem is Proposition~\ref{prop:partial} with
+Theorem~\ref{thm:converse}: at $u=1$, $r_1=2$ the proof of
+Theorem~\ref{thm:converse} shows that $\sigma\le|P(1)|$ already forces
+\eqref{eq:partial}.  Below $2$ it answers the question left by
+Proposition~\ref{prop:subtwosharp}.
+
+\begin{corollary}[When the repaired bound is the infimum]\label{cor:repairedsharp}
+Let $1<r_1<\cdots<r_L$ be distinct and $1\le u\le L-1$.  Then
+\eqref{eq:repaired} is the infimum of $b_{u+1}$ over monic multiples if and
+only if either $r_u\le2$ and $\sigma\le|P(1)|$, or $r_1\ge2$ and
+\eqref{eq:partial} holds.  In particular, with an exempt root below $2$ it is
+the infimum exactly under the hypotheses of
+Proposition~\ref{prop:subtwosharp}; when $r_1<2<r_u$ it is never the
+infimum, even with repeated roots.
+\end{corollary}
+
+\begin{proof}
+If $r_1<2<r_u$, Corollary~\ref{cor:twosided} puts every $b_{u+1}$ at or above
+a value strictly larger than \eqref{eq:repaired}; that argument allows
+repeated roots.  If $r_u\le2$ and $r_1<2$, then \eqref{eq:repaired} is
+$|P(1)|=\min(|P(1)|,|P_u(1)|)$ and $\pi\le r_1-1<1$, so by
+Theorem~\ref{thm:twosidedsharp} it is the infimum exactly when
+$\sigma\le|P(1)|$.  If $r_1\ge2$ it is \eqref{eq:order}, settled by
+Proposition~\ref{prop:partial} and Theorem~\ref{thm:converse}.
+\end{proof}
+
+When the criterion fails, Theorem~\ref{thm:value} still computes the
+infimum as $1/T$: its proof never uses the cutoff.  What does use it is the
+covering, through the deletion step in Theorem~\ref{thm:lift}, and below $2$
+the escaping placement need not be extremal.  For one exempt coefficient the
+covering survives, with the half-mass point of
+Corollary~\ref{cor:halfmass}, which needs no cutoff, in place of $\max Z^*$.
+
+The half-mass point comes from a line of certificates, and nothing on that
+line needs the cutoff.  Adding one node to a certificate and one zero to its
+zero set moves it along a line, on which the tail is a weighted sum of
+distances.
 
 \begin{lemma}[Sign rule for the pencil]\label{lem:pencil}
 Let $n=L-k-1$, let $A$ be a set of $n-1$ positive integers, let $F$ be the full
@@ -1762,976 +1994,127 @@ of the order of $d$, so the weights $|H_d|$ of Proposition~\ref{prop:median}
 accumulate from the largest $d$ downwards.
 \end{proof}
 
-The displacement therefore needs no window, and $N$ need not exceed $\max A$.
+The displaced zero $N$ need not exceed $\max A$.
 Taking $\theta=0$ in \eqref{eq:median} returns $\Tail(F)$, and the breakpoints
 are positive and tend to $0$, since $|F_d|/|H_d|$ decays like
 $(y_{k+2}/y_{k+1})^d$; so the convex minimum is at most the value at $0$.
+With nodes anywhere in $(0,1)$, some $N$ therefore gives
+$\Tail(A\cup\{N\})\le\Tail(F)$: for a \emph{fixed} zero set the deletion
+step reverses beyond the cutoff, as on $(1/3,1/2,9/10)$ in
+Section~\ref{sec:extend}, but once the
+displaced zero is chosen by Proposition~\ref{prop:median} it cannot.
 
-\begin{corollary}[A displaced zero always pays for a node]\label{cor:nocut}
-With $F$ and $H$ as in Lemma~\ref{lem:pencil} and nodes anywhere in $(0,1)$,
-some $N$ gives $\Tail(A\cup\{N\})\le\Tail(F)$.
-\end{corollary}
-
-The node cutoff is not needed for this.  For a \emph{fixed} zero set the
-deletion step reverses beyond the cutoff, as on $(1/3,1/2,9/10)$ above; once
-the displaced zero is chosen by Proposition~\ref{prop:median} it cannot.
-
-So \eqref{eq:step} can fail only through a misalignment: the minimizing $Z^-$
-has $g<\max Z^-$ and $g\notin Z^-$, and no zero can be added to $Z^-$ above its
-largest to reach $g$.  Freeing the largest zero does not repair it, because
-replacing $\max Z^-$ by $g$ throws away the displacement $Z^-$ earned and
-leaves a consecutive set, where Theorem~2.2 is an equality: at
-$(\tfrac{503}{250},\tfrac{2053}{1000},\tfrac{527}{250},\tfrac{11}5,
-\tfrac{1177}{500})$ with $u=1$ and $X=\{2\}$ that turns $Z^-=\{1,3,6\}$ into
-$\{1,2,3\}$, and no displaced lift of it comes within a factor $1.40$.
-Sliding down the \emph{smallest} zero above $g$ keeps the displacement.  Nor
-can the slide be dispensed with: adjoining $g$ to $Z^-$ and displacing nothing
-gives a zero set of the right size, but its tail exceeds $\Tail(v^-)$ in $245$
-of the $379$ straddling instances we put to it, at
-$(\tfrac{2013}{1000},\tfrac{257}{125},\tfrac{2127}{1000},\tfrac{1071}{500},
-\tfrac{549}{250})$ with $u=1$ and $X=\{2\}$ by a factor $2.01$.
-
-Both the slide and the displacement are choices of a point on one line, and
-that line carries its own minimum.  Fix a set $B$ of $L-k-3$ positive
-integers and let
+\begin{proposition}[One exempt coefficient at any roots]\label{prop:uoneall}
+Let $1<r_1<\cdots<r_L$ and $u=1$, let $\tau^*$ be attained by the full
+certificate $v^*$ on $y_2,\ldots,y_L$ with zero set $Z^*$
+(Proposition~\ref{prop:attain}), and let $N'$ be the half-mass point of
+Corollary~\ref{cor:halfmass} for $k=0$ and $A=Z^*$, so that $F=v^*$ and $H$ is
+the sum on all $L$ nodes vanishing on $\{0\}\cup Z^*$.  Then
 \[
-  \mathcal P=\bigl\{v \text{ on } y_{k+1},\ldots,y_L\ :\ v_0=1,\
-  v_b=0\ (b\in B)\bigr\},
+  \inf_Qb_2\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)
+  =\frac1{\max\bigl(\tau^*,\ \max_{w\in G}\tau(\{w\})\bigr)},
+  \qquad G=\{1,\ldots,N'-1\}\setminus Z^*.
 \]
-a two-parameter family on which $\Tail$ is convex.  For $a\notin B$ write
-$\ell_a=\{v\in\mathcal P:v_a=0\}$, and $\ell_\infty$ for the certificates in
-$\mathcal P$ giving weight $0$ to $y_{k+1}$, that is, the full certificates on
-$y_{k+2},\ldots,y_L$ whose zero set contains $B$.  Each $\ell_a$ is a pencil as
-in Lemma~\ref{lem:pencil}, so $\Tail$ restricted to it is the convex function
-of Proposition~\ref{prop:median}, minimized at the half-mass point of
-Corollary~\ref{cor:halfmass}; two of these lines meet in the full certificate
-with zero set $B\cup\{a,b\}$, which we write $p_{ab}$, and $\ell_a$ meets
-$\ell_\infty$ in the full certificate $F_a$ on $y_{k+2},\ldots,y_L$ with zero
-set $B\cup\{a\}$.  The slide-down rule is then one inequality between a line
-and a point.
-
-\begin{proposition}[Slide reduction]\label{prop:slide}
-Let $2\le r_1<\cdots<r_L$, let $X$ be finite with $g=\max X$ and
-$X'=X\setminus\{g\}$, and let $Z^-$ attain $\tau_{k+1}(X')$ with $g\notin Z^-$
-and $g<\max Z^-$.  Put $M=\min\{z\in Z^-:z>g\}$ and $B=Z^-\setminus\{M\}$.  If
-\begin{equation}\label{eq:slide}
-  \min\{\Tail(v):v\in\ell_g\}\ \le\ \Tail(F_M),
-\end{equation}
-then \eqref{eq:step} holds at $X$.
 \end{proposition}
 
 \begin{proof}
-$B$ has $L-k-3$ elements, $g$ and $M$ lie outside it and no element of $B$
-lies between them.  Every $v\in\ell_g$ vanishes on $B\cup\{g\}\supseteq X$,
-because $X'\subseteq Z^-$ and $M>g=\max X$ puts $M$ outside $X$; so the left
-side of \eqref{eq:slide} is at least $\tau_k(X)$, while
-$\Tail(F_M)=\Tail(Z^-)=\tau_{k+1}(X')$.
+By \eqref{eq:median} the tail along the pencil is
+$\varphi(\theta)=\sum_{d\ge1}|H_d|\,\bigl|\theta-|F_d|/|H_d|\bigr|$, with
+$\varphi(0)=\Tail(v^*)=\tau^*$.  All breakpoints are positive, so the right
+derivative at $0$ is $-\sum_{d\notin Z^*}|H_d|<0$, and the convex $\varphi$
+has its minimum, at $\theta_{N'}$, below $\tau^*$.  For $0<\theta\le
+\theta_{N'}$ convexity gives $\varphi(\theta)\le(1-s)\tau^*+s\varphi(\theta_{N'})
+<\tau^*$ with $s=\theta/\theta_{N'}$.  By Lemma~\ref{lem:ratio},
+$\theta_N=|F_N|/|H_N|$ is positive and decreasing in $N\notin Z^*$, so
+$\Tail(Z^*\cup\{N\})<\tau^*$ for every $N\ge N'$ outside $Z^*$.  That full
+certificate is one for $\{w\}$ when $w=N$, and, taking $N=N'$, when
+$w\in Z^*$.  So $\tau(\{w\})<\tau^*$ for $w\notin G$, and $T\ge\tau^*$ by
+Theorem~\ref{thm:value}.
 \end{proof}
 
-Together with Proposition~\ref{prop:stepeasy} this covers every case of
-\eqref{eq:step}, and two alignments of the minimizers settle
-\eqref{eq:slide} by convexity alone.
-
-\begin{proposition}[Two aligned cases of the slide]\label{prop:slidealigned}
-Let $B$, $g<M$ be as in \eqref{eq:slide}, let $M^*$ minimize $\Tail(F_a)$
-over $a\notin B$, and let $N'$ be the half-mass point of
-Corollary~\ref{cor:halfmass} for $A=B\cup\{M\}$ on $y_{k+1},\ldots,y_L$.
-\begin{enumerate}
-\item If $M^*\le g$, then $\Tail(F_g)\le\Tail(F_M)$, and \eqref{eq:slide}
-  holds by Corollary~\ref{cor:nocut}.
-\item If $N'\le g$, then $\Tail(p_{gM})\le\Tail(F_M)$: adjoining $g$ to $Z^-$
-  costs nothing, and \eqref{eq:slide} holds.
-\end{enumerate}
-\end{proposition}
-
-\begin{proof}
-On $\ell_\infty$ the points $F_a$ are ordered by $a$ (Lemma~\ref{lem:ratio}
-applied on $y_{k+2},\ldots,y_L$), so in the first case $F_g$ lies between
-$F_{M^*}$ and $F_M$, and convexity of $\Tail$ along the line gives
-$\Tail(F_g)\le\max(\Tail(F_{M^*}),\Tail(F_M))=\Tail(F_M)$.  On $\ell_M$ the
-points $p_{Ma}$ are ordered by $a$ with $F_M$ at the end, so in the second case
-$p_{gM}$ lies between $F_M$ and the minimizer $p_{MN'}$, and convexity gives
-$\Tail(p_{gM})\le\Tail(F_M)$.
-\end{proof}
-
-The remaining case, $M^*>g$ and $N'>g$, is where the slide must displace.
-There \eqref{eq:slide} is false in general.
-
-\begin{proposition}[The slide fails for a general zero set]\label{prop:slidefails}
-Let $L=9$, $k=0$, $y_i=\tfrac12-(i-1)\cdot10^{-4}$, $B=\{1,2,3,11,12,13\}$,
-$g=4$ and $M=6$.  Then $M=M^*$, and every $v\in\ell_g$ has
-$\Tail(v)\ge1.026\,\Tail(F_M)$.  In the confluent limit of
-Proposition~\ref{prop:confluent} with all nine nodes at $\tfrac12$, where the
-full certificate with zero set $Z$ is $d\mapsto2^{-d}\prod_{z\in Z}(1-d/z)$,
-the same $B$, $g$, $M$ give
+Exact values, each $\tau$ certified by a dual multiplier as in
+Proposition~\ref{prop:attain} and every $\tau(\{w\})$, $w\in G$, computed:
 \[
-  \min_{N}\Tail\bigl(B\cup\{4,N\}\bigr)
-  =\Tail\bigl(\{1,2,3,4,10,11,12,13\}\bigr)=\tfrac3{143}
-  =\tfrac{36}{35}\Tail\bigl(B\cup\{6\}\bigr),
+\begin{array}{lcccc}
+  (r_i) & \eqref{eq:repaired} & \eqref{eq:twosided} & \inf b_2 & \text{extremal}\\\hline
+  (\tfrac32,10,20) & \tfrac{171}2 & \tfrac{171}2 & \tfrac{171}2 & w=2\\
+  (\tfrac32,3,4) & 3 & 3 & 6 & \text{escaping}\\
+  (\tfrac32,3,5,7) & 24 & 24 & \tfrac{1704}{31} & \text{escaping}\\
+  (\tfrac{11}{10},3,5,7) & \tfrac{24}5 & \tfrac{24}5 & \tfrac{3398808}{96935}=35.06\ldots & w=5\\
+  (\tfrac65,\tfrac32,3) & \tfrac15 & \tfrac15 & \tfrac{23688369}{19164415}=1.236\ldots & w=1
+\end{array}
 \]
-where $\Tail(B\cup\{6\})=\tfrac{35}{1716}$.
-\end{proposition}
-
-\begin{proof}
-Exact rational arithmetic.  The minimum over $\ell_g$ is at its half-mass
-point $N=10$ by Corollary~\ref{cor:halfmass}, and the tails at $N\le40$ were
-also compared directly; in the confluent case every $N\le399$ was checked and
-the limit $N\to\infty$ is $\Tail(B\cup\{4\})=2.01\,\Tail(B\cup\{6\})$.
-\end{proof}
-
-So the case analysis does not disappear.  The hypothesis
-Proposition~\ref{prop:slide} actually supplies, that $B\cup\{M\}$ is a
-minimizer of $\tau_{k+1}$, is stronger than the hypothesis of
-\eqref{eq:slide}, and at the root set of Proposition~\ref{prop:slidefails} it
-is not met: the minimizer for $X'=\{1,2,3\}$ on $y_2,\ldots,y_9$ is
-$\{1,2,3,6,8,12,17\}$, and \eqref{eq:step} holds at $X=\{1,2,3,4\}$ with ratio
-$0.70$.  Theorem~\ref{thm:extremal} below proves \eqref{eq:step} in general.  Where the displaced zero goes is
-not settled either: the half-mass point $N'$ of $\ell_M$ wins in most
-straddling instances, but at the confluent limit with $B=\{1,\ldots,24\}$,
-$g=25$ and $M=50$, where $M$ is the minimizer on $\ell_\infty$, the vertex
-$p_{gN'}$ has $N'=55$ and tail $1.031\,\Tail(F_M)$ while $p_{g,51}$ meets
-$\Tail(F_M)$ exactly and $p_{g,52}$ falls below it.  What does hold, at every $g$ and whatever lies above it, is the step from a
-zero set whose part below $g$ is an initial segment, by a certificate that is
-not a vertex at all: smoothing the minimizing certificate against the new
-node.
-
-\begin{theorem}[The step from an initial segment]\label{thm:slideinitial}
-Let $y_1,\ldots,y_{c-1}\in(0,1)$ be distinct, let $y_c\in(0,\tfrac12]$ be a
-further node, let $Z^-$ be a set of $c-2$ positive integers and $g\notin Z^-$
-with $Z^-\cap(0,g)=\{1,\ldots,k\}$, and let $F$ be the full certificate on
-$y_1,\ldots,y_{c-1}$ with zero set $Z^-$.  Then some certificate on all $c$
-nodes vanishing on $\{1,\ldots,k\}\cup\{g\}$ has tail at most $\Tail(F)$, and
-for $g=k+1$ at most $\tfrac{y_c}{1-y_c}\Tail(F)$.  If $Z^-$ has a single
-element $M$ above $g$, the certificate can be taken full, with zero set
-$\{1,\ldots,k\}\cup\{g,N\}$, so \eqref{eq:slide} holds for
-$B=\{1,\ldots,k\}$.
-\end{theorem}
-
-\begin{proof}
-Write $F(x)=\sum_dF_dx^d=N(x)/\prod_{i<c}(1-y_ix)$ with $\deg N\le c-2$, and
-put
-\[
-  v(x)=\frac{1-y_cxF(x)}{1-y_cx}
-      =\frac{\prod_{i<c}(1-y_ix)-y_cxN(x)}{\prod_{i\le c}(1-y_ix)} .
-\]
-The numerator has degree at most $c-1$ and the poles are simple, so $v$ is an
-exponential sum on the $c$ nodes; expanding, $v_0=1$ and
-\[
-  v_d=-\sum_{1\le j<d}F_j\,y_c^{\,d-j}\qquad(d\ge1).
-\]
-For $b\le k+1$ every $j<b$ lies in $Z^-$, so $v_b=0$.  Summing the geometric
-factors,
-$\Tail(v)\le\sum_{j\ge1}|F_j|\sum_{i\ge1}y_c^i
-=\tfrac{y_c}{1-y_c}\Tail(F)\le\Tail(F)$, the one use of the cutoff.  This
-settles $g=k+1$.  For $g>k+1$ the sum for $v_g$ runs over $k<j<g$; by the
-zero bound $F$ has exactly the zeros $Z^-$, so it keeps one sign from $k$ to
-the least element of $Z^-$ above $g$, or to infinity if there is none, and
-$v_g$ has the sign opposite to $F_g$.  The segment from $F$ to $v$ consists of sums on the
-$c$ nodes with $v_0=1$ vanishing on $\{1,\ldots,k\}$, and it crosses the
-hyperplane $v_g=0$ at $w=(1-\lambda)F+\lambda v$ with
-$\lambda=F_g/(F_g-v_g)\in(0,1)$; $\Tail$ is convex, so
-$\Tail(w)\le\max(\Tail(F),\Tail(v))=\Tail(F)$.  When $Z^-=\{1,\ldots,k\}\cup\{M\}$
-the whole segment lies in $\mathcal P$ for $B=\{1,\ldots,k\}$, so $w\in\ell_g$,
-and by Proposition~\ref{prop:median} the minimum over $\ell_g$ is at a vertex
-$p_{gN}$, a full certificate with the claimed tail.
-\end{proof}
-
-Since $\tau_k(X)$ is an infimum over all certificates for $X$, the theorem
-proves \eqref{eq:step} at every $X$ whose minimizer for $X'$ has an initial
-segment below $\max X$, whatever its zeros above.  It does not need
-minimality: at the root set of Proposition~\ref{prop:slidefails}, where a
-slide from $\{1,2,3,6,11,12,13\}$ to $g=4$ fails on every vertex, the smoothed
-certificate vanishes on $\{1,2,3,4\}$ with tail $0.82$ times the tail of that
-zero set, and for $g=5$ the crossing point has tail $0.48$ times it.  Only the
-new node is held to the cutoff, and the others may exceed it; with
-$y_c>\tfrac12$ the conclusion fails in $59$ of $114$ instances tried, so the
-hypothesis is the right one.  The factor $\tfrac{y_c}{1-y_c}$ is sharp: at the
-confluent limit with all nodes at $\tfrac12$, $g=k+1$ and $M=2k+2$ the ratio in
-\eqref{eq:slide} is $(2k+3)/(2k+4)$ for $k\le8$, exactly, where
-$\Tail(B\cup\{M\})=\binom{2k+2}{k+1}4^{-k-1}$.  The construction does not
-reach a gap below $g$, where
-$v_b=-\sum_{j<b,\,j\notin Z^-}F_jy_c^{b-j}$ need not vanish at the first
-element of $Z^-$ above the gap.
-
-What remains is one inequality with the right hypothesis, and the hypothesis
-is the part of minimality that the counterexample lacks.  Write
-$Z^-=B_0\cup A$ with $B_0=Z^-\cap(0,g)$ and $A=Z^-\cap(g,\infty)$, and
-$A+1=\{a+1:a\in A\}$.  The rule is not to displace one zero to a half-mass
-point but to shift every zero above $g$ up by one:
-\begin{equation}\label{eq:shift}
-  \Tail\bigl(B_0\cup\{g\}\cup(A+1)\bigr)\le\Tail(B_0\cup A)
-  \quad\text{whenever}\quad
-  \Tail(B_0\cup A)\le\Tail\bigl(B_0\cup A\setminus\{a\}\cup\{a+1\}\bigr)
-\end{equation}
-for every $a\in A$ with $a+1\notin A$, the left side on
-$y_{k+1},\ldots,y_L$ and the others on $y_{k+2},\ldots,y_L$.
-For $|A|=1$ it is proved below (Corollary~\ref{cor:shiftone}), and whenever
-no two elements of $A$ are consecutive by Corollary~\ref{cor:shiftrun}.  For
-runs of length at least two Corollary~\ref{cor:shiftrun} proves it with a
-hypothesis that moves the start of each run past its end instead;
-minimality supplies that form equally, and it is the one
-Theorem~\ref{thm:extremal} uses.  In the stated wording it held in every
-one of $550$ further instances tried.
-
-\begin{proposition}[The shift]\label{prop:shift}
-\begin{enumerate}
-\item If $Z^-$ attains $\tau_{k+1}(X')$ with $g\notin Z^-$ and $g<\max Z^-$,
-  then the hypothesis of \eqref{eq:shift} holds at $Z^-$, and
-  \eqref{eq:shift} gives \eqref{eq:step} at $X$.
-\item For $A=\{M\}$ the hypothesis is $\Tail(F_M)\le\Tail(F_{M+1})$, that is,
-  at least half the mass $\sum_{d\notin B_0}|H_d|$ of the direction $H$ of
-  $\ell_\infty$ lies at $d\le M$; the conclusion is
-  $\Tail(p_{g,M+1})\le\Tail(F_M)$.
-\item In the confluent limit with all nodes at $\tfrac12$, $B_0=\{1,\ldots,k\}$,
-  $g=k+1$ and $A=\{M\}$, the hypothesis and the conclusion of
-  \eqref{eq:shift} are both equivalent to $M\ge2k+2$, and the conclusion is an
-  equality exactly at $M=2k+2$.
-\end{enumerate}
-\end{proposition}
-
-\begin{proof}
-(1) Every $a\in A$ exceeds $g=\max X$, so $a\notin X'$ and
-$Z^-\setminus\{a\}\cup\{a+1\}$ is a zero set of the right size containing
-$X'$ when $a+1\notin Z^-$; minimality of $Z^-$ is the hypothesis.  The left
-side of \eqref{eq:shift} is the tail of a full certificate vanishing on
-$B_0\cup\{g\}\supseteq X$, so it is at least $\tau_k(X)$, and the right side
-is $\tau_{k+1}(X')$.
-
-(2) Apply Lemma~\ref{lem:pencil} and Proposition~\ref{prop:median} on
-$y_{k+2},\ldots,y_L$ with $A=B_0$, so that $H$ is the sum on those nodes
-vanishing on $\{0\}\cup B_0$: $F_M$ and $F_{M+1}$ are the points
-$\theta_M>\theta_{M+1}$ of \eqref{eq:median}, between which the breakpoints
-below $\theta$ are exactly those with $d>M$, by Lemma~\ref{lem:ratio}; so
-$\Tail(F_{M+1})-\Tail(F_M)
-=(\theta_M-\theta_{M+1})\bigl(\sum_{d\le M}|H_d|-\sum_{d>M}|H_d|\bigr)$.
-
-(3) Let $D$ have $\Pr(D=d)=\binom{d-1}{k}2^{-d}$ for $d\ge k+1$, the number of
-fair coin tosses to the $(k+1)$st head, with mean $2k+2$, and let $G$ be an
-independent geometric variable, $\Pr(G=j)=2^{-j}$ for $j\ge1$, so that $D+G$
-is the number of tosses to the $(k+2)$nd head.  The certificate with zero set
-$\{1,\ldots,k\}\cup\{M\}$ is $d\mapsto(-1)^k\Pr(D=d)(1-d/M)$, and since
-$(d-k-1)\binom{d-1}{k}=(k+1)\binom{d-1}{k+1}$, the one with zero set
-$\{1,\ldots,k+1\}\cup\{N\}$ is $d\mapsto(-1)^{k+1}\Pr(D+G=d)(1-d/N)$; hence
-$\Tail(\{1,\ldots,k\}\cup\{M\})=\E|D-M|/M$ and
-$\Tail(\{1,\ldots,k+1\}\cup\{N\})=\E|D+G-N|/N$.  For integers $x$ and $N$ a
-direct sum gives $\E|x+G-N|=|x-N|-2+4\cdot2^{-(N-x)_+}$, and
-$\E|D-m-1|-\E|D-m|=2\Pr(D\le m)-1$.  With $N=M+1$, conditioning on $D$ and
-using $\sum_{d\le M}\binom{d-1}{k}=\binom{M}{k+1}$,
-\[
-  (M+1)\Tail\bigl(\{1,\ldots,k+1\}\cup\{M+1\}\bigr)
-  =\E|D-M|+1-2\Pr(D\le M)+2\binom{M}{k+1}2^{-M},
-\]
-while $(M+1)\Tail(\{1,\ldots,k\}\cup\{M+1\})=\E|D-M|+2\Pr(D\le M)-1$.  Next,
-$(2k+2-d)\Pr(D=d)=(k+1)2^{-d}\bigl[\binom{d-1}{k}-\binom{d-1}{k+1}\bigr]$ by
-Pascal's rule, and summing over $d\le M$ telescopes against the two
-head-count events to $(k+1)\binom{M}{k+1}2^{-M}$; with
-$\E|D-M|=(2k+2-M)+2\sum_{d\le M}(M-d)\Pr(D=d)$ this gives
-\[
-  \E|D-M|=(M-2k-2)\bigl(2\Pr(D\le M)-1\bigr)+2(k+1)\binom{M}{k+1}2^{-M}.
-\]
-Substituting, the hypothesis $\E|D-M|\le M(2\Pr(D\le M)-1)$ and the
-conclusion $M(1-2\Pr(D\le M))+2M\binom{M}{k+1}2^{-M}\le\E|D-M|$ both reduce
-to $\binom{M}{k+1}2^{-M}\le2\Pr(D\le M)-1$.  In terms of the number $S$ of
-heads in $M$ tosses, $\Pr(D\le M)=\Pr(S\ge k+1)$ and
-$\binom{M}{k+1}2^{-M}=\Pr(S=k+1)$, so the condition is
-$\Pr(S\ge k+2)\ge\Pr(S\le k)=\Pr(S\ge M-k)$, which holds exactly when
-$M-k\ge k+2$, with equality exactly when $M=2k+2$.
-\end{proof}
-
-The confluent block is therefore the case where \eqref{eq:shift} is sharp, and
-its hypothesis is exactly what the conclusion needs.  Away from it there is
-room: at the same $B_0$ and $g$ with $M>2k+2$ the ratio falls below $1$, and
-at $M=2k+2$ the vertex $p_{g,M+2}$, which is the smoothed certificate of
-Theorem~\ref{thm:slideinitial} there, reaches $(2k+3)/(2k+4)$.  The plane
-$\mathcal P$ makes the shape of the question visible.  With $H$ as in (2),
-$K$ the sum on $y_{k+1},\ldots,y_L$ vanishing on $\{0\}\cup B_0\cup\{M+1\}$,
-$\theta_d=K_d/H_d$ and $\rho_d=-F_{M,d}/H_d$, every $v\in\mathcal P$ is
-$v_d=H_d(\alpha+\beta\theta_d-\rho_d)$, so
-$\Tail(v)=\sum_{d\notin B_0}|H_d|\,|\alpha+\beta\theta_d-\rho_d|$ is the
-weighted $\ell^1$ error of an affine fit to $\rho$ against $\theta$; the
-points $F_a$ are the constant fits, $p_{ab}$ the chords, and the zero bound
-makes $\rho$ a concave function of $\theta$.  With the weights $|H_d|$
-replaced by arbitrary positive weights the case $|A|=1$ of \eqref{eq:shift}
-fails, so the exponential-sum structure of $H$ and the cutoff on $y_{k+1}$,
-which enters only through $\theta$, are both essential.
-
-The hypothesis can be separated from the geometry, and the geometry is a
-theorem.  Write $F_M(d)$, $w(d)$ and so on for values at $d$, and
-$E(d)$ for the value of an exponential sum $E$.
-
-\begin{proposition}[The chord lemma]\label{prop:chord}
-Let $B_0$ be a set of $L-k-3$ positive integers, $g>\max B_0$ and $M>g$.
-Let $F_M$ and $F_{M+1}$ be the full certificates on $y_{k+2},\ldots,y_L$
-with zero sets $B_0\cup\{M\}$ and $B_0\cup\{M+1\}$, and $w$ and $p$ the full
-certificates on $y_{k+1},\ldots,y_L$ with zero sets $B_0\cup\{g,M+1\}$ and
-$B_0\cup\{M,M+1\}$.  Then $p=\lambda F_{M+1}+(1-\lambda)w$ for one
-$\lambda\in(0,1)$, and
-\begin{equation}\label{eq:chord}
-  \Tail(F_M)\ \ge\ \lambda\,\Tail(F_{M+1})+(1-\lambda)\,\Tail(w),
-\end{equation}
-with equality if and only if $y_{k+1}=\tfrac12$ and $B_0=\{1,\ldots,g-1\}$.
-\end{proposition}
-
-\begin{proof}
-\emph{Order.}  Apply Lemma~\ref{lem:pencil} and Proposition~\ref{prop:median}
-with $A=B_0\cup\{M+1\}$ and $F=F_{M+1}$, and call the direction $K$: then
-$p=F_{M+1}+t_MK$ and $w=F_{M+1}+t_gK$ with $t_N=-F_{M+1}(N)/K(N)$.  By the
-sign rule $t_M$ and $t_g$ have one sign, and by Lemma~\ref{lem:ratio}
-$|t_M|<|t_g|$, as $g<M$.  So $p=\lambda F_{M+1}+(1-\lambda)w$ with
-$\lambda=1-t_M/t_g\in(0,1)$.
-
-\emph{Signs.}  Put $\sigma=(-1)^{|B_0|}$ and $b=\max B_0$, or $b=0$ if
-$B_0$ is empty.  Each of the four certificates is full, so by the zero bound
-it has exactly its prescribed zeros, all simple, and it is positive at $0$.
-Below $g$ all four have the sign $(-1)^{|B_0\cap(0,d)|}$ at $d$, and on the
-intervals $(b,g)$, $(g,M)$, $(M,M+1)$, $(M+1,\infty)$ the signs are
-$\sigma,\sigma,-\sigma,-\sigma$ for $F_M$; $\sigma,\sigma,\sigma,-\sigma$ for
-$F_{M+1}$; $\sigma,-\sigma,-\sigma,\sigma$ for $w$; and
-$\sigma,\sigma,-\sigma,\sigma$ for $p$.
-
-\emph{Decomposition.}  Put $\delta_e=|F_M(e)|-|p(e)|$ and
-$\gamma_d=\lambda|F_{M+1}(d)|+(1-\lambda)|w(d)|-|p(d)|$, so that the left
-side of \eqref{eq:chord} minus the right is
-$\sum_{e\ge1}\delta_e-\sum_{d\ge1}\gamma_d$; and let $G=F_M-p$ and
-$E(d)=G(d-1)+2(1-\lambda)w(d)$, exponential sums on $y_{k+1},\ldots,y_L$.
-For $d\le g$ the values $F_{M+1}(d)$ and $w(d)$ have one sign or vanish, so
-$\gamma_d=0$.  For $g<d\le M$ they are opposed and $p(d)$ sides with
-$F_{M+1}(d)$, so $|p(d)|=\lambda|F_{M+1}(d)|-(1-\lambda)|w(d)|$ and
-$\gamma_d=2(1-\lambda)|w(d)|=-2(1-\lambda)\sigma w(d)$, while $F_M$ and $p$
-have sign $\sigma$ or vanish on $[g,M]$, so $\delta_{d-1}=\sigma G(d-1)$.
-Hence $\delta_{d-1}-\gamma_d=\sigma E(d)$ for $g<d\le M+1$, both sides being
-$0$ at $d=M+1$.  For $d\ge M+2$ the values of $w$ and $p$ have sign $\sigma$
-and those of $F_M$ and $F_{M+1}$ sign $-\sigma$, so
-$\gamma_d=2\lambda|F_{M+1}(d)|=-2\lambda\sigma F_{M+1}(d)$ and
-$\delta_e=-\sigma\bigl(F_M(e)+p(e)\bigr)$ for $e\ge M+1$; since $p$,
-$F_{M+1}$ and $w$ vanish at $M+1$ and $p=\lambda F_{M+1}+(1-\lambda)w$,
-\[
-  \sum_{e\ge M+1}\delta_e-\sum_{d\ge M+2}\gamma_d
-  =-\sigma\sum_{e\ge M+1}\bigl(F_M(e)-p(e)\bigr)
-   -2(1-\lambda)\sigma\sum_{d\ge M+2}w(d)
-  =-\sigma\sum_{d\ge M+2}E(d).
-\]
-Altogether
-\begin{equation}\label{eq:chordsplit}
-  \Tail(F_M)-\lambda\Tail(F_{M+1})-(1-\lambda)\Tail(w)
-  =\sum_{e<g}\delta_e+\sigma\sum_{g<d\le M+1}E(d)-\sigma\sum_{d\ge M+2}E(d),
-\end{equation}
-and it remains to show that each of the three terms is nonnegative.
-
-\emph{The first term.}  $G$ is an exponential sum on the $L-k$ nodes with
-the $L-k-1$ zeros $\{0\}\cup B_0\cup\{M\}$, so by the zero bound it has no
-others and changes sign at each.  Its weight on $y_{k+1}$ is minus that of
-$p$, which has the sign $\sigma$ of $p$ at infinity, so $G$ has sign
-$-\sigma$ on $(M,\infty)$, as does $F_M$; the two change sign together at
-$B_0$ and at $M$, so they agree in sign everywhere.  On $(0,M)$ the values
-of $F_M$ and $p$ also agree in sign, so $\delta_e=|G(e)|\ge0$ for $e<M$,
-with $\delta_e=0$ exactly for $e\in B_0$.
-
-\emph{Zeros of $E$.}  $E(M+1)=G(M)+2(1-\lambda)w(M+1)=0$.  Let
-$S=\{0\}\cup B_0\cup\{g\}$; if $d-1\in S$ and $d\in S$ then
-$G(d-1)=0=w(d)$ and $E(d)=0$.  Let $S$ consist of $m$ maximal runs of
-consecutive integers $R_1,\ldots,R_m$, with $0\in R_1$ and $g\in R_m$; the
-pairs give $|S|-m=L-k-1-m$ zeros, and with $M+1$ there are $L-k-m$ known
-zeros.  At the start $q=r+1$ of each gap, where $r\in S$, $r<g$ and
-$r+1\notin S$, we have $E(q)=2(1-\lambda)w(q)\ne0$, of sign
-$(-1)^{|B_0\cap(0,q)|}$.  The weight of $F_M$ on $y_{k+1}$ is $0$, so the
-weight of $E$ on $y_{k+1}$ is $(1-\lambda)(2-1/y_{k+1})$ times that of $w$,
-which has the sign $\sigma$ of $w$ at infinity.  If $y_{k+1}<\tfrac12$ this
-weight has sign $-\sigma$, $E$ has sign $-\sigma$ at infinity, and by the
-zero bound $E$ has at most $L-k-1$ real zeros with multiplicity; if
-$y_{k+1}=\tfrac12$ the weight is $0$, and $E$ is a sum on $L-k-1$ nodes with
-at most $L-k-2$ zeros unless it vanishes identically.
-
-\emph{Counting.}  Suppose first $m\ge2$, with gap starts
-$q_1<\cdots<q_{m-1}$.  For $1\le j\le m-2$ the run $R_{j+1}\subseteq B_0$
-lies in $(q_j,q_{j+1})$, supplies $|R_{j+1}|-1$ known zeros there, and the
-signs of $E$ at $q_j$ and $q_{j+1}$ differ by the factor $(-1)^{|R_{j+1}|}$,
-so $E$ has at least $|R_{j+1}|$ zeros in $(q_j,q_{j+1})$, counted with
-multiplicity.  The run $R_1$ supplies $|R_1|-1$ zeros below $q_1$, and
-beyond $q_{m-1}$ the known zeros are $a+1,\ldots,g$ with $a=\min R_m$, and
-$M+1$: $|R_m|$ of them.  In all, at least $|S|-1=L-k-2$.  At $q_{m-1}$ the
-sign of $E$ is $(-1)^{|B_0|-|R_m|+1}=\sigma(-1)^{|R_m|-1}$.  If
-$y_{k+1}<\tfrac12$, the sign $-\sigma$ at infinity makes the number of zeros
-beyond $q_{m-1}$ congruent to $|R_m|$ modulo $2$, and since the total is at
-most $L-k-1$ that number is $|R_m|$ or $|R_m|+1$; so it is $|R_m|$.  If
-$y_{k+1}=\tfrac12$ the total is at most $L-k-2$, so again exactly the known
-zeros occur.  Either way the zeros of $E$ beyond $q_{m-1}$ are
-$a+1,\ldots,g,M+1$, all simple, and from the sign at $q_{m-1}$, $E$ has sign
-$\sigma$ on $(g,M+1)$ and $-\sigma$ on $(M+1,\infty)$.  If $m=1$, that is
-$B_0=\{1,\ldots,g-1\}$, the known zeros $1,\ldots,g,M+1$ number $L-k-1$.
-For $y_{k+1}<\tfrac12$ they are all the zeros, simple, and the sign $-\sigma$
-at infinity gives $\sigma$ on $(g,M+1)$; for $y_{k+1}=\tfrac12$ the bound
-$L-k-2$ forces $E\equiv0$.
-
-So $\sigma E(d)\ge0$ for $g<d\le M+1$ and $\sigma E(d)\le0$ for $d\ge M+2$,
-and \eqref{eq:chordsplit} proves \eqref{eq:chord}.  The first term of
-\eqref{eq:chordsplit} vanishes exactly when $B_0=\{1,\ldots,g-1\}$; then
-$E\equiv0$ if $y_{k+1}=\tfrac12$, and otherwise $\sigma E(g+1)>0$.
-\end{proof}
-
-\begin{corollary}[The shift with one zero above $g$]\label{cor:shiftone}
-In the setting of Proposition~\ref{prop:chord}, $\Tail(w)\le\Tail(F_M)$
-whenever $\Tail(F_M)\le\Tail(F_{M+1})$.  So \eqref{eq:shift} holds for
-$|A|=1$.  Consequently \eqref{eq:step} holds at each $X$ such that
-$X\setminus\{\max X\}$ has a minimizing zero set with at most one element
-above $\max X$.
-\end{corollary}
-
-\begin{proof}
-By \eqref{eq:chord} and the hypothesis,
-$\Tail(F_M)\ge\lambda\Tail(F_M)+(1-\lambda)\Tail(w)$, and $\lambda<1$.  With
-$A=\{M\}$ this is \eqref{eq:shift}, by part (2) of
-Proposition~\ref{prop:shift}; part (1) turns it into \eqref{eq:step}, and
-Proposition~\ref{prop:stepeasy} covers a minimizer with no element above
-$\max X$.
-\end{proof}
-
-The proof of Proposition~\ref{prop:chord} counts integer slots: the zeros
-of $E$ pinned at consecutive pairs of $\{0\}\cup B_0\cup\{g\}$, and its
-signs pinned at the gap starts, are what fix its sign on $(g,M+1)$.  With
-the elements of $B_0$ allowed to be real the count is unavailable, and
-\eqref{eq:chord} is in fact false there, already in the confluent limit at
-$B_0=\{1,\tfrac52\}$, $g=3$, $M=6$.  The cutoff enters once, through the
-sign of the weight of $E$ on $y_{k+1}$, and for $y_{k+1}>\tfrac12$ that sign
-flips.  In the block case $B_0=\{1,\ldots,g-1\}$ with $y_{k+1}=\tfrac12$ the
-sum $E$ vanishes identically, and \eqref{eq:chord} is the identity behind
-part (3) of Proposition~\ref{prop:shift}, the closed form of $\E|D-M|$.
-The chord does extend, once every run of $A$ is moved at once and every run
-contributes its own neighbour.  Write $A$ as the disjoint union of its maximal
-runs of consecutive integers $[s_1,e_1],\ldots,[s_p,e_p]$, so that
-$A+1=\bigcup_j[s_j+1,e_j+1]$.  The neighbour of $B_0\cup A$ belonging to the
-$j$th run is the zero set obtained by moving its first element past its last,
-\[
-  Z_j=(B_0\cup A)\setminus\{s_j\}\cup\{e_j+1\},
-\]
-which shifts that run up by one; for a run of length one it is the move
-$a\to a+1$ of \eqref{eq:shift}.  Shifting every run at once is the left side of
-\eqref{eq:shift}.
-
-\begin{proposition}[The run chord]\label{prop:runchord}
-Let $y_{k+1}\le\tfrac12$, let $g\ge1$, let $B_0\subseteq\{1,\ldots,g-1\}$ and
-let $A$ be a nonempty set of integers above $g$ with
-$|B_0|+|A|=L-k-2$, with runs $[s_j,e_j]$ and neighbours $Z_j$ as above.  Let
-$F$ and $F_j$ be the full certificates on $y_{k+2},\ldots,y_L$ with zero sets
-$Z=B_0\cup A$ and $Z_j$, and $w$ the full certificate on $y_{k+1},\ldots,y_L$
-with zero set $W=B_0\cup\{g\}\cup(A+1)$.  Then there are
-$\lambda_1,\ldots,\lambda_p,\mu>0$ with $\sum_j\lambda_j+\mu=1$ such that
-\begin{equation}\label{eq:runchord}
-  \Tail(F)\ \ge\ \sum_{j=1}^p\lambda_j\Tail(F_j)+\mu\,\Tail(w),
-\end{equation}
-with equality if and only if $y_{k+1}=\tfrac12$ and $B_0=\{1,\ldots,g-1\}$.
-\end{proposition}
-
-For $A=\{M\}$ this is Proposition~\ref{prop:chord}, with $\lambda_1=\lambda$,
-$\mu=1-\lambda$ and $F_1=F_{M+1}$.
-
-\begin{proof}
-\emph{Signs.}  For an integer $d\ge0$ put
-$\varphi(d)=(-1)^{|Z\cap(0,d)|}$.  Each of $F$, $F_j$, $w$ is full, so by the
-zero bound it has exactly its prescribed zeros, all simple, and it is positive
-at $0$; its sign at a point $d$ outside its zero set is $-1$ to the number of
-its zeros below $d$.  Hence $F(d)=\varphi(d)|F(d)|$.  For an integer $d$,
-$|Z_j\cap(0,d)|-|Z\cap(0,d)|=[e_j+1<d]-[s_j<d]$, which vanishes unless
-$s_j<d\le e_j+1$, and those $d$ lie in $Z_j$; so $F_j(d)=\varphi(d)|F_j(d)|$
-for every integer $d\ge0$.  Since $|(A+1)\cap(0,d)|=|A\cap(0,d-1)|$,
-\[
-  |W\cap(0,d)|=|Z\cap(0,d)|+[g<d]-[d-1\in A],
-\]
-and $d-1\in A$ puts $d$ in $W$; so
-\begin{equation}\label{eq:runsigns}
-  w(d)=\varphi(d)|w(d)|\quad(d\le g),\qquad
-  w(d)=-\varphi(d)|w(d)|\quad(d>g).
-\end{equation}
-In words: the $F_j$ keep the signs of $F$ at every integer, and $w$ keeps them
-below $g$ and reverses them above.
-
-\emph{The combination.}  At a run start $s_i$ we have $F_j(s_i)=0$ for $j\ne
-i$, as $s_i\in Z_j$; $F_i(s_i)\ne0$, as $s_i\notin Z_i$; and $w(s_i)\ne0$,
-as $s_i>g$ and $s_i-1\notin A$ keep $s_i$ out of $W$.  Put
-$\rho_i=|w(s_i)|/|F_i(s_i)|$, $\mu=1/(1+\sum_i\rho_i)$, $\lambda_i=\mu\rho_i$
-and
-\[
-  q=\sum_{j=1}^p\lambda_jF_j+\mu w .
-\]
-Then $q(0)=1$, and by \eqref{eq:runsigns}
-$q(s_i)=\varphi(s_i)\bigl(\lambda_i|F_i(s_i)|-\mu|w(s_i)|\bigr)=0$.  Every
-other point of $Z$ lies in $B_0$ or in $A\cap(A+1)$, hence in every $Z_j$ and
-in $W$, so $q$ vanishes on all of $Z$.  Let $\omega$ be the weight of $w$ on
-$y_{k+1}$.  It is nonzero, for otherwise $w$ would be a sum on $L-k-1$ nodes
-with the $L-k-1$ zeros $W$; and since $y_{k+1}$ is the largest node and $w$ has
-the sign $(-1)^{|W|}=(-1)^{L-k-1}$ past $\max W$, $\sgn\omega=(-1)^{L-k-1}$.
-The sum $G=F-q$ on $y_{k+1},\ldots,y_L$ has weight $-\mu\omega\ne0$ on
-$y_{k+1}$ and vanishes on the $L-k-1$ points $\{0\}\cup Z$, so by the zero
-bound these are its only zeros and all are simple.  For large $d$ its sign is
-$-\sgn\omega=(-1)^{L-k}=(-1)^{|Z|}$, which is $\varphi(d)$ there; as $G$ and
-$\varphi$ change sign exactly at the points of $Z$,
-\begin{equation}\label{eq:runG}
-  \varphi(d)G(d)=|G(d)|\qquad(d\ge0).
-\end{equation}
-
-\emph{Decomposition.}  Put $\delta_d=|F(d)|-|q(d)|$ and
-$\gamma_d=\sum_j\lambda_j|F_j(d)|+\mu|w(d)|-|q(d)|$, so that, all the series
-converging absolutely, the left side of \eqref{eq:runchord} minus the right is
-$D=\sum_{d\ge1}(\delta_d-\gamma_d)$.  For $1\le d\le g$ every term of $q(d)$
-has the sign $\varphi(d)$ or vanishes, so $\gamma_d=0$ and
-$\delta_d=\varphi(d)(F(d)-q(d))=\varphi(d)G(d)$.  For $d>g$ write
-$P=\sum_j\lambda_j|F_j(d)|$ and $Q=\mu|w(d)|$; by \eqref{eq:runsigns}
-$q(d)=\varphi(d)(P-Q)$, so $\gamma_d=P+Q-|P-Q|$ and
-\[
-  \delta_d-\gamma_d=|F(d)|-P-Q=\varphi(d)G(d)-2\mu|w(d)| ,
-\]
-whatever the sign of $P-Q$.  Hence
-\[
-  D=\sum_{d\ge1}\varphi(d)G(d)-2\mu\sum_{d>g}|w(d)| .
-\]
-Since $G(0)=0$, and $\varphi(d)\ne\varphi(d-1)$ only when $d-1\in Z$, where $G$
-vanishes, $\sum_{d\ge1}\varphi(d)G(d)=\sum_{d\ge1}\varphi(d)G(d-1)$.  With
-\eqref{eq:runsigns} and \eqref{eq:runG} this gives
-\begin{equation}\label{eq:runsplit}
-  \Tail(F)-\sum_j\lambda_j\Tail(F_j)-\mu\Tail(w)
-  =\sum_{d=1}^{g}|G(d-1)|+\sum_{d>g}\varphi(d)E(d),
-  \qquad E(d)=G(d-1)+2\mu\,w(d),
-\end{equation}
-and it remains to show $\varphi(d)E(d)\ge0$ for every integer $d>g$.
-
-\emph{Zeros of $E$.}  $E$ is an exponential sum on $y_{k+1},\ldots,y_L$, and
-its weight on $y_{k+1}$ is $\mu\omega(2-1/y_{k+1})$.  It vanishes at every $d$
-with $d-1\in\{0\}\cup Z$ and $d\in W$.  With $S=\{0\}\cup B_0\cup\{g\}$ that
-covers every $d$ with $d-1,d\in S$, and every $d\in A+1$.  Let $S$ consist of
-the maximal runs $R_1,\ldots,R_m$ of consecutive integers, $0\in R_1$ and
-$g\in R_m$.  At a gap start $q=r+1$ with $r\in S$, $r<g$, $q\notin S$, we have
-$G(q-1)=0$ and $q\notin W$, so $E(q)=2\mu w(q)\ne0$, of sign $\varphi(q)$ by
-\eqref{eq:runsigns}.
-
-\emph{Counting.}  Suppose first $m\ge2$, with gap starts
-$q_1<\cdots<q_{m-1}$, and $E\not\equiv0$.  As in the proof of
-Proposition~\ref{prop:chord}, $R_1$ supplies $|R_1|-1$ zeros below $q_1$; for
-$1\le j\le m-2$ the run $R_{j+1}\subseteq B_0$ supplies $|R_{j+1}|-1$ zeros in
-$(q_j,q_{j+1})$, and since
-$\varphi(q_{j+1})=\varphi(q_j)(-1)^{|R_{j+1}|}$ that interval holds at least
-$|R_{j+1}|$ zeros counted with multiplicity; and beyond $q_{m-1}$ lie the known
-zeros $a+1,\ldots,g$, with $a=\min R_m$, and the $|A|$ points of $A+1$.  In
-all $E$ has at least $|S|-2+|A|=|B_0|+|A|=L-k-2$ zeros, of which at least
-$|R_m|-1+|A|$ lie in $(q_{m-1},\infty)$.  At $q_{m-1}$ the sign of $E$ is
-$\varphi(q_{m-1})=(-1)^{|B_0|-|R_m|+1}$.  If $y_{k+1}<\tfrac12$ the weight on
-$y_{k+1}$ is nonzero, $E$ has at most $L-k-1$ zeros, hence at most
-$|R_m|+|A|$ in $(q_{m-1},\infty)$, and its sign at infinity is
-$-\sgn\omega=(-1)^{|B_0|+|A|}$; the number of its zeros in
-$(q_{m-1},\infty)$ is then congruent to $|R_m|-1+|A|$ modulo $2$, so it is
-exactly $|R_m|-1+|A|$.  If $y_{k+1}=\tfrac12$ the weight vanishes, $E$ is a sum
-on $L-k-1$ nodes with at most $L-k-2$ zeros, and again only the known zeros
-occur.  Either way the zeros of $E$ beyond $q_{m-1}$ are exactly
-$a+1,\ldots,g$ and the points of $A+1$, all simple.  So for an integer $d>g$
-outside $A+1$, where $d-1\notin A$ and hence $|(A+1)\cap(0,d)|=|A\cap(0,d)|$,
-\[
-  \sgn E(d)=(-1)^{|B_0|-|R_m|+1}(-1)^{|R_m|-1}(-1)^{|A\cap(0,d)|}
-  =(-1)^{|Z\cap(0,d)|}=\varphi(d),
-\]
-while $E$ vanishes on $A+1$.  If $m=1$, that is $B_0=\{1,\ldots,g-1\}$, the
-known zeros $1,\ldots,g$ and $A+1$ number $L-k-1$.  For $y_{k+1}<\tfrac12$ they
-are all the zeros, simple, and counting down from the sign
-$(-1)^{|B_0|+|A|}$ at infinity gives $\sgn E(d)=\varphi(d)$ for $d>g$ outside
-$A+1$ as before; for $y_{k+1}=\tfrac12$ the bound $L-k-2$ forces
-$E\equiv0$.
-
-So $\varphi(d)E(d)\ge0$ for every $d>g$, and \eqref{eq:runsplit} proves
-\eqref{eq:runchord}.  Its first term vanishes exactly when $G$ vanishes on
-$\{1,\ldots,g-1\}$, that is when $B_0=\{1,\ldots,g-1\}$; then $E\equiv0$ if
-$y_{k+1}=\tfrac12$, and otherwise $\varphi(g+1)E(g+1)>0$, as $g+1\notin A+1$.
-\end{proof}
-
-Only the new node is held to the cutoff, and only through the sign of
-$2-1/y_{k+1}$; the nodes $y_{k+2},\ldots,y_L$ may be any distinct reals in
-$(0,y_{k+1})$.  The proof also shows why the single chord of
-Proposition~\ref{prop:chord} breaks for $|A|\ge2$: with one neighbour only,
-the other runs of $A$ are not shifted in $w$, and $E$ loses the zeros they
-would force.
-
-\begin{corollary}[The shift]\label{cor:shiftrun}
-In the setting of Proposition~\ref{prop:runchord},
-\begin{equation}\label{eq:shiftrun}
-  \Tail\bigl(B_0\cup\{g\}\cup(A+1)\bigr)\le\Tail(B_0\cup A)
-  \quad\text{whenever}\quad
-  \Tail(B_0\cup A)\le\Tail\bigl(B_0\cup A\setminus\{s\}\cup\{e+1\}\bigr)
-\end{equation}
-for every run $[s,e]$ of $A$, the left side on $y_{k+1},\ldots,y_L$ and the
-others on $y_{k+2},\ldots,y_L$.  When no two elements of $A$ are consecutive
-this is \eqref{eq:shift}.
-\end{corollary}
-
-\begin{proof}
-By \eqref{eq:runchord} and the hypothesis,
-$\Tail(F)\ge(1-\mu)\Tail(F)+\mu\Tail(w)$, and $\mu>0$.
-\end{proof}
-
-The hypothesis is again what minimality supplies.  For that we need
-minimisers at every placement, and the argument of
-Proposition~\ref{prop:attain} gives them.
-
-\begin{lemma}[Full minimisers]\label{lem:attainX}
-Let $0\le k<L$ and let $X$ be a set of at most $L-k-1$ positive integers.  Then
-$\tau_k(X)$ is attained by a full certificate on $y_{k+1},\ldots,y_L$ whose
-zero set contains $X$.
-\end{lemma}
-
-\begin{proof}
-Run the first two steps of the proof of Proposition~\ref{prop:attain} on the
-affine set $\{\lambda:\sum_i\lambda_i=1,\ v_x(\lambda)=0\ (x\in X)\}$ in place
-of $\{\sum_i\lambda_i=1\}$.  It is closed, and nonempty because it contains the
-full certificate of any zero set of size $L-k-1$ containing $X$, so the norm
-$f$ attains its minimum on it.  If a minimiser has a zero set $Z\supseteq X$
-with $|Z|\le L-k-2$, the conditions $\sum_ih_i=0$ and $v_d(h)=0$ for $d\in Z$
-are at most $L-k-1$ linear conditions on $h\in\R^{L-k}$, so some $h\ne0$ meets
-them, and the move $\lambda+th$ of that proof keeps the tail and every zero of
-$Z$, and so every point of $X$, until it gains a zero.  The zero bound caps
-the zeros at $L-k-1$.
-\end{proof}
-
-\begin{theorem}[The escaping placement is extremal]\label{thm:extremal}
-Let $2\le r_1<\cdots<r_L$ and $0\le u\le L-1$.  Then \eqref{eq:step} holds for
-every $0\le k<u$ and every set $X$ of $u-k$ positive integers.  Consequently
-$T=\tau^*$, and
-\[
-  \inf_Qb_{u+1}\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)=\frac1{\tau^*}
-  =\min_M\max_{j\ge1}\bigl|S_j(P_uM)\bigr|
-\]
-over monic $Q,M\in\R[x]$.
-\end{theorem}
-
-\begin{proof}
-Fix $k$ and $X$, and put $g=\max X$ and $X'=X\setminus\{g\}$.  By
-Lemma~\ref{lem:attainX} on $y_{k+2},\ldots,y_L$, $\tau_{k+1}(X')$ is attained
-by a full certificate $F$ with a zero set $Z^-\supseteq X'$ of size $L-k-2$.
-If $g\in Z^-$ or $g>\max Z^-$, Proposition~\ref{prop:stepeasy} gives
-\eqref{eq:step}.  Otherwise put $B_0=Z^-\cap(0,g)$, which contains $X'$, and
-$A=Z^-\cap(g,\infty)\ne\varnothing$.  For a run $[s,e]$ of $A$, the set
-$Z^-\setminus\{s\}\cup\{e+1\}$ has $L-k-2$ elements and contains $X'$, as
-$s>g$, so its full certificate is a certificate for $X'$ and its tail is at
-least $\tau_{k+1}(X')=\Tail(F)$.  The node $y_{k+1}=1/r_{k+1}$ is at most
-$\tfrac12$, so Corollary~\ref{cor:shiftrun} applies: the full certificate $w$
-on $y_{k+1},\ldots,y_L$ with zero set $B_0\cup\{g\}\cup(A+1)\supseteq X$ has
-$\Tail(w)\le\Tail(F)$, whence $\tau_k(X)\le\Tail(w)\le\tau_{k+1}(X')$.
-Proposition~\ref{prop:step} then gives $T=\tau^*$ and the value $1/\tau^*$,
-and Proposition~\ref{prop:attain} makes \eqref{eq:multiplier} an equality at
-some monic $M$.
-\end{proof}
-
-So when \eqref{eq:partial} fails the infimum is always $1/\tau^*$: the
-covering search after Corollary~\ref{cor:uone} always closes, and
-Corollary~\ref{cor:uone} reads $\inf_Qb_2=1/\tau^*$.  The hypothesis of
-\eqref{eq:shiftrun} differs from that of \eqref{eq:shift} only on runs of
-length at least two, where it moves the start of the run instead of its end;
-minimality supplies both, and only the former enters the proof.
-What the median ranges over is not a one-parameter shape: the minimizing zero
-set itself is not a consecutive block with one displaced zero.  At
-$(2,3,4,5,6)$ with $u=0$ it is $\{1,2,4,6\}$, of tail $\tfrac{41}{12600}$,
-against $0.003847$ for the best block $\{1,2,3\}$ with one displaced zero.
-
-That it always closes can also be put analytically, as a question about one
-end of a multiple.  Fix the
-placement.  Dividing the exempt roots out of a multiple controls every
-coefficient below the exempt positions, by the geometric sum that proves
-\eqref{eq:order}.
-
-\begin{lemma}[Deflation]\label{lem:deflate}
-Let $2\le r_1<\cdots<r_L$, let $F=\sum_jf_jx^j$ be a monic multiple of
-$\prod_{i=1}^L(x-r_i)$ of degree $D$, let $X\subset\{1,\ldots,D\}$ be
-nonempty, and put $c=\max\{|f_{D-d}|:1\le d\le D,\ d\notin X\}$.  Then
-$Q=F\big/\prod_{i\le u}(x-r_i)$ is a monic multiple of $P_u$, and every
-coefficient of $Q$ at distance $e\ge\max X$ from its leading one satisfies
-\[
-  |q|\le\frac{c}{\prod_{i\le u}(r_i-1)}\le c .
-\]
-\end{lemma}
-
-\begin{proof}
-Take $u=1$ first, with $r=r_1$ and $Q=\sum_jq_jx^j$.  Comparing coefficients
-in $F=(x-r)Q$ gives $f_j=q_{j-1}-rq_j$, so $q_j=(q_{j-1}-f_j)/r$ and,
-unwinding to $q_{-1}=0$,
-\[
-  q_j=-\sum_{i\le j}f_i\,r^{\,i-j-1}.
-\]
-The coefficient of $Q$ at distance $e$ from its leading one is $q_{D-1-e}$,
-and the $f_i$ that sum reads have $i\le D-1-e$, that is, distance $D-i\ge e+1$
-from the leading coefficient of $F$.  If $e\ge\max X$ then none of them is
-exempt and none is $f_D$, so each $|f_i|\le c$ and
-$|q_{D-1-e}|\le c\sum_{k\ge1}r^{-k}=c/(r-1)$.
-
-For $u>1$ apply that case to $F$ and $r_1$: the quotient $Q_1$ is a monic
-multiple of $\prod_{i\ge2}(x-r_i)$ whose coefficients at distance $\ge\max X$
-from its leading one are at most $c/(r_1-1)$ in magnitude.  The same
-computation with $r_2$ reads only coefficients of $Q_1$ at distance
-$\ge\max X+1$, so it applies with $c$ replaced by $c/(r_1-1)$.  Iterating
-over $i\le u$ gives the product, and each $r_i-1\ge1$.
-\end{proof}
-
-What the lemma leaves uncovered is the head: the $\max X-1$ coefficients of
-$Q$ nearer the top than the highest exempt position.  There $q$ is a
-geometric combination of the leading coefficients of $F$, the exempt ones
-among them, and nothing bounds it termwise.  At a fixed placement that is the
-whole question.
-
-\begin{proposition}[The head carries the question]\label{prop:head}
-Let $2\le r_1<\cdots<r_L$ be distinct, $0\le u\le L-1$, and $X$ a set of $u$
-positive integers.  Suppose that for every $\varepsilon>0$ some monic
-multiple $F$ of $\prod_{i=1}^L(x-r_i)$ has $c\le1/\tau(X)+\varepsilon$, with
-$c$ as in Lemma~\ref{lem:deflate}, and $|q|\le c$ at each coefficient of
-$Q=F/\prod_{i\le u}(x-r_i)$ at distance less than $\max X$ from its leading
-one.  Then $\tau(X)\le\tau^*$.  If this holds at every $X$ of size $u$ then
-$T=\tau^*$ and the infimum of $b_{u+1}$ is $1/\tau^*$.
-\end{proposition}
-
-\begin{proof}
-With Lemma~\ref{lem:deflate} the hypothesis reads $b_1(Q)\le c$.
-Theorem~\ref{thm:value} applied to the roots $r_{u+1},\ldots,r_L$ with $u=0$
-gives $\inf b_1=1/\tau^*$ over monic multiples of $P_u$, the supremum there
-running over the single placement $X=\varnothing$.  So
-$1/\tau^*\le b_1(Q)\le1/\tau(X)+\varepsilon$ for every $\varepsilon>0$, that
-is $\tau(X)\le\tau^*$.  Taking the supremum over $X$ gives $T\le\tau^*$, and
-Theorem~\ref{thm:value} gives the reverse.
-\end{proof}
-
-The head is a window of $\max X-1$ coefficients, so the hypothesis is a finite
-condition at each placement.  Near-extremality in it is not a convenience.  At
-$(7,11)$ the multiple $F=(x-7)(x-11)(x+5)=x^3-13x^2-13x+385$ has $b_2(F)=13$
-and $X_F=\{3\}$, while $F/(x-7)=x^2-6x-55$ has $b_1=55$: an arbitrary
-multiple's head exceeds its $c$ by a factor above four.  How much
-near-extremality it needs is exact, and at the cutoff it needs more than there
-is.
-
-\begin{proposition}[Reach of the deflation route]\label{prop:defthresh}
-Let $u=1$, $X=\{g\}$, and let $F$, $c$ and $Q=F/(x-r_1)$ be as in
-Lemma~\ref{lem:deflate}.  If the exempt coefficient satisfies
-\begin{equation}\label{eq:defthresh}
-  |f_{D-g}|\le c\,\frac{r_1(r_1-2)}{r_1-1},
-\end{equation}
-then $b_1(Q)\le c$, and hence $c\ge1/\tau^*$.  Under the weaker hypothesis
-$|f_{D-g}|\le c$ the same conclusion is immediate, since $F$ is itself a monic
-multiple of $P_1$; \eqref{eq:defthresh} improves on it exactly when
-$r_1>\tfrac{3+\sqrt5}2=2.618\ldots$, and at $r_1=2$ it is empty.
-\end{proposition}
-
-\begin{proof}
-Write $y=1/r_1$ and $w_d=f_{D-d}$, so $|w_d|\le c$ for $1\le d\le D$, $d\ne g$.
-Since $F(r_1)=0$, the coefficient of $Q$ at distance $e$ from its leading one
-is $-\sum_{k>e}w_ky^{\,k-e}$, as in Lemma~\ref{lem:deflate}.  For $e\ge g$ no
-exempt term occurs and the bound $c\,y/(1-y)=c/(r_1-1)\le c$ is the lemma.  For
-$e<g$ the exempt term contributes at most $|w_g|y^{\,g-e}$ and the rest at most
-$c\,y/(1-y)$, so $b_1(Q)\le c$ as soon as
-$|w_g|y^{\,g-e}\le c\bigl(1-\tfrac1{r_1-1}\bigr)=c\,\tfrac{r_1-2}{r_1-1}$ for
-every $e<g$.  The largest weight is $y^{\,1}$, at $e=g-1$, which is
-\eqref{eq:defthresh}.  Finally $r_1(r_1-2)/(r_1-1)>1$ is $r_1^2-3r_1+1>0$.
-\end{proof}
-
-So at every root set with $r_1=2$ --- $(2,3,5,7)$ among them --- no pointwise
-bound on the head closes a placement along this route: the head has to be
-bounded against $c$ through the cancellation between its terms, not term by
-term.
-
-The primal route to the same statement is to insert the zeros one at a time,
-each insertion paid for by one node, and it fails outright.  The full
-certificate on $(\tfrac13,\tfrac15,\tfrac17)$ with zero set $\{1,3\}$ has
-tail $\tfrac{31}{1704}$; adding the node $\tfrac12$ and the zero $2$ gives
-the full certificate on all four nodes with the consecutive zero set
-$\{1,2,3\}$, of tail $\tfrac1{48}$, so the tail rose although a node was
-gained---Theorem~2.2's equality case absorbed it.  Barring consecutive zero
-sets does not repair the step.  At $(2,\tfrac94,\tfrac52,3)$ the full
-certificate on $(\tfrac49,\tfrac25,\tfrac13)$ with zero set $\{1,4\}$ has
-tail $\tfrac{11608}{84555}=0.13728\ldots$, and adding the node $\tfrac12$ and
-the zero $2$ gives the zero set $\{1,2,4\}$ and tail
-$\tfrac{108}{755}=0.14304\ldots$.  This is what Theorem~\ref{thm:lift} buys
-with its hypothesis $X\subseteq Z\cup(g,\infty)$, and why the covering below
-it is a search.
-
-\begin{proposition}[Two infima]\label{prop:values}
-Over monic $Q\in\R[x]$,
-\begin{align*}
-  \inf_Qb_2\bigl(Q\,(x-2)(x-3)(x-5)(x-7)\bigr)
-    &=\frac{1704}{31}=54.967\ldots,\\
-  \inf_Qb_3\Bigl(Q\prod_{r=2}^7(x-r)\Bigr)
-    &=\frac{114840}{259}=443.397\ldots,
-\end{align*}
-against the bounds $48$ and $360$ of \eqref{eq:order} and the values $57$ and
-$480$ of the construction.  Neither infimum is attained.
-\end{proposition}
-
-\begin{proof}
-At $(2,3,5,7)$ the full certificate on $(\tfrac13,\tfrac15,\tfrac17)$ with
-zero set $\{1,3\}$ is
-$v^*_d=(81\cdot3^{-d}-625\cdot5^{-d}+686\cdot7^{-d})/142$.  It has
-$v^*_2=-\tfrac1{71}$, is positive past $3$, and has tail $\tfrac{31}{1704}$.
-The multiplier $M=x+\tfrac9{62}$ gives
-\[
-  \frac{\widetilde P_1(y)\,(1+\tfrac9{62}y)}{1-y}
-  =1-\tfrac{859}{62}y+\tfrac{1704}{31}y^2-\tfrac{2463}{62}y^3
-   -\tfrac{1704}{31}\sum_{d\ge4}y^d ,
-\]
-so by \eqref{eq:dualpair} $\tau^*=\tfrac{31}{1704}$, with $Z^*=\{1,3\}$ and
-$G=\{2\}$.  The full certificate on all four nodes with zero set $\{1,2,5\}$
-has tail $\tfrac{21337}{1910352}<\tfrac{31}{1704}$, and
-Corollary~\ref{cor:uone} gives the first value.
-
-At $(2,\ldots,7)$ with $u=2$ the full certificate on
-$(\tfrac14,\ldots,\tfrac17)$ with zero set $\{1,2,4\}$ has
-$v^*_3=\tfrac1{638}$, is negative past $4$, and has tail
-$\tfrac{259}{114840}$.  The multiplier $M=x+\tfrac{60}{259}$ gives the
-partial sums $1$, $-\tfrac{5379}{259}$, $\tfrac{5666}{37}$,
-$-\tfrac{114840}{259}$, $\tfrac{64440}{259}$ and then $\tfrac{114840}{259}$
-forever, so $\tau^*=\tfrac{259}{114840}$ with $Z^*=\{1,2,4\}$.  The search
-closes in two steps.  Theorem~\ref{thm:lift} with $k=2$ covers every
-$X\not\ni3$.  The full certificate on $(\tfrac13,\ldots,\tfrac17)$ with zero
-set $\{1,2,3,5\}$, of tail $\tfrac{31}{36720}$, covers every $\{3,x\}$ except
-$\{3,4\}$.  The full certificate on all six nodes with zero set
-$\{1,2,3,4,7\}$, of tail $\tfrac{119261}{193623120}$, covers $\{3,4\}$.
-
-Neither infimum is attained, because $\tau(X)<\tau^*$ for every $X$.  Each
-covering above either lifts with $k\ge1$ onto a padded zero set that is not
-consecutive, which is strict by Theorem~\ref{thm:lift}, or has tail below
-$\tau^*$ outright.  So every multiple $F$ has
-$b_{u+1}(F)\ge1/\tau(X_F)>1/\tau^*$.
-\end{proof}
-
-In both cases the extremal series is the construction of
-Proposition~\ref{prop:partial} applied to $P_uM$ rather than $P_u$, and the
-factor $x+\beta$ has a negative root.  It raises the total $|P_u(1)M(1)|$
-above $|P_u(1)|$ but brings every partial sum within it, so \eqref{eq:partial}
-holds for the product.  Complementary slackness explains the shape.  Past the
-largest zero $g$ of $v^*$ the witness is constant, so $(1-y)W$ is a
-polynomial of degree $g+1$ and $\deg M=g+1-m$, which is $1$ both times.
-
-This is the $\ell^\infty$ member of the family this paper works in.  Reduced
-length minimizes $\ell^1$ over normalized multiples~\cite{schinzel}.  Its
-integer-polynomial $\ell^2$ analogue, the minimal Euclidean norm of an
-algebraic number, is effectively computable~\cite{frw}.  The logarithmic
-coefficient mass $\Lambda$ of~\cite{coefficient-mass} is additive over
-coefficients rather than a norm at all.
-
-\begin{corollary}[The criterion at repeated roots]\label{cor:charrep}
-Let $2\le r_1\le\cdots\le r_L$, repetitions allowed, and $0\le u\le L-1$.
-Then \eqref{eq:order} is the infimum of $b_{u+1}$ over monic multiples of
-$\prod_i(x-r_i)$ exactly when \eqref{eq:partial} holds; no alignment
-$r_u<r_{u+1}$ is needed.
-\end{corollary}
-
-\begin{proof}
-Necessity is Theorem~\ref{thm:converse}.  For sufficiency use
-Theorem~\ref{thm:value}, which carries to repeated roots: in its first half
-the constraints $F(r_i)=0$ become $((x\,d/dx)^aF)(r_i)=0$, $a<m_i$, the dual
-variables again assemble into an element of $\mathcal H_0$ because
-$d\mapsto(D-d)^ay_i^{d}$ and $d^ay_i^d$ span the same space, and the
-compactness step uses unisolvence of $\mathcal H_0$ at $L$ distinct points;
-in its second half the entries of $A_\nu^{-1}R_\nu$ are the ratios of
-Proposition~\ref{prop:farrep}(b), which tend to $0$ for every sequence with
-$\min E_\nu\to\infty$.  So the infimum is $1/T$ with $T\ge\tau^*$, where
-$\tau^*$ is the least tail of a certificate on $\mathcal H_u$.  The dual
-pairing \eqref{eq:dualpair} holds on $\mathcal H_u$, since
-$\sum_dw_dd^ay^d=((y\,d/dy)^aW)(y)$ vanishes at $y=1/r_i$ for $a<m_i$ when
-$\widetilde P_u$ divides $W$; with $M=1$ in \eqref{eq:multiplier} it gives
-$1/\tau^*\le\max_{j\ge1}|S_j(P_u)|$, which is $|P_u(1)|=1/B$ under
-\eqref{eq:partial}.  Hence $T\ge B$, while Theorem~3.2 gives $T\le B$.
-\end{proof}
-
-\section{Scope}\label{sec:scope}
-
-The bounds here concern coefficient magnitudes, not ordinary length or
-height: they are uniform over the degree of $F$ and over all additional real
-or complex roots, and in~\cite{coefficient-mass} the hypothesis
-$|f_D|\ge1$ enters only where the $\log|f_D|$ term is discarded to reach an
-asymptotic.  In the opposite
-direction,
-the degree of an integer polynomial of height $H\ge2$ all of whose roots are
-nonzero rationals is at most a constant times $\log H$~\cite{htv}, and the
-minimal height of a degree-$n$ polynomial over a fixed number field with all
-roots in $K^\times$ grows exponentially in $n$~\cite{tromp}; the bound here
-constrains neither degree nor height but the additive coefficient mass.  The
-contribution of~\cite{coefficient-mass} relative to reduced-height duality
-is the prefix-sensitive tail
-comparison and its iteration; the normalized determinant sequence and its
-consecutive-zero evaluation are from Dubickas and Jankauskas~\cite{dj}.
-Proposition~\ref{prop:confluent} is supplementary: it carries the tail
-theorem to confluent nodes, but Theorem~3.2 already reaches
-repeated roots by perturbation, so the main bounds do not depend on it.
-
-In the stated form the coefficient bounds for $k\ge2$ require $r_i\ge2$,
-inherited from the node cutoff $y_i\le1/2$ of Theorem~2.2.  The cutoff enters
-in exactly two places, the factor $2$ in the correction-ratio bound of
-Theorem~2.2's proof and the discard of factors at most $1$ in Lemma~3.1.  Both
-matter only for $u\ge1$.  The $k=1$ bound is free of the cutoff, as are
-Lemma~2.1 and Lemma~2.3.  The restriction is not an artifact of the proof.  By
-Proposition~\ref{prop:subtwo}, \eqref{eq:order} is false for $k=2$ already at
-$L=2$, and already when only $r_1<2$.  By Proposition~\ref{prop:cutoff}, the
-cutoff in the stated product cannot be raised.  Theorem~\ref{thm:repaired}
-removes both uses at once by keeping the factors the discard drops, so
-\eqref{eq:repaired} holds for every $r_1>1$.  By
-Proposition~\ref{prop:subtwosharp} it is the infimum when the exempt roots
-lie in $(1,2]$ and at most $u$ partial sums of $P$ exceed $|P(1)|$.  With an exempt root below $2$ and those hypotheses failing it is not
-(Corollary~\ref{cor:repairedsharp}); the sharper two-sided bound
-\eqref{eq:twosided} is the infimum exactly under the criterion of
-Theorem~\ref{thm:twosidedsharp}, and otherwise the infimum is $1/T$
-(Theorem~\ref{thm:value}), a finite computation for $u=1$
-(Proposition~\ref{prop:uoneall}).  For $u\ge2$ below the cutoff the escaping
-placement need not be extremal, and $1/T$ remains a search.
-
-The pointwise extremal problem asks, for a fixed root sequence and a fixed
-$k$, how closely a multiple can approach \eqref{eq:order}.
-Corollary~3.6 settles the asymptotic form of the aggregated question for
+At $(\tfrac32,3,4)$ the infimum is the product $(r_2-1)(r_3-1)$ that
+\eqref{eq:order} would assert, twice \eqref{eq:repaired}: the exempt root is
+absorbed as if it were at least $2$.  At $(\tfrac65,\tfrac32,3)$ the infimum
+exceeds even that product, $1$.  At $(\tfrac{11}{10},3,5,7)$ the surviving
+roots are those of $(2,3,5,7)$, so $\tau^*=\tfrac{31}{1704}$, but
+$\tau(\{5\})=\tfrac{96935}{3398808}>\tau^*$: the finite placement beats the
+escaping one, and \eqref{eq:step} fails at $k=0$, $X=\{5\}$.  Below the
+cutoff Proposition~\ref{prop:step} can therefore not be applied as is, and
+for $u\ge2$ the value $1/T$ remains a search.
+
+\section{Scope and open questions}\label{sec:scope}
+
+\paragraph{What is proved.}  For roots at least $2$ the question whether
+\eqref{eq:order} is the infimum is settled, repeated roots included
+(Theorem~\ref{thm:converse}, Corollary~\ref{cor:charrep}), and for distinct
+roots so is the value when it is not (Theorem~\ref{thm:extremal}).  Below
+$2$, \eqref{eq:repaired} and \eqref{eq:twosided} hold for every $r_1>1$, and
+for distinct roots Theorem~\ref{thm:twosidedsharp} and
+Corollary~\ref{cor:repairedsharp} say when they are attained.
+
+\paragraph{Open questions.}
+\begin{itemize}
+\item[(i)] \emph{Below the cutoff with $u\ge2$.}  Theorem~\ref{thm:value} gives the
+infimum as $1/T$ for all distinct roots above $1$, but at
+$(\tfrac{11}{10},3,5,7)$ the escaping placement is not extremal, so
+Proposition~\ref{prop:step} is unavailable.  For $u=1$,
+Proposition~\ref{prop:uoneall} reduces $T$ to finitely many placements; for
+$u\ge2$ computing $T$ remains a search.
+\item[(ii)] \emph{Repeated roots.}  The criterion is settled at repeated roots, but
+Theorem~\ref{thm:extremal}, Theorem~\ref{thm:twosidedsharp} and the first
+part of Corollary~\ref{cor:repairedsharp} are proved for distinct roots only:
+the lifting, the pencil and the run chord all use full certificates on
+distinct nodes.
+\item[(iii)] \emph{The shift at run ends.}  The hypothesis of
+Corollary~\ref{cor:shiftrun} moves the start of each run of $A$ past its end.
+The variant that moves the end instead,
+$\Tail(B_0\cup A)\le\Tail(B_0\cup A\setminus\{a\}\cup\{a+1\})$ for every
+$a\in A$ with $a+1\notin A$, agrees with it when no two elements of $A$ are
+consecutive; for longer runs we do not know whether it implies the same
+conclusion, though it did in all $550$ instances we tried.  Minimality
+supplies both forms, so Theorem~\ref{thm:extremal} does not need it.
+\end{itemize}
+
+\paragraph{Relation to the literature.}  The bounds here concern coefficient
+magnitudes, not ordinary length or height: they are uniform over the degree
+of $F$ and over all additional real or complex roots, and
+in~\cite{coefficient-mass} the hypothesis $|f_D|\ge1$ enters only where the
+$\log|f_D|$ term is discarded to reach an asymptotic.  In the opposite
+direction, the degree of an integer polynomial of height $H\ge2$ all of whose
+roots are nonzero rationals is at most a constant times $\log H$~\cite{htv},
+and the minimal height of a degree-$n$ polynomial over a fixed number field
+with all roots in $K^\times$ grows exponentially in $n$~\cite{tromp}; the
+bound here constrains neither degree nor height but the additive coefficient
+mass.  The contribution of~\cite{coefficient-mass} relative to reduced-height
+duality is the prefix-sensitive tail comparison and its iteration; the
+normalized determinant sequence and its consecutive-zero evaluation are from
+Dubickas and Jankauskas~\cite{dj}, as is the case $u=0$ of the construction
+of Section~\ref{sec:criterion}.  Proposition~\ref{prop:confluent} is not needed for
+\eqref{eq:order}, which Theorem~3.2 reaches at repeated roots by
+perturbation, but Theorem~\ref{thm:converse} uses it at repeated roots.
+
+The infimum of $b_{u+1}$ is the $\ell^\infty$ member of a family of extremal
+problems over normalized multiples.  Reduced length minimizes $\ell^1$
+over normalized multiples~\cite{schinzel}.  Its integer-polynomial $\ell^2$
+analogue, the minimal Euclidean norm of an algebraic number, is effectively
+computable~\cite{frw}.  The logarithmic coefficient mass $\Lambda$
+of~\cite{coefficient-mass} is additive over coefficients rather than a norm at
+all.  Corollary~3.6 settles the asymptotic form of the aggregated question for
 prime roots, and the multiplier $x+1$ of~\cite[Section~3]{coefficient-mass}
 shows that even there the root product need not be the finite-$L$
-minimizer.  Whether \eqref{eq:order} is itself the infimum is settled: by
-Proposition~\ref{prop:partial}, Theorem~\ref{thm:converse} and
-Corollary~\ref{cor:charrep} it is exactly when \eqref{eq:partial} holds, as
-at $(2,3)$ and $(2,3,5)$, where~\cite[Proposition~4.5]{coefficient-mass} and
-Proposition~\ref{prop:sharp235} exhibit the multiples, and at $(3,4,5,6)$.
-It fails already at $L=3$: at $(2,3,\tfrac72)$ with $u=1$ the partial sums
-are $1,-\tfrac{11}2,5$, so the infimum of $b_2$ exceeds $5$.  When
-\eqref{eq:partial} fails, Theorem~\ref{thm:value} gives the infimum as $1/T$,
-and for distinct roots Theorem~\ref{thm:extremal} shows $T=\tau^*$: the
-escaping placement is always extremal, so the infimum is
-$1/\tau^*=\min_M\max_{j\ge1}|S_j(P_uM)|$, computed from the surviving roots
-alone, and the finite search of Theorem~\ref{thm:lift} always closes, as it
-does at $(2,3,5,7)$ and $(2,\ldots,7)$ (Proposition~\ref{prop:values}).
-Attainment by a full certificate with a witness as in \eqref{eq:dualpair} is
-Proposition~\ref{prop:attain}.  The route to Theorem~\ref{thm:extremal} is
-Proposition~\ref{prop:step}, which reduces it to the single step
-\eqref{eq:step}, deleting the largest element of the placement, and
-Proposition~\ref{prop:stepeasy}, which settles the step unless the minimizing
-zero set $Z^-$ straddles $g=\max X$.  In the straddling case the naive
-inequalities fail: the slide \eqref{eq:slide} fails at nine clustered nodes
-(Proposition~\ref{prop:slidefails}), deleting $\min X$ rather than $\max X$
-fails at $(2,3,4,5)$, freeing $\max Z^-$ rather than the smallest zero above
-$g$ fails by a factor $1.40$, and adjoining $g$ without sliding fails by as
-much as a factor $2.01$.  What works is to shift every run of zeros above $g$
-up by one, and the run chord (Proposition~\ref{prop:runchord}) compares that
-shift against one neighbour per run; minimality of $Z^-$ supplies the
-hypothesis, and the cutoff enters only through the sign of $2-1/y_{k+1}$.
-Theorem~\ref{thm:slideinitial} and Proposition~\ref{prop:chord} are the
-special cases $B_0$ initial and $|A|=1$.  Proposition~\ref{prop:head}
-states the same question analytically, as a bound on the $\max X-1$
-coefficients of a deflated multiple; by Proposition~\ref{prop:defthresh}
-that route says nothing pointwise once $r_1\le\tfrac{3+\sqrt5}2$.  Repeated roots are settled on both sides.  In the Hermite basis $d^ay_i^d$,
-ordered by growth, Descartes' rule counts with multiplicity, Hermite
-interpolation on a multiset replaces the Vandermonde change of variables, and
-the unisolvence and positivity steps are the confluent matrix $M(0)$ of
-Proposition~\ref{prop:confluent} and the P\'olya--Szeg\H o bound.  The one
-step that does not carry is the minor estimate in the proof of
-Lemma~\ref{lem:far}: the constant $c=\prod_{a<b\le k}(1-y_b/y_a)$ vanishes as
-soon as two nodes coincide, and $\alpha_{J^*}$ can vanish outright---at the
-roots $(3,3,4,4)$ with $u=3$ the leading functions
-$d(\tfrac13)^d,(\tfrac13)^d,d(\tfrac14)^d$ have the combination
-$\tfrac{2187}{16384}d(\tfrac13)^d-\tfrac{15309}{8192}(\tfrac13)^d+d(\tfrac14)^d$
-vanishing at $d=6,7,8$; among the triples in $\{1,\ldots,50\}$ with
-$\min E<21$ or diameter at most $30$ it is the only singular one.  Proposition~\ref{prop:farrep} avoids
-minors altogether: zeros far out cannot be produced by the leading
-functions (Lemma~\ref{lem:infinity}), so the space of sums vanishing on
-$E_\nu$ converges to $\mathcal H_k$ whatever the shape of $E_\nu$, and
-$\alpha_{J^*}(E)\ne0$ with $\eta\to0$ once $\min E$ is large.  This gives
-Theorem~\ref{thm:converse} and, with Theorem~\ref{thm:value},
-Corollary~\ref{cor:charrep}.  It gives no rate.  Proposition~\ref{prop:conffar}
-supplies the rate when $E_\nu$ has bounded diameter---$\Theta(1/\min E)$ when
-the cut falls inside a multiplicity block, geometric at an aligned cut---and
-throughout our computations $\eta$ stayed $\Theta(1/\min E)$ at a split cut
-even with gaps $\lfloor\sqrt n\rfloor$, linear gaps and geometric spacing, but
-a rate for arbitrary $E$ is not proved.
+minimizer.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
