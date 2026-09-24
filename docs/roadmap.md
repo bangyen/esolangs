@@ -321,8 +321,13 @@ step; an answer lands in the paper it extends, and the row leaves.
   reduces to the first-gap insertion at constrained minimizers
   (`cor:crossreduce`); crossing trees give `V_2(L,k) = beta_2(n)` up to
   `k = 10` (`cor:crosstreevals`); and one arbitrary position above an
-  initial block is settled for all `n` (`prop:dilatecross`).  Open: the
-  conjecture `V_r(L,k) = min_i 1/nu_i(n)` for all `n`, now equivalent at
+  initial block is settled for all `n` (`prop:dilatecross`).  CLOSED for
+  every root `r >= 9/2` (`sec:bigroot`, `thm:bigroot`): every top-row
+  optimum has hole product `<= r - 1` for all `n` (largest-zero median
+  `lem:topzero`, first hole `lem:firsthole`, Jensen `lem:jensentop`), so all
+  rows equal the top row; also `r >= 4` for `n <= 1000` and `r in {13/4,
+  7/2}` for `n <= 50` (`cor:bigrootfinite`).  Open for `r < 9/2`: the
+  conjecture `V_r(L,k) = min_i 1/nu_i(n)` for all `n`, equivalent at
   `r >= 2` to `Phi_r(ins(W_T, first gap)) <= Phi_r(W_T)` at constrained
   minimizers (for the second row, `1 + rho(Z_0) <= r Pi_Y`; `rho(Z_0) <=
   r - 1` would also settle `prop:dilatecross`'s class for all `k`);
