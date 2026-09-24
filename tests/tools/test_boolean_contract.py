@@ -1120,16 +1120,36 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
     ],
 )
 def test_converted_generators_scale_linearly(name: str) -> None:
-    """Doubling a wide unfolded table at most doubles generated text."""
+    """Three same-parity rungs grow by four, whatever the prologue.
+
+    Comparing consecutive arities cannot do this job.  For ``size = a*T +
+    b`` that ratio is ``4(a + b/T)/(a + 4b/T)``, which exceeds four exactly
+    when ``b`` is negative -- it reports the sign of the prologue, not the
+    growth, so shrinking a generator's per-entry cost *raises* it.  It also
+    straddles the two arity parities that an alternating-axis layout keeps
+    separate constants for.  Successive differences over three same-parity
+    rungs are ``3aT`` and ``12aT``, so their ratio is four for any ``a*T +
+    b`` and the prologue cancels.
+    """
     fn = getattr(boolean, name)
-    # The grid H-layouts have different odd/even finite-size constants; their
-    # all-arity area bounds are checked with their construction invariants.
-    arities = (8, 9) if name == "circuit_diagram" else (11, 12)
+    if name == "circuit_diagram":
+        # The H-layout is not asymptotic below n=8, so it has no room for a
+        # third rung; the deep contract carries it on a backstop for the
+        # same reason, and its area recurrence is checked with the
+        # construction invariants.
+        sizes = [len(fn(_parity(n))) for n in (8, 9)]
+        assert sizes[1] <= 2 * sizes[0]
+        return
+    arities = (8, 10, 12)
     sizes = [len(fn(_parity(n))) for n in arities]
     if name == "minifuck":
         assert all(size <= 70 * 2**n for size, n in zip(sizes, arities, strict=True))
-    else:
-        assert sizes[1] <= 2 * sizes[0]
+        return
+    # The bound is ``linearity.MAX_DIFF_RATIO``.  That module imports the
+    # table shapes from this one, so the constant cannot travel the other
+    # way without a cycle; it is restated here rather than shared.
+    assert sizes[1] > sizes[0]
+    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) <= 4.4
 
 
 @pytest.mark.slow
