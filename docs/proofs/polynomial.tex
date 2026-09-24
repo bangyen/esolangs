@@ -48,10 +48,8 @@ divisible by $L$ distinct prime-power roots and having leading coefficient
 of absolute value at least one has logarithmic coefficient mass
 $\Omega(L^2\log L)$.  Tracking the constants, the worst-case length $C_P(n)$
 satisfies
-$\tfrac{49}{16}\log_{10}2\le\liminf C_P(n)\,n/T^2$ and
-$\tfrac{13}4\log_{10}2\le\limsup C_P(n)\,n/T^2\le\tfrac{325}8\log_{10}2$:
-the order is settled, but the constant is determined only up to a factor of
-about $13.3$.
+$\tfrac{13}4\log_{10}2\le\liminf C_P(n)\,n/T^2\le\limsup C_P(n)\,n/T^2\le\tfrac{325}8\log_{10}2$:
+the order is settled, but the constant is determined only up to a factor of $\tfrac{25}2$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Descriptional complexity; Boolean functions;
@@ -161,8 +159,8 @@ $\Omega(T^2/\log T)$ coefficient digits.  Section~\ref{sec:upper} supplies
 the matching construction, and Section~\ref{sec:constants} tracks the
 constants through both halves (Proposition~\ref{prop:bracket}):
 \[
-  \frac{49}{16}\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2},\qquad
-  \frac{13}{4}\log_{10}2\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \frac{13}{4}\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}
   \le\frac{325}{8}\log_{10}2 .
 \]
 Remark~\ref{rem:bracket} locates the gap between the two sides.
@@ -1157,7 +1155,10 @@ register value $0$, and the branch that carries the $0$ must pass a whole run of
 real roots of exponent at least $2$ (Lemma~\ref{lem:zerowit}).  Tables whose residuals at
 one level have pairwise distinct halves force about $\mu_nT/n$ of these, with
 $\mu_n\in[\frac14,\frac12]$ up to $O(\log n/n)$ (Lemma~\ref{lem:halves}), and they pay like
-input pairs: the lower constant becomes $3+\mu_n^2$.
+input pairs: the lower constant becomes $3+\mu_n^2$.  Counting what the tests of such a
+source can carry between two reads (Lemma~\ref{lem:evencount}) forces
+$(\frac12-o(1))T/n$ of these roots at every $n$, for a table chosen by counting
+(Corollary~\ref{cor:evenhard}), and the lower constant becomes $3+\frac14=\frac{13}4$.
 The upper side
 counts the effective exponents of the roots of the automaton programs of
 Proposition~\ref{prop:embprog}.
@@ -1321,8 +1322,7 @@ Proposition~\ref{prop:bracket} below, and the real instruction roots add $Q^2\lo
 they are primes.  A real root $p^v$ with $v\ge2$ has a square $p^{2v}\ge v_j^2$ as large as
 that of an input value, and $N$ of them raise the contribution of the real roots to
 $(Q^2+N^2)\log Q$ at leading order: they are the largest real roots, and the reversed
-weights of the rows give them the weights $1,\dots,N$.  Lemma~\ref{lem:zerowit} below
-supplies such roots.
+weights of the rows give them the weights $1,\dots,N$.  Lemmas~\ref{lem:zerowit} and~\ref{lem:evencount} below supply such roots.
 
 \begin{proposition}[Explicit bracket]\label{prop:bracket}
 Let $N_n$ be as in Lemma~\ref{lem:maximal-width}, $v_j$ as in Lemma~\ref{lem:ppow},
@@ -1360,6 +1360,15 @@ Lemma~\ref{lem:evensigns},
   \theta_n&=3Q'^2\log Q'-7Q'(Q'+1)+2N^2\log N-N(N+1)\log(Q'+1)-4.39N(N+1);
   \end{aligned}
 \]
+Finally, for every $n\ge9$, with $K'$ and $Q'$ as there, $L_0$, $M_0$ and $\ell_n$ as in
+Corollary~\ref{cor:evenhard}, $N''=\min(\ell_n+1,Q')$ and
+$\psi_L=\sum_{i=1}^{L}i\log\bigl((i+1)^2-1\bigr)$,
+\[
+  C_P(n)\ \ge\ \frac{\min\bigl(2\sigma_{K'},\ \psi_{L_0+1},\
+  \frac12(M_0+1)(M_0+2)\log3,\ \tau_{Q',N''}\bigr)}{\log10},
+\]
+where $\psi_L\ge L^2\log L-\frac12L^2$, and $\tau_{Q',N''}$ is at least $\theta_n$ with
+$N''$ in place of $N$ (without the terms in $N''$ if $N''=0$);
 \item every $n$-input table has a program with
 \[
   |f|\le\bigl(1+O(1/n)\bigr)\,n\log_{10}2\cdot\Phi^*_n,\qquad
@@ -1370,19 +1379,18 @@ table.
 \end{enumerate}
 Moreover
 \begin{equation}\label{eq:bracket-n}
-  \Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)\bigl(3+\mu_n^2\bigr)\log_{10}2
+  \Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)\frac{13}4\log_{10}2
   \ \le\ \frac{C_P(n)\,n}{T^2}\ \le\
-  \Bigl(1+O\bigl(\tfrac{(\log n)^2}n\bigr)\Bigr)\frac{325}8\log_{10}2 ,
+  \Bigl(1+O\bigl(\tfrac{(\log n)^2}n\bigr)\Bigr)\frac{325}8\log_{10}2 ;
 \end{equation}
-where $\mu_n=n2^{-j_n}$ has $\frac14-O(\frac{\log n}n)<\mu_n\le\frac12$, and
-$\mu_n\to\frac12$ along a subsequence, by Lemma~\ref{lem:halves}.
+the second display of item~1 alone gives the left side with $3+\mu_n^2$ in place of
+$\frac{13}4$, where $\mu_n=n2^{-j_n}\le\frac12$ is as in Lemma~\ref{lem:halves}.
 Consequently
 \[
-  \frac{49}{16}\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2},\qquad
-  \frac{13}4\log_{10}2\le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}\le\frac{325}8\log_{10}2 ;
+  \frac{13}4\log_{10}2\le\liminf_{n\to\infty}\frac{C_P(n)\,n}{T^2}
+  \le\limsup_{n\to\infty}\frac{C_P(n)\,n}{T^2}\le\frac{325}8\log_{10}2 ;
 \]
-numerically, the lower limit is at least $0.921$ and the upper limit lies in
-$[0.978,12.23]$.
+numerically, both limits lie in $[0.978,12.23]$.
 \end{proposition}
 
 \begin{proof}
@@ -1438,6 +1446,23 @@ $\Lambda(f)\ge\tau_{Q',N}$, while a source that is neither even nor odd has
 $\Lambda(f)\ge2\sigma_{K'}$ as above.  The closed forms are those of $\sigma_{K'}$ and of
 Lemma~\ref{lem:evensigns}, and $\theta_n$ adds the two bounds there.
 
+For the third display take the table of Corollary~\ref{cor:evenhard}.  Every program for
+it has at least $K'$ distinct input root values and, as above, at least $Q'$ distinct real
+instruction roots, and a source that is neither even nor odd has
+$\Lambda(f)\ge2\sigma_{K'}$.  Let $f=x^\varepsilon E(x^2)$ be even or odd, so that
+$\Lambda(f)=\Lambda(E)$ and $E$ has integer coefficients.  If its program has more than
+$L_0$ distinct real instruction roots $r$, the $r^2$ are roots of $E$ and squares of
+distinct integers at least $2$, the $i$th smallest at least $(i+1)^2$, and
+Theorem~\ref{thm:mass} gives $\Lambda(f)\ge\psi_{L_0+1}$.  If it has more than $M_0$ real
+instructions, $E$ is divisible by $\prod_i(y-r_i^2)$ over them, with multiplicity: a root
+$r\ne0$ of $f$ of multiplicity $m$ is a root of $E(x^2)$ of multiplicity $m$, and $x+r$
+does not vanish at $r$.  All $r_i^2\ge4$, so Theorem~\ref{thm:mass} gives
+$\Lambda(f)\ge\sum_{i\le M_0+1}i\log3$.  Otherwise the program has at least $\ell_n+1\ge N''$
+distinct real instruction roots $p^v$ with $v\ge2$, and $N''\le Q'$, so
+Lemma~\ref{lem:evensigns} with $Q=Q'$ and $N=N''$ gives $\Lambda(f)\ge\tau_{Q',N''}$.
+Finally $\log\bigl((i+1)^2-1\bigr)=\log\bigl(i(i+2)\bigr)\ge2\log i$ and
+$\sum_{i\le L}i\log i\ge\frac{L^2}2\log L-\frac{L^2}4$ give the bound on $\psi_L$.
+
 For the asymptotics, $Q'\ge T/(n+4)-1$, $N\ge\mu_nT/n-1$ with $\mu_n>\frac15$ for large
 $n$, $j_n=O(\log n)$ and $\log(Q'+1)\le n\log2$.  So $\log N\ge(n-j_n)\log2-1$ and
 \[
@@ -1450,8 +1475,23 @@ and $4.39N(N+1)=O(T^2/n^2)$.  With the bound for $3Q'^2\log Q'-7Q'(Q'+1)$ above,
 $\theta_n$ is at least $(3+\mu_n^2)\log2\,(1-O(\frac{\log n}n))T^2/n$.  The other
 entry of the minimum is at least $4\log2\,(1-O(\frac{\log n}n))T^2/n$, which is larger,
 since $\mu_n\le\frac12$.
-Dividing by $\log10$ gives the left side of~\eqref{eq:bracket-n}; the limits follow from
-the bounds on $\mu_n$ in Lemma~\ref{lem:halves}.
+For the third display, Corollary~\ref{cor:evenhard} and $Q'\ge T/(n+4)-1$ give
+$N''\ge(1-O(\frac{\log n}n))\frac T{2n}$, so $\log N''\ge n\log2-\log n-1$ for large $n$,
+and, with $\log(Q'+1)\le n\log2$,
+\[
+  \begin{aligned}
+  2N''^2\log N''-N''(N''+1)\log(Q'+1)&\ \ge\ N''^2(n\log2-2\log n-2)-N''n\log2\\
+  &\ \ge\ \frac14\log2\,\Bigl(1-O\bigl(\tfrac{\log n}n\bigr)\Bigr)\frac{T^2}n ,
+  \end{aligned}
+\]
+while $4.39N''(N''+1)=O(T^2/n^2)$; so the bound on $\tau_{Q',N''}$ is at least
+$\frac{13}4\log2\,(1-O(\frac{\log n}n))T^2/n$.  The other entries of the minimum are
+larger: $2\sigma_{K'}$ as above; $\psi_{L_0+1}\ge L_0^2\log L_0-\frac12L_0^2$ with
+$L_0\ge2T/n-1$ is at least $4\log2\,(1-O(\frac{\log n}n))T^2/n$; and
+$\frac12(M_0+1)(M_0+2)\log3\ge\frac{25}8\log3\cdot T^2/n>3.4\,T^2/n$, while
+$4\log2<2.78$.  As $\mu_n\le\frac12$, the third display is at least the second at leading
+order.  Dividing by $\log10$ gives the left side of~\eqref{eq:bracket-n}, and the limits
+follow.
 
 \emph{Upper bound, item 2.}  Fix an automaton $\mathcal A$ of either kind and a table.
 
@@ -1554,9 +1594,7 @@ of~\eqref{eq:bracket-n}.  The limits follow.
 
 
 \begin{remark}[What the bracket says]\label{rem:bracket}
-The two sides of~\eqref{eq:bracket-n} differ by the factor $\frac{325}{8(3+\mu_n^2)}$; between the limits this is at most
-$\frac{650}{49}=13.3$, and along the $n$ with $\mu_n\to\frac12$ it tends to
-$\frac{25}2=12.5$.  So Proposition~\ref{prop:bracket} fixes the order, but it does not fix the
+The two sides of~\eqref{eq:bracket-n} differ by the factor $\frac{325}{26}=\frac{25}2=12.5$ at leading order, at both limits.  So Proposition~\ref{prop:bracket} fixes the order, but it does not fix the
 constant.  The factor splits as follows.
 \begin{itemize}
 \item \emph{Routing contributes nothing.}  The lower bound credits one input
@@ -1575,7 +1613,7 @@ the lengths of the leaves of the band, and so this number can be placed just bel
 depth of the tree.  The bounded stripped automaton offers only the numbers
 $2^{n-L-1}(1-2^{-d(I+1)})/(1-2^{-d})$.  At small $n$ it can still be the better of the two,
 which is why item~2 of Proposition~\ref{prop:bracket} takes the minimum over both.
-\item \emph{Profile: $g/(3+\mu_n^2)$.}  The lower bound charges
+\item \emph{Profile: $g/\frac{13}4=\frac{25}2$.}  The lower bound charges
 each input pair as one real root $c^2$, which is exact for pairs
 alone~\cite[Corollary~5.3]{coefficient-mass}, and
 $\sum_{j\le K}j\log v_j^2\sim2K^2\log K$ gives the mass constant $2$.  A source
@@ -1583,7 +1621,8 @@ that is neither even nor odd pays this twice (Remark~\ref{rem:parity}), and an e
 odd source pays it once, plus the constant $1$ of its real instruction roots
 (Lemma~\ref{lem:evensigns}): hence the lower constant $3$.  The real roots of exponent at
 least $2$ that the zero branches force (Lemma~\ref{lem:zerowit}) pay like input pairs,
-and for the tables of Lemma~\ref{lem:halves} they add $\mu_n^2$.  The
+for the tables of Lemma~\ref{lem:halves} they add $\mu_n^2$; Lemma~\ref{lem:evencount}
+forces $(\frac12-o(1))T/n$ of them at every $n$, which adds $\frac14$.  The
 construction pays $g=\frac{325}8$ per state squared: an input ($2,2$), a closing
 bracket ($2$), an opener ($1$ or $4$), and either $\mathord{+}\!=-48$ ($1,1$) or one
 addition that encodes both successor codes (effective $2,2$), the latter for half of the
@@ -1606,17 +1645,25 @@ odd the multisection proof of~\cite[Corollary~5.3]{coefficient-mass} needs $P=R(
 with all roots of $R$ of one sign; the real roots $p^v$ break the first condition, and
 passing to $F(x)F(-x)$ breaks the second, but these sources already pay $4$.  The
 order-statistic bound for arbitrary free positions (\cite[Lemma~3.1]{coefficient-mass})
-is already sharp (\cite[Corollary~3.6]{coefficient-mass}).  Lemma~\ref{lem:zerowit}
-goes past $3$ without charging register roots: every first-essential residual of a family
-with pairwise distinct halves forces its own real root $p^v$ with $v\ge2$, and these pay
-like input pairs.  At one level such a family has at most $(\frac12+o(1))T/n$ members,
-because its $2|\mathcal G|$ halves are distinct functions of the same $n-K-1$ bits; and the
-argument does not prevent the zero branches of residuals at different levels, or of
-residuals with a common half, from merging.  So this route stops at $3+\frac14$.
-Reaching $4$ needs about $T/n$ real roots of exponent at least $2$, or a charge for the
-register roots of even and odd sources, which in $E$ are the complex roots
-$(a\pm p^bi)^2$; bounds for such roots at arbitrary angles are open
-(\cite[Section~5]{coefficient-mass}).
+is already sharp (\cite[Corollary~3.6]{coefficient-mass}).  Lemma~\ref{lem:zerowit} goes past $3$ without charging register roots: every
+first-essential residual of a family with pairwise distinct halves forces its own real
+root $p^v$ with $v\ge2$, and these pay like input pairs.  At one level such a family has
+at most $(\frac12+o(1))T/n$ members, because its $2|\mathcal G|$ halves are distinct
+functions of the same $n-K-1$ bits.  Lemma~\ref{lem:evencount} reaches the same number at
+every $n$ by counting instead: between two reads the register of an even or odd source
+matters only through the gap end at which it first becomes $0$, so the gap automaton is
+fixed by $O(\frac Tn\log n)$ bits except for the targets of the zero transitions of at
+most $\ell+1$ expensive gaps, which cost $\log_2(\ell+6)$ bits each.  The count cannot
+force more than $(\frac12+o(1))T/n$ such roots: its only leading term is
+$2(\ell+1)\log_2(\ell+6)$, which reaches $T$ at $\ell=(\frac12+o(1))T/n$, and nothing in it
+charges an expensive gap more than the targets of its two transitions.  So
+both routes stop at $3+\frac14$.  Reaching $4$ needs about $T/n$ real roots of exponent
+at least $2$, or a charge for what an even or odd source spends on the targets of its
+zero transitions: the register roots whose operands place the gap end at which the
+register becomes $0$, which in $E$ are the complex roots $(a\pm p^bi)^2$ and for which
+bounds at arbitrary angles are open (\cite[Section~5]{coefficient-mass}), or those gap
+ends themselves, each preceded by its own real run, whose number the count does not force
+to be of order $T/n$.
 \end{remark}
 
 
@@ -1639,7 +1686,9 @@ register instruction $(a,b)$, $a\ne0$.  Lemma~\ref{lem:symruns} restricts such s
 subtractions change the register only right after reads, in the run of the read, and
 Corollary~\ref{cor:symm} gives the constant $4$ to every source with a run of nonzero sum.
 By Lemma~\ref{lem:evensigns} even and odd sources pay at least the constant $3$, and, for
-the tables of Lemma~\ref{lem:halves}, at least $3+\mu_n^2$ by Lemma~\ref{lem:zerowit};
+the tables of Lemma~\ref{lem:halves}, at least $3+\mu_n^2$ by Lemma~\ref{lem:zerowit},
+and, for the table of Corollary~\ref{cor:evenhard}, at least $\frac{13}4-o(1)$ by
+Lemma~\ref{lem:evencount};
 whether they can come below $4$ is what separates the lower constants from $4$.
 \end{remark}
 
@@ -1862,6 +1911,174 @@ $j_n$ stays constant $\mu_n=n2^{-j_n}$ runs up from about $\frac14$ to about $\f
 The implementation evaluates a negative power in binary floating
 point, and a later block of additions with operands near $2^{53}$ can round a register
 across $0$; the exact reading above does not cover that rounding.
+
+The zero branches carry more than the residuals of one level.  Between two reads an even
+or odd source sees its register only through signs, and a nonzero register keeps a sign
+that the instructions determine; so, apart from outputs, a run between two reads is fixed
+by the real instructions and by the place where its register first becomes $0$, and the
+gaps that such runs enter are preceded by real roots of exponent at least $2$.  Counting
+tables against these data forces many of those roots.  Arithmetic is read exactly, as
+above.
+
+For a gap $\gamma$ that does not begin the list, let $\operatorname{pre}(\gamma)$ be the
+real instruction just before it; a run enters $\gamma$ only at its first instruction,
+right after executing $\operatorname{pre}(\gamma)$ or after a jump to the instruction
+following it.  A \emph{gap end} of a run is a moment at which it steps from the last
+instruction of a gap to a real instruction or past the end of the list; the register
+there is the \emph{value} at that gap end.  Read gaps, $\Gamma$, the entry $e$ and the
+data $m_g$, $\delta_g$, $\lambda_g$ are as in Lemma~\ref{lem:gapauto}.
+
+\begin{lemma}[Information in even and odd programs]\label{lem:evencount}
+Let $n\ge2$, $1\le L\le M$ and $\ell\ge0$ be integers, and put
+\[
+  \beta_n(L,M,\ell)=2(\ell+1)\log_2(\ell+6)+(L+1)\bigl(\log_2(n+1)+16\bigr)
+  +L\log_2\frac{eM}L+\log_2\bigl((L+1)(M+1)\bigr).
+\]
+With register arithmetic read exactly, at most $2^{\beta_n(L,M,\ell)}$ tables of $n$
+inputs are computed by even or odd sources whose decoded program has at most $L$ distinct
+real instruction roots, at most $M$ real instructions counted with multiplicity, and at
+most $\ell$ distinct real instruction roots $p^v$ with $v\ge2$.
+\end{lemma}
+
+\begin{proof}
+Fix such a source.  By property~(4) of Section~\ref{sec:model} its blocks correspond to its
+distinct real instruction roots, so it has $L'\le L$ blocks, $M'\le M$ real instructions,
+and at most $\ell$ blocks of code at least $2$; the code of a real root $p^v$ is $v$.
+
+\emph{Gaps between reads.}  By Lemma~\ref{lem:symruns}, part~2, a gap is a concatenation of
+whole lists $R_q$, and in each of them the additions come first and have total $0$, and so
+do the subtractions if $R_q$ has no input (part~1).  So a gap $\gamma$ without input and
+output changes the register by its multiplications, floor divisions, remainders and
+powers, in order, each with an operand $a\ne0$.  Each of them maps $0$ to $0$, except a
+power with $a<0$, which faults at $0$; and each maps a value of sign $s\ne0$ either to $0$
+or to a value of sign $s\operatorname{sgn}a$ (multiplication, floor division),
+$\operatorname{sgn}a$ (remainder) or $s^a$ (power).  Hence a run that enters $\gamma$ with
+the register $0$ leaves it with $0$ unless it faults, and whether it faults depends only
+on $\gamma$; and a run that enters $\gamma$ with a register of sign $s\ne0$ leaves it with
+$0$, or faults after its register has become $0$ in $\gamma$, or leaves it with a register
+of a sign $\sigma_\gamma(s)$ that depends only on $\gamma$ and $s$.  An output instruction
+$[0,1]$ lies in some $R_{q,1}$ after its additions with negative operands, so a run that
+enters a gap with the register $0$ and reaches an output there outputs a register value at
+most $0$, not the character $\mathtt0$ or $\mathtt1$ (codes $48$ and $49$).  Tests depend only on the sign of the register, and the
+bracket matching only on the codes.
+
+\emph{The skeleton.}  Give every gap a type: $\mathrm I$ if its first input or output
+instruction is an input, $\mathrm O$ if it is an output, and otherwise the triple formed by
+whether it faults at $0$ and by $\sigma_\gamma(+)$ and $\sigma_\gamma(-)$; there are $10$
+types.  The \emph{skeleton} is the list of the $L'$ blocks, each given by its code and its
+multiplicity, with the typed gaps in those of the $L'+1$ places before, between and after
+the blocks where gaps occur.  There are at most
+$2^{L'+1}8^{L'}\binom{M'-1}{L'-1}10^{L'+1}$ skeletons, and
+$\binom{M'-1}{L'-1}\le(eM'/L')^{L'}\le(eM/L)^L$, because $x\log(eM/x)$ increases for
+$0<x\le M$.
+
+By the paragraph above, the skeleton determines the following for every gap end $x$ and
+sign $s\ne0$.  $Z(x)$ is the outcome of a run whose value at $x$ is $0$, up to its next
+input or output: the gap of type $\mathrm I$ that it enters first, or $\bot$ if it faults,
+reaches an output or the end of the list first, or never enters such a gap.  $P(x,s)$ is the list
+of pairs (gap end, sign) through which a run with a value of sign $s$ at $x$ passes,
+starting with $(x,s)$, as long as its values at gap ends are nonzero and up to the first
+gap of type $\mathrm I$ or $\mathrm O$ that it enters; that gap, or $\bot$, is the
+\emph{end} of $P(x,s)$.  Faults before the first input of a gap of type $\mathrm I$ are
+ignored here; they do not occur below.
+
+\emph{Transitions.}  Call $(g,b)$, $g\in\Gamma$, $b\in\{0,1\}$, \emph{occurring} if some
+input reaches $g$ with $\pi+m_g\le n$ and $b_{\pi+m_g}=b$ in the notation of
+Lemma~\ref{lem:gapauto}.  Only the occurring transitions and the labels $\lambda_g$ enter
+the semantics there, and along them the program neither faults, nor halts, nor prints
+anything but its output.  Let $(g,b)$ be occurring.  If $m_g$ is less than the number of
+inputs of $g$, then $\delta_g(b)$ is a character.  Otherwise the run starts after the last
+input of $g$ with the register $48+b$, and it either prints before the end of $g$ or has a
+value $u_b$ at the end $x_g$ of $g$.  As in the proof of Lemma~\ref{lem:zerowit}, $u_0$ and
+$u_1$ lie in a common closed half-line, so if both are nonzero they have the same sign.  We
+call $(g,b)$ an \emph{output transition} if $\delta_g(b)$ is a character; a \emph{zero
+transition} if not and its value at some gap end before its next input is $0$; and an
+\emph{N-transition} otherwise.  For an N-transition, $\delta_g(b)$ is the end of
+$P(x_g,\operatorname{sgn}u_b)$.  For a zero transition let $x$ be the first gap end with the
+value $0$: up to $x$ the run passes through $P(x_g,\operatorname{sgn}u_b)$, unless
+$x=x_g$, and $\delta_g(b)=Z(x)$.
+
+\emph{Zero transitions enter gaps of $H$.}  Let $H$ be the set of read gaps $\gamma$ for
+which $\operatorname{pre}(\gamma)$ exists and has code at least $2$.  If the target of a
+zero transition is a gap $\gamma$, the run enters $\gamma$ with the register $0$.  An
+opener $\text{if}>0$ lets a run continue after itself only when its test holds, and a jump
+lands after a closing bracket (code $2$ or $6$) or after a $\text{while}$ (code $5$, $7$ or
+$8$); so $\gamma\in H$.  The instructions $\operatorname{pre}(\gamma)$ of distinct gaps lie
+in distinct real runs, hence in distinct blocks, and so $|H|\le\ell$.
+
+\emph{Cheap and expensive gaps.}  Let $R\subseteq\Gamma$ be the set of read gaps reached on
+some input, and $\mathcal N\subseteq R$ the set of targets of occurring N-transitions.  For
+$a\in\mathcal N$ fix an occurring N-transition $(\gamma_a,b_a)$ with the target $a$, and
+put $s_a=\operatorname{sgn}u_{b_a}$ and $P_a=P(x_{\gamma_a},s_a)$.  Two N-transitions from
+one gap have values of one sign, hence the same path and the same target, so
+$a\mapsto\gamma_a$ is injective.  Two of the paths $P_a$ with a common pair continue
+identically from it and have the same end; so the $P_a$ are pairwise disjoint, and
+$\sum_a|P_a|\le2(L'+1)$, as there are at most $L'+1$ gaps.  Every gap of $R$ other than
+$e$ is the target of an occurring N- or zero transition, so $R\subseteq\mathcal N\cup
+H\cup\{e\}$.  Call the gaps $\gamma_a$ \emph{cheap} and the other gaps of $R$
+\emph{expensive}; there are at most $|R|-|\mathcal N|\le|H|+1\le\ell+1$ expensive gaps.
+If the other transition $(\gamma_a,1-b_a)$ of a cheap gap is occurring, it is an output
+transition, an N-transition with the target $a$, or a zero transition whose first gap end
+with the value $0$ is in $P_a$: its value at $x_{\gamma_a}$ is $0$ or has the sign $s_a$,
+and the two runs pass through $P_a$ together until one of them has the value $0$.
+
+\emph{Counting.}  The data of Lemma~\ref{lem:gapauto} on $R$, which determine the table,
+are therefore determined by the skeleton and by the following, for each gap of type
+$\mathrm I$ (only these can be targets or the entry; the entry is determined by the
+skeleton, since the register starts at $0$).  Whether it is outside $R$, cheap or
+expensive; $m_g$ and $\lambda_g$ if it is in $R$.  For an expensive gap and $b=0,1$:
+$\delta_g(b)$ if it is a character, or the sign of $u_b$ for an N-transition, or the target
+in $H\cup\{\bot\}$ of a zero transition.  For a cheap gap $\gamma_a$: $b_a$ and $s_a$, and
+for the other transition its character, or that it is an N-transition, or the position in
+$P_a$ of its first gap end with the value $0$.  (On transitions that do not occur the data
+are arbitrary.)  So each gap has at most $9(n+1)$ choices of the first data, an expensive
+gap at most $(\ell+6)^2$ choices of its transitions, and a cheap gap $\gamma_a$ at most
+$4(|P_a|+4)$.  As the $P_a$ are disjoint and at most $L'+1$ in number, and
+$x\bigl(2+\log_2(4+c/x)\bigr)$ increases in $x>0$, concavity gives
+$\sum_a\log_2\bigl(4(|P_a|+4)\bigr)\le(L'+1)\log_224$.  So the base-$2$ logarithm of the
+number of tables such a source can compute is at most
+\[
+  (L+1)\Bigl(\log_2(n+1)+1+3+\log_210+\log_29+\log_224\Bigr)+L\log_2\frac{eM}L
+  +2(\ell+1)\log_2(\ell+6),
+\]
+and $1+3+\log_210+\log_29+\log_224<15.1$.  Summing over the at most $(L+1)(M+1)$ pairs
+$(L',M')$ proves the lemma.
+\end{proof}
+
+\begin{corollary}[A table for even and odd sources]\label{cor:evenhard}
+Let $n\ge9$, $L_0=\lfloor2T/n\rfloor$ and $M_0=\lfloor5T/(2\sqrt n)\rfloor$, and let
+$\ell_n$ be the largest integer $\ell\ge-1$ such that $\ell=-1$ or
+$\beta_n(L_0,M_0,\ell)\le T-1$.  Some $n$-input table has no program with fewer than
+$\lceil T/(n+4)\rceil$ distinct input root values, and, with arithmetic read exactly,
+every even or odd source for it has more than $L_0$ distinct real instruction roots, or
+more than $M_0$ real instructions counted with multiplicity, or at least $\ell_n+1$
+distinct real instruction roots $p^v$ with $v\ge2$.  Moreover
+$\ell_n+1\ge(1-O(\frac{\log n}n))\frac T{2n}$.
+\end{corollary}
+
+\begin{proof}
+Let $Z=\lfloor T/(n+4)\rfloor$.  The proof of Proposition~\ref{prop:counting} gives
+$\log_2B_n(Z)<T-0.97\,T/(n+4)+2n+9\le T-1$, since $0.97\,T/(n+4)\ge2n+10$ for $n\ge9$.
+If $\ell_n\ge0$, Lemma~\ref{lem:evencount}, with $1\le L_0\le M_0$, bounds by $2^{T-1}$
+the number of tables computed by even or odd sources with at most $L_0$ distinct real
+instruction roots, $M_0$ real instructions and $\ell_n$ distinct real instruction roots
+$p^v$, $v\ge2$; if $\ell_n=-1$ there are no such sources.  So some table is computed by
+neither kind of program; as in Proposition~\ref{prop:counting}, every program for it has
+at least $Z+1\ge\lceil T/(n+4)\rceil$ input root values.
+
+Write $\beta_n(L_0,M_0,\ell)=2(\ell+1)\log_2(\ell+6)+B$.  Since $L_0\le2T/n$ and
+$M_0\le3\sqrt n\,L_0$ for large $n$, $B=O(\frac Tn\log n)$.  Every $\ell\ge-1$ with
+$2(\ell+1)\log_2(\ell+6)\le T$ has $\ell+1\le T/(2\log_26)$, so $\ell+7<T/4$; this applies to
+$\ell_n$, so $\log_2(\ell_n+7)<n-2$, and the maximality of $\ell_n$ gives
+$2(\ell_n+2)\log_2(\ell_n+7)>T-1-B$.  Hence
+$\ell_n+1>\frac{T-1-B}{2(n-2)}-1\ge(1-O(\frac{\log n}n))\frac T{2n}$.
+\end{proof}
+
+With these tables the lower constant for even and odd sources is $3+\frac14$ at every $n$
+(Proposition~\ref{prop:bracket}), which is also the value that Lemma~\ref{lem:halves}
+reaches only along a subsequence.  The error terms are large, however: $\ell_n=-1$ for
+$n<53$, and $(\ell_n+1)n/T$ is about $0.24$ at $n=100$, $0.45$ at $n=500$ and $0.49$ at
+$n=5000$, so for moderate $n$ the second display of item~1 is often the better one.
 
 \begin{remark}[The profile of per-state blocks]\label{rem:floor}
 The programs of Proposition~\ref{prop:embprog} give every state one input, one register
