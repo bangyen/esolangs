@@ -578,6 +578,7 @@ _UNSHAPED = {
     "b_tapemark",
     "minifuck",
     "one_two_three",
+    "packlang",  # one painted array cell per differing row, read by index
     "qoibl",
     "slow_acv_mammalian",
     "container",
