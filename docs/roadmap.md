@@ -131,9 +131,14 @@ INTERCAL, listed last, is outside the pass.
   Root recovery now lifts through `D**2`, covering the generated
   `|a| < 50D` envelope, and swaps NTT field roles when an instruction prime
   equals the primary modulus.  Exact division remains acceptance.  Therefore
-  every generated factor peels and cold parsing is polynomial; arbitrary
-  programs outside the envelope retain the general factorization fallback.
-  Conservative generation and cold-parse work/memory estimators cover the
+  every generated factor peels.  Cold parsing of *every* source is now
+  polynomial in its length: a sparse term map (no dense list for
+  `x^1000000000000 - 1`), the gap lemma and `x d/dx` multiplicities with
+  Hajos' bound, `p`-adic lifting plus a 2-D lattice for the Gaussian roots
+  of one dense chunk in place of `factor_list`, and a `convert` that proves
+  primality (deterministic Miller--Rabin below `2**64`, BPSW then AKS above)
+  instead of scanning to the widest root.  The output matches the old
+  parser on every source it finished.  Conservative generation and cold-parse work/memory estimators cover the
   tested corpus and boundary controls, including pre-expansion refusal and a
   parse outside the former fixed lift.  See [polynomial](proofs/polynomial.md) and
   `tests/proofs/deep/multiplicity.py`.
