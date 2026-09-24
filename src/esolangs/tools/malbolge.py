@@ -1019,11 +1019,13 @@ def malbolge(truth_table: str) -> str:
     ``n`` is recovered from the table.  Through ten inputs the program is one
     source stub per row; eleven inputs use the pointer cascade, twelve the
     cascade with a selector on the last input, thirteen that build with the
-    last input read by the answer stub; ``n > 13`` is refused (fourteen's
-    route is written but its constants are not).  Every build is the full
-    59049-cell store.
+    last input read by the answer stub.  Fourteen's route is written but its
+    constants are not, so it is refused until ``_F_LEVELS`` is filled in, and
+    ``n > 14`` always is.  Every build is the full 59049-cell store.
     """
     n = _validate_truth_table(truth_table)
+    if n == _FOURTEEN_N and all(_F_LEVELS):
+        return _fourteen_program(truth_table)
     if n > _THIRTEEN_N:
         raise GeneratorCapError(
             f"Malbolge builds at most {_THIRTEEN_N} inputs, got {n}: the "
