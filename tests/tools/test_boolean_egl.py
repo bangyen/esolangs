@@ -7,7 +7,6 @@ import pytest
 from esolangs import tools
 from esolangs.interpreters.grid_based.egl import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.egl import _egl_ordered
 
 
 def execute(program: str, bits: tuple[int, ...]) -> tuple[str, int]:
@@ -29,22 +28,27 @@ def test_truth_tables(table: str) -> None:
         assert reads == n
 
 
-def test_constant_subtrees_fold() -> None:
-    assert len(tools.egl("00001111")) < len(tools.egl("01101001"))
-
-
-def test_input_reordering_folds_a_scattered_table() -> None:
-    table = "10101010"
-    assert len(tools.egl(table)) < len(_egl_ordered(table, (0, 1, 2)))
-
-
-def test_input_reordering_never_grows_a_program() -> None:
+def test_every_three_input_table_runs() -> None:
     for value in range(256):
-        table = f"{value:08b}"
-        assert len(tools.egl(table)) <= len(_egl_ordered(table, (0, 1, 2)))
+        test_truth_tables(f"{value:08b}")
 
 
-def test_reordered_programs_compute_the_table() -> None:
-    for value in range(256):
-        table = f"{value:08b}"
-        test_truth_tables(table)
+def test_the_walk_is_branch_free() -> None:
+    """One guard an input, and no other loop: the table is not a tree."""
+    program = tools.egl("01101001")
+    assert program.count("(") == 3
+
+
+def test_size_is_table_content_only() -> None:
+    """Two tables of one arity and one popcount render to the same length."""
+    assert len(tools.egl("01101001")) == len(tools.egl("00001111"))
+
+
+def test_wrapped_programs_still_compute_the_table() -> None:
+    table = "10010110"
+    for width in (5, 20, 80):
+        program = tools.egl(table, width)
+        assert max(map(len, program.split("\n"))) <= max(width, len("8,2:"))
+        for bits in itertools.product((0, 1), repeat=3):
+            index = int("".join(map(str, bits)), 2)
+            assert execute(program, bits) == (table[index], 3)

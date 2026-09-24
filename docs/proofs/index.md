@@ -137,7 +137,7 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, Eval, Minsky
+the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, EGL, Eval, Minsky
 Swap, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN, Suffolk and Whitespace
 keep no tree route at all:
 A Painter Ant's
@@ -145,7 +145,8 @@ answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, Befunge reads one grid cell per table entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
-once the doubling between the input runs is in the text), Eval is one linear
+once the doubling between the input runs is in the text), EGL paints one cell
+an entry and walks a pointer to it, Eval is one linear
 lookup at every arity, Packlang paints one array block and indexes it at every
 arity, Minsky Swap's `~`
 cascade routes the index to one of two shared leaves with a one-digit target
@@ -212,7 +213,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Decleq | tree | the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits | linear, time n log: essential_inputs |
 | Dig | tree | finite cell placement | linear: axis-swapping rectangle of area O(T), four-cell nodes with side operands |
 | Dimensional | tree | `decision_tree_program` with dimensional moves | linear: decision_tree_program with dimensional moves |
-| EGL | tree | — | linear, time n log: greedy order scoring, capped at n <= 10 |
+| EGL | finite lookup | row 1 is painted with the table and each input's `(-...)` guard walks the row-0 pointer right by that input's Horner weight, so `v=` prints the indexed cell | linear: T painted cells, guard weights sum to T - 1 |
 | Eval | linear lookup | fixed reversed stack order selects the indexed row | linear: T literal plus halving `;` runs under T |
 | Factor | tree | Brainfuck tree followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence | lower bound: tight language and generated Theta(T log T) ([factor](factor.md)) |
 | Fargo | tree | finite folded layout | linear, time n log: Moebius transform, n passes over 2**n |

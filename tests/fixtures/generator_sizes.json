@@ -380,16 +380,16 @@
   },
   "EGL": {
    "0110": {
-    "commands": 75,
-    "source_units": 122
+    "commands": 20,
+    "source_units": 24
    },
    "01101001": {
-    "commands": 141,
-    "source_units": 291
+    "commands": 34,
+    "source_units": 38
    },
    "0110100110010110": {
-    "commands": 221,
-    "source_units": 635
+    "commands": 58,
+    "source_units": 63
    }
   },
   "Eval": {
