@@ -232,9 +232,14 @@ step; an answer lands in the paper it extends, and the row leaves.
   within a factor 4, on circles of prime-power norm (`cor:padiccircle`);
   carry sizes alone cap at linear mass (`prop:carrylimit`), row 2 is a
   rounding-recurrence question (`lem:gaussround`), and rows need
-  `0 < |a_j| < c_j` (`prop:gaussrowsfail`).  Open: rows `k >= 2` or an
-  `Omega(K**2 log)` mass for pairs `a +- p**b i`, `a != 0`, uniformly in
-  `K` (squarefree or coprime norms).
+  `0 < |a_j| < c_j` (`prop:gaussrowsfail`).  An Archimedean Newton
+  polygon (`thm:archnewton`) gives rows and mass `sum j log(rho_j/3)` for
+  every complex multiple once moduli grow by a factor 9 (`cor:separated`),
+  so one prime with distinct exponents is CLOSED (`cor:oneprime`), and
+  at most `g` moduli per annulus `[R, 9R]` costs a factor `g**2`.  Open:
+  rows `k >= 2` or an `Omega(K**2 log)` mass for many pairs in one annulus,
+  as Polynomial's register roots `a +- p**b i` over many primes (coprime
+  norms), uniformly in `K`.
 
 - **Polynomial's routing constant.**  CLOSED in
   [polynomial](proofs/polynomial.tex): the next-read count `thm:count`
