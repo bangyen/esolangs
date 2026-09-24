@@ -165,7 +165,7 @@ class TestFactorHasNoDigitBudget:
 
     @pytest.mark.slow
     def test_the_arity_that_used_to_refuse_builds(self) -> None:
-        """Dense n=13 was the 500000-digit refusal; it is 705048 digits now."""
+        """Dense n=13 was the 500000-digit refusal; this table is 708448 digits now."""
         import random
 
         rng = random.Random(7)

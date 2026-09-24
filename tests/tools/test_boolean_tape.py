@@ -266,12 +266,33 @@ class TestFactor:
             got = run_factor(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_is_the_decimal_encoding_of_the_bf_program(self) -> None:
-        """factor delegates to the brainfuck generator, then encodes it."""
-        from esolangs.tools.tape import _factor_encode
+    def test_factors_back_into_a_working_bf_program(self) -> None:
+        """The integer's factorization is a brainfuck program for the table.
+
+        This used to assert the stronger ``factor(t) ==
+        _factor_encode(brainfuck(t))``, which pinned *which* brainfuck
+        program was encoded.  Factor pays a prime per run rather than a
+        character per command, so it builds for that objective instead and no
+        longer emits brainfuck's shortest program; what has to hold is the
+        encoding itself, which is what this decodes and runs.
+        """
+        import sympy
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import run as run_bf
+        from esolangs.tools.factor import _BF_RESIDUE
 
         table = "0110"
-        assert boolean.factor(table) == str(_factor_encode(boolean.brainfuck(table)))
+        n = 2
+        command = {residue: char for char, residue in _BF_RESIDUE.items()}
+        factors = sorted(sympy.factorint(int(boolean.factor(table))).items())
+        code = "".join(command[prime % 11] * power for prime, power in factors)
+
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+            run_bf(code, io)
+            assert io.getvalue() == table[combo], f"inputs {bits}"
 
     def test_sparse_tables_stay_small_at_n_four(self) -> None:
         """Sparse tables (few one-rows) encode a short brainfuck program,
@@ -280,7 +301,7 @@ class TestFactor:
         assert boolean.factor("1" * 16).isdigit()
 
     def test_a_table_past_cpythons_own_limit_still_renders(self) -> None:
-        """XOR6 encodes to 5934 digits, past CPython's 4300-digit default.
+        """XOR6 encodes to 5343 digits, past CPython's 4300-digit default.
 
         That default is a DoS guard on quadratic int-to-str conversion, not
         anything Factor says, so it is raised for the render rather than
@@ -291,7 +312,9 @@ class TestFactor:
         digits) until the print-once leaf took it to 2842, then XOR5 until
         dropping the complement construction took that to 3107.  Both fell
         back under the default, so the check moves up rather than losing the
-        raise it exists to exercise.
+        raise it exists to exercise.  Folding the ASCII offsets took XOR6
+        from 5934 to 5343, which is an O(n) saving against a tree that
+        doubles, so it stays clear of the default rather than moving again.
         """
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         program = boolean.factor(xor6)
@@ -328,7 +351,7 @@ class TestFactor:
     def test_total_past_the_retired_digit_budget(self) -> None:
         """No digit budget: the 500000-digit refusal is gone (dense n=13).
 
-        705048 digits, and the interpreter decodes it to the tree the
+        703447 digits, and the interpreter decodes it to the program the
         generator encoded.  That decode is the whole load cost (n=12
         parity's 460824 took 43s), so the rows run on
         the decoded machine -- the object ``_Machine.step`` drives --
@@ -336,6 +359,7 @@ class TestFactor:
         other high-arity probes.
         """
         from esolangs.interpreters.tape_based.factor import _parse, decode
+        from esolangs.tools.factor import _encode
         from tests.tools.test_boolean_contract import _dense
 
         n = 13
@@ -343,7 +367,17 @@ class TestFactor:
         program = boolean.factor(table)
         assert len(program) > 500_000
         code = decode(_parse(program))
-        assert code == boolean.brainfuck(table)
+        # Re-encoding rather than comparing against brainfuck's program: the
+        # construction Factor encodes is its own now, and the contract is the
+        # round trip, which holds whatever it builds.  The digit limit guards
+        # str -> int too, so it is raised here as the generator raises it for
+        # its own render.
+        limit = sys.get_int_max_str_digits()
+        sys.set_int_max_str_digits(len(program) + 1)
+        try:
+            assert _encode(code) == int(program)
+        finally:
+            sys.set_int_max_str_digits(limit)
         for row in (0, 1, 2**12, 2**13 - 2, 2**13 - 1):
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_bf(code, bits) == table[row], row

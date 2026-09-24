@@ -196,6 +196,14 @@ spend `Omega(T log T)`, so this generated upper bound is tight in the worst
 case. This is not a per-table claim: constant subtrees fold and can be much
 smaller.
 
+The shipped generator emits a variant of the tree these bounds are stated for.
+Digits are `sum(L_i log10 p_i)` over the runs -- weighted by position, since
+the primes ascend -- so the shortest brainfuck program is not the cheapest
+Factor one, and the `48(n + 1)` characters of ASCII offset are folded into one
+multiply loop and one subtracting loop: -38.5% of the digits at `n = 2`, -0.2%
+at `n = 13`. An `O(n)` saving against a doubling tree leaves every bound here
+untouched, and the folded program is never larger.
+
 ## Generation time
 
 Prime discovery during generation uses exact segmented Eratosthenes

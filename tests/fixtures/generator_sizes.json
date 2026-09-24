@@ -366,16 +366,16 @@
   },
   "Dimensional": {
    "0110": {
-    "commands": 40,
-    "source_units": 112
+    "commands": 42,
+    "source_units": 104
    },
    "01101001": {
-    "commands": 63,
-    "source_units": 251
+    "commands": 67,
+    "source_units": 223
    },
    "0110100110010110": {
-    "commands": 80,
-    "source_units": 524
+    "commands": 86,
+    "source_units": 448
    }
   },
   "EGL": {
@@ -408,16 +408,16 @@
   },
   "Factor": {
    "0110": {
-    "commands": 179,
-    "source_units": 506
+    "commands": 865,
+    "source_units": 352
    },
    "01101001": {
-    "commands": 251,
-    "source_units": 939
+    "commands": 1133,
+    "source_units": 672
    },
    "0110100110010110": {
-    "commands": 317,
-    "source_units": 1702
+    "commands": 1395,
+    "source_units": 1296
    }
   },
   "Fargo": {

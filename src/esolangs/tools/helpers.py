@@ -446,6 +446,84 @@ def decision_tree_program(truth_table: str, right: str, left: str) -> str:
     )
 
 
+def move_text(start: int, target: int, right: str, left: str) -> str:
+    """Return the moves taking a one-dimensional pointer to ``target``.
+
+    One run, not one token per cell, so a caller measuring maximal runs --
+    Factor, which pays a prime per run -- sees the same count either way.
+    """
+    delta = target - start
+    return right * delta if delta >= 0 else left * -delta
+
+
+def decision_tree_body(
+    truth_table: str,
+    right: str,
+    left: str,
+    perm: tuple[int, ...],
+    start: int,
+) -> tuple[str, int]:
+    """Return the decision tree alone, and the cell it leaves the pointer on.
+
+    The reads above it and the print below it are the caller's.  Split out
+    for Factor, which pays a prime per maximal run rather than a character
+    per command, and so wants to fold the ASCII offsets the reads and the
+    print would otherwise spend 48 characters on each.
+    :func:`_decision_tree_program` joins the three parts back.
+    """
+    n = _validate_truth_table(truth_table)
+
+    cells: list[str] = []
+    pos = start
+
+    def move(target: int) -> None:
+        nonlocal pos
+        cells.append(move_text(pos, target, right, left))
+        pos = target
+
+    result = 2 * n
+    is_constant = constant_span_test(truth_table)
+
+    def constant(i: int, combo: int) -> str | None:
+        """Return the shared value of the subtree at ``(i, combo)``, else None."""
+        span = 2 ** (n - i)
+        return truth_table[combo] if is_constant(combo, combo + span) else None
+
+    def branch(i: int, combo: int) -> None:
+        """Emit one side of node ``i``: a leaf when constant, else a subtree."""
+        value = constant(i + 1, combo)
+        if value is None:
+            move(2 * perm[i + 1])
+            node(i + 1, combo)
+        elif value == "1":
+            move(result)
+            cells.append("+")
+
+    def node(i: int, combo: int) -> None:
+        """Emit node ``i``: test ``b_i``, run one side, leave both cells zero."""
+        bit = 2 * perm[i]
+        flag = bit + 1
+        one = combo | (1 << (n - 1 - i))
+        move(flag)
+        cells.append("+")  # flag = 1, pending
+        move(bit)
+        cells.append("[-")  # one-side: if b_i, and clear it so this ] exits
+        move(flag)
+        cells.append("-")  # the one-side ran, so the zero-side must not
+        branch(i, one)
+        move(bit)
+        cells.append("]")
+        move(flag)
+        cells.append("[-")  # zero-side: the flag survived, so b_i was 0
+        branch(i, combo)
+        move(flag)
+        cells.append("]")
+
+    move(2 * perm[0])
+    node(0, 0)
+    return "".join(cells), pos
+
+
 def _decision_tree_program(
     truth_table: str,
     right: str,
@@ -477,68 +555,15 @@ def _decision_tree_program(
         if i < n - 1:
             move(pos + 2)
 
-    # decision tree: node i entered at cell 2i, exits at cell 2i+1
-    result = 2 * n
-
-    is_constant = constant_span_test(truth_table)
-
-    def constant(i: int, combo: int) -> str | None:
-        """Return the shared value of the subtree at ``(i, combo)``, else None.
-
-        The subtree's ``2**(n - i)`` rows are contiguous (MSB-first split).
-        """
-        span = 2 ** (n - i)
-        return truth_table[combo] if is_constant(combo, combo + span) else None
-
-    def branch(i: int, combo: int) -> None:
-        """Emit one side of node ``i``: a leaf when constant, else a subtree.
-
-        A ``'1'`` leaf is one ``+``; a ``'0'`` leaf is nothing, since the
-        result cell is already zero.  Either way pointer-neutral.
-        """
-        value = constant(i + 1, combo)
-        if value is None:
-            # A subtree is entered at the cell holding *its* input, which is
-            # ``2 * perm[i + 1]`` -- adjacent only when the order is the
-            # identity, so the target is computed rather than stepped over.
-            move(2 * perm[i + 1])
-            node(i + 1, combo)
-        elif value == "1":
-            move(result)
-            cells.append("+")
-
-    def node(i: int, combo: int) -> None:
-        """Emit node ``i``: test ``b_i``, run one side, and leave both cells zero.
-
-        Entered at ``bit`` with the flag zero, left at the flag with both
-        zero, so nodes nest.
-        """
-        bit = 2 * perm[i]
-        flag = bit + 1
-        one = combo | (1 << (n - 1 - i))
-        move(flag)
-        cells.append("+")  # flag = 1, pending
-        move(bit)
-        cells.append("[-")  # one-side: if b_i, and clear it so this ] exits
-        move(flag)
-        cells.append("-")  # the one-side ran, so the zero-side must not
-        branch(i, one)
-        move(bit)
-        cells.append("]")
-        move(flag)
-        cells.append("[-")  # zero-side: the flag survived, so b_i was 0
-        branch(i, combo)
-        move(flag)
-        cells.append("]")
-
-    move(2 * perm[0])
-    node(0, 0)
+    # The tree itself, which Factor also builds around its own prologue.
+    body, pos = decision_tree_body(truth_table, right, left, perm, pos)
+    cells.append(body)
 
     # One print, below the tree.  Exactly one leaf fires, leaving 0 or 1 in
     # the result cell, so the ASCII offset is paid once here instead of at
     # every leaf -- which is what the whole tree used to spend most of its
     # characters on.
-    move(result)
+    cells.append(move_text(pos, 2 * n, right, left))
     cells.append("+" * _ASCII_ZERO)
     cells.append(".")
     return "".join(cells)
