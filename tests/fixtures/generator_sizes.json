@@ -870,16 +870,16 @@
   },
   "bit~": {
    "0110": {
-    "commands": 233,
-    "source_units": 350
+    "commands": 121,
+    "source_units": 203
    },
    "01101001": {
-    "commands": 502,
-    "source_units": 867
+    "commands": 207,
+    "source_units": 402
    },
    "0110100110010110": {
-    "commands": 749,
-    "source_units": 1912
+    "commands": 237,
+    "source_units": 769
    }
   },
   "brainfuck": {

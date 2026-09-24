@@ -249,15 +249,25 @@ def bit_tilde(truth_table: str) -> str:
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first).  Each node copies its input into two
-    indicators, complements one, and uses both as one-shot ``{``/``}``
-    branch loops that clear themselves; deep levels sit nearest the input
-    area so the pointer walks sum geometrically and the source is O(T).
+    indicators, complements one, and runs both as one-shot ``{``/``}``
+    branch loops that clear themselves.
+
+    A read lands a byte on eight cells but only its low bit is consulted,
+    so reads *descend* three at a time: a later window stops three below
+    the previous low bit and cannot clobber it.  Three is the floor -- a
+    level's two flags stay live for its whole subtree, so it owns two
+    cells above its bit -- and the pitch is what the constant buys, the
+    walk being four fifths of the program at eight.  The third cell, the
+    copy temporary, is dead before either branch runs, so it is borrowed
+    from the level above.  The tree tests the essential inputs in reverse,
+    putting its busiest level beside the result cell.
     """
     n = _validate_truth_table(truth_table)
 
     used = essential_inputs(truth_table, n) or [0]
-    table = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
+    order = used[::-1]
+    table = read_at(truth_table, order, n)
+    width = len(order)
 
     prog: list[str] = []
     pos = 0
@@ -273,7 +283,6 @@ def bit_tilde(truth_table: str) -> str:
 
     def copy2(src: int, d1: int, d2: int) -> None:
         """Copy ``src`` to ``d1`` and ``d2``, zeroing ``src``."""
-        nonlocal pos
         move(src)
         prog.append("{")
         move(d1)
@@ -284,65 +293,68 @@ def bit_tilde(truth_table: str) -> str:
         prog.append("~")
         prog.append("}")
 
-    for i in range(n):
-        if i:
-            move(8 * i)
-        prog.append(")")
-        pos = 8 * i
+    def bit_cell(i: int) -> int:
+        """Return the cell holding stream input ``i``'s low bit."""
+        return 3 * (n - 1 - i) + 7
 
-    base = 8 * n
-    result = base
+    for i in range(n):
+        move(bit_cell(i) - 7)
+        prog.append(")")
+
+    # One past the deepest level's temporary, so leaf writes are a step away.
+    result = bit_cell(order[-1]) + 2
 
     def set_result() -> None:
-        nonlocal pos
         move(result)
-        prog.append("{ ~ } ~")
-        pos = result
+        prog.append("~")
 
     def clear(cell: int) -> None:
-        nonlocal pos
         move(cell)
         prog.append("{~}")
-        pos = cell
+
+    def roles(depth: int) -> tuple[int, int, int]:
+        """Level ``depth``'s two flags, under its bit, and its temporary.
+
+        The temporary is borrowed from above (see :func:`bit_tilde`).
+        """
+        source = bit_cell(order[depth])
+        return source - 1, source - 2, source + 1
+
+    # Every node hands its scratch back at zero and a node jumped over
+    # never touches it, so one prologue replaces the per-node clears that
+    # were a fifth of the source.  A set: a temporary is also a flag.
+    for cell in sorted({cell for depth in range(width) for cell in roles(depth)}):
+        clear(cell)
+    clear(result)
 
     changes = [0]
     for previous, current in pairwise(table):
         changes.append(changes[-1] + (previous != current))
 
     def node(start: int, end: int, depth: int) -> None:
-        nonlocal pos
         if changes[start] == changes[end - 1]:
             if table[start] == "1":
                 set_result()
             return
         half = (start + end) // 2
-        slot = width - 1 - depth
-        zero = base + 1 + 3 * slot
-        one = zero + 1
-        temp = zero + 2
-        for cell in (zero, one, temp):
-            clear(cell)
-        source = 8 * used[depth] + 7
+        source = bit_cell(order[depth])
+        zero, one, temp = roles(depth)
         copy2(source, one, temp)
         copy2(temp, source, zero)
         move(zero)
         prog.append("~{")
-        pos = zero
         node(start, half, depth + 1)
         move(zero)
         prog.append("~}")
-        pos = zero
         move(one)
         prog.append("{")
-        pos = one
         node(half, end, depth + 1)
         move(one)
         prog.append("~}")
-        pos = one
 
     node(0, 1 << width, 0)
 
-    # Cell 7 still holds input 0 because tree copies preserve every source.
+    # Copies preserve their source: cell 7 is still the last input byte.
     clear(7)
     move(result)
     prog.append("{")
@@ -351,7 +363,6 @@ def bit_tilde(truth_table: str) -> str:
     move(result)
     prog.append("~")
     prog.append("}")
-    pos = result
     move(0)
     prog.append("(")
     return "".join(prog)

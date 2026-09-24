@@ -30,10 +30,10 @@ which exceeds four exactly when ``b`` is negative -- a statement about the
 prologue, not about growth.  And ``b < 0`` is the *normal* case here: a
 balanced decision tree with per-node cost ``C`` sums to ``2C*T - 2C``.  So
 the retired size ratio ranked generators by how much fixed output they emit.
-AddSubJump is ``0.55*T + 1440`` and read x1.31; bit~ is ``132*T - 250`` and
-read x2.00.  Both are exactly linear.  Worse, it rewarded the wrong edit:
-with ``b`` negative and fixed, *reducing* the per-entry cost raises the
-ratio, so a genuine size win read as a regression.
+AddSubJump is ``0.55*T + 1440`` and read x1.31; Clockwise is
+``84.8*T - 858`` and read x2.01.  Both are exactly linear.  Worse, it
+rewarded the wrong edit: with ``b`` negative and fixed, *reducing* the
+per-entry cost raises the ratio, so a genuine size win read as a regression.
 
 Where the bound sits, measured on both sides:
 
