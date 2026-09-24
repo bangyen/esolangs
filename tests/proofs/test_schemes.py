@@ -11,7 +11,7 @@ Many of the twenty-two lookup rows fold a one-dependency table at ``n == 3``,
 which looks like a contradiction until you notice ``n == 3`` sits under every
 crossover -- those rows are measuring the tree route while the ledger names
 the wide one.  Folding therefore cannot be turned into "folds implies `tree`".
-Two rows break the converse as well, and are named in
+Several rows break the converse as well, and are named in
 :data:`_FOLDS_WITHOUT_TREE` below.
 
 Nor does the converse hold.  A tree may be *deliberately* unfolded: B-tapemark
@@ -62,12 +62,13 @@ _UNFOLDED_TREE_ROUTE = frozenset({"Container"})
 #: Lookup rows with no tree route that the fold discriminator cannot see:
 #: their *lookup* route is what shrinks a degenerate table, so they fold like a
 #: tree would.  Eval is one linear lookup at every arity, NoComment switches
-#: between two lookups at four inputs, and Suffolk's sweep shortens with every
-#: input ``essential_inputs`` drops.  Named rather than derived because the
-#: proxy is structural and this pair is its known blind spot; a third such row
-#: has to be added here, which is the point -- the equality below then fails
-#: until the prose and this set agree.
-_FOLDS_WITHOUT_TREE = frozenset({"Eval", "NoComment", "Suffolk"})
+#: between two lookups at four inputs, Suffolk's sweep shortens with every
+#: input ``essential_inputs`` drops, and Collatz Multiverse spends a constant
+#: and a decoder group on each distinct nibble its table holds.  Named rather
+#: than derived because the proxy is structural and these are its known blind
+#: spot; a further such row has to be added here, which is the point -- the
+#: equality below then fails until the prose and this set agree.
+_FOLDS_WITHOUT_TREE = frozenset({"Collatz Multiverse", "Eval", "NoComment", "Suffolk"})
 
 _LOOKUP_SCHEMES = frozenset({"finite lookup", "parameterized lookup", "linear lookup"})
 

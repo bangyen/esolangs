@@ -209,19 +209,54 @@ def decleq(truth_table: str) -> str:
     return " ".join(map(str, mem))
 
 
+#: Table rows a Collatz Multiverse cell carries, and so its decoder's stride.
+#: A cell costs one line whatever its width and a decoder ``c * 2**c`` cells,
+#: so four is cheapest: eight outgrows its own saving below thirteen inputs.
+_CM_CHUNK = 4
+
+#: Cell-constant names: one character, and none a register spelled elsewhere.
+_CM_ALIAS = "abcefghijlmnpqr"
+
+#: The shortest line that does nothing -- ``z`` is the zero register.
+_CM_PAD = "z=zx+z,NOT PRINT."
+
+
+def _cm_cells(
+    lines: list[str], array: str, values: list[str | None], capture: str
+) -> None:
+    """Append a block placing ``values`` at consecutive cells of ``array``.
+
+    ``capture`` takes the address one below the first cell -- a line rather
+    than a built constant, padded odd so the reader can sum even weights into
+    it.  A ``None`` value is left at its default, free in a trailing run.
+    """
+    if (len(lines) + 1) % 2 == 0:
+        lines.append(_CM_PAD)
+    lines.append(f"{capture}=zx+lineNumber,NOT PRINT.")
+    block = [
+        f"{array}[lineNumber]=zx+{value},NOT PRINT." if value else _CM_PAD
+        for value in values
+    ]
+    while block and block[-1] == _CM_PAD:
+        block.pop()
+    lines += block
+
+
 def collatz_multiverse(truth_table: str) -> str:
     """Build a Collatz Multiverse program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    A postorder Shannon tree combines child bits as ``(!x & zero) | (x &
-    one)``, reusing registers by depth so the source stays O(T).  For a
-    destination holding 0 or 1, ``d = A x + B`` is ``d := B + d*A`` -- a
-    multiply-add in the destination, not a conditional.  So ``d = z x + s``
-    copies ``s`` over whatever ``d`` held, the same line with ``d`` preloaded
-    with a bit is a two-way select, and writing a subtree's result into the
-    parent's accumulator collapses its "and with !x" to one line.
+    The table is placed in cells and indexed, not walked.  An array subscript
+    may name ``lineNumber``, so ``A[lineNumber] = z x + v`` drops ``v`` into
+    the cell the writing line's own number addresses: such a block lays the
+    table out at consecutive addresses for one line a cell, no pointer to
+    advance.  Four rows ride in each cell as a nibble ``V`` whose constant is
+    ``4 * V``, and the last two inputs select within it through a 64-cell
+    decoder holding bit ``j`` of ``V`` at ``4V + j``.  ``d = A x + B`` is
+    ``d := B + d*A`` for a destination holding zero and ``d := d // 2`` for an
+    even one, so an address takes its odd weight last: nothing halves it.
     """
     n = _validate_truth_table(truth_table)
     if all(c == truth_table[0] for c in truth_table):
@@ -233,66 +268,47 @@ def collatz_multiverse(truth_table: str) -> str:
         lines.append(f"out = negativeOne x + k{const}, DO PRINT.")
         return "\n".join(lines)
 
-    changes = [0]
-    for previous, current in pairwise(truth_table):
-        changes.append(changes[-1] + (previous != current))
+    padded = truth_table + "0" * (-len(truth_table) % _CM_CHUNK)
+    chunks = [
+        sum(int(bit) << j for j, bit in enumerate(padded[base : base + _CM_CHUNK]))
+        for base in range(0, len(padded), _CM_CHUNK)
+    ]
+    alias = {value: _CM_ALIAS[i] for i, value in enumerate(sorted({*chunks} - {0}))}
 
-    body: list[str] = []
-    negated: set[int] = set()
+    # The cell index is the inputs above the last two, shifted down by two.
+    weights = {2 ** (n - 3 - i) for i in range(max(n - 3, 0))}
+    lines = _cm_constants(
+        {_ASCII_ZERO, *weights, *(_CM_CHUNK * v for v in alias)}, zero="z"
+    )
+    lines += [f"{name}=zx+k{_CM_CHUNK * v},NOT PRINT." for v, name in alias.items()]
+    decoder = [
+        "k1" if v in alias and (v >> j) & 1 else None
+        for v in range(1 << _CM_CHUNK)
+        for j in range(_CM_CHUNK)
+    ]
+    _cm_cells(lines, "D", decoder, "t")
+    _cm_cells(lines, "A", [alias.get(v) for v in chunks], "s")
 
-    def tree(start: int, end: int, depth: int, dst: str) -> str:
-        """Emit the subtree over ``truth_table[start:end]``, preferring ``dst``.
-
-        Returns where the value landed: ``dst`` when a selecting line was
-        emitted, else an existing register or constant.  Reading that return
-        is what lets a child write straight into its parent's accumulator.
-        """
-        if changes[start] == changes[end - 1]:
-            return "k1" if truth_table[start] == "1" else "z"
-        half = (start + end) // 2
-        index = n - 1 - depth
-        inverted, accumulator = f"i{index}", f"a{index}"
-        # The zero child, masked by !x.  ``a`` is level-local, so the mask
-        # survives the one child's deeper call.
-        low = tree(start, half, depth + 1, accumulator)
-        if low == "z":
-            masked = "z"
-        elif low == "k1":
-            negated.add(index)
-            masked = inverted
-        else:
-            negated.add(index)
-            if low != accumulator:
-                body.append(f"{accumulator} = z x + {inverted}, NOT PRINT.")
-                body.append(f"{accumulator} = {low} x + z, NOT PRINT.")
-            else:
-                body.append(f"{accumulator} = {inverted} x + z, NOT PRINT.")
-            masked = accumulator
-        high = tree(half, end, depth + 1, f"r{index}")
-        if high == "z":
-            # ``x & 0`` is 0, so the masked zero child is already the answer.
-            return masked
-        if masked == "z" and high == "k1":
-            # The node *is* the input bit, and ``b`` is never written again.
-            return f"b{index}"
-        # ``dst`` holds the input bit; the mask is 0 when it is 1, so the
-        # disjoint arms make the add an or.
-        body.append(f"{dst} = z x + b{index}, NOT PRINT.")
-        body.append(f"{dst} = {high} x + {masked}, NOT PRINT.")
-        return dst
-
-    result = tree(0, 1 << n, 0, "o")
-
-    lines = _cm_constants({_ASCII_ZERO}, zero="z")
-    for index in reversed(range(n)):
-        lines.append(f"b{index} = z x + input, NOT PRINT.")
-    for index in sorted(negated):
-        lines.append(f"i{index} = z x + b{index}, NOT PRINT.")
-        lines.append(f"i{index} = negativeOne x + k1, NOT PRINT.")
-    lines += body
-    if result != "o":
-        lines.append(f"o = z x + {result}, NOT PRINT.")
-    lines.append(f"o = k1 x + k{_ASCII_ZERO}, DO PRINT.")
+    for i in range(n):
+        lines.append(f"w{i}=zx+input,NOT PRINT.")
+    # ``s`` sits one below the first cell, so the address wants the missing
+    # one -- folded into the only odd weight, which has to be added last.
+    for i in range(max(n - 3, 0)):
+        lines.append(f"w{i}=k{2 ** (n - 3 - i)}x+z,NOT PRINT.")
+        lines.append(f"s=k1x+w{i},NOT PRINT.")
+    if n >= 3:
+        lines.append(f"w{n - 3}=k1x+k1,NOT PRINT.")
+        lines.append(f"s=k1x+w{n - 3},NOT PRINT.")
+    else:
+        lines.append("s=k1x+k1,NOT PRINT.")
+    lines.append("t=k1x+A[s],NOT PRINT.")
+    if n >= 2:
+        lines.append(f"w{n - 2}=k2x+z,NOT PRINT.")
+        lines.append(f"t=k1x+w{n - 2},NOT PRINT.")
+    lines.append(f"w{n - 1}=k1x+k1,NOT PRINT.")
+    lines.append(f"t=k1x+w{n - 1},NOT PRINT.")
+    lines.append("o=zx+D[t],NOT PRINT.")
+    lines.append(f"o=k1x+k{_ASCII_ZERO},DO PRINT.")
     return "\n".join(lines)
 
 

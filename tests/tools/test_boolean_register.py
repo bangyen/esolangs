@@ -848,21 +848,32 @@ class TestCollatzMultiverse:
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 assert run_collatz_multiverse(program, bits) == table[combo]
 
-    def test_postorder_tree_structure(self) -> None:
-        """The tree reads each input once, reuses registers, and prints once.
-
-        Register *reuse* is the property worth pinning -- names are per level,
-        not per node -- so this counts distinct register names rather than
-        naming the ones a particular construction happens to emit.
-        """
+    def test_reads_each_input_once_and_prints_once(self) -> None:
+        """The program reads every input once and answers with one print."""
         program = boolean.collatz_multiverse("01101001")
         assert program.count("input") == 3
         assert program.count("DO PRINT.") == 1
-        names = {line.split(" =")[0] for line in program.splitlines()}
-        assert len(names) < len(program.splitlines())
+
+    def test_cells_are_addressed_by_line_number(self) -> None:
+        """The table sits in cells the writing line's own number addresses.
+
+        What is pinned is that the rows are *placed and indexed* rather than
+        walked: the fill block spends one line a cell and no line advancing a
+        pointer, and the reader subscripts those arrays instead of branching.
+        A quarter of the rows per cell is the construction's own choice and is
+        not pinned here; one line per cell is what the size constant rides on.
+        """
+        table = "01101001" * 8
+        program = boolean.collatz_multiverse(table)
+        subscripted = [line for line in program.splitlines() if "[" in line]
+        placed = [line for line in subscripted if "[lineNumber]=" in line]
+        assert len(placed) <= len(table) // 2
+        # What is left is the reader: one indexed read of each array, by a
+        # register the inputs summed rather than by a walked pointer.
+        assert len(subscripted) - len(placed) == 2
 
     def test_full_tree_growth_is_linear(self) -> None:
-        """Parity folds nothing, but depth-reused names keep source linear."""
+        """Parity folds nothing, but one line a cell keeps source linear."""
         sizes = []
         for n in (7, 8):
             table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
