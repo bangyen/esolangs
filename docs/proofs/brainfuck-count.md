@@ -14,17 +14,17 @@ arithmetic:
 
 | model (section 1) | lower bound on `liminf B(C)^(1/C)` | upper bound on `limsup B(C)^(1/C)` |
 |---|---|---|
-| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.19639** (Thm 4) | **7.0601** (Thm 1) |
+| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.18585** (Thm 4) | **7.0601** (Thm 1) |
 | clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0601 (Thm 1) |
 | clipped tape, EOF leaves the cell, all inputs | 3.79003 (Thm 4) | 7.3339 (Thm 1) |
-| bi-infinite tape, EOF error / keep | 4.19639 / 3.79003 | 6.9133 / 7.1949 |
+| bi-infinite tape, EOF error / keep | 4.18585 / 3.79003 | 6.9133 / 7.1949 |
 | any fixed nonempty finite input set `I`, any EOF, any tape | **3.36614** (Thm 5) | as for all inputs |
 | only the empty input (repo model) | 3.36614 | **6.3218** (Thm 1) |
 | loop-free programs, EOF error | **4.06124** (Thm 3) | **2 + sqrt 5 = 4.23607** (Thm 3) |
 | loop-free programs, EOF constant / keep | 3.79003 | 4.23607 / 4.72458 |
 
-Headline (repo model): **`4.1963 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0601`**,
-from `[2.414, 7.388]`.  In bits per character: `[2.069, 2.820]`, from `[1.272, 2.885]`.
+Headline (repo model): **`4.1858 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0601`**,
+from `[2.414, 7.388]`.  In bits per character: `[2.065, 2.820]`, from `[1.272, 2.885]`.
 The lower bound uses nested loops (section 5c).  They lift it well above the loop-free lower
 bound `4.061`, but not above the loop-free upper bound `4.236`, so it is still open whether
 loops raise the growth rate.
@@ -80,10 +80,10 @@ Conversely `liminf L(C)^(1/C) >= 4.06124` (err) and `>= 3.79003` (every EOF conv
 by the dead-cell families of section 5b.  These replace `3.87513` and `3.68909`, the limits of
 the pointer-read families of section 5.
 
-**Theorem 4 (lower bound, all inputs).**  `B(C) >= c * 4.19639^C / C` in the repo model and on
+**Theorem 4 (lower bound, all inputs).**  `B(C) >= c * 4.18585^C / C` in the repo model and on
 the bi tape with EOF err, using the nested-loop family `N_err` of section 5c.  (The family
 `D^L_err` of section 5b gives 4.06834.)  `B(C) >= L(C)`, so for const and keep
-`B(C) >= c * 3.79003^C / C`.  Hence `liminf B(C)^(1/C) >= 4.19639` (err) and `>= 3.79003`
+`B(C) >= c * 3.79003^C / C`.  Hence `liminf B(C)^(1/C) >= 4.18585` (err) and `>= 3.79003`
 (const, keep).
 
 **Theorem 5 (one input).**  For every nonempty input set `I`, every EOF convention and either tape,
@@ -330,15 +330,27 @@ The tokens are `P(q, D, f)` for a live or tested `q`, and `R(f)` at the nearest 
   makes the cell tested; a kill print makes it dead.
 * A **kill** print of a live cell may be followed by `]` when the depth is positive.
 
-Three local rules apply:
+Four local rules apply:
 
 * **N1.**  The token after `[` (the body's first token `g`) is a print.
 * **N2.**  Let `tau(g) = 1` when `g` prints the cell the `[` tested.  At depth 1 `tau` is free, and
   a loop directly inside another loop has the opposite `tau`.
 * **N3.**  The token after `]` is a read.  It is the single character `,`, because the exit cell
   is dead and nearest.
+* **N4.**  Every loop body contains a read at its own top level, that is, not inside a nested
+  loop.  A loop opens a child only after such a read.
 
 A word is *valid* if it ends at depth 0, with no live or tested cell, and not with `]`.
+
+*Termination.*  With N4, every run on every finite input ends, with a halt or an EOF.  Suppose a
+run is infinite.  It reads only finitely often, so some `]` jumps back infinitely often.  Take
+such a loop `L` of maximal depth.  After some time no loop inside `L` jumps back, so each later
+pass through `L`'s body executes its top-level tokens in order, including the read.  That gives
+infinitely many reads, a contradiction.  So every result below lists all outputs of its run.
+
+N4 is needed.  Without it a displaced repeat can run forever without reading, and its output is
+never observed.  An example is `>,>,<.[.>+.],<.` with `x2 != 255`: each pass moves right over a
+fresh cell, adds 1 and tests it.
 
 *Once-run.*  Each variable carries at most one bracket.  An *exit variable* is one whose print
 carries `]`; it takes the value that makes that print 0.  Every other variable is generic.  An
@@ -348,13 +360,15 @@ the same meaning as in `D_err`.
 
 *Decoding.*  It suffices to recover the once-run's event sequence together with the brackets that
 follow each print.  The `D_err` argument then gives the tokens.  Suppose `e_1, ..., e_{k-1}` and
-their brackets are known.
+their brackets are known, and let `r` be the number of reads among them.
 
-* Pin the exit variables seen so far and leave every other variable generic.  The run then follows
-  the once-run through `e_k`, and EOF truncation together with variation of the generic variables
-  shows `e_k`.
+* Pin the exit variables seen so far and leave every other variable generic.  Truncate the input
+  after `r` values.  The run follows the once-run through `e_k`, because no test lies between
+  `e_{k-1}`'s bracket and `e_k`, and then it ends.  If `e_k` is a read the result is `(eof, o)`.
+  If the text has ended it is `(halt, o)`.  Otherwise the run has one more output, the value of
+  `e_k`, and varying the generic variables gives it as a formal pair.
 * Let `e_k` print a live variable `x`.  Compare two runs: `G`, with `x` generic, and `Z`, with `x`
-  set so that `e_k` prints 0.
+  set so that `e_k` prints 0.  Both runs end.
   * With no bracket, both runs execute the same next token.
   * With `[`, `G` enters and its next event is a print (N1).  `Z` skips and its next event is a
     read (N3).
@@ -370,9 +384,10 @@ their brackets are known.
   * The decoder knows `tau(g_cur)` from the loop's first body event, and N2 makes the two
     hypotheses differ.
 
-*Counting.*  The transfer matrix has states (cell statuses, pointer, depth, a just-after-bracket
-flag, and the `tau` of the current depth-1 loop).  It is restricted to states that can still reach
-the final state, so every prefix completes at bounded cost.  The weights are:
+*Counting.*  The transfer matrix has these states: cell statuses, pointer, depth, a
+just-after-bracket flag, the `tau` of the current depth-1 loop, and whether the innermost open
+loop has read yet.  It is restricted to states that can still reach the final state, so every
+prefix completes at bounded cost.  The weights are:
 
 * `P`: `x^{1+dist} mu_D`;
 * a print followed by a bracket: `x^{2+dist} mu_D`;
@@ -381,26 +396,48 @@ the final state, so every prefix completes at bounded cost.  The weights are:
 The check is the one used in section 9 (`phi = round(10^17 v)`, weights `floor(w 2^62)`,
 128-bit integers):
 
-| window `W` | depth `K` | states | `x0` | growth `>=` |
-|---|---|---|---|---|
-| 8 | 4 | 892216 | 2391/10^4 | 4.182350 |
-| 9 | 4 | 3011409 | 2383/10^4 | **4.196391** |
+| window `W` | depth `K` | states | `x0` | min ratio | growth `>=` |
+|---|---|---|---|---|---|
+| 8 | 4 | 1311992 | 2398/10^4 | 1.000448 | 4.170141 |
+| 9 | 4 | 4428441 | 2389/10^4 | 1.000254 | **4.185851** |
 
-Numerical rates at `K = 4` are 4.134 (W = 6), 4.163 (7), 4.183 (8) and 4.196 (9).  Going to `K = 6`
-adds 0.003.  The limit appears to be 4.22 to 4.23, just below `2 + sqrt 5`.
+N4 costs about 0.01.  Without it the same windows give 4.182 (W = 8) and 4.196 (W = 9).  Going to
+`K = 6` adds about 0.003.  The limit appears to be about 4.22, just below `2 + sqrt 5`.
+Counting the words with `D = 0` from the matrix gives the same totals as the brute force below:
+748715 at W = 2, K = 3, cost <= 14, and 993648 at W = 1, K = 3, cost <= 18.
 
-A brute-force check confirms pairwise distinctness on small windows (clip/err).  The runs were
-W = 2 with cost <= 10, W = 3 with cost <= 10, W = 1 with cost <= 15 (`D = 0`), and W = 2 with
-cost <= 13 (`D = 0`), for 819136 programs in total.  Of these, 201295 contain loops and 592 contain
-nested loops.  There are no collisions.  As a negative control, dropping the tested status gives
-collisions, for example `+.+.[..]` against `+.+.[.]`.
+A brute-force check confirms pairwise distinctness on small windows (clip/err).  It detects
+divergence exactly, by a repeated state at a backward jump, and it tests each class of candidates
+on up to 91578 inputs, biased to zeros.  The runs were W = 2 with cost <= 11 and `|D| <= 1`,
+W = 3 with cost <= 11 and `|D| <= 1`, W = 1 with cost <= 23 (`D = 0`), and W = 2 with cost <= 17
+(`D = 0`).  About 66 million programs were tested, 36 million of them with loops and 263 with
+nested loops.  There are no collisions.  As a negative control, dropping the tested status and
+N4 gives collisions, for example `,.[...],` against `,.[.],`.
 
-**Without N1-N3.**  Call the family without the three rules `T`.  Its rates are 4.2420 (W = 6) and
-4.2898 (W = 8), numerically.  An exact Collatz-Wielandt check at W = 6 gives `>= 4.241781`.
-Brute force (W = 2, cost <= 10, depth <= 3, 140531 programs) finds no collisions.  A decoding
-proof for `T` would therefore show that loops raise the growth rate.  The argument above cannot
-supply one: in `T` the body's first token and the token after `]` may coincide, and then the skip
-and repeat runs execute the program from a displaced pointer.
+**Without N1-N3.**  Call the family without N1-N3 `T`.  Its rates at `K = 4` are 4.2420
+(W = 6), 4.2700 (W = 7) and 4.2898 (W = 8), numerically, and an exact check at W = 6 gives
+`>= 4.241781`.  Adding N4 costs 0.008 to 0.013.  Brute force finds no collisions in `T`: 20.7
+million programs at W = 1 with cost <= 21 (1.2 million nested), 2.9 million at W = 2 with
+cost <= 15, and 2.4 million at W = 3 with cost <= 12.  A decoding proof for `T` would show that
+loops raise the growth rate.  The argument above extends as follows (with N4).
+
+* With no bracket, `G` and `Z` agree up to the value of `x`.
+* With either bracket, `G` runs the loop's `g` and `Z` runs the token `z` after `]`, both from
+  `x`'s cell.  Every cell then holds a variable at a known offset, or 0.  So two consistent
+  prints must have equal adds, and they must print the same cell or two cells holding 0.
+* The add of `G`'s token can be read off, so the kind of bracket is decided by the signature
+  (type, whether it prints `x`'s cell, add) of the current loop's `g`.
+
+Local rules that force a difference within one or two tokens therefore suffice.  They are: `g`
+and `z` are not two prints with equal adds, and not two reads unless the next pair differs in the
+same way; a child's `g` has a signature different from its parent's.  But these rules need
+memory for every open loop, and each tested version costs 0.01 to 0.04.  Examples at W = 6 are
+4.203 when `g` and `z` may not both be reads, 4.208 or 4.218 for the parent/child rule, and
+0.06 to 0.09 for the combinations that can be proved.  That exceeds the headroom of `T`.  The
+configurations that force the cost are those where the loop body and the code after `]` (or a
+parent body and a child body) agree for several tokens, such as `.[,.` against `.],.`.  After two
+reads into different cells the two tapes differ in two places, and the comparison no longer
+reduces to comparing texts.
 
 ## 6. One input (Theorem 5)
 
@@ -435,17 +472,18 @@ These are behaviours on finite input sets, so they are lower estimates of `B(C)`
 
 ## 8. What is not settled
 
-* **The limit.**  The repo-model interval is `[4.1964, 7.0601]`.  Nested loops raise the
-  certified lower bound from the loop-free 4.061 to 4.196 (section 5c).  It stays below the
+* **The limit.**  The repo-model interval is `[4.1858, 7.0601]`.  Nested loops raise the
+  certified lower bound from the loop-free 4.061 to 4.186 (section 5c).  It stays below the
   loop-free upper bound `4.236`, so it is still open whether loops raise the growth rate.  The
   idealised grammar explains why loops must nest.  Take prints of weight `x mu^2`, reads of
   weight `x`, and brackets after prints with no decodability constraint.  Depth 1 then gives
   exactly `2 + sqrt 5`, since `x^4 + 4x^3 + 4x - 1 = (x^2+1)(x^2+4x-1)`.  Depths 2, 4 and 8
   give 4.365, 4.459 and 4.507.  On the dead-cell base the unconstrained nested family `T` of
   section 5c already reaches 4.242 at W = 6 and 4.290 at W = 8, and brute force finds no
-  collisions in it.  The gap is therefore a proof question.  The local rules N1-N3 make the
-  decoding a one-event comparison, but they cost about 0.1 and push the limit of `N_err` to
-  about 4.23.
+  collisions in it.  The gap is therefore a proof question.  Local rules make the decoding a
+  one- or two-event comparison, but every provable set of them tried so far costs 0.06 to 0.1.
+  What is missing is a non-local argument: that from one machine state, a loop's enter
+  continuation and its skip continuation cannot behave the same.
 * **Loop-free rate.**  It lies in `[4.061, 4.236]`.  The upper bound gives each read a free
   position.  Behaviourally a read only kills a value that is never printed again, and the
   dead-cell families suggest a limit near 4.08.  An encoding that drops the positions of
@@ -482,6 +520,6 @@ integers `phi` (scale `10^17`).  The token weights are replaced by the exact low
 128-bit integer arithmetic.  Lowering the weights only weakens `M`, so the check is sound.
 
 The nested-loop certificates of section 5c use the same scheme.  The transfer matrix is on
-(cell statuses in {dead, live, tested}, pointer, depth, flag, `tau` bit), restricted to states
-that are reachable and can reach the final state.  Its token weight classes are `x^{1+d} mu_D`,
-`x^{1+d}` and `x^{2+d} mu_D`.
+(cell statuses in {dead, live, tested}, pointer, depth, flag, `tau` bit, read bit), restricted to
+states that are reachable and can reach the final state.  Its token weight classes are
+`x^{1+d} mu_D`, `x^{1+d}` and `x^{2+d} mu_D`.
