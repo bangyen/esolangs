@@ -53,6 +53,8 @@ CITATIONS = {
     ("polynomial.tex", "coefficient-mass", "3.1"): ("Lemma", "lem:slack"),
     ("polynomial.tex", "coefficient-mass", "3.4"): ("Corollary", "cor:mass"),
     ("polynomial.tex", "coefficient-mass", "3.6"): ("Corollary", "cor:infimum"),
+    ("polynomial.tex", "coefficient-mass", "5.3"): ("Corollary", "cor:imag"),
+    ("polynomial.md", "coefficient-mass", "5.3"): ("Corollary", "cor:imag"),
 }
 
 #: The files whose citations the table above has to cover.

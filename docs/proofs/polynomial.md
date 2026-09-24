@@ -335,21 +335,21 @@ The companion to `polynomial.tex` Section "Explicit constants"
 Put `C_P(n)` = max over tables of min `|f|`, and normalise by
 `T**2/n = T**2/log2 T`. The bracket is
 
-    log10(2)/1152 = 2.61e-4  <=  liminf C_P n/T**2  <=  211/2 log10(2) = 31.8
-    log10(2)/288  = 1.05e-3  <=  limsup C_P n/T**2  <=  422 log10(2)   = 127.1
+    log10(2)/18   = 1.67e-2  <=  liminf C_P n/T**2  <=  211/2 log10(2) = 31.8
+    2/9 log10(2)  = 6.69e-2  <=  limsup C_P n/T**2  <=  422 log10(2)   = 127.1
 
-For `T**2/ln T` units, multiply by `ln 2`: `1.81e-4 .. 22.0` and
-`7.25e-4 .. 88.1`.
+For `T**2/ln T` units, multiply by `ln 2`: `1.16e-2 .. 22.0` and
+`4.64e-2 .. 88.1`.
 
 Per `n`, put `j1 = min{j : 2**j + j >= n}`, `nu = n / 2**j1` (in
 `(1/2, 1 + j1/2**j1]`), `n = 2**(j1-1) + j1 - 1 + s` and `u = 2**-s`. Then the
-normalised size lies between `log10(2) nu**2 / 288` and
+normalised size lies between `(2/9) log10(2) nu**2` and
 `log10(2) nu**2 (422 + 924u + 494u**2)`. The lower side carries relative
 error `O(log n / n)` and the upper side `O(1/n)`. The two sides differ by
-the factor `288 (422 + 924u + 494u**2)`, which is 121,536 for most `n` and
-at most 290,160. So the order is settled and the constant is not.
+the factor `(9/2)(422 + 924u + 494u**2)`, which is 1899 for most `n` and
+at most 4533.75. So the order is settled and the constant is not.
 
-**Lower side: four links.**
+**Lower side: three links.**
 
 1. *Width, exact.* Reads consume the stream in order, so only the natural
    variable order counts, and the table is chosen outright (no union bound
@@ -357,22 +357,25 @@ at most 290,160. So the order is settled and the constant is not.
    distinct first-essential strings. There are
    `E_j = 2**(2**j) - 2**(2**(j-1)) - 2` of these, so
    `N_n = max_j min(2**(n-j), E_j) = nu T/n (1 + o(1))` is attained.
-2. *Cursor count `3 + 6B` (was `4 + 8B`).* The cursor `c_(J-1)` carries at
-   most one first-essential residual. The read at `c_J` overwrites the
-   register with no routing in between, so the output is
-   `w(b_k) v(y_1, ...)` with `v` free of `b_k`. A first-essential residual
-   needs `w` empty, so it equals `v` for both register values. `c_J` keeps
-   its two residuals.
-3. *Block incidence `2L - 2` (was `3L - 3`).* The graph is bipartite
-   (openers against closers) as well as outerplanar. A 2-connected block's
-   outer Hamiltonian cycle alternates sides, so `a_i = b_i` and
-   `E_i <= 3a_i - 2`. Summing over the block-cut tree gives
-   `E <= a + 2b - 2`, hence `m_routing <= a + E <= 2L - 2`. Links 2 and 3
-   together give `N*(k) <= 12 L_real - 9`.
-4. *Mass, exact `1/2`.* `Lambda >= sum_i i log i >= (L**2/2)(log L - 1/2)`,
-   which is sharp at the first `L` primes. For every `n >= 6`, with
-   `L = ceil((N_n + 9)/12)`:
-   `C_P(n) >= L**2 (2 ln L - 1) / (4 ln 10)`.
+2. *Input incidence `N* <= 3K` (`lem:input`).* Input instructions are the
+   purely imaginary pairs `+-p**b i`, `2 <= b <= 6`, and equal roots sort
+   into one block. Reads do not jump, so inside a block of `s` equal reads
+   the read at `q_i` is followed by the one at `q_(i+1)`: before `q_(s-1)`
+   the next two reads erase both the register and `y_1`, so no
+   first-essential residual sits there; `q_(s-1)` carries at most one and
+   `q_s` two. So a maximal-width table forces `K_n = ceil(N_n/3)` distinct
+   input values.
+3. *Mass, exact per pair.* By multisection
+   ([coefficient-mass](coefficient-mass.tex) Corollary 5.3)
+   a multiple of `prod (x**2 + c_j**2)` has an even or odd part that is a
+   multiple of `prod (y + c_j**2)` with the same leading coefficient, so each
+   pair is charged exactly as the real root `c**2`. The `j`-th prime power
+   with exponent `>= 2` is at least `(j+2)**2/4` (`lem:ppow`), so for every
+   `n >= 6`: `C_P(n) >= (2 K**2 ln K - (5/2) K (K+1)) / ln 10`.
+
+The older real-root route (`12 L - 9` routing, mass `1/2`) is 64 times
+weaker: `N*(k) <= 3 + 6 m_route` with `m_route <= 2L - 2` for the
+bipartite outerplanar block-incidence graph.
 
 **Upper side.** A chained block
 (`+=1; if; input; *=span or //=50; +=delta; endif`) has 10 roots. Their
@@ -395,20 +398,20 @@ or `4` twice. Let `Phi = sum_i i b_(i)`, taken in sorted order.
   `S_n = (2 + 2u) q_j1` and `R_n = 2u q_j1` gives the closed form.
 
 **Where the gap sits** (at `u -> 0`):
-`121,536 = 12**2 (routing) x 4 (levels: (S/W)**2) x 2 x 105.5 (profile)`.
+`1899 = 3**2 (routing) x 4 (levels: (S/W)**2) x 105.5/2 (profile)`.
 
-* The routing factor is lossy. Both per-cursor caps are attained, and the
-  graph bound `a + E = 2V - 2` is attained (ladders). The measured ratios
-  are `N*/L_real <= 0.2` and `N*/B <= 0.5` on 2,536 table programs at
-  n = 3..5.
+* The routing factor: the construction spends one input per state, the
+  bound credits one per 3 residuals. Measured `N*/K_in <= 0.4` on 3,761
+  generator programs at n = 3..5.
 * The levels factor exists because a cursor can serve several levels when
   the read count varies. So counting sees `W`, not `S`.
-* The profile factor comes from the construction: 80% of its degree is
-  complex register roots, which the real-node certificate cannot charge.
-  The worst-case profile bound is 105.5; random tables measure about 76.
+* The profile factor: the input pairs give mass constant 2, the
+  construction pays up to 105.5 (random tables about 76). The rest is the
+  arithmetic register roots `a +- p**b i`, `a != 0`, and the real roots,
+  which the lower bound does not charge.
 
-**Exact ingredients:** the width, the mass `1/2`, and the logarithms to
-first order.
+**Exact ingredients:** the width, the per-pair mass (multisection), and the
+logarithms to first order.
 
 **The roadmap's sharp form is already in hand.** Its gap (a) is
 `coefficient-mass.tex` Lemma 3.1, the all-root form, which holds for every
