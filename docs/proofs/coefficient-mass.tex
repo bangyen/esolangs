@@ -2363,7 +2363,8 @@ equal the top row.  At $r=\frac32$ and $L\le8$ the minimum is at $i=k$
 except for $(L,k)=(6,2),(8,2),(8,3)$, where it is at $i=1$.  For $n\ge2$
 at $r=1.9$ and $n\ge3$ at $r=1.75$ it is at $i=1$.  This explains the
 exception noted in the previous paragraph: there the worst exempted set lies
-far out.
+far out.  For $1<r<2$, Theorem~\ref{thm:onepolyrows} proves the conjecture
+whenever $\beta_r(n)\le1$, for every $k$ and with the minimum at $i=k$.
 
 \paragraph{One kept hole at several roots.}
 For a multiset $R=(\rho_1,\ldots,\rho_m)$ of reals greater than $1$ write
@@ -5226,6 +5227,8 @@ For $1<r<2$ the theorem gives $V_r(L,k)\ge(r-1)^{k-1}\beta_r(L-k+1)$.  By
 Corollary~\ref{cor:lastrowr} this is an equality for $k=L$, where both sides
 are $(r-1)^L$.  The conjectured value $\min_{i\le k}1/\nu_i(n)$ is at least
 $(r-1)^{k-1}\beta_r(n)$ by Theorem~\ref{thm:prefixmono}.
+Section~\ref{sec:onepoly} proves the conjecture for $1<r<2$ whenever
+$\beta_r(n)\le1$.
 
 Lemma~\ref{lem:optins} with $D=\infty$ and $T=\varnothing$ applies to every
 top-row optimum $Z_0$ (Lemma~\ref{lem:topzero}(a)) and every hole $c$ of
@@ -5246,6 +5249,283 @@ $W\supseteq[1,c-1]$, so $\Phi_{r,D}^{<c}(r_{\mathrm{ins}(W,c)})=0$.  Also
 $\mathrm{ins}(W,c)\supseteq[1,i]$.  So
 $\mu_{r,D}([1,i],i+m)\le a\,\mu_{r,D}([1,i-1],i-1+m)$, and letting
 $D\to\infty$ gives $\nu_{i+1}(m)\le a\,\nu_i(m)$.
+
+\subsection{Rows below the root \texorpdfstring{$2$}{2} from one polynomial}\label{sec:onepoly}
+
+Theorem~\ref{thm:allrowstwo} settles the rows at every $r\ge2$.  For
+$1<r<2$ it gives only $V_r(L,k)\ge(r-1)^{k-1}\beta_r(n)$, while the
+conjectured value is $\min_{i\le k}1/\nu_i(n)$.  This subsection proves the
+conjecture for $1<r<2$ whenever $\beta_r(n)\le1$, for every $k$
+(Theorem~\ref{thm:onepolyrows}).  For each $n$ this is an interval of roots
+$1<r\le r_n$, and $r_n\ge1+\frac1n$ for $n\le10$
+(Corollary~\ref{cor:onepolyranges}).  There the minimum is at $i=k$: the
+prefix $[1,k-1]$ is the worst exempted set.
+
+Two facts give this.  First, Lemma~\ref{lem:crossing}(b) pushes every
+exempted position down into an initial block while a fixed polynomial factor
+rides along.  So one polynomial $p$ serves all exempted sets at once, at the
+cost of the largest of its prefix sums (Theorem~\ref{thm:onepoly}).  Second,
+these prefix sums grow at least by the factor $\nu_1(n)=1/\beta_r(n)$ from
+one index to the next (Lemma~\ref{lem:prefixshift}).  Nothing is inserted,
+and the only optimality used is that of $p$ for the last index.
+
+Keep $\omega_i(s)=\binom{s-1}{i-1}r^{-s}$ from the paragraph on dilating
+and crossing, let $\mathcal Q_n$ be the set of real polynomials $p$ with
+$\deg p\le n-1$ and $p(0)=1$, and put
+\[
+  A_i(p)=\sum_{s\ge1}\omega_i(s)\,|p(s)|=\Phi_r\bigl(r_{[1,i-1]}\,p\bigr)
+  \qquad(i\ge1),
+\]
+for real polynomials $p$, so that $\nu_i(n)=\inf_{p\in\mathcal Q_n}A_i(p)$.
+The second expression holds because $|r_{[1,i-1]}(s)|=\binom{s-1}{i-1}$
+for $s\ge1$.  For finite $S\subset\N_{>0}$ let $\ell(S)$ be the largest
+$\ell\ge0$ with $[1,\ell]\subseteq S$.
+
+\begin{lemma}[Pushing exempted positions into the prefix]\label{lem:prefixpush}
+Let $r>1$, let $p$ be a real polynomial and let $S\subset\N_{>0}$ be finite.
+Then
+\[
+  \Phi_r(r_S\,p)\le\max_{1\le i\le|S|+1}A_i(p).
+\]
+\end{lemma}
+
+\begin{proof}
+Induct on $|S|$ and, for fixed $|S|$, on $d(S)=|S|-\ell(S)$.  If $d(S)=0$,
+then $S=[1,|S|]$ and $\Phi_r(r_Sp)=A_{|S|+1}(p)$.  Let $d(S)>0$, put
+$\ell=\ell(S)$ and $\sigma=\max S$.  Then $\ell+1\notin S$, so
+$\sigma\ge\ell+2$; otherwise $S\subseteq[1,\ell]$ and $d(S)=0$.  Put
+$U=S\setminus\{\sigma\}$ and $Q=r_Up$, so that $r_Sp=Q\cdot(1-s/\sigma)$.
+Lemma~\ref{lem:crossing}(b) with $y=\ell+1\le\sigma$ gives
+\[
+  \Phi_r(r_Sp)\le\max\bigl\{\Phi_r(r_Up),\ \Phi_r(r_{U\cup\{\ell+1\}}\,p)\bigr\},
+\]
+because $\ell+1\notin U$.  Here $|U|=|S|-1$, so the induction hypothesis
+bounds the first term by $\max_{i\le|S|}A_i(p)$.  The set
+$S'=U\cup\{\ell+1\}$ has $|S'|=|S|$ and $[1,\ell+1]\subseteq S'$, so
+$d(S')<d(S)$, and the induction hypothesis bounds the second term by
+$\max_{i\le|S|+1}A_i(p)$.
+\end{proof}
+
+\begin{theorem}[One polynomial for all exempted sets]\label{thm:onepoly}
+Let $r>1$, $1\le k\le L$, $n=L-k+1$ and $p\in\mathcal Q_n$.  Every monic
+multiple $F$ of $(x-r)^L$ has
+\[
+  b_k(F)\ \ge\ \frac1{\max_{1\le i\le k}A_i(p)} .
+\]
+Hence, with $\Lambda_k(n)=\inf_{p\in\mathcal Q_n}\max_{1\le i\le k}A_i(p)$,
+\[
+  \frac1{\Omega_k(n)}\ \le\ \frac1{\Lambda_k(n)}\ \le\ V_r(L,k)\ \le\
+  \min_{1\le i\le k}\frac1{\nu_i(n)} .
+\]
+\end{theorem}
+
+\begin{proof}
+Let $S$ be the exempted set of Proposition~\ref{prop:rowvalue}(a), so
+$|S|=k-1$.  The polynomial $q=r_Sp$ has $\deg q\le k-1+n-1=L-1$, $q(0)=1$
+and $q|_S=0$.  So $b_k(F)\,\Phi_r(q)\ge1$, and Lemma~\ref{lem:prefixpush}
+bounds $\Phi_r(q)$.  The upper bound is Theorem~\ref{thm:prefixrows}.  For
+the first inequality, $W_k(s)=\max_{1\le i\le k}\binom{s-1}{i-1}$ in the
+notation of Theorem~\ref{thm:prefixrows}, so
+$\sum_sW_k(s)r^{-s}|p(s)|\ge\max_{i\le k}A_i(p)$ for every $p$.
+\end{proof}
+
+The theorem moves the maximum over $i$ out of the sum in
+Theorem~\ref{thm:prefixrows}, and this loses nothing when one $p$ is nearly
+optimal for all prefix problems at once.  The conjecture stated after
+Corollary~\ref{cor:belowtwo} holds at $(r,n,k)$ whenever
+$\Lambda_k(n)=\max_{i\le k}\nu_i(n)$.  For $n=1$ we have
+$\mathcal Q_1=\{1\}$ and $A_i(1)=a^i$.  So the theorem gives
+$V_r(L,L)\ge r-1$ for $r\ge2$ and $V_r(L,L)\ge(r-1)^L$ for $r\le2$, and
+Lemma~\ref{lem:prefixpush} with $p=1$ gives $\Phi_r(S)\le\max\{a,a^{|S|+1}\}$.
+These are the lower bounds of Corollary~\ref{cor:lastrowr}, obtained here
+from convexity alone, without Lemma~\ref{lem:confdelr} and the tail theorem
+behind it.
+
+\begin{lemma}[Shifting the prefix index]\label{lem:prefixshift}
+Let $r>1$, $n\ge1$, $i,m\ge1$, and let $p$ be real with $\deg p\le n-1$.
+Then
+\[
+  A_{i+m}(p)\ \ge\ \nu_m(n)\,A_i(p).
+\]
+Consequently $\nu_{i+m}(n)\ge\nu_i(n)\,\nu_m(n)$, and
+$\nu_i(n)\ge\nu_1(n)^i=\beta_r(n)^{-i}$.
+\end{lemma}
+
+\begin{proof}
+Counting the $(i+m-1)$-element subsets of $[1,s-1]$ by their $i$-th
+smallest element $u$ gives
+$\sum_{u=1}^{s-1}\binom{u-1}{i-1}\binom{s-u-1}{m-1}=\binom{s-1}{i+m-1}$, that is,
+$\omega_{i+m}(s)=\sum_{u+t=s,\ u,t\ge1}\omega_i(u)\,\omega_m(t)$.  All terms
+being nonnegative,
+\[
+  A_{i+m}(p)=\sum_{u\ge1}\omega_i(u)\sum_{t\ge1}\omega_m(t)\,|p(u+t)| .
+\]
+If $p(u)\ne0$, the polynomial $t\mapsto p(u+t)/p(u)$ lies in $\mathcal Q_n$,
+so the inner sum is at least $\nu_m(n)|p(u)|$; if $p(u)=0$ this is trivial.
+This proves the inequality.  Taking the infimum over $p\in\mathcal Q_n$
+gives $\nu_{i+m}(n)\ge\nu_m(n)\nu_i(n)$, and $\nu_1(n)=1/\beta_r(n)$.
+\end{proof}
+
+Together with Theorem~\ref{thm:prefixmono},
+$\nu_1(n)\,\nu_i(n)\le\nu_{i+1}(n)\le a\,\nu_i(n)$, and both inequalities are
+equalities at $n=1$, where $\nu_i(1)=a^i$.
+
+\begin{theorem}[All rows when the top row is at most one]\label{thm:onepolyrows}
+Let $r>1$ and $n\ge1$ with $\beta_r(n)\le1$.  Then
+$1\le\nu_1(n)\le\nu_2(n)\le\cdots$, and for every $k\ge1$ and $L=n+k-1$,
+\[
+  V_r(L,k)=\frac1{\nu_k(n)}=\min_{1\le i\le k}\frac1{\nu_i(n)} .
+\]
+So the conjecture stated after Corollary~\ref{cor:belowtwo} holds at $(r,n)$
+for every $k$, with the minimum at $i=k$.
+\end{theorem}
+
+\begin{proof}
+By Lemma~\ref{lem:prefixshift} with $m=1$ and $\nu_1(n)=1/\beta_r(n)\ge1$,
+$A_{i+1}(p)\ge A_i(p)$ for every $p\in\mathcal Q_n$ and every $i$, and
+$\nu_{i+1}(n)\ge\nu_i(n)$.  Given $\varepsilon>0$ choose $p\in\mathcal Q_n$
+with $A_k(p)\le\nu_k(n)+\varepsilon$.  Then
+$\max_{i\le k}A_i(p)=A_k(p)$, and Theorem~\ref{thm:onepoly} gives
+$V_r(L,k)\ge1/(\nu_k(n)+\varepsilon)$.  The upper bound
+$V_r(L,k)\le\min_i1/\nu_i(n)\le1/\nu_k(n)$ is Theorem~\ref{thm:prefixrows}.
+\end{proof}
+
+Since $\nu_1(n+1)\le\nu_1(n)$, we have $\beta_r(n)\ge\beta_r(1)=r-1$.  So the
+hypothesis forces $r\le2$, and at $r=2$ it holds only for $n=1$.  For each
+$q\in\mathcal Q_n$ the sum $\Phi_r(q)$ decreases in $r$, as in
+Lemma~\ref{lem:rmono}, so $\nu_1(n)$ does not increase with $r$.  Hence
+$\{r>1:\beta_r(n)\le1\}$ is an interval with left end $1$, it shrinks as $n$
+grows, and for $n=1$ it is $(1,2]$.  Let $r_n$ be its right end.
+
+\begin{corollary}[Explicit ranges]\label{cor:onepolyranges}
+Let $1\le n\le10$ and $1<r\le1+\frac1n$.  Then
+$V_r(L,L-n+1)=1/\nu_{L-n+1}(n)$ for every $L\ge n$.
+\end{corollary}
+
+\begin{proof}
+For $n=1$, $\beta_r(1)=r-1\le1$.  For $2\le n\le10$ put $\rho=1+\frac1n$.
+Proposition~\ref{prop:toprowcert} with the set $Z_0$ of
+Table~\ref{tab:onepolyranges} gives $\beta_\rho(n)=1/\Phi_\rho(Z_0)$, and
+exact arithmetic gives $\Phi_\rho(Z_0)>1$.  By the monotonicity just noted,
+$\beta_r(n)\le\beta_\rho(n)<1$ for $1<r\le\rho$, and
+Theorem~\ref{thm:onepolyrows} applies.
+\end{proof}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{rll}
+$n$ & $Z_0$ & $\beta_{1+1/n}(n)$\\\hline
+2 & $\{4\}$ & $0.9153$\\
+3 & $\{4,11\}$ & $0.8767$\\
+4 & $\{4,11,21\}$ & $0.8526$\\
+5 & $\{4,10,20,35\}$ & $0.8380$\\
+6 & $\{4,10,19,33,52\}$ & $0.8271$\\
+7 & $\{4,10,19,32,48,73\}$ & $0.8195$\\
+8 & $\{4,10,19,31,47,68,97\}$ & $0.8135$\\
+9 & $\{4,10,19,31,46,65,90,125\}$ & $0.8084$\\
+10 & $\{4,10,19,30,45,64,87,116,156\}$ & $0.8042$
+\end{tabular}
+\caption{Top-row optima at $r=1+\frac1n$, certified by
+Proposition~\ref{prop:toprowcert} in exact arithmetic (values rounded).}
+\label{tab:onepolyranges}
+\end{table}
+
+In floating point the right ends are $r_2\approx1.5405$, $r_3\approx1.3738$,
+$r_4\approx1.2865$, $r_5\approx1.2321$, $r_6\approx1.1951$,
+$r_7\approx1.1685$ and $r_8\approx1.1482$, so $n(r_n-1)$ grows from $1.08$
+to $1.19$.  The values in Table~\ref{tab:onepolyranges} decrease with $n$,
+and we expect $\beta_{1+1/n}(n)<1$ for every $n$, but have no proof.  The
+corollary agrees with Corollary~\ref{cor:rowstreevals}, where every case
+with $n\ge2$ and $r\le1+\frac1n$ has $i^*=k$.  It extends that corollary: at
+$r=\frac{11}{10}$ it gives $i^*=k$ for all $k$ and $n\le10$, at
+$r=\frac54$ for $n\le4$, and at $r=\frac32$ for $n\le2$.
+
+Theorem~\ref{thm:onepoly} also works beyond $\beta_r(n)\le1$, one row at a
+time and with a finite check in place of a tree.
+
+\begin{corollary}[Rows from one certified set]\label{cor:onepolyexact}
+Let $r>1$, $n\ge1$, $k\ge2$ and $L=n+k-1$.  Let $Z^*=[1,k-1]\cup Y$ with
+$|Y|=n-1$ satisfy the hypothesis of Proposition~\ref{prop:toprowcertS} with
+$S=[1,k-1]$.  If $\Phi_r([1,i-1]\cup Y)\le\Phi_r(Z^*)$ for $1\le i<k$, then
+\[
+  V_r(L,k)=\frac1{\Phi_r(Z^*)}=\frac1{\nu_k(n)}=\min_{1\le i\le k}\frac1{\nu_i(n)} .
+\]
+This holds in exact arithmetic for $r=\frac32$ with $n=3$, $2\le k\le10$, and
+with $n=4$, $5\le k\le10$; for $r=\frac54$ with $n=5$, $2\le k\le10$; and for
+$r=\frac74$ with $n=2$, $5\le k\le12$.
+\end{corollary}
+
+\begin{proof}
+Proposition~\ref{prop:toprowcertS} gives
+$\nu_k(n)=\mu_r([1,k-1],L)=\Phi_r(Z^*)$ and $V_r(L,k)\le1/\Phi_r(Z^*)$.
+Since $Z^*$ is a set, $Y\subset[k,\infty)$, so $p=r_Y\in\mathcal Q_n$ has
+$A_i(p)=\Phi_r([1,i-1]\cup Y)$ for $i\le k$, and $A_k(p)=\Phi_r(Z^*)$.
+Theorem~\ref{thm:onepoly} gives $V_r(L,k)\ge1/\Phi_r(Z^*)$, and
+Theorem~\ref{thm:prefixrows} gives the rest.  In the listed cases $Y$ is,
+for $k=2,3,\ldots$ in turn:
+\begingroup\sloppy
+\begin{itemize}
+\item $r=\frac32$, $n=3$: $\{5,11\}$, $\{8,15\}$, $\{11,18\}$, $\{13,22\}$,
+$\{16,25\}$, $\{19,28\}$, $\{21,31\}$, $\{24,35\}$, $\{27,38\}$;
+\item $r=\frac32$, $n=4$, from $k=5$: $\{12,18,26\}$, $\{14,21,30\}$,
+$\{17,24,33\}$, $\{19,27,37\}$, $\{22,30,40\}$, $\{24,33,44\}$;
+\item $r=\frac54$, $n=5$: $\{6,13,22,35\}$, $\{10,17,27,42\}$,
+$\{13,22,33,48\}$, $\{17,26,38,55\}$, $\{21,31,44,61\}$, $\{24,36,49,67\}$,
+$\{28,40,55,74\}$, $\{32,45,60,80\}$, $\{36,50,65,86\}$;
+\item $r=\frac74$, $n=2$, from $k=5$: $\{12\}$, $\{15\}$, $\{17\}$, $\{19\}$,
+$\{22\}$, $\{24\}$, $\{26\}$, $\{29\}$.
+\end{itemize}
+\endgroup
+The certificates of Proposition~\ref{prop:toprowcertS} and the inequalities
+$\Phi_r([1,i-1]\cup Y)\le\Phi_r(Z^*)$ were checked in exact arithmetic.
+\end{proof}
+
+Here $i^*=k$ throughout.  Corollary~\ref{cor:rowstreevals} has these rows
+only for $k\le4$ ($r=\frac32$ and $r=\frac74$) and for $k\le3$ ($r=\frac54$, $n=5$).  The
+check fails with the certified set at $r=\frac32$, $n=4$, $k\le4$ and at
+$r=\frac74$, $n=2$, $2\le k\le4$, although $i^*=k$ there as well.  Where
+$\max_i\nu_i(n)$ sits at $i=1<k$, the theorem cannot give the conjecture in
+general, because its bound covers real exempted positions as well.
+For $k=2$ and any $p\in\mathcal Q_n$, Lemma~\ref{lem:crossing}(b) gives
+$\Phi_r(p\cdot(1-s/x))\le\max\{A_1(p),A_2(p)\}$ for every real $x\ge1$, so
+$\Lambda_2(n)$ is at least the infimum of $\Phi_r(q)$ over $q$ with
+$\deg q\le n$, $q(0)=1$ and $q(x)=0$.  At $r=\frac74$, $n=6$ and
+$x=\frac{16}9$ this infimum is at least $0.10845$.  The certificate is a set
+of weights $z_s\in[-1,1]$, $1\le s\le40$, with
+$\sum_sz_s|1-s/x|r^{-s}s^j=0$ for $1\le j\le5$ and
+$\sum_sz_s|1-s/x|r^{-s}\ge0.10845$.  For $q=p\cdot(1-s/x)$ with
+$p\in\mathcal Q_6$ it gives
+$\Phi_r(q)\ge\sum_{s\le40}z_s|1-s/x|r^{-s}p(s)=\sum_sz_s|1-s/x|r^{-s}$.
+But $\nu_1(6)\le\Phi_r(\{1,3,6,9,15\})<0.09940$ and
+$\nu_2(6)\le\Phi_r(\{1,3,5,8,12,18\})<0.05975$.  So
+$\Lambda_2(6)>1.09\max\{\nu_1(6),\nu_2(6)\}$ there, while
+Corollary~\ref{cor:rowstreevals}(c) gives $V_{7/4}(7,2)=\beta_{7/4}(6)$.
+
+Two other routes fail below $2$.  First, Lemma~\ref{lem:optins} does not
+carry over.  At $r=\frac74$ and $n=5$ the top-row optimum is
+$Z_0=\{1,3,7,11\}$, and it is the only polynomial in $\mathcal Q_5$ with
+$\Phi_r\le\nu_1(5)$: the weights $z_s=\sgn r_{Z_0}(s)$ for $s\notin Z_0$,
+completed on $Z_0$ so that $\sum_sz_s\,s^j r^{-s}=0$ for $1\le j\le4$, have
+$|z_s|<1$ on $Z_0$.  So every $q\in\mathcal Q_5$ has
+$\Phi_r(q)\ge\sum_sz_sq(s)r^{-s}=\Phi_r(Z_0)$, with equality only if $q$
+vanishes on $Z_0$.  Moreover $\nu_2(5)\le\Phi_r(\{1,3,6,9,15\})<\nu_1(5)$,
+yet $\Phi_r(\mathrm{ins}(Z_0,2))>1.17\,\Phi_r(Z_0)$.  So
+Theorem~\ref{thm:crossing} with $k=2$ gives no bound as large as
+$\beta_{7/4}(5)=V_{7/4}(6,2)$ from any set $W$.  Second, the argument of
+Lemma~\ref{lem:prefixpush} would prove the conjecture if each push kept the
+best polynomial, that is, if
+$\mu_r(U\cup\{x\},|U|+n+1)\le\max\{\mu_r(U,|U|+n),\,\mu_r(U\cup\{h\},|U|+n+1)\}$
+for $x>\max U$ and $h$ the first gap of $U$.  This fails: at $r=\frac32$,
+$n=6$, $U=\{3,4\}$ and $x=5$ the left side is at least $0.17071$ (a dual
+certificate on $s\le80$), and the right side is at most $0.16846$, by
+the sets $\{1,3,4,9,13,20,28\}$ and $\{1,3,4,8,12,17,24,33\}$.  The
+conjecture itself is not affected there: it only asks for
+$\max_{i\le4}\nu_i(6)$ on the right, and in floating point
+$\nu_1(6)\approx0.2571$.
+For $1<r<2$ the conjecture remains open where $\beta_r(n)>1$ and no single
+polynomial serves all prefixes, in particular wherever the maximum of
+$\nu_i(n)$ sits at $i=1<k$.
 
 \section{Complex roots}\label{sec:complexroots}
 
