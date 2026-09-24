@@ -297,9 +297,18 @@ step; an answer lands in the paper it extends, and the row leaves.
   top row whenever a top-row optimum has hole product `<= r - 1`
   (`thm:rowspi`, exact top rows by `prop:toprowcert`), proved for every
   `n <= 10` at `r >= 3` and at points up to `n = 24` (`cor:rowspiranges`).
-  Open: the conjecture `V_r(L,k) = min_i 1/nu_i(n)` in general (the
-  insertion inequality beyond hole product `r - 1`, `2 <= r < 5/2`, and
-  `1 < r < 2` with `n >> k`).
+  Finite certificates (`sec:rowsfinite`): the chain only shifts holes
+  (`lem:holestates`), so for `r > 2` finitely many shifted sets decide all
+  `L` (`thm:rowsfinite`, monotone in `r`, `lem:rmono`; cuts,
+  `thm:rowsrec`), giving half-lines for `n <= 7` down to
+  `r >= 103/50 .. 11/5` and points up to `n = 45` at `r = 3` and `7/2`
+  (`cor:rowsfiniteranges`); for every `r > 1` a finite tree with far
+  appends (`lem:farappend`, `thm:rowstree`, `prop:toprowcertS`) decides
+  single rows exactly, `r = 2` and `r < 2` included (`cor:rowstreevals`;
+  all five rows of `(x - 3/2)**5`).  Open: the conjecture
+  `V_r(L,k) = min_i 1/nu_i(n)` for all `n` (at `r = 3`, `Pi(Z_0)` exceeds
+  2 from `n = 25`; at `r = 2` the chain fails outright and only single
+  rows are known; `1 < r < 2` with `n >> k`).
 
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
