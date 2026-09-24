@@ -3458,7 +3458,9 @@ degree, which makes it a finite computation for each root set
 charge $\sum_jj\log(c_j^2-1)$ at explicit root sets with $a_j\ne0$
 (Proposition~\ref{prop:gaussinst}).  Proposition~\ref{prop:gaussnotransfer}
 records why the exact reductions of this section cannot be used at such
-roots.
+roots.  Theorem~\ref{thm:thingauss} gives the mass bound for crowded moduli when
+the roots lie in a thin sector, which covers register roots $a\pm p^bi$
+with $|a|$ bounded (Corollary~\ref{cor:thinregister}).
 
 Throughout, $\alpha_1,\ldots,\alpha_K\in\mathbb Z[i]$ are distinct, with
 $\alpha_j=a_j+ic_j$ and $c_j\ge1$; put $\rho_j=|\alpha_j|$,
@@ -4040,29 +4042,289 @@ annulus, as $x^{2M}+\rho^{2M}$ and $x^{2m}+x+B$ of
 Proposition~\ref{prop:noangle} do, and then only integrality can separate
 them.
 
-\paragraph{What remains open.}  Rows $k\ge2$, or a mass bound of order
-$\sum_jj\log\rho_j$, for pairs $a_j\pm ic_j\in\mathbb Z[i]$ with
-$0<|a_j|<c_j$ whose moduli crowd.  If every annulus $R\le|z|\le9R$ contains at
-most $g$ of the $\rho_j$ and $\rho_{\min}\ge3$, then
-Corollary~\ref{cor:separated}, item~3, gives
-$\Lambda(F)\ge g^{-2}\sum_jj\log(\rho_j/3)$ uniformly in $K$, for all complex
-multiples; Corollary~\ref{cor:oneprime} is the case of one prime.  So the
-open case is that of many pairs in one annulus, such as the register roots
-$a\pm p^bi$ over many primes $p$, where the norms are coprime or squarefree.
-By Corollary~\ref{cor:gaussfinite} a mass bound $X$ needs to
-be proved only for $P$-irreducible multiples of degree below
-$X/\log(\rho_{\min}/2)$, that is, by Lemma~\ref{lem:gausswindow}, for
-$F=PQ$ with $Q$ free of runs of $2K$ zeros and $\deg Q=O(K^2)$.  In that
-range the angle mechanism of Proposition~\ref{prop:noangle} is not excluded
-for pairs within $\delta\gg1/K$ of the imaginary axis.  Exactly equal moduli
-are excluded when the common norm is a prime power
+Integrality does separate them when the roots of the annulus lie in a thin
+sector, and that is the case of the register roots $a\pm p^bi$ with $|a|$
+bounded.  The angle mechanism of Proposition~\ref{prop:noangle} puts $K$ roots
+within an angle $\delta$ of a ray only at the price of degree about
+$K/\delta$, and at Gaussian roots degree costs mass
+(Theorem~\ref{thm:gausscharge}).  A multiple of smaller degree is handled by
+the real theory, applied to the real polynomial
+$r\mapsto\operatorname{Im}\bigl(e^{-i\theta}F(re^{i\psi})\bigr)$ along a ray
+$\arg z=\psi$ next to the sector.  For $0<x\le\pi/2$ put
+\[
+  E(x)=\frac{4x}{\log2}\Bigl(1+\log\Bigl(1+\frac{\pi}{2x}\Bigr)\Bigr).
+\]
+$E$ is increasing, since
+$\frac{d}{dx}\bigl(x(1+\log(1+\frac{\pi}{2x}))\bigr)=1+\log(1+t)-\frac t{1+t}>0$
+with $t=\pi/(2x)$.
+
+\begin{lemma}[Crossings next to a sector]\label{lem:sectorcount}
+Let $B\in\mathbb C[x]$ be nonzero of degree $d$, let $\varphi\in\R$,
+$0<\delta'\le\pi/2$ and $R>0$, and suppose that $B$ has no zero other than $0$
+on the two rays $\arg z=\varphi\pm\delta'$, and at least $K$ zeros, counted
+with multiplicity, in $\{z:|z|\ge R,\ |\arg z-\varphi|<\delta'\}$.  Then there are
+$r_1\in[R/2,R)$ and $\psi\in\{\varphi-\delta',\varphi+\delta'\}$ such that for
+every $\theta\in\R$ the real polynomial
+\[
+  h_\theta(r)=\operatorname{Im}\bigl(e^{-i\theta}B(re^{i\psi})\bigr)
+  =\sum_{k=0}^d\operatorname{Im}\bigl(e^{-i\theta}b_ke^{ik\psi}\bigr)\,r^k
+\]
+has at least $K-dE(\delta')/\pi-1$ distinct zeros in $(r_1,\infty)$.
+\end{lemma}
+
+\begin{proof}
+For $r>0$ let $\Gamma_r=\{re^{it}:|t-\varphi|\le\delta'\}$, traversed in the
+direction of increasing $t$, and for a point $\beta$ with $|\beta|\ne r$ let
+$\Delta_\beta(r)$ be the change of a continuous argument of $z-\beta$ along
+$\Gamma_r$.  We claim
+\[
+  |\Delta_\beta(r)|\ \le\ \min\Bigl(2\pi,\ \frac{2\delta'r}{\bigl|r-|\beta|\bigr|}\Bigr).
+\]
+The second bound holds because $|d\arg(z-\beta)|\le|dz|/|z-\beta|$, the arc
+has length $2\delta'r$, and $|z-\beta|\ge|r-|\beta||$ on it.  For the first:
+if $|\beta|<r$, the argument of $re^{it}-\beta$ has derivative
+$(r^2-\operatorname{Re}(\bar\beta re^{it}))/|re^{it}-\beta|^2>0$ and increases by
+$2\pi$ over a full turn, so $0<\Delta_\beta(r)<2\pi$; if $|\beta|>r$, the
+points $z-\beta$, $|z|=r$, lie in a closed disc not containing $0$, which is
+seen from $0$ under an angle less than $\pi$, so $|\Delta_\beta(r)|<\pi$.
+
+Next, for every $\varrho\ge0$ and $a>0$,
+\[
+  \int_a^{2a}\min\Bigl(2\pi,\frac{2\delta'r}{|r-\varrho|}\Bigr)\frac{dr}r
+  \ \le\ 4\delta'\Bigl(1+\log\Bigl(1+\frac\pi{2\delta'}\Bigr)\Bigr)
+  =E(\delta')\log2 .
+\]
+Indeed, the integrand is $\min(2\pi/r,2\delta'/|r-\varrho|)$.  Put
+$\eta=\delta'a/\pi$.  Where $|r-\varrho|\le\eta$ it is at most $2\pi/a$ on a
+set of measure at most $2\eta$, which contributes at most $4\delta'$.  Elsewhere
+it is at most $2\delta'/|r-\varrho|$ on a set of measure at most $a$ on which
+$|r-\varrho|>\eta$; such an integral is largest for the set
+$\eta<|r-\varrho|\le\eta+a/2$, where it equals
+$4\delta'\log(1+a/(2\eta))=4\delta'\log(1+\pi/(2\delta'))$.
+
+Let $\beta_1,\ldots,\beta_d$ be the zeros of $B$ with multiplicity, and
+$S(r)=\sum_l\min(2\pi,2\delta'r/|r-|\beta_l||)$.  By the last display,
+$\int_a^{2a}S(r)\,dr/r\le dE(\delta')\log2$, while
+$\int_a^{2a}dr/r=\log2$; so $S(r)\le dE(\delta')$ on a subset of $[a,2a]$ of
+positive measure.  Taking $a=R/2$, choose $r_1\in[R/2,R)$ there, different from
+every $|\beta_l|$; taking $a=M$ larger than every $|\beta_l|$, choose $r_2$ in
+the same way in $[M,2M]$.  Since
+$\arg B(z)=\arg b_d+\sum_l\arg(z-\beta_l)$, the change $\Delta_{\rm arc}(r_i)$
+of $\arg B$ along $\Gamma_{r_i}$ satisfies
+$|\Delta_{\rm arc}(r_i)|\le S(r_i)\le dE(\delta')$.
+
+Let $\psi_\pm=\varphi\pm\delta'$ and let $\Delta_\pm$ be the change of
+$\arg B(re^{i\psi_\pm})$ as $r$ increases from $r_1$ to $r_2$.  The region
+$W=\{r_1<|z|<r_2,\ |\arg z-\varphi|<\delta'\}$ has no zero of $B$ on its
+boundary and contains the $K$ zeros of the statement (their moduli are at
+least $R>r_1$ and below $M<r_2$).  The argument principle along
+$\partial W$, traversed counterclockwise, gives
+\[
+  2\pi K\ \le\ \Delta_-+\Delta_{\rm arc}(r_2)-\Delta_+-\Delta_{\rm arc}(r_1)
+  \ \le\ |\Delta_-|+|\Delta_+|+2dE(\delta').
+\]
+Let $\psi$ be the ray with the larger $|\Delta_\pm|$, so that
+$|\Delta_\psi|\ge\pi K-dE(\delta')$, and let $A(r)$ be a continuous argument of
+$B(re^{i\psi})$ on $[r_1,r_2]$.  Fix $\theta$.  The open interval between
+$A(r_1)$ and $A(r_2)$ has length $|\Delta_\psi|$, so it contains at least
+$|\Delta_\psi|/\pi-1$ points of $\theta+\pi\mathbb Z$; by continuity each of
+them equals $A(r)$ for some $r\in(r_1,r_2)$, and distinct points give distinct
+$r$.  At such $r$ the number $e^{-i\theta}B(re^{i\psi})$ is real, so
+$h_\theta(r)=0$.  This gives at least $|\Delta_\psi|/\pi-1\ge K-dE(\delta')/\pi-1$
+distinct zeros of $h_\theta$ in $(r_1,r_2)$.
+\end{proof}
+
+\begin{theorem}[Thin sectors]\label{thm:thinsector}
+Let $B\in\mathbb C[x]$ have degree $d$ and $|b_d|\ge1$, let $\varphi\in\R$,
+$0<\delta\le\pi/4$ and $R\ge6$, and suppose that $B$ has at least $K$ zeros,
+counted with multiplicity, in $\{z:|z|\ge R,\ |\arg z-\varphi|\le\delta\}$.  If
+$d\,E(2\delta)\le\pi K/2$, then with $m=\lceil K/2\rceil-1$,
+\[
+  b_k(B)\ \ge\ |b_d|\Bigl(\frac R2-1\Bigr)^{m-k+1}\quad(1\le k\le m),
+\]
+\[
+  \Lambda(B)\ \ge\ (m+1)\log|b_d|+\frac{m(m+1)}2\log\Bigl(\frac R2-1\Bigr),
+\]
+and $\frac{m(m+1)}2\ge\frac{K(K-2)}8$.
+\end{theorem}
+
+\begin{proof}
+Choose $\delta'\in(\delta,2\delta]$ such that no zero of $B$ lies on the rays
+$\arg z=\varphi\pm\delta'$; all but finitely many values qualify.  The $K$
+zeros lie in the open sector $|\arg z-\varphi|<\delta'$, and $E(\delta')\le
+E(2\delta)$ because $E$ is increasing.  Lemma~\ref{lem:sectorcount} gives
+$r_1\ge R/2$ and a ray $\psi$ such that every $h_\theta$ has at least
+$K-dE(2\delta)/\pi-1\ge K/2-1$ distinct zeros in $(r_1,\infty)$, hence at least
+$m$ of them, say $\varrho_1<\cdots<\varrho_m$, all larger than $R/2\ge3$.
+Choose $\theta$ with $e^{-i\theta}b_de^{id\psi}=i|b_d|$.  Then $h_\theta$ is a
+nonzero real polynomial of degree $d$ with leading coefficient $|b_d|$ and
+coefficients $h_k=\operatorname{Im}(e^{-i\theta}b_ke^{ik\psi})$, so
+$|h_k|\le|b_k|$, and it is divisible by $\prod_{i\le m}(x-\varrho_i)$ with
+$\varrho_1\ge2$.  Theorem~\ref{thm:order} and Corollary~\ref{cor:mass} give
+$b_k(h_\theta)\ge|b_d|\prod_{i=k}^m(\varrho_i-1)$ and
+$\Lambda(h_\theta)\ge(m+1)\log|b_d|+\sum_{i=1}^mi\log(\varrho_i-1)$, and
+$\varrho_i-1>R/2-1$.  The coefficientwise domination $|h_k|\le|b_k|$, with the
+leading coefficients at the same position $d$, gives $b_k(B)\ge b_k(h_\theta)$
+and $\Lambda(B)\ge\Lambda(h_\theta)$.  Finally $m+1\ge K/2$ and $m\ge K/2-1$.
+\end{proof}
+
+The theorem uses no integrality, and its degree hypothesis cannot be
+dropped: $x^{2M}+\rho^{2M}$ in Proposition~\ref{prop:noangle} has about
+$2\delta M/\pi$ roots within $\delta$ of the imaginary axis and
+$b_2=0$, and its degree $2M$ exceeds $\pi K/(2E(2\delta))$.  At Gaussian roots
+the large-degree case is paid for by Theorem~\ref{thm:gausscharge}.
+
+\begin{theorem}[Thin Gaussian clusters]\label{thm:thingauss}
+Let $\varphi\in\R$, $0<\delta\le\pi/4$ and $R\ge6$, and suppose that every
+$\alpha_j$ has $|\alpha_j|\ge R$ and $|\arg\alpha_j-\varphi|\le\delta$.  Every
+nonzero $F\in\mathbb Z[x]$ divisible by $P$ satisfies $\Lambda(F)\ge2K\log R$
+and
+\[
+  \Lambda(F)\ \ge\ \min\Bigl\{\frac{K(K-2)}8\log\Bigl(\frac R2-1\Bigr),\
+  \frac{\pi K\log(R/2)}{2E(2\delta)}\Bigr\},
+  \qquad
+  \frac{\pi}{2E(2\delta)}\ \ge\ \frac{\pi\log2}{16\,\delta\log(e\pi/(2\delta))}.
+\]
+If moreover some block $B$ of $F$ (Lemma~\ref{lem:gaussblocks}) has
+$\deg B\cdot E(2\delta)\le\pi K/2$, then
+$b_k(F)\ge(R/2-1)^{m-k+1}$ for $1\le k\le m=\lceil K/2\rceil-1$.
+\end{theorem}
+
+\begin{proof}
+Let $B$ be a block of $F$, of degree $d$.  It is divisible by $P$, so it
+vanishes at the $K$ distinct $\alpha_j$; $B(0)\ne0$, $|b_d|\ge1$,
+$\Lambda(F)\ge\Lambda(B)$ and $b_k(F)\ge b_k(B)$.  If $dE(2\delta)\le\pi K/2$,
+Theorem~\ref{thm:thinsector} applies to $B$ and gives the first term, and the
+rows.  Otherwise $d>\pi K/(2E(2\delta))$, and Theorem~\ref{thm:gausscharge},
+with $\rho_{\min}\ge R>2$, gives
+$\Lambda(B)\ge d\log(\rho_{\min}/2)>\pi K\log(R/2)/(2E(2\delta))$.  Next,
+$B=PQ$ with $Q\in\mathbb Z[x]$ since $P$ is monic, so $B(0)=P(0)Q(0)$ is a
+nonzero multiple of $P(0)=\prod_j\rho_j^2\ge R^{2K}$, and $B(0)$ is a
+coefficient of $F$; this gives $\Lambda(F)\ge2K\log R$.  Finally, for
+$0<\delta\le\pi/4$ we have $1+\pi/(4\delta)\le\pi/(2\delta)$, so
+$E(2\delta)\le(8\delta/\log2)(1+\log(\pi/(2\delta)))
+=(8\delta/\log2)\log(e\pi/(2\delta))$.
+\end{proof}
+
+For the register roots of Polynomial, $\varphi=\pi/2$ and $\delta$ is the
+largest angle $\arctan(|a_j|/c_j)$.
+
+\begin{corollary}[Thin register clusters]\label{cor:thinregister}
+Let $A\ge1$, $\lambda\ge1$ and $R\ge\max(6,A)$, and let
+$\alpha_j=a_j+ic_j$ with $0<|a_j|\le A$ and $R\le c_j\le\lambda R$ for
+$1\le j\le K$.  Put $\delta=\arctan(A/R)$ and let $F\in\mathbb Z[x]$ be a
+nonzero multiple of $P$.
+\begin{enumerate}
+\item If $(K-2)\,\delta\log(e\pi/(2\delta))\le\frac{\pi\log2}2$, for instance
+if $(K-2)\frac AR\log\frac{e\pi R}{2A}\le1.08$, then
+\[
+  \Lambda(F)\ \ge\ \frac{K(K-2)}8\log\Bigl(\frac R2-1\Bigr)
+  \quad\text{and}\quad
+  \Lambda(F)\ \ge\ \frac15\sum_{j=1}^Kj\log\rho_{(j)}-\frac{K(K+1)}{10}\log(3\sqrt2\,\lambda),
+\]
+where $\rho_{(1)}\le\cdots\le\rho_{(K)}$ are the $\rho_j$ in order.
+\item If $K\le\kappa R/\log R$ for some $\kappa>0$, then
+\[
+  \Lambda(F)\ \ge\ \min\Bigl\{\frac{K(K-2)}8\log\Bigl(\frac R2-1\Bigr),\
+  \frac{\pi\log2}{16}\cdot\frac{K^2\log R}{\kappa A}\cdot
+  \frac{\log(R/2)}{\log(e\pi R/(2A))}\Bigr\}.
+\]
+If the $c_j$ are distinct primes, $\kappa=1.25506\,\lambda$ qualifies.
+\end{enumerate}
+\end{corollary}
+
+\begin{proof}
+Every $\alpha_j$ has $|\alpha_j|\ge c_j\ge R$ and
+$|\arg\alpha_j-\pi/2|=\arctan(|a_j|/c_j)\le\delta\le\pi/4$, so
+Theorem~\ref{thm:thingauss} applies with $\varphi=\pi/2$.  The function
+$x\log(e\pi/(2x))$ is increasing on $(0,\pi/2)$, with derivative
+$\log(\pi/(2x))>0$, and $\delta\le A/R$; this gives the ``for instance'', as
+$\frac{\pi\log2}2>1.0887$.
+
+1.  For $K\le2$ the first bound is trivial, and the second follows from
+$\Lambda(F)\ge2K\log R$ and the estimate for $\sum_jj\log\rho_{(j)}$ below,
+since $K(K+1)/10\le2K$.  For $K\ge3$ the hypothesis and
+the last inequality of Theorem~\ref{thm:thingauss} give
+$\pi K\log(R/2)/(2E(2\delta))\ge\frac{K(K-2)}8\log(R/2)$, so the minimum there
+is the first term.  For the second bound combine it with
+$\Lambda(F)\ge2K\log R$ in the proportion $\frac45:\frac15$, and use
+$\log(R/2-1)\ge\log R-\log3$ for $R\ge6$:
+\[
+  \Lambda(F)\ \ge\ \frac{K(K+2)}{10}\log R-\frac{K(K-2)}{10}\log3 .
+\]
+On the other side $\rho_j^2=a_j^2+c_j^2\le2\lambda^2R^2$, so
+$\frac15\sum_jj\log\rho_{(j)}\le\frac{K(K+1)}{10}(\log R+\log(\sqrt2\lambda))$,
+and the difference of the two displays is at least
+$-\frac{K(K+1)}{10}\log(\sqrt2\lambda)-\frac{K(K-2)}{10}\log3
+\ge-\frac{K(K+1)}{10}\log(3\sqrt2\lambda)$.
+
+2.  By the last inequality of Theorem~\ref{thm:thingauss} and the
+monotonicity above,
+\[
+  \frac{\pi K\log(R/2)}{2E(2\delta)}\ \ge\
+  \frac{\pi\log2}{16}\cdot\frac{KR\log(R/2)}{A\log(e\pi R/(2A))},
+\]
+and $R\ge K\log R/\kappa$.  For distinct primes $c_j\le\lambda R$,
+\[
+  K\ \le\ \pi(\lambda R)\ <\ \frac{1.25506\,\lambda R}{\log(\lambda R)}
+  \ \le\ \frac{1.25506\,\lambda R}{\log R}
+\]
+by~\cite{rosser-schoenfeld}.
+\end{proof}
+
+So for register roots whose operands are bounded, $|a_j|\le A$, the mass
+bound of order $K^2\log R$ holds for $K$ roots in one annulus $[R,\lambda R]$
+uniformly in $K$: with item~1 when $K\le cR/(A\log R)$, and, for prime
+imaginary parts, with item~2 at any density, where
+$\log(R/2)/\log(e\pi R/(2A))\ge0.33$ for $R\ge6$ and tends to $1$, so the
+coefficient of $K^2\log R$ in the second term is at least $0.036/(\lambda A)$
+and tends to $0.108/(\lambda A)$ as $R\to\infty$.  Applied to the roots of modulus at
+least $s$, for each $s$, the theorem gives the largest of these bounds over
+all tails, each with the angle $\delta_s=\max\{\arctan(|a_j|/c_j):|\alpha_j|\ge s\}$,
+which for register roots decreases as $s$ grows.  The constants are far from
+the truth at small $K$: at the four sets of Proposition~\ref{prop:gaussinst}
+the theorem gives $0$, $0.15$, $1.45$ and $6.22$, below the constant-term bound
+$2K\log R$, against the certified $11.09$, $26.20$, $58.22$ and $139.8$; the
+certificates remain the way to settle individual root sets, and the theorem is
+the uniform statement in $K$.
+
+\paragraph{What remains open.}  Two cases of the register roots
+$a_j\pm ic_j$, $0<|a_j|<c_j$, whose moduli crowd.
+
+\emph{Wide sectors.}  Suppose the angles of $K$ roots of one annulus from
+the imaginary axis, $\arctan(|a_j|/c_j)$, are not $O(1/(K\log K))$, for
+instance $|a_j|$ comparable to $c_j$.  Then
+Theorem~\ref{thm:thingauss} gives only a linear charge.  This is where the angle
+mechanism of Proposition~\ref{prop:noangle} lives: $K$ roots spread over an
+angle $\delta\gg1/K$ need degree only about $K/\delta$, which is
+$o(K^2)$, and Theorem~\ref{thm:gausscharge} charges degree only linearly.  Exactly equal
+moduli are excluded when the common norm is a prime power
 (Corollary~\ref{cor:padiccircle}), but not for squarefree norms, and not for
-nearly equal moduli; pairwise coprime norms, the case of the register roots,
-get only the first row from Theorem~\ref{thm:padicmass}, and inside one
-annulus Theorem~\ref{thm:archnewton} gives no more.  Carry sizes, even
-at several roots, cannot close the gap (Proposition~\ref{prop:carrylimit}); what is
-needed is a lower bound for the residuals of the rounding recurrence of
+nearly equal moduli; pairwise coprime norms get only the first row from
+Theorem~\ref{thm:padicmass}, and inside one annulus
+Theorem~\ref{thm:archnewton} gives no more.  Carry sizes, even at several
+roots, cannot close the gap (Proposition~\ref{prop:carrylimit}); what is needed
+is a lower bound for the residuals of the rounding recurrence of
 Lemma~\ref{lem:gaussround} and its analogues with $k-1$ free coefficients.
+
+\emph{Across annuli.}  Theorem~\ref{thm:thingauss} charges each thin tail
+of the roots, $K_s^2\log s$ for the $K_s$ roots of modulus at least $s$, but not
+the cross terms $K_sK_t\log t$ ($s<t$) of $\sum_jj\log\rho_j$ between
+different annuli; Corollary~\ref{cor:separated} gets cross terms only between
+single representatives of separated annuli.  For $F$ real and the two rays
+$\arg z=\pi/2\pm\delta'$ the two crossing polynomials of
+Lemma~\ref{lem:sectorcount} are one: with $H(r)=F(re^{i(\pi/2-\delta')})$,
+$F(re^{i(\pi/2+\delta')})=\overline{H(-r)}$, so the real polynomial
+$\operatorname{Im}(e^{-i\theta}H(r))$ has at least $2K-2dE(\delta')/\pi-2$
+real zeros $r$ with $r_1<|r|<r_2$, of both signs.  A mass bound for real
+multiples with prescribed real roots of both signs, of the form
+$c\sum_ii\log(|r_{(i)}|-1)$ over the roots ordered by modulus (the pairs
+$\pm r$ of Corollary~\ref{cor:imag} show $c\le\frac12$), is the natural
+missing ingredient: together with intermediate arcs that localize the
+crossings at each scale, it would charge the cross terms for register roots
+that are thin at every scale, whereas Theorem~\ref{thm:order} charges only
+the larger of the two sign classes.
+
 Perturbing the certificate of Corollary~\ref{cor:imag} to the nodes
 $1/\alpha_j$ did not help either: the excluded coefficients are unbounded, so
 the certificate must vanish there exactly, and the correction is controlled
@@ -4071,7 +4333,8 @@ determinant in the close nodes $c_j^{-2}$.  Integral certificates (vectors of
 the dual of the lattice of multiples) replace the normalization but not the
 exact vanishing, and by transference they are as hard to find as the
 bound itself.  Proposition~\ref{prop:gaussinst} settles individual root sets;
-the question is a uniform statement in $K$ for crowded moduli.
+the question is a uniform statement in $K$ for crowded moduli at wide
+angles, and the cross terms between annuli.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
