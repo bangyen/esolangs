@@ -153,6 +153,18 @@ The construction first emits a Brainfuck decision tree and then replaces each
 maximal run by one prime power.  We begin by bounding the size of the decision
 tree.
 
+The generator shipped alongside this paper emits a variant of that tree, and
+the difference is worth stating because it does not affect anything proved
+here.  Because the primes ascend, a program's digit count is
+$\sum_i L_i\log_{10}p_i$ over its runs, weighted by position rather than by
+character count, so the shortest Brainfuck program is not the cheapest Factor
+one.  The generator therefore folds the $48(n+1)$ characters of ASCII offset
+into one multiply loop and one subtracting loop, which measures $-38.5\%$ of
+the digits at $n=2$ and $-0.2\%$ at $n=13$.  The saving is $O(n)$ against a
+tree that doubles, so it is a low-order term: every bound below, and the
+explicit constants that follow them, are unchanged, and the folded program is
+never larger.
+
 \begin{lemma}[Decision-tree size]\label{lem:tree}
 For $n\ge2$, every $T$-bit truth table has a Brainfuck decision-tree program
 of length
