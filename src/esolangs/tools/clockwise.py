@@ -6,13 +6,14 @@ from esolangs.tools.helpers import (
     constant_span_test,
 )
 
-# Cells in a leaf: 'S', seven ';' with their '+', and the 'S+?' exit;
-# '0' pads with one 'S' so both leaves of a node end on the same row.
-_CLOCKWISE_LEAF = 14
+# Cells in a leaf: seven ';', the four '+' the worst parity costs, and the
+# '?' that leaves; '+' pads the cheaper leaves to the same row.
+_CLOCKWISE_LEAF = 12
 
 
-# Rows one level of the tree spends: 'S', seven '.', and the '?' that turns.
-_CLOCKWISE_LEVEL = 9
+# Rows one level spends: seven '.' and the '?' that turns.  A read clears
+# the accumulator's low bit, so the 0 or 1 a node inherits needs no ``S``.
+_CLOCKWISE_LEVEL = 8
 
 
 def clockwise(truth_table: str, width: int | None = None) -> str:
@@ -24,12 +25,14 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     ``width`` stacks as many levels as needed, and a width under the floor
     returns the narrowest program.
 
-    A decision tree in a closed ring.  ``S`` zeroes the accumulator, seven
-    ``.`` reads leave the input's value bit; at each node ``?`` turns by
-    ``acc`` quarter-turns, so a zero continues down the spine and a one
+    A decision tree in a closed ring.  Seven ``.`` reads leave the input's
+    value bit, each clearing the accumulator's low bit first, so a node
+    needs no ``S`` to clear the 0 or 1 it inherits; at each node ``?`` turns
+    by ``acc`` quarter-turns, so a zero continues down the spine and a one
     turns into its own column.  A leaf prints seven bits with ``;`` (``+``
-    flips a bit's parity; ``'0'`` and ``'1'`` differ by one ``+``), then
-    ``S+`` so the exit ``?`` sees 1.  Every exit row ends at a ``!`` on
+    flips a bit's parity; ``'0'`` and ``'1'`` differ by one ``+``) and
+    leaves on the ``+`` a digit always spends, which the exit ``?`` reads
+    as nonzero.  Every exit row ends at a ``!`` on
     column 0 that turns a zero accumulator up the left edge, with ``+`` above
     it, so leaves finish on different rows.
 
@@ -118,8 +121,9 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     # between the subtrees where the zero-branch already sets row lengths.
     slack = root - shape(0, 0, stacked)[0]
     hoist = root >= 8
-    # Hoisting the root's reads onto row 0 retires seven rows of spine.
-    shift = 7 if hoist else 0
+    # Hoisting the root's reads onto row 0 retires six rows of spine: the
+    # seventh would put the turn gadget on row 0, where the reads now sit.
+    shift = _CLOCKWISE_LEVEL - 2 if hoist else 0
 
     cells: dict[tuple[int, int], str] = {}
     exits: list[tuple[int, int]] = []
@@ -134,36 +138,45 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
             raise AssertionError(f"two cells at {node}: {cells[node]!r} and {ch!r}")
         cells[node] = ch
 
-    def leaf(x: int, y: int, combo: int) -> None:
-        """Print the answer at ``(x, y)`` and leave by the row it ends on."""
+    def leaf(x: int, y: int, combo: int, acc: int | None) -> None:
+        """Print the answer at ``(x, y)``, inheriting ``acc``.
+
+        ``acc`` is ``None`` when a folded chain's reads leave it up to the
+        input, and an ``S`` has to clear it.
+        """
         # Seven ';' print acc % 2 each, MSB first; '+' flips the parity.
         result = int(truth_table[combo])
-        code = "S"
-        acc = 0
+        code = ""
+        if acc is None:
+            code, acc = "S", 0
         for bit in format(_ASCII_ZERO + result, "07b"):
             if acc % 2 != int(bit):
                 code += "+"
                 acc += 1
             code += ";"
-        # The exit '?' must see exactly 1: 'S+' resets rather than tracks
-        # the 2 or 3 the digit left, and the extra 'S' pads the shorter leaf.
-        code += "S" * (_CLOCKWISE_LEAF - len(code) - 2) + "+?"
+        # The exit '?' turns on any nonzero accumulator, and the two '+'
+        # every digit spends leave one, so '+' both pads and keeps it.
+        code += "+" * (_CLOCKWISE_LEAF - len(code) - 1) + "?"
         for i, ch in enumerate(code):
             place((x, y + i), ch)
         exits.append((x, y + _CLOCKWISE_LEAF - 1))
 
-    def build(bit: int, x: int, y: int, combo: int) -> None:
-        """Lay the subtree for ``combo`` at ``bit``, spine head at ``(x, y)``."""
+    def build(bit: int, x: int, y: int, combo: int, acc: int | None = 0) -> None:
+        """Lay the subtree for ``combo`` at ``bit``, spine head at ``(x, y)``.
+
+        ``acc`` is 1 when the parent's ``?`` turned here, else 0.
+        """
         if leafy(bit, combo):
-            # Folded: the skipped levels still spend ``S`` and seven ``.``
-            # (Clockwise reads inside the tree), with an ``S`` where the
-            # ``?`` was so the column ends where an unfolded one would.
+            # Folded: the skipped levels still spend seven ``.`` (Clockwise
+            # reads inside the tree), with an ``S`` where the ``?`` was so
+            # the column ends where an unfolded one would.
             for level in range(n - bit):
-                place((x, y + _CLOCKWISE_LEVEL * level), "S")
                 for i in range(7):
-                    place((x, y + _CLOCKWISE_LEVEL * level + 1 + i), ".")
-                place((x, y + _CLOCKWISE_LEVEL * level + 8), "S")
-            leaf(x, y + _CLOCKWISE_LEVEL * (n - bit), combo << (n - bit))
+                    place((x, y + _CLOCKWISE_LEVEL * level + i), ".")
+                place((x, y + _CLOCKWISE_LEVEL * level + 7), "S")
+            if n > bit:
+                acc = None
+            leaf(x, y + _CLOCKWISE_LEVEL * (n - bit), combo << (n - bit), acc)
             return
         if bit == 0 and hoist:
             # The seven reads sit on row 0, left of the corner ``R``; the
@@ -171,24 +184,23 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
             for i in range(7):
                 place((x - 7 + i, 0), ".")
         else:
-            place((x, y), "S")
             for i in range(7):
-                place((x, y + 1 + i), ".")
-        place((x, y + 8), "?")
+                place((x, y + i), ".")
+        place((x, y + 7), "?")
         one = shape(bit + 1, (combo << 1) | 1, stacked)
         zero = shape(bit + 1, combo << 1, stacked)
         # Stacked: one column, zero-branch below; flat: past the span, shared rows.
         step = 1 if stacks(bit, stacked) else max(2, zero[0])
         xn = x - step - (slack if bit == 0 else 0)
         # b=1: '?' turns the pointer aside, then three R's turn it down
-        place((xn, y + 8), " ")
-        place((xn - 1, y + 8), "R")
+        place((xn, y + 7), " ")
         place((xn - 1, y + 7), "R")
-        place((xn, y + 7), "R")
-        build(bit + 1, xn, y + 9, (combo << 1) | 1)
+        place((xn - 1, y + 6), "R")
+        place((xn, y + 6), "R")
+        build(bit + 1, xn, y + 8, (combo << 1) | 1, 1)
         below = one[1] if stacks(bit, stacked) else 0
         # b=0: fall down this column, past the one-branch when it stacks
-        build(bit + 1, x, y + 9 + below, combo << 1)
+        build(bit + 1, x, y + 8 + below, combo << 1, 0)
 
     build(0, root, 1 - shift, 0)
 
