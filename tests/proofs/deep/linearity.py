@@ -154,7 +154,6 @@ ARITY_OVERRIDE = {
     "circuit_diagram": 10,
     "factor": 11,
     "polynomial": 9,
-    "slow_acv_mammalian": 10,
     "streetcode": 10,
 }
 

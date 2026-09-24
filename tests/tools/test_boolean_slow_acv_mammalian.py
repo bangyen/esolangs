@@ -7,7 +7,6 @@ import pytest
 from esolangs import tools as boolean
 from esolangs.tools.slow_acv_mammalian import (
     _greedy_advance,
-    _route_to_0_len,
     _stash_chunk,
     _Sums,
     _trampoline,
@@ -74,19 +73,22 @@ class TestSlowAcvMammalian:
             run_until_halt_or_cycle(_Machine(program, io_obj))
             assert io_obj.position() == 2
 
-    def test_routing_is_confined_to_the_arms_and_the_dispatch(self) -> None:
-        """Exactly ``2n + 1`` ``SPRINT``s: out and back per arm, one out.
+    def test_routing_is_accounted_for_array_by_array(self) -> None:
+        """Every ``SPRINT`` belongs to a named errand, and none is spare.
 
         ``ACCEPT`` appends to array 0 whatever the pointer holds, so the
-        reads never route; the pointer leaves array 0 only to bank a
-        weight on array 16 (each 1-arm goes out and comes back) and once
-        at the end, when the dispatch trampoline jumps from array 16 into
-        the leaf table.  A count off by one would mean a read or a merge
-        running on the wrong array.
+        reads never route.  The pointer leaves array 0 to plant each print
+        array and each pool (out and back), to raise array 16 to the leaf
+        base (out and back), once per arm -- twice for a solved weight,
+        three times for a pooled one, whose middle hop is the ride the
+        planted cell pays for -- once for the dispatch, and once inside
+        whichever leaf the run lands on.  A count off by one would mean a
+        read or a merge running on the wrong array.
         """
-        for table, n in (("01", 1), ("0110", 2), ("01101001", 3)):
+        for table, n, pools in (("01", 1, 0), ("0110", 2, 1), ("01101001", 3, 2)):
             tokens = boolean.slow_acv_mammalian(table).split()
-            assert tokens.count("SPRINT") == 2 * n + 1
+            arms = 2 * (n - pools) + 3 * pools
+            assert tokens.count("SPRINT") == 4 + 2 * pools + 2 + arms + 1 + len(table)
             assert "CONFLAGRATE" not in tokens
 
     def test_a_node_opens_the_accumulator_on_a_clean_digit(self) -> None:
@@ -196,19 +198,19 @@ class TestSlowAcvMammalian:
             machine.step()
         assert machine.ind == target
 
-    def test_ballast_is_spent_where_it_stands(self) -> None:
-        """No ``CONSUME`` or ``FISSION``: no cell is ever indexed.
+    def test_only_the_construction_s_own_opcodes_appear(self) -> None:
+        """Eight opcodes, and ``FISSION`` is not one of them.
 
-        The build tracks only heads and non-head sums (see ``_Sums``), and
-        that is sound precisely because the emitted program never touches
-        a cell by position -- ``SPRINT`` reads ``curr[0]`` with a zeroed
-        accumulator and every ``LEAPFROG``'s firing cell is appended by
-        its own code.  The program says so: only the seven ops the
-        construction needs appear.
+        Arrays 0 and 16 are never indexed -- ``SPRINT`` reads ``curr[0]``
+        with a zeroed accumulator and every ``LEAPFROG``'s firing cell is
+        appended by its own code -- which is what lets the build track
+        them as a head and a sum (see ``_Sums``).  ``CONSUME`` indexes
+        only the small planted arrays, and ``FISSION``, which would
+        halve a cell and move every index after it, appears nowhere.
         """
         program = boolean.slow_acv_mammalian("0110")
         used = set(program.split())
-        assert used <= {
+        assert used == {
             "SEED",
             "EXCRETE",
             "DIGEST",
@@ -216,28 +218,32 @@ class TestSlowAcvMammalian:
             "PRONOUNCE",
             "LEAPFROG",
             "SPRINT",
+            "CONSUME",
         }
 
-    def test_a_stale_slot_bound_is_caught_not_emitted(self) -> None:
-        """An arm too wide for its slot raises, loudly.
+    def test_a_pooled_weight_is_blind_to_what_array_16_holds(self) -> None:
+        """The pool banks its byte from any starting sum, unchanged.
 
-        The slot is the one place the construction leans on a bound rather
-        than an exact solve, so a stale ``_tramp_bound`` must surface as
-        an error naming the overflow -- not as a program whose merge
-        trampoline spills past its slot and lands the two branch paths at
-        different addresses.
+        This is the property the whole stride rests on.  A solved chunk
+        reads array 16's sum, so two runs that reached the arm with
+        different sums would append different bytes -- which is why every
+        solved weight has to be a multiple of 256.  The pool never reads
+        it: ``CONSUME`` lifts a planted byte, ``SPRINT`` rides it over and
+        ``EXCRETE`` drops it.  Run here from sums 256 apart *and* from
+        sums that are not, which a solved chunk could never survive.
         """
         import importlib
 
-        # The package re-exports the generator under its own module's
-        # name, so the package attribute is the *function*; only
-        # import_module reaches the module.
         module = importlib.import_module("esolangs.tools.slow_acv_mammalian")
-
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_tramp_bound", lambda _distance: 0)
-            with pytest.raises(AssertionError, match="slot"):
-                module.slow_acv_mammalian("0110")
+        banked = set()
+        for offset in (0, 1, 17, 255, 256, 4097):
+            st = module._Sums()  # noqa: SLF001
+            _ = module._build_pool(st, 32, 4)  # noqa: SLF001
+            st.nw += offset
+            before = st.nw
+            module._pool_bank(st, 32, 4)  # noqa: SLF001
+            banked.add(st.nw - before)
+        assert banked == {32}
 
     @pytest.mark.parametrize("amount", [0, 100, 256, 600, 2000])
     def test_a_weight_raise_is_exact_on_the_machine(self, amount: int) -> None:
@@ -271,26 +277,29 @@ class TestSlowAcvMammalian:
     def test_the_dispatch_lands_every_row_on_its_own_leaf(self) -> None:
         """Each run halts inside the leaf slot its inputs selected.
 
-        The construction's one data-dependent jump is the dispatch: the
-        banked weights shift array 16's non-head sum by ``row * 256``, so
-        the same fixed trampoline must land run ``row`` at
-        ``leaf_base + row * 256``.  Recovering the slot from the halt
+        The construction's one data-dependent jump is the dispatch: array
+        16's non-head sum is the leaf table's own address plus whatever
+        the ones banked, so the same fixed ``DIGEST LEAPFROG`` must land
+        run ``row`` on its weight sum.  Recovering the slot from the halt
         cursor pins that arithmetic through the machine rather than
         through the builder's own model of it.
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.tools.slow_acv_mammalian import _LEAF_UNIT, _weights
 
         table = "01101001"
         program = boolean.slow_acv_mammalian(table)
         tokens = program.split()
-        leaf_base = len(tokens) - 256 * len(table)
+        leaf_base = len(tokens) - _LEAF_UNIT * len(table)
+        weights = _weights(3)
         for row in range(8):
             bits = [(row >> (2 - i)) & 1 for i in range(3)]
             machine = _Machine(program, ScriptedIO("".join(f"{b}\n" for b in bits)))
             while not machine.halted:
                 machine.step()
-            assert (machine.ind - leaf_base) // 256 == row
+            banked = sum(w for w, b in zip(weights, bits, strict=True) if b)
+            assert machine.ind - leaf_base - banked in range(_LEAF_UNIT)
 
     def test_the_emitted_size_is_pinned_and_linear(self) -> None:
         """Exact sizes per arity, and the leaf table is the whole growth.
@@ -298,15 +307,30 @@ class TestSlowAcvMammalian:
         The construction is deterministic, so three sizes pin every piece
         -- a node, an arm, a slot or the dispatch drifting shows here
         first.  The differences also carry the linearity: each added input
-        costs one more level (whose arm doubles) plus the doubled leaf
-        table, so per-entry cost falls toward the 256-token slot floor
-        instead of growing.
+        costs one more level plus the doubled leaf table, and a slot is
+        eight tokens whatever the row, so per-entry cost falls toward that
+        floor instead of growing.
         """
         sizes = [
             len(boolean.slow_acv_mammalian(table))
             for table in ("01", "0110", "01101001")
         ]
-        assert sizes == [22_531, 40_555, 58_472]
+        assert sizes == [13_276, 23_330, 28_055]
+
+    def test_a_slot_is_the_same_width_for_either_digit(self) -> None:
+        """The table's stride is a leaf, and a leaf does not read the sum.
+
+        Both leaves clear the accumulator and SPRINT to a print array, one
+        SEED apart, so the two bodies differ by where they land and not by
+        how long they are.  That is what puts the stride at eight tokens
+        rather than at the 256 a solved print would need: a program's
+        length cannot depend on which entries its table holds.
+        """
+        sizes = {
+            len(boolean.slow_acv_mammalian(table))
+            for table in ("0000", "1111", "0110", "1001", "0111")
+        }
+        assert len(sizes) == 1
 
 
 class TestFastLanding:
@@ -334,14 +358,12 @@ class TestFastLanding:
         self, hw0: int, nw0: int, amount: int
     ) -> None:
         st = _Sums()
-        st.hw, st.nw, st.ptr = hw0, nw0, 1
+        st.hw, st.nw, st.ptr = hw0, nw0, 16
         real_tokens = _w_raise(st, amount)
 
         fast_len, fast_hw = _w_raise_len(hw0, nw0, amount)
         assert fast_len == len(real_tokens)
         assert fast_hw == st.hw
-        # _route_to_0_len only needs the resulting head, never the tokens.
-        assert _route_to_0_len(fast_hw) == _route_to_0_len(st.hw)
 
     def test_greedy_advance_cycle_matches_a_full_walk(self) -> None:
         """A target past 256 chunks must exercise the cycle-jump branch."""
@@ -351,7 +373,7 @@ class TestFastLanding:
 
         # Cross-check against the slow reference the construction ships.
         st = _Sums()
-        st.hw, st.nw, st.ptr = 0, 17, 1
+        st.hw, st.nw, st.ptr = 0, 17, 16
         _w_raise(st, 10**6 + 510)
         assert (st.hw + st.nw) % 256 == final_r
 
@@ -366,7 +388,7 @@ class TestFastLanding:
         through the jump, not just the one big-target picks.
         """
         st = _Sums()
-        st.hw, st.nw, st.ptr = 3, 29, 1
+        st.hw, st.nw, st.ptr = 3, 29, 16
         real_tokens = _w_raise(st, target)
         fast_len, fast_hw = _w_raise_len(3, 29, target)
         assert (fast_len, fast_hw) == (len(real_tokens), st.hw)
@@ -381,7 +403,7 @@ class TestFastLanding:
         nw0 = rng.randrange(10**6)
         amount = rng.randrange(2 * 10**6)
         st = _Sums()
-        st.hw, st.nw, st.ptr = hw0, nw0, 1
+        st.hw, st.nw, st.ptr = hw0, nw0, 16
         real_tokens = _w_raise(st, amount)
         fast_len, fast_hw = _w_raise_len(hw0, nw0, amount)
         assert (fast_len, fast_hw) == (len(real_tokens), st.hw)
