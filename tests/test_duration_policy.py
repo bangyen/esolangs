@@ -65,3 +65,33 @@ def test_the_top_bands_are_exempt_on_either_machine(
     monkeypatch.setenv("CI", "1")
     assert violation({"slow"}, 1000.0) is None
     assert violation({"weekly"}, 1000.0) is None
+
+
+def test_a_starved_test_is_excused_but_a_slow_one_is_not() -> None:
+    """Wall time past the band is contention only if the work fit the band."""
+    # 1.15s wall for 0.30s of work: descheduled, not slow.
+    assert violation(set(), 1.15, 0.30) is None
+    # The same wall time for work that itself blew the band is a real overrun.
+    assert "fast band limit of 1s" in str(violation(set(), 1.15, 1.02))
+
+
+def test_the_excuse_runs_out_past_the_scaled_ceiling() -> None:
+    """No amount of starvation explains three times the band."""
+    assert violation(set(), 1.0 * CI_SCALE + 0.01, 0.01) is not None
+
+
+def test_cpu_time_can_only_excuse_an_overrun_never_cause_one() -> None:
+    """``process_time`` sums threads, so a pool reads a multiple of its wall.
+
+    A rule that failed on CPU alone would fail tests sitting well inside
+    their band, which is why the check is consulted only after the wall
+    time is already past the ceiling.
+    """
+    assert violation(set(), 0.5, 4.0) is None
+    assert violation({"medium"}, 2.0, 12.0) is None
+
+
+def test_an_unmeasured_call_keeps_the_plain_wall_rule() -> None:
+    """The caller may not have timed the CPU; then the ceiling is unchanged."""
+    assert violation(set(), 1.01, None) is not None
+    assert violation(set(), 1.01) is not None
