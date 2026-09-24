@@ -447,8 +447,8 @@ and the right-half-plane bound without the half-plane.  Two gaps kept this
 *sharp* form from being a theorem: the certificate is proved for
 `U = {0..K}` only, and asymptotically in `D` (the exact optima sit above the
 limit at every finite degree measured, but that is measured, not proved).
-Both are still open, and both are now unnecessary -- the slack certificate
-below gives up the `u` primes `p_{u+1}..p_{2u}`, keeps
+Gap (b) is now closed, for every `c` (*General `c`* below); (a) is
+open.  Both are unnecessary -- the slack certificate below gives up the `u` primes `p_{u+1}..p_{2u}`, keeps
 `Omega(L**2 log L)`, and is proved for free positions anywhere at every
 degree.  What follows on the two gaps is therefore the record of the sharp
 form, not a dependency of the bound.
@@ -472,7 +472,7 @@ which is an *identity* when only `a, b` are present (`h_n**2 - h_{n-1}
 h_{n+1} = (ab)**n`) and strict below, ratio below 1 on the checked `L = 3..8`,
 `n <= 40` range.  Adding a root smaller than `a` must not raise that ratio;
 that single inequality, and its `c > 2` analogue through the `c x c`
-minors, is what (b) still needs.  A primal reduction does not work:
+minors, was what (b) needed, and *General `c`* below proves it.  A primal reduction does not work:
 dividing out the small roots turns bounded coefficients into `B *
 h_n(small)` ones, and the free low coefficients are `B r**D` large.  (a)
 *Lowest positions.*  Every unbounded set of size 1..3 at `L = 4, 5` and
@@ -535,9 +535,32 @@ rho_i**-k`, so both minors are `det V[R] * const` and their ratio is
 `C`.  At the boundary (some `r < k`) the minors are skew Schur functions
 `s_{lambda/mu}(rho_1..rho_c)` by Jacobi--Trudi and the needed inequality
 is `s_{((d-c+1)**(c-1))} * s_{lambda_B/mu} >= (prod rho)**(d-c+2)
-s_{lambda_A/mu}`, measured, not proved, for `c >= 3` (`c = 2` is the
-hand argument above).  That inequality is the whole of gap (b), of the
-sharp form only: the slack certificate needs no truncated Toeplitz minor.
+s_{lambda_A/mu}`, which closes gap (b), of the sharp form only (the
+slack certificate needs no truncated Toeplitz minor).  *Proof* (every
+`c`, all positive `rho`), with `b = n-c+1`, `k = d-c+1`, `lambda_A =
+(b**(c-1), n-d)`, `lambda_B = ((b+1)**c)`, `mu_j = C_{c+1-j} + j - c`.
+If `mu_1 > b` the left side is `0`.  Otherwise let `beta` be `mu`'s
+complement in the box `b**c`: complementing in `(b+1)**c` gives
+`s_{lambda_B/mu} = e_c s_beta`, and since `lambda_A`'s complement is the
+single row `(k)`, `c^{lambda_A}_{mu eta} = c^{beta}_{(k) eta}` gives
+`s_{lambda_A/mu} = sum s_eta` over `beta/eta` a horizontal `k`-strip.
+With `s_{(k**(c-1))} = e_c**k h_k(1/rho)` and the dual Pieri rule for
+`GL_c` (`h_k(1/x) s_beta = sum s_gamma` over `gamma` in `Z**c`
+interlacing `beta`, `|gamma| = |beta| - k`), the `gamma` with
+`gamma_c >= 0` are exactly the `eta`, so
+`s_{(k**(c-1))} s_{lambda_B/mu} - e_c**(k+1) s_{lambda_A/mu} = e_c**(k+1)
+sum_{gamma_c < 0} s_{gamma + (k+1)**c}`, each term a genuine Schur
+polynomial (`gamma_c >= -k`): Schur-positive, and empty exactly in the
+interior, which recovers the equality there and, at `c = 2`, the hand
+argument.  With the step above, **every monic real multiple of
+`prod_{i<=L} (x - p_i)` of degree `D >= L` with its `K + 1 <= L - 1`
+lowest coefficients free has a coefficient in degrees `[K+1, D-c]`,
+`c = L - K - 1`, of absolute value at least `prod_{i=K+2}^{L} (p_i -
+1)`, at every `D`.**  Executed, exact: the Schur expansion against the
+determinants for `c = 2, 3, 4` (`n <= 8, 7, 5`, every `C`), the
+Cauchy--Binet step at `c = 3, 4`, `(H)` with extra roots on either side
+of the designated ones, and `1 / tail >= bound` for `L = 5..7`, every
+`K`, `D` to 25 (`L = 7, K = 4, D = 25`: 195.5 against 192).
 
 **Total mass: no multiple is lighter than the product** (executed).  The
 decisive measurement for the whole route: the least coefficient-digit

@@ -355,8 +355,15 @@ step; an answer lands in the paper it extends, and the row leaves.
   `C = 10`), so any fitted base is a lower estimate.  DEAD: quotienting
   loop-free I/O-free segments by their tape effect -- the transfer matrix
   over `.,[]` gives base 7.371 against 7.388, a floor of 0.1507; the
-  count lives in short segments between separators.  The gain must come
-  from bracket equivalences (dead, idempotent or state-returning loops).
+  count lives in short segments between separators.  Forbidding local
+  patterns whose deletion preserves behaviour (the paper's count admits
+  only deletions, so `[+]` -> `[-]` is not sound) barely helps either:
+  a dead `+`/`-` before a clear loop and never-exiting pointer-neutral
+  loops to body length 9 give 7.3787, floor 0.15062; adding `+,`/`-,`
+  gives 7.1102, floor 0.1535, but that rule is sound only if `,` at end
+  of input fails (the repo's interpreter raises `EOFError`), a convention
+  `factor.tex` must state before relying on it.  A real gain needs a
+  global equivalence argument, not a forbidden-pattern list.
 
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further
@@ -371,7 +378,15 @@ step; an answer lands in the paper it extends, and the row leaves.
   is dependent (3,416 at `n = 4`, 9,308 at 10, 16,650 at 11, at least
   19,007 at 12).  What survives is a cut over ONE program per table -- a
   normal form that strips nop runs and padding -- or a count of
-  descriptions rather than of flip-sensitive cells.  Between the shipped
+  descriptions rather than of flip-sensitive cells.  Either way it is a
+  density lemma: 17 inputs need 2.22 bits a cell against the 3 a cell
+  holds, so every program must waste 0.78 bits a cell (the shipped builds
+  store 0.14).  Next step: measure bits per cell of the tables computed
+  by a scaled-down Malbolge (`3**6`..`3**7` cells, same decode and
+  re-encipher) as the store grows; near 3 kills the route.  The `n = 14`
+  route is not shipped despite [limitations](limitations.md): its
+  constants (`_F_LEVELS`, `_F_LINKS`) are empty and every 14-input table
+  raises `IndexError` in `_f_tables`.  Between the shipped
   constructions and 17 the least unreachable arity is unknown in both
   directions.
 
@@ -404,14 +419,10 @@ step; an answer lands in the paper it extends, and the row leaves.
   every `U`; (b) it is asymptotic in `D`, and the finite-`D` statement
   reduces to the skew-Schur inequality
   `s_{((d-c+1)**(c-1))} s_{lambda_B/mu} >= (prod rho)**(d-c+2) s_{lambda_A/mu}`,
-  measured but proved only at `c = 2` in the doc.  The inequality holds for
-  every `c` and positive real `rho`: complementing `mu` in the `b**c` box
-  (`b = n - c + 1`, `k = d - c + 1`) gives `s_{lambda_B/mu} = e_c s_beta`
-  and `s_{lambda_A/mu} = sum s_eta` over horizontal `k`-strips `beta/eta`,
-  while dual Pieri for `h_k(1/rho) s_beta` sums over all `gamma` in `Z**c`
-  interlacing `beta`, so `LHS - RHS = e_c**(k+1) sum_{gamma_c < 0}
-  s_{gamma + (k+1)**c}`, Schur-positive, and empty exactly in the interior.
-  Checked exactly against the determinants in 942 cases (`c = 2, 3, 4`).
-  Left for (b): write it into [polynomial](proofs/polynomial.md) and check
-  the Cauchy--Binet step and cyclic-shift reduction that carry it to every
-  `C`; (a) is untouched.
+  now proved for every `c` (Schur-positive by Pieri and dual Pieri; see
+  *General `c`* in [polynomial](proofs/polynomial.md)), which closes (b).
+  Left: (a).  Untested route: the certificate entries for any `U` are
+  ratios of Schur functions `s_{lambda(U)}(r)`, so minimality at
+  `U = {0..u-1}` is a monotonicity statement for such ratios as one part
+  moves up -- the shape of the Lam--Postnikov--Pylyavskyy inequality
+  `s_mu s_nu <= s_{mu v nu} s_{mu ^ nu}`.
