@@ -177,8 +177,12 @@ def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
 # will do.
 _BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};| "
 
-# Brainfuck-family, plus a digit argument (Dimensional's ``>0``/``<0``).
-_DIMENSIONAL_COMMAND = r"[<>]\d+|."
+# Dimensional's operands, all of which a break would split.  ``_number``
+# takes an optional ``~`` and a digit run for ``<``, ``>``, ``$``, ``{``,
+# ``?`` and ``!``; ``=`` takes exactly two hex digits and ``:`` exactly one
+# character, newline included.  Binding a pair the interpreter would not
+# have read -- a ``:`` inside a ``*`` comment -- only costs a break.
+_DIMENSIONAL_COMMAND = r"[<>$?!{]~?\d*|=[\s\S]{0,2}|:[\s\S]?|[\s\S]"
 
 # 6-5's ``7``/``8`` take the next character, whatever it is (the
 # interpreter's tokenizer merges the pair blind), so this matches any
