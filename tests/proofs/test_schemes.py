@@ -14,11 +14,11 @@ the wide one.  Folding therefore cannot be turned into "folds implies `tree`".
 Several rows break the converse as well, and are named in
 :data:`_FOLDS_WITHOUT_TREE` below.
 
-Nor does the converse hold.  A tree may be *deliberately* unfolded: B-tapemark
-and Container's sub-crossover route both keep uniform depth because their
-nodes read the input, and collapsing a constant subtree would drop that
-subtree's reads.  A 0% fold is those constructions working.  The obligations
-below are the ones that survive both cautions.
+Nor does the converse hold.  A tree may be *deliberately* unfolded:
+Container's sub-crossover route keeps uniform depth because its nodes read
+the input, and collapsing a constant subtree would drop that subtree's
+reads.  A 0% fold is that construction working.  The obligations below are
+the ones that survive both cautions.
 """
 
 from __future__ import annotations

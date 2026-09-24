@@ -128,16 +128,16 @@
   },
   "B-tapemark": {
    "0110": {
-    "commands": 59,
-    "source_units": 227
+    "commands": 89,
+    "source_units": 221
    },
    "01101001": {
-    "commands": 98,
-    "source_units": 636
+    "commands": 134,
+    "source_units": 364
    },
    "0110100110010110": {
-    "commands": 151,
-    "source_units": 1517
+    "commands": 187,
+    "source_units": 545
    }
   },
   "BF-PDA": {
