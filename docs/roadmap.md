@@ -258,8 +258,13 @@ step; an answer lands in the paper it extends, and the row leaves.
   would follow up to a constant factor per row, which suffices, from a
   norm bound `eq:nuconj` on certificates with `2k-2` spare roots
   (`lem:sparecert`; qualitatively Descartes, `prop:sparedescartes`).  The
-  row `k = 2` is proved up to a factor 65 (`thm:secondrow`, via Hunter
-  positivity with constants, `lem:evenh`).
+  row `k = 2` is proved up to a factor 13, and exactly when the two
+  smallest roots have opposite signs (`thm:secondrowsharp`, by averaging
+  the certificates `x^|A|/P_A`, `lem:mixcert`; Hunter positivity with
+  constants, `lem:evenh`).  `eq:nuconj` has a form without `prod rho`
+  (`eq:nucore`) and may be weakened to `C^L prod rho`; balanced rows
+  `k >= 3` conjecturally follow by averaging (LP evidence, a Farkas
+  counterexample when unbalanced).
 
 - **Polynomial's routing constant.**  CLOSED in
   [polynomial](proofs/polynomial.tex): the next-read count `thm:count`
