@@ -338,15 +338,14 @@ The companion to `polynomial.tex` Section "Explicit constants"
 Put `C_P(n)` = max over tables of min `|f|`, and normalise by
 `T**2/n = T**2/log2 T`. The bracket is
 
-    49/16 log10(2) = 0.922  <=  liminf C_P n/T**2
-    13/4  log10(2) = 0.978  <=  limsup C_P n/T**2  <=  325/8 log10(2) = 12.23
+    13/4 log10(2) = 0.978  <=  liminf C_P n/T**2  <=  limsup C_P n/T**2
+                           <=  325/8 log10(2) = 12.23
 
-For `T**2/ln T` units, multiply by `ln 2`: `0.639 .. 8.48`.
+For `T**2/ln T` units, multiply by `ln 2`: `0.678 .. 8.48`.
 
 For every `n`,
-`(1 - O(log n / n)) (3 + mu_n**2) log10 2 <= C_P n/T**2 <= (1 + O((log n)**2/n)) 325/8 log10 2`,
-with `mu_n = n 2**-j_n` in `(1/4 - o(1), 1/2]` (`lem:halves`): a factor
-`650/49 = 13.3` at the lower limit. So the order is settled and the constant is not.
+`(1 - O(log n / n)) 13/4 log10 2 <= C_P n/T**2 <= (1 + O((log n)**2/n)) 325/8 log10 2`,
+a factor `325/26 = 12.5` at both limits. So the order is settled and the constant is not.
 
 **Lower side: three links.**
 
@@ -433,8 +432,11 @@ source for `n <= 7`. Rendered lengths against the first compiler: 0.85 at
   halves (`lem:zerowit`, exact register arithmetic); tables with
   `2^(n-j_n) - 1` such residuals still force `T/(n+4)` inputs
   (`lem:halves`), and those roots add `mu_n**2` (`lem:evensigns` with `N`).
-  The register roots `(a +- p**b i)**2` of `E` are not charged; that is
-  what separates `3 + mu_n**2` from 4.
+  Counting even or odd programs by their sign skeleton and zero points
+  (`lem:evencount`) forces about `T/(2n)` such roots for every large `n`
+  (`cor:evenhard`), so they pay `3 + 1/4` uniformly. The register roots
+  `(a +- p**b i)**2` of `E` are not charged; that is what separates 13/4
+  from 4 (both counts stop at `1/2`).
 
 The order-statistic bound for free positions (`coefficient-mass.tex`
 Lemma 3.1) is already sharp (Corollary 3.6), so the mass step alone cannot
@@ -442,7 +444,7 @@ narrow the bracket. Open:
 
 * a mass bound for the roots `a +- p**b i` (roadmap, complex roots);
 * a profile below `325/8`;
-* whether even or odd sources can be optimal (lower constant `3 + mu_n**2` or 4).
+* whether even or odd sources can be optimal (lower constant 13/4 or 4).
 
 **Measured** (uncapped `_polynomial_dag`, one seeded random table per n):
 
