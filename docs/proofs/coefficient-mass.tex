@@ -3445,6 +3445,168 @@ Corollary~\ref{cor:imag} up to the constant.  Proposition~\ref{prop:noangle}
 shows that some separation is necessary; the constants $3$, $9$ and $729$ are
 not optimized.
 
+\subsection{Real roots of both signs}\label{sec:bothsigns}
+
+Theorem~\ref{thm:order} needs its roots on one side of $0$.  Applied to $F(x)$
+and to $F(-x)$ it charges a multiple with $p$ positive and $n$ negative
+prescribed roots only for the larger of the two classes.  The mixed problem is
+genuinely weaker: by the multisection transfer (the remark after
+Corollary~\ref{cor:imag}, with $R=\prod_j(y-s_j^2)$), the $L=2m$ roots $\pm s_j$
+of $\prod_j(x^2-s_j^2)$ are worth only the $m$ positive roots $s_j^2$, so at a
+common modulus $s$ they cost about $\frac14L^2\log s$ instead of the
+$\frac12L^2\log s$ of $L$ roots of one sign.  Rolle's theorem, used on the two
+half-lines separately as in Proposition~\ref{prop:quadratic}, gives the
+matching lower bound: every excluded coefficient costs one root of each sign.
+
+\begin{lemma}[Rolle on both half-lines]\label{lem:rolleside}
+Let $h\in\R[t]$ be nonzero, let $z\ge1$ be an integer, and put
+$T_zh=h-(t/z)h'$, so that $[t^d]T_zh=(1-d/z)[t^d]h$.  If $h$ has the zeros
+$0<\xi_1\le\cdots\le\xi_m$, listed with multiplicity, $m\ge1$, then $T_zh$ has
+zeros $\eta_1\le\cdots\le\eta_{m-1}$ in $(0,\infty)$, listed with multiplicity,
+with $\xi_j\le\eta_j\le\xi_{j+1}$.  The same holds in $(-\infty,0)$ for the
+absolute values: zeros $|\xi_1|\le\cdots\le|\xi_m|$ of $h$ there give zeros
+$|\eta_1|\le\cdots\le|\eta_{m-1}|$ of $T_zh$ there with
+$|\xi_j|\le|\eta_j|\le|\xi_{j+1}|$.
+\end{lemma}
+
+\begin{proof}
+For $t\ne0$, $T_zh=-(t^{z+1}/z)(t^{-z}h)'$.  On $I=(0,\infty)$ the function
+$\varphi=t^{-z}h$ is real-analytic, not identically zero, and has the zeros of
+$h$ with the same multiplicities.  Let $x_1<\cdots<x_q$ be the distinct zeros,
+of multiplicities $\mu_i$.  Writing $\varphi=(t-x_i)^{\mu_i}\psi$ with
+$\psi(x_i)\ne0$ shows that $\varphi'$ vanishes to order $\mu_i-1$ at $x_i$,
+and Rolle's theorem gives a zero $y_i\in(x_i,x_{i+1})$ for $i<q$.  List
+$\mu_1-1$ copies of $x_1$, then $y_1$, then $\mu_2-1$ copies of $x_2$, then
+$y_2$, and so on: these are $m-1$ zeros of $\varphi'$ counted with
+multiplicity, the $j$-th lies in $[\xi_j,\xi_{j+1}]$, and since
+$-t^{z+1}/z$ has no zero in $I$ they are zeros of $T_zh$.  For
+$(-\infty,0)$ apply this to $h(-t)$, using $(T_zh)(-t)=T_z\bigl(h(-t)\bigr)$.
+\end{proof}
+
+\begin{theorem}[Rows at real roots of both signs]\label{thm:bothsigns}
+Let $F\in\mathbb C[x]$ be nonzero of degree $D$, and let
+$a_1\ge\cdots\ge a_p>0$ and $c_1\ge\cdots\ge c_n>0$, repetitions allowed, with
+$p+n\ge1$, be such that $\prod_{i}(x-a_i)\prod_i(x+c_i)$ divides $F$.  Let
+$0<\rho<1$ with $\rho a_i>1$ and $\rho c_i>1$ for every $i$.  For
+$1\le k\le\max(p,n)$ put
+\[
+  \Pi_k(\rho)=\prod_{i=k}^{p}(\rho a_i)\prod_{i=k}^{n}(\rho c_i),
+\]
+an empty product being $1$.  Then
+\begin{equation}\label{eq:bothrowsbound}
+  b_k(F)\ \ge\ |f_D|\,\frac{\Pi_k(\rho)-1}{(1-\rho)^{-k}-1}.
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+First let $F$ be real.  Since $k\le\max(p,n)\le p+n\le D$, there are at least
+$k-1$ positions below $D$.  Let $z_1<\cdots<z_{k-1}$ be the backward distances
+$D-j$ of $k-1$ positions $j<D$ carrying the $k-1$ largest nonleading
+magnitudes; they are distinct positive integers, so $z_i\ge i$.  Let
+$F^*(t)=t^DF(1/t)=\sum_{d=0}^Df_{D-d}t^d$ and
+\[
+  g=T_{z_{k-1}}\cdots T_{z_1}F^*,\qquad
+  [t^d]g=f_{D-d}\prod_{i=1}^{k-1}\Bigl(1-\frac d{z_i}\Bigr).
+\]
+So $g(0)=f_D\ne0$ and $[t^{z_i}]g=0$.  As in the proof of
+Proposition~\ref{prop:rowone}, $(x-\alpha)\mid F$ gives $(1-\alpha t)\mid F^*$,
+so $F^*$ has the zeros $1/a_1\le\cdots\le1/a_p$ in $(0,\infty)$ and the zeros
+$-1/c_i$, of absolute values $1/c_1\le\cdots\le1/c_n$, in $(-\infty,0)$, with
+multiplicity.  Every intermediate polynomial $T_{z_s}\cdots T_{z_1}F^*$ has
+constant term $f_D\ne0$, so Lemma~\ref{lem:rolleside} applies at each step;
+after $s$ steps the $j$-th positive zero is at most the $(j+1)$-th positive
+zero of the previous stage, hence at most $1/a_{j+s}$.  So $g$ has positive
+zeros $\eta_j\le1/a_{j+k-1}$, $1\le j\le p-k+1$, and negative zeros
+$\eta'_j$ with $|\eta'_j|\le1/c_{j+k-1}$, $1\le j\le n-k+1$, all of modulus
+less than $\rho$.  Jensen's formula for $g$ on $|t|\le\rho$ gives
+\[
+  \log|f_D|+\log\Pi_k(\rho)\ \le\
+  \log|f_D|+\sum_{g(\zeta)=0,\ |\zeta|<\rho}\log\frac\rho{|\zeta|}\ \le\
+  \log\max_{|t|=\rho}|g(t)|,
+\]
+because $\log(\rho/|\eta_j|)\ge\log(\rho a_{j+k-1})$, likewise for the
+$\eta'_j$, and the remaining terms are positive.  On the other side, for
+$d\ge1$ either $[t^d]g=0$ or the position $D-d$ is not among the $k-1$ largest,
+so $|f_{D-d}|\le b_k(F)$, while
+$\prod_i|1-d/z_i|\le\prod_{i=1}^{k-1}(1+d/i)=\binom{d+k-1}{k-1}$.  Hence
+\[
+  \max_{|t|=\rho}|g(t)|\ \le\ |f_D|+b_k(F)\sum_{d\ge1}\binom{d+k-1}{k-1}\rho^d
+  =|f_D|+b_k(F)\bigl((1-\rho)^{-k}-1\bigr),
+\]
+and the two displays give \eqref{eq:bothrowsbound}.  For complex $F$ apply the
+real case to $\operatorname{Re}(F/f_D)$, as in Corollary~\ref{cor:complex}: it
+is real of degree $D$ with leading coefficient $1$, divisible by the real
+polynomial $\prod_i(x-a_i)\prod_i(x+c_i)$, and its coefficients are dominated
+by those of $F/f_D$.
+\end{proof}
+
+The exclusions cost one root of each sign, and in the worst case the largest
+one: $\Pi_k$ omits $a_1,\ldots,a_{k-1}$ and $c_1,\ldots,c_{k-1}$.  This is the
+opposite of Theorem~\ref{thm:order}, which omits the smallest roots, so
+\eqref{eq:bothrowsbound} is the right tool when the moduli are comparable, and
+it is sharp there.
+
+\begin{corollary}[Mass at real roots of both signs]\label{cor:bothsignsmass}
+Let $F\in\mathbb C[x]$ be nonzero with $|f_D|\ge1$, divisible by
+$\prod_{i=1}^L(x-r_i)$ with $r_i$ real, repetitions allowed, and $|r_i|\ge R\ge4$.
+Then for $1\le k\le\lceil L/2\rceil$,
+\[
+  b_k(F)\ \ge\ |f_D|\,\frac{(R/2)^{L-2k+2}-1}{2^k-1},
+\]
+and
+\begin{equation}\label{eq:bothmass}
+  \Lambda(F)\ \ge\ \Bigl(\Bigl\lceil\frac L2\Bigr\rceil+1\Bigr)\log|f_D|
+  +\Bigl\lfloor\frac{(L+1)^2}4\Bigr\rfloor\log\frac R2
+  -\frac12\Bigl\lceil\frac L2\Bigr\rceil\Bigl(\Bigl\lceil\frac L2\Bigr\rceil+3\Bigr)\log2 .
+\end{equation}
+\end{corollary}
+
+\begin{proof}
+Let $p$ and $n$ count the positive and negative $r_i$; then
+$\lceil L/2\rceil\le\max(p,n)$.  Take $\rho=\frac12$ in
+Theorem~\ref{thm:bothsigns}: every $\rho|r_i|\ge R/2\ge2$, and
+$\Pi_k(\tfrac12)\ge(R/2)^{(p-k+1)^++(n-k+1)^+}\ge(R/2)^{L-2k+2}$.  This is the row
+bound.  For $k\le\lceil L/2\rceil$ the exponent $L-2k+2$ is at least $1$, so
+$X=(R/2)^{L-2k+2}\ge2$, $X-1\ge X/2$, and
+$\log b_k(F)\ge\log|f_D|+(L-2k+2)\log(R/2)-(k+1)\log2$.  The leading coefficient
+and the $\lceil L/2\rceil$ largest nonleading magnitudes, all nonzero, sit at
+distinct positions, so $\Lambda(F)\ge\log^+|f_D|+\sum_k\log^+b_k(F)$ is at
+least the sum of these lower bounds; finally
+$\sum_{k=1}^{\lceil L/2\rceil}(L-2k+2)=\lfloor(L+1)^2/4\rfloor$ and
+$\sum_{k=1}^{\lceil L/2\rceil}(k+1)=\frac12\lceil L/2\rceil(\lceil L/2\rceil+3)$.
+\end{proof}
+
+\begin{proposition}[Sharpness of the constant $\frac14$]\label{prop:bothsignssharp}
+Let $m\ge1$, $R\ge4$, $\lambda\ge1$ and $s_1,\ldots,s_m\in[R,\lambda R]$.  The
+polynomial $P=\prod_{j=1}^m(x^2-s_j^2)$ is a monic multiple of the $L=2m$ real
+roots $\pm s_j$, all of modulus at least $R$, and
+\[
+  \Lambda(P)\ \le\ \Bigl\lfloor\frac{(L+1)^2}4\Bigr\rfloor\log(\lambda R)+m^2\log2 .
+\]
+So the coefficient $\lfloor(L+1)^2/4\rfloor\sim\frac14L^2$ of $\log R$ in
+\eqref{eq:bothmass} cannot be increased, while for roots of one sign
+Corollary~\ref{cor:mass} gives $\frac{L(L+1)}2\log(R-1)$.
+\end{proposition}
+
+\begin{proof}
+The nonleading coefficients of $P$ are $\pm e_j(s_1^2,\ldots,s_m^2)$,
+$1\le j\le m$, each between $1$ and $\binom mj(\lambda R)^{2j}$.  So
+$\Lambda(P)\le\sum_j\log\binom mj+m(m+1)\log(\lambda R)$, and
+$m(m+1)=\lfloor(2m+1)^2/4\rfloor$, $\sum_j\log\binom mj\le m^2\log2$.
+\end{proof}
+
+At the bottom of the range the proof of Proposition~\ref{prop:quadratic} goes
+through for both signs.  If $|f_D|\ge1$ and all $|r_i|\ge2$, then
+\eqref{eq:bothrowsbound} with $\rho=\frac9{10}$ gives
+$b_k\ge((9/5)^{L-2k+2}-1)/(10^k-1)$; for $k\le L/16$ the exponent is at least
+$\frac78L$, so for $L\ge16$
+\[
+  \log b_k\ \ge\ \tfrac78L\log\tfrac95-\tfrac1{16}L\log10
+    +\log\bigl(1-(9/5)^{-14}\bigr)\ \ge\ \tfrac L3,
+\]
+with $\frac78\log\frac95=0.5143\ldots$ and $\frac1{16}\log10=0.1439\ldots$;
+there are $\lfloor L/16\rfloor\ge L/32$ such rows, so $\Lambda(F)\ge L^2/96$.
+
 \subsection{Gaussian-integer roots}\label{sec:gaussian}
 
 Proposition~\ref{prop:noangle} rules out bounds in terms of moduli and
@@ -4288,6 +4450,120 @@ $2K\log R$, against the certified $11.09$, $26.20$, $58.22$ and $139.8$; the
 certificates remain the way to settle individual root sets, and the theorem is
 the uniform statement in $K$.
 
+For real multiples the two crossing polynomials of
+Lemma~\ref{lem:sectorcount} at the rays $\arg z=\frac\pi2\pm\delta'$ are one
+real polynomial with zeros of both signs, and the crossings can be localized
+annulus by annulus.
+
+\begin{lemma}[Both rays, annulus by annulus]\label{lem:localcross}
+Let $B\in\R[x]$ be nonzero of degree $d$, let $0<\delta'\le\pi/2$, and suppose
+$B$ has no zero other than $0$ on the rays $\arg z=\frac\pi2\pm\delta'$.  Let
+$0<A_1<\cdots<A_{m+1}$ with $A_{\ell+1}\ge2A_\ell$.  There are
+$a_\ell\in[A_\ell/2,A_\ell)$, $1\le\ell\le m+1$, with the following property.
+Put $\psi=\frac\pi2-\delta'$ and, for $\theta\in\R$,
+\[
+  h_\theta(r)=\operatorname{Im}\bigl(e^{-i\theta}B(re^{i\psi})\bigr)
+  =\sum_{k=0}^d\operatorname{Im}\bigl(e^{-i\theta}b_ke^{ik\psi}\bigr)r^k .
+\]
+If $B$ has $K_\ell$ zeros, counted with multiplicity, in
+$W_\ell=\{a_\ell<|z|<a_{\ell+1},\ |\arg z-\frac\pi2|<\delta'\}$, then for every
+$\theta$ the real polynomial $h_\theta$ has at least
+$2K_\ell-2dE(\delta')/\pi-2$ distinct real zeros $r$ with
+$a_\ell<|r|<a_{\ell+1}$.
+\end{lemma}
+
+\begin{proof}
+With $S(r)$ as in the proof of Lemma~\ref{lem:sectorcount},
+$\int_{A/2}^{A}S(r)\,dr/r\le dE(\delta')\log2$ for every $A>0$, so we may choose
+$a_\ell\in[A_\ell/2,A_\ell)$ with $S(a_\ell)\le dE(\delta')$ and $a_\ell$
+different from the modulus of every zero of $B$.  The intervals
+$[A_\ell/2,A_\ell)$ are disjoint and increasing, so $a_1<\cdots<a_{m+1}$.  Let
+$\psi_\pm=\frac\pi2\pm\delta'$ and let $\Delta_\pm^\ell$ be the change of a
+continuous argument of $B(re^{i\psi_\pm})$ as $r$ increases from $a_\ell$ to
+$a_{\ell+1}$.  The argument principle along $\partial W_\ell$ and the arc
+bound $|\Delta_{\rm arc}(a)|\le S(a)$ give
+\[
+  2\pi K_\ell\ \le\ |\Delta^\ell_-|+|\Delta^\ell_+|+2dE(\delta').
+\]
+By the last paragraph of the proof of Lemma~\ref{lem:sectorcount}, for every
+$\theta'$ there are at least $|\Delta^\ell_\pm|/\pi-1$ distinct
+$r\in(a_\ell,a_{\ell+1})$ at which $e^{-i\theta'}B(re^{i\psi_\pm})$ is real.  With
+$\psi_-=\psi$ and $\theta'=\theta$ these are positive zeros of $h_\theta$.
+For $r<0$ we have $re^{i\psi}=\overline{|r|e^{i\psi_+}}$, and $B$ is real, so
+$h_\theta(r)=-\operatorname{Im}\bigl(e^{i\theta}B(|r|e^{i\psi_+})\bigr)$; with
+$\psi_+$ and $\theta'=-\theta$ this gives at least $|\Delta^\ell_+|/\pi-1$
+negative zeros with $a_\ell<|r|<a_{\ell+1}$.  Add the two counts.
+\end{proof}
+
+\begin{theorem}[Thin sectors at the imaginary axis]\label{thm:thinreal}
+Let $B\in\R[x]$ have degree $d$ and $|b_d|\ge1$, let $0<\delta\le\pi/4$ and
+$R\ge8$, and suppose that $B$ has at least $K$ zeros, counted with
+multiplicity, in $\{z:|z|\ge R,\ |\arg z-\frac\pi2|\le\delta\}$.  Let $M$ be the
+least integer with $M\ge2K-2dE(2\delta)/\pi-2$, and suppose $M\ge1$.  Then
+$b_k(B)\ge|b_d|\bigl((R/4)^{M-2k+2}-1\bigr)/(2^k-1)$ for
+$1\le k\le\lceil M/2\rceil$, and
+\[
+  \Lambda(B)\ \ge\ \Bigl\lfloor\frac{(M+1)^2}4\Bigr\rfloor\log\frac R4
+  -\frac12\Bigl\lceil\frac M2\Bigr\rceil\Bigl(\Bigl\lceil\frac M2\Bigr\rceil+3\Bigr)\log2 .
+\]
+\end{theorem}
+
+\begin{proof}
+Choose $\delta'\in(\delta,2\delta]$ with no zero of $B$ on the rays
+$\arg z=\frac\pi2\pm\delta'$; then $E(\delta')\le E(2\delta)$ and the $K$ zeros
+lie in the open sector.  Apply Lemma~\ref{lem:localcross} with $m=1$, $A_1=R$
+and $A_2$ at least twice the largest modulus of a zero of $B$: then
+$a_1\ge R/2$, $a_2$ exceeds every modulus, and $W_1$ contains the $K$ zeros.
+So every $h_\theta$ has at least $M$ distinct real zeros, all of modulus
+greater than $R/2\ge4$.  Choose $\theta$ with
+$e^{-i\theta}b_de^{id\psi}=i|b_d|$; then $h_\theta$ is real of degree $d$ with
+leading coefficient $|b_d|$ and coefficients
+$|h_k|\le|b_k|$.  Corollary~\ref{cor:bothsignsmass}, with $R/2$ in place of
+$R$, applies to $h_\theta$; the domination, with the leading coefficients at
+the same position, gives $b_k(B)\ge b_k(h_\theta)$ and
+$\Lambda(B)\ge\Lambda(h_\theta)$, and $\log|b_d|\ge0$.
+\end{proof}
+
+Under the hypothesis $dE(2\delta)\le\pi K/2$ of Theorem~\ref{thm:thinsector}
+we get $M\ge K-2$ and a bound of about $\frac14K^2\log R$, twice the
+$\frac18K^2\log R$ there.  When $dE(2\delta)\le\varepsilon\pi K$ we get
+$M\ge2(1-\varepsilon)K-2$ and a bound $(1-\varepsilon)^2K^2\log R-O(K^2)$.  This
+leading term is attained: the $K$ purely imaginary pairs $\pm ic_j$ with
+$c_j\in[R,2R]$ lie in every such sector, and
+$P_{\rm im}=\prod_j(x^2+c_j^2)$ has $\Lambda(P_{\rm im})\le K(K+1)\log(2R)+K^2\log2$
+by the proof of Proposition~\ref{prop:bothsignssharp}.  So for real multiples
+and thin sectors at the imaginary axis the constant of
+Corollary~\ref{cor:imag}, one real root $c_j^2$ per pair, is recovered up to
+$O(K^2)$.
+
+\begin{corollary}[Thin Gaussian clusters, both rays]\label{cor:thingaussreal}
+In the setting of Theorem~\ref{thm:thingauss} with $\varphi=\pi/2$, let
+$R\ge8$ and $0<\varepsilon<1$, and put
+$M_\varepsilon=\lceil2(1-\varepsilon)K\rceil-2$; suppose $M_\varepsilon\ge1$.  Every
+nonzero $F\in\mathbb Z[x]$ divisible by $P$ satisfies
+\[
+  \Lambda(F)\ \ge\ \min\Bigl\{
+  \Bigl\lfloor\frac{(M_\varepsilon+1)^2}4\Bigr\rfloor\log\frac R4
+  -\frac12\Bigl\lceil\frac{M_\varepsilon}2\Bigr\rceil
+   \Bigl(\Bigl\lceil\frac{M_\varepsilon}2\Bigr\rceil+3\Bigr)\log2,\
+  \frac{\varepsilon\pi K\log(R/2)}{E(2\delta)}\Bigr\}.
+\]
+\end{corollary}
+
+\begin{proof}
+Let $B$ be a block of $F$ (Lemma~\ref{lem:gaussblocks}), of degree $d$: it is
+real, $|b_d|\ge1$, it vanishes at the $K$ distinct $\alpha_j$, and
+$\Lambda(F)\ge\Lambda(B)$.  If $dE(2\delta)\le\varepsilon\pi K$ then
+$2K-2dE(2\delta)/\pi-2\ge2(1-\varepsilon)K-2$, so the proof of
+Theorem~\ref{thm:thinreal} gives a real polynomial $h_\theta$, dominated by $B$
+with leading coefficient $|b_d|$ at the same position, with at least
+$M_\varepsilon$ real zeros of modulus greater than $R/2$; Corollary~\ref{cor:bothsignsmass},
+with $R/2$ in place of $R$, applied to $M_\varepsilon$ of them gives the first
+term.  Otherwise $d>\varepsilon\pi K/E(2\delta)$, and
+Theorem~\ref{thm:gausscharge} with $\rho_{\min}\ge R>2$ gives
+$\Lambda(B)\ge d\log(\rho_{\min}/2)$, which exceeds the second term.
+\end{proof}
+
 \paragraph{What remains open.}  Two cases of the register roots
 $a_j\pm ic_j$, $0<|a_j|<c_j$, whose moduli crowd.
 
@@ -4307,23 +4583,114 @@ roots, cannot close the gap (Proposition~\ref{prop:carrylimit}); what is needed
 is a lower bound for the residuals of the rounding recurrence of
 Lemma~\ref{lem:gaussround} and its analogues with $k-1$ free coefficients.
 
-\emph{Across annuli.}  Theorem~\ref{thm:thingauss} charges each thin tail
-of the roots, $K_s^2\log s$ for the $K_s$ roots of modulus at least $s$, but not
-the cross terms $K_sK_t\log t$ ($s<t$) of $\sum_jj\log\rho_j$ between
-different annuli; Corollary~\ref{cor:separated} gets cross terms only between
-single representatives of separated annuli.  For $F$ real and the two rays
-$\arg z=\pi/2\pm\delta'$ the two crossing polynomials of
-Lemma~\ref{lem:sectorcount} are one: with $H(r)=F(re^{i(\pi/2-\delta')})$,
-$F(re^{i(\pi/2+\delta')})=\overline{H(-r)}$, so the real polynomial
-$\operatorname{Im}(e^{-i\theta}H(r))$ has at least $2K-2dE(\delta')/\pi-2$
-real zeros $r$ with $r_1<|r|<r_2$, of both signs.  A mass bound for real
-multiples with prescribed real roots of both signs, of the form
-$c\sum_ii\log(|r_{(i)}|-1)$ over the roots ordered by modulus (the pairs
-$\pm r$ of Corollary~\ref{cor:imag} show $c\le\frac12$), is the natural
-missing ingredient: together with intermediate arcs that localize the
-crossings at each scale, it would charge the cross terms for register roots
-that are thin at every scale, whereas Theorem~\ref{thm:order} charges only
-the larger of the two sign classes.
+\emph{Across annuli.}  Theorem~\ref{thm:thinreal}, applied to the roots of
+modulus at least $s$ for each $s$, charges each thin tail with the sharp
+constant, $K_s^2\log s$ for the $K_s$ roots of modulus at least $s$, but not the
+cross terms $K_sK_t\log t$ ($s<t$) of $\sum_jj\log\rho_j^2$.  By
+Lemma~\ref{lem:localcross} the crossings are localized: with intermediate arcs
+at radii $a_\ell$, the real polynomial $h_\theta$ has at least
+$2K_\ell-2dE(\delta')/\pi-2$ zeros of both signs in each annulus
+$a_\ell<|r|<a_{\ell+1}$.  What is missing is a mass bound for real multiples
+with prescribed real roots of both signs that charges the larger modulus of a
+pair of roots, as Theorem~\ref{thm:order} does for one sign, and not the smaller
+one, as \eqref{eq:bothrowsbound} does.  We conjecture that for every nonzero
+real multiple $F$ of $\prod_{i=1}^L(x-r_i)$ with $r_i$ real, $|r_i|\ge2$,
+repetitions allowed, and moduli $\rho_1\le\cdots\le\rho_L$,
+\begin{equation}\label{eq:bothrows}
+  b_k(F)\ \ge\ |f_D|\prod_{i=2k-1}^{L}(\rho_i-1)\qquad
+  \bigl(1\le k\le\lceil L/2\rceil\bigr).
+\end{equation}
+The row $k=1$ is Proposition~\ref{prop:rowone}; for roots of one sign
+\eqref{eq:bothrows} is weaker than Theorem~\ref{thm:order}; for pairs $\pm s_j$
+it follows from the multisection transfer, since
+$s^2-1\ge(s-1)^2$; and it is what \eqref{eq:bothrowsbound} gives, up to the
+factors $\rho$ and $(1-\rho)^{-k}$, when all moduli are equal.  In exact
+rational arithmetic, for random root sets with $3\le L\le6$, near-pairs
+$r,-r(1+\eta)$ included, and random excluded sets, one of the three zero sets
+$W\cup\{\text{first free distances}\}$, $W\cup(W-1)\cup\{\ldots\}$ and
+$W\cup(W+1)\cup\{\ldots\}$ always gave a certificate proving the row
+(in 50-digit arithmetic some came within a factor $1+10^{-9}$ of
+\eqref{eq:bothrows}, at a near-pair with one larger root); the filler rule of
+Lemma~\ref{lem:slack} alone can fail by a factor larger than $50$.  So the free
+zeros must be placed according to the signs, and the tail bound of
+Theorem~\ref{thm:tail} has no direct analogue for nodes of both signs.  The
+route through $F(x)F(-x)=G(x^2)$ fails for a different reason: $G$ has the
+roots $r_i^2$ of one sign, but its coefficients are quadratic in those of $F$,
+and $\Lambda(G)$ is not bounded by $C\Lambda(F)+C'D$ (for $F=M\sum_{j\in S}x^j$
+with $S\subset[0,|S|^2]$ a Sidon set, $\Lambda(F)=|S|\log M$ while
+$\Lambda(G)\ge\binom{|S|}2\log M$).
+
+\begin{corollary}[Conditional on \eqref{eq:bothrows}]\label{cor:conjmass}
+If \eqref{eq:bothrows} holds, then every $F$ as there with $|f_D|\ge1$ has
+\[
+  \Lambda(F)\ \ge\ \Bigl(\Bigl\lceil\frac L2\Bigr\rceil+1\Bigr)\log|f_D|
+  +\sum_{i=1}^L\Bigl\lceil\frac i2\Bigr\rceil\log(\rho_i-1)
+  \ \ge\ \frac12\sum_{i=1}^Li\log(\rho_i-1),
+\]
+and the weights $\lceil i/2\rceil$ cannot be improved: for
+$P=\prod_{j\le m}(x^2-s_j^2)$ with $s_1\le\cdots\le s_m$,
+\[
+  \sum_{j=1}^m2j\log s_j\ \le\ \Lambda(P)\ \le\ m^2\log2+\sum_{j=1}^m2j\log s_j,
+  \qquad
+  \sum_{i=1}^{2m}\Bigl\lceil\frac i2\Bigr\rceil\log(\rho_i-1)=\sum_{j=1}^m2j\log(s_j-1).
+\]
+In particular no bound $\Lambda(F)\ge c\sum_ii\log(\rho_i-1)-O(L)$ with an
+absolute $c>\frac12$ holds: at $s_j=s\to\infty$ the ratio of the two sides for
+$P$ is $(m+1)/(2m+1)+o(1)$, which tends to $\frac12$ as $m\to\infty$.
+\end{corollary}
+
+\begin{proof}
+As in Corollary~\ref{cor:mass}: every product in \eqref{eq:bothrows} is at
+least $1$, the positions are distinct, and $\log(\rho_i-1)$ occurs in the rows
+$k$ with $2k-1\le i$, that is $\lceil i/2\rceil$ times.  For $P$, the sorted
+moduli are $\rho_{2j-1}=\rho_{2j}=s_j$, and
+$\prod_{i>m-j}s_i^2\le e_j(s_1^2,\ldots,s_m^2)\le\binom mj\prod_{i>m-j}s_i^2$;
+summing the logarithms over $j$ counts $\log s_i^2$ exactly $i$ times.  At
+$s_j=s$, $\sum_ii\log(\rho_i-1)=m(2m+1)\log(s-1)$ and
+$\Lambda(P)=m(m+1)\log s+O(m^2)$.
+\end{proof}
+
+\begin{corollary}[Cross terms, conditionally]\label{cor:conjcross}
+Let $B$, $\delta'$, $A_\ell$, $a_\ell$ and $K_\ell$ be as in
+Lemma~\ref{lem:localcross}, with $|b_d|\ge1$ and $A_1\ge6$, and put
+$M_\ell=\max\bigl(0,\lceil2K_\ell-2dE(\delta')/\pi-2\rceil\bigr)$ and
+$M_{<\ell}=\sum_{\ell'<\ell}M_{\ell'}$.  If \eqref{eq:bothrows} holds, then
+\[
+  \Lambda(B)\ \ge\ \sum_{\ell=1}^m\sum_{j=1}^{M_\ell}
+  \Bigl\lceil\frac{M_{<\ell}+j}2\Bigr\rceil\log(a_\ell-1)
+  \ \ge\ \sum_{\ell=1}^m\Bigl(\frac{M_\ell M_{<\ell}}2+\frac{M_\ell^2}4\Bigr)
+  \log\Bigl(\frac{A_\ell}2-1\Bigr).
+\]
+In particular, if $2dE(\delta')/\pi+2\le2\varepsilon K_\ell$ for every $\ell$,
+then
+$\Lambda(B)\ge(1-\varepsilon)^2\sum_\ell(2K_\ell K_{<\ell}+K_\ell^2)\log(A_\ell/2-1)$,
+which is $(1-\varepsilon)^2\sum_j(2j-1)\log(A_{\ell(j)}/2-1)$ over the $K=\sum_\ell K_\ell$
+roots ordered by annulus, $\ell(j)$ being the annulus of the $j$-th: the
+imaginary-pair charge $\sum_jj\log\rho_j^2$ of Corollary~\ref{cor:imag}, cross
+terms included, up to replacing each modulus by the inner radius of its
+annulus.
+\end{corollary}
+
+\begin{proof}
+Choose $\theta$ with $e^{-i\theta}b_de^{id\psi}=i|b_d|$, so that $h=h_\theta$ is
+real of degree $d$, has leading coefficient $|b_d|$, and is dominated by $B$.
+By Lemma~\ref{lem:localcross} it has at least $M_\ell$ real zeros with
+$a_\ell<|r|<a_{\ell+1}$; keep exactly $M_\ell$ of them in each annulus.  Sorted
+by modulus, the $i$-th kept zero with $M_{<\ell}<i\le M_{<\ell}+M_\ell$ has
+modulus greater than $a_\ell\ge A_\ell/2\ge3$.  Corollary~\ref{cor:conjmass}
+gives $\Lambda(h)\ge\sum_i\lceil i/2\rceil\log(\rho_i-1)$, which is at least the
+first sum, and $\Lambda(B)\ge\Lambda(h)$.  The second inequality uses
+$\lceil x/2\rceil\ge x/2$.  For the last statement, $M_\ell\ge2(1-\varepsilon)K_\ell$.
+\end{proof}
+
+For Gaussian roots in $\mathbb Z[i]$ and $F\in\mathbb Z[x]$ the degree
+hypothesis is removed as in Corollary~\ref{cor:thingaussreal}: a block of
+degree $d$ with $2dE(\delta')/\pi+2>2\varepsilon\min_\ell K_\ell$ pays
+$d\log(\rho_{\min}/2)$ by Theorem~\ref{thm:gausscharge}.  So
+\eqref{eq:bothrows} would complete the thin case at every scale, cross terms
+included; unconditionally we have the thin tails of Theorem~\ref{thm:thinreal}
+and, from Theorem~\ref{thm:order} applied to the positive zeros of $h_\theta$
+alone, the cross terms among the crossings of one ray.
 
 Perturbing the certificate of Corollary~\ref{cor:imag} to the nodes
 $1/\alpha_j$ did not help either: the excluded coefficients are unbounded, so
