@@ -1040,7 +1040,6 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "Circuit Diagram": (1_780_773, 2_505_897, 1.4),
-    "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (1_589_968, 5_016_851, 3.2),
     "SLOW ACV MAMMALIAN": (456_394, 798_829, 1.8),
     "bit~": (8_177, 16_448, 2.0),
