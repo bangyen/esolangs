@@ -342,7 +342,7 @@ step; an answer lands in the paper it extends, and the row leaves.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
-  both limits in `[2 log10(2), 325/8 log10(2)]`, a factor 20.3 (down
+  both limits in `[3 log10(2), 325/8 log10(2)]`, a factor 13.5 (down
   from 211).
   Lower side: counting with the relabelling symmetry (`lem:gapauto`,
   `prop:counting`) forces `T/(n+4)` input values for every `n >= 7`.
@@ -351,8 +351,9 @@ step; an answer lands in the paper it extends, and the row leaves.
   squared, `lem:effprofile`) on a bounded stripped automaton
   (`lem:bstrip`) and a trie-banded automaton (`lem:trieband`,
   `lem:bandtrie`) with `(1 + o(1)) T/n` states for every `n`, so levels
-  are CLOSED.  Open: profile (`325/16` against mass `2`).  Sources neither
-  even nor odd pay mass `4` (`rem:parity`); even or odd sources add and
+  are CLOSED.  Open: profile (`325/24` against mass `3`).  Sources neither
+  even nor odd pay mass `4` (`rem:parity`), even or odd ones `3`
+  (`lem:evensigns`, both-signs rows on `E` with `f = x^e E(x**2)`); even or odd sources add and
   subtract only right after a read (`lem:symruns`), so every source built
   as in the upper side already pays `4` (`cor:symm`).  Per-state blocks
   cannot beat `325/8` (`lem:onestep`: after a read and one instruction the
