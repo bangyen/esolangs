@@ -259,19 +259,16 @@ step; an answer lands in the paper it extends, and the row leaves.
   point for one degree (it can lose a factor 4).  Floating LPs (HiGHS) report values below the
   bound from `D = 30`; check large-`D` optima with exact rational duals.
 
-- **Polynomial's sharp constant.**  The language bound is proved by the
-  slack certificate; the sharp form -- a coefficient of at least
-  `(1 - o(1)) prod_{i>u} (p_i - 1)` with `u` coefficients free -- would
-  give its constant, and has two gaps ([polynomial](proofs/polynomial.md), "The
-  iterated elimination"): (a) the certificate is proved only for free
-  positions `U = {0..K}`, though sweeps put the least threshold there for
-  every `U`; (b) it is asymptotic in `D`, and the finite-`D` statement
-  reduces to the skew-Schur inequality
-  `s_{((d-c+1)**(c-1))} s_{lambda_B/mu} >= (prod rho)**(d-c+2) s_{lambda_A/mu}`,
-  now proved for every `c` (Schur-positive by Pieri and dual Pieri; see
-  *General `c`* in [polynomial](proofs/polynomial.md)), which closes (b).
-  Left: (a).  Untested route: the certificate entries for any `U` are
-  ratios of Schur functions `s_{lambda(U)}(r)`, so minimality at
-  `U = {0..u-1}` is a monotonicity statement for such ratios as one part
-  moves up -- the shape of the Lam--Postnikov--Pylyavskyy inequality
-  `s_mu s_nu <= s_{mu v nu} s_{mu ^ nu}`.
+- **Polynomial's constant.**  `prop:bracket` in
+  [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
+  liminf in `[log10(2)/1152, 105.5 log10(2)]`, limsup in
+  `[log10(2)/288, 422 log10(2)]`, a factor 121,536 for most `n`.  The mass
+  step is not the gap: the order-statistic bound for arbitrary free positions
+  (coefficient-mass `lem:slack`, Theorem 3.2) is already exact, and its
+  constant `1/2` is sharp (`cor:infimum`), so the old gap (a) was closed
+  there.  The gap is `12**2` routing (one distinct real root per 12
+  first-essential residuals, against 2 per state in the construction), `4`
+  levels (the lower bound uses one), and `211` for the complex register roots
+  that carry 80% of the construction's degree and that the real-node
+  certificate does not charge.  Next step: a coefficient-mass bound for the
+  complex instruction roots `a +- p**b i` (start from `cor:complex`).

@@ -50,7 +50,9 @@ CITATIONS = {
         "Proposition",
         "prop:confluent",
     ),
+    ("polynomial.tex", "coefficient-mass", "3.1"): ("Lemma", "lem:slack"),
     ("polynomial.tex", "coefficient-mass", "3.4"): ("Corollary", "cor:mass"),
+    ("polynomial.tex", "coefficient-mass", "3.6"): ("Corollary", "cor:infimum"),
 }
 
 #: The files whose citations the table above has to cover.
