@@ -57,7 +57,10 @@ the bound cannot be raised; and we extend that comparison to confluent
 (repeated) nodes.  Beyond the cutoff we prove a repaired bound that keeps the
 factors $\min(r_i-1,1)$ the original discards.  It holds for every $r_1>1$ and
 is the infimum when the exempt roots lie in $(1,2]$ and the partial sums are
-small, in particular for $b_L$ whenever $r_{L-1}\le2$.
+small, in particular for $b_L$ whenever $r_{L-1}\le2$; with an exempt root
+below $2$ it is the infimum only then, and a two-sided bound
+$b_{u+1}\ge|f_D|\min(|P(1)|,|P_u(1)|)$ improves it whenever the exempt roots
+straddle $2$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -457,6 +460,250 @@ of \eqref{eq:repaired} is $|P(1)|$.  At $u=L-1$, $\sigma=0$.
 At $(\tfrac32,10,20)$ with $u=1$, for example, the partial sums are
 $1,-30.5,214.5,-85.5$, so $\sigma=30.5$ and the infimum of $b_2$ is
 $85.5=|P(1)|$.  The stated product $171$ is false there.
+
+The repaired bound is itself not the end of the story.  It pays
+$\max(1,y_i/(1-y_i))$ for every node outside the leading run, and when the
+exempt roots straddle $2$ it pays for the small ones without letting the large
+ones pay back.  Keeping the whole product in one piece gives a sharper bound,
+and with it the answer to when the infimum is reached.  Write
+$q_i=y_i/(1-y_i)$ and $\Pi_j=\prod_{i\le j}q_i$ for nodes
+$0<y_1<\cdots<y_c<1$, and for a full certificate $u$ with zero set $Z$ put
+$S(u)=\sum_{d>\max Z}|u_d|$, with $\max\varnothing=0$: the mass past the last
+zero.
+
+\begin{theorem}[Two-sided tail comparison]\label{thm:twosided}
+Let $0<y_1<\cdots<y_c<1$, and let $Z$, $f$ and $u$ be as in Theorem~2.2.  Then
+for every $t\ge0$
+\[
+  \Tail(u)+t\,S(u)\le\max\bigl(\Pi_{f+1},(1+t)\Pi_c\bigr),
+\]
+with equality exactly when $Z=\{1,\ldots,c-1\}$.  In particular
+\[
+  \Tail(u)\le\max\Bigl(\prod_{i=1}^{f+1}\frac{y_i}{1-y_i},\
+                       \prod_{i=1}^{c}\frac{y_i}{1-y_i}\Bigr),
+\]
+strictly unless $Z$ is consecutive.
+\end{theorem}
+
+Since $\Pi_c\le\Pi_{f+1}\prod_{i>f+1}\max(1,q_i)$, this sharpens
+Theorem~\ref{thm:repaired}; within the cutoff every $q_i\le1$, the maximum is
+$\Pi_{f+1}$, and it is Theorem~2.2.
+
+\begin{proof}
+Induct on the number $c-1-f$ of displaced zeros.  If $Z=\{1,\ldots,c-1\}$
+(including $c=1$, $Z=\varnothing$), then $f=c-1$, $u_d=0$ for $1\le d<c$, and
+Lemma~2.1 gives $S(u)=\Tail(u)=\Pi_c$, so both sides equal $(1+t)\Pi_c$.
+
+Otherwise let $z=\max Z$, $Z'=Z\setminus\{z\}$, and let $F$, $G$ and
+$\mu=|F_z|>0$ be as in the displaced step of Theorem~2.2's proof: $F$ is the
+full certificate on $y_1,\ldots,y_{c-1}$ with zero set $Z'$, which has the same
+leading run $f\le c-2$.  The sign comparison there uses only the zero bound and
+gives $|u_d|=\mu|G_d|-|F_d|$ for $d>z$, so, with $|G_z|=1$ and
+$\mu\Gamma_F(z)=\sum_{d\ge z}|F_d|$,
+\[
+  S(u)=\mu\bigl(\Gamma_G(z)-1\bigr)-\bigl(\mu\Gamma_F(z)-\mu\bigr)
+      =\mu\bigl(\Gamma_G(z)-\Gamma_F(z)\bigr).
+\]
+Adding $t$ times this to the splitting identity of Theorem~2.2's proof,
+\[
+  \Tail(u)+t\,S(u)=\Tail(F)+\mu\bigl((1+t)\Gamma_G(z)-(2+t)\Gamma_F(z)
+  -\Sigma_G\bigr).
+\]
+The first half $\Gamma_G(z)\le\Gamma_F(z)/(1-y_c)=(1+q_c)\Gamma_F(z)$ of the
+correction-ratio bound needs no cutoff, and $\Sigma_G>0$ by the strictness
+paragraph of that proof, which needs none either.  With $t'=q_c(1+t)-1$,
+\[
+  \Tail(u)+t\,S(u)<\Tail(F)+t'\sum_{d\ge z}|F_d| .
+\]
+If $t'\ge0$, then $z>\max Z'$ gives $\sum_{d\ge z}|F_d|\le S(F)$, and the
+induction hypothesis for $F$ at the parameter $t'$ bounds the right side by
+$\max(\Pi_{f+1},(1+t')\Pi_{c-1})$; and $(1+t')\Pi_{c-1}=(1+t)q_c\Pi_{c-1}
+=(1+t)\Pi_c$.  If $t'<0$, then $q_c<1$, so every $q_i<1$ and
+$\Pi_{c-1}\le\Pi_{f+1}$; the right side is at most $\Tail(F)$, which the
+induction hypothesis at $t=0$ bounds by $\max(\Pi_{f+1},\Pi_{c-1})=\Pi_{f+1}$.
+Either way the bound holds, strictly.
+\end{proof}
+
+The same limit argument as for Theorem~\ref{thm:repaired} carries the
+non-strict inequality to confluent nodes.  Read on root sets, the maximum of
+two products becomes the minimum of two root products.
+
+\begin{corollary}[Two-sided order statistics]\label{cor:twosided}
+Let $r_1\le\cdots\le r_L$ be real with $r_1>1$, repetitions allowed, put
+$P=\prod_{i=1}^L(x-r_i)$ and $P_u=\prod_{i>u}(x-r_i)$, and let $F$ be a nonzero
+multiple of $P$.  Then for every $0\le u\le L-1$
+\begin{equation}\label{eq:twosided}
+  b_{u+1}\ge|f_D|\min\bigl(|P(1)|,|P_u(1)|\bigr)
+  =|f_D|\prod_{i=u+1}^L(r_i-1)\cdot\min\Bigl(1,\prod_{i=1}^u(r_i-1)\Bigr).
+\end{equation}
+This implies \eqref{eq:repaired}, and exceeds it exactly when
+$r_1<2<r_u$.
+\end{corollary}
+
+\begin{proof}
+For distinct roots and $|f_D|=1$ follow Lemma~3.1's proof with
+Theorem~\ref{thm:twosided} in place of Theorem~2.2.  In increasing order the
+nodes are $1/r_L<\cdots<1/r_1$, so
+$\Pi_j=\prod_{i>L-j}(r_i-1)^{-1}$, and the zero set there has leading run
+$f\ge m-1$, $m=L-u$.  The increments $\log\Pi_j-\log\Pi_{j-1}=
+-\log(r_{L-j+1}-1)$ increase with $j$, so $j\mapsto\log\Pi_j$ is convex and,
+as $m\le f+1\le L$, $\Pi_{f+1}\le\max(\Pi_m,\Pi_L)$.  Hence
+$\Tail\le\max(\Pi_m,\Pi_L)=\max(1/|P_u(1)|,1/|P(1)|)$, which is
+\eqref{eq:twosided}.  A general $f_D$ and repeated roots are handled as in
+Theorem~3.2's proof; the right side is continuous in the roots.
+
+Put $s_i=r_i-1$ and let $p$ be the number of $i\le u$ with $s_i<1$.  The
+factor in \eqref{eq:repaired} is
+$\prod_{i\le u}\min(s_i,1)=\prod_{i\le p}s_i$, that in \eqref{eq:twosided} is
+$\min(1,\prod_{i\le u}s_i)$.  They agree if $p=0$ and if all $s_i\le1$.
+Otherwise $r_1<2<r_u$, the first is below $1$, and it is below
+$\prod_{i\le u}s_i$ by the factor $\prod_{p<i\le u}s_i\ge s_u>1$.
+\end{proof}
+
+At $(\tfrac32,\tfrac52,4)$ with $u=2$, \eqref{eq:repaired} gives $b_3\ge\tfrac32$
+and \eqref{eq:twosided} gives $b_3\ge\tfrac94=|P(1)|$, which is the infimum by
+Proposition~\ref{prop:subtwosharp} ($\sigma=0$ at $u=L-1$).  Whether
+\eqref{eq:twosided} is attained is decided by the two constructions already in
+hand, one for each side of the minimum.
+
+\begin{theorem}[When the two-sided bound is the infimum]\label{thm:twosidedsharp}
+Let $1<r_1<\cdots<r_L$ be distinct and $0\le u\le L-1$, put
+$\pi=\prod_{i\le u}(r_i-1)$, and let $\sigma$ be as in
+Proposition~\ref{prop:subtwosharp}.  Then, over monic $Q\in\R[x]$,
+\[
+  \inf_Qb_{u+1}(QP)=\min\bigl(|P(1)|,|P_u(1)|\bigr)
+\]
+if and only if either $\pi\le1$ and $\sigma\le|P(1)|$, or $\pi\ge1$ and
+\eqref{eq:partial} holds for $P_u$.  Otherwise the infimum is strictly larger.
+\end{theorem}
+
+\begin{proof}
+Write $R=\min(|P(1)|,|P_u(1)|)$; Corollary~\ref{cor:twosided} gives
+$\inf\ge R$.  If $\pi\le1$ then $R=|P(1)|$, and if also $\sigma\le|P(1)|$,
+Proposition~\ref{prop:subtwosharp} gives $\inf\le|P(1)|$.  If $\pi\ge1$ then
+$R=|P_u(1)|$, and if \eqref{eq:partial} holds, \eqref{eq:multiplier} at $M=1$
+gives $\inf\le\max_{j\ge1}|S_j(P_u)|=|P_u(1)|$, since the partial sums
+stabilize at $S_m(P_u)=P_u(1)$.  Neither step uses $r_1\ge2$:
+Theorem~\ref{thm:value} and \eqref{eq:multiplier} assume only $1<r_1$.
+
+Conversely suppose neither condition holds.  By \eqref{eq:weak} every monic
+multiple has $b_{u+1}\ge1/\tau(X_F)$, so it suffices to show
+$T=\sup_{|X|=u}\tau(X)<1/R$.  Exactly as in the proof of
+Theorem~\ref{thm:converse}, a sequence $X_\nu$ with $\tau(X_\nu)\to1/R$ has a
+subsequence $X_\nu=X_0\cup E_\nu$ with $|E_\nu|=k$ and $\min E_\nu\to\infty$,
+and Lemma~\ref{lem:far}, which needs only nodes in $(0,1)$, turns a
+certificate for $X_0$ on $y_{k+1},\ldots,y_L$ with tail below $1/R$ into
+certificates for $X_\nu$ whose tails tend to it.  So it suffices to find, for
+every $0\le k\le u$ and every $X_0$ of size $u-k$, such a certificate.
+
+Take the zero set $Z$ of $X_0$ and the first $m-1$ positive integers outside
+it, of size $L-k-1$ and leading run $f\ge m-1$.  On the nodes
+$y_{k+1},\ldots,y_L$ the products $\Pi_j$ are the same as on all $L$ nodes for
+$j\le L-k$, so Theorem~\ref{thm:twosided} bounds the tail by
+$\max(\Pi_{f+1},\Pi_{L-k})$, strictly unless $Z$ is consecutive.  With
+distinct roots the increments of $\log\Pi_j$ increase strictly, so
+$j\mapsto\log\Pi_j$ is strictly convex, and since $m\le f+1\le L-k\le L$,
+\[
+  \max(\Pi_{f+1},\Pi_{L-k})\le\max(\Pi_m,\Pi_L)=1/R,
+\]
+with $\Pi_{L-k}<1/R$ unless $L-k$ is an endpoint $m$ or $L$ carrying the
+maximum.  So the tail is below $1/R$ except when $Z=\{1,\ldots,L-k-1\}$ and
+either $k=u$ and $\Pi_m\ge\Pi_L$, or $k=0$ and $\Pi_L\ge\Pi_m$.
+
+If $k=u$ and $\Pi_m\ge\Pi_L$, that is $\pi\ge1$, then $X_0=\varnothing$ and the
+tail is $1/|P_u(1)|=1/R$; as $\pi\ge1$, \eqref{eq:partial} fails for $P_u$, and
+Lemma~\ref{lem:improve} with $Q=P_u$ and $X_0=\varnothing$ gives a certificate
+with tail below $1/R$.  If $k=0$ and $\Pi_L\ge\Pi_m$, that is $\pi\le1$, then
+$X_0\subseteq\{1,\ldots,L-1\}$ and the tail is $1/|P(1)|=1/R$; as $\pi\le1$,
+$\sigma>|P(1)|$, so at least $u+1$ indices $j\in\{1,\ldots,L-1\}$ have
+$|S_j(P)|>|P(1)|$, one of them outside $X_0$, and Lemma~\ref{lem:improve} with
+$Q=P$ gives a certificate for $X_0$ with tail below $1/R$.  (For $u=0$ both
+cases are $k=0$, $X_0=\varnothing$, and either argument applies.)
+\end{proof}
+
+For $r_1\ge2$ one has $\pi\ge1$, with $\pi=1$ only at $u=0$ or at $u=1$,
+$r_1=2$, and the theorem is Proposition~\ref{prop:partial} with
+Theorem~\ref{thm:converse}: at $u=1$, $r_1=2$ the proof of
+Theorem~\ref{thm:converse} shows that $\sigma\le|P(1)|$ already forces
+\eqref{eq:partial}.  Below $2$ it answers the question left by
+Proposition~\ref{prop:subtwosharp}.
+
+\begin{corollary}[When the repaired bound is the infimum]\label{cor:repairedsharp}
+Let $1<r_1<\cdots<r_L$ be distinct and $1\le u\le L-1$.  Then
+\eqref{eq:repaired} is the infimum of $b_{u+1}$ over monic multiples if and
+only if either $r_u\le2$ and $\sigma\le|P(1)|$, or $r_1\ge2$ and
+\eqref{eq:partial} holds.  In particular, with an exempt root below $2$ it is
+the infimum exactly under the hypotheses of
+Proposition~\ref{prop:subtwosharp}; when $r_1<2<r_u$ it is never the
+infimum, even with repeated roots.
+\end{corollary}
+
+\begin{proof}
+If $r_1<2<r_u$, Corollary~\ref{cor:twosided} puts every $b_{u+1}$ at or above
+a value strictly larger than \eqref{eq:repaired}; that argument allows
+repeated roots.  If $r_u\le2$ and $r_1<2$, then \eqref{eq:repaired} is
+$|P(1)|=\min(|P(1)|,|P_u(1)|)$ and $\pi\le r_1-1<1$, so by
+Theorem~\ref{thm:twosidedsharp} it is the infimum exactly when
+$\sigma\le|P(1)|$.  If $r_1\ge2$ it is \eqref{eq:order}, settled by
+Proposition~\ref{prop:partial} and Theorem~\ref{thm:converse}.
+\end{proof}
+
+When the criterion fails, Theorem~\ref{thm:value} still computes the
+infimum as $1/T$: its proof never uses the cutoff.  What does use it is the
+covering, through the deletion step in Theorem~\ref{thm:lift}, and below $2$
+the escaping placement need not be extremal.  For one exempt coefficient the
+covering survives, with the half-mass point of
+Corollary~\ref{cor:halfmass}, which needs no cutoff, in place of $\max Z^*$.
+
+\begin{proposition}[One exempt coefficient at any roots]\label{prop:uoneall}
+Let $1<r_1<\cdots<r_L$ and $u=1$, let $\tau^*$ be attained by the full
+certificate $v^*$ on $y_2,\ldots,y_L$ with zero set $Z^*$
+(Proposition~\ref{prop:attain}), and let $N'$ be the half-mass point of
+Corollary~\ref{cor:halfmass} for $k=0$ and $A=Z^*$, so that $F=v^*$ and $H$ is
+the sum on all $L$ nodes vanishing on $\{0\}\cup Z^*$.  Then
+\[
+  \inf_Qb_2\Bigl(Q\prod_{i=1}^L(x-r_i)\Bigr)
+  =\frac1{\max\bigl(\tau^*,\ \max_{w\in G}\tau(\{w\})\bigr)},
+  \qquad G=\{1,\ldots,N'-1\}\setminus Z^*.
+\]
+\end{proposition}
+
+\begin{proof}
+By \eqref{eq:median} the tail along the pencil is
+$\varphi(\theta)=\sum_{d\ge1}|H_d|\,\bigl|\theta-|F_d|/|H_d|\bigr|$, with
+$\varphi(0)=\Tail(v^*)=\tau^*$.  All breakpoints are positive, so the right
+derivative at $0$ is $-\sum_{d\notin Z^*}|H_d|<0$, and the convex $\varphi$
+has its minimum, at $\theta_{N'}$, below $\tau^*$.  For $0<\theta\le
+\theta_{N'}$ convexity gives $\varphi(\theta)\le(1-s)\tau^*+s\varphi(\theta_{N'})
+<\tau^*$ with $s=\theta/\theta_{N'}$.  By Lemma~\ref{lem:ratio},
+$\theta_N=|F_N|/|H_N|$ is positive and decreasing in $N\notin Z^*$, so
+$\Tail(Z^*\cup\{N\})<\tau^*$ for every $N\ge N'$ outside $Z^*$.  That full
+certificate is one for $\{w\}$ when $w=N$, and, taking $N=N'$, when
+$w\in Z^*$.  So $\tau(\{w\})<\tau^*$ for $w\notin G$, and $T\ge\tau^*$ by
+Theorem~\ref{thm:value}.
+\end{proof}
+
+Exact values, each $\tau$ certified by a dual multiplier as in
+Proposition~\ref{prop:attain} and every $\tau(\{w\})$, $w\in G$, computed:
+\[
+\begin{array}{lcccc}
+  (r_i) & \eqref{eq:repaired} & \eqref{eq:twosided} & \inf b_2 & \text{extremal}\\\hline
+  (\tfrac32,10,20) & \tfrac{171}2 & \tfrac{171}2 & \tfrac{171}2 & w=2\\
+  (\tfrac32,3,4) & 3 & 3 & 6 & \text{escaping}\\
+  (\tfrac32,3,5,7) & 24 & 24 & \tfrac{1704}{31} & \text{escaping}\\
+  (\tfrac{11}{10},3,5,7) & \tfrac{24}5 & \tfrac{24}5 & \tfrac{3398808}{96935}=35.06\ldots & w=5\\
+  (\tfrac65,\tfrac32,3) & \tfrac15 & \tfrac15 & \tfrac{23688369}{19164415}=1.236\ldots & w=1
+\end{array}
+\]
+At $(\tfrac32,3,4)$ the infimum is the product $(r_2-1)(r_3-1)$ that
+\eqref{eq:order} would assert, twice \eqref{eq:repaired}: the exempt root is
+absorbed as if it were at least $2$.  At $(\tfrac65,\tfrac32,3)$ the infimum
+exceeds even that product, $1$.  At $(\tfrac{11}{10},3,5,7)$ the surviving
+roots are those of $(2,3,5,7)$, so $\tau^*=\tfrac{31}{1704}$, but
+$\tau(\{5\})=\tfrac{96935}{3398808}>\tau^*$: the finite placement beats the
+escaping one, and \eqref{eq:step} fails at $k=0$, $X=\{5\}$.  Below the
+cutoff Proposition~\ref{prop:step} can therefore not be applied as is, and
+for $u\ge2$ the value $1/T$ remains a search.
 
 \section{Sharpness at explicit root sets}\label{sec:attain}
 
@@ -2417,9 +2664,13 @@ cutoff in the stated product cannot be raised.  Theorem~\ref{thm:repaired}
 removes both uses at once by keeping the factors the discard drops, so
 \eqref{eq:repaired} holds for every $r_1>1$.  By
 Proposition~\ref{prop:subtwosharp} it is the infimum when the exempt roots
-lie in $(1,2]$ and at most $u$ partial sums of $P$ exceed $|P(1)|$.  With an
-exempt root below $2$ and those hypotheses failing, whether it is the infimum
-is open.
+lie in $(1,2]$ and at most $u$ partial sums of $P$ exceed $|P(1)|$.  With an exempt root below $2$ and those hypotheses failing it is not
+(Corollary~\ref{cor:repairedsharp}); the sharper two-sided bound
+\eqref{eq:twosided} is the infimum exactly under the criterion of
+Theorem~\ref{thm:twosidedsharp}, and otherwise the infimum is $1/T$
+(Theorem~\ref{thm:value}), a finite computation for $u=1$
+(Proposition~\ref{prop:uoneall}).  For $u\ge2$ below the cutoff the escaping
+placement need not be extremal, and $1/T$ remains a search.
 
 The pointwise extremal problem asks, for a fixed root sequence and a fixed
 $k$, how closely a multiple can approach \eqref{eq:order}.
