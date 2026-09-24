@@ -35,6 +35,7 @@ from esolangs.tools.jaune import (
     _jaune_ordered as _jaune_ordered,
 )
 from esolangs.tools.jaune import jaune as jaune
+from esolangs.tools.painfuck import painfuck as painfuck
 from esolangs.tools.rotfuck import rotfuck
 from esolangs.tools.sbleq import (
     _sbleq_hoisted as _sbleq_hoisted,
@@ -43,6 +44,9 @@ from esolangs.tools.sbleq import sbleq as sbleq
 from esolangs.tools.six_five import six_five
 from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 from esolangs.tools.suffolk import suffolk as suffolk
+from esolangs.tools.three_d_brainfuck import (
+    three_d_brainfuck as three_d_brainfuck,
+)
 
 __all__ = [
     "bf_tree",
@@ -140,61 +144,6 @@ def factor(truth_table: str) -> str:
         return str(number)
     finally:
         sys.set_int_max_str_digits(limit)
-
-
-def three_d_brainfuck(truth_table: str) -> str:
-    """Build a 3D Brainfuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).  :func:`brainfuck`'s tree with
-    ``e``/``w`` for the moves, since ``>``/``<`` are no-ops.
-    """
-    return brainfuck(truth_table).translate(str.maketrans("><", "ew"))
-
-
-# The interpreter's two substitution cycles, in the order the cross-check
-# scans them: Painfuck source is pre-shifted here so the trans table recovers
-# the intended commands.
-_CYCLES = ("pevkjzwr", "yuctsobqihald")
-
-
-def painfuck(truth_table: str) -> str:
-    """Build a Painfuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).  :func:`brainfuck`'s tree with
-    ``>``/``<`` as ``rl``/``l``, ``+``/``-`` as ``ps``/``s`` and
-    ``[``/``]``/``,``/``.`` as ``a``/``b``/``j``/``u``, each command
-    pre-shifted ``k`` steps back along its cycle to undo the interpreter's
-    substitution.
-    """
-    code = (
-        brainfuck(truth_table)
-        .replace(">", "rl")
-        .replace("<", "l")
-        .replace("+", "ps")
-        .replace("-", "s")
-        .replace("[", "a")
-        .replace("]", "b")
-        .replace(",", "j")
-        .replace(".", "u")
-    )
-    out: list[str] = []
-    k = 0
-    for char in code:
-        for cycle in _CYCLES:
-            p = cycle.find(char)
-            if p != -1:
-                out.append(cycle[(p - k) % len(cycle)])
-                k += 1
-                break
-        else:
-            # every command the brainfuck generator emits maps to a command
-            # in _CYCLES, so this branch is unreachable by construction
-            raise ValueError(
-                f"Painfuck command {char!r} is not in a cycle"
-            )  # pragma: no cover
-    return "".join(out)
 
 
 def bf_tree(truth_table: str) -> str:

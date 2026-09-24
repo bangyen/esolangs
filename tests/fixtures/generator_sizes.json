@@ -16,16 +16,16 @@
   },
   "3D Brainfuck": {
    "0110": {
-    "commands": 179,
-    "source_units": 205
+    "commands": 587,
+    "source_units": 109
    },
    "01101001": {
-    "commands": 251,
-    "source_units": 330
+    "commands": 764,
+    "source_units": 190
    },
    "0110100110010110": {
-    "commands": 317,
-    "source_units": 525
+    "commands": 935,
+    "source_units": 343
    }
   },
   "3x": {
@@ -366,16 +366,16 @@
   },
   "Dimensional": {
    "0110": {
-    "commands": 181,
-    "source_units": 237
+    "commands": 40,
+    "source_units": 112
    },
    "01101001": {
-    "commands": 254,
-    "source_units": 404
+    "commands": 63,
+    "source_units": 251
    },
    "0110100110010110": {
-    "commands": 321,
-    "source_units": 677
+    "commands": 80,
+    "source_units": 524
    }
   },
   "EGL": {
@@ -646,16 +646,16 @@
   },
   "Painfuck": {
    "0110": {
-    "commands": 243,
-    "source_units": 276
+    "commands": 42,
+    "source_units": 75
    },
    "01101001": {
-    "commands": 327,
-    "source_units": 429
+    "commands": 69,
+    "source_units": 170
    },
    "0110100110010110": {
-    "commands": 401,
-    "source_units": 676
+    "commands": 87,
+    "source_units": 361
    }
   },
   "Piet": {
