@@ -1688,6 +1688,487 @@ tail bound of Lemma~\ref{lem:holetail} exceeds $\frac12$ and the argument
 does not close; that is why Proposition~\ref{prop:rowsfree} keeps different
 holes there.
 
+\subsection{Rows at other roots}
+
+We now replace the root $2$ by an arbitrary real $r>1$.  Throughout this
+subsection
+\[
+  a=\frac1{r-1},\qquad
+  \Phi_r(q)=\sum_{s\ge1}|q(s)|\,r^{-s},\qquad
+  \Phi_r(Z)=\Phi_r(r_Z),\qquad
+  \psi_r(y)=\frac{1+a^y}{ry}\quad(y\ge1),
+\]
+for real polynomials $q$ and finite $Z\subset\N_{>0}$, so $\Phi_2=\Phi$ and
+$\Phi_r(\varnothing)=a$.  Write $[u,v]$ for the integers in that range.  For
+$1\le k\le L$ put $n=L-k+1$ and
+\[
+  V_r(L,k)=\inf\{b_k(F): F\text{ a monic real multiple of }(x-r)^L\},
+\]
+the exact value of the row.  For finite $S\subset\N_{>0}$ with $|S|<L$ let
+$\mu_r(S,L)$ be the infimum of $\Phi_r(q)$ over real $q$ with $\deg q\le L-1$,
+$q(0)=1$ and $q|_S=0$, and put $\beta_r(n)=1/\mu_r(\varnothing,n)$.  At
+$r=2$, Theorem~\ref{thm:everyrow} says $V_2(L,k)\ge n$.
+
+\begin{proposition}[The row values]\label{prop:rowvalue}
+Let $r>1$ and $1\le k\le L$.
+\begin{enumerate}
+\item[(a)] If $F$ is a monic multiple of $(x-r)^L$, $S$ is the set of
+backward distances of $k-1$ positions carrying the $k-1$ largest nonleading
+magnitudes, and $q$ is real with $\deg q\le L-1$, $q(0)=1$ and $q|_S=0$, then
+$b_k(F)\,\Phi_r(q)\ge1$.  In particular $b_k(F)\ge1/\Phi_r(Z)$ for every
+finite $Z\supseteq S$ with $|Z|\le L-1$.
+\item[(b)] $V_r(L,k)=\inf_{|S|=k-1}1/\mu_r(S,L)$, the infimum over
+$S\subset\N_{>0}$.
+\item[(c)] $V_r(L,k)\le\beta_r(n)$, and $V_r(n,1)=\beta_r(n)$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(a) This is the proof of Lemma~\ref{lem:rowcert} with $2$ replaced by $r$:
+$(q(D-\theta)F)(r)=0$ with $\theta=x\,d/dx$ gives
+$\sum_{j\le D}f_jq(D-j)r^{j-D}=0$, so
+$1\le\sum_{s\ge1,\,s\notin S}|f_{D-s}||q(s)|r^{-s}\le b_k(F)\Phi_r(q)$.
+
+(b) By (a), $b_k(F)\ge1/\mu_r(S_F,L)$ for the set $S_F$ of (a), which
+gives ``$\ge$''.  For ``$\le$'' fix $S$ with $|S|=k-1$ and $D\ge\max(L,\max S)$.
+Writing $F=\sum_{s=0}^Dg_sx^{D-s}$ with $g_0=1$, divisibility by
+$(x-r)^L$ is the set of $L$ linear conditions
+$\sum_{s=0}^Dg_sq(s)r^{-s}=0$ for $\deg q\le L-1$ (as in (a), these are the
+conditions $(\theta^iF)(r)=0$, $i<L$).  Minimizing
+$\max_{s\in[1,D]\setminus S}|g_s|$ over this affine set is a finite linear
+program, feasible because $D\ge L$, and by linear-programming duality its value is
+$1/\mu_{r,D}(S,L)$, where $\mu_{r,D}$ is defined like $\mu_r$ with the sum
+$\Phi_r(q)$ truncated to $s\le D$ (the dual variables are the values
+$q(s)r^{-s}$ of a polynomial $q$ of degree at most $L-1$ vanishing on $S$;
+for weak duality, $|q(0)|=|\sum_{s\ge1,\,s\notin S}g_sq(s)r^{-s}|$).  Since
+the $k-1$ positions at distances $S$ can carry at most the $k-1$ largest
+magnitudes, $b_k(F)\le\max_{s\notin S}|g_s|$, so
+$V_r(L,k)\le1/\mu_{r,D}(S,L)$ for every $D$.  Finally
+$\mu_{r,D}(S,L)\to\mu_r(S,L)$: the truncated sums increase with $D$ and
+are at most $\Phi_r$; on the affine space $\{\deg q\le L-1,\ q(0)=1\}$ the
+values $q(1),\ldots,q(L-1)$ are coordinates, so minimizers $q_D$ of the
+truncated problems ($D\ge L$) have bounded coefficients, and a limit point
+$q_*$ satisfies $q_*(0)=1$, $q_*|_S=0$ and, for each fixed $M$,
+$\sum_{s\le M}|q_*(s)|r^{-s}\le\lim_D\mu_{r,D}(S,L)$; letting $M\to\infty$
+gives $\mu_r(S,L)\le\Phi_r(q_*)\le\lim_D\mu_{r,D}(S,L)$.
+
+(c) Let $S_N=[N+1,N+k-1]$.  A polynomial $q$ of degree at most $L-1$ with
+$q(0)=1$ and $q|_{S_N}=0$ factors as $q=q_0\pi_N$ with
+$\pi_N(s)=\prod_{\sigma\in S_N}(1-s/\sigma)$, $\deg q_0\le n-1$ and
+$q_0(0)=1$.  For $1\le s\le M<N$ we have $\pi_N(s)\ge(1-M/N)^{k-1}$, so
+$\Phi_r(q)\ge(1-M/N)^{k-1}\mu_{r,M}(\varnothing,n)$.  Hence
+$\liminf_N\mu_r(S_N,L)\ge\mu_{r,M}(\varnothing,n)$ for every $M$, and by
+the convergence in (b) it is at least $\mu_r(\varnothing,n)$.  By (b),
+$V_r(L,k)\le\inf_N1/\mu_r(S_N,L)\le\beta_r(n)$.  For $k=1$, (b) with
+$S=\varnothing$ is $V_r(n,1)=\beta_r(n)$.
+\end{proof}
+
+So every row is at most the top row of a multiple of $(x-r)^n$, the value
+approached when the $k-1$ exempted positions lie far below the leading one.
+The lower bounds come from certificates, and the first tool is the
+displaced-zero tail bound without the cutoff $\rho_i\ge2$.
+
+\begin{theorem}[Tail bound at arbitrary nodes]\label{thm:tailgen}
+Let $0<y_1<\cdots<y_c<1$, let $Z\subset\N_{>0}$ with $|Z|=c-1$ have leading
+run $\ell$, let $w$ be the exponential sum on these nodes with $w_0=1$ and
+$w|_Z=0$, and put $\varphi_i=y_i/(1-y_i)$.  Then
+\[
+  \Tail(w)\le\prod_{i=1}^{\ell+1}\varphi_i\prod_{i=\ell+2}^c\max(1,\varphi_i).
+\]
+Moreover, if $Z\ne[1,c-1]$ and $F$ is the sum on $y_1,\ldots,y_{c-1}$ with
+$F_0=1$ and $F|_{Z\setminus\{\max Z\}}=0$, then
+$\Tail(w)\le\max(1,\varphi_c)\Tail(F)$.
+\end{theorem}
+
+\begin{proof}
+The sum $w$ exists and is unique for any distinct positive nodes, by the
+Vandermonde argument at the start of Section~2.  Induct on $c-1-\ell$ as in
+the proof of Theorem~\ref{thm:tail}.  The base case $Z=[1,c-1]$ is
+Lemma~\ref{lem:consecutive}, which gives $\prod_{i=1}^c\varphi_i$ and needs
+no cutoff.  In the displaced step, the sign comparison, the identity
+\eqref{eq:split} and the first inequality of \eqref{eq:gamma},
+$\Gamma_G(z)\le\Gamma_F(z)/(1-y_c)$, use only the zero bound,
+Lemma~\ref{lem:interlace} (which needs no upper bound on the nodes) and
+$y_c<1$.  If $y_c\le\frac12$, the proof of Theorem~\ref{thm:tail} gives
+$\Tail(w)<\Tail(F)$.  If $y_c>\frac12$, then $\Sigma_G\ge0$ and
+\eqref{eq:split} give
+\[
+  \Tail(w)\le\Tail(F)+\mu\Gamma_F(z)\Bigl(\frac1{1-y_c}-2\Bigr),
+\]
+where the bracket is positive and
+$\mu\Gamma_F(z)=\sum_{d\ge z}|F_d|\le\Tail(F)$ (if $F_z=0$ then $w=F$), so
+$\Tail(w)\le(\frac1{1-y_c}-1)\Tail(F)=\varphi_c\Tail(F)$.  In both cases
+$\Tail(w)\le\max(1,\varphi_c)\Tail(F)$.  The set $Z\setminus\{\max Z\}$ has
+the same leading run $\ell$ and $\ell+1\le c-1$, so the induction hypothesis
+for $F$ on $y_1,\ldots,y_{c-1}$ gives the bound.
+\end{proof}
+
+For $y_c\le\frac12$ every $\max(1,\varphi_i)$ is $1$ and this is
+Theorem~\ref{thm:tail}.  The order statistics extend to all roots above $1$.
+
+\begin{corollary}[Order statistics for roots above one]\label{cor:ordergen}
+Let $1<r_1\le\cdots\le r_L$ and let $F$ be a nonzero real multiple of
+$\prod_{i=1}^L(x-r_i)$.  Then for every $0\le u\le L-1$,
+\[
+  b_{u+1}(F)\ge|f_D|\prod_{i=u+1}^L(r_i-1)\prod_{i=1}^u\min(1,r_i-1).
+\]
+\end{corollary}
+
+\begin{proof}
+Repeat the proofs of Lemma~\ref{lem:slack} and Theorem~\ref{thm:order}.  In
+Lemma~\ref{lem:slack} the reciprocal nodes $y_1<\cdots<y_L$ are the
+$1/r_i$ in decreasing order of $r_i$ and the leading run of $Z$ is
+$\ell\ge L-u-1$; Theorem~\ref{thm:tailgen}, together with
+$\varphi_i\le\max(1,\varphi_i)$ for $L-u<i\le\ell+1$, bounds the tail by
+$\prod_{i\le L-u}\varphi_i\prod_{i>L-u}\max(1,\varphi_i)$, which is the
+reciprocal of the right side (with $|f_D|=1$) because $\varphi_i=1/(\rho_i-1)$.
+The perturbation of Theorem~\ref{thm:order} applies unchanged, the bound
+being continuous in the roots.
+\end{proof}
+
+For $r_1\ge2$ this is Theorem~\ref{thm:order}.  At a single root
+$r\in(1,2]$ it gives $b_k\ge(r-1)^L$ in every row, which is sharp in the
+last row (Corollary~\ref{cor:lastrowr}).
+
+\begin{lemma}[Deleting the largest zero at the root $r$]\label{lem:confdelr}
+Let $r>1$.  Then $\Phi_r([1,\ell])=a^{\ell+1}$ for $\ell\ge0$, and for every
+nonempty finite $Z$,
+\[
+  \Phi_r(Z)\le\max(1,a)\,\Phi_r\bigl(Z\setminus\{\max Z\}\bigr).
+\]
+Consequently $\Phi_r(Z)\le\Phi_r(Z\cap[1,t])$ for all $t$ when $r\ge2$, and
+$\Phi_r(Z)\le a^{|Z|+1}$ when $1<r\le2$.
+\end{lemma}
+
+\begin{proof}
+$|r_{[1,\ell]}(s)|=\binom{s-1}\ell$ for $s>\ell$ and
+$\sum_{s>\ell}\binom{s-1}\ell r^{-s}=(r^{-1}/(1-r^{-1}))^{\ell+1}=a^{\ell+1}$;
+this also settles $Z=[1,\ell]$, the ratio being $a$.  For
+$Z\ne[1,|Z|]$ run the limit in the proof of Lemma~\ref{lem:confdel} with
+the nodes $y_i=\frac1r-(c-i)\varepsilon$ and the comparison
+$\Tail(w^\varepsilon)\le\max(1,\varphi_c)\Tail(F^\varepsilon)$ of
+Theorem~\ref{thm:tailgen}; the domination
+$0\le h_{d-i+1}(y_1,\ldots,y_i)\le\binom d{i-1}r^{-(d-i+1)}$ and the
+invertibility of the limit matrix are as there, and $\varphi_c\to a$.  The
+consequences follow by deleting the largest element repeatedly: for $r\ge2$
+each step does not increase $\Phi_r$, and for $r\le2$ each of the $|Z|$
+steps from $Z$ to $\varnothing$ costs at most the factor $a$, with
+$\Phi_r(\varnothing)=a$.
+\end{proof}
+
+\begin{corollary}[The last row]\label{cor:lastrowr}
+$V_r(L,L)=r-1$ for $r\ge2$, and $V_r(L,L)=(r-1)^L$ for $1<r\le2$.
+\end{corollary}
+
+\begin{proof}
+Lower bounds: Proposition~\ref{prop:rowvalue}(a) with $Z=S$, $|S|=L-1$, and
+Lemma~\ref{lem:confdelr}, which gives $\Phi_r(S)\le a$ for $r\ge2$ and
+$\Phi_r(S)\le a^L$ for $r\le2$.  Upper bounds: for $r\ge2$,
+Proposition~\ref{prop:rowvalue}(c) with $n=1$ and
+$\beta_r(1)=1/\Phi_r(1)=r-1$; for $r\le2$, Proposition~\ref{prop:rowvalue}(b)
+with $S=[1,L-1]$, where $q=r_S$ is forced and $\mu_r(S,L)=a^L$.
+\end{proof}
+
+At $r=2$ both values are $1$.  For the other rows at $r\ge2$ we need the
+hole integral at the root $r$.  For finite nonempty $C\subset\N_{>0}$ with
+$m=\max C$ and $w_c$ as in Lemma~\ref{lem:holeint}, put
+\[
+  T_C(u)=\sum_{c\in C}w_cr^{-c}u^{m-c}(1+u)^{c-1},\qquad
+  H_C(t)=\sum_{c\in C}|w_c|\,r^{-c}t^{m-c}(1-t)^{c-1}.
+\]
+
+\begin{lemma}[Hole integral at the root $r$]\label{lem:holeintr}
+Let $r>1$, $k\ge0$ and $P=[1,m+k]\setminus C$.  Then
+\[
+  \Phi_r(P)=\int_0^1t^k\bigl(a^{k+1}T_C(at)+H_C(t)\bigr)\,dt,
+\]
+where the second summand integrates to $\sum_{c\in C}|r_P(c)|r^{-c}$ and
+the first to $\sum_{s>m+k}|r_P(s)|r^{-s}$.  In particular, for $c\ge1$ and
+$t_0\ge0$,
+\[
+  S_r(c,t_0):=\Phi_r\bigl([1,c+t_0]\setminus\{c\}\bigr)
+  =\frac{r^{-c}}{\binom{c+t_0}c}
+   +c\,r^{-c}\sum_{i=0}^{c-1}\binom{c-1}i\frac{a^{t_0+i+1}}{t_0+i+1},
+\]
+with $S_r(1,t_0)=\psi_r(t_0+1)$ and $S_r(c,0)=a^c$.
+\end{lemma}
+
+\begin{proof}
+Put $x=m+k$.  As in the proof of Lemma~\ref{lem:holeint}, with
+$\sum_{s>x}\binom{s-1}xy^s=(y/(1-y))^{x+1}$ at $y=u/r$ and then
+$v=u/(r-u)$,
+\[
+  \sum_{s>x}\binom{s-1}x\frac{r^{-s}}{s-c}
+  =\int_0^1\frac{u^{x-c}\,du}{(r-u)^{x+1}}
+  =r^{-c}\int_0^av^{x-c}(1+v)^{c-1}\,dv
+  =r^{-c}a^{x-c+1}\int_0^1t^{x-c}(1+at)^{c-1}\,dt,
+\]
+and $a^{x-c+1}t^{x-c}=a^{k+1}t^k(at)^{m-c}$.  The values at the holes are
+$|r_P(c)|=|w_c|\int_0^1t^{x-c}(1-t)^{c-1}dt$ exactly as there.  For
+$C=\{c\}$, $w_c=c$, the hole value is $r^{-c}/\binom xc$, and expanding
+$(1+v)^{c-1}$ gives the sum.  For $c=1$ it is $(1+a^{t_0+1})/(r(t_0+1))$;
+for $t_0=0$ the set is $[1,c-1]$.
+\end{proof}
+
+At $r=2$, $a=1$ and $T_C+H_C=M_C$, which is Lemma~\ref{lem:holeint}.  For
+$r>2$ the tail carries the extra factor $a^{k+1}$; the target $\psi_r$
+splits accordingly as $\frac1{r(k+1)}+\frac{a^{k+1}}{r(k+1)}$.
+
+\begin{lemma}[A sufficient condition]\label{lem:psiprin}
+Let $r\ge2$, $k\ge0$ and $G_C(t)=r\bigl(H_C(t)+T_C(at)\bigr)$.  If
+\[
+  \int_0^1t^kG_C(t)\,dt\le\frac2{k+1}
+  \qquad\text{and}\qquad
+  \int_0^1t^k\,rH_C(t)\,dt\le\frac1{k+1},
+\]
+then $\Phi_r([1,m+k]\setminus C)\le\psi_r(k+1)$.
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:holeintr},
+$r\Phi_r=\int_0^1t^k\bigl(a^{k+1}G_C+(1-a^{k+1})rH_C\bigr)dt$, and
+$0<a\le1$, so $r\Phi_r\le\frac{2a^{k+1}+1-a^{k+1}}{k+1}=r\psi_r(k+1)$.
+\end{proof}
+
+\begin{proposition}[Rows with the target $\psi_r$]\label{prop:psirows}
+Let $r\ge2$, $n\ge1$ and $A\subset\N_{>0}$ finite.  Some finite $Z\supseteq A$
+has $|Z|\le|A|+n-1$ and $\Phi_r(Z)\le\psi_r(n)$.
+\end{proposition}
+
+\begin{proof}
+For $n=1$ take $Z=A$: $\Phi_r(A)\le\Phi_r(\varnothing)=a=\psi_r(1)$ by
+Lemma~\ref{lem:confdelr}.  Let $n\ge2$, let $j$ be the leading run of $A$,
+and let $c_1=j+1<c_2<\cdots$ be the positive integers outside $A$.  Keep the
+holes $K=\{1\}$, $\{2\}$, $\{3,c_2\}$, $\{c_1,\ldots,c_{j+1}\}$ for $j=0$,
+$1$, $2$, $j\ge3$, fill the next $n-1$ holes, and let $x$ be the last filled
+hole, $P=[1,x]\setminus K$ and $Z=P\cup A$, exactly as in
+Propositions~\ref{prop:rowsfree} and~\ref{prop:rowstop}.  Then $Z\supseteq A$,
+$|Z|\le|A|+n-1$, and $\Phi_r(Z)\le\Phi_r(P)$ by Lemma~\ref{lem:confdelr},
+the elements of $Z$ above $x$ being deleted one at a time.  Put
+$m=\max K$ and $k=x-m\ge n-1$.  Since $\psi_r$ is decreasing ($a\le1$), it
+suffices to show $\Phi_r(P)\le\psi_r(k+1)$, or, for $j\ge3$,
+$\Phi_r(P)\le(1+a^n)/(r(k+1))$.
+
+\emph{$j=0$.}  $P=[2,x]$ and $\Phi_r(P)=\psi_r(x)=\psi_r(k+1)$ by
+Lemma~\ref{lem:holeintr}.
+
+\emph{$j=1$.}  $C=\{2\}$: $rH_C=\frac2r(1-t)\le1$ and
+$G_C=\frac2r\bigl(2-(1-a)t\bigr)\le\frac4r\le2$, so
+Lemma~\ref{lem:psiprin} applies.
+
+\emph{$j=2$, $b=c_2\ge5$.}  $C=\{3,b\}$, $w_b=-w_3=\kappa:=3b/(b-3)$.  Writing
+$B_i=\binom{b-1}it^i(1-t)^{b-1-i}$ and $1+at=(1-t)+rat$, a direct expansion gives
+$G_C=\kappa\sum_{i=0}^{b-1}\gamma_iB_i$ with
+\[
+  \gamma_0=2r^{1-b},\quad
+  \gamma_i=r^{1-b}(ra)^i\ (1\le i\le b-4),\quad
+  \gamma_{b-3}=\frac{a^{b-3}(1-\epsilon)+\epsilon}{r^2},\quad
+  \gamma_{b-2}=\frac{a^{b-2}}r\cdot\frac{b-3}{b-1},\quad
+  \gamma_{b-1}=0,
+\]
+where $\epsilon=1/\binom{b-1}2$.  With $r\ge2$, $a\le1$ and $ra\le2$:
+$\gamma_0\le2^{2-b}\le\frac18$ and $\gamma_i\le2^{1-b+i}\le\frac18$ for $1\le i\le b-4$, so $\kappa\gamma_i\le\frac{3b}{8(b-3)}\le1$ for $i\le b-4$;
+$\kappa\gamma_{b-3}\le\kappa/4\le\frac{15}8$ and
+$\kappa\gamma_{b-2}\le\frac{3b}{2(b-1)}\le2$.  So $G_C\le2$.  Next
+$rH_C=\kappa\bigl(r^{-2}t^{b-3}(1-t)^2+r^{1-b}(1-t)^{b-1}\bigr)$, and
+$\int_0^1t^kt^{b-3}(1-t)^2\,dt\le\frac2{(k+1)b(b-1)}$,
+$\int_0^1t^k(1-t)^{b-1}dt\le\frac1{k+1}$, so
+$(k+1)\int t^k rH_C\le\frac3{2(b-3)(b-1)}+\frac{3b\,2^{1-b}}{b-3}\le\frac3{16}+\frac{15}{32}<1$.
+
+\emph{$j=2$, $b=4$.}  Here $T_C(at)=12r^{-4}(1+at)^2(1-t)$ because
+$1+at-rat=1-t$, so
+\[
+  G_C=12(1-t)\Bigl(\frac{t(1-t)}{r^2}+\frac{(1-t)^2}{r^3}
+       +\frac1r\Bigl(\frac{1+at}r\Bigr)^2\Bigr)\le3(1-t^2),
+\]
+each term being largest at $r=2$ ($(1+at)/r$ decreases in $r$), and
+$\int_0^1t^k3(1-t^2)\,dt=\frac6{(k+1)(k+3)}\le\frac2{k+1}$.  Also
+$rH_C\le3t(1-t)^2+\frac32(1-t)^3$, whose moment is
+$\frac{6k+15}{(k+1)(k+2)(k+3)(k+4)}\le\frac1{k+1}$.
+
+\emph{$j\ge3$.}  Here $k\ge1$.  Split
+$\Phi_r(P)=H_r+T_r$ into the values at the kept holes and the tail, as in
+the paragraph before Lemma~\ref{lem:holevals}.  Every kept hole is at least
+$j+1$ and $2/r\le1$, so with $H(C,k)$ of that paragraph and
+Lemma~\ref{lem:holevals},
+\[
+  H_r\le(2/r)^{j+1}H(C,k)\le\frac{(2/r)^{j+1}}{2(k+1)}\le\frac1{r(k+1)} .
+\]
+For the tail, the first two steps of the proof of Lemma~\ref{lem:holetail}
+do not involve the root, and summing
+$\binom{s-1}xr^{-s}(1-t)^{s-m-1}$ over $s>x$ gives
+$(1-t)^k(r-1+t)^{-x-1}=a^{x+1}(1-t)^k(1+at)^{-x-1}$, so
+\[
+  T_r\le(j+1)\binom mj a^{m+k+1}\int_0^1t^j
+     \Bigl(\frac{1-t}{1+at}\Bigr)^k(1+at)^{-m-1}\,dt .
+\]
+The function $\log(1+at)-\log(1-t)$ vanishes at $0$, has derivative $1+a$
+there and is convex (as $a/(1+at)\le1\le1/(1-t)$), so
+$(1-t)/(1+at)\le e^{-(1+a)t}$; and $(k+1)e^{-(1+a)kt}\le2/(e(1+a)t)$.
+Extending the integral to $(0,\infty)$ and using
+$\int_0^\infty t^{j-1}(1+at)^{-m-1}dt=a^{-j}\mathrm B(j,m-j+1)$,
+$\binom mj\mathrm B(j,m-j+1)=1/j$ and $1+a=ra$,
+\[
+  (k+1)T_r\le\frac{2(j+1)}{e\,j\,r}\,a^{m+k-j}
+  \le\frac{2(j+1)}{e\,j}\,a^{j}\cdot\frac{a^n}r\le\frac{a^n}r,
+\]
+because $m\ge2j+1$ and $k+1\ge n$ give $m+k-j\ge n+j$, and
+$2(j+1)/(ej)\le8/(3e)<1$ for $j\ge3$.  Hence
+$\Phi_r(P)\le(1+a^n)/(r(k+1))\le\psi_r(n)$.
+\end{proof}
+
+At $r=2$ the proposition is $T(n)$.  For larger $r$ its target $\psi_r(n)$
+is weaker than the row $a^n$ of \eqref{eq:order} once $(r-1)^n+1>nr$; the
+remedy is to keep one hole in the middle.
+
+\begin{lemma}[Moving the hole]\label{lem:shift}
+For $r\ge2$ and $t_0\ge0$, $S_r(2,t_0)\le S_r(1,t_0)$.  For $r\ge\frac52$,
+$h\ge1$ and $t_0\ge0$, $S_r(h+1,t_0)\le S_r(h,t_0)$.
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:holeintr},
+$S_r(2,t_0)=\frac2{r^2}\bigl(\frac{a^{t_0+1}}{t_0+1}+\frac{a^{t_0+2}}{t_0+2}
++\frac1{(t_0+1)(t_0+2)}\bigr)$, so
+$r(t_0+1)S_r(2,t_0)=\frac2r\bigl(a^{t_0+1}+\frac{(t_0+1)a^{t_0+2}+1}{t_0+2}\bigr)
+\le\frac2r(1+a^{t_0+1})\le1+a^{t_0+1}=r(t_0+1)S_r(1,t_0)$.
+For $h\ge2$ write $S_r(h,t_0)=\eta(h)+\tau(h)$ with
+$\eta(h)=r^{-h}/\binom{h+t_0}h$ and
+$\tau(h)=hr^{-h}\int_0^av^{t_0}(1+v)^{h-1}dv$.  Then
+$\eta(h+1)=\frac{h+1}{r(h+1+t_0)}\eta(h)\le\eta(h)$, and $1+v\le1+a=ra$
+gives $\tau(h+1)\le\frac{h+1}h\,a\,\tau(h)\le\frac32a\,\tau(h)\le\tau(h)$
+for $r\ge\frac52$.
+\end{proof}
+
+\begin{proposition}[Rows with one kept hole]\label{prop:oneholerows}
+Let $r\ge2$, $1\le c\le n$ and $A\subset\N_{>0}$ finite.  Some finite
+$Z\supseteq A$ has $|Z|\le|A|+n-1$ and
+$\Phi_r(Z)\le\sup_{h\ge c}S_r(h,n-c)$.  The supremum is $S_r(c,n-c)$ when
+$r\ge\frac52$, and also when $c=n$, where it is $a^n$.
+\end{proposition}
+
+\begin{proof}
+Let $c_1<c_2<\cdots$ be the positive integers outside $A$, keep the hole
+$h=c_c\ge c$, fill the holes $c_i$, $i\le n$, $i\ne c$, and put $x=c_n$ and
+$Z=([1,x]\setminus\{h\})\cup A$.  Then $|Z\setminus A|=n-1$, and deleting the
+elements of $Z$ above $h+n-c\le x$ one at a time (Lemma~\ref{lem:confdelr})
+gives $\Phi_r(Z)\le S_r(h,n-c)$.  For $r\ge\frac52$,
+Lemma~\ref{lem:shift} applied $h-c$ times gives $S_r(h,n-c)\le
+S_r(c,n-c)$; for $c=n$, $S_r(h,0)=a^h\le a^n$.
+\end{proof}
+
+\begin{theorem}[Every row at the root $r$]\label{thm:everyrowr}
+Let $r\ge2$, $L\ge1$, let $F$ be a monic multiple of $(x-r)^L$, $1\le k\le L$
+and $n=L-k+1$.  Then
+\[
+  b_k(F)\ \ge\ \max\Bigl\{(r-1)^n,\ \frac{nr(r-1)^n}{(r-1)^n+1}\Bigr\},
+\]
+and if $r\ge\frac52$,
+\[
+  b_k(F)\ \ge\ B_r(n):=\max_{1\le c\le n}\frac1{S_r(c,n-c)},\qquad
+  S_r(c,n-c)=\frac{r^{-c}}{\binom nc}
+   +c\,r^{-c}\sum_{i=0}^{c-1}\binom{c-1}i\frac{(r-1)^{-(n-c+i+1)}}{n-c+i+1}.
+\]
+\end{theorem}
+
+\begin{proof}
+Let $S$ be as in Proposition~\ref{prop:rowvalue}(a), $|S|=k-1$.
+Proposition~\ref{prop:psirows} with $A=S$ gives $Z\supseteq S$,
+$|Z|\le L-1$, $\Phi_r(Z)\le\psi_r(n)$, and $1/\psi_r(n)$ is the second
+term; the first is \eqref{eq:order} (or Proposition~\ref{prop:oneholerows}
+with $c=n$).  For $r\ge\frac52$ use Proposition~\ref{prop:oneholerows} for
+each $c$.  In each case Proposition~\ref{prop:rowvalue}(a) concludes.
+\end{proof}
+
+At $r=2$ the first bound is $\max\{1,n\}=L-k+1$, which is
+Theorem~\ref{thm:everyrow}.  The terms $c=1$ and $c=n$ of $B_r(n)$ are the
+two terms of the first bound, so $B_r(n)$ dominates it.  Both rows at the
+bottom are exact.
+
+\begin{corollary}[The last two rows]\label{cor:tworowsr}
+Let $r\ge2$ and $L\ge2$.  Then $V_r(L,L)=r-1$ and
+\[
+  V_r(L,L-1)=(r-1)^2\max\Bigl\{1,\frac{2r}{r^2-2r+2}\Bigr\},
+\]
+the maximum being the second term exactly when $r\le2+\sqrt2$.
+\end{corollary}
+
+\begin{proof}
+The first is Corollary~\ref{cor:lastrowr}.  For $n=2$ the lower bound is
+Theorem~\ref{thm:everyrowr}, as $(r-1)^2+1=r^2-2r+2$.  For the upper bound,
+$V_r(L,L-1)\le\beta_r(2)$ by Proposition~\ref{prop:rowvalue}(c), and
+$\mu_r(\varnothing,2)$ is the minimum over $\omega\in\R$ of
+$\sum_s|1-\omega s|r^{-s}$, a convex function of $\omega$ that is linear
+between consecutive points $1/s$, exceeds its value $a$ at $\omega=0$ for
+$\omega<0$, and tends to infinity; so the minimum is $a$ or some
+$\Phi_r(\{z\})$.  Summing directly,
+\[
+  \Phi_r(\{z\})=\frac{z(r-1)-r+2r^{1-z}}{z(r-1)^2}=a-\frac{a^2}z\,g(z),\qquad
+  g(z)=r-2r^{1-z}.
+\]
+Now $g(1)=r-2$, $g(2)/2-g(3)/3=(r-2)(r^2+2r-2)/(6r^2)\ge0$, and for $z\ge4$,
+$g(z)/z<r/4\le r/2-1/r=g(2)/2$.  So the minimum is $\min\{\Phi_r(\{1\}),
+\Phi_r(\{2\})\}=\min\{a^2,(r^2-2r+2)a^2/(2r)\}$, which is at most $a$, and
+$\beta_r(2)$ is the stated value.  The comparison $2r\ge r^2-2r+2$ is
+$r^2-4r+2\le0$.
+\end{proof}
+
+At $r=2$ the corollary says $V_2(L,L-1)=2$: Theorem~\ref{thm:everyrow} is
+sharp in its two lowest rows.  The threshold $2+\sqrt2$ is where the
+criterion quoted after Proposition~\ref{prop:nonsharp} starts to hold for
+$P_{L-2}=(x-r)^2$: its first partial sum $1-2r$ has absolute value at most
+$(r-1)^2$ exactly when $r^2-4r+2\ge0$.
+
+\paragraph{How far the bound is from the rows.}
+By Proposition~\ref{prop:rowvalue}, $B_r(n)\le V_r(L,k)\le\beta_r(n)$ for
+$r\ge\frac52$, and $\beta_r(n)$ is the top row of $(x-r)^n$.  We computed
+$1/\Phi_r(Z_0)$ exactly for the best zero set $Z_0$ of size $n-1$ inside
+$[1,\min(3n+3,18)]$; this is a lower bound for $\beta_r(n)$, and presumably
+its value.  It equals $B_r(n)$ for $r=6$, $n\le7$; $r=4$, $n\le5$; $r=3$,
+$n\le3$; $r=\frac52$, $n\le2$.  For example $B_3(3)=\frac{27}2$ at $c=2$ and
+$B_4(4)=128$ at $c=3$.  Beyond that the two separate, for instance
+$B_3(5)=80$ against $\frac{31104}{307}=101.3\ldots$ and $B_3(7)=407.2\ldots$
+against $815.8\ldots$; in the computed range the ratio decreases with $n$.
+At $r=2$ the computed values are $1,2,\frac{40}{11},\frac{672}{115},
+\frac{10368}{851}$ for $n\le5$, against $n$.  The one-hole family is not
+optimal in general: the best zero sets of the top row, such as
+$\{1,3,5\}$ at $(r,n)=(3,4)$, spread their gaps.  Numerically
+Lemma~\ref{lem:shift} holds for all $h,t_0<50$ at $r=2.3$ and fails at
+$r=2.2$ ($h=3$, $t_0=13$), so the constant $\frac52$ is not the limit of
+the method.
+
+\paragraph{Rows equal the top row.}
+For $r\ge2$ we conjecture $V_r(L,k)=\beta_r(L-k+1)$: exempting $k-1$
+positions exactly offsets $k-1$ of the $L$ zeros at $r$.  In the form of
+Proposition~\ref{prop:rowvalue}(b), this says that every finite $S$ admits
+$Z\supseteq S$ with $|Z|\le|S|+n-1$ and $\Phi_r(Z)\le\mu_r(\varnothing,n)$.
+It holds for $n=1$ by Lemma~\ref{lem:confdelr}, and for $n=2$ by
+Corollary~\ref{cor:tworowsr}.  For $r\in\{2,\frac94,\frac52,3,4\}$,
+$n\le4$ and every $S\subseteq[1,9]$ with $|S|\le3$ we found such a $Z$,
+with $\mu_r(\varnothing,n)$ replaced by $\Phi_r(Z_0)$ for the $Z_0$ of the
+previous paragraph and the inequality checked in exact arithmetic.  The
+worst $S$ found always lies at the top of the search range, as the limit in
+Proposition~\ref{prop:rowvalue}(c) suggests.  At $r=2$ the conjecture would
+sharpen Theorem~\ref{thm:everyrow} to $b_k\ge\beta_2(L-k+1)$, with
+$\beta_2(3)\ge\frac{40}{11}>3$.  It fails for $r<2$: there
+$V_r(L,L)=(r-1)^L<r-1=\beta_r(1)$ by Corollary~\ref{cor:lastrowr}.
+
+\paragraph{Roots between one and two.}
+For $1<r<2$ the deletion of Lemma~\ref{lem:confdelr} can increase $\Phi_r$
+by the factor $a>1$, and the exempted set $S=[1,k-1]$ is costly: every
+$Z\supseteq[1,k-1]$ has
+$\Phi_r(Z)=a^k\sum_{s\ge k}\binom{s-1}{k-1}(1-r^{-1})^kr^{-(s-k)}|q(s)|$
+with $q=r_{Z\setminus[1,k-1]}$, a negative-binomial mean inflated by $a^k$.
+What is proved here is the top row, $V_r(L,1)=\beta_r(L)\ge\max_c1/S_r(c,L-c)$
+(any certificate is admissible when $S=\varnothing$), and the last row,
+$V_r(L,L)=(r-1)^L$; Corollary~\ref{cor:ordergen} gives only $(r-1)^L$ for
+the rows in between.  In a numerical search at $r=\frac32$ and $\frac74$
+with $L\le5$, $S\subseteq[1,8]$ and zero sets in a window, the worst
+exempted set is $S=[1,k-1]$ in all but one case, and the approximate row
+values at $r=\frac32$, $L=5$ are $2.98,\,1.99,\,0.80,\,0.20,\,\frac1{32}$
+for $k=1,\ldots,5$ (the last is exact).  We have not determined these
+rows.
+
 \section{Complex roots}\label{sec:complexroots}
 
 Everything so far prescribes real roots.  This section shows that complex
