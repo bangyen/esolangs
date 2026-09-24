@@ -224,13 +224,12 @@ step; an answer lands in the paper it extends, and the row leaves.
   `a != 0`, the Gaussian-integer register roots; any proof must use their
   arithmetic.
 
-- **Polynomial's routing constant.**  `lem:input` credits one distinct
-  input root per 3 first-essential residuals at one level; the construction
-  spends one per state (measured `N*/K_in <= 0.4`), and pays for every level
-  where the bound uses one (factors `3**2` and `4` of the bracket).  Whether
-  one cursor can really serve first-essential residuals at several levels
-  when read counts vary is open.  First step: search small programs for a
-  cursor carrying first-essential residuals at two levels.
+- **Polynomial's routing constant.**  CLOSED in
+  [polynomial](proofs/polynomial.tex): the next-read count `thm:count`
+  gives `N*(k) <= min(K_in, L)`, sharp (`prop:sharp`), so routing adds no
+  factor; and one input root can serve first-essential residuals at
+  `n - Theta(log n)` levels (`rem:levels`), so summing levels is not
+  available to the lower bound.
 
 - **Every row at other roots.**  For `r >= 2` the per-row bound is
   generalized ([coefficient-mass](proofs/coefficient-mass.tex)
@@ -287,10 +286,12 @@ step; an answer lands in the paper it extends, and the row leaves.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
-  liminf in `[log10(2)/18, 105.5 log10(2)]`, limsup in
-  `[(2/9) log10(2), 422 log10(2)]`, a factor 1899 for most `n` (down from
-  121,536 by charging the input pairs: `lem:input`, `cor:imag`).  The gap is
-  `3**2` routing (one input value per 3 first-essential residuals, against
-  one per state), `4` levels (the lower bound uses one), and `105.5/2` for
-  the register and real roots the lower bound does not charge.  See the
-  complex-roots and routing rows.
+  liminf in `[log10(2)/2, 105.5 log10(2)]`, limsup in
+  `[2 log10(2), 422 log10(2)]`, a factor 211 for most `n` (down from
+  121,536: input pairs charged by `cor:imag`, routing exact by
+  `thm:count`).  The gap is `4` levels (the construction pays one input per
+  state at every level; the minimum input count sits between the widest
+  level and the smallest automaton agreeing with the table on `{0,1}**n`)
+  and `105.5/2` for the register and real roots the lower bound does not
+  charge (see the complex-roots row).  First step: a construction that
+  shares input states across levels.
