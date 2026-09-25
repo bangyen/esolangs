@@ -93,7 +93,7 @@ Corollary~\ref{cor:mass} give
 \]
 We call the first inequality at a given $k$ the row $k$.  Both bounds are
 uniform in the degree and in any further roots of the multiple, and they
-extend to complex multiples (Corollary~\ref{cor:complex}).  The row $k=1$
+extend to complex multiples (Corollaries~\ref{cor:complex} and~\ref{cor:mass}).  The row $k=1$
 holds for all $r_1>1$.  For the first $L$ primes the mass bound is
 $\Lambda(F)\ge(\frac12+o(1))L^2\log L$ (Corollary~\ref{cor:prime}), and the
 infimum over monic multiples is
@@ -552,14 +552,15 @@ through by $|f_D|$ gives \eqref{eq:order} for $F$.
 
 \begin{corollary}[Logarithmic mass]\label{cor:mass}
 Let $r_1\le\cdots\le r_L$ be real with $r_1\ge2$, repetitions allowed, and
-let $F$ be a nonzero real multiple of $\prod_{i=1}^L(x-r_i)$.  Then
+let $F$ be a nonzero real or complex multiple of $\prod_{i=1}^L(x-r_i)$.  Then
 \begin{equation}\label{eq:mass}
  \Lambda(F)\ge(L+1)\log|f_D|+\sum_{i=1}^{L}i\log(r_i-1).
 \end{equation}
 \end{corollary}
 
 \begin{proof}
-Each product in \eqref{eq:order} is at least one because $r_i\ge2$, so the
+By Theorem~\ref{thm:order}, with Corollary~\ref{cor:complex} for complex
+$F$, \eqref{eq:order} holds.  Each product in it is at least one because $r_i\ge2$, so the
 $L$ largest nonleading magnitudes are nonzero, as is $f_D$; since $D\ge L$
 these are $L+1$ distinct positions.  Summing $\log^+\ge\log$ over them alone,
 \[
@@ -898,8 +899,8 @@ repeated roots included, the row $k=u+1$ is the infimum of $b_{u+1}(PQ)$
 over monic $Q$ exactly when no partial sum of the coefficients of
 $P_u=\prod_{i>u}(x-r_i)$, read down from the leading one, exceeds their
 total $P_u(1)$ in absolute value.  At $(\tfrac52,3,\tfrac72)$ with $u=1$ the
-first partial sum of $(x-3)(x-\tfrac72)$ is $-\tfrac{11}2$, against
-$P_1(1)=5$, so there the row $k=2$ is not an infimum.
+partial sum $1-\tfrac{13}2=-\tfrac{11}2$ of the two leading coefficients of
+$P_1=(x-3)(x-\tfrac72)$ exceeds $P_1(1)=5$ in absolute value, so there the row $k=2$ is not an infimum.
 
 \subsection{A \texorpdfstring{$D$}{D}-free form of the rows}
 
