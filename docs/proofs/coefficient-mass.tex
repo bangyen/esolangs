@@ -2365,6 +2365,10 @@ at $r=1.9$ and $n\ge3$ at $r=1.75$ it is at $i=1$.  This explains the
 exception noted in the previous paragraph: there the worst exempted set lies
 far out.  For $1<r<2$, Theorem~\ref{thm:onepolyrows} proves the conjecture
 whenever $\beta_r(n)\le1$, for every $k$ and with the minimum at $i=k$.
+Theorem~\ref{thm:longdiag} proves it for every $n$ once $k$ is large
+compared with $n$, again with the minimum at $i=k$
+(Corollary~\ref{cor:longdiagfinite}).  So for each fixed $n$ and $1<r<2$
+the minimum moves to $i=k$ for all large $k$.
 
 \paragraph{One kept hole at several roots.}
 For a multiset $R=(\rho_1,\ldots,\rho_m)$ of reals greater than $1$ write
@@ -5228,7 +5232,8 @@ Corollary~\ref{cor:lastrowr} this is an equality for $k=L$, where both sides
 are $(r-1)^L$.  The conjectured value $\min_{i\le k}1/\nu_i(n)$ is at least
 $(r-1)^{k-1}\beta_r(n)$ by Theorem~\ref{thm:prefixmono}.
 Section~\ref{sec:onepoly} proves the conjecture for $1<r<2$ whenever
-$\beta_r(n)\le1$.
+$\beta_r(n)\le1$, and Section~\ref{sec:longdiag} whenever $k$ is large
+compared with $n$.
 
 Lemma~\ref{lem:optins} with $D=\infty$ and $T=\varnothing$ applies to every
 top-row optimum $Z_0$ (Lemma~\ref{lem:topzero}(a)) and every hole $c$ of
@@ -5525,7 +5530,290 @@ $\max_{i\le4}\nu_i(6)$ on the right, and in floating point
 $\nu_1(6)\approx0.2571$.
 For $1<r<2$ the conjecture remains open where $\beta_r(n)>1$ and no single
 polynomial serves all prefixes, in particular wherever the maximum of
-$\nu_i(n)$ sits at $i=1<k$.
+$\nu_i(n)$ sits at $i=1<k$.  Section~\ref{sec:longdiag} shows that a single
+polynomial does serve all prefixes once $k$ is large compared with $n$.
+
+\subsection{Long diagonals below the root \texorpdfstring{$2$}{2}}\label{sec:longdiag}
+
+Theorem~\ref{thm:onepoly} gives the conjectured value $1/\nu_k(n)$ as soon
+as one polynomial that is nearly optimal for $\nu_k(n)$ has its $k$-th
+prefix sum $A_k$ at least as large as the earlier ones.
+Theorem~\ref{thm:onepolyrows} obtains this from $\beta_r(n)\le1$.  This
+subsection obtains it for every $1<r<2$, with no condition on $\beta_r(n)$,
+once $k$ is large compared with $n$ (Theorem~\ref{thm:longdiag} and
+Proposition~\ref{prop:longdiagexplicit}).  So on every diagonal
+$L-k=n-1$ the conjecture can fail in at most finitely many rows
+(Corollary~\ref{cor:longdiagfinite}).  Together with the exact certificates
+of Section~\ref{sec:onepoly}, this settles whole diagonals at
+$r=\frac54,\frac32,\frac74$ (Corollary~\ref{cor:completediag}).
+
+The mechanism is simple.  By Lemma~\ref{lem:intzeros} the polynomials for
+$\nu_k(n)$ may be taken with all zeros at least $k$, and such a polynomial is
+bounded by $1$ on $[1,2k-3]$.  There the weights $\omega_i$, $i<k$, exceed
+$\omega_k$ by an amount that is exponentially small compared with $\nu_k(n)$
+when $r<2$.  From $2k-2$ on, $\omega_k$ dominates every $\omega_i$, $i<k$,
+with a margin that is a fixed fraction of $\omega_k$ near the mode of
+$\omega_k$, where every polynomial in $\mathcal Q_n$ has some mass.
+
+For $k\ge2$ put
+\[
+  w_k(s)=\omega_k(s)-\omega_{k-1}(s),\qquad
+  \tau_k(n)=\inf_{p\in\mathcal Q_n}\sum_{s\ge2k-2}w_k(s)\,|p(s)|,
+\]
+\[
+  N_k(r)=\max_{1\le i<k}\sum_{s=1}^{2k-3}\bigl(\omega_i(s)-\omega_k(s)\bigr)^+,
+\]
+where $x^+=\max\{x,0\}$ and $\omega_i(s)=0$ for $s<i$.  For $s\ge k$ we have
+$\omega_{k-1}(s)/\omega_k(s)=(k-1)/(s-k+1)$, so
+\begin{equation}\label{eq:wkratio}
+  w_k(s)=\frac{s-2k+2}{s-k+1}\,\omega_k(s)\qquad(s\ge k).
+\end{equation}
+In particular $w_k\ge0$ on $[2k-2,\infty)$, and $\tau_k(n)\ge0$.
+
+\begin{lemma}[Far zeros keep the last prefix sum largest]\label{lem:farprefix}
+Let $r>1$, $k\ge2$ and $n\ge1$.  Let $Y$ be a set of $n-1$ integers, each at
+least $k$, and $p=r_Y$.  Then for $1\le i<k$,
+\[
+  A_k(p)-A_i(p)\ \ge\ \tau_k(n)-N_k(r).
+\]
+\end{lemma}
+
+\begin{proof}
+Let $1\le s\le2k-3$.  Every $y\in Y$ has $2y\ge2k>s$, so $|1-s/y|\le1$ and
+$|p(s)|\le1$.  Hence
+$(\omega_k(s)-\omega_i(s))|p(s)|\ge-(\omega_i(s)-\omega_k(s))^+$, and the
+sum of these terms over $s\le2k-3$ is at least $-N_k(r)$.
+
+Let $s\ge2k-2$.  The coefficients $\binom{s-1}j$ increase in $j$ for
+$j\le(s-1)/2$, and $i-1\le k-2\le(s-1)/2$, so $\omega_i(s)\le\omega_{k-1}(s)$
+and $(\omega_k(s)-\omega_i(s))|p(s)|\ge w_k(s)|p(s)|$.  Since $p\in\mathcal Q_n$,
+the sum of these terms over $s\ge2k-2$ is at least $\tau_k(n)$.
+\end{proof}
+
+\begin{theorem}[Long diagonals]\label{thm:longdiag}
+Let $r>1$, $n\ge1$, $k\ge2$ and $L=n+k-1$.  If $N_k(r)\le\tau_k(n)$, then
+$\nu_i(n)\le\nu_k(n)$ for $1\le i\le k$, and
+\[
+  V_r(L,k)=\frac1{\nu_k(n)}=\min_{1\le i\le k}\frac1{\nu_i(n)} .
+\]
+So the conjecture stated after Corollary~\ref{cor:belowtwo} holds at
+$(r,L,k)$, with the minimum at $i=k$.
+\end{theorem}
+
+\begin{proof}
+Let $\varepsilon>0$.  Lemma~\ref{lem:intzeros} with $\omega=\omega_k$ gives a
+set $Y$ of $n-1$ integers, each at least $k$, such that $p=r_Y$ has
+$A_k(p)\le\nu_k(n)+\varepsilon$.  By Lemma~\ref{lem:farprefix} and the
+hypothesis, $A_i(p)\le A_k(p)$ for $i<k$.  Hence
+$\nu_i(n)\le A_i(p)\le\nu_k(n)+\varepsilon$ for $i\le k$, and
+$\max_{i\le k}A_i(p)=A_k(p)$.  Theorem~\ref{thm:onepoly} gives
+$V_r(L,k)\ge1/(\nu_k(n)+\varepsilon)$.  Let $\varepsilon\to0$.
+Theorem~\ref{thm:prefixrows} gives
+$V_r(L,k)\le\min_i1/\nu_i(n)\le1/\nu_k(n)$.
+\end{proof}
+
+The hypothesis compares a quantity that is exponentially small for $r<2$
+with one that is not.  The next proposition makes this explicit.  It uses
+the mode of $\omega_k$ and Lagrange interpolation, as in
+Lemma~\ref{lem:nbmass}.
+
+\begin{proposition}[An explicit form]\label{prop:longdiagexplicit}
+Let $1<r<2$, $\theta=4(r-1)/r^2$ and $n\ge1$.  For $k\ge2$ put
+$M_k=\lfloor(k-1)r/(r-1)\rfloor+1$ and
+\[
+  F(k)=\theta^k\,(2r)^{n-1}\binom{M_k+n-1}{n-1}
+  \Bigl(\frac{4\sqrt{kr}}{r-1}+1\Bigr).
+\]
+\begin{enumerate}
+\item[(a)] If $F(k)\le3(2-r)^2/r^2$, then $N_k(r)\le\tau_k(n)$, so
+Theorem~\ref{thm:longdiag} applies.
+\item[(b)] Put $d=\lceil r/(r-1)\rceil$ and
+$\rho_k=\theta\,(1+(n-1)/(M_k+1))^d\sqrt{1+1/k}$.  Then $F(k+1)\le\rho_kF(k)$,
+and $\rho_k$ does not increase with $k$.  So if $F(k_1)\le3(2-r)^2/r^2$ and
+$\rho_{k_1}\le1$, then (a) applies to every $k\ge k_1$.
+\item[(c)] Let $\alpha\ge1$ satisfy
+$\rho(\alpha):=\theta\,\bigl(2re(\alpha r/(r-1)+1)\bigr)^{1/\alpha}<1$.  If
+$n-1\le k/\alpha$, then
+$F(k)\le\rho(\alpha)^k(4\sqrt{kr}/(r-1)+1)$.  Consequently there is $K$ such
+that $V_r(n+k-1,k)=1/\nu_k(n)$ for every $n\ge1$ and every
+$k\ge\max\{K,\alpha(n-1)\}$.
+\end{enumerate}
+Since $\bigl(2re(\alpha r/(r-1)+1)\bigr)^{1/\alpha}\to1$ as $\alpha\to\infty$
+and $\theta<1$, admissible $\alpha$ exist for every $1<r<2$.  For instance,
+$(\alpha,K)=(30,21)$ works at $r=\frac54$, $(100,149)$ at $r=\frac32$ and
+$(1000,761)$ at $r=\frac74$.
+\end{proposition}
+
+\begin{proof}
+(a) First, $(\omega_i(s)-\omega_k(s))^+\le\omega_i(s)\le
+\binom{s-1}{\lfloor(s-1)/2\rfloor}r^{-s}$, so $N_k(r)\le E_k(r)$, and the
+proof of Corollary~\ref{cor:belowtwo} gives
+$E_k(r)\le\frac{r^2}{4(2-r)}(4/r^2)^k=\frac{r^2}{4(2-r)}\,\theta^ka^k$.
+
+Next let $p\in\mathcal Q_n$.  The ratio $\omega_k(s+1)/\omega_k(s)=s/(r(s-k+1))$
+is at least $1/r$, and it is at least $1$ exactly when $s\le(k-1)r/(r-1)$.  So
+$M_k$ maximizes $\omega_k$: it is a mode of the law $P$ of
+Lemma~\ref{lem:nbmass}, where $\omega_k=a^kP$.  That lemma gives
+$\omega_k(M_k)\ge a^k\cdot3/(4(4\sqrt{kr}/(r-1)+1))$, and
+$\omega_k(M_k+l)\ge r^{-l}\omega_k(M_k)$ for $l\ge0$.  Since
+$M_k>(k-1)r/(r-1)\ge2k-2$, the nodes $t_l=M_k+l$, $0\le l<n$, lie in
+$[2k-2,\infty)$.  By~\eqref{eq:wkratio} the ratio $w_k(s)/\omega_k(s)=1-(k-1)/(s-k+1)$
+increases in $s$, and at $s=t_0>(k-1)r/(r-1)$ it exceeds $1-(r-1)=2-r$.  So
+$w_k(t_l)\ge(2-r)\,r^{-(n-1)}\omega_k(M_k)$ for every $l$.  Finally
+$1=p(0)=\sum_l\ell_lp(t_l)$ with the Lagrange coefficients
+$|\ell_l|=\prod_{l'\ne l}t_{l'}/|l-l'|\le\prod_{j=1}^{n-1}(M_k+j)/(l!\,(n-1-l)!)$,
+so $\sum_l|\ell_l|\le2^{n-1}\binom{M_k+n-1}{n-1}$ and
+$\max_l|p(t_l)|\ge1/(2^{n-1}\binom{M_k+n-1}{n-1})$.  Altogether
+\[
+  \sum_{s\ge2k-2}w_k(s)|p(s)|\ge\sum_lw_k(t_l)|p(t_l)|
+  \ge\frac{3(2-r)\,a^k}{4\,(4\sqrt{kr}/(r-1)+1)\,(2r)^{n-1}\binom{M_k+n-1}{n-1}} .
+\]
+This lower bound for $\tau_k(n)$ is at least the upper bound for $E_k(r)$
+exactly when $F(k)\le3(2-r)^2/r^2$.
+
+(b) We have $M_{k+1}-M_k\le d$, so
+$\binom{M_{k+1}+n-1}{n-1}/\binom{M_k+n-1}{n-1}=\prod_{j=M_k+1}^{M_{k+1}}(j+n-1)/j
+\le(1+(n-1)/(M_k+1))^d$.  Also
+$(4\sqrt{(k+1)r}/(r-1)+1)/(4\sqrt{kr}/(r-1)+1)\le\sqrt{(k+1)/k}$.  This gives
+$F(k+1)\le\rho_kF(k)$.  Since $M_k$ does not decrease, neither does
+$1/\rho_k$, and induction on $k$ gives the rest.
+
+(c) For $n=1$ the claim is $\theta\le\rho(\alpha)$.  Let $m=n-1\ge1$.  Then
+$\binom{M_k+m}m\le(e(M_k+m)/m)^m$, and the right side increases with $m$,
+since the derivative of $m\log(e(M_k+m)/m)$ is $\log(1+M_k/m)+m/(M_k+m)>0$.
+With $m\le k/\alpha$ and $M_k\le(k-1)r/(r-1)+1\le kr/(r-1)$ this gives
+$\binom{M_k+m}m\le(e(\alpha r/(r-1)+1))^{k/\alpha}$.  Also
+$(2r)^m\le(2r)^{k/\alpha}$, which proves the bound on $F(k)$.  Its right side
+tends to $0$ as $k\to\infty$ and decreases once $k\ge1/(2\log(1/\rho(\alpha)))$.
+So some $K$ has $\rho(\alpha)^k(4\sqrt{kr}/(r-1)+1)\le3(2-r)^2/r^2$ for all
+$k\ge K$, and (a) and Theorem~\ref{thm:longdiag} apply whenever also
+$k\ge\alpha(n-1)$.  The listed pairs were checked with $40$-digit
+arithmetic.
+\end{proof}
+
+\begin{corollary}[Every diagonal is eventually determined]\label{cor:longdiagfinite}
+Let $1<r<2$ and $n\ge1$.  Then $V_r(L,L-n+1)=1/\nu_{L-n+1}(n)$ for all but
+finitely many $L\ge n$.  Moreover the sequence $\nu_k(n)$ is eventually
+nondecreasing in $k$, and $\nu_k(n)=\max_{i\le k}\nu_i(n)$ for all large $k$.
+\end{corollary}
+
+\begin{proof}
+Apply Proposition~\ref{prop:longdiagexplicit}(c) with $k=L-n+1\ge\max\{K,\alpha(n-1)\}$.
+Theorem~\ref{thm:longdiag} also gives $\nu_i(n)\le\nu_k(n)$ for all
+$i\le k$ and all such $k$.
+\end{proof}
+
+This sharpens Corollary~\ref{cor:belowtwo}, which gives
+$V_r(L,k)=(1+o(1))/\nu_k(n)$ as $k\to\infty$ with $n$ fixed: the factor
+$1+o(1)$ is exactly $1$ once $k\ge\max\{K,\alpha(n-1)\}$, uniformly in $n$.
+For small $n$ the explicit thresholds are much smaller than
+$\alpha(n-1)$.  The hypothesis $N_k(r)\le\tau_k(n)$ of
+Theorem~\ref{thm:longdiag} can be checked row by row in exact arithmetic.  A
+set $Y$ of $n-1$ integers in $[2k-2,D]$ and the weights
+$z_s=w_k(s)\sgn r_Y(s)$ for $s\in[2k-2,D]\setminus Y$, completed on $Y$ so
+that $\sum_sz_ss^j=0$ for $1\le j\le n-1$, give
+$\tau_k(n)\ge\sum_{s=2k-2}^Dz_s$ whenever $|z_y|\le w_k(y)$ on $Y$: for
+$p\in\mathcal Q_n$, $\sum_{s\ge2k-2}w_k|p|\ge\sum_{s=2k-2}^Dz_sp(s)=\sum_sz_s$.
+We found $Y$ by linear programming and then compared $\sum_sz_s$ with
+$E_k(r)$, or with $N_k(r)$ when $E_k(r)$ was too large.
+
+\begin{corollary}[Complete diagonals]\label{cor:completediag}
+For every $L\ge n$ and $k=L-n+1$,
+\[
+  V_r(L,k)=\frac1{\nu_k(n)}=\min_{1\le i\le k}\frac1{\nu_i(n)}
+\]
+in each of the cases $r=\frac54$ with $n\le9$; $r=\frac32$ with $n\le4$;
+and $r=\frac74$ with $n\le2$.  So the conjecture stated after
+Corollary~\ref{cor:belowtwo} holds on these diagonals, with the minimum at
+$i=k$ in every row.
+\end{corollary}
+
+\begin{proof}
+The row $k=1$ is $V_r(n,1)=\beta_r(n)=1/\nu_1(n)$.  For $n=1$,
+$\nu_i(1)=a^i$ and Corollary~\ref{cor:lastrowr} gives $V_r(L,L)=(r-1)^L$.
+For $r=\frac54$ with $n\le4$ and $r=\frac32$ with $n=2$ the claim is
+Corollary~\ref{cor:onepolyranges}.  For the remaining diagonals and $k\ge2$
+we use four sources:
+(I)~Corollary~\ref{cor:rowstreevals}(c),(d), whose rows have $i^*=k$ in
+the cases used here;
+(II)~single certified sets as in Corollary~\ref{cor:onepolyexact};
+(III)~the exact row-by-row check of $N_k(r)\le\tau_k(n)$ just described;
+(IV)~Proposition~\ref{prop:longdiagexplicit}(b) from $k_1$ on, with
+$F(k_1)\le3(2-r)^2/r^2$ and $\rho_{k_1}\le1$ checked in exact arithmetic.
+The rows are covered as follows.
+\begingroup\sloppy
+\begin{itemize}
+\item $r=\frac54$, $n=5$: (III) for $2\le k\le63$, (IV) with $k_1=64$.
+\item $r=\frac54$, $n=6$: (I) for $k\le3$, (III) for $4\le k\le77$, (IV)
+with $k_1=78$.
+\item $r=\frac54$, $n=7$: (I) for $k\le3$, (II) for $k=4,5$, (III) for
+$6\le k\le91$, (IV) with $k_1=92$.
+\item $r=\frac54$, $n=8$: (I) for $k\le3$, (II) for $4\le k\le7$, (III) for
+$8\le k\le105$, (IV) with $k_1=106$.
+\item $r=\frac54$, $n=9$: (I) for $k\le3$, (II) for $4\le k\le10$, (III) for
+$11\le k\le118$, (IV) with $k_1=119$.
+\item $r=\frac32$, $n=3$: Corollary~\ref{cor:onepolyexact} for $k\le10$,
+(III) for $11\le k\le169$, (IV) with $k_1=170$.
+\item $r=\frac32$, $n=4$: (I) for $k\le4$, Corollary~\ref{cor:onepolyexact}
+for $5\le k\le10$, (II) for $11\le k\le19$, (III) for $20\le k\le231$, (IV)
+with $k_1=232$.
+\item $r=\frac74$, $n=2$: (I) for $k\le4$, Corollary~\ref{cor:onepolyexact}
+for $5\le k\le12$, (II) for $13\le k\le47$, (III) for $48\le k\le820$, (IV)
+with $k_1=821$.
+\end{itemize}
+\endgroup
+The sets $Y$ of source (II), with $Z^*=[1,k-1]\cup Y$ certified by
+Proposition~\ref{prop:toprowcertS} and $\Phi_r([1,i-1]\cup Y)\le\Phi_r(Z^*)$
+for $i<k$, are, for $k=4,5,\ldots$ in turn:
+\begingroup\sloppy
+\begin{itemize}
+\item $r=\frac54$, $n=7$: $\{11,17,25,35,48,65\}$, $\{14,21,30,41,54,72\}$;
+\item $r=\frac54$, $n=8$: $\{10,16,23,31,42,55,73\}$,
+$\{13,20,27,36,48,62,80\}$, $\{16,23,32,41,53,68,87\}$,
+$\{19,27,36,46,59,74,94\}$;
+\item $r=\frac54$, $n=9$: $\{9,15,21,29,38,49,63,82\}$,
+$\{12,18,25,33,43,55,69,89\}$, $\{15,22,29,38,48,61,76,96\}$,
+$\{18,25,33,43,54,66,82,103\}$, $\{21,29,38,47,59,72,88,110\}$,
+$\{24,33,42,52,64,78,95,116\}$, $\{28,37,46,57,69,84,101,123\}$;
+\item $r=\frac32$, $n=4$, from $k=11$: $\{27,36,47\}$, $\{29,39,51\}$,
+$\{32,42,54\}$, $\{35,45,57\}$, $\{37,48,61\}$, $\{40,51,64\}$,
+$\{43,54,67\}$, $\{45,57,71\}$, $\{48,60,74\}$;
+\item $r=\frac74$, $n=2$, from $k=13$: $Y=\{\lfloor7k/3\rfloor+1\}$ for
+$13\le k\le47$ (the sets of Corollary~\ref{cor:onepolyexact} for
+$5\le k\le12$ have the same form).
+\end{itemize}
+\endgroup
+In every case $i^*=k$, so the rows equal $1/\nu_k(n)$.
+\end{proof}
+
+The certified margins in source~(III) grow quickly with $k$: the ratio of the
+lower bound for $\tau_k(n)$ to $E_k(r)$ or $N_k(r)$ exceeds $10^6$ at the
+end of each range.  Source~(IV) is crude, and so is the lemma behind it: it
+holds for all sets $Y\subset[k,\infty)$, not only for the optimal ones.  In
+floating point the first $k$ at which $N_k(r)\le\tau_k(n)$ holds is $k=2,4,6,8,11,14$
+for $n=5,\ldots,10$ at $r=\frac54$, $k=9$ for $n=3$ and $k=20$ for $n=4$ at
+$r=\frac32$, and $k=48$ for $n=2$ at $r=\frac74$.  The one-polynomial
+condition $\max_{i<k}A_i(p)\le A_k(p)$ for an optimal $p$, which is what
+Theorem~\ref{thm:onepoly} needs, holds much earlier, from about $k=2n$ at
+$r=\frac32$.
+
+What remains open for $1<r<2$ are the rows with $\beta_r(n)>1$ and $k$ below
+these thresholds.  Many of them are out of reach of every one-polynomial
+argument, because $\Lambda_k(n)>\max_{i\le k}\nu_i(n)$ there.  In floating
+point this happens already for $n=2$: at $r=\frac{17}{10}$ for $k=2,3$, at
+$r=\frac95$ for $2\le k\le8$, and at $r=\frac{19}{10}$ for every $k\le30$
+(at $r=\frac{19}{10}$ the maximum of $\nu_i(2)$ over $i\le k$ sits at $i=1$
+for $k\le11$).  In the second row with $i^*=1$ the one-point exempted sets
+still have room.  At $r=\frac32,\frac74$ and $n=5,6$, where
+$\nu_1(n)>\nu_2(n)$, floating point gives
+$\mu_r(\{\sigma\},n+1)<0.97\,\nu_1(n)$ for $2\le\sigma\le120$, and the value
+tends to $\nu_1(n)$ as $\sigma\to\infty$.  For all large $\sigma$ the
+polynomial $r_{Z_0}(s)(1-s/\sigma)$, with $Z_0$ a top-row optimum, has
+$\Phi_r<\nu_1(n)$, because $\Phi_r(r_{Z_0}(s)(1-us))$ is convex in $u$ with
+negative right derivative at $u=0$.  For small $\sigma$ the optimal sets are of
+a different kind (at $r=\frac74$, $n=5$ and $\sigma=2$ floating point gives
+$\{1,2,5,9,14\}$).  So a proof has to switch polynomials between ranges of
+$\sigma$, as the trees of Theorem~\ref{thm:rowstree} do for small $n$.
 
 \section{Complex roots}\label{sec:complexroots}
 
