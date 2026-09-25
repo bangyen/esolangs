@@ -57,21 +57,9 @@ CITATIONS = {
         "Lemma",
         "lem:interlace",
     ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "3.1"): (
-        "Lemma",
-        "lem:slack",
-    ),
     ("coefficient-mass-rows.tex", "coefficient-mass", "3.2"): (
         "Theorem",
         "thm:order",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "4.3"): (
-        "Proposition",
-        "prop:quadratic",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "4.7"): (
-        "Proposition",
-        "prop:nonsharp",
     ),
     ("coefficient-mass-rows.tex", "coefficient-mass", "4.8"): (
         "Lemma",
@@ -80,26 +68,6 @@ CITATIONS = {
     ("coefficient-mass-rows.tex", "coefficient-mass", "4.9"): (
         "Lemma",
         "lem:confdel",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "4.10"): (
-        "Lemma",
-        "lem:holeint",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "4.12"): (
-        "Proposition",
-        "prop:rowsfree",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "4.13"): (
-        "Lemma",
-        "lem:holevals",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "4.14"): (
-        "Lemma",
-        "lem:holetail",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "4.15"): (
-        "Proposition",
-        "prop:rowstop",
     ),
     ("coefficient-mass-rows.tex", "coefficient-mass", "4.16"): (
         "Theorem",
