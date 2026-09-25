@@ -230,7 +230,6 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
     from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
-    from esolangs.tools.dimensional import _dimensional_ordered
     from esolangs.tools.painfuck import _painfuck_ordered
     from esolangs.tools.parameterized import (
         _bitdeque_ordered,
@@ -255,7 +254,6 @@ def _reordering_generators() -> list[object]:
             boolean.brainfuck,
             _bf_ordered,
         ),
-        ("dimensional", boolean.dimensional, _dimensional_ordered),
         ("painfuck", boolean.painfuck, _painfuck_ordered),
         ("three_d_brainfuck", boolean.three_d_brainfuck, _three_d_ordered),
         ("ram0", boolean.ram0, _ram0_ordered),
@@ -559,18 +557,20 @@ _REDUCING = {
 # so the only thing a one-dependency table spares is the literal's leading
 # zeros.
 #
-# ``befunge``, ``clockwise``, ``modulous`` and ``whitespace`` are branch-free
-# lookups of one class: Befunge writes one grid cell per entry and reads it
-# with ``g``, Clockwise stops a countdown on the entry's own column and holds
-# the answer row under it, Modulous pops a ``PSH STR`` table down to the
-# indexed character, and Whitespace halves one literal once per index step, so
-# a 0% fold is the construction working.
+# ``befunge``, ``clockwise``, ``dimensional``, ``modulous`` and ``whitespace``
+# are branch-free lookups: Befunge writes one grid cell per entry and reads it
+# with ``g``, Clockwise stops a countdown on the entry's own column, Modulous
+# pops a ``PSH STR`` table down to the indexed character, and Whitespace halves
+# one literal once per index step, so a 0% fold is the construction working.
+# Dimensional paints one cell an entry along dimension 1 and stops at the last
+# one, so a constant-zero tail reads as a 6.9% fold with nothing collapsing.
 _UNSHAPED = {
     "a_painter_ant",
     "befunge",
     "bio",
     "alight",
     "clockwise",
+    "dimensional",
     "egl",  # one painted grid cell per entry, walked to by weighted guards
     "forbin",  # one painted call argument per entry, halved down to the first
     "malbolge",

@@ -691,12 +691,12 @@ class TestGeneratorEdgePaths:
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.back("011")
 
-    def test_dimensional_tree_validation(self) -> None:
-        """The Dimensional decision-tree generator rejects bad truth tables."""
+    def test_dimensional_validation(self) -> None:
+        """The Dimensional generator rejects bad truth tables."""
         with pytest.raises(ValueError, match="power-of-two"):
-            boolean.dimensional_tree("011")
+            boolean.dimensional("011")
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.dimensional_tree("0123")
+            boolean.dimensional("0123")
 
     def test_six_five_helper_edges(self) -> None:
         """The +5 tail of the constant encoder.
