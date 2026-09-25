@@ -42,9 +42,8 @@ this sharpens the bound $b_k\ge L-k+1$.  The proof reduces each row to an
 $\ell^1$ problem for polynomials with prescribed integer zeros, covers all
 exempted positions beyond the first gap of a minimizer by one crossing step,
 and bounds the cost of that step by first-order optimality.  For $1<r<2$ the
-rows are not top rows, and we conjecture that they are given by
-prefix-constrained problems.  We prove this whenever the top row is at most
-one, and on each diagonal $L-k=\mathrm{const}$ for all but finitely many
+rows are not top rows.  We show that they are given by
+prefix-constrained problems whenever the top row is at most one, and on each diagonal $L-k=\mathrm{const}$ for all but finitely many
 rows.
 \end{abstract}
 
@@ -99,7 +98,7 @@ $\ell^1$ norm of a polynomial that vanishes on $[1,i-1]$.  They satisfy
   \qquad n=L-k+1,
 \]
 with $E_k(r)/\nu_k(n)\to0$ as $k\to\infty$ (Theorem~\ref{thm:prefixrows}).
-We conjecture that the upper bound is always attained.  We prove this for
+We prove that the upper bound is attained for
 every $k$ whenever $\beta_r(n)\le1$ (Theorem~\ref{thm:onepolyrows}).  We
 also prove it whenever $k\ge\max(K,\alpha(n-1))$ for constants depending on
 $r$ (Theorem~\ref{thm:longdiag}, Proposition~\ref{prop:longdiagexplicit}).
@@ -472,12 +471,14 @@ $\binom{s-1}{\lfloor(s-1)/2\rfloor}\le2^{s-1}$ and $2/r>1$,
 Finally $E_k/\nu_k=(r-1)^kE_k/m_k$, and $\theta<1$ is $(r-2)^2>0$.
 \end{proof}
 
-For $r\ge2$ the loss $E_k(r)$ is not small.  We conjecture that the upper
-bound of~\eqref{eq:prefixsandwich} is always attained:
-\[
-  V_r(L,k)=\min_{1\le i\le k}\frac1{\nu_i(n)}\qquad(r>1,\ 1\le k\le L,\ n=L-k+1).
-\]
-For $r\ge2$ this follows from Theorem~\ref{thm:allrowstwo} (see the remark
+For $r\ge2$ the loss $E_k(r)$ is not small.  We say that the
+\emph{prefix identity} holds at $(r,L,k)$ if the upper bound
+of~\eqref{eq:prefixsandwich} is attained:
+\begin{equation}\label{eq:prefixid}
+  V_r(L,k)=\min_{1\le i\le k}\frac1{\nu_i(n)}\qquad(n=L-k+1).
+\end{equation}
+We do not claim it for every $1<r<2$.
+For $r\ge2$ it follows from Theorem~\ref{thm:allrowstwo} (see the remark
 after it).  For $1<r<2$, Theorems~\ref{thm:onepolyrows}
 and~\ref{thm:longdiag} prove it in two regimes, in both with the minimum at
 $i=k$.
@@ -608,8 +609,7 @@ $W$ is a minimizer.
 
 \section{Every row is a top row at roots at least \texorpdfstring{$2$}{2}}\label{sec:allrowstwo}
 
-This section proves the conjecture stated after
-Corollary~\ref{cor:belowtwo} at every root $r\ge2$
+This section proves the prefix identity~\eqref{eq:prefixid} at every root $r\ge2$
 (Theorem~\ref{thm:allrowstwo}).  By Theorem~\ref{thm:crossing} it suffices
 to bound the cost of one insertion at the first gap of a minimizer, and we
 do this, in a truncated form, by a first-order optimality argument.
@@ -801,8 +801,8 @@ Proposition~\ref{prop:rowvalue}(c) gives the reverse inequality.
 
 For $r\ge2$, Theorem~\ref{thm:prefixrows} gives
 $V_r(L,k)\le\min_{i\le k}1/\nu_i(n)\le1/\nu_1(n)=\beta_r(n)$, so the theorem
-also gives $\min_{i\le k}1/\nu_i(n)=\beta_r(n)$ and proves the conjecture
-stated after Corollary~\ref{cor:belowtwo} there.  So the rows at a single
+also gives $\min_{i\le k}1/\nu_i(n)=\beta_r(n)$ and proves the prefix
+identity~\eqref{eq:prefixid} there.  So the rows at a single
 root $r\ge2$ are
 \[
   V_r(L,k)=\beta_r(L-k+1)\qquad(1\le k\le L),
@@ -814,8 +814,8 @@ remains open at a single root $r\ge2$ is the value of $\beta_r(n)$ itself.
 For $1<r<2$ the theorem gives $V_r(L,k)\ge(r-1)^{k-1}\beta_r(L-k+1)$.  By
 Corollary~\ref{cor:lastrowr} this is an equality for $k=L$, where both sides
 are $(r-1)^L$.  With Theorem~\ref{thm:prefixrows} it shows that the
-conjectured value $\min_{i\le k}1/\nu_i(n)$ is at least
-$(r-1)^{k-1}\beta_r(n)$.  Section~\ref{sec:onepoly} proves the conjecture
+value $\min_{i\le k}1/\nu_i(n)$ of~\eqref{eq:prefixid} is at least
+$(r-1)^{k-1}\beta_r(n)$.  Section~\ref{sec:onepoly} proves~\eqref{eq:prefixid}
 for $1<r<2$ whenever $\beta_r(n)\le1$, and Section~\ref{sec:longdiag}
 whenever $k$ is large compared with $n$.
 
@@ -830,16 +830,15 @@ $D\to\infty$ gives $\nu_{i+1}(m)\le a\,\nu_i(m)$ for every $r>1$.
 \section{Rows below the root \texorpdfstring{$2$}{2}}\label{sec:belowtwo}
 
 For $1<r<2$ the rows are not top rows, and Theorem~\ref{thm:allrowstwo}
-gives only $V_r(L,k)\ge(r-1)^{k-1}\beta_r(n)$.  The conjectured value is
-$\min_{i\le k}1/\nu_i(n)$ (the conjecture stated after
-Corollary~\ref{cor:belowtwo}).  This section proves it in two regimes: for
+gives only $V_r(L,k)\ge(r-1)^{k-1}\beta_r(n)$.  The prefix identity~\eqref{eq:prefixid}
+would give $\min_{i\le k}1/\nu_i(n)$.  This section proves it in two regimes: for
 every $k$ when $\beta_r(n)\le1$ (Section~\ref{sec:onepoly}), and for every
 $n$ once $k$ is large compared with $n$ (Section~\ref{sec:longdiag}).  In
 both the minimum is at $i=k$.
 
 \subsection{One polynomial for all exempted sets}\label{sec:onepoly}
 
-This subsection proves the conjecture for $1<r<2$ whenever $\beta_r(n)\le1$,
+This subsection proves~\eqref{eq:prefixid} for $1<r<2$ whenever $\beta_r(n)\le1$,
 for every $k$ (Theorem~\ref{thm:onepolyrows}).  There the minimum is at
 $i=k$: the prefix $[1,k-1]$ is the worst exempted set.
 
@@ -913,8 +912,7 @@ $\sum_sW_k(s)r^{-s}|p(s)|\ge\max_{i\le k}A_i(p)$ for every $p$.
 
 The theorem moves the maximum over $i$ out of the sum in
 Theorem~\ref{thm:prefixrows}, and this loses nothing when one $p$ is nearly
-optimal for all prefix problems at once.  The conjecture stated after
-Corollary~\ref{cor:belowtwo} holds at $(r,n,k)$ whenever
+optimal for all prefix problems at once.  The prefix identity~\eqref{eq:prefixid} holds at $(r,n,k)$ whenever
 $\Lambda_k(n)=\max_{i\le k}\nu_i(n)$.  For $n=1$ we have
 $\mathcal Q_1=\{1\}$ and $A_i(1)=a^i$.  So the theorem gives
 $V_r(L,L)\ge r-1$ for $r\ge2$ and $V_r(L,L)\ge(r-1)^L$ for $r\le2$, and
@@ -959,7 +957,7 @@ $1\le\nu_1(n)\le\nu_2(n)\le\cdots$, and for every $k\ge1$ and $L=n+k-1$,
 \[
   V_r(L,k)=\frac1{\nu_k(n)}=\min_{1\le i\le k}\frac1{\nu_i(n)} .
 \]
-So the conjecture stated after Corollary~\ref{cor:belowtwo} holds at $(r,n)$
+So the prefix identity~\eqref{eq:prefixid} holds at $(r,n)$
 for every $k$, with the minimum at $i=k$.
 \end{theorem}
 
@@ -1002,21 +1000,21 @@ infimum over $q$ gives $\nu_1(n)\ge e^{-4n-2}/(C_n(r-1))$, which is the
 claim since $\beta_r(n)=1/\nu_1(n)$.
 \end{proof}
 
-Beyond $\beta_r(n)\le1$ the conjecture remains open for $1<r<2$ where no single
-polynomial serves all prefixes.  Section~\ref{sec:longdiag} shows that a
+Beyond $\beta_r(n)\le1$, where no single polynomial serves all prefixes,
+we do not know when the prefix identity holds.  Section~\ref{sec:longdiag} shows that a
 single polynomial does serve all prefixes once $k$ is large compared with
 $n$.
 
 \subsection{Long diagonals}\label{sec:longdiag}
 
-Theorem~\ref{thm:onepoly} gives the conjectured value $1/\nu_k(n)$ as soon
+Theorem~\ref{thm:onepoly} gives the value $1/\nu_k(n)$ as soon
 as one polynomial that is nearly optimal for $\nu_k(n)$ has its $k$-th
 prefix sum $A_k$ at least as large as the earlier ones.
 Theorem~\ref{thm:onepolyrows} obtains this from $\beta_r(n)\le1$.  This
 subsection obtains it for every $1<r<2$, with no condition on $\beta_r(n)$,
 once $k$ is large compared with $n$ (Theorem~\ref{thm:longdiag} and
 Proposition~\ref{prop:longdiagexplicit}).  So on every diagonal
-$L-k=n-1$ the conjecture can fail in at most finitely many rows
+$L-k=n-1$ the prefix identity can fail in at most finitely many rows
 (Corollary~\ref{cor:longdiagfinite}).
 
 The mechanism is simple.  By Lemma~\ref{lem:intzeros} the polynomials for
@@ -1068,7 +1066,7 @@ $\nu_i(n)\le\nu_k(n)$ for $1\le i\le k$, and
 \[
   V_r(L,k)=\frac1{\nu_k(n)}=\min_{1\le i\le k}\frac1{\nu_i(n)} .
 \]
-So the conjecture stated after Corollary~\ref{cor:belowtwo} holds at
+So the prefix identity~\eqref{eq:prefixid} holds at
 $(r,L,k)$, with the minimum at $i=k$.
 \end{theorem}
 
