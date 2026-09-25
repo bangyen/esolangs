@@ -140,9 +140,9 @@ Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
-Collatz Multiverse, EGL, Eval, Forbin, Minsky Swap, NoComment, Packlang, Qoibl,
-SLOW
-ACV MAMMALIAN, Suffolk and Whitespace keep no tree route at all: A Painter
+Collatz Multiverse, EGL, Eval, Forbin, Minsky Swap, Modulous, NoComment,
+Packlang, Qoibl, SLOW ACV MAMMALIAN, Suffolk and Whitespace keep no tree route
+at all: A Painter
 Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, Befunge reads one grid cell per table entry with `g`, BIO's
@@ -157,7 +157,8 @@ list at every arity and its branches above seven inputs choose a block rather
 than route a table, Packlang paints one array block and indexes it at every
 arity, Minsky Swap's `~`
 cascade routes the index to one of two shared leaves with a one-digit target
-per row, NoComment switches between two lookups at four inputs, Qoibl divides one
+per row, Modulous pushes the whole table as one string literal and spends
+the row index popping it down to the answer, NoComment switches between two lookups at four inputs, Qoibl divides one
 literal by the power of two its reads build,
 SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
 row whatever the table says, Suffolk sweeps a countdown past every row, and
@@ -237,7 +238,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; the practical cap is fourteen ([malbolge-scaling](malbolge-scaling.md)) | measured: fixed 59049-cell store through n <= 14 |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` | linear: mux lookup, constant strings times O(T) counts |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length | linear: cascade routes to two shared leaves, one-digit targets |
-| Modulous | tree | — | linear: span walk, fold digits geometric |
+| Modulous | linear lookup | the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard | linear: T-character literal, one read block an input |
 | NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells | linear, time n log: essential_inputs |
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
 | Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: one write per differing row, block-bounded index digits |

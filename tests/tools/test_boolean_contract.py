@@ -559,11 +559,10 @@ _REDUCING = {
 # so the only thing a one-dependency table spares is the literal's leading
 # zeros.
 #
-# ``befunge`` and ``whitespace`` are branch-free lookups of the same class:
-# Befunge writes one grid cell per table entry and reads it with ``g``, and
-# Whitespace halves one literal once per index step, so two tables with the
-# same ones-count render to the same length and a 0% fold is the construction
-# working.
+# ``befunge``, ``modulous`` and ``whitespace`` are branch-free lookups: Befunge
+# reads one grid cell per entry with ``g``, Modulous pops a ``PSH STR`` table
+# down to the indexed character, and Whitespace halves one literal once per
+# index step, so a 0% fold is the construction working.
 _UNSHAPED = {
     "a_painter_ant",
     "befunge",
@@ -575,6 +574,7 @@ _UNSHAPED = {
     "minsky_swap",
     "b_tapemark",
     "minifuck",
+    "modulous",
     "one_two_three",
     "packlang",  # one painted array cell per differing row, read by index
     "qoibl",
