@@ -559,15 +559,18 @@ _REDUCING = {
 # so the only thing a one-dependency table spares is the literal's leading
 # zeros.
 #
-# ``befunge``, ``modulous`` and ``whitespace`` are branch-free lookups: Befunge
-# reads one grid cell per entry with ``g``, Modulous pops a ``PSH STR`` table
-# down to the indexed character, and Whitespace halves one literal once per
-# index step, so a 0% fold is the construction working.
+# ``befunge``, ``clockwise``, ``modulous`` and ``whitespace`` are branch-free
+# lookups of one class: Befunge writes one grid cell per entry and reads it
+# with ``g``, Clockwise stops a countdown on the entry's own column and holds
+# the answer row under it, Modulous pops a ``PSH STR`` table down to the
+# indexed character, and Whitespace halves one literal once per index step, so
+# a 0% fold is the construction working.
 _UNSHAPED = {
     "a_painter_ant",
     "befunge",
     "bio",
     "alight",
+    "clockwise",
     "egl",  # one painted grid cell per entry, walked to by weighted guards
     "forbin",  # one painted call argument per entry, halved down to the first
     "malbolge",
