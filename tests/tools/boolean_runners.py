@@ -242,6 +242,12 @@ def run_bfstack(program: str, inputs: list[str]) -> str:
     return run_program(run, program, _stdin(inputs))
 
 
+def run_unsquare(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.stack_based.unsquare import run
+
+    return run_program(run, program, _stdin(inputs))
+
+
 def run_slow_acv_mammalian(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.slow_acv_mammalian import run
 

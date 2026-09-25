@@ -4,31 +4,19 @@ Covers the generators in :mod:`esolangs.tools.stack`: Grapheme,
 Forþ, Modulous, BFStack, and Unsquare.
 """
 
-import random
-
 import pytest
 
 import esolangs
 from esolangs import tools as boolean
 from esolangs.tools import stack
 from esolangs.tools.helpers import permute_truth_table
-from esolangs.tools.stack import _UNSQUARE_READ, _UNSQUARE_SINKS, stack_programs
 from tests.tools.boolean_runners import (
     run_bfstack,
     run_forth,
     run_grapheme,
     run_modulous,
+    run_unsquare,
 )
-
-
-def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
-    """Read-and-sink program for each reachable stack arrangement.
-
-    ``2 * 3**(n - 2)`` arrangements, as Forþ.  Unlike Forþ, a BFS finds the
-    same set with the same shortest strings through n == 7: these sinks do
-    not compose across reads, so the enumeration is also optimal.
-    """
-    return stack_programs(n, _UNSQUARE_SINKS, _UNSQUARE_READ)
 
 
 def _forth_scope_keys(table: str) -> set[int]:
@@ -405,127 +393,65 @@ class TestBfstack:
 
 
 class TestUnsquare:
-    def test_program_shape(self) -> None:
-        """The program reads n inputs and prints once.
+    """The table lives on the stack; the reads pop down to the answer."""
 
-        The reads are no longer necessarily consecutive: a sink that
-        reorders the tree is emitted *between* them, because a bit has to
-        be moved while it is still near the top.  What stays invariant is
-        that there is one read per input and the program still consumes its
-        input stream in order.
-        """
-        program = boolean.unsquare("0110")
-        assert program.startswith("iA>-<P")
-        assert program.count("iA>-<P") == 2  # one read per input
-        assert program.endswith("o")
-
-        # A table whose best order needs a sink still reads once per input.
-        for value in range(256):
-            assert boolean.unsquare(format(value, "08b")).count("iA>-<P") == 3
-
-    def test_the_natural_order_is_built_at_wide_arity(self) -> None:
-        """A wide greedy prefix still reads every input exactly once."""
-        n = 7
-        table = "01" * (2 ** (n - 1))
+    @staticmethod
+    def _rows(table: str) -> list[str]:
+        """Every row of ``table`` as the generated program answers it."""
+        n = (len(table) - 1).bit_length()
         program = boolean.unsquare(table)
+        return [
+            run_unsquare(program, list(format(row, f"0{n}b"))) for row in range(2**n)
+        ]
 
-        assert program.count("iA>-<P") == n  # one read per input
+    def test_program_shape(self) -> None:
+        """The table is pushed first, then one read an input, then the print."""
+        program = boolean.unsquare("0110")
+        assert program.startswith("OIIO")  # the table, reversed, one cell a row
+        assert program.count("i") == 2  # one read an input
         assert program.endswith("o")
 
-    def test_greedy_sinks_recover_most_small_oracle_winners(self) -> None:
-        """The heuristic never grows n=3 and matches 248/256 oracle minima."""
-        from esolangs.tools.stack import _unsquare_tree
-
-        improved = 0
-        exact = 0
-        largest_gap = 0
         for value in range(256):
-            table = format(value, "08b")
-            current = len(boolean.unsquare(table))
-            natural = len(_UNSQUARE_READ * 3 + _unsquare_tree(table, 3))
-            oracle = min(
-                len(prefix)
-                + _unsquare_cost(permute_truth_table(table, arrangement), 3)
-                + 1
-                for arrangement, prefix in _unsquare_stack_programs(3).items()
-            )
-            assert current <= natural
-            improved += current < natural
-            exact += current == oracle
-            largest_gap = max(largest_gap, current - oracle)
-        assert (improved, exact, largest_gap) == (104, 248, 44)
+            assert boolean.unsquare(format(value, "08b")).count("i") == 3
 
-    def test_sinks_are_interleaved_with_the_reads(self) -> None:
-        """Weaving the sinks into the reads is what reaches the arrangements.
+    def test_two_bytes_a_row(self) -> None:
+        """Size is the table plus its addressing, not a tree over it.
 
-        A bit stashed in the accumulator does not survive a read block --
-        the block's own ``A`` overwrites it -- so a bit has to be sunk while
-        it is still near the top, before later reads bury it.
-
-        The reachable *set* has a closed form, which is why no search is
-        needed: after each read the new bit is on top and the only lasting
-        freedom is how far it sinks (0, 1 or 2 places), one independent
-        choice per read past the first.  Forþ's stack has the same count for
-        the same reason, reached through different ops.
+        ``2**n`` cells and ``2**n - 1`` pops, so the constant is 2 either
+        side of the reads; the old decision tree spent 32.5 a row.
         """
+        for n in range(2, 11):
+            table = "".join("01"[(row * row) % 3 % 2] for row in range(2**n))
+            size = len(boolean.unsquare(table))
+            assert size - 2 * 2**n == 10 * n + 26, n
 
-        for n in range(2, 7):
-            assert len(_unsquare_stack_programs(n)) == 2 * 3 ** (n - 2)
-        assert len(_unsquare_stack_programs(3)) == 6  # all of 3!
-        assert len(_unsquare_stack_programs(4)) == 18  # of 24
-        assert len(_unsquare_stack_programs(5)) == 54  # of 120
+    def test_every_row_of_every_small_table(self) -> None:
+        """Exhaustive at n <= 3: 276 tables, every row executed."""
+        for n in (1, 2, 3):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                assert "".join(self._rows(table)) == table, table
 
-        # The reads themselves are still one per input, whatever the weave.
-        for n in (3, 4, 5):
-            for program in _unsquare_stack_programs(n).values():
-                assert program.count("iA>-<P") == n
+    def test_a_program_answers_its_own_table_only(self) -> None:
+        """The positive control: XOR's program disagrees with XNOR everywhere."""
+        assert "".join(self._rows("0110")) != "1001"
 
-    def test_two_place_sink_needs_the_leading_swap(self) -> None:
-        """Sinking two places is ``SASP``; ``ASP`` alone does something else.
+    def test_inessential_inputs_cost_a_read_not_a_table(self) -> None:
+        """An ignored input is consumed by ``iA`` and never widens the table.
 
-        ``A`` lifts the *top* out, so the ``S`` that follows swaps the pair
-        beneath it and ``P`` returns the bit to where it started -- which
-        reorders the wrong two cells.  The leading ``S`` is what moves the
-        bit down first so the pair it must cross ends up above it.  This is
-        pinned because the difference is invisible in the arrangement count
-        (both spellings reach the same number of arrangements) and shows up
-        only as a program computing the wrong function.
+        The stream is still read in full -- a program that stopped early
+        would leave the harness's remaining lines unread -- but the cells
+        below count only the inputs that matter.
         """
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.unsquare import _Machine
-
-        def apply(ops: str) -> tuple[int, ...]:
-            machine = _Machine(ops, ScriptedIO(""))
-            machine.load((10, 20, 30))
-            for _ in range(100):
-                if machine.halted:
-                    break
-                machine.step()
-            return machine.stack
-
-        assert apply("SASP") == (30, 10, 20)  # the top sank two places
-        assert apply("ASP") == (20, 10, 30)  # the top never moved
-
-    def test_decision_tree(self) -> None:
-        """Each internal node branches on a bit with the flip primitive."""
-        program = boolean.unsquare("0110")
-        assert "x->IA<" in program  # the stack-clean flip
-        assert program.count("x>") >= 3  # one guard per branch
-
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant slice prints its answer instead of branching further.
-
-        Like Modulous, Unsquare branches on the last input first, so its
-        subtrees are strided and a table such as ``11110000`` folds
-        nothing; a table that agrees outright collapses to one leaf.
-        """
-        assert boolean.unsquare("11111111").count("P") == 3 + 1  # 3 reads, 1 leaf
-        assert boolean.unsquare("10010110").count("P") == 3 + 8
+        program = boolean.unsquare("01010101")  # depends on the last input alone
+        assert program.count("i") == 3
+        assert program.startswith("IOiA")  # two cells, then the first skip
+        assert "".join(self._rows("01010101")) == "01010101"
 
     def test_the_program_is_only_unsquare_commands(self) -> None:
         """Only the characters Unsquare reads are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
-            assert set(boolean.unsquare(table)) <= set("+-<>AIOPSiox"), table
+            assert set(boolean.unsquare(table)) <= set("+-<>AIOPiox"), table
 
 
 class TestGraphemeTable:
@@ -575,41 +501,3 @@ class TestGraphemeTable:
         monkeypatch.setattr(stack, "_grapheme_table", lambda t: 2 * packed(t))
         table = self._one_minterm(6)
         assert esolangs.evaluate("Grapheme", table, timeout=60) != table
-
-
-def _unsquare_cost(truth_table: str, n: int) -> int:
-    """The tree-size model spelled recursively: the pricer's oracle."""
-
-    def cost(rows: list[int], bit: int) -> int:
-        if len({truth_table[row] for row in rows}) == 1:
-            return 29
-        ones = [row for row in rows if (row >> bit) & 1]
-        zeros = [row for row in rows if not (row >> bit) & 1]
-        return 17 + cost(ones, bit + 1) + cost(zeros, bit + 1)
-
-    return cost(list(range(2**n)), 0)
-
-
-@pytest.mark.parametrize("seed", range(40))
-def test_unsquare_prices_every_sink_as_the_permuted_tree(seed: int) -> None:
-    """The incremental pricer agrees with pricing each candidate from scratch."""
-    from esolangs.tools.stack import _UNSQUARE_SINKS, _sink_top, _UnsquarePricer
-
-    rng = random.Random(seed)
-    n = rng.randint(1, 7)
-    table = "".join(
-        rng.choice("01") if rng.random() < 0.6 else "0" for _ in range(2**n)
-    )
-    pricer = _UnsquarePricer(table, n)
-    arranged: tuple[int, ...] = ()
-    for k in range(n):
-        pushed = (*arranged, k)
-        options = [places for places, _ in _UNSQUARE_SINKS if places < len(pushed)]
-        for places in options:
-            final = (*_sink_top(pushed, places), *range(k + 1, n))
-            assert pricer.price(k, places) == _unsquare_cost(
-                permute_truth_table(table, final), n
-            )
-        places = rng.choice(options)
-        pricer.commit(k, places)
-        arranged = _sink_top(pushed, places)
