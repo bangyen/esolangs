@@ -352,7 +352,13 @@ step; an answer lands in the paper it extends, and the row leaves.
   from one certificate (`cor:onepolyexact`).  Open: the conjectured value
   `min_i 1/nu_i(n)` for `1 < r < 2` when `beta_r(n) > 1`; the insertion
   route and the natural one-step reduction both fail there (exact
-  counterexamples in `sec:onepoly`).
+  counterexamples in `sec:onepoly`).  Long diagonals (`sec:longdiag`,
+  `lem:farprefix`, `thm:longdiag`, `prop:longdiagexplicit`): for each
+  `1 < r < 2` there are `alpha`, `K` with the conjecture holding for
+  `k >= max(K, alpha(n-1))`, so every diagonal fails in at most finitely
+  many rows (`cor:longdiagfinite`); whole diagonals at `r = 5/4, n <= 9`,
+  `r = 3/2, n <= 4`, `r = 7/4, n <= 2` (`cor:completediag`).  Still open:
+  small `k` with `beta_r(n) > 1`, where one polynomial cannot suffice.
 
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
