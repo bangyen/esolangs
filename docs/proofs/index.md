@@ -140,9 +140,9 @@ Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
-bit~, Clockwise, Collatz Multiverse, EGL, Eval, Forbin, Minsky Swap, Modulous,
-NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN, Suffolk, Unsquare and Whitespace keep no
-tree route at all: A Painter
+bit~, Clockwise, Collatz Multiverse, Dimensional, EGL, Eval, Forbin, Minsky
+Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN, Suffolk,
+Unsquare and Whitespace keep no tree route at all: A Painter
 Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, bit~ lands the pointer on one tape cell an entry and walks the
@@ -153,7 +153,9 @@ once the doubling between the input runs is in the text), B-tapemark copies
 one mark per row onto the blank grid and walks the pointer to it, Clockwise
 writes one cell per entry in a countdown row and stops the pointer on the
 one the index names, Collatz
-Multiverse writes one cell per four table rows at every arity, EGL paints one
+Multiverse writes one cell per four table rows at every arity, Dimensional
+paints one cell an entry along dimension 1 and a bare `>` displaces the
+pointer onto it by the bit it is standing on, EGL paints one
 cell an entry and walks a pointer to it, Eval is one linear
 lookup at every arity, Forbin paints a 128-entry block as one call's argument
 list at every arity and its branches above seven inputs choose a block rather
@@ -228,7 +230,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | CV(N)(C) | tree | the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts | linear, time n log: greedy order scoring, capped at n <= 10 |
 | Decleq | tree | the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits | linear, time n log: essential_inputs |
 | Dig | tree | finite cell placement | linear: axis-swapping rectangle of area O(T), four-cell nodes with side operands |
-| Dimensional | tree | `decision_tree_program` with dimensional moves | linear: decision_tree_program with dimensional moves |
+| Dimensional | linear lookup | a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1 | linear: 2T table characters plus a fixed gadget per input |
 | EGL | finite lookup | row 1 is painted with the table and each input's `(-...)` guard walks the row-0 pointer right by that input's Horner weight, so `v=` prints the indexed cell | linear: T painted cells, guard weights sum to T - 1 |
 | Eval | linear lookup | fixed reversed stack order selects the indexed row | linear: T literal plus halving `;` runs under T |
 | Factor | tree | Brainfuck tree followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence | lower bound: tight language and generated Theta(T log T) ([factor](factor.md)) |

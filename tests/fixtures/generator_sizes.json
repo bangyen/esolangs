@@ -366,16 +366,16 @@
   },
   "Dimensional": {
    "0110": {
-    "commands": 42,
-    "source_units": 104
+    "commands": 78,
+    "source_units": 86
    },
    "01101001": {
-    "commands": 67,
-    "source_units": 223
+    "commands": 129,
+    "source_units": 116
    },
    "0110100110010110": {
-    "commands": 86,
-    "source_units": 448
+    "commands": 236,
+    "source_units": 150
    }
   },
   "EGL": {
