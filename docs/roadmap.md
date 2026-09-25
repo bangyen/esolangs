@@ -235,10 +235,6 @@ step; an answer lands in the paper it extends, and the row leaves.
   roots in a wide sector (the question the paper's introduction leaves),
   and the cross terms `K_s K_t log t` between annuli.
 
-- **Polynomial's routing constant.**  CLOSED in
-  [polynomial](proofs/polynomial.tex): the next-read count `thm:count`
-  gives `N*(k) <= min(K_in, L)`, so routing adds no factor.
-
 - **Every row at other roots.**  The paper is
   [coefficient-mass-rows](proofs/coefficient-mass-rows.tex), split out of
   [coefficient-mass](proofs/coefficient-mass.tex).  The last row is exact
@@ -312,15 +308,6 @@ step; an answer lands in the paper it extends, and the row leaves.
   constructions reach 14 inputs (four copies over a three-level cascade);
   between them and 17 the least unreachable arity is unknown in both
   directions.
-
-- **Intermediate rows of `b_k`.**  CLOSED: every monic multiple of
-  `(x-2)**L` has `b_k >= L - k + 1` for every row and degree
-  (`thm:everyrow` in [coefficient-mass](proofs/coefficient-mass.tex)).  The
-  certificate `r_Z(D - x d/dx)` (`lem:rowcert`) reduces row `k` to a
-  `D`-free statement `T(n)`; `prop:rowsfree` proves it when `{1,2,3}` is
-  not exempt, and `prop:rowstop` otherwise, bounding the values at the
-  kept holes by the consecutive block (`lem:holevals`) and the tail by a
-  Beta integral (`lem:holetail`): `(k+1) Phi <= 1/2 + 4/(3e) < 1`.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
