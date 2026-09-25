@@ -265,20 +265,29 @@ class TestForbinBoolean:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_uses_the_lsb_of_each_input(self) -> None:
-        """Each input is read as 8 bits and only the LSB drives the tree."""
+        """Each input is read as 8 bits and only the LSB is kept.
+
+        One assignment does every read: a single right-hand side is
+        re-evaluated once per target, so seven bits land in the scratch name
+        and the eighth in the input's own.
+        """
         program = boolean.forbin("01")
-        # one 8-variable read, then a decision tree that prints '1' for bit 1
-        assert "a,b,c,d,e,f,g,h = (in 0);" in program
-        assert "for _:!h..h" in program
+        assert "e,e,e,e,e,e,e,a=(in 0);" in program
 
     def test_small_program_uses_one_character_variables(self) -> None:
-        """The first 52 bit variables do not carry widening decimal suffixes."""
-        assignments = [
-            line.strip().split(" =", 1)[0]
+        """The first 52 variables do not carry widening decimal suffixes."""
+        targets = [
+            line.split("=", 1)[0]
             for line in boolean.forbin("01101001").splitlines()
-            if " = (in 0);" in line
+            if line.endswith("=(in 0);")
         ]
-        assert all(len(name) == 1 for group in assignments for name in group.split(","))
+        assert targets
+        assert all(len(name) == 1 for group in targets for name in group.split(","))
+
+    def test_the_block_is_painted_as_a_literal_argument_list(self) -> None:
+        """A table inside one block is emitted verbatim, two characters an entry."""
+        program = boolean.forbin("01101001")
+        assert "0,1,1,0,1,0,0,1)" in program
 
     def test_compact_variables_skip_keywords_without_duplicates(self) -> None:
         """Filtering a reserved word does not reuse its successor's name."""
@@ -288,11 +297,19 @@ class TestForbinBoolean:
         assert len(set(names)) == len(names)
         assert not set(names) & _FORBIN_RESERVED
 
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant slice returns its answer instead of branching further."""
-        assert boolean.forbin("11111111").count("return 0;") == 1
-        assert boolean.forbin("11110000").count("return 0;") == 2
-        assert boolean.forbin("10010110").count("return 0;") == 8
+    def test_constant_spans_fold_above_the_block(self) -> None:
+        """A constant span of blocks calls a printer instead of painting."""
+        from esolangs.tools.forbin import _BLOCK_BITS, _Names
+
+        arity = _BLOCK_BITS + 2
+        wide = 2**arity
+        register = _Names(arity, 1 << _BLOCK_BITS).table + " "
+        whole = boolean.forbin("1" * wide)
+        assert whole.count("return(") == 1
+        half = boolean.forbin("0" * (wide // 2) + "1" * (wide // 2))
+        assert half.count("return(") == 2
+        # Neither paints a block, so neither defines the shift register.
+        assert all(register not in program for program in (whole, half))
 
     def test_full_tree_growth_is_linear(self) -> None:
         """Names and indentation add only a geometric cost to the tree."""

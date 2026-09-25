@@ -140,7 +140,8 @@ Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
-Collatz Multiverse, EGL, Eval, Minsky Swap, NoComment, Packlang, Qoibl, SLOW
+Collatz Multiverse, EGL, Eval, Forbin, Minsky Swap, NoComment, Packlang, Qoibl,
+SLOW
 ACV MAMMALIAN, Suffolk and Whitespace keep no tree route at all: A Painter
 Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
@@ -151,7 +152,9 @@ once the doubling between the input runs is in the text), B-tapemark copies
 one mark per row onto the blank grid and walks the pointer to it, Collatz
 Multiverse writes one cell per four table rows at every arity, EGL paints one
 cell an entry and walks a pointer to it, Eval is one linear
-lookup at every arity, Packlang paints one array block and indexes it at every
+lookup at every arity, Forbin paints a 128-entry block as one call's argument
+list at every arity and its branches above seven inputs choose a block rather
+than route a table, Packlang paints one array block and indexes it at every
 arity, Minsky Swap's `~`
 cascade routes the index to one of two shared leaves with a one-digit target
 per row, NoComment switches between two lookups at four inputs, Qoibl divides one
@@ -224,7 +227,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Factor | tree | Brainfuck tree followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence | lower bound: tight language and generated Theta(T log T) ([factor](factor.md)) |
 | Fargo | tree | finite folded layout | linear, time n log: Moebius transform, n passes over 2**n |
 | Flowchart | finite lookup | a pair of answers per deque, and the input walks the deque cursor to the pair it wants | linear: T pushes, `T/2 - 1` cursor steps, two rows |
-| Forbin | tree | — | linear, time n log: greedy order scoring, capped at n <= 10 |
+| Forbin | finite lookup | the last seven inputs paint a block of `2**7` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry | linear: two characters an entry, halvings sum to `2 * 128` |
 | Forþ | tree | — | linear: span walk, constant dispatch, step literals geometric |
 | Grapheme | tree | arbitrary integer variable keys remove the old 24 one-letter-key ceiling | linear, time n log: essential_inputs |
 | Home Row | parameterized tree | — | linear, time n log: essential_inputs |

@@ -35,9 +35,6 @@ from esolangs.tools.forbin import (
 from esolangs.tools.forbin import (
     _forbin_name as _forbin_name,
 )
-from esolangs.tools.forbin import (
-    _forbin_ordered as _forbin_ordered,
-)
 from esolangs.tools.forbin import forbin as forbin
 from esolangs.tools.helpers import (
     _validate_truth_table,
