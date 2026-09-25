@@ -828,16 +828,16 @@
   },
   "Unsquare": {
    "0110": {
-    "commands": 206,
-    "source_units": 180
+    "commands": 196,
+    "source_units": 54
    },
    "01101001": {
-    "commands": 294,
-    "source_units": 370
+    "commands": 285,
+    "source_units": 72
    },
    "0110100110010110": {
     "commands": 382,
-    "source_units": 744
+    "source_units": 98
    }
   },
   "Vandevelo": {

@@ -141,7 +141,7 @@ carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
 bit~, Clockwise, Collatz Multiverse, EGL, Eval, Forbin, Minsky Swap, Modulous,
-NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN, Suffolk and Whitespace keep no
+NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN, Suffolk, Unsquare and Whitespace keep no
 tree route at all: A Painter
 Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
@@ -164,13 +164,16 @@ per row, Modulous pushes the whole table as one string literal and spends
 the row index popping it down to the answer, NoComment switches between two lookups at four inputs, Qoibl divides one
 literal by the power of two its reads build,
 SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
-row whatever the table says, Suffolk sweeps a countdown past every row, and
+row whatever the table says, Suffolk sweeps a countdown past every row,
+Unsquare pushes the whole table onto the stack a cell a row and pops the row
+index off the top of it, and
 Whitespace halves one literal once per index step; none has a subtree to
 fold.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
-table.  Collatz Multiverse, Eval, NoComment and Suffolk fold a degenerate
+table.  Collatz Multiverse, Eval, NoComment, Suffolk and Unsquare fold a degenerate
 table anyway, because their lookup route is what shrinks it -- Suffolk through
-`essential_inputs`, which halves the sweep per input dropped, and Collatz
+`essential_inputs`, which halves the sweep per input dropped, Unsquare through
+the same call, which halves its table, and Collatz
 Multiverse because a table with few distinct nibbles needs fewer cell
 constants and a shorter decoder; that is why the fold discriminator
 in `test_schemes.py` carries them as documented exceptions.
@@ -260,7 +263,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Taglate | tree | — | linear, time n log: essential_inputs |
 | 3D Brainfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
 | 3x | tree | — | linear, time n log: essential_inputs; greedy order scoring, capped |
-| Unsquare | tree | stack arrangement affects size only | linear: span walk, pricer sums geometrically |
+| Unsquare | linear lookup | the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it | linear: `2**n` cells and `2**n - 1` pops, two bytes a row |
 | Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | linear: amortised peel; sqrt(log T) dual-basis core; proof fallback n 2^n |
 | Whitespace | linear lookup | the table is one binary literal, halved once per index step | linear: T-bit literal, index halvings |
 
