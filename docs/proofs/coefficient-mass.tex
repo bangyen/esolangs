@@ -50,7 +50,14 @@ the initial run of consecutive zeros, with equality only when all the zeros
 are consecutive.  As a by-product, the same-sign hypothesis under which
 Dubickas and Jankauskas evaluate the consecutive case holds at all distinct
 positive nodes, making their bound $H(P)\ge|P(1)|$ unconditional for
-distinct real roots greater than one.
+distinct real roots greater than one.  At a single root $r\ge2$ every row is
+a top row: the $k$-th row for $(x-r)^L$ equals the top row for
+$(x-r)^{L-k+1}$.  For $1<r<2$ the rows are given by prefix-constrained
+problems whenever that top row is at most one, and in all but finitely many
+rows of each diagonal.  Complex roots in full orbits of $x\mapsto\zeta x$
+reduce exactly to real roots, and for $K$ roots in a sector of half-width
+$\delta$ the mass of multiples of degree $O(K)$ is of order
+$\min(K^2,K/\delta)\log R$.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Polynomial multiples; coefficient mass; reduced
@@ -186,6 +193,39 @@ paper~\cite{coefficient-mass-attainment} characterizes the root sets at which
 a row is an infimum by a partial-sum criterion, repeated roots included.
 Finally, every monic multiple of $(x-2)^L$ has $b_k\ge L-k+1$ for every
 row $1\le k\le L$ (Theorem~\ref{thm:everyrow}).
+
+\paragraph{Rows at a single root.}
+Section~\ref{sec:singleroot} takes all $L$ roots equal to one real $r>1$.
+Let $V_r(L,k)$ be the infimum of $b_k(F)$ over monic multiples $F$ of
+$(x-r)^L$, and $\beta_r(n)=V_r(n,1)$.  For every $r\ge2$,
+\[
+  V_r(L,k)=\beta_r(L-k+1)\qquad(1\le k\le L)
+\]
+(Theorem~\ref{thm:allrowstwo}); at $r=2$ this sharpens
+Theorem~\ref{thm:everyrow}.  The proof inserts one zero at the first gap of a
+minimizer, bounds the cost of the insertion by first-order optimality
+(Lemma~\ref{lem:optins}), and covers every later exempted position at once by
+a crossing argument (Theorem~\ref{thm:crossing}).  For $1<r<2$ the rows lie
+within a factor tending to $1$ as $k$ grows of prefix-constrained values
+(Theorem~\ref{thm:prefixrows}), and equal them whenever $\beta_r(L-k+1)\le1$
+(Theorem~\ref{thm:onepolyrows}) or $k$ is large compared with $L-k$
+(Theorem~\ref{thm:longdiag}).
+
+\paragraph{Complex roots.}
+Section~\ref{sec:complexroots} shows that roots in full orbits of
+$x\mapsto\zeta x$, in particular purely imaginary pairs, reduce exactly to
+real roots (Theorem~\ref{thm:transfer}, Corollary~\ref{cor:imag}).  Without
+such structure only the first row survives (Propositions~\ref{prop:rowone}
+and~\ref{prop:noangle}), and rows and mass return once the moduli are
+separated (Corollary~\ref{cor:separated}).  Real roots of both signs charge
+one root of each sign per excluded coefficient
+(Theorem~\ref{thm:bothsigns}).  At Gaussian-integer roots the mass infimum is
+a finite computation for each root set (Corollary~\ref{cor:gaussfinite}).
+For $K$ roots of modulus at least $R$ in a sector of half-width $\delta$, the
+mass of multiples of degree $O(K)$ is of order $\min(K^2,K/\delta)\log R$
+(Theorem~\ref{thm:widesector}).  Whether $cK^2\log R$ holds for all integer
+multiples in wide sectors is open; the route through sparse skeletons fails
+(Propositions~\ref{prop:Hfails} and~\ref{prop:Hrotated}).
 
 \paragraph{Conventions.}
 All logarithms are natural, $\N_{>0}=\{1,2,\ldots\}$, and every asymptotic
@@ -1688,6 +1728,23 @@ tail bound of Lemma~\ref{lem:holetail} exceeds $\frac12$ and the argument
 does not close; that is why Proposition~\ref{prop:rowsfree} keeps different
 holes there.
 
+\section{Rows at a single root}\label{sec:singleroot}
+
+This section determines the rows when all $L$ prescribed roots are equal to
+one real $r>1$.  Write $V_r(L,k)$ for the infimum of $b_k(F)$ over monic
+multiples $F$ of $(x-r)^L$ and $\beta_r(n)=V_r(n,1)$ for the top row.  For
+$r\ge2$ every row equals a top row, $V_r(L,k)=\beta_r(L-k+1)$
+(Theorem~\ref{thm:allrowstwo}): exempting $k-1$ coefficient positions costs
+exactly $k-1$ of the $L$ roots.  For $1<r<2$ the rows are determined up to a
+factor tending to $1$ by prefix-constrained problems
+(Theorem~\ref{thm:prefixrows}), and exactly whenever $\beta_r(n)\le1$
+(Theorem~\ref{thm:onepolyrows}) or $k$ is large compared with $n$
+(Theorem~\ref{thm:longdiag}).  The first subsections set up the reduction to
+exempted sets and zero sets, together with finite certificates, prefix values
+and the crossing argument; Sections~\ref{sec:allrowstwo}--\ref{sec:longdiag}
+contain the main theorems.  Appendix~\ref{sec:holeproducts} collects
+the earlier route through the hole product of a top-row optimum.
+
 \subsection{Rows at other roots}
 
 We now replace the root $2$ by an arbitrary real $r>1$.  Throughout this
@@ -2168,7 +2225,9 @@ with $L\le5$, $S\subseteq[1,8]$ and zero sets in a window, the worst
 exempted set is $S=[1,k-1]$ in all but one case, and the approximate row
 values at $r=\frac32$, $L=5$ are $2.98,\,1.99,\,0.80,\,0.20,\,\frac1{32}$
 for $k=1,\ldots,5$ (the last is exact).  Theorem~\ref{thm:prefixrows} below
-determines these rows up to a factor tending to $1$.
+determines these rows up to a factor tending to $1$, and
+Theorems~\ref{thm:onepolyrows} and~\ref{thm:longdiag} determine many of
+them exactly.
 
 \subsection{Rows below two, at several roots, and rows equal to the top row}
 
@@ -2352,7 +2411,8 @@ For $r\ge2$ the loss $E_k(r)$ is not small and
 Theorem~\ref{thm:prefixrows} adds nothing to Theorem~\ref{thm:everyrowr}.
 At the same time $\theta\to1$ as $r\to2$, and for small $L$ the bound of
 Corollary~\ref{cor:ordergen} is better.  We conjecture
-$V_r(L,k)=\min_{1\le i\le k}1/\nu_i(n)$ for every $r>1$.  The evidence is a
+$V_r(L,k)=\min_{1\le i\le k}1/\nu_i(n)$ for every $r>1$;
+Theorem~\ref{thm:allrowstwo} proves this for $r\ge2$.  For $1<r<2$ the evidence is a
 floating-point linear-programming search over exempted sets.  For
 $r\in\{1.1,1.25,1.5,1.75,1.9\}$, $n\le4$ and all $S\subseteq[1,10]$ with
 $|S|\le3$, no $S$ gave a value below the upper bound
@@ -4230,784 +4290,6 @@ a proof of the weaker $1+\rho(Z_0)\le r\Pi_Y$ for the second row alone.
 Both are statements about the top-row optimum only.  As in
 Section~\ref{sec:prefixmono}, they seem to need control of the zero
 distribution of $Z_0$ that we do not have.
-
-\subsection{All rows at roots at least \texorpdfstring{$\frac92$}{9/2}}\label{sec:bigroot}
-
-Theorem~\ref{thm:rowspi} shows that rows equal the top row as soon as some
-top-row optimum has hole product at most $r-1$.  So far this was checked one
-$n$ at a time (Corollary~\ref{cor:rowspiranges}).  This subsection proves it
-for every $n$ when $r\ge\frac92$ (Theorem~\ref{thm:bigroot}).  So the
-conjecture stated after Corollary~\ref{cor:belowtwo} holds at every root
-$r\ge\frac92$.
-
-Three crude facts about a top-row optimum suffice.
-\begin{itemize}
-\item Its largest zero balances the weight below it against the weight above
-it (Lemma~\ref{lem:topzero}).  This bounds the largest zero.
-\item Its first hole carries weight at most $1/\beta_r(n)$
-(Lemma~\ref{lem:firsthole}).
-\item Jensen's formula gives $\beta_r(n)\ge r^n/(8n)$
-(Lemma~\ref{lem:jensentop}).  With the previous item this bounds the initial
-run from below.
-\end{itemize}
-For large $n$ they give an initial run longer than $0.52n$ and a largest zero
-below $2.2n$, so the hole product is below $3.32$.  For $3\le r<\frac92$ the
-same facts give finite ranges (Corollary~\ref{cor:bigrootfinite}).
-
-Throughout, a \emph{top-row optimum} for $(r,n)$ is a set $Z_0$ of $n-1$
-positive integers with $\Phi_r(Z_0)=1/\beta_r(n)$.  For $n\ge2$ and $x\ge1$
-put
-\[
-  T_r(n,x)=\sum_{s\ge x}s\binom{s-1}{n-2}r^{-s} .
-\]
-
-\begin{lemma}[The largest zero]\label{lem:topzero}
-Let $r>1$ and $n\ge2$.
-\begin{enumerate}
-\item[(a)] A top-row optimum for $(r,n)$ exists.
-\item[(b)] Let $Z_0$ be a top-row optimum with a hole, $x=\max Z_0$,
-$W=Z_0\setminus\{x\}$, and let $\ell$ be the largest integer with
-$[1,\ell]\subseteq Z_0$.  Then
-\[
-  \sum_{s<x}s\,|r_W(s)|\,r^{-s}\ \le\ \sum_{s\ge x}s\,|r_W(s)|\,r^{-s}
-  \qquad\text{and}\qquad
-  \frac{\ell+1}{\beta_r(n-1)}\ \le\ 2\,T_r(n,x) .
-\]
-\end{enumerate}
-\end{lemma}
-
-\begin{proof}
-Let $\mathcal A$ be the set of real $p$ with $\deg p\le n-1$ and $p(0)=1$.
-For $D\in\{n+1,n+2,\ldots\}\cup\{\infty\}$ put
-$f_D(p)=\sum_{s=1}^D|p(s)|r^{-s}$, so $f_\infty=\Phi_r$.
-
-\emph{Step 1.}  Let $Z$ be a set of $n-1$ positive integers with
-$x=\max Z\le D$ such that $r_Z$ minimizes $f_D$ on $\mathcal A$.  Put
-$W=Z\setminus\{x\}$ and $w(s)=|r_W(s)|r^{-s}$.  For $u\ge0$ the polynomial
-$r_W(s)(1-us)$ lies in $\mathcal A$, so
-$F(u)=\sum_{s\le D}w(s)|1-us|$ is at least $F(1/x)=f_D(r_Z)$.  The function
-$F$ is convex.  Its right derivative at $1/x$ is
-$\sum_{x\le s\le D}sw(s)-\sum_{s<x}sw(s)$.  For $D=\infty$ the difference
-quotients are dominated by $sw(s)$, and $\sum_ssw(s)<\infty$.  So
-\[
-  \sum_{s<x}sw(s)\le\sum_{x\le s\le D}sw(s).
-\]
-For $s\ge x$ every factor $1-s/z$ of $r_W(s)$ is negative.  If
-$z_1<\cdots<z_{n-2}$ are the elements of $W$, then $z_i\ge i$, so
-$|r_W(s)|=\prod_i(s-z_i)/z_i\le\prod_i(s-i)/i=\binom{s-1}{n-2}$.  Let $m$ be
-the least positive integer outside $W$.  Then $w$ vanishes on $[1,m-1]$, and
-\[
-  f_D(r_W)=\sum_{s\le D}w(s)\le\frac1m\sum_{s\le D}sw(s)
-  \le\frac2m\sum_{x\le s\le D}sw(s)\le\frac2m\,T_r(n,x).
-\]
-
-\emph{Step 2: (a).}  By the proof of Lemma~\ref{lem:intzeros} (with
-$\omega(s)=r^{-s}$ and $i=1$), for each finite $D\ge n+1$ some set $Z_D$ of
-$n-1$ integers in $[1,D]$ has $r_{Z_D}$ minimizing $f_D$ on $\mathcal A$,
-and $\min_{\mathcal A}f_D$ increases to $\mu_r(\varnothing,n)$.  Let $c$ be the
-minimum of $f_{n+1}$ over the real $q$ with $\deg q\le n-2$ and $q(0)=1$.
-It is attained and positive, because such a $q$ cannot vanish at the $n+1$
-points of $[1,n+1]$.  Step 1 with $m\ge1$ gives
-$c\le f_{n+1}(r_{W_D})\le f_D(r_{W_D})\le2T_r(n,\max Z_D)$.  Since
-$T_r(n,x)\to0$ as $x\to\infty$, all the sets $Z_D$ lie in one interval
-$[1,X]$.  So one set $Z_0$ equals $Z_D$ for infinitely many $D$.  For these
-$D$, $f_D(r_{Z_0})=\min_{\mathcal A}f_D$.  Letting $D\to\infty$ gives
-$\Phi_r(Z_0)=\mu_r(\varnothing,n)=1/\beta_r(n)$.
-
-\emph{Step 3: (b).}  Apply Step 1 with $D=\infty$ and $Z=Z_0$.  Since $Z_0$
-has a hole, $x\ge\ell+2$, so $[1,\ell]\subseteq W$ and $m=\ell+1$.  This gives
-the first inequality and $\Phi_r(W)\le2T_r(n,x)/(\ell+1)$.  Finally $r_W$ has
-degree $n-2$ and value $1$ at $0$, so
-$\Phi_r(W)\ge\mu_r(\varnothing,n-1)=1/\beta_r(n-1)$.
-\end{proof}
-
-So the largest zero of a top-row optimum sits at a weighted median: at least
-half of the weight $s|r_W(s)|r^{-s}$ lies at or above it.  Above the largest
-zero this weight is at most $s\binom{s-1}{n-2}r^{-s}$, which is tiny far out.
-So the largest zero cannot be far out.
-
-\begin{lemma}[The first hole]\label{lem:firsthole}
-Let $r>1$, and let $Z$ be a set of $n-1$ positive integers with a hole.  Put
-$x=\max Z$, let $C=[1,x]\setminus Z$ be its set of holes, and let
-$\ell+1=\min C$.  Then
-\[
-  r^{\ell+1}\,\Phi_r(Z)\ \ge\ |r_Z(\ell+1)|
-  =\binom x{\ell+1}^{-1}\prod_{c\in C,\ c>\ell+1}\frac c{c-\ell-1}
-  \ \ge\ \binom n{\ell+1}^{-1},
-\]
-and $\Pi(Z)\le(x-n+\ell+2)/(\ell+1)$.
-\end{lemma}
-
-\begin{proof}
-The first inequality is the term $s=\ell+1$ of $\Phi_r(Z)$.  Write
-$Z=[1,\ell]\cup Y$ with $Y=[\ell+2,x]\setminus C$.  Then
-$|r_{[1,\ell]}(\ell+1)|=1$ and $|r_Y(\ell+1)|=\prod_{y\in Y}(y-\ell-1)/y$.  The
-product of $(y-\ell-1)/y$ over all $y\in[\ell+2,x]$ is
-$(x-\ell-1)!\,(\ell+1)!/x!=\binom x{\ell+1}^{-1}$.  Dividing by the factors at
-the holes $c>\ell+1$ gives the identity.  For the lower bound, list $Y$ as
-$y_1<\cdots<y_{n-1-\ell}$.  Then $y_i\ge\ell+1+i$, and $(y-\ell-1)/y$
-increases with $y$.  So the product is at least
-$\prod_ii/(\ell+1+i)=\binom n{\ell+1}^{-1}$.
-
-There are $|C|=x-n+1$ holes, all at least $\ell+1$.  The product of
-$1+1/c$ over them is largest when they are $\ell+1,\ldots,\ell+|C|$, where it
-equals $(\ell+|C|+1)/(\ell+1)$.
-\end{proof}
-
-\begin{lemma}[Jensen's bound for the top row]\label{lem:jensentop}
-Let $r>1$, $n\ge1$ and $1/r<\rho<1$.  Then
-$\beta_r(n)\ge((\rho r)^n-1)(1-\rho)/\rho$.  If $r\ge3$ and $n\ge2$, then
-$\beta_r(n)\ge r^n/(8n)$.
-\end{lemma}
-
-\begin{proof}
-Let $F$ be a monic multiple of $(x-r)^n$ of degree $D$, and let
-$F^*(t)=t^DF(1/t)=1+\sum_{j\ge1}f_jt^j$, where $f_j$ is the coefficient at
-backward distance $j$.  As in the proof of Proposition~\ref{prop:quadratic},
-$F^*$ has a zero of order at least $n$ at $1/r$, and Jensen's formula on
-$|t|\le\rho$ gives
-\[
-  (\rho r)^n\le\max_{|t|=\rho}|F^*(t)|\le1+b_1(F)\frac\rho{1-\rho}.
-\]
-Take the infimum over $F$; by Proposition~\ref{prop:rowvalue}(c) it is
-$\beta_r(n)$.  For the second claim take $\rho=1-1/n$, which exceeds $1/r$.
-Since $(1-1/n)^n\ge\frac14$,
-$\beta_r(n)\ge(r^n/4-1)/(n-1)\ge(r^n/4-1)/n\ge r^n/(8n)$, the last step because
-$r^n\ge8$.
-\end{proof}
-
-The polynomial $(x-r)^n$ itself gives the trivial upper bound
-$\beta_r(n)\le\max_j\binom nj r^j\le(r+1)^n$.
-
-\begin{theorem}[All rows at large roots]\label{thm:bigroot}
-Let $r\ge\frac92$ and $n\ge1$.  Every top-row optimum $Z_0$ for $(r,n)$
-satisfies $\Pi(Z_0)\le r-1$.  Consequently $V_r(L,L-n+1)=\beta_r(n)$ for
-every $L\ge n$.
-\end{theorem}
-
-\begin{proof}
-For $n=1$, $Z_0=\varnothing$ and $\Pi(Z_0)=1$.  Let $n\ge2$.  If $Z_0$ has no
-hole, $\Pi(Z_0)=1$.  Otherwise let $x=\max Z_0$ and let $\ell$ be as in
-Lemma~\ref{lem:firsthole}, so $0\le\ell\le n-2$ and $x\ge n$.  Put
-$r_0=\frac92$.  We collect three inequalities.
-\begin{itemize}
-\item[(i)] $8n\binom n{\ell+1}\ge r_0^{\,n-\ell-1}$.  Indeed, by
-Lemmas~\ref{lem:jensentop} and~\ref{lem:firsthole},
-$r^n/(8n)\le\beta_r(n)=1/\Phi_r(Z_0)\le r^{\ell+1}\binom n{\ell+1}$, and
-$r\ge r_0$.
-\item[(ii)] $1\le2(r_0+1)^{n-1}T_{r_0}(n,x)$.  Indeed,
-Lemma~\ref{lem:topzero}(b) and $\beta_r(n-1)\le(r+1)^{n-1}$ give
-$1\le2(r+1)^{n-1}T_r(n,x)$.  Every term of $T_r(n,x)$ has $s\ge x>n-1$, and
-$r\mapsto(r+1)^{n-1}r^{-s}$ decreases, since its logarithmic derivative is
-$(n-1)/(r+1)-s/r<0$.
-\item[(iii)] $(\ell+1)(r_0-1)\le2r_0^{\ell+1}\binom n{\ell+1}T_{r_0}(n,x)$.
-Indeed, Corollary~\ref{cor:prefixmono}(b) and Lemma~\ref{lem:firsthole} give
-$\beta_r(n-1)\le\beta_r(n)/(r-1)\le r^{\ell+1}\binom n{\ell+1}/(r-1)$.  With
-Lemma~\ref{lem:topzero}(b) this is (iii) at $r$.  Divided by $r-1$, its right
-side is a sum of terms $s\binom{s-1}{n-2}\binom n{\ell+1}r^{\ell+1-s}/(r-1)$
-with $s>\ell+1$, and each decreases in $r$.
-\end{itemize}
-By Lemma~\ref{lem:firsthole},
-$\Pi(Z_0)\le(x-n+\ell+2)/(\ell+1)=1+(x-n+1)/(\ell+1)$.  We show that this is
-at most $r_0-1=\frac72$.
-
-\emph{Large $n$.}  Let $n\ge301$, $m=n-\ell-1$ and $\mu=m/n$.  With
-$h(t)=-t\log t-(1-t)\log(1-t)$ we have $\binom nm\le e^{nh(\mu)}$, so (i) gives
-$n\psi(\mu)\le\log(8n)$ for $\psi(\mu)=\mu\log r_0-h(\mu)$.  The function
-$\psi$ is convex with $\psi'(\mu)=\log(r_0\mu/(1-\mu))$, which is positive for
-$\mu>\frac2{11}$.  If $\mu\ge0.48$, then $\psi(\mu)\ge\psi(0.48)>0.0296$, and
-$0.0296\,n>\log(8n)$ for $n\ge301$.  So $\mu<0.48$, that is, $\ell+1>0.52n$.
-
-Next suppose $x\ge2.2n$, and put $t_s=s\binom{s-1}{n-2}r_0^{-s}$.  For
-$s\ge x$,
-\[
-  \frac{t_{s+1}}{t_s}=\frac{s+1}{r_0(s-n+2)}\le\frac{2.2n+1}{r_0(1.2n+2)}
-  <\frac{11}{6r_0}<0.41 .
-\]
-So $T_{r_0}(n,x)\le t_{x_0}/0.59$ with $x_0=\lceil2.2n\rceil$.  Here
-$t_{x_0}=(n-1)\binom{x_0}{n-1}r_0^{-x_0}$, and
-$\binom{x_0}{n-1}\le e^{x_0h((n-1)/x_0)}$.  Put $K=n-1$.  The function
-$N\mapsto Nh(K/N)-N\log r_0$ has derivative $\log(N/(N-K))-\log r_0$, which
-is negative for $N\ge2.2n$.  Also $h$ increases on $[0,\frac12]$, and
-$(n-1)/(2.2n)<1/2.2$.  So
-\[
-  2(r_0+1)^{n-1}T_{r_0}(n,x)\le\frac{2(n-1)}{0.59(r_0+1)}\,
-  e^{n(2.2h(1/2.2)+\log(r_0+1)-2.2\log r_0)}<0.62\,(n-1)e^{-0.088n}<1,
-\]
-which contradicts (ii).  So $x<2.2n$, and
-$\Pi(Z_0)<1+(1.2n+1)/(0.52n)<3.32$.
-
-\emph{Small $n$.}  For $2\le n\le300$ we checked, in exact integer
-arithmetic, every $\ell\in[0,n-2]$ satisfying (i) together with the largest
-$x\ge n$ satisfying (iii).  In every case $(x-n+\ell+2)/(\ell+1)\le\frac72$.
-The bound increases with $x$, so all smaller $x$ are covered too.  The sums
-$T_{r_0}(n,x)$ were computed exactly for $s\le8n+40$, and the rest was bounded
-by a geometric series; this can only enlarge the set of admissible $x$.  The
-largest value found is below $2.54$.
-
-So $\Pi(Z_0)\le\frac72\le r-1$ in all cases.  Lemma~\ref{lem:topzero}(a)
-provides a top-row optimum.  Theorem~\ref{thm:rowspi} with this $Z_0$ gives
-$V_r(L,L-n+1)\ge1/\Phi_r(Z_0)=\beta_r(n)$, and
-Proposition~\ref{prop:rowvalue}(c) gives the reverse inequality.
-\end{proof}
-
-By Corollary~\ref{cor:prefixmono}(a), the theorem is the conjecture stated
-after Corollary~\ref{cor:belowtwo}, for every $r\ge\frac92$.  It contains the
-cases $r\ge\frac92$ of Corollaries~\ref{cor:rowstopranges}
-and~\ref{cor:rowspiranges}.  At these roots the conclusions of
-Corollaries~\ref{cor:secondrow} and~\ref{cor:crossreduce} hold for every $n$,
-without their hypotheses.  The proof never looks at the exempted positions.
-It only shows that at these roots every top-row optimum has a long initial
-run and few holes.
-
-The same argument works at $r=4$ for bounded $n$.  In the proof, the root
-enters only through (i), (ii), (iii) and the target $r-1$.  All three
-inequalities become weaker as the root decreases.  So a check at one root
-$r_0\ge3$ covers every $r\ge r_0$.  (Lemma~\ref{lem:jensentop} needs $r\ge3$.)
-
-\begin{corollary}[Finite ranges below $\frac92$]\label{cor:bigrootfinite}
-$V_r(L,L-n+1)=\beta_r(n)$ for every $L\ge n$ in the following cases:
-$r\ge4$ and $n\le1000$; $r\in\{\frac{13}4,\frac72\}$ and $n\le50$; $r=3$
-and $n\in\{28,29,30\}$.
-\end{corollary}
-
-\begin{proof}
-For $r\ge4$, run the small-$n$ part of the proof of
-Theorem~\ref{thm:bigroot} with $r_0=4$ and the target $3$.  We checked in
-exact integer arithmetic that, for $2\le n\le1000$, every pair $(\ell,x)$
-allowed by (i) and (iii) at $r_0=4$ has $(x-n+\ell+2)/(\ell+1)\le3$.  For
-$r\in\{\frac{13}4,\frac72\}$ and $r=3$ we found top-row optima $Z_0$ by the
-continuation search of
-Corollary~\ref{cor:secondrow}, certified them by
-Proposition~\ref{prop:toprowcert}, and computed $\Pi(Z_0)$ exactly.  In all
-these cases $\Pi(Z_0)\le r-1$; the maxima are $2$ at $r=\frac{13}4$ and $1.82$
-at $r=\frac72$.  Theorem~\ref{thm:rowspi} concludes.
-\end{proof}
-
-The method has a limit near $r=4$.  In floating point, the largest value of
-$1+(x-n+1)/(\ell+1)$ allowed by (i) and (iii) at the level of exponential
-rates tends, as $n\to\infty$, to $2.57$ at $r=\frac92$, to exactly $3=r-1$ at
-$r=4$ (attained at $\ell\approx n/2$, $x\approx2n$), and to $3.71$ at
-$r=\frac72$.  So a proof for all $n$ at $r=4$ needs a sharper bound than the count;
-Section~\ref{sec:rootfour} gives one.  At $r_0\in\{3,\frac{13}4,\frac72\}$ the finite check already
-fails for every $n$ with $3\le n\le200$.  Near $r=3$ Theorem~\ref{thm:rowspi}
-itself stops working.
-At $r=3$ the certified optima have $\Pi(Z_0)>2$ for
-$n\in[25,27]\cup[31,42]$, and at $r=\frac52$ they have $\Pi(Z_0)>\frac32$ for
-every $n\le36$.  The true values are far from the bounds: at $r=4$ and $n=50$
-the certified optimum has $\ell=30$, $\max Z_0=76$ and $\Pi(Z_0)=1.65$.
-
-For $2\le r<\frac92$ the second row therefore remains open for large $n$
-(Sections~\ref{sec:rootfour} and~\ref{sec:rootbelowfour} lower $\frac92$ to $4$
-and then to $\frac{10}3$).
-The criterion of Corollary~\ref{cor:secondrow} has a simple form in the
-root.  For $W=[1,\ell]\cup Y$ as there, termwise differentiation gives
-$\partial_r\Phi_r(W)=-r^{-1}\sum_ss|r_W(s)|r^{-s}$, so
-\[
-  \frac{\Phi_r(\mathrm{ins}(W,\ell+1))}{\Phi_r(W)}
-  =-\frac{\partial_r\log\Phi_r(W)}{(\ell+1)\Pi_Y},\qquad
-  \Pi_Y=\prod_{y\in Y}\Bigl(1+\frac1y\Bigr).
-\]
-The sum $\Phi_r(W)=\sum_s|r_W(s)|r^{-s}$ is log-convex in $\log r$, so for a
-fixed set $W$ the ratio, and likewise $\rho$, does not increase with $r$.
-At a top-row optimum $Z_0$ for $(r,n)$, $\beta_{r'}(n)\ge1/\Phi_{r'}(Z_0)$ at
-every root $r'$, with equality at $r'=r$.  Hence the ratio is at most $\bigl((\ell+1)\Pi_Y\bigr)^{-1}$ times the
-lower right Dini derivative of $\log\beta_r(n)$ in $r$.  So the second row
-holds at $r$ whenever $\beta_r(n)$ grows slowly enough in the root there.
-We could not bound this growth for all $n$.
-
-\subsection{All rows at roots at least \texorpdfstring{$4$}{4}}\label{sec:rootfour}
-
-At $r=4$ the proof of Theorem~\ref{thm:bigroot} stops because of the count
-bound $\Pi(Z_0)\le(x-n+\ell+2)/(\ell+1)$ of Lemma~\ref{lem:firsthole}.  That
-bound puts all holes right above the first one.  Such holes make
-$|r_{Z_0}(\ell+1)|$ large, and the term $s=\ell+1$ of $\Phi_r(Z_0)$ forbids
-this.  This subsection turns the observation into two bounds for the hole
-product (Lemma~\ref{lem:holeblock}).  The first one shows that rows equal the
-top row for every $n$ at every root $r\ge4$ (Theorem~\ref{thm:rootfour}).  A
-bound for the mean of the weight $|r_Z(s)|r^{-s}$ (Lemma~\ref{lem:tailmean})
-gives a sufficient condition for the second row that is weaker than
-$\Pi(Z_0)\le r-1$ (Corollary~\ref{cor:secondtail}).  With the second bound
-this gives finite ranges below $4$ that hold at all roots above a threshold at
-once (Corollary~\ref{cor:rootfourfinite}).  Section~\ref{sec:rootbelowfour} extends
-them to all $n$ for all rows at $r\ge\frac{25}7$ and for the second row at
-$r\ge\frac{10}3$.
-
-Throughout, $Z$ is a set of $n-1$ positive integers with a hole, $x=\max Z$,
-$p=\ell+1$ is the first hole of $Z$, and $K=x-n$.  So $Z$ has $K+1$ holes.  By
-Lemma~\ref{lem:firsthole},
-\[
-  Q(Z):=\binom xp\,|r_Z(p)|=\prod_{c\text{ a hole of }Z,\ c>p}\frac c{c-p}\ \ge1 .
-\]
-
-\begin{lemma}[Holes above the first hole]\label{lem:holeblock}
-Let $Z$, $p$ and $K$ be as above, and put $Q=Q(Z)$.
-\begin{enumerate}
-\item[(a)] $\Pi(Z)^p\le(1+1/p)^p\,Q$.
-\item[(b)] Let $y\ge p+1$ be an integer with $\binom{y+K-1}p\ge Q\binom{y-1}p$.
-Then
-\[
-  \Pi(Z)\le\frac{(p+1)(y+K)}{p\,y} .
-\]
-\end{enumerate}
-\end{lemma}
-
-\begin{proof}
-Let $C'$ be the set of holes of $Z$ other than $p$.  It has $K$ elements, all
-greater than $p$, and $\Pi(Z)=(1+1/p)\prod_{c\in C'}(1+1/c)$.  For real $c>p$
-put $\pi(c)=\log(1+1/c)$ and $\alpha(c)=\log(c/(c-p))$.  Both decrease, and
-$\log Q=\sum_{c\in C'}\alpha(c)$.
-
-(a) Since $-\log(1-u)\ge u$ for $0\le u<1$, we have $p\,\pi(c)\le p/c\le\alpha(c)$.
-Sum over $C'$.
-
-(b) Let $B=[y,y+K-1]$.  The products telescope:
-$\sum_{c\in B}\pi(c)=\log((y+K)/y)$ and
-$\sum_{c\in B}\alpha(c)=\log\bigl(\binom{y+K-1}p/\binom{y-1}p\bigr)$.  So the
-hypothesis says $\sum_{C'}\alpha\le\sum_B\alpha$, and we must show
-$\sum_{C'}\pi\le\sum_B\pi$.  If $K=0$ there is nothing to show.  If $y=p+1$,
-list $C'$ as $c_1<\cdots<c_K$.  Then $c_i\ge p+i$, so
-$\sum_{C'}\pi\le\sum_i\pi(p+i)=\sum_B\pi$.
-
-Now let $y\ge p+2$ and $K\ge1$.  Put
-\[
-  \lambda=\frac{\pi(y-1)-\pi(y+K-1)}{\alpha(y-1)-\alpha(y+K-1)}>0,\qquad
-  g=\pi-\lambda\alpha\quad\text{on }(p,\infty).
-\]
-Then $g(y-1)=g(y+K-1)$, and
-\[
-  g'(c)=\frac{(\lambda p-1)c+p(1+\lambda)}{c(c+1)(c-p)} .
-\]
-The numerator is linear in $c$ and positive at $c=p$.  It cannot stay
-positive, since $g$ takes the same value twice.  So $g$ strictly increases and
-then strictly decreases.  With $v=g(y-1)$, this gives $g>v$ on $(y-1,y+K-1)$
-and $g<v$ outside $[y-1,y+K-1]$.  The elements of $C'\setminus B$ lie outside
-$[y,y+K-1]$, so $g\le v$ there.  The elements of $B\setminus C'$ lie in
-$[y,y+K-1]$, so $g\ge v$ there.  The two sets have the same size.  Hence
-$\sum_{C'}g\le\sum_Bg$, and
-\[
-  \sum_{C'}\pi=\sum_{C'}g+\lambda\sum_{C'}\alpha\le\sum_Bg+\lambda\sum_B\alpha
-  =\sum_B\pi .\qedhere
-\]
-\end{proof}
-
-For $y=p+1$, part (b) is the count bound of Lemma~\ref{lem:firsthole}.  The
-best $y$ is the largest one allowed.  Part (b) says that, among the hole sets
-that cost at most as much in $Q$, a block of consecutive holes has the
-largest hole product.
-
-\begin{theorem}[All rows at roots at least $4$]\label{thm:rootfour}
-Let $r\ge4$ and $n\ge1$.  Every top-row optimum $Z_0$ for $(r,n)$ satisfies
-$\Pi(Z_0)\le r-1$.  Consequently $V_r(L,L-n+1)=\beta_r(n)$ for every $L\ge n$.
-\end{theorem}
-
-\begin{proof}
-If $Z_0$ has no hole, $\Pi(Z_0)=1$.  Every top-row optimum with a hole
-satisfies (i) and (iii) of the proof of Theorem~\ref{thm:bigroot} at $r_0=4$.
-So for $n\le1000$ the claim is the check in the proof of
-Corollary~\ref{cor:bigrootfinite}, which gives $\Pi(Z_0)\le3$.  Let
-$n\ge301$, let $Z_0$ have a hole, and let $x$, $p=\ell+1$ and $K$ be as above.
-Put $\theta=p/n$, and let $h$ be as in the proof of Theorem~\ref{thm:bigroot}.
-
-\emph{Step 1: $\theta>0.48$.}  By (i) and $\binom np\le e^{nh(\theta)}$,
-$n\bigl((1-\theta)\log4-h(\theta)\bigr)\le\log(8n)$.  The left side is convex
-in $\theta$, vanishes at $\theta=\frac12$, and has derivative $-n\log4$ there.
-So $n(\frac12-\theta)\log4\le\log(8n)$, and
-$\theta\ge\frac12-\log(8n)/(n\log4)>0.48$.
-
-\emph{Step 2.}  If $x\le n+2p-1$, Lemma~\ref{lem:firsthole} gives
-$\Pi(Z_0)\le(x-n+1+p)/p\le3$.  So let $x\ge x_0:=n+2p$.
-
-\emph{Step 3.}  By Lemma~\ref{lem:firsthole},
-$\beta_r(n)=1/\Phi_r(Z_0)\le r^p/|r_{Z_0}(p)|$.  With
-Corollary~\ref{cor:prefixmono}(b) this gives
-$\beta_r(n-1)\le r^p/\bigl((r-1)|r_{Z_0}(p)|\bigr)$, and
-Lemma~\ref{lem:topzero}(b) gives
-\[
-  p\,(r-1)\,|r_{Z_0}(p)|\le2r^pT_r(n,x).
-\]
-This is (iii) before $|r_{Z_0}(p)|$ is bounded below.  As in (iii),
-$r^pT_r(n,x)/(r-1)$ decreases in $r$.  With Lemma~\ref{lem:holeblock}(a) and
-$(1+1/p)^p<e$,
-\[
-  \Pi(Z_0)^p<\frac{2e}{3p}\,4^p\,H(x),\qquad H(x)=\binom xp\,T_4(n,x).
-\]
-
-\emph{Step 4: $H(x)\le H(x_0)$.}  Put $t_s=s\binom{s-1}{n-2}4^{-s}$ and
-$q_s=t_{s+1}/t_s=(s+1)/(4(s-n+2))$.  Since $q_s$ decreases in $s$,
-$T_4(n,x+1)=\sum_{s\ge x}q_st_s\le q_xT_4(n,x)$, and
-$T_4(n,x)\le t_x/(1-q_x)$ when $q_x<1$.  Hence
-\[
-  \frac{H(x+1)}{H(x)}\le\frac{(x+1)^2}{4(x+1-p)(x-n+2)} .
-\]
-The right side decreases in $x$.  At $x_0$ it is at most $1$, because
-$4(n+p+1)(2p+2)-(n+2p+1)^2=4p^2+4np+12p+6n+7-n^2>0$ for $p\ge n/4$.
-
-\emph{Step 5: the value at $x_0$.}  Here
-$q:=q_{x_0}=(n+2p+1)/(8(p+1))<(1/0.48+2)/8<0.52$ and
-$t_{x_0}=(n-1)\binom{x_0}{n-1}4^{-x_0}$.  Also
-$\binom{x_0}{n-1}=\binom{x_0}n\,n/(2p+1)<\binom{x_0}n/0.96$ and
-$(n-1)/p<1/0.48$.  Use $\binom Nk\le e^{Nh(k/N)}$ and $x_0=(1+2\theta)n$.
-Then
-\[
-  \log\frac{\Pi(Z_0)^p}{3^p}<2.12+n\varphi(\theta),\qquad
-  \varphi(\theta)=(1+2\theta)\Bigl(h\Bigl(\frac\theta{1+2\theta}\Bigr)
-  +h\Bigl(\frac1{1+2\theta}\Bigr)\Bigr)-(1+\theta)\log4-\theta\log3,
-\]
-where $2.12>1+\log\frac23+2\log\frac1{0.48}+\log\frac1{0.96}$.  The function
-$\varphi$ is concave on $(0,1)$, because $(u,v)\mapsto vh(u/v)$ is concave on
-$0<u<v$.  Its derivative is
-$\varphi'(\theta)=\log\bigl((1+2\theta)^4/(48\theta^3(1+\theta))\bigr)$.  At
-$\theta=\frac56$ we have $\varphi=-0.03665\ldots$ and
-$\varphi'=-0.00705\ldots$, so the tangent there gives $\varphi<-0.0307$ on
-$(0,1)$.  Hence $\log(\Pi(Z_0)^p/3^p)<2.12-0.03n<0$.
-
-So $\Pi(Z_0)\le3\le r-1$ in all cases.  Lemma~\ref{lem:topzero}(a) provides a
-top-row optimum, Theorem~\ref{thm:rowspi} gives
-$V_r(L,L-n+1)\ge\beta_r(n)$, and Proposition~\ref{prop:rowvalue}(c) gives the
-reverse inequality.
-\end{proof}
-
-The theorem contains Theorem~\ref{thm:bigroot} and the case $r\ge4$ of
-Corollary~\ref{cor:bigrootfinite}.  By Corollary~\ref{cor:prefixmono}(a) it
-proves the conjecture stated after Corollary~\ref{cor:belowtwo} for every
-$r\ge4$.  Only Step~2 uses the count bound, and there it is not the limit.
-
-\paragraph{The second row below $4$.}
-Corollary~\ref{cor:secondrow} needs $1+\rho\le r\Pi_Y$.  Both sides can be
-written with $\Pi(Z_0)$ and the mean of the weight $|r_Z(s)|r^{-s}$.  That mean
-is controlled by the zeros near $x$.
-
-\begin{lemma}[The mean of the weight]\label{lem:tailmean}
-Let $r>1$, let $Z$ be a nonempty set of $n-1$ positive integers, $x=\max Z$ and
-$w(s)=|r_Z(s)|r^{-s}$.  Then
-\[
-  \sum_{s\ge1}s\,w(s)\le(x+1+M)\,\Phi_r(Z),\qquad M=\frac n{r-1} .
-\]
-If $Z$ has a hole, $p$ is its first hole and $q=(x+1)/(r(x-p+2))<1$, one may
-take $M=\min\{n/(r-1),\ (n-p+1)q/(1-q)\}$.
-\end{lemma}
-
-\begin{proof}
-Every $s\le x$ is less than $x+1$.  So the claim follows once the weight
-$u(d)=w(x+d)$, $d\ge1$, has mean $\sum_ddu(d)/\sum_du(d)$ at most $1+M$.  For
-$s>x$,
-\[
-  \frac{w(s+1)}{w(s)}=\frac1r\prod_{z\in Z}\Bigl(1+\frac1{s-z}\Bigr).
-\]
-The numbers $s-z$ are $n-1$ distinct integers at least $d=s-x$.  So the product
-is at most $\prod_{j=d}^{d+n-2}(1+1/j)=(d+n-1)/d$.  Let
-$v(d)=\binom{d+n-2}{n-1}r^{1-d}$.  Then $v(d+1)/v(d)=(d+n-1)/(rd)$, which is at
-least $u(d+1)/u(d)$.  So $u/v$ does not increase in $d$.  Under $v$ the
-covariance of $d$ and $u/v$ is therefore not positive, and the mean of $u$ is
-at most the mean of $v$.  With $j=d-1$, the weight $v$ is proportional to
-$\binom{j+n-1}{n-1}r^{-j}$, a negative binomial law with mean $n/(r-1)$.  So
-the mean of $v$ is $1+n/(r-1)$.
-
-For the second value of $M$, divide the product over $[1,x]$, which is
-$s/(s-x)$, by the product over the set $C$ of holes.  The $x-n+1$ holes are
-distinct integers at least $p$, and $1+1/(s-c)$ increases with $c$.  So
-$\prod_{c\in C}(1+1/(s-c))\ge\prod_{j=0}^{x-n}(1+1/(s-p-j))=(s-p+1)/(s-p-x+n)$.
-With $d=s-x$ this gives
-\[
-  \frac{u(d+1)}{u(d)}\le\frac{(x+d)(d+n-p)}{r\,d\,(x+d-p+1)}\le q\,\frac{d+n-p}d,
-\]
-because $(x+d)/(x+d-p+1)$ does not increase in $d$.  Compare with
-$v(d)=\binom{d+n-p-1}{n-p}q^{d-1}$.  Its ratio is $q(d+n-p)/d$, and its mean is
-$1+(n-p+1)q/(1-q)$.
-\end{proof}
-
-In the notation of the remark at the end of Section~\ref{sec:bigroot}, the
-lemma says $-\partial_r\log\Phi_r(Z)\le(x+1+M)/r$.
-
-\begin{corollary}[The second row through the tail]\label{cor:secondtail}
-Let $r>1$ and $n\ge2$, and let $Z_0$ be a top-row optimum for $(r,n)$ with a
-hole.  Let $x=\max Z_0$ and let $M$ be as in Lemma~\ref{lem:tailmean}.  If
-\[
-  \Pi(Z_0)\,(x+1+M)\le r\,(x+1),
-\]
-then $V_r(n+1,2)=\beta_r(n)$.  This holds in particular when
-$\Pi(Z_0)\le r-1$.  If $r\ge2$ and the top-row optimum is $[1,n-1]$, again
-$V_r(n+1,2)=\beta_r(n)$.
-\end{corollary}
-
-\begin{proof}
-Write $Z_0=[1,\ell]\cup Y$ as in Corollary~\ref{cor:secondrow}, and $p=\ell+1$.
-The integers in $[p+1,x]$ are the elements of $Y$ and the holes other than
-$p$.  So $\Pi_Y\,\Pi(Z_0)/(1+1/p)=\prod_{z=p+1}^x(1+1/z)=(x+1)/(p+1)$, that is,
-$r\Pi_Y=r(x+1)/(p\,\Pi(Z_0))$.  By the remark after
-Corollary~\ref{cor:secondrow}, $1+\rho=\sum_ss\,w(s)/(p\,\Phi_r(Z_0))$ with $w$
-as in Lemma~\ref{lem:tailmean}.  So $1+\rho\le r\Pi_Y$ is the inequality
-$\Pi(Z_0)\sum_ssw(s)\le r(x+1)\Phi_r(Z_0)$, and the lemma gives it.
-Corollary~\ref{cor:secondrow} concludes.  If $\Pi(Z_0)\le r-1$, then
-$(r-1)(x+1+M)\le r(x+1)$, since $(r-1)M\le n\le x+1$.  For $Z_0=[1,n-1]$ we
-have $Y=\varnothing$, $\Pi_Y=1$ and $p=n$, and the lemma gives
-$1+\rho\le(n+n/(r-1))/n=r/(r-1)\le r$.
-\end{proof}
-
-At the certified optima of Corollary~\ref{cor:secondrow} the condition holds
-for every $n\le42$ at $r=3$, where $\Pi(Z_0)\le r-1$ fails for
-$n\in[25,27]\cup[31,42]$ (the remark after Corollary~\ref{cor:bigrootfinite}).
-It fails at every certified optimum at $r=2$, $\frac94$ and $\frac52$.
-
-\begin{corollary}[Ranges for all roots above a threshold]\label{cor:rootfourfinite}
-\begin{enumerate}
-\item[(a)] $V_r(L,L-n+1)=\beta_r(n)$ for every $L\ge n$ if $r\ge\frac{18}5$
-and $n\le300$, or if $r\ge\frac72$ and $n\le27$.
-\item[(b)] $V_r(n+1,2)=\beta_r(n)$ if $r\ge\frac{10}3$ and $n\le300$, or if
-$r\ge\frac{13}4$, $n\le300$ and $n\notin\{11,12\}$.
-\end{enumerate}
-\end{corollary}
-
-\begin{proof}
-For $n\le2$ this is Corollary~\ref{cor:tworowsr}, and for $n=3$ it is
-Corollary~\ref{cor:rowstopranges}.  In (b) with $r\ge\frac{13}4$ and
-$4\le n\le10$ it is Corollary~\ref{cor:rowspiranges}.  In the remaining cases
-let $r_0\in\{\frac{18}5,\frac72,\frac{10}3,\frac{13}4\}$ be the threshold, and
-let $Z_0$ be a top-row optimum with a hole at a root $r\ge r_0$.
-Let $p$ be its first hole and $x=\max Z_0$.  Let $J$ be the largest of
-$r_0^n/(8n)$ and the values $((\rho r_0)^n-1)(1-\rho)/\rho$ of
-Lemma~\ref{lem:jensentop} for $\rho\in\{1-k/400\}$ with $\rho r_0>1$.  For a
-fixed $\rho$, $r^p/(((\rho r)^n-1)(1-\rho)/\rho)$ decreases in $r$.  So
-Lemma~\ref{lem:firsthole} and Step~3 of the proof of
-Theorem~\ref{thm:rootfour} give
-\[
-  \binom np^{-1}\le|r_{Z_0}(p)|\le\min\Bigl\{\frac{r_0^p}J,\
-  \frac{2r_0^pT_{r_0}(n,x)}{p(r_0-1)}\Bigr\}.
-\]
-Put $Q$ equal to $\binom xp$ times this minimum, so $Q\ge Q(Z_0)$.  For every
-pair $(p,x)$ allowed by these inequalities we checked, in exact rational
-arithmetic, that the count bound, Lemma~\ref{lem:holeblock}(a) or
-Lemma~\ref{lem:holeblock}(b) bounds $\Pi(Z_0)$ by a target.  The target is
-$r_0-1$ in (a).  In (b) it is $r_0(x+1)/(x+1+M)$, with $M$ taken at $r_0$ in
-Lemma~\ref{lem:tailmean}.  In (b) we used the least $y$ allowed by the target.
-The sums $T_{r_0}(n,x)$ were bounded above as in the proof of
-Theorem~\ref{thm:bigroot}, and $x$ ran until the right bound fell below
-$\binom np^{-1}$; it decreases in $x$.  All bounds only get better as the root
-grows, and $M$ decreases in the root.  So the check at $r_0$ covers every
-$r\ge r_0$.  Theorem~\ref{thm:rowspi}, resp.\ Corollary~\ref{cor:secondtail},
-concludes.
-\end{proof}
-
-The check covers between $6.7$ and $8.5$ million pairs at each threshold, and
-part (b) of Lemma~\ref{lem:holeblock} is needed at $11$ to $17\%$ of them.  Without it, (a)
-fails from $n=15$ on already at $r_0=\frac{15}4$.  At $r_0=\frac72$ the check
-for (a) fails for every $n$ with $28\le n\le40$.  At $r_0=\frac{13}4$ the
-check for (b) fails at $n=11,12$, and at $r_0=3$ it fails for every $n$ with
-$4\le n\le80$.
-
-Theorem~\ref{thm:rootbelowfour} extends the ranges at $\frac{10}3$ and $\frac{13}4$
-to all $n$, and gives all rows for every $n$ at $r\ge\frac{25}7$.  In floating
-point, at the level of exponential rates as $n\to\infty$, the largest hole
-product allowed by (i), (iii) and Lemma~\ref{lem:holeblock}(b) stays below
-$r-1$ exactly for $r$ above about $3.55$.  With part (a) instead of (b) the
-limit is about $3.94$, so part (a) alone cannot go much below $4$.
-The condition of Corollary~\ref{cor:secondtail}, with part (b), holds for large
-$n$ exactly for $r$ above about $3.2$.  Theorem~\ref{thm:rootbelowfour}
-uses a two-parameter version of Steps~4 and~5.  The worst largest zero is
-no longer $x_0$: near $r=3.55$ it is about $2.5n$, with $p$ about $0.75n$.  Two
-natural sharpenings do not help.  Counting the holes in $T_r(n,x)$ exactly,
-instead of putting them at the top, lowers the limiting hole product at
-$r=\frac72$ only from $2.575$ to $2.559$.  In tests at finite $n$, the terms of
-$\Phi_r(Z_0)$ at $s>x$ and at the largest hole added nothing either.  The worst
-configurations have a long block of holes and a largest zero near $2.5n$, far
-from the certified optima (at $r=4$, $n=50$ the optimum has
-$\max Z_0=76$).  Excluding them needs the terms of $\Phi_r(Z_0)$ at the inner
-holes, and those are not linear in the hole set.
-
-\subsection{All rows at roots at least \texorpdfstring{$\frac{25}7$}{25/7}}\label{sec:rootbelowfour}
-
-Corollary~\ref{cor:rootfourfinite} gives the rows below $4$ only for
-$n\le300$.  This subsection removes the bound on $n$
-(Theorem~\ref{thm:rootbelowfour}).  For large $n$ we replace Steps~4 and~5 of
-the proof of Theorem~\ref{thm:rootfour} by an inequality between exponential
-rates in two variables, $\theta=p/n$ and $\xi=x/n$.  It is checked on a box by
-a finite computation in interval arithmetic.  The count bound, part (b) of
-Lemma~\ref{lem:holeblock} and the two upper bounds for $|r_{Z_0}(p)|$ from the
-proof of Corollary~\ref{cor:rootfourfinite} are all we use.
-
-As before, $h(t)=-t\log t-(1-t)\log(1-t)$ on $[0,1]$.  For a root $r_0>1$
-put $L=\log r_0$ and, for $\xi>1$, $u>t>0$ and $\kappa\ge0$,
-\[
-  \tau(\xi)=\xi h(1/\xi)-\xi L,\qquad
-  F(u,t)=u\log u-(u-t)\log(u-t),\qquad
-  B(\eta,\kappa,t)=F(\eta+\kappa,t)-F(\eta,t).
-\]
-The derivatives are
-$\tau'(\xi)=\log(\xi/(\xi-1))-L$, $\partial_\kappa B=\log((\eta+\kappa)/(\eta+\kappa-t))$,
-$\partial_\eta B=\log((\eta+\kappa)/(\eta+\kappa-t))-\log(\eta/(\eta-t))$ and
-$\partial_tB=\log((\eta+\kappa-t)/(\eta-t))$ for $\eta>t$.  So $\tau$
-decreases for $\xi>r_0/(r_0-1)$, and $B$ decreases in $\eta$ and increases in
-$\kappa$ and in $t$.
-
-\begin{theorem}[All rows at roots at least $\frac{25}7$]\label{thm:rootbelowfour}
-\begin{enumerate}
-\item[(a)] Let $r\ge\frac{25}7$ and $n\ge1$.  Then $V_r(L,L-n+1)=\beta_r(n)$
-for every $L\ge n$.  If $n\ge4$, every top-row optimum $Z_0$ for $(r,n)$
-satisfies $\Pi(Z_0)\le\frac{18}7$.
-\item[(b)] Let $n\ge1$, and let $r\ge\frac{10}3$, or $r\ge\frac{13}4$ and
-$n\notin\{11,12\}$.  Then $V_r(n+1,2)=\beta_r(n)$.
-\end{enumerate}
-\end{theorem}
-
-\begin{proof}
-\emph{Small $n$.}  In (a), for $n\le2$ this is Corollary~\ref{cor:tworowsr},
-and for $n=3$ it is Corollary~\ref{cor:rowstopranges}.  For $4\le n\le369$ we
-ran the exact check of the proof of Corollary~\ref{cor:rootfourfinite} at
-$r_0=\frac{25}7$ with the target $\frac{18}7$.  It passed for all of the
-$12.8$ million pairs $(p,x)$.  So every top-row optimum with a hole has
-$\Pi(Z_0)\le\frac{18}7\le r-1$, and Theorem~\ref{thm:rowspi} concludes as in
-the proof of Theorem~\ref{thm:rootfour}.  In (b), for $n\le300$ this is
-Corollary~\ref{cor:rootfourfinite}.
-
-\emph{Large $n$.}  Let $N_0=370$ in (a) and $N_0=301$ in (b), and let
-$n\ge N_0$.  Let $r_0$ be $\frac{25}7$ in (a) and $\frac{10}3$ or $\frac{13}4$
-in (b), and let $r\ge r_0$.  Let $Z_0$ be a top-row optimum for $(r,n)$.  If
-$Z_0$ has no hole, then $\Pi(Z_0)=1$, and Corollary~\ref{cor:secondtail}
-gives (b).  So let $Z_0$ have a hole, and let $p$, $x$ and $K=x-n$ be as in
-Section~\ref{sec:rootfour}.  Put $\theta=p/n$, $\xi=x/n$, $d=1/n$ and
-$e=\log(8n)/n$.  Then $d\le1/N_0$ and $e\le e_1:=\log(8N_0)/N_0$.
-
-\emph{Step 1: the target.}  In (a) put $g=r_0-1$.  In (b) let $M_0$ be the
-number $M$ of Lemma~\ref{lem:tailmean} for $Z_0$ at the root $r_0$, and put
-$g=r_0(x+1)/(x+1+M_0)$.  We show $\Pi(Z_0)\le g$.  This is enough.  In (a),
-$g\le r-1$, and Theorem~\ref{thm:rowspi} concludes.  In (b), the number $M$
-at $r$ is at most $M_0$, because $n/(r-1)$ and $q=(x+1)/(r(x-p+2))$ decrease
-in $r$, and $q/(1-q)$ increases in $q$.  So $\Pi(Z_0)(x+1+M)\le r(x+1)$, and
-Corollary~\ref{cor:secondtail} concludes.  In both cases $g\ge r_0-1$, since
-$M_0\le n/(r_0-1)\le(x+1)/(r_0-1)$.
-
-\emph{Step 2: three bounds at $r_0$.}  Put $u=|r_{Z_0}(p)|$.  By
-Lemma~\ref{lem:firsthole}, $u\ge\binom np^{-1}\ge e^{-nh(\theta)}$.  As in (i)
-of the proof of Theorem~\ref{thm:bigroot}, Lemmas~\ref{lem:firsthole}
-and~\ref{lem:jensentop} give $u\le r^p/\beta_r(n)\le8nr^{p-n}\le8nr_0^{p-n}$.
-By Step~3 of the proof of Theorem~\ref{thm:rootfour},
-$u\le2r_0^pT_{r_0}(n,x)/(p(r_0-1))$.
-
-\emph{Step 3: the count bound.}  If $x-n+1\le(g-1)p$, then
-Lemma~\ref{lem:firsthole} gives $\Pi(Z_0)\le1+(x-n+1)/p\le g$.  So let
-$x-n+1>(g-1)p\ge(r_0-2)p$.  In the variables, $\xi-1+d>(g-1)\theta$.
-
-\emph{Step 4: a box.}  The first two bounds of Step~2 give
-$(1-\theta)L-h(\theta)\le e$.  The left side has derivative
-$-L-\log((1-\theta)/\theta)$, which is negative for
-$\theta<\theta^*:=r_0/(1+r_0)$.  Let $\theta_0$ be the number in the table
-below.  It is less than $\theta^*$, and $(1-\theta_0)L-h(\theta_0)>e_1$.  So
-$\theta>\theta_0$.  By Step~3, $\xi>\xi_0:=1+(r_0-2)\theta_0-1/N_0$.
-
-Next we bound $T_{r_0}(n,x)$.  With $t_s=s\binom{s-1}{n-2}r_0^{-s}$ and
-$q_s=t_{s+1}/t_s=(s+1)/(r_0(s-n+2))$, as in Step~4 of the proof of
-Theorem~\ref{thm:rootfour}, $T_{r_0}(n,x)\le t_x/(1-q_x)$ when $q_x<1$.  Put
-$a=x-n+2$.  Then $a>(r_0-2)\theta_0n$, so
-\[
-  q_x=\frac{a+n-1}{r_0a}<\frac1{r_0}\Bigl(1+\frac1{(r_0-2)\theta_0}\Bigr)
-  =:\bar q<1 .
-\]
-Also $t_x=(n-1)\binom x{n-1}r_0^{-x}$ and
-$\binom x{n-1}=\binom xn\,n/(x-n+1)\le e^{xh(n/x)}n/(x-n+1)$, and
-$xh(n/x)-xL=n\tau(\xi)$.  Since $p>\theta_0n$ and
-$x-n+1>(r_0-2)\theta_0n$,
-\[
-  \frac{2T_{r_0}(n,x)}{p(r_0-1)}
-  \le\frac{2n(n-1)\,e^{n\tau(\xi)}}{p(r_0-1)(x-n+1)(1-q_x)}
-  <\frac{2e^{n\tau(\xi)}}{c},\qquad
-  c=\theta_0^2(r_0-1)(r_0-2)(1-\bar q).
-\]
-The table gives $4cN_0\ge1$, so $2/c\le8n$.  So the third bound of Step~2
-becomes $u\le e^{n(\theta L+\tau(\xi)+e)}$.  With $u\ge e^{-nh(\theta)}$,
-\[
-  -h(\theta)-\theta L\le\tau(\xi)+e_1 .
-\]
-The left side is convex in $\theta$ with least value $-\log(1+r_0)$ at
-$\theta^*$.  Let $\xi_1$ be the number in the table.  It exceeds $\xi_0$, and
-$\xi_0>r_0/(r_0-1)$, and $\tau(\xi_1)<-\log(1+r_0)-e_1$.  As $\tau$ decreases
-for $\xi>r_0/(r_0-1)$, we get $\xi<\xi_1$.  So
-$(\theta,\xi)$ lies in the box $[\theta_0,1]\times[\xi_0,\xi_1]$.
-\[
-\begin{array}{ccccccc}
-  r_0&N_0&\theta_0&\xi_0&\xi_1&\bar q&4cN_0\\\hline
-  \frac{25}7&370&\frac{11}{25}&\frac{21869}{12950}&\frac{64}{25}&\frac{2072}{3025}&364.7\ldots\\[2pt]
-  \frac{10}3&301&\frac{41}{100}&\frac{34841}{22575}&\frac{273}{100}&\frac{174}{205}&95.2\ldots\\[2pt]
-  \frac{13}4&301&\frac25&\frac{901}{602}&\frac{14}5&\frac{12}{13}&41.6\ldots
-\end{array}
-\]
-
-\emph{Step 5: the block bound.}  By Step~2 and $\binom xp\le e^{xh(p/x)}$,
-$Q(Z_0)=\binom xpu$ satisfies
-\[
-  \log Q(Z_0)\le n\bigl(\xi h(\theta/\xi)+\theta L+\min\{-L,\tau(\xi)\}+e\bigr).
-\]
-Let $g'\le g$ be positive with $p(g'-1)>1$, and put
-$y_0=(p+1)K/(p(g'-1)-1)$.  The inequality $(p+1)(y+K)\le g'py$ holds exactly
-for $y\ge y_0$.  If $y_0\le p+1$, then
-$\Pi(Z_0)\le(p+1+K)/p\le g'\le g$ by the count bound.  Otherwise let
-$y=\lceil y_0\rceil\ge p+2$.  If
-$\binom{y+K-1}p\ge Q(Z_0)\binom{y-1}p$, then Lemma~\ref{lem:holeblock}(b) gives
-$\Pi(Z_0)\le(p+1)(y+K)/(py)\le g$.  Now $\log(c/(c-p))$ decreases in $c>p$, so
-\[
-  \log\frac{\binom{y+K-1}p}{\binom{y-1}p}=\sum_{c=y}^{y+K-1}\log\frac c{c-p}
-  \ge\int_y^{y+K}\log\frac c{c-p}\,dc=F(y+K,p)-F(y,p)
-  =nB(\eta,\xi-1,\theta),
-\]
-with $\eta=y/n$.  The last step uses $F(nu,nt)=nF(u,t)+nt\log n$.  Also
-$\eta<y_0/n+d=(\theta+d)(\xi-1)/((g'-1)\theta-d)+d$.  Hence $\Pi(Z_0)\le g$
-as soon as
-\[
-  B(\eta,\xi-1,\theta)\ge\xi h(\theta/\xi)+\theta L+\min\{-L,\tau(\xi)\}+e_1 .
-\]
-
-\emph{Step 6: the certificate.}  We cover the box by rectangles
-$[\theta_a,\theta_b]\times[\xi_a,\xi_b]$ with rational corners.  On each one
-we use a lower bound $g'$ for $g$.  In (a), $g'=r_0-1$.  In (b), $M_0\le nm$
-with $m=\min\{1/(r_0-1),(1-\theta_a+1/N_0)\bar q_c/(1-\bar q_c)\}$, where
-$\bar q_c=\xi_a/(r_0(\xi_a-\theta_b))$; the second term is used only when
-$\bar q_c<1$.  Indeed $(x+1)/(x-p+2)\le x/(x-p)=\xi/(\xi-\theta)$, and
-$(n-p+1)/n\le1-\theta+d$.  Since $(x+1)/(x+1+M_0)\ge\xi/(\xi+m)$, we may take
-$g'=r_0\xi_a/(\xi_a+m)$.  A rectangle is settled by one of three tests.
-\begin{itemize}
-\item[(E1)] The least value of $-h(\theta)-\theta L$ on
-$[\theta_a,\theta_b]$ exceeds $\tau(\xi_a)+e_1$.  Then no point of the
-rectangle satisfies the inequality of Step~4, since
-$\tau(\xi)\le\tau(\xi_a)$.
-\item[(E2)] $\xi_b-1+1/N_0\le(g'-1)\theta_a$.  Then Step~3 applies.
-\item[(E3)] $(g'-1)\theta_a>1/N_0$, and with
-$\bar\eta=\max\{\theta_a+\frac1{N_0},\,(\theta_a+\frac1{N_0})(\xi_b-1)/((g'-1)\theta_a-\frac1{N_0})+\frac1{N_0}\}$,
-\[
-  B(\bar\eta,\xi_a-1,\theta_a)\ge\xi_bH+\theta_bL+\min\{-L,\tau(\xi_a)\}+e_1,
-\]
-where $H$ is the largest value of $h$ on $[\theta_a/\xi_b,\theta_b/\xi_b]$.
-The bound for $\eta$ in Step~5 increases in $\xi$ and in $d$, and decreases in
-$\theta$, so $\eta\le\bar\eta$.  By the monotonicity of $B$, the left side is
-at most $B(\eta,\xi-1,\theta)$.  The function $\xi h(\theta/\xi)$ increases in
-$\xi$, so the right side is at least the right side of Step~5.
-\end{itemize}
-We started from a $48\times48$ grid and quartered every rectangle that no
-test settled.  All quantities were evaluated in interval arithmetic with
-outward rounding at $100$ bits.  Every rectangle was settled.
-\[
-\begin{array}{cccccc}
-  r_0&\text{(E1)}&\text{(E2)}&\text{(E3)}&\text{rounds}&\text{least margin in (E3)}\\\hline
-  \frac{25}7&421&1091&132945&7&1.6\cdot10^{-8}\\
-  \frac{10}3&205&1503&596&0&0.035\\
-  \frac{13}4&198&1376&1438&3&2.6\cdot10^{-5}
-\end{array}
-\]
-Here ``rounds'' is the largest number of quarterings of one grid rectangle.
-So $\Pi(Z_0)\le g$ for every $n\ge N_0$, and Step~1 concludes.  In (a),
-$g=\frac{18}7$.
-\end{proof}
-
-By Corollary~\ref{cor:prefixmono}(a), part (a) proves the conjecture stated
-after Corollary~\ref{cor:belowtwo} for every $r\ge\frac{25}7$.  At
-$r_0=\frac{25}7$ the certificate did not close for $N_0=340$ within eight
-rounds.  At $r_0=\frac{18}5$ it closes for $N_0=301$, so there
-Corollary~\ref{cor:rootfourfinite} suffices for small $n$.  The limit of the method is near $3.55$ for
-all rows and near $3.2$ for the second row (the remarks after
-Corollary~\ref{cor:rootfourfinite}).  At $r_0=\frac{16}5$ the certificate for
-the second row did not close even for $N_0=2000$ within six rounds.  Closer to these limits the box
-certificate needs a larger $N_0$, and the exact check must then reach $N_0-1$.
-Section~\ref{sec:allrowstwo} proves all rows at every $r\ge2$ by another
-argument.
 
 \subsection{All rows at every root at least \texorpdfstring{$2$}{2}}\label{sec:allrowstwo}
 
@@ -8815,6 +8097,801 @@ root sets the bound $\Lambda(F)\ge cK^2\log R$ is open.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
+
+\appendix
+
+\section{Hole products of top-row optima}\label{sec:holeproducts}
+
+Before Theorem~\ref{thm:allrowstwo}, rows equal to the top row were proved
+through Theorem~\ref{thm:rowspi}: it suffices that some top-row optimum $Z_0$
+has hole product $\Pi(Z_0)\le r-1$.  This appendix proves that bound for every
+$n$ at $r\ge\frac92$, $r\ge4$ and $r\ge\frac{25}7$, and the second-row
+criterion of Corollary~\ref{cor:secondtail} below $4$.  Theorem~\ref{thm:allrowstwo}
+supersedes all of these statements about rows.  We keep the appendix for its
+information about top-row optima: the balance of the largest zero
+(Lemma~\ref{lem:topzero}), the first hole (Lemma~\ref{lem:firsthole}), the
+Jensen bound $\beta_r(n)\ge r^n/(8n)$ (Lemma~\ref{lem:jensentop}), block and
+tail bounds on the hole product (Lemmas~\ref{lem:holeblock}
+and~\ref{lem:tailmean}), and the explicit bounds on $\Pi(Z_0)$, such as
+$\Pi(Z_0)\le\frac{18}7$ at $r\ge\frac{25}7$ (Theorem~\ref{thm:rootbelowfour}).
+
+\subsection{The hole product at roots at least \texorpdfstring{$\frac92$}{9/2}}\label{sec:bigroot}
+
+Theorem~\ref{thm:rowspi} shows that rows equal the top row as soon as some
+top-row optimum has hole product at most $r-1$.  So far this was checked one
+$n$ at a time (Corollary~\ref{cor:rowspiranges}).  This subsection proves it
+for every $n$ when $r\ge\frac92$ (Theorem~\ref{thm:bigroot}).  So the
+conjecture stated after Corollary~\ref{cor:belowtwo} holds at every root
+$r\ge\frac92$.
+
+Three crude facts about a top-row optimum suffice.
+\begin{itemize}
+\item Its largest zero balances the weight below it against the weight above
+it (Lemma~\ref{lem:topzero}).  This bounds the largest zero.
+\item Its first hole carries weight at most $1/\beta_r(n)$
+(Lemma~\ref{lem:firsthole}).
+\item Jensen's formula gives $\beta_r(n)\ge r^n/(8n)$
+(Lemma~\ref{lem:jensentop}).  With the previous item this bounds the initial
+run from below.
+\end{itemize}
+For large $n$ they give an initial run longer than $0.52n$ and a largest zero
+below $2.2n$, so the hole product is below $3.32$.  For $3\le r<\frac92$ the
+same facts give finite ranges (Corollary~\ref{cor:bigrootfinite}).
+
+Throughout, a \emph{top-row optimum} for $(r,n)$ is a set $Z_0$ of $n-1$
+positive integers with $\Phi_r(Z_0)=1/\beta_r(n)$.  For $n\ge2$ and $x\ge1$
+put
+\[
+  T_r(n,x)=\sum_{s\ge x}s\binom{s-1}{n-2}r^{-s} .
+\]
+
+\begin{lemma}[The largest zero]\label{lem:topzero}
+Let $r>1$ and $n\ge2$.
+\begin{enumerate}
+\item[(a)] A top-row optimum for $(r,n)$ exists.
+\item[(b)] Let $Z_0$ be a top-row optimum with a hole, $x=\max Z_0$,
+$W=Z_0\setminus\{x\}$, and let $\ell$ be the largest integer with
+$[1,\ell]\subseteq Z_0$.  Then
+\[
+  \sum_{s<x}s\,|r_W(s)|\,r^{-s}\ \le\ \sum_{s\ge x}s\,|r_W(s)|\,r^{-s}
+  \qquad\text{and}\qquad
+  \frac{\ell+1}{\beta_r(n-1)}\ \le\ 2\,T_r(n,x) .
+\]
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Let $\mathcal A$ be the set of real $p$ with $\deg p\le n-1$ and $p(0)=1$.
+For $D\in\{n+1,n+2,\ldots\}\cup\{\infty\}$ put
+$f_D(p)=\sum_{s=1}^D|p(s)|r^{-s}$, so $f_\infty=\Phi_r$.
+
+\emph{Step 1.}  Let $Z$ be a set of $n-1$ positive integers with
+$x=\max Z\le D$ such that $r_Z$ minimizes $f_D$ on $\mathcal A$.  Put
+$W=Z\setminus\{x\}$ and $w(s)=|r_W(s)|r^{-s}$.  For $u\ge0$ the polynomial
+$r_W(s)(1-us)$ lies in $\mathcal A$, so
+$F(u)=\sum_{s\le D}w(s)|1-us|$ is at least $F(1/x)=f_D(r_Z)$.  The function
+$F$ is convex.  Its right derivative at $1/x$ is
+$\sum_{x\le s\le D}sw(s)-\sum_{s<x}sw(s)$.  For $D=\infty$ the difference
+quotients are dominated by $sw(s)$, and $\sum_ssw(s)<\infty$.  So
+\[
+  \sum_{s<x}sw(s)\le\sum_{x\le s\le D}sw(s).
+\]
+For $s\ge x$ every factor $1-s/z$ of $r_W(s)$ is negative.  If
+$z_1<\cdots<z_{n-2}$ are the elements of $W$, then $z_i\ge i$, so
+$|r_W(s)|=\prod_i(s-z_i)/z_i\le\prod_i(s-i)/i=\binom{s-1}{n-2}$.  Let $m$ be
+the least positive integer outside $W$.  Then $w$ vanishes on $[1,m-1]$, and
+\[
+  f_D(r_W)=\sum_{s\le D}w(s)\le\frac1m\sum_{s\le D}sw(s)
+  \le\frac2m\sum_{x\le s\le D}sw(s)\le\frac2m\,T_r(n,x).
+\]
+
+\emph{Step 2: (a).}  By the proof of Lemma~\ref{lem:intzeros} (with
+$\omega(s)=r^{-s}$ and $i=1$), for each finite $D\ge n+1$ some set $Z_D$ of
+$n-1$ integers in $[1,D]$ has $r_{Z_D}$ minimizing $f_D$ on $\mathcal A$,
+and $\min_{\mathcal A}f_D$ increases to $\mu_r(\varnothing,n)$.  Let $c$ be the
+minimum of $f_{n+1}$ over the real $q$ with $\deg q\le n-2$ and $q(0)=1$.
+It is attained and positive, because such a $q$ cannot vanish at the $n+1$
+points of $[1,n+1]$.  Step 1 with $m\ge1$ gives
+$c\le f_{n+1}(r_{W_D})\le f_D(r_{W_D})\le2T_r(n,\max Z_D)$.  Since
+$T_r(n,x)\to0$ as $x\to\infty$, all the sets $Z_D$ lie in one interval
+$[1,X]$.  So one set $Z_0$ equals $Z_D$ for infinitely many $D$.  For these
+$D$, $f_D(r_{Z_0})=\min_{\mathcal A}f_D$.  Letting $D\to\infty$ gives
+$\Phi_r(Z_0)=\mu_r(\varnothing,n)=1/\beta_r(n)$.
+
+\emph{Step 3: (b).}  Apply Step 1 with $D=\infty$ and $Z=Z_0$.  Since $Z_0$
+has a hole, $x\ge\ell+2$, so $[1,\ell]\subseteq W$ and $m=\ell+1$.  This gives
+the first inequality and $\Phi_r(W)\le2T_r(n,x)/(\ell+1)$.  Finally $r_W$ has
+degree $n-2$ and value $1$ at $0$, so
+$\Phi_r(W)\ge\mu_r(\varnothing,n-1)=1/\beta_r(n-1)$.
+\end{proof}
+
+So the largest zero of a top-row optimum sits at a weighted median: at least
+half of the weight $s|r_W(s)|r^{-s}$ lies at or above it.  Above the largest
+zero this weight is at most $s\binom{s-1}{n-2}r^{-s}$, which is tiny far out.
+So the largest zero cannot be far out.
+
+\begin{lemma}[The first hole]\label{lem:firsthole}
+Let $r>1$, and let $Z$ be a set of $n-1$ positive integers with a hole.  Put
+$x=\max Z$, let $C=[1,x]\setminus Z$ be its set of holes, and let
+$\ell+1=\min C$.  Then
+\[
+  r^{\ell+1}\,\Phi_r(Z)\ \ge\ |r_Z(\ell+1)|
+  =\binom x{\ell+1}^{-1}\prod_{c\in C,\ c>\ell+1}\frac c{c-\ell-1}
+  \ \ge\ \binom n{\ell+1}^{-1},
+\]
+and $\Pi(Z)\le(x-n+\ell+2)/(\ell+1)$.
+\end{lemma}
+
+\begin{proof}
+The first inequality is the term $s=\ell+1$ of $\Phi_r(Z)$.  Write
+$Z=[1,\ell]\cup Y$ with $Y=[\ell+2,x]\setminus C$.  Then
+$|r_{[1,\ell]}(\ell+1)|=1$ and $|r_Y(\ell+1)|=\prod_{y\in Y}(y-\ell-1)/y$.  The
+product of $(y-\ell-1)/y$ over all $y\in[\ell+2,x]$ is
+$(x-\ell-1)!\,(\ell+1)!/x!=\binom x{\ell+1}^{-1}$.  Dividing by the factors at
+the holes $c>\ell+1$ gives the identity.  For the lower bound, list $Y$ as
+$y_1<\cdots<y_{n-1-\ell}$.  Then $y_i\ge\ell+1+i$, and $(y-\ell-1)/y$
+increases with $y$.  So the product is at least
+$\prod_ii/(\ell+1+i)=\binom n{\ell+1}^{-1}$.
+
+There are $|C|=x-n+1$ holes, all at least $\ell+1$.  The product of
+$1+1/c$ over them is largest when they are $\ell+1,\ldots,\ell+|C|$, where it
+equals $(\ell+|C|+1)/(\ell+1)$.
+\end{proof}
+
+\begin{lemma}[Jensen's bound for the top row]\label{lem:jensentop}
+Let $r>1$, $n\ge1$ and $1/r<\rho<1$.  Then
+$\beta_r(n)\ge((\rho r)^n-1)(1-\rho)/\rho$.  If $r\ge3$ and $n\ge2$, then
+$\beta_r(n)\ge r^n/(8n)$.
+\end{lemma}
+
+\begin{proof}
+Let $F$ be a monic multiple of $(x-r)^n$ of degree $D$, and let
+$F^*(t)=t^DF(1/t)=1+\sum_{j\ge1}f_jt^j$, where $f_j$ is the coefficient at
+backward distance $j$.  As in the proof of Proposition~\ref{prop:quadratic},
+$F^*$ has a zero of order at least $n$ at $1/r$, and Jensen's formula on
+$|t|\le\rho$ gives
+\[
+  (\rho r)^n\le\max_{|t|=\rho}|F^*(t)|\le1+b_1(F)\frac\rho{1-\rho}.
+\]
+Take the infimum over $F$; by Proposition~\ref{prop:rowvalue}(c) it is
+$\beta_r(n)$.  For the second claim take $\rho=1-1/n$, which exceeds $1/r$.
+Since $(1-1/n)^n\ge\frac14$,
+$\beta_r(n)\ge(r^n/4-1)/(n-1)\ge(r^n/4-1)/n\ge r^n/(8n)$, the last step because
+$r^n\ge8$.
+\end{proof}
+
+The polynomial $(x-r)^n$ itself gives the trivial upper bound
+$\beta_r(n)\le\max_j\binom nj r^j\le(r+1)^n$.
+
+\begin{theorem}[All rows at large roots]\label{thm:bigroot}
+Let $r\ge\frac92$ and $n\ge1$.  Every top-row optimum $Z_0$ for $(r,n)$
+satisfies $\Pi(Z_0)\le r-1$.  Consequently $V_r(L,L-n+1)=\beta_r(n)$ for
+every $L\ge n$.
+\end{theorem}
+
+\begin{proof}
+For $n=1$, $Z_0=\varnothing$ and $\Pi(Z_0)=1$.  Let $n\ge2$.  If $Z_0$ has no
+hole, $\Pi(Z_0)=1$.  Otherwise let $x=\max Z_0$ and let $\ell$ be as in
+Lemma~\ref{lem:firsthole}, so $0\le\ell\le n-2$ and $x\ge n$.  Put
+$r_0=\frac92$.  We collect three inequalities.
+\begin{itemize}
+\item[(i)] $8n\binom n{\ell+1}\ge r_0^{\,n-\ell-1}$.  Indeed, by
+Lemmas~\ref{lem:jensentop} and~\ref{lem:firsthole},
+$r^n/(8n)\le\beta_r(n)=1/\Phi_r(Z_0)\le r^{\ell+1}\binom n{\ell+1}$, and
+$r\ge r_0$.
+\item[(ii)] $1\le2(r_0+1)^{n-1}T_{r_0}(n,x)$.  Indeed,
+Lemma~\ref{lem:topzero}(b) and $\beta_r(n-1)\le(r+1)^{n-1}$ give
+$1\le2(r+1)^{n-1}T_r(n,x)$.  Every term of $T_r(n,x)$ has $s\ge x>n-1$, and
+$r\mapsto(r+1)^{n-1}r^{-s}$ decreases, since its logarithmic derivative is
+$(n-1)/(r+1)-s/r<0$.
+\item[(iii)] $(\ell+1)(r_0-1)\le2r_0^{\ell+1}\binom n{\ell+1}T_{r_0}(n,x)$.
+Indeed, Corollary~\ref{cor:prefixmono}(b) and Lemma~\ref{lem:firsthole} give
+$\beta_r(n-1)\le\beta_r(n)/(r-1)\le r^{\ell+1}\binom n{\ell+1}/(r-1)$.  With
+Lemma~\ref{lem:topzero}(b) this is (iii) at $r$.  Divided by $r-1$, its right
+side is a sum of terms $s\binom{s-1}{n-2}\binom n{\ell+1}r^{\ell+1-s}/(r-1)$
+with $s>\ell+1$, and each decreases in $r$.
+\end{itemize}
+By Lemma~\ref{lem:firsthole},
+$\Pi(Z_0)\le(x-n+\ell+2)/(\ell+1)=1+(x-n+1)/(\ell+1)$.  We show that this is
+at most $r_0-1=\frac72$.
+
+\emph{Large $n$.}  Let $n\ge301$, $m=n-\ell-1$ and $\mu=m/n$.  With
+$h(t)=-t\log t-(1-t)\log(1-t)$ we have $\binom nm\le e^{nh(\mu)}$, so (i) gives
+$n\psi(\mu)\le\log(8n)$ for $\psi(\mu)=\mu\log r_0-h(\mu)$.  The function
+$\psi$ is convex with $\psi'(\mu)=\log(r_0\mu/(1-\mu))$, which is positive for
+$\mu>\frac2{11}$.  If $\mu\ge0.48$, then $\psi(\mu)\ge\psi(0.48)>0.0296$, and
+$0.0296\,n>\log(8n)$ for $n\ge301$.  So $\mu<0.48$, that is, $\ell+1>0.52n$.
+
+Next suppose $x\ge2.2n$, and put $t_s=s\binom{s-1}{n-2}r_0^{-s}$.  For
+$s\ge x$,
+\[
+  \frac{t_{s+1}}{t_s}=\frac{s+1}{r_0(s-n+2)}\le\frac{2.2n+1}{r_0(1.2n+2)}
+  <\frac{11}{6r_0}<0.41 .
+\]
+So $T_{r_0}(n,x)\le t_{x_0}/0.59$ with $x_0=\lceil2.2n\rceil$.  Here
+$t_{x_0}=(n-1)\binom{x_0}{n-1}r_0^{-x_0}$, and
+$\binom{x_0}{n-1}\le e^{x_0h((n-1)/x_0)}$.  Put $K=n-1$.  The function
+$N\mapsto Nh(K/N)-N\log r_0$ has derivative $\log(N/(N-K))-\log r_0$, which
+is negative for $N\ge2.2n$.  Also $h$ increases on $[0,\frac12]$, and
+$(n-1)/(2.2n)<1/2.2$.  So
+\[
+  2(r_0+1)^{n-1}T_{r_0}(n,x)\le\frac{2(n-1)}{0.59(r_0+1)}\,
+  e^{n(2.2h(1/2.2)+\log(r_0+1)-2.2\log r_0)}<0.62\,(n-1)e^{-0.088n}<1,
+\]
+which contradicts (ii).  So $x<2.2n$, and
+$\Pi(Z_0)<1+(1.2n+1)/(0.52n)<3.32$.
+
+\emph{Small $n$.}  For $2\le n\le300$ we checked, in exact integer
+arithmetic, every $\ell\in[0,n-2]$ satisfying (i) together with the largest
+$x\ge n$ satisfying (iii).  In every case $(x-n+\ell+2)/(\ell+1)\le\frac72$.
+The bound increases with $x$, so all smaller $x$ are covered too.  The sums
+$T_{r_0}(n,x)$ were computed exactly for $s\le8n+40$, and the rest was bounded
+by a geometric series; this can only enlarge the set of admissible $x$.  The
+largest value found is below $2.54$.
+
+So $\Pi(Z_0)\le\frac72\le r-1$ in all cases.  Lemma~\ref{lem:topzero}(a)
+provides a top-row optimum.  Theorem~\ref{thm:rowspi} with this $Z_0$ gives
+$V_r(L,L-n+1)\ge1/\Phi_r(Z_0)=\beta_r(n)$, and
+Proposition~\ref{prop:rowvalue}(c) gives the reverse inequality.
+\end{proof}
+
+By Corollary~\ref{cor:prefixmono}(a), the theorem is the conjecture stated
+after Corollary~\ref{cor:belowtwo}, for every $r\ge\frac92$.  It contains the
+cases $r\ge\frac92$ of Corollaries~\ref{cor:rowstopranges}
+and~\ref{cor:rowspiranges}.  At these roots the conclusions of
+Corollaries~\ref{cor:secondrow} and~\ref{cor:crossreduce} hold for every $n$,
+without their hypotheses.  The proof never looks at the exempted positions.
+It only shows that at these roots every top-row optimum has a long initial
+run and few holes.
+
+The same argument works at $r=4$ for bounded $n$.  In the proof, the root
+enters only through (i), (ii), (iii) and the target $r-1$.  All three
+inequalities become weaker as the root decreases.  So a check at one root
+$r_0\ge3$ covers every $r\ge r_0$.  (Lemma~\ref{lem:jensentop} needs $r\ge3$.)
+
+\begin{corollary}[Finite ranges below $\frac92$]\label{cor:bigrootfinite}
+$V_r(L,L-n+1)=\beta_r(n)$ for every $L\ge n$ in the following cases:
+$r\ge4$ and $n\le1000$; $r\in\{\frac{13}4,\frac72\}$ and $n\le50$; $r=3$
+and $n\in\{28,29,30\}$.
+\end{corollary}
+
+\begin{proof}
+For $r\ge4$, run the small-$n$ part of the proof of
+Theorem~\ref{thm:bigroot} with $r_0=4$ and the target $3$.  We checked in
+exact integer arithmetic that, for $2\le n\le1000$, every pair $(\ell,x)$
+allowed by (i) and (iii) at $r_0=4$ has $(x-n+\ell+2)/(\ell+1)\le3$.  For
+$r\in\{\frac{13}4,\frac72\}$ and $r=3$ we found top-row optima $Z_0$ by the
+continuation search of
+Corollary~\ref{cor:secondrow}, certified them by
+Proposition~\ref{prop:toprowcert}, and computed $\Pi(Z_0)$ exactly.  In all
+these cases $\Pi(Z_0)\le r-1$; the maxima are $2$ at $r=\frac{13}4$ and $1.82$
+at $r=\frac72$.  Theorem~\ref{thm:rowspi} concludes.
+\end{proof}
+
+The method has a limit near $r=4$.  In floating point, the largest value of
+$1+(x-n+1)/(\ell+1)$ allowed by (i) and (iii) at the level of exponential
+rates tends, as $n\to\infty$, to $2.57$ at $r=\frac92$, to exactly $3=r-1$ at
+$r=4$ (attained at $\ell\approx n/2$, $x\approx2n$), and to $3.71$ at
+$r=\frac72$.  So a proof for all $n$ at $r=4$ needs a sharper bound than the count;
+Section~\ref{sec:rootfour} gives one.  At $r_0\in\{3,\frac{13}4,\frac72\}$ the finite check already
+fails for every $n$ with $3\le n\le200$.  Near $r=3$ Theorem~\ref{thm:rowspi}
+itself stops working.
+At $r=3$ the certified optima have $\Pi(Z_0)>2$ for
+$n\in[25,27]\cup[31,42]$, and at $r=\frac52$ they have $\Pi(Z_0)>\frac32$ for
+every $n\le36$.  The true values are far from the bounds: at $r=4$ and $n=50$
+the certified optimum has $\ell=30$, $\max Z_0=76$ and $\Pi(Z_0)=1.65$.
+
+For $2\le r<\frac92$ the second row therefore remains open for large $n$
+(Sections~\ref{sec:rootfour} and~\ref{sec:rootbelowfour} lower $\frac92$ to $4$
+and then to $\frac{10}3$).
+The criterion of Corollary~\ref{cor:secondrow} has a simple form in the
+root.  For $W=[1,\ell]\cup Y$ as there, termwise differentiation gives
+$\partial_r\Phi_r(W)=-r^{-1}\sum_ss|r_W(s)|r^{-s}$, so
+\[
+  \frac{\Phi_r(\mathrm{ins}(W,\ell+1))}{\Phi_r(W)}
+  =-\frac{\partial_r\log\Phi_r(W)}{(\ell+1)\Pi_Y},\qquad
+  \Pi_Y=\prod_{y\in Y}\Bigl(1+\frac1y\Bigr).
+\]
+The sum $\Phi_r(W)=\sum_s|r_W(s)|r^{-s}$ is log-convex in $\log r$, so for a
+fixed set $W$ the ratio, and likewise $\rho$, does not increase with $r$.
+At a top-row optimum $Z_0$ for $(r,n)$, $\beta_{r'}(n)\ge1/\Phi_{r'}(Z_0)$ at
+every root $r'$, with equality at $r'=r$.  Hence the ratio is at most $\bigl((\ell+1)\Pi_Y\bigr)^{-1}$ times the
+lower right Dini derivative of $\log\beta_r(n)$ in $r$.  So the second row
+holds at $r$ whenever $\beta_r(n)$ grows slowly enough in the root there.
+We could not bound this growth for all $n$.
+
+\subsection{The hole product at roots at least \texorpdfstring{$4$}{4}}\label{sec:rootfour}
+
+At $r=4$ the proof of Theorem~\ref{thm:bigroot} stops because of the count
+bound $\Pi(Z_0)\le(x-n+\ell+2)/(\ell+1)$ of Lemma~\ref{lem:firsthole}.  That
+bound puts all holes right above the first one.  Such holes make
+$|r_{Z_0}(\ell+1)|$ large, and the term $s=\ell+1$ of $\Phi_r(Z_0)$ forbids
+this.  This subsection turns the observation into two bounds for the hole
+product (Lemma~\ref{lem:holeblock}).  The first one shows that rows equal the
+top row for every $n$ at every root $r\ge4$ (Theorem~\ref{thm:rootfour}).  A
+bound for the mean of the weight $|r_Z(s)|r^{-s}$ (Lemma~\ref{lem:tailmean})
+gives a sufficient condition for the second row that is weaker than
+$\Pi(Z_0)\le r-1$ (Corollary~\ref{cor:secondtail}).  With the second bound
+this gives finite ranges below $4$ that hold at all roots above a threshold at
+once (Corollary~\ref{cor:rootfourfinite}).  Section~\ref{sec:rootbelowfour} extends
+them to all $n$ for all rows at $r\ge\frac{25}7$ and for the second row at
+$r\ge\frac{10}3$.
+
+Throughout, $Z$ is a set of $n-1$ positive integers with a hole, $x=\max Z$,
+$p=\ell+1$ is the first hole of $Z$, and $K=x-n$.  So $Z$ has $K+1$ holes.  By
+Lemma~\ref{lem:firsthole},
+\[
+  Q(Z):=\binom xp\,|r_Z(p)|=\prod_{c\text{ a hole of }Z,\ c>p}\frac c{c-p}\ \ge1 .
+\]
+
+\begin{lemma}[Holes above the first hole]\label{lem:holeblock}
+Let $Z$, $p$ and $K$ be as above, and put $Q=Q(Z)$.
+\begin{enumerate}
+\item[(a)] $\Pi(Z)^p\le(1+1/p)^p\,Q$.
+\item[(b)] Let $y\ge p+1$ be an integer with $\binom{y+K-1}p\ge Q\binom{y-1}p$.
+Then
+\[
+  \Pi(Z)\le\frac{(p+1)(y+K)}{p\,y} .
+\]
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Let $C'$ be the set of holes of $Z$ other than $p$.  It has $K$ elements, all
+greater than $p$, and $\Pi(Z)=(1+1/p)\prod_{c\in C'}(1+1/c)$.  For real $c>p$
+put $\pi(c)=\log(1+1/c)$ and $\alpha(c)=\log(c/(c-p))$.  Both decrease, and
+$\log Q=\sum_{c\in C'}\alpha(c)$.
+
+(a) Since $-\log(1-u)\ge u$ for $0\le u<1$, we have $p\,\pi(c)\le p/c\le\alpha(c)$.
+Sum over $C'$.
+
+(b) Let $B=[y,y+K-1]$.  The products telescope:
+$\sum_{c\in B}\pi(c)=\log((y+K)/y)$ and
+$\sum_{c\in B}\alpha(c)=\log\bigl(\binom{y+K-1}p/\binom{y-1}p\bigr)$.  So the
+hypothesis says $\sum_{C'}\alpha\le\sum_B\alpha$, and we must show
+$\sum_{C'}\pi\le\sum_B\pi$.  If $K=0$ there is nothing to show.  If $y=p+1$,
+list $C'$ as $c_1<\cdots<c_K$.  Then $c_i\ge p+i$, so
+$\sum_{C'}\pi\le\sum_i\pi(p+i)=\sum_B\pi$.
+
+Now let $y\ge p+2$ and $K\ge1$.  Put
+\[
+  \lambda=\frac{\pi(y-1)-\pi(y+K-1)}{\alpha(y-1)-\alpha(y+K-1)}>0,\qquad
+  g=\pi-\lambda\alpha\quad\text{on }(p,\infty).
+\]
+Then $g(y-1)=g(y+K-1)$, and
+\[
+  g'(c)=\frac{(\lambda p-1)c+p(1+\lambda)}{c(c+1)(c-p)} .
+\]
+The numerator is linear in $c$ and positive at $c=p$.  It cannot stay
+positive, since $g$ takes the same value twice.  So $g$ strictly increases and
+then strictly decreases.  With $v=g(y-1)$, this gives $g>v$ on $(y-1,y+K-1)$
+and $g<v$ outside $[y-1,y+K-1]$.  The elements of $C'\setminus B$ lie outside
+$[y,y+K-1]$, so $g\le v$ there.  The elements of $B\setminus C'$ lie in
+$[y,y+K-1]$, so $g\ge v$ there.  The two sets have the same size.  Hence
+$\sum_{C'}g\le\sum_Bg$, and
+\[
+  \sum_{C'}\pi=\sum_{C'}g+\lambda\sum_{C'}\alpha\le\sum_Bg+\lambda\sum_B\alpha
+  =\sum_B\pi .\qedhere
+\]
+\end{proof}
+
+For $y=p+1$, part (b) is the count bound of Lemma~\ref{lem:firsthole}.  The
+best $y$ is the largest one allowed.  Part (b) says that, among the hole sets
+that cost at most as much in $Q$, a block of consecutive holes has the
+largest hole product.
+
+\begin{theorem}[All rows at roots at least $4$]\label{thm:rootfour}
+Let $r\ge4$ and $n\ge1$.  Every top-row optimum $Z_0$ for $(r,n)$ satisfies
+$\Pi(Z_0)\le r-1$.  Consequently $V_r(L,L-n+1)=\beta_r(n)$ for every $L\ge n$.
+\end{theorem}
+
+\begin{proof}
+If $Z_0$ has no hole, $\Pi(Z_0)=1$.  Every top-row optimum with a hole
+satisfies (i) and (iii) of the proof of Theorem~\ref{thm:bigroot} at $r_0=4$.
+So for $n\le1000$ the claim is the check in the proof of
+Corollary~\ref{cor:bigrootfinite}, which gives $\Pi(Z_0)\le3$.  Let
+$n\ge301$, let $Z_0$ have a hole, and let $x$, $p=\ell+1$ and $K$ be as above.
+Put $\theta=p/n$, and let $h$ be as in the proof of Theorem~\ref{thm:bigroot}.
+
+\emph{Step 1: $\theta>0.48$.}  By (i) and $\binom np\le e^{nh(\theta)}$,
+$n\bigl((1-\theta)\log4-h(\theta)\bigr)\le\log(8n)$.  The left side is convex
+in $\theta$, vanishes at $\theta=\frac12$, and has derivative $-n\log4$ there.
+So $n(\frac12-\theta)\log4\le\log(8n)$, and
+$\theta\ge\frac12-\log(8n)/(n\log4)>0.48$.
+
+\emph{Step 2.}  If $x\le n+2p-1$, Lemma~\ref{lem:firsthole} gives
+$\Pi(Z_0)\le(x-n+1+p)/p\le3$.  So let $x\ge x_0:=n+2p$.
+
+\emph{Step 3.}  By Lemma~\ref{lem:firsthole},
+$\beta_r(n)=1/\Phi_r(Z_0)\le r^p/|r_{Z_0}(p)|$.  With
+Corollary~\ref{cor:prefixmono}(b) this gives
+$\beta_r(n-1)\le r^p/\bigl((r-1)|r_{Z_0}(p)|\bigr)$, and
+Lemma~\ref{lem:topzero}(b) gives
+\[
+  p\,(r-1)\,|r_{Z_0}(p)|\le2r^pT_r(n,x).
+\]
+This is (iii) before $|r_{Z_0}(p)|$ is bounded below.  As in (iii),
+$r^pT_r(n,x)/(r-1)$ decreases in $r$.  With Lemma~\ref{lem:holeblock}(a) and
+$(1+1/p)^p<e$,
+\[
+  \Pi(Z_0)^p<\frac{2e}{3p}\,4^p\,H(x),\qquad H(x)=\binom xp\,T_4(n,x).
+\]
+
+\emph{Step 4: $H(x)\le H(x_0)$.}  Put $t_s=s\binom{s-1}{n-2}4^{-s}$ and
+$q_s=t_{s+1}/t_s=(s+1)/(4(s-n+2))$.  Since $q_s$ decreases in $s$,
+$T_4(n,x+1)=\sum_{s\ge x}q_st_s\le q_xT_4(n,x)$, and
+$T_4(n,x)\le t_x/(1-q_x)$ when $q_x<1$.  Hence
+\[
+  \frac{H(x+1)}{H(x)}\le\frac{(x+1)^2}{4(x+1-p)(x-n+2)} .
+\]
+The right side decreases in $x$.  At $x_0$ it is at most $1$, because
+$4(n+p+1)(2p+2)-(n+2p+1)^2=4p^2+4np+12p+6n+7-n^2>0$ for $p\ge n/4$.
+
+\emph{Step 5: the value at $x_0$.}  Here
+$q:=q_{x_0}=(n+2p+1)/(8(p+1))<(1/0.48+2)/8<0.52$ and
+$t_{x_0}=(n-1)\binom{x_0}{n-1}4^{-x_0}$.  Also
+$\binom{x_0}{n-1}=\binom{x_0}n\,n/(2p+1)<\binom{x_0}n/0.96$ and
+$(n-1)/p<1/0.48$.  Use $\binom Nk\le e^{Nh(k/N)}$ and $x_0=(1+2\theta)n$.
+Then
+\[
+  \log\frac{\Pi(Z_0)^p}{3^p}<2.12+n\varphi(\theta),\qquad
+  \varphi(\theta)=(1+2\theta)\Bigl(h\Bigl(\frac\theta{1+2\theta}\Bigr)
+  +h\Bigl(\frac1{1+2\theta}\Bigr)\Bigr)-(1+\theta)\log4-\theta\log3,
+\]
+where $2.12>1+\log\frac23+2\log\frac1{0.48}+\log\frac1{0.96}$.  The function
+$\varphi$ is concave on $(0,1)$, because $(u,v)\mapsto vh(u/v)$ is concave on
+$0<u<v$.  Its derivative is
+$\varphi'(\theta)=\log\bigl((1+2\theta)^4/(48\theta^3(1+\theta))\bigr)$.  At
+$\theta=\frac56$ we have $\varphi=-0.03665\ldots$ and
+$\varphi'=-0.00705\ldots$, so the tangent there gives $\varphi<-0.0307$ on
+$(0,1)$.  Hence $\log(\Pi(Z_0)^p/3^p)<2.12-0.03n<0$.
+
+So $\Pi(Z_0)\le3\le r-1$ in all cases.  Lemma~\ref{lem:topzero}(a) provides a
+top-row optimum, Theorem~\ref{thm:rowspi} gives
+$V_r(L,L-n+1)\ge\beta_r(n)$, and Proposition~\ref{prop:rowvalue}(c) gives the
+reverse inequality.
+\end{proof}
+
+The theorem contains Theorem~\ref{thm:bigroot} and the case $r\ge4$ of
+Corollary~\ref{cor:bigrootfinite}.  By Corollary~\ref{cor:prefixmono}(a) it
+proves the conjecture stated after Corollary~\ref{cor:belowtwo} for every
+$r\ge4$.  Only Step~2 uses the count bound, and there it is not the limit.
+
+\paragraph{The second row below $4$.}
+Corollary~\ref{cor:secondrow} needs $1+\rho\le r\Pi_Y$.  Both sides can be
+written with $\Pi(Z_0)$ and the mean of the weight $|r_Z(s)|r^{-s}$.  That mean
+is controlled by the zeros near $x$.
+
+\begin{lemma}[The mean of the weight]\label{lem:tailmean}
+Let $r>1$, let $Z$ be a nonempty set of $n-1$ positive integers, $x=\max Z$ and
+$w(s)=|r_Z(s)|r^{-s}$.  Then
+\[
+  \sum_{s\ge1}s\,w(s)\le(x+1+M)\,\Phi_r(Z),\qquad M=\frac n{r-1} .
+\]
+If $Z$ has a hole, $p$ is its first hole and $q=(x+1)/(r(x-p+2))<1$, one may
+take $M=\min\{n/(r-1),\ (n-p+1)q/(1-q)\}$.
+\end{lemma}
+
+\begin{proof}
+Every $s\le x$ is less than $x+1$.  So the claim follows once the weight
+$u(d)=w(x+d)$, $d\ge1$, has mean $\sum_ddu(d)/\sum_du(d)$ at most $1+M$.  For
+$s>x$,
+\[
+  \frac{w(s+1)}{w(s)}=\frac1r\prod_{z\in Z}\Bigl(1+\frac1{s-z}\Bigr).
+\]
+The numbers $s-z$ are $n-1$ distinct integers at least $d=s-x$.  So the product
+is at most $\prod_{j=d}^{d+n-2}(1+1/j)=(d+n-1)/d$.  Let
+$v(d)=\binom{d+n-2}{n-1}r^{1-d}$.  Then $v(d+1)/v(d)=(d+n-1)/(rd)$, which is at
+least $u(d+1)/u(d)$.  So $u/v$ does not increase in $d$.  Under $v$ the
+covariance of $d$ and $u/v$ is therefore not positive, and the mean of $u$ is
+at most the mean of $v$.  With $j=d-1$, the weight $v$ is proportional to
+$\binom{j+n-1}{n-1}r^{-j}$, a negative binomial law with mean $n/(r-1)$.  So
+the mean of $v$ is $1+n/(r-1)$.
+
+For the second value of $M$, divide the product over $[1,x]$, which is
+$s/(s-x)$, by the product over the set $C$ of holes.  The $x-n+1$ holes are
+distinct integers at least $p$, and $1+1/(s-c)$ increases with $c$.  So
+$\prod_{c\in C}(1+1/(s-c))\ge\prod_{j=0}^{x-n}(1+1/(s-p-j))=(s-p+1)/(s-p-x+n)$.
+With $d=s-x$ this gives
+\[
+  \frac{u(d+1)}{u(d)}\le\frac{(x+d)(d+n-p)}{r\,d\,(x+d-p+1)}\le q\,\frac{d+n-p}d,
+\]
+because $(x+d)/(x+d-p+1)$ does not increase in $d$.  Compare with
+$v(d)=\binom{d+n-p-1}{n-p}q^{d-1}$.  Its ratio is $q(d+n-p)/d$, and its mean is
+$1+(n-p+1)q/(1-q)$.
+\end{proof}
+
+In the notation of the remark at the end of Section~\ref{sec:bigroot}, the
+lemma says $-\partial_r\log\Phi_r(Z)\le(x+1+M)/r$.
+
+\begin{corollary}[The second row through the tail]\label{cor:secondtail}
+Let $r>1$ and $n\ge2$, and let $Z_0$ be a top-row optimum for $(r,n)$ with a
+hole.  Let $x=\max Z_0$ and let $M$ be as in Lemma~\ref{lem:tailmean}.  If
+\[
+  \Pi(Z_0)\,(x+1+M)\le r\,(x+1),
+\]
+then $V_r(n+1,2)=\beta_r(n)$.  This holds in particular when
+$\Pi(Z_0)\le r-1$.  If $r\ge2$ and the top-row optimum is $[1,n-1]$, again
+$V_r(n+1,2)=\beta_r(n)$.
+\end{corollary}
+
+\begin{proof}
+Write $Z_0=[1,\ell]\cup Y$ as in Corollary~\ref{cor:secondrow}, and $p=\ell+1$.
+The integers in $[p+1,x]$ are the elements of $Y$ and the holes other than
+$p$.  So $\Pi_Y\,\Pi(Z_0)/(1+1/p)=\prod_{z=p+1}^x(1+1/z)=(x+1)/(p+1)$, that is,
+$r\Pi_Y=r(x+1)/(p\,\Pi(Z_0))$.  By the remark after
+Corollary~\ref{cor:secondrow}, $1+\rho=\sum_ss\,w(s)/(p\,\Phi_r(Z_0))$ with $w$
+as in Lemma~\ref{lem:tailmean}.  So $1+\rho\le r\Pi_Y$ is the inequality
+$\Pi(Z_0)\sum_ssw(s)\le r(x+1)\Phi_r(Z_0)$, and the lemma gives it.
+Corollary~\ref{cor:secondrow} concludes.  If $\Pi(Z_0)\le r-1$, then
+$(r-1)(x+1+M)\le r(x+1)$, since $(r-1)M\le n\le x+1$.  For $Z_0=[1,n-1]$ we
+have $Y=\varnothing$, $\Pi_Y=1$ and $p=n$, and the lemma gives
+$1+\rho\le(n+n/(r-1))/n=r/(r-1)\le r$.
+\end{proof}
+
+At the certified optima of Corollary~\ref{cor:secondrow} the condition holds
+for every $n\le42$ at $r=3$, where $\Pi(Z_0)\le r-1$ fails for
+$n\in[25,27]\cup[31,42]$ (the remark after Corollary~\ref{cor:bigrootfinite}).
+It fails at every certified optimum at $r=2$, $\frac94$ and $\frac52$.
+
+\begin{corollary}[Ranges for all roots above a threshold]\label{cor:rootfourfinite}
+\begin{enumerate}
+\item[(a)] $V_r(L,L-n+1)=\beta_r(n)$ for every $L\ge n$ if $r\ge\frac{18}5$
+and $n\le300$, or if $r\ge\frac72$ and $n\le27$.
+\item[(b)] $V_r(n+1,2)=\beta_r(n)$ if $r\ge\frac{10}3$ and $n\le300$, or if
+$r\ge\frac{13}4$, $n\le300$ and $n\notin\{11,12\}$.
+\end{enumerate}
+\end{corollary}
+
+\begin{proof}
+For $n\le2$ this is Corollary~\ref{cor:tworowsr}, and for $n=3$ it is
+Corollary~\ref{cor:rowstopranges}.  In (b) with $r\ge\frac{13}4$ and
+$4\le n\le10$ it is Corollary~\ref{cor:rowspiranges}.  In the remaining cases
+let $r_0\in\{\frac{18}5,\frac72,\frac{10}3,\frac{13}4\}$ be the threshold, and
+let $Z_0$ be a top-row optimum with a hole at a root $r\ge r_0$.
+Let $p$ be its first hole and $x=\max Z_0$.  Let $J$ be the largest of
+$r_0^n/(8n)$ and the values $((\rho r_0)^n-1)(1-\rho)/\rho$ of
+Lemma~\ref{lem:jensentop} for $\rho\in\{1-k/400\}$ with $\rho r_0>1$.  For a
+fixed $\rho$, $r^p/(((\rho r)^n-1)(1-\rho)/\rho)$ decreases in $r$.  So
+Lemma~\ref{lem:firsthole} and Step~3 of the proof of
+Theorem~\ref{thm:rootfour} give
+\[
+  \binom np^{-1}\le|r_{Z_0}(p)|\le\min\Bigl\{\frac{r_0^p}J,\
+  \frac{2r_0^pT_{r_0}(n,x)}{p(r_0-1)}\Bigr\}.
+\]
+Put $Q$ equal to $\binom xp$ times this minimum, so $Q\ge Q(Z_0)$.  For every
+pair $(p,x)$ allowed by these inequalities we checked, in exact rational
+arithmetic, that the count bound, Lemma~\ref{lem:holeblock}(a) or
+Lemma~\ref{lem:holeblock}(b) bounds $\Pi(Z_0)$ by a target.  The target is
+$r_0-1$ in (a).  In (b) it is $r_0(x+1)/(x+1+M)$, with $M$ taken at $r_0$ in
+Lemma~\ref{lem:tailmean}.  In (b) we used the least $y$ allowed by the target.
+The sums $T_{r_0}(n,x)$ were bounded above as in the proof of
+Theorem~\ref{thm:bigroot}, and $x$ ran until the right bound fell below
+$\binom np^{-1}$; it decreases in $x$.  All bounds only get better as the root
+grows, and $M$ decreases in the root.  So the check at $r_0$ covers every
+$r\ge r_0$.  Theorem~\ref{thm:rowspi}, resp.\ Corollary~\ref{cor:secondtail},
+concludes.
+\end{proof}
+
+The check covers between $6.7$ and $8.5$ million pairs at each threshold, and
+part (b) of Lemma~\ref{lem:holeblock} is needed at $11$ to $17\%$ of them.  Without it, (a)
+fails from $n=15$ on already at $r_0=\frac{15}4$.  At $r_0=\frac72$ the check
+for (a) fails for every $n$ with $28\le n\le40$.  At $r_0=\frac{13}4$ the
+check for (b) fails at $n=11,12$, and at $r_0=3$ it fails for every $n$ with
+$4\le n\le80$.
+
+Theorem~\ref{thm:rootbelowfour} extends the ranges at $\frac{10}3$ and $\frac{13}4$
+to all $n$, and gives all rows for every $n$ at $r\ge\frac{25}7$.  In floating
+point, at the level of exponential rates as $n\to\infty$, the largest hole
+product allowed by (i), (iii) and Lemma~\ref{lem:holeblock}(b) stays below
+$r-1$ exactly for $r$ above about $3.55$.  With part (a) instead of (b) the
+limit is about $3.94$, so part (a) alone cannot go much below $4$.
+The condition of Corollary~\ref{cor:secondtail}, with part (b), holds for large
+$n$ exactly for $r$ above about $3.2$.  Theorem~\ref{thm:rootbelowfour}
+uses a two-parameter version of Steps~4 and~5.  The worst largest zero is
+no longer $x_0$: near $r=3.55$ it is about $2.5n$, with $p$ about $0.75n$.  Two
+natural sharpenings do not help.  Counting the holes in $T_r(n,x)$ exactly,
+instead of putting them at the top, lowers the limiting hole product at
+$r=\frac72$ only from $2.575$ to $2.559$.  In tests at finite $n$, the terms of
+$\Phi_r(Z_0)$ at $s>x$ and at the largest hole added nothing either.  The worst
+configurations have a long block of holes and a largest zero near $2.5n$, far
+from the certified optima (at $r=4$, $n=50$ the optimum has
+$\max Z_0=76$).  Excluding them needs the terms of $\Phi_r(Z_0)$ at the inner
+holes, and those are not linear in the hole set.
+
+\subsection{The hole product at roots at least \texorpdfstring{$\frac{25}7$}{25/7}}\label{sec:rootbelowfour}
+
+Corollary~\ref{cor:rootfourfinite} gives the rows below $4$ only for
+$n\le300$.  This subsection removes the bound on $n$
+(Theorem~\ref{thm:rootbelowfour}).  For large $n$ we replace Steps~4 and~5 of
+the proof of Theorem~\ref{thm:rootfour} by an inequality between exponential
+rates in two variables, $\theta=p/n$ and $\xi=x/n$.  It is checked on a box by
+a finite computation in interval arithmetic.  The count bound, part (b) of
+Lemma~\ref{lem:holeblock} and the two upper bounds for $|r_{Z_0}(p)|$ from the
+proof of Corollary~\ref{cor:rootfourfinite} are all we use.
+
+As before, $h(t)=-t\log t-(1-t)\log(1-t)$ on $[0,1]$.  For a root $r_0>1$
+put $L=\log r_0$ and, for $\xi>1$, $u>t>0$ and $\kappa\ge0$,
+\[
+  \tau(\xi)=\xi h(1/\xi)-\xi L,\qquad
+  F(u,t)=u\log u-(u-t)\log(u-t),\qquad
+  B(\eta,\kappa,t)=F(\eta+\kappa,t)-F(\eta,t).
+\]
+The derivatives are
+$\tau'(\xi)=\log(\xi/(\xi-1))-L$, $\partial_\kappa B=\log((\eta+\kappa)/(\eta+\kappa-t))$,
+$\partial_\eta B=\log((\eta+\kappa)/(\eta+\kappa-t))-\log(\eta/(\eta-t))$ and
+$\partial_tB=\log((\eta+\kappa-t)/(\eta-t))$ for $\eta>t$.  So $\tau$
+decreases for $\xi>r_0/(r_0-1)$, and $B$ decreases in $\eta$ and increases in
+$\kappa$ and in $t$.
+
+\begin{theorem}[All rows at roots at least $\frac{25}7$]\label{thm:rootbelowfour}
+\begin{enumerate}
+\item[(a)] Let $r\ge\frac{25}7$ and $n\ge1$.  Then $V_r(L,L-n+1)=\beta_r(n)$
+for every $L\ge n$.  If $n\ge4$, every top-row optimum $Z_0$ for $(r,n)$
+satisfies $\Pi(Z_0)\le\frac{18}7$.
+\item[(b)] Let $n\ge1$, and let $r\ge\frac{10}3$, or $r\ge\frac{13}4$ and
+$n\notin\{11,12\}$.  Then $V_r(n+1,2)=\beta_r(n)$.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+\emph{Small $n$.}  In (a), for $n\le2$ this is Corollary~\ref{cor:tworowsr},
+and for $n=3$ it is Corollary~\ref{cor:rowstopranges}.  For $4\le n\le369$ we
+ran the exact check of the proof of Corollary~\ref{cor:rootfourfinite} at
+$r_0=\frac{25}7$ with the target $\frac{18}7$.  It passed for all of the
+$12.8$ million pairs $(p,x)$.  So every top-row optimum with a hole has
+$\Pi(Z_0)\le\frac{18}7\le r-1$, and Theorem~\ref{thm:rowspi} concludes as in
+the proof of Theorem~\ref{thm:rootfour}.  In (b), for $n\le300$ this is
+Corollary~\ref{cor:rootfourfinite}.
+
+\emph{Large $n$.}  Let $N_0=370$ in (a) and $N_0=301$ in (b), and let
+$n\ge N_0$.  Let $r_0$ be $\frac{25}7$ in (a) and $\frac{10}3$ or $\frac{13}4$
+in (b), and let $r\ge r_0$.  Let $Z_0$ be a top-row optimum for $(r,n)$.  If
+$Z_0$ has no hole, then $\Pi(Z_0)=1$, and Corollary~\ref{cor:secondtail}
+gives (b).  So let $Z_0$ have a hole, and let $p$, $x$ and $K=x-n$ be as in
+Section~\ref{sec:rootfour}.  Put $\theta=p/n$, $\xi=x/n$, $d=1/n$ and
+$e=\log(8n)/n$.  Then $d\le1/N_0$ and $e\le e_1:=\log(8N_0)/N_0$.
+
+\emph{Step 1: the target.}  In (a) put $g=r_0-1$.  In (b) let $M_0$ be the
+number $M$ of Lemma~\ref{lem:tailmean} for $Z_0$ at the root $r_0$, and put
+$g=r_0(x+1)/(x+1+M_0)$.  We show $\Pi(Z_0)\le g$.  This is enough.  In (a),
+$g\le r-1$, and Theorem~\ref{thm:rowspi} concludes.  In (b), the number $M$
+at $r$ is at most $M_0$, because $n/(r-1)$ and $q=(x+1)/(r(x-p+2))$ decrease
+in $r$, and $q/(1-q)$ increases in $q$.  So $\Pi(Z_0)(x+1+M)\le r(x+1)$, and
+Corollary~\ref{cor:secondtail} concludes.  In both cases $g\ge r_0-1$, since
+$M_0\le n/(r_0-1)\le(x+1)/(r_0-1)$.
+
+\emph{Step 2: three bounds at $r_0$.}  Put $u=|r_{Z_0}(p)|$.  By
+Lemma~\ref{lem:firsthole}, $u\ge\binom np^{-1}\ge e^{-nh(\theta)}$.  As in (i)
+of the proof of Theorem~\ref{thm:bigroot}, Lemmas~\ref{lem:firsthole}
+and~\ref{lem:jensentop} give $u\le r^p/\beta_r(n)\le8nr^{p-n}\le8nr_0^{p-n}$.
+By Step~3 of the proof of Theorem~\ref{thm:rootfour},
+$u\le2r_0^pT_{r_0}(n,x)/(p(r_0-1))$.
+
+\emph{Step 3: the count bound.}  If $x-n+1\le(g-1)p$, then
+Lemma~\ref{lem:firsthole} gives $\Pi(Z_0)\le1+(x-n+1)/p\le g$.  So let
+$x-n+1>(g-1)p\ge(r_0-2)p$.  In the variables, $\xi-1+d>(g-1)\theta$.
+
+\emph{Step 4: a box.}  The first two bounds of Step~2 give
+$(1-\theta)L-h(\theta)\le e$.  The left side has derivative
+$-L-\log((1-\theta)/\theta)$, which is negative for
+$\theta<\theta^*:=r_0/(1+r_0)$.  Let $\theta_0$ be the number in the table
+below.  It is less than $\theta^*$, and $(1-\theta_0)L-h(\theta_0)>e_1$.  So
+$\theta>\theta_0$.  By Step~3, $\xi>\xi_0:=1+(r_0-2)\theta_0-1/N_0$.
+
+Next we bound $T_{r_0}(n,x)$.  With $t_s=s\binom{s-1}{n-2}r_0^{-s}$ and
+$q_s=t_{s+1}/t_s=(s+1)/(r_0(s-n+2))$, as in Step~4 of the proof of
+Theorem~\ref{thm:rootfour}, $T_{r_0}(n,x)\le t_x/(1-q_x)$ when $q_x<1$.  Put
+$a=x-n+2$.  Then $a>(r_0-2)\theta_0n$, so
+\[
+  q_x=\frac{a+n-1}{r_0a}<\frac1{r_0}\Bigl(1+\frac1{(r_0-2)\theta_0}\Bigr)
+  =:\bar q<1 .
+\]
+Also $t_x=(n-1)\binom x{n-1}r_0^{-x}$ and
+$\binom x{n-1}=\binom xn\,n/(x-n+1)\le e^{xh(n/x)}n/(x-n+1)$, and
+$xh(n/x)-xL=n\tau(\xi)$.  Since $p>\theta_0n$ and
+$x-n+1>(r_0-2)\theta_0n$,
+\[
+  \frac{2T_{r_0}(n,x)}{p(r_0-1)}
+  \le\frac{2n(n-1)\,e^{n\tau(\xi)}}{p(r_0-1)(x-n+1)(1-q_x)}
+  <\frac{2e^{n\tau(\xi)}}{c},\qquad
+  c=\theta_0^2(r_0-1)(r_0-2)(1-\bar q).
+\]
+The table gives $4cN_0\ge1$, so $2/c\le8n$.  So the third bound of Step~2
+becomes $u\le e^{n(\theta L+\tau(\xi)+e)}$.  With $u\ge e^{-nh(\theta)}$,
+\[
+  -h(\theta)-\theta L\le\tau(\xi)+e_1 .
+\]
+The left side is convex in $\theta$ with least value $-\log(1+r_0)$ at
+$\theta^*$.  Let $\xi_1$ be the number in the table.  It exceeds $\xi_0$, and
+$\xi_0>r_0/(r_0-1)$, and $\tau(\xi_1)<-\log(1+r_0)-e_1$.  As $\tau$ decreases
+for $\xi>r_0/(r_0-1)$, we get $\xi<\xi_1$.  So
+$(\theta,\xi)$ lies in the box $[\theta_0,1]\times[\xi_0,\xi_1]$.
+\[
+\begin{array}{ccccccc}
+  r_0&N_0&\theta_0&\xi_0&\xi_1&\bar q&4cN_0\\\hline
+  \frac{25}7&370&\frac{11}{25}&\frac{21869}{12950}&\frac{64}{25}&\frac{2072}{3025}&364.7\ldots\\[2pt]
+  \frac{10}3&301&\frac{41}{100}&\frac{34841}{22575}&\frac{273}{100}&\frac{174}{205}&95.2\ldots\\[2pt]
+  \frac{13}4&301&\frac25&\frac{901}{602}&\frac{14}5&\frac{12}{13}&41.6\ldots
+\end{array}
+\]
+
+\emph{Step 5: the block bound.}  By Step~2 and $\binom xp\le e^{xh(p/x)}$,
+$Q(Z_0)=\binom xpu$ satisfies
+\[
+  \log Q(Z_0)\le n\bigl(\xi h(\theta/\xi)+\theta L+\min\{-L,\tau(\xi)\}+e\bigr).
+\]
+Let $g'\le g$ be positive with $p(g'-1)>1$, and put
+$y_0=(p+1)K/(p(g'-1)-1)$.  The inequality $(p+1)(y+K)\le g'py$ holds exactly
+for $y\ge y_0$.  If $y_0\le p+1$, then
+$\Pi(Z_0)\le(p+1+K)/p\le g'\le g$ by the count bound.  Otherwise let
+$y=\lceil y_0\rceil\ge p+2$.  If
+$\binom{y+K-1}p\ge Q(Z_0)\binom{y-1}p$, then Lemma~\ref{lem:holeblock}(b) gives
+$\Pi(Z_0)\le(p+1)(y+K)/(py)\le g$.  Now $\log(c/(c-p))$ decreases in $c>p$, so
+\[
+  \log\frac{\binom{y+K-1}p}{\binom{y-1}p}=\sum_{c=y}^{y+K-1}\log\frac c{c-p}
+  \ge\int_y^{y+K}\log\frac c{c-p}\,dc=F(y+K,p)-F(y,p)
+  =nB(\eta,\xi-1,\theta),
+\]
+with $\eta=y/n$.  The last step uses $F(nu,nt)=nF(u,t)+nt\log n$.  Also
+$\eta<y_0/n+d=(\theta+d)(\xi-1)/((g'-1)\theta-d)+d$.  Hence $\Pi(Z_0)\le g$
+as soon as
+\[
+  B(\eta,\xi-1,\theta)\ge\xi h(\theta/\xi)+\theta L+\min\{-L,\tau(\xi)\}+e_1 .
+\]
+
+\emph{Step 6: the certificate.}  We cover the box by rectangles
+$[\theta_a,\theta_b]\times[\xi_a,\xi_b]$ with rational corners.  On each one
+we use a lower bound $g'$ for $g$.  In (a), $g'=r_0-1$.  In (b), $M_0\le nm$
+with $m=\min\{1/(r_0-1),(1-\theta_a+1/N_0)\bar q_c/(1-\bar q_c)\}$, where
+$\bar q_c=\xi_a/(r_0(\xi_a-\theta_b))$; the second term is used only when
+$\bar q_c<1$.  Indeed $(x+1)/(x-p+2)\le x/(x-p)=\xi/(\xi-\theta)$, and
+$(n-p+1)/n\le1-\theta+d$.  Since $(x+1)/(x+1+M_0)\ge\xi/(\xi+m)$, we may take
+$g'=r_0\xi_a/(\xi_a+m)$.  A rectangle is settled by one of three tests.
+\begin{itemize}
+\item[(E1)] The least value of $-h(\theta)-\theta L$ on
+$[\theta_a,\theta_b]$ exceeds $\tau(\xi_a)+e_1$.  Then no point of the
+rectangle satisfies the inequality of Step~4, since
+$\tau(\xi)\le\tau(\xi_a)$.
+\item[(E2)] $\xi_b-1+1/N_0\le(g'-1)\theta_a$.  Then Step~3 applies.
+\item[(E3)] $(g'-1)\theta_a>1/N_0$, and with
+$\bar\eta=\max\{\theta_a+\frac1{N_0},\,(\theta_a+\frac1{N_0})(\xi_b-1)/((g'-1)\theta_a-\frac1{N_0})+\frac1{N_0}\}$,
+\[
+  B(\bar\eta,\xi_a-1,\theta_a)\ge\xi_bH+\theta_bL+\min\{-L,\tau(\xi_a)\}+e_1,
+\]
+where $H$ is the largest value of $h$ on $[\theta_a/\xi_b,\theta_b/\xi_b]$.
+The bound for $\eta$ in Step~5 increases in $\xi$ and in $d$, and decreases in
+$\theta$, so $\eta\le\bar\eta$.  By the monotonicity of $B$, the left side is
+at most $B(\eta,\xi-1,\theta)$.  The function $\xi h(\theta/\xi)$ increases in
+$\xi$, so the right side is at least the right side of Step~5.
+\end{itemize}
+We started from a $48\times48$ grid and quartered every rectangle that no
+test settled.  All quantities were evaluated in interval arithmetic with
+outward rounding at $100$ bits.  Every rectangle was settled.
+\[
+\begin{array}{cccccc}
+  r_0&\text{(E1)}&\text{(E2)}&\text{(E3)}&\text{rounds}&\text{least margin in (E3)}\\\hline
+  \frac{25}7&421&1091&132945&7&1.6\cdot10^{-8}\\
+  \frac{10}3&205&1503&596&0&0.035\\
+  \frac{13}4&198&1376&1438&3&2.6\cdot10^{-5}
+\end{array}
+\]
+Here ``rounds'' is the largest number of quarterings of one grid rectangle.
+So $\Pi(Z_0)\le g$ for every $n\ge N_0$, and Step~1 concludes.  In (a),
+$g=\frac{18}7$.
+\end{proof}
+
+By Corollary~\ref{cor:prefixmono}(a), part (a) proves the conjecture stated
+after Corollary~\ref{cor:belowtwo} for every $r\ge\frac{25}7$.  At
+$r_0=\frac{25}7$ the certificate did not close for $N_0=340$ within eight
+rounds.  At $r_0=\frac{18}5$ it closes for $N_0=301$, so there
+Corollary~\ref{cor:rootfourfinite} suffices for small $n$.  The limit of the method is near $3.55$ for
+all rows and near $3.2$ for the second row (the remarks after
+Corollary~\ref{cor:rootfourfinite}).  At $r_0=\frac{16}5$ the certificate for
+the second row did not close even for $N_0=2000$ within six rounds.  Closer to these limits the box
+certificate needs a larger $N_0$, and the exact check must then reach $N_0-1$.
+Section~\ref{sec:allrowstwo} proves all rows at every $r\ge2$ by another
+argument.
 
 \begin{thebibliography}{99}
 \small

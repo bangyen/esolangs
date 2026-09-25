@@ -1144,7 +1144,7 @@ constants through both halves, normalizing $C_P(n)$ by
 $T^2/n=T^2/\log_2T$.  The lower side charges the input roots:
 Corollary~\ref{cor:roots} and Proposition~\ref{prop:counting} force
 $\max(N_n,\lceil T/(n+4)\rceil)$ of them, and the imaginary-pair form
-of the coefficient-mass theorem~\cite[Corollary~5.3]{coefficient-mass}
+of the coefficient-mass theorem~\cite[Corollary~6.3]{coefficient-mass}
 prices each pair $\pm ci$ as one real root $c^2$.  This beats the
 real roots with Theorem~\ref{thm:mass} by a factor $4$.
 For even and odd sources the forced real roots can be charged as well
@@ -1270,7 +1270,7 @@ $\prod_{i=1}^Q(y-a_i)\prod_{i=1}^Q(y+c_i)$, where $a_1>\cdots>a_Q$ are the squar
 chosen real roots and $c_1>\cdots>c_Q$ the squares of the chosen input values.  All
 $a_i\ge4$ and all $c_i\ge16$.
 
-Apply the rows at real roots of both signs~\cite[Theorem~5.10]{coefficient-mass} to $E$,
+Apply the rows at real roots of both signs~\cite[Theorem~6.10]{coefficient-mass} to $E$,
 with $\rho=\frac12$; as the leading coefficient of $E$ has absolute value at least $1$,
 for $1\le k\le Q$
 \[
@@ -1315,7 +1315,7 @@ With $m=N+1-i$, $\sum_{i\le N}i\log(N+3-i)=\sum_{m\le N}(N+1-m)\log(m+2)
 $2N^2\log N-3N^2-2\log2\,N(N+1)-N(N+1)\log(Q+1)$, and $3+2\log2<4.39$.
 \end{proof}
 
-The rows of~\cite[Theorem~5.10]{coefficient-mass} drop the largest roots of each sign,
+The rows of~\cite[Theorem~6.10]{coefficient-mass} drop the largest roots of each sign,
 not the smallest, and this costs only $O(Q^2)$ here because all the moduli are
 polynomial in $Q$.  The input pairs contribute $2Q^2\log Q$, as in
 Proposition~\ref{prop:bracket} below, and the real instruction roots add $Q^2\log Q$ when
@@ -1408,10 +1408,10 @@ roots.
 Let $f$ be a source for this table, and let $\pm c_ji$ be its input roots.  Each
 $x^2+c_j^2$ divides $f$, so their product does, and $|f_D|\ge1$ as $f$ has integer
 coefficients.  The $c_j$ are distinct elements of $\{p^b:b\ge2\}$, so the $j$th smallest
-is at least $v_j\ge4$, and $c_j^2\ge16$.  By~\cite[Corollary~5.3]{coefficient-mass},
+is at least $v_j\ge4$, and $c_j^2\ge16$.  By~\cite[Corollary~6.3]{coefficient-mass},
 $\Lambda(f)\ge\sum_{j\le K}j\log(c_{(j)}^2-1)\ge\sigma_K$.  If $f$ is neither even nor odd,
 Remark~\ref{rem:parity} gives $\Lambda(f)\ge2\sigma_K$: write $f=E_0(x^2)+xE_1(x^2)$; by
-the multisection lemma~\cite[Lemma~5.1]{coefficient-mass} both $E_\varepsilon$ are
+the multisection lemma~\cite[Lemma~6.1]{coefficient-mass} both $E_\varepsilon$ are
 nonzero integer multiples of $\prod_j(y+c_j^2)$, Theorem~\ref{thm:mass} applied to
 $E_\varepsilon(-y)$ gives $\Lambda(E_\varepsilon)\ge\sigma_K$, and
 $\Lambda(f)=\Lambda(E_0)+\Lambda(E_1)$.  If $f$ is even or odd, Lemma~\ref{lem:evensigns}
@@ -1615,7 +1615,7 @@ $2^{n-L-1}(1-2^{-d(I+1)})/(1-2^{-d})$.  At small $n$ it can still be the better 
 which is why item~2 of Proposition~\ref{prop:bracket} takes the minimum over both.
 \item \emph{Profile: $g/\frac{13}4=\frac{25}2$.}  The lower bound charges
 each input pair as one real root $c^2$, which is exact for pairs
-alone~\cite[Corollary~5.3]{coefficient-mass}, and
+alone~\cite[Corollary~6.3]{coefficient-mass}, and
 $\sum_{j\le K}j\log v_j^2\sim2K^2\log K$ gives the mass constant $2$.  A source
 that is neither even nor odd pays this twice (Remark~\ref{rem:parity}), and an even or
 odd source pays it once, plus the constant $1$ of its real instruction roots
@@ -1637,11 +1637,11 @@ Charging the forced real roots together with the input pairs is what
 Lemma~\ref{lem:evensigns} does for even and odd sources, where $f=x^\varepsilon E(x^2)$
 and $E$ carries both families on the real line, the inputs as negative roots $-c^2$ and
 the real roots as positive roots $r^2$.  The rows at real roots of both
-signs~\cite[Theorem~5.10]{coefficient-mass} charge the two signs separately.  Charging
+signs~\cite[Theorem~6.10]{coefficient-mass} charge the two signs separately.  Charging
 them as one sorted family with the weights $\lceil i/2\rceil$, as the conjectured
 rows~\cite[(22)]{coefficient-mass} would, is worth only about $\frac72Q^2\log Q$ at the
 least admissible root values, still below $4$.  For sources that are neither even nor
-odd the multisection proof of~\cite[Corollary~5.3]{coefficient-mass} needs $P=R(x^2)$
+odd the multisection proof of~\cite[Corollary~6.3]{coefficient-mass} needs $P=R(x^2)$
 with all roots of $R$ of one sign; the real roots $p^v$ break the first condition, and
 passing to $F(x)F(-x)$ breaks the second, but these sources already pay $4$.  The
 order-statistic bound for arbitrary free positions (\cite[Lemma~3.1]{coefficient-mass})
@@ -1669,7 +1669,7 @@ to be of order $T/n$.
 
 \begin{remark}[Even and odd sources]\label{rem:parity}
 Write a source as $f(x)=E_0(x^2)+xE_1(x^2)$.  If $f$ is divisible by
-$\prod_j(x^2+c_j^2)$, then by the multisection lemma~\cite[Lemma~5.1]{coefficient-mass}
+$\prod_j(x^2+c_j^2)$, then by the multisection lemma~\cite[Lemma~6.1]{coefficient-mass}
 both $E_0$ and $E_1$ are multiples of $R(y)=\prod_j(y+c_j^2)$.  If $f$ is neither even
 nor odd, both are nonzero, and both have integer coefficients, hence leading
 coefficients of absolute value at least $1$.  Theorem~\ref{thm:mass}, applied to
