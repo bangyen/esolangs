@@ -326,39 +326,24 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def modulous(truth_table: str) -> str:
-    """Build a Modulous program computing the given truth table.
-
-    ``[INP INT]`` reads the inputs onto the stack; ``[JMP F n IF 0/1]``
-    branches on the top, popping; a leaf ``[PSH INT]``s and prints.
-    """
+    """Build a Modulous program: a table literal popped down to its row."""
     n = _validate_truth_table(truth_table)
-    # The stack pops the *last* input first, so the tree splits on the low
-    # row bit at the root.  Read through the bit-reversed index that
-    # subtree is a contiguous span, so the tree walks spans of the
-    # reflected table with an O(1) constant test into one flat piece list,
-    # each subtree reporting its command count for the jump: O(2**n).
-    reflected = "".join(
-        truth_table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(2**n)
-    )
-    constant = constant_span_test(reflected)
-    pieces = ["[INP INT]" * n]
-
-    def build(lo: int, hi: int) -> int:
-        """Lay the subtree down and return how many commands it spans."""
-        if constant(lo, hi):
-            pieces.append(f"[PSH INT {reflected[lo]}][PRT INT][END]")
-            return 3
-        mid = (lo + hi) // 2
-        jump = len(pieces)
-        pieces.append("")
-        sub0 = build(lo, mid)
-        pieces.append("[POP]")
-        sub1 = build(mid, hi)
-        pieces[jump] = f"[JMP F 2 IF 0][JMP F {2 + sub0} IF 1][POP]"
-        return 3 + sub0 + 1 + sub1
-
-    build(0, 2**n)
-    return "".join(pieces)
+    # ``PSH STR`` pushes the characters in reverse, so the leftmost entry is
+    # the one on top and discarding ``index`` of them uncovers
+    # ``truth_table[index]`` -- the row index read most significant bit
+    # first, which is what the weights below build.  The first read *is* the
+    # counter: a bit is already 0 or 1, so the top weight is one conditional
+    # ``ADD`` away and no accumulator is pushed.
+    top = 1 << (n - 1)
+    reads = ["[INP INT]" + (f"[JMP F 2 IF 0][ADD {top - 1}]" if n > 1 else "")]
+    reads += [
+        f"[INP INT][JMP F 4 IF 0][POP][ADD {1 << (n - 1 - i)}][JMP F 2][POP]"
+        for i in range(1, n)
+    ]
+    # ``SWP``/``POP`` discards the entry *under* the counter, which is what
+    # keeps the counter reachable: nothing but the top two cells is.
+    walk = "[JMP F 5 IF 0][SUB 1][SWP][POP][JMP B 4][POP][PRT][END]"
+    return f'[PSH STR "{truth_table}"]{"".join(reads)}{walk}'
 
 
 def _bfstack_encoder(n: int, *, preset: bool) -> str:

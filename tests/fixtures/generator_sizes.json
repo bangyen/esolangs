@@ -604,16 +604,16 @@
   },
   "Modulous": {
    "0110": {
-    "commands": 11,
-    "source_units": 233
+    "commands": 28,
+    "source_units": 150
    },
    "01101001": {
-    "commands": 15,
-    "source_units": 496
+    "commands": 53,
+    "source_units": 203
    },
    "0110100110010110": {
-    "commands": 19,
-    "source_units": 1013
+    "commands": 98,
+    "source_units": 260
    }
   },
   "NoComment": {
