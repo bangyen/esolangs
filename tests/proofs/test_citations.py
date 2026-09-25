@@ -41,9 +41,65 @@ ENVIRONMENTS = {
 #: checks that this table is complete, so a new citation fails here until it
 #: is listed.
 CITATIONS = {
-    ("coefficient-mass-attainment.tex", "coefficient-mass", "4.5"): (
+    ("coefficient-mass-attainment.tex", "coefficient-mass", "4.4"): (
         "Proposition",
         "prop:sharp23",
+    ),
+    ("coefficient-mass-complex.tex", "coefficient-mass", "3.2"): (
+        "Theorem",
+        "thm:order",
+    ),
+    ("coefficient-mass-complex.tex", "coefficient-mass", "3.3"): (
+        "Corollary",
+        "cor:complex",
+    ),
+    ("coefficient-mass-complex.tex", "coefficient-mass", "3.4"): (
+        "Corollary",
+        "cor:mass",
+    ),
+    ("coefficient-mass-complex.tex", "coefficient-mass", "3.7"): (
+        "Corollary",
+        "cor:near",
+    ),
+    ("coefficient-mass-complex.tex", "coefficient-mass", "4.2"): (
+        "Proposition",
+        "prop:quadratic",
+    ),
+    ("coefficient-mass-complex.tex", "coefficient-mass", "4.3"): (
+        "Corollary",
+        "cor:allroots",
+    ),
+    ("coefficient-mass-complex.tex", "coefficient-mass", "4.4"): (
+        "Proposition",
+        "prop:sharp23",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "2.1"): (
+        "Lemma",
+        "lem:consecutive",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "2.2"): (
+        "Theorem",
+        "thm:tail",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "2.3"): (
+        "Lemma",
+        "lem:interlace",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "3.2"): (
+        "Theorem",
+        "thm:order",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.5"): (
+        "Lemma",
+        "lem:rowcert",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.6"): (
+        "Lemma",
+        "lem:confdel",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.13"): (
+        "Theorem",
+        "thm:everyrow",
     ),
     ("index.md", "coefficient-mass", "3.4"): ("Corollary", "cor:mass"),
     ("polynomial.md", "coefficient-mass-attainment", "2.1"): (
@@ -51,11 +107,25 @@ CITATIONS = {
         "prop:confluent",
     ),
     ("polynomial.tex", "coefficient-mass", "3.4"): ("Corollary", "cor:mass"),
+    ("polynomial.tex", "coefficient-mass-complex", "2.1"): (
+        "Lemma",
+        "lem:multisection",
+    ),
+    ("polynomial.tex", "coefficient-mass-complex", "4.2"): (
+        "Theorem",
+        "thm:bothsigns",
+    ),
+    ("polynomial.md", "coefficient-mass-complex", "2.3"): (
+        "Corollary",
+        "cor:imag",
+    ),
 }
 
 #: The files whose citations the table above has to cover.
 CITING = (
     "coefficient-mass-attainment.tex",
+    "coefficient-mass-complex.tex",
+    "coefficient-mass-rows.tex",
     "index.md",
     "polynomial.md",
     "polynomial.tex",
@@ -154,7 +224,7 @@ def test_every_citation_is_covered() -> None:
 def test_the_cited_titles_are_the_ones_the_papers_name() -> None:
     """The bibliography entry's parenthetical names Corollary 3.4's title."""
     assert _numbering("coefficient-mass")["3.4"][2] == "Logarithmic mass"
-    assert _numbering("coefficient-mass")["4.5"][2] == (
+    assert _numbering("coefficient-mass")["4.4"][2] == (
         "Sharpness of the row $k=2$ at $(2,3)$"
     )
     assert _numbering("coefficient-mass-attainment")["2.1"][2] == "Confluent analogue"

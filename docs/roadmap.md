@@ -72,7 +72,9 @@ INTERCAL, listed last, is outside the pass.
   Every generator is audited on four axes.  Totality is the `proofs/index.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
   totality argument).  Output size is the registry-wide contract
-  (`tests/proofs/deep/linearity.py`, per-entry cost to n=12).  Generation
+  (`tests/proofs/deep/linearity.py`, the successive-difference ratio over
+  three same-parity arities to n=12, which is four for any `a*T + b` and so
+  reads the growth rather than the prologue).  Generation
   time and execution time are measured by hand: the fitted growth per
   added input over the top five arities, best of three, execution on the
   worst sampled parity row with loading excluded, and a figure on a run
@@ -92,7 +94,7 @@ INTERCAL, listed last, is outside the pass.
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
   Malbolge cannot be total: its finite source space omits some 18-input truth
-  tables.  Its shipped constructions cover every table through eleven inputs;
+  tables.  Its shipped constructions cover every table through fourteen inputs;
   generation time and size remain open over the reachable gap below that
   language ceiling.
 
@@ -111,7 +113,7 @@ INTERCAL, listed last, is outside the pass.
 
   Polynomial has language-level text complexity `Theta(T**2 / log T)`.  Equal
   real roots form contiguous blocks; their noncrossing opener/closer incidence
-  graph is outerplanar, giving `m_routing < 3L_real`.  The routing lemma gives
+  graph is outerplanar and bipartite, giving `m_routing <= 2L_real - 2`.  The routing lemma gives
   `L_real = Omega(T/log T)` for every read count: only the last two reads
   before a routing position can carry a residual that depends on its next
   input and not on it alone.  The distinct-root slack certificate
@@ -129,9 +131,14 @@ INTERCAL, listed last, is outside the pass.
   Root recovery now lifts through `D**2`, covering the generated
   `|a| < 50D` envelope, and swaps NTT field roles when an instruction prime
   equals the primary modulus.  Exact division remains acceptance.  Therefore
-  every generated factor peels and cold parsing is polynomial; arbitrary
-  programs outside the envelope retain the general factorization fallback.
-  Conservative generation and cold-parse work/memory estimators cover the
+  every generated factor peels.  Cold parsing of *every* source is now
+  polynomial in its length: a sparse term map (no dense list for
+  `x^1000000000000 - 1`), the gap lemma and `x d/dx` multiplicities with
+  Hajos' bound, `p`-adic lifting plus a 2-D lattice for the Gaussian roots
+  of one dense chunk in place of `factor_list`, and a `convert` that proves
+  primality (deterministic Miller--Rabin below `2**64`, BPSW then AKS above)
+  instead of scanning to the widest root.  The output matches the old
+  parser on every source it finished.  Conservative generation and cold-parse work/memory estimators cover the
   tested corpus and boundary controls, including pre-expansion refusal and a
   parse outside the former fixed lift.  See [polynomial](proofs/polynomial.md) and
   `tests/proofs/deep/multiplicity.py`.
@@ -191,222 +198,132 @@ INTERCAL, listed last, is outside the pass.
 Research questions the proofs leave open.  Each names the first executable
 step; an answer lands in the paper it extends, and the row leaves.
 
-- **Extremality of the escaping placement.**  `T = tau*` (escaping exempt
-  coefficients extremal) is still the step `tau_k(X) <= tau_{k+1}(X \ {max
-  X})`, which has no known counterexample.  Write the minimizer for
-  `X' = X \ {g}`, `g = max X`, as `Z^- = B_0 u A` with `B_0` below `g` and
-  `A` above.  The step is PROVED when `B_0` is an initial segment
-  (`thm:slideinitial`, any `A`), when `A` is empty (`prop:stepeasy`), and
-  when `|A| = 1` (`cor:shiftone`): the shift-by-one inequality `eq:shift`
-  (`Tail_c(B_0 u {g} u (A+1)) <= Tail_{c-1}(Z^-)` whenever no single move
-  `a -> a+1` lowers the tail, which minimality gives, `prop:shift`) follows
-  for `A = {M}` from the hypothesis-free chord lemma `prop:chord`:
-  `Tail(F_M) >= lam Tail(F_{M+1}) + (1-lam) Tail(p_{g,M+1})` with `lam` from
-  `p_{M,M+1} = lam F_{M+1} + (1-lam) p_{g,M+1}` on `ell_{M+1}`.  Its proof:
-  the difference equals `sum_{e<g} delta_e + sigma sum_{g<d<=M+1} E(d) -
-  sigma sum_{d>=M+2} E(d)` (`eq:chordsplit`) with `E(d) = (F_M - p)(d-1) +
-  2(1-lam) w(d)`, an exponential sum whose zeros at the consecutive pairs of
-  `{0} u B_0 u {g}` and at `M+1`, signs at the gap starts, and weight on the
-  new node (sign fixed by the cutoff `y <= 1/2`) pin its sign on the window
-  by the zero bound; equality iff the block `B_0 = {1..g-1}` at the cutoff.
-  OPEN: `eq:shift` with `|A| >= 2`, i.e. a gap below `g` and at least two
-  zeros above it in the minimizer.  Evidence: 0 failures in 7023 instances
-  with the hypothesis at `L <= 9` (clustered and random nodes, `|A| <= 5`),
-  283 failures without it; worst ratio 0.9993.  What is known about it: the
-  chord of `prop:chord` does NOT extend.  With `M` the end of the first run
-  of `A` and `C` the other zeros, `eq:chordsplit` holds with `B_0 -> C`
-  only with the LOCAL sign `s_d = sigma (-1)^{#(C n (g,d))}` (the global
-  `sigma` form is false in every instance); `E` is short one forced zero
-  per run of `A` above `M+1`, and the chord fails at `L = 9`, clustered
-  nodes, `B_0 = {1,2,3,5,6}`, `g = 7`, `A = {8,12}`, by 19%, all in the far
-  term.  No fixed weights work (<= 0.683 at `L <= 7`, >= 0.794 at `L = 9`).
-  The case split on whether the far sign is pinned is DEAD: pinned implies
-  the chord (never violated) but pinning never occurs with a gapped `A`,
-  and unpinned does NOT imply the hypothesis fails (552 of 1515 unpinned
-  at `L = 9` satisfy it).  What DOES hold, 0 failures at `L <= 10` and
-  `|A| <= 3` (least relative slack 0.063, against 150 chord failures at
-  `L = 10`, all violating the hypothesis): `Tail(Z^-) <= Tail(F_1)` implies
-  the chord, which with `prop:shift` closes the case.  Prove THAT.  The
-  hypothesis equals the mass form `sum_{d<=M}|H_d| >= sum_{d>M}|H_d|` for
-  the `(L-1)`-node sum `H` vanishing on `{0} u C` -- indeed `F_M - F_1 =
-  alpha H` (one-dimensional space) and the GAP IDENTITY `T1 - TM =
-  |alpha| (mass_le - mass_gt)` holds exactly at every tier to `L = 10`.
-  Dead for it: first-order convexity (`Tail` IS convex along `[F_1, w]`
-  and `TM - Tp >= DD` always, but `DD >= D` fails 1089/1600 at `L = 9`,
-  64 under the hypothesis, so no supporting hyperplane works); and any
-  hypothesis-free bound of `(1-lam)(T1 - Tw)` by `|alpha| mass_le` (it
-  would prove the chord unconditionally, which the failures refute -- the
-  far mass MUST enter); and `BELOW * mass_gt >= (-ABOVE) * mass_le`, which
-  passes `L <= 7` and fails at `L = 9` and `L = 10` (the c<=7 trap again).
-  Dead: the
-  half-mass point of
-  `ell_M`, any fixed window, shifting only the smallest zero above `g`,
-  arbitrary weights with the same decay, Schur/LPP positivity (the cleared
-  polynomial has thousands of negative terms even at the cutoff), deleting
-  `min X`, freeing the largest zero, adjoining without sliding,
-  block-plus-one zero sets, real-valued zero positions (`eq:chord` is false
-  there), pointwise deflation at `r_1 <= (3+sqrt 5)/2`.
-  That `tau*` is always attained by a full certificate with a multiplier
-  witness is now PROVED (`prop:attain`): the tail is a norm, so the infimum
-  is attained; a minimiser with fewer than `m-1` zeros can be moved along a
-  direction that keeps its zeros until it gains one, the move being finite
-  because the zero bound makes the sign of the kink parameter eventually
-  constant; the multipliers come from the nonsingularity of the exponents
-  `{0} u Z`; and the witness is constant past `max Z`, so `(1-y)W` is a
-  polynomial and its cofactor a monic `M`.  It needs only distinct nodes in
-  `(0,1)` -- no `r_1 >= 2` cutoff.  The same proof runs in the confluent
-  basis `d^a y^d`, where the zero bound is Polya-Szego; checked exactly with
-  witnesses on 9 repeated-root sets.  Repeated roots beyond `(3,3)` are open on the
-  PLACEMENT side only (`u >= 1`; at `(3,3)`, `u = 0` and `tau* = 5/24`, so
-  the infimum of `b_1` is 24/5): a proof needs confluent analogues of
-  `prop:partial`, `thm:converse` and `thm:value`.  Round 11 REDUCED that to
-  ONE step.  In the Hermite basis `d^a y^d` ordered by growth, Descartes
-  counts with multiplicity, the Vandermonde change of variables becomes
-  Hermite interpolation on a multiset, and `thm:value`'s unisolvence and
-  positivity steps are `prop:confluent`'s `M(0)` and Polya-Szego -- all
-  routine; `prop:partial` needs only the extra hypothesis that the cut is
-  ALIGNED with the blocks (`r_u < r_{u+1}`).  The one step that FAILS is the
-  minor estimate inside `lem:far`, which `thm:value` reuses verbatim:
-  `c = prod (1 - y_b/y_a)` is 0 the moment two nodes coincide, so
-  `|alpha_{J*}| >= c M_{J*}` is vacuous, and `alpha_{J*}` can vanish outright
-  -- at `(3,3,4,4)`, `u = 3`, the span of `d(1/3)^d, (1/3)^d, d(1/4)^d` has
-  `(2187/16384) d(1/3)^d - (15309/8192)(1/3)^d + d(1/4)^d` zero at
-  `d = 6,7,8` (the ONLY singular triple in `{1..13}`; none with
-  `min E >= 21`; the full 4-function basis has no singular 4-subset of
-  `{0..11}`).  The rate degrades too: `sup eta` over a window is
-  `Theta(1/min E)` -- exactly `1/(n0+1)` at `(3,3)`, `(2,2)`, and
-  `(3,3,5)`/`(3,3,4,4)` with `u = 1` -- when the cut falls INSIDE a
-  multiplicity block, against geometric at an aligned cut (2.1e-23 at
-  `(2,3,3)`, 3.0e-30 at `(3,3,5)` `u = 2`, `n0 = 140`).  Round 12 then PROVED
-  the replacement (`prop:conffar`, commit below) for `E` of BOUNDED DIAMETER,
-  which is a CLUSTER EXPANSION: write `E = {n+f : f in F}` with `F` fixed,
-  pull `z_i^n` and `n^a` out of each column to get
-  `Lambda_J(n) = (prod z_i^{n k_i}) n^{P(J)}`, then expand
-  `(1+f/n)^a = sum_b C(a,b)(f/n)^b` multilinearly.  Columns at one node that
-  pick the same `b` are equal, so `sum b >= sum_i C(k_i,2)` with equality only
-  at `{0..k_i-1}`, giving
-  `alpha_J = +- Lambda_J n^{-sum C(k_i,2)} [kappa_J W(F;k) + O(1/n)]` with
-  `kappa_J = prod_i prod_{t<t'}(a_t' - a_t)/prod_{s<k_i} s! > 0` and
-  `W(F;k) = det(f^b z_i^f)` the UNGAPPED alternant, nonzero by Polya-Szego.
-  So the degeneracy is harmless: a gapped alternant's leading term is a
-  POSITIVE MULTIPLE of the ungapped one, and a gap only moves the power of
-  `n`.  `J*` greedily fills the largest nodes and takes the TOP exponent
-  segment at the cut node, so it uniquely maximises both `sum k_i log z_i`
-  (others lose `kappa = min log(z_i/z_{i+1})`) and `P`; hence
-  `Lambda_J/Lambda_J* <= 1/n` at equal profile and `<= n^{Nk} e^{-kappa n}`
-  otherwise.  VERIFIED independently (tmp/esc/verify12.py, exact Fractions,
-  N=10, z=1/2,1/3,1/5, mults 3,4,3, gapped `J` included): alpha/prediction
-  -> +-1 with error falling exactly 10x per decade of `n`.
-  CONSEQUENCE: confluent `thm:value` is CLOSED -- it uses only
-  `E_nu = {nu+1..nu+u}`, diameter `u-1`.  STILL OPEN: confluent
-  `thm:converse`, whose proof lets the elements of `E_nu` separate.  Round 13
-  REDUCED that to ONE scale-free inequality.  PROVED there: the cluster
-  expansion is EXACT for every `E` (no fixed-`F` hypothesis) --
-  `alpha_J(E) = Lambda_J(n) sum_b (prod C(a,b_ia)) n^{-|b|} W_b(F)` with
-  `n = min E`, `F = E - n`, boundedly many terms -- so ALL dependence on the
-  shape of `E` sits in the `W_b(F)`.  PROVED: `W(F;k)` never vanishes (its
-  SIGN is a column-ordering convention -- I checked 400 instances, 0 zero,
-  and the sign is constant across `F` for each of 50 profiles, so the
-  "positivity" claim is convention, the content is nonvanishing).  PROVED
-  (Lemma B): the inequality `eq:altratio`,
-  `|W_B(F)| <= C (1 + max F)^j |W(F;k)|` with
-  `j = sum_i (sum B_i - C(k_i,2))`, IMPLIES the whole open case -- it makes
-  the tail geometric once `max F <= tau n`, giving `alpha_J* != 0` and
-  `eta = O(1/min E)` for ARBITRARY gap structure.  PROVED: `eq:altratio` at a
-  single node (the ratio is a Schur polynomial `s_mu(F)`, `|mu| = j`), and
-  `min F >> diam F` reduces to `min F = 0` (depth-1 recursion, constants do
-  not compound).  Round 14 PROVED `eq:altratio` OUTRIGHT
-  (`prop:altratio`): give each COLUMN its own variable, so
-  `W_B(F) = [Theta_B det M(x)]` at the confluent point with
-  `Theta_B = prod (x d/dx)^b` of order `M_0 + j`, `M_0 = sum C(k_i,2)`; by
-  the bialternant identity `det M(x) = +- s_lambda(x) V(x)` with
-  `lambda_u = f_{k+1-u} - (k-u)`; `V` is divisible by the `M_0` forms
-  `x_{i,b} - x_{i,b'}` that VANISH at the confluent point, so Leibniz leaves
-  only `|alpha| <= j` derivatives of `s_lambda`, giving
-  `W_B(F) = sum_{|alpha|<=j} c_{B,alpha} (d^alpha s_lambda)(Z)` with `c`
-  INDEPENDENT of `F`; and `s_lambda` is monomial-positive with every exponent
-  `<= lambda_1`, so `d^alpha s_lambda(Z) <= (lambda_1/z_p)^{|alpha|}
-  s_lambda(Z)`.  At `j = 0` this also re-proves `W(F;k) = +- c_0 s_lambda(Z)
-  != 0`.  I VERIFIED the crux independently (verify14.py): `W(F;k)/s_lambda(Z)`
-  is the CONSTANT `-1/53204107681274414062500000000` over 10 sets `F` with
-  `max F` from 11 to 371, `z=(1/2,1/3,1/5)`, `k=(3,4,3)`.  Ingredient (L)
-  also falls out: `lambda` depends only on `F`, both confluent points have
-  coordinates in `[z_p, z_1]`, so the two Schur values differ by at most
-  `(z_1/z_p)^{|lambda|}`, `|lambda| <= k max F <= k tau n`, and `tau` shrinks
-  until `e^{-kappa n}` beats it.  WHAT IS LEFT, after round 15, is
-  TWO isolated items in a BETTER FRAME -- expand over NODES, not clusters.
-  PROVED there: the node expansion
-  `alpha_J(E) = sum_{E = u E_i} eps prod_i z_i^{sigma(E_i)} D_i(E_i)`,
-  `D_i(E_i) = det(e^a)`, exact for every `E`, so all node dependence is an
-  explicit monomial and each `D_i` is a PLAIN generalized Vandermonde; the
-  two-sided bound `Pi*Delta <= |D_i| <= C_N*Pi*Delta` with
-  `V(E_i) = (prod e_(u)^{k_i-u}) Delta(E_i)`, `Delta = prod (1 - e/e')`, `Pi`
-  the sorted pairing (I VERIFIED this: 600 instances, lower bound ATTAINED at
-  ratio exactly 1.000000, upper max 3304, 0 vanishing -- verify15.py); the
-  exchange lemma (sorted pairing maximises the monomial); pointwise
-  domination giving `N_J/N_J* <= max(1/min E, e^{-kappa min E/2})` at EQUAL
-  profile; and the aligned-cut case `alpha_J* != 0` for every `E` from
-  `prop:altratio`.  Round 16 then PROVED (C') FOR THE SORTED
-  PARTITIONS: the `u`-th function of `J` in growth order never precedes that
-  of `J*`, the true node mismatches are the prefix intervals
-  `(c_j(J), c*_j]`, every deficiency `delta(u,v)^{-1} = g_u/(g_u - g_v)` is
-  `<= 2 g_v`, and the pair `(u,v)` CHARGES to slot `v`, which such a pair
-  always forces into the mismatch set; a slot is charged `<= k-1` times, so
-  `W_J/W_J* <= 2^{k-1} n^{abar+k-1} e^{-kappa n}` -- reproving the geometric
-  rate at a split profile.  REMAINING: (G) `N_J <= C(N) W_J` (the sorted
-  partition attains the max up to a constant) -- observed, constant `<= 32.4`
-  over 4000 instances at `N = 9,10,12`, no growth in `min E` or spread; with
-  (G), (C') follows since `N_J* >= W_J*` for free.  And (L)
-  `|alpha_J*| >= c N_J*` is now PROVED AT A SIMPLE CUT (`k_u = 1`), round 17,
-  `prop:nocancel`: in logarithmic coordinates the Euler operator is constant
-  coefficient, so expanding both `s_lambda` and `V` into monomials collapses
-  the whole `E`-dependence into ONE fixed polynomial,
-  `alpha_J*(E) = +- sum_gamma K_{lambda gamma} Z^gamma Phi(gamma_chat)`, with
-  `Phi(g) = det((g[c=chat]+w)^{b_c} z_{i(c)}^w)` free of `E`.  Only the cut
-  coordinate survives, because at a non-cut node the exponents form a FULL
-  initial segment and `(gamma_c+w)^{b_c}` is monic of degree `b_c` in `w`, so
-  that block is a unitriangular change of basis.  `Phi` has degree
-  `s = m_u - 1` with leading coefficient the UNGAPPED alternant
-  `W({0..k-1};k) != 0`, hence one sign past its largest zero `g_0`; every
-  `gamma` has `gamma_chat >= lambda_k = min E`, and every weight
-  `K Z^gamma >= 0`, so for `min E >= g_0` there is NO cancellation and
-  `c1 (min E)^s |W(E;k)| <= |alpha_J*(E)| <= C1 (max E)^s |W(E;k)|`,
-  arbitrary gaps.  I VERIFIED all of it independently (verify17*.py): the
-  identity is EXACT (ratio exactly 1) on 4 configurations up to `N = 9`, both
-  `k_u = 1` and `k_u = 2`, including `0 = 0` at the singular `E = {6,7,8}`;
-  `W(E;k)/s_lambda(Z)` is constant; the support claim holds; `|D_0|` equals
-  the ungapped alternant in all 6 configs; and the lower bound is SHARP --
-  2400 sets over `N = 4..12`, 0 vanishing, min ratio exactly 1.0000 attained
-  at `min E = g_0`.  Round 17's own displayed constant (`1/2 |D_0| g^s` for
-  `g >= g_0`) is WRONG -- it conflates the sign-definiteness threshold with
-  the leading-term-domination one and fails at ratio 0.116; the fix is
-  `c1 = inf_{g >= g_0} |Phi(g)|/g^s`, positive since the ratio is continuous
-  and positive with limit `|D_0| > 0`.  `g_0 = 7` is EXACT at `(3,3,4,4)`,
-  `u = 3`: `Phi(g) = (6-g)/432` and `alpha_J*` vanishes at `min E = 6`.
-  NEGATIVE RESULT, do NOT retry the sign route for `k_u >= 2`: `Phi` then has
-  `k_u` arguments and changes sign far out even after symmetrising over the
-  cut block (the only symmetry the weights have).  At `z = (1/2,1/3,1/4)`,
-  `m = (3,3,3)`, `k = 5`, `Phi^sym` is POSITIVE along the ray `(t,3t)` and
-  NEGATIVE along `(t,4t)` for every `t` up to `1e5` -- I reproduced the
-  witness exactly (`Phi^sym(50,200) = -859/93312`); the sign turns on the
-  SPREAD inside the cut block, not on the scale.  What is left there is the
-  Kostka mass carried by spread `gamma`'s, a finite question about `Phi^sym`.  NEGATIVE RESULT, exact witness -- the sorted partition is NOT even
-  the largest term, so (L) cannot come from termwise domination and must come
-  from SIGNS: at `z = (1/3,1/4)`, `m = (2,2)`, `k = 3`,
-  `E = {n,n+1,n+2}`, the partition `({n,n+2},{n+1})` beats the sorted
-  `({n+1,n+2},{n})` by exactly `3*2*(1/4)*(n+1)/n` = 1.575 at `n=20`, tending
-  to `2 z_2/z_1 = 3/2`, with the runner-up a fixed 2/3 of the max forever
-  (I re-derived this ratio by hand: sorted `(1/3)^43 (1/4)^20 * 20` vs
-  `(1/3)^42 * 2 * (1/4)^21 * 21`).  NEGATIVE RESULT -- do NOT retry
-  the cluster/Laplace route: two clusters with the SAME profile but different
-  exponent assignments compete at a ratio the separation bounds only by a
-  CONSTANT, so no termwise domination exists there however small `tau` is.  And with gaps `floor(sqrt n)` and
-  `N=10`, `eta * min E` ran to 1.000 at `k=4` and 2.98 at `k=6`
-  (verify12b.py), the same `Theta(1/min E)`, so the lemma is expected TRUE.
-  DEAD: `|alpha_J*| ~ M_J* prod_{same-node}(1 - e_s/e_t)` (fails at `k>=6`,
-  ratio 4e-16 at `N=11, k=10`; exact for `k<=5`, another small-size trap).
-  Also open is the
-  case where an exempt root lies below 2 and more than `u` partial sums of
-  `P` exceed `|P(1)|`, where the repaired bound need not be sharp.  See the
-  section "The infimum when the criterion fails" in
-  [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex).
+- **Coefficient-mass sharpness, residue.**
+  [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex)
+  proves the partial-sum criterion at repeated roots (`thm:converse`,
+  `cor:charrep`, Descartes at infinity) and non-attainment
+  (`thm:noattain`).  Open (`sec:scope`): when the criterion fails the
+  infimum is `1/T` with `T >= tau*`; whether `T = tau*`, that is, whether
+  the escaping placement is the worst one.
+
+- **Coefficient mass at complex roots.**  Purely imaginary pairs are CLOSED
+  ([coefficient-mass-complex](proofs/coefficient-mass-complex.tex), split
+  out of [coefficient-mass](proofs/coefficient-mass.tex); `thm:transfer`,
+  `cor:imag`: by multisection a pair `+-ci` is worth exactly one real root
+  `c**2`, rows, mass and sharpness included), and the first row holds at
+  every root set (`prop:rowone`).  Beyond that no bound can depend on the
+  moduli and the angles alone (`prop:noangle`: `x**(2M) + rho**(2M)`).
+  At Gaussian-integer pairs, integer multiples split into blocks
+  (`lem:gausscarry`, `lem:gaussblocks`) each paying `log(rho_min/2)` per
+  degree (`thm:gausscharge`).  An Archimedean Newton polygon
+  (`thm:archnewton`) gives rows and mass `sum j log(rho_j/3)` for every
+  complex multiple once moduli grow by a factor 9 (`cor:separated`), and
+  at most `g` moduli per annulus `[R, 9R]` costs a factor `g**2`.  Crowded
+  roots in a thin sector are CLOSED (`lem:sectorcount`, `thm:thinsector`,
+  `thm:thingauss`: the argument principle forces a real crossing
+  polynomial with `K/2` large roots unless the degree is `>> K/delta`,
+  which block charging pays).  Real roots of both signs (`sec:bothsigns`):
+  Rolle on each half-line gives rows charging one root of each sign per
+  excluded coefficient (`thm:bothsigns`) and mass
+  `floor((L+1)**2/4) log(R/2)`, sharp at `+-s_j` (`cor:bothsignsmass`,
+  `prop:bothsignssharp`).  Wide sectors (`sec:widesectors`): for multiples of degree `O(K)` the order is
+  `min(K**2, K/delta) log R` with both constants sharp (`thm:widesector`,
+  `cor:wideconst`; `x^N - rho^N` attains `pi/delta`, `prop:widesharp`), so
+  `c K**2 log R` is false over the reals; at Gaussian roots
+  `(pi/delta - o(1)) K log R` holds unconditionally (`cor:widegauss`).
+  Open: whether `c K**2 log R` holds for all integer multiples at Gaussian
+  roots in a wide sector (the question the paper's introduction leaves),
+  and the cross terms `K_s K_t log t` between annuli.
+
+- **Every row at other roots.**  The paper is
+  [coefficient-mass-rows](proofs/coefficient-mass-rows.tex), split out of
+  [coefficient-mass](proofs/coefficient-mass.tex).  The last row is exact
+  for every `r > 1` (`cor:lastrowr`), and `thm:tailgen` extends `thm:tail`
+  to all roots above 1.  For `1 < r < 2` the rows are pinned up to a
+  factor `1 + O(k**(n-1/2) theta**k)` (`thm:prefixrows`, `cor:belowtwo`).
+  Crossing (`sec:crossing`): admissible polynomials form a convex set and an insertion flips every
+  later sign (`lem:crossing`, `lem:insflip`), so one insertion at the first
+  gap covers every later exempted position (`thm:crossing`, all `r > 1`).
+  CLOSED for every root `r >= 2` (`sec:allrowstwo`, `thm:allrowstwo`):
+  first-order optimality of a truncated minimizer in one direction bounds
+  the insertion at any gap above the constraints (`lem:optins`,
+  `lem:truncvertex`), which is the hypothesis of the reduction the paper
+  inlines, so `V_r(L,k) = beta_r(L-k+1)` for all `k`, `L`; for `1 < r < 2` the same
+  proof gives `V_r(L,k) >= (r-1)**(k-1) beta_r(L-k+1)`, exact at `k = L`.
+  For `1 < r < 2` one polynomial serves every exempted set
+  (`sec:onepoly`, `lem:prefixpush`, `thm:onepoly`) and prefix values are
+  supermultiplicative (`lem:prefixshift`), so the prefix identity
+  `V_r(L,k) = min_(i<=k) 1/nu_i(n)` (`eq:prefixid`) holds for every `k`
+  whenever `beta_r(n) <= 1` (`thm:onepolyrows`), in particular for
+  `r - 1 <= e**(-4n-2)/C_n` (`lem:topnearone`).  It is false in general
+  for `1 < r < 2`: at `r = 5/4`, `L = 16`, `k = 2` a monic multiple has
+  `b_2 <= 6.5694 < 7.6492 = min_(i<=2) 1/nu_i` (exact rational
+  arithmetic).  Long diagonals (`sec:longdiag`,
+  `lem:farprefix`, `thm:longdiag`, `prop:longdiagexplicit`): for each
+  `1 < r < 2` there are `alpha`, `K` with the prefix identity holding for
+  `k >= max(K, alpha(n-1))`, so every diagonal fails in at most finitely
+  many rows (`cor:longdiagfinite`).  Open: the value of `V_r(L,k)` for
+  `1 < r < 2`, small `k` and `beta_r(n) > 1`, where one polynomial cannot suffice and the prefix
+  identity can fail.
+
+- **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
+  brackets the growth rate of distinct behaviours (input-output maps on all
+  inputs, repo model: clipped tape, `,` at EOF an error) of `C`-character
+  programs: `4.1858 <= liminf B(C)**(1/C) <= limsup <= 7.0601`, from
+  `[2.414, 7.388]`.  Upper: behaviour-preserving shortlex rewriting (dead
+  loops, clears, diverging bodies, excursion commutation) and an exactly
+  certified Perron bound on the irreducible words; the old `7.388` counted
+  `[]` as removable, which is unsound when programs may diverge.  Lower:
+  token families decodable from their event sequences, with reads sent to
+  the nearest cell whose value is never printed again and nested loops
+  attached to prints (four local rules make brackets decodable; the fourth, a
+  read in every loop body, closes a gap where a read-free loop diverges and
+  hides its output, lowering the old 4.1963), certified by a Collatz-Wielandt vector; loop-free programs alone
+  lie in `[4.061, 2 + sqrt 5 = 4.236]`.  A single fixed input gives `>= 3.366`.
+  Open: the limit.  Local rules have saturated near 7.06, so the upper side
+  needs a global equivalence argument; the lower side needs a decodable
+  loop gadget beating `4.236`; the nested family without the local rules
+  certifies 4.2418 at `W = 6` and shows no collisions by brute force, so a
+  decoding proof for it would settle that loops raise the rate.
+
+- **Malbolge's first unreachable arity.**  Counting proves some 18-input
+  table has no Malbolge program; 17 needs the program count a further
+  `2**46076` down, and the length and alphabet cuts are dead
+  ([limitations](limitations.md), Malbolge).  The live route is a dependence
+  cut over the 24,434-cell threshold (the largest `K` with
+  `C(59049, K) * 8**K < 2**131072`), but NOT per program: `'o'*59046 +
+  '/<v'` computes the one-input identity and every one of its cells flips
+  it, so some program for a table can depend on all 59,049.  With full
+  stores a cell's first access is always a read, so dependent cells are
+  touched cells; in the shipped constructions every sampled touched cell
+  is dependent (3,416 at `n = 4`, 9,308 at 10, 16,650 at 11, at least
+  19,007 at 12).  What survives is a cut over ONE program per table -- a
+  normal form that strips nop runs and padding -- or a count of
+  descriptions rather than of flip-sensitive cells.  Either way it is a
+  density lemma: 17 inputs need 2.22 bits a cell against the 3 a cell
+  holds, so every program must waste 0.78 bits a cell (the shipped builds
+  store 0.14).  Next step: measure bits per cell of the tables computed
+  by a scaled-down Malbolge (`3**6`..`3**7` cells, same decode and
+  re-encipher) as the store grows; near 3 kills the route.  The shipped
+  constructions reach 14 inputs (four copies over a three-level cascade);
+  between them and 17 the least unreachable arity is unknown in both
+  directions.
+
+- **Polynomial's constant.**  `prop:bracket` in
+  [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
+  both limits in `[13/4 log10(2), 325/8 log10(2)]`, a factor 12.5 (down
+  from 211).
+  Lower side: counting with the relabelling symmetry (`lem:gapauto`,
+  `prop:counting`) forces `T/(n+4)` input values for every `n >= 7`.
+  Upper side: embedded automaton programs with an additive decoder
+  (`lem:adddec`, `prop:embprog`, effective profile `325/8` per state
+  squared, `lem:effprofile`) on a trie-banded automaton (`lem:trieband`,
+  `lem:bandtrie`) with `(1 + o(1)) T/n` states for every `n`, so levels
+  are CLOSED.  Open: profile (`325/8` against mass `13/4`).  Sources neither
+  even nor odd pay mass `4` (`rem:parity`), even or odd ones `3`
+  (`lem:evensigns`, both-signs rows on `E` with `f = x^e E(x**2)`), plus
+  `1/4` for every large `n` by counting sign skeletons
+  (`lem:evencount`, `cor:evenhard`; even or odd sources add and subtract
+  only right after a read, `lem:symruns`; exact register arithmetic, the
+  float `**` is a caveat).  The register and real roots are not
+  charged, see the complex-roots row.

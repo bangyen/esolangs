@@ -4,31 +4,19 @@ Covers the generators in :mod:`esolangs.tools.stack`: Grapheme,
 Forþ, Modulous, BFStack, and Unsquare.
 """
 
-import random
-
 import pytest
 
 import esolangs
 from esolangs import tools as boolean
 from esolangs.tools import stack
 from esolangs.tools.helpers import permute_truth_table
-from esolangs.tools.stack import _UNSQUARE_READ, _UNSQUARE_SINKS, stack_programs
 from tests.tools.boolean_runners import (
     run_bfstack,
     run_forth,
     run_grapheme,
     run_modulous,
+    run_unsquare,
 )
-
-
-def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
-    """Read-and-sink program for each reachable stack arrangement.
-
-    ``2 * 3**(n - 2)`` arrangements, as Forþ.  Unlike Forþ, a BFS finds the
-    same set with the same shortest strings through n == 7: these sinks do
-    not compose across reads, so the enumeration is also optimal.
-    """
-    return stack_programs(n, _UNSQUARE_SINKS, _UNSQUARE_READ)
 
 
 def _forth_scope_keys(table: str) -> set[int]:
@@ -50,19 +38,13 @@ def _forth_scope_keys(table: str) -> set[int]:
 
 
 class TestGrapheme:
-    def test_variable_keys_are_unbounded_and_avoid_the_reserved_key(self) -> None:
-        """Integer-mode arithmetic removes the old 24-letter key ceiling."""
-        from esolangs.tools.stack import (
-            _GRAPHEME_CONST_KEY,
-            _grapheme_push_key,
-            _grapheme_slot_key,
-        )
+    def test_a_literal_pushes_ten_times_any_value(self) -> None:
+        """Int mode spells every value, 6 included, as one literal."""
+        from esolangs.tools.stack import _grapheme_literal
 
-        keys = [_grapheme_slot_key(slot) for slot in range(40)]
-        assert len(set(keys)) == len(keys)
-        assert _GRAPHEME_CONST_KEY not in keys
-        for key in (60, 260, keys[-1], 1_263_460):
-            assert run_grapheme(_grapheme_push_key(key) + "Y", []) == str(key)
+        for value in (0, 1, 16, 106, 1006, 1_263_460, 9_999_996, 5_666_666):
+            code = _grapheme_literal(value)
+            assert run_grapheme(code + "Y", []) == str(10 * value), value
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -95,23 +77,25 @@ class TestGrapheme:
                 got = run_grapheme(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant table has no conditional skip; parity has a full tree."""
-        assert "V" not in boolean.grapheme("0" * 8)
-        assert boolean.grapheme("01101001").count("V") == 14
+    def test_there_is_no_branch_left(self) -> None:
+        """Indexing a literal needs no skip: parity emits no ``U``/``V``/``X``."""
+        parity = boolean.grapheme("01101001")
+        assert set("UVX").isdisjoint(parity)
+        assert set("UVX").isdisjoint(boolean.grapheme("0" * 8))
 
-    def test_full_tree_growth_is_linear(self) -> None:
-        """Skip literals widen near the root, but total source stays O(T)."""
+    def test_the_table_costs_about_a_third_of_a_character_an_entry(self) -> None:
+        """The literal is the table in base 10, so log10(2) letters an entry."""
         sizes = []
-        for n in (7, 8):
+        for n in (7, 11):
             table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
             sizes.append(len(boolean.grapheme(table)))
-        assert sizes[1] < 2 * sizes[0] + 64
+        grown = (sizes[1] - sizes[0]) / ((1 << 11) - (1 << 7))
+        assert 0.30 < grown < 0.35, sizes
 
     def test_the_program_is_only_grapheme_commands(self) -> None:
-        """Only the letters Grapheme reads as commands are emitted."""
+        """Only int-mode digits and the eleven commands used are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
-            assert set(boolean.grapheme(table)) <= set("ABCDEFGHIRSTVWYZ"), table
+            assert set(boolean.grapheme(table)) <= set("ABCDEFGHIKLPRSTWYZ"), table
 
 
 class TestForth:
@@ -346,22 +330,26 @@ class TestModulous:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
-        """A one-input function reads one input then branches on it."""
-        assert boolean.modulous("10").startswith("[INP INT]")
-        assert "[JMP F 2 IF 0]" in boolean.modulous("10")
+        """The table is one literal and the program prints one of its bytes."""
+        program = boolean.modulous("10010110")
+        assert program.startswith('[PSH STR "10010110"]')
+        assert program.count("[INP INT]") == 3
+        assert program.endswith("[PRT][END]")
 
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant slice pushes its answer instead of branching further.
+    def test_size_is_the_table_plus_a_fixed_frame(self) -> None:
+        """No branch reads the table, so its contents cannot change the size.
 
-        Modulous branches on the stack top, which is the *last* input, so
-        its subtrees are strided rather than contiguous runs -- a table
-        like ``11110000`` has no constant subtree under that split and
-        folds nothing.  A table that agrees outright still collapses to a
-        single push, which is where the saving comes from.
+        The old route was a decision tree, which meant a constant subtree
+        collapsed and a table like parity did not -- 45 characters an entry
+        against this one's frame plus a byte.  Length depending only on the
+        arity is the signature of the lookup that replaced it.
         """
-        leaves = "[PRT INT]"
-        assert boolean.modulous("11111111").count(leaves) == 1
-        assert boolean.modulous("10010110").count(leaves) == 8
+        sizes = {
+            len(boolean.modulous(table))
+            for table in ("11111111", "10010110", "00000000", "11110000")
+        }
+        assert len(sizes) == 1
+        assert len(boolean.modulous("1" * 16)) - sizes.pop() == 16 - 8 + 49
 
 
 class TestBfstack:
@@ -405,227 +393,111 @@ class TestBfstack:
 
 
 class TestUnsquare:
-    def test_program_shape(self) -> None:
-        """The program reads n inputs and prints once.
+    """The table lives on the stack; the reads pop down to the answer."""
 
-        The reads are no longer necessarily consecutive: a sink that
-        reorders the tree is emitted *between* them, because a bit has to
-        be moved while it is still near the top.  What stays invariant is
-        that there is one read per input and the program still consumes its
-        input stream in order.
-        """
-        program = boolean.unsquare("0110")
-        assert program.startswith("iA>-<P")
-        assert program.count("iA>-<P") == 2  # one read per input
-        assert program.endswith("o")
-
-        # A table whose best order needs a sink still reads once per input.
-        for value in range(256):
-            assert boolean.unsquare(format(value, "08b")).count("iA>-<P") == 3
-
-    def test_the_natural_order_is_built_at_wide_arity(self) -> None:
-        """A wide greedy prefix still reads every input exactly once."""
-        n = 7
-        table = "01" * (2 ** (n - 1))
+    @staticmethod
+    def _rows(table: str) -> list[str]:
+        """Every row of ``table`` as the generated program answers it."""
+        n = (len(table) - 1).bit_length()
         program = boolean.unsquare(table)
+        return [
+            run_unsquare(program, list(format(row, f"0{n}b"))) for row in range(2**n)
+        ]
 
-        assert program.count("iA>-<P") == n  # one read per input
+    def test_program_shape(self) -> None:
+        """The table is pushed first, then one read an input, then the print."""
+        program = boolean.unsquare("0110")
+        assert program.startswith("OIIO")  # the table, reversed, one cell a row
+        assert program.count("i") == 2  # one read an input
         assert program.endswith("o")
 
-    def test_greedy_sinks_recover_most_small_oracle_winners(self) -> None:
-        """The heuristic never grows n=3 and matches 248/256 oracle minima."""
-        from esolangs.tools.stack import _unsquare_tree
-
-        improved = 0
-        exact = 0
-        largest_gap = 0
         for value in range(256):
-            table = format(value, "08b")
-            current = len(boolean.unsquare(table))
-            natural = len(_UNSQUARE_READ * 3 + _unsquare_tree(table, 3))
-            oracle = min(
-                len(prefix)
-                + _unsquare_cost(permute_truth_table(table, arrangement), 3)
-                + 1
-                for arrangement, prefix in _unsquare_stack_programs(3).items()
-            )
-            assert current <= natural
-            improved += current < natural
-            exact += current == oracle
-            largest_gap = max(largest_gap, current - oracle)
-        assert (improved, exact, largest_gap) == (104, 248, 44)
+            assert boolean.unsquare(format(value, "08b")).count("i") == 3
 
-    def test_sinks_are_interleaved_with_the_reads(self) -> None:
-        """Weaving the sinks into the reads is what reaches the arrangements.
+    def test_two_bytes_a_row(self) -> None:
+        """Size is the table plus its addressing, not a tree over it.
 
-        A bit stashed in the accumulator does not survive a read block --
-        the block's own ``A`` overwrites it -- so a bit has to be sunk while
-        it is still near the top, before later reads bury it.
-
-        The reachable *set* has a closed form, which is why no search is
-        needed: after each read the new bit is on top and the only lasting
-        freedom is how far it sinks (0, 1 or 2 places), one independent
-        choice per read past the first.  Forþ's stack has the same count for
-        the same reason, reached through different ops.
+        ``2**n`` cells and ``2**n - 1`` pops, so the constant is 2 either
+        side of the reads; the old decision tree spent 32.5 a row.
         """
+        for n in range(2, 11):
+            table = "".join("01"[(row * row) % 3 % 2] for row in range(2**n))
+            size = len(boolean.unsquare(table))
+            assert size - 2 * 2**n == 10 * n + 26, n
 
-        for n in range(2, 7):
-            assert len(_unsquare_stack_programs(n)) == 2 * 3 ** (n - 2)
-        assert len(_unsquare_stack_programs(3)) == 6  # all of 3!
-        assert len(_unsquare_stack_programs(4)) == 18  # of 24
-        assert len(_unsquare_stack_programs(5)) == 54  # of 120
+    def test_every_row_of_every_small_table(self) -> None:
+        """Exhaustive at n <= 3: 276 tables, every row executed."""
+        for n in (1, 2, 3):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                assert "".join(self._rows(table)) == table, table
 
-        # The reads themselves are still one per input, whatever the weave.
-        for n in (3, 4, 5):
-            for program in _unsquare_stack_programs(n).values():
-                assert program.count("iA>-<P") == n
+    def test_a_program_answers_its_own_table_only(self) -> None:
+        """The positive control: XOR's program disagrees with XNOR everywhere."""
+        assert "".join(self._rows("0110")) != "1001"
 
-    def test_two_place_sink_needs_the_leading_swap(self) -> None:
-        """Sinking two places is ``SASP``; ``ASP`` alone does something else.
+    def test_inessential_inputs_cost_a_read_not_a_table(self) -> None:
+        """An ignored input is consumed by ``iA`` and never widens the table.
 
-        ``A`` lifts the *top* out, so the ``S`` that follows swaps the pair
-        beneath it and ``P`` returns the bit to where it started -- which
-        reorders the wrong two cells.  The leading ``S`` is what moves the
-        bit down first so the pair it must cross ends up above it.  This is
-        pinned because the difference is invisible in the arrangement count
-        (both spellings reach the same number of arrangements) and shows up
-        only as a program computing the wrong function.
+        The stream is still read in full -- a program that stopped early
+        would leave the harness's remaining lines unread -- but the cells
+        below count only the inputs that matter.
         """
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.unsquare import _Machine
-
-        def apply(ops: str) -> tuple[int, ...]:
-            machine = _Machine(ops, ScriptedIO(""))
-            machine.load((10, 20, 30))
-            for _ in range(100):
-                if machine.halted:
-                    break
-                machine.step()
-            return machine.stack
-
-        assert apply("SASP") == (30, 10, 20)  # the top sank two places
-        assert apply("ASP") == (20, 10, 30)  # the top never moved
-
-    def test_decision_tree(self) -> None:
-        """Each internal node branches on a bit with the flip primitive."""
-        program = boolean.unsquare("0110")
-        assert "x->IA<" in program  # the stack-clean flip
-        assert program.count("x>") >= 3  # one guard per branch
-
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant slice prints its answer instead of branching further.
-
-        Like Modulous, Unsquare branches on the last input first, so its
-        subtrees are strided and a table such as ``11110000`` folds
-        nothing; a table that agrees outright collapses to one leaf.
-        """
-        assert boolean.unsquare("11111111").count("P") == 3 + 1  # 3 reads, 1 leaf
-        assert boolean.unsquare("10010110").count("P") == 3 + 8
+        program = boolean.unsquare("01010101")  # depends on the last input alone
+        assert program.count("i") == 3
+        assert program.startswith("IOiA")  # two cells, then the first skip
+        assert "".join(self._rows("01010101")) == "01010101"
 
     def test_the_program_is_only_unsquare_commands(self) -> None:
         """Only the characters Unsquare reads are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
-            assert set(boolean.unsquare(table)) <= set("+-<>AIOPSiox"), table
+            assert set(boolean.unsquare(table)) <= set("+-<>AIOPiox"), table
 
 
-class TestGraphemeKeys:
-    """Variable keys remain distinct beyond the old one-letter alphabet."""
+class TestGraphemeTable:
+    """The one literal holding the table, and the index that shifts it."""
 
     @staticmethod
     def _one_minterm(n: int) -> str:
         """A table whose single 1 makes every one of its ``n`` inputs matter."""
         return "1" + "0" * (2**n - 1)
 
-    def test_digit_six_is_split_around_the_int_mode_delimiter(self) -> None:
-        """A key containing decimal 6 is still constructed exactly."""
-        for key in (60, 160, 260, 1_263_460):
-            code = stack._grapheme_push_key(key)  # noqa: SLF001
-            assert run_grapheme(code + "Y", []) == str(key)
-
-    def test_no_key_letter_aliases_the_constant(self) -> None:
-        """The normalizing 65 owns key 90, and no finite slot aliases it."""
-        keys = [
-            stack._grapheme_slot_key(slot)  # noqa: SLF001
-            for slot in range(1000)
-        ]
-        assert stack._GRAPHEME_CONST_KEY not in keys  # noqa: SLF001
-        assert len(set(keys)) == len(keys)
+    def test_padding_never_reaches_an_entry(self) -> None:
+        """Every entry survives the lift that forces a leading decimal 1."""
+        for n in range(1, 9):
+            for table in (self._one_minterm(n), "01" * (2 ** (n - 1))):
+                packed = stack._grapheme_table(table)  # noqa: SLF001
+                assert str(packed)[0] == "1"
+                low = format(packed % (1 << len(table)), f"0{len(table)}b")
+                assert low == table
 
     @pytest.mark.parametrize("n", [6, 7, 8, 9])
     def test_a_table_using_every_input_still_computes(self, n: int) -> None:
         """Six essential inputs reached slot 5, whose old key was ``FFF``.
 
-        Under the old alphabet six raised ``ProgramError: Grapheme produced
-        no answer this could read`` and seven raised ``HaltError: G needs a
-        string or a function``.  Five and below were always fine, at any
-        arity, because the wall stood at essential inputs rather than table
-        size -- a dense n=9 table that folds to one input never saw it.
+        Under the one-letter key alphabet six raised ``ProgramError: Grapheme
+        produced no answer this could read`` and seven raised ``HaltError: G
+        needs a string or a function``.  There are no slot keys left to
+        collide, but the arities that broke stay pinned.
         """
         table = self._one_minterm(n)
         assert esolangs.evaluate("Grapheme", table, timeout=60) == table
 
     def test_parity_at_six_inputs_computes(self) -> None:
-        """Parity is the table with nothing to fold, so all six slots are live."""
+        """Parity is the table with nothing to fold, so every input is live."""
         table = "".join(str(bin(row).count("1") & 1) for row in range(64))
         assert esolangs.evaluate("Grapheme", table, timeout=60) == table
 
-    def test_the_constant_alias_returned_a_wrong_answer(
+    def test_an_off_by_one_shift_returns_a_wrong_answer(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """The positive control: aliasing a slot with key 90 is quietly wrong.
+        """The positive control: the index is load-bearing, not decoration.
 
-        The old ``I`` key put slot 7 at the normalization constant's key.
-        That collision does not raise: eight essential inputs
-        still come out right, because slot 7 is read last and nothing reads
-        the constant after it.  Nine is where the clobbered 65 is read back
-        and the table comes out wrong, quietly.  Without this control the
-        ``I`` skip looks like superstition.
+        Doubling the packed table shifts every entry one bit up, which the
+        accumulator's power of two no longer cancels.  Without this control a
+        table that happened to read right anywhere would look like proof.
         """
-        from esolangs.tools.stack import _GRAPHEME_CONST_KEY
-
-        slot_key = stack._grapheme_slot_key  # noqa: SLF001
-        monkeypatch.setattr(
-            stack,
-            "_grapheme_slot_key",
-            lambda slot: _GRAPHEME_CONST_KEY if slot == 7 else slot_key(slot),
-        )
-        table = self._one_minterm(9)
+        packed = stack._grapheme_table  # noqa: SLF001
+        monkeypatch.setattr(stack, "_grapheme_table", lambda t: 2 * packed(t))
+        table = self._one_minterm(6)
         assert esolangs.evaluate("Grapheme", table, timeout=60) != table
-
-
-def _unsquare_cost(truth_table: str, n: int) -> int:
-    """The tree-size model spelled recursively: the pricer's oracle."""
-
-    def cost(rows: list[int], bit: int) -> int:
-        if len({truth_table[row] for row in rows}) == 1:
-            return 29
-        ones = [row for row in rows if (row >> bit) & 1]
-        zeros = [row for row in rows if not (row >> bit) & 1]
-        return 17 + cost(ones, bit + 1) + cost(zeros, bit + 1)
-
-    return cost(list(range(2**n)), 0)
-
-
-@pytest.mark.parametrize("seed", range(40))
-def test_unsquare_prices_every_sink_as_the_permuted_tree(seed: int) -> None:
-    """The incremental pricer agrees with pricing each candidate from scratch."""
-    from esolangs.tools.stack import _UNSQUARE_SINKS, _sink_top, _UnsquarePricer
-
-    rng = random.Random(seed)
-    n = rng.randint(1, 7)
-    table = "".join(
-        rng.choice("01") if rng.random() < 0.6 else "0" for _ in range(2**n)
-    )
-    pricer = _UnsquarePricer(table, n)
-    arranged: tuple[int, ...] = ()
-    for k in range(n):
-        pushed = (*arranged, k)
-        options = [places for places, _ in _UNSQUARE_SINKS if places < len(pushed)]
-        for places in options:
-            final = (*_sink_top(pushed, places), *range(k + 1, n))
-            assert pricer.price(k, places) == _unsquare_cost(
-                permute_truth_table(table, final), n
-            )
-        places = rng.choice(options)
-        pricer.commit(k, places)
-        arranged = _sink_top(pushed, places)

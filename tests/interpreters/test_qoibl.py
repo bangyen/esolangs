@@ -556,8 +556,14 @@ class TestTheTokenizerCarriesItsOwnStack:
         return "".join(str(int(bin(r).count("1") * 2 > n)) for r in range(2**n))
 
     def test_a_program_past_the_old_wall_tokenizes(self) -> None:
-        """3972 characters, against a default limit of 1000."""
-        program = esolangs.generate("Qoibl", self._majority(6))
+        """4929 characters, against a default limit of 1000.
+
+        Twelve inputs, not the six this needed when a program cost a
+        Shannon tree: the table now rides in one literal, so a six-input
+        majority is 513 characters and would clear the old wall by being
+        small rather than by the tokenizer carrying its own stack.
+        """
+        program = esolangs.generate("Qoibl", self._majority(12))
         assert len(program) > 3000
         assert tokenize(program)
 

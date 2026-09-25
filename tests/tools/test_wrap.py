@@ -127,6 +127,7 @@ UNWRAPPABLE = {
     "back": "the beam path and embedded input occupy fixed grid coordinates",
     "befunge": "a row is a grid row and the lookup table is indexed by column",
     "brainif": "each line is one instruction and goto targets are line numbers",
+    "clockwise": "a row is a ring row; the walk's turns sit at fixed cells",
     "collatz_multiverse": "each line is one complete register assignment",
     "container": "each line declares a container or one of its rules",
     "crement": "each line is one instruction; jumps and patches name line numbers",
@@ -146,6 +147,7 @@ WIDTH_EXCEPTIONS = {
         "arrowqueue",
         "back",
         "befunge",
+        "clockwise",
         "collatz_multiverse",
         "container",
         "crement",
@@ -743,11 +745,10 @@ def test_no_width_is_unchanged(name: str) -> None:
 
 
 def test_clockwise_is_never_reflowed() -> None:
-    """Clockwise honours a width by shaping, never by inserting newlines.
+    """Clockwise takes no width, and a break in its grid is not a reflow.
 
-    Its grid rows are semantic, so ``wrap_program`` must leave it alone even
-    though ``generate`` does respond to a width for it -- the width reaches
-    the generator instead.
+    Its rows are ring rows and every turn is a cell of the walk, so a
+    newline inserted after generation moves code rather than rewrapping it.
     """
     assert "clockwise" not in WRAPPERS
     grid = generate("Clockwise", TABLE)
@@ -764,6 +765,34 @@ def test_already_multiline_programs_are_left_alone() -> None:
     """A program that already has newlines is never re-wrapped."""
     program = "line one\nline two"
     assert wrap_program(program, "decleq", 4) == program
+
+
+@pytest.mark.parametrize(
+    ("program", "token"),
+    [
+        ("+=30.", "=30"),
+        ("+:x.", ":x"),
+        ("+>~3.", ">~3"),
+        ("+!12.", "!12"),
+        ("+?7.", "?7"),
+        ("+$4.", "$4"),
+        ("+{2}.", "{2"),
+    ],
+)
+def test_dimensional_keeps_every_operand_with_its_command(
+    program: str, token: str
+) -> None:
+    """A break inside any of these changes what the program does.
+
+    ``_number`` takes an optional ``~`` and a digit run for ``<``, ``>``,
+    ``$``, ``{``, ``?`` and ``!``; ``=`` takes exactly two hex digits and
+    ``:`` exactly one character.  The pattern named only ``[<>]\\d+``, so
+    all seven split -- but generated programs use just ``=``, and the one
+    committed example is wrapped where nothing lands mid-token, so only
+    ``=30`` ever failed and the other six sat latent.  Width 1 forces a
+    break at every boundary the pattern allows.
+    """
+    assert token in wrap_program(program, "dimensional", 1).split("\n")
 
 
 def test_wrap_tokens_refuses_a_pattern_that_does_not_tile() -> None:

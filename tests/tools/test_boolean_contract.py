@@ -230,18 +230,13 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
     from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
-    from esolangs.tools.egl import _egl_ordered
-    from esolangs.tools.helpers import _decision_tree_program
-    from esolangs.tools.other import _forbin_ordered
+    from esolangs.tools.painfuck import _painfuck_ordered
     from esolangs.tools.parameterized import (
         _bitdeque_ordered,
         _ram0_ordered,
     )
-    from esolangs.tools.tape import (
-        _ASCII_ZERO,
-        _circlefuck_ordered,
-        _jaune_ordered,
-    )
+    from esolangs.tools.tape import _bf_ordered, _jaune_ordered
+    from esolangs.tools.three_d_brainfuck import _three_d_ordered
 
     entries: list[tuple[str, object, object]] = [
         (
@@ -252,25 +247,12 @@ def _reordering_generators() -> list[object]:
         (
             "brainfuck",
             boolean.brainfuck,
-            lambda t, p: _decision_tree_program(t, ">", "<", p),
+            _bf_ordered,
         ),
-        (
-            "dimensional",
-            boolean.dimensional,
-            lambda t, p: _decision_tree_program(t, ">0", "<0", p),
-        ),
-        ("egl", boolean.egl, _egl_ordered),
+        ("painfuck", boolean.painfuck, _painfuck_ordered),
+        ("three_d_brainfuck", boolean.three_d_brainfuck, _three_d_ordered),
         ("ram0", boolean.ram0, _ram0_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
-        (
-            "circlefuck",
-            boolean.circlefuck,
-            # The byte-valued builder underneath takes a *byte* table,
-            # so the contract's binary-string table is lifted the way
-            # circlefuck() itself lifts it.
-            lambda t, p: _circlefuck_ordered([_ASCII_ZERO + int(b) for b in t], p),
-        ),
-        ("forbin", boolean.forbin, _forbin_ordered),
         ("jaune", boolean.jaune, _jaune_ordered),
     ]
     return [
@@ -323,11 +305,7 @@ def test_reordering_shrinks_the_tables_it_should(
     """
     if name == "jaune":
         pytest.skip("clobbering already makes the identity order optimal here")
-    # Circlefuck splits last-input-first, so ``10101010`` is the table its
-    # identity order already folds; the one only a reorder folds is the
-    # same function with its inputs renamed the other way.
-    table = "11110000" if name == "circlefuck" else "10101010"
-    assert len(fn(table)) < len(ordered(table, (0, 1, 2))), (
+    assert len(fn("10101010")) < len(ordered("10101010", (0, 1, 2))), (
         f"{name} did not reorder a table that only reordering folds"
     )
 
@@ -348,13 +326,11 @@ def test_reorder_permutation_preserves_the_function() -> None:
 
 def test_greedy_order_never_grows_a_wide_program() -> None:
     """The identity candidate keeps the greedy heuristic from growing output."""
-    from esolangs.tools.helpers import _decision_tree_program
+    from esolangs.tools.tape import _bf_ordered
 
     n = 8
     table = "0" * (2**n - 1) + "1"
-    assert len(boolean.brainfuck(table)) <= len(
-        _decision_tree_program(table, ">", "<", tuple(range(n)))
-    )
+    assert len(boolean.brainfuck(table)) <= len(_bf_ordered(table, tuple(range(n))))
 
 
 def test_order_selection_builds_at_most_two_candidates() -> None:
@@ -467,11 +443,10 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """
     from itertools import permutations
 
-    from esolangs.tools.helpers import _decision_tree_program
+    from esolangs.tools.tape import _bf_ordered
 
     lengths = {
-        perm: len(_decision_tree_program("00010111", ">", "<", perm))
-        for perm in permutations(range(3))
+        perm: len(_bf_ordered("00010111", perm)) for perm in permutations(range(3))
     }
     assert lengths == {
         (0, 1, 2): 299,
@@ -484,9 +459,9 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
 
     # One and two inputs, where the tape is short enough that an off-by-one
     # in the move would still land inside it.
-    assert len(_decision_tree_program("01", ">", "<", (0,))) == 115
-    assert len(_decision_tree_program("0110", ">", "<", (0, 1))) == 205
-    assert len(_decision_tree_program("0110", ">", "<", (1, 0))) == 211
+    assert len(_bf_ordered("01", (0,))) == 115
+    assert len(_bf_ordered("0110", (0, 1))) == 205
+    assert len(_bf_ordered("0110", (1, 0))) == 211
 
 
 # The shape each boolean generator's construction takes, which decides which
@@ -501,10 +476,10 @@ _MINTERM_SHAPED = {
 # Neither model describes these.  ``minifuck`` is a route search over a
 # grid, not a sum and not a tree.
 #
-# ``b_tapemark`` is a tree, but a deliberately *unfolded* one, so the
-# folding discriminator does not apply: its nodes read the input, and
-# collapsing a constant subtree would drop that subtree's reads and break
-# the read-count contract above.  ``slow_acv_mammalian`` is a branch-free
+# ``b_tapemark`` copies the whole table onto the blank grid, one mark per
+# row, and each input walks the mark pointer by its weight -- so every table
+# of one arity renders to the same length and a 0% fold is its construction
+# working.  ``slow_acv_mammalian`` is a branch-free
 # chain into a flat leaf table -- every table of one arity renders to the
 # same length, so a 0% fold is its construction working.
 #
@@ -528,7 +503,11 @@ _MINTERM_SHAPED = {
 # essential inputs, so the gain tracks the dropped *arity* rather than any
 # collapsed structure.  Reordering does not become applicable to them the way
 # it would if they had grown a tree, which is why they are neither list.
+# ``circlefuck`` reduces for the same reason from the other shape: its
+# lookup tabulates the essential inputs alone, so a one-dependency table is
+# a two-entry table and not a collapsed tree.
 _REDUCING = {
+    "circlefuck",
     "home_row",
     "nocomment",
     "rotfuck",
@@ -560,21 +539,35 @@ _REDUCING = {
 # says; a one-dependency table only spares it the flat edges' adjustments,
 # which is 4.4% once the doubling between the input runs is in the text.
 #
-# ``befunge`` and ``whitespace`` are branch-free lookups of the same class:
-# Befunge writes one grid cell per table entry and reads it with ``g``, and
-# Whitespace halves one literal once per index step, so two tables with the
-# same ones-count render to the same length and a 0% fold is the construction
-# working.
+# ``qoibl`` is the same class as ``whitespace``: the whole table is one
+# binary literal and the reads build the power of two that divides it down,
+# so the only thing a one-dependency table spares is the literal's leading
+# zeros.
+#
+# ``befunge``, ``clockwise``, ``dimensional``, ``modulous`` and ``whitespace``
+# are branch-free lookups: Befunge writes one grid cell per entry and reads it
+# with ``g``, Clockwise stops a countdown on the entry's own column, Modulous
+# pops a ``PSH STR`` table down to the indexed character, and Whitespace halves
+# one literal once per index step, so a 0% fold is the construction working.
+# Dimensional paints one cell an entry along dimension 1 and stops at the last
+# one, so a constant-zero tail reads as a 6.9% fold with nothing collapsing.
 _UNSHAPED = {
     "a_painter_ant",
     "befunge",
     "bio",
     "alight",
+    "clockwise",
+    "dimensional",
+    "egl",  # one painted grid cell per entry, walked to by weighted guards
+    "forbin",  # one painted call argument per entry, halved down to the first
     "malbolge",
     "minsky_swap",
     "b_tapemark",
     "minifuck",
+    "modulous",
     "one_two_three",
+    "packlang",  # one painted array cell per differing row, read by index
+    "qoibl",
     "slow_acv_mammalian",
     "container",
     "whitespace",
@@ -813,6 +806,33 @@ def _dense(n: int) -> str:
     return "".join(bits[: 2**n])
 
 
+def _nested_dense(n: int) -> str:
+    """A dense table whose every arity *extends* the one below it.
+
+    :func:`_dense` seeds on ``n``, so its tables at consecutive arities are
+    independent draws: how much of each one folds is an accident of that
+    draw, and a statistic comparing two arities reads the difference between
+    two unrelated tables as growth.  That is fine for the coverage sweeps,
+    which want one hard table per arity and pin its size, but it is noise to
+    anything measuring a *series* -- re-drawing the tables moves the scaling
+    contract's reading by +-2% for the generators whose size depends on the
+    table at all.
+
+    Here one stream is drawn once and every arity takes a prefix of it, so
+    ``_nested_dense(n)`` restricted to ``x_n = 0`` is exactly
+    ``_nested_dense(n - 1)``.  The arities then form a family of functions
+    rather than a sample, which is what a growth measurement needs.
+    """
+    digest = hashlib.sha256(b"nested-dense").digest()
+    bits: list[str] = []
+    block = 0
+    while len(bits) < 2**n:
+        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+        bits.extend(str(byte & 1) for byte in digest)
+        block += 1
+    return "".join(bits[: 2**n])
+
+
 def _parity(n: int) -> str:
     """Parity -- the table with no constant subtree above a single row."""
     return "".join(str(bin(row).count("1") & 1) for row in range(2**n))
@@ -1008,12 +1028,8 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "Circuit Diagram": (1_780_773, 2_505_897, 1.4),
-    "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (1_589_968, 5_016_851, 3.2),
-    "SLOW ACV MAMMALIAN": (456_394, 798_829, 1.8),
-    "bit~": (28_210, 56_676, 2.0),
-    "123": (22_964, 45_728, 2.0),
-    "Factor": (17_613, 36_339, 2.1),
+    "Factor": (16_711, 35_323, 2.1),
 }
 
 
@@ -1021,7 +1037,8 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
 # after an O(T) construction or a language-wide lower bound; it enters when
 # the construction is read super-linear, whatever the twelve doublings
 # measure.  Streetcode left: its per-level hall was the
-# ``Theta(T log T)`` source and the alternating-axis H-tree replaced it.
+# ``Theta(T log T)`` source, and the tree it hung off has since gone too --
+# the table is one street cell per entry and the inputs address it.
 _LINEAR_SCALING = {
     "a_painter_ant",
     "addsubjump",
@@ -1095,16 +1112,36 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
     ],
 )
 def test_converted_generators_scale_linearly(name: str) -> None:
-    """Doubling a wide unfolded table at most doubles generated text."""
+    """Three same-parity rungs grow by four, whatever the prologue.
+
+    Comparing consecutive arities cannot do this job.  For ``size = a*T +
+    b`` that ratio is ``4(a + b/T)/(a + 4b/T)``, which exceeds four exactly
+    when ``b`` is negative -- it reports the sign of the prologue, not the
+    growth, so shrinking a generator's per-entry cost *raises* it.  It also
+    straddles the two arity parities that an alternating-axis layout keeps
+    separate constants for.  Successive differences over three same-parity
+    rungs are ``3aT`` and ``12aT``, so their ratio is four for any ``a*T +
+    b`` and the prologue cancels.
+    """
     fn = getattr(boolean, name)
-    # The grid H-layouts have different odd/even finite-size constants; their
-    # all-arity area bounds are checked with their construction invariants.
-    arities = (8, 9) if name == "circuit_diagram" else (11, 12)
+    if name == "circuit_diagram":
+        # The H-layout is not asymptotic below n=8, so it has no room for a
+        # third rung; the deep contract carries it on a backstop for the
+        # same reason, and its area recurrence is checked with the
+        # construction invariants.
+        sizes = [len(fn(_parity(n))) for n in (8, 9)]
+        assert sizes[1] <= 2 * sizes[0]
+        return
+    arities = (8, 10, 12)
     sizes = [len(fn(_parity(n))) for n in arities]
     if name == "minifuck":
         assert all(size <= 70 * 2**n for size, n in zip(sizes, arities, strict=True))
-    else:
-        assert sizes[1] <= 2 * sizes[0]
+        return
+    # The bound is ``linearity.MAX_DIFF_RATIO``.  That module imports the
+    # table shapes from this one, so the constant cannot travel the other
+    # way without a cycle; it is restated here rather than shared.
+    assert sizes[1] > sizes[0]
+    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) <= 4.4
 
 
 @pytest.mark.slow
@@ -1144,4 +1181,7 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         if name not in _DOCUMENTED_SIZES and LANGUAGES[name].boolean is not None
     )
     assert biggest[0] < 600_000, biggest
-    assert biggest[1] == "Streetcode"
+    # Streetcode and B-tapemark each led here until their trees became flat
+    # lookups.  SLOW ACV MAMMALIAN leads now at 115707, roughly twice
+    # Malbolge's fixed 59049 store, so one name is stable where a set was not.
+    assert biggest[1] == "SLOW ACV MAMMALIAN", biggest

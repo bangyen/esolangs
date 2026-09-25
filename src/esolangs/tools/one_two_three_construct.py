@@ -2,29 +2,27 @@ r"""Constructed 123 templates for four and more inputs.
 
 Same contract as :mod:`esolangs.tools.one_two_three`: each run once in
 name order, ``1`` a one and ``2`` a zero, halt for a 0 entry and a proven
-loop for a 1.  The ledger's objection ("the pointer phase *is* the value")
-binds the phase-decode shape, not the language: after each embed the two
-fill branches re-merge to position 0 by ``"1"*(P+1) + "212112"``
-(``2`` maps -1 and -2 to 0; the junk byte is snapshot-invisible), leaving
-the bit as a tape mark, so embeds are storage and the rest is decode.
+loop for a 1.
 
-1. **Embed** (:func:`_phase_a`): walk to ``P_i``, run, merge, scrub the
-   merge's blanket flip; all rows end at 0 with one mark per set bit.
-2. **Separate** (:func:`_separate`): a planned decode tree; level ``i``
-   walks each group onto ``marks[i]`` and ``"33"`` splits it by the bit.
-   Geometry from :func:`_geometry`: a tight linear layout proved per
-   arity by a reference run (2.2-64x smaller), else the doubling base
-   whose halving escapes survive all ``n`` levels at any arity.
-3. **Verdict** (:func:`_verdict`): rows sit at distinct odd positions
-   with nothing marked above; the kill ``"1"*a + "2" + "2"*(a-1) + "12"``
-   loops every row below ``a`` by a proven revisit, and each 0-row is
-   shielded first by a paint (:func:`_paint_all`).
-4. **Endgame** (:func:`_endgame`): a descent parks every survivor on a
-   negative ring cell, so it halts.
+At four inputs and up :func:`_construct_linear` emits by rule, one
+segment per input: **the fill is the splitter**.  A one flips the cell
+under it and steps left, a zero steps right, so the branches part by two
+and the ``33`` sees the flip; the set-bit branch then replays twice,
+because a replay is the first pass translated by its own displacement and
+:func:`_segment` picks which cells it marks so that the third landing
+cell, not the second, comes up clear.  Replays cost displacement and no
+source, so the same split needs half the walk.  Nothing is pre-painted,
+and the marks each pass leaves are read by the verdict, not cleared.
 
-:func:`construct` validates every stage on an exact model while
-emitting and raises rather than ship an unproven template.  It does not
-replay the result (81-95% of a call); the suite runs emitted programs on
+Below four inputs :func:`construct` runs the older modelled pipeline --
+:func:`_phase_a` embeds each bit as a mark and re-merges the branches,
+:func:`_separate` walks a decode tree onto the geometry
+:func:`_geometry` picks, :func:`_verdict` shields each 0-row and fires
+one kill, :func:`_endgame` parks the survivors below zero.  Every stage
+there is validated on an exact model while emitting, and raises rather
+than ship an unproven template.
+
+Neither route replays what it emitted; the suite runs emitted programs on
 the real interpreter, exhaustively at ``n <= 3``.  :func:`_replay_verdict`
 is a separate 123 interpreter for those tests, checked against the real
 one on random programs.
@@ -616,9 +614,6 @@ def _endgame(b: _Builder) -> None:
         raise ConstructError("a survivor would restart instead of halting")
 
 
-_REUSED_BIT_MERGE = "121111112112"
-
-
 def _paint_source(offsets: list[int]) -> str:
     """Spell :func:`_paint_all` without constructing per-row tape states."""
     targets = set(offsets)
@@ -661,53 +656,93 @@ def _linear_endgame(positions: set[int]) -> str:
     return "".join(out)
 
 
-def _construct_linear(truth_table: str, n: int) -> str:
-    """Build the repeated-mark 123 construction in O(T) time and source.
+def _walk(i: int) -> int:
+    """Level ``i``'s stride ``d``: a zero advances ``d + 2``, a one ``3*d``.
 
-    Input ``i`` occupies reusable cell 2; everyone paints two below its
-    separator marks, a set-bit row replays the segment and paints the marks;
-    the merge identity maps positions 2/4 to zero.  Separator weight
-    ``4*2**i``; marks and their shadows occupy different residues mod four.
-    Row ``r`` ends at ``base + 4*(T-1 + bit_reverse(r))``, derived directly.
+    The least admissible stride, not a tuned constant.  A set-bit row runs
+    the segment three times (see :func:`_segment`), so it splits by
+    ``3*d - (d + 2) = 2*d - 2``, and the split has to beat the spread
+    ``2*(2**i - 1)`` already accumulated or two rows collide -- so
+    ``2*d - 2 = 2*2**i``, which is this.
     """
-    base = 9
-    out: list[str] = []
-    for i in range(n):
-        # The first three runs are one P=1 embed/merge/scrub, leaving exactly
-        # bit i at cell 2 and every row at zero.
-        out.extend(("2", _INPUT, "11", "212112", "22", "111", "2", "33"))
-        weight = 4 * 2**i
-        prefix_positions = range(4 * (2**i - 1), 8 * (2**i - 1) + 1, 4)
-        marks = [base + pos + weight for pos in prefix_positions]
-        out.extend(
-            (
-                "2221",
-                _paint_source([mark - 4 for mark in marks]),
-                "33",
-                _REUSED_BIT_MERGE,
-                "33",
-            )
-        )
+    return (1 << i) + 1
 
-    out.extend((_ZERO * base, "33"))
-    for i in range(n):
-        out.extend((_ZERO * (4 * 2**i), "33"))
 
-    size = 2**n
+def _segment(i: int) -> str:
+    """Level ``i``'s splitter: one fill, three passes for a set bit.
+
+    ``"2"*d`` puts the fill on cell ``d``, ``"2"*(2*d+1)`` carries the walk
+    out to ``3*d``, and the descent comes back to ``d`` marking every cell
+    it leaves except ``2*d`` and ``3*d-1`` (``"121"`` toggles a cell twice
+    and still steps down, so skipping costs two characters).  A pass is the
+    one before it translated by ``d``, so the pass-``j`` landing cell
+    ``j*d`` is marked exactly when an odd number of ``{d, 2*d, 3*d}`` are
+    toggled: ``d`` and ``3*d`` are, ``2*d`` is not, so passes 1 and 2 land
+    marked and pass 3 lands clear.  ``3*d-1`` is skipped so the next
+    level's fill cell, ``2*d - 1`` above this one's landing, is clear.
+    """
+    d = _walk(i)
+    descent = _ONE + "121" + _ONE * (d - 2) + "121" + _ONE * (d - 1)
+    return _ZERO * d + _INPUT + _ZERO * (2 * d + 1) + descent + "33"
+
+
+def _leftover(n: int, bit: int, off: int) -> bool:
+    """Whether cell ``off`` above a row's landing cell ends the walk marked.
+
+    Closed form, not a simulation: only the last level's marks survive above
+    its own landing cell.  With ``M`` the descent's marks -- ``[d+1, 3*d]``
+    less ``2*d`` and ``3*d-1`` -- the toggles left above are ``M - d`` for a
+    clear bit and, three passes in, ``(M - d)`` xor ``(M - 2*d)`` for a set
+    one.
+    """
+    d = _walk(n - 1)
+    if off == 2 * d:
+        return True
+    if bit:
+        return d - 1 <= off <= 2 * d - 2
+    return 1 <= off <= d - 1 or d + 1 <= off <= 2 * d - 2
+
+
+def _construct_linear(truth_table: str, n: int) -> str:
+    """Build the fill-as-splitter 123 construction in O(T) time and source.
+
+    Level ``i`` is one :func:`_segment` with stride ``d = _walk(i)``.  The
+    fill itself is the split: a one flips the cell under it and steps left,
+    a zero steps right, so the two branches part and the ``33`` sees the
+    flip.  A set-bit row lands on that fresh mark and replays *twice* before
+    its landing cell comes up clear, so it advances ``3*d`` against a clear
+    bit's ``d + 2``.  Nothing is pre-painted: the split is ``2*d - 2``, so
+    ``d = 2**i + 1`` doubles the spread and row ``r`` ends at
+    ``sum(d_i + 2) + 2*bit_reverse(r)`` -- distinct, even-strided positions.
+
+    Three passes cost no source, only displacement, which is why the stride
+    is half what one replay needs: the zero branch's advance -- and with it
+    the kill and the endgame, both priced off the topmost row -- falls from
+    ``4*T`` to ``3*T``.  :func:`_leftover` gives what each pass leaves above
+    a row's landing cell; the verdict reads that rather than clearing it, so
+    a shield is planted only where the tape disagrees with the table.
+    """
+    out: list[str] = [_segment(i) for i in range(n)]
+
     reversed_rows = [0]
     for _ in range(n):
         reversed_rows = [2 * row for row in reversed_rows] + [
             2 * row + 1 for row in reversed_rows
         ]
-    positions = [base + 4 * (size - 1 + row) for row in reversed_rows]
+    start = sum(_walk(i) + 2 for i in range(n))
+    positions = [start + 2 * row for row in reversed_rows]
     ones = [positions[row] for row, bit in enumerate(truth_table) if bit == "1"]
     if ones:
         boundary = max(ones) + 2
-        shields = [
-            boundary - 1 - pos
-            for row, pos in enumerate(positions)
-            if truth_table[row] == "0" and pos < boundary
-        ]
+        shields = []
+        for row, pos in enumerate(positions):
+            if pos >= boundary:
+                continue
+            tested = boundary if (boundary - pos) % 4 == 0 else boundary - 1
+            # Below the kill a 0-row's tested cell must end marked and a
+            # 1-row's clear, so paint only where the leftovers disagree.
+            if _leftover(n, row & 1, tested - pos) != (truth_table[row] == "0"):
+                shields.append(tested - pos)
         if shields:
             out.extend((_paint_source(shields), "33"))
         out.extend(
@@ -720,7 +755,9 @@ def _construct_linear(truth_table: str, n: int) -> str:
             )
         )
         live = {
-            boundary - 1 if pos < boundary else pos
+            (boundary if (boundary - pos) % 4 == 0 else boundary - 1)
+            if pos < boundary
+            else pos
             for row, pos in enumerate(positions)
             if truth_table[row] == "0"
         }

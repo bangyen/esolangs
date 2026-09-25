@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from itertools import product
 
 import pytest
@@ -24,18 +24,10 @@ from esolangs.interpreters.other.malbolge import run
 _module = importlib.import_module("esolangs.tools.malbolge")
 
 
-def _rows(
-    table: str,
-    rows: Sequence[int] | None = None,
-    build: Callable[[str], str] = boolean.malbolge,
-) -> list[str]:
-    """Return the program's output for ``rows`` (default: every row) in order.
-
-    ``build`` defaults to the public generator; the fourteen-input tests pass
-    the unexported route, which the generator refuses until its constants land.
-    """
+def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
+    """Return the program's output for ``rows`` (default: every row) in order."""
     n = len(table).bit_length() - 1
-    program = build(table)
+    program = boolean.malbolge(table)
     outputs = []
     for value in range(1 << n) if rows is None else rows:
         bits = [(value >> (n - 1 - i)) & 1 for i in range(n)]
@@ -59,6 +51,25 @@ def _dense(n: int) -> str:
 
 def _parity(n: int) -> str:
     return "".join(str(row.bit_count() & 1) for row in range(2**n))
+
+
+#: How many items each ``every_row`` sweep is split into, per shape.
+#:
+#: A sweep is execution, not build: a thirteen-input row is 12.1ms of which
+#: the load is 1%, so that shape alone is ~100s.  As one item per shape the
+#: sweeps pinned one worker each while the constant shapes finished at once
+#: and the rest idled, so the wall was the longest single item; split, the
+#: work spreads and the wall falls to the total over the worker count.  The
+#: thirteen-input sweep went 103.9s -> 56.9s on ten workers, and the whole
+#: weekly band 103.5s -> 82.5s.  Rebuilding per part is free -- the build is
+#: 0.17s, 0.2% of a sweep.  Strided rather than blocked so the parts cost the
+#: same, and their union is still every row.
+#:
+#: Four is where the band bottoms out: eight parts measured 83.6s, no better,
+#: because the remaining wall is the band's total work over the cores it has
+#: rather than the longest item.  Raising this past the core count buys
+#: nothing.
+_SWEEP_PARTS = 4
 
 
 @pytest.mark.parametrize(
@@ -117,11 +128,13 @@ def test_eleven_inputs_sampled(shape: object) -> None:
 
 @pytest.mark.slow
 @pytest.mark.weekly
+@pytest.mark.parametrize("part", range(_SWEEP_PARTS))
 @pytest.mark.parametrize("shape", [_dense, _parity])
-def test_eleven_inputs_every_row(shape: object) -> None:
+def test_eleven_inputs_every_row(shape: object, part: int) -> None:
     """The full 2048-row sweep, the cascade's execution gate."""
     table = shape(11)  # type: ignore[operator]
-    assert _rows(table) == list(table)
+    rows = range(part, 2**11, _SWEEP_PARTS)
+    assert _rows(table, rows) == [table[row] for row in rows]
 
 
 def _wide_second_level_rows() -> list[int]:
@@ -147,11 +160,13 @@ def test_twelve_inputs_sampled(shape: object) -> None:
 
 @pytest.mark.slow
 @pytest.mark.weekly
+@pytest.mark.parametrize("part", range(_SWEEP_PARTS))
 @pytest.mark.parametrize("shape", [_dense, _parity])
-def test_twelve_inputs_every_row(shape: object) -> None:
+def test_twelve_inputs_every_row(shape: object, part: int) -> None:
     """The full 4096-row sweep, the selector's execution gate."""
     table = shape(12)  # type: ignore[operator]
-    assert _rows(table) == list(table)
+    rows = range(part, 2**12, _SWEEP_PARTS)
+    assert _rows(table, rows) == [table[row] for row in rows]
 
 
 def _thirteen_second_level_rows() -> list[int]:
@@ -186,13 +201,15 @@ def test_thirteen_inputs_sampled(shape: object) -> None:
 
 @pytest.mark.slow
 @pytest.mark.weekly
+@pytest.mark.parametrize("part", range(_SWEEP_PARTS))
 @pytest.mark.parametrize(
     "shape", [_dense, _parity, lambda n: "0" * 2**n, lambda n: "1" * 2**n]
 )
-def test_thirteen_inputs_every_row(shape: object) -> None:
+def test_thirteen_inputs_every_row(shape: object, part: int) -> None:
     """The full 8192-row sweep, the four-answer labels' execution gate."""
     table = shape(13)  # type: ignore[operator]
-    assert _rows(table) == list(table)
+    rows = range(part, 2**13, _SWEEP_PARTS)
+    assert _rows(table, rows) == [table[row] for row in rows]
 
 
 def _fourteen_rows(levels: set[int]) -> list[int]:
@@ -207,25 +224,23 @@ def _fourteen_rows(levels: set[int]) -> list[int]:
     ]
 
 
-@pytest.mark.xfail(
-    raises=IndexError,
-    strict=True,
-    reason="_F_LEVELS is still the empty placeholder; the annealed table "
-    "constants for fourteen inputs have not been searched out yet",
-)
 def test_fourteen_inputs_resolve_in_three_levels() -> None:
-    """5,525 copies own their level-1 cell; 2,185 resolve at level 2, 482 at 3."""
+    """7,427 copies own their level-1 cell; 685 resolve at level 2, 80 at 3."""
     _, _, level, _, _ = _module._fourteen()  # noqa: SLF001
     counts = [sum(lvl == k for per_copy in level for lvl in per_copy) for k in range(3)]
-    assert counts == [5525, 2185, 482]
+    assert counts == [7427, 685, 80]
 
 
-@pytest.mark.xfail(
-    raises=IndexError,
-    strict=True,
-    reason="_F_LEVELS is still the empty placeholder; the annealed table "
-    "constants for fourteen inputs have not been searched out yet",
-)
+def test_fourteen_inputs_level_three_has_its_own_region() -> None:
+    """Level-3 cells sit in 13122..19682; levels 1 and 2 at 19683 or above."""
+    _, _, level, tables, _ = _module._fourteen()  # noqa: SLF001
+    for copy in range(4):
+        for row, k in enumerate(level[copy]):
+            for lvl in range(k + 1):
+                h = tables[lvl][copy][row]
+                assert 13122 < h < 19683 if lvl == 2 else h > 19683
+
+
 def test_fourteen_inputs_label_every_residue() -> None:
     """Each cell a copy reads admits N and the four single-cell answers."""
     _, _, level, tables, labels = _module._fourteen()  # noqa: SLF001
@@ -239,19 +254,14 @@ def test_fourteen_inputs_label_every_residue() -> None:
 
 def test_fourteen_inputs_second_pass_is_nine_nops_and_a_jump() -> None:
     """The decoder's cells, once run, decode to nops and then an ``i``."""
-    cells = ((29525, "j"), (29526, "j"))
+    start = _module._F_DECODER  # noqa: SLF001
+    cells = ((start, "j"), (start + 1, "j"))
     second = [_module._second_pass(op, a) for a, op in cells]  # noqa: SLF001
-    second += [_module._second_pass("o", 29527 + k) for k in range(8)]  # noqa: SLF001
+    second += [_module._second_pass("o", start + 2 + k) for k in range(8)]  # noqa: SLF001
     assert second == ["o"] * 9 + ["i"]
 
 
 @pytest.mark.slow
-@pytest.mark.xfail(
-    raises=IndexError,
-    strict=True,
-    reason="_F_LEVELS is still the empty placeholder; the annealed table "
-    "constants for fourteen inputs have not been searched out yet",
-)
 @pytest.mark.parametrize("shape", [_dense, _parity])
 def test_fourteen_inputs_sampled(shape: object) -> None:
     """Every 64th row, every level-3 row and every fourth level-2 row."""
@@ -259,41 +269,22 @@ def test_fourteen_inputs_sampled(shape: object) -> None:
     rows = sorted(
         {*range(0, 2**14, 64), *_fourteen_rows({2}), *_fourteen_rows({1})[::4]}
     )
-    built = _rows(table, rows, _module._fourteen_program)  # noqa: SLF001
-    assert built == [table[row] for row in rows]
+    assert _rows(table, rows) == [table[row] for row in rows]
 
 
 @pytest.mark.slow
 @pytest.mark.weekly
-@pytest.mark.xfail(
-    raises=IndexError,
-    strict=True,
-    reason="_F_LEVELS is still the empty placeholder; the annealed table "
-    "constants for fourteen inputs have not been searched out yet",
-)
 @pytest.mark.parametrize(
     "shape", [_dense, _parity, lambda n: "0" * 2**n, lambda n: "1" * 2**n]
 )
 def test_fourteen_inputs_every_row(shape: object) -> None:
     """The full 16,384-row sweep, the three-level cascade's execution gate."""
     table = shape(14)  # type: ignore[operator]
-    assert _rows(table, build=_module._fourteen_program) == list(table)  # noqa: SLF001
+    assert _rows(table) == list(table)
 
 
-def test_fourteen_inputs_dispatch_once_the_levels_land(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Filling ``_F_LEVELS`` is all it takes to route fourteen inputs."""
-    monkeypatch.setattr(_module, "_F_LEVELS", ((0,), (0,), (0,)))
-    monkeypatch.setattr(_module, "_fourteen_program", lambda table: f"built {table}")
-    table = _dense(14)
-    assert boolean.malbolge(table) == f"built {table}"
-    with pytest.raises(GeneratorCapError, match="at most 13 inputs"):
-        boolean.malbolge(_dense(15))
-
-
-@pytest.mark.parametrize("n", [14, 15])
-def test_past_thirteen_inputs_is_refused(n: int) -> None:
-    """Fourteen's constants are pending; fifteen needs a fourth cascade level."""
-    with pytest.raises(GeneratorCapError, match="at most 13 inputs"):
+@pytest.mark.parametrize("n", [15, 16])
+def test_past_fourteen_inputs_is_refused(n: int) -> None:
+    """Fifteen would need eight copies and a fourth level."""
+    with pytest.raises(GeneratorCapError, match="at most 14 inputs"):
         boolean.malbolge(_dense(n))

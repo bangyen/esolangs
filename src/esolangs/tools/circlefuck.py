@@ -1,43 +1,34 @@
 """Boolean-function generator for Circlefuck."""
 
 from collections.abc import Sequence
+from itertools import pairwise
 
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+
+#: Bits an index digit carries.  A cell is a byte, so one counter stops
+#: addressing at 256 entries; the index is base ``2**_DIGIT_BITS``, one cell
+#: a digit, and seven is the widest power of two a byte can also *count out*
+#: -- :func:`_deleter` plants that many in the digit below and spends them.
+_DIGIT_BITS = 7
+
+#: One input: read it, subtract ``"0"``, clamp what is left to 0 or 1, and
+#: bank it back.  The clamp is load-bearing -- an underfed ``,`` is a no-op,
+#: so the cell keeps the source character, and an index built from that byte
+#: would delete past the table and eat the program.  The scratch cell is the
+#: next input's, which has not been read yet.
+_READ = "," + "-" * _ASCII_ZERO + ">[-]<[[-]>+<]>[-<+>]"
 
 
 def circlefuck(truth_table: str) -> str:
     """Build a Circlefuck program computing the given truth table.
 
-    ``,`` reads each input, 48 ``-``s normalize, and a decision tree branches
-    from the last input down; each leaf sets a cleared cell with ``+``s to
-    the byte ``48 + bit``, prints, and halts with ``@``.  The tree is built
-    over byte values, so a constant subtree folds on the value; the reads
-    are unconditional above the tree.  Identity and greedy orders compete:
-    a node tests the cell under the pointer, so an order is a walk with a
-    real cost (:func:`_circlefuck_ordered`).
+    ``,`` reads each input and 48 ``-``s normalize it; Horner's rule folds
+    the essential bits into an index, and the index is spent deleting the
+    entries before the one it names, so ``.`` prints the entry the deletions
+    leave under the pointer.  One character an entry.
     """
     _validate_truth_table(truth_table)
-    table = [_ASCII_ZERO + int(bit) for bit in truth_table]
-    return _best_byte_order(table, len(table).bit_length() - 1)
-
-
-def _best_byte_order(truth_table: Sequence[int], n: int) -> str:
-    """Return the shorter program from the identity and greedy orders.
-
-    The byte-valued twin of :func:`~esolangs.tools.helpers.best_input_order`;
-    identity first, ties keep it.
-    """
-    best = _circlefuck_ordered(list(truth_table), tuple(range(n)))
-    if n < 2:
-        return best
-    return min(best, _circlefuck_greedy(truth_table, n), key=len)
-
-
-# Scoring passes the greedy order spends before it settles the rest by the
-# last scores it has.  A pass is one walk over the rows, so this is what
-# keeps the order a fixed number of passes rather than one per input; every
-# table with this many essential inputs or fewer gets the full greedy.
-_CIRCLEFUCK_PASSES = 8
+    return _circlefuck_table([_ASCII_ZERO + int(bit) for bit in truth_table])
 
 
 def _essential_byte_inputs(truth_table: Sequence[int], n: int) -> list[int]:
@@ -59,161 +50,85 @@ def _essential_byte_inputs(truth_table: Sequence[int], n: int) -> list[int]:
     return essential
 
 
-def _circlefuck_greedy(truth_table: Sequence[int], n: int) -> str:
-    """Pick an order level by level, in a fixed number of passes.
-
-    Essential inputs first, each level taking the one creating the most
-    constant subtrees (:func:`_constant_subtree_scores`); after
-    :data:`_CIRCLEFUCK_PASSES` the rest follow the last scores.  Full greedy
-    was ``Theta(T log T)``; eight passes change four of a 231-table corpus
-    by under half a percent.
-    """
-    essential = _essential_byte_inputs(truth_table, n)
-    remaining = list(essential)
-    order: list[int] = []
-    keys = [0] * len(truth_table)
-    for _ in range(_CIRCLEFUCK_PASSES):
-        if not remaining:
-            break
-        scores = _constant_subtree_scores(truth_table, n, keys)
-        best_input = max(remaining, key=lambda i: scores[i])
-        order.append(best_input)
-        remaining.remove(best_input)
-        shift = n - 1 - best_input
-        keys = [(key << 1) | ((row >> shift) & 1) for row, key in enumerate(keys)]
-    if remaining:
-        scores = _constant_subtree_scores(truth_table, n, keys)
-        order.extend(sorted(remaining, key=lambda i: (-scores[i], i)))
-    order.extend(i for i in range(n) if i not in essential)
-    # ``_circlefuck_ordered`` descends its permuted row bits from least to
-    # most significant, so its tuple is the reverse of this root-first score.
-    return _circlefuck_ordered(list(truth_table), tuple(reversed(order)))
-
-
-def _constant_subtree_scores(
-    truth_table: Sequence[int], n: int, keys: list[int]
+def _projected(
+    truth_table: Sequence[int], n: int, essential: Sequence[int]
 ) -> list[int]:
-    """Count the constant subtrees splitting each subtree on ``i``, per ``i``.
+    """Return the same function tabulated over ``essential`` alone.
 
-    One pass: a row's index is its bit vector, so each subtree keeps per
-    table value the OR of the index and its complement, and a half is
-    constant where exactly one value's mask reaches it -- every candidate in
-    one word.
+    Every input is still read, but an inessential one picks no entry, so
+    the table it would have doubled stays at ``2**len(essential)``.
     """
-    width = len(truth_table)
-    full = (1 << n) - 1
-    # Per subtree, per table value: the OR of the row indices carrying it
-    # (which candidates' 1-halves it reaches) and of their complements
-    # (which 0-halves).  Row indices count input 0 as the most significant
-    # bit, so the masks are read back with the same reversal below.
-    masks: dict[int, dict[int, list[int]]] = {}
-    for row in range(width):
-        subtree = masks.get(keys[row])
-        if subtree is None:
-            subtree = masks[keys[row]] = {}
-        entry = subtree.get(truth_table[row])
-        if entry is None:
-            entry = subtree[truth_table[row]] = [0, 0]
-        entry[0] |= row
-        entry[1] |= full ^ row
-    scores = [0] * n
-    for subtree in masks.values():
-        for half in (0, 1):
-            # A half is constant where exactly one value reaches it.
-            once = twice = 0
-            for entry in subtree.values():
-                twice |= once & entry[half]
-                once |= entry[half]
-            constant = once & ~twice
-            while constant:
-                low = constant & -constant
-                scores[n - low.bit_length()] += 1
-                constant ^= low
-    return scores
+    rows = []
+    for key in range(1 << len(essential)):
+        row = 0
+        for place, i in enumerate(essential):
+            if (key >> (len(essential) - 1 - place)) & 1:
+                row |= 1 << (n - 1 - i)
+        rows.append(truth_table[row])
+    return rows
 
 
-def _circlefuck_ordered(truth_table: list[int], perm: tuple[int, ...]) -> str:
-    """Emit one input order's Circlefuck program; see :func:`circlefuck`.
+def _cell(value: int) -> str:
+    r"""Return one tape cell as source text.
 
-    The table is in stream order, so each node carries its table index
-    (``2**(n-1-perm[k])``) beside its row index.  Folding is settled
-    bottom-up, one visit per node.  A level costs
-    ``|previous cell - perm[k]|`` moves; the identity's walk is the single
-    ``<`` the unordered build emitted.
+    ``parse`` drops anything outside ``32 < ord < 127`` and reads ``\`` as
+    an escape, so those spell themselves out instead.  :func:`circlefuck`
+    only ever tabulates digits, so the character-counting wrapper never
+    meets an escape it could split.
     """
-    n = len(perm)
-    prog: list[str] = []
+    if 32 < value < 127 and value != 92:  # ord("\\")
+        return chr(value)
+    return f"\\x{value:02x}"
 
-    def emit(c: str) -> None:
-        prog.append(c)
 
-    for _ in range(n):
-        emit(",")
-        prog.extend("-" * _ASCII_ZERO)
-        emit(">")
-    prog.pop()  # the trailing ">" would leave the pointer past the last input
+def _deleter(digit: int) -> str:
+    """Spend digit ``digit``, deleting ``128**digit`` entries per unit.
 
-    def move(source: int, target: int) -> None:
-        """Walk the pointer from cell ``source`` to cell ``target``."""
-        step = ">" if target > source else "<"
-        prog.extend(step * abs(target - source))
+    ``}`` removes the cell under the pointer and slides the tape down into
+    it, so ``<}`` deletes the entry ahead of the digits *and* puts the digit
+    back under the pointer -- one loop that both counts down and walks.  A
+    higher digit has no step of its own, so it plants a full low digit
+    underneath and spends that.
+    """
+    if digit == 0:
+        return "[-<}]"
+    return f"[-<{'+' * (1 << _DIGIT_BITS)}{_deleter(digit - 1)}>]"
 
-    # ``folded[k][row]`` is the one value the subtree at ``(k, row)`` takes,
-    # or ``None`` where its rows disagree; level ``k`` has ``2**(n-1-k)``
-    # subtrees, one per setting of the bits below it.
-    folded: list[list[int | None]] = [[None] * (1 << (n - 1 - k)) for k in range(n)]
 
-    def settle(k: int, row: int, index: int) -> int | None:
-        if k < 0:
-            return truth_table[index]
-        zero = settle(k - 1, row, index)
-        one = settle(k - 1, row + (1 << (n - 1 - k)), index + (1 << (n - 1 - perm[k])))
-        value = zero if zero is not None and zero == one else None
-        folded[k][row] = value
-        return value
+def _circlefuck_table(truth_table: Sequence[int]) -> str:
+    """Emit the lookup for a byte-valued table; see :func:`circlefuck`.
 
-    settle(n - 1, 0, 0)
-
-    def leaf(value: int) -> None:
-        if value:
-            prog.extend("+" * value)
-        emit(".")
-        emit("@")
-
-    def build(k: int, row: int, index: int, cell: int) -> None:
-        """Emit the subtree at level ``k`` with the pointer over ``cell``."""
-        if k < 0:
-            leaf(truth_table[index])
-            return
-        value = folded[k][row]
-        if value is not None:
-            # Every row this subtree could reach agrees, so the bits it
-            # would branch on cannot change the answer.  The reads are
-            # unconditional, above the tree, so a folded program still
-            # consumes its input the same way an unfolded one does.
-            #
-            # The ``[-]`` is what a full-depth leaf relies on: it is
-            # emitted inside each ``[`` on the way down, so a leaf builds
-            # its value on a cleared cell.  A folded leaf skips those
-            # levels and so must clear the cell itself -- without this the
-            # pointer still holds an input bit and every one-valued input
-            # prints one too high.
-            emit("[-]")
-            leaf(value)
-            return
-        target = perm[k]
-        move(cell, target)
-        emit("[")
-        emit("[-]")
-        # Both arms leave the pointer wherever the deeper level put it, but
-        # each arm re-aims from ``target`` itself: the ``[-]`` above cleared
-        # the tested cell, so the loop runs at most once and the ``]`` is
-        # reached with the pointer back under our control only if the arm
-        # returns it.  Emitting the walk inside each arm rather than once
-        # before the branch is what keeps the two arms independent.
-        build(k - 1, row + (1 << (n - 1 - k)), index + (1 << (n - 1 - perm[k])), target)
-        emit("]")
-        build(k - 1, row, index, target)
-
-    build(n - 1, 0, 0, n - 1)
+    The tape is the program, so the table is the program's tail, laid out
+    backwards past the ``@`` that stops the run: entry 0 abuts the digit
+    cells, which are the last cells of all and which ``<`` reaches from cell
+    0 in one step because the tape is a ring.  The decoder is then a fixed
+    number of characters and the table is the only part that grows.
+    """
+    n = len(truth_table).bit_length() - 1
+    essential = _essential_byte_inputs(truth_table, n)
+    width = len(essential)
+    digits = max(1, -(-width // _DIGIT_BITS))
+    prog = ["<[-]" * digits + ">" * digits]  # the digits are the last cells
+    prog.append(_READ * n)
+    at = n
+    for digit in range(digits):
+        top = max(0, width - _DIGIT_BITS * (digit + 1))
+        places = [essential[place] for place in range(top, width - _DIGIT_BITS * digit)]
+        if not places:
+            continue
+        prog.append("<" * (at - places[0]))
+        for below, here in pairwise(places):
+            # Horner: double what is banked and land it on the next bit's
+            # own cell, which already holds that bit.
+            gap = here - below
+            prog.append(f"[-{'>' * gap}++{'<' * gap}]{'>' * gap}")
+        at = places[-1]
+        reach = at + digits - digit
+        prog.append(f"[-{'<' * reach}+{'>' * reach}]")
+    prog.append("<" * (at + digits))
+    prog.append(">".join(_deleter(digit) for digit in range(digits)))
+    prog.append("<" * digits + ".@")
+    rows = _projected(truth_table, n, essential)
+    prog.extend(_cell(value) for value in reversed(rows))
+    prog.append("0" * digits)  # the digit cells, cleared by the leading `[-]`s
     return "".join(prog)

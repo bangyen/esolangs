@@ -395,8 +395,8 @@ def decision_tree_tokens[Token](
     positional heap (Eval, Forth pin children at ``2i+1``/``2i+2``); skip a
     child (AddSubJump, Jaune descend into one half -- 24 of 256 tables came
     out longer at ``n == 3``); Lamfunc's plain string; the grid generators'
-    plane.  Contrast :func:`decision_tree_program`, which shares a whole
-    construction between two dialects.
+    plane.  Contrast :func:`decision_tree_body`, which carries a whole
+    construction rather than a walk its caller fills in.
     """
     n = _validate_truth_table(truth_table)
     constant = constant_span_test(truth_table)
@@ -422,83 +422,53 @@ def decision_tree_tokens[Token](
     return out
 
 
-def decision_tree_program(truth_table: str, right: str, left: str) -> str:
-    """Build a brainfuck-family decision-tree program for ``truth_table``.
+def move_text(start: int, target: int, right: str, left: str) -> str:
+    """Return the moves taking a one-dimensional pointer to ``target``.
 
-    Shared by Brainfuck and Dimensional, differing only in the move tokens
-    (``>``/``<`` vs ``>0``/``<0``).  Each input is normalized into cell
-    ``2i`` with its flag at ``2i + 1``: a node sets the flag, tests ``[b]``
-    and clears the flag inside, then tests ``[flag]`` for the zero side,
-    so exactly one side fires and both cells are left zero.  O(2**n).
-    The flag replaced a precomputed ``1 - b`` per input (O(n**2): n == 10
-    sparse went 2,646 -> 754 chars).  A leaf only records its bit (``+`` or
-    nothing) and one ``.`` sits below the tree; with the fold, n == 10 xor
-    went 77,939 -> 18,495.  A constant subtree collapses to a leaf; the
-    reads are unconditional above the tree, so a folded program consumes
-    its input the same way.  Factor most wants this: it refuses tables
-    whose integer encoding exceeds Python's digit limit.
+    One run, not one token per cell, so a caller measuring maximal runs --
+    Factor, which pays a prime per run -- sees the same count either way.
     """
-    return best_input_order(
-        truth_table,
-        lambda table, perm: _decision_tree_program(table, right, left, perm),
-    )
+    delta = target - start
+    return right * delta if delta >= 0 else left * -delta
 
 
-def _decision_tree_program(
+def decision_tree_body(
     truth_table: str,
     right: str,
     left: str,
     perm: tuple[int, ...],
-) -> str:
-    """Emit one input order's program; see :func:`decision_tree_program`.
+    start: int,
+) -> tuple[str, int]:
+    """Return the decision tree alone, and the cell it leaves the pointer on.
 
-    ``truth_table`` is already permuted; ``perm`` is spent only in the cell
-    a node tests, ``2 * perm[i]``.  The reads above the tree are untouched.
+    The reads above it and the print below it are the caller's.  Split out
+    for Factor, which pays a prime per maximal run rather than a character
+    per command, and so wants to fold the ASCII offsets the reads and the
+    print would otherwise spend 48 characters on each.
+    :func:`_decision_tree_program` joins the three parts back.
     """
     n = _validate_truth_table(truth_table)
 
     cells: list[str] = []
-    pos = 0
+    pos = start
 
     def move(target: int) -> None:
         nonlocal pos
-        delta = target - pos
-        cells.append(right * delta if delta >= 0 else left * -delta)
+        cells.append(move_text(pos, target, right, left))
         pos = target
 
-    # read bits b_i at cell 2i, leaving the flag cells (1, 3, ...) zero
-    for i in range(n):
-        cells.append(",")
-        # ``append`` of the run, not ``extend`` over its characters: the run
-        # is 48 long and the join sees the same text either way.
-        cells.append("-" * _ASCII_ZERO)
-        if i < n - 1:
-            move(pos + 2)
-
-    # decision tree: node i entered at cell 2i, exits at cell 2i+1
     result = 2 * n
-
     is_constant = constant_span_test(truth_table)
 
     def constant(i: int, combo: int) -> str | None:
-        """Return the shared value of the subtree at ``(i, combo)``, else None.
-
-        The subtree's ``2**(n - i)`` rows are contiguous (MSB-first split).
-        """
+        """Return the shared value of the subtree at ``(i, combo)``, else None."""
         span = 2 ** (n - i)
         return truth_table[combo] if is_constant(combo, combo + span) else None
 
     def branch(i: int, combo: int) -> None:
-        """Emit one side of node ``i``: a leaf when constant, else a subtree.
-
-        A ``'1'`` leaf is one ``+``; a ``'0'`` leaf is nothing, since the
-        result cell is already zero.  Either way pointer-neutral.
-        """
+        """Emit one side of node ``i``: a leaf when constant, else a subtree."""
         value = constant(i + 1, combo)
         if value is None:
-            # A subtree is entered at the cell holding *its* input, which is
-            # ``2 * perm[i + 1]`` -- adjacent only when the order is the
-            # identity, so the target is computed rather than stepped over.
             move(2 * perm[i + 1])
             node(i + 1, combo)
         elif value == "1":
@@ -506,11 +476,7 @@ def _decision_tree_program(
             cells.append("+")
 
     def node(i: int, combo: int) -> None:
-        """Emit node ``i``: test ``b_i``, run one side, and leave both cells zero.
-
-        Entered at ``bit`` with the flag zero, left at the flag with both
-        zero, so nodes nest.
-        """
+        """Emit node ``i``: test ``b_i``, run one side, leave both cells zero."""
         bit = 2 * perm[i]
         flag = bit + 1
         one = combo | (1 << (n - 1 - i))
@@ -531,15 +497,7 @@ def _decision_tree_program(
 
     move(2 * perm[0])
     node(0, 0)
-
-    # One print, below the tree.  Exactly one leaf fires, leaving 0 or 1 in
-    # the result cell, so the ASCII offset is paid once here instead of at
-    # every leaf -- which is what the whole tree used to spend most of its
-    # characters on.
-    move(result)
-    cells.append("+" * _ASCII_ZERO)
-    cells.append(".")
-    return "".join(cells)
+    return "".join(cells), pos
 
 
 # The build plan for every Collatz Multiverse constant: ``_PLAN[n]`` is
@@ -581,16 +539,21 @@ def _extend_plans(maxval: int) -> None:
         _PLAN[m] = (best[0], plan)
 
 
-def _cm_constants(needed: Iterable[int]) -> list[str]:
+def _cm_constants(needed: Iterable[int], zero: str = "zero") -> list[str]:
     """Lines building Collatz Multiverse constants for the values in ``needed``.
 
     ``k1``/``k2`` bootstrap from ``negativeOne``; the rest use
     :func:`_extend_plans`'s two-line trick.  Only referenced constants are built.
+
+    ``zero`` names the never-written register the language reads as 0.  It is
+    a parameter because the name is free -- any register never assigned reads
+    as 0 -- and a caller that spells zero on most of its lines wants the
+    shortest spelling.
     """
     need = sorted(n for n in set(needed) if n > 2)
     lines = [
         "k1 = negativeOne x + negativeOne, NOT PRINT.",
-        "k1 = negativeOne x + zero, NOT PRINT.",
+        f"k1 = negativeOne x + {zero}, NOT PRINT.",
         "k2 = negativeOne x + negativeOne, NOT PRINT.",
         "k2 = negativeOne x + k1, NOT PRINT.",
     ]
@@ -608,7 +571,7 @@ def _cm_constants(needed: Iterable[int]) -> list[str]:
             b, a, c = decomp[n]
             lines.append(f"k{n} = negativeOne x + k{b}, NOT PRINT.")
             if c == 0:
-                lines.append(f"k{n} = k{a} x + zero, NOT PRINT.")
+                lines.append(f"k{n} = k{a} x + {zero}, NOT PRINT.")
             else:
                 lines.append(f"k{n} = k{a} x + k{c}, NOT PRINT.")
     return lines

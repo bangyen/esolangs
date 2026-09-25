@@ -8,9 +8,8 @@ from itertools import pairwise
 from esolangs.tools.addsubjump import addsubjump as addsubjump
 
 # The strategies live in their own modules, but this one is the
-# construction's face: the registry, the wrapper and the suite all reach
-# it by this name.  Re-exported in the ``x as x`` form so a caller that
-# does not care where a piece lives need not know.
+# construction's face: the registry, the wrapper and the suite all reach it
+# by this name, so the pieces are re-exported in the ``x as x`` form.
 from esolangs.tools.dig import (
     _DIG_BAND as _DIG_BAND,
 )
@@ -32,7 +31,6 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _cm_constants,
     _validate_truth_table,
-    constant_span_test,
     essential_inputs,
 )
 from esolangs.tools.polynomial import (
@@ -123,14 +121,11 @@ def decleq(truth_table: str) -> str:
         """Whether the ``width`` rows starting at ``row`` all agree."""
         return changes[row] == changes[row + width - 1]
 
-    # Every input is read to preserve the interface, but only inputs on
-    # which the table depends need normalizing: folding makes both outcomes
-    # of every other branch equivalent, and an ignored low input's weight
-    # would select a row that agrees with the one it selects now.
+    # Only the inputs the table depends on need the normalization chain;
+    # see the docstring for why an ignored one still reads but never routes.
     essential = set(essential_inputs(truth_table, n))
 
-    # Fixed low addresses.  The two gadgets print then jump to END; leaves
-    # reach them by ``0 0 gadget``.
+    # Fixed low addresses; a leaf reaches a gadget by ``0 0 gadget``.
     out_zero, halt, out_one = 3, 6, 9
     k48, k49, counter = 15, 16, 17
     read_cells = [18 + i for i in range(n)]
@@ -205,9 +200,7 @@ def decleq(truth_table: str) -> str:
 
     node(0, 0)
 
-    # One past the last cell: the interpreter halts as soon as the pointer
-    # leaves memory, so this is the smallest address that stops the program.
-    # Deriving it from the cell count keeps it out of wrap_grid's way: a
+    # Deriving END from the cell count keeps it out of wrap_grid's way: a
     # leaf's table-top operand is within ``2**k + 8`` of it, so the two
     # differ by at most one digit, and _cell_width drops an outlier only at
     # twice the next width.
@@ -216,80 +209,106 @@ def decleq(truth_table: str) -> str:
     return " ".join(map(str, mem))
 
 
+#: Table rows a Collatz Multiverse cell carries, and so its decoder's stride.
+#: A cell costs one line whatever its width and a decoder ``c * 2**c`` cells,
+#: so four is cheapest: eight outgrows its own saving below thirteen inputs.
+_CM_CHUNK = 4
+
+#: Cell-constant names: one character, and none a register spelled elsewhere.
+_CM_ALIAS = "abcefghijlmnpqr"
+
+#: The shortest line that does nothing -- ``z`` is the zero register.
+_CM_PAD = "z=zx+z,NOT PRINT."
+
+
+def _cm_cells(
+    lines: list[str], array: str, values: list[str | None], capture: str
+) -> None:
+    """Append a block placing ``values`` at consecutive cells of ``array``.
+
+    ``capture`` takes the address one below the first cell -- a line rather
+    than a built constant, padded odd so the reader can sum even weights into
+    it.  A ``None`` value is left at its default, free in a trailing run.
+    """
+    if (len(lines) + 1) % 2 == 0:
+        lines.append(_CM_PAD)
+    lines.append(f"{capture}=zx+lineNumber,NOT PRINT.")
+    block = [
+        f"{array}[lineNumber]=zx+{value},NOT PRINT." if value else _CM_PAD
+        for value in values
+    ]
+    while block and block[-1] == _CM_PAD:
+        block.pop()
+    lines += block
+
+
 def collatz_multiverse(truth_table: str) -> str:
     """Build a Collatz Multiverse program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    A postorder Shannon tree combines child bits as
-    ``(!x & zero) | (x & one)``. Registers are reused by recursion depth;
-    every write first clears its destination because Collatz assignment
-    otherwise depends on the destination's old parity. Short names belong to
-    the deepest, most repeated levels, keeping the emitted source O(T).
+    The table is placed in cells and indexed, not walked.  An array subscript
+    may name ``lineNumber``, so ``A[lineNumber] = z x + v`` drops ``v`` into
+    the cell the writing line's own number addresses: such a block lays the
+    table out at consecutive addresses for one line a cell, no pointer to
+    advance.  Four rows ride in each cell as a nibble ``V`` whose constant is
+    ``4 * V``, and the last two inputs select within it through a 64-cell
+    decoder holding bit ``j`` of ``V`` at ``4V + j``.  ``d = A x + B`` is
+    ``d := B + d*A`` for a destination holding zero and ``d := d // 2`` for an
+    even one, so an address takes its odd weight last: nothing halves it.
     """
     n = _validate_truth_table(truth_table)
     if all(c == truth_table[0] for c in truth_table):
-        # A constant table needs no evaluation, but the reads are the language's
-        # interface: skipping them would leave the caller's bits unread on the
-        # input stream and drop the prompts a prompting interpreter emits.  So
-        # read every input, discard it, and print the constant.
+        # A constant table needs no evaluation, but the reads are the
+        # interface: skipping them strands the caller's bits and the prompts.
         const = _ASCII_ZERO + int(truth_table[0])
         lines = _cm_constants({const})
         lines += [f"b{i} = negativeOne x + input, NOT PRINT." for i in range(n)]
         lines.append(f"out = negativeOne x + k{const}, DO PRINT.")
         return "\n".join(lines)
 
-    lines = _cm_constants({_ASCII_ZERO})
-    inputs = [f"b{n - 1 - depth}" for depth in range(n)]
-    for name in inputs:
-        lines.append(f"{name} = negativeOne x + input, NOT PRINT.")
+    padded = truth_table + "0" * (-len(truth_table) % _CM_CHUNK)
+    chunks = [
+        sum(int(bit) << j for j, bit in enumerate(padded[base : base + _CM_CHUNK]))
+        for base in range(0, len(padded), _CM_CHUNK)
+    ]
+    alias = {value: _CM_ALIAS[i] for i, value in enumerate(sorted({*chunks} - {0}))}
 
-    def clear(dst: str) -> None:
-        lines.append(f"{dst} = zero x + zero, NOT PRINT.")
+    # The cell index is the inputs above the last two, shifted down by two.
+    weights = {2 ** (n - 3 - i) for i in range(max(n - 3, 0))}
+    lines = _cm_constants(
+        {_ASCII_ZERO, *weights, *(_CM_CHUNK * v for v in alias)}, zero="z"
+    )
+    lines += [f"{name}=zx+k{_CM_CHUNK * v},NOT PRINT." for v, name in alias.items()]
+    decoder = [
+        "k1" if v in alias and (v >> j) & 1 else None
+        for v in range(1 << _CM_CHUNK)
+        for j in range(_CM_CHUNK)
+    ]
+    _cm_cells(lines, "D", decoder, "t")
+    _cm_cells(lines, "A", [alias.get(v) for v in chunks], "s")
 
-    def assign(dst: str, src: str) -> None:
-        clear(dst)
-        lines.append(f"{dst} = negativeOne x + {src}, NOT PRINT.")
-
-    def negate(dst: str, src: str) -> None:
-        assign(dst, src)
-        lines.append(f"{dst} = negativeOne x + k1, NOT PRINT.")
-
-    def conjunction(dst: str, x: str, y: str) -> None:
-        assign(dst, x)
-        lines.append(f"{dst} = {y} x + zero, NOT PRINT.")
-
-    changes = [0]
-    for previous, current in pairwise(truth_table):
-        changes.append(changes[-1] + (previous != current))
-
-    def tree(start: int, end: int, depth: int) -> str:
-        if changes[start] == changes[end - 1]:
-            return "k1" if truth_table[start] == "1" else "zero"
-        half = (start + end) // 2
-        zero = tree(start, half, depth + 1)
-        index = n - 1 - depth
-        saved = f"l{index}"
-        if zero not in {"zero", "k1"}:
-            assign(saved, zero)
-            zero = saved
-        one = tree(half, end, depth + 1)
-        inverted = f"i{index}"
-        left = f"a{index}"
-        right = f"c{index}"
-        result = f"r{index}"
-        negate(inverted, inputs[depth])
-        conjunction(left, inverted, zero)
-        conjunction(right, inputs[depth], one)
-        assign(result, left)
-        lines.append(f"{result} = k1 x + {right}, NOT PRINT.")
-        return result
-
-    result = tree(0, 1 << n, 0)
-    out = "out"
-    assign(out, result)
-    lines.append(f"{out} = k1 x + k48, DO PRINT.")
+    for i in range(n):
+        lines.append(f"w{i}=zx+input,NOT PRINT.")
+    # ``s`` sits one below the first cell, so the address wants the missing
+    # one -- folded into the only odd weight, which has to be added last.
+    for i in range(max(n - 3, 0)):
+        lines.append(f"w{i}=k{2 ** (n - 3 - i)}x+z,NOT PRINT.")
+        lines.append(f"s=k1x+w{i},NOT PRINT.")
+    if n >= 3:
+        lines.append(f"w{n - 3}=k1x+k1,NOT PRINT.")
+        lines.append(f"s=k1x+w{n - 3},NOT PRINT.")
+    else:
+        lines.append("s=k1x+k1,NOT PRINT.")
+    lines.append("t=k1x+A[s],NOT PRINT.")
+    if n >= 2:
+        lines.append(f"w{n - 2}=k2x+z,NOT PRINT.")
+        lines.append(f"t=k1x+w{n - 2},NOT PRINT.")
+    lines.append(f"w{n - 1}=k1x+k1,NOT PRINT.")
+    lines.append(f"t=k1x+w{n - 1},NOT PRINT.")
+    lines.append("o=zx+D[t],NOT PRINT.")
+    lines.append(f"o=k1x+k{_ASCII_ZERO},DO PRINT.")
     return "\n".join(lines)
 
 
@@ -308,9 +327,6 @@ def sophie(truth_table: str) -> str:
     labels only states reached from multiple parents. It therefore keeps
     constant-subtree folding while merging equal residual subfunctions.
 
-    The hybrid only pays a label where sharing needs it, so it cannot lose
-    the tree's compact unshared regions.
-
     **Reordering the inputs is not available here**, unlike most tree
     generators: ``;`` and ``:`` *assign* to the accumulator, ``#`` loads only
     a literal, and nothing else writes it, so a bit can only be branched on
@@ -322,7 +338,6 @@ def sophie(truth_table: str) -> str:
 
 
 #: Accumulator values a Sophie label may not take.
-#:
 #: A read leaves the accumulator holding the character read, and the tests
 #: are against ``48``/``49`` -- ASCII ``0`` and ``1`` -- so a block labelled
 #: with either would fire on an ordinary bit rather than on a jump.  Nothing
@@ -351,11 +366,6 @@ def sophie_labels(retained: list[list[str]]) -> list[dict[str, int]]:
     from parity and dense tables and shows up on one-hot: over 500 random
     tables per arity, 1.6% collide at n=5, 11.2% at n=6, 35.0% at n=7 and
     87.6% at n=8, while all 65536 tables at n <= 4 are clean.
-
-    Numbering across the whole program rather than per level also retires a
-    second latent collision: the bands' upper bounds were never read, so a
-    level with more than twenty retained states ran straight into the next
-    band.
     """
     labels: list[dict[str, int]] = []
     number = 1
@@ -432,76 +442,32 @@ def _qoibl_enc(n: int) -> str:
     return f"{n:b}".replace("0", "e").replace("1", "y")
 
 
+_QOIBL_POWER, _QOIBL_ROW = 0, 1
+
+
 def qoibl(truth_table: str) -> str:
     """Build a Qoibl program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Each input is read with ``et`` and normalized to 0/1.  A folded Shannon
-    tree then combines children as ``(1 - x) * lo + x * hi``.  Four registers
-    are reserved per level; the deepest, most frequently repeated levels get
-    the shortest binary names, so widening register IDs still sum to O(T).
+    ``truth_table`` has length ``2**n``, most significant input first.  The
+    whole table rides in one binary literal, bit ``k`` holding row ``k``, so
+    ``table // 2**index`` then ``r - 2 * (r // 2)`` reads that row off.
     """
     n = _validate_truth_table(truth_table)
+    power = _qoibl_enc(_QOIBL_POWER)
+    row = _qoibl_enc(_QOIBL_ROW)
+    zero = _qoibl_enc(_ASCII_ZERO)
+    packed = sum(int(bit) << index for index, bit in enumerate(truth_table))
 
-    def registers(level: int) -> tuple[int, int, int, int]:
-        base = 4 * (n - 1 - level)
-        return base, base + 1, base + 2, base + 3
-
-    lines: list[str] = []
-    for level in range(n):
-        raw, complement, _lo, _hi = registers(level)
-        lines.append(
-            f"we {_qoibl_enc(raw)} we et ry ey ry {_qoibl_enc(_ASCII_ZERO)} we"
-        )
-        lines.append(
-            f"we {_qoibl_enc(complement)} we {_qoibl_enc(1)} "
-            f"ry ey ry qe {_qoibl_enc(raw)} qe we"
-        )
-
-    root = 4 * n
-    constant = constant_span_test(truth_table)
-    # ``names[w][i]`` names the ``i``-th span of ``2**w`` rows, two spans
-    # sharing a name exactly when they are equal (a span's name is the
-    # interned pair of its halves'), so the equal-halves test that skips a
-    # level is O(1) and the tree is O(2**n) rather than a slice compare a node.
-    names = [[int(bit) for bit in truth_table]]
-    for _ in range(n):
-        interned: dict[tuple[int, int], int] = {}
-        below = names[-1]
-        names.append(
-            [
-                interned.setdefault((below[i], below[i + 1]), len(interned))
-                for i in range(0, len(below), 2)
-            ]
-        )
-
-    def assign(destination: int, expression: str) -> None:
-        lines.append(f"we {_qoibl_enc(destination)} we {expression} we")
-
-    def node(level: int, lo: int, hi: int, destination: int) -> None:
-        if constant(lo, hi):
-            assign(destination, _qoibl_enc(int(truth_table[lo])))
-            return
-        mid = (lo + hi) // 2
-        halves = names[n - level - 1]
-        if halves[lo // (mid - lo)] == halves[mid // (mid - lo)]:
-            node(level + 1, lo, mid, destination)
-            return
-        raw, complement, low, high = registers(level)
-        node(level + 1, lo, mid, low)
-        node(level + 1, mid, hi, high)
-        assign(
-            low,
-            f"qe {_qoibl_enc(complement)} qe ry ye ry qe {_qoibl_enc(low)} qe",
-        )
-        assign(high, f"qe {_qoibl_enc(raw)} qe ry ye ry qe {_qoibl_enc(high)} qe")
-        assign(
-            destination,
-            f"qe {_qoibl_enc(low)} qe ry ee ry qe {_qoibl_enc(high)} qe",
-        )
-
-    node(0, 0, 2**n, root)
-    lines.append(f"tt qe {_qoibl_enc(root)} qe ry ee ry {_qoibl_enc(_ASCII_ZERO)} tt")
+    # ``p = p * (p * (et - 47))``: the digit is 48 or 49, so that factor is
+    # the bit plus one and squaring makes the reads Horner's rule.
+    bit = f"et ry ey ry {_qoibl_enc(_ASCII_ZERO - 1)}"
+    lines = [f"we {power} we {bit} we"]
+    lines += (n - 1) * [
+        f"we {power} we qe {power} qe ry ye ry qe {power} qe ry ye ry {bit} we"
+    ]
+    lines.append(f"we {row} we {_qoibl_enc(packed)} ry yy ry qe {power} qe we")
+    lines.append(
+        f"tt qe {row} qe ry ee ry {zero} ry ey ry ye ry ye ry "
+        f"qe {row} qe ry yy ry ye tt"
+    )
     return "\n".join(lines)
