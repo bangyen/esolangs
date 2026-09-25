@@ -197,85 +197,156 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     return "\n".join(lines)
 
 
-def _strip(index: int, bit: int) -> int:
-    """Return the value cell ``index`` carries for ``bit``: 0/1 even, 2/3 odd."""
-    return 2 * (index % 2) + bit
+#: Levels whose walk becomes a marker-terminated ``goto`` loop instead of
+#: ``2**(n-i)`` emitted ``left`` lines.  Measured over n=8..12: four is where
+#: the per-entry constant bottoms out at 25.4 (three reads 25.8, five 25.5).
+_LOOP_LEVELS = 4
+
+
+def _top_level(n: int) -> int:
+    """Return the deepest level that may loop, for an ``n``-input table.
+
+    Levels ``i < j`` share a marker position exactly when ``j - i ==
+    2**(n-1-j)``, and ``m_i = 2**(n-1-i)`` must be even for a two-cell loop
+    iteration.  Halving the arity clears both at once: ``top <= (n-2)/2``
+    leaves ``2**(n-1-top) >= 2**(n/2)``, which outgrows ``top``.
+    """
+    return min(_LOOP_LEVELS, (n - 2) // 2)
+
+
+class _Strip:
+    """The strip's cell values, and what a guard at a given class may see.
+
+    A cell holds ``2 * (position % 2) + bit``; the parity keeps a two-line
+    step from firing twice.  A *marker* cell holds its level's value plus the
+    bit instead, which is what stops that level's loop.
+    """
+
+    def __init__(self, cells: str, n: int) -> None:
+        """Place the markers and fix the alphabet for an ``n``-input table."""
+        self.cells = cells
+        size = len(cells)
+        top = _top_level(n)
+        self.levels = list(range(top + 1))
+        #: ``2 * m_i``: the period of level ``i``'s marker class.
+        self.period = {i: 1 << (n - i) for i in self.levels}
+        #: Level ``i``'s walk starts at ``size - 2 - i`` (mod its period) and
+        #: ends ``m_i`` cells left of it, which is where its marker goes.
+        self.first = {
+            i: (size - 2 - i - (1 << (n - 1 - i))) % self.period[i] for i in self.levels
+        }
+        # The deepest looped level has the most markers, so it takes the
+        # cheapest value: a climb to v costs v lines, once per marker.
+        self.value = {i: 4 + 2 * (top - i) for i in self.levels}
+        self.level_at: dict[int, int] = {}
+        for i in self.levels:
+            for pos in range(self.first[i], size, self.period[i]):
+                self.level_at[pos] = i
+        self.alphabet: dict[int, set[int]] = {0: {0, 1}, 1: {2, 3}}
+        for i in self.levels:
+            self.alphabet[self.first[i] % 2] |= {self.value[i], self.value[i] + 1}
+
+    def at(self, pos: int) -> int:
+        """Return the value stored in cell ``pos``."""
+        bit = int(self.cells[pos])
+        level = self.level_at.get(pos)
+        if level is None:
+            return 2 * (pos % 2) + bit
+        return self.value[level] + bit
+
+    def seen(self, residue: int, modulus: int | None) -> list[int]:
+        """Values a cell known only as ``residue`` mod ``modulus`` may hold.
+
+        ``None`` means the position is exact -- the first read -- so the value
+        is a compile-time constant.  Otherwise a level's markers are possible
+        when the two classes can meet; an over-estimate costs a dead guard
+        line, an under-estimate is a bug.
+        """
+        if modulus is None:
+            return [self.at(residue)]
+        parity = residue % 2
+        out = {2 * parity, 2 * parity + 1}
+        for i in self.levels:
+            if self.first[i] % 2 != parity:
+                continue
+            coarse = min(modulus, self.period[i])
+            if self.first[i] % coarse == residue % coarse:
+                out |= {self.value[i], self.value[i] + 1}
+        return sorted(out)
 
 
 def _brainif_linear(truth_table: str) -> str:
     """Emit a linear spatial lookup for BrainIf.
 
-    One cell an entry.  A cell's value carries its bit *and* its parity --
-    ``{0, 1}`` even, ``{2, 3}`` odd -- so a step left is two guarded moves,
-    one per value the cell it leaves can hold.  The scratch cell this
-    replaces made a step three lines and the tape twice as long; four
-    distinct values is the fewest a period-2 scheme can use, so 1.5 ``inc``
-    lines a cell is the floor for the build.
+    One cell an entry, carrying its bit *and* its parity -- ``{0, 1}`` even,
+    ``{2, 3}`` odd -- so an emitted step left is two guarded moves, one per
+    value the cell it leaves can hold.  The strip stores 0..3 rather than
+    ``'0'``/``'1'`` because BrainIf cannot write a constant: a cell climbs by
+    ``if v inc`` lines, so an ASCII digit an entry would be a 48-line climb an
+    entry, and only the final ``output`` cares what the byte is.
 
-    The pointer's parity is a compile-time constant wherever a gadget reads
-    it.  Input ``i`` walks ``1 + 2**(n-1-i)`` cells, even for every ``i`` but
-    the last; the last walk ends *on* the answer cell, which nothing crosses.
-    So only the output routine is parity-blind, and it costs nothing to make
-    so: it sends 1 and 3 to the one-branch and climbs from whichever of 0/2
-    it finds, a climb that converges anyway.
+    The build runs left to right and the selection right to left, reading the
+    index in complement: a ``1`` stays put and a ``0`` walks its weight.  One
+    padding cell an input keeps every read right of the answer cell.
 
-    The strip carries 0..3, not ``'0'``/``'1'``.  BrainIf cannot write a
-    constant -- a cell climbs by ``if v inc`` lines, one per value passed --
-    so an ASCII digit an entry was a 48-line climb an entry.  Only the final
-    ``output`` cares what the byte is, so the climb happens once.
-
-    The build runs left to right and the selection right to left, from the
-    far end, reading the index in complement: a ``1`` stays put and a ``0``
-    walks its weight.  One padding cell an input keeps every read strictly
-    right of the answer cell, so a read never clobbers the entry it selects.
-
-    Commands take the language's short forms: the interpreter matches by
-    substring and the wiki spells them this way.
+    The top levels walk by *loop* rather than by emitted line.  Level ``i``
+    ends ``m_i = 2**(n-1-i)`` cells left of a position fixed mod ``2*m_i``
+    whatever the higher bits were, so a marker value planted on that whole
+    residue class stops the loop exactly there: the class has period
+    ``2*m_i`` and the window is ``m_i`` long, so the window holds one.  That
+    trades ``2*m_i`` ``left`` lines for ``2**i`` marker climbs, which only the
+    widest levels are worth (:data:`_LOOP_LEVELS`) -- level 0 alone is half
+    the crossings and costs one marker.  Commands take the short spellings
+    the interpreter matches by substring.
     """
     n = _validate_truth_table(truth_table)
     cells = truth_table + "0" * n
+    size = len(cells)
+    strip = _Strip(cells, n)
     lines: list[str] = []
     labels: dict[str, int] = {}
 
     def mark(name: str) -> None:
         labels[name] = len(lines) + 1
 
-    def cross(parity: int) -> None:
-        """Step one cell left, entered on a cell of the given parity."""
-        lines.append(f"if {2 * parity} left")
-        lines.append(f"if {2 * parity + 1} left")
+    def guard(residue: int, modulus: int | None, suffix: str) -> None:
+        """Emit one guarded line per value the named cell may hold."""
+        lines.extend(f"if {v} {suffix}" for v in strip.seen(residue, modulus))
 
     # The table, then one padding cell per input.  Padding takes the cheaper
     # bit; the last cell needs no ``right``, since the walk starts there.
-    for index, bit in enumerate(cells):
-        value = _strip(index, int(bit))
+    for index in range(size):
+        value = strip.at(index)
         lines += [f"if {passed} inc" for passed in range(value)]
-        if index + 1 < len(cells):
+        if index + 1 < size:
             lines.append(f"if {value} right")
 
-    # A read overwrites the cell it lands on, so its guard is the pair that
-    # cell's parity admits.  The first step off it is one line, not two: the
-    # byte just read says which branch is running.
-    parity = (len(cells) - 1) % 2
+    # A read overwrites the cell it lands on, so its guard is every value that
+    # cell's class admits.  The first step off it is one line, not two: the
+    # byte just read says which branch is running.  The read for level ``i``
+    # sits at ``size - 1 - i`` mod ``2**(n-i)`` -- exactly, for level 0.
     for i in range(n):
         far, after = f"far_{i}", f"after_{i}"
-        lines.append(f"if {2 * parity} input")
-        lines.append(f"if {2 * parity + 1} input")
+        known = None if i == 0 else 1 << (n - i)
+        guard(size - 1 - i, known, "input")
         lines.append(f"if {_ASCII_ZERO} goto @{far}")
         lines.append(f"if {_ASCII_ONE} left")
-        lines.append(f"if {2 * (1 - parity)} goto @{after}")
-        lines.append(f"if {2 * (1 - parity) + 1} goto @{after}")
+        guard(size - 2 - i, known, f"goto @{after}")
         mark(far)
         lines.append(f"if {_ASCII_ZERO} left")
-        for k in range(1 << (n - 1 - i)):
-            cross((1 - parity + k) % 2)
+        if i in strip.levels:
+            _emit_loop(lines, labels, strip, i, size)
+        else:
+            for k in range(1 << (n - 1 - i)):
+                guard(size - 2 - i - k, known, "left")
         mark(after)
-        parity = 1 - parity
 
-    # The walk ends on the selected cell, whose parity is the one thing the
-    # construction does not know; both climbs converge, so neither cares.
-    lines.append("if 1 goto @one_out")
-    lines.append("if 3 goto @one_out")
+    # The walk ends on the selected cell, whose value is its bit in the low
+    # place -- every marker value is even -- and the climbs converge, so
+    # neither cares which class the cell came from.
+    alphabet = strip.alphabet[0] | strip.alphabet[1]
+    for value in sorted(v for v in alphabet if v % 2):
+        lines.append(f"if {value} goto @one_out")
     for value in range(_ASCII_ZERO):
         lines.append(f"if {value} inc")
     lines.append(f"if {_ASCII_ZERO} output")
@@ -291,3 +362,23 @@ def _brainif_linear(truth_table: str) -> str:
             head, name = line.split("goto @")
             lines[i] = f"{head}goto {labels[name]}"
     return "\n".join(lines)
+
+
+def _emit_loop(
+    lines: list[str], labels: dict[str, int], strip: _Strip, level: int, size: int
+) -> None:
+    """Emit level ``level``'s walk as a loop that halts on its own marker.
+
+    Three groups, entered and left on parity ``P``: cross one cell, cross a
+    second, repeat unless the cell is the marker.  Two cells an iteration
+    holds the parity, and ``m_i`` is even wherever a level may loop, so the
+    walk lands on the marker rather than stepping over it.
+    """
+    name = f"loop_{level}"
+    parity = (size - 2 - level) % 2
+    own = {strip.value[level], strip.value[level] + 1}
+    crossable = sorted(strip.alphabet[parity] - own)
+    labels[name] = len(lines) + 1
+    lines.extend(f"if {v} left" for v in crossable)
+    lines.extend(f"if {v} left" for v in sorted(strip.alphabet[1 - parity]))
+    lines.extend(f"if {v} goto @{name}" for v in crossable)
