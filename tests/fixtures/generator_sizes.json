@@ -450,16 +450,16 @@
   },
   "Forbin": {
    "0110": {
-    "commands": 5,
-    "source_units": 264
+    "commands": 2,
+    "source_units": 131
    },
    "01101001": {
-    "commands": 6,
-    "source_units": 512
+    "commands": 2,
+    "source_units": 190
    },
    "0110100110010110": {
-    "commands": 7,
-    "source_units": 980
+    "commands": 2,
+    "source_units": 281
    }
   },
   "For\u00fe": {

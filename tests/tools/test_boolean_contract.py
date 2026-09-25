@@ -231,7 +231,6 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 def _reordering_generators() -> list[object]:
     from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
     from esolangs.tools.dimensional import _dimensional_ordered
-    from esolangs.tools.other import _forbin_ordered
     from esolangs.tools.painfuck import _painfuck_ordered
     from esolangs.tools.parameterized import (
         _bitdeque_ordered,
@@ -269,7 +268,6 @@ def _reordering_generators() -> list[object]:
             # circlefuck() itself lifts it.
             lambda t, p: _circlefuck_ordered([_ASCII_ZERO + int(b) for b in t], p),
         ),
-        ("forbin", boolean.forbin, _forbin_ordered),
         ("jaune", boolean.jaune, _jaune_ordered),
     ]
     return [
@@ -572,6 +570,7 @@ _UNSHAPED = {
     "bio",
     "alight",
     "egl",  # one painted grid cell per entry, walked to by weighted guards
+    "forbin",  # one painted call argument per entry, halved down to the first
     "malbolge",
     "minsky_swap",
     "b_tapemark",
