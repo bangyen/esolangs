@@ -235,12 +235,7 @@ def _reordering_generators() -> list[object]:
         _bitdeque_ordered,
         _ram0_ordered,
     )
-    from esolangs.tools.tape import (
-        _ASCII_ZERO,
-        _bf_ordered,
-        _circlefuck_ordered,
-        _jaune_ordered,
-    )
+    from esolangs.tools.tape import _bf_ordered, _jaune_ordered
     from esolangs.tools.three_d_brainfuck import _three_d_ordered
 
     entries: list[tuple[str, object, object]] = [
@@ -258,14 +253,6 @@ def _reordering_generators() -> list[object]:
         ("three_d_brainfuck", boolean.three_d_brainfuck, _three_d_ordered),
         ("ram0", boolean.ram0, _ram0_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
-        (
-            "circlefuck",
-            boolean.circlefuck,
-            # The byte-valued builder underneath takes a *byte* table,
-            # so the contract's binary-string table is lifted the way
-            # circlefuck() itself lifts it.
-            lambda t, p: _circlefuck_ordered([_ASCII_ZERO + int(b) for b in t], p),
-        ),
         ("jaune", boolean.jaune, _jaune_ordered),
     ]
     return [
@@ -318,11 +305,7 @@ def test_reordering_shrinks_the_tables_it_should(
     """
     if name == "jaune":
         pytest.skip("clobbering already makes the identity order optimal here")
-    # Circlefuck splits last-input-first, so ``10101010`` is the table its
-    # identity order already folds; the one only a reorder folds is the
-    # same function with its inputs renamed the other way.
-    table = "11110000" if name == "circlefuck" else "10101010"
-    assert len(fn(table)) < len(ordered(table, (0, 1, 2))), (
+    assert len(fn("10101010")) < len(ordered("10101010", (0, 1, 2))), (
         f"{name} did not reorder a table that only reordering folds"
     )
 
@@ -520,7 +503,11 @@ _MINTERM_SHAPED = {
 # essential inputs, so the gain tracks the dropped *arity* rather than any
 # collapsed structure.  Reordering does not become applicable to them the way
 # it would if they had grown a tree, which is why they are neither list.
+# ``circlefuck`` reduces for the same reason from the other shape: its
+# lookup tabulates the essential inputs alone, so a one-dependency table is
+# a two-entry table and not a collapsed tree.
 _REDUCING = {
+    "circlefuck",
     "home_row",
     "nocomment",
     "rotfuck",
