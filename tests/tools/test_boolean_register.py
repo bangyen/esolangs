@@ -521,12 +521,13 @@ class TestDig:
     def test_alternating_layout_has_linear_area(self) -> None:
         """Text per entry stays under a constant as the arity grows.
 
-        The rectangle approaches thirty cells an entry from *above* -- a
-        node is four cells and its operands sit beside it -- so "two more
-        levels at most quadruple" is not the contract; the constant is.
+        The rectangle approaches nine cells an entry from *below* -- the
+        leaf's own box is fixed and the tree above it adds the padding --
+        so "two more levels at most quadruple" is not the contract; the
+        constant is.  Thirty was the reading while every entry was a leaf.
         """
         sizes = [len(boolean.dig("01" * (2 ** (n - 1)))) / 2**n for n in (7, 9, 11)]
-        assert max(sizes) < 30
+        assert max(sizes) < 9
 
     @pytest.mark.parametrize(
         ("table", "n"),
