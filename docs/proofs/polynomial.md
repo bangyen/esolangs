@@ -360,8 +360,6 @@ a factor `325/26 = 12.5` at both limits. So the order is settled and the constan
    gaps, and some table needs more than `T/(n+4)` input values (`n >= 7`;
    asymptotically `T/(n + log2 3e)`). Distinct read gaps have distinct last
    input roots. So `K_n = max(N_n, ceil(T/(n+4)))` input values are forced.
-   Next-read is sharp: a mod-`(2**K - 1)` automaton compiled one read per
-   state has `N*(K) = K_in = 2**K - 1 > T/(6n) - 1` (`prop:sharp`, removed from the paper in the pure-math trim; see git history).
 2. *Mass, exact per pair.* By multisection
    ([coefficient-mass-complex](coefficient-mass-complex.tex) Corollary 2.3)
    a multiple of `prod (x**2 + c_j**2)` has an even or odd part that is a
@@ -373,12 +371,7 @@ a factor `325/26 = 12.5` at both limits. So the order is settled and the constan
 
 The real-root route (`L >= N_n` with mass `1/2`) is 4 times weaker.
 
-**Upper side.** Two compilers. The first (`prop:dfaprog`, with `lem:decoder`,
-`lem:profile` and the stripped automata below, removed from the paper in the pure-math trim; see git history): a shared
-17-instruction threshold decoder (`lem:decoder`) turns `-alpha_q (48+b) + D`
-into the next state's code, each state's `*=A` operand encoding both child
-codes; profile `f(phi) S**2`, `f(0) = 525/8` (`lem:profile`). The second
-(`prop:embprog`), used for the bracket: a state whose two successors have no
+**Upper side.** The compiler (`prop:embprog`): a state whose two successors have no
 other predecessor branches in place (`input; +=-48; if>0{..}; if==0{..}`), with
 no dispatch and no multiplication; every other state is `input; += a_q`, with
 `a_q` encoding both child codes and the end-of-input label as
@@ -391,33 +384,18 @@ they count with effective exponent 2 (`lem:effprofile`):
 `Phi_e = g(a, x) S**2 + O(S)`,
 `g(a, x) = (4(6+x)**2 - 2(11/2+x)**2 - (5/2-2a+x)**2)/2`, with `a` the share of
 states outside the branching set and `x` the dispatched share;
-`g(1/2, 0) = 325/8`. Automata:
+`g(1/2, 0) = 325/8`. The automaton is trie-banded (`lem:trieband`,
+`lem:bandtrie`): leaves of a trie grouped in bands of distinct lengths share
+one tree; a deep state below band `k` records `C = 2**(h-1) (1+y)` bits, `y`
+the binary fraction whose digits are the band's leaf lengths, placed just
+below the tree depth; `(1 + O((log n)**2/n)) T/n` states for every `n`, which
+settles the asymptotics.
 
-* the bounded stripped automaton (`lem:bstrip`, removed from the paper in the pure-math trim; see git history): strip at most `I` leading
-  copies of `c` (length `d`), tree states up to level `L`, residual tuples
-  below, words starting with `c**(I+1)` to a separate residual DAG; with
-  `L + dI < n` no tree state sees end of input, and tree successors have a
-  unique predecessor;
-* `d = 1`, `L = n-j1+1`, `I = j1-2`: `2 nu (1+u/2) T/n` states, profile
-  `325/8 + 13 delta + delta**2`;
-* `d = 2`, `L = n-j1`, `I = ceil(j1/2)-1`: `(3/2) nu T/n` states when
-  `n >= (7/10) 2**j1`, profile `325/8`.
-* the trie-banded automaton (`lem:trieband`, `lem:bandtrie`): leaves of a
-  trie grouped in bands of distinct lengths share one tree; a deep state
-  below band `k` records `C = 2**(h-1) (1+y)` bits, `y` the binary fraction
-  whose digits are the band's leaf lengths, placed just below the tree
-  depth; `(1 + O((log n)**2/n)) T/n` states for every `n`, which settles the
-  asymptotics (the stripped automata stay better for `n` up to about 100).
-
-All constructions were compiled and run on every input for `n <= 11` (the
-properties of the removed `lem:bstrip` asserted on every run), and round-tripped through
-source for `n <= 7`. Rendered lengths against the first compiler: 0.85 at
-`n = 10` (maximal-width), 0.82 (random).
+All constructions were compiled and run on every input for `n <= 11`, and
+round-tripped through source for `n <= 7`.
 
 **Where the gap sits.**
 
-* Routing is exact: one input value per first-essential residual, attained
-  (`prop:sharp`, removed from the paper in the pure-math trim; see git history).
 * Levels contribute nothing: counting charges `T/(n+4)` inputs, and the
   trie-banded automaton has `(1 + o(1)) T/n` states for every table.
 * Profile, `g/3 = 325/24` at both limits: the input pairs give mass
@@ -427,15 +405,11 @@ source for `n <= 7`. Rendered lengths against the first compiler: 0.85 at
   `Lambda(f) = Lambda(E)`; in `E` the inputs are negative roots `-c**2` and
   the forced real roots positive roots `r**2`, and the both-signs rows
   (`coefficient-mass-complex.tex` Theorem 4.2) add constant 1 (`lem:evensigns`).
-  So every source pays 3. For even or odd sources the two runs after a read
-  part at a register 0, and the zero branch passes a whole block of real
-  roots `p^v`, `v` in {2,4,6,8}, distinct across residuals with distinct
-  halves (`lem:zerowit`, exact register arithmetic); tables with
-  `2^(n-j_n) - 1` such residuals still force `T/(n+4)` inputs
-  (`lem:halves`; both removed from the paper in the pure-math trim; see git history), and those roots add `mu_n**2` (`lem:evensigns` with `N`).
-  Counting even or odd programs by their sign skeleton and zero points
-  (`lem:evencount`) forces about `T/(2n)` such roots for every large `n`
-  (`cor:evenhard`), so they pay `3 + 1/4` uniformly. The register roots
+  So every source pays 3. Counting even or odd programs by their sign
+  skeleton and zero points (`lem:evencount`) forces about `T/(2n)` real
+  instruction roots of exponent at least 2 for every large `n`
+  (`cor:evenhard`), which add `mu_n**2` (`lem:evensigns` with `N`), so they
+  pay `3 + 1/4` uniformly. The register roots
   `(a +- p**b i)**2` of `E` are not charged; that is what separates 13/4
   from 4 (both counts stop at `1/2`).
 
