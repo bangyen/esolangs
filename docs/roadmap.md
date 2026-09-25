@@ -198,73 +198,10 @@ INTERCAL, listed last, is outside the pass.
 Research questions the proofs leave open.  Each names the first executable
 step; an answer lands in the paper it extends, and the row leaves.
 
-- **Coefficient-mass sharpness, residue.**
-  [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex)
-  proves the partial-sum criterion at repeated roots (`thm:converse`,
-  `cor:charrep`, Descartes at infinity) and non-attainment
-  (`thm:noattain`).  Open (`sec:scope`): when the criterion fails the
-  infimum is `1/T` with `T >= tau*`; whether `T = tau*`, that is, whether
-  the escaping placement is the worst one.
-
-- **Coefficient mass at complex roots.**  Purely imaginary pairs are CLOSED
-  ([coefficient-mass-complex](proofs/coefficient-mass-complex.tex), split
-  out of [coefficient-mass](proofs/coefficient-mass.tex); `thm:transfer`,
-  `cor:imag`: by multisection a pair `+-ci` is worth exactly one real root
-  `c**2`, rows, mass and sharpness included), and the first row holds at
-  every root set (`prop:rowone`).  Beyond that no bound can depend on the
-  moduli and the angles alone (`prop:noangle`: `x**(2M) + rho**(2M)`).
-  At Gaussian-integer pairs, integer multiples split into blocks
-  (`lem:gausscarry`, `lem:gaussblocks`) each paying `log(rho_min/2)` per
-  degree (`thm:gausscharge`).  An Archimedean Newton polygon
-  (`thm:archnewton`) gives rows and mass `sum j log(rho_j/3)` for every
-  complex multiple once moduli grow by a factor 9 (`cor:separated`), and
-  at most `g` moduli per annulus `[R, 9R]` costs a factor `g**2`.  Crowded
-  roots in a thin sector are CLOSED (`lem:sectorcount`, `thm:thinsector`,
-  `thm:thingauss`: the argument principle forces a real crossing
-  polynomial with `K/2` large roots unless the degree is `>> K/delta`,
-  which block charging pays).  Real roots of both signs (`sec:bothsigns`):
-  Rolle on each half-line gives rows charging one root of each sign per
-  excluded coefficient (`thm:bothsigns`) and mass
-  `floor((L+1)**2/4) log(R/2)`, sharp at `+-s_j` (`cor:bothsignsmass`,
-  `prop:bothsignssharp`).  Wide sectors (`sec:widesectors`): for multiples of degree `O(K)` the order is
-  `min(K**2, K/delta) log R` with both constants sharp (`thm:widesector`,
-  `cor:wideconst`; `x^N - rho^N` attains `pi/delta`, `prop:widesharp`), so
-  `c K**2 log R` is false over the reals; at Gaussian roots
-  `(pi/delta - o(1)) K log R` holds unconditionally (`cor:widegauss`).
-  Open: whether `c K**2 log R` holds for all integer multiples at Gaussian
-  roots in a wide sector (the question the paper's introduction leaves),
-  and the cross terms `K_s K_t log t` between annuli.
-
-- **Every row at other roots.**  The paper is
-  [coefficient-mass-rows](proofs/coefficient-mass-rows.tex), split out of
-  [coefficient-mass](proofs/coefficient-mass.tex).  The last row is exact
-  for every `r > 1` (`cor:lastrowr`), and `thm:tailgen` extends `thm:tail`
-  to all roots above 1.  For `1 < r < 2` the rows are pinned up to a
-  factor `1 + O(k**(n-1/2) theta**k)` (`thm:prefixrows`, `cor:belowtwo`).
-  Crossing (`sec:crossing`): admissible polynomials form a convex set and an insertion flips every
-  later sign (`lem:crossing`, `lem:insflip`), so one insertion at the first
-  gap covers every later exempted position (`thm:crossing`, all `r > 1`).
-  CLOSED for every root `r >= 2` (`sec:allrowstwo`, `thm:allrowstwo`):
-  first-order optimality of a truncated minimizer in one direction bounds
-  the insertion at any gap above the constraints (`lem:optins`,
-  `lem:truncvertex`), which is the hypothesis of the reduction the paper
-  inlines, so `V_r(L,k) = beta_r(L-k+1)` for all `k`, `L`; for `1 < r < 2` the same
-  proof gives `V_r(L,k) >= (r-1)**(k-1) beta_r(L-k+1)`, exact at `k = L`.
-  For `1 < r < 2` one polynomial serves every exempted set
-  (`sec:onepoly`, `lem:prefixpush`, `thm:onepoly`) and prefix values are
-  supermultiplicative (`lem:prefixshift`), so the prefix identity
-  `V_r(L,k) = min_(i<=k) 1/nu_i(n)` (`eq:prefixid`) holds for every `k`
-  whenever `beta_r(n) <= 1` (`thm:onepolyrows`), in particular for
-  `r - 1 <= e**(-4n-2)/C_n` (`lem:topnearone`).  It is false in general
-  for `1 < r < 2`: at `r = 5/4`, `L = 16`, `k = 2` a monic multiple has
-  `b_2 <= 6.5694 < 7.6492 = min_(i<=2) 1/nu_i` (exact rational
-  arithmetic).  Long diagonals (`sec:longdiag`,
-  `lem:farprefix`, `thm:longdiag`, `prop:longdiagexplicit`): for each
-  `1 < r < 2` there are `alpha`, `K` with the prefix identity holding for
-  `k >= max(K, alpha(n-1))`, so every diagonal fails in at most finitely
-  many rows (`cor:longdiagfinite`).  Open: the value of `V_r(L,k)` for
-  `1 < r < 2`, small `k` and `beta_r(n) > 1`, where one polynomial cannot suffice and the prefix
-  identity can fail.
+- **Coefficient mass.**  The open questions of the four coefficient-mass
+  papers -- sharpness past the partial-sum criterion, complex roots, and every
+  row below the root 2 -- moved with the papers to
+  [bangyen/coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/main/ROADMAP.md).
 
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
@@ -326,4 +263,5 @@ step; an answer lands in the paper it extends, and the row leaves.
   (`lem:evencount`, `cor:evenhard`; even or odd sources add and subtract
   only right after a read, `lem:symruns`; exact register arithmetic, the
   float `**` is a caveat).  The register and real roots are not
-  charged, see the complex-roots row.
+  charged, see the complex-roots row of the
+  [coefficient-mass roadmap](https://github.com/bangyen/coefficient-mass/blob/main/ROADMAP.md).
