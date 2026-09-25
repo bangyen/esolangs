@@ -134,11 +134,14 @@ supermultiplicativity of the prefix values (Lemma~\ref{lem:prefixshift}).
 \paragraph{Organization.}
 Section~\ref{sec:rowvalues} sets up the row values, extends the tail bound
 of~\cite{coefficient-mass} to arbitrary nodes, and proves the last row and
-first bounds.  The next sections treat the rows below $2$ through prefix
-sets, several roots, hole shifts, finite certificates, monotone prefix values
-and crossing.  Sections~\ref{sec:allrowstwo}, \ref{sec:onepoly}
-and~\ref{sec:longdiag} contain the main theorems.  Appendix~\ref{sec:holeproducts}
-collects bounds on the hole products of top-row optima.
+first bounds at every root.  Section~\ref{sec:prefix} brackets the rows
+below $2$ by prefix values and treats several roots.
+Sections~\ref{sec:holeshifts}--\ref{sec:crossing} develop the tools: hole
+shifts and insertions, finite certificates, monotone prefix values and
+crossing.  Section~\ref{sec:allrowstwo} proves that every row is a top row
+at $r\ge2$, and Section~\ref{sec:belowtwo} treats $1<r<2$.
+Appendix~\ref{sec:holeproducts} collects bounds on the hole products of
+top-row optima.
 
 \paragraph{Conventions.}
 All logarithms are natural and $\N_{>0}=\{1,2,\ldots\}$.  For a finite set
@@ -630,7 +633,7 @@ determines these rows up to a factor tending to $1$, and
 Theorems~\ref{thm:onepolyrows} and~\ref{thm:longdiag} determine many of
 them exactly.
 
-\section{Rows below two, at several roots, and rows equal to the top row}
+\section{Prefix sets, several roots, and the top row}\label{sec:prefix}
 
 This section keeps the notation of the previous one.  It adds three
 things.  For $1<r<2$ it identifies the rows up to a factor tending to $1$
@@ -1159,7 +1162,7 @@ $r\in\{2,\frac{21}{10},\frac94\}$, $n\le6$ and all $S\subseteq[1,12]$ with
 $|S|\le4$, a witness $Z\supseteq S$ with $|Z|=|S|+n-1$ had
 $\Phi_r(Z)\le0.80\,\Phi_r(Z_0)$, where $Z_0$ is the best top-row set found.
 
-\section{Moving holes at several roots, and inserting into sets with few holes}
+\section{Hole shifts and insertions}\label{sec:holeshifts}
 
 This section proves two of the steps left open above.  At several roots
 all at least $\frac52$, the hole moves from $h$ to $h-1$
@@ -2692,7 +2695,7 @@ Both are statements about the top-row optimum only.  As in
 Section~\ref{sec:prefixmono}, they seem to need control of the zero
 distribution of $Z_0$ that we do not have.
 
-\section{All rows at every root at least \texorpdfstring{$2$}{2}}\label{sec:allrowstwo}
+\section{Every row is a top row at roots at least \texorpdfstring{$2$}{2}}\label{sec:allrowstwo}
 
 Sections~\ref{sec:bigroot}--\ref{sec:rootbelowfour} prove that rows equal the
 top row by bounding the hole product of a top-row optimum.  That route stops
@@ -2938,12 +2941,19 @@ $\mathrm{ins}(W,c)\supseteq[1,i]$.  So
 $\mu_{r,D}([1,i],i+m)\le a\,\mu_{r,D}([1,i-1],i-1+m)$, and letting
 $D\to\infty$ gives $\nu_{i+1}(m)\le a\,\nu_i(m)$.
 
-\section{Rows below the root \texorpdfstring{$2$}{2} from one polynomial}\label{sec:onepoly}
+\section{Rows below the root \texorpdfstring{$2$}{2}}\label{sec:belowtwo}
 
-Theorem~\ref{thm:allrowstwo} settles the rows at every $r\ge2$.  For
-$1<r<2$ it gives only $V_r(L,k)\ge(r-1)^{k-1}\beta_r(n)$, while the
-conjectured value is $\min_{i\le k}1/\nu_i(n)$.  This section proves the
-conjecture for $1<r<2$ whenever $\beta_r(n)\le1$, for every $k$
+For $1<r<2$ the rows are not top rows, and Theorem~\ref{thm:allrowstwo}
+gives only $V_r(L,k)\ge(r-1)^{k-1}\beta_r(n)$.  The conjectured value is
+$\min_{i\le k}1/\nu_i(n)$ (the conjecture stated after
+Corollary~\ref{cor:belowtwo}).  This section proves it in two regimes: for
+every $k$ when $\beta_r(n)\le1$ (Section~\ref{sec:onepoly}), and for every
+$n$ once $k$ is large compared with $n$ (Section~\ref{sec:longdiag}).  In
+both the minimum is at $i=k$.
+
+\subsection{One polynomial for all exempted sets}\label{sec:onepoly}
+
+This subsection proves the conjecture for $1<r<2$ whenever $\beta_r(n)\le1$, for every $k$
 (Theorem~\ref{thm:onepolyrows}).  For each $n$ this is an interval of roots
 $1<r\le r_n$, and $r_n\ge1+\frac1n$ for $n\le10$
 (Corollary~\ref{cor:onepolyranges}).  There the minimum is at $i=k$: the
@@ -3216,13 +3226,13 @@ polynomial serves all prefixes, in particular wherever the maximum of
 $\nu_i(n)$ sits at $i=1<k$.  Section~\ref{sec:longdiag} shows that a single
 polynomial does serve all prefixes once $k$ is large compared with $n$.
 
-\section{Long diagonals below the root \texorpdfstring{$2$}{2}}\label{sec:longdiag}
+\subsection{Long diagonals}\label{sec:longdiag}
 
 Theorem~\ref{thm:onepoly} gives the conjectured value $1/\nu_k(n)$ as soon
 as one polynomial that is nearly optimal for $\nu_k(n)$ has its $k$-th
 prefix sum $A_k$ at least as large as the earlier ones.
 Theorem~\ref{thm:onepolyrows} obtains this from $\beta_r(n)\le1$.  This
-section obtains it for every $1<r<2$, with no condition on $\beta_r(n)$,
+subsection obtains it for every $1<r<2$, with no condition on $\beta_r(n)$,
 once $k$ is large compared with $n$ (Theorem~\ref{thm:longdiag} and
 Proposition~\ref{prop:longdiagexplicit}).  So on every diagonal
 $L-k=n-1$ the conjecture can fail in at most finitely many rows
