@@ -233,7 +233,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Flowchart | finite lookup | a pair of answers per deque, and the input walks the deque cursor to the pair it wants | linear: T pushes, `T/2 - 1` cursor steps, two rows |
 | Forbin | finite lookup | the last seven inputs paint a block of `2**7` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry | linear: two characters an entry, halvings sum to `2 * 128` |
 | Forþ | tree | — | linear: span walk, constant dispatch, step literals geometric |
-| Grapheme | tree | arbitrary integer variable keys remove the old 24 one-letter-key ceiling | linear, time n log: essential_inputs |
+| Grapheme | linear lookup | the whole table is one int-mode literal read in base 10, and each `W` squares an accumulator and doubles it on a 0, which is Horner's rule for the complemented index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0 | linear, time n log: essential_inputs; ~0.302 characters an entry, one read block an input |
 | Home Row | parameterized tree | — | linear, time n log: essential_inputs |
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: T literal, `.` halvings sum to 2T |
 | Jaune | finite lookup | a spatial table reached with two labels | linear: two cells per row, unary weights sum T - 1 |
@@ -289,16 +289,10 @@ The remaining `cap` rows do have a uniform lift argument.
   finitely many instructions receives a distinct prime root, and removing the
   interpreter-cost screen does not change that encoding.
 
-Grapheme's lift is already applied, so it is a `tree` row rather than a
-`cap` row.  Its folded tree needs one variable per essential input, but
-variable names are arbitrary integers, not just the 24 collision-free
-one-letter literals the old emitter used.  `FAF` pushes 10; repeating it and
-combining the copies with `A` constructs `10(i+1)` for every finite `i`.
-Reserving a disjoint key for the normalization constant therefore extends the
-same finite tree proof to every arity.  Decimal digit 6 is split into `1 + 5`,
-since `F` delimits integer mode and cannot occur inside its literal.
-
-6-5 left this section when its walk stopped spending a label per input.
+Grapheme left this section when its tree did: the table is one int-mode
+literal and the index is an accumulator, so no arity needs a second variable
+and there is nothing left to run out of.  6-5 left when its walk stopped
+spending a label per input.
 NoComment left when its rows stopped living on the tape: the index is pushed
 as byte-sized stage amounts, a chain of uniform six-command groups pops and
 skips its way to the row's group, and every group after it adds the

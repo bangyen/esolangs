@@ -1,7 +1,7 @@
 """Boolean-function generators for stack-based languages."""
 
 from functools import cache
-from itertools import pairwise, product
+from itertools import product
 
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
@@ -56,120 +56,78 @@ def stack_programs(n: int, sinks: Sinks, read: str) -> dict[tuple[int, ...], str
     return reached
 
 
-def _grapheme_push0() -> str:
-    """Grapheme code pushing the integer 0 (``Z`` is intmode's zero digit)."""
-    return "FZF"
+#: Int-mode digits: ``Z`` is 0 and ``A``-``Y`` are 1 to 25, so the one value
+#: with no letter is 6 -- ``F`` closes the mode.  16 with a borrow spells it.
+_GRAPHEME_DIGITS = "ZABCDE?GHIJKLMNOPQRSTUVWXY"
 
-
-def _grapheme_push1() -> str:
-    """Grapheme code pushing the integer 1 (``10 / 10``)."""
-    return "FAF" + "FAF" + "R"
+#: Holds 65.  A literal is worth ten times its digits, so ``9`` names key 90.
+_GRAPHEME_CONST = 9
 
 
 def _grapheme_push65() -> str:
-    """Grapheme code pushing 65 (``ord('A')``, the input normalization constant)."""
-    return "FAF" + "FEF" + "R" + "FGF" + "B"  # 70 - (50 / 10)
+    """Grapheme code pushing 65 (``ord('A')``), spelled ``70 - (50 / 10)``."""
+    return "FAF" + "FEF" + "R" + "FGF" + "B"
 
 
-#: The reserved variable key, holding the 65 that normalizes an input bit.
-_GRAPHEME_CONST_KEY = 90
+def _grapheme_literal(value: int) -> str:
+    """Return an int-mode literal pushing ``10 * value``, for ``value >= 0``."""
+    digits = [int(c) for c in str(value)]
+    if digits[0] == 6:
+        raise AssertionError("a leading 6 has nothing to borrow from")
+    for at in range(len(digits) - 1, 0, -1):
+        if digits[at] != 6:
+            continue
+        digits[at] = 16
+        lend = at - 1
+        while digits[lend] == 0:
+            digits[lend] = 9
+            lend -= 1
+        digits[lend] -= 1
+    return "F" + "".join(_GRAPHEME_DIGITS[digit] for digit in digits) + "F"
 
 
-def _grapheme_slot_key(slot: int) -> int:
-    """Return the unbounded integer key holding input ``slot``."""
-    key = 10 * (slot + 1)
-    return key if key < _GRAPHEME_CONST_KEY else key + 10
-
-
-def _grapheme_push_key(key: int) -> str:
-    """Grapheme code pushing the integer variable key ``key`` (a multiple of 10)."""
-    # Int mode computes an ordinary decimal value followed by one zero, but
-    # ``F`` closes the mode and therefore cannot spell digit 6.  Split each 6
-    # into 1 + 5; the two literals have disjoint nonzero columns, so their sum
-    # is exactly the requested key with no carries.  This replaces the old
-    # one-letter alphabet's 24-key ceiling without changing the value model.
-    digits = str(key // 10)
-    letters = "ZABCDE?GHI"
-
-    def literal(value: str) -> str:
-        return "F" + "".join(letters[int(digit)] for digit in value) + "F"
-
-    if "6" not in digits:
-        return literal(digits)
-    low = "".join("1" if digit == "6" else digit for digit in digits)
-    five = "".join("5" if digit == "6" else "0" for digit in digits)
-    return literal(low) + literal(five) + "A"
-
-
-def _grapheme_push_int(value: int) -> str:
-    """Push any nonnegative integer using Grapheme's trailing-zero literals."""
-    return _grapheme_push_key(10) + _grapheme_push_key(value * 10) + "R"
+def _grapheme_table(table: str) -> int:
+    """Pack entry ``i`` at bit ``len(table) - 1 - i``, lifted to lead with 1."""
+    span = 1 << len(table)
+    value = int(table, 2)
+    lift: int = 10 ** (len(str(span)) + 1)
+    return value + -(-(lift - value) // span) * span
 
 
 def grapheme(truth_table: str) -> str:
     """Build a Grapheme program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first; prints
-    ``'0'`` or ``'1'``.  ``W`` reads a whole line and every non-empty string
-    is truthy, so the harness feeds ``A`` (one) and ``%`` (zero), normalized
-    by ``W 65 B T`` and stored; a folded decision tree follows, with ``V``
-    skipping the unselected branch by character length.  The most repeated,
-    deepest inputs get the shortest keys.  A leaf pushes its bit; ``Y`` prints.
+    ``'0'`` or ``'1'``.  The table is one int-mode literal, ~0.302 letters an
+    entry, indexed by Horner's rule run on the complemented input bits.
     """
     n = _validate_truth_table(truth_table)
-
     used = essential_inputs(truth_table, n) or [0]
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    level_of = {input_index: level for level, input_index in enumerate(used)}
-    slots = [width - 1 - level for level in range(width)]
+    reading = set(used)
 
-    head = [_grapheme_push65() + _grapheme_push_key(_GRAPHEME_CONST_KEY) + "C"]
+    ten = _grapheme_literal(1)
+    one = ten * 2 + "R"
+    two = ten + _grapheme_literal(2) + "R"
+    store65 = _grapheme_push65() + _grapheme_literal(_GRAPHEME_CONST) + "C"
+    read_bit = "W" + _grapheme_literal(_GRAPHEME_CONST) + "D" + "B" + "T"
+    drop_unread_line = "WM"
+    square = "KS"
+    double_unless_set = two + "B" + "S"
+    match_the_literal_scale = ten + "S"
+    shift = "R"
+    low_bit = "K" + two + "LR" + two + "SLB"
+
+    pieces = [store65, one]
     for input_index in range(n):
-        if input_index not in level_of:
-            head.append("W")
-            continue
-        slot = slots[level_of[input_index]]
-        head.append(
-            "W"
-            + _grapheme_push_key(_GRAPHEME_CONST_KEY)
-            + "D"
-            + "B"
-            + "T"
-            + _grapheme_push_key(_grapheme_slot_key(slot))
-            + "C"
-        )
-
-    changes = [0]
-    for previous, current in pairwise(table):
-        changes.append(changes[-1] + (previous != current))
-
-    # One flat piece list: a node's two skips depend on its subtrees'
-    # lengths, so each is a slot reserved ahead and written once the
-    # subtree is down -- O(T) rather than a copy per level.
-    body: list[str] = []
-
-    def tree(start: int, end: int, depth: int) -> int:
-        """Lay the subtree down and return its length in characters."""
-        if changes[start] == changes[end - 1]:
-            leaf = _grapheme_push1() if table[start] == "1" else _grapheme_push0()
-            body.append(leaf)
-            return len(leaf)
-        half = (start + end) // 2
-        conditional = len(body)
-        body.append("")
-        zero_len = tree(start, half, depth + 1)
-        skip = len(body)
-        body.append("")
-        one_len = tree(half, end, depth + 1)
-        always = _grapheme_push_int(one_len) + _grapheme_push0() + "V"
-        lookup = _grapheme_push_key(_grapheme_slot_key(slots[depth])) + "D"
-        body[skip] = always
-        body[conditional] = _grapheme_push_int(zero_len + len(always)) + lookup + "TV"
-        return len(body[conditional]) + zero_len + len(always) + one_len
-
-    tree(0, 1 << width, 0)
-    return "".join([*head, *body, "Y"])
+        if input_index in reading:
+            pieces.append(square + read_bit + double_unless_set)
+        else:
+            pieces.append(drop_unread_line)
+    pieces.append(match_the_literal_scale)
+    pieces.append(_grapheme_literal(_grapheme_table(table)))
+    pieces.append(shift + low_bit + "Y")
+    return "".join(pieces)
 
 
 def _forth_const(value: int) -> str:

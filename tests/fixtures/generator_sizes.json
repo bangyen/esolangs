@@ -478,16 +478,16 @@
   },
   "Grapheme": {
    "0110": {
-    "commands": 69,
-    "source_units": 134
+    "commands": 90,
+    "source_units": 90
    },
    "01101001": {
-    "commands": 99,
-    "source_units": 273
+    "commands": 109,
+    "source_units": 109
    },
    "0110100110010110": {
-    "commands": 121,
-    "source_units": 536
+    "commands": 129,
+    "source_units": 129
    }
   },
   "Home Row": {

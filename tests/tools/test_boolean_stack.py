@@ -50,19 +50,13 @@ def _forth_scope_keys(table: str) -> set[int]:
 
 
 class TestGrapheme:
-    def test_variable_keys_are_unbounded_and_avoid_the_reserved_key(self) -> None:
-        """Integer-mode arithmetic removes the old 24-letter key ceiling."""
-        from esolangs.tools.stack import (
-            _GRAPHEME_CONST_KEY,
-            _grapheme_push_key,
-            _grapheme_slot_key,
-        )
+    def test_a_literal_pushes_ten_times_any_value(self) -> None:
+        """Int mode spells every value, 6 included, as one literal."""
+        from esolangs.tools.stack import _grapheme_literal
 
-        keys = [_grapheme_slot_key(slot) for slot in range(40)]
-        assert len(set(keys)) == len(keys)
-        assert _GRAPHEME_CONST_KEY not in keys
-        for key in (60, 260, keys[-1], 1_263_460):
-            assert run_grapheme(_grapheme_push_key(key) + "Y", []) == str(key)
+        for value in (0, 1, 16, 106, 1006, 1_263_460, 9_999_996, 5_666_666):
+            code = _grapheme_literal(value)
+            assert run_grapheme(code + "Y", []) == str(10 * value), value
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -95,23 +89,25 @@ class TestGrapheme:
                 got = run_grapheme(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant table has no conditional skip; parity has a full tree."""
-        assert "V" not in boolean.grapheme("0" * 8)
-        assert boolean.grapheme("01101001").count("V") == 14
+    def test_there_is_no_branch_left(self) -> None:
+        """Indexing a literal needs no skip: parity emits no ``U``/``V``/``X``."""
+        parity = boolean.grapheme("01101001")
+        assert set("UVX").isdisjoint(parity)
+        assert set("UVX").isdisjoint(boolean.grapheme("0" * 8))
 
-    def test_full_tree_growth_is_linear(self) -> None:
-        """Skip literals widen near the root, but total source stays O(T)."""
+    def test_the_table_costs_about_a_third_of_a_character_an_entry(self) -> None:
+        """The literal is the table in base 10, so log10(2) letters an entry."""
         sizes = []
-        for n in (7, 8):
+        for n in (7, 11):
             table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
             sizes.append(len(boolean.grapheme(table)))
-        assert sizes[1] < 2 * sizes[0] + 64
+        grown = (sizes[1] - sizes[0]) / ((1 << 11) - (1 << 7))
+        assert 0.30 < grown < 0.35, sizes
 
     def test_the_program_is_only_grapheme_commands(self) -> None:
-        """Only the letters Grapheme reads as commands are emitted."""
+        """Only int-mode digits and the eleven commands used are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
-            assert set(boolean.grapheme(table)) <= set("ABCDEFGHIRSTVWYZ"), table
+            assert set(boolean.grapheme(table)) <= set("ABCDEFGHIKLPRSTWYZ"), table
 
 
 class TestForth:
@@ -532,68 +528,52 @@ class TestUnsquare:
             assert set(boolean.unsquare(table)) <= set("+-<>AIOPSiox"), table
 
 
-class TestGraphemeKeys:
-    """Variable keys remain distinct beyond the old one-letter alphabet."""
+class TestGraphemeTable:
+    """The one literal holding the table, and the index that shifts it."""
 
     @staticmethod
     def _one_minterm(n: int) -> str:
         """A table whose single 1 makes every one of its ``n`` inputs matter."""
         return "1" + "0" * (2**n - 1)
 
-    def test_digit_six_is_split_around_the_int_mode_delimiter(self) -> None:
-        """A key containing decimal 6 is still constructed exactly."""
-        for key in (60, 160, 260, 1_263_460):
-            code = stack._grapheme_push_key(key)  # noqa: SLF001
-            assert run_grapheme(code + "Y", []) == str(key)
-
-    def test_no_key_letter_aliases_the_constant(self) -> None:
-        """The normalizing 65 owns key 90, and no finite slot aliases it."""
-        keys = [
-            stack._grapheme_slot_key(slot)  # noqa: SLF001
-            for slot in range(1000)
-        ]
-        assert stack._GRAPHEME_CONST_KEY not in keys  # noqa: SLF001
-        assert len(set(keys)) == len(keys)
+    def test_padding_never_reaches_an_entry(self) -> None:
+        """Every entry survives the lift that forces a leading decimal 1."""
+        for n in range(1, 9):
+            for table in (self._one_minterm(n), "01" * (2 ** (n - 1))):
+                packed = stack._grapheme_table(table)  # noqa: SLF001
+                assert str(packed)[0] == "1"
+                low = format(packed % (1 << len(table)), f"0{len(table)}b")
+                assert low == table
 
     @pytest.mark.parametrize("n", [6, 7, 8, 9])
     def test_a_table_using_every_input_still_computes(self, n: int) -> None:
         """Six essential inputs reached slot 5, whose old key was ``FFF``.
 
-        Under the old alphabet six raised ``ProgramError: Grapheme produced
-        no answer this could read`` and seven raised ``HaltError: G needs a
-        string or a function``.  Five and below were always fine, at any
-        arity, because the wall stood at essential inputs rather than table
-        size -- a dense n=9 table that folds to one input never saw it.
+        Under the one-letter key alphabet six raised ``ProgramError: Grapheme
+        produced no answer this could read`` and seven raised ``HaltError: G
+        needs a string or a function``.  There are no slot keys left to
+        collide, but the arities that broke stay pinned.
         """
         table = self._one_minterm(n)
         assert esolangs.evaluate("Grapheme", table, timeout=60) == table
 
     def test_parity_at_six_inputs_computes(self) -> None:
-        """Parity is the table with nothing to fold, so all six slots are live."""
+        """Parity is the table with nothing to fold, so every input is live."""
         table = "".join(str(bin(row).count("1") & 1) for row in range(64))
         assert esolangs.evaluate("Grapheme", table, timeout=60) == table
 
-    def test_the_constant_alias_returned_a_wrong_answer(
+    def test_an_off_by_one_shift_returns_a_wrong_answer(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """The positive control: aliasing a slot with key 90 is quietly wrong.
+        """The positive control: the index is load-bearing, not decoration.
 
-        The old ``I`` key put slot 7 at the normalization constant's key.
-        That collision does not raise: eight essential inputs
-        still come out right, because slot 7 is read last and nothing reads
-        the constant after it.  Nine is where the clobbered 65 is read back
-        and the table comes out wrong, quietly.  Without this control the
-        ``I`` skip looks like superstition.
+        Doubling the packed table shifts every entry one bit up, which the
+        accumulator's power of two no longer cancels.  Without this control a
+        table that happened to read right anywhere would look like proof.
         """
-        from esolangs.tools.stack import _GRAPHEME_CONST_KEY
-
-        slot_key = stack._grapheme_slot_key  # noqa: SLF001
-        monkeypatch.setattr(
-            stack,
-            "_grapheme_slot_key",
-            lambda slot: _GRAPHEME_CONST_KEY if slot == 7 else slot_key(slot),
-        )
-        table = self._one_minterm(9)
+        packed = stack._grapheme_table  # noqa: SLF001
+        monkeypatch.setattr(stack, "_grapheme_table", lambda t: 2 * packed(t))
+        table = self._one_minterm(6)
         assert esolangs.evaluate("Grapheme", table, timeout=60) != table
 
 
