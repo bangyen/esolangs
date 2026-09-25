@@ -282,16 +282,16 @@
   },
   "Clockwise": {
    "0110": {
-    "commands": 66,
-    "source_units": 233
+    "commands": 110,
+    "source_units": 236
    },
    "01101001": {
-    "commands": 94,
-    "source_units": 440
+    "commands": 170,
+    "source_units": 387
    },
    "0110100110010110": {
-    "commands": 138,
-    "source_units": 1026
+    "commands": 270,
+    "source_units": 616
    }
   },
   "Collatz Multiverse": {
