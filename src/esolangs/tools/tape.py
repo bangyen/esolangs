@@ -17,7 +17,7 @@ from esolangs.tools.circlefuck import (
 from esolangs.tools.circlefuck import (
     circlefuck as circlefuck,
 )
-from esolangs.tools.dimensional import dimensional, dimensional_tree
+from esolangs.tools.dimensional import dimensional
 from esolangs.tools.factor import (
     _BF_RESIDUE as _BF_RESIDUE,
 )
@@ -57,7 +57,6 @@ __all__ = [
     "brainif",
     "circlefuck",
     "dimensional",
-    "dimensional_tree",
     "factor",
     "jaune",
     "painfuck",

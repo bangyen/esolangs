@@ -65,13 +65,23 @@ _UNFOLDED_TREE_ROUTE = frozenset({"Container"})
 #: between two lookups at four inputs, Suffolk's sweep shortens with every
 #: input ``essential_inputs`` drops, and Collatz Multiverse spends a constant
 #: and a decoder group on each distinct nibble its table holds,
-#: bit~ indexes the projected table it is handed, and Unsquare pushes
-#: only the cells the essential inputs address.  Named rather
+#: bit~ indexes the projected table it is handed, Dimensional paints only as
+#: far as its last one, so a table whose tail is constant zero is cheaper
+#: (6.9% on the best one-dependency table) with no subtree involved, and
+#: Unsquare pushes only the cells the essential inputs address.  Named rather
 #: than derived because the proxy is structural and these are its known blind
 #: spot; a further such row has to be added here, which is the point -- the
 #: equality below then fails until the prose and this set agree.
 _FOLDS_WITHOUT_TREE = frozenset(
-    {"bit~", "Collatz Multiverse", "Eval", "NoComment", "Suffolk", "Unsquare"}
+    {
+        "bit~",
+        "Collatz Multiverse",
+        "Dimensional",
+        "Eval",
+        "NoComment",
+        "Suffolk",
+        "Unsquare",
+    }
 )
 
 _LOOKUP_SCHEMES = frozenset({"finite lookup", "parameterized lookup", "linear lookup"})

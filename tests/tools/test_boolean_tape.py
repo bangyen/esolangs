@@ -49,6 +49,7 @@ class TestDimensional:
             ("0001", 2),  # AND
             ("11111110", 3),  # NAND3
             ("1111111111111111", 4),  # constant one
+            ("1111111100000000", 4),
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -59,59 +60,46 @@ class TestDimensional:
             got = run_dimensional(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_every_move_names_its_dimension(self) -> None:
-        """A bare >/< would take its dimension from the cell's value.
+    def test_a_bare_move_is_the_addressing(self) -> None:
+        """A bare >/< takes its dimension from the cell, which is the point.
 
-        The generator gives each input its own dimension, so the digits
-        vary; what has to hold is that no move is left bare.
+        One per read -- ``d>`` steps along dimension 1 for a one bit and 0
+        for a zero -- and one per painted one-cell, whose ``+`` leaves the
+        1 the following ``>`` reads.  ``0110`` paints as far as its last
+        one at index 2, so that is two reads and one one-cell before it.
         """
         program = boolean.dimensional("0110")
-        for index, char in enumerate(program):
-            if char in "><":
-                assert program[index + 1 :][:1].isdigit(), f"bare move at {index}"
+        bare = [
+            i
+            for i, c in enumerate(program)
+            if c in "><" and not program[i + 1 :][:1].isdigit()
+        ]
+        assert len(bare) == 3, program
+
+    def test_the_table_costs_two_characters_an_entry(self) -> None:
+        """One painted cell an entry, whichever bit it is.
+
+        A zero-cell steps with ``>1`` and a one-cell with ``+`` and a bare
+        ``>``; both are two characters, so the emitted length does not
+        carry the table's contents.
+        """
+        full = "1" * 64
+        one = "0" * 63 + "1"
+        assert len(boolean.dimensional(full)) == len(boolean.dimensional(one))
+        parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
+        assert len(boolean.dimensional(parity)) < 10_000
+
+    def test_a_sparse_table_pays_only_for_its_prefix(self) -> None:
+        """An unvisited cell already reads 0, so painting stops at the last one."""
+        early = "1" + "0" * 15
+        late = "0" * 15 + "1"
+        assert len(boolean.dimensional(early)) < len(boolean.dimensional(late))
 
     def test_scales_beyond_the_old_reference_cap(self) -> None:
         """The v3.0 interpreter's unbounded cells lift the old n <= 12 cap."""
         program = boolean.dimensional("0" * 4095 + "1")
         got = run_dimensional(program, ["1"] * 12)
         assert got == "1"
-
-
-class TestDimensionalTree:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111100000000", 4),
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.dimensional_tree(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_dimensional(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_tree_small_on_dense_tables(self) -> None:
-        """The tree shares bit tests, so dense tables stay small."""
-        xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert len(boolean.dimensional_tree(xor6)) < 10_000
-
-    def test_dimensional_is_the_tree(self) -> None:
-        """dimensional is the tree, sparse or dense.
-
-        A survivor evaluator used to sit beside it, chosen when it came out
-        shorter.  Folding constant subtrees put the tree ahead on every
-        table at n <= 4, so the survivor was unreachable and was removed.
-        """
-        sparse = "0" * 15 + "1"  # AND4
-        assert boolean.dimensional(sparse) == boolean.dimensional_tree(sparse)
-        xor = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
-        assert boolean.dimensional(xor) == boolean.dimensional_tree(xor)
 
 
 class TestBf:
