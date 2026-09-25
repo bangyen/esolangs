@@ -140,12 +140,13 @@ Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
-Collatz Multiverse, EGL, Eval, Forbin, Minsky Swap, Modulous, NoComment,
+bit~, Collatz Multiverse, EGL, Eval, Forbin, Minsky Swap, Modulous, NoComment,
 Packlang, Qoibl, SLOW ACV MAMMALIAN, Suffolk and Whitespace keep no tree route
 at all: A Painter
 Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
-literal, Befunge reads one grid cell per table entry with `g`, BIO's
+literal, bit~ lands the pointer on one tape cell an entry and walks the
+bit it finds home, Befunge reads one grid cell per table entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
 once the doubling between the input runs is in the text), B-tapemark copies
@@ -209,7 +210,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | BF-PDA | parameterized tree | — | linear: span walk, leaf drains sum geometrically |
 | BFStack | minterms | — | linear: zero-row walk telescopes to T |
 | BIO | finite lookup | nested loops telescope from `table[0]` to `table[index]` | linear: T - 1 loop pieces joined once |
-| bit~ | tree | — | linear, time n log: essential_inputs |
+| bit~ | linear lookup | one tape cell an entry, and each input's one-shot loop jumps the pointer left by that input's weight, so the reads chain into a Horner index and a self-erasing walk carries the landed bit to one of two print windows | linear, time n log: essential_inputs |
 | Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque | linear: 2T commands, discard blocks sum to T |
 | brainfuck | tree | `decision_tree_program` | linear: decision_tree_program, span walk, leaf moves geometric |
 | BrainIf | finite lookup | a spatial table is addressed by the read row index | linear: n + T strip cells of 2.6 lines |

@@ -7,7 +7,6 @@
 
 from collections import Counter
 from fractions import Fraction
-from itertools import pairwise
 
 from esolangs.tools.clockwise import clockwise as clockwise
 
@@ -294,125 +293,69 @@ def _three_x_build(
     )
 
 
+#: Cells the prologue plants below the table: the ``0`` window at 10..17,
+#: the ``1`` window at 1..8, and the two walk terminators at 18 and 27.
+_BIT_TILDE_PLANTED = (3, 4, 8, 12, 13, 18, 27)
+
+#: Step two cells left and flip, which runs forever over a zero lane and
+#: stops on the planted 1 it clears.  The leading ``<~`` primes the loop.
+_BIT_TILDE_WALK = "<~{<<~}"
+
+
 def bit_tilde(truth_table: str) -> str:
     """Build a bit~ program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).  Each node copies its input into two
-    indicators, complements one, and runs both as one-shot ``{``/``}``
-    branch loops that clear themselves.
+    inputs (most significant first).  The table is one tape cell per entry
+    and the program *indexes* it.  ``{`` and ``}`` test the cell the pointer
+    stands on when they are reached, so ``{`` at an input's bit, a run of
+    ``<``, and ``}`` on a cell known to be zero is a jump left by a constant
+    taken only when that bit is 1.  One jump per input, weighted by Horner,
+    leaves the pointer on the entry the inputs name.
 
-    A read lands a byte on eight cells but only its low bit is consulted,
-    so reads *descend* three at a time: a later window stops three below
-    the previous low bit and cannot clobber it.  Three is the floor -- a
-    level's two flags stay live for its whole subtree, so it owns two
-    cells above its bit -- and the pitch is what the constant buys, the
-    walk being four fifths of the program at eight.  The third cell, the
-    copy temporary, is dead before either branch runs, so it is borrowed
-    from the level above.  The tree tests the essential inputs in reverse,
-    putting its busiest level beside the result cell.
+    ``)`` writes its byte at the pointer, and that is what chains the jumps:
+    each read lands the next input's bit under the pointer wherever the last
+    jump left it, so no input is ever copied.  Entries sit two cells apart
+    because the other lane has to stay zero -- it is where the jumps land,
+    and a 1 there would run the loop again.
+
+    The answer leaves as a *position*.  The entry's bit guards a first walk,
+    and the shared second walk therefore starts from one of two cells and
+    ends on one of two, far enough apart that ``(`` prints a different
+    eight-cell window at each: ``"0"`` and ``"1"``, planted in the prologue.
     """
     n = _validate_truth_table(truth_table)
 
     used = essential_inputs(truth_table, n) or [0]
-    order = used[::-1]
-    table = read_at(truth_table, order, n)
-    width = len(order)
+    table = read_at(truth_table, used, n)
+    width = len(used)
+    # Two cells an entry, above the planted region, and even so that the
+    # reads stay in the lane whose jumps land in the zero one.
+    start = 2 * len(table) + 34
+
+    planted = set(_BIT_TILDE_PLANTED)
+    planted.update(
+        start - 2 * index - 2 for index, bit in enumerate(table) if bit == "1"
+    )
 
     prog: list[str] = []
     pos = 0
+    for cell in sorted(planted):
+        prog.append(">" * (cell - pos) + "~")
+        pos = cell
+    prog.append(">" * (start - pos))
 
-    def move(dst: int) -> None:
-        nonlocal pos
-        while pos < dst:
-            prog.append(">")
-            pos += 1
-        while pos > dst:
-            prog.append("<")
-            pos -= 1
-
-    def copy2(src: int, d1: int, d2: int) -> None:
-        """Copy ``src`` to ``d1`` and ``d2``, zeroing ``src``."""
-        move(src)
-        prog.append("{")
-        move(d1)
-        prog.append("~")
-        move(d2)
-        prog.append("~")
-        move(src)
-        prog.append("~")
-        prog.append("}")
-
-    def bit_cell(i: int) -> int:
-        """Return the cell holding stream input ``i``'s low bit."""
-        return 3 * (n - 1 - i) + 7
-
+    depth = {stream: level for level, stream in enumerate(used)}
     for i in range(n):
-        move(bit_cell(i) - 7)
-        prog.append(")")
+        # The byte a read lands leaves a 1 three cells along, in the lane a
+        # later jump tests, so it is cleared on the way to the input's bit.
+        prog.append(")>>>~")
+        if i in depth:
+            weight = 2 << (width - 1 - depth[i])
+            prog.append(">>>>{" + "<" * weight + "}" + "<" * 7)
+        else:
+            prog.append("<<<")
 
-    # One past the deepest level's temporary, so leaf writes are a step away.
-    result = bit_cell(order[-1]) + 2
-
-    def set_result() -> None:
-        move(result)
-        prog.append("~")
-
-    def clear(cell: int) -> None:
-        move(cell)
-        prog.append("{~}")
-
-    def roles(depth: int) -> tuple[int, int, int]:
-        """Level ``depth``'s two flags, under its bit, and its temporary.
-
-        The temporary is borrowed from above (see :func:`bit_tilde`).
-        """
-        source = bit_cell(order[depth])
-        return source - 1, source - 2, source + 1
-
-    # Every node hands its scratch back at zero and a node jumped over
-    # never touches it, so one prologue replaces the per-node clears that
-    # were a fifth of the source.  A set: a temporary is also a flag.
-    for cell in sorted({cell for depth in range(width) for cell in roles(depth)}):
-        clear(cell)
-    clear(result)
-
-    changes = [0]
-    for previous, current in pairwise(table):
-        changes.append(changes[-1] + (previous != current))
-
-    def node(start: int, end: int, depth: int) -> None:
-        if changes[start] == changes[end - 1]:
-            if table[start] == "1":
-                set_result()
-            return
-        half = (start + end) // 2
-        source = bit_cell(order[depth])
-        zero, one, temp = roles(depth)
-        copy2(source, one, temp)
-        copy2(temp, source, zero)
-        move(zero)
-        prog.append("~{")
-        node(start, half, depth + 1)
-        move(zero)
-        prog.append("~}")
-        move(one)
-        prog.append("{")
-        node(half, end, depth + 1)
-        move(one)
-        prog.append("~}")
-
-    node(0, 1 << width, 0)
-
-    # Copies preserve their source: cell 7 is still the last input byte.
-    clear(7)
-    move(result)
-    prog.append("{")
-    move(7)
-    prog.append("~")
-    move(result)
-    prog.append("~")
-    prog.append("}")
-    move(0)
-    prog.append("(")
+    prog.append("<<{" + _BIT_TILDE_WALK + "}" + _BIT_TILDE_WALK)
+    prog.append("<" * 17 + "(")
     return "".join(prog)

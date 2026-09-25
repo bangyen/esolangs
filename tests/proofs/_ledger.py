@@ -163,7 +163,7 @@ def load(path: Path | None = None) -> Ledger:
     # Matched against whitespace-collapsed prose: the sentence is wrapped to
     # 80 columns, so the names and the verb routinely straddle a line break.
     exempt = re.search(
-        r"([\w,\- ()]+?) keeps? no tree route at all",
+        r"([\w,\-~ ()]+?) keeps? no tree route at all",
         " ".join(schemes.split()),
     )
     assert exempt, "Size dispatch no longer names which rows lack a tree route"
