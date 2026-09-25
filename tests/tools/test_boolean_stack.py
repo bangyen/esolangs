@@ -346,22 +346,26 @@ class TestModulous:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
-        """A one-input function reads one input then branches on it."""
-        assert boolean.modulous("10").startswith("[INP INT]")
-        assert "[JMP F 2 IF 0]" in boolean.modulous("10")
+        """The table is one literal and the program prints one of its bytes."""
+        program = boolean.modulous("10010110")
+        assert program.startswith('[PSH STR "10010110"]')
+        assert program.count("[INP INT]") == 3
+        assert program.endswith("[PRT][END]")
 
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant slice pushes its answer instead of branching further.
+    def test_size_is_the_table_plus_a_fixed_frame(self) -> None:
+        """No branch reads the table, so its contents cannot change the size.
 
-        Modulous branches on the stack top, which is the *last* input, so
-        its subtrees are strided rather than contiguous runs -- a table
-        like ``11110000`` has no constant subtree under that split and
-        folds nothing.  A table that agrees outright still collapses to a
-        single push, which is where the saving comes from.
+        The old route was a decision tree, which meant a constant subtree
+        collapsed and a table like parity did not -- 45 characters an entry
+        against this one's frame plus a byte.  Length depending only on the
+        arity is the signature of the lookup that replaced it.
         """
-        leaves = "[PRT INT]"
-        assert boolean.modulous("11111111").count(leaves) == 1
-        assert boolean.modulous("10010110").count(leaves) == 8
+        sizes = {
+            len(boolean.modulous(table))
+            for table in ("11111111", "10010110", "00000000", "11110000")
+        }
+        assert len(sizes) == 1
+        assert len(boolean.modulous("1" * 16)) - sizes.pop() == 16 - 8 + 49
 
 
 class TestBfstack:
