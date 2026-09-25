@@ -915,7 +915,7 @@ the right side of~\eqref{eq:bracket-n}.
 \subsection{The lower side}\label{sec:const-lower}
 
 For the input roots we use the following consequence of the multisection
-lemma~\cite[Lemma~5.1]{coefficient-mass}.  Let $v_j$ be as in Lemma~\ref{lem:ppow} and
+lemma~\cite[Lemma~2.1]{coefficient-mass-complex}.  Let $v_j$ be as in Lemma~\ref{lem:ppow} and
 $\sigma_K=\sum_{j=1}^Kj\log(v_j^2-1)$.
 
 \begin{lemma}[Sources that are neither even nor odd]\label{rem:parity}
@@ -925,7 +925,7 @@ $\Lambda(f)\ge2\sigma_K\ge4K^2\log K-6K(K+1)$.
 \end{lemma}
 
 \begin{proof}
-Write $f(x)=E_0(x^2)+xE_1(x^2)$.  By~\cite[Lemma~5.1]{coefficient-mass} both $E_0$ and
+Write $f(x)=E_0(x^2)+xE_1(x^2)$.  By~\cite[Lemma~2.1]{coefficient-mass-complex} both $E_0$ and
 $E_1$ are multiples of $\prod_j(y+c_j^2)$.  As $f$ is neither even nor odd, both are
 nonzero, and both have integer coefficients, hence leading coefficients of absolute value
 at least $1$.  Theorem~\ref{thm:mass}, applied to $E_\varepsilon(-y)$, a multiple of
@@ -965,7 +965,7 @@ $\prod_{i=1}^Q(y-a_i)\prod_{i=1}^Q(y+c_i)$, where $a_1>\cdots>a_Q$ are the squar
 chosen real roots and $c_1>\cdots>c_Q$ the squares of the chosen input values.  All
 $a_i\ge4$ and all $c_i\ge16$.
 
-Apply the rows at real roots of both signs~\cite[Theorem~5.10]{coefficient-mass} to $E$,
+Apply the rows at real roots of both signs~\cite[Theorem~4.2]{coefficient-mass-complex} to $E$,
 with $\rho=\frac12$; as the leading coefficient of $E$ has absolute value at least $1$,
 for $1\le k\le Q$
 \[
@@ -1311,6 +1311,11 @@ B.~Pham,
 \newblock Displaced-zero certificates and the coefficient mass of polynomial
 multiples,
 \newblock manuscript in preparation; Corollary~3.4 (Logarithmic mass).
+
+\bibitem{coefficient-mass-complex}
+B.~Pham,
+\newblock Coefficient mass of polynomial multiples at complex roots,
+\newblock manuscript in preparation.
 
 \end{thebibliography}
 

@@ -158,6 +158,7 @@ proofs-pdf:
     tectonic --outdir docs/proofs docs/proofs/polynomial.tex
     tectonic --outdir docs/proofs docs/proofs/coefficient-mass.tex
     tectonic --outdir docs/proofs docs/proofs/coefficient-mass-attainment.tex
+    tectonic --outdir docs/proofs docs/proofs/coefficient-mass-complex.tex
     tectonic --outdir docs/proofs docs/proofs/coefficient-mass-rows.tex
 
 # Not in `just test` or CI: what it guards moves only when APA's head, body,

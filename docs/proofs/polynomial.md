@@ -363,7 +363,7 @@ a factor `325/26 = 12.5` at both limits. So the order is settled and the constan
    Next-read is sharp: a mod-`(2**K - 1)` automaton compiled one read per
    state has `N*(K) = K_in = 2**K - 1 > T/(6n) - 1` (`prop:sharp`).
 2. *Mass, exact per pair.* By multisection
-   ([coefficient-mass](coefficient-mass.tex) Corollary 5.3)
+   ([coefficient-mass-complex](coefficient-mass-complex.tex) Corollary 2.3)
    a multiple of `prod (x**2 + c_j**2)` has an even or odd part that is a
    multiple of `prod (y + c_j**2)` with the same leading coefficient, so each
    pair is charged exactly as the real root `c**2`.
@@ -425,7 +425,7 @@ source for `n <= 7`. Rendered lengths against the first compiler: 0.85 at
   (`rem:parity`). An even or odd source is `x^e E(x**2)` with
   `Lambda(f) = Lambda(E)`; in `E` the inputs are negative roots `-c**2` and
   the forced real roots positive roots `r**2`, and the both-signs rows
-  (`coefficient-mass.tex` Theorem 5.10) add constant 1 (`lem:evensigns`).
+  (`coefficient-mass-complex.tex` Theorem 4.2) add constant 1 (`lem:evensigns`).
   So every source pays 3. For even or odd sources the two runs after a read
   part at a register 0, and the zero branch passes a whole block of real
   roots `p^v`, `v` in {2,4,6,8}, distinct across residuals with distinct
