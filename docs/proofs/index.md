@@ -140,9 +140,9 @@ Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
-bit~, Collatz Multiverse, EGL, Eval, Forbin, Minsky Swap, Modulous, NoComment,
-Packlang, Qoibl, SLOW ACV MAMMALIAN, Suffolk and Whitespace keep no tree route
-at all: A Painter
+bit~, Clockwise, Collatz Multiverse, EGL, Eval, Forbin, Minsky Swap, Modulous,
+NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN, Suffolk and Whitespace keep no
+tree route at all: A Painter
 Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, bit~ lands the pointer on one tape cell an entry and walks the
@@ -150,7 +150,9 @@ bit it finds home, Befunge reads one grid cell per table entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
 once the doubling between the input runs is in the text), B-tapemark copies
-one mark per row onto the blank grid and walks the pointer to it, Collatz
+one mark per row onto the blank grid and walks the pointer to it, Clockwise
+writes one cell per entry in a countdown row and stops the pointer on the
+one the index names, Collatz
 Multiverse writes one cell per four table rows at every arity, EGL paints one
 cell an entry and walks a pointer to it, Eval is one linear
 lookup at every arity, Forbin paints a 128-entry block as one call's argument
@@ -216,7 +218,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | BrainIf | finite lookup | a spatial table is addressed by the read row index | linear: n + T strip cells of 2.6 lines |
 | Circlefuck | tree | its local shape guard is equivalent to the shared guard | linear, time n log: essential-input byte compare; greedy candidate's walk |
 | Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) |
-| Clockwise | tree | finite grid layout | linear: alternating rectangle of area O(T), exits in walk order |
+| Clockwise | linear lookup | the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit | linear: five table rows of 2T columns, doubling gadgets whose widths halve downward |
 | Collatz Multiverse | finite lookup | an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it | linear: one line per four rows, a 64-cell decoder, 3n index lines |
 | Container | finite lookup | the table is the prefix sum of its own steps, summed against a row counter that is live for one tick | linear: one line per step in the table, halting in 2n+2 ticks |
 | Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, and a folded subtree targets the shared self-jump or the line past the end | linear: 3(T - 1) + 2n + 3 lines, span walk |
