@@ -45,6 +45,66 @@ CITATIONS = {
         "Proposition",
         "prop:sharp23",
     ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "2.1"): (
+        "Lemma",
+        "lem:consecutive",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "2.2"): (
+        "Theorem",
+        "thm:tail",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "2.3"): (
+        "Lemma",
+        "lem:interlace",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "3.1"): (
+        "Lemma",
+        "lem:slack",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "3.2"): (
+        "Theorem",
+        "thm:order",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.3"): (
+        "Proposition",
+        "prop:quadratic",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.7"): (
+        "Proposition",
+        "prop:nonsharp",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.8"): (
+        "Lemma",
+        "lem:rowcert",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.9"): (
+        "Lemma",
+        "lem:confdel",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.10"): (
+        "Lemma",
+        "lem:holeint",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.12"): (
+        "Proposition",
+        "prop:rowsfree",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.13"): (
+        "Lemma",
+        "lem:holevals",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.14"): (
+        "Lemma",
+        "lem:holetail",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.15"): (
+        "Proposition",
+        "prop:rowstop",
+    ),
+    ("coefficient-mass-rows.tex", "coefficient-mass", "4.16"): (
+        "Theorem",
+        "thm:everyrow",
+    ),
     ("index.md", "coefficient-mass", "3.4"): ("Corollary", "cor:mass"),
     ("polynomial.md", "coefficient-mass-attainment", "2.1"): (
         "Proposition",
@@ -53,15 +113,16 @@ CITATIONS = {
     ("polynomial.tex", "coefficient-mass", "3.1"): ("Lemma", "lem:slack"),
     ("polynomial.tex", "coefficient-mass", "3.4"): ("Corollary", "cor:mass"),
     ("polynomial.tex", "coefficient-mass", "3.6"): ("Corollary", "cor:infimum"),
-    ("polynomial.tex", "coefficient-mass", "6.1"): ("Lemma", "lem:multisection"),
-    ("polynomial.tex", "coefficient-mass", "6.10"): ("Theorem", "thm:bothsigns"),
-    ("polynomial.tex", "coefficient-mass", "6.3"): ("Corollary", "cor:imag"),
-    ("polynomial.md", "coefficient-mass", "6.3"): ("Corollary", "cor:imag"),
+    ("polynomial.tex", "coefficient-mass", "5.1"): ("Lemma", "lem:multisection"),
+    ("polynomial.tex", "coefficient-mass", "5.10"): ("Theorem", "thm:bothsigns"),
+    ("polynomial.tex", "coefficient-mass", "5.3"): ("Corollary", "cor:imag"),
+    ("polynomial.md", "coefficient-mass", "5.3"): ("Corollary", "cor:imag"),
 }
 
 #: The files whose citations the table above has to cover.
 CITING = (
     "coefficient-mass-attainment.tex",
+    "coefficient-mass-rows.tex",
     "index.md",
     "polynomial.md",
     "polynomial.tex",
