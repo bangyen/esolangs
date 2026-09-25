@@ -7,7 +7,7 @@ short enough to live in [factor](factor.md) alone.
 [brainfuck-count](brainfuck-count.md) bounds the number of distinct
 behaviours of `C`-character Brainfuck programs.
 Polynomial's lower bound cites one result it does not prove:
-Corollary 3.4 of [coefficient-mass](coefficient-mass.tex), the companion
+Corollary 3.4 of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex), the companion
 manuscript bounding the coefficient mass of a polynomial multiple.
 `tests/proofs/test_citations.py` holds the numbered cross-references
 between them to the labels they name.

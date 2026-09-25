@@ -361,7 +361,7 @@ a factor `325/26 = 12.5` at both limits. So the order is settled and the constan
    asymptotically `T/(n + log2 3e)`). Distinct read gaps have distinct last
    input roots. So `K_n = max(N_n, ceil(T/(n+4)))` input values are forced.
 2. *Mass, exact per pair.* By multisection
-   ([coefficient-mass-complex](coefficient-mass-complex.tex) Corollary 2.3)
+   ([coefficient-mass-complex](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass-complex.tex) Corollary 2.3)
    a multiple of `prod (x**2 + c_j**2)` has an even or odd part that is a
    multiple of `prod (y + c_j**2)` with the same leading coefficient, so each
    pair is charged exactly as the real root `c**2`.
@@ -1000,7 +1000,7 @@ and no two-sided form exists -- boundary `2x2` ratios fall to 0.004 of
 `psi`.  Dead as a route.
 
 **Revision (September 2026): the all-root form supersedes the discarded-root
-route below.**  The committed lemma in [coefficient-mass.tex](coefficient-mass.tex)
+route below.**  The committed lemma in [coefficient-mass.tex](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex)
 needs no reduction in the number of roots: keeping all `L` nodes makes
 `|Z| = u + (L - u - 1) = L - 1` for every `u <= L - 1`, so the range
 `u <= (L-1)/2` below was an artifact of dropping to `L - u` roots.  The
@@ -1237,7 +1237,7 @@ count on that machine.
 
 **The confluent certificate (multiplicity is free of the extra hypothesis).**
 The distinct-node theorem above is replaced by its confluent analogue,
-[coefficient-mass-attainment](coefficient-mass-attainment.tex) Proposition 2.1:
+[coefficient-mass-attainment](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass-attainment.tex) Proposition 2.1:
 for `u_d = sum_i P_i(d) y_i^d` with `deg P_i < e_i`, `u_0 = 1`, and `u_z = 0`
 on a zero set `Z` of size `sum e_i - 1`, the tail bound holds with the product
 read over the **expanded multiset** (each `y_i` repeated `e_i` times).  The

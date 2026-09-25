@@ -27,7 +27,7 @@ The confluent analogue is::
 and the claim is the *same* tail bound with the product read over the expanded
 multiset (each ``y_i`` repeated ``e_i`` times).  This module does not prove the
 limit step -- that is the Hermite interpolation argument in
-``docs/proofs/coefficient-mass-attainment.tex``,
+``coefficient-mass-attainment.tex`` in bangyen/coefficient-mass (tag v1),
 Proposition 2.1 -- it pins the algebraic
 content: the base case is exact, the general bound holds on every certificate
 here, the slack assembly's threshold really is the product over the top units,
