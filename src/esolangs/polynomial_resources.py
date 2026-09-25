@@ -71,7 +71,7 @@ def estimate_generation(factors: list[list[int]]) -> GenerationEstimate:
 
 def estimate_cold_parse(coeffs: list[int]) -> ColdParseEstimate:
     """Bound the implemented fast peel; do not price the remainder root search."""
-    from esolangs.interpreters.register_based.polynomial import (
+    from esolangs.interpreters.register_based._polynomial_roots import (
         _NTT_FIELDS,
         _ntt_real_bound,
     )
