@@ -290,7 +290,8 @@ step; an answer lands in the paper it extends, and the row leaves.
   available to the lower bound.
 
 - **Every row at other roots.**  For `r >= 2` the per-row bound is
-  generalized ([coefficient-mass](proofs/coefficient-mass.tex)
+  generalized ([coefficient-mass-rows](proofs/coefficient-mass-rows.tex),
+  split out of [coefficient-mass](proofs/coefficient-mass.tex);
   `thm:everyrowr`: `b_k >= max((r-1)**n, n r (r-1)**n/((r-1)**n + 1))`,
   `n = L-k+1`, and the one-hole bound `B_r(n)` for `r >= 5/2`); the last two
   rows are exact (`cor:tworowsr`), the last row for every `r > 1`
