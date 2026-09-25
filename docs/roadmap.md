@@ -198,29 +198,13 @@ INTERCAL, listed last, is outside the pass.
 Research questions the proofs leave open.  Each names the first executable
 step; an answer lands in the paper it extends, and the row leaves.
 
-- **Coefficient-mass sharpness, residue.**  CLOSED in
-  [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex):
-  the partial-sum criterion at repeated roots (`thm:converse`,
-  `cor:charrep`, Descartes at infinity) and non-attainment (`thm:noattain`)
-  are in the paper.  The rest of this record was proved and then
-  removed from the paper in the pure-math trim (see git history):
-  extremality of the escaping placement for distinct roots `>= 2`
-  (`thm:extremal`, run chord: the infimum is `1/tau*` when the criterion
-  fails; the trimmed paper leaves `T = tau*` open in `sec:scope`), and the
-  repaired bound below 2 (`cor:repairedsharp`: with an exempt root below 2 it is the
-  infimum exactly under `prop:subtwosharp`'s hypotheses; the two-sided bound
-  `min(|P(1)|, |P_u(1)|)` of `cor:twosided` beats it when the exempt roots
-  straddle 2, with its own criterion `thm:twosidedsharp`).  Repeated roots
-  were CLOSED too (`thm:extremalrep`, `thm:twosidedsharprep`, via the
-  coalescence limit `lem:coalesce`; removed), and so was the shift with its
-  hypothesis at run ends (`cor:shiftend`, via the three-point bound
-  `lem:threepoint`; removed).  Below the cutoff (`prop:cutoff`, removed) the
-  value is a finite computation for every `u` (`thm:finite`, removed: `T` is a max over
-  placements in `[1, u(L-u)Delta]` of minima over zero sets within
-  `(L-1-u)Delta` of the placement; e.g. `(11/10, 3, 5, 7)`, `u = 2`:
-  `inf b_3 = 294156/21995` at `X = {2,4}`).  The attainment
-  characterization and the far-zero rate were settled too (`thm:attainchar`,
-  `prop:farrate`; removed).
+- **Coefficient-mass sharpness, residue.**
+  [coefficient-mass-attainment](proofs/coefficient-mass-attainment.tex)
+  proves the partial-sum criterion at repeated roots (`thm:converse`,
+  `cor:charrep`, Descartes at infinity) and non-attainment
+  (`thm:noattain`).  Open (`sec:scope`): when the criterion fails the
+  infimum is `1/T` with `T >= tau*`; whether `T = tau*`, that is, whether
+  the escaping placement is the worst one.
 
 - **Coefficient mass at complex roots.**  Purely imaginary pairs are CLOSED
   ([coefficient-mass-complex](proofs/coefficient-mass-complex.tex), split
@@ -231,172 +215,59 @@ step; an answer lands in the paper it extends, and the row leaves.
   moduli and the angles alone (`prop:noangle`: `x**(2M) + rho**(2M)`).
   At Gaussian-integer pairs, integer multiples split into blocks
   (`lem:gausscarry`, `lem:gaussblocks`) each paying `log(rho_min/2)` per
-  degree (`thm:gausscharge`).  Kept as a record but removed from the paper
-  in the pure-math trim (see git history): the mass infimum there is a
-  finite computation per root set (`cor:gaussfinite`), certified at four
-  sets with `a != 0` (`prop:gaussinst`); no multisection or ray reduces
-  them (`prop:gaussnotransfer`); `q`-adic Newton polygons give an
-  unconditional mass bound (`thm:padicmass`) that pays `sum j log rho_j`,
-  within a factor 4, on circles of prime-power norm (`cor:padiccircle`);
-  carry sizes alone cap at linear mass (`prop:carrylimit`), row 2 is a
-  rounding-recurrence question (`lem:gaussround`), and rows need
-  `0 < |a_j| < c_j` (`prop:gaussrowsfail`).  An Archimedean Newton
-  polygon (`thm:archnewton`) gives rows and mass `sum j log(rho_j/3)` for
-  every complex multiple once moduli grow by a factor 9 (`cor:separated`),
-  so one prime with distinct exponents is CLOSED (`cor:oneprime`, removed
-  from the paper), and
+  degree (`thm:gausscharge`).  An Archimedean Newton polygon
+  (`thm:archnewton`) gives rows and mass `sum j log(rho_j/3)` for every
+  complex multiple once moduli grow by a factor 9 (`cor:separated`), and
   at most `g` moduli per annulus `[R, 9R]` costs a factor `g**2`.  Crowded
   roots in a thin sector are CLOSED (`lem:sectorcount`, `thm:thinsector`,
   `thm:thingauss`: the argument principle forces a real crossing
   polynomial with `K/2` large roots unless the degree is `>> K/delta`,
-  which block charging pays), so register roots `a +- p**b i` with bounded
-  `|a|` in one annulus get `Omega(K**2 log R)` at any density of primes
-  (`cor:thinregister`, removed from the paper).  Real roots of both signs (`sec:bothsigns`):
+  which block charging pays).  Real roots of both signs (`sec:bothsigns`):
   Rolle on each half-line gives rows charging one root of each sign per
   excluded coefficient (`thm:bothsigns`) and mass
   `floor((L+1)**2/4) log(R/2)`, sharp at `+-s_j` (`cor:bothsignsmass`,
-  `prop:bothsignssharp`).  For real multiples the two rays are one real
-  crossing polynomial, localized annulus by annulus (`lem:localcross`), so
-  thin tails at the imaginary axis get the sharp constant of `cor:imag`,
-  `(1-eps)**2 K**2 log R` (`thm:thinreal`, `cor:thingaussreal`; all three
-  removed from the paper).  Wide
-  sectors (`sec:widesectors`): for multiples of degree `O(K)` the order is
+  `prop:bothsignssharp`).  Wide sectors (`sec:widesectors`): for multiples of degree `O(K)` the order is
   `min(K**2, K/delta) log R` with both constants sharp (`thm:widesector`,
   `cor:wideconst`; `x^N - rho^N` attains `pi/delta`, `prop:widesharp`), so
   `c K**2 log R` is false over the reals; at Gaussian roots
-  `(pi/delta - o(1)) K log R` holds unconditionally (`cor:widegauss`), and
-  `K**2` there reduces to excluding integer multiples whose large zeros are
-  nearly equidistributed in angle (`cor:widedisc`), and also follows from a
-  Diophantine property (H) of sparse integer polynomials with many
-  near-zeros in `Z[i]` (`lem:skeleton`, `prop:skeletonreduction`; (H)
-  as stated fails for all constants, `prop:Hfails`, but the reduction
-  needs it only below the degree cap `D <= l_R s(s+1)/2`,
-  `prop:skeletoncap`, where clusters still refute `c < 1/2` and, in
-  sectors containing a real direction, every `c < 1`; and clusters
-  pulled back along `x -> x**g` refute the capped (H) for every `c < 1` in
-  every sector, `prop:Hrotated`, `sec:Hrotated`, so a skeleton proof must
-  use coefficient sizes: `prop:skeletonmass` adds the mass cap
-  `Lambda(S) < s(s-1)/2 log R`, which nearly contains the target; this
-  reduction, from `cor:widedisc` on, was removed from the paper in the
-  pure-math trim, see git history).  Open (the paper keeps only this
-  question, in its introduction; the rest of this sentence was removed from
-  the paper with the conjectures and certificates it cites): that Gaussian
-  `K**2` question and the cross terms `K_s K_t log t` between annuli, which follow
-  (`cor:conjcross`) from the conjectured rows at real roots of both signs,
-  `b_k >= |f_D| prod_{i >= 2k-1} (rho_i - 1)` (`eq:bothrows`; certified
-  exactly on 145 random instances, never violated in high precision), and
-  would follow up to a constant factor per row, which suffices, from a
-  norm bound `eq:nuconj` on certificates with `2k-2` spare roots
-  (`lem:sparecert`; qualitatively Descartes, `prop:sparedescartes`).  The
-  row `k = 2` was proved up to a factor 13, and exactly when the two
-  smallest roots have opposite signs (`thm:secondrowsharp`, by averaging
-  the certificates `x^|A|/P_A`, `lem:mixcert`; Hunter positivity with
-  constants, `lem:evenh`; all removed from the paper).  The removed
-  `eq:nuconj` has a form without `prod rho`
-  (`eq:nucore`) and may be weakened to `C^L prod rho`; balanced rows
-  `k >= 3` conjecturally follow by averaging (LP evidence, a Farkas
-  counterexample when unbalanced).
+  `(pi/delta - o(1)) K log R` holds unconditionally (`cor:widegauss`).
+  Open: whether `c K**2 log R` holds for all integer multiples at Gaussian
+  roots in a wide sector (the question the paper's introduction leaves),
+  and the cross terms `K_s K_t log t` between annuli.
 
 - **Polynomial's routing constant.**  CLOSED in
   [polynomial](proofs/polynomial.tex): the next-read count `thm:count`
-  gives `N*(k) <= min(K_in, L)`, sharp (`prop:sharp`, removed from the paper in the pure-math trim; see git history), so routing
-  adds no factor; and one input root can serve first-essential residuals at
-  `n - Theta(log n)` levels (`rem:levels`, likewise removed), so summing
-  levels is not available to the lower bound.
+  gives `N*(k) <= min(K_in, L)`, so routing adds no factor.
 
 - **Every row at other roots.**  The paper is
   [coefficient-mass-rows](proofs/coefficient-mass-rows.tex), split out of
-  [coefficient-mass](proofs/coefficient-mass.tex); its pure-math trim kept
-  `thm:allrowstwo`, the below-2 theorems and their proof closure, and
-  removed the superseded intermediate results, the several-root results,
-  the finite certificates and all numerical ranges recorded below (see git
-  history).  For `r >= 2` the per-row bound was
-  generalized (`thm:everyrowr`, removed: `b_k >= max((r-1)**n, n r (r-1)**n/((r-1)**n + 1))`,
-  `n = L-k+1`, and the one-hole bound `B_r(n)` for `r >= 5/2`); the last two
-  rows are exact (`cor:tworowsr`, removed), the last row for every `r > 1`
-  (`cor:lastrowr`), and `thm:tailgen` extends `thm:tail` to all roots
-  above 1 (`cor:ordergen`, extending `eq:order`, was removed).  For `1 < r < 2` the rows are pinned up
-  to a factor `1 + O(k**(n-1/2) theta**k)` (`thm:prefixrows`,
-  `cor:belowtwo`).  Removed from the paper, kept as a record: at several
-  roots the one-hole tail has a closed form
-  (`prop:oneholegen`) giving `thm:rowsgen`, which beats `eq:order`; the top
-  row at any roots is bracketed by `prop:toprowgen`; and rows equal the top
-  row exactly in explicit ranges (`thm:rowstop`, `cor:rowstopranges`).
-  The hole shift at several roots was CLOSED (removed) for roots `>= 5/2`
-  (`lem:holeshiftgen`, `thm:rowsgenfull`); insertion holds at holes with
-  `prod_(c >= h) (1 + 1/c) <= r - 1` (`lem:insertpi`), so rows equal the
-  top row whenever a top-row optimum has hole product `<= r - 1`
-  (`thm:rowspi`, exact top rows by `prop:toprowcert`), proved for every
-  `n <= 10` at `r >= 3` and at points up to `n = 24` (`cor:rowspiranges`;
-  all removed).
-  Finite certificates (`sec:rowsfinite`, removed): the chain only shifts holes
-  (`lem:holestates`), so for `r > 2` finitely many shifted sets decide all
-  `L` (`thm:rowsfinite`, monotone in `r`, `lem:rmono`; cuts,
-  `thm:rowsrec`), giving half-lines for `n <= 7` down to
-  `r >= 103/50 .. 11/5` and points up to `n = 45` at `r = 3` and `7/2`
-  (`cor:rowsfiniteranges`); for every `r > 1` a finite tree with far
-  appends (`lem:farappend`, `thm:rowstree`, `prop:toprowcertS`) decides
-  single rows exactly, `r = 2` and `r < 2` included (`cor:rowstreevals`;
-  all five rows of `(x - 3/2)**5`).  A dilation kernel shows the prefix
-  values shrink, `nu_(i+1)(n) <= nu_i(n)/(r-1)` for every `r > 1` and `n`
-  (`thm:prefixmono`, removed), so at `r >= 2` the prefix identity
-  (`eq:prefixid`) is exactly "rows equal the top row", and exempted sets
-  inside the initial run of a good zero set are settled for all `n`
-  (`cor:prefixmono`, removed).  Crossing (`sec:crossing`):
-  admissible polynomials form a convex set and an insertion flips every
+  [coefficient-mass](proofs/coefficient-mass.tex).  The last row is exact
+  for every `r > 1` (`cor:lastrowr`), and `thm:tailgen` extends `thm:tail`
+  to all roots above 1.  For `1 < r < 2` the rows are pinned up to a
+  factor `1 + O(k**(n-1/2) theta**k)` (`thm:prefixrows`, `cor:belowtwo`).
+  Crossing (`sec:crossing`): admissible polynomials form a convex set and an insertion flips every
   later sign (`lem:crossing`, `lem:insflip`), so one insertion at the first
-  gap covers every later exempted position (`thm:crossing`, all `r > 1`);
-  removed from the paper with the rest of this sentence: the second row
-  is exact from one inequality per `n` (`cor:secondrow`:
-  `r = 2` to `n <= 30`, `r = 3` to `42`, `r = 4` to `50`); the identity
-  reduces to the first-gap insertion at constrained minimizers
-  (`cor:crossreduce`); crossing trees give `V_2(L,k) = beta_2(n)` up to
-  `k = 10` (`cor:crosstreevals`); and one arbitrary position above an
-  initial block is settled for all `n` (`prop:dilatecross`).  Superseded
-  by `thm:allrowstwo` and removed from the paper: CLOSED for
-  every root `r >= 25/7` (`sec:bigroot`, `thm:bigroot` at `r >= 9/2`;
-  `sec:rootfour`, `thm:rootfour` via block bounds on the hole product,
-  `lem:holeblock`): every top-row
-  optimum has hole product `<= r - 1` for all `n` (largest-zero median
-  `lem:topzero`, first hole `lem:firsthole`, Jensen `lem:jensentop`), so all
-  rows equal the top row; also `r >= 4` for `n <= 1000` and `r in {13/4,
-  7/2}` for `n <= 50` (`cor:bigrootfinite`); all rows for `r >= 18/5`,
-  `n <= 300`, and the second row for `r >= 10/3`, `n <= 300`, via a tail
-  mean bound (`lem:tailmean`, `cor:secondtail`, `cor:rootfourfinite`);
-  extended to all `n` by an interval-arithmetic rate certificate
-  (`sec:rootbelowfour`, `thm:rootbelowfour`): all rows for `r >= 25/7`,
-  the second row for `r >= 10/3`, and for `r >= 13/4` except `n = 11, 12`.
+  gap covers every later exempted position (`thm:crossing`, all `r > 1`).
   CLOSED for every root `r >= 2` (`sec:allrowstwo`, `thm:allrowstwo`):
   first-order optimality of a truncated minimizer in one direction bounds
   the insertion at any gap above the constraints (`lem:optins`,
-  `lem:truncvertex`), which is the hypothesis of the reduction
-  (`cor:crossreduce`, removed; the paper inlines it), so
-  `V_r(L,k) = beta_r(L-k+1)` for all `k`, `L`; for `1 < r < 2` the same
+  `lem:truncvertex`), which is the hypothesis of the reduction the paper
+  inlines, so `V_r(L,k) = beta_r(L-k+1)` for all `k`, `L`; for `1 < r < 2` the same
   proof gives `V_r(L,k) >= (r-1)**(k-1) beta_r(L-k+1)`, exact at `k = L`.
   For `1 < r < 2` one polynomial serves every exempted set
   (`sec:onepoly`, `lem:prefixpush`, `thm:onepoly`) and prefix values are
   supermultiplicative (`lem:prefixshift`), so the prefix identity
   `V_r(L,k) = min_(i<=k) 1/nu_i(n)` (`eq:prefixid`) holds for every `k`
   whenever `beta_r(n) <= 1` (`thm:onepolyrows`), in particular for
-  `r - 1 <= e**(-4n-2)/C_n` (`lem:topnearone`); the ranges
-  `r <= 1 + 1/n` for `n <= 10` (`cor:onepolyranges`) and exact rows
-  from one certificate (`cor:onepolyexact`) were removed from the paper.
-  The identity was conjectured for all `1 < r < 2` and is FALSE: in exact
-  rational arithmetic at `r = 5/4`, `L = 16`, `k = 2` a monic multiple
-  has `b_2 <= 6.5694`, below the predicted `min_(i<=2) 1/nu_i = 7.6492`,
-  and it also fails at `r = 5/4`, `L = 15, 17, 18, 19` and `r = 13/10`,
-  `L = 13, 14, 15` (scratch scripts, not in the repo).  The rows paper
-  withdrew the conjecture and claims the identity only where proved.  The
-  insertion route and the natural one-step reduction also fail when
-  `beta_r(n) > 1` (exact counterexamples, removed from `sec:onepoly` in the
-  pure-math trim).  Long diagonals (`sec:longdiag`,
+  `r - 1 <= e**(-4n-2)/C_n` (`lem:topnearone`).  It is false in general
+  for `1 < r < 2`: at `r = 5/4`, `L = 16`, `k = 2` a monic multiple has
+  `b_2 <= 6.5694 < 7.6492 = min_(i<=2) 1/nu_i` (exact rational
+  arithmetic).  Long diagonals (`sec:longdiag`,
   `lem:farprefix`, `thm:longdiag`, `prop:longdiagexplicit`): for each
   `1 < r < 2` there are `alpha`, `K` with the prefix identity holding for
   `k >= max(K, alpha(n-1))`, so every diagonal fails in at most finitely
-  many rows (`cor:longdiagfinite`); whole diagonals at `r = 5/4, n <= 9`,
-  `r = 3/2, n <= 4`, `r = 7/4, n <= 2` (`cor:completediag`, removed from
-  the paper).  Open: the value of `V_r(L,k)` for `1 < r < 2`, small `k`
-  and `beta_r(n) > 1`, where one polynomial cannot suffice and the prefix
+  many rows (`cor:longdiagfinite`).  Open: the value of `V_r(L,k)` for
+  `1 < r < 2`, small `k` and `beta_r(n) > 1`, where one polynomial cannot suffice and the prefix
   identity can fail.
 
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
@@ -460,19 +331,12 @@ step; an answer lands in the paper it extends, and the row leaves.
   Upper side: embedded automaton programs with an additive decoder
   (`lem:adddec`, `prop:embprog`, effective profile `325/8` per state
   squared, `lem:effprofile`) on a trie-banded automaton (`lem:trieband`,
-  `lem:bandtrie`; the bounded stripped automaton `lem:bstrip` was removed
-  from the paper in the pure-math trim, see git history) with `(1 + o(1)) T/n` states for every `n`, so levels
+  `lem:bandtrie`) with `(1 + o(1)) T/n` states for every `n`, so levels
   are CLOSED.  Open: profile (`325/8` against mass `13/4`).  Sources neither
   even nor odd pay mass `4` (`rem:parity`), even or odd ones `3`
   (`lem:evensigns`, both-signs rows on `E` with `f = x^e E(x**2)`), plus
-  `mu_n**2` from zero-branch witnesses `p^v`, `v >= 2` (`lem:zerowit`,
-  `lem:halves`; both removed from the paper), `1/4` for every large `n` by counting sign skeletons
-  (`lem:evencount`, `cor:evenhard`; exact register arithmetic, the float
-  `**` is a caveat); even or odd sources add and
-  subtract only right after a read (`lem:symruns`), so every source built
-  as in the upper side already pays `4` (`cor:symm`, removed from the
-  paper).  Per-state blocks cannot beat `325/8` (`lem:onestep`: after a
-  read and one instruction the runs part only at a zero test; `rem:floor`;
-  both removed from the paper in the pure-math trim, see git history), so a lower upper constant
-  needs programs of another kind; the register and real roots are not
+  `1/4` for every large `n` by counting sign skeletons
+  (`lem:evencount`, `cor:evenhard`; even or odd sources add and subtract
+  only right after a read, `lem:symruns`; exact register arithmetic, the
+  float `**` is a caveat).  The register and real roots are not
   charged, see the complex-roots row.
