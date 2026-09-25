@@ -254,16 +254,16 @@
   },
   "Circlefuck": {
    "0110": {
-    "commands": 158,
-    "source_units": 318
+    "commands": 555,
+    "source_units": 176
    },
    "01101001": {
-    "commands": 214,
-    "source_units": 594
+    "commands": 888,
+    "source_units": 261
    },
    "0110100110010110": {
-    "commands": 268,
-    "source_units": 1096
+    "commands": 1259,
+    "source_units": 350
    }
   },
   "Circuit Diagram": {

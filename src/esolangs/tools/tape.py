@@ -7,13 +7,8 @@
 # already use.
 from esolangs.tools.brainif import brainif as brainif
 
-# The strategies live in their own modules, but this one is the
-# construction's face: the registry, the wrapper and the suite all reach
-# it by this name.  Re-exported in the ``x as x`` form so a caller that
-# does not care where a piece lives need not know.
-from esolangs.tools.circlefuck import (
-    _circlefuck_ordered as _circlefuck_ordered,
-)
+# Re-exported in the ``x as x`` form: the registry, the wrapper and the
+# suite all reach a construction by this module's name.
 from esolangs.tools.circlefuck import (
     circlefuck as circlefuck,
 )

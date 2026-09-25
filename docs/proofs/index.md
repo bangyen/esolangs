@@ -140,9 +140,9 @@ Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
-bit~, Clockwise, Collatz Multiverse, Dimensional, EGL, Eval, Forbin, Minsky
-Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN, Suffolk,
-Unsquare and Whitespace keep no tree route at all: A Painter
+bit~, Circlefuck, Clockwise, Collatz Multiverse, Dimensional, EGL, Eval,
+Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
+Suffolk, Unsquare and Whitespace keep no tree route at all: A Painter
 Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, bit~ lands the pointer on one tape cell an entry and walks the
@@ -150,7 +150,9 @@ bit it finds home, Befunge reads one grid cell per table entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
 once the doubling between the input runs is in the text), B-tapemark copies
-one mark per row onto the blank grid and walks the pointer to it, Clockwise
+one mark per row onto the blank grid and walks the pointer to it, Circlefuck
+deletes the entries before the one the index names and prints what the
+deletions leave under the pointer, Clockwise
 writes one cell per entry in a countdown row and stops the pointer on the
 one the index names, Collatz
 Multiverse writes one cell per four table rows at every arity, Dimensional
@@ -221,7 +223,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque | linear: 2T commands, discard blocks sum to T |
 | brainfuck | tree | `decision_tree_program` | linear: decision_tree_program, span walk, leaf moves geometric |
 | BrainIf | finite lookup | a spatial table is addressed by the read row index | linear: n + T strip cells of 2.6 lines |
-| Circlefuck | tree | its local shape guard is equivalent to the shared guard | linear, time n log: essential-input byte compare; greedy candidate's walk |
+| Circlefuck | linear lookup | the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer | linear, time n log: essential-input byte compare |
 | Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) |
 | Clockwise | linear lookup | the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit | linear: five table rows of 2T columns, doubling gadgets whose widths halve downward |
 | Collatz Multiverse | finite lookup | an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it | linear: one line per four rows, a 64-cell decoder, 3n index lines |
