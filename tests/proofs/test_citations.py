@@ -1,18 +1,20 @@
-"""The papers' numbered cross-references resolve to the results they name.
+"""The numbered citations of the coefficient-mass papers name the right results.
 
-``polynomial.tex`` imports its coefficient-mass bound from the companion
-manuscript by number -- ``\\cite[Corollary~3.4]{coefficient-mass}`` -- and the
-Markdown companion and the ledger cite it and the confluent analogue the same
-way.  A number is not a link: reordering or inserting a result renumbers
-everything after it, and splitting a paper in two renumbers from the start,
+``polynomial.tex`` imports its coefficient-mass bound from a companion paper
+by number -- ``\\cite[Corollary~3.4]{coefficient-mass}`` -- and the Markdown
+companion and the ledger cite it and its siblings the same way.  A number is
+not a link: reordering or inserting a result renumbers everything after it,
 leaving a citation pointing at the wrong statement -- or at no statement --
 silently and while still compiling.
 
-So recompute each cited paper's numbering from its own source the way LaTeX
-does -- one counter shared by the four theorem environments, reset per
-``\\section`` -- and hold each citation to the paper and the label it is
-supposed to name.  The expectations are labels, not numbers, because the label
-is what the citing sentence means.
+The papers live in `bangyen/coefficient-mass`_ and are cited at a tag, so the
+numbering those citations rely on is pinned here as :data:`PINNED`, generated
+by that repo's ``just pin``.  This test holds every numbered citation to a
+pinned result and the label it is supposed to name, and holds every citation
+to the pinned tag.  Moving to a newer tag means regenerating :data:`PINNED`
+and changing :data:`TAG` together; the labels are the part that must not move.
+
+.. _bangyen/coefficient-mass: https://github.com/bangyen/coefficient-mass
 """
 
 from __future__ import annotations
@@ -27,85 +29,45 @@ import pytest
 #: are all valid places to run from.
 PROOFS = Path(__file__).resolve().parents[2] / "docs" / "proofs"
 
-#: The environments sharing one counter, from the ``\newtheorem`` block at the
-#: head of each cited paper, mapped to the word a citation spells.
-ENVIRONMENTS = {
-    "theorem": "Theorem",
-    "lemma": "Lemma",
-    "corollary": "Corollary",
-    "proposition": "Proposition",
+#: The coefficient-mass release every citation points at.
+TAG = "v1"
+REPO = "https://github.com/bangyen/coefficient-mass/blob/"
+
+#: ``(paper, number) -> (word, label, title)`` at :data:`TAG`, from
+#: ``just pin`` in bangyen/coefficient-mass.
+PINNED = {
+    ("coefficient-mass", "3.4"): ("Corollary", "cor:mass", "Logarithmic mass"),
+    ("coefficient-mass-attainment", "2.1"): (
+        "Proposition",
+        "prop:confluent",
+        "Confluent analogue",
+    ),
+    ("coefficient-mass-complex", "2.1"): ("Lemma", "lem:multisection", "Multisection"),
+    ("coefficient-mass-complex", "2.3"): (
+        "Corollary",
+        "cor:imag",
+        "Purely imaginary pairs",
+    ),
+    ("coefficient-mass-complex", "4.2"): (
+        "Theorem",
+        "thm:bothsigns",
+        "Rows at real roots of both signs",
+    ),
 }
 
-#: Every numbered cross-reference into a companion paper, as
+#: The companion papers, as the keys citations use.
+PAPERS = frozenset(paper for paper, _ in PINNED)
+
+#: Every numbered citation of a companion, as
 #: ``(citing file, cited paper, number) -> (word, label)``.  The test also
-#: checks that this table is complete, so a new citation fails here until it
-#: is listed.
+#: checks the reverse: that every such citation in a citing file is listed.
 CITATIONS = {
-    ("coefficient-mass-attainment.tex", "coefficient-mass", "4.4"): (
-        "Proposition",
-        "prop:sharp23",
-    ),
-    ("coefficient-mass-complex.tex", "coefficient-mass", "3.2"): (
-        "Theorem",
-        "thm:order",
-    ),
-    ("coefficient-mass-complex.tex", "coefficient-mass", "3.3"): (
-        "Corollary",
-        "cor:complex",
-    ),
-    ("coefficient-mass-complex.tex", "coefficient-mass", "3.4"): (
-        "Corollary",
-        "cor:mass",
-    ),
-    ("coefficient-mass-complex.tex", "coefficient-mass", "3.7"): (
-        "Corollary",
-        "cor:near",
-    ),
-    ("coefficient-mass-complex.tex", "coefficient-mass", "4.2"): (
-        "Proposition",
-        "prop:quadratic",
-    ),
-    ("coefficient-mass-complex.tex", "coefficient-mass", "4.3"): (
-        "Corollary",
-        "cor:allroots",
-    ),
-    ("coefficient-mass-complex.tex", "coefficient-mass", "4.4"): (
-        "Proposition",
-        "prop:sharp23",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "2.1"): (
-        "Lemma",
-        "lem:consecutive",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "2.2"): (
-        "Theorem",
-        "thm:tail",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "2.3"): (
-        "Lemma",
-        "lem:interlace",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "3.2"): (
-        "Theorem",
-        "thm:order",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "4.5"): (
-        "Lemma",
-        "lem:rowcert",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "4.6"): (
-        "Lemma",
-        "lem:confdel",
-    ),
-    ("coefficient-mass-rows.tex", "coefficient-mass", "4.13"): (
-        "Theorem",
-        "thm:everyrow",
-    ),
     ("index.md", "coefficient-mass", "3.4"): ("Corollary", "cor:mass"),
     ("polynomial.md", "coefficient-mass-attainment", "2.1"): (
         "Proposition",
         "prop:confluent",
     ),
+    ("polynomial.md", "coefficient-mass-complex", "2.3"): ("Corollary", "cor:imag"),
     ("polynomial.tex", "coefficient-mass", "3.4"): ("Corollary", "cor:mass"),
     ("polynomial.tex", "coefficient-mass-complex", "2.1"): (
         "Lemma",
@@ -115,21 +77,10 @@ CITATIONS = {
         "Theorem",
         "thm:bothsigns",
     ),
-    ("polynomial.md", "coefficient-mass-complex", "2.3"): (
-        "Corollary",
-        "cor:imag",
-    ),
 }
 
 #: The files whose citations the table above has to cover.
-CITING = (
-    "coefficient-mass-attainment.tex",
-    "coefficient-mass-complex.tex",
-    "coefficient-mass-rows.tex",
-    "index.md",
-    "polynomial.md",
-    "polynomial.tex",
-)
+CITING = ("index.md", "polynomial.md", "polynomial.tex")
 
 #: A numbered reference in running text or in a ``\cite`` option.
 _REFERENCE = re.compile(
@@ -137,46 +88,12 @@ _REFERENCE = re.compile(
 )
 
 #: The paper a line cites: the key of its ``\cite``, or -- in Markdown, which
-#: has no ``\cite`` -- the target of its link.
+#: has no ``\cite`` -- the file name its link targets.
 _CITE_KEY = re.compile(r"\\cite\[[^]]*\]\{([^}]*)\}")
-_LINK_KEY = re.compile(r"\]\(([^)]*)\.tex\)")
+_LINK_KEY = re.compile(r"\]\([^)]*?([\w-]+)\.tex\)")
 
-#: ``\begin{corollary}[Title]`` and the ``\label`` that follows it, which may
-#: sit on the next line (``prop:subtwo`` does).
-_BEGIN = re.compile(r"\\begin\{(" + "|".join(ENVIRONMENTS) + r")\}(?:\[([^]]*)\])?")
-_LABEL = re.compile(r"\\label\{([^}]*)\}")
-_SECTION = re.compile(r"^\\section\{")
-
-
-def _numbering(paper: str) -> dict[str, tuple[str, str, str]]:
-    """Map each result number of ``paper`` to the result it names.
-
-    The value is ``(word, label, title)``; the numbering is LaTeX's, one
-    counter shared across the four environments and reset by ``\\section``.
-    """
-    lines = (PROOFS / f"{paper}.tex").read_text().splitlines()
-    numbered: dict[str, tuple[str, str, str]] = {}
-    section = 0
-    counter = 0
-    for index, line in enumerate(lines):
-        if _SECTION.match(line):
-            section += 1
-            counter = 0
-            continue
-        begin = _BEGIN.search(line)
-        if begin is None:
-            continue
-        counter += 1
-        # The label is on the ``\begin`` line or the one after it; nothing in
-        # the papers puts anything else between the two.
-        label = _LABEL.search(line) or _LABEL.search(lines[index + 1])
-        assert label is not None, f"unlabelled result at line {index + 1}"
-        numbered[f"{section}.{counter}"] = (
-            ENVIRONMENTS[begin.group(1)],
-            label.group(1),
-            begin.group(2) or "",
-        )
-    return numbered
+#: Any link into the companion repo, and the version it names.
+_COMPANION_LINK = re.compile(re.escape(REPO) + r"([^/]+)/")
 
 
 def _cited(name: str) -> set[tuple[str, str, str]]:
@@ -184,14 +101,13 @@ def _cited(name: str) -> set[tuple[str, str, str]]:
 
     The paper is the key the line's own ``\\cite`` names, or the ``.tex`` link
     target in Markdown.  A numbered reference on a line that names neither is
-    the file's reference to itself; one whose key is not a paper in
-    ``docs/proofs`` is somebody else's, which is what skips the two
-    ``Theorem~4.1`` citations of Karlin and Studden.
+    the file's reference to itself; one whose key is not a companion is
+    somebody else's.
     """
     found: set[tuple[str, str, str]] = set()
     for line in (PROOFS / name).read_text().splitlines():
         cite = _CITE_KEY.search(line) or _LINK_KEY.search(line)
-        if cite is None or not (PROOFS / f"{cite.group(1)}.tex").exists():
+        if cite is None or cite.group(1) not in PAPERS:
             continue
         for match in _REFERENCE.finditer(line):
             found.add((match.group(1), cite.group(1), match.group(2)))
@@ -202,11 +118,10 @@ def _cited(name: str) -> set[tuple[str, str, str]]:
 def test_citation_resolves(
     citation: tuple[str, str, str], expected: tuple[str, str]
 ) -> None:
-    """Each cited number is the labelled result of the paper it names."""
+    """Each cited number is the pinned, labelled result of the paper it names."""
     _, paper, number = citation
-    numbering = _numbering(paper)
-    assert number in numbering, f"{paper} has no result {number}"
-    word, label, _ = numbering[number]
+    assert (paper, number) in PINNED, f"{paper} {number} is not pinned"
+    word, label, _ = PINNED[paper, number]
     assert (word, label) == expected
 
 
@@ -221,13 +136,16 @@ def test_every_citation_is_covered() -> None:
         assert _cited(name) == listed, name
 
 
-def test_the_cited_titles_are_the_ones_the_papers_name() -> None:
+def test_every_link_is_at_the_pinned_tag() -> None:
+    """A link to another version of the papers may name other numbers."""
+    for name in CITING:
+        text = (PROOFS / name).read_text()
+        assert set(_COMPANION_LINK.findall(text)) <= {TAG}, name
+
+
+def test_the_cited_title_is_the_one_the_paper_names() -> None:
     """The bibliography entry's parenthetical names Corollary 3.4's title."""
-    assert _numbering("coefficient-mass")["3.4"][2] == "Logarithmic mass"
-    assert _numbering("coefficient-mass")["4.4"][2] == (
-        "Sharpness of the row $k=2$ at $(2,3)$"
-    )
-    assert _numbering("coefficient-mass-attainment")["2.1"][2] == "Confluent analogue"
+    assert PINNED["coefficient-mass", "3.4"][2] == "Logarithmic mass"
     # Compared with whitespace collapsed: the entry is prose, and rewrapping
     # it to fit the margin (``1ab35a6d``) moved the parenthetical onto the
     # line above without changing what it names.
