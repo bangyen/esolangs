@@ -8471,8 +8471,9 @@ degree $O(s^2)$, because Theorem~\ref{thm:gausscharge} bounds the degree of a
 block by its mass (Proposition~\ref{prop:skeletoncap}).  Below this degree cap two
 obstructions remain, both from clusters of Gaussian integers at a zero of
 high multiplicity.  They exclude $c<\frac12$ in every sector, and every $c<1$ in
-sectors that contain a real direction.  What remains open is the capped
-hypothesis for $\frac12\le c<1$ in sectors inside an open half-plane.
+sectors that contain a real direction.  The capped hypothesis fails for
+$\frac12\le c<1$ in sectors inside an open half-plane as well
+(Section~\ref{sec:Hrotated}).
 
 For $M\ge0$ and $0\le j\le2M$ put
 $\gamma_{M,j}=(2+i)^j(2-i)^{2M-j}$.  These have norm $25^M$, and
@@ -8639,7 +8640,178 @@ $c\in[\frac12,1)$.  The count of parameters after
 Proposition~\ref{prop:skeletonreduction} is consistent with this restricted
 hypothesis for every $c>\frac12$.  A Siegel-lemma count also fits it: $s$
 coefficients of sizes $\rho^{O(s)}$ can place about $s/(4c)$ generic points
-to precision $\rho^{-cs}$.  We do not know a proof in any range of $c$.
+to precision $\rho^{-cs}$.  Both counts miss polynomials in $x^g$, and the
+second condition fails for every $c$ (Proposition~\ref{prop:Hrotated}).
+
+\subsection{Clusters in every direction}\label{sec:Hrotated}
+
+The capped hypothesis fails in the case that Section~\ref{sec:Hstatus} leaves
+open, and in fact for every $c<1$ in every sector.  Item~4 of
+Proposition~\ref{prop:Hfails} places a cluster of near-zeros at a real point.
+The substitution $x\mapsto x^g$ copies that cluster to every direction
+$2\pi l/g$.  This multiplies the degree by $g$ but leaves the number of terms
+unchanged.  A sector of half-width $\delta$ contains such a direction once
+$g\ge2\pi/\delta$, so the degree stays linear in $s$, far below the cap.
+What separates these polynomials from skeletons is their mass
+(Proposition~\ref{prop:skeletonmass}).  With a mass cap added, the hypothesis
+survives all the examples, but its exact-zero case then follows from the bound
+it is meant to prove.
+
+\begin{proposition}[Clusters in every direction]\label{prop:Hrotated}
+Let $\varphi\in\R$, $0<\delta<\frac\pi2$, $R>2$, $C\ge1$ and $0<c<1$.  Let
+$g\ge2\pi/\delta$ and $t$ be integers with $t>2/(1-c)$ and $t\ge2g$.  For
+every sufficiently large integer $\rho_0$, the polynomial
+$S=(x^g-\rho_0^g)^t\in\mathbb Z[x]$ has $s=t+1$ nonzero coefficients and
+degree $D=gt$, with
+\[
+  D<gs,\qquad D\le\ell_R\,\frac{s(s+1)}2,\qquad
+  \Lambda(S)\ \ge\ g\,\frac{s(s-1)}2\log\rho_0 ,
+\]
+and more than $Cs$ Gaussian integers $\alpha$ satisfy
+\[
+  |\alpha|\ge R,\qquad|\arg\alpha-\varphi|\le\delta,\qquad
+  |S(\alpha)|<|\alpha|^{D-\lceil cs\rceil}.
+\]
+So (H) below the degree cap fails for all constants $C$ and $c$, in every
+sector.  It also fails if the cap is lowered to $D<gs$.
+\end{proposition}
+
+\begin{proof}
+Put $N=\rho_0^g$.  Then
+$S=\sum_{j=0}^t\binom tj(-N)^{t-j}x^{gj}$, with $t+1$ nonzero coefficients at
+distinct degrees.  Next, $D=g(s-1)<gs$, and $t\ge2g$ gives
+$D=gt\le t^2/2<s(s+1)/2<\ell_Rs(s+1)/2$.  For $j<t$ the coefficient of
+$x^{gj}$ has modulus at least $N^{t-j}=\rho_0^{g(t-j)}$, so
+$\Lambda(S)\ge g\log\rho_0\sum_{j<t}(t-j)=g\frac{t(t+1)}2\log\rho_0$, and
+$t(t+1)=s(s-1)$.
+
+Choose an integer $l$ such that $2\pi l/g$ is within $\pi/g\le\delta/2$ of
+$\varphi$ modulo $2\pi$, and put $w=\rho_0e^{2\pi il/g}$, so $w^g=N$.  Put
+$e=1-c-2/t$, which lies in $(0,1)$ because $t>2/(1-c)$, and
+$r_0=\rho_0^e/(g4^g)$.  Since $0<e<1$, we may take $\rho_0$ so large that
+\[
+  r_0\ge6,\qquad r_0\le\rho_0\sin(\delta/2),\qquad r_0\le\rho_0/2,\qquad
+  \rho_0\ge2R,\qquad r_0^2>Cs .
+\]
+
+Let $\alpha\in\mathbb Z[i]$ with $|\alpha-w|\le r_0$.  Then
+$|\alpha|\ge\rho_0-r_0\ge\rho_0/2\ge R$.  The argument of $\alpha$ differs
+from that of $w$ by at most $\arcsin(r_0/\rho_0)\le\delta/2$, so
+$|\arg\alpha-\varphi|\le\delta$.  Since $|\alpha|\le\frac32\rho_0$,
+\[
+  |\alpha^g-N|=|\alpha-w|\,\Bigl|\sum_{k=0}^{g-1}\alpha^kw^{g-1-k}\Bigr|
+  \le r_0\,g\,(2\rho_0)^{g-1}=2^{-g-1}\rho_0^{\,e}\,\rho_0^{\,g-1},
+\]
+and therefore
+$|S(\alpha)|\le2^{-(g+1)t}\rho_0^{\,(g-1)t+et}$.  Let $u=\lceil cs\rceil$.
+Then $u<c(t+1)+1<ct+2$, so
+\[
+  D-u\ >\ gt-ct-2=(g-1)t+(1-c)t-2=(g-1)t+et\ >\ 0 .
+\]
+As $|\alpha|\ge\rho_0/2\ge1$,
+\[
+  |\alpha|^{D-u}\ \ge\ (\rho_0/2)^{(g-1)t+et}
+  =2^{-(g-1+e)t}\rho_0^{\,(g-1)t+et}\ >\ 2^{-(g+1)t}\rho_0^{\,(g-1)t+et}
+  \ \ge\ |S(\alpha)| .
+\]
+
+It remains to count these $\alpha$.  Let $w_0\in\mathbb Z[i]$ be nearest to
+$w$, so $|w-w_0|\le\frac{\sqrt2}2$, and let $q=\lfloor(r_0-1)/\sqrt2\rfloor$.
+The points $w_0+k+il$ with $|k|,|l|\le q$ satisfy
+$|w_0+k+il-w|\le\frac{\sqrt2}2+\sqrt2q<r_0$.  There are $(2q+1)^2$ of them,
+and $2q+1\ge\sqrt2(r_0-1)-1\ge r_0$ because
+$r_0\ge6>(\sqrt2+1)^2$.  So there are at least $r_0^2>Cs$ of them.
+\end{proof}
+
+The near-zeros form a cluster of radius $\rho_0^{\,e}/(g4^g)$ at each direction
+$2\pi l/g$ in the sector, and $S$ has a zero of order $t=s-1$ at the centre
+of each cluster, the highest order that $s$ terms allow at a nonzero point.  For
+$g=1$ and $l=0$ this is item~4 of Proposition~\ref{prop:Hfails}.  For
+$g\ge2\pi/\delta$ the conjugate factor that forces $c<\frac12$ in item~3 is
+absent, because the $g$ clusters come from the single real cluster of
+$(y-N)^t$ under $y=x^g$.  So the count of parameters after
+Proposition~\ref{prop:skeletonreduction} does not apply to polynomials in
+$x^g$.  The reduction of Proposition~\ref{prop:skeletonreduction} needs some
+$c<1$, because $s=t+1+m^*$ and $cs\le t$.  It also needs degrees up to about
+$\ell_Rs^2/2$, while the proposition gives counterexamples of degree below
+$gs$.  So no restriction on $c$, on the sector or on the degree makes (H)
+true in a range that Proposition~\ref{prop:skeletoncap} can use.
+
+A skeleton, however, is not an arbitrary polynomial with few terms.  Its
+coefficients are among those of a block, so its mass is at most
+$\Lambda(F)$.  We say that \emph{(H) holds with constants $C$ and $c$ below
+the degree and mass caps} if the defining property of (H) holds for every
+$s\ge1$ and every $S\in\mathbb Z[x]$ with at most $s$ nonzero coefficients,
+degree $1\le D\le\ell_Rs(s+1)/2$ and
+\[
+  \Lambda(S)\ <\ \frac{s(s-1)}2\log R .
+\]
+
+\begin{proposition}[The Diophantine condition below the mass cap]\label{prop:skeletonmass}
+Proposition~\ref{prop:skeletonreduction} remains true if (H) is replaced by
+(H) below the degree and mass caps.
+\end{proposition}
+
+\begin{proof}
+Let $m^*$, $t$ and $s=t+1+m^*$ be as in the proof of
+Proposition~\ref{prop:skeletonreduction}, let $B$ be a block of $F$, and let
+$S$ be its skeleton.  By the proof of Proposition~\ref{prop:skeletoncap}, $S$
+has degree at most $\ell_Rs(s+1)/2$.  The nonzero coefficients of $S$ are
+coefficients of $B$, so
+$\Lambda(S)\le\Lambda(B)\le\Lambda(F)$ by Lemma~\ref{lem:gaussblocks}.  By the maximality of $m^*$,
+$\Lambda(F)<\frac12(m^*+1)(m^*+2)\log R$.  Since $c>0$ and $m^*+1\ge1$, we
+have $t\ge1$, hence $m^*+2\le s$, and
+\[
+  \Lambda(S)\ <\ \frac{(m^*+1)(m^*+2)}2\log R\ \le\ \frac{s(s-1)}2\log R .
+\]
+So $S$ is one of the polynomials for which the capped hypothesis is assumed,
+and the rest of the proof is unchanged.
+\end{proof}
+
+Every counterexample found so far violates the mass cap.  The polynomial of
+Proposition~\ref{prop:Hrotated} has $\Lambda(S)\ge g\frac{s(s-1)}2\log\rho_0$
+with $\rho_0>R$.  Items~1 and~2 of Proposition~\ref{prop:Hfails} and the
+rounding example after Proposition~\ref{prop:skeletonreduction} have $s=2$
+and $\Lambda=N\log\rho\ge\log R$.  Item~4 has
+$\Lambda(S)\ge\sum_{j<t}(t-j)\log\rho=\frac{s(s-1)}2\log\rho$ with $\rho\ge2R$.
+In item~3, $S$ is a monic multiple of $(x-w)^t$ with $|w|=\rho$, so
+Corollary~\ref{cor:ray} gives
+$\Lambda(S)\ge\frac{t(t+1)}2\log(\rho-1)$.  This is at least
+$t(2t+1)\log R=\frac{s(s-1)}2\log R$ once $\rho-1\ge R^4$, which holds for
+large $T$.  In items~3 and~4 and in Proposition~\ref{prop:Hrotated}, $S$ has a
+zero of order at least $(s-1)/2$ at the centre of each cluster.  By
+Corollary~\ref{cor:ray}, a zero of order $t$ and modulus $\rho\ge2$ costs a
+polynomial with $|f_D|\ge1$ mass at least $\frac{t(t+1)}2\log(\rho-1)$.  This
+is the cost that the mass cap charges.
+
+With the mass cap, however, the hypothesis is close to a reformulation of
+the bound it is meant to prove.  Suppose that the sector lies in the open
+upper half-plane, and that $\Lambda(F)\ge c_0K^2\log R$ for all $K$, all
+$\alpha_1,\ldots,\alpha_K$ in the sector of modulus at least $R$, and all
+nonzero integer multiples $F$ of $P$.  Let $S$ satisfy the two caps and let
+$Z$ be a set of Gaussian integers in the sector, of modulus at least $R$, at
+which $S$ vanishes.  They are not real, $S$ is real, and
+$\prod_{\alpha\in Z}(x-\alpha)(x-\bar\alpha)$ is monic with distinct roots.
+So it divides $S$ in $\mathbb Z[x]$, and
+\[
+  c_0|Z|^2\log R\ \le\ \Lambda(S)\ <\ \frac{s(s-1)}2\log R ,
+\]
+that is, $|Z|<s/\sqrt{2c_0}$.  The exact-zero case of the hypothesis below the
+two caps therefore follows from the bound, with $C=(2c_0)^{-1/2}$ and without
+the degree cap.  Beyond the bound it asks only for the passage from zeros to
+near-zeros of precision $|\alpha|^{-cs}$.
+
+So the skeleton route, as formulated in
+Proposition~\ref{prop:skeletonreduction}, is closed in every sector.  Any
+condition that bounds near-zeros by the number of terms and the degree
+alone fails once degrees up to $gs$ with $g\ge2\pi/\delta$ are allowed, and
+the reduction needs degrees of order $s^2$.  A proof along these lines has
+to use the sizes of the coefficients of $S$.  Once it does, it contains the
+exact problem.  The configurations that the proposition isolates are root sets
+made of clusters of radius $\rho^e$, $0<e<1$, around the directions
+$2\pi l/g$ in the sector.  Theorem~\ref{thm:thingauss} covers a single
+cluster of radius $r$ only when $r^3$ is at most about $\rho$.  For these
+root sets the bound $\Lambda(F)\ge cK^2\log R$ is open.
 
 \paragraph{Data availability.}
 No datasets were generated or analyzed in this study.
