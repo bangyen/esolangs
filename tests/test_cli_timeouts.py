@@ -47,10 +47,8 @@ class TestATimeoutHasOneExitCode:
         full band, where something does.  Widening the table does not
         help; the warm row does not grow with it.
         """
-        from esolangs.interpreters.register_based.polynomial import (
-            _factor_roots,
-            _parse_program,
-        )
+        from esolangs.interpreters.register_based._polynomial_roots import _factor_roots
+        from esolangs.interpreters.register_based.polynomial import _parse_program
 
         _parse_program.cache_clear()
         _factor_roots.cache_clear()
