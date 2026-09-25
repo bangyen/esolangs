@@ -78,12 +78,9 @@ CITATIONS = {
         "Proposition",
         "prop:confluent",
     ),
-    ("polynomial.tex", "coefficient-mass", "3.1"): ("Lemma", "lem:slack"),
     ("polynomial.tex", "coefficient-mass", "3.4"): ("Corollary", "cor:mass"),
-    ("polynomial.tex", "coefficient-mass", "3.6"): ("Corollary", "cor:infimum"),
     ("polynomial.tex", "coefficient-mass", "5.1"): ("Lemma", "lem:multisection"),
     ("polynomial.tex", "coefficient-mass", "5.10"): ("Theorem", "thm:bothsigns"),
-    ("polynomial.tex", "coefficient-mass", "5.3"): ("Corollary", "cor:imag"),
     ("polynomial.md", "coefficient-mass", "5.3"): ("Corollary", "cor:imag"),
 }
 
