@@ -6,6 +6,7 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.interpreters.io import IO
+from esolangs.tools.flowchart import _flowchart_deque
 from esolangs.tools.other import (
     _flowchart_cells,
     _flowchart_render,
@@ -19,13 +20,37 @@ from tests.tools.boolean_runners import (
 class TestFlowchart:
     """The Flowchart boolean generator (works for arbitrary n)."""
 
-    def test_compact_layout_uses_the_shorter_orientation(self) -> None:
-        """A stacked parity tree beats the flat form from three inputs."""
+    @pytest.mark.parametrize(
+        "table",
+        ["00", "01", "0000", "0110", "11111111", "01101001", "0110100110010110"],
+    )
+    def test_an_unconstrained_call_returns_the_shortest_layout(
+        self, table: str
+    ) -> None:
+        """Without a width every candidate is built and the shortest wins.
+
+        Three layouts compete: the flat tree, its stacked form, and the
+        deque lookup.  The deque takes the small arities too (it is about
+        six times shorter than the tree at ``n = 4``), but a table that
+        folds to one or two leaves still goes to the tree, so the contract
+        is the minimum rather than any one construction.
+        """
+        candidates = [
+            _flowchart_render(_flowchart_cells(table)),
+            _flowchart_render(_flowchart_stacked(table)),
+            _flowchart_deque(table),
+        ]
+        chosen = boolean.flowchart(table)
+        assert len(chosen) == min(len(c) for c in candidates)
+        assert chosen in candidates
+
+    def test_a_stacked_parity_tree_beats_the_flat_one(self) -> None:
+        """From three inputs the stacked orientation is the shorter tree."""
         table = "01101001"
         flat = _flowchart_render(_flowchart_cells(table))
         stacked = _flowchart_render(_flowchart_stacked(table))
         assert len(stacked) < len(flat)
-        assert boolean.flowchart(table) == stacked
+        assert boolean.flowchart(table, 1) == stacked
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -73,7 +98,7 @@ class TestFlowchart:
 
     @pytest.mark.medium
     def test_wide_deque_lookup_executes_every_row(self) -> None:
-        """Opposite-end discards leave exactly the indexed answer."""
+        """The cursor walk lands on exactly the indexed answer's deque."""
         n = 6
         table = "".join(str((row.bit_count() ^ (row >> 2)) & 1) for row in range(2**n))
         program = boolean.flowchart(table)
@@ -82,13 +107,28 @@ class TestFlowchart:
             assert run_flowchart(program, bits) == table[row], row
 
     def test_wide_deque_lookup_scales_linearly(self) -> None:
-        """The five-row layout grows no faster than its table doubles."""
+        """The two-row layout grows no faster than its table doubles."""
         sizes = [len(boolean.flowchart("01" * (2 ** (n - 1)))) for n in range(7, 11)]
         assert all(b <= 2 * a for a, b in pairwise(sizes))
 
+    def test_a_repeated_answer_is_set_once_and_pushed_twice(self) -> None:
+        """A run of equal entries shares one set node and still answers.
+
+        Neither the push nor the deque step touches the register, so the
+        preload only re-sets it where the table changes; an alternating
+        table (the one the scaling test uses) never exercises that, which is
+        why this one repeats.
+        """
+        table = "0011" * 8
+        program = boolean.flowchart(table)
+        assert program.count("[ }") + program.count("{ ]") < len(table)
+        for row in (0, 1, 2, 3, 17, 30, 31):
+            bits = [str((row >> (4 - i)) & 1) for i in range(5)]
+            assert run_flowchart(program, bits) == table[row], row
+
     def test_tree_depth_matches_input_count(self) -> None:
         """One ``/ /`` read node sits on each path from entry to a leaf."""
-        program = boolean.flowchart("0110100110010110")
+        program = _flowchart_render(_flowchart_cells("0110100110010110"))
         assert program.count("< >") == 15  # 2**4 - 1 internal nodes
         assert program.count("(( ))") == 16  # 2**4 leaves
 
@@ -99,12 +139,18 @@ class TestFlowchart:
         them, so a folded subtree narrows the drawing rather than leaving a
         gap where its rows would have been.
         """
-        assert boolean.flowchart("11111111").count("(( ))") == 1
-        assert boolean.flowchart("11110000").count("(( ))") == 2
-        assert boolean.flowchart("10010110").count("(( ))") == 8  # no fold
+
+        def tree(table: str) -> str:
+            return _flowchart_render(_flowchart_cells(table))
+
+        assert tree("11111111").count("(( ))") == 1
+        assert tree("11110000").count("(( ))") == 2
+        assert tree("10010110").count("(( ))") == 8  # no fold
         # a constant table needs no switch at all
-        assert boolean.flowchart("11111111").count("< >") == 0
-        assert boolean.flowchart("11110000").count("< >") == 1
+        assert tree("11111111").count("< >") == 0
+        assert tree("11110000").count("< >") == 1
+        # the fold is deep enough that a constant table keeps the tree
+        assert boolean.flowchart("11111111") == tree("11111111")
 
     @pytest.mark.parametrize(
         "table", ["01", "0001", "01101001", "0110100110010110", "1000000000000000"]
@@ -125,7 +171,8 @@ class TestFlowchart:
         """
         from esolangs.interpreters.grid_based.flowchart import _Machine
 
-        machine = _Machine(boolean.flowchart(table).splitlines(), IO())
+        drawing = _flowchart_render(_flowchart_cells(table))
+        machine = _Machine(drawing.splitlines(), IO())
         for row, line in enumerate(machine.grid):
             for col, char in enumerate(line):
                 if char != "│":
@@ -150,7 +197,7 @@ class TestFlowchart:
         generator's docstring on why the parameterized once-only embedding
         rule does not apply to an input-reading generator).
         """
-        program = boolean.flowchart("0110100110010110")
+        program = _flowchart_render(_flowchart_cells("0110100110010110"))
         assert program.count("/ /") == 15
 
         consumed = 0

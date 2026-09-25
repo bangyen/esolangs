@@ -7,10 +7,20 @@ import random
 import pytest
 
 from esolangs import tools as boolean
-from esolangs.tools.cvnc import _stored
+from esolangs.tools.cvnc import _render, _stored
 from tests.tools.boolean_runners import (
     run_cvnc,
 )
+
+
+def _leaves(program: str) -> int:
+    """Count the leaves: every one of them ends with the ``j`` that halts."""
+    return program.count("j")
+
+
+def _branches(program: str) -> int:
+    """Count the interior nodes: a plain ``ɰ``, not the prologue's ``ɰ̊``."""
+    return program.count("\u0270") - program.count("\u0270\u030a")
 
 
 def _stored_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -20,7 +30,8 @@ def _stored_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
     Substituting another program would compute a different function, since
     ``truth_table`` is already permuted.
     """
-    return _stored(truth_table, perm) or ""
+    tokens = _stored(truth_table, perm)
+    return _render(tokens) if tokens is not None else ""
 
 
 class TestCvnc:
@@ -51,28 +62,30 @@ class TestCvnc:
     def test_a_table_that_folds_nothing_is_a_full_tree(self) -> None:
         """Parity folds nowhere, so it keeps a leaf per row."""
         program = boolean.cvnc("01101001")
-        assert program.count("fu") == 8  # one leaf per row
-        assert program.count("\u0270\u030ao") == 7  # one branch per interior node
+        assert _leaves(program) == 8  # one leaf per row
+        assert _branches(program) == 7  # one branch per interior node
 
     def test_a_constant_table_folds_to_one_leaf_but_keeps_its_reads(self) -> None:
         """Folding drops the branches, never the reads."""
         for table in ("00000000", "11111111"):
             program = boolean.cvnc(table)
-            assert program.count("so") == 3  # still three inputs consumed
-            assert program.count("\u0270\u030ao") == 0  # nothing left to branch on
-            assert program.count("fu") == 1  # one leaf for the whole table
+            assert program.count("s") == 3  # still three inputs consumed
+            assert _branches(program) == 0  # nothing left to branch on
+            assert _leaves(program) == 1  # one leaf for the whole table
 
     def test_a_one_dependency_table_costs_two_leaves(self) -> None:
         """Depending on one input collapses the other two levels.
 
-        This table is where the hoisted build wins, so the three reads are
-        the load block's and appear once each rather than once per folded
-        path.  Either way only the root branches and only two leaves remain.
+        Only the root branches and only two leaves remain.  Both folded
+        arms still owe the two reads below them, and the node-read tree is
+        what ships: a folded read is one character there (the ``ə`` that
+        floors the last of them is the read's own syllable vowel), which
+        the load block's pushes and the fetch cannot undercut.
         """
         program = boolean.cvnc("11110000")
-        assert program.count("fu") == 2
-        assert program.count("\u0270\u030ao") == 1  # only the root still branches
-        assert program.count("so") == 3  # three inputs, read once each
+        assert _leaves(program) == 2
+        assert _branches(program) == 1  # only the root still branches
+        assert program.count("s") == 5  # one at the root, two per folded arm
         for combo in range(8):
             bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
             assert run_cvnc(program, bits) == "11110000"[combo]
@@ -84,8 +97,8 @@ class TestCvnc:
         """The starting gadget's reach covers every arity worth asking for.
 
         The goto lands at a fixed offset, so a program longer than that
-        offset would jump back *into itself* instead of halting.  Two
-        squarings reach 6.25M characters, and nothing the suite builds gets
+        offset would jump back *into itself* instead of halting.  Four
+        squarings reach 65536 characters, and nothing the suite builds gets
         near it, so the escalation below is never paid in practice.
         """
         module = importlib.import_module("esolangs.tools.cvnc")
@@ -105,18 +118,17 @@ class TestCvnc:
 
         The reach is far past any table worth generating, so the escalation
         is reached by starting from fewer squarings rather than by building
-        a vast table: from zero, a gadget reaches 50 characters, then 2500,
-        then 6.25M.  The programs still run, which is what proves the wider
+        a vast table: from zero, a gadget reaches 2 characters, then 4, 16,
+        256, 65536.  The programs still run, which is what proves the wider
         gadget halts rather than re-entering.
         """
         # ``esolangs.tools.cvnc`` resolves to the re-exported
         # *function*, so the module has to be fetched by name.
         module = importlib.import_module("esolangs.tools.cvnc")
         monkeypatch.setattr(module, "_HALT_SQUARINGS", 0)
-        monkeypatch.setattr(module, "_HALT", module._halt(0))  # noqa: SLF001
         rng = random.Random(7)
         dense = "".join(rng.choice("01") for _ in range(128))
-        for table, squarings in (("01", 1), ("0110", 1), (dense, 2)):
+        for table, squarings in (("01", 3), ("0110", 3), (dense, 4)):
             program = module.cvnc(table)
             assert module._halt(squarings) in program  # noqa: SLF001
             assert module._halt(squarings + 1) not in program  # noqa: SLF001
@@ -131,7 +143,7 @@ class TestCvnc:
         module = importlib.import_module("esolangs.tools.cvnc")
         table = "01101001"
         program = boolean.cvnc(table).replace(
-            module._HALT,  # noqa: SLF001
+            module._halt(module._HALT_SQUARINGS),  # noqa: SLF001
             module._halt(module._HALT_SQUARINGS + 1),  # noqa: SLF001
         )
         for combo in range(8):
@@ -139,9 +151,14 @@ class TestCvnc:
             assert run_cvnc(program, bits) == table[combo], bits
 
     def test_every_leaf_ends_by_halting(self) -> None:
-        """Without the halting goto a then-arm falls into its own loop end."""
+        """Without the halting jump a then-arm falls into its own loop end.
+
+        The goto itself is shared: one ``ɹ`` for the whole program, which
+        every leaf reaches through the ``j`` that lands on syllable 1.
+        """
         program = boolean.cvnc("0110")
-        assert program.count("\u0279i") == program.count("fu")
+        assert _leaves(program) == 4
+        assert program.count("\u0279") == 1
 
     def test_a_zero_input_table_is_refused(self) -> None:
         """A one-entry table is a constant, not a function of any input."""
@@ -160,21 +177,21 @@ class TestCvnc:
         show up as a shorter program, not merely a different one.
         """
         program = boolean.cvnc("10101010")
-        assert program.count("fu") == 2  # two leaves, as the reorder intends
-        assert program.count("ɰ̊o") == 1
+        assert _leaves(program) == 2  # two leaves, as the reorder intends
+        assert _branches(program) == 1
         # The unreordered node-read tree over the same table folds only at the
         # bottom, so it costs a leaf per row.
         module = importlib.import_module("esolangs.tools.cvnc")
-        unreordered = module._tree("10101010", 0)  # noqa: SLF001
-        assert unreordered.count("fu") == 8
+        unreordered = module._render(module._tree("10101010"))  # noqa: SLF001
+        assert _leaves(unreordered) == 8
         assert len(program) < len(unreordered)
 
     def test_the_hoisted_build_stores_and_fetches_rather_than_rotating(self) -> None:
         """The bridge between read order and test order is the deque's ends."""
         program = boolean.cvnc("10101010")
         # Every input is read once and pushed to an end in the same syllable.
-        assert program.count("so") == 3
-        assert program.count("som") + program.count("son") == 3
+        assert program.count("s") == 3
+        assert program.count("sum") + program.count("sun") == 3
         # The one surviving node fetches rather than reads.
         assert program.count("cuŋ") + program.count("cuɲ") == 1
 
@@ -199,9 +216,11 @@ class TestCvnc:
         module = importlib.import_module("esolangs.tools.cvnc")
         for value in range(2**8):
             table = bin(value)[2:].zfill(8)
-            assert len(boolean.cvnc(table)) <= len(module._tree(table, 0))  # noqa: SLF001
+            tree = module._render(module._tree(table))  # noqa: SLF001
+            assert len(boolean.cvnc(table)) <= len(module._halt(4)) + len(tree)  # noqa: SLF001
         # and parity specifically keeps the node-read build
-        assert boolean.cvnc("01101001") == module._tree("01101001", 0)  # noqa: SLF001
+        parity = module._render(module._tree("01101001"))  # noqa: SLF001
+        assert boolean.cvnc("01101001").endswith(parity)
 
     def test_an_unservable_order_is_skipped_rather_than_mispriced(self) -> None:
         """The deque serves the unimodal orders; the rest return no program.
@@ -253,11 +272,11 @@ class TestCvnc:
     def test_a_tie_keeps_the_node_read_tree(self) -> None:
         """The hoisted build must be strictly shorter to be taken.
 
-        Sixteen of the 256 three-input tables build a hoisted program of
+        Three of the 256 three-input tables build a hoisted program of
         exactly the tree's length, so ``<`` and ``<=`` ship different
         programs of *identical size*: invisible to a length bound and to
         every truth-table assertion, since both shapes compute the table.
-        All sixteen keep the tree.
+        All three keep the tree.
 
         The comparison has to be driven through ``best_input_order``, the
         way the generator does it -- that helper permutes the *table* per
@@ -271,16 +290,17 @@ class TestCvnc:
         tied = []
         for value in range(2**8):
             table = bin(value)[2:].zfill(8)
-            tree = module._tree(table, 0)  # noqa: SLF001
+            tree = module._render(module._tree(table))  # noqa: SLF001
             hoisted = best_input_order(
                 table,
                 _stored_candidate,
             )
             if hoisted and len(hoisted) == len(tree):
                 tied.append(table)
-        assert len(tied) == 16
+        assert len(tied) == 3
         for table in tied:
-            assert boolean.cvnc(table) == module._tree(table, 0)  # noqa: SLF001
+            tree = module._render(module._tree(table))  # noqa: SLF001
+            assert boolean.cvnc(table).endswith(tree)
 
     def test_a_served_order_pops_from_the_end_holding_its_input(self) -> None:
         """The schedule is not merely non-empty; it is the right one.
@@ -308,7 +328,7 @@ class TestCvnc:
                     else:
                         held.append(i)
                 for wanted, pop in zip(perm, pops, strict=True):
-                    if pop == module._FETCH_FRONT:  # noqa: SLF001
+                    if pop == module._POP_FRONT:  # noqa: SLF001
                         assert held.pop(0) == wanted, (perm, wanted)
                     else:
                         assert held.pop() == wanted, (perm, wanted)
@@ -318,12 +338,10 @@ class TestCvnc:
         """The hoisted build's folded root still holds an unpredictable bit.
 
         No branch has run, so the accumulator is whatever the load block read
-        last rather than a bit the tree chose.  Without the ``cə`` the leaf
-        climbs from that and prints one too many for a 1 input.
+        last rather than a bit the tree chose.  Without the ``ə`` the leaf
+        prints that value instead of the answer.
         """
-        module = importlib.import_module("esolangs.tools.cvnc")
-        program = module._ordered("00", (0,))  # noqa: SLF001
-        assert program is not None
-        assert "cə" in program
+        program = boolean.cvnc("00")
+        assert "sə" in program  # the floor rides the read's own vowel slot
         for bit in ("0", "1"):
             assert run_cvnc(program, [bit]) == "0"

@@ -1,27 +1,22 @@
 """Boolean-function generators for tape-based languages."""
 
-import heapq
-import sys
-
-from esolangs.factor_primes import prime_segments
-
 # Every language whose construction reads on its own owns a file; what is
-# left here is brainfuck and the four dialects built directly on it.  The
-# rest are re-exported so this module stays the import site the package and
-# tests already use.
+# left here is brainfuck and Factor, which is brainfuck's program under an
+# integer encoding rather than a construction of its own.  The rest are
+# re-exported so this module stays the import site the package and tests
+# already use.
 from esolangs.tools.brainif import brainif as brainif
 
-# The strategies live in their own modules, but this one is the
-# construction's face: the registry, the wrapper and the suite all reach
-# it by this name.  Re-exported in the ``x as x`` form so a caller that
-# does not care where a piece lives need not know.
-from esolangs.tools.circlefuck import (
-    _circlefuck_ordered as _circlefuck_ordered,
-)
+# Re-exported in the ``x as x`` form: the registry, the wrapper and the
+# suite all reach a construction by this module's name.
 from esolangs.tools.circlefuck import (
     circlefuck as circlefuck,
 )
-from esolangs.tools.dimensional import dimensional, dimensional_tree
+from esolangs.tools.dimensional import dimensional
+from esolangs.tools.factor import (
+    _BF_RESIDUE as _BF_RESIDUE,
+)
+from esolangs.tools.factor import factor as factor
 from esolangs.tools.helpers import (
     _ASCII_ONE as _ASCII_ONE,
 )
@@ -29,12 +24,16 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO as _ASCII_ZERO,
 )
 from esolangs.tools.helpers import (
-    decision_tree_program,
+    _validate_truth_table,
+    best_input_order,
+    decision_tree_body,
+    move_text,
 )
 from esolangs.tools.jaune import (
     _jaune_ordered as _jaune_ordered,
 )
 from esolangs.tools.jaune import jaune as jaune
+from esolangs.tools.painfuck import painfuck as painfuck
 from esolangs.tools.rotfuck import rotfuck
 from esolangs.tools.sbleq import (
     _sbleq_hoisted as _sbleq_hoisted,
@@ -43,6 +42,9 @@ from esolangs.tools.sbleq import sbleq as sbleq
 from esolangs.tools.six_five import six_five
 from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 from esolangs.tools.suffolk import suffolk as suffolk
+from esolangs.tools.three_d_brainfuck import (
+    three_d_brainfuck as three_d_brainfuck,
+)
 
 __all__ = [
     "bf_tree",
@@ -50,7 +52,6 @@ __all__ = [
     "brainif",
     "circlefuck",
     "dimensional",
-    "dimensional_tree",
     "factor",
     "jaune",
     "painfuck",
@@ -76,132 +77,66 @@ def brainfuck(truth_table: str) -> str:
     return bf_tree(truth_table)
 
 
-_BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
-
-# Exact prime enumeration, in bounded segments. ``isprime`` becomes a BPSW
-# probable-prime test above 2**64; Factor is uncapped, so it cannot certify the
-# primes in a total encoding. The chunk is only a segment width, never a cap.
-_FACTOR_PRIME_CHUNK = 20000
-
-
-def _factor_encode(code: str) -> int:
-    """Encode a brainfuck program as the Factor integer for it.
-
-    Exact sieved primes ascend with the right residue mod 11 (Dirichlet), a
-    run folds into one exponent. Prime powers multiply smallest-width first:
-    a growing accumulator was 12.5s of a 14.4s build at thirteen inputs
-    (120860 runs) against 0.7s, and width balance gives the arithmetic bound.
-    """
-    powers: list[int] = []
-    primes = (
-        prime
-        for _start, _stop, segment in prime_segments(_FACTOR_PRIME_CHUNK)
-        for prime in segment
-    )
-    i = 0
-    while i < len(code):
-        residue = _BF_RESIDUE[code[i]]
-        j = i
-        while j < len(code) and code[j] == code[i]:
-            j += 1
-        prime = next(prime for prime in primes if prime % 11 == residue)
-        powers.append(prime ** (j - i))
-        i = j
-    heap = [(value.bit_length(), serial, value) for serial, value in enumerate(powers)]
-    heapq.heapify(heap)
-    serial = len(heap)
-    while len(heap) > 1:
-        _a_bits, _a_serial, a = heapq.heappop(heap)
-        _b_bits, _b_serial, b = heapq.heappop(heap)
-        product = a * b
-        heapq.heappush(heap, (product.bit_length(), serial, product))
-        serial += 1
-    return heap[0][2] if heap else 1
-
-
-def factor(truth_table: str) -> str:
-    """Build a Factor program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).  Encodes :func:`brainfuck`'s program
-    with :func:`_factor_encode`; total, with no digit ceiling (the old
-    4300/16000/500000 budgets were size policy): n=13 parity is 966568
-    digits, built in 3s.  CPython's ``sys.get_int_max_str_digits()`` is
-    raised to a bit-length estimate (``log10(2) < 0.30103``, never
-    under-counting) and put back.
-    """
-    number = _factor_encode(brainfuck(truth_table))
-    digits = int(number.bit_length() * 0.30103) + 1
-    limit = sys.get_int_max_str_digits()
-    if limit == 0 or digits <= limit:  # 0 is CPython's "unlimited"
-        return str(number)
-    sys.set_int_max_str_digits(digits + 1)
-    try:
-        return str(number)
-    finally:
-        sys.set_int_max_str_digits(limit)
-
-
-def three_d_brainfuck(truth_table: str) -> str:
-    """Build a 3D Brainfuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).  :func:`brainfuck`'s tree with
-    ``e``/``w`` for the moves, since ``>``/``<`` are no-ops.
-    """
-    return brainfuck(truth_table).translate(str.maketrans("><", "ew"))
-
-
-# The interpreter's two substitution cycles, in the order the cross-check
-# scans them: Painfuck source is pre-shifted here so the trans table recovers
-# the intended commands.
-_CYCLES = ("pevkjzwr", "yuctsobqihald")
-
-
-def painfuck(truth_table: str) -> str:
-    """Build a Painfuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).  :func:`brainfuck`'s tree with
-    ``>``/``<`` as ``rl``/``l``, ``+``/``-`` as ``ps``/``s`` and
-    ``[``/``]``/``,``/``.`` as ``a``/``b``/``j``/``u``, each command
-    pre-shifted ``k`` steps back along its cycle to undo the interpreter's
-    substitution.
-    """
-    code = (
-        brainfuck(truth_table)
-        .replace(">", "rl")
-        .replace("<", "l")
-        .replace("+", "ps")
-        .replace("-", "s")
-        .replace("[", "a")
-        .replace("]", "b")
-        .replace(",", "j")
-        .replace(".", "u")
-    )
-    out: list[str] = []
-    k = 0
-    for char in code:
-        for cycle in _CYCLES:
-            p = cycle.find(char)
-            if p != -1:
-                out.append(cycle[(p - k) % len(cycle)])
-                k += 1
-                break
-        else:
-            # every command the brainfuck generator emits maps to a command
-            # in _CYCLES, so this branch is unreachable by construction
-            raise ValueError(
-                f"Painfuck command {char!r} is not in a cycle"
-            )  # pragma: no cover
-    return "".join(out)
+#: Brainfuck's move tokens.  This builder used to take them as parameters so
+#: Dimensional could pass ``>0``/``<0``; Dimensional builds its own reads and
+#: print around :func:`decision_tree_body` now, and every call here passes
+#: these, so they are named rather than threaded.
+_RIGHT, _LEFT = ">", "<"
 
 
 def bf_tree(truth_table: str) -> str:
     """Build a decision-tree brainfuck program for the given truth table.
 
-    :func:`decision_tree_program`, shared with :func:`dimensional_tree`:
-    O(2**n) characters against the minterm evaluator's O(n * 2**n); XOR-n
-    measures 0.2K..4.9K at n = 2..8 against the minterm's 1.4K..33M.
+    Each input is normalized into cell
+    ``2i`` with its flag at ``2i + 1``: a node sets the flag, tests ``[b]``
+    and clears the flag inside, then tests ``[flag]`` for the zero side,
+    so exactly one side fires and both cells are left zero.  O(2**n).
+    The flag replaced a precomputed ``1 - b`` per input (O(n**2): n == 10
+    sparse went 2,646 -> 754 chars).  A leaf only records its bit (``+`` or
+    nothing) and one ``.`` sits below the tree; with the fold, n == 10 xor
+    went 77,939 -> 18,495.  A constant subtree collapses to a leaf; the
+    reads are unconditional above the tree, so a folded program consumes
+    its input the same way.  Factor most wants this: it refuses tables
+    whose integer encoding exceeds Python's digit limit.
     """
-    return decision_tree_program(truth_table, ">", "<")
+    return best_input_order(truth_table, _bf_ordered)
+
+
+def _bf_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's program; see :func:`bf_tree`.
+
+    ``truth_table`` is already permuted; ``perm`` is spent only in the cell
+    a node tests, ``2 * perm[i]``.  The reads above the tree are untouched.
+    """
+    n = _validate_truth_table(truth_table)
+
+    cells: list[str] = []
+    pos = 0
+
+    def move(target: int) -> None:
+        nonlocal pos
+        delta = target - pos
+        cells.append(_RIGHT * delta if delta >= 0 else _LEFT * -delta)
+        pos = target
+
+    # read bits b_i at cell 2i, leaving the flag cells (1, 3, ...) zero
+    for i in range(n):
+        cells.append(",")
+        # ``append`` of the run, not ``extend`` over its characters: the run
+        # is 48 long and the join sees the same text either way.
+        cells.append("-" * _ASCII_ZERO)
+        if i < n - 1:
+            move(pos + 2)
+
+    # The tree itself, which Factor also builds around its own prologue.
+    body, pos = decision_tree_body(truth_table, _RIGHT, _LEFT, perm, pos)
+    cells.append(body)
+
+    # One print, below the tree.  Exactly one leaf fires, leaving 0 or 1 in
+    # the result cell, so the ASCII offset is paid once here instead of at
+    # every leaf -- which is what the whole tree used to spend most of its
+    # characters on.
+    cells.append(move_text(pos, 2 * n, _RIGHT, _LEFT))
+    cells.append("+" * _ASCII_ZERO)
+    cells.append(".")
+    return "".join(cells)

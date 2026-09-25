@@ -21,16 +21,15 @@ in the walked region, and the rows a first readout cannot separate are sent
 through a second decoder that reads a second cell.  ``n == 12`` runs the
 same fold over the first eleven inputs and lets the twelfth pick which of two
 paths reads the readout (see below), ``n == 13`` keeps that build and lets
-the answer stub read the thirteenth.  ``n == 14`` is written -- inputs twelve
-and thirteen folded into a four-way selector over a three-level cascade --
-but its annealed constants have not been searched out, so ``n > 13`` is
-refused until they are.
+the answer stub read the thirteenth.  ``n == 14`` computes four copies'
+readouts in the main code, lets inputs twelve and thirteen pick a copy and
+the stub read the fourteenth, and resolves shared cells over three levels;
+``n > 14`` is refused.
 """
 
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Callable
 from functools import cache
 from itertools import product
 
@@ -456,96 +455,107 @@ def _thirteen_program(truth_table: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Fourteen inputs: two selectors, three levels, the stub reads the last input.
+# Fourteen inputs: four copies, three levels, every readout computed up front.
 #
-# Input twelve selects one of two paths as the twelve-input build does; each
-# path reads input thirteen into a shared selector cell and selects one of
-# four *sub-paths*, one per copy ``2 * x12 + x13``.  A copy transforms the
-# readout by searched ops over the mixer cells and three mask constants, and
-# 5,525 of the 8,192 rows own their level-1 cell.  A shared cell holds ``N``
-# whoever reads it, at whatever level: the sharers read a second cell, and a
-# third, until each owns one (2,185 resolve at level 2, 482 at level 3).
-# Level-2 cells may therefore land on level-1 cells, which is what the
-# one-shot level-2 post-maps could not afford, and a row's third read passes
-# the decoder at 29525 a second time.  Its cells have been re-enciphered by
-# then: at residues 9 through 17 ``j`` and ``o`` both image to nops and at
-# residue 18 ``o`` images to ``i``, so the second pass runs nine nops and
-# jumps through ``mem[V + 11]`` for the N hub ``V`` it came through -- a
-# handler that selects the level-3 copy.  The selector cell serves every
-# level: a sub-path rewrites it by a searched chain of constant ``p`` and
-# ``*`` to its copy's level-2 address, and a level-2 path likewise to the
-# level-3 address, so the decoder and the handler both jump through the one
-# cell.
+# Inputs twelve and thirteen pick one of four *copies* of the eleven-bit
+# table, and input fourteen is read by the answer stub as at thirteen.  Each
+# copy reads one cell per level; a cell read by two rows holds ``N``, and the
+# readers go on to their next level.  The copies differ only in which readout
+# cell they jump through, so every readout -- four copies, three levels -- is
+# computed by the walked main code before the last two inputs are read: a
+# searched run of ops over the mixer and three extra cells, which now and
+# then ``p``s ``A`` into a prepared readout cell.  A level-1 or level-2 cell
+# is prepared with a top trit of 2, so its readout lies at or above 19683,
+# clear of the code; a level-3 readout goes through two cells, 42646 and
+# 16402, which leave its two top trits at 0 and 2, in 13122..19682 where no
+# other level reads.  The selector then only picks a four-way jump per level:
+# the two inputs are folded into one cell, and ``p`` over three prepared cells
+# (the second and third through a scratch cell first) turns it into the
+# address of each level's *stub*, a few cells that walk ``d`` to the readout
+# cell and make the table jump.  ``A`` is set to ``'0'`` once, before the
+# first stub: nothing between there and the answer stub touches it.
 #
-# Paths are jumped to, never walked, so every cell they touch is navigated to
-# by ``o`` and ``j`` from wherever ``d`` was left.  The cells they use are
-# packed into 163..243, and the free addresses there hold *trampolines*:
-# ``p`` with ``A = all-2`` over a walked cell whose ``g`` is at least 81
-# leaves a value in 162..242, so a ``j`` through it lands inside the window.
-# That cuts a path's navigation from ~56 cells per op to ~20.
+# Levels resolve bottom-up: every row reads its level-1 cell; a row whose
+# cell is shared moves on and reads its next one, which may in turn push
+# another row on.  Levels one and two resolve all but 80 of the 8,192 copies,
+# and the third level's own region gives those room.  The decoder at 29525
+# would sit among the level-1 and level-2 cells, so the N hubs hold 13168 and
+# it runs from 13169 -- the same residue, so its second pass is unchanged.
+# The walked cells the readout ops touch are packed into 163..243 with ten
+# trampolines (``p`` with ``A = all-2`` over a walked cell whose ``g`` is at
+# least 81 leaves a value that ``j`` lands inside the window); that keeps the
+# main code under the level-3 region.
 _FOURTEEN_N = 14
-_Selector = tuple[tuple[int, ...], tuple[tuple[int, int], ...], int]
-#: Input twelve's selector: four walked cells' ``g`` values, the ops run from
-#: ``A = '0' + x`` and the output cell.
-_F_SELECT12: _Selector = ((), (), 0)
-#: Input thirteen's: the shared output cell's ``g`` value, then per input-twelve
-#: path three scratch cells' ``g`` values and the ops over cells 0 (output)
-#: to 3.
-_F_SELECT13: tuple[
-    int, tuple[tuple[tuple[int, ...], tuple[tuple[int, int], ...]], ...]
-] = (
-    0,
-    (((), ()), ((), ())),
+#: ``g`` values of the extra state cells 5, 6 and 7.
+_F_EXTRA = (57, 75, 119)
+#: The readout ops, in three segments run after the eleven-bit post-map:
+#: ``(0, i)`` is ``p`` and ``(1, i)`` is ``*`` on state cell ``i``, ``(2, k)``
+#: is ``*`` on the constant 0, all-1 or all-2 (setting ``A`` to it), and
+#: ``(3, c)`` snapshots ``A`` into copy ``c``'s readout at the segment's level.
+_F_SEGMENTS: tuple[tuple[tuple[int, int], ...], ...] = (
+    (
+        *((3, 0), (1, 6), (0, 2), (0, 1), (0, 6), (0, 6), (1, 7), (2, 1)),
+        *((0, 7), (1, 7), (0, 2), (1, 0), (0, 2), (0, 5), (0, 6), (0, 1)),
+        *((0, 3), (0, 7), (2, 0), (0, 2), (1, 1), (0, 2), (1, 7), (1, 7)),
+        *((1, 7), (1, 6), (0, 2), (1, 5), (0, 7), (0, 2), (1, 0), (0, 5)),
+        *((0, 2), (0, 0), (3, 2), (3, 1), (3, 3)),
+    ),
+    (
+        *((3, 0), (0, 7), (3, 2), (3, 1), (1, 6), (0, 3), (1, 6), (2, 2)),
+        *((0, 2), (1, 2), (0, 3), (1, 7), (1, 3), (1, 7), (1, 6), (0, 4)),
+        *((1, 7), (1, 7), (0, 4), (2, 0), (0, 5), (0, 3), (1, 6), (0, 4)),
+        *((1, 5), (0, 4), (1, 4), (0, 1), (1, 3), (0, 1), (1, 1), (1, 0)),
+        *((0, 1), (3, 3)),
+    ),
+    ((0, 5), (3, 0), (1, 2), (3, 1), (3, 3), (1, 2), (1, 2), (3, 2)),
 )
-#: Mask constants as state cells 8, 9 and 10: ``*`` on the first gives
-#: ``A = 52487``, whose ``p`` swaps the top trit and the low eight and fixes
-#: the second, so the readout stays in blocks 3, 5, 6 and 8 -- clear of the
-#: code and the decoder with no offset.  Each is a walked ``g`` value run
-#: through ``p`` with ``A = 0``, ``p`` with ``A = all-2`` and ``*``.
-_F_CONSTS = ((38, "K0 K2 rot"), (47, "K0 K2 rot"), (35, "K0 K2 rot rot"))
-#: Per copy ``2 * x12 + x13``, per level: ops, readout cell and table offset,
-#: searched by annealing under the shared-cell rule (0 rows left of 8,192).
-_F_LEVELS: tuple[tuple[tuple[tuple[tuple[int, int], ...], int, int], ...], ...] = (
-    (),
-    (),
-    (),
+#: Per copy, the ``o`` run before each level's table ``j``.
+_F_OFFSETS = ((3, 18, 18), (22, 19, 1), (14, 16, 15), (14, 24, 18))
+#: Per copy, the level-1 and level-2 readout cells: a walked ``g`` value and
+#: the chain that prepares it (``_chain``), each with a top trit of 2.
+_F_PREP = (
+    ((122, "rot"), (38, "rot K0")),
+    ((83, "rot K0"), (92, "rot K0")),
+    ((95, "rot K0"), (56, "rot rot rot rot K0")),
+    ((59, "rot rot rot rot K0"), (110, "rot K0")),
 )
-#: Path code budgets: the input-twelve paths, then per level, copy and
-#: segment; every selector, chain and link value was cleared for its length.
-#: A sub-path or level-2 path is one segment per run of the copy's ops --
-#: the first at the address the selector or the chain derives -- then the
-#: chain for the next level with the preload, then the table jump; a level-3
-#: path folds the last two together.  The tables leave few free runs long
-#: enough to link into, and a link costs a window cell that nothing else can
-#: then use, so the ops are cut into as many segments as this tuple gives.
-_F_PATH_LEN12 = 0
-_F_SEG_LEN: tuple[tuple[tuple[int, ...], ...], ...] = ((), (), ())
-#: Segment links, in order: per copy the sub-path's second to fourth
-#: segment, then the level-2 path's, then the level-3 path's second and
-#: third.  Each is
-#: a window cell's ``g`` value (below 81, so never a trampoline), the constant
-#: ``p`` run over it first (``K2``/``K1``/``K0`` from an adjacent supply cell
-#: holding all-2, all-1 or 0; empty for none) and the rotations after; the
-#: cell then holds the segment's address minus one, and the segment before
-#: ends with ``i`` through it.
-_F_LINKS: tuple[tuple[int, str, int], ...] = ()
-#: Per input-twelve path, the chain (``K0``/``K1``/``K2`` are ``p`` with
-#: ``A`` 0, all-1, all-2; ``rot`` is ``*``) it runs on the selector cell once
-#: input thirteen is folded in, so both values start free runs holding the
-#: sub-paths; then per level 2 and 3, per copy, the chain the previous
-#: level's path runs on the cell for the copy's next path.
-_F_SUB_CHAINS: tuple[str, str] = ("", "")
-_F_LEVEL_CHAINS: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())
-_F_SEEDS = _T_SEEDS
-#: N hubs hold all-1 twice, then the handler pointer at ``V + 11`` and the
-#: handler's own ``j`` character at ``V + 12``; the second pass only walks
-#: ``d`` over the cells between, so those stay free for anything.
+#: The level-3 pair: ``crazy(crazy(A, 42646), 16402)`` has top trits 0 and 2.
+#: Each pair of cells is prepared by one chained ``p`` over all-1 cells, from
+#: ``A = 45927`` (``g`` 63 rotated four times) and ``A = 32805`` (45, four);
+#: spare all-1 cells between them swap ``A`` back.
+_F_LEVEL3 = (42646, 16402)
+_F_LEVEL3_SEEDS = ((63, 4), (45, 4))
+#: The selector: a cell (``g`` 33) takes ``p`` with each input, rotated
+#: eight and then six times, and ``p`` over the prepared cells then gives
+#: each level's stub address -- the first directly, the others each through
+#: a scratch cell (``g`` 33) first.
+_F_SELECT = (33, 8, 6)
+_F_SELECT_PREP = (
+    (34, "rot rot rot"),
+    (33, ""),
+    (102, "rot rot rot K2"),
+    (33, ""),
+    (56, "rot rot rot rot rot"),
+)
+#: The decoder's first cell.  The N hubs hold one less, 13168, which is
+#: ``crazy(36066, all-1)``; ``A = 36066`` is ``p`` with ``A = rot(84)`` over a
+#: cell prepared from ``g`` 82.
+_F_DECODER = 13169
+_F_DECODER_SPAN = 150
+_F_HUB_A = (84, (82, "rot rot K2"))
+#: Label seeds: the ``1`` hubs move to 40095 and 48478, out of the code band.
+_F_SEEDS = {**_T_SEEDS, "1": (55, 4)}
+#: N hubs hold the decoder address twice, then the handler pointer at
+#: ``V + 11`` and the handler's own ``j`` character at ``V + 12``; the second
+#: pass only walks ``d`` over the cells between, so those stay free for
+#: anything.
 _F_HUB_CELLS: dict[str, int | tuple[int, ...]] = {**_T_HUB_CELLS, "N": (1, 2, 11, 12)}
 _F_DECODER_NOPS = 8
 #: Handlers may sit in the free band between the main code and the tables.
 _F_HANDLER_FLOOR = 8600
-#: The window path cells and trampolines are packed into.
+#: The window the readout ops' cells are packed into, and its trampolines.
 _F_WINDOW = (163, 244)
+_F_TRAMPOLINES = 10
 
 
 def _second_pass(op: str, address: int) -> str:
@@ -578,8 +588,24 @@ def _emit_chain(path: _Planner, target: int, ops: str, helper: dict[str, int]) -
             path.op("p", target)
 
 
-def _f_state() -> list[int]:
-    return [*_C_INITS, 0, 29524, 59048, *(_chain(g, ops) for g, ops in _F_CONSTS)]
+def _f_select() -> tuple[tuple[int, ...], ...]:
+    """Return each level's four selector values, by copy ``2 * x12 + x13``."""
+    g, first, second = _F_SELECT
+    prep = [_chain(*spec) for spec in _F_SELECT_PREP]
+    levels: list[list[int]] = [[], [], []]
+    for c in range(4):
+        x = _crazy(48 + (c >> 1), g)
+        for _ in range(first):
+            x = _rot(x)
+        x = _crazy(48 + (c & 1), x)
+        for _ in range(second):
+            x = _rot(x)
+        x = _crazy(x, prep[0])
+        levels[0].append(x)
+        for lvl in (1, 2):
+            x = _crazy(_crazy(x, prep[2 * lvl - 1]), prep[2 * lvl])
+            levels[lvl].append(x)
+    return tuple(tuple(per) for per in levels)
 
 
 @cache
@@ -588,56 +614,53 @@ def _f_tables() -> tuple[
 ]:
     """Return the table cell per level, copy and prefix, and each row's level.
 
-    A cell read by two rows holds ``N``; a row resolves at the first level
-    where its cell is read by no other row that gets that far.  Raises if a
-    row never resolves.
+    Rows resolve bottom-up: a row whose cell is read by another row reads its
+    next level's cell, which counts against every other reader of that cell
+    too.  Raises if a row never resolves.
     """
     rows = 1 << _CASCADE_N
-    tables = [[[0] * rows for _ in range(4)] for _ in _F_LEVELS]
+    prep = [[_chain(*spec) for spec in per_copy] for per_copy in _F_PREP]
+    tables = [[[0] * rows for _ in range(4)] for _ in range(3)]
     for row in range(rows):
-        cells = _f_state()
+        cells = [*_C_INITS, 0, 29524, 59048]
         a = 0
         for i in range(_CASCADE_N):
             bit = (row >> (_CASCADE_N - 1 - i)) & 1
             a = _apply(cells, 49 if bit else 48, _C_SCHEDULE)
-        _apply(cells, a, _C_POST[0])
-        for c in range(4):
-            state = list(cells)
-            for lvl, spec in enumerate(_F_LEVELS):
-                ops, readout, offset = spec[c]
-                _apply(state, 0, ops)
-                tables[lvl][c][row] = state[readout] + 1 + offset
-    reach = [[len(_F_LEVELS)] * rows for _ in range(4)]
-    level = [[-1] * rows for _ in range(4)]
+        a = _apply(cells, a, _C_POST[0])
+        state = [*cells[:5], *_F_EXTRA]
+        for lvl, segment in enumerate(_F_SEGMENTS):
+            for kind, index in segment:
+                if kind == 0:
+                    a = state[index] = _crazy(a, state[index])
+                elif kind == 1:
+                    a = state[index] = _rot(state[index])
+                elif kind == 2:
+                    a = (0, 29524, 59048)[index]
+                else:
+                    if lvl < 2:
+                        a = _crazy(a, prep[index][lvl])
+                    else:
+                        a = _crazy(_crazy(a, _F_LEVEL3[0]), _F_LEVEL3[1])
+                    tables[lvl][index][row] = a + 1 + _F_OFFSETS[index][lvl]
+    reach = [[1] * rows for _ in range(4)]
+    count = Counter(tables[0][c][row] for c in range(4) for row in range(rows))
     changed = True
     while changed:
         changed = False
-        count = Counter(
-            tables[lvl][c][row]
-            for c in range(4)
-            for row in range(rows)
-            for lvl in range(reach[c][row])
-        )
         for c in range(4):
             for row in range(rows):
-                k = next(
-                    (
-                        lvl
-                        for lvl in range(reach[c][row])
-                        if count[tables[lvl][c][row]] == 1
-                    ),
-                    -1,
-                )
-                level[c][row] = k
-                new = len(_F_LEVELS) if k < 0 else k + 1
-                if new != reach[c][row]:
-                    reach[c][row] = new
+                k = reach[c][row]
+                if k <= 3 and count[tables[k - 1][c][row]] > 1:
+                    reach[c][row] = k + 1
                     changed = True
-    if any(k < 0 for per_copy in level for k in per_copy):
+                    if k < 3:
+                        count[tables[k][c][row]] += 1
+    if any(k > 3 for per_copy in reach for k in per_copy):
         raise AssertionError("a row never resolves")
     return (
         tuple(tuple(tuple(t) for t in tl) for tl in tables),
-        tuple(tuple(lv) for lv in level),
+        tuple(tuple(k - 1 for k in per_copy) for per_copy in reach),
     )
 
 
@@ -677,17 +700,21 @@ def _f_handler(
     raise AssertionError(f"no handler for hub {v}")  # pragma: no cover
 
 
-def _link_value(g: int, kind: str, rotations: int) -> int:
-    """Return what a link cell holds: ``rot**rotations`` of ``K(g)`` or ``g``."""
-    return _chain(g, " ".join(([kind] if kind else []) + ["rot"] * rotations))
+class _Window:
+    """Walked-cell allocator that packs the busiest cells into the window."""
 
+    def __init__(self) -> None:
+        self.used: set[int] = set()
 
-def _f_selected(x12: int, x13: int) -> int:
-    """Return the shared selector cell's value for copy ``2 * x12 + x13``."""
-    scratch, ops = _F_SELECT13[1][x12]
-    state = [_F_SELECT13[0], *scratch]
-    _apply(state, 48 + x13, ops)
-    return state[0]
+    def take(self, value: int | None = None, *, packed: bool = True) -> int:
+        """Allocate a walked cell with ``g == value`` (any, if ``None``)."""
+        spans = [range(*_F_WINDOW)] if packed else []
+        for span in [*spans, range(128, _ENTRY)]:
+            for a in span:
+                if (value is None or _g(a) == value) and a not in self.used:
+                    self.used.add(a)
+                    return a
+        raise AssertionError(f"no walked cell with g {value}")  # pragma: no cover
 
 
 @cache
@@ -697,8 +724,7 @@ def _fourteen() -> _Thirteen:
     ``level[c][row]`` is the level (0-based) at which copy ``c`` of the
     eleven-bit prefix ``row`` resolves and ``tables[level][c][row]`` its
     cells.  Raises if any code, stub, hub, handler or data cell collides with
-    another or with a table cell, if a path overruns the budget its selector
-    value was cleared for, or if the decoder's second pass breaks.
+    another or with a table cell, or if the decoder's second pass breaks.
     """
     tables, level = _f_tables()
     read = Counter(
@@ -712,56 +738,34 @@ def _fourteen() -> _Thirteen:
             if read[tables[k][c][row]] != 1:
                 raise AssertionError("a resolved cell is shared")
     cells_of_tables = set(read)
+    if max(cells_of_tables) >= _WORDS:
+        raise AssertionError("a table cell is past the store")
 
-    used: set[int] = set()
-    helper: dict[str, int] = {}
-    low, high = _F_WINDOW
-
-    def walked(value: int, *, packed: bool = True) -> int:
-        """Allocate a walked cell with ``g == value``, inside the window if asked."""
-        ranges = [range(low, high)] if packed else []
-        for span in [*ranges, range(128, _ENTRY)]:
-            for a in span:
-                if _g(a) == value and a not in used:
-                    used.add(a)
-                    return a
-        raise AssertionError(f"no walked cell with g {value}")  # pragma: no cover
-
-    # Cells the paths touch go into the window, most-used first: the mixer,
-    # the constants, the selector and its scratch, the preload cell.
+    window = _Window()
+    walked = window.take
     mix = [walked(v) for v in _C_INITS]
-    helper["all1"] = walked(_g(low))
-    helper["all2"] = walked(_g(low + 1))
-    consts = [walked(g) for g, _ in _F_CONSTS]
-    helper["a1"] = walked(_T_HELPERS["a1"])
+    xcell = walked(_F_SELECT[0])
+    helper = {"all1": walked(_g(_F_WINDOW[0])), "all2": walked(_g(_F_WINDOW[0] + 1))}
+    extras = [walked(v) for v in _F_EXTRA]
     helper["z0"] = walked(_T_HELPERS["z0"])
-    out = walked(_F_SELECT13[0])
-    scratch = [[walked(g) for g in per_path[0]] for per_path in _F_SELECT13[1]]
-    links = []
-    supplies: dict[int, str] = {}
-    for g, link_kind, _ in _F_LINKS:
-        link = walked(g)
-        if link_kind:
-            # A supply cell must sit just before the link: take the next
-            # address with this ``g`` if the first one's predecessor is used.
-            while link - 1 in used:
-                link = walked(g, packed=False)
-            used.add(link - 1)
-            supplies[link] = link_kind.split()[0]
-        links.append(link)
+    helper["a1"] = walked(_T_HELPERS["a1"])
+    readout = {
+        (c, lvl): walked(g) for c in range(4) for lvl, (g, _) in enumerate(_F_PREP[c])
+    }
+    select = [walked(g) for g, _ in _F_SELECT_PREP]
+    triples = [walked() for _ in range(8)]
     for name in ("z1", "w", "v"):
         helper[name] = walked(_T_HELPERS[name], packed=False)
-    select12 = [walked(v, packed=False) for v in _F_SELECT12[0]]
-    seeds = {lab: walked(value, packed=False) for lab, (value, _) in _F_SEEDS.items()}
-    # Trampolines: pairs of free cells from 130 up through the window, the
-    # first an all-2 supply, the second holding ``K2(g)`` once ``p`` runs over
-    # it with ``A = all-2``.  The pointer cells the mixer no longer needs are
-    # trampolines too, written one by one.
-    trampolines: list[tuple[int, int]] = []
+    seeds = {lab: walked(g, packed=False) for lab, (g, _) in _F_SEEDS.items()}
+    spares = [walked(packed=False) for _ in range(9)]
+    level3_seeds = [walked(g, packed=False) for g, _ in _F_LEVEL3_SEEDS]
+    hub_a = walked(_F_HUB_A[0], packed=False)
+    hub_prep = walked(_F_HUB_A[1][0], packed=False)
     label = {t + 34: lab for t, lab in enumerate(_T_LABELS) if lab != "-"}
     singles = [a for a in range(34, 128) if a not in label and _g(a) >= 81]
-    singles += [a for a in range(130, 257) if a not in used and _g(a) >= 81]
-    used.update(singles)
+    singles += [a for a in range(*_F_WINDOW) if a not in window.used and _g(a) >= 81]
+    readout.update({(c, 2): triples[4 + c] for c in range(4)})
+
     values: dict[int, int] = {}
     for lab, (_, turns) in _F_SEEDS.items():
         a = _g(seeds[lab])
@@ -774,114 +778,80 @@ def _fourteen() -> _Thirteen:
     pointer: dict[int, int] = {}
     for p in sorted(values):
         pointer.setdefault(values[p], p)
-
-    twelve = []
-    for x in (0, 1):
-        state = list(_F_SELECT12[0])
-        _apply(state, 48 + x, _F_SELECT12[1])
-        twelve.append(state[_F_SELECT12[2]])
-    # ``targets[c][lvl]``: the segment starts of copy ``c``'s path at ``lvl``.
-    link_of: dict[tuple[int, int, int], int] = {}
-    for lvl in range(3):
-        for c in range(4):
-            for k in range(len(_F_SEG_LEN[lvl][c]) - 1):
-                link_of[lvl, c, k] = len(link_of)
-    targets: list[list[list[int]]] = []
-    for c in range(4):
-        v = _chain(_f_selected(c >> 1, c & 1), _F_SUB_CHAINS[c >> 1])
-        v2 = _chain(v, _F_LEVEL_CHAINS[0][c])
-        firsts = [v, v2, _chain(v2, _F_LEVEL_CHAINS[1][c])]
-        targets.append(
-            [
-                [first]
-                + [
-                    _link_value(*_F_LINKS[link_of[lvl, c, k]])
-                    for k in range(len(_F_SEG_LEN[lvl][c]) - 1)
-                ]
-                for lvl, first in enumerate(firsts)
-            ]
-        )
-    regions: list[tuple[int, int]] = [(v, _F_PATH_LEN12) for v in twelve]
-    for c in range(4):
-        for lvl in range(3):
-            for start, length in zip(targets[c][lvl], _F_SEG_LEN[lvl][c], strict=True):
-                regions.append((start, length))
-    paths_region: set[int] = set()
-    for start, length in regions:
-        span = set(range(start + 1, start + 1 + length))
-        if span & paths_region:
-            raise AssertionError("path regions overlap")
-        paths_region |= span
-    avoid = cells_of_tables | set(range(29520, 29800)) | paths_region
+    decoder = set(range(_F_DECODER - 1, _F_DECODER + _F_DECODER_SPAN))
+    avoid = cells_of_tables | decoder
     data, stubs, hub_turns = _t_hubs(values, label, avoid, _F_HUB_CELLS)
 
-    cell = [*mix, helper["z0"], helper["all1"], helper["all2"], *consts]
+    cell = [*mix, *extras]
+    konst = (helper["z0"], helper["all1"], helper["all2"])
     mem: dict[int, int | None] = {a: _g(a) for a in range(_ENTRY)}
     main = _Planner(_ENTRY + 1, 34 + (7 - _ENTRY) % 94, mem, data)
     main.code[_ENTRY] = "j"
-    main.op("p", helper["z1"])
-    main.op("p", helper["z0"])
-    main.op("p", helper["w"])
-    for _ in range(4):
-        main.op("*", helper["v"])
-    main.op("p", helper["w"])
-    for _ in range(3):
-        main.op("*", helper["v"])
-    main.op("p", helper["w"])
-    main.op("*", helper["z1"])
-    supply_cells: list[int] = sorted(link - 1 for link in supplies)
-    for p in (helper["all1"], helper["all2"], *supply_cells, *sorted(label)):
+    _build_constants(main, helper)
+    for p in (helper["all1"], helper["all2"], *sorted(label), *triples, *spares):
         main.op("p", p)
         main.op("p", p)
     main.op("*", helper["w"])
-    for p in (helper["all2"], *(q for q in supply_cells if supplies[q + 1] == "K2")):
-        main.op("p", p)  # ``crazy(all-2, all-1)`` is all-2, so ``A`` holds
-    for supply in supply_cells:
-        if supplies[supply + 1] == "K0":
-            main.op("*", helper["z1"])
-            main.op("p", supply)  # ``crazy(all-1, all-1)`` is 0
-    del trampolines
-    for a in singles:
+    main.op("p", helper["all2"])
+    for a in singles[:_F_TRAMPOLINES]:
         main.op("*", helper["all2"])
         main.op("p", a)
         mem[a] = _crazy(59048, _g(a))
-    for target, (_, chain) in zip(consts, _F_CONSTS, strict=True):
-        _emit_chain(main, target, chain, helper)
-    for link, (_, link_kind, _) in sorted(zip(links, _F_LINKS, strict=True)):
-        if link_kind:
-            main.op("*", link - 1)
-            main.op("p", link)
-            _emit_chain(main, link, " ".join(link_kind.split()[1:]), helper)
-    for turn in range(1, 10):
-        for link, (_, _, rotations) in sorted(zip(links, _F_LINKS, strict=True)):
-            if rotations >= turn:
-                main.op("*", link)
     for lab, (_, turns) in _F_SEEDS.items():
         for _ in range(turns):
             main.op("*", seeds[lab])
         for p in sorted(label):
             if label[p] == lab:
                 main.op("p", p)
+    for pair, seed, (_, turns) in zip(
+        (0, 4), level3_seeds, _F_LEVEL3_SEEDS, strict=True
+    ):
+        for _ in range(turns):
+            main.op("*", seed)
+        for k in range(4):
+            main.op("p", triples[pair + k])
+            if k < 3:
+                main.op("p", spares[pair // 4 * 3 + k])
+    for (c, lvl), target in sorted(readout.items()):
+        if lvl < 2:
+            _emit_chain(main, target, _F_PREP[c][lvl][1], helper)
+    for target, (_, chain) in zip(select, _F_SELECT_PREP, strict=True):
+        _emit_chain(main, target, chain, helper)
     main.op("*", helper["z1"])
+    nhubs = [v for v in sorted(pointer) if label[pointer[v]] == "N"]
+    for v in nhubs:
+        main.hub(pointer[v], v)
+        main.raw("p")
+        main.hub(pointer[v], v)
+        main.raw("p")
+        main.raw("p")
+        main.hub(pointer[v], v, 2)
+        main.raw("p")
+    # A = 36066, and each p over an all-1 cell swaps it with 13168.
+    _emit_chain(main, hub_prep, _F_HUB_A[1][1], helper)
+    main.op("*", hub_a)
+    main.op("p", hub_prep)
+    flips = iter(spares[6:])
+    for i, v in enumerate(nhubs):
+        main.hub(pointer[v], v, 2)
+        main.raw("p")
+        main.op("p", next(flips))
+        main.hub(pointer[v], v)
+        main.raw("p")
+        main.raw("o")  # d passes V + 2, whose value has changed, without a j
+        if i + 1 < len(nhubs):
+            main.op("p", next(flips))
     handlers: dict[int, str] = {}
-    reserved = set(stubs) | set(data) | avoid
-    for v in sorted(pointer):
-        if label[pointer[v]] == "N":
-            main.hub(pointer[v], v)
-            main.raw("p")
-            main.hub(pointer[v], v)
-            main.raw("p")
-            main.raw("p")
-            main.hub(pointer[v], v, 2)
-            main.raw("p")
-            chain, code_of = _f_handler(v, reserved | set(handlers), out, mem, data)
-            reserved |= set(data)
-            handlers.update(code_of)
-            for op in chain.split():
-                if op != "rot":
-                    main.op("*", helper[{"K0": "z0", "K1": "all1", "K2": "all2"}[op]])
-                main.hub(pointer[v], v, 11)
-                main.raw("*" if op == "rot" else "p")
+    reserved = set(stubs) | set(data) | avoid | set(range(_F_DECODER))
+    for v in nhubs:
+        chain, code_of = _f_handler(v, reserved | set(handlers), select[4], mem, data)
+        reserved |= set(data)
+        handlers.update(code_of)
+        for op in chain.split():
+            if op != "rot":
+                main.op("*", helper[{"K0": "z0", "K1": "all1", "K2": "all2"}[op]])
+            main.hub(pointer[v], v, 11)
+            main.raw("*" if op == "rot" else "p")
     for v, turns in sorted(hub_turns.items()):
         for _ in range(turns):
             main.hub(pointer[v], v)
@@ -889,99 +859,54 @@ def _fourteen() -> _Thirteen:
     for _ in range(_CASCADE_N):
         main.raw("/")
         for kind, index in _C_SCHEDULE:
-            main.op("p" if kind == 0 else "*", cell[index])
+            main.op("p" if kind == 0 else "*", mix[index])
     for kind, index in _C_POST[0]:
-        main.op("p" if kind == 0 else "*", cell[index])
-    main.raw("/")
-    for kind, index in _F_SELECT12[1]:
-        main.op("p" if kind == 0 else "*", select12[index])
-    main.goto(select12[_F_SELECT12[2]])
+        main.op("p" if kind == 0 else "*", mix[index])
+    for lvl, segment in enumerate(_F_SEGMENTS):
+        for kind, index in segment:
+            if kind < 2:
+                main.op("p*"[kind], cell[index])
+            elif kind == 2:
+                main.op("*", konst[index])
+            elif lvl < 2:
+                main.op("p", readout[index, lvl])
+            else:
+                main.op("p", triples[index])
+                main.op("p", readout[index, 2])
+    for rotations in _F_SELECT[1:]:
+        main.raw("/")
+        main.op("p", xcell)
+        for _ in range(rotations):
+            main.op("*", xcell)
+    for target in select:
+        main.op("p", target)
+    main.op("*", helper["all2"])
+    main.op("p", helper["a1"])
+    main.goto(select[0])
     main.raw("i")
     code_end = main.c
 
     parts = [main.code, handlers]
-    lengths: dict[str, int] = {}
-    budget_of: dict[str, int] = {}
-    for x in (0, 1):
-        _, sel_ops = _F_SELECT13[1][x]
-        cells13 = [out, *scratch[x]]
-        path = _Planner(twelve[x] + 1, select12[_F_SELECT12[2]] + 1, mem, data)
-        path.raw("/")
-        for kind, index in sel_ops:
-            path.op("p" if kind == 0 else "*", cells13[index])
-        _emit_chain(path, out, _F_SUB_CHAINS[x], helper)
-        path.goto(out)
-        path.raw("i")
-        lengths[f"twelve {x}"] = path.c - twelve[x] - 1
-        budget_of[f"twelve {x}"] = _F_PATH_LEN12
-        parts.append(path.code)
-    for lvl in range(3):
-        if lvl == 1:
-            dec = _Planner(_NEXT + 1, 0, mem, data)
-            dec.raw("j")
-            dec.raw("j")
-            dec.d = ord(_XLAT2[_char_for("j", _NEXT + 1) - 33]) + 1
-            for _ in range(_F_DECODER_NOPS):
-                dec.raw("o")
-            dec.goto(out)
-            dec.raw("i")
-            second = [_second_pass(op, a) for a, op in sorted(dec.code.items())]
-            if second[: _F_DECODER_NOPS + 2] != ["o"] * (_F_DECODER_NOPS + 1) + ["i"]:
-                raise AssertionError("the decoder's second pass changed")
-            parts.append(dec.code)
-        for c in range(4):
-            ops, readout, offset = _F_LEVELS[lvl][c]
-
-            def piece(part: _Ops) -> Callable[[_Planner], None]:
-                """Return a step running part of the copy's ops."""
-
-                def run_ops(seg: _Planner) -> None:
-                    _t_ops(seg, cell, part)
-
-                return run_ops
-
-            def chain_and_preload(path: _Planner, lvl: int = lvl, c: int = c) -> None:
-                if lvl < 2:
-                    _emit_chain(path, out, _F_LEVEL_CHAINS[lvl][c], helper)
-                for _ in range(1 if lvl == 0 else 2):
-                    path.op("*", helper["all2"])
-                    path.op("p", helper["a1"])
-
-            def jump(
-                path: _Planner, readout: int = readout, offset: int = offset
-            ) -> None:
-                _t_jump(path, cell[readout], offset)
-
-            def preload_and_jump(path: _Planner) -> None:
-                chain_and_preload(path)
-                jump(path)
-
-            runs = len(_F_SEG_LEN[lvl][c]) - (2 if lvl < 2 else 1)
-            pieces = [
-                piece(ops[k * len(ops) // runs : (k + 1) * len(ops) // runs])
-                for k in range(runs)
-            ]
-            steps: list[Callable[[_Planner], None]] = (
-                [*pieces, chain_and_preload, jump]
-                if lvl < 2
-                else [*pieces, preload_and_jump]
-            )
-            d = out + 1
-            for k, step in enumerate(steps):
-                start = targets[c][lvl][k]
-                path = _Planner(start + 1, d, mem, data)
-                step(path)
-                if k + 1 < len(steps):
-                    link = links[link_of[lvl, c, k]]
-                    path.goto(link)
-                    path.raw("i")
-                    d = link + 1
-                name = f"level {lvl + 1} copy {c} segment {k + 1}"
-                lengths[name] = path.c - start - 1
-                budget_of[name] = _F_SEG_LEN[lvl][c][k]
-                parts.append(path.code)
-    if any(lengths[k] > budget_of[k] for k in lengths):
-        raise AssertionError(f"path lengths {lengths} exceed budgets {budget_of}")
+    for lvl, per_copy in enumerate(_f_select()):
+        entry = select[2 * lvl] + 1
+        for c, value in enumerate(per_copy):
+            stub = _Planner(value + 1, entry, mem, data)
+            _t_jump(stub, readout[c, lvl], _F_OFFSETS[c][lvl])
+            parts.append(stub.code)
+    dec = _Planner(_F_DECODER, 0, mem, data)
+    dec.raw("j")
+    dec.raw("j")
+    dec.d = ord(_XLAT2[_char_for("j", _F_DECODER) - 33]) + 1
+    for _ in range(_F_DECODER_NOPS):
+        dec.raw("o")
+    dec.goto(select[2])
+    dec.raw("i")
+    second = [_second_pass(op, a) for a, op in sorted(dec.code.items())]
+    if second[: _F_DECODER_NOPS + 2] != ["o"] * (_F_DECODER_NOPS + 1) + ["i"]:
+        raise AssertionError("the decoder's second pass changed")
+    if not set(dec.code) <= decoder:
+        raise AssertionError("the decoder overran its span")
+    parts.append(dec.code)
 
     code = dict.fromkeys(range(_ENTRY), "o")
     for part in (*parts, stubs):
@@ -991,7 +916,7 @@ def _fourteen() -> _Thirteen:
     if set(data) & set(code):
         raise AssertionError("a data cell overlaps code")
     hits = cells_of_tables & (set(code) | set(data))
-    if hits or min(cells_of_tables) <= code_end or code_end >= _T_FLOOR:
+    if hits or min(cells_of_tables) <= code_end:
         raise AssertionError("a table cell collides with code")
     labels = {p - 1: lab for p, lab in label.items()}
     return code, data, level, tables, labels
@@ -1019,20 +944,20 @@ def malbolge(truth_table: str) -> str:
     ``n`` is recovered from the table.  Through ten inputs the program is one
     source stub per row; eleven inputs use the pointer cascade, twelve the
     cascade with a selector on the last input, thirteen that build with the
-    last input read by the answer stub.  Fourteen's route is written but its
-    constants are not, so it is refused until ``_F_LEVELS`` is filled in, and
-    ``n > 14`` always is.  Every build is the full 59049-cell store.
+    last input read by the answer stub, fourteen four copies of that table
+    picked by inputs twelve and thirteen.  ``n > 14`` is refused.  Every
+    build is the full 59049-cell store.
     """
     n = _validate_truth_table(truth_table)
-    if n == _FOURTEEN_N and all(_F_LEVELS):
-        return _fourteen_program(truth_table)
-    if n > _THIRTEEN_N:
+    if n > _FOURTEEN_N:
         raise GeneratorCapError(
-            f"Malbolge builds at most {_THIRTEEN_N} inputs, got {n}: the "
-            f"{_FOURTEEN_N}-input cascade's annealed constants have not been "
-            "searched out, and a third selector's eight copies would need a "
-            "fourth cascade level"
+            f"Malbolge builds at most {_FOURTEEN_N} inputs, got {n}: eight "
+            "copies would put 16,384 first reads in the 39,366 cells above "
+            "the code, and the decoder's second pass is the last level its "
+            "cells afford"
         )
+    if n == _FOURTEEN_N:
+        return _fourteen_program(truth_table)
     if n == _THIRTEEN_N:
         return _thirteen_program(truth_table)
     if n == _WIDE_N:

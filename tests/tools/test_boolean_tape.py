@@ -49,6 +49,7 @@ class TestDimensional:
             ("0001", 2),  # AND
             ("11111110", 3),  # NAND3
             ("1111111111111111", 4),  # constant one
+            ("1111111100000000", 4),
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -59,55 +60,46 @@ class TestDimensional:
             got = run_dimensional(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_moves_are_pinned_to_dimension_zero(self) -> None:
-        """A bare >/< would take its dimension from the cell's value."""
+    def test_a_bare_move_is_the_addressing(self) -> None:
+        """A bare >/< takes its dimension from the cell, which is the point.
+
+        One per read -- ``d>`` steps along dimension 1 for a one bit and 0
+        for a zero -- and one per painted one-cell, whose ``+`` leaves the
+        1 the following ``>`` reads.  ``0110`` paints as far as its last
+        one at index 2, so that is two reads and one one-cell before it.
+        """
         program = boolean.dimensional("0110")
-        rest = program.replace(">0", "").replace("<0", "")
-        assert ">" not in rest
-        assert "<" not in rest
+        bare = [
+            i
+            for i, c in enumerate(program)
+            if c in "><" and not program[i + 1 :][:1].isdigit()
+        ]
+        assert len(bare) == 3, program
+
+    def test_the_table_costs_two_characters_an_entry(self) -> None:
+        """One painted cell an entry, whichever bit it is.
+
+        A zero-cell steps with ``>1`` and a one-cell with ``+`` and a bare
+        ``>``; both are two characters, so the emitted length does not
+        carry the table's contents.
+        """
+        full = "1" * 64
+        one = "0" * 63 + "1"
+        assert len(boolean.dimensional(full)) == len(boolean.dimensional(one))
+        parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
+        assert len(boolean.dimensional(parity)) < 10_000
+
+    def test_a_sparse_table_pays_only_for_its_prefix(self) -> None:
+        """An unvisited cell already reads 0, so painting stops at the last one."""
+        early = "1" + "0" * 15
+        late = "0" * 15 + "1"
+        assert len(boolean.dimensional(early)) < len(boolean.dimensional(late))
 
     def test_scales_beyond_the_old_reference_cap(self) -> None:
         """The v3.0 interpreter's unbounded cells lift the old n <= 12 cap."""
         program = boolean.dimensional("0" * 4095 + "1")
         got = run_dimensional(program, ["1"] * 12)
         assert got == "1"
-
-
-class TestDimensionalTree:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111100000000", 4),
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.dimensional_tree(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_dimensional(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_tree_small_on_dense_tables(self) -> None:
-        """The tree shares bit tests, so dense tables stay small."""
-        xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert len(boolean.dimensional_tree(xor6)) < 10_000
-
-    def test_dimensional_is_the_tree(self) -> None:
-        """dimensional is the tree, sparse or dense.
-
-        A survivor evaluator used to sit beside it, chosen when it came out
-        shorter.  Folding constant subtrees put the tree ahead on every
-        table at n <= 4, so the survivor was unreachable and was removed.
-        """
-        sparse = "0" * 15 + "1"  # AND4
-        assert boolean.dimensional(sparse) == boolean.dimensional_tree(sparse)
-        xor = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
-        assert boolean.dimensional(xor) == boolean.dimensional_tree(xor)
 
 
 class TestBf:
@@ -262,12 +254,50 @@ class TestFactor:
             got = run_factor(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_is_the_decimal_encoding_of_the_bf_program(self) -> None:
-        """factor delegates to the brainfuck generator, then encodes it."""
-        from esolangs.tools.tape import _factor_encode
+    def test_factors_back_into_a_working_bf_program(self) -> None:
+        """The integer's factorization is a brainfuck program for the table.
+
+        This used to assert the stronger ``factor(t) ==
+        _factor_encode(brainfuck(t))``, which pinned *which* brainfuck
+        program was encoded.  Factor pays a prime per run rather than a
+        character per command, so it builds for that objective instead and no
+        longer emits brainfuck's shortest program; what has to hold is the
+        encoding itself, which is what this decodes and runs.
+        """
+        import sympy
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import run as run_bf
+        from esolangs.tools.factor import _BF_RESIDUE
 
         table = "0110"
-        assert boolean.factor(table) == str(_factor_encode(boolean.brainfuck(table)))
+        n = 2
+        command = {residue: char for char, residue in _BF_RESIDUE.items()}
+        factors = sorted(sympy.factorint(int(boolean.factor(table))).items())
+        code = "".join(command[prime % 11] * power for prime, power in factors)
+
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+            run_bf(code, io)
+            assert io.getvalue() == table[combo], f"inputs {bits}"
+
+    def test_builds_above_the_greedy_order_cap(self) -> None:
+        """Past ``_GREEDY_ORDER_MAX_ARITY`` only the identity order is built.
+
+        The generator scores two input orders by digits and keeps the better;
+        above the cap the greedy order is not searched at all, which is a path
+        of its own.  AND11 takes it cheaply -- the tree folds to one leaf, so
+        this is 1330 digits and a 2ms build rather than parity's 425ms.
+        """
+        from esolangs.tools.helpers import _GREEDY_ORDER_MAX_ARITY
+
+        n = _GREEDY_ORDER_MAX_ARITY + 1
+        table = "0" * (2**n - 1) + "1"
+        program = boolean.factor(table)
+        assert program.isdigit()
+        assert run_factor(program, ["1"] * n) == "1"
+        assert run_factor(program, ["0"] * n) == "0"
 
     def test_sparse_tables_stay_small_at_n_four(self) -> None:
         """Sparse tables (few one-rows) encode a short brainfuck program,
@@ -276,7 +306,7 @@ class TestFactor:
         assert boolean.factor("1" * 16).isdigit()
 
     def test_a_table_past_cpythons_own_limit_still_renders(self) -> None:
-        """XOR6 encodes to 5934 digits, past CPython's 4300-digit default.
+        """XOR6 encodes to 5343 digits, past CPython's 4300-digit default.
 
         That default is a DoS guard on quadratic int-to-str conversion, not
         anything Factor says, so it is raised for the render rather than
@@ -287,7 +317,9 @@ class TestFactor:
         digits) until the print-once leaf took it to 2842, then XOR5 until
         dropping the complement construction took that to 3107.  Both fell
         back under the default, so the check moves up rather than losing the
-        raise it exists to exercise.
+        raise it exists to exercise.  Folding the ASCII offsets took XOR6
+        from 5934 to 5343, which is an O(n) saving against a tree that
+        doubles, so it stays clear of the default rather than moving again.
         """
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         program = boolean.factor(xor6)
@@ -324,7 +356,7 @@ class TestFactor:
     def test_total_past_the_retired_digit_budget(self) -> None:
         """No digit budget: the 500000-digit refusal is gone (dense n=13).
 
-        705048 digits, and the interpreter decodes it to the tree the
+        703447 digits, and the interpreter decodes it to the program the
         generator encoded.  That decode is the whole load cost (n=12
         parity's 460824 took 43s), so the rows run on
         the decoded machine -- the object ``_Machine.step`` drives --
@@ -332,6 +364,7 @@ class TestFactor:
         other high-arity probes.
         """
         from esolangs.interpreters.tape_based.factor import _parse, decode
+        from esolangs.tools.factor import _encode
         from tests.tools.test_boolean_contract import _dense
 
         n = 13
@@ -339,7 +372,17 @@ class TestFactor:
         program = boolean.factor(table)
         assert len(program) > 500_000
         code = decode(_parse(program))
-        assert code == boolean.brainfuck(table)
+        # Re-encoding rather than comparing against brainfuck's program: the
+        # construction Factor encodes is its own now, and the contract is the
+        # round trip, which holds whatever it builds.  The digit limit guards
+        # str -> int too, so it is raised here as the generator raises it for
+        # its own render.
+        limit = sys.get_int_max_str_digits()
+        sys.set_int_max_str_digits(len(program) + 1)
+        try:
+            assert _encode(code) == int(program)
+        finally:
+            sys.set_int_max_str_digits(limit)
         for row in (0, 1, 2**12, 2**13 - 2, 2**13 - 1):
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_bf(code, bits) == table[row], row
@@ -352,7 +395,7 @@ class TestSuffolk:
         for n in (8, 9, 10):
             table = "".join(str((i * 73 + i.bit_count()) & 1) for i in range(2**n))
             sizes.append(len(boolean.suffolk(table)))
-        assert sizes == [15_205, 24_291, 40_749]
+        assert sizes == [2211, 3224, 5087]
         assert sizes[2] < 2 * sizes[1]
 
     @pytest.mark.parametrize(
@@ -389,36 +432,41 @@ class TestSuffolk:
         for table in ("00", "11"):
             assert boolean.suffolk(table).count(",") == 1  # n == 1
 
-    def test_dense_tables_evaluate_the_complement(self) -> None:
-        """A table with more ones than zeros is evaluated from its zero rows.
+    def test_size_tracks_steps_rather_than_ones(self) -> None:
+        """Cost is one op per *step* of a half-table, not per one-row.
 
-        Cost is one minterm block per evaluated row, so before this the
-        length rose monotonically with the ones-count.  Now it peaks at half
-        and falls again -- the signature of picking whichever row-set is
-        smaller -- which is what this pins.
+        The countdown sweep emits an op only where consecutive rows differ,
+        counting the drop off the end of each half, so the ones-count does
+        not price a table: the step profile fixes the length exactly, and
+        one one and seven ones land in different groups only because their
+        steps fall in different halves.  This replaces a pin on the retired
+        minterm route, whose cost rose with the evaluated row-set instead.
 
         **Every table here depends on all three inputs**, which the prefix
         family ``1^k 0^(8-k)`` does not: ``11110000`` ignores two of them,
-        and since dependency reduction (10) shipped it is the *cheapest*
-        table of the seven rather than the dearest, so the peak-at-half
-        signature reads as broken when it is only being measured through a
-        second optimization.  Holding the arity fixed isolates the
-        complement, which is what this test is about.
+        so dependency reduction rather than the sweep would be measured.
         """
         tables = (
             "10000000",  # 1 one
-            "10010000",  # 2
-            "11100000",  # 3
-            "11101000",  # 4
-            "11111000",  # 5
-            "11111001",  # 6
-            "11111110",  # 7
+            "10010000",  # 2 ones
+            "11100000",  # 3 ones
+            "11101000",  # 4 ones
+            "11111000",  # 5 ones
+            "11111001",  # 6 ones
+            "11111110",  # 7 ones
         )
-        lengths = [len(boolean.suffolk(table)) for table in tables]
-        assert lengths[3] == max(lengths)  # four ones is the worst case
-        assert lengths[6] < lengths[3]  # seven ones is cheaper than four
-        # and roughly as cheap as its one-one mirror image
-        assert abs(lengths[6] - lengths[0]) < lengths[0] // 4
+        groups: dict[tuple[int, ...], set[int]] = {}
+        for table in tables:
+            half = len(table) // 2
+            profile = tuple(
+                sum(a != b for a, b in zip(part, f"{part[1:]}0", strict=True))
+                for part in (table[:half], table[half:])
+            )
+            groups.setdefault(profile, set()).add(len(boolean.suffolk(table)))
+        assert sorted(groups) == [(1, 0), (1, 1), (1, 3), (3, 0)]
+        assert all(len(sizes) == 1 for sizes in groups.values())  # profile fixes it
+        assert min(groups[(1, 0)]) < min(groups[(3, 0)])  # more steps cost more
+        assert min(groups[(1, 1)]) < min(groups[(1, 3)])
 
     @pytest.mark.parametrize(
         "table",
@@ -512,8 +560,8 @@ class TestBitTilde:
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 assert run_bit_tilde(program, [str(b) for b in bits]) == table[combo]
 
-    def test_full_tree_growth_is_linear(self) -> None:
-        """Parity folds nothing, but depth-local movement stays linear."""
+    def test_full_table_growth_is_linear(self) -> None:
+        """Parity folds nothing, but one cell an entry stays linear."""
         sizes = []
         for n in (7, 8):
             table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
@@ -523,7 +571,9 @@ class TestBitTilde:
     def test_single_read_and_output(self) -> None:
         """One read per input and a single final output."""
         program = boolean.bit_tilde("0110")
-        assert program.startswith(")")
+        # The prologue paints the table and walks to the top of it, so the
+        # opening is moves and flips -- no loop, read or print among them.
+        assert set(program[: program.index(")")]) <= {">", "~"}
         assert program.count(")") == 2
         assert program.count("(") == 1
         assert program.endswith("(")
@@ -792,10 +842,11 @@ class TestBrainIf:
 class TestRotfuck:
     """The ROTfuck boolean generator.
 
-    ROTfuck rotates the program after every command, so the generator lays
-    out ``[ body ]`` blocks whose ``]`` is a phantom encoded at the ``[``-fire
-    seek state; both the skip and body paths re-converge in the same rotation
-    state because every body length is 7 (mod 8).
+    ROTfuck rotates the program after every command, so a loop only works if
+    its every pass reads the same commands: the generator pins each loop's
+    cycle to 0 (mod 8) and reaches its back-jump target through a phantom
+    that is never executed.  On that it builds a tape lookup -- the table in
+    the even cells, a variable-distance pointer walk over the odd ones.
     """
 
     @pytest.mark.parametrize(
@@ -832,6 +883,23 @@ class TestRotfuck:
                 got = run_rotfuck(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
+    @pytest.mark.parametrize("n", [6, 7, 8])
+    def test_a_second_index_digit_still_selects_the_right_entry(self, n: int) -> None:
+        """The arity where the index stops fitting in one walk.
+
+        A cell is a byte, so the index is carried six bits at a time: one
+        walk per digit, each read only once the walk before it has landed.
+        Six inputs still fit in one digit and seven do not, so this brackets
+        the boundary -- and it is not a boundary any smaller table can
+        reach, which is why the truth-table sweeps above cannot see it.
+        """
+        table = "".join(str(bin(row).count("1") & 1) for row in range(2**n))
+        program = boolean.rotfuck(table)
+        for combo in (0, 1, 2**n - 1, 2**n - 2, 2 ** (n - 1), 2 ** (n - 1) - 1):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_rotfuck(program, [str(b) for b in bits])
+            assert got == table[combo], f"n={n} inputs {bits}"
+
     def test_the_rotation_cycle_is_the_documented_one(self) -> None:
         """``+ -> - -> > -> < -> , -> . -> [ -> ] -> +``, and it is a cycle.
 
@@ -851,72 +919,80 @@ class TestRotfuck:
             assert _rotfuck_rot(char, 8) == char, char
             assert _rotfuck_rot(char, 0) == char, char
 
-    def test_a_body_command_never_shows_as_a_bracket(self) -> None:
-        """The allowed set at each offset is exactly the non-bracket rotations.
+    def test_a_command_never_shows_as_a_bracket_inside_a_seek(self) -> None:
+        """A command's rotation, seen from a seek's, must not be a bracket.
 
-        A body command at relative offset ``j`` is read as
-        ``rot^-j(cmd)`` while the ``[`` seeks its partner, so a command
-        that shows as ``[`` or ``]`` there would move the seek's depth
-        count and the block would pair with the wrong bracket.  The two
+        A seek reads the whole program at one fixed rotation, so a command
+        that executes ``d`` steps after that rotation shows there as
+        ``rot^-d`` of itself.  Showing as a bracket moves the seek's depth
+        count and pairs the loop with the wrong character, which leaves a
+        program that still runs and computes something else.  The two
         offsets that matter most are 2 and 3, where only two of the four
-        commands survive -- and they exclude *different* ones, which is
-        what makes the padding necessary rather than cosmetic.
+        commands survive -- and they exclude *different* ones, which is what
+        makes the padding necessary rather than cosmetic.
         """
-        from esolangs.tools.rotfuck import _rotfuck_allowed, _rotfuck_rot
+        from esolangs.tools.rotfuck import _rotfuck_rot, _shows
 
-        for offset in range(8):
-            allowed = _rotfuck_allowed(offset)
-            assert allowed == [
-                c for c in "+-><" if _rotfuck_rot(c, -offset) not in "[]"
-            ], offset
-        assert _rotfuck_allowed(2) == [">", "<"]
-        assert _rotfuck_allowed(3) == ["+", "<"]
-        assert _rotfuck_allowed(4) == ["+", "-"]
+        for seek in range(8):
+            for rot in range(8):
+                for cmd in "+-><":
+                    assert _shows(cmd, seek, rot) == (
+                        _rotfuck_rot(cmd, seek - rot) in "[]"
+                    ), (cmd, seek, rot)
+        assert [c for c in "+-><" if not _shows(c, 0, 2)] == [">", "<"]
+        assert [c for c in "+-><" if not _shows(c, 0, 3)] == ["+", "<"]
+        assert [c for c in "+-><" if not _shows(c, 0, 4)] == ["+", "-"]
 
-    def test_a_neutral_pad_exists_and_is_net_zero_at_every_offset(self) -> None:
-        """Padding shifts the offset by two without moving the tape.
+    def test_every_pad_is_invisible_and_they_are_shortest_first(self) -> None:
+        """Padding shifts the rotation without shifting anything else.
 
-        Both characters have to be legal *at their own* offsets, and at
-        offsets 2 and 3 exactly one of the four candidate pairs qualifies,
-        so the choice is forced there rather than preferred.  The pair is
-        also net-neutral by construction -- ``+-`` and ``><`` undo
-        themselves -- which is what lets it be inserted anywhere.
+        A pad is what moves a command off a rotation where it would read as
+        a bracket, so it has to leave every cell and the pointer where it
+        found them -- and never step left of where it started, because
+        ``<`` clamps at cell zero and a pad that reached past the caller's
+        cell would not be neutral there.  Length runs shortest first, since
+        padding is pure cost.
         """
-        from esolangs.tools.rotfuck import _rotfuck_allowed, _rotfuck_neutral
+        from esolangs.tools.rotfuck import _PADS
 
-        for offset in range(8):
-            pad = _rotfuck_neutral(offset)
-            assert pad in ("+-", "-+", "><", "<>"), offset
-            assert set(pad) in ({"+", "-"}, {"<", ">"}), offset
-            for i, char in enumerate(pad):
-                assert char in _rotfuck_allowed((offset + i) % 8), (offset, char)
-        # Forced where only one candidate is legal, so these are the pad.
-        assert _rotfuck_neutral(2) == "><"
-        assert _rotfuck_neutral(3) == "+-"
+        assert _PADS[0] in ("+-", "-+", "><")
+        assert list(_PADS) == sorted(_PADS, key=len)
+        for pad in _PADS:
+            cells: dict[int, int] = {}
+            at = low = 0
+            for char in pad:
+                assert char in "+-><", pad
+                at += (char == ">") - (char == "<")
+                low = min(low, at)
+                cells[at] = cells.get(at, 0) + (char == "+") - (char == "-")
+            assert at == 0, pad
+            assert low == 0, pad
+            assert not any(cells.values()), pad
 
-    def test_every_body_is_seven_mod_eight_and_offset_legal(self) -> None:
-        """The two invariants the block layout rests on, over many bodies.
+    @pytest.mark.parametrize("trips", range(7))
+    def test_a_loop_leaves_the_rotation_where_it_found_it(self, trips: int) -> None:
+        """The invariant every loop rests on, checked by running one.
 
-        A body of length ``L`` with ``L + 1 == 0 (mod 8)`` puts the skip
-        path and the body path in the same rotation state after the block,
-        which is what lets the blocks be laid end to end.  Every command in
-        it must also sit at an offset where it does not read as a bracket.
-        Neither is visible in a truth-table check: a body that breaks
-        either still runs, it just re-converges in the wrong state.
+        A loop's trip count is data, so the rotation it exits at must not
+        depend on it -- otherwise every command after the loop means
+        something else for a different input.  The generator gets that by
+        padding each loop's cycle to 0 (mod 8).  Here a drain loop runs
+        ``trips`` times and the *same* trailing ``+`` run and ``.`` follow
+        it: if the exit rotation moved with the trip count, that tail would
+        not still be a print of the right character.
         """
-        from esolangs.tools.rotfuck import _rotfuck_allowed, _rotfuck_body
+        from esolangs.tools.helpers import _ASCII_ZERO
+        from esolangs.tools.rotfuck import _Builder
 
-        for guard in range(6):
-            for target in range(6):
-                if guard == target:
-                    continue
-                for op in ("+", "-"):
-                    body = _rotfuck_body(guard, target, op)
-                    assert (len(body) + 1) % 8 == 0, (guard, target, op)
-                    for j, char in enumerate(body):
-                        assert char in _rotfuck_allowed(j % 8), (guard, target, j)
-                    assert body.count(">") - body.count("<") == 0, (guard, target)
-                    assert op in body, (guard, target, op)
+        out = _Builder()
+        out.travel(2)
+        out.emit("+" * trips)
+        out.travel(4)
+        out.drain("-<<+>>>>++")
+        out.travel(0)
+        out.emit("+" * _ASCII_ZERO)
+        out.emit(".")
+        assert run_rotfuck(out.text(), []) == str(trips)
 
     def test_the_program_is_only_command_characters(self) -> None:
         """Nothing but the eight commands is emitted.
@@ -933,26 +1009,25 @@ class TestRotfuck:
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("01", 193),
-            ("10", 191),
-            ("0001", 340),
-            ("0110", 371),
-            ("11110000", 299),
-            ("01101001", 660),
+            ("01", 224),
+            ("10", 224),
+            ("0001", 390),
+            ("0110", 391),
+            ("11110000", 228),
+            ("01101001", 571),
         ],
     )
     def test_the_emitted_length_is_exact(self, table: str, length: int) -> None:
         """The layout is deterministic down to the character.
 
         Several ways of getting this wrong leave a *correct* program: a
-        move loop that emits a redundant ``><`` when the pointer is
-        already home, a pad count taken mod 9 rather than mod 8 (which
-        adds a whole 8-cycle and so preserves the length invariant), or a
-        stray separator the interpreter reads as a comment.  None of them
-        changes an answer, and a loose size bound only catches them by
-        luck, so the lengths are pinned exactly.
+        pad taken at four characters where two would have hidden, a cycle
+        padded to 8 (mod 8) rather than 0 (which is the same rotation and
+        so still runs), or a travel that walks the pointer home when it is
+        already there.  None of them changes an answer, and a loose size
+        bound only catches them by luck, so the lengths are pinned.
 
-        ``11110000`` also carries dependency reduction: it builds a one-input
-        Gray walk, 299 characters against ``01101001``'s 660.
+        ``11110000`` also carries dependency reduction: it lays out a
+        two-entry table, 228 characters against ``01101001``'s 571.
         """
         assert len(boolean.rotfuck(table)) == length

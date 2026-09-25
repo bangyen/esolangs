@@ -8,8 +8,11 @@ encode instructions.  The size and time cells of the roadmap's scaling audit
 close here as a language lower bound: every Polynomial program for a
 maximal-width table is `Omega(T**2 / log T)` characters, for every cofactor,
 every operand sign, every degree and every read count.  The distinct-root
-forcing is the routing lemma, which counts only read cursors whose residual
-depends on the next input (see "Variable read counts").  Everything else below is proved, executed,
+forcing is the next-read count (`thm:count` in the paper): a first-essential
+residual is fixed by the cursor of the next read, which must end its gap, so
+the program has at least as many distinct input values and distinct real
+values as the widest level has first-essential residuals.  The older routing
+lemma below (see "Variable read counts") is kept as history.  Everything else below is proved, executed,
 or a bounded search; the coefficient-mass bound is the theorem under "The slack
 certificate", and the searches that narrowed the question to it are kept
 because they say what is *not* available -- not because anything is still
@@ -31,8 +34,8 @@ parse time are classified below.
 The input instruction *overwrites* the register, so between reads every bit
 about earlier inputs lives in the cursor alone: just before the k-th read the
 reachable configurations number at most twice the instruction count, and a
-maximal-width table needs Omega(T/log T) residual classes under every read
-order.  Every Polynomial program for such a table carries `m = Omega(T/log T)`
+maximal-width table needs Omega(T/log T) residual classes (the input stream
+fixes the read order).  Every Polynomial program for such a table carries `m = Omega(T/log T)`
 instructions whatever its operands.  The step is sound: a state is exactly
 `(register, cursor)`, the input arm
 assigns rather than combines, and the instruction list is never rewritten.
@@ -99,7 +102,7 @@ window of 81920 for `100 < D < 287`).  Every generated operand satisfies `|a| = 
 tree operands are bounded by their instruction count, while a DAG operand is
 at most its two adjacent levels' state counts plus 48 times their label span.
 Thus every generated factor is proposed and exact division leaves a constant
-remainder; generated programs never reach SymPy's Zassenhaus fallback.  If an
+remainder; generated programs never reach the remainder search.  If an
 instruction prime equals the primary field modulus, the fields swap pairing
 and cross-check roles, so that otherwise-collapsed conjugate pair is covered.
 
@@ -111,9 +114,9 @@ width is `O(H + D log D)`, so cold parsing is
 multiplication.  Even schoolbook arithmetic gives `O(L**6 log**2 L)` because
 `D,H <= L`.  This is a deliberately loose polynomial certificate, not a
 runtime estimate.  A hand-written polynomial with a root outside the lift
-keeps its remainder and
-still reaches `factor_list`, preserving the language's arbitrary-program
-semantics.  `_parse_program` caches recovered instructions, so later machines
+keeps its remainder, which goes to the deterministic polynomial-time search
+of "Cold parsing of arbitrary programs" below (formerly `factor_list`),
+preserving the language's arbitrary-program semantics.  `_parse_program` caches recovered instructions, so later machines
 using the same source do not repay the cold cost.  Cold timings on the dense
 fixtures at `n = 5..10`, wall-clock on the development machine and therefore
 machine-dependent,
@@ -121,6 +124,328 @@ were `0.57, 0.72, 1.26, 2.49, 5.15, 17.55` seconds; construction was
 `0.008, 0.018, 0.061, 0.187, 0.587, 2.186` seconds for outputs from 56 KB to
 16.9 MB.  These measurements check which stages dominate; they are not the
 asymptotic proof.
+
+## Cold parsing of arbitrary programs
+
+The previous section prices generated programs.  An arbitrary source used to
+be densified -- `[terms.get(d, 0) for d in range(max_degree, -1, -1)]`, so
+`f(x) = x^1000000000000 - 1` asked for a trillion-entry list -- and its
+leftover factored by SymPy's `factor_list`, whose Zassenhaus recombination is
+exponential in the worst case; `convert` then scanned every integer up to the
+widest root, exponential in its bits.  All three are replaced.
+
+**Theorem (cold parse).**  For every source string of length `s`,
+`_parse_program` returns the instruction list the previous parser defined
+(wherever that parser terminates) in time polynomial in `s`, deterministically.
+The one exception is output-bound: a source whose terms are all zero and whose
+largest written exponent `E` exceeds `2s` decodes, exactly as before, to `E`
+copies of `[1]` (the real peel divides `x - 2` out of the zero list `E` times),
+and that output is written in `O(E)`.
+
+*What the list depends on.*  The previous parser collected every integer
+root and every non-real Gaussian integer root of the dense polynomial, with
+multiplicity (a monic linear or monic even-middle quadratic factor of
+`factor_list`, or an exact division by a peel), kept those with `imag >= 0`,
+and `convert` read only (a) real roots `p**v`, `p` prime, `1 <= v <= 8`, as
+`[v]`, and (b) roots `a + p**b i`, `1 <= b <= 6`, as `[a, b]`.  Its scan over
+`num = 2, 3, ...` emits them grouped by ascending prime, and within one prime
+in the `(imag, real)` order of its pre-sort; a real root has `imag = 0`, so it
+precedes that prime's pairs.  So the list is a function of the multiset of
+such *relevant* roots, sorted by `(p, imag, real)`.  Every relevant root has
+`|alpha| >= 2`.  The new `convert` computes exactly this sort.
+
+*Step 1: the term map.*  `sanitize_terms` is `_sanitize` without its final
+densification, which is now literally `[terms.get(d, 0) ...]` over the map it
+returns, so every quirk carries over: the character filter of
+`_parse_program` (whose class `+-^` is a range), the last term written for a
+degree wins, the last bare number is the constant even over `x^0`, zero
+coefficients are kept.  The regular expressions cost `O(s**2)` (backtracking
+through a digit run) and decimal conversion at most `O(s**2)`.  Write
+`f = sum_{i=1..t} c_i x**e_i` with nonzero `c_i`, `e_1 < ... < e_t`,
+`H = max |c_i|`, `E = e_t`; then `t <= s` and `log10 H, log10 E < s`.  If
+`E <= 2s` the dense list has `O(s)` entries and the dense branch below runs;
+otherwise the sparse branch.  Divide out `x**e_1`: only nonzero roots matter.
+
+*Step 2: the gap lemma.*  Let `alpha` be a Gaussian integer with
+`|alpha| >= 2`, and split `f = g + x**e_{k+1} h` with `g` the terms up to
+`e_k` and `h = sum_{i > k} c_i x**(e_i - e_{k+1})`.  If `f(alpha) = 0` and
+`2**(e_{k+1} - e_k) > S`, where `S = sum_{i <= k} |c_i|`, then
+`g(alpha) = h(alpha) = 0`.  *Proof.*  `h(alpha)` is a Gaussian integer; were
+it nonzero, `|h(alpha)| >= 1` and
+`|alpha|**e_{k+1} <= |g(alpha)| <= S |alpha|**e_k` (as `|alpha| >= 1`), so
+`2**(e_{k+1} - e_k) <= |alpha|**(e_{k+1} - e_k) <= S`, a contradiction.  So
+`h(alpha) = 0` and then `g(alpha) = 0`.  []  `_gap_chunks` applies this left
+to right, restarting `S` at each cut (the lemma is applied to the tail, which
+also vanishes at `alpha`), so the relevant roots of `f` are exactly the
+common relevant roots of the chunks, each shifted to start at `x**0`.  Inside
+a chunk every gap has `2**gap <= ||f||_1 <= tH`, so a chunk has degree at most
+`(t - 1) log2(tH) = O(s**2)`.  This is the device of Cucker, Koiran and Smale
+for integer roots of sparse polynomials; it transfers verbatim to `Z[i]`
+because the only arithmetic used is that a nonzero Gaussian integer has
+modulus at least 1.  A chunk that is a single monomial has no nonzero root,
+and then `f` has none of norm at least 4.
+
+*Step 3: multiplicity.*  Let `theta = x d/dx`.  Then
+`theta**j = sum_{l <= j} S(j, l) x**l d**l/dx**l` with Stirling numbers of
+the second kind and `S(j, j) = 1`, a unitriangular change; at `alpha != 0`
+the powers `alpha**l` are invertible, so the multiplicity of `alpha` is the
+least `j` with `(theta**j f)(alpha) != 0`.  Since
+`theta**j f = sum c_i e_i**j x**e_i` has the same support (the constant term
+drops once) and height at most `H E**j`, step 2 decides each
+`(theta**j f)(alpha) = 0` exactly.  *Hajos' lemma:* a nonzero root of a
+`t`-term polynomial has multiplicity at most `t - 1`.  *Proof* by induction
+on `t`: one term has no nonzero root; otherwise
+`g = x**(-e_1) f` has the same multiplicity `m` at `alpha`, and
+`g' = sum_{i >= 2} c_i (e_i - e_1) x**(e_i - e_1 - 1)` has `t - 1` nonzero
+terms (characteristic 0) and multiplicity exactly `m - 1` at `alpha`, so
+`m - 1 <= t - 2`.  []  Hence `j <= t - 1`, and every `theta**j f` needed has
+coefficients of `O(s + s**2)` bits and chunks of degree `O(s**3)`
+(`_sparse_multiplicity`).
+
+*Step 4: the Gaussian integer roots of one dense chunk*, without factoring
+over `Z` (`_dense_gaussian_roots`).  Let `g` have degree `d`, `g(0) != 0`,
+Cauchy bound `B = 1 + ceil(max_{i<d} |g_i| / |g_d|)`, so every complex root
+has `|alpha| < B`.
+
+1. Take the squarefree part `q = g / gcd(g, g')` (SymPy's integer `gcd`:
+   heuristic GCD with a subresultant fallback, both polynomial time; see
+   von zur Gathen and Gerhard, chapter 6).  It has the same roots.
+2. Take the least prime `p = 1 (mod 4)` such that `q mod p` keeps its degree
+   and `gcd(q mod p, q' mod p) = 1` (`_root_prime`).  Any `p` not dividing
+   `lc(q) Res(q, q')` qualifies, and that nonzero integer has
+   `O(d (d + log H))` bits by Hadamard's and Mignotte's bounds, so it has at
+   most that many prime divisors; by the prime number theorem for arithmetic
+   progressions the least good `p` is `O(N log N)` for `N = O(d (d + log H))`.
+3. Find every root of `q` in GF(`p`) by evaluation at all `p` points --
+   deterministic, and `p` is polynomial.  Since `p = 1 (mod 4)`, `x**2 + 1`
+   has a simple root `iota` mod `p`.
+4. Hensel-lift each root and `iota` (all simple) to `P = p**k > 16 B**2`
+   (`_hensel_lift`, Newton, precision doubling).
+5. Fix the ring map `Z[i] -> Z_p`, `i -> iota`.  A root `alpha = a + ci` of
+   `g` maps to a root `beta` of `q` in `Z_p`, and `beta mod p` is one of the
+   simple roots found, which by Hensel's lemma has a unique lift; so
+   `a + c iota = beta (mod P)` for one of the lifted values `beta`.  The
+   solutions `(u, v)` of `u + v iota = 0 (mod P)` form a lattice `Lambda` of
+   determinant `P` (basis `(P, 0), (-iota, 1)`), and `(a, c)` lies in the
+   coset `(beta, 0) + Lambda` with `a**2 + c**2 < B**2`.  Every nonzero
+   `(u, v)` in `Lambda` has `u**2 + v**2 = (u + v iota)(u - v iota) = 0
+   (mod P)`, so `lambda_1(Lambda) >= sqrt(P) > 4B`.
+6. Lagrange--Gauss-reduce the basis (`|b_1| <= |b_2|`,
+   `|<b_1, b_2>| <= |b_1|**2 / 2`), so `|b_2*|**2 >= (3/4) |b_2|**2 >=
+   (3/4) P`.  Babai's nearest-plane rounding of `(beta, 0)` recovers
+   `(a, c)`: the coefficient on `b_2` is off by
+   `|<(a, c), b_2*>| / |b_2*|**2 <= B / |b_2*| < 1/2` and so rounds to the
+   right integer, and then the one on `b_1` is off by at most
+   `B / |b_1| < 1/2`.  Both need only `P > 16 B**2 / 3`.  Uniqueness is the
+   same bound: two coset vectors of norm below `B` differ by a lattice vector
+   shorter than `2B < sqrt(P)`.
+7. Verify every candidate by exact evaluation of `g` in `Z[i]`.
+
+So the output is exactly the set of nonzero Gaussian integer roots of `g`,
+including the integer ones (`c = 0`).  With `d = O(s**2)` and
+`log B = O(s)`: `p = O(s**4 log s)`; choosing `p` costs `O(p d**2)` and root
+finding `O(p d)` operations on words; lifting `O(d**2 log s)` products of
+`O(s)`-bit integers; verification `O(d**2)` products of `O(d s)`-bit
+integers.
+
+*The two branches.*  Sparse (`_sparse_roots`): chunk (step 2), take the
+chunk of least degree, find its roots (step 4), keep those of norm at least 4,
+and for each compute the multiplicity (step 3), which is zero unless every
+chunk vanishes.  Dense (`_find_roots`): the existing peels run first -- they
+only accept exact divisions, so they cannot change the multiset -- and the
+remainder that `factor_list` used to receive goes to `_remainder_roots`:
+zero roots from trailing zeros, the other Gaussian integer roots by step 4,
+multiplicities by exact division.  This is the same multiset `factor_list`
+produced, so `_factor_roots` keeps its contract, small roots included.  The
+peels' cost on a dense list of `O(s)` entries is the bound of the previous
+section; the one exception to determinism is the quadratic peel below
+`_NTT_MIN_DEGREE`, which factors over GF(`2**64 + 13`) with SymPy's
+Cantor--Zassenhaus (Las Vegas) at degree at most 100 -- an acceleration whose
+result is checked by exact division and whose removal would leave the
+theorem's algorithm deterministic.
+
+*Step 5: `convert`.*  A root `n` is tested as `p**v` by integer `v`-th roots
+(`_integer_root`, Newton from above, `v <= 8`) and a primality proof
+(`_is_proven_prime`): below `2**64` Miller--Rabin with Sinclair's seven bases
+is deterministic (Factor's `_isprime64`); above it SymPy's BPSW screens
+composites -- its "composite" is a witness -- and a probable prime is
+certified by AKS (`_aks`, with `L = bit_length` in place of `log2 n`, which
+only strengthens both of its conditions and keeps the checked range below
+`r`).  Each root costs `O(1)` integer roots of `O(s)`-bit numbers and one
+AKS run, `O~(log**10.5 n)` = poly(`s`).  The sort is `O(R log R)` for `R`
+roots.
+
+*Complexity.*  Sparse branch, with `M` integer multiplication: step 2 on
+`theta**j f` for `j < t` over at most `d = O(s**2)` roots, each pass
+evaluating chunks of degree `O(s**3)` at `O(s)`-bit points through
+`O(s**4)`-bit intermediates, is `O(s**4 log s M(s**4))`; step 4 is
+`O(s**8 log s)` word operations plus `O(s**4 M(s**3))`; the squarefree
+part is polynomial in `(d, log H)`.  With schoolbook `M` the total is
+`O(s**12 log s)` bit operations plus that gcd -- deliberately loose, like the
+previous section's certificate.  The dense branch is bounded there, with
+`D <= 2s`, plus step 4 on a remainder of degree at most `2s`.  Both are
+polynomial in `s`, which proves the theorem.  []
+
+*Validation.*  `tests/interpreters/test_polynomial_sparse.py` holds the new
+parser, and the sparse branch forced onto dense sources, to the previous
+parser re-implemented as an oracle (dense `factor_list` and the scanning
+`convert`) on seeded corpora with repeated roots, roots `0, +-1, +-i,
++-1 +- i`, rational and non-monic factors, non-instruction pairs, duplicate
+degrees and constants, and moderately sparse products; it decodes
+`(x**(10**12) - 1)(x - 2)**3 (x**2 - 2x + 10)(x - 9)` against its known
+construction in milliseconds.  A scratch differential run (executed, not
+rerun by the suite) compared the new and old parsers on 2375 sources: 43 test
+literals, the shipped example, 7 precision fixtures, every generated program
+for `n = 1..3` and 40, 6 and 2 dense tables at `n = 4, 5, 6`, 400 random
+products of instruction factors and cofactors with formatting quirks, 60
+sparse products with exponents up to 270, and 2000 random character soups.
+Instruction lists, forced-sparse lists and `_factor_roots` multisets all
+agreed; 61 soups (degrees in the hundreds to thousands, e.g. `x^1348 + ...`)
+made the old parser exceed 20 s, and on 1888 soups and sparse products the
+new dense and sparse branches agree with each other.  300 products of
+generated factors with `x**N +- 1`, `x**N + x**(N/2) + 1` or
+`c + x + x**N (2 + k x)` for `N` up to `2**61` decoded to their dense
+construction, 3 ms at worst, and 3000 random root lists matched the scanning
+`convert`.  One old quirk is kept, not fixed: a trailing `...- 3x` at the very
+end of a source is read as the constant `-3`, because neither `x` rewrite
+fires without a following sign.
+
+*Costs that remain.*  AKS is a proof, not a practical test: in pure Python it
+takes about 20 s at 26 bits and grows roughly threefold per four bits, so a
+hand-written root with a prime base past `2**64` (which the old scan could not
+reach either) is polynomial but impractical.  Generated programs never meet
+it: their primes are the first `m`.  Step 4's exhaustive GF(`p`) search and
+the `theta**j` passes also make the sparse branch slower than the peels on
+large dense sources (18 s against 0.7 s on a generated `n = 6` program when
+forced), which is why dense sources keep the peels.
+
+References: F. Cucker, P. Koiran, S. Smale, "A polynomial time algorithm
+for Diophantine equations in one variable", J. Symbolic Comput. 27 (1999)
+21--29 (the gap argument); H. W. Lenstra, Jr., "Finding small degree factors
+of lacunary polynomials", Number Theory in Progress (1999) 267--276, and
+G. Hajos, Mat. Lapok 4 (1953) 40--41 (the multiplicity bound); J. von zur
+Gathen and J. Gerhard, *Modern Computer Algebra*, chapters 6, 14 and 15
+(integer gcd, squarefree parts, Hensel lifting); L. Babai, "On Lovasz'
+lattice reduction and the nearest lattice point problem", Combinatorica 6
+(1986) 1--13; M. Agrawal, N. Kayal, N. Saxena, "PRIMES is in P", Ann. of
+Math. 160 (2004) 781--793.
+
+## Explicit constants
+
+The companion to `polynomial.tex` Section "Explicit constants"
+(`prop:bracket`).
+
+Put `C_P(n)` = max over tables of min `|f|`, and normalise by
+`T**2/n = T**2/log2 T`. The bracket is
+
+    13/4 log10(2) = 0.978  <=  liminf C_P n/T**2  <=  limsup C_P n/T**2
+                           <=  325/8 log10(2) = 12.23
+
+For `T**2/ln T` units, multiply by `ln 2`: `0.678 .. 8.48`.
+
+For every `n`,
+`(1 - O(log n / n)) 13/4 log10 2 <= C_P n/T**2 <= (1 + O((log n)**2/n)) 325/8 log10 2`,
+a factor `325/26 = 12.5` at both limits. So the order is settled and the constant is not.
+
+**Lower side: three links.**
+
+1. *Input count.* Either a maximal-width table (`lem:maximal-width`,
+   `N_n = nu T/n (1 + o(1))` first-essential residuals at one level, each
+   needing its own input value by the next-read count `thm:count`), or
+   counting (`prop:counting`): between reads a program is an automaton over
+   its read gaps (`lem:gapauto`: per gap a skip count `m <= n+1`, two
+   targets, an end-of-input label), the `z!` renumberings of one automaton
+   give the same table, so at most
+   `B_n(Z) = (Z+1)(Z+3)(3(n+1))**Z (Z+3)**(2Z) / Z!` tables have `<= Z` read
+   gaps, and some table needs more than `T/(n+4)` input values (`n >= 7`;
+   asymptotically `T/(n + log2 3e)`). Distinct read gaps have distinct last
+   input roots. So `K_n = max(N_n, ceil(T/(n+4)))` input values are forced.
+2. *Mass, exact per pair.* By multisection
+   ([coefficient-mass-complex](coefficient-mass-complex.tex) Corollary 2.3)
+   a multiple of `prod (x**2 + c_j**2)` has an even or odd part that is a
+   multiple of `prod (y + c_j**2)` with the same leading coefficient, so each
+   pair is charged exactly as the real root `c**2`.
+3. *Prime powers.* The `j`-th prime power with exponent `>= 2` is at least
+   `(j+2)**2/4` (`lem:ppow`), so for every `n >= 7`:
+   `C_P(n) >= (2 K**2 ln K - (5/2) K (K+1)) / ln 10` with `K = K_n`.
+
+The real-root route (`L >= N_n` with mass `1/2`) is 4 times weaker.
+
+**Upper side.** The compiler (`prop:embprog`): a state whose two successors have no
+other predecessor branches in place (`input; +=-48; if>0{..}; if==0{..}`), with
+no dispatch and no multiplication; every other state is `input; += a_q`, with
+`a_q` encoding both child codes and the end-of-input label as
+`m = (zW + o + W) 28 + rho`, compensated for the later dispatch increments,
+and dispatched in pairs inside `while<0{..; Dec}`. The 34-instruction
+additive decoder (`lem:adddec`) reads the bit from the parity of `2m - b`
+via `x(N+1) mod 2N = x + N (x mod 2)`, and end of input from `m mod 28` in
+`{26, 27}`. Additions with operand `O(S**2)` have roots of modulus `S**2`, so
+they count with effective exponent 2 (`lem:effprofile`):
+`Phi_e = g(a, x) S**2 + O(S)`,
+`g(a, x) = (4(6+x)**2 - 2(11/2+x)**2 - (5/2-2a+x)**2)/2`, with `a` the share of
+states outside the branching set and `x` the dispatched share;
+`g(1/2, 0) = 325/8`. The automaton is trie-banded (`lem:trieband`,
+`lem:bandtrie`): leaves of a trie grouped in bands of distinct lengths share
+one tree; a deep state below band `k` records `C = 2**(h-1) (1+y)` bits, `y`
+the binary fraction whose digits are the band's leaf lengths, placed just
+below the tree depth; `(1 + O((log n)**2/n)) T/n` states for every `n`, which
+settles the asymptotics.
+
+All constructions were compiled and run on every input for `n <= 11`, and
+round-tripped through source for `n <= 7`.
+
+**Where the gap sits.**
+
+* Levels contribute nothing: counting charges `T/(n+4)` inputs, and the
+  trie-banded automaton has `(1 + o(1)) T/n` states for every table.
+* Profile, `g/3 = 325/24` at both limits: the input pairs give mass
+  constant 2. A source that is neither even nor odd has both multisection
+  parts nonzero multiples of `prod (y + c_j**2)`, so it pays constant 4
+  (`rem:parity`). An even or odd source is `x^e E(x**2)` with
+  `Lambda(f) = Lambda(E)`; in `E` the inputs are negative roots `-c**2` and
+  the forced real roots positive roots `r**2`, and the both-signs rows
+  (`coefficient-mass-complex.tex` Theorem 4.2) add constant 1 (`lem:evensigns`).
+  So every source pays 3. Counting even or odd programs by their sign
+  skeleton and zero points (`lem:evencount`) forces about `T/(2n)` real
+  instruction roots of exponent at least 2 for every large `n`
+  (`cor:evenhard`), which add `mu_n**2` (`lem:evensigns` with `N`), so they
+  pay `3 + 1/4` uniformly. The register roots
+  `(a +- p**b i)**2` of `E` are not charged; that is what separates 13/4
+  from 4 (both counts stop at `1/2`).
+
+The order-statistic bound for free positions (`coefficient-mass.tex`
+Lemma 3.1) is already sharp (Corollary 3.6), so the mass step alone cannot
+narrow the bracket. Open:
+
+* a mass bound for the roots `a +- p**b i` (roadmap, complex roots);
+* a profile below `325/8`;
+* whether even or odd sources can be optimal (lower constant 13/4 or 4).
+
+**Measured** (uncapped `_polynomial_dag`, one seeded random table per n):
+
+| n  | chars       | chars n/T**2 | vs `Phi log P / ln 10` |
+|----|-------------|-------------:|------------------------|
+| 8  | 1,491,142   | 182          | 9% under               |
+| 9  | 4,641,290   | 159          | 9% under               |
+| 10 | 16,389,823  | 156          | 8% under               |
+| 11 | 53,746,303  | 141          | 7% under               |
+| 12 | 170,483,303 | 122          | 7% under               |
+
+The table measures the old chained-block DAG; the new constructions are
+0.62 of its length at n = 10 (d = 2) and longer below n = 9, where the
+decoders dominate.
+
+* The constant is still falling at these sizes, because
+  `log P / log T = 1.19` at n = 12.
+* `Lambda` is 0.94 of the rearrangement bound.
+* The real-root explicit floor was `5..6e5` times smaller at n = 10..12;
+  the input-root bound raises it by 576 asymptotically.
+
+(executed: the outerplanar bound exhaustively to `V = 9`; the per-cursor
+caps, `m_routing <= 2L - 2` and `N* <= 12L - 9` on every input of 2,536
+programs; the profile identity and the monotonicity step in exact
+rationals; the scratch scripts are `polyconst/{widths,checks,groups,measure}.py`,
+which no test reruns.)
 
 ## The text is not construction-forced
 
@@ -176,9 +501,10 @@ instructions cannot be shed, and the routing lemma bounds the cursors at a
 read by the routing positions.  Call a residual `g(y_1, ...)` *first-essential*
 when it depends on `y_1` and is not a function of `y_1` alone, and let `N*(k)`
 count the distinct first-essential residuals at level `k`.  The maximal-width
-lemma gives `N*(k+1) >= 3q/8` under every order: a child fails to be
-first-essential with probability at most `2**(1 - n/2)`, independently, so
-more than `q/8` failures has probability `exp(-Omega(q n))`, below `1/n!`.
+lemma prescribes the table directly: the input stream fixes the variable
+order, so at the level `n - j` of `N_n` (see "Explicit constants") the blocks
+are chosen as distinct first-essential strings, giving `N*(K) = N_n >=
+T/(4n)` for `n >= 6`.
 An execution that halts before its `k`th read has a constant residual;
 otherwise a read leaves the register at 48 or 49, so a residual is fixed by
 its cursor and that value: `N*(k) <= 2 D*_k`, with `D*_k` the cursors at the
@@ -196,9 +522,12 @@ position between, so it reaches only the output `w(y_1)` emitted there; the
 run prints `w(y_1) v(y_2, ...)`, and either `w` is empty (the residual ignores
 `y_1`) or it is the single output character (the residual is a function of
 `y_1` alone).  A fault between the reads would sit on a reachable input.
-With no routing position the same holds from the initial cursor.  Hence
+The same argument one read later shows `c_{J-1}` carries at most one
+first-essential residual: the read at `c_J` overwrites the bit it read, so
+the residual depends only on the segment.  With no routing position the same
+holds from the initial cursor.  Hence, over at most `2B + 1` segments,
 
-    D*_k <= 2 + 4B,   N*(k) <= 4 + 8B,   B >= (N*(k) - 4) / 8   (k <= n-2).
+    N*(k) <= 3 + 6B,   B >= (N*(k) - 3) / 6   (k <= n-2).
 
 **Variable read counts.**  Counting every cursor fails when the read count
 varies: the decoded program
@@ -895,7 +1224,8 @@ the preceding closer, again with that condition false; no instruction between
 them changes the register.  Thus an incidence is charged at most once.  For
 `L_real >= 2` this gives `m_routing <= L_real + 2L_real - 3`; for `L_real = 1`,
 the weaker `m_routing <= 3L_real` is immediate.  In every case
-`m_routing <= 3L_real`.  With the cursor bound, the dense-table floor forces
+`m_routing <= 3L_real`; bipartiteness sharpens this to `2L_real - 2`
+("Explicit constants").  With the cursor bound, the dense-table floor forces
 `L_real = Omega(T/log T)`, which is the sharpened routing lemma.
 
 The smaller "one closer per (value, condition)" charge is false, executed:
@@ -1015,9 +1345,9 @@ constructed multiples to `L = 7` with a split control.
 
 Totality remains capped.  Text is `Theta(T**2/log T)`, and fixed-libmpdec
 generation is `Theta((T**2/log T)**log_2(3))`, with `Theta(T**2)` throughout
-the direct-FNT range admitted by the public cap.  Generated-family cold
-parsing is polynomial; only arbitrary hand-written programs outside its
-operand envelope retain the general factorization fallback.
+the direct-FNT range admitted by the public cap.  Cold parsing is
+polynomial in the source length for every source, generated or not (see
+"Cold parsing of arbitrary programs").
 
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
 [sparse-survey]: https://arxiv.org/abs/1807.08289

@@ -44,18 +44,39 @@ def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> st
     return stream.getvalue()
 
 
-class TestPacklangLinearTree:
-    """Fast structural coverage for Packlang's linear decision tree."""
+class TestPacklangPaintedArray:
+    """Fast structural coverage for Packlang's painted array.
 
-    def test_constants_fold_and_parity_doubles(self) -> None:
-        """Cover both leaf values, branching, and empty/nonempty bodies."""
-        assert "If " not in boolean.packlang("0000")
-        assert boolean.packlang("1111").count("INCR acc") == 1
+    The contract, not the construction: a row is painted only where it
+    differs from the block it sits in, and the cost of painting one does
+    not grow with the table.  The old assertions here pinned the decision
+    tree that has been replaced -- an ``If``-free constant program and one
+    ``INCR acc`` per folded leaf -- so they pinned a spelling rather than
+    either claim.
+    """
+
+    def test_a_constant_table_paints_per_block_not_per_row(self) -> None:
+        """Both fold routes: an all-zero block writes nothing, a full one fills."""
+        assert "INCR t(" not in boolean.packlang("0000")
+        assert "While q^4Do{" in boolean.packlang("1111")
+        # A painted row costs eleven characters, so two per row is well
+        # under the cheapest per-row program either constant could have.
+        biggest = max(len(boolean.packlang(bit * 1024)) for bit in "01")
+        assert biggest < 2 * 1024, "a constant table is paying per row"
+
+    def test_the_per_row_cost_does_not_grow_with_the_table(self) -> None:
+        """Doubling parity's table doubles what the rows cost, no more.
+
+        The index a painted row carries is an offset inside one block, so
+        its digits stop growing; a per-row cost that grew with the table
+        would show here as a difference that more than doubles.
+        """
         sizes = []
-        for n in (7, 8):
+        for n in (9, 10, 11):
             table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
             sizes.append(len(boolean.packlang(table)))
-        assert sizes[1] < 2 * sizes[0]
+        first, second = sizes[1] - sizes[0], sizes[2] - sizes[1]
+        assert 1.9 < second / first < 2.1, sizes
 
 
 class TestInject:
@@ -244,20 +265,29 @@ class TestForbinBoolean:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_uses_the_lsb_of_each_input(self) -> None:
-        """Each input is read as 8 bits and only the LSB drives the tree."""
+        """Each input is read as 8 bits and only the LSB is kept.
+
+        One assignment does every read: a single right-hand side is
+        re-evaluated once per target, so seven bits land in the scratch name
+        and the eighth in the input's own.
+        """
         program = boolean.forbin("01")
-        # one 8-variable read, then a decision tree that prints '1' for bit 1
-        assert "a,b,c,d,e,f,g,h = (in 0);" in program
-        assert "for _:!h..h" in program
+        assert "e,e,e,e,e,e,e,a=(in 0);" in program
 
     def test_small_program_uses_one_character_variables(self) -> None:
-        """The first 52 bit variables do not carry widening decimal suffixes."""
-        assignments = [
-            line.strip().split(" =", 1)[0]
+        """The first 52 variables do not carry widening decimal suffixes."""
+        targets = [
+            line.split("=", 1)[0]
             for line in boolean.forbin("01101001").splitlines()
-            if " = (in 0);" in line
+            if line.endswith("=(in 0);")
         ]
-        assert all(len(name) == 1 for group in assignments for name in group.split(","))
+        assert targets
+        assert all(len(name) == 1 for group in targets for name in group.split(","))
+
+    def test_the_block_is_painted_as_a_literal_argument_list(self) -> None:
+        """A table inside one block is emitted verbatim, two characters an entry."""
+        program = boolean.forbin("01101001")
+        assert "0,1,1,0,1,0,0,1)" in program
 
     def test_compact_variables_skip_keywords_without_duplicates(self) -> None:
         """Filtering a reserved word does not reuse its successor's name."""
@@ -267,11 +297,19 @@ class TestForbinBoolean:
         assert len(set(names)) == len(names)
         assert not set(names) & _FORBIN_RESERVED
 
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant slice returns its answer instead of branching further."""
-        assert boolean.forbin("11111111").count("return 0;") == 1
-        assert boolean.forbin("11110000").count("return 0;") == 2
-        assert boolean.forbin("10010110").count("return 0;") == 8
+    def test_constant_spans_fold_above_the_block(self) -> None:
+        """A constant span of blocks calls a printer instead of painting."""
+        from esolangs.tools.forbin import _BLOCK_BITS, _Names
+
+        arity = _BLOCK_BITS + 2
+        wide = 2**arity
+        register = _Names(arity, 1 << _BLOCK_BITS).table + " "
+        whole = boolean.forbin("1" * wide)
+        assert whole.count("return(") == 1
+        half = boolean.forbin("0" * (wide // 2) + "1" * (wide // 2))
+        assert half.count("return(") == 2
+        # Neither paints a block, so neither defines the shift register.
+        assert all(register not in program for program in (whole, half))
 
     def test_full_tree_growth_is_linear(self) -> None:
         """Names and indentation add only a geometric cost to the tree."""
@@ -607,32 +645,36 @@ class TestThreeX:
         parity8 = "".join(str(i.bit_count() & 1) for i in range(2**8))
         assert len(boolean.three_x(parity8)) < 2 * len(boolean.three_x(parity7))
 
-    def test_digit_constant_encodings(self) -> None:
-        """The base-3 digit seeds are the closed-form minimal programs."""
+    def test_constant_ladder_is_the_grammar_shortest_first(self) -> None:
+        """Keys are the shortest ``C ::= 3 | C C C x`` programs, by length."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.three_x import run
         from esolangs.tools import other
 
-        assert other._const(0) == "333x"  # noqa: SLF001
-        assert other._const(1) == "3333x3x"  # noqa: SLF001
-        assert other._const(2) == "3333x3x3333x3x3x"  # noqa: SLF001
+        codes = other._constants(13)  # noqa: SLF001
+        assert [len(c) for c in codes] == [1, 4, 7, 7] + [10] * 4 + [13] * 5
+        values = []
+        for code in codes:
+            io = ScriptedIO("")
+            run(code + "!", io)  # each leaves exactly one value on the stack
+            values.append(io.getvalue().strip())
+        assert values[0] == "3"
+        assert len(set(values)) == len(values)  # a key has to be distinct
 
-    def test_base_three_digits_accumulate(self) -> None:
-        """Each base-3 digit past the first appends the 3v+d affine step."""
+    def test_constant_ladder_only_ever_extends(self) -> None:
+        """More names append to the cache; 30 of them still fit 16 characters."""
         from esolangs.tools import other
 
-        # 12 is "110" in base 3: seed 1, then d=1, then d=0.  Each transform
-        # adds exactly one `#` (the swap before the `x`), and no seed has one.
-        twelve = other._const(12)  # noqa: SLF001
-        assert twelve.startswith(other._const(1))  # noqa: SLF001
-        assert twelve.count("#") == 2
+        first = other._constants(4)  # noqa: SLF001
+        longer = other._constants(30)  # noqa: SLF001
+        assert longer[:4] == first
+        assert len(longer[-1]) <= 16
 
-    def test_formula_scales_logarithmically(self) -> None:
-        """The closed form grows with the digit count, not the value."""
-        from esolangs.tools import other
-
-        small, large = other._const(100), other._const(1_000_000)  # noqa: SLF001
-        assert len(small) < 120  # 100 is "10201": 5 digits
-        assert len(large) < 350  # 1_000_000 is 13 base-3 digits
-        assert len(large) < len(small) * 4
+    def test_bit_copies_replace_a_guarded_pair(self) -> None:
+        """A subtree that *is* one of its bits collapses to one write."""
+        # The identity on input 1 at n=2: no guard, one copy of the stored bit.
+        program = boolean.three_x("0011")
+        assert "(" not in program
 
 
 class TestGeneratorEdgePaths:
@@ -649,12 +691,12 @@ class TestGeneratorEdgePaths:
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.back("011")
 
-    def test_dimensional_tree_validation(self) -> None:
-        """The Dimensional decision-tree generator rejects bad truth tables."""
+    def test_dimensional_validation(self) -> None:
+        """The Dimensional generator rejects bad truth tables."""
         with pytest.raises(ValueError, match="power-of-two"):
-            boolean.dimensional_tree("011")
+            boolean.dimensional("011")
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.dimensional_tree("0123")
+            boolean.dimensional("0123")
 
     def test_six_five_helper_edges(self) -> None:
         """The +5 tail of the constant encoder.

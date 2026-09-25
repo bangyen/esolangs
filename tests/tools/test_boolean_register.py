@@ -132,17 +132,32 @@ class TestQoibl:
             got = run_qoibl(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_tree_structure(self) -> None:
-        """An AND function combines the two branches arithmetically."""
+    def test_the_table_is_one_literal(self) -> None:
+        """The whole table rides in a single binary literal, bit k for row k.
+
+        The per-entry cost is that literal and nothing else, so the
+        construction stands or falls on it appearing exactly once.
+        """
         program = boolean.qoibl("0001")
-        assert program.startswith("we yee we et")
-        assert "ry ee ry" in program
+        # 0b1000: row 3 is the only one set, and it is bit 3.
+        assert program.count(" yeee ") == 1
         assert program.endswith("tt")
 
-    def test_constant_truth_table_folds(self) -> None:
-        """A constant function needs only one tree assignment."""
+    def test_the_reads_are_one_statement_each(self) -> None:
+        """Only the input count scales the statements; the table does not."""
+        counts = [
+            boolean.qoibl(
+                "".join(str(row.bit_count() & 1) for row in range(2**n))
+            ).count("\n")
+            for n in range(1, 6)
+        ]
+        assert counts == [2, 3, 4, 5, 6]
+
+    def test_a_constant_table_still_reads_its_inputs(self) -> None:
+        """A constant function packs to zero but keeps the reads it owes."""
         program = boolean.qoibl("0000")
-        assert program.count("\nwe ") == 4
+        assert program.count(" et ") == 2
+        assert "we y we e ry yy ry" in program
 
     def test_dense_growth_is_linear(self) -> None:
         """A full tree doubles by a bounded additive term."""
@@ -504,9 +519,15 @@ class TestDig:
                     assert run_dig(program, [str(bit) for bit in bits]) == table[combo]
 
     def test_alternating_layout_has_linear_area(self) -> None:
-        """Two more levels quadruple entries and at most quadruple text."""
-        sizes = [len(boolean.dig("01" * (2 ** (n - 1)))) for n in (7, 9)]
-        assert sizes[1] <= 4 * sizes[0]
+        """Text per entry stays under a constant as the arity grows.
+
+        The rectangle approaches nine cells an entry from *below* -- the
+        leaf's own box is fixed and the tree above it adds the padding --
+        so "two more levels at most quadruple" is not the contract; the
+        constant is.  Thirty was the reading while every entry was a leaf.
+        """
+        sizes = [len(boolean.dig("01" * (2 ** (n - 1)))) / 2**n for n in (7, 9, 11)]
+        assert max(sizes) < 9
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -828,16 +849,32 @@ class TestCollatzMultiverse:
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 assert run_collatz_multiverse(program, bits) == table[combo]
 
-    def test_postorder_tree_structure(self) -> None:
-        """The tree reads each input once, reuses registers, and prints once."""
-        program = boolean.collatz_multiverse("0110")
-        assert program.count("input") == 2
+    def test_reads_each_input_once_and_prints_once(self) -> None:
+        """The program reads every input once and answers with one print."""
+        program = boolean.collatz_multiverse("01101001")
+        assert program.count("input") == 3
         assert program.count("DO PRINT.") == 1
-        assert "r0" in program
-        assert "r1" in program
+
+    def test_cells_are_addressed_by_line_number(self) -> None:
+        """The table sits in cells the writing line's own number addresses.
+
+        What is pinned is that the rows are *placed and indexed* rather than
+        walked: the fill block spends one line a cell and no line advancing a
+        pointer, and the reader subscripts those arrays instead of branching.
+        A quarter of the rows per cell is the construction's own choice and is
+        not pinned here; one line per cell is what the size constant rides on.
+        """
+        table = "01101001" * 8
+        program = boolean.collatz_multiverse(table)
+        subscripted = [line for line in program.splitlines() if "[" in line]
+        placed = [line for line in subscripted if "[lineNumber]=" in line]
+        assert len(placed) <= len(table) // 2
+        # What is left is the reader: one indexed read of each array, by a
+        # register the inputs summed rather than by a walked pointer.
+        assert len(subscripted) - len(placed) == 2
 
     def test_full_tree_growth_is_linear(self) -> None:
-        """Parity folds nothing, but depth-reused names keep source linear."""
+        """Parity folds nothing, but one line a cell keeps source linear."""
         sizes = []
         for n in (7, 8):
             table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
