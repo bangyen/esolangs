@@ -211,7 +211,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | bit~ | tree | — | linear, time n log: essential_inputs |
 | Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque | linear: 2T commands, discard blocks sum to T |
 | brainfuck | tree | `decision_tree_program` | linear: decision_tree_program, span walk, leaf moves geometric |
-| BrainIf | finite lookup | a spatial table is addressed by the read row index | linear: n + T strip cells of 51 lines |
+| BrainIf | finite lookup | a spatial table is addressed by the read row index | linear: n + T strip cells of 2.6 lines |
 | Circlefuck | tree | its local shape guard is equivalent to the shared guard | linear, time n log: essential-input byte compare; greedy candidate's walk |
 | Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) |
 | Clockwise | tree | finite grid layout | linear: alternating rectangle of area O(T), exits in walk order |
