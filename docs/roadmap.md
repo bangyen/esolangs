@@ -262,8 +262,11 @@ step; an answer lands in the paper it extends, and the row leaves.
   as stated fails for all constants, `prop:Hfails`, but the reduction
   needs it only below the degree cap `D <= l_R s(s+1)/2`,
   `prop:skeletoncap`, where clusters still refute `c < 1/2` and, in
-  sectors containing a real direction, every `c < 1`; open for
-  `1/2 <= c < 1` in sectors inside an open half-plane).  Open: that Gaussian
+  sectors containing a real direction, every `c < 1`; and clusters
+  pulled back along `x -> x**g` refute the capped (H) for every `c < 1` in
+  every sector, `prop:Hrotated`, `sec:Hrotated`, so a skeleton proof must
+  use coefficient sizes: `prop:skeletonmass` adds the mass cap
+  `Lambda(S) < s(s-1)/2 log R`, which nearly contains the target).  Open: that Gaussian
   `K**2` question and the cross terms `K_s K_t log t` between annuli, which follow
   (`cor:conjcross`) from the conjectured rows at real roots of both signs,
   `b_k >= |f_D| prod_{i >= 2k-1} (rho_i - 1)` (`eq:bothrows`; certified
