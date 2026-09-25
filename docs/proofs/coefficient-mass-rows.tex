@@ -912,7 +912,7 @@ $\sum_sW_k(s)r^{-s}|p(s)|\ge\max_{i\le k}A_i(p)$ for every $p$.
 
 The theorem moves the maximum over $i$ out of the sum in
 Theorem~\ref{thm:prefixrows}, and this loses nothing when one $p$ is nearly
-optimal for all prefix problems at once.  The prefix identity~\eqref{eq:prefixid} holds at $(r,n,k)$ whenever
+optimal for all prefix problems at once.  The prefix identity~\eqref{eq:prefixid} holds at $(r,L,k)$ whenever
 $\Lambda_k(n)=\max_{i\le k}\nu_i(n)$.  For $n=1$ we have
 $\mathcal Q_1=\{1\}$ and $A_i(1)=a^i$.  So the theorem gives
 $V_r(L,L)\ge r-1$ for $r\ge2$ and $V_r(L,L)\ge(r-1)^L$ for $r\le2$, and
@@ -957,7 +957,7 @@ $1\le\nu_1(n)\le\nu_2(n)\le\cdots$, and for every $k\ge1$ and $L=n+k-1$,
 \[
   V_r(L,k)=\frac1{\nu_k(n)}=\min_{1\le i\le k}\frac1{\nu_i(n)} .
 \]
-So the prefix identity~\eqref{eq:prefixid} holds at $(r,n)$
+So the prefix identity~\eqref{eq:prefixid} holds at $(r,n+k-1,k)$
 for every $k$, with the minimum at $i=k$.
 \end{theorem}
 
@@ -976,7 +976,7 @@ hypothesis forces $r\le2$, and at $r=2$ it holds only for $n=1$.  For each
 $q\in\mathcal Q_n$ the sum $\Phi_r(q)$ decreases in $r$, term by term, so
 $\nu_1(n)$ does not increase with $r$.  Hence
 $\{r>1:\beta_r(n)\le1\}$ is an interval with left end $1$, it shrinks as $n$
-grows, and for $n=1$ it is $(1,2]$.  It is nonempty for every $n$.
+grows, and for $n=1$ it is $(1,2]$.  It is nonempty for every $n$ (Lemma~\ref{lem:topnearone}).
 
 \begin{lemma}[The top row near the root $1$]\label{lem:topnearone}
 Let $n\ge1$, $1<r\le2$ and $C_n=\prod_{i=1}^n(2i+1)$.  Then
