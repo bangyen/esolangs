@@ -1200,11 +1200,12 @@ Moreover $\ell_n+1\ge(1-O(\frac{\log n}n))\frac T{2n}$.
 \begin{proof}
 Write $\beta_n(L_0,M_0,\ell)=2(\ell+1)\log_2(\ell+6)+B$.  Since $L_0\le2T/n$ and
 $M_0/L_0=O(\sqrt n)$, $B=O(\frac Tn\log n)$; so $\ell=0$ qualifies for large $n$, and
-$\ell_n$ exists.  By Proposition~\ref{prop:counting}, $\log_2B_n(Z)\le T-cZ+2n+9\le T-1$
+$\ell_n$ exists.  By Proposition~\ref{prop:counting}, $\log_2B_n(Z)\le T-cZ+2n+9<T-1$
 for large $n$, and Lemma~\ref{lem:evencount}, with $1\le L_0\le M_0$, bounds by $2^{T-1}$
 the number of tables computed by even or odd sources with at most $L_0$ distinct real
 instruction roots, $M_0$ real instructions and $\ell_n$ distinct real instruction roots
-$p^v$, $v\ge2$.  So some table is computed by neither kind of program.
+$p^v$, $v\ge2$.  As $B_n(Z)+2^{T-1}<2^T$, some table is computed by neither kind of
+program.
 
 Every $\ell\ge0$ with $2(\ell+1)\log_2(\ell+6)\le T$ has $\ell+1<T/5$, as $\log_26>\frac52$;
 so $\ell+7<T/4$ for large $n$.  This applies to $\ell_n$, so $\log_2(\ell_n+7)<n-2$, and the
