@@ -332,10 +332,7 @@ def _check_routing(failures: list[str]) -> int:
     * on the shipped generator ``N' <= 2 * L_real`` with margin, a positive
       control that the bound is not vacuous.
     """
-    from esolangs.interpreters.register_based.polynomial import (
-        _advance,
-        _bracket_pairs,
-    )
+    from esolangs.interpreters.register_based.polynomial import _advance, _bracket_pairs
     from esolangs.tools.polynomial import polynomial
 
     count = 0
@@ -393,7 +390,7 @@ def _check_routing(failures: list[str]) -> int:
         return "".join(bits[: 2**n])
 
     for n in (2, 3, 4):
-        from esolangs.interpreters.register_based.polynomial import _find_roots
+        from esolangs.interpreters.register_based._polynomial_roots import _find_roots
 
         cleaned = re.sub(r"[^\df(x)=+-^]", "", polynomial(dense(n)))
         roots = _find_roots(sanitize(cleaned))
@@ -694,10 +691,7 @@ def _residual_cursors(instrs: list[list[int]], n: int):
     """
     import itertools
 
-    from esolangs.interpreters.register_based.polynomial import (
-        _advance,
-        _bracket_pairs,
-    )
+    from esolangs.interpreters.register_based.polynomial import _advance, _bracket_pairs
 
     pairs = _bracket_pairs(instrs)
     if any(len(i) == 1 and p not in pairs for p, i in enumerate(instrs)):

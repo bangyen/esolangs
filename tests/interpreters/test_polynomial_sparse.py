@@ -18,16 +18,19 @@ import time
 import pytest
 import sympy as sp
 
-from esolangs.interpreters.register_based.polynomial import (
+from esolangs.interpreters.register_based._polynomial_roots import (
     _aks,
     _dense_gaussian_roots,
     _gap_chunks,
+    _gauss_reduce,
     _integer_root,
     _is_proven_prime,
-    _parse_program,
     _Root,
     _sparse_multiplicity,
     _sparse_roots,
+)
+from esolangs.interpreters.register_based.polynomial import (
+    _parse_program,
     convert,
     sanitize,
     sanitize_terms,
@@ -345,6 +348,14 @@ class TestSteps:
                         expected |= {(real, imag), (real, -imag)}
             assert _dense_gaussian_roots(coefficients) == expected, coefficients
 
+    def test_dense_gaussian_roots_ignore_zero_padding(self) -> None:
+        # Leading zeros are no degree; a trailing one is the root 0, left out.
+        assert _dense_gaussian_roots([0, 0, 1, -2, 0]) == {(2, 0)}
+
+    def test_gauss_reduce_keeps_an_ordered_basis(self) -> None:
+        assert _gauss_reduce((1, 0), (3, 5)) == ((1, 0), (0, 5))
+        assert _gauss_reduce((3, 5), (1, 0)) == ((1, 0), (0, 5))
+
     def test_integer_root_is_exact(self) -> None:
         rng = random.Random(5)
         for _ in range(200):
@@ -368,7 +379,7 @@ class TestProvenPrimality:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Past the Miller--Rabin range a probable prime is certified by AKS."""
-        import esolangs.interpreters.register_based.polynomial as module
+        import esolangs.interpreters.register_based._polynomial_roots as module
 
         monkeypatch.setattr(module, "_EXACT_ISPRIME_LIMIT", 100)
         calls: list[int] = []
