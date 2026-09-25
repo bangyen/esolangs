@@ -361,7 +361,7 @@ a factor `325/26 = 12.5` at both limits. So the order is settled and the constan
    asymptotically `T/(n + log2 3e)`). Distinct read gaps have distinct last
    input roots. So `K_n = max(N_n, ceil(T/(n+4)))` input values are forced.
    Next-read is sharp: a mod-`(2**K - 1)` automaton compiled one read per
-   state has `N*(K) = K_in = 2**K - 1 > T/(6n) - 1` (`prop:sharp`).
+   state has `N*(K) = K_in = 2**K - 1 > T/(6n) - 1` (`prop:sharp`, removed from the paper in the pure-math trim; see git history).
 2. *Mass, exact per pair.* By multisection
    ([coefficient-mass-complex](coefficient-mass-complex.tex) Corollary 2.3)
    a multiple of `prod (x**2 + c_j**2)` has an even or odd part that is a
@@ -373,7 +373,8 @@ a factor `325/26 = 12.5` at both limits. So the order is settled and the constan
 
 The real-root route (`L >= N_n` with mass `1/2`) is 4 times weaker.
 
-**Upper side.** Two compilers. The first (`prop:dfaprog`): a shared
+**Upper side.** Two compilers. The first (`prop:dfaprog`, with `lem:decoder`,
+`lem:profile` and the stripped automata below, removed from the paper in the pure-math trim; see git history): a shared
 17-instruction threshold decoder (`lem:decoder`) turns `-alpha_q (48+b) + D`
 into the next state's code, each state's `*=A` operand encoding both child
 codes; profile `f(phi) S**2`, `f(0) = 525/8` (`lem:profile`). The second
@@ -392,7 +393,7 @@ they count with effective exponent 2 (`lem:effprofile`):
 states outside the branching set and `x` the dispatched share;
 `g(1/2, 0) = 325/8`. Automata:
 
-* the bounded stripped automaton (`lem:bstrip`): strip at most `I` leading
+* the bounded stripped automaton (`lem:bstrip`, removed from the paper in the pure-math trim; see git history): strip at most `I` leading
   copies of `c` (length `d`), tree states up to level `L`, residual tuples
   below, words starting with `c**(I+1)` to a separate residual DAG; with
   `L + dI < n` no tree state sees end of input, and tree successors have a
@@ -409,14 +410,14 @@ states outside the branching set and `x` the dispatched share;
   asymptotics (the stripped automata stay better for `n` up to about 100).
 
 All constructions were compiled and run on every input for `n <= 11` (the
-`lem:bstrip` properties asserted on every run), and round-tripped through
+properties of the removed `lem:bstrip` asserted on every run), and round-tripped through
 source for `n <= 7`. Rendered lengths against the first compiler: 0.85 at
 `n = 10` (maximal-width), 0.82 (random).
 
 **Where the gap sits.**
 
 * Routing is exact: one input value per first-essential residual, attained
-  (`prop:sharp`).
+  (`prop:sharp`, removed from the paper in the pure-math trim; see git history).
 * Levels contribute nothing: counting charges `T/(n+4)` inputs, and the
   trie-banded automaton has `(1 + o(1)) T/n` states for every table.
 * Profile, `g/3 = 325/24` at both limits: the input pairs give mass
@@ -431,7 +432,7 @@ source for `n <= 7`. Rendered lengths against the first compiler: 0.85 at
   roots `p^v`, `v` in {2,4,6,8}, distinct across residuals with distinct
   halves (`lem:zerowit`, exact register arithmetic); tables with
   `2^(n-j_n) - 1` such residuals still force `T/(n+4)` inputs
-  (`lem:halves`), and those roots add `mu_n**2` (`lem:evensigns` with `N`).
+  (`lem:halves`; both removed from the paper in the pure-math trim; see git history), and those roots add `mu_n**2` (`lem:evensigns` with `N`).
   Counting even or odd programs by their sign skeleton and zero points
   (`lem:evencount`) forces about `T/(2n)` such roots for every large `n`
   (`cor:evenhard`), so they pay `3 + 1/4` uniformly. The register roots
