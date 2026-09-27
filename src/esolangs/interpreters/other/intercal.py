@@ -18,9 +18,18 @@ type _Value = tuple[int, int]
 type _State = tuple[int, tuple[tuple[int, int], ...], tuple[int, ...]]
 
 _DIGITS = {
-    "ZERO": "0", "OH": "0", "ONE": "1", "TWO": "2", "THREE": "3",
-    "FOUR": "4", "FIVE": "5", "SIX": "6", "SEVEN": "7", "EIGHT": "8",
-    "NINE": "9", "NINER": "9",
+    "ZERO": "0",
+    "OH": "0",
+    "ONE": "1",
+    "TWO": "2",
+    "THREE": "3",
+    "FOUR": "4",
+    "FIVE": "5",
+    "SIX": "6",
+    "SEVEN": "7",
+    "EIGHT": "8",
+    "NINE": "9",
+    "NINER": "9",
 }
 
 
@@ -34,7 +43,9 @@ def _unary(value: int, width: int, operator: str) -> int:
     return value ^ rotated
 
 
-def _expression(text: str, variables: dict[int, int], at: int = 0) -> tuple[_Value, int]:
+def _expression(
+    text: str, variables: dict[int, int], at: int = 0
+) -> tuple[_Value, int]:
     """Parse one fully grouped INTERCAL expression."""
     if at >= len(text):
         raise HaltError("incomplete INTERCAL expression")
@@ -72,14 +83,28 @@ def _expression(text: str, variables: dict[int, int], at: int = 0) -> tuple[_Val
         raise HaltError("invalid INTERCAL operand")
     sigil, number = match.groups()
     value = int(number)
-    return ((variables.get(value, 0) if sigil == "." else value), 16), at + len(match[0])
+    return ((variables.get(value, 0) if sigil == "." else value), 16), at + len(
+        match[0]
+    )
 
 
 def _roman(value: int) -> str:
     """Return the ordinary range of butchered Roman output."""
-    numerals = ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"),
-                (100, "C"), (90, "XC"), (50, "L"), (40, "XL"),
-                (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"))
+    numerals = (
+        (1000, "M"),
+        (900, "CM"),
+        (500, "D"),
+        (400, "CD"),
+        (100, "C"),
+        (90, "XC"),
+        (50, "L"),
+        (40, "XL"),
+        (10, "X"),
+        (9, "IX"),
+        (5, "V"),
+        (4, "IV"),
+        (1, "I"),
+    )
     out = []
     for amount, glyph in numerals:
         count, value = divmod(value, amount)
@@ -93,8 +118,14 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.lines = [line.strip() for line in code.splitlines() if line.strip()]
-        polite = sum(bool(re.match(r"(?:\(\d+\)\s+)?PLEASE", line)) for line in self.lines)
-        if not self.lines or polite * 5 < len(self.lines) or polite * 3 > len(self.lines):
+        polite = sum(
+            bool(re.match(r"(?:\(\d+\)\s+)?PLEASE", line)) for line in self.lines
+        )
+        if (
+            not self.lines
+            or polite * 5 < len(self.lines)
+            or polite * 3 > len(self.lines)
+        ):
             raise HaltError("INTERCAL program is insufficiently or excessively polite")
         self.labels: dict[int, int] = {}
         for i, line in enumerate(self.lines):
@@ -122,7 +153,7 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         return (*self.state, self.io.position())
 
-    def step(self) -> None:  # noqa: C901, PLR0912, PLR0915
+    def step(self) -> None:
         if self.halted:
             return
         ind, packed, stack = self.state

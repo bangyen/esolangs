@@ -14,7 +14,7 @@ def _run(source: str, stdin: str = "") -> str:
 
 
 def test_calculate_mingle_select_unary_and_output() -> None:
-    source = "PLEASE .1 <- '\"&#1$#1\"~\"#65535$#0\"'\nDO READ OUT .1\nDO GIVE UP"
+    source = 'PLEASE .1 <- \'"&#1$#1"~"#65535$#0"\'\nDO READ OUT .1\nDO GIVE UP'
     assert _run(source) == "I\n"
 
 
@@ -45,7 +45,11 @@ def test_vm_views_are_copies() -> None:
 
 @pytest.mark.parametrize(
     "source",
-    ["DO GIVE UP", "PLEASE GIVE UP\nPLEASE GIVE UP", "PLEASE RESUME #1\nDO GIVE UP\nDO GIVE UP"],
+    [
+        "DO GIVE UP",
+        "PLEASE GIVE UP\nPLEASE GIVE UP",
+        "PLEASE RESUME #1\nDO GIVE UP\nDO GIVE UP",
+    ],
 )
 def test_politeness_and_stack_errors(source: str) -> None:
     with pytest.raises(HaltError):
