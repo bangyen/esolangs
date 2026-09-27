@@ -25,6 +25,7 @@ from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
 from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
 from esolangs.tools.back import PAIR as BACK_PAIR
+from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
 from esolangs.tools.crement import PAIR as CREMENT_PAIR
 from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
 from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
@@ -499,6 +500,17 @@ def _register() -> None:
                 "Bitdeque has no output instruction and dumps its deque at "
                 "halt; the generator leaves exactly one bit on it, so the "
                 "whole dump is the answer and there is no position to name"
+            ),
+        ),
+        "bitwise-cyclic-tag": _embedded(
+            b.bitwise_cyclic_tag,
+            "queue_based.bitwise_cyclic_tag",
+            pair=BCT_PAIR,
+            note=(
+                "Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs "
+                "are bits of the initial data-string, and the answer is the "
+                "bit the last 0 deletes, which the interpreter prints alone -- "
+                "so the output is the answer and there is no position to name"
             ),
         ),
         "eval": _embedded(b.eval, "stack_based.eval", pair=EVAL_PAIR),

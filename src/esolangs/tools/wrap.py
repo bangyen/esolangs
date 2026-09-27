@@ -459,6 +459,8 @@ WRAPPERS = {
     "dimensional": _dimensional,
     # 7n/8n are two-character tokens; see :func:`_six_five`.
     "six_five": _six_five,
+    # Safe anywhere: every space and newline is stripped before parsing.
+    "bitwise_cyclic_tag": wrap_chars,
     "brainfuck": wrap_chars,
     "three_d_brainfuck": wrap_chars,
     "circlefuck": wrap_chars,

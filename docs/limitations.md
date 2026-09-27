@@ -325,10 +325,12 @@ fraction is pinned by the admissions: inside the band the classics pass by
 construction. A past admission is audited on the axis test, which is intrinsic
 to the language and references no population. The route has also only ever been
 used to reject; [roadmap](roadmap.md) carries the screen it has never been run
-as. Among its candidates Bitwise Cyclic Tag 0.66, Underload 0.59, INTERCAL 0.37
-and Cyclic tag 0.35 clear `bf/5`, Emmental 0.15 lands in the band and rests on
-its axis instead, and Prelude 0.05 is under Braincopter while predating it by
-six years.
+as. Its first result is admitted rather than pending: Bitwise Cyclic Tag 0.66
+cleared `bf/5`, took the cyclic-schedule axis and is implemented, which makes it
+the only language the route has ever argued *into* the set. Among the candidates
+left Underload 0.59, INTERCAL 0.37 and Cyclic tag 0.35 clear `bf/5`, Emmental
+0.15 lands in the band and rests on its axis instead, and Prelude 0.05 is under
+Braincopter while predating it by six years.
 
 ## Specification decisions
 

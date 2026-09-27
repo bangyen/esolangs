@@ -7,7 +7,7 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 68 esoteric languages: 66 text and 2 raster.
+Interpreters and Boolean generators for 69 esoteric languages: 67 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
@@ -116,7 +116,7 @@ the page.  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#d
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):
-`examples/` holds a truth-table program for each of the 66
+`examples/` holds a truth-table program for each of the 67
 text languages with a boolean generator.  It regenerates via
 `python scripts/generate.py examples`.
 
@@ -127,7 +127,7 @@ text languages with a boolean generator.  It regenerates via
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 66 text languages</summary>
+<summary>Show all 67 text languages</summary>
 
 ### Grid-based Languages
 
@@ -167,6 +167,7 @@ Languages that use a stack for data manipulation.
 Languages whose primary data structure is a queue or deque.
 
 - [Bitdeque](https://esolangs.org/wiki/Bitdeque) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/queue_based/bitdeque.py))
+- [Bitwise Cyclic Tag](https://esolangs.org/wiki/Bitwise_Cyclic_Tag) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/queue_based/bitwise_cyclic_tag.py))
 - [Taglate](https://esolangs.org/wiki/Taglate) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/queue_based/taglate.py))
 
 ### Tape-based Languages
@@ -238,7 +239,7 @@ Boolean generators accept a most-significant-input-first binary truth table.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  66 of the
+first; its length implies `n`, so it isn't passed separately.  67 of the
 text languages have such a generator, some covering only a documented subset of
 tables.
 

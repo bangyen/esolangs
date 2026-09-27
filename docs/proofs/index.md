@@ -35,7 +35,7 @@ lookup and parameterized row to its scheme's measurable consequence (the
 `tree` and `minterms` rows carry no such per-row check); both are in the fast
 band and gate every push.  `tests/proofs/deep/` holds the proofs themselves,
 at two depths.
-`all_generators.py` runs a lemma battery against all 62: every single
+`all_generators.py` runs a lemma battery against all 67: every single
 row of the table demonstrably participates in the emitted program at the
 flip-tested arities, and the construction completes at every arity of a ladder
 on both table shapes.  That
@@ -146,13 +146,16 @@ Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
-bit~, Circlefuck, Clockwise, Collatz Multiverse, Dimensional, EGL, Eval,
+bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
+Dimensional, EGL, Eval,
 Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
 Suffolk, Thue, Unsquare and Whitespace keep no tree route at all: A Painter
 Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, bit~ lands the pointer on one tape cell an entry and walks the
-bit it finds home, Befunge reads one grid cell per table entry with `g`, BIO's
+bit it finds home, Bitwise Cyclic Tag has no branch to fold a tree into --
+the commands it runs are a fixed cyclic sequence, so every table of a given
+arity emits the same length, Befunge reads one grid cell per table entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
 once the doubling between the input runs is in the text), B-tapemark copies
@@ -223,6 +226,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | B-tapemark | finite lookup | the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on | linear: 3T copy cells, T pointer steps, one stage per input |
 | Back | parameterized tree | — | linear: leaf moves sum geometrically, sparse row render |
 | Befunge | finite lookup | the grid is the table, one cell per entry, read by `g` at the Horner index | linear: T table cells, one g at the index |
+| Bitwise Cyclic Tag | parameterized lookup | the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it | linear: 4T table cells, 4T walk appends, 5T + n steps |
 | BF-PDA | parameterized tree | — | linear: span walk, leaf drains sum geometrically |
 | BFStack | minterms | — | linear: zero-row walk telescopes to T |
 | BIO | finite lookup | nested loops telescope from `table[0]` to `table[index]` | linear: T - 1 loop pieces joined once |
@@ -337,6 +341,6 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 65 theoretical totality arguments and one
+Accordingly, this ledger records 66 theoretical totality arguments and one
 proved language exception; every other row is `Total` or theoretically total
 past a resource ceiling.

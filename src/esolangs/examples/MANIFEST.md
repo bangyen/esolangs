@@ -30,6 +30,7 @@ that row is actually spelled for the language.
 | `bfstack.txt` | BFStack | `0001` | `01` | 0 1 | '0' |
 | `bio.txt` | BIO | `0001` | `01` | embedded 01 | '0' |
 | `bitdeque.txt` | Bitdeque | `0001` | `01` | embedded 01 | '0' |
+| `bitwise-cyclic-tag.txt` | Bitwise Cyclic Tag | `0001` | `01` | embedded 01 | '0' |
 | `bit~.txt` | bit~ | `0001` | `01` | 0 1 | '0' |
 | `brainfuck.txt` | brainfuck | `0001` | `01` | 0 1 | '0' |
 | `brainif.txt` | BrainIf | `0001` | `01` | 0 1 | '0' |
@@ -89,6 +90,7 @@ that row is actually spelled for the language.
 - **arrowqueue** -- ArrowQueue answers by termination -- it halts for a 0 result and loops forever for a 1, so only the halting branch is committed.  The headings printed are its interpreter-only queue dump, which the verdict does not read: the answer is that the program halted at all
 - **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n, past the n input cells
 - **bitdeque** -- Bitdeque has no output instruction and dumps its deque at halt; the generator leaves exactly one bit on it, so the whole dump is the answer and there is no position to name
+- **bitwise-cyclic-tag** -- Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs are bits of the initial data-string, and the answer is the bit the last 0 deletes, which the interpreter prints alone -- so the output is the answer and there is no position to name
 - **clockwise** -- Clockwise reads all its input bits in one go, so they go on one line -- one character per bit, not a line per bit, and not seven bits packed into a character: that packing is real but is on the output side. A line per bit, or a packed one, is read as a different row and answered wrongly
 - **container** -- Container prints the answer like any other reader; it also ends by calling sys.exit(0) rather than returning, which matters to a harness driving it but not to reading the result
 - **crement** -- Crement answers by termination: the tree's nodes patch a per-input tester's jump targets, and the row lands past the end (halts, 0) or on a self-jump (diverges, 1)
