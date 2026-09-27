@@ -24,14 +24,17 @@ read is complete; rejected candidates are recorded under Curation in
   stack permits 79 entries, and 1/5--1/3 of statements must carry `PLEASE`.
 - **Underload** (2006): clears the fame bar at 0.59. Its spec and implementations
   agree on the nine commands; `^` forces a program from the stack and `S`
-  outputs one. Build a parameterized promise tree, or reject it if equal-width
-  input elements cannot preserve the stack contract.
+  outputs one. The promise-tree prototype passes every table through three
+  inputs and approaches `11T` characters. Its equal-width selectors are
+  `(()!!^)` for 0 and `(:!~!^)` for 1; both embed once in name order. Add the
+  interpreter and execute the promoted generator through it.
 - **Smallfuck** (2002): clears the fame bar at 0.23. The spec deliberately
   leaves the finite tape size and initial/final-state I/O to implementations.
-  Pin tape length to source length, map encoded stdin to initial cells, and
-  read the answer from a named final cell; reject the generator if that
-  convention cannot meet the package I/O contract without extending the
-  five-command language.
+  A folded local-result tree passes every table through three inputs and
+  approaches `48.5T` characters. Its equal-width setters are `[*]>>>` for 0
+  and `***>>>` for 1; child results move three cells upward, avoiding the
+  first prototype's `Theta(T log T)` walk to one answer cell. Pin tape length
+  to source length and expose cell 2 as the decoded final answer.
 
 ## Conditional follow-up
 
