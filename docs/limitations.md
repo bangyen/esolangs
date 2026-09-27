@@ -53,147 +53,24 @@ BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
 its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
 ArrowQueue re-enqueue remains open.
 
-Malbolge registers a generator through fourteen inputs, source-embedded with no
-initializer. Through ten, a branch-free five-cell mixer (13 operations per input bit, inits
-52/90/83/70/92, then a 16-operation post-map) folds the row index into a
-distinct address `h(row)` in `[1083, 59048]` with pairwise gap at least three,
-and a three-cell source stub at `h(row)` prints the answer: `p` then `<` for a
-1 row, `o` then `<` for a 0 row, with `A` preloaded to `'0'`.
+Malbolge registers a source-embedded generator through fourteen inputs. A
+five-cell mixer and gap-three stubs cover ten; pointer cascades and selected
+inputs extend it to fourteen. All rows of the dense, parity, all-zero, and
+all-one tables were executed at each shipped arity. Larger inputs raise
+`GeneratorCapError`; the measured fifteen-input cascade does not fit. See
+[malbolge-scaling](proofs/malbolge-scaling.md) for the construction and failed
+routes.
 
-The store is the program. `i`/`j` let the pointer revisit a cell, and a cell
-whose content is the unique NOP character `f(a) = 33 + ((35 - a) % 94)` at its
-address is walked over harmlessly, so the mixer inits, the navigation
-constants and the stubs all live in the source. Malbolge re-enciphers every
-cell it executes, so a walked-over cell's value is not `f(a)` but
-`g(a) = XLAT2[f(a) - 33]`; the generator places each state and navigation cell
-at the address whose `g` value it wants and computes `h` against those values.
-
-The stub construction stops at ten inputs: no searched mixer is gap-3
-injective at eleven bits (best 1836 of 2048 rows over ~40k schedules whose
-full state stays distinct, and even distinct-only readouts top out at 1862),
-because collisions arrive in low-trit clusters. Eleven inputs ship through a
-two-level pointer cascade that needs only distinct readouts. Each row owns one
-table cell at `X + 1 + k` holding one of the eight source characters the
-loader admits there; the decoder runs `j`, `j`, `i`, so the character `T` names
-the walked-region cell `T + 1` and that cell names the jump. Seventeen pairs
-`[P0, P1]` (`P1 = rot(113)`, `P0` its 0/1-swapped twin, filled by one chained
-`p` over all-1 cells) serve both answers -- `T = a - 1` reaches `P0`, whose
-stub rotates `P1` into `A` (`'1'`); `T = a` reaches `P1`, whose stub prints the
-preloaded `'0'` -- and 24 all-1 cells send the 256 rows the first readout
-leaves in 128 pairs to a second decoder at 29525, which reads a second mixer
-cell that separates all of them. The 58 pointer cells and the residue cover
-(every `h mod 94` must admit a character of each label) were found by
-annealing and are pinned.
-
-Twelve inputs ship without a twelve-bit mixer. The fold above runs over the
-first eleven; then `/` reads the twelfth and `p` writes it into a selector
-cell. The crazy operation and `*` act trit by trit, so the two values of a
-selector differ in one trit, and ten searched ops park that trit at the top:
-each selector's two values lie 19,683 apart. `i` through the first selector
-runs one of two level-1 *paths* stored at those addresses -- code that is
-jumped to, never walked. A path may rewrite the readout and picks its own
-table offset, so the halves land on different cells: `x = 0` reads cell 0 as
-the eleven-input build does, `x = 1` reads `neg(cell 0)` (`p` with
-`A = all-2` negates every trit) 543 cells on, and 560 of the 4,096 rows
-collide at level 1 against 512 at eleven inputs doubled. The decoder selects
-through the second selector the same way, and each level-2 path runs its own
-searched post-map that separates its half's colliding rows. The labels and
-the `[P0, P1]`/NEXT layout are unchanged. Executed on all 4,096 rows of the
-dense, parity, all-0 and all-1 tables.
-
-Thirteen inputs keep that build and hand the last input to the answer stub.
-A table cell now names one of four answers as a function of it -- `0`, `1`,
-`x` or `not x` -- or `N`, so every residue needs five of its eight
-characters. The `[P0, P1]` pairs and NEXT runs cannot afford that (CP-SAT:
-infeasible with only the mixer blocked), so every label is a single pointer
-cell and the decoder takes one more hop: `j` to the table cell, `j` to its
-pointer cell `T + 1`, `j` to the *hub* `V + 1` that cell names, `i` through
-the hub. `d` is then `V + 2` on every row, so a stub may read the source
-characters after its hub. The pointer region holds only the 89 label cells
-and the mixer; helpers, selectors and seeds move to walked cells above 127,
-and navigation becomes a shortest path over `o` and `j` through every cell of
-known value, which also brings the main code down from 15,398 cells to 9,677.
-A label's cells are one chained `p` over all-1 cells from a rotated walked
-seed, so they hold `s` and `f(s)` alternately and ten hubs serve five labels;
-each hub holds a source character rotated until it names a free stub. The
-`1` stub runs `p` over the two characters after its hub. No run of one to
-three `p` over source characters swaps `'0'` and `'1'`, so the `not x` stub
-runs two and then, through a third character that names a pointer cell, a
-third over that cell's chain value. Executed on all 8,192 rows of the dense,
-parity, all-0 and all-1 tables.
-
-Fourteen inputs keep the thirteen-input answer stub and add a second
-selected input. Inputs twelve and thirteen pick one of four *copies* of the
-eleven-bit table, and a copy reads one cell per level: a cell read by two rows
-holds `N`, and its readers go on to their next level. Copies differ only in
-which readout cell they jump through, so all twelve readouts -- four copies,
-three levels -- are computed by the walked main code before the last two
-inputs are read: a searched run of ops over the mixer and three extra cells
-now and then `p`s `A` into a prepared readout cell. A level-1 or level-2 cell
-is prepared with a top trit of 2, so its readouts lie at 19683 or above,
-clear of the code; a level-3 readout goes through two cells, 42646 and
-16402, which pin its top two trits to 0 and 2, so it lands in 13122..19682
-where no other level reads. The selector is then only a four-way jump per
-level: both inputs are folded into one cell, `p` over three prepared cells
-turns it into each level's *stub* address, and a stub walks `d` to its
-readout cell and makes the table jump. `A` is set to `'0'` once, before the
-first stub, because nothing between there and the answer stub touches it.
-
-Levels resolve bottom-up: every row reads its level-1 cell, and a row whose
-cell another row reads moves on to its next, which may push another row on
-in turn. The readout ops were annealed a level at a time -- level 1 alone,
-then level 2 with level 1 frozen, then level 3 -- and 7,427 of the 8,192
-copies own their level-1 cell, 685 resolve at level 2 and 80 at level 3,
-whose own region leaves them room. A third read passes the decoder a second
-time; its cells have been re-enciphered, and at residues 9 through 17 `j` and
-`o` both image to nops while at residue 18 `o` images to `i`, so the second
-pass runs nine nops and jumps through `mem[V + 11]` for the N hub `V` it came
-through, a handler that jumps through the level-3 selector. At 29525 the
-decoder would sit among the level-1 cells, so the N hubs hold 13168 and it
-runs from 13169, the same residue. The cells the readout ops touch are packed
-into 163..243 with ten trampolines (`p` with `A = all-2` over a walked cell
-whose `g` is at least 81 leaves `K2(g)` in 162..242, so a `j` through it
-lands inside the window), which keeps the main code near 12,000 cells, under
-the level-3 region. Executed on all 16,384 rows of the dense, parity, all-0
-and all-1 tables. `n > 14` is refused with `GeneratorCapError`: eight copies
-would put 16,384 first reads in the 39,366 cells above the code, and the
-decoder's second pass is the last level its cells afford.
-
-Counting bounds each family, independent of how good the mixer is. A stub
-program needs three cells per row at pairwise distance at least three, so
-`3 * 2**n <= 59049` and `n <= 14`; the cascade needs one table cell per row
-per level above its ~9k cells of code, so `n <= 15`. Neither reaches the
-seventeen-input target.
-
-That construction gap ends before totality. Malbolge has 59,049 cells and
-eight valid decoded instructions at each occupied source cell -- the
-decipherment cycles with the cell index, and `_XLAT1` holds each instruction
-character exactly once -- hence fewer than `sum(8**k for k in range(59050)) <
-2**177148` programs. There are `2**262144` truth tables on 18 inputs, and one
-program computes at most one table, so some 18-input tables have no Malbolge
-program. Malbolge is therefore a language exception, not merely a ceiling.
-
-Seventeen -- the registry target -- needs the count under `2**131072`, a
-factor `2**46076` below it, and counting does not get there. A length cut
-needs every answer to rest inside the first 43,690 cells, but cell 58,967
-alone flips row 299 at ten inputs (`0` against `1`, both executed). An
-alphabet cut needs 4 of the 8 characters at a cell to matter: single cells
-realise 5 to 8 distinct behaviours (12 of 20 sampled walked-code cells at 5 or
-more), and an every-line cap of `k` buys `log2(8/k)` bits in all -- one bit at
-`k = 4`. What is left is a dependence cut: every table-computing program's
-answer resting on at most 24,434 cells, the largest `K` with `C(59049, K) *
-8**K < 2**131072`. Per program it is false: `'o'*59046 + '/<v'` computes
-the one-input identity and every cell flips it, so only a cut over one
-normal-form program per table remains open.
-
-The no-`i`/`j` model is still dead. Straight-line `c == d` from the reset
-state gives a `p` its own cell's instruction character, one of 94 values in
-33..126, and the input pair `(49, 48)` is unreachable, so NOT is not
-expressible at any length.
+Malbolge is a language exception, not just a generator cap. Its 59,049 cells
+and eight decoded instructions give fewer than `2**177148` programs, versus
+`2**262144` truth tables at eighteen inputs. Seventeen remains open: counting
+misses by `2**46076`, while executed counterexamples kill the simple length,
+alphabet, and per-program dependence cuts. The live route is a normal-form
+dependence bound, recorded in [roadmap](roadmap.md).
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 14 | 14 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones; twelve inputs split the last one off it through a selector, so no mixer ever folds twelve bits; thirteen let the answer stub read the last input, so a table cell names one of four one-input answers; fourteen compute four copies' readouts up front, pick one with inputs twelve and thirteen, and let shared cells hold `N` at any level, so a third read re-enters the decoder. Fifteen's eight-copy cascade resolves every row, but its code, tails and decoders do not fit below 19,683 ([measured](proofs/malbolge-scaling.md#fifteen-the-eight-copy-cascade-measured)). |
+| Malbolge | 14 | 14 | Fifteen's eight-copy cascade resolves every row but does not fit ([measured](proofs/malbolge-scaling.md#fifteen-the-eight-copy-cascade-measured)). |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
@@ -213,43 +90,13 @@ worst sampled parity row. A sub-10 ms run does not establish an exponent.
 Loading dominates Factor (integer factorization) and Circuit Diagram (parsing
 super-linear area); it is intentionally excluded from execution time.
 
-No FRACTRAN construction that addresses table rows can be linear, and that
-is a fact about addressing rows rather than about the language. A program is
-an ordered list of fractions and a starting value, so every reachable state is
-that value times a product of those fractions, and a step's only decision is
-whether some fraction's guard divides it. Two consequences bind. Fractions
-sharing a guard are dead after the first, so the live ones are distinct
-strings, and `m` of them cost `(1 + o(1)) m log m` characters. Digit cost is
-additive over distinct primes however they are packed into numbers, so the
-`k` primes a text spells cost `(1 + o(1)) k log10 k`. Giving `T` rows their
-own guard or their own prime is therefore `Omega(T log T)`, which a
-prime-per-node tree attains exactly: `3T + n - 2` fractions over `2T + n`
-primes, measured difference ratio 4.61 against the contract's 4.4.
-
-That is not a language lower bound, and the shipped generator is why. It does
-not address rows: the tree stops early, each leaf loads a block of `w` entries
-as a single exponent -- `w` bits for `w log10 2` characters, since this port
-parses `p^e` -- and a fixed fourteen-fraction decoder shifts that exponent by
-an offset the low inputs spell in unary. It pays the same budget for `3T / w`
-addresses instead of `T`, and with `w = Theta(n)` that is `Theta(T)`
-characters: measured `8.93` an entry at `n = 12` against the tree's `23.6`,
-declining with `n`, difference ratio inside the contract at every same-parity
-triple from `n = 6` up. With the counting floor `D >= T / log2(c) > 0.26 T`,
-FRACTRAN's boolean size complexity is `Theta(T)`.
-
-Counting could never have said otherwise. A Factor program is one integer
-read by prime rank, so a `D`-digit one has `exp(O(D / log D))` behaviours; a
-FRACTRAN program is a *list* whose order is behaviour, worth `log2(m!)` bits
-at the alphabet's full rate, so a `D`-character one has `2**Theta(D)`.
-
-What the text costs is paid on the clock: a block held in an exponent has to
-be traversed, so a run is `O(2**w)` steps rather than the tree's `2n + 1`, and
-`w` is held at about `n / 3` to keep that under `2.5 * sqrt(T)`. Blocks come
-in two widths, mixed to average a target that is not a power of two, because
-doubling `w` outright made the characters an entry saw between settings
-instead of settling. Both ends and the trade are in
-[fractran](proofs/fractran.md), measured in
-`tests/proofs/deep/fractran_packed.py`.
+FRACTRAN's row-addressing tree costs `Theta(T log T)`, but that is not a
+language floor. The shipped generator packs `w = Theta(n)` entries into an
+exponent and pays for `3T / w` addresses, giving `Theta(T)` text and
+`O(2**w)` execution. At n=12 it emits 8.93 characters per entry versus 23.6
+for the tree; same-parity difference ratios satisfy the contract from n=6.
+The construction, counting floor, and time tradeoff are in
+[fractran](proofs/fractran.md) and `tests/proofs/deep/fractran_packed.py`.
 
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
@@ -260,89 +107,31 @@ separate axes.
 ## Curation
 
 The collection has 68 languages; its floor is 31. All seven classics carry
-generators: Befunge, FALSE, Thue and Whitespace loop-less O(T) lookups or
-trees, Unlambda a promise-forced tree, Malbolge a source-embedded mixer through
-fourteen inputs, FRACTRAN a tree onto blocks of entries carried one to an
-exponent, which pays the address budget for `3T / w` blocks rather than `T`
-rows and so is linear (Scaling, below). They are here for coverage; three of the four
-2026-09-27 additions touch an axis the rest of the set does not, and
-[roadmap](roadmap.md) carries the promotion question rather than this file. Ordinary
-imperative entries with shared-shim generators and no consumer were removed. Nopstacle and
-ZTOALC L left: the former cannot meet embed conventions, the
-latter was a searched syntax-level lookup table. The 2D candidate screen is
-kept because re-running it is expensive: 1,543 unimplemented pages intersected
-with 567 two-dimensional-language pages, then filtered to 36 by implemented
-verdicts, co-categories, I/O/branch vocabulary, and 1,500-character pages.
-Super SNUSP and Alight were admitted; Pinyin was rejected.
+generators. Ordinary imperative entries with shared-shim generators and no
+consumer were removed. Nopstacle could not meet the embed conventions; ZTOALC
+L was a searched syntax-level lookup table. The retained 2D screen intersected
+1,543 unimplemented with 567 two-dimensional pages, then filtered 36 by prior
+verdicts, co-categories, I/O and branch vocabulary, and page length. It admitted
+Super SNUSP and Alight and rejected Pinyin.
 
-The alternative admission route is fame, measured on two proxies, both taken
-2026-09-27: backlinks to the language's esolangs page (`list=backlinks`,
-redirects followed, capped at 500) for standing inside the community, and an
-English Wikipedia article with its 90-day pageviews (2026-06-28 to 2026-09-25)
-for reach outside it. The seven classics score Befunge 271, Thue 154, Malbolge
-129, FALSE 91, Unlambda 89, FRACTRAN 65 and Whitespace 58, and each holds a
-Wikipedia article or at least a redirect; Brainloller 26 and Braincopter 14 are
-the rejected pair, Piet, admitted, 65. The two proxies are not one axis and a
-candidate may clear either: Befunge leads the community count but draws 3,999
-Wikipedia views against Malbolge's 20,823 and Whitespace's 11,255, while Thue
-has no article at all. Page age biases the count down, so a low score is
-evidence only against an old language.
+The alternative route measures fame by esolangs backlinks and by an English
+Wikipedia article with 90-day pageviews, sampled 2026-09-27. A candidate may
+clear either proxy; low backlinks count against only old languages.
 
-**The bar is a fraction of brainfuck.** Brainfuck is the reference esolang and
-its count does not depend on anything this collection decided, so it is the one
-available anchor that is not derived from our own admissions. At 282 it sets the
-unit: fame at or above `bf/5` (56) is sufficient on its own, at or below `bf/10`
-(28) it carries nothing and the axis test stands alone, and between the two the
-verdict is indeterminate and the axis test decides. Every past decision falls
-outside that band, which is the point -- the classics run 0.21 (Whitespace) to
-0.96 (Befunge) and the two rejections are 0.09 (Brainloller) and 0.05
-(Braincopter), so any cut in the empty 2.2x span between them reproduces the
-whole record, and the threshold is not fitted to a single value. Ratios also
-re-normalize as the wiki grows, where an absolute count drifts.
+Brainfuck anchors the backlink bar at 282: `bf/5` (56) is sufficient, `bf/10`
+(28) carries nothing, and the axis test decides between them. The decided
+classics score 58--271; rejected Brainloller and Braincopter score 26 and 14.
+The band is intentionally indeterminate: Chicken 0.199, Shakespeare 0.195,
+and LOLCODE 0.167 fall inside it. A population percentile cannot replace the
+ratio: a fixed sample of 150 language pages had p99=20, below both rejected
+image languages.
 
-Three limits. The fraction is still picked by looking at our own admits and
-rejects, so the anchor removes one degree of freedom and not two; the band is
-declared indeterminate rather than split, because that is the honest width of
-what the evidence fixes. The band is empty only in the decided set -- Chicken
-0.199, Shakespeare 0.195 and LOLCODE 0.167 all sit inside it, so indeterminate
-is the ordinary verdict for an outside candidate, not the exception. And the
-unit partly counts derivative families, since every variant page links its
-parent: that keeps the anchor stable, but it is why Deadfish scores 0.89,
-second only to brainfuck, for a four-command language with no input at all.
+The fame bar is forward-only; past admissions are audited on the intrinsic
+axis test.
 
-No absolute bar exists at this resolution, which is why the anchor is a ratio.
-Category:Languages holds 7,560 pages; a seed-pinned uniform sample of 150 has
-median 2 backlinks, p75 5, p90 8, p95 10, p99 20 and sample maximum 24. Every
-language this collection has admitted, queued *or rejected* therefore sits above
-the 96th percentile -- Prelude 13 at p96.7, rejected Braincopter 14 at p97.3,
-the rest at p100 -- so a population percentile cannot separate what curation
-needs separated, and a bar at p99 would admit both languages already judged
-short.
-
-The bar is forward-only either way. It answers "is this candidate as prominent
-as what we keep?" and it cannot answer "was that admission wrong?", since the
-fraction is pinned by the admissions: inside the band the classics pass by
-construction. A past admission is audited on the axis test, which is intrinsic
-to the language and references no population.
-
-The route has now admitted twice, in two different ways, having until then only
-ever rejected. Bitwise Cyclic Tag 0.66 cleared `bf/5` and then took the
-cyclic-schedule axis on its own merits, so fame only bought it a reading.
-Deadfish 0.89 cleared `bf/5` and can never take an axis at all -- the four are a
-generator's test and it has no input vocabulary to host one -- so it is admitted
-**interpreter-only**: an interpreter, no generator, `int` in `list --details`.
-That pair marks the boundary of what fame buys. It is sufficient for a place in
-the collection, and it cannot supply an input interface, so where none exists
-the place it wins is the interpreter-only one.
-
-Deadfish was recorded here and in the roadmap as the standing proof that fame is
-*not* sufficient on its own -- highest count in the screen, inadmissible anyway.
-That reading assumed a language with no possible generator was inadmissible, and
-what the case actually shows is narrower: fame cannot conjure an input
-interface. It is also why HuePrism's rejection now rests on fame rather than on
-being output-only, which is no longer disqualifying by itself; its count is
-unmeasured, the wiki having returned 403 since the popularity sweep, and it is
-not being re-measured to settle a row nobody is arguing for.
+Bitwise Cyclic Tag (0.66) also earned the cyclic-schedule axis. Deadfish (0.89)
+has no input vocabulary and is therefore interpreter-only: fame can admit a
+language, but cannot create a generator interface.
 
 Among the candidates left Underload 0.59, INTERCAL 0.37 and Cyclic tag 0.35
 clear `bf/5`, Emmental 0.15 lands in the band and rests on its axis instead, and
