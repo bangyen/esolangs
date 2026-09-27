@@ -102,25 +102,32 @@ INTERCAL, listed last, is outside the pass.
   generation time and size remain open over the reachable gap below that
   language ceiling.
 
-  FRACTRAN's two cells opened when the wall was written out in full.  What is
-  proved is an address budget: the live fractions have pairwise distinct
-  guards, so `m` of them cost `(1 + o(1)) m log m` characters, and every prime
-  the text spells costs `log10 p` additively, so `k` of them cost
-  `(1 + o(1)) k log10 k`.  Any program that gives each of `T` rows its own
-  guard or its own prime therefore needs `Omega(T log T)`, which the shipped
-  tree attains -- `3T + n - 2` fractions over `2T + n` primes.  That covers
-  every construction anyone has written, and it is not a language bound.  Two
-  routes remain: an earlier claim that packing rows into one exponent costs
-  `2**k` digits holds only in plain fraction notation, since this port parses
-  `p^e`, and what closes it is the clock rather than the size -- an exponent
-  moves by a bounded amount a step, so reading one of magnitude `E` costs
-  `E / M` steps.  The route nothing above touches is priority order, and the
-  reason is structural: Factor's behaviour count works because a Factor
-  program is one integer read by prime rank, while a fraction *list* makes
-  order behaviour, worth `log2(m!)` bits at the alphabet's full rate.  So no
-  counting argument can reach `Omega(T log T)` here, and the row stays on the
-  third clause of the bar -- an obstruction, pinned as tests in
-  `tests/proofs/test_fractran_bound.py`.  See [fractran](proofs/fractran.md).
+  FRACTRAN's two cells stay open, and the reason has changed: the wall they
+  were resting on is not the language's.  What is proved is an address
+  budget -- live fractions have pairwise distinct guards, so `m` of them cost
+  `(1 + o(1)) m log m` characters, and every prime a text spells costs
+  `log10 p` additively, so `k` of them cost `(1 + o(1)) k log10 k` -- and so
+  any program giving each of `T` rows its own guard or its own prime needs
+  `Omega(T log T)`, which the shipped tree attains at `3T + n - 2` fractions
+  over `2T + n` primes.  But a program need not address rows.  Stopping the
+  tree `v` levels early, loading each block of `w = 2**v` entries as a single
+  exponent and reading the bit out with a fixed fourteen-fraction decoder
+  addresses `T / w` blocks, pays that same budget for those, and at
+  `w = Theta(log T)` costs `Theta(T)` characters: measured, `2.3` to `2.5`
+  characters an entry from `n = 9` to `n = 14` against the tree's `20` to
+  `26`, with every row executed, in `tests/proofs/deep/fractran_packed.py`.
+  With the counting floor `D >= T / log2(c) > 0.26 T` that settles the
+  language -- its boolean size complexity is `Theta(T)` -- and no counting
+  argument could have settled it the other way, since a fraction *list* makes
+  order behaviour and a `D`-character program has `2**Theta(D)` behaviours,
+  where a Factor program is one integer read by prime rank.  What the tree's
+  `log T` buys is the clock: `2n + 1` steps on an `O(log T)`-bit value, where
+  the packed program runs `Theta(T)` steps on a `Theta(T)`-bit one.  So the
+  open cells carry a trade with an executed witness at each end rather than
+  an obstruction, and the question is whether one construction can hold both
+  ends at once.  Shipping the packed one would close output size and open
+  execution time -- a curator's call, not a gap.  See
+  [fractran](proofs/fractran.md).
 
   Factor's adaptive residue sequence is bounded by fixed-modulus Hoheisel:
   its last selected prime `Q` is polynomial in the run count. Worst-case

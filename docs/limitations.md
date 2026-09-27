@@ -213,8 +213,8 @@ worst sampled parity row. A sub-10 ms run does not establish an exponent.
 Loading dominates Factor (integer factorization) and Circuit Diagram (parsing
 super-linear area); it is intentionally excluded from execution time.
 
-No FRACTRAN construction that addresses table rows can be linear, and the
-reason is the language's rather than a construction's. A program is an
+No FRACTRAN construction that addresses table rows can be linear, and that
+is a fact about addressing rows rather than about the language. A program is an
 ordered list of fractions and a starting value, so every reachable state is
 that value times a product of those fractions, and a step's only decision is
 whether some fraction's guard divides it. Two consequences bind. Fractions
@@ -228,21 +228,26 @@ tree attains it: `3T + n - 2` fractions over `2T + n` primes,
 contract's 4.4. The proof, its lemmas and their executed checks are in
 [fractran](proofs/fractran.md).
 
-That is not a language lower bound, and two things stop it from being one.
-Packing rows into one prime's exponent was previously said to cost `2**k`
-digits for `k` bits; that holds in plain fraction notation but not here,
-since this port parses `p^e`, which prices the same exponent at `log10 e`.
-What rules the route out is the clock: a step shifts an exponent by a bounded
-amount, so a datum held as an exponent of magnitude `E` costs `E / M` steps
-to read, and a table packed that way needs `Omega(2**T / M)`. The size axis
-alone does not forbid it. The other route is the fraction *order*, which is
-part of the program and carries `log2(m!)` bits -- at the alphabet's full
-rate, undamped by any log, which is exactly why Factor's behaviour count
-cannot be imported: a Factor program is one integer read by prime rank, and a
-FRACTRAN program is a list whose order is behaviour. So no counting argument
-reaches `Omega(T log T)` here. Enough order to name any table is already
-bought at `Theta(T)` characters; whether a FRACTRAN program can decode one is
-open, and a construction that did would close the row.
+That is not a language lower bound, and it is not one because it is false as
+one. A program need not address rows: stop the tree `v` levels early, load
+each block of `w = 2**v` entries as a single exponent -- `w` bits for
+`w log10 2` characters, since this port parses `p^e` -- and read the bit out
+with a fixed fourteen-fraction decoder that shifts the exponent by an offset
+standing in unary. That addresses `T / w` blocks, pays the same budget for
+those, and at `w = Theta(log T)` costs `Theta(T)` characters: `2.3` to `2.5`
+an entry from `n = 9` to `n = 14`, against the tree's `20` to `26`, every row
+executed in `tests/proofs/deep/fractran_packed.py`. With the counting floor
+`D >= T / log2(c) > 0.26 T`, FRACTRAN's boolean size complexity is
+`Theta(T)`.
+
+Counting could never have said otherwise. A Factor program is one integer
+read by prime rank, so a `D`-digit one has `exp(O(D / log D))` behaviours; a
+FRACTRAN program is a *list* whose order is behaviour, worth `log2(m!)` bits
+at the alphabet's full rate, so a `D`-character one has `2**Theta(D)`. What
+the tree's extra `log T` buys is the clock -- `2n + 1` steps on an
+`O(log T)`-bit value, where the packed program runs `Theta(T)` steps on a
+`Theta(T)`-bit one. Both ends are built; whether one construction holds both
+is open.
 
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
@@ -255,8 +260,9 @@ separate axes.
 The collection has 68 languages; its floor is 31. All seven classics carry
 generators: Befunge, FALSE, Thue and Whitespace loop-less O(T) lookups or
 trees, Unlambda a promise-forced tree, Malbolge a source-embedded mixer through
-fourteen inputs, FRACTRAN a prime-per-node tree that pays the language's
-address budget and so is super-linear (Scaling, below). They are here for coverage; three of the four
+fourteen inputs, FRACTRAN a prime-per-node tree that pays the address
+budget for every row and so is super-linear, by choice rather than by
+necessity (Scaling, below). They are here for coverage; three of the four
 2026-09-27 additions touch an axis the rest of the set does not, and
 [roadmap](roadmap.md) carries the promotion question rather than this file. Ordinary
 imperative entries with shared-shim generators and no consumer were removed. Nopstacle and

@@ -13,14 +13,14 @@ A folded leaf leaves the input primes below it unconsumed, and the trailing
 ``1/p`` fractions clear them.  They are last, so while any node prime remains
 some earlier fraction always fires and they get their turn only at the end.
 
-Output size is ``Theta(T log T)``, and the reason is the language's address
-budget rather than this construction: fractions sharing a guard are dead after
-the first, so ``m`` live ones cost ``m log m`` characters, and a prime costs
-``log10 p`` additively however it is packed into a number.  Addressing ``T``
-rows pays both, and this tree attains them -- ``3T + n - 2`` fractions over
-``2T + n`` primes.  That bounds every construction which addresses rows, not
-every program in the language: ``docs/proofs/fractran.md`` prices the routes
-around it and pins its lemmas in ``tests/proofs/test_fractran_bound.py``.
+Output size is ``Theta(T log T)``: guard-sharing fractions are dead after the
+first, so ``m`` live ones cost ``m log m`` characters, and a prime costs
+``log10 p`` additively.  This tree attains both -- ``3T + n - 2`` fractions
+over ``2T + n`` primes -- so it is optimal among programs that address rows,
+which are not all of them.  The language itself is ``Theta(T)``, by packing
+entries into one exponent and spending ``Theta(T)`` steps to read them back;
+the extra ``log T`` here buys the ``2n + 1``-step run
+(``docs/proofs/fractran.md``).
 """
 
 from __future__ import annotations

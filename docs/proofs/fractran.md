@@ -1,20 +1,35 @@
-# FRACTRAN: the size wall, and where it stops
+# FRACTRAN: whose wall it is
 
 The shipped generator emits `Theta(T log T)` characters for a `T`-row truth
 table. This document proves that no *row-addressing* program does better --
 an unconditional `Omega(m log m)` in the fraction count and
-`Omega(k log k)` in the prime count, from distinctness alone -- prices the
-escape route that bound leaves open, and states precisely what is still
-unproved. Two corrections to earlier prose come out of it, both recorded
-below: the packing argument was notation-dependent and false under this
-port's own rendering, and the Factor-style behaviour count *cannot* be
-imported here, for a reason that is structural rather than a gap in effort.
+`Omega(k log k)` in the prime count, from distinctness alone -- and then
+shows that the language is not bounded by it, by exhibiting a program that
+does not address rows and costs `Theta(T)`.
 
-The conclusion for the audit: FRACTRAN's output-size and generation-time
-cells read `Open`, not `Language lower bound`. What is proved is an
-obstruction covering every construction anyone has written, pinned by
-execution in `tests/proofs/test_fractran_bound.py`, not a bound over every
-program in the language.
+So the headline is a negative one. **FRACTRAN has no `Omega(T log T)`
+language lower bound; its boolean size complexity is `Theta(T)`.** The
+floor is the counting floor, `D >= T / log2(c) > 0.26 T` (Theorem 14), and
+Theorem 15 comes within a small constant of it: a block-packed program
+measures `2.3` to `2.5` characters an entry from nine inputs to fourteen,
+against the shipped tree's `20` to `26` and climbing. The `log T` in the
+shipped generator's size is the construction's, not the language's.
+
+What the wall really prices is the clock. A packed program holds `w` table
+entries in one exponent, so it buys those characters with a value of
+`Theta(2**w)` bits and a run that has to traverse them; the tree buys
+`2n + 1` steps on a value of `O(log T)` bits by putting a `log T` in its
+text. Both ends are executed in `tests/proofs/deep/fractran_packed.py`.
+Neither is linear on all four audit axes at once, and that trade -- not a
+wall -- is what keeps FRACTRAN's cells open.
+
+Three corrections to earlier prose come out of this, all recorded below:
+the packing argument was notation-dependent and false under this port's own
+rendering; the Factor-style behaviour count *cannot* be imported here, for
+a reason that is structural rather than a gap in effort; and the address
+budget was being read as a statement about the language when it is a
+statement about a class of constructions -- a class nothing established was
+exhaustive, and which is not.
 
 ## Setup
 
@@ -132,7 +147,12 @@ floor is not loose for it: measured on the unfoldable table (parity), it
 emits `m = 3T + n - 2` fractions over `k = 2T + n` primes with all `m`
 guards distinct, and `D / log10(m!)` falls to `3.00` by `n = 12`.
 
-## Closing the packing route
+Read the hypothesis. It is a wall for programs that address rows, and a
+program is under no obligation to address rows: Theorem 15 addresses
+`T / log T` blocks and pays this same budget for those, which comes to
+`Theta(T)`.
+
+## Pricing the packing route
 
 The alternative to `T` addresses is to pack rows into one prime's exponent.
 
@@ -164,6 +184,13 @@ contract. The packing route is closed on the time axis, not on the size
 axis -- so the clock has to be part of the hypothesis, and for a size-only
 claim it genuinely is not closed.
 
+Read Lemma 11 the other way and it is a recipe rather than a refutation.
+Packing the *whole* table is what costs `2**T` steps; packing `w` entries
+costs `Theta(2**w)`, and at `w = Theta(log T)` that is `Theta(T)` steps --
+inside the linear execution contract, not outside it. Theorem 15 is
+exactly that reading, and it is why the size cell cannot be closed by any
+of the work above.
+
 ## Why shared machinery cannot escape
 
     Theorem 12. For every prime p,
@@ -194,7 +221,7 @@ fraction a number of times that varies with the input, which is a loop,
 which Lemma 11 prices in steps. Every construction in this repo and in the
 FRACTRAN literature takes the first horn.
 
-## What is not proved
+## The counting floor, and why it is the only one
 
     Theorem 14 (floor). D >= T / log2(c) > 0.26 T.
 
@@ -212,23 +239,122 @@ damping. The number of behaviours of a `D`-character FRACTRAN program is
 `2**Theta(D)`, so **no counting argument can reach `Omega(T log T)` here**.
 That is not a gap to be filled by a better count; it closes the route.
 
-What remains open is therefore sharp. An `O(T)`-character family would
-have to
+Counting is therefore the only lower-bound technique available, and it
+stops at `Omega(T)`. An `O(T)`-character family would have to
 
-- use `m = o(T)` fractions and `k = o(T)` primes (Theorems 7 and 8);
-- keep its data out of exponent magnitudes (Lemma 10 in plain notation,
-  Lemma 11 under powers plus the execution contract); and
-- so decode the table out of priority order alone, as a decision list over
-  monotone conjunctions of the input bits (Lemma 6) whose leaf values are
-  the linear form of Theorem 12.
+- use `m = o(T)` fractions and `k = o(T)` primes (Theorems 7 and 8); and
+- carry the rest of the table somewhere those do not count it -- which
+  leaves exactly two places, priority order and exponent magnitude.
 
-Information permits it: `log2(m!) >= T` already at `m = Theta(T / log T)`,
-which Theorem 7 prices at `Theta(T)` characters, not `Theta(T log T)`. No
-decoder of that shape is known, and nothing above excludes one. A
-construction would beat the shipped tree and close the row; a proof that
-none exists would be the language lower bound this document does not have.
+The order route is open and unused. The magnitude route is the one taken
+below, and it was available all along: Lemma 11 prices a magnitude in
+*steps*, and steps are a different axis from characters. This document
+previously read that lemma as closing the route. It closes it on the
+clock, and the cell it was being used to justify measures text.
 
-## Upper bound
+## Where the wall stops
+
+    Theorem 15 (packed construction). For every w = 2**v <= T there is a
+    FRACTRAN program family computing any T-row table under the generator
+    contract, with
+
+        m, k = Theta(T / w)  fractions and primes,
+        D    = O((T / w) log(T / w)) + T log10(2) + O(1)  characters,
+
+    running O(w * 2**w) steps on a value of O(2**w + log T) bits.
+    Taking w = Theta(log T) gives D = Theta(T).
+
+*Construction.* Stop the decision tree `v` levels early. Its `T / w`
+leaves are blocks of `w` consecutive table entries, and the high `n - v`
+input bits reach the right one exactly as in the shipped tree: a node owns
+two fractions, the first dividing by the node's input prime, the second
+serving as FRACTRAN's own else. A leaf fires
+
+    carry**c * ready / state
+
+where `c` is its block read as a `w`-bit integer, low entry first. That is
+`w` bits of table for `log10 c + O(1)` characters, because this port parses
+`p^e` (Lemma 10's plain-notation pricing is what would forbid it).
+
+The low `v` input bits are the offset inside the block. They are consumed
+by `v` fractions at the very top of the list, `count**(2**(v-1-r)) / p`,
+one per bit, which fire first and to exhaustion because nothing else guards
+on a low input prime. The offset therefore stands in unary as the exponent
+of `count` before the tree has finished.
+
+The decoder is one fixed list of fourteen fractions, independent of the
+table. It shifts the block right once per unit of the counter -- halving
+the exponent by moving two `carry` to one `work`, discarding the bit
+shifted out, moving `work` back -- and then answers with the parity of what
+is left: `2 / (read * carry)` if a unit remains, `1 / read` if not. Each
+loop alternates between two state primes, which is what keeps a guard from
+being shared; by Lemma 2 a fraction that tried to hold its own state prime
+in both numerator and denominator would have that prime cancel out of its
+guard and fire everywhere.
+
+*Correctness* is the loop invariant that after `j` units are spent the
+`carry` exponent is `c >> j`, and the offset is exactly the low `v` bits of
+the row. It is checked by execution rather than asserted: every row of
+every table, at every block width a run can afford, in
+`tests/proofs/deep/fractran_packed.py` (1,888 rows at the pinned seed) and
+in `tests/proofs/test_fractran_bound.py`.
+
+*Cost.* The tree addresses `T / w` blocks, so Theorems 7 and 8 price it at
+`Theta((T/w) log(T/w))` -- the budget is paid, for fewer addresses. The
+block literals cost `sum log10 c_j <= (T/w)(w log10 2 + 1)`, which is
+`0.302 T + T/w`, and digit additivity (Theorem 8's engine) says no
+rendering does better. The decoder is `O(log T)` and the `n` clears
+`O(n log T)`. With
+`2**v >= n` the first term is `O(T)`, and
+
+    Corollary 16 (language size complexity). The worst-case rendered size
+    of a FRACTRAN boolean program is Theta(T): Omega(T) by Theorem 14,
+    O(T) by Theorem 15.
+
+Measured, at the seed pinned in the deep proof -- `m` fractions, `k` primes,
+and characters an entry for the packed program and for the shipped tree:
+
+    n     T       w    D        D/T     tree      tree/T   m      k
+    8     256     8    1147     4.48    4836      18.89    119    116
+    9     512     16   1243     2.43    10291     20.10    121    117
+    10    1024    16   2300     2.25    21281     20.78    218    214
+    11    2048    16   4655     2.27    45728     22.33    411    407
+    12    4096    16   9520     2.32    96693     23.61    796    792
+    13    8192    16   19214    2.35    199320    24.33    1565   1561
+    14    16384   16   40527    2.47    423757    25.86    3102   3098
+
+`D/T` stays inside a band while the tree's climbs; `m` and `k` stay near
+`T / 8`, so nothing here contradicts the address budget. The band is not
+flat because `w` is a power of two, so the constant sawtooths as `v` steps
+up (at `n = 9` and again at `n = 17`); the contract's successive-difference
+ratio reads that oscillation as super-linear even though `D = Theta(T)`.
+That is a property of the width knob, not of the construction.
+
+## What is not proved
+
+Both ends of the trade are built, and neither is linear on every axis:
+
+    tree     D = Theta(T log T)   2n + 1 steps      O(log T)-bit values
+    packed   D = Theta(T)         Theta(T) steps    Theta(T)-bit values
+
+so a `Theta(T)` step count comes with `Theta(T)`-bit arithmetic, and the
+bit cost of a packed run is `Theta(T**2)`. The open question is the joint
+one, and it is sharper than the old one because both axes now have a
+witness:
+
+- is there a family with `D = O(T)` and `polylog(T)` steps? Every
+  construction here pays one for the other, and the reason is visible:
+  `m = o(T)` forces some address to name more than one row, and the only
+  storage a fraction list has for the rest is a magnitude, which Lemma 11
+  makes the run traverse;
+- or is there a size-time tradeoff theorem -- a lower bound on `D * S`, or
+  on `D` for `S = polylog`, over every program in the language?
+
+Nothing above excludes either. What is excluded is any argument by
+counting, at either end: a `D`-character program has `2**Theta(D)`
+behaviours, so counting stops at `Omega(T)` exactly as Theorem 14 says.
+
+## The other end: the shipped tree
 
 The shipped generator is a decision tree with one prime per node, the bits
 as exponents in the starting value, and FRACTRAN's first-match rule as the
@@ -239,8 +365,10 @@ else-branch. On the unfoldable table it emits
 with pairwise distinct guards, `n + 1` to `2n + 1` steps a run, and a
 measured successive-difference ratio of `4.61` against the size contract's
 `4.4`. Corollary 9 is attained to within a constant, so the construction is
-optimal among row-addressing programs up to that constant, and the measured
-super-linearity is the language's arithmetic rather than a slack encoding.
+optimal among row-addressing programs up to that constant. Its measured
+super-linearity is therefore not slack in the encoding and not the
+language's arithmetic either: it is the price of the `2n + 1`-step run,
+which is what a row-addressed table buys.
 
     n     T      D       m      k    D / log10(m!)
     2     4      73      12     10   8.41
