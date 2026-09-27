@@ -276,7 +276,13 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        return self.state[4]
+        """Whether ``end`` has run, or the pointer has left the program.
+
+        Whitespace ends with an explicit ``[LF][LF][LF]``, so a pointer past
+        the last instruction means the source was cut short -- ``step`` used
+        to index the instruction list with it and leak an IndexError.
+        """
+        return self.state[4] or self.state[0] >= len(self.instructions)
 
     #: The position is a character offset into the source a caller handed in,
     #: so the debugger can mark the token the pointer stands on.

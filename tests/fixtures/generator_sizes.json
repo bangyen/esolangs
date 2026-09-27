@@ -406,6 +406,34 @@
     "source_units": 84
    }
   },
+  "FALSE": {
+   "0110": {
+    "commands": 26,
+    "source_units": 53
+   },
+   "01101001": {
+    "commands": 38,
+    "source_units": 121
+   },
+   "0110100110010110": {
+    "commands": 50,
+    "source_units": 257
+   }
+  },
+  "FRACTRAN": {
+   "0110": {
+    "commands": 4,
+    "source_units": 73
+   },
+   "01101001": {
+    "commands": 5,
+    "source_units": 157
+   },
+   "0110100110010110": {
+    "commands": 6,
+    "source_units": 336
+   }
+  },
   "Factor": {
    "0110": {
     "commands": 865,
@@ -824,6 +852,34 @@
    "0110100110010110": {
     "commands": 353,
     "source_units": 451
+   }
+  },
+  "Thue": {
+   "0110": {
+    "commands": 14,
+    "source_units": 203
+   },
+   "01101001": {
+    "commands": 26,
+    "source_units": 207
+   },
+   "0110100110010110": {
+    "commands": 46,
+    "source_units": 215
+   }
+  },
+  "Unlambda": {
+   "0110": {
+    "commands": 139,
+    "source_units": 91
+   },
+   "01101001": {
+    "commands": 205,
+    "source_units": 207
+   },
+   "0110100110010110": {
+    "commands": 271,
+    "source_units": 439
    }
   },
   "Unsquare": {

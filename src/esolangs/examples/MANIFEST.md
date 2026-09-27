@@ -46,10 +46,12 @@ that row is actually spelled for the language.
 | `egl.txt` | EGL | `0001` | `01` | 0 1 | '0' |
 | `eval.txt` | Eval | `0001` | `01` | embedded 01 | '0' |
 | `factor.txt` | Factor | `0001` | `01` | 0 1 | '0' |
+| `false.txt` | FALSE | `0001` | `01` | 0 1 | '0' |
 | `fargo.txt` | Fargo | `0001` | `01` | 1 | '0' |
 | `flowchart.txt` | Flowchart | `0001` | `01` | 0 1 | '0' |
 | `forbin.txt` | Forbin | `0001` | `01` | 0 1 | '0' |
 | `forþ.txt` | Forþ | `0001` | `01` | 0 1 | '0' |
+| `fractran.txt` | FRACTRAN | `0001` | `01` | embedded 01 | '1' |
 | `grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
 | `home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
 | `inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
@@ -73,6 +75,8 @@ that row is actually spelled for the language.
 | `suffolk.txt` | Suffolk | `0001` | `01` | 0 1 | '0' |
 | `super-snusp.txt` | Super SNUSP | `0001` | `01` | 0 1 | '0' |
 | `taglate.txt` | Taglate | `0001` | `01` | 0 1 | '0' |
+| `thue.txt` | Thue | `0001` | `01` | 0 1 | '0' |
+| `unlambda.txt` | Unlambda | `0001` | `01` | 0 1 | '0' |
 | `unsquare.txt` | Unsquare | `0001` | `01` | 0 1 | '0' |
 | `vandevelo.txt` | Vandevelo | `0001` | `01` | 0 1 | (nothing) |
 | `whitespace.txt` | Whitespace | `0001` | `01` | 0 1 | '0' |
@@ -89,6 +93,7 @@ that row is actually spelled for the language.
 - **container** -- Container prints the answer like any other reader; it also ends by calling sys.exit(0) rather than returning, which matters to a harness driving it but not to reading the result
 - **crement** -- Crement answers by termination: the tree's nodes patch a per-input tester's jump targets, and the row lands past the end (halts, 0) or on a self-jump (diverges, 1)
 - **fargo** -- Fargo reads one number whose bits are the inputs, so the committed input is the row index rather than a bit per line
+- **fractran** -- FRACTRAN has neither input nor output: the inputs are the exponents of n primes in the starting value, and the answer is the value the run stops on -- 1 for a zero and 2 for a one
 - **grapheme** -- Grapheme's generator normalizes each input line with ord(line[0]) - 65 and then maps zero to 1, so its input bits are spelled % and A: 'A' is a 1 and every other first character is a 0, which means a 0/1 line reads as 0 and the program answers the all-zeros row. The second step is not optional prose -- ord('A') - 65 is 0, so the subtraction alone says the opposite
 - **inject** -- send terminates each line, so the answer ends in a newline
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
@@ -96,4 +101,5 @@ that row is actually spelled for the language.
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
 - **taglate** -- Taglate takes a line per bit like most languages, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four lines. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
+- **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change
 - **vandevelo** -- Vandevelo answers by terminating: nil halts and not nil loops

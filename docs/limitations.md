@@ -213,6 +213,27 @@ worst sampled parity row. A sub-10 ms run does not establish an exponent.
 Loading dominates Factor (integer factorization) and Circuit Diagram (parsing
 super-linear area); it is intentionally excluded from execution time.
 
+FRACTRAN cannot have a linear generator, for a reason that is the language's
+and not a construction's. A program is an ordered list of fractions and a
+starting value, so every reachable state is that value times a product of
+those fractions, and a step's only decision is whether some fraction's
+denominator divides it. The exponents a program can read are therefore
+exactly those of the primes its own text spells. Telling `T` rows apart needs
+`T` distinct primes in the source, and the `T`th prime takes
+`log10(T log T)` digits to write; packing rows into one prime's exponent
+trades the wrong way, since an exponent of `2**k` carries `k` bits and costs
+`2**k` digits. So every construction that addresses table entries by prime
+pays `Theta(log T)` an entry, and the shipped one does: 3T fractions over
+`2T + n + 1` primes, `Theta(T log T)` characters, measured difference ratio
+4.65 against the contract's 4.4.
+
+This wall is falsifiable in one direction that the argument above does not
+reach: the *order* of the fraction list is part of the program and carries
+`log2(m!)` bits of its own, so a construction that decodes the table out of
+priority rather than out of prime exponents is not excluded by it. Nothing
+here says how a FRACTRAN machine would read an ordering it cannot observe
+except through which fraction fires first.
+
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
 Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.
@@ -221,10 +242,13 @@ separate axes.
 
 ## Curation
 
-The collection has 64 languages; its floor is 31. All three classics carry
-generators: Befunge and Whitespace loop-less O(T) lookups, Malbolge a
-source-embedded mixer through fourteen inputs. They are here for coverage, not for
-a new construction axis. Ordinary
+The collection has 68 languages; its floor is 31. All seven classics carry
+generators: Befunge, FALSE, Thue and Whitespace loop-less O(T) lookups or
+trees, Unlambda a promise-forced tree, Malbolge a source-embedded mixer through
+fourteen inputs, FRACTRAN a prime-per-node tree whose size the language holds
+above linear (Scaling, below). They are here for coverage; three of the four
+2026-09-27 additions touch an axis the rest of the set does not, and
+[roadmap](roadmap.md) carries the promotion question rather than this file. Ordinary
 imperative entries with shared-shim generators and no consumer were removed. Nopstacle and
 ZTOALC L left: the former cannot meet embed conventions, the
 latter was a searched syntax-level lookup table. The 2D candidate screen is
@@ -236,6 +260,36 @@ Super SNUSP and Alight were admitted; Pinyin was rejected.
 ## Specification decisions
 
 - 6-5 accepts operands beyond its specification; generators use `0..35`.
+- FALSE's `ø` pick counts from zero, so `0ø` is `$`; the description ("dup
+  the nth stack item") does not say where the count starts.  Reading a
+  variable before storing it raises rather than inventing a value, and a
+  character that is no command is ignored the way whitespace is -- the spec
+  states neither.  Integers wrap to signed 32 bits (the spec's width) and `/`
+  truncates toward zero, and `O` is accepted as an ASCII spelling of the
+  non-ASCII `ø`.  `^` answers the spec's `-1` at end of input, which
+  the shell reaches by catching the port's `EOFError`: raising instead made
+  the reference's own cat loop, which tests `^` against `-1`, a crash.
+- FRACTRAN has no I/O in the language, so this package reads the starting
+  value from the source's first token and prints the value the run stops on.
+  A token may be written as a product of prime powers (`2^3*5` is 40), which
+  is notation only: it is how a generated starting value spells thousands of
+  digits without spelling them.
+- Thue is nondeterministic by specification -- the rule *and* the position are
+  drawn at random -- and the interpreter draws, through the shared
+  `randomness` hook, rather than pinning a tie-break: a pinned one would make
+  every overlapping-rule program compute whatever this package preferred.
+  `--seed` fixes it.  The generator instead writes rules that never overlap,
+  so each state it reaches has exactly one rewrite and the draw cannot change
+  the answer; `tests/tools/test_boolean_classics.py` asserts that over every
+  table to three inputs, and checks the answer under three seeds and the
+  unseeded draw.
+- Unlambda's `@` reads a line and takes its first character, an empty line
+  giving a newline, since the package has no character stream.  Both spec
+  branches are live: at end of input `@` hands its argument `v`, reached by
+  catching the port's `EOFError` as nine other interpreters here catch it, and
+  the current character is left as it was.  `v` absorbs its arguments, so the
+  failure arm can run nothing of its own -- that is the language, not this
+  port.
 - Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
   wiki's "Nth operation" reads one-based.  The generator's labels match this.
 - BrainIf ignores a guarded line naming no command (`if 0 frobnicate`), which

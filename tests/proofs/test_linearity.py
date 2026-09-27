@@ -183,9 +183,11 @@ def test_the_contract_covers_generators_the_original_queue_missed() -> None:
     generators were never checked, which is why this exists.
 
     (ZTOALC L, Nopstacle and COD entered the same way and left with their
-    languages.)  Growing this number is the contract doing its job, so the
-    assertion is on the *original* twenty-five.
+    languages.)  FRACTRAN is the twenty-sixth, and it entered as Factor did:
+    a language lower bound rather than an open measurement.  Growing this
+    number is the contract doing its job, so the gap is asserted against the
+    registry rather than fixed.
     """
     queue = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
-    assert len(queue) == 25
-    assert len(BY_BOOLEAN) - len(queue) == 37
+    assert len(queue) == 26
+    assert len(BY_BOOLEAN) - len(queue) == 40

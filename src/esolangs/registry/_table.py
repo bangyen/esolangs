@@ -426,9 +426,17 @@ LANGUAGES: dict[str, Language] = {
 }
 
 #: Widely known classics kept for coverage as much as construction.  All
-#: three now carry a generator, but they sit outside the four admission axes:
-#: they are here because a caller expects them, and each is an ordinary
-#: machine in its own costume.  Malbolge's generator caps at fourteen inputs.
+#: seven carry a generator, but they are here because a caller expects them
+#: rather than because they take an admission axis: Befunge, FALSE, Malbolge
+#: and Whitespace are each an ordinary machine in a costume.  Three of the
+#: four 2026-09-27 additions do touch something the rest of the set does not
+#: -- Thue rewrites the table in place instead of walking a tree, FRACTRAN
+#: answers with the value it stops on and branches by which fraction divides
+#: first, Unlambda has no conditional at all and branches by forcing one of
+#: two promises -- and the curator's call on promoting any of them out of
+#: this tier is open.  Malbolge's generator caps at fourteen inputs;
+#: FRACTRAN's emission is ``Theta(T log T)`` for a reason the language
+#: forces (``docs/limitations.md``).
 CLASSICS: dict[str, Language] = {
     "Befunge": Language(
         "Befunge",
@@ -437,11 +445,35 @@ CLASSICS: dict[str, Language] = {
         id="befunge",
         split=True,
     ),
+    "FALSE": Language(
+        "FALSE",
+        "stack_based.false",
+        boolean=_boolean.false,
+        id="false",
+    ),
+    "FRACTRAN": Language(
+        "FRACTRAN",
+        "other.fractran",
+        boolean=_boolean.fractran,
+        id="fractran",
+    ),
     "Malbolge": Language(
         "Malbolge",
         "other.malbolge",
         boolean=_boolean.malbolge,
         id="malbolge",
+    ),
+    "Thue": Language(
+        "Thue",
+        "other.thue",
+        boolean=_boolean.thue,
+        id="thue",
+    ),
+    "Unlambda": Language(
+        "Unlambda",
+        "other.unlambda",
+        boolean=_boolean.unlambda,
+        id="unlambda",
     ),
     "Whitespace": Language(
         "Whitespace",

@@ -27,6 +27,7 @@ from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
 from esolangs.tools.back import PAIR as BACK_PAIR
 from esolangs.tools.crement import PAIR as CREMENT_PAIR
 from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
+from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     Setters,
@@ -360,6 +361,7 @@ def _register() -> None:
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
         "egl": _reader(b.egl, "grid_based.egl"),
         "factor": _reader(b.factor, "tape_based.factor"),
+        "false": _reader(b.false, "stack_based.false"),
         # Fargo reads one *number* before the program starts, not a bit per
         # line, and ``@ k`` indexes that number's bits.  The boolean
         # convention is therefore to feed the row index: the inputs
@@ -435,6 +437,15 @@ def _register() -> None:
             "three exhausts its input; padding at the end instead answers "
             "every row whose top bit is set wrongly",
         ),
+        "thue": _reader(
+            b.thue,
+            "other.thue",
+            note="Thue draws which rewrite to make, by spec, and the "
+            "interpreter draws too; this program's rules are written so that "
+            "every state it reaches has exactly one, leaving the draw nothing "
+            "to change",
+        ),
+        "unlambda": _reader(b.unlambda, "other.unlambda"),
         "unsquare": _reader(b.unsquare, "stack_based.unsquare"),
         "vandevelo": _reader(
             b.vandevelo,
@@ -491,6 +502,19 @@ def _register() -> None:
             ),
         ),
         "eval": _embedded(b.eval, "stack_based.eval", pair=EVAL_PAIR),
+        "fractran": _embedded(
+            b.fractran,
+            "other.fractran",
+            pair=FRACTRAN_PAIR,
+            answer_mode="dump",
+            answer_values=("1", "2"),
+            expected="1",
+            note=(
+                "FRACTRAN has neither input nor output: the inputs are the "
+                "exponents of n primes in the starting value, and the answer "
+                "is the value the run stops on -- 1 for a zero and 2 for a one"
+            ),
+        ),
         "home-row": _embedded(b.home_row, "tape_based.home_row", pair=HOME_ROW_PAIR),
         "minifuck": _embedded(b.minifuck, "tape_based.minifuck", pair=MINIFUCK_PAIR),
         "minsky-swap": _embedded(

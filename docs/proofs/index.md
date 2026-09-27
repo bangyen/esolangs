@@ -145,7 +145,7 @@ optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
 bit~, Circlefuck, Clockwise, Collatz Multiverse, Dimensional, EGL, Eval,
 Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
-Suffolk, Unsquare and Whitespace keep no tree route at all: A Painter
+Suffolk, Thue, Unsquare and Whitespace keep no tree route at all: A Painter
 Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, bit~ lands the pointer on one tape cell an entry and walks the
@@ -173,7 +173,8 @@ literal by the power of two its reads build,
 SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
 row whatever the table says, Suffolk sweeps a countdown past every row,
 Unsquare pushes the whole table onto the stack a cell a row and pops the row
-index off the top of it, and
+index off the top of it, Thue makes the table its starting state and rewrites
+every adjacent pair down to one per input, and
 Whitespace halves one literal once per index step; none has a subtree to
 fold.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
@@ -239,10 +240,12 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | EGL | finite lookup | row 1 is painted with the table and each input's `(-...)` guard walks the row-0 pointer right by that input's Horner weight, so `v=` prints the indexed cell | linear: T painted cells, guard weights sum to T - 1 |
 | Eval | linear lookup | fixed reversed stack order selects the indexed row | linear: T literal plus halving `;` runs under T |
 | Factor | tree | Brainfuck tree followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence | lower bound: tight language and generated Theta(T log T) ([factor](factor.md)) |
+| FALSE | tree | — | linear: 17 characters an internal node, two a leaf |
 | Fargo | tree | finite folded layout | linear, time n log: Moebius transform, n passes over 2**n |
 | Flowchart | finite lookup | a pair of answers per deque, and the input walks the deque cursor to the pair it wants | linear: T pushes, `T/2 - 1` cursor steps, two rows |
 | Forbin | finite lookup | the last seven inputs paint a block of `2**7` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry | linear: two characters an entry, halvings sum to `2 * 128` |
 | Forþ | tree | — | linear: span walk, constant dispatch, step literals geometric |
+| FRACTRAN | parameterized tree | the bits are the exponents of `n` primes in the starting value, one prime per tree node, and the first-match rule is the else-branch | lower bound: one prime a row, Theta(T log T) digits |
 | Grapheme | linear lookup | the whole table is one int-mode literal read in base 10, and each `W` squares an accumulator and doubles it on a 0, which is Horner's rule for the complemented index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0 | linear, time n log: essential_inputs; ~0.302 characters an entry, one read block an input |
 | Home Row | parameterized tree | — | linear, time n log: essential_inputs |
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: T literal, `.` halvings sum to 2T |
@@ -268,8 +271,10 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Suffolk | linear lookup | a countdown built from the row index reads zero exactly on the rows below it, so counting the table's rising and falling steps against it telescopes to the indexed entry | linear, time n log: essential_inputs |
 | Super SNUSP | tree | each folding pass removes at least one pending unit | linear: one `*` per entry; ANF only below five inputs |
 | Taglate | tree | — | linear, time n log: essential_inputs |
+| Thue | linear lookup | the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per input and the last character is the answer; the rules never overlap, so the language's random rule choice has nothing to choose | linear: T state characters, twenty-one fixed rules |
 | 3D Brainfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
 | 3x | tree | — | linear, time n log: essential_inputs; greedy order scoring, capped |
+| Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application | linear: 29 characters an internal node, four a leaf |
 | Unsquare | linear lookup | the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it | linear: `2**n` cells and `2**n - 1` pops, two bytes a row |
 | Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | linear: amortised peel; sqrt(log T) dual-basis core; proof fallback n 2^n |
 | Whitespace | linear lookup | the table is one binary literal, halved once per index step | linear: T-bit literal, index halvings |
@@ -329,6 +334,6 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 61 theoretical totality arguments and one
+Accordingly, this ledger records 65 theoretical totality arguments and one
 proved language exception; every other row is `Total` or theoretically total
 past a resource ceiling.

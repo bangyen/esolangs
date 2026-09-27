@@ -294,6 +294,11 @@ _EOF_IS_A_HALT: dict[str, str] = {
     "malbolge": "an exhausted read is the value 59048, not an error",
     "packlang": "an exhausted charGet is newline byte 10",
     "polynomial": "an exhausted input instruction stores -1",
+    # Both specs name the value a failed read answers with, so catching the
+    # raise is what makes their own idioms work: FALSE's cat tests ``^``
+    # against -1, and an Unlambda read-until-EOF loop needs the ``v`` branch.
+    "false": "an exhausted '^' is the spec's -1",
+    "unlambda": "an exhausted '@' hands its argument v, the spec's branch",
 }
 
 

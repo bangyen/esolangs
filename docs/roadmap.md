@@ -42,12 +42,15 @@ INTERCAL, listed last, is outside the pass.
   survives the computed-label and `COME FROM` wiring, and whether its binary
   I/O routes through the package's stdin convention, is the work.
 
-- **Classic-language audit.**  Spec-read Thue, FRACTRAN, Unlambda, and FALSE
-  against the admission test, using brainfuck, Befunge, Malbolge, Piet,
-  Whitespace, and Super SNUSP as the retained comparison set.  For each
-  candidate, identify the new axis, deterministic semantics, stdin route, and
-  a loop-less Boolean construction or a documented obstruction.  Promote only
-  survivors to ordered interpreter work; record rejections in limitations.
+- **Classic-language admission.**  All four of Thue, FRACTRAN, Unlambda and
+  FALSE now ship as interpreters with generators, in the classics tier.  What
+  is left is the curator's call on promoting three of them out of it: Thue
+  rewrites the table in place rather than walking a tree, FRACTRAN answers
+  with the value it stops on and branches by which fraction divides first, and
+  Unlambda has no conditional and branches by forcing one of two promises.
+  FALSE is an ordinary stack language in costume and stays where it is.  Each
+  promotion needs a comparison against the construction-shape, branch and
+  answer axes the set already occupies, not just the observation above.
 
 ## Conditional follow-up
 
@@ -90,6 +93,7 @@ INTERCAL, listed last, is outside the pass.
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
+  | FRACTRAN | Total | Language lower bound | Language lower bound | Linear |
   | Malbolge | Exception | Open | Open | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
@@ -97,6 +101,20 @@ INTERCAL, listed last, is outside the pass.
   tables.  Its shipped constructions cover every table through fourteen inputs;
   generation time and size remain open over the reachable gap below that
   language ceiling.
+
+  FRACTRAN's `Theta(T log T)` is the language's, not the construction's.  A
+  program is a list of fractions and a starting value, so every state is the
+  start times a product of those fractions: the only data a step can read is
+  the exponent of a prime the *text* spells.  Distinguishing `T` rows
+  therefore needs `T` distinct primes somewhere in the source, and the `T`th
+  prime costs `log10(T log T)` digits.  Packing rows into one prime's exponent
+  trades the wrong way -- an exponent of `2**k` carries `k` bits and costs
+  `2**k` digits -- so the per-entry cost is `Theta(log T)` for every
+  construction that addresses entries by prime.  The escape route left open is
+  the one thing that argument does not cover: the fraction *order* is part of
+  the program and carries `Theta(L log L)` bits of its own, so a construction
+  that decodes the table out of priority alone is not excluded.  See
+  [limitations](limitations.md).
 
   Factor's adaptive residue sequence is bounded by fixed-modulus Hoheisel:
   its last selected prime `Q` is polynomial in the run count. Worst-case

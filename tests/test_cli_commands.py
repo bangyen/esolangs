@@ -202,11 +202,12 @@ class TestASeedMakesARunRepeat:
         with pytest.raises(esolangs.ArgumentError):
             esolangs.run("LaserFuck", self.PROGRAM, "", 5, seed="\ud800")
 
-    def test_the_five_that_draw_are_the_five_named(self) -> None:
+    def test_the_six_that_draw_are_the_six_named(self) -> None:
         """The message lists them, so the list has to be right.
 
         Recomputed from the interpreters rather than trusted, since a
         language gaining a draw would leave the sentence quietly wrong.
+        Thue is the sixth: its rule choice is random by specification.
         """
         drawing = [
             name
@@ -226,6 +227,7 @@ class TestASeedMakesARunRepeat:
             "Modulous",
             "Painfuck",
             "Super SNUSP",
+            "Thue",
         ]
         with pytest.raises(esolangs.ArgumentError) as caught:
             esolangs.run("brainfuck", "+++.", "", 5, seed=1)

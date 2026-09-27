@@ -8,7 +8,9 @@ from esolangs.tools.circuit_diagram import circuit_diagram
 from esolangs.tools.crement import crement
 from esolangs.tools.cvnc import cvnc
 from esolangs.tools.egl import egl
+from esolangs.tools.false import false
 from esolangs.tools.fargo import fargo
+from esolangs.tools.fractran import fractran
 from esolangs.tools.inject import inject
 from esolangs.tools.malbolge import malbolge
 from esolangs.tools.other import (
@@ -65,6 +67,8 @@ from esolangs.tools.tape import (
     suffolk,
     three_d_brainfuck,
 )
+from esolangs.tools.thue import thue
+from esolangs.tools.unlambda import unlambda
 from esolangs.tools.vandevelo import vandevelo
 from esolangs.tools.whitespace import whitespace
 
@@ -100,10 +104,12 @@ __all__ = [
     "egl",
     "eval",
     "factor",
+    "false",
     "fargo",
     "flowchart",
     "forbin",
     "forth",
+    "fractran",
     "grapheme",
     "home_row",
     "inject",
@@ -131,6 +137,8 @@ __all__ = [
     "taglate",
     "three_d_brainfuck",
     "three_x",
+    "thue",
+    "unlambda",
     "unsquare",
     "vandevelo",
     "whitespace",
