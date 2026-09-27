@@ -563,10 +563,7 @@ _UNSHAPED = {
     "malbolge",
     "minsky_swap",
     "b_tapemark",
-    # No branch to fold a tree into: the commands a BCT program runs are a
-    # fixed cyclic sequence, so the table is spelled whole at one cell a row
-    # and every table of an arity emits the same length.
-    "bitwise_cyclic_tag",
+    "bitwise_cyclic_tag",  # no branch, so every table of an arity is one length
     "minifuck",
     "modulous",
     "one_two_three",

@@ -7,12 +7,11 @@ is no character output and, famously, no input vocabulary at all, so no
 boolean generator can exist for it and the registry carries none; ``esolangs
 list --details`` marks it ``int``.
 
-The arithmetic is the whole joke.  After *every* command the accumulator is
-reset to 0 if and only if it equals ``-1`` or ``256`` -- not "greater than
-256", which is what the C original's own comment claims -- so ``iissso``
-prints 0 by overshooting on the third square, and ``diissisdo`` prints 288
-because 289 sails past the trap untouched.  The wiki calls those cases
-mandatory for an implementation and they are asserted as such.
+The arithmetic is the whole joke.  After *every* command the accumulator resets
+to 0 if and only if it equals ``-1`` or ``256`` -- not "greater than 256", which
+is what the C original's own comment claims -- so ``iissso`` prints 0 by landing
+on 256 exactly while ``diissisdo`` prints 288, 289 sailing past untouched.  The
+wiki calls those cases mandatory, and they are asserted as such.
 
 Two decisions, both spelled out by the page rather than gaps in it.  A
 character that is not a command is ignored: "anything that is not a command is
@@ -22,11 +21,10 @@ this package, and deliberately.  And ``h``, which the command table carries as
 "(optional)", halts; it is honoured, since a table entry is a weaker thing to
 ignore than to support.
 
-Each ``o`` writes the number and a newline.  The wiki's shell transcript puts
-one value per line, and without a separator a program printing 1 and then 2 is
-indistinguishable from one printing 12.  Nothing is read, so no ``EOFError``
-comes from here, and no operation can be invalid, so no
-:class:`~esolangs.exceptions.HaltError` arises either.
+Each ``o`` writes the number and a newline: the wiki's shell transcript puts one
+value per line, and without a separator a program printing 1 then 2 reads the
+same as one printing 12.  Nothing is read and no operation can be invalid, so
+neither ``EOFError`` nor :class:`~esolangs.exceptions.HaltError` arises.
 """
 
 from __future__ import annotations
