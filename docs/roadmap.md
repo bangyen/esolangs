@@ -20,8 +20,18 @@ read is complete; rejected candidates are recorded under Curation in
   implementation.
 - **INTERCAL**: target C-INTERCAL with `WRITE IN`/`READ OUT`. `NEXT` pushes a
   return frame and `RESUME <expression>` selects its depth; `COME FROM` is
-  unconditional. Price the labels in a decision tree before building: the
-  stack permits 79 entries, and 1/5--1/3 of statements must carry `PLEASE`.
+  unconditional. A two-`NEXT` selector model passes every table through
+  three inputs: store 2 for input 0 and 1 for input 1, then `RESUME` selects
+  the saved zero or one continuation. A zero removes both frames; a one
+  leaves the unused zero frame, so peak depth is `n + 1` and the 80-entry
+  stack reaches 79 inputs. The route first fails on labels: it needs `2T - 2`
+  unique ones, whose decimal definitions and references are `Theta(T log T)`,
+  and the 16-bit label space caps it at `T <= 32768`. A better Shannon tree
+  uses no control flow: `&` or `V` over mingled pairs gives Boolean AND or OR,
+  and `?` over a bit mingled with 1 gives NOT. The abstract expression passes
+  every table through three inputs and approaches 18 source units per row.
+  Render its nested quote syntax and execute it in the interpreter before
+  promotion.
 ## Conditional follow-up
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where

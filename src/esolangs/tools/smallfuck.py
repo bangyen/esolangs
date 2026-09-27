@@ -1,6 +1,10 @@
 """Smallfuck boolean generator: a folded local-result decision tree."""
 
-from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, constant_span_test
+from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
+    _validate_truth_table,
+    constant_span_test,
+)
 
 PAIR = ("[*]>>>", "***>>>")
 
