@@ -5,109 +5,28 @@ Only live work belongs here. Contracts and standing walls go to
 
 ## New interpreters
 
-Implement the surveyed interpreter candidates in this order.  The first three
-are the 2026-09-19 re-run of the `Category:Unimplemented` x
-`Category:Two-dimensional languages` pass (116 pages, up from 111), Gridify
-having been the fourth and closed on a finished read; the verdicts are spec
-reads, not executed generators, so the size question is open for every entry.
-Piet is already implemented, so it was never in the screen; INTERCAL, listed
-after them, is outside the pass.  Among the classics the
-build order is INTERCAL, then Emmental; Bitwise Cyclic Tag was the head of
-that order and is implemented, Cyclic tag system is held as the embedding's
-source rather than built, and Prelude is pending removal, not queued.  Each
-row carries why.
+Implement the surveyed candidates in this order. The first three survived the
+2026-09-19 two-dimensional-language screen; their verdicts are spec reads, so
+generator size remains open. INTERCAL and Emmental are classic candidates.
 
 - **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
-  filed it unread, thinking the `{{:thisthat}}` transclusions hid the node
-  table; they inject only a CSS `style=` string, so the table is in the
-  wikitext.  Native gates -- `◘` NAND, `□■▦` NOR/OR/XOR with `□■` also
-  emitting 0/1, `◇` one-bit input/output, `◐◑◒◓` bit-conditioned routing --
-  make a combinational network the natural generator, a construction the set
-  does not occupy.  Settle `◨⬒` and the partial-node cases first, and dodge
-  `◘`'s random pointer pick by construction.
+  was misfiled as unread: its transclusions inject CSS, not the node table.
+  Native gates and bit-conditioned routing suggest a combinational-network
+  generator. Settle `◨⬒` and partial nodes first; avoid `◘`'s random pick.
 - **Self-replicating marbles** (2024): a second gate-native pick the 2026-09-02
-  audit missed -- it recorded "no input or output vocabulary", but `i` and `o`
-  are in the command table and the NAND example uses both.  A marble carries one
-  bit, `?` deletes it on 0, and two marbles on one tile merge with NAND; a
-  marble leaving a section replicates to every instruction of the next, a
-  fan-out primitive the set does not have.  Pin "the next section" and the
-  collision tick before building.
+  audit missed: `i` and `o` supply I/O. A marble is one bit; collision is NAND,
+  and leaving a section replicates it into the next. Pin section order and the
+  collision tick before building the set's first replication fan-out.
 - **Wirefunge** (2011): native not/and/or/xor/nor/nand/xnor gates over
-  bit-addressable `a-h`/`1-8` ports, but the page is a self-labelled "Draft
-  Spec" and propagation is simultaneous.  Third of the three gate-native picks
-  and last for a reason beyond the draft: gates are all its row records, and
-  that is thisthat's axis, where marbles earns its own place on replication
-  fan-out instead.  So pinning one evaluation order is necessary and not
-  sufficient -- admit only if it forces something past the gates, the test
-  Gridify was closed on.  Ranked from this row, not from a fresh read: the
-  wiki has been returning 403 since the popularity sweep.
+  bit-addressable ports, simultaneous propagation, and a draft spec. Pin one
+  evaluation order, then admit only if it contributes more than thisthat's
+  gate axis. This ranking predates the wiki's current 403 responses.
 - **INTERCAL**: not from the 2D pass, and not a completeness add -- the
-  well-known candidates otherwise re-occupy an axis the set already has, and
-  the collection is curated by admission, not coverage.  INTERCAL is the
-  exception, but not for the reason first filed.  `COME FROM` is an
-  *unconditional* trap door -- manual 4.4.14, fired "immediately after
-  statement (label)", an error for two of them to name one label -- and
-  `ABSTAIN` takes a literal label or a gerund list, so there is no computed
-  label anywhere in the Revised Reference Manual and `COME FROM` cannot branch
-  on data at all.  What branches is `DO (label) NEXT` with
-  `RESUME <expression>`: a computed *return depth* over the NEXT stack, which
-  the manual's own cat program uses to select 1 or 2 frames with
-  `PLEASE RESUME '?.1$#256'~'#256$#256'`.  That is the new mechanism against
-  push/conditional/jump/pointer here, and it is the claim to carry, not
-  "pull-based transfer".  Target C-INTERCAL, not INTERCAL-72: `COME FROM` is a
-  C-INTERCAL addition, so the 1972 language does not carry the feature the
-  admission rests on.
-
-  Settled, and no longer blocking: the I/O.  There is no plain byte I/O --
-  `WRITE IN` reads English digit words one per line (`ZERO`/`ONE`, also `OH`
-  and `NINER`), `READ OUT` prints extended Roman numerals with zero an
-  overline over no character -- but `_answers.py` already carries
-  per-language stdin overrides of exactly that shape (Grapheme spells
-  `%`/`A`, Fargo takes one number).  The Turing Text array model (manual 5.2)
-  gives literal `0`/`1` instead, at the cost of differencing every input
-  against the previous character and bit-reversing every output byte; take
-  `WRITE IN`/`READ OUT`.
-
-  Open: the size.  A depth-`n` NEXT/RESUME tree is O(T) statements at O(1)
-  text each, and E123 caps NEXTing at 80 levels -- depth, not rows, so a tree
-  clears it and any per-row frame build does not.  One generator constraint
-  nothing else here has: 1/5 to 1/3 of statements must carry `PLEASE`, or
-  E079/E099 fires.
-
-- **Cyclic tag system** (2004): Matthew Cook's tag variant, the one that
-  carried the Rule 110 proof.  A production list `P_0 .. P_{n-1}` over a
-  binary word, stepping `(i, dX) -> (i+1 mod n, X P_i^d)`: the only decision
-  in the language is the word's leading symbol, control is the cyclic index,
-  and nothing addresses anything.  Every branch here is
-  conditional/jump/pointer/first-match/promise-forced, so a cyclic schedule
-  forces a new one, and the inputs embed as symbols of the initial word --
-  a one-character embed, which is the convention's easiest case.  Nothing is
-  left to decide here, and nothing left to build: Bitwise Cyclic Tag took this
-  row's axis, as the last paragraph records.  The answer is the last symbol
-  deleted.  Halting needs the final consumed symbol to append nothing:
-  automatic for `d = 0`, and for `d = 1` exactly when `P_i` is empty, which is
-  legal and which Cook's tag-to-cyclic reduction already appends `|Sigma|` of.
-  Both values are reachable as the last deletion, so the halt carries a bit
-  where FRACTRAN's carries a value.
-
-  Two mechanics for the generator.  Consumption is FIFO, so the symbol at
-  position `k` meets `P_(k mod n)`, and every production length `0 mod n`
-  makes the schedule data-independent; a length that is not shifts the phase
-  of everything after it, and phase in `Z_n` is the only state the language
-  has.  A width-1 embed is monotone -- it can only append -- so negation wants
-  the width-2 dual rail `'01'`/`'10'`, equally legal under the five
-  conventions.  Source shape follows FRACTRAN: productions, then an initial
-  data string.
-
-  Open: the size.  A block-aligned width-`w` build pays about `w` per
-  production across `w` productions, so it needs a construction holding width
-  O(1), or a bound.
-
-  Bitwise Cyclic Tag took this axis and is implemented.  Admitting both would
-  duplicate one axis, so this row stays as the source of the embedding and of
-  the Rule 110 pedigree, not as a build target -- production `b_1..b_k` goes to
-  `1b_1 .. 1b_k 0`, which is how Cook's pedigree reached the language that was
-  built instead.
+  candidate for computed return depth: `NEXT` pushes frames and
+  `RESUME <expression>` selects the return depth. `COME FROM` itself is
+  unconditional. Target C-INTERCAL with `WRITE IN`/`READ OUT`. Open: price an
+  O(T)-statement tree under the 80-frame limit and the required 1/5--1/3
+  `PLEASE` ratio.
 
 - **Emmental** (2007): Chris Pressey's self-modifying language -- a stack, a
   queue, and `!`, which pops a symbol and a `;`-terminated program and
@@ -117,27 +36,11 @@ row carries why.
   row for, a jump table the program defines for itself rather than a tree it
   walks: one symbol per table block, reached by `?`.
 
-  Settled: binding is definition-time.  `createOp interpreter (head:tail) =
-  composeOps (fetch interpreter head) (createOp interpreter tail)` (reference
-  interpreter, `src/Language/Emmental.hs:82`) resolves every body symbol
-  against the interpreter in force when `!` runs, so a later redefinition
-  never reaches an existing definition, forward references do not work, and
-  self-reference is not recursion -- the wiki's massive-redefinition example
-  expands to a finite 251 copies, `5 * 50 + 1`.  Blocks still compose, through
-  `?`: `opEval` calls `createOp` with the interpreter passed at *call* time,
-  so `#NN?` resolves `NN` at run time, about five characters an edge, all at
-  top level.  That indirection *is* the construction, because nesting is the
-  cost -- a body's characters are pushed as `#NN` literals, so a definition
-  runs about 4x its body and depth `d` about `4^d` (`'0` 3, `''0` 9, `'''0`
-  27).  `~` is not the index primitive: `?` executes a popped symbol, so any
-  byte-valued expression is already a 256-way computed dispatch (`,:.:?`),
-  while `~` only folds 256 values into 9 classes -- a range test.
-
-  Open, and Malbolge-shaped: symbols are bytes, so one dispatch level covers
-  8 inputs and only 256 definitions are live at once.  Past 8 inputs a cascade
-  must hold each stage's table either nested (`4^stages`) or inside the
-  256-symbol table; price the row the way Malbolge's arity ceiling is priced,
-  not as an ordinary tree.
+  Binding is definition-time, so later redefinitions and forward references
+  do not reach a body. `?` still resolves a popped byte at call time, giving a
+  256-way dispatch at about five characters per edge. Open: price the cascade
+  beyond eight inputs; nesting grows about `4^depth` and only 256 definitions
+  are live.
 - **Prelude** (2005): Nikita Ayzikovsky's language of *voices*, one per line,
   each with its own stack of zeroes, where instructions in the same column
   run simultaneously and every stack updates atomically.  Concurrency is an
@@ -151,29 +54,10 @@ row carries why.
   top, `+`/`-` combine, and nothing multiplies.  `AND(x, y) = x y` is not
   affine, so no bracket-free program computes a general table.
 
-  What survives: `(`...`)` as an execute-at-most-once guard is a conditional,
-  not a loop, so a tree is still loop-less here.  It costs a column a guard --
-  "It is illegal to have simultaneously more than one bracket", enforced at
-  parse, where `prelude.py` aborts on `curr.count('(') + curr.count(')') > 1`
-  -- so a `2^n`-leaf tree spans Theta(T) columns times the voice count: O(T)
-  only at O(1) voices, which is also where the concurrency claim is weakest,
-  and Theta(T n) for a voice a level.  Admission therefore rests on
-  construction shape alone, since skip guard and print 0/1 are both occupied:
-  a build that does not use simultaneity takes FALSE's verdict.
-
-  Two spec decisions for the docstring.  `)` tests the top of the *opening*
-  bracket's voice, and reads the previous column's snapshot
-  (`topValues[openingVoice]`), where `(` tests its own live top.  The boundary
-  read is a genuine gap: the author's Python wraps
-  (`topValues[(voice-1) % numVoices]`), graue's C pushes 0, the draft spec is
-  silent, and the wiki's wrap claim is `[citation needed]` -- free choice, and
-  moot if the construction never reads across the boundary.
-
-  The fame route does not carry it either: 13 esolangs backlinks against
-  Braincopter's 14 and Brainloller's 26, both already judged short, and Prelude
-  predates them ([limitations](limitations.md), Curation).  With the loop-less
-  plan refuted and the count under the rejected pair, the row is a removal
-  candidate; keep it only for a construction that actually spends simultaneity.
+  A guarded tree is possible, but costs Theta(T n) with one voice per level
+  and duplicates FALSE's mechanism at O(1) voices. Its 13 backlinks also fall
+  below both rejected image languages. Remove it unless a construction
+  actually uses simultaneity.
 
 - **The fame screen, never run.**  The alternative route is measured now
   ([limitations](limitations.md), Curation), but it has only ever been applied
@@ -187,21 +71,12 @@ row carries why.
   generators.  Computational models -- Turing machine 159, Lambda calculus 130,
   Tag system 59 -- are not languages and are excluded.
 
-  Deadfish has left the screen: at 0.89 it clears `bf/5`, and its page's "has a
-  way to output things but it has no way to input them" makes a generator
-  impossible, so it was admitted *interpreter-only* -- the route's second
-  admission and the first of that kind.  It was filed here as the proof that
-  fame is not sufficient on its own, which assumed no possible generator meant
-  inadmissible; Curation in [limitations](limitations.md) carries what the
-  route does and does not buy, and the same correction moves HuePrism's
-  rejection onto fame.
-
   Underload is the next read: it outranks Thue, and Emmental's
   Turing-completeness argument runs through an Underload implementation, so the
   two rows touch.  Fish and Smallfuck look like the grid walk and the tape the
   set already has; read them last.
 
-- **Classic-language admission.**  All four of Thue, FRACTRAN, Unlambda and
+- **Classic-language promotion.** Thue, FRACTRAN, Unlambda and FALSE
   FALSE now ship as interpreters with generators, in the classics tier.  What
   is left is the curator's call on promoting three of them out of it: Thue
   rewrites the table in place rather than walking a tree, FRACTRAN answers
@@ -363,11 +238,6 @@ row carries why.
 
 Research questions the proofs leave open.  Each names the first executable
 step; an answer lands in the paper it extends, and the row leaves.
-
-- **Coefficient mass.**  The open questions of the four coefficient-mass
-  papers -- sharpness past the partial-sum criterion, complex roots, and every
-  row below the root 2 -- moved with the papers to
-  [bangyen/coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/main/ROADMAP.md).
 
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
