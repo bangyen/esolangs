@@ -1,13 +1,14 @@
 """The lemmas ``docs/proofs/fractran.md`` rests on, as executable checks.
 
 That document proves a size wall for every FRACTRAN program that gives each
-table row its own address, and argues that the routes around it cost either
-digits or steps.  It is deliberately *not* a language lower bound: the
-counting argument that gives Factor one provably cannot be imported, because
-a fraction list's priority order is behaviour and is cheap.  So FRACTRAN's
-audit row stays open, and what earns it its place is an obstruction --
-a semantic model of the language that every construction has broken on.
-These are that model, pinned where it runs.
+table row its own address, and then *refutes* it as a claim about the
+language: a program need not address rows, and one that packs a block of
+entries into a single exponent is `Theta(T)` characters.  The counting
+argument that gives Factor a language bound could never have been imported
+here either, because a fraction list's priority order is behaviour and is
+cheap.  So what survives is a proved obstruction with a known scope, and a
+time-for-size trade at the edge of it.  These are that model, pinned where
+it runs.
 
 Following :mod:`tests.proofs.test_negatives`: measurements belong in the
 document, where a stale number reads as stale.  What is pinned here is what
@@ -30,6 +31,12 @@ import pytest
 from esolangs.interpreters.other.fractran import _choose, _parse
 from esolangs.tools.fractran import PAIR, fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from tests.proofs.deep.fractran_packed import (
+    packed,
+    rows,
+    spelled,
+    width_exponent,
+)
 
 #: A fraction list, as the interpreter holds it.
 type _Fractions = tuple[tuple[int, int], ...]
@@ -279,14 +286,57 @@ def test_the_tree_pays_the_address_budget_it_is_priced_by() -> None:
         assert len(fractran(parity)) >= math.log10(math.factorial(len(fractions)))
 
 
-def test_priority_order_is_the_channel_the_wall_does_not_cover() -> None:
+def _pseudo_table(n: int) -> str:
+    """A table with no structure for the tree to fold, made the same way twice."""
+    state = 0x9E3779B9
+    bits = []
+    for _ in range(1 << n):
+        state = (state * 1103515245 + 12345) & 0xFFFFFFFF
+        bits.append(str((state >> 16) & 1))
+    return "".join(bits)
+
+
+def test_a_packed_program_answers_every_row_without_addressing_one() -> None:
+    """Theorem 15: a program does not have to give a row an address.
+
+    A leaf carries a whole block of `w` entries as one exponent, and one
+    shared decoder shifts that exponent by the offset and reads the parity.
+    Every row is run, since the answer is the only thing a construction can
+    be wrong about.  The sizes are measured in
+    `tests/proofs/deep/fractran_packed.py`; what is pinned here is that the
+    refutation runs at all -- if it stops running, Theorem 7's scope is
+    back to being the whole language and the audit row changes meaning.
+    """
+    table = _pseudo_table(6)
+    worst, widest = rows(packed(table, 2), table)
+    assert worst > 2 * 6 + 1, "the packed run was not slower than the tree"
+    assert widest > 0
+
+
+def test_packing_pays_the_address_budget_rather_than_escaping_it() -> None:
+    """Corollary 9 covers the packed program too, and does not bind.
+
+    It spells `Theta(T / log T)` fractions over as many primes, so Theorems
+    7 and 8 price it at `Theta(T)` characters -- which is what it costs.
+    Nothing here contradicts the budget; the budget is paid, for far fewer
+    addresses than the table has rows.
+    """
+    table = _pseudo_table(12)
+    template = packed(table, width_exponent(12))
+    assert len(template.split()) - 1 < len(table) // 4
+    assert len(spelled(template)) < len(table) // 4
+    assert len(template) < 3 * len(table)
+    assert len(fractran(table)) > 8 * len(template)
+
+
+def test_priority_order_is_a_channel_no_counting_argument_can_close() -> None:
     """ "What is not proved": order carries a bit per character, undamped.
 
     `m` fractions carry `log2(m!)` bits of priority, and Theorem 7 prices
-    them at `m log_c m` characters.  The arithmetic pinned here is the one
-    that keeps the row open: enough order to name any table is already
-    bought at `Theta(T)` characters, so no counting argument can reach
-    `Omega(T log T)`, and the open question is whether a decoder exists.
+    them at `m log_c m` characters.  Enough order to name any table is
+    bought at `Theta(T)` characters, so no counting argument could ever have
+    reached `Omega(T log T)` -- which is the shape of the refutation above,
+    arrived at from the other side.
     """
     alphabet = 14
     for n in range(8, 14):

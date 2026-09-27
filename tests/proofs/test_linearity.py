@@ -184,9 +184,10 @@ def test_the_contract_covers_generators_the_original_queue_missed() -> None:
 
     (ZTOALC L, Nopstacle and COD entered the same way and left with their
     languages.)  FRACTRAN is the twenty-sixth.  It entered reading as Factor
-    does, a language lower bound, and now reads open: the wall is proved for
-    every program that addresses rows, but order is behaviour in a fraction
-    list, so no counting argument reaches the language
+    does, a language lower bound, and now reads open: the wall holds for
+    every program that addresses rows, and the language itself is
+    `Theta(T)`, because a program that packs a block of entries into one
+    exponent does not address rows -- it pays steps instead
     (`docs/proofs/fractran.md`).  Growing this number is the contract doing
     its job, so the gap is asserted against the registry rather than fixed.
     """
