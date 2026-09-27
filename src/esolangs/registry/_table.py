@@ -478,6 +478,12 @@ CLASSICS: dict[str, Language] = {
         id="fish",
         split=True,
     ),
+    "INTERCAL": Language(
+        "INTERCAL",
+        "other.intercal",
+        boolean=_boolean.intercal,
+        id="intercal",
+    ),
     "Malbolge": Language(
         "Malbolge",
         "other.malbolge",
