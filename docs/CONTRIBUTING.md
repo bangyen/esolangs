@@ -23,6 +23,17 @@ already occupy.  Four axes, with what currently sits on each:
 - **Input interface** -- read-and-route, bit-addressable index (`fargo`),
   parameterized embed.
 
+All four are a *generator's* test, so a language that can host no generator
+cannot earn a place on any of them.  One route remains: fame, defined as a
+fraction of brainfuck under Curation in [limitations](limitations.md).  A
+language at or above `bf/5` whose spec makes a generator impossible is admitted
+**interpreter-only** -- an interpreter and no `boolean` in the registry, marked
+`int` by `esolangs list --details`, and refused by `generate` with that reason.
+Deadfish is the only one, at 0.89 of brainfuck with no input vocabulary at all,
+so there is nothing for a truth table's inputs to arrive through.  This route
+cannot be argued from novelty: novelty here is a claim about a construction,
+and there is no construction to make it about.
+
 This is an admission test.  The removal test is different and is recorded
 under Curation in [limitations](limitations.md): a language can be dropped
 for being an ordinary imperative language in costume, or for sharing a

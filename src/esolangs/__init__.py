@@ -164,7 +164,15 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str |
     lang = LANGUAGES[resolved]
     fn = lang.boolean or lang.raster_boolean
     if fn is None:
-        raise UnknownLanguageError(language)
+        # Registered, but no generator can exist: Deadfish reads nothing.  This
+        # raised UnknownLanguageError, whose message points at `esolangs list`
+        # -- which shows the language.  Pinned since before it could fire, but
+        # against a monkeypatched entry, so the contradiction went unnoticed.
+        raise ArgumentError(
+            f"{resolved} has no boolean generator: it reads no input at all, so "
+            f"there is no way to hand a program the truth table's inputs. "
+            f"`esolangs list --details` marks it 'int'"
+        )
     if not isinstance(truth_table, str):
         raise TruthTableError(
             f"truth table must be a string of '0' and '1', got "
