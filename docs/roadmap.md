@@ -12,10 +12,12 @@ read is complete; rejected candidates are recorded under Curation in
 
 - **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
   was misfiled as unread: its transclusions inject CSS, not the node table.
-  The node table is sufficient: use `□` NOR with one-way `◐◑◒◓` routing so
-  its selected input pointer is observationally irrelevant; avoid `◘`, stacks,
-  and partial ports. Build an acyclic combinational network and execute every
-  small table before admitting it.
+  An acyclic mux network using only `□` NOR passes every table through three
+  inputs and has `n + 8T - 7` nodes. Rendering is open: shared input fan-outs
+  cross the formula tree, the language has no transparent data crossover, and
+  `◐◑◒◓` route by the carried bit. Find a linear crossover or planar
+  construction, then execute the Unicode drawing; the netlist alone is not an
+  implementation.
 - **INTERCAL**: target C-INTERCAL with `WRITE IN`/`READ OUT`. `NEXT` pushes a
   return frame and `RESUME <expression>` selects its depth; `COME FROM` is
   unconditional. Price the labels in a decision tree before building: the
