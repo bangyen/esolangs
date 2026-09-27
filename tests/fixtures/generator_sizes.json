@@ -812,6 +812,20 @@
     "source_units": 40837
    }
   },
+  "Smallfuck": {
+   "0110": {
+    "commands": 55,
+    "source_units": 163
+   },
+   "01101001": {
+    "commands": 111,
+    "source_units": 366
+   },
+   "0110100110010110": {
+    "commands": 111,
+    "source_units": 763
+   }
+  },
   "Sophie": {
    "0110": {
     "commands": 7,

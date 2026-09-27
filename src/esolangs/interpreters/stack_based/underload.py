@@ -35,7 +35,7 @@ def _element(program: str, start: int) -> tuple[str, int]:
     return program[start + 1 : at - 1], at
 
 
-def _advance(state: _State) -> tuple[_State, _Effect]:  # noqa: C901, PLR0912
+def _advance(state: _State) -> tuple[_State, _Effect]:
     """Execute one command and return immutable state plus optional output."""
     program, at, packed = state
     if at >= len(program):

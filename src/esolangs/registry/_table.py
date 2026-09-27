@@ -484,6 +484,12 @@ CLASSICS: dict[str, Language] = {
         boolean=_boolean.malbolge,
         id="malbolge",
     ),
+    "Smallfuck": Language(
+        "Smallfuck",
+        "tape_based.smallfuck",
+        boolean=_boolean.smallfuck,
+        id="smallfuck",
+    ),
     "Thue": Language(
         "Thue",
         "other.thue",

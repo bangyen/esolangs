@@ -72,6 +72,7 @@ that row is actually spelled for the language.
 | `rotfuck.txt` | ROTfuck | `0001` | `01` | 0 1 | '0' |
 | `s*bleq.txt` | S*bleq | `0001` | `01` | 0 1 | '0' |
 | `slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 0 1 | '0' |
+| `smallfuck.txt` | Smallfuck | `0001` | `01` | embedded 01 | '0' |
 | `sophie.txt` | Sophie | `0001` | `01` | 0 1 | '0' |
 | `streetcode.txt` | Streetcode | `0001` | `01` | 0 1 | '0' |
 | `suffolk.txt` | Suffolk | `0001` | `01` | 0 1 | '0' |
@@ -104,6 +105,7 @@ that row is actually spelled for the language.
 - **malbolge** -- the answer is one character and is printed with no newline
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
+- **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2
 - **taglate** -- Taglate takes a line per bit like most languages, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four lines. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
 - **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change
 - **vandevelo** -- Vandevelo answers by terminating: nil halts and not nil loops

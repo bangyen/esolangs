@@ -52,6 +52,7 @@ from esolangs.tools.register import (
     qoibl,
     sophie,
 )
+from esolangs.tools.smallfuck import smallfuck
 from esolangs.tools.stack import bfstack, forth, grapheme, modulous, unsquare
 from esolangs.tools.super_snusp import super_snusp
 from esolangs.tools.tape import (
@@ -135,6 +136,7 @@ __all__ = [
     "sbleq",
     "six_five",
     "slow_acv_mammalian",
+    "smallfuck",
     "sophie",
     "streetcode",
     "suffolk",

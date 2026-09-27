@@ -45,6 +45,7 @@ from esolangs.tools.parameterized import (
     MINSKY_SWAP_PAIR,
 )
 from esolangs.tools.ram0 import PAIR as RAM0_PAIR
+from esolangs.tools.smallfuck import PAIR as SMALLFUCK_PAIR
 from esolangs.tools.underload import PAIR as UNDERLOAD_PAIR
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
@@ -556,6 +557,12 @@ def _register() -> None:
                 "RAM0 has no output instruction and dumps its whole state "
                 "at halt; the answer is the 'z' register"
             ),
+        ),
+        "smallfuck": _embedded(
+            b.smallfuck,
+            "tape_based.smallfuck",
+            pair=SMALLFUCK_PAIR,
+            note="Smallfuck defines no I/O; this implementation prints final cell 2",
         ),
         "underload": _embedded(
             b.underload,

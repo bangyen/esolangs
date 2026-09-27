@@ -275,6 +275,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | S*bleq | finite lookup | packed chunks decoded after the hoisted read block | linear: T/n packed chunks of n bits, O(n) decoder |
 | 6-5 | finite lookup | past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks | linear, time n log: greedy order scoring, capped at n <= 10 |
 | SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; the five lightest weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf | linear: per-node landing search sized in O(1), not an O(weight) dry build |
+| Smallfuck | parameterized tree | each level owns a bit, branch flag, and result cell; a child transfers its result three cells upward, so the depth-first pointer walk crosses each tree edge only a constant number of times | linear: six characters an input, approaching 48.5T characters |
 | Sophie | tree | — | linear, time n log: shared-state build, n 2**n state characters |
 | Streetcode | linear lookup | the street writes one cell per entry, then each input's mouth forks on its bit and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry | linear: nine rows of street, ~1.8T columns |
 | Suffolk | linear lookup | a countdown built from the row index reads zero exactly on the rows below it, so counting the table's rising and falling steps against it telescopes to the indexed entry | linear, time n log: essential_inputs |
@@ -344,6 +345,6 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 68 theoretical totality arguments and one
+Accordingly, this ledger records 69 theoretical totality arguments and one
 proved language exception; every other row is `Total` or theoretically total
 past a resource ceiling.

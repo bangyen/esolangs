@@ -472,6 +472,7 @@ WRAPPERS = {
     "bit_tilde": wrap_chars,
     "unsquare": wrap_chars,
     "rotfuck": wrap_chars,
+    "smallfuck": wrap_chars,
     "bfstack": wrap_chars,
     "suffolk": wrap_chars,
     # The trailing ``1`` is a terminator, not a structural line.

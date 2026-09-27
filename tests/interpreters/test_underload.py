@@ -4,7 +4,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.stack_based.underload import _Machine, run
+from esolangs.interpreters.stack_based.underload import _advance, _Machine, run
 
 
 def _run(source: str) -> str:
@@ -43,6 +43,11 @@ def test_halted_step_is_a_noop() -> None:
     before = machine.snapshot()
     machine.step()
     assert machine.snapshot() == before
+
+
+def test_pure_advance_accepts_a_halt_and_whitespace() -> None:
+    assert _advance(("", 0, ())) == (("", 0, ()), None)
+    assert _run(" \n") == ""
 
 
 @pytest.mark.parametrize("source", ["!", "~", "*", "^", "S", ")", "(", "x"])
