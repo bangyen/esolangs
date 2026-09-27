@@ -262,9 +262,9 @@ separate axes.
 The collection has 68 languages; its floor is 31. All seven classics carry
 generators: Befunge, FALSE, Thue and Whitespace loop-less O(T) lookups or
 trees, Unlambda a promise-forced tree, Malbolge a source-embedded mixer through
-fourteen inputs, FRACTRAN a prime-per-node tree that pays the address
-budget for every row and so is super-linear, by choice rather than by
-necessity (Scaling, below). They are here for coverage; three of the four
+fourteen inputs, FRACTRAN a tree onto blocks of entries carried one to an
+exponent, which pays the address budget for `3T / w` blocks rather than `T`
+rows and so is linear (Scaling, below). They are here for coverage; three of the four
 2026-09-27 additions touch an axis the rest of the set does not, and
 [roadmap](roadmap.md) carries the promotion question rather than this file. Ordinary
 imperative entries with shared-shim generators and no consumer were removed. Nopstacle and

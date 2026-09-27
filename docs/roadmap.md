@@ -42,6 +42,41 @@ INTERCAL, listed last, is outside the pass.
   survives the computed-label and `COME FROM` wiring, and whether its binary
   I/O routes through the package's stdin convention, is the work.
 
+- **Cyclic tag system** (2004): Matthew Cook's tag variant, the one that
+  carried the Rule 110 proof.  A production list `P_0 .. P_{n-1}` over a
+  binary word, stepping `(i, dX) -> (i+1 mod n, X P_i^d)`: the only decision
+  in the language is the word's leading symbol, control is the cyclic index,
+  and nothing addresses anything.  Every branch here is
+  conditional/jump/pointer/first-match/promise-forced, so a cyclic schedule
+  forces a new one, and the inputs embed as symbols of the initial word --
+  a one-character embed, which is the convention's easiest case.  What blocks
+  admission is the *answer*: there is no output vocabulary and the system
+  halts exactly when the word empties, so its halt state carries nothing
+  where FRACTRAN's carries the result.  The candidate convention is the last
+  symbol deleted, since the word has length one before it empties; pin an
+  answer, then admit.
+- **Emmental** (2007): Chris Pressey's self-modifying language -- a stack, a
+  queue, and `!`, which pops a symbol and a `;`-terminated program and
+  redefines that symbol to mean that program.  The dispatch table is data,
+  which nothing here has: Malbolge rewrites its source, not the meaning of an
+  instruction.  That also points at a construction shape the ledger has no
+  row for, a jump table the program defines for itself rather than a tree it
+  walks: one symbol per table block, reached by `?`.  Spec read only, not
+  priced: whether a redefinition binds the symbols in its body at definition
+  or at use, which decides whether blocks can be built compositionally, and
+  what `~` -- discrete base-2 log, with log 0 taken as 8 -- costs to form an
+  index with.
+- **Prelude** (2005): Nikita Ayzikovsky's language of *voices*, one per line,
+  each with its own stack of zeroes, where instructions in the same column
+  run simultaneously and every stack updates atomically.  Concurrency is an
+  axis the set has nowhere, and it points at a width-wise construction
+  instead of a depth-wise tree -- a voice a level, `^`/`v` reading the
+  neighbouring voice's top, and the loop brackets left unused, so it can be
+  loop-less.  Two things to settle first: the spec makes it an error for two
+  voices to carry loop brackets in the same column, which bounds any
+  construction wanting per-voice control flow, and `^` in the top voice wraps
+  to the bottom, which a tree would otherwise read as a missing edge.
+
 - **Classic-language admission.**  All four of Thue, FRACTRAN, Unlambda and
   FALSE now ship as interpreters with generators, in the classics tier.  What
   is left is the curator's call on promoting three of them out of it: Thue
