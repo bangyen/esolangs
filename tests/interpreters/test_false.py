@@ -6,7 +6,12 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.stack_based.false import _closers, _Machine, run
+from esolangs.interpreters.stack_based.false import (
+    _advance,
+    _closers,
+    _Machine,
+    run,
+)
 from tests.interpreters.runner import run_program
 
 
@@ -81,7 +86,7 @@ def test_a_comment_is_skipped_and_its_brackets_do_not_nest() -> None:
     [
         ("[1", "unterminated '['"),
         ("1]", "closes a '[' that is not there"),
-        ('"open', 'unterminated \'"\''),
+        ('"open', "unterminated '\"'"),
         ("{open", "unterminated '{'"),
         ("1'", "cannot end in"),
     ],
@@ -143,3 +148,30 @@ def test_an_empty_program_halts_at_once() -> None:
 def test_an_unknown_character_is_ignored() -> None:
     """``B`` flushes a buffer this package has not got, so it is a no-op."""
     assert run_program(run, "1.B") == "1"
+
+
+def test_bitwise_operators_wrap_to_32_bits() -> None:
+    assert run_program(run, "12 10&.") == "8"
+    assert run_program(run, "12 10|.") == "14"
+
+
+def test_picking_past_the_stack_halts() -> None:
+    with pytest.raises(HaltError, match="which is not there"):
+        run_program(run, "1 2 9\u00f8.")
+
+
+def test_a_conditional_needs_a_lambda() -> None:
+    with pytest.raises(HaltError, match="the top of the stack is a number"):
+        run_program(run, "1 2?")
+
+
+def test_a_loop_needs_two_lambdas() -> None:
+    with pytest.raises(HaltError, match="one of these is a number"):
+        run_program(run, "[1] 2#")
+
+
+def test_advancing_a_finished_state_is_a_no_op() -> None:
+    """No frames left is answered, not indexed: ``_advance`` is pure, so a
+    caller stepping past the end gets the state back."""
+    state = ((), (None,) * 26, ())
+    assert _advance(state, "", {}) == (state, None)

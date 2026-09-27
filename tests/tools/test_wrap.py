@@ -1152,3 +1152,10 @@ def test_six_five_wrapped_programs_still_run() -> None:
     unwrapped = _run("6-5", program)
     for width in (3, 5, 8, 13, 40, 60):
         assert _run("6-5", _six_five(program, width)) == unwrapped
+
+
+def test_mammalian_hands_back_a_program_with_no_words() -> None:
+    """The grid wrapper needs at least one token to size a row, so a
+    whitespace-only program is returned as it came."""
+    assert _mammalian("", 40) == ""
+    assert _mammalian("   \n ", 40) == "   \n "

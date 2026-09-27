@@ -1,42 +1,34 @@
 """Interpreter for Thue.
 
 John Colagioia's 2000 string-rewriting language.  Each line before the
-separator is a rule ``lhs::=rhs``; everything after it, newlines included,
-is the starting state.  A step replaces one
-occurrence of some rule's ``lhs`` with its ``rhs``, and the program ends
-when no rule's ``lhs`` occurs.  Two right-hand sides are special: ``:::``
-substitutes a line of input, and a ``~`` prefix prints the rest of the
-right-hand side and deletes the match.
+separator is a rule ``lhs::=rhs``; everything after it, newlines included, is
+the starting state.  A step replaces one occurrence of some rule's ``lhs``
+with its ``rhs``, and the program ends when no ``lhs`` occurs.  ``:::`` as a
+right-hand side substitutes a line of input; a ``~`` prefix prints the rest.
 
-Which occurrence of which rule is the spec's choice, and it is random, so
-this interpreter *draws* it -- through the package's shared
-:mod:`~esolangs.interpreters.randomness` hook -- rather than pinning a
-tie-break.  Pinning one would be the wrong kind of convenient: every Thue
-program whose rules overlap would quietly compute whatever this file
-happened to prefer, and a program written against the language would not run
-here.  ``rng`` fixes the draw where a caller needs reproducibility, and the
-branching protocol below lets the hang proof search *every* draw rather than
-sample one, as Befunge's ``?`` does.
+Which occurrence of which rule is the spec's choice, and it is random, so this
+interpreter *draws* it through the shared
+:mod:`~esolangs.interpreters.randomness` hook rather than pinning a tie-break:
+pinned, every Thue program whose rules overlap would quietly compute whatever
+this file preferred.  ``rng`` fixes the draw where a caller needs
+reproducibility, and the branching protocol below lets the hang proof search
+*every* draw rather than sample one, as Befunge's ``?`` does.  A program whose
+rewrites never collide has one in every state it reaches, so no draw can
+change it -- which is how the generated programs stay reproducible without
+pinning the language, asserted by their suite.
 
-A program whose applicable rewrites never collide has one in every state it
-reaches, so no draw can change what it computes.  The generated programs are
-built that way and their suite asserts it, which is why they are reproducible
-without pinning the language.
+The separator is the first ``::=`` line with nothing but whitespace on either
+side, and a ``~`` rule whose text is empty prints a newline and nothing else;
+both are the spec's, the second Vogel's convention that the wiki carries.  A
+rule line with no ``::=`` at all is refused rather than skipped, which is a
+decision: the spec does not say whether a blank line or a comment may sit
+there, and a loud rejection beats guessing.
 
-The separator is the first ``::=`` line with nothing but whitespace on
-either side, and a ``~`` rule whose text is empty prints a newline and
-nothing else -- both are the spec's, the second Vogel's convention that the
-wiki carries.  A rule line among the rules that has no ``::=`` at all is
-refused rather than skipped, which is a decision: the spec does not say
-whether a blank line or a comment may sit there, and a loud rejection beats
-guessing which one a reader meant.
-
-A source with no separator line, a rule line without ``::=``, and a rule
-with an empty left-hand side (it would match everywhere, so no run could
-make progress past it) raise :class:`ValueError`.  Nothing at runtime
-is invalid, so no :class:`~esolangs.exceptions.HaltError` arises: a state
-no rule matches is the normal end.  A ``:::`` rule with no input left
-propagates ``EOFError``.
+A source with no separator line, a rule line without ``::=``, and a rule with
+an empty left-hand side (it would match everywhere, so no run could make
+progress past it) raise :class:`ValueError`.  Nothing at runtime is invalid,
+so no :class:`~esolangs.exceptions.HaltError` arises: a state no rule matches
+is the normal end.  A ``:::`` rule with no input left propagates ``EOFError``.
 """
 
 from __future__ import annotations
@@ -55,9 +47,8 @@ _OUTPUT = "~"
 type _Rule = tuple[str, str]
 #: One rewrite a step could make: which rule, and at what offset.
 type _Match = tuple[int, int]
-#: The whole run as a value: the string being rewritten, and nothing else.
-#: The rules are fixed, and where the next rewrite lands is not state but a
-#: draw among what :func:`_matches` finds in the string.
+#: The whole run as a value: the string being rewritten, and nothing else --
+#: where the next rewrite lands is a draw, not state.
 type _State = str
 
 
@@ -134,9 +125,8 @@ def _advance(
         replacement = line or ""
     elif rhs.startswith(_OUTPUT):
         replacement = ""
-        # Vogel's output convention, which the wiki carries: the text goes
-        # out with no newline after it, *except* that an empty string is a
-        # newline and nothing else.
+        # Vogel's convention: no newline after the text, except that an
+        # empty string *is* one.
         out = rhs[len(_OUTPUT) :] or "\n"
     else:
         replacement = rhs
@@ -165,8 +155,8 @@ class _Machine:
     def ip(self) -> tuple[int, ...]:
         """The first rewrite available and where it matches, or empty at the end.
 
-        The first, not the one the next step draws: reporting that would have
-        to make the draw, and reading a position must not consume randomness.
+        The first, not the one the next step draws: reading a position must
+        not consume randomness.
         """
         found = _matches(self.state, self.rules)
         return found[0] if found else ()
@@ -185,10 +175,8 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.state, self.io.position())
 
-    # The all-draws search.  The state is the string alone, so it is its own
-    # branching state; the input cursor is left out because a ``:::`` rule
-    # declines to fork rather than reading, and a ``~`` rule's output cannot
-    # change which rules match later.
+    # The all-draws search, over the string alone: a ``:::`` rule declines to
+    # fork, and a ``~`` rule's output cannot change what matches later.
 
     def branching_snapshot(self) -> _State:
         """Return the current state as the search's starting point."""

@@ -213,26 +213,36 @@ worst sampled parity row. A sub-10 ms run does not establish an exponent.
 Loading dominates Factor (integer factorization) and Circuit Diagram (parsing
 super-linear area); it is intentionally excluded from execution time.
 
-FRACTRAN cannot have a linear generator, for a reason that is the language's
-and not a construction's. A program is an ordered list of fractions and a
-starting value, so every reachable state is that value times a product of
-those fractions, and a step's only decision is whether some fraction's
-denominator divides it. The exponents a program can read are therefore
-exactly those of the primes its own text spells. Telling `T` rows apart needs
-`T` distinct primes in the source, and the `T`th prime takes
-`log10(T log T)` digits to write; packing rows into one prime's exponent
-trades the wrong way, since an exponent of `2**k` carries `k` bits and costs
-`2**k` digits. So every construction that addresses table entries by prime
-pays `Theta(log T)` an entry, and the shipped one does: 3T fractions over
-`2T + n + 1` primes, `Theta(T log T)` characters, measured difference ratio
-4.65 against the contract's 4.4.
+No FRACTRAN construction that addresses table rows can be linear, and the
+reason is the language's rather than a construction's. A program is an
+ordered list of fractions and a starting value, so every reachable state is
+that value times a product of those fractions, and a step's only decision is
+whether some fraction's guard divides it. Two consequences bind. Fractions
+sharing a guard are dead after the first, so the live ones are distinct
+strings, and `m` of them cost `(1 + o(1)) m log m` characters. Digit cost is
+additive over distinct primes however they are packed into numbers, so the
+`k` primes a text spells cost `(1 + o(1)) k log10 k`. Giving `T` rows their
+own guard or their own prime is therefore `Omega(T log T)`, and the shipped
+tree attains it: `3T + n - 2` fractions over `2T + n` primes,
+`Theta(T log T)` characters, measured difference ratio 4.61 against the
+contract's 4.4. The proof, its lemmas and their executed checks are in
+[fractran](proofs/fractran.md).
 
-This wall is falsifiable in one direction that the argument above does not
-reach: the *order* of the fraction list is part of the program and carries
-`log2(m!)` bits of its own, so a construction that decodes the table out of
-priority rather than out of prime exponents is not excluded by it. Nothing
-here says how a FRACTRAN machine would read an ordering it cannot observe
-except through which fraction fires first.
+That is not a language lower bound, and two things stop it from being one.
+Packing rows into one prime's exponent was previously said to cost `2**k`
+digits for `k` bits; that holds in plain fraction notation but not here,
+since this port parses `p^e`, which prices the same exponent at `log10 e`.
+What rules the route out is the clock: a step shifts an exponent by a bounded
+amount, so a datum held as an exponent of magnitude `E` costs `E / M` steps
+to read, and a table packed that way needs `Omega(2**T / M)`. The size axis
+alone does not forbid it. The other route is the fraction *order*, which is
+part of the program and carries `log2(m!)` bits -- at the alphabet's full
+rate, undamped by any log, which is exactly why Factor's behaviour count
+cannot be imported: a Factor program is one integer read by prime rank, and a
+FRACTRAN program is a list whose order is behaviour. So no counting argument
+reaches `Omega(T log T)` here. Enough order to name any table is already
+bought at `Theta(T)` characters; whether a FRACTRAN program can decode one is
+open, and a construction that did would close the row.
 
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
@@ -245,8 +255,8 @@ separate axes.
 The collection has 68 languages; its floor is 31. All seven classics carry
 generators: Befunge, FALSE, Thue and Whitespace loop-less O(T) lookups or
 trees, Unlambda a promise-forced tree, Malbolge a source-embedded mixer through
-fourteen inputs, FRACTRAN a prime-per-node tree whose size the language holds
-above linear (Scaling, below). They are here for coverage; three of the four
+fourteen inputs, FRACTRAN a prime-per-node tree that pays the language's
+address budget and so is super-linear (Scaling, below). They are here for coverage; three of the four
 2026-09-27 additions touch an axis the rest of the set does not, and
 [roadmap](roadmap.md) carries the promotion question rather than this file. Ordinary
 imperative entries with shared-shim generators and no consumer were removed. Nopstacle and

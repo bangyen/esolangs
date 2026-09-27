@@ -1066,8 +1066,9 @@ _LINEAR_SCALING = {
     "streetcode",
     "vandevelo",
 }
-_LANGUAGE_SUPERLINEAR_SCALING = {"factor", "fractran"}
+_LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
+    "fractran",
     "malbolge",
     "polynomial",
 }

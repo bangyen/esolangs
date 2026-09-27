@@ -10,10 +10,10 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.randomness import Seeded
 from esolangs.interpreters.other.fractran import run as run_fractran
 from esolangs.interpreters.other.thue import run as run_thue
 from esolangs.interpreters.other.unlambda import run as run_unlambda
+from esolangs.interpreters.randomness import Seeded
 from esolangs.interpreters.stack_based.false import run as run_false
 from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
@@ -176,9 +176,7 @@ def test_fractran_runs_in_a_step_per_level() -> None:
     table = "01101001"
     template = boolean.fractran(table)
     for row in range(2**n):
-        program = fill_runs(
-            template, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n, _bits(row, n)
-        )
+        program = fill_runs(template, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n, _bits(row, n))
         machine = _Machine(program, ScriptedIO(""))
         steps = 0
         while not machine.halted:
