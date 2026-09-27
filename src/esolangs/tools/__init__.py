@@ -11,6 +11,7 @@ from esolangs.tools.cvnc import cvnc
 from esolangs.tools.egl import egl
 from esolangs.tools.false import false
 from esolangs.tools.fargo import fargo
+from esolangs.tools.fish import fish
 from esolangs.tools.fractran import fractran
 from esolangs.tools.inject import inject
 from esolangs.tools.malbolge import malbolge
@@ -108,6 +109,7 @@ __all__ = [
     "factor",
     "false",
     "fargo",
+    "fish",
     "flowchart",
     "forbin",
     "forth",

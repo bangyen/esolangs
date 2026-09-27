@@ -7,7 +7,7 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 70 esoteric languages: 68 text and 2 raster.
+Interpreters and Boolean generators for 71 esoteric languages: 69 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
@@ -112,7 +112,7 @@ the page.  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#d
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):
-`examples/` holds a truth-table program for each of the 67
+`examples/` holds a truth-table program for each of the 68
 text languages with a boolean generator.  It regenerates via
 `python scripts/generate.py examples`.
 
@@ -123,7 +123,7 @@ text languages with a boolean generator.  It regenerates via
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 68 text languages</summary>
+<summary>Show all 69 text languages</summary>
 
 ### Grid-based Languages
 
@@ -138,6 +138,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/clockwise.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/dig.py))
 - [EGL](https://esolangs.org/wiki/EGL) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/egl.py))
+- [Fish](https://esolangs.org/wiki/Fish) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/fish.py))
 - [Flowchart](https://esolangs.org/wiki/Flowchart) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/flowchart.py))
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/laserfuck.py))
 - [Streetcode](https://esolangs.org/wiki/Streetcode) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/streetcode.py))
@@ -236,7 +237,7 @@ Boolean generators accept a most-significant-input-first binary truth table.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  67 of the
+first; its length implies `n`, so it isn't passed separately.  68 of the
 text languages have such a generator, some covering only a documented subset of
 tables.
 

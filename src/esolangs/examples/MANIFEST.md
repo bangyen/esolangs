@@ -49,6 +49,7 @@ that row is actually spelled for the language.
 | `factor.txt` | Factor | `0001` | `01` | 0 1 | '0' |
 | `false.txt` | FALSE | `0001` | `01` | 0 1 | '0' |
 | `fargo.txt` | Fargo | `0001` | `01` | 1 | '0' |
+| `fish.txt` | Fish | `0001` | `01` | 0 1 | '0' |
 | `flowchart.txt` | Flowchart | `0001` | `01` | 0 1 | '0' |
 | `forbin.txt` | Forbin | `0001` | `01` | 0 1 | '0' |
 | `forþ.txt` | Forþ | `0001` | `01` | 0 1 | '0' |
