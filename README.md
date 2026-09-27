@@ -15,15 +15,11 @@ Interpreters and Boolean generators for 70 esoteric languages: 68 text and 2 ras
 `verify` runs that program on every row and checks what it answers.
 
 [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md) is the
-caller's guide -- the exported functions, the four odd input shapes,
-templates, reading an answer back, the debugger.
+caller's guide -- a guided example, exported functions, input shapes,
+templates, answer extraction, debugging, and compatibility.
 [architecture](https://github.com/bangyen/esolangs/blob/main/docs/architecture.md)
 shows how the registry, generators, interpreters, and answer extraction
 connect.
-[tutorial](https://github.com/bangyen/esolangs/blob/main/docs/tutorial.md)
-walks one truth table through text, template, raster, and debugger interfaces;
-[compatibility](https://github.com/bangyen/esolangs/blob/main/docs/compatibility.md)
-defines the beta package's stable surface.
 [roadmap](https://github.com/bangyen/esolangs/blob/main/docs/roadmap.md) tracks
 live work and
 [limitations](https://github.com/bangyen/esolangs/blob/main/docs/limitations.md)

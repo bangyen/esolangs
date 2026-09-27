@@ -5,10 +5,6 @@ caller knows nothing about. Every decision below reads a
 [`describe`](#describe) field rather than a language name, so nothing here
 needs a per-language branch.
 
-For a guided example covering text, embedded-input, and raster programs, see
-the [XOR tutorial](tutorial.md). The [compatibility policy](compatibility.md)
-defines which Python, CLI, metadata, and semantic interfaces are stable.
-
 ## The round trip
 
 `evaluate` runs a generated program on every row of its input space and
@@ -26,6 +22,57 @@ Both work for every language -- the four odd input shapes, the template
 languages and the four that answer by diverging included. If you need the
 steps rather than the result, they are `generate`, `encode_inputs`, `run`,
 `read_answer`, below.
+
+## Guided XOR example
+
+XOR's table is `0110`: rows `00`, `01`, `10`, and `11` produce `0`, `1`,
+`1`, and `0`. A stdin-driven language runs one row like this:
+
+```python
+import esolangs
+
+table = "0110"
+program = esolangs.generate("brainfuck", table)
+stdin = esolangs.encode_inputs("brainfuck", [0, 1])
+output = esolangs.run("brainfuck", program, stdin)
+assert esolangs.read_answer("brainfuck", output) == "1"
+assert esolangs.verify("brainfuck", table)
+```
+
+Some languages embed inputs in their source instead:
+
+```python
+template = esolangs.generate("Minifuck", table)
+program = esolangs.instantiate("Minifuck", template, [1, 0])
+output = esolangs.run("Minifuck", program)
+assert esolangs.read_answer("Minifuck", output) == "1"
+```
+
+Raster languages return an image source:
+
+```python
+raster = esolangs.generate("Piet", table)
+assert isinstance(raster, esolangs.Raster)
+raster.to_png()
+assert esolangs.verify("Piet", table)
+```
+
+The VM exposes common state without erasing language-specific state:
+
+```python
+program = esolangs.generate("brainfuck", table)
+stdin = esolangs.encode_inputs("brainfuck", [0, 1])
+vm = esolangs.make_vm("brainfuck", program, stdin)
+for _ in range(20):
+    if vm.halted:
+        break
+    vm.step()
+print(vm.ip, vm.memory, vm.output)
+```
+
+The [debugging](#debugging) section covers the interactive interface. Use
+`just benchmark brainfuck 0110 --row 1` when changing a generator; its JSON
+reports source units, generation time, and deterministic command count.
 
 ## Exported callables
 
@@ -156,3 +203,23 @@ than marked in the wrong place; the header always shows the raw `ip`.
 `width_effect`, `parameterized`, `reads_input` and the rest.
 `esolangs describe --json <language>` prints it, and `esolangs list
 --details` reduces it to a marker column -- `gen`, `tmpl`, `ex`.
+
+## Compatibility
+
+The package is beta. Within a major release, compatibility covers:
+
+- names in `esolangs.__all__`, their documented arguments, and deliberate
+  `EsolangError` exceptions;
+- CLI command names, exit-status meanings, and JSON field meanings;
+- existing `describe()` fields and their value types;
+- interpreter semantics for valid programs, including I/O and answers;
+- committed examples as executable programs for their recorded tables.
+
+New optional arguments and metadata fields may be added. Human CLI prose,
+generated program text, debugger presentation, and private `_` names may
+change without deprecation; generated programs retain behaviour, not spelling
+or size.
+
+A breaking public change requires a major release. When old and new interfaces
+can coexist, the replacement is documented for at least one minor release.
+Security and correctness fixes may reject input accepted by mistake.
