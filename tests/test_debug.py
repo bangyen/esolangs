@@ -244,11 +244,12 @@ class TestARunFinishesTheDump:
         assert stopped.output == plain.output
 
     def test_the_set_is_the_six(self) -> None:
-        """Named from the registry, and not the six of a *different* set.
+        """Named from the registry, and not the *dump answer* set.
 
-        ``answer_mode == "dump"`` also has six members and is not this one:
-        it includes A Painter Ant and excludes ArrowQueue.  Equal size is a
-        coincidence, not identity.
+        ``answer_mode == "dump"`` is a different set: it includes A Painter
+        Ant and FRACTRAN and excludes ArrowQueue.  The two had equal size
+        until FRACTRAN's answer -- the value its run stops on -- made seven,
+        which is why both sizes are pinned rather than compared.
         """
         assert len(self._dumping()) == 6
         mode = {
@@ -256,7 +257,7 @@ class TestARunFinishesTheDump:
             for n in esolangs.list_languages()
             if esolangs.describe(n)["answer_mode"] == "dump"
         }
-        assert len(mode) == 6
+        assert len(mode) == 7
         assert mode != set(self._dumping())
 
     def test_run_leaves_the_output_in_place(self) -> None:

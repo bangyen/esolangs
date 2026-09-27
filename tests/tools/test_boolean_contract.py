@@ -570,6 +570,9 @@ _UNSHAPED = {
     "qoibl",
     "slow_acv_mammalian",
     "container",
+    # The table is the state and the bit read rewrites every pair down to
+    # one, so nothing collapses and a 0% fold is the construction working.
+    "thue",
     "whitespace",
 }
 
@@ -1063,7 +1066,7 @@ _LINEAR_SCALING = {
     "streetcode",
     "vandevelo",
 }
-_LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
+_LANGUAGE_SUPERLINEAR_SCALING = {"factor", "fractran"}
 _OPEN_SCALING = {
     "malbolge",
     "polynomial",
@@ -1096,6 +1099,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "ram0",
         "sbleq",
         "slow_acv_mammalian",
+        "fractran",
         "streetcode",
         "vandevelo",
     }

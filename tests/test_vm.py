@@ -986,6 +986,7 @@ class TestEveryLanguageIsSteppable:
             "Modulous",
             "Painfuck",
             "Super SNUSP",
+            "Thue",
         }, "the random set changed -- a new language needs a branching search"
 
     def test_memory_and_stack_are_copies_not_the_live_store(self) -> None:

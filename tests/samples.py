@@ -215,10 +215,13 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "EGL": ("1,1:+=", ""),
     "Eval": ("0+.", ""),
     "Factor": ("15", ""),
+    "FALSE": ("'A,", ""),
     "Fargo": ("$", "0\n"),
     "Flowchart": (FLOWCHART_TRUTH_MACHINE, "0\n"),
     "Forbin": ("main { x = 1; }", ""),
     "Forþ": ("65.", ""),
+    # Conway's two-fraction addition, which halts once no 2 is left.
+    "FRACTRAN": ("2^3*3 3/2", ""),
     "Grapheme": ("FAFY", ""),
     "Home Row": ("ak;", ""),
     # A corrected truth machine (the wiki's own is inverted -- see the
@@ -248,6 +251,9 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Super SNUSP": ('"65.', ""),
     "Suffolk": ("!" * 66 + "<.", ""),
     "Taglate": ("abc\ni", ""),
+    # One rule that prints and deletes its match, so the state empties.
+    "Thue": ("a::=~A\n::=\na", ""),
+    "Unlambda": ("`.Ai", ""),
     "Unsquare": ("Io", ""),
     "Vandevelo": ("Nil?", ""),
     "Whitespace": (WHITESPACE_PUSH_ZERO, ""),

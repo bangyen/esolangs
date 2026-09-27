@@ -85,15 +85,25 @@ def _run(example: BooleanExample, program: str, stdin: str) -> str:
 
 
 def _answer(example: BooleanExample, got: str) -> str:
-    """Strip the shape the language's output convention adds.
+    """Strip the shape the language's output convention adds, and read the bit.
 
     ``expected`` is what the committed example prints for a *known* bit,
     so its trailing newline -- Inject's ``send`` terminator, APL's
     statement print -- is the convention rather than the answer.  Removing
     exactly that suffix leaves the digit the table is compared against.
+
+    ``answer_values`` is then how the language spells a 0 and a 1 where the
+    answer sits: the digits for every entry but FRACTRAN, whose run stops on
+    1 for a zero and 2 for a one.  Reading it here rather than skipping the
+    language keeps the sweep's claim on every generator whose whole output is
+    its answer, whatever alphabet that answer is in.
     """
     suffix = example.expected[1:]
-    return got[: -len(suffix)] if suffix and got.endswith(suffix) else got
+    trimmed = got[: -len(suffix)] if suffix and got.endswith(suffix) else got
+    zero, one = example.answer_values
+    if trimmed == zero:
+        return "0"
+    return "1" if trimmed == one else trimmed
 
 
 def _stdin(name: str, bits: list[int]) -> str:

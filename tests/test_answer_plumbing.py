@@ -620,10 +620,13 @@ class TestWhatHappensWhenAProgramIsUnderfed:
             and not esolangs.describe(name)["parameterized"]
             and self._underfed(name)[0] == "raised"
         )
-        # 38 of the 50 that read stdin, measured.  Pinned exactly, so that a change
-        # which quietly moves a language out of the norm shows up here rather
-        # than in a docstring nobody re-derives.
-        assert raised == 38
+        # 39 of the 53 that read stdin, measured.  Pinned exactly, so that a
+        # change which quietly moves a language out of the norm shows up here
+        # rather than in a docstring nobody re-derives.  Thue joined the norm
+        # and the three classics added with it did not all: FALSE and Unlambda
+        # have an EOF *value* in their specs (-1, and ``@``'s ``v`` branch), so
+        # they answer where the norm raises.
+        assert raised == 39
 
     def test_the_trait_is_reported_by_describe(self) -> None:
         """A caller must be able to learn this without underfeeding one."""
