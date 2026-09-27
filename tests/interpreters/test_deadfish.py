@@ -20,8 +20,7 @@ _HELLO = "".join(
         "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         "ddddddddddoddddddddddddo",
         "dddddddddddddddddddddsddoddddddddoiiioddddddoddddddddo",
-        "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
-        "ddddddddddo",
+        "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddo",
     ]
 )
 
@@ -61,7 +60,7 @@ class TestDeadfish:
         assert run_program(run, "i" * 65 + "o") == "65\n"
 
     def test_a_non_command_is_ignored(self) -> None:
-        """"Errors are not acknowledged", so junk is neither read nor refused."""
+        """ "Errors are not acknowledged", so junk is neither read nor refused."""
         assert run_program(run, "i i\nxyz!o") == "2\n"
 
     def test_an_empty_program_prints_nothing(self) -> None:
