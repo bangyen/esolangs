@@ -275,23 +275,39 @@ with 567 two-dimensional-language pages, then filtered to 36 by implemented
 verdicts, co-categories, I/O/branch vocabulary, and 1,500-character pages.
 Super SNUSP and Alight were admitted; Pinyin was rejected.
 
-The alternative admission route is fame, and it is a measured scale rather than
-a judgment. Two proxies, both taken 2026-09-27: backlinks to the language's
-esolangs page (`list=backlinks`, redirects followed, capped at 500) for standing
-inside the community, and an English Wikipedia article with its 90-day
-pageviews (2026-06-28 to 2026-09-25) for reach outside it. The seven classics
-score Befunge 271, Thue 154, Malbolge 129, FALSE 91, Unlambda 89, FRACTRAN 65
-and Whitespace 58, so 58 is the observed floor, and each holds a Wikipedia
-article or at least a redirect. Brainloller 26 and Braincopter 14 are the
-rejected calibration and Piet, admitted, is 65, which puts the bar between 26
-and 58. The two proxies are not one axis and a candidate may clear either:
-Befunge leads the community count but draws 3,999 Wikipedia views against
-Malbolge's 20,823 and Whitespace's 11,255, while Thue has no article at all.
-Page age biases the count down, so a low score is evidence only against an old
-language. Among the [roadmap](roadmap.md) candidates INTERCAL 103 and Cyclic
-tag 98 clear the floor outright, Emmental 43 falls in the gap and rests on its
-axis instead, and Prelude 13 is under Braincopter while predating it by six
-years.
+The alternative admission route is fame, measured on two proxies, both taken
+2026-09-27: backlinks to the language's esolangs page (`list=backlinks`,
+redirects followed, capped at 500) for standing inside the community, and an
+English Wikipedia article with its 90-day pageviews (2026-06-28 to 2026-09-25)
+for reach outside it. The seven classics score Befunge 271, Thue 154, Malbolge
+129, FALSE 91, Unlambda 89, FRACTRAN 65 and Whitespace 58, and each holds a
+Wikipedia article or at least a redirect; Brainloller 26 and Braincopter 14 are
+the rejected pair, Piet, admitted, 65. The two proxies are not one axis and a
+candidate may clear either: Befunge leads the community count but draws 3,999
+Wikipedia views against Malbolge's 20,823 and Whitespace's 11,255, while Thue
+has no article at all. Page age biases the count down, so a low score is
+evidence only against an old language.
+
+**The bar is comparative and forward-only, and no absolute one exists at this
+resolution.** Category:Languages holds 7,560 pages; a seed-pinned uniform
+sample of 150 has median 2 backlinks, p75 5, p90 8, p95 10, p99 20 and sample
+maximum 24. Every language this collection has admitted, queued *or rejected*
+therefore sits above the 96th percentile -- Prelude 13 at p96.7, rejected
+Braincopter 14 at p97.3, everything else at p100 -- so a population percentile
+cannot separate what curation needs separated: the whole decision range, 13 to
+271, is compressed into the top 3%, and a bar at p99 would admit both languages
+already judged short. The usable comparison is against the set already carried,
+which makes the numbers above landmarks rather than a threshold: 26 is the
+highest score ever rejected and 58 the lowest ever admitted. That answers
+"is this candidate as prominent as what we keep?" and it cannot answer "was
+that admission wrong?", since it is derived from the admissions themselves. A
+past admission is audited on the axis test, which is intrinsic to the language
+and references no population. The route has also only ever been used to
+reject; [roadmap](roadmap.md) carries the screen it has never been run as.
+Among its candidates INTERCAL 103 and Cyclic tag 98 clear every admitted
+classic bar Befunge, Thue, Malbolge and FALSE, Emmental 43 falls between the
+rejected pair and the admitted floor and rests on its axis instead, and Prelude
+13 is under Braincopter while predating it by six years.
 
 ## Specification decisions
 
