@@ -128,13 +128,17 @@ INTERCAL, listed last, is outside the pass.
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
-  | Malbolge | Exception | Open | Open | Linear |
+  | Malbolge | Exception | Open | Linear | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
   Malbolge cannot be total: its finite source space omits some 18-input truth
   tables.  Its shipped constructions cover every table through fourteen inputs;
-  generation time and size remain open over the reachable gap below that
-  language ceiling.
+  generation time remains open over the reachable gap below that language
+  ceiling.  Output size is settled by the language itself: a source must load
+  into 59,049 cells, so every Malbolge program -- shipped or not -- is at most
+  59,049 characters, which is `O(1)` and so `O(T)`.  No super-linear size
+  bound can exist: at sixteen and seventeen inputs `T` already exceeds that
+  ceiling, and above seventeen some tables have no program.
 
   Factor's adaptive residue sequence is bounded by fixed-modulus Hoheisel:
   its last selected prime `Q` is polynomial in the run count. Worst-case

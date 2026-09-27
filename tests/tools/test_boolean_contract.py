@@ -1059,6 +1059,7 @@ _LINEAR_SCALING = {
     "inject",
     "jaune",
     "laserfuck",
+    "malbolge",
     "minifuck",
     "one_two_three",
     "ram0",
@@ -1069,7 +1070,6 @@ _LINEAR_SCALING = {
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
-    "malbolge",
     "polynomial",
 }
 
@@ -1141,6 +1141,11 @@ def test_converted_generators_scale_linearly(name: str) -> None:
     sizes = [len(fn(_parity(n))) for n in arities]
     if name == "minifuck":
         assert all(size <= 70 * 2**n for size, n in zip(sizes, arities, strict=True))
+        return
+    if name == "malbolge":
+        # Every Malbolge source loads into 59,049 cells, so every program --
+        # this generator's or any other -- is bounded by a constant.
+        assert all(size <= 59_049 for size in sizes)
         return
     # The bound is ``linearity.MAX_DIFF_RATIO``.  That module imports the
     # table shapes from this one, so the constant cannot travel the other
