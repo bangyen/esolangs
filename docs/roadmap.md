@@ -155,6 +155,12 @@ why.
   silent, and the wiki's wrap claim is `[citation needed]` -- free choice, and
   moot if the construction never reads across the boundary.
 
+  The fame route does not carry it either: 13 esolangs backlinks against
+  Braincopter's 14 and Brainloller's 26, both already judged short, and Prelude
+  predates them ([limitations](limitations.md), Curation).  With the loop-less
+  plan refuted and the count under the rejected pair, the row is a removal
+  candidate; keep it only for a construction that actually spends simultaneity.
+
 - **Classic-language admission.**  All four of Thue, FRACTRAN, Unlambda and
   FALSE now ship as interpreters with generators, in the classics tier.  What
   is left is the curator's call on promoting three of them out of it: Thue

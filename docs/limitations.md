@@ -275,6 +275,24 @@ with 567 two-dimensional-language pages, then filtered to 36 by implemented
 verdicts, co-categories, I/O/branch vocabulary, and 1,500-character pages.
 Super SNUSP and Alight were admitted; Pinyin was rejected.
 
+The alternative admission route is fame, and it is a measured scale rather than
+a judgment. Two proxies, both taken 2026-09-27: backlinks to the language's
+esolangs page (`list=backlinks`, redirects followed, capped at 500) for standing
+inside the community, and an English Wikipedia article with its 90-day
+pageviews (2026-06-28 to 2026-09-25) for reach outside it. The seven classics
+score Befunge 271, Thue 154, Malbolge 129, FALSE 91, Unlambda 89, FRACTRAN 65
+and Whitespace 58, so 58 is the observed floor, and each holds a Wikipedia
+article or at least a redirect. Brainloller 26 and Braincopter 14 are the
+rejected calibration and Piet, admitted, is 65, which puts the bar between 26
+and 58. The two proxies are not one axis and a candidate may clear either:
+Befunge leads the community count but draws 3,999 Wikipedia views against
+Malbolge's 20,823 and Whitespace's 11,255, while Thue has no article at all.
+Page age biases the count down, so a low score is evidence only against an old
+language. Among the [roadmap](roadmap.md) candidates INTERCAL 103 and Cyclic
+tag 98 clear the floor outright, Emmental 43 falls in the gap and rests on its
+axis instead, and Prelude 13 is under Braincopter while predating it by six
+years.
+
 ## Specification decisions
 
 - 6-5 accepts operands beyond its specification; generators use `0..35`.
