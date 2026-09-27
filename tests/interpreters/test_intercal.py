@@ -4,7 +4,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.intercal import _Machine, run
+from esolangs.interpreters.other.intercal import _expression, _Machine, run
 
 
 def _run(source: str, stdin: str = "") -> str:
@@ -41,6 +41,51 @@ def test_vm_views_are_copies() -> None:
     memory = machine.memory
     memory.append(9)
     assert machine.memory == [1]
+
+
+@pytest.mark.parametrize(
+    "expression",
+    ["", "'#1", "\"'#1$#1'$#1\""],
+)
+def test_invalid_expressions_raise(expression: str) -> None:
+    with pytest.raises(HaltError):
+        _expression(expression, {})
+
+
+def test_inactive_statement_is_skipped() -> None:
+    source = "PLEASE .1 <- #0\nDON'T .1 <- #1\nDO READ OUT .1"
+    assert _run(source) == "\n"
+
+
+@pytest.mark.parametrize(
+    ("statement", "stdin"),
+    [
+        (".1 <- #1#1", ""),
+        ("READ OUT #1#1", ""),
+        ("WRITE IN .1", "\n"),
+        ("WRITE IN .1", "TEN\n"),
+        ("FORGET #0", ""),
+        ("FORGET #1#1", ""),
+        ("IGNORE .1", ""),
+    ],
+)
+def test_invalid_statements_raise(statement: str, stdin: str) -> None:
+    source = f"PLEASE {statement}\nDO GIVE UP\nDO GIVE UP"
+    with pytest.raises(HaltError):
+        _run(source, stdin)
+
+
+def test_forget_discards_next_frames_without_resuming() -> None:
+    source = "\n".join(
+        [
+            "PLEASE DO (10) NEXT",
+            "DO READ OUT #1",
+            "DO GIVE UP",
+            "(10) DO FORGET #1",
+            "DO READ OUT #0",
+        ]
+    )
+    assert _run(source) == "\n"
 
 
 @pytest.mark.parametrize(
