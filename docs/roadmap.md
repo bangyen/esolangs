@@ -11,8 +11,9 @@ are the 2026-09-19 re-run of the `Category:Unimplemented` x
 verdicts are spec reads, not executed generators, so the size question is open
 for every entry.  Piet is already implemented, so it was never in the screen;
 INTERCAL, listed after them, is outside the pass.  Among the classics the
-build order is Cyclic tag, INTERCAL, Emmental, Prelude, and each row carries
-why.
+build order is Bitwise Cyclic Tag, INTERCAL, Emmental; Cyclic tag system is
+held as the embedding's source rather than built, and Prelude is pending
+removal, not queued.  Each row carries why.
 
 - **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
   filed it unread, thinking the `{{:thisthat}}` transclusions hid the node
@@ -68,6 +69,29 @@ why.
   nothing else here has: 1/5 to 1/3 of statements must carry `PLEASE`, or
   E079/E099 fires.
 
+- **Bitwise Cyclic Tag** (2004): the cyclic-schedule pick, and the strongest
+  unadmitted classic in the set at 0.66 of brainfuck -- above four of the seven
+  admitted.  A program is a bitstring executed cyclically over a data-bitstring
+  extensible to the right: `0` deletes the leftmost data-bit, and `1x` is a
+  composite pair that appends `x` to the right end when that leftmost bit is 1
+  and deletes nothing.  Halting is the data-string emptying, and there is no I/O
+  vocabulary, so the answer is the bit the last `0` consumes -- the convention
+  settled for Cyclic tag, transferred, and cleaner here because delete and
+  decide are separate commands.  Inputs embed as bits of the initial
+  data-string: width 1, pair `('0', '1')`, one run an input, which satisfies the
+  five conventions the way CT's does.
+
+  Two commands make it the smaller interpreter, and splitting delete from append
+  is strictly more room for a construction than CT's one delete a step.  CT
+  embeds mechanically -- production `b_1..b_k` goes to `1b_1 .. 1b_k 0` -- so
+  taking BCT keeps Cook's Rule 110 pedigree without a second row on the axis.
+
+  Spec read only, not priced.  Open: the size, inherited whole from CT, since
+  program position still fixes which command a data-bit meets and the phase
+  argument carries over.  Also unread: the page's bijective base-2 reading of
+  the data-string, which may be the cheaper route to an index than a
+  block-aligned schedule.
+
 - **Cyclic tag system** (2004): Matthew Cook's tag variant, the one that
   carried the Rule 110 proof.  A production list `P_0 .. P_{n-1}` over a
   binary word, stepping `(i, dX) -> (i+1 mod n, X P_i^d)`: the only decision
@@ -96,17 +120,9 @@ why.
   production across `w` productions, so it needs a construction holding width
   O(1), or a bound.
 
-  Bitwise Cyclic Tag takes this axis, and probably takes it better.  BCT is the
-  same cyclic schedule with the same halt-on-empty answer and no I/O, so every
-  verdict above transfers unchanged, but it is 0.66 of brainfuck against 0.35,
-  it is two commands rather than a production list, and it splits delete from
-  append:
-  `0` deletes the leftmost data-bit, `1x` appends `x` when that bit is 1 and
-  deletes nothing.  That decoupling is strictly more room for a construction
-  than CT's one delete a step.  CT embeds in BCT mechanically, production
-  `b_1..b_k` going to `1b_1 .. 1b_k 0`, so Cook's Rule 110 pedigree survives
-  the swap.  Admitting both would duplicate one axis: take BCT, and keep this
-  row only as the embedding's source.
+  Bitwise Cyclic Tag takes this axis and carries its own row below.  Admitting
+  both would duplicate one axis, so build BCT and keep this row as the source of
+  the embedding and of the Rule 110 pedigree, not as a build target.
 - **Emmental** (2007): Chris Pressey's self-modifying language -- a stack, a
   queue, and `!`, which pops a symbol and a `;`-terminated program and
   redefines that symbol to mean that program.  The dispatch table is data,
