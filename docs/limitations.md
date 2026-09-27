@@ -323,14 +323,30 @@ The bar is forward-only either way. It answers "is this candidate as prominent
 as what we keep?" and it cannot answer "was that admission wrong?", since the
 fraction is pinned by the admissions: inside the band the classics pass by
 construction. A past admission is audited on the axis test, which is intrinsic
-to the language and references no population. The route has also only ever been
-used to reject; [roadmap](roadmap.md) carries the screen it has never been run
-as. Its first result is admitted rather than pending: Bitwise Cyclic Tag 0.66
-cleared `bf/5`, took the cyclic-schedule axis and is implemented, which makes it
-the only language the route has ever argued *into* the set. Among the candidates
-left Underload 0.59, INTERCAL 0.37 and Cyclic tag 0.35 clear `bf/5`, Emmental
-0.15 lands in the band and rests on its axis instead, and Prelude 0.05 is under
-Braincopter while predating it by six years.
+to the language and references no population.
+
+The route has now admitted twice, in two different ways, having until then only
+ever rejected. Bitwise Cyclic Tag 0.66 cleared `bf/5` and then took the
+cyclic-schedule axis on its own merits, so fame only bought it a reading.
+Deadfish 0.89 cleared `bf/5` and can never take an axis at all -- the four are a
+generator's test and it has no input vocabulary to host one -- so it is admitted
+**interpreter-only**: an interpreter, no generator, `int` in `list --details`.
+That pair marks the boundary of what fame buys. It is sufficient for a place in
+the collection, and it cannot supply an input interface, so where none exists
+the place it wins is the interpreter-only one.
+
+Deadfish was recorded here and in the roadmap as the standing proof that fame is
+*not* sufficient on its own -- highest count in the screen, inadmissible anyway.
+That reading assumed a language with no possible generator was inadmissible, and
+what the case actually shows is narrower: fame cannot conjure an input
+interface. It is also why HuePrism's rejection now rests on fame rather than on
+being output-only, which is no longer disqualifying by itself; its count is
+unmeasured, the wiki having returned 403 since the popularity sweep, and it is
+not being re-measured to settle a row nobody is arguing for.
+
+Among the candidates left Underload 0.59, INTERCAL 0.37 and Cyclic tag 0.35
+clear `bf/5`, Emmental 0.15 lands in the band and rests on its axis instead, and
+Prelude 0.05 is under Braincopter while predating it by six years.
 
 ## Specification decisions
 

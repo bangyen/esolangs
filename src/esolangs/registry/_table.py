@@ -181,6 +181,14 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.cvnc,
         id="cvnc",
     ),
+    # No ``boolean``: Deadfish has no input vocabulary, so no generator can
+    # exist for it.  It is here on the fame route alone, and is the only
+    # language ``list --details`` marks ``int``.
+    "Deadfish": Language(
+        "Deadfish",
+        "register_based.deadfish",
+        id="deadfish",
+    ),
     "Decleq": Language(
         "Decleq",
         "register_based.decleq",

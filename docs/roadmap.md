@@ -187,12 +187,15 @@ row carries why.
   generators.  Computational models -- Turing machine 159, Lambda calculus 130,
   Tag system 59 -- are not languages and are excluded.
 
-  Deadfish is rejected where it stands and should not be raised again: its page
-  says it "has a way to output things but it has no way to input them", so it
-  has no input interface and no generator can exist, which is HuePrism's
-  ground.  It is also the standing proof that the route is not sufficient on
-  its own -- second-highest count in the screen, inadmissible anyway.  Bitwise
-  Cyclic Tag is the live one, and it collides with the Cyclic tag row above.
+  Deadfish has left the screen: at 0.89 it clears `bf/5`, and its page's "has a
+  way to output things but it has no way to input them" makes a generator
+  impossible, so it was admitted *interpreter-only* -- the route's second
+  admission and the first of that kind.  It was filed here as the proof that
+  fame is not sufficient on its own, which assumed no possible generator meant
+  inadmissible; Curation in [limitations](limitations.md) carries what the
+  route does and does not buy, and the same correction moves HuePrism's
+  rejection onto fame.
+
   Underload is the next read: it outranks Thue, and Emmental's
   Turing-completeness argument runs through an Underload implementation, so the
   two rows touch.  Fish and Smallfuck look like the grid walk and the tape the

@@ -67,7 +67,10 @@ def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
             row=(1 << (len(table).bit_length() - 1)) - 1,
             step_cap=STEP_CAP,
         )
+        # A language with no generator has no size to record; Deadfish is
+        # carried for its fame and marked ``int``.
         for name in esolangs.list_languages()
+        if esolangs.describe(name)["boolean_generator"]
         for table in TABLES
     ]
 
