@@ -118,7 +118,10 @@ def _closers(code: str) -> dict[int, int]:
         char = code[index]
         if char == "'":
             if index + 1 >= len(code):
-                raise ValueError("a FALSE source cannot end in \"'\", which quotes the character after it")
+                raise ValueError(
+                    "a FALSE source cannot end in a quote, which takes the "
+                    "character after it"
+                )
             index += 2
             continue
         if char in '{"':
@@ -170,9 +173,7 @@ def _literal(code: str, pc: int, end: int) -> tuple[int, int]:
     return int(code[pc:stop]), stop
 
 
-def _binary(
-    char: str, stack: tuple[_Value, ...]
-) -> tuple[_Value, ...]:
+def _binary(char: str, stack: tuple[_Value, ...]) -> tuple[_Value, ...]:
     """Return ``stack`` with the top two replaced by ``char``'s result."""
     right, rest = _pop(stack)
     left, rest = _pop(rest)
@@ -303,7 +304,11 @@ def _advance(
         # binding cannot be both an int and a lambda.
         stored, rest = _pop(rest)
         index = _variable(reference)
-        return (rest, (*variables[:index], stored, *variables[index + 1 :]), frames), None
+        return (
+            rest,
+            (*variables[:index], stored, *variables[index + 1 :]),
+            frames,
+        ), None
     if char == ";":
         reference, rest = _pop(stack)
         index = _variable(reference)
@@ -343,10 +348,7 @@ def _advance(
         # The read already happened in the shell.  ``None`` is end of input,
         # which the spec answers with -1; an empty line is 0, which is what
         # every line-reading interpreter here returns for one.
-        if line is None:
-            value = -1
-        else:
-            value = ord(line[0]) if line else 0
+        value = -1 if line is None else ord(line[0]) if line else 0
         return ((*stack, value), variables, frames), None
     # ``ß``/``B`` flush a buffer this package does not have, and every other
     # character is ignored, as the reference's parser ignores whitespace.
@@ -383,7 +385,11 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The variables, with an unstored slot reading as zero."""
-        return [0 if value is None else value for value in self.state[1] if not isinstance(value, _Lambda)]
+        return [
+            0 if value is None else value
+            for value in self.state[1]
+            if not isinstance(value, _Lambda)
+        ]
 
     @property
     def stack(self) -> list[object]:
@@ -394,7 +400,7 @@ class _Machine:
         return (*self.state, self.io.position())
 
     def step(self) -> None:
-        """Execute one command, doing the reading and writing the transition asks for."""
+        """Execute one command, with the reads and writes the transition asks."""
         if self.halted:
             return
         state = _finalize(self.state)

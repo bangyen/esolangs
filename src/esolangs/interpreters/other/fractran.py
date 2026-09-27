@@ -55,10 +55,7 @@ def _product(text: str) -> int:
 
 def _parse(code: str) -> tuple[int, tuple[_Fraction, ...], tuple[int, ...]]:
     """Return the starting value, the fractions, and each token's offset."""
-    tokens = [
-        (found.start(), found.group())
-        for found in re.finditer(r"[^\s,]+", code)
-    ]
+    tokens = [(found.start(), found.group()) for found in re.finditer(r"[^\s,]+", code)]
     if not tokens:
         raise ValueError("a FRACTRAN program needs a starting value")
     start = _product(tokens[0][1])

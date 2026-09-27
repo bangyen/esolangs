@@ -183,10 +183,12 @@ def test_the_contract_covers_generators_the_original_queue_missed() -> None:
     generators were never checked, which is why this exists.
 
     (ZTOALC L, Nopstacle and COD entered the same way and left with their
-    languages.)  FRACTRAN is the twenty-sixth, and it entered as Factor did:
-    a language lower bound rather than an open measurement.  Growing this
-    number is the contract doing its job, so the gap is asserted against the
-    registry rather than fixed.
+    languages.)  FRACTRAN is the twenty-sixth.  It entered reading as Factor
+    does, a language lower bound, and now reads open: the wall is proved for
+    every program that addresses rows, but order is behaviour in a fraction
+    list, so no counting argument reaches the language
+    (`docs/proofs/fractran.md`).  Growing this number is the contract doing
+    its job, so the gap is asserted against the registry rather than fixed.
     """
     queue = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
     assert len(queue) == 26

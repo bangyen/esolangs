@@ -1,34 +1,26 @@
 """FRACTRAN boolean program builder: a decision tree priced in primes.
 
-``fractran(truth_table)`` emits a template whose starting value carries the
-inputs as the exponents of ``n`` primes -- FRACTRAN has no input vocabulary
-at all, so the bits are embedded, one digit per input -- and whose fractions
-walk a decision tree.  Each internal node owns two fractions: the first
-divides by the node's input prime and moves to the one-child, the second
-moves to the zero-child.  FRACTRAN's own first-match rule is the ``else``:
-the second fraction is reachable only when the first does not divide.  A
-leaf fraction consumes the node's prime and leaves ``2`` for a one and ``1``
-for a zero, and no fraction divides either, so that value is where the run
-stops and what it prints.
+The inputs are embedded as the exponents of ``n`` primes in the starting
+value, since FRACTRAN has no input vocabulary at all, and the fractions walk a
+decision tree.  Each internal node owns two fractions: the first divides by
+the node's input prime and moves to the one-child, the second moves to the
+zero-child, reachable only when the first does not divide -- FRACTRAN's own
+first-match rule is the ``else``.  A leaf leaves ``2`` for a one and ``1`` for
+a zero, which no fraction divides, so that value is where the run stops and
+what it prints, in at most ``2n + 1`` steps: the cheapest execution here.
 
-A subtable whose rows agree collapses to a leaf, which leaves the input
-primes below it unconsumed.  The ``1/p`` fractions at the end of the list
-clear them: they are last, so while any node prime is in the value some
-earlier fraction always fires, and they get their turn only once the answer
-is all that is left beside them.
+A folded leaf leaves the input primes below it unconsumed, and the trailing
+``1/p`` fractions clear them.  They are last, so while any node prime remains
+some earlier fraction always fires and they get their turn only at the end.
 
-A run is at most ``n + n + 1`` steps whatever the table says -- one per
-level, one per cleared prime, and the leaf -- which is the cheapest
-execution in the registry.
-
-Output size is ``Theta(T log T)``, not linear, and the reason is the
-language rather than this construction: see the FRACTRAN entry in
-``docs/limitations.md``.  A FRACTRAN program can only ever test the
-exponents of the primes its own text spells, so distinguishing ``T`` rows
-costs ``T`` distinct primes, and the ``T``-th prime needs
-``log10(T log T)`` digits to write down.  Packing several table entries into
-one prime's exponent does not help: an exponent of ``2**k`` carries ``k``
-bits and costs ``2**k`` in the value's digits.
+Output size is ``Theta(T log T)``, and the reason is the language's address
+budget rather than this construction: fractions sharing a guard are dead after
+the first, so ``m`` live ones cost ``m log m`` characters, and a prime costs
+``log10 p`` additively however it is packed into a number.  Addressing ``T``
+rows pays both, and this tree attains them -- ``3T + n - 2`` fractions over
+``2T + n`` primes.  That bounds every construction which addresses rows, not
+every program in the language: ``docs/proofs/fractran.md`` prices the routes
+around it and pins its lemmas in ``tests/proofs/test_fractran_bound.py``.
 """
 
 from __future__ import annotations
@@ -50,6 +42,7 @@ _FRACTRAN_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 #: Segment width for the sieve; the primes wanted are a prefix of it.
 _PRIME_CHUNK = 1 << 12
+
 
 @dataclass(frozen=True)
 class _Leaf:
@@ -106,9 +99,8 @@ def fractran(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     nodes = _tree(truth_table, n)
-    # 2 is the answer's prime, then one prime per input, then one per node
-    # of the tree -- every row that survives folding needs its own leaf
-    # prime, which is the whole of why the emission is not linear.
+    # 2 is the answer's prime, then one per input, then one per node: a row
+    # surviving folding needs its own leaf prime, hence the address budget.
     primes = _primes(1 + n + len(nodes))
     inputs = primes[1 : 1 + n]
     states = primes[1 + n :]
@@ -121,13 +113,8 @@ def fractran(truth_table: str) -> str:
         if isinstance(entry, _Leaf):
             fractions.append(f"{2 if entry.answer == '1' else 1}/{states[index]}")
             continue
-        # The one-child first: FRACTRAN tries them in order, so the
-        # zero-child's fraction is reachable only when this one does not
-        # divide -- that is the whole of the branch.
-        fractions.append(
-            f"{states[entry.one]}/{states[index] * inputs[entry.depth]}"
-        )
+        # The one-child first: the zero-child is the else, by priority.
+        fractions.append(f"{states[entry.one]}/{states[index] * inputs[entry.depth]}")
         fractions.append(f"{states[entry.zero]}/{states[index]}")
-    # Last, so a folded leaf's unread inputs are cleared only at the end.
     fractions += [f"1/{prime}" for prime in inputs]
     return " ".join([start, *fractions])

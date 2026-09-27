@@ -5,7 +5,14 @@ import re
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.unlambda import _App, _Machine, _parse, run
+from esolangs.interpreters.other.unlambda import (
+    _advance,
+    _App,
+    _Machine,
+    _parse,
+    _Promise,
+    run,
+)
 from tests.interpreters.runner import run_program
 
 #: The wiki's Hello world: a left-nested chain of prints, newline first.
@@ -134,3 +141,24 @@ def test_stepping_past_the_halt_is_a_no_op() -> None:
     before = machine.snapshot()
     machine.step()
     assert machine.snapshot() == before
+
+
+def test_d_applied_as_a_value_promises_what_it_was_given() -> None:
+    """``d`` delays whatever is *written* after it, so reaching it as a plain
+    function needs a combinator to hand it an already-evaluated argument.
+    ``c`` is the one that can: it applies ``d`` to the continuation, and the
+    answer is a promise of that value rather than of an unevaluated term."""
+    machine = _Machine("`cd", ScriptedIO(""))
+    while not machine.halted:
+        machine.step()
+    assert isinstance(machine.state[0].value, _Promise)
+    # Applying that promise forces it, and the continuation answers ``i``.
+    assert run_program(run, "```cdii") == ""
+
+
+def test_stepping_a_finished_machine_changes_nothing() -> None:
+    machine = _Machine("`.Ai", ScriptedIO(""))
+    while not machine.halted:
+        machine.step()
+    assert machine.state[3] is True
+    assert _advance(machine.state) == (machine.state, None)

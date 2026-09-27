@@ -10,8 +10,7 @@ from tests.interpreters.runner import run_program
 
 #: Conway's PRIMEGAME.  The powers of two it passes through are the primes.
 PRIMEGAME = (
-    "17/91 78/85 19/51 23/38 29/33 77/29 95/23 77/19 1/17 11/13 "
-    "13/11 15/14 15/2 55/1"
+    "17/91 78/85 19/51 23/38 29/33 77/29 95/23 77/19 1/17 11/13 13/11 15/14 15/2 55/1"
 )
 
 
@@ -102,3 +101,8 @@ def test_stepping_past_the_halt_is_a_no_op() -> None:
     before = machine.snapshot()
     machine.step()
     assert machine.snapshot() == before
+
+
+def test_a_non_positive_numerator_is_refused() -> None:
+    with pytest.raises(ValueError, match="is not positive"):
+        run_program(run, "5 0/3")

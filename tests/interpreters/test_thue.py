@@ -5,8 +5,8 @@ import re
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.randomness import FirstDraw, Seeded
 from esolangs.interpreters.other.thue import _Machine, _matches, _parse, run
+from esolangs.interpreters.randomness import FirstDraw, Seeded
 from tests.interpreters.runner import run_program
 
 #: Two print rules over ``ab``.  Both match the starting state, so which
@@ -139,3 +139,13 @@ def test_stepping_past_the_halt_is_a_no_op() -> None:
     before = machine.snapshot()
     machine.step()
     assert machine.snapshot() == before
+
+
+def test_the_branching_protocol_reports_the_state_it_searches() -> None:
+    """The hang proof searches every draw, so the string is its own branching
+    state and the successors are one per available rewrite."""
+    machine = _Machine("a::=b\na::=c\n::=\naa", ScriptedIO(""))
+    assert machine.branching_snapshot() == "aa"
+    assert not machine.branching_halted("aa")
+    assert machine.branching_halted("zz")
+    assert set(machine.branching_successors("aa", 8)) == {"ba", "ab", "ca", "ac"}
