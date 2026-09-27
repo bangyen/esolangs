@@ -74,9 +74,7 @@ class _Machine:
                 ind = self.size
             else:
                 ptr -= 1
-        elif command == "[" and tape[ptr] == 0:
-            ind = self.brackets[ind]
-        elif command == "]" and tape[ptr] != 0:
+        elif (command == "[" and tape[ptr] == 0) or (command == "]" and tape[ptr] != 0):
             ind = self.brackets[ind]
         self.state = (ind + (ind < self.size), ptr, tape, dumped)
 
