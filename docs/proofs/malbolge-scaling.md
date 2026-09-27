@@ -82,3 +82,52 @@ from ~12 tiers to ~5, and the remaining work is a four-to-five-pass decoder
 (third- and fourth-pass building blocks exist at 73-77 of the 94 residues),
 the overflow cascade, and interpreter verification across all 32,768 rows
 before the cap moves. The cap stays at fourteen until that build verifies.
+
+## Fifteen: the eight-copy cascade, measured
+
+A second attempt built the multi-level version: eight copies selected by
+inputs twelve to fourteen through a selector cell `Q`, a shared decoder per
+level entered through the all-1 `N` hub, and per-level readouts in three
+region types -- shared (`>= 19683`), private (`13122 + a % 6561`, two
+constants), and a single 2187-cell block (three-constant clamp to top trits
+`(0, 1, 2)`). Annealed level schedules resolve every row: `SSSSPP` followed by
+three per-copy-prep levels in an empty block goes
+7622/2803/1584/1721/1480/683 then 491 -> 87 -> 5 -> 0 unresolved. The table
+side is solved. The build is not, because memory runs out:
+
+- **Main code ~10,300-11,200 cells.** Constants and mixer 567; high-cell resets
+  ~60 per cell (every reset walks up from the `N` hub); private and clamp
+  preparation ~1,500; selector and per-copy preps 250-1,000; nine segments
+  ~1,800-2,200; label resets and chains ~2,400-2,800; hub turns ~640.
+- **Band.** Per-copy tails (offset dispatch), decoders (~50-120 cells each,
+  dominated by walks to the high `G` constant cells) and answer stubs need
+  ~1,300-1,900 free cells. Tails of level `k` sit at `Q_k(c) + 1`, and the
+  selector puts the eight copies on 81-cell tiles (input bits at trits 4-6),
+  so each tile holds at most about four levels of ~20-cell tails. Six tail
+  levels never packed: the planner reaches level 6 and fails there on every
+  seed.
+- **The squeeze.** Below `19683` the only free space is `[0, 13122)` minus the
+  private region's needs: main code, band and the empty block for the last
+  levels do not all fit. Moving the answer hubs into free shared cells
+  (seeds `(73,1) (91,1) (107,1) (113,2)`), lifting `Q` above them with one
+  main-code `G` op, and sharing a few rotating `G` cells across decoders each
+  bought a few hundred cells, not enough.
+- **Per-copy preps instead of tails** remove the tile limit but resolve less:
+  a prep `rot^u(char)` is mostly zero trits and loses information (25% of
+  2,654 keys resolved at level 5); `f01(rot^u(char))` is nearly bijective and
+  resolves 65% (1,725 vs 1,693 for private offsets), yet in the private
+  region successive levels only halve the remainder (929 -> 491 -> 275),
+  where an empty block finishes in three.
+
+The unbuilt remainder is a layout with the band inside the private region
+(annealed around) and the last levels in the empty `(0, 1, 2)` block, with
+main code under 10,935. Nothing in it is verified in the interpreter, so the
+cap stays at fourteen.
+
+Seventeen, the registry target, is out of reach for any construction: a
+17-input table carries 131,072 bits and a Malbolge source at most
+`59049 * 3 = 177,147`, so the table alone needs about 74% of the machine's
+information capacity before any addressing code. Lowering the language bound
+instead needs some 16- or 17-input table with no program; counting misses at
+seventeen by a factor `2**46076` and sixteen is likely computable in
+principle, so no such proof is in sight.
