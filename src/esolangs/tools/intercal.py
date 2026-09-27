@@ -19,7 +19,7 @@ class _Expr:
             return f"#{self.value}"
         if self.op == "input":
             return f".{self.value + 1}"
-        outer, inner = (("'", '"') if depth % 2 == 0 else ('"', "'"))
+        outer, inner = ("'", '"') if depth % 2 == 0 else ('"', "'")
         if self.op == "not":
             children, operator = (*self.children, _Expr("constant", 1)), "?"
         else:
@@ -50,9 +50,7 @@ def intercal(truth_table: str) -> str:
         right = _Expr("and", children=(selector, one))
         return _Expr("or", children=(left, right))
 
-    statements = [
-        f".{n - i} <- {TEMPLATE_CHAR * 2}" for i in range(n)
-    ]
+    statements = [f".{n - i} <- {TEMPLATE_CHAR * 2}" for i in range(n)]
     statements += [f".{n + 1} <- {tree(0, 0, len(truth_table)).render()}"]
     statements += [f"READ OUT .{n + 1}", "GIVE UP"]
     polite = max(1, (len(statements) + 4) // 5)
