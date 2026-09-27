@@ -75,9 +75,9 @@ why.
   and nothing addresses anything.  Every branch here is
   conditional/jump/pointer/first-match/promise-forced, so a cyclic schedule
   forces a new one, and the inputs embed as symbols of the initial word --
-  a one-character embed, which is the convention's easiest case.  **Build this
-  one first**; nothing is left to decide.  The answer is the last symbol
-  deleted.  Halting needs the final consumed symbol to append nothing:
+  a one-character embed, which is the convention's easiest case.  Nothing is
+  left to decide here, but read Bitwise Cyclic Tag before building: it takes
+  this row's axis, below.  The answer is the last symbol deleted.  Halting needs the final consumed symbol to append nothing:
   automatic for `d = 0`, and for `d = 1` exactly when `P_i` is empty, which is
   legal and which Cook's tag-to-cyclic reduction already appends `|Sigma|` of.
   Both values are reachable as the last deletion, so the halt carries a bit
@@ -95,6 +95,17 @@ why.
   Open: the size.  A block-aligned width-`w` build pays about `w` per
   production across `w` productions, so it needs a construction holding width
   O(1), or a bound.
+
+  Bitwise Cyclic Tag takes this axis, and probably takes it better.  BCT is the
+  same cyclic schedule with the same halt-on-empty answer and no I/O, so every
+  verdict above transfers unchanged, but it is 185 backlinks against 98, it is
+  two commands rather than a production list, and it splits delete from append:
+  `0` deletes the leftmost data-bit, `1x` appends `x` when that bit is 1 and
+  deletes nothing.  That decoupling is strictly more room for a construction
+  than CT's one delete a step.  CT embeds in BCT mechanically, production
+  `b_1..b_k` going to `1b_1 .. 1b_k 0`, so Cook's Rule 110 pedigree survives
+  the swap.  Admitting both would duplicate one axis: take BCT, and keep this
+  row only as the embedding's source.
 - **Emmental** (2007): Chris Pressey's self-modifying language -- a stack, a
   queue, and `!`, which pops a symbol and a `;`-terminated program and
   redefines that symbol to mean that program.  The dispatch table is data,
@@ -160,6 +171,28 @@ why.
   predates them ([limitations](limitations.md), Curation).  With the loop-less
   plan refuted and the count under the rejected pair, the row is a removal
   candidate; keep it only for a construction that actually spends simultaneity.
+
+- **The fame screen, never run.**  The alternative route is measured now
+  ([limitations](limitations.md), Curation), but it has only ever been applied
+  to reject.  Run over well-known languages outside the set it returns five
+  above every admitted classic's floor, none of them admitted or queued:
+  Deadfish 250, Bitwise Cyclic Tag 185, Underload 167, Fish 90, Smallfuck 66 --
+  three above admitted FRACTRAN 65 and Whitespace 58, two above Thue 154.  Just
+  under: Chicken 56, Shakespeare 55, LOLCODE 47, Ook! 42, Lazy K 42, Chef 40.
+  The counts are backlinks and the verdicts are spec reads, not executed
+  generators.  Computational models -- Turing machine 159, Lambda calculus 130,
+  Tag system 59 -- are not languages and are excluded.
+
+  Deadfish is rejected where it stands and should not be raised again: its page
+  says it "has a way to output things but it has no way to input them", so it
+  has no input interface and no generator can exist, which is HuePrism's
+  ground.  It is also the standing proof that the route is not sufficient on
+  its own -- second-highest count in the screen, inadmissible anyway.  Bitwise
+  Cyclic Tag is the live one, and it collides with the Cyclic tag row above.
+  Underload is the next read: it outranks Thue, and Emmental's
+  Turing-completeness argument runs through an Underload implementation, so the
+  two rows touch.  Fish and Smallfuck look like the grid walk and the tape the
+  set already has; read them last.
 
 - **Classic-language admission.**  All four of Thue, FRACTRAN, Unlambda and
   FALSE now ship as interpreters with generators, in the classics tier.  What
