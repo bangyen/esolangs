@@ -27,11 +27,12 @@ read is complete; rejected candidates are recorded under Curation in
   stack reaches 79 inputs. The route first fails on labels: it needs `2T - 2`
   unique ones, whose decimal definitions and references are `Theta(T log T)`,
   and the 16-bit label space caps it at `T <= 32768`. A better Shannon tree
-  uses no control flow: `&` or `V` over mingled pairs gives Boolean AND or OR,
-  and `?` over a bit mingled with 1 gives NOT. The abstract expression passes
-  every table through three inputs and approaches 18 source units per row.
-  Render its nested quote syntax and execute it in the interpreter before
-  promotion.
+  uses no control flow: mingle a pair, apply `&`, `V`, or `?`, then `SELECT`
+  odd positions with `#65535$#0` to pack Boolean AND, OR, or XOR back to one
+  bit; XOR with 1 gives NOT. The fully grouped spark/rabbit-ear renderer and
+  syntax evaluator pass every table through three inputs. Dense concrete
+  source approaches `81T` characters. Execute it in the package interpreter
+  before promotion.
 ## Conditional follow-up
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
