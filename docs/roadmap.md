@@ -5,9 +5,11 @@ Only live work belongs here. Contracts and standing walls go to
 
 ## New interpreters
 
-Implement the surveyed candidates in this order. The first three survived the
-2026-09-19 two-dimensional-language screen; their verdicts are spec reads, so
-generator size remains open. INTERCAL and Emmental are classic candidates.
+Two routes feed this queue: obscure languages without an implementation, and
+popular languages already implemented elsewhere but absent here. The first
+three survived the 2026-09-19 two-dimensional-language screen; their verdicts
+are spec reads, so generator size remains open. INTERCAL takes the popular
+route.
 
 - **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
   was misfiled as unread: its transclusions inject CSS, not the node table.
@@ -28,63 +30,18 @@ generator size remains open. INTERCAL and Emmental are classic candidates.
   O(T)-statement tree under the 80-frame limit and the required 1/5--1/3
   `PLEASE` ratio.
 
-- **Emmental** (2007): Chris Pressey's self-modifying language -- a stack, a
-  queue, and `!`, which pops a symbol and a `;`-terminated program and
-  redefines that symbol to mean that program.  The dispatch table is data,
-  which nothing here has: Malbolge rewrites its source, not the meaning of an
-  instruction.  That also points at a construction shape the ledger has no
-  row for, a jump table the program defines for itself rather than a tree it
-  walks: one symbol per table block, reached by `?`.
-
-  Binding is definition-time, so later redefinitions and forward references
-  do not reach a body. `?` still resolves a popped byte at call time, giving a
-  256-way dispatch at about five characters per edge. Open: price the cascade
-  beyond eight inputs; nesting grows about `4^depth` and only 256 definitions
-  are live.
-- **Prelude** (2005): Nikita Ayzikovsky's language of *voices*, one per line,
-  each with its own stack of zeroes, where instructions in the same column
-  run simultaneously and every stack updates atomically.  Concurrency is an
-  axis the set has nowhere, and it points at a width-wise construction
-  instead of a depth-wise tree -- a voice a level, `^`/`v` reading the
-  neighbouring voice's top.  **Last, and this row's plan is refuted, not
-  open**: loop-less is impossible.  The instruction set is
-  `+ - # ( ) ^ v ? ! 0-9` and everything else a nop, so with the brackets
-  unused every value on every stack is an integer *affine* combination of the
-  inputs and constants -- digits push constants, `^`/`v` copy a neighbour's
-  top, `+`/`-` combine, and nothing multiplies.  `AND(x, y) = x y` is not
-  affine, so no bracket-free program computes a general table.
-
-  A guarded tree is possible, but costs Theta(T n) with one voice per level
-  and duplicates FALSE's mechanism at O(1) voices. Its 13 backlinks also fall
-  below both rejected image languages. Remove it unless a construction
-  actually uses simultaneity.
-
 - **The fame screen, never run.**  The alternative route is measured now
-  ([limitations](limitations.md), Curation), but it has only ever been applied
-  to reject.  Run over well-known languages outside the set it returns five
-  clearing `bf/5`, none of them admitted or queued: Deadfish 0.89, Bitwise
-  Cyclic Tag 0.66, Underload 0.59, Fish 0.32, Smallfuck 0.23 -- three above
-  admitted FRACTRAN and Whitespace, two above Thue 0.55.  Inside the
+  ([limitations](limitations.md), Curation). Of the languages still outside
+  the set, it returns three clearing `bf/5`: Underload 0.59, Fish 0.32, and
+  Smallfuck 0.23. Inside the
   indeterminate band, so needing the axis test: Chicken 0.199, Shakespeare
   0.195, LOLCODE 0.167, Ook! 0.149, Lazy K 0.149, Chef 0.142.
   The counts are backlinks and the verdicts are spec reads, not executed
   generators.  Computational models -- Turing machine 159, Lambda calculus 130,
   Tag system 59 -- are not languages and are excluded.
 
-  Underload is the next read: it outranks Thue, and Emmental's
-  Turing-completeness argument runs through an Underload implementation, so the
-  two rows touch.  Fish and Smallfuck look like the grid walk and the tape the
-  set already has; read them last.
-
-- **Classic-language promotion.** Thue, FRACTRAN, Unlambda and FALSE
-  FALSE now ship as interpreters with generators, in the classics tier.  What
-  is left is the curator's call on promoting three of them out of it: Thue
-  rewrites the table in place rather than walking a tree, FRACTRAN answers
-  with the value it stops on and branches by which fraction divides first, and
-  Unlambda has no conditional and branches by forcing one of two promises.
-  FALSE is an ordinary stack language in costume and stays where it is.  Each
-  promotion needs a comparison against the construction-shape, branch and
-  answer axes the set already occupies, not just the observation above.
+  Underload is the next read. Fish and Smallfuck look like the grid walk and
+  tape already present; read them last.
 
 ## Conditional follow-up
 
