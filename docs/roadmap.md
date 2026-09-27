@@ -14,10 +14,12 @@ read is complete; rejected candidates are recorded under Curation in
   was misfiled as unread: its transclusions inject CSS, not the node table.
   An acyclic mux network using only `□` NOR passes every table through three
   inputs and has `n + 8T - 7` nodes. Rendering is open: shared input fan-outs
-  cross the formula tree, the language has no transparent data crossover, and
-  `◐◑◒◓` route by the carried bit. Find a linear crossover or planar
-  construction, then execute the Unicode drawing; the netlist alone is not an
-  implementation.
+  cross the formula tree, and `◐◑◒◓` route by the carried bit. A constant
+  logical crossover exists: three native XOR nodes compute `a=x XOR y`, then
+  `a XOR y=x` and `a XOR x=y`; one pause on each direct branch synchronizes the
+  final gates. Its graph is planar with alternating terminals and passes all
+  four input pairs. Lay that graph out in Unicode, then execute the full
+  drawing; the netlist alone is not an implementation.
 ## Conditional follow-up
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
