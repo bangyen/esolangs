@@ -471,6 +471,13 @@ CLASSICS: dict[str, Language] = {
         boolean=_boolean.fractran,
         id="fractran",
     ),
+    "Fish": Language(
+        "Fish",
+        "grid_based.fish",
+        boolean=_boolean.fish,
+        id="fish",
+        split=True,
+    ),
     "Malbolge": Language(
         "Malbolge",
         "other.malbolge",

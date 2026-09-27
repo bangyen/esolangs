@@ -24,10 +24,6 @@ read is complete; rejected candidates are recorded under Curation in
   agree on the nine commands; `^` forces a program from the stack and `S`
   outputs one. Build a parameterized promise tree, or reject it if equal-width
   input elements cannot preserve the stack contract.
-- **Fish** (2009): clears the fame bar at 0.32 and has several implementations.
-  Pin the current non-threaded instruction set, character input with `-1` at
-  EOF, and unbounded codebox. Reuse only construction machinery, not Befunge's
-  semantics; execute reflection and stack-stack cases independently.
 - **Smallfuck** (2002): clears the fame bar at 0.23. The spec deliberately
   leaves the finite tape size and initial/final-state I/O to implementations.
   Pin tape length to source length, map encoded stdin to initial cells, and

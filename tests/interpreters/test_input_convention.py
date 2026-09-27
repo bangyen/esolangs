@@ -298,6 +298,7 @@ _EOF_IS_A_HALT: dict[str, str] = {
     # raise is what makes their own idioms work: FALSE's cat tests ``^``
     # against -1, and an Unlambda read-until-EOF loop needs the ``v`` branch.
     "false": "an exhausted '^' is the spec's -1",
+    "fish": "an exhausted 'i' is the spec's -1",
     "unlambda": "an exhausted '@' hands its argument v, the spec's branch",
 }
 

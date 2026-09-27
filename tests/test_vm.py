@@ -982,6 +982,7 @@ class TestEveryLanguageIsSteppable:
         assert missing == {}
         assert random_languages == {
             "Befunge",
+            "Fish",
             "LaserFuck",
             "Modulous",
             "Painfuck",

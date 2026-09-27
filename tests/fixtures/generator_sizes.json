@@ -476,6 +476,20 @@
     "source_units": 30
    }
   },
+  "Fish": {
+   "0110": {
+    "commands": 27,
+    "source_units": 32
+   },
+   "01101001": {
+    "commands": 36,
+    "source_units": 45
+   },
+   "0110100110010110": {
+    "commands": 45,
+    "source_units": 62
+   }
+  },
   "Flowchart": {
    "0110": {
     "commands": 19,

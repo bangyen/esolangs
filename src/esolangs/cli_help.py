@@ -168,8 +168,8 @@ options:
                      *not* terminating -- 123, ArrowQueue, Crement and
                      Vandevelo -- so a timeout there is the answer, not a
                      failure.
-  --seed N           fix the random draws so the run repeats.  Six
-                     languages draw: Befunge, LaserFuck, Modulous,
+  --seed N           fix the random draws so the run repeats.  Seven
+                     languages draw: Befunge, Fish, LaserFuck, Modulous,
                      Painfuck, Super SNUSP and Thue.  A seed for a language
                      that draws nothing is refused rather than ignored.
   --table TABLE      the truth table the program was generated from.  Adds

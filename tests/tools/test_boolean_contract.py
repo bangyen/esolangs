@@ -554,6 +554,7 @@ _REDUCING = {
 _UNSHAPED = {
     "a_painter_ant",
     "befunge",
+    "fish",
     "bio",
     "alight",
     "clockwise",

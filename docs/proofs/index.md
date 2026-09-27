@@ -35,7 +35,7 @@ lookup and parameterized row to its scheme's measurable consequence (the
 `tree` and `minterms` rows carry no such per-row check); both are in the fast
 band and gate every push.  `tests/proofs/deep/` holds the proofs themselves,
 at two depths.
-`all_generators.py` runs a lemma battery against all 67: every single
+`all_generators.py` runs a lemma battery against all 68: every single
 row of the table demonstrably participates in the emitted program at the
 flip-tested arities, and the construction completes at every arity of a ladder
 on both table shapes.  That
@@ -147,7 +147,7 @@ carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
 bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
-Dimensional, EGL, Eval,
+Dimensional, EGL, Eval, Fish,
 Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
 Suffolk, Thue, Unsquare and Whitespace keep no tree route at all: A Painter
 Ant's
@@ -155,7 +155,8 @@ answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, bit~ lands the pointer on one tape cell an entry and walks the
 bit it finds home, Bitwise Cyclic Tag has no branch to fold a tree into --
 the commands it runs are a fixed cyclic sequence, so every table of a given
-arity emits the same length, Befunge reads one grid cell per table entry with `g`, BIO's
+arity emits the same length, Befunge and Fish read one grid cell per table
+entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
 once the doubling between the input runs is in the text), B-tapemark copies
@@ -248,6 +249,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Eval | linear lookup | fixed reversed stack order selects the indexed row | linear: T literal plus halving `;` runs under T |
 | Factor | tree | Brainfuck tree followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence | lower bound: tight language and generated Theta(T log T) ([factor](factor.md)) |
 | FALSE | tree | — | linear: 17 characters an internal node, two a leaf |
+| Fish | finite lookup | the inputs form a Horner row index and `g` reads that column from the table row | linear: T table cells, one g at the index |
 | Fargo | tree | finite folded layout | linear, time n log: Moebius transform, n passes over 2**n |
 | Flowchart | finite lookup | a pair of answers per deque, and the input walks the deque cursor to the pair it wants | linear: T pushes, `T/2 - 1` cursor steps, two rows |
 | Forbin | finite lookup | the last seven inputs paint a block of `2**7` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry | linear: two characters an entry, halvings sum to `2 * 128` |
@@ -341,6 +343,6 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 66 theoretical totality arguments and one
+Accordingly, this ledger records 67 theoretical totality arguments and one
 proved language exception; every other row is `Total` or theoretically total
 past a resource ceiling.
