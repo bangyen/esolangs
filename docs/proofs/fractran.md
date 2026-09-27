@@ -1,27 +1,27 @@
 # FRACTRAN: whose wall it is
 
-The shipped generator emits `Theta(T log T)` characters for a `T`-row truth
-table. This document proves that no *row-addressing* program does better --
-an unconditional `Omega(m log m)` in the fraction count and
-`Omega(k log k)` in the prime count, from distinctness alone -- and then
-shows that the language is not bounded by it, by exhibiting a program that
-does not address rows and costs `Theta(T)`.
+A program that gives each of a table's `T` rows its own address needs
+`Theta(T log T)` characters. This document proves that -- an unconditional
+`Omega(m log m)` in the fraction count and `Omega(k log k)` in the prime
+count, from distinctness alone -- and then shows that the language is not
+bounded by it, because a program need not address rows. The generator
+shipped here does not, and costs `Theta(T)`.
 
 So the headline is a negative one. **FRACTRAN has no `Omega(T log T)`
 language lower bound; its boolean size complexity is `Theta(T)`.** The
 floor is the counting floor, `D >= T / log2(c) > 0.26 T` (Theorem 14), and
-Theorem 15 comes within a small constant of it: a block-packed program
-measures `2.3` to `2.5` characters an entry from nine inputs to fourteen,
-against the shipped tree's `20` to `26` and climbing. The `log T` in the
-shipped generator's size is the construction's, not the language's.
+Theorem 15 is within a constant of it. It is also what the generator now
+emits: `8.93` characters an entry at `n = 12` and falling, against a
+prime-per-row tree's `23.6` and climbing. The `log T` the generator used to
+carry was the construction's, not the language's.
 
 What the wall really prices is the clock. A packed program holds `w` table
 entries in one exponent, so it buys those characters with a value of
-`Theta(2**w)` bits and a run that has to traverse them; the tree buys
-`2n + 1` steps on a value of `O(log T)` bits by putting a `log T` in its
-text. Both ends are executed in `tests/proofs/deep/fractran_packed.py`.
-Neither is linear on all four audit axes at once, and that trade -- not a
-wall -- is what keeps FRACTRAN's cells open.
+`Theta(2**w)` bits and a run that has to traverse them -- `O(2**w)` steps,
+against the tree's `2n + 1` on a value of `O(log T)` bits. Linearity asks
+only `w = Omega(n)`, so `w` is held near `n / 3` and the run stays
+polylogarithmic in `T`; both ends are executed in
+`tests/proofs/deep/fractran_packed.py`.
 
 Three corrections to earlier prose come out of this, all recorded below:
 the packing argument was notation-dependent and false under this port's own
@@ -142,15 +142,15 @@ the prime number theorem.
 This is the wall, and it is where the earlier prose was pointing: not "the
 `T`th prime costs `log10(T log T)` digits" -- true but paid once -- but that
 digit cost is *additive*, so `T` addresses cost `T` of those logs however
-they are packed into numbers. The shipped tree pays exactly this, and the
+they are packed into numbers. A prime-per-node tree pays exactly this, and the
 floor is not loose for it: measured on the unfoldable table (parity), it
 emits `m = 3T + n - 2` fractions over `k = 2T + n` primes with all `m`
 guards distinct, and `D / log10(m!)` falls to `3.00` by `n = 12`.
 
 Read the hypothesis. It is a wall for programs that address rows, and a
 program is under no obligation to address rows: Theorem 15 addresses
-`T / log T` blocks and pays this same budget for those, which comes to
-`Theta(T)`.
+`3T / w` of them for a block width `w = Theta(n)`, and pays this same
+budget for those, which comes to `Theta(T)`.
 
 ## Pricing the packing route
 
@@ -254,19 +254,20 @@ clock, and the cell it was being used to justify measures text.
 
 ## Where the wall stops
 
-    Theorem 15 (packed construction). For every w = 2**v <= T there is a
-    FRACTRAN program family computing any T-row table under the generator
-    contract, with
+    Theorem 15 (packed construction). For every block width w = 2**v <= T
+    there is a FRACTRAN program family computing any T-row table under the
+    generator contract, with
 
         m, k = Theta(T / w)  fractions and primes,
-        D    = O((T / w) log(T / w)) + T log10(2) + O(1)  characters,
+        D    = O((T / w) log(T / w)) + T log10(2) + O(n log T)  characters,
 
     running O(w * 2**w) steps on a value of O(2**w + log T) bits.
-    Taking w = Theta(log T) gives D = Theta(T).
+    Any w = Omega(n) gives D = Theta(T), and w = O(n) keeps the run
+    polylogarithmic in T; the generator takes w near n / 3.
 
 *Construction.* Stop the decision tree `v` levels early. Its `T / w`
 leaves are blocks of `w` consecutive table entries, and the high `n - v`
-input bits reach the right one exactly as in the shipped tree: a node owns
+input bits reach the right one exactly as a plain tree does: a node owns
 two fractions, the first dividing by the node's input prime, the second
 serving as FRACTRAN's own else. A leaf fires
 
@@ -276,11 +277,14 @@ where `c` is its block read as a `w`-bit integer, low entry first. That is
 `w` bits of table for `log10 c + O(1)` characters, because this port parses
 `p^e` (Lemma 10's plain-notation pricing is what would forbid it).
 
-The low `v` input bits are the offset inside the block. They are consumed
-by `v` fractions at the very top of the list, `count**(2**(v-1-r)) / p`,
-one per bit, which fire first and to exhaustion because nothing else guards
-on a low input prime. The offset therefore stands in unary as the exponent
-of `count` before the tree has finished.
+The inputs the tree did not read are the offset inside the block. One
+fraction each, `count**(2**(v-r)) / p`, places them in unary as the exponent
+of `count`. Their position in the list is the whole argument for them: they
+sit *after* the tree's fractions and before the decoder's, and a descending
+tree always has a fraction of its own to fire, so they take their turn
+exactly once a block is loaded. Put them at the top instead and they would
+steal an input the tree still had to read -- which is a mistake this
+construction made and the execution check caught.
 
 The decoder is one fixed list of fourteen fractions, independent of the
 table. It shifts the block right once per unit of the counter -- halving
@@ -292,71 +296,96 @@ being shared; by Lemma 2 a fraction that tried to hold its own state prime
 in both numerator and denominator would have that prime cancel out of its
 guard and fire everywhere.
 
+*Two widths.* A power of two is too coarse a setting for `w`: it would
+double where the target crossed it, and the characters an entry would saw
+between the two settings rather than settle -- measured, that sawtooth
+pushes the size contract's difference ratio to `6.19` against its `4.4`,
+while the mixture holds every same-parity triple from `n = 6` to `n = 14`
+inside `3.93`. So blocks come in both `2**v` and `2**(v+1)`, mixed to
+average a target of about `n / 3`. The wider ones stop a level above the
+rest, which leaves them one more unread input; the offset fraction carrying
+weight `2**v` is exactly that level's, and under a narrow block that prime
+is already gone, so the two widths need no marker to tell them apart.
+
 *Correctness* is the loop invariant that after `j` units are spent the
-`carry` exponent is `c >> j`, and the offset is exactly the low `v` bits of
-the row. It is checked by execution rather than asserted: every row of
-every table, at every block width a run can afford, in
-`tests/proofs/deep/fractran_packed.py` (1,888 rows at the pinned seed) and
-in `tests/proofs/test_fractran_bound.py`.
+`carry` exponent is `c >> j`, and the offset is exactly the row's index
+inside its block. It is checked by execution rather than asserted: every
+row of every table, at every arity from one to nine, over random, constant,
+parity and half-split tables, in `tests/proofs/deep/fractran_packed.py`
+(10,220 rows at the pinned seed) and in
+`tests/proofs/test_fractran_bound.py`.
 
 *Cost.* The tree addresses `T / w` blocks, so Theorems 7 and 8 price it at
 `Theta((T/w) log(T/w))` -- the budget is paid, for fewer addresses. The
 block literals cost `sum log10 c_j <= (T/w)(w log10 2 + 1)`, which is
-`0.302 T + T/w`, and digit additivity (Theorem 8's engine) says no
-rendering does better. The decoder is `O(log T)` and the `n` clears
-`O(n log T)`. With
-`2**v >= n` the first term is `O(T)`, and
+`0.302 T + T/w`, and digit additivity (Theorem 8's engine) says no rendering
+does better. The decoder is `O(log T)` and the `n` clears `O(n log T)`.
+With `w = Omega(n)` the first term is `O(T)`, and
 
     Corollary 16 (language size complexity). The worst-case rendered size
     of a FRACTRAN boolean program is Theta(T): Omega(T) by Theorem 14,
     O(T) by Theorem 15.
 
 Measured, at the seed pinned in the deep proof -- `m` fractions, `k` primes,
-and characters an entry for the packed program and for the shipped tree:
+and characters an entry for the shipped builder and for the tree:
 
-    n     T       w    D        D/T     tree      tree/T   m      k
-    8     256     8    1147     4.48    4836      18.89    119    116
-    9     512     16   1243     2.43    10291     20.10    121    117
-    10    1024    16   2300     2.25    21281     20.78    218    214
-    11    2048    16   4655     2.27    45728     22.33    411    407
-    12    4096    16   9520     2.32    96693     23.61    796    792
-    13    8192    16   19214    2.35    199320    24.33    1565   1561
-    14    16384   16   40527    2.47    423757    25.86    3102   3098
+    n     T       w    D        D/T     tree      tree/T   m       k
+    8     256     2    2310     9.02    4696      18.34    251     248
+    9     512     2    4764     9.30    9914      19.36    480     477
+    10    1024    2    9056     8.84    21514     21.01    856     853
+    11    2048    2    17062    8.33    45429     22.18    1559    1556
+    12    4096    4    36210    8.84    96624     23.59    3093    3090
+    13    8192    4    69820    8.52    199542    24.36    5672    5668
+    14    16384   4    133372   8.14    426120    26.01    10524   10520
 
-`D/T` stays inside a band while the tree's climbs; `m` and `k` stay near
-`T / 8`, so nothing here contradicts the address budget. The band is not
-flat because `w` is a power of two, so the constant sawtooths as `v` steps
-up (at `n = 9` and again at `n = 17`); the contract's successive-difference
-ratio reads that oscillation as super-linear even though `D = Theta(T)`.
-That is a property of the width knob, not of the construction.
+`D/T` declines while the tree's climbs, and the successive-difference ratio
+sits between `3.16` and `3.93` against the size contract's `4.4` at every
+same-parity triple from `n = 6` up -- which is the mixture doing its work,
+since a single power-of-two width reads `6.19` there. The `w` column is the
+narrow width; about a third of the table sits in blocks of `2w`.
+
+`m` and `k` are `3T / w`, so they are below `T` and fall as `w` grows:
+nothing here contradicts the address budget, which is paid in full for the
+addresses that exist. At these arities `w` is small and the margin is a
+constant factor; it is the `w = Theta(n)` growth that makes the product
+`Theta(T)`.
 
 ## What is not proved
 
-Both ends of the trade are built, and neither is linear on every axis:
+The width is a knob, and what it trades is sharp. Writing `alpha` for the
+tree's per-address constant,
 
-    tree     D = Theta(T log T)   2n + 1 steps      O(log T)-bit values
-    packed   D = Theta(T)         Theta(T) steps    Theta(T)-bit values
+    D ~ (0.302 + alpha (n - log2 w) / w) T     characters
+    S ~ 4 * 2**w                              steps
 
-so a `Theta(T)` step count comes with `Theta(T)`-bit arithmetic, and the
-bit cost of a packed run is `Theta(T**2)`. The open question is the joint
-one, and it is sharper than the old one because both axes now have a
-witness:
+so every `w = Omega(n)` gives `D = Theta(T)`, and buying the constant down
+by a factor costs exponentially in steps. At `w = Theta(n)` the run is
+`2**Theta(n) = T**Theta(1)` -- the shipped width near `n / 3` measures
+`T**(1/3)` steps on values of `O(T**(1/3))` bits, so its bit cost is
+`O(T**(2/3))`, sublinear, which is why the execution axis stays linear while
+the text does too. The two ends built here are
+
+    tree     D = Theta(T log T)   2n + 1 steps          O(log T)-bit values
+    packed   D = Theta(T)         Theta(T**(1/3))       O(T**(1/3))-bit values
+
+and the open question is the joint one:
 
 - is there a family with `D = O(T)` and `polylog(T)` steps? Every
-  construction here pays one for the other, and the reason is visible:
-  `m = o(T)` forces some address to name more than one row, and the only
-  storage a fraction list has for the rest is a magnitude, which Lemma 11
-  makes the run traverse;
+  construction here pays a fractional power of `T` for it, and the reason is
+  visible: `m = o(T)` forces some address to name more than one row, and the
+  only storage a fraction list has for the rest is a magnitude, which
+  Lemma 11 makes the run traverse;
 - or is there a size-time tradeoff theorem -- a lower bound on `D * S`, or
-  on `D` for `S = polylog`, over every program in the language?
+  on `D` for `S = polylog(T)`, over every program in the language?
 
 Nothing above excludes either. What is excluded is any argument by
 counting, at either end: a `D`-character program has `2**Theta(D)`
 behaviours, so counting stops at `Omega(T)` exactly as Theorem 14 says.
 
-## The other end: the shipped tree
+## The other end: the row-addressing tree
 
-The shipped generator is a decision tree with one prime per node, the bits
+The generator that shipped before this was a decision tree with one prime
+per node, the bits
 as exponents in the starting value, and FRACTRAN's first-match rule as the
 else-branch. On the unfoldable table it emits
 

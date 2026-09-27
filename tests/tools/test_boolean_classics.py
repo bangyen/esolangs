@@ -168,18 +168,32 @@ def test_the_emissions_grow_by_a_line() -> None:
         assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) == 4.0
 
 
-def test_fractran_runs_in_a_step_per_level() -> None:
-    """At most one step a level, one a cleared prime, and the leaf."""
-    from esolangs.interpreters.other.fractran import _Machine
+def test_fractran_runs_inside_the_block_it_reads() -> None:
+    """A run is bounded by one block, never by the table.
 
-    n = 3
-    table = "01101001"
-    template = boolean.fractran(table)
-    for row in range(2**n):
-        program = fill_runs(template, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n, _bits(row, n))
-        machine = _Machine(program, ScriptedIO(""))
-        steps = 0
-        while not machine.halted:
-            machine.step()
-            steps += 1
-        assert steps <= 2 * n + 2, (row, steps)
+    The tree spends a step a level and the decoder traverses a single block's
+    exponent, so a run costs ``O(2**w)`` for a block of ``w`` entries -- and
+    ``w = Theta(n)``, which makes the step count polylogarithmic in ``T``.
+    That is what the packed text buys its characters with, and why
+    ``_plan`` holds the width near ``n / 3``: this ceiling is the thing that
+    would grow if it stopped.
+    """
+    from esolangs.interpreters.other.fractran import _Machine
+    from esolangs.tools.fractran import _plan
+
+    for n in range(2, 8):
+        table = "".join(str((row * row + 1) % 2) for row in range(2**n))
+        v, wide = _plan(n)
+        widest = 1 << (v + 1 if wide else v)
+        ceiling = 4 * (1 << widest) + 4 * n
+        template = boolean.fractran(table)
+        for row in range(2**n):
+            program = fill_runs(
+                template, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n, _bits(row, n)
+            )
+            machine = _Machine(program, ScriptedIO(""))
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                steps += 1
+            assert steps <= ceiling, (n, row, steps, ceiling)

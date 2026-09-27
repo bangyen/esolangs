@@ -31,12 +31,7 @@ import pytest
 from esolangs.interpreters.other.fractran import _choose, _parse
 from esolangs.tools.fractran import PAIR, fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from tests.proofs.deep.fractran_packed import (
-    packed,
-    rows,
-    spelled,
-    width_exponent,
-)
+from tests.proofs.deep.fractran_packed import row_addressed, rows, spelled
 
 #: A fraction list, as the interpreter holds it.
 type _Fractions = tuple[tuple[int, int], ...]
@@ -52,7 +47,8 @@ def _bits(row: int, n: int) -> list[int]:
 def _program(table: str, row: int) -> tuple[int, _Fractions]:
     """The generated program for ``table``, with ``row``'s bits filled in."""
     n = len(table).bit_length() - 1
-    filled = fill_runs(fractran(table), TEMPLATE_CHAR, [PAIR] * n, _bits(row, n))
+    text = row_addressed(table)
+    filled = fill_runs(text, TEMPLATE_CHAR, [PAIR] * n, _bits(row, n))
     start, fractions, _offsets = _parse(filled)
     return start, fractions
 
@@ -283,7 +279,7 @@ def test_the_tree_pays_the_address_budget_it_is_priced_by() -> None:
         assert len(fractions) == 3 * size + n - 2, n
         assert len(set(guards)) == len(guards), n
         assert len(_primes_of(start, fractions)) == 2 * size + n, n
-        assert len(fractran(parity)) >= math.log10(math.factorial(len(fractions)))
+        assert len(row_addressed(parity)) >= math.log10(math.factorial(len(fractions)))
 
 
 def _pseudo_table(n: int) -> str:
@@ -296,37 +292,38 @@ def _pseudo_table(n: int) -> str:
     return "".join(bits)
 
 
-def test_a_packed_program_answers_every_row_without_addressing_one() -> None:
+def test_the_shipped_builder_answers_every_row_without_addressing_one() -> None:
     """Theorem 15: a program does not have to give a row an address.
 
-    A leaf carries a whole block of `w` entries as one exponent, and one
-    shared decoder shifts that exponent by the offset and reads the parity.
-    Every row is run, since the answer is the only thing a construction can
-    be wrong about.  The sizes are measured in
+    A leaf carries a whole block of entries as one exponent, and one shared
+    decoder shifts that exponent by the offset and reads the parity.  Every
+    row is run, since the answer is the only thing a construction can be
+    wrong about.  The sizes are measured in
     `tests/proofs/deep/fractran_packed.py`; what is pinned here is that the
-    refutation runs at all -- if it stops running, Theorem 7's scope is
-    back to being the whole language and the audit row changes meaning.
+    refutation runs at all -- if it stops running, Theorem 7's scope is back
+    to being the whole language and the audit row comes back with it.
     """
     table = _pseudo_table(6)
-    worst, widest = rows(packed(table, 2), table)
-    assert worst > 2 * 6 + 1, "the packed run was not slower than the tree"
+    worst, widest = rows(fractran(table), table)
+    assert worst > 2 * 6 + 1, "the packed run was not slower than a tree's"
     assert widest > 0
 
 
 def test_packing_pays_the_address_budget_rather_than_escaping_it() -> None:
     """Corollary 9 covers the packed program too, and does not bind.
 
-    It spells `Theta(T / log T)` fractions over as many primes, so Theorems
-    7 and 8 price it at `Theta(T)` characters -- which is what it costs.
-    Nothing here contradicts the budget; the budget is paid, for far fewer
-    addresses than the table has rows.
+    It spells `3T / w` fractions over as many primes, so Theorems 7 and 8
+    price it at `Theta((T / w) log(T / w))` characters -- which is what it
+    costs, and is `Theta(T)` because `w` grows like `n`.  Nothing here
+    contradicts the budget: the budget is paid, for fewer addresses than the
+    table has rows, and the shortfall widens as `w` does.
     """
     table = _pseudo_table(12)
-    template = packed(table, width_exponent(12))
-    assert len(template.split()) - 1 < len(table) // 4
-    assert len(spelled(template)) < len(table) // 4
-    assert len(template) < 3 * len(table)
-    assert len(fractran(table)) > 8 * len(template)
+    template = fractran(table)
+    assert len(template.split()) - 1 < len(table)
+    assert len(spelled(template)) < len(table)
+    assert len(template) < 12 * len(table)
+    assert len(row_addressed(table)) > 2 * len(template)
 
 
 def test_priority_order_is_a_channel_no_counting_argument_can_close() -> None:

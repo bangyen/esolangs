@@ -214,40 +214,42 @@ Loading dominates Factor (integer factorization) and Circuit Diagram (parsing
 super-linear area); it is intentionally excluded from execution time.
 
 No FRACTRAN construction that addresses table rows can be linear, and that
-is a fact about addressing rows rather than about the language. A program is an
-ordered list of fractions and a starting value, so every reachable state is
+is a fact about addressing rows rather than about the language. A program is
+an ordered list of fractions and a starting value, so every reachable state is
 that value times a product of those fractions, and a step's only decision is
 whether some fraction's guard divides it. Two consequences bind. Fractions
 sharing a guard are dead after the first, so the live ones are distinct
 strings, and `m` of them cost `(1 + o(1)) m log m` characters. Digit cost is
 additive over distinct primes however they are packed into numbers, so the
 `k` primes a text spells cost `(1 + o(1)) k log10 k`. Giving `T` rows their
-own guard or their own prime is therefore `Omega(T log T)`, and the shipped
-tree attains it: `3T + n - 2` fractions over `2T + n` primes,
-`Theta(T log T)` characters, measured difference ratio 4.61 against the
-contract's 4.4. The proof, its lemmas and their executed checks are in
-[fractran](proofs/fractran.md).
+own guard or their own prime is therefore `Omega(T log T)`, which a
+prime-per-node tree attains exactly: `3T + n - 2` fractions over `2T + n`
+primes, measured difference ratio 4.61 against the contract's 4.4.
 
-That is not a language lower bound, and it is not one because it is false as
-one. A program need not address rows: stop the tree `v` levels early, load
-each block of `w = 2**v` entries as a single exponent -- `w` bits for
-`w log10 2` characters, since this port parses `p^e` -- and read the bit out
-with a fixed fourteen-fraction decoder that shifts the exponent by an offset
-standing in unary. That addresses `T / w` blocks, pays the same budget for
-those, and at `w = Theta(log T)` costs `Theta(T)` characters: `2.3` to `2.5`
-an entry from `n = 9` to `n = 14`, against the tree's `20` to `26`, every row
-executed in `tests/proofs/deep/fractran_packed.py`. With the counting floor
-`D >= T / log2(c) > 0.26 T`, FRACTRAN's boolean size complexity is
-`Theta(T)`.
+That is not a language lower bound, and the shipped generator is why. It does
+not address rows: the tree stops early, each leaf loads a block of `w` entries
+as a single exponent -- `w` bits for `w log10 2` characters, since this port
+parses `p^e` -- and a fixed fourteen-fraction decoder shifts that exponent by
+an offset the low inputs spell in unary. It pays the same budget for `3T / w`
+addresses instead of `T`, and with `w = Theta(n)` that is `Theta(T)`
+characters: measured `8.93` an entry at `n = 12` against the tree's `23.6`,
+declining with `n`, difference ratio inside the contract at every same-parity
+triple from `n = 6` up. With the counting floor `D >= T / log2(c) > 0.26 T`,
+FRACTRAN's boolean size complexity is `Theta(T)`.
 
 Counting could never have said otherwise. A Factor program is one integer
 read by prime rank, so a `D`-digit one has `exp(O(D / log D))` behaviours; a
 FRACTRAN program is a *list* whose order is behaviour, worth `log2(m!)` bits
-at the alphabet's full rate, so a `D`-character one has `2**Theta(D)`. What
-the tree's extra `log T` buys is the clock -- `2n + 1` steps on an
-`O(log T)`-bit value, where the packed program runs `Theta(T)` steps on a
-`Theta(T)`-bit one. Both ends are built; whether one construction holds both
-is open.
+at the alphabet's full rate, so a `D`-character one has `2**Theta(D)`.
+
+What the text costs is paid on the clock: a block held in an exponent has to
+be traversed, so a run is `O(2**w)` steps rather than the tree's `2n + 1`, and
+`w` is held at about `n / 3` to keep that under `2.5 * sqrt(T)`. Blocks come
+in two widths, mixed to average a target that is not a power of two, because
+doubling `w` outright made the characters an entry saw between settings
+instead of settling. Both ends and the trade are in
+[fractran](proofs/fractran.md), measured in
+`tests/proofs/deep/fractran_packed.py`.
 
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
