@@ -14,6 +14,7 @@ from esolangs.tools.fargo import fargo
 from esolangs.tools.fish import fish
 from esolangs.tools.fractran import fractran
 from esolangs.tools.inject import inject
+from esolangs.tools.intercal import intercal
 from esolangs.tools.malbolge import malbolge
 from esolangs.tools.other import (
     bit_tilde,
@@ -119,6 +120,7 @@ __all__ = [
     "grapheme",
     "home_row",
     "inject",
+    "intercal",
     "jaune",
     "laserfuck",
     "malbolge",

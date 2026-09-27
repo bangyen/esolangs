@@ -34,6 +34,8 @@ from esolangs.tools.helpers import (
     Setters,
     fill_runs,
 )
+from esolangs.tools.intercal import PAIR as INTERCAL_PAIR
+from esolangs.tools.intercal import TEMPLATE_CHAR as INTERCAL_CHAR
 from esolangs.tools.minifuck_sim import PAIR as MINIFUCK_PAIR
 from esolangs.tools.nocomment import PAIR as NOCOMMENT_PAIR
 from esolangs.tools.one_two_three import PAIR as ONE_TWO_THREE_PAIR
@@ -531,6 +533,16 @@ def _register() -> None:
             ),
         ),
         "home-row": _embedded(b.home_row, "tape_based.home_row", pair=HOME_ROW_PAIR),
+        "intercal": _embedded(
+            b.intercal,
+            "other.intercal",
+            pair=INTERCAL_PAIR,
+            char=INTERCAL_CHAR,
+            expected="\n",
+            answer_pattern=r"(?s)^([I]?)\n$",
+            answer_values=("", "I"),
+            note="INTERCAL READ OUT prints blank for zero and I for one",
+        ),
         "minifuck": _embedded(b.minifuck, "tape_based.minifuck", pair=MINIFUCK_PAIR),
         "minsky-swap": _embedded(
             b.minsky_swap,

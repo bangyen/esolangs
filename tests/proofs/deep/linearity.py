@@ -450,7 +450,7 @@ def main() -> int:
     print()
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
-    assert len(measured) == len(BY_BOOLEAN) == 70, "not every generator was measured"
+    assert len(measured) == len(BY_BOOLEAN) == 71, "not every generator was measured"
 
     print(
         f"Scaling contract: {len(measured)} generators, "

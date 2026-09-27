@@ -7,7 +7,7 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 73 esoteric languages: 71 text and 2 raster.
+Interpreters and Boolean generators for 74 esoteric languages: 72 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
@@ -112,7 +112,7 @@ the page.  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#d
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):
-`examples/` holds a truth-table program for each of the 70
+`examples/` holds a truth-table program for each of the 71
 text languages with a boolean generator.  It regenerates via
 `python scripts/generate.py examples`.
 
@@ -123,7 +123,7 @@ text languages with a boolean generator.  It regenerates via
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 71 text languages</summary>
+<summary>Show all 72 text languages</summary>
 
 ### Grid-based Languages
 
@@ -219,6 +219,7 @@ Languages that don't fit into the above categories.
 - [FRACTRAN](https://esolangs.org/wiki/FRACTRAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/fractran.py))
 - [Fargo](https://esolangs.org/wiki/Fargo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/fargo.py))
 - [Forbin](https://esolangs.org/wiki/Forbin) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/forbin.py))
+- [INTERCAL](https://esolangs.org/wiki/INTERCAL) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/intercal.py))
 - [Inject](https://esolangs.org/wiki/Inject) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/inject.py))
 - [Malbolge](https://esolangs.org/wiki/Malbolge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/malbolge.py))
 - [Packlang](https://esolangs.org/wiki/Packlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/packlang.py))
@@ -239,7 +240,7 @@ Boolean generators accept a most-significant-input-first binary truth table.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  70 of the
+first; its length implies `n`, so it isn't passed separately.  71 of the
 text languages have such a generator, some covering only a documented subset of
 tables.
 

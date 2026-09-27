@@ -560,6 +560,20 @@
     "source_units": 389
    }
   },
+  "INTERCAL": {
+   "0110": {
+    "commands": 5,
+    "source_units": 305
+   },
+   "01101001": {
+    "commands": 6,
+    "source_units": 641
+   },
+   "0110100110010110": {
+    "commands": 7,
+    "source_units": 1293
+   }
+  },
   "Inject": {
    "0110": {
     "commands": 18,

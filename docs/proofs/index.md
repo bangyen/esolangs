@@ -35,7 +35,7 @@ lookup and parameterized row to its scheme's measurable consequence (the
 `tree` and `minterms` rows carry no such per-row check); both are in the fast
 band and gate every push.  `tests/proofs/deep/` holds the proofs themselves,
 at two depths.
-`all_generators.py` runs a lemma battery against all 68: every single
+`all_generators.py` runs a lemma battery against all 71: every single
 row of the table demonstrably participates in the emitted program at the
 flip-tested arities, and the construction completes at every arity of a ladder
 on both table shapes.  That
@@ -258,6 +258,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Grapheme | linear lookup | the whole table is one int-mode literal read in base 10, and each `W` squares an accumulator and doubles it on a 0, which is Horner's rule for the complemented index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0 | linear, time n log: essential_inputs; ~0.302 characters an entry, one read block an input |
 | Home Row | parameterized tree | — | linear, time n log: essential_inputs |
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: T literal, `.` halvings sum to 2T |
+| INTERCAL | parameterized tree | equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree | linear: reverse-depth numbering confines long names near the root |
 | Jaune | finite lookup | a spatial table reached with two labels | linear: two cells per row, unary weights sum T - 1 |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T |
 | Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; the practical cap is fourteen ([malbolge-scaling](malbolge-scaling.md)) | measured: fixed 59049-cell store through n <= 14 |
@@ -345,6 +346,6 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 69 theoretical totality arguments and one
+Accordingly, this ledger records 70 theoretical totality arguments and one
 proved language exception; every other row is `Total` or theoretically total
 past a resource ceiling.
