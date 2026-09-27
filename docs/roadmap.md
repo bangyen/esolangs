@@ -5,12 +5,13 @@ Only live work belongs here. Contracts and standing walls go to
 
 ## New interpreters
 
-Implement the surveyed interpreter candidates in this order.  The first four
+Implement the surveyed interpreter candidates in this order.  The first three
 are the 2026-09-19 re-run of the `Category:Unimplemented` x
-`Category:Two-dimensional languages` pass (116 pages, up from 111); the
-verdicts are spec reads, not executed generators, so the size question is open
-for every entry.  Piet is already implemented, so it was never in the screen;
-INTERCAL, listed after them, is outside the pass.  Among the classics the
+`Category:Two-dimensional languages` pass (116 pages, up from 111), Gridify
+having been the fourth and closed on a finished read; the verdicts are spec
+reads, not executed generators, so the size question is open for every entry.
+Piet is already implemented, so it was never in the screen; INTERCAL, listed
+after them, is outside the pass.  Among the classics the
 build order is INTERCAL, then Emmental; Bitwise Cyclic Tag was the head of
 that order and is implemented, Cyclic tag system is held as the embedding's
 source rather than built, and Prelude is pending removal, not queued.  Each
@@ -33,10 +34,13 @@ row carries why.
   collision tick before building.
 - **Wirefunge** (2011): native not/and/or/xor/nor/nand/xnor gates over
   bit-addressable `a-h`/`1-8` ports, but the page is a self-labelled "Draft
-  Spec" and propagation is simultaneous.  Pin one evaluation order, then admit.
-- **Gridify** (2026): the most complete new spec -- Befunge-style stack, `~`/`&`
-  in, `.`/`,` out, a four-way `?` dispatch -- but its construction is the grid
-  walk the set already has.  Last: admit only if it forces a new axis.
+  Spec" and propagation is simultaneous.  Third of the three gate-native picks
+  and last for a reason beyond the draft: gates are all its row records, and
+  that is thisthat's axis, where marbles earns its own place on replication
+  fan-out instead.  So pinning one evaluation order is necessary and not
+  sufficient -- admit only if it forces something past the gates, the test
+  Gridify was closed on.  Ranked from this row, not from a fresh read: the
+  wiki has been returning 403 since the popularity sweep.
 - **INTERCAL**: not from the 2D pass, and not a completeness add -- the
   well-known candidates otherwise re-occupy an axis the set already has, and
   the collection is curated by admission, not coverage.  INTERCAL is the
