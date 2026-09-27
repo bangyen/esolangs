@@ -133,9 +133,21 @@ Bitwise Cyclic Tag (0.66) also earned the cyclic-schedule axis. Deadfish (0.89)
 has no input vocabulary and is therefore interpreter-only: fame can admit a
 language, but cannot create a generator interface.
 
-Among the candidates left Underload 0.59, INTERCAL 0.37 and Cyclic tag 0.35
-clear `bf/5`, Emmental 0.15 lands in the band and rests on its axis instead, and
-Prelude 0.05 is under Braincopter while predating it by six years.
+The remaining popular queue is Underload 0.59, INTERCAL 0.37, Fish 0.32, and
+Smallfuck 0.23. Cyclic tag 0.35 duplicates the Bitwise Cyclic Tag axis.
+Emmental 0.15 and Prelude 0.05 are implemented elsewhere but do not clear the
+fame bar, so neither admission route applies.
+
+The 2026-09-27 spec read closed the other candidates. Self-replicating marbles
+does not define which section is next or when collisions occur. Wirefunge's
+draft leaves element initialization open, and its gates duplicate thisthat.
+Bytemap leaves byte order,
+division faults, and its optional 8bpp encoding undefined. Gifunk specifies no
+instructions beyond moving through APNG/GIF frames. Turing Paint has a complete
+reference implementation, and Befunk implements Befunge-98 in PNG; both are
+obscure but already implemented, so neither admission route applies. HuePrism,
+BitCode, PicCode, Brainloller, Braincopter, and the game-save languages remain
+rejected from the same image-source screen.
 
 ## Specification decisions
 

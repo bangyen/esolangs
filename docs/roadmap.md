@@ -6,42 +6,34 @@ Only live work belongs here. Contracts and standing walls go to
 ## New interpreters
 
 Two routes feed this queue: obscure languages without an implementation, and
-popular languages already implemented elsewhere but absent here. The first
-three survived the 2026-09-19 two-dimensional-language screen; their verdicts
-are spec reads, so generator size remains open. INTERCAL takes the popular
-route.
+popular languages implemented elsewhere but absent here. The 2026-09-27 spec
+read is complete; rejected candidates are recorded under Curation in
+[limitations](limitations.md).
 
 - **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
   was misfiled as unread: its transclusions inject CSS, not the node table.
-  Native gates and bit-conditioned routing suggest a combinational-network
-  generator. Settle `◨⬒` and partial nodes first; avoid `◘`'s random pick.
-- **Self-replicating marbles** (2024): a second gate-native pick the 2026-09-02
-  audit missed: `i` and `o` supply I/O. A marble is one bit; collision is NAND,
-  and leaving a section replicates it into the next. Pin section order and the
-  collision tick before building the set's first replication fan-out.
-- **Wirefunge** (2011): native not/and/or/xor/nor/nand/xnor gates over
-  bit-addressable ports, simultaneous propagation, and a draft spec. Pin one
-  evaluation order, then admit only if it contributes more than thisthat's
-  gate axis. This ranking predates the wiki's current 403 responses.
-- **INTERCAL**: not from the 2D pass, and not a completeness add -- the
-  candidate for computed return depth: `NEXT` pushes frames and
-  `RESUME <expression>` selects the return depth. `COME FROM` itself is
-  unconditional. Target C-INTERCAL with `WRITE IN`/`READ OUT`. Open: price an
-  O(T)-statement tree under the 80-frame limit and the required 1/5--1/3
-  `PLEASE` ratio.
-
-- **The fame screen, never run.**  The alternative route is measured now
-  ([limitations](limitations.md), Curation). Of the languages still outside
-  the set, it returns three clearing `bf/5`: Underload 0.59, Fish 0.32, and
-  Smallfuck 0.23. Inside the
-  indeterminate band, so needing the axis test: Chicken 0.199, Shakespeare
-  0.195, LOLCODE 0.167, Ook! 0.149, Lazy K 0.149, Chef 0.142.
-  The counts are backlinks and the verdicts are spec reads, not executed
-  generators.  Computational models -- Turing machine 159, Lambda calculus 130,
-  Tag system 59 -- are not languages and are excluded.
-
-  Underload is the next read. Fish and Smallfuck look like the grid walk and
-  tape already present; read them last.
+  The node table is sufficient: use `□` NOR with one-way `◐◑◒◓` routing so
+  its selected input pointer is observationally irrelevant; avoid `◘`, stacks,
+  and partial ports. Build an acyclic combinational network and execute every
+  small table before admitting it.
+- **INTERCAL**: target C-INTERCAL with `WRITE IN`/`READ OUT`. `NEXT` pushes a
+  return frame and `RESUME <expression>` selects its depth; `COME FROM` is
+  unconditional. Price the labels in a decision tree before building: the
+  stack permits 79 entries, and 1/5--1/3 of statements must carry `PLEASE`.
+- **Underload** (2006): clears the fame bar at 0.59. Its spec and implementations
+  agree on the nine commands; `^` forces a program from the stack and `S`
+  outputs one. Build a parameterized promise tree, or reject it if equal-width
+  input elements cannot preserve the stack contract.
+- **Fish** (2009): clears the fame bar at 0.32 and has several implementations.
+  Pin the current non-threaded instruction set, character input with `-1` at
+  EOF, and unbounded codebox. Reuse only construction machinery, not Befunge's
+  semantics; execute reflection and stack-stack cases independently.
+- **Smallfuck** (2002): clears the fame bar at 0.23. The spec deliberately
+  leaves the finite tape size and initial/final-state I/O to implementations.
+  Pin tape length to source length, map encoded stdin to initial cells, and
+  read the answer from a named final cell; reject the generator if that
+  convention cannot meet the package I/O contract without extending the
+  five-command language.
 
 ## Conditional follow-up
 
@@ -174,22 +166,6 @@ route.
   index only on the essential ones.  Ship separately per language only if
   the PNG round trip executes and reduces pixels or codels on an exhaustive
   small-table corpus; constants are the positive control.
-
-- **Image-source candidates.**  A read of the 129 `Category:Non-textual` pages
-  for raster sources only -- music (Fugue, Velato), music-note, and
-  steganography pages excluded.  Verdicts are spec reads, not executed
-  generators.  Brainloller and Braincopter are not popular enough to clear
-  the collection's alternative admission route.
-  Deferred: Bytemap (2012, source and data the same self-modifying grid, no
-  interpreter yet) and Gifunk (2021, APNG/GIF fungeoid whose IP crosses frames)
-  are the
-  only image languages beyond Piet that force an axis the set lacks, both WIP;
-  Turing Paint (2020, six hand-drawable colours) needs the website, not the
-  wiki stub; Befunk (2014, Befunge-98 in PNG, Funk value
-  `(R%10)*100 + (G%10)*10 + B%10`) waits on Befunge-98 and a construction that
-  dodges `?`'s random delta.  Rejected: HuePrism (output-only, no input
-  interface) and BitCode/PicCode (no interpreter, no numbers); the Minecraft
-  ports are game-save media, not a reproducible raster.
 
 ## Open problems
 
