@@ -496,6 +496,12 @@ CLASSICS: dict[str, Language] = {
         boolean=_boolean.unlambda,
         id="unlambda",
     ),
+    "Underload": Language(
+        "Underload",
+        "stack_based.underload",
+        boolean=_boolean.underload,
+        id="underload",
+    ),
     "Whitespace": Language(
         "Whitespace",
         "stack_based.whitespace",

@@ -78,6 +78,7 @@ that row is actually spelled for the language.
 | `super-snusp.txt` | Super SNUSP | `0001` | `01` | 0 1 | '0' |
 | `taglate.txt` | Taglate | `0001` | `01` | 0 1 | '0' |
 | `thue.txt` | Thue | `0001` | `01` | 0 1 | '0' |
+| `underload.txt` | Underload | `0001` | `01` | embedded 01 | '0' |
 | `unlambda.txt` | Unlambda | `0001` | `01` | 0 1 | '0' |
 | `unsquare.txt` | Unsquare | `0001` | `01` | 0 1 | '0' |
 | `vandevelo.txt` | Vandevelo | `0001` | `01` | 0 1 | (nothing) |

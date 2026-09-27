@@ -22,12 +22,6 @@ read is complete; rejected candidates are recorded under Curation in
   return frame and `RESUME <expression>` selects its depth; `COME FROM` is
   unconditional. Price the labels in a decision tree before building: the
   stack permits 79 entries, and 1/5--1/3 of statements must carry `PLEASE`.
-- **Underload** (2006): clears the fame bar at 0.59. Its spec and implementations
-  agree on the nine commands; `^` forces a program from the stack and `S`
-  outputs one. The promise-tree prototype passes every table through three
-  inputs and approaches `11T` characters. Its equal-width selectors are
-  `(()!!^)` for 0 and `(:!~!^)` for 1; both embed once in name order. Add the
-  interpreter and execute the promoted generator through it.
 - **Smallfuck** (2002): clears the fame bar at 0.23. The spec deliberately
   leaves the finite tape size and initial/final-state I/O to implementations.
   A folded local-result tree passes every table through three inputs and
