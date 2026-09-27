@@ -101,7 +101,7 @@ def bits_of(value: int) -> str:
 # no-op step is the second one past the halt, not the first.
 #
 # This is a fact about the language, so a caller does not have to come here
-# to learn it: each of the six declares
+# to learn it: each of the seven declares
 # ``dumps_on_the_post_halt_step = True`` on its ``_Machine``, and
 # :attr:`esolangs.vm.VM.dumps_on_the_post_halt_step` reports it -- the same
 # mechanism ``reproducible_seed`` uses, for the same reason.
@@ -116,7 +116,7 @@ def bits_of(value: int) -> str:
 # keep a trait nobody rechecked.  The duplication is the check.
 #
 # Parsing the interpreters for the shape instead does not work either: the
-# dump sites are uniform (all seven guard on the halt inside ``step``) but
+# dump sites are uniform (all eight guard on the halt inside ``step``) but
 # the *timing* is not visible in that shape -- A Painter Ant has the same
 # guarded ``step`` and is deliberately absent here, because ``interrupt``
 # is external and its ``halted`` is always False.  The sweep also needs
@@ -127,6 +127,7 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
         "Minsky Swap",
         "RAM0",
         "Bitdeque",
+        "Bitwise Cyclic Tag",
         "LaserFuck",
         "ArrowQueue",
         "Back",
@@ -195,6 +196,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "BIO": ("0ox;0ix{1ox;};1ix;", ""),
     "bit~": ("~(", ""),
     "Bitdeque": ("PUSH INVERT", ""),
+    "Bitwise Cyclic Tag": ("1101000,101", ""),
     "BrainIf": ("if 0 output", ""),
     "brainfuck": ("+++[>+++<-]>.", ""),
     "Circlefuck": ("+.@", ""),

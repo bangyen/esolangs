@@ -224,6 +224,20 @@
     "source_units": 909
    }
   },
+  "Bitwise Cyclic Tag": {
+   "0110": {
+    "commands": 22,
+    "source_units": 37
+   },
+   "01101001": {
+    "commands": 43,
+    "source_units": 71
+   },
+   "0110100110010110": {
+    "commands": 84,
+    "source_units": 137
+   }
+  },
   "BrainIf": {
    "0110": {
     "commands": 61,

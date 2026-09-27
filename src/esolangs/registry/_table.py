@@ -136,6 +136,12 @@ LANGUAGES: dict[str, Language] = {
         id="bitdeque",
         interpreter="queue_based.bitdeque",
     ),
+    "Bitwise Cyclic Tag": Language(
+        "Bitwise Cyclic Tag",
+        boolean=_boolean.bitwise_cyclic_tag,
+        id="bitwise_cyclic_tag",
+        interpreter="queue_based.bitwise_cyclic_tag",
+    ),
     "BrainIf": Language(
         "BrainIf",
         "tape_based.brainif",

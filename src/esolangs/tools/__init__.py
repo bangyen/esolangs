@@ -4,6 +4,7 @@ from esolangs.tools.algebraic_programming_language import algebraic_programming_
 from esolangs.tools.alight import alight
 from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.befunge import befunge
+from esolangs.tools.bitwise_cyclic_tag import bitwise_cyclic_tag
 from esolangs.tools.circuit_diagram import circuit_diagram
 from esolangs.tools.crement import crement
 from esolangs.tools.cvnc import cvnc
@@ -89,6 +90,7 @@ __all__ = [
     "bio",
     "bit_tilde",
     "bitdeque",
+    "bitwise_cyclic_tag",
     "brainfuck",
     "brainif",
     "circlefuck",
