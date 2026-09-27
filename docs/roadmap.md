@@ -16,10 +16,11 @@ read is complete; rejected candidates are recorded under Curation in
   inputs and has `n + 8T - 7` nodes. Rendering is open: shared input fan-outs
   cross the formula tree, and `◐◑◒◓` route by the carried bit. A constant
   logical crossover exists: three native XOR nodes compute `a=x XOR y`, then
-  `a XOR y=x` and `a XOR x=y`; one pause on each direct branch synchronizes the
-  final gates. Its graph is planar with alternating terminals and passes all
-  four input pairs. Lay that graph out in Unicode, then execute the full
-  drawing; the netlist alone is not an implementation.
+  `a XOR y=x` and `a XOR x=y`. A 19-by-17 Unicode layout balances both paths
+  at sixteen steps, has alternating terminals, and passes all four input pairs
+  in the simultaneous-update prototype. Compose it into the NOR network, then
+  execute every small table; the isolated gadget and netlist are not an
+  implementation.
 ## Conditional follow-up
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
