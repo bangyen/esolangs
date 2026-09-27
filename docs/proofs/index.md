@@ -5,8 +5,8 @@ Markdown companion retains implementation bounds, measurements,
 counterexamples, and the development record.  Factor's `Theta(T log T)` is
 short enough to live in [factor](factor.md) alone.
 [fractran](fractran.md) proves FRACTRAN's address budget and then refutes it
-as a claim about the language, with a block-packed program that costs
-`Theta(T)`; that row is a size-for-time trade rather than a wall.
+as a claim about the language: the shipped generator packs blocks and costs
+`Theta(T)`, buying that with steps rather than characters.
 [brainfuck-count](brainfuck-count.md) bounds the number of distinct
 behaviours of `C`-character Brainfuck programs.
 Polynomial's lower bound cites one result it does not prove:
@@ -248,7 +248,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Flowchart | finite lookup | a pair of answers per deque, and the input walks the deque cursor to the pair it wants | linear: T pushes, `T/2 - 1` cursor steps, two rows |
 | Forbin | finite lookup | the last seven inputs paint a block of `2**7` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry | linear: two characters an entry, halvings sum to `2 * 128` |
 | Forþ | tree | — | linear: span walk, constant dispatch, step literals geometric |
-| FRACTRAN | parameterized tree | the bits are the exponents of `n` primes in the starting value, one prime per tree node, and the first-match rule is the else-branch | open: `Theta(T log T)` as shipped, while the language's own size complexity is `Theta(T)` -- the address budget binds programs that address rows, and a block-packed one measures `2.32` characters an entry at `n = 12`, buying that with `Theta(T)` steps on a `Theta(T)`-bit value ([fractran](fractran.md)) |
+| FRACTRAN | parameterized tree | the bits are the exponents of `n` primes in the starting value, a tree over the high bits reaches a block of `w` entries carried as one exponent, a fixed decoder shifts the block by the offset the low bits spell, and the first-match rule is the else-branch | linear: 3T/w blocks of w = Theta(n) entries, one exponent each |
 | Grapheme | linear lookup | the whole table is one int-mode literal read in base 10, and each `W` squares an accumulator and doubles it on a 0, which is Horner's rule for the complemented index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0 | linear, time n log: essential_inputs; ~0.302 characters an entry, one read block an input |
 | Home Row | parameterized tree | — | linear, time n log: essential_inputs |
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions | linear: T literal, `.` halvings sum to 2T |

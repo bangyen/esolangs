@@ -1055,6 +1055,7 @@ _LINEAR_SCALING = {
     "dig",
     "forth",
     "flowchart",
+    "fractran",
     "inject",
     "jaune",
     "laserfuck",
@@ -1068,7 +1069,6 @@ _LINEAR_SCALING = {
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
-    "fractran",
     "malbolge",
     "polynomial",
 }
