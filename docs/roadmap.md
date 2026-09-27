@@ -10,7 +10,9 @@ are the 2026-09-19 re-run of the `Category:Unimplemented` x
 `Category:Two-dimensional languages` pass (116 pages, up from 111); the
 verdicts are spec reads, not executed generators, so the size question is open
 for every entry.  Piet is already implemented, so it was never in the screen;
-INTERCAL, listed last, is outside the pass.
+INTERCAL, listed after them, is outside the pass.  Among the classics the
+build order is Cyclic tag, INTERCAL, Emmental, Prelude, and each row carries
+why.
 
 - **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
   filed it unread, thinking the `{{:thisthat}}` transclusions hid the node
@@ -33,14 +35,38 @@ INTERCAL, listed last, is outside the pass.
 - **Gridify** (2026): the most complete new spec -- Befunge-style stack, `~`/`&`
   in, `.`/`,` out, a four-way `?` dispatch -- but its construction is the grid
   walk the set already has.  Last: admit only if it forces a new axis.
-- **INTERCAL** (1972): not from the 2D pass, and not a completeness add -- the
+- **INTERCAL**: not from the 2D pass, and not a completeness add -- the
   well-known candidates otherwise re-occupy an axis the set already has, and
   the collection is curated by admission, not coverage.  INTERCAL is the
-  exception: `COME FROM` is pull-based, label-triggered transfer, where every
-  branch here is push/conditional/jump/pointer, so it forces a new branch
-  mechanism.  Spec read only, not priced: whether a loop-less O(T) construction
-  survives the computed-label and `COME FROM` wiring, and whether its binary
-  I/O routes through the package's stdin convention, is the work.
+  exception, but not for the reason first filed.  `COME FROM` is an
+  *unconditional* trap door -- manual 4.4.14, fired "immediately after
+  statement (label)", an error for two of them to name one label -- and
+  `ABSTAIN` takes a literal label or a gerund list, so there is no computed
+  label anywhere in the Revised Reference Manual and `COME FROM` cannot branch
+  on data at all.  What branches is `DO (label) NEXT` with
+  `RESUME <expression>`: a computed *return depth* over the NEXT stack, which
+  the manual's own cat program uses to select 1 or 2 frames with
+  `PLEASE RESUME '?.1$#256'~'#256$#256'`.  That is the new mechanism against
+  push/conditional/jump/pointer here, and it is the claim to carry, not
+  "pull-based transfer".  Target C-INTERCAL, not INTERCAL-72: `COME FROM` is a
+  C-INTERCAL addition, so the 1972 language does not carry the feature the
+  admission rests on.
+
+  Settled, and no longer blocking: the I/O.  There is no plain byte I/O --
+  `WRITE IN` reads English digit words one per line (`ZERO`/`ONE`, also `OH`
+  and `NINER`), `READ OUT` prints extended Roman numerals with zero an
+  overline over no character -- but `_answers.py` already carries
+  per-language stdin overrides of exactly that shape (Grapheme spells
+  `%`/`A`, Fargo takes one number).  The Turing Text array model (manual 5.2)
+  gives literal `0`/`1` instead, at the cost of differencing every input
+  against the previous character and bit-reversing every output byte; take
+  `WRITE IN`/`READ OUT`.
+
+  Open: the size.  A depth-`n` NEXT/RESUME tree is O(T) statements at O(1)
+  text each, and E123 caps NEXTing at 80 levels -- depth, not rows, so a tree
+  clears it and any per-row frame build does not.  One generator constraint
+  nothing else here has: 1/5 to 1/3 of statements must carry `PLEASE`, or
+  E079/E099 fires.
 
 - **Cyclic tag system** (2004): Matthew Cook's tag variant, the one that
   carried the Rule 110 proof.  A production list `P_0 .. P_{n-1}` over a
@@ -49,33 +75,85 @@ INTERCAL, listed last, is outside the pass.
   and nothing addresses anything.  Every branch here is
   conditional/jump/pointer/first-match/promise-forced, so a cyclic schedule
   forces a new one, and the inputs embed as symbols of the initial word --
-  a one-character embed, which is the convention's easiest case.  What blocks
-  admission is the *answer*: there is no output vocabulary and the system
-  halts exactly when the word empties, so its halt state carries nothing
-  where FRACTRAN's carries the result.  The candidate convention is the last
-  symbol deleted, since the word has length one before it empties; pin an
-  answer, then admit.
+  a one-character embed, which is the convention's easiest case.  **Build this
+  one first**; nothing is left to decide.  The answer is the last symbol
+  deleted.  Halting needs the final consumed symbol to append nothing:
+  automatic for `d = 0`, and for `d = 1` exactly when `P_i` is empty, which is
+  legal and which Cook's tag-to-cyclic reduction already appends `|Sigma|` of.
+  Both values are reachable as the last deletion, so the halt carries a bit
+  where FRACTRAN's carries a value.
+
+  Two mechanics for the generator.  Consumption is FIFO, so the symbol at
+  position `k` meets `P_(k mod n)`, and every production length `0 mod n`
+  makes the schedule data-independent; a length that is not shifts the phase
+  of everything after it, and phase in `Z_n` is the only state the language
+  has.  A width-1 embed is monotone -- it can only append -- so negation wants
+  the width-2 dual rail `'01'`/`'10'`, equally legal under the five
+  conventions.  Source shape follows FRACTRAN: productions, then an initial
+  data string.
+
+  Open: the size.  A block-aligned width-`w` build pays about `w` per
+  production across `w` productions, so it needs a construction holding width
+  O(1), or a bound.
 - **Emmental** (2007): Chris Pressey's self-modifying language -- a stack, a
   queue, and `!`, which pops a symbol and a `;`-terminated program and
   redefines that symbol to mean that program.  The dispatch table is data,
   which nothing here has: Malbolge rewrites its source, not the meaning of an
   instruction.  That also points at a construction shape the ledger has no
   row for, a jump table the program defines for itself rather than a tree it
-  walks: one symbol per table block, reached by `?`.  Spec read only, not
-  priced: whether a redefinition binds the symbols in its body at definition
-  or at use, which decides whether blocks can be built compositionally, and
-  what `~` -- discrete base-2 log, with log 0 taken as 8 -- costs to form an
-  index with.
+  walks: one symbol per table block, reached by `?`.
+
+  Settled: binding is definition-time.  `createOp interpreter (head:tail) =
+  composeOps (fetch interpreter head) (createOp interpreter tail)` (reference
+  interpreter, `src/Language/Emmental.hs:82`) resolves every body symbol
+  against the interpreter in force when `!` runs, so a later redefinition
+  never reaches an existing definition, forward references do not work, and
+  self-reference is not recursion -- the wiki's massive-redefinition example
+  expands to a finite 251 copies, `5 * 50 + 1`.  Blocks still compose, through
+  `?`: `opEval` calls `createOp` with the interpreter passed at *call* time,
+  so `#NN?` resolves `NN` at run time, about five characters an edge, all at
+  top level.  That indirection *is* the construction, because nesting is the
+  cost -- a body's characters are pushed as `#NN` literals, so a definition
+  runs about 4x its body and depth `d` about `4^d` (`'0` 3, `''0` 9, `'''0`
+  27).  `~` is not the index primitive: `?` executes a popped symbol, so any
+  byte-valued expression is already a 256-way computed dispatch (`,:.:?`),
+  while `~` only folds 256 values into 9 classes -- a range test.
+
+  Open, and Malbolge-shaped: symbols are bytes, so one dispatch level covers
+  8 inputs and only 256 definitions are live at once.  Past 8 inputs a cascade
+  must hold each stage's table either nested (`4^stages`) or inside the
+  256-symbol table; price the row the way Malbolge's arity ceiling is priced,
+  not as an ordinary tree.
 - **Prelude** (2005): Nikita Ayzikovsky's language of *voices*, one per line,
   each with its own stack of zeroes, where instructions in the same column
   run simultaneously and every stack updates atomically.  Concurrency is an
   axis the set has nowhere, and it points at a width-wise construction
   instead of a depth-wise tree -- a voice a level, `^`/`v` reading the
-  neighbouring voice's top, and the loop brackets left unused, so it can be
-  loop-less.  Two things to settle first: the spec makes it an error for two
-  voices to carry loop brackets in the same column, which bounds any
-  construction wanting per-voice control flow, and `^` in the top voice wraps
-  to the bottom, which a tree would otherwise read as a missing edge.
+  neighbouring voice's top.  **Last, and this row's plan is refuted, not
+  open**: loop-less is impossible.  The instruction set is
+  `+ - # ( ) ^ v ? ! 0-9` and everything else a nop, so with the brackets
+  unused every value on every stack is an integer *affine* combination of the
+  inputs and constants -- digits push constants, `^`/`v` copy a neighbour's
+  top, `+`/`-` combine, and nothing multiplies.  `AND(x, y) = x y` is not
+  affine, so no bracket-free program computes a general table.
+
+  What survives: `(`...`)` as an execute-at-most-once guard is a conditional,
+  not a loop, so a tree is still loop-less here.  It costs a column a guard --
+  "It is illegal to have simultaneously more than one bracket", enforced at
+  parse, where `prelude.py` aborts on `curr.count('(') + curr.count(')') > 1`
+  -- so a `2^n`-leaf tree spans Theta(T) columns times the voice count: O(T)
+  only at O(1) voices, which is also where the concurrency claim is weakest,
+  and Theta(T n) for a voice a level.  Admission therefore rests on
+  construction shape alone, since skip guard and print 0/1 are both occupied:
+  a build that does not use simultaneity takes FALSE's verdict.
+
+  Two spec decisions for the docstring.  `)` tests the top of the *opening*
+  bracket's voice, and reads the previous column's snapshot
+  (`topValues[openingVoice]`), where `(` tests its own live top.  The boundary
+  read is a genuine gap: the author's Python wraps
+  (`topValues[(voice-1) % numVoices]`), graue's C pushes 0, the draft spec is
+  silent, and the wiki's wrap claim is `[citation needed]` -- free choice, and
+  moot if the construction never reads across the boundary.
 
 - **Classic-language admission.**  All four of Thue, FRACTRAN, Unlambda and
   FALSE now ship as interpreters with generators, in the classics tier.  What
