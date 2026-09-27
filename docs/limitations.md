@@ -288,26 +288,47 @@ Wikipedia views against Malbolge's 20,823 and Whitespace's 11,255, while Thue
 has no article at all. Page age biases the count down, so a low score is
 evidence only against an old language.
 
-**The bar is comparative and forward-only, and no absolute one exists at this
-resolution.** Category:Languages holds 7,560 pages; a seed-pinned uniform
-sample of 150 has median 2 backlinks, p75 5, p90 8, p95 10, p99 20 and sample
-maximum 24. Every language this collection has admitted, queued *or rejected*
-therefore sits above the 96th percentile -- Prelude 13 at p96.7, rejected
-Braincopter 14 at p97.3, everything else at p100 -- so a population percentile
-cannot separate what curation needs separated: the whole decision range, 13 to
-271, is compressed into the top 3%, and a bar at p99 would admit both languages
-already judged short. The usable comparison is against the set already carried,
-which makes the numbers above landmarks rather than a threshold: 26 is the
-highest score ever rejected and 58 the lowest ever admitted. That answers
-"is this candidate as prominent as what we keep?" and it cannot answer "was
-that admission wrong?", since it is derived from the admissions themselves. A
-past admission is audited on the axis test, which is intrinsic to the language
-and references no population. The route has also only ever been used to
-reject; [roadmap](roadmap.md) carries the screen it has never been run as.
-Among its candidates INTERCAL 103 and Cyclic tag 98 clear every admitted
-classic bar Befunge, Thue, Malbolge and FALSE, Emmental 43 falls between the
-rejected pair and the admitted floor and rests on its axis instead, and Prelude
-13 is under Braincopter while predating it by six years.
+**The bar is a fraction of brainfuck.** Brainfuck is the reference esolang and
+its count does not depend on anything this collection decided, so it is the one
+available anchor that is not derived from our own admissions. At 282 it sets the
+unit: fame at or above `bf/5` (56) is sufficient on its own, at or below `bf/10`
+(28) it carries nothing and the axis test stands alone, and between the two the
+verdict is indeterminate and the axis test decides. Every past decision falls
+outside that band, which is the point -- the classics run 0.21 (Whitespace) to
+0.96 (Befunge) and the two rejections are 0.09 (Brainloller) and 0.05
+(Braincopter), so any cut in the empty 2.2x span between them reproduces the
+whole record, and the threshold is not fitted to a single value. Ratios also
+re-normalize as the wiki grows, where an absolute count drifts.
+
+Three limits. The fraction is still picked by looking at our own admits and
+rejects, so the anchor removes one degree of freedom and not two; the band is
+declared indeterminate rather than split, because that is the honest width of
+what the evidence fixes. The band is empty only in the decided set -- Chicken
+0.199, Shakespeare 0.195 and LOLCODE 0.167 all sit inside it, so indeterminate
+is the ordinary verdict for an outside candidate, not the exception. And the
+unit partly counts derivative families, since every variant page links its
+parent: that keeps the anchor stable, but it is why Deadfish scores 0.89,
+second only to brainfuck, for a four-command language with no input at all.
+
+No absolute bar exists at this resolution, which is why the anchor is a ratio.
+Category:Languages holds 7,560 pages; a seed-pinned uniform sample of 150 has
+median 2 backlinks, p75 5, p90 8, p95 10, p99 20 and sample maximum 24. Every
+language this collection has admitted, queued *or rejected* therefore sits above
+the 96th percentile -- Prelude 13 at p96.7, rejected Braincopter 14 at p97.3,
+the rest at p100 -- so a population percentile cannot separate what curation
+needs separated, and a bar at p99 would admit both languages already judged
+short.
+
+The bar is forward-only either way. It answers "is this candidate as prominent
+as what we keep?" and it cannot answer "was that admission wrong?", since the
+fraction is pinned by the admissions: inside the band the classics pass by
+construction. A past admission is audited on the axis test, which is intrinsic
+to the language and references no population. The route has also only ever been
+used to reject; [roadmap](roadmap.md) carries the screen it has never been run
+as. Among its candidates Bitwise Cyclic Tag 0.66, Underload 0.59, INTERCAL 0.37
+and Cyclic tag 0.35 clear `bf/5`, Emmental 0.15 lands in the band and rests on
+its axis instead, and Prelude 0.05 is under Braincopter while predating it by
+six years.
 
 ## Specification decisions
 

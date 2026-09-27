@@ -98,8 +98,9 @@ why.
 
   Bitwise Cyclic Tag takes this axis, and probably takes it better.  BCT is the
   same cyclic schedule with the same halt-on-empty answer and no I/O, so every
-  verdict above transfers unchanged, but it is 185 backlinks against 98, it is
-  two commands rather than a production list, and it splits delete from append:
+  verdict above transfers unchanged, but it is 0.66 of brainfuck against 0.35,
+  it is two commands rather than a production list, and it splits delete from
+  append:
   `0` deletes the leftmost data-bit, `1x` appends `x` when that bit is 1 and
   deletes nothing.  That decoupling is strictly more room for a construction
   than CT's one delete a step.  CT embeds in BCT mechanically, production
@@ -175,10 +176,11 @@ why.
 - **The fame screen, never run.**  The alternative route is measured now
   ([limitations](limitations.md), Curation), but it has only ever been applied
   to reject.  Run over well-known languages outside the set it returns five
-  above every admitted classic's floor, none of them admitted or queued:
-  Deadfish 250, Bitwise Cyclic Tag 185, Underload 167, Fish 90, Smallfuck 66 --
-  three above admitted FRACTRAN 65 and Whitespace 58, two above Thue 154.  Just
-  under: Chicken 56, Shakespeare 55, LOLCODE 47, Ook! 42, Lazy K 42, Chef 40.
+  clearing `bf/5`, none of them admitted or queued: Deadfish 0.89, Bitwise
+  Cyclic Tag 0.66, Underload 0.59, Fish 0.32, Smallfuck 0.23 -- three above
+  admitted FRACTRAN and Whitespace, two above Thue 0.55.  Inside the
+  indeterminate band, so needing the axis test: Chicken 0.199, Shakespeare
+  0.195, LOLCODE 0.167, Ook! 0.149, Lazy K 0.149, Chef 0.142.
   The counts are backlinks and the verdicts are spec reads, not executed
   generators.  Computational models -- Turing machine 159, Lambda calculus 130,
   Tag system 59 -- are not languages and are excluded.
