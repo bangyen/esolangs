@@ -126,6 +126,7 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
     {
         "Minsky Swap",
         "RAM0",
+        "Smallfuck",
         "Bitdeque",
         "Bitwise Cyclic Tag",
         "LaserFuck",
@@ -250,6 +251,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "ROTfuck": (".", ""),
     "S*bleq": ("-3 11 3", ""),
     "SLOW ACV MAMMALIAN": ("SEED SEED SEED CONSUME PRONOUNCE", ""),
+    "Smallfuck": (">>*", ""),
     "Sophie": ("#$5.", ""),
     "Streetcode": (STREETCODE, ""),
     "Super SNUSP": ('"65.', ""),

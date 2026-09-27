@@ -22,14 +22,6 @@ read is complete; rejected candidates are recorded under Curation in
   return frame and `RESUME <expression>` selects its depth; `COME FROM` is
   unconditional. Price the labels in a decision tree before building: the
   stack permits 79 entries, and 1/5--1/3 of statements must carry `PLEASE`.
-- **Smallfuck** (2002): clears the fame bar at 0.23. The spec deliberately
-  leaves the finite tape size and initial/final-state I/O to implementations.
-  A folded local-result tree passes every table through three inputs and
-  approaches `48.5T` characters. Its equal-width setters are `[*]>>>` for 0
-  and `***>>>` for 1; child results move three cells upward, avoiding the
-  first prototype's `Theta(T log T)` walk to one answer cell. Pin tape length
-  to source length and expose cell 2 as the decoded final answer.
-
 ## Conditional follow-up
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where

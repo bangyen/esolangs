@@ -7,7 +7,7 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 72 esoteric languages: 70 text and 2 raster.
+Interpreters and Boolean generators for 73 esoteric languages: 71 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
@@ -112,7 +112,7 @@ the page.  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#d
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):
-`examples/` holds a truth-table program for each of the 69
+`examples/` holds a truth-table program for each of the 70
 text languages with a boolean generator.  It regenerates via
 `python scripts/generate.py examples`.
 
@@ -123,7 +123,7 @@ text languages with a boolean generator.  It regenerates via
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 70 text languages</summary>
+<summary>Show all 71 text languages</summary>
 
 ### Grid-based Languages
 
@@ -188,6 +188,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [ROTfuck](https://esolangs.org/wiki/ROTfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/rotfuck.py))
 - [S*bleq](https://esolangs.org/wiki/S*bleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/sbleq.py))
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/slow_acv_mammalian.py))
+- [Smallfuck](https://esolangs.org/wiki/Smallfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/smallfuck.py))
 - [Suffolk](https://esolangs.org/wiki/Suffolk) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/suffolk.py))
 - [bit~](https://esolangs.org/wiki/bit~) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/bit_tilde.py))
 - [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/brainfuck.py))
@@ -238,7 +239,7 @@ Boolean generators accept a most-significant-input-first binary truth table.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  69 of the
+first; its length implies `n`, so it isn't passed separately.  70 of the
 text languages have such a generator, some covering only a documented subset of
 tables.
 

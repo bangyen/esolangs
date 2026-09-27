@@ -243,18 +243,17 @@ class TestARunFinishesTheDump:
         assert stopped.run(timeout=10) == "breakpoint"
         assert stopped.output == plain.output
 
-    def test_the_set_is_the_seven(self) -> None:
+    def test_the_dumping_sets_are_distinct(self) -> None:
         """Named from the registry, and not the *dump answer* set.
 
         ``answer_mode == "dump"`` is a different set: it includes A Painter
         Ant and FRACTRAN and excludes ArrowQueue and Bitwise Cyclic Tag,
         whose one printed character *is* the answer rather than a state the
         answer sits in.  The two sizes have now coincided twice -- they
-        parted when FRACTRAN's answer made seven and met again when BCT
-        joined this set alone -- while the members never have, which is why
-        the sets are compared and not their lengths.
+        parted when FRACTRAN joined one set and met again when BCT joined the
+        other -- while the members never have, so compare the sets too.
         """
-        assert len(self._dumping()) == 7
+        assert len(self._dumping()) == 8
         mode = {
             n
             for n in esolangs.list_languages()
@@ -264,7 +263,7 @@ class TestARunFinishesTheDump:
         assert mode != set(self._dumping())
 
     def test_run_leaves_the_output_in_place(self) -> None:
-        """All seven, since the bug was invisible on the rest."""
+        """Every dumping language, since the bug was invisible on the rest."""
         empty = []
         for name in self._dumping():
             program = esolangs.generate(name, "0110")

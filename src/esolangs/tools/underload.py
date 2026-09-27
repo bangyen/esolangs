@@ -1,6 +1,10 @@
 """Underload boolean generator: equal-width selectors force a promise tree."""
 
-from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, constant_span_test
+from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
+    _validate_truth_table,
+    constant_span_test,
+)
 
 # ``()!`` and ``:!`` are stack-neutral before the shared selector suffix.
 PAIR = ("(()!!^)", "(:!~!^)")
