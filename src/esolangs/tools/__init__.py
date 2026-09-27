@@ -41,6 +41,7 @@ from esolangs.tools.parameterized import (
     nocomment,
     one_two_three,
     ram0,
+    underload,
 )
 from esolangs.tools.register import (
     addsubjump,
@@ -142,6 +143,7 @@ __all__ = [
     "three_d_brainfuck",
     "three_x",
     "thue",
+    "underload",
     "unlambda",
     "unsquare",
     "vandevelo",

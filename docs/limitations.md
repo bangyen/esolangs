@@ -133,8 +133,8 @@ Bitwise Cyclic Tag (0.66) also earned the cyclic-schedule axis. Deadfish (0.89)
 has no input vocabulary and is therefore interpreter-only: fame can admit a
 language, but cannot create a generator interface.
 
-The remaining popular queue is Underload 0.59, INTERCAL 0.37, Fish 0.32, and
-Smallfuck 0.23. Cyclic tag 0.35 duplicates the Bitwise Cyclic Tag axis.
+The remaining popular queue is INTERCAL 0.37 and Smallfuck 0.23. Cyclic tag
+0.35 duplicates the Bitwise Cyclic Tag axis.
 Emmental 0.15 and Prelude 0.05 are implemented elsewhere but do not clear the
 fame bar, so neither admission route applies.
 

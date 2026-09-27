@@ -45,6 +45,7 @@ from esolangs.tools.parameterized import (
     MINSKY_SWAP_PAIR,
 )
 from esolangs.tools.ram0 import PAIR as RAM0_PAIR
+from esolangs.tools.underload import PAIR as UNDERLOAD_PAIR
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
 # The committed programs all witness the same two-input function and row:
@@ -555,6 +556,11 @@ def _register() -> None:
                 "RAM0 has no output instruction and dumps its whole state "
                 "at halt; the answer is the 'z' register"
             ),
+        ),
+        "underload": _embedded(
+            b.underload,
+            "stack_based.underload",
+            pair=UNDERLOAD_PAIR,
         ),
         # 123 answers with the termination convention, as ArrowQueue does, so
         # only the halting (0) branch is committed.  The constructed template

@@ -257,6 +257,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Taglate": ("abc\ni", ""),
     # One rule that prints and deletes its match, so the state empties.
     "Thue": ("a::=~A\n::=\na", ""),
+    "Underload": ("(Hi)S", ""),
     "Unlambda": ("`.Ai", ""),
     "Unsquare": ("Io", ""),
     "Vandevelo": ("Nil?", ""),

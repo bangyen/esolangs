@@ -127,6 +127,7 @@ UNWRAPPABLE = {
     "back": "the beam path and embedded input occupy fixed grid coordinates",
     "befunge": "a row is a grid row and the lookup table is indexed by column",
     "fish": "a row is a codebox row and the lookup table is indexed by column",
+    "underload": "a break inside a pushed element changes the string it contains",
     "brainif": "each line is one instruction and goto targets are line numbers",
     "clockwise": "a row is a ring row; the walk's turns sit at fixed cells",
     "collatz_multiverse": "each line is one complete register assignment",
@@ -161,6 +162,7 @@ WIDTH_EXCEPTIONS = {
         "minsky_swap",
         "nocomment",
         "thue",
+        "underload",
         "whitespace",
     )
 }
