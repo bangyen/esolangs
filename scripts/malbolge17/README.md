@@ -27,3 +27,8 @@ None of this is wired into the generator.
 - `slack.c` -- `slack PROGRAM NBITS CELLFILE [full]`: which other characters
   at each listed cell leave every row's output unchanged (256-row screen, or
   every row with `full`).
+- `outputs.py` -- exhaustive checks on the printed word (plain operands,
+  residues, landing addresses) behind "Seventeen: straight-line programs".
+- `readers.c` -- `gcc -O2 -o readers readers.c && ./readers`: the most
+  cleanly printing admissible triples for every lockstep way of reading a
+  three-cell group (at most 137 of 512).

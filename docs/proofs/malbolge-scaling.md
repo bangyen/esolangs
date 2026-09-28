@@ -556,3 +556,78 @@ per answer vector to exist. Getting the bits back means packing, for example
 cells between code and data frees at most a few hundred cells on the
 measured build, not the thousands a seventeen-input decoder would need if
 the measured per-state costs hold.
+
+### Seventeen: straight-line programs
+
+The missing lemma was tried on a restricted class first. It is still open
+there, but the attempt settles which decoders the class allows.
+
+**The class.** Call a program *straight-line* if no row executes `i` before
+its output and no cell runs after it has been written, including by the
+encipher, so no cell runs twice.
+
+**Fact 1 (one tape).** In a straight-line program `c` only increments, and
+every cell it runs still holds its source character. So step `s` runs the
+source instruction of cell `s` in every row. The output is the first `<` on
+that tape, at the same step in every row, and every row makes the same number
+of data reads at the same steps. Rows differ only in `A`, `d` and memory.
+
+**Fact 2 (the counterexample is straight-line).** `sweep17.py`'s program
+executes no `i` and runs no written cell (checked by simulation). So the
+per-program bound fails inside the class too, and a class-restricted lemma
+still has to come from minimality. The class keeps the whole pointer toolkit:
+lockstep sweeps, and landing on a word written into a low cell, which is two
+`j`s through a low cell that holds its neighbour's address, as at cells
+114-116 and 56-57. So revisiting a row-dependent cell costs a few tape
+cells. Reaching cells cannot be where the class loses.
+
+**Fact 3 (the printed word; all programs).** In a valid run, let `y` be the
+word printed by the one `<`. Because `256` is even and every `3**k` is odd,
+the answer bit is `y mod 2`, the parity of `y`'s trit sum. The last
+instruction to set `A` before the `<` was `/` (then `y` is an input), `*` or
+`p`. Exhaustively over all 59,049 values of `A` (`outputs.py`):
+
+- `*` of a plain character (33..126) never prints `0` or `1`.
+- `p` with a plain operand prints a digit for at most 30 of the 94 operands,
+  whatever `A` is.
+- No `A` offers even one fixed digit among the admissible characters at every
+  address: the best reaches 78 of 94 residues. Both digits are available at
+  47 residues at best.
+- Landing on a cell and printing through `p` at once (`A` is then the
+  pointer, the cell's address minus one) offers both digits at only 202 of
+  59,049 addresses.
+
+A plain table cell used as the final operand therefore cannot carry an answer
+at every address. A straight-line program has no label stubs, so its table
+bits must reach `y` through written words.
+
+**Fact 4 (lockstep readers; exhaustive).** Suppose a group `h, h+1, h+2` is
+read in consecutive steps, each cell by `p`, by `*`, or not at all, starting
+from any of the 59,049 values of `A`, and the result is printed. Then at
+every residue (`readers.c`, whose all-`p` figure was cross-checked by brute
+force):
+
+- reading all three cells by `p` leaves at most **137** of the 512
+  admissible triples printing a clean digit;
+- any pattern containing `*` leaves at most 40;
+- a pattern that skips a cell sees at most 64 distinct triples;
+- a pattern ending on `*` prints nothing clean.
+
+Eight rows need 256 triples that print cleanly for every row, and one row
+already allows at most 137. So **no lockstep reader decodes a three-cell
+group**, whatever `A` the rows bring. A straight-line decoder has to jump:
+`j` on a table cell moves `d` into `34..127`, and landing on a word derived
+from the values read moves it anywhere.
+
+**What is left.** Within the class, the lemma reduces to decoders that use
+landings. A row folds its group's values into a word (through low-cell
+lookups and lockstep `p`s) and lands on prepared cells, where Fact 3 limits
+the print. The honest next statement is a finite one. Bound the answer
+region that a landing decoder needs per decoded group pattern. Each landing
+target prints for only one pointer value, so a residue-independent 512-colour
+code with eight rows needs up to 4,096 targets (estimated, not searched).
+Then check whether main code, fold and targets exceed the 9,897 non-table
+cells. The obstacle is computing a residue-independent colouring of the
+admissible triples with `crazy`, `rot` and lookups alone. No such colouring
+circuit is known, and none has been shown impossible. The class-restricted
+lemma is open.
