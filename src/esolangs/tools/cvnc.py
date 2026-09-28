@@ -27,12 +27,23 @@ read is pushed to the end it will be popped from (:func:`_deque_schedule`),
 which serves exactly the unimodal permutations.  A stored read costs one
 more character and a fetch three vs one, but a folded subtree then owes
 nothing; the shorter of the two is kept.
+
+``j`` is also how a repeated subtree is shared (:class:`_Stream`): the
+accumulator names a syllable, so a later copy climbs to the first copy's
+syllable with ``i``, ``æ`` and ``ə`` and jumps into it, where that is
+shorter.  Its leaves halt, so nothing returns.  The plain build stays a
+candidate.
 """
+
+import math
+from collections import Counter
+from functools import partial
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     constant_span_test,
+    subtree_ids,
 )
 
 __all__ = ["cvnc"]
@@ -157,12 +168,13 @@ def _syllable_options(tokens: list[str], index: int) -> list[tuple[str, int]]:
     return options
 
 
-def _render(tokens: list[str]) -> str:
+def _syllables(tokens: list[str]) -> list[str]:
     """Spell a command sequence as the shortest syllabifiable source.
 
     A backward pass prices the tail from every syllable boundary, so the
     forward pass can take the coda only where it pays; the commands
-    themselves are emitted in order and untouched.
+    themselves are emitted in order and untouched.  One string a syllable,
+    so a caller can count them.
     """
     total = len(tokens)
     tail = [0] * (total + 1)
@@ -179,7 +191,113 @@ def _render(tokens: list[str]) -> str:
         )
         pieces.append(chars)
         index = rest
-    return "".join(pieces)
+    return pieces
+
+
+def _render(tokens: list[str]) -> str:
+    """Spell a command sequence as the shortest syllabifiable source."""
+    return "".join(_syllables(tokens))
+
+
+def _climb(start: int, target: int) -> list[tuple[str, int]]:
+    """Return runs of commands taking the accumulator from ``start`` to ``target``.
+
+    ``start`` is 0 or 1, the bit a branch arm opens on.  Past three, the
+    target is the nearer square of ``isqrt`` or one more, reached by
+    climbing to its root, squaring and stepping the rest: a closed form,
+    not a search.  Runs, since a step count can be ``O(sqrt(target))`` and
+    is only spelled out when the jump is taken; there are ``O(log log
+    target)`` of them.
+    """
+    root = math.isqrt(target)
+    if root <= 1:
+        return [(_INCREMENT, target - start)]
+    below, above = target - root * root, (root + 1) ** 2 - target
+    if below <= above:
+        return [*_climb(start, root), (_SQUARE, 1), (_INCREMENT, below)]
+    return [*_climb(start, root + 1), (_SQUARE, 1), (_NORMALIZE, above)]
+
+
+class _Stream:
+    """Commands in written order, cut where a repeated subtree is entered.
+
+    Without ``offset`` it only collects commands.  With it -- the syllable
+    the body starts on, after the prologue -- the first copy of a subtable
+    that recurs at its depth opens a new segment, rendered there and then,
+    so its syllable is known; a later copy climbs to that syllable and
+    ``j``-jumps into it where that is shorter.  A subtree's copies run the
+    same commands from the same deque whichever arm entered them, and each
+    opens with a read or a pop, so the accumulator it is entered with is
+    never used.
+    """
+
+    def __init__(self, table: str, offset: int | None = None) -> None:
+        """Start an empty stream for ``table``, sharing if given ``offset``."""
+        self.tokens: list[str] = []
+        self._text: list[str] = []
+        self._syllable = offset or 0
+        self._chars = 0
+        self._ids = subtree_ids(table) if offset is not None else []
+        # A subtable that appears once at its depth has nothing to share.
+        self._recurs = Counter(
+            (level, node) for level, ids in enumerate(self._ids) for node in ids
+        )
+        self._copies: dict[tuple[int, int], tuple[int, int]] = {}
+
+    def _flush(self) -> None:
+        pieces = _syllables(self.tokens)
+        self._text.append("".join(pieces))
+        self._chars += len(self._text[-1])
+        self._syllable += len(pieces)
+        self.tokens = []
+
+    def jump(self, level: int, block: int, accumulator: int) -> bool:
+        """Jump into an earlier copy of this subtree if that is shorter.
+
+        The copy is its own run of whole syllables, so what it spent is
+        known to the character, and so is the jump that would replace it.
+        """
+        if not self._ids:
+            return False
+        copy = self._copies.get((level, self._ids[level][block]))
+        if copy is None:
+            return False
+        climb = _climb(accumulator, copy[0])
+        # Each step is a vowel, so an onset and a syllable of its own; the
+        # ``j`` closes the last of them as its coda.
+        if 2 * sum(count for _step, count in climb) + 1 >= copy[1]:
+            return False
+        for step, count in climb:
+            self.tokens.extend([step] * count)
+        self.tokens.append(_GOTO_SYLLABLE)
+        return True
+
+    def enter(self, level: int, block: int) -> tuple[int, int, int, int] | None:
+        """Open a segment if this is the first copy of a recurring subtree.
+
+        Returns what :meth:`leave` needs: the copy's key, its syllable and
+        the characters spelled before it.
+        """
+        if not self._ids:
+            return None
+        node = self._ids[level][block]
+        if self._recurs[level, node] < 2 or (level, node) in self._copies:
+            return None
+        self._flush()
+        return level, node, self._syllable, self._chars
+
+    def leave(self, entered: tuple[int, int, int, int] | None) -> None:
+        """Close the copy :meth:`enter` opened and record what it spent."""
+        if entered is not None:
+            level, node, syllable, start = entered
+            self._flush()
+            spent = self._chars - start
+            self._copies[level, node] = (syllable, spent)
+
+    def text(self) -> str:
+        """Return the whole body, spelled."""
+        self._flush()
+        return "".join(self._text)
 
 
 def _leaf(answer: str, accumulator: int | None) -> list[str]:
@@ -209,33 +327,39 @@ def _bit_count(size: int) -> int:
     return size.bit_length() - 1
 
 
-def _tree(table: str) -> list[str]:
+def _tree(table: str, stream: _Stream | None = None) -> list[str]:
     """Build the command sequence for ``table``, reading at every node.
 
     A constant table stops branching but still owes every read below it.
     Spans of the one table, an O(1) constant test and one flat token list:
-    O(2**n).
+    O(2**n).  Returns the commands not yet spelled: all of them unless
+    ``stream`` shares, whose :meth:`_Stream.text` is then the body.
     """
     constant = constant_span_test(table)
-    tokens: list[str] = []
+    stream = stream or _Stream(table)
 
-    def walk(lo: int, hi: int, accumulator: int | None) -> None:
+    def walk(lo: int, hi: int, level: int, accumulator: int | None) -> None:
         if constant(lo, hi):
             reads = _bit_count(hi - lo)
-            tokens.extend([_READ] * reads)
-            tokens.extend(_leaf(table[lo], None if reads else accumulator))
+            stream.tokens.extend([_READ] * reads)
+            stream.tokens.extend(_leaf(table[lo], None if reads else accumulator))
             return
+        block = lo // (hi - lo)
+        if accumulator is not None and stream.jump(level, block, accumulator):
+            return
+        entered = stream.enter(level, block)
         mid = (lo + hi) // 2
         # ``ɰ`` jumps past ``ʋ`` on *nonzero*, so the arm between the
         # markers is the first (bit 0) half; swapped, every odd-weight
         # table inverts.
-        tokens.extend([_READ, _IF_ZERO])
-        walk(lo, mid, 0)
-        tokens.append(_END_IF)
-        walk(mid, hi, 1)
+        stream.tokens.extend([_READ, _IF_ZERO])
+        walk(lo, mid, level + 1, 0)
+        stream.tokens.append(_END_IF)
+        walk(mid, hi, level + 1, 1)
+        stream.leave(entered)
 
-    walk(0, len(table), None)
-    return tokens
+    walk(0, len(table), 0, None)
+    return stream.tokens
 
 
 def _deque_schedule(
@@ -271,54 +395,77 @@ def _deque_schedule(
     return None
 
 
-def _stored(truth_table: str, perm: tuple[int, ...]) -> list[str] | None:
+def _stored(
+    truth_table: str, perm: tuple[int, ...], stream: _Stream | None = None
+) -> list[str] | None:
     """Build the stored-read command sequence for ``perm``.
 
     Every input is read up front and each node fetches the bit it tests; a
-    folded subtree owes nothing, which is where the reorder pays.
+    folded subtree owes nothing, which is where the reorder pays.  Returns
+    what :func:`_tree` does, or None when no deque schedule serves ``perm``.
     """
     schedule = _deque_schedule(perm)
     if schedule is None:
         return None
     pushes, pops = schedule
-    tokens: list[str] = []
+    stream = stream or _Stream(truth_table)
     for push in pushes:
-        tokens.extend([_READ, push])
+        stream.tokens.extend([_READ, push])
     constant = constant_span_test(truth_table)
 
     def walk(lo: int, hi: int, level: int, accumulator: int | None) -> None:
         if constant(lo, hi):
             # Below a branch the accumulator is a known bit; at an
             # immediately-folding root it is the last read, so it is floored.
-            tokens.extend(_leaf(truth_table[lo], accumulator))
+            stream.tokens.extend(_leaf(truth_table[lo], accumulator))
             return
+        block = lo // (hi - lo)
+        if accumulator is not None and stream.jump(level, block, accumulator):
+            return
+        entered = stream.enter(level, block)
         mid = (lo + hi) // 2
-        tokens.extend([pops[level], _IF_ZERO])
+        stream.tokens.extend([pops[level], _IF_ZERO])
         walk(lo, mid, level + 1, 0)
-        tokens.append(_END_IF)
+        stream.tokens.append(_END_IF)
         walk(mid, hi, level + 1, 1)
+        stream.leave(entered)
 
     walk(0, len(truth_table), 0, None)
-    return tokens
+    return stream.tokens
 
 
-def _ordered(truth_table: str, perm: tuple[int, ...]) -> str | None:
+def _ordered(
+    truth_table: str, perm: tuple[int, ...], offset: int | None = None
+) -> str | None:
     """Build the shortest read strategy available for ``perm``.
 
     Stream order may read at its nodes or store first; other orders store.
-    Ties keep the direct tree.
+    Ties keep the direct tree.  ``offset``, the body's first syllable,
+    turns sharing on in both.
     """
-    stored = _stored(truth_table, perm)
-    rendered = _render(stored) if stored is not None else None
+    stream = _Stream(truth_table, offset)
+    rendered = stream.text() if _stored(truth_table, perm, stream) is not None else None
     if perm != tuple(range(len(perm))):
         return rendered
-    direct = _render(_tree(truth_table))
+    stream = _Stream(truth_table, offset)
+    _tree(truth_table, stream)
+    direct = stream.text()
     return rendered if rendered is not None and len(rendered) < len(direct) else direct
 
 
-def _ordered_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
+def _ordered_candidate(
+    truth_table: str, perm: tuple[int, ...], offset: int | None = None
+) -> str:
     """Adapt :func:`_ordered` to :func:`best_input_order`'s contract."""
-    return _ordered(truth_table, perm) or ""
+    return _ordered(truth_table, perm, offset) or ""
+
+
+def _prologue_syllables(squarings: int) -> int:
+    """Return how many syllables :func:`_halt` spells, where the body starts.
+
+    ``ɰ̊u``, the climb's ``ci``, one ``cæ`` a squaring and ``ɹuʋ``.
+    """
+    return 3 + squarings
 
 
 def cvnc(truth_table: str) -> str:
@@ -339,4 +486,12 @@ def cvnc(truth_table: str) -> str:
     squarings = _HALT_SQUARINGS
     while len(_halt(squarings)) + len(body) >= _reach(squarings):
         squarings += 1
+    # A shared body jumps to syllables counted past this prologue, so it is
+    # built once the prologue is fixed; shorter, it fits the same reach.
+    shared = best_input_order(
+        truth_table,
+        partial(_ordered_candidate, offset=_prologue_syllables(squarings)),
+    )
+    if len(shared) < len(body):
+        body = shared
     return _halt(squarings) + body
