@@ -1202,6 +1202,18 @@ and $1+3+\log_2(10\cdot9\cdot24)<16$ as $2160<2^{12}$.  Summing over the at most
 $(L',M')$ proves the lemma.
 \end{proof}
 
+The coefficient $2$ on the first term of $\beta_n$ cannot be reduced from
+the common-sign observation alone.  A symmetric pair of remainder
+instructions with operands $-d,d$, $d>0$, maps every integer $u$ to
+$(u\bmod -d)\bmod d=u\bmod d$.  Starting from the consecutive values
+$48,49$, remainders by moduli greater than $49$ delay both transitions;
+a remainder by $48$ sends them to $0,1$, and a later remainder by $1$
+sends the survivor to $0$.  Replacing $48$ by $49$ reverses which
+transition vanishes first.  Thus the two first-zero positions can vary
+independently along one common-sign path.  An improvement must charge the
+Gaussian instruction roots that realize those positions, rather than count
+fewer choices for them.
+
 \begin{corollary}[A table for even and odd sources]\label{cor:evenhard}
 Let $n$ be large, $Z=\lfloor T/(n+4)\rfloor$, $L_0=\lfloor2T/n\rfloor$ and
 $M_0=\lfloor5T/(2\sqrt n)\rfloor$, and let $\ell_n$ be the largest integer $\ell\ge0$ with

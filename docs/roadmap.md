@@ -135,3 +135,8 @@ step; an answer lands in the paper it extends, and the row leaves.
   `a >= 1/2`, and its effective profile is minimized at `a = 1/2`, `x = 0`.
   Next step: replace that instruction profile, or raise the mass bound; the
   existing decoder has no remaining parameter route to a smaller constant.
+  On the lower side, the two zero targets counted per expensive gap really
+  are independent: symmetric remainder pairs realize arbitrary ordered
+  first-zero positions from consecutive register values.  Raising `13/4`
+  therefore needs a coefficient-mass charge for those Gaussian instruction
+  roots, not a smaller transition count.
