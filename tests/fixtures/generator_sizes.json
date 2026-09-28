@@ -353,15 +353,15 @@
   "Decleq": {
    "0110": {
     "commands": 106,
-    "source_units": 1093
+    "source_units": 919
    },
    "01101001": {
     "commands": 159,
-    "source_units": 1635
+    "source_units": 1357
    },
    "0110100110010110": {
     "commands": 208,
-    "source_units": 2201
+    "source_units": 1824
    }
   },
   "Dig": {

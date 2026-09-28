@@ -147,13 +147,14 @@ def decleq(truth_table: str) -> str:
     def patch(addr: int, c: int) -> None:
         mem[addr + 2] = c
 
+    # A read falls through and these decrements never reach 0: target 0.
     for rc in read_cells:
-        emit(-1, rc, pc() + 3)
+        emit(-1, rc, 0)
     for i, rc in enumerate(read_cells):
         if i not in essential:
             continue
         for _ in range(47):
-            emit(rc, rc, pc() + 3)
+            emit(rc, rc, 0)
 
     # Index: the low ``k`` inputs, each one taking its weight off the
     # counter.  A zero (1) decrements to 0 and jumps the run; a one (2)
@@ -165,7 +166,7 @@ def decleq(truth_table: str) -> str:
         weight = 2 ** (n - 1 - i)
         emit(rc, rc, pc() + 3 * (weight + 1))
         for _ in range(weight):
-            emit(counter, counter, pc() + 3)
+            emit(counter, counter, 0)
 
     def leaf(row: int) -> None:
         """Print row ``counter`` of the table at ``row``, then halt.
@@ -177,7 +178,7 @@ def decleq(truth_table: str) -> str:
         loop = pc()
         out = loop + 9
         emit(counter, counter, out)
-        emit(out + 1, out + 1, loop)
+        emit(out + 1, out + 1, 0)
         emit(0, 0, loop)
         emit(-2, out + 6 + span - 1, 0)
         emit(0, 0, halt)
