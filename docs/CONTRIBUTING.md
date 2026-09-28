@@ -99,6 +99,12 @@ A change that shrinks an existing generator ships only if it clears all of:
   interpreter forgives it (truncated keywords, missing operands) is not
   shorter.
 
+A change aimed at execution time clears the same bar with steps in place of
+size: 5% or more off the executed commands summed over every row of the
+three-input tables (`scripts/screens/steps.py`), and no table slower *or*
+larger.  Where a generator chooses among candidates, it chooses by size and
+breaks ties by steps, so a step win never buys itself with characters.
+
 `scripts/screens/` bounds where the upside is before any construction is
 written.
 
