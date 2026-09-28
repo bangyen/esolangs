@@ -846,3 +846,36 @@ least 54 of the 64 admissible pairs at every residue, more than the 49 that
 seven meanings give. A single constant separates at most 38 at the worst
 residue, though, and a read destroys its cells. So no fold read beats seven
 meanings a cell in practice, and the table stays at 49,152 cells.
+
+**A seven-box tiling puts the free space at the bottom (measured).** Drop
+the slab that pins the top digit, which is itself a contiguous block, and
+spend its 1,024 groups on two `z = 0` boxes that pin a low digit instead:
+
+- A: `z` in {1, 2}, all digits normal (8,192 groups);
+- B: `z = 0`, all normal (4,096);
+- C1-C3: `z` in {1, 2}, digit 1, 2 or 3 pinned (1,024 each);
+- D1, D2: `z = 0`, digit 1 or 2 pinned (512 each).
+
+That is 16,384 groups, pairwise disjoint (checked cell by cell). The top
+digit is never pinned, so no group uses its missing value. Put that digit on
+trits 8 and 9 with missing value `(0, 0)`, `z` on trit 7, the cell index on
+trit 0 and the other digits on `(1, 2), (3, 4), (5, 6)`. Then cells
+`0..6806` are one free run at the bottom of memory, the same shape as the
+sixteen-input build's code region below 6,561. Eight more runs of 246 remain,
+and **8,529** free cells lie in runs of 200 or more, against 5,127 for any
+six-slab tiling.
+
+The routing stays simple:
+
+- the top digit always takes its own three input bits;
+- digit 3 takes its own bits unless pinned;
+- digit 2 takes its own bits unless pinned;
+- only digit 1 changes source: its own bits in A and B, pinned in C1 and
+  D1, digit 2's bits in C2 and D2, digit 3's bits in C3;
+- `z` is `1 + x2` in A, 0 in B and D, and `1 + x5` in C.
+
+With the combining steps shared as a prefix tree, the address computation is
+about ten digit combines instead of four, plus the dispatch (estimated). The
+code budget is then about 6,800 contiguous cells for the main line, with
+the state blocks and stubs, which are entered by `i` anyway, in the 246-cell
+runs.
