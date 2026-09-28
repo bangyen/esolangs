@@ -139,8 +139,7 @@ step; an answer lands in the paper it extends, and the row leaves.
   are independent: symmetric remainder pairs realize arbitrary ordered
   first-zero positions from consecutive register values.  Raising `13/4`
   therefore needs a coefficient-mass charge for those Gaussian instruction
-  roots, not a smaller transition count.  `lem:arithwitness` makes that set
-  injective: `Q` distinct first-essential residuals force `Q` distinct
-  nonzero register roots before their next reads; `lem:maximal-width` now
-  supplies `Q >= T/(2n)`, improving its old `T/(4n)`.  The missing step is
-  exactly a quadratic mass charge for those Gaussian roots.
+  roots, not a smaller transition count.  `lem:maximal-width` improves the
+  independent first-essential residual width from `T/(4n)` to `T/(2n)`,
+  but distinct residuals can arrive at one arithmetic cursor with different
+  register values, so width alone does not supply distinct Gaussian roots.

@@ -1057,42 +1057,6 @@ the positive ones.  The same holds for $R_{p,2}$ without input.  With an input $
 it are the $[a,2]$ with $a>0$.
 \end{proof}
 
-\begin{lemma}[Arithmetic witnesses]\label{lem:arithwitness}
-Let $f$ be an even or odd source computing an $n$-input table.  If
-$g_1,\ldots,g_Q$ are distinct first-essential residuals after the same
-number of reads, then the decoded program contains at least $Q$ distinct
-nonzero register-instruction roots.
-\end{lemma}
-
-\begin{proof}
-By Lemma~\ref{lem:nextread}, the next read for $g_j$ is at a cursor $c_j$
-that is last in its gap.  After that read the two executions hold $48$ and
-$49$.  Until a nonzero register instruction is executed, every control
-test sees the same positive sign.  An intervening read would overwrite the
-only difference, while an output would make the residual a function of
-the bit just read alone.  Both contradict first-essentiality.  Thus both
-executions reach a first nonzero register instruction; call its cursor
-$d_j$.
-
-If $d_j=d_{j'}$, the two pairs of executions have reached the same cursor
-with the same respective registers, without consuming another input.
-Their outputs on every remaining suffix agree, so $g_j=g_{j'}$.  Hence the
-$d_j$ are distinct.  By Lemma~\ref{lem:symruns}, execution enters each
-$R_p$ at its first instruction and runs through it.  Equal register roots
-are consecutive inside one $R_p$, so two distinct first such cursors cannot
-belong to the same root block.  The roots at the $d_j$ are therefore
-distinct.
-\end{proof}
-
-Together with Lemma~\ref{lem:maximal-width}, this gives a table for which
-every even or odd program contains at least $T/(2n)$ distinct nonzero
-register roots.  These roots are Gaussian integers.  Pairing a root with
-its negative loses at most a factor two, so after writing
-$f=x^\varepsilon E(x^2)$ their squares give at least $T/(4n)$ distinct
-nonreal roots of $E$.  A quadratic coefficient-mass bound for this set
-would add a leading-order term to the lower half of
-Proposition~\ref{prop:bracket}.
-
 Recall the control codes of a real root $p^v$: for $v=1,\dots,8$ it is $\text{if}>0$, a
 closing bracket, $\text{if}<0$, $\text{if}=0$, $\text{while}>0$, a closing bracket,
 $\text{while}<0$ and $\text{while}=0$.  An opener whose test fails continues after its
