@@ -86,6 +86,10 @@ A change that shrinks an existing generator ships only if it clears all of:
   measured for the commit against its parent.  Below that the added
   construction costs more to keep than it saves (ArrowQueue's rotation
   reorder, 2.1%, was reverted for this; `docs/limitations.md` records it).
+  A gain that grows with the table, such as sharing repeated subtrees
+  (`scripts/screens/sharing.py`: 14.5% of nodes repeat at three inputs, a
+  third at five), may clear it instead on 200 seeded random five-input
+  tables; the no-growth rule then holds on that sample too.
 - **No table grows**: checked exhaustively through three inputs, so keep the
   old build as a candidate when the new one is not uniformly shorter.
 - **Every table executes**: exhaustively through three inputs, sampled at
