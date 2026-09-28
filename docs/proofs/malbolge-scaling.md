@@ -486,6 +486,27 @@ into state B's code, which reads a second cell under its own constant and
 prints -- is right on all 64 cases on real sources, in 5,367 code cells
 against 14,871 for the same chain with the earlier `rot` reads.
 
+**The whole five-state decoder works on one group.** Each state reads its cell
+of a three-cell group under one of ten view constants (five states times two
+parities, landing blocks pairwise disjoint), each landing cell holds a plain
+character whose pointer cell carries the target's label, and routing goes
+through the shipped `_T_LABELS` machinery: every label cell is cleared to
+all-1 by `p p`, one seeded `p` chain per label writes alternating hub values
+into all its cells, and each hub value is rotated to its own copy of the
+target (a print stub or a state 3 or 4 block). Two fixes were needed and are
+general: after the read's `p`, `2 - c` `o`s move `d` past the group, so the
+next escape never jumps through another group cell's table character; and
+every block must fit the room reserved for it, since a stub that runs into a
+rotated hub cell halts. With both, for every row (8) and every meaning
+triple of the group (343), the program prints the decoder's answer: **2,744
+of 2,744 correct** on real sources, run through `msim`. One group's program
+takes about 6,700-6,800 code cells, nearly all of it one-time: the view
+constants, label clearing and seed chains, eight hub copies, stubs and state
+blocks. What is still missing for seventeen inputs is the address
+computation that selects the group and its per-row read pointers from the
+inputs, the parity selection of view constants at run time, and the full
+table.
+
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
