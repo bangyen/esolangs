@@ -563,15 +563,15 @@
   "INTERCAL": {
    "0110": {
     "commands": 5,
-    "source_units": 305
+    "source_units": 197
    },
    "01101001": {
     "commands": 6,
-    "source_units": 641
+    "source_units": 389
    },
    "0110100110010110": {
     "commands": 7,
-    "source_units": 1293
+    "source_units": 753
    }
   },
   "Inject": {
