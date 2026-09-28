@@ -8,14 +8,12 @@ Tree (``n <= 4``): a right push follows each cell and ``+`` branches pop
 the front.  Cascade (``n >= 5``): each stage doubles the queued markers
 then crosses the cell (Horner), and one ``+`` per row turns right at the
 indexed row.  A ``0`` leaf is empty; a ``1`` leaf is a self-sustaining ring.
-Both routes fold constant rows: the tree a constant subtree, the cascade
-its constant tail.
+Both routes fold constant rows (a subtree; the cascade's tail).
 """
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    permute_truth_table,
 )
 
 #: Each input's cell, both routes: ``~`` pushes a down heading, ``.`` nothing.
@@ -49,39 +47,17 @@ _ROWS = {"0": [" +", "", ""], "1": [" + +~+", "   ~ ~", "   +~+"]}
 _DRAINED_RING = ["*+ +~+", "** ~ ~", "   +~+"]
 
 
-def _header(n: int, rotate: int = 0) -> list[str]:
+def _header(n: int) -> list[str]:
     """Build the tree route's header: ``n`` input cells, a right push each.
 
-    The cells sit on a diagonal; with ``rotate`` set, input ``rotate - 1``
-    also pushes the stop heading :func:`_rotation` pops.
+    The cells sit on a diagonal; the last exits heading down at column 3.
     """
     rows = [" " * (n + 3) + "*"]
     for i in range(n):
         x = n + 3 - i  # input ``i``'s column
-        pushes = "~~" if i == rotate - 1 else "~"
-        left = x - 2 - len(pushes)
-        rows.append(" " * left + "*" + pushes + "*" + TEMPLATE_CHAR)
-        rows.append(" " * left + "*" + " " * (x - left - 1) + "*")
+        rows.append(" " * (x - 3) + "*~*" + TEMPLATE_CHAR)
+        rows.append(" " * (x - 3) + "*  *")
     return rows
-
-
-def _rotation(k: int) -> list[str]:
-    """Re-enqueue the ``k`` inputs queued first behind the rest.
-
-    One gadget per input re-pushes what it pops, and its exits meet on the
-    next gadget's ``+``; the last pops the stop heading and turns into the
-    middle, replacing the middle's first two rows.
-    """
-    grid = [[" "] * (5 + 2 * k) for _ in range(2 * k + 2)]
-    for g in range(k):
-        r, c = 2 * g, 3 + 2 * g
-        grid[r][c : c + 3] = "+~*"
-        grid[r + 1][c] = "~"
-        grid[r + 2][c : c + 2] = "+~"
-    grid[2 * k][:3] = _MIDDLE[0][:3]
-    grid[2 * k][3 + 2 * k : 5 + 2 * k] = "+*"
-    grid[2 * k + 1][0] = grid[2 * k + 1][4 + 2 * k] = "*"
-    return ["".join(row).rstrip() for row in grid]
 
 
 def _connect(t0: list[str], t1: list[str]) -> list[str]:
@@ -155,29 +131,13 @@ def arrowqueue(truth_table: str) -> str:
     instantiated program halts iff the entry is ``0``.  Below five inputs a
     tree with 3x3 leaves, constant subtrees folded (:func:`_drained_leaf`);
     from five a cascade of at most ``6n`` + ``3 * 2**n`` rows, linear in the
-    table, its constant tail folded (:func:`_cascade`).  The tree tests the
-    shortest rotation of the read order (:func:`_rotated_tree`).
+    table, its constant tail folded (:func:`_cascade`).
     """
     n = _validate_truth_table(truth_table)
     if len(truth_table) > 16:
         rows = ["  ~*", *(_STAGE * n), *_MIDDLE, *_cascade(truth_table)]
         return "\n".join(row.rstrip() for row in rows)
-    # ``min`` keeps the first of equals, so a rotation must strictly win.
-    return min((_rotated_tree(truth_table, n, k) for k in range(n)), key=len)
-
-
-def _rotated_tree(truth_table: str, n: int, k: int) -> str:
-    """Build the tree route testing input ``k`` first, read order unchanged.
-
-    Level ``j`` splits on input ``(k + j) % n``; the gadgets cost 19, 39
-    and 63 characters at ``k = 1, 2, 3``.
-    """
-    order = (*range(k, n), *range(k))
-    body = _compact(_MIDDLE + _tree(list(permute_truth_table(truth_table, order))))
-    if k:
-        # Compaction keeps the middle's four columns, so its rows lead.
-        body[:2] = _rotation(k)
-    return "\n".join([*_header(n, k), *body])
+    return "\n".join([*_header(n), *_compact(_MIDDLE + _tree(list(truth_table)))])
 
 
 def _cascade(truth_table: str) -> list[str]:

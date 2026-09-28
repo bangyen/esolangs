@@ -51,7 +51,9 @@ The screen script measures permuted-table builds, not an admissible reorder
 under a fixed input template and fill mapping. Dig, Flowchart,
 BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
 its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
-ArrowQueue re-enqueues its reads, so its `n <= 4` tree tests the shortest rotation.
+ArrowQueue can re-enqueue its reads into any rotation (d5bac32), but the
+routing (19, 39, 63 characters at k = 1, 2, 3) nets only 2.1% over the
+three-input tables, under the 5% bar, so the plain order ships.
 
 Malbolge registers a generator through sixteen inputs, source-embedded with no
 initializer. Through ten, a branch-free five-cell mixer (13 operations per input bit, inits
