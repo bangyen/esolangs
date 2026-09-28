@@ -18,6 +18,7 @@ must come back unwrapped rather than subtly broken.
 
 import re
 from dataclasses import replace
+from functools import cache
 
 import pytest
 
@@ -46,6 +47,7 @@ from esolangs.tools.wrap import (
     wrap_space_delimited,
     wrap_tokens,
 )
+from tests.divergence import diverges
 
 # A 2-input table (XOR), which every boolean generator can build.  Used
 # where a test needs *a* program rather than the language's own example.
@@ -542,8 +544,18 @@ _OTHER_TABLES = {"majority": "00010111", "mixed": "11111001"}
 _RUN_TIMEOUT = 2.0
 
 
+@cache
 def _behaviour(name: str, program: str, stdin: str) -> str:
-    """What ``program`` does, as a value: its output, or how it failed."""
+    """What ``program`` does, as a value: its output, or how it failed.
+
+    Memoized because a width wider than the program needs folds nothing and
+    so lays out byte-identically to the compact form and every wider width:
+    Vandevelo's 110 executions over `_HONOUR_TABLES` are 44 distinct
+    ``(program, stdin)`` pairs, Streetcode's 48.  Sound because the key *is*
+    the whole input, and `run` is deterministic given one.
+    """
+    if diverges(name, program, stdin):
+        return "diverges (cycle proven)"
     try:
         return run(name, program, stdin, timeout=_RUN_TIMEOUT)
     except Exception as exc:
