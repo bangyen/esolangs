@@ -12,8 +12,11 @@ from itertools import pairwise
 
 import pytest
 
+import esolangs
 from esolangs import tools as boolean
+from esolangs.tools.helpers import best_input_order
 from tests.tools.boolean_runners import (
+    five_input_sample,
     run_algebraic_programming_language,
     run_container,
     run_fargo,
@@ -1134,8 +1137,11 @@ class TestAlgebraicProgrammingLanguageShapes:
 
         Inputs arrive as 0 or 1, so ``b`` needs no ``!!``, and a node whose
         arms are both constant is its literal.  Over every three-input table
-        the program falls from 31,190 characters to 16,303.
+        the program falls from 31,190 characters to 16,303 (the inline tree,
+        which the shared diagram now undercuts).
         """
+        from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
+
         tail = {
             "0110": "((!a & b) | (a & !b))",
             "0001": "(a & b)",
@@ -1147,7 +1153,37 @@ class TestAlgebraicProgrammingLanguageShapes:
             assert program.endswith(f"(a & b & 0) | {expression}")
             self._check(table, 2)
         total = sum(
-            len(boolean.algebraic_programming_language(f"{value:08b}"))
+            len(best_input_order(f"{value:08b}", _apl_tree_ordered))
             for value in range(256)
         )
         assert total == 16303
+
+    def test_the_reduced_diagram_skips_idle_tests_and_complements(self) -> None:
+        """Reducing the tree shrinks it, and no table grows.
+
+        A node whose halves agree is its half, and one that complements a
+        node built at its level is ``!`` of it.  16,303 characters over the
+        256 three-input tables fall to 16,067 (1.4%), and 42,875 over the
+        seeded five-input sample to 40,684 (5.1%).
+        """
+        from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
+
+        assert boolean.algebraic_programming_language("00011110").endswith(
+            "(a & b & c & 0) | ((!a & (b & c)) | (a & !(b & c)))"
+        )
+        assert boolean.algebraic_programming_language("0101010100110011").endswith(
+            "(a & b & c & d & 0) | ((!a & d) | (a & c))"
+        )
+        three = [f"{value:08b}" for value in range(256)]
+        for tables, before, after in (
+            (three, 16303, 16067),
+            (five_input_sample(), 42875, 40684),
+        ):
+            inline = [len(best_input_order(t, _apl_tree_ordered)) for t in tables]
+            reduced = [len(boolean.algebraic_programming_language(t)) for t in tables]
+            assert (sum(inline), sum(reduced)) == (before, after)
+            assert all(r <= i for r, i in zip(reduced, inline, strict=True))
+        for n in (4, 5, 6):
+            for value in (0x6996, 0x1234ABCD5678EF01, 0xF0F0CCCC5A5A3C3C):
+                table = format(value % 2**2**n, f"0{2**n}b")
+                assert esolangs.verify("Algebraic Programming Language", table)
