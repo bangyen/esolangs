@@ -879,3 +879,57 @@ about ten digit combines instead of four, plus the dispatch (estimated). The
 code budget is then about 6,800 contiguous cells for the main line, with
 the state blocks and stubs, which are entered by `i` anyway, in the 246-cell
 runs.
+
+**An address fold for the seven-box tiling (word-level, `address17.py`).**
+Fourteen address bits fold into 16,384 distinct group words. Every step is
+a `crazy`/`rot` that a source string executes, but this is checked as a
+word model, not yet an emitted program. The table cells are pointer + 1:
+
+- 49,152 table cells, the lowest at 6,562, so cells `0..6561` are one free
+  run;
+- eight free runs of 243 cells;
+- 8,506 free cells in runs of 200 or more.
+
+The steps:
+
+- The shipped gadget runs on each input triple.
+- The accumulator starts at all-2.
+- Each digit enters with `A` = accumulator, as `p` over the gadget cell and
+  then `*`. So the gadget runs first and its outputs combine later from
+  their cells, which lets each case take its slots in its own order.
+- `v` is pre-mapped through `crazy(all-2, ·)` so its high trits read 1.
+- `z` is a single-trit step between the third digit and the top.
+- A fixed tail follows, then one `crazy(Q, acc)` per decoder state. `Q` is
+  all-2 except trit 0, which picks the cell.
+
+Two constraints decided the details.
+
+1. *No table cell may wrap to cell 0.* Cell 0 is the first instruction
+   executed, and a group whose pointer word is all-2 would put a table cell
+   there. Every per-trit bijection available from `crazy` with a constant is
+   swap01 or swap12, applied to all information trits at once, so the
+   all-2 group is excluded only if some digit misses an equal pair
+   `(r, r)`. The top digit also has to miss an equal pair, a different one,
+   for the bottom block.
+2. *The shipped combine gives only one equal pair.* With every digit
+   entering `v` then `u` in the same form, only `(2, 2)` is reachable (swap12
+   variants on `u`, `v` or both, searched).
+
+A trit-level solver that tracks each information trit's permutation from
+entry found 53,613 configurations once the top digit enters `u` the other
+way round (`acc = crazy(crazy(all-2, u), acc)`). The one used here has:
+
+- lower gadgets from walked values `(33, 33, 78)`, swap12 on `u` in slots 0
+  and 2, so both miss `(1, 1)`;
+- the top gadget from `(33, 33, 69)` with `u` and `v` swapped, missing
+  `(2, 2)`;
+- the pinned slots on a gadget from `(38, 38, 38)` run on all-0 reads, which
+  yields exactly the missing value;
+- `z` base 29541 (A and C use two `z` codes, B and D the third);
+- the tail swap01, swap12, `p` with all-1 and trit 0 = 2, after which trit 0
+  of the per-state pointers takes all three values.
+
+All seven boxes are disjoint, and no pointer is all-2. The routing is the
+one above: the top digit takes the pinned digit's triple in C and D, the
+case selector and C's `z` bit come from the top triple, and B, D share
+the third `z` code.

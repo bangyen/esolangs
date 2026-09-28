@@ -49,3 +49,5 @@ None of this is wired into the generator.
   measured cover 20,364 of 24,064 residue/vector pairs).
 - `tiling_runs.py` -- free cells in long runs under every digit-local
   six-slab tiling (best 5,127 in runs of 200 or more); needs numpy.
+- `address17.py` -- word-level model of the seventeen-input address fold
+  (16,384 groups, cells `0..6561` free, no wrap to cell 0).
