@@ -21,6 +21,7 @@ def _run(table: str, row: int) -> str:
     return "1" if output == "I\n" else "0"
 
 
+@pytest.mark.medium  # executes every table (1.3s at n = 3)
 @pytest.mark.parametrize("n", range(1, 4))
 def test_every_table_through_three_inputs(n: int) -> None:
     width = 1 << n
