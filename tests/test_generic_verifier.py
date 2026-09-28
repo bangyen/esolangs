@@ -18,7 +18,7 @@ from __future__ import annotations
 import pytest
 
 import esolangs
-from tests.divergence import diverges
+from tests.divergence import terminates
 
 #: One two-input table, one asymmetric two-input table, and two three-input
 #: ones.  The asymmetry matters: a verifier that reads the wrong position
@@ -76,14 +76,7 @@ def _terminates(name: str, source: str, stdin: str) -> str:
     letting it hang unattributed.  A language with no snapshot protocol at
     all falls back to the clock below.
     """
-    proven = diverges(name, source, stdin)
-    if proven is not None:
-        return "1" if proven else "0"
-    try:
-        esolangs.run(name, source, stdin=stdin, timeout=_TERMINATION_TIMEOUT)
-    except esolangs.ExecutionTimeoutError:
-        return "1"
-    return "0"
+    return "0" if terminates(name, source, stdin, _TERMINATION_TIMEOUT) else "1"
 
 
 def _verify(name: str, table: str) -> str:

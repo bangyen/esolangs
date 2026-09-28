@@ -108,6 +108,7 @@ class TestSeparationLaws:
             assert ((best_walk,) * n, best_disps) == _LAWS[n][0], (n, ranked[:3])
 
     @pytest.mark.weekly  # ~6 min: 380 of 3.8M laws separate at three inputs
+    @pytest.mark.cost_evidence("a stored extra law displaced from the greedy cover")
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_the_extra_laws_are_the_greedy_cover(self, n: int) -> None:
         """The extra laws are re-derived by the rule ``_LAWS`` states.

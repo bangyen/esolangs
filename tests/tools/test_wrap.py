@@ -47,7 +47,7 @@ from esolangs.tools.wrap import (
     wrap_space_delimited,
     wrap_tokens,
 )
-from tests.divergence import diverges
+from tests.divergence import diverges, terminates
 
 # A 2-input table (XOR), which every boolean generator can build.  Used
 # where a test needs *a* program rather than the language's own example.
@@ -554,6 +554,12 @@ def _behaviour(name: str, program: str, stdin: str) -> str:
     ``(program, stdin)`` pairs, Streetcode's 48.  Sound because the key *is*
     the whole input, and `run` is deterministic given one.
     """
+    if esolangs.describe(name)["answer_mode"] == "termination":
+        return (
+            "halts"
+            if terminates(name, program, stdin, _RUN_TIMEOUT)
+            else "diverges (cycle or timeout)"
+        )
     if diverges(name, program, stdin):
         return "diverges (cycle proven)"
     try:

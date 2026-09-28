@@ -133,6 +133,7 @@ class TestEveryAuditedCapIsCatchable:
 
     @pytest.mark.slow
     @pytest.mark.weekly
+    @pytest.mark.cost_evidence("an unclassified exception from any n=12 generator")
     def test_nothing_escapes_the_contract_at_twelve_inputs(self) -> None:
         """A periodic table, so the generators that blow up stay small.
 
