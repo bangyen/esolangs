@@ -860,6 +860,18 @@ construction also has tail states, so this is a favorable relaxation of
 the trade.  Shrinking decoder operands by reallocating band width cannot
 lower the constant either.
 
+The local split inside an embedded state is likewise cheapest among gadgets
+using one arithmetic instruction.  The negative, zero and positive control
+classes have least test exponents $3,4,1$.  Addition and subtraction map the
+consecutive inputs $48,49$ to consecutive integers, so cannot put them on
+opposite strict signs.  Multiplication and integer powers leave them with one
+sign, while floor division and remainder can separate zero from one sign but
+not the two strict signs.  Thus every such split needs the zero test and, at
+best, the positive test.  Addition is the least-exponent capable opcode, and
+adding $-48$ gives $0,1$.  Its two arithmetic roots and two opener roots have
+sorted effective exponents $1,1,1,4$, componentwise minimal.  Substituting a
+different opcode or branch polarity cannot improve the profile.
+
 \begin{proof}[Proof of the upper half of Proposition~\ref{prop:bracket}]
 \emph{Parameters.}  Let $n$ be large and put $\lambda_0=\lceil\log_2n\rceil$,
 $t_0=\sigma=\lambda_0$ and $A=t_0+\lambda_0+\lceil2(\lambda_0+1)\log n\rceil$.  Let $h$
