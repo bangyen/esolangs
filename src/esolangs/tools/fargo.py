@@ -5,17 +5,19 @@ needed and the construction is the **algebraic normal form**
 ``f(x) = c0 XOR (c1 & x0) XOR (c2 & x1) XOR (c3 & x0 & x1) XOR ...``,
 coefficients from the Möbius transform (:func:`_anf_coefficients`).
 The emitter factors each variable as ``p = p0 ^ (x & p1)``, so every
-coefficient appears at most once and a dense ANF is O(T).
+coefficient appears at most once and a dense ANF is O(T).  A second emitter
+picks each node's arm locally (:func:`_arm_expression`); the shorter wins.
 
 The program is ``% 0 <expression>`` then ``$``, writing exactly ``0`` or
 ``1``; a constant table emits the literal.  The harness feeds one line
 holding ``int(bits, 2)``, so input ``i`` (most-significant-first) is bit
 ``n - 1 - i`` of that number -- the only place the mapping appears.  The
 interpreter reads that line before execution, so every program consumes
-exactly one input line.  Input reordering does not apply.
+exactly one input line.  With no reads there is no read order: factoring
+order only renames the ``@`` literals, and :func:`fargo` tries four.
 """
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, permute_truth_table
 
 __all__ = ["fargo"]
 
@@ -99,7 +101,7 @@ def _factored(masks: list[int], constant: int, n: int) -> str:
     return "\n".join([*lines, f"% 0 {result}", "$", ""])
 
 
-def _anf_expression(coeffs: list[int], n: int) -> str:
+def _anf_expression(coeffs: list[int], n: int, at: tuple[int, ...]) -> str:
     """Return a recursively factored ANF expression in O(T) emitted size.
 
     Emitted into one flat piece list, O(T) time: whether a half is empty,
@@ -126,15 +128,107 @@ def _anf_expression(coeffs: list[int], n: int) -> str:
             build(start, half, bit - 1)
             pieces.append(" ")
         if nonzero[start + size] - nonzero[start + half] == 1 and coeffs[start + half]:
-            pieces.append(f"@ {bit:b}")
+            pieces.append(f"@ {at[bit]:b}")
         else:
-            pieces.append(f"& @ {bit:b} ")
+            pieces.append(f"& @ {at[bit]:b} ")
             build(start + half, half, bit - 1)
 
     if nonzero[-1] == 0:
         return "0"
     build(0, 1 << n, n - 1)
     return "".join(pieces)
+
+
+def _arm_expression(
+    truth_table: str, coeffs: list[int], n: int, at: tuple[int, ...]
+) -> str:
+    """Return the factored expression with each node's arms chosen locally.
+
+    The positive split ``f0 ^ (x & d)``, ``d = f0 ^ f1``, is why polarity
+    matters: ``not x & g`` has ``d = f0 = g``, emitted twice at every level.
+    A node here takes one of four splits, the complement ``^ 1 @ b`` costing
+    four characters: ``f0 ^ (x & d)``, ``f1 ^ (not x & d)``, ``f0 | (x & f1)``
+    when ``f0 <= f1``, and ``f1 | (not x & f0)`` when ``f1 <= f0``.
+
+    The rule reads only the node's function: a zero 1-arm takes the negated
+    split, a constant-one 1-arm ``f0 | x``, and otherwise the split whose
+    children hold the fewest ANF terms wins, ties to no complement, then in
+    that order.  ``f0`` and ``d`` hold the low and high coefficient halves
+    and ``f1`` their xor, so a level costs O(T), like a transform pass.
+    """
+    pieces: list[str] = []
+
+    def build(table: list[int], anf: list[int], bit: int) -> None:
+        """Emit ``table`` (``anf`` its coefficients), known nonconstant."""
+        half = len(table) // 2
+        low, high = anf[:half], anf[half:]
+        while not any(high):
+            # The top input is inessential: descend into the 0-arm alone.
+            table, anf, bit = table[:half], low, bit - 1
+            half //= 2
+            low, high = anf[:half], anf[half:]
+        f0, f1 = table[:half], table[half:]
+        one = [x ^ y for x, y in zip(low, high, strict=True)]
+        w0, wd, w1 = sum(low), sum(high), sum(one)
+        if not w1:
+            choice = 1
+        elif w1 == 1 and one[0] and w0:
+            choice = 2
+        else:
+            # (terms, complemented, order): the positive split wins ties.
+            options = [(w0 + wd, 0, 0), (w1 + wd, 1, 1)]
+            if w0 and all(x <= y for x, y in zip(f0, f1, strict=True)):
+                options.append((w0 + w1, 0, 2))
+            if all(y <= x for x, y in zip(f0, f1, strict=True)):
+                options.append((w0 + w1, 1, 3))
+            choice = min(options)[2]
+        d = [x ^ y for x, y in zip(f0, f1, strict=True)]
+        # Each split's kept arm, its operator, and the literal's operand.
+        kept, kept_anf, op, operand, operand_anf = (
+            (f0, low, "^", d, high),
+            (f1, one, "^", d, high),
+            (f0, low, "|", f1, one),
+            (f1, one, "|", f0, low),
+        )[choice]
+        literal = f"^ 1 @ {at[bit]:b}" if choice % 2 else f"@ {at[bit]:b}"
+        if any(kept_anf):
+            pieces.append(f"{op} ")
+            leaf(kept, kept_anf, bit - 1)
+            pieces.append(" ")
+        if sum(operand_anf) == 1 and operand_anf[0]:
+            pieces.append(literal)
+        else:
+            pieces.append(f"& {literal} ")
+            leaf(operand, operand_anf, bit - 1)
+
+    def leaf(table: list[int], anf: list[int], bit: int) -> None:
+        """Emit ``table``, which is not constant zero."""
+        if sum(anf) == 1 and anf[0]:
+            pieces.append("1")
+        else:
+            build(table, anf, bit)
+
+    if not any(coeffs):
+        return "0"
+    leaf([int(bit) for bit in truth_table], coeffs, n - 1)
+    return "".join(pieces)
+
+
+def _orders(n: int) -> list[tuple[int, ...]]:
+    """Return the factoring orders tried: identity, reversed, both rotations."""
+    identity = tuple(range(n))
+    orders = [identity, identity[::-1], (*identity[1:], 0), (n - 1, *identity[:-1])]
+    return list(dict.fromkeys(orders))
+
+
+def _expressions(truth_table: str, n: int, order: tuple[int, ...]) -> list[str]:
+    """Return both emitters' expressions factoring level ``k`` on ``order[k]``."""
+    table = permute_truth_table(truth_table, order)
+    coeffs = _anf_coefficients(table)
+    # ``bit`` counts down from ``n - 1`` at the top level; input ``i`` is
+    # Fargo bit ``n - 1 - i``.
+    at = tuple(n - 1 - order[n - 1 - bit] for bit in range(n))
+    return [_arm_expression(table, coeffs, n, at), _anf_expression(coeffs, n, at)]
 
 
 def fargo(truth_table: str, width: int | None = None) -> str:
@@ -147,7 +241,17 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     """
     n = _validate_truth_table(truth_table)
     coeffs = _anf_coefficients(truth_table)
-    expression = _anf_expression(coeffs, n)
+    # Four named factoring orders; ``@`` addresses any bit, so an order only
+    # renames the literals.  Each order's two emitters are O(T), the chosen
+    # arms shorter on nearly every table; identity first, so it wins ties.
+    expression = min(
+        (
+            candidate
+            for order in _orders(n)
+            for candidate in _expressions(truth_table, n, order)
+        ),
+        key=len,
+    )
     compact = f"% 0 {expression}\n$\n"
     if width is None or max(map(len, compact.splitlines())) <= width:
         return compact

@@ -128,6 +128,7 @@ def test_eleven_inputs_sampled(shape: object) -> None:
 
 @pytest.mark.slow
 @pytest.mark.weekly
+@pytest.mark.cost_evidence("an n=11 cascade row outside the sampled residue classes")
 @pytest.mark.parametrize("part", range(_SWEEP_PARTS))
 @pytest.mark.parametrize("shape", [_dense, _parity])
 def test_eleven_inputs_every_row(shape: object, part: int) -> None:
@@ -160,6 +161,7 @@ def test_twelve_inputs_sampled(shape: object) -> None:
 
 @pytest.mark.slow
 @pytest.mark.weekly
+@pytest.mark.cost_evidence("an n=12 selector row outside the sampled residue classes")
 @pytest.mark.parametrize("part", range(_SWEEP_PARTS))
 @pytest.mark.parametrize("shape", [_dense, _parity])
 def test_twelve_inputs_every_row(shape: object, part: int) -> None:
@@ -201,6 +203,9 @@ def test_thirteen_inputs_sampled(shape: object) -> None:
 
 @pytest.mark.slow
 @pytest.mark.weekly
+@pytest.mark.cost_evidence(
+    "an n=13 answer-label row outside the sampled residue classes"
+)
 @pytest.mark.parametrize("part", range(_SWEEP_PARTS))
 @pytest.mark.parametrize(
     "shape", [_dense, _parity, lambda n: "0" * 2**n, lambda n: "1" * 2**n]
@@ -274,6 +279,7 @@ def test_fourteen_inputs_sampled(shape: object) -> None:
 
 @pytest.mark.slow
 @pytest.mark.weekly
+@pytest.mark.cost_evidence("an n=14 cascade row outside the sampled levels")
 @pytest.mark.parametrize(
     "shape", [_dense, _parity, lambda n: "0" * 2**n, lambda n: "1" * 2**n]
 )
@@ -332,6 +338,7 @@ def test_digit_builds_sampled(n: int, shape: object) -> None:
 
 @pytest.mark.slow
 @pytest.mark.weekly
+@pytest.mark.cost_evidence("an n=15 or n=16 positional row outside the 1-in-128 sample")
 @pytest.mark.parametrize("part", range(_SWEEP_PARTS))
 @pytest.mark.parametrize("n", [15, 16])
 def test_digit_builds_every_row(n: int, part: int) -> None:

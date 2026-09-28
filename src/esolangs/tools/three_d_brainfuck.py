@@ -47,7 +47,8 @@ def three_d_brainfuck(truth_table: str) -> str:
     inputs (most significant first).  Input ``k`` is read into ``(k, 0,
     0)`` and its flag sits at ``(k, 1, 0)``; a node sets the flag, tests
     the bit and clears the flag inside, then tests the flag for the zero
-    side, so exactly one side fires and both cells are left zero.  The
+    side, so exactly one side fires and both cells are left zero; a
+    constant zero side needs no flag.  The
     answer cell is one step along z from the last input tested, which is
     where every full-depth leaf ends up.
     """
@@ -62,9 +63,11 @@ def _three_d_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """
     n = _validate_truth_table(truth_table)
     out: list[str] = []
-    pos: _Cell = (0, 0, 0)
     # Beside the deepest test, so a full-depth leaf pays one move for it.
     result: _Cell = (perm[n - 1], 0, 1)
+    multiplier: _Cell = (0, 1, 1)
+    # The array is unbounded and all zero, so the run starts on the multiplier.
+    pos = multiplier
 
     def move(target: _Cell) -> None:
         nonlocal pos
@@ -76,11 +79,8 @@ def _three_d_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # the program at n == 4 and 70% at n == 2.  The third axis is what makes it
     # cheap -- the counter and the multiplier sit off the input row and its
     # flag plane, so the loop body walks the row and nothing else.
-    multiplier: _Cell = (0, 1, 1)
     counter: _Cell = (0, 0, -1)
     span, step = 6, _ASCII_ZERO // 6
-
-    move(multiplier)
     out.append("+" * span)
     out.append("[-")
     move(counter)
@@ -109,38 +109,57 @@ def _three_d_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         span = 2 ** (n - level)
         return truth_table[combo] if is_constant(combo, combo + span) else None
 
-    def branch(level: int, combo: int) -> None:
-        """Emit one side of node ``level``: a leaf when constant, else a subtree."""
+    def branch(level: int, combo: int, paid: int) -> None:
+        """Emit one side of node ``level``: a leaf when constant, else a subtree.
+
+        ``paid`` (0 or 1) is what the answer cell already holds for this
+        side, so a leaf adds its value less that.
+        """
         value = constant(level + 1, combo)
         if value is None:
             move((perm[level + 1], 0, 0))
-            node(level + 1, combo)
-        elif value == "1":
+            node(level + 1, combo, paid)
+        elif int(value) != paid:
             move(result)
-            out.append("+")
+            out.append("+" if value == "1" else "-")
 
-    def node(level: int, combo: int) -> None:
-        """Emit node ``level``: test its bit and leave both its cells zero."""
+    def node(level: int, combo: int, paid: int) -> None:
+        """Emit node ``level``: test its bit and leave both its cells zero.
+
+        A constant zero-side needs no flag: its value is added up front and
+        the one-side, the bit's loop alone, is built on top of it.
+        """
         bit: _Cell = (perm[level], 0, 0)
         flag: _Cell = (perm[level], 1, 0)
         one = combo | (1 << (n - 1 - level))
+        zero = constant(level + 1, combo)
+        if zero is not None:
+            if int(zero) != paid:
+                move(result)
+                out.append("+" if zero == "1" else "-")
+            move(bit)
+            out.append("[-")
+            branch(level, one, int(zero))
+            move(bit)
+            out.append("]")
+            return
         move(flag)
         out.append("+")  # flag = 1, pending
         move(bit)
         out.append("[-")  # one-side: if the bit is set, and clear it to exit
         move(flag)
         out.append("-")  # the one-side ran, so the zero-side must not
-        branch(level, one)
+        branch(level, one, paid)
         move(bit)
         out.append("]")
         move(flag)
         out.append("[-")  # zero-side: the flag survived, so the bit was 0
-        branch(level, combo)
+        branch(level, combo, paid)
         move(flag)
         out.append("]")
 
     move((perm[0], 0, 0))
-    node(0, 0)
+    node(0, 0, 0)
 
     # Exactly one leaf fired, so the offset is paid once, here.
     # Exactly one leaf fired, and the answer cell already holds the offset,

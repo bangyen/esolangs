@@ -3,7 +3,7 @@
 The rule the family is built on -- each input embedded exactly once, at equal
 width, with the slots in name order -- is checked here across all of them.
 The languages with a source file of their own have a test file to match:
-test_boolean_one_two_three, _arrowqueue, _eval, _back and _nocomment.
+test_boolean_one_two_three, _arrowqueue, _eval, _back, _nocomment and _ram0.
 """
 
 import importlib
@@ -314,6 +314,7 @@ class TestParameterizedBIO:
             ("01101001", 3),  # XOR3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools import parameterized
@@ -419,6 +420,7 @@ class TestParameterizedBitdeque:
             ("1111111100000000", 4),  # top half
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools import parameterized
@@ -430,6 +432,7 @@ class TestParameterizedBitdeque:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         from esolangs.tools import parameterized
@@ -551,126 +554,6 @@ class TestParameterizedBitdeque:
         assert all(b <= 2 * a for a, b in pairwise(filled))
 
 
-class TestParameterizedRam0:
-    """Input-by-substitution boolean generator for the no-input language RAM0.
-
-    RAM0 prints a full state dump at halt; the generator's answer is the
-    final ``z`` value, read from the dump's ``z: N`` line.
-    """
-
-    def run_ram0(self, prog: str) -> str:
-
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.ram0 import run
-
-        io = ScriptedIO()
-        run(prog, io)
-        m = re.search(r"^z: (\d+)", io.getvalue(), re.MULTILINE)
-        assert m is not None
-        return m.group(1)
-
-    def instantiate(self, tpl: str, bits: list[int]) -> str:
-        """Fill through the shipped filler, not a copy of it.
-
-        ``Z`` resets absolutely, so the setter is the same at every
-        position -- ``Z A`` for a one, ``Z Z`` for a zero, two commands
-        either way -- which is what made a local copy look safe.  It is
-        still a second spelling of a construction the generator counts
-        positions against, and that is the shape that hung the suite when
-        Minsky Swap's copy drifted.
-        """
-        from tests.tools.fills import _fill_ram0
-
-        return _fill_ram0(tpl, bits)
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # majority
-            ("1111111100000000", 4),  # top half
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input produces the truth-table result."""
-        from esolangs.tools import parameterized
-
-        template = parameterized.ram0(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_ram0(self.instantiate(template, bits))
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        from esolangs.tools import parameterized
-
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            template = parameterized.ram0(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = self.run_ram0(self.instantiate(template, bits))
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
-    def test_template_is_input_independent(self) -> None:
-        """The template has one run per input, not hardcoded bits."""
-        from esolangs.tools import parameterized
-        from esolangs.tools.helpers import TEMPLATE_CHAR, runs
-        from esolangs.tools.ram0 import PAIR as RAM0_PAIR
-
-        template = parameterized.ram0("0110")
-        assert "{X" not in template
-        assert len(runs(template, TEMPLATE_CHAR, (RAM0_PAIR,) * 2)) == 2
-
-    def test_constant_table_is_a_leaf(self) -> None:
-        """A constant table emits a single leaf with no branching."""
-        from esolangs.tools import parameterized
-
-        template = parameterized.ram0("0000")
-        assert template.count("C") == 1  # entry trampoline only
-        assert "Z" in template
-
-    def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
-        """Every leaf jumps to 2; only the trampoline names the end."""
-        from esolangs.tools import parameterized
-
-        template = parameterized.ram0("01101001")
-        tokens = template.split()
-        assert tokens[0] == "C"
-        assert tokens.count("2") == 8
-
-    def test_linear_lookup_executes_wide_rows(self) -> None:
-        """The straight-line RAM table returns sampled six-input rows."""
-        from esolangs.tools import parameterized
-
-        n = 6
-        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        template = parameterized.ram0(table)
-        for row in (0, 1, 2, 7, 31, 32, 62, 63):
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-            assert self.run_ram0(self.instantiate(template, bits)) == table[row]
-
-    def test_linear_lookup_growth(self) -> None:
-        """Wide parity templates grow by at most the table-size ratio."""
-        from esolangs.tools import parameterized
-
-        sizes = []
-        for n in range(11, 15):
-            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            sizes.append(len(parameterized.ram0(table)))
-        assert all(b <= 2 * a for a, b in pairwise(sizes))
-
-
 class TestParameterizedMinskySwap:
     """Input-by-substitution boolean generator for the no-input language Minsky Swap.
 
@@ -721,6 +604,7 @@ class TestParameterizedMinskySwap:
             ("1111111100000000", 4),  # top half
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools import parameterized
@@ -732,6 +616,7 @@ class TestParameterizedMinskySwap:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         from esolangs.tools import parameterized
@@ -853,6 +738,7 @@ class TestParameterizedBfpda:
             ("1111111100000000", 4),  # top half
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools import parameterized
@@ -864,6 +750,7 @@ class TestParameterizedBfpda:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         from esolangs.tools import parameterized
@@ -882,7 +769,8 @@ class TestParameterizedBfpda:
 
         template = parameterized.bfpda("0110")
         assert "{X" not in template
-        assert template.startswith("<@$$$$<@$$$$")
+        # The first marker's ``<`` is dropped: ``@`` pushes a 1 onto the empty stack.
+        assert template.startswith("@$$$$<@$$$$")
 
     def test_program_structure(self) -> None:
         """Each input is embedded once (pre-loaded), not re-embedded per node."""
@@ -893,17 +781,34 @@ class TestParameterizedBfpda:
 
         template = parameterized.bfpda("0110")
         # ``runs`` refuses a stray ``$``, so two spans is exactly two embeds
-        assert runs(template, "$", (BFPDA_PAIR,) * 2) == [(2, 6), (8, 12)]
+        assert runs(template, "$", (BFPDA_PAIR,) * 2) == [(1, 5), (7, 11)]
         assert "{C0}" not in template  # the marker is a constant, not a complement
         assert "{C1}" not in template
 
-    def test_leaf_print_is_balanced(self) -> None:
-        """A leaf pops the remaining bits, prints the answer, and pops it."""
+    def test_leaf_leaves_the_stack_empty(self) -> None:
+        """A zero drains and prints the empty stack; a one prints the bottom marker.
+
+        Both arms of a node end on an empty stack, so the ``]`` closing
+        each exits without a pushed zero, and nothing is left to pop.
+        """
         from esolangs.tools import parameterized
 
-        template = parameterized.bfpda("10")  # NOT: one-leaf prints 1
-        assert "<@.>" in template
-        assert "<.>" in template
+        assert parameterized.bfpda("10") == "@$$$$[>>.]>[>@.>]"  # NOT
+        assert parameterized.bfpda("0110") == (
+            "@$$$$<@$$$$[>>[>>.]>[>@.>]]>[>[>>@.>]>[>.]]"  # XOR
+        )
+
+    def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
+        """Total emitted bytes over every three-input table.
+
+        24127 while each arm pushed a zero to break its loop and popped it
+        after, and each leaf pushed its answer; 17578 once the arms end on
+        the empty stack a leaf leaves behind.
+        """
+        from esolangs.tools import parameterized
+
+        total = sum(len(parameterized.bfpda(format(v, "08b"))) for v in range(256))
+        assert total == 17578
 
 
 class TestParameterizedHomeRow:
@@ -954,6 +859,7 @@ class TestParameterizedHomeRow:
             ("1111111100000000", 4),  # top half
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools import parameterized
@@ -965,6 +871,7 @@ class TestParameterizedHomeRow:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         from esolangs.tools import parameterized
@@ -1012,6 +919,28 @@ class TestParameterizedHomeRow:
         assert len(runs(template, "$", (HOME_ROW_PAIR,) * 2)) == 2
         assert "{C0}" not in template
         assert "{C1}" not in template
+
+    def test_rows_that_agree_with_the_last_share_its_leaf(self) -> None:
+        """Only the rows before the table's trailing run get a guarded leaf."""
+        from esolangs.tools import parameterized
+
+        setup = "aaaaaalsffaaaaaaaaffflf$$lsffffaafl$$lsffffafl"
+        assert parameterized.home_row("0111") == setup + "fffflflfflk;lffffak"
+        assert parameterized.home_row("0110") == setup + (
+            "fffflsflfflk;lfflsflfflak;lfflflfflak;lffffk"
+        )
+
+    def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
+        """Total emitted bytes over every three-input table.
+
+        49378 while every leaf re-raised a flag, fanned the index into a
+        working copy and restored it; 37410 once a leaf only decrements and
+        steps; 34521 once the rows agreeing with the last share its leaf.
+        """
+        from esolangs.tools import parameterized
+
+        tables = (format(v, "08b") for v in range(256))
+        assert sum(len(parameterized.home_row(t)) for t in tables) == 34521
 
 
 @pytest.mark.slow  # 2.6s: every fill of every parameterized generator

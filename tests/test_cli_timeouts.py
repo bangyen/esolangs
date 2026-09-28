@@ -92,10 +92,6 @@ class TestATimeoutHasOneExitCode:
 
 # 3.0s over 12 tests: waits out a real timeout.
 @pytest.mark.medium
-# 3.0s over 12 tests: waits out a real timeout.
-@pytest.mark.medium
-# 3.0s over 12 tests: waits out a real timeout.
-@pytest.mark.medium
 class TestATimeoutIsNotAProgramError:
     """They shared exit 1, so a script could not tell them apart."""
 
@@ -233,6 +229,7 @@ class TestTimeoutValuesAreCheckedOnce:
 class TestRunCanBeBounded:
     """Several of these languages loop forever by design."""
 
+    @pytest.mark.medium
     def test_timeout_stops_a_program_that_never_halts(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -530,6 +527,7 @@ class TestDebugMirrorsRunsExitCodes:
             call_main(["debug", "brainfuck", str(path)], capsys, stdin="")
         assert exc.value.code == 1
 
+    @pytest.mark.medium
     def test_a_timeout_exits_124(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:

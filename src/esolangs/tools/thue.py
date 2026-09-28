@@ -1,15 +1,14 @@
-"""Thue boolean program builder: twenty-one rules that halve one table.
+"""Thue boolean program builder: nineteen rules that halve one table.
 
 The table is the starting state, one character an entry; reading a bit
 replaces each adjacent *pair* with one of the two, so the state halves per
-input and the last character is the answer, for ``T + 199`` characters.
+input and the last character is the answer, for ``T + 187`` characters.
 Entries are bit-reversed: pairs differ in the *least* significant index bit,
 inputs arrive most significant first, and no rewrite can select a half.
 
-Thue draws which rewrite to make, and these rules leave nothing to draw:
-every state reached has one applicable rule at one position, which makes the
-answer reproducible without pinning the language's randomness.  Asserted to
-``n = 3`` under three seeds and the unseeded draw, in the classics tests.
+Thue draws which rewrite to make; these rules leave nothing to draw (every
+state reached has one rule at one position), so the answer is reproducible
+unpinned, as the classics tests assert to ``n = 3`` under several draws.
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ from __future__ import annotations
 from esolangs.tools.helpers import _validate_truth_table
 
 #: Entries are ``a``/``b`` so a ``0``/``1`` input line is never mistaken for
-#: one; ``L``/``E`` are sentinels and ``M``/``P``/``Q``/``R`` the markers.
+#: one; ``L``/``E`` are sentinels, ``M``/``R`` and the read ``0``/``1`` markers.
 _RULES = "\n".join(
     [
         # One entry left: print it and empty the state, which halts.
@@ -30,20 +29,18 @@ _RULES = "\n".join(
         "LRba::=LMba",
         "LRbb::=LMbb",
         "M::=:::",
-        "0::=P",
-        "1::=Q",
-        # ``P`` keeps the first of each pair and ``Q`` the second; the
-        # unprocessed suffix stays even, so a marker never meets one entry.
-        "Paa::=aP",
-        "Pab::=aP",
-        "Pba::=bP",
-        "Pbb::=bP",
-        "PE::=RE",
-        "Qaa::=aQ",
-        "Qab::=bQ",
-        "Qba::=aQ",
-        "Qbb::=bQ",
-        "QE::=RE",
+        # The line read is the marker: ``0`` keeps the first of each pair, ``1``
+        # the second; the suffix left stays even, so none meets one entry.
+        "0aa::=a0",
+        "0ab::=a0",
+        "0ba::=b0",
+        "0bb::=b0",
+        "0E::=RE",
+        "1aa::=a1",
+        "1ab::=b1",
+        "1ba::=a1",
+        "1bb::=b1",
+        "1E::=RE",
         # Carry the marker back to the left sentinel for the next round.
         "aR::=Ra",
         "bR::=Rb",

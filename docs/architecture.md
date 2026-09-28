@@ -17,17 +17,13 @@ interpreter module ◄──── source + encoded stdin ◄──┘
     └── make_vm() ──► step-and-inspect state
 ```
 
-`src/esolangs/registry/` is the integration source of truth.  Each
-`Language` records the display name, canonical id, interpreter module, source
-shape, and optional boolean generator.  `resolve` normalizes caller spelling;
-`RUNNERS` supplies the interpreter module and whether its source is passed as
-one string or split into lines.
+`src/esolangs/registry/` is the integration source of truth. Each `Language`
+records its names, interpreter, source shape, and optional generator. `resolve`
+normalizes spelling; `RUNNERS` selects whole-source or split-line input.
 
-`generate` calls the registered generator with a truth table.  Most generators
-return runnable source.  Languages that embed inputs return a template, each
-input a run of `$` as long as its setter; `instantiate` fills one copy per
-input row.  `encode_inputs` handles the other
-languages' stdin conventions.  Generator code lives under
+`generate` calls the registered generator. Most return runnable source;
+input-embedding languages return a `$`-placeholder template for `instantiate`.
+`encode_inputs` handles stdin conventions. Generators live in
 `src/esolangs/tools/`.
 
 `run` loads the registered module from `src/esolangs/interpreters/`, constructs

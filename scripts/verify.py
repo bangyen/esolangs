@@ -21,12 +21,9 @@ everything (see ``scripts/_scope.py``).  ``--full`` forces that too, and CI
 still runs the complete suite on every push regardless.
 
 A default run also leaves work to CI where CI already covers it: the steps in
-``FULL_ONLY`` and the ``slow`` marker in both test suites -- pytest's (the
-fuzzers' divergence-detection tests, which CI runs by that same marker and
-errors on if they skip) and
-tests/interpreters's (its two 5.2s render round trips, which CI's ``line`` job runs
-unfiltered).  ``--full``, ``just test-full``, and an explicit ``--only`` all
-still run them.
+``FULL_ONLY`` and pytest's ``slow`` and ``weekly`` markers.
+``--full`` adds ``FULL_ONLY`` and ``slow``; only an explicit ``--only`` or the
+scheduled workflow runs ``weekly``.
 
 The steps do not all run one after another.  ``pytest`` is the longest, so it
 is launched first and the one-core steps run while it goes; ``pre-commit``
@@ -95,9 +92,10 @@ PY = python_cmd()
 # still run under --full, under an explicit --only, and via `just test-full`.
 FULL_ONLY: frozenset[str] = frozenset()
 
-# Named once: the step table, STEP_SCOPE and the slow-marker filter all refer
-# to this step, and a typo in any of them would silently stop matching.
-LINE_STEP = "Line interpreter suites"
+# Both local tiers exclude the weekly probes. A default run also excludes the
+# slow band; --full includes it.
+LOCAL_PYTEST_MARKS = "not slow and not weekly"
+FULL_PYTEST_MARKS = "not weekly"
 
 # How often the long step reports that it is still going.  Short enough that
 # the wait never looks stalled, long enough that a normal run prints only a
@@ -111,31 +109,12 @@ HEARTBEAT_SECONDS = 20.0
 DIFF_COVERAGE_STEP = "touched-file coverage"
 
 
-def _line_addopts(env: dict[str, str]) -> str:
-    """``PYTEST_ADDOPTS`` for the line step, deselecting the slow tests.
-
-    Composed with whatever the caller already set rather than replacing it,
-    so `PYTEST_ADDOPTS=-x just test` keeps its own flag.  A caller who has
-    already chosen a `-m` expression is left alone: two `-m` flags would let
-    the last one win, silently discarding theirs.
-
-    Both spellings count as a choice -- pytest takes the marker attached
-    (`-mslow`) as readily as separated (`-m slow`), and only the separated
-    form survives a plain membership test.
-    """
-    existing = env.get("PYTEST_ADDOPTS", "")
-    if any(word.startswith("-m") for word in existing.split()):
-        return existing
-    return f"{existing} -m 'not slow'".strip()
-
-
 # Which paths each step actually guards.  A step whose prefixes the branch did
 # not touch cannot have been broken by that branch, so a scoped run skips it.
 # A step absent from this table is always run: it is either cheap enough not to
 # matter or it guards the whole tree.  Prefixes are repo-relative.
 STEP_SCOPE: dict[str, tuple[str, ...]] = {
     "bandit": ("src/",),
-    LINE_STEP: ("tests/interpreters/",),
     "duplicate-code check (pylint)": ("src/esolangs/", "scripts/"),
     "dead definitions": ("src/", "scripts/"),
     # Only a generator, an interpreter (the step counts are executed), or the
@@ -198,24 +177,6 @@ STEPS = [
     # the collection's claims rest on, and until this step nothing measured
     # them outside a hand-run `just benchmark`.  192 measurements, ~3s.
     ("generator size baseline", [*PY, "scripts/check_generator_sizes.py"]),
-    (
-        # These also run under the plain `pytest` step above.  Repeated here
-        # under `--isolated --no-project`, which installs only pytest, so a
-        # green run proves the subtree pulls in no third-party dependency.
-        # The in-project run cannot show that.
-        LINE_STEP,
-        [
-            *PY,
-            "-m",
-            "pytest",
-            "tests/line/test_bf_to_line.py",
-            "tests/line/test_line_boolean.py",
-            "tests/line/test_mask.py",
-            "tests/raster/test_png.py",
-            "tests/line/test_simulate.py",
-            "-q",
-        ],
-    ),
     (
         # pylint's R0801 reports similar blocks across files, catching
         # copy-pasted helpers like the bracket matcher or the OISC memory
@@ -768,17 +729,9 @@ def main() -> int:
             #
             # Appended to argv rather than set in `addopts`, because pytest
             # *prepends* addopts: a default there would sit before the
-            # caller's own `-m` and lose to it, and `just test-quick`'s
-            # `-m 'not slow and not medium'` would then re-admit the band it
-            # exists to skip.
-            cmd = [*cmd, "-m", "not weekly" if full else "not slow"]
-        if only is None and not full and name == LINE_STEP:
-            # Not argv: the command ends in `pytest . -q` under `uv run
-            # --isolated`, so an appended flag would land after the path
-            # argument and be read by uv's pytest, not composed with the
-            # rest of the step's own options.  PYTEST_ADDOPTS is applied
-            # by pytest itself wherever it ends up running.
-            step_env = dict(env, PYTEST_ADDOPTS=_line_addopts(env))
+            # caller's own `-m` and lose to it. `just test-quick` supplies its
+            # own expression excluding all three deferred bands.
+            cmd = [*cmd, "-m", FULL_PYTEST_MARKS if full else LOCAL_PYTEST_MARKS]
         if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
             print(f"[skip] {name}: uv not installed")
             continue
@@ -793,11 +746,11 @@ def main() -> int:
     # fail on evidence it does not have.  A --full run has no such excuse.
     #
     # The deselection has two sources, and both have to be caught.  This file
-    # appends `-m "not slow"` itself, but `just test-quick` instead exports
-    # PYTEST_ADDOPTS and passes --only, which suppresses the append while
-    # pytest still reads the env var and runs the subset.  Keying on --only
-    # alone would leave that path enforcing strict subset data -- the exact
-    # false failure --partial exists to prevent, on the blessed fast loop.
+    # appends its local marker expression itself, but `just test-quick`
+    # instead exports PYTEST_ADDOPTS and passes --only, which suppresses the
+    # append while pytest still runs the subset. Keying on --only alone would
+    # leave that path enforcing strict subset data -- the false failure
+    # --partial exists to prevent.
     gate: tuple[str, list[str], dict[str, str]] | None = None
     if any(name == "pytest" for name, _, _ in runnable):
         gate_cmd = [*PY, "scripts/check_diff_coverage.py"]

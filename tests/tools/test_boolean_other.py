@@ -1,9 +1,9 @@
 """The generators still in :mod:`esolangs.tools.other`, and its neighbours.
 
-three_x, Container and Forbin from the facade itself, plus Packlang, Inject,
+three_x and Forbin from the facade itself, plus Packlang, Inject,
 Fargo and the Algebraic Programming Language.  The languages with a generator
 file of their own have a test file to match: test_boolean_laserfuck,
-_cvnc, _flowchart, _clockwise and _taglate.
+_cvnc, _flowchart, _clockwise, _taglate and _container.
 """
 
 import itertools
@@ -12,36 +12,16 @@ from itertools import pairwise
 
 import pytest
 
+import esolangs
 from esolangs import tools as boolean
+from esolangs.tools.helpers import best_input_order
 from tests.tools.boolean_runners import (
+    five_input_sample,
     run_algebraic_programming_language,
-    run_container,
     run_fargo,
     run_forbin_boolean,
     run_inject,
 )
-
-
-def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> str:
-    """Run a Container program under a hard tick budget and return its output.
-
-    :func:`run_container` has no cap, so a program that cannot terminate
-    presents as a hung suite rather than a failing test.  Container's own
-    ``_Machine`` is stepped here instead, which is what makes a tick count an
-    assertion.  Overrunning the budget is an error, not a truncated run.
-    """
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.other.container import _Machine
-
-    stream = ScriptedIO("".join(f"{line}\n" for line in inputs))
-    machine = _Machine(program.splitlines(), stream)
-    for _ in range(budget):
-        if machine.halted:
-            return stream.getvalue()
-        machine.step()
-    if not machine.halted:
-        raise AssertionError(f"still running after {budget} ticks")
-    return stream.getvalue()
 
 
 class TestPacklangPaintedArray:
@@ -56,9 +36,14 @@ class TestPacklangPaintedArray:
     """
 
     def test_a_constant_table_paints_per_block_not_per_row(self) -> None:
-        """Both fold routes: an all-zero block writes nothing, a full one fills."""
+        """Both fold routes: an all-zero block writes nothing, a full one fills.
+
+        A lone block is never filled -- the program paints its zeros and
+        prints ``49 ^ t`` instead -- so the fill shows beside a blank block.
+        """
         assert "INCR t(" not in boolean.packlang("0000")
-        assert "While q^4Do{" in boolean.packlang("1111")
+        assert "INCR t(" not in boolean.packlang("1111")
+        assert "While q^128Do{" in boolean.packlang("1" * 128 + "0" * 128)
         # A painted row costs eleven characters, so two per row is well
         # under the cheapest per-row program either constant could have.
         biggest = max(len(boolean.packlang(bit * 1024)) for bit in "01")
@@ -97,6 +82,7 @@ class TestInject:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result.
 
@@ -256,6 +242,7 @@ class TestForbinBoolean:
             ("01101001", 3),  # XOR3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.forbin(table)
@@ -321,9 +308,10 @@ class TestForbinBoolean:
 
 
 class TestFargo:
-    """The Fargo boolean generator: a recursively factored ANF."""
+    """The Fargo boolean generator: a recursively factored ANF, arms chosen."""
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_every_table_at_small_arity(self, n: int) -> None:
         """Exhaustive: every table, every input combination."""
         for value in range(2 ** (2**n)):
@@ -398,133 +386,47 @@ class TestFargo:
         sizes = [len(boolean.fargo("1" + "0" * ((1 << n) - 1))) for n in (7, 8)]
         assert sizes[1] < 2 * sizes[0] + 16
 
+    def test_choosing_arms_never_grows_a_program(self) -> None:
+        """No table to three inputs is longer than its positive factoring.
 
-class TestContainer:
+        The positive factoring in name order is the build before arms and
+        orders were chosen, and it stays a candidate, so they only shorten a
+        program: over three inputs the sweep falls from 9,556 characters to
+        8,202 with the arms, and to 7,576 with the four orders.
+        """
+        from esolangs.tools.fargo import _anf_coefficients, _anf_expression
+
+        before = after = 0
+        for n in (1, 2, 3):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                at = tuple(range(n))
+                positive = _anf_expression(_anf_coefficients(table), n, at)
+                old = len(f"% 0 {positive}\n$\n")
+                built = len(boolean.fargo(table))
+                assert built <= old, table
+                if n == 3:
+                    before += old
+                    after += built
+        assert (before, after) == (9556, 7576)
+
     @pytest.mark.parametrize(
-        ("table", "n"),
+        ("table", "expression"),
         [
-            ("01", 1),  # NOT
-            ("10", 1),
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111111", 4),  # constant one
+            # NOR3: each 1-arm is zero, so each node keeps its 0-arm negated
+            # where the positive factoring spelled all eight ANF terms.
+            ("10000000", "& ^ 1 @ 10 & ^ 1 @ 1 ^ 1 @ 0"),
+            # OR3: each 1-arm is constant one, so each node is ``f0 | x``.
+            ("01111111", "| | @ 0 @ 1 @ 10"),
         ],
     )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.container(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_container(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_structure(self) -> None:
-        """The program reads n inputs and advances prefix survivors."""
-        program = boolean.container("0110")
-        assert program.startswith("T:\n+1 T>=T")
-        assert ":" in program.splitlines()[:4]  # the empty-named reader
-        declarations = [
-            line[:-1].split("=", 1)[0]
-            for line in program.splitlines()
-            if line.endswith(":")
-        ]
-        generated = [
-            name
-            for name in declarations
-            if name not in {"", "T", "IN", "OUT", "PRINT", "EXIT"}
-        ]
-        assert len(generated) == len(set(generated))
-        assert program.count("PRINT:") == 1
-
-    def test_wide_tables_decode_every_row_inside_a_tick_budget(self) -> None:
-        """A *random dense* wide table answers every row in ``2n + 2`` ticks.
-
-        The cap is the point.  Its predecessor packed the table into one
-        decimal literal and subtracted ten per tick, so the tick count scaled
-        with that literal's magnitude, not its length: 2.2e6 ticks for eight
-        rows at ``n == 3``, hence ~1e126 at ``n == 7``.  The test that stood
-        here ran the same path at ``"011" + "0" * 125``, whose reversed
-        literal is the three digits ``110``, and so only ever exercised the
-        decoder at its cheapest possible input.  A representative table is
-        what discriminates, and the budget turns the old route's
-        non-termination into a failure rather than a hang.
-        """
-        rng = random.Random(20260922)
-        for n in (7, 8):
-            table = "".join(rng.choice("01") for _ in range(1 << n))
-            assert table.count("1") > (1 << n) // 4, "not a dense table"
-            program = boolean.container(table)
-            for combo in range(1 << n):
-                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-                got = _run_container_capped(program, bits, budget=2 * n + 2)
-                assert got == table[combo], f"n={n} row {combo}"
-
-    def test_name_allocation_steps_over_container_s_own_names(self) -> None:
-        """``_forbin_name`` reaches ``T`` at 45 and ``IN`` at 754, so it collides.
-
-        Both routes draw from one namespace, and the skip is live rather than
-        defensive: a generated container called ``T`` would be the tick
-        counter and a generated ``IN`` would be overwritten by every read.
-        """
-        from esolangs.tools.container import _RESERVED, _allocate_names
-
-        uses = {("node", 0, index): 1000 - index for index in range(800)}
-        names = _allocate_names(uses)
-        assert not _RESERVED & set(names.values())
-        assert len(set(names.values())) == len(uses)
-        # Descending use counts, so the allocation order is the key order.
-        assert [names[key] for key in list(uses)[:3]] == ["a", "b", "c"]
-
-    def test_wide_tables_read_exactly_n_inputs(self) -> None:
-        """The latch-and-gate route still reads one line per input."""
-        program = boolean.container("0110100110010110" * 8)
-        assert program.count("IN>=") == 7  # one latch per input, no rescan
-        assert program.count("PRINT:") == 1
-
-    def test_small_tree_uses_one_character_generated_names(self) -> None:
-        """Gates and survivors share one compact identifier namespace."""
-        declarations = [
-            line[:-1].split("=", 1)[0]
-            for line in boolean.container("01101001").splitlines()
-            if line.endswith(":")
-        ]
-        special = {"", "T", "IN", "OUT", "PRINT", "EXIT"}
-        assert all(len(name) == 1 for name in declarations if name not in special)
-
-    @pytest.mark.slow
-    def test_tree_removes_the_minterm_factor(self) -> None:
-        """Each additional row adds bounded tree work, not n tests."""
-        sizes = [len(boolean.container("01" * (2 ** (n - 1)))) for n in range(7, 11)]
-        assert all(b <= 2 * a + 4000 for a, b in itertools.pairwise(sizes))
-
-    def test_dense_tables_evaluate_the_complement(self) -> None:
-        """A dense table is summed from its zero rows and inverted.
-
-        ``OUT`` costs one ``+1 S{row}>=Gout`` line per row the table sends
-        to 1, so before this the length rose with the ones-count all the way
-        to the all-ones table.  Now it peaks at half and falls back
-        symmetrically, which is the signature of taking whichever row-set is
-        smaller.
-        """
-        lengths = [len(boolean.container("1" * k + "0" * (8 - k))) for k in range(9)]
-        assert lengths[4] == max(lengths)  # four ones is the worst case
-        assert lengths == lengths[::-1]  # and the curve is symmetric
-
-    @pytest.mark.parametrize("table", ["11111110", "11111111", "1110", "0111"])
-    def test_complemented_tables_still_compute(self, table: str) -> None:
-        """The inverted form answers the original table.
-
-        It starts ``OUT`` at 49 and subtracts one per surviving zero row, so
-        the printed byte is ``49 - S``; the container clamp at zero never
-        bites, since the value stays at 48 or 49.
-        """
-        n = (len(table) - 1).bit_length()
-        program = boolean.container(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_container(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
+    def test_a_node_keeps_its_cheap_arm(self, table: str, expression: str) -> None:
+        """Polarity is chosen per node by the construction, not by the fill."""
+        program = boolean.fargo(table)
+        assert program == f"% 0 {expression}\n$\n"
+        for combo in range(8):
+            bits = list(format(combo, "03b"))
+            assert run_fargo(program, bits) == table[combo]
 
 
 class TestThreeX:
@@ -793,6 +695,7 @@ class TestAlgebraicProgrammingLanguage:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result.
 
@@ -994,3 +897,59 @@ class TestAlgebraicProgrammingLanguageShapes:
 
         assert list(_NAMES) == sorted(_NAMES)
         assert len(set(_NAMES)) == len(_NAMES)
+
+    def test_constant_arms_need_no_guard(self) -> None:
+        """A node over a constant arm is one literal and one operator.
+
+        Inputs arrive as 0 or 1, so ``b`` needs no ``!!``, and a node whose
+        arms are both constant is its literal.  Over every three-input table
+        the program falls from 31,190 characters to 16,303 (the inline tree,
+        which the shared diagram now undercuts).
+        """
+        from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
+
+        tail = {
+            "0110": "((!a & b) | (a & !b))",
+            "0001": "(a & b)",
+            "0111": "(a | b)",
+            "1101": "(!a | b)",
+        }
+        for table, expression in tail.items():
+            program = boolean.algebraic_programming_language(table)
+            assert program.endswith(f"(a & b & 0) | {expression}")
+            self._check(table, 2)
+        total = sum(
+            len(best_input_order(f"{value:08b}", _apl_tree_ordered))
+            for value in range(256)
+        )
+        assert total == 16303
+
+    def test_the_reduced_diagram_skips_idle_tests_and_complements(self) -> None:
+        """Reducing the tree shrinks it, and no table grows.
+
+        A node whose halves agree is its half, and one that complements a
+        node built at its level is ``!`` of it.  16,303 characters over the
+        256 three-input tables fall to 16,067 (1.4%), and 42,875 over the
+        seeded five-input sample to 40,684 (5.1%).
+        """
+        from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
+
+        assert boolean.algebraic_programming_language("00011110").endswith(
+            "(a & b & c & 0) | ((!a & (b & c)) | (a & !(b & c)))"
+        )
+        assert boolean.algebraic_programming_language("0101010100110011").endswith(
+            "(a & b & c & d & 0) | ((!a & d) | (a & c))"
+        )
+        three = [f"{value:08b}" for value in range(256)]
+        for tables, before, after in (
+            (three, 16303, 16067),
+            (five_input_sample(), 42875, 40684),
+        ):
+            inline = [len(best_input_order(t, _apl_tree_ordered)) for t in tables]
+            reduced = [len(boolean.algebraic_programming_language(t)) for t in tables]
+            assert (sum(inline), sum(reduced)) == (before, after)
+            assert all(r <= i for r, i in zip(reduced, inline, strict=True))
+        for n in (4, 5, 6):
+            for value in (0x6996, 0x1234ABCD5678EF01, 0xF0F0CCCC5A5A3C3C):
+                table = format(value % 2**2**n, f"0{2**n}b")
+                assert esolangs.verify("Algebraic Programming Language", table)

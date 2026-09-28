@@ -13,7 +13,6 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
-from esolangs.tools.helpers import _ASCII_ONE, _ASCII_ZERO
 from esolangs.tools.register import (
     _DIG_BRANCH,
     _DIG_RETURN,
@@ -23,8 +22,6 @@ from esolangs.tools.register import (
 )
 from tests.tools.boolean_oracles import (
     _polynomial_tree,
-    _sophie_dag,
-    _sophie_tree,
 )
 from tests.tools.boolean_runners import (
     run_addsubjump,
@@ -35,8 +32,6 @@ from tests.tools.boolean_runners import (
     run_polynomial,
     run_polynomial_from,
     run_qoibl,
-    run_sophie,
-    run_sophie_from,
 )
 from tests.tools.test_boolean_contract import _parity
 
@@ -56,6 +51,7 @@ class TestAddSubJump:
             ("01101001", 3),  # XOR3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.addsubjump(table)
@@ -80,6 +76,16 @@ class TestAddSubJump:
             for row in range(8):
                 bits = [str((row >> shift) & 1) for shift in (2, 1, 0)]
                 assert run_addsubjump(program, bits) == table[row]
+
+    def test_three_input_total(self) -> None:
+        """The 256 three-input programs total 99,032 characters.
+
+        108,054 before every ``d`` operand named cell 7, a zero data word,
+        in place of the special zero ``-7``, and the entry stopped enabling
+        a flag mode nothing reads.
+        """
+        total = sum(len(boolean.addsubjump(f"{value:08b}")) for value in range(256))
+        assert total == 99032
 
     def test_every_path_reads_each_input_once(self) -> None:
         """A run consumes exactly ``n`` inputs, whatever the table.
@@ -124,6 +130,7 @@ class TestQoibl:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.qoibl(table)
@@ -230,6 +237,7 @@ class TestPolynomial:
             ("10000000", 3),  # OR-3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.polynomial(table)
@@ -539,6 +547,7 @@ class TestDig:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.dig(table)
@@ -691,129 +700,6 @@ class TestDig:
         assert boolean.dig("0110100110010110", 1)
 
 
-class TestSophie:
-    def test_hybrid_subsumes_both_routes(self) -> None:
-        """The hybrid is no longer than either prior construction through n=3."""
-        from esolangs.tools.register import _sophie_hybrid
-
-        improved = 0
-        for n in range(1, 4):
-            for value in range(1 << (1 << n)):
-                table = format(value, f"0{1 << n}b")
-                hybrid = _sophie_hybrid(table)
-                assert len(hybrid) <= min(
-                    len(_sophie_tree(table)), len(_sophie_dag(table))
-                )
-                improved += len(hybrid) < min(
-                    len(_sophie_tree(table)), len(_sophie_dag(table))
-                )
-        assert improved == 132
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111110", 4),  # NAND4
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.sophie(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_sophie(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_structure(self) -> None:
-        """A one-input function is a single conditional pair."""
-        assert boolean.sophie("10") == ";@$48{#$49,&}{#$48,&}"
-
-    def test_state_machine_merges_what_the_tree_cannot(self) -> None:
-        """A subtable that is not constant can still collapse to one state.
-
-        ``10101010`` is NOT of the last input: the nested tree branches at
-        every level, while every prefix leaves the same residual
-        subfunction, so the chain needs one state per level until the last.
-        The accumulator carries the state label between levels, which is
-        what a nested construction cannot express.
-        """
-        table = "10101010"
-        assert [len(level) for level in _polynomial_states(table, 3)] == [1, 1, 1, 2]
-        assert len(_sophie_dag(table)) < len(_sophie_tree(table))
-        program = boolean.sophie(table)
-        for combo in range(8):
-            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
-            assert run_sophie(program, [str(b) for b in bits]) == table[combo]
-
-    def test_merge_only_shrinks(self) -> None:
-        """No table comes out longer than the nested tree alone.
-
-        The hybrid inlines unshared states as tree branches, so labels only
-        pay for actual merges. At n == 3, 130 of 256 tables shrink.
-        """
-        improved = 0
-        for value in range(256):
-            table = format(value, "08b")
-            dispatched = len(boolean.sophie(table))
-            tree = len(_sophie_tree(table))
-            assert dispatched <= tree, table
-            improved += dispatched < tree
-        assert improved == 130
-
-    def test_merge_is_linear_where_the_tree_doubles(self) -> None:
-        """Parity needs two states per level however wide it gets.
-
-        Parity is the nested tree's worst case at every width -- nothing
-        folds, so it branches at all ``2**n - 1`` internal nodes -- and is
-        the merge's best, since the running parity is the whole state.  The
-        saving therefore grows with ``n`` rather than being a fixed trim.
-        """
-        previous = None
-        for n in (4, 5, 6):
-            parity = "".join(str(bin(row).count("1") % 2) for row in range(2**n))
-            assert [len(level) for level in _polynomial_states(parity, n)] == [1] + [
-                2
-            ] * n
-            ratio = len(_sophie_dag(parity)) / len(_sophie_tree(parity))
-            assert ratio < 1
-            if previous is not None:
-                assert ratio < previous  # the gap widens with n
-            previous = ratio
-
-    def test_every_path_reads_each_input_once(self) -> None:
-        """A run consumes exactly ``n`` inputs, whichever build won.
-
-        The tree spends the reads a folded leaf skipped; the state machine
-        reads once inside the single block each level's chain fires.  An
-        exhaustible feed proves both directions -- an over-read raises, a
-        leftover proves an under-read.
-        """
-        for table, n in (("10101010", 3), ("11111111", 3), ("01101001", 3)):
-            program = boolean.sophie(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                feed = iter([str(b) for b in bits])
-                got = run_sophie_from(program, feed)
-                assert got == table[combo], f"{table} inputs {bits}"
-                assert not list(feed), f"{table} inputs {bits} left input unread"
-
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant slice prints outright, but still reads its inputs.
-
-        Sophie reads *inside* the tree -- a node is ``;`` then its branch
-        -- so a folded leaf carries the ``;`` it skipped.  Dropping them
-        would make the program's input count depend on its table, which
-        :mod:`tests.tools.test_boolean_contract` rejects for every
-        generator.
-        """
-        assert boolean.sophie("1111") == ";;#$49,&"
-        assert boolean.sophie("0000") == ";;#$48,&"
-        assert boolean.sophie("0110").count(";") == 3  # nothing folds
-
-
 class TestCollatzMultiverse:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -830,6 +716,7 @@ class TestCollatzMultiverse:
             ("1111111100000000", 4),  # top half
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.collatz_multiverse(table)
@@ -893,6 +780,48 @@ class TestCollatzMultiverse:
             assert program.count("DO PRINT.") == 1
             assert program.count("input") == 2  # n == 2, read once each
 
+    @pytest.mark.parametrize("n", [4, 5, 6])
+    @pytest.mark.medium
+    def test_sampled_wider_tables(self, n: int) -> None:
+        """Every row of sampled tables, with ignored inputs among them."""
+        rng = random.Random(n)
+        for _ in range(4):
+            table = "".join(rng.choice("01") for _ in range(2**n))
+            # An ignored first input, so the essential projection is exercised.
+            for shape in (table, table[: 2 ** (n - 1)] * 2):
+                program = boolean.collatz_multiverse(shape)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    assert run_collatz_multiverse(program, bits) == shape[combo]
+
+    def test_numbered_cells_halve_the_three_input_total(self) -> None:
+        """The plain build against the shipped one over every varied table.
+
+        The plain build stores each cell's value, so its decoder spans every
+        value up to the largest; the generator before numbering totalled
+        460296 over all 256 tables, the plain build now 450156 of the 254
+        varied ones (one-letter aliases only where they pay).
+        """
+        from esolangs.tools.register import _cm_build
+
+        varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
+        plain = sum(len(_cm_build(t, 3, [0, 1, 2], zero_top=None)) for t in varied)
+        built = sum(len(boolean.collatz_multiverse(t)) for t in varied)
+        assert (plain, built) == (450156, 218136)
+
+    def test_numbering_never_grows_a_program(self) -> None:
+        """The plain build is the first candidate, so no table gets longer."""
+        from esolangs.tools.register import _cm_build
+
+        rng = random.Random(0)
+        tables = [format(v, "08b") for v in range(1, 255)]
+        tables += ["".join(rng.choice("01") for _ in range(2**n)) for n in (4, 5, 6)]
+        for table in tables:
+            n = len(table).bit_length() - 1
+            plain = _cm_build(table, n, list(range(n)), zero_top=None)
+            assert plain is not None
+            assert len(boolean.collatz_multiverse(table)) <= len(plain), table
+
 
 class TestDecleq:
     @pytest.mark.parametrize(
@@ -909,6 +838,7 @@ class TestDecleq:
             ("01101001", 3),  # XOR3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.decleq(table)
@@ -985,102 +915,19 @@ class TestDecleq:
                 got = run_decleq(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
+    def test_untaken_jumps_target_zero(self) -> None:
+        """A jump no run can take is spelt ``0``, not the next address.
 
-def _depth_zero_labels(program: str) -> list[int]:
-    """Every ``@$N`` block label at the top level of ``program``.
-
-    Sophie dispatches by setting the accumulator with ``#$N`` and falling
-    through the top-level ``@$N{...}`` blocks, so two blocks sharing an
-    ``N`` means the first also fires.  48 and 49 are excluded: those are the
-    bit tests, which are not dispatch labels.
-    """
-    labels: list[int] = []
-    depth = index = 0
-    while index < len(program):
-        char = program[index]
-        if char == "{":
-            depth += 1
-        elif char == "}":
-            depth -= 1
-        elif char == "@" and depth == 0 and program[index + 1 : index + 2] == "$":
-            end = index + 2
-            while end < len(program) and program[end].isdigit():
-                end += 1
-            value = int(program[index + 2 : end])
-            if value not in (_ASCII_ZERO, _ASCII_ONE):
-                labels.append(value)
-            index = end
-            continue
-        index += 1
-    return labels
-
-
-class TestSophieLabelsAreUnique:
-    """Two blocks with one label make the first fire on the way past.
-
-    Labels used to come from two bands chosen by level parity, on the
-    reasoning that a fired block leaves a *next*-level label in the
-    accumulator which no remaining test in the chain can match.  That is
-    true of consecutive levels and consecutive levels are not the relation
-    that matters: unshared states are inlined, so a single top-level block
-    carries jumps originating at several depths, and levels 2 and 4 -- same
-    parity, same band -- were both targets from inside it.  Level 2 is
-    emitted first, so a jump meant for level 4 ran level 2 first and read
-    inputs the caller never supplied.
-
-    The failure is *shape*-dependent, not size-dependent, which is why it
-    survived: Sophie is correct on all 65536 tables at n <= 4, and collides
-    on 35% of random tables at n=7.
-    """
-
-    #: The smallest table that collides, found by exhaustive search upward.
-    MINIMAL = "00000000000000010000000100000100"
-
-    def test_the_minimal_colliding_table_computes(self) -> None:
-        """It raised ``read past the end of input: 5 lines supplied, read 6``."""
-        assert boolean.sophie(self.MINIMAL)  # builds, and always did
-        for combo in range(32):
-            bits = [(combo >> (4 - i)) & 1 for i in range(5)]
-            got = run_sophie(boolean.sophie(self.MINIMAL), [str(b) for b in bits])
-            assert got == self.MINIMAL[combo], bits
-
-    def test_the_minimal_table_has_no_duplicate_label(self) -> None:
-        """Its program carried two ``@$1`` blocks."""
-        labels = _depth_zero_labels(boolean.sophie(self.MINIMAL))
-        assert len(labels) == len(set(labels)), labels
-
-    @pytest.mark.parametrize("n", [5, 6, 7, 8])
-    def test_no_table_collides_at_any_arity(self, n: int) -> None:
-        """A structural check, so it reaches arities executing cannot afford.
-
-        Sampled rather than exhaustive, with a fixed seed: at n=8 the old
-        scheme collided on 88% of random tables, so twenty is ample to
-        catch a regression and cheap enough to run every time.  The shapes
-        that first exposed this are included by name, since a random sample
-        is exactly what missed it for so long.
+        A read falls through, a normalization chain stops at 1 or 2, the
+        index counter at 1, and a leaf's address operand far above 0, so
+        none of their targets is ever used.  Spelling them ``pc + 3`` cost
+        the 256 three-input tables 394,316 characters; ``0`` costs 327,842.
         """
-        rng = random.Random(n)
-        tables = ["".join(rng.choice("01") for _ in range(2**n)) for _ in range(20)]
-        tables.append("".join(str(int(bin(r).count("1") == 1)) for r in range(2**n)))
-        for table in tables:
-            labels = _depth_zero_labels(boolean.sophie(table))
-            assert len(labels) == len(set(labels)), (n, table)
-
-    def test_a_label_is_never_a_bit_value(self) -> None:
-        """48 and 49 are what a read leaves behind, so a block cannot own one.
-
-        Nothing else is reserved -- the interpreter parses a label as a
-        plain digit run -- so this is the whole constraint, and it binds
-        only once the count climbs past 47.
-        """
-        for n in (6, 7, 8):
-            table = "".join(str(int(bin(r).count("1") == 1)) for r in range(2**n))
-            labels = _depth_zero_labels(boolean.sophie(table))
-            assert _ASCII_ZERO not in labels
-            assert _ASCII_ONE not in labels
-
-    def test_the_scan_can_actually_see_a_duplicate(self) -> None:
-        """The positive control: a checker that never fires guards nothing."""
-        assert _depth_zero_labels("@$1{;}@$1{;}") == [1, 1]
-        assert _depth_zero_labels("@$1{@$1{;}}") == [1]  # nested is not top level
-        assert _depth_zero_labels(";@$48{#$48,&}{#$49,&}") == []  # bit tests only
+        cells = [int(tok) for tok in boolean.decleq("01101001").split()]
+        instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
+        assert [c for a, _b, c in instrs if a == -1] == [0, 0, 0]  # the reads
+        for rc in (18, 19, 20):  # each chain, then its one branch
+            assert instrs.count([rc, rc, 0]) == 47
+        assert instrs.count([17, 17, 0]) == 4 + 2 + 1  # the index weights
+        tables = [format(i, "08b") for i in range(256)]
+        assert sum(len(boolean.decleq(t)) for t in tables) == 327_842

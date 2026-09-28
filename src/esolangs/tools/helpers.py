@@ -5,7 +5,7 @@ and the generators take no ``n`` parameter.
 """
 
 from collections.abc import Callable, Iterable, Sequence
-from itertools import repeat
+from itertools import pairwise, repeat
 
 from esolangs.exceptions import TruthTableError
 
@@ -28,6 +28,110 @@ def constant_span_test(truth_table: str) -> Callable[[int, int], bool]:
         return count in (0, stop - start)
 
     return constant
+
+
+def subtree_ids(truth_table: str) -> list[list[int]]:
+    """Return an id for every subtable, equal ones at a level sharing one.
+
+    ``ids[d][k]`` names the ``k``-th subtable of ``2**(n - d)`` rows:
+    ``ids[0]`` is the whole table, ``ids[n]`` its rows.  A constant subtable
+    is ``0`` or ``1`` at every level, and any other id is fresh the first
+    time its pair of halves turns up, so ids ascend with first occurrence
+    along a level.  Built bottom-up from the child ids, one dict lookup a
+    node -- the quasi-reduced decision diagram, interned rather than
+    searched, in O(T).
+    """
+    n = _validate_truth_table(truth_table)
+    level = [int(bit) for bit in truth_table]
+    ids = [level]
+    fresh = 2
+    for _ in range(n):
+        seen: dict[tuple[int, int], int] = {}
+        above: list[int] = []
+        for zero, one in zip(level[::2], level[1::2], strict=True):
+            if zero == one and zero < 2:  # two equal constants stay one
+                above.append(zero)
+                continue
+            if (zero, one) not in seen:
+                seen[zero, one] = fresh
+                fresh += 1
+            above.append(seen[zero, one])
+        level = above
+        ids.append(level)
+    ids.reverse()
+    return ids
+
+
+def subtree_slot(
+    ids: list[list[int]], level: int, block: int, *, skip: bool
+) -> tuple[int, int, tuple[int, int]]:
+    """Name the subtree at ``block`` of ``level`` for a shared tree's lookup.
+
+    With ``skip``, a test whose halves agree is passed over for its zero
+    half.  The name is ``(level, id)`` for a node and ``(-1, bit)`` for a
+    leaf, which is the same code at every level.
+    """
+    while skip and level + 1 < len(ids) and ids[level][block] >= 2:
+        if ids[level + 1][2 * block] != ids[level + 1][2 * block + 1]:
+            break
+        level, block = level + 1, 2 * block
+    key = ids[level][block]
+    return level, block, (level, key) if key >= 2 else (-1, key)
+
+
+class SubtreeDiagram:
+    """The reduced diagram by subtree id, for a tree that hands a share down.
+
+    ``halves[key]`` are a node's zero and one halves and ``level[key]`` its
+    depth; ids are unique across levels, so an id alone names a node.  A
+    generator that pushes or binds a repeated subtree once, where its copies
+    all lie below, asks :meth:`reaches` whether a half still needs it and
+    :meth:`repeated_near` which subtrees are worth offering.  Both memoize
+    per id, so each is O(1) a node amortized for a fixed ``depth``.
+    """
+
+    def __init__(self, truth_table: str) -> None:
+        """Intern ``truth_table``'s subtrees and index each node's halves."""
+        self.ids = subtree_ids(truth_table)
+        self.halves: dict[int, tuple[int, int]] = {}
+        self.level: dict[int, int] = {}
+        for depth, (row, under) in enumerate(pairwise(self.ids)):
+            for block, key in enumerate(row):
+                if key >= 2 and key not in self.halves:
+                    self.halves[key] = (under[2 * block], under[2 * block + 1])
+                    self.level[key] = depth
+        self._reach: dict[tuple[int, int], bool] = {}
+        self._counts: dict[tuple[int, int], dict[int, int]] = {}
+
+    def reaches(self, key: int, target: int) -> bool:
+        """Whether node ``target`` is ``key`` or lies below it."""
+        if key == target:
+            return True
+        if key < 2 or self.level[key] >= self.level[target]:
+            return False
+        if (key, target) not in self._reach:
+            halves = set(self.halves[key])
+            found = any(self.reaches(half, target) for half in halves)
+            self._reach[key, target] = found
+        return self._reach[key, target]
+
+    def _count(self, key: int, depth: int) -> dict[int, int]:
+        """Count each node within ``depth`` levels below, equal halves once."""
+        if key < 2 or not depth:
+            return {}
+        if (key, depth) not in self._counts:
+            found: dict[int, int] = {}
+            for half in set(self.halves[key]):
+                below = self._count(half, depth - 1).items()
+                for name, count in [(half, 1), *below]:
+                    if name >= 2:
+                        found[name] = found.get(name, 0) + count
+            self._counts[key, depth] = found
+        return self._counts[key, depth]
+
+    def repeated_near(self, key: int, depth: int) -> list[int]:
+        """Return the nodes met twice or more within ``depth`` levels below."""
+        return [name for name, count in self._count(key, depth).items() if count > 1]
 
 
 def _validate_truth_table(truth_table: str) -> int:
@@ -431,13 +535,15 @@ def separated_tree_text(
     between: str,
     close: str,
     one_first: bool = False,
+    pair: Callable[[int, int], str] | None = None,
 ) -> str:
     """Return a folded decision tree as text, with a separator between halves.
 
     ``head`` opens a node and its first half, ``between`` closes that half
     and opens the other, and ``close`` ends the node; ``leaf(level, row)``
     writes a leaf, which a collapsed subtable reaches early.  ``one_first``
-    lays the one-half before the zero-half.
+    lays the one-half before the zero-half, and ``pair(level, mid)`` writes
+    a node whose halves are two different constants, split at row ``mid``.
 
     :func:`decision_tree_tokens` deliberately cannot act *between* the
     children, and a language whose branch is a delimited body -- FALSE's
@@ -461,6 +567,9 @@ def separated_tree_text(
             pieces.append(leaf(level, lo))
             continue
         mid = (lo + hi) // 2
+        if pair is not None and constant(lo, mid) and constant(mid, hi):
+            pieces.append(pair(level, mid))
+            continue
         halves = ((mid, hi), (lo, mid)) if one_first else ((lo, mid), (mid, hi))
         pieces.append(head)
         # Pushed back to front: the stack is popped, so this is source order.
