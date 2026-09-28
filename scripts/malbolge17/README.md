@@ -13,6 +13,8 @@ None of this is wired into the generator.
 - `decoder_s6_norepeat.p` -- six shared states decode a group of three cells
   (seven meanings each) for eight rows, realising all 256 answer vectors with
   no row reading a cell twice.
+- `decoder_s5_norepeat.p` -- five shared states with no re-read, the
+  minimum (four are excluded by exhaustive search).
 - `decoder_s5_repeats.p` -- five states, but 462 paths re-read a cell, which a
   destructive read forbids.
 - `decoder_s13_fixed_order.txt` -- the earlier thirteen-state decoder in which
