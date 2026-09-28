@@ -35,7 +35,7 @@ lookup and parameterized row to its scheme's measurable consequence (the
 `tree` and `minterms` rows carry no such per-row check); both are in the fast
 band and gate every push.  `tests/proofs/deep/` holds the proofs themselves,
 at two depths.
-`all_generators.py` runs a lemma battery against all 71: every single
+`all_generators.py` runs a lemma battery against all 72: every single
 row of the table demonstrably participates in the emitted program at the
 flip-tested arities, and the construction completes at every arity of a ladder
 on both table shapes.  That
@@ -283,6 +283,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Super SNUSP | tree | each folding pass removes at least one pending unit | linear: one `*` per entry; ANF only below five inputs |
 | Taglate | tree | — | linear, time n log: essential_inputs |
 | Thue | linear lookup | the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per input and the last character is the answer; the rules never overlap, so the language's random rule choice has nothing to choose | linear: T state characters, twenty-one fixed rules |
+| thisthat | tree | inputs append to one bistack row; each head pop drives the next alternating-axis decision node | linear: the planar H-tree has `O(sqrt(T))` width and height |
 | 3D Brainfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
 | 3x | tree | — | linear, time n log: essential_inputs; greedy order scoring, capped |
 | Underload | parameterized tree | equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors | linear: 7n input characters plus at most 11T - 4 tree characters |
@@ -346,6 +347,6 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 70 theoretical totality arguments and one
+Accordingly, this ledger records 71 theoretical totality arguments and one
 proved language exception; every other row is `Total` or theoretically total
 past a resource ceiling.

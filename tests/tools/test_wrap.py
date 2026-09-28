@@ -139,6 +139,7 @@ UNWRAPPABLE = {
     "stubs sit at fixed addresses, so reflowing loses the layout",
     "whitespace": "every space, tab and newline is a token or a number terminator",
     "thue": "a newline ends a rule, and the state's own newlines are part of it",
+    "thisthat": "the H-tree's nodes and wires occupy fixed grid coordinates",
 }
 
 # The narrower claim needed by the registry audit: these generators currently
@@ -164,6 +165,7 @@ WIDTH_EXCEPTIONS = {
         "minsky_swap",
         "nocomment",
         "thue",
+        "thisthat",
         "underload",
         "whitespace",
     )

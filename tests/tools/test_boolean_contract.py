@@ -575,6 +575,7 @@ _UNSHAPED = {
     # The table is the state and the bit read rewrites every pair down to
     # one, so nothing collapses and a 0% fold is the construction working.
     "thue",
+    "thisthat",  # fixed H-tree geometry; only the leaf glyphs vary
     "whitespace",
 }
 
@@ -1193,7 +1194,6 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         if name not in _DOCUMENTED_SIZES and LANGUAGES[name].boolean is not None
     )
     assert biggest[0] < 600_000, biggest
-    # Streetcode and B-tapemark each led here until their trees became flat
-    # lookups.  SLOW ACV MAMMALIAN leads now at 115707, roughly twice
-    # Malbolge's fixed 59049 store, so one name is stable where a set was not.
-    assert biggest[1] == "SLOW ACV MAMMALIAN", biggest
+    # thisthat's planar H-tree leads at 124937; its bounding rectangle carries
+    # whitespace as well as the live wires.
+    assert biggest[1] == "thisthat", biggest

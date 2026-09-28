@@ -72,6 +72,7 @@ from esolangs.tools.tape import (
     suffolk,
     three_d_brainfuck,
 )
+from esolangs.tools.thisthat import thisthat
 from esolangs.tools.thue import thue
 from esolangs.tools.unlambda import unlambda
 from esolangs.tools.vandevelo import vandevelo
@@ -144,6 +145,7 @@ __all__ = [
     "suffolk",
     "super_snusp",
     "taglate",
+    "thisthat",
     "three_d_brainfuck",
     "three_x",
     "thue",
