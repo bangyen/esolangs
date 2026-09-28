@@ -23,8 +23,17 @@ import pytest
 
 from esolangs.line.extract import extract
 from esolangs.line.line_boolean import line_boolean
-from esolangs.line.render import render
+from esolangs.line.render import Node, render
 from esolangs.line.simulate import IO, compile_program, run_compiled
+
+
+def _forks(node: Node | None) -> int:
+    """Count the ``?`` tests in a generated (loop-free) tree."""
+    if node is None:
+        return 0
+    if node.op == "?":
+        return 1 + _forks(node.zero) + _forks(node.nonzero)
+    return _forks(node.next)
 
 
 def _io(inputs: list[int]) -> tuple[IO, list[int]]:
@@ -131,6 +140,28 @@ class TestLineBoolean:
             tmp_path,
             rows=sorted(rows),
         )
+
+    def test_constants_test_nothing(self, tmp_path: Path) -> None:
+        """The positive control: a constant reads its inputs and prints."""
+        for table in ("0" * 8, "1" * 8):
+            assert _forks(line_boolean(table)) == 0
+            _check_truth_table(table, 3, tmp_path)
+        canvas = render(line_boolean("0" * 16))
+        assert len(canvas.pixels) * len(canvas.pixels[0]) < 100_000
+
+    def test_only_dependent_levels_are_tested(self, tmp_path: Path) -> None:
+        """A level whose halves agree is read but never tested."""
+        assert _forks(line_boolean("00001111")) == 1  # the first input alone
+        assert _forks(line_boolean("01010101")) == 1  # the last input alone
+        assert _forks(line_boolean("00010011")) == 4  # the full tree has 7
+        _check_truth_table("00010011", 3, tmp_path)
+        _check_truth_table("01010101", 3, tmp_path)
+
+    @pytest.mark.slow  # ~50s: 256 drawings through extract
+    def test_every_three_input_function(self, tmp_path: Path) -> None:
+        """Every pruned shape survives render -> extract -> simulate."""
+        for encoded in range(256):
+            _check_truth_table(f"{encoded:08b}", 3, tmp_path)
 
     def test_invalid_length_rejected(self) -> None:
         """A truth table whose length is not a power of two is rejected."""
