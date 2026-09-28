@@ -426,6 +426,18 @@ constant, lands in a block of plain source characters (no run-time writes),
 and routes through the existing label and hub machinery; it is estimated at
 about 8,400 of the 9,897 non-table cells, not measured.
 
+Layout caps that design. A constant injective in `T` needs its low five
+trits all 2, so `crazy(K, T) + 1` lands in one of only 32 fixed windows (the
+cells whose trits 5..9 are all 0 or 1), each a 94-cell pattern. Enumerating
+every digit-local tiling -- which trit is `t9`, all 105 pairings of the rest
+into digits, every missing-value choice and every `t9` role -- frees at most
+**8** of those windows from table cells: a window is free for nothing only
+when its fixed top trits already supply the pinned digits, and the five top
+trits hold at most two whole digits besides `t9`. Every landing cell in the
+best tiling's 8 windows admits all four labels, leaving 9,049 cells for code.
+The design needs one window per state and parity, so it fits only with at
+most four states; six give twelve.
+
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
