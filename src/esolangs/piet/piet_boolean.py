@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from functools import cache
 
 from esolangs.raster import Raster
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 
 from . import _COLOURS, BLACK
 
@@ -34,7 +34,14 @@ def _push(value: int) -> _Operation:
 
 
 def _operations(truth_table: str, inputs: int) -> list[_Operation]:
-    """Return stack operations for a linear table lookup."""
+    """Return stack operations for a linear table lookup.
+
+    Every input is read, but only the essential ones index the table: an
+    ignored input is popped, and the stored table is projected onto the rest.
+    """
+    essential = essential_inputs(truth_table, inputs)
+    kept = set(essential)
+    truth_table = read_at(truth_table, essential, inputs)
     operations: list[_Operation] = []
     for bit in truth_table:
         operations.append(_push(1))
@@ -43,10 +50,18 @@ def _operations(truth_table: str, inputs: int) -> list[_Operation]:
 
     # Accumulate the MSB-first input as a binary row number.
     operations.extend((_push(1), _Operation(_NOT)))
-    for _ in range(inputs):
-        operations.extend(
-            (_push(2), _Operation(_MULTIPLY), _Operation(_IN_NUMBER), _Operation(_ADD))
-        )
+    for i in range(inputs):
+        if i in kept:
+            operations.extend(
+                (
+                    _push(2),
+                    _Operation(_MULTIPLY),
+                    _Operation(_IN_NUMBER),
+                    _Operation(_ADD),
+                )
+            )
+        else:
+            operations.extend((_Operation(_IN_NUMBER), _Operation(_POP)))
 
     # roll expects [..., depth, rolls].  Swap T past the row number, then
     # -(row + 1) rotates the requested table entry to the top.
