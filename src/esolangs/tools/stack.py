@@ -10,6 +10,7 @@ from esolangs.tools.helpers import (
     essential_inputs,
     permute_truth_table,
     read_at,
+    subtree_ids,
 )
 
 Sinks = tuple[tuple[int, str], ...]
@@ -156,11 +157,16 @@ def forth(truth_table: str) -> str:
     ``1+``, and ``;`` pops, so a node that dups its key leaves the callee
     its own index -- an internal node is the fixed ``2*1++:;``.  Linear in
     the table.  ``;`` pops, so the last input is tested first, and that
-    order is kept.
+    order is kept.  A subtree equal to one already emitted at its level is
+    a call to it (:data:`_FORTH_SHARE`); the unshared build stays a
+    candidate, so sharing never lengthens a program.
     """
     n = _validate_truth_table(truth_table)
     natural = tuple(reversed(range(n)))
-    return _forth_ordered(permute_truth_table(truth_table, natural), natural)
+    table = permute_truth_table(truth_table, natural)
+    plain = _forth_ordered(table, natural)
+    shared = _forth_ordered(table, natural, share=True)
+    return shared if len(shared) < len(plain) else plain
 
 
 # The read that pushes one normalized input bit.
@@ -173,6 +179,14 @@ _FORTH_READ = ",68*-"
 #: do the same, and ``;`` calls -- constant at every depth, which is why the
 #: construction is linear.
 _FORTH_DISPATCH = "2*1++:;"
+
+#: A repeated node's body: ``-`` its distance back turns its index into its
+#: twin's, whose dispatch reaches the twin's children, so none is re-emitted.
+_FORTH_SHARE = "{}-:;"
+
+#: The least a subtree spends inline (a dispatch, two ``1+{0}`` scopes); a
+#: call is kept only when shorter, the local rule.
+_FORTH_SUBTREE_FLOOR = len(_FORTH_DISPATCH) + 2 * len("1+{0}")
 
 
 # How far a freshly-read bit can sink, and the ops that put it there.  ``v``
@@ -195,7 +209,9 @@ def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     return stack_programs(n, _FORTH_SINKS, _FORTH_READ)
 
 
-def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+def _forth_ordered(
+    truth_table: str, perm: tuple[int, ...], *, share: bool = False
+) -> str:
     """Emit one input order's Forþ program; see :func:`forth`.
 
     ``truth_table`` is already permuted; ``perm`` surfaces only in the
@@ -203,7 +219,8 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     top).  Returns ``""`` when unreachable.  The stack is balanced by
     construction and must be: an empty pop halts Forþ, and the definition
     counter sits under the bits.  Each dispatch consumes one bit and one
-    index and produces one index.
+    index and produces one index.  ``share`` calls a node's nearest emitted
+    twin (equal subtable, same level) in place of re-emitting its subtree.
     """
     n = _validate_truth_table(truth_table)
     wanted = tuple(reversed(perm))
@@ -233,6 +250,20 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     prog = []
     folded: set[int] = set()
+
+    def fold_below(m: int) -> None:
+        """Drop every scope under ``m``, grandchildren too, as unreachable."""
+        below = [2 * m + 1, 2 * m + 2]
+        while below:
+            child = below.pop()
+            folded.add(child)
+            if child <= last_internal:
+                below += [2 * child + 1, 2 * child + 2]
+
+    ids = subtree_ids(truth_table) if share else []
+    # Heap order is level order, so a twin is at the same level; a folded
+    # scope is never recorded, so a call lands on a defined one.
+    emitted: dict[int, int] = {}
     previous = 0  # the index the accumulator holds; 0 before anything is pushed
     for m in range(1, 2 ** (n + 1) - 1):
         if m in folded:
@@ -242,22 +273,23 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             continue
         if m <= last_internal:
             lo, hi = span_under(m)
+            depth = (m + 1).bit_length() - 1
+            key = ids[depth][m + 1 - (1 << depth)] if share else -1
+            twin = emitted.get(key) if share else None
+            call = _FORTH_SHARE.format(_forth_const(m - twin)) if twin else ""
             if constant(lo, hi):
-                # Every row under this node agrees, so answer here and drop
-                # the whole subtree -- a grandchild is as unreachable as a
-                # child, and marking one level leaves the deeper nodes
-                # emitted but never called.  The reads are outside the tree,
-                # so a folded program consumes its input as an unfolded one
-                # does.
+                # Every row under this node agrees, so answer here.  The
+                # reads are outside the tree, so a folded program consumes
+                # its input as an unfolded one does.
                 body = _forth_const(_ASCII_ZERO + int(truth_table[lo]))
-                below = [2 * m + 1, 2 * m + 2]
-                while below:
-                    child = below.pop()
-                    folded.add(child)
-                    if child <= last_internal:
-                        below += [2 * child + 1, 2 * child + 2]
+                fold_below(m)
+            elif call and len(call) < _FORTH_SUBTREE_FLOOR:
+                # The twin's subtree already answers for this one.
+                body = call
+                fold_below(m)
             else:  # internal node: dispatch on the top bit
                 body = _FORTH_DISPATCH
+            emitted[key] = m
         else:  # leaf: push the result byte
             body = _forth_const(_ASCII_ZERO + int(truth_table[m - last_internal - 1]))
         # The label is a step from the index on the stack, never the index

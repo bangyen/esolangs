@@ -11,6 +11,7 @@ from esolangs import tools as boolean
 from esolangs.tools import stack
 from esolangs.tools.helpers import permute_truth_table
 from tests.tools.boolean_runners import (
+    five_input_sample,
     run_bfstack,
     run_forth,
     run_grapheme,
@@ -35,6 +36,14 @@ def _forth_scope_keys(table: str) -> set[int]:
     while not machine.halted:
         machine.step()
     return set(machine.table)
+
+
+def _forth_plain(table: str) -> str:
+    """Forþ's build with no subtree shared: the fold alone, in natural order."""
+    from esolangs.tools.stack import _forth_ordered
+
+    natural = tuple(reversed(range(len(table).bit_length() - 1)))
+    return _forth_ordered(permute_truth_table(table, natural), natural)
 
 
 class TestGrapheme:
@@ -136,8 +145,11 @@ class TestForth:
         """More inputs mean more tree functions, and every input is read."""
         # Parity folds nothing under any order, so it spends the full tree.
         parity = "".join(str(bin(row).count("1") % 2) for row in range(32))
+        assert _forth_plain(parity).count("{") == 2 ** (5 + 1) - 2
+        # Sharing keeps two dispatching nodes a level (parity and its
+        # complement) and two calls to them: 2 + 4 * 3 + 4 leaves.
         program = boolean.forth(parity)
-        assert program.count("{") == 2 ** (5 + 1) - 2
+        assert program.count("{") == 18
         assert program.count(",68*-") == 5
 
     @pytest.mark.parametrize("n", [1, 2, 3])
@@ -170,11 +182,11 @@ class TestForth:
         Parity is what folds under no order at all, so it is the witness
         that the fold is doing work rather than the search hiding it.
         """
-        assert boolean.forth("1" * 8).count("{") == 2
-        assert boolean.forth("01" * 4).count("{") == 2
-        assert boolean.forth("0" * 4 + "1" * 4).count("{") == 14
+        assert _forth_plain("1" * 8).count("{") == 2
+        assert _forth_plain("01" * 4).count("{") == 2
+        assert _forth_plain("0" * 4 + "1" * 4).count("{") == 14
         parity = "".join(str(bin(row).count("1") % 2) for row in range(8))
-        assert boolean.forth(parity).count("{") == 2 ** (3 + 1) - 2
+        assert _forth_plain(parity).count("{") == 2 ** (3 + 1) - 2
 
     def test_folded_subtree_leaves_no_orphans(self) -> None:
         """Folding drops the whole subtree, not just the two children.
@@ -189,7 +201,9 @@ class TestForth:
         for one would pass whatever the generator emitted.
         """
         assert _forth_scope_keys("1" * 8) == {1, 2}
-        assert _forth_scope_keys("0" * 4 + "1" * 4) == set(range(1, 15))
+        # Node 2 repeats node 1 and node 4 repeats node 3, so each is a call
+        # and drops its subtree as a fold does: only 3's leaves remain.
+        assert _forth_scope_keys("0" * 4 + "1" * 4) == {1, 2, 3, 4, 7, 8}
         # The one-side fold keeps its sibling's descendants: AND's zero
         # subtree collapses to node 1 while 2 keeps 5 and 6.
         assert _forth_scope_keys("0001") == {1, 2, 5, 6}
@@ -201,9 +215,11 @@ class TestForth:
         natural = (2, 1, 0)
         for value in range(256):
             table = format(value, "08b")
-            assert boolean.forth(table) == _forth_ordered(
-                permute_truth_table(table, natural), natural
-            )
+            builds = [
+                _forth_ordered(permute_truth_table(table, natural), natural, share=s)
+                for s in (False, True)
+            ]
+            assert boolean.forth(table) == min(builds, key=len)
 
     def test_rotations_are_interleaved_with_the_reads(self) -> None:
         """Weaving the rotations into the reads reaches more arrangements.
@@ -277,6 +293,45 @@ class TestForth:
         buildable = (0, 1, 3, 2)
         assert tuple(reversed(buildable)) in reachable
         assert _forth_ordered(table, buildable) != ""
+
+    def test_sharing_totals(self) -> None:
+        """Calling a repeated subtree's twin cuts the totals, growing none.
+
+        28,672 characters over the 256 three-input tables before and 24,992
+        after (12.8%); 93,764 over the seeded five-input sample before and
+        63,240 after (32.6%), where more subtrees repeat.
+        """
+        three = [format(value, "08b") for value in range(256)]
+        for tables, before, after in (
+            (three, 28672, 24992),
+            (five_input_sample(), 93764, 63240),
+        ):
+            plain = [len(_forth_plain(table)) for table in tables]
+            shared = [len(boolean.forth(table)) for table in tables]
+            assert (sum(plain), sum(shared)) == (before, after)
+            assert all(s <= p for s, p in zip(shared, plain, strict=True))
+
+    def test_subtree_ids_intern_each_level(self) -> None:
+        """Equal subtables at a level share an id; constants are 0 and 1."""
+        from esolangs.tools.helpers import subtree_ids
+
+        assert subtree_ids("01101001") == [
+            [6],
+            [4, 5],
+            [2, 3, 3, 2],
+            [0, 1, 1, 0, 1, 0, 0, 1],
+        ]
+        assert subtree_ids("00001111") == [[2], [0, 1], [0, 0, 1, 1], [0] * 4 + [1] * 4]
+
+    def test_sharing_executes_at_four_to_six(self) -> None:
+        """A call lands on its twin's scope at every arity sampled."""
+        import random
+
+        rng = random.Random(0)
+        for n in (4, 5, 6):
+            for _ in range(8):
+                table = format(rng.getrandbits(2**n), f"0{2**n}b")
+                assert esolangs.verify("Forþ", table), table
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
