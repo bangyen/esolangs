@@ -940,16 +940,16 @@
   },
   "Unlambda": {
    "0110": {
-    "commands": 139,
-    "source_units": 91
+    "commands": 166,
+    "source_units": 87
    },
    "01101001": {
-    "commands": 205,
-    "source_units": 207
+    "commands": 243,
+    "source_units": 163
    },
    "0110100110010110": {
-    "commands": 271,
-    "source_units": 439
+    "commands": 320,
+    "source_units": 315
    }
   },
   "Unsquare": {

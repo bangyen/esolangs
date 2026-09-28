@@ -256,6 +256,40 @@ def test_false_runs_out_of_variables_and_writes_the_rest_inline() -> None:
     assert esolangs.verify("FALSE", table)
 
 
+def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
+    """Share-taking nodes cut both totals and lengthen no table.
+
+    A node returns ``s`` over its selected promises, so a repeated subtree
+    bound once as ```` `N`dX ```` is ``i`` wherever it recurs below, and a
+    node whose halves agree reads and runs the half.  41,074 characters over
+    the 256 three-input tables fall to 32,522 (20.8%), and 144,722 over the
+    seeded five-input sample to 100,963 (30.2%).
+    """
+    from esolangs.tools.unlambda import _plain
+
+    three = [format(value, "08b") for value in range(256)]
+    assert boolean.unlambda("01101001") == (
+        "``@`d`k``s``?0i`d`@`d`k``s``?0ii``?1i`d`@`d`k``s``?0i`d`.1v``?1i`d`.0v"
+        "``?1i`d`@`d`k``s``?1ii``?0i`d`@`d`k``s``?0i`d`.1v``?1i`d`.0v"
+        "`d`@`d`k``s``?0i`d`.0v``?1i`d`.1v"
+    )
+    for tables, before, after in (
+        (three, 41074, 32522),
+        (five_input_sample(), 144722, 100963),
+    ):
+        plain = [len(_plain(table)) for table in tables]
+        shared = [len(boolean.unlambda(table)) for table in tables]
+        assert (sum(plain), sum(shared)) == (before, after)
+        assert all(s <= p for s, p in zip(shared, plain, strict=True))
+    for table in five_input_sample()[::10]:
+        for row in range(32):
+            assert _read_answer("unlambda", table, row) == (table[row], 5)
+    for n in (4, 6):
+        for value in (0x6996, 0x1234ABCD5678EF01):
+            table = format(value % 2**2**n, f"0{2**n}b")
+            assert esolangs.verify("Unlambda", table), table
+
+
 def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
     """Its emission is the table plus a constant: ``T + 187`` characters.
 
@@ -309,11 +343,12 @@ def test_thue_answers_the_same_under_every_draw(table: str) -> None:
 def test_the_emissions_grow_by_a_line() -> None:
     """Successive differences at a fixed parity quadruple, exactly."""
     from esolangs.tools.false import _plain
+    from esolangs.tools.unlambda import _plain as _plain_unlambda
 
-    # FALSE's shipped build folds this table's equal halves, so its plain
-    # tree is the one measured.
+    # FALSE's and Unlambda's shipped builds fold and share this table's
+    # subtrees, so their plain trees are the ones measured.
     trees = (lambda table: _plain(table, len(table).bit_length() - 1),)
-    for generate in (*trees, boolean.thue, boolean.unlambda):
+    for generate in (*trees, boolean.thue, _plain_unlambda):
         sizes = [len(generate("01" * (2 ** (n - 1)))) for n in (4, 6, 8)]
         assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) == 4.0
 
