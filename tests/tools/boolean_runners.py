@@ -26,6 +26,20 @@ from esolangs.interpreters.randomness import FirstDraw
 from tests.interpreters.runner import run_program
 
 
+def five_input_sample(count: int = 200, seed: int = 0) -> list[str]:
+    """Return the seeded five-input tables a sharing gain is measured on.
+
+    The sample ``scripts/screens/sharing.py`` screens (``random.Random(0)``,
+    200 distinct tables, sorted): a repeated subtree's share grows with the
+    table, so a sharing build is pinned here as well as at three inputs.
+    """
+    rng = random.Random(seed)
+    found: set[str] = set()
+    while len(found) < count:
+        found.add(format(rng.getrandbits(32), "032b"))
+    return sorted(found)
+
+
 def _stdin(inputs: list[str]) -> str:
     """Join input lines into the single stdin string the runner takes.
 

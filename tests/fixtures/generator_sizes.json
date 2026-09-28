@@ -524,12 +524,12 @@
     "source_units": 72
    },
    "01101001": {
-    "commands": 81,
-    "source_units": 157
+    "commands": 73,
+    "source_units": 115
    },
    "0110100110010110": {
-    "commands": 141,
-    "source_units": 322
+    "commands": 97,
+    "source_units": 158
    }
   },
   "Grapheme": {

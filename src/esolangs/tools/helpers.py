@@ -30,6 +30,38 @@ def constant_span_test(truth_table: str) -> Callable[[int, int], bool]:
     return constant
 
 
+def subtree_ids(truth_table: str) -> list[list[int]]:
+    """Return an id for every subtable, equal ones at a level sharing one.
+
+    ``ids[d][k]`` names the ``k``-th subtable of ``2**(n - d)`` rows:
+    ``ids[0]`` is the whole table, ``ids[n]`` its rows.  A constant subtable
+    is ``0`` or ``1`` at every level, and any other id is fresh the first
+    time its pair of halves turns up, so ids ascend with first occurrence
+    along a level.  Built bottom-up from the child ids, one dict lookup a
+    node -- the quasi-reduced decision diagram, interned rather than
+    searched, in O(T).
+    """
+    n = _validate_truth_table(truth_table)
+    level = [int(bit) for bit in truth_table]
+    ids = [level]
+    fresh = 2
+    for _ in range(n):
+        seen: dict[tuple[int, int], int] = {}
+        above: list[int] = []
+        for zero, one in zip(level[::2], level[1::2], strict=True):
+            if zero == one and zero < 2:  # two equal constants stay one
+                above.append(zero)
+                continue
+            if (zero, one) not in seen:
+                seen[zero, one] = fresh
+                fresh += 1
+            above.append(seen[zero, one])
+        level = above
+        ids.append(level)
+    ids.reverse()
+    return ids
+
+
 def _validate_truth_table(truth_table: str) -> int:
     """Validate a truth table and return its input count ``n``.
 
