@@ -1,6 +1,6 @@
 """Screen every boolean generator for symmetry and pruning upside at n=3.
 
-The companion of ``screen_input_reorder.py``: each generator builds all 256
+The companion of ``input_reorder.py``: each generator builds all 256
 three-input tables (and all 16 two-input ones) once, and every column is a
 lookup over those sizes.  A percentage is ``100 * (1 - sum(min)/sum(own))``
 where ``min`` is the shortest build over the transformed tables:
@@ -23,14 +23,22 @@ the inverter a negated build needs, or a polarity flip that a uniform
 ``ignored`` column includes the read itself, which the interface keeps.
 """
 
+import sys
+from collections.abc import Callable
 from itertools import permutations
+from pathlib import Path
 from time import perf_counter
 
-from esolangs.registry import LANGUAGES
-from esolangs.tools.helpers import essential_inputs, permute_truth_table, read_at
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-TABLES = [format(i, "08b") for i in range(256)]
-PAIRS = [format(i, "04b") for i in range(16)]
+from _build import PAIRS, TABLES, generators, sizes
+
+from esolangs.tools.helpers import (
+    essential_inputs,
+    permute_truth_table,
+    read_at,
+)
+
 PERMS = list(permutations(range(3)))
 
 
@@ -43,39 +51,26 @@ def _flip(table: str, mask: int) -> str:
     return "".join(table[row ^ mask] for row in range(len(table)))
 
 
-def _sizes(gen: object, tables: list[str]) -> dict[str, int | None]:
-    """Build every table once; ``None`` marks an arity the generator refuses.
-
-    ``ValueError`` is the refusal; anything else is a real failure and
-    propagates.
-    """
-    assert callable(gen)
-    sizes: dict[str, int | None] = {}
-    for table in tables:
-        try:
-            sizes[table] = len(str(gen(table)))
-        except ValueError:
-            sizes[table] = None
-    return sizes
+Row = tuple[float, float, float, float, float]
 
 
-def screen(gen: object) -> tuple[float, float, float, float, float] | None:
+def screen(gen: Callable[[str], object]) -> Row | None:
     """Return (outneg %, inpol %, npn %, ignored chars, seconds), or None."""
     start = perf_counter()
-    sizes = _sizes(gen, TABLES)
-    pairs = _sizes(gen, PAIRS)
+    built_sizes = sizes(gen, TABLES)
+    pairs = sizes(gen, PAIRS)
     elapsed = perf_counter() - start
-    built = [t for t in TABLES if sizes[t] is not None]
+    built = [t for t in TABLES if built_sizes[t] is not None]
     if not built:
         return None
-    own = sum(sizes[t] or 0 for t in built)
+    own = sum(built_sizes[t] or 0 for t in built)
 
     def upside(candidates: object) -> float:
         assert callable(candidates)
         best = 0
         for table in built:
-            found = [s for c in candidates(table) if (s := sizes[c]) is not None]
-            best += min(found, default=sizes[table] or 0)
+            found = [s for c in candidates(table) if (s := built_sizes[c]) is not None]
+            best += min(found, default=built_sizes[table] or 0)
         return 100 * (1 - best / own)
 
     outneg = upside(lambda t: [t, _negate(t)])
@@ -94,7 +89,7 @@ def screen(gen: object) -> tuple[float, float, float, float, float] | None:
         if len(essential) == 2:
             projected = pairs[read_at(table, essential, 3)]
             if projected is not None:
-                extra.append((sizes[table] or 0) - projected)
+                extra.append((built_sizes[table] or 0) - projected)
     ignored = sum(extra) / len(extra) if extra else float("nan")
     return outneg, inpol, npn, ignored, elapsed
 
@@ -102,10 +97,8 @@ def screen(gen: object) -> tuple[float, float, float, float, float] | None:
 def main() -> None:
     """Screen the registry and print one row per language, best NPN first."""
     rows = []
-    for key, lang in sorted(LANGUAGES.items()):
-        if lang.boolean is None:
-            continue
-        result = screen(lang.boolean)
+    for key, gen in generators():
+        result = screen(gen)
         if result is None:
             continue
         rows.append((key, *result))
