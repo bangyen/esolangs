@@ -56,6 +56,10 @@ most significant first, matching the other generators in this package.
 * at most one unfinished signal per input level is live.  The fold performs
   one pass over the table and emits fewer than three gates per entry; it is
   neither a circuit search nor a graph traversal.
+* through seven inputs the fold is built for up to four *selector orders*
+  and the shortest drawing ships.  The rails keep their rows and read order;
+  only which rail each Shannon level selects moves, which is the table's
+  inputs renamed (:func:`_selector_orders`).
 
 **Constant tables need no muxes.**  Both are a single self-fed ``x`` or ``X``
 gate, the shape the wiki's own constant-output circuit uses.
@@ -73,8 +77,10 @@ from typing import Literal, cast
 
 from esolangs.tools._circuit_layout import _HOLD, _Layout, _RoutingLayout, _Shape
 from esolangs.tools.helpers import (
+    _greedy_input_order,
     _validate_truth_table,
     essential_inputs,
+    permute_truth_table,
     read_at,
 )
 
@@ -89,6 +95,12 @@ __all__ = ["circuit_diagram"]
 # each other (see the module docstring's note on the eight-way ``.``).
 _COL_STEP = 2
 _ROW_STEP = 2
+
+# The flat route's widest arity: from eight inputs an unconstrained build is
+# the H-layout, which is not reordered.  Selector orders are only chosen up
+# to here -- a width-bound build past it keeps the identity -- so their
+# scoring is bounded work and the wide route's generation stays O(T).
+_REORDER_MAX_ARITY = 7
 
 # H-layout lattice.  Every site sits on a multiple of eight in both axes, and
 # each wire class owns residues no other class uses, so wires of different
@@ -832,7 +844,106 @@ def _complemented_levels(truth_table: str, n: int) -> set[int]:
     return needed
 
 
-def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
+# A fold token that is a gate's output.  Unlike a constant or a rail it is
+# never the same signal twice, so two of them always take a real mux.
+_GATE = -1
+
+
+def _mux_cost(zero: int, one: int) -> tuple[int, bool]:
+    """Return what :func:`_mux` spends on a pair: gates, and whether ``~``."""
+    if zero == one and zero != _GATE:
+        return 0, False
+    if (zero, one) == (0, 1):
+        return 0, False
+    if (zero, one) == (1, 0):
+        return 0, True
+    if zero == 0 or one == 1:
+        return 1, False
+    if zero == 1 or one == 0:
+        return 1, True
+    return 3, True
+
+
+def _cheapest_selector_order(truth_table: str, n: int) -> tuple[int, ...]:
+    """Pick each Shannon level's rail bottom-up by what its muxes cost.
+
+    A level's cost is read straight off its pairs with :func:`_mux_cost`,
+    one per gate plus one for a complement.  The pairs a level sees do not
+    depend on the order *below* it -- a cofactor is a constant, a rail or a
+    gate whichever way it was folded -- so the bottom level is chosen first,
+    folded, and the next chosen over what is left.  Ties keep the identity's
+    rail.  Each level scores every remaining input over the remaining
+    table, so the whole choice is ``O(n * 2**n)``.
+    """
+    tokens = [int(bit) for bit in truth_table]
+    remaining = list(range(n))
+    bottom_up: list[int] = []
+    while len(remaining) > 1:
+        best_pos, best_cost = len(remaining) - 1, -1
+        for pos in range(len(remaining) - 1, -1, -1):
+            stride = 1 << (len(remaining) - 1 - pos)
+            cost, complement = 0, False
+            for block in range(0, len(tokens), 2 * stride):
+                for x in range(block, block + stride):
+                    gates, negated = _mux_cost(tokens[x], tokens[x + stride])
+                    cost += gates
+                    complement = complement or negated
+            cost += complement
+            if best_cost < 0 or cost < best_cost:
+                best_pos, best_cost = pos, cost
+        stride = 1 << (len(remaining) - 1 - best_pos)
+        rail = remaining.pop(best_pos)
+        folded = []
+        for block in range(0, len(tokens), 2 * stride):
+            for x in range(block, block + stride):
+                zero, one = tokens[x], tokens[x + stride]
+                if zero == one and zero != _GATE:
+                    folded.append(zero)
+                elif (zero, one) == (0, 1):
+                    folded.append(2 + 2 * rail)
+                elif (zero, one) == (1, 0):
+                    folded.append(3 + 2 * rail)
+                else:
+                    folded.append(_GATE)
+        tokens = folded
+        bottom_up.append(rail)
+    return tuple(remaining + bottom_up[::-1])
+
+
+def _selector_orders(truth_table: str) -> list[tuple[int, ...] | None]:
+    """Return the selector orders worth building, identity (``None``) first.
+
+    Only which rail each Shannon level selects moves; the rails themselves
+    are drawn, and read, in input order.  Three named candidates join the
+    identity: the shared greedy order
+    (:func:`~esolangs.tools.helpers._greedy_input_order`), which counts
+    constant cofactors; :func:`_cheapest_selector_order`, which counts this
+    fold's gates and complements; and the reversed identity, which hands
+    the bottom level -- the one with the most muxes -- the first rail.  None
+    of the three dominates: over all 256 three-input tables they save 7.4%,
+    12.5% and 13.6% alone and 19.6% together, against 19.8% for the best of
+    all six orders.  Four builds is the whole cost; nothing searches.
+    """
+    n = len(truth_table).bit_length() - 1
+    if n > _REORDER_MAX_ARITY:
+        return [None]
+    used = essential_inputs(truth_table, n) or [0]
+    table = read_at(truth_table, used, n)
+    identity = tuple(range(len(used)))
+    orders: list[tuple[int, ...] | None] = [None]
+    for order in (
+        _greedy_input_order(table, len(used)),
+        _cheapest_selector_order(table, len(used)),
+        identity[::-1],
+    ):
+        if order != identity and order not in orders:
+            orders.append(order)
+    return orders
+
+
+def _circuit_diagram_at(
+    truth_table: str, limit: int | None, perm: tuple[int, ...] | None = None
+) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -850,6 +961,10 @@ def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
     must still sit right of every bus it reads,
     since the run feeding it travels along its row, so what is reused is the
     leftmost dead group past those buses.  Four inputs: 219 columns to 99.
+
+    ``perm`` renames the essential inputs' levels: level ``k`` selects rail
+    ``perm[k]``.  The input rows are drawn first and in input order either
+    way.
     """
     _validate_truth_table(truth_table)
 
@@ -868,6 +983,9 @@ def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
         rails = [rails[i] for i in used]
         truth_table = table
         n = len(used)
+    if perm is not None:
+        truth_table = permute_truth_table(truth_table, perm)
+        rails = [rails[i] for i in perm]
 
     complemented = _complemented_levels(truth_table, n)
     selectors: list[list[int | None]] = [
@@ -892,6 +1010,13 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     See :func:`_circuit_diagram_at` for the construction.  ``width`` asks
     for a column count: the drawing is built once without one, and again
     inside the width if that came out too wide.
+
+    Below eight inputs "once" is once per selector order
+    (:func:`_selector_orders`), the shortest kept, and a width bands that
+    order.  The orders' reach is a constant four builds: over all 256
+    three-input tables the shipped drawings are 19.6% smaller than the
+    identity's, 20.8% over all 65,536 four-input ones, and 9% to 19% on
+    random five- to seven-input ones.
 
     From eight inputs an unconstrained build uses the H-layout instead
     (:func:`_h_term_layout`).  That is a growth choice, not a size one: the
@@ -919,10 +1044,18 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     inputs = len(truth_table).bit_length() - 1
     if width is None and inputs >= 8 and "1" in truth_table:
         return _h_term_layout(truth_table).render()
-    flat = _circuit_diagram_at(truth_table, None)
+    # The shortest drawing over the candidate selector orders; ``min`` keeps
+    # the first on a tie, so the identity only ever gives way to a win.
+    flat, order = min(
+        (
+            (_circuit_diagram_at(truth_table, None, order), order)
+            for order in _selector_orders(truth_table)
+        ),
+        key=lambda built: len(built[0]),
+    )
     if width is None or max(len(line) for line in flat.split("\n")) <= width:
         return flat
-    banded = _circuit_diagram_at(truth_table, width)
+    banded = _circuit_diagram_at(truth_table, width, order)
     if max(len(line) for line in banded.split("\n")) < max(
         len(line) for line in flat.split("\n")
     ):
