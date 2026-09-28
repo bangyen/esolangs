@@ -16,7 +16,8 @@ def jaune(truth_table: str) -> str:
     tree; each leaf prints with ``^`` and terminates.  Only inputs the tree
     branches on get a cell (``>`` after the read), so the tree navigates a
     span as wide as the real dependencies, and a leaf prints from its
-    parent's test cell for one ``+``/``-``.  Reading up front keeps the
+    parent's test cell for one ``+``/``-``, and a node whose halves are
+    ``0`` and ``1`` prints its own cell unbranched.  Reading up front keeps the
     input count constant: reads at the nodes let a folded tree skip them,
     and Jaune escaped the contract test only by not being in
     ``BY_FUNCTION``.  The split order is whichever is shortest
@@ -93,8 +94,14 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # reads finish on is blank only when the last read advanced off it.  A
     # whole-table constant prints from there and needs it zero, so step once
     # more when the final read clobbered -- and the entry cell moves with it.
+    # Any other table prints only from test cells and walks straight back to
+    # its first, so the last read's step off its cell is dropped instead.
     scratch = slot
-    if n and (n - 1) not in stored:
+    if not constant(0, 1 << n):
+        if reads.endswith(">"):
+            reads = reads[:-1]
+            scratch = slot - 1
+    elif n and (n - 1) not in stored:
         reads += ">"
         scratch = slot + 1
 
@@ -114,8 +121,11 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         if perm[level] not in cell_of:
             return node(level + 1, lo, (lo + hi) // 2, entry, held)
         cell = cell_of[perm[level]]
-        then_lbl = fresh()
         mid = (lo + hi) // 2
+        # Halves 0 and 1 are the tested cell itself: print it unbranched.
+        if constant(lo, mid) and constant(mid, hi) and truth_table[mid] == "1":
+            return move(entry, cell) + "^."
+        then_lbl = fresh()
         then = node(level + 1, mid, hi, cell, 1)
         else_ = node(level + 1, lo, mid, cell, 0)
         return move(entry, cell) + f"{then_lbl}?{else_}{then_lbl}:{then}"

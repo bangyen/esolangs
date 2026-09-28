@@ -645,14 +645,30 @@ class TestJaune:
         one-cell block instead of a three-cell one.
         """
         assert boolean.jaune("10101010").startswith("vvv")
-        # every input matters here, so every read keeps its cell
-        assert boolean.jaune("10010110").startswith("v>v>v>")
+        # every input matters here, so every read keeps its cell (the last
+        # needs no step: the tree walks back from it)
+        assert boolean.jaune("10010110").startswith("v>v>v<<")
 
     def test_each_leaf_terminates_without_a_shared_label(self) -> None:
         """Leaves use ``.`` instead of repeating a widening end label."""
         program = boolean.jaune("0110")
-        assert program.count(".") == 4
+        assert program.count(".") == 3
         assert program.endswith("^.")
+
+    def test_a_zero_one_node_prints_its_cell_and_the_reads_stay_put(self) -> None:
+        """Halves ``0``/``1`` print the tested cell with no branch.
+
+        ``1`` on then and ``0`` on else are the cell itself, so the node is
+        its move and ``^.``; and a table that is not constant never prints
+        from the cell the reads end on, so the last read does not step off
+        its cell only to walk back.  Over every three-input table the
+        program falls from 10,261 characters to 8,331.
+        """
+        assert boolean.jaune("0110") == "v>v<2?>^.2:>3?+^.3:-^."
+        assert boolean.jaune("0001") == "v>v<2?^.2:>^."
+        assert boolean.jaune("0000") == "vv>^."
+        total = sum(len(boolean.jaune(f"{value:08b}")) for value in range(256))
+        assert total == 8331
 
     def test_spatial_lookup_executes_wide_rows(self) -> None:
         """The travelling counter returns sampled six-input rows."""
