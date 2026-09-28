@@ -456,6 +456,20 @@ hop (estimated at ~180 cells), and only the four rotated blocks pay it. Two
 `p`s with a fresh constant between them reach at least nineteen blocks, but
 reloading `A` mid-read is its own cost.
 
+The state-tagged read works on real sources. A single state that loads `A`
+from a prepared constant, reads its cell with `p` and lands at
+`crazy(K, T) + 1` prints the right bit for all 8 characters admissible at its
+cell. Two such states with different constants and opposite answer maps
+share one table cell and one pair of answer hubs in the same program and
+are right on all 16 cases (measured, interpreter). The cost per added state
+is its constant plus its share of the routing: 8,357 code cells for one
+view, 8,353 for two and 8,960 for three once each view's constant sits
+below cell 300, against about 7,000 per state for the earlier per-state
+decoders. A constant op costs about 20 cells near the pointer region and
+about 180 above cell 300, so where constants live dominates; the one-time
+constants here still sit above 300 (about 3,600 of the 8,357). These are
+prototypes on one fixed cell, not the 17-input build.
+
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
