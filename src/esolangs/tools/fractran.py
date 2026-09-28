@@ -17,7 +17,8 @@ distinct, so ``m`` fractions cost ``m log m`` characters and ``k`` primes cost
 ``k log10 k``, and a row per address pays ``Theta(T log T)``.  This pays that
 budget for ``3T / w`` addresses instead, and buys the difference on the clock
 -- a block in an exponent has to be traversed, so a run is ``O(2**w)`` steps.
-Below about ``n = 4`` the decoder costs more than it saves.
+Below four inputs the decoder costs more than it saves on every table, so
+through four the plain tree is built as well and the shorter text ships.
 ``docs/proofs/fractran.md`` proves both ends and the floor they sit above.
 """
 
@@ -37,6 +38,12 @@ from esolangs.tools.helpers import (
 #: One digit wide, so the run is one :data:`TEMPLATE_CHAR`.
 PAIR = ("0", "1")
 _FRACTRAN_INPUT = TEMPLATE_CHAR * len(PAIR[0])
+
+#: The widest table also built as a plain tree.  Below four inputs the
+#: decoder's fractions and its ten reserved primes outweigh what blocks save,
+#: on every table; at four the two split, and from five the tree all but
+#: never wins while it grows as ``T log T``, so it is not built past here.
+_PLAIN_MAX = 4
 
 #: Segment width for the sieve; the primes wanted are a prefix of it.
 _PRIME_CHUNK = 1 << 12
@@ -172,14 +179,62 @@ def _power(prime: int, exponent: int) -> str:
     return f"{prime}^{exponent}" if exponent > 1 else str(prime)
 
 
-def fractran(truth_table: str) -> str:
-    """Return a FRACTRAN template computing ``truth_table``.
+def _nodes(
+    nodes: list[_Leaf | _Block | _Node],
+    states: list[int],
+    inputs: list[int],
+    load: tuple[int, int],
+) -> list[str]:
+    """Return the tree's fractions: a leaf's answer, a block's load, a node's two.
 
-    Each run of :data:`TEMPLATE_CHAR` is the exponent of one input's prime,
-    filled with :data:`PAIR`; the instantiated program prints ``2`` where the
-    table says one and ``1`` where it says zero.
+    ``load`` is the decoder's ``(ready, carry)`` pair a block multiplies in;
+    a tree without blocks never reads it.
     """
-    n = _validate_truth_table(truth_table)
+    ready, carry = load
+    fractions: list[str] = []
+    for index, entry in enumerate(nodes):
+        if isinstance(entry, _Leaf):
+            fractions.append(f"{2 if entry.answer == '1' else 1}/{states[index]}")
+        elif isinstance(entry, _Block):
+            chunk = f"{_power(carry, entry.chunk)}*" if entry.chunk else ""
+            fractions.append(f"{chunk}{ready}/{states[index]}")
+        else:
+            # The one-child first: the zero-child is the else, by priority.
+            one, zero = entry.one, entry.zero
+            fractions.append(f"{states[one]}/{states[index] * inputs[entry.depth]}")
+            fractions.append(f"{states[zero]}/{states[index]}")
+    return fractions
+
+
+def _start(states: list[int], inputs: list[int]) -> str:
+    """Return the starting value: the root's state, and each input's run."""
+    return "*".join(
+        [str(states[-1])] + [f"{prime}^{_FRACTRAN_INPUT}" for prime in inputs]
+    )
+
+
+def _shallowest(nodes: list[_Leaf | _Block | _Node], n: int) -> int:
+    """Return the depth of the shallowest folded leaf, or ``n`` for none."""
+    return min((e.depth for e in nodes if isinstance(e, _Leaf)), default=n)
+
+
+def _plain(truth_table: str, n: int) -> str:
+    """Return the table as a plain tree: every level read, no decoder.
+
+    Only ``2`` is reserved, so the inputs and states take the smallest primes
+    there are, and a run is a step a level, one for the leaf, and a clear for
+    each input a folded leaf left unread.
+    """
+    nodes = _tree(truth_table, n, 0, 0)
+    primes = _primes(1 + n + len(nodes))
+    inputs, states = primes[1 : 1 + n], primes[1 + n :]
+    fractions = _nodes(nodes, states, inputs, (1, 1))
+    fractions += [f"1/{prime}" for prime in inputs[_shallowest(nodes, n) :]]
+    return " ".join([_start(states, inputs), *fractions])
+
+
+def _packed(truth_table: str, n: int) -> str:
+    """Return the table as blocks under a tree, read out by the decoder."""
     v, wide = _plan(n)
     nodes = _tree(truth_table, n, v, wide)
     primes = _primes(_CONTROL + n + len(nodes))
@@ -188,20 +243,7 @@ def fractran(truth_table: str) -> str:
     inputs = primes[_CONTROL : _CONTROL + n]
     states = primes[_CONTROL + n :]
 
-    fractions: list[str] = []
-    for index, entry in enumerate(nodes):
-        if isinstance(entry, _Leaf):
-            fractions.append(f"{2 if entry.answer == '1' else 1}/{states[index]}")
-        elif isinstance(entry, _Block):
-            load = (
-                f"{_power(carry, entry.chunk)}*{ready}" if entry.chunk else f"{ready}"
-            )
-            fractions.append(f"{load}/{states[index]}")
-        else:
-            # The one-child first: the zero-child is the else, by priority.
-            one, zero = entry.one, entry.zero
-            fractions.append(f"{states[one]}/{states[index] * inputs[entry.depth]}")
-            fractions.append(f"{states[zero]}/{states[index]}")
+    fractions = _nodes(nodes, states, inputs, (ready, carry))
     # The offset, in unary: one fraction per input the tree did not read.
     # They sit *after* the tree and before the decoder, which is what makes
     # them safe -- a descending tree always has a fraction of its own to
@@ -216,11 +258,25 @@ def fractran(truth_table: str) -> str:
     fractions += _decoder(control)
     # A folded answer leaves the tree's inputs from its level down unread,
     # and an offset that no block asked for; a block's path spends both.
-    shallowest = min((e.depth for e in nodes if isinstance(e, _Leaf)), default=n)
+    shallowest = _shallowest(nodes, n)
     if shallowest < n:
         fractions += [f"1/{prime}" for prime in (*inputs[shallowest:first], count)]
 
-    start = "*".join(
-        [str(states[-1])] + [f"{prime}^{_FRACTRAN_INPUT}" for prime in inputs]
-    )
-    return " ".join([start, *fractions])
+    return " ".join([_start(states, inputs), *fractions])
+
+
+def fractran(truth_table: str) -> str:
+    """Return a FRACTRAN template computing ``truth_table``.
+
+    Each run of :data:`TEMPLATE_CHAR` is the exponent of one input's prime,
+    filled with :data:`PAIR`; the instantiated program prints ``2`` where the
+    table says one and ``1`` where it says zero.  Through :data:`_PLAIN_MAX`
+    inputs the plain tree is built too and the shorter text ships, the tree
+    on a tie: its run never takes more steps than the packed one's.
+    """
+    n = _validate_truth_table(truth_table)
+    packed = _packed(truth_table, n)
+    if n > _PLAIN_MAX:
+        return packed
+    plain = _plain(truth_table, n)
+    return plain if len(plain) <= len(packed) else packed

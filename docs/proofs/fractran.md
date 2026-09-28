@@ -311,6 +311,20 @@ rest, which leaves them one more unread input; the offset fraction carrying
 weight `2**v` is exactly that level's, and under a narrow block that prime
 is already gone, so the two widths need no marker to tell them apart.
 
+*Small tables.* The decoder's twelve fractions and ten reserved primes are
+a constant, and below four inputs they outweigh what blocks save on every
+table. So through four inputs the generator also builds the plain tree --
+every level read, a leaf per answer, only `2` reserved -- and ships the
+shorter text, the tree on a tie. The tree never runs longer: past the
+shared levels it spends a step a level and one on its leaf, where a block
+spends its load, an offset fraction a level, and the decoder. Over the 256
+three-input tables this takes the text from 41,010 characters to 27,842
+and the benchmark's steps from 34,314 to 9,592, no table growing on either.
+At four inputs the tree ships for 37,984 of the 65,536 tables, taking the
+text down 5.0% and the steps 41.7%, again with no table growing; from five
+on it is all but never shorter, so it is not built there and the
+asymptotics above are untouched.
+
 *Correctness* is the loop invariant that after `j` units are spent the
 `carry` exponent is `c >> j`, and the offset is exactly the row's index
 inside its block. It is checked by execution rather than asserted: every
