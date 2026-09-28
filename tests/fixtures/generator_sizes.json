@@ -912,16 +912,16 @@
   },
   "Thue": {
    "0110": {
-    "commands": 14,
-    "source_units": 203
+    "commands": 12,
+    "source_units": 191
    },
    "01101001": {
-    "commands": 26,
-    "source_units": 207
+    "commands": 23,
+    "source_units": 195
    },
    "0110100110010110": {
-    "commands": 46,
-    "source_units": 215
+    "commands": 42,
+    "source_units": 203
    }
   },
   "Underload": {
