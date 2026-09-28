@@ -140,6 +140,20 @@ def test_folding_shortens_a_constant_table() -> None:
     assert len(boolean.fractran("00000000")) < len(boolean.fractran("01101001"))
 
 
+def test_false_tests_the_low_bit_and_prints_a_constant_pair() -> None:
+    """``1&`` is the bit, and a node over two constant halves is a literal.
+
+    ``'0`` and ``'1`` differ in their low bit and ``?`` takes any nonzero
+    flag, so ``$1=`` is not needed; halves ``0``/``1`` print the bit itself
+    and ``1``/``0`` its ``'0=_`` complement.  Over every three-input table
+    the program falls from 22,170 characters to 12,034.
+    """
+    assert boolean.false("0110") == "^1&$[^'0=_.]?0=[^1&.]?"
+    assert boolean.false("0001") == "^1&$[^1&.]?0=[^%0.]?"
+    total = sum(len(boolean.false(f"{value:08b}")) for value in range(256))
+    assert total == 12034
+
+
 def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
     """Its emission is the table plus a constant: ``T + 187`` characters.
 
