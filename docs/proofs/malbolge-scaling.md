@@ -269,6 +269,37 @@ admits eight characters. Information is tighter still: a 17-input table
 carries 131,072 bits and a Malbolge source at most `59049 * 3 = 177,147`, so
 the table needs 2.2 bits of every cell in the machine before any addressing
 code, where the label builds store at most 2 bits in the cells they use.
-Lowering the language bound instead needs some 17-input table with no
-program; counting misses by a factor `2**46076`, so no such proof is in
-sight. Seventeen is open in both directions.
+
+### Five meanings per cell, at most
+
+Joint decoding across several cells does not escape this if a cell is read
+by its *value*. At address `h` the eight admissible characters are
+`33 + ((i - h) mod 94)` for the eight instruction indices
+`I = {6, 7, 29, 35, 48, 65, 66, 84}` of `_XLAT1`, so as `h` varies the
+character sets are exactly the 94 translates of `I` in `Z_94`. Suppose a
+build gives each character value one meaning (a label, a hub, anything its
+decoder does next that depends only on the value), and every meaning must
+be writable at every table address. Each meaning's set of values then meets
+every translate of `I`: it is a hitting set. The smallest hitting set has 16
+values (as character minus 33, one is `{11, 15, 17, 22, 24, 29, 31, 38, 44,
+62, 64, 71, 76, 78, 85, 91}`). None has 15: CP-SAT proves it infeasible in about 200 s,
+with one member fixed at 0, which loses nothing because translating a
+hitting set gives another. Six disjoint hitting sets would need 96 of the
+94 values, so **a value-decoded cell carries at most five meanings**, and
+the thirteen- and fourteen-input builds already use all five.
+
+That caps every value-decoded build at `log2 5 = 2.32` bits a cell: `k`
+cells jointly name at most `5**k` behaviours, so a group of `2**r` rows needs
+`5**k >= 2**(2**r)` and the best rate is `1 / log2 5 = 0.43` cells a row.
+Seventeen inputs then need at least 56,450 table cells, leaving under 2,600
+for all code, hubs and stubs, against a positional main code of ~5,700.
+Executing the table cells instead gives eight residue-independent meanings,
+but `<`, `v` and `i` act on every row at once, so a group's cells are a
+straight-line program shared by all its rows, which again caps the usable
+choices near five per cell.
+
+No value-decoded build reaches seventeen, and nothing above excludes a
+build that reads its cells some other way. Lowering the language bound
+instead needs some 17-input table with no program; counting misses by a
+factor `2**46076`, so no such proof is in sight. Seventeen is open in both
+directions.

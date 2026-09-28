@@ -19,7 +19,7 @@ import pytest
 from esolangs import tools as boolean
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.malbolge import run
+from esolangs.interpreters.other.malbolge import _XLAT1, run
 
 _module = importlib.import_module("esolangs.tools.malbolge")
 
@@ -345,3 +345,17 @@ def test_past_sixteen_inputs_is_refused() -> None:
     """Seventeen would need 65,536 answer cells in a 59,049-cell store."""
     with pytest.raises(GeneratorCapError, match="at most 16 inputs"):
         boolean.malbolge(_dense(17))
+
+
+def test_a_value_meaning_needs_sixteen_characters() -> None:
+    """A 16-value set meets every residue's character set; see the proof.
+
+    The characters admissible at ``h`` are ``33 + ((i - h) mod 94)`` over the
+    eight instruction indices, so a value set usable at every address must
+    hit every translate of those indices.  This pins the witness; that none
+    of 15 exists is the CP-SAT result in ``docs/proofs/malbolge-scaling.md``.
+    """
+    indices = [_XLAT1.index(op) for op in "ji*p</vo"]
+    witness = {11, 15, 17, 22, 24, 29, 31, 38, 44, 62, 64, 71, 76, 78, 85, 91}
+    for h in range(94):
+        assert witness & {(i - h) % 94 for i in indices}
