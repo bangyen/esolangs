@@ -199,8 +199,8 @@ _SOPHIE_COMMAND = r"@\$\d+\{|@\$?.\{|#\$\d+|#\$?.|\}\{|."
 
 # Minifuck ``[`` skips the next character (``ind + 2``), so a newline
 # there is what gets skipped; consecutive ``[`` chain, so the whole run
-# stays with the character after it.
-_MINIFUCK_COMMAND = r"\[+.|."
+# stays with the character after it, or with the input run after it.
+_MINIFUCK_COMMAND = rf"\[+(?:{_RUN}|.)|."
 
 # Jaune: operand before operator (``3?``, ``2+``, ``v?``) is the only
 # unbreakable unit.  A bare run ``++`` splits harmlessly (1 + 1 = 2).

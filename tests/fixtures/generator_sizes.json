@@ -646,16 +646,16 @@
   },
   "Minifuck": {
    "0110": {
-    "commands": 656,
-    "source_units": 763
+    "commands": 282,
+    "source_units": 322
    },
    "01101001": {
-    "commands": 822,
-    "source_units": 970
+    "commands": 395,
+    "source_units": 469
    },
    "0110100110010110": {
-    "commands": 1185,
-    "source_units": 1361
+    "commands": 655,
+    "source_units": 740
    }
   },
   "Minsky Swap": {
