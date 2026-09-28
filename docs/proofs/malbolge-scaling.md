@@ -1054,3 +1054,38 @@ words plus an in-place parity toggle is a real saving against the measured
 structured to allow it: all ten share low five trits 2 and top trit 0 and
 differ only in a four-trit field, where trits 6-8 select the state and trit 5
 is the parity bit. Building that toggle, and the compaction, is unbuilt.
+
+### Seventeen: navigation is linear in address, so packing helps (measured)
+
+The per-op navigation cost was measured directly. A three-op chain emitted
+at a walked cell costs, by the cell's address:
+
+| cell | 3-op chain |
+| --- | --- |
+| 135 | 48 |
+| 200 | 241 |
+| 300 | 537 |
+| 410 | 869 |
+
+So the cost is roughly linear in `(address - 128)`: an op on a cell near 135
+costs ~16 cells, one near 410 costs ~290. `five_esc` lets its walked cells
+drift up to ~420 (the allocator takes the first free cell that can produce a
+value), which is why the setup is ~12,900.
+
+The build needs about **27 distinct walked value-cells** (five `_T_HELPERS`,
+three `z`-cells, `C0`/`C1`, ten views, escape pair, five label seeds), and
+the cheap band `130..160` holds 30, so in principle they fit low. Packed as
+an assignment (cheapest distinct cell in `130..175` per target), eight of the
+ten views emit **2,039 cells** against the ~3,561 they cost scattered — a
+~40% cut on that phase from placement alone, before any chain shortening.
+Two of the ten cannot be placed in-band because no free low cell reaches
+their value within the search depth: those need either a wider band or a
+richer operand set (using already-built low cells as `crazy` operands to
+shorten the 8-op chains).
+
+This quantifies the lever. The one-group setup is navigation-bound, and its
+cost is not fixed: packing the working cells into the low walked band, plus
+shortening chains and the parity toggle for the views, are each measured to
+save on the order of hundreds to a thousand cells. Whether their sum brings
+the setup under the ~5,650-cell tiling budget is the open build; the pieces
+are now measured rather than estimated.
