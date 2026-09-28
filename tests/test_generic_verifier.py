@@ -18,25 +18,72 @@ from __future__ import annotations
 import pytest
 
 import esolangs
+from tests.divergence import diverges
 
 #: One two-input table, one asymmetric two-input table, and two three-input
 #: ones.  The asymmetry matters: a verifier that reads the wrong position
 #: can still pass a palindromic table by luck.
 _TABLES = ("0110", "0001", "10010110", "00010111")
 
-#: A termination-answering language proves a 1 by *not* halting, so this is
-#: paid once per such row, and it is dead wall time rather than work: the
-#: run has already decided, and the bound only says how long the suite sits
-#: still.  The old 5.0-second bound on these rows was 152s of this file, the
-#: largest single block in the slow band.
+#: The fallback for a termination-answering language with no snapshot, and
+#: only that -- :func:`_terminates` prefers a proof.  A clock cannot tell a
+#: loop from a slow run, so every second spent here was dead wall time that
+#: bought no evidence: the run had already decided, and the bound only said
+#: how long the suite sat still.  That block was 152s of this file at the
+#: old 5.0-second bound and ~42s at 1.0; against a certificate it is 0.014s
+#: for every row of every table, and the answer is proved rather than timed.
 #:
-#: The floor is the slowest *halting* row in those four -- a 0-row that
-#: takes longer than the bound would be misread as a loop.  Measured across
-#: 123, ArrowQueue, Crement and Vandevelo over all four tables below: 0.000s,
-#: every one of them sub-millisecond.  A second is three orders of magnitude
-#: of headroom, which survives CI being about 2.5x slower per core.
+#: Kept for a language that cannot be stepped, where the floor is still the
+#: slowest *halting* row -- a 0-row over the bound would be misread as a
+#: loop.  Measured across 123, ArrowQueue, Crement and Vandevelo over all
+#: four tables below: 0.000s, every one sub-millisecond.  A second is three
+#: orders of magnitude of headroom, which survives CI's slower cores.
 _TERMINATION_TIMEOUT = 1.0
 _RUN_TIMEOUT = 30.0
+
+#: Step cap on the divergence certificate, matching
+#: :func:`~esolangs.vm.run_until_halt_or_growth`'s own 100_000.  Every row
+#: these sweeps ask about resolves in well under a millisecond, so this is
+#: not a bound anyone is near; it is there because a *cycle* detector does
+#: not return on divergence-by-growth, and a wrapping bug can produce one.
+#: Reaching it is not a verdict -- the caller falls back to the clock.
+_CYCLE_STEPS = 100_000
+
+
+def _terminates(name: str, source: str, stdin: str) -> str:
+    """``"0"`` if ``source`` halts, ``"1"`` if it provably does not.
+
+    A termination-answering language proves a 1 by looping forever, and the
+    obvious way to read that is a stopwatch: run it, and call a timeout a
+    loop.  That is not evidence.  A timeout says the program had not
+    finished yet, which is also what a slow run says, so the bound has to be
+    guessed high enough to be safe and then paid on every 1-row -- ~42s
+    across the four tables here, all of it spent waiting for a clock rather
+    than deciding anything.
+
+    :func:`~esolangs.vm.run_until_halt_or_cycle` decides it instead: a
+    repeated snapshot *proves* the machine can never halt.  Over 123,
+    ArrowQueue, Crement and Vandevelo -- every termination language with a
+    boolean generator -- it returns the right answer for all four tables in
+    0.014s total, with no row over 0.3ms.
+
+    This stays free of per-language knowledge, which is the point of the
+    file: the choice is on ``answer_mode`` and on whether the machine
+    offers a snapshot, never on a name.  A language whose divergence is
+    unbounded *growth* rather than a cycle would not repeat a state, so the
+    detector would not return; that is the band's hard ceiling in
+    `tests/duration_policy.py`, which fails such a row by name instead of
+    letting it hang unattributed.  A language with no snapshot protocol at
+    all falls back to the clock below.
+    """
+    proven = diverges(name, source, stdin)
+    if proven is not None:
+        return "1" if proven else "0"
+    try:
+        esolangs.run(name, source, stdin=stdin, timeout=_TERMINATION_TIMEOUT)
+    except esolangs.ExecutionTimeoutError:
+        return "1"
+    return "0"
 
 
 def _verify(name: str, table: str) -> str:
@@ -56,11 +103,7 @@ def _verify(name: str, table: str) -> str:
         else:
             source, stdin = program, esolangs.encode_inputs(name, bits)
         if facts["answer_mode"] == "termination":
-            try:
-                esolangs.run(name, source, stdin=stdin, timeout=_TERMINATION_TIMEOUT)
-                got += "0"
-            except esolangs.ExecutionTimeoutError:
-                got += "1"
+            got += _terminates(name, source, stdin)
         else:
             output = esolangs.run(name, source, stdin=stdin, timeout=_RUN_TIMEOUT)
             got += esolangs.read_answer(name, output)
