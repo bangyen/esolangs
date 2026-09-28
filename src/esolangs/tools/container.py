@@ -47,22 +47,23 @@ def _container_tree(truth_table: str, *, prune: bool = True) -> str:
     when its value changes.  There is no per-tick conditional, so the
     generator timestamps everything with the tick counter ``T``:
 
-    * The empty container pulses on even ticks ``0..2(n-1)`` (``+1 T>=2k``,
-      ``-2 T>=2k+1``, ``+1 T>=2k+2``), reading one bit per pulse.
-    * For each bit ``k``, two armed gates (65, dipping to 49; and 47, dipping
+    * The empty container pulses on even ticks ``0..2(n-1)`` (``1 T>=2k``,
+      ``-2 T>=2k+1``, ``1 T>=2k+2``), reading one bit per pulse.
+    * For each bit ``k``, two armed gates (50, dipping to 49; and 47, dipping
       to 48) make their ``IN`` comparisons hold for
       exactly the tick the bit is in ``IN``, testing bit ``k`` once.
     * A prefix survivor creates its two children while bit ``k`` is active;
       the mismatching child is cancelled in that same tick.  The parent then
       expires, so each tree edge costs constant work instead of retesting the
-      whole prefix at every leaf.
+      whole prefix at every leaf.  A leaf never decays: it holds its birth
+      value until the output gate reads it.
     * A level whose halves agree is skipped (``prune=False`` keeps it): the
       node is born two higher per skipped level, so it still decays to 1 on
       its next tested bit.  The empty container still pulses ``n`` times, so
       an ignored input costs only its read; a constant is a lone root leaf.
     * At tick ``2n`` an output gate, resting above every leaf's birth value,
-      dips to 1, so the surviving leaf adds its entry to ``OUT``; ``PRINT``
-      fires and ``EXIT`` halts.
+      dips to 1, so the surviving leaf adds its entry to ``OUT`` (which holds
+      48 from the start); ``PRINT`` fires and ``EXIT`` halts.
 
     The last block costs one line per leaf the table sends to 1, so a dense
     table is summed from its **zero** leaves instead: ``OUT`` starts at 49
@@ -134,59 +135,66 @@ def _container_tree(truth_table: str, *, prune: bool = True) -> str:
     root = names[("root", 0, 0)]
     output_gate = names[("output", 0, 0)]
 
-    lines = ["T:", "+1 T>=T"]
+    # A positive delta is spelt unsigned, as ``int`` reads it.
+    lines = ["T:", "1 T>=T"]
     lines.append(":")  # the empty-named container reads input
-    lines.append("+1 T>=0")
+    lines.append("1 T>=0")
     lines.append("-2 T>=1")
     for k in range(1, n):
-        lines.append(f"+2 T>={2 * k}")
+        lines.append(f"2 T>={2 * k}")
         lines.append(f"-2 T>={2 * k + 1}")
-    lines.append(f"+1 T>={2 * n}")
-    lines.append("IN=50:")  # a value no real byte matches
+    lines.append(f"1 T>={2 * n}")
+    # IN starts at 0.  Only a child's mismatch rule reads it, and the first
+    # read lands after tick 0, when every child is still 0 and clamped.
+    lines.append("IN:")
     for k in tested:
         low = names[("low", k, 0)]
         high = names[("high", k, 0)]
-        lines.append(f"{low}=65:")
-        lines.append(f"-16 T>={2 * k}")
-        lines.append(f"+32 T>={2 * k + 1}")
-        lines.append(f"-16 T>={2 * k + 2}")
+        # 50 is above every byte IN holds, and dips to 49 for one tick.
+        lines.append(f"{low}=50:")
+        lines.append(f"-1 T>={2 * k}")
+        lines.append(f"2 T>={2 * k + 1}")
+        lines.append(f"-1 T>={2 * k + 2}")
         lines.append(f"{high}=47:")
-        lines.append(f"+1 T>={2 * k}")
+        lines.append(f"1 T>={2 * k}")
         lines.append(f"-2 T>={2 * k + 1}")
-        lines.append(f"+1 T>={2 * k + 2}")
+        lines.append(f"1 T>={2 * k + 2}")
     lines.append(f"{root}={2 + 2 * root_tests}:")
-    lines.append(f"-1 {root}>=1")
+    if root_tests < n:
+        lines.append(f"-1 {root}>=1")
     for i in order:
         born, tests, _lo, parent = nodes[i]
         child = names[key(i)]
         value = 2 + 2 * (tests - born)
         lines.append(f"{child}:")
         # The paired parent rules fire only while the parent is exactly 1.
-        lines.append(f"+{value} {names[key(parent)]}>=1")
+        lines.append(f"{value} {names[key(parent)]}>=1")
         lines.append(f"-{value} {names[key(parent)]}>=2")
         gate = names[("high" if key(i)[2] & 1 else "low", born - 1, 0)]
         mismatch = f"IN<={gate}" if key(i)[2] & 1 else f"IN>={gate}"
         lines.append(f"-{value} {mismatch}")
-        lines.append(f"-1 {child}>=1")
+        # Only a node that tests must decay, to be 1 when its bit is in
+        # IN.  A leaf keeps its birth value, below the output gate's rest.
+        if tests < n:
+            lines.append(f"-1 {child}>=1")
     peak = max(2 + 2 * (n - (nodes[i][0] if i >= 0 else 0)) for i in leaves)
     rest = peak + 1 if peak > 2 else 2
+    # The gate is never restored: EXIT halts the tick after PRINT.
     lines.append(f"{output_gate}={rest}:")
     lines.append(f"-{rest - 1} T>={2 * n - 1}")
-    lines.append(f"+{rest - 1} T>={2 * n}")
     # OUT is 48 plus one ``+1`` per leaf the table sends to 1, so a dense
     # table pays for nearly every leaf.  Evaluating the *zero* leaves costs
     # one line each and starts from 49, subtracting: ``49 - S`` is the
     # complement, and since ``S`` is 0 or 1 the value stays at 48 or 49, so
     # the container's clamp at zero never bites.  Whichever leaf set is
-    # smaller wins; ties keep the plain form.
-    lines.append("OUT:")
-    lines.append(f"+{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n}")
-    lines.append(f"-{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n + 1}")
-    delta = "-1" if invert else "+1"
+    # smaller wins; ties keep the plain form.  The gate alone keeps OUT at
+    # its base until the printing tick.
+    lines.append(f"OUT={_ASCII_ZERO + 1 if invert else _ASCII_ZERO}:")
+    delta = "-1" if invert else "1"
     for i in sorted(answers, key=lambda i: nodes[i][2] if i >= 0 else 0):
         lines.append(f"{delta} {names[key(i)]}>={output_gate}")
     lines.append("PRINT:")
-    lines.append(f"+1 T>={2 * n}")
+    lines.append(f"1 T>={2 * n}")
     lines.append("EXIT=1:")
     lines.append(f"-1 T>={2 * n + 1}")
     return "\n".join(lines)
