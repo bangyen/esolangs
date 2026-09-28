@@ -1,12 +1,13 @@
 """Executed tests for the INTERCAL Shannon-expression generator."""
 
+import random
 from itertools import pairwise
 
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.intercal import run
-from esolangs.tools.helpers import fill_runs
+from esolangs.tools.helpers import best_input_order, fill_runs
 from esolangs.tools.intercal import PAIR, TEMPLATE_CHAR, _intercal_ordered, intercal
 
 
@@ -56,7 +57,53 @@ def test_levels_select_inputs_in_the_shorter_order() -> None:
     old = new = 0
     for value in range(256):
         table = f"{value:08b}"
-        before, after = len(_intercal_ordered(table, (0, 1, 2))), len(intercal(table))
+        before = len(_intercal_ordered(table, (0, 1, 2)))
+        after = len(_unshared(table))
         assert after <= before, table
         old, new = old + before, new + after
     assert (old, new) == (74152, 65704)
+
+
+def _five_input_sample() -> list[str]:
+    """Return ``scripts/screens/sharing.py``'s 200 five-input tables, seed 0."""
+    rng, found = random.Random(0), set[str]()
+    while len(found) < 200:
+        found.add(format(rng.getrandbits(32), "032b"))
+    return sorted(found)
+
+
+def _unshared(table: str) -> str:
+    return best_input_order(table, _intercal_ordered)
+
+
+def test_repeated_subexpressions_are_assigned_once() -> None:
+    """A repeated node or complement is one ``.k <- expr``, named where read.
+
+    Five-input parity has two nodes per level, each read by both nodes
+    above it: the three lowest levels' six are assigned once and the result
+    reads their names.  No table
+    grows: 65,704 characters to 62,728 (4.5%) over the three-input tables
+    and 195,636 to 137,608 (29.7%) over 200 seeded five-input ones.
+    """
+    parity = "01101001100101101001011001101001"
+    template = intercal(parity)
+    assert [f".{name} <- " in template for name in range(7, 14)] == [True] * 6 + [False]
+    assert len(template) < len(_unshared(parity)) // 2
+    for tables, pinned in (
+        ([f"{value:08b}" for value in range(256)], (65704, 62728)),
+        (_five_input_sample(), (195636, 137608)),
+    ):
+        old = new = 0
+        for table in tables:
+            before, after = len(_unshared(table)), len(intercal(table))
+            assert after <= before, table
+            old, new = old + before, new + after
+        assert (old, new) == pinned
+
+
+@pytest.mark.parametrize("n", range(4, 7))
+def test_shared_templates_execute_on_sampled_tables(n: int) -> None:
+    rng = random.Random(n)
+    for _ in range(3):
+        table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+        assert "".join(_run(table, row) for row in range(1 << n)) == table
