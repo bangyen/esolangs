@@ -1061,6 +1061,23 @@ class TestDecleq:
                 got = run_decleq(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
+    def test_untaken_jumps_target_zero(self) -> None:
+        """A jump no run can take is spelt ``0``, not the next address.
+
+        A read falls through, a normalization chain stops at 1 or 2, the
+        index counter at 1, and a leaf's address operand far above 0, so
+        none of their targets is ever used.  Spelling them ``pc + 3`` cost
+        the 256 three-input tables 394,316 characters; ``0`` costs 327,842.
+        """
+        cells = [int(tok) for tok in boolean.decleq("01101001").split()]
+        instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
+        assert [c for a, _b, c in instrs if a == -1] == [0, 0, 0]  # the reads
+        for rc in (18, 19, 20):  # each chain, then its one branch
+            assert instrs.count([rc, rc, 0]) == 47
+        assert instrs.count([17, 17, 0]) == 4 + 2 + 1  # the index weights
+        tables = [format(i, "08b") for i in range(256)]
+        assert sum(len(boolean.decleq(t)) for t in tables) == 327_842
+
 
 def _depth_zero_labels(program: str) -> list[int]:
     """Every ``@$N`` block label at the top level of ``program``.
