@@ -801,15 +801,15 @@
   "S*bleq": {
    "0110": {
     "commands": 7,
-    "source_units": 149
+    "source_units": 128
    },
    "01101001": {
     "commands": 9,
-    "source_units": 263
+    "source_units": 171
    },
    "0110100110010110": {
     "commands": 11,
-    "source_units": 487
+    "source_units": 214
    }
   },
   "SLOW ACV MAMMALIAN": {

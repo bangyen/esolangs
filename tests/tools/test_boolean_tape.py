@@ -1,8 +1,8 @@
 """The tape-family generators whose tests are short.
 
 The longer suites have files of their own: test_boolean_circlefuck,
-test_boolean_six_five, test_boolean_slow_acv_mammalian and
-test_boolean_streetcode_gen.
+test_boolean_sbleq, test_boolean_six_five, test_boolean_slow_acv_mammalian
+and test_boolean_streetcode_gen.
 """
 
 import contextlib
@@ -21,7 +21,6 @@ from tests.tools.boolean_runners import (
     run_jaune,
     run_painfuck,
     run_rotfuck,
-    run_sbleq,
     run_suffolk,
     run_three_d_brainfuck,
 )
@@ -711,102 +710,6 @@ class TestJaune:
             table = "".join(str(row.bit_count() & 1) for row in range(2**n))
             sizes.append(len(boolean.jaune(table)))
         assert all(b <= 2 * a for a, b in pairwise(sizes))
-
-
-class TestSbleq:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("0000000000000000", 4),  # constant zero
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.sbleq(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_sbleq(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_program_structure(self) -> None:
-        """Low-address data precedes the root reads and branch."""
-        program = boolean.sbleq("0110")
-        cells = [int(tok) for tok in program.split()]
-        data_base = 9
-        code_base = cells[6]
-        assert cells[:6] == [0, 0, 6, -1, 0, 0]
-        assert cells[7:9] == [0, 0]
-        assert cells[data_base : data_base + 4] == [-49, 48, 49, -1]
-        assert cells[code_base : code_base + 3] == [
-            data_base + 4,
-            -2,
-            data_base + 6,
-        ]
-        assert cells[code_base + 6 : code_base + 9] == [
-            data_base + 4,
-            data_base,
-            data_base + 8,
-        ]
-        code = cells[code_base:]
-        triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
-        outputs = [
-            t for t in triples if t[0] == -3
-        ]  # one output per leaf, in combo order
-        assert outputs == [
-            (-3, data_base + 1, 0),
-            (-3, data_base + 2, 0),
-            (-3, data_base + 2, 0),
-            (-3, data_base + 1, 0),
-        ]
-        assert [t for t in triples if t == (0, 0, 3)] == 4 * [(0, 0, 3)]
-
-    def test_only_the_hoisted_route_remains(self) -> None:
-        """The former node-read builder is gone, not merely bypassed."""
-        import esolangs.tools.tape as module
-
-        assert not hasattr(module, "_sbleq_node_read")
-
-    def test_hoisted_build_reads_every_input_once_up_front(self) -> None:
-        """The read block is 2n instructions and precedes every branch."""
-        from esolangs.tools.tape import _sbleq_hoisted
-
-        program = _sbleq_hoisted("00010111", (0, 1, 2))
-        cells = [int(tok) for tok in program.split()]
-        code_base = cells[6]
-        code = cells[code_base:]
-        triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
-        reads = [t for t in triples[:3] if t[1] == -2]
-        assert len(reads) == 3  # one read per input, all before the tree
-        assert [t[0] for t in reads] == sorted({t[0] for t in reads})  # input order
-
-    def test_packed_decoder_executes_wide_rows(self) -> None:
-        """Rows on both sides of chunk boundaries decode correctly."""
-        n = 6
-        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        program = boolean.sbleq(table)
-        for row in (0, 1, 5, 6, 7, 31, 32, 62, 63):
-            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
-            assert run_sbleq(program, bits) == table[row]
-
-    def test_packed_growth_is_linear(self) -> None:
-        """Wide parity tables grow by at most the table-size ratio."""
-        sizes = []
-        for n in range(11, 15):
-            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            sizes.append(len(boolean.sbleq(table)))
-        assert all(b <= 2 * a for a, b in pairwise(sizes))
-
-    def test_mismatched_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.sbleq("011")
-
-    def test_bad_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.sbleq("0123")
 
 
 class TestBrainIf:

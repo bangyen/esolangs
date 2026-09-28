@@ -5,6 +5,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     subtree_ids,
+    subtree_slot,
 )
 
 #: How each input is set: ``Z`` resets the register absolutely, so ``Z Z``
@@ -200,19 +201,11 @@ def _ram0_ordered(
 
     ids = subtree_ids(truth_table)
     tree: list[str] = []
-    # First address of each emitted subtree: ``(level, id)`` for a node, and
-    # ``(-1, bit)`` for a leaf, which is the same program at every level.
+    # First address of each emitted subtree, by :func:`subtree_slot` name.
     placed: dict[tuple[int, int], int] = {}
 
     def resolve(level: int, block: int) -> tuple[int, int, tuple[int, int]]:
-        """Skip the tests whose halves agree (shared only); name the subtree."""
-        while share and level < n and ids[level][block] >= 2:
-            zero, one = ids[level + 1][2 * block], ids[level + 1][2 * block + 1]
-            if zero != one:
-                break
-            level, block = level + 1, 2 * block
-        key = ids[level][block]
-        return level, block, (level, key) if key >= 2 else (-1, key)
+        return subtree_slot(ids, level, block, skip=share)
 
     def emit(level: int, block: int) -> None:
         """Lay the subtree out where control falls in, or jump to its copy."""
