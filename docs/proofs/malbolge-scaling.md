@@ -653,14 +653,14 @@ meaningful room.
   `34..127` hold at most `94 * 3 = 282` bits, about 106 table cells.
 
 The only large slack is inside the table. A three-cell group uses 256 of its
-512 meaning triples, so 16,384 bits (5,461 cells' worth) are spare. The
-six-state decoder already spends that freedom, because it needs two triples
-per answer vector to exist. Getting the bits back means packing, for example
-11 cells for 32 rows (45,056 table cells, 4,096 freed), with a decoder over
-11-cell groups. That decoder is unbuilt and its cost is unknown. So sharing
-cells between code and data frees at most a few hundred cells on the
-measured build, not the thousands a seventeen-input decoder would need if
-the measured per-state costs hold.
+512 triples, so 16,384 bits (5,461 cells' worth) are spare; the decoders
+spend that freedom, since they read seven meanings a cell and need 256 of
+the 343 meaning triples. Packing tighter is costed under "Seventeen: packing
+and a stateless fold" below. With seven meanings it frees at most 2,463
+cells, not the 4,096 an eight-meaning count suggests. So sharing cells
+between code and data frees at most a few hundred cells on the measured
+build, not the thousands a seventeen-input decoder would need if the
+measured per-state costs hold.
 
 ### Seventeen: straight-line programs
 
@@ -736,3 +736,57 @@ cells. The obstacle is computing a residue-independent colouring of the
 admissible triples with `crazy`, `rot` and lookups alone. No such colouring
 circuit is known, and none has been shown impossible. The class-restricted
 lemma is open.
+
+### Seventeen: packing and a stateless fold
+
+Two cheaper alternatives to the five-state decoder were checked: packing
+the table tighter, and a decoder with no states at all.
+
+**Packing, at the decoder's real alphabet.** The working decoders read seven
+meanings a cell, so `2**r` rows need `k` cells with `7**k >= 2**(2**r)`.
+That gives `k/2**r` = 0.375 at 8, 16 and 32 rows (3, 6 and 12 cells): no gain
+over three-cell groups. The first saving is at 64 rows in 23 cells, which
+leaves 47,104 table cells and frees **2,048**. The limit `2**17 / log2 7` is
+46,689 cells, freeing 2,463. The 4,096 quoted earlier for 11 cells per 32
+rows assumed eight meanings, which no decoder reads.
+
+Against that ceiling, a 23-cell decoder pays per state. From the measured
+parts, one state costs about 500-1,800 cells (estimated): two view
+constants at 130-750 each, a read routine of 47-123 and its landing blocks.
+So it pays only if it needs at most about four more states than the five
+already built. Its margin is `7**23 / 2**64` = 1.48, against 1.34 for the
+three-cell code that needed five states. Checking any such decoder means
+covering `2**64` answer vectors, beyond the exhaustive checks used so far.
+Unless the seventeen-input budget ends up short by less than about 2,000
+cells, packing is not worth it.
+
+**A stateless fold (straight-line, measured).** The cheapest straight-line
+decoder has no states. Each row `r` loads a constant, reads its group's
+three cells by lockstep `p`, and so holds a word whose low five trits are
+`L_r = crazy(crazy(crazy(a_r, v0), v1), v2) mod 243`. Plain operands never
+touch the high trits. The row then lands in its own 243-cell window, shared
+by every group, whose cell `L_r` prints a fixed bit. The eight windows would
+cost 1,944 cells, and the design needs no view constants, hubs or states.
+It fails:
+
+- *Intrinsic loss (exhaustive, `fold_classes.py`).* At the worst residue,
+  the 512 admissible triples fall into only **272** classes that no fold can
+  separate: two triples in a class give equal `L` for all 243 constants. So
+  the eight row bits must map 272 classes onto all 256 vectors, with each
+  bit a function of its own row's view.
+- *Search (measured, `fold.c`).* Choosing constants for distinct joint views
+  plateaus at that 272 by the third constant. Annealing the window contents
+  covers at most **20,364 of the 24,064** (residue, answer vector) pairs
+  (84.6%, best of five runs, two of them with separate windows per parity).
+  A decoder needs all of them.
+
+So a straight-line decoder cannot fold a group once and look the answer up.
+It has to land more than once, carrying information between landings, which
+is what the states of the five-state decoder do. That is evidence, not
+proof, for the class-restricted lemma: the class keeps cheap navigation but
+seems to need staged decoding.
+
+**The decoder itself** is being measured on the other line of work (five
+states, 2,744 of 2,744 cases on real sources, setup about 7,500 of the
+8,957 cells left after the landing blocks). What it still lacks is
+table-free landings and the seventeen-input address computation.

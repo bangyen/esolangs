@@ -43,3 +43,7 @@ None of this is wired into the generator.
   `/tmp/claude-0/csim`) and is not written to the repo's lint standard. To
   rerun, copy both into a scratch directory as `.py`, fix the two paths,
   build `msim`, and run `five_lab.py` with `PYTHONPATH=src`.
+- `fold_classes.py` -- the 272 triple classes that no `p p p` fold separates
+  at the worst residue.
+- `fold.c` -- anneals the stateless fold decoder's row windows (best
+  measured cover 20,364 of 24,064 residue/vector pairs).
