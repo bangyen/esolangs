@@ -548,16 +548,16 @@
   },
   "Home Row": {
    "0110": {
-    "commands": 171,
-    "source_units": 111
+    "commands": 154,
+    "source_units": 90
    },
    "01101001": {
-    "commands": 250,
-    "source_units": 207
+    "commands": 205,
+    "source_units": 154
    },
    "0110100110010110": {
-    "commands": 395,
-    "source_units": 389
+    "commands": 294,
+    "source_units": 272
    }
   },
   "INTERCAL": {

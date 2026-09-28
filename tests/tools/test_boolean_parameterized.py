@@ -1031,6 +1031,28 @@ class TestParameterizedHomeRow:
         assert "{C0}" not in template
         assert "{C1}" not in template
 
+    def test_rows_that_agree_with_the_last_share_its_leaf(self) -> None:
+        """Only the rows before the table's trailing run get a guarded leaf."""
+        from esolangs.tools import parameterized
+
+        setup = "aaaaaalsffaaaaaaaaffflf$$lsffffaafl$$lsffffafl"
+        assert parameterized.home_row("0111") == setup + "fffflflfflk;lffffak"
+        assert parameterized.home_row("0110") == setup + (
+            "fffflsflfflk;lfflsflfflak;lfflflfflak;lffffk"
+        )
+
+    def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
+        """Total emitted bytes over every three-input table.
+
+        49378 while every leaf re-raised a flag, fanned the index into a
+        working copy and restored it; 37410 once a leaf only decrements and
+        steps; 34521 once the rows agreeing with the last share its leaf.
+        """
+        from esolangs.tools import parameterized
+
+        tables = (format(v, "08b") for v in range(256))
+        assert sum(len(parameterized.home_row(t)) for t in tables) == 34521
+
 
 @pytest.mark.slow  # 2.6s: every fill of every parameterized generator
 def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
