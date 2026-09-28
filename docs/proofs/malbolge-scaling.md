@@ -37,6 +37,36 @@ steeply with load `L = cells / window`:
 The model reproduces the shipped fourteen-input build, so the wall is real:
 past load ~0.3 the required depth outruns any decoder pass count.
 
+## Seventeen: three-cell packing
+
+The one-cell-per-row-pair architecture stops at sixteen, but it does not give
+a language wall.  The raw capacity permits a different unbuilt design.  Use
+fourteen inputs to select a block of eight rows and encode that block's eight
+answer bits in three source characters.  Three legal characters carry nine
+bits, so this needs `3 * 2**14 = 49,152` cells and leaves 9,897 for code.
+
+The existing fourteen-bit positional map gives the address geometry.  Add
+`0`, `1`, or `2` modulo three to every trit of each readout to obtain three
+candidate cells.  Exhaustive evaluation of the 16,384 readouts gives 41,949
+distinct cells.  Of the blocks, 11,582 own three cells outright.  The other
+4,802 form 2,401 pairs; the two blocks in a pair share all three cells, and
+different pairs share none.  Equivalently, the collision graph is 2,401
+components of two vertices joined by three parallel edges.  The count is
+structural: each of the four full two-trit digits has seven values common to
+two translates, hence `7**4 = 2,401`; the partial digit fixes which pair of
+translates meets.
+
+Each colliding pair contains sixteen answer bits.  Its three shared cells and
+three private cells carry eighteen bits, so one free three-cell orbit per pair
+suffices.  The cyclic translates occupy 13,983 of the 19,683 three-cell
+orbits and leave 5,700; assigning 2,401 of those would complete the storage
+bound while preserving 9,897 cells for code.  This is capacity, not a build:
+the missing piece is a loop-less address map from the collision key (four
+seven-valued digits) to a free orbit, followed by a decoder executed against
+all 131,072 rows.  Uniform trit permutations and rotations do not supply it:
+among the sixty such transforms no pair of full 16,384-cell images is
+disjoint, and the least pairwise overlap is 2,401.
+
 ## The emitted-size law
 
 `len(program)` is 59,049 at every arity: the whole store is the source, so the
