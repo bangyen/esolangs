@@ -843,15 +843,15 @@
   "Sophie": {
    "0110": {
     "commands": 8,
-    "source_units": 28
+    "source_units": 22
    },
    "01101001": {
     "commands": 9,
-    "source_units": 58
+    "source_units": 52
    },
    "0110100110010110": {
     "commands": 21,
-    "source_units": 98
+    "source_units": 92
    }
   },
   "Streetcode": {

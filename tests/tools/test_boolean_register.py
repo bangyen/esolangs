@@ -706,9 +706,11 @@ def _printed_once(program: str) -> str:
 
     The oracles halt in every leaf (``,&``) and branch on a last-level
     ``01``; the generator loads the digit, prints once at the end, and lets
-    that read stand.  Respelling them keeps the merge the only difference.
+    that read stand, and a ``10`` there tests it in the character form.
+    Respelling them keeps the merge the only difference.
     """
-    return program.replace(",&", "").replace(";@$48{#$48}{#$49}", ";") + ","
+    program = program.replace(",&", "").replace(";@$48{#$48}{#$49}", ";")
+    return program.replace(";@$48{#$49}{#$48}", ";@0{#1}{#0}") + ","
 
 
 class TestSophie:
@@ -727,7 +729,7 @@ class TestSophie:
                 )
                 assert len(hybrid) <= best
                 improved += len(hybrid) < best
-        assert improved == 104
+        assert improved == 74
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -749,7 +751,7 @@ class TestSophie:
 
     def test_structure(self) -> None:
         """A one-input function is a single conditional pair."""
-        assert boolean.sophie("10") == ";@$48{#$49}{#$48},"
+        assert boolean.sophie("10") == ";@0{#1}{#0},"
 
     def test_leaves_share_one_print_and_01_is_its_read(self) -> None:
         """A leaf loads its digit, and the one ``,`` at the end prints it.
@@ -761,10 +763,26 @@ class TestSophie:
         11,728.
         """
         assert boolean.sophie("01") == ";,"
-        assert boolean.sophie("0110") == ";@$48{;}{;@$48{#$49}{#$48}},"
+        assert boolean.sophie("0110") == ";@$48{;}{;@0{#1}{#0}},"
         assert boolean.sophie("00010100") == ";@$48{;@$48{;#$48}{;}}{;@$48{;}{;#$48}},"
         total = sum(len(boolean.sophie(f"{value:08b}")) for value in range(256))
-        assert total == 11728
+        assert total == 10678  # 11,728 before a ``10`` tested its read as ``@0``
+
+    def test_10_tests_its_read_in_the_character_form(self) -> None:
+        """A last-level ``10`` is ``;@0{#1}{#0}``, six under the ``$`` form.
+
+        ``@0`` and ``#1`` test and load the codes ``$48`` and ``$49`` spell,
+        so no table grows, and over every three-input table the program
+        falls from 11,728 characters to 10,678.
+        """
+        assert boolean.sophie("1010") == ";;@0{#1}{#0},"
+        old = new = 0
+        for value in range(256):
+            program = boolean.sophie(f"{value:08b}")
+            before = program.replace(";@0{#1}{#0}", ";@$48{#$49}{#$48}")
+            assert len(program) <= len(before)
+            old, new = old + len(before), new + len(program)
+        assert (old, new) == (11728, 10678)
 
     def test_state_machine_merges_what_the_tree_cannot(self) -> None:
         """A subtable that is not constant can still collapse to one state.
@@ -787,7 +805,7 @@ class TestSophie:
         """No table comes out longer than the nested tree alone.
 
         The hybrid inlines unshared states as tree branches, so labels only
-        pay for actual merges. At n == 3, 102 of 256 tables shrink.
+        pay for actual merges. At n == 3, 72 of 256 tables shrink.
         """
         improved = 0
         for value in range(256):
@@ -796,7 +814,7 @@ class TestSophie:
             tree = len(_printed_once(_sophie_tree(table)))
             assert dispatched <= tree, table
             improved += dispatched < tree
-        assert improved == 102
+        assert improved == 72
 
     def test_merge_is_linear_where_the_tree_doubles(self) -> None:
         """Parity needs two states per level however wide it gets.
