@@ -464,7 +464,7 @@ class TestContainer:
     def test_structure(self) -> None:
         """The program reads n inputs and advances prefix survivors."""
         program = boolean.container("0110")
-        assert program.startswith("T:\n+1 T>=T")
+        assert program.startswith("T:\n1 T>=T")
         assert ":" in program.splitlines()[:4]  # the empty-named reader
         declarations = [
             line[:-1].split("=", 1)[0]
@@ -543,10 +543,12 @@ class TestContainer:
     def test_dense_tables_evaluate_the_complement(self) -> None:
         """A dense table is summed from its zero leaves and inverted.
 
-        ``OUT`` costs one ``+1 S{row}>=Gout`` line per leaf the table sends
+        ``OUT`` costs one ``1 S{row}>=Gout`` line per leaf the table sends
         to 1, so before this the length rose with the ones-count all the way
         to the all-ones table.  A table and its complement share one tree,
-        so taking whichever leaf set is smaller makes them the same length.
+        so taking whichever leaf set is smaller makes them the same length
+        but for the sign: an inverted line spells ``-1`` where a plain one
+        spells ``1``.
         """
         from esolangs.tools.container import _container_tree
 
@@ -554,12 +556,16 @@ class TestContainer:
             len(_container_tree("1" * k + "0" * (8 - k), prune=False)) for k in range(9)
         ]
         assert full[4] == max(full)  # four ones is the worst case
-        assert full == full[::-1]  # and the curve is symmetric
+        # k ones against k zeros: the same k answer lines, each one signed.
+        assert all(full[8 - k] == full[k] + k for k in range(4))
         flip = str.maketrans("01", "10")
         for i in range(256):
             table = format(i, "08b")
             complement = table.translate(flip)
-            assert len(boolean.container(table)) == len(boolean.container(complement))
+            difference = len(boolean.container(table)) - len(
+                boolean.container(complement)
+            )
+            assert abs(difference) <= 4  # at most half of eight leaves answer
 
     def test_constants_test_nothing(self) -> None:
         """The positive control: a constant reads its inputs and prints.
@@ -575,7 +581,7 @@ class TestContainer:
             for combo in range(2**n):
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                 assert run_container(program, bits) == table[0]
-        assert len(boolean.container("0" * 8)) == 163  # 856 unpruned
+        assert len(boolean.container("0" * 8)) == 123  # 856 unpruned
 
     def test_only_dependent_levels_are_tested(self) -> None:
         """A level whose halves agree is read but never tested.
@@ -600,8 +606,8 @@ class TestContainer:
     def test_pruning_never_grows_a_table(self) -> None:
         """No table up to three inputs comes out longer than its full tree.
 
-        Summed over all 256 three-input tables the pruned tree is 166,768
-        characters against 225,088 unpruned.
+        Summed over all 256 three-input tables the pruned tree is 141,366
+        characters against 191,808 unpruned.
         """
         from esolangs.tools.container import _container_tree
 
@@ -612,8 +618,27 @@ class TestContainer:
                     _container_tree(table, prune=False)
                 )
         tables = [format(i, "08b") for i in range(256)]
-        assert sum(len(boolean.container(t)) for t in tables) == 166_768
-        assert sum(len(_container_tree(t, prune=False)) for t in tables) == 225_088
+        assert sum(len(boolean.container(t)) for t in tables) == 141_366
+        assert sum(len(_container_tree(t, prune=False)) for t in tables) == 191_808
+
+    def test_no_line_restores_what_nothing_reads(self) -> None:
+        """Unsigned deltas, no leaf decay, no output restore, a static ``OUT``.
+
+        A leaf is read once, by the output gate, so it keeps its birth value;
+        the gate and ``OUT`` never need to come back, since ``EXIT`` halts the
+        tick after ``PRINT``.  The 256 three-input tables went from 166,768
+        characters to 141,366.
+        """
+        program = boolean.container("01101001")
+        assert "+" not in program
+        assert "OUT=48:" in program
+        # Parity's full tree: only the root and the six nodes above the
+        # eight leaves decay.
+        decays = [line for line in program.split("\n") if line.endswith(">=1")]
+        assert sum(line.startswith("-1 ") for line in decays) == 1 + 2 + 4
+        for combo in range(8):
+            bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+            assert run_container(program, bits) == "01101001"[combo]
 
     @pytest.mark.parametrize("table", ["11111110", "11111111", "1110", "0111"])
     def test_complemented_tables_still_compute(self, table: str) -> None:
