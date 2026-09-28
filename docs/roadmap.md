@@ -3,23 +3,6 @@
 Only live work belongs here. Contracts and standing walls go to
 [limitations](limitations.md); a closed row leaves, and its commit is the record.
 
-## New interpreters
-
-Two routes feed this queue: obscure languages without an implementation, and
-popular languages implemented elsewhere but absent here. The 2026-09-27 spec
-read is complete; rejected candidates are recorded under Curation in
-[limitations](limitations.md).
-
-- **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
-  was misfiled as unread: its transclusions inject CSS, not the node table.
-  The crossover route works but is unnecessary. Read inputs in name order,
-  append them to one bistack row with `◨`, then let each `◧` pop the next bit
-  into a `◑` decision node. The resulting single-grid tree passes all 276
-  non-nullary tables through three inputs. Alternating split axes with branch
-  spans `8 * 2**k - 2` gives an H-tree whose width and height are
-  `O(sqrt(T))`; its text is therefore `O(T)` (264,669 characters at ten
-  inputs, and 4,222,893 at fourteen). Promote the executed interpreter and
-  generator.
 ## Conditional follow-up
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where

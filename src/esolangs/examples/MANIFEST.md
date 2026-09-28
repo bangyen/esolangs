@@ -79,6 +79,7 @@ that row is actually spelled for the language.
 | `suffolk.txt` | Suffolk | `0001` | `01` | 0 1 | '0' |
 | `super-snusp.txt` | Super SNUSP | `0001` | `01` | 0 1 | '0' |
 | `taglate.txt` | Taglate | `0001` | `01` | 0 1 | '0' |
+| `thisthat.txt` | thisthat | `0001` | `01` | 0 1 | '0' |
 | `thue.txt` | Thue | `0001` | `01` | 0 1 | '0' |
 | `underload.txt` | Underload | `0001` | `01` | embedded 01 | '0' |
 | `unlambda.txt` | Unlambda | `0001` | `01` | 0 1 | '0' |

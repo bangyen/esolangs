@@ -425,6 +425,13 @@ LANGUAGES: dict[str, Language] = {
         id="taglate",
         split=True,
     ),
+    "thisthat": Language(
+        "thisthat",
+        "grid_based.thisthat",
+        boolean=_boolean.thisthat,
+        id="thisthat",
+        split=True,
+    ),
     "Unsquare": Language(
         "Unsquare",
         "stack_based.unsquare",

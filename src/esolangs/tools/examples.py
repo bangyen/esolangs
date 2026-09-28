@@ -368,6 +368,7 @@ def _register() -> None:
         "factor": _reader(b.factor, "tape_based.factor"),
         "false": _reader(b.false, "stack_based.false"),
         "fish": _reader(b.fish, "grid_based.fish", split=True),
+        "thisthat": _reader(b.thisthat, "grid_based.thisthat", split=True),
         # Fargo reads one *number* before the program starts, not a bit per
         # line, and ``@ k`` indexes that number's bits.  The boolean
         # convention is therefore to feed the row index: the inputs

@@ -7,7 +7,7 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 74 esoteric languages: 72 text and 2 raster.
+Interpreters and Boolean generators for 75 esoteric languages: 73 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
@@ -112,7 +112,7 @@ the page.  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#d
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):
-`examples/` holds a truth-table program for each of the 71
+`examples/` holds a truth-table program for each of the 72
 text languages with a boolean generator.  It regenerates via
 `python scripts/generate.py examples`.
 
@@ -123,7 +123,7 @@ text languages with a boolean generator.  It regenerates via
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 72 text languages</summary>
+<summary>Show all 73 text languages</summary>
 
 ### Grid-based Languages
 
@@ -143,6 +143,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/laserfuck.py))
 - [Streetcode](https://esolangs.org/wiki/Streetcode) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/streetcode.py))
 - [Super SNUSP](https://esolangs.org/wiki/Super_SNUSP) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/super_snusp.py))
+- [thisthat](https://esolangs.org/wiki/thisthat) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/thisthat.py))
 
 ### Stack-based Languages
 
@@ -240,7 +241,7 @@ Boolean generators accept a most-significant-input-first binary truth table.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  71 of the
+first; its length implies `n`, so it isn't passed separately.  72 of the
 text languages have such a generator, some covering only a documented subset of
 tables.
 
