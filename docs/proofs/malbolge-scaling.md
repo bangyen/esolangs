@@ -88,6 +88,41 @@ floors. It does mean the law states the architecture's optimum rather than
 what every shipped arity does, and eleven and twelve carry a spent factor
 two that no measurement above them inherits.
 
+## Generation time
+
+The build is `plan(n)` then `fill(table)`. Every layout planner -- `_skeleton`,
+`_cascade`, `_wide`, `_thirteen`, `_fourteen` -- takes **no truth table** and is
+memoized, so all table-dependent work is in `fill`, which is one pass over the
+rows and one pass over the store. `fill` calls `_table_char` at most 1.14 times
+a row (measured 1.125, 1.137, 0.568, 0.552 at eleven to fourteen, tracking the
+rows-per-cell column above), and each call is bounded by eight ops over a
+94-character table, so `fill` is `Theta(T + W)` with `W = 59,049`.
+
+`plan` was the super-linear half. The address map refolded the mixer from
+`_INITS` for every row -- `n` steps a row, `Theta(T log T)` -- which is a
+structural count, not a measurement artifact, and the measured growth per added
+input agreed: x2.19 twice at the top of the stub regime against the `2(n+1)/n`
+that `T log T` predicts (x2.22 at nine to ten) and the x2.00 that linear does.
+
+The fold is a prefix computation, so rows sharing their first `i` inputs share
+every state to level `i`. Expanding the levels breadth first computes each
+distinct prefix once, `2**(n+1) - 2` steps against `n * 2**n`, and the address
+map is now `Theta(T)`. The emitted program is byte-identical at every arity
+through ten, on random and all-zero/all-one tables. Measured growth per added
+input fell to x1.75, x1.71, x1.88, x1.93, x1.95 -- under x2 and rising toward
+it, the linear signature in the one direction the convention reads -- and cold
+planning at ten inputs went 73.9 ms to 19.3 ms.
+
+So generation is `Theta(T + W)` for `n <= 10`, by structure and not only by
+measurement. Above ten each arity is a separate hand-built layout, and cold
+planning grows x1.08, x1.08, x1.53 from eleven to fourteen, all under x2; the
+regime change at eleven is excluded rather than smoothed. What stays open is
+not the shape of the curve but its domain: the planners are searches whose cost
+is proved for no arity, and since the generator refuses past its cap the input
+set is finite, so no measurement over it can establish an asymptotic claim in
+either direction. That is the reachable gap the roadmap's generation-time cell
+names, and it is a coverage gap rather than a growth one.
+
 ## Sixteen: no known construction
 
 Sixteen needs 32,768 answer cells (load 0.83). Three routes, all closed:
