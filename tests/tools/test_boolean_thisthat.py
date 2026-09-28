@@ -1,12 +1,16 @@
 """Executed tests for the thisthat boolean generator."""
 
-from itertools import pairwise
+import random
+from collections import deque
+from itertools import pairwise, permutations, product
+from math import comb
 
 import pytest
 
+import esolangs
 from esolangs.interpreters.grid_based.thisthat import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.thisthat import _Builder, _tree, thisthat
+from esolangs.tools.thisthat import _Builder, _deque_plan, _tree, thisthat
 
 
 def _run(table: str, row: int) -> tuple[str, int]:
@@ -70,7 +74,8 @@ def test_only_dependent_levels_are_tested() -> None:
 
     assert tests("00001111") == 1  # the first input alone
     assert tests("01010101") == 1  # the last input alone
-    assert tests("00010011") == 4  # the full tree has 7
+    # 4 in input order (the full tree has 7); testing x1 first leaves 3.
+    assert tests("00010011") == 3
     # The second input is tested under x0 = 0 and popped under x0 = 1.
     assert tests("00010101") == 4  # 7 unpruned
     assert "⬒" in thisthat("00010101").split("\n", 1)[1]
@@ -83,16 +88,65 @@ def test_pruning_never_grows_a_table() -> None:
     """No table through three inputs is larger than its unpruned tree.
 
     ``prune=False`` is the previous tree under the tighter loader: the 256
-    three-input tables were 299,264 characters, are 199,936 unpruned, and
-    159,628 with ignored inputs projected and agreeing levels skipped.
+    three-input tables were 299,264 characters, are 199,936 unpruned,
+    159,628 with ignored inputs projected and agreeing levels skipped, and
+    147,836 with the greedy test order where the row can pop it.
     """
     for n in (1, 2, 3):
         for value in range(1 << (1 << n)):
             table = f"{value:0{1 << n}b}"
-            assert len(thisthat(table)) <= len(_tree(table, prune=False))
+            size = len(thisthat(table))
+            assert size <= len(_tree(table, reorder=False))
+            assert size <= len(_tree(table, prune=False))
     tables = [f"{value:08b}" for value in range(256)]
-    assert sum(len(thisthat(table)) for table in tables) == 159_628
+    assert sum(len(thisthat(table)) for table in tables) == 147_836
+    assert sum(len(_tree(table, reorder=False)) for table in tables) == 159_628
     assert sum(len(_tree(table, prune=False)) for table in tables) == 199_936
+
+
+def test_deque_plan_pops_exactly_the_orders_a_deque_can() -> None:
+    """Every order a push-then-pop deque yields is planned, and nothing else.
+
+    Pushing inputs in order to either end and then popping either end
+    yields ``C(2n - 2, n - 1)`` orders: all six at three inputs.
+    """
+    for n in range(1, 7):
+        reachable = set()
+        for pushes in product((False, True), repeat=n):
+            row: deque[int] = deque()
+            for i, head in enumerate(pushes):
+                (row.appendleft if head else row.append)(i)
+            for pops in product((False, True), repeat=n):
+                left = deque(row)
+                reachable.add(
+                    tuple(left.popleft() if head else left.pop() for head in pops)
+                )
+        assert len(reachable) == comb(2 * n - 2, n - 1)
+        for order in permutations(range(n)):
+            plan = _deque_plan(order)
+            assert (plan is not None) == (order in reachable), order
+            if plan is None:
+                continue
+            head_push, head_pop = plan
+            row = deque()
+            for i, head in enumerate(head_push):
+                (row.appendleft if head else row.append)(i)
+            popped = tuple(row.popleft() if head else row.pop() for head in head_pop)
+            assert popped == order
+
+
+@pytest.mark.medium
+def test_reordered_tables_through_six_inputs_execute() -> None:
+    """Samples at four to six inputs, some in a reordered test order."""
+    rng = random.Random(6)
+    reordered = 0
+    for n in (4, 5, 6):
+        for _ in range(12):
+            table = "".join(rng.choice("01") for _ in range(1 << n))
+            program = thisthat(table)
+            reordered += program != _tree(table, reorder=False)
+            assert esolangs.verify("thisthat", table), table
+    assert reordered
 
 
 def test_layout_collisions_abort() -> None:
