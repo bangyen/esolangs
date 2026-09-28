@@ -121,14 +121,6 @@ Only live work belongs here. Contracts and standing walls go to
   x2.15 and what these arities separate from noise; they are held linear
   until a wider measurement says otherwise.
 
-- **ArrowQueue reusable drain.** Ship it only if folding is testable at `n >= 5`.
-
-- **Reorder ArrowQueue inputs.**  The current three-input screen leaves 7.2%
-  headroom, but its queued inputs cannot be renamed in place.  Find a
-  re-enqueue and grid-routing construction, then compare emitted, executed
-  programs against the current template; abandon it if the routing spends
-  the apparent gain.
-
 ## Open problems
 
 Research questions the proofs leave open.  Each names the first executable
