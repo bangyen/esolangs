@@ -18,35 +18,46 @@ not ``tests``.
 What it buys over the suite is the *uniform-in-n* half.  The checked-in
 tests cover the shipped behaviour at the arities they can enumerate; this
 reduces "all tables at every arity" to a finite computation: the
-arity-dependent part is arithmetic over sums of distinct powers of two (L1),
+arity-dependent part is arithmetic over sums of distinct powers of two,
+saturated at the corridor's end (L1),
 and the behavioural part is confined to a three-row window whose vocabulary
 does not grow with n (L2, L3, L4).
 
 The construction (see the generator's module comment): row ``-1`` is the
-*lane*, never painted; row ``0`` is the corridor, ``2**n`` white cells from
-``x = 0``; row ``+1`` holds the answers, cell ``x`` white iff
-``table[x] == "1"``.  The head paints that on pass 1 and walks back to the
+*lane*, never painted; row ``0`` is the corridor, white cells ``0..c``
+where ``c`` starts the table's trailing run of equal answers (``c = 2**n -
+1`` when the last two differ); row ``+1`` holds the answers, cell ``x <= c``
+white iff ``table[x] == "1"``.  The head paints that on pass 1 and walks back to the
 origin.  Each input is one character, ``n`` (zero: step into the lane) or
 ``N`` (one: blocked, stay), followed by the template's ``E * 2**(n-1-i)``
 walk and ``SN`` return.  A final ``s`` steps onto a black answer; a
 white one leaves the ant on the white corridor cell above it.
 
-L1  *Arithmetic.*  The ant's column after input ``i`` is the partial index
-    ``sum(bit_k * 2**(n-1-k), k <= i)``, which never exceeds ``2**n - 1``,
-    the corridor's last cell -- so no walk runs off the corridor's end and
-    the final column is the table index.  Checked as an identity to n=64
-    (the all-ones prefix is the worst partial index, and the bound is
-    arity-monotone past it).
+L1  *Arithmetic.*  A one's walk of ``w`` from column ``x <= c`` ends at
+    ``min(x + w, c)`` (L3), so the ant's column after input ``i`` is
+    ``min(p_i, c)`` for the partial index ``p_i = sum(bit_k * 2**(n-1-k),
+    k <= i)``: ``min(min(p, c) + w, c) = min(p + w, c)`` for ``w >= 0``.
+    The final column is ``min(index, c)``, and ``table[min(index, c)] ==
+    table[index]`` because every index past ``c`` lies in the run ``c``
+    starts.  The partial index never exceeds ``2**n - 1``, checked to n=64
+    (the all-ones prefix is the worst, and the bound is arity-monotone past
+    it); the saturated recurrence is checked against ``min(index, c)`` for
+    every ``c`` and every index to n=8, an identity with no dependence on n.
 
 L2  *The head is what it says.*  After pass 1's head (up to the first run)
-    the white cells are exactly the corridor and the one-answers, and the
-    ant is at the origin.  Traced for every table at n=3 and on a ladder of
-    shaped and random tables to n=10.
+    the white cells are exactly the corridor ``0..c`` and its one-answers,
+    the ant is at the origin, and ``c`` is where the trailing run starts.
+    Traced for every table at n=3 and on a ladder of shaped and random tables
+    to n=10.
 
 L3  *Magnitude collapse.*  A zero's walk is blocked at every step because
     the lane is black at every cell, so the walk's length is irrelevant: the
     gadget with ``E * w`` and the gadget with ``E * 1`` leave the ant on the
-    same cell for a zero, and a one's walk moves exactly ``w``.  Checked by
+    same cell for a zero, and a one's walk moves exactly ``w`` on a corridor
+    long enough.  On a shorter one it stops at ``c``, blocked at every later
+    step because ``(c + 1, 0)`` is black -- the lane's per-step argument
+    again, checked for every power-of-two ``c`` and ``w`` through ``2**9``.
+    Checked by
     tracing each gadget in isolation on the built grid, every ``w`` that is a
     power of two through ``2**9``.  A zero's separation of column ``w`` from
     the corridor end telescopes the powers to every integer ``2**9`` and
@@ -89,10 +100,16 @@ def bits_of(idx: int, n: int) -> list[int]:
     return [(idx >> (n - 1 - k)) & 1 for k in range(n)]
 
 
+def corridor_end(table: str) -> int:
+    """``c``: the first entry of the table's trailing run of equal answers."""
+    return len(table.rstrip(table[-1]))
+
+
 def expected_grid(table: str) -> dict[tuple[int, int], int]:
     """The white cells the head is meant to paint: corridor and one-answers."""
-    grid = {(x, 0): 1 for x in range(len(table))}
-    grid.update({(x, 1): 1 for x, bit in enumerate(table) if bit == "1"})
+    end = corridor_end(table)
+    grid = {(x, 0): 1 for x in range(end + 1)}
+    grid.update({(x, 1): 1 for x in range(end + 1) if table[x] == "1"})
     return grid
 
 
@@ -112,12 +129,13 @@ def ladder(n: int, rng: random.Random, extra: int = 6) -> list[str]:
     return tables
 
 
-def check_l1(max_n: int = 64) -> list[str]:
-    """Partial indices are bounded by the corridor at every arity.
+def check_l1(max_n: int = 64, max_saturated: int = 8) -> list[str]:
+    """Partial indices stay in the table; the saturated walk lands on ``min``.
 
     The all-ones prefix is the worst partial index at each step, and past it
     the bound is arity-monotone, so the identity at every n to 64 certifies
-    the arithmetic for every arity the ladder exercises.
+    the arithmetic for every arity the ladder exercises.  The saturated
+    recurrence is checked against ``min(index, c)`` exhaustively to n=8.
     """
     for n in range(1, max_n + 1):
         top = (1 << n) - 1
@@ -126,7 +144,17 @@ def check_l1(max_n: int = 64) -> list[str]:
             partial += 1 << (n - 1 - i)
             assert 0 <= partial <= top, (n, i)
         assert partial == top, n
-    return [f"  n=1..{max_n}: every partial index stays on the corridor"]
+    for n in range(1, max_saturated + 1):
+        for end in range(1 << n):
+            for idx in range(1 << n):
+                column = 0
+                for bit, i in zip(bits_of(idx, n), range(n), strict=True):
+                    column = min(column + bit * (1 << (n - 1 - i)), end)
+                assert column == min(idx, end), (n, end, idx)
+    return [
+        f"  n=1..{max_n}: every partial index stays within the table",
+        f"  n=1..{max_saturated}: the saturated walk ends at min(index, c)",
+    ]
 
 
 def check_l2(max_n: int = 10) -> list[str]:
@@ -146,6 +174,9 @@ def check_l2(max_n: int = 10) -> list[str]:
             white = {cell for cell, colour in outcome.grid.items() if colour == 1}
             assert white == set(expected_grid(table)), (n, table)
             assert outcome.position == (0, 0), (n, table)
+            end = corridor_end(table)
+            assert len(set(table[end:])) == 1, (n, table)
+            assert end == 0 or table[end - 1] != table[end], (n, table)
         lines.append(f"  n={n}: {len(tables)} tables, head exact")
     return lines
 
@@ -159,15 +190,26 @@ def check_l3(max_w: int = 10) -> list[str]:
     witness of the mechanism rather than a finite ceiling.
     """
     size = 1 << max_w
-    build = a_painter_ant("1" * size)
+    # A last answer unlike the one before it keeps the whole corridor.
+    build = a_painter_ant("1" * (size - 1) + "0")
     head = build[: build.index(TEMPLATE_CHAR)]
-    for w in [1 << k for k in range(max_w)]:
+    powers = [1 << k for k in range(max_w)]
+    for w in powers:
         for bit, spelled in ((0, "n"), (1, "N")):
             outcome = run(head + spelled + "E" * w + "SN", 1)
             assert outcome.position == (w if bit else 0, 0), (w, bit)
             if bit == 0:
                 assert run(head + "nESN", 1).position == outcome.position
-    return [f"  w=1..{size // 2}: zero walks collapse, one walks measure exactly"]
+    for end in powers:
+        short = a_painter_ant("1" * end + "0" * (size - end))
+        head = short[: short.index(TEMPLATE_CHAR)]
+        for w in powers:
+            outcome = run(head + "N" + "E" * w + "SN", 1)
+            assert outcome.position == (min(w, end), 0), (end, w)
+    return [
+        f"  w=1..{size // 2}: zero walks collapse, one walks measure exactly",
+        f"  c, w=1..{size // 2}: a one's walk stops at the corridor's end c",
+    ]
 
 
 def phases(template: str) -> list[str]:
