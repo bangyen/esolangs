@@ -4,7 +4,7 @@ from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     best_input_order,
-    decision_tree_tokens,
+    subtree_ids,
 )
 
 #: How each input is set: ``Z`` resets the register absolutely, so ``Z Z``
@@ -13,6 +13,9 @@ from esolangs.tools.helpers import (
 #: token that instantiates to two commands.
 PAIR = ("Z Z", "Z A")
 _RAM0_INPUT = TEMPLATE_CHAR * len(PAIR[0])
+
+#: A leaf: set ``z`` to the answer and jump to the halt trampoline.
+_LEAF = "Z A 2"
 
 
 def _ram0_width(address: int) -> int:
@@ -57,10 +60,36 @@ def ram0(truth_table: str) -> str:
     That assignment is fixed optimally by depth: level ``n-1`` uses address
     zero, up to the root at ``n-1``.  The load remains in input order, so the
     input runs and their positions are untouched.
+
+    **A repeated subtree is emitted once and jumped to.**  A node assumes
+    nothing on entry (it sets ``z`` and loads its own bit), so a one-subtree
+    equal to one already emitted at its level costs nothing -- its ``goto``
+    names the copy -- and a zero-subtree costs one ``goto`` in place of
+    itself; a leaf is shared the same way, and a test whose halves agree is
+    skipped.  That caps the tree at its distinct subtables, O(T) with
+    addresses included, where the plain tree's addresses made it
+    O(T log T) and past 16 entries gave way to :func:`_ram0_linear`, the
+    straight-line lookup.  So the shared tree now runs at every width, with
+    the plain tree a candidate through 16 entries and the lookup past them;
+    at five inputs it is a fifth of the lookup.
     """
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _ram0_ordered)
-    return _ram0_linear(truth_table)
+        return best_input_order(truth_table, _ram0_best)
+    tree = best_input_order(truth_table, _ram0_shared)
+    lookup = _ram0_linear(truth_table)
+    return tree if len(tree) < len(lookup) else lookup
+
+
+def _ram0_shared(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one order's shared tree; see :func:`_ram0_ordered`."""
+    return _ram0_ordered(truth_table, perm, share=True)
+
+
+def _ram0_best(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Return the shorter of one order's plain and shared trees."""
+    plain = _ram0_ordered(truth_table, perm)
+    shared = _ram0_shared(truth_table, perm)
+    return shared if len(shared) < len(plain) else plain
 
 
 def _ram0_linear(truth_table: str) -> str:
@@ -135,12 +164,15 @@ def _ram0_linear(truth_table: str) -> str:
     return " ".join(tokens)
 
 
-def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+def _ram0_ordered(
+    truth_table: str, perm: tuple[int, ...], *, share: bool = False
+) -> str:
     """Emit one input order's RAM0 template; see :func:`ram0`.
 
     ``truth_table`` is already permuted, so every row index here is in the
     permuted frame.  ``perm`` decides which named input is loaded into each
-    depth-assigned cell; nodes use address ``n - 1 - level``.
+    depth-assigned cell; nodes use address ``n - 1 - level``.  ``share``
+    jumps to a subtree already emitted instead of repeating it.
     """
     n = _validate_truth_table(truth_table)
 
@@ -166,34 +198,52 @@ def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         tokens.append("S")
         pos += 1
 
-    def leaf_tokens(_level: int, row: int) -> list[str]:
-        return ["Z", "A" if truth_table[row] == "1" else "Z", "2"]
+    ids = subtree_ids(truth_table)
+    tree: list[str] = []
+    # First address of each emitted subtree: ``(level, id)`` for a node, and
+    # ``(-1, bit)`` for a leaf, which is the same program at every level.
+    placed: dict[tuple[int, int], int] = {}
 
-    def node(level: int, zero: int, _one: int, at: int) -> list[str]:
-        # ``Z``, the level's ``A`` run, ``L``, ``C`` and the ``ONE@`` slot all
-        # precede the subtrees, which is the node's own width; the one subtree
-        # therefore starts a further ``zero`` along, 1-based.
-        return [
+    def resolve(level: int, block: int) -> tuple[int, int, tuple[int, int]]:
+        """Skip the tests whose halves agree (shared only); name the subtree."""
+        while share and level < n and ids[level][block] >= 2:
+            zero, one = ids[level + 1][2 * block], ids[level + 1][2 * block + 1]
+            if zero != one:
+                break
+            level, block = level + 1, 2 * block
+        key = ids[level][block]
+        return level, block, (level, key) if key >= 2 else (-1, key)
+
+    def emit(level: int, block: int) -> None:
+        """Lay the subtree out where control falls in, or jump to its copy."""
+        level, block, slot = resolve(level, block)
+        copy = placed.get(slot)
+        # A jump is one token; a leaf's three only lose to a long address.
+        if copy is not None and (slot[0] >= 0 or len(str(copy)) < len(_LEAF)):
+            tree.append(str(copy))
+            return
+        if share:
+            placed.setdefault(slot, pos + len(tree) + 1)
+        if slot[0] < 0:
+            tree.extend(["Z", "A" if slot[1] else "Z", "2"])
+            return
+        at = len(tree)
+        tree.extend([""] * width(level))
+        emit(level + 1, 2 * block)
+        # The one subtree is jumped to, so an earlier copy costs nothing.
+        one = placed.get(resolve(level + 1, 2 * block + 1)[2])
+        if one is None:
+            one = pos + len(tree) + 1
+            emit(level + 1, 2 * block + 1)
+        tree[at : at + width(level)] = [
             "Z",
             *("A" for _ in range(n - 1 - level)),
             "L",
             "C",
-            f"ONE@{at + width(level) + zero + 1}",
+            str(one),
         ]
 
-    # Every tree token is one command (unlike the load block's input run, which
-    # expands to two), so the tree's command count is its token count.
-    tree = decision_tree_tokens(
-        truth_table,
-        leaf_tokens,
-        node,
-        parent_width=width,
-        start=pos,
-        collapse=True,
-    )
+    emit(0, 0)
     tokens += tree
     end = pos + len(tree) + 1  # 1-based goto operand just past the last command
-    return " ".join(
-        str(end) if t == "END@" else str(int(t[4:])) if t.startswith("ONE@") else t
-        for t in tokens
-    )
+    return " ".join(str(end) if t == "END@" else t for t in tokens)
