@@ -1,11 +1,10 @@
 """The tape-family generators whose tests are short.
 
 The longer suites have files of their own: test_boolean_circlefuck,
-test_boolean_sbleq, test_boolean_six_five, test_boolean_slow_acv_mammalian
-and test_boolean_streetcode_gen.
+test_boolean_jaune, test_boolean_sbleq, test_boolean_six_five,
+test_boolean_slow_acv_mammalian and test_boolean_streetcode_gen.
 """
 
-import contextlib
 import sys
 from itertools import pairwise
 
@@ -18,7 +17,6 @@ from tests.tools.boolean_runners import (
     run_brainif,
     run_dimensional,
     run_factor,
-    run_jaune,
     run_painfuck,
     run_rotfuck,
     run_suffolk,
@@ -587,129 +585,6 @@ class TestBitTilde:
         assert program.count(")") == 2
         assert program.count("(") == 1
         assert program.endswith("(")
-
-
-class TestJaune:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("00", 1),  # constant zero
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.jaune(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_jaune(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            program = boolean.jaune(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = run_jaune(program, [str(b) for b in bits])
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
-    def test_reads_every_input_whatever_the_table(self) -> None:
-        """Every table consumes exactly ``n`` inputs, folds included.
-
-        This is the cross-cutting contract in
-        ``test_boolean_contract.py``, pinned here because that sweep
-        cannot see Jaune: it iterates the generators registered in
-        ``BY_FUNCTION``, and Jaune is not one of them.  The reads used to
-        sit *at* the tree's nodes, so a folded tree skipped them and a
-        constant table consumed no input at all -- making the program's
-        stream consumption a function of its truth table.  Without this
-        test nothing would catch that coming back.
-        """
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.jaune import run
-
-        n = 3
-        for table in ("11111111", "00000000", "11110000", "10101010", "10010110"):
-            io = ScriptedIO("0\n" * n)
-            with contextlib.suppress(Exception, SystemExit):
-                run(boolean.jaune(table), io=io)
-            assert io.position() == n, (
-                f"{table} consumed {io.position()} inputs, expected {n}"
-            )
-
-    def test_unused_inputs_are_clobbered_not_stored(self) -> None:
-        """An input no node branches on is read without keeping a cell.
-
-        ``01010101`` depends only on its last input, so the first two
-        reads need no cell of their own and the tree navigates a
-        one-cell block instead of a three-cell one.
-        """
-        assert boolean.jaune("01010101").startswith("vvv")
-        # every input matters here, so every read keeps its cell (the last
-        # needs no step: the tree walks back from it)
-        assert boolean.jaune("10010110").startswith("v>v>v<<")
-
-    def test_each_leaf_terminates_without_a_shared_label(self) -> None:
-        """Leaves use ``.`` instead of repeating a widening end label."""
-        program = boolean.jaune("0110")
-        assert program.count(".") == 2  # the ``10`` node's two leaves share one
-        assert program.endswith("^.")
-
-    def test_a_zero_one_node_prints_its_cell_and_the_reads_stay_put(self) -> None:
-        """Halves ``0``/``1`` print the tested cell with no branch.
-
-        ``1`` on then and ``0`` on else are the cell itself, so the node is
-        its move and ``^.``; and a table that is not constant never prints
-        from the cell the reads end on, so the last read does not step off
-        its cell only to walk back.  Over every three-input table the
-        program falls from 10,261 characters to 8,331.
-        """
-        assert boolean.jaune("0110") == "v>v<2?>^.2:>3?++3:-^."
-        assert boolean.jaune("0001") == "v>v<2?^.2:>^."
-        assert boolean.jaune("0000") == "vv>^."
-
-    def test_a_one_zero_node_prints_the_inverted_cell(self) -> None:
-        """Halves ``1``/``0`` print ``1 - x``, and mostly-``10`` inputs read so.
-
-        ``L?++L:-^.`` is one under branching to two leaves: a 1 jumps to
-        the ``-``, a 0 adds two first.  An input with more ``10`` nodes than
-        ``01`` reads as ``+v-`` (``%+v-`` over a clobbered read), which
-        swaps its halves so each ``10`` is a bare print.  No table grows
-        through four inputs, and over every three-input table the program
-        falls from 8,331 characters to 7,437.
-        """
-        assert boolean.jaune("10") == "+v-^."
-        assert boolean.jaune("10101010") == "vv%+v-^."
-        assert boolean.jaune("1110") == "v>+v-<2?+^.2:>^."
-        total = sum(len(boolean.jaune(f"{value:08b}")) for value in range(256))
-        assert total == 7437
-
-    def test_spatial_lookup_executes_wide_rows(self) -> None:
-        """The travelling counter returns sampled six-input rows."""
-        n = 6
-        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        program = boolean.jaune(table)
-        for row in (0, 1, 2, 7, 31, 32, 62, 63):
-            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
-            assert run_jaune(program, bits) == table[row]
-
-    def test_spatial_lookup_growth_is_linear(self) -> None:
-        """Wide parity programs grow by at most the table-size ratio."""
-        sizes = []
-        for n in range(11, 15):
-            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            sizes.append(len(boolean.jaune(table)))
-        assert all(b <= 2 * a for a, b in pairwise(sizes))
 
 
 class TestBrainIf:
