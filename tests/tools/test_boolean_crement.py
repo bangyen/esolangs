@@ -113,14 +113,12 @@ class TestCrementTree:
         Each node is three lines whose operands are a tester's line number
         or an offset into the node's own subtree, so the size tracks the
         node count and the ratio settles at two once the tree dominates
-        the fixed header.  Four to five inputs is a route change, from
-        every split order to the identity and greedy ones, so the ratio
-        is held from five on.
+        the fixed header.
         """
         sizes = [len(crement(_dense(n))) for n in range(1, 9)]
-        assert sizes == [55, 93, 153, 239, 583, 1221, 2389, 4738]
+        assert sizes == [55, 93, 153, 288, 583, 1221, 2389, 4738]
         ratios = [b / a for a, b in pairwise(sizes)]
-        assert all(1.6 <= r <= 2.2 for r in ratios[4:]), ratios
+        assert all(1.6 <= r <= 2.2 for r in ratios), ratios
         assert all(1.95 <= r <= 2.05 for r in ratios[-2:]), ratios
 
     def test_level_patches_the_chosen_inputs_tester(self) -> None:
@@ -140,7 +138,7 @@ class TestCrementTree:
 
         The comparison is on the text, tester and patch addresses included,
         so the fold a reorder buys cannot be spent on its routing.  Over all
-        three-input tables it saves 12.4% (43,596 to 38,208 characters).
+        three-input tables it saves 10.2% (43,596 to 39,156 characters).
         """
         identity = tuple(range(n))
         old = new = 0
@@ -150,7 +148,7 @@ class TestCrementTree:
             after = len(crement(table))
             assert after <= before, table
             old, new = old + before, new + after
-        assert (old, new) == {2: (1444, 1352), 3: (43596, 38208)}[n]
+        assert (old, new) == {2: (1444, 1352), 3: (43596, 39156)}[n]
 
     def test_runs_a_handful_of_commands_per_input(self) -> None:
         """One node per level: a halting row runs ``5 n + 2`` commands at most.
