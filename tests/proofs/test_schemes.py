@@ -56,13 +56,15 @@ _FOLD = 0.05
 #: bit~ indexes the projected table it is handed, Circlefuck tabulates its
 #: essential inputs alone, Dimensional paints only as far as its last one, so
 #: a table whose tail is constant zero is cheaper (6.9% on the best
-#: one-dependency table) with no subtree involved, and Unsquare pushes only
-#: the cells the essential inputs address.  Named rather
+#: one-dependency table) with no subtree involved, A Painter Ant's corridor
+#: stops where the trailing run of equal answers starts (36.4%), and Unsquare
+#: pushes only the cells the essential inputs address.  Named rather
 #: than derived because the proxy is structural and these are its known blind
 #: spot; a further such row has to be added here, which is the point -- the
 #: equality below then fails until the prose and this set agree.
 _FOLDS_WITHOUT_TREE = frozenset(
     {
+        "A Painter Ant",
         "bit~",
         "Circlefuck",
         "Collatz Multiverse",
