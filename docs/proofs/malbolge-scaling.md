@@ -417,8 +417,11 @@ or reads can reach that, since 2^17 leaves each need one.
 
 The five-state code re-reads a cell on 462 of its 2,744 paths, and a read
 that rewrites its cell cannot be repeated. Forbidding that, **six** shared
-states suffice (all 256 vectors, no path reads a cell twice; three are proved
-too few). Its transitions reach only four targets -- two states and the two
+states suffice (all 256 vectors, no path reads a cell twice). Four do not:
+an exhaustive search over all `C(120, 7)` = 59,487,568,920 transition tables
+with seven distinct columns (two equal columns leave at most `6**3 = 216`
+distinguishable contents, under 256) finds none, and three were already
+excluded. Five is open; the same search would need about `C(720, 7)` tables. Its transitions reach only four targets -- two states and the two
 prints -- which is within what one pointer region routes: the shipped
 `_T_LABELS` admit each of `0 1 x n` at every residue. That suggests an
 unbuilt design in which a state reads its cell with `p` under its own
