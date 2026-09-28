@@ -138,14 +138,57 @@ def test_fractran_spends_nothing_a_run_never_divides() -> None:
     A block's path consumes every input and the offset, so the ``1/p``
     clears are for a folded leaf alone; and the parity fractions come after
     every phase prime's own exit, so they need no guard.  The 256
-    three-input tables went from 50,700 characters to 41,010.
+    three-input tables went from 50,700 characters to 41,010.  Five inputs,
+    since a smaller table ships as the plain tree.
     """
-    parity = str(boolean.fractran("01101001"))
+    from esolangs.tools.fractran import _packed
+
+    parity = str(boolean.fractran("0110100110010110" * 2))
     assert "^1 " not in parity
     assert "^1*" not in parity
     assert parity.endswith(" 1/3^2 2/3")  # no leaf folds, so nothing to clear
     tables = [format(i, "08b") for i in range(256)]
-    assert sum(len(str(boolean.fractran(t))) for t in tables) == 41_010
+    assert sum(len(_packed(t, 3)) for t in tables) == 41_010
+
+
+def _fractran_steps(template: str, n: int) -> int:
+    """Return the steps every row of ``template`` runs to its halt, summed."""
+    from esolangs.interpreters.other.fractran import _Machine
+
+    steps = 0
+    for row in range(2**n):
+        program = fill_runs(template, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n, _bits(row, n))
+        machine = _Machine(program, ScriptedIO(""))
+        while not machine.halted:
+            machine.step()
+            steps += 1
+    return steps
+
+
+def test_fractran_ships_the_plain_tree_where_the_decoder_costs_more() -> None:
+    """Below four inputs the decoder's constant outweighs what blocks save.
+
+    Twelve fractions and ten reserved primes, and a run that loads a block,
+    spends the offset and shifts it out, against a tree that reads every
+    level and stops on its leaf.  So through four inputs both are built and
+    the shorter ships, the tree on a tie; over the 256 three-input tables
+    no table grows in characters or in steps, the text falls from 41,010 to
+    27,842, and the steps from 34,314 to 9,592.
+    """
+    from esolangs.tools.fractran import _packed, _plain
+
+    tables = [format(i, "08b") for i in range(256)]
+    size = steps = old_size = old_steps = 0
+    for table in tables:
+        template, packed = boolean.fractran(table), _packed(table, 3)
+        assert template == _plain(table, 3), table
+        cost, old_cost = _fractran_steps(template, 3), _fractran_steps(packed, 3)
+        assert len(template) <= len(packed), table
+        assert cost <= old_cost, table
+        size, steps = size + len(template), steps + cost
+        old_size, old_steps = old_size + len(packed), old_steps + old_cost
+    assert (old_size, size) == (41_010, 27_842)
+    assert (old_steps, steps) == (34_314, 9_592)
 
 
 def test_folding_shortens_a_constant_table() -> None:

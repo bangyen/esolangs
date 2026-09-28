@@ -436,12 +436,12 @@
   },
   "FRACTRAN": {
    "0110": {
-    "commands": 9,
-    "source_units": 130
+    "commands": 4,
+    "source_units": 65
    },
    "01101001": {
-    "commands": 15,
-    "source_units": 166
+    "commands": 5,
+    "source_units": 145
    },
    "0110100110010110": {
     "commands": 11,
