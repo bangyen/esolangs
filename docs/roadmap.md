@@ -129,12 +129,6 @@ Only live work belongs here. Contracts and standing walls go to
   programs against the current template; abandon it if the routing spends
   the apparent gain.
 
-- **Reorder Circuit Diagram selectors.**  The three-input exhaustive screen
-  leaves 20.4% headroom.  Its inputs already occupy separate rails, so keep
-  their read order and permute only which rail each Shannon level selects.
-  Ship only if executed programs beat both flat and H layouts on a wider
-  corpus without moving generation above O(T).
-
 ## Open problems
 
 Research questions the proofs leave open.  Each names the first executable
