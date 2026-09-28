@@ -132,6 +132,22 @@ def test_a_constant_table_still_reads_every_input(name: str) -> None:
     assert reads == 3
 
 
+def test_fractran_spends_nothing_a_run_never_divides() -> None:
+    """No ``p^1``, no clear a block's path spends, no phase on the parity.
+
+    A block's path consumes every input and the offset, so the ``1/p``
+    clears are for a folded leaf alone; and the parity fractions come after
+    every phase prime's own exit, so they need no guard.  The 256
+    three-input tables went from 50,700 characters to 41,010.
+    """
+    parity = str(boolean.fractran("01101001"))
+    assert "^1 " not in parity
+    assert "^1*" not in parity
+    assert parity.endswith(" 1/3^2 2/3")  # no leaf folds, so nothing to clear
+    tables = [format(i, "08b") for i in range(256)]
+    assert sum(len(str(boolean.fractran(t))) for t in tables) == 41_010
+
+
 def test_folding_shortens_a_constant_table() -> None:
     """The three tree generators collapse a table whose rows agree."""
     for name in ("false", "unlambda"):
