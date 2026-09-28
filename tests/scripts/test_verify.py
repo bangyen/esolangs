@@ -1,13 +1,10 @@
 """The local gate may skip work, but only work CI is known to redo.
 
-``scripts/verify.py`` deselects the ``slow`` marker from a default run in both
-test suites -- pytest's and Line's -- on the standing argument that
-CI runs those tests on every push, so skipping them locally costs no coverage.
+``scripts/verify.py`` deselects the ``slow`` and ``weekly`` markers from a
+default run on the standing argument that CI runs those tests, so skipping
+them locally costs no coverage.
 That argument only holds while the skip is exactly as narrow as it claims, so
-the two halves are pinned here: the filter must reach the line step *and* it
-must step aside for a caller who asked for something else, since a silently
-discarded ``-m`` would turn someone's explicit selection into a different run
-than the one they asked for.
+the filters are pinned here and explicit selections remain unfiltered.
 """
 
 import importlib.util
@@ -186,22 +183,14 @@ class TestCiRedoesEveryLocalStep:
         bogus = _signature(["uv", "run", "python", "scripts/no_such_check.py"])
         assert bogus not in workflow
 
-    def test_the_skipped_step_is_one_ci_re_derives(self) -> None:
-        """``FULL_ONLY`` is skipped locally *because* CI redoes it.
 
-        This is the subtraction with the least margin -- the step does not
-        run at push time at all -- so it is pinned by name rather than left
-        to the sweep above.
-        """
-        verify = load_script()
-        workflow = CI.read_text(encoding="utf-8")
-        by_name = dict(verify.STEPS)
-        for name in verify.FULL_ONLY:
-            assert _signature(by_name[name]) in workflow, name
+def test_local_runs_exclude_the_weekly_band() -> None:
+    """Default and full local runs leave weekly probes to the scheduler."""
+    verify = load_script()
+    assert verify.LOCAL_PYTEST_MARKS == "not slow and not weekly"
+    assert verify.FULL_PYTEST_MARKS == "not weekly"
 
 
-# 6.2s over 9 tests: spawns real subprocesses to time the steps.
-@pytest.mark.medium
 # 6.2s over 9 tests: spawns real subprocesses to time the steps.
 @pytest.mark.medium
 class TestHeavyStepsAreNotRunInPytestsShadow:

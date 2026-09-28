@@ -212,7 +212,7 @@ markers = [
     # sharded across four `slow` jobs (`-m "slow and not weekly"` -- the
     # `weekly` probes stay weekly) and `.github/workflows/weekly.yml`
     # keeps the whole suite on a schedule.
-    # `just test` and `just test-full` do not deselect it locally.
+    # `just test` and `just test-full` deselect it locally.
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     # A tier above `slow`, and a cost tier rather than a kind: two tests are
     # 142.6s of the slow band's ~182s at four workers, and the other 347 are
