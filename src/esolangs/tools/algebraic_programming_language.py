@@ -21,8 +21,8 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  A
     variable is read from stdin by appearing on an executed line, and the
     line's result is printed.  A folded decision tree selects subtrees with
-    ``!x`` and ``!!x``; every value stays 0 or 1, and a literal carries its
-    own normalization (``!!a``/``!a``).  The split order is whichever is
+    ``!x`` and ``x``; the harness feeds 0 or 1, so an input needs no
+    normalization and every value stays 0 or 1.  The split order is whichever is
     shortest (:func:`~esolangs.tools.helpers.best_input_order`); the reads
     are unaffected since the line names ``a`` before ``b``.  A zero-valued
     prefix names every input first, preserving binding under folds; O(T)
@@ -49,17 +49,36 @@ def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     reads = " & ".join(_NAMES[index] for index in range(n)) + " & 0"
     pieces = [f"{_NOT}\n({reads}) | "]
 
+    def constant(start: int, end: int) -> str | None:
+        return truth_table[start] if changes[start] == changes[end - 1] else None
+
     def tree(start: int, end: int, depth: int) -> None:
-        if changes[start] == changes[end - 1]:
-            pieces.append(truth_table[start])
+        if (value := constant(start, end)) is not None:
+            pieces.append(value)
             return
         half = (start + end) // 2
         name = _NAMES[perm[depth]]
-        pieces.append(f"((!{name} & ")
-        tree(start, half, depth + 1)
-        pieces.append(f") | (!!{name} & ")
-        tree(half, end, depth + 1)
-        pieces.append("))")
+        zero, one = constant(start, half), constant(half, end)
+        # A constant arm needs no guard of its own: the literal alone when
+        # both are, else ``x & f1``, ``!x & f0``, ``!x | f1`` or ``x | f0``.
+        if zero is not None and one is not None:
+            pieces.append(name if one == "1" else f"!{name}")
+        elif zero is not None or one is not None:
+            constant_one = (zero or one) == "1"
+            literal = name if (one is None) != constant_one else f"!{name}"
+            op = "|" if constant_one else "&"
+            pieces.append(f"({literal} {op} ")
+            if one is None:
+                tree(half, end, depth + 1)
+            else:
+                tree(start, half, depth + 1)
+            pieces.append(")")
+        else:
+            pieces.append(f"((!{name} & ")
+            tree(start, half, depth + 1)
+            pieces.append(f") | ({name} & ")
+            tree(half, end, depth + 1)
+            pieces.append("))")
 
     tree(0, 1 << n, 0)
     return "".join(pieces)
@@ -87,7 +106,7 @@ def _apl_ordered(
     if not rows:
         # The constant-0 table must still name every input; the
         # expression yields 0.
-        body = " & ".join(f"!!{_NAMES[i]}" for i in range(n)) + " & 0"
+        body = " & ".join(_NAMES[i] for i in range(n)) + " & 0"
         return f"{_NOT}\n{body}"
     terms = []
     for row in rows:
@@ -97,7 +116,7 @@ def _apl_ordered(
             # in the permuted frame, so the bit comes from the level.
             bit = (row >> (n - 1 - level)) & 1
             name = _NAMES[perm[level]]
-            literals.append(f"!!{name}" if bit else f"!{name}")
+            literals.append(name if bit else f"!{name}")
         terms.append(sorted(literals, key=_order_key))
     flat = " | ".join("(" + " & ".join(t) + ")" for t in terms)
     if width is None or len(flat) <= width:
