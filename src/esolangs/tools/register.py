@@ -433,8 +433,8 @@ def sophie(truth_table: str) -> str:
 
     Sophie reads a character with ``;`` and branches on the accumulator with
     ``@$48{then}{else}`` -- the else block runs flat after a failed check, so
-    consecutive conditionals must use the block form. Each leaf sets the
-    result with ``#$48``/``#$49`` and prints it before halting.
+    consecutive conditionals must use the block form. A leaf loads ``#$48``
+    or ``#$49`` for one final ``,`` to print; a last-level ``01`` is its read.
 
     :func:`_sophie_hybrid` nests unshared residual states like a tree and
     labels only states reached from multiple parents. It therefore keeps
@@ -516,22 +516,24 @@ def _sophie_hybrid(truth_table: str) -> str:
             state
             for state in states
             if k == 0
-            or (state.count(state[0]) < len(state) and references[k].get(state, 0) > 1)
+            or (
+                state.count(state[0]) < len(state)
+                and references[k].get(state, 0) > 1
+                and state != "01"
+            )
         ]
         for k, states in enumerate(levels)
     ]
     labels = sophie_labels(retained)
 
+    # A leaf runs on to the final ``,``: 48/49 fire no ``@$L`` on the way.
     def body(k: int, state: str) -> str:
         if state.count(state[0]) == len(state):
-            return ";" * (n - k) + f"#${_ASCII_ZERO + int(state[0])},&"
+            return ";" * (n - k) + f"#${_ASCII_ZERO + int(state[0])}"
         width = 2 ** (n - k - 1)
         zero, one = state[:width], state[width:]
         if k + 1 == n:
-            return (
-                f";@$48{{#${_ASCII_ZERO + int(zero)},&}}"
-                f"{{#${_ASCII_ZERO + int(one)},&}}"
-            )
+            return ";" if one == "1" else ";@$48{#$49}{#$48}"
 
         def next_body(child: str) -> str:
             if child in labels[k + 1]:
@@ -547,7 +549,7 @@ def _sophie_hybrid(truth_table: str) -> str:
         for state in states:
             block = body(k, state)
             out.append(block if k == 0 else f"@${labels[k][state]}{{{block}}}")
-    return "".join(out)
+    return "".join(out) + ","
 
 
 def _qoibl_enc(n: int) -> str:

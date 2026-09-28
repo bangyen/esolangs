@@ -842,16 +842,16 @@
   },
   "Sophie": {
    "0110": {
-    "commands": 7,
-    "source_units": 51
+    "commands": 8,
+    "source_units": 28
    },
    "01101001": {
-    "commands": 13,
-    "source_units": 91
+    "commands": 9,
+    "source_units": 58
    },
    "0110100110010110": {
     "commands": 21,
-    "source_units": 131
+    "source_units": 98
    }
   },
   "Streetcode": {

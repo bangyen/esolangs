@@ -74,10 +74,10 @@ build the stdin.
 
 ## Examples
 
-`esolangs generate Sophie 0110` emits 51 characters computing XOR:
+`esolangs generate Sophie 0110` emits 28 characters computing XOR:
 
 ```
-;@$48{;@$48{#$48,&}{#$49,&}}{;@$48{#$49,&}{#$48,&}}
+;@$48{;}{;@$48{#$49}{#$48}},
 ```
 
 Feeding it the two input bits, one per line, prints their XOR.
