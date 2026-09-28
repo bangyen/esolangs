@@ -19,16 +19,16 @@ from esolangs.tools.helpers import (
 #: Each input's cell, both routes: ``~`` pushes a down heading, ``.`` nothing.
 PAIR = (".", "~")
 
-_TREE_1 = ["+~+", "~ ~", "+~+"]  # the ``1`` leaf: a self-sustaining ring
+_TREE_1 = ["+~+", "~ ~", "+~+"]
 
 
-_TREE_0 = ["   ", "   ", "   "]  # the ``0`` leaf: empty, runs off-grid to halt
+_TREE_0 = ["   ", "   ", "   "]
 
 
-_TREE_BRANCH_0 = [" + ", "   ", "   "]  # pops a bit; 0 goes right, 1 goes down
+_TREE_BRANCH_0 = [" + ", "   ", "   "]
 
 
-_TREE_BRANCH_1 = [" + ", "   ", "   "]  # pops a one's trailing R: down-route goes right
+_TREE_BRANCH_1 = [" + ", "   ", "   "]
 
 
 # Entered heading down at column 3; queues R, D, L, U, then down column 1.
@@ -54,7 +54,7 @@ def _header(n: int) -> list[str]:
     """
     rows = [" " * (n + 3) + "*"]
     for i in range(n):
-        x = n + 3 - i  # input ``i``'s column
+        x = n + 3 - i
         rows.append(" " * (x - 3) + "*~*" + TEMPLATE_CHAR)
         rows.append(" " * (x - 3) + "*  *")
     return rows
@@ -66,7 +66,7 @@ def _connect(t0: list[str], t1: list[str]) -> list[str]:
     0-branch top-left, ``t0`` at its right exit, 1-branch below ``t0``,
     ``t1`` at its right exit.
     """
-    yb = len(t0)  # the 1-branch's top row: one row below ``t0``
+    yb = len(t0)
     width = max(3 + len(t0[0]), 3 + len(t1[0]))
     height = max(3, yb + 3, yb + len(t1))
     grid = [[" "] * width for _ in range(height)]
