@@ -183,9 +183,7 @@ Unsquare pushes the whole table onto the stack a cell a row and pops the row
 index off the top of it, Thue makes the table its starting state and rewrites
 every adjacent pair down to one per input, and
 Whitespace halves one literal once per index step; none has a subtree to
-fold.  Container's sub-crossover route is a
-tree but a deliberately unfolded one, so it does not shrink on a degenerate
-table.  Collatz Multiverse, Eval, NoComment, Suffolk and Unsquare fold a degenerate
+fold.  Collatz Multiverse, Eval, NoComment, Suffolk and Unsquare fold a degenerate
 table anyway, because their lookup route is what shrinks it -- Suffolk through
 `essential_inputs`, which halves the sweep per input dropped, Unsquare through
 the same call, which halves its table, and Collatz

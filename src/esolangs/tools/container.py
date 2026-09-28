@@ -34,7 +34,7 @@ def _allocate_names(uses: dict[tuple[str, int, int], int]) -> _Names:
     return names
 
 
-def _container_tree(truth_table: str) -> str:
+def _container_tree(truth_table: str, *, prune: bool = True) -> str:
     """Build a Container program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -56,34 +56,78 @@ def _container_tree(truth_table: str) -> str:
       the mismatching child is cancelled in that same tick.  The parent then
       expires, so each tree edge costs constant work instead of retesting the
       whole prefix at every leaf.
-    * At tick ``2n`` an output gate dips to 1, so the surviving row adds the
-      table entry of the surviving row to ``OUT``; ``PRINT`` fires and
-      ``EXIT`` halts.
+    * A level whose halves agree is skipped (``prune=False`` keeps it): the
+      node is born two higher per skipped level, so it still decays to 1 on
+      its next tested bit.  The empty container still pulses ``n`` times, so
+      an ignored input costs only its read; a constant is a lone root leaf.
+    * At tick ``2n`` an output gate, resting above every leaf's birth value,
+      dips to 1, so the surviving leaf adds its entry to ``OUT``; ``PRINT``
+      fires and ``EXIT`` halts.
 
-    The last block costs one line per row the table sends to 1, so a dense
-    table is summed from its **zero** rows instead: ``OUT`` starts at 49 and
-    each surviving zero row subtracts one, printing ``49 - S``.  The clamp at
-    zero never bites, since the value stays at 48 or 49.  Worth up to 12.7%
-    at ``n == 4`` (1356 characters down to 1184 for fifteen ones of sixteen);
-    the per-row survivor blocks above are fixed and unaffected.
+    The last block costs one line per leaf the table sends to 1, so a dense
+    table is summed from its **zero** leaves instead: ``OUT`` starts at 49
+    and each surviving zero leaf subtracts one, printing ``49 - S``.  The
+    clamp at zero never bites, since the value stays at 48 or 49.  Worth up
+    to 12.7% at ``n == 4`` (1356 characters down to 1184 for fifteen ones of
+    sixteen, before pruning).
     """
     n = _validate_truth_table(truth_table)
-    ones = truth_table.count("1")
-    invert = ones > 2**n - ones
-    wanted = "0" if invert else "1"
+    size = 2**n
 
-    # Every generated container has a unique name, but their reference counts
-    # differ sharply.  Assign shortest alphabetic names by actual frequency.
-    uses: dict[tuple[str, int, int], int] = {("root", 0, 0): 6}
-    for bit in range(n):
-        uses[("low", bit, 0)] = 1 + 2**bit
-        uses[("high", bit, 0)] = 1 + 2**bit
-    for depth in range(1, n + 1):
-        for prefix in range(2**depth):
-            uses[("node", depth, prefix)] = (
-                6 if depth < n else 2 + (truth_table[prefix] == wanted)
-            )
-    uses[("output", 0, 0)] = 1 + truth_table.count(wanted)
+    # A node is born at one depth and next tests a level (``n`` for a leaf).
+    nodes: list[tuple[int, int, int, int]] = []  # (born, tests, lo, parent)
+
+    def settle(depth: int, lo: int) -> int:
+        """Return the first level at or below ``depth`` whose halves differ."""
+        span = size >> depth
+        while (
+            prune
+            and depth < n
+            and truth_table[lo : lo + span // 2]
+            == truth_table[lo + span // 2 : lo + span]
+        ):
+            depth += 1
+            span //= 2
+        return depth
+
+    def grow(tests: int, lo: int, parent: int) -> None:
+        """Add the two children of a node that tests level ``tests``."""
+        half = size >> (tests + 1)
+        for child_lo in (lo, lo + half):
+            nodes.append((tests + 1, settle(tests + 1, child_lo), child_lo, parent))
+            if nodes[-1][1] < n:
+                grow(nodes[-1][1], child_lo, len(nodes) - 1)
+
+    root_tests = settle(0, 0)
+    if root_tests < n:
+        grow(root_tests, 0, -1)
+    # Emit by birth depth and row, as the unpruned tree did.  A constant
+    # table's root is its only leaf; index -1 stands for the root.
+    order = sorted(range(len(nodes)), key=lambda i: (nodes[i][0], nodes[i][2]))
+    leaves = [i for i in order if nodes[i][1] == n] or [-1]
+    ones = sum(truth_table[nodes[i][2] if i >= 0 else 0] == "1" for i in leaves)
+    invert = ones > len(leaves) - ones
+    wanted = "0" if invert else "1"
+    answers = [i for i in leaves if truth_table[nodes[i][2] if i >= 0 else 0] == wanted]
+
+    def key(i: int) -> tuple[str, int, int]:
+        if i < 0:
+            return ("root", 0, 0)
+        born, _tests, lo, _parent = nodes[i]
+        return ("node", born, lo >> (n - born))
+
+    # Assign shortest names by how often each is spelt: a node twice, twice
+    # per child and once if it adds to ``OUT``; a gate once, and once a test.
+    uses: dict[tuple[str, int, int], int] = {key(-1): 6}
+    for i in order:
+        born, tests, _lo, _parent = nodes[i]
+        uses[key(i)] = 6 if tests < n else 2
+        gate_key = ("high" if key(i)[2] & 1 else "low", born - 1, 0)
+        uses[gate_key] = uses.get(gate_key, 1) + 1
+    for i in leaves:
+        uses[key(i)] = 2 + (i in answers)
+    uses[("output", 0, 0)] = 1 + len(answers)
+    tested = sorted({k for side, k, _ in uses if side == "low"})
 
     names = _allocate_names(uses)
 
@@ -99,7 +143,7 @@ def _container_tree(truth_table: str) -> str:
         lines.append(f"-2 T>={2 * k + 1}")
     lines.append(f"+1 T>={2 * n}")
     lines.append("IN=50:")  # a value no real byte matches
-    for k in range(n):
+    for k in tested:
         low = names[("low", k, 0)]
         high = names[("high", k, 0)]
         lines.append(f"{low}=65:")
@@ -110,38 +154,37 @@ def _container_tree(truth_table: str) -> str:
         lines.append(f"+1 T>={2 * k}")
         lines.append(f"-2 T>={2 * k + 1}")
         lines.append(f"+1 T>={2 * k + 2}")
-    lines.append(f"{root}=2:")
+    lines.append(f"{root}={2 + 2 * root_tests}:")
     lines.append(f"-1 {root}>=1")
-    for depth in range(1, n + 1):
-        bit = depth - 1
-        for prefix in range(2**depth):
-            parent = root if depth == 1 else names[("node", depth - 1, prefix >> 1)]
-            child = names[("node", depth, prefix)]
-            lines.append(f"{child}:")
-            # A node is born at 2, decays to 1, then pulses its children.
-            # The paired parent rules therefore fire only at exactly 1.
-            lines.append(f"+2 {parent}>=1")
-            lines.append(f"-2 {parent}>=2")
-            gate = names[("high" if prefix & 1 else "low", bit, 0)]
-            mismatch = f"IN<={gate}" if prefix & 1 else f"IN>={gate}"
-            lines.append(f"-2 {mismatch}")
-            lines.append(f"-1 {child}>=1")
-    lines.append(f"{output_gate}=2:")
-    lines.append(f"-1 T>={2 * n - 1}")
-    lines.append(f"+1 T>={2 * n}")
-    # OUT is 48 plus one ``+1`` per row the table sends to 1, so a dense
-    # table pays for nearly every row.  Evaluating the *zero* rows costs one
-    # line each and starts from 49, subtracting: ``49 - S`` is the
+    for i in order:
+        born, tests, _lo, parent = nodes[i]
+        child = names[key(i)]
+        value = 2 + 2 * (tests - born)
+        lines.append(f"{child}:")
+        # The paired parent rules fire only while the parent is exactly 1.
+        lines.append(f"+{value} {names[key(parent)]}>=1")
+        lines.append(f"-{value} {names[key(parent)]}>=2")
+        gate = names[("high" if key(i)[2] & 1 else "low", born - 1, 0)]
+        mismatch = f"IN<={gate}" if key(i)[2] & 1 else f"IN>={gate}"
+        lines.append(f"-{value} {mismatch}")
+        lines.append(f"-1 {child}>=1")
+    peak = max(2 + 2 * (n - (nodes[i][0] if i >= 0 else 0)) for i in leaves)
+    rest = peak + 1 if peak > 2 else 2
+    lines.append(f"{output_gate}={rest}:")
+    lines.append(f"-{rest - 1} T>={2 * n - 1}")
+    lines.append(f"+{rest - 1} T>={2 * n}")
+    # OUT is 48 plus one ``+1`` per leaf the table sends to 1, so a dense
+    # table pays for nearly every leaf.  Evaluating the *zero* leaves costs
+    # one line each and starts from 49, subtracting: ``49 - S`` is the
     # complement, and since ``S`` is 0 or 1 the value stays at 48 or 49, so
-    # the container's clamp at zero never bites.  Whichever row-set is
+    # the container's clamp at zero never bites.  Whichever leaf set is
     # smaller wins; ties keep the plain form.
     lines.append("OUT:")
     lines.append(f"+{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n}")
     lines.append(f"-{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n + 1}")
     delta = "-1" if invert else "+1"
-    for row in range(2**n):
-        if truth_table[row] == wanted:
-            lines.append(f"{delta} {names[('node', n, row)]}>={output_gate}")
+    for i in sorted(answers, key=lambda i: nodes[i][2] if i >= 0 else 0):
+        lines.append(f"{delta} {names[key(i)]}>={output_gate}")
     lines.append("PRINT:")
     lines.append(f"+1 T>={2 * n}")
     lines.append("EXIT=1:")

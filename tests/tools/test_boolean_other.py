@@ -541,17 +541,79 @@ class TestContainer:
         assert all(b <= 2 * a + 4000 for a, b in itertools.pairwise(sizes))
 
     def test_dense_tables_evaluate_the_complement(self) -> None:
-        """A dense table is summed from its zero rows and inverted.
+        """A dense table is summed from its zero leaves and inverted.
 
-        ``OUT`` costs one ``+1 S{row}>=Gout`` line per row the table sends
+        ``OUT`` costs one ``+1 S{row}>=Gout`` line per leaf the table sends
         to 1, so before this the length rose with the ones-count all the way
-        to the all-ones table.  Now it peaks at half and falls back
-        symmetrically, which is the signature of taking whichever row-set is
-        smaller.
+        to the all-ones table.  A table and its complement share one tree,
+        so taking whichever leaf set is smaller makes them the same length.
         """
-        lengths = [len(boolean.container("1" * k + "0" * (8 - k))) for k in range(9)]
-        assert lengths[4] == max(lengths)  # four ones is the worst case
-        assert lengths == lengths[::-1]  # and the curve is symmetric
+        from esolangs.tools.container import _container_tree
+
+        full = [
+            len(_container_tree("1" * k + "0" * (8 - k), prune=False)) for k in range(9)
+        ]
+        assert full[4] == max(full)  # four ones is the worst case
+        assert full == full[::-1]  # and the curve is symmetric
+        flip = str.maketrans("01", "10")
+        for i in range(256):
+            table = format(i, "08b")
+            complement = table.translate(flip)
+            assert len(boolean.container(table)) == len(boolean.container(complement))
+
+    def test_constants_test_nothing(self) -> None:
+        """The positive control: a constant reads its inputs and prints.
+
+        Its root is its only leaf, so it has no gate and no test at all, and
+        what is left is the reader, the leaf and the output block.
+        """
+        for table in ("0" * 8, "1" * 8, "0" * 16):
+            program = boolean.container(table)
+            assert "IN>=" not in program
+            assert "IN<=" not in program
+            n = len(table).bit_length() - 1
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_container(program, bits) == table[0]
+        assert len(boolean.container("0" * 8)) == 163  # 856 unpruned
+
+    def test_only_dependent_levels_are_tested(self) -> None:
+        """A level whose halves agree is read but never tested.
+
+        Each test is one ``IN>=``/``IN<=`` mismatch line on a child, so a
+        node that tests contributes two; the full three-input tree has 14.
+        """
+
+        def tests(table: str) -> int:
+            program = boolean.container(table)
+            return program.count("IN>=") + program.count("IN<=")
+
+        assert tests("00001111") == 2  # the first input alone
+        assert tests("01010101") == 2  # the last input alone
+        assert tests("00010011") == 8  # four nodes test, not seven
+        assert tests("01101001") == 14
+        for table in ("00001111", "01010101", "00010011", "00110000"):
+            for combo in range(8):
+                bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+                assert run_container(boolean.container(table), bits) == table[combo]
+
+    def test_pruning_never_grows_a_table(self) -> None:
+        """No table up to three inputs comes out longer than its full tree.
+
+        Summed over all 256 three-input tables the pruned tree is 166,768
+        characters against 225,088 unpruned.
+        """
+        from esolangs.tools.container import _container_tree
+
+        for n in (1, 2, 3):
+            for i in range(1 << (1 << n)):
+                table = format(i, f"0{1 << n}b")
+                assert len(boolean.container(table)) <= len(
+                    _container_tree(table, prune=False)
+                )
+        tables = [format(i, "08b") for i in range(256)]
+        assert sum(len(boolean.container(t)) for t in tables) == 166_768
+        assert sum(len(_container_tree(t, prune=False)) for t in tables) == 225_088
 
     @pytest.mark.parametrize("table", ["11111110", "11111111", "1110", "0111"])
     def test_complemented_tables_still_compute(self, table: str) -> None:
