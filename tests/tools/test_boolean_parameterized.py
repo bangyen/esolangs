@@ -314,6 +314,7 @@ class TestParameterizedBIO:
             ("01101001", 3),  # XOR3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools import parameterized
@@ -419,6 +420,7 @@ class TestParameterizedBitdeque:
             ("1111111100000000", 4),  # top half
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools import parameterized
@@ -430,6 +432,7 @@ class TestParameterizedBitdeque:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         from esolangs.tools import parameterized
@@ -601,6 +604,7 @@ class TestParameterizedMinskySwap:
             ("1111111100000000", 4),  # top half
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools import parameterized
@@ -612,6 +616,7 @@ class TestParameterizedMinskySwap:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         from esolangs.tools import parameterized
@@ -733,6 +738,7 @@ class TestParameterizedBfpda:
             ("1111111100000000", 4),  # top half
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools import parameterized
@@ -744,6 +750,7 @@ class TestParameterizedBfpda:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         from esolangs.tools import parameterized
@@ -852,6 +859,7 @@ class TestParameterizedHomeRow:
             ("1111111100000000", 4),  # top half
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools import parameterized
@@ -863,6 +871,7 @@ class TestParameterizedHomeRow:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         from esolangs.tools import parameterized

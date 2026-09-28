@@ -66,6 +66,7 @@ class TestSixFive:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.six_five(table)
@@ -603,6 +604,7 @@ class TestSixFive:
         assert not hasattr(module, "_six_five_node_read")
 
     @pytest.mark.parametrize("n", range(1, 6))
+    @pytest.mark.medium
     def test_the_looped_walk_executes_every_row(self, n: int) -> None:
         """The sixteen-label walk answers every row of every table shape.
 
@@ -681,6 +683,7 @@ class TestSixFiveSharing:
         """200 seeded five-input tables: 41,884 to 27,168 characters, 35.1%."""
         assert self._totals(five_input_sample()) == (41884, 27168)
 
+    @pytest.mark.medium
     def test_five_input_sample_runs(self) -> None:
         """Every row of the five-input sample's shared programs computes its bit."""
         for table in five_input_sample():

@@ -46,6 +46,7 @@ class TestCrementTree:
     """
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs, every row, one length per template."""
         for table_int in range(2 ** (2**n)):

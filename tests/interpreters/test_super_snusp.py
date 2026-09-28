@@ -85,6 +85,7 @@ def test_every_two_input_table_executes_without_rand() -> None:
             assert _run_boolean(program, bits) == table[row], (table, bits, program)
 
 
+@pytest.mark.medium
 def test_three_input_generator_executes_every_table() -> None:
     for value in range(256):
         table = format(value, "08b")

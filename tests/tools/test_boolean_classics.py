@@ -167,6 +167,7 @@ def _fractran_steps(template: str, n: int) -> int:
     return steps
 
 
+@pytest.mark.medium
 def test_fractran_ships_the_plain_tree_where_the_decoder_costs_more() -> None:
     """Below four inputs the decoder's constant outweighs what blocks save.
 
@@ -246,6 +247,7 @@ def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
             assert esolangs.verify("FALSE", table), table
 
 
+@pytest.mark.medium
 def test_false_runs_out_of_variables_and_writes_the_rest_inline() -> None:
     """Past 26 repeated halves the rest stay written out, and still run."""
     import random

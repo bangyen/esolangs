@@ -38,6 +38,7 @@ def test_three_input_tables(table: str) -> None:
         assert execute(program, bits) == (table[int(bits, 2)], 3)
 
 
+@pytest.mark.medium
 def test_every_one_hot_table_is_addressed() -> None:
     """One row answering ``1`` pins the walk's arrival on that row alone."""
     for one in range(32):

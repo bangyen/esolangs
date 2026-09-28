@@ -624,6 +624,7 @@ class TestBooleanGenerator:
     """Executed over complete truth tables, not inspected as source."""
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_every_table_at_this_arity(self, n: int) -> None:
         """Exhaustive: all ``2**(2**n)`` tables, each over all ``2**n`` rows."""
         for value in range(2 ** (2**n)):
@@ -678,6 +679,7 @@ class TestBooleanGenerator:
         assert packlang("1110").count("INCR t(3)") == 1
         assert "charPut(49^t(" in packlang("1110")
 
+    @pytest.mark.medium
     def test_three_input_steps_and_sizes(self) -> None:
         """Painting the minority, and no doubling before the first read.
 

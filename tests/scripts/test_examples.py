@@ -239,6 +239,7 @@ def _prove_halt(vm: object) -> bool:
 
 
 @pytest.mark.parametrize("name", sorted(BOOLEAN_EXAMPLES))
+@pytest.mark.medium
 def test_boolean_example(name: str) -> None:
     _module, inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
     program = (

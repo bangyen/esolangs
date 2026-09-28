@@ -28,6 +28,7 @@ class TestJaune:
             ("01101001", 3),  # XOR3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.jaune(table)
@@ -37,6 +38,7 @@ class TestJaune:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         for table_int in range(2 ** (2**n)):
@@ -186,6 +188,7 @@ class TestJauneSharing:
         )
         assert plain_tree == 29291
 
+    @pytest.mark.medium
     def test_five_input_sample_runs(self) -> None:
         """Every row of the five-input sample's shared programs computes its bit."""
         for table in five_input_sample():

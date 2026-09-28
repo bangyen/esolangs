@@ -53,6 +53,7 @@ class TestCvnc:
             ("1111111111111111", 4),  # constant one
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.cvnc(table)

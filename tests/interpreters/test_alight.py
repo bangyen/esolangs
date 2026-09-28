@@ -470,6 +470,7 @@ class TestGenerators:
     """
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_boolean_computes_every_table_at_every_row(self, n: int) -> None:
         """Exhaustive: all ``2**2**n`` tables, each on all ``2**n`` rows.
 

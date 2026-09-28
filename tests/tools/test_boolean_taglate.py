@@ -23,6 +23,7 @@ class TestTaglate:
             ("0000000000000001", 4),  # 4-AND
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.taglate(table)

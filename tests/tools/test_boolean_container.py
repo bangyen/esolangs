@@ -43,6 +43,7 @@ class TestContainer:
             ("1111111111111111", 4),  # constant one
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.container(table)
@@ -69,6 +70,7 @@ class TestContainer:
         assert len(generated) == len(set(generated))
         assert program.count("PRINT:") == 1
 
+    @pytest.mark.medium
     def test_wide_tables_decode_every_row_inside_a_tick_budget(self) -> None:
         """A *random dense* wide table answers every row in ``2n + 2`` ticks.
 

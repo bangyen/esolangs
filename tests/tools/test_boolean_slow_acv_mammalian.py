@@ -46,6 +46,7 @@ class TestSlowAcvMammalian:
             ("01101001", 3),  # XOR3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.slow_acv_mammalian(table)

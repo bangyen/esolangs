@@ -82,6 +82,7 @@ class TestInject:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result.
 
@@ -241,6 +242,7 @@ class TestForbinBoolean:
             ("01101001", 3),  # XOR3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.forbin(table)
@@ -309,6 +311,7 @@ class TestFargo:
     """The Fargo boolean generator: a recursively factored ANF, arms chosen."""
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_every_table_at_small_arity(self, n: int) -> None:
         """Exhaustive: every table, every input combination."""
         for value in range(2 ** (2**n)):
@@ -692,6 +695,7 @@ class TestAlgebraicProgrammingLanguage:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result.
 

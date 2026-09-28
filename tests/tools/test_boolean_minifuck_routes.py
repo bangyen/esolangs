@@ -35,6 +35,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
             # cover.
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools import parameterized

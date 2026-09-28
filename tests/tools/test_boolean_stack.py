@@ -67,6 +67,7 @@ class TestGrapheme:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.grapheme(table)
@@ -76,6 +77,7 @@ class TestGrapheme:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         for table_int in range(2 ** (2**n)):
@@ -153,6 +155,7 @@ class TestForth:
         assert program.count(",68*-") == 5
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_truth_table(self, n: int) -> None:
         """Every table up to three inputs produces the right result.
 
@@ -323,6 +326,7 @@ class TestForth:
         ]
         assert subtree_ids("00001111") == [[2], [0, 1], [0, 0, 1, 1], [0] * 4 + [1] * 4]
 
+    @pytest.mark.medium
     def test_sharing_executes_at_four_to_six(self) -> None:
         """A call lands on its twin's scope at every arity sampled."""
         import random
@@ -376,6 +380,7 @@ class TestModulous:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.modulous(table)
@@ -419,6 +424,7 @@ class TestBfstack:
             ("1111111111111111", 4),  # constant one
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.bfstack(table)
@@ -480,6 +486,7 @@ class TestUnsquare:
             size = len(boolean.unsquare(table))
             assert size - 2 * 2**n == 10 * n + 26, n
 
+    @pytest.mark.medium
     def test_every_row_of_every_small_table(self) -> None:
         """Exhaustive at n <= 3: 276 tables, every row executed."""
         for n in (1, 2, 3):
@@ -527,6 +534,7 @@ class TestGraphemeTable:
                 assert low == table
 
     @pytest.mark.parametrize("n", [6, 7, 8, 9])
+    @pytest.mark.medium
     def test_a_table_using_every_input_still_computes(self, n: int) -> None:
         """Six essential inputs reached slot 5, whose old key was ``FFF``.
 

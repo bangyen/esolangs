@@ -236,6 +236,7 @@ def _fuzz_mutated_source(language: str, program: str, stdin: str) -> None:
 
 @pytest.mark.parametrize("case_index", range(11))
 @pytest.mark.parametrize("fuzz_cases", sorted(RUNNERS), indirect=True, scope="module")
+@pytest.mark.medium
 def test_every_interpreter_fuzzes_mutated_sources(
     fuzz_cases: tuple[str, list[tuple[str, str]]], case_index: int
 ) -> None:

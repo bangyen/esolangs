@@ -49,6 +49,7 @@ class TestDimensional:
             ("1111111100000000", 4),
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.dimensional(table)
@@ -111,6 +112,7 @@ class TestBf:
             ("1000000000000000", 4),  # single one (AND4)
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.brainfuck(table)
@@ -147,6 +149,7 @@ class TestBfTree:
             ("1111111100000000", 4),
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.bf_tree(table)
@@ -202,6 +205,7 @@ class TestThreeDBf:
             ("1000000000000000", 4),  # single one (AND4)
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.three_d_brainfuck(table)
@@ -254,6 +258,7 @@ class TestFactor:
             ("11111110", 3),  # NAND3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.factor(table)
@@ -422,6 +427,7 @@ class TestSuffolk:
             ("1000000000000000", 4),  # single one (AND4)
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.suffolk(table)
@@ -513,6 +519,7 @@ class TestPainfuck:
             ("1000000000000000", 4),  # single one (AND4)
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.painfuck(table)
@@ -550,6 +557,7 @@ class TestBitTilde:
             ("1000000000000000", 4),  # single one (AND4)
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.bit_tilde(table)
@@ -559,6 +567,7 @@ class TestBitTilde:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_every_small_table(self, n: int) -> None:
         """Execute every table and row through three inputs."""
         for value in range(2 ** (2**n)):
@@ -598,6 +607,7 @@ class TestBrainIf:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.brainif(table)
@@ -761,6 +771,7 @@ class TestRotfuck:
             ("1111111100000000", 4),  # high half
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.rotfuck(table)
