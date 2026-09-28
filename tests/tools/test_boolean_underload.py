@@ -41,6 +41,7 @@ def test_source_growth_is_linear() -> None:
     assert all(right <= 2 * left for left, right in pairwise(sizes))
 
 
+@pytest.mark.medium
 def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
     """The reduced, carrying tree cuts both totals and lengthens no table.
 

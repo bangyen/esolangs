@@ -50,6 +50,7 @@ class TestParameterizedOneTwoThree:
         return fill_runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * len(bits), bits)
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every one-, two- and three-input table halts or loops per its entry."""
         from esolangs.tools import parameterized

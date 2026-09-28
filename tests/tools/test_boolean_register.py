@@ -51,6 +51,7 @@ class TestAddSubJump:
             ("01101001", 3),  # XOR3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.addsubjump(table)
@@ -129,6 +130,7 @@ class TestQoibl:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.qoibl(table)
@@ -235,6 +237,7 @@ class TestPolynomial:
             ("10000000", 3),  # OR-3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.polynomial(table)
@@ -544,6 +547,7 @@ class TestDig:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.dig(table)
@@ -712,6 +716,7 @@ class TestCollatzMultiverse:
             ("1111111100000000", 4),  # top half
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.collatz_multiverse(table)
@@ -776,6 +781,7 @@ class TestCollatzMultiverse:
             assert program.count("input") == 2  # n == 2, read once each
 
     @pytest.mark.parametrize("n", [4, 5, 6])
+    @pytest.mark.medium
     def test_sampled_wider_tables(self, n: int) -> None:
         """Every row of sampled tables, with ignored inputs among them."""
         rng = random.Random(n)
@@ -832,6 +838,7 @@ class TestDecleq:
             ("01101001", 3),  # XOR3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.decleq(table)

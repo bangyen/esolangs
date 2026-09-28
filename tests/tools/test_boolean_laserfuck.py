@@ -52,6 +52,7 @@ class TestLaserFuck:
             ("0110100110010110", 4),  # XOR4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.laserfuck(table)
@@ -64,6 +65,7 @@ class TestLaserFuck:
     # n=3 is 256 tables at 2.0s, over the fast run's one-second budget;
     # n=1 and n=2 are 16 tables between them and stay well under it.
     @pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.slow)])
+    @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         for table_int in range(2 ** (2**n)):

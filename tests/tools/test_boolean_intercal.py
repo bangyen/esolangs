@@ -102,6 +102,7 @@ def test_repeated_subexpressions_are_assigned_once() -> None:
 
 
 @pytest.mark.parametrize("n", range(4, 7))
+@pytest.mark.medium
 def test_shared_templates_execute_on_sampled_tables(n: int) -> None:
     rng = random.Random(n)
     for _ in range(3):

@@ -28,6 +28,7 @@ class TestClockwise:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination prints the result as an ASCII digit."""
         program = boolean.clockwise(table)

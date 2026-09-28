@@ -25,6 +25,7 @@ class TestSbleq:
             ("0000000000000000", 4),  # constant zero
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.sbleq(table)

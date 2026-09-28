@@ -82,6 +82,7 @@ class TestSophie:
             ("1111111111111110", 4),  # NAND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.sophie(table)
