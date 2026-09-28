@@ -927,15 +927,15 @@
   "Underload": {
    "0110": {
     "commands": 26,
-    "source_units": 54
+    "source_units": 51
    },
    "01101001": {
-    "commands": 37,
-    "source_units": 105
+    "commands": 41,
+    "source_units": 94
    },
    "0110100110010110": {
-    "commands": 48,
-    "source_units": 200
+    "commands": 52,
+    "source_units": 161
    }
   },
   "Unlambda": {

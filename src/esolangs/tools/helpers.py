@@ -5,7 +5,7 @@ and the generators take no ``n`` parameter.
 """
 
 from collections.abc import Callable, Iterable, Sequence
-from itertools import repeat
+from itertools import pairwise, repeat
 
 from esolangs.exceptions import TruthTableError
 
@@ -77,6 +77,61 @@ def subtree_slot(
         level, block = level + 1, 2 * block
     key = ids[level][block]
     return level, block, (level, key) if key >= 2 else (-1, key)
+
+
+class SubtreeDiagram:
+    """The reduced diagram by subtree id, for a tree that hands a share down.
+
+    ``halves[key]`` are a node's zero and one halves and ``level[key]`` its
+    depth; ids are unique across levels, so an id alone names a node.  A
+    generator that pushes or binds a repeated subtree once, where its copies
+    all lie below, asks :meth:`reaches` whether a half still needs it and
+    :meth:`repeated_near` which subtrees are worth offering.  Both memoize
+    per id, so each is O(1) a node amortized for a fixed ``depth``.
+    """
+
+    def __init__(self, truth_table: str) -> None:
+        """Intern ``truth_table``'s subtrees and index each node's halves."""
+        self.ids = subtree_ids(truth_table)
+        self.halves: dict[int, tuple[int, int]] = {}
+        self.level: dict[int, int] = {}
+        for depth, (row, under) in enumerate(pairwise(self.ids)):
+            for block, key in enumerate(row):
+                if key >= 2 and key not in self.halves:
+                    self.halves[key] = (under[2 * block], under[2 * block + 1])
+                    self.level[key] = depth
+        self._reach: dict[tuple[int, int], bool] = {}
+        self._counts: dict[tuple[int, int], dict[int, int]] = {}
+
+    def reaches(self, key: int, target: int) -> bool:
+        """Whether node ``target`` is ``key`` or lies below it."""
+        if key == target:
+            return True
+        if key < 2 or self.level[key] >= self.level[target]:
+            return False
+        if (key, target) not in self._reach:
+            halves = set(self.halves[key])
+            found = any(self.reaches(half, target) for half in halves)
+            self._reach[key, target] = found
+        return self._reach[key, target]
+
+    def _count(self, key: int, depth: int) -> dict[int, int]:
+        """Count each node within ``depth`` levels below, equal halves once."""
+        if key < 2 or not depth:
+            return {}
+        if (key, depth) not in self._counts:
+            found: dict[int, int] = {}
+            for half in set(self.halves[key]):
+                below = self._count(half, depth - 1).items()
+                for name, count in [(half, 1), *below]:
+                    if name >= 2:
+                        found[name] = found.get(name, 0) + count
+            self._counts[key, depth] = found
+        return self._counts[key, depth]
+
+    def repeated_near(self, key: int, depth: int) -> list[int]:
+        """Return the nodes met twice or more within ``depth`` levels below."""
+        return [name for name, count in self._count(key, depth).items() if count > 1]
 
 
 def _validate_truth_table(truth_table: str) -> int:
