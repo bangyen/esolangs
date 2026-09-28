@@ -32,6 +32,7 @@ import esolangs
 from esolangs._answers import encode_inputs, read_answer
 from esolangs._describe import describe
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError
+from esolangs.registry import resolve
 from esolangs.tagged import _Template
 
 #: AND, XOR, a one-input table wearing a second input, and a three-input
@@ -166,7 +167,10 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=2000, help="skip longer programs")
     parser.add_argument("--timeout", type=float, default=0.5, help="seconds per row")
     args = parser.parse_args()
-    names = args.languages or [key for key, _gen in generators()]
+    # ``resolve`` takes keys and aliases too: ``bf-pda`` failed every row.
+    names = [resolve(name) for name in args.languages] or [
+        key for key, _gen in generators()
+    ]
     rows = []
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
