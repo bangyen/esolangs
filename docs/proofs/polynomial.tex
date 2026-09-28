@@ -824,6 +824,21 @@ and summing $i$ over these blocks gives
 the $O(1)$ further roots change ranks by $O(1)$.
 \end{proof}
 
+The constant in Lemma~\ref{lem:effprofile} cannot be improved by changing only
+which states Proposition~\ref{prop:embprog} embeds.  The two successors of every
+state in $F$ are distinct embedded states, and no embedded state is a successor
+of two pairs.  Hence $2(1-a)S\le S$, so $a\ge\frac12$; also $x\ge0$.  On the
+region $\frac12\le a\le1$, $x\ge0$,
+\[
+ \frac{\partial g}{\partial a}=2\bigl(\tfrac52-2a+x\bigr)>0,
+ \qquad
+ \frac{\partial g}{\partial x}=4(6+x)-2\bigl(\tfrac{11}2+x\bigr)
+ -\bigl(\tfrac52-2a+x\bigr)>0.
+\]
+Consequently $g(a,x)\ge g(\frac12,0)=325/8$.  A smaller upper
+constant therefore needs a different instruction profile, not a different
+choice of $F$ in the existing embedding.
+
 \begin{proof}[Proof of the upper half of Proposition~\ref{prop:bracket}]
 \emph{Parameters.}  Let $n$ be large and put $\lambda_0=\lceil\log_2n\rceil$,
 $t_0=\sigma=\lambda_0$ and $A=t_0+\lambda_0+\lceil2(\lambda_0+1)\log n\rceil$.  Let $h$
