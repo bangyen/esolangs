@@ -256,6 +256,7 @@ def test_false_runs_out_of_variables_and_writes_the_rest_inline() -> None:
     assert esolangs.verify("FALSE", table)
 
 
+@pytest.mark.medium  # both builds of 456 tables: 0.95s alone
 def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
     """Share-taking nodes cut both totals and lengthen no table.
 
