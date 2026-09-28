@@ -1057,6 +1057,39 @@ the positive ones.  The same holds for $R_{p,2}$ without input.  With an input $
 it are the $[a,2]$ with $a>0$.
 \end{proof}
 
+\begin{proposition}[Even sources are universal]\label{prop:evenuniversal}
+Every Boolean truth table has an even Polynomial source that computes it.
+\end{proposition}
+
+\begin{proof}
+Use its full decision tree.  At an internal node, put the symmetric
+subtraction run
+\[
+ [-48,2],\ [0,2],\ [48,2].
+\]
+The first subtraction is overwritten by the input and the last sends the
+input character $48+b$ to $b$.  Follow it by an
+$\text{if}>0$ block for the one-child and an $\text{if}=0$ block for the
+zero-child.
+
+At a leaf, read once past the end of input, obtaining $-1$.  The symmetric
+multiplication run $[-8,3],[8,3]$ sends this to $64$.  For leaf value
+$v\in\{0,1\}$, the symmetric addition run
+\[
+ [-(16-v),1],\ [0,1],\ [16-v,1]
+\]
+therefore prints $48+v$ and restores $64$.  That positive value fails every
+zero-test encountered after a taken one-child while the nested blocks
+unwind, so no other leaf is entered.
+
+Give consecutive instruction runs fresh primes as usual.  For every real
+control root $p^j$, also include the ignored root $-p^j$.  Every register
+run already contains $[a,b]$ and $[-a,b]$ with equal multiplicity.  The
+resulting root multiset is closed under negation, so its monic product is an
+even integer polynomial; its decoded positive and upper-half-plane roots
+are exactly the program above.
+\end{proof}
+
 Recall the control codes of a real root $p^v$: for $v=1,\dots,8$ it is $\text{if}>0$, a
 closing bracket, $\text{if}<0$, $\text{if}=0$, $\text{while}>0$, a closing bracket,
 $\text{while}<0$ and $\text{while}=0$.  An opener whose test fails continues after its
