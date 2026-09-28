@@ -328,8 +328,38 @@ would have to be computed as `S + k` -- addition, which `crazy` and `*` do
 not give. So `i` ends the group for every row, and the letters left are `o
 j * p /`: again about `log2 5` bits a cell.
 
-No value-decoded build reaches seventeen, and no known execution-decoded
-one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
+### Six meanings, once the decoder knows the address's parity
+
+The hitting-set bound assumes a meaning is writable at *every* address. A
+decoder that also knows `h mod 2` escapes it, because `94` is even: an
+address of one parity only sees the 47 translates `I - h` with `h` of that
+parity. Each value lies in 4 of them, so a meaning needs at least 12 values
+and eight meanings would need 96: **at most seven**. Six are attained in
+both classes (CP-SAT, checked by enumeration; as character minus 33, even `h`):
+
+```
+{4,9,30,45,49,52,54,55,58,60,62,63,65,66,70,73}
+{8,10,12,15,17,21,23,31,33,35,38,40,50,77,78}
+{5,6,13,18,26,29,34,39,46,53,56,59,67,80,83,92}
+{1,14,16,19,22,25,27,41,43,48,81,86,88,91,93}
+{2,28,42,61,68,69,71,72,74,75,76,79,82,84,87,89}
+{0,3,7,11,20,24,32,36,37,44,47,51,57,64,85,90}
+```
+
+Seven is undecided (no answer in 40 minutes). Parity is cheap to
+reach: `9**k` is odd, so `h mod 2` is the parity of the digit sum, a
+function of the input bits. `log2 6 = 2.58` bits a cell clears the 2.47
+seventeen needs once a positional main code is paid for, so the
+value-decoded cap no longer excludes seventeen. What remains is cost, not
+rate: a parity-aware decoder must rewrite its hubs per class, and a joint
+code over several cells multiplies that per decoded state. A 2+1 layout
+(two 15-bit cells and one 14-bit cell per four row pairs, `7**3 >= 4**4`)
+fails even at seven meanings: each pair of labels needs a common `B` value,
+which forces the Fano plane, and no multiplicity of its lines keeps every
+value within seven labels.
+
+No value-only build reaches seventeen, and no known parity-aware or
+execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
 factor `2**46076`, so no such proof is in sight. Seventeen is open in both
 directions.
