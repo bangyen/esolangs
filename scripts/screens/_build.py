@@ -7,7 +7,7 @@ each puts this directory on ``sys.path`` for the import, as
 
 from collections.abc import Callable, Iterator
 
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, resolve
 
 #: Every two- and three-input table, MSB first.
 PAIRS = [format(i, "04b") for i in range(16)]
@@ -34,3 +34,15 @@ def sizes(gen: Callable[[str], object], tables: list[str]) -> dict[str, int | No
         except ValueError:
             out[table] = None
     return out
+
+
+def chosen(names: list[str]) -> list[tuple[str, Callable[[str], object]]]:
+    """Return ``generators()`` narrowed to ``names``, or all of it for none.
+
+    A name is resolved as ``esolangs`` resolves one, so a display name, a
+    lower-case key or a punctuation-free spelling all select the language.
+    """
+    if not names:
+        return list(generators())
+    wanted = {resolve(name) for name in names}
+    return [(key, gen) for key, gen in generators() if key in wanted]
