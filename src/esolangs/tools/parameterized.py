@@ -400,15 +400,15 @@ def home_row(truth_table: str) -> str:
     or ``j`` (a skip that does not fire).  The bits pack into one binary
     accumulator: each packing line ``$$ l s ffff a{2**(n-1-i)} f l`` uses
     Home Row's position-stable ``l``/``s``/``l`` gate (loops cannot nest) to
-    add the weight iff the bit is 1.  Then ``2**n`` lines
-    ``a ffff l s f s ff l f l f <answer> k ; l f f`` fan the accumulator
-    into a working copy and backup, subtract ``k``, and either print the
-    baked answer and halt or restore and fall through; the last needs no restore.
+    add the weight iff the bit is 1.  Then guarded leaves count it down:
+    ``l s f l`` decrements a nonzero index onto the zeroed bit cell; ``ff``
+    lands a zero one on the 48 (print ``<answer> k ;``), the rest on a
+    blank, skipped, then back.  Rows agreeing with the last share its unguarded leaf.
     """
     n = _validate_truth_table(truth_table)
-    # The leaf chain is 2**n lines whatever the table says, so dropping an
-    # ignored input halves the program; its gate stays with weight zero,
-    # so nothing moves and no setter changes width.
+    # The leaf chain is up to 2**n leaves, so dropping an ignored input
+    # halves the program; its gate stays with weight zero, so nothing moves
+    # and no setter changes width.
     used = essential_inputs(truth_table, n)
     # A constant table depends on nothing and reduces to a one-input table,
     # never to the length-1 table, which is not a valid shape.
@@ -420,8 +420,12 @@ def home_row(truth_table: str) -> str:
         run + "lsffff" + "a" * weights.get(i, 0) + "fl"
         for i, run in enumerate(_runs(HOME_ROW_PAIR, n))
     ]
+    guarded = table.rstrip(table[-1])
+    # Nothing after the last guard reads the index: it need not decrement.
     leaves = [
-        "afffflsfsfflflf" + ("a" if bit == "1" else "") + "k;lff" for bit in table[:-1]
+        "l" + "s" * (row < len(guarded) - 1) + "flffl" + "a" * (bit == "1") + "k;lff"
+        for row, bit in enumerate(guarded)
     ]
-    leaves.append("f" + ("a" if table[-1] == "1" else "") + "k;")
-    return setup + "".join(bit_lines) + "".join(leaves)
+    # The source's end halts, so the last answer needs no ``;``.
+    last = ("ff" if guarded else "f") + "a" * (table[-1] == "1") + "k"
+    return setup + "".join(bit_lines) + "ffff" * bool(guarded) + "".join(leaves) + last
