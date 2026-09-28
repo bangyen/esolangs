@@ -321,7 +321,7 @@ class TestForbinBoolean:
 
 
 class TestFargo:
-    """The Fargo boolean generator: a recursively factored ANF."""
+    """The Fargo boolean generator: a recursively factored ANF, arms chosen."""
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_every_table_at_small_arity(self, n: int) -> None:
@@ -397,6 +397,46 @@ class TestFargo:
         """NOR has every ANF coefficient set, but its source only doubles."""
         sizes = [len(boolean.fargo("1" + "0" * ((1 << n) - 1))) for n in (7, 8)]
         assert sizes[1] < 2 * sizes[0] + 16
+
+    def test_choosing_arms_never_grows_a_program(self) -> None:
+        """No table to three inputs is longer than its positive factoring.
+
+        The positive factoring is the build before arms were chosen and it
+        stays a candidate, so the chosen arms can only shorten a program:
+        over three inputs the sweep falls from 9,556 characters to 8,202.
+        """
+        from esolangs.tools.fargo import _anf_coefficients, _anf_expression
+
+        before = after = 0
+        for n in (1, 2, 3):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                positive = _anf_expression(_anf_coefficients(table), n)
+                old = len(f"% 0 {positive}\n$\n")
+                built = len(boolean.fargo(table))
+                assert built <= old, table
+                if n == 3:
+                    before += old
+                    after += built
+        assert (before, after) == (9556, 8202)
+
+    @pytest.mark.parametrize(
+        ("table", "expression"),
+        [
+            # NOR3: each 1-arm is zero, so each node keeps its 0-arm negated
+            # where the positive factoring spelled all eight ANF terms.
+            ("10000000", "& ^ 1 @ 10 & ^ 1 @ 1 ^ 1 @ 0"),
+            # OR3: each 1-arm is constant one, so each node is ``f0 | x``.
+            ("01111111", "| | @ 0 @ 1 @ 10"),
+        ],
+    )
+    def test_a_node_keeps_its_cheap_arm(self, table: str, expression: str) -> None:
+        """Polarity is chosen per node by the construction, not by the fill."""
+        program = boolean.fargo(table)
+        assert program == f"% 0 {expression}\n$\n"
+        for combo in range(8):
+            bits = list(format(combo, "03b"))
+            assert run_fargo(program, bits) == table[combo]
 
 
 class TestContainer:
