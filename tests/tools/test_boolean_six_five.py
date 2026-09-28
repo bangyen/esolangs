@@ -71,13 +71,15 @@ class TestSixFive:
 
         The two constructions differ in where the reads sit, not in the
         branch: each starts by reading a bit and subtracting 40, tests it
-        with ``78``, and ends every path on ``A0``.
+        with ``78``, and ends every path on ``A0`` -- but the last, which the
+        dispatch leaves on ``A``, since the program halts at its end anyway.
         """
 
         for program in (boolean.six_five("0110"), _six_five_stream_ordered("0110")):
             assert program.startswith("B" + "2" * 8)
             assert "78" in program
-            assert program.endswith("A0")
+        assert _six_five_stream_ordered("0110").endswith("A0")
+        assert boolean.six_five("0110").endswith("2A")
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -157,11 +159,11 @@ class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n", "labels"),
         [
-            ("0" * 63 + "1", 6, 6),  # AND6: was refused by both paths
+            ("0" * 63 + "1", 6, 5),  # AND6: was refused by both paths
             ("1" * 32 + "0" * 32, 6, 1),  # one split
             ("1" * 48 + "0" * 16, 6, 2),  # two regions
             ("1" * 64, 6, 0),  # constant
-            ("0" * 255 + "1", 8, 8),  # AND8
+            ("0" * 255 + "1", 8, 7),  # AND8: the last test copies its bit
         ],
     )
     def test_tree_past_five_inputs(self, table: str, n: int, labels: int) -> None:
@@ -193,15 +195,11 @@ class TestSixFive:
         tables are the ones where the bound is tight: each is a constant, a
         single prefix run, or an AND, whose folding no renaming improves.
         """
-        for table in (
-            "0" * 63 + "1",
-            "1" + "0" * 63,
-            "1" * 48 + "0" * 16,
-            "1" * 64,
-            "1" * 127 + "0",
-            "0" * 255 + "1",
-        ):
+        for table in ("1" + "0" * 63, "1" * 48 + "0" * 16, "1" * 64, "1" * 127 + "0"):
             assert _six_five_markers(table) == _markers(boolean.six_five(table))
+        # An AND's last test copies its bit, so it prints and spends no label.
+        for table in ("0" * 63 + "1", "0" * 255 + "1"):
+            assert _six_five_markers(table) - 1 == _markers(boolean.six_five(table))
 
         # And the bound itself, over every n == 3 table: reordering can only
         # fold more subtrees, never fewer, so the emission never allocates
@@ -336,7 +334,7 @@ class TestSixFive:
         dense7 = self._dense(7)
         assert _six_five_dag_cost(dense7) > 35
         program = boolean.six_five(dense7)
-        assert program == _six_five_walk(dense7)
+        assert program == _six_five_walk(dense7).removesuffix("0")  # halts at its end
         assert _markers(program) == 7
         for combo in range(128):
             bits = [(combo >> (6 - i)) & 1 for i in range(7)]
@@ -346,7 +344,7 @@ class TestSixFive:
     def test_dense_ten_inputs_render_and_run(self) -> None:
         """The generator clears n == 10 on a table with nothing to fold.
 
-        Dense n == 10 renders at 10 labels and 5319 chars (all 1024 rows
+        Dense n == 10 renders at 10 labels and 5318 chars (all 1024 rows
         were run exhaustively once, in 12s; this samples).  The feed check
         proves the walk reads exactly ``n`` lines -- its ``B``s sit inside
         the pointer walk, so a desync would misroute as well as misread.
@@ -354,12 +352,22 @@ class TestSixFive:
         dense10 = self._dense(10)
         program = boolean.six_five(dense10)
         assert _markers(program) == 10
-        assert len(program) == 5319
+        assert len(program) == 5318
         for combo in (0, 1, 512, 1023, *range(7, 1024, 128)):
             bits = [(combo >> (9 - i)) & 1 for i in range(10)]
             feed = iter([str(b) for b in bits])
             assert run_six_five_from(program, feed) == dense10[combo], f"row {combo}"
             assert not list(feed), f"inputs {bits} left input unread"
+
+    def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
+        """Total emitted bytes over every three-input table.
+
+        29900 while a node whose answer is its own bit tested it and laid
+        two leaves of one text, the last leaf kept its halt, and a folded
+        leaf stepped back a cell; 21533 once the node prints its cell.
+        """
+        total = sum(len(boolean.six_five(format(v, "08b"))) for v in range(256))
+        assert total == 21533
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than its identity-order program."""
@@ -368,13 +376,14 @@ class TestSixFive:
         for value in range(256):
             table = format(value, "08b")
             dispatched = len(boolean.six_five(table))
-            identity = len(_six_five_stream_ordered(table))
+            # The dispatch drops the last ``0``, which the builds keep.
+            identity = len(_six_five_stream_ordered(table)) - 1
             assert dispatched <= identity, table
             improved += dispatched < identity
         # 186 before the leaves gained ``_six_five_const``'s ``r == 5``
-        # shortcut: a shorter leaf changes which orders pay for themselves,
-        # so more tables now beat the identity rather than tying it.
-        assert improved == 192  # the rest tie, keeping the old emission
+        # shortcut, 192 after; 108 once a node that copies its bit prints
+        # it, which the stream build does with the raw read (``BA0``).
+        assert improved == 108  # the rest tie, keeping the old emission
 
     @pytest.mark.parametrize(
         ("table", "n"),

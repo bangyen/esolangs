@@ -10,6 +10,7 @@ one that folds inside the budget.
 """
 
 import string
+from collections.abc import Callable
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.helpers import (
@@ -41,7 +42,10 @@ def _six_five_markers(table: str) -> int:
 
     One per internal node the fold leaves; a slice whose characters agree
     folds to a leaf.  Pass a permuted table for that order's count -- the
-    35-label budget is a per-order gate.  Spans, not slices: O(2**n).
+    35-label budget is a per-order gate.  Spans, not slices: O(2**n).  A
+    node that copies its bit (:func:`_six_five_copies_bit`) spends no label
+    but still counts: the gate is a bound, so the tree-or-shared choice is
+    unmoved (counted exactly, one n == 6 table took a tree 341 -> 561).
     """
     constant = constant_span_test(table)
 
@@ -52,6 +56,18 @@ def _six_five_markers(table: str) -> int:
         return 1 + count(lo, mid) + count(mid, hi)
 
     return count(0, len(table))
+
+
+def _six_five_copies_bit(
+    table: str, constant: Callable[[int, int], bool], lo: int, hi: int
+) -> bool:
+    """Whether the span's answer is its first bit: all 0s, then all 1s.
+
+    Both arms then print from the tested cell with one text (0 from 8, 1
+    from 9), so the node needs no test and spends no label.
+    """
+    mid = (lo + hi) // 2
+    return table[lo] + table[mid] == "01" and constant(lo, mid) and constant(mid, hi)
 
 
 def six_five(truth_table: str) -> str:
@@ -105,8 +121,9 @@ def six_five(truth_table: str) -> str:
         # too many distinct subtrees for any tree-shaped emission.  The walk
         # spends labels per *input* rather than per subtree, so it always
         # fits at these widths.
-        return _six_five_walk(truth_table)
-    return best
+        best = _six_five_walk(truth_table)
+    # The last leaf ends the program, which halts at its end anyway.
+    return best.removesuffix("0")
 
 
 def _six_five_walk(truth_table: str) -> str:
@@ -449,6 +466,8 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         cell = cell_of[perm[level]]
         mid = (lo + hi) // 2
         nav = _six_five_move(entry, cell)
+        if _six_five_copies_bit(truth_table, constant, lo, hi):
+            return nav + leaf("0", cell, 8)
         # A label is the index of this node's own ``4`` among every ``4`` in
         # the emitted string, so it is allocated *after* the left subtree --
         # whose markers all precede it -- and before the right.
@@ -482,7 +501,7 @@ def _six_five_stream_ordered(truth_table: str) -> str:
     (competitive on shallow tables).  Splits in stream order: one candidate.
     A constant subtree folds (17 chars vs 226 at n == 3, 19 vs 946 at n == 5)
     but still spends its reads, so a folded leaf cannot use the 8/9 base and
-    builds its digit from cell 1 instead.  Raises :class:`ValueError` past 35 labels.
+    builds its digit on a fresh cell.  Raises :class:`ValueError` past 35 labels.
     """
     n = _validate_truth_table(truth_table)
     labels = _six_five_markers(truth_table)
@@ -492,6 +511,7 @@ def _six_five_stream_ordered(truth_table: str) -> str:
             f"{labels} after folding its constant subtrees (n == {n})"
         )
     marker = 0
+    constant = constant_span_test(truth_table)
 
     def build(rows: list[int], bit: int, base: int) -> str:
         nonlocal marker
@@ -503,10 +523,14 @@ def _six_five_stream_ordered(truth_table: str) -> str:
         values = {truth_table[r] for r in rows}
         if len(values) == 1:
             # Folded leaf: the skipped reads still run (stream sync) and
-            # leave 48 or 49 in the cell, so build the digit from cell 1.
+            # leave 48 or 49 in the cell, so build the digit two cells on.
             reads = "B" * (n - bit + 1)
             value = _ASCII_ZERO + int(values.pop())
-            return reads + "13" + _six_five_const(value) + "A0"
+            return reads + "1" + _six_five_const(value) + "A0"
+        if _six_five_copies_bit(truth_table, constant, rows[0], rows[-1] + 1):
+            # Print the read as it came; the rest of the stream reads two cells on.
+            rest = n - bit
+            return "B" + ("1" + "B" * rest + "33" if rest else "") + "A0"
         g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
         g1 = [r for r in rows if ((r >> (n - bit)) & 1) == 1]
         sub0 = build(g0, bit + 1, 8)
