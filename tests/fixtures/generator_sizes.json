@@ -48,12 +48,12 @@
     "source_units": 30
    },
    "01101001": {
-    "commands": 14,
-    "source_units": 70
+    "commands": 15,
+    "source_units": 51
    },
    "0110100110010110": {
-    "commands": 28,
-    "source_units": 150
+    "commands": 29,
+    "source_units": 71
    }
   },
   "A Painter Ant": {
