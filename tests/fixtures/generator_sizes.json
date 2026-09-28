@@ -619,15 +619,15 @@
   "Line": {
    "0110": {
     "commands": null,
-    "source_units": 990000
+    "source_units": 860000
    },
    "01101001": {
     "commands": null,
-    "source_units": 2442400
+    "source_units": 2128000
    },
    "0110100110010110": {
     "commands": null,
-    "source_units": 4233600
+    "source_units": 3872800
    }
   },
   "Malbolge": {

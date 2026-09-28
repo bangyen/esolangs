@@ -140,14 +140,6 @@ Only live work belongs here. Contracts and standing walls go to
   tester address.  Ship only if every three-input table executes correctly
   and the routing win survives the emitted tester and patch addresses.
 
-- **Prune raster dependencies.**  Line and Piet both retain every input and
-  every table entry when the function ignores inputs: at four inputs, an
-  all-zero Line drawing is 1,920 x 2,060 pixels and an all-zero Piet program
-  is 258 codels.  Read every input to preserve the interface, but branch or
-  index only on the essential ones.  Ship separately per language only if
-  the PNG round trip executes and reduces pixels or codels on an exhaustive
-  small-table corpus; constants are the positive control.
-
 ## Open problems
 
 Research questions the proofs leave open.  Each names the first executable
