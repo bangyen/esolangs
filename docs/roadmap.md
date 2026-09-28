@@ -88,9 +88,14 @@ step; an answer lands in the paper it extends, and the row leaves.
   descriptions rather than of flip-sensitive cells.  Either way it is a
   density lemma: 17 inputs need 2.22 bits a cell against the 3 a cell
   holds, so every program must waste 0.78 bits a cell (the sixteen-input
-  build stores 1.11).  Next step: measure bits per cell of the tables computed
-  by a scaled-down Malbolge (`3**6`..`3**7` cells, same decode and
-  re-encipher) as the store grows; near 3 kills the route.  The shipped
+  build stores 1.11).  Directly sampling scaled stores cannot measure this:
+  at `3**6` cells the threshold is 1,618 bits, so even the first expected
+  collision needs about `2**809` programs (`2**2428` at `3**7`).  In 10,000
+  random legal programs, 234 at `3**6` and 246 at `3**7` computed a total
+  one-input table, but the sample itself caps any distinct-table estimate at
+  0.0183 and 0.0061 bits a cell.  Next step: define a canonical nop/padding
+  normal form and bound its descriptions analytically; empirical entropy
+  cannot supply the needed upper bound.  The shipped
   constructions reach 16 inputs (a positional address, one cell per row
   pair), so 17 is the only arity whose status is unknown: a build would
   need more than two table bits in nearly every cell, and a proof that one
