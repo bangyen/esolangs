@@ -56,6 +56,19 @@ Only live work belongs here. Contracts and standing walls go to
   bound can exist: at sixteen and seventeen inputs `T` already exceeds that
   ceiling, and above seventeen some tables have no program.
 
+  That settles the column but says nothing about the construction, because
+  `len()` does not measure it: every build emits the whole store, so the
+  figure is 59,049 at every arity and the load limit is the length rather
+  than a bound on it.  What the construction spends is its *set* cells, the
+  ones differing from `f(a)`, the nop character for their own address that
+  every untouched cell holds -- and that is exactly linear in `T`, with a
+  closed form through ten inputs.  The cascade above ten spends cells per
+  resolved readout rather than per row, which is where the load law bites.
+  See [malbolge-scaling](proofs/malbolge-scaling.md#the-emitted-size-law):
+  the reason this matters is that the `O(1)` verdict is a property of the
+  padding, so any size argument about the *build* has to be made against
+  the set-cell law, not against the 59,049.
+
   Factor's adaptive residue sequence is bounded by fixed-modulus Hoheisel:
   its last selected prime `Q` is polynomial in the run count. Worst-case
   generated text and the weighted exponent-vector language floor are both
@@ -175,8 +188,11 @@ step; an answer lands in the paper it extends, and the row leaves.
   normal form that strips nop runs and padding -- or a count of
   descriptions rather than of flip-sensitive cells.  Either way it is a
   density lemma: 17 inputs need 2.22 bits a cell against the 3 a cell
-  holds, so every program must waste 0.78 bits a cell (the shipped builds
-  store 0.14).  Next step: measure bits per cell of the tables computed
+  holds, so every program must waste 0.78 bits a cell (the widest shipped
+  build, 14 inputs, stores 16,384 bits over 59,049 cells = 0.28 a cell, or
+  1.62 over the cells it actually sets; the arity is named because the old
+  figure here, 0.14, was 13's and went stale when 14 shipped).  Next step:
+  measure bits per cell of the tables computed
   by a scaled-down Malbolge (`3**6`..`3**7` cells, same decode and
   re-encipher) as the store grows; near 3 kills the route.  The shipped
   constructions reach 14 inputs (four copies over a three-level cascade);
