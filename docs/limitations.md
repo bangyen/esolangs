@@ -266,6 +266,17 @@ Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.
 Those choices prevent repeated scans, but command cost and source size remain
 separate axes.
 
+### The Malbolge sampled rows are not redundant
+
+`test_boolean_malbolge.py` is the largest single block in the suite, and
+each sampled test runs a stride sample (every 8th/16th/32nd row) *and* every
+second-level row of the cascade.  The two halves cover disjoint failures, so
+neither is trimmable: at eleven inputs, corrupting the level-0 answers of
+`_cascade_program` is caught by 117 stride rows and **0** second-level rows,
+while corrupting the second-level answers is caught by 127 second-level rows
+and only 18 stride rows.  The stride rows are the only cover for the 1792
+level-0 rows.  Recorded because the file's size reads like waste and is not.
+
 ## Curation
 
 The collection has 68 languages; its floor is 31. All seven classics carry

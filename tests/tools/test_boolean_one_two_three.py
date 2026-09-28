@@ -650,6 +650,25 @@ class TestParameterizedOneTwoThree:
         ``_work`` is deterministic (simulated commands, not wall clock), so
         shrinking :data:`_WORK_BUDGET` reproduces the exhausted-budget branch
         exactly -- the path an unconvergent search takes, without paying one.
+
+        The cache clear is not tidiness, it is the whole correctness of
+        doing this in a shared process.  ``construct`` on an eight-bit table
+        is ``n = 3``, which calls ``_geometry(3)`` -- and ``_geometry`` is
+        ``@cache``d and *reads this constant*, budgeting its one reference
+        run from it.  First call under a budget of 50 and the reference run
+        exhausts, so ``_geometry`` takes its "no probed arity reaches this"
+        fallback to the doubling base and caches that for the life of the
+        process.  Every later three-input build then emits the longer
+        template: restoring the constant does not restore what was derived
+        from it.
+
+        That is not hypothetical.  It is what made
+        ``test_the_constructed_lengths_are_stable_over_three_inputs`` fail
+        with 229941 against its pinned 189055, once in three runs under
+        ``--dist worksteal`` -- which only changes *which worker* gets a
+        test, so the two had never shared a process under the default
+        scheduler.  The assertions below pin the invalidation rather than
+        trusting the next reader to notice.
         """
         from esolangs.tools import one_two_three_construct as construct_mod
 
@@ -660,6 +679,15 @@ class TestParameterizedOneTwoThree:
                 construct_mod.construct("00000000")
         finally:
             construct_mod._WORK_BUDGET = original_budget  # noqa: SLF001
+            construct_mod._geometry.cache_clear()  # noqa: SLF001
+
+        # The tight layout, not the doubling base: `ws` is None only on the
+        # fallback, so this is exactly "the cache is not poisoned".
+        _, ws = construct_mod._geometry(3)  # noqa: SLF001
+        assert ws is not None, (
+            "_geometry(3) cached its exhausted-budget fallback; every later "
+            "three-input construct would emit the longer template"
+        )
 
     def test_normalize_reports_a_live_locked_ring(self) -> None:
         """Four distinct rows pinned to all four ring cells cannot escape.

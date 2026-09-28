@@ -177,6 +177,26 @@ addopts = [
     # Override per-run with "-n auto", "-n 8", or "-n 0" on the command line.
     "-n",
     "4",
+    # The schedule, not the worker count, was the band's real bound. The
+    # default "load" hands out fixed-size chunks up front, so a worker that
+    # draws several of the 8-16s Malbolge probes is still going long after
+    # the others have run dry -- the tail is idle workers, not work.
+    # Measured on one tree, `-m "not weekly"`, 11752 passing every time:
+    # at four workers 193.5s on load against 126.9s on worksteal, and at
+    # `-n auto` (ten) 173.7s against 85.6s. Going 4 -> 10 workers buys 11%;
+    # changing the schedule at four buys 34%, and keeps the six free cores
+    # the comment above is about.
+    #
+    # Adopting it first needed the bug it found. worksteal only changes
+    # which worker gets a test, and that put two tests in one process for
+    # the first time: one shrinks `_WORK_BUDGET` to exercise an exhausted
+    # build, and `_geometry` is `@cache`d and budgets its reference run
+    # from that constant -- so it cached its fallback and every later
+    # three-input template came out longer. See
+    # `test_an_exhausted_work_budget_is_declined`, which now invalidates
+    # the cache and asserts it did.
+    "--dist",
+    "worksteal",
     # A hang never reaches the duration policy, so every test also carries a
     # hard stop: `tests/conftest.py` sets it per band from
     # `tests/duration_policy.HARD_CEILINGS`.  The thread method, not the
