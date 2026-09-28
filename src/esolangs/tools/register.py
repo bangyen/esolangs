@@ -429,8 +429,7 @@ def collatz_multiverse(truth_table: str) -> str:
 def sophie(truth_table: str) -> str:
     """Build a Sophie program computing the given truth table.
 
-    ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), ``n`` is the input count implied by the table length.
+    ``truth_table`` has ``2**n`` entries, most significant input first.
 
     Sophie reads a character with ``;`` and branches on the accumulator with
     ``@$48{then}{else}`` -- the else block runs flat after a failed check, so
