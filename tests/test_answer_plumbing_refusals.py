@@ -848,17 +848,16 @@ class TestDivergenceIsProvenNotWaitedOut:
 class TestTheTerminationProofFallsBackToTheClock:
     """A cycle is not the only way to diverge; growth never repeats a state."""
 
-    def test_the_proof_beats_even_a_millisecond_bound(self) -> None:
+    def test_the_proof_needs_no_clock_at_all(self) -> None:
         """Which is the measurement, and also why the clock arm is untested.
 
-        I expected a one-millisecond bound to force the fallback and assert
-        the old "diverges" answer.  It does not: these programs revisit a
-        state inside a hundred steps, so the cycle is proven before the
-        clock can fire, and the right table comes back anyway.  The
-        fallback is real -- unbounded growth never repeats a state -- but
-        no table in this suite reaches it.
+        These programs revisit a state inside a hundred steps, so the cycle
+        is proven with no bound at all: a looping row that needed the clock
+        would never return.  A one-millisecond bound said the same until a
+        loaded machine let a row outlast it.  The fallback is real --
+        unbounded growth never repeats a state -- but no table here reaches it.
         """
-        assert esolangs.evaluate("123", "0110", 0.001) == "0110"
+        assert esolangs.evaluate("123", "0110", None) == "0110"
 
     def test_the_answers_match_what_the_clock_used_to_give(self) -> None:
         """The proof must not have changed any verdict, only the cost."""
