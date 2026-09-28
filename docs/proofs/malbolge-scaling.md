@@ -59,13 +59,22 @@ translates meets.
 Each colliding pair contains sixteen answer bits.  Its three shared cells and
 three private cells carry eighteen bits, so one free three-cell orbit per pair
 suffices.  The cyclic translates occupy 13,983 of the 19,683 three-cell
-orbits and leave 5,700; assigning 2,401 of those would complete the storage
-bound while preserving 9,897 cells for code.  This is capacity, not a build:
-the missing piece is a loop-less address map from the collision key (four
-seven-valued digits) to a free orbit, followed by a decoder executed against
-all 131,072 rows.  Uniform trit permutations and rotations do not supply it:
-among the sixty such transforms no pair of full 16,384-cell images is
-disjoint, and the least pairwise overlap is 2,401.
+orbits and leave 5,700.  There is a loop-less assignment.  Normalize a
+collision orbit so its top digit is `2`; its other four digits independently
+range over seven fixed values, giving a base-7 rank `r` in `0..2400`.  For
+`r < 1458`, write `r` in mixed radix `(9, 9, 9, 2)` with digit 0 fixed at 7.
+Otherwise write `r - 1458` in `(8, 9, 9, 2)`, with digit 1 fixed at 8 and
+digit 0 drawn from `{0,1,2,3,4,5,6,8}`.  Both Cartesian regions are outside
+the occupied orbits and overlap only where the second excludes digit 7, so
+all 2,401 targets are distinct.  `malbolge_packing.py` exhaustively certifies
+the counts and the formula.
+
+Storage is therefore closed at 49,152 cells, preserving 9,897 for code.  This
+is still an unbuilt design: the remaining piece is a six-cell encoder/decoder
+for each collision pair and an interpreter run over all 131,072 rows.  Uniform
+trit permutations and rotations alone do not supply the full layout: among
+the sixty such transforms no pair of full 16,384-cell images is disjoint, and
+the least pairwise overlap is 2,401.
 
 ## The emitted-size law
 

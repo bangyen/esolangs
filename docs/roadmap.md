@@ -100,9 +100,10 @@ step; an answer lands in the paper it extends, and the row leaves.
   cyclic trit translates of the fourteen-input positional map produce 11,582
   disjoint blocks and 2,401 pairs sharing all three cells.  Encoding each
   shared pair across its three common cells and three private cells uses
-  49,152 cells and leaves 9,897 for code.  Next step: derive the loop-less
-  map from the 2,401 collision pairs to 2,401 of the 5,700 free three-cell
-  orbits, then build and execute the decoder; see
+  49,152 cells and leaves 9,897 for code.  A mixed-radix formula now maps the
+  four base-7 collision digits injectively into 2,401 of the 5,700 free
+  three-cell orbits, certified exhaustively by `malbolge_packing.py`.  Next
+  step: build the six-cell encoder/decoder and execute every row; see
   [malbolge-scaling](proofs/malbolge-scaling.md#seventeen-three-cell-packing).
   The shipped
   constructions reach 16 inputs (a positional address, one cell per row
