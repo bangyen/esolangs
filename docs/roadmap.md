@@ -48,9 +48,9 @@ Only live work belongs here. Contracts and standing walls go to
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
   Malbolge cannot be total: its finite source space omits some 18-input truth
-  tables.  Its shipped constructions cover every table through fourteen inputs;
-  generation time remains open over the reachable gap below that language
-  ceiling.  Output size is settled by the language itself: a source must load
+  tables.  Its shipped constructions cover every table through sixteen inputs;
+  generation time remains open at seventeen, the one arity between them and
+  that language ceiling.  Output size is settled by the language itself: a source must load
   into 59,049 cells, so every Malbolge program -- shipped or not -- is at most
   59,049 characters, which is `O(1)` and so `O(T)`.  No super-linear size
   bound can exist: at sixteen and seventeen inputs `T` already exceeds that
@@ -188,16 +188,14 @@ step; an answer lands in the paper it extends, and the row leaves.
   normal form that strips nop runs and padding -- or a count of
   descriptions rather than of flip-sensitive cells.  Either way it is a
   density lemma: 17 inputs need 2.22 bits a cell against the 3 a cell
-  holds, so every program must waste 0.78 bits a cell (the widest shipped
-  build, 14 inputs, stores 16,384 bits over 59,049 cells = 0.28 a cell, or
-  1.62 over the cells it actually sets; the arity is named because the old
-  figure here, 0.14, was 13's and went stale when 14 shipped).  Next step:
-  measure bits per cell of the tables computed
+  holds, so every program must waste 0.78 bits a cell (the sixteen-input
+  build stores 1.11).  Next step: measure bits per cell of the tables computed
   by a scaled-down Malbolge (`3**6`..`3**7` cells, same decode and
   re-encipher) as the store grows; near 3 kills the route.  The shipped
-  constructions reach 14 inputs (four copies over a three-level cascade);
-  between them and 17 the least unreachable arity is unknown in both
-  directions.
+  constructions reach 16 inputs (a positional address, one cell per row
+  pair), so 17 is the only arity whose status is unknown: a build would
+  need more than two table bits in nearly every cell, and a proof that one
+  table is unreachable needs the density lemma above.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:

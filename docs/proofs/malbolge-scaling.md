@@ -1,10 +1,12 @@
-# Malbolge boolean generator: the scaling wall above fourteen
+# Malbolge boolean generator: the hashed wall, and the build past it
 
-Why the source-embedded boolean generator caps at fourteen inputs, what a
-fifteen-input build would take, and why sixteen has no known construction.
-Companion to the narrative in [../limitations.md](../limitations.md); the
-shipped build stops at fourteen. Everything here is measured or verified
-against the interpreter's `crazy`/`rot`, or marked as an unbuilt design.
+Why the hashed cascade stopped at fourteen inputs, the positional build that
+now covers fifteen and sixteen, and why seventeen is out of reach for any
+build that spends a cell per pair of rows. Companion to the narrative in
+[../limitations.md](../limitations.md). Everything here is measured or
+verified against the interpreter's `crazy`/`rot`, or marked as an unbuilt
+design. The sections on the load law and the two fifteen-input cascade
+attempts are kept as the record of why the hash had to go.
 
 ## The load law
 
@@ -172,7 +174,8 @@ So fifteen is feasible but unbuilt: the disjoint-block gadget cuts the cascade
 from ~12 tiers to ~5, and the remaining work is a four-to-five-pass decoder
 (third- and fourth-pass building blocks exist at 73-77 of the 94 residues),
 the overflow cascade, and interpreter verification across all 32,768 rows
-before the cap moves. The cap stays at fourteen until that build verifies.
+before the cap moves. (Superseded: the positional build below needs no
+cascade at all.)
 
 ## Fifteen: the eight-copy cascade, measured
 
@@ -212,13 +215,60 @@ side is solved. The build is not, because memory runs out:
 
 The unbuilt remainder is a layout with the band inside the private region
 (annealed around) and the last levels in the empty `(0, 1, 2)` block, with
-main code under 10,935. Nothing in it is verified in the interpreter, so the
-cap stays at fourteen.
+main code under 10,935. Nothing in it was verified in the interpreter; the
+positional build below replaced it.
 
-Seventeen, the registry target, is out of reach for any construction: a
-17-input table carries 131,072 bits and a Malbolge source at most
-`59049 * 3 = 177,147`, so the table alone needs about 74% of the machine's
-information capacity before any addressing code. Lowering the language bound
-instead needs some 16- or 17-input table with no program; counting misses at
-seventeen by a factor `2**46076` and sixteen is likely computable in
-principle, so no such proof is in sight.
+## Fifteen and sixteen: a positional address
+
+Every wall above is a *collision* wall: a hashed readout puts two rows on one
+cell, and resolving them costs levels. A positional readout has no
+collisions, and the store is big enough for one: a word has five two-trit
+digits, a digit has nine values, and three input bits need eight. Fifteen
+address bits therefore fit one word with every row pair on its own cell, at
+load 32,768 / 59,049 -- far past the ~0.3 the cascade tolerated, because
+nothing has to be resolved.
+
+`crazy` works trit by trit, which is what makes this cheap. A 16-op gadget
+over three fresh walked cells (`/ p0 / p1 K2 p0 K2 p1 / p2 p0 p1 p0 K1 p0 p2`,
+found by breadth-first search over trit 0 alone) leaves the three inputs
+injective in trit 0 of cells 1 and 2; trits 1..9 of every cell see only
+constants and stay constant. Folding a group into the accumulator `S` is
+`p` over `S` with `A = v`, `*`, `p` over the `u` cell with `A = S`, `*`. Each
+`p` is bijective in the new trit because `S`'s arriving trit is 1 for the
+first (the `y = 1` row of `crazy` permutes `x`) and 2 for the second (`x = 2`
+permutes `y`), and bijective in every digit already folded because the
+cells' constants there are 2 and 1. Those constants and the arriving trits
+are fixed by the cells' walked `g` values: trits 4..9 of a small `g` are 0 or
+1, which gives `(u, v) = (1, 2)`, and trits 1..3 were solved so that every
+untouched trit of an all-1 `S` arrives holding the 1 or 2 it needs. Ten folds
+are ten rotations, so digit `k` of the final word is group `k`.
+
+Each digit misses one value. `swap12` on group 4's `v` and group 1's `u`
+(`p` with `A = 2`: trit 0 swaps 1 and 2, and the constants 1 and 2 at the
+other trits stay put), and `swap01` of the final word, make the top digit miss
+`(0, 0)` and digit 1 miss `(2, 2)`: every readout lies in 6,561..59,039, the
+main code (under 5,800 cells) fits below the table, and no `S + 1` wraps past the
+store. Fifteen inputs replace group 4's first read with the constant `'0'`;
+their 16,384 cells are a subset of sixteen's.
+
+The answer side is the thirteen-input stub reading the last input, with the
+four labels `0 1 x n` and no `N`. At 55% occupancy the hubs are the hard
+part: their seed chains (`rot` and the three constant `p`s, up to five long)
+are searched so that both values a label's chain alternates between land in
+the table's holes, and the `not x` stub, which flips `'0'` and `'1'` only
+over a large operand, `j`s to a dedicated pointer-region cell prepared for
+it instead of a hub value. Both arities run on every row of a dense (seeded
+random) and the parity table.
+
+## Seventeen
+
+Any build whose answer cell names a function of the last input needs
+`2**(n - 1)` cells: 65,536 at seventeen, more than the store. A cell naming
+a function of the last two inputs needs sixteen labels, and its address
+admits eight characters. Information is tighter still: a 17-input table
+carries 131,072 bits and a Malbolge source at most `59049 * 3 = 177,147`, so
+the table needs 2.2 bits of every cell in the machine before any addressing
+code, where the label builds store at most 2 bits in the cells they use.
+Lowering the language bound instead needs some 17-input table with no
+program; counting misses by a factor `2**46076`, so no such proof is in
+sight. Seventeen is open in both directions.

@@ -283,8 +283,65 @@ def test_fourteen_inputs_every_row(shape: object) -> None:
     assert _rows(table) == list(table)
 
 
+_digits = importlib.import_module("esolangs.tools._malbolge_digits")
+
+
+def test_digit_readouts_are_distinct_and_clear_of_the_code() -> None:
+    """Every row pair owns a cell in 6562..59040, above the code, no wrap."""
+    cells = _digits._readouts_cells()  # noqa: SLF001
+    assert len(set(cells)) == len(cells) == 2**15
+    assert (min(cells), max(cells)) == (6562, 59040)
+
+
+def test_digit_readouts_hold_three_bits_per_digit() -> None:
+    """Each two-trit digit takes eight values; the top one never ``(0, 0)``."""
+    readouts = [h - 1 for h in _digits._readouts_cells()]  # noqa: SLF001
+    for k in range(5):
+        values = {(s // 9**k) % 9 for s in readouts}
+        assert len(values) == 8
+    assert 0 not in {s // 9**4 for s in readouts}
+
+
+@pytest.mark.medium
+def test_fifteen_inputs_reuse_sixteens_cells() -> None:
+    """The constant read makes fifteen's cells a subset of sixteen's."""
+    fifteen = set(_digits._digits(15)[2])  # noqa: SLF001
+    assert len(fifteen) == 2**14
+    assert fifteen <= set(_digits._readouts_cells())  # noqa: SLF001
+
+
+@pytest.mark.medium
 @pytest.mark.parametrize("n", [15, 16])
-def test_past_fourteen_inputs_is_refused(n: int) -> None:
-    """Fifteen would need eight copies and a fourth level."""
-    with pytest.raises(GeneratorCapError, match="at most 14 inputs"):
-        boolean.malbolge(_dense(n))
+def test_digit_builds_label_every_cell(n: int) -> None:
+    """Each table cell's residue admits the four single-cell answers."""
+    _, _, tables, labels = _digits._digits(n)  # noqa: SLF001
+    for h in tables:
+        for label in "01xn":
+            _module._table_char(h, label, labels)  # noqa: SLF001
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("n", [15, 16])
+@pytest.mark.parametrize("shape", [_dense, _parity])
+def test_digit_builds_sampled(n: int, shape: object) -> None:
+    """Every 128th row, offset per arity so both halves of each pair run."""
+    table = shape(n)  # type: ignore[operator]
+    rows = range(n - 15, 2**n, 128)
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+@pytest.mark.slow
+@pytest.mark.weekly
+@pytest.mark.parametrize("part", range(_SWEEP_PARTS))
+@pytest.mark.parametrize("n", [15, 16])
+def test_digit_builds_every_row(n: int, part: int) -> None:
+    """The full sweep of the dense shape, the positional build's gate."""
+    table = _dense(n)
+    rows = range(part, 2**n, _SWEEP_PARTS)
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+def test_past_sixteen_inputs_is_refused() -> None:
+    """Seventeen would need 65,536 answer cells in a 59,049-cell store."""
+    with pytest.raises(GeneratorCapError, match="at most 16 inputs"):
+        boolean.malbolge(_dense(17))
