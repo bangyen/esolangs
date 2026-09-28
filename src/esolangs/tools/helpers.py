@@ -431,13 +431,15 @@ def separated_tree_text(
     between: str,
     close: str,
     one_first: bool = False,
+    pair: Callable[[int, int], str] | None = None,
 ) -> str:
     """Return a folded decision tree as text, with a separator between halves.
 
     ``head`` opens a node and its first half, ``between`` closes that half
     and opens the other, and ``close`` ends the node; ``leaf(level, row)``
     writes a leaf, which a collapsed subtable reaches early.  ``one_first``
-    lays the one-half before the zero-half.
+    lays the one-half before the zero-half, and ``pair(level, mid)`` writes
+    a node whose halves are two different constants, split at row ``mid``.
 
     :func:`decision_tree_tokens` deliberately cannot act *between* the
     children, and a language whose branch is a delimited body -- FALSE's
@@ -461,6 +463,9 @@ def separated_tree_text(
             pieces.append(leaf(level, lo))
             continue
         mid = (lo + hi) // 2
+        if pair is not None and constant(lo, mid) and constant(mid, hi):
+            pieces.append(pair(level, mid))
+            continue
         halves = ((mid, hi), (lo, mid)) if one_first else ((lo, mid), (mid, hi))
         pieces.append(head)
         # Pushed back to front: the stack is popped, so this is source order.

@@ -8,7 +8,7 @@ otherwise be handed.  A node over two constant halves is its own literal.
 
 from __future__ import annotations
 
-from esolangs.tools.helpers import _validate_truth_table, constant_span_test
+from esolangs.tools.helpers import _validate_truth_table, separated_tree_text
 
 #: ``'0`` and ``'1`` differ in their low bit, so ``1&`` is the bit and ``?``
 #: takes any nonzero flag; ``$`` leaves a copy under it for the ``0`` test.
@@ -30,25 +30,17 @@ def false(truth_table: str) -> str:
     the answer digit.
     """
     n = _validate_truth_table(truth_table)
-    constant = constant_span_test(truth_table)
-    pieces: list[str] = []
-    # A tuple is a span still to write; a string is text already placed.
-    work: list[str | tuple[int, int, int]] = [(0, 0, len(truth_table))]
-    while work:
-        item = work.pop()
-        if isinstance(item, str):
-            pieces.append(item)
-            continue
-        level, lo, hi = item
-        if level == n or constant(lo, hi):
-            pieces.append(_SKIP * (n - level) + truth_table[lo] + ".")
-            continue
-        mid = (lo + hi) // 2
-        if constant(lo, mid) and constant(mid, hi):
-            read = _SAME if truth_table[mid] == "1" else _FLIPPED
-            pieces.append(read + _SKIP * (n - level - 1) + ".")
-            continue
-        pieces.append(_TEST_ONE)
-        # Pushed back to front, so the one half is written first.
-        work += [_CLOSE, (level + 1, lo, mid), _TEST_ZERO, (level + 1, mid, hi)]
-    return "".join(pieces)
+
+    def pair(level: int, mid: int) -> str:
+        read = _SAME if truth_table[mid] == "1" else _FLIPPED
+        return read + _SKIP * (n - level - 1) + "."
+
+    return separated_tree_text(
+        truth_table,
+        lambda level, row: _SKIP * (n - level) + truth_table[row] + ".",
+        head=_TEST_ONE,
+        between=_TEST_ZERO,
+        close=_CLOSE,
+        one_first=True,
+        pair=pair,
+    )
