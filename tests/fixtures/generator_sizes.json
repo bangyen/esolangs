@@ -591,15 +591,15 @@
   "Jaune": {
    "0110": {
     "commands": 12,
-    "source_units": 22
+    "source_units": 21
    },
    "01101001": {
     "commands": 15,
-    "source_units": 49
+    "source_units": 47
    },
    "0110100110010110": {
     "commands": 24,
-    "source_units": 106
+    "source_units": 102
    }
   },
   "LaserFuck": {
