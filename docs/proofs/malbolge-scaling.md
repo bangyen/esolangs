@@ -977,3 +977,35 @@ The sum is roughly 7,000 cells of code against about 5,650, some 25% over.
 That estimate rests on the unbuilt parity word and on a placement not yet
 done. Closing it needs savings on the label and hub setup, which is about
 2,000 of the 7,500, or on the case structure, beyond everything above.
+
+**Routing through plain characters (checked, fails).** Every build executes
+the low region at startup, so the pointer cells `34..127` hold fixed
+enciphered values. That is why routing needs run-time hub values, and label
+setup costs about 2,000 cells. The low region need not run:
+
+- A startup `j` from a cell below 34 lands on a pointer cell. Two to four
+  `*`/`p` ops there, each followed by a `j` back through its neighbour,
+  build a word, and an `i` jumps past the region. For example, a `j` at
+  cell 10 lands on cell 125, and three ops there make a word that jumps
+  to 3,272.
+- The pointer cells then keep their source characters, with eight
+  choices each.
+
+Routing a landing to one of the four targets through those characters,
+with no run-time labels, would need each label's pointer cells to meet
+every translate of the admissible set `I`:
+
+- In one hop (landing character to pointer cell to a target-word cell),
+  each word cell `W` admits exactly the eight pointer cells where `W - 1` is
+  admissible, a single translate of `I`. No union of two translates hits
+  every translate (checked for all pairs).
+- In two hops, a label's first-level cells lie in a union of translates, one
+  per second-level cell. Unions of three translates never hit every
+  translate (all 4,278 checked with one fixed at 0), and unions of four
+  rarely do (21 of 8,529 sampled). So each label needs about 24-32
+  first-level cells, and four labels do not fit in the 74 cells left after
+  the word and second-level cells.
+
+So run-time label values stay. The startup jump would still let the walked
+constants start from chosen characters rather than fixed enciphered ones,
+which shortens their chains (not measured).
