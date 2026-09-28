@@ -1,9 +1,7 @@
 # Using the package
 
-Generate a program, feed it, judge what comes back -- in a language the
-caller knows nothing about. Every decision below reads a
-[`describe`](#describe) field rather than a language name, so nothing here
-needs a per-language branch.
+Generate a program, feed it, and judge the result without language-specific
+branches. The API reads [`describe`](#describe) metadata instead.
 
 ## The round trip
 
@@ -18,10 +16,9 @@ esolangs.evaluate("A Painter Ant", "0110")  # -> '0110'
 esolangs.verify("Fargo", "10010110")  # -> True
 ```
 
-Both work for every language -- the four odd input shapes, the template
-languages and the four that answer by diverging included. If you need the
-steps rather than the result, they are `generate`, `encode_inputs`, `run`,
-`read_answer`, below.
+Both cover unusual input shapes, templates, and termination-encoded answers.
+For individual stages, use `generate`, `encode_inputs`, `run`, and
+`read_answer`.
 
 ## Guided XOR example
 
@@ -139,11 +136,8 @@ surplus line as well as a missing one.
 
 ## Templates
 
-Fourteen languages embed the inputs in the program rather than reading
-them, so `generate` returns a template: the program with each input spelled
-as a run of `$` (a character outside the language), one run per input in
-order and exactly as long as the code that replaces it, so the template is
-the shape of every program it fills to.  Fill it with
+Fourteen languages embed inputs, so `generate` returns a template with one
+ordered `$` run per input, exactly as long as its replacement. Fill it with
 `esolangs.instantiate(language, template, bits)`; running one unfilled is
 refused.  `esolangs list --details` marks them `tmpl` and identifies each
 one.
@@ -185,16 +179,14 @@ printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 prints a fifth word, `stopped: raised`, which is why that line ranges over
 more than this tuple.
 
-`--tui` steps the program on screen instead, highlighting the op about to
-run and showing the tape, stack, output and the language's own named state
-beside it, with `--watch-cell`'s history as a row that grows as you step
-and shortens as you go back. `hjkl` move a selector so a breakpoint can be
-set where the run has not reached yet; `t` marks under it, `c` continues to
-the next one, `space` steps, `b` steps back, `r` runs to the end and `q`
-quits. Feed such a run with `--stdin`, since the keys and the
-program cannot share one stream. A language whose position is not a place
-in the source -- a call stack, a 3-D point -- is left unhighlighted rather
-than marked in the wrong place; the header always shows the raw `ip`.
+`--tui` highlights the next operation and shows the tape, stack, output,
+named state, and watch history. Controls are `hjkl` to move, `t` to toggle a
+breakpoint, `c` to continue, `space` to step, `b` to step back, `r` to finish,
+and `q` to quit. Use `--stdin`; keyboard commands and program input cannot
+share a stream.
+
+Call-stack and 3-D positions cannot identify source text, so they remain
+unhighlighted. The header still shows the raw `ip`.
 
 ## describe
 

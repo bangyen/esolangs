@@ -1,11 +1,9 @@
 # Contributing
 
 Add stable, deterministic languages verifiable through this repository's I/O
-model.  Each needs a generator, or a documented reason one is impossible --
-record rejections in [limitations](limitations.md).
-
-Read the [architecture overview](architecture.md) for how registration,
-generation, execution, and answer extraction connect.
+model. Each needs a generator or a documented impossibility; record rejections
+in [limitations](limitations.md). See [architecture](architecture.md) for the
+execution path.
 
 ## What makes a candidate worth adding
 
@@ -23,22 +21,11 @@ already occupy.  Four axes, with what currently sits on each:
 - **Input interface** -- read-and-route, bit-addressable index (`fargo`),
   parameterized embed.
 
-All four are a *generator's* test, so a language that can host no generator
-cannot earn a place on any of them.  One route remains: fame, defined as a
-fraction of brainfuck under Curation in [limitations](limitations.md).  A
-language at or above `bf/5` whose spec makes a generator impossible is admitted
-**interpreter-only** -- an interpreter and no `boolean` in the registry, marked
-`int` by `esolangs list --details`, and refused by `generate` with that reason.
-Deadfish is the only one, at 0.89 of brainfuck with no input vocabulary at all,
-so there is nothing for a truth table's inputs to arrive through.  This route
-cannot be argued from novelty: novelty here is a claim about a construction,
-and there is no construction to make it about.
-
-This is an admission test.  The removal test is different and is recorded
-under Curation in [limitations](limitations.md): a language can be dropped
-for being an ordinary imperative language in costume, or for sharing a
-generator shim with no downstream consumer, however novel it looked going
-in.
+These are generator tests. A language whose specification precludes a
+generator qualifies only through the fame threshold under Curation in
+[limitations](limitations.md). Such languages are interpreter-only, marked
+`int` by `esolangs list --details`; Deadfish is the sole example. Curation also
+defines removal independently of admission.
 
 ## Layout
 
@@ -80,21 +67,19 @@ interpreter reads input or raises them.
 
 ## What makes a generator optimization worth shipping
 
-A change that shrinks an existing generator ships only if it clears all of:
+A generator size optimization must clear all of:
 
 - **5% or more** off the total emitted size over all 256 three-input tables,
-  measured for the commit against its parent.  Below that the added
-  construction costs more to keep than it saves (ArrowQueue's rotation
-  reorder, 2.1%, was reverted for this; `docs/limitations.md` records it).
+  measured against its parent. ArrowQueue's 2.1% rotation gain was reverted.
   A gain that grows with the table, such as sharing repeated subtrees
   (`scripts/screens/sharing.py`: 14.5% of nodes repeat at three inputs, a
   third at five), may clear it instead on 200 seeded random five-input
   tables; the no-growth rule then holds on that sample too.
 - **No table grows**: checked exhaustively through three inputs, so keep the
   old build as a candidate when the new one is not uniformly shorter.
-- **Every table executes**: exhaustively through three inputs, sampled at
-  four to six; pin the n = 3 total before and after in a test, and update
-  `just sizes` when its baseline moves.
+- **Every table executes**: exhaustively through three inputs and sampled at
+  four to six. Pin the n=3 total before and after; update `just sizes` when its
+  baseline moves.
 - **The Boolean-generator conventions** in `docs/limitations.md`: reads and
   template runs in input order, one uniform `(zero, one)` fill pair, at most
   four named reorder candidates, no search, O(T) size and generation
@@ -109,8 +94,7 @@ three-input tables (`scripts/screens/steps.py`), and no table slower *or*
 larger.  Where a generator chooses among candidates, it chooses by size and
 breaks ties by steps, so a step win never buys itself with characters.
 
-`scripts/screens/` bounds where the upside is before any construction is
-written.
+Use `scripts/screens/` to bound the upside first.
 
 ## Checklist
 

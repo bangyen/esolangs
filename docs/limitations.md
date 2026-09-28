@@ -35,174 +35,53 @@ changing the program.
 ## Boolean generators
 
 Parameterized generators embed each input exactly once. Every emitted
-character is build work. Five conventions govern the *embed* -- the text
-standing for one input, not the program around it: one ordered run per input,
-constant width, a single embed, no padded spaces, and a uniform `(zero, one)`
-pair. The first three are the template constructor's shape; the last two are
-measured off filled programs at n=2, 3, 5 by
-`tests/proofs/test_conventions.py`, and every embedding generator holds both.
+character is build work. The input text must have:
+
+- one ordered, constant-width run per input;
+- one embed with no padded spaces;
+- one uniform `(zero, one)` pair.
+
+The template constructor enforces the shape. `tests/proofs/test_conventions.py`
+checks filled programs at n=2, 3, 5.
+
 A relaxed-width toggle is worth adding only for a smaller executed build; a
 space toggle has no remaining use. Reordering is optional around a construction, but
 its selection cost counts; named candidates are capped at four and the generic
 greedy scorer stops at n=10. Generator constructions may not use BFS or DFS;
 test-only oracles may.
 
-The screen script measures permuted-table builds, not an admissible reorder
-under a fixed input template and fill mapping. Dig, Flowchart,
-BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
-its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
-ArrowQueue can re-enqueue its reads into any rotation (d5bac32), but the
-routing (19, 39, 63 characters at k = 1, 2, 3) nets only 2.1% over the
-three-input tables, under the 5% bar, so the plain order ships.
-Circuit Diagram can fan a repeated mux's output bus out to every parent,
-but over its four orders that nets 3.5% on the seeded five-input sample
-(two-input cofactors are rails, so nothing at three); it reaches 5.6%
-only with a fifth, sharing-scored order, which the cap rules out.
-Factor's Brainfuck has no jump, call or label, so a shared subtree is a
-dispatch on a state cell costing a round-trip walk and a switch test per
-reference: an optimistic model nets -1.0% at three inputs and 3.4% at
-five.  123 runs one straight-line stream per row, so it has no per-node
-subtrees to share; its table-dependent paint sweep is fixed by the
-separation laws' geometry.
+The screen script measures permuted tables, not admissible reorders under a
+fixed template and fill mapping. Dig, Flowchart, BrainIf, Sophie, and SLOW ACV
+MAMMALIAN must read in order; BF-PDA uses fixed stack order. No instruction-only
+wire is derived for 123 or Minifuck.
 
-Malbolge registers a generator through sixteen inputs, source-embedded with no
-initializer. Through ten, a branch-free five-cell mixer (13 operations per input bit, inits
-52/90/83/70/92, then a 16-operation post-map) folds the row index into a
-distinct address `h(row)` in `[1083, 59048]` with pairwise gap at least three,
-and a three-cell source stub at `h(row)` prints the answer: `p` then `<` for a
-1 row, `o` then `<` for a 0 row, with `A` preloaded to `'0'`.
+- ArrowQueue's rotations cost 19, 39, and 63 characters at k=1, 2, 3. Their
+  2.1% gain misses the 5% bar, so plain order ships (d5bac32).
+- Circuit Diagram gains 3.5% over four orders on the seeded five-input sample.
+  A fifth, sharing-scored order reaches 5.6% but violates the cap.
+- Factor subtree dispatch loses 1.0% at three inputs and gains 3.4% at five.
+  Brainfuck lacks a cheaper jump, call, or label.
+- 123 has one straight-line stream per row. Its table-dependent paint sweep is
+  fixed by the separation laws.
 
-The store is the program. `i`/`j` let the pointer revisit a cell, and a cell
-whose content is the unique NOP character `f(a) = 33 + ((35 - a) % 94)` at its
-address is walked over harmlessly, so the mixer inits, the navigation
-constants and the stubs all live in the source. Malbolge re-enciphers every
-cell it executes, so a walked-over cell's value is not `f(a)` but
-`g(a) = XLAT2[f(a) - 33]`; the generator places each state and navigation cell
-at the address whose `g` value it wants and computes `h` against those values.
+Malbolge's source-embedded generator covers sixteen inputs. Through ten, a
+five-cell mixer maps rows to gap-3 addresses with three-cell answer stubs.
+Eleven through fourteen use collision-resolving pointer cascades; fifteen and
+sixteen use positional readouts, one cell per row pair. The representative
+dense, parity, constant tables were executed exhaustively at each shipped
+arity. Construction details and measurements are in
+[malbolge-scaling](proofs/malbolge-scaling.md).
 
-The stub construction stops at ten inputs: no searched mixer is gap-3
-injective at eleven bits (best 1836 of 2048 rows over ~40k schedules whose
-full state stays distinct, and even distinct-only readouts top out at 1862),
-because collisions arrive in low-trit clusters. Eleven inputs ship through a
-two-level pointer cascade that needs only distinct readouts. Each row owns one
-table cell at `X + 1 + k` holding one of the eight source characters the
-loader admits there; the decoder runs `j`, `j`, `i`, so the character `T` names
-the walked-region cell `T + 1` and that cell names the jump. Seventeen pairs
-`[P0, P1]` (`P1 = rot(113)`, `P0` its 0/1-swapped twin, filled by one chained
-`p` over all-1 cells) serve both answers -- `T = a - 1` reaches `P0`, whose
-stub rotates `P1` into `A` (`'1'`); `T = a` reaches `P1`, whose stub prints the
-preloaded `'0'` -- and 24 all-1 cells send the 256 rows the first readout
-leaves in 128 pairs to a second decoder at 29525, which reads a second mixer
-cell that separates all of them. The 58 pointer cells and the residue cover
-(every `h mod 94` must admit a character of each label) were found by
-annealing and are pinned.
+Counting bounds each family independently of mixer quality:
 
-Twelve inputs ship without a twelve-bit mixer. The fold above runs over the
-first eleven; then `/` reads the twelfth and `p` writes it into a selector
-cell. The crazy operation and `*` act trit by trit, so the two values of a
-selector differ in one trit, and ten searched ops park that trit at the top:
-each selector's two values lie 19,683 apart. `i` through the first selector
-runs one of two level-1 *paths* stored at those addresses -- code that is
-jumped to, never walked. A path may rewrite the readout and picks its own
-table offset, so the halves land on different cells: `x = 0` reads cell 0 as
-the eleven-input build does, `x = 1` reads `neg(cell 0)` (`p` with
-`A = all-2` negates every trit) 543 cells on, and 560 of the 4,096 rows
-collide at level 1 against 512 at eleven inputs doubled. The decoder selects
-through the second selector the same way, and each level-2 path runs its own
-searched post-map that separates its half's colliding rows. The labels and
-the `[P0, P1]`/NEXT layout are unchanged. Executed on all 4,096 rows of the
-dense, parity, all-0 and all-1 tables.
+- stubs need three gap-3 cells per row: `3 * 2**n <= 59049`, hence `n <= 14`;
+- cascades need one cell per row per level above ~9k code cells: `n <= 15`;
+- last-input cells need `2**(n-1) <= 59049`: `n <= 16`.
 
-Thirteen inputs keep that build and hand the last input to the answer stub.
-A table cell now names one of four answers as a function of it -- `0`, `1`,
-`x` or `not x` -- or `N`, so every residue needs five of its eight
-characters. The `[P0, P1]` pairs and NEXT runs cannot afford that (CP-SAT:
-infeasible with only the mixer blocked), so every label is a single pointer
-cell and the decoder takes one more hop: `j` to the table cell, `j` to its
-pointer cell `T + 1`, `j` to the *hub* `V + 1` that cell names, `i` through
-the hub. `d` is then `V + 2` on every row, so a stub may read the source
-characters after its hub. The pointer region holds only the 89 label cells
-and the mixer; helpers, selectors and seeds move to walked cells above 127,
-and navigation becomes a shortest path over `o` and `j` through every cell of
-known value, which also brings the main code down from 15,398 cells to 9,677.
-A label's cells are one chained `p` over all-1 cells from a rotated walked
-seed, so they hold `s` and `f(s)` alternately and ten hubs serve five labels;
-each hub holds a source character rotated until it names a free stub. The
-`1` stub runs `p` over the two characters after its hub. No run of one to
-three `p` over source characters swaps `'0'` and `'1'`, so the `not x` stub
-runs two and then, through a third character that names a pointer cell, a
-third over that cell's chain value. Executed on all 8,192 rows of the dense,
-parity, all-0 and all-1 tables.
-
-Fourteen inputs keep the thirteen-input answer stub and add a second
-selected input. Inputs twelve and thirteen pick one of four *copies* of the
-eleven-bit table, and a copy reads one cell per level: a cell read by two rows
-holds `N`, and its readers go on to their next level. Copies differ only in
-which readout cell they jump through, so all twelve readouts -- four copies,
-three levels -- are computed by the walked main code before the last two
-inputs are read: a searched run of ops over the mixer and three extra cells
-now and then `p`s `A` into a prepared readout cell. A level-1 or level-2 cell
-is prepared with a top trit of 2, so its readouts lie at 19683 or above,
-clear of the code; a level-3 readout goes through two cells, 42646 and
-16402, which pin its top two trits to 0 and 2, so it lands in 13122..19682
-where no other level reads. The selector is then only a four-way jump per
-level: both inputs are folded into one cell, `p` over three prepared cells
-turns it into each level's *stub* address, and a stub walks `d` to its
-readout cell and makes the table jump. `A` is set to `'0'` once, before the
-first stub, because nothing between there and the answer stub touches it.
-
-Levels resolve bottom-up: every row reads its level-1 cell, and a row whose
-cell another row reads moves on to its next, which may push another row on
-in turn. The readout ops were annealed a level at a time -- level 1 alone,
-then level 2 with level 1 frozen, then level 3 -- and 7,427 of the 8,192
-copies own their level-1 cell, 685 resolve at level 2 and 80 at level 3,
-whose own region leaves them room. A third read passes the decoder a second
-time; its cells have been re-enciphered, and at residues 9 through 17 `j` and
-`o` both image to nops while at residue 18 `o` images to `i`, so the second
-pass runs nine nops and jumps through `mem[V + 11]` for the N hub `V` it came
-through, a handler that jumps through the level-3 selector. At 29525 the
-decoder would sit among the level-1 cells, so the N hubs hold 13168 and it
-runs from 13169, the same residue. The cells the readout ops touch are packed
-into 163..243 with ten trampolines (`p` with `A = all-2` over a walked cell
-whose `g` is at least 81 leaves `K2(g)` in 162..242, so a `j` through it
-lands inside the window), which keeps the main code near 12,000 cells, under
-the level-3 region. Executed on all 16,384 rows of the dense, parity, all-0
-and all-1 tables.
-
-Fifteen and sixteen inputs drop the hash. The cascade is needed only because
-a hashed readout collides; a positional one cannot. A readout word has five
-two-trit digits and three bits have eight values, so fifteen address bits
-fill the word with every row pair on its own cell: no `N`, no decoder, no
-copies. A 16-op *gadget* over three fresh walked cells reads three inputs and
-leaves them injective in trit 0 of two of the cells (found by breadth-first
-search over trit 0); since `crazy` is trit-wise, their other trits stay
-constant. The accumulator takes one digit per group -- `p` over it with `A =
-v`, `*`, `p` over the `u` cell with `A` = the accumulator, `*` -- and each
-fold is bijective because the accumulator's arriving trit is 1 (then 2) and
-the gadget cells' constants at trits already holding digits are 2 and 1,
-`crazy`'s two bijective rows. The gadget cells' walked `g` values are solved
-for so that every untouched trit arrives holding exactly that 1 or 2. Each
-digit then misses one of its nine values; two `swap12`s and a final `swap01`
-make the top digit miss `(0, 0)` and digit 1 miss `(2, 2)`, so every readout
-lies in 6561..59039, above the main code (under 5,800 cells) and without wrapping.
-Fifteen inputs run the same build with one read replaced by the constant
-`'0'`, so their 16,384 cells are a subset of sixteen's 32,768. The answer
-stub reads the last input as at thirteen; with no `N`, only the `0 1 x n`
-labels exist, and at 55% occupancy their hubs are placed by seed chains
-searched to land in the table's holes, while the `not x` stub's large
-operand moves to a dedicated pointer-region cell. Executed on all 32,768 and
-65,536 rows of dense (seeded random) and parity tables. `n > 16` is refused
-with `GeneratorCapError`: seventeen would need 65,536 row-pair cells in a
-59,049-cell store.
-
-Counting bounds each family, independent of how good the mixer is. A stub
-program needs three cells per row at pairwise distance at least three, so
-`3 * 2**n <= 59049` and `n <= 14`; the cascade needs one table cell per row
-per level above its ~9k cells of code, so `n <= 15`; any build whose cell
-answers a function of the last input needs `2**(n-1) <= 59049`, so `n <= 16`,
-which the positional build meets. A cell answering the last two inputs would
-need sixteen labels from the eight characters its address admits. None reaches the seventeen-input target: seventeen
-needs more than two table bits per cell across nearly the whole store.
+The positional build meets the last bound. A cell answering the final two
+inputs would need sixteen labels, but its address admits eight characters.
+Seventeen inputs need more than two table bits per cell across almost the
+whole store.
 
 That construction gap ends before totality. Malbolge has 59,049 cells and
 eight valid decoded instructions at each occupied source cell -- the
@@ -310,16 +189,16 @@ Cyclic tag 0.35 duplicates the Bitwise Cyclic Tag axis.
 Emmental 0.15 and Prelude 0.05 are implemented elsewhere but do not clear the
 fame bar, so neither admission route applies.
 
-The 2026-09-27 spec read closed the other candidates. Self-replicating marbles
-does not define which section is next or when collisions occur. Wirefunge's
-draft leaves element initialization open, and its gates duplicate thisthat.
-Bytemap leaves byte order,
-division faults, and its optional 8bpp encoding undefined. Gifunk specifies no
-instructions beyond moving through APNG/GIF frames. Turing Paint has a complete
-reference implementation, and Befunk implements Befunge-98 in PNG; both are
-obscure but already implemented, so neither admission route applies. HuePrism,
-BitCode, PicCode, Brainloller, Braincopter, and the game-save languages remain
-rejected from the same image-source screen.
+The 2026-09-27 spec read closed the other candidates:
+
+- Self-replicating marbles leaves section order and collision timing undefined.
+- Wirefunge leaves initialization open and duplicates thisthat's gates.
+- Bytemap leaves byte order, division faults, and optional 8bpp undefined.
+- Gifunk defines motion through APNG/GIF frames but no instructions.
+- Turing Paint and Befunk are obscure but already implemented.
+
+HuePrism, BitCode, PicCode, Brainloller, Braincopter, and the game-save
+languages remain rejected from the same image-source screen.
 
 ## Specification decisions
 
