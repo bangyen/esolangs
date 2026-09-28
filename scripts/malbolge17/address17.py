@@ -31,8 +31,8 @@ from esolangs.tools._malbolge_digits import _GADGET, _K
 
 W = 59049
 ALL1, ALL2 = 29524, 59048
-LOW, TOP, PIN = (33, 33, 78), (33, 33, 69), (38, 38, 38)
-ZBASE = 29541
+LOW, PIN = (33, 33, 78), (38, 38, 38)
+ZBASE = 29514
 Z_CODE = {"A": (1, 2), "B": 0, "C": (1, 2)}
 
 
@@ -80,7 +80,7 @@ def group_word(bits: list[int]) -> int:
     for j, (u, v) in enumerate(slots):
         acc = mix(mix(acc, _crazy(ALL2, v)), swap(u) if j in (0, 2) else u)
     acc = mix(acc, ZBASE + z)
-    u, v = gadget(TOP, [48 + b for b in top])
+    u, v = gadget(LOW, [48 + b for b in top])
     acc = _rot(_crazy(_crazy(ALL2, swap(u)), mix(acc, _crazy(ALL2, swap(v)))))
     return _crazy(_crazy(ALL2, _crazy(acc, ALL1)), ALL1 + 1)
 

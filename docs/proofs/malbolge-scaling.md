@@ -921,11 +921,11 @@ way round (`acc = crazy(crazy(all-2, u), acc)`). The one used here has:
 
 - lower gadgets from walked values `(33, 33, 78)`, swap12 on `u` in slots 0
   and 2, so both miss `(1, 1)`;
-- the top gadget from `(33, 33, 69)` with `u` and `v` swapped, missing
-  `(2, 2)`;
+- the top taking the same `(33, 33, 78)` gadget, since a triple is read
+  only once, with `u` and `v` swapped, missing `(2, 2)`;
 - the pinned slots on a gadget from `(38, 38, 38)` run on all-0 reads, which
   yields exactly the missing value;
-- `z` base 29541 (A and C use two `z` codes, B and D the third);
+- `z` base 29514 (A and C use two `z` codes, B and D the third);
 - the tail swap01, swap12, `p` with all-1 and trit 0 = 2, after which trit 0
   of the per-state pointers takes all three values.
 
