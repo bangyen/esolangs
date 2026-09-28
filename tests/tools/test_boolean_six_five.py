@@ -383,10 +383,11 @@ class TestSixFive:
         (-7.0%) once a node whose answer is its bit inverted skips a step
         onto a blank cell instead of testing and laying two leaves; 12483
         (-27.4%) once a read is held at 31/32 rather than 8/9: -17 and
-        every leaf's add take three tokens each, not seven.
+        every leaf's add take three tokens each, not seven; 12135 (-2.8%)
+        once the winning order prints a read its tree copies once as it came.
         """
         total = sum(len(boolean.six_five(format(v, "08b"))) for v in range(256))
-        assert total == 12483
+        assert total == 12135
 
     def test_the_executed_steps_are_stable_over_three_inputs(self) -> None:
         """Steps summed over every row of every three-input table.
@@ -394,7 +395,9 @@ class TestSixFive:
         Counted as ``benchmark.py`` counts ``commands``.  66323 with reads
         held at 8/9, where a read's -40 and a leaf's +39..+41 ran seven
         steps each; 43044 (-35.1%) at 31/32, where each runs three, and
-        no table takes more steps than it did.
+        no table takes more steps than it did; 40068 (-6.9%) once a read
+        one node uses is normalized at that node, on its paths alone, and
+        one a node copies prints raw.
         """
         total = 0
         for value in range(256):
@@ -404,7 +407,7 @@ class TestSixFive:
                 steps = _commands("6-5", program, table, row, 10_000)
                 assert steps is not None
                 total += steps
-        assert total == 43044
+        assert total == 40068
 
     def test_an_inverted_bit_skips_a_step_only_before_more_reads(self) -> None:
         """A node whose answer is NOT its bit tests it, unless reads remain.
@@ -429,6 +432,30 @@ class TestSixFive:
                 for combo in range(8):
                     bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
                     assert run_six_five(program, bits) == table[combo], (table, perm)
+
+    def test_a_read_one_node_uses_is_normalized_there(self) -> None:
+        """A read tested at one node alone costs its -17 on that node's paths.
+
+        The size is unchanged, so the order contest is too; a read one node
+        copies prints raw (``A`` straight off the 48/49), which is shorter,
+        and only the winner does that.  Every order of every three-input
+        table is executed with it.
+        """
+        # AND of x1 and x2, x2 tested first: no read is normalized up front,
+        # x2 steps back to its cell for -17, and x1 is copied as read.
+        program = _six_five_hoisted("00010001", (2, 1, 0), raw_copies=True)
+        assert program.startswith("B13B13B3" + _SIX_FIVE_TREE_NORMALIZE)
+        assert program.endswith("4" + "3" + "A0")
+        for value in range(256):
+            table = format(value, "08b")
+            for perm in permutations(range(3)):
+                permuted = permute_truth_table(table, perm)
+                plain = _six_five_hoisted(permuted, perm)
+                raw = _six_five_hoisted(permuted, perm, raw_copies=True)
+                assert len(raw) <= len(plain)
+                for combo in range(8):
+                    bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+                    assert run_six_five(raw, bits) == table[combo], (table, perm)
 
     def test_an_add_never_outgrows_its_old_spelling(self) -> None:
         """No table grows under the fewest-token adds: no add is longer.
@@ -521,21 +548,28 @@ class TestSixFive:
             (8, "0" * 255 + "1"),
             (7, ("10" * 128)[:128]),
         ):
-            built = 0
+            built = rebuilt = 0
 
             def counted(
                 table: str,
                 perm: tuple[int, ...],
                 _build: object = _six_five_hoisted,
+                *,
+                raw_copies: bool = False,
             ) -> str:
-                nonlocal built
-                built += 1
-                return _build(table, perm)  # type: ignore[operator, no-any-return]
+                nonlocal built, rebuilt
+                # The winner is rebuilt once to print its copied reads raw.
+                if raw_copies:
+                    rebuilt += 1
+                else:
+                    built += 1
+                return _build(table, perm, raw_copies=raw_copies)  # type: ignore[operator, no-any-return]
 
             with pytest.MonkeyPatch.context() as patch:
                 patch.setattr(module, "_six_five_hoisted", counted)
                 boolean.six_five(table)
             assert 1 <= built <= 4, f"n={n} built {built} candidates"
+            assert rebuilt == 1
 
     def test_retired_arithmetic_kernel_is_gone(self) -> None:
         """Retired construction helpers do not return as dispatch candidates."""

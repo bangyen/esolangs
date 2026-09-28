@@ -131,6 +131,7 @@ def six_five(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     best = ""
+    best_order: tuple[str, tuple[int, ...]] = (truth_table, ())
     identity = tuple(range(n))
     orders = dict.fromkeys(
         (
@@ -150,7 +151,12 @@ def six_five(truth_table: str) -> str:
         # An empty candidate means this order overflowed the label budget,
         # so it is skipped rather than winning on length 0.
         if candidate and (not best or len(candidate) < len(best)):
-            best = candidate
+            best, best_order = candidate, (table, perm)
+    if best:
+        # Only the winner prints a lone copied read raw: that shrinks it and
+        # its steps, and choosing with it could hand a shorter, slower order
+        # the win.
+        best = _six_five_hoisted(*best_order, raw_copies=True)
     if not best:
         # Every order overflowed the budget even shared, so the table has
         # too many distinct subtrees for any tree-shaped emission.  The walk
@@ -425,14 +431,16 @@ def _six_five_shared(
     return out
 
 
-def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
+def _six_five_hoisted(
+    truth_table: str, perm: tuple[int, ...], *, raw_copies: bool = False
+) -> str:
     """Emit the read-up-front 6-5 program for one input order.
 
     ``truth_table`` is already permuted; ``perm`` names the stream input a
     node tests.  Returns ``""`` when this order overflows the 35 labels.
     Only inputs the tree branches on get a cell (others read into a shared
     scratch), so the kept bits are a contiguous block from cell 0.  A stored
-    read is normalized where it lands by -17 (``7n``'s operand is
+    read is normalized by -17 where it lands, or at its one node (``7n`` is
     capped at 35, so 48/49 cannot be tested).  A leaf prints from the cell
     it stands on (32 on the jump, 31 on the fall-through); the pointer's entry
     position is a function of level alone.
@@ -448,6 +456,27 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     if perm == tuple(range(n)) and not shared:
         return _six_five_stream_ordered(truth_table)
     stored = stored_inputs(truth_table, perm)
+    constant = constant_span_test(truth_table)
+    # An input the tree tests at one node alone is normalized there, not at
+    # its read: the same three tokens, run only on the paths through it.
+    uses = dict.fromkeys(stored, 0)
+
+    def count(level: int, lo: int, hi: int) -> None:
+        if level == n or constant(lo, hi):
+            return
+        mid = (lo + hi) // 2
+        if perm[level] not in stored:
+            count(level + 1, lo, mid)
+            return
+        if _six_five_copies_bit(truth_table, constant, lo, hi):
+            uses[perm[level]] += 1 if raw_copies else 2
+            return
+        uses[perm[level]] += 1
+        count(level + 1, lo, mid)
+        count(level + 1, mid, hi)
+
+    count(0, 0, 2**n)
+    lazy = set() if shared else {i for i, used in uses.items() if used == 1}
     # Reads run in input order; only a stored input claims a cell, so the
     # kept bits occupy a contiguous block from cell 0 and every clobbered
     # read reuses the one cell past it.
@@ -460,7 +489,7 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         pos = slot
         reads += "B"
         if i in stored:
-            reads += _SIX_FIVE_TREE_NORMALIZE
+            reads += "" if i in lazy else _SIX_FIVE_TREE_NORMALIZE
             cell_of[i] = slot
             slot += 1
     # A clobbered read leaves 48/49 under the pointer, so the cell the reads
@@ -478,8 +507,6 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
             return _six_five_move(entry, scratch) + _six_five_const(digit) + "A0"
         return _six_five_const(_ASCII_ZERO + int(value) - held) + "A0"
 
-    constant = constant_span_test(truth_table)
-
     def node(level: int, lo: int, hi: int, entry: int, held: int | None) -> str:
         nonlocal marker
         if level == n or constant(lo, hi):
@@ -494,7 +521,11 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         mid = (lo + hi) // 2
         nav = _six_five_move(entry, cell)
         if _six_five_copies_bit(truth_table, constant, lo, hi):
-            return nav + leaf("0", cell, _SIX_FIVE_HELD)
+            # A read left raw prints as it came.
+            base = _ASCII_ZERO if perm[level] in lazy else _SIX_FIVE_HELD
+            return nav + leaf("0", cell, base)
+        if perm[level] in lazy:
+            nav += _SIX_FIVE_TREE_NORMALIZE
         # No inverted-bit print: from 31/32 it is 17 characters to a node's 14.
         # A label is the index of this node's own ``4`` among every ``4`` in
         # the emitted string, so it is allocated *after* the left subtree --
