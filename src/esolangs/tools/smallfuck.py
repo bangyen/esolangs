@@ -3,6 +3,7 @@
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
+    best_input_order,
     constant_span_test,
 )
 
@@ -27,7 +28,21 @@ class _Builder:
 
 
 def smallfuck(truth_table: str) -> str:
-    """Return a Smallfuck template whose final tape cell 2 is the answer."""
+    """Return a Smallfuck template whose final tape cell 2 is the answer.
+
+    Input ``i`` is stored in cell ``3 i`` before the tree runs, so a level
+    may test any of them: the shorter of the identity and greedy orders is
+    kept (:func:`best_input_order`).
+    """
+    return best_input_order(truth_table, _smallfuck_ordered)
+
+
+def _smallfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one order's template; level ``k`` tests input ``perm[k]``.
+
+    ``truth_table`` is already permuted.  Only the tested bit moves: level
+    ``k`` keeps its own flag and result cells, ``3 k + 1`` and ``3 k + 2``.
+    """
     n = _validate_truth_table(truth_table)
     constant = constant_span_test(truth_table)
     builder = _Builder()
@@ -47,7 +62,7 @@ def smallfuck(truth_table: str) -> str:
             if truth_table[lo] == "1":
                 builder.flip(result)
             return
-        bit, flag = 3 * level, 3 * level + 1
+        bit, flag = 3 * perm[level], 3 * level + 1
         child = 3 * (level + 1) + 2
         builder.flip(flag)
         builder.move(bit)
