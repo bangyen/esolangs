@@ -773,15 +773,15 @@
   "RAM0": {
    "0110": {
     "commands": 25,
-    "source_units": 79
+    "source_units": 70
    },
    "01101001": {
     "commands": 38,
-    "source_units": 159
+    "source_units": 111
    },
    "0110100110010110": {
     "commands": 53,
-    "source_units": 317
+    "source_units": 158
    }
   },
   "ROTfuck": {
