@@ -3,7 +3,7 @@
 from itertools import pairwise
 from typing import Literal
 
-from esolangs.tools.helpers import _validate_truth_table, read_at
+from esolangs.tools.helpers import _validate_truth_table, best_input_order, read_at
 
 _STEP = {"E": (1, 0), "W": (-1, 0), "N": (0, -1), "S": (0, 1)}
 _OPPOSITE = {"E": "W", "W": "E", "N": "S", "S": "N"}
@@ -116,18 +116,62 @@ def _span_ids(truth_table: str) -> list[list[int]]:
     return levels[::-1]
 
 
+def _deque_plan(order: tuple[int, ...]) -> tuple[list[bool], list[bool]] | None:
+    """Return head pushes by input and head pops by level that pop ``order``.
+
+    Inputs are read in order and each goes to the row's head or tail, so
+    the row reads (head first) the head-pushed inputs descending, input 0,
+    then the tail-pushed ones ascending; the tree pops either end at each
+    level.  Before input 0 is popped each pop is the largest left on its
+    side, so that prefix splits into two descending runs, the tail run
+    above every input popped after 0; those are all tail-pushed, so they
+    leave the row as a run each pop takes the least or the greatest of.
+    ``None`` when ``order`` has no such split: the plan is the greedy fit
+    (a tie goes to the lower run), which finds every poppable order.
+    """
+    depth = len(order)
+    zero = order.index(0)
+    floor = max(order[zero + 1 :], default=-1)
+    head_push = [False] * depth
+    head_pop = []
+    last = {True: depth, False: depth}
+    for x in order[:zero]:
+        fits = [
+            head for head in (True, False) if x < last[head] and (head or x > floor)
+        ]
+        if not fits:
+            return None
+        head = min(fits, key=last.__getitem__)
+        last[head] = x
+        head_push[x] = head
+        head_pop.append(head)
+    head_pop.append(True)
+    rest = sorted(order[zero + 1 :])
+    for x in order[zero + 1 :]:
+        if x not in (rest[0], rest[-1]):
+            return None
+        head_pop.append(x == rest[0])
+        rest.remove(x)
+    return head_push, head_pop
+
+
 def thisthat(truth_table: str) -> str:
     """Return a planar thisthat decision tree with linear source area."""
     return _tree(truth_table)
 
 
-def _tree(truth_table: str, *, prune: bool = True) -> str:
+def _tree(truth_table: str, *, prune: bool = True, reorder: bool = True) -> str:
     """Build the tree; ``prune=False`` tests every input at every node.
 
     Every input is read in order.  An ignored input is pushed onto the column
     stack, which nothing pops, and the tree is the projected table's; inside
     it a constant span is a leaf and a node whose halves agree pops its bit
-    onto the column stack too, as Line's tree skips such a level.
+    onto the column stack too, as Line's tree skips such a level.  The row
+    is a deque, so the tree may test the kept inputs in the greedy order
+    (:func:`~esolangs.tools.helpers.best_input_order`) when
+    :func:`_deque_plan` can pop them in it: a read pushes to the head or the
+    tail and a node pops either end, one glyph for another.  ``reorder=False``
+    keeps input order.
     """
     n = _validate_truth_table(truth_table)
     ids = _span_ids(truth_table)
@@ -139,7 +183,33 @@ def _tree(truth_table: str, *, prune: bool = True) -> str:
     ]
     if len(essential) < n:
         truth_table = read_at(truth_table, essential, n)
-        ids = _span_ids(truth_table)
+    if not (prune and reorder and essential):
+        order = tuple(range(len(essential)))
+        return _layout(truth_table, n, essential, order, prune=prune)
+    return best_input_order(
+        truth_table,
+        lambda table, order: _layout(table, n, essential, order, prune=True),
+    )
+
+
+def _layout(
+    truth_table: str,
+    n: int,
+    essential: list[int],
+    order: tuple[int, ...],
+    *,
+    prune: bool,
+) -> str:
+    """Lay out the tree over ``truth_table``, whose level ``k`` pops ``order[k]``.
+
+    ``order`` names essential inputs by their rank; ``""`` when the row
+    cannot pop them in that order.
+    """
+    plan = _deque_plan(order) if order else ([], [])
+    if plan is None:
+        return ""
+    head_push, head_pop = plan
+    ids = _span_ids(truth_table)
     depth = len(essential)
     builder = _Builder()
     axes = ((1, 0), (0, 1))
@@ -163,7 +233,7 @@ def _tree(truth_table: str, *, prune: bool = True) -> str:
             builder.node(output, "◇")
             builder.connect(_path(pop, output, _first_axis(incoming[0])), "double")
             return
-        builder.node(pop, "◧")
+        builder.node(pop, "◧" if head_pop[level] else "◨")
         router = (pop[0] + 2 * incoming[0], pop[1] + 2 * incoming[1])
         axis = axes[level % 2]
         mid = (lo + hi) // 2
@@ -197,7 +267,10 @@ def _tree(truth_table: str, *, prune: bool = True) -> str:
         diamond = (start_x + 2 + 4 * i, loader_y)
         push = (diamond[0] + 2, loader_y)
         builder.node(diamond, "◇")
-        builder.node(push, "◨" if i in essential else "⬒")
+        if i in essential:
+            builder.node(push, "◧" if head_push[essential.index(i)] else "◨")
+        else:
+            builder.node(push, "⬒")
         builder.connect(_path(previous, diamond, "horizontal"), "single")
         builder.connect(_path(diamond, push, "horizontal"), "double")
         previous = push
