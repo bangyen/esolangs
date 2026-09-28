@@ -54,6 +54,10 @@ its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
 ArrowQueue can re-enqueue its reads into any rotation (d5bac32), but the
 routing (19, 39, 63 characters at k = 1, 2, 3) nets only 2.1% over the
 three-input tables, under the 5% bar, so the plain order ships.
+Circuit Diagram can fan a repeated mux's output bus out to every parent,
+but over its four orders that nets 3.5% on the seeded five-input sample
+(two-input cofactors are rails, so nothing at three); it reaches 5.6%
+only with a fifth, sharing-scored order, which the cap rules out.
 
 Malbolge registers a generator through sixteen inputs, source-embedded with no
 initializer. Through ten, a branch-free five-cell mixer (13 operations per input bit, inits
