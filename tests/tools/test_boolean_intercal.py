@@ -7,7 +7,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.intercal import run
 from esolangs.tools.helpers import fill_runs
-from esolangs.tools.intercal import PAIR, TEMPLATE_CHAR, intercal
+from esolangs.tools.intercal import PAIR, TEMPLATE_CHAR, _intercal_ordered, intercal
 
 
 def _run(table: str, row: int) -> str:
@@ -39,3 +39,23 @@ def test_setters_are_equal_width_and_embedded_once() -> None:
 def test_source_growth_is_linear() -> None:
     sizes = [len(intercal("0110" * (1 << (n - 2)))) for n in range(2, 11)]
     assert all(right <= 2 * left + 500 for left, right in pairwise(sizes))
+
+
+def test_levels_select_inputs_in_the_shorter_order() -> None:
+    """Assignments stay in name order; only the selectors move.
+
+    ``10101010`` depends on input 2 (``.1``) alone: split on it first, the
+    expression names ``.1`` and nothing else.  Over all three-input tables
+    no template grows and the total falls 13.0%.
+    """
+    template = intercal("10101010")
+    assert template.index(".3 <- @@") < template.index(".1 <- @@")
+    expression = template.split(".4 <- ", 1)[1].split("\n", 1)[0]
+    assert {name for name in (".1", ".2", ".3") if name in expression} == {".1"}
+    old = new = 0
+    for value in range(256):
+        table = f"{value:08b}"
+        before, after = len(_intercal_ordered(table, (0, 1, 2))), len(intercal(table))
+        assert after <= before, table
+        old, new = old + before, new + after
+    assert (old, new) == (117856, 102496)
