@@ -348,16 +348,16 @@ Measured, at the seed pinned in the deep proof -- `m` fractions, `k` primes,
 and characters an entry for the shipped builder and for the tree:
 
     n     T       w    D        D/T     tree      tree/T   m       k
-    8     256     2    2310     9.02    4696      18.34    251     248
-    9     512     2    4764     9.30    9914      19.36    480     477
-    10    1024    2    9056     8.84    21514     21.01    856     853
-    11    2048    2    17062    8.33    45429     22.18    1559    1556
-    12    4096    4    36210    8.84    96624     23.59    3093    3090
-    13    8192    4    69820    8.52    199542    24.36    5672    5668
-    14    16384   4    133372   8.14    426120    26.01    10524   10520
+    8     256     2    2217     8.66    4696      18.34    242     246
+    9     512     2    4621     9.03    9914      19.36    469     475
+    10    1024    2    8892     8.68    21514     21.01    844     851
+    11    2048    2    16889    8.25    45429     22.18    1547    1554
+    12    4096    4    35900    8.76    96624     23.59    3080    3088
+    13    8192    4    69429    8.48    199542    24.36    5657    5666
+    14    16384   4    132844   8.11    426120    26.01    10508   10518
 
 `D/T` declines while the tree's climbs, and the successive-difference ratio
-sits between `3.16` and `3.93` against the size contract's `4.4` at every
+sits between `3.50` and `4.28` against the size contract's `4.4` at every
 same-parity triple from `n = 6` up -- which is the mixture doing its work,
 since a single power-of-two width reads `6.19` there. The `w` column is the
 narrow width; about a third of the table sits in blocks of `2w`.
