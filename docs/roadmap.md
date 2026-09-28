@@ -169,15 +169,55 @@ below are the rest of the audit, each with the measurement that opened it.
   or three of them and see whether the exhaustive loop kills a mutant its
   first eight tables do not.
 
-- **The Malbolge arity sweeps are the largest block left, and unaudited.**
-  With the rows above converted, `test_boolean_malbolge.py`'s eleven- to
-  fourteen-input probes are the top of the suite: ~100s of CPU across eight
-  tests, 16.5s the largest.  They already *sample* rather than enumerate, so
-  the exhaustive-sweep finding does not apply to them and nothing here says
-  they are wasteful -- only that no one has asked what they kill.  First
-  step: `scripts/mutate.py generator tools/malbolge` with and without them,
-  since a sampled probe that survives the same mutants as the arity below it
-  is sampling an arity that is not separating anything.
+- **The band is scheduler-bound, not worker-bound.**  Measured on the same
+  tree, `-m "not weekly"`, 11752 passing every time:
+
+  | workers | `--dist load` (default) | `--dist worksteal` |
+  | --- | --- | --- |
+  | 4 | 193.5s | **126.9s** |
+  | auto (10) | 173.7s | 85.6s |
+
+  Going 4 -> 10 workers buys 11%; changing the scheduler at four workers
+  buys 34%.  `load` hands out tests in fixed-size chunks, so a worker that
+  draws several of the 8-16s Malbolge probes finishes long after the others
+  have run dry -- the tail is idle workers, not work.  This is why the audit
+  above stopped paying: after the timeout conversions the remaining cost is
+  load-bearing (see the next row), and the schedule was the real bound all
+  along.  Open: adopt `worksteal` as the default, which is blocked only on
+  the row below.
+
+- **`one_two_three_construct.construct` is order-dependent within a process.**
+  Under `worksteal` the suite fails intermittently -- once in three runs --
+  on `test_the_constructed_lengths_are_stable_over_three_inputs`, with the
+  total over all 256 three-input tables coming out 229941 against the pinned
+  189055.  The test passes alone, passes with its own file, and passes with
+  either suspected neighbour serially, so it is not a stale golden: some
+  earlier call in the same process changes what `construct` emits.
+
+  The mechanism is `_geometry`, which is `@cache`d per arity and picks the
+  tight mark layout when a reference run proves out, the doubling base
+  otherwise.  The doubling base is what emits longer templates, and both it
+  and the `except (ConstructError, _WorkExhaustedError)` above it are marked
+  `# pragma: no cover` with the comment "No probed arity reaches this
+  fallback".  A scheduling change reached it.  So either that comment is
+  wrong or state is leaking into the reference run, and in both cases a
+  generator documented as deterministic is not.  First step: assert in
+  `_geometry` that the fallback is not taken at `n <= 10`, run the suite
+  under `worksteal` until it trips, and read what the reference run raised
+  -- the branch is currently invisible because nothing covers it.
+
+- **The Malbolge sampled rows were audited, and both halves are load-bearing
+  -- this block is not trimmable.**  `test_boolean_malbolge.py` is 149.6s of
+  the suite's 397.4s of attributed CPU, the largest single block, and each
+  sampled test runs a stride sample (every 8th/16th/32nd row) *and* every
+  second-level row of the cascade.  Two mutants of `_cascade_program` at
+  n=11 separate them cleanly: corrupting the level-0 answers is caught by
+  117 stride rows and **0** second-level rows, while corrupting the
+  second-level answers is caught by 127 second-level rows and only 18 stride
+  rows.  Neither half sees what the other does -- the stride rows are the
+  only cover for the 1792 level-0 rows.  Recorded so the next reader does
+  not mistake the file's size for waste; cutting it means accepting less
+  coverage, not removing redundancy.
 
 - **The expensive tests have no evidence gate.**  `tests/duration_policy.py`
   bounds what a test may *cost* by band, and nothing bounds what it must
