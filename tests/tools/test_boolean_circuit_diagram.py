@@ -198,12 +198,15 @@ class TestCircuitDiagramLayoutGuards:
         ("table", "rows", "columns"),
         [
             ("01", 1, 4),
-            ("0001", 11, 17),
+            # AND reads both plain rails, so it builds no complement: 11 x 17
+            # while the analysis still took ``0/x`` for a ``~`` rule.
+            ("0001", 7, 11),
             ("0110", 23, 35),
             # 91 columns before gate groups were recycled, and the width is
             # what moves when they stop being: the rows are untouched, since
-            # reuse gives back columns and never a band.
-            ("00010111", 33, 49),
+            # reuse gives back columns and never a band.  33 x 49 until only
+            # the complement the ``1/x`` level reads was built.
+            ("00010111", 29, 43),
             # Four inputs, where the two savings compound: 219 columns as a
             # left fold with no reuse, 99 once groups were recycled, and 87
             # once the folds were balanced.  The rows never move -- neither
@@ -507,7 +510,7 @@ class TestCircuitDiagram:
     @pytest.mark.parametrize(
         ("table", "tildes"),
         [
-            ("0001", 1),  # selector 0 chooses whether selector 1 matters
+            ("0001", 0),  # AND: ``0/x`` and ``0/1`` read plain rails only
             ("01", 0),  # identity: likewise
             ("10", 1),  # NOT is the complemented selector
             ("0110", 2),  # XOR: both inputs appear negated and plain
@@ -520,12 +523,18 @@ class TestCircuitDiagram:
         assert circuit_diagram(table).count("~") == tildes
 
     def test_complementary_sparse_tables_have_comparable_drawings(self) -> None:
-        """Shannon folding handles a function and its complement symmetrically."""
+        """Shannon folding handles a function and its complement symmetrically.
+
+        Both fold to the same two gates.  What differs is the rails: AND
+        joins ``0/x`` cofactors on the plain rails, and NAND's ``1/x`` reads
+        every complement -- three ``~`` the sparse drawing does not need.
+        """
         from esolangs.tools.circuit_diagram import circuit_diagram
 
         dense = circuit_diagram("11111110")  # NAND3: seven ones
         sparse = circuit_diagram("00000001")  # its complement: one
-        assert len(dense) < 2 * len(sparse)
+        assert [dense.count(glyph) for glyph in "ao~"] == [0, 2, 3]
+        assert [sparse.count(glyph) for glyph in "ao~"] == [2, 0, 0]
         # both compute their own table, whichever way they were drawn
         assert self.run_table("11111110") == "11111110"
         assert self.run_table("00000001") == "00000001"
