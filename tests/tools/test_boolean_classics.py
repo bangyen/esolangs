@@ -141,9 +141,16 @@ def test_folding_shortens_a_constant_table() -> None:
 
 
 def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
-    """Its emission is the table plus a constant: ``T + 199`` characters."""
+    """Its emission is the table plus a constant: ``T + 187`` characters.
+
+    ``T + 199`` before the line read became the marker itself: the rules
+    ``0::=P`` and ``1::=Q`` only renamed it, so every three-input table
+    sheds twelve characters, 52,992 to 49,920 over all 256.
+    """
     sizes = [len(boolean.thue("01" * (2 ** (n - 1)))) for n in (1, 2, 3, 4)]
-    assert sizes == [2**n + 199 for n in (1, 2, 3, 4)]
+    assert sizes == [2**n + 187 for n in (1, 2, 3, 4)]
+    total = sum(len(boolean.thue(f"{value:08b}")) for value in range(256))
+    assert total == 49920
 
 
 @pytest.mark.parametrize("table", _TABLES)
