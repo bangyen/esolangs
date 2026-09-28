@@ -261,7 +261,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | INTERCAL | parameterized tree | equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree | linear: reverse-depth numbering confines long names near the root |
 | Jaune | finite lookup | a spatial table reached with two labels | linear: two cells per row, unary weights sum T - 1 |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T |
-| Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; the practical cap is fourteen ([malbolge-scaling](malbolge-scaling.md)) | measured: fixed 59049-cell store through n <= 14 |
+| Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; fifteen and sixteen replace the hash with a positional address, three input bits per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open ([malbolge-scaling](malbolge-scaling.md)) | measured: fixed 59049-cell store through n <= 16 |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` | linear: mux lookup, constant strings times O(T) counts |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length | linear: cascade routes to two shared leaves, one-digit targets |
 | Modulous | linear lookup | the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard | linear: T-character literal, one read block an input |
@@ -300,11 +300,12 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
   the 18-input domain has `2**(2**18) = 2**262144` truth tables.  One program
   computes at most one table, so some 18-input tables have no Malbolge program;
   no generator can be total under this interpreter's language semantics.  The shipped
-  construction caps well below this information-theoretic wall, at fourteen inputs:
-  [malbolge-scaling](malbolge-scaling.md) measures why (the cascade depth a truth table
-  forces climbs past any decoder pass count as the answer-cell load rises), records the
-  verified disjoint-block and clamp gadgets a fifteen-input build would use, and shows
-  sixteen has no known construction.
+  construction reaches sixteen inputs, one below that wall:
+  [malbolge-scaling](malbolge-scaling.md) measures why the hashed cascade stopped at
+  fourteen (the depth a truth table forces climbs past any decoder pass count as the
+  answer-cell load rises), gives the positional build that covers fifteen and sixteen with
+  no collisions, and shows why seventeen is beyond any build spending a cell per row
+  pair.  Whether some 17-input table has no program is open.
 
 The former exception, `%^2^-1`, left with its language.  Every other row is
 `Total`, or theoretically total past the resource ceiling below.

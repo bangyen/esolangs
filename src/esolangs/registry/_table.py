@@ -455,7 +455,7 @@ LANGUAGES: dict[str, Language] = {
 #: answers with the value it stops on and branches by which fraction divides
 #: first, Unlambda has no conditional at all and branches by forcing one of
 #: two promises -- and the curator's call on promoting any of them out of
-#: this tier is open.  Malbolge's generator caps at fourteen inputs;
+#: this tier is open.  Malbolge's generator caps at sixteen inputs;
 #: FRACTRAN's emission is ``Theta(T log T)`` for a reason the language
 #: forces (``docs/limitations.md``).
 CLASSICS: dict[str, Language] = {

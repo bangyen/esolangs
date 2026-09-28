@@ -23,8 +23,9 @@ same fold over the first eleven inputs and lets the twelfth pick which of two
 paths reads the readout (see below), ``n == 13`` keeps that build and lets
 the answer stub read the thirteenth.  ``n == 14`` computes four copies'
 readouts in the main code, lets inputs twelve and thirteen pick a copy and
-the stub read the fourteenth, and resolves shared cells over three levels;
-``n > 14`` is refused.
+the stub read the fourteenth, and resolves shared cells over three levels.
+``n == 15`` and ``n == 16`` drop the hash for a collision-free positional
+address (:mod:`esolangs.tools._malbolge_digits`); ``n > 16`` is refused.
 """
 
 from __future__ import annotations
@@ -486,6 +487,8 @@ def _thirteen_program(truth_table: str) -> str:
 # least 81 leaves a value that ``j`` lands inside the window); that keeps the
 # main code under the level-3 region.
 _FOURTEEN_N = 14
+#: Fifteen and sixteen inputs: :mod:`esolangs.tools._malbolge_digits`.
+_DIGITS_N = 16
 #: ``g`` values of the extra state cells 5, 6 and 7.
 _F_EXTRA = (57, 75, 119)
 #: The readout ops, in three segments run after the eleven-bit post-map:
@@ -945,17 +948,22 @@ def malbolge(truth_table: str) -> str:
     source stub per row; eleven inputs use the pointer cascade, twelve the
     cascade with a selector on the last input, thirteen that build with the
     last input read by the answer stub, fourteen four copies of that table
-    picked by inputs twelve and thirteen.  ``n > 14`` is refused.  Every
-    build is the full 59049-cell store.
+    picked by inputs twelve and thirteen, fifteen and sixteen a positional
+    address with no cascade.  ``n > 16`` is refused.  Every build is the
+    full 59049-cell store.
     """
     n = _validate_truth_table(truth_table)
-    if n > _FOURTEEN_N:
+    if n > _DIGITS_N:
         raise GeneratorCapError(
-            f"Malbolge builds at most {_FOURTEEN_N} inputs, got {n}: eight "
-            "copies would put 16,384 first reads in the 39,366 cells above "
-            "the code, and the decoder's second pass is the last level its "
-            "cells afford"
+            f"Malbolge builds at most {_DIGITS_N} inputs, got {n}: every row "
+            "pair owns a cell, and seventeen inputs would need 65,536 of the "
+            "store's 59,049"
         )
+    if n > _FOURTEEN_N:
+        # Deferred: the positional build reads this module.
+        from ._malbolge_digits import _digits_program
+
+        return _digits_program(truth_table)
     if n == _FOURTEEN_N:
         return _fourteen_program(truth_table)
     if n == _THIRTEEN_N:
