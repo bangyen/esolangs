@@ -7,7 +7,7 @@ import pytest
 
 from esolangs.exceptions import TruthTableError
 from esolangs.interpreters.other.crement import _Machine
-from esolangs.tools.crement import PAIR, crement
+from esolangs.tools.crement import PAIR, _crement_ordered, crement
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from esolangs.vm import run_until_halt_or_cycle
 from tests.tools.fills import instantiate_crement
@@ -113,13 +113,44 @@ class TestCrementTree:
         Each node is three lines whose operands are a tester's line number
         or an offset into the node's own subtree, so the size tracks the
         node count and the ratio settles at two once the tree dominates
-        the fixed header.
+        the fixed header.  Four to five inputs is a route change, from
+        every split order to the identity and greedy ones, so the ratio
+        is held from five on.
         """
         sizes = [len(crement(_dense(n))) for n in range(1, 9)]
-        assert sizes == [55, 93, 199, 383, 787, 1536, 3071, 6103]
+        assert sizes == [55, 93, 153, 239, 583, 1221, 2389, 4738]
         ratios = [b / a for a, b in pairwise(sizes)]
-        assert all(1.6 <= r <= 2.2 for r in ratios), ratios
-        assert all(1.95 <= r <= 2.05 for r in ratios[-3:]), ratios
+        assert all(1.6 <= r <= 2.2 for r in ratios[4:]), ratios
+        assert all(1.95 <= r <= 2.05 for r in ratios[-2:]), ratios
+
+    def test_level_patches_the_chosen_inputs_tester(self) -> None:
+        """A table on the last input alone is one node calling its tester.
+
+        Name order folds ``10101010`` only at the bottom; split on input 2
+        first, the root patches and calls line 7, input 2's tester, and the
+        runs stay on lines 3, 5, 7.
+        """
+        template = crement("10101010")
+        assert template.splitlines()[9:] == ["+A 7 0", "+A 8 1", "+J 7 1"]
+        assert len(template) < len(_crement_ordered("10101010", (0, 1, 2)))
+
+    @pytest.mark.parametrize("n", [2, 3])
+    def test_reordering_never_grows_a_template(self, n: int) -> None:
+        """Every table is at most its name-order template, as emitted.
+
+        The comparison is on the text, tester and patch addresses included,
+        so the fold a reorder buys cannot be spent on its routing.  Over all
+        three-input tables it saves 12.4% (43,596 to 38,208 characters).
+        """
+        identity = tuple(range(n))
+        old = new = 0
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            before = len(_crement_ordered(table, identity))
+            after = len(crement(table))
+            assert after <= before, table
+            old, new = old + before, new + after
+        assert (old, new) == {2: (1444, 1352), 3: (43596, 38208)}[n]
 
     def test_runs_a_handful_of_commands_per_input(self) -> None:
         """One node per level: a halting row runs ``5 n + 2`` commands at most.
