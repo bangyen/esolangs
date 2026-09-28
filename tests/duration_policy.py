@@ -31,6 +31,15 @@ def hard_ceiling(markers: set[str]) -> int:
     return HARD_CEILINGS["fast"]
 
 
+def evidence_violation(markers: set[str], evidence: tuple[object, ...]) -> str | None:
+    """Require a named unique regression from tests reserved for weekly runs."""
+    if "weekly" not in markers:
+        return None
+    if evidence and all(isinstance(arg, str) and arg.strip() for arg in evidence):
+        return None
+    return "weekly tests need @pytest.mark.cost_evidence('named unique regression')"
+
+
 def limits() -> tuple[float, float]:
     """Return the ``(fast, medium)`` ceilings for this machine.
 

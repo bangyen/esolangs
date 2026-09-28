@@ -22,6 +22,7 @@ and a caller that gets it should fall back to its clock rather than guess.
 
 from __future__ import annotations
 
+import esolangs
 from esolangs.vm import make_vm, run_until_halt_or_cycle
 
 #: Step cap on the certificate, matching ``run_until_halt_or_growth``'s own.
@@ -47,3 +48,15 @@ def diverges(name: str, source: str, stdin: str) -> bool | None:
         return not run_until_halt_or_cycle(machine, limit=_CYCLE_STEPS)
     except Exception:
         return None
+
+
+def terminates(name: str, source: str, stdin: str, timeout: float) -> bool:
+    """Whether a run halts, proving a cycle before using time as the oracle."""
+    proven = diverges(name, source, stdin)
+    if proven is not None:
+        return not proven
+    try:
+        esolangs.run(name, source, stdin=stdin, timeout=timeout)
+    except esolangs.ExecutionTimeoutError:
+        return False
+    return True

@@ -104,6 +104,7 @@ sys.path.insert(0, str(ROOT / "src"))
 # generators against the remaining ones alone.
 _TOOLS_SUPPORT = (
     Path("tests/__init__.py"),
+    Path("tests/divergence.py"),
     Path("tests/raises.py"),
     Path("tests/interpreters/__init__.py"),
     Path("tests/interpreters/runner.py"),
@@ -186,7 +187,7 @@ class _Kind:
 
 # Keyed by the name the CLI takes.
 _KINDS = {
-    "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT),
+    "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT, needs_scripts=True),
     # The package root: ``vm``, ``debug``, ``tui``, ``cli``, ``registry``.
     #
     # These are the modules ``mutate_one`` cannot reach.  It mutates a

@@ -10,7 +10,7 @@ import pytest
 from _pytest.reports import TestReport
 from coverage.collector import Collector
 
-from tests.duration_policy import hard_ceiling, violation
+from tests.duration_policy import evidence_violation, hard_ceiling, violation
 
 
 def _reject_stale_install() -> None:
@@ -43,11 +43,15 @@ _reject_stale_install()
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    """Give every test its band's hard stop unless it set a ``timeout`` itself."""
+    """Give every test its hard stop and require evidence for weekly cost."""
     for item in items:
+        markers = {marker.name for marker in item.iter_markers()}
+        evidence = item.get_closest_marker("cost_evidence")
+        message = evidence_violation(markers, evidence.args if evidence else ())
+        if message is not None:
+            raise pytest.UsageError(f"{item.nodeid}: {message}")
         if item.get_closest_marker("timeout") is not None:
             continue
-        markers = {marker.name for marker in item.iter_markers()}
         item.add_marker(pytest.mark.timeout(hard_ceiling(markers)))
 
 

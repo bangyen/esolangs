@@ -47,63 +47,6 @@ Only live work belongs here. Contracts and standing walls go to
   the size contract's x2.15 and remains linear pending wider measurements.
   Vandevelo is x2.0 over n=11..15 and takes 0.31 s at n=12.
 
-## Test evidence
-
-What a test costs should buy something no cheaper test buys.  The rows
-below are what auditing the suite against that turned up and has not yet
-closed, each with the measurement that opened it.
-
-- **Divergence by certificate, not by clock.**  A termination-answering
-  language proves a one by *not halting*, and the cheap way to read that is a
-  stopwatch -- run it, call a timeout a loop.  That decides nothing: a
-  timeout says the program had not finished, which is equally what a slow run
-  says, so the bound is guessed high and then paid on every looping row.
-  `run_until_halt_or_cycle` proves it instead, and the two converted sites
-  went from ~42s to 1.8s (`test_generic_verifier.py`, all four tables) and
-  from 89.4s to 7.3s (`tests/tools/test_wrap.py`, where Vandevelo's 110s row
-  and 123's 40s pair were nearly all waiting).  Both keep the timed path as a
-  fallback and cap the detector at `_CYCLE_STEPS`, because a cycle detector
-  does not return on divergence-by-*growth*.
-  Open: the remaining `timeout=` sites in `tests/` have not been sorted into
-  "the timeout is the oracle" (convertible) and "the timeout is a guard"
-  (leave alone).  The first executable step is that sort, since only the
-  first kind is worth converting.
-
-- **`esolangs.run`'s timeout does not bound 3D Brainfuck.**  Found as a
-  control, not a guess: wrapping `wrap_chars` in an off-by-one that drops a
-  character per line makes a 3D Brainfuck program that `run(timeout=2.0)`
-  never returns from, so the test dies on the band's hard ceiling instead of
-  on its own bound.  The *original* test file hangs on it identically, so
-  this is not a regression from the certificate work above -- it is a
-  pre-existing hole in the timeout.  First step: reproduce it directly
-  against `esolangs.run` with no test harness around it, and find whether the
-  bound is never armed or armed and not checked between steps.
-
-- **A sweep should pin a shape, not enumerate a space.**  Line's n=3 sweep
-  rendered all 256 truth tables (37s at `-n 0`).  All 256 are distinct
-  drawings, so nothing was duplicated -- but they carry only 26 fork
-  topologies, and against five mutants of the arm-spacing arithmetic
-  (`_BRANCH_SPACING` at 4, 2 and 1; the `reach_back` term dropped and halved)
-  **all 256 tables passed every one**.  The sweep was not pinning geometry at
-  any size; `test_parity_n5`/`n8`/`n9` and the loop-back shapes in
-  `test_bf_to_line.py` were (31 failures at `_BRANCH_SPACING = 1`).  It now
-  enumerates topologies and renders 52 representatives, 7.3s.
-  Open: the other ~37 exhaustive-table sweeps cost ~6s *combined*, so
-  converting them is a readability trade, not a time one -- but none has been
-  mutation-checked, and the Line result says an exhaustive sweep can pin
-  nothing at all.  First step: run `scripts/mutate.py generator` against two
-  or three of them and see whether the exhaustive loop kills a mutant its
-  first eight tables do not.
-
-- **The expensive tests have no evidence gate.**  `tests/duration_policy.py`
-  bounds what a test may *cost* by band, and nothing bounds what it must
-  *buy*.  That is the asymmetry all three findings above came through: each
-  sweep was within its band and paying for nothing.  Sketch: for a test over
-  some threshold, require a named mutant it kills that no cheaper test in the
-  suite kills, recorded next to the marker the way the band comments already
-  record timings.  Wants the sort in the first row done first, since the
-  timeout-as-oracle sites would all fail such a gate for the same reason.
-
 ## Open problems
 
 Research questions the proofs leave open.  Each names the first executable

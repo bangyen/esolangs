@@ -366,6 +366,7 @@ class TestFactor:
 
     @pytest.mark.slow
     @pytest.mark.weekly
+    @pytest.mark.cost_evidence("Factor's dense n=13 render stops beyond 500000 digits")
     def test_total_past_the_retired_digit_budget(self) -> None:
         """No digit budget: the 500000-digit refusal is gone (dense n=13).
 
