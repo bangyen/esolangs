@@ -14,7 +14,10 @@ resolves exactly the two rows that differ in the last input -- **two rows per
 cell is the hard maximum**, since a function of the last two inputs would need
 sixteen labels and the pointer region admits about six. An `n`-input table
 therefore needs `2**(n-1)` answer cells, all distinct and decoder-reachable,
-in the roughly 39,366 cells the readout can address above the code.
+in the roughly 39,366 cells the readout can address above the code. That is a
+floor, and the optimum of this architecture rather than a description of every
+build: thirteen and fourteen attain it, while eleven and twelve resolve one
+row per cell and spend `2**n` ([the emitted-size law](#the-emitted-size-law)).
 
 Collisions resolve by cascade *tiers*; the decoder reaches tier `k` by being
 re-entered and re-enciphered `k` times, so the tier budget is the number of
@@ -31,6 +34,59 @@ steeply with load `L = cells / window`:
 
 The model reproduces the shipped fourteen-input build, so the wall is real:
 past load ~0.3 the required depth outruns any decoder pass count.
+
+## The emitted-size law
+
+`len(program)` is 59,049 at every arity: the whole store is the source, so the
+load limit *is* the emitted length rather than a bound on it, and reading
+linearity off `len()` measures the padding. What the construction spends is
+its **set cells** -- those differing from `f(a) = 33 + ((35 - a) % 94)`, the
+unique nop character for a cell's own address, which is what every untouched
+cell holds. Unwritten cells decode as op `o`, so a set cell is exactly a
+non-`o` cell.
+
+Through ten inputs that count is not fitted but exact:
+
+```
+set_cells(n, table) = 46 + 28*n + 2*T + popcount(table)        n <= 10
+```
+
+Zero residual on every table measured, all-zero and all-one included. The
+terms are the build: a row writes `'p'`/`'o'` at `+1`, `'<'` at `+2`, `'v'` at
+`+3`, and a **0-row's `+1` cell is the nop character**, so the per-row cost is
+`2 + bit`, not three. `28*n` is the per-input mixer fold, `46` the fixed
+navigation. Worst case is all-ones at `46 + 28n + 3T`, best all-zeros at
+`46 + 28n + 2T` -- linear in `T` with a known constant, the `28n` being the
+`log T` term.
+
+Above ten the cascade stores per *resolved readout*, not per row, so size
+becomes table-independent -- 0.1-1.3% spread across all-zero, all-one and
+random tables, against the `T/2` that popcount moves it below ten. Answer
+cells are `2**11 * 2**selectors`:
+
+| inputs | copies | selectors | stub-read | answer cells | rows per cell |
+| --- | --- | --- | --- | --- | --- |
+| 11 | 1 | 0 | -- | 2,048 = `T` | 1 |
+| 12 | 2 | 1 | -- | 4,096 = `T` | 1 |
+| 13 | 2 | 1 | 1 | 4,096 = `T/2` | 2 |
+| 14 | 4 | 2 | 1 | 8,192 = `T/2` | 2 |
+
+So an input spent as a copy-selector doubles storage while one read directly
+by the answer stub doubles `T` for free, and the coefficient alternates
+between `1` and `1/2`. That is the whole content of the lumpy per-input size
+factors (x1.82, x1.13, x1.93 from eleven to fourteen): not a growth rate, an
+alternation. Sampling cannot separate `T/log T` from `T log T` on four
+points; counting the construction settles it as linear in both regimes.
+
+Where it matters: the load law above allows two rows per answer cell and
+prices fifteen and sixteen at `2**(n-1)`, but only thirteen and fourteen
+actually reach that. Eleven and twelve resolve one row per cell, so they
+spend `2**n` -- a factor two above what the architecture admits. This does
+not weaken the wall: `2**(n-1)` is the optimistic count, and a build that
+misses it needs *more* cells, so the fifteen- and sixteen-input loads are
+floors. It does mean the law states the architecture's optimum rather than
+what every shipped arity does, and eleven and twelve carry a spent factor
+two that no measurement above them inherits.
 
 ## Sixteen: no known construction
 
