@@ -828,16 +828,16 @@
   },
   "Smallfuck": {
    "0110": {
-    "commands": 55,
-    "source_units": 163
+    "commands": 38,
+    "source_units": 48
    },
    "01101001": {
-    "commands": 111,
-    "source_units": 366
+    "commands": 68,
+    "source_units": 143
    },
    "0110100110010110": {
-    "commands": 111,
-    "source_units": 763
+    "commands": 101,
+    "source_units": 323
    }
   },
   "Sophie": {
