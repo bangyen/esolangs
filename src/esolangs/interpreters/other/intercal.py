@@ -52,6 +52,11 @@ def _expression(
     if text[at] in "'\"":
         delimiter = text[at]
         at += 1
+        # A program truncated right after its delimiter leaves nothing to
+        # read here; the entry guard above cannot see it, because `at` was
+        # in range when this call began.
+        if at >= len(text):
+            raise HaltError("incomplete INTERCAL expression")
         unary = text[at] if text[at] in "&V?" else ""
         at += bool(unary)
         (left, width), at = _expression(text, variables, at)
