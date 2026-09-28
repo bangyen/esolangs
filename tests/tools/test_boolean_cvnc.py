@@ -8,7 +8,9 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.cvnc import _render, _stored
+from esolangs.tools.helpers import best_input_order
 from tests.tools.boolean_runners import (
+    five_input_sample,
     run_cvnc,
 )
 
@@ -60,10 +62,17 @@ class TestCvnc:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_a_table_that_folds_nothing_is_a_full_tree(self) -> None:
-        """Parity folds nowhere, so it keeps a leaf per row."""
+        """Parity folds nowhere, so its plain tree keeps a leaf per row.
+
+        The shipped build jumps into the first copy of its last two-row
+        subtree instead of repeating it: one ``j`` for two leaves.
+        """
+        module = importlib.import_module("esolangs.tools.cvnc")
+        tree = module._render(module._tree("01101001"))  # noqa: SLF001
+        assert _leaves(tree) == 8  # one leaf per row
+        assert _branches(tree) == 7  # one branch per interior node
         program = boolean.cvnc("01101001")
-        assert _leaves(program) == 8  # one leaf per row
-        assert _branches(program) == 7  # one branch per interior node
+        assert (_leaves(program), _branches(program)) == (7, 6)
 
     def test_a_constant_table_folds_to_one_leaf_but_keeps_its_reads(self) -> None:
         """Folding drops the branches, never the reads."""
@@ -139,9 +148,14 @@ class TestCvnc:
                 assert run_cvnc(program, bits) == table[combo], (table, bits)
 
     def test_three_squarings_still_halt(self) -> None:
-        """The gadget past the shipped floor runs, so escalation is sound."""
+        """The gadget past the shipped floor runs, so escalation is sound.
+
+        On a table that shares nothing: a shared copy's ``j`` counts
+        syllables past the prologue, so a longer gadget would move it.
+        """
         module = importlib.import_module("esolangs.tools.cvnc")
-        table = "01101001"
+        table = "11101000"
+        assert boolean.cvnc(table).endswith(module._render(module._tree(table)))  # noqa: SLF001
         program = boolean.cvnc(table).replace(
             module._halt(module._HALT_SQUARINGS),  # noqa: SLF001
             module._halt(module._HALT_SQUARINGS + 1),  # noqa: SLF001
@@ -218,9 +232,8 @@ class TestCvnc:
             table = bin(value)[2:].zfill(8)
             tree = module._render(module._tree(table))  # noqa: SLF001
             assert len(boolean.cvnc(table)) <= len(module._halt(4)) + len(tree)  # noqa: SLF001
-        # and parity specifically keeps the node-read build
-        parity = module._render(module._tree("01101001"))  # noqa: SLF001
-        assert boolean.cvnc("01101001").endswith(parity)
+        # and parity specifically keeps the node-read build, pushing nothing
+        assert not {"m", "n"} & set(boolean.cvnc("01101001"))
 
     def test_an_unservable_order_is_skipped_rather_than_mispriced(self) -> None:
         """The deque serves the unimodal orders; the rest return no program.
@@ -345,3 +358,71 @@ class TestCvnc:
         assert "sə" in program  # the floor rides the read's own vowel slot
         for bit in ("0", "1"):
             assert run_cvnc(program, [bit]) == "0"
+
+
+class TestCvncSharing:
+    """A subtree already emitted at its depth is jumped into, not repeated.
+
+    ``j`` jumps to the syllable the accumulator names, so a later copy
+    climbs to the first copy's syllable and jumps; the first copy opens a
+    syllable of its own for that.  The plain build stays a candidate, so no
+    table grows; the gain grows with the table, so it is judged on the
+    seeded five-input sample too (``docs/CONTRIBUTING.md``).
+    """
+
+    @staticmethod
+    def _totals(tables: list[str]) -> tuple[int, int]:
+        """(plain, shipped) character totals, no table allowed to grow."""
+        module = importlib.import_module("esolangs.tools.cvnc")
+        before = after = 0
+        for table in tables:
+            body = best_input_order(table, module._ordered_candidate)  # noqa: SLF001
+            plain = len(module._halt(module._HALT_SQUARINGS)) + len(body)  # noqa: SLF001
+            shipped = len(boolean.cvnc(table))
+            assert shipped <= plain, table
+            before, after = before + plain, after + shipped
+        return before, after
+
+    def test_three_input_total(self) -> None:
+        """All 256 three-input tables: 14,849 to 14,621 characters, 1.5%."""
+        tables = [format(i, "08b") for i in range(256)]
+        assert self._totals(tables) == (14_849, 14_621)
+
+    def test_five_input_sample_total(self) -> None:
+        """200 seeded five-input tables: 39,373 to 37,048 characters, 5.9%."""
+        assert self._totals(five_input_sample()) == (39_373, 37_048)
+
+    def test_the_climb_is_a_closed_form(self) -> None:
+        """A target is its nearer square's root climbed to, squared, stepped.
+
+        ``ə`` floors at zero, so stepping down from the square above is as
+        safe as stepping up from the one below.
+        """
+        module = importlib.import_module("esolangs.tools.cvnc")
+        climb = module._climb  # noqa: SLF001
+        assert climb(1, 9) == [("i", 2), ("æ", 1), ("i", 0)]
+        # 0, 2, 4, 16, 15: four squared is nearer fifteen than three squared.
+        assert climb(0, 15) == [("i", 2), ("æ", 1), ("i", 0), ("æ", 1), ("ə", 1)]
+        for start in (0, 1):
+            for target in range(2, 400):
+                value = start
+                for step, count in climb(start, target):
+                    for _ in range(count):
+                        value = {"i": value + 1, "æ": value * value}.get(
+                            step, max(value - 1, 0)
+                        )
+                assert value == target
+
+    @pytest.mark.parametrize("n", [4, 5, 6])
+    def test_a_shared_copy_runs_from_every_arm(self, n: int) -> None:
+        """Seeded tables that share run every row, entered from each arm."""
+        module = importlib.import_module("esolangs.tools.cvnc")
+        rng = random.Random(n)
+        for _ in range(3):
+            table = format(rng.getrandbits(2**n), f"0{2**n}b")
+            program = boolean.cvnc(table)
+            plain = best_input_order(table, module._ordered_candidate)  # noqa: SLF001
+            assert not program.endswith(plain), table
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_cvnc(program, bits) == table[combo], f"{table} {bits}"

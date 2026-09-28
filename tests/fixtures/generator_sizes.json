@@ -258,12 +258,12 @@
     "source_units": 43
    },
    "01101001": {
-    "commands": 24,
-    "source_units": 75
+    "commands": 30,
+    "source_units": 70
    },
    "0110100110010110": {
-    "commands": 28,
-    "source_units": 138
+    "commands": 35,
+    "source_units": 103
    }
   },
   "Circlefuck": {
