@@ -938,3 +938,42 @@ blocks 1, 3, 4, 9, 10, 12, 13, 28, 82 and 109. The routing is the
 one above: the top digit takes the pinned digit's triple in C and D, the
 case selector and C's `z` bit come from the top triple, and B, D share
 the third `z` code.
+
+**The budget with this layout (partly measured).** Code room is:
+
+- the bottom run of 6,562 cells;
+- less the startup, pointer and walked region below 420;
+- less the seven landing windows inside it (1,701 cells);
+
+which leaves about 4,440 cells for the main line. The five spare 243-cell
+runs add about 1,200 for blocks entered by jumps (state blocks, stubs,
+case blocks).
+
+Against that room:
+
+- *Setup and decoder.* The other line of work measured about 7,500 cells
+  for setup plus a compacted one-group five-state decoder, excluding
+  address and per-row work. About 4,000 of those are the ten view
+  constants. A per-row parity word, where each state's view is
+  `crazy(rot^k(P), base_q)`, needs five base words and one parity
+  computation. The parity XOR can be accumulated as a trit in {1, 2},
+  since `crazy(0, ·)` fixes 1 and 2 and `crazy(2, ·)` swaps them. That
+  should bring the ten views to about 1,500 (estimated).
+- *Address computation.* Emitted with the shipped planner but not yet
+  placed for cost (measured):
+  - the captures of `x1`, `x2` and the five gadgets take 4,117 cells;
+  - one case's combine sequence takes 3,802.
+
+  The cost is navigation. The planner reaches a walked cell by landing in
+  the pointer region and stepping up, so cells near 400 cost about 300 steps
+  per op. The shipped build keeps its gadgets just above 128 and pays 113-314
+  per gadget. None of the 79 consecutive walked triples above 128 with an
+  injective trit 0 matches the solved gadget pattern, so a placed version
+  needs the fold re-solved per slot over the patterns that occur. At the
+  shipped build's rates the address computation would be about 2,000 cells
+  or more (estimated).
+
+The sum is roughly 7,000 cells of code against about 5,650, some 25% over.
+That estimate rests on the unbuilt parity word and on a placement not yet
+done. Closing it needs savings on the label and hub setup, which is about
+2,000 of the 7,500, or on the case structure, beyond everything above.
