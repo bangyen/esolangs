@@ -310,16 +310,16 @@
   },
   "Collatz Multiverse": {
    "0110": {
-    "commands": 54,
-    "source_units": 1266
+    "commands": 25,
+    "source_units": 699
    },
    "01101001": {
-    "commands": 75,
-    "source_units": 1748
+    "commands": 34,
+    "source_units": 935
    },
    "0110100110010110": {
-    "commands": 80,
-    "source_units": 1871
+    "commands": 39,
+    "source_units": 1051
    }
   },
   "Container": {

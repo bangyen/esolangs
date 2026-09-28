@@ -32,6 +32,7 @@ from esolangs.tools.helpers import (
     _cm_constants,
     _validate_truth_table,
     essential_inputs,
+    read_at,
 )
 from esolangs.tools.polynomial import (
     _POLYNOMIAL_MAX_INSTRS as _POLYNOMIAL_MAX_INSTRS,
@@ -210,11 +211,13 @@ def decleq(truth_table: str) -> str:
 
 
 #: Table rows a Collatz Multiverse cell carries, and so its decoder's stride.
-#: A cell costs one line whatever its width and a decoder ``c * 2**c`` cells,
-#: so four is cheapest: eight outgrows its own saving below thirteen inputs.
+#: A cell costs one line whatever its width and the decoder ``c`` lines per
+#: distinct cell: at most 64 for four, but up to 2048 for eight, more than
+#: the ``T / 8`` lines eight saves below fourteen inputs.
 _CM_CHUNK = 4
 
 #: Cell-constant names: one character, and none a register spelled elsewhere.
+#: Fifteen, one per nonzero code a four-row cell can take.
 _CM_ALIAS = "abcefghijlmnpqr"
 
 #: The shortest line that does nothing -- ``z`` is the zero register.
@@ -242,6 +245,131 @@ def _cm_cells(
     lines += block
 
 
+def _cm_codes(chunks: list[int], *, zero_top: bool) -> dict[int, int] | None:
+    """Return codes ``0, 1, ...`` for the distinct cells: the decoder spans them.
+
+    A cell's code, not its bits, is what the table stores and the decoder is
+    indexed by, so a table with ``m`` distinct cells needs ``4 m`` decoder
+    lines whatever their values -- ``1000`` is value 1 but ``0001`` is 8,
+    and a decoder spanning the values paid 32 lines to reach it.  Code 0 is
+    the cell nothing writes, so it goes to the empty cell when there is one
+    (its cells cost a pad) and else to the most frequent.  The top code's
+    decoder entries past its highest set bit are trailing pads and drop, so
+    it goes to the cell whose highest set bit is lowest.
+
+    ``zero_top`` instead puts the empty cell on top, where its four decoder
+    entries all drop, and pays for its cells with an alias; ``None`` when
+    there is no empty cell to move.
+    """
+    counts: dict[int, int] = {}
+    for value in chunks:
+        counts[value] = counts.get(value, 0) + 1
+    if zero_top and 0 not in counts:
+        return None
+    ranked = sorted(counts, key=lambda v: (-counts[v], v))
+    head = []
+    if 0 in counts and not zero_top:
+        ranked.remove(0)
+        head = [0]
+    top = 0 if zero_top else min(ranked, key=lambda v: (v.bit_length(), -counts[v]))
+    ranked.remove(top)
+    return {value: code for code, value in enumerate([*head, *ranked, top])}
+
+
+def _cm_build(
+    truth_table: str,
+    n: int,
+    order: list[int],
+    *,
+    zero_top: bool | None,
+    negate: bool = False,
+    flip: bool = False,
+) -> str | None:
+    """Emit the cell-and-decoder program over ``order``'s inputs.
+
+    ``order`` names the inputs the address is built from, most significant
+    first; its last two select a row within a cell and the rest index the
+    cells.  An input it leaves out is still read, and never added.
+    ``zero_top`` picks :func:`_cm_codes`'s numbering; ``None`` stores each
+    cell's own value as its code, the build before cells were numbered.
+    ``negate`` stores the complement and prints ``49 - bit``; ``flip``
+    stores the table with the last selector's arms swapped.
+    """
+    table = read_at(truth_table, order, n)
+    if negate:
+        table = table.translate(str.maketrans("01", "10"))
+    if flip:
+        table = "".join(table[r ^ 1] for r in range(len(table)))
+    padded = table + "0" * (-len(table) % _CM_CHUNK)
+    chunks = [
+        sum(int(bit) << j for j, bit in enumerate(padded[base : base + _CM_CHUNK]))
+        for base in range(0, len(padded), _CM_CHUNK)
+    ]
+    if zero_top is None:
+        codes: dict[int, int] | None = {value: value for value in chunks}
+    else:
+        codes = _cm_codes(chunks, zero_top=zero_top)
+    if codes is None:
+        return None
+    uses: dict[int, int] = {}
+    for value in chunks:
+        uses[value] = uses.get(value, 0) + 1
+
+    high = max(len(order) - 2, 0)
+    weights = {2 ** (high - 1 - k) for k in range(high)}
+    stored = sorted((code, value) for value, code in codes.items() if code)
+    lines = _cm_constants(
+        {_ASCII_ZERO + negate, *weights, *(_CM_CHUNK * code for code, _ in stored)},
+        zero="z",
+    )
+    # A cell names its code's constant, or a one-letter alias of it when the
+    # alias line is cheaper than the characters the alias saves.
+    names: dict[int, str] = {}
+    for code, value in stored:
+        constant = f"k{_CM_CHUNK * code}"
+        alias = _CM_ALIAS[sum(len(name) == 1 for name in names.values())]
+        line = f"{alias}=zx+{constant},NOT PRINT."
+        if uses[value] * (len(constant) - 1) > len(line) + 1:
+            lines.append(line)
+            names[value] = alias
+        else:
+            names[value] = constant
+    decoder: list[str | None] = [None] * (_CM_CHUNK * (max(codes.values()) + 1))
+    for value, code in codes.items():
+        for j in range(_CM_CHUNK):
+            if (value >> j) & 1:
+                decoder[_CM_CHUNK * code + j] = "k1"
+    _cm_cells(lines, "D", decoder, "t")
+    _cm_cells(lines, "A", [names.get(value) for value in chunks], "s")
+
+    for i in range(n):
+        lines.append(f"w{i}=zx+input,NOT PRINT.")
+    # ``s`` sits one below the first cell, so the address wants the missing
+    # one -- folded into the only odd weight, which has to be added last.
+    cells, select = order[:high], order[high:]
+    for k, i in enumerate(cells[:-1]):
+        lines.append(f"w{i}=k{2 ** (high - 1 - k)}x+z,NOT PRINT.")
+        lines.append(f"s=k1x+w{i},NOT PRINT.")
+    if cells:
+        lines.append(f"w{cells[-1]}=k1x+k1,NOT PRINT.")
+        lines.append(f"s=k1x+w{cells[-1]},NOT PRINT.")
+    else:
+        lines.append("s=k1x+k1,NOT PRINT.")
+    lines.append("t=k1x+A[s],NOT PRINT.")
+    if len(select) == 2:
+        lines.append(f"w{select[0]}=k2x+z,NOT PRINT.")
+        lines.append(f"t=k1x+w{select[0]},NOT PRINT.")
+    # ``1 + bit``, or ``2 - bit`` when the build swapped that input's arms.
+    last = "negativeOnex+k2" if flip else "k1x+k1"
+    lines.append(f"w{select[-1]}={last},NOT PRINT.")
+    lines.append(f"t=k1x+w{select[-1]},NOT PRINT.")
+    lines.append("o=zx+D[t],NOT PRINT.")
+    # ``o`` holds the bit: ``0 * a + b`` for a zero, ``1 * a + b`` for a one.
+    scale = "negativeOne" if negate else "k1"
+    lines.append(f"o={scale}x+k{_ASCII_ZERO + negate},DO PRINT.")
+    return "\n".join(lines)
+
+
 def collatz_multiverse(truth_table: str) -> str:
     """Build a Collatz Multiverse program computing the given truth table.
 
@@ -252,11 +380,22 @@ def collatz_multiverse(truth_table: str) -> str:
     may name ``lineNumber``, so ``A[lineNumber] = z x + v`` drops ``v`` into
     the cell the writing line's own number addresses: such a block lays the
     table out at consecutive addresses for one line a cell, no pointer to
-    advance.  Four rows ride in each cell as a nibble ``V`` whose constant is
-    ``4 * V``, and the last two inputs select within it through a 64-cell
-    decoder holding bit ``j`` of ``V`` at ``4V + j``.  ``d = A x + B`` is
+    advance.  Four rows ride in each cell, stored as a *code* ``c`` whose
+    constant is ``4 c``, and the last two inputs select within it through a
+    decoder holding the cell's bit ``j`` at ``4 c + j``.  ``d = A x + B`` is
     ``d := B + d*A`` for a destination holding zero and ``d := d // 2`` for an
     even one, so an address takes its odd weight last: nothing halves it.
+
+    The candidates are all O(T) and the shortest is kept, the plain build
+    first so ties keep it: the plain build stores each cell's value as its
+    code; the numbered builds store codes ``0 .. m`` (:func:`_cm_codes`),
+    which halves the three-input total, over the essential inputs only (an
+    ignored input is read and never added) and under three named choices of
+    the two selecting inputs -- the last two, the first two, and the first
+    and last, which at three inputs is every pair.  Only which input a
+    level tests moves; the reads stay in name order.  Each is also built
+    for the complement, printed as ``49 - bit``, and with the last selector
+    added as ``2 - bit``: arithmetic swaps those arms, not the fill.
     """
     n = _validate_truth_table(truth_table)
     if all(c == truth_table[0] for c in truth_table):
@@ -268,48 +407,22 @@ def collatz_multiverse(truth_table: str) -> str:
         lines.append(f"out = negativeOne x + k{const}, DO PRINT.")
         return "\n".join(lines)
 
-    padded = truth_table + "0" * (-len(truth_table) % _CM_CHUNK)
-    chunks = [
-        sum(int(bit) << j for j, bit in enumerate(padded[base : base + _CM_CHUNK]))
-        for base in range(0, len(padded), _CM_CHUNK)
+    essential = essential_inputs(truth_table, n)
+    orders = [essential]
+    if len(essential) >= 3:
+        orders += [
+            essential[2:] + essential[:2],
+            [*essential[1:-1], essential[0], essential[-1]],
+        ]
+    candidates = [_cm_build(truth_table, n, list(range(n)), zero_top=None)]
+    candidates += [
+        _cm_build(truth_table, n, order, zero_top=zero_top, negate=negate, flip=flip)
+        for order in orders
+        for zero_top in (False, True)
+        for negate in (False, True)
+        for flip in (False, True)
     ]
-    alias = {value: _CM_ALIAS[i] for i, value in enumerate(sorted({*chunks} - {0}))}
-
-    # The cell index is the inputs above the last two, shifted down by two.
-    weights = {2 ** (n - 3 - i) for i in range(max(n - 3, 0))}
-    lines = _cm_constants(
-        {_ASCII_ZERO, *weights, *(_CM_CHUNK * v for v in alias)}, zero="z"
-    )
-    lines += [f"{name}=zx+k{_CM_CHUNK * v},NOT PRINT." for v, name in alias.items()]
-    decoder = [
-        "k1" if v in alias and (v >> j) & 1 else None
-        for v in range(1 << _CM_CHUNK)
-        for j in range(_CM_CHUNK)
-    ]
-    _cm_cells(lines, "D", decoder, "t")
-    _cm_cells(lines, "A", [alias.get(v) for v in chunks], "s")
-
-    for i in range(n):
-        lines.append(f"w{i}=zx+input,NOT PRINT.")
-    # ``s`` sits one below the first cell, so the address wants the missing
-    # one -- folded into the only odd weight, which has to be added last.
-    for i in range(max(n - 3, 0)):
-        lines.append(f"w{i}=k{2 ** (n - 3 - i)}x+z,NOT PRINT.")
-        lines.append(f"s=k1x+w{i},NOT PRINT.")
-    if n >= 3:
-        lines.append(f"w{n - 3}=k1x+k1,NOT PRINT.")
-        lines.append(f"s=k1x+w{n - 3},NOT PRINT.")
-    else:
-        lines.append("s=k1x+k1,NOT PRINT.")
-    lines.append("t=k1x+A[s],NOT PRINT.")
-    if n >= 2:
-        lines.append(f"w{n - 2}=k2x+z,NOT PRINT.")
-        lines.append(f"t=k1x+w{n - 2},NOT PRINT.")
-    lines.append(f"w{n - 1}=k1x+k1,NOT PRINT.")
-    lines.append(f"t=k1x+w{n - 1},NOT PRINT.")
-    lines.append("o=zx+D[t],NOT PRINT.")
-    lines.append(f"o=k1x+k{_ASCII_ZERO},DO PRINT.")
-    return "\n".join(lines)
+    return min((c for c in candidates if c is not None), key=len)
 
 
 def sophie(truth_table: str) -> str:

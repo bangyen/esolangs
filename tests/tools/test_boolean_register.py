@@ -893,6 +893,47 @@ class TestCollatzMultiverse:
             assert program.count("DO PRINT.") == 1
             assert program.count("input") == 2  # n == 2, read once each
 
+    @pytest.mark.parametrize("n", [4, 5, 6])
+    def test_sampled_wider_tables(self, n: int) -> None:
+        """Every row of sampled tables, with ignored inputs among them."""
+        rng = random.Random(n)
+        for _ in range(4):
+            table = "".join(rng.choice("01") for _ in range(2**n))
+            # An ignored first input, so the essential projection is exercised.
+            for shape in (table, table[: 2 ** (n - 1)] * 2):
+                program = boolean.collatz_multiverse(shape)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    assert run_collatz_multiverse(program, bits) == shape[combo]
+
+    def test_numbered_cells_halve_the_three_input_total(self) -> None:
+        """The plain build against the shipped one over every varied table.
+
+        The plain build stores each cell's value, so its decoder spans every
+        value up to the largest; the generator before numbering totalled
+        460296 over all 256 tables, the plain build now 450156 of the 254
+        varied ones (one-letter aliases only where they pay).
+        """
+        from esolangs.tools.register import _cm_build
+
+        varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
+        plain = sum(len(_cm_build(t, 3, [0, 1, 2], zero_top=None)) for t in varied)
+        built = sum(len(boolean.collatz_multiverse(t)) for t in varied)
+        assert (plain, built) == (450156, 218136)
+
+    def test_numbering_never_grows_a_program(self) -> None:
+        """The plain build is the first candidate, so no table gets longer."""
+        from esolangs.tools.register import _cm_build
+
+        rng = random.Random(0)
+        tables = [format(v, "08b") for v in range(1, 255)]
+        tables += ["".join(rng.choice("01") for _ in range(2**n)) for n in (4, 5, 6)]
+        for table in tables:
+            n = len(table).bit_length() - 1
+            plain = _cm_build(table, n, list(range(n)), zero_top=None)
+            assert plain is not None
+            assert len(boolean.collatz_multiverse(table)) <= len(plain), table
+
 
 class TestDecleq:
     @pytest.mark.parametrize(
