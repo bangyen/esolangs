@@ -19,6 +19,7 @@ def _run(table: str, row: int) -> str:
     return io.getvalue()
 
 
+@pytest.mark.medium  # executes every table (0.75s at n = 3)
 @pytest.mark.parametrize("n", range(1, 4))
 def test_every_table_through_three_inputs(n: int) -> None:
     width = 1 << n
