@@ -328,35 +328,45 @@ would have to be computed as `S + k` -- addition, which `crazy` and `*` do
 not give. So `i` ends the group for every row, and the letters left are `o
 j * p /`: again about `log2 5` bits a cell.
 
-### Six meanings, once the decoder knows the address's parity
+### Seven meanings, once the decoder knows the address's parity
 
 The hitting-set bound assumes a meaning is writable at *every* address. A
 decoder that also knows `h mod 2` escapes it, because `94` is even: an
 address of one parity only sees the 47 translates `I - h` with `h` of that
-parity. Each value lies in 4 of them, so a meaning needs at least 12 values
-and eight meanings would need 96: **at most seven**. Six are attained in
-both classes (CP-SAT, checked by enumeration; as character minus 33, even `h`):
+parity. Each value lies in 4 of them, and exhaustive search finds no
+hitting set of 12, so a meaning needs at least 13 values and eight would need
+104: **at most seven**, and seven are attained. As character minus 33, for even
+`h` (odd `h` adds 1 to every value, since `(I - h) + 1 = I - (h - 1)`):
 
 ```
-{4,9,30,45,49,52,54,55,58,60,62,63,65,66,70,73}
-{8,10,12,15,17,21,23,31,33,35,38,40,50,77,78}
-{5,6,13,18,26,29,34,39,46,53,56,59,67,80,83,92}
-{1,14,16,19,22,25,27,41,43,48,81,86,88,91,93}
-{2,28,42,61,68,69,71,72,74,75,76,79,82,84,87,89}
-{0,3,7,11,20,24,32,36,37,44,47,51,57,64,85,90}
+{0,2,4,6,9,11,14,26,51,72,84,91,93}
+{7,16,25,30,37,40,49,54,60,63,67,70,81}
+{10,17,19,20,22,24,29,31,34,44,46,71,92}
+{5,13,15,23,33,38,47,57,62,65,75,86,89}
+{1,12,21,28,35,39,42,53,61,68,74,77,79,82}
+{3,18,27,32,41,43,45,48,50,52,56,59,83,88}
+{8,36,55,58,64,66,69,73,76,78,80,85,87,90}
 ```
 
-Seven is undecided (no answer in 40 minutes). Parity is cheap to
+The seven partition all 94 values and each meets every translate of its class. Parity is cheap to
 reach: `9**k` is odd, so `h mod 2` is the parity of the digit sum, a
-function of the input bits. `log2 6 = 2.58` bits a cell clears the 2.47
+function of the input bits. `log2 7 = 2.81` bits a cell clears the 2.47
 seventeen needs once a positional main code is paid for, so the
 value-decoded cap no longer excludes seventeen. What remains is cost, not
 rate: a parity-aware decoder must rewrite its hubs per class, and a joint
 code over several cells multiplies that per decoded state. A 2+1 layout
 (two 15-bit cells and one 14-bit cell per four row pairs, `7**3 >= 4**4`)
-fails even at seven meanings: each pair of labels needs a common `B` value,
+fails at seven meanings: each pair of labels needs a common `B` value,
 which forces the Fano plane, and no multiplicity of its lines keeps every
 value within seven labels.
+
+Reading two adjacent cells removes the phase altogether: `v_{h+1} - v_h =
+i_{h+1} - i_h - 1 (mod 94)` does not involve `h`, the eight sets `I - i - 1`
+hit only 43 differences, and a colouring of those with eight colours rainbow
+on every set exists, so a chain of cells carries the full 3 bits a cell after
+its first. Malbolge cannot subtract, though, and the obvious substitute --
+two `p`s, `crazy(crazy(K, v_h), v_{h+1})` -- is not injective in `v_{h+1}`
+for any of the 243 low-trit constants `K`, so no decoder for it is known.
 
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
