@@ -78,6 +78,30 @@ interpreter:
 the language and mentions `EOF`, `HaltError` or `ValueError` wherever the
 interpreter reads input or raises them.
 
+## What makes a generator optimization worth shipping
+
+A change that shrinks an existing generator ships only if it clears all of:
+
+- **5% or more** off the total emitted size over all 256 three-input tables,
+  measured for the commit against its parent.  Below that the added
+  construction costs more to keep than it saves (ArrowQueue's rotation
+  reorder, 2.1%, was reverted for this; `docs/limitations.md` records it).
+- **No table grows**: checked exhaustively through three inputs, so keep the
+  old build as a candidate when the new one is not uniformly shorter.
+- **Every table executes**: exhaustively through three inputs, sampled at
+  four to six; pin the n = 3 total before and after in a test, and update
+  `just sizes` when its baseline moves.
+- **The Boolean-generator conventions** in `docs/limitations.md`: reads and
+  template runs in input order, one uniform `(zero, one)` fill pair, at most
+  four named reorder candidates, no search, O(T) size and generation
+  (`tests/proofs/deep/linearity.py`).
+- **No interpreter leniency**: a program that runs only because an
+  interpreter forgives it (truncated keywords, missing operands) is not
+  shorter.
+
+`scripts/screens/` bounds where the upside is before any construction is
+written.
+
 ## Checklist
 
 1. Run `just new-language "Name" --category tape_based` (using the matching
