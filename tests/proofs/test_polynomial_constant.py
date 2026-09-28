@@ -57,6 +57,43 @@ def test_decoder_slack_cannot_lower_the_effective_profile() -> None:
         assert relaxed >= baseline
 
 
+def test_one_instruction_split_has_no_cheaper_opcode() -> None:
+    """An exhaustive control pins the local split's minimal root profile."""
+    baseline = [1, 1, 1, 4]
+    test_exponent = {-1: 3, 0: 4, 1: 1}
+    separating: list[tuple[int, int, list[int]]] = []
+
+    for opcode in range(1, 7):
+        for operand in range(-100, 101):
+            if not operand:
+                continue
+            if opcode == 1:
+                values = [register + operand for register in (48, 49)]
+            elif opcode == 2:
+                values = [register - operand for register in (48, 49)]
+            elif opcode == 3:
+                values = [register * operand for register in (48, 49)]
+            elif opcode == 4:
+                values = [register // operand for register in (48, 49)]
+            elif opcode == 5:
+                values = [register % operand for register in (48, 49)]
+            else:
+                values = [Fraction(register) ** operand for register in (48, 49)]
+
+            signs = [0 if value == 0 else 1 if value > 0 else -1 for value in values]
+            if signs[0] == signs[1]:
+                continue
+            profile = sorted(
+                [opcode, opcode, test_exponent[signs[0]], test_exponent[signs[1]]]
+            )
+            assert all(
+                actual >= best for actual, best in zip(profile, baseline, strict=True)
+            )
+            separating.append((opcode, operand, profile))
+
+    assert (1, -48, baseline) in separating
+
+
 def _even_source(table: str) -> tuple[str, list[list[int]], list[int]]:
     n = (len(table) - 1).bit_length()
     instructions: list[list[int]] = []

@@ -138,6 +138,9 @@ step; an answer lands in the paper it extends, and the row leaves.
   Spending a fraction `delta` of the band width to shrink its operands is
   also closed: even the favorable relaxed constant
   `(325/8 - 4 delta)/(1 - delta)**2` is minimized at `delta = 0`.
+  Local opcode substitution is closed too: among one-arithmetic-instruction
+  splits, adding `-48` and testing positive/zero has componentwise-minimal
+  effective exponents `1,1,1,4`.
   On the lower side, the two zero targets counted per expensive gap really
   are independent: symmetric remainder pairs realize arbitrary ordered
   first-zero positions from consecutive register values.  Raising `13/4`
