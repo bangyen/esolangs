@@ -536,7 +536,12 @@ constants whose landings are injective, or collide only where the targets
 agree, across all 94 characters. With the valid constants, decoding setup
 and one group's decoders take about 7,500 of the 8,957 non-table cells left
 after the ten landing blocks, before the seventeen-input address
-computation.
+computation. Those constants are valid over all 94 characters but not yet
+for the layout: under the best tiling about 800 of their landing cells fall
+on table cells, invisible in a one-group test. Table-free landings force the
+rotated-read constants found above, whose setup cost has not been measured,
+so the 7,500 is a lower-bound estimate for the real layout, not a
+measurement of it.
 
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
