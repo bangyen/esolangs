@@ -8,6 +8,16 @@ guard line hangs on an affine coset of inputs and a whole program hangs on
 a union of cosets.  The generator therefore emits one guard line per coset
 of an affine cover of the table's 1-set.
 
+A test for 0 is ``x? == Nil?``, eight characters and four steps over a
+bare ``x?``, so the guards are spelled to need it rarely.  A register
+takes whichever polarity its clause wants -- its last toggle is ``==``
+rather than ``!=`` -- and an input most of whose tests ask for 0 is read
+negated (``~!>``) when the rows reaching those tests agree.  A guard's
+bare tests run first, and a test every row reaching it passes -- the
+far side of an earlier one-test guard -- is dropped.  Over the
+three-input tables these take 30,476 steps to 22,769 and 26,438
+characters to 23,481.
+
 The cover is an affine-cube peel.  A cube is grown by iterated popular
 differences: pick the direction ``v`` maximising ``|B & (B ^ v)|``,
 intersect, repeat while a pair remains; the working sets along that chain
@@ -616,11 +626,17 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     compact = width is not None
     names = [_name(index) for index in range(n)]
-    lines = (
-        [f"{names[index]}~>Inp?" for index in range(n)]
-        if compact
-        else [f"{names[index]} ~> Inp?" for index in range(n)]
-    )
+    ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
+    cubes = _Peel(ones, n).run() if ones else []
+    cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
+    flips = _flips(cover, [len(dirs) for _, dirs in cubes], n)
+    lines = []
+    for index in range(n):
+        # A flipped input is read negated, so its ``== Nil`` tests go.
+        arrow = "~!>" if flips >> (n - 1 - index) & 1 else "~>"
+        lines.append(
+            f"{names[index]}{arrow}Inp?" if compact else f"{names[index]} {arrow} Inp?"
+        )
     lines.append("l->l?" if compact else "loop -> loop?")
     loop = "l?" if compact else "loop?"
 
@@ -629,30 +645,33 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
         # most-significant-first, and the first read is the top bit.
         return names[n - 1 - bit]
 
-    ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
-    cubes = _Peel(ones, n).run() if ones else []
-
-    bank: dict[str, int] = {}
+    # A register holds its parity XOR its own polarity, and a clause that
+    # (re)binds it sets that polarity -- a ``==`` toggle in place of ``!=``
+    # -- so the test it makes is a bare ``r?``.
+    bank: dict[str, tuple[int, int]] = {}
     next_register = n
-    for base, dirs in cubes:
+    for constraints in cover:
         parts = []
         used: set[str] = set()
-        for w, value in _constraints(base, dirs, n):
+        for w, value in constraints:
+            # The constraint over the reads as spelled, flipped inputs and all.
+            value ^= (w & flips).bit_count() & 1
             if w.bit_count() == 1:
-                part = ref(w.bit_length() - 1)
+                part, polarity = ref(w.bit_length() - 1), 0
             else:
                 recent = list(islice(reversed(bank.items()), _SCAN))
                 exact = next(
-                    (r for r, held in recent if held == w and r not in used),
+                    (r for r, held in recent if held[0] == w and r not in used),
                     None,
                 )
                 if exact is not None:
                     register = exact
-                    bank[register] = bank.pop(register)  # most recently used
+                    polarity = bank.pop(register)[1]
+                    bank[register] = (w, polarity)  # most recently used
                 else:
                     nearest: str | None = None
                     distance = w.bit_count()
-                    for r, held in recent:
+                    for r, (held, _) in recent:
                         if r in used:
                             continue
                         d = (held ^ w).bit_count()
@@ -660,17 +679,18 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                             nearest, distance = r, d
                     if nearest is not None:
                         register = nearest
-                        toggles = _points(bank.pop(register) ^ w)
+                        held, polarity = bank.pop(register)
+                        toggles = _points(held ^ w)
                     elif len(bank) < _bank_cap(n):
                         register = _name(next_register)
                         next_register += 1
-                        toggles = _points(w)
+                        toggles, polarity = _points(w), 0
                     else:
                         # Bank full: respell the least recently used free
                         # register, which costs what a fresh one would.
                         register = next(r for r in bank if r not in used)
                         del bank[register]
-                        toggles = _points(w)
+                        toggles, polarity = _points(w), 0
                     if nearest is None:
                         first, toggles = ref(toggles[0]), toggles[1:]
                         lines.append(
@@ -678,20 +698,73 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                             if compact
                             else f"{register} ~> {first}?"
                         )
-                    for b in toggles:
+                    # Every rebinding toggles at least once; the last toggle
+                    # sets the polarity that makes this test pass on a 1.
+                    for i, b in enumerate(toggles):
+                        op = "!="
+                        if i == len(toggles) - 1 and polarity == value:
+                            op, polarity = "==", polarity ^ 1
                         lines.append(
-                            f"{register}~>{register}?!={ref(b)}?"
+                            f"{register}~>{register}?{op}{ref(b)}?"
                             if compact
-                            else f"{register} ~> {register}? != {ref(b)}?"
+                            else f"{register} ~> {register}? {op} {ref(b)}?"
                         )
-                    bank[register] = w
+                    bank[register] = (w, polarity)
                 used.add(register)
                 part = register
-            if value:
+            # The test passes when the variable equals ``value ^ polarity``.
+            if value ^ polarity:
                 parts.append(f"{part}?")
             else:
                 parts.append(f"{part}?==Nil?" if compact else f"{part}? == Nil?")
+        # A bare test costs one step and a ``== Nil`` five, and each part
+        # stops about half the rows still evaluating: cheap parts go first.
+        parts.sort(key=lambda part: part.endswith("Nil?"))
         lines.append(
             "::".join([*parts, loop]) if compact else " :: ".join([*parts, loop])
         )
     return "\n".join(lines)
+
+
+def _pruned(cover: list[list[tuple[int, int]]]) -> list[list[tuple[int, int]]]:
+    """Drop the tests every row reaching their clause passes.
+
+    A clause left with one test hangs every row that reaches it on that
+    test's side, so every row reaching a later clause is on the other, and
+    a later test of that side is spent text and steps.  A clause left with
+    no test is ``loop?`` alone, which is right: every row reaching it is in
+    its cube.
+    """
+    implied: set[tuple[int, int]] = set()
+    out = []
+    for constraints in cover:
+        kept = [test for test in constraints if test not in implied]
+        out.append(kept)
+        if len(kept) == 1:
+            w, value = kept[0]
+            implied.add((w, value ^ 1))
+    return out
+
+
+def _flips(cover: list[list[tuple[int, int]]], dims: list[int], n: int) -> int:
+    """Return the index bits whose input is read negated.
+
+    An input is flipped when more of its single-input tests ask for 0 than
+    for 1, counted both plainly (each sheds ``== Nil``, eight characters,
+    for one ``!`` on the read) and weighted by the rows that reach the
+    test's line (each sheds four steps per row).  The cubes are disjoint
+    and a row in one hangs on its line, so a line is reached by every row
+    outside the cubes before it.  Registers set their own polarity, so only
+    the bare tests count.
+    """
+    count = [0] * n
+    weight = [0] * n
+    reach = 1 << n
+    for constraints, dim in zip(cover, dims, strict=True):
+        for w, value in constraints:
+            if w.bit_count() == 1:
+                bit = w.bit_length() - 1
+                count[bit] += 1 if value else -1
+                weight[bit] += reach if value else -reach
+        reach -= 1 << dim
+    return sum(1 << bit for bit in range(n) if count[bit] < 0 and weight[bit] < 0)

@@ -43,6 +43,52 @@ def test_constant_subtree_is_one_coset() -> None:
     assert program.splitlines()[-1] == "a? :: loop?"
 
 
+def test_an_input_tested_mostly_for_zero_is_read_negated() -> None:
+    """``~!>`` on the read replaces every ``== Nil`` test of that input."""
+    lines = vandevelo("10000000").splitlines()
+    assert lines[:3] == ["a ~!> Inp?", "b ~!> Inp?", "c ~!> Inp?"]
+    assert lines[-1] == "c? :: b? :: a? :: loop?"
+
+
+def test_a_register_binds_the_polarity_its_test_wants() -> None:
+    """The last toggle is ``==`` when the clause wants the parity at 0."""
+    lines = vandevelo("00001001").splitlines()
+    assert lines[4:] == ["d ~> c?", "d ~> d? == b?", "d? :: a? :: loop?"]
+
+
+def test_a_test_implied_by_an_earlier_half_space_is_dropped() -> None:
+    """Rows past ``a? :: loop?`` all have ``a`` at 0; nothing tests it again."""
+    lines = vandevelo("01111111").splitlines()
+    assert lines[4:] == ["a? :: loop?", "c? :: loop?", "b? :: loop?"]
+
+
+def _steps(program: str, bits: tuple[int, ...]) -> int:
+    """Steps to the halt, or to the first repeated state of a hanging row."""
+    machine = _Machine(program, ScriptedIO("".join(f"{bit}\n" for bit in bits)))
+    seen = set()
+    steps = 0
+    while not machine.halted and machine.snapshot() not in seen:
+        seen.add(machine.snapshot())
+        machine.step()
+        steps += 1
+    return steps
+
+
+def test_three_input_steps_and_sizes() -> None:
+    """Negated reads, register polarity and pruning, over all 256 tables.
+
+    Charged as ``scripts/screens/steps.py`` charges a termination row.
+    Before them the totals were 26,438 characters and 30,476 steps; no
+    table grew in either.
+    """
+    size = steps = 0
+    for index in range(256):
+        program = vandevelo(format(index, "08b"))
+        size += len(program)
+        steps += sum(_steps(program, bits) for bits in product(range(2), repeat=3))
+    assert (size, steps) == (23481, 22769)
+
+
 def test_parity_is_a_single_hyperplane() -> None:
     """The parity table's 1-set is one affine coset: one register, one guard."""
     parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**8))
