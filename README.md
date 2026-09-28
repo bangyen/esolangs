@@ -231,8 +231,8 @@ Languages that don't fit into the above categories.
 <!-- IMPLEMENTED:END -->
 </details>
 
-Line is an image-language module under `esolangs.line`; run
-`just test-line` for its suite.
+Line is an image-language module under `esolangs.line`; its suite is
+`tests/line/`, run with the rest by `just test`.
 
 ## Generators
 

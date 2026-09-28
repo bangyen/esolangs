@@ -82,10 +82,6 @@ test-mid *args:
 test-py *args:
     {{PYTHON}} scripts/verify.py --only pytest {{args}}
 
-# the Line image-language suites, in full
-test-line *args:
-    {{PYTHON}} scripts/verify.py --only "Line interpreter suites" {{args}}
-
 # lint + duplicate-code + bandit + dead definitions
 test-lint *args:
     {{PYTHON}} scripts/verify.py --only pre-commit,"duplicate-code check (pylint)",bandit,"dead definitions" {{args}}
