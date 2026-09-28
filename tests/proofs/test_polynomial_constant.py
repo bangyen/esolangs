@@ -3,12 +3,14 @@
 import itertools
 import math
 
+import pytest
+
 from esolangs.interpreters.register_based.polynomial import (
     _advance,
     _bracket_pairs,
     sanitize_terms,
 )
-from esolangs.tools._polynomial import primes, render_product
+from esolangs.tools._polynomial import format_coeffs, multiply, primes
 from esolangs.tools.polynomial import _polynomial_decode_key
 from tests.tools.boolean_runners import run_polynomial
 
@@ -45,7 +47,7 @@ def test_maximal_width_reaches_half_the_asymptotic_scale() -> None:
         assert min(residuals, first_essential) * 2 * n >= 2**n
 
 
-def _even_source(table: str) -> tuple[str, list[list[int]]]:
+def _even_source(table: str) -> tuple[str, list[list[int]], list[int]]:
     n = (len(table) - 1).bit_length()
     instructions: list[list[int]] = []
 
@@ -65,9 +67,9 @@ def _even_source(table: str) -> tuple[str, list[list[int]]]:
     build(0, 0)
     groups: list[list[list[int]]] = []
     for instruction in instructions:
-        if groups and _polynomial_decode_key(
-            groups[-1][-1]
-        ) <= _polynomial_decode_key(instruction):
+        if groups and _polynomial_decode_key(groups[-1][-1]) <= _polynomial_decode_key(
+            instruction
+        ):
             groups[-1].append(instruction)
         else:
             groups.append([instruction])
@@ -82,7 +84,10 @@ def _even_source(table: str) -> tuple[str, list[list[int]]]:
                 factors.append(
                     [1, -2 * operand, operand * operand + prime ** (2 * opcode)]
                 )
-    return str(render_product(factors)), instructions
+    coefficients = [1]
+    for factor in factors:
+        coefficients = multiply(coefficients, factor)
+    return format_coeffs(coefficients), instructions, coefficients
 
 
 def _execute(instructions: list[list[int]], bits: str) -> str:
@@ -99,11 +104,14 @@ def _execute(instructions: list[list[int]], bits: str) -> str:
     return output
 
 
+# 3.3s: the only test factoring and running the symmetric construction; it
+# pins both source parities and exhausts the two-input instruction programs.
+@pytest.mark.medium
 def test_even_sources_compute_every_two_input_table() -> None:
     """The symmetric decision tree after ``lem:symruns`` is an even source."""
     for bits in itertools.product("01", repeat=4):
         table = "".join(bits)
-        program, instructions = _even_source(table)
+        program, instructions, coefficients = _even_source(table)
         assert all(exponent % 2 == 0 for exponent in sanitize_terms(program))
         output = "".join(_execute(instructions, f"{row:02b}") for row in range(4))
         assert output == table
@@ -112,3 +120,15 @@ def test_even_sources_compute_every_two_input_table() -> None:
                 run_polynomial(program, list(f"{row:02b}")) for row in range(4)
             )
             assert actual == table
+            odd = format_coeffs(multiply(coefficients, [1, 0]))
+            if odd.endswith("x"):
+                odd += "^1"
+            assert all(
+                exponent % 2 == 1
+                for exponent, coefficient in sanitize_terms(odd).items()
+                if coefficient
+            )
+            odd_actual = "".join(
+                run_polynomial(odd, list(f"{row:02b}")) for row in range(4)
+            )
+            assert odd_actual == table

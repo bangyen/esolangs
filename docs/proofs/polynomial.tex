@@ -1057,8 +1057,9 @@ the positive ones.  The same holds for $R_{p,2}$ without input.  With an input $
 it are the $[a,2]$ with $a>0$.
 \end{proof}
 
-\begin{proposition}[Even sources are universal]\label{prop:evenuniversal}
-Every Boolean truth table has an even Polynomial source that computes it.
+\begin{proposition}[Parity sources are universal]\label{prop:evenuniversal}
+Every Boolean truth table has both an even and an odd Polynomial source
+that computes it.
 \end{proposition}
 
 \begin{proof}
@@ -1087,7 +1088,8 @@ control root $p^j$, also include the ignored root $-p^j$.  Every register
 run already contains $[a,b]$ and $[-a,b]$ with equal multiplicity.  The
 resulting root multiset is closed under negation, so its monic product is an
 even integer polynomial; its decoded positive and upper-half-plane roots
-are exactly the program above.
+are exactly the program above.  Multiplying that source by $x$ makes it odd
+and only adds the unrecognized root $0$, so it computes the same table.
 \end{proof}
 
 Recall the control codes of a real root $p^v$: for $v=1,\dots,8$ it is $\text{if}>0$, a

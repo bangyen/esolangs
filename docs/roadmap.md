@@ -143,6 +143,7 @@ step; an answer lands in the paper it extends, and the row leaves.
   independent first-essential residual width from `T/(4n)` to `T/(2n)`,
   but distinct residuals can arrive at one arithmetic cursor with different
   register values, so width alone does not supply distinct Gaussian roots.
-  The parity case cannot be excluded: `prop:evenuniversal` gives a symmetric
-  decision-tree program for every table, executed exhaustively through two
-  inputs.  A matching lower bound must price even sources themselves.
+  The parity case cannot be excluded: `prop:evenuniversal` gives even and
+  odd symmetric decision-tree programs for every table, executed
+  exhaustively through two inputs.  A matching lower bound must price
+  parity sources themselves.
