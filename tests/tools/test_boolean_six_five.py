@@ -10,6 +10,8 @@ import pytest
 from esolangs import tools as boolean
 from esolangs.tools.helpers import permute_truth_table
 from esolangs.tools.six_five import (
+    _SIX_FIVE_NORMALIZE,
+    _six_five_const,
     _six_five_dag_cost,
     _six_five_hoisted,
     _six_five_looped,
@@ -76,10 +78,11 @@ class TestSixFive:
         """
 
         for program in (boolean.six_five("0110"), _six_five_stream_ordered("0110")):
-            assert program.startswith("B" + "2" * 8)
+            assert program.startswith("B" + _SIX_FIVE_NORMALIZE)
             assert "78" in program
         assert _six_five_stream_ordered("0110").endswith("A0")
-        assert boolean.six_five("0110").endswith("2A")
+        # The last leaf (a 0 printed from the 9 cell: +39 as ``6666555``).
+        assert boolean.six_five("0110").endswith("555A")
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -138,9 +141,9 @@ class TestSixFive:
         # Walk the emitted tree: a branch spends one read, then its two
         # halves follow; a leaf carries the reads its fold skipped.
         def reads_on_each_path(code: str) -> set[int]:
-            if not code.startswith("B" + "2" * 8):  # a leaf
+            if not code.startswith("B" + _SIX_FIVE_NORMALIZE):  # a leaf
                 return {code.count("B")}
-            body = code[len("B" + "2" * 8) + len("78") + 2 :]
+            body = code[len("B" + _SIX_FIVE_NORMALIZE) + len("78") + 2 :]
             depth = 0
             for i, char in enumerate(body):
                 if body[i : i + 2] == "78":
@@ -344,7 +347,7 @@ class TestSixFive:
     def test_dense_ten_inputs_render_and_run(self) -> None:
         """The generator clears n == 10 on a table with nothing to fold.
 
-        Dense n == 10 renders at 10 labels and 5318 chars (all 1024 rows
+        Dense n == 10 renders at 10 labels and 5308 chars (all 1024 rows
         were run exhaustively once, in 12s; this samples).  The feed check
         proves the walk reads exactly ``n`` lines -- its ``B``s sit inside
         the pointer walk, so a desync would misroute as well as misread.
@@ -352,7 +355,7 @@ class TestSixFive:
         dense10 = self._dense(10)
         program = boolean.six_five(dense10)
         assert _markers(program) == 10
-        assert len(program) == 5318
+        assert len(program) == 5308
         for combo in (0, 1, 512, 1023, *range(7, 1024, 128)):
             bits = [(combo >> (9 - i)) & 1 for i in range(10)]
             feed = iter([str(b) for b in bits])
@@ -364,10 +367,39 @@ class TestSixFive:
 
         29900 while a node whose answer is its own bit tested it and laid
         two leaves of one text, the last leaf kept its halt, and a folded
-        leaf stepped back a cell; 21533 once the node prints its cell.
+        leaf stepped back a cell; 21533 once the node prints its cell; 18490
+        (-14.1%) once every add is spelled in the fewest ``6``/``5`` (or
+        ``9``/``2``) tokens: a leaf's ``6``s then ``62`` pairs cost a 0-leaf
+        (+40 from the 8 cell, +39 from the 9) twice a 1-leaf from the 8 cell
+        (+41), and a read's -40 was eight ``2``s rather than seven.
         """
         total = sum(len(boolean.six_five(format(v, "08b"))) for v in range(256))
-        assert total == 21533
+        assert total == 18490
+
+    def test_an_add_never_outgrows_its_old_spelling(self) -> None:
+        """No table grows under the fewest-token adds: no add is longer.
+
+        The adds are the only text that changed: a leaf's add (was ``6``s
+        then ``62`` pairs) and a read's -40 (was eight ``2``s).  Every build
+        emits them per leaf and per read, and the dispatch keeps the
+        shortest order, so adds no longer than the old text for every value
+        a leaf can ask for bound every program by its old length.
+        """
+        assert len(_SIX_FIVE_NORMALIZE) < len("2" * 8)
+        assert (
+            -6 * _SIX_FIVE_NORMALIZE.count("9") - 5 * _SIX_FIVE_NORMALIZE.count("2")
+            == -40
+        )
+        for value in range(64):
+            q, r = divmod(value, 6)
+            pairs = "6" * q + ("5" if r == 5 else "62" * r)
+            add = _six_five_const(value)
+            assert len(add) <= len(pairs), value
+            assert (
+                6 * add.count("6") + 5 * add.count("5") - 5 * add.count("2") == value
+            ), value
+        # The leaf deltas themselves: 0 and 1 from the 8 and 9 cells.
+        assert [len(_six_five_const(d)) for d in (39, 40, 41)] == [7, 7, 7]
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than its identity-order program."""
@@ -382,8 +414,10 @@ class TestSixFive:
             improved += dispatched < identity
         # 186 before the leaves gained ``_six_five_const``'s ``r == 5``
         # shortcut, 192 after; 108 once a node that copies its bit prints
-        # it, which the stream build does with the raw read (``BA0``).
-        assert improved == 108  # the rest tie, keeping the old emission
+        # it, which the stream build does with the raw read (``BA0``); 140
+        # once every add takes the fewest tokens, which shortens the
+        # hoisted builds' extra leaves more than the stream build's.
+        assert improved == 140  # the rest tie, keeping the old emission
 
     @pytest.mark.parametrize(
         ("table", "n"),
