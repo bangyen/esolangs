@@ -523,6 +523,21 @@ chains and 2,350 for hub rotations. That is over the 9,897 non-table cells;
 the earlier compaction halved the same kinds of setup, so fitting is now a
 placement problem.
 
+Placement cuts it to about 7,460-7,540 code cells per row, still 2,744 of
+2,744 correct: one ascending `p p` pass clears the pointer cells (2,055 to
+962), constants are placed and ordered by the planner's exact cost, seeds
+are scored by chain plus pass cost, and hubs take their fewest-turn rotation
+from the nearest pointer cell (2,350 to 251). Cheaper view constants reach
+about 5,900, but the ones found so far collide: over all 94 characters, six
+of the ten land two characters with different targets on one cell (134
+conflicts), which a single test group cannot show because only eight
+characters are admissible at each of its cells. A full table needs
+constants whose landings are injective, or collide only where the targets
+agree, across all 94 characters. With the valid constants, decoding setup
+and one group's decoders take about 7,500 of the 8,957 non-table cells left
+after the ten landing blocks, before the seventeen-input address
+computation.
+
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
