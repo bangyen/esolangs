@@ -790,3 +790,59 @@ seems to need staged decoding.
 states, 2,744 of 2,744 cases on real sources, setup about 7,500 of the
 8,957 cells left after the landing blocks). What it still lacks is
 table-free landings and the seventeen-input address computation.
+
+### Seventeen: where the code can run
+
+The budgets above count every non-table cell as room for code: 9,897
+cells, or 8,957 after the landing blocks. Executed code, though, needs
+*contiguous* table-free cells. The instruction pointer only steps forward,
+so code that reaches a table cell executes table data, and leaving one free
+run for another costs an `i` hop plus the navigation that sets it up (tens
+to hundreds of cells). The one-group prototypes never met this, because
+their table is a single group.
+
+Under the six-slab tiling the free cells are
+`(z = 0 and some digit missing) or (two or more digits missing)`. Only
+the pieces where a *high* digit is missing are long. With `z` as the top
+trit and the digits in order, the free set is:
+
+- one 2,187-cell block (the top digit missing), which becomes a 2,460-cell run;
+- eight 243-cell blocks, which become 273-cell runs;
+- 64 blocks of 27 cells;
+- 512 triples;
+- about 2,500 scattered cells where `z != 0`.
+
+That is 896 runs in all. Searching every choice of `z`, every cell-index
+trit and all 105 pairings, with missing values `(0, 0)` or `(2, 2)`
+(`tiling_runs.py`), the best tiling leaves **5,127** free cells in runs of
+200 or more (measured). The rest can hold landing cells, pointer cells and
+hubs, but not code.
+
+So the code budget is about 5,100 cells, not 8,957. Against it:
+
+- the compacted sixteen-input main code is 2,391 cells (measured);
+- the five-state decoder's setup, measured on one group, is about 7,500,
+  of which the ten view constants alone are roughly 4,000.
+
+Together that is roughly 9,900 cells of code for about 5,100 cells of room,
+before the six-slab address computation, which needs a separate case for
+the pinned slabs. The five-state view-constant design does not fit the
+tiling it assumes. It would fit only with a layout whose free space is
+mostly contiguous. Among digit-local layouts that means covering the
+low-digit holes with more slabs, and every extra slab is another case in
+the address computation.
+
+Decoders that spend data rather than code were checked for coverage and
+fall short (measured, annealing over window labels; `fold.c` and variants):
+
+| design | windows | best cover of 24,064 |
+| --- | --- | --- |
+| one `p p p` fold, 8 row windows, labels 0/1 | 8 | 20,364 (84.6%) |
+| rows paired by the last input, labels `0 1 x n` | 4 | 19,227 (79.9%) |
+| two stages: land on `W2`, then on `W1` or `W0` | 24 | 21,427 (89.0%) |
+
+A fold of two adjacent cells, taken over all 243 constants, separates at
+least 54 of the 64 admissible pairs at every residue, more than the 49 that
+seven meanings give. A single constant separates at most 38 at the worst
+residue, though, and a read destroys its cells. So no fold read beats seven
+meanings a cell in practice, and the table stays at 49,152 cells.

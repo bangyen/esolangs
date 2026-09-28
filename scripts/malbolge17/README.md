@@ -45,5 +45,7 @@ None of this is wired into the generator.
   build `msim`, and run `five_lab.py` with `PYTHONPATH=src`.
 - `fold_classes.py` -- the 272 triple classes that no `p p p` fold separates
   at the worst residue.
-- `fold.c` -- anneals the stateless fold decoder's row windows (best
+- `fold.c`, `fold2s.c` -- anneal the stateless fold decoder's row windows (best
   measured cover 20,364 of 24,064 residue/vector pairs).
+- `tiling_runs.py` -- free cells in long runs under every digit-local
+  six-slab tiling (best 5,127 in runs of 200 or more); needs numpy.
