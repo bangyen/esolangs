@@ -34,7 +34,7 @@ class _Expr:
             f"{inner}{operator}{left.render(depth + 2)}$"
             f"{right.render(depth + 2)}{inner}"
         )
-        return f"{outer}{mingled}~{inner}#65535$#0{inner}{outer}"
+        return f"{outer}{mingled}~#2{outer}"
 
 
 def intercal(truth_table: str) -> str:

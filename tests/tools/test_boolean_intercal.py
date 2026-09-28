@@ -46,7 +46,7 @@ def test_levels_select_inputs_in_the_shorter_order() -> None:
 
     ``10101010`` depends on input 2 (``.1``) alone: split on it first, the
     expression names ``.1`` and nothing else.  Over all three-input tables
-    no template grows and the total falls 13.0%.
+    no template grows and the total falls 11.4%.
     """
     template = intercal("10101010")
     assert template.index(".3 <- @@") < template.index(".1 <- @@")
@@ -58,4 +58,4 @@ def test_levels_select_inputs_in_the_shorter_order() -> None:
         before, after = len(_intercal_ordered(table, (0, 1, 2))), len(intercal(table))
         assert after <= before, table
         old, new = old + before, new + after
-    assert (old, new) == (117856, 102496)
+    assert (old, new) == (74152, 65704)
