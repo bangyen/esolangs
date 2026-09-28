@@ -745,15 +745,21 @@ def _mux(
         raise AssertionError("selector has no plain rail")
     if zero == "0" and one == "1":
         return selector
+    # The plain rail's two rules come first: a level that only ever takes
+    # them has no complement to read (see :func:`_complemented_levels`).
+    if zero == "0":
+        if not isinstance(one, int):  # pragma: no cover - constants handled above
+            raise AssertionError("unexpected constant mux arm")
+        return builder.gate("a", selector, one)
+    if one == "1":
+        if not isinstance(zero, int):  # pragma: no cover - constants handled above
+            raise AssertionError("unexpected constant mux arm")
+        return builder.gate("o", selector, zero)
     negated = selectors[1]
     if negated is None:  # pragma: no cover - built before the fold
         raise AssertionError("selector has no complemented rail")
     if zero == "1" and one == "0":
         return negated
-    if zero == "0":
-        if not isinstance(one, int):  # pragma: no cover - constants handled above
-            raise AssertionError("unexpected constant mux arm")
-        return builder.gate("a", selector, one)
     if one == "0":
         if not isinstance(zero, int):  # pragma: no cover - constants handled above
             raise AssertionError("unexpected constant mux arm")
@@ -762,10 +768,6 @@ def _mux(
         if not isinstance(one, int):  # pragma: no cover - constants handled above
             raise AssertionError("unexpected constant mux arm")
         return builder.gate("o", negated, one)
-    if one == "1":
-        if not isinstance(zero, int):  # pragma: no cover - constants handled above
-            raise AssertionError("unexpected constant mux arm")
-        return builder.gate("o", selector, zero)
     off = builder.gate("a", negated, zero)
     on = builder.gate("a", selector, one)
     return builder.gate("o", off, on)
@@ -813,7 +815,9 @@ def _complemented_levels(truth_table: str, n: int) -> set[int]:
         while stack and stack[-1][1] == level:
             zero, _ = stack.pop()
             if zero != identity:
-                if (zero, identity) != (0, 1):
+                # ``0/x`` is ``selector AND x`` and ``x/1`` is ``selector OR
+                # x``: only the plain rail is read, as for ``0/1`` itself.
+                if zero != 0 and identity != 1:
                     needed.add(n - 1 - level)
                 key = (level, zero, identity)
                 if key in rails:
