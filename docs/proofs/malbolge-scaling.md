@@ -920,7 +920,8 @@ entry found 53,613 configurations once the top digit enters `u` the other
 way round (`acc = crazy(crazy(all-2, u), acc)`). The one used here has:
 
 - lower gadgets from walked values `(33, 33, 78)`, swap12 on `u` in slots 0
-  and 2, so both miss `(1, 1)`;
+  and 1, so both miss `(1, 1)`, and on `v` in slot 2, so it misses a pair
+  that the tail sends into {0, 1}²;
 - the top taking the same `(33, 33, 78)` gadget, since a triple is read
   only once, with `u` and `v` swapped, missing `(2, 2)`;
 - the pinned slots on a gadget from `(38, 38, 38)` run on all-0 reads, which
@@ -929,7 +930,11 @@ way round (`acc = crazy(crazy(all-2, u), acc)`). The one used here has:
 - the tail swap01, swap12, `p` with all-1 and trit 0 = 2, after which trit 0
   of the per-state pointers takes all three values.
 
-All seven boxes are disjoint, and no pointer is all-2. The routing is the
+All seven boxes are disjoint, and no pointer is all-2. Because slot 2's
+missing pair lands in {0, 1}², three of the eight 243-cell runs are landing
+windows (their top five trits are all 0 or 1), which with seven in the
+bottom block gives exactly the ten the five-state decoder's views need:
+blocks 1, 3, 4, 9, 10, 12, 13, 28, 82 and 109. The routing is the
 one above: the top digit takes the pinned digit's triple in C and D, the
 case selector and C's `z` bit come from the top triple, and B, D share
 the third `z` code.

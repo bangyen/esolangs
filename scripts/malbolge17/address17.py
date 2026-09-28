@@ -14,8 +14,9 @@ source string can execute; this script checks the map, not an emitted program.
   or D, ``x14`` is C's ``z`` bit or D's 1/2; the pinned slot takes a gadget run
   on all-0 reads and the top takes the pinned slot's own triple.
 * Accumulator from all-2; each lower slot mixes ``crazy(all-2, v)`` then ``u``
-  (``p`` over the cell with ``A = acc``, then ``*``); slots 0 and 2 swap12 their
-  ``u`` first.  ``z`` mixes a cell ``zbase + z``.  The top mixes
+  (``p`` over the cell with ``A = acc``, then ``*``); slots 0 and 1 swap12
+  their ``u`` first and slot 2 its ``v``.  ``z`` mixes a cell ``zbase + z``.
+  The top mixes
   ``crazy(all-2, v)``, then enters ``u`` the other way round
   (``acc = crazy(crazy(all-2, u), acc)``, then ``*``), both swapped first.
 * Tail: swap01, swap12, ``p`` with all-1 and trit 0 = 2; state pointers are
@@ -78,7 +79,9 @@ def group_word(bits: list[int]) -> int:
         slots[k] = gadget(PIN, [0, 0, 0])
     acc = ALL2
     for j, (u, v) in enumerate(slots):
-        acc = mix(mix(acc, _crazy(ALL2, v)), swap(u) if j in (0, 2) else u)
+        u = swap(u) if j < 2 else u
+        v = swap(v) if j == 2 else v
+        acc = mix(mix(acc, _crazy(ALL2, v)), u)
     acc = mix(acc, ZBASE + z)
     u, v = gadget(LOW, [48 + b for b in top])
     acc = _rot(_crazy(_crazy(ALL2, swap(u)), mix(acc, _crazy(ALL2, swap(v)))))
@@ -102,6 +105,13 @@ def main() -> None:
     print(f"distinct groups {len(set(words))}, table cells {len(cells)}")
     print(f"lowest table cell {min(cells)}, longest free runs {sorted(runs)[-9:]}")
     print(f"free cells in runs of 200 or more: {sum(r for r in runs if r >= 200)}")
+    windows = [
+        b
+        for b in range(243)
+        if all((b // 3**k) % 3 < 2 for k in range(5))
+        and not any(b * 243 + o in cells for o in range(243))
+    ]
+    print(f"table-free landing windows (243-blocks, top trits 0/1): {windows}")
 
 
 if __name__ == "__main__":
