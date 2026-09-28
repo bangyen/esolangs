@@ -130,3 +130,8 @@ step; an answer lands in the paper it extends, and the row leaves.
   float `**` is a caveat).  The register and real roots are not
   charged, see the complex-roots row of the
   [coefficient-mass roadmap](https://github.com/bangyen/coefficient-mass/blob/main/ROADMAP.md).
+  Retuning which states the embedded-automaton construction places inline
+  cannot lower `325/8`: two unique successors per inline state force
+  `a >= 1/2`, and its effective profile is minimized at `a = 1/2`, `x = 0`.
+  Next step: replace that instruction profile, or raise the mass bound; the
+  existing decoder has no remaining parameter route to a smaller constant.
