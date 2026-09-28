@@ -4,7 +4,9 @@ For each registry language with a text generator, take a few small tables,
 and greedily delete every maximal run of one character (and, failing that,
 each single character of the run) left to right, keeping a deletion when
 every row still answers correctly.  The figure is the share of the program
-deleted, summed over the tables.  A template's input runs are never
+deleted, summed over the tables, with the whitespace share apart: a
+language that tolerates missing spaces loses them all, which is layout,
+not construction.  A template's input runs are never
 touched, so a deletion holds for every fill of it.
 
 Unlike ``input_reorder.py`` and ``transforms.py`` this is not
@@ -130,10 +132,16 @@ def shrink(program: _Program) -> str:
         position = start
 
 
-def screen(name: str, limit: int, timeout: float) -> tuple[float, int, float] | None:
-    """Return (deleted %, chars deleted, seconds), or None if nothing screened."""
+def _spaces(text: str) -> int:
+    return sum(c.isspace() for c in text)
+
+
+def screen(
+    name: str, limit: int, timeout: float
+) -> tuple[float, float, int, float] | None:
+    """Return (deleted %, whitespace %, chars deleted, seconds), or None."""
     start = perf_counter()
-    before = after = 0
+    before = after = spaces = 0
     for table in TABLES:
         try:
             program = _Program(name, table, timeout)
@@ -141,11 +149,14 @@ def screen(name: str, limit: int, timeout: float) -> tuple[float, int, float] | 
             continue
         if len(program.text) > limit or not program.correct(program.text):
             continue
+        shrunk = shrink(program)
         before += len(program.text)
-        after += len(shrink(program))
+        after += len(shrunk)
+        spaces += _spaces(program.text) - _spaces(shrunk)
     if not before:
         return None
-    return 100 * (1 - after / before), before - after, perf_counter() - start
+    dead, blank = 100 * (1 - after / before), 100 * spaces / before
+    return dead, blank, before - after, perf_counter() - start
 
 
 def main() -> None:
@@ -164,10 +175,15 @@ def main() -> None:
             if result is not None:
                 rows.append((name, *result))
                 print(f"  {name}: {result[0]:.1f}%", flush=True)
-    rows.sort(key=lambda row: (-row[1], row[0]))
-    print(f"{'language':<32}{'dead%':>7}{'chars':>7}{'sec':>7}")
-    for name, dead, chars, elapsed in rows:
-        print(f"{name:<32}{dead:>7.1f}{chars:>7}{elapsed:>7.1f}")
+    rows.sort(key=lambda row: (row[2] - row[1], row[0]))
+    print(
+        f"{'language':<32}{'dead%':>7}{'space%':>7}{'other%':>7}{'chars':>7}{'sec':>7}"
+    )
+    for name, dead, blank, chars, elapsed in rows:
+        print(
+            f"{name:<32}{dead:>7.1f}{blank:>7.1f}{dead - blank:>7.1f}"
+            f"{chars:>7}{elapsed:>7.1f}"
+        )
 
 
 if __name__ == "__main__":
