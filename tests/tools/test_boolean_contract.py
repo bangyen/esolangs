@@ -571,7 +571,6 @@ _UNSHAPED = {
     "packlang",  # one painted array cell per differing row, read by index
     "qoibl",
     "slow_acv_mammalian",
-    "container",
     # The table is the state and the bit read rewrites every pair down to
     # one, so nothing collapses and a 0% fold is the construction working.
     "thue",
