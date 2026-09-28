@@ -73,15 +73,15 @@
   "AddSubJump": {
    "0110": {
     "commands": 16,
-    "source_units": 316
+    "source_units": 289
    },
    "01101001": {
     "commands": 23,
-    "source_units": 610
+    "source_units": 559
    },
    "0110100110010110": {
     "commands": 30,
-    "source_units": 1141
+    "source_units": 1046
    }
   },
   "Algebraic Programming Language": {
