@@ -33,32 +33,27 @@ _TREE_BRANCH_0 = [" + ", "   ", "   "]  # pops a bit; 0 goes right, 1 goes down
 _TREE_BRANCH_1 = [" + ", "   ", "   "]  # pops a one's trailing R: down-route goes right
 
 
-# Loop components: entered heading down at column 3, queues R, D, L, U
-# (so the tree sees ``[bits..., R, D, L, U]``) and routes down column 1.
+# Entered heading down at column 3; queues R, D, L, U, then down column 1.
 _MIDDLE = ["*~* ", "*  *", "*  *", "~ ~ ", "*~* ", "**  ", "*  *"]
 
 
-# One cascade stage: a popped down marker laps the loop (two ``~`` double
-# it); the popped right heading exits through the input cell and the tail
-# pushes the next stage's stop heading.
+# One cascade stage: two ``~`` double each popped down marker; the right
+# heading exits through the input cell and pushes the next stop heading.
 _STAGE = ["  *+*", "   ~" + TEMPLATE_CHAR, "   ~", "  **", " *~*", " *  *"]
 
 #: The cascade's row per table entry: a ring right of the ``+``, or none.
 _ROWS = {"0": [" +", "", ""], "1": [" + +~+", "   ~ ~", "   +~+"]}
 
-#: A folded tail of ``1`` rows: one reusable drain.  A popped marker laps
-#: the ``*`` square back into the same ``+``, so every marker left is
-#: drained there, and the stop heading enters the ring as on a ``1`` row.
+#: A folded tail of ``1`` rows: every marker left laps the ``*`` square back
+#: into one ``+``; the stop heading then enters the ring as on a ``1`` row.
 _DRAINED_RING = ["*+ +~+", "** ~ ~", "   +~+"]
 
 
 def _header(n: int, rotate: int = 0) -> list[str]:
     """Build the tree route's header: ``n`` input cells, a right push each.
 
-    Each cell's hook lands one column left, so the cells sit on a diagonal
-    and the last exits heading down at column 3.  With ``rotate`` set,
-    input ``rotate - 1``'s hook pushes a second R, the stop heading
-    :func:`_rotation` pops; the hook widens into the blank left of it.
+    The cells sit on a diagonal; with ``rotate`` set, input ``rotate - 1``
+    also pushes the stop heading :func:`_rotation` pops.
     """
     rows = [" " * (n + 3) + "*"]
     for i in range(n):
@@ -73,13 +68,9 @@ def _header(n: int, rotate: int = 0) -> list[str]:
 def _rotation(k: int) -> list[str]:
     """Re-enqueue the ``k`` inputs queued first behind the rest.
 
-    One gadget per input, entered on its ``+``: a ``0``'s R re-pushes on
-    the right, a ``1``'s D re-pushes going down and its R after the lower
-    ``+``, and both exits meet on the next gadget's ``+``, which pops on
-    arrival from any heading.  The last ``+`` pops the header's stop
-    heading, and the ``*`` beyond it turns into the middle's first corner,
-    moved right.  So these rows replace the middle's first two, the first
-    shared with the chain's last.
+    One gadget per input re-pushes what it pops, and its exits meet on the
+    next gadget's ``+``; the last pops the stop heading and turns into the
+    middle, replacing the middle's first two rows.
     """
     grid = [[" "] * (5 + 2 * k) for _ in range(2 * k + 2)]
     for g in range(k):
@@ -122,11 +113,9 @@ def _drained_leaf(value: str, skipped: int) -> list[str]:
     """Build a folded leaf that drains the ``skipped`` bits it never popped.
 
     A ``1`` leaf's ring must find exactly ``R, D, L, U``, so each skipped bit
-    gets a ``+`` whose two exits reconverge on one cell (a ``+`` pops on
-    arrival from any heading), stepping one row down and one column right.
+    gets a ``+`` whose two exits reconverge one row down, one column right.
     """
-    # A ``0`` leaf needs no drain (running off the grid halts regardless),
-    # and a drain costs ``_compact`` blank columns.
+    # A ``0`` leaf needs no drain: running off the grid halts regardless.
     if value != "1":
         return list(_TREE_0)
     # 3x3 leaf at (skipped, skipped + 1).
@@ -166,10 +155,8 @@ def arrowqueue(truth_table: str) -> str:
     instantiated program halts iff the entry is ``0``.  Below five inputs a
     tree with 3x3 leaves, constant subtrees folded (:func:`_drained_leaf`);
     from five a cascade of at most ``6n`` + ``3 * 2**n`` rows, linear in the
-    table, its constant tail folded (:func:`_cascade`).
-
-    The tree tests the inputs in any rotation of their read order, the
-    shortest of the ``n <= 4`` candidates (:func:`_rotated_tree`).
+    table, its constant tail folded (:func:`_cascade`).  The tree tests the
+    shortest rotation of the read order (:func:`_rotated_tree`).
     """
     n = _validate_truth_table(truth_table)
     if len(truth_table) > 16:
@@ -182,10 +169,8 @@ def arrowqueue(truth_table: str) -> str:
 def _rotated_tree(truth_table: str, n: int, k: int) -> str:
     """Build the tree route testing input ``k`` first, read order unchanged.
 
-    The reads still queue inputs ``0 .. n-1``; :func:`_rotation` moves the
-    first ``k`` behind the rest, so level ``j`` splits on input
-    ``(k + j) % n``.  The gadgets cost 19, 39 and 63 characters at
-    ``k = 1, 2, 3``, against what the rotated tree folds.
+    Level ``j`` splits on input ``(k + j) % n``; the gadgets cost 19, 39
+    and 63 characters at ``k = 1, 2, 3``.
     """
     order = (*range(k, n), *range(k))
     body = _compact(_MIDDLE + _tree(list(permute_truth_table(truth_table, order))))
@@ -198,11 +183,8 @@ def _rotated_tree(truth_table: str, n: int, k: int) -> str:
 def _cascade(truth_table: str) -> list[str]:
     """Build the cascade's rows, the table's constant tail folded.
 
-    Only an index inside the tail reaches a row past the tail's first, so
-    the tail's answer needs no further count.  A ``0`` tail is dropped:
-    the descent runs off the grid, which halts.  A ``1`` tail is one
-    :data:`_DRAINED_RING`, which pops the markers the dropped rows would
-    have.  The tree's drains cannot loop so: its queue has no stop heading.
+    A ``0`` tail is dropped (running off the grid halts); a ``1`` tail is
+    one :data:`_DRAINED_RING`, popping the markers the dropped rows would.
     """
     tail = len(truth_table.rstrip(truth_table[-1]))
     rows = [row for bit in truth_table[:tail] for row in _ROWS[bit]]
@@ -212,8 +194,8 @@ def _cascade(truth_table: str) -> list[str]:
 def _compact(rows: list[str]) -> list[str]:
     """Drop the wholly blank rows and columns from the template's body.
 
-    A blank line carries only straight travel.  The header is not
-    consulted: its glyphs sit past column 4, which every branch marks.
+    A blank line carries only straight travel; the header's glyphs sit past
+    column 4, which every branch marks.
     """
     width = max((len(row) for row in rows), default=0)
     padded = [row.ljust(width) for row in rows]

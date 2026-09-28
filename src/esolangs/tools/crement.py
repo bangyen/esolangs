@@ -12,9 +12,6 @@ Layout: a jump to the root, the halt, ``+J @ 1`` (a one-step cycle), then
 ``@+1``; constant subtrees fold to the two gadgets.  Halts for a 0 entry,
 diverges for a 1: at most ``5 n + 2`` commands over ``3 (2**n - 1) + 2 n + 3``
 lines.
-
-The runs stay in name order, so each tester keeps its input's address; only
-which tester a tree level patches and calls moves with the split order.
 """
 
 from esolangs.tools.helpers import (
@@ -43,22 +40,16 @@ PAIR = ("+J 0 0", "+J 0 1")
 def crement(truth_table: str) -> str:
     """Build a Crement template: one run per input, its tester's first line.
 
-    A subtree whose rows agree folds to the shared loop or the halt, and
-    which rows a subtree covers is the split order's choice, so the tree
-    splits in whichever of the identity and greedy orders
-    (:func:`~esolangs.tools.helpers.best_input_order`) emits the shorter
-    template.  Candidates are compared as emitted, tester and patch
-    addresses included, and the identity wins ties, so reordering only ever
-    shrinks.
+    Constant subtrees fold, so the tree splits in the shorter of the identity
+    and greedy orders as emitted; the identity wins ties.
     """
     return best_input_order(truth_table, _crement_ordered)
 
 
 def _crement_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one split order's template over the *permuted* table.
+    """Emit one split order's template; level ``k`` calls input ``perm[k]``'s tester.
 
-    Level ``k`` splits on input ``perm[k]``, so its nodes patch and call
-    that input's tester; the runs, and so the testers, stay in name order.
+    The runs, and so the testers, stay in name order.
     """
     n = _validate_truth_table(truth_table)
     lines: list[str] = []
