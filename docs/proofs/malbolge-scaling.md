@@ -468,7 +468,17 @@ below cell 300, against about 7,000 per state for the earlier per-state
 decoders. A constant op costs about 20 cells near the pointer region and
 about 180 above cell 300, so where constants live dominates; the one-time
 constants here still sit above 300 (about 3,600 of the 8,357). These are
-prototypes on one fixed cell, not the 17-input build.
+prototypes on one fixed cell, not the 17-input build. Moving the one-time
+constants below 300 too brings one view to 3,185 cells; each further view
+then pays its constant (about 130-750 cells, measured) plus its routing,
+which here is built lazily as fresh low pointer cells but in the design comes
+from the shared labelled region the shipped build already pays for. A
+state's read routine -- load `K`, point at the cell, `p`, return, `j`, `j`,
+`j`, `i` -- measures 47-123 cells. Summing measured parts (the compacted
+main code less its sixteen-input fold, ten view constants, five read
+routines, ten landing blocks) with estimates for the seventeen-input address
+computation and the parity and per-row pointer work gives about 8,400 of the
+9,897 non-table cells: inside, but resting on those two estimates.
 
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
