@@ -34,6 +34,12 @@ _SIX_FIVE_MAX_LABEL = 10 + len(string.ascii_uppercase) - 1
 #: tokens: seven (``9`` is -6, ``2`` is -5), not eight ``2``s.
 _SIX_FIVE_NORMALIZE = "99999" + "22"
 
+#: :func:`_six_five_const`'s text for ``v`` read as ``-v``.
+_SIX_FIVE_NEGATE = str.maketrans("652", "925")
+
+#: 8/9 on to the 1/2 :func:`_six_five_inverted` tests: -7 as -6 -6 +5.
+_SIX_FIVE_TO_ONE = "99" + "5"
+
 
 def _six_five_label(value: int) -> str:
     """Return the single character 6-5 reads as ``value`` for a 7n/8n operand."""
@@ -48,9 +54,9 @@ def _six_five_markers(table: str) -> int:
     One per internal node the fold leaves; a slice whose characters agree
     folds to a leaf.  Pass a permuted table for that order's count -- the
     35-label budget is a per-order gate.  Spans, not slices: O(2**n).  A
-    node that copies its bit (:func:`_six_five_copies_bit`) spends no label
-    but still counts: the gate is a bound, so the tree-or-shared choice is
-    unmoved (counted exactly, one n == 6 table took a tree 341 -> 561).
+    node that copies or inverts its bit spends no label but still counts:
+    the gate is a bound, so the tree-or-shared choice is unmoved (counted
+    exactly, one n == 6 table took a tree 341 -> 561).
     """
     constant = constant_span_test(table)
 
@@ -73,6 +79,24 @@ def _six_five_copies_bit(
     """
     mid = (lo + hi) // 2
     return table[lo] + table[mid] == "01" and constant(lo, mid) and constant(mid, hi)
+
+
+def _six_five_inverts_bit(
+    table: str, constant: Callable[[int, int], bool], lo: int, hi: int
+) -> bool:
+    """Whether the span's answer is its first bit inverted: all 1s, then 0s."""
+    mid = (lo + hi) // 2
+    return table[lo] + table[mid] == "10" and constant(lo, mid) and constant(mid, hi)
+
+
+def _six_five_inverted() -> str:
+    """Print NOT the tested cell's bit, held as 1/2; the cell two on is blank.
+
+    Adds are monotone, so none maps 8/9 to 49/48; instead ``71`` skips the
+    ``1`` on a 0 bit, which prints ``1 + 48`` where it stands, and a 1 bit
+    prints ``0 + 48`` two cells on.  No test of 8 or 9, so no label.
+    """
+    return "71" + "1" + _six_five_const(_ASCII_ZERO) + "A0"
 
 
 def six_five(truth_table: str) -> str:
@@ -466,6 +490,9 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         nav = _six_five_move(entry, cell)
         if _six_five_copies_bit(truth_table, constant, lo, hi):
             return nav + leaf("0", cell, 8)
+        # Cells from ``scratch`` on stay blank until a leaf writes and halts.
+        if cell + 2 >= scratch and _six_five_inverts_bit(truth_table, constant, lo, hi):
+            return nav + _SIX_FIVE_TO_ONE + _six_five_inverted()
         # A label is the index of this node's own ``4`` among every ``4`` in
         # the emitted string, so it is allocated *after* the left subtree --
         # whose markers all precede it -- and before the right.
@@ -528,6 +555,12 @@ def _six_five_stream_ordered(truth_table: str) -> str:
             # Print the read as it came; the rest of the stream reads two cells on.
             rest = n - bit
             return "B" + ("1" + "B" * rest + "33" if rest else "") + "A0"
+        if _six_five_inverts_bit(truth_table, constant, rows[0], rows[-1] + 1):
+            # -47 takes the read to 1/2; the rest read into cell 1, not 2.
+            rest = n - bit
+            reads = "13" + "B" * rest + "3" if rest else ""
+            to_one = _six_five_const(_ASCII_ZERO - 1).translate(_SIX_FIVE_NEGATE)
+            return "B" + to_one + reads + _six_five_inverted()
         g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
         g1 = [r for r in rows if ((r >> (n - bit)) & 1) == 1]
         sub0 = build(g0, bit + 1, 8)
