@@ -1,5 +1,8 @@
 """thisthat boolean generator: a bistack-routed planar decision tree."""
 
+from itertools import pairwise
+from typing import Literal
+
 from esolangs.tools.helpers import _validate_truth_table
 
 _STEP = {"E": (1, 0), "W": (-1, 0), "N": (0, -1), "S": (0, 1)}
@@ -33,13 +36,15 @@ _DOUBLE = {
 
 
 def _path(
-    start: tuple[int, int], end: tuple[int, int], horizontal_first: bool
+    start: tuple[int, int],
+    end: tuple[int, int],
+    first_axis: Literal["horizontal", "vertical"],
 ) -> list[tuple[int, int]]:
     x, y = start
     points = [(x, y)]
-    axes = (
-        ((0, end[0]), (1, end[1])) if horizontal_first else ((1, end[1]), (0, end[0]))
-    )
+    axes: tuple[tuple[int, int], ...] = ((0, end[0]), (1, end[1]))
+    if first_axis == "vertical":
+        axes = tuple(reversed(axes))
     for axis, target in axes:
         while (x, y)[axis] != target:
             if axis == 0:
@@ -48,6 +53,10 @@ def _path(
                 y += 1 if target > y else -1
             points.append((x, y))
     return points
+
+
+def _first_axis(horizontal: int) -> Literal["horizontal", "vertical"]:
+    return "horizontal" if horizontal else "vertical"
 
 
 class _Builder:
@@ -62,7 +71,7 @@ class _Builder:
         self.nodes[point] = glyph
 
     def connect(self, points: list[tuple[int, int]], kind: str) -> None:
-        for left, right in zip(points, points[1:]):
+        for left, right in pairwise(points):
             delta = (right[0] - left[0], right[1] - left[1])
             direction = next(name for name, step in _STEP.items() if step == delta)
             for point, port in ((left, direction), (right, _OPPOSITE[direction])):
@@ -91,8 +100,6 @@ class _Builder:
 def thisthat(truth_table: str) -> str:
     """Return a planar thisthat decision tree with linear source area."""
     n = _validate_truth_table(truth_table)
-    if n == 0:
-        return f"▣─{'■' if truth_table == '1' else '□'}═◇"
     builder = _Builder()
     axes = ((1, 0), (0, 1))
 
@@ -110,13 +117,13 @@ def thisthat(truth_table: str) -> str:
             builder.node(pop, "■" if truth_table[lo] == "1" else "□")
             output = (pop[0] + 2 * incoming[0], pop[1] + 2 * incoming[1])
             builder.node(output, "◇")
-            builder.connect(_path(pop, output, incoming[0] != 0), "double")
+            builder.connect(_path(pop, output, _first_axis(incoming[0])), "double")
             return
         builder.node(pop, "◧")
         router = (pop[0] + 2 * incoming[0], pop[1] + 2 * incoming[1])
         axis = axes[level % 2]
         builder.node(router, "◑" if axis[0] else "◒")
-        builder.connect(_path(pop, router, incoming[0] != 0), "double")
+        builder.connect(_path(pop, router, _first_axis(incoming[0])), "double")
         mid = (lo + hi) // 2
         for sign, child_lo, child_hi in ((-1, lo, mid), (1, mid, hi)):
             child_incoming = (sign * axis[0], sign * axis[1])
@@ -124,7 +131,7 @@ def thisthat(truth_table: str) -> str:
                 router[0] + span(level) * child_incoming[0],
                 router[1] + span(level) * child_incoming[1],
             )
-            builder.connect(_path(router, child, axis[0] != 0), "single")
+            builder.connect(_path(router, child, _first_axis(axis[0])), "single")
             tree(level + 1, child_lo, child_hi, child, child_incoming)
 
     root = (0, 0)
@@ -140,12 +147,12 @@ def thisthat(truth_table: str) -> str:
         push = (diamond[0] + 2, loader_y)
         builder.node(diamond, "◇")
         builder.node(push, "◨")
-        builder.connect(_path(previous, diamond, True), "single")
-        builder.connect(_path(diamond, push, True), "double")
+        builder.connect(_path(previous, diamond, "horizontal"), "single")
+        builder.connect(_path(diamond, push, "horizontal"), "double")
         previous = push
     entry = (root[0], root[1] - 1)
-    route = _path(previous, (root[0], loader_y), True)
-    route += _path((root[0], loader_y), entry, False)[1:]
+    route = _path(previous, (root[0], loader_y), "horizontal")
+    route += _path((root[0], loader_y), entry, "vertical")[1:]
     route.append(root)
     builder.connect(route, "single")
     return builder.render()

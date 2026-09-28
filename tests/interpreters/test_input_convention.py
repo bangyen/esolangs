@@ -300,6 +300,7 @@ _EOF_IS_A_HALT: dict[str, str] = {
     "false": "an exhausted '^' is the spec's -1",
     "fish": "an exhausted 'i' is the spec's -1",
     "unlambda": "an exhausted '@' hands its argument v, the spec's branch",
+    "thisthat": "an exhausted '◇' sends the spec's empty transfer",
 }
 
 
