@@ -16,16 +16,16 @@
   },
   "3D Brainfuck": {
    "0110": {
-    "commands": 587,
-    "source_units": 109
+    "commands": 582,
+    "source_units": 88
    },
    "01101001": {
-    "commands": 764,
-    "source_units": 190
+    "commands": 753,
+    "source_units": 150
    },
    "0110100110010110": {
-    "commands": 935,
-    "source_units": 343
+    "commands": 930,
+    "source_units": 265
    }
   },
   "3x": {
