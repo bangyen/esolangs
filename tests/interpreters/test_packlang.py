@@ -672,10 +672,33 @@ class TestBooleanGenerator:
         assert packlang("0110").count("INCR t(") == 2
         assert packlang("01101001").count("INCR t(") == 4
         assert packlang("0000").count("INCR t(") == 0
-        # A block that is all ones is filled by a loop instead, and then
-        # has no zero to punch back out.
-        assert packlang("1111").count("INCR t(") == 1
-        assert packlang("1111").count("DECR t(") == 0
+        # A mostly-ones table paints its zeros and prints ``49 ^ t``.
+        assert "INCR t(" not in packlang("1111")
+        assert "DECR t(" not in packlang("1111")
+        assert packlang("1110").count("INCR t(3)") == 1
+        assert "charPut(49^t(" in packlang("1110")
+
+    def test_three_input_steps_and_sizes(self) -> None:
+        """Painting the minority, and no doubling before the first read.
+
+        Every row runs every write, so a table painted over its 1-rows
+        paid for each of them (or for the fill loop) where its zeros were
+        fewer.  Commands summed over every row of all 256 tables, as
+        ``tests/fixtures/generator_sizes.json`` counts them; before, the
+        totals were 92,472 characters and 64,744 commands, and no table
+        grew in either.
+        """
+        size = steps = 0
+        for value in range(256):
+            program = packlang(format(value, "08b"))
+            size += len(program)
+            for row in range(8):
+                bits = "".join(f"{row >> (2 - i) & 1}\n" for i in range(3))
+                machine = _Machine(program, ScriptedIO(bits))
+                while not machine.halted:
+                    machine.step()
+                    steps += 1
+        assert (size, steps) == (81424, 52032)
 
     def test_full_table_growth_is_linear(self) -> None:
         """Parity paints half the rows, and its emitted size still doubles."""

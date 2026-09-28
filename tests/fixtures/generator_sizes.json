@@ -702,16 +702,16 @@
   },
   "Packlang": {
    "0110": {
-    "commands": 18,
-    "source_units": 275
+    "commands": 17,
+    "source_units": 242
    },
    "01101001": {
-    "commands": 39,
-    "source_units": 362
+    "commands": 38,
+    "source_units": 329
    },
    "0110100110010110": {
-    "commands": 82,
-    "source_units": 476
+    "commands": 81,
+    "source_units": 443
    }
   },
   "Painfuck": {
