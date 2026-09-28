@@ -128,10 +128,21 @@ So generation is `Theta(T + W)` for `n <= 10`, by structure and not only by
 measurement. Above ten each arity is a separate layout, and cold planning grows
 x1.08, x1.08, x1.53 across the cascade; the regime change at eleven is excluded
 rather than smoothed. Warm fill keeps reading linear to the cap -- 15.9, 20.2,
-23.4, 36.0 ms at thirteen to sixteen, so x1.27, x1.16, x1.54 per added input,
-all under x2 -- and the positional arities share a plan cache (fifteen's cells
-are a subset of sixteen's), so a cold figure there depends on which was built
-first and is not read as a growth rate.
+23.4, 38.4 ms at thirteen to sixteen, so x1.27, x1.16, x1.63 per added input,
+all under x2.
+
+The positional plan does not grow either, once its shared part is separated.
+`_digits(n)` calls the nullary `_readouts_cells()`, so whichever arity builds
+first pays that search and the other finds it cached; timed apart in a fresh
+process per arity it is 0.402 s at both, arity-independent, while `_digits(n)`
+itself costs 0.263 s at fifteen and 0.048 s at sixteen -- *falling* as `T`
+doubles, because sixteen is the natural base of one cell per row pair over the
+whole digit space and fifteen derives a layout from it. Cold generation is
+therefore dominated by a constant: 60% of the build at fifteen, 89% at sixteen.
+Two arities give one ratio rather than a scaling read, so the positional verdict
+rests on the plan/fill structure -- memoized, table-free, exactly 0.500
+`_table_char` calls a row -- with the measurements consistent with it, not on a
+fitted growth.
 
 What stays open is not the shape of the curve but its domain: the planners are
 searches whose cost is proved for no arity, and since the generator refuses past
