@@ -368,6 +368,38 @@ its first. Malbolge cannot subtract, though, and the obvious substitute --
 two `p`s, `crazy(crazy(K, v_h), v_{h+1})` -- is not injective in `v_{h+1}`
 for any of the 243 low-trit constants `K`, so no decoder for it is known.
 
+### Seventeen: what a build would need, measured
+
+A design that meets the rate was taken as far as real sources allow; every
+figure here is from a source string run through the interpreter unless it
+says estimated.
+
+- **Joint codes are lossless.** Two adjacent cells admit a 64-colouring and
+  three a 512-colouring rainbow on every product of admissible sets, so a
+  group decoded together carries the full 3 bits a cell with no phase.
+- **Layout.** Groups of three cells `3q..3q+2`, eight rows each: 16,384
+  groups, 49,152 table cells. No single product of 8-of-9 digits reaches
+  16,384, but six digit-local slabs do -- all digits normal with `t9` in
+  `{1,2}` (8,192), `t9 = 0` (4,096), and four slabs pinning one digit to its
+  missing value (1,024 each) -- disjoint by enumeration, with `[0, 243)` and
+  a 2,430-cell run at `[2187, 4616]` left free.
+- **Automaton.** A 13-state decoder (states shared across rows) maps a
+  group's three meanings to its eight answer bits; simulated annealing finds
+  none at 12, and counting gives at least 9.
+- **Main code.** The sixteen-input main code compacts from 5,085 to 2,391
+  cells (sampled rows green), leaving 7,506 cells for all 17-input decoding.
+- **The wall is setup, not rate.** A source cell holds only one of 8
+  characters, so every large word the decoder needs -- hub pointers, landing
+  targets -- is written by the program at run time, and navigation dominates:
+  an independently placed word costs 350-450 cells, an ascending sweep 1 cell
+  a cell. One convergent decoder state reads, converges and prints correctly
+  for all 8 admissible characters (7,880 code cells); two states chained
+  through a hub are correct on all 32 chain paths (14,871). Each added state
+  costs about 7,000 cells, so thirteen are about 90,000 against 7,506. Sweeping
+  the trampolines still leaves about 2,600 a state (estimated). A fit needs
+  under about 200 a state: one read routine per cell position shared by all
+  states, with the state carried as data. That is designed, not built.
+
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
