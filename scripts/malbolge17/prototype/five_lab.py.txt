@@ -1,0 +1,163 @@
+"""Five-state shared decoder on one 3-cell group, REAL source.
+
+States come from scripts/malbolge17/decoder_s5_norepeat.p.  State q reads cell
+pos[q][s] of the group under view constant K[q][parity], lands at crazy(K,T)+1,
+and routes through a trampoline to one of four SHARED hubs: print0, print1,
+state 3's block, state 4's block.  One program per row s; every meaning
+triple x in 7^3 is then run by patching the three table characters.
+"""
+import sys, itertools, subprocess
+exec(open('/tmp/claude-0/hub17/chain_k.py').read().split("def emit_read_converge")[0])
+
+KS=[242,728,1700,2186,4616,5102,6074,6560,13364,13850]   # view constants, disjoint landings
+def load_code(fn):
+    L=[l for l in open(fn).read().splitlines() if l.strip()]
+    start=[int(x) for x in L[1].split()[1:]]; D=[];Pos=[]
+    for q in range(5):
+        a,b=L[2+q].split('| pos'); D.append([int(x) for x in a.split('|')[1].split()]); Pos.append([int(x) for x in b.split()])
+    return start,D,Pos
+START,DELTA,POS=load_code('/home/user/esolangs/scripts/malbolge17/decoder_s5_norepeat.p')
+TGT={-1:'p0',-2:'p1',3:'s3',4:'s4'}
+
+def expected(s,x):
+    q=START[s]
+    while True:
+        t=DELTA[q][x[POS[q][s]]]
+        if t<0: return '0' if t==-1 else '1'
+        q=t
+
+from esolangs.tools.malbolge import _T_LABELS
+LABELS={t+34:lab for t,lab in enumerate(_T_LABELS) if lab in "01xn"}
+KEY={'0':'p0','1':'p1','x':'s3','n':'s4'}; LABOF={v:k for k,v in KEY.items()}
+def f1(v): return _crazy(v,29524)
+def setup():
+    hu={128,129}
+    for n,v in _T_HELPERS.items():
+        hu.add(next(a for a in range(130,_ENTRY) if a not in hu and _g(a)==v))
+    ORDER=[x for x in range(130,300) if x not in hu]+list(range(300,_ENTRY))
+    used=set(LABELS)
+    B={x:bfs(_g(x)) for x in ORDER}
+    def cell_for(val):
+        for x in ORDER:
+            if x not in used and val in B[x]: used.add(x); return x
+        raise RuntimeError(('no cell for',val))
+    reach=set().union(*B.values())
+    Gb=next(g for g in range(15000,21000) if all((g-1+k) in reach for k in range(3)))
+    zcs=[cell_for(Gb-1+k) for k in range(3)]
+    C0,C0v=next((x,v) for x in ORDER if x not in used for v in B[x] if rot(v)&0xFF==48); used.add(C0)
+    C1,C1v=next((x,v) for x in ORDER if x not in used for v in B[x] if rot(v)&0xFF==49); used.add(C1)
+    Kc=[cell_for(KINV(K)) for K in KS]
+    # seeds: per label a walked cell + chain whose value v and f1(v) are free hub values
+    taken=set(range(Gb-2,Gb+5))
+    for K in KS: taken|={LANDK(K,T) for T in range(33,127)}
+    seeds={}; hubvals={}
+    for lab in '01xn':
+        found=None
+        for x in ORDER:
+            if x in used: continue
+            for v,path in B[x].items():
+                w=f1(v)
+                if not (10000<=v<59000 and 10000<=w<59000) or abs(v-w)<4: continue
+                cells={v,v+1,v+2,w,w+1,w+2}
+                if cells & taken: continue
+                found=(x,path,v,w); break
+            if found: break
+        x,path,v,w=found; used.add(x); seeds[lab]=(x,path); hubvals[lab]=(v,w)
+        taken|={v,v+1,v+2,w,w+1,w+2}
+    return dict(hu=hu,Gb=Gb,zcs=zcs,C0=C0,C0v=C0v,C1=C1,C1v=C1v,Kc=Kc,seeds=seeds,hubvals=hubvals,used=set(used),taken=taken)
+
+def build(s,cf):
+    Gb,zcs,Kc=cf['Gb'],cf['zcs'],cf['Kc']
+    used={128,129}|cf['used']; mem={a:_g(a) for a in range(_ENTRY)}
+    helper={'all1':128,'all2':129}
+    for n,v in _T_HELPERS.items():
+        a=next(x for x in range(130,_ENTRY) if x not in used and _g(x)==v); used.add(a); helper[n]=a
+    data={Gb+k:_char_for('o',Gb+k) for k in range(3)}
+    P=_Planner(_ENTRY+1,34+(7-_ENTRY)%94,mem,data); P.code[_ENTRY]='j'
+    _build_constants(P,helper)
+    for c in (helper['all1'],helper['all2'],*sorted(LABELS)): P.op('p',c); P.op('p',c)
+    P.op('*',helper['w']); P.op('p',helper['all2'])
+    chains=[(zcs[k],Gb-1+k) for k in range(3)]+[(cf['C0'],cf['C0v']),(cf['C1'],cf['C1v'])]
+    chains+=[(Kc[i],KINV(K)) for i,K in enumerate(KS)]
+    for cell,val in chains:
+        r=bfs(_g(cell)); assert val in r,(cell,val); _emit_chain(P,cell,' '.join(r[val]),helper)
+    # label chains: each label's cells alternate f1(v), v
+    value={}
+    for lab in '01xn':
+        x,path=cf['seeds'][lab]; _emit_chain(P,x,' '.join(path),helper)
+        a=cf['hubvals'][lab][0]
+        for p in sorted(LABELS):
+            if LABELS[p]==lab:
+                P.op('p',p); a=f1(a); value[p]=a
+    pointer={}
+    for p in sorted(value): pointer.setdefault(value[p],p)
+    # hub rotations: every hub value gets its own target copy
+    avoid=set(cf['taken'])|set(data)
+    def hub_to(Hp1,room):
+        for hc in _valid_chars(Hp1):
+            for k,sv in _rotations(hc):
+                if 30000<=sv+1 and sv+1+room<_WORDS and not any((sv+1+o) in avoid for o in range(room)):
+                    return hc,k,sv+1
+        raise RuntimeError('no rotation')
+    copies=[]      # (key, hub value, entry address)
+    for lab in '01xn':
+        key=KEY[lab]; room=60 if key[0]=='p' else 160
+        for H in sorted(set(value[p] for p in value if LABELS[p]==lab)):
+            hc,k,addr=hub_to(H+1,room); data[H+1]=hc; avoid|=set(range(addr,addr+room))
+            for _ in range(k): P.hub(pointer[H],H); P.raw('*')
+            P.d=H+2
+            copies.append((key,H,addr,room))
+    def view(q):
+        c=POS[q][s]; par=(Gb+c)%2; return c,Kc[2*q+par],KS[2*q+par],par
+    # landing chars: pick an admissible char whose pointer cell carries the target's label
+    for q in range(5):
+        c,kc,K,par=view(q); cell=Gb+c
+        for T in admissible(cell):
+            lab=LABOF[TGT[DELTA[q][meaning(T,par)]]]; L=LANDK(K,T)
+            cL=next(ch for ch in _valid_chars(L) if LABELS.get(ch+1)==lab)
+            assert data.get(L,cL)==cL,('landing clash',L); data[L]=cL
+    noneset={a for a in range(_ENTRY) if P.mem.get(a) is None}
+    P.mem={a:_g(a) for a in range(_ENTRY)}
+    for a in noneset: P.mem[a]=None
+    def decoder(Q,q):
+        c,kc,K,par=view(q); cell=Gb+c; z=zcs[c]
+        Q.op('*',kc)
+        Q.goto(z); Q.raw('j'); Q.d=cell; Q.raw('p'); Q.d=cell+1
+        for _ in range(2-c): Q.raw('o')          # escape past the group, never via a table cell
+        Q.goto(z); Q.raw('j'); Q.d=cell; Q.raw('j')
+        Q.raw('j'); Q.raw('j'); Q.raw('i')
+    decoder(P,START[s])
+    for key,H,addr,room in copies:
+        Q=_Planner(addr,H+2,dict(P.mem),data)
+        if key=='s3': decoder(Q,3)
+        elif key=='s4': decoder(Q,4)
+        else: Q.op('*',cf['C0'] if key=='p0' else cf['C1']); Q.raw('<'); Q.raw('v')
+        assert all(addr<=a<addr+room for a in Q.code),('block overflows its room',key,addr,max(Q.code)-addr)
+        for a,op in Q.code.items(): P.code[a]=op
+    src=[_char_for('o',a) for a in range(_WORDS)]
+    for a,op in P.code.items(): src[a]=_char_for(op,a)
+    for a,ch in data.items(): src[a]=ch
+    return src,len(P.code)
+
+if __name__=='__main__':
+    cf=setup()
+    print('group',cf['Gb'],'hub values',cf['hubvals'])
+    tot=bad=0
+    for s in range(8):
+        src,ncode=build(s,cf)
+        progs=[]
+        for x in itertools.product(range(7),repeat=3):
+            sv=list(src)
+            for c in range(3):
+                cell=cf['Gb']+c; par=cell%2
+                sv[cell]=next(T for T in admissible(cell) if meaning(T,par)==x[c])
+            progs.append((x,''.join(chr(v) for v in sv)))
+        fails=0
+        for x,prog in progs:
+            open('/tmp/claude-0/hub17/_p.mb','w').write(prog)
+            out=subprocess.run(['/tmp/claude-0/csim/msim','/tmp/claude-0/hub17/_p.mb','0'],capture_output=True,text=True).stdout.split()
+            got=out[1] if len(out)>1 else ''
+            if got!=expected(s,x): fails+=1
+        tot+=len(progs); bad+=fails
+        print(f'row {s}: code cells {ncode}, {len(progs)-fails}/{len(progs)} correct',flush=True)
+    print('FIVE-STATE group decoder, real source:',tot-bad,'/',tot)
