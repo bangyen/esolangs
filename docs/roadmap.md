@@ -12,17 +12,13 @@ read is complete; rejected candidates are recorded under Curation in
 
 - **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
   was misfiled as unread: its transclusions inject CSS, not the node table.
-  An acyclic mux network using only `□` NOR passes every table through three
-  inputs and has `n + 8T - 7` nodes. Rendering is open: shared input fan-outs
-  cross the formula tree, and `◐◑◒◓` route by the carried bit. A constant
-  logical crossover exists: three native XOR nodes compute `a=x XOR y`, then
-  `a XOR y=x` and `a XOR x=y`. A 19-by-17 Unicode layout balances both paths
-  at sixteen steps, has alternating terminals, and passes all four input pairs
-  in the simultaneous-update prototype. A layered tree needs one crossover
-  per internal mux: its composed gadget model passes all 278 tables through
-  three inputs and has `n + 11T - 10` logic nodes. Pack and synchronize that
-  composition in one Unicode grid; separately executed gadgets are not an
-  implementation.
+  The crossover route works but is unnecessary. Read inputs in name order,
+  append them to one bistack row with `◨`, then let each `◧` pop the next bit
+  into a `◑` decision node. The resulting single-grid tree passes all 276
+  non-nullary tables through three inputs. Its first top-down drawing is
+  `Theta(T log T)` text (340,079 characters at ten inputs): alternate split
+  axes in an H-tree layout to reach linear area, then promote the interpreter
+  and generator.
 ## Conditional follow-up
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
