@@ -286,15 +286,19 @@ exactly once a block is loaded. Put them at the top instead and they would
 steal an input the tree still had to read -- which is a mistake this
 construction made and the execution check caught.
 
-The decoder is one fixed list of fourteen fractions, independent of the
+The decoder is one fixed list of twelve fractions, independent of the
 table. It shifts the block right once per unit of the counter -- halving
 the exponent by moving two `carry` to one `work`, discarding the bit
 shifted out, moving `work` back -- and then answers with the parity of what
-is left: `2 / (read * carry)` if a unit remains, `1 / read` if not. Each
-loop alternates between two state primes, which is what keeps a guard from
-being shared; by Lemma 2 a fraction that tried to hold its own state prime
-in both numerator and denominator would have that prime cancel out of its
-guard and fire everywhere.
+is left: `1 / carry**2` casts out pairs and `2 / carry` answers a unit that
+remains. Each loop alternates between two state primes, which is what keeps
+a guard from being shared; by Lemma 2 a fraction that tried to hold its own
+state prime in both numerator and denominator would have that prime cancel
+out of its guard and fire everywhere. The last two fractions need no state
+prime at all: every earlier state holds a tree state or a phase prime whose
+unguarded fraction comes first, so they fire only once the last phase prime
+is gone. The trailing `1 / p` clears exist only when a folded leaf leaves
+the inputs below it, and the offset, unread: a block's path spends both.
 
 *Two widths.* A power of two is too coarse a setting for `w`: it would
 double where the target crossed it, and the characters an entry would saw
