@@ -186,10 +186,14 @@ def _tree(truth_table: str, *, prune: bool = True, reorder: bool = True) -> str:
     if not (prune and reorder and essential):
         order = tuple(range(len(essential)))
         return _layout(truth_table, n, essential, order, prune=prune)
-    return best_input_order(
-        truth_table,
-        lambda table, order: _layout(table, n, essential, order, prune=True),
-    )
+
+    def build(table: str, order: tuple[int, ...]) -> str:
+        return min(
+            (_layout(table, n, essential, order, swap=swap) for swap in (False, True)),
+            key=len,
+        )
+
+    return best_input_order(truth_table, build)
 
 
 def _layout(
@@ -198,12 +202,16 @@ def _layout(
     essential: list[int],
     order: tuple[int, ...],
     *,
-    prune: bool,
+    prune: bool = True,
+    swap: bool = False,
 ) -> str:
     """Lay out the tree over ``truth_table``, whose level ``k`` pops ``order[k]``.
 
     ``order`` names essential inputs by their rank; ``""`` when the row
-    cannot pop them in that order.
+    cannot pop them in that order.  ``swap`` sends the root's 1 arm west
+    (``◐`` for ``◑``, a glyph for a glyph): the halves' pruned shapes
+    differ, and the rendered program is not mirror-symmetric, since rows
+    are stripped on the east and the loader row enters from the west.
     """
     plan = _deque_plan(order) if order else ([], [])
     if plan is None:
@@ -237,14 +245,18 @@ def _layout(
         router = (pop[0] + 2 * incoming[0], pop[1] + 2 * incoming[1])
         axis = axes[level % 2]
         mid = (lo + hi) // 2
-        children: tuple[tuple[int, int, int], ...] = ((-1, lo, mid), (1, mid, hi))
+        west = -1 if not (swap and level == 0) else 1
+        children: tuple[tuple[int, int, int], ...] = (
+            (west, lo, mid),
+            (-west, mid, hi),
+        )
         if prune and ids[level + 1][2 * index] == ids[level + 1][2 * index + 1]:
             # The halves agree: pop the bit onto the column stack, which
             # nothing pops, and go on into the one half both values share.
             builder.node(router, "⬒")
             children = children[:1]
         else:
-            builder.node(router, "◑" if axis[0] else "◒")
+            builder.node(router, ("◑" if axis[0] else "◒") if west < 0 else "◐")
         builder.connect(_path(pop, router, _first_axis(incoming[0])), "double")
         for sign, child_lo, child_hi in children:
             child_incoming = (sign * axis[0], sign * axis[1])
