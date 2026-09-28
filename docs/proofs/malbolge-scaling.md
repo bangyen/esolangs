@@ -1009,3 +1009,48 @@ every translate of the admissible set `I`:
 So run-time label values stay. The startup jump would still let the walked
 constants start from chosen characters rather than fixed enciphered ones,
 which shortens their chains (not measured).
+
+### Seventeen: the one-group build, measured, and where the cost really is
+
+The five-state decoder on one 3-cell group was built on **real source** and
+run through `msim`: `scripts/malbolge17/prototype/five_esc.py` emits one
+program per startup row `s`, patches the three table characters for every
+meaning triple in `7^3`, and checks the printed answer. It is green:
+**2,744 / 2,744** correct across the eight rows. So the mechanism — value
+decode, per-state view constant, land, trampoline to one of four shared hubs
+(print0, print1, state 3, state 4) — works end to end on the interpreter, not
+just at the trit level. The full single-group program is about **12,900 code
+cells** (12,897 for row 0), and instrumenting the build shows where they go:
+
+| phase | cells |
+| --- | --- |
+| constants + priming the 94 pointer cells | 1,635 |
+| chains: `z`-cells, `C0`/`C1`, the ten views, escape | 5,957 |
+| label chains (5 seeds + per-label pointer ops) | 2,127 |
+| hub rotations | 2,350 |
+| landing characters + decoder block | 828 |
+
+**Navigation, not op count, is the cost (measured).** The program is only 24
+hubs, 679 raw ops and 525 `op` calls, yet 12,897 cells: reaching a walked
+cell means walking the pointer up from the pointer region, so each op there
+costs tens of cells. Two spot measurements make it concrete:
+
+- The ten view cells are chains of 8, 6, 8, 5, 8, 6, 8, 4, 8, 6 ops — only
+  **67 ops** — but emitted they are about **3,561 cells**, because each op
+  on a cell near address 160 costs ~30-70 cells of navigation. This
+  confirms the earlier "about 4,000 for the ten views"; the op count alone
+  badly understates it.
+- Hardcoded addressing of one group (three `z`-cells holding `Gb-1+k`) is
+  about **230 cells**. That is small, and it is exactly what the address
+  fold replaces per invocation — so the fold is worth its own cost only once
+  the ~16,384 groups are counted, and the single-group figure above is not
+  where the fold pays off.
+
+So the gap-closing lever is cutting **ops-at-distance**: fewer distinct
+high-address chain targets and a tighter working band. The parity word earns
+its place here after all — collapsing the ten view cells toward five base
+words plus an in-place parity toggle is a real saving against the measured
+3,561, not the negligible one an op count suggested. The view constants are
+structured to allow it: all ten share low five trits 2 and top trit 0 and
+differ only in a four-trit field, where trits 6-8 select the state and trit 5
+is the parity bit. Building that toggle, and the compaction, is unbuilt.
