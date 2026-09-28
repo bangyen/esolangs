@@ -12,12 +12,19 @@ Layout: a jump to the root, the halt, ``+J @ 1`` (a one-step cycle), then
 ``@+1``; constant subtrees fold to the two gadgets.  Halts for a 0 entry,
 diverges for a 1: at most ``5 n + 2`` commands over ``3 (2**n - 1) + 2 n + 3``
 lines.
+
+The runs stay in name order, so each tester keeps its input's address; only
+which tester a tree level patches and calls moves with the split order.
 """
+
+from itertools import permutations
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
+    best_input_order,
     constant_span_test,
+    permute_truth_table,
 )
 
 __all__ = ["crement"]
@@ -35,16 +42,47 @@ _HALT, _LOOP = 0, 1
 
 PAIR = ("+J 0 0", "+J 0 1")
 
+#: Every split order is built through this arity: at most ``4! = 24``
+#: candidates, a constant factor.  Wider tables take
+#: :func:`~esolangs.tools.helpers.best_input_order` (identity and greedy
+#: through its own cap, identity alone past it).
+_EXHAUSTIVE_ORDER_MAX_ARITY = 4
+
 
 def crement(truth_table: str) -> str:
     """Build a Crement template: one run per input, its tester's first line.
 
-    Rows split most-significant-first; a subtree whose rows agree folds to
-    the shared loop or the halt.
+    A subtree whose rows agree folds to the shared loop or the halt, and
+    which rows a subtree covers is the split order's choice, so the tree
+    splits in whichever order emits the shortest template.  Through four
+    inputs every order is built; above, the identity and greedy orders
+    (:func:`~esolangs.tools.helpers.best_input_order`).  Candidates are
+    compared as emitted, tester and patch addresses included, and the
+    identity wins ties, so reordering only ever shrinks.
+    """
+    n = _validate_truth_table(truth_table)
+    if n > _EXHAUSTIVE_ORDER_MAX_ARITY:
+        return best_input_order(truth_table, _crement_ordered)
+    # ``permutations`` yields the identity first and ``min`` keeps the first
+    # of equals, so a tie keeps the name order.
+    return min(
+        (
+            _crement_ordered(permute_truth_table(truth_table, perm), perm)
+            for perm in permutations(range(n))
+        ),
+        key=len,
+    )
+
+
+def _crement_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one split order's template over the *permuted* table.
+
+    Level ``k`` splits on input ``perm[k]``, so its nodes patch and call
+    that input's tester; the runs, and so the testers, stay in name order.
     """
     n = _validate_truth_table(truth_table)
     lines: list[str] = []
-    tester = [_HEADER_LINES + 2 * i for i in range(n)]
+    tester = [_HEADER_LINES + 2 * perm[level] for level in range(n)]
     constant = constant_span_test(truth_table)  # O(1) a node, so O(2**n) in all
 
     def walk(lo: int, hi: int) -> int | None:
