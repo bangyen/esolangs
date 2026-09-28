@@ -124,17 +124,18 @@ def mark(i: int) -> str:
     return chr(MARK + i)
 
 
-def render(template: str, char: str | None, setters: Setters) -> str:
+def mark_runs(template: str, char: str, setters: Setters) -> str:
     """Return the template as a wrapper is handed it.
 
-    Runs of :data:`TEMPLATE_CHAR` are each as long as their input's setters,
-    so no separator is needed.  With ``char`` None each run is re-spelled
-    as its own :func:`mark`, the form a wrapper keeps whole.
+    Runs of ``char`` are each as long as their input's setters, so no
+    separator is needed; each is re-spelled as its own :func:`mark`, the form
+    a wrapper keeps whole.  ``char`` is the *language's* template character
+    and cannot default to :data:`TEMPLATE_CHAR`: INTERCAL embeds on ``@``
+    because ``$`` is its mingle operator, so scanning for the global one
+    found an operator and read it as a one-character run.
     """
-    if char is not None:
-        return template
     out, position = [], 0
-    for i, (start, end) in enumerate(runs(template, TEMPLATE_CHAR, setters)):
+    for i, (start, end) in enumerate(runs(template, char, setters)):
         out.append(template[position:start] + mark(i) * (end - start))
         position = end
     return "".join(out) + template[position:]
