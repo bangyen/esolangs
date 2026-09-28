@@ -414,6 +414,17 @@ fetch of a cell cannot decode to `v`, nor to `<` unless `A` already holds
 first reads weigh at most 131,050 bits, and no bound on a single run's steps
 or reads can reach that, since 2^17 leaves each need one.
 
+The five-state code re-reads a cell on 462 of its 2,744 paths, and a read
+that rewrites its cell cannot be repeated. Forbidding that, **six** shared
+states suffice (all 256 vectors, no path reads a cell twice; three are proved
+too few). Its transitions reach only four targets -- two states and the two
+prints -- which is within what one pointer region routes: the shipped
+`_T_LABELS` admit each of `0 1 x n` at every residue. That suggests an
+unbuilt design in which a state reads its cell with `p` under its own
+constant, lands in a block of plain source characters (no run-time writes),
+and routes through the existing label and hub machinery; it is estimated at
+about 8,400 of the 9,897 non-table cells, not measured.
+
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
