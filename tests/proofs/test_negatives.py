@@ -441,6 +441,29 @@ class TestConvolutionStepOfTheTwoRootTheorem:
 # every size measured.  Exact, by z3 bisection on a digit budget.
 
 
+def test_polynomial_symmetric_remainders_have_independent_zero_positions() -> None:
+    """The two expensive-gap targets in ``lem:evencount`` need two choices."""
+
+    def first_zeros(moduli: list[int]) -> tuple[int, int]:
+        values = [48, 49]
+        found = [0, 0]
+        for position, modulus in enumerate(moduli, 1):
+            values = [(value % -modulus) % modulus for value in values]
+            for bit, value in enumerate(values):
+                if not value and not found[bit]:
+                    found[bit] = position
+        return found[0], found[1]
+
+    for first in range(1, 5):
+        for second in range(first + 1, 6):
+            moduli = [53] * 5
+            moduli[first - 1], moduli[second - 1] = 48, 1
+            assert first_zeros(moduli) == (first, second)
+
+            moduli[first - 1], moduli[second - 1] = 49, 48
+            assert first_zeros(moduli) == (second, first)
+
+
 def _digit_mass(coeffs: list[int]) -> int:
     return sum(len(str(abs(c))) for c in coeffs if c)
 
