@@ -34,6 +34,8 @@ None of this is wired into the generator.
 - `readers.c` -- `gcc -O2 -o readers readers.c && ./readers`: the most
   cleanly printing admissible triples for every lockstep way of reading a
   three-cell group (at most 137 of 512).
+- `prototype/five_esc.py.txt` -- the same decoder with the dense-table
+  escape (the cell after the group varies); also 2,744 of 2,744.
 - `prototype/five_lab.py.txt`, `prototype/chain_k.py.txt` -- the scratch
   prototype of the five-state group decoder that runs 2,744 of 2,744 cases
   on real sources (see the doc). Kept as text: it hard-codes `/tmp` paths

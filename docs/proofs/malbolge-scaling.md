@@ -507,6 +507,22 @@ computation that selects the group and its per-row read pointers from the
 inputs, the parity selection of view constants at run time, and the full
 table.
 
+In a dense table the cell after a group is the next group's first cell, so
+the read's escape jumps through a table character that varies. It converges
+anyway if every pointer cell but one, `E`, holds a hub value (the 26 cells
+outside `0 1 x n` get a fifth, escape-only seed chain), every hub value's
+cell `H + 2` holds `E - 1`, `E` holds `Z0 - 1` and `Z0 + 1` holds `E - 1`:
+from any table character, `j j o j j` ends on `Z0` (through a label cell:
+`H + 1`, `H + 2`, `E`, `Z0`; through `E`: `Z0`, `Z0 + 1`, `E`, `Z0`). Seeds
+are chosen so every hub value admits `E - 1` at `H + 2`. With the neighbour
+cell set to a different admissible character on every run, the five-state
+group decoder is still right on 2,744 of 2,744 cases. The unoptimised program
+now takes about 12,900 code cells, all but about 400 one-time: 2,055 to clear
+the 94 pointer cells, 5,957 for 17 constant chains, 2,127 for five label
+chains and 2,350 for hub rotations. That is over the 9,897 non-table cells;
+the earlier compaction halved the same kinds of setup, so fitting is now a
+placement problem.
+
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
