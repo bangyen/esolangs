@@ -1,0 +1,21 @@
+# Seventeen-input Malbolge: research artifacts
+
+Supporting files for the "Seventeen" sections of
+[docs/proofs/malbolge-scaling.md](../../docs/proofs/malbolge-scaling.md).
+None of this is wired into the generator.
+
+- `msim.c`, `tables.h` -- a C Malbolge simulator matching
+  `esolangs.interpreters.other.malbolge` (checked against it). Build with
+  `gcc -O2 -o msim msim.c`; `msim PROGRAM NBITS [stride] [offset]` feeds each
+  row's bits as `0`/`1` lines and prints its output. It runs every row of a
+  sixteen-input program in about 2.5 s, and found no wrong row in the shipped
+  sixteen-input build on a seeded random table or the parity table.
+- `decoder_s6_norepeat.p` -- six shared states decode a group of three cells
+  (seven meanings each) for eight rows, realising all 256 answer vectors with
+  no row reading a cell twice.
+- `decoder_s5_repeats.p` -- five states, but 462 paths re-read a cell, which a
+  destructive read forbids.
+- `decoder_s13_fixed_order.txt` -- the earlier thirteen-state decoder in which
+  each state reads one fixed cell (a different file format).
+- `verify_decoder.py` -- checks a `.p` decoder: `verify_decoder.py FILE
+  [--no-repeat]`.
