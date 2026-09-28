@@ -142,16 +142,16 @@
   },
   "BF-PDA": {
    "0110": {
-    "commands": 31,
-    "source_units": 59
+    "commands": 24,
+    "source_units": 43
    },
    "01101001": {
-    "commands": 46,
-    "source_units": 123
+    "commands": 38,
+    "source_units": 89
    },
    "0110100110010110": {
-    "commands": 59,
-    "source_units": 245
+    "commands": 48,
+    "source_units": 175
    }
   },
   "BFStack": {
