@@ -30,15 +30,20 @@ __all__ = ["six_five"]
 _SIX_FIVE_MAX_LABEL = 10 + len(string.ascii_uppercase) - 1
 
 
-#: A read's -40, 48/49 to the 8/9 a ``78`` test can name, in the fewest
+#: A walk read's -40, 48/49 to the 8/9 its ``79`` names, in the fewest
 #: tokens: seven (``9`` is -6, ``2`` is -5), not eight ``2``s.
 _SIX_FIVE_NORMALIZE = "99999" + "22"
 
+#: A tree read's 0 bit (1 is one more): under ``7n``'s cap of 35 by -17,
+#: three tokens as is each leaf's +16..+18, where 8/9 took seven.
+_SIX_FIVE_HELD = 31
+_SIX_FIVE_TREE_NORMALIZE = "99" + "2"
+
+#: The node test: skip the left arm's jump when the bit is 0.
+_SIX_FIVE_TEST = "7V"
+
 #: :func:`_six_five_const`'s text for ``v`` read as ``-v``.
 _SIX_FIVE_NEGATE = str.maketrans("652", "925")
-
-#: 8/9 on to the 1/2 :func:`_six_five_inverted` tests: -7 as -6 -6 +5.
-_SIX_FIVE_TO_ONE = "99" + "5"
 
 
 def _six_five_label(value: int) -> str:
@@ -74,8 +79,8 @@ def _six_five_copies_bit(
 ) -> bool:
     """Whether the span's answer is its first bit: all 0s, then all 1s.
 
-    Both arms then print from the tested cell with one text (0 from 8, 1
-    from 9), so the node needs no test and spends no label.
+    Both arms then print from the tested cell with one text (0 from 31, 1
+    from 32), so the node needs no test and spends no label.
     """
     mid = (lo + hi) // 2
     return table[lo] + table[mid] == "01" and constant(lo, mid) and constant(mid, hi)
@@ -92,9 +97,9 @@ def _six_five_inverts_bit(
 def _six_five_inverted() -> str:
     """Print NOT the tested cell's bit, held as 1/2; the cell two on is blank.
 
-    Adds are monotone, so none maps 8/9 to 49/48; instead ``71`` skips the
-    ``1`` on a 0 bit, which prints ``1 + 48`` where it stands, and a 1 bit
-    prints ``0 + 48`` two cells on.  No test of 8 or 9, so no label.
+    Adds are monotone, so none maps a read to 49/48; instead ``71`` skips
+    the ``1`` on a 0 bit, which prints ``1 + 48`` where it stands, and a 1
+    bit prints ``0 + 48`` two cells on.  No test, so no label.
     """
     return "71" + "1" + _six_five_const(_ASCII_ZERO) + "A0"
 
@@ -103,9 +108,9 @@ def six_five(truth_table: str) -> str:
     """Build a 6-5 program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  A
-    node is ``78``: ``7`` compares the cell to 8, a zero bit skips the
+    node is ``7V``: ``7`` compares the cell to 31, a zero bit skips the
     ``8n`` jump into the left subtree, a one bit jumps to the n-th ``4``.  A
-    leaf adds ``48 + value - base`` (8 left, 9 right) in sixes and fives
+    leaf adds ``48 + value - base`` (31 left, 32 right) in sixes and fives
     (:func:`_six_five_const`), prints with ``A``, halts with ``0``.
     Constant subtrees fold.
 
@@ -325,7 +330,7 @@ def _six_five_shared(
     Two equal slices are always the same node: a slice's length fixes its
     level and :func:`_six_five_hoisted` makes the pointer's entry position a
     function of level alone.  Left leaves stay inline (the fall-through
-    costs no marker); right leaves count from 9 and there are only two
+    costs no marker); right leaves count from 32 and there are only two
     distinct ones, emitted once at the end.
     """
     # Distinct blocks, in the order their code is laid down: the root's
@@ -396,9 +401,9 @@ def _six_five_shared(
         """
         _, cell = test_cell(window)
         left, right = children(window)
-        code = _six_five_move(arrive, cell) + "78" + right_branch(right)
+        code = _six_five_move(arrive, cell) + _SIX_FIVE_TEST + right_branch(right)
         if len(set(left)) == 1:
-            return code + leaf_code(left[0], 8)
+            return code + leaf_code(left[0], _SIX_FIVE_HELD)
         # The left arm is a node of its own, reached by falling through the
         # test and then jumping -- unconditionally, since ``7`` owns the
         # condition and has already skipped the branch above.
@@ -416,7 +421,7 @@ def _six_five_shared(
     for window in order[1:]:
         out += "4" + block(window, arrive_at[window])
     for value in right_leaf_values:
-        out += "4" + leaf_code(value, 9)
+        out += "4" + leaf_code(value, _SIX_FIVE_HELD + 1)
     return out
 
 
@@ -427,9 +432,9 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     node tests.  Returns ``""`` when this order overflows the 35 labels.
     Only inputs the tree branches on get a cell (others read into a shared
     scratch), so the kept bits are a contiguous block from cell 0.  A stored
-    read is normalized where it lands by -40 (``7n``'s operand is
+    read is normalized where it lands by -17 (``7n``'s operand is
     capped at 35, so 48/49 cannot be tested).  A leaf prints from the cell
-    it stands on (9 on the jump, 8 on the fall-through); the pointer's entry
+    it stands on (32 on the jump, 31 on the fall-through); the pointer's entry
     position is a function of level alone.
     """
     n = _validate_truth_table(truth_table)
@@ -455,7 +460,7 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         pos = slot
         reads += "B"
         if i in stored:
-            reads += _SIX_FIVE_NORMALIZE
+            reads += _SIX_FIVE_TREE_NORMALIZE
             cell_of[i] = slot
             slot += 1
     # A clobbered read leaves 48/49 under the pointer, so the cell the reads
@@ -489,18 +494,16 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         mid = (lo + hi) // 2
         nav = _six_five_move(entry, cell)
         if _six_five_copies_bit(truth_table, constant, lo, hi):
-            return nav + leaf("0", cell, 8)
-        # Cells from ``scratch`` on stay blank until a leaf writes and halts.
-        if cell + 2 >= scratch and _six_five_inverts_bit(truth_table, constant, lo, hi):
-            return nav + _SIX_FIVE_TO_ONE + _six_five_inverted()
+            return nav + leaf("0", cell, _SIX_FIVE_HELD)
+        # No inverted-bit print: from 31/32 it is 17 characters to a node's 14.
         # A label is the index of this node's own ``4`` among every ``4`` in
         # the emitted string, so it is allocated *after* the left subtree --
         # whose markers all precede it -- and before the right.
-        sub0 = node(level + 1, lo, mid, cell, 8)
+        sub0 = node(level + 1, lo, mid, cell, _SIX_FIVE_HELD)
         marker += 1
         label = marker
-        sub1 = node(level + 1, mid, hi, cell, 9)
-        return nav + "78" + "8" + _six_five_label(label) + sub0 + "4" + sub1
+        sub1 = node(level + 1, mid, hi, cell, _SIX_FIVE_HELD + 1)
+        return nav + _SIX_FIVE_TEST + "8" + _six_five_label(label) + sub0 + "4" + sub1
 
     if shared:
         return reads + _six_five_shared(truth_table, perm, cell_of, pos, n)
@@ -525,8 +528,8 @@ def _six_five_stream_ordered(truth_table: str) -> str:
     Reads with ``B`` at the node and normalizes in place, so no pointer moves
     (competitive on shallow tables).  Splits in stream order: one candidate.
     A constant subtree folds (17 chars vs 226 at n == 3, 19 vs 946 at n == 5)
-    but still spends its reads, so a folded leaf cannot use the 8/9 base and
-    builds its digit on a fresh cell.  Raises :class:`ValueError` past 35 labels.
+    but still spends its reads, so a folded leaf reads them two cells on and
+    steps back to its tested cell.  Raises :class:`ValueError` past 35 labels.
     """
     n = _validate_truth_table(truth_table)
     labels = _six_five_markers(truth_table)
@@ -546,31 +549,35 @@ def _six_five_stream_ordered(truth_table: str) -> str:
             )
         values = {truth_table[r] for r in rows}
         if len(values) == 1:
-            # Folded leaf: the skipped reads still run (stream sync) and
-            # leave 48 or 49 in the cell, so build the digit two cells on.
+            # Folded leaf: the skipped reads still run (stream sync), two
+            # cells on under a node, whose tested cell's 31/32 is then built
+            # on; a whole-table constant builds on a blank cell.
             reads = "B" * (n - bit + 1)
             value = _ASCII_ZERO + int(values.pop())
+            if base:
+                return "1" + reads + "33" + _six_five_const(value - base) + "A0"
             return reads + "1" + _six_five_const(value) + "A0"
         if _six_five_copies_bit(truth_table, constant, rows[0], rows[-1] + 1):
             # Print the read as it came; the rest of the stream reads two cells on.
             rest = n - bit
             return "B" + ("1" + "B" * rest + "33" if rest else "") + "A0"
-        if _six_five_inverts_bit(truth_table, constant, rows[0], rows[-1] + 1):
+        rest = n - bit
+        if rest and _six_five_inverts_bit(truth_table, constant, rows[0], rows[-1] + 1):
             # -47 takes the read to 1/2; the rest read into cell 1, not 2.
-            rest = n - bit
-            reads = "13" + "B" * rest + "3" if rest else ""
+            # With no reads left for a node's leaves to repeat, it is shorter.
+            reads = "13" + "B" * rest + "3"
             to_one = _six_five_const(_ASCII_ZERO - 1).translate(_SIX_FIVE_NEGATE)
             return "B" + to_one + reads + _six_five_inverted()
         g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
         g1 = [r for r in rows if ((r >> (n - bit)) & 1) == 1]
-        sub0 = build(g0, bit + 1, 8)
+        sub0 = build(g0, bit + 1, _SIX_FIVE_HELD)
         label = marker + 1
         marker += 1
-        sub1 = build(g1, bit + 1, 9)
+        sub1 = build(g1, bit + 1, _SIX_FIVE_HELD + 1)
         return (
             "B"
-            + _SIX_FIVE_NORMALIZE
-            + "78"
+            + _SIX_FIVE_TREE_NORMALIZE
+            + _SIX_FIVE_TEST
             + "8"
             + _six_five_label(label)
             + sub0
@@ -585,8 +592,8 @@ def _six_five_const(value: int) -> str:
     """Instructions adding ``value`` to the current cell, fewest first.
 
     ``k = ceil(value / 6)`` tokens of ``6``/``5`` reach all of ``[5k, 6k]``,
-    every leaf's 39..49 included; ``62`` pairs made +40 cost 14 to +41's 7,
-    so 0-leaves paid double.  Below 20, ``6``s then ``62`` pairs.
+    every leaf's 16..18 and 48..49 included; ``62`` pairs made +40 cost 14
+    to +41's 7, so 0-leaves paid double.  Below 20, ``6``s then ``62`` pairs.
     """
     k = -(-value // 6)
     if 5 * k <= value:
