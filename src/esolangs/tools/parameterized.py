@@ -150,23 +150,25 @@ def bfpda(truth_table: str) -> str:
     run is a four-character push of its bit; the load pushes every ``<@`` +
     run pair so the stack holds all bits and markers with ``b0`` on top.
     Characters outside ``@.<>[]`` are comments.  A node tests and consumes
-    its bit with ``[ > one < ] > [ > zero < ] >``: ``[`` enters on a one,
-    ``>`` pops it, the one-branch pops the marker, ``<`` pushes a zero to
-    break; on a zero the outer ``>`` pops the bit and the second loop tests
-    the marker, a constant 1 embedded directly.  A leaf pops the remaining
-    ``2*(n-level)`` and prints.
+    its bit with ``[>> one ]>[> zero ]``: ``[`` enters on a one and ``>>``
+    pops it and its marker; on a zero ``>`` pops the bit and the second loop
+    enters on the marker, a constant 1.  A leaf empties the stack (a zero
+    prints the empty stack), so each ``]`` after it exits with no zero
+    pushed.  The first marker is a bare ``@``: the empty stack reads 0.
     """
     n = _validate_truth_table(truth_table)
 
     # Marker then bit, in name order, so the tree tests the last input
     # first (the same tree reflected; the reversed load bought nothing and
     # put the runs out of order).
-    head = "".join("<@" + run for run in _runs(BFPDA_PAIR, n))
+    head = "".join("<@" + run for run in _runs(BFPDA_PAIR, n))[1:]
 
     def leaf(level: int, value: str) -> str:
-        drain_preloaded_bits = ">" * (2 * (n - level))
-        print_answer = ("<@" if value == "1" else "<") + ".>"
-        return drain_preloaded_bits + print_answer
+        # A one stops on the bottom entry, the first marker, and prints it.
+        left = 2 * (n - level)
+        if value == "0":
+            return ">" * left + "."
+        return ">" * (left - 1) + ".>" if left else "@.>"
 
     # The load pushes in name order, so the stack hands back the *last*
     # input first: level ``i`` tests input ``n - 1 - i``, row bit ``i``.
@@ -184,13 +186,12 @@ def bfpda(truth_table: str) -> str:
             pieces.append(leaf(i, reflected[lo]))
             return
         mid = (lo + hi) // 2
-        # one-branch pops ~bi first (expose next bit); zero-branch has it popped
-        # by the node's own loop
+        # Each arm ends on an empty stack, so its ``]`` exits as it stands.
         pieces.append("[>>")
         node(i + 1, mid, hi)
-        pieces.append("<]>[>")
+        pieces.append("]>[>")
         node(i + 1, lo, mid)
-        pieces.append("<]>")
+        pieces.append("]")
 
     node(0, 0, 2**n)
     return "".join(pieces)

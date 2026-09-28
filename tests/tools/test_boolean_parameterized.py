@@ -882,7 +882,8 @@ class TestParameterizedBfpda:
 
         template = parameterized.bfpda("0110")
         assert "{X" not in template
-        assert template.startswith("<@$$$$<@$$$$")
+        # The first marker's ``<`` is dropped: ``@`` pushes a 1 onto the empty stack.
+        assert template.startswith("@$$$$<@$$$$")
 
     def test_program_structure(self) -> None:
         """Each input is embedded once (pre-loaded), not re-embedded per node."""
@@ -893,17 +894,34 @@ class TestParameterizedBfpda:
 
         template = parameterized.bfpda("0110")
         # ``runs`` refuses a stray ``$``, so two spans is exactly two embeds
-        assert runs(template, "$", (BFPDA_PAIR,) * 2) == [(2, 6), (8, 12)]
+        assert runs(template, "$", (BFPDA_PAIR,) * 2) == [(1, 5), (7, 11)]
         assert "{C0}" not in template  # the marker is a constant, not a complement
         assert "{C1}" not in template
 
-    def test_leaf_print_is_balanced(self) -> None:
-        """A leaf pops the remaining bits, prints the answer, and pops it."""
+    def test_leaf_leaves_the_stack_empty(self) -> None:
+        """A zero drains and prints the empty stack; a one prints the bottom marker.
+
+        Both arms of a node end on an empty stack, so the ``]`` closing
+        each exits without a pushed zero, and nothing is left to pop.
+        """
         from esolangs.tools import parameterized
 
-        template = parameterized.bfpda("10")  # NOT: one-leaf prints 1
-        assert "<@.>" in template
-        assert "<.>" in template
+        assert parameterized.bfpda("10") == "@$$$$[>>.]>[>@.>]"  # NOT
+        assert parameterized.bfpda("0110") == (
+            "@$$$$<@$$$$[>>[>>.]>[>@.>]]>[>[>>@.>]>[>.]]"  # XOR
+        )
+
+    def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
+        """Total emitted bytes over every three-input table.
+
+        24127 while each arm pushed a zero to break its loop and popped it
+        after, and each leaf pushed its answer; 17578 once the arms end on
+        the empty stack a leaf leaves behind.
+        """
+        from esolangs.tools import parameterized
+
+        total = sum(len(parameterized.bfpda(format(v, "08b"))) for v in range(256))
+        assert total == 17578
 
 
 class TestParameterizedHomeRow:
