@@ -540,6 +540,18 @@ class TestCircuitDiagram:
         assert self.run_table("1111") == "1111"
         assert self.run_table("0000") == "0000"
 
+    @pytest.mark.parametrize("table", ["0000111100010001", "0000111101110111"])
+    def test_equal_cofactors_from_different_gates_still_get_a_complement(
+        self, table: str
+    ) -> None:
+        """The fold compares signals, not functions, so ``0001|0001`` muxes.
+
+        Both halves compute the same function from different gates, which the
+        complement analysis once hashed together; the mux that joins them
+        then reached for a ``~`` nobody had built.
+        """
+        assert self.run_table(table) == table
+
     def test_four_input_primality(self) -> None:
         """The same function the wiki's own worked example computes.
 
