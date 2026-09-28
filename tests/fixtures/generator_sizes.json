@@ -325,15 +325,15 @@
   "Container": {
    "0110": {
     "commands": 6,
-    "source_units": 422
+    "source_units": 368
    },
    "01101001": {
     "commands": 8,
-    "source_units": 756
+    "source_units": 594
    },
    "0110100110010110": {
     "commands": 10,
-    "source_units": 1352
+    "source_units": 820
    }
   },
   "Crement": {
