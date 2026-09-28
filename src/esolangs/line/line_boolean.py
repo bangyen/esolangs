@@ -49,8 +49,6 @@ def line_boolean(truth_table: str) -> Node:
         return rest
 
     def fork(lo: int, depth: int, pointer: int, known: int | None) -> Node:
-        # Skip every level whose halves agree: that input cannot change
-        # this subtree's answer, so it is read but never tested.
         size = 2 ** (n - depth)
         while (
             depth < n
@@ -62,11 +60,7 @@ def line_boolean(truth_table: str) -> Node:
         if depth == n:
             value = int(truth_table[lo])
             if known is None:
-                # Only a constant gets here untested: cell n is never read,
-                # so it is zero, and the entry is built there.
                 return moved(pointer, n, chain(*(["+"] * value), "o"))
-            # A leaf straight under a test sits on the input it just tested
-            # and knows its bit; nothing tests that cell again.
             step = {1: ["+"], 0: [], -1: ["-"]}[value - known]
             return chain(*step, "o")
         node = Node("?")

@@ -42,15 +42,11 @@ def ram0(truth_table: str) -> str:
     variable-length setter (``Z`` vs ``Z A``) was what shifted the absolute
     ``goto`` operands; the padded setter removes that.
 
-    A load phase stores each bit once in its own RAM cell,
-    so the inputs are embedded exactly ``n`` times; the decision tree then
-    *loads* each bit with RAM0's indirect ``L`` (``z := ram[z]``) rather than
-    re-embedding it, so the tree nodes contain no substitution.  Each node
-    sets ``z`` to its address, loads the bit, and ``C`` skips the following
-    ``goto`` when ``z`` is zero (the zero-subtree falls through in place)
-    while the ``goto`` jumps to the one-subtree otherwise.  A leaf sets
-    ``z`` to the answer and jumps to a fixed low-address halt trampoline, so
-    the final ``z`` read from the state dump is the answer.
+    The load stores each bit once in its own RAM cell. Tree nodes use indirect
+    ``L`` (``z := ram[z]``), then ``C`` falls through to the zero-subtree or a
+    ``goto`` reaches the one-subtree. A leaf sets the answer and jumps to a
+    fixed low-address halt trampoline; the state dump's final ``z`` is the
+    answer.
 
     **The tree splits on its inputs in whichever order emits the shortest
     program** (:func:`~esolangs.tools.helpers.best_input_order`).
@@ -67,12 +63,9 @@ def ram0(truth_table: str) -> str:
     equal to one already emitted at its level costs nothing -- its ``goto``
     names the copy -- and a zero-subtree costs one ``goto`` in place of
     itself; a leaf is shared the same way, and a test whose halves agree is
-    skipped.  That caps the tree at its distinct subtables, O(T) with
-    addresses included, where the plain tree's addresses made it
-    O(T log T) and past 16 entries gave way to :func:`_ram0_linear`, the
-    straight-line lookup.  So the shared tree now runs at every width, with
-    the plain tree a candidate through 16 entries and the lookup past them;
-    at five inputs it is a fifth of the lookup.
+    skipped. That caps the tree at its distinct subtables, O(T) with addresses.
+    The plain tree is a candidate through 16 entries and the linear lookup
+    past them; at five inputs the shared tree is a fifth of the lookup.
     """
     if len(truth_table) <= 16:
         return best_input_order(truth_table, _ram0_best)
