@@ -135,11 +135,6 @@ Only live work belongs here. Contracts and standing walls go to
   Ship only if executed programs beat both flat and H layouts on a wider
   corpus without moving generation above O(T).
 
-- **Reorder Crement testers.**  The same screen leaves 12.4% headroom.  Keep
-  the parameterized runs in name order and map each tree level to the chosen
-  tester address.  Ship only if every three-input table executes correctly
-  and the routing win survives the emitted tester and patch addresses.
-
 ## Open problems
 
 Research questions the proofs leave open.  Each names the first executable
