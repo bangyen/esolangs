@@ -4,10 +4,12 @@ from itertools import pairwise
 
 import pytest
 
+import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.underload import run
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.tools.underload import PAIR, underload
+from esolangs.tools.underload import PAIR, _plain, underload
+from tests.tools.boolean_runners import five_input_sample
 
 
 def _run(table: str, row: int) -> str:
@@ -37,3 +39,32 @@ def test_setters_are_equal_width_and_embedded_once() -> None:
 def test_source_growth_is_linear() -> None:
     sizes = [len(underload("01" * (1 << (n - 1)))) for n in range(1, 13)]
     assert all(right <= 2 * left for left, right in pairwise(sizes))
+
+
+def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
+    """The reduced, carrying tree cuts both totals and lengthens no table.
+
+    A repeated subtree is pushed once and run by ``^`` where it recurs, a
+    node whose halves agree is ``!`` and the half, and one ``S`` prints the
+    leaf's bit.  21,032 characters over the 256 three-input tables fall to
+    17,850 (15.1%), and 58,565 over the seeded five-input sample to 44,756
+    (23.6%).
+    """
+    assert underload("01101001")[21:] == (
+        "((((0))~((1))~^)~(~(^)~(!((1))~((0))~^)~^)~(~(!((1))~((0))~^)~(^)~^)~^)^S"
+    )
+    three = [format(value, "08b") for value in range(256)]
+    for tables, before, after in (
+        (three, 21032, 17850),
+        (five_input_sample(), 58565, 44756),
+    ):
+        plain = [len(_plain(table)) for table in tables]
+        shared = [len(underload(table)) for table in tables]
+        assert (sum(plain), sum(shared)) == (before, after)
+        assert all(s <= p for s, p in zip(shared, plain, strict=True))
+    for table in five_input_sample()[::10]:
+        assert "".join(_run(table, row) for row in range(32)) == table
+    for n in (4, 6):
+        for value in (0x6996, 0x1234ABCD5678EF01):
+            table = format(value % 2**2**n, f"0{2**n}b")
+            assert esolangs.verify("Underload", table), table
