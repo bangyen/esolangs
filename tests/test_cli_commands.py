@@ -229,6 +229,7 @@ class TestASeedMakesARunRepeat:
             "Painfuck",
             "Super SNUSP",
             "Thue",
+            "thisthat",
         ]
         with pytest.raises(esolangs.ArgumentError) as caught:
             esolangs.run("brainfuck", "+++.", "", 5, seed=1)
