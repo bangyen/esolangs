@@ -62,6 +62,23 @@ def subtree_ids(truth_table: str) -> list[list[int]]:
     return ids
 
 
+def subtree_slot(
+    ids: list[list[int]], level: int, block: int, *, skip: bool
+) -> tuple[int, int, tuple[int, int]]:
+    """Name the subtree at ``block`` of ``level`` for a shared tree's lookup.
+
+    With ``skip``, a test whose halves agree is passed over for its zero
+    half.  The name is ``(level, id)`` for a node and ``(-1, bit)`` for a
+    leaf, which is the same code at every level.
+    """
+    while skip and level + 1 < len(ids) and ids[level][block] >= 2:
+        if ids[level + 1][2 * block] != ids[level + 1][2 * block + 1]:
+            break
+        level, block = level + 1, 2 * block
+    key = ids[level][block]
+    return level, block, (level, key) if key >= 2 else (-1, key)
+
+
 def _validate_truth_table(truth_table: str) -> int:
     """Validate a truth table and return its input count ``n``.
 
