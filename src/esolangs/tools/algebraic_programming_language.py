@@ -2,7 +2,11 @@
 
 from itertools import pairwise
 
-from esolangs.tools.helpers import _validate_truth_table, best_input_order
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    best_input_order,
+    subtree_ids,
+)
 
 #: Input variable names in harness order; a variable is bound by being
 #: named on an executed line, so these must be codepoint-ascending
@@ -33,7 +37,14 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
         return best_input_order(
             truth_table, lambda table, perm: _apl_ordered(table, perm, width)
         )
-    return best_input_order(truth_table, _apl_tree_ordered)
+    return best_input_order(truth_table, _apl_best_ordered)
+
+
+def _apl_best_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Return the shorter of one order's inline tree and its reduced diagram."""
+    inline = _apl_tree_ordered(truth_table, perm)
+    reduced = _apl_reduced_ordered(truth_table, perm)
+    return reduced if len(reduced) < len(inline) else inline
 
 
 def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -179,3 +190,80 @@ def _order_key(literal: str) -> tuple[str, int]:
     """Sort literals by the variable they name, so reads stay ascending."""
     name = literal.lstrip("!")
     return (name, len(literal))
+
+
+Key = tuple[int, int]
+#: A half as a node reached through it and whether it arrives complemented.
+Ref = tuple[Key, bool]
+
+
+def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order as a reduced diagram.
+
+    The tree of :func:`_apl_tree_ordered`, reduced: a node whose halves
+    agree is that half -- the reads prefix binds every input, so dropping a
+    test drops no read -- and a node that complements one already built at
+    its level is ``!`` of it.  Nodes are interned bottom-up from
+    :func:`~esolangs.tools.helpers.subtree_ids`, a dict lookup a node, and
+    each piece is emitted once per use as the inline tree emits it: O(T).
+    """
+    n = _validate_truth_table(truth_table)
+    ids = subtree_ids(truth_table)
+    reads = " & ".join(_NAMES[index] for index in range(n)) + " & 0"
+    # A node's (test, zero half, one half); ``ref`` sends every subtable to
+    # the node that spells it, and ``made`` finds a node by its halves.
+    split: dict[Key, tuple[str, Ref, Ref]] = {}
+    ref: dict[Key, Ref] = {}
+    made: dict[tuple[int, Ref, Ref], Key] = {}
+
+    def resolve(key: Key) -> Ref:
+        return (key, False) if key[1] < 2 else ref[key]
+
+    def flip(half: Ref) -> Ref:
+        (level, node), negated = half
+        return ((level, 1 - node), False) if node < 2 else (half[0], not negated)
+
+    for depth in range(n - 1, -1, -1):
+        for place, node in enumerate(ids[depth]):
+            key = (depth, node)
+            if node < 2 or key in ref:
+                continue
+            zero = resolve((depth + 1, ids[depth + 1][2 * place]))
+            one = resolve((depth + 1, ids[depth + 1][2 * place + 1]))
+            if zero == one:
+                ref[key] = zero
+            elif (twin := made.get((depth, flip(zero), flip(one)))) is not None:
+                ref[key] = (twin, True)
+            else:
+                ref[key] = (key, False)
+                made[depth, zero, one] = key
+                split[key] = (_NAMES[perm[depth]], zero, one)
+
+    def emit(half: Ref, out: list[str]) -> None:
+        """Append a half's text: the inline tree's shapes, ``!`` if flipped."""
+        (key, negated), bang = half, "!" * half[1]
+        if key[1] < 2:
+            out.append(str(key[1]))
+            return
+        name, zero, one = split[key]
+        low, high = zero[0][1], one[0][1]
+        if low < 2 and high < 2:
+            # A literal complements by its own ``!``.
+            out.append(name if bool(high) != negated else f"!{name}")
+        elif low < 2 or high < 2:
+            constant_one = min(low, high) == 1
+            lit = name if (high >= 2) != constant_one else f"!{name}"
+            op = "|" if constant_one else "&"
+            out.append(f"{bang}({lit} {op} ")
+            emit(one if high >= 2 else zero, out)
+            out.append(")")
+        else:
+            out.append(f"{bang}((!{name} & ")
+            emit(zero, out)
+            out.append(f") | ({name} & ")
+            emit(one, out)
+            out.append("))")
+
+    root: list[str] = []
+    emit(resolve((0, ids[0][0])), root)
+    return f"{_NOT}\n({reads}) | {''.join(root)}"
