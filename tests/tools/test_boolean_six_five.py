@@ -81,8 +81,9 @@ class TestSixFive:
             assert program.startswith("B" + _SIX_FIVE_NORMALIZE)
             assert "78" in program
         assert _six_five_stream_ordered("0110").endswith("A0")
-        # The last leaf (a 0 printed from the 9 cell: +39 as ``6666555``).
-        assert boolean.six_five("0110").endswith("555A")
+        # The right half is NOT of the last input: -47 to 1/2, then ``71``
+        # skips the step onto a blank cell for a 0 bit, and +48 prints.
+        assert boolean.six_five("0110").endswith("9999999271166666666A")
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -108,9 +109,11 @@ class TestSixFive:
             5: "10010110" * 4,
         }[n]
         assert len(boolean.six_five(table)) < len(boolean.six_five(mixed))
-        # One ``A`` per emitted leaf: the fold collapses the leaf count to
-        # the number of distinct constant regions, not ``2**n``.
-        assert boolean.six_five(table).count("A") == _leaves(table)
+        # At most one ``A`` per emitted leaf: the fold collapses the leaf
+        # count to the number of distinct constant regions, not ``2**n``,
+        # and a node whose answer is its bit, or its bit inverted, prints
+        # both of its leaves with one ``A`` (``11110000`` is NOT x1).
+        assert boolean.six_five(table).count("A") <= _leaves(table)
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -163,8 +166,8 @@ class TestSixFive:
         ("table", "n", "labels"),
         [
             ("0" * 63 + "1", 6, 5),  # AND6: was refused by both paths
-            ("1" * 32 + "0" * 32, 6, 1),  # one split
-            ("1" * 48 + "0" * 16, 6, 2),  # two regions
+            ("1" * 32 + "0" * 32, 6, 0),  # one split: NOT x1 prints inverted
+            ("1" * 48 + "0" * 16, 6, 1),  # two regions, the second inverted
             ("1" * 64, 6, 0),  # constant
             ("0" * 255 + "1", 8, 7),  # AND8: the last test copies its bit
         ],
@@ -198,10 +201,11 @@ class TestSixFive:
         tables are the ones where the bound is tight: each is a constant, a
         single prefix run, or an AND, whose folding no renaming improves.
         """
-        for table in ("1" + "0" * 63, "1" * 48 + "0" * 16, "1" * 64, "1" * 127 + "0"):
+        for table in ("1" + "0" * 63, "1" * 64, "1" * 127 + "0"):
             assert _six_five_markers(table) == _markers(boolean.six_five(table))
-        # An AND's last test copies its bit, so it prints and spends no label.
-        for table in ("0" * 63 + "1", "0" * 255 + "1"):
+        # An AND's last test copies its bit, and the second region's test
+        # inverts it, so each prints and spends no label.
+        for table in ("0" * 63 + "1", "0" * 255 + "1", "1" * 48 + "0" * 16):
             assert _six_five_markers(table) - 1 == _markers(boolean.six_five(table))
 
         # And the bound itself, over every n == 3 table: reordering can only
@@ -276,7 +280,8 @@ class TestSixFive:
         assert _six_five_hoisted(alternating, tuple(range(n)))
 
         program = boolean.six_five(alternating)
-        assert _markers(program) == 1  # greedy tests the last input first
+        # Greedy tests the last input first, and NOT of it prints inverted.
+        assert _markers(program) == 0
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             feed = iter([str(b) for b in bits])
@@ -371,10 +376,39 @@ class TestSixFive:
         (-14.1%) once every add is spelled in the fewest ``6``/``5`` (or
         ``9``/``2``) tokens: a leaf's ``6``s then ``62`` pairs cost a 0-leaf
         (+40 from the 8 cell, +39 from the 9) twice a 1-leaf from the 8 cell
-        (+41), and a read's -40 was eight ``2``s rather than seven.
+        (+41), and a read's -40 was eight ``2``s rather than seven; 17190
+        (-7.0%) once a node whose answer is its bit inverted skips a step
+        onto a blank cell instead of testing and laying two leaves.
         """
         total = sum(len(boolean.six_five(format(v, "08b"))) for v in range(256))
-        assert total == 18490
+        assert total == 17190
+
+    def test_an_inverted_bit_prints_without_a_label(self) -> None:
+        """A node whose answer is NOT its bit spends no test of 8/9.
+
+        Adds are monotone, so the node moves the pointer instead: at 1/2,
+        ``71`` skips a ``1`` on a 0 bit, and a 1 bit prints from the blank
+        cell two on.  The hoisted build takes it only where that cell is
+        blank (``cell + 2 >= scratch``); every order of every three-input
+        table is executed here.
+        """
+        assert _markers(boolean.six_five("10")) == 0
+        assert _markers(boolean.six_five("10101010")) == 0
+        # x1, x2 then x0 over three stored cells: NOT x0 tests cell 0, and
+        # cell 2 holds x2, so that node keeps its ``78`` and two leaves.
+        guarded = _six_five_hoisted("10000111", (1, 2, 0))
+        assert "71" not in guarded
+        assert guarded.count("78") == 4
+        inverted = 0
+        for value in range(256):
+            table = format(value, "08b")
+            for perm in permutations(range(3)):
+                program = _six_five_hoisted(permute_truth_table(table, perm), perm)
+                inverted += "71" in program
+                for combo in range(8):
+                    bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+                    assert run_six_five(program, bits) == table[combo], (table, perm)
+        assert inverted == 824  # of 1536 builds
 
     def test_an_add_never_outgrows_its_old_spelling(self) -> None:
         """No table grows under the fewest-token adds: no add is longer.
@@ -416,8 +450,11 @@ class TestSixFive:
         # shortcut, 192 after; 108 once a node that copies its bit prints
         # it, which the stream build does with the raw read (``BA0``); 140
         # once every add takes the fewest tokens, which shortens the
-        # hoisted builds' extra leaves more than the stream build's.
-        assert improved == 140  # the rest tie, keeping the old emission
+        # hoisted builds' extra leaves more than the stream build's; 112 once
+        # a node whose answer is its bit inverted prints it, which the
+        # stream build can do at every such node and the hoisted only where
+        # the cell two on is blank.
+        assert improved == 112  # the rest tie, keeping the old emission
 
     @pytest.mark.parametrize(
         ("table", "n"),
