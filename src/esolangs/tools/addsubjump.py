@@ -11,6 +11,11 @@ from esolangs.tools.helpers import (
     stored_inputs,
 )
 
+#: The ``d`` operand of every instruction: cell 7, the last word of the
+#: first data block, which nothing writes, so ``*d > 0`` never holds and the
+#: instruction adds.  One digit where the special zero ``-7`` spent two.
+_ADD = 7
+
 
 def addsubjump(truth_table: str) -> str:
     """Build an AddSubJump program computing the given truth table.
@@ -222,10 +227,11 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
                 named.append(v)
         return idx
 
-    emit(-9, -6, "next", -7)  # enable flag mode
     # The entry jumps over these two instruction-width data blocks.  Their
     # fixed addresses hold the operands repeated throughout the tree:
-    # D48=4, D49=5, U=6 and C48=8.
+    # D48=4, D49=5, U=6 and C48=8.  It adds U to itself, a no-op: nothing
+    # reads the flags, so the old ``-9 -6`` (enable flag mode) bought nothing.
+    emit(6, 6, "next", _ADD)
     instructions += [[_ASCII_ZERO, _ASCII_ONE, 0, 0], [-_ASCII_ZERO, 0, 0, 0]]
 
     stored = stored_inputs(truth_table, perm)
@@ -237,14 +243,14 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         values["DUMP"] = 0
     for i in range(n):
         if i not in stored:
-            emit("DUMP", -1, "next", -7)  # read and discard
+            emit("DUMP", -1, "next", _ADD)  # read and discard
             continue
         bit = f"B{i}"
         values[bit] = 0
-        emit(bit, -1, "next", -7)  # B += input byte (48/49)
-        emit(bit, 8, "next", -7)  # B += -48
-        emit(bit, bit, "next", -7)  # double
-        emit(bit, bit, "next", -7)  # double -> {0, 4}
+        emit(bit, -1, "next", _ADD)  # B += input byte (48/49)
+        emit(bit, 8, "next", _ADD)  # B += -48
+        emit(bit, bit, "next", _ADD)  # double
+        emit(bit, bit, "next", _ADD)  # double -> {0, 4}
 
     # Rows split most significant first, so the span a node covers is the
     # contiguous ``truth_table[lo:hi]`` and its two halves are that slice cut
@@ -258,7 +264,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         if constant(lo, hi):
             # Every read already happened up front, so a folded leaf prints
             # and halts with nothing to drain.
-            emit(-1, 4 + int(truth_table[lo]), -8, -7)
+            emit(-1, 4 + int(truth_table[lo]), -8, _ADD)
             return
         half = (hi - lo) // 2
         if perm[level] not in stored:
@@ -274,12 +280,12 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         # rests on the zero trampoline two slots on, and ``B`` (0 or 4) moves
         # it to the one trampoline.
         jump = 4 * (base + 1) + 2
-        emit(jump, bit, "next", -7)  # c of the goto += B, the hoisted bit
-        emit(6, 6, ("init", 4 * (base + 2)), -7)  # goto, target patched above
+        emit(jump, bit, "next", _ADD)  # c of the goto += B, the hoisted bit
+        emit(6, 6, ("init", 4 * (base + 2)), _ADD)  # goto, target patched above
         ztarget = f"Z{base}"
         otarget = f"O{base}"
-        emit(6, 6, ztarget, -7)  # zero trampoline
-        emit(6, 6, otarget, -7)  # one trampoline
+        emit(6, 6, ztarget, _ADD)  # zero trampoline
+        emit(6, 6, otarget, _ADD)  # one trampoline
         targets[ztarget] = len(instructions)
         build(level + 1, lo, lo + half)
         targets[otarget] = len(instructions)
