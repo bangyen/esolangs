@@ -40,9 +40,11 @@ def _parity(n: int) -> str:
 def test_source_growth_is_linear_in_the_table() -> None:
     """Parity keeps every node, so it is the full tree's growth.
 
-    From four inputs, where the tree outgrows the loader row above it.
+    From four inputs, where the tree outgrows the loader row above it; to
+    twelve, where linearity.py reads the same trend (thirteen took 4.6s of
+    the medium band's 5s once four candidates were built).
     """
-    sizes = [len(thisthat(_parity(n))) for n in range(1, 14)]
+    sizes = [len(thisthat(_parity(n))) for n in range(1, 13)]
     assert all(right <= 3 * left for left, right in pairwise(sizes[3:]))
     assert max(size / (1 << n) for n, size in enumerate(sizes, 1)) < 300
 
