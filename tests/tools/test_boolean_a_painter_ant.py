@@ -179,7 +179,7 @@ class TestAPainterAnt:
         """Input ``i``'s run is followed by ``2**(n-1-i)`` ``E`` and ``SN``.
 
         The walk is the weight and the ``SN`` is the return to the
-        corridor; the ``sS`` after the last one steps onto the answer.
+        corridor; the ``s`` after the last one steps onto a black answer.
         """
         template = a_painter_ant("01" * 16)  # n = 5
         head, *tails = template.split(TEMPLATE_CHAR)
@@ -189,7 +189,7 @@ class TestAPainterAnt:
             "E" * 8 + "SN",
             "E" * 4 + "SN",
             "E" * 2 + "SN",
-            "E" * 1 + "SNsS",
+            "E" * 1 + "SNs",
         ]
 
     def test_each_input_moves_the_ant_by_its_weight(self) -> None:
@@ -236,12 +236,22 @@ class TestAPainterAnt:
         """Wide dense tables grow no faster than their table size.
 
         The two ``W`` walks cost two characters per entry, the corridor and
-        its answers seven, the walks one per entry, and each input three more:
+        its answers six, the walks one per entry, and each input three more:
         doubling the table doubles the size and adds that constant back.
         """
         sizes = [len(a_painter_ant("1" * (2**n))) for n in range(6, 10)]
         assert all(b <= 2 * a + 3 for a, b in pairwise(sizes))
-        assert sizes[0] == 1 + (64 + 63) + (7 * 64 - 3) + 63 + 3 * 6 + 2
+        assert sizes[0] == 1 + (63 + 63) + (6 * 64 - 2) + 63 + 3 * 6 + 1
+
+    def test_three_input_total(self) -> None:
+        """The 256 three-input templates total 16,896 characters.
+
+        19,200 before the head's ``W`` walk stopped at the corridor's last
+        cell, each corridor cell dropped its second ``P``, and the closing
+        ``S`` went (a white answer reads off the white corridor above it).
+        """
+        total = sum(len(a_painter_ant(f"{value:08b}")) for value in range(256))
+        assert total == 16896
 
     def test_linear_strip_executes_dense_wide_table(self) -> None:
         """Every row reaches its adjacent strip cell and remains cycle-stable."""
