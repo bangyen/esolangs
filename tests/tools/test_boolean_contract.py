@@ -574,7 +574,6 @@ _UNSHAPED = {
     # The table is the state and the bit read rewrites every pair down to
     # one, so nothing collapses and a 0% fold is the construction working.
     "thue",
-    "thisthat",  # fixed H-tree geometry; only the leaf glyphs vary
     "whitespace",
 }
 
@@ -1193,6 +1192,7 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         if name not in _DOCUMENTED_SIZES and LANGUAGES[name].boolean is not None
     )
     assert biggest[0] < 600_000, biggest
-    # thisthat's planar H-tree leads at 124937; its bounding rectangle carries
-    # whitespace as well as the live wires.
-    assert biggest[1] == "thisthat", biggest
+    # SLOW ACV MAMMALIAN leads at 115707, just ahead of thisthat's planar
+    # H-tree (113805, 124937 before its loader row moved over the tree),
+    # whose bounding rectangle carries whitespace as well as the live wires.
+    assert biggest[1] == "SLOW ACV MAMMALIAN", biggest

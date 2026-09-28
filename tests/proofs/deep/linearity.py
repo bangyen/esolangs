@@ -38,9 +38,10 @@ per-entry cost raises the ratio, so a genuine size win read as a regression.
 
 Where the bound sits, measured on both sides:
 
-* the settled cohort's worst is Container at 4.289 and Streetcode at 4.231,
-  both of them still settling after a route change, with everything else at
-  or under 4.21;
+* the settled cohort's worst is Container at 4.289, still settling after a
+  route change, and thisthat at 4.228, whose pruned subtrees leave blanks
+  inside a fixed H-tree rectangle (8.4% of the nested dense table at n=4,
+  0.7% at n=12); everything else is at or under 4.21;
 * ``T log T`` reads 4.83 and ``T^1.1`` 4.59, and both are rejected.  Factor
   reads 4.467 and is rejected too -- correctly, since its digit growth is
   proven super-linear, and it is exempt for that reason.

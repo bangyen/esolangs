@@ -1024,16 +1024,16 @@
   },
   "thisthat": {
    "0110": {
-    "commands": 49,
-    "source_units": 597
+    "commands": 37,
+    "source_units": 363
    },
    "01101001": {
-    "commands": 85,
-    "source_units": 1169
+    "commands": 67,
+    "source_units": 781
    },
    "0110100110010110": {
-    "commands": 121,
-    "source_units": 3493
+    "commands": 99,
+    "source_units": 2381
    }
   }
  },
