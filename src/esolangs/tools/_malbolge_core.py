@@ -209,16 +209,20 @@ def _skeleton(n: int) -> tuple[dict[int, str], tuple[int, ...]]:
     set_d(x)
     code[c] = "i"
 
-    addresses = []
-    for row in range(1 << n):
-        state: tuple[int, ...] = _INITS
-        for i in range(n):
-            schedule = _SCHEDULE if i < n - 1 else _SCHEDULE + _POST
-            state = _step(state, 49 if (row >> (n - 1 - i)) & 1 else 48, schedule)
-        addresses.append(state[0])
+    # The fold is a prefix computation, so expanding the levels breadth first
+    # computes each distinct prefix once: refolding from ``_INITS`` per row
+    # costs ``n`` steps a row and so ``Theta(T log T)``, while the shared
+    # levels total ``2**(n+1) - 2`` steps and so ``Theta(T)``.  Branching
+    # ``48`` before ``49`` leaves the list in the MSB-first row order the
+    # caller indexes by.
+    states: list[tuple[int, ...]] = [_INITS]
+    for i in range(n):
+        schedule = _SCHEDULE if i < n - 1 else _SCHEDULE + _POST
+        states = [_step(state, a, schedule) for state in states for a in (48, 49)]
+    addresses = tuple(state[0] for state in states)
     if len(set(addresses)) != len(addresses):
         raise AssertionError("mixer collided")
-    return code, tuple(addresses)
+    return code, addresses
 
 
 # ---------------------------------------------------------------------------

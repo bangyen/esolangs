@@ -125,20 +125,26 @@ def test_describe_language_without_interpreter() -> None:
     assert info["state_model"] == "tape"
 
 
-def test_generate_refuses_a_language_with_no_generator(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_generate_refuses_a_language_with_no_generator() -> None:
     """A registered language may have no generator, and must say so.
 
-    Every language currently has one, so this guard has no live instance --
-    which is exactly why it is pinned here rather than left to be noticed
-    the first time a generator-less language is registered.
+    Deadfish is the live instance this was written ahead of, and having one
+    changed the answer.  The guard raised ``UnknownLanguageError``, whose
+    message ends "`esolangs list` shows all of them" -- and `esolangs list`
+    shows Deadfish, so the refusal contradicted itself the moment it could
+    fire for real.  It is an ``ArgumentError`` now, which is still a
+    ``ValueError`` for anyone catching broadly, and it says which fact about
+    the language is the obstacle.
     """
-    from dataclasses import replace
+    with pytest.raises(esolangs.ArgumentError) as exc:
+        esolangs.generate("Deadfish", "0110")
+    message = str(exc.value)
+    assert "no boolean generator" in message
+    assert "reads no input" in message
+    assert "'int'" in message
 
-    from esolangs.registry import LANGUAGES
 
-    bare = replace(LANGUAGES["Sophie"], boolean=None)
-    monkeypatch.setitem(LANGUAGES, "Sophie", bare)
+def test_an_unknown_language_is_still_unknown_to_generate() -> None:
+    """The other arm, so the two refusals cannot collapse into one."""
     with pytest.raises(UnknownLanguageError):
-        esolangs.generate("Sophie", "0110")
+        esolangs.generate("NoSuchLanguage", "0110")

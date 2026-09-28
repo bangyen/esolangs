@@ -3,52 +3,6 @@
 Only live work belongs here. Contracts and standing walls go to
 [limitations](limitations.md); a closed row leaves, and its commit is the record.
 
-## New interpreters
-
-Implement the surveyed interpreter candidates in this order.  The first four
-are the 2026-09-19 re-run of the `Category:Unimplemented` x
-`Category:Two-dimensional languages` pass (116 pages, up from 111); the
-verdicts are spec reads, not executed generators, so the size question is open
-for every entry.  Piet is already implemented, so it was never in the screen;
-INTERCAL, listed last, is outside the pass.
-
-- **thisthat** (2025): the strongest untouched survivor.  The 2026-09-02 audit
-  filed it unread, thinking the `{{:thisthat}}` transclusions hid the node
-  table; they inject only a CSS `style=` string, so the table is in the
-  wikitext.  Native gates -- `◘` NAND, `□■▦` NOR/OR/XOR with `□■` also
-  emitting 0/1, `◇` one-bit input/output, `◐◑◒◓` bit-conditioned routing --
-  make a combinational network the natural generator, a construction the set
-  does not occupy.  Settle `◨⬒` and the partial-node cases first, and dodge
-  `◘`'s random pointer pick by construction.
-- **Self-replicating marbles** (2024): a second gate-native pick the 2026-09-02
-  audit missed -- it recorded "no input or output vocabulary", but `i` and `o`
-  are in the command table and the NAND example uses both.  A marble carries one
-  bit, `?` deletes it on 0, and two marbles on one tile merge with NAND; a
-  marble leaving a section replicates to every instruction of the next, a
-  fan-out primitive the set does not have.  Pin "the next section" and the
-  collision tick before building.
-- **Wirefunge** (2011): native not/and/or/xor/nor/nand/xnor gates over
-  bit-addressable `a-h`/`1-8` ports, but the page is a self-labelled "Draft
-  Spec" and propagation is simultaneous.  Pin one evaluation order, then admit.
-- **Gridify** (2026): the most complete new spec -- Befunge-style stack, `~`/`&`
-  in, `.`/`,` out, a four-way `?` dispatch -- but its construction is the grid
-  walk the set already has.  Last: admit only if it forces a new axis.
-- **INTERCAL** (1972): not from the 2D pass, and not a completeness add -- the
-  well-known candidates otherwise re-occupy an axis the set already has, and
-  the collection is curated by admission, not coverage.  INTERCAL is the
-  exception: `COME FROM` is pull-based, label-triggered transfer, where every
-  branch here is push/conditional/jump/pointer, so it forces a new branch
-  mechanism.  Spec read only, not priced: whether a loop-less O(T) construction
-  survives the computed-label and `COME FROM` wiring, and whether its binary
-  I/O routes through the package's stdin convention, is the work.
-
-- **Classic-language audit.**  Spec-read Thue, FRACTRAN, Unlambda, and FALSE
-  against the admission test, using brainfuck, Befunge, Malbolge, Piet,
-  Whitespace, and Super SNUSP as the retained comparison set.  For each
-  candidate, identify the new axis, deterministic semantics, stdin route, and
-  a loop-less Boolean construction or a documented obstruction.  Promote only
-  survivors to ordered interpreter work; record rejections in limitations.
-
 ## Conditional follow-up
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
@@ -90,13 +44,30 @@ INTERCAL, listed last, is outside the pass.
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
-  | Malbolge | Exception | Open | Open | Linear |
+  | Malbolge | Exception | Open | Linear | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
   Malbolge cannot be total: its finite source space omits some 18-input truth
-  tables.  Its shipped constructions cover every table through fourteen inputs;
-  generation time and size remain open over the reachable gap below that
-  language ceiling.
+  tables.  Its shipped constructions cover every table through sixteen inputs;
+  generation time remains open at seventeen, the one arity between them and
+  that language ceiling.  Output size is settled by the language itself: a source must load
+  into 59,049 cells, so every Malbolge program -- shipped or not -- is at most
+  59,049 characters, which is `O(1)` and so `O(T)`.  No super-linear size
+  bound can exist: at sixteen and seventeen inputs `T` already exceeds that
+  ceiling, and above seventeen some tables have no program.
+
+  That settles the column but says nothing about the construction, because
+  `len()` does not measure it: every build emits the whole store, so the
+  figure is 59,049 at every arity and the load limit is the length rather
+  than a bound on it.  What the construction spends is its *set* cells, the
+  ones differing from `f(a)`, the nop character for their own address that
+  every untouched cell holds -- and that is exactly linear in `T`, with a
+  closed form through ten inputs.  The cascade above ten spends cells per
+  resolved readout rather than per row, which is where the load law bites.
+  See [malbolge-scaling](proofs/malbolge-scaling.md#the-emitted-size-law):
+  the reason this matters is that the `O(1)` verdict is a property of the
+  padding, so any size argument about the *build* has to be made against
+  the set-cell law, not against the 59,049.
 
   Factor's adaptive residue sequence is bounded by fixed-modulus Hoheisel:
   its last selected prime `Q` is polynomial in the run count. Worst-case
@@ -177,31 +148,10 @@ INTERCAL, listed last, is outside the pass.
   the PNG round trip executes and reduces pixels or codels on an exhaustive
   small-table corpus; constants are the positive control.
 
-- **Image-source candidates.**  A read of the 129 `Category:Non-textual` pages
-  for raster sources only -- music (Fugue, Velato), music-note, and
-  steganography pages excluded.  Verdicts are spec reads, not executed
-  generators.  Brainloller and Braincopter are not popular enough to clear
-  the collection's alternative admission route.
-  Deferred: Bytemap (2012, source and data the same self-modifying grid, no
-  interpreter yet) and Gifunk (2021, APNG/GIF fungeoid whose IP crosses frames)
-  are the
-  only image languages beyond Piet that force an axis the set lacks, both WIP;
-  Turing Paint (2020, six hand-drawable colours) needs the website, not the
-  wiki stub; Befunk (2014, Befunge-98 in PNG, Funk value
-  `(R%10)*100 + (G%10)*10 + B%10`) waits on Befunge-98 and a construction that
-  dodges `?`'s random delta.  Rejected: HuePrism (output-only, no input
-  interface) and BitCode/PicCode (no interpreter, no numbers); the Minecraft
-  ports are game-save media, not a reproducible raster.
-
 ## Open problems
 
 Research questions the proofs leave open.  Each names the first executable
 step; an answer lands in the paper it extends, and the row leaves.
-
-- **Coefficient mass.**  The open questions of the four coefficient-mass
-  papers -- sharpness past the partial-sum criterion, complex roots, and every
-  row below the root 2 -- moved with the papers to
-  [bangyen/coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/main/ROADMAP.md).
 
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
@@ -238,13 +188,14 @@ step; an answer lands in the paper it extends, and the row leaves.
   normal form that strips nop runs and padding -- or a count of
   descriptions rather than of flip-sensitive cells.  Either way it is a
   density lemma: 17 inputs need 2.22 bits a cell against the 3 a cell
-  holds, so every program must waste 0.78 bits a cell (the shipped builds
-  store 0.14).  Next step: measure bits per cell of the tables computed
+  holds, so every program must waste 0.78 bits a cell (the sixteen-input
+  build stores 1.11).  Next step: measure bits per cell of the tables computed
   by a scaled-down Malbolge (`3**6`..`3**7` cells, same decode and
   re-encipher) as the store grows; near 3 kills the route.  The shipped
-  constructions reach 14 inputs (four copies over a three-level cascade);
-  between them and 17 the least unreachable arity is unknown in both
-  directions.
+  constructions reach 16 inputs (a positional address, one cell per row
+  pair), so 17 is the only arity whose status is unknown: a build would
+  need more than two table bits in nearly every cell, and a proof that one
+  table is unreachable needs the density lemma above.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:

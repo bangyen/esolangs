@@ -53,7 +53,7 @@ BrainIf, Sophie, and SLOW ACV MAMMALIAN must read streams in order; BF-PDA uses
 its fixed stack order. No instruction-only wire is derived for 123 or Minifuck.
 ArrowQueue re-enqueue remains open.
 
-Malbolge registers a generator through fourteen inputs, source-embedded with no
+Malbolge registers a generator through sixteen inputs, source-embedded with no
 initializer. Through ten, a branch-free five-cell mixer (13 operations per input bit, inits
 52/90/83/70/92, then a 16-operation post-map) folds the row index into a
 distinct address `h(row)` in `[1083, 59048]` with pairwise gap at least three,
@@ -155,15 +155,42 @@ into 163..243 with ten trampolines (`p` with `A = all-2` over a walked cell
 whose `g` is at least 81 leaves `K2(g)` in 162..242, so a `j` through it
 lands inside the window), which keeps the main code near 12,000 cells, under
 the level-3 region. Executed on all 16,384 rows of the dense, parity, all-0
-and all-1 tables. `n > 14` is refused with `GeneratorCapError`: eight copies
-would put 16,384 first reads in the 39,366 cells above the code, and the
-decoder's second pass is the last level its cells afford.
+and all-1 tables.
+
+Fifteen and sixteen inputs drop the hash. The cascade is needed only because
+a hashed readout collides; a positional one cannot. A readout word has five
+two-trit digits and three bits have eight values, so fifteen address bits
+fill the word with every row pair on its own cell: no `N`, no decoder, no
+copies. A 16-op *gadget* over three fresh walked cells reads three inputs and
+leaves them injective in trit 0 of two of the cells (found by breadth-first
+search over trit 0); since `crazy` is trit-wise, their other trits stay
+constant. The accumulator takes one digit per group -- `p` over it with `A =
+v`, `*`, `p` over the `u` cell with `A` = the accumulator, `*` -- and each
+fold is bijective because the accumulator's arriving trit is 1 (then 2) and
+the gadget cells' constants at trits already holding digits are 2 and 1,
+`crazy`'s two bijective rows. The gadget cells' walked `g` values are solved
+for so that every untouched trit arrives holding exactly that 1 or 2. Each
+digit then misses one of its nine values; two `swap12`s and a final `swap01`
+make the top digit miss `(0, 0)` and digit 1 miss `(2, 2)`, so every readout
+lies in 6561..59039, above the main code (under 5,800 cells) and without wrapping.
+Fifteen inputs run the same build with one read replaced by the constant
+`'0'`, so their 16,384 cells are a subset of sixteen's 32,768. The answer
+stub reads the last input as at thirteen; with no `N`, only the `0 1 x n`
+labels exist, and at 55% occupancy their hubs are placed by seed chains
+searched to land in the table's holes, while the `not x` stub's large
+operand moves to a dedicated pointer-region cell. Executed on all 32,768 and
+65,536 rows of dense (seeded random) and parity tables. `n > 16` is refused
+with `GeneratorCapError`: seventeen would need 65,536 row-pair cells in a
+59,049-cell store.
 
 Counting bounds each family, independent of how good the mixer is. A stub
 program needs three cells per row at pairwise distance at least three, so
 `3 * 2**n <= 59049` and `n <= 14`; the cascade needs one table cell per row
-per level above its ~9k cells of code, so `n <= 15`. Neither reaches the
-seventeen-input target.
+per level above its ~9k cells of code, so `n <= 15`; any build whose cell
+answers a function of the last input needs `2**(n-1) <= 59049`, so `n <= 16`,
+which the positional build meets. A cell answering the last two inputs would
+need sixteen labels from the eight characters its address admits. None reaches the seventeen-input target: seventeen
+needs more than two table bits per cell across nearly the whole store.
 
 That construction gap ends before totality. Malbolge has 59,049 cells and
 eight valid decoded instructions at each occupied source cell -- the
@@ -193,7 +220,7 @@ expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 14 | 14 | Stubs need gap-3 readouts (none at eleven bits). The cascade needs only distinct ones; twelve inputs split the last one off it through a selector, so no mixer ever folds twelve bits; thirteen let the answer stub read the last input, so a table cell names one of four one-input answers; fourteen compute four copies' readouts up front, pick one with inputs twelve and thirteen, and let shared cells hold `N` at any level, so a third read re-enters the decoder. Fifteen would need eight copies and a fourth level, and the decoder's second pass is the last its cells afford. |
+| Malbolge | 16 | 16 | Stubs need gap-3 readouts (none at eleven bits); the hashed cascade through fourteen resolves collisions over up to three levels and stops where their depth outruns the decoder. Fifteen and sixteen address positionally, three bits per two-trit digit, so no row collides; seventeen would need 65,536 row-pair cells in a 59,049-cell store ([scaling](proofs/malbolge-scaling.md)). |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
@@ -213,6 +240,14 @@ worst sampled parity row. A sub-10 ms run does not establish an exponent.
 Loading dominates Factor (integer factorization) and Circuit Diagram (parsing
 super-linear area); it is intentionally excluded from execution time.
 
+FRACTRAN's row-addressing tree costs `Theta(T log T)`, but that is not a
+language floor. The shipped generator packs `w = Theta(n)` entries into an
+exponent and pays for `3T / w` addresses, giving `Theta(T)` text and
+`O(2**w)` execution. At n=12 it emits 8.93 characters per entry versus 23.6
+for the tree; same-parity difference ratios satisfy the contract from n=6.
+The construction, counting floor, and time tradeoff are in
+[fractran](proofs/fractran.md) and `tests/proofs/deep/fractran_packed.py`.
+
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
 Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.
@@ -221,21 +256,81 @@ separate axes.
 
 ## Curation
 
-The collection has 64 languages; its floor is 31. All three classics carry
-generators: Befunge and Whitespace loop-less O(T) lookups, Malbolge a
-source-embedded mixer through fourteen inputs. They are here for coverage, not for
-a new construction axis. Ordinary
-imperative entries with shared-shim generators and no consumer were removed. Nopstacle and
-ZTOALC L left: the former cannot meet embed conventions, the
-latter was a searched syntax-level lookup table. The 2D candidate screen is
-kept because re-running it is expensive: 1,543 unimplemented pages intersected
-with 567 two-dimensional-language pages, then filtered to 36 by implemented
-verdicts, co-categories, I/O/branch vocabulary, and 1,500-character pages.
-Super SNUSP and Alight were admitted; Pinyin was rejected.
+The collection has 68 languages; its floor is 31. All seven classics carry
+generators. Ordinary imperative entries with shared-shim generators and no
+consumer were removed. Nopstacle could not meet the embed conventions; ZTOALC
+L was a searched syntax-level lookup table. The retained 2D screen intersected
+1,543 unimplemented with 567 two-dimensional pages, then filtered 36 by prior
+verdicts, co-categories, I/O and branch vocabulary, and page length. It admitted
+Super SNUSP and Alight and rejected Pinyin.
+
+The alternative route measures fame by esolangs backlinks and by an English
+Wikipedia article with 90-day pageviews, sampled 2026-09-27. A candidate may
+clear either proxy; low backlinks count against only old languages.
+
+Brainfuck anchors the backlink bar at 282: `bf/5` (56) is sufficient, `bf/10`
+(28) carries nothing, and the axis test decides between them. The decided
+classics score 58--271; rejected Brainloller and Braincopter score 26 and 14.
+The band is intentionally indeterminate: Chicken 0.199, Shakespeare 0.195,
+and LOLCODE 0.167 fall inside it. A population percentile cannot replace the
+ratio: a fixed sample of 150 language pages had p99=20, below both rejected
+image languages.
+
+The fame bar is forward-only; past admissions are audited on the intrinsic
+axis test.
+
+Bitwise Cyclic Tag (0.66) also earned the cyclic-schedule axis. Deadfish (0.89)
+has no input vocabulary and is therefore interpreter-only: fame can admit a
+language, but cannot create a generator interface.
+
+Cyclic tag 0.35 duplicates the Bitwise Cyclic Tag axis.
+Emmental 0.15 and Prelude 0.05 are implemented elsewhere but do not clear the
+fame bar, so neither admission route applies.
+
+The 2026-09-27 spec read closed the other candidates. Self-replicating marbles
+does not define which section is next or when collisions occur. Wirefunge's
+draft leaves element initialization open, and its gates duplicate thisthat.
+Bytemap leaves byte order,
+division faults, and its optional 8bpp encoding undefined. Gifunk specifies no
+instructions beyond moving through APNG/GIF frames. Turing Paint has a complete
+reference implementation, and Befunk implements Befunge-98 in PNG; both are
+obscure but already implemented, so neither admission route applies. HuePrism,
+BitCode, PicCode, Brainloller, Braincopter, and the game-save languages remain
+rejected from the same image-source screen.
 
 ## Specification decisions
 
 - 6-5 accepts operands beyond its specification; generators use `0..35`.
+- FALSE's `ø` pick counts from zero, so `0ø` is `$`; the description ("dup
+  the nth stack item") does not say where the count starts.  Reading a
+  variable before storing it raises rather than inventing a value, and a
+  character that is no command is ignored the way whitespace is -- the spec
+  states neither.  Integers wrap to signed 32 bits (the spec's width) and `/`
+  truncates toward zero, and `O` is accepted as an ASCII spelling of the
+  non-ASCII `ø`.  `^` answers the spec's `-1` at end of input, which
+  the shell reaches by catching the port's `EOFError`: raising instead made
+  the reference's own cat loop, which tests `^` against `-1`, a crash.
+- FRACTRAN has no I/O in the language, so this package reads the starting
+  value from the source's first token and prints the value the run stops on.
+  A token may be written as a product of prime powers (`2^3*5` is 40), which
+  is notation only: it is how a generated starting value spells thousands of
+  digits without spelling them.
+- Thue is nondeterministic by specification -- the rule *and* the position are
+  drawn at random -- and the interpreter draws, through the shared
+  `randomness` hook, rather than pinning a tie-break: a pinned one would make
+  every overlapping-rule program compute whatever this package preferred.
+  `--seed` fixes it.  The generator instead writes rules that never overlap,
+  so each state it reaches has exactly one rewrite and the draw cannot change
+  the answer; `tests/tools/test_boolean_classics.py` asserts that over every
+  table to three inputs, and checks the answer under three seeds and the
+  unseeded draw.
+- Unlambda's `@` reads a line and takes its first character, an empty line
+  giving a newline, since the package has no character stream.  Both spec
+  branches are live: at end of input `@` hands its argument `v`, reached by
+  catching the port's `EOFError` as nine other interpreters here catch it, and
+  the current character is left as it was.  `v` absorbs its arguments, so the
+  failure arm can run nothing of its own -- that is the language, not this
+  port.
 - Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
   wiki's "Nth operation" reads one-based.  The generator's labels match this.
 - BrainIf ignores a guarded line naming no command (`if 0 frobnicate`), which

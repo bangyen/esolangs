@@ -147,7 +147,7 @@ def render_template(
     wrapper breaks every run of the same length the same way, so the wrapped
     template is the wrapped form of every program it fills to.
     """
-    from esolangs.tools.helpers import render, unmark
+    from esolangs.tools.helpers import mark_runs, unmark
     from esolangs.tools.wrap import wrap_program
 
     char = template_char(language_id)
@@ -157,8 +157,8 @@ def render_template(
         )
     setters = template_setters(language_id, slots, n)
     if width is None:
-        return render(slots, char, setters), char, setters
-    wrapped = wrap_program(render(slots, None, setters), language_id, width)
+        return slots, char, setters
+    wrapped = wrap_program(mark_runs(slots, char, setters), language_id, width)
     return unmark(wrapped, char, n), char, setters
 
 

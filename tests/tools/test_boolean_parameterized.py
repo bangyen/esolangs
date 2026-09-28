@@ -500,6 +500,15 @@ class TestParameterizedBitdeque:
         assert " ".join(tokens).count("INVERT INVERT") == n - 1  # the resets
         assert tokens[-1] == "EJECT"  # the last input ends on its one block
 
+    def test_ordered_route_rotates_a_nonhead_input_toward_the_head(self) -> None:
+        """The private candidate builder covers the other shortest rotation."""
+        from esolangs.tools import parameterized
+
+        template = parameterized._bitdeque_ordered(  # noqa: SLF001
+            "0110100110010110", (1, 0, 2, 3)
+        )
+        assert "EJECT PUSH EJECT" in template
+
     def test_constant_table_is_a_leaf(self) -> None:
         """A constant table emits a drain-and-push leaf with no branching."""
         from esolangs.tools import parameterized

@@ -4,12 +4,17 @@ from esolangs.tools.algebraic_programming_language import algebraic_programming_
 from esolangs.tools.alight import alight
 from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.befunge import befunge
+from esolangs.tools.bitwise_cyclic_tag import bitwise_cyclic_tag
 from esolangs.tools.circuit_diagram import circuit_diagram
 from esolangs.tools.crement import crement
 from esolangs.tools.cvnc import cvnc
 from esolangs.tools.egl import egl
+from esolangs.tools.false import false
 from esolangs.tools.fargo import fargo
+from esolangs.tools.fish import fish
+from esolangs.tools.fractran import fractran
 from esolangs.tools.inject import inject
+from esolangs.tools.intercal import intercal
 from esolangs.tools.malbolge import malbolge
 from esolangs.tools.other import (
     bit_tilde,
@@ -37,6 +42,7 @@ from esolangs.tools.parameterized import (
     nocomment,
     one_two_three,
     ram0,
+    underload,
 )
 from esolangs.tools.register import (
     addsubjump,
@@ -47,6 +53,7 @@ from esolangs.tools.register import (
     qoibl,
     sophie,
 )
+from esolangs.tools.smallfuck import smallfuck
 from esolangs.tools.stack import bfstack, forth, grapheme, modulous, unsquare
 from esolangs.tools.super_snusp import super_snusp
 from esolangs.tools.tape import (
@@ -65,6 +72,9 @@ from esolangs.tools.tape import (
     suffolk,
     three_d_brainfuck,
 )
+from esolangs.tools.thisthat import thisthat
+from esolangs.tools.thue import thue
+from esolangs.tools.unlambda import unlambda
 from esolangs.tools.vandevelo import vandevelo
 from esolangs.tools.whitespace import whitespace
 
@@ -85,6 +95,7 @@ __all__ = [
     "bio",
     "bit_tilde",
     "bitdeque",
+    "bitwise_cyclic_tag",
     "brainfuck",
     "brainif",
     "circlefuck",
@@ -100,13 +111,17 @@ __all__ = [
     "egl",
     "eval",
     "factor",
+    "false",
     "fargo",
+    "fish",
     "flowchart",
     "forbin",
     "forth",
+    "fractran",
     "grapheme",
     "home_row",
     "inject",
+    "intercal",
     "jaune",
     "laserfuck",
     "malbolge",
@@ -124,13 +139,18 @@ __all__ = [
     "sbleq",
     "six_five",
     "slow_acv_mammalian",
+    "smallfuck",
     "sophie",
     "streetcode",
     "suffolk",
     "super_snusp",
     "taglate",
+    "thisthat",
     "three_d_brainfuck",
     "three_x",
+    "thue",
+    "underload",
+    "unlambda",
     "unsquare",
     "vandevelo",
     "whitespace",

@@ -183,9 +183,14 @@ def test_the_contract_covers_generators_the_original_queue_missed() -> None:
     generators were never checked, which is why this exists.
 
     (ZTOALC L, Nopstacle and COD entered the same way and left with their
-    languages.)  Growing this number is the contract doing its job, so the
-    assertion is on the *original* twenty-five.
+    languages.)  FRACTRAN is the twenty-sixth.  It entered reading as Factor
+    does, a language lower bound, and now reads open: the wall holds for
+    every program that addresses rows, and the language itself is
+    `Theta(T)`, because a program that packs a block of entries into one
+    exponent does not address rows -- it pays steps instead
+    (`docs/proofs/fractran.md`).  Growing this number is the contract doing
+    its job, so the gap is asserted against the registry rather than fixed.
     """
     queue = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
-    assert len(queue) == 25
-    assert len(BY_BOOLEAN) - len(queue) == 37
+    assert len(queue) == 26
+    assert len(BY_BOOLEAN) - len(queue) == 46

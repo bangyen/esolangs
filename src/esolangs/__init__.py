@@ -164,7 +164,15 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str |
     lang = LANGUAGES[resolved]
     fn = lang.boolean or lang.raster_boolean
     if fn is None:
-        raise UnknownLanguageError(language)
+        # Registered, but no generator can exist: Deadfish reads nothing.  This
+        # raised UnknownLanguageError, whose message points at `esolangs list`
+        # -- which shows the language.  Pinned since before it could fire, but
+        # against a monkeypatched entry, so the contradiction went unnoticed.
+        raise ArgumentError(
+            f"{resolved} has no boolean generator: it reads no input at all, so "
+            f"there is no way to hand a program the truth table's inputs. "
+            f"`esolangs list --details` marks it 'int'"
+        )
     if not isinstance(truth_table, str):
         raise TruthTableError(
             f"truth table must be a string of '0' and '1', got "
@@ -541,8 +549,8 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
 def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., Any]:
     """Bind ``seed`` to ``run_fn``'s random source, refusing where there is none.
 
-    Five languages draw (Befunge, LaserFuck, Modulous, Painfuck,
-    Super SNUSP) and nothing public passed an ``rng``: ten runs of
+    Eight languages draw (Befunge, Fish, LaserFuck, Modulous, Painfuck,
+    Super SNUSP, Thue, and thisthat) and nothing public passed an ``rng``: ten runs of
     ``o+++.`` gave ``3`` five times and nothing five times, while ``make_vm``
     always seeded.  A seed for a language that draws nothing is refused: the
     likelier reading is the wrong language.
@@ -552,8 +560,8 @@ def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., A
     if "rng" not in inspect.signature(run_fn).parameters:
         raise ArgumentError(
             f"{name} draws no random values, so a seed has nothing to fix; "
-            f"the languages that draw are Befunge, LaserFuck, "
-            f"Modulous, Painfuck and Super SNUSP"
+            f"the languages that draw are Befunge, Fish, LaserFuck, "
+            f"Modulous, Painfuck, Super SNUSP, Thue and thisthat"
         )
     from esolangs.interpreters.randomness import Seeded
 

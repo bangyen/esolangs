@@ -554,6 +554,7 @@ _REDUCING = {
 _UNSHAPED = {
     "a_painter_ant",
     "befunge",
+    "fish",
     "bio",
     "alight",
     "clockwise",
@@ -563,6 +564,7 @@ _UNSHAPED = {
     "malbolge",
     "minsky_swap",
     "b_tapemark",
+    "bitwise_cyclic_tag",  # no branch, so every table of an arity is one length
     "minifuck",
     "modulous",
     "one_two_three",
@@ -570,6 +572,10 @@ _UNSHAPED = {
     "qoibl",
     "slow_acv_mammalian",
     "container",
+    # The table is the state and the bit read rewrites every pair down to
+    # one, so nothing collapses and a 0% fold is the construction working.
+    "thue",
+    "thisthat",  # fixed H-tree geometry; only the leaf glyphs vary
     "whitespace",
 }
 
@@ -781,7 +787,7 @@ _ARITY_BANDS = (
 # measurement that put the cap here belongs back in this table, with the
 # phrase its own refusal is built around.
 # Malbolge's five-cell mixer is injective with pairwise gap >= 3 through ten
-# inputs, so it now covers the whole sweep; the fifteen-input refusal lives in
+# inputs, so it now covers the whole sweep; the seventeen-input refusal lives in
 # ``tests/tools/test_boolean_malbolge.py``.  No generator falls short of
 # _MAX_ARITY on either shape any more.
 _ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {}
@@ -1052,9 +1058,11 @@ _LINEAR_SCALING = {
     "dig",
     "forth",
     "flowchart",
+    "fractran",
     "inject",
     "jaune",
     "laserfuck",
+    "malbolge",
     "minifuck",
     "one_two_three",
     "ram0",
@@ -1065,7 +1073,6 @@ _LINEAR_SCALING = {
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
-    "malbolge",
     "polynomial",
 }
 
@@ -1096,6 +1103,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "ram0",
         "sbleq",
         "slow_acv_mammalian",
+        "fractran",
         "streetcode",
         "vandevelo",
     }
@@ -1136,6 +1144,11 @@ def test_converted_generators_scale_linearly(name: str) -> None:
     sizes = [len(fn(_parity(n))) for n in arities]
     if name == "minifuck":
         assert all(size <= 70 * 2**n for size, n in zip(sizes, arities, strict=True))
+        return
+    if name == "malbolge":
+        # Every Malbolge source loads into 59,049 cells, so every program --
+        # this generator's or any other -- is bounded by a constant.
+        assert all(size <= 59_049 for size in sizes)
         return
     # The bound is ``linearity.MAX_DIFF_RATIO``.  That module imports the
     # table shapes from this one, so the constant cannot travel the other
@@ -1181,7 +1194,6 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         if name not in _DOCUMENTED_SIZES and LANGUAGES[name].boolean is not None
     )
     assert biggest[0] < 600_000, biggest
-    # Streetcode and B-tapemark each led here until their trees became flat
-    # lookups.  SLOW ACV MAMMALIAN leads now at 115707, roughly twice
-    # Malbolge's fixed 59049 store, so one name is stable where a set was not.
-    assert biggest[1] == "SLOW ACV MAMMALIAN", biggest
+    # thisthat's planar H-tree leads at 124937; its bounding rectangle carries
+    # whitespace as well as the live wires.
+    assert biggest[1] == "thisthat", biggest

@@ -136,6 +136,12 @@ LANGUAGES: dict[str, Language] = {
         id="bitdeque",
         interpreter="queue_based.bitdeque",
     ),
+    "Bitwise Cyclic Tag": Language(
+        "Bitwise Cyclic Tag",
+        boolean=_boolean.bitwise_cyclic_tag,
+        id="bitwise_cyclic_tag",
+        interpreter="queue_based.bitwise_cyclic_tag",
+    ),
     "BrainIf": Language(
         "BrainIf",
         "tape_based.brainif",
@@ -174,6 +180,14 @@ LANGUAGES: dict[str, Language] = {
         "other.cvnc",
         boolean=_boolean.cvnc,
         id="cvnc",
+    ),
+    # No ``boolean``: Deadfish has no input vocabulary, so no generator can
+    # exist for it.  It is here on the fame route alone, and is the only
+    # language ``list --details`` marks ``int``.
+    "Deadfish": Language(
+        "Deadfish",
+        "register_based.deadfish",
+        id="deadfish",
     ),
     "Decleq": Language(
         "Decleq",
@@ -411,6 +425,13 @@ LANGUAGES: dict[str, Language] = {
         id="taglate",
         split=True,
     ),
+    "thisthat": Language(
+        "thisthat",
+        "grid_based.thisthat",
+        boolean=_boolean.thisthat,
+        id="thisthat",
+        split=True,
+    ),
     "Unsquare": Language(
         "Unsquare",
         "stack_based.unsquare",
@@ -426,9 +447,17 @@ LANGUAGES: dict[str, Language] = {
 }
 
 #: Widely known classics kept for coverage as much as construction.  All
-#: three now carry a generator, but they sit outside the four admission axes:
-#: they are here because a caller expects them, and each is an ordinary
-#: machine in its own costume.  Malbolge's generator caps at fourteen inputs.
+#: seven carry a generator, but they are here because a caller expects them
+#: rather than because they take an admission axis: Befunge, FALSE, Malbolge
+#: and Whitespace are each an ordinary machine in a costume.  Three of the
+#: four 2026-09-27 additions do touch something the rest of the set does not
+#: -- Thue rewrites the table in place instead of walking a tree, FRACTRAN
+#: answers with the value it stops on and branches by which fraction divides
+#: first, Unlambda has no conditional at all and branches by forcing one of
+#: two promises -- and the curator's call on promoting any of them out of
+#: this tier is open.  Malbolge's generator caps at sixteen inputs;
+#: FRACTRAN's emission is ``Theta(T log T)`` for a reason the language
+#: forces (``docs/limitations.md``).
 CLASSICS: dict[str, Language] = {
     "Befunge": Language(
         "Befunge",
@@ -437,11 +466,60 @@ CLASSICS: dict[str, Language] = {
         id="befunge",
         split=True,
     ),
+    "FALSE": Language(
+        "FALSE",
+        "stack_based.false",
+        boolean=_boolean.false,
+        id="false",
+    ),
+    "FRACTRAN": Language(
+        "FRACTRAN",
+        "other.fractran",
+        boolean=_boolean.fractran,
+        id="fractran",
+    ),
+    "Fish": Language(
+        "Fish",
+        "grid_based.fish",
+        boolean=_boolean.fish,
+        id="fish",
+        split=True,
+    ),
+    "INTERCAL": Language(
+        "INTERCAL",
+        "other.intercal",
+        boolean=_boolean.intercal,
+        id="intercal",
+    ),
     "Malbolge": Language(
         "Malbolge",
         "other.malbolge",
         boolean=_boolean.malbolge,
         id="malbolge",
+    ),
+    "Smallfuck": Language(
+        "Smallfuck",
+        "tape_based.smallfuck",
+        boolean=_boolean.smallfuck,
+        id="smallfuck",
+    ),
+    "Thue": Language(
+        "Thue",
+        "other.thue",
+        boolean=_boolean.thue,
+        id="thue",
+    ),
+    "Unlambda": Language(
+        "Unlambda",
+        "other.unlambda",
+        boolean=_boolean.unlambda,
+        id="unlambda",
+    ),
+    "Underload": Language(
+        "Underload",
+        "stack_based.underload",
+        boolean=_boolean.underload,
+        id="underload",
     ),
     "Whitespace": Language(
         "Whitespace",
