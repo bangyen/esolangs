@@ -8,9 +8,10 @@ import pytest
 from esolangs.exceptions import TruthTableError
 from esolangs.interpreters.other.crement import _Machine
 from esolangs.tools.crement import PAIR, _crement_ordered, crement
-from esolangs.tools.helpers import TEMPLATE_CHAR, runs
+from esolangs.tools.helpers import TEMPLATE_CHAR, best_input_order, runs
 from esolangs.vm import run_until_halt_or_cycle
 from tests.tools.fills import instantiate_crement
+from tests.tools.sample_tables import five_input_sample
 
 
 def _result(program: str) -> str:
@@ -102,24 +103,33 @@ class TestCrementTree:
         assert _result(instantiate_crement(crement("1111"), [0, 1])) == "1"
 
     def test_constant_subtrees_fold(self) -> None:
-        """A one-dependency table is one node; parity is a full tree."""
+        """A one-dependency table is one node; parity is five, shared.
+
+        Parity's tree has seven nodes, but only two distinct subtrees at
+        each level below the root, so two of them are jumps to a copy.
+        """
         assert len(crement("11110000")) < len(crement("10010110"))
         assert crement("11110000").splitlines()[9:] == ["+A 3 0", "+A 4 1", "+J 3 1"]
-        assert crement("10010110").count("\n") + 1 == 3 + 6 + 3 * 7
+        assert crement("10010110").count("\n") + 1 == 3 + 6 + 3 * 5
 
-    def test_sizes_double_per_added_input(self) -> None:
-        """Dense templates through n=8 grow about twofold per added input.
+    def test_sizes_at_most_double_per_added_input(self) -> None:
+        """Seeded random templates through n=10 never more than double.
 
         Each node is three lines whose operands are a tester's line number
-        or an offset into the node's own subtree, so the size tracks the
-        node count and the ratio settles at two once the tree dominates
-        the fixed header.
+        or an offset, so the plain tree tracks its node count and doubles
+        per input; the shared build emits a random table's distinct
+        subtrees only, of which there are fewer than ``2**n / n`` or so,
+        and the ratio creeps up towards two from below.
         """
-        sizes = [len(crement(_dense(n))) for n in range(1, 9)]
-        assert sizes == [55, 93, 153, 288, 583, 1221, 2389, 4738]
+        tables = [
+            format(random.Random(n).getrandbits(2**n), f"0{2**n}b")
+            for n in range(1, 11)
+        ]
+        sizes = [len(crement(table)) for table in tables]
+        assert sizes == [34, 48, 130, 288, 431, 708, 1266, 2040, 3510, 6608]
         ratios = [b / a for a, b in pairwise(sizes)]
-        assert all(1.6 <= r <= 2.2 for r in ratios), ratios
-        assert all(1.95 <= r <= 2.05 for r in ratios[-2:]), ratios
+        assert all(r <= 2.25 for r in ratios[2:]), ratios
+        assert all(1.6 <= r <= 2 for r in ratios[-3:]), ratios
 
     def test_level_patches_the_chosen_inputs_tester(self) -> None:
         """A table on the last input alone is one node calling its tester.
@@ -138,7 +148,7 @@ class TestCrementTree:
 
         The comparison is on the text, tester and patch addresses included,
         so the fold a reorder buys cannot be spent on its routing.  Over all
-        three-input tables it saves 10.2% (43,596 to 39,156 characters).
+        three-input tables it and sharing save 14.5% (43,596 to 37,278).
         """
         identity = tuple(range(n))
         old = new = 0
@@ -148,7 +158,7 @@ class TestCrementTree:
             after = len(crement(table))
             assert after <= before, table
             old, new = old + before, new + after
-        assert (old, new) == {2: (1444, 1352), 3: (43596, 39156)}[n]
+        assert (old, new) == {2: (1444, 1352), 3: (43596, 37278)}[n]
 
     def test_runs_a_handful_of_commands_per_input(self) -> None:
         """One node per level: a halting row runs ``5 n + 2`` commands at most.
@@ -165,3 +175,43 @@ class TestCrementTree:
                 machine.step()
                 steps += 1
             assert steps == 4 * n + 2
+
+
+class TestCrementSharing:
+    """A subtree already emitted at its level is jumped to, not repeated.
+
+    The plain tree stays a candidate for every order, so no table grows; the
+    gain grows with the table, so it is judged on the seeded five-input
+    sample too (``docs/CONTRIBUTING.md``).
+    """
+
+    @staticmethod
+    def _totals(tables: list[str]) -> tuple[int, int]:
+        """(plain, shipped) character totals, each table checked not to grow."""
+        before = after = 0
+        for table in tables:
+            plain = len(best_input_order(table, _crement_ordered))
+            shipped = len(crement(table))
+            assert shipped <= plain, table
+            before, after = before + plain, after + shipped
+        return before, after
+
+    def test_three_input_total(self) -> None:
+        """All 256 three-input tables: 39,156 to 37,278 characters, 4.8%."""
+        tables = [format(i, "08b") for i in range(256)]
+        assert self._totals(tables) == (39156, 37278)
+
+    def test_five_input_sample_total(self) -> None:
+        """200 seeded five-input tables: 114,791 to 83,070 characters, 27.6%."""
+        assert self._totals(five_input_sample()) == (114791, 83070)
+
+    def test_a_shared_copy_is_patched_by_whoever_enters(self) -> None:
+        """Parity's repeated subtrees run from both parents, every row.
+
+        Each node writes its tester's targets on entry, so the copy's
+        children are right whichever parent jumped to it.
+        """
+        table = "01101001" * 4
+        template = crement(table)
+        assert len(template) < len(best_input_order(table, _crement_ordered))
+        _check(table)

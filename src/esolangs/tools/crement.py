@@ -12,13 +12,19 @@ Layout: a jump to the root, the halt, ``+J @ 1`` (a one-step cycle), then
 ``@+1``; constant subtrees fold to the two gadgets.  Halts for a 0 entry,
 diverges for a 1: at most ``5 n + 2`` commands over ``3 (2**n - 1) + 2 n + 3``
 lines.
+
+Since a child is only an address, a subtree equal to one already emitted at
+its level is not emitted again: the patch names the earlier copy, and a node
+whose halves are equal is skipped for its child.  Over the 256 three-input
+tables that is 39,156 to 37,278 characters (4.8%); over 200 seeded
+five-input tables, 114,791 to 83,070 (27.6%).
 """
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     best_input_order,
-    constant_span_test,
+    subtree_ids,
 )
 
 __all__ = ["crement"]
@@ -41,46 +47,75 @@ def crement(truth_table: str) -> str:
     """Build a Crement template: one run per input, its tester's first line.
 
     Constant subtrees fold, so the tree splits in the shorter of the identity
-    and greedy orders as emitted; the identity wins ties.
+    and greedy orders as emitted; the identity wins ties.  Each order is
+    built plain and shared (:func:`_crement_ordered`), and the shorter wins.
     """
-    return best_input_order(truth_table, _crement_ordered)
+    return best_input_order(truth_table, _crement_best)
 
 
-def _crement_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+def _crement_best(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Return the shorter of one order's plain and shared templates."""
+    plain = _crement_ordered(truth_table, perm)
+    shared = _crement_ordered(truth_table, perm, share=True)
+    return shared if len(shared) < len(plain) else plain
+
+
+def _data(target: int, line: int) -> str:
+    """Spell ``+A`` data at ``line`` naming ``target``: absolute or ``@-k``."""
+    offset = target - 1 - line
+    relative = "@" if not offset else f"@{offset:+d}"
+    absolute = str(target - 1)
+    return relative if len(relative) < len(absolute) else absolute
+
+
+def _crement_ordered(
+    truth_table: str, perm: tuple[int, ...], *, share: bool = False
+) -> str:
     """Emit one split order's template; level ``k`` calls input ``perm[k]``'s tester.
 
-    The runs, and so the testers, stay in name order.
+    The runs, and so the testers, stay in name order.  With ``share`` a
+    parent may name a copy emitted for another: sound, since a node patches
+    its tester's two targets itself on every entry.
     """
     n = _validate_truth_table(truth_table)
     lines: list[str] = []
     tester = [_HEADER_LINES + 2 * perm[level] for level in range(n)]
-    constant = constant_span_test(truth_table)  # O(1) a node, so O(2**n) in all
-
-    def walk(lo: int, hi: int) -> int | None:
-        """Emit the subtree over rows ``lo:hi``; a folded leaf is its gadget."""
-        if constant(lo, hi):
-            return _LOOP if truth_table[lo] == "1" else _HALT
-        level = n - (hi - lo).bit_length() + 1
-        at = len(lines)
-        lines.extend([""] * _NODE_LINES)  # reserve the node's lines
-        half = (hi - lo) // 2
-        zero = walk(lo, lo + half)
-        one_start = len(lines)
-        one = walk(lo + half, hi)
-        # The zero subtree's root is the line after this node, so as data
-        # (one less than the address) it is ``@+1`` from the second line;
-        # the one subtree's root is wherever the zero subtree ended.
-        one_data = f"@+{one_start - 1 - at}" if one is None else str(one)
-        zero_data = "@+1" if zero is None else str(zero)
-        lines[at] = f"+A {tester[level]} {one_data}"
-        lines[at + 1] = f"+A {tester[level] + 1} {zero_data}"
-        lines[at + 2] = f"+J {tester[level]} 1"
-        return None
-
-    root = walk(0, len(truth_table))
     first = _HEADER_LINES + 2 * n
+    ids = subtree_ids(truth_table)  # O(2**n), so a node's lookup is O(1)
+    placed: dict[tuple[int, int], int] = {}
+
+    def walk(level: int, block: int) -> int:
+        """Emit the subtree at ``block`` of ``level``; return its first line."""
+        key = ids[level][block]
+        if key < 2:
+            return _LOOP + 1 if key else _HALT + 1
+        if (level, key) in placed:
+            return placed[level, key]
+        # Equal halves need no test: the parent names the child directly.
+        if share and ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]:
+            return walk(level + 1, 2 * block)
+        at = first + len(lines)
+        if share:
+            placed[level, key] = at
+        lines.extend([""] * _NODE_LINES)  # reserve the node's lines
+        zero = walk(level + 1, 2 * block)
+        one = walk(level + 1, 2 * block + 1)
+
+        # A child emitted here is named relative to the patch, as ``@+k``;
+        # a gadget or earlier copy takes the shorter spelling.
+        def data(target: int, line: int) -> str:
+            return f"@+{target - 1 - line}" if target > at else _data(target, line)
+
+        cell = tester[level]
+        rel = at - first
+        lines[rel] = f"+A {cell} {data(one, at)}"
+        lines[rel + 1] = f"+A {cell + 1} {data(zero, at + 1)}"
+        lines[rel + 2] = f"+J {cell} 1"
+        return at
+
+    root = walk(0, 0)
     header = [
-        f"+J {first if root is None else root + 1} 1",
+        f"+J {root} 1",
         f"+J {first + len(lines)} 1",
         "+J @ 1",
     ]
