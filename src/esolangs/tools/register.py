@@ -1,6 +1,6 @@
 """Boolean-function generators for register-based languages."""
 
-from itertools import pairwise
+from itertools import chain, count, pairwise
 
 # Polynomial, Dig and AddSubJump each own a file: their constructions dwarf
 # the rest of the category, and this module stays the import site the package
@@ -432,10 +432,9 @@ def sophie(truth_table: str) -> str:
     ``truth_table`` has ``2**n`` entries, most significant input first.
 
     Sophie reads a character with ``;`` and branches on the accumulator with
-    ``@$48{then}{else}`` -- the else block runs flat after a failed check, so
-    consecutive conditionals must use the block form. A leaf loads ``#$48``
-    or ``#$49`` for one final ``,`` to print; a last-level ``01`` is its read
-    and ``10`` tests it in the character form, ``;@0{#1}{#0}``.
+    ``@0{then}{else}`` -- the else block runs flat after a failed check, so
+    consecutive conditionals must use the block form. A leaf loads ``#0`` or
+    ``#1`` for one final ``,`` to print; a last-level ``01`` is its read.
 
     :func:`_sophie_hybrid` nests unshared residual states like a tree and
     labels only states reached from multiple parents, merging equal ones.
@@ -450,13 +449,18 @@ def sophie(truth_table: str) -> str:
     return _sophie_hybrid(truth_table)
 
 
-#: Accumulator values a Sophie label may not take.
-#: A read leaves the accumulator holding the character read, and the tests
-#: are against ``48``/``49`` -- ASCII ``0`` and ``1`` -- so a block labelled
-#: with either would fire on an ordinary bit rather than on a jump.  Nothing
-#: else is reserved: the interpreter reads a label as a plain digit run, so
-#: they can climb as high as the program needs.
+#: Accumulator values a Sophie label may not take: a read leaves ``0`` or
+#: ``1`` (48/49), so a block labelled either would fire on an ordinary bit.
 _SOPHIE_RESERVED = frozenset({_ASCII_ZERO, _ASCII_ONE})
+
+#: Values spelled as one character, ``#c``/``@c{``: not ``$``, brackets
+#: (``_partners`` ignores loads), ``#`` (``matches`` misreads ``@#{``) or space.
+_SOPHIE_CHARACTERS = frozenset(range(33, 127)) - {ord(c) for c in "#$[]{}"}
+
+
+def _sophie_literal(value: int) -> str:
+    """Spell ``value`` after ``#`` or ``@``: its character, else ``$`` digits."""
+    return chr(value) if value in _SOPHIE_CHARACTERS else f"${value}"
 
 
 def sophie_labels(retained: list[list[str]]) -> list[dict[str, int]]:
@@ -479,18 +483,13 @@ def sophie_labels(retained: list[list[str]]) -> list[dict[str, int]]:
     from parity and dense tables and shows up on one-hot: over 500 random
     tables per arity, 1.6% collide at n=5, 11.2% at n=6, 35.0% at n=7 and
     87.6% at n=8, while all 65536 tables at n <= 4 are clean.
+
+    Single-character values come first, then numbers from 1 that are not.
     """
-    labels: list[dict[str, int]] = []
-    number = 1
-    for states in retained:
-        level: dict[str, int] = {}
-        for state in states:
-            while number in _SOPHIE_RESERVED:
-                number += 1
-            level[state] = number
-            number += 1
-        labels.append(level)
-    return labels
+    single = sorted(_SOPHIE_CHARACTERS - _SOPHIE_RESERVED)
+    rest = (v for v in count(1) if v not in _SOPHIE_CHARACTERS)
+    values = chain(single, rest)
+    return [{state: next(values) for state in states} for states in retained]
 
 
 def _sophie_hybrid(truth_table: str) -> str:
@@ -526,10 +525,10 @@ def _sophie_hybrid(truth_table: str) -> str:
     ]
     labels = sophie_labels(retained)
 
-    # A leaf runs on to the final ``,``: 48/49 fire no ``@$L`` on the way.
+    # A leaf runs on to the final ``,``: 48/49 fire no ``@L`` on the way.
     def body(k: int, state: str) -> str:
         if state.count(state[0]) == len(state):
-            return ";" * (n - k) + f"#${_ASCII_ZERO + int(state[0])}"
+            return ";" * (n - k) + f"#{state[0]}"
         width = 2 ** (n - k - 1)
         zero, one = state[:width], state[width:]
         if k + 1 == n:
@@ -537,18 +536,19 @@ def _sophie_hybrid(truth_table: str) -> str:
 
         def next_body(child: str) -> str:
             if child in labels[k + 1]:
-                return f"#${labels[k + 1][child]}"
+                return "#" + _sophie_literal(labels[k + 1][child])
             return body(k + 1, child)
 
         if zero == one:
             return ";" + next_body(zero)
-        return f";@$48{{{next_body(zero)}}}{{{next_body(one)}}}"
+        return f";@0{{{next_body(zero)}}}{{{next_body(one)}}}"
 
     out = []
     for k, states in enumerate(retained):
         for state in states:
             block = body(k, state)
-            out.append(block if k == 0 else f"@${labels[k][state]}{{{block}}}")
+            label = _sophie_literal(labels[k][state])
+            out.append(block if k == 0 else f"@{label}{{{block}}}")
     return "".join(out) + ","
 
 
