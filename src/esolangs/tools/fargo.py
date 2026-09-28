@@ -13,10 +13,11 @@ The program is ``% 0 <expression>`` then ``$``, writing exactly ``0`` or
 holding ``int(bits, 2)``, so input ``i`` (most-significant-first) is bit
 ``n - 1 - i`` of that number -- the only place the mapping appears.  The
 interpreter reads that line before execution, so every program consumes
-exactly one input line.  Input reordering does not apply.
+exactly one input line.  With no reads there is no read order: factoring
+order only renames the ``@`` literals, and :func:`fargo` tries four.
 """
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, permute_truth_table
 
 __all__ = ["fargo"]
 
@@ -100,7 +101,7 @@ def _factored(masks: list[int], constant: int, n: int) -> str:
     return "\n".join([*lines, f"% 0 {result}", "$", ""])
 
 
-def _anf_expression(coeffs: list[int], n: int) -> str:
+def _anf_expression(coeffs: list[int], n: int, at: tuple[int, ...]) -> str:
     """Return a recursively factored ANF expression in O(T) emitted size.
 
     Emitted into one flat piece list, O(T) time: whether a half is empty,
@@ -127,9 +128,9 @@ def _anf_expression(coeffs: list[int], n: int) -> str:
             build(start, half, bit - 1)
             pieces.append(" ")
         if nonzero[start + size] - nonzero[start + half] == 1 and coeffs[start + half]:
-            pieces.append(f"@ {bit:b}")
+            pieces.append(f"@ {at[bit]:b}")
         else:
-            pieces.append(f"& @ {bit:b} ")
+            pieces.append(f"& @ {at[bit]:b} ")
             build(start + half, half, bit - 1)
 
     if nonzero[-1] == 0:
@@ -138,7 +139,9 @@ def _anf_expression(coeffs: list[int], n: int) -> str:
     return "".join(pieces)
 
 
-def _arm_expression(truth_table: str, coeffs: list[int], n: int) -> str:
+def _arm_expression(
+    truth_table: str, coeffs: list[int], n: int, at: tuple[int, ...]
+) -> str:
     """Return the factored expression with each node's arms chosen locally.
 
     The positive split ``f0 ^ (x & d)``, ``d = f0 ^ f1``, is why polarity
@@ -187,7 +190,7 @@ def _arm_expression(truth_table: str, coeffs: list[int], n: int) -> str:
             (f0, low, "|", f1, one),
             (f1, one, "|", f0, low),
         )[choice]
-        literal = f"^ 1 @ {bit:b}" if choice % 2 else f"@ {bit:b}"
+        literal = f"^ 1 @ {at[bit]:b}" if choice % 2 else f"@ {at[bit]:b}"
         if any(kept_anf):
             pieces.append(f"{op} ")
             leaf(kept, kept_anf, bit - 1)
@@ -211,6 +214,23 @@ def _arm_expression(truth_table: str, coeffs: list[int], n: int) -> str:
     return "".join(pieces)
 
 
+def _orders(n: int) -> list[tuple[int, ...]]:
+    """Return the factoring orders tried: identity, reversed, both rotations."""
+    identity = tuple(range(n))
+    orders = [identity, identity[::-1], (*identity[1:], 0), (n - 1, *identity[:-1])]
+    return list(dict.fromkeys(orders))
+
+
+def _expressions(truth_table: str, n: int, order: tuple[int, ...]) -> list[str]:
+    """Return both emitters' expressions factoring level ``k`` on ``order[k]``."""
+    table = permute_truth_table(truth_table, order)
+    coeffs = _anf_coefficients(table)
+    # ``bit`` counts down from ``n - 1`` at the top level; input ``i`` is
+    # Fargo bit ``n - 1 - i``.
+    at = tuple(n - 1 - order[n - 1 - bit] for bit in range(n))
+    return [_arm_expression(table, coeffs, n, at), _anf_expression(coeffs, n, at)]
+
+
 def fargo(truth_table: str, width: int | None = None) -> str:
     """Build a Fargo program computing the given truth table.
 
@@ -221,11 +241,15 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     """
     n = _validate_truth_table(truth_table)
     coeffs = _anf_coefficients(truth_table)
-    # Two candidates, both O(T): the chosen arms are shorter on nearly every
-    # table, and the positive factoring keeps the few it loses from growing.
+    # Four named factoring orders; ``@`` addresses any bit, so an order only
+    # renames the literals.  Each order's two emitters are O(T), the chosen
+    # arms shorter on nearly every table; identity first, so it wins ties.
     expression = min(
-        _arm_expression(truth_table, coeffs, n),
-        _anf_expression(coeffs, n),
+        (
+            candidate
+            for order in _orders(n)
+            for candidate in _expressions(truth_table, n, order)
+        ),
         key=len,
     )
     compact = f"% 0 {expression}\n$\n"

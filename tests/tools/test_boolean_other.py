@@ -401,9 +401,10 @@ class TestFargo:
     def test_choosing_arms_never_grows_a_program(self) -> None:
         """No table to three inputs is longer than its positive factoring.
 
-        The positive factoring is the build before arms were chosen and it
-        stays a candidate, so the chosen arms can only shorten a program:
-        over three inputs the sweep falls from 9,556 characters to 8,202.
+        The positive factoring in name order is the build before arms and
+        orders were chosen, and it stays a candidate, so they only shorten a
+        program: over three inputs the sweep falls from 9,556 characters to
+        8,202 with the arms, and to 7,576 with the four orders.
         """
         from esolangs.tools.fargo import _anf_coefficients, _anf_expression
 
@@ -411,14 +412,15 @@ class TestFargo:
         for n in (1, 2, 3):
             for value in range(2 ** (2**n)):
                 table = format(value, f"0{2**n}b")
-                positive = _anf_expression(_anf_coefficients(table), n)
+                at = tuple(range(n))
+                positive = _anf_expression(_anf_coefficients(table), n, at)
                 old = len(f"% 0 {positive}\n$\n")
                 built = len(boolean.fargo(table))
                 assert built <= old, table
                 if n == 3:
                     before += old
                     after += built
-        assert (before, after) == (9556, 8202)
+        assert (before, after) == (9556, 7576)
 
     @pytest.mark.parametrize(
         ("table", "expression"),
