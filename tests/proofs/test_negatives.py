@@ -464,6 +464,17 @@ def test_polynomial_symmetric_remainders_have_independent_zero_positions() -> No
             assert first_zeros(moduli) == (second, first)
 
 
+def test_polynomial_maximal_width_reaches_half_the_asymptotic_scale() -> None:
+    """The chosen level in ``lem:maximal-width`` gives ``N_n >= T/(2n)``."""
+    import math
+
+    for n in range(2, 33):
+        j = max(2, math.ceil(math.log2(n)))
+        residuals = 2 ** (n - j)
+        first_essential = 2 ** (2**j) - 2 ** (2 ** (j - 1)) - 2
+        assert min(residuals, first_essential) * 2 * n >= 2**n
+
+
 def _digit_mass(coeffs: list[int]) -> int:
     return sum(len(str(abs(c))) for c in coeffs if c)
 
