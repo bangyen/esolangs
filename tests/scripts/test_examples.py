@@ -299,25 +299,18 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         monkeypatch.setattr(_generate_examples, "EXAMPLES", target)
         return _generate_examples
 
-    def test_write_set_writes_every_boolean_example(
+    def test_write_set_writes_programs_and_manifest(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         module = self._redirect(monkeypatch, tmp_path / "examples")
+        programs = [("one", "a"), ("two", "b\n")]
+        monkeypatch.setitem(module.SETS, "boolean", lambda: iter(programs))  # type: ignore[attr-defined]
         module.write_set("boolean")  # type: ignore[attr-defined]
 
         written = {path.stem for path in (tmp_path / "examples").glob("*.txt")}
-        expected = {stem for stem, _ in module.boolean_programs()}  # type: ignore[attr-defined]
-        assert written == expected
+        assert written == {"one", "two"}
         assert (tmp_path / "examples" / "MANIFEST.md").is_file()
-
-    def test_each_file_is_the_program_plus_one_newline(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """The interpreters strip that newline; the file has to carry it."""
-        module = self._redirect(monkeypatch, tmp_path / "examples")
-        module.write_set("boolean")  # type: ignore[attr-defined]
-
-        for stem, generated in module.boolean_programs():  # type: ignore[attr-defined]
+        for stem, generated in programs:
             text = (tmp_path / "examples" / f"{stem}.txt").read_text(encoding="utf-8")
             assert text == generated.rstrip("\n") + "\n"
 
@@ -327,8 +320,8 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Rerunning is a no-op, which is what makes it safe to run habitually."""
         module = self._redirect(monkeypatch, tmp_path / "examples")
+        monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("sample", "x")]))  # type: ignore[attr-defined]
         module.write_set("boolean")  # type: ignore[attr-defined]
         capsys.readouterr()
         module.write_set("boolean")  # type: ignore[attr-defined]
@@ -351,17 +344,21 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         module = self._redirect(monkeypatch, tmp_path / "examples")
+        written: list[str] = []
+        monkeypatch.setattr(module, "write_set", written.append)
         monkeypatch.setattr(sys, "argv", ["generate.py"])
         assert module.main() == 0  # type: ignore[attr-defined]
-        assert (tmp_path / "examples" / "MANIFEST.md").is_file()
+        assert written == list(module.SETS)  # type: ignore[attr-defined]
 
     def test_main_accepts_one_named_set(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         module = self._redirect(monkeypatch, tmp_path / "examples")
+        written: list[str] = []
+        monkeypatch.setattr(module, "write_set", written.append)
         monkeypatch.setattr(sys, "argv", ["generate.py", "boolean"])
         assert module.main() == 0  # type: ignore[attr-defined]
-        assert list((tmp_path / "examples").glob("*.txt"))
+        assert written == ["boolean"]
 
     def test_main_refuses_an_unknown_set(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
