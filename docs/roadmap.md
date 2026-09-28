@@ -169,6 +169,16 @@ below are the rest of the audit, each with the measurement that opened it.
   or three of them and see whether the exhaustive loop kills a mutant its
   first eight tables do not.
 
+- **The Malbolge arity sweeps are the largest block left, and unaudited.**
+  With the rows above converted, `test_boolean_malbolge.py`'s eleven- to
+  fourteen-input probes are the top of the suite: ~100s of CPU across eight
+  tests, 16.5s the largest.  They already *sample* rather than enumerate, so
+  the exhaustive-sweep finding does not apply to them and nothing here says
+  they are wasteful -- only that no one has asked what they kill.  First
+  step: `scripts/mutate.py generator tools/malbolge` with and without them,
+  since a sampled probe that survives the same mutants as the arity below it
+  is sampling an arity that is not separating anything.
+
 - **The expensive tests have no evidence gate.**  `tests/duration_policy.py`
   bounds what a test may *cost* by band, and nothing bounds what it must
   *buy*.  That is the asymmetry all three findings above came through: each
