@@ -1,7 +1,8 @@
 """Boolean-function generator for Super SNUSP.
 
 Wide tables use a linear packed-integer lookup.  Small tables retain the ANF
-evaluator where its XOR of input products is shorter.  Neither uses the
+evaluator where its XOR of input products is shorter, at a per-input
+polarity: a cell may hold an input or its complement at one command.  Neither uses the
 language's random ``=`` opcode.
 """
 
@@ -47,14 +48,54 @@ def _move(start: int, end: int) -> str:
     return (">" if end > start else "<") * abs(end - start)
 
 
+def _flip(truth_table: str, negated: int) -> str:
+    """Return ``truth_table`` with the inputs set in ``negated`` inverted.
+
+    ``negated`` is a row mask (most-significant input first), so row ``r``
+    of the result is row ``r ^ negated`` of the table.
+    """
+    return "".join(truth_table[row ^ negated] for row in range(len(truth_table)))
+
+
+def _decode_base(k: int, negated: int) -> int:
+    """Return the decode constant, 48 or 49, for ``k`` retained inputs.
+
+    ``,-`` against 48 stores an input as its bit (0 or 1); against 49 it
+    stores ``bit - 1``, which is -1 for a 0 and 0 for a 1.  A product starts
+    at 1 and ``&`` with -1 keeps it, so a -1/0 cell *is* the negated
+    literal.  Whichever polarity is the majority rides on the constant for
+    free and each minority input pays one ``(`` or ``)``.
+    """
+    return 49 if 2 * negated.bit_count() > k else 48
+
+
 def _emit_anf(
-    n: int, truth_table: str, used: list[int], *, coefficients: list[int] | None = None
+    n: int,
+    truth_table: str,
+    used: list[int],
+    *,
+    coefficients: list[int] | None = None,
+    negated: int = 0,
 ) -> str:
-    """Emit an ANF evaluator over ``used`` stream inputs."""
-    program = ['"', "48{"]
+    """Emit a fixed-polarity ANF evaluator over ``used`` stream inputs.
+
+    ``negated`` marks, as a row mask over ``truth_table``'s inputs, the
+    retained inputs whose cells hold the complement; the terms are then the
+    ANF of the table with those inputs flipped (``coefficients`` when given).
+    """
+    k = len(used)
+    base = _decode_base(k, negated)
+    program = ['"', f"{base}{{"]
+    retained = 0
     for input_index in range(n):
         program.extend([",", "-"])
         if input_index in used:
+            flipped = bool(negated >> (k - 1 - retained) & 1)
+            retained += 1
+            if flipped and base == 48:
+                program.append("(")
+            elif not flipped and base == 49:
+                program.append(")")
             program.append(">")
 
     # A trailing ignored input occupies the accumulator cell.  Inputs that
@@ -63,10 +104,9 @@ def _emit_anf(
     # retained at all).
     if not used or used[-1] != n - 1:
         program.append("0")
-    product = len(used) + 1
-    coefficients = (
-        _anf_coefficients(truth_table) if coefficients is None else coefficients
-    )
+    product = k + 1
+    if coefficients is None:
+        coefficients = _anf_coefficients(_flip(truth_table, negated))
     if coefficients[0]:
         program.append(")")
 
@@ -74,8 +114,8 @@ def _emit_anf(
         if not coefficient:
             continue
         program.extend([">", "1"])
-        for input_index in range(len(used)):
-            table_bit = 1 << (len(used) - 1 - input_index)
+        for input_index in range(k):
+            table_bit = 1 << (k - 1 - input_index)
             if mask & table_bit:
                 program.extend(
                     [
@@ -99,25 +139,52 @@ def _anf_cost(
     used: list[int],
     *,
     coefficients: list[int] | None = None,
+    negated: int = 0,
 ) -> int:
     """Return the rendered length of :func:`_emit_anf` without emitting it."""
-    cost = 4 + 2 * n + len(used) + 7
+    k = len(used)
+    flips = negated.bit_count()
+    cost = 4 + 2 * n + k + 7 + min(flips, k - flips)
     if not used or used[-1] != n - 1:
         cost += 1
-    coefficients = (
-        _anf_coefficients(truth_table) if coefficients is None else coefficients
-    )
+    if coefficients is None:
+        coefficients = _anf_coefficients(_flip(truth_table, negated))
     cost += coefficients[0]
-    product = len(used) + 1
+    product = k + 1
     for mask, coefficient in enumerate(coefficients[1:], start=1):
         if not coefficient:
             continue
         cost += 5  # ``>1`` then ``{<^`` around the product.
-        for input_index in range(len(used)):
-            table_bit = 1 << (len(used) - 1 - input_index)
+        for input_index in range(k):
+            table_bit = 1 << (k - 1 - input_index)
             if mask & table_bit:
                 cost += 2 * (product - input_index) + 2
     return cost
+
+
+def _polarity(n: int, truth_table: str, used: list[int]) -> tuple[int, int]:
+    """Return ``(negated, cost)``: a cheap input polarity for the ANF.
+
+    Which arm of an input is its ANF literal decides the terms: ``NOR`` is
+    every product of its inputs, ``AND`` of their complements a single one.
+    Both uniform polarities cost nothing extra (see :func:`_decode_base`),
+    so each is a start, and one greedy pass then flips every retained input
+    in turn, keeping a flip that shortens the build.  That is ``2(k + 1)``
+    priced candidates, not the ``2**k`` polarities, and it stays on the
+    bounded ANF path.
+    """
+    k = len(used)
+    best_mask, best_cost = 0, 0
+    for start in (0, (1 << k) - 1):
+        mask = start
+        cost = _anf_cost(n, truth_table, used, negated=mask)
+        for bit in range(k):
+            trial = _anf_cost(n, truth_table, used, negated=mask ^ 1 << bit)
+            if trial < cost:
+                mask, cost = mask ^ 1 << bit, trial
+        if not start or cost < best_cost:
+            best_mask, best_cost = mask, cost
+    return best_mask, best_cost
 
 
 def _emit_lookup(truth_table: str) -> str:
@@ -146,8 +213,9 @@ def _super_snusp_flat(truth_table: str) -> str:
     """Emit the shortest bounded-ANF or linear lookup program.
 
     Only essential inputs are retained, compactly, while every original input
-    is still consumed in stream order.  The ANF is built over that projection:
-    for every nonzero coefficient the construction forms its input product
+    is still consumed in stream order.  The ANF is built over that projection
+    or the full table, whichever is shorter at its :func:`_polarity`: for
+    every nonzero coefficient the construction forms its input product
     beside the accumulator and xors it in.  Both reads happen before any
     evaluation, so every path consumes exactly ``n`` input lines, including
     constant and reduced functions.
@@ -164,17 +232,19 @@ def _super_snusp_flat(truth_table: str) -> str:
 
     used = essential_inputs(truth_table, n)
     full = list(range(n))
-    if len(used) == n:
-        return min(lookup, _emit_anf(n, truth_table, full), key=len)
-    reduced = read_at(truth_table, used, n)
-    full_coefficients = _anf_coefficients(truth_table)
-    reduced_coefficients = _anf_coefficients(reduced)
-    anf = (
-        _emit_anf(n, truth_table, full, coefficients=full_coefficients)
-        if _anf_cost(n, truth_table, full, coefficients=full_coefficients)
-        <= _anf_cost(n, reduced, used, coefficients=reduced_coefficients)
-        else _emit_anf(n, reduced, used, coefficients=reduced_coefficients)
-    )
+    shapes = [(truth_table, full)]
+    if len(used) < n:
+        shapes.append((read_at(truth_table, used, n), used))
+    # Price each shape at its chosen polarity and emit only the cheaper; the
+    # full shape wins ties, as it did before polarity was chosen.
+    best: tuple[int, str, list[int], int] | None = None
+    for table, retained in shapes:
+        negated, cost = _polarity(n, table, retained)
+        if best is None or cost < best[0]:
+            best = (cost, table, retained, negated)
+    assert best is not None
+    _, table, retained, negated = best
+    anf = _emit_anf(n, table, retained, negated=negated)
     return min(lookup, anf, key=len)
 
 
