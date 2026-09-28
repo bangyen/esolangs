@@ -93,9 +93,18 @@ step; an answer lands in the paper it extends, and the row leaves.
   collision needs about `2**809` programs (`2**2428` at `3**7`).  In 10,000
   random legal programs, 234 at `3**6` and 246 at `3**7` computed a total
   one-input table, but the sample itself caps any distinct-table estimate at
-  0.0183 and 0.0061 bits a cell.  Next step: define a canonical nop/padding
-  normal form and bound its descriptions analytically; empirical entropy
-  cannot supply the needed upper bound.  The shipped
+  0.0183 and 0.0061 bits a cell.  A local canonical form cannot shrink the
+  alphabet either: every address admits one character for each of the eight
+  operations, and a first-use cell can carry all three bits as data.  The
+  constructive route now packs an eight-bit block into three cells.  Three
+  cyclic trit translates of the fourteen-input positional map produce 11,582
+  disjoint blocks and 2,401 pairs sharing all three cells.  Encoding each
+  shared pair across its three common cells and three private cells uses
+  49,152 cells and leaves 9,897 for code.  Next step: derive the loop-less
+  map from the 2,401 collision pairs to 2,401 of the 5,700 free three-cell
+  orbits, then build and execute the decoder; see
+  [malbolge-scaling](proofs/malbolge-scaling.md#seventeen-three-cell-packing).
+  The shipped
   constructions reach 16 inputs (a positional address, one cell per row
   pair), so 17 is the only arity whose status is unknown: a build would
   need more than two table bits in nearly every cell, and a proof that one
