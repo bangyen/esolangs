@@ -236,14 +236,12 @@ def _super_snusp_flat(truth_table: str) -> str:
     if len(used) < n:
         shapes.append((read_at(truth_table, used, n), used))
     # Price each shape at its chosen polarity and emit only the cheaper; the
-    # full shape wins ties, as it did before polarity was chosen.
-    best: tuple[int, str, list[int], int] | None = None
-    for table, retained in shapes:
-        negated, cost = _polarity(n, table, retained)
-        if best is None or cost < best[0]:
-            best = (cost, table, retained, negated)
-    assert best is not None
-    _, table, retained, negated = best
+    # full shape wins ties, as it did before polarity was chosen, because
+    # ``min`` returns the first of equally cheap entries.
+    priced = [
+        (_polarity(n, table, retained), table, retained) for table, retained in shapes
+    ]
+    (negated, _cost), table, retained = min(priced, key=lambda shape: shape[0][1])
     anf = _emit_anf(n, table, retained, negated=negated)
     return min(lookup, anf, key=len)
 
