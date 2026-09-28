@@ -400,6 +400,20 @@ says estimated.
   under about 200 a state: one read routine per cell position shared by all
   states, with the state carried as data. That is designed, not built.
 
+Two later results narrow both sides. The automaton shrinks to **five**
+shared states once each state may read a cell chosen by the row's select
+bits (verified over all 256 answer vectors; two states provably cannot,
+three and four were never found); since a group's three cells differ only in
+trit 0, those per-row read pointers are a one-time per-trit selection. Five
+states times two parities projects to roughly 7,300-9,000 cells against 7,506
+free -- near the line but unbuilt. On the other side, an output-truncated
+count sharpens the language bound: before its one output a run's first
+fetch of a cell cannot decode to `v`, nor to `<` unless `A` already holds
+`'0'` or `'1'`, so the tables are at most `2**21.85 * 6**a' * 7**a * 8**b` for
+`a'`, `a`, `b` such first reads by kind. Seventeen falls if every program's
+first reads weigh at most 131,050 bits, and no bound on a single run's steps
+or reads can reach that, since 2^17 leaves each need one.
+
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
