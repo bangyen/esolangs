@@ -293,16 +293,18 @@ cells jointly name at most `5**k` behaviours, so a group of `2**r` rows needs
 `5**k >= 2**(2**r)` and the best rate is `1 / log2 5 = 0.43` cells a row.
 Seventeen inputs then need at least 56,450 table cells, leaving under 2,600
 for all code, hubs and stubs, against a positional main code of ~5,700.
-Executing the table cells instead is not covered: the decoded instruction
-depends on `(t + h) mod 94`, so all eight are available at every address. A
-group's cells run as one straight-line program shared by its rows, and `<`
-and `v` act on every row at once, but `i` jumps through `mem[d]`, and `d`
-differs per row, so it can send some rows on and let others fall through.
-That leaves seven usable instructions, about 2.8 bits a cell, above the 2.47
-a cell seventeen needs once the code is paid for. No such build is known.
+Executing the table cells instead escapes the proof but not the rate. The
+decoded instruction depends on `(t + h) mod 94`, so all eight are available
+at every address, and a group's cells run as one straight-line program
+shared by its rows. `<` and `v` act on every row at once. `i` jumps through
+`mem[d]`, and `d` differs per row, but a row can only fall through it if
+`mem[d]` holds that `i` cell's own address, which differs per group and
+would have to be computed as `S + k` -- addition, which `crazy` and `*` do
+not give. So `i` ends the group for every row, and the letters left are `o
+j * p /`: again about `log2 5` bits a cell.
 
-No value-decoded build reaches seventeen; an execution-decoded one is not
-excluded. Lowering the language bound
+No value-decoded build reaches seventeen, and no known execution-decoded
+one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
 factor `2**46076`, so no such proof is in sight. Seventeen is open in both
 directions.
