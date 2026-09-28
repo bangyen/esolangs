@@ -18,7 +18,7 @@ sixteen labels and the pointer region admits about six. An `n`-input table
 therefore needs `2**(n-1)` answer cells, all distinct and decoder-reachable,
 in the roughly 39,366 cells the readout can address above the code. That is a
 floor, and the optimum of this architecture rather than a description of every
-build: thirteen and fourteen attain it, while eleven and twelve resolve one
+build: thirteen through sixteen attain it, while eleven and twelve resolve one
 row per cell and spend `2**n` ([the emitted-size law](#the-emitted-size-law)).
 
 Collisions resolve by cascade *tiers*; the decoder reaches tier `k` by being
@@ -61,44 +61,53 @@ navigation. Worst case is all-ones at `46 + 28n + 3T`, best all-zeros at
 `46 + 28n + 2T` -- linear in `T` with a known constant, the `28n` being the
 `log T` term.
 
-Above ten the cascade stores per *resolved readout*, not per row, so size
-becomes table-independent -- 0.1-1.3% spread across all-zero, all-one and
-random tables, against the `T/2` that popcount moves it below ten. Answer
-cells are `2**11 * 2**selectors`:
+Above ten, size stops depending on the table at all: it is spent per *resolved
+readout*, not per row, and the spread across all-zero, all-one and random
+tables is 0.1-2.0% where popcount moved it by `T/2` below ten. The hashed
+cascade spends `2**11 * 2**selectors`, the positional build one cell a row
+pair:
 
-| inputs | copies | selectors | stub-read | answer cells | rows per cell |
+| inputs | build | answer cells | rows per cell | set cells | overhead |
 | --- | --- | --- | --- | --- | --- |
-| 11 | 1 | 0 | -- | 2,048 = `T` | 1 |
-| 12 | 2 | 1 | -- | 4,096 = `T` | 1 |
-| 13 | 2 | 1 | 1 | 4,096 = `T/2` | 2 |
-| 14 | 4 | 2 | 1 | 8,192 = `T/2` | 2 |
+| 11 | cascade, 1 copy | 2,048 = `T` | 1 | 2,524-2,532 | ~480 |
+| 12 | cascade, 2 copies | 4,096 = `T` | 1 | 4,667-4,670 | ~572 |
+| 13 | cascade, 2 + stub read | 4,096 = `T/2` | 2 | 5,237 | ~1,200 |
+| 14 | cascade, 4 + stub read | 8,192 = `T/2` | 2 | 10,108 | ~1,900 |
+| 15 | positional | 16,384 = `T/2` | 2 | 16,473 | 89 |
+| 16 | positional | 32,768 = `T/2` | 2 | 32,034 | -734 |
 
-So an input spent as a copy-selector doubles storage while one read directly
-by the answer stub doubles `T` for free, and the coefficient alternates
-between `1` and `1/2`. That is the whole content of the lumpy per-input size
-factors (x1.82, x1.13, x1.93 from eleven to fourteen): not a growth rate, an
-alternation. Sampling cannot separate `T/log T` from `T log T` on four
-points; counting the construction settles it as linear in both regimes.
+In the cascade an input spent as a copy-selector doubles storage while one read
+directly by the answer stub doubles `T` for free, so its coefficient alternates
+between `1` and `1/2` -- the whole content of its lumpy per-input size factors
+(x1.82, x1.13, x1.93), which are an alternation rather than a growth rate. The
+positional build sits at `T/2` throughout and carries almost no overhead, the
+decoder and hub machinery being what the cascade paid for. At sixteen it is
+*below* `T/2`: 734 of the 32,768 pair cells want the nop character for their own
+address anyway, the same coincidence that makes a 0-row free below ten.
 
-Where it matters: the load law above allows two rows per answer cell and
-prices fifteen and sixteen at `2**(n-1)`, but only thirteen and fourteen
-actually reach that. Eleven and twelve resolve one row per cell, so they
-spend `2**n` -- a factor two above what the architecture admits. This does
-not weaken the wall: `2**(n-1)` is the optimistic count, and a build that
-misses it needs *more* cells, so the fifteen- and sixteen-input loads are
-floors. It does mean the law states the architecture's optimum rather than
-what every shipped arity does, and eleven and twelve carry a spent factor
-two that no measurement above them inherits.
+So size is linear in `T` in all three regimes, and counting the construction is
+what settles that -- six arities of a table-independent quantity cannot separate
+`T/log T` from `T log T` by sampling.
+
+Where it matters: the load law's `2**(n-1)` is a floor and the optimum of the
+architecture, not a description of every build. Thirteen through sixteen attain
+it; eleven and twelve resolve one row per cell and spend `2**n`, a factor two
+above what the architecture admits. That never weakened the wall -- a build
+that misses the floor needs *more* cells -- but it does mean the factor two at
+eleven and twelve is spent head-room that no later arity inherits.
 
 ## Generation time
 
 The build is `plan(n)` then `fill(table)`. Every layout planner -- `_skeleton`,
-`_cascade`, `_wide`, `_thirteen`, `_fourteen` -- takes **no truth table** and is
-memoized, so all table-dependent work is in `fill`, which is one pass over the
-rows and one pass over the store. `fill` calls `_table_char` at most 1.14 times
-a row (measured 1.125, 1.137, 0.568, 0.552 at eleven to fourteen, tracking the
-rows-per-cell column above), and each call is bounded by eight ops over a
-94-character table, so `fill` is `Theta(T + W)` with `W = 59,049`.
+`_cascade`, `_wide`, `_thirteen`, `_fourteen` for the hashed builds and
+`_digits` for the positional one -- takes **no truth table** and is memoized, so
+all table-dependent work is in `fill`, which is one pass over the rows and one
+pass over the store. `fill` calls `_table_char` at most 1.14 times a row
+(measured 1.125, 1.137, 0.568, 0.552 at eleven to fourteen and exactly 0.5 at
+fifteen and sixteen, tracking the rows-per-cell column above), each call bounded
+by eight ops over a 94-character table, so `fill` is `Theta(T + W)` with
+`W = 59,049`. This is a shape every arity shares, the positional build
+included, not a property of one construction.
 
 `plan` was the super-linear half. The address map refolded the mixer from
 `_INITS` for every row -- `n` steps a row, `Theta(T log T)` -- which is a
@@ -116,14 +125,19 @@ it, the linear signature in the one direction the convention reads -- and cold
 planning at ten inputs went 73.9 ms to 19.3 ms.
 
 So generation is `Theta(T + W)` for `n <= 10`, by structure and not only by
-measurement. Above ten each arity is a separate hand-built layout, and cold
-planning grows x1.08, x1.08, x1.53 from eleven to fourteen, all under x2; the
-regime change at eleven is excluded rather than smoothed. What stays open is
-not the shape of the curve but its domain: the planners are searches whose cost
-is proved for no arity, and since the generator refuses past its cap the input
-set is finite, so no measurement over it can establish an asymptotic claim in
-either direction. That is the reachable gap the roadmap's generation-time cell
-names, and it is a coverage gap rather than a growth one.
+measurement. Above ten each arity is a separate layout, and cold planning grows
+x1.08, x1.08, x1.53 across the cascade; the regime change at eleven is excluded
+rather than smoothed. Warm fill keeps reading linear to the cap -- 15.9, 20.2,
+23.4, 36.0 ms at thirteen to sixteen, so x1.27, x1.16, x1.54 per added input,
+all under x2 -- and the positional arities share a plan cache (fifteen's cells
+are a subset of sixteen's), so a cold figure there depends on which was built
+first and is not read as a growth rate.
+
+What stays open is not the shape of the curve but its domain: the planners are
+searches whose cost is proved for no arity, and since the generator refuses past
+its cap the input set is finite, so no measurement over it can establish an
+asymptotic claim in either direction. That is the reachable gap the roadmap's
+generation-time cell names, and it is a coverage gap rather than a growth one.
 
 ## Sixteen: no known construction
 
