@@ -58,6 +58,12 @@ Circuit Diagram can fan a repeated mux's output bus out to every parent,
 but over its four orders that nets 3.5% on the seeded five-input sample
 (two-input cofactors are rails, so nothing at three); it reaches 5.6%
 only with a fifth, sharing-scored order, which the cap rules out.
+Factor's Brainfuck has no jump, call or label, so a shared subtree is a
+dispatch on a state cell costing a round-trip walk and a switch test per
+reference: an optimistic model nets -1.0% at three inputs and 3.4% at
+five.  123 runs one straight-line stream per row, so it has no per-node
+subtrees to share; its table-dependent paint sweep is fixed by the
+separation laws' geometry.
 
 Malbolge registers a generator through sixteen inputs, source-embedded with no
 initializer. Through ten, a branch-free five-cell mixer (13 operations per input bit, inits
