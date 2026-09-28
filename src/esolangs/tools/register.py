@@ -434,11 +434,11 @@ def sophie(truth_table: str) -> str:
     Sophie reads a character with ``;`` and branches on the accumulator with
     ``@$48{then}{else}`` -- the else block runs flat after a failed check, so
     consecutive conditionals must use the block form. A leaf loads ``#$48``
-    or ``#$49`` for one final ``,`` to print; a last-level ``01`` is its read.
+    or ``#$49`` for one final ``,`` to print; a last-level ``01`` is its read
+    and ``10`` tests it in the character form, ``;@0{#1}{#0}``.
 
     :func:`_sophie_hybrid` nests unshared residual states like a tree and
-    labels only states reached from multiple parents. It therefore keeps
-    constant-subtree folding while merging equal residual subfunctions.
+    labels only states reached from multiple parents, merging equal ones.
 
     **Reordering the inputs is not available here**, unlike most tree
     generators: ``;`` and ``:`` *assign* to the accumulator, ``#`` loads only
@@ -533,7 +533,7 @@ def _sophie_hybrid(truth_table: str) -> str:
         width = 2 ** (n - k - 1)
         zero, one = state[:width], state[width:]
         if k + 1 == n:
-            return ";" if one == "1" else ";@$48{#$49}{#$48}"
+            return ";" if one == "1" else ";@0{#1}{#0}"
 
         def next_body(child: str) -> str:
             if child in labels[k + 1]:
