@@ -139,8 +139,8 @@ every row.  This is only an optimization unless the cited inner construction
 is itself total.
 
 **Size dispatch.**  Some lookup rows ship two routes: a folded decision tree
-for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
-and the lookup above it.  Streetcode builds both at five inputs and keeps
+for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container;
+BrainIf's tree counts only the inputs it branches on — and the lookup above it.  Streetcode builds both at five inputs and keeps
 the shorter, so its crossover is where the two meet rather than a constant.
 Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size

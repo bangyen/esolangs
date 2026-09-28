@@ -241,15 +241,15 @@
   "BrainIf": {
    "0110": {
     "commands": 61,
-    "source_units": 1164
+    "source_units": 1097
    },
    "01101001": {
-    "commands": 68,
-    "source_units": 1546
+    "commands": 67,
+    "source_units": 1253
    },
    "0110100110010110": {
-    "commands": 69,
-    "source_units": 2299
+    "commands": 70,
+    "source_units": 1409
    }
   },
   "CV(N)(C)": {
