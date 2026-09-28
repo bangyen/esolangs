@@ -123,9 +123,9 @@ Only live work belongs here. Contracts and standing walls go to
 
 ## Test evidence
 
-What a test costs should buy something no cheaper test buys.  Three sweeps
-were audited against that and two of them were paying for nothing; the rows
-below are the rest of the audit, each with the measurement that opened it.
+What a test costs should buy something no cheaper test buys.  The rows
+below are what auditing the suite against that turned up and has not yet
+closed, each with the measurement that opened it.
 
 - **Divergence by certificate, not by clock.**  A termination-answering
   language proves a one by *not halting*, and the cheap way to read that is a
@@ -168,56 +168,6 @@ below are the rest of the audit, each with the measurement that opened it.
   nothing at all.  First step: run `scripts/mutate.py generator` against two
   or three of them and see whether the exhaustive loop kills a mutant its
   first eight tables do not.
-
-- **The band is scheduler-bound, not worker-bound.**  Measured on the same
-  tree, `-m "not weekly"`, 11752 passing every time:
-
-  | workers | `--dist load` (default) | `--dist worksteal` |
-  | --- | --- | --- |
-  | 4 | 193.5s | **126.9s** |
-  | auto (10) | 173.7s | 85.6s |
-
-  Going 4 -> 10 workers buys 11%; changing the scheduler at four workers
-  buys 34%.  `load` hands out tests in fixed-size chunks, so a worker that
-  draws several of the 8-16s Malbolge probes finishes long after the others
-  have run dry -- the tail is idle workers, not work.  This is why the audit
-  above stopped paying: after the timeout conversions the remaining cost is
-  load-bearing (see the next row), and the schedule was the real bound all
-  along.  Open: adopt `worksteal` as the default, which is blocked only on
-  the row below.
-
-- **`one_two_three_construct.construct` is order-dependent within a process.**
-  Under `worksteal` the suite fails intermittently -- once in three runs --
-  on `test_the_constructed_lengths_are_stable_over_three_inputs`, with the
-  total over all 256 three-input tables coming out 229941 against the pinned
-  189055.  The test passes alone, passes with its own file, and passes with
-  either suspected neighbour serially, so it is not a stale golden: some
-  earlier call in the same process changes what `construct` emits.
-
-  The mechanism is `_geometry`, which is `@cache`d per arity and picks the
-  tight mark layout when a reference run proves out, the doubling base
-  otherwise.  The doubling base is what emits longer templates, and both it
-  and the `except (ConstructError, _WorkExhaustedError)` above it are marked
-  `# pragma: no cover` with the comment "No probed arity reaches this
-  fallback".  A scheduling change reached it.  So either that comment is
-  wrong or state is leaking into the reference run, and in both cases a
-  generator documented as deterministic is not.  First step: assert in
-  `_geometry` that the fallback is not taken at `n <= 10`, run the suite
-  under `worksteal` until it trips, and read what the reference run raised
-  -- the branch is currently invisible because nothing covers it.
-
-- **The Malbolge sampled rows were audited, and both halves are load-bearing
-  -- this block is not trimmable.**  `test_boolean_malbolge.py` is 149.6s of
-  the suite's 397.4s of attributed CPU, the largest single block, and each
-  sampled test runs a stride sample (every 8th/16th/32nd row) *and* every
-  second-level row of the cascade.  Two mutants of `_cascade_program` at
-  n=11 separate them cleanly: corrupting the level-0 answers is caught by
-  117 stride rows and **0** second-level rows, while corrupting the
-  second-level answers is caught by 127 second-level rows and only 18 stride
-  rows.  Neither half sees what the other does -- the stride rows are the
-  only cover for the 1792 level-0 rows.  Recorded so the next reader does
-  not mistake the file's size for waste; cutting it means accepting less
-  coverage, not removing redundancy.
 
 - **The expensive tests have no evidence gate.**  `tests/duration_policy.py`
   bounds what a test may *cost* by band, and nothing bounds what it must
