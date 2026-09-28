@@ -19,3 +19,11 @@ None of this is wired into the generator.
   each state reads one fixed cell (a different file format).
 - `verify_decoder.py` -- checks a `.p` decoder: `verify_decoder.py FILE
   [--no-repeat]`.
+- `sweep17.py` -- builds a valid seventeen-input program (prints input 2)
+  whose first reads weigh 164,965 bits, refuting the per-program form of the
+  read-count bound: `uv run python scripts/malbolge17/sweep17.py OUT.mb`.
+- `trace.c` -- `trace PROGRAM NBITS [stride]`: per cell, how many rows first
+  touch it by execution (split by whether `A` holds `'0'`/`'1'`) or as data.
+- `slack.c` -- `slack PROGRAM NBITS CELLFILE [full]`: which other characters
+  at each listed cell leave every row's output unchanged (256-row screen, or
+  every row with `full`).

@@ -411,7 +411,8 @@ count sharpens the language bound: before its one output a run's first
 fetch of a cell cannot decode to `v`, nor to `<` unless `A` already holds
 `'0'` or `'1'`, so the tables are at most `2**21.85 * 6**a' * 7**a * 8**b` for
 `a'`, `a`, `b` such first reads by kind. Seventeen falls if every program's
-first reads weigh at most 131,050 bits, and no bound on a single run's steps
+first reads weigh at most 131,050 bits (false as stated; see [the corrected
+route](#seventeen-the-read-count-route-corrected)), and no bound on a single run's steps
 or reads can reach that, since 2^17 leaves each need one.
 
 The five-state code re-reads a cell on 462 of its 2,744 paths, and a read
@@ -430,3 +431,116 @@ execution-decoded one does either; neither is a bound on Malbolge programs in ge
 instead needs some 17-input table with no program; counting misses by a
 factor `2**46076`, so no such proof is in sight. Seventeen is open in both
 directions.
+
+### Seventeen: the read-count route, corrected
+
+The count above was stated as "seventeen falls if every program's first reads
+weigh at most 131,050 bits". **That hypothesis is false**, so the route cannot
+be finished in that form. What survives is a weaker, correct theorem whose
+hypothesis is a statement about tables rather than about programs.
+
+**Counterexample (measured).** `scripts/malbolge17/sweep17.py` builds a real
+source string with `_char_for`. Every one of the 131,072 seventeen-input rows
+prints exactly one character, input 2, and halts (msim over all rows; the
+repo interpreter agrees on sampled rows). Before that output it executes
+29,564 cells and reads 29,433 others as data (`trace.c`): 28,466 first
+executions at `log2 6`, 1,098 at `log2 7` and 29,433 data reads at 3 bits.
+That is **164,965 bits**, well over 131,050. The layout is nops from 0. Then
+`*` at 114 turns that cell into 39403, and two `j`s put `d` on it. A lockstep
+`p` sweep of 19,600 cells reads `39404..59003`. A 14-cell gadget uses `*` on
+a data cell, a `j` into the low cells, `p` on cell 56 and two `j`s, which
+leaves 29564 in cell 56 and moves `d` there. A second sweep reads
+`29565..39395`, and `/ < v` ends the run. Only 52 cells stay unread. Getting
+`d` anywhere in the store costs a handful of cells, so control flow ("only
+`i`/`j` on memory values") forces almost nothing to be wasted: every jump
+from an unwritten cell lands in `33..126`, but one `*` or `p` makes a large
+pointer.
+
+**Theorem (representatives).** Explore rows in a fixed order. Run each row
+to its first output. Assign each cell when it is first read (executed or
+read by `j i * p`), and record its kind: executed with `A mod 256` in
+`{48, 49}` (7 admissible characters, since `v` halts with no output),
+executed otherwise (6, since `<` would also print a wrong character), or
+data (8). The canonical weight `wt(P)` is the sum of `log2` of these counts.
+If every seventeen-input table that has a valid program has one with
+`wt(P) <= 131,071`, then some seventeen-input table has no program.
+
+*Proof.* Before its first read a cell holds its initial value. Every write
+(`p`, `*` and the encipher after execution) happens in a step that reads the
+cell. So each row's run up to its output depends only on the assigned
+cells, and the next cell's kind is fixed by the cells assigned so far. The
+exploration is therefore a tree, and each valid program `P` ends at one leaf
+(its restriction to the cells it reads), which fixes its table. Pick children
+uniformly among the admissible characters. A leaf is then reached with
+probability `2**-wt`, and leaves are disjoint events. Leaves of
+representatives of distinct tables are distinct, so there are at most
+`2**131071 < 2**131072` of them. ∎ This version needs no 21.85-bit overhead.
+The uniform form of the same argument (3 bits for every cell) says it is
+enough that each realizable table has a program reading at most 43,690
+cells.
+
+**What the missing lemma is.** The counterexample shows the hypothesis
+cannot come from any bound on individual programs. It has to come from
+*minimality*: every valid program heavier than 131,071 bits must be
+replaceable by a lighter one that prints the same table. That lemma is
+strictly stronger than the conclusion, since it constrains every realizable
+table and not just the count. The same counting also shows the lemma's
+analogue fails at sixteen. All `2**65536` sixteen-input tables have programs,
+so at least three quarters of them have no program lighter than 65,534 bits.
+The shipped build weighs at most 112,769 bits (measured with `trace.c`, which
+counts a cell executed with `A` in `{'0','1'}` in any row at `log2 7` and a
+cell touched both ways at 3). Of that, 14,465 bits are its 5,553 shared code
+cells and 98,304 are its 32,768 label cells. So any proof has to use the one
+thing that separates seventeen from sixteen, the ceiling. The lemma says a
+lightest program never uses more than 131,071 of the 177,147 bits of the
+store, which means at least 46,076 bits (15,359 cells' worth) must always be
+wasted. The sweep shows the waste cannot be in reaching cells. If the lemma
+holds, the waste must be in making different rows read different cells and
+decoding what they read. The sweep does neither: every row reads the same
+cells. Nothing here proves or refutes that. Evidence either way is the
+construction side: a working seventeen-input build with 49,152 table cells
+and ~8,400 code cells would weigh roughly 169,000 bits (estimated), and for
+most tables it would have to be near-lightest.
+
+### Seventeen: code and data in the same cells
+
+Every build keeps table and code in separate cells, which leaves about 9,897
+non-table cells. Cells can do both jobs in three ways, and none frees
+meaningful room.
+
+- **Code whose character choice carries table bits.** An executed cell can
+  hold a table bit only if another character at its address leaves every
+  row's output unchanged. After running, the cell holds `xlat2` of its
+  character, a bijection, so a later data read could recover the choice.
+  This was measured on the shipped sixteen-input build (`slack.c`). Of the
+  5,553 cells touched in every row (5,529 executed, 4,624 of them `o`),
+  1,248 admit an alternative that passes 256 spread rows. There are 2,126
+  such alternatives, almost all `*` or `p` in place of an `o`, and
+  `sum log2(1 + alternatives)` is **1,760 bits**. That is an upper bound,
+  since the screen is a superset. On cells `0..1585`, where every candidate
+  was also run on all 65,536 rows, 113 of 184 survived. So the true figure is
+  near 1,100 bits, and joint use can only lower it. 1,760 bits is at most 660
+  table cells at `8/3` bits a cell (estimated conversion). Recovering those
+  bits needs a read path to code addresses, which the positional fold does
+  not map to, and one navigation hop costs 140-350 cells. There is a hard
+  cap as well. Where `A` and `mem[d]` are dead, only `o`, `*` and `p` are
+  harmless (`/` shifts the inputs later reads see), so an executed cell
+  carries at most `log2 3` bits. Even if all 9,897 non-table cells were dead
+  code, that would be 15,700 bits, or about 5,900 table cells.
+- **Table cells on the main path.** Execution is contiguous, so every cell of
+  an executed stretch must be harmless for every table value. That leaves
+  `log2 3` bits a cell: eight rows need 6 executed cells where a plain group
+  needs 3, and the stretch does no other work. That is a table at half
+  density, not shared code.
+- **The pointer and label region as data.** The `j`/`i` landing cells
+  `34..127` hold at most `94 * 3 = 282` bits, about 106 table cells.
+
+The only large slack is inside the table. A three-cell group uses 256 of its
+512 meaning triples, so 16,384 bits (5,461 cells' worth) are spare. The
+six-state decoder already spends that freedom, because it needs two triples
+per answer vector to exist. Getting the bits back means packing, for example
+11 cells for 32 rows (45,056 table cells, 4,096 freed), with a decoder over
+11-cell groups. That decoder is unbuilt and its cost is unknown. So sharing
+cells between code and data frees at most a few hundred cells on the
+measured build, not the thousands a seventeen-input decoder would need if
+the measured per-state costs hold.
