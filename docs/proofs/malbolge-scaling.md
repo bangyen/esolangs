@@ -37,7 +37,7 @@ steeply with load `L = cells / window`:
 The model reproduces the shipped fourteen-input build, so the wall is real:
 past load ~0.3 the required depth outruns any decoder pass count.
 
-## Seventeen: three-cell packing
+## Seventeen: three-cell orbit packing
 
 The one-cell-per-row-pair architecture stops at sixteen, but it does not give
 a language wall.  The raw capacity permits a different unbuilt design.  Use
@@ -70,11 +70,9 @@ all 2,401 targets are distinct.  `malbolge_packing.py` exhaustively certifies
 the counts and the formula.
 
 Storage is therefore closed at 49,152 cells, preserving 9,897 for code.  This
-is still an unbuilt design: the remaining piece is a six-cell encoder/decoder
-for each collision pair and an interpreter run over all 131,072 rows.  Uniform
-trit permutations and rotations alone do not supply the full layout: among
-the sixty such transforms no pair of full 16,384-cell images is disjoint, and
-the least pairwise overlap is 2,401.
+remains an unbuilt alternative to the executed decoder route below: its
+missing piece is a six-cell encoder/decoder for each collision pair and an
+interpreter run over all 131,072 rows.
 
 ## The emitted-size law
 
@@ -367,8 +365,764 @@ would have to be computed as `S + k` -- addition, which `crazy` and `*` do
 not give. So `i` ends the group for every row, and the letters left are `o
 j * p /`: again about `log2 5` bits a cell.
 
-No value-decoded build reaches seventeen, and no known execution-decoded
-one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
+### Seven meanings, once the decoder knows the address's parity
+
+The hitting-set bound assumes a meaning is writable at *every* address. A
+decoder that also knows `h mod 2` escapes it, because `94` is even: an
+address of one parity only sees the 47 translates `I - h` with `h` of that
+parity. Each value lies in 4 of them, and exhaustive search finds no
+hitting set of 12, so a meaning needs at least 13 values and eight would need
+104: **at most seven**, and seven are attained. As character minus 33, for even
+`h` (odd `h` adds 1 to every value, since `(I - h) + 1 = I - (h - 1)`):
+
+```
+{0,2,4,6,9,11,14,26,51,72,84,91,93}
+{7,16,25,30,37,40,49,54,60,63,67,70,81}
+{10,17,19,20,22,24,29,31,34,44,46,71,92}
+{5,13,15,23,33,38,47,57,62,65,75,86,89}
+{1,12,21,28,35,39,42,53,61,68,74,77,79,82}
+{3,18,27,32,41,43,45,48,50,52,56,59,83,88}
+{8,36,55,58,64,66,69,73,76,78,80,85,87,90}
+```
+
+The seven partition all 94 values and each meets every translate of its class. Parity is cheap to
+reach: `9**k` is odd, so `h mod 2` is the parity of the digit sum, a
+function of the input bits. `log2 7 = 2.81` bits a cell clears the 2.47
+seventeen needs once a positional main code is paid for, so the
+value-decoded cap no longer excludes seventeen. What remains is cost, not
+rate: a parity-aware decoder must rewrite its hubs per class, and a joint
+code over several cells multiplies that per decoded state. A 2+1 layout
+(two 15-bit cells and one 14-bit cell per four row pairs, `7**3 >= 4**4`)
+fails at seven meanings: each pair of labels needs a common `B` value,
+which forces the Fano plane, and no multiplicity of its lines keeps every
+value within seven labels.
+
+Reading two adjacent cells removes the phase altogether: `v_{h+1} - v_h =
+i_{h+1} - i_h - 1 (mod 94)` does not involve `h`, the eight sets `I - i - 1`
+hit only 43 differences, and a colouring of those with eight colours rainbow
+on every set exists, so a chain of cells carries the full 3 bits a cell after
+its first. Malbolge cannot subtract, though, and the obvious substitute --
+two `p`s, `crazy(crazy(K, v_h), v_{h+1})` -- is not injective in `v_{h+1}`
+for any of the 243 low-trit constants `K`, so no decoder for it is known.
+
+### Seventeen: what a build would need, measured
+
+A design that meets the rate was taken as far as real sources allow; every
+figure here is from a source string run through the interpreter unless it
+says estimated.
+
+- **Joint codes are lossless.** Two adjacent cells admit a 64-colouring and
+  three a 512-colouring rainbow on every product of admissible sets, so a
+  group decoded together carries the full 3 bits a cell with no phase.
+- **Layout.** Groups of three cells `3q..3q+2`, eight rows each: 16,384
+  groups, 49,152 table cells. No single product of 8-of-9 digits reaches
+  16,384, but six digit-local slabs do -- all digits normal with `t9` in
+  `{1,2}` (8,192), `t9 = 0` (4,096), and four slabs pinning one digit to its
+  missing value (1,024 each) -- disjoint by enumeration, with `[0, 243)` and
+  a 2,430-cell run at `[2187, 4616]` left free.
+- **Automaton.** A 13-state decoder (states shared across rows) maps a
+  group's three meanings to its eight answer bits; simulated annealing finds
+  none at 12, and counting gives at least 9.
+- **Main code.** The sixteen-input main code compacts from 5,085 to 2,391
+  cells (sampled rows green), leaving 7,506 cells for all 17-input decoding.
+- **The wall is setup, not rate.** A source cell holds only one of 8
+  characters, so every large word the decoder needs -- hub pointers, landing
+  targets -- is written by the program at run time, and navigation dominates:
+  an independently placed word costs 350-450 cells, an ascending sweep 1 cell
+  a cell. One convergent decoder state reads, converges and prints correctly
+  for all 8 admissible characters (7,880 code cells); two states chained
+  through a hub are correct on all 32 chain paths (14,871). Each added state
+  costs about 7,000 cells, so thirteen are about 90,000 against 7,506. Sweeping
+  the trampolines still leaves about 2,600 a state (estimated). A fit needs
+  under about 200 a state: one read routine per cell position shared by all
+  states, with the state carried as data. That is designed, not built.
+
+Two later results narrow both sides. The automaton shrinks to **five**
+shared states once each state may read a cell chosen by the row's select
+bits (verified over all 256 answer vectors; two states provably cannot,
+three and four were never found); since a group's three cells differ only in
+trit 0, those per-row read pointers are a one-time per-trit selection. Five
+states times two parities projects to roughly 7,300-9,000 cells against 7,506
+free -- near the line but unbuilt. On the other side, an output-truncated
+count sharpens the language bound: before its one output a run's first
+fetch of a cell cannot decode to `v`, nor to `<` unless `A` already holds
+`'0'` or `'1'`, so the tables are at most `2**21.85 * 6**a' * 7**a * 8**b` for
+`a'`, `a`, `b` such first reads by kind. Seventeen falls if every program's
+first reads weigh at most 131,050 bits (false as stated; see [the corrected
+route](#seventeen-the-read-count-route-corrected)), and no bound on a single run's steps
+or reads can reach that, since 2^17 leaves each need one.
+
+The five-state code re-reads a cell on 462 of its 2,744 paths, and a read
+that rewrites its cell cannot be repeated. Forbidding that, **six** shared
+states suffice (all 256 vectors, no path reads a cell twice). Four do not:
+an exhaustive search over all `C(120, 7)` = 59,487,568,920 transition tables
+with seven distinct columns (two equal columns leave at most `6**3 = 216`
+distinguishable contents, under 256) finds none, and three were already
+excluded. **Five is the minimum**: a search that fixes the states other
+states point to first (each has at most one level below it) and adds rows
+while every output class keeps room finds 5-state codes
+(`scripts/malbolge17/decoder_s5_norepeat.p`, all 256 vectors, no re-read).
+Three start-only states feed a fourth, which feeds a print-only fifth, so
+transitions still reach only four targets. Its transitions reach only four targets -- two states and the two
+prints -- which is within what one pointer region routes: the shipped
+`_T_LABELS` admit each of `0 1 x n` at every residue. That suggests an
+unbuilt design in which a state reads its cell with `p` under its own
+constant, lands in a block of plain source characters (no run-time writes),
+and routes through the existing label and hub machinery; it is estimated at
+about 8,400 of the 9,897 non-table cells, not measured.
+
+Layout caps that design. A constant injective in `T` needs its low five
+trits all 2, so `crazy(K, T) + 1` lands in one of only 32 fixed windows (the
+cells whose trits 5..9 are all 0 or 1), each a 94-cell pattern. Enumerating
+every digit-local tiling -- which trit is `t9`, all 105 pairings of the rest
+into digits, every missing-value choice and every `t9` role -- frees at most
+**8** of those windows from table cells: a window is free for nothing only
+when its fixed top trits already supply the pinned digits, and the five top
+trits hold at most two whole digits besides `t9`. Every landing cell in the
+best tiling's 8 windows admits all four labels, leaving 9,049 cells for code.
+The design needs one window per state and parity, so it fits only with at
+most four states; six give twelve.
+
+Rotating the landing escapes the cap. `rot^s(crazy(K, T)) + 1` -- the read's
+`p`, then `s` more `*` on the same cell -- is still injective, and with
+`s <= 3` twelve pairwise-disjoint blocks (1,128 cells, all at least 420, none
+on the table) fit the best tiling, eight of them with `s = 0` and one, two
+and one with `s = 1, 2, 3`; every landing cell again admits all four labels.
+Each extra rotation needs `d` back on the table cell, one more navigation
+hop (estimated at ~180 cells), and only the four rotated blocks pay it. Two
+`p`s with a fresh constant between them reach at least nineteen blocks, but
+reloading `A` mid-read is its own cost.
+
+The state-tagged read works on real sources. A single state that loads `A`
+from a prepared constant, reads its cell with `p` and lands at
+`crazy(K, T) + 1` prints the right bit for all 8 characters admissible at its
+cell. Two such states with different constants and opposite answer maps
+share one table cell and one pair of answer hubs in the same program and
+are right on all 16 cases (measured, interpreter). The cost per added state
+is its constant plus its share of the routing: 8,357 code cells for one
+view, 8,353 for two and 8,960 for three once each view's constant sits
+below cell 300, against about 7,000 per state for the earlier per-state
+decoders. A constant op costs about 20 cells near the pointer region and
+about 180 above cell 300, so where constants live dominates; the one-time
+constants here still sit above 300 (about 3,600 of the 8,357). These are
+prototypes on one fixed cell, not the 17-input build. Moving the one-time
+constants below 300 too brings one view to 3,185 cells; each further view
+then pays its constant (about 130-750 cells, measured) plus its routing,
+which here is built lazily as fresh low pointer cells but in the design comes
+from the shared labelled region the shipped build already pays for. A
+state's read routine -- load `K`, point at the cell, `p`, return, `j`, `j`,
+`j`, `i` -- measures 47-123 cells. Summing measured parts (the compacted
+main code less its sixteen-input fold, ten view constants, five read
+routines, ten landing blocks) with estimates for the seventeen-input address
+computation and the parity and per-row pointer work gives about 8,400 of the
+9,897 non-table cells: inside, but resting on those two estimates.
+
+Transitions work too. A two-state chain -- state A reads its cell under its
+constant, and each character either prints directly or goes through a hub
+into state B's code, which reads a second cell under its own constant and
+prints -- is right on all 64 cases on real sources, in 5,367 code cells
+against 14,871 for the same chain with the earlier `rot` reads.
+
+**The whole five-state decoder works on one group.** Each state reads its cell
+of a three-cell group under one of ten view constants (five states times two
+parities, landing blocks pairwise disjoint), each landing cell holds a plain
+character whose pointer cell carries the target's label, and routing goes
+through the shipped `_T_LABELS` machinery: every label cell is cleared to
+all-1 by `p p`, one seeded `p` chain per label writes alternating hub values
+into all its cells, and each hub value is rotated to its own copy of the
+target (a print stub or a state 3 or 4 block). Two fixes were needed and are
+general: after the read's `p`, `2 - c` `o`s move `d` past the group, so the
+next escape never jumps through another group cell's table character; and
+every block must fit the room reserved for it, since a stub that runs into a
+rotated hub cell halts. With both, for every row (8) and every meaning
+triple of the group (343), the program prints the decoder's answer: **2,744
+of 2,744 correct** on real sources, run through `msim`. One group's program
+takes about 6,700-6,800 code cells, nearly all of it one-time: the view
+constants, label clearing and seed chains, eight hub copies, stubs and state
+blocks. What is still missing for seventeen inputs is the address
+computation that selects the group and its per-row read pointers from the
+inputs, the parity selection of view constants at run time, and the full
+table.
+
+In a dense table the cell after a group is the next group's first cell, so
+the read's escape jumps through a table character that varies. It converges
+anyway if every pointer cell but one, `E`, holds a hub value (the 26 cells
+outside `0 1 x n` get a fifth, escape-only seed chain), every hub value's
+cell `H + 2` holds `E - 1`, `E` holds `Z0 - 1` and `Z0 + 1` holds `E - 1`:
+from any table character, `j j o j j` ends on `Z0` (through a label cell:
+`H + 1`, `H + 2`, `E`, `Z0`; through `E`: `Z0`, `Z0 + 1`, `E`, `Z0`). Seeds
+are chosen so every hub value admits `E - 1` at `H + 2`. With the neighbour
+cell set to a different admissible character on every run, the five-state
+group decoder is still right on 2,744 of 2,744 cases. The unoptimised program
+now takes about 12,900 code cells, all but about 400 one-time: 2,055 to clear
+the 94 pointer cells, 5,957 for 17 constant chains, 2,127 for five label
+chains and 2,350 for hub rotations. That is over the 9,897 non-table cells;
+the earlier compaction halved the same kinds of setup, so fitting is now a
+placement problem.
+
+Placement cuts it to about 7,460-7,540 code cells per row, still 2,744 of
+2,744 correct: one ascending `p p` pass clears the pointer cells (2,055 to
+962), constants are placed and ordered by the planner's exact cost, seeds
+are scored by chain plus pass cost, and hubs take their fewest-turn rotation
+from the nearest pointer cell (2,350 to 251). Cheaper view constants reach
+about 5,900, but the ones found so far collide: over all 94 characters, six
+of the ten land two characters with different targets on one cell (134
+conflicts), which a single test group cannot show because only eight
+characters are admissible at each of its cells. A full table needs
+constants whose landings are injective, or collide only where the targets
+agree, across all 94 characters. With the valid constants, decoding setup
+and one group's decoders take about 7,500 of the 8,957 non-table cells left
+after the ten landing blocks, before the seventeen-input address
+computation. Those constants are valid over all 94 characters but not yet
+for the layout: under the best tiling about 800 of their landing cells fall
+on table cells, invisible in a one-group test. Table-free landings force the
+rotated-read constants found above, whose setup cost has not been measured,
+so the 7,500 is a lower-bound estimate for the real layout, not a
+measurement of it.
+
+No value-only build reaches seventeen, and no known parity-aware or
+execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
 factor `2**46076`, so no such proof is in sight. Seventeen is open in both
 directions.
+
+### Seventeen: the read-count route, corrected
+
+The count above was stated as "seventeen falls if every program's first reads
+weigh at most 131,050 bits". **That hypothesis is false**, so the route cannot
+be finished in that form. What survives is a weaker, correct theorem whose
+hypothesis is a statement about tables rather than about programs.
+
+**Counterexample (measured).** `scripts/malbolge17/sweep17.py` builds a real
+source string with `_char_for`. Every one of the 131,072 seventeen-input rows
+prints exactly one character, input 2, and halts (msim over all rows; the
+repo interpreter agrees on sampled rows). Before that output it executes
+29,564 cells and reads 29,433 others as data (`trace.c`): 28,466 first
+executions at `log2 6`, 1,098 at `log2 7` and 29,433 data reads at 3 bits.
+That is **164,965 bits**, well over 131,050. The layout is nops from 0. Then
+`*` at 114 turns that cell into 39403, and two `j`s put `d` on it. A lockstep
+`p` sweep of 19,600 cells reads `39404..59003`. A 14-cell gadget uses `*` on
+a data cell, a `j` into the low cells, `p` on cell 56 and two `j`s, which
+leaves 29564 in cell 56 and moves `d` there. A second sweep reads
+`29565..39395`, and `/ < v` ends the run. Only 52 cells stay unread. Getting
+`d` anywhere in the store costs a handful of cells, so control flow ("only
+`i`/`j` on memory values") forces almost nothing to be wasted: every jump
+from an unwritten cell lands in `33..126`, but one `*` or `p` makes a large
+pointer.
+
+**Theorem (representatives).** Explore rows in a fixed order. Run each row
+to its first output. Assign each cell when it is first read (executed or
+read by `j i * p`), and record its kind: executed with `A mod 256` in
+`{48, 49}` (7 admissible characters, since `v` halts with no output),
+executed otherwise (6, since `<` would also print a wrong character), or
+data (8). The canonical weight `wt(P)` is the sum of `log2` of these counts.
+If every seventeen-input table that has a valid program has one with
+`wt(P) <= 131,071`, then some seventeen-input table has no program.
+
+*Proof.* Before its first read a cell holds its initial value. Every write
+(`p`, `*` and the encipher after execution) happens in a step that reads the
+cell. So each row's run up to its output depends only on the assigned
+cells, and the next cell's kind is fixed by the cells assigned so far. The
+exploration is therefore a tree, and each valid program `P` ends at one leaf
+(its restriction to the cells it reads), which fixes its table. Pick children
+uniformly among the admissible characters. A leaf is then reached with
+probability `2**-wt`, and leaves are disjoint events. Leaves of
+representatives of distinct tables are distinct, so there are at most
+`2**131071 < 2**131072` of them. ∎ This version needs no 21.85-bit overhead.
+The uniform form of the same argument (3 bits for every cell) says it is
+enough that each realizable table has a program reading at most 43,690
+cells.
+
+**What the missing lemma is.** The counterexample shows the hypothesis
+cannot come from any bound on individual programs. It has to come from
+*minimality*: every valid program heavier than 131,071 bits must be
+replaceable by a lighter one that prints the same table. That lemma is
+strictly stronger than the conclusion, since it constrains every realizable
+table and not just the count. The same counting also shows the lemma's
+analogue fails at sixteen. All `2**65536` sixteen-input tables have programs,
+so at least three quarters of them have no program lighter than 65,534 bits.
+The shipped build weighs at most 112,769 bits (measured with `trace.c`, which
+counts a cell executed with `A` in `{'0','1'}` in any row at `log2 7` and a
+cell touched both ways at 3). Of that, 14,465 bits are its 5,553 shared code
+cells and 98,304 are its 32,768 label cells. So any proof has to use the one
+thing that separates seventeen from sixteen, the ceiling. The lemma says a
+lightest program never uses more than 131,071 of the 177,147 bits of the
+store, which means at least 46,076 bits (15,359 cells' worth) must always be
+wasted. The sweep shows the waste cannot be in reaching cells. If the lemma
+holds, the waste must be in making different rows read different cells and
+decoding what they read. The sweep does neither: every row reads the same
+cells. Nothing here proves or refutes that. Evidence either way is the
+construction side: a working seventeen-input build with 49,152 table cells
+and ~8,400 code cells would weigh roughly 169,000 bits (estimated), and for
+most tables it would have to be near-lightest.
+
+### Seventeen: code and data in the same cells
+
+Every build keeps table and code in separate cells, which leaves about 9,897
+non-table cells. Cells can do both jobs in three ways, and none frees
+meaningful room.
+
+- **Code whose character choice carries table bits.** An executed cell can
+  hold a table bit only if another character at its address leaves every
+  row's output unchanged. After running, the cell holds `xlat2` of its
+  character, a bijection, so a later data read could recover the choice.
+  This was measured on the shipped sixteen-input build (`slack.c`). Of the
+  5,553 cells touched in every row (5,529 executed, 4,624 of them `o`),
+  1,248 admit an alternative that passes 256 spread rows. There are 2,126
+  such alternatives, almost all `*` or `p` in place of an `o`, and
+  `sum log2(1 + alternatives)` is **1,760 bits**. That is an upper bound,
+  since the screen is a superset. On cells `0..1585`, where every candidate
+  was also run on all 65,536 rows, 113 of 184 survived. So the true figure is
+  near 1,100 bits, and joint use can only lower it. 1,760 bits is at most 660
+  table cells at `8/3` bits a cell (estimated conversion). Recovering those
+  bits needs a read path to code addresses, which the positional fold does
+  not map to, and one navigation hop costs 140-350 cells. There is a hard
+  cap as well. Where `A` and `mem[d]` are dead, only `o`, `*` and `p` are
+  harmless (`/` shifts the inputs later reads see), so an executed cell
+  carries at most `log2 3` bits. Even if all 9,897 non-table cells were dead
+  code, that would be 15,700 bits, or about 5,900 table cells.
+- **Table cells on the main path.** Execution is contiguous, so every cell of
+  an executed stretch must be harmless for every table value. That leaves
+  `log2 3` bits a cell: eight rows need 6 executed cells where a plain group
+  needs 3, and the stretch does no other work. That is a table at half
+  density, not shared code.
+- **The pointer and label region as data.** The `j`/`i` landing cells
+  `34..127` hold at most `94 * 3 = 282` bits, about 106 table cells.
+
+The only large slack is inside the table. A three-cell group uses 256 of its
+512 triples, so 16,384 bits (5,461 cells' worth) are spare; the decoders
+spend that freedom, since they read seven meanings a cell and need 256 of
+the 343 meaning triples. Packing tighter is costed under "Seventeen: packing
+and a stateless fold" below. With seven meanings it frees at most 2,463
+cells, not the 4,096 an eight-meaning count suggests. So sharing cells
+between code and data frees at most a few hundred cells on the measured
+build, not the thousands a seventeen-input decoder would need if the
+measured per-state costs hold.
+
+### Seventeen: straight-line programs
+
+The missing lemma was tried on a restricted class first. It is still open
+there, but the attempt settles which decoders the class allows.
+
+**The class.** Call a program *straight-line* if no row executes `i` before
+its output and no cell runs after it has been written, including by the
+encipher, so no cell runs twice.
+
+**Fact 1 (one tape).** In a straight-line program `c` only increments, and
+every cell it runs still holds its source character. So step `s` runs the
+source instruction of cell `s` in every row. The output is the first `<` on
+that tape, at the same step in every row, and every row makes the same number
+of data reads at the same steps. Rows differ only in `A`, `d` and memory.
+
+**Fact 2 (the counterexample is straight-line).** `sweep17.py`'s program
+executes no `i` and runs no written cell (checked by simulation). So the
+per-program bound fails inside the class too, and a class-restricted lemma
+still has to come from minimality. The class keeps the whole pointer toolkit:
+lockstep sweeps, and landing on a word written into a low cell, which is two
+`j`s through a low cell that holds its neighbour's address, as at cells
+114-116 and 56-57. So revisiting a row-dependent cell costs a few tape
+cells. Reaching cells cannot be where the class loses.
+
+**Fact 3 (the printed word; all programs).** In a valid run, let `y` be the
+word printed by the one `<`. Because `256` is even and every `3**k` is odd,
+the answer bit is `y mod 2`, the parity of `y`'s trit sum. The last
+instruction to set `A` before the `<` was `/` (then `y` is an input), `*` or
+`p`. Exhaustively over all 59,049 values of `A` (`outputs.py`):
+
+- `*` of a plain character (33..126) never prints `0` or `1`.
+- `p` with a plain operand prints a digit for at most 30 of the 94 operands,
+  whatever `A` is.
+- No `A` offers even one fixed digit among the admissible characters at every
+  address: the best reaches 78 of 94 residues. Both digits are available at
+  47 residues at best.
+- Landing on a cell and printing through `p` at once (`A` is then the
+  pointer, the cell's address minus one) offers both digits at only 202 of
+  59,049 addresses.
+
+A plain table cell used as the final operand therefore cannot carry an answer
+at every address. A straight-line program has no label stubs, so its table
+bits must reach `y` through written words.
+
+**Fact 4 (lockstep readers; exhaustive).** Suppose a group `h, h+1, h+2` is
+read in consecutive steps, each cell by `p`, by `*`, or not at all, starting
+from any of the 59,049 values of `A`, and the result is printed. Then at
+every residue (`readers.c`, whose all-`p` figure was cross-checked by brute
+force):
+
+- reading all three cells by `p` leaves at most **137** of the 512
+  admissible triples printing a clean digit;
+- any pattern containing `*` leaves at most 40;
+- a pattern that skips a cell sees at most 64 distinct triples;
+- a pattern ending on `*` prints nothing clean.
+
+Eight rows need 256 triples that print cleanly for every row, and one row
+already allows at most 137. So **no lockstep reader decodes a three-cell
+group**, whatever `A` the rows bring. A straight-line decoder has to jump:
+`j` on a table cell moves `d` into `34..127`, and landing on a word derived
+from the values read moves it anywhere.
+
+**What is left.** Within the class, the lemma reduces to decoders that use
+landings. A row folds its group's values into a word (through low-cell
+lookups and lockstep `p`s) and lands on prepared cells, where Fact 3 limits
+the print. The honest next statement is a finite one. Bound the answer
+region that a landing decoder needs per decoded group pattern. Each landing
+target prints for only one pointer value, so a residue-independent 512-colour
+code with eight rows needs up to 4,096 targets (estimated, not searched).
+Then check whether main code, fold and targets exceed the 9,897 non-table
+cells. The obstacle is computing a residue-independent colouring of the
+admissible triples with `crazy`, `rot` and lookups alone. No such colouring
+circuit is known, and none has been shown impossible. The class-restricted
+lemma is open.
+
+### Seventeen: packing and a stateless fold
+
+Two cheaper alternatives to the five-state decoder were checked: packing
+the table tighter, and a decoder with no states at all.
+
+**Packing, at the decoder's real alphabet.** The working decoders read seven
+meanings a cell, so `2**r` rows need `k` cells with `7**k >= 2**(2**r)`.
+That gives `k/2**r` = 0.375 at 8, 16 and 32 rows (3, 6 and 12 cells): no gain
+over three-cell groups. The first saving is at 64 rows in 23 cells, which
+leaves 47,104 table cells and frees **2,048**. The limit `2**17 / log2 7` is
+46,689 cells, freeing 2,463. The 4,096 quoted earlier for 11 cells per 32
+rows assumed eight meanings, which no decoder reads.
+
+Against that ceiling, a 23-cell decoder pays per state. From the measured
+parts, one state costs about 500-1,800 cells (estimated): two view
+constants at 130-750 each, a read routine of 47-123 and its landing blocks.
+So it pays only if it needs at most about four more states than the five
+already built. Its margin is `7**23 / 2**64` = 1.48, against 1.34 for the
+three-cell code that needed five states. Checking any such decoder means
+covering `2**64` answer vectors, beyond the exhaustive checks used so far.
+Unless the seventeen-input budget ends up short by less than about 2,000
+cells, packing is not worth it.
+
+**A stateless fold (straight-line, measured).** The cheapest straight-line
+decoder has no states. Each row `r` loads a constant, reads its group's
+three cells by lockstep `p`, and so holds a word whose low five trits are
+`L_r = crazy(crazy(crazy(a_r, v0), v1), v2) mod 243`. Plain operands never
+touch the high trits. The row then lands in its own 243-cell window, shared
+by every group, whose cell `L_r` prints a fixed bit. The eight windows would
+cost 1,944 cells, and the design needs no view constants, hubs or states.
+It fails:
+
+- *Intrinsic loss (exhaustive, `fold_classes.py`).* At the worst residue,
+  the 512 admissible triples fall into only **272** classes that no fold can
+  separate: two triples in a class give equal `L` for all 243 constants. So
+  the eight row bits must map 272 classes onto all 256 vectors, with each
+  bit a function of its own row's view.
+- *Search (measured, `fold.c`).* Choosing constants for distinct joint views
+  plateaus at that 272 by the third constant. Annealing the window contents
+  covers at most **20,364 of the 24,064** (residue, answer vector) pairs
+  (84.6%, best of five runs, two of them with separate windows per parity).
+  A decoder needs all of them.
+
+So a straight-line decoder cannot fold a group once and look the answer up.
+It has to land more than once, carrying information between landings, which
+is what the states of the five-state decoder do. That is evidence, not
+proof, for the class-restricted lemma: the class keeps cheap navigation but
+seems to need staged decoding.
+
+**The decoder itself** is being measured on the other line of work (five
+states, 2,744 of 2,744 cases on real sources, setup about 7,500 of the
+8,957 cells left after the landing blocks). What it still lacks is
+table-free landings and the seventeen-input address computation.
+
+### Seventeen: where the code can run
+
+The budgets above count every non-table cell as room for code: 9,897
+cells, or 8,957 after the landing blocks. Executed code, though, needs
+*contiguous* table-free cells. The instruction pointer only steps forward,
+so code that reaches a table cell executes table data, and leaving one free
+run for another costs an `i` hop plus the navigation that sets it up (tens
+to hundreds of cells). The one-group prototypes never met this, because
+their table is a single group.
+
+Under the six-slab tiling the free cells are
+`(z = 0 and some digit missing) or (two or more digits missing)`. Only
+the pieces where a *high* digit is missing are long. With `z` as the top
+trit and the digits in order, the free set is:
+
+- one 2,187-cell block (the top digit missing), which becomes a 2,460-cell run;
+- eight 243-cell blocks, which become 273-cell runs;
+- 64 blocks of 27 cells;
+- 512 triples;
+- about 2,500 scattered cells where `z != 0`.
+
+That is 896 runs in all. Searching every choice of `z`, every cell-index
+trit and all 105 pairings, with missing values `(0, 0)` or `(2, 2)`
+(`tiling_runs.py`), the best tiling leaves **5,127** free cells in runs of
+200 or more (measured). The rest can hold landing cells, pointer cells and
+hubs, but not code.
+
+So the code budget is about 5,100 cells, not 8,957. Against it:
+
+- the compacted sixteen-input main code is 2,391 cells (measured);
+- the five-state decoder's setup, measured on one group, is about 7,500,
+  of which the ten view constants alone are roughly 4,000.
+
+Together that is roughly 9,900 cells of code for about 5,100 cells of room,
+before the six-slab address computation, which needs a separate case for
+the pinned slabs. The five-state view-constant design does not fit the
+tiling it assumes. It would fit only with a layout whose free space is
+mostly contiguous. Among digit-local layouts that means covering the
+low-digit holes with more slabs, and every extra slab is another case in
+the address computation.
+
+Decoders that spend data rather than code were checked for coverage and
+fall short (measured, annealing over window labels; `fold.c` and variants):
+
+| design | windows | best cover of 24,064 |
+| --- | --- | --- |
+| one `p p p` fold, 8 row windows, labels 0/1 | 8 | 20,364 (84.6%) |
+| rows paired by the last input, labels `0 1 x n` | 4 | 19,227 (79.9%) |
+| two stages: land on `W2`, then on `W1` or `W0` | 24 | 21,427 (89.0%) |
+
+A fold of two adjacent cells, taken over all 243 constants, separates at
+least 54 of the 64 admissible pairs at every residue, more than the 49 that
+seven meanings give. A single constant separates at most 38 at the worst
+residue, though, and a read destroys its cells. So no fold read beats seven
+meanings a cell in practice, and the table stays at 49,152 cells.
+
+**A seven-box tiling puts the free space at the bottom (measured).** Drop
+the slab that pins the top digit, which is itself a contiguous block, and
+spend its 1,024 groups on two `z = 0` boxes that pin a low digit instead:
+
+- A: `z` in {1, 2}, all digits normal (8,192 groups);
+- B: `z = 0`, all normal (4,096);
+- C1-C3: `z` in {1, 2}, digit 1, 2 or 3 pinned (1,024 each);
+- D1, D2: `z = 0`, digit 1 or 2 pinned (512 each).
+
+That is 16,384 groups, pairwise disjoint (checked cell by cell). The top
+digit is never pinned, so no group uses its missing value. Put that digit on
+trits 8 and 9 with missing value `(0, 0)`, `z` on trit 7, the cell index on
+trit 0 and the other digits on `(1, 2), (3, 4), (5, 6)`. Then cells
+`0..6806` are one free run at the bottom of memory, the same shape as the
+sixteen-input build's code region below 6,561. Eight more runs of 246 remain,
+and **8,529** free cells lie in runs of 200 or more, against 5,127 for any
+six-slab tiling.
+
+The routing stays simple:
+
+- the top digit always takes its own three input bits;
+- digit 3 takes its own bits unless pinned;
+- digit 2 takes its own bits unless pinned;
+- only digit 1 changes source: its own bits in A and B, pinned in C1 and
+  D1, digit 2's bits in C2 and D2, digit 3's bits in C3;
+- `z` is `1 + x2` in A, 0 in B and D, and `1 + x5` in C.
+
+With the combining steps shared as a prefix tree, the address computation is
+about ten digit combines instead of four, plus the dispatch (estimated). The
+code budget is then about 6,800 contiguous cells for the main line, with
+the state blocks and stubs, which are entered by `i` anyway, in the 246-cell
+runs.
+
+**An address fold for the seven-box tiling (word-level, `address17.py`).**
+Fourteen address bits fold into 16,384 distinct group words. Every step is
+a `crazy`/`rot` that a source string executes, but this is checked as a
+word model, not yet an emitted program. The table cells are pointer + 1:
+
+- 49,152 table cells, the lowest at 6,562, so cells `0..6561` are one free
+  run;
+- eight free runs of 243 cells;
+- 8,530 free cells in runs of 200 or more.
+
+The steps:
+
+- The shipped gadget runs on each input triple.
+- The accumulator starts at all-2.
+- Each digit enters with `A` = accumulator, as `p` over the gadget cell and
+  then `*`. So the gadget runs first and its outputs combine later from
+  their cells, which lets each case take its slots in its own order.
+- `v` is pre-mapped through `crazy(all-2, ·)` so its high trits read 1.
+- `z` is a single-trit step between the third digit and the top.
+- A fixed tail follows, then one `crazy(Q, acc)` per decoder state. `Q` is
+  all-2 except trit 0, which picks the cell.
+
+Two constraints decided the details.
+
+1. *No table cell may wrap to cell 0.* Cell 0 is the first instruction
+   executed, and a group whose pointer word is all-2 would put a table cell
+   there. Every per-trit bijection available from `crazy` with a constant is
+   swap01 or swap12, applied to all information trits at once, so the
+   all-2 group is excluded only if some digit misses an equal pair
+   `(r, r)`. The top digit also has to miss an equal pair, a different one,
+   for the bottom block.
+2. *The shipped combine gives only one equal pair.* With every digit
+   entering `v` then `u` in the same form, only `(2, 2)` is reachable (swap12
+   variants on `u`, `v` or both, searched).
+
+A trit-level solver that tracks each information trit's permutation from
+entry found 53,613 configurations once the top digit enters `u` the other
+way round (`acc = crazy(crazy(all-2, u), acc)`). The one used here has:
+
+- lower gadgets from walked values `(33, 33, 78)`, swap12 on `u` in slots 0
+  and 1, so both miss `(1, 1)`, and on `v` in slot 2, so it misses a pair
+  that the tail sends into {0, 1}²;
+- the top taking the same `(33, 33, 78)` gadget, since a triple is read
+  only once, with `u` and `v` swapped, missing `(2, 2)`;
+- the pinned slots on a gadget from `(38, 38, 38)` run on all-0 reads, which
+  yields exactly the missing value;
+- `z` base 29514 (A and C use two `z` codes, B and D the third);
+- the tail swap01, swap12, `p` with all-1 and trit 0 = 2, after which trit 0
+  of the per-state pointers takes all three values.
+
+All seven boxes are disjoint, and no pointer is all-2. Because slot 2's
+missing pair lands in {0, 1}², three of the eight 243-cell runs are landing
+windows (their top five trits are all 0 or 1), which with seven in the
+bottom block gives exactly the ten the five-state decoder's views need:
+blocks 1, 3, 4, 9, 10, 12, 13, 28, 82 and 109. The routing is the
+one above: the top digit takes the pinned digit's triple in C and D, the
+case selector and C's `z` bit come from the top triple, and B, D share
+the third `z` code.
+
+**The budget with this layout (partly measured).** Code room is:
+
+- the bottom run of 6,562 cells;
+- less the startup, pointer and walked region below 420;
+- less the seven landing windows inside it (1,701 cells);
+
+which leaves about 4,440 cells for the main line. The five spare 243-cell
+runs add about 1,200 for blocks entered by jumps (state blocks, stubs,
+case blocks).
+
+Against that room:
+
+- *Setup and decoder.* The other line of work measured about 7,500 cells
+  for setup plus a compacted one-group five-state decoder, excluding
+  address and per-row work. About 4,000 of those are the ten view
+  constants. A per-row parity word, where each state's view is
+  `crazy(rot^k(P), base_q)`, needs five base words and one parity
+  computation. The parity XOR can be accumulated as a trit in {1, 2},
+  since `crazy(0, ·)` fixes 1 and 2 and `crazy(2, ·)` swaps them. That
+  should bring the ten views to about 1,500 (estimated).
+- *Address computation.* Emitted with the shipped planner but not yet
+  placed for cost (measured):
+  - the captures of `x1`, `x2` and the five gadgets take 4,117 cells;
+  - one case's combine sequence takes 3,802.
+
+  The cost is navigation. The planner reaches a walked cell by landing in
+  the pointer region and stepping up, so cells near 400 cost about 300 steps
+  per op. The shipped build keeps its gadgets just above 128 and pays 113-314
+  per gadget. None of the 79 consecutive walked triples above 128 with an
+  injective trit 0 matches the solved gadget pattern, so a placed version
+  needs the fold re-solved per slot over the patterns that occur. At the
+  shipped build's rates the address computation would be about 2,000 cells
+  or more (estimated).
+
+The sum is roughly 7,000 cells of code against about 5,650, some 25% over.
+That estimate rests on the unbuilt parity word and on a placement not yet
+done. Closing it needs savings on the label and hub setup, which is about
+2,000 of the 7,500, or on the case structure, beyond everything above.
+
+**Routing through plain characters (checked, fails).** Every build executes
+the low region at startup, so the pointer cells `34..127` hold fixed
+enciphered values. That is why routing needs run-time hub values, and label
+setup costs about 2,000 cells. The low region need not run:
+
+- A startup `j` from a cell below 34 lands on a pointer cell. Two to four
+  `*`/`p` ops there, each followed by a `j` back through its neighbour,
+  build a word, and an `i` jumps past the region. For example, a `j` at
+  cell 10 lands on cell 125, and three ops there make a word that jumps
+  to 3,272.
+- The pointer cells then keep their source characters, with eight
+  choices each.
+
+Routing a landing to one of the four targets through those characters,
+with no run-time labels, would need each label's pointer cells to meet
+every translate of the admissible set `I`:
+
+- In one hop (landing character to pointer cell to a target-word cell),
+  each word cell `W` admits exactly the eight pointer cells where `W - 1` is
+  admissible, a single translate of `I`. No union of two translates hits
+  every translate (checked for all pairs).
+- In two hops, a label's first-level cells lie in a union of translates, one
+  per second-level cell. Unions of three translates never hit every
+  translate (all 4,278 checked with one fixed at 0), and unions of four
+  rarely do (21 of 8,529 sampled). So each label needs about 24-32
+  first-level cells, and four labels do not fit in the 74 cells left after
+  the word and second-level cells.
+
+So run-time label values stay. The startup jump would still let the walked
+constants start from chosen characters rather than fixed enciphered ones,
+which shortens their chains (not measured).
+
+### Seventeen: the one-group build, measured, and where the cost really is
+
+The five-state decoder on one 3-cell group was built on **real source** and
+run through `msim`: `scripts/malbolge17/prototype/five_esc.py` emits one
+program per startup row `s`, patches the three table characters for every
+meaning triple in `7^3`, and checks the printed answer. It is green:
+**2,744 / 2,744** correct across the eight rows. So the mechanism — value
+decode, per-state view constant, land, trampoline to one of four shared hubs
+(print0, print1, state 3, state 4) — works end to end on the interpreter, not
+just at the trit level. The full single-group program is about **12,900 code
+cells** (12,897 for row 0), and instrumenting the build shows where they go:
+
+| phase | cells |
+| --- | --- |
+| constants + priming the 94 pointer cells | 1,635 |
+| chains: `z`-cells, `C0`/`C1`, the ten views, escape | 5,957 |
+| label chains (5 seeds + per-label pointer ops) | 2,127 |
+| hub rotations | 2,350 |
+| landing characters + decoder block | 828 |
+
+**Navigation, not op count, is the cost (measured).** The program is only 24
+hubs, 679 raw ops and 525 `op` calls, yet 12,897 cells: reaching a walked
+cell means walking the pointer up from the pointer region, so each op there
+costs tens of cells. Two spot measurements make it concrete:
+
+- The ten view cells are chains of 8, 6, 8, 5, 8, 6, 8, 4, 8, 6 ops — only
+  **67 ops** — but emitted they are about **3,561 cells**, because each op
+  on a cell near address 160 costs ~30-70 cells of navigation. This
+  confirms the earlier "about 4,000 for the ten views"; the op count alone
+  badly understates it.
+- Hardcoded addressing of one group (three `z`-cells holding `Gb-1+k`) is
+  about **230 cells**. That is small, and it is exactly what the address
+  fold replaces per invocation — so the fold is worth its own cost only once
+  the ~16,384 groups are counted, and the single-group figure above is not
+  where the fold pays off.
+
+So the gap-closing lever is cutting **ops-at-distance**: fewer distinct
+high-address chain targets and a tighter working band. The parity word earns
+its place here after all — collapsing the ten view cells toward five base
+words plus an in-place parity toggle is a real saving against the measured
+3,561, not the negligible one an op count suggested. The view constants are
+structured to allow it: all ten share low five trits 2 and top trit 0 and
+differ only in a four-trit field, where trits 6-8 select the state and trit 5
+is the parity bit. Building that toggle, and the compaction, is unbuilt.
+
+### Seventeen: navigation is linear in address, so packing helps (measured)
+
+The per-op navigation cost was measured directly. A three-op chain emitted
+at a walked cell costs, by the cell's address:
+
+| cell | 3-op chain |
+| --- | --- |
+| 135 | 48 |
+| 200 | 241 |
+| 300 | 537 |
+| 410 | 869 |
+
+So the cost is roughly linear in `(address - 128)`: an op on a cell near 135
+costs ~16 cells, one near 410 costs ~290. `five_esc` lets its walked cells
+drift up to ~420 (the allocator takes the first free cell that can produce a
+value), which is why the setup is ~12,900.
+
+The build needs about **27 distinct walked value-cells** (five `_T_HELPERS`,
+three `z`-cells, `C0`/`C1`, ten views, escape pair, five label seeds), and
+the cheap band `130..160` holds 30, so in principle they fit low. Packed as
+an assignment (cheapest distinct cell in `130..175` per target), eight of the
+ten views emit **2,039 cells** against the ~3,561 they cost scattered — a
+~40% cut on that phase from placement alone, before any chain shortening.
+Two of the ten cannot be placed in-band because no free low cell reaches
+their value within the search depth: those need either a wider band or a
+richer operand set (using already-built low cells as `crazy` operands to
+shorten the 8-op chains).
+
+This quantifies the lever. The one-group setup is navigation-bound, and its
+cost is not fixed: packing the working cells into the low walked band, plus
+shortening chains and the parity toggle for the views, are each measured to
+save on the order of hundreds to a thousand cells. Whether their sum brings
+the setup under the ~5,650-cell tiling budget is the open build; the pieces
+are now measured rather than estimated.

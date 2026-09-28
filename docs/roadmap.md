@@ -96,15 +96,15 @@ step; an answer lands in the paper it extends, and the row leaves.
   0.0183 and 0.0061 bits a cell.  A local canonical form cannot shrink the
   alphabet either: every address admits one character for each of the eight
   operations, and a first-use cell can carry all three bits as data.  The
-  constructive route now packs an eight-bit block into three cells.  Three
-  cyclic trit translates of the fourteen-input positional map produce 11,582
-  disjoint blocks and 2,401 pairs sharing all three cells.  Encoding each
-  shared pair across its three common cells and three private cells uses
-  49,152 cells and leaves 9,897 for code.  A mixed-radix formula now maps the
-  four base-7 collision digits injectively into 2,401 of the 5,700 free
-  three-cell orbits, certified exhaustively by `malbolge_packing.py`.  Next
-  step: build the six-cell encoder/decoder and execute every row; see
-  [malbolge-scaling](proofs/malbolge-scaling.md#seventeen-three-cell-packing).
+  constructive routes now fit the table in 49,152 cells.  The orbit packing
+  maps its 2,401 collision pairs to free cells by a certified mixed-radix
+  formula.  The more developed seven-box layout has a five-state decoder
+  executed on all 2,744 one-group cases and a word-level address fold, but its
+  measured setup plus estimated address work is about 7,000 cells against
+  about 5,650 available.  Next step: pack the 27 walked value-cells into the
+  low band, shorten the two chains that do not fit there, and build the parity
+  toggle; then remeasure the emitted program.  See
+  [malbolge-scaling](proofs/malbolge-scaling.md#seventeen-navigation-is-linear-in-address-so-packing-helps-measured).
   The shipped
   constructions reach 16 inputs (a positional address, one cell per row
   pair), so 17 is the only arity whose status is unknown: a build would
