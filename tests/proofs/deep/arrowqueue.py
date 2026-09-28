@@ -21,7 +21,12 @@ import random
 import sys
 
 from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
-from esolangs.tools.arrowqueue import _DRAINED_RING, _compact
+from esolangs.tools.arrowqueue import (
+    _DRAINED_RING,
+    _compact,
+    _rotated_tree,
+    _rotation,
+)
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.tools.parameterized import (
     _MIDDLE,
@@ -96,14 +101,14 @@ def _glyph_rows(block: list[str]) -> set[int]:
     return {r for r, row in enumerate(block) if row.strip()}
 
 
-def _header_rows(bits: list[int]) -> list[str]:
+def _header_rows(bits: list[int], rotate: int = 0) -> list[str]:
     """The tree route's header filled with ``bits``, one cell each.
 
     Input ``i``'s cell is on row ``1 + 2i``, so the row says which bit.
     """
     return [
         row.replace(TEMPLATE_CHAR, "~" if bits[(r - 1) // 2] else ".") if r else row
-        for r, row in enumerate(_header(len(bits)))
+        for r, row in enumerate(_header(len(bits), rotate))
     ]
 
 
@@ -196,6 +201,34 @@ def check_s_stage() -> None:
         "S stage is Horner",
         ok=bad == 0,
         detail=f"m=0..39 x 2 bits = {cases} stages, {bad} wrong counts or exits",
+    )
+
+
+def check_r_rotation() -> None:
+    """R: the re-enqueue chain rotates the read inputs, then the middle runs.
+
+    The reads stay in input order; after the chain and the middle's
+    remaining rows the queue must be the inputs from ``k`` on, then those
+    before ``k``, then the loop components, entering the tree as H3 does.
+    """
+    bad = 0
+    total = 0
+    for n in range(2, 9):
+        for k in range(1, n):
+            rows = [*_rotation(k), *_MIDDLE[2:]]
+            for bits in itertools.product([0, 1], repeat=n):
+                total += 1
+                header = _header_rows(list(bits), k)
+                row, col, d, queue, _done = _run_block(header + rows, (0, 0, 0, ()))
+                if (row, col, d) != (len(header) + len(rows), 1, 1) or queue != (
+                    *_encoded((*bits[k:], *bits[:k])),
+                    *RDLU,
+                ):
+                    bad += 1
+    report(
+        "R re-enqueue rotates",
+        ok=bad == 0,
+        detail=f"{total} patterns, n=2..8, every k; {bad} wrong queues or exits",
     )
 
 
@@ -419,7 +452,7 @@ def check_c1_compaction(*, deep: bool) -> None:
             else ["".join(random.choice("01") for _ in range(2**n)) for _ in range(40)]
         )
         for table in tables:
-            template = arrowqueue(table)
+            template = _rotated_tree(table, n, 0)
             body = _MIDDLE + _tree(list(table))
             if _compact(body) != template.split("\n")[2 * n + 1 :]:
                 mismatch += 1  # the template's body is not the compacted body
@@ -525,6 +558,7 @@ def main(argv: list[str] | None = None) -> int:
 
     check_h1_pitch()
     check_h2_h3_handoff()
+    check_r_rotation()
     check_s_stage()
     check_d_drain()
     check_g_geometry()

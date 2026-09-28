@@ -357,6 +357,75 @@ class TestParameterizedArrowQueue:
             }
             assert len(sizes) == 1, f"{table}: {sizes}"
 
+    @pytest.mark.parametrize("n", [2, 3])
+    def test_every_rotation_executes(self, n: int) -> None:
+        """Every rotation of every table through three inputs is correct.
+
+        Not only the one the generator picks: each candidate is a program
+        the selection could return, so each is run on every row.
+        """
+        from esolangs.tools.arrowqueue import _rotated_tree
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            for k in range(1, n):
+                template = _rotated_tree(table, n, k)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    got = self.run_arrowqueue(self.instantiate(template, bits))
+                    assert got == table[combo], f"{table} k={k} inputs {bits}"
+
+    def test_rotation_keeps_the_read_order(self) -> None:
+        """A rotated build reads the same cells in the same order.
+
+        Only the test order moves: the header's cells sit where the plain
+        build puts them, and the re-enqueue chain after them rotates the
+        queue.  ``10101010`` depends on input 2 alone, so testing it first
+        folds the tree to two leaves.
+        """
+        from esolangs.tools import parameterized
+        from esolangs.tools.arrowqueue import _rotated_tree
+
+        table = "10101010"
+        plain = _rotated_tree(table, 3, 0)
+        template = parameterized.arrowqueue(table)
+        assert template == _rotated_tree(table, 3, 2)
+        assert len(template) < len(plain)
+
+        def cells(text: str) -> list[tuple[int, int]]:
+            return [
+                (r, c)
+                for r, row in enumerate(text.split("\n"))
+                for c, ch in enumerate(row)
+                if ch == TEMPLATE_CHAR
+            ]
+
+        assert cells(template) == cells(plain)
+
+    def test_rotation_only_when_it_wins(self) -> None:
+        """The generator returns the shortest rotation, the plain build on ties.
+
+        Parity is symmetric, so every rotation tests the same tree and
+        the chain is pure cost; the plain build must come back.  Across
+        the 256 three-input tables the rotations save 2.07% of the
+        plain builds' total.
+        """
+        from esolangs.tools import parameterized
+        from esolangs.tools.arrowqueue import _rotated_tree
+
+        plain_total = best_total = 0
+        for table_int in range(256):
+            table = format(table_int, "08b")
+            builds = [_rotated_tree(table, 3, k) for k in range(3)]
+            template = parameterized.arrowqueue(table)
+            assert len(template) == min(map(len, builds)), table
+            if len(template) == len(builds[0]):
+                assert template == builds[0], table
+            plain_total += len(builds[0])
+            best_total += len(template)
+        assert parameterized.arrowqueue("01101001") == _rotated_tree("01101001", 3, 0)
+        assert (plain_total, best_total) == (50335, 49291)
+
     def test_bare_ring_is_entry_sensitive(self) -> None:
         """A bare ring sustains on right-entry and *halts* on down-entry.
 
