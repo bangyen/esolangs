@@ -140,15 +140,10 @@ def run_until_halt_or_cycle(
     snapshots, up to ~2x past the cycle's start, so rely on the verdict,
     not the machine's state at detection.
 
-    ``limit`` bounds the steps, as the other detectors here already do, and
-    raises :class:`TimeoutError` rather than answering when it runs out --
-    an undecided run is not a verdict.  It defaults to ``None``, which is
-    the unbounded search this has always done, because a caller that knows
-    its machine cycles should not have to pick a number.  A caller that
-    does *not* know needs it: growth never repeats a state, so on a
-    program that grows this loop does not return, and a test reaching for a
-    divergence certificate would hang where a clock would merely have been
-    slow.  Bound it there and fall back when it raises.
+    ``limit`` bounds the steps as the sibling detectors do, raising
+    :class:`TimeoutError` rather than answer.  ``None`` (default) is the
+    unbounded search; bound it when the machine may *grow* instead, which
+    never repeats a state and so would not return.
     """
     machine = cast(
         _StepMachine, _unwrap(machine, _StepMachine, "steppable with a snapshot")
