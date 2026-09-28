@@ -438,6 +438,16 @@ best tiling's 8 windows admits all four labels, leaving 9,049 cells for code.
 The design needs one window per state and parity, so it fits only with at
 most four states; six give twelve.
 
+Rotating the landing escapes the cap. `rot^s(crazy(K, T)) + 1` -- the read's
+`p`, then `s` more `*` on the same cell -- is still injective, and with
+`s <= 3` twelve pairwise-disjoint blocks (1,128 cells, all at least 420, none
+on the table) fit the best tiling, eight of them with `s = 0` and one, two
+and one with `s = 1, 2, 3`; every landing cell again admits all four labels.
+Each extra rotation needs `d` back on the table cell, one more navigation
+hop (estimated at ~180 cells), and only the four rotated blocks pay it. Two
+`p`s with a fresh constant between them reach at least nineteen blocks, but
+reloading `A` mid-read is its own cost.
+
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
