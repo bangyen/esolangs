@@ -426,12 +426,12 @@
     "source_units": 22
    },
    "01101001": {
-    "commands": 24,
-    "source_units": 56
+    "commands": 28,
+    "source_units": 54
    },
    "0110100110010110": {
-    "commands": 35,
-    "source_units": 124
+    "commands": 47,
+    "source_units": 86
    }
   },
   "FRACTRAN": {
