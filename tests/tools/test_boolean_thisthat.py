@@ -68,29 +68,31 @@ def test_constants_test_nothing() -> None:
 def test_only_dependent_levels_are_tested() -> None:
     """A level whose halves agree is popped onto the column stack, not tested."""
 
-    def tests(table: str) -> int:
-        program = thisthat(table)
-        return program.count("◑") + program.count("◒")
+    def tests(table: str, *, reorder: bool = False) -> int:
+        program = _tree(table, reorder=reorder)
+        return sum(map(program.count, "◐◑◒"))
 
     assert tests("00001111") == 1  # the first input alone
     assert tests("01010101") == 1  # the last input alone
-    # 4 in input order (the full tree has 7); testing x1 first leaves 3.
-    assert tests("00010011") == 3
+    assert tests("00010011") == 4  # the full tree has 7
+    assert tests("00010011", reorder=True) == 3  # testing x1 first
     # The second input is tested under x0 = 0 and popped under x0 = 1.
     assert tests("00010101") == 4  # 7 unpruned
-    assert "⬒" in thisthat("00010101").split("\n", 1)[1]
+    assert "⬒" in _tree("00010101", reorder=False).split("\n", 1)[1]
     for table in ("00110011", "00010101", "01011010"):
         for row, expected in enumerate(table):
             assert _run(table, row) == (expected, 3)
 
 
+@pytest.mark.medium
 def test_pruning_never_grows_a_table() -> None:
     """No table through three inputs is larger than its unpruned tree.
 
     ``prune=False`` is the previous tree under the tighter loader: the 256
     three-input tables were 299,264 characters, are 199,936 unpruned,
-    159,628 with ignored inputs projected and agreeing levels skipped, and
-    147,836 with the greedy test order where the row can pop it.
+    159,628 with ignored inputs projected and agreeing levels skipped,
+    147,836 with the greedy test order where the row can pop it, and
+    130,860 with the root's arms swapped where that is shorter.
     """
     for n in (1, 2, 3):
         for value in range(1 << (1 << n)):
@@ -99,7 +101,8 @@ def test_pruning_never_grows_a_table() -> None:
             assert size <= len(_tree(table, reorder=False))
             assert size <= len(_tree(table, prune=False))
     tables = [f"{value:08b}" for value in range(256)]
-    assert sum(len(thisthat(table)) for table in tables) == 147_836
+    assert sum(len(thisthat(table)) for table in tables) == 130_860
+    assert sum("◐" in thisthat(table) for table in tables) == 100
     assert sum(len(_tree(table, reorder=False)) for table in tables) == 159_628
     assert sum(len(_tree(table, prune=False)) for table in tables) == 199_936
 
