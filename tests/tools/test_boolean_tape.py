@@ -1,11 +1,10 @@
 """The tape-family generators whose tests are short.
 
 The longer suites have files of their own: test_boolean_circlefuck,
-test_boolean_six_five, test_boolean_slow_acv_mammalian and
-test_boolean_streetcode_gen.
+test_boolean_jaune, test_boolean_sbleq, test_boolean_six_five,
+test_boolean_slow_acv_mammalian and test_boolean_streetcode_gen.
 """
 
-import contextlib
 import sys
 from itertools import pairwise
 
@@ -18,10 +17,8 @@ from tests.tools.boolean_runners import (
     run_brainif,
     run_dimensional,
     run_factor,
-    run_jaune,
     run_painfuck,
     run_rotfuck,
-    run_sbleq,
     run_suffolk,
     run_three_d_brainfuck,
 )
@@ -52,6 +49,7 @@ class TestDimensional:
             ("1111111100000000", 4),
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.dimensional(table)
@@ -114,6 +112,7 @@ class TestBf:
             ("1000000000000000", 4),  # single one (AND4)
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.brainfuck(table)
@@ -150,6 +149,7 @@ class TestBfTree:
             ("1111111100000000", 4),
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.bf_tree(table)
@@ -205,6 +205,7 @@ class TestThreeDBf:
             ("1000000000000000", 4),  # single one (AND4)
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.three_d_brainfuck(table)
@@ -220,6 +221,17 @@ class TestThreeDBf:
         assert "<" not in program
         assert "e" in program
         assert "w" in program
+
+    def test_a_constant_zero_side_needs_no_flag(self) -> None:
+        """Pin the three-input total: 35,488 characters before, 28,734 after.
+
+        A node whose zero-side is constant adds it up front and keeps only
+        the bit's loop, so AND is two nested loops; the run starts on the
+        multiplier rather than walking to it.
+        """
+        assert boolean.three_d_brainfuck("0001").endswith("e[-n[-e+w]s]ne.")
+        tables = [f"{value:08b}" for value in range(256)]
+        assert sum(len(boolean.three_d_brainfuck(t)) for t in tables) == 28734
 
 
 class TestFactor:
@@ -246,6 +258,7 @@ class TestFactor:
             ("11111110", 3),  # NAND3
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.factor(table)
@@ -353,6 +366,7 @@ class TestFactor:
 
     @pytest.mark.slow
     @pytest.mark.weekly
+    @pytest.mark.cost_evidence("Factor's dense n=13 render stops beyond 500000 digits")
     def test_total_past_the_retired_digit_budget(self) -> None:
         """No digit budget: the 500000-digit refusal is gone (dense n=13).
 
@@ -414,6 +428,7 @@ class TestSuffolk:
             ("1000000000000000", 4),  # single one (AND4)
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.suffolk(table)
@@ -505,6 +520,7 @@ class TestPainfuck:
             ("1000000000000000", 4),  # single one (AND4)
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.painfuck(table)
@@ -542,6 +558,7 @@ class TestBitTilde:
             ("1000000000000000", 4),  # single one (AND4)
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.bit_tilde(table)
@@ -551,6 +568,7 @@ class TestBitTilde:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
     def test_every_small_table(self, n: int) -> None:
         """Execute every table and row through three inputs."""
         for value in range(2 ** (2**n)):
@@ -579,195 +597,6 @@ class TestBitTilde:
         assert program.endswith("(")
 
 
-class TestJaune:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("00", 1),  # constant zero
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.jaune(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_jaune(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            program = boolean.jaune(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = run_jaune(program, [str(b) for b in bits])
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
-    def test_reads_every_input_whatever_the_table(self) -> None:
-        """Every table consumes exactly ``n`` inputs, folds included.
-
-        This is the cross-cutting contract in
-        ``test_boolean_contract.py``, pinned here because that sweep
-        cannot see Jaune: it iterates the generators registered in
-        ``BY_FUNCTION``, and Jaune is not one of them.  The reads used to
-        sit *at* the tree's nodes, so a folded tree skipped them and a
-        constant table consumed no input at all -- making the program's
-        stream consumption a function of its truth table.  Without this
-        test nothing would catch that coming back.
-        """
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.jaune import run
-
-        n = 3
-        for table in ("11111111", "00000000", "11110000", "10101010", "10010110"):
-            io = ScriptedIO("0\n" * n)
-            with contextlib.suppress(Exception, SystemExit):
-                run(boolean.jaune(table), io=io)
-            assert io.position() == n, (
-                f"{table} consumed {io.position()} inputs, expected {n}"
-            )
-
-    def test_unused_inputs_are_clobbered_not_stored(self) -> None:
-        """An input no node branches on is read without keeping a cell.
-
-        ``10101010`` depends only on its last input, so the first two
-        reads need no cell of their own and the tree navigates a
-        one-cell block instead of a three-cell one.
-        """
-        assert boolean.jaune("10101010").startswith("vvv")
-        # every input matters here, so every read keeps its cell
-        assert boolean.jaune("10010110").startswith("v>v>v>")
-
-    def test_each_leaf_terminates_without_a_shared_label(self) -> None:
-        """Leaves use ``.`` instead of repeating a widening end label."""
-        program = boolean.jaune("0110")
-        assert program.count(".") == 4
-        assert program.endswith("^.")
-
-    def test_spatial_lookup_executes_wide_rows(self) -> None:
-        """The travelling counter returns sampled six-input rows."""
-        n = 6
-        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        program = boolean.jaune(table)
-        for row in (0, 1, 2, 7, 31, 32, 62, 63):
-            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
-            assert run_jaune(program, bits) == table[row]
-
-    def test_spatial_lookup_growth_is_linear(self) -> None:
-        """Wide parity programs grow by at most the table-size ratio."""
-        sizes = []
-        for n in range(11, 15):
-            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            sizes.append(len(boolean.jaune(table)))
-        assert all(b <= 2 * a for a, b in pairwise(sizes))
-
-
-class TestSbleq:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("0000000000000000", 4),  # constant zero
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.sbleq(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_sbleq(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_program_structure(self) -> None:
-        """Low-address data precedes the root reads and branch."""
-        program = boolean.sbleq("0110")
-        cells = [int(tok) for tok in program.split()]
-        data_base = 9
-        code_base = cells[6]
-        assert cells[:6] == [0, 0, 6, -1, 0, 0]
-        assert cells[7:9] == [0, 0]
-        assert cells[data_base : data_base + 4] == [-49, 48, 49, -1]
-        assert cells[code_base : code_base + 3] == [
-            data_base + 4,
-            -2,
-            data_base + 6,
-        ]
-        assert cells[code_base + 6 : code_base + 9] == [
-            data_base + 4,
-            data_base,
-            data_base + 8,
-        ]
-        code = cells[code_base:]
-        triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
-        outputs = [
-            t for t in triples if t[0] == -3
-        ]  # one output per leaf, in combo order
-        assert outputs == [
-            (-3, data_base + 1, 0),
-            (-3, data_base + 2, 0),
-            (-3, data_base + 2, 0),
-            (-3, data_base + 1, 0),
-        ]
-        assert [t for t in triples if t == (0, 0, 3)] == 4 * [(0, 0, 3)]
-
-    def test_only_the_hoisted_route_remains(self) -> None:
-        """The former node-read builder is gone, not merely bypassed."""
-        import esolangs.tools.tape as module
-
-        assert not hasattr(module, "_sbleq_node_read")
-
-    def test_hoisted_build_reads_every_input_once_up_front(self) -> None:
-        """The read block is 2n instructions and precedes every branch."""
-        from esolangs.tools.tape import _sbleq_hoisted
-
-        program = _sbleq_hoisted("00010111", (0, 1, 2))
-        cells = [int(tok) for tok in program.split()]
-        code_base = cells[6]
-        code = cells[code_base:]
-        triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
-        reads = [t for t in triples[:3] if t[1] == -2]
-        assert len(reads) == 3  # one read per input, all before the tree
-        assert [t[0] for t in reads] == sorted({t[0] for t in reads})  # input order
-
-    def test_packed_decoder_executes_wide_rows(self) -> None:
-        """Rows on both sides of chunk boundaries decode correctly."""
-        n = 6
-        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        program = boolean.sbleq(table)
-        for row in (0, 1, 5, 6, 7, 31, 32, 62, 63):
-            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
-            assert run_sbleq(program, bits) == table[row]
-
-    def test_packed_growth_is_linear(self) -> None:
-        """Wide parity tables grow by at most the table-size ratio."""
-        sizes = []
-        for n in range(11, 15):
-            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            sizes.append(len(boolean.sbleq(table)))
-        assert all(b <= 2 * a for a, b in pairwise(sizes))
-
-    def test_mismatched_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.sbleq("011")
-
-    def test_bad_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.sbleq("0123")
-
-
 class TestBrainIf:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -779,6 +608,7 @@ class TestBrainIf:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.brainif(table)
@@ -792,7 +622,8 @@ class TestBrainIf:
         program = boolean.brainif("10")
         assert program.startswith("if 0 goto 4\nif 48 goto")
         assert "if 0 input" in program
-        assert program.count("goto 2") == 4
+        # The one leaf, a 0, joins the trampoline line its byte (48) passes.
+        assert program.count("goto 2") == 1
 
     def test_the_answer_byte_is_built_once(self) -> None:
         """The climb to 48 is paid before the tree, not once per digit.
@@ -800,11 +631,11 @@ class TestBrainIf:
         Two per-digit output routines cost 48 + 49 increments and dominated
         the program; building the byte ahead of the branch leaves the tree
         deciding only whether to add one, so the count is 48 plus one line
-        per ``1`` *leaf*.  Leaves, not rows: a constant slice folds to one
-        leaf, so ``11111110`` spends three rather than seven.
+        for the ``1`` leaf: every other ``1`` leaf jumps to that one.
         """
-        for table, one_leaves in (("10", 1), ("0110", 2), ("11111110", 3)):
-            assert boolean.brainif(table).count("increment") == 48 + one_leaves
+        for table in ("10", "0110", "11111110", "01101001"):
+            assert boolean.brainif(table).count("increment") == 49
+        assert boolean.brainif("00000000").count("increment") == 48
 
     def test_one_shared_output_tail(self) -> None:
         """Both answers print from the same two lines."""
@@ -820,6 +651,82 @@ class TestBrainIf:
         """
         assert len(boolean.brainif("11111111")) < len(boolean.brainif("11110000"))
         assert len(boolean.brainif("11110000")) < len(boolean.brainif("10010110"))
+
+    @staticmethod
+    def _tests(program: str) -> int:
+        """Count branch tests: an ``if 49 goto`` straight after a read."""
+        lines = program.splitlines()
+        return sum(
+            a == "if 0 input" and b.startswith("if 49 goto") for a, b in pairwise(lines)
+        )
+
+    @staticmethod
+    def _reads(program: str, stdin: str) -> tuple[str, int]:
+        """Run ``program`` and return its answer and how many inputs it read."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainif import run
+
+        io = ScriptedIO(stdin)
+        run(program.splitlines(), io)
+        return io.getvalue(), io.reads
+
+    def test_constants_test_nothing(self) -> None:
+        """The positive control: a constant reads its inputs and prints."""
+        for table in ("0" * 8, "1" * 8, "0" * 32):
+            program = boolean.brainif(table)
+            n = len(table).bit_length() - 1
+            assert self._tests(program) == 0
+            assert program.count("if 0 input") == n
+            for row in range(2**n):
+                bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_brainif(program, bits) == table[0]
+        assert len(boolean.brainif("0" * 8)) == 1015  # 1028 before
+        assert len(boolean.brainif("0" * 32)) < 1200  # a 2,864-character lookup before
+
+    def test_only_dependent_levels_are_tested(self) -> None:
+        """A level whose halves agree is read and stepped past, never tested."""
+        assert self._tests(boolean.brainif("00001111")) == 1  # the first input
+        assert self._tests(boolean.brainif("01010101")) == 1  # the last input
+        assert self._tests(boolean.brainif("00110011")) == 1  # the middle one
+        assert self._tests(boolean.brainif("00010011")) == 4  # the full tree has 7
+        for table in ("00110011", "00010011", "01011010"):
+            program = boolean.brainif(table)
+            for row in range(8):
+                bits = "".join(f"{(row >> (2 - i)) & 1}\n" for i in range(3))
+                assert self._reads(program, bits) == (table[row], 3)
+
+    def test_equal_spans_share_their_code(self) -> None:
+        """Parity has two distinct spans per level, so two tests a level."""
+        assert self._tests(boolean.brainif("01101001")) == 5
+        assert self._tests(boolean.brainif("0110100110010110")) == 7
+
+    def test_wide_tables_on_few_inputs_stay_a_tree(self) -> None:
+        """Ignored inputs no longer push a table onto the linear lookup."""
+        table = "0110" * 16  # six inputs, depending on the last two
+        program = boolean.brainif(table)
+        assert self._tests(program) == 3
+        assert len(program) < len(boolean.brainif("0110")) + 400
+        for row in (0, 1, 2, 3, 21, 42, 63):
+            bits = "".join(f"{(row >> (5 - i)) & 1}\n" for i in range(6))
+            assert self._reads(program, bits) == (table[row], 6)
+
+    def test_pruning_never_grows_a_table(self) -> None:
+        """No table through four inputs is longer than its unpruned tree.
+
+        ``prune=False`` is the previous build less each leaf's dead second
+        ``goto``: 364,700 characters over the 256 three-input tables, then
+        345,486, and 319,576 with levels skipped and spans shared.
+        """
+        from esolangs.tools.brainif import _brainif_tree
+
+        for n in (1, 2, 3, 4):
+            for i in range(0, 1 << (1 << n), 1 if n < 4 else 257):
+                table = format(i, f"0{1 << n}b")
+                unpruned = _brainif_tree(table, None, prune=False)
+                assert len(boolean.brainif(table)) <= len(unpruned)
+        tables = [format(i, "08b") for i in range(256)]
+        assert sum(len(boolean.brainif(t)) for t in tables) == 319_576
+        assert sum(len(_brainif_tree(t, None, prune=False)) for t in tables) == 345_486
 
     def test_spatial_lookup_executes_wide_rows(self) -> None:
         """Fresh scratch cells route sampled six-input rows."""
@@ -865,6 +772,7 @@ class TestRotfuck:
             ("1111111100000000", 4),  # high half
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.rotfuck(table)

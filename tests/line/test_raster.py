@@ -131,6 +131,7 @@ def test_a_generated_raster_runs_from_its_retained_graph() -> None:
     assert io.getvalue() == "1"
 
 
+@pytest.mark.medium  # 0.97s alone: renders and walks the pixels
 def test_the_graph_walker_matches_the_pixels() -> None:
     """Both routes answer the same, which is what makes the shortcut safe."""
     from esolangs.line import generate

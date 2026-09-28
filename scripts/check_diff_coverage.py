@@ -149,8 +149,10 @@ def _diff_base() -> str | None:
     return _rev("rev-parse", "HEAD~1")
 
 
-def _coverage_json(data_file: Path) -> dict[str, dict[str, Any]] | None:
-    """Return coverage's per-file executed/missing lines, or ``None``.
+def _coverage_json(
+    data_file: Path, targets: set[str]
+) -> dict[str, dict[str, Any]] | None:
+    """Return coverage data for ``targets``, or ``None``.
 
     Reads through ``coverage json`` rather than the ``.coverage`` SQLite file
     directly: the report applies the ``exclude_lines`` patterns from
@@ -169,6 +171,8 @@ def _coverage_json(data_file: Path) -> dict[str, dict[str, Any]] | None:
             "-",
             "--data-file",
             str(data_file),
+            "--include",
+            ",".join(sorted(targets)),
         ],
         capture_output=True,
         text=True,
@@ -229,7 +233,7 @@ def main() -> int:
         print(f"skip: branch touched no files under {MEASURED}")
         return 0
 
-    files = _coverage_json(Path(args.data_file))
+    files = _coverage_json(Path(args.data_file), targets)
     if files is None:
         print(f"skip: no usable coverage data at {args.data_file}")
         return 0

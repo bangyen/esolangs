@@ -4,7 +4,7 @@
 file checks it against the *generators*: a row claiming a scheme is claiming
 its construction has that scheme's signature, and a signature is executable.
 
-Two cautions, both learned by getting them wrong first.
+One caution, learned by getting it wrong first.
 
 The fold discriminator is a statement about the route *below* the crossover.
 Many of the twenty-two lookup rows fold a one-dependency table at ``n == 3``,
@@ -12,13 +12,8 @@ which looks like a contradiction until you notice ``n == 3`` sits under every
 crossover -- those rows are measuring the tree route while the ledger names
 the wide one.  Folding therefore cannot be turned into "folds implies `tree`".
 Several rows break the converse as well, and are named in
-:data:`_FOLDS_WITHOUT_TREE` below.
-
-Nor does the converse hold.  A tree may be *deliberately* unfolded:
-Container's sub-crossover route keeps uniform depth because its nodes read
-the input, and collapsing a constant subtree would drop that subtree's
-reads.  A 0% fold is that construction working.  The obligations below are
-the ones that survive both cautions.
+:data:`_FOLDS_WITHOUT_TREE` below.  The obligations below are the ones
+that survive it.
 """
 
 from __future__ import annotations
@@ -52,13 +47,6 @@ _PARITY = "01101001"
 #: on the table.  The threshold is the existing shape discriminator's.
 _FOLD = 0.05
 
-#: Lookup rows whose sub-crossover route is a tree that deliberately does not
-#: fold, so they measure 0% without lacking a tree route.  Container's nodes
-#: read the input; collapsing a constant subtree would drop those reads and
-#: break the read-count contract.  Kept separate from the ledger's own
-#: exemption list because the reason is different: these *have* a tree.
-_UNFOLDED_TREE_ROUTE = frozenset({"Container"})
-
 #: Lookup rows with no tree route that the fold discriminator cannot see:
 #: their *lookup* route is what shrinks a degenerate table, so they fold like a
 #: tree would.  Eval is one linear lookup at every arity, NoComment switches
@@ -68,13 +56,15 @@ _UNFOLDED_TREE_ROUTE = frozenset({"Container"})
 #: bit~ indexes the projected table it is handed, Circlefuck tabulates its
 #: essential inputs alone, Dimensional paints only as far as its last one, so
 #: a table whose tail is constant zero is cheaper (6.9% on the best
-#: one-dependency table) with no subtree involved, and Unsquare pushes only
-#: the cells the essential inputs address.  Named rather
+#: one-dependency table) with no subtree involved, A Painter Ant's corridor
+#: stops where the trailing run of equal answers starts (36.4%), and Unsquare
+#: pushes only the cells the essential inputs address.  Named rather
 #: than derived because the proxy is structural and these are its known blind
 #: spot; a further such row has to be added here, which is the point -- the
 #: equality below then fails until the prose and this set agree.
 _FOLDS_WITHOUT_TREE = frozenset(
     {
+        "A Painter Ant",
         "bit~",
         "Circlefuck",
         "Collatz Multiverse",
@@ -183,7 +173,7 @@ def test_rows_without_a_tree_route_are_the_ones_the_ledger_names(
         for row in ledger.rows
         if set(row.labels) & _LOOKUP_SCHEMES and _fold(_generator(row)) < _FOLD
     }
-    documented = set(ledger.no_tree_route) | _UNFOLDED_TREE_ROUTE
+    documented = set(ledger.no_tree_route)
     assert measured_without | _FOLDS_WITHOUT_TREE == documented, (
         f"lookup rows measuring no tree route: {sorted(measured_without)}; "
         f"the ledger documents: {sorted(documented)}"
@@ -193,7 +183,7 @@ def test_rows_without_a_tree_route_are_the_ones_the_ledger_names(
 def test_the_documented_exemptions_are_real_ledger_rows(ledger: Ledger) -> None:
     """A name in the Size dispatch prose must be a generator, not a typo."""
     listed = {row.generator for row in ledger.rows}
-    named = set(ledger.no_tree_route) | _UNFOLDED_TREE_ROUTE
+    named = set(ledger.no_tree_route)
     assert named <= listed, f"not ledger rows: {sorted(named - listed)}"
 
 

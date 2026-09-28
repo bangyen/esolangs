@@ -10,17 +10,25 @@ import pytest
 from esolangs import tools as boolean
 from esolangs.tools.helpers import permute_truth_table
 from esolangs.tools.six_five import (
+    _SIX_FIVE_NORMALIZE,
+    _SIX_FIVE_TEST,
+    _SIX_FIVE_TREE_NORMALIZE,
+    _six_five_chosen,
+    _six_five_const,
     _six_five_dag_cost,
     _six_five_hoisted,
     _six_five_looped,
     _six_five_markers,
+    _six_five_orders,
     _six_five_stream_ordered,
     _six_five_walk,
 )
+from scripts.benchmark import _commands
 from tests.tools.boolean_runners import (
     run_six_five,
     run_six_five_from,
 )
+from tests.tools.sample_tables import five_input_sample
 
 
 def _leaves(table: str) -> int:
@@ -58,6 +66,7 @@ class TestSixFive:
             ("1000000000000000", 4),  # AND4
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         program = boolean.six_five(table)
@@ -67,17 +76,21 @@ class TestSixFive:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_branch_structure(self) -> None:
-        """Both builds read, normalize to 8/9, branch on ``78``, and halt.
+        """Both builds read, normalize to 31/32, branch on ``7V``, and halt.
 
         The two constructions differ in where the reads sit, not in the
-        branch: each starts by reading a bit and subtracting 40, tests it
-        with ``78``, and ends every path on ``A0``.
+        branch: each starts by reading a bit and subtracting 17, tests it
+        with ``7V``, and ends every path on ``A0`` -- but the last, which the
+        dispatch leaves on ``A``, since the program halts at its end anyway.
         """
 
         for program in (boolean.six_five("0110"), _six_five_stream_ordered("0110")):
-            assert program.startswith("B" + "2" * 8)
-            assert "78" in program
-            assert program.endswith("A0")
+            assert program.startswith("B" + _SIX_FIVE_TREE_NORMALIZE)
+            assert _SIX_FIVE_TEST in program
+        assert _six_five_stream_ordered("0110").endswith("A0")
+        # The right half is NOT of the last input, with nothing left to
+        # read: a node, whose leaves add 18 to the 31 and 16 to the 32.
+        assert boolean.six_five("0110").endswith("7V82666A04655A")
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -103,9 +116,11 @@ class TestSixFive:
             5: "10010110" * 4,
         }[n]
         assert len(boolean.six_five(table)) < len(boolean.six_five(mixed))
-        # One ``A`` per emitted leaf: the fold collapses the leaf count to
-        # the number of distinct constant regions, not ``2**n``.
-        assert boolean.six_five(table).count("A") == _leaves(table)
+        # At most one ``A`` per emitted leaf: the fold collapses the leaf
+        # count to the number of distinct constant regions, not ``2**n``,
+        # and a node whose answer is its bit, or its bit inverted, prints
+        # both of its leaves with one ``A`` (``11110000`` is NOT x1).
+        assert boolean.six_five(table).count("A") <= _leaves(table)
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -136,12 +151,13 @@ class TestSixFive:
         # Walk the emitted tree: a branch spends one read, then its two
         # halves follow; a leaf carries the reads its fold skipped.
         def reads_on_each_path(code: str) -> set[int]:
-            if not code.startswith("B" + "2" * 8):  # a leaf
+            if not code.startswith("B" + _SIX_FIVE_TREE_NORMALIZE):  # a leaf
                 return {code.count("B")}
-            body = code[len("B" + "2" * 8) + len("78") + 2 :]
+            head = "B" + _SIX_FIVE_TREE_NORMALIZE + _SIX_FIVE_TEST
+            body = code[len(head) + 2 :]
             depth = 0
             for i, char in enumerate(body):
-                if body[i : i + 2] == "78":
+                if body[i : i + 2] == _SIX_FIVE_TEST:
                     depth += 1
                 elif char == "4":
                     if depth == 0:
@@ -157,11 +173,12 @@ class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n", "labels"),
         [
-            ("0" * 63 + "1", 6, 6),  # AND6: was refused by both paths
-            ("1" * 32 + "0" * 32, 6, 1),  # one split
-            ("1" * 48 + "0" * 16, 6, 2),  # two regions
+            # AND6 was refused by both paths; shared, its 0 leaves are one.
+            ("0" * 63 + "1", 6, 6),
+            ("1" * 32 + "0" * 32, 6, 1),  # one split: NOT x1, a node
+            ("1" * 48 + "0" * 16, 6, 3),  # two regions, the second NOT x2
             ("1" * 64, 6, 0),  # constant
-            ("0" * 255 + "1", 8, 8),  # AND8
+            ("0" * 255 + "1", 8, 8),  # AND8: the last test copies its bit
         ],
     )
     def test_tree_past_five_inputs(self, table: str, n: int, labels: int) -> None:
@@ -192,23 +209,25 @@ class TestSixFive:
         table bounds the emission rather than equalling it in general.  These
         tables are the ones where the bound is tight: each is a constant, a
         single prefix run, or an AND, whose folding no renaming improves.
+        The unshared tree is what the gate counts; a shared one can mark a
+        left copy it jumps to, so it checks its own count against 35.
         """
-        for table in (
-            "0" * 63 + "1",
-            "1" + "0" * 63,
-            "1" * 48 + "0" * 16,
-            "1" * 64,
-            "1" * 127 + "0",
-            "0" * 255 + "1",
-        ):
-            assert _six_five_markers(table) == _markers(boolean.six_five(table))
+
+        def plain(table: str) -> str:
+            return _six_five_chosen(table, _six_five_orders(table), share=False)
+
+        for table in ("1" + "0" * 63, "1" * 64, "1" * 127 + "0", "1" * 48 + "0" * 16):
+            assert _six_five_markers(table) == _markers(plain(table))
+        # An AND's last test copies its bit, so it prints and spends no label.
+        for table in ("0" * 63 + "1", "0" * 255 + "1"):
+            assert _six_five_markers(table) - 1 == _markers(plain(table))
 
         # And the bound itself, over every n == 3 table: reordering can only
-        # fold more subtrees, never fewer, so the emission never allocates
-        # more labels than the stream-order count.
+        # fold more subtrees, never fewer, so the unshared winner never
+        # allocates more labels than the stream-order count.
         for value in range(256):
             table = format(value, "08b")
-            assert _markers(boolean.six_five(table)) <= _six_five_markers(table)
+            assert _markers(plain(table)) <= _six_five_markers(table)
 
     def test_folding_is_still_per_order_even_though_sharing_is_not(self) -> None:
         """Parity resists folding under every order, and is built anyway.
@@ -275,7 +294,8 @@ class TestSixFive:
         assert _six_five_hoisted(alternating, tuple(range(n)))
 
         program = boolean.six_five(alternating)
-        assert _markers(program) == 1  # greedy tests the last input first
+        # Greedy tests the last input first, and NOT of it is one node.
+        assert _markers(program) == 1
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             feed = iter([str(b) for b in bits])
@@ -336,7 +356,7 @@ class TestSixFive:
         dense7 = self._dense(7)
         assert _six_five_dag_cost(dense7) > 35
         program = boolean.six_five(dense7)
-        assert program == _six_five_walk(dense7)
+        assert program == _six_five_walk(dense7).removesuffix("0")  # halts at its end
         assert _markers(program) == 7
         for combo in range(128):
             bits = [(combo >> (6 - i)) & 1 for i in range(7)]
@@ -346,7 +366,7 @@ class TestSixFive:
     def test_dense_ten_inputs_render_and_run(self) -> None:
         """The generator clears n == 10 on a table with nothing to fold.
 
-        Dense n == 10 renders at 10 labels and 5319 chars (all 1024 rows
+        Dense n == 10 renders at 10 labels and 5308 chars (all 1024 rows
         were run exhaustively once, in 12s; this samples).  The feed check
         proves the walk reads exactly ``n`` lines -- its ``B``s sit inside
         the pointer walk, so a desync would misroute as well as misread.
@@ -354,12 +374,132 @@ class TestSixFive:
         dense10 = self._dense(10)
         program = boolean.six_five(dense10)
         assert _markers(program) == 10
-        assert len(program) == 5319
+        assert len(program) == 5308
         for combo in (0, 1, 512, 1023, *range(7, 1024, 128)):
             bits = [(combo >> (9 - i)) & 1 for i in range(10)]
             feed = iter([str(b) for b in bits])
             assert run_six_five_from(program, feed) == dense10[combo], f"row {combo}"
             assert not list(feed), f"inputs {bits} left input unread"
+
+    def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
+        """Total emitted bytes over every three-input table.
+
+        29900 while a node whose answer is its own bit tested it and laid
+        two leaves of one text, the last leaf kept its halt, and a folded
+        leaf stepped back a cell; 21533 once the node prints its cell; 18490
+        (-14.1%) once every add is spelled in the fewest ``6``/``5`` (or
+        ``9``/``2``) tokens: a leaf's ``6``s then ``62`` pairs cost a 0-leaf
+        (+40 from the 8 cell, +39 from the 9) twice a 1-leaf from the 8 cell
+        (+41), and a read's -40 was eight ``2``s rather than seven; 17190
+        (-7.0%) once a node whose answer is its bit inverted skips a step
+        onto a blank cell instead of testing and laying two leaves; 12483
+        (-27.4%) once a read is held at 31/32 rather than 8/9: -17 and
+        every leaf's add take three tokens each, not seven; 12135 (-2.8%)
+        once the winning order prints a read its tree copies once as it came;
+        10951 (-9.8%) once a tree jumps to the subtrees it repeats.
+        """
+        total = sum(len(boolean.six_five(format(v, "08b"))) for v in range(256))
+        assert total == 10951
+
+    def test_the_executed_steps_are_stable_over_three_inputs(self) -> None:
+        """Steps summed over every row of every three-input table.
+
+        Counted as ``benchmark.py`` counts ``commands``.  66323 with reads
+        held at 8/9, where a read's -40 and a leaf's +39..+41 ran seven
+        steps each; 43044 (-35.1%) at 31/32, where each runs three, and
+        no table takes more steps than it did; 40068 (-6.9%) once a read
+        one node uses is normalized at that node, on its paths alone, and
+        one a node copies prints raw; 40261 (+0.5%) once a tree jumps to the
+        subtrees it repeats, whose jumps cost a step each.
+        """
+        total = 0
+        for value in range(256):
+            table = format(value, "08b")
+            program = boolean.six_five(table)
+            for row in range(8):
+                steps = _commands("6-5", program, table, row, 10_000)
+                assert steps is not None
+                total += steps
+        assert total == 40261
+
+    def test_an_inverted_bit_skips_a_step_only_before_more_reads(self) -> None:
+        """A node whose answer is NOT its bit tests it, unless reads remain.
+
+        Adds are monotone, so the no-label print moves the pointer instead:
+        at 1/2, ``71`` skips a ``1`` on a 0 bit, and a 1 bit prints from the
+        blank cell two on.  From a read held at 31/32 that is -30 and +48
+        from blank, 17 characters to a node's 14, so the hoisted build never
+        takes it (its identity order is the stream build's); the stream
+        build does only where its node would repeat the reads still due in
+        both leaves.  Every order of every three-input table is executed.
+        """
+        assert _markers(boolean.six_five("10")) == 1
+        assert "71" not in boolean.six_five("10")
+        assert "71" in _six_five_stream_ordered("11110000")
+        for value in range(256):
+            table = format(value, "08b")
+            for perm in permutations(range(3)):
+                program = _six_five_hoisted(permute_truth_table(table, perm), perm)
+                # The identity order is the stream build's, not the hoisted.
+                assert "71" not in program or perm == (0, 1, 2)
+                for combo in range(8):
+                    bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+                    assert run_six_five(program, bits) == table[combo], (table, perm)
+
+    def test_a_read_one_node_uses_is_normalized_there(self) -> None:
+        """A read tested at one node alone costs its -17 on that node's paths.
+
+        The size is unchanged, so the order contest is too; a read one node
+        copies prints raw (``A`` straight off the 48/49), which is shorter,
+        and only the winner does that.  Every order of every three-input
+        table is executed with it.
+        """
+        # AND of x1 and x2, x2 tested first: no read is normalized up front,
+        # x2 steps back to its cell for -17, and x1 is copied as read.
+        program = _six_five_hoisted("00010001", (2, 1, 0), raw_copies=True)
+        assert program.startswith("B13B13B3" + _SIX_FIVE_TREE_NORMALIZE)
+        assert program.endswith("4" + "3" + "A0")
+        for value in range(256):
+            table = format(value, "08b")
+            for perm in permutations(range(3)):
+                permuted = permute_truth_table(table, perm)
+                plain = _six_five_hoisted(permuted, perm)
+                raw = _six_five_hoisted(permuted, perm, raw_copies=True)
+                assert len(raw) <= len(plain)
+                for combo in range(8):
+                    bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+                    assert run_six_five(raw, bits) == table[combo], (table, perm)
+
+    def test_an_add_never_outgrows_its_old_spelling(self) -> None:
+        """No table grows under the fewest-token adds: no add is longer.
+
+        The adds are the only text that changed: a leaf's add (was ``6``s
+        then ``62`` pairs) and a read's -40 (was eight ``2``s).  Every build
+        emits them per leaf and per read, and the dispatch keeps the
+        shortest order, so adds no longer than the old text for every value
+        a leaf can ask for bound every program by its old length.
+        """
+        assert len(_SIX_FIVE_NORMALIZE) < len("2" * 8)
+        assert (
+            -6 * _SIX_FIVE_NORMALIZE.count("9") - 5 * _SIX_FIVE_NORMALIZE.count("2")
+            == -40
+        )
+        for value in range(64):
+            q, r = divmod(value, 6)
+            pairs = "6" * q + ("5" if r == 5 else "62" * r)
+            add = _six_five_const(value)
+            assert len(add) <= len(pairs), value
+            assert (
+                6 * add.count("6") + 5 * add.count("5") - 5 * add.count("2") == value
+            ), value
+        # A tree read's -17, and the leaf deltas: 0 and 1 from 31 and 32.
+        assert len(_SIX_FIVE_TREE_NORMALIZE) == 3
+        assert (
+            -6 * _SIX_FIVE_TREE_NORMALIZE.count("9")
+            - 5 * _SIX_FIVE_TREE_NORMALIZE.count("2")
+            == -17
+        )
+        assert [len(_six_five_const(d)) for d in (16, 17, 18)] == [3, 3, 3]
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than its identity-order program."""
@@ -368,13 +508,21 @@ class TestSixFive:
         for value in range(256):
             table = format(value, "08b")
             dispatched = len(boolean.six_five(table))
-            identity = len(_six_five_stream_ordered(table))
+            # The dispatch drops the last ``0``, which the builds keep.
+            identity = len(_six_five_stream_ordered(table)) - 1
             assert dispatched <= identity, table
             improved += dispatched < identity
         # 186 before the leaves gained ``_six_five_const``'s ``r == 5``
-        # shortcut: a shorter leaf changes which orders pay for themselves,
-        # so more tables now beat the identity rather than tying it.
-        assert improved == 192  # the rest tie, keeping the old emission
+        # shortcut, 192 after; 108 once a node that copies its bit prints
+        # it, which the stream build does with the raw read (``BA0``); 140
+        # once every add takes the fewest tokens, which shortens the
+        # hoisted builds' extra leaves more than the stream build's; 112 once
+        # a node whose answer is its bit inverted prints it, which the
+        # stream build can do at every such node and the hoisted only where
+        # the cell two on is blank; 155 once reads are held at 31/32, where
+        # the hoisted builds' cheaper nodes beat the stream build's inverts;
+        # 209 once a tree jumps to the subtrees it repeats.
+        assert improved == 209  # the rest tie, keeping the old emission
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -414,21 +562,32 @@ class TestSixFive:
             (8, "0" * 255 + "1"),
             (7, ("10" * 128)[:128]),
         ):
-            built = 0
+            built = plain = rebuilt = 0
 
             def counted(
                 table: str,
                 perm: tuple[int, ...],
                 _build: object = _six_five_hoisted,
+                *,
+                raw_copies: bool = False,
+                share: bool = False,
             ) -> str:
-                nonlocal built
-                built += 1
-                return _build(table, perm)  # type: ignore[operator, no-any-return]
+                nonlocal built, plain, rebuilt
+                # Each layout's winner is rebuilt once to print its copied
+                # reads raw.
+                if raw_copies:
+                    rebuilt += 1
+                else:
+                    built += 1
+                    plain += not share
+                return _build(table, perm, raw_copies=raw_copies, share=share)  # type: ignore[operator, no-any-return]
 
             with pytest.MonkeyPatch.context() as patch:
                 patch.setattr(module, "_six_five_hoisted", counted)
                 boolean.six_five(table)
-            assert 1 <= built <= 4, f"n={n} built {built} candidates"
+            # The plain and shared layouts see the same orders.
+            assert 1 <= plain == built - plain <= 4, f"n={n} built {built}"
+            assert rebuilt == 2
 
     def test_retired_arithmetic_kernel_is_gone(self) -> None:
         """Retired construction helpers do not return as dispatch candidates."""
@@ -445,6 +604,7 @@ class TestSixFive:
         assert not hasattr(module, "_six_five_node_read")
 
     @pytest.mark.parametrize("n", range(1, 6))
+    @pytest.mark.medium
     def test_the_looped_walk_executes_every_row(self, n: int) -> None:
         """The sixteen-label walk answers every row of every table shape.
 
@@ -492,3 +652,53 @@ class TestSixFive:
         assert _six_five_walk(dense17) == _six_five_looped(dense17)
         monkeypatch.setattr(module, "_SIX_FIVE_MAX_LABEL", 35)
         assert _six_five_walk(dense17) != _six_five_looped(dense17)
+
+
+class TestSixFiveSharing:
+    """A repeated subtree is laid out once and jumped to.
+
+    Every order is built plain and shared and the plain trees choose first,
+    so no table grows; the gain grows with the table, so it is judged on the
+    seeded five-input sample too (``docs/CONTRIBUTING.md``).
+    """
+
+    @staticmethod
+    def _totals(tables: list[str]) -> tuple[int, int]:
+        """(plain, shipped) character totals, each table checked not to grow."""
+        before = after = 0
+        for table in tables:
+            orders = _six_five_orders(table)
+            plain = len(_six_five_chosen(table, orders, share=False).removesuffix("0"))
+            shipped = len(boolean.six_five(table))
+            assert shipped <= plain, table
+            before, after = before + plain, after + shipped
+        return before, after
+
+    def test_three_input_total(self) -> None:
+        """All 256 three-input tables: 12,135 to 10,951 characters, 9.8%."""
+        tables = [format(i, "08b") for i in range(256)]
+        assert self._totals(tables) == (12135, 10951)
+
+    def test_five_input_sample_total(self) -> None:
+        """200 seeded five-input tables: 41,884 to 27,168 characters, 35.1%."""
+        assert self._totals(five_input_sample()) == (41884, 27168)
+
+    @pytest.mark.medium
+    def test_five_input_sample_runs(self) -> None:
+        """Every row of the five-input sample's shared programs computes its bit."""
+        for table in five_input_sample():
+            program = boolean.six_five(table)
+            for combo in range(32):
+                bits = [str((combo >> (4 - i)) & 1) for i in range(5)]
+                assert run_six_five(program, bits) == table[combo], (table, combo)
+
+    def test_a_left_leaf_is_one_copy(self) -> None:
+        """AND's 0 leaves are one: each later test jumps to the first.
+
+        The leaf builds on the tested cell's 31, whichever cell that is, so
+        the copy prints right from any parent that falls through to it; it
+        gains a ``4`` of its own, since a fall-through has none.
+        """
+        program = boolean.six_five("0" * 15 + "1")
+        assert program.count("665A0") == 1
+        assert _markers(program) == 4

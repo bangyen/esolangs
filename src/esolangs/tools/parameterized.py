@@ -150,23 +150,25 @@ def bfpda(truth_table: str) -> str:
     run is a four-character push of its bit; the load pushes every ``<@`` +
     run pair so the stack holds all bits and markers with ``b0`` on top.
     Characters outside ``@.<>[]`` are comments.  A node tests and consumes
-    its bit with ``[ > one < ] > [ > zero < ] >``: ``[`` enters on a one,
-    ``>`` pops it, the one-branch pops the marker, ``<`` pushes a zero to
-    break; on a zero the outer ``>`` pops the bit and the second loop tests
-    the marker, a constant 1 embedded directly.  A leaf pops the remaining
-    ``2*(n-level)`` and prints.
+    its bit with ``[>> one ]>[> zero ]``: ``[`` enters on a one and ``>>``
+    pops it and its marker; on a zero ``>`` pops the bit and the second loop
+    enters on the marker, a constant 1.  A leaf empties the stack (a zero
+    prints the empty stack), so each ``]`` after it exits with no zero
+    pushed.  The first marker is a bare ``@``: the empty stack reads 0.
     """
     n = _validate_truth_table(truth_table)
 
     # Marker then bit, in name order, so the tree tests the last input
     # first (the same tree reflected; the reversed load bought nothing and
     # put the runs out of order).
-    head = "".join("<@" + run for run in _runs(BFPDA_PAIR, n))
+    head = "".join("<@" + run for run in _runs(BFPDA_PAIR, n))[1:]
 
     def leaf(level: int, value: str) -> str:
-        drain_preloaded_bits = ">" * (2 * (n - level))
-        print_answer = ("<@" if value == "1" else "<") + ".>"
-        return drain_preloaded_bits + print_answer
+        # A one stops on the bottom entry, the first marker, and prints it.
+        left = 2 * (n - level)
+        if value == "0":
+            return ">" * left + "."
+        return ">" * (left - 1) + ".>" if left else "@.>"
 
     # The load pushes in name order, so the stack hands back the *last*
     # input first: level ``i`` tests input ``n - 1 - i``, row bit ``i``.
@@ -184,13 +186,12 @@ def bfpda(truth_table: str) -> str:
             pieces.append(leaf(i, reflected[lo]))
             return
         mid = (lo + hi) // 2
-        # one-branch pops ~bi first (expose next bit); zero-branch has it popped
-        # by the node's own loop
+        # Each arm ends on an empty stack, so its ``]`` exits as it stands.
         pieces.append("[>>")
         node(i + 1, mid, hi)
-        pieces.append("<]>[>")
+        pieces.append("]>[>")
         node(i + 1, lo, mid)
-        pieces.append("<]>")
+        pieces.append("]")
 
     node(0, 0, 2**n)
     return "".join(pieces)
@@ -399,15 +400,15 @@ def home_row(truth_table: str) -> str:
     or ``j`` (a skip that does not fire).  The bits pack into one binary
     accumulator: each packing line ``$$ l s ffff a{2**(n-1-i)} f l`` uses
     Home Row's position-stable ``l``/``s``/``l`` gate (loops cannot nest) to
-    add the weight iff the bit is 1.  Then ``2**n`` lines
-    ``a ffff l s f s ff l f l f <answer> k ; l f f`` fan the accumulator
-    into a working copy and backup, subtract ``k``, and either print the
-    baked answer and halt or restore and fall through; the last needs no restore.
+    add the weight iff the bit is 1.  Then guarded leaves count it down:
+    ``l s f l`` decrements a nonzero index onto the zeroed bit cell; ``ff``
+    lands a zero one on the 48 (print ``<answer> k ;``), the rest on a
+    blank, skipped, then back.  Rows agreeing with the last share its unguarded leaf.
     """
     n = _validate_truth_table(truth_table)
-    # The leaf chain is 2**n lines whatever the table says, so dropping an
-    # ignored input halves the program; its gate stays with weight zero,
-    # so nothing moves and no setter changes width.
+    # The leaf chain is up to 2**n leaves, so dropping an ignored input
+    # halves the program; its gate stays with weight zero, so nothing moves
+    # and no setter changes width.
     used = essential_inputs(truth_table, n)
     # A constant table depends on nothing and reduces to a one-input table,
     # never to the length-1 table, which is not a valid shape.
@@ -419,8 +420,12 @@ def home_row(truth_table: str) -> str:
         run + "lsffff" + "a" * weights.get(i, 0) + "fl"
         for i, run in enumerate(_runs(HOME_ROW_PAIR, n))
     ]
+    guarded = table.rstrip(table[-1])
+    # Nothing after the last guard reads the index: it need not decrement.
     leaves = [
-        "afffflsfsfflflf" + ("a" if bit == "1" else "") + "k;lff" for bit in table[:-1]
+        "l" + "s" * (row < len(guarded) - 1) + "flffl" + "a" * (bit == "1") + "k;lff"
+        for row, bit in enumerate(guarded)
     ]
-    leaves.append("f" + ("a" if table[-1] == "1" else "") + "k;")
-    return setup + "".join(bit_lines) + "".join(leaves)
+    # The source's end halts, so the last answer needs no ``;``.
+    last = ("ff" if guarded else "f") + "a" * (table[-1] == "1") + "k"
+    return setup + "".join(bit_lines) + "ffff" * bool(guarded) + "".join(leaves) + last

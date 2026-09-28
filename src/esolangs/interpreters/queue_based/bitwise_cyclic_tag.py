@@ -72,7 +72,6 @@ def _advance(state: _State, program: str, bit: str) -> tuple[_State, str | None]
     head, read, answer, printed = state
     size = len(program)
     if program[head] == "0":
-        # Overwritten each time, so the survivor is the last bit deleted.
         return ((head + 1) % size, read + 1, bit, printed), None
     operand = program[(head + 1) % size]
     return ((head + 2) % size, read, answer, printed), operand if bit == "1" else None
@@ -89,7 +88,6 @@ class _Machine:
         """Parse ``code`` into the program and the initial data-string."""
         self.io = io
         self.program, data, self.offsets = _parse(code)
-        #: Append-only; ``read`` starts the live part, the rest kept uncopied.
         self.data = list(data)
         self.state: _State = (0, 0, None, False)
 

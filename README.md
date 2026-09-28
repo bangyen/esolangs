@@ -74,10 +74,10 @@ build the stdin.
 
 ## Examples
 
-`esolangs generate Sophie 0110` emits 51 characters computing XOR:
+`esolangs generate Sophie 0110` emits 20 characters computing XOR:
 
 ```
-;@$48{;@$48{#$48,&}{#$49,&}}{;@$48{#$49,&}{#$48,&}}
+;@0{;}{;@0{#1}{#0}},
 ```
 
 Feeding it the two input bits, one per line, prints their XOR.
@@ -231,8 +231,8 @@ Languages that don't fit into the above categories.
 <!-- IMPLEMENTED:END -->
 </details>
 
-Line is an image-language module under `esolangs.line`; run
-`just test-line` for its suite.
+Line is an image-language module under `esolangs.line`; its suite is
+`tests/line/`, run with the rest by `just test`.
 
 ## Generators
 

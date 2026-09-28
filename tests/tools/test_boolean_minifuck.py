@@ -365,6 +365,20 @@ def test_the_lookup_rule_is_linear(n: int) -> None:
     assert len(built) <= 650 + 70 * 2**n
 
 
+def test_the_strip_is_laid_without_a_round_trip() -> None:
+    """Pin the three-input total: 244,329 characters before, 118,669 after.
+
+    The strip was crossed back with ``<`` and forward again one preserving
+    step per cell, a round trip that left the tape as it was; one step now
+    crosses the preset cell.  Walks over fresh cells drop their ``x`` and
+    the print its dead ``[x``.
+    """
+    from esolangs.tools.minifuck import minifuck
+
+    assert minifuck("0110").endswith("<.")
+    assert sum(len(minifuck(f"{value:08b}")) for value in range(256)) == 118669
+
+
 def test_the_preserving_step_restores_arbitrary_tape() -> None:
     """The lookup's right step preserves every tested tape and advances one."""
 

@@ -6,7 +6,6 @@ from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
-    constant_span_test,
 )
 
 
@@ -39,7 +38,10 @@ class _MoveLeft:
 
 @dataclass
 class _Out:
-    """A marker defining output routine ``which``; it emits no line itself."""
+    """A marker naming the next line ``OUT<which>``; it emits no line itself.
+
+    ``OUT0`` is the output tail; the rest are spans a later equal span jumps to.
+    """
 
     which: int
 
@@ -50,6 +52,16 @@ class _End:
 
 
 _Entry = _Cmd | _If | _MoveLeft | _Out | _End
+
+
+#: The most levels the tree may branch on before the linear lookup takes
+#: over.  An ignored level only reads, so a wide table that depends on at most
+#: this many inputs stays a tree however many it reads.
+_TREE_LEVELS = 4
+
+
+class _TooWideError(Exception):
+    """The tree reached a fifth branching level; build the linear lookup."""
 
 
 def brainif(truth_table: str, width: int | None = None) -> str:
@@ -76,15 +88,24 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     tests and a step left, and a leaf is *there* already, adding one iff its
     entry is a ``1`` before joining a two-line tail.
 
-    That is what makes the tree foldable: a subtree whose rows all agree
-    becomes a leaf, and since a leaf spends no moves reaching the answer the
-    saving is not handed back.  The skipped levels' *reads* still happen, or
-    a caller feeding several programs from one stream would desync.  An
-    earlier arrangement built the answer past the inputs and had each leaf
-    walk out to it, costing two lines per skipped level -- exactly the fold.
+    That is what makes the tree foldable: a level whose halves agree is read
+    and stepped past but not tested, as Line's tree skips it, so an ignored
+    input costs its three reading lines.  Every read still happens, or a
+    caller feeding several programs from one stream would desync.  Equal
+    spans at one level run the same code from the same cell, so the second
+    is one guarded ``goto`` to the first.  A wide table stays a tree while
+    it branches on at most :data:`_TREE_LEVELS` inputs.
+    """
+    return _brainif_tree(truth_table, width)
+
+
+def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) -> str:
+    """Build the tree, falling back to the linear lookup past four levels.
+
+    ``prune=False`` folds only constant spans and shares none, for comparison.
     """
     n = _validate_truth_table(truth_table)
-    if len(truth_table) > 16:
+    if not prune and n > _TREE_LEVELS:
         return _brainif_linear(truth_table)
     # Initial zero skips the two-line output trampoline.  Leaves later return
     # with 48/49 to line 2, whose guards forward to the wide output-tail
@@ -101,29 +122,53 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     entries += [_Cmd("if 0 move right") for _ in range(n - 1)]
 
     counter = [0]
-    constant = constant_span_test(truth_table)
+    shared: dict[tuple[int, str], int] = {}
+    branching: set[int] = set()
 
     def build(lo: int, hi: int, k: int) -> list[_Entry]:
         """Emit a table span, entered with the pointer on cell n-k+1."""
         rest = n - (k - 1)
-        if rest == 0 or constant(lo, hi):
-            # Consume the inputs this path never branched on, which walks
-            # the pointer the rest of the way home; then add one iff the
-            # answer is a 1 and join the tail.
-            out: list[_Entry] = []
-            for _ in range(rest):
-                out.append(_Cmd("if 0 input"))
-                out.append(_Cmd(f"if {_ASCII_ZERO} move left"))
-                out.append(_Cmd(f"if {_ASCII_ONE} move left"))
-            if int(truth_table[lo]):
-                out.append(_Cmd(f"if {_ASCII_ZERO} increment"))
-            out.append(_Cmd(f"if {_ASCII_ZERO} goto 2"))
-            out.append(_Cmd(f"if {_ASCII_ONE} goto 2"))
-            return out
+        span = (k, truth_table[lo:hi])
+        # Entered on an unread cell (0), or on the answer byte (48) once
+        # every input is read, so one guarded jump reuses an equal span.
+        if prune and span in shared:
+            return [
+                _Cmd(f"if {_ASCII_ZERO if rest == 0 else 0} goto OUT{shared[span]}")
+            ]
+        body = _span(lo, hi, k, rest)
+        if prune and len(body) > 1:
+            shared[span] = len(shared) + 1
+            body.insert(0, _Out(shared[span]))
+        return body
+
+    def _span(lo: int, hi: int, k: int, rest: int) -> list[_Entry]:
+        if rest == 0:
+            # The answer byte is 48: add one iff the entry is a 1 and join
+            # the trampoline line whose guard that byte passes.
+            if truth_table[lo] == "0":
+                return [_Cmd(f"if {_ASCII_ZERO} goto 2")]
+            return [
+                _Cmd(f"if {_ASCII_ZERO} increment"),
+                _Cmd(f"if {_ASCII_ONE} goto 3"),
+            ]
+        middle = (lo + hi) // 2
+        if truth_table[lo:middle] == truth_table[middle:hi] and (
+            prune or truth_table[lo:hi] == truth_table[lo] * (hi - lo)
+        ):
+            # The halves agree, so this input cannot change the answer: read
+            # it, step past it and build the one half both values share.
+            return [
+                _Cmd("if 0 input"),
+                _Cmd(f"if {_ASCII_ZERO} move left"),
+                _Cmd(f"if {_ASCII_ONE} move left"),
+                *build(lo, middle, k + 1),
+            ]
         # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
         # bit it selects is the table's usual most-significant-first one --
         # the reads are in input order even though the pointer walks down.
-        middle = (lo + hi) // 2
+        branching.add(k)
+        if len(branching) > _TREE_LEVELS:
+            raise _TooWideError
         l0, l1 = counter[0], counter[0] + 1
         counter[0] += 2
         sub0 = build(lo, middle, k + 1)
@@ -137,7 +182,10 @@ def brainif(truth_table: str, width: int | None = None) -> str:
             *sub1,
         ]
 
-    entries += build(0, len(truth_table), 1)
+    try:
+        entries += build(0, len(truth_table), 1)
+    except _TooWideError:
+        return _brainif_linear(truth_table)
     # One shared tail: the answer cell already holds the byte to print, so
     # this is two lines rather than a climb per digit.
     entries.append(_Out(0))
@@ -150,15 +198,11 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     labels: dict[int, int] = {}
     out_labels: dict[int, int] = {}
     line_no = 0
-    pending: int | None = None
     for entry in entries:
         if isinstance(entry, _Out):
-            pending = entry.which
+            out_labels[entry.which] = line_no + 1
             continue
         line_no += 1
-        if pending is not None:
-            out_labels[pending] = line_no
-            pending = None
         if isinstance(entry, _MoveLeft):
             labels[entry.label] = line_no
 

@@ -129,7 +129,9 @@ def _unwrap(machine: object, protocol: type[Any], role: str) -> object:
     )
 
 
-def run_until_halt_or_cycle(machine: _StepMachine | VM) -> bool:
+def run_until_halt_or_cycle(
+    machine: _StepMachine | VM, limit: int | None = None
+) -> bool:
     """Step ``machine`` until it halts or revisits an exact state.
 
     A repeated snapshot *proves* a hang.  ``True`` on a halt, ``False``
@@ -137,6 +139,11 @@ def run_until_halt_or_cycle(machine: _StepMachine | VM) -> bool:
     :func:`run_until_halt_or_growth`'s.  Brent's algorithm: O(1)
     snapshots, up to ~2x past the cycle's start, so rely on the verdict,
     not the machine's state at detection.
+
+    ``limit`` bounds the steps as the sibling detectors do, raising
+    :class:`TimeoutError` rather than answer.  ``None`` (default) is the
+    unbounded search; bound it when the machine may *grow* instead, which
+    never repeats a state and so would not return.
     """
     machine = cast(
         _StepMachine, _unwrap(machine, _StepMachine, "steppable with a snapshot")
@@ -144,8 +151,14 @@ def run_until_halt_or_cycle(machine: _StepMachine | VM) -> bool:
     tortoise = machine.snapshot()
     power = 1
     length = 0
+    steps = 0
     while not machine.halted:
+        if limit is not None and steps >= limit:
+            raise TimeoutError(
+                f"undecided after {limit} steps: neither halted nor repeated a state"
+            )
         machine.step()
+        steps += 1
         length += 1
         # mypy narrows `machine.halted` to Literal[False] from the loop guard
         # and won't re-widen it across `step()`; the explicit local defeats that.

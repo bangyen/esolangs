@@ -56,7 +56,7 @@ def run_gate(
     gate = load_script()
     gate._added_lines = lambda _base: added  # noqa: SLF001
     gate._diff_base = lambda: "BASE"  # noqa: SLF001
-    gate._coverage_json = lambda _data_file: files  # noqa: SLF001
+    gate._coverage_json = lambda _data_file, _targets: files  # noqa: SLF001
 
     argv = [str(SCRIPT), "--data-file", str(tmp_path / "unused")]
     if partial:

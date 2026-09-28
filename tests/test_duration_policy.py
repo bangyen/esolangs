@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.duration_policy import CI_SCALE, limits, violation
+from tests.duration_policy import CI_SCALE, evidence_violation, limits, violation
 
 
 @pytest.fixture(autouse=True)
@@ -95,3 +95,10 @@ def test_an_unmeasured_call_keeps_the_plain_wall_rule() -> None:
     """The caller may not have timed the CPU; then the ceiling is unchanged."""
     assert violation(set(), 1.01, None) is not None
     assert violation(set(), 1.01) is not None
+
+
+def test_weekly_cost_requires_a_named_unique_regression() -> None:
+    assert evidence_violation({"slow"}, ()) is None
+    assert evidence_violation({"weekly"}, ("n=16 row outside the sample",)) is None
+    assert "cost_evidence" in str(evidence_violation({"weekly"}, ()))
+    assert "cost_evidence" in str(evidence_violation({"weekly"}, ("",)))

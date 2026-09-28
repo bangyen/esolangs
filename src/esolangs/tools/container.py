@@ -5,7 +5,7 @@ from itertools import count, pairwise
 from esolangs.tools.forbin import (
     _forbin_name,
 )
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, subtree_ids
 
 #: The names Container gives its own meaning, which a generated container
 #: may not take.  ``_forbin_name`` draws from a mixed-case alphabet and so
@@ -34,7 +34,9 @@ def _allocate_names(uses: dict[tuple[str, int, int], int]) -> _Names:
     return names
 
 
-def _container_tree(truth_table: str) -> str:
+def _container_tree(
+    truth_table: str, *, prune: bool = True, share: bool = False
+) -> str:
     """Build a Container program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -47,103 +49,207 @@ def _container_tree(truth_table: str) -> str:
     when its value changes.  There is no per-tick conditional, so the
     generator timestamps everything with the tick counter ``T``:
 
-    * The empty container pulses on even ticks ``0..2(n-1)`` (``+1 T>=2k``,
-      ``-2 T>=2k+1``, ``+1 T>=2k+2``), reading one bit per pulse.
-    * For each bit ``k``, two armed gates (65, dipping to 49; and 47, dipping
+    * The empty container pulses on even ticks ``0..2(n-1)`` (``1 T>=2k``,
+      ``-2 T>=2k+1``, ``1 T>=2k+2``), reading one bit per pulse.
+    * For each bit ``k``, two armed gates (50, dipping to 49; and 47, dipping
       to 48) make their ``IN`` comparisons hold for
       exactly the tick the bit is in ``IN``, testing bit ``k`` once.
     * A prefix survivor creates its two children while bit ``k`` is active;
       the mismatching child is cancelled in that same tick.  The parent then
       expires, so each tree edge costs constant work instead of retesting the
-      whole prefix at every leaf.
-    * At tick ``2n`` an output gate dips to 1, so the surviving row adds the
-      table entry of the surviving row to ``OUT``; ``PRINT`` fires and
-      ``EXIT`` halts.
+      whole prefix at every leaf.  A leaf never decays: it holds its birth
+      value until the output gate reads it.
+    * A level whose halves agree is skipped (``prune=False`` keeps it): the
+      node is born two higher per skipped level, so it still decays to 1 on
+      its next tested bit.  The empty container still pulses ``n`` times, so
+      an ignored input costs only its read; a constant is a lone root leaf.
+    * At tick ``2n`` an output gate, resting above every leaf's birth value,
+      dips to 1, so the surviving leaf adds its entry to ``OUT`` (which holds
+      48 from the start); ``PRINT`` fires and ``EXIT`` halts.
 
-    The last block costs one line per row the table sends to 1, so a dense
-    table is summed from its **zero** rows instead: ``OUT`` starts at 49 and
-    each surviving zero row subtracts one, printing ``49 - S``.  The clamp at
-    zero never bites, since the value stays at 48 or 49.  Worth up to 12.7%
-    at ``n == 4`` (1356 characters down to 1184 for fifteen ones of sixteen);
-    the per-row survivor blocks above are fixed and unaffected.
+    The last block costs one line per leaf the table sends to 1, so a dense
+    table is summed from its **zero** leaves instead: ``OUT`` starts at 49
+    and each surviving zero leaf subtracts one, printing ``49 - S``.  The
+    clamp at zero never bites, since the value stays at 48 or 49.  Worth up
+    to 12.7% at ``n == 4`` (1356 characters down to 1184 for fifteen ones of
+    sixteen, before pruning).  A leaf that does not answer is never read, so
+    it is not emitted, and a gate no emitted child names is not declared.
+
+    ``share`` folds a node into the first live node at its depth with the
+    same subtable (``subtree_ids``): only one parent is ever alive, so the
+    copy takes a pair of birth rules from each, and the folded subtree is
+    not emitted.  That works on the copy's own side only, since a node's
+    mismatch rule names its side's gate.  A folded node on the other side
+    is a *relay* instead: born and cancelled like the node, it kills itself
+    the tick after and feeds the copy one less, so the copy still decays to
+    1 on its next tested bit and its subtree is spent once.
     """
     n = _validate_truth_table(truth_table)
-    ones = truth_table.count("1")
-    invert = ones > 2**n - ones
-    wanted = "0" if invert else "1"
+    size = 2**n
 
-    # Every generated container has a unique name, but their reference counts
-    # differ sharply.  Assign shortest alphabetic names by actual frequency.
-    uses: dict[tuple[str, int, int], int] = {("root", 0, 0): 6}
-    for bit in range(n):
-        uses[("low", bit, 0)] = 1 + 2**bit
-        uses[("high", bit, 0)] = 1 + 2**bit
-    for depth in range(1, n + 1):
-        for prefix in range(2**depth):
-            uses[("node", depth, prefix)] = (
-                6 if depth < n else 2 + (truth_table[prefix] == wanted)
-            )
-    uses[("output", 0, 0)] = 1 + truth_table.count(wanted)
+    # A node is born at one depth and next tests a level (``n`` for a leaf).
+    nodes: list[tuple[int, int, int, int]] = []  # (born, tests, lo, parent)
+
+    def settle(depth: int, lo: int) -> int:
+        """Return the first level at or below ``depth`` whose halves differ."""
+        span = size >> depth
+        while (
+            prune
+            and depth < n
+            and truth_table[lo : lo + span // 2]
+            == truth_table[lo + span // 2 : lo + span]
+        ):
+            depth += 1
+            span //= 2
+        return depth
+
+    def grow(tests: int, lo: int, parent: int) -> None:
+        """Add the two children of a node that tests level ``tests``."""
+        half = size >> (tests + 1)
+        for child_lo in (lo, lo + half):
+            nodes.append((tests + 1, settle(tests + 1, child_lo), child_lo, parent))
+            if nodes[-1][1] < n:
+                grow(nodes[-1][1], child_lo, len(nodes) - 1)
+
+    root_tests = settle(0, 0)
+    if root_tests < n:
+        grow(root_tests, 0, -1)
+    # Emit by birth depth and row, as the unpruned tree did.  A constant
+    # table's root is its only leaf; index -1 stands for the root.
+    order = sorted(range(len(nodes)), key=lambda i: (nodes[i][0], nodes[i][2]))
+    # ``parents[i]`` lists every node that gives birth to ``i``; a node
+    # missing from it is folded or lies under a fold or a relay.  ``first``
+    # holds the copy for a (depth, subtable, side) and ``either`` the first
+    # side seen, which a node on the other side relays to.
+    parents = {i: [nodes[i][3]] for i in order}
+    relays: dict[int, int] = {}
+    if share:
+        ids = subtree_ids(truth_table)
+        first: dict[tuple[int, int, int], int] = {}
+        either: dict[tuple[int, int], int] = {}
+        for i in order:
+            born, tests, lo, parent = nodes[i]
+            if parent >= 0 and (parent not in parents or parent in relays):
+                del parents[i]  # inside a folded copy
+                continue
+            block = lo >> (n - born)
+            slot = (born, ids[born][block], block & 1)
+            if slot in first:
+                parents[first[slot]].append(parent)
+                del parents[i]
+                continue
+            first[slot] = i
+            if (born, slot[1]) in either:
+                if tests < n:
+                    relays[i] = either[born, slot[1]]
+            else:
+                either[born, slot[1]] = i
+        order = [i for i in order if i in parents]
+    fed: dict[int, list[int]] = {}
+    for relay, target in relays.items():
+        fed.setdefault(target, []).append(relay)
+    leaves = [i for i in order if nodes[i][1] == n] or [-1]
+    ones = sum(truth_table[nodes[i][2] if i >= 0 else 0] == "1" for i in leaves)
+    invert = ones > len(leaves) - ones
+    wanted = "0" if invert else "1"
+    answers = [i for i in leaves if truth_table[nodes[i][2] if i >= 0 else 0] == wanted]
+    order = [i for i in order if nodes[i][1] < n or i in answers]
+
+    def key(i: int) -> tuple[str, int, int]:
+        if i < 0:
+            return ("root", 0, 0)
+        born, _tests, lo, _parent = nodes[i]
+        return ("node", born, lo >> (n - born))
+
+    # Assign shortest names by how often each is spelt: a node once, once
+    # more if it decays, twice per child it feeds and once if it adds to
+    # ``OUT``; a gate once, and once a test.
+    uses: dict[tuple[str, int, int], int] = {key(-1): 1 + (root_tests < n)}
+    for i in order:
+        born, tests, _lo, _parent = nodes[i]
+        uses[key(i)] = uses.get(key(i), 0) + 1 + (tests < n) + (i in relays)
+        for parent in parents[i]:
+            uses[key(parent)] = uses.get(key(parent), 0) + 2
+        gate_key = ("high" if key(i)[2] & 1 else "low", born - 1, 0)
+        uses[gate_key] = uses.get(gate_key, 1) + 1
+    for i in answers:
+        uses[key(i)] += 1
+    uses[("output", 0, 0)] = 1 + len(answers)
+    tested = sorted({k for side, k, _ in uses if side in ("low", "high")})
 
     names = _allocate_names(uses)
 
     root = names[("root", 0, 0)]
     output_gate = names[("output", 0, 0)]
 
-    lines = ["T:", "+1 T>=T"]
+    # A positive delta is spelt unsigned, as ``int`` reads it.
+    lines = ["T:", "1 T>=T"]
     lines.append(":")  # the empty-named container reads input
-    lines.append("+1 T>=0")
+    lines.append("1 T>=0")
     lines.append("-2 T>=1")
     for k in range(1, n):
-        lines.append(f"+2 T>={2 * k}")
+        lines.append(f"2 T>={2 * k}")
         lines.append(f"-2 T>={2 * k + 1}")
-    lines.append(f"+1 T>={2 * n}")
-    lines.append("IN=50:")  # a value no real byte matches
-    for k in range(n):
-        low = names[("low", k, 0)]
-        high = names[("high", k, 0)]
-        lines.append(f"{low}=65:")
-        lines.append(f"-16 T>={2 * k}")
-        lines.append(f"+32 T>={2 * k + 1}")
-        lines.append(f"-16 T>={2 * k + 2}")
-        lines.append(f"{high}=47:")
-        lines.append(f"+1 T>={2 * k}")
-        lines.append(f"-2 T>={2 * k + 1}")
-        lines.append(f"+1 T>={2 * k + 2}")
-    lines.append(f"{root}=2:")
-    lines.append(f"-1 {root}>=1")
-    for depth in range(1, n + 1):
-        bit = depth - 1
-        for prefix in range(2**depth):
-            parent = root if depth == 1 else names[("node", depth - 1, prefix >> 1)]
-            child = names[("node", depth, prefix)]
-            lines.append(f"{child}:")
-            # A node is born at 2, decays to 1, then pulses its children.
-            # The paired parent rules therefore fire only at exactly 1.
-            lines.append(f"+2 {parent}>=1")
-            lines.append(f"-2 {parent}>=2")
-            gate = names[("high" if prefix & 1 else "low", bit, 0)]
-            mismatch = f"IN<={gate}" if prefix & 1 else f"IN>={gate}"
-            lines.append(f"-2 {mismatch}")
+    lines.append(f"1 T>={2 * n}")
+    # IN starts at 0.  Only a child's mismatch rule reads it, and the first
+    # read lands after tick 0, when every child is still 0 and clamped.
+    lines.append("IN:")
+    for k in tested:
+        # 50 is above every byte IN holds, and dips to 49 for one tick.
+        if ("low", k, 0) in names:
+            lines.append(f"{names[('low', k, 0)]}=50:")
+            lines.append(f"-1 T>={2 * k}")
+            lines.append(f"2 T>={2 * k + 1}")
+            lines.append(f"-1 T>={2 * k + 2}")
+        if ("high", k, 0) in names:
+            lines.append(f"{names[('high', k, 0)]}=47:")
+            lines.append(f"1 T>={2 * k}")
+            lines.append(f"-2 T>={2 * k + 1}")
+            lines.append(f"1 T>={2 * k + 2}")
+    lines.append(f"{root}={2 + 2 * root_tests}:")
+    if root_tests < n:
+        lines.append(f"-1 {root}>=1")
+    for i in order:
+        born, tests, _lo, _parent = nodes[i]
+        child = names[key(i)]
+        value = 2 + 2 * (tests - born)
+        lines.append(f"{child}:")
+        # The paired parent rules fire only while the parent is exactly 1,
+        # and one parent at most is alive: the others are off the path.
+        for parent in parents[i]:
+            lines.append(f"{value} {names[key(parent)]}>=1")
+            lines.append(f"-{value} {names[key(parent)]}>=2")
+        gate = names[("high" if key(i)[2] & 1 else "low", born - 1, 0)]
+        mismatch = f"IN<={gate}" if key(i)[2] & 1 else f"IN>={gate}"
+        lines.append(f"-{value} {mismatch}")
+        if i in relays:  # alive one tick after its birth, then gone
+            lines.append(f"-{value} {child}>=1")
+            continue
+        # A relay is alive a tick late, so it feeds one less than a parent.
+        for relay in fed.get(i, []):
+            lines.append(f"{value - 1} {names[key(relay)]}>=1")
+        # Only a node that tests must decay, to be 1 when its bit is in
+        # IN.  A leaf keeps its birth value, below the output gate's rest.
+        if tests < n:
             lines.append(f"-1 {child}>=1")
-    lines.append(f"{output_gate}=2:")
-    lines.append(f"-1 T>={2 * n - 1}")
-    lines.append(f"+1 T>={2 * n}")
-    # OUT is 48 plus one ``+1`` per row the table sends to 1, so a dense
-    # table pays for nearly every row.  Evaluating the *zero* rows costs one
-    # line each and starts from 49, subtracting: ``49 - S`` is the
+    peak = max(2 + 2 * (n - (nodes[i][0] if i >= 0 else 0)) for i in leaves)
+    rest = peak + 1 if peak > 2 else 2
+    # The gate is never restored: EXIT halts the tick after PRINT.
+    lines.append(f"{output_gate}={rest}:")
+    lines.append(f"-{rest - 1} T>={2 * n - 1}")
+    # OUT is 48 plus one ``+1`` per leaf the table sends to 1, so a dense
+    # table pays for nearly every leaf.  Evaluating the *zero* leaves costs
+    # one line each and starts from 49, subtracting: ``49 - S`` is the
     # complement, and since ``S`` is 0 or 1 the value stays at 48 or 49, so
-    # the container's clamp at zero never bites.  Whichever row-set is
-    # smaller wins; ties keep the plain form.
-    lines.append("OUT:")
-    lines.append(f"+{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n}")
-    lines.append(f"-{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n + 1}")
-    delta = "-1" if invert else "+1"
-    for row in range(2**n):
-        if truth_table[row] == wanted:
-            lines.append(f"{delta} {names[('node', n, row)]}>={output_gate}")
+    # the container's clamp at zero never bites.  Whichever leaf set is
+    # smaller wins; ties keep the plain form.  The gate alone keeps OUT at
+    # its base until the printing tick.
+    lines.append(f"OUT={_ASCII_ZERO + 1 if invert else _ASCII_ZERO}:")
+    delta = "-1" if invert else "1"
+    for i in sorted(answers, key=lambda i: nodes[i][2] if i >= 0 else 0):
+        lines.append(f"{delta} {names[key(i)]}>={output_gate}")
     lines.append("PRINT:")
-    lines.append(f"+1 T>={2 * n}")
+    lines.append(f"1 T>={2 * n}")
     lines.append("EXIT=1:")
     lines.append(f"-1 T>={2 * n + 1}")
     return "\n".join(lines)
@@ -254,5 +360,9 @@ def container(truth_table: str) -> str:
     """Build a Container program, switching to the threshold-sum decoder."""
     n = _validate_truth_table(truth_table)
     if n <= 6:
-        return _container_tree(truth_table)
+        return min(
+            _container_tree(truth_table),
+            _container_tree(truth_table, share=True),
+            key=len,
+        )
     return _container_threshold(truth_table)

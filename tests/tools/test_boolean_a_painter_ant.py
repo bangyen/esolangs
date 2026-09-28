@@ -22,9 +22,10 @@ class TestAPainterAnt:
     model: the colour of the cell the ant lands on at the end of a cycle
     (white is one, black is zero), read after any whole number of cycles
     since every instantiated program is a cycle-stable fixed point.  One
-    construction serves every arity: a white corridor of ``2**n`` cells
-    with the answers in the row below, each input one character (``n`` or
-    ``N``) and its weight the ``E`` walk the template spells after it.
+    construction serves every arity: a white corridor of up to ``2**n``
+    cells (it ends where the trailing run of equal answers starts) with the
+    answers in the row below, each input one character (``n`` or ``N``) and
+    its weight the ``E`` walk the template spells after it.
     """
 
     _MOVE: ClassVar[dict[str, tuple[int, int]]] = {
@@ -131,7 +132,7 @@ class TestAPainterAnt:
         point.
         """
         template = a_painter_ant("0110")
-        assert template.count("P") < a_painter_ant("1111").count("P")
+        assert template.count("P") < a_painter_ant("1110").count("P")
         # no paint-black anywhere in any instantiated program
         program = _instantiate_apa(template, [1, 1])
         assert "p" not in program
@@ -179,7 +180,7 @@ class TestAPainterAnt:
         """Input ``i``'s run is followed by ``2**(n-1-i)`` ``E`` and ``SN``.
 
         The walk is the weight and the ``SN`` is the return to the
-        corridor; the ``sS`` after the last one steps onto the answer.
+        corridor; the ``s`` after the last one steps onto a black answer.
         """
         template = a_painter_ant("01" * 16)  # n = 5
         head, *tails = template.split(TEMPLATE_CHAR)
@@ -189,7 +190,7 @@ class TestAPainterAnt:
             "E" * 8 + "SN",
             "E" * 4 + "SN",
             "E" * 2 + "SN",
-            "E" * 1 + "SNsS",
+            "E" * 1 + "SNs",
         ]
 
     def test_each_input_moves_the_ant_by_its_weight(self) -> None:
@@ -236,12 +237,39 @@ class TestAPainterAnt:
         """Wide dense tables grow no faster than their table size.
 
         The two ``W`` walks cost two characters per entry, the corridor and
-        its answers seven, the walks one per entry, and each input three more:
-        doubling the table doubles the size and adds that constant back.
+        its answers six, the walks one per entry, and each input three more:
+        doubling the table doubles the size and adds that constant back.  The
+        last answer differs from the one before, so the corridor is whole.
         """
-        sizes = [len(a_painter_ant("1" * (2**n))) for n in range(6, 10)]
+        sizes = [len(a_painter_ant("1" * (2**n - 1) + "0")) for n in range(6, 10)]
         assert all(b <= 2 * a + 3 for a, b in pairwise(sizes))
-        assert sizes[0] == 1 + (64 + 63) + (7 * 64 - 3) + 63 + 3 * 6 + 2
+        assert sizes[0] == 1 + (63 + 63) + (6 * 64 - 5) + 63 + 3 * 6 + 1
+
+    def test_the_corridor_stops_where_the_trailing_run_starts(self) -> None:
+        """Answers equal to the one before them to the end get no cell.
+
+        A walk east stops at the corridor's last cell, so every index past it
+        lands there and reads its answer, which is theirs too.
+        """
+        for table, cells in (("0000", 1), ("0111", 2), ("01101111", 5)):
+            head = a_painter_ant(table).split(TEMPLATE_CHAR)[0]
+            assert head.startswith("N" + "W" * (cells - 1) + "P")
+            assert head.count("e") == cells - 1
+            n = len(table).bit_length() - 1
+            for bits in product([0, 1], repeat=n):
+                index = sum(bit << (n - 1 - k) for k, bit in enumerate(bits))
+                assert self._check(table, list(bits)) == int(table[index])
+
+    def test_three_input_total(self) -> None:
+        """The 256 three-input templates total 15,245 characters.
+
+        19,200 before the head's ``W`` walk stopped at the corridor's last
+        cell, each corridor cell dropped its second ``P``, and the closing
+        ``S`` went (a white answer reads off the white corridor above it);
+        16,896 before the corridor stopped where the trailing run starts.
+        """
+        total = sum(len(a_painter_ant(f"{value:08b}")) for value in range(256))
+        assert total == 15245
 
     def test_linear_strip_executes_dense_wide_table(self) -> None:
         """Every row reaches its adjacent strip cell and remains cycle-stable."""

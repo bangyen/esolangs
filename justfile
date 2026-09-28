@@ -65,7 +65,7 @@ test-full *args:
 
 # tier 1 — inner loop: pre-commit + pytest, fast band only, quiet by default
 test-quick *args:
-    PYTEST_ADDOPTS="-m 'not slow and not medium'" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
+    PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly' -n 8" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
 
 # tier 2 — before a commit: everything but the long tail
 test-mid *args:
@@ -81,10 +81,6 @@ test-mid *args:
 # pytest only, in full -- including the `slow` band
 test-py *args:
     {{PYTHON}} scripts/verify.py --only pytest {{args}}
-
-# the Line image-language suites, in full
-test-line *args:
-    {{PYTHON}} scripts/verify.py --only "Line interpreter suites" {{args}}
 
 # lint + duplicate-code + bandit + dead definitions
 test-lint *args:

@@ -335,6 +335,11 @@ class TestEveryDeliberateErrorIsCatchable:
         assert isinstance(exc.value, EsolangError)
         assert str(exc.value)
 
+    # Runs every committed example through `run`, which is the `medium`
+    # rule exactly.  It sat in the fast band at ~1.07s against its 1s floor,
+    # so it passed alone and failed whenever the gate ran a second step
+    # beside pytest.
+    @pytest.mark.medium
     def test_every_committed_example_runs_from_its_described_path(self) -> None:
         """describe() handed out paths run() choked on: the file's newline."""
         failures = []
@@ -670,6 +675,10 @@ class TestAMistypedPathIsNotRunAsAProgram:
             text = path.read_text()
             assert not ("\n" not in text and text.endswith(".txt")), path.name
 
+    # 180 generator calls -- building programs is the expensive half of the
+    # `medium` rule even though this one never runs them.  ~1.30s against
+    # the fast band's 1s.
+    @pytest.mark.medium
     def test_no_generated_program_looks_like_one_either(self) -> None:
         """All 60, three tables each, since a generator could drift into it."""
         for name in esolangs.list_languages():

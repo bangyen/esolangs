@@ -5,7 +5,8 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     best_input_order,
-    decision_tree_tokens,
+    subtree_ids,
+    subtree_slot,
 )
 
 
@@ -62,11 +63,35 @@ def sbleq(truth_table: str) -> str:
     The node-read form is now redundant: the hoisted route has the same
     one-instruction read-and-test shape at a node but shares its input reads
     across the tree. It handles every table alone.
+
+    **A repeated subtree is emitted once and jumped to.**  A branch assumes
+    only its own input's value cell, and every path through the shared
+    diagram still tests each input once, so the destructive test stays
+    safe.  A one-subtree equal to an earlier copy is reached through the
+    copy's target cell (branches to one copy share a cell), a zero-subtree
+    becomes ``0 0 c`` (cell 0 is always zero, so the jump is taken), a leaf
+    is emitted once per answer, and a test whose halves agree is skipped.
+    Shared, the tree is O(T), so it runs past 16 entries against
+    :func:`_sbleq_packed`, which it undercuts through about nine inputs.
     """
     _validate_truth_table(truth_table)
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _sbleq_hoisted)
-    return _sbleq_packed(truth_table)
+        return best_input_order(truth_table, _sbleq_best)
+    tree = best_input_order(truth_table, _sbleq_shared)
+    packed = _sbleq_packed(truth_table)
+    return tree if len(tree) < len(packed) else packed
+
+
+def _sbleq_shared(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one order's shared tree; see :func:`_sbleq_hoisted`."""
+    return _sbleq_hoisted(truth_table, perm, share=True)
+
+
+def _sbleq_best(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Return the shorter of one order's plain and shared trees."""
+    plain = _sbleq_hoisted(truth_table, perm)
+    shared = _sbleq_shared(truth_table, perm)
+    return shared if len(shared) < len(plain) else plain
 
 
 def _sbleq_packed(truth_table: str) -> str:
@@ -219,55 +244,69 @@ def _sbleq_packed(truth_table: str) -> str:
     return " ".join(map(str, memory))
 
 
-def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
+def _sbleq_hoisted(
+    truth_table: str, perm: tuple[int, ...], *, share: bool = False
+) -> str:
     """Emit one input order's hoisted S*bleq program; see :func:`sbleq`.
 
     ``perm[k]`` is the input the tree tests at level ``k``; the read block
     stays in input order, so the program consumes its input stream exactly
-    as the node-read build did.
+    as the node-read build did.  ``share`` jumps to a subtree already
+    emitted instead of repeating it.
     """
     n = _validate_truth_table(truth_table)
-    neg49, d48 = 0, 1
+    neg49 = 0
     vbase = 4
     nxtbase = vbase + n
-    del d48
 
     # (a operand, b operand, kind, kind's argument); ``a``/``b`` are data
     # offsets made absolute below, and ``kind`` picks how ``c`` is filled.
-    reads: list[tuple[int, int, str, int]] = [
+    # A ``one`` or ``jump`` argument is the instruction index it goes to.
+    instructions: list[tuple[int, int, str, int]] = [
         (vbase + i, -2, "nxt", i) for i in range(n)
     ]
+    ids = subtree_ids(truth_table)
+    # First instruction of each emitted subtree, by :func:`subtree_slot` name.
+    placed: dict[tuple[int, int], int] = {}
 
-    def leaf(_level: int, row: int) -> list[tuple[int, int, str, int]]:
-        return [(-3, 1 + int(truth_table[row]), "out", 0), (0, 0, "halt", 0)]
+    def resolve(level: int, block: int) -> tuple[int, int, tuple[int, int]]:
+        return subtree_slot(ids, level, block, skip=share)
 
-    def node(
-        level: int, zero: int, _one: int, at: int
-    ) -> list[tuple[int, int, str, int]]:
-        # A branch spends one instruction before either subtree, so the
-        # one-side starts just past this node and its whole zero subtree.
-        # The walker hands that index down, which is what the old build
-        # reserved a slot and backpatched to get.
-        target = 3 * (at + 1 + zero)
-        return [(vbase + perm[level], neg49, "one", target)]
+    def emit(level: int, block: int) -> None:
+        """Lay the subtree out where control falls in, or jump to its copy.
 
-    instructions = reads + decision_tree_tokens(
-        truth_table,
-        leaf,
-        node,
-        parent_width=1,
-        start=len(reads),
-        collapse=True,
-    )
+        The jump ``0 0 c`` empties the always-zero cell 0, so it is taken.
+        """
+        level, block, slot = resolve(level, block)
+        if slot in placed:
+            instructions.append((0, 0, "jump", placed[slot]))
+            return
+        if share:
+            placed[slot] = len(instructions)
+        if slot[0] < 0:
+            instructions.append((-3, 1 + slot[1], "out", 0))
+            instructions.append((0, 0, "halt", 0))
+            return
+        at = len(instructions)
+        instructions.append((0, 0, "", 0))  # the branch, once its target is known
+        emit(level + 1, 2 * block)
+        # The one subtree is branched to, so an earlier copy costs nothing.
+        one = placed.get(resolve(level + 1, 2 * block + 1)[2])
+        if one is None:
+            one = len(instructions)
+            emit(level + 1, 2 * block + 1)
+        instructions[at] = (vbase + perm[level], neg49, "one", one)
+
+    emit(0, 0)
 
     onebase = nxtbase + n
-    one_count = sum(kind == "one" for _a, _b, kind, _arg in instructions)
+    # One target cell per distinct target: two branches to one copy share it.
+    targets = {
+        arg: None for _a, _b, kind, arg in instructions if kind in {"one", "jump"}
+    }
+    slot_of = {arg: i for i, arg in enumerate(targets)}
     data_base = 9
-    code_base = data_base + onebase + one_count
-
-    # ``one`` instructions carry their absolute target, and the data block
-    # holds those targets in the order the emit loop meets them.
-    ones: list[int] = []
+    code_base = data_base + onebase + len(targets)
 
     cells: list[int] = []
     for a, b, kind, arg in instructions:
@@ -277,16 +316,16 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
             cells += [0, 0, 3]
         elif kind == "nxt":
             cells += [data_base + a, -2, data_base + nxtbase + arg]
+        elif kind == "jump":
+            cells += [0, 0, data_base + onebase + slot_of[arg]]
         else:
-            slot = len(ones)
-            ones.append(code_base + arg)
-            cells += [data_base + a, data_base + b, data_base + onebase + slot]
+            cells += [data_base + a, data_base + b, data_base + onebase + slot_of[arg]]
 
     data = (
         [-_ASCII_ONE, _ASCII_ZERO, _ASCII_ONE, -1]
         + [0] * n
         + [code_base + 3 * (i + 1) for i in range(n)]
-        + ones
+        + [code_base + 3 * arg for arg in targets]
     )
     # Instruction 0 jumps over inert low-address data to the code.  Keeping
     # the data first shortens every repeated a/b/c operand; the large code

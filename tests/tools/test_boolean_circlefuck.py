@@ -27,6 +27,7 @@ class TestCirclefuck:
             ("0110100110010110", 4),  # parity, which no input order folds
         ],
     )
+    @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
         _rows(boolean.circlefuck(table), table, n)

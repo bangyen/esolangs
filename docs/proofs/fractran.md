@@ -286,15 +286,19 @@ exactly once a block is loaded. Put them at the top instead and they would
 steal an input the tree still had to read -- which is a mistake this
 construction made and the execution check caught.
 
-The decoder is one fixed list of fourteen fractions, independent of the
+The decoder is one fixed list of twelve fractions, independent of the
 table. It shifts the block right once per unit of the counter -- halving
 the exponent by moving two `carry` to one `work`, discarding the bit
 shifted out, moving `work` back -- and then answers with the parity of what
-is left: `2 / (read * carry)` if a unit remains, `1 / read` if not. Each
-loop alternates between two state primes, which is what keeps a guard from
-being shared; by Lemma 2 a fraction that tried to hold its own state prime
-in both numerator and denominator would have that prime cancel out of its
-guard and fire everywhere.
+is left: `1 / carry**2` casts out pairs and `2 / carry` answers a unit that
+remains. Each loop alternates between two state primes, which is what keeps
+a guard from being shared; by Lemma 2 a fraction that tried to hold its own
+state prime in both numerator and denominator would have that prime cancel
+out of its guard and fire everywhere. The last two fractions need no state
+prime at all: every earlier state holds a tree state or a phase prime whose
+unguarded fraction comes first, so they fire only once the last phase prime
+is gone. The trailing `1 / p` clears exist only when a folded leaf leaves
+the inputs below it, and the offset, unread: a block's path spends both.
 
 *Two widths.* A power of two is too coarse a setting for `w`: it would
 double where the target crossed it, and the characters an entry would saw
@@ -306,6 +310,20 @@ average a target of about `n / 3`. The wider ones stop a level above the
 rest, which leaves them one more unread input; the offset fraction carrying
 weight `2**v` is exactly that level's, and under a narrow block that prime
 is already gone, so the two widths need no marker to tell them apart.
+
+*Small tables.* The decoder's twelve fractions and ten reserved primes are
+a constant, and below four inputs they outweigh what blocks save on every
+table. So through four inputs the generator also builds the plain tree --
+every level read, a leaf per answer, only `2` reserved -- and ships the
+shorter text, the tree on a tie. The tree never runs longer: past the
+shared levels it spends a step a level and one on its leaf, where a block
+spends its load, an offset fraction a level, and the decoder. Over the 256
+three-input tables this takes the text from 41,010 characters to 27,842
+and the benchmark's steps from 34,314 to 9,592, no table growing on either.
+At four inputs the tree ships for 37,984 of the 65,536 tables, taking the
+text down 5.0% and the steps 41.7%, again with no table growing; from five
+on it is all but never shorter, so it is not built there and the
+asymptotics above are untouched.
 
 *Correctness* is the loop invariant that after `j` units are spent the
 `carry` exponent is `c >> j`, and the offset is exactly the row's index
@@ -330,16 +348,16 @@ Measured, at the seed pinned in the deep proof -- `m` fractions, `k` primes,
 and characters an entry for the shipped builder and for the tree:
 
     n     T       w    D        D/T     tree      tree/T   m       k
-    8     256     2    2310     9.02    4696      18.34    251     248
-    9     512     2    4764     9.30    9914      19.36    480     477
-    10    1024    2    9056     8.84    21514     21.01    856     853
-    11    2048    2    17062    8.33    45429     22.18    1559    1556
-    12    4096    4    36210    8.84    96624     23.59    3093    3090
-    13    8192    4    69820    8.52    199542    24.36    5672    5668
-    14    16384   4    133372   8.14    426120    26.01    10524   10520
+    8     256     2    2217     8.66    4696      18.34    242     246
+    9     512     2    4621     9.03    9914      19.36    469     475
+    10    1024    2    8892     8.68    21514     21.01    844     851
+    11    2048    2    16889    8.25    45429     22.18    1547    1554
+    12    4096    4    35900    8.76    96624     23.59    3080    3088
+    13    8192    4    69429    8.48    199542    24.36    5657    5666
+    14    16384   4    132844   8.11    426120    26.01    10508   10518
 
 `D/T` declines while the tree's climbs, and the successive-difference ratio
-sits between `3.16` and `3.93` against the size contract's `4.4` at every
+sits between `3.50` and `4.28` against the size contract's `4.4` at every
 same-parity triple from `n = 6` up -- which is the mixture doing its work,
 since a single power-of-two width reads `6.19` there. The `w` column is the
 narrow width; about a third of the table sits in blocks of `2w`.

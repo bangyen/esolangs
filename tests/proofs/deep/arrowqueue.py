@@ -21,7 +21,7 @@ import random
 import sys
 
 from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
-from esolangs.tools.arrowqueue import _compact
+from esolangs.tools.arrowqueue import _DRAINED_RING, _compact
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.tools.parameterized import (
     _MIDDLE,
@@ -196,6 +196,25 @@ def check_s_stage() -> None:
         "S stage is Horner",
         ok=bad == 0,
         detail=f"m=0..39 x 2 bits = {cases} stages, {bad} wrong counts or exits",
+    )
+
+
+def check_d_drain() -> None:
+    """D: the cascade's drained ring sustains for every marker count.
+
+    The folded ``1`` tail rests on it: entered heading down with ``m``
+    markers, the stop heading and the loop components queued, the one
+    ``+`` pops every marker and the ring then finds ``R, D, L, U``.
+    """
+    bad = 0
+    for m in range(40):
+        state = (0, 1, 1, (*([1] * m), 0, *RDLU))
+        if _verdict_from(_DRAINED_RING, state) != "1":
+            bad += 1
+    report(
+        "D drain is reusable",
+        ok=bad == 0,
+        detail=f"m=0..39 markers into one drained ring, {bad} halts",
     )
 
 
@@ -507,6 +526,7 @@ def main(argv: list[str] | None = None) -> int:
     check_h1_pitch()
     check_h2_h3_handoff()
     check_s_stage()
+    check_d_drain()
     check_g_geometry()
     check_b_branches()
     check_l_leaves()

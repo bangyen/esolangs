@@ -1,6 +1,6 @@
 """Piet's linear Boolean generator."""
 
-from itertools import product
+from itertools import pairwise, product
 
 import pytest
 
@@ -28,10 +28,10 @@ def test_png_round_trip_executes_the_same_program() -> None:
 
 
 @pytest.mark.medium
-def test_every_three_input_function_executes() -> None:
+def test_every_three_input_function_executes_through_png() -> None:
     for encoded in range(256):
         truth_table = f"{encoded:08b}"
-        program = generate(truth_table)
+        program = Raster.from_png(generate(truth_table).to_png())
         for row in range(8):
             stdin = "".join(f"{bit}\n" for bit in f"{row:03b}")
             assert esolangs.run("Piet", program, stdin) == truth_table[row]
@@ -50,6 +50,15 @@ def test_emitted_pixels_are_linear_in_the_table() -> None:
         program = generate("01" * (entries // 2) if entries > 1 else "0")
         assert len(program.rows) * len(program.rows[0]) <= 64 * entries
         assert len(program.to_png()) <= 110 * entries
+
+
+def test_ignored_inputs_are_read_but_not_indexed() -> None:
+    """An ignored input costs its read and a pop, never table entries."""
+    widths = [len(generate("0" * 2**inputs).rows[0]) for inputs in range(1, 9)]
+    assert [b - a for a, b in pairwise(widths)] == [2] * 7
+    # The second input is ignored: the stored table is the one-input one.
+    assert len(generate("0011").rows[0]) == len(generate("01").rows[0]) + 2
+    assert esolangs.run("Piet", generate("0" * 8), "1\n1\n1\n") == "0"
 
 
 @pytest.mark.parametrize("truth_table", ["", "0", "1", "010", "0121"])
