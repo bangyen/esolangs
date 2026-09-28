@@ -208,6 +208,15 @@ _JAUNE_COMMAND = r"\d+[-+:?!$@]|v[-+?!@]|."
 _BRACKET_LITERAL = r"\[[^\]]*\]|."
 _EVAL_UNIT = r'"[^"]*"|\?.|.'
 
+# FALSE ``'`` pushes the *next* character, so ``'0`` is one token and a
+# newline between the two pushes 10 instead of 48.  A ``{comment}`` or
+# ``"string"`` would be a third unit; no generated program has either.
+_FALSE_COMMAND = r"'[\s\S]|[\s\S]"
+
+# Unlambda ``.x`` and ``?x`` take the next character too: a break inside
+# ``.0`` prints a newline, and one inside ``?0`` asks about one.
+_UNLAMBDA_COMMAND = r"[.?][\s\S]|[\s\S]"
+
 
 def _bio(program: str, width: int) -> str:
     """Wrap BIO, indenting a nested program by its loop depth.
@@ -325,6 +334,16 @@ def _minifuck(program: str, width: int) -> str:
     return wrap_tokens(program, width, _MINIFUCK_COMMAND)
 
 
+def _false(program: str, width: int) -> str:
+    """Wrap FALSE, keeping each ``'x`` character push whole."""
+    return wrap_tokens(program, width, _FALSE_COMMAND)
+
+
+def _unlambda(program: str, width: int) -> str:
+    """Wrap Unlambda, keeping each ``.x`` print and ``?x`` test whole."""
+    return wrap_tokens(program, width, _UNLAMBDA_COMMAND)
+
+
 def _bitdeque(program: str, width: int) -> str:
     r"""Wrap Bitdeque, keeping each ``GOTO`` with the operand it jumps to.
 
@@ -440,6 +459,8 @@ WRAPPERS = {
     "dimensional": _dimensional,
     # 7n/8n are two-character tokens; see :func:`_six_five`.
     "six_five": _six_five,
+    # Safe anywhere: every space and newline is stripped before parsing.
+    "bitwise_cyclic_tag": wrap_chars,
     "brainfuck": wrap_chars,
     "three_d_brainfuck": wrap_chars,
     "circlefuck": wrap_chars,
@@ -451,6 +472,7 @@ WRAPPERS = {
     "bit_tilde": wrap_chars,
     "unsquare": wrap_chars,
     "rotfuck": wrap_chars,
+    "smallfuck": wrap_chars,
     "bfstack": wrap_chars,
     "suffolk": wrap_chars,
     # The trailing ``1`` is a terminator, not a structural line.
@@ -466,6 +488,12 @@ WRAPPERS = {
     # Print through a literal that must not be broken.
     "modulous": _bracket_literal,
     "eval": _quote_literal,
+    # ``'x`` and ``.x``/``?x`` take the character after them.
+    "false": _false,
+    "unlambda": _unlambda,
+    # Whitespace- or comma-separated tokens, and a break inside one would
+    # change a number.
+    "fractran": wrap_space_delimited,
     "sophie": _sophie,
     "three_x": _bracket_literal,
     "forth": wrap_chars,

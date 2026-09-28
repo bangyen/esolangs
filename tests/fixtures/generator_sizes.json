@@ -224,6 +224,20 @@
     "source_units": 909
    }
   },
+  "Bitwise Cyclic Tag": {
+   "0110": {
+    "commands": 22,
+    "source_units": 37
+   },
+   "01101001": {
+    "commands": 43,
+    "source_units": 71
+   },
+   "0110100110010110": {
+    "commands": 84,
+    "source_units": 137
+   }
+  },
   "BrainIf": {
    "0110": {
     "commands": 61,
@@ -406,6 +420,34 @@
     "source_units": 84
    }
   },
+  "FALSE": {
+   "0110": {
+    "commands": 26,
+    "source_units": 53
+   },
+   "01101001": {
+    "commands": 38,
+    "source_units": 121
+   },
+   "0110100110010110": {
+    "commands": 50,
+    "source_units": 257
+   }
+  },
+  "FRACTRAN": {
+   "0110": {
+    "commands": 10,
+    "source_units": 167
+   },
+   "01101001": {
+    "commands": 15,
+    "source_units": 208
+   },
+   "0110100110010110": {
+    "commands": 12,
+    "source_units": 294
+   }
+  },
   "Factor": {
    "0110": {
     "commands": 865,
@@ -432,6 +474,20 @@
    "0110100110010110": {
     "commands": 18,
     "source_units": 30
+   }
+  },
+  "Fish": {
+   "0110": {
+    "commands": 27,
+    "source_units": 32
+   },
+   "01101001": {
+    "commands": 36,
+    "source_units": 45
+   },
+   "0110100110010110": {
+    "commands": 45,
+    "source_units": 62
    }
   },
   "Flowchart": {
@@ -502,6 +558,20 @@
    "0110100110010110": {
     "commands": 395,
     "source_units": 389
+   }
+  },
+  "INTERCAL": {
+   "0110": {
+    "commands": 5,
+    "source_units": 305
+   },
+   "01101001": {
+    "commands": 6,
+    "source_units": 641
+   },
+   "0110100110010110": {
+    "commands": 7,
+    "source_units": 1293
    }
   },
   "Inject": {
@@ -756,6 +826,20 @@
     "source_units": 40837
    }
   },
+  "Smallfuck": {
+   "0110": {
+    "commands": 55,
+    "source_units": 163
+   },
+   "01101001": {
+    "commands": 111,
+    "source_units": 366
+   },
+   "0110100110010110": {
+    "commands": 111,
+    "source_units": 763
+   }
+  },
   "Sophie": {
    "0110": {
     "commands": 7,
@@ -826,6 +910,48 @@
     "source_units": 451
    }
   },
+  "Thue": {
+   "0110": {
+    "commands": 14,
+    "source_units": 203
+   },
+   "01101001": {
+    "commands": 26,
+    "source_units": 207
+   },
+   "0110100110010110": {
+    "commands": 46,
+    "source_units": 215
+   }
+  },
+  "Underload": {
+   "0110": {
+    "commands": 26,
+    "source_units": 54
+   },
+   "01101001": {
+    "commands": 37,
+    "source_units": 105
+   },
+   "0110100110010110": {
+    "commands": 48,
+    "source_units": 200
+   }
+  },
+  "Unlambda": {
+   "0110": {
+    "commands": 139,
+    "source_units": 91
+   },
+   "01101001": {
+    "commands": 205,
+    "source_units": 207
+   },
+   "0110100110010110": {
+    "commands": 271,
+    "source_units": 439
+   }
+  },
   "Unsquare": {
    "0110": {
     "commands": 196,
@@ -894,6 +1020,20 @@
    "0110100110010110": {
     "commands": 317,
     "source_units": 525
+   }
+  },
+  "thisthat": {
+   "0110": {
+    "commands": 49,
+    "source_units": 597
+   },
+   "01101001": {
+    "commands": 85,
+    "source_units": 1169
+   },
+   "0110100110010110": {
+    "commands": 121,
+    "source_units": 3493
    }
   }
  },

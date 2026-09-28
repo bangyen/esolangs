@@ -69,6 +69,7 @@ from esolangs.tools.ram0 import (
     _ram0_ordered as _ram0_ordered,
 )
 from esolangs.tools.ram0 import ram0 as ram0
+from esolangs.tools.underload import underload as underload
 
 __all__ = [
     "a_painter_ant",
@@ -83,6 +84,7 @@ __all__ = [
     "nocomment",
     "one_two_three",
     "ram0",
+    "underload",
 ]
 
 

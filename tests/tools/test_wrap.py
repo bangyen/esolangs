@@ -126,15 +126,20 @@ UNWRAPPABLE = {
     "arrowqueue": "the queue and decision tree occupy fixed grid coordinates",
     "back": "the beam path and embedded input occupy fixed grid coordinates",
     "befunge": "a row is a grid row and the lookup table is indexed by column",
+    "fish": "a row is a codebox row and the lookup table is indexed by column",
+    "underload": "a break inside a pushed element changes the string it contains",
     "brainif": "each line is one instruction and goto targets are line numbers",
     "clockwise": "a row is a ring row; the walk's turns sit at fixed cells",
     "collatz_multiverse": "each line is one complete register assignment",
     "container": "each line declares a container or one of its rules",
     "crement": "each line is one instruction; jumps and patches name line numbers",
     "inject": "blocks and executable commands are delimited by source lines",
+    "intercal": "each physical line is one statement; groups have no continuation",
     "malbolge": "the source is the full 59049-cell store; the mixer and the "
     "stubs sit at fixed addresses, so reflowing loses the layout",
     "whitespace": "every space, tab and newline is a token or a number terminator",
+    "thue": "a newline ends a rule, and the state's own newlines are part of it",
+    "thisthat": "the H-tree's nodes and wires occupy fixed grid coordinates",
 }
 
 # The narrower claim needed by the registry audit: these generators currently
@@ -147,6 +152,7 @@ WIDTH_EXCEPTIONS = {
         "arrowqueue",
         "back",
         "befunge",
+        "fish",
         "clockwise",
         "collatz_multiverse",
         "container",
@@ -154,9 +160,13 @@ WIDTH_EXCEPTIONS = {
         "cvnc",
         "grapheme",
         "inject",
+        "intercal",
         "malbolge",
         "minsky_swap",
         "nocomment",
+        "thue",
+        "thisthat",
+        "underload",
         "whitespace",
     )
 }
@@ -1150,3 +1160,10 @@ def test_six_five_wrapped_programs_still_run() -> None:
     unwrapped = _run("6-5", program)
     for width in (3, 5, 8, 13, 40, 60):
         assert _run("6-5", _six_five(program, width)) == unwrapped
+
+
+def test_mammalian_hands_back_a_program_with_no_words() -> None:
+    """The grid wrapper needs at least one token to size a row, so a
+    whitespace-only program is returned as it came."""
+    assert _mammalian("", 40) == ""
+    assert _mammalian("   \n ", 40) == "   \n "

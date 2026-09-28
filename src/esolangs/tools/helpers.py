@@ -124,17 +124,18 @@ def mark(i: int) -> str:
     return chr(MARK + i)
 
 
-def render(template: str, char: str | None, setters: Setters) -> str:
+def mark_runs(template: str, char: str, setters: Setters) -> str:
     """Return the template as a wrapper is handed it.
 
-    Runs of :data:`TEMPLATE_CHAR` are each as long as their input's setters,
-    so no separator is needed.  With ``char`` None each run is re-spelled
-    as its own :func:`mark`, the form a wrapper keeps whole.
+    Runs of ``char`` are each as long as their input's setters, so no
+    separator is needed; each is re-spelled as its own :func:`mark`, the form
+    a wrapper keeps whole.  ``char`` is the *language's* template character
+    and cannot default to :data:`TEMPLATE_CHAR`: INTERCAL embeds on ``@``
+    because ``$`` is its mingle operator, so scanning for the global one
+    found an operator and read it as a one-character run.
     """
-    if char is not None:
-        return template
     out, position = [], 0
-    for i, (start, end) in enumerate(runs(template, TEMPLATE_CHAR, setters)):
+    for i, (start, end) in enumerate(runs(template, char, setters)):
         out.append(template[position:start] + mark(i) * (end - start))
         position = end
     return "".join(out) + template[position:]
@@ -420,6 +421,51 @@ def decision_tree_tokens[Token](
 
     walk(0, 0, len(truth_table), start)
     return out
+
+
+def separated_tree_text(
+    truth_table: str,
+    leaf: Callable[[int, int], str],
+    *,
+    head: str,
+    between: str,
+    close: str,
+    one_first: bool = False,
+) -> str:
+    """Return a folded decision tree as text, with a separator between halves.
+
+    ``head`` opens a node and its first half, ``between`` closes that half
+    and opens the other, and ``close`` ends the node; ``leaf(level, row)``
+    writes a leaf, which a collapsed subtable reaches early.  ``one_first``
+    lays the one-half before the zero-half.
+
+    :func:`decision_tree_tokens` deliberately cannot act *between* the
+    children, and a language whose branch is a delimited body -- FALSE's
+    ``[...]?`` lambda, Unlambda's ``d`` promise -- needs exactly that: one
+    delimiter per half, in the text, between the two.  One pre-order pass
+    with an explicit stack, so a node's text is appended once rather than
+    copied into its parent's: O(len(result)).
+    """
+    n = _validate_truth_table(truth_table)
+    constant = constant_span_test(truth_table)
+    pieces: list[str] = []
+    # A tuple is a subtable still to write; a string is text already placed.
+    work: list[str | tuple[int, int, int]] = [(0, 0, len(truth_table))]
+    while work:
+        item = work.pop()
+        if isinstance(item, str):
+            pieces.append(item)
+            continue
+        level, lo, hi = item
+        if level == n or constant(lo, hi):
+            pieces.append(leaf(level, lo))
+            continue
+        mid = (lo + hi) // 2
+        halves = ((mid, hi), (lo, mid)) if one_first else ((lo, mid), (mid, hi))
+        pieces.append(head)
+        # Pushed back to front: the stack is popped, so this is source order.
+        work += [close, (level + 1, *halves[1]), between, (level + 1, *halves[0])]
+    return "".join(pieces)
 
 
 def move_text(start: int, target: int, right: str, left: str) -> str:

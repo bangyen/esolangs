@@ -982,10 +982,13 @@ class TestEveryLanguageIsSteppable:
         assert missing == {}
         assert random_languages == {
             "Befunge",
+            "Fish",
             "LaserFuck",
             "Modulous",
             "Painfuck",
             "Super SNUSP",
+            "Thue",
+            "thisthat",
         }, "the random set changed -- a new language needs a branching search"
 
     def test_memory_and_stack_are_copies_not_the_live_store(self) -> None:

@@ -223,13 +223,13 @@ class TestARunFinishesTheDump:
         """``run`` reports the breakpoint, not ``"halted"``, when it does.
 
         The dump step is taken *inside* the halt branch, and the branch
-        re-checks the breakpoints after taking it -- so on these six the
+        re-checks the breakpoints after taking it -- so on these seven the
         answer and the last chance to stop on it arrive together.  Without
         that re-check a ``break_on_output`` for the dumped text could never
         fire at all, since the text does not exist until the step that the
         halt branch takes on the caller's behalf.
 
-        Minsky Swap prints its two registers; every one of the six
+        Minsky Swap prints its two registers; every one of the seven
         behaves the same way here, and this pins the arm rather than the
         language.
         """
@@ -243,24 +243,27 @@ class TestARunFinishesTheDump:
         assert stopped.run(timeout=10) == "breakpoint"
         assert stopped.output == plain.output
 
-    def test_the_set_is_the_six(self) -> None:
-        """Named from the registry, and not the six of a *different* set.
+    def test_the_dumping_sets_are_distinct(self) -> None:
+        """Named from the registry, and not the *dump answer* set.
 
-        ``answer_mode == "dump"`` also has six members and is not this one:
-        it includes A Painter Ant and excludes ArrowQueue.  Equal size is a
-        coincidence, not identity.
+        ``answer_mode == "dump"`` is a different set: it includes A Painter
+        Ant and FRACTRAN and excludes ArrowQueue and Bitwise Cyclic Tag,
+        whose one printed character *is* the answer rather than a state the
+        answer sits in.  The two sizes have now coincided twice -- they
+        parted when FRACTRAN joined one set and met again when BCT joined the
+        other -- while the members never have, so compare the sets too.
         """
-        assert len(self._dumping()) == 6
+        assert len(self._dumping()) == 8
         mode = {
             n
             for n in esolangs.list_languages()
             if esolangs.describe(n)["answer_mode"] == "dump"
         }
-        assert len(mode) == 6
+        assert len(mode) == 7
         assert mode != set(self._dumping())
 
     def test_run_leaves_the_output_in_place(self) -> None:
-        """All six, since the bug was invisible on the rest."""
+        """Every dumping language, since the bug was invisible on the rest."""
         empty = []
         for name in self._dumping():
             program = esolangs.generate(name, "0110")

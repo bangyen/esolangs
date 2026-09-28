@@ -77,13 +77,21 @@ def test_every_language_resolves_its_example() -> None:
     ``test_the_sweep_loads_the_packaged_examples`` above did not catch it:
     it asks about brainfuck, one of the languages whose stem and slug are
     the same string.
+
+    A language with no generator is exempt, and that is the same fact rather
+    than a second one: ``examples/`` is generated from the boolean examples, so
+    a language that cannot have a generator cannot have a committed program
+    there either.  Deadfish is the only one, and the fuzz suites reach it
+    through ``SAMPLES`` instead.
     """
-    from esolangs.registry import RUNNERS, canonical_id
+    from esolangs.registry import LANGUAGES, RUNNERS, canonical_id
 
     module = load_script()
     by_slug = module._examples_by_slug()  # type: ignore[attr-defined]  # noqa: SLF001
-    missing = sorted(name for name in RUNNERS if not by_slug.get(canonical_id(name)))
+    generating = [name for name in RUNNERS if LANGUAGES[name].boolean is not None]
+    missing = sorted(name for name in generating if not by_slug.get(canonical_id(name)))
     assert missing == []
+    assert [n for n in RUNNERS if n not in generating] == ["Deadfish"]
 
 
 def test_the_lookup_is_keyed_the_way_the_sweep_reads_it() -> None:

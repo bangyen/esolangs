@@ -266,13 +266,27 @@ class TestATemplateCarriesItsSetters:
     def test_the_runs_pass_through_render_and_fill_by_width(self) -> None:
         """Run-form output is the template; marks are asked for by a wrapper."""
         from esolangs.tools.examples import _fill_from
-        from esolangs.tools.helpers import mark, render
+        from esolangs.tools.helpers import mark, mark_runs
 
         pairs = (("xx", "yy"), ("p", "q"))
-        assert render("a$$$b", "$", pairs) == "a$$$b"
-        assert render("a$$$b", None, pairs) == "a" + mark(0) * 2 + mark(1) + "b"
+        assert mark_runs("a$$$b", "$", pairs) == "a" + mark(0) * 2 + mark(1) + "b"
         fill = _fill_from(lambda _template, n: pairs[:n])
         assert fill("a$$$b", [1, 0]) == "ayypb"
+
+    def test_marks_are_read_off_the_languages_own_char(self) -> None:
+        """The regression: ``$`` is INTERCAL's mingle operator, not its slot.
+
+        Scanning for the global template character found the operator and
+        read it as a one-character run, so every width-bearing INTERCAL
+        template raised instead of wrapping.
+        """
+        from esolangs.tools.helpers import mark, mark_runs
+
+        pairs = (("xx", "yy"), ("p", "q"))
+        # ``$`` here is ordinary text, exactly as a mingle operator would be.
+        assert mark_runs("a@@$@b", "@", pairs) == (
+            "a" + mark(0) * 2 + "$" + mark(1) + "b"
+        )
 
     def test_a_zero_width_setter_has_an_empty_run(self) -> None:
         """An input spelled as nothing on both branches fills to nothing."""
@@ -620,10 +634,13 @@ class TestWhatHappensWhenAProgramIsUnderfed:
             and not esolangs.describe(name)["parameterized"]
             and self._underfed(name)[0] == "raised"
         )
-        # 38 of the 50 that read stdin, measured.  Pinned exactly, so that a change
-        # which quietly moves a language out of the norm shows up here rather
-        # than in a docstring nobody re-derives.
-        assert raised == 38
+        # 39 of the 53 that read stdin, measured.  Pinned exactly, so that a
+        # change which quietly moves a language out of the norm shows up here
+        # rather than in a docstring nobody re-derives.  Thue joined the norm
+        # and the three classics added with it did not all: FALSE and Unlambda
+        # have an EOF *value* in their specs (-1, and ``@``'s ``v`` branch), so
+        # they answer where the norm raises.
+        assert raised == 39
 
     def test_the_trait_is_reported_by_describe(self) -> None:
         """A caller must be able to learn this without underfeeding one."""

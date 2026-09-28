@@ -25,13 +25,17 @@ from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
 from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
 from esolangs.tools.back import PAIR as BACK_PAIR
+from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
 from esolangs.tools.crement import PAIR as CREMENT_PAIR
 from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
+from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     Setters,
     fill_runs,
 )
+from esolangs.tools.intercal import PAIR as INTERCAL_PAIR
+from esolangs.tools.intercal import TEMPLATE_CHAR as INTERCAL_CHAR
 from esolangs.tools.minifuck_sim import PAIR as MINIFUCK_PAIR
 from esolangs.tools.nocomment import PAIR as NOCOMMENT_PAIR
 from esolangs.tools.one_two_three import PAIR as ONE_TWO_THREE_PAIR
@@ -43,6 +47,8 @@ from esolangs.tools.parameterized import (
     MINSKY_SWAP_PAIR,
 )
 from esolangs.tools.ram0 import PAIR as RAM0_PAIR
+from esolangs.tools.smallfuck import PAIR as SMALLFUCK_PAIR
+from esolangs.tools.underload import PAIR as UNDERLOAD_PAIR
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
 # The committed programs all witness the same two-input function and row:
@@ -360,6 +366,9 @@ def _register() -> None:
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
         "egl": _reader(b.egl, "grid_based.egl"),
         "factor": _reader(b.factor, "tape_based.factor"),
+        "false": _reader(b.false, "stack_based.false"),
+        "fish": _reader(b.fish, "grid_based.fish", split=True),
+        "thisthat": _reader(b.thisthat, "grid_based.thisthat", split=True),
         # Fargo reads one *number* before the program starts, not a bit per
         # line, and ``@ k`` indexes that number's bits.  The boolean
         # convention is therefore to feed the row index: the inputs
@@ -435,6 +444,15 @@ def _register() -> None:
             "three exhausts its input; padding at the end instead answers "
             "every row whose top bit is set wrongly",
         ),
+        "thue": _reader(
+            b.thue,
+            "other.thue",
+            note="Thue draws which rewrite to make, by spec, and the "
+            "interpreter draws too; this program's rules are written so that "
+            "every state it reaches has exactly one, leaving the draw nothing "
+            "to change",
+        ),
+        "unlambda": _reader(b.unlambda, "other.unlambda"),
         "unsquare": _reader(b.unsquare, "stack_based.unsquare"),
         "vandevelo": _reader(
             b.vandevelo,
@@ -490,8 +508,42 @@ def _register() -> None:
                 "whole dump is the answer and there is no position to name"
             ),
         ),
+        "bitwise-cyclic-tag": _embedded(
+            b.bitwise_cyclic_tag,
+            "queue_based.bitwise_cyclic_tag",
+            pair=BCT_PAIR,
+            note=(
+                "Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs "
+                "are bits of the initial data-string, and the answer is the "
+                "bit the last 0 deletes, which the interpreter prints alone -- "
+                "so the output is the answer and there is no position to name"
+            ),
+        ),
         "eval": _embedded(b.eval, "stack_based.eval", pair=EVAL_PAIR),
+        "fractran": _embedded(
+            b.fractran,
+            "other.fractran",
+            pair=FRACTRAN_PAIR,
+            answer_mode="dump",
+            answer_values=("1", "2"),
+            expected="1",
+            note=(
+                "FRACTRAN has neither input nor output: the inputs are the "
+                "exponents of n primes in the starting value, and the answer "
+                "is the value the run stops on -- 1 for a zero and 2 for a one"
+            ),
+        ),
         "home-row": _embedded(b.home_row, "tape_based.home_row", pair=HOME_ROW_PAIR),
+        "intercal": _embedded(
+            b.intercal,
+            "other.intercal",
+            pair=INTERCAL_PAIR,
+            char=INTERCAL_CHAR,
+            expected="\n",
+            answer_pattern=r"(?s)^([I]?)\n$",
+            answer_values=("", "I"),
+            note="INTERCAL READ OUT prints blank for zero and I for one",
+        ),
         "minifuck": _embedded(b.minifuck, "tape_based.minifuck", pair=MINIFUCK_PAIR),
         "minsky-swap": _embedded(
             b.minsky_swap,
@@ -518,6 +570,17 @@ def _register() -> None:
                 "RAM0 has no output instruction and dumps its whole state "
                 "at halt; the answer is the 'z' register"
             ),
+        ),
+        "smallfuck": _embedded(
+            b.smallfuck,
+            "tape_based.smallfuck",
+            pair=SMALLFUCK_PAIR,
+            note="Smallfuck defines no I/O; this implementation prints final cell 2",
+        ),
+        "underload": _embedded(
+            b.underload,
+            "stack_based.underload",
+            pair=UNDERLOAD_PAIR,
         ),
         # 123 answers with the termination convention, as ArrowQueue does, so
         # only the halting (0) branch is committed.  The constructed template
