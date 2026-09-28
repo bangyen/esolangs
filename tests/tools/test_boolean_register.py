@@ -701,6 +701,16 @@ class TestDig:
         assert boolean.dig("0110100110010110", 1)
 
 
+def _printed_once(program: str) -> str:
+    """Respell a retired Sophie build's leaves as the shipped one does.
+
+    The oracles halt in every leaf (``,&``) and branch on a last-level
+    ``01``; the generator loads the digit, prints once at the end, and lets
+    that read stand.  Respelling them keeps the merge the only difference.
+    """
+    return program.replace(",&", "").replace(";@$48{#$48}{#$49}", ";") + ","
+
+
 class TestSophie:
     def test_hybrid_subsumes_both_routes(self) -> None:
         """The hybrid is no longer than either prior construction through n=3."""
@@ -711,13 +721,13 @@ class TestSophie:
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
                 hybrid = _sophie_hybrid(table)
-                assert len(hybrid) <= min(
-                    len(_sophie_tree(table)), len(_sophie_dag(table))
+                best = min(
+                    len(_printed_once(_sophie_tree(table))),
+                    len(_printed_once(_sophie_dag(table))),
                 )
-                improved += len(hybrid) < min(
-                    len(_sophie_tree(table)), len(_sophie_dag(table))
-                )
-        assert improved == 132
+                assert len(hybrid) <= best
+                improved += len(hybrid) < best
+        assert improved == 104
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -739,7 +749,22 @@ class TestSophie:
 
     def test_structure(self) -> None:
         """A one-input function is a single conditional pair."""
-        assert boolean.sophie("10") == ";@$48{#$49,&}{#$48,&}"
+        assert boolean.sophie("10") == ";@$48{#$49}{#$48},"
+
+    def test_leaves_share_one_print_and_01_is_its_read(self) -> None:
+        """A leaf loads its digit, and the one ``,`` at the end prints it.
+
+        Every later ``@$L`` tests a label, which 48 and 49 never are, so a
+        leaf runs on to the end instead of printing and halting there.  A
+        last-level ``01`` is the read itself, never worth a label.  Over
+        every three-input table the program falls from 16,960 characters to
+        11,728.
+        """
+        assert boolean.sophie("01") == ";,"
+        assert boolean.sophie("0110") == ";@$48{;}{;@$48{#$49}{#$48}},"
+        assert boolean.sophie("00010100") == ";@$48{;@$48{;#$48}{;}}{;@$48{;}{;#$48}},"
+        total = sum(len(boolean.sophie(f"{value:08b}")) for value in range(256))
+        assert total == 11728
 
     def test_state_machine_merges_what_the_tree_cannot(self) -> None:
         """A subtable that is not constant can still collapse to one state.
@@ -762,16 +787,16 @@ class TestSophie:
         """No table comes out longer than the nested tree alone.
 
         The hybrid inlines unshared states as tree branches, so labels only
-        pay for actual merges. At n == 3, 130 of 256 tables shrink.
+        pay for actual merges. At n == 3, 102 of 256 tables shrink.
         """
         improved = 0
         for value in range(256):
             table = format(value, "08b")
             dispatched = len(boolean.sophie(table))
-            tree = len(_sophie_tree(table))
+            tree = len(_printed_once(_sophie_tree(table)))
             assert dispatched <= tree, table
             improved += dispatched < tree
-        assert improved == 130
+        assert improved == 102
 
     def test_merge_is_linear_where_the_tree_doubles(self) -> None:
         """Parity needs two states per level however wide it gets.
@@ -819,8 +844,8 @@ class TestSophie:
         :mod:`tests.tools.test_boolean_contract` rejects for every
         generator.
         """
-        assert boolean.sophie("1111") == ";;#$49,&"
-        assert boolean.sophie("0000") == ";;#$48,&"
+        assert boolean.sophie("1111") == ";;#$49,"
+        assert boolean.sophie("0000") == ";;#$48,"
         assert boolean.sophie("0110").count(";") == 3  # nothing folds
 
 
