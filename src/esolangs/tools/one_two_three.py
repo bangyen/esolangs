@@ -22,7 +22,8 @@ Construction (``n <= 3``; wider tables go unchanged to
 2. **Separation** -- a frozen per-arity schedule of even-displacement
    walk/descend segments each closed by ``33``, ending with every row at
    a distinct odd position.  Frozen constants, replayed on the exact
-   model, never searched at build time.
+   model, never searched at build time; up to four laws per arity are
+   candidates, and the shortest template wins.
 3. **Verdict** -- the wider pipeline's planned kill on a junky tape: one
    paint per row whose tested cell disagrees with the table's demand;
    distinct odd positions keep paint offsets collision-free.
@@ -31,7 +32,7 @@ Construction (``n <= 3``; wider tables go unchanged to
 The suite's exhaustive ``n <= 3`` sweep on the real interpreter is what
 pins the schedules.  Retired stored plans (see git history) averaged
 5.75/11.44/19.97 characters at one/two/three inputs; the constructed
-route averages 17.0/49.5/151.5 (3.0x/4.3x/7.6x) because 102 of the 256
+route averages 20.0/48.1/135.3 (3.5x/4.2x/6.8x) because 102 of the 256
 three-input plans were search-found witnesses with no rule.  Every
 template loops by a proven state revisit, never unbounded growth, or
 the harness would hang instead of reporting a 1; the suite checks it.
@@ -66,48 +67,60 @@ ONE, ZERO = _ONE, _ZERO
 #: Each input's embed: the generator's own ``ZERO``/``ONE`` command.
 PAIR = (ZERO, ONE)
 
-#: One separation law: the constant pre-fill walk, then the alternating
-#: test displacements.
+#: One separation law: the walk before each fill, then the alternating test
+#: displacements.
 #:
-#: Both parts are one *shape*, not a set of answers.  The seed walks the
-#: same distance before every fill, so it is a single number; separation
+#: Both parts are one *shape*, not a set of answers.  The seed walks a fixed
+#: distance before each fill; separation
 #: alternates ``"1"``-runs and ``"2"``-runs, one displacement each, with
 #: no raw repositioning.  Every displacement is closed by its own ``33``:
 #: rows whose tested cell is marked re-run the segment and escape, rows
 #: whose cell is clear skip.  That split is what separates -- rows differ
 #: in their *marks* after a bare fill, not their positions, so a walk
 #: alone can never split them.
-type _Law = tuple[int, tuple[int, ...]]
+type _Law = tuple[tuple[int, ...], tuple[int, ...]]
 
-#: The separation law per small arity.
+#: The separation laws per small arity, each a named candidate.
 #:
-#: These are *derived* constants, not a frozen search log: over constant
-#: seeds and alternating displacement vectors, each is the law with the
-#: least mean template length, one selection rule applied at every arity.
-#: ``test_the_separation_law_is_the_least_mean`` re-derives all three
-#: rather than trusting them.  At ``n == 3`` the domain is tight -- 13
-#: laws cover all 256 tables, the winner leading by 18% -- which is why
-#: one law replaces ten hand-swept schedules.  A failing law could only
-#: raise, never mis-emit, and the exhaustive sweep re-proves both.
-_LAWS: dict[int, _Law] = {
-    1: (0, ()),
-    2: (2, (3, 2, 4)),
-    3: (3, (1, 3, 9, 4)),
+#: These are *derived* constants, not a frozen search log.  The first is,
+#: over constant seeds and alternating displacement vectors, the law with
+#: the least mean template length.  Each law puts the rows at different
+#: positions, so the paints and the kill height differ by table, and the
+#: rest are a greedy cover: over seeds of 0..6 per fill and up to four
+#: displacements of 1..10, each is the law that most shrinks the total over
+#: every table given the candidates before it (the first law and the wide
+#: chain), at most four laws in all.  Both rules are re-derived in
+#: ``tests/tools/test_boolean_one_two_three_laws.py``.  A failing law could
+#: only raise, never mis-emit, and the exhaustive sweep re-proves each.
+_LAWS: dict[int, tuple[_Law, ...]] = {
+    1: (((0,), ()), ((1,), (1, 2, 2)), ((0,), (2,))),
+    2: (
+        ((2, 2), (3, 2, 4)),
+        ((2, 0), (2,)),
+        ((2, 0), (2, 4, 4)),
+        ((0, 6), (3, 2, 4)),
+    ),
+    3: (
+        ((3, 3, 3), (1, 3, 9, 4)),
+        ((6, 0, 1), (4, 8, 6)),
+        ((2, 6, 1), (7, 4, 2)),
+        ((4, 2, 3), (6, 9, 2)),
+    ),
 }
 
 
 @cache
-def _separated(n: int) -> _Builder:
-    """Execute arity ``n``'s separation law up to full separation.
+def _separated(n: int, law: int = 0) -> _Builder:
+    """Execute arity ``n``'s ``law``-th separation law up to full separation.
 
     A prototype the per-table build clones, so the law is modelled once per
     process.  Raises if the law no longer separates, which the exhaustive
     sweep turns into a test failure.
     """
-    walk, disps = _LAWS[n]
+    walks, disps = _LAWS[n][law]
     _work[0] = _WORK_BUDGET
     b = _Builder(n)
-    for i in range(n):
+    for i, walk in enumerate(walks):
         if walk:
             b.run("2" * walk)
         b.fill(i)
@@ -169,8 +182,8 @@ def _verdict_junky(b: _Builder, table: str) -> None:
     b.test(kills=frozenset(r.bits for r in ones))
 
 
-def _construct_small(truth_table: str, n: int) -> str:
-    """Build the small-arity template arity ``n``'s separation law gives.
+def _construct_small(truth_table: str, n: int, law: int = 0) -> str:
+    """Build the small-arity template arity ``n``'s ``law``-th law gives.
 
     No closing replay: ``test_all_small_tables`` sweeps every ``n <= 3``
     table through the real interpreter, the same contract as
@@ -178,7 +191,7 @@ def _construct_small(truth_table: str, n: int) -> str:
     """
     _work[0] = _WORK_BUDGET
     try:
-        b = _separated(n).clone()
+        b = _separated(n, law).clone()
         _verdict_junky(b, truth_table)
         _endgame(b)
     except ConstructError as exc:  # pragma: no cover - the sweep proves coverage
@@ -213,5 +226,10 @@ def one_two_three(truth_table: str) -> str:
     # being gated out by arity.  The mean still sets the crossover above.
     # No guard on the chain: ``test_the_wide_route_is_exhaustive_and_loses_
     # on_the_mean`` builds it for every table through three inputs.
-    candidates = (_construct_small(truth_table, n), _construct_linear(truth_table, n))
+    # The first law and the chain come first, so ties keep what they built;
+    # the extra laws only ever replace a longer template.
+    candidates = [_construct_small(truth_table, n), _construct_linear(truth_table, n)]
+    candidates += [
+        _construct_small(truth_table, n, law) for law in range(1, len(_LAWS[n]))
+    ]
     return _in_name_order(min(candidates, key=len), n)

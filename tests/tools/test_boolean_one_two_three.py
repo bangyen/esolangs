@@ -272,9 +272,9 @@ class TestParameterizedOneTwoThree:
     @pytest.mark.parametrize(
         ("table", "length", "route"),
         [
-            ("00000000", 63, "small"),
-            ("10000000", 155, "wide"),
-            ("00010111", 201, "small"),
+            ("00000000", 55, "small"),
+            ("10000000", 105, "wide"),
+            ("00010111", 131, "small"),
             ("01101001", 151, "small"),
         ],
     )
@@ -287,7 +287,8 @@ class TestParameterizedOneTwoThree:
         still wins the mean, 201.6 bytes against 214.9 -- that is what pins
         the crossover at ``n > 3`` -- but it stopped winning every table
         once the wide chain gave up pre-painting, so gating the chain out
-        by arity would cost size on 98 of the 256.  These four straddle it.
+        by arity would cost size on 98 of the 256.  These four straddle it;
+        the extra separation laws then undercut either on three of them.
         """
         from esolangs.tools import parameterized
         from esolangs.tools.one_two_three import _construct_small, _in_name_order
@@ -296,104 +297,7 @@ class TestParameterizedOneTwoThree:
         small = len(_in_name_order(_construct_small(table, 3), 3))
         wide = len(_in_name_order(_construct_linear(table, 3), 3))
         assert (wide < small) == (route == "wide"), (small, wide)
-        assert len(parameterized.one_two_three(table)) == length == min(small, wide)
-
-    @pytest.mark.slow
-    def test_the_separation_law_is_the_least_mean(self) -> None:
-        """The law's constants are re-derived, not trusted.
-
-        ``_LAWS`` claims one selection rule at every arity: over constant
-        walk seeds and alternating pure-test displacement vectors, the law
-        with the least mean template length.  Re-running that sweep at
-        ``n <= 2`` fails a hand-edited constant rather than shipping it;
-        ``n == 3`` is 13 laws over 256 tables, minutes rather than seconds.
-        """
-        from itertools import product
-
-        from esolangs.tools.one_two_three import (
-            _LAWS,
-            _WORK_BUDGET,
-            ConstructError,
-            _Builder,
-            _endgame,
-            _on_mark,
-            _verdict_junky,
-            _work,
-        )
-
-        def prototype(n: int, walk: int, disps: tuple[int, ...]) -> object:
-            """Replay one candidate law, or ``None`` if it does not fit.
-
-            A candidate that walks a row off the ring raises exactly as a
-            build would; here that only means "not this law", so the
-            raise is caught rather than propagated.
-            """
-            # pylint: disable=duplicate-code
-            # The overlap with ``_separated``'s replay is the point, not
-            # an oversight: this test re-derives the shipped constants,
-            # so it has to replay the law independently.  Sharing a
-            # helper would check the generator against itself and a bug
-            # in the replay would pass here, so the copy stays and the
-            # similarity check is told so rather than left to fail in CI.
-            _work[0] = _WORK_BUDGET
-            try:
-                b = _Builder(n)
-                for i in range(n):
-                    if walk:
-                        b.run("2" * walk)
-                    b.fill(i)
-                for d in range(4 * 2**n + 9):
-                    probe = b.clone()
-                    if d:
-                        probe.run("2" * d)
-                    if any(r.pos < 0 for r in probe.live()):
-                        continue
-                    if not any(_on_mark(r) for r in probe.live()):
-                        if d:
-                            b.run("2" * d)
-                        b.test()
-                        break
-                else:
-                    return None
-                for i, step in enumerate(disps):
-                    b.run(("1" if i % 2 == 0 else "2") * step)
-                    b.test()
-            except ConstructError:
-                return None
-            poss = [r.pos for r in b.live()]
-            if len(set(poss)) != len(poss) or any(p % 2 == 0 for p in poss):
-                return None
-            return b
-
-        def mean_length(n: int, proto: object) -> float | None:
-            total = 0
-            tables = ["".join(t) for t in product("01", repeat=2**n)]
-            for table in tables:
-                _work[0] = _WORK_BUDGET
-                b = proto.clone()  # type: ignore[attr-defined]
-                try:
-                    _verdict_junky(b, table)
-                    _endgame(b)
-                except ConstructError:
-                    return None
-                total += len(b.template())
-            return total / len(tables)
-
-        for n in (1, 2):
-            ranked = []
-            for walk in range(9):
-                for depth in range(5):
-                    for disps in product(range(1, 11), repeat=depth):
-                        proto = prototype(n, walk, disps)
-                        if proto is None:
-                            continue
-                        mean = mean_length(n, proto)
-                        if mean is not None:
-                            ranked.append((mean, walk, disps))
-            assert ranked, n
-            ranked.sort()
-            _best_mean, best_walk, best_disps = ranked[0]
-            assert (best_walk, best_disps) == _LAWS[n], (n, ranked[:3])
+        assert len(parameterized.one_two_three(table)) == length <= min(small, wide)
 
     @pytest.mark.medium  # 2120 rows of the real interpreter, 0.9s
     def test_the_wide_route_is_exhaustive_and_loses_on_the_mean(self) -> None:
@@ -423,24 +327,45 @@ class TestParameterizedOneTwoThree:
         small = [len(_in_name_order(_construct_small(table, 3), 3)) for table in tables]
         assert [sum(wide), sum(small)] == [55004, 51609]
         assert sum(a < b for a, b in zip(wide, small, strict=True)) == 98
-        # ``one_two_three`` is the pointwise minimum of the two, so naming
-        # it as one side would compare a route with the contest holding it.
+        # ``one_two_three`` is at most the pointwise minimum of the two (the
+        # extra laws only undercut it), so naming it as one side would
+        # compare a route with the contest holding it.  46703 was the
+        # three-input total before the extra laws.
+        both = [min(a, b) for a, b in zip(wide, small, strict=True)]
         built = [len(one_two_three(table)) for table in tables]
-        assert built == [min(a, b) for a, b in zip(wide, small, strict=True)]
-        assert sum(built) == 46703
+        assert all(b <= m for b, m in zip(built, both, strict=True))
+        assert (sum(both), sum(built)) == (46703, 34627)
+
+    def test_the_extra_laws_never_grow_a_template(self) -> None:
+        """Through two inputs too: the first law and the chain bound it.
+
+        Totals before and after: 94 -> 80 at one input, 1105 -> 769 at two.
+        """
+        from esolangs.tools.one_two_three import _construct_small, one_two_three
+        from esolangs.tools.one_two_three_construct import _construct_linear
+
+        for n, before, after in ((1, 94, 80), (2, 1105, 769)):
+            tables = [format(v, f"0{2**n}b") for v in range(2 ** (2**n))]
+            both = [
+                min(len(_construct_small(t, n)), len(_construct_linear(t, n)))
+                for t in tables
+            ]
+            built = [len(one_two_three(t)) for t in tables]
+            assert all(b <= m for b, m in zip(built, both, strict=True))
+            assert (sum(both), sum(built)) == (before, after)
 
     @pytest.mark.parametrize(
         ("table", "template"),
         [
-            ("01", f"{_X}223311122212331111"),
-            ("0001", f"22{_X}22{_X}22331113322331111332133121233111111121121"),
+            ("01", f"{_X}2233113312123311"),
+            ("0001", f"22{_X}{_X}2223311332133121233111111121121"),
         ],
     )
     def test_the_emitted_template_is_exact(self, table: str, template: str) -> None:
         """The construction is deterministic down to the byte.
 
-        ``_construct_small`` builds one prototype per arity, so the
-        emission is a function of the law and the table alone.  A change to
+        ``_construct_small`` builds one prototype per law, so the
+        emission is a function of the laws and the table alone.  A change to
         the law's constants, or to the order its tests fire in, moves these
         bytes even where every truth-table assertion still passes.
         """
@@ -457,9 +382,10 @@ class TestParameterizedOneTwoThree:
         the flag is genuinely two-valued; forcing it either way leaves every
         template correct, so only size sees it, and the total is asserted
         because the effect is spread across the sweep.  It also pins the two
-        routes' joint cost: 47902 characters, against 52826 when the
-        separation law served every three-input table alone and the wide
-        route's 56902.  (A template is as long as the programs it fills to.)
+        routes' joint cost: 35476 characters with the extra laws, 47902
+        with the first law and the chain, 52826 when the first law served
+        every three-input table alone and the wide route's 56902.  (A
+        template is as long as the programs it fills to.)
         """
         from esolangs.tools import parameterized
 
@@ -468,7 +394,7 @@ class TestParameterizedOneTwoThree:
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
                 total += len(parameterized.one_two_three(table))
-        assert total == 47902
+        assert total == 35476
 
     def test_a_seed_with_even_positions_is_refused(self) -> None:
         """The junky verdict rejects a seed whose rows are not distinct odd.
