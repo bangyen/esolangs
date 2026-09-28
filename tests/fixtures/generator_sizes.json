@@ -2,8 +2,8 @@
  "records": {
   "123": {
    "0110": {
-    "commands": 60,
-    "source_units": 63
+    "commands": 58,
+    "source_units": 47
    },
    "01101001": {
     "commands": null,
