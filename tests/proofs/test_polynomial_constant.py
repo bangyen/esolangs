@@ -2,6 +2,7 @@
 
 import itertools
 import math
+from fractions import Fraction
 
 import pytest
 
@@ -45,6 +46,15 @@ def test_maximal_width_reaches_half_the_asymptotic_scale() -> None:
         residuals = 2 ** (n - j)
         first_essential = 2 ** (2**j) - 2 ** (2 ** (j - 1)) - 2
         assert min(residuals, first_essential) * 2 * n >= 2**n
+
+
+def test_decoder_slack_cannot_lower_the_effective_profile() -> None:
+    """The relaxed operand/state trade after ``lem:effprofile`` bottoms at zero."""
+    baseline = Fraction(325, 8)
+    for numerator in range(51):
+        delta = Fraction(numerator, 100)
+        relaxed = (baseline - 4 * delta) / (1 - delta) ** 2
+        assert relaxed >= baseline
 
 
 def _even_source(table: str) -> tuple[str, list[list[int]], list[int]]:

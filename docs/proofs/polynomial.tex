@@ -841,6 +841,25 @@ Consequently $g(a,x)\ge g(\frac12,0)=325/8$.  A smaller upper
 constant therefore needs a different instruction profile, not a different
 choice of $F$ in the existing embedding.
 
+Nor does spending a positive fraction of the input length on decoder slack
+improve this profile.  Give that fraction the optimistic value
+$0\le\delta\le\frac12$: suppose it shrinks the dispatched-state set by
+$T^{-\delta}$, so the two roots of every large transition addition have
+effective exponent $2(1-\delta)$, and charge no other cost for doing so.
+The band width is then at most $(1-\delta)n$, so its state count is larger
+by $(1-\delta)^{-1}$.  In the calculation of
+Lemma~\ref{lem:effprofile}, the cumulative root densities at exponents
+$1,2(1-\delta),2,4$ are respectively $3/2,5/2,11/2,6$.  Its profile is
+therefore $325/8-4\delta$, and the normalized source constant is at least
+\[
+ H(\delta)=\frac{325/8-4\delta}{(1-\delta)^2}\ge\frac{325}8,
+\]
+because the difference has numerator
+$\delta(2(325/8)-4-(325/8)\delta)>0$ for $\delta>0$.  The actual band
+construction also has tail states, so this is a favorable relaxation of
+the trade.  Shrinking decoder operands by reallocating band width cannot
+lower the constant either.
+
 \begin{proof}[Proof of the upper half of Proposition~\ref{prop:bracket}]
 \emph{Parameters.}  Let $n$ be large and put $\lambda_0=\lceil\log_2n\rceil$,
 $t_0=\sigma=\lambda_0$ and $A=t_0+\lambda_0+\lceil2(\lambda_0+1)\log n\rceil$.  Let $h$
