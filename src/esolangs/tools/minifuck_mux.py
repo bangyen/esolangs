@@ -89,6 +89,11 @@ def _mux_start(n: int) -> int:
 _SCULPT_POOL_CODE = _POOL_CODES[4]
 
 
+#: The relay leaves the pointer at 6 for a one, 7 for a zero, over pool
+#: ``00110000`` and a set cell 8, so a bare ``.`` prints ``'1'`` or ``'0'``.
+_PRINT = "."
+
+
 def _canonical_endgame(j: _Joint, acc: int, *, direct: bool) -> None:
     """Print ``acc`` from the canonical pool state by the named orientation."""
     if acc < _POOL_WIDTH:
@@ -105,7 +110,7 @@ def _canonical_endgame(j: _Joint, acc: int, *, direct: bool) -> None:
     for cell in range(_POOL_WIDTH):
         if len(set(j.col(cell))) != 1:
             raise AssertionError(f"pool cell {cell} is input-dependent")
-    j.emit("[x.")
+    j.emit(_PRINT)
 
 
 @cache
@@ -162,8 +167,7 @@ def _mux_init_bits(bits: str) -> str:
 def _mux_lookup(truth_table: str, n: int) -> str:
     """Return the linear preloaded-strip mux.
 
-    ``[x<[x<[x<[x`` advances one cell and restores a cell; repeating it
-    crosses the preloaded controls unchanged, and one left run maps row
+    The controls are written on fresh tape, and one left run maps row
     ``r`` to control ``r``.  With zero controls the printed row is
     ``popcount(r)`` plus the separator phase; a control flips every row but
     its own and the sentinel flips all, so the selected output is the bit.
@@ -178,13 +182,12 @@ def _mux_lookup(truth_table: str, n: int) -> str:
 
     field_lo = _MUX_GUARD + 4
     field = "".join(map(str, reversed(controls))) + str(sentinel)
-    parts = ["[x" * (field_lo - 1), _mux_init_bits(field + "0")]
-    parts.append("<" * (field_lo + len(field) + 3))
-
+    # Fresh cells flip to one and never skip, so their walks need no ``x``;
+    # one preserving step crosses the preset one the field ends before.
     field_end = field_lo + len(field) + 1
-    parts.append(_MUX_PRESERVE_RIGHT * field_end)
     start = _mux_start(n) + 4 * total
-    parts.append("[x" * (start - 1 - field_end))
+    parts = ["[" * (field_lo - 1), _mux_init_bits(field + "0")]
+    parts.extend((_MUX_PRESERVE_RIGHT, "[" * (start - 1 - field_end)))
 
     weights = _mux_weights(n)
     for i, weight in enumerate(weights):
@@ -214,7 +217,7 @@ def _mux_lookup(truth_table: str, n: int) -> str:
             "[x" * (acc - 1 - landed),
             _READS[1],
             "<" * (acc - (_POOL_WIDTH - 1)),
-            "[x.",
+            _PRINT,
         )
     )
     return "".join(parts)
