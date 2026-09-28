@@ -18,8 +18,10 @@ read is complete; rejected candidates are recorded under Curation in
   logical crossover exists: three native XOR nodes compute `a=x XOR y`, then
   `a XOR y=x` and `a XOR x=y`. A 19-by-17 Unicode layout balances both paths
   at sixteen steps, has alternating terminals, and passes all four input pairs
-  in the simultaneous-update prototype. Compose it into the NOR network, then
-  execute every small table; the isolated gadget and netlist are not an
+  in the simultaneous-update prototype. A layered tree needs one crossover
+  per internal mux: its composed gadget model passes all 278 tables through
+  three inputs and has `n + 11T - 10` logic nodes. Pack and synchronize that
+  composition in one Unicode grid; separately executed gadgets are not an
   implementation.
 ## Conditional follow-up
 
