@@ -794,9 +794,18 @@ def _shannon_fold(
 
 
 def _complemented_levels(truth_table: str, n: int) -> set[int]:
-    """Return selector levels whose direct mux rule needs ``~selector``."""
+    """Return selector levels whose direct mux rule needs ``~selector``.
+
+    Identities have to compare the way :func:`_mux`'s signals do.  Only a
+    constant or a level's own rail is ever the same signal twice; every gate
+    output is fresh, so two cofactors that compute the same function from
+    different gates are *unequal* to the fold and take a real mux.  Hashing
+    them together, as this once did, skipped the complement that mux reads:
+    twenty four-input tables, ``0000111100010001`` first, raised instead of
+    drawing.
+    """
     stack: list[tuple[int, int]] = []
-    identities: dict[tuple[int, int, int], int] = {}
+    rails: dict[tuple[int, int, int], int] = {}
     needed: set[int] = set()
     next_identity = 2
     for bit in truth_table:
@@ -807,10 +816,13 @@ def _complemented_levels(truth_table: str, n: int) -> set[int]:
                 if (zero, identity) != (0, 1):
                     needed.add(n - 1 - level)
                 key = (level, zero, identity)
-                if key not in identities:
-                    identities[key] = next_identity
+                if key in rails:
+                    identity = rails[key]
+                else:
+                    if (zero, identity) in ((0, 1), (1, 0)):
+                        rails[key] = next_identity
+                    identity = next_identity
                     next_identity += 1
-                identity = identities[key]
             level += 1
         stack.append((identity, level))
     return needed
