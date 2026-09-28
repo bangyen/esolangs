@@ -15,10 +15,11 @@ read is complete; rejected candidates are recorded under Curation in
   The crossover route works but is unnecessary. Read inputs in name order,
   append them to one bistack row with `◨`, then let each `◧` pop the next bit
   into a `◑` decision node. The resulting single-grid tree passes all 276
-  non-nullary tables through three inputs. Its first top-down drawing is
-  `Theta(T log T)` text (340,079 characters at ten inputs): alternate split
-  axes in an H-tree layout to reach linear area, then promote the interpreter
-  and generator.
+  non-nullary tables through three inputs. Alternating split axes with branch
+  spans `8 * 2**k - 2` gives an H-tree whose width and height are
+  `O(sqrt(T))`; its text is therefore `O(T)` (264,669 characters at ten
+  inputs, and 4,222,893 at fourteen). Promote the executed interpreter and
+  generator.
 ## Conditional follow-up
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
