@@ -59,15 +59,15 @@
   "A Painter Ant": {
    "0110": {
     "commands": null,
-    "source_units": 38
+    "source_units": 33
    },
    "01101001": {
     "commands": null,
-    "source_units": 75
+    "source_units": 66
    },
    "0110100110010110": {
     "commands": null,
-    "source_units": 146
+    "source_units": 129
    }
   },
   "AddSubJump": {

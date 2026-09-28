@@ -28,7 +28,8 @@ The construction (see the generator's module comment): row ``-1`` is the
 ``table[x] == "1"``.  The head paints that on pass 1 and walks back to the
 origin.  Each input is one character, ``n`` (zero: step into the lane) or
 ``N`` (one: blocked, stay), followed by the template's ``E * 2**(n-1-i)``
-walk and ``SN`` return.
+walk and ``SN`` return.  A final ``s`` steps onto a black answer; a
+white one leaves the ant on the white corridor cell above it.
 
 L1  *Arithmetic.*  The ant's column after input ``i`` is the partial index
     ``sum(bit_k * 2**(n-1-k), k <= i)``, which never exceeds ``2**n - 1``,
@@ -187,9 +188,9 @@ def phases(template: str) -> list[str]:
             out.extend(["ret", "ret"])
             i += 2
         else:
-            assert rest[i:] == "sS", rest[i:]
-            out.extend(["read", "read"])
-            i += 2
+            assert rest[i:] == "s", rest[i:]
+            out.append("read")
+            i += 1
     assert len(out) == len(template)
     return out
 

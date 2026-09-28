@@ -3,7 +3,8 @@
 Row -1 is the never-painted lane, row 0 the corridor of ``2**n`` white
 cells, row +1 the answers.  Each input is ``n`` (into the lane) or ``N``
 (blocked), then ``E`` x ``2**(n-1-i)`` which only the corridor allows,
-then ``SN``; the answer is the colour of the cell a pass ends on.
+then ``SN``; the answer is the colour of the cell a pass ends on, which
+for a one is the corridor above a white answer.
 """
 
 from esolangs.tools.helpers import (
@@ -21,13 +22,14 @@ def a_painter_ant(truth_table: str) -> str:
     """Build an A Painter Ant template: one run per input, weight in the ``E`` walk."""
     n = _validate_truth_table(truth_table)
     size = len(truth_table)
-    # Pass 1 paints the origin; later ``N`` lifts off the answer, ``W`` returns.
-    out = ["N", "W" * size, "P"]
+    # Pass 1 paints the origin; later ``N`` lifts off the answer, ``W`` returns
+    # from at most the corridor's last cell.
+    out = ["N", "W" * (size - 1), "P"]
     if truth_table[0] == "1":
         out.append("sPN")
     for bit in truth_table[1:]:
         # ``e`` paints on pass 1, ``E`` enters white later: one cell per pass.
-        out.append("ePEP")
+        out.append("ePE")
         if bit == "1":
             # Paints the answer cell on pass 1; harmless later.
             out.append("sPN")
@@ -35,6 +37,6 @@ def a_painter_ant(truth_table: str) -> str:
     for i in range(n):
         out.append(TEMPLATE_CHAR)
         out.append("E" * (1 << (n - 1 - i)) + "SN")
-    # ``sS`` steps onto the answer whichever colour it is.
-    out.append("sS")
+    # ``s`` steps onto a black answer; a white one leaves the ant on white.
+    out.append("s")
     return "".join(out)
