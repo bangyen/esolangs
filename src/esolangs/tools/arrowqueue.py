@@ -8,6 +8,8 @@ Tree (``n <= 4``): a right push follows each cell and ``+`` branches pop
 the front.  Cascade (``n >= 5``): each stage doubles the queued markers
 then crosses the cell (Horner), and one ``+`` per row turns right at the
 indexed row.  A ``0`` leaf is empty; a ``1`` leaf is a self-sustaining ring.
+Both routes fold constant rows: the tree a constant subtree, the cascade
+its constant tail.
 """
 
 from esolangs.tools.helpers import (
@@ -39,6 +41,14 @@ _MIDDLE = ["*~* ", "*  *", "*  *", "~ ~ ", "*~* ", "**  ", "*  *"]
 # it); the popped right heading exits through the input cell and the tail
 # pushes the next stage's stop heading.
 _STAGE = ["  *+*", "   ~" + TEMPLATE_CHAR, "   ~", "  **", " *~*", " *  *"]
+
+#: The cascade's row per table entry: a ring right of the ``+``, or none.
+_ROWS = {"0": [" +", "", ""], "1": [" + +~+", "   ~ ~", "   +~+"]}
+
+#: A folded tail of ``1`` rows: one reusable drain.  A popped marker laps
+#: the ``*`` square back into the same ``+``, so every marker left is
+#: drained there, and the stop heading enters the ring as on a ``1`` row.
+_DRAINED_RING = ["*+ +~+", "** ~ ~", "   +~+"]
 
 
 def _header(n: int) -> list[str]:
@@ -127,17 +137,28 @@ def arrowqueue(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
     instantiated program halts iff the entry is ``0``.  Below five inputs a
     tree with 3x3 leaves, constant subtrees folded (:func:`_drained_leaf`);
-    from five a cascade of ``6n`` + ``3 * 2**n`` rows, linear in the table.
+    from five a cascade of at most ``6n`` + ``3 * 2**n`` rows, linear in the
+    table, its constant tail folded (:func:`_cascade`).
     """
     n = _validate_truth_table(truth_table)
     if len(truth_table) > 16:
-        rows = ["  ~*", *(_STAGE * n), *_MIDDLE]
-        for bit in truth_table:
-            rows.extend(
-                [" + +~+", "   ~ ~", "   +~+"] if bit == "1" else [" +", "", ""]
-            )
+        rows = ["  ~*", *(_STAGE * n), *_MIDDLE, *_cascade(truth_table)]
         return "\n".join(row.rstrip() for row in rows)
     return "\n".join([*_header(n), *_compact(_MIDDLE + _tree(list(truth_table)))])
+
+
+def _cascade(truth_table: str) -> list[str]:
+    """Build the cascade's rows, the table's constant tail folded.
+
+    Only an index inside the tail reaches a row past the tail's first, so
+    the tail's answer needs no further count.  A ``0`` tail is dropped:
+    the descent runs off the grid, which halts.  A ``1`` tail is one
+    :data:`_DRAINED_RING`, which pops the markers the dropped rows would
+    have.  The tree's drains cannot loop so: its queue has no stop heading.
+    """
+    tail = len(truth_table.rstrip(truth_table[-1]))
+    rows = [row for bit in truth_table[:tail] for row in _ROWS[bit]]
+    return [*rows, *_DRAINED_RING] if truth_table[-1] == "1" else rows
 
 
 def _compact(rows: list[str]) -> list[str]:

@@ -194,7 +194,10 @@ class TestParameterizedArrowQueue:
         ],
     )
     def test_folded_tables_past_three_inputs(self, table: str, n: int) -> None:
-        """Folded leaves stay correct deeper than the exhaustive n <= 3 sweep."""
+        """Folded leaves stay correct deeper than the exhaustive n <= 3 sweep.
+
+        The five-input tables take the cascade, whose constant tail folds.
+        """
         from esolangs.tools import parameterized
 
         template = parameterized.arrowqueue(table)
@@ -202,6 +205,61 @@ class TestParameterizedArrowQueue:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_arrowqueue(self.instantiate(template, bits))
             assert got == table[combo], f"inputs {bits}"
+
+    @pytest.mark.parametrize(
+        "table",
+        [
+            "0" * 32,
+            "0" * 31 + "1",
+            "1" * 31 + "0",
+            "0" * 16 + "1" * 16,
+            "01" * 8 + "1" * 16,
+            "10" * 8 + "0" * 16,
+            "0110" * 4 + "1" * 48,
+            "1" + "0" * 63,
+        ],
+    )
+    def test_cascade_folds_its_constant_tail(self, table: str) -> None:
+        """Past four inputs the table's constant tail folds to one row or none.
+
+        A ``0`` tail runs off the grid; a ``1`` tail is one drained ring,
+        whatever its length.  Every row executes, and the template is
+        shorter than the unfolded cascade, which lays three rows an entry.
+        """
+        from esolangs.tools import parameterized
+        from esolangs.tools.arrowqueue import _MIDDLE, _STAGE
+
+        n = len(table).bit_length() - 1
+        template = parameterized.arrowqueue(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_arrowqueue(self.instantiate(template, bits))
+            assert got == table[combo], f"inputs {bits}"
+        tail = len(table) - len(table.rstrip(table[-1]))
+        rows = 1 + len(_STAGE) * n + len(_MIDDLE) + 3 * len(table)
+        folded = 3 * (tail if table[-1] == "0" else tail - 1)
+        assert template.count("\n") + 1 == rows - folded
+
+    def test_reusable_drain_pops_every_marker(self) -> None:
+        """One drained ring sustains for any marker count; a bare row does not.
+
+        Entered heading down onto its ``+`` with ``m`` markers, the stop
+        heading and the loop components queued, the drain laps once per
+        marker and the ring then finds ``R, D, L, U``.  The cascade's plain
+        ``1`` row sends the first marker down and off the grid.
+        """
+        from esolangs.interpreters.grid_based.arrowqueue import _Machine
+        from esolangs.tools.arrowqueue import _DRAINED_RING, _ROWS
+        from esolangs.vm import run_until_halt_or_cycle
+
+        def verdict(rows: list[str], markers: int) -> str:
+            machine = _Machine(list(rows))
+            machine.state = (0, 1, 1, (*([1] * markers), 0, 0, 1, 2, 3), False)
+            return "0" if run_until_halt_or_cycle(machine) else "1"
+
+        assert all(verdict(_DRAINED_RING, m) == "1" for m in range(64))
+        assert verdict(_ROWS["1"], 0) == "1"
+        assert not any(verdict(_ROWS["1"], m) == "1" for m in range(1, 64))
 
     def test_folded_one_leaf_drains_the_bits_it_skipped(self) -> None:
         """The drain is required: a ring needs the queue it expects.
