@@ -1098,3 +1098,26 @@ class TestAlgebraicProgrammingLanguageShapes:
 
         assert list(_NAMES) == sorted(_NAMES)
         assert len(set(_NAMES)) == len(_NAMES)
+
+    def test_constant_arms_need_no_guard(self) -> None:
+        """A node over a constant arm is one literal and one operator.
+
+        Inputs arrive as 0 or 1, so ``b`` needs no ``!!``, and a node whose
+        arms are both constant is its literal.  Over every three-input table
+        the program falls from 31,190 characters to 16,303.
+        """
+        tail = {
+            "0110": "((!a & b) | (a & !b))",
+            "0001": "(a & b)",
+            "0111": "(a | b)",
+            "1101": "(!a | b)",
+        }
+        for table, expression in tail.items():
+            program = boolean.algebraic_programming_language(table)
+            assert program.endswith(f"(a & b & 0) | {expression}")
+            self._check(table, 2)
+        total = sum(
+            len(boolean.algebraic_programming_language(f"{value:08b}"))
+            for value in range(256)
+        )
+        assert total == 16303

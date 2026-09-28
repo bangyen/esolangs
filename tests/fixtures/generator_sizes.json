@@ -86,16 +86,16 @@
   },
   "Algebraic Programming Language": {
    "0110": {
-    "commands": 92,
-    "source_units": 97
+    "commands": 44,
+    "source_units": 54
    },
    "01101001": {
-    "commands": 134,
-    "source_units": 185
+    "commands": 58,
+    "source_units": 97
    },
    "0110100110010110": {
-    "commands": 176,
-    "source_units": 357
+    "commands": 90,
+    "source_units": 179
    }
   },
   "Alight": {
