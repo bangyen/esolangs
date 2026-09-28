@@ -480,6 +480,12 @@ routines, ten landing blocks) with estimates for the seventeen-input address
 computation and the parity and per-row pointer work gives about 8,400 of the
 9,897 non-table cells: inside, but resting on those two estimates.
 
+Transitions work too. A two-state chain -- state A reads its cell under its
+constant, and each character either prints directly or goes through a hub
+into state B's code, which reads a second cell under its own constant and
+prints -- is right on all 64 cases on real sources, in 5,367 code cells
+against 14,871 for the same chain with the earlier `rot` reads.
+
 No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
