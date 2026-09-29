@@ -248,8 +248,14 @@ def build(
         source[address] = _char_for(operation, address)
     for address, value in raw.items():
         source[address] = value
+    emitted: dict[int, str] = {}
     for part in parts:
         for address, operation in part.items():
+            if address in emitted and emitted[address] != operation:
+                raise AssertionError(
+                    f"conflicting code at {address}: {emitted[address]} / {operation}"
+                )
+            emitted[address] = operation
             source[address] = _char_for(operation, address)
     return (
         "".join(chr(value) for value in source),
