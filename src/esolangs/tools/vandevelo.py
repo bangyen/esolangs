@@ -254,7 +254,11 @@ def _score(node: _Node, dirs: list[int]) -> None:
     for v in dirs:
         if v in node.span or v in node.cands:
             continue
-        node.cands[v] = sum(1 for p in pts if (p ^ v) in pts)
+        count = 0
+        for p in pts:
+            if (p ^ v) in pts:
+                count += 1
+        node.cands[v] = count
 
 
 def _pairset(node: _Node, v: int) -> set[int]:
