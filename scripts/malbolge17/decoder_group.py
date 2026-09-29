@@ -551,17 +551,24 @@ def _build(row: int, group: _Group) -> _Emission:
 
 def _run(source: str, limit: int = 100_000) -> list[int]:
     """Execute a real source and return its emitted characters up to the halt."""
+    return _run_traced(source, limit)[0]
+
+
+def _run_traced(source: str, limit: int = 100_000) -> tuple[list[int], set[int]]:
+    """Execute a real source, returning its output and the cells it runs."""
     memory = list(_initial_memory(source))
     state = (0, 0, 0, False)
     output: list[int] = []
+    executed: set[int] = set()
     for _ in range(limit):
+        executed.add(state[1])
         state, writes, effect = _advance(state, memory)
         for address, value in writes:
             memory[address] = value
         if effect is not None:
             output.append(effect)
         if state[3]:
-            return output
+            return output, executed
     raise AssertionError("group decoder did not halt")
 
 
@@ -569,9 +576,12 @@ def main() -> int:
     """Rebuild every row and reproduce the 2,744 real-source group cases."""
     group = _setup()
     total = 0
+    executed: set[int] = set()
     for row in range(8):
         emission = _build(row, group)
         source = emission.source
+        default = [_char_for("o", a) for a in range(_WORDS)]
+        set_cells = sum(1 for a in range(_WORDS) if source[a] != default[a])
         for triple in itertools.product(range(7), repeat=3):
             program = list(source)
             for index in range(3):
@@ -586,12 +596,14 @@ def main() -> int:
             program[neighbour] = _admissible(neighbour)[
                 (triple[0] * 49 + triple[1] * 7 + triple[2]) % 8
             ]
-            output = _run("".join(chr(value) for value in program))
-            got = chr(output[0]) if output else None
+            char, seen = _run_traced("".join(chr(value) for value in program))
+            executed |= seen
+            got = chr(char[0]) if char else None
             assert got == _expected(row, triple), (row, triple, got)
             total += 1
-        print(f"row {row}: {emission.code_cells} code cells")
+        print(f"row {row}: {emission.code_cells} written, {set_cells} set cells")
     print(f"five-state group decoder: {total} / {total}")
+    print(f"executed cells across all rows: {len(executed)}")
     return 0
 
 
