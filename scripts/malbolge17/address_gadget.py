@@ -4,6 +4,7 @@ import itertools
 
 from address17 import ALL2, LOW, PIN, group_word
 from address_parity import parity_operand
+from parity_views import STORED_PARITY
 
 from esolangs.interpreters.other.malbolge import (
     _advance,
@@ -76,14 +77,23 @@ def build(
     helper = {"all1": walked(_g(128)), "all2": walked(_g(129))}
     for name, value in _T_HELPERS.items():
         helper[name] = walked(value)
-    mask_specs: tuple[tuple[int, str], tuple[int, str]] | None = (
-        (
-            (walked(_g(170)), "rot rot rot rot K1 K2"),
-            (walked(_g(185)), "rot rot rot rot K1 K2"),
+    mask_specs = (
+        tuple(
+            (walked(seed), "rot rot rot rot K1 K2")
+            for seed in (_g(170), _g(185), _g(197), _g(170))
         )
         if parity
-        else None
+        else ()
     )
+    parity_specs = (
+        tuple(
+            (walked(seed), "rot rot rot rot K2 K0 K2")
+            for seed in (_g(141), _g(147), _g(165))
+        )
+        if parity
+        else ()
+    )
+    toggle_spec = (walked(_g(157)), "K1 rot rot rot") if parity else None
     normal_count = 4 if selected is None else 3
     normal = tuple(
         (walked(LOW[0]), walked(LOW[1]), walked(LOW[2])) for _ in range(normal_count)
@@ -139,9 +149,12 @@ def build(
     path.op("*", helper["w"])
     path.op("p", helper["all2"])
     if parity:
-        assert mask_specs is not None
-        for cell, chain in mask_specs:
+        for cell, chain in (*mask_specs, *parity_specs):
             _emit_chain(path, cell, chain, helper)
+        assert toggle_spec is not None
+        _emit_chain(path, toggle_spec[0], toggle_spec[1], helper)
+        path.op("*", toggle_spec[0])
+        path.op("p", parity_specs[2][0])
         assert parity_reunion is not None
         _emit_chain(path, parity_reunion, "rot rot rot rot rot", helper)
         parity_entry = raw[parity_reunion]
@@ -300,6 +313,11 @@ def build(
             walked_inert(PIN[2]),
         )
         cells = (*normal, pin)
+        if parity:
+            cells = (
+                *cells,
+                (parity_specs[0][0], parity_specs[2][0], parity_specs[1][0]),
+            )
         selector_cells = tuple(
             walked_inert(seed) for seed in (36, 33, 45, 42, 51, 60, 72)
         )
@@ -398,7 +416,6 @@ def build(
         assert parity_entry is not None
         assert parity_reunion is not None
         assert parity_all1 is not None
-        assert mask_specs is not None
         reducer_memory = dict(memory)
         for cell in used:
             reducer_memory[cell] = None
@@ -418,6 +435,11 @@ def build(
             reducer.op("*", tail_cell)
             reducer.op("p", helper["w"])
         reducer.op("p", mask_specs[1][0])
+        reducer.op("p", parity_specs[0][0])
+        reducer.op("p", mask_specs[2][0])
+        reducer.op("p", parity_specs[1][0])
+        reducer.op("p", mask_specs[3][0])
+        reducer.op("p", parity_specs[2][0])
         reducer.raw("v")
         parts.append(reducer.code)
     source = [_char_for("o", a) for a in range(_WORDS)]
@@ -439,8 +461,7 @@ def build(
             source[address] = _char_for(operation, address)
     result_cell = tail_cell
     if parity:
-        assert mask_specs is not None
-        result_cell = mask_specs[1][0]
+        result_cell = mask_specs[3][0]
     return (
         "".join(chr(value) for value in source),
         cells,
@@ -515,19 +536,24 @@ def main() -> None:
     for selector_bits in itertools.product(range(2), repeat=12):
         bits = (0, 0, *selector_bits)
         assert run(dynamic_ab, result_cell, bits) == group_word(list(bits))
-    dynamic_parity, _cells, parity_cell, dynamic_parity_size = build(
+    dynamic_parity, parity_groups, parity_operand_cell, dynamic_parity_size = build(
         None, dispatch_ab=True, parity=True
     )
+    parity_result_cells = parity_groups[-1]
     for bits in itertools.product(range(2), repeat=14):
         word = group_word(list(bits))
         pointer = _crazy(ALL2 - 2, word)
-        assert run(dynamic_parity, parity_cell, bits) == parity_operand(pointer)
+        memory = execute(dynamic_parity, bits)
+        assert memory[parity_operand_cell] == parity_operand(pointer)
+        assert tuple(memory[cell] for cell in parity_result_cells) == tuple(
+            STORED_PARITY[(pointer + 1 + offset) % 2] for offset in range(3)
+        )
     print(
         "fixed address paths: 16,384/16,384 correct, "
         f"ordinary {ordinary_sizes}, special {special_sizes}; "
         f"dynamic A: 8,192/8,192 correct, {dynamic_size}; "
         f"dynamic A/B/C/D: 16,384/16,384 correct, "
-        f"{dynamic_ab_size} code cells; parity reducer: 16,384/16,384 correct, "
+        f"{dynamic_ab_size} code cells; parity words: 49,152/49,152 correct, "
         f"{dynamic_parity_size} code cells"
     )
 
