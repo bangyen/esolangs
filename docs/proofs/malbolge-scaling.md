@@ -1176,4 +1176,8 @@ suffixes in **2,368**, 2,368 and 2,297 code cells. C/D consume the selector
 triple, substitute a constant-input PIN gadget into one lower slot and reuse
 the selected normal triple on top; all 4,096 special addresses pass in
 1,621--1,714 cells. Thus all 16,384 fixed paths execute correctly. The
-remaining emitted address work is dynamic case dispatch and block reunion.
+first dispatch is also emitted: rotating a `48/49` encoding separates A's two
+branches by 19,683 cells; both write their `z` word into one cell and `i`
+through a shared reunion pointer. The combined **2,471-cell** A program passes
+all 8,192 rows. The remaining emitted address work is the top-level A/B/C/D
+dispatch and reunion of the special paths.
