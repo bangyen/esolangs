@@ -1195,15 +1195,16 @@ constructs the group pointer and runs the straight-line parity reducer. The
 Reuniting all four top folds before their identical final tail, then placing
 that tail at cell 2,190, the shared reducer at cell 731 and one selected-slot
 suffix at cell 5,590 in the free bottom run, cuts the parity build further.
-The **10,445-cell** combined source returns the exact
+The pointer-seed mask is then restored by four rotations and reused as the
+first parity-copy mask. The **10,383-cell** combined source returns the exact
 0/1,458 operand on all
 16,384 rows and initializes the three consumable parity words; all 49,152
 address-plus-offset parities execute correctly. Decoder and table integration
 remain. This source is an execution certificate, not a placed table build:
-6,463 of its 10,437 distinct instruction cells overlap table cells, leaving
-3,974 already in the complement. The next construction step is therefore
+6,463 of its 10,375 distinct instruction cells overlap table cells, leaving
+3,912 already in the complement. The next construction step is therefore
 relocating and reuniting these paths into the bottom run and spare windows,
 not appending the decoder at their current addresses. Independently of
-placement, 10,437 instructions exceed the table's 9,897-cell complement by
-540 cells, so at least that much code must disappear before any decoder code
+placement, 10,375 instructions exceed the table's 9,897-cell complement by
+478 cells, so at least that much code must disappear before any decoder code
 can fit.

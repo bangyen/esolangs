@@ -81,11 +81,12 @@ def build(
     mask_specs = (
         tuple(
             (walked(seed), "rot rot rot rot K1 K2")
-            for seed in (_g(170), _g(185), _g(197), _g(170))
+            for seed in (_g(170), _g(185), _g(197))
         )
         if parity
         else ()
     )
+    mask_spare = walked(_g(170)) if parity else None
     parity_specs = (
         tuple(
             (walked(seed), "rot rot rot rot K2 K0 K2")
@@ -158,12 +159,14 @@ def build(
     path.op("*", helper["w"])
     path.op("p", helper["all2"])
     if parity:
-        for cell, chain in (*mask_specs, *parity_specs):
+        for cell, chain in sorted((*mask_specs, *parity_specs)):
             _emit_chain(path, cell, chain, helper)
         assert toggle_spec is not None
         _emit_chain(path, toggle_spec[0], toggle_spec[1], helper)
         path.op("*", toggle_spec[0])
         path.op("p", parity_specs[2][0])
+        assert mask_spare is not None
+        path.mem[mask_spare] = None
         assert parity_reunion is not None
         _emit_chain(path, parity_reunion, "rot rot rot rot", helper)
         parity_entry = raw[parity_reunion]
@@ -456,6 +459,8 @@ def build(
         reducer.op("*", helper["all2"])
         reducer.op("p", seed_all1)
         reducer.op("p", tail_cell)
+        for _ in range(4):
+            reducer.op("*", mask_specs[0][0])
         reducer.op("*", helper["all2"])
         reducer.op("p", tail_cell)
         reducer.op("*", map_all1)
@@ -463,11 +468,11 @@ def build(
         for _ in range(10):
             reducer.op("*", tail_cell)
             reducer.op("p", helper["w"])
-        reducer.op("p", mask_specs[1][0])
+        reducer.op("p", mask_specs[0][0])
         reducer.op("p", parity_specs[0][0])
-        reducer.op("p", mask_specs[2][0])
+        reducer.op("p", mask_specs[1][0])
         reducer.op("p", parity_specs[1][0])
-        reducer.op("p", mask_specs[3][0])
+        reducer.op("p", mask_specs[2][0])
         reducer.op("p", parity_specs[2][0])
         reducer.raw("v")
         parts.append(reducer.code)
@@ -492,7 +497,7 @@ def build(
         occupied.update(emitted)
     result_cell = tail_cell
     if parity:
-        result_cell = mask_specs[3][0]
+        result_cell = mask_specs[2][0]
     return (
         "".join(chr(value) for value in source),
         cells,
