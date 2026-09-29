@@ -86,15 +86,16 @@ def build(
         if parity
         else ()
     )
-    parity_specs = (
-        tuple(
-            (walked(seed), "rot rot rot rot K2 K0 K2")
-            for seed in (_g(141), _g(147), _g(165))
+    parity_specs: tuple[tuple[int, str], ...] = (
+        (
+            (walked(_g(141)), "rot rot rot rot K2 K0 K2"),
+            (walked(_g(165)), "rot rot rot rot K2 K0 K2"),
+            (walked(_g(147)), "rot K0 K2"),
         )
         if parity
         else ()
     )
-    toggle_spec = (walked_inert(95), "rot rot rot K1") if parity else None
+    map_all1 = walked_inert(95) if parity else None
     normal_count = 4 if selected is None else 3
     normal = tuple(
         (walked(LOW[0]), walked(LOW[1]), walked(LOW[2])) for _ in range(normal_count)
@@ -151,7 +152,9 @@ def build(
     path.op("p", reset[1])
     path.op("p", reset[2])
     _build_constants(path, helper)
-    extra_all1 = () if parity_all1 is None else (parity_all1,)
+    extra_all1 = (
+        () if parity_all1 is None or map_all1 is None else (parity_all1, map_all1)
+    )
     for cell in (helper["all1"], helper["all2"], *extra_all1):
         path.op("p", cell)
         path.op("p", cell)
@@ -160,13 +163,6 @@ def build(
     if parity:
         for cell, chain in sorted((*mask_specs, *parity_specs)):
             _emit_chain(path, cell, chain, helper)
-        assert toggle_spec is not None
-        _emit_chain(path, toggle_spec[0], toggle_spec[1], helper)
-        path.op("*", toggle_spec[0])
-        path.op("p", parity_specs[2][0])
-        path.op("*", helper["all1"])
-        path.op("p", toggle_spec[0])
-        path.op("p", toggle_spec[0])
         assert parity_reunion is not None
         _emit_chain(path, parity_reunion, "rot rot rot rot", helper)
         parity_entry = raw[parity_reunion]
@@ -448,12 +444,12 @@ def build(
         assert parity_entry is not None
         assert parity_reunion is not None
         assert parity_all1 is not None
-        assert toggle_spec is not None
+        assert map_all1 is not None
         reducer_memory = dict(memory)
         for cell in used:
             reducer_memory[cell] = None
         reducer = _Planner(parity_entry, parity_reunion + 1, reducer_memory, {})
-        seed_all1, map_all1 = parity_all1, toggle_spec[0]
+        seed_all1 = parity_all1
         for _ in range(6):
             reducer.op("*", mask_specs[0][0])
         reducer.op("p", seed_all1)
