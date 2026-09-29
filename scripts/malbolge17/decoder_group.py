@@ -528,6 +528,8 @@ def _build(row: int, group: _Group, row_offset: int = 0) -> _Emission:
     row_start = planner.c
     decoder(planner, _START[row], 0)
     for key, address, room, _turns in copies:
+        if key == "s3" and 3 not in states:
+            continue
         block = _Planner(address, 0, dict(planner.mem), data)
         block.raw("o")
         block.raw("j")

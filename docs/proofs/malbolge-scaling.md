@@ -1250,3 +1250,6 @@ those blocks and separate placement or sharing of the two conflicting copies.
 All four conflicts are live. The state-3 copy needs only two executed code
 variants (rows `3,5` and `4`), and the state-4 copy needs four (`0`, `1,6`,
 `2,5,7`, `3,4`). These are the copy classes the combined source must route.
+Omitting the unreachable state-3 block in the other five row builds retains
+all 2,744 outputs and reduces their written code by 91--150 cells each. Three
+non-`o` opcode conflicts remain in the live copies.
