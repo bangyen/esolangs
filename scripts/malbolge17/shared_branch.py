@@ -15,6 +15,7 @@ from esolangs.interpreters.other.malbolge import (
 )
 
 _REUNION_D = (128, 222, 316)
+_V_ROUTE = ((224, 121, 55), (109, 85, 78), (75, 60, 97))
 
 
 def _check(
@@ -36,9 +37,14 @@ def _check(
             slot = selector if selector < 3 else bits[13]
             assert state[2] == _REUNION_D[slot]
             assert memory[state[2]] == groups[slot][1] - 1
+            first, second, result = _V_ROUTE[slot]
+            assert memory[groups[slot][1] + 1] == first - 1
+            assert memory[first] == second - 1
+            assert memory[second] == result - 1
+            assert result == groups[slot][2]
             assert expected is None
             expected = (
-                _crazy(_crazy(state[0], memory[groups[slot][1]]), memory[86]) & 0xFF
+                _crazy(_crazy(state[0], memory[groups[slot][1]]), memory[result]) & 0xFF
             )
         char = next(inputs) if _op(memory[state[1]], state[1]) == "/" else None
         state, writes, effect = _advance(state, memory, char)

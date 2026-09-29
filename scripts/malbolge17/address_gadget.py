@@ -94,6 +94,9 @@ def build(
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
+    if shared_special_read:
+        raw.update({60: 96, 75: 59, 109: 84, 121: 54, 224: 120})
+        used.update((60, 75, 109, 121, 224))
 
     def walked(value: int, *, high: bool = False) -> int:
         cell = next(
@@ -159,6 +162,13 @@ def build(
     )
     normal_count = 4 if selected is None else 3
     normal = tuple(scratch_group(LOW) for _ in range(normal_count))
+    if shared_special_read:
+        assert tuple(group[1:] for group in normal[:3]) == (
+            (48, 55),
+            (66, 78),
+            (100, 97),
+        )
+        raw.update({67: 108, 101: 74})
     pin = None if selected is None else scratch_group(PIN)
     cells = normal if pin is None else (*normal, pin)
     twos = tuple(walked(38) for _ in range(5))
@@ -256,9 +266,14 @@ def build(
     constants = {"K0": helper["z0"], "K1": helper["all1"], "K2": helper["all2"]}
     return_cells = sorted({result + 1 for group in cells for result in group[1:]})
 
-    def emit_return_setup(plan: _Planner) -> None:
+    def emit_return_setup(plan: _Planner, *, special: bool = False) -> None:
         if prepare_returns:
             for cell in return_cells:
+                if special and shared_special_read and cell in (49, 67, 101):
+                    if cell == 49:
+                        assert _chain(boot_memory[cell], "K2") == 223
+                        _emit_chain(plan, cell, "K2", helper)
+                    continue
                 start = boot_memory[cell]
                 chain = "K1" if _crazy(29524, start) == 0 else "K1 K2 K1"
                 assert _chain(start, chain) == 0
@@ -433,7 +448,7 @@ def build(
         for cell in (*pin, *selector_cells, *reunion_cells, selector_relocation):
             special_memory[cell] = raw[cell]
         special = _Planner(entry, d, special_memory, {})
-        emit_return_setup(special)
+        emit_return_setup(special, special=True)
         _emit_chain(special, tail_cell, "K0", helper)
         for group in normal[:3]:
             for operation in _GADGET:
@@ -551,7 +566,7 @@ def build(
         if shared_special_read:
             assert reunion_targets == [39378] * 3
             branch = _Planner(39378, 0, dict(suffix_memory), {})
-            for op in "jpjjp<v":
+            for op in "jpjjjp<v":
                 branch.raw(op)
             record_part("shared-selected-read", branch.code)
             if outputs is not None:
