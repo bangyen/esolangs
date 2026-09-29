@@ -126,7 +126,7 @@ def build(s,cf):
     phases=[len(P.code)]
     chains=[(f'z{k}',zcs[k],Gb-1+k) for k in range(3)]+[('C0',cf['C0'],cf['C0v']),('C1',cf['C1'],cf['C1v'])]
     chains+=[(f'B{i}',Bc[i],BASES[i]) for i in range(5)]
-    chains += [(f'M{i}',cell,MASK) for i,cell in enumerate(cf['Mc'])]
+    chains += [(f'M{i}',cell,MASK) for i,cell in enumerate(cf['Mc'][:len(pcs)])]
     chains += [('R',cf['Rc'],Gb-1)]
     chains += [(f'P{d}',cell,PARITY[POS[states[d]][s]%2]) for d,(cell,_) in enumerate(pcs)]
     chain_cost=[]
@@ -146,8 +146,10 @@ def build(s,cf):
     P.op('*',helper['all1']); P.op('p',cf['Rc'])
     for _ in range(10):
         P.op('*',cf['Rc']); P.op('p',helper['w'])
-    for mask,(cell,_) in zip(cf['Mc'],pcs):
-        P.op('*',helper['z0']); P.op('p',helper['w'])
+    parity_cells=sorted(zip(pcs,states),key=lambda x:POS[x[1]][s]%2)
+    for i,(mask,((cell,_),_q)) in enumerate(zip(cf['Mc'],parity_cells)):
+        if i==0:
+            P.op('*',helper['z0']); P.op('p',helper['w'])
         P.op('p',mask); P.op('p',cell)
     phases.append(len(P.code))
     Z0=value[NCELLS[0]]+1
