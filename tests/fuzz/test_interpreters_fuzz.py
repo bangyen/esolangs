@@ -28,7 +28,8 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs.exceptions import EsolangError
+import esolangs
+from esolangs.exceptions import EsolangError, GeneratorCapError
 from esolangs.interpreters.io import IO
 from esolangs.registry import LANGUAGES, RUNNERS
 from esolangs.vm import make_vm, run_until_halt, run_until_halt_or_cycle
@@ -69,8 +70,10 @@ def _generated_seed(language: str) -> str | None:
     """
     boolean_generator = LANGUAGES[language].boolean
     if boolean_generator is not None:
-        with suppress(Exception):
+        try:
             return boolean_generator("0110")
+        except GeneratorCapError:
+            return None
     return None
 
 
@@ -299,3 +302,47 @@ def test_random_programs_terminate(module: str) -> None:
                 signal.alarm(0)
     finally:
         signal.signal(signal.SIGALRM, old_handler)
+
+
+@pytest.mark.parametrize(
+    "error", [RuntimeError("broken generator"), ValueError("bad construction")]
+)
+def test_generated_seed_does_not_hide_failures(
+    monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    from dataclasses import replace
+
+    def broken(_table: str) -> str:
+        raise error
+
+    monkeypatch.setitem(
+        LANGUAGES, "brainfuck", replace(LANGUAGES["brainfuck"], boolean=broken)
+    )
+    with pytest.raises(type(error), match=str(error)):
+        _generated_seed("brainfuck")
+
+
+def test_generated_seed_accepts_documented_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dataclasses import replace
+
+    def capped(_table: str) -> str:
+        raise GeneratorCapError("documented cap")
+
+    monkeypatch.setitem(
+        LANGUAGES, "brainfuck", replace(LANGUAGES["brainfuck"], boolean=capped)
+    )
+    assert _generated_seed("brainfuck") is None
+
+
+def test_generated_seed_positive_control() -> None:
+    seed = _generated_seed("brainfuck")
+    assert seed
+    assert (
+        esolangs.read_answer(
+            "brainfuck",
+            esolangs.run(
+                "brainfuck", seed, esolangs.encode_inputs("brainfuck", [1, 0])
+            ),
+        )
+        == "1"
+    )

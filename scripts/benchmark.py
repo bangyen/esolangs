@@ -1,14 +1,19 @@
-"""Measure one generator with repeatable size, time, and command counts."""
+"""Measure one generated artifact's size, time, steps, and actual answers."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import signal
 import statistics
+import threading
 import time
-from typing import Any
+from typing import Any, cast
 
 import esolangs
+from esolangs._validate import check_timeout
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.vm import run_until_halt_or_cycle
 
 
 def _bits(row: int, inputs: int) -> list[int]:
@@ -21,6 +26,81 @@ def _source_size(program: str | esolangs.Raster) -> int:
     return sum(len(row) for row in program.rows)
 
 
+def _execute(
+    language: str,
+    program: str | esolangs.Raster,
+    table: str,
+    row: int,
+    cap: int,
+    timeout: float | None,
+) -> dict[str, Any]:
+    facts = esolangs.describe(language)
+    bits = _bits(row, len(table).bit_length() - 1)
+    source: str | esolangs.Raster
+    if facts["parameterized"]:
+        assert isinstance(program, str)
+        source, stdin = esolangs.instantiate(language, program, bits), ""
+    else:
+        source, stdin = program, esolangs.encode_inputs(language, bits, table)
+    supported = isinstance(source, str) and facts["steppable_to_answer"]
+    result: dict[str, Any] = {
+        "row": row,
+        "expected_answer": table[row],
+        "actual_answer": None,
+        "matches": None,
+        "commands": None,
+        "stepping_status": "supported" if supported else "unsupported",
+        "execution_status": "pending",
+    }
+
+    def drive(*_args: object) -> None:
+        if not supported:
+            output = esolangs.run(language, source, stdin)
+            result["execution_status"] = "halted"
+            result["actual_answer"] = esolangs.read_answer(language, output)
+            return
+        assert isinstance(source, str)
+        vm = esolangs.make_vm(language, source, stdin)
+        terminating = facts["answer_mode"] == "termination"
+        if terminating:
+            halted = run_until_halt_or_cycle(vm, limit=cap)
+            if not halted:
+                result["execution_status"] = "cycle"
+                result["actual_answer"] = str(
+                    list(facts["answer_encoding"]).index("diverges")
+                )
+                return
+            # The detector unwraps the VM; replay a halt to retain the
+            # baseline's wrapper-step count, excluding its post-halt dump.
+            vm = esolangs.make_vm(language, source, stdin)
+        steps = 0
+        while not vm.halted and steps < cap:
+            vm.step()
+            steps += 1
+        result["commands"] = steps if vm.halted else None
+        if not vm.halted:
+            result["execution_status"] = "step_cap"
+        elif terminating:
+            result["execution_status"] = "halted"
+            result["actual_answer"] = str(list(facts["answer_encoding"]).index("halts"))
+        else:
+            if facts["dumps_on_the_post_halt_step"]:
+                vm.step()
+            result["execution_status"] = "halted"
+            result["actual_answer"] = esolangs.read_answer(language, vm.output)
+
+    try:
+        # Cover VM construction too: a step cap cannot bound factoring.
+        esolangs._run(drive, source, ScriptedIO(stdin), timeout)  # noqa: SLF001
+    except esolangs.ExecutionTimeoutError:
+        result["execution_status"] = "timeout"
+    except TimeoutError:
+        result["execution_status"] = "step_cap"
+    if result["actual_answer"] is not None:
+        result["matches"] = result["actual_answer"] == result["expected_answer"]
+    return result
+
+
 def _commands(
     language: str,
     program: str | esolangs.Raster,
@@ -28,32 +108,36 @@ def _commands(
     row: int,
     cap: int,
 ) -> int | None:
-    facts = esolangs.describe(language)
-    if not isinstance(program, str) or not facts["steppable_to_answer"]:
-        return None
-    inputs = len(table).bit_length() - 1
-    bits = _bits(row, inputs)
-    # A parameterized language embeds its inputs in the source, and
-    # `encode_inputs` raises for one rather than returning an empty string --
-    # so the branch has to come before the call, not after it.
-    if facts["parameterized"]:
-        source = esolangs.instantiate(language, program, bits)
-        stdin = ""
-    else:
-        source = program
-        stdin = esolangs.encode_inputs(language, bits)
-    vm = esolangs.make_vm(language, source, stdin)
-    steps = 0
-    while not vm.halted and steps < cap:
-        vm.step()
-        steps += 1
-    return steps if vm.halted else None
+    """Return steps to halt for the size screens, checking the same artifact."""
+    result = _execute(language, program, table, row, cap, None)
+    if result["matches"] is False:
+        raise ValueError(f"{language} row {row}: wrong generated answer")
+    return cast("int | None", result["commands"])
 
 
 def measure(
-    language: str, table: str, *, repeat: int, row: int, step_cap: int
+    language: str,
+    table: str,
+    *,
+    repeat: int,
+    row: int,
+    step_cap: int,
+    all_rows: bool = False,
+    timeout: float | None = 30.0,
 ) -> dict[str, Any]:
-    """Return one benchmark record; timings are best-of-repeat."""
+    """Benchmark the last timed artifact; optionally check every input row."""
+    if repeat < 1 or step_cap < 1:
+        raise ValueError("repeat and step_cap must be positive")
+    if not 0 <= row < len(table):
+        raise ValueError("row must index the truth table")
+    check_timeout(timeout)
+    if timeout is not None and not (
+        threading.current_thread() is threading.main_thread()
+        and hasattr(signal, "SIGALRM")
+    ):
+        raise esolangs.ArgumentError(
+            "benchmark timeout needs a Unix main thread; pass timeout=None"
+        )
     timings: list[int] = []
     program: str | esolangs.Raster | None = None
     for _ in range(repeat):
@@ -61,45 +145,59 @@ def measure(
         program = esolangs.generate(language, table)
         timings.append(time.perf_counter_ns() - started)
     assert program is not None
+    rows = range(len(table)) if all_rows else (row,)
+    executions = [
+        _execute(language, program, table, at, step_cap, timeout) for at in rows
+    ]
+    selected = next(item for item in executions if item["row"] == row)
     return {
-        "schema": 1,
+        "schema": 2,
         "language": esolangs.describe(language)["name"],
         "truth_table": table,
         "inputs": len(table).bit_length() - 1,
-        "row": row,
         "source_kind": esolangs.describe(language)["source_kind"],
         "source_units": _source_size(program),
         "generation_ns_best": min(timings),
         "generation_ns_median": int(statistics.median(timings)),
-        "commands": _commands(language, program, table, row, step_cap),
         "step_cap": step_cap,
+        "timeout": timeout,
+        "all_rows": all_rows,
+        "executions": executions,
+        **selected,
     }
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Print a stable JSON benchmark record."""
+    """Print JSON evidence; fail if any requested row is wrong or undecided."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("language")
     parser.add_argument("truth_table")
     parser.add_argument("--repeat", type=int, default=3)
     parser.add_argument("--row", type=int)
     parser.add_argument("--step-cap", type=int, default=2_000_000)
+    bounds = parser.add_mutually_exclusive_group()
+    bounds.add_argument("--timeout", type=float, default=30.0)
+    bounds.add_argument(
+        "--no-timeout", action="store_const", dest="timeout", const=None
+    )
+    parser.add_argument("--all-rows", action="store_true")
     args = parser.parse_args(argv)
-    if args.repeat < 1:
-        parser.error("--repeat must be positive")
-    inputs = len(args.truth_table).bit_length() - 1
-    row = (1 << inputs) - 1 if args.row is None else args.row
-    if not 0 <= row < 1 << inputs:
-        parser.error(f"--row must be in [0, {(1 << inputs) - 1}]")
+    if args.repeat < 1 or args.step_cap < 1:
+        parser.error("--repeat and --step-cap must be positive")
+    row = len(args.truth_table) - 1 if args.row is None else args.row
+    if not 0 <= row < len(args.truth_table):
+        parser.error(f"--row must be in [0, {len(args.truth_table) - 1}]")
     result = measure(
         args.language,
         args.truth_table,
         repeat=args.repeat,
         row=row,
         step_cap=args.step_cap,
+        all_rows=args.all_rows,
+        timeout=args.timeout,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
-    return 0
+    return 0 if all(item["matches"] is True for item in result["executions"]) else 1
 
 
 if __name__ == "__main__":

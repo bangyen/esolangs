@@ -106,3 +106,25 @@ class TestCommittedBaseline:
             assert sorted(rows) == sorted(TABLES), name
             for table, fields in rows.items():
                 assert fields["source_units"] > 0, (name, table)
+
+
+def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch) -> None:
+    import pytest
+
+    from scripts import check_generator_sizes as sizes
+
+    monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: ["brainfuck"])
+    for matches in (False, None):
+        monkeypatch.setattr(
+            sizes,
+            "measure",
+            lambda *_args, matches=matches, **_kwargs: {
+                **RECORD,
+                "matches": matches,
+                "execution_status": "step_cap",
+                "expected_answer": "1",
+                "actual_answer": None,
+            },
+        )
+        with pytest.raises(ValueError, match="expected 1, got None"):
+            sizes.sweep()
