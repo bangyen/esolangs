@@ -1272,3 +1272,11 @@ Eight groups outside the address code were changed to three valid characters
 each; all eight executions printed the independently folded value and retained
 the pointer. This is a working address-to-group read, not yet the five-state
 decoder or a source for arbitrary table contents.
+
+The decoder now uses one preserved `base-1` cell for every group read. After
+the jump it advances `D` by the selected within-group offset, so the other
+two `z` value chains disappear. All 2,744 real-source decoder cases still
+pass; each row writes 7,409--7,524 code cells. The separate-emitter join
+budget falls from 13,672 to 13,193 instruction addresses, leaving a
+3,296-address placement and sharing deficit. The address fold already
+preserves the matching dynamic `base-1` value in its pointer cell.

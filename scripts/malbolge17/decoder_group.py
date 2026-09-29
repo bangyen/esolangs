@@ -148,7 +148,7 @@ class _Group:
     """The fixed group cells and shared setup the decoder build reads."""
 
     base: int
-    z_cells: tuple[int, int, int]
+    z_cell: int
     clear: tuple[tuple[int, int], tuple[int, int]]
     view_cells: tuple[int, ...]
     mask_cells: tuple[int, ...]
@@ -190,7 +190,7 @@ def _setup() -> _Group:
         for group in range(15000, 21000)
         if all((group - 1 + k) in reachable for k in range(3))
     )
-    z_cells = (cell_for(base - 1), cell_for(base), cell_for(base + 1))
+    z_cell = cell_for(base - 1)
     clear0, clear0_value = next(
         (cell, value)
         for cell in order
@@ -245,7 +245,7 @@ def _setup() -> _Group:
     taken |= {hub, hub + 1, hub + 2, hub + 3}
     return _Group(
         base=base,
-        z_cells=z_cells,
+        z_cell=z_cell,
         clear=((clear0, clear0_value), (clear1, clear1_value)),
         view_cells=view_cells,
         mask_cells=mask_cells,
@@ -383,9 +383,7 @@ def _build(row: int, group: _Group, row_offset: int = 0) -> _Emission:
             planner.op("p", point)
             values[point] = group.hub_values[label][0]
     phases.append(len(planner.code))
-    chains: list[tuple[str, int, int]] = [
-        (f"z{k}", group.z_cells[k], base - 1 + k) for k in range(3)
-    ]
+    chains: list[tuple[str, int, int]] = [("z", group.z_cell, base - 1)]
     chains += [
         ("C0", group.clear[0][0], group.clear[0][1]),
         ("C1", group.clear[1][0], group.clear[1][1]),
@@ -499,12 +497,15 @@ def _build(row: int, group: _Group, row_offset: int = 0) -> _Emission:
     def decoder(block: _Planner, state: int, depth: int) -> None:
         offset, view_cell, _constant, _parity = view(state)
         cell = base + offset
-        z_cell = group.z_cells[offset]
+        # One preserved base pointer reaches each within-group offset.
+        z_cell = group.z_cell
         block.op("*", parity_cells[depth][0])
         block.op("p", view_cell)
         block.goto(z_cell)
         block.raw("j")
-        block.d = cell
+        block.d = base
+        for _ in range(offset):
+            block.raw("o")
         block.raw("p")
         block.d = cell + 1
         for _ in range(2 - offset):
@@ -514,7 +515,9 @@ def _build(row: int, group: _Group, row_offset: int = 0) -> _Emission:
         block.d = z0
         block.goto(z_cell)
         block.raw("j")
-        block.d = cell
+        block.d = base
+        for _ in range(offset):
+            block.raw("o")
         block.raw("j")
         block.raw("j")
         block.raw("j")
