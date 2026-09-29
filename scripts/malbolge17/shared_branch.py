@@ -32,6 +32,7 @@ def _check(
     fold: bool = False,
     normalize: bool = False,
     label_targets: dict[int, int] | None = None,
+    constants: bool = False,
 ) -> bool:
     """Check one complete source run; return whether it took the special read."""
     memory = list(_initial_memory(source))
@@ -112,6 +113,12 @@ def _check(
             assert all(memory[cell] == ALL1 for cell in range(34, 128))
         else:
             assert all(memory[cell] == value for cell, value in label_targets.items())
+    if constants:
+        assert tuple(
+            memory[outputs[name]]
+            for name in ("decoder_zero", "decoder_all1", "decoder_all2")
+        ) == (0, ALL1, ALL2)
+        assert state[2] == outputs["decoder_continuation_d"]
     return fold and bits[:2] == (0, 0)
 
 
@@ -124,8 +131,10 @@ def main(
     fold: bool = False,
     normalize: bool = False,
     restore: bool = False,
+    constants: bool = False,
 ) -> None:
     """Check eight selector leaves and optionally the full address domain."""
+    restore |= constants
     normalize |= restore
     fold |= normalize
     copy |= handoff or exact
@@ -147,6 +156,7 @@ def main(
         shared_special_fold=fold,
         normalize_labels=normalize,
         restore_labels=restore,
+        decoder_constants=constants,
         outputs=outputs,
     )
     samples = tuple(
@@ -174,13 +184,16 @@ def main(
             fold=fold,
             normalize=normalize,
             label_targets=label_targets,
+            constants=constants,
         ):
             special += 1
         else:
             ordinary += 1
     assert (special, ordinary) == ((4096, 12288) if full else (8, 0))
     mode = (
-        "restored fold"
+        "decoder constants"
+        if constants
+        else "restored fold"
         if restore
         else "normalized fold"
         if normalize
@@ -212,6 +225,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--restore-labels", action="store_true", help="check decoder hub assignment"
     )
+    parser.add_argument(
+        "--decoder-constants", action="store_true", help="check the shared constants"
+    )
     args = parser.parse_args()
     main(
         full=args.full,
@@ -221,4 +237,5 @@ if __name__ == "__main__":
         fold=args.fold,
         normalize=args.normalize_labels,
         restore=args.restore_labels,
+        constants=args.decoder_constants,
     )

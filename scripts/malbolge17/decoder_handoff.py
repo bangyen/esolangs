@@ -2,27 +2,16 @@
 
 import itertools
 
-from address_gadget import build, execute_state
+from address_gadget import execute_state
 from decoder_group import _build, _expected, _setup
 from runtime_decoder import _finish, _prefill, _prepare
+from shared_fold import build_shared_fold
 
 
 def main() -> None:
     """Execute both address families and all decoder rows and meaning triples."""
     outputs: dict[str, int] = {}
-    source, groups, _, _ = build(
-        None,
-        dispatch_ab=True,
-        parity=True,
-        high_pointer=True,
-        high_parity=True,
-        guard_scratch=True,
-        prepare_returns=True,
-        result_first=True,
-        slot_pointers=True,
-        shared_special_fold=True,
-        outputs=outputs,
-    )
+    source, groups, _, _ = build_shared_fold(outputs=outputs)
     interface = (outputs["pointer"], *groups[-1])
     assert interface == (142, 145, 139, 144)
     folds = []
