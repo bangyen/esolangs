@@ -207,9 +207,14 @@ step; an answer lands in the paper it extends, and the row leaves.
   on one seeded twelve-input table it emits 4,686 versus 16,759 shipped,
   but eight executed rows take 230,072 versus 62,128 machine steps.
   Eager selection pays `T - 1` primitive shifts per nonconstant-table row;
-  step counts do not price arbitrary-integer bit operations. Next: use
-  direct Boolean expressions for small residuals and pack only larger ones,
-  then clear the size gate without retaining the full-table transform.
+  step counts do not price arbitrary-integer bit operations. A hybrid of
+  shipped three-input residual expressions and whole-table packing matches
+  all three-input sizes (7,576 total), but totals 28,726 on the five-input
+  sample (168 grow). It executes 10,374 rows; packing wins none of that
+  corpus. Its small transforms are capped at three inputs, but recursive
+  string copying leaves the build-time bound unproved. Next: compare
+  character costs of difference-arm splits against shared selectors, then
+  clear the size and build-time gates without a full-table transform.
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between
