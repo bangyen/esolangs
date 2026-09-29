@@ -42,10 +42,12 @@ Only live work belongs here. Contracts and standing walls go to
   its generation time is super-linear; [polynomial](proofs/polynomial.md)
   proves both bounds and the parser's totality.
 
-  At the top arities, B-tapemark, 6-5, Forth, Circuit Diagram after its n=8
-  route change, and Vandevelo grow x2.0--2.2 per added input. This straddles
-  the size contract's x2.15 and remains linear pending wider measurements.
-  Vandevelo is x2.0 over n=11..15 and takes 0.31 s at n=12.
+  Wider dense-table measurements give same-parity size-difference ratios
+  3.971 (B-tapemark), 4.004 (6-5), 3.855 (Forth), and 4.211 (Vandevelo)
+  over n=12,14,16. Circuit Diagram, after its n=8 route change, reads
+  4.135 over n=10,12,14 and 4.119 over n=11,13,15. Parity tables read no
+  higher. All remain inside the measured 4.4 contract; this is not a proof
+  of linearity.
 
 ## Open problems
 
