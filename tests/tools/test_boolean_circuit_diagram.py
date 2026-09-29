@@ -721,7 +721,7 @@ class TestCircuitDiagram:
         elif collision == "neighbour":
             layout.junctions[(1, 1)] = 2
         else:
-            layout._horizontal_cells[(1, 0)] = 2  # noqa: SLF001
+            layout.run_horizontal(0, 2, 0, 2)  # another signal covers (1, 0)
         assert not layout._route_is_free([(0, 0), (2, 0)], 1)  # noqa: SLF001
 
     @pytest.mark.slow  # ~6s: three n=4 builds, sixteen interpreted rows each
