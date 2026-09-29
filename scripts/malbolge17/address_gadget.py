@@ -338,8 +338,9 @@ def build(
             walked_inert(seed) for seed in (36, 33, 45, 42, 51, 60, 72)
         )
         reunion_cells = tuple(walked_inert(seed) for seed in (69, 41, 40))
+        selector_relocation = walked_inert(50)
         entry, d, special_memory = pending_special
-        for cell in (*pin, *selector_cells, *reunion_cells):
+        for cell in (*pin, *selector_cells, *reunion_cells, selector_relocation):
             special_memory[cell] = raw[cell]
         special = _Planner(entry, d, special_memory, {})
         _emit_chain(special, tail_cell, "K0", helper)
@@ -366,6 +367,10 @@ def build(
             for _ in range(rotations):
                 target = _rot(target)
             reunion_targets.append(target + 1)
+        relocated_selector_entry = raw[selector_relocation]
+        for _ in range(6):
+            relocated_selector_entry = _rot(relocated_selector_entry)
+        relocated_selector_entry += 1
 
         def selector_node(
             branch: _Planner, cell: int, rotations: int
@@ -382,8 +387,34 @@ def build(
 
         first, first_memory = selector_node(special, selector_cells[0], 3)
         second: list[tuple[int, int, dict[int, int | None]]] = []
-        for selector_entry, cell in zip(first, selector_cells[1:3], strict=True):
-            branch = _Planner(selector_entry, selector_cells[0] + 1, first_memory, {})
+        for branch_index, (selector_entry, cell) in enumerate(
+            zip(first, selector_cells[1:3], strict=True)
+        ):
+            if branch_index == 0:
+                trampoline = _Planner(
+                    selector_entry,
+                    selector_cells[0] + 1,
+                    first_memory,
+                    {},
+                )
+                for _ in range(6):
+                    trampoline.op("*", selector_relocation)
+                trampoline.goto(selector_relocation)
+                trampoline.raw("i")
+                parts.append(trampoline.code)
+                branch = _Planner(
+                    relocated_selector_entry,
+                    selector_relocation + 1,
+                    dict(trampoline.mem),
+                    {},
+                )
+            else:
+                branch = _Planner(
+                    selector_entry,
+                    selector_cells[0] + 1,
+                    first_memory,
+                    {},
+                )
             selector_targets, branch_memory = selector_node(branch, cell, 4)
             second.extend(
                 (target, cell + 1, branch_memory) for target in selector_targets
@@ -418,7 +449,13 @@ def build(
             branch.raw("i")
             parts.append(branch.code)
         suffix_memory = dict(special.mem)
-        for cell in (*z_inputs, z_cell, *selector_cells, *reunion_cells):
+        for cell in (
+            *z_inputs,
+            z_cell,
+            *selector_cells,
+            *reunion_cells,
+            selector_relocation,
+        ):
             suffix_memory[cell] = None
         for selected_slot, (target, reunion) in enumerate(
             zip(reunion_targets, reunion_cells, strict=True)
