@@ -1133,15 +1133,16 @@ code cells. A backlink then cuts hub setup: `H+2` points through the label
 cell back to `H+1`, so every rotation after the first costs two `j`s rather
 than fresh navigation; the dense-table escape uses `H+3` instead. Finally,
 the escape-only label at cell 83 carries the convergence word itself, so no
-separate escape constants are built. The executed row sizes are now
-**7,091**, 7,093, 7,071, 7,220, 7,248, 7,218, 7,127 and 7,070. These
-fixed-group builds initialize the known parity directly, so they exclude the
-full address reducer.
+separate escape constants are built. The prefix `o j j` then converges both
+hub values of each label through `H+3`, allowing them to share one block.
+The executed row sizes are now **6,854**, 6,832, 6,812, 6,988, 6,987,
+6,988, 6,866 and 6,811. These fixed-group builds initialize the known parity
+directly, so they exclude the full address reducer.
 
 Row 0 now splits into 1,642 cells for constant setup and pointer priming,
-2,504 for value chains, 1,408 for label chains, 323 for hub rotations and
-1,214 for landing/decoder blocks. Backlinks and the self-hosted escape remove
-3,070 cells from the 10,687-cell factorized build.
+2,504 for value chains, 1,408 for label chains, 341 for hub rotations and
+959 for landing/decoder blocks. Backlinks, the self-hosted escape and shared
+blocks remove 3,833 cells from the 10,687-cell factorized build.
 
 This quantifies the lever. The one-group setup is navigation-bound, and its
 cost is not fixed. Address parity has a straight-line reducer: applying

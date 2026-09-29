@@ -137,11 +137,22 @@ def build(s,cf):
             data[H+2]=pointer[H]-1
             assert admits(H+2,pointer[H]-1)
         assert admits(H+3,E-1); data[H+3]=E-1
-    copies=[]      # (key, hub value, entry address)
+    copies=[]      # (key, shared entry address, room, hub turns)
     for lab in '01xn':
-        key=KEY[lab]; room=80 if key[0]=='p' else 300
-        for H in sorted(set(value[p] for p in value if LABELS.get(p)==lab)):
-            hc,k,addr=hub_to(H+1,room); data[H+1]=hc; avoid|=set(range(addr,addr+room))
+        key=KEY[lab]; room=140 if key[0]=='p' else 300
+        hubs=sorted(set(value[p] for p in value if LABELS.get(p)==lab))
+        options=[]
+        for H in hubs:
+            byaddr={}
+            for hc in _valid_chars(H+1):
+                for k,sv in _rotations(hc): byaddr.setdefault(sv+1,(hc,k))
+            options.append(byaddr)
+        common=set(options[0]).intersection(*options[1:])
+        addr=next(a for a in sorted(common,key=lambda a:sum(o[a][1] for o in options))
+                  if 7000<=a and a+room<_WORDS and not any(a+o in avoid for o in range(room)))
+        turns=[]
+        for H,option in zip(hubs,options):
+            hc,k=option[addr]; data[H+1]=hc; turns.append(k)
             P.hub(pointer[H],H)
             for turn in range(k):
                 P.raw('*')
@@ -149,7 +160,7 @@ def build(s,cf):
                     P.raw('j'); P.d=pointer[H]
                     P.raw('j'); P.d=H+1
             P.d=H+2
-            copies.append((key,H,addr,room,k))
+        avoid|=set(range(addr,addr+room)); copies.append((key,addr,room,turns))
     phases.append(len(P.code))
     def view(q):
         c=POS[q][s]; par=(Gb+c)%2; return c,Bc[q],KS[2*q+par],par
@@ -175,8 +186,11 @@ def build(s,cf):
         Q.raw('j'); Q.raw('j'); Q.raw('i')
     decoder(P,START[s],0)
     spans=[]
-    for key,H,addr,room,k in copies:
-        Q=_Planner(addr,H+2,dict(P.mem),data)
+    for key,addr,room,turns in copies:
+        Q=_Planner(addr,0,dict(P.mem),data)
+        Q.raw('o')
+        Q.raw('j'); Q.d=E
+        Q.raw('j'); Q.d=Z0
         if key=='s3': decoder(Q,3,1)
         elif key=='s4': decoder(Q,4,states.index(4))
         else: Q.op('*',cf['C0'] if key=='p0' else cf['C1']); Q.raw('<'); Q.raw('v')
@@ -187,7 +201,7 @@ def build(s,cf):
     for a,op in P.code.items(): src[a]=_char_for(op,a)
     for a,ch in data.items(): src[a]=ch
     phases.append(len(P.code))
-    return src,len(P.code),[phases[0],*(b-a for a,b in zip(phases,phases[1:]))],[k for *_,k in copies],spans,chain_cost
+    return src,len(P.code),[phases[0],*(b-a for a,b in zip(phases,phases[1:]))],[k for *_,ks in copies for k in ks],spans,chain_cost
 
 if __name__=='__main__':
     cf=setup()
