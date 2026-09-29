@@ -59,7 +59,7 @@ SCHEMA = 1
 
 def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
     """Return one full benchmark record per (language, table), timings and all."""
-    return [
+    records = [
         measure(
             name,
             table,
@@ -73,6 +73,14 @@ def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
         if esolangs.describe(name)["boolean_generator"]
         for table in TABLES
     ]
+    for record in records:
+        if record["matches"] is not True:
+            raise ValueError(
+                f"{record['language']} [{record['truth_table']}]: "
+                f"{record['execution_status']}, expected {record['expected_answer']}, "
+                f"got {record['actual_answer']}"
+            )
+    return records
 
 
 def baseline(records: list[dict[str, Any]]) -> dict[str, Any]:

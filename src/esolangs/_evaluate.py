@@ -17,7 +17,6 @@ from esolangs._validate import check_timeout
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
-    ExecutionTimeoutError,
     InputExhaustedError,
 )
 from esolangs.interpreters.io import ScriptedIO
@@ -62,7 +61,7 @@ def evaluate(
     row: omit for the defaults, ``None`` for unbounded (callable off the main
     thread).  The four termination-answer languages do not pay it: those rows are
     settled by a repeated machine state, so the bound is only a backstop
-    for growth.
+    for growth. A timeout raises rather than claiming divergence.
     ``width`` is passed through.  A failure carries the row as a note and
     ``partial_output``.
     """
@@ -164,21 +163,16 @@ def _terminates(
     """
     from esolangs.vm import run_until_halt_or_cycle
 
-    machine = make_vm(name, source, stdin)
     # A box, because ``_run`` exists to apply the timeout and discards what
     # it drove -- which is right for ``run``, whose result is the io buffer.
     verdict: list[bool] = []
 
     def _drive(*_args: object) -> None:
+        machine = make_vm(name, source, stdin)
         verdict.append(run_until_halt_or_cycle(machine))
 
     try:
         esolangs._run(_drive, source, ScriptedIO(""), bound)  # noqa: SLF001
-    except ExecutionTimeoutError:  # pragma: no cover - see below
-        # No cycle inside the bound: unbounded growth or slow.  Unreached
-        # by the suite (every program repeats within ~100 steps); kept
-        # because the detector proves only cycles.
-        return diverges
     except InputExhaustedError:  # pragma: no cover - see below
         # Reading past the end is a halt.  Unreachable via :func:`evaluate`
         # (it never underfeeds); kept for a caller passing its own stdin.

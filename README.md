@@ -56,15 +56,23 @@ just test-quick
 
 Run `just test` before committing; the
 [contribution guide](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md)
-has the full workflow.
+has the full workflow. CI also installs the built wheel on Linux, macOS,
+and Windows, checking packaged examples, CLI I/O, Line/Piet PNG execution,
+and installation with and without the mathematics extra.
 
 ## Python API
 
 ```python
 import esolangs
 
-esolangs.verify("Fargo", "10010110")  # -> True
+esolangs.verify("Fargo", "10010110", timeout=None)  # -> True
 ```
+
+`evaluate` returns the answers observed over every input row; `verify`
+compares them with the requested table. Termination answers require a proved
+halt or cycle; reaching a timeout raises `ExecutionTimeoutError`.
+The default row timeout requires a Unix main thread. `timeout=None` disables
+that bound and also works on Windows and worker threads.
 
 Pass each command the language it was generated for: running a Suffolk
 program as brainfuck does not fail, it reports something useless.  How a
@@ -265,6 +273,20 @@ esolangs list --details --json | jq '.[] | select(.name == "Sophie")'
 ```
 
 Regenerate the committed examples with `python scripts/generate.py examples`.
+
+Measure a generated program and check every input row:
+
+```bash
+just benchmark brainfuck 0110 --all-rows
+```
+
+The JSON reports rendered size, generation time, steps to halt, expected and
+actual answers, and execution status. It checks the artifact it measured;
+wrong or undecided rows exit unsuccessfully. Unsupported stepping is reported
+separately from a step cap or timeout. The row timeout defaults to 30 seconds;
+`--no-timeout` disables the signal guard for Windows or worker threads.
+`just sizes` checks the committed size and step baseline and requires each
+measured row to answer correctly.
 
 ## Contributing
 

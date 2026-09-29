@@ -886,3 +886,32 @@ class TestEvaluateNoLongerClaimsToPayTheTimeout:
         # has to be there is the mechanism and the denial.
         assert "repeated machine state" in doc
         assert "do not pay it" in doc
+
+
+class TestTerminationTimeoutIsUndecided:
+    def test_timeout_propagates_with_row_context(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def expired(*_args: object) -> None:
+            raise esolangs.ExecutionTimeoutError("forced timeout")
+
+        monkeypatch.setattr(esolangs, "_run", expired)
+        with pytest.raises(
+            esolangs.ExecutionTimeoutError, match="forced timeout"
+        ) as exc:
+            esolangs.verify("123", "01")
+        assert "while evaluating row 0" in exc.value.__notes__[0]
+
+    @pytest.mark.medium
+    def test_vm_construction_is_timed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import time
+
+        from esolangs import _evaluate
+
+        def slow_machine(*_args: object) -> None:
+            time.sleep(1)
+            pytest.fail("construction escaped the timeout")
+
+        monkeypatch.setattr(_evaluate, "make_vm", slow_machine)
+        with pytest.raises(esolangs.ExecutionTimeoutError):
+            esolangs.evaluate("123", "01", timeout=0.02)

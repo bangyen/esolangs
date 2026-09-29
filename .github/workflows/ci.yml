@@ -260,3 +260,37 @@ jobs:
 
     - name: Audit dependencies with pip-audit
       run: uv run --with pip-audit pip-audit --local
+
+  distribution:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v7
+    - uses: astral-sh/setup-uv@v7
+    - uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+    - name: Build and install the wheel without extras
+      run: |
+        uv build --python 3.12
+        uv venv --python 3.12 .artifact-venv
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          artifact_python="$PWD/.artifact-venv/Scripts/python.exe"
+        else
+          artifact_python="$PWD/.artifact-venv/bin/python"
+        fi
+        echo "ARTIFACT_PYTHON=$artifact_python" >> "$GITHUB_ENV"
+        uv pip install --python "$artifact_python" dist/*.whl
+        "$artifact_python" -I scripts/smoke_distribution.py
+    - name: Install the math extra and exercise Polynomial
+      run: |
+        wheels=(dist/*.whl)
+        uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[math]"
+        "$ARTIFACT_PYTHON" -I scripts/smoke_distribution.py --math
