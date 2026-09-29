@@ -22,6 +22,7 @@ BASES = (364, 1093, 2551, 3280, 6925)
 STORED_PARITY = (58318, 59047)
 TOGGLE = 1458
 STORED_TOGGLE = 4374
+MASK = 729
 
 # Address, target, and construction. Ascending address is the emission order.
 CHAINS = (
@@ -34,6 +35,9 @@ CHAINS = (
     (147, STORED_PARITY[0], "rot rot rot rot K2 K0 K2"),
     (157, STORED_TOGGLE, "K1 rot rot rot"),
     (165, STORED_PARITY[0], "rot rot rot rot K2 K0 K2"),
+    (170, MASK, "rot rot rot rot K1 K2"),
+    (185, MASK, "rot rot rot rot K1 K2"),
+    (197, MASK, "rot rot rot rot K1 K2"),
 )
 
 
@@ -114,7 +118,7 @@ def main() -> None:
         assert _chain(_g(cell), chain) == target
     bases, total = emitted_size()
     print(f"five bases: {bases} emitted cells")
-    print(f"bases + three parity words + toggle operand: {total} emitted cells")
+    print(f"complete view/parity constants: {total} emitted cells")
 
 
 if __name__ == "__main__":
