@@ -94,6 +94,27 @@ def test_one_instruction_split_has_no_cheaper_opcode() -> None:
     assert (1, -48, baseline) in separating
 
 
+def test_direct_affine_dispatch_only_increases_the_profile() -> None:
+    """The multiply/add alternative to the shared decoder has positive cost."""
+    baseline = Fraction(325, 8)
+    for numerator in range(51):
+        converted = Fraction(numerator, 100)
+        cumulative = [
+            Fraction(3, 2) + 2 * converted,
+            Fraction(11, 2),
+            Fraction(11, 2) + 2 * converted,
+            6 + 2 * converted,
+        ]
+        profile = Fraction(1, 2) * (
+            4 * cumulative[3] ** 2
+            - cumulative[2] ** 2
+            - cumulative[1] ** 2
+            - cumulative[0] ** 2
+        )
+        assert profile == baseline + 34 * converted + 4 * converted**2
+        assert profile >= baseline
+
+
 def _even_source(table: str) -> tuple[str, list[list[int]], list[int]]:
     n = (len(table) - 1).bit_length()
     instructions: list[list[int]] = []

@@ -872,6 +872,26 @@ adding $-48$ gives $0,1$.  Its two arithmetic roots and two opener roots have
 sorted effective exponents $1,1,1,4$, componentwise minimal.  Substituting a
 different opcode or branch polarity cannot improve the profile.
 
+Nor can a direct affine transition replace the additive decoder profitably.
+From an input character $48+b$, multiplication by $z-o$ followed by addition
+of $-48(z-o)-z-D_q$ selects $-z-D_q$ or $-o-D_q$ with operands $O(W)$.
+For each fraction $t$ of all states converted this way, it replaces two
+effective-exponent-$2$ roots by two roots each of exponents $1$ and $3$.
+At the minimizing profile $a=\frac12$, $x=0$, the cumulative root densities
+at exponents $1,2,3,4$ become
+\[
+ \tfrac32+2t,\qquad \tfrac{11}2,\qquad \tfrac{11}2+2t,
+ \qquad 6+2t.
+\]
+Consequently the profile constant is
+\[
+ \frac12\left(4(6+2t)^2-(\tfrac{11}2+2t)^2
+ -(\tfrac{11}2)^2-(\tfrac32+2t)^2\right)
+ =\frac{325}8+34t+4t^2.
+\]
+It increases for every $t>0$; removing the shared decoder in this way costs
+more than its quadratic transition operands.
+
 \begin{proof}[Proof of the upper half of Proposition~\ref{prop:bracket}]
 \emph{Parameters.}  Let $n$ be large and put $\lambda_0=\lceil\log_2n\rceil$,
 $t_0=\sigma=\lambda_0$ and $A=t_0+\lambda_0+\lceil2(\lambda_0+1)\log n\rceil$.  Let $h$
