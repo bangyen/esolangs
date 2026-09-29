@@ -1193,4 +1193,8 @@ constructs the group pointer and runs the straight-line parity reducer. The
 **11,511-cell** combined source returns the exact 0/1,458 operand on all
 16,384 rows and initializes the three consumable parity words; all 49,152
 address-plus-offset parities execute correctly. Decoder and table integration
-remain.
+remain. This source is an execution certificate, not a placed table build:
+9,030 of its 11,503 distinct instruction cells overlap table cells, leaving
+only 2,473 already in the complement. The next construction step is therefore
+relocating and reuniting these paths into the bottom run and spare windows,
+not appending the decoder at their current addresses.

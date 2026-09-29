@@ -41,6 +41,7 @@ def build(
     *,
     dispatch_ab: bool = False,
     parity: bool = False,
+    occupied: set[int] | None = None,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -462,6 +463,8 @@ def build(
             emitted[address] = operation
             owners[address] = part_index
             source[address] = _char_for(operation, address)
+    if occupied is not None:
+        occupied.update(emitted)
     result_cell = tail_cell
     if parity:
         result_cell = mask_specs[3][0]
@@ -539,13 +542,16 @@ def main() -> None:
     for selector_bits in itertools.product(range(2), repeat=12):
         bits = (0, 0, *selector_bits)
         assert run(dynamic_ab, result_cell, bits) == group_word(list(bits))
+    occupied: set[int] = set()
     dynamic_parity, parity_groups, parity_operand_cell, dynamic_parity_size = build(
-        None, dispatch_ab=True, parity=True
+        None, dispatch_ab=True, parity=True, occupied=occupied
     )
     parity_result_cells = parity_groups[-1]
+    table_cells: set[int] = set()
     for bits in itertools.product(range(2), repeat=14):
         word = group_word(list(bits))
         pointer = _crazy(ALL2 - 2, word)
+        table_cells.update(_crazy(ALL2 - 2 + offset, word) + 1 for offset in range(3))
         memory = execute(dynamic_parity, bits)
         assert memory[parity_operand_cell] == parity_operand(pointer)
         assert tuple(memory[cell] for cell in parity_result_cells) == tuple(
@@ -557,7 +563,8 @@ def main() -> None:
         f"dynamic A: 8,192/8,192 correct, {dynamic_size}; "
         f"dynamic A/B/C/D: 16,384/16,384 correct, "
         f"{dynamic_ab_size} code cells; parity words: 49,152/49,152 correct, "
-        f"{dynamic_parity_size} code cells"
+        f"{dynamic_parity_size} code cells, {len(occupied & table_cells)} table "
+        "collisions"
     )
 
 
