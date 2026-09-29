@@ -14,8 +14,8 @@ arithmetic:
 
 | model (section 1) | lower bound on `liminf B(C)^(1/C)` | upper bound on `limsup B(C)^(1/C)` |
 |---|---|---|
-| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.23728** (Thm 4) | **7.0341** (Thm 1) |
-| clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0341 (Thm 1) |
+| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.23728** (Thm 4) | **7.0300** (Thm 1) |
+| clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0300 (Thm 1) |
 | clipped tape, EOF leaves the cell, all inputs | 3.79003 (Thm 4) | 7.3339 (Thm 1) |
 | bi-infinite tape, EOF error / keep | 4.23728 / 3.79003 | 6.9133 / 7.1949 |
 | any fixed nonempty finite input set `I`, any EOF, any tape | **3.36614** (Thm 5) | as for all inputs |
@@ -23,7 +23,7 @@ arithmetic:
 | loop-free programs, EOF error | **4.06124** (Thm 3) | **2 + sqrt 5 = 4.23607** (Thm 3) |
 | loop-free programs, EOF constant / keep | 3.79003 | 4.23607 / 4.72458 |
 
-Headline (repo model): **`4.2372 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0341`**,
+Headline (repo model): **`4.2372 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0300`**,
 from `[2.414, 7.388]`.  In bits per character: `[2.083, 2.814]`, from `[1.272, 2.885]`.
 The lower bound uses nested loops (section 5c) and exceeds the loop-free upper bound
 `2 + sqrt 5 = 4.23607`.  Loops therefore strictly raise the growth rate.
@@ -34,7 +34,7 @@ Two corrections to the old statement:
   programs.  Of the five adjacencies, `[]` can be deleted only from a program that terminates
   on every input (as the Factor setting had).  In a model where a program may diverge, `[]`
   is the shortest diverging loop and cannot be removed.  The four sound adjacencies give
-  `7.4979`.  Theorem 1 replaces both by `7.0341`.
+  `7.4979`.  Theorem 1 replaces both by `7.0300`.
 * The drawing floor `(1 + sqrt 2)^C` is far from the truth.  Loop-free programs with I/O
   already have `4.061^C` behaviours on all inputs and `3.366^C` distinct outputs on a single
   input.
@@ -63,7 +63,7 @@ behaviours of programs of length exactly `C` is nondecreasing in `C` and lies be
 ## 2. Results
 
 **Theorem 1 (upper bound).**  In the repo model (clip/err) and in clip/const,
-`B(C) <= K * 7.0341^C`.  For clip/keep `7.3339`, bi/err `6.9133`, bi/keep `7.1949`.  With only the
+`B(C) <= K * 7.0300^C`.  For clip/keep `7.3339`, bi/err `6.9133`, bi/keep `7.1949`.  With only the
 empty input (clip/err), `B_{{eps}}(C) <= K * 6.3218^C`.
 
 **Theorem 2 (the old five adjacencies).**  Words avoiding `+- -+ >< ][ []` grow as `7.38776` (Perron
@@ -141,6 +141,7 @@ set; with transfer matrix `M`, `N_n = e_root^T M^n 1 <= (v_root / min v) * rho^n
 | clip/err, + `+, -, [-],` | 7 | 8 | 7.2356196 |
 | clip/err and clip/const, all rules (`--big`) | 5793 | 8634 | **7.0600257** |
 | clip/err and clip/const, sound subset + global bodies, `len(Y) <= 7` | 723653 | 1358980 | **7.0341** |
+| clip/err and clip/const, local factors `len <= 6` + unrestricted global bodies | 286 | 123 minimized | **7.0300** |
 | clip/keep, all rules | 7379 | 10410 | 7.3338896 |
 | bi/err, all rules | 9969 | 14814 | 6.9132619 |
 | bi/keep, all rules | 12759 | 17946 | 7.1948872 |
@@ -155,10 +156,24 @@ The local method has saturated: doubling every family size moves the third decim
 finds no further candidate that survives better contexts.  The global identity `[[Y]] -> [Y]`
 holds for every balanced `Y`: if the inner loop exits, it leaves the cell tested by the outer `]`
 at zero; otherwise both sides already have the same result.  Adding its instances through length
-7 to a sound subset of the local rules gives the last row.  The row also uses `[Y[] -> []` for
+7 to a sound subset of the local rules gives the finite-body row.  That row also uses `[Y[] -> []` for
 balanced read-free `Y`: if `Y` returns, the empty loop diverges; if it does not, both sides already
 diverge, and without a read `Y` cannot end at EOF.  See section 9 for the certificates and randomised
 soundness tests.
+
+The unrestricted row applies both identities at arbitrary body length.  Regard a balanced program
+as a sequence of atoms of five kinds: a read-free instruction `O`, a read `C`, an empty loop `E`, a
+nonempty read-free loop `L0`, or a loop containing a read `L1`.  Let `R` be the matrix series for
+sequences over `O,L0`, and `P` the series for all atom sequences; entries record paths in the minimized
+avoidance DFA for the 286 local factors.  The permitted read-free and read-containing loop bodies are
+
+    B0 = I + O R + L0 (R - I),
+    B1 = R C P + (R - I) L1 P + L1 (P - I),
+
+where `L0 = [ (B0 - I) ]`, `L1 = [ B1 ]`, `R = (I - O - L0)^-1`, and
+`P = (I - O - C - E - L0 - L1)^-1`.  The first formula excludes a sole loop and every empty loop
+before a read; the second partitions at the first read-bearing atom and excludes a sole `L1`.
+These are exactly the restrictions from `[[Y]]` and `[Y[]`.
 
 ## 4. Loop-free programs (Theorem 3)
 
@@ -506,7 +521,7 @@ These are behaviours on finite input sets, so they are lower estimates of `B(C)`
 
 ## 8. What is not settled
 
-* **The limit.**  The repo-model interval is `[4.2372, 7.0341]`.  Nested loops raise the
+* **The limit.**  The repo-model interval is `[4.2372, 7.0300]`.  Nested loops raise the
   certified lower bound above the loop-free upper bound `4.236` (section 5c), so loops strictly
   raise the growth rate.  The
   idealised grammar explains why loops must nest.  Take prints of weight `x mu^2`, reads of
@@ -521,8 +536,8 @@ These are behaviours on finite input sets, so they are lower estimates of `B(C)`
   dead-cell families suggest a limit near 4.08.  An encoding that drops the positions of
   dead-at-birth reads needs an extra type and gets worse (`x mu^2 + x mu + x`).  Whether a
   read could be moved depends on the future, so no local rule captures it.
-* **Upper bound.**  Local rules have saturated near 7.06.  The global nested-loop identity improves
-  the bound to 7.0341; the remaining gap needs more global arguments.
+* **Upper bound.**  Local rules have saturated near 7.06.  The unrestricted global nested-loop
+  identities improve the bound to 7.0300; the remaining gap needs more global arguments.
   Two tried and dead: (i) the event encoding of section 4 applied to each bracket-free segment between
   brackets must also charge the positions of the segment's final increments, and the resulting series
   is worse than counting words (radius near `1/8`); (ii) the segment-quotient transfer matrix of the
@@ -549,6 +564,12 @@ the tests do catch.
 For the global nested-loop row, the Aho--Corasick automaton has 1,358,980 live states.  A positive
 right Perron vector rounded at scale `10^17` satisfies `10000 M v <= 70341 v` in exact integer
 arithmetic at every state; the largest ratio is 0.9999794.  Thus its growth is at most 7.0341.
+
+For the unrestricted row, minimizing the avoidance DFA for the 286 local factors leaves 123 states.
+At `x = 100/703`, four nonnegative rational matrices bound `B0`, `B1`, `R`, and `P` above and satisfy the
+four displayed defining inequalities componentwise.  They come from the numerical fixed point at
+`x = 1/7.028`, rounded outward at scale `10^13`; the check expands every product and compares
+integers.  Thus all four series converge at `100/703`, proving growth at most `703/100 = 7.03`.
 
 The dead-cell certificates of section 5b come from the transfer matrices on `(p, m)`, and on
 `(c, m, q)` for the gadget.  A numerical Perron vector at the rational `x0` is rounded to
