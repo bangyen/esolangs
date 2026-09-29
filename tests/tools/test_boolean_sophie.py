@@ -344,3 +344,13 @@ class TestSophieLabelsAreUnique:
         assert _depth_zero_labels("@$1{@$1{;}}") == [1]  # nested is not top level
         assert _depth_zero_labels('@"{#@}@@{;}@"{;}') == [34, 64, 34]  # characters
         assert _depth_zero_labels(";@$48{#$48,&}{#$49,&}") == []  # bit tests only
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [8, 10, 12])
+def test_shared_residual_ids_execute_at_scale(n: int) -> None:
+    rng = random.Random(929 + n)
+    table = "".join(rng.choice("01") for _ in range(1 << n))
+    program = boolean.sophie(table)
+    for row in (0, (1 << n) - 1, *[rng.randrange(1 << n) for _ in range(6)]):
+        assert run_sophie(program, list(format(row, f"0{n}b"))) == table[row]

@@ -30,6 +30,7 @@ from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _cm_constants,
+    _residual_ids,
     _validate_truth_table,
     essential_inputs,
     read_at,
@@ -58,7 +59,9 @@ from esolangs.tools.polynomial import (
 from esolangs.tools.polynomial import (
     _polynomial_hybrid_cost as _polynomial_hybrid_cost,
 )
-from esolangs.tools.polynomial import _polynomial_states
+from esolangs.tools.polynomial import (
+    _polynomial_states as _polynomial_states,
+)
 from esolangs.tools.polynomial import polynomial as polynomial
 
 
@@ -463,7 +466,7 @@ def _sophie_literal(value: int) -> str:
     return chr(value) if value in _SOPHIE_CHARACTERS else f"${value}"
 
 
-def sophie_labels(retained: list[list[str]]) -> list[dict[str, int]]:
+def sophie_labels(retained: list[list[int]]) -> list[dict[int, int]]:
     """Return one label per retained state, unique across all levels.
 
     This used to draw from two bands by level parity -- ``((1, 20), (21,
@@ -495,19 +498,17 @@ def sophie_labels(retained: list[list[str]]) -> list[dict[str, int]]:
 def _sophie_hybrid(truth_table: str) -> str:
     """Emit a Sophie tree that labels only shared residual states.
 
-    The states are the residual subtables as strings, ``n * 2**n``
-    characters over all levels, and every test here is one C-level pass
-    over a state: Theta(T log T), intrinsic to naming the shared states.
+    Canonical child pairs name states in O(T) RAM work without copying
+    the subtables at every depth. First-occurrence order preserves labels.
     """
     n = _validate_truth_table(truth_table)
-    levels = _polynomial_states(truth_table, n)
-    references: list[dict[str, int]] = [{} for _ in levels]
+    levels, children, constants = _residual_ids(truth_table, n)
+    references: list[dict[int, int]] = [{} for _ in levels]
     for k in range(n - 1):
-        width = 2 ** (n - k - 1)
         for state in levels[k]:
-            if state.count(state[0]) == len(state):
+            if constants[state] is not None:
                 continue
-            for child in {state[:width], state[width:]}:
+            for child in set(children[state]):
                 references[k + 1][child] = references[k + 1].get(child, 0) + 1
 
     retained = [
@@ -516,40 +517,52 @@ def _sophie_hybrid(truth_table: str) -> str:
             for state in states
             if k == 0
             or (
-                state.count(state[0]) < len(state)
+                constants[state] is None
                 and references[k].get(state, 0) > 1
-                and state != "01"
+                and not (k == n - 1 and children[state] == (0, 1))
             )
         ]
         for k, states in enumerate(levels)
     ]
     labels = sophie_labels(retained)
 
-    # A leaf runs on to the final ``,``: 48/49 fire no ``@L`` on the way.
-    def body(k: int, state: str) -> str:
-        if state.count(state[0]) == len(state):
-            return ";" * (n - k) + f"#{state[0]}"
-        width = 2 ** (n - k - 1)
-        zero, one = state[:width], state[width:]
-        if k + 1 == n:
-            return ";" if one == "1" else ";@0{#1}{#0}"
+    out: list[str] = []
 
-        def next_body(child: str) -> str:
+    # A leaf runs on to the final ``,``: 48/49 fire no ``@L`` on the way.
+    def body(k: int, state: int) -> None:
+        if constants[state] is not None:
+            out.append(";" * (n - k) + f"#{constants[state]}")
+            return
+        zero, one = children[state]
+        if k + 1 == n:
+            out.append(";" if one == 1 else ";@0{#1}{#0}")
+            return
+
+        def next_body(child: int) -> None:
             if child in labels[k + 1]:
-                return "#" + _sophie_literal(labels[k + 1][child])
-            return body(k + 1, child)
+                out.append("#" + _sophie_literal(labels[k + 1][child]))
+            else:
+                body(k + 1, child)
 
         if zero == one:
-            return ";" + next_body(zero)
-        return f";@0{{{next_body(zero)}}}{{{next_body(one)}}}"
+            out.append(";")
+            next_body(zero)
+        else:
+            out.append(";@0{")
+            next_body(zero)
+            out.append("}{")
+            next_body(one)
+            out.append("}")
 
-    out = []
     for k, states in enumerate(retained):
         for state in states:
-            block = body(k, state)
-            label = _sophie_literal(labels[k][state])
-            out.append(block if k == 0 else f"@{label}{{{block}}}")
-    return "".join(out) + ","
+            if k:
+                out.append("@" + _sophie_literal(labels[k][state]) + "{")
+            body(k, state)
+            if k:
+                out.append("}")
+    out.append(",")
+    return "".join(out)
 
 
 def _qoibl_enc(n: int) -> str:
