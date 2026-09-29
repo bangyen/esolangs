@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import itertools
 
 from address17 import ALL2, group_word
@@ -9,11 +10,33 @@ from address_gadget import build as build_address
 from decoder_group import _build as build_decoder
 from decoder_group import _setup as setup_decoder
 
-from esolangs.interpreters.other.malbolge import _crazy, _op
+from esolangs.interpreters.other.malbolge import (
+    _advance,
+    _crazy,
+    _initial_memory,
+    _op,
+)
 from esolangs.tools._malbolge_core import _WORDS
 
 
-def main() -> None:
+def _executed(source: str, bits: tuple[int, ...]) -> set[int]:
+    """Return instruction addresses visited by one emitted address path."""
+    memory = list(_initial_memory(source))
+    state = (0, 0, 0, False)
+    inputs = iter(48 + bit for bit in bits)
+    seen: set[int] = set()
+    for _ in range(100_000):
+        seen.add(state[1])
+        char = next(inputs) if _op(memory[state[1]], state[1]) == "/" else None
+        state, writes, _ = _advance(state, memory, char)
+        for address, value in writes:
+            memory[address] = value
+        if state[3]:
+            return seen
+    raise AssertionError("address fold did not halt")
+
+
+def main(*, live: bool = False) -> None:
     """Report exact occupied-cell counts for the current separate emitters."""
     address_cells: set[int] = set()
     source, _, _, count = build_address(
@@ -42,7 +65,21 @@ def main() -> None:
         f"table {len(table)}, complement {_WORDS - len(table)}, "
         f"union on table {len(union & table)}, union off table {len(union - table)}"
     )
+    if live:
+        first = _executed(source, (0,) * 14)
+        assert address_cells - first  # positive control for the zero-result audit
+        seen = set(first)
+        for bits in itertools.product(range(2), repeat=14):
+            if any(bits):
+                seen.update(_executed(source, bits))
+        dead = address_cells - seen
+        print(
+            f"address liveness: {len(dead)} dead of {len(address_cells)} emitted "
+            f"cells; one-path control leaves {len(address_cells - first)} unvisited"
+        )
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--live", action="store_true", help="trace all address paths")
+    main(live=parser.parse_args().live)

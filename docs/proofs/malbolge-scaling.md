@@ -1280,3 +1280,6 @@ pass; each row writes 7,409--7,524 code cells. The separate-emitter join
 budget falls from 13,672 to 13,193 instruction addresses, leaving a
 3,296-address placement and sharing deficit. The address fold already
 preserves the matching dynamic `base-1` value in its pointer cell.
+The `join_budget.py --live` trace visits all 9,588 address instruction cells
+across the 16,384 paths. A one-path positive control leaves 4,456 of them
+unvisited. There is no dead emitted address code to delete from this build.
