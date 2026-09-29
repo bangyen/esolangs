@@ -1198,18 +1198,18 @@ suffix at cell 5,590 in the free bottom run, cuts the parity build further.
 The pointer-seed mask is then restored by four rotations and reused as the
 first parity-copy mask. Removing the unused fourth mask reservation shifts the
 remaining constructed cells into a cheaper placement. Finally, putting the
-sacrificial all-1 words at untouched default cells 63 and 67 removes 1,140
-navigation cells. The odd-offset parity seed reaches its stored word directly
-in `rot K0 K2`, eliminating the separate toggle construction. The
-**9,057-cell** combined source returns the exact
+sacrificial all-1 word at untouched default cell 63 and reusing the dormant
+`z1` helper removes both high-address reducer words. The odd-offset parity
+seed reaches its stored word directly in `rot K0 K2`, eliminating the separate
+toggle construction. The **8,975-cell** combined source returns the exact
 0/1,458 operand on all
 16,384 rows and initializes the three consumable parity words; all 49,152
 address-plus-offset parities execute correctly. Decoder and table integration
 remain. This source is an execution certificate, not a placed table build:
-5,318 of its 9,049 distinct instruction cells overlap table cells, leaving
-3,731 already in the complement. The next construction step is therefore
+5,241 of its 8,967 distinct instruction cells overlap table cells, leaving
+3,726 already in the complement. The next construction step is therefore
 relocating and reuniting these paths into the bottom run and spare windows,
 not appending the decoder at their current addresses. Independently of
 placement, the prefix now fits the table's 9,897-cell complement by count,
-with 848 cells left. The decoder still needs substantially more, so setup must
+with 930 cells left. The decoder still needs substantially more, so setup must
 be shared and further address code removed rather than merely relocated.
