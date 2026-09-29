@@ -630,11 +630,35 @@ def main() -> int:
         for address, op in emission.code.items():
             owners.setdefault(address, set()).add(op)
     conflicts = {address for address, ops in owners.items() if len(ops - {"o"}) > 1}
+    live_conflicts = {
+        address: {
+            row: emissions[row].code.get(address, "o")
+            for row, (_, seen) in enumerate(live_rows)
+            if address in seen
+        }
+        for address in conflicts
+    }
+    copy_classes: dict[str, list[list[int]]] = {}
+    for label in ("s3", "s4"):
+        classes: dict[tuple[str, ...], list[int]] = {}
+        for row, emission in enumerate(emissions):
+            _, address, room = next(
+                window for window in emission.copy_windows if window[0] == label
+            )
+            if not any(a in live_rows[row][1] for a in range(address, address + room)):
+                continue
+            signature = tuple(
+                emission.code.get(a, "o") for a in range(address, address + room)
+            )
+            classes.setdefault(signature, []).append(row)
+        copy_classes[label] = list(classes.values())
     print(f"five-state group decoder: {total} / {total}")
     print(f"executed cells across all rows: {len(executed)}")
     print(f"common executed cells: {len(common)}; live row variants: {len(variants)}")
     print(f"row starts: {[emission.row_start for emission in emissions]}")
     print(f"non-nop opcode conflicts: {len(conflicts)} at {sorted(conflicts)}")
+    print(f"live conflict owners: {dict(sorted(live_conflicts.items()))}")
+    print(f"live copy classes: {copy_classes}")
     return 0
 
 
