@@ -1136,13 +1136,15 @@ the escape-only label carries the convergence word itself, so no separate
 escape constants are built. A label-specific seed followed by two `p`s at
 each pointer cell maps the whole label directly to one hub. Each `H+3` may
 then point through any escape-label cell; all such cells converge on the same
-escape hub. The prefix `o j j` therefore gives each label one shared block.
-The executed row sizes are now **6,449**, 6,461, 6,342, 6,650, 6,603,
-6,650, 6,460 and 6,341. These fixed-group builds initialize the known parity
+escape hub. Only five escape-label cells are needed: the unused pointer cells
+reachable from the next table cell, plus the four hub backlinks. The prefix
+`o j j` therefore gives each label one shared block. The executed row sizes
+are now **5,420**, 5,472, 5,317, 5,607, 5,664, 5,607, 5,461 and 5,306.
+These fixed-group builds initialize the known parity
 directly, so they exclude the full address reducer.
 
-Row 0 now splits into 549 cells for constant setup, 2,383 for value chains,
-2,354 for two-pass label assignment, 158 for hub rotations and 1,005 for
+Row 0 now splits into 549 cells for constant setup, 2,315 for value chains,
+2,095 for two-pass label assignment, 77 for hub rotations and 384 for
 landing/decoder blocks. All 2,744 real-source executions pass.
 
 This quantifies the lever. The one-group setup is navigation-bound, and its
