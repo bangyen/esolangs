@@ -335,7 +335,7 @@ def build(
         selector_cells = tuple(
             walked_inert(seed) for seed in (36, 33, 45, 42, 51, 60, 72)
         )
-        reunion_cells = tuple(walked_inert(seed) for seed in (38, 41, 40))
+        reunion_cells = tuple(walked_inert(seed) for seed in (69, 41, 40))
         entry, d, special_memory = pending_special
         for cell in (*pin, *selector_cells, *reunion_cells):
             special_memory[cell] = raw[cell]
@@ -356,7 +356,7 @@ def build(
                 special.op("*", constants[operation])
             else:
                 special.op("p", pin[int(operation)])
-        reunion_rotations = (3, 3, 2)
+        reunion_rotations = (6, 3, 2)
         reunion_targets = []
         for cell, rotations in zip(reunion_cells, reunion_rotations, strict=True):
             _emit_chain(special, cell, " ".join(["rot"] * rotations), helper)
