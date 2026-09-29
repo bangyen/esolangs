@@ -9,6 +9,8 @@ seventeen-input decoder needs.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from esolangs.interpreters.other.malbolge import (
     _advance,
     _crazy,
@@ -41,6 +43,16 @@ from esolangs.tools.malbolge import (
 _OPS = "ji*p</vo"
 
 
+@dataclass(frozen=True)
+class _Emission:
+    """Dispatcher source, route entries, and exact code and data maps."""
+
+    source: str
+    entries: tuple[int, ...]
+    code: dict[int, str]
+    data: dict[int, int]
+
+
 def _readouts() -> list[int]:
     """Return the eight one-group readouts, by input triple."""
     out = []
@@ -61,8 +73,8 @@ def _readouts() -> list[int]:
     return out
 
 
-def build() -> str:
-    """Emit the dispatcher source."""
+def emit() -> _Emission:
+    """Emit the dispatcher and expose each row's executable stub entry."""
     used = {*_T_LOW}
     helper = {"all1": _T_LOW[0], "all2": _T_LOW[1]}
     for name, value in _T_HELPERS.items():
@@ -83,6 +95,16 @@ def build() -> str:
     label = dict.fromkeys(pointers, "0")
     hub_data, stubs, turns = _hubs(values, label, set())
     data.update(hub_data)
+    entries = []
+    for pointer in pointers:
+        value = values[pointer]
+        stub = data[value + 1]
+        for _ in range(turns[value]):
+            stub = _rot(stub)
+        entry = stub + 1
+        assert stubs[entry] == "<"
+        assert stubs[entry + 1] == "v"
+        entries.append(entry)
 
     for p in (helper["all1"], helper["all2"], s_cell, z_cell, *pointers):
         main.op("p", p)
@@ -140,7 +162,17 @@ def build() -> str:
         source[a] = _char_for(op, a)
     for a, ch in data.items():
         source[a] = ch
-    return "".join(chr(v) for v in source)
+    return _Emission(
+        "".join(chr(v) for v in source),
+        tuple(entries),
+        {**main.code, **routing},
+        dict(data),
+    )
+
+
+def build() -> str:
+    """Return the dispatcher source."""
+    return emit().source
 
 
 def _choose_targets(
@@ -197,30 +229,33 @@ def _walked(used: set[int], value: int | None = None) -> int:
 
 def _execute(
     program: str, bits: int, limit: int = 20_000
-) -> tuple[tuple[int, int, int, bool], list[int]]:
-    """Run the dispatcher on ``bits`` and return its halt state and memory."""
+) -> tuple[tuple[int, int, int, bool], list[int], list[int]]:
+    """Run the dispatcher on ``bits`` and return state, memory, and output."""
     memory = list(_initial_memory(program))
     state = (0, 0, 0, False)
     inputs = iter(48 + ((bits >> k) & 1) for k in (2, 1, 0))
+    output: list[int] = []
     for _ in range(limit):
         char = next(inputs, None) if _op(memory[state[1]], state[1]) == "/" else None
-        state, writes, _ = _advance(state, memory, char)
+        state, writes, effect = _advance(state, memory, char)
         for address, value in writes:
             memory[address] = value
+        if effect is not None:
+            output.append(effect)
         if state[3]:
-            return state, memory
+            return state, memory, output
     raise AssertionError(f"no halt on {bits}")
 
 
 def main() -> int:
-    """Build the dispatcher and check all eight input triples dispatch uniquely."""
-    program = build()
-    landings = []
+    """Check every triple reaches its executable output and halt stub."""
+    emission = emit()
     for bits in range(8):
-        state, _ = _execute(program, bits)
-        landings.append(state[1] - 1)
-    assert len(set(landings)) == 8, landings
-    print(f"three-input dispatch: 8 / 8 destinations at {sorted(set(landings))}")
+        state, _, output = _execute(emission.source, bits)
+        assert output == [48], (bits, output)
+        assert state[1] - 1 == emission.entries[bits], (bits, state)
+    assert len(set(emission.entries)) == 8, emission.entries
+    print(f"three-input dispatch: 8 / 8 output stubs at {sorted(emission.entries)}")
     return 0
 
 
