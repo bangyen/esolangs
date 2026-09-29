@@ -1190,13 +1190,14 @@ ordinary walked band, while withholding those mutable cells from ordinary
 navigation, cuts the combined program from 11,883 to **7,888 cells**. It
 executes all 16,384 group addresses correctly. A shared continuation then
 constructs the group pointer and runs the straight-line parity reducer. The
-Reuniting all four top folds before their identical final tail cuts the
-parity build further. The **11,241-cell** combined source returns the exact
+Reuniting all four top folds before their identical final tail, then placing
+that tail at cell 2,190 and the shared reducer at cell 731 in the free bottom
+run, cuts the parity build further. The **10,959-cell** combined source returns the exact
 0/1,458 operand on all
 16,384 rows and initializes the three consumable parity words; all 49,152
 address-plus-offset parities execute correctly. Decoder and table integration
 remain. This source is an execution certificate, not a placed table build:
-8,746 of its 11,233 distinct instruction cells overlap table cells, leaving
-only 2,487 already in the complement. The next construction step is therefore
+7,667 of its 10,951 distinct instruction cells overlap table cells, leaving
+3,284 already in the complement. The next construction step is therefore
 relocating and reuniting these paths into the bottom run and spare windows,
 not appending the decoder at their current addresses.

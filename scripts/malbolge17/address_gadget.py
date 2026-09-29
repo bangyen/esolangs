@@ -127,8 +127,8 @@ def build(
         pin = (walked(PIN[0]), walked(PIN[1]), walked(PIN[2]))
         cells = (*normal, pin)
     parity_all1 = (walked_inert(36), walked_inert(45)) if parity else None
-    parity_reunion = walked_inert(48) if parity else None
-    tail_reunion = walked_inert(53) if parity else None
+    parity_reunion = walked_inert(82) if parity else None
+    tail_reunion = walked_inert(55) if parity else None
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
         boot[address] = _char_for(operation, address)
@@ -174,9 +174,9 @@ def build(
         parity_entry = None
     if parity:
         assert tail_reunion is not None
-        _emit_chain(path, tail_reunion, "rot rot rot rot", helper)
+        _emit_chain(path, tail_reunion, "rot rot rot", helper)
         tail_entry = raw[tail_reunion]
-        for _ in range(4):
+        for _ in range(3):
             tail_entry = _rot(tail_entry)
         tail_entry += 1
     else:
