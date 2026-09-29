@@ -195,9 +195,13 @@ step; an answer lands in the paper it extends, and the row leaves.
   grow); inlining single-use or short residuals totals 11,534 (203 grow).
   Both execute 10,374 rows through six inputs, including constants and
   projections. On 200 seeded five-input tables, both grow every table:
-  40,124 and 41,184 characters against 25,062 shipped. Next: factor the
-  repeated selection syntax through parameterized definitions, then clear
-  the size gate without retaining the transform.
+  40,124 and 41,184 characters against 25,062 shipped. Parameterized
+  selection also fails: a shared three-argument selector totals 12,928
+  characters at three inputs (209 grow) and 30,656 on the same five-input
+  sample (188 grow). Per-bit selectors total 13,538 and 38,503 (209 and
+  200 grow). Both execute the same 10,374 rows. Next: pack small residual
+  tables into binary literals and decode them with fixed shift definitions,
+  then clear the size gate without retaining the transform.
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between
