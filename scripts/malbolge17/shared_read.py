@@ -81,6 +81,7 @@ def _address_handoff(*, full: bool = False) -> None:
         high_parity=True,
         guard_scratch=True,
         prepare_returns=True,
+        result_first=True,
         outputs=outputs,
     )
     source = list(address)
@@ -100,6 +101,7 @@ def _address_handoff(*, full: bool = False) -> None:
     )
     cases = itertools.product(range(2), repeat=14) if full else samples
     checked = 0
+    source_pointers = 0
     for bits in cases:
         _, folded = execute_state(program, bits)
         pointer = _crazy(ALL2 - 2, group_word(list(bits)))
@@ -112,12 +114,25 @@ def _address_handoff(*, full: bool = False) -> None:
         selected = (
             (result_cells[sum(bits) % len(result_cells)],) if full else result_cells
         )
+        if bits[:2] == (0, 0):
+            selector = 2 * bits[11] + bits[12]
+            slot = selector if selector < 3 else bits[13]
+            special_cell = groups[slot][1 + bits[13]]
+            assert special_cell <= 127
+            selected = (*selected, special_cell)
         for cell in selected:
             memory = folded.copy()
             value = memory[cell]
             operand = memory[86]
-            memory[419] = cell - 1
-            state = (0, _ENTRY, 419, False)
+            if cell <= 127:
+                pointer_cell = 200 + ((69 - cell - 200) % 94)
+                assert ord(program[pointer_cell]) == cell - 1
+                assert memory[pointer_cell] == cell - 1
+                source_pointers += 1
+            else:
+                pointer_cell = 419
+                memory[pointer_cell] = cell - 1
+            state = (0, _ENTRY, pointer_cell, False)
             result: list[int] = []
             for step in range(7):
                 state, writes, effect = _advance(state, memory)
@@ -130,9 +145,12 @@ def _address_handoff(*, full: bool = False) -> None:
             assert state[3]
             assert result == [_crazy(_crazy(0, value), operand) & 0xFF]
             checked += 1
-    expected = 16_384 if full else 80
+    expected = 20_480 if full else 82
     assert checked == expected
-    print(f"guarded address handoff: {checked} / {expected} executed reads")
+    print(
+        f"guarded address handoff: {checked} / {expected} executed reads, "
+        f"{source_pointers} source-resident pointers"
+    )
 
 
 if __name__ == "__main__":
