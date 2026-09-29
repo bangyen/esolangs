@@ -48,6 +48,7 @@ def build(
     high_parity: bool = False,
     group_read: bool = False,
     part_cells: list[tuple[str, set[int]]] | None = None,
+    guard_scratch: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -94,6 +95,18 @@ def build(
         raw[cell] = value
         return cell
 
+    def scratch(value: int, *, result: bool) -> int:
+        if not (guard_scratch and result):
+            return walked(value)
+        cell = next(
+            a
+            for a in range(34, _ENTRY - 1)
+            if a not in used and a + 1 not in used and value in _valid_chars(a)
+        )
+        used.update((cell, cell + 1))
+        raw[cell] = value
+        return cell
+
     reset = walked(33), walked(46), walked(81)
     helper = {"all1": walked(_g(128)), "all2": walked(_g(129))}
     for name, value in _T_HELPERS.items():
@@ -117,9 +130,22 @@ def build(
     )
     normal_count = 4 if selected is None else 3
     normal = tuple(
-        (walked(LOW[0]), walked(LOW[1]), walked(LOW[2])) for _ in range(normal_count)
+        (
+            scratch(LOW[0], result=False),
+            scratch(LOW[1], result=True),
+            scratch(LOW[2], result=True),
+        )
+        for _ in range(normal_count)
     )
-    pin = None if selected is None else (walked(PIN[0]), walked(PIN[1]), walked(PIN[2]))
+    pin = (
+        None
+        if selected is None
+        else (
+            scratch(PIN[0], result=False),
+            scratch(PIN[1], result=True),
+            scratch(PIN[2], result=True),
+        )
+    )
     cells = normal if pin is None else (*normal, pin)
     twos = tuple(walked(38) for _ in range(5))
     z_load = walked(45) if z == 2 else None
@@ -144,7 +170,11 @@ def build(
         inner_branch = ordinary_branch = None
     tail_cell = walked(38)
     if dispatch_ab:
-        pin = (walked(PIN[0]), walked(PIN[1]), walked(PIN[2]))
+        pin = (
+            scratch(PIN[0], result=False),
+            scratch(PIN[1], result=True),
+            scratch(PIN[2], result=True),
+        )
         cells = (*normal, pin)
     parity_all1 = reset[1] if parity else None
     parity_reunion = walked_inert(82) if parity else None

@@ -37,7 +37,9 @@ def _executed(source: str, bits: tuple[int, ...]) -> set[int]:
     raise AssertionError("address fold did not halt")
 
 
-def main(*, live: bool = False, components: bool = False) -> None:
+def main(
+    *, live: bool = False, components: bool = False, guard_scratch: bool = False
+) -> None:
     """Report exact occupied-cell counts for the current separate emitters."""
     address_cells: set[int] = set()
     address_parts: list[tuple[str, set[int]]] = []
@@ -49,6 +51,7 @@ def main(*, live: bool = False, components: bool = False) -> None:
         high_parity=True,
         occupied=address_cells,
         part_cells=address_parts,
+        guard_scratch=guard_scratch,
     )
     assert groups[-1] == (145, 139, 144)
     address_cells.update(range(10, 18))  # startup precedes the emitted parts
@@ -111,5 +114,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--live", action="store_true", help="trace all address paths")
     parser.add_argument("--components", action="store_true", help="list address parts")
+    parser.add_argument(
+        "--guard-scratch", action="store_true", help="reserve return neighbours"
+    )
     args = parser.parse_args()
-    main(live=args.live, components=args.components)
+    main(live=args.live, components=args.components, guard_scratch=args.guard_scratch)
