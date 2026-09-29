@@ -51,8 +51,8 @@ None of this is wired into the generator.
   six-slab tiling (best 5,127 in runs of 200 or more); needs numpy.
 - `address17.py` -- word-level model of the seventeen-input address fold
   (16,384 groups, cells `0..6561` free, no wrap to cell 0).
-- `address_gadget.py` -- emits the complete ordinary B address path as real
-  source and checks all 4,096 suffixes against `address17.py`.
+- `address_gadget.py` -- emits the complete fixed A/B address paths as real
+  source and checks their 12,288 suffixes against `address17.py`.
 - `parity_views.py` -- exact five-base factorization of the ten view constants,
   its three consumable parity words and one-trit toggle, and emitted setup
   measurements.

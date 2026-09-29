@@ -20,8 +20,10 @@ from esolangs.tools._malbolge_digits import _GADGET
 from esolangs.tools.malbolge import _T_HELPERS, _emit_chain, _Planner, _valid_chars
 
 
-def build() -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
-    """Return the real-source ordinary-path address slots before ``z``."""
+def build(z: int = 0) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
+    """Return a real-source ordinary address path for fixed ``z``."""
+    if z not in (0, 1, 2):
+        raise ValueError(z)
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
@@ -40,7 +42,8 @@ def build() -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
         helper[name] = walked(value)
     cells = tuple((walked(LOW[0]), walked(LOW[1]), walked(LOW[2])) for _ in range(4))
     twos = tuple(walked(38) for _ in range(5))
-    z_cell = walked(47)
+    z_load = walked(45) if z == 2 else None
+    z_cell = walked(56 if z == 2 else 47 if z == 0 else 45)
     tail_cell = walked(38)
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
@@ -66,7 +69,12 @@ def build() -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     path.op("*", helper["w"])
     path.op("p", helper["all2"])
     constants = {"K0": helper["z0"], "K1": helper["all1"], "K2": helper["all2"]}
-    _emit_chain(path, z_cell, "K0 K2 K1 K2", helper)
+    if z == 2:
+        assert z_load is not None
+        _emit_chain(path, z_load, "K2", helper)
+        path.op("p", z_cell)
+    else:
+        _emit_chain(path, z_cell, "K0 K2 K1 K2", helper)
     _emit_chain(path, tail_cell, "K0", helper)
     for group in cells:
         for operation in _GADGET:
@@ -138,12 +146,15 @@ def run(
 
 
 def main() -> None:
-    """Check all 4,096 ordinary-path slot executions against the word model."""
-    source, _cells, result_cell, size = build()
-    for bits in itertools.product(range(2), repeat=12):
-        expected = group_word([0, 1, *bits])
-        assert run(source, result_cell, bits) == expected
-    print(f"ordinary B address fold: 4,096/4,096 correct, {size} code cells")
+    """Check all 12,288 fixed ordinary paths against the word model."""
+    sizes = []
+    for z in range(3):
+        source, _cells, result_cell, size = build(z)
+        prefix = [0, 1] if z == 0 else [1, z - 1]
+        for bits in itertools.product(range(2), repeat=12):
+            assert run(source, result_cell, bits) == group_word([*prefix, *bits])
+        sizes.append(size)
+    print(f"fixed ordinary address paths: 12,288/12,288 correct, {sizes} code cells")
 
 
 if __name__ == "__main__":
