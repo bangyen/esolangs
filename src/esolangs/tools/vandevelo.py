@@ -225,11 +225,13 @@ def _popularities(points: set[int], n: int) -> list[int]:
 class _Node:
     """A working set along a chain, with the pair sets of its candidates.
 
-    ``points`` is ``S``; ``cands[v]`` is ``S & (S ^ v)`` for each scored
-    direction ``v``; ``span`` is the subspace spanned by the chain's
-    directions down to here; ``child`` is the greedy continuation, kept
-    while it has points; ``removed`` counts points gone since the
-    candidates were chosen.
+    ``points`` is ``S``; ``cands[v]`` is ``|S & (S ^ v)|`` for each scored
+    direction ``v`` -- the pair *size*, not the pair set, because a removal
+    only ever drops two entries from it and keeping the set cost two
+    ``discard`` calls a direction a point.  ``span`` is the subspace spanned
+    by the chain's directions down to here; ``child`` is the greedy
+    continuation, kept while it has points; ``removed`` counts points gone
+    since the candidates were chosen.
     """
 
     __slots__ = ("cands", "child", "parent", "points", "removed", "span", "v")
@@ -239,7 +241,7 @@ class _Node:
     ) -> None:
         self.v = v
         self.points = points
-        self.cands: dict[int, set[int]] = {}
+        self.cands: dict[int, int] = {}
         self.span = span
         self.child: _Node | None = None
         self.parent = parent
@@ -247,19 +249,25 @@ class _Node:
 
 
 def _score(node: _Node, dirs: list[int]) -> None:
-    """Add the pair set of each direction in ``dirs`` to the node."""
+    """Add the pair size of each direction in ``dirs`` to the node."""
     pts = node.points
     for v in dirs:
         if v in node.span or v in node.cands:
             continue
-        node.cands[v] = {p for p in pts if (p ^ v) in pts}
+        node.cands[v] = sum(1 for p in pts if (p ^ v) in pts)
+
+
+def _pairset(node: _Node, v: int) -> set[int]:
+    """Return ``S & (S ^ v)``, recomputed only when a child is built."""
+    pts = node.points
+    return {p for p in pts if (p ^ v) in pts}
 
 
 def _best(node: _Node) -> tuple[int | None, int]:
     """Return the candidate with the largest pair set, if any has a pair."""
     best_v, best_c = None, 1
     for v, c in node.cands.items():
-        m = len(c)
+        m = c
         if m > best_c or (m == best_c and best_v is not None and v < best_v):
             best_v, best_c = v, m
     return best_v, best_c
@@ -295,10 +303,12 @@ def _remove(node: _Node, p: int) -> None:
         return
     node.points.discard(p)
     node.removed += 1
-    for w, c in node.cands.items():
-        if p in c:
-            c.discard(p)
-            c.discard(p ^ w)
+    # ``cands[w]`` counts ``q`` with ``q`` and ``q ^ w`` both in the set;
+    # dropping ``p`` removes the entries ``q = p`` and ``q = p ^ w`` -- two
+    # exactly when ``p ^ w`` is still present, since neither counts alone.
+    for w in node.cands:
+        if (p ^ w) in node.points:
+            node.cands[w] -= 2
     child = node.child
     if child is not None:
         _remove(child, p)
@@ -359,9 +369,9 @@ class _Peel:
         it.
         """
         span = parent.span | {s ^ v for s in parent.span}
-        child = _Node(v, set(parent.cands[v]), span, parent)
+        child = _Node(v, _pairset(parent, v), span, parent)
         pts = child.points
-        ranked = sorted(parent.cands.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+        ranked = sorted(parent.cands.items(), key=lambda kv: (-kv[1], kv[0]))
         dirs = [w for w, _ in ranked if w != v][:_INHERIT]
         fresh = _nearest(
             pts, min(pts), set(dirs) | span, self.n, _CANDIDATES - len(dirs)
@@ -373,7 +383,7 @@ class _Peel:
     def refresh(self, node: _Node) -> None:
         """Replace the node's pairless candidates with fresh nearest differences."""
         node.removed = 0
-        for v in [v for v, c in node.cands.items() if len(c) < 2]:
+        for v in [v for v, c in node.cands.items() if c < 2]:
             del node.cands[v]
             if node is self.root:
                 self.nodes.pop(v, None)
@@ -492,8 +502,8 @@ class _Peel:
             # most popular one first, if the pool has fallen below average
             _ensure_popular(root, n)
             pick = None
-            for v, c in sorted(root.cands.items(), key=lambda kv: (-len(kv[1]), kv[0])):
-                if len(c) < 2:
+            for v, c in sorted(root.cands.items(), key=lambda kv: (-kv[1], kv[0])):
+                if c < 2:
                     break
                 if v not in self.nodes and v not in tried:
                     pick = v
