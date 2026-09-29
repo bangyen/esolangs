@@ -1187,17 +1187,20 @@ constant PIN triple and dispatches `x12..x14` to eight C/D leaves. Each leaf
 writes `z` and enters one of three pre-rotated reunion pointers, sharing the
 verified suffix for that selected slot. Packing the PIN triple into the
 ordinary walked band, while withholding those mutable cells from ordinary
-navigation, cuts the combined program from 11,883 to **7,888 cells**. It
+navigation, cuts the combined program from 11,883 to 7,888 cells. Moving the
+first selected-slot suffix to cell 5,590 in the last bottom-run gap cuts it
+again to **7,360 cells**. It
 executes all 16,384 group addresses correctly. A shared continuation then
 constructs the group pointer and runs the straight-line parity reducer. The
 Reuniting all four top folds before their identical final tail, then placing
-that tail at cell 2,190 and the shared reducer at cell 731 in the free bottom
-run, cuts the parity build further. The **10,959-cell** combined source returns the exact
+that tail at cell 2,190, the shared reducer at cell 731 and one selected-slot
+suffix at cell 5,590 in the free bottom run, cuts the parity build further.
+The **10,445-cell** combined source returns the exact
 0/1,458 operand on all
 16,384 rows and initializes the three consumable parity words; all 49,152
 address-plus-offset parities execute correctly. Decoder and table integration
 remain. This source is an execution certificate, not a placed table build:
-7,667 of its 10,951 distinct instruction cells overlap table cells, leaving
-3,284 already in the complement. The next construction step is therefore
+6,463 of its 10,437 distinct instruction cells overlap table cells, leaving
+3,974 already in the complement. The next construction step is therefore
 relocating and reuniting these paths into the bottom run and spare windows,
 not appending the decoder at their current addresses.
