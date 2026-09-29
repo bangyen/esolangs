@@ -147,8 +147,10 @@ step; an answer lands in the paper it extends, and the row leaves.
   The parity count now exposes its missing algebraic charge: a separate hard
   table forces `(1-o(1)) T/(2n)` expensive gaps, and each but one forces a
   distinct Gaussian register-root pair (`lem:expensive-gaussian`,
-  `cor:gaussianhard`).  Turning those pairs into quadratic coefficient mass
-  is the remaining lower-bound step.
+  `cor:gaussianhard`).  Their Gaussian factor forces `8 log(K!) = Theta(T)`
+  mass through one lowest coefficient (`lem:gaussian-low`), which is below
+  the `T**2/n` constant scale.  Turning those pairs into quadratic
+  coefficient mass is the remaining lower-bound step.
   On the lower side, the two zero targets counted per expensive gap really
   are independent: symmetric remainder pairs realize arbitrary ordered
   first-zero positions from consecutive register values.  Raising `13/4`
