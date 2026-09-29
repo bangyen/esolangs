@@ -1084,13 +1084,23 @@ costs tens of cells. Two spot measurements make it concrete:
   where the fold pays off.
 
 So the gap-closing lever is cutting **ops-at-distance**: fewer distinct
-high-address chain targets and a tighter working band. The parity word earns
-its place here after all — collapsing the ten view cells toward five base
-words plus an in-place parity toggle is a real saving against the measured
-3,561, not the negligible one an op count suggested. The view constants are
-structured to allow it: all ten share low five trits 2 and top trit 0 and
-differ only in a four-trit field, where trits 6-8 select the state and trit 5
-is the parity bit. Building that toggle, and the compaction, is unbuilt.
+high-address chain targets and a tighter working band. The ten view constants
+factor exactly as `crazy(A[parity], B[state])`, with
+`A = (39122, 39365)` and `B = (364, 1093, 2551, 3280, 6925)`. The two `A`
+words differ only at trit 5. Operationally, a cell holds their inverse
+rotations `(58318, 59047)`; `crazy(1458, cell)` swaps them,
+`crazy(0, cell)` fixes them, and `*` loads the selected `A`. A subsequent
+`p` over one of five state bases produces the view. Loading the parity cell
+rotates it, so it is consumable; the decoder's maximum path length is three,
+and three copies cover every path.
+
+All five bases, three initial parity words, and the toggle operand have explicit
+chains at distinct cells in `131..165`. `scripts/malbolge17/parity_views.py` executes
+the identities and chains through the interpreter's word operations, then
+emits them through the generator's real planner. In ascending-address order,
+the five bases cost **937 cells**; adding the parity words and toggle operand
+costs **1,765 cells** total. This replaces the ten scattered views' measured
+3,561-cell setup with a 1,796-cell reduction before wiring parity production.
 
 ### Seventeen: navigation is linear in address, so packing helps (measured)
 
@@ -1109,20 +1119,12 @@ costs ~16 cells, one near 410 costs ~290. `five_esc` lets its walked cells
 drift up to ~420 (the allocator takes the first free cell that can produce a
 value), which is why the setup is ~12,900.
 
-The build needs about **27 distinct walked value-cells** (five `_T_HELPERS`,
-three `z`-cells, `C0`/`C1`, ten views, escape pair, five label seeds), and
-the cheap band `130..160` holds 30, so in principle they fit low. Packed as
-an assignment (cheapest distinct cell in `130..175` per target), eight of the
-ten views emit **2,039 cells** against the ~3,561 they cost scattered — a
-~40% cut on that phase from placement alone, before any chain shortening.
-Two of the ten cannot be placed in-band because no free low cell reaches
-their value within the search depth: those need either a wider band or a
-richer operand set (using already-built low cells as `crazy` operands to
-shorten the 8-op chains).
+The build needs about **26 distinct walked value-cells** after replacing ten
+views by five bases, three parity words, and their shared toggle operand. The
+exact factorization above supersedes the direct ten-view assignment: all nine
+constants fit at cells `131..165` and emit in 1,765 cells.
 
 This quantifies the lever. The one-group setup is navigation-bound, and its
-cost is not fixed: packing the working cells into the low walked band, plus
-shortening chains and the parity toggle for the views, are each measured to
-save on the order of hundreds to a thousand cells. Whether their sum brings
-the setup under the ~5,650-cell tiling budget is the open build; the pieces
-are now measured rather than estimated.
+cost is not fixed. The remaining view task is to emit the address-parity bit
+as operand 0 or 1458 and wire the destructive base reads. Then the complete
+setup can be remeasured against the ~5,650-cell tiling budget.
