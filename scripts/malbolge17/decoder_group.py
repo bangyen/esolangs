@@ -148,7 +148,7 @@ class _Group:
     """The fixed group cells and shared setup the decoder build reads."""
 
     base: int
-    z_cell: int
+    z_cell: int | None
     clear: tuple[tuple[int, int], tuple[int, int]]
     view_cells: tuple[int, ...]
     mask_cells: tuple[int, ...]
@@ -162,7 +162,9 @@ class _Group:
     reserved: frozenset[int]
 
 
-def _setup(reserved: frozenset[int] = frozenset()) -> _Group:
+def _setup(
+    reserved: frozenset[int] = frozenset(), *, external_pointer: bool = False
+) -> _Group:
     """Choose the group base and every shared walked cell, as the prototype did."""
     helpers = {128, 129}
     for value in _T_HELPERS.values():
@@ -191,7 +193,7 @@ def _setup(reserved: frozenset[int] = frozenset()) -> _Group:
         for group in range(15000, 21000)
         if all((group - 1 + k) in reachable for k in range(3))
     )
-    z_cell = cell_for(base - 1)
+    z_cell = None if external_pointer else cell_for(base - 1)
     clear0, clear0_value = next(
         (cell, value)
         for cell in order
@@ -325,7 +327,9 @@ def _neighbour_cell(
     return None
 
 
-def _build(row: int, group: _Group, row_offset: int = 0) -> _Emission:
+def _build(
+    row: int, group: _Group, row_offset: int = 0, *, external_pointer: bool = False
+) -> _Emission:
     """Emit one row's real-source group decoder and its code-cell count."""
     base = group.base
     used = {128, 129} | group.used
@@ -388,7 +392,11 @@ def _build(row: int, group: _Group, row_offset: int = 0) -> _Emission:
             planner.op("p", point)
             values[point] = group.hub_values[label][0]
     phases.append(len(planner.code))
-    chains: list[tuple[str, int, int]] = [("z", group.z_cell, base - 1)]
+    if external_pointer:
+        chains: list[tuple[str, int, int]] = []
+    else:
+        assert group.z_cell is not None
+        chains = [("z", group.z_cell, base - 1)]
     chains += [
         ("C0", group.clear[0][0], group.clear[0][1]),
         ("C1", group.clear[1][0], group.clear[1][1]),
@@ -503,7 +511,8 @@ def _build(row: int, group: _Group, row_offset: int = 0) -> _Emission:
         offset, view_cell, _constant, _parity = view(state)
         cell = base + offset
         # One preserved base pointer reaches each within-group offset.
-        z_cell = group.z_cell
+        z_cell = 142 if external_pointer else group.z_cell
+        assert z_cell is not None
         block.op("*", parity_cells[depth][0])
         block.op("p", view_cell)
         block.goto(z_cell)
@@ -606,13 +615,13 @@ def _run_traced(
 
 def main() -> int:
     """Rebuild every row and reproduce the 2,744 real-source group cases."""
-    group = _setup(frozenset({142}))
+    group = _setup(frozenset({142}), external_pointer=True)
     total = 0
     executed: set[int] = set()
     live_rows: list[tuple[list[int], set[int]]] = []
     emissions: list[_Emission] = []
     for row in range(8):
-        emission = _build(row, group, row_offset=200 * row)
+        emission = _build(row, group, row_offset=200 * row, external_pointer=True)
         emissions.append(emission)
         source = emission.source
         default = [_char_for("o", a) for a in range(_WORDS)]

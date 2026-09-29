@@ -1286,10 +1286,18 @@ its table collisions from 5,151 to 4,837. All 16,384 address paths and
 49,152 parity words still pass. The continuation is now at `C=1,855`,
 `D=47`; a generated navigation path reaches cell 142 before the same
 three-cell group read. Reserving cell 142 in the decoder moves one label seed
-and leaves that cell untouched after startup in all 2,744 decoder executions
-with an injected pointer. The raw address/decoder union is then 13,126
-instruction addresses, leaving a 3,229-address placement and sharing deficit.
-The decoder still builds its own fixed group pointer; the dynamic pointer is
-preserved but not yet consumed by that decoder. The
+and leaves that cell untouched after startup. The decoder's external-pointer
+mode uses it for every group read and omits the separate `z` value chain.
+All 2,744 decoder cases pass with the pointer injected after startup. The
+raw address/decoder union is now 13,014 instruction addresses, leaving a
+3,117-address placement and sharing deficit. The decoder still constructs its
+own parity words and reducer. The
 `join_budget.py --live` trace visits all 9,280 address instructions; a
 one-path positive control leaves 4,185 unvisited.
+The existing decoder cannot retain the address fold's low parity outputs at
+cells `51,46,56`: even after replacing their label duties, row 0 on meaning
+triple `(1,0,1)` routes through cell 51 via the neighbouring group character.
+Putting a parity word there changes that jump and prints `0` instead of `1`.
+The parity words must move outside this low routing region or the route must
+change. The first high-parity placement currently collides with an address
+branch at cell 4,051, so that placement needs adjustment before execution.
