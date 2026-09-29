@@ -2,7 +2,8 @@
 
 import itertools
 
-from address17 import LOW, PIN, group_word
+from address17 import ALL2, LOW, PIN, group_word
+from address_parity import parity_operand
 
 from esolangs.interpreters.other.malbolge import (
     _advance,
@@ -38,6 +39,7 @@ def build(
     selected: int | None = None,
     *,
     dispatch_ab: bool = False,
+    parity: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -46,6 +48,8 @@ def build(
         raise ValueError(selected)
     if dispatch_ab and z is not None:
         raise ValueError(z)
+    if parity and not dispatch_ab:
+        raise ValueError("parity requires the combined dispatcher")
     if selected not in (None, 0, 1, 2):
         raise ValueError(selected)
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
@@ -72,6 +76,14 @@ def build(
     helper = {"all1": walked(_g(128)), "all2": walked(_g(129))}
     for name, value in _T_HELPERS.items():
         helper[name] = walked(value)
+    mask_specs: tuple[tuple[int, str], tuple[int, str]] | None = (
+        (
+            (walked(_g(170)), "rot rot rot rot K1 K2"),
+            (walked(_g(185)), "rot rot rot rot K1 K2"),
+        )
+        if parity
+        else None
+    )
     normal_count = 4 if selected is None else 3
     normal = tuple(
         (walked(LOW[0]), walked(LOW[1]), walked(LOW[2])) for _ in range(normal_count)
@@ -100,6 +112,8 @@ def build(
         branch_cell = join_cell = None
         inner_branch = ordinary_branch = None
     tail_cell = walked(38)
+    parity_all1 = (walked_inert(36), walked_inert(45)) if parity else None
+    parity_reunion = walked_inert(63) if parity else None
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
         boot[address] = _char_for(operation, address)
@@ -118,11 +132,24 @@ def build(
     path.op("p", reset[1])
     path.op("p", reset[2])
     _build_constants(path, helper)
-    for cell in (helper["all1"], helper["all2"]):
+    extra_all1 = () if parity_all1 is None else parity_all1
+    for cell in (helper["all1"], helper["all2"], *extra_all1):
         path.op("p", cell)
         path.op("p", cell)
     path.op("*", helper["w"])
     path.op("p", helper["all2"])
+    if parity:
+        assert mask_specs is not None
+        for cell, chain in mask_specs:
+            _emit_chain(path, cell, chain, helper)
+        assert parity_reunion is not None
+        _emit_chain(path, parity_reunion, "rot rot rot rot rot", helper)
+        parity_entry = raw[parity_reunion]
+        for _ in range(5):
+            parity_entry = _rot(parity_entry)
+        parity_entry += 1
+    else:
+        parity_entry = None
     constants = {"K0": helper["z0"], "K1": helper["all1"], "K2": helper["all2"]}
     parts: list[dict[int, str]] = []
 
@@ -157,7 +184,12 @@ def build(
         suffix.op("*", helper["all2"])
         suffix.op("p", helper["all1"])
         suffix.op("p", tail_cell)
-        suffix.raw("v")
+        if not parity:
+            suffix.raw("v")
+            return
+        assert parity_reunion is not None
+        suffix.goto(parity_reunion)
+        suffix.raw("i")
 
     pending_special: tuple[int, int, dict[int, int | None]] | None = None
     if z is None:
@@ -362,6 +394,32 @@ def build(
             special_slots[selected_slot] = pin
             emit_suffix(branch, tuple(special_slots), normal[selected_slot])
             parts.append(branch.code)
+    if parity:
+        assert parity_entry is not None
+        assert parity_reunion is not None
+        assert parity_all1 is not None
+        assert mask_specs is not None
+        reducer_memory = dict(memory)
+        for cell in used:
+            reducer_memory[cell] = None
+        reducer = _Planner(parity_entry, parity_reunion + 1, reducer_memory, {})
+        seed_all1, map_all1 = parity_all1
+        for _ in range(6):
+            reducer.op("*", mask_specs[0][0])
+        reducer.op("p", seed_all1)
+        reducer.op("*", helper["all2"])
+        reducer.op("p", seed_all1)
+        reducer.op("p", tail_cell)
+        reducer.op("*", helper["all2"])
+        reducer.op("p", tail_cell)
+        reducer.op("*", map_all1)
+        reducer.op("p", tail_cell)
+        for _ in range(10):
+            reducer.op("*", tail_cell)
+            reducer.op("p", helper["w"])
+        reducer.op("p", mask_specs[1][0])
+        reducer.raw("v")
+        parts.append(reducer.code)
     source = [_char_for("o", a) for a in range(_WORDS)]
     for address, operation in startup.items():
         source[address] = _char_for(operation, address)
@@ -379,10 +437,14 @@ def build(
             emitted[address] = operation
             owners[address] = part_index
             source[address] = _char_for(operation, address)
+    result_cell = tail_cell
+    if parity:
+        assert mask_specs is not None
+        result_cell = mask_specs[1][0]
     return (
         "".join(chr(value) for value in source),
         cells,
-        tail_cell,
+        result_cell,
         len(startup) + sum(map(len, parts)),
     )
 
@@ -453,12 +515,20 @@ def main() -> None:
     for selector_bits in itertools.product(range(2), repeat=12):
         bits = (0, 0, *selector_bits)
         assert run(dynamic_ab, result_cell, bits) == group_word(list(bits))
+    dynamic_parity, _cells, parity_cell, dynamic_parity_size = build(
+        None, dispatch_ab=True, parity=True
+    )
+    for bits in itertools.product(range(2), repeat=14):
+        word = group_word(list(bits))
+        pointer = _crazy(ALL2 - 2, word)
+        assert run(dynamic_parity, parity_cell, bits) == parity_operand(pointer)
     print(
         "fixed address paths: 16,384/16,384 correct, "
         f"ordinary {ordinary_sizes}, special {special_sizes}; "
         f"dynamic A: 8,192/8,192 correct, {dynamic_size}; "
         f"dynamic A/B/C/D: 16,384/16,384 correct, "
-        f"{dynamic_ab_size} code cells"
+        f"{dynamic_ab_size} code cells; parity reducer: 16,384/16,384 correct, "
+        f"{dynamic_parity_size} code cells"
     )
 
 
