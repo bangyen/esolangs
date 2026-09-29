@@ -1182,5 +1182,7 @@ through a shared reunion pointer. The combined **2,471-cell** A program passes
 all 8,192 rows. A second nested dispatch now separates A from B, consumes
 `x2` on both sides and feeds all three ordinary `z` words into the same
 reunion. The combined **2,786-cell** A/B program passes all 12,288 covered
-rows. The remaining emitted address work is replacing the `x1x2 = 00` halt
-with the C/D selector and reuniting those special paths.
+rows. Its `x1x2 = 00` block now captures the three normal triples and the
+selector triple; all 4,096 retained states match the gadget model. With that
+block the program uses 3,477 cells. The remaining emitted address work is the
+eight-way C/D selector and reunion of its selected slot layouts.
