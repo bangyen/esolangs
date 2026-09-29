@@ -328,7 +328,12 @@ def _neighbour_cell(
 
 
 def _build(
-    row: int, group: _Group, row_offset: int = 0, *, external_pointer: bool = False
+    row: int,
+    group: _Group,
+    row_offset: int = 0,
+    *,
+    external_pointer: bool = False,
+    external_parity: bool = False,
 ) -> _Emission:
     """Emit one row's real-source group decoder and its code-cell count."""
     base = group.base
@@ -344,7 +349,7 @@ def _build(
         states.extend((3, 4))
     # Fixed copies keep the setup identical across all eight rows.
     parity_sources: dict[int, list[tuple[int, int]]] = {0: [], 1: []}
-    for parity in (0, 0, 1):
+    for parity in () if external_parity else (0, 0, 1):
         target = _PARITY[parity]
         cell = next(
             cell
@@ -356,9 +361,13 @@ def _build(
     parity_counts = {0: 0, 1: 0}
     parity_cells: list[tuple[int, int]] = []
     for state in states:
-        parity = _POS[state][row] % 2
-        parity_cells.append(parity_sources[parity][parity_counts[parity]])
-        parity_counts[parity] += 1
+        offset = _POS[state][row]
+        if external_parity:
+            parity_cells.append(((145, 139, 144)[offset], _PARITY[(base + offset) % 2]))
+        else:
+            parity = offset % 2
+            parity_cells.append(parity_sources[parity][parity_counts[parity]])
+            parity_counts[parity] += 1
     helpers = {"all1": 128, "all2": 129}
     for name, value in _T_HELPERS.items():
         cell = next(
@@ -402,34 +411,36 @@ def _build(
         ("C1", group.clear[1][0], group.clear[1][1]),
     ]
     chains += [(f"B{i}", group.view_cells[i], _BASES[i]) for i in range(5)]
-    chains += [(f"M{i}", cell, _MASK) for i, cell in enumerate(group.mask_cells)]
-    chains += [("R", group.group_pointer, base - 1)]
-    chains += [
-        (f"P{parity}{index}", cell, target)
-        for parity, cells in parity_sources.items()
-        for index, (cell, target) in enumerate(cells)
-    ]
+    if not external_parity:
+        chains += [(f"M{i}", cell, _MASK) for i, cell in enumerate(group.mask_cells)]
+        chains += [("R", group.group_pointer, base - 1)]
+        chains += [
+            (f"P{parity}{index}", cell, target)
+            for parity, cells in parity_sources.items()
+            for index, (cell, target) in enumerate(cells)
+        ]
     for _, cell, value in chains:
         ops = _bfs(_g(cell))
         assert value in ops, (cell, value)
         _emit_chain(planner, cell, " ".join(ops[value]), helpers)
     phases.append(len(planner.code))
-    planner.op("*", helpers["all2"])
-    planner.op("p", group.group_pointer)
-    planner.op("*", helpers["all1"])
-    planner.op("p", group.group_pointer)
-    for _ in range(10):
-        planner.op("*", group.group_pointer)
-        planner.op("p", helpers["w"])
-    ordered = [*parity_sources[0], *parity_sources[1]]
-    for index, (mask, (cell, _)) in enumerate(
-        zip(group.mask_cells, ordered, strict=True)
-    ):
-        if index == 0:
-            planner.op("*", helpers["z0"])
+    if not external_parity:
+        planner.op("*", helpers["all2"])
+        planner.op("p", group.group_pointer)
+        planner.op("*", helpers["all1"])
+        planner.op("p", group.group_pointer)
+        for _ in range(10):
+            planner.op("*", group.group_pointer)
             planner.op("p", helpers["w"])
-        planner.op("p", mask)
-        planner.op("p", cell)
+        ordered = [*parity_sources[0], *parity_sources[1]]
+        for index, (mask, (cell, _)) in enumerate(
+            zip(group.mask_cells, ordered, strict=True)
+        ):
+            if index == 0:
+                planner.op("*", helpers["z0"])
+                planner.op("p", helpers["w"])
+            planner.op("p", mask)
+            planner.op("p", cell)
     phases.append(len(planner.code))
     z0 = values[group.near_cells[0]] + 1
     pointer: dict[int, int] = {}
@@ -603,7 +614,7 @@ def _run_traced(
         executed.add(state[1])
         state, writes, effect = _advance(state, memory)
         for address, value in writes:
-            assert not injected or prefill is None or address not in prefill
+            assert not injected or prefill is None or address != 142
             memory[address] = value
         if effect is not None:
             output.append(effect)
@@ -615,13 +626,19 @@ def _run_traced(
 
 def main() -> int:
     """Rebuild every row and reproduce the 2,744 real-source group cases."""
-    group = _setup(frozenset({142}), external_pointer=True)
+    group = _setup(frozenset({142, 145, 139, 144}), external_pointer=True)
     total = 0
     executed: set[int] = set()
     live_rows: list[tuple[list[int], set[int]]] = []
     emissions: list[_Emission] = []
     for row in range(8):
-        emission = _build(row, group, row_offset=200 * row, external_pointer=True)
+        emission = _build(
+            row,
+            group,
+            row_offset=200 * row,
+            external_pointer=True,
+            external_parity=True,
+        )
         emissions.append(emission)
         source = emission.source
         default = [_char_for("o", a) for a in range(_WORDS)]
@@ -643,7 +660,12 @@ def main() -> int:
             ]
             char, seen = _run_traced(
                 "".join(chr(value) for value in program),
-                prefill={142: group.base - 1},
+                prefill={
+                    142: group.base - 1,
+                    145: _PARITY[group.base % 2],
+                    139: _PARITY[(group.base + 1) % 2],
+                    144: _PARITY[(group.base + 2) % 2],
+                },
             )
             executed |= seen
             row_executed |= seen

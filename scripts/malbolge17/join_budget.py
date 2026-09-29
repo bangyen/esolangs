@@ -39,18 +39,25 @@ def _executed(source: str, bits: tuple[int, ...]) -> set[int]:
 def main(*, live: bool = False) -> None:
     """Report exact occupied-cell counts for the current separate emitters."""
     address_cells: set[int] = set()
-    source, _, _, count = build_address(
-        z=None, dispatch_ab=True, parity=True, high_pointer=True, occupied=address_cells
+    source, groups, _, count = build_address(
+        z=None,
+        dispatch_ab=True,
+        parity=True,
+        high_pointer=True,
+        high_parity=True,
+        occupied=address_cells,
     )
+    assert groups[-1] == (145, 139, 144)
     address_cells.update(range(10, 18))  # startup precedes the emitted parts
     assert len(address_cells) == count
     decoder = build_decoder(
         0,
-        setup_decoder(frozenset({142}), external_pointer=True),
+        setup_decoder(frozenset({142, 145, 139, 144}), external_pointer=True),
         external_pointer=True,
+        external_parity=True,
     )
-    assert 142 not in decoder.code
-    assert 142 not in decoder.data
+    assert not {142, 145, 139, 144} & decoder.code.keys()
+    assert not {142, 145, 139, 144} & decoder.data.keys()
     decoder_cells = set(decoder.code)
     table = {
         _crazy(ALL2 - 2 + offset, group_word(list(bits))) + 1

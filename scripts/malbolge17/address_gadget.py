@@ -45,6 +45,7 @@ def build(
     outputs: dict[str, int] | None = None,
     continuation: str = "v",
     high_pointer: bool = False,
+    high_parity: bool = False,
     group_read: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
@@ -58,6 +59,8 @@ def build(
         raise ValueError("parity requires the combined dispatcher")
     if high_pointer and not parity:
         raise ValueError("high pointer requires the parity build")
+    if high_parity and not parity:
+        raise ValueError("high parity requires the parity build")
     if continuation != "v" and not parity:
         raise ValueError("continuation requires the parity build")
     if group_read and (not parity or continuation != "v"):
@@ -75,7 +78,7 @@ def build(
     def walked(value: int, *, high: bool = False) -> int:
         cell = next(
             a
-            for a in range(128 if high else 34, _ENTRY)
+            for a in range(130 if high else 34, _ENTRY)
             if a not in used and value in _valid_chars(a)
         )
         used.add(cell)
@@ -104,9 +107,9 @@ def build(
     )
     parity_specs: tuple[tuple[int, str], ...] = (
         (
-            (walked(_g(141)), "rot rot rot rot K2 K0 K2"),
-            (walked(_g(165)), "rot rot rot rot K2 K0 K2"),
-            (walked(_g(147)), "rot K0 K2"),
+            (walked(_g(141), high=high_parity), "rot rot rot rot K2 K0 K2"),
+            (walked(_g(165), high=high_parity), "rot rot rot rot K2 K0 K2"),
+            (walked(_g(147), high=high_parity), "rot K0 K2"),
         )
         if parity
         else ()
@@ -348,7 +351,7 @@ def build(
             walked_inert(seed) for seed in (36, 33, 45, 42, 51, 60, 72)
         )
         reunion_cells = tuple(walked_inert(seed) for seed in (69, 41, 40))
-        selector_relocation = walked_inert(50)
+        selector_relocation = walked_inert(60 if high_parity else 50)
         entry, d, special_memory = pending_special
         for cell in (*pin, *selector_cells, *reunion_cells, selector_relocation):
             special_memory[cell] = raw[cell]
@@ -553,7 +556,9 @@ def build(
             if address in emitted:
                 raise AssertionError(
                     f"code parts {owners[address]} and {part_index} overlap at "
-                    f"{address}: {emitted[address]} / {operation}"
+                    f"{address}: {emitted[address]} / {operation}; "
+                    f"prior part ends at {max(parts[owners[address]])}, "
+                    f"new part spans {min(part)}..{max(part)}"
                 )
             emitted[address] = operation
             owners[address] = part_index
@@ -648,10 +653,12 @@ def main() -> None:
         dispatch_ab=True,
         parity=True,
         high_pointer=True,
+        high_parity=True,
         occupied=occupied,
         outputs=outputs,
     )
     parity_result_cells = parity_groups[-1]
+    assert parity_result_cells == (145, 139, 144)
     pointer_cell = outputs["pointer"]
     table_cells: set[int] = set()
     read_probes: list[tuple[tuple[int, ...], int]] = []
@@ -681,6 +688,7 @@ def main() -> None:
         dispatch_ab=True,
         parity=True,
         high_pointer=True,
+        high_parity=True,
         group_read=True,
         outputs=probe_outputs,
     )
