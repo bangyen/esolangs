@@ -1182,8 +1182,9 @@ through a shared reunion pointer. The combined **2,501-cell** A program passes
 all 8,192 rows. A second nested dispatch now separates A from B, consumes
 `x2` on both sides and feeds all three ordinary `z` words into the same
 reunion. The combined **2,786-cell** A/B program passes all 12,288 covered
-rows. Its `x1x2 = 00` block now captures the three normal triples, builds the
-constant PIN triple and dispatches `x12..x14` to eight distinct C/D leaves.
-All 4,096 special executions preserve the four gadget pairs and reach the
-expected leaf; the combined program uses 5,287 cells. The remaining emitted
-address work is reunion of the leaves with their selected slot layouts.
+rows. Its `x1x2 = 00` block captures the three normal triples, builds the
+constant PIN triple and dispatches `x12..x14` to eight C/D leaves. Each leaf
+writes `z` and enters one of three pre-rotated reunion pointers, sharing the
+verified suffix for that selected slot. The **11,883-cell** combined program
+executes all 16,384 group addresses correctly. Address-fold integration with
+the parity reducer remains.
