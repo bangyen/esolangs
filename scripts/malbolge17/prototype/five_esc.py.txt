@@ -58,10 +58,9 @@ def setup():
     taken=set(range(Gb-2,Gb+5))
     for K in KS: taken|={LANDK(K,T) for T in range(33,127)}
     seeds={}; hubvals={}
-    for lab in '01xnN':
+    for lab in '01xn':
         found=None
-        label_cells=(OTHERS if lab=='N'
-                     else sorted(q for q in LABELS if LABELS[q]==lab))
+        label_cells=sorted(q for q in LABELS if LABELS[q]==lab)
         for x in ORDER:
             if x in used: continue
             for seed,path in B[x].items():
@@ -71,18 +70,37 @@ def setup():
                 if len(set(values))!=1: continue
                 H=values[0]
                 if not 10000<=H<59000 or not any(admits(H+3,e-1) for e in OTHERS): continue
-                if lab!='N' and not any(admits(H+2,p-1) for p in label_cells): continue
+                if not any(admits(H+2,p-1) for p in label_cells): continue
                 cells={H,H+1,H+2,H+3}
                 if cells & taken: continue
                 found=(x,path,H); break
             if found: break
         x,path,H=found; used.add(x); seeds[lab]=(x,path); hubvals[lab]=(H,)
         taken|={H,H+1,H+2,H+3}
-    return dict(hu=hu,Gb=Gb,zcs=zcs,C0=C0,C0v=C0v,C1=C1,C1v=C1v,Bc=Bc,B=B,seeds=seeds,hubvals=hubvals,used=set(used),taken=taken)
+    ncells=sorted({*(T+1 for T in admissible(Gb+3) if T+1 in OTHERS),
+                   *(next(e for e in OTHERS if admits(H+3,e-1))
+                     for hs in hubvals.values() for H in hs)})
+    found=None
+    for x in ORDER:
+        if x in used: continue
+        for seed,path in B[x].items():
+            a=seed; values=[]
+            for p in ncells:
+                a=_crazy(a,_g(p)); a=_crazy(a,a); values.append(a)
+            if len(set(values))!=1: continue
+            H=values[0]
+            cells={H,H+1,H+2,H+3}
+            if (10000<=H<59000 and any(admits(H+3,e-1) for e in ncells)
+                    and not cells & taken):
+                found=(x,path,H); break
+        if found: break
+    x,path,H=found; used.add(x); seeds['N']=(x,path); hubvals['N']=(H,)
+    taken|={H,H+1,H+2,H+3}
+    return dict(hu=hu,Gb=Gb,zcs=zcs,C0=C0,C0v=C0v,C1=C1,C1v=C1v,Bc=Bc,B=B,seeds=seeds,hubvals=hubvals,ncells=ncells,used=set(used),taken=taken)
 
 def build(s,cf):
     Gb,zcs,Bc=cf['Gb'],cf['zcs'],cf['Bc']
-    NCELLS=OTHERS
+    NCELLS=cf['ncells']
     used={128,129}|cf['used']; mem={a:_g(a) for a in range(_ENTRY)}
     # Each row has one state at each reachable depth.  Its parity cell is
     # consumed by ``*``, so allocate one copy per depth.
@@ -118,7 +136,7 @@ def build(s,cf):
         for p in (NCELLS if lab=='N' else sorted(q for q in LABELS if LABELS[q]==lab)):
             P.op('p',p); P.op('p',p); value[p]=cf['hubvals'][lab][0]
     phases.append(len(P.code))
-    Z0=value[OTHERS[0]]+1
+    Z0=value[NCELLS[0]]+1
     pointer={}
     for p in sorted(value):
         H=value[p]
@@ -135,7 +153,7 @@ def build(s,cf):
         if H in pointer:
             data[H+2]=pointer[H]-1
             assert admits(H+2,pointer[H]-1)
-        escape=next(e for e in OTHERS if admits(H+3,e-1))
+        escape=next(e for e in NCELLS if admits(H+3,e-1))
         data[H+3]=escape-1
     copies=[]      # (key, shared entry address, room, hub turns)
     for lab in '01xn':
