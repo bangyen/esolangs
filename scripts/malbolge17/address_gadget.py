@@ -43,6 +43,7 @@ def build(
     parity: bool = False,
     occupied: set[int] | None = None,
     outputs: dict[str, int] | None = None,
+    continuation: str = "v",
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -53,6 +54,10 @@ def build(
         raise ValueError(z)
     if parity and not dispatch_ab:
         raise ValueError("parity requires the combined dispatcher")
+    if continuation != "v" and not parity:
+        raise ValueError("continuation requires the parity build")
+    if any(op not in "ji*p</vo" for op in continuation):
+        raise ValueError(continuation)
     if selected not in (None, 0, 1, 2):
         raise ValueError(selected)
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
@@ -512,7 +517,11 @@ def build(
         reducer.op("p", parity_specs[1][0])
         reducer.op("p", mask_specs[2][0])
         reducer.op("p", parity_specs[2][0])
-        reducer.raw("v")
+        if outputs is not None:
+            outputs["continuation_c"] = reducer.c
+            outputs["continuation_d"] = reducer.d
+        for op in continuation:
+            reducer.raw(op)
         parts.append(reducer.code)
     source = [_char_for("o", a) for a in range(_WORDS)]
     for address, operation in startup.items():
@@ -547,7 +556,7 @@ def build(
 
 
 def execute_state(
-    source: str, bits: tuple[int, ...]
+    source: str, bits: tuple[int, ...], output: list[int] | None = None
 ) -> tuple[tuple[int, int, int, bool], list[int]]:
     """Execute ``source`` on ``bits`` and return final state and memory."""
     memory = list(_initial_memory(source))
@@ -555,9 +564,11 @@ def execute_state(
     inputs = iter(48 + bit for bit in bits)
     for _ in range(100_000):
         char = next(inputs) if _op(memory[state[1]], state[1]) == "/" else None
-        state, writes, _ = _advance(state, memory, char)
+        state, writes, effect = _advance(state, memory, char)
         for address, value in writes:
             memory[address] = value
+        if effect is not None and output is not None:
+            output.append(effect)
         if state[3]:
             return state, memory
     raise AssertionError("address fold did not halt")
@@ -624,16 +635,36 @@ def main() -> None:
     parity_result_cells = parity_groups[-1]
     pointer_cell = outputs["pointer"]
     table_cells: set[int] = set()
+    read_probes: list[tuple[tuple[int, ...], int]] = []
     for bits in itertools.product(range(2), repeat=14):
         word = group_word(list(bits))
         pointer = _crazy(ALL2 - 2, word)
         table_cells.update(_crazy(ALL2 - 2 + offset, word) + 1 for offset in range(3))
-        memory = execute(dynamic_parity, bits)
+        if pointer + 1 not in occupied and len(read_probes) < 8:
+            read_probes.append((bits, pointer))
+        state, memory = execute_state(dynamic_parity, bits)
+        assert state[1:3] == (
+            outputs["continuation_c"],
+            outputs["continuation_d"],
+        )
+        assert state[0] in STORED_PARITY
         assert memory[pointer_cell] == pointer
         assert memory[parity_operand_cell] == parity_operand(pointer)
         assert tuple(memory[cell] for cell in parity_result_cells) == tuple(
             STORED_PARITY[(pointer + 1 + offset) % 2] for offset in range(3)
         )
+    probe, _, _, _ = build(None, dispatch_ab=True, parity=True, continuation="ojp<v")
+    assert len(read_probes) == 8
+    for bits, pointer in read_probes:
+        address = pointer + 1
+        value = _char_for("j", address)
+        program = list(probe)
+        program[address] = chr(value)
+        printed: list[int] = []
+        state, memory = execute_state("".join(program), bits, printed)
+        assert state[1] == outputs["continuation_c"] + 4
+        assert memory[pointer_cell] == pointer
+        assert printed == [_crazy(STORED_PARITY[pointer % 2], value) & 0xFF]
     print(
         "fixed address paths: 16,384/16,384 correct, "
         f"ordinary {ordinary_sizes}, special {special_sizes}; "
