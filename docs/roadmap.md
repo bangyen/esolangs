@@ -141,6 +141,9 @@ step; an answer lands in the paper it extends, and the row leaves.
   Local opcode substitution is closed too: among one-arithmetic-instruction
   splits, adding `-48` and testing positive/zero has componentwise-minimal
   effective exponents `1,1,1,4`.
+  Direct affine dispatch is also worse: replacing a fraction `t` of the
+  quadratic-operand additions by multiply/add pairs changes the profile to
+  `325/8 + 34t + 4t**2`.
   The parity count now exposes its missing algebraic charge: a separate hard
   table forces `(1-o(1)) T/(2n)` expensive gaps, and each but one forces a
   distinct Gaussian register-root pair (`lem:expensive-gaussian`,
