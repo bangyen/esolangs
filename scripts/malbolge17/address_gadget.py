@@ -122,8 +122,11 @@ def build(
         branch_cell = join_cell = None
         inner_branch = ordinary_branch = None
     tail_cell = walked(38)
+    if dispatch_ab:
+        pin = (walked(PIN[0]), walked(PIN[1]), walked(PIN[2]))
+        cells = (*normal, pin)
     parity_all1 = (walked_inert(36), walked_inert(45)) if parity else None
-    parity_reunion = walked_inert(63) if parity else None
+    parity_reunion = walked_inert(48) if parity else None
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
         boot[address] = _char_for(operation, address)
@@ -137,6 +140,10 @@ def build(
             boot_memory[address] = value
     assert state[1:] == (3272, 126, False)
     memory: dict[int, int | None] = {a: boot_memory[a] for a in range(_ENTRY)}
+    if dispatch_ab:
+        assert pin is not None
+        for cell in pin:
+            memory[cell] = None
     path = _Planner(3272, 126, memory, {})
     path.op("*", reset[0])
     path.op("p", reset[1])
@@ -156,9 +163,9 @@ def build(
         path.op("*", toggle_spec[0])
         path.op("p", parity_specs[2][0])
         assert parity_reunion is not None
-        _emit_chain(path, parity_reunion, "rot rot rot rot rot", helper)
+        _emit_chain(path, parity_reunion, "rot rot rot rot", helper)
         parity_entry = raw[parity_reunion]
-        for _ in range(5):
+        for _ in range(4):
             parity_entry = _rot(parity_entry)
         parity_entry += 1
     else:
@@ -289,7 +296,8 @@ def build(
                 path.op("*", constants[operation])
             else:
                 path.op("p", group[int(operation)])
-    if pin is not None:
+    if selected is not None:
+        assert pin is not None
         for _ in range(3):
             path.raw("/")
         for operation in _GADGET:
@@ -307,12 +315,7 @@ def build(
     emit_suffix(path, tuple(slots), top)
     parts.append(path.code)
     if pending_special is not None:
-        pin = (
-            walked_inert(PIN[0]),
-            walked_inert(PIN[1]),
-            walked_inert(PIN[2]),
-        )
-        cells = (*normal, pin)
+        assert pin is not None
         if parity:
             cells = (
                 *cells,
