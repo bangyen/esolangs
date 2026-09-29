@@ -1247,3 +1247,6 @@ opcode conflicts remain in the common high copy windows, at 32,875, 32,902,
 46,011 and 46,114. The standalone programs reach their own blocks by
 falling through blank cells; a combined source still needs row dispatch before
 those blocks and separate placement or sharing of the two conflicting copies.
+All four conflicts are live. The state-3 copy needs only two executed code
+variants (rows `3,5` and `4`), and the state-4 copy needs four (`0`, `1,6`,
+`2,5,7`, `3,4`). These are the copy classes the combined source must route.
