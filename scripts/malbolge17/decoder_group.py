@@ -133,12 +133,14 @@ def _expected(row: int, triple: tuple[int, ...]) -> str:
 
 @dataclass(frozen=True)
 class _Emission:
-    """One row's emitted source and the cells that carry code and data."""
+    """One row's source, code and data maps, and movable block positions."""
 
     source: list[int]
     code_cells: int
     code: dict[int, str]
     data: dict[int, int]
+    row_start: int
+    copy_windows: tuple[tuple[str, int, int], ...]
 
 
 @dataclass(frozen=True)
@@ -321,7 +323,7 @@ def _neighbour_cell(
     return None
 
 
-def _build(row: int, group: _Group) -> _Emission:
+def _build(row: int, group: _Group, row_offset: int = 0) -> _Emission:
     """Emit one row's real-source group decoder and its code-cell count."""
     base = group.base
     used = {128, 129} | group.used
@@ -518,6 +520,12 @@ def _build(row: int, group: _Group) -> _Emission:
         block.raw("j")
         block.raw("i")
 
+    if row_offset < 0:
+        raise ValueError(row_offset)
+    assert not any(planner.c <= address < planner.c + row_offset for address in data)
+    planner.c += row_offset
+    planner.d += row_offset
+    row_start = planner.c
     decoder(planner, _START[row], 0)
     for key, address, room, _turns in copies:
         block = _Planner(address, 0, dict(planner.mem), data)
@@ -547,6 +555,8 @@ def _build(row: int, group: _Group) -> _Emission:
         code_cells=len(planner.code),
         code=dict(planner.code),
         data=dict(data),
+        row_start=row_start,
+        copy_windows=tuple((key, address, room) for key, address, room, _ in copies),
     )
 
 
@@ -579,8 +589,10 @@ def main() -> int:
     total = 0
     executed: set[int] = set()
     live_rows: list[tuple[list[int], set[int]]] = []
+    emissions: list[_Emission] = []
     for row in range(8):
-        emission = _build(row, group)
+        emission = _build(row, group, row_offset=200 * row)
+        emissions.append(emission)
         source = emission.source
         default = [_char_for("o", a) for a in range(_WORDS)]
         set_cells = sum(1 for a in range(_WORDS) if source[a] != default[a])
@@ -613,9 +625,16 @@ def main() -> int:
         for address in executed
         if len({source[address] for source, seen in live_rows if address in seen}) > 1
     }
+    owners: dict[int, set[str]] = {}
+    for emission in emissions:
+        for address, op in emission.code.items():
+            owners.setdefault(address, set()).add(op)
+    conflicts = {address for address, ops in owners.items() if len(ops - {"o"}) > 1}
     print(f"five-state group decoder: {total} / {total}")
     print(f"executed cells across all rows: {len(executed)}")
     print(f"common executed cells: {len(common)}; live row variants: {len(variants)}")
+    print(f"row starts: {[emission.row_start for emission in emissions]}")
+    print(f"non-nop opcode conflicts: {len(conflicts)} at {sorted(conflicts)}")
     return 0
 
 
