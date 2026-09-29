@@ -29,6 +29,9 @@ from esolangs.tools.malbolge import (
     _valid_chars,
 )
 
+# Seed 33 collides at C5468 after reserving the V route; 78 lands at 51395/50666.
+_V_HANDOFF_SELECTOR_SEED = 78
+
 
 def _branch_targets(seed: int, rotations: int) -> tuple[int, int]:
     """Return the two instruction cells selected by an input bit."""
@@ -60,6 +63,7 @@ def build(
     slot_pointers: bool = False,
     shared_special_read: bool = False,
     shared_special_copy: bool = False,
+    shared_v_handoff: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -94,12 +98,17 @@ def build(
         raise ValueError("shared special read requires prepared slot pointers")
     if shared_special_copy and not shared_special_read:
         raise ValueError("shared copy requires shared special read")
+    if shared_v_handoff and not shared_special_copy:
+        raise ValueError("V handoff requires shared copy")
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
     if shared_special_read:
         raw.update({60: 96, 75: 59, 109: 84, 121: 54, 224: 120})
         used.update((60, 75, 109, 121, 224))
+    if shared_v_handoff:
+        raw.update({50: 106, 74: 59, 95: 97, 102: 73, 107: 120})
+        used.update((50, 74, 95, 102, 107))
     copy_scratch = (85, 202, 92) if shared_special_copy else ()
     for slot, cell in enumerate(copy_scratch):
         used.update((cell, cell + 1, cell + 2))
@@ -178,6 +187,8 @@ def build(
         raw.update(
             {49: 84, 67: 67, 101: 91} if shared_special_copy else {67: 108, 101: 74}
         )
+        if shared_v_handoff:
+            raw[98] = 77
     pin = None if selected is None else scratch_group(PIN)
     cells = normal if pin is None else (*normal, pin)
     twos = tuple(walked(38) for _ in range(5))
@@ -211,10 +222,14 @@ def build(
     selected_pointers = (
         tuple(walked(group[1] - 1) for group in normal[:3]) if slot_pointers else ()
     )
+    if shared_v_handoff:
+        assert selected_pointers[1] == 68
+        raw[68] = 94
     assert all(cell < 128 for cell in selected_pointers)
     if outputs is not None:
         for slot, cell in enumerate(selected_pointers):
-            outputs[f"slot_pointer_{slot}"] = cell
+            if not (shared_v_handoff and slot == 1):
+                outputs[f"slot_pointer_{slot}"] = cell
     shared_reunion = (127, 221, 315) if shared_special_read else ()
     for slot, cell in enumerate(shared_reunion):
         assert cell not in used
@@ -287,6 +302,8 @@ def build(
                     elif cell == 49:
                         assert _chain(boot_memory[cell], "K2") == 223
                         _emit_chain(plan, cell, "K2", helper)
+                    continue
+                if special and shared_v_handoff and cell == 98:
                     continue
                 start = boot_memory[cell]
                 chain = "K1" if _crazy(29524, start) == 0 else "K1 K2 K1"
@@ -450,7 +467,16 @@ def build(
                 (parity_specs[0][0], parity_specs[2][0], parity_specs[1][0]),
             )
         selector_cells = tuple(
-            walked_inert(seed) for seed in (36, 33, 45, 42, 51, 60, 72)
+            walked_inert(seed)
+            for seed in (
+                36,
+                _V_HANDOFF_SELECTOR_SEED if shared_v_handoff else 33,
+                45,
+                42,
+                51,
+                60,
+                72,
+            )
         )
         reunion_cells = (
             shared_reunion
@@ -589,7 +615,14 @@ def build(
         if shared_special_read:
             assert reunion_targets == [39378] * 3
             branch = _Planner(39378, 0, dict(suffix_memory), {})
-            for op in "jpjp*jp<v" if shared_special_copy else "jpjjjp<v":
+            stream = (
+                "jpjp*jppjjjp<v"
+                if shared_v_handoff
+                else "jpjp*jp<v"
+                if shared_special_copy
+                else "jpjjjp<v"
+            )
+            for op in stream:
                 branch.raw(op)
             record_part("shared-selected-read", branch.code)
             if outputs is not None:
