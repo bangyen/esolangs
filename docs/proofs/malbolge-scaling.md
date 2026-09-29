@@ -1201,15 +1201,21 @@ remaining constructed cells into a cheaper placement. Finally, putting the
 sacrificial all-1 word at untouched default cell 63 and reusing the dormant
 `z1` helper removes both high-address reducer words. The odd-offset parity
 seed reaches its stored word directly in `rot K0 K2`, eliminating the separate
-toggle construction. The **8,975-cell** combined source returns the exact
-0/1,458 operand on all
+toggle construction. The parity-only schedule was **8,975 cells** and returned
+the exact 0/1,458 operand on all
 16,384 rows and initializes the three consumable parity words; all 49,152
-address-plus-offset parities execute correctly. Decoder and table integration
+address-plus-offset parities execute correctly. The decoder also needs the
+group pointer after this destructive reduction. The dormant `a1` helper is
+prepared as a second tail word; ten rotations recover the tail accumulator,
+and ten more recover the 59,046 operand after the first pointer is made.
+Restoring cell 35 to 33 gives the first rotation pass a `* j` backlink, so the
+pointer-preserving source is **9,830 cells**, not the overlapping naive build.
+It retains the exact pointer on all 16,384 rows. Decoder and table integration
 remain. This source is an execution certificate, not a placed table build:
-5,241 of its 8,967 distinct instruction cells overlap table cells, leaving
-3,726 already in the complement. The next construction step is therefore
+5,701 of its 9,822 distinct instruction cells overlap table cells, leaving
+4,121 already in the complement. The next construction step is therefore
 relocating and reuniting these paths into the bottom run and spare windows,
 not appending the decoder at their current addresses. Independently of
 placement, the prefix now fits the table's 9,897-cell complement by count,
-with 930 cells left. The decoder still needs substantially more, so setup must
+with 75 cells left. The decoder still needs substantially more, so setup must
 be shared and further address code removed rather than merely relocated.
