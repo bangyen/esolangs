@@ -57,6 +57,7 @@ def build(
     guard_scratch: bool = False,
     prepare_returns: bool = False,
     result_first: bool = False,
+    slot_pointers: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -85,6 +86,8 @@ def build(
         raise ValueError("return setup requires guarded parity dispatcher")
     if result_first and not guard_scratch:
         raise ValueError("result-first allocation requires guarded scratch")
+    if slot_pointers and not result_first:
+        raise ValueError("slot pointers require result-first scratch")
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
@@ -183,6 +186,13 @@ def build(
     parity_all1 = reset[1] if parity else None
     parity_reunion = walked_inert(82) if parity else None
     tail_reunion = walked_inert(55) if parity else None
+    selected_pointers = (
+        tuple(walked(group[1] - 1) for group in normal[:3]) if slot_pointers else ()
+    )
+    assert all(cell < 128 for cell in selected_pointers)
+    if outputs is not None:
+        for slot, cell in enumerate(selected_pointers):
+            outputs[f"slot_pointer_{slot}"] = cell
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
         boot[address] = _char_for(operation, address)
