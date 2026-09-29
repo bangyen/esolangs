@@ -22,6 +22,24 @@ from esolangs.tools._malbolge_digits import _GADGET
 from esolangs.tools.malbolge import _T_HELPERS, _emit_chain, _Planner, _valid_chars
 
 
+def _branch_targets(seed: int, rotations: int) -> tuple[int, int]:
+    """Return the two instruction cells selected by an input bit."""
+    targets = []
+    for bit in range(2):
+        target = _crazy(48 + bit, seed)
+        for _ in range(rotations):
+            target = _rot(target)
+        targets.append(target + 1)
+    return targets[0], targets[1]
+
+
+def _selector_leaves() -> tuple[int, ...]:
+    """Return the C/D selector's leaves in binary selector order."""
+    return tuple(
+        target for seed in (42, 51, 60, 72) for target in _branch_targets(seed, 4)
+    )
+
+
 def build(
     z: int | None = 0,
     selected: int | None = None,
@@ -44,6 +62,14 @@ def build(
     def walked(value: int) -> int:
         cell = next(
             a for a in range(34, _ENTRY) if a not in used and value in _valid_chars(a)
+        )
+        used.add(cell)
+        raw[cell] = value
+        return cell
+
+    def walked_inert(value: int) -> int:
+        cell = next(
+            a for a in range(34, _ENTRY) if a not in used and _char_for("o", a) == value
         )
         used.add(cell)
         raw[cell] = value
@@ -106,6 +132,7 @@ def build(
     path.op("p", helper["all2"])
     constants = {"K0": helper["z0"], "K1": helper["all1"], "K2": helper["all2"]}
     parts: list[dict[int, str]] = []
+    pending_special: tuple[int, int, dict[int, int | None]] | None = None
     if z is None:
         assert z_inputs is not None
         assert branch_cell is not None
@@ -161,17 +188,7 @@ def build(
             special_memory = dict(path.mem)
             for changed_cell in (branch_cell, ordinary_branch):
                 special_memory[changed_cell] = None
-            special = _Planner(nested[1][0], ordinary_branch + 1, special_memory, {})
-            for group in normal:
-                for operation in _GADGET:
-                    if operation == "/":
-                        special.raw("/")
-                    elif operation[0] == "K":
-                        special.op("*", constants[operation])
-                    else:
-                        special.op("p", group[int(operation)])
-            special.raw("v")
-            parts.append(special.code)
+            pending_special = nested[1][0], ordinary_branch + 1, special_memory
             z_block(nested[1][1], ordinary_branch + 1, 0)
         else:
             for bit, entry in enumerate(entries):
@@ -243,6 +260,66 @@ def build(
     path.op("p", tail_cell)
     path.raw("v")
     parts.append(path.code)
+    if pending_special is not None:
+        pin = (
+            walked_inert(PIN[0]),
+            walked_inert(PIN[1]),
+            walked_inert(PIN[2]),
+        )
+        cells = (*normal, pin)
+        selector_cells = tuple(
+            walked_inert(seed) for seed in (36, 33, 45, 42, 51, 60, 72)
+        )
+        entry, d, special_memory = pending_special
+        for cell in (*pin, *selector_cells):
+            special_memory[cell] = raw[cell]
+        special = _Planner(entry, d, special_memory, {})
+        for group in normal[:3]:
+            for operation in _GADGET:
+                if operation == "/":
+                    special.raw("/")
+                elif operation[0] == "K":
+                    special.op("*", constants[operation])
+                else:
+                    special.op("p", group[int(operation)])
+        for operation in _GADGET:
+            if operation == "/":
+                special.op("*", helper["z0"])
+            elif operation[0] == "K":
+                special.op("*", constants[operation])
+            else:
+                special.op("p", pin[int(operation)])
+
+        def selector_node(
+            branch: _Planner, cell: int, rotations: int
+        ) -> tuple[tuple[int, int], dict[int, int | None]]:
+            branch.raw("/")
+            branch.op("p", cell)
+            for _ in range(rotations):
+                branch.op("*", cell)
+            branch.goto(cell)
+            branch.raw("i")
+            parts.append(branch.code)
+            seed = raw[cell]
+            return _branch_targets(seed, rotations), dict(branch.mem)
+
+        first, first_memory = selector_node(special, selector_cells[0], 3)
+        second: list[tuple[int, int, dict[int, int | None]]] = []
+        for selector_entry, cell in zip(first, selector_cells[1:3], strict=True):
+            branch = _Planner(selector_entry, selector_cells[0] + 1, first_memory, {})
+            selector_targets, branch_memory = selector_node(branch, cell, 4)
+            second.extend(
+                (target, cell + 1, branch_memory) for target in selector_targets
+            )
+        leaves: list[int] = []
+        for (selector_entry, selector_d, branch_memory), cell in zip(
+            second, selector_cells[3:], strict=True
+        ):
+            branch = _Planner(selector_entry, selector_d, branch_memory, {})
+            selector_targets, _ = selector_node(branch, cell, 4)
+            leaves.extend(selector_targets)
+        for leaf in leaves:
+            parts.append({leaf: "v"})
     source = [_char_for("o", a) for a in range(_WORDS)]
     for address, operation in startup.items():
         source[address] = _char_for(operation, address)
@@ -251,7 +328,7 @@ def build(
     emitted: dict[int, str] = {}
     for part in parts:
         for address, operation in part.items():
-            if address in emitted and emitted[address] != operation:
+            if address in emitted:
                 raise AssertionError(
                     f"conflicting code at {address}: {emitted[address]} / {operation}"
                 )
@@ -265,8 +342,10 @@ def build(
     )
 
 
-def execute(source: str, bits: tuple[int, ...]) -> list[int]:
-    """Execute ``source`` on ``bits`` and return final memory."""
+def execute_state(
+    source: str, bits: tuple[int, ...]
+) -> tuple[tuple[int, int, int, bool], list[int]]:
+    """Execute ``source`` on ``bits`` and return final state and memory."""
     memory = list(_initial_memory(source))
     state = (0, 0, 0, False)
     inputs = iter(48 + bit for bit in bits)
@@ -276,8 +355,13 @@ def execute(source: str, bits: tuple[int, ...]) -> list[int]:
         for address, value in writes:
             memory[address] = value
         if state[3]:
-            return memory
+            return state, memory
     raise AssertionError("address fold did not halt")
+
+
+def execute(source: str, bits: tuple[int, ...]) -> list[int]:
+    """Execute ``source`` on ``bits`` and return final memory."""
+    return execute_state(source, bits)[1]
 
 
 def run(source: str, result_cell: int, bits: tuple[int, ...]) -> int:
@@ -321,18 +405,24 @@ def main() -> None:
         for tail_bits in itertools.product(range(2), repeat=12):
             bits = (*head, *tail_bits)
             assert run(dynamic_ab, result_cell, bits) == group_word(list(bits))
+    leaves = _selector_leaves()
     for selector_bits in itertools.product(range(2), repeat=12):
-        memory = execute(dynamic_ab, (0, 0, *selector_bits))
-        for group, start in zip(dynamic_cells, range(0, 12, 3), strict=True):
+        state, memory = execute_state(dynamic_ab, (0, 0, *selector_bits))
+        for group, start in zip(dynamic_cells[:3], range(0, 9, 3), strict=True):
             expected = gadget(
                 LOW, [48 + bit for bit in selector_bits[start : start + 3]]
             )
             assert (memory[group[1]], memory[group[2]]) == expected
+        assert (memory[dynamic_cells[-1][1]], memory[dynamic_cells[-1][2]]) == gadget(
+            PIN, [0, 0, 0]
+        )
+        selector = sum(bit << (2 - k) for k, bit in enumerate(selector_bits[-3:]))
+        assert state[1] == leaves[selector]
     print(
         "fixed address paths: 16,384/16,384 correct, "
         f"ordinary {ordinary_sizes}, special {special_sizes}; "
         f"dynamic A: 8,192/8,192 correct, {dynamic_size}; "
-        f"dynamic A/B: 12,288/12,288 correct + 4,096 special prefixes, "
+        f"dynamic A/B: 12,288/12,288 correct + 4,096 special selectors, "
         f"{dynamic_ab_size} code cells"
     )
 

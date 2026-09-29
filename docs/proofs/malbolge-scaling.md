@@ -1178,11 +1178,12 @@ the selected normal triple on top; all 4,096 special addresses pass in
 1,621--1,714 cells. Thus all 16,384 fixed paths execute correctly. The
 first dispatch is also emitted: rotating a `48/49` encoding separates A's two
 branches by 19,683 cells; both write their `z` word into one cell and `i`
-through a shared reunion pointer. The combined **2,471-cell** A program passes
+through a shared reunion pointer. The combined **2,501-cell** A program passes
 all 8,192 rows. A second nested dispatch now separates A from B, consumes
 `x2` on both sides and feeds all three ordinary `z` words into the same
 reunion. The combined **2,786-cell** A/B program passes all 12,288 covered
-rows. Its `x1x2 = 00` block now captures the three normal triples and the
-selector triple; all 4,096 retained states match the gadget model. With that
-block the program uses 3,477 cells. The remaining emitted address work is the
-eight-way C/D selector and reunion of its selected slot layouts.
+rows. Its `x1x2 = 00` block now captures the three normal triples, builds the
+constant PIN triple and dispatches `x12..x14` to eight distinct C/D leaves.
+All 4,096 special executions preserve the four gadget pairs and reach the
+expected leaf; the combined program uses 5,287 cells. The remaining emitted
+address work is reunion of the leaves with their selected slot layouts.
