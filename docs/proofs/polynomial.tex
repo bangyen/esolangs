@@ -1282,6 +1282,76 @@ independently along one common-sign path.  An improvement must charge the
 Gaussian instruction roots that realize those positions, rather than count
 fewer choices for them.
 
+That charge can be isolated.  In the proof of Lemma~\ref{lem:evencount}, call
+the gaps $\gamma_a$, $a\in\mathcal N$, cheap and the other gaps of $R$
+expensive, as above, and let $d(f)=|R|-|\mathcal N|$ be their number.  Put
+\[
+ \widehat\beta_n(L,M,\ell,d)=2d\log_2(\ell+6)
+ +(L+1)\bigl(\log_2(n+1)+16\bigr)
+ +L\log_2\frac{eM}L+\log_2\bigl((L+1)(M+1)\bigr).
+\]
+
+\begin{lemma}[Expensive-gap information]\label{lem:expensive-count}
+For $n\ge2$, $1\le L\le M$ and $\ell,d\ge0$, at most
+$2^{\widehat\beta_n(L,M,\ell,d)}$ tables are computed by even or odd sources
+with at most $L$ distinct real instruction roots, at most $M$ real
+instructions, at most $\ell$ distinct real instruction roots of code at
+least $2$, and $d(f)\le d$.
+\end{lemma}
+
+\begin{proof}
+Repeat the encoding in Lemma~\ref{lem:evencount}.  All factors are unchanged
+except the transition data of the expensive gaps.  There are now at most $d$
+such gaps, each with at most $(\ell+6)^2$ choices, so their contribution is
+$2d\log_2(\ell+6)$ rather than $2(\ell+1)\log_2(\ell+6)$.
+\end{proof}
+
+\begin{lemma}[Gaussian roots behind expensive gaps]\label{lem:expensive-gaussian}
+An even or odd source has at least $d(f)-1$ distinct conjugate pairs
+$a\mathbin\pm p^bi$ belonging to register instructions.
+\end{lemma}
+
+\begin{proof}
+Every reached gap other than the entry is the target of an occurring N- or
+zero transition.  Thus at least
+\[
+ |R\setminus(\mathcal N\cup\{e\})|\ge |R|-|\mathcal N|-1=d(f)-1
+\]
+distinct reached gaps are targets of zero transitions.  For each such target
+$g$, choose one transition and the first gap end $x_g$ at which its value is
+zero.  The skeleton determines $Z(x_g)=g$, so distinct targets have distinct
+$x_g$.  The register is nonzero after the preceding read and control
+instructions do not change it; hence some register instruction in the gap
+ending at $x_g$ makes its value zero.  By Lemma~\ref{lem:symruns}, every
+$R_p$ lies wholly in one gap.  Distinct gap ends therefore supply instructions
+with distinct primes $p$, and hence distinct conjugate root pairs.
+\end{proof}
+
+\begin{corollary}[Many forced Gaussian roots]\label{cor:gaussianhard}
+Let $n$ be large, $Z=\lfloor T/(n+4)\rfloor$, $L_0=\lfloor2T/n\rfloor$ and
+$M_0=\lfloor5T/(2\sqrt n)\rfloor$.  Let $d_n$ be the largest $d\ge0$ with
+$\widehat\beta_n(L_0,M_0,L_0,d)\le T-1$.  Some $n$-input table has no program
+with at most $Z$ read gaps, and every even or odd source for it has more than
+$L_0$ distinct real instruction roots, more than $M_0$ real instructions, or
+at least $d_n+1$ expensive gaps and hence at least $d_n$ distinct Gaussian
+register-root pairs.  Moreover
+\[
+ d_n+1\ge\left(1-O\left(\frac{\log n}{n}\right)\right)\frac T{2n}.
+\]
+\end{corollary}
+
+\begin{proof}
+Apart from its first term, $\widehat\beta_n(L_0,M_0,L_0,d)$ is
+$O((T/n)\log n)$, so $d=0$ qualifies for large $n$.  Proposition~\ref{prop:counting}
+and Lemma~\ref{lem:expensive-count} count fewer than $2^{T-1}$ tables each,
+so their union omits a table.  Maximality gives
+\[
+ 2(d_n+1)\log_2(L_0+6)>T-1-O((T/n)\log n).
+\]
+Since $\log_2(L_0+6)=n-O(\log n)$, this proves the estimate.  The root claim
+is Lemma~\ref{lem:expensive-gaussian}.
+\end{proof}
+
 \begin{corollary}[A table for even and odd sources]\label{cor:evenhard}
 Let $n$ be large, $Z=\lfloor T/(n+4)\rfloor$, $L_0=\lfloor2T/n\rfloor$ and
 $M_0=\lfloor5T/(2\sqrt n)\rfloor$, and let $\ell_n$ be the largest integer $\ell\ge0$ with
