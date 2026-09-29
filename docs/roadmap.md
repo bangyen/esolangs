@@ -55,22 +55,20 @@ step; an answer lands in the paper it extends, and the row leaves.
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
   inputs, repo model: clipped tape, `,` at EOF an error) of `C`-character
-  programs: `4.1858 <= liminf B(C)**(1/C) <= limsup <= 7.0601`, from
+  programs: `4.2372 <= liminf B(C)**(1/C) <= limsup <= 7.0601`, from
   `[2.414, 7.388]`.  Upper: behaviour-preserving shortlex rewriting (dead
   loops, clears, diverging bodies, excursion commutation) and an exactly
   certified Perron bound on the irreducible words; the old `7.388` counted
   `[]` as removable, which is unsound when programs may diverge.  Lower:
   token families decodable from their event sequences, with reads sent to
   the nearest cell whose value is never printed again and nested loops
-  attached to prints (four local rules make brackets decodable; the fourth, a
-  read in every loop body, closes a gap where a read-free loop diverges and
-  hides its output, lowering the old 4.1963), certified by a Collatz-Wielandt vector; loop-free programs alone
-  lie in `[4.061, 2 + sqrt 5 = 4.236]`.  A single fixed input gives `>= 3.366`.
+  attached to prints.  Reads in every body guarantee termination; alternating
+  the first event type of directly nested bodies makes bracket direction
+  decodable.  The exact Collatz-Wielandt certificate gives `250/59 = 4.2372`,
+  above the loop-free ceiling `2 + sqrt 5 = 4.2360`.  Thus loops strictly
+  raise the rate.  A single fixed input gives `>= 3.366`.
   Open: the limit.  Local rules have saturated near 7.06, so the upper side
-  needs a global equivalence argument; the lower side needs a decodable
-  loop gadget beating `4.236`; the nested family without the local rules
-  certifies 4.2418 at `W = 6` and shows no collisions by brute force, so a
-  decoding proof for it would settle that loops raise the rate.
+  needs a global equivalence argument.
 
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further

@@ -14,20 +14,19 @@ arithmetic:
 
 | model (section 1) | lower bound on `liminf B(C)^(1/C)` | upper bound on `limsup B(C)^(1/C)` |
 |---|---|---|
-| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.18585** (Thm 4) | **7.0601** (Thm 1) |
+| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.23728** (Thm 4) | **7.0601** (Thm 1) |
 | clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0601 (Thm 1) |
 | clipped tape, EOF leaves the cell, all inputs | 3.79003 (Thm 4) | 7.3339 (Thm 1) |
-| bi-infinite tape, EOF error / keep | 4.18585 / 3.79003 | 6.9133 / 7.1949 |
+| bi-infinite tape, EOF error / keep | 4.23728 / 3.79003 | 6.9133 / 7.1949 |
 | any fixed nonempty finite input set `I`, any EOF, any tape | **3.36614** (Thm 5) | as for all inputs |
 | only the empty input (repo model) | 3.36614 | **6.3218** (Thm 1) |
 | loop-free programs, EOF error | **4.06124** (Thm 3) | **2 + sqrt 5 = 4.23607** (Thm 3) |
 | loop-free programs, EOF constant / keep | 3.79003 | 4.23607 / 4.72458 |
 
-Headline (repo model): **`4.1858 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0601`**,
-from `[2.414, 7.388]`.  In bits per character: `[2.065, 2.820]`, from `[1.272, 2.885]`.
-The lower bound uses nested loops (section 5c).  They lift it well above the loop-free lower
-bound `4.061`, but not above the loop-free upper bound `4.236`, so it is still open whether
-loops raise the growth rate.
+Headline (repo model): **`4.2372 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0601`**,
+from `[2.414, 7.388]`.  In bits per character: `[2.083, 2.820]`, from `[1.272, 2.885]`.
+The lower bound uses nested loops (section 5c) and exceeds the loop-free upper bound
+`2 + sqrt 5 = 4.23607`.  Loops therefore strictly raise the growth rate.
 
 Two corrections to the old statement:
 
@@ -80,10 +79,10 @@ Conversely `liminf L(C)^(1/C) >= 4.06124` (err) and `>= 3.79003` (every EOF conv
 by the dead-cell families of section 5b.  These replace `3.87513` and `3.68909`, the limits of
 the pointer-read families of section 5.
 
-**Theorem 4 (lower bound, all inputs).**  `B(C) >= c * 4.18585^C / C` in the repo model and on
-the bi tape with EOF err, using the nested-loop family `N_err` of section 5c.  (The family
+**Theorem 4 (lower bound, all inputs).**  `B(C) >= c * (250/59)^C / C` in the repo model and on
+the bi tape with EOF err, using the nested-loop family `A_err` of section 5c.  (The family
 `D^L_err` of section 5b gives 4.06834.)  `B(C) >= L(C)`, so for const and keep
-`B(C) >= c * 3.79003^C / C`.  Hence `liminf B(C)^(1/C) >= 4.18585` (err) and `>= 3.79003`
+`B(C) >= c * 3.79003^C / C`.  Hence `liminf B(C)^(1/C) >= 250/59 = 4.23728` (err) and `>= 3.79003`
 (const, keep).
 
 **Theorem 5 (one input).**  For every nonempty input set `I`, every EOF convention and either tape,
@@ -439,6 +438,34 @@ parent body and a child body) agree for several tokens, such as `.[,.` against `
 reads into different cells the two tapes differ in two places, and the comparison no longer
 reduces to comparing texts.
 
+**Alternating first events.**  The decodable subfamily `A_err(W, K)` keeps N4 and replaces
+N1--N3 by one rule: the first events of directly nested loop bodies have opposite types, print
+versus read.  The first event at depth 1 is free, so its type and the depth determine every
+deeper body's required type.  A word is valid as above.
+
+Termination is the N4 argument.  For decoding, first recover the once-run events inductively as
+above.  At an eligible print of a variable `x`, compare runs in which that print is zero and
+nonzero, choosing all other tests to make each entered body run once.  With no bracket, changing
+`x` cannot change the later event types: a kept `x` is tested and cannot carry another bracket,
+and a killed `x` is dead.  With either bracket, one run executes one extra body traversal before
+the runs rejoin.  N4 puts a top-level read in that traversal, so EOF truncation observes the
+extra interval.  This decides whether a bracket is present.
+
+At depth 0 it must be `[`, and at depth `K` it must be `]`.  At an intermediate depth, the
+nonzero run starts the child body after `[` or repeats the current body after `]`.  Their first
+event types are opposite by the rule, and the current body's first type is already known.  This
+decides the bracket direction.  The recovered event sequence and brackets determine every token
+by the `D_err` argument, so distinct valid words have distinct behaviours.
+
+The transfer state is (cell statuses, pointer, depth, the depth-1 first-event type, a
+first-event-pending flag, and whether the current body has read at top level).  The weights are
+the three classes above.  At `W = 9`, `K = 4` there are 3,122,541 reachable, completable states.
+For `x0 = 59/250`, round the positive left Perron vector at scale `10^17` and replace every
+transition weight by its lower bound `floor(w 2^62) / 2^62`.  The exact integer check gives
+`(M phi)_s >= 2^62 phi_s` at every state; the minimum ratio is 1.0020615.  The counting lemma
+therefore gives growth at least `1/x0 = 250/59 = 4.237288`, strictly greater than
+`2 + sqrt 5 = 4.236068`.  The numerical root is 4.242137.
+
 ## 6. One input (Theorem 5)
 
 Programs without `,` behave the same on every input, so it suffices to count distinct outputs.  Take
@@ -472,18 +499,16 @@ These are behaviours on finite input sets, so they are lower estimates of `B(C)`
 
 ## 8. What is not settled
 
-* **The limit.**  The repo-model interval is `[4.1858, 7.0601]`.  Nested loops raise the
-  certified lower bound from the loop-free 4.061 to 4.186 (section 5c).  It stays below the
-  loop-free upper bound `4.236`, so it is still open whether loops raise the growth rate.  The
+* **The limit.**  The repo-model interval is `[4.2372, 7.0601]`.  Nested loops raise the
+  certified lower bound above the loop-free upper bound `4.236` (section 5c), so loops strictly
+  raise the growth rate.  The
   idealised grammar explains why loops must nest.  Take prints of weight `x mu^2`, reads of
   weight `x`, and brackets after prints with no decodability constraint.  Depth 1 then gives
   exactly `2 + sqrt 5`, since `x^4 + 4x^3 + 4x - 1 = (x^2+1)(x^2+4x-1)`.  Depths 2, 4 and 8
   give 4.365, 4.459 and 4.507.  On the dead-cell base the unconstrained nested family `T` of
   section 5c already reaches 4.242 at W = 6 and 4.290 at W = 8, and brute force finds no
-  collisions in it.  The gap is therefore a proof question.  Local rules make the decoding a
-  one- or two-event comparison, but every provable set of them tried so far costs 0.06 to 0.1.
-  What is missing is a non-local argument: that from one machine state, a loop's enter
-  continuation and its skip continuation cannot behave the same.
+  collisions in it.  Its injectivity remains open, but the alternating-first-event subfamily
+  already clears the loop-free ceiling.
 * **Loop-free rate.**  It lies in `[4.061, 4.236]`.  The upper bound gives each read a free
   position.  Behaviourally a read only kills a value that is never printed again, and the
   dead-cell families suggest a limit near 4.08.  An encoding that drops the positions of
@@ -523,3 +548,5 @@ The nested-loop certificates of section 5c use the same scheme.  The transfer ma
 (cell statuses in {dead, live, tested}, pointer, depth, flag, `tau` bit, read bit), restricted to
 states that are reachable and can reach the final state.  Its token weight classes are
 `x^{1+d} mu_D`, `x^{1+d}` and `x^{2+d} mu_D`.
+For `A_err`, the `tau` bit is instead the depth-1 body's first-event type; its exact certificate
+uses `W = 9`, `K = 4`, `x0 = 59/250`, vector scale `10^17` and weight scale `2^62`.
