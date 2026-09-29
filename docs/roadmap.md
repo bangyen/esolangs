@@ -212,9 +212,14 @@ step; an answer lands in the paper it extends, and the row leaves.
   all three-input sizes (7,576 total), but totals 28,726 on the five-input
   sample (168 grow). It executes 10,374 rows; packing wins none of that
   corpus. Its small transforms are capped at three inputs, but recursive
-  string copying leaves the build-time bound unproved. Next: compare
-  character costs of difference-arm splits against shared selectors, then
-  clear the size and build-time gates without a full-table transform.
+  string copying leaves the build-time bound unproved. Character-cost
+  difference-arm splits with index-taking selectors now ship through five
+  inputs as additional candidates: 7,467 versus 7,576 characters at three
+  inputs, and 23,199 versus 25,062 (7.43% smaller) on the five-input sample.
+  The old build stays a candidate; all 533 corpus programs execute 10,374
+  rows without growth. Larger arities retain the ANF transform. Next: make
+  difference residuals and emission linear beyond the five-input cap;
+  lifting the memoized recursion cap is not a build-time proof.
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between

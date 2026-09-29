@@ -7,6 +7,9 @@ coefficients from the Möbius transform (:func:`_anf_coefficients`).
 The emitter factors each variable as ``p = p0 ^ (x & p1)``, so every
 coefficient appears at most once and a dense ANF is O(T).  A second emitter
 picks each node's arm locally (:func:`_arm_expression`); the shorter wins.
+Through five inputs, character-cost splits and an indexed selector also
+compete; their difference recursion is bounded, so larger builds keep the
+Möbius transform.
 
 The program is ``% 0 <expression>`` then ``$``, writing exactly ``0`` or
 ``1``; a constant table emits the literal.  The harness feeds one line
@@ -16,6 +19,8 @@ interpreter reads that line before execution, so every program consumes
 exactly one input line.  With no reads there is no read order: factoring
 order only renames the ``@`` literals, and :func:`fargo` tries four.
 """
+
+from functools import cache
 
 from esolangs.tools.helpers import _validate_truth_table, permute_truth_table
 
@@ -40,16 +45,6 @@ def _anf_coefficients(truth_table: str) -> list[int]:
                 coeffs[offset + step] ^= coeffs[offset]
         step *= 2
     return coeffs
-
-
-def _term(mask: int, n: int) -> str:
-    """Return the AND-product of the inputs ``mask`` selects.
-
-    Input ``i`` reads ``@ <n - 1 - i>`` in binary; ``k`` inputs need
-    ``k - 1`` leading ``&``.
-    """
-    reads = [f"@ {(n - 1 - i):b}" for i in range(n) if mask >> (n - 1 - i) & 1]
-    return "& " * (len(reads) - 1) + " ".join(reads)
 
 
 def _name(index: int) -> str:
@@ -231,11 +226,86 @@ def _expressions(truth_table: str, n: int, order: tuple[int, ...]) -> list[str]:
     return [_arm_expression(table, coeffs, n, at), _anf_expression(coeffs, n, at)]
 
 
+_SELECTOR_BODY = "^ y & @ x ^ y z"
+_SELECTOR = f"M x y z {_SELECTOR_BODY}\n"
+
+
+def _cost_key(source: str) -> tuple[int, int]:
+    """Return characters and strict-evaluation token/frame cost."""
+    tokens = source.removeprefix(_SELECTOR).split()
+    # Each selector call evaluates its body and finishes one extra frame.
+    return len(source), len(tokens) + tokens.count("M") * (
+        len(_SELECTOR_BODY.split()) + 1
+    )
+
+
+def _cost_expression(truth_table: str, at: tuple[int, ...], *, selectors: bool) -> str:
+    """Return a local character-cost split; callers cap the table at 32 rows."""
+
+    # Distinct arms make product operands nonzero; input literals are nonconstant.
+    def product(a: str, b: str) -> str:
+        return a if b == "1" else f"& {a} {b}"
+
+    def combine(a: str, b: str, op: str) -> str:
+        if a == "0":
+            return b
+        if op == "^":
+            if a == "1" and b.startswith("^ 1 "):
+                return b[4:]
+            if a.startswith("^ 1 ") and b.startswith("^ 1 "):
+                return combine(a[4:], b[4:], "^")
+        return f"{op} {a} {b}"
+
+    @cache
+    def build(values: str) -> str:
+        n = len(values).bit_length() - 1
+        if len(set(values)) == 1:
+            return values[0]
+        if n == 1:
+            x = f"@ {at[0]:b}"
+            return x if values == "01" else f"^ 1 {x}"
+        half = len(values) // 2
+        zero, one = values[:half], values[half:]
+        if zero == one:
+            return build(zero)
+        difference = "".join(
+            "0" if a == b else "1" for a, b in zip(zero, one, strict=True)
+        )
+        low, high, delta = build(zero), build(one), build(difference)
+        x = f"@ {at[n - 1]:b}"
+        notx = f"^ 1 {x}"
+        candidates = [
+            combine(low, product(x, delta), "^"),
+            combine(high, product(notx, delta), "^"),
+        ]
+        if all(a <= b for a, b in zip(zero, one, strict=True)):
+            candidates.append(combine(low, product(x, high), "|"))
+        if all(b <= a for a, b in zip(zero, one, strict=True)):
+            candidates.append(combine(high, product(notx, low), "|"))
+        if selectors:
+            candidates.append(f"M {at[n - 1]:b} {low} {high}")
+        return min(candidates, key=_cost_key)
+
+    return build(truth_table)
+
+
+def _cost_programs(truth_table: str, n: int, order: tuple[int, ...]) -> list[str]:
+    """Return plain and indexed-selector programs in the given input order."""
+    table = permute_truth_table(truth_table, order)
+    at = tuple(n - 1 - order[n - 1 - bit] for bit in range(n))
+    programs = []
+    for selectors in (False, True):
+        expression = _cost_expression(table, at, selectors=selectors)
+        header = _SELECTOR if "M" in expression.split() else ""
+        programs.append(f"{header}% 0 {expression}\n$\n")
+    return programs
+
+
 def fargo(truth_table: str, width: int | None = None) -> str:
     """Build a Fargo program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).  Emits the ANF (see the module
+    inputs (most significant first).  Emits a Boolean expression (see the module
     docstring); a constant table emits ``% 0 0`` or ``% 0 1``, sound because
     the interpreter consumes the input line either way.
     """
@@ -253,6 +323,20 @@ def fargo(truth_table: str, width: int | None = None) -> str:
         key=len,
     )
     compact = f"% 0 {expression}\n$\n"
+    if n <= 5:
+        # Index selectors save 7.43% on 200 seeded five-input tables. Difference
+        # recursion stays capped: this does not close the linear-build question.
+        compact = min(
+            [
+                compact,
+                *[
+                    program
+                    for order in _orders(n)
+                    for program in _cost_programs(truth_table, n, order)
+                ],
+            ],
+            key=_cost_key,
+        )
     if width is None or max(map(len, compact.splitlines())) <= width:
         return compact
     masks = [mask for mask in range(1 << n) if coeffs[mask] and mask]
