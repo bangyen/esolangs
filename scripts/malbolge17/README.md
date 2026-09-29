@@ -54,3 +54,5 @@ None of this is wired into the generator.
 - `parity_views.py` -- exact five-base factorization of the ten view constants,
   its three consumable parity words and one-trit toggle, and emitted setup
   measurements.
+- `address_parity.py` -- exhaustive certificate for the straight-line reducer
+  from the computed group pointer to the parity toggle operand.

@@ -1098,9 +1098,10 @@ All five bases, three initial parity words, and the toggle operand have explicit
 chains at distinct cells in `131..165`. `scripts/malbolge17/parity_views.py` executes
 the identities and chains through the interpreter's word operations, then
 emits them through the generator's real planner. In ascending-address order,
-the five bases cost **937 cells**; adding the parity words and toggle operand
-costs **1,765 cells** total. This replaces the ten scattered views' measured
-3,561-cell setup with a 1,796-cell reduction before wiring parity production.
+the five bases cost **937 cells**; adding the parity words, toggle operand and
+three reducer masks costs **2,757 cells** total. This replaces the ten
+scattered views' measured 3,561-cell setup with an 804-cell reduction before
+wiring parity production.
 
 ### Seventeen: navigation is linear in address, so packing helps (measured)
 
@@ -1121,10 +1122,17 @@ value), which is why the setup is ~12,900.
 
 The build needs about **26 distinct walked value-cells** after replacing ten
 views by five bases, three parity words, and their shared toggle operand. The
-exact factorization above supersedes the direct ten-view assignment: all nine
-constants fit at cells `131..165` and emit in 1,765 cells.
+exact factorization above supersedes the direct ten-view assignment: its
+twelve constants fit at cells `131..197` and emit in 2,757 cells.
 
 This quantifies the lever. The one-group setup is navigation-bound, and its
-cost is not fixed. The remaining view task is to emit the address-parity bit
-as operand 0 or 1458 and wire the destructive base reads. Then the complete
-setup can be remeasured against the ~5,650-cell tiling budget.
+cost is not fixed. Address parity has a straight-line reducer: applying
+`crazy(all-2, ·)` then `crazy(all-1, ·)` maps each pointer trit to 2 exactly
+when it was 1. Ten rotate/folds into an all-2 accumulator XOR those ten
+indicators; folding the result over a mask with only trit 6 equal to 1 yields
+1458 exactly when the group base cell is odd, otherwise 0. Three mask copies
+toggle the three consumable parity cells. `address_parity.py` checks all
+16,384 group pointers and all 49,152 cell parities, including the fixed
+within-group offset. What remains is emitted wiring of this reducer, offset
+toggle and destructive base reads, then remeasurement of the complete setup
+against the ~5,650-cell tiling budget.
