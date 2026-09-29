@@ -1197,17 +1197,18 @@ that tail at cell 2,190, the shared reducer at cell 731 and one selected-slot
 suffix at cell 5,590 in the free bottom run, cuts the parity build further.
 The pointer-seed mask is then restored by four rotations and reused as the
 first parity-copy mask. Removing the unused fourth mask reservation shifts the
-remaining constructed cells into a cheaper placement. Finally, putting the two
+remaining constructed cells into a cheaper placement. Finally, putting the
 sacrificial all-1 words at untouched default cells 63 and 67 removes 1,140
-navigation cells. The **9,194-cell** combined source returns the exact
+navigation cells; cell 67 first carries the parity-toggle word, then two
+`p`s restore it for the reducer. The **9,187-cell** combined source returns the exact
 0/1,458 operand on all
 16,384 rows and initializes the three consumable parity words; all 49,152
 address-plus-offset parities execute correctly. Decoder and table integration
 remain. This source is an execution certificate, not a placed table build:
-5,352 of its 9,186 distinct instruction cells overlap table cells, leaving
-3,834 already in the complement. The next construction step is therefore
+5,318 of its 9,179 distinct instruction cells overlap table cells, leaving
+3,861 already in the complement. The next construction step is therefore
 relocating and reuniting these paths into the bottom run and spare windows,
 not appending the decoder at their current addresses. Independently of
 placement, the prefix now fits the table's 9,897-cell complement by count,
-with 711 cells left. The decoder still needs substantially more, so setup must
+with 718 cells left. The decoder still needs substantially more, so setup must
 be shared and further address code removed rather than merely relocated.
