@@ -1,12 +1,11 @@
-"""Emit and execute the three-bit unit used by the seventeen-input fold."""
+"""Emit and execute the ordinary B path of the seventeen-input address fold."""
 
 import itertools
 
-from address17 import ALL2, LOW, gadget, mix, swap
+from address17 import LOW, group_word
 
 from esolangs.interpreters.other.malbolge import (
     _advance,
-    _crazy,
     _initial_memory,
     _op,
 )
@@ -18,11 +17,11 @@ from esolangs.tools._malbolge_core import (
     _g,
 )
 from esolangs.tools._malbolge_digits import _GADGET
-from esolangs.tools.malbolge import _T_HELPERS, _Planner, _valid_chars
+from esolangs.tools.malbolge import _T_HELPERS, _emit_chain, _Planner, _valid_chars
 
 
-def build() -> tuple[str, tuple[tuple[int, int, int], ...], int]:
-    """Return the real-source three-slot lower address fold."""
+def build() -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
+    """Return the real-source ordinary-path address slots before ``z``."""
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
@@ -39,8 +38,10 @@ def build() -> tuple[str, tuple[tuple[int, int, int], ...], int]:
     helper = {"all1": walked(_g(128)), "all2": walked(_g(129))}
     for name, value in _T_HELPERS.items():
         helper[name] = walked(value)
-    cells = tuple((walked(LOW[0]), walked(LOW[1]), walked(LOW[2])) for _ in range(3))
-    twos = walked(38), walked(38)
+    cells = tuple((walked(LOW[0]), walked(LOW[1]), walked(LOW[2])) for _ in range(4))
+    twos = tuple(walked(38) for _ in range(5))
+    z_cell = walked(47)
+    tail_cell = walked(38)
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
         boot[address] = _char_for(operation, address)
@@ -65,6 +66,8 @@ def build() -> tuple[str, tuple[tuple[int, int, int], ...], int]:
     path.op("*", helper["w"])
     path.op("p", helper["all2"])
     constants = {"K0": helper["z0"], "K1": helper["all1"], "K2": helper["all2"]}
+    _emit_chain(path, z_cell, "K0 K2 K1 K2", helper)
+    _emit_chain(path, tail_cell, "K0", helper)
     for group in cells:
         for operation in _GADGET:
             if operation == "/":
@@ -73,19 +76,32 @@ def build() -> tuple[str, tuple[tuple[int, int, int], ...], int]:
                 path.op("*", constants[operation])
             else:
                 path.op("p", group[int(operation)])
-    for group, two in zip(cells, twos, strict=False):
+    swap_cells = cells[0][1], cells[1][1], cells[2][2], cells[3][1], cells[3][2]
+    for cell, two in zip(swap_cells, twos, strict=True):
         path.op("*", helper["all1"])
         path.op("p", two)
-        path.op("p", group[1])
-    for group in cells:
+        path.op("p", cell)
+    for group in (*cells[:3], cells[3]):
         path.op("*", helper["all2"])
         path.op("p", group[2])
     path.op("*", helper["w"])
-    for group in cells:
+    for group in cells[:3]:
         path.op("p", group[2])
         path.op("*", group[2])
         path.op("p", group[1])
         path.op("*", group[1])
+    path.op("p", z_cell)
+    path.op("*", z_cell)
+    path.op("p", cells[3][2])
+    path.op("*", cells[3][2])
+    path.op("*", helper["all2"])
+    path.op("p", cells[3][1])
+    path.op("p", cells[3][2])
+    path.op("*", cells[3][2])
+    path.op("p", helper["all1"])
+    path.op("*", helper["all2"])
+    path.op("p", helper["all1"])
+    path.op("p", tail_cell)
     path.raw("v")
     source = [_char_for("o", a) for a in range(_WORDS)]
     for address, operation in startup.items():
@@ -94,12 +110,17 @@ def build() -> tuple[str, tuple[tuple[int, int, int], ...], int]:
         source[address] = value
     for address, operation in path.code.items():
         source[address] = _char_for(operation, address)
-    return "".join(chr(value) for value in source), cells, len(startup) + len(path.code)
+    return (
+        "".join(chr(value) for value in source),
+        cells,
+        tail_cell,
+        len(startup) + len(path.code),
+    )
 
 
 def run(
     source: str,
-    cells: tuple[tuple[int, int, int], ...],
+    result_cell: int,
     bits: tuple[int, ...],
 ) -> int:
     """Execute ``source`` on ``bits`` and return the folded accumulator."""
@@ -112,20 +133,17 @@ def run(
         for address, value in writes:
             memory[address] = value
         if state[3]:
-            return memory[cells[-1][1]]
-    raise AssertionError("gadget did not halt")
+            return memory[result_cell]
+    raise AssertionError("address fold did not halt")
 
 
 def main() -> None:
-    """Check all 512 real-source executions against the word model."""
-    source, cells, size = build()
-    for bits in itertools.product(range(2), repeat=9):
-        expected = ALL2
-        for slot, start in enumerate(range(0, 9, 3)):
-            u, v = gadget(LOW, [48 + bit for bit in bits[start : start + 3]])
-            expected = mix(mix(expected, _crazy(ALL2, v)), swap(u) if slot < 2 else u)
-        assert run(source, cells, bits) == expected
-    print(f"three lower address slots: 512/512 correct, {size} code cells")
+    """Check all 4,096 ordinary-path slot executions against the word model."""
+    source, _cells, result_cell, size = build()
+    for bits in itertools.product(range(2), repeat=12):
+        expected = group_word([0, 1, *bits])
+        assert run(source, result_cell, bits) == expected
+    print(f"ordinary B address fold: 4,096/4,096 correct, {size} code cells")
 
 
 if __name__ == "__main__":
