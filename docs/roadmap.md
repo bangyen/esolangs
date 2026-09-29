@@ -98,12 +98,11 @@ step; an answer lands in the paper it extends, and the row leaves.
   operations, and a first-use cell can carry all three bits as data.  The
   constructive routes now fit the table in 49,152 cells.  The orbit packing
   maps its 2,401 collision pairs to free cells by a certified mixed-radix
-  formula.  The more developed seven-box layout has a five-state decoder
-  executed on all 2,744 one-group cases and a word-level address fold, but its
-  measured setup plus estimated address work is about 7,000 cells against
-  about 5,650 available.  Next step: pack the 27 walked value-cells into the
-  low band, shorten the two chains that do not fit there, and build the parity
-  toggle; then remeasure the emitted program.  See
+  formula.  The five-state decoder runs all 2,744 one-group cases; the address
+  fold and parity reducer now emit together as a 9,588-cell source, 5,151 of
+  its 9,580 instructions overlapping table cells and 4,429 in the 9,897-cell
+  complement.  Relocating alone leaves 317 cells, and the decoder needs
+  thousands, so the remaining work is sharing setup, not placement.  See
   [malbolge-scaling](proofs/malbolge-scaling.md#seventeen-navigation-is-linear-in-address-so-packing-helps-measured).
   The shipped
   constructions reach 16 inputs (a positional address, one cell per row
