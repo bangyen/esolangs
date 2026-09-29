@@ -58,8 +58,8 @@ None of this is wired into the generator.
   142, continues at C=1,855, D=47, and reads three changed group-table cells
   on eight executed rows.
 - `decoder_group.py` -- linted five-state group decoder; executes all 2,744
-  row/meaning cases with cell 142 reserved and reports the live shared and
-  row-dependent cells.
+  row/meaning cases with a pointer injected at cell 142 after startup and
+  reports the live shared and row-dependent cells.
 - `dispatch3.py` -- real-source three-input fold and eight-way row dispatcher;
   exposes the eight terminal output stubs and exact emitted code/data maps.
 - `join_budget.py` -- exact address/decoder instruction-map union and table
