@@ -56,6 +56,7 @@ def build(
     part_cells: list[tuple[str, set[int]]] | None = None,
     guard_scratch: bool = False,
     prepare_returns: bool = False,
+    result_first: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -82,6 +83,8 @@ def build(
         raise ValueError(selected)
     if prepare_returns and (not guard_scratch or not dispatch_ab or not parity):
         raise ValueError("return setup requires guarded parity dispatcher")
+    if result_first and not guard_scratch:
+        raise ValueError("result-first allocation requires guarded scratch")
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
@@ -116,6 +119,17 @@ def build(
         raw[cell] = value
         return cell
 
+    def scratch_group(values: tuple[int, int, int]) -> tuple[int, int, int]:
+        if result_first:
+            u = scratch(values[1], result=True)
+            v = scratch(values[2], result=True)
+            return scratch(values[0], result=False), u, v
+        return (
+            scratch(values[0], result=False),
+            scratch(values[1], result=True),
+            scratch(values[2], result=True),
+        )
+
     reset = walked(33), walked(46), walked(81)
     helper = {"all1": walked(_g(128)), "all2": walked(_g(129))}
     for name, value in _T_HELPERS.items():
@@ -138,23 +152,8 @@ def build(
         else ()
     )
     normal_count = 4 if selected is None else 3
-    normal = tuple(
-        (
-            scratch(LOW[0], result=False),
-            scratch(LOW[1], result=True),
-            scratch(LOW[2], result=True),
-        )
-        for _ in range(normal_count)
-    )
-    pin = (
-        None
-        if selected is None
-        else (
-            scratch(PIN[0], result=False),
-            scratch(PIN[1], result=True),
-            scratch(PIN[2], result=True),
-        )
-    )
+    normal = tuple(scratch_group(LOW) for _ in range(normal_count))
+    pin = None if selected is None else scratch_group(PIN)
     cells = normal if pin is None else (*normal, pin)
     twos = tuple(walked(38) for _ in range(5))
     z_load = walked(45) if z == 2 else None
@@ -179,11 +178,7 @@ def build(
         inner_branch = ordinary_branch = None
     tail_cell = walked(38)
     if dispatch_ab:
-        pin = (
-            scratch(PIN[0], result=False),
-            scratch(PIN[1], result=True),
-            scratch(PIN[2], result=True),
-        )
+        pin = scratch_group(PIN)
         cells = (*normal, pin)
     parity_all1 = reset[1] if parity else None
     parity_reunion = walked_inert(82) if parity else None
