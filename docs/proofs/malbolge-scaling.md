@@ -1213,11 +1213,13 @@ was **9,758 cells**, not the overlapping rotation build.
 It retains the exact pointer on all 16,384 rows. Decoder and table integration
 remain. The first placement step rotates a branch-local pointer into the free
 window at cell 4,051, moving a 527-cell selector block off the table. The
-resulting **9,953-cell** source has 5,384 of its 9,945 distinct instructions
-on table cells, leaving 4,561 already in the complement: 405 fewer collisions
-for 195 more distinct instructions. The next construction step is therefore
+dead startup-reset cell 35 then replaces the reducer's second all-1 word, so
+cell 67 and its reservation disappear. The resulting **9,588-cell** source has
+5,151 of its 9,580 distinct instructions on table cells, leaving 4,429 in the
+complement.
+The next construction step is therefore
 relocating and reuniting these paths into the bottom run and spare windows,
 not appending the decoder at their current addresses. Independently of
-placement, this first relocation puts the prefix 48 cells over the table's
-9,897-cell complement. The decoder still needs substantially more, so setup
-must be shared and further address code removed rather than merely relocated.
+placement, the prefix would fit the table's 9,897-cell complement by count with
+317 cells left. The decoder needs thousands, so setup must be shared
+and further address code removed rather than merely relocated.
