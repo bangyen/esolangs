@@ -1254,7 +1254,7 @@ Omitting the unreachable state-3 block in the other five row builds retains
 all 2,744 outputs and reduces their written code by 91--150 cells each. Three
 non-`o` opcode conflicts remain in the live copies.
 
-`join_budget.py` compares the current emitted address path and row-0 decoder
+The initial `join_budget.py` comparison of the separate address path and row-0 decoder
 with the exact 49,152 table cells. Their raw instruction-address union is
 13,672, including 6,625 table positions and 1,014 incompatible opcode
 overlaps. The table complement holds 9,897 cells: after the 7,047 current
@@ -1280,6 +1280,16 @@ pass; each row writes 7,409--7,524 code cells. The separate-emitter join
 budget falls from 13,672 to 13,193 instruction addresses, leaving a
 3,296-address placement and sharing deficit. The address fold already
 preserves the matching dynamic `base-1` value in its pointer cell.
-The `join_budget.py --live` trace visits all 9,588 address instruction cells
-across the 16,384 paths. A one-path positive control leaves 4,456 of them
-unvisited. There is no dead emitted address code to delete from this build.
+Moving the address fold's preserved pointer from label-region cell 48 to
+walked cell 142 shortens that source from 9,588 to 9,280 code cells and cuts
+its table collisions from 5,151 to 4,837. All 16,384 address paths and
+49,152 parity words still pass. The continuation is now at `C=1,855`,
+`D=47`; a generated navigation path reaches cell 142 before the same
+three-cell group read. Reserving cell 142 in the decoder moves one label seed
+and leaves that cell untouched after startup in all 2,744 decoder executions
+with an injected pointer. The raw address/decoder union is then 13,126
+instruction addresses, leaving a 3,229-address placement and sharing deficit.
+The decoder still builds its own fixed group pointer; the dynamic pointer is
+preserved but not yet consumed by that decoder. The
+`join_budget.py --live` trace visits all 9,280 address instructions; a
+one-path positive control leaves 4,185 unvisited.
