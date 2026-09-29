@@ -69,9 +69,14 @@ def build(
     shared_special_fold: bool = False,
     normalize_labels: bool = False,
     restore_labels: bool = False,
+    decoder_constants: bool = False,
+    decoder_plans: list[_Planner] | None = None,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
+    restore_labels |= decoder_constants
     normalize_labels |= restore_labels
+    if decoder_plans is not None and not decoder_constants:
+        raise ValueError("decoder plan requires prepared constants")
     if z not in (None, 0, 1, 2):
         raise ValueError(z)
     if z is None and selected is not None:
@@ -134,11 +139,13 @@ def build(
         if shared_exact_copy:
             used.add(cell + 3)
 
-    def walked(value: int, *, high: bool = False) -> int:
+    def walked(
+        value: int, *, high: bool = False, avoid: frozenset[int] = frozenset()
+    ) -> int:
         cell = next(
             a
             for a in range(130 if high else 34, _ENTRY)
-            if a not in used and value in _valid_chars(a)
+            if a not in used and a not in avoid and value in _valid_chars(a)
         )
         used.add(cell)
         raw[cell] = value
@@ -277,6 +284,16 @@ def build(
         )
         if restore_labels
         else ()
+    )
+    decoder_constant_cells = (
+        (
+            # Decoder view B3 needs 131; keep its constant source elsewhere.
+            walked(80, high=True, avoid=frozenset({131})),
+            walked(78, high=True),
+            walked_inert(37, high=True),
+        )
+        if decoder_constants
+        else None
     )
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
@@ -939,6 +956,36 @@ def build(
                 normalizer.mem[107] = label_targets[107]
                 if outputs is not None:
                     outputs["labels_done"] = normalizer.c
+            if decoder_constant_cells is not None:
+                all2_cell, v_cell, zero_cell = decoder_constant_cells
+                normalizer.op("*", 42)
+                normalizer.mem[42] = ALL1
+                normalizer.op("p", zero_cell)
+                normalizer.op("p", zero_cell)
+                normalizer.op("p", zero_cell)
+                normalizer.mem[zero_cell] = 0
+                _build_constants(
+                    normalizer,
+                    {"z1": 42, "z0": zero_cell, "w": all2_cell, "v": v_cell},
+                )
+                normalizer.mem[42] = ALL1
+                normalizer.mem[zero_cell] = 0
+                normalizer.mem[all2_cell] = ALL2
+                if outputs is not None:
+                    outputs["decoder_all1"] = 42
+                    outputs["decoder_all2"] = all2_cell
+                    outputs["decoder_zero"] = zero_cell
+                    outputs["decoder_continuation_c"] = normalizer.c
+                    outputs["decoder_continuation_d"] = normalizer.d
+                if decoder_plans is not None:
+                    decoder_plans.append(
+                        _Planner(
+                            normalizer.c,
+                            normalizer.d,
+                            dict(normalizer.mem),
+                            dict(normalizer.data),
+                        )
+                    )
             normalizer.raw("v")
             if not restore_labels:
                 assert not normalizer.data
