@@ -1125,6 +1125,14 @@ views by five bases, three parity words, and their shared toggle operand. The
 exact factorization above supersedes the direct ten-view assignment: its
 twelve constants fit at cells `131..197` and emit in 2,757 cells.
 
+The factorized reads were also substituted into the real-source one-group
+prototype. Every row and meaning triple remains green (**2,744 / 2,744**),
+so consuming one base per state and one parity cell per decoder depth works
+through actual Malbolge execution. Row 0 falls from 12,897 to **10,687 code
+cells**; rows 1-7 take 10,725, 10,763, 10,984, 11,099, 10,982, 10,745 and
+10,762. These fixed-group builds initialize the known parity directly, so
+they exclude the full address reducer.
+
 This quantifies the lever. The one-group setup is navigation-bound, and its
 cost is not fixed. Address parity has a straight-line reducer: applying
 `crazy(all-2, ·)` then `crazy(all-1, ·)` maps each pointer trit to 2 exactly

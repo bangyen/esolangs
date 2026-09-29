@@ -35,14 +35,14 @@ None of this is wired into the generator.
   cleanly printing admissible triples for every lockstep way of reading a
   three-cell group (at most 137 of 512).
 - `prototype/five_esc.py.txt` -- the same decoder with the dense-table
-  escape (the cell after the group varies); also 2,744 of 2,744.
+  escape and five-base parity views; also 2,744 of 2,744. Build `msim.c` as
+  `/private/tmp/malbolge17-msim` before running it.
 - `prototype/five_lab.py.txt`, `prototype/chain_k.py.txt` -- the scratch
   prototype of the five-state group decoder that runs 2,744 of 2,744 cases
   on real sources (see the doc). Kept as text: it hard-codes `/tmp` paths
-  (`chain_k.py` is exec'd for its helpers, and `msim` is invoked from
-  `/tmp/claude-0/csim`) and is not written to the repo's lint standard. To
-  rerun, copy both into a scratch directory as `.py`, fix the two paths,
-  build `msim`, and run `five_lab.py` with `PYTHONPATH=src`.
+  (`chain_k.py` is exec'd for its helpers) and is not written to the repo's
+  lint standard. To rerun `five_lab.py`, copy both into a scratch directory
+  as `.py`, fix its paths, build `msim`, and run with `PYTHONPATH=src`.
 - `fold_classes.py` -- the 272 triple classes that no `p p p` fold separates
   at the worst residue.
 - `fold.c`, `fold2s.c` -- anneal the stateless fold decoder's row windows (best
