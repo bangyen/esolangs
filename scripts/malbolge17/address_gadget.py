@@ -462,8 +462,10 @@ def build(
         reducer.op("*", helper["all2"])
         reducer.op("p", seed_all1)
         reducer.op("p", tail_cell)
-        for _ in range(10):
-            reducer.op("*", seed_all1)
+        reducer.op("*", helper["all2"])
+        reducer.op("p", seed_all1)
+        reducer.op("*", helper["all2"])
+        reducer.op("p", seed_all1)
         reducer.op("p", helper["a1"])
         for _ in range(4):
             reducer.op("*", mask_specs[0][0])
