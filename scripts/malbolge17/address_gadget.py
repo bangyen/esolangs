@@ -42,6 +42,7 @@ def build(
     dispatch_ab: bool = False,
     parity: bool = False,
     occupied: set[int] | None = None,
+    outputs: dict[str, int] | None = None,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -158,6 +159,9 @@ def build(
     path.op("*", helper["w"])
     path.op("p", helper["all2"])
     if parity:
+        for _ in range(9):
+            path.op("*", reset[0])
+        _emit_chain(path, helper["a1"], "rot rot K2 K0", helper)
         for cell, chain in sorted((*mask_specs, *parity_specs)):
             _emit_chain(path, cell, chain, helper)
         assert parity_reunion is not None
@@ -444,14 +448,23 @@ def build(
         reducer_memory = dict(memory)
         for cell in used:
             reducer_memory[cell] = None
+        reducer_memory[reset[0]] = reset[0] - 2
         reducer = _Planner(parity_entry, parity_reunion + 1, reducer_memory, {})
         seed_all1, map_all1 = parity_all1, helper["z1"]
+        for _ in range(10):
+            reducer.op("*", helper["all1"])
+            reducer.raw("j")
+            reducer.d = helper["all1"]
+        reducer.op("p", helper["a1"])
         for _ in range(6):
             reducer.op("*", mask_specs[0][0])
         reducer.op("p", seed_all1)
         reducer.op("*", helper["all2"])
         reducer.op("p", seed_all1)
         reducer.op("p", tail_cell)
+        for _ in range(10):
+            reducer.op("*", seed_all1)
+        reducer.op("p", helper["a1"])
         for _ in range(4):
             reducer.op("*", mask_specs[0][0])
         reducer.op("*", helper["all2"])
@@ -488,6 +501,8 @@ def build(
             source[address] = _char_for(operation, address)
     if occupied is not None:
         occupied.update(emitted)
+    if outputs is not None and parity:
+        outputs["pointer"] = helper["a1"]
     result_cell = tail_cell
     if parity:
         result_cell = mask_specs[2][0]
@@ -566,16 +581,23 @@ def main() -> None:
         bits = (0, 0, *selector_bits)
         assert run(dynamic_ab, result_cell, bits) == group_word(list(bits))
     occupied: set[int] = set()
+    outputs: dict[str, int] = {}
     dynamic_parity, parity_groups, parity_operand_cell, dynamic_parity_size = build(
-        None, dispatch_ab=True, parity=True, occupied=occupied
+        None,
+        dispatch_ab=True,
+        parity=True,
+        occupied=occupied,
+        outputs=outputs,
     )
     parity_result_cells = parity_groups[-1]
+    pointer_cell = outputs["pointer"]
     table_cells: set[int] = set()
     for bits in itertools.product(range(2), repeat=14):
         word = group_word(list(bits))
         pointer = _crazy(ALL2 - 2, word)
         table_cells.update(_crazy(ALL2 - 2 + offset, word) + 1 for offset in range(3))
         memory = execute(dynamic_parity, bits)
+        assert memory[pointer_cell] == pointer
         assert memory[parity_operand_cell] == parity_operand(pointer)
         assert tuple(memory[cell] for cell in parity_result_cells) == tuple(
             STORED_PARITY[(pointer + 1 + offset) % 2] for offset in range(3)
