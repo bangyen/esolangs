@@ -1167,9 +1167,10 @@ the reducer phase itself costs 1,082--1,159
 cells. What remains is address-fold integration and roughly 2,350 cells of
 setup reduction against the ~5,650-cell tiling budget.
 
-The address emitter now runs all three lower slots as real source.
+The address emitter now runs the complete ordinary B path as real source.
 `address_gadget.py` jumps over the pointer region, resets the resulting
-accumulator, captures nine bits with three shipped gadgets, pre-maps their
-`u`/`v` words and streams all six folds without reloading the accumulator.
-It matches the word model on all 512 inputs in **1,067 code cells**. The
-remaining emitted address work is case selection, `z`, the top slot and tail.
+accumulator, captures four triples, pre-maps their `u`/`v` words, streams the
+three lower slots, folds fixed `z = 0`, applies the reversed top slot and
+finishes the tail. It matches the word model on all 4,096 suffixes in
+**2,368 code cells**. The remaining emitted address work is case selection
+and the A/C/D variants.
