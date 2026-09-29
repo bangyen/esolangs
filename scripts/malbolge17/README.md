@@ -54,10 +54,12 @@ None of this is wired into the generator.
 - `address_gadget.py` -- emits every fixed A/B/C/D address path plus combined
   dynamic A and A/B/C/D paths as real source; the combined program executes
   all 16,384 group addresses, retains the table pointer and initializes all
-  three parity words. Its continuation seam is C=1,799, D=47; an emitted
-  suffix reads three changed group-table cells on eight executed rows.
+  three parity words. The high-pointer layout stores that pointer at cell
+  142, continues at C=1,855, D=47, and reads three changed group-table cells
+  on eight executed rows.
 - `decoder_group.py` -- linted five-state group decoder; executes all 2,744
-  row/meaning cases and reports the live shared and row-dependent cells.
+  row/meaning cases with cell 142 reserved and reports the live shared and
+  row-dependent cells.
 - `dispatch3.py` -- real-source three-input fold and eight-way row dispatcher;
   exposes the eight terminal output stubs and exact emitted code/data maps.
 - `join_budget.py` -- exact address/decoder instruction-map union and table

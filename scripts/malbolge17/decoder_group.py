@@ -159,9 +159,10 @@ class _Group:
     near_cells: list[int]
     used: set[int]
     taken: set[int]
+    reserved: frozenset[int]
 
 
-def _setup() -> _Group:
+def _setup(reserved: frozenset[int] = frozenset()) -> _Group:
     """Choose the group base and every shared walked cell, as the prototype did."""
     helpers = {128, 129}
     for value in _T_HELPERS.values():
@@ -174,7 +175,7 @@ def _setup() -> _Group:
         )
     order = [cell for cell in range(130, 300) if cell not in helpers]
     order += list(range(300, _ENTRY))
-    used = {*_LABELS, *_OTHERS}
+    used = {*_LABELS, *_OTHERS, *reserved}
     reach = {cell: _bfs(_g(cell)) for cell in order}
 
     def cell_for(value: int) -> int:
@@ -256,6 +257,7 @@ def _setup() -> _Group:
         near_cells=near_cells,
         used=used,
         taken=taken,
+        reserved=reserved,
     )
 
 
@@ -327,7 +329,10 @@ def _build(row: int, group: _Group, row_offset: int = 0) -> _Emission:
     """Emit one row's real-source group decoder and its code-cell count."""
     base = group.base
     used = {128, 129} | group.used
-    memory: dict[int, int | None] = {address: _g(address) for address in range(_ENTRY)}
+    memory: dict[int, int | None] = {
+        address: None if address in group.reserved else _g(address)
+        for address in range(_ENTRY)
+    }
     states = [_START[row]]
     if states[0] in (0, 2):
         states.append(4)
@@ -570,27 +575,38 @@ def _run(source: str, limit: int = 100_000) -> list[int]:
     return _run_traced(source, limit)[0]
 
 
-def _run_traced(source: str, limit: int = 100_000) -> tuple[list[int], set[int]]:
-    """Execute a real source, returning its output and the cells it runs."""
+def _run_traced(
+    source: str,
+    limit: int = 100_000,
+    prefill: dict[int, int] | None = None,
+) -> tuple[list[int], set[int]]:
+    """Return output and live cells; inject reserved data after startup."""
     memory = list(_initial_memory(source))
     state = (0, 0, 0, False)
     output: list[int] = []
     executed: set[int] = set()
+    injected = False
     for _ in range(limit):
+        if prefill is not None and state[1] == _ENTRY + 1 and not injected:
+            for address, value in prefill.items():
+                memory[address] = value
+            injected = True
         executed.add(state[1])
         state, writes, effect = _advance(state, memory)
         for address, value in writes:
+            assert not injected or prefill is None or address not in prefill
             memory[address] = value
         if effect is not None:
             output.append(effect)
         if state[3]:
+            assert prefill is None or injected
             return output, executed
     raise AssertionError("group decoder did not halt")
 
 
 def main() -> int:
     """Rebuild every row and reproduce the 2,744 real-source group cases."""
-    group = _setup()
+    group = _setup(frozenset({142}))
     total = 0
     executed: set[int] = set()
     live_rows: list[tuple[list[int], set[int]]] = []
@@ -616,7 +632,10 @@ def main() -> int:
             program[neighbour] = _admissible(neighbour)[
                 (triple[0] * 49 + triple[1] * 7 + triple[2]) % 8
             ]
-            char, seen = _run_traced("".join(chr(value) for value in program))
+            char, seen = _run_traced(
+                "".join(chr(value) for value in program),
+                prefill={142: group.base - 1},
+            )
             executed |= seen
             row_executed |= seen
             got = chr(char[0]) if char else None

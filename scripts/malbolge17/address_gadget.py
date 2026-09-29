@@ -44,6 +44,8 @@ def build(
     occupied: set[int] | None = None,
     outputs: dict[str, int] | None = None,
     continuation: str = "v",
+    high_pointer: bool = False,
+    group_read: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -54,8 +56,14 @@ def build(
         raise ValueError(z)
     if parity and not dispatch_ab:
         raise ValueError("parity requires the combined dispatcher")
+    if high_pointer and not parity:
+        raise ValueError("high pointer requires the parity build")
     if continuation != "v" and not parity:
         raise ValueError("continuation requires the parity build")
+    if group_read and (not parity or continuation != "v"):
+        raise ValueError(
+            "group read requires the parity build and default continuation"
+        )
     if any(op not in "ji*p</vo" for op in continuation):
         raise ValueError(continuation)
     if selected not in (None, 0, 1, 2):
@@ -64,9 +72,11 @@ def build(
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
 
-    def walked(value: int) -> int:
+    def walked(value: int, *, high: bool = False) -> int:
         cell = next(
-            a for a in range(34, _ENTRY) if a not in used and value in _valid_chars(a)
+            a
+            for a in range(128 if high else 34, _ENTRY)
+            if a not in used and value in _valid_chars(a)
         )
         used.add(cell)
         raw[cell] = value
@@ -83,7 +93,7 @@ def build(
     reset = walked(33), walked(46), walked(81)
     helper = {"all1": walked(_g(128)), "all2": walked(_g(129))}
     for name, value in _T_HELPERS.items():
-        helper[name] = walked(value)
+        helper[name] = walked(value, high=high_pointer and name == "a1")
     mask_specs = (
         tuple(
             (walked(seed), "rot rot rot rot K1 K2")
@@ -520,8 +530,16 @@ def build(
         if outputs is not None:
             outputs["continuation_c"] = reducer.c
             outputs["continuation_d"] = reducer.d
-        for op in continuation:
-            reducer.raw(op)
+        if group_read:
+            reducer.goto(helper["a1"])
+            reducer.raw("j")
+            for op in "ppp<v":
+                reducer.raw(op)
+            if outputs is not None:
+                outputs["group_read_halt_c"] = reducer.c - 1
+        else:
+            for op in continuation:
+                reducer.raw(op)
         parts.append(reducer.code)
     source = [_char_for("o", a) for a in range(_WORDS)]
     for address, operation in startup.items():
@@ -629,6 +647,7 @@ def main() -> None:
         None,
         dispatch_ab=True,
         parity=True,
+        high_pointer=True,
         occupied=occupied,
         outputs=outputs,
     )
@@ -656,7 +675,15 @@ def main() -> None:
         assert tuple(memory[cell] for cell in parity_result_cells) == tuple(
             STORED_PARITY[(pointer + 1 + offset) % 2] for offset in range(3)
         )
-    probe, _, _, _ = build(None, dispatch_ab=True, parity=True, continuation="ojppp<v")
+    probe_outputs: dict[str, int] = {}
+    probe, _, _, _ = build(
+        None,
+        dispatch_ab=True,
+        parity=True,
+        high_pointer=True,
+        group_read=True,
+        outputs=probe_outputs,
+    )
     assert len(read_probes) == 8
     for bits, pointer in read_probes:
         program = list(probe)
@@ -668,7 +695,7 @@ def main() -> None:
             expected = _crazy(expected, value)
         printed: list[int] = []
         state, memory = execute_state("".join(program), bits, printed)
-        assert state[1] == outputs["continuation_c"] + 6
+        assert state[1] == probe_outputs["group_read_halt_c"]
         assert memory[pointer_cell] == pointer
         assert printed == [expected & 0xFF]
     print(
