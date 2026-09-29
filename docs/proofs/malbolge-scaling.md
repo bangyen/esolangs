@@ -1232,3 +1232,10 @@ run in at least one row and 7,447 run in every row, but 2,355 live addresses
 carry row-dependent source bytes. A naïve overlay is therefore invalid; the
 next join must put those live variants behind the eight dispatcher landings
 while retaining the common setup once.
+
+Staging the label seeds before the row-specific chains, then initializing two
+even and one odd parity word in the same order for every row, makes the emitted
+setup identical through cell 8,106. All 2,744 real-source cases still pass.
+The live row-dependent cells fall from 2,355 to 112; the eight row builds
+write 8,026--8,157 code cells each, up from 7,142--7,906. The remaining
+row-dependent instructions can now be placed after the shared prefix.
