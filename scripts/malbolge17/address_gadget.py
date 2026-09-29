@@ -128,6 +128,7 @@ def build(
         cells = (*normal, pin)
     parity_all1 = (walked_inert(36), walked_inert(45)) if parity else None
     parity_reunion = walked_inert(48) if parity else None
+    tail_reunion = walked_inert(53) if parity else None
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
         boot[address] = _char_for(operation, address)
@@ -141,7 +142,7 @@ def build(
             boot_memory[address] = value
     assert state[1:] == (3272, 126, False)
     memory: dict[int, int | None] = {a: boot_memory[a] for a in range(_ENTRY)}
-    if dispatch_ab:
+    if parity:
         assert pin is not None
         for cell in pin:
             memory[cell] = None
@@ -171,6 +172,15 @@ def build(
         parity_entry += 1
     else:
         parity_entry = None
+    if parity:
+        assert tail_reunion is not None
+        _emit_chain(path, tail_reunion, "rot rot rot rot", helper)
+        tail_entry = raw[tail_reunion]
+        for _ in range(4):
+            tail_entry = _rot(tail_entry)
+        tail_entry += 1
+    else:
+        tail_entry = None
     constants = {"K0": helper["z0"], "K1": helper["all1"], "K2": helper["all2"]}
     parts: list[dict[int, str]] = []
 
@@ -201,16 +211,16 @@ def build(
         suffix.op("p", top[1])
         suffix.op("p", top[2])
         suffix.op("*", top[2])
+        if parity:
+            assert tail_reunion is not None
+            suffix.goto(tail_reunion)
+            suffix.raw("i")
+            return
         suffix.op("p", helper["all1"])
         suffix.op("*", helper["all2"])
         suffix.op("p", helper["all1"])
         suffix.op("p", tail_cell)
-        if not parity:
-            suffix.raw("v")
-            return
-        assert parity_reunion is not None
-        suffix.goto(parity_reunion)
-        suffix.raw("i")
+        suffix.raw("v")
 
     pending_special: tuple[int, int, dict[int, int | None]] | None = None
     if z is None:
@@ -416,6 +426,21 @@ def build(
             special_slots[selected_slot] = pin
             emit_suffix(branch, tuple(special_slots), normal[selected_slot])
             parts.append(branch.code)
+    if parity:
+        assert tail_entry is not None
+        assert tail_reunion is not None
+        tail_memory = dict(memory)
+        for cell in used:
+            tail_memory[cell] = None
+        tail = _Planner(tail_entry, tail_reunion + 1, tail_memory, {})
+        tail.op("p", helper["all1"])
+        tail.op("*", helper["all2"])
+        tail.op("p", helper["all1"])
+        tail.op("p", tail_cell)
+        assert parity_reunion is not None
+        tail.goto(parity_reunion)
+        tail.raw("i")
+        parts.append(tail.code)
     if parity:
         assert parity_entry is not None
         assert parity_reunion is not None
