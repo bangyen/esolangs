@@ -57,7 +57,8 @@ None of this is wired into the generator.
   three parity words.
 - `decoder_group.py` -- linted five-state group decoder; executes all 2,744
   row/meaning cases and reports the live shared and row-dependent cells.
-- `dispatch3.py` -- real-source three-input fold and eight-way row dispatcher.
+- `dispatch3.py` -- real-source three-input fold and eight-way row dispatcher;
+  exposes the eight terminal output stubs and exact emitted code/data maps.
 - `parity_views.py` -- exact five-base factorization of the ten view constants,
   its three consumable parity words and one-trit toggle, and emitted setup
   measurements.
