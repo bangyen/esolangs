@@ -65,6 +65,7 @@ def build(
     shared_special_copy: bool = False,
     shared_v_handoff: bool = False,
     shared_exact_copy: bool = False,
+    shared_special_fold: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -103,6 +104,10 @@ def build(
         raise ValueError("V handoff requires shared copy")
     if shared_exact_copy and (not shared_special_copy or shared_v_handoff):
         raise ValueError("exact copy requires U copy without V handoff")
+    if shared_special_fold and (
+        not prepare_returns or not result_first or shared_special_read
+    ):
+        raise ValueError("shared fold requires prepared results without read probe")
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
@@ -244,6 +249,11 @@ def build(
         raw[cell + 1] = normal[slot][1] - 1
         assert raw[cell] in _valid_chars(cell)
         assert raw[cell + 1] in _valid_chars(cell + 1)
+    fold_reunion = walked_inert(35) if shared_special_fold else None
+    if fold_reunion is not None:
+        assert fold_reunion + 1 not in used
+        used.add(fold_reunion + 1)
+        raw[fold_reunion + 1] = _char_for("o", fold_reunion + 1)
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
         boot[address] = _char_for(operation, address)
@@ -272,6 +282,11 @@ def build(
         path.op("p", cell)
     path.op("*", helper["w"])
     path.op("p", helper["all2"])
+    if fold_reunion is not None:
+        _emit_chain(path, fold_reunion, "rot", helper)
+        path.mem[fold_reunion] = 39377
+        _emit_chain(path, fold_reunion + 1, "K1 K2 K1", helper)
+        path.mem[fold_reunion + 1] = 0
     if parity:
         for cell, chain in sorted((*mask_specs, *parity_specs)):
             _emit_chain(path, cell, chain, helper)
@@ -533,6 +548,13 @@ def build(
                 special.op("*", constants[operation])
             else:
                 special.op("p", pin[int(operation)])
+        if fold_reunion is not None:
+            for cell in (pin[0], *normal[3][1:]):
+                special.op("*", helper["all1"])
+                special.mem[helper["all1"]] = ALL1
+                special.op("p", cell)
+                special.op("p", cell)
+                special.mem[cell] = ALL1
         reunion_rotations = (1, 1, 1) if shared_special_read else (6, 3, 2)
         reunion_targets = []
         for cell, rotations in zip(reunion_cells, reunion_rotations, strict=True):
@@ -651,6 +673,49 @@ def build(
             record_part("shared-selected-read", branch.code)
             if outputs is not None:
                 outputs["shared_read_entry"] = 39378
+        elif shared_special_fold:
+            assert fold_reunion is not None
+
+            def load_constant(plan: _Planner, name: str, value: int) -> None:
+                plan.op("*", helper[name])
+                plan.mem[helper[name]] = value
+
+            def reset_copy_cell(plan: _Planner, cell: int) -> None:
+                load_constant(plan, "all1", ALL1)
+                plan.op("p", cell)
+                plan.op("p", cell)
+                plan.mem[cell] = ALL1
+
+            def copy_cell(plan: _Planner, source_cell: int, target_cell: int) -> None:
+                load_constant(plan, "all2", ALL2)
+                plan.op("p", source_cell)
+                load_constant(plan, "all2", ALL2)
+                plan.op("p", source_cell)
+                plan.op("p", pin[0])
+                plan.op("p", target_cell)
+
+            for slot, (target, reunion) in enumerate(
+                zip(reunion_targets, reunion_cells, strict=True)
+            ):
+                branch = _Planner(target, reunion + 1, dict(suffix_memory), {})
+                copy_cell(branch, normal[slot][1], normal[3][1])
+                reset_copy_cell(branch, pin[0])
+                copy_cell(branch, normal[slot][2], normal[3][2])
+                reset_copy_cell(branch, pin[0])
+                reset_copy_cell(branch, normal[slot][1])
+                copy_cell(branch, pin[1], normal[slot][1])
+                _emit_chain(branch, normal[slot][2], "K1 K2 K0 K2", helper)
+                branch.goto(fold_reunion)
+                branch.raw("i")
+                record_part(f"copy-selected-{slot}", branch.code)
+            branch = _Planner(39378, fold_reunion + 1, dict(suffix_memory), {})
+            branch.raw("j")
+            branch.d = 1
+            for group in normal:
+                for cell in group:
+                    branch.mem[cell] = None
+            emit_suffix(branch, normal[:3], normal[3])
+            record_part("shared-special-fold", branch.code)
         else:
             for selected_slot, (target, reunion) in enumerate(
                 zip(reunion_targets, reunion_cells, strict=True)
@@ -666,6 +731,9 @@ def build(
         tail_memory = dict(memory)
         for cell in used:
             tail_memory[cell] = None
+        if fold_reunion is not None:
+            tail_memory[fold_reunion] = 39377
+            tail_memory[fold_reunion + 1] = 0
         if shared_special_read:
             for cell in shared_reunion:
                 tail_memory[cell] = raw[cell]
@@ -686,6 +754,9 @@ def build(
         reducer_memory = dict(memory)
         for cell in used:
             reducer_memory[cell] = None
+        if fold_reunion is not None:
+            reducer_memory[fold_reunion] = 39377
+            reducer_memory[fold_reunion + 1] = 0
         if shared_special_read:
             for cell in shared_reunion:
                 reducer_memory[cell] = raw[cell]

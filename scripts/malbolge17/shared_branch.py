@@ -28,6 +28,7 @@ def _check(
     copy: bool = False,
     handoff: bool = False,
     exact: bool = False,
+    fold: bool = False,
 ) -> bool:
     """Check one complete source run; return whether it took the special read."""
     memory = list(_initial_memory(source))
@@ -44,7 +45,7 @@ def _check(
             assert state[2] == groups[slot][2]
             v_after = _crazy(state[0], original_v)
             expected = v_after & 0xFF
-        if state[1] == outputs["shared_read_entry"]:
+        if not fold and state[1] == outputs["shared_read_entry"]:
             assert bits[:2] == (0, 0)
             selector = 2 * bits[11] + bits[12]
             slot = selector if selector < 3 else bits[13]
@@ -81,7 +82,7 @@ def _check(
             break
     else:
         raise AssertionError("shared branch did not halt")
-    if bits[:2] == (0, 0):
+    if bits[:2] == (0, 0) and not fold:
         assert expected is not None
         assert printed == [expected]
         if selected is not None:
@@ -102,7 +103,7 @@ def _check(
     assert tuple(memory[cell] for cell in groups[-1]) == tuple(
         STORED_PARITY[(pointer + 1 + offset) % 2] for offset in range(3)
     )
-    return False
+    return fold and bits[:2] == (0, 0)
 
 
 def main(
@@ -111,6 +112,7 @@ def main(
     copy: bool = False,
     handoff: bool = False,
     exact: bool = False,
+    fold: bool = False,
 ) -> None:
     """Check eight selector leaves and optionally the full address domain."""
     copy |= handoff or exact
@@ -125,10 +127,11 @@ def main(
         prepare_returns=True,
         result_first=True,
         slot_pointers=True,
-        shared_special_read=True,
+        shared_special_read=not fold,
         shared_special_copy=copy,
         shared_v_handoff=handoff,
         shared_exact_copy=exact,
+        shared_special_fold=fold,
         outputs=outputs,
     )
     samples = tuple(
@@ -138,14 +141,23 @@ def main(
     special = ordinary = 0
     for bits in cases:
         if _check(
-            source, groups, outputs, bits, copy=copy, handoff=handoff, exact=exact
+            source,
+            groups,
+            outputs,
+            bits,
+            copy=copy,
+            handoff=handoff,
+            exact=exact,
+            fold=fold,
         ):
             special += 1
         else:
             ordinary += 1
     assert (special, ordinary) == ((4096, 12288) if full else (8, 0))
     mode = (
-        "exact copy"
+        "fold"
+        if fold
+        else "exact copy"
         if exact
         else "V handoff"
         if handoff
@@ -164,5 +176,12 @@ if __name__ == "__main__":
         "--v-handoff", action="store_true", help="check selected V route"
     )
     parser.add_argument("--exact-copy", action="store_true", help="check exact U copy")
+    parser.add_argument("--fold", action="store_true", help="check full shared fold")
     args = parser.parse_args()
-    main(full=args.full, copy=args.copy, handoff=args.v_handoff, exact=args.exact_copy)
+    main(
+        full=args.full,
+        copy=args.copy,
+        handoff=args.v_handoff,
+        exact=args.exact_copy,
+        fold=args.fold,
+    )
