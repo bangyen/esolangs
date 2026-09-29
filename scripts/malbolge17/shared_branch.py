@@ -27,6 +27,7 @@ def _check(
     *,
     copy: bool = False,
     handoff: bool = False,
+    exact: bool = False,
 ) -> bool:
     """Check one complete source run; return whether it took the special read."""
     memory = list(_initial_memory(source))
@@ -55,6 +56,8 @@ def _check(
                 selected = slot, memory[u], memory[v]
                 assert memory[_COPY_SCRATCH[slot]] == ALL1
                 assert memory[_COPY_SCRATCH[slot] + 1] == ALL2
+                if exact:
+                    assert memory[_COPY_SCRATCH[slot] + 3] == ALL1
                 assert memory[u + 1] == _COPY_SCRATCH[slot] - 1
                 if not handoff:
                     expected = memory[u] & 0xFF
@@ -86,7 +89,11 @@ def _check(
             u, v = groups[slot][1:]
             assert memory[u] == original_u
             assert memory[v] == (v_after if handoff else original_v)
-            assert memory[_COPY_SCRATCH[slot]] == _crazy(_crazy(ALL2, original_u), ALL1)
+            assert memory[_COPY_SCRATCH[slot]] == _crazy(
+                original_u if exact else _crazy(ALL2, original_u), ALL1
+            )
+            if exact:
+                assert memory[_COPY_SCRATCH[slot] + 3] == original_u
         return True
     assert expected is None
     assert not printed
@@ -98,9 +105,15 @@ def _check(
     return False
 
 
-def main(*, full: bool = False, copy: bool = False, handoff: bool = False) -> None:
+def main(
+    *,
+    full: bool = False,
+    copy: bool = False,
+    handoff: bool = False,
+    exact: bool = False,
+) -> None:
     """Check eight selector leaves and optionally the full address domain."""
-    copy |= handoff
+    copy |= handoff or exact
     outputs: dict[str, int] = {}
     source, groups, _, size = build(
         None,
@@ -115,6 +128,7 @@ def main(*, full: bool = False, copy: bool = False, handoff: bool = False) -> No
         shared_special_read=True,
         shared_special_copy=copy,
         shared_v_handoff=handoff,
+        shared_exact_copy=exact,
         outputs=outputs,
     )
     samples = tuple(
@@ -123,12 +137,22 @@ def main(*, full: bool = False, copy: bool = False, handoff: bool = False) -> No
     cases = itertools.product((0, 1), repeat=14) if full else samples
     special = ordinary = 0
     for bits in cases:
-        if _check(source, groups, outputs, bits, copy=copy, handoff=handoff):
+        if _check(
+            source, groups, outputs, bits, copy=copy, handoff=handoff, exact=exact
+        ):
             special += 1
         else:
             ordinary += 1
     assert (special, ordinary) == ((4096, 12288) if full else (8, 0))
-    mode = "V handoff" if handoff else "copy" if copy else "read"
+    mode = (
+        "exact copy"
+        if exact
+        else "V handoff"
+        if handoff
+        else "copy"
+        if copy
+        else "read"
+    )
     print(f"shared {mode}: {special} special, {ordinary} ordinary; {size} code cells")
 
 
@@ -139,5 +163,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--v-handoff", action="store_true", help="check selected V route"
     )
+    parser.add_argument("--exact-copy", action="store_true", help="check exact U copy")
     args = parser.parse_args()
-    main(full=args.full, copy=args.copy, handoff=args.v_handoff)
+    main(full=args.full, copy=args.copy, handoff=args.v_handoff, exact=args.exact_copy)

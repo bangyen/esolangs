@@ -64,6 +64,7 @@ def build(
     shared_special_read: bool = False,
     shared_special_copy: bool = False,
     shared_v_handoff: bool = False,
+    shared_exact_copy: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -100,6 +101,8 @@ def build(
         raise ValueError("shared copy requires shared special read")
     if shared_v_handoff and not shared_special_copy:
         raise ValueError("V handoff requires shared copy")
+    if shared_exact_copy and (not shared_special_copy or shared_v_handoff):
+        raise ValueError("exact copy requires U copy without V handoff")
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
@@ -113,6 +116,8 @@ def build(
     for slot, cell in enumerate(copy_scratch):
         used.update((cell, cell + 1, cell + 2))
         raw[cell + 2] = (47, 65, 99)[slot]
+        if shared_exact_copy:
+            used.add(cell + 3)
 
     def walked(value: int, *, high: bool = False) -> int:
         cell = next(
@@ -470,7 +475,9 @@ def build(
             walked_inert(seed)
             for seed in (
                 36,
-                _V_HANDOFF_SELECTOR_SEED if shared_v_handoff else 33,
+                _V_HANDOFF_SELECTOR_SEED
+                if shared_v_handoff or shared_exact_copy
+                else 33,
                 45,
                 42,
                 51,
@@ -484,10 +491,20 @@ def build(
             else tuple(walked_inert(seed) for seed in (69, 41, 40))
         )
         selector_relocation = walked_inert(60 if high_parity else 50)
+        copy_relocation = walked_inert(41) if shared_exact_copy else None
         entry, d, special_memory = pending_special
         for cell in (*pin, *selector_cells, *reunion_cells, selector_relocation):
             special_memory[cell] = raw[cell]
         special = _Planner(entry, d, special_memory, {})
+        if copy_relocation is not None:
+            # Exact-copy setup exceeded 59049 here; rotate 41 twice into C32810.
+            special.mem[copy_relocation] = raw[copy_relocation]
+            _emit_chain(special, copy_relocation, "rot rot", helper)
+            special.goto(copy_relocation)
+            special.raw("i")
+            record_part("copy-setup-relocation", special.code)
+            entry = _rot(_rot(raw[copy_relocation])) + 1
+            special = _Planner(entry, copy_relocation + 1, dict(special.mem), {})
         emit_return_setup(special, special=True)
         for cell in copy_scratch:
             chain = "K2 K0" if cell == 202 else "K1 K2 K0"
@@ -496,6 +513,10 @@ def build(
             chain = "K1 K2 K0 K2"
             assert _chain(boot_memory[cell + 1], chain) == ALL2
             _emit_chain(special, cell + 1, chain, helper)
+            if shared_exact_copy:
+                chain = "K1 K2 K0"
+                assert _chain(boot_memory[cell + 3], chain) == ALL1
+                _emit_chain(special, cell + 3, chain, helper)
         _emit_chain(special, tail_cell, "K0", helper)
         for group in normal[:3]:
             for operation in _GADGET:
@@ -615,8 +636,11 @@ def build(
         if shared_special_read:
             assert reunion_targets == [39378] * 3
             branch = _Planner(39378, 0, dict(suffix_memory), {})
+            # ALL2 restores U; two fresh ALL1 cells then copy its exact value.
             stream = (
-                "jpjp*jppjjjp<v"
+                "jpjo*jpjpoop<v"
+                if shared_exact_copy
+                else "jpjp*jppjjjp<v"
                 if shared_v_handoff
                 else "jpjp*jp<v"
                 if shared_special_copy
