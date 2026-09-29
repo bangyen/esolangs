@@ -54,8 +54,6 @@ def setup():
     C0,C0v=next((x,v) for x in ORDER if x not in used for v in B[x] if rot(v)&0xFF==48); used.add(C0)
     C1,C1v=next((x,v) for x in ORDER if x not in used for v in B[x] if rot(v)&0xFF==49); used.add(C1)
     Bc=[cell_for(B) for B in BASES]
-    # E joins the escape-only label chain; its hub value defines Z0 at run time.
-    E=83
     # seeds: per label a walked cell + chain whose value v and f1(v) are free hub values
     taken=set(range(Gb-2,Gb+5))
     for K in KS: taken|={LANDK(K,T) for T in range(33,127)}
@@ -66,23 +64,25 @@ def setup():
                      else sorted(q for q in LABELS if LABELS[q]==lab))
         for x in ORDER:
             if x in used: continue
-            for v,path in B[x].items():
-                w=f1(v)
-                if not (10000<=v<59000 and 10000<=w<59000) or abs(v-w)<4: continue
-                if not (admits(v+3,E-1) and admits(w+3,E-1)): continue
-                assigned={v:label_cells[1::2],w:label_cells[0::2]}
-                if lab!='N' and any(not any(admits(H+2,p-1) for p in assigned[H]) for H in (v,w)): continue
-                cells={v,v+1,v+2,v+3,w,w+1,w+2,w+3}
+            for seed,path in B[x].items():
+                a=seed; values=[]
+                for p in label_cells:
+                    a=_crazy(a,_g(p)); a=_crazy(a,a); values.append(a)
+                if len(set(values))!=1: continue
+                H=values[0]
+                if not 10000<=H<59000 or not any(admits(H+3,e-1) for e in OTHERS): continue
+                if lab!='N' and not any(admits(H+2,p-1) for p in label_cells): continue
+                cells={H,H+1,H+2,H+3}
                 if cells & taken: continue
-                found=(x,path,v,w); break
+                found=(x,path,H); break
             if found: break
-        x,path,v,w=found; used.add(x); seeds[lab]=(x,path); hubvals[lab]=(v,w)
-        taken|={v,v+1,v+2,v+3,w,w+1,w+2,w+3}
-    return dict(E=E,hu=hu,Gb=Gb,zcs=zcs,C0=C0,C0v=C0v,C1=C1,C1v=C1v,Bc=Bc,B=B,seeds=seeds,hubvals=hubvals,used=set(used),taken=taken)
+        x,path,H=found; used.add(x); seeds[lab]=(x,path); hubvals[lab]=(H,)
+        taken|={H,H+1,H+2,H+3}
+    return dict(hu=hu,Gb=Gb,zcs=zcs,C0=C0,C0v=C0v,C1=C1,C1v=C1v,Bc=Bc,B=B,seeds=seeds,hubvals=hubvals,used=set(used),taken=taken)
 
 def build(s,cf):
     Gb,zcs,Bc=cf['Gb'],cf['zcs'],cf['Bc']
-    E=cf['E']; NCELLS=OTHERS
+    NCELLS=OTHERS
     used={128,129}|cf['used']; mem={a:_g(a) for a in range(_ENTRY)}
     # Each row has one state at each reachable depth.  Its parity cell is
     # consumed by ``*``, so allocate one copy per depth.
@@ -100,7 +100,7 @@ def build(s,cf):
     data={Gb+k:_char_for('o',Gb+k) for k in range(3)}
     P=_Planner(_ENTRY+1,34+(7-_ENTRY)%94,mem,data); P.code[_ENTRY]='j'
     _build_constants(P,helper)
-    for c in (helper['all1'],helper['all2'],*sorted(LABELS),*NCELLS): P.op('p',c); P.op('p',c)
+    for c in (helper['all1'],helper['all2']): P.op('p',c); P.op('p',c)
     P.op('*',helper['w']); P.op('p',helper['all2'])
     phases=[len(P.code)]
     chains=[(f'z{k}',zcs[k],Gb-1+k) for k in range(3)]+[('C0',cf['C0'],cf['C0v']),('C1',cf['C1'],cf['C1v'])]
@@ -115,11 +115,10 @@ def build(s,cf):
     value={}
     for lab in '01xnN':
         x,path=cf['seeds'][lab]; _emit_chain(P,x,' '.join(path),helper)
-        a=cf['hubvals'][lab][0]
         for p in (NCELLS if lab=='N' else sorted(q for q in LABELS if LABELS[q]==lab)):
-            P.op('p',p); a=f1(a); value[p]=a
+            P.op('p',p); P.op('p',p); value[p]=cf['hubvals'][lab][0]
     phases.append(len(P.code))
-    Z0=value[E]+1
+    Z0=value[OTHERS[0]]+1
     pointer={}
     for p in sorted(value):
         H=value[p]
@@ -136,7 +135,8 @@ def build(s,cf):
         if H in pointer:
             data[H+2]=pointer[H]-1
             assert admits(H+2,pointer[H]-1)
-        assert admits(H+3,E-1); data[H+3]=E-1
+        escape=next(e for e in OTHERS if admits(H+3,e-1))
+        data[H+3]=escape-1
     copies=[]      # (key, shared entry address, room, hub turns)
     for lab in '01xn':
         key=KEY[lab]; room=140 if key[0]=='p' else 300
@@ -189,7 +189,7 @@ def build(s,cf):
     for key,addr,room,turns in copies:
         Q=_Planner(addr,0,dict(P.mem),data)
         Q.raw('o')
-        Q.raw('j'); Q.d=E
+        Q.raw('j')
         Q.raw('j'); Q.d=Z0
         if key=='s3': decoder(Q,3,1)
         elif key=='s4': decoder(Q,4,states.index(4))
