@@ -29,6 +29,7 @@ def _check(
     handoff: bool = False,
     exact: bool = False,
     fold: bool = False,
+    normalize: bool = False,
 ) -> bool:
     """Check one complete source run; return whether it took the special read."""
     memory = list(_initial_memory(source))
@@ -103,6 +104,9 @@ def _check(
     assert tuple(memory[cell] for cell in groups[-1]) == tuple(
         STORED_PARITY[(pointer + 1 + offset) % 2] for offset in range(3)
     )
+    if normalize:
+        assert state[1] == outputs["label_halt"]
+        assert all(memory[cell] == ALL1 for cell in range(34, 128))
     return fold and bits[:2] == (0, 0)
 
 
@@ -113,8 +117,10 @@ def main(
     handoff: bool = False,
     exact: bool = False,
     fold: bool = False,
+    normalize: bool = False,
 ) -> None:
     """Check eight selector leaves and optionally the full address domain."""
+    fold |= normalize
     copy |= handoff or exact
     outputs: dict[str, int] = {}
     source, groups, _, size = build(
@@ -132,6 +138,7 @@ def main(
         shared_v_handoff=handoff,
         shared_exact_copy=exact,
         shared_special_fold=fold,
+        normalize_labels=normalize,
         outputs=outputs,
     )
     samples = tuple(
@@ -149,13 +156,16 @@ def main(
             handoff=handoff,
             exact=exact,
             fold=fold,
+            normalize=normalize,
         ):
             special += 1
         else:
             ordinary += 1
     assert (special, ordinary) == ((4096, 12288) if full else (8, 0))
     mode = (
-        "fold"
+        "normalized fold"
+        if normalize
+        else "fold"
         if fold
         else "exact copy"
         if exact
@@ -177,6 +187,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("--exact-copy", action="store_true", help="check exact U copy")
     parser.add_argument("--fold", action="store_true", help="check full shared fold")
+    parser.add_argument(
+        "--normalize-labels", action="store_true", help="check emitted label resets"
+    )
     args = parser.parse_args()
     main(
         full=args.full,
@@ -184,4 +197,5 @@ if __name__ == "__main__":
         handoff=args.v_handoff,
         exact=args.exact_copy,
         fold=args.fold,
+        normalize=args.normalize_labels,
     )
