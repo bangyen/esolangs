@@ -1159,7 +1159,10 @@ within-group offset. The reducer is now wired into `five_esc`: it derives the
 indicator destructively from a group pointer, folds all ten rotations into an
 all-2 cell, reloads that accumulator through zero and applies three mask
 copies to offset-initialized parity cells. All 2,744 real-source executions
-still pass. The dynamic-parity row sizes are **7,365**, 7,393, 7,745, 7,993,
-8,005, 7,993, 7,382 and 7,734; the reducer phase itself costs 1,125--1,256
+still pass. Scheduling the even-offset cells before the odd-offset cell lets
+each completed parity word feed the next mask without reloading the
+accumulator; two-read rows also omit the third mask. The dynamic-parity row
+sizes are **7,145**, 7,152, 7,529, 7,894, 7,906, 7,894, 7,142 and 7,519;
+the reducer phase itself costs 1,082--1,159
 cells. What remains is address-fold integration and roughly 2,350 cells of
 setup reduction against the ~5,650-cell tiling budget.
