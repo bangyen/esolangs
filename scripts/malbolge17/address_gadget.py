@@ -66,6 +66,7 @@ def build(
     shared_v_handoff: bool = False,
     shared_exact_copy: bool = False,
     shared_special_fold: bool = False,
+    normalize_labels: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -108,6 +109,8 @@ def build(
         not prepare_returns or not result_first or shared_special_read
     ):
         raise ValueError("shared fold requires prepared results without read probe")
+    if normalize_labels and (not parity or group_read or continuation != "v"):
+        raise ValueError("label normalization requires the halted parity build")
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
@@ -254,6 +257,9 @@ def build(
         assert fold_reunion + 1 not in used
         used.add(fold_reunion + 1)
         raw[fold_reunion + 1] = _char_for("o", fold_reunion + 1)
+    if normalize_labels:
+        # The old reducer at C731 hit C2190 before the extra handoff fit.
+        parity_reunion = walked_inert(46)
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
         boot[address] = _char_for(operation, address)
@@ -794,7 +800,32 @@ def build(
         if outputs is not None:
             outputs["continuation_c"] = reducer.c
             outputs["continuation_d"] = reducer.d
-        if group_read:
+        if normalize_labels:
+            seed = next(
+                cell
+                for cell, value in reducer.mem.items()
+                if cell >= 130 and value == 49
+            )
+            for _ in range(3):
+                reducer.op("*", seed)
+            reducer.mem[seed] = _chain(49, "rot rot rot")
+            assert reducer.mem[seed] == 48115
+            reducer.goto(seed)
+            reducer.raw("i")
+            normalizer = _Planner(48116, reducer.d, dict(reducer.mem), {})
+            normalizer.op("*", map_all1)
+            for cell in range(34, 128):
+                # With A=ALL1, p twice resets any prior ten-trit word to ALL1.
+                normalizer.op("p", cell)
+                normalizer.op("p", cell)
+                normalizer.mem[cell] = 29524
+            normalizer.raw("v")
+            assert not normalizer.data
+            record_part("label-normalizer", normalizer.code)
+            if outputs is not None:
+                outputs["label_entry"] = 48116
+                outputs["label_halt"] = normalizer.c - 1
+        elif group_read:
             reducer.goto(helper["a1"])
             reducer.raw("j")
             for op in "ppp<v":
