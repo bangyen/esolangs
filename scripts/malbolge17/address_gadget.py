@@ -47,6 +47,7 @@ def build(
     high_pointer: bool = False,
     high_parity: bool = False,
     group_read: bool = False,
+    part_cells: list[tuple[str, set[int]]] | None = None,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -199,6 +200,11 @@ def build(
     constants = {"K0": helper["z0"], "K1": helper["all1"], "K2": helper["all2"]}
     parts: list[dict[int, str]] = []
 
+    def record_part(name: str, code: dict[int, str]) -> None:
+        parts.append(code)
+        if part_cells is not None:
+            part_cells.append((name, set(code)))
+
     def emit_suffix(
         suffix: _Planner,
         slots: tuple[tuple[int, int, int], ...],
@@ -248,7 +254,7 @@ def build(
         path.op("*", branch_cell)
         path.goto(branch_cell)
         path.raw("i")
-        parts.append(path.code)
+        record_part("entry", path.code)
         common = _rot(37) + 1
         entries = tuple(_rot(_crazy(48 + bit, 33)) + 1 for bit in range(2))
 
@@ -263,7 +269,7 @@ def build(
             branch.mem[join_cell] = common - 1
             branch.goto(join_cell)
             branch.raw("i")
-            parts.append(branch.code)
+            record_part(f"z{z_index}", branch.code)
 
         if dispatch_ab:
             assert inner_branch is not None
@@ -280,7 +286,7 @@ def build(
                     branch.op("*", dispatch_cell)
                 branch.goto(dispatch_cell)
                 branch.raw("i")
-                parts.append(branch.code)
+                record_part(f"dispatch-{seed}", branch.code)
                 targets = []
                 for bit in range(2):
                     target = _crazy(48 + bit, seed)
@@ -339,7 +345,7 @@ def build(
         assert pin is not None
         slots[selected] = pin
     emit_suffix(path, tuple(slots), top)
-    parts.append(path.code)
+    record_part("common", path.code)
     if pending_special is not None:
         assert pin is not None
         if parity:
@@ -394,7 +400,7 @@ def build(
                 branch.op("*", cell)
             branch.goto(cell)
             branch.raw("i")
-            parts.append(branch.code)
+            record_part("selector", branch.code)
             seed = raw[cell]
             return _branch_targets(seed, rotations), dict(branch.mem)
 
@@ -414,7 +420,7 @@ def build(
                     trampoline.op("*", selector_relocation)
                 trampoline.goto(selector_relocation)
                 trampoline.raw("i")
-                parts.append(trampoline.code)
+                record_part("selector-relocation", trampoline.code)
                 branch = _Planner(
                     relocated_selector_entry,
                     selector_relocation + 1,
@@ -460,7 +466,7 @@ def build(
             branch.op("p", z_cell)
             branch.goto(reunion_cells[selected_slot])
             branch.raw("i")
-            parts.append(branch.code)
+            record_part("selected-leaf", branch.code)
         suffix_memory = dict(special.mem)
         for cell in (
             *z_inputs,
@@ -477,7 +483,7 @@ def build(
             special_slots = list(normal[:3])
             special_slots[selected_slot] = pin
             emit_suffix(branch, tuple(special_slots), normal[selected_slot])
-            parts.append(branch.code)
+            record_part(f"suffix-{selected_slot}", branch.code)
     if parity:
         assert tail_entry is not None
         assert tail_reunion is not None
@@ -492,7 +498,7 @@ def build(
         assert parity_reunion is not None
         tail.goto(parity_reunion)
         tail.raw("i")
-        parts.append(tail.code)
+        record_part("tail", tail.code)
     if parity:
         assert parity_entry is not None
         assert parity_reunion is not None
@@ -543,7 +549,7 @@ def build(
         else:
             for op in continuation:
                 reducer.raw(op)
-        parts.append(reducer.code)
+        record_part("parity-reducer", reducer.code)
     source = [_char_for("o", a) for a in range(_WORDS)]
     for address, operation in startup.items():
         source[address] = _char_for(operation, address)

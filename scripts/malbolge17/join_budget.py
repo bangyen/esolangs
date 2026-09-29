@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import itertools
+from collections import defaultdict
 
 from address17 import ALL2, group_word
 from address_gadget import build as build_address
@@ -36,9 +37,10 @@ def _executed(source: str, bits: tuple[int, ...]) -> set[int]:
     raise AssertionError("address fold did not halt")
 
 
-def main(*, live: bool = False) -> None:
+def main(*, live: bool = False, components: bool = False) -> None:
     """Report exact occupied-cell counts for the current separate emitters."""
     address_cells: set[int] = set()
+    address_parts: list[tuple[str, set[int]]] = []
     source, groups, _, count = build_address(
         z=None,
         dispatch_ab=True,
@@ -46,6 +48,7 @@ def main(*, live: bool = False) -> None:
         high_pointer=True,
         high_parity=True,
         occupied=address_cells,
+        part_cells=address_parts,
     )
     assert groups[-1] == (145, 139, 144)
     address_cells.update(range(10, 18))  # startup precedes the emitted parts
@@ -78,6 +81,18 @@ def main(*, live: bool = False) -> None:
         f"table {len(table)}, complement {_WORDS - len(table)}, "
         f"union on table {len(union & table)}, union off table {len(union - table)}"
     )
+    if components:
+        grouped: dict[str, set[int]] = defaultdict(set)
+        for name, cells in address_parts:
+            grouped[name].update(cells)
+        for name, cells in sorted(
+            grouped.items(), key=lambda part: -len(part[1] & table)
+        ):
+            print(
+                f"{name}: {len(cells)} cells, {len(cells & table)} on table, "
+                f"{len(cells & decoder_cells)} on decoder, "
+                f"{len(cells & conflicts)} conflicting"
+            )
     if live:
         first = _executed(source, (0,) * 14)
         assert address_cells - first  # positive control for the zero-result audit
@@ -95,4 +110,6 @@ def main(*, live: bool = False) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--live", action="store_true", help="trace all address paths")
-    main(live=parser.parse_args().live)
+    parser.add_argument("--components", action="store_true", help="list address parts")
+    args = parser.parse_args()
+    main(live=args.live, components=args.components)
