@@ -1203,19 +1203,21 @@ sacrificial all-1 word at untouched default cell 63 and reusing the dormant
 seed reaches its stored word directly in `rot K0 K2`, eliminating the separate
 toggle construction. The parity-only schedule was **8,975 cells** and returned
 the exact 0/1,458 operand on all
-16,384 rows and initializes the three consumable parity words; all 49,152
+16,384 rows and initialized the three consumable parity words; all 49,152
 address-plus-offset parities execute correctly. The decoder also needs the
 group pointer after this destructive reduction. Two all-1 cells copy the tail
 word directly because `crazy(crazy(a, 1), 1) = a` per trit; the dormant `a1`
 helper holds the copy. Two all-2 folds then restore the effective 29,523
 pointer operand after the first pointer is made. The pointer-preserving source
-is **9,758 cells**, not the overlapping rotation build.
+was **9,758 cells**, not the overlapping rotation build.
 It retains the exact pointer on all 16,384 rows. Decoder and table integration
-remain. This source is an execution certificate, not a placed table build:
-5,789 of its 9,750 distinct instruction cells overlap table cells, leaving
-3,961 already in the complement. The next construction step is therefore
+remain. The first placement step rotates a branch-local pointer into the free
+window at cell 4,051, moving a 527-cell selector block off the table. The
+resulting **9,953-cell** source has 5,384 of its 9,945 distinct instructions
+on table cells, leaving 4,561 already in the complement: 405 fewer collisions
+for 195 more distinct instructions. The next construction step is therefore
 relocating and reuniting these paths into the bottom run and spare windows,
 not appending the decoder at their current addresses. Independently of
-placement, the prefix now fits the table's 9,897-cell complement by count,
-with 147 cells left. The decoder still needs substantially more, so setup must
-be shared and further address code removed rather than merely relocated.
+placement, this first relocation puts the prefix 48 cells over the table's
+9,897-cell complement. The decoder still needs substantially more, so setup
+must be shared and further address code removed rather than merely relocated.
