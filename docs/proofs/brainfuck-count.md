@@ -14,17 +14,17 @@ arithmetic:
 
 | model (section 1) | lower bound on `liminf B(C)^(1/C)` | upper bound on `limsup B(C)^(1/C)` |
 |---|---|---|
-| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.23728** (Thm 4) | **7.0201** (Thm 1) |
+| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.24000** (Thm 4) | **7.0201** (Thm 1) |
 | clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0201 (Thm 1) |
 | clipped tape, EOF leaves the cell, all inputs | 3.79003 (Thm 4) | 7.3339 (Thm 1) |
-| bi-infinite tape, EOF error / keep | 4.23728 / 3.79003 | 6.9133 / 7.1949 |
+| bi-infinite tape, EOF error / keep | 4.24000 / 3.79003 | 6.9133 / 7.1949 |
 | any fixed nonempty finite input set `I`, any EOF, any tape | **3.36614** (Thm 5) | as for all inputs |
 | only the empty input (repo model) | 3.36614 | **6.3218** (Thm 1) |
 | loop-free programs, EOF error | **4.06124** (Thm 3) | **2 + sqrt 5 = 4.23607** (Thm 3) |
 | loop-free programs, EOF constant / keep | 3.79003 | 4.23607 / 4.72458 |
 
-Headline (repo model): **`4.2372 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0201`**,
-from `[2.414, 7.388]`.  In bits per character: `[2.083, 2.812]`, from `[1.272, 2.885]`.
+Headline (repo model): **`4.2400 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0201`**,
+from `[2.414, 7.388]`.  In bits per character: `[2.084, 2.812]`, from `[1.272, 2.885]`.
 The lower bound uses nested loops (section 5c) and exceeds the loop-free upper bound
 `2 + sqrt 5 = 4.23607`.  Loops therefore strictly raise the growth rate.
 
@@ -79,10 +79,10 @@ Conversely `liminf L(C)^(1/C) >= 4.06124` (err) and `>= 3.79003` (every EOF conv
 by the dead-cell families of section 5b.  These replace `3.87513` and `3.68909`, the limits of
 the pointer-read families of section 5.
 
-**Theorem 4 (lower bound, all inputs).**  `B(C) >= c * (250/59)^C / C` in the repo model and on
+**Theorem 4 (lower bound, all inputs).**  `B(C) >= c * (106/25)^C / C` in the repo model and on
 the bi tape with EOF err, using the nested-loop family `A_err` of section 5c.  (The family
 `D^L_err` of section 5b gives 4.06834.)  `B(C) >= L(C)`, so for const and keep
-`B(C) >= c * 3.79003^C / C`.  Hence `liminf B(C)^(1/C) >= 250/59 = 4.23728` (err) and `>= 3.79003`
+`B(C) >= c * 3.79003^C / C`.  Hence `liminf B(C)^(1/C) >= 106/25 = 4.24` (err) and `>= 3.79003`
 (const, keep).
 
 **Theorem 5 (one input).**  For every nonempty input set `I`, every EOF convention and either tape,
@@ -483,10 +483,10 @@ by the `D_err` argument, so distinct valid words have distinct behaviours.
 The transfer state is (cell statuses, pointer, depth, the depth-1 first-event type, a
 first-event-pending flag, and whether the current body has read at top level).  The weights are
 the three classes above.  At `W = 9`, `K = 4` there are 3,122,541 reachable, completable states.
-For `x0 = 59/250`, round the positive left Perron vector at scale `10^17` and replace every
+For `x0 = 25/106`, round the positive left Perron vector at scale `10^17` and replace every
 transition weight by its lower bound `floor(w 2^62) / 2^62`.  The exact integer check gives
-`(M phi)_s >= 2^62 phi_s` at every state; the minimum ratio is 1.0020615.  The counting lemma
-therefore gives growth at least `1/x0 = 250/59 = 4.237288`, strictly greater than
+`(M phi)_s >= 2^62 phi_s` at every state; the minimum ratio is 1.0009065.  The counting lemma
+therefore gives growth at least `1/x0 = 106/25 = 4.24`, strictly greater than
 `2 + sqrt 5 = 4.236068`.  The numerical root is 4.242137.
 
 ## 6. One input (Theorem 5)
@@ -522,7 +522,7 @@ These are behaviours on finite input sets, so they are lower estimates of `B(C)`
 
 ## 8. What is not settled
 
-* **The limit.**  The repo-model interval is `[4.2372, 7.0201]`.  Nested loops raise the
+* **The limit.**  The repo-model interval is `[4.2400, 7.0201]`.  Nested loops raise the
   certified lower bound above the loop-free upper bound `4.236` (section 5c), so loops strictly
   raise the growth rate.  The
   idealised grammar explains why loops must nest.  Take prints of weight `x mu^2`, reads of
@@ -584,4 +584,4 @@ The nested-loop certificates of section 5c use the same scheme.  The transfer ma
 states that are reachable and can reach the final state.  Its token weight classes are
 `x^{1+d} mu_D`, `x^{1+d}` and `x^{2+d} mu_D`.
 For `A_err`, the `tau` bit is instead the depth-1 body's first-event type; its exact certificate
-uses `W = 9`, `K = 4`, `x0 = 59/250`, vector scale `10^17` and weight scale `2^62`.
+uses `W = 9`, `K = 4`, `x0 = 25/106`, vector scale `10^17` and weight scale `2^62`.
