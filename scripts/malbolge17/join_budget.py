@@ -44,6 +44,7 @@ def main(
     guard_scratch: bool = False,
     prepare_returns: bool = False,
     result_first: bool = False,
+    slot_pointers: bool = False,
 ) -> None:
     """Report exact occupied-cell counts for the current separate emitters."""
     address_cells: set[int] = set()
@@ -59,6 +60,7 @@ def main(
         guard_scratch=guard_scratch,
         prepare_returns=prepare_returns,
         result_first=result_first,
+        slot_pointers=slot_pointers,
     )
     assert groups[-1] == (145, 139, 144)
     address_cells.update(range(10, 18))  # startup precedes the emitted parts
@@ -130,11 +132,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--result-first", action="store_true", help="place result cells before seed"
     )
+    parser.add_argument(
+        "--slot-pointers", action="store_true", help="emit three low slot pointers"
+    )
     args = parser.parse_args()
     main(
         live=args.live,
         components=args.components,
-        guard_scratch=args.guard_scratch or args.prepare_returns or args.result_first,
+        guard_scratch=(
+            args.guard_scratch
+            or args.prepare_returns
+            or args.result_first
+            or args.slot_pointers
+        ),
         prepare_returns=args.prepare_returns,
-        result_first=args.result_first,
+        result_first=args.result_first or args.slot_pointers,
+        slot_pointers=args.slot_pointers,
     )

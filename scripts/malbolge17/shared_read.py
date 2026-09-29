@@ -82,6 +82,7 @@ def _address_handoff(*, full: bool = False) -> None:
         guard_scratch=True,
         prepare_returns=True,
         result_first=True,
+        slot_pointers=True,
         outputs=outputs,
     )
     source = list(address)
@@ -89,6 +90,9 @@ def _address_handoff(*, full: bool = False) -> None:
         source[_ENTRY + offset] = chr(_char_for(op, _ENTRY + offset))
     program = "".join(source)
     result_cells = [cell for group in groups[:5] for cell in group[1:]]
+    slot_pointer = {
+        groups[slot][1]: outputs[f"slot_pointer_{slot}"] for slot in range(3)
+    }
     samples = (
         (0,) * 14,
         (1,) * 14,
@@ -125,7 +129,7 @@ def _address_handoff(*, full: bool = False) -> None:
             value = memory[cell]
             operand = memory[86]
             if cell <= 127:
-                pointer_cell = 200 + ((69 - cell - 200) % 94)
+                pointer_cell = slot_pointer.get(cell, 200 + ((69 - cell - 200) % 94))
                 assert ord(program[pointer_cell]) == cell - 1
                 assert memory[pointer_cell] == cell - 1
                 source_pointers += 1
