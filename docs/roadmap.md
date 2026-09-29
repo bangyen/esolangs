@@ -199,9 +199,17 @@ step; an answer lands in the paper it extends, and the row leaves.
   selection also fails: a shared three-argument selector totals 12,928
   characters at three inputs (209 grow) and 30,656 on the same five-input
   sample (188 grow). Per-bit selectors total 13,538 and 38,503 (209 and
-  200 grow). Both execute the same 10,374 rows. Next: pack small residual
-  tables into binary literals and decode them with fixed shift definitions,
-  then clear the size gate without retaining the transform.
+  200 grow). Both execute the same 10,374 rows. Packed literals decoded
+  by fixed shift definitions also fail: whole-table and three-input-block
+  variants total 38,885 and 39,901 at three inputs (254 grow each), and
+  54,415 and 56,439 on the five-input sample (200 grow each). Both execute
+  10,374 rows. Whole-table source is at most `T + O(n log n)` characters;
+  on one seeded twelve-input table it emits 4,686 versus 16,759 shipped,
+  but eight executed rows take 230,072 versus 62,128 machine steps.
+  Eager selection pays `T - 1` primitive shifts per nonconstant-table row;
+  step counts do not price arbitrary-integer bit operations. Next: use
+  direct Boolean expressions for small residuals and pack only larger ones,
+  then clear the size gate without retaining the full-table transform.
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between
