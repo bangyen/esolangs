@@ -1253,3 +1253,12 @@ variants (rows `3,5` and `4`), and the state-4 copy needs four (`0`, `1,6`,
 Omitting the unreachable state-3 block in the other five row builds retains
 all 2,744 outputs and reduces their written code by 91--150 cells each. Three
 non-`o` opcode conflicts remain in the live copies.
+
+`join_budget.py` compares the current emitted address path and row-0 decoder
+with the exact 49,152 table cells. Their raw instruction-address union is
+13,672, including 6,625 table positions and 1,014 incompatible opcode
+overlaps. The table complement holds 9,897 cells: after the 7,047 current
+off-table instruction addresses, only 2,850 remain for those 6,625 table
+positions. This is a 3,775-address placement and sharing deficit for the
+current separate emitters, before joining the row dispatcher. It does not
+bound a redesigned source that shares code or data with the table.
