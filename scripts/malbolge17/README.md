@@ -59,6 +59,8 @@ None of this is wired into the generator.
   row/meaning cases and reports the live shared and row-dependent cells.
 - `dispatch3.py` -- real-source three-input fold and eight-way row dispatcher;
   exposes the eight terminal output stubs and exact emitted code/data maps.
+- `join_budget.py` -- exact address/decoder instruction-map union and table
+  overlap for the current separate emitters.
 - `parity_views.py` -- exact five-base factorization of the ten view constants,
   its three consumable parity words and one-trit toggle, and emitted setup
   measurements.
