@@ -543,8 +543,9 @@ These are behaviours on finite input sets, so they are lower estimates of `B(C)`
   dead-at-birth reads needs an extra type and gets worse (`x mu^2 + x mu + x`).  Whether a
   read could be moved depends on the future, so no local rule captures it.
 * **Upper bound.**  Local rules have saturated near 7.06.  The unrestricted global nested-loop
-  identities and loop commutation improve the bound to 7.0194; the remaining gap
-  needs more global arguments.
+  identities and loop commutation improve the bound to 7.0194.  The next finite-state extension is
+  to admit `[]` and `[-]` tokens inside the four regular commute monitors, prove the enlarged
+  families sound, then certify and execute the resulting upper bound.
   Two tried and dead: (i) the event encoding of section 4 applied to each bracket-free segment between
   brackets must also charge the positions of the segment's final increments, and the resulting series
   is worse than counting words (radius near `1/8`); (ii) the segment-quotient transfer matrix of the
