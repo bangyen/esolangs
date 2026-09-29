@@ -1,5 +1,6 @@
 """Execute the group decoder across every runtime address residue."""
 
+import argparse
 import itertools
 
 from address17 import ALL2, group_word
@@ -18,6 +19,7 @@ from esolangs.interpreters.other.malbolge import (
     _advance,
     _crazy,
     _initial_memory,
+    _op,
     _State,
 )
 
@@ -37,14 +39,34 @@ def _prepare(emission: _Emission) -> tuple[_State, list[int]]:
     raise AssertionError("decoder prefix did not reach its first read")
 
 
-def _finish(state: _State, memory: list[int]) -> list[int]:
+def _finish(
+    state: _State,
+    memory: list[int],
+    *,
+    entry: dict[int, int] | None = None,
+    dynamic: frozenset[int] = frozenset(),
+) -> list[int]:
     """Execute one decoder continuation without rewriting the base pointer."""
     output = []
+    written: set[int] = set()
     for _ in range(10_000):
+        if entry is not None:
+            _, c, d, _ = state
+            op = _op(memory[c], c)
+            reads = {c}
+            if op in ("j", "i", "*", "p"):
+                reads.add(d)
+            if op == "i":
+                reads.add(memory[d])
+            for address in reads - written - dynamic:
+                value = memory[address]
+                assert entry.setdefault(address, value) == value, (address, value)
         state, writes, effect = _advance(state, memory)
         for address, value in writes:
             assert address != 142
             memory[address] = value
+            if entry is not None:
+                written.add(address)
         if effect is not None:
             output.append(effect)
         if state[3]:
@@ -71,7 +93,7 @@ def _prefill(base: int, triple: tuple[int, ...]) -> dict[int, int]:
     return cells
 
 
-def main() -> None:
+def main(*, inspect_entry: bool = False) -> None:
     """Check all meaning triples at all 94 residues for each of eight rows."""
     group = _setup(
         frozenset({142, 145, 139, 144}), external_pointer=True, runtime_base=True
@@ -100,13 +122,19 @@ def main() -> None:
             triple: [ord(_expected(row, triple))]
             for triple in itertools.product(range(7), repeat=3)
         }
+        entry: dict[int, int] | None = {} if inspect_entry else None
         for base in representatives.values():
             for triple, wanted in expected.items():
                 memory = list(prepared)
                 prefill = _prefill(base, triple)
                 for address, value in prefill.items():
                     memory[address] = value
-                got = _finish(state, memory)
+                got = _finish(
+                    state,
+                    memory,
+                    entry=entry,
+                    dynamic=frozenset(prefill),
+                )
                 assert got == wanted, (row, base, triple, got, wanted)
                 total += 1
         base = next(iter(representatives.values()))
@@ -115,9 +143,22 @@ def main() -> None:
         )
         assert got == expected[(0, 0, 0)]
         print(f"row {row}: 94 runtime residues, {94 * 343} decoder executions")
+        if entry is not None:
+            low = {address: value for address, value in entry.items() if address < 420}
+            print(f"row {row}: {len(entry)} static entry cells, {len(low)} low cells")
+            print(f"row {row} low entry: {sorted(low.items())}")
+            minimal = [0] * len(prepared)
+            for address, value in entry.items():
+                minimal[address] = value
+            for address, value in _prefill(base, (0, 0, 0)).items():
+                minimal[address] = value
+            assert _finish(state, minimal) == expected[(0, 0, 0)]
+            print(f"row {row}: entry-only memory control passed")
     assert total == 8 * 94 * 343
     print(f"runtime group decoder: {total} cases and eight full-source controls")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--entry", action="store_true", help="trace first-read values")
+    main(inspect_entry=parser.parse_args().entry)
