@@ -55,7 +55,7 @@ step; an answer lands in the paper it extends, and the row leaves.
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
   inputs, repo model: clipped tape, `,` at EOF an error) of `C`-character
-  programs: `4.2372 <= liminf B(C)**(1/C) <= limsup <= 7.0601`, from
+  programs: `4.2372 <= liminf B(C)**(1/C) <= limsup <= 7.0341`, from
   `[2.414, 7.388]`.  Upper: behaviour-preserving shortlex rewriting (dead
   loops, clears, diverging bodies, excursion commutation) and an exactly
   certified Perron bound on the irreducible words; the old `7.388` counted
@@ -67,8 +67,10 @@ step; an answer lands in the paper it extends, and the row leaves.
   decodable.  The exact Collatz-Wielandt certificate gives `250/59 = 4.2372`,
   above the loop-free ceiling `2 + sqrt 5 = 4.2360`.  Thus loops strictly
   raise the rate.  A single fixed input gives `>= 3.366`.
-  Open: the limit.  Local rules have saturated near 7.06, so the upper side
-  needs a global equivalence argument.
+  Open: the limit.  Local rules have saturated near 7.06.  The global identities
+  `[[Y]] -> [Y]` and `[Y[] -> []`, certified through balanced bodies of length
+  seven (read-free in the second), lower the upper bound to 7.0341; closing the
+  gap needs more global equivalences.
 
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further
