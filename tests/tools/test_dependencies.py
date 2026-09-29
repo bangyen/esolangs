@@ -10,8 +10,7 @@ def _oracle(table: str, n: int) -> list[int]:
         i
         for i in range(n)
         if any(
-            table[row] != table[row ^ (1 << (n - 1 - i))]
-            for row in range(len(table))
+            table[row] != table[row ^ (1 << (n - 1 - i))] for row in range(len(table))
         )
     ]
 
@@ -25,21 +24,18 @@ def test_dependencies_exhaustive() -> None:
 
 def test_dependencies_late_witnesses_and_ignored_inputs() -> None:
     rng = random.Random(929)
-    for n in range(5,11):
+    for n in range(5, 11):
         tables = ["0" * (1 << n), "0" * ((1 << n) - 1) + "1"]
         tables += [
-            "".join(str((row >> bit) & 1) for row in range(1 << n))
-            for bit in range(n)
+            "".join(str((row >> bit) & 1) for row in range(1 << n)) for bit in range(n)
         ]
-        tables += [
-            "".join(rng.choice("01") for _ in range(1 << n)) for _ in range(10)
-        ]
+        tables += ["".join(rng.choice("01") for _ in range(1 << n)) for _ in range(10)]
         for table in tables:
             assert helpers.essential_inputs(table, n) == _oracle(table, n)
 
 
 def test_dependency_fallback_has_positive_control(monkeypatch) -> None:
-    original = helpers._residual_ids
+    original = helpers._residual_ids  # noqa: SLF001 -- Instrument the fallback positive control.
     calls = []
 
     def record(table, n):

@@ -153,6 +153,15 @@ step; an answer lands in the paper it extends, and the row leaves.
   mass through one lowest coefficient (`lem:gaussian-low`), which is below
   the `T**2/n` constant scale.  Turning those pairs into quadratic
   coefficient mass is the remaining lower-bound step.
+  The [common-norm subproblem](proofs/polynomial-common-norm.md) now has
+  `Lambda(Q) >= K**2 log(R)/16` for the raw forced factor, and the same
+  bound for scaled reciprocal or anti-reciprocal integer multiples of
+  any degree.  Arbitrary integer multipliers remain open: support alone
+  does not locate radius-charged coefficients, and local approximation
+  bounds still need a cancellation-resistant height transfer.  Common
+  norm is an extra hypothesis, not guaranteed for the register roots
+  above; this checkpoint closes neither that general case nor the
+  constant bracket.
   On the lower side, the two zero targets counted per expensive gap really
   are independent: symmetric remainder pairs realize arbitrary ordered
   first-zero positions from consecutive register values.  Raising `13/4`
