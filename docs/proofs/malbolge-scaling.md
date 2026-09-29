@@ -1266,9 +1266,9 @@ bound a redesigned source that shares code or data with the table.
 The address emitter now exposes a continuation at `C=1,799`, `D=47` after
 constructing the pointer and all three parity words. All 16,384 address paths
 reach that same register position with `A` holding one of the two stored
-parity words. The real-source suffix `ojp<v` advances to pointer cell 48,
-jumps to the computed first group cell, reads it and prints the resulting
-value. Eight table cells outside the address code were changed to a different
-valid character; all eight executions printed the word-model value and kept
-the computed pointer. This is a working address-to-table read, not yet the
-five-state decoder or a source for arbitrary table contents.
+parity words. The real-source suffix `ojppp<v` advances to pointer cell 48,
+jumps to the computed first group cell and reads all three cells in order.
+Eight groups outside the address code were changed to three valid characters
+each; all eight executions printed the independently folded value and retained
+the pointer. This is a working address-to-group read, not yet the five-state
+decoder or a source for arbitrary table contents.

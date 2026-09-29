@@ -640,7 +640,10 @@ def main() -> None:
         word = group_word(list(bits))
         pointer = _crazy(ALL2 - 2, word)
         table_cells.update(_crazy(ALL2 - 2 + offset, word) + 1 for offset in range(3))
-        if pointer + 1 not in occupied and len(read_probes) < 8:
+        if (
+            all(pointer + offset not in occupied for offset in (1, 2, 3))
+            and len(read_probes) < 8
+        ):
             read_probes.append((bits, pointer))
         state, memory = execute_state(dynamic_parity, bits)
         assert state[1:3] == (
@@ -653,18 +656,21 @@ def main() -> None:
         assert tuple(memory[cell] for cell in parity_result_cells) == tuple(
             STORED_PARITY[(pointer + 1 + offset) % 2] for offset in range(3)
         )
-    probe, _, _, _ = build(None, dispatch_ab=True, parity=True, continuation="ojp<v")
+    probe, _, _, _ = build(None, dispatch_ab=True, parity=True, continuation="ojppp<v")
     assert len(read_probes) == 8
     for bits, pointer in read_probes:
-        address = pointer + 1
-        value = _char_for("j", address)
         program = list(probe)
-        program[address] = chr(value)
+        expected = STORED_PARITY[pointer % 2]
+        for offset, op in enumerate("j*<", 1):
+            address = pointer + offset
+            value = _char_for(op, address)
+            program[address] = chr(value)
+            expected = _crazy(expected, value)
         printed: list[int] = []
         state, memory = execute_state("".join(program), bits, printed)
-        assert state[1] == outputs["continuation_c"] + 4
+        assert state[1] == outputs["continuation_c"] + 6
         assert memory[pointer_cell] == pointer
-        assert printed == [_crazy(STORED_PARITY[pointer % 2], value) & 0xFF]
+        assert printed == [expected & 0xFF]
     print(
         "fixed address paths: 16,384/16,384 correct, "
         f"ordinary {ordinary_sizes}, special {special_sizes}; "
