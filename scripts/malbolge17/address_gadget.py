@@ -86,7 +86,6 @@ def build(
         if parity
         else ()
     )
-    mask_spare = walked(_g(170)) if parity else None
     parity_specs = (
         tuple(
             (walked(seed), "rot rot rot rot K2 K0 K2")
@@ -165,8 +164,6 @@ def build(
         _emit_chain(path, toggle_spec[0], toggle_spec[1], helper)
         path.op("*", toggle_spec[0])
         path.op("p", parity_specs[2][0])
-        assert mask_spare is not None
-        path.mem[mask_spare] = None
         assert parity_reunion is not None
         _emit_chain(path, parity_reunion, "rot rot rot rot", helper)
         parity_entry = raw[parity_reunion]
