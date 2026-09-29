@@ -165,3 +165,29 @@ step; an answer lands in the paper it extends, and the row leaves.
   odd symmetric decision-tree programs for every table, executed
   exhaustively through two inputs.  A matching lower bound must price
   parity sources themselves.
+
+- **FRACTRAN size-time frontier.** Can every table have `O(T)` text and
+  `polylog(T)` execution, or does the language force a tradeoff?
+  A priority-ordered monotone-guard construction executed all 2,120 rows of
+  every table through three inputs, with constants as controls. It still
+  names one guard per row, so the address bound defeats linear text; scanning
+  the fraction list also costs time beyond the firing count. Next: encode
+  several rows in priority order without one distinct guard per row, or
+  prove a language-wide tradeoff. See [fractran](proofs/fractran.md#what-is-not-proved).
+
+- **Fargo linear construction.** Replace the `Theta(T log T)` ANF transform
+  without losing the size contract. A direct Shannon emitter executed 3,464
+  rows, exhaustive through three inputs and twelve seeded tables per arity
+  four through six. Its three-input total was 12,990 characters against
+  7,576 shipped; 228 of 256 tables grew. Constants and projections were
+  included. Next: share residual expressions with definitions whose naming
+  cost stays linear, then clear the size gate without retaining the transform.
+
+- **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
+  now brackets the worst-case minimum digits divided by `T*n` between
+  0.10034333 and 12.64325982 asymptotically. The lower side counts weighted
+  exponent compositions with adjacent equal commands merged; the upper side
+  prices the tree with fixed-modulus prime gaps. Parity encodings executed through five inputs do not determine
+  either limit. Next: count only semantically distinct decoded programs to
+  raise the lower coefficient, or construct a cheaper weighted command stream
+  to lower the upper one; the existence and value of the limit remain open.
