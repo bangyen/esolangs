@@ -1203,4 +1203,7 @@ remain. This source is an execution certificate, not a placed table build:
 6,463 of its 10,437 distinct instruction cells overlap table cells, leaving
 3,974 already in the complement. The next construction step is therefore
 relocating and reuniting these paths into the bottom run and spare windows,
-not appending the decoder at their current addresses.
+not appending the decoder at their current addresses. Independently of
+placement, 10,437 instructions exceed the table's 9,897-cell complement by
+540 cells, so at least that much code must disappear before any decoder code
+can fit.
