@@ -1128,16 +1128,18 @@ twelve constants fit at cells `131..197` and emit in 2,757 cells.
 The factorized reads were also substituted into the real-source one-group
 prototype. Every row and meaning triple remains green (**2,744 / 2,744**),
 so consuming one base per state and one parity cell per decoder depth works
-through actual Malbolge execution. Row 0 falls from 12,897 to **10,687 code
-cells**; rows 1-7 take 10,725, 10,763, 10,984, 11,099, 10,982, 10,745 and
-10,762. These fixed-group builds initialize the known parity directly, so
-they exclude the full address reducer.
+through actual Malbolge execution. Row 0 first fell from 12,897 to 10,687
+code cells. A backlink then cuts hub setup: `H+2` points through the label
+cell back to `H+1`, so every rotation after the first costs two `j`s rather
+than fresh navigation; the dense-table escape uses `H+3` instead. The
+executed row sizes are now **8,034**, 8,017, 7,887, 8,144, 8,172, 8,142,
+8,051 and 7,886. These fixed-group builds initialize the known parity
+directly, so they exclude the full address reducer.
 
 Row 0 now splits into 1,635 cells for constant setup and pointer priming,
-3,831 for value chains, 2,101 for label chains, 2,350 for hub rotations and
-770 for landing/decoder blocks. The label and hub machinery alone is 4,451
-cells; attaching the address fold cannot fit until that routing cost is
-shared or replaced.
+3,888 for value chains, 1,409 for label chains, 323 for hub rotations and
+779 for landing/decoder blocks. Backlinks remove 2,127 cells from label/hub
+routing; value chains are now the largest remaining phase.
 
 This quantifies the lever. The one-group setup is navigation-bound, and its
 cost is not fixed. Address parity has a straight-line reducer: applying
