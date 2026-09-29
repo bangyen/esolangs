@@ -577,11 +577,13 @@ def main() -> int:
     group = _setup()
     total = 0
     executed: set[int] = set()
+    live_rows: list[tuple[list[int], set[int]]] = []
     for row in range(8):
         emission = _build(row, group)
         source = emission.source
         default = [_char_for("o", a) for a in range(_WORDS)]
         set_cells = sum(1 for a in range(_WORDS) if source[a] != default[a])
+        row_executed: set[int] = set()
         for triple in itertools.product(range(7), repeat=3):
             program = list(source)
             for index in range(3):
@@ -598,12 +600,21 @@ def main() -> int:
             ]
             char, seen = _run_traced("".join(chr(value) for value in program))
             executed |= seen
+            row_executed |= seen
             got = chr(char[0]) if char else None
             assert got == _expected(row, triple), (row, triple, got)
             total += 1
+        live_rows.append((source, row_executed))
         print(f"row {row}: {emission.code_cells} written, {set_cells} set cells")
+    common = set.intersection(*(seen for _, seen in live_rows))
+    variants = {
+        address
+        for address in executed
+        if len({source[address] for source, seen in live_rows if address in seen}) > 1
+    }
     print(f"five-state group decoder: {total} / {total}")
     print(f"executed cells across all rows: {len(executed)}")
+    print(f"common executed cells: {len(common)}; live row variants: {len(variants)}")
     return 0
 
 

@@ -1223,3 +1223,11 @@ not appending the decoder at their current addresses. Independently of
 placement, the prefix would fit the table's 9,897-cell complement by count with
 317 cells left. The decoder needs thousands, so setup must be shared
 and further address code removed rather than merely relocated.
+
+The linted decoder port now exposes its exact code and data maps, and the
+three-input row selector dispatches all eight input triples to distinct real
+source destinations. Across the decoder's 2,744 executions, 8,340 addresses
+run in at least one row and 7,447 run in every row, but 2,355 live addresses
+carry row-dependent source bytes. A naïve overlay is therefore invalid; the
+next join must put those live variants behind the eight dispatcher landings
+while retaining the common setup once.
