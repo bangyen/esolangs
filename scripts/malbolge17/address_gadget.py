@@ -2,7 +2,7 @@
 
 import itertools
 
-from address17 import LOW, PIN, group_word
+from address17 import LOW, PIN, gadget, group_word
 
 from esolangs.interpreters.other.malbolge import (
     _advance,
@@ -158,7 +158,20 @@ def build(
                 nested.append(tuple(targets))
             z_block(nested[0][0], inner_branch + 1, 1)
             z_block(nested[0][1], inner_branch + 1, 2)
-            parts.append({nested[1][0]: "v"})
+            special_memory = dict(path.mem)
+            for changed_cell in (branch_cell, ordinary_branch):
+                special_memory[changed_cell] = None
+            special = _Planner(nested[1][0], ordinary_branch + 1, special_memory, {})
+            for group in normal:
+                for operation in _GADGET:
+                    if operation == "/":
+                        special.raw("/")
+                    elif operation[0] == "K":
+                        special.op("*", constants[operation])
+                    else:
+                        special.op("p", group[int(operation)])
+            special.raw("v")
+            parts.append(special.code)
             z_block(nested[1][1], ordinary_branch + 1, 0)
         else:
             for bit, entry in enumerate(entries):
@@ -167,9 +180,9 @@ def build(
         common_memory[z_cell] = None
         for cell in z_inputs:
             common_memory[cell] = None
-        for changed_cell in (branch_cell, inner_branch, ordinary_branch):
-            if changed_cell is not None:
-                common_memory[changed_cell] = None
+        for maybe_changed in (branch_cell, inner_branch, ordinary_branch):
+            if maybe_changed is not None:
+                common_memory[maybe_changed] = None
         common_memory[join_cell] = common - 1
         path = _Planner(common, join_cell + 1, common_memory, {})
     elif z == 2:
@@ -246,12 +259,8 @@ def build(
     )
 
 
-def run(
-    source: str,
-    result_cell: int,
-    bits: tuple[int, ...],
-) -> int:
-    """Execute ``source`` on ``bits`` and return the folded accumulator."""
+def execute(source: str, bits: tuple[int, ...]) -> list[int]:
+    """Execute ``source`` on ``bits`` and return final memory."""
     memory = list(_initial_memory(source))
     state = (0, 0, 0, False)
     inputs = iter(48 + bit for bit in bits)
@@ -261,8 +270,13 @@ def run(
         for address, value in writes:
             memory[address] = value
         if state[3]:
-            return memory[result_cell]
+            return memory
     raise AssertionError("address fold did not halt")
+
+
+def run(source: str, result_cell: int, bits: tuple[int, ...]) -> int:
+    """Execute ``source`` on ``bits`` and return the folded accumulator."""
+    return execute(source, bits)[result_cell]
 
 
 def main() -> None:
@@ -280,9 +294,9 @@ def main() -> None:
     for selected in range(3):
         for z in (1, 2):
             source, _cells, result_cell, size = build(z, selected)
-            suffix = selected >> 1, selected & 1, z - 1
+            selector_suffix = selected >> 1, selected & 1, z - 1
             for lower_bits in itertools.product(range(2), repeat=9):
-                bits = (*lower_bits, *suffix)
+                bits = (*lower_bits, *selector_suffix)
                 assert run(source, result_cell, bits) == group_word([0, 0, *bits])
             special_sizes.append(size)
     for selected in (0, 1):
@@ -294,16 +308,26 @@ def main() -> None:
     dynamic_a, _cells, result_cell, dynamic_size = build(None)
     for bits in itertools.product(range(2), repeat=13):
         assert run(dynamic_a, result_cell, bits) == group_word([1, *bits])
-    dynamic_ab, _cells, result_cell, dynamic_ab_size = build(None, dispatch_ab=True)
+    dynamic_ab, dynamic_cells, result_cell, dynamic_ab_size = build(
+        None, dispatch_ab=True
+    )
     for head in ((1, 0), (1, 1), (0, 1)):
         for tail_bits in itertools.product(range(2), repeat=12):
             bits = (*head, *tail_bits)
             assert run(dynamic_ab, result_cell, bits) == group_word(list(bits))
+    for selector_bits in itertools.product(range(2), repeat=12):
+        memory = execute(dynamic_ab, (0, 0, *selector_bits))
+        for group, start in zip(dynamic_cells, range(0, 12, 3), strict=True):
+            expected = gadget(
+                LOW, [48 + bit for bit in selector_bits[start : start + 3]]
+            )
+            assert (memory[group[1]], memory[group[2]]) == expected
     print(
         "fixed address paths: 16,384/16,384 correct, "
         f"ordinary {ordinary_sizes}, special {special_sizes}; "
         f"dynamic A: 8,192/8,192 correct, {dynamic_size}; "
-        f"dynamic A/B: 12,288/12,288 correct, {dynamic_ab_size} code cells"
+        f"dynamic A/B: 12,288/12,288 correct + 4,096 special prefixes, "
+        f"{dynamic_ab_size} code cells"
     )
 
 

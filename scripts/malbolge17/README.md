@@ -52,7 +52,8 @@ None of this is wired into the generator.
 - `address17.py` -- word-level model of the seventeen-input address fold
   (16,384 groups, cells `0..6561` free, no wrap to cell 0).
 - `address_gadget.py` -- emits every fixed A/B/C/D address path plus combined
-  dynamic A and A/B paths as real source; checks them against `address17.py`.
+  dynamic A and A/B paths as real source; the A/B program also captures all
+  4,096 special prefixes for the pending C/D selector.
 - `parity_views.py` -- exact five-base factorization of the ten view constants,
   its three consumable parity words and one-trit toggle, and emitted setup
   measurements.
