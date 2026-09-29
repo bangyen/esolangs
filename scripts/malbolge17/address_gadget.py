@@ -7,6 +7,7 @@ from address_parity import parity_operand
 from parity_views import STORED_PARITY
 
 from esolangs.interpreters.other.malbolge import (
+    _XLAT2,
     _advance,
     _crazy,
     _initial_memory,
@@ -67,8 +68,10 @@ def build(
     shared_exact_copy: bool = False,
     shared_special_fold: bool = False,
     normalize_labels: bool = False,
+    restore_labels: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
+    normalize_labels |= restore_labels
     if z not in (None, 0, 1, 2):
         raise ValueError(z)
     if z is None and selected is not None:
@@ -114,6 +117,10 @@ def build(
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
+    if restore_labels:
+        # Startup jumps away at C17; these non-label seeds survive the fold.
+        raw.update({18: 81, 25: 108})
+        used.update((18, 25))
     if shared_special_read:
         raw.update({60: 96, 75: 59, 109: 84, 121: 54, 224: 120})
         used.update((60, 75, 109, 121, 224))
@@ -137,9 +144,11 @@ def build(
         raw[cell] = value
         return cell
 
-    def walked_inert(value: int) -> int:
+    def walked_inert(value: int, *, high: bool = False) -> int:
         cell = next(
-            a for a in range(34, _ENTRY) if a not in used and _char_for("o", a) == value
+            a
+            for a in range(130 if high else 34, _ENTRY)
+            if a not in used and _char_for("o", a) == value
         )
         used.add(cell)
         raw[cell] = value
@@ -259,7 +268,16 @@ def build(
         raw[fold_reunion + 1] = _char_for("o", fold_reunion + 1)
     if normalize_labels:
         # The old reducer at C731 hit C2190 before the extra handoff fit.
-        parity_reunion = walked_inert(46)
+        parity_reunion = walked_inert(45 if restore_labels else 46)
+    # A single assignment block crossed C53581; rotate seeds into separate gaps.
+    label_jumps = (
+        tuple(
+            (walked_inert(value, high=True), value, turns)
+            for value, turns in ((92, 5), (92, 4), (98, 4), (49, 3))
+        )
+        if restore_labels
+        else ()
+    )
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
         boot[address] = _char_for(operation, address)
@@ -801,29 +819,135 @@ def build(
             outputs["continuation_c"] = reducer.c
             outputs["continuation_d"] = reducer.d
         if normalize_labels:
+            for jump_cell, value, turns in label_jumps:
+                for _ in range(turns):
+                    reducer.op("*", jump_cell)
+                reducer.mem[jump_cell] = _chain(value, " ".join(("rot",) * turns))
+            entry_seed, entry_turns = (50, 4) if restore_labels else (49, 3)
             seed = next(
                 cell
                 for cell, value in reducer.mem.items()
-                if cell >= 130 and value == 49
+                if cell >= 130 and value == entry_seed
             )
-            for _ in range(3):
+            for _ in range(entry_turns):
                 reducer.op("*", seed)
-            reducer.mem[seed] = _chain(49, "rot rot rot")
-            assert reducer.mem[seed] == 48115
+            entry_word = _chain(entry_seed, " ".join(("rot",) * entry_turns))
+            reducer.mem[seed] = entry_word
             reducer.goto(seed)
             reducer.raw("i")
-            normalizer = _Planner(48116, reducer.d, dict(reducer.mem), {})
+            normalizer = _Planner(entry_word + 1, reducer.d, dict(reducer.mem), {})
             normalizer.op("*", map_all1)
             for cell in range(34, 128):
                 # With A=ALL1, p twice resets any prior ten-trit word to ALL1.
                 normalizer.op("p", cell)
                 normalizer.op("p", cell)
                 normalizer.mem[cell] = 29524
+            if restore_labels:
+                from decoder_group import _LABELS, _setup
+
+                decoder_group = _setup(
+                    frozenset({142, 145, 139, 144}),
+                    external_pointer=True,
+                    runtime_base=True,
+                )
+                label_targets = {
+                    cell: decoder_group.hub_values[_LABELS.get(cell, "N")][0]
+                    for cell in range(34, 128)
+                }
+                assert label_targets[42] == 29524
+                assert label_targets[107] == 20776
+
+                def reload_seed() -> None:
+                    neighbour = normalizer.d
+                    if neighbour != 107:
+                        value = normalizer.mem[neighbour]
+                        assert value is not None, neighbour
+                        # All-one fold input leaves cell 29525 non-printable (28823).
+                        if value != 29524:
+                            normalizer.raw("j")
+                            normalizer.d = value + 1
+                        if normalizer.d >= _ENTRY:
+                            address = normalizer.d
+                            operation = next(
+                                (part[address] for part in parts if address in part),
+                                None,
+                            )
+                            if operation is not None:
+                                char = ord(_XLAT2[_char_for(operation, address) - 33])
+                            else:
+                                char = max(
+                                    ch for ch in _valid_chars(address) if ch < 107
+                                )
+                            normalizer.data[address] = char
+                            normalizer.raw("j")
+                            normalizer.d = char + 1
+                    normalizer.op("p", 107)
+                    normalizer.mem[107] = encoded
+
+                for seed_cell, initial, turns in (
+                    (18, 81, 8),
+                    (107, 729, 9),
+                    (107, 2187, 9),
+                    (25, 108, 6),
+                ):
+                    jump_index = {81: 0, 729: 1, 2187: 2, 108: 3}.get(initial)
+                    if jump_index is not None:
+                        jump_cell, value, jump_turns = label_jumps[jump_index]
+                        normalizer.goto(jump_cell)
+                        normalizer.raw("i")
+                        record_part(f"label-setup-before-{initial}", normalizer.code)
+                        destination = _chain(value, " ".join(("rot",) * jump_turns)) + 1
+                        normalizer = _Planner(
+                            destination,
+                            normalizer.d,
+                            dict(normalizer.mem),
+                            normalizer.data,
+                        )
+                    if outputs is not None:
+                        outputs[f"labels_phase_{initial}"] = normalizer.c
+                    if seed_cell == 25:
+                        normalizer.op("*", 42)
+                        normalizer.mem[42] = 29524
+                        normalizer.op("p", 107)
+                        normalizer.op("p", 107)
+                        normalizer.mem[107] = 29524
+                    for _ in range(turns):
+                        normalizer.op("*", seed_cell)
+                    encoded = initial
+                    for _ in range(turns):
+                        encoded = _rot(encoded)
+                    normalizer.mem[seed_cell] = encoded
+                    hub = 29524 - encoded
+                    primed = seed_cell == 107
+                    for cell, target in label_targets.items():
+                        if target == hub and cell != 107:
+                            normalizer.op("p", cell)
+                            normalizer.mem[cell] = hub
+                            if not primed:
+                                normalizer.op("p", 107)
+                                normalizer.mem[107] = encoded
+                                primed = True
+                            else:
+                                reload_seed()
+                normalizer.op("*", 42)
+                normalizer.mem[42] = 29524
+                normalizer.op("p", 107)
+                normalizer.op("p", 107)
+                for _ in range(10):
+                    normalizer.op("*", 25)
+                normalizer.op("p", 107)
+                normalizer.mem[107] = label_targets[107]
+                if outputs is not None:
+                    outputs["labels_done"] = normalizer.c
             normalizer.raw("v")
-            assert not normalizer.data
-            record_part("label-normalizer", normalizer.code)
+            if not restore_labels:
+                assert not normalizer.data
+            record_part(
+                "label-restoration-final" if restore_labels else "label-normalizer",
+                normalizer.code,
+            )
             if outputs is not None:
-                outputs["label_entry"] = 48116
+                outputs["label_entry"] = entry_word + 1
                 outputs["label_halt"] = normalizer.c - 1
         elif group_read:
             reducer.goto(helper["a1"])
@@ -841,6 +965,15 @@ def build(
         source[address] = _char_for(operation, address)
     for address, value in raw.items():
         source[address] = value
+    if restore_labels:
+        for address, char in normalizer.data.items():
+            return_operation = next(
+                (part[address] for part in parts if address in part), None
+            )
+            if return_operation is None:
+                source[address] = char
+            else:
+                assert char == ord(_XLAT2[_char_for(return_operation, address) - 33])
     emitted: dict[int, str] = {}
     owners: dict[int, int] = {}
     for part_index, part in enumerate(parts):

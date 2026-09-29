@@ -5,6 +5,7 @@ import itertools
 
 from address17 import ALL1, ALL2, group_word
 from address_gadget import build
+from decoder_group import _LABELS, _setup
 from parity_views import STORED_PARITY
 
 from esolangs.interpreters.other.malbolge import (
@@ -30,6 +31,7 @@ def _check(
     exact: bool = False,
     fold: bool = False,
     normalize: bool = False,
+    label_targets: dict[int, int] | None = None,
 ) -> bool:
     """Check one complete source run; return whether it took the special read."""
     memory = list(_initial_memory(source))
@@ -106,7 +108,10 @@ def _check(
     )
     if normalize:
         assert state[1] == outputs["label_halt"]
-        assert all(memory[cell] == ALL1 for cell in range(34, 128))
+        if label_targets is None:
+            assert all(memory[cell] == ALL1 for cell in range(34, 128))
+        else:
+            assert all(memory[cell] == value for cell, value in label_targets.items())
     return fold and bits[:2] == (0, 0)
 
 
@@ -118,8 +123,10 @@ def main(
     exact: bool = False,
     fold: bool = False,
     normalize: bool = False,
+    restore: bool = False,
 ) -> None:
     """Check eight selector leaves and optionally the full address domain."""
+    normalize |= restore
     fold |= normalize
     copy |= handoff or exact
     outputs: dict[str, int] = {}
@@ -139,12 +146,21 @@ def main(
         shared_exact_copy=exact,
         shared_special_fold=fold,
         normalize_labels=normalize,
+        restore_labels=restore,
         outputs=outputs,
     )
     samples = tuple(
         (0, 0) + (0,) * 9 + tail for tail in itertools.product((0, 1), repeat=3)
     )
     cases = itertools.product((0, 1), repeat=14) if full else samples
+    label_targets = None
+    if restore:
+        group = _setup(
+            frozenset({142, 145, 139, 144}), external_pointer=True, runtime_base=True
+        )
+        label_targets = {
+            cell: group.hub_values[_LABELS.get(cell, "N")][0] for cell in range(34, 128)
+        }
     special = ordinary = 0
     for bits in cases:
         if _check(
@@ -157,13 +173,16 @@ def main(
             exact=exact,
             fold=fold,
             normalize=normalize,
+            label_targets=label_targets,
         ):
             special += 1
         else:
             ordinary += 1
     assert (special, ordinary) == ((4096, 12288) if full else (8, 0))
     mode = (
-        "normalized fold"
+        "restored fold"
+        if restore
+        else "normalized fold"
         if normalize
         else "fold"
         if fold
@@ -190,6 +209,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--normalize-labels", action="store_true", help="check emitted label resets"
     )
+    parser.add_argument(
+        "--restore-labels", action="store_true", help="check decoder hub assignment"
+    )
     args = parser.parse_args()
     main(
         full=args.full,
@@ -198,4 +220,5 @@ if __name__ == "__main__":
         exact=args.exact_copy,
         fold=args.fold,
         normalize=args.normalize_labels,
+        restore=args.restore_labels,
     )
