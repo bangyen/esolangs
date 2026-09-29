@@ -1239,3 +1239,11 @@ setup identical through cell 8,106. All 2,744 real-source cases still pass.
 The live row-dependent cells fall from 2,355 to 112; the eight row builds
 write 8,026--8,157 code cells each, up from 7,142--7,906. The remaining
 row-dependent instructions can now be placed after the shared prefix.
+
+The main decoder block also executes when each row places it 200 cells farther
+along the source. The eight starts are 8,073, 8,273, ..., 9,473, and all
+2,744 cases pass. This removes the main-block code conflicts. Four non-`o`
+opcode conflicts remain in the common high copy windows, at 32,875, 32,902,
+46,011 and 46,114. The standalone programs reach their own blocks by
+falling through blank cells; a combined source still needs row dispatch before
+those blocks and separate placement or sharing of the two conflicting copies.
