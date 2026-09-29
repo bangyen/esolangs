@@ -1155,6 +1155,11 @@ indicators; folding the result over a mask with only trit 6 equal to 1 yields
 1458 exactly when the group base cell is odd, otherwise 0. Three mask copies
 toggle the three consumable parity cells. `address_parity.py` checks all
 16,384 group pointers and all 49,152 cell parities, including the fixed
-within-group offset. What remains is emitted wiring of this reducer, offset
-toggle and destructive base reads, then remeasurement of the complete setup
-against the ~5,650-cell tiling budget.
+within-group offset. The reducer is now wired into `five_esc`: it derives the
+indicator destructively from a group pointer, folds all ten rotations into an
+all-2 cell, reloads that accumulator through zero and applies three mask
+copies to offset-initialized parity cells. All 2,744 real-source executions
+still pass. The dynamic-parity row sizes are **7,365**, 7,393, 7,745, 7,993,
+8,005, 7,993, 7,382 and 7,734; the reducer phase itself costs 1,125--1,256
+cells. What remains is address-fold integration and roughly 2,350 cells of
+setup reduction against the ~5,650-cell tiling budget.

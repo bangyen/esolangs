@@ -14,6 +14,7 @@ exec((HERE/'chain_k.py.txt').read_text().split("def emit_read_converge")[0])
 KS=[242,728,1700,2186,4616,5102,6074,6560,13364,13850]   # view constants, disjoint landings
 BASES=[364,1093,2551,3280,6925]
 PARITY=[58318,59047]
+MASK=729
 def load_code(fn):
     L=[l for l in open(fn).read().splitlines() if l.strip()]
     start=[int(x) for x in L[1].split()[1:]]; D=[];Pos=[]
@@ -54,6 +55,8 @@ def setup():
     C0,C0v=next((x,v) for x in ORDER if x not in used for v in B[x] if rot(v)&0xFF==48); used.add(C0)
     C1,C1v=next((x,v) for x in ORDER if x not in used for v in B[x] if rot(v)&0xFF==49); used.add(C1)
     Bc=[cell_for(B) for B in BASES]
+    Mc=[cell_for(MASK) for _ in range(3)]
+    Rc=cell_for(Gb-1)
     # seeds: per label a walked cell + chain whose value v and f1(v) are free hub values
     taken=set(range(Gb-2,Gb+5))
     for K in KS: taken|={LANDK(K,T) for T in range(33,127)}
@@ -96,7 +99,7 @@ def setup():
         if found: break
     x,path,H=found; used.add(x); seeds['N']=(x,path); hubvals['N']=(H,)
     taken|={H,H+1,H+2,H+3}
-    return dict(hu=hu,Gb=Gb,zcs=zcs,C0=C0,C0v=C0v,C1=C1,C1v=C1v,Bc=Bc,B=B,seeds=seeds,hubvals=hubvals,ncells=ncells,used=set(used),taken=taken)
+    return dict(hu=hu,Gb=Gb,zcs=zcs,C0=C0,C0v=C0v,C1=C1,C1v=C1v,Bc=Bc,Mc=Mc,Rc=Rc,B=B,seeds=seeds,hubvals=hubvals,ncells=ncells,used=set(used),taken=taken)
 
 def build(s,cf):
     Gb,zcs,Bc=cf['Gb'],cf['zcs'],cf['Bc']
@@ -109,7 +112,7 @@ def build(s,cf):
     elif states[0]==1: states.extend((3,4))
     pcs=[]
     for depth,q in enumerate(states):
-        target=PARITY[(Gb+POS[q][s])%2]
+        target=PARITY[POS[q][s]%2]
         cell=next(x for x in cf['B'] if x not in used and target in cf['B'][x])
         used.add(cell); pcs.append((cell,cf['B'][cell][target]))
     helper={'all1':128,'all2':129}
@@ -122,7 +125,10 @@ def build(s,cf):
     P.op('*',helper['w']); P.op('p',helper['all2'])
     phases=[len(P.code)]
     chains=[(f'z{k}',zcs[k],Gb-1+k) for k in range(3)]+[('C0',cf['C0'],cf['C0v']),('C1',cf['C1'],cf['C1v'])]
-    chains+=[(f'B{i}',Bc[i],BASES[i]) for i in range(5)]+[(f'P{d}',cell,PARITY[(Gb+POS[states[d]][s])%2]) for d,(cell,_) in enumerate(pcs)]
+    chains+=[(f'B{i}',Bc[i],BASES[i]) for i in range(5)]
+    chains += [(f'M{i}',cell,MASK) for i,cell in enumerate(cf['Mc'])]
+    chains += [('R',cf['Rc'],Gb-1)]
+    chains += [(f'P{d}',cell,PARITY[POS[states[d]][s]%2]) for d,(cell,_) in enumerate(pcs)]
     chain_cost=[]
     for name,cell,val in chains:
         before=len(P.code)
@@ -135,6 +141,14 @@ def build(s,cf):
         x,path=cf['seeds'][lab]; _emit_chain(P,x,' '.join(path),helper)
         for p in (NCELLS if lab=='N' else sorted(q for q in LABELS if LABELS[q]==lab)):
             P.op('p',p); P.op('p',p); value[p]=cf['hubvals'][lab][0]
+    phases.append(len(P.code))
+    P.op('*',helper['all2']); P.op('p',cf['Rc'])
+    P.op('*',helper['all1']); P.op('p',cf['Rc'])
+    for _ in range(10):
+        P.op('*',cf['Rc']); P.op('p',helper['w'])
+    for mask,(cell,_) in zip(cf['Mc'],pcs):
+        P.op('*',helper['z0']); P.op('p',helper['w'])
+        P.op('p',mask); P.op('p',cell)
     phases.append(len(P.code))
     Z0=value[NCELLS[0]]+1
     pointer={}
