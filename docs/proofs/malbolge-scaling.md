@@ -1185,10 +1185,12 @@ reunion. The combined **2,786-cell** A/B program passes all 12,288 covered
 rows. Its `x1x2 = 00` block captures the three normal triples, builds the
 constant PIN triple and dispatches `x12..x14` to eight C/D leaves. Each leaf
 writes `z` and enters one of three pre-rotated reunion pointers, sharing the
-verified suffix for that selected slot. The **11,883-cell** combined program
+verified suffix for that selected slot. Packing the PIN triple into the
+ordinary walked band, while withholding those mutable cells from ordinary
+navigation, cuts the combined program from 11,883 to **7,937 cells**. It
 executes all 16,384 group addresses correctly. A shared continuation then
 constructs the group pointer and runs the straight-line parity reducer. The
-**14,666-cell** combined source returns the exact 0/1,458 operand on all
+**11,511-cell** combined source returns the exact 0/1,458 operand on all
 16,384 rows and initializes the three consumable parity words; all 49,152
 address-plus-offset parities execute correctly. Decoder and table integration
 remain.
