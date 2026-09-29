@@ -55,7 +55,7 @@ None of this is wired into the generator.
   dynamic A and A/B/C/D paths as real source; the combined program executes
   all 16,384 group addresses, retains the table pointer and initializes all
   three parity words. Its continuation seam is C=1,799, D=47; an emitted
-  suffix reads a changed group-table cell on eight executed rows.
+  suffix reads three changed group-table cells on eight executed rows.
 - `decoder_group.py` -- linted five-state group decoder; executes all 2,744
   row/meaning cases and reports the live shared and row-dependent cells.
 - `dispatch3.py` -- real-source three-input fold and eight-way row dispatcher;
