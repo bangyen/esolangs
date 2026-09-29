@@ -2,7 +2,7 @@
 
 import itertools
 
-from address17 import ALL2, LOW, PIN, group_word
+from address17 import ALL1, ALL2, LOW, PIN, group_word
 from address_parity import parity_operand
 from parity_views import STORED_PARITY
 
@@ -59,6 +59,7 @@ def build(
     result_first: bool = False,
     slot_pointers: bool = False,
     shared_special_read: bool = False,
+    shared_special_copy: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -91,12 +92,18 @@ def build(
         raise ValueError("slot pointers require result-first scratch")
     if shared_special_read and (not slot_pointers or not prepare_returns):
         raise ValueError("shared special read requires prepared slot pointers")
+    if shared_special_copy and not shared_special_read:
+        raise ValueError("shared copy requires shared special read")
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
     if shared_special_read:
         raw.update({60: 96, 75: 59, 109: 84, 121: 54, 224: 120})
         used.update((60, 75, 109, 121, 224))
+    copy_scratch = (85, 202, 92) if shared_special_copy else ()
+    for slot, cell in enumerate(copy_scratch):
+        used.update((cell, cell + 1, cell + 2))
+        raw[cell + 2] = (47, 65, 99)[slot]
 
     def walked(value: int, *, high: bool = False) -> int:
         cell = next(
@@ -168,7 +175,9 @@ def build(
             (66, 78),
             (100, 97),
         )
-        raw.update({67: 108, 101: 74})
+        raw.update(
+            {49: 84, 67: 67, 101: 91} if shared_special_copy else {67: 108, 101: 74}
+        )
     pin = None if selected is None else scratch_group(PIN)
     cells = normal if pin is None else (*normal, pin)
     twos = tuple(walked(38) for _ in range(5))
@@ -270,7 +279,12 @@ def build(
         if prepare_returns:
             for cell in return_cells:
                 if special and shared_special_read and cell in (49, 67, 101):
-                    if cell == 49:
+                    if shared_special_copy:
+                        if cell == 67:
+                            chain = " ".join(("rot",) * 9)
+                            assert _chain(boot_memory[cell], chain) == 201
+                            _emit_chain(plan, cell, chain, helper)
+                    elif cell == 49:
                         assert _chain(boot_memory[cell], "K2") == 223
                         _emit_chain(plan, cell, "K2", helper)
                     continue
@@ -449,6 +463,13 @@ def build(
             special_memory[cell] = raw[cell]
         special = _Planner(entry, d, special_memory, {})
         emit_return_setup(special, special=True)
+        for cell in copy_scratch:
+            chain = "K2 K0" if cell == 202 else "K1 K2 K0"
+            assert _chain(boot_memory[cell], chain) == ALL1
+            _emit_chain(special, cell, chain, helper)
+            chain = "K1 K2 K0 K2"
+            assert _chain(boot_memory[cell + 1], chain) == ALL2
+            _emit_chain(special, cell + 1, chain, helper)
         _emit_chain(special, tail_cell, "K0", helper)
         for group in normal[:3]:
             for operation in _GADGET:
@@ -551,6 +572,8 @@ def build(
             branch = _Planner(leaf, leaf_d, leaf_memory, {})
             _emit_chain(branch, z_inputs[special_z], "rot", helper)
             branch.op("p", z_cell)
+            if shared_special_copy:
+                branch.op("*", helper["all2"])
             branch.goto(reunion_cells[selected_slot])
             branch.raw("i")
             record_part("selected-leaf", branch.code)
@@ -566,7 +589,7 @@ def build(
         if shared_special_read:
             assert reunion_targets == [39378] * 3
             branch = _Planner(39378, 0, dict(suffix_memory), {})
-            for op in "jpjjjp<v":
+            for op in "jpjp*jp<v" if shared_special_copy else "jpjjjp<v":
                 branch.raw(op)
             record_part("shared-selected-read", branch.code)
             if outputs is not None:
