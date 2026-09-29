@@ -2,7 +2,7 @@
 
 import itertools
 
-from address17 import LOW, group_word
+from address17 import LOW, PIN, group_word
 
 from esolangs.interpreters.other.malbolge import (
     _advance,
@@ -20,10 +20,14 @@ from esolangs.tools._malbolge_digits import _GADGET
 from esolangs.tools.malbolge import _T_HELPERS, _emit_chain, _Planner, _valid_chars
 
 
-def build(z: int = 0) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
-    """Return a real-source ordinary address path for fixed ``z``."""
+def build(
+    z: int = 0, selected: int | None = None
+) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
+    """Return a real-source fixed address path; ``selected`` pins one slot."""
     if z not in (0, 1, 2):
         raise ValueError(z)
+    if selected not in (None, 0, 1, 2):
+        raise ValueError(selected)
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
@@ -40,7 +44,12 @@ def build(z: int = 0) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     helper = {"all1": walked(_g(128)), "all2": walked(_g(129))}
     for name, value in _T_HELPERS.items():
         helper[name] = walked(value)
-    cells = tuple((walked(LOW[0]), walked(LOW[1]), walked(LOW[2])) for _ in range(4))
+    normal_count = 4 if selected is None else 3
+    normal = tuple(
+        (walked(LOW[0]), walked(LOW[1]), walked(LOW[2])) for _ in range(normal_count)
+    )
+    pin = None if selected is None else (walked(PIN[0]), walked(PIN[1]), walked(PIN[2]))
+    cells = normal if pin is None else (*normal, pin)
     twos = tuple(walked(38) for _ in range(5))
     z_load = walked(45) if z == 2 else None
     z_cell = walked(56 if z == 2 else 47 if z == 0 else 45)
@@ -76,7 +85,7 @@ def build(z: int = 0) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     else:
         _emit_chain(path, z_cell, "K0 K2 K1 K2", helper)
     _emit_chain(path, tail_cell, "K0", helper)
-    for group in cells:
+    for group in normal:
         for operation in _GADGET:
             if operation == "/":
                 path.raw("/")
@@ -84,28 +93,43 @@ def build(z: int = 0) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
                 path.op("*", constants[operation])
             else:
                 path.op("p", group[int(operation)])
-    swap_cells = cells[0][1], cells[1][1], cells[2][2], cells[3][1], cells[3][2]
+    if pin is not None:
+        for _ in range(3):
+            path.raw("/")
+        for operation in _GADGET:
+            if operation == "/":
+                path.op("*", helper["z0"])
+            elif operation[0] == "K":
+                path.op("*", constants[operation])
+            else:
+                path.op("p", pin[int(operation)])
+    slots = list(normal[:3])
+    top = normal[3] if selected is None else normal[selected]
+    if selected is not None:
+        assert pin is not None
+        slots[selected] = pin
+    swap_cells = slots[0][1], slots[1][1], slots[2][2], top[1], top[2]
     for cell, two in zip(swap_cells, twos, strict=True):
         path.op("*", helper["all1"])
         path.op("p", two)
         path.op("p", cell)
-    for group in (*cells[:3], cells[3]):
+    for group in (*slots, top):
         path.op("*", helper["all2"])
         path.op("p", group[2])
     path.op("*", helper["w"])
-    for group in cells[:3]:
+    for group in slots:
         path.op("p", group[2])
         path.op("*", group[2])
         path.op("p", group[1])
         path.op("*", group[1])
     path.op("p", z_cell)
     path.op("*", z_cell)
-    path.op("p", cells[3][2])
-    path.op("*", cells[3][2])
+    path.op("p", top[2])
+    path.op("*", top[2])
     path.op("*", helper["all2"])
-    path.op("p", cells[3][1])
-    path.op("p", cells[3][2])
-    path.op("*", cells[3][2])
+    path.op("p", top[1])
+    path.op("p", top[2])
+    path.op("*", top[2])
     path.op("p", helper["all1"])
     path.op("*", helper["all2"])
     path.op("p", helper["all1"])
@@ -146,15 +170,35 @@ def run(
 
 
 def main() -> None:
-    """Check all 12,288 fixed ordinary paths against the word model."""
-    sizes = []
+    """Check all 16,384 fixed address paths against the word model."""
+    ordinary_sizes = []
     for z in range(3):
         source, _cells, result_cell, size = build(z)
-        prefix = [0, 1] if z == 0 else [1, z - 1]
+        address_prefix = [0, 1] if z == 0 else [1, z - 1]
         for bits in itertools.product(range(2), repeat=12):
-            assert run(source, result_cell, bits) == group_word([*prefix, *bits])
-        sizes.append(size)
-    print(f"fixed ordinary address paths: 12,288/12,288 correct, {sizes} code cells")
+            assert run(source, result_cell, bits) == group_word(
+                [*address_prefix, *bits]
+            )
+        ordinary_sizes.append(size)
+    special_sizes = []
+    for selected in range(3):
+        for z in (1, 2):
+            source, _cells, result_cell, size = build(z, selected)
+            suffix = selected >> 1, selected & 1, z - 1
+            for lower_bits in itertools.product(range(2), repeat=9):
+                bits = (*lower_bits, *suffix)
+                assert run(source, result_cell, bits) == group_word([0, 0, *bits])
+            special_sizes.append(size)
+    for selected in (0, 1):
+        source, _cells, result_cell, size = build(0, selected)
+        for lower_bits in itertools.product(range(2), repeat=9):
+            bits = (*lower_bits, 1, 1, selected)
+            assert run(source, result_cell, bits) == group_word([0, 0, *bits])
+        special_sizes.append(size)
+    print(
+        "fixed address paths: 16,384/16,384 correct, "
+        f"ordinary {ordinary_sizes}, special {special_sizes} code cells"
+    )
 
 
 if __name__ == "__main__":
