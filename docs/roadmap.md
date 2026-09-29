@@ -55,7 +55,7 @@ step; an answer lands in the paper it extends, and the row leaves.
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
   inputs, repo model: clipped tape, `,` at EOF an error) of `C`-character
-  programs: `4.2400 <= liminf B(C)**(1/C) <= limsup <= 7.0201`, from
+  programs: `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0201`, from
   `[2.414, 7.388]`.  Upper: behaviour-preserving shortlex rewriting (dead
   loops, clears, diverging bodies, excursion commutation) and an exactly
   certified Perron bound on the irreducible words; the old `7.388` counted
@@ -64,7 +64,7 @@ step; an answer lands in the paper it extends, and the row leaves.
   the nearest cell whose value is never printed again and nested loops
   attached to prints.  Reads in every body guarantee termination; alternating
   the first event type of directly nested bodies makes bracket direction
-  decodable.  The exact Collatz-Wielandt certificate gives `106/25 = 4.24`,
+  decodable.  The exact Collatz-Wielandt certificate gives `2121/500 = 4.242`,
   above the loop-free ceiling `2 + sqrt 5 = 4.2360`.  Thus loops strictly
   raise the rate.  A single fixed input gives `>= 3.366`.
   Open: the limit.  Local rules have saturated near 7.06.  The global identities
