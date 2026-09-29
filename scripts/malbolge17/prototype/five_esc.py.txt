@@ -68,13 +68,17 @@ def setup():
     seeds={}; hubvals={}
     for lab in '01xnN':
         found=None
+        label_cells=([x for x in OTHERS if x!=E] if lab=='N'
+                     else sorted(q for q in LABELS if LABELS[q]==lab))
         for x in ORDER:
             if x in used: continue
             for v,path in B[x].items():
                 w=f1(v)
                 if not (10000<=v<59000 and 10000<=w<59000) or abs(v-w)<4: continue
-                if not (admits(v+2,E-1) and admits(w+2,E-1)): continue
-                cells={v,v+1,v+2,w,w+1,w+2}
+                if not (admits(v+3,E-1) and admits(w+3,E-1)): continue
+                assigned={v:label_cells[1::2],w:label_cells[0::2]}
+                if lab!='N' and any(not any(admits(H+2,p-1) for p in assigned[H]) for H in (v,w)): continue
+                cells={v,v+1,v+2,v+3,w,w+1,w+2,w+3}
                 if cells & taken: continue
                 found=(x,path,v,w); break
             if found: break
@@ -119,23 +123,33 @@ def build(s,cf):
             P.op('p',p); a=f1(a); value[p]=a
     phases.append(len(P.code))
     pointer={}
-    for p in sorted(value): pointer.setdefault(value[p],p)
+    for p in sorted(value):
+        H=value[p]
+        if admits(H+2,p-1): pointer.setdefault(H,p)
     # hub rotations: every hub value gets its own target copy
     avoid=set(cf['taken'])|set(data)
     def hub_to(Hp1,room):
         for hc in _valid_chars(Hp1):
             for k,sv in _rotations(hc):
-                if 30000<=sv+1 and sv+1+room<_WORDS and not any((sv+1+o) in avoid for o in range(room)):
+                if 12000<=sv+1 and sv+1+room<_WORDS and not any((sv+1+o) in avoid for o in range(room)):
                     return hc,k,sv+1
         raise RuntimeError('no rotation')
     for H in set(value.values()):
-        assert admits(H+2,E-1); data[H+2]=E-1
+        if H in pointer:
+            data[H+2]=pointer[H]-1
+            assert admits(H+2,pointer[H]-1)
+        assert admits(H+3,E-1); data[H+3]=E-1
     copies=[]      # (key, hub value, entry address)
     for lab in '01xn':
-        key=KEY[lab]; room=60 if key[0]=='p' else 160
+        key=KEY[lab]; room=80 if key[0]=='p' else 160
         for H in sorted(set(value[p] for p in value if LABELS.get(p)==lab)):
             hc,k,addr=hub_to(H+1,room); data[H+1]=hc; avoid|=set(range(addr,addr+room))
-            for _ in range(k): P.hub(pointer[H],H); P.raw('*')
+            P.hub(pointer[H],H)
+            for turn in range(k):
+                P.raw('*')
+                if turn+1<k:
+                    P.raw('j'); P.d=pointer[H]
+                    P.raw('j'); P.d=H+1
             P.d=H+2
             copies.append((key,H,addr,room,k))
     phases.append(len(P.code))
@@ -157,7 +171,7 @@ def build(s,cf):
         Q.op('p',bc)
         Q.goto(z); Q.raw('j'); Q.d=cell; Q.raw('p'); Q.d=cell+1
         for _ in range(2-c): Q.raw('o')          # d = Gb+3, the next group's cell
-        for op in 'jjojj': Q.raw(op)
+        for op in 'jjoojj': Q.raw(op)
         Q.d=Z0                                   # converges whatever Gb+3 holds
         Q.goto(z); Q.raw('j'); Q.d=cell; Q.raw('j')
         Q.raw('j'); Q.raw('j'); Q.raw('i')
