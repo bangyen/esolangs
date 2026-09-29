@@ -1205,18 +1205,17 @@ toggle construction. The parity-only schedule was **8,975 cells** and returned
 the exact 0/1,458 operand on all
 16,384 rows and initializes the three consumable parity words; all 49,152
 address-plus-offset parities execute correctly. The decoder also needs the
-group pointer after this destructive reduction. The dormant `a1` helper is
-prepared as a second tail word; ten rotations recover the tail accumulator,
-and two all-2 folds restore the effective 29,523 pointer operand after the
-first pointer is made. Restoring cell 35 to 33 gives the first rotation pass a
-`* j` backlink, so the pointer-preserving source is **9,766 cells**, not the
-overlapping naive build.
+group pointer after this destructive reduction. Two all-1 cells copy the tail
+word directly because `crazy(crazy(a, 1), 1) = a` per trit; the dormant `a1`
+helper holds the copy. Two all-2 folds then restore the effective 29,523
+pointer operand after the first pointer is made. The pointer-preserving source
+is **9,758 cells**, not the overlapping rotation build.
 It retains the exact pointer on all 16,384 rows. Decoder and table integration
 remain. This source is an execution certificate, not a placed table build:
-5,701 of its 9,758 distinct instruction cells overlap table cells, leaving
-4,057 already in the complement. The next construction step is therefore
+5,789 of its 9,750 distinct instruction cells overlap table cells, leaving
+3,961 already in the complement. The next construction step is therefore
 relocating and reuniting these paths into the bottom run and spare windows,
 not appending the decoder at their current addresses. Independently of
 placement, the prefix now fits the table's 9,897-cell complement by count,
-with 139 cells left. The decoder still needs substantially more, so setup must
+with 147 cells left. The decoder still needs substantially more, so setup must
 be shared and further address code removed rather than merely relocated.
