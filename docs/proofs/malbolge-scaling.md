@@ -1179,5 +1179,8 @@ the selected normal triple on top; all 4,096 special addresses pass in
 first dispatch is also emitted: rotating a `48/49` encoding separates A's two
 branches by 19,683 cells; both write their `z` word into one cell and `i`
 through a shared reunion pointer. The combined **2,471-cell** A program passes
-all 8,192 rows. The remaining emitted address work is the top-level A/B/C/D
-dispatch and reunion of the special paths.
+all 8,192 rows. A second nested dispatch now separates A from B, consumes
+`x2` on both sides and feeds all three ordinary `z` words into the same
+reunion. The combined **2,786-cell** A/B program passes all 12,288 covered
+rows. The remaining emitted address work is replacing the `x1x2 = 00` halt
+with the C/D selector and reuniting those special paths.

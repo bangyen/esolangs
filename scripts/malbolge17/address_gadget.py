@@ -23,13 +23,18 @@ from esolangs.tools.malbolge import _T_HELPERS, _emit_chain, _Planner, _valid_ch
 
 
 def build(
-    z: int | None = 0, selected: int | None = None
+    z: int | None = 0,
+    selected: int | None = None,
+    *,
+    dispatch_ab: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
         raise ValueError(z)
     if z is None and selected is not None:
         raise ValueError(selected)
+    if dispatch_ab and z is not None:
+        raise ValueError(z)
     if selected not in (None, 0, 1, 2):
         raise ValueError(selected)
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
@@ -56,18 +61,25 @@ def build(
     cells = normal if pin is None else (*normal, pin)
     twos = tuple(walked(38) for _ in range(5))
     z_load = walked(45) if z == 2 else None
-    z_inputs: tuple[int, int] | None
+    z_inputs: tuple[int, ...] | None
     branch_cell: int | None
     join_cell: int | None
     if z is None:
-        z_inputs = walked(37), walked(45)
-        z_cell = walked(56)
+        z_inputs = (
+            (walked(48), walked(45), walked(51))
+            if dispatch_ab
+            else (walked(45), walked(51))
+        )
+        z_cell = walked(34)
         branch_cell = walked(33)
-        join_cell = walked(34)
+        join_cell = walked(37)
+        inner_branch = walked(33) if dispatch_ab else None
+        ordinary_branch = walked(42) if dispatch_ab else None
     else:
         z_inputs = None
         z_cell = walked(56 if z == 2 else 47 if z == 0 else 45)
         branch_cell = join_cell = None
+        inner_branch = ordinary_branch = None
     tail_cell = walked(38)
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
@@ -105,20 +117,59 @@ def build(
         path.goto(branch_cell)
         path.raw("i")
         parts.append(path.code)
-        common = _rot(34) + 1
+        common = _rot(37) + 1
         entries = tuple(_rot(_crazy(48 + bit, 33)) + 1 for bit in range(2))
-        for bit, entry in enumerate(entries):
-            branch = _Planner(entry, branch_cell + 1, dict(path.mem), {})
-            _emit_chain(branch, z_inputs[bit], "K2", helper)
+
+        def z_block(entry: int, d: int, z_index: int) -> None:
+            branch_memory = dict(path.mem)
+            for cell in (branch_cell, inner_branch, ordinary_branch):
+                if cell is not None:
+                    branch_memory[cell] = None
+            branch = _Planner(entry, d, branch_memory, {})
+            _emit_chain(branch, z_inputs[z_index], "rot", helper)
             branch.op("p", z_cell)
             branch.mem[join_cell] = common - 1
             branch.goto(join_cell)
             branch.raw("i")
             parts.append(branch.code)
+
+        if dispatch_ab:
+            assert inner_branch is not None
+            assert ordinary_branch is not None
+            nested = []
+            for entry, dispatch_cell, seed in (
+                (entries[1], inner_branch, 33),
+                (entries[0], ordinary_branch, 42),
+            ):
+                branch = _Planner(entry, branch_cell + 1, dict(path.mem), {})
+                branch.raw("/")
+                branch.op("p", dispatch_cell)
+                for _ in range(3):
+                    branch.op("*", dispatch_cell)
+                branch.goto(dispatch_cell)
+                branch.raw("i")
+                parts.append(branch.code)
+                targets = []
+                for bit in range(2):
+                    target = _crazy(48 + bit, seed)
+                    for _ in range(3):
+                        target = _rot(target)
+                    targets.append(target + 1)
+                nested.append(tuple(targets))
+            z_block(nested[0][0], inner_branch + 1, 1)
+            z_block(nested[0][1], inner_branch + 1, 2)
+            parts.append({nested[1][0]: "v"})
+            z_block(nested[1][1], ordinary_branch + 1, 0)
+        else:
+            for bit, entry in enumerate(entries):
+                z_block(entry, branch_cell + 1, bit)
         common_memory = dict(path.mem)
         common_memory[z_cell] = None
         for cell in z_inputs:
             common_memory[cell] = None
+        for changed_cell in (branch_cell, inner_branch, ordinary_branch):
+            if changed_cell is not None:
+                common_memory[changed_cell] = None
         common_memory[join_cell] = common - 1
         path = _Planner(common, join_cell + 1, common_memory, {})
     elif z == 2:
@@ -243,10 +294,16 @@ def main() -> None:
     dynamic_a, _cells, result_cell, dynamic_size = build(None)
     for bits in itertools.product(range(2), repeat=13):
         assert run(dynamic_a, result_cell, bits) == group_word([1, *bits])
+    dynamic_ab, _cells, result_cell, dynamic_ab_size = build(None, dispatch_ab=True)
+    for head in ((1, 0), (1, 1), (0, 1)):
+        for tail_bits in itertools.product(range(2), repeat=12):
+            bits = (*head, *tail_bits)
+            assert run(dynamic_ab, result_cell, bits) == group_word(list(bits))
     print(
         "fixed address paths: 16,384/16,384 correct, "
         f"ordinary {ordinary_sizes}, special {special_sizes}; "
-        f"dynamic A: 8,192/8,192 correct, {dynamic_size} code cells"
+        f"dynamic A: 8,192/8,192 correct, {dynamic_size}; "
+        f"dynamic A/B: 12,288/12,288 correct, {dynamic_ab_size} code cells"
     )
 
 
