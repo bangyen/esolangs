@@ -58,6 +58,7 @@ def build(
     prepare_returns: bool = False,
     result_first: bool = False,
     slot_pointers: bool = False,
+    shared_special_read: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -88,6 +89,8 @@ def build(
         raise ValueError("result-first allocation requires guarded scratch")
     if slot_pointers and not result_first:
         raise ValueError("slot pointers require result-first scratch")
+    if shared_special_read and (not slot_pointers or not prepare_returns):
+        raise ValueError("shared special read requires prepared slot pointers")
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
@@ -193,6 +196,15 @@ def build(
     if outputs is not None:
         for slot, cell in enumerate(selected_pointers):
             outputs[f"slot_pointer_{slot}"] = cell
+    shared_reunion = (127, 221, 315) if shared_special_read else ()
+    for slot, cell in enumerate(shared_reunion):
+        assert cell not in used
+        assert cell + 1 not in used
+        used.update((cell, cell + 1))
+        raw[cell] = 35
+        raw[cell + 1] = normal[slot][1] - 1
+        assert raw[cell] in _valid_chars(cell)
+        assert raw[cell + 1] in _valid_chars(cell + 1)
     boot = [_char_for("o", a) for a in range(_ENTRY)]
     for address, operation in startup.items():
         boot[address] = _char_for(operation, address)
@@ -411,7 +423,11 @@ def build(
         selector_cells = tuple(
             walked_inert(seed) for seed in (36, 33, 45, 42, 51, 60, 72)
         )
-        reunion_cells = tuple(walked_inert(seed) for seed in (69, 41, 40))
+        reunion_cells = (
+            shared_reunion
+            if shared_special_read
+            else tuple(walked_inert(seed) for seed in (69, 41, 40))
+        )
         selector_relocation = walked_inert(60 if high_parity else 50)
         entry, d, special_memory = pending_special
         for cell in (*pin, *selector_cells, *reunion_cells, selector_relocation):
@@ -434,7 +450,7 @@ def build(
                 special.op("*", constants[operation])
             else:
                 special.op("p", pin[int(operation)])
-        reunion_rotations = (6, 3, 2)
+        reunion_rotations = (1, 1, 1) if shared_special_read else (6, 3, 2)
         reunion_targets = []
         for cell, rotations in zip(reunion_cells, reunion_rotations, strict=True):
             _emit_chain(special, cell, " ".join(["rot"] * rotations), helper)
@@ -532,20 +548,33 @@ def build(
             selector_relocation,
         ):
             suffix_memory[cell] = None
-        for selected_slot, (target, reunion) in enumerate(
-            zip(reunion_targets, reunion_cells, strict=True)
-        ):
-            branch = _Planner(target, reunion + 1, dict(suffix_memory), {})
-            special_slots = list(normal[:3])
-            special_slots[selected_slot] = pin
-            emit_suffix(branch, tuple(special_slots), normal[selected_slot])
-            record_part(f"suffix-{selected_slot}", branch.code)
+        if shared_special_read:
+            assert reunion_targets == [39378] * 3
+            branch = _Planner(39378, 0, dict(suffix_memory), {})
+            for op in "jpjjp<v":
+                branch.raw(op)
+            record_part("shared-selected-read", branch.code)
+            if outputs is not None:
+                outputs["shared_read_entry"] = 39378
+        else:
+            for selected_slot, (target, reunion) in enumerate(
+                zip(reunion_targets, reunion_cells, strict=True)
+            ):
+                branch = _Planner(target, reunion + 1, dict(suffix_memory), {})
+                special_slots = list(normal[:3])
+                special_slots[selected_slot] = pin
+                emit_suffix(branch, tuple(special_slots), normal[selected_slot])
+                record_part(f"suffix-{selected_slot}", branch.code)
     if parity:
         assert tail_entry is not None
         assert tail_reunion is not None
         tail_memory = dict(memory)
         for cell in used:
             tail_memory[cell] = None
+        if shared_special_read:
+            for cell in shared_reunion:
+                tail_memory[cell] = raw[cell]
+                tail_memory[cell + 1] = raw[cell + 1]
         tail = _Planner(tail_entry, tail_reunion + 1, tail_memory, {})
         tail.op("p", helper["all1"])
         tail.op("*", helper["all2"])
@@ -562,6 +591,10 @@ def build(
         reducer_memory = dict(memory)
         for cell in used:
             reducer_memory[cell] = None
+        if shared_special_read:
+            for cell in shared_reunion:
+                reducer_memory[cell] = raw[cell]
+                reducer_memory[cell + 1] = raw[cell + 1]
         reducer = _Planner(parity_entry, parity_reunion + 1, reducer_memory, {})
         seed_all1, map_all1 = parity_all1, reset[0]
         reducer.op("p", helper["z1"])
