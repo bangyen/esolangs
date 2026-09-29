@@ -2,7 +2,7 @@
 
 import itertools
 
-from address17 import LOW, PIN, gadget, group_word
+from address17 import LOW, PIN, group_word
 
 from esolangs.interpreters.other.malbolge import (
     _advance,
@@ -31,13 +31,6 @@ def _branch_targets(seed: int, rotations: int) -> tuple[int, int]:
             target = _rot(target)
         targets.append(target + 1)
     return targets[0], targets[1]
-
-
-def _selector_leaves() -> tuple[int, ...]:
-    """Return the C/D selector's leaves in binary selector order."""
-    return tuple(
-        target for seed in (42, 51, 60, 72) for target in _branch_targets(seed, 4)
-    )
 
 
 def build(
@@ -132,6 +125,40 @@ def build(
     path.op("p", helper["all2"])
     constants = {"K0": helper["z0"], "K1": helper["all1"], "K2": helper["all2"]}
     parts: list[dict[int, str]] = []
+
+    def emit_suffix(
+        suffix: _Planner,
+        slots: tuple[tuple[int, int, int], ...],
+        top: tuple[int, int, int],
+    ) -> None:
+        swap_cells = slots[0][1], slots[1][1], slots[2][2], top[1], top[2]
+        for cell, two in zip(swap_cells, twos, strict=True):
+            suffix.op("*", helper["all1"])
+            suffix.op("p", two)
+            suffix.op("p", cell)
+        for group in (*slots, top):
+            suffix.op("*", helper["all2"])
+            suffix.op("p", group[2])
+        suffix.op("*", helper["w"])
+        for group in slots:
+            suffix.op("p", group[2])
+            suffix.op("*", group[2])
+            suffix.op("p", group[1])
+            suffix.op("*", group[1])
+        suffix.op("p", z_cell)
+        suffix.op("*", z_cell)
+        suffix.op("p", top[2])
+        suffix.op("*", top[2])
+        suffix.op("*", helper["all2"])
+        suffix.op("p", top[1])
+        suffix.op("p", top[2])
+        suffix.op("*", top[2])
+        suffix.op("p", helper["all1"])
+        suffix.op("*", helper["all2"])
+        suffix.op("p", helper["all1"])
+        suffix.op("p", tail_cell)
+        suffix.raw("v")
+
     pending_special: tuple[int, int, dict[int, int | None]] | None = None
     if z is None:
         assert z_inputs is not None
@@ -232,33 +259,7 @@ def build(
     if selected is not None:
         assert pin is not None
         slots[selected] = pin
-    swap_cells = slots[0][1], slots[1][1], slots[2][2], top[1], top[2]
-    for cell, two in zip(swap_cells, twos, strict=True):
-        path.op("*", helper["all1"])
-        path.op("p", two)
-        path.op("p", cell)
-    for group in (*slots, top):
-        path.op("*", helper["all2"])
-        path.op("p", group[2])
-    path.op("*", helper["w"])
-    for group in slots:
-        path.op("p", group[2])
-        path.op("*", group[2])
-        path.op("p", group[1])
-        path.op("*", group[1])
-    path.op("p", z_cell)
-    path.op("*", z_cell)
-    path.op("p", top[2])
-    path.op("*", top[2])
-    path.op("*", helper["all2"])
-    path.op("p", top[1])
-    path.op("p", top[2])
-    path.op("*", top[2])
-    path.op("p", helper["all1"])
-    path.op("*", helper["all2"])
-    path.op("p", helper["all1"])
-    path.op("p", tail_cell)
-    path.raw("v")
+    emit_suffix(path, tuple(slots), top)
     parts.append(path.code)
     if pending_special is not None:
         pin = (
@@ -270,10 +271,12 @@ def build(
         selector_cells = tuple(
             walked_inert(seed) for seed in (36, 33, 45, 42, 51, 60, 72)
         )
+        reunion_cells = tuple(walked_inert(seed) for seed in (38, 41, 40))
         entry, d, special_memory = pending_special
-        for cell in (*pin, *selector_cells):
+        for cell in (*pin, *selector_cells, *reunion_cells):
             special_memory[cell] = raw[cell]
         special = _Planner(entry, d, special_memory, {})
+        _emit_chain(special, tail_cell, "K0", helper)
         for group in normal[:3]:
             for operation in _GADGET:
                 if operation == "/":
@@ -289,6 +292,14 @@ def build(
                 special.op("*", constants[operation])
             else:
                 special.op("p", pin[int(operation)])
+        reunion_rotations = (3, 3, 2)
+        reunion_targets = []
+        for cell, rotations in zip(reunion_cells, reunion_rotations, strict=True):
+            _emit_chain(special, cell, " ".join(["rot"] * rotations), helper)
+            target = raw[cell]
+            for _ in range(rotations):
+                target = _rot(target)
+            reunion_targets.append(target + 1)
 
         def selector_node(
             branch: _Planner, cell: int, rotations: int
@@ -311,28 +322,62 @@ def build(
             second.extend(
                 (target, cell + 1, branch_memory) for target in selector_targets
             )
-        leaves: list[int] = []
+        leaves: list[tuple[int, int, dict[int, int | None]]] = []
         for (selector_entry, selector_d, branch_memory), cell in zip(
             second, selector_cells[3:], strict=True
         ):
             branch = _Planner(selector_entry, selector_d, branch_memory, {})
-            selector_targets, _ = selector_node(branch, cell, 4)
-            leaves.extend(selector_targets)
-        for leaf in leaves:
-            parts.append({leaf: "v"})
+            selector_targets, leaf_memory = selector_node(branch, cell, 4)
+            leaves.extend(
+                (target, cell + 1, leaf_memory) for target in selector_targets
+            )
+        configurations = (
+            (0, 1),
+            (0, 2),
+            (1, 1),
+            (1, 2),
+            (2, 1),
+            (2, 2),
+            (0, 0),
+            (1, 0),
+        )
+        assert z_inputs is not None
+        for (leaf, leaf_d, leaf_memory), (selected_slot, special_z) in zip(
+            leaves, configurations, strict=True
+        ):
+            branch = _Planner(leaf, leaf_d, leaf_memory, {})
+            _emit_chain(branch, z_inputs[special_z], "rot", helper)
+            branch.op("p", z_cell)
+            branch.goto(reunion_cells[selected_slot])
+            branch.raw("i")
+            parts.append(branch.code)
+        suffix_memory = dict(special.mem)
+        for cell in (*z_inputs, z_cell, *selector_cells, *reunion_cells):
+            suffix_memory[cell] = None
+        for selected_slot, (target, reunion) in enumerate(
+            zip(reunion_targets, reunion_cells, strict=True)
+        ):
+            branch = _Planner(target, reunion + 1, dict(suffix_memory), {})
+            special_slots = list(normal[:3])
+            special_slots[selected_slot] = pin
+            emit_suffix(branch, tuple(special_slots), normal[selected_slot])
+            parts.append(branch.code)
     source = [_char_for("o", a) for a in range(_WORDS)]
     for address, operation in startup.items():
         source[address] = _char_for(operation, address)
     for address, value in raw.items():
         source[address] = value
     emitted: dict[int, str] = {}
-    for part in parts:
+    owners: dict[int, int] = {}
+    for part_index, part in enumerate(parts):
         for address, operation in part.items():
             if address in emitted:
                 raise AssertionError(
-                    f"conflicting code at {address}: {emitted[address]} / {operation}"
+                    f"code parts {owners[address]} and {part_index} overlap at "
+                    f"{address}: {emitted[address]} / {operation}"
                 )
             emitted[address] = operation
+            owners[address] = part_index
             source[address] = _char_for(operation, address)
     return (
         "".join(chr(value) for value in source),
@@ -398,31 +443,21 @@ def main() -> None:
     dynamic_a, _cells, result_cell, dynamic_size = build(None)
     for bits in itertools.product(range(2), repeat=13):
         assert run(dynamic_a, result_cell, bits) == group_word([1, *bits])
-    dynamic_ab, dynamic_cells, result_cell, dynamic_ab_size = build(
+    dynamic_ab, _dynamic_cells, result_cell, dynamic_ab_size = build(
         None, dispatch_ab=True
     )
     for head in ((1, 0), (1, 1), (0, 1)):
         for tail_bits in itertools.product(range(2), repeat=12):
             bits = (*head, *tail_bits)
             assert run(dynamic_ab, result_cell, bits) == group_word(list(bits))
-    leaves = _selector_leaves()
     for selector_bits in itertools.product(range(2), repeat=12):
-        state, memory = execute_state(dynamic_ab, (0, 0, *selector_bits))
-        for group, start in zip(dynamic_cells[:3], range(0, 9, 3), strict=True):
-            expected = gadget(
-                LOW, [48 + bit for bit in selector_bits[start : start + 3]]
-            )
-            assert (memory[group[1]], memory[group[2]]) == expected
-        assert (memory[dynamic_cells[-1][1]], memory[dynamic_cells[-1][2]]) == gadget(
-            PIN, [0, 0, 0]
-        )
-        selector = sum(bit << (2 - k) for k, bit in enumerate(selector_bits[-3:]))
-        assert state[1] == leaves[selector]
+        bits = (0, 0, *selector_bits)
+        assert run(dynamic_ab, result_cell, bits) == group_word(list(bits))
     print(
         "fixed address paths: 16,384/16,384 correct, "
         f"ordinary {ordinary_sizes}, special {special_sizes}; "
         f"dynamic A: 8,192/8,192 correct, {dynamic_size}; "
-        f"dynamic A/B: 12,288/12,288 correct + 4,096 special selectors, "
+        f"dynamic A/B/C/D: 16,384/16,384 correct, "
         f"{dynamic_ab_size} code cells"
     )
 
