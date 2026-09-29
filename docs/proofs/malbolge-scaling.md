@@ -1133,6 +1133,12 @@ cells**; rows 1-7 take 10,725, 10,763, 10,984, 11,099, 10,982, 10,745 and
 10,762. These fixed-group builds initialize the known parity directly, so
 they exclude the full address reducer.
 
+Row 0 now splits into 1,635 cells for constant setup and pointer priming,
+3,831 for value chains, 2,101 for label chains, 2,350 for hub rotations and
+770 for landing/decoder blocks. The label and hub machinery alone is 4,451
+cells; attaching the address fold cannot fit until that routing cost is
+shared or replaced.
+
 This quantifies the lever. The one-group setup is navigation-bound, and its
 cost is not fixed. Address parity has a straight-line reducer: applying
 `crazy(all-2, ·)` then `crazy(all-1, ·)` maps each pointer trit to 2 exactly
