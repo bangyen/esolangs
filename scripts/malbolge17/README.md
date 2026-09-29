@@ -53,7 +53,7 @@ None of this is wired into the generator.
   (16,384 groups, cells `0..6561` free, no wrap to cell 0).
 - `address_gadget.py` -- emits every fixed A/B/C/D address path plus combined
   dynamic A and A/B/C/D paths as real source; the combined program executes
-  all 16,384 group addresses.
+  all 16,384 group addresses and derives their exact parity operand.
 - `parity_views.py` -- exact five-base factorization of the ten view constants,
   its three consumable parity words and one-trit toggle, and emitted setup
   measurements.

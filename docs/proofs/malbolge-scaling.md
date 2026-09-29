@@ -1186,5 +1186,7 @@ rows. Its `x1x2 = 00` block captures the three normal triples, builds the
 constant PIN triple and dispatches `x12..x14` to eight C/D leaves. Each leaf
 writes `z` and enters one of three pre-rotated reunion pointers, sharing the
 verified suffix for that selected slot. The **11,883-cell** combined program
-executes all 16,384 group addresses correctly. Address-fold integration with
-the parity reducer remains.
+executes all 16,384 group addresses correctly. A shared continuation then
+constructs the group pointer and runs the straight-line parity reducer. The
+**14,559-cell** combined source returns the exact 0/1,458 operand on all
+16,384 rows. Applying that operand to the consumable parity cells remains.
