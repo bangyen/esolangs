@@ -127,7 +127,7 @@ def build(
     if dispatch_ab:
         pin = (walked(PIN[0]), walked(PIN[1]), walked(PIN[2]))
         cells = (*normal, pin)
-    parity_all1 = (walked_inert(36), walked_inert(45)) if parity else None
+    parity_all1 = (walked_inert(99), walked_inert(95)) if parity else None
     parity_reunion = walked_inert(82) if parity else None
     tail_reunion = walked_inert(55) if parity else None
     boot = [_char_for("o", a) for a in range(_ENTRY)]
