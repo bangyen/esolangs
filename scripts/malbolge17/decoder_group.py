@@ -132,6 +132,16 @@ def _expected(row: int, triple: tuple[int, ...]) -> str:
 
 
 @dataclass(frozen=True)
+class _Emission:
+    """One row's emitted source and the cells that carry code and data."""
+
+    source: list[int]
+    code_cells: int
+    code: dict[int, str]
+    data: dict[int, int]
+
+
+@dataclass(frozen=True)
 class _Group:
     """The fixed group cells and shared setup the decoder build reads."""
 
@@ -311,7 +321,7 @@ def _neighbour_cell(
     return None
 
 
-def _build(row: int, group: _Group) -> tuple[list[int], int]:
+def _build(row: int, group: _Group) -> _Emission:
     """Emit one row's real-source group decoder and its code-cell count."""
     base = group.base
     used = {128, 129} | group.used
@@ -531,7 +541,12 @@ def _build(row: int, group: _Group) -> tuple[list[int], int]:
     for a, ch in data.items():
         source[a] = ch
     phases.append(len(planner.code))
-    return source, len(planner.code)
+    return _Emission(
+        source=source,
+        code_cells=len(planner.code),
+        code=dict(planner.code),
+        data=dict(data),
+    )
 
 
 def _run(source: str, limit: int = 100_000) -> list[int]:
@@ -555,7 +570,8 @@ def main() -> int:
     group = _setup()
     total = 0
     for row in range(8):
-        source, code_cells = _build(row, group)
+        emission = _build(row, group)
+        source = emission.source
         for triple in itertools.product(range(7), repeat=3):
             program = list(source)
             for index in range(3):
@@ -574,7 +590,7 @@ def main() -> int:
             got = chr(output[0]) if output else None
             assert got == _expected(row, triple), (row, triple, got)
             total += 1
-        print(f"row {row}: {code_cells} code cells")
+        print(f"row {row}: {emission.code_cells} code cells")
     print(f"five-state group decoder: {total} / {total}")
     return 0
 
