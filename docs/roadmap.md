@@ -72,8 +72,9 @@ step; an answer lands in the paper it extends, and the row leaves.
   Open: the limit.  Local rules have saturated near 7.06.  The global identities
   `[[Y]] -> [Y]` and `[Y[] -> []`, certified for arbitrary balanced bodies
   (read-free in the second), plus empty-loop commutation lower the upper bound
-  to 7.0194; closing the
-  gap needs more global equivalences.
+  to 7.0194.  Next: admit `[]` and `[-]` tokens inside the four regular
+  commute monitors, prove each enlarged family sound, then certify and execute
+  the resulting upper bound.
 
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further
