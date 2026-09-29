@@ -331,16 +331,23 @@ def _build(row: int, group: _Group) -> _Emission:
         states.append(4)
     elif states[0] == 1:
         states.extend((3, 4))
-    parity_cells: list[tuple[int, int]] = []
-    for state in states:
-        target = _PARITY[_POS[state][row] % 2]
+    # Fixed copies keep the setup identical across all eight rows.
+    parity_sources: dict[int, list[tuple[int, int]]] = {0: [], 1: []}
+    for parity in (0, 0, 1):
+        target = _PARITY[parity]
         cell = next(
             cell
             for cell in group.reach
             if cell not in used and target in group.reach[cell]
         )
         used.add(cell)
-        parity_cells.append((cell, target))
+        parity_sources[parity].append((cell, target))
+    parity_counts = {0: 0, 1: 0}
+    parity_cells: list[tuple[int, int]] = []
+    for state in states:
+        parity = _POS[state][row] % 2
+        parity_cells.append(parity_sources[parity][parity_counts[parity]])
+        parity_counts[parity] += 1
     helpers = {"all1": 128, "all2": 129}
     for name, value in _T_HELPERS.items():
         cell = next(
@@ -360,28 +367,6 @@ def _build(row: int, group: _Group) -> _Emission:
     planner.op("*", helpers["w"])
     planner.op("p", helpers["all2"])
     phases = [len(planner.code)]
-    chains: list[tuple[str, int, int]] = [
-        (f"z{k}", group.z_cells[k], base - 1 + k) for k in range(3)
-    ]
-    chains += [
-        ("C0", group.clear[0][0], group.clear[0][1]),
-        ("C1", group.clear[1][0], group.clear[1][1]),
-    ]
-    chains += [(f"B{i}", group.view_cells[i], _BASES[i]) for i in range(5)]
-    chains += [
-        (f"M{i}", cell, _MASK)
-        for i, cell in enumerate(group.mask_cells[: len(parity_cells)])
-    ]
-    chains += [("R", group.group_pointer, base - 1)]
-    chains += [
-        (f"P{d}", cell, _PARITY[_POS[states[d]][row] % 2])
-        for d, (cell, _) in enumerate(parity_cells)
-    ]
-    for _, cell, value in chains:
-        ops = _bfs(_g(cell))
-        assert value in ops, (cell, value)
-        _emit_chain(planner, cell, " ".join(ops[value]), helpers)
-    phases.append(len(planner.code))
     values: dict[int, int] = {}
     for label in "01xnN":
         seed, seed_ops = group.seeds[label]
@@ -396,6 +381,26 @@ def _build(row: int, group: _Group) -> _Emission:
             planner.op("p", point)
             values[point] = group.hub_values[label][0]
     phases.append(len(planner.code))
+    chains: list[tuple[str, int, int]] = [
+        (f"z{k}", group.z_cells[k], base - 1 + k) for k in range(3)
+    ]
+    chains += [
+        ("C0", group.clear[0][0], group.clear[0][1]),
+        ("C1", group.clear[1][0], group.clear[1][1]),
+    ]
+    chains += [(f"B{i}", group.view_cells[i], _BASES[i]) for i in range(5)]
+    chains += [(f"M{i}", cell, _MASK) for i, cell in enumerate(group.mask_cells)]
+    chains += [("R", group.group_pointer, base - 1)]
+    chains += [
+        (f"P{parity}{index}", cell, target)
+        for parity, cells in parity_sources.items()
+        for index, (cell, target) in enumerate(cells)
+    ]
+    for _, cell, value in chains:
+        ops = _bfs(_g(cell))
+        assert value in ops, (cell, value)
+        _emit_chain(planner, cell, " ".join(ops[value]), helpers)
+    phases.append(len(planner.code))
     planner.op("*", helpers["all2"])
     planner.op("p", group.group_pointer)
     planner.op("*", helpers["all1"])
@@ -403,13 +408,9 @@ def _build(row: int, group: _Group) -> _Emission:
     for _ in range(10):
         planner.op("*", group.group_pointer)
         planner.op("p", helpers["w"])
-    ordered = sorted(
-        zip(parity_cells, states, strict=True),
-        key=lambda pair: _POS[pair[1]][row] % 2,
-    )
-    masks = group.mask_cells[: len(ordered)]
-    for index, (mask, ((cell, _), _state)) in enumerate(
-        zip(masks, ordered, strict=True)
+    ordered = [*parity_sources[0], *parity_sources[1]]
+    for index, (mask, (cell, _)) in enumerate(
+        zip(group.mask_cells, ordered, strict=True)
     ):
         if index == 0:
             planner.op("*", helpers["z0"])
