@@ -190,8 +190,14 @@ step; an answer lands in the paper it extends, and the row leaves.
   rows, exhaustive through three inputs and twelve seeded tables per arity
   four through six. Its three-input total was 12,990 characters against
   7,576 shipped; 228 of 256 tables grew. Constants and projections were
-  included. Next: share residual expressions with definitions whose naming
-  cost stays linear, then clear the size gate without retaining the transform.
+  included. Bottom-up shared residuals also fail the size gate: naming every
+  nontrivial residual totals 12,680 characters at three inputs (252 tables
+  grow); inlining single-use or short residuals totals 11,534 (203 grow).
+  Both execute 10,374 rows through six inputs, including constants and
+  projections. On 200 seeded five-input tables, both grow every table:
+  40,124 and 41,184 characters against 25,062 shipped. Next: factor the
+  repeated selection syntax through parameterized definitions, then clear
+  the size gate without retaining the transform.
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between
