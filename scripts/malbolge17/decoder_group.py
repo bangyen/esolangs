@@ -160,12 +160,18 @@ class _Group:
     used: set[int]
     taken: set[int]
     reserved: frozenset[int]
+    runtime_base: bool
 
 
 def _setup(
-    reserved: frozenset[int] = frozenset(), *, external_pointer: bool = False
+    reserved: frozenset[int] = frozenset(),
+    *,
+    external_pointer: bool = False,
+    runtime_base: bool = False,
 ) -> _Group:
     """Choose the group base and every shared walked cell, as the prototype did."""
+    if runtime_base and not external_pointer:
+        raise ValueError("runtime base requires external pointer")
     helpers = {128, 129}
     for value in _T_HELPERS.values():
         helpers.add(
@@ -239,6 +245,8 @@ def _setup(
             ),
         }
     )
+    if runtime_base:
+        near_cells = _OTHERS
     neighbour = _neighbour_cell(order, used, reach, taken, near_cells)
     assert neighbour is not None
     cell, path, hub = neighbour
@@ -260,6 +268,7 @@ def _setup(
         used=used,
         taken=taken,
         reserved=reserved,
+        runtime_base=runtime_base,
     )
 
 
@@ -336,6 +345,8 @@ def _build(
     external_parity: bool = False,
 ) -> _Emission:
     """Emit one row's real-source group decoder and its code-cell count."""
+    if group.runtime_base and not (external_pointer and external_parity):
+        raise ValueError("runtime base requires external pointer and parity")
     base = group.base
     used = {128, 129} | group.used
     memory: dict[int, int | None] = {
@@ -499,19 +510,22 @@ def _build(
         return offset, group.view_cells[state], _VIEW[2 * state + parity], parity
 
     for state in range(5):
-        offset, _view_cell, constant, parity = view(state)
+        offset, _view_cell, _constant, fixed_parity = view(state)
         cell = base + offset
-        for char in _admissible(cell):
-            label = _LABEL_OF[_TARGET[_DELTA[state][_meaning(char, parity)]]]
-            landing = _landing(constant, char)
-            landing_char = next(
-                ch for ch in _valid_chars(landing) if _LABELS.get(ch + 1) == label
-            )
-            assert data.get(landing, landing_char) == landing_char, (
-                "landing clash",
-                landing,
-            )
-            data[landing] = landing_char
+        for parity in range(2) if group.runtime_base else (fixed_parity,):
+            constant = _VIEW[2 * state + parity]
+            chars = range(33, 127) if group.runtime_base else _admissible(cell)
+            for char in chars:
+                label = _LABEL_OF[_TARGET[_DELTA[state][_meaning(char, parity)]]]
+                landing = _landing(constant, char)
+                landing_char = next(
+                    ch for ch in _valid_chars(landing) if _LABELS.get(ch + 1) == label
+                )
+                assert data.get(landing, landing_char) == landing_char, (
+                    "landing clash",
+                    landing,
+                )
+                data[landing] = landing_char
     cleared = {a for a in range(_ENTRY) if planner.mem.get(a) is None}
     fresh: dict[int, int | None] = {a: _g(a) for a in range(_ENTRY)}
     planner.mem = fresh
