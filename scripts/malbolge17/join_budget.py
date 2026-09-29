@@ -38,7 +38,11 @@ def _executed(source: str, bits: tuple[int, ...]) -> set[int]:
 
 
 def main(
-    *, live: bool = False, components: bool = False, guard_scratch: bool = False
+    *,
+    live: bool = False,
+    components: bool = False,
+    guard_scratch: bool = False,
+    prepare_returns: bool = False,
 ) -> None:
     """Report exact occupied-cell counts for the current separate emitters."""
     address_cells: set[int] = set()
@@ -52,6 +56,7 @@ def main(
         occupied=address_cells,
         part_cells=address_parts,
         guard_scratch=guard_scratch,
+        prepare_returns=prepare_returns,
     )
     assert groups[-1] == (145, 139, 144)
     address_cells.update(range(10, 18))  # startup precedes the emitted parts
@@ -117,5 +122,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--guard-scratch", action="store_true", help="reserve return neighbours"
     )
+    parser.add_argument(
+        "--prepare-returns", action="store_true", help="emit return setup"
+    )
     args = parser.parse_args()
-    main(live=args.live, components=args.components, guard_scratch=args.guard_scratch)
+    main(
+        live=args.live,
+        components=args.components,
+        guard_scratch=args.guard_scratch or args.prepare_returns,
+        prepare_returns=args.prepare_returns,
+    )

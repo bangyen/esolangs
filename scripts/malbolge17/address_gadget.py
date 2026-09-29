@@ -21,7 +21,13 @@ from esolangs.tools._malbolge_core import (
     _rot,
 )
 from esolangs.tools._malbolge_digits import _GADGET
-from esolangs.tools.malbolge import _T_HELPERS, _emit_chain, _Planner, _valid_chars
+from esolangs.tools.malbolge import (
+    _T_HELPERS,
+    _chain,
+    _emit_chain,
+    _Planner,
+    _valid_chars,
+)
 
 
 def _branch_targets(seed: int, rotations: int) -> tuple[int, int]:
@@ -49,6 +55,7 @@ def build(
     group_read: bool = False,
     part_cells: list[tuple[str, set[int]]] | None = None,
     guard_scratch: bool = False,
+    prepare_returns: bool = False,
 ) -> tuple[str, tuple[tuple[int, int, int], ...], int, int]:
     """Return an address path; ``z=None`` dispatches A's two variants."""
     if z not in (None, 0, 1, 2):
@@ -73,6 +80,8 @@ def build(
         raise ValueError(continuation)
     if selected not in (None, 0, 1, 2):
         raise ValueError(selected)
+    if prepare_returns and (not guard_scratch or not dispatch_ab or not parity):
+        raise ValueError("return setup requires guarded parity dispatcher")
     startup = {10: "j", 11: "*", 12: "j", 13: "p", 14: "j", 15: "*", 16: "j", 17: "i"}
     raw = {125: 103, 126: 124}
     used = {*range(18), 125, 126}
@@ -228,6 +237,16 @@ def build(
     else:
         tail_entry = None
     constants = {"K0": helper["z0"], "K1": helper["all1"], "K2": helper["all2"]}
+    return_cells = sorted({result + 1 for group in cells for result in group[1:]})
+
+    def emit_return_setup(plan: _Planner) -> None:
+        if prepare_returns:
+            for cell in return_cells:
+                start = boot_memory[cell]
+                chain = "K1" if _crazy(29524, start) == 0 else "K1 K2 K1"
+                assert _chain(start, chain) == 0
+                _emit_chain(plan, cell, chain, helper)
+
     parts: list[dict[int, str]] = []
 
     def record_part(name: str, code: dict[int, str]) -> None:
@@ -349,6 +368,7 @@ def build(
         path.op("p", z_cell)
     else:
         _emit_chain(path, z_cell, "K0 K2 K1 K2", helper)
+    emit_return_setup(path)
     _emit_chain(path, tail_cell, "K0", helper)
     for group in normal:
         for operation in _GADGET:
@@ -392,6 +412,7 @@ def build(
         for cell in (*pin, *selector_cells, *reunion_cells, selector_relocation):
             special_memory[cell] = raw[cell]
         special = _Planner(entry, d, special_memory, {})
+        emit_return_setup(special)
         _emit_chain(special, tail_cell, "K0", helper)
         for group in normal[:3]:
             for operation in _GADGET:

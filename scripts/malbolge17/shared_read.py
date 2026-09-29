@@ -80,6 +80,7 @@ def _address_handoff(*, full: bool = False) -> None:
         high_pointer=True,
         high_parity=True,
         guard_scratch=True,
+        prepare_returns=True,
         outputs=outputs,
     )
     source = list(address)
@@ -107,6 +108,7 @@ def _address_handoff(*, full: bool = False) -> None:
             STORED_PARITY[(pointer + 1 + offset) % 2] for offset in range(3)
         )
         assert folded[1] == 85
+        assert all(folded[cell + 1] == 0 for cell in result_cells)
         selected = (
             (result_cells[sum(bits) % len(result_cells)],) if full else result_cells
         )
@@ -115,7 +117,6 @@ def _address_handoff(*, full: bool = False) -> None:
             value = memory[cell]
             operand = memory[86]
             memory[419] = cell - 1
-            memory[cell + 1] = 0
             state = (0, _ENTRY, 419, False)
             result: list[int] = []
             for step in range(7):
