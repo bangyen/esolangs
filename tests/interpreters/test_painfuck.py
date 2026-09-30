@@ -520,3 +520,4 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     machine = staticmethod(_machine)
     stepping_program = "pp"
     halting_program = "pp"
+    looping_program = _encode("pab")

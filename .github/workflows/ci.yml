@@ -164,7 +164,7 @@ jobs:
     # and fail the job; the weekly suite retains the expensive evidence.
     - name: Check changed-line and changed-branch coverage
       if: matrix.python-version == '3.14'
-      run: uv run python scripts/check_diff_coverage.py --partial
+      run: uv run python scripts/check_diff_coverage.py --partial --strict
 
     - name: Test with pytest
       if: matrix.python-version != '3.14'
@@ -181,7 +181,8 @@ jobs:
     #
     # 3.14 only: the fast suite already covers every promised interpreter
     # on every push, and weekly.yml keeps the whole suite on all three.
-    # Count-balanced, not time-balanced; the timeout has headroom for CI's
+    # Recorded durations balance the shards; new tests use the median known
+    # duration. Refresh from weekly timing artifacts; the timeout covers CI's
     # slower cores.
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -208,7 +209,7 @@ jobs:
       run: uv sync --extra dev --python 3.14
 
     - name: Test one slow shard
-      run: uv run python scripts/pytest_shard.py --marker "slow and not weekly" --shard ${{ matrix.shard }} --shards 4 -- -n auto
+      run: uv run python scripts/pytest_shard.py --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 -- -n auto
 
 
   generated-docs:
@@ -260,3 +261,37 @@ jobs:
 
     - name: Audit dependencies with pip-audit
       run: uv run --with pip-audit pip-audit --local
+
+  distribution:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v7
+    - uses: astral-sh/setup-uv@v7
+    - uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+    - name: Build and install the wheel without extras
+      run: |
+        uv build --python 3.12
+        uv venv --python 3.12 .artifact-venv
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          artifact_python="$PWD/.artifact-venv/Scripts/python.exe"
+        else
+          artifact_python="$PWD/.artifact-venv/bin/python"
+        fi
+        echo "ARTIFACT_PYTHON=$artifact_python" >> "$GITHUB_ENV"
+        uv pip install --python "$artifact_python" dist/*.whl
+        "$artifact_python" -I scripts/smoke_distribution.py
+    - name: Install the math extra and exercise Polynomial
+      run: |
+        wheels=(dist/*.whl)
+        uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[math]"
+        "$ARTIFACT_PYTHON" -I scripts/smoke_distribution.py --math

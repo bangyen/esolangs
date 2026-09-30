@@ -618,6 +618,10 @@ class _Parser:
                 incoming = (
                     [] if char in (_ZERO, _ONE, _CLOCK) else self._ports(row, col, -1)
                 )
+                if char == _OUTPUT and self.grid.at(row, col - 1) != "-":
+                    raise ValueError(
+                        f"':' at ({col}, {row}) requires '-' directly to its left"
+                    )
                 if char == "~" and len(incoming) > 1:
                     # NOT takes exactly one input, drawn level with it (the
                     # spec's sample is ``.~.``), so a diagonal neighbour is

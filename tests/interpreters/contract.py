@@ -186,25 +186,32 @@ class CycleContract:
 
     halting_program: ClassVar[Any]
 
-    # None where no existing test had a looping program for this language.
-    # Writing one takes knowing which of its loops repeats a snapshot rather
-    # than growing its state forever, so the gap is left visible as a skip
-    # instead of being filled with a guess that would hang the suite.
     looping_program: ClassVar[Any] = None
+    no_cycle_reason: ClassVar[str | None] = None
+
+    def test_cycle_fixture_or_obstruction_is_declared(self) -> None:
+        assert (self.looping_program is None) == (self.no_cycle_reason is not None)
+        if self.no_cycle_reason is not None:
+            assert self.no_cycle_reason.strip()
 
     def test_halting_program_is_detected(self) -> None:
         """A program that reaches its halt is reported as halting."""
         from esolangs.vm import run_until_halt_or_cycle
 
-        assert run_until_halt_or_cycle(type(self).machine(self.halting_program))
+        assert run_until_halt_or_cycle(
+            type(self).machine(self.halting_program), limit=_HALT_BUDGET
+        )
 
     def test_loop_is_detected_as_a_cycle(self) -> None:
         """A program that revisits a snapshot is proven to hang."""
         from esolangs.vm import run_until_halt_or_cycle
 
         if self.looping_program is None:
-            pytest.skip("no looping program written for this language yet")
-        assert not run_until_halt_or_cycle(type(self).machine(self.looping_program))
+            assert self.no_cycle_reason is not None
+            pytest.skip(self.no_cycle_reason)
+        assert not run_until_halt_or_cycle(
+            type(self).machine(self.looping_program), limit=_HALT_BUDGET
+        )
 
     def test_stepping_past_the_halt_does_not_raise(self) -> None:
         """A halted machine ignores a further step instead of failing.

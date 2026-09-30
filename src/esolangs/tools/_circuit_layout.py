@@ -239,64 +239,119 @@ class _Layout:
 
 
 class _RoutingLayout(_Layout):
-    """Layout whose wires are laid in fixed shapes over indexed cells."""
+    """Layout whose wires are laid in fixed shapes over interval runs.
+
+    The base class stores each run as one interval; this subclass used to
+    also mirror every covered cell into ``_horizontal_cells`` /
+    ``_vertical_cells`` so a route could be tested cell by cell.  That is
+    O(area) time and memory for checks interval overlap answers in
+    O(log runs + overlaps), and the H-layout's area is linear in the table,
+    so the per-cell maps put a large constant on every build.  Junctions
+    and reservations are indexed per row and column for the same reason.
+    """
 
     def __init__(self) -> None:
         super().__init__()
-        self._horizontal_cells: dict[tuple[int, int], int] = {}
-        self._vertical_cells: dict[tuple[int, int], int] = {}
         self._reserved: dict[tuple[int, int], int] = {}
+        self._junction_rows: dict[int, list[tuple[int, int]]] = {}
+        self._junction_cols: dict[int, list[tuple[int, int]]] = {}
+        self._reserved_rows: dict[int, list[tuple[int, int]]] = {}
+        self._reserved_cols: dict[int, list[tuple[int, int]]] = {}
+
+    @staticmethod
+    def _strip(line: list[tuple[int, int]], coord: int) -> None:
+        """Drop the entry at ``coord`` from an indexed line, if present."""
+        index = bisect_left(line, (coord, -1))
+        while index < len(line) and line[index][0] == coord:
+            line.pop(index)
 
     def reserve(self, point: tuple[int, int], signal: int) -> None:
         """Keep a future junction clear for ``signal`` while routing."""
+        previous = self._reserved.get(point)
+        if previous == signal:
+            return
+        x, y = point
         self._reserved[point] = signal
+        if previous is not None:
+            self._strip(self._reserved_rows[y], x)
+            self._strip(self._reserved_cols[x], y)
+        insort(self._reserved_rows.setdefault(y, []), (x, signal))
+        insort(self._reserved_cols.setdefault(x, []), (y, signal))
 
     def release(self, signal: int) -> None:
         """Drop every reservation held by ``signal``."""
         self._reserved = {
             point: owner for point, owner in self._reserved.items() if owner != signal
         }
+        self._reserved_rows = {}
+        self._reserved_cols = {}
+        for (x, y), owner in self._reserved.items():
+            insort(self._reserved_rows.setdefault(y, []), (x, owner))
+            insort(self._reserved_cols.setdefault(x, []), (y, owner))
+
+    @staticmethod
+    def _other_covering(
+        runs: list[tuple[int, int, int]] | None, point: int, signal: int
+    ) -> bool:
+        """Whether an interval run of another signal covers ``point``."""
+        if not runs:
+            return False
+        index = bisect_left(runs, (point + 1, -1, -1)) - 1
+        return (
+            index >= 0
+            and runs[index][0] <= point < runs[index][1]
+            and runs[index][2] != signal
+        )
+
+    @staticmethod
+    def _indexed_clash(
+        line: list[tuple[int, int]] | None, lo: int, hi: int, signal: int
+    ) -> bool:
+        """Whether an indexed point of another signal lies in ``[lo, hi)``."""
+        if not line:
+            return False
+        index = bisect_left(line, (lo, -1))
+        while index < len(line):
+            coord, owner = line[index]
+            if coord >= hi:
+                return False
+            if owner != signal:
+                return True
+            index += 1
+        return False
 
     def junction(self, x: int, y: int, signal: int) -> None:
         """Place a junction unless another signal already occupies its cell."""
         existing = self.junctions.get((x, y))
-        covering = {
-            value
-            for value in (
-                self._horizontal_cells.get((x, y)),
-                self._vertical_cells.get((x, y)),
-            )
-            if value is not None
-        }
         if (
             (existing is not None and existing != signal)
             or (x, y) in self.glyphs
-            or bool(covering - {signal})
+            or self._other_covering(self.horizontal.get(y), x, signal)
+            or self._other_covering(self.vertical.get(x), y, signal)
         ):
             raise AssertionError(f"junction collision at ({x}, {y})")
+        if existing is None:
+            insort(self._junction_rows.setdefault(y, []), (x, signal))
+            insort(self._junction_cols.setdefault(x, []), (y, signal))
         self.junctions[(x, y)] = signal
 
     def run_horizontal(self, x0: int, x1: int, y: int, signal: int) -> None:
-        """Record a horizontal run and index its occupied cells."""
+        """Record a horizontal run, checked against the interval runs."""
         lo, hi = min(x0, x1) + 1, max(x0, x1)
-        for x in range(lo, hi):
-            other = self._horizontal_cells.get((x, y))
-            if (other is not None and other != signal) or (x, y) in self.glyphs:
-                raise AssertionError(f"horizontal collision at ({x}, {y})")
+        hit = self._clash(
+            self.horizontal.get(y), self._glyph_rows.get(y), lo, hi, signal
+        )
+        if hit is not None:
+            raise AssertionError(f"horizontal collision at ({hit[0]}, {y})")
         self._record(self.horizontal.setdefault(y, []), (lo, hi, signal))
-        for x in range(lo, hi):
-            self._horizontal_cells[(x, y)] = signal
 
     def run_vertical(self, x: int, y0: int, y1: int, signal: int) -> None:
-        """Record a vertical run and index its occupied cells."""
+        """Record a vertical run, checked against the interval runs."""
         lo, hi = min(y0, y1) + 1, max(y0, y1)
-        for y in range(lo, hi):
-            other = self._vertical_cells.get((x, y))
-            if (other is not None and other != signal) or (x, y) in self.glyphs:
-                raise AssertionError(f"vertical collision at ({x}, {y})")
+        hit = self._clash(self.vertical.get(x), self._glyph_cols.get(x), lo, hi, signal)
+        if hit is not None:
+            raise AssertionError(f"vertical collision at ({x}, {hit[0]})")
         self._record(self.vertical.setdefault(x, []), (lo, hi, signal))
-        for y in range(lo, hi):
-            self._vertical_cells[(x, y)] = signal
 
     def route(
         self,
@@ -343,8 +398,8 @@ class _RoutingLayout(_Layout):
             if (
                 (x, y) in self.glyphs
                 or self._reserved.get((x, y), signal) != signal
-                or self._horizontal_cells.get((x, y), signal) != signal
-                or self._vertical_cells.get((x, y), signal) != signal
+                or self._other_covering(self.horizontal.get(y), x, signal)
+                or self._other_covering(self.vertical.get(x), y, signal)
             ):
                 return False
             for dx in (-1, 0, 1):
@@ -356,17 +411,19 @@ class _RoutingLayout(_Layout):
                         return False
         for (x0, y0), (x1, y1) in pairwise(points):
             if x0 == x1:
-                cells = ((x0, y) for y in range(min(y0, y1) + 1, max(y0, y1)))
-                occupied = self._vertical_cells
+                lo, hi = min(y0, y1) + 1, max(y0, y1)
+                runs, glyphs = self.vertical.get(x0), self._glyph_cols.get(x0)
+                reserved = self._reserved_cols.get(x0)
+                junctions = self._junction_cols.get(x0)
             else:
-                cells = ((x, y0) for x in range(min(x0, x1) + 1, max(x0, x1)))
-                occupied = self._horizontal_cells
-            for cell in cells:
-                if (
-                    cell in self.glyphs
-                    or self._reserved.get(cell, signal) != signal
-                    or occupied.get(cell, signal) != signal
-                    or self.junctions.get(cell, signal) != signal
-                ):
-                    return False
+                lo, hi = min(x0, x1) + 1, max(x0, x1)
+                runs, glyphs = self.horizontal.get(y0), self._glyph_rows.get(y0)
+                reserved = self._reserved_rows.get(y0)
+                junctions = self._junction_rows.get(y0)
+            if (
+                self._clash(runs, glyphs, lo, hi, signal) is not None
+                or self._indexed_clash(reserved, lo, hi, signal)
+                or self._indexed_clash(junctions, lo, hi, signal)
+            ):
+                return False
         return True

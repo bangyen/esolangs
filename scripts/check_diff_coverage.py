@@ -26,7 +26,7 @@ touched file that only ever went one way fails just as an unexecuted line
 does.  This is deliberately not a percentage: "the file is covered" is the
 only coherent form the threshold takes once the unit is a file.
 
-Fail-open, matching :mod:`_scope`: an unreadable diff or absent coverage data
+Locally fail-open, matching :mod:`_scope`: an unreadable diff or absent coverage data
 is reported and skipped.  With ``--partial``, whole-file gaps outside the diff
 are reported but only added statements and branches block; those are the facts
 the branch introduced and the subset run can cheaply enforce.
@@ -83,8 +83,12 @@ def _added_lines(base: str) -> dict[str, set[int]] | None:
     added: dict[str, set[int]] = {}
     current: str | None = None
     for line in got.stdout.splitlines():
-        if line.startswith("+++ b/"):
-            current = line[6:]
+        if line.startswith("+++ "):
+            current = line[6:] if line.startswith("+++ b/") else None
+            if current is not None:
+                # Deleting code still touches the surviving file: whole-file
+                # coverage must judge it even when no new lines were added.
+                added.setdefault(current, set())
         elif line.startswith("@@") and current is not None:
             # "@@ -old,count +new,count @@" -- the new-side start and length
             # are what the branch is adding.  A hunk that deletes only has
@@ -209,17 +213,23 @@ def main() -> int:
             "uncovered added statements and branches"
         ),
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="fail when diff or line/branch coverage evidence is unavailable",
+    )
     args = parser.parse_args()
+    label = "error" if args.strict else "skip"
 
     base = _diff_base()
     if base is None:
-        print("skip: no diff base (shallow clone or detached HEAD)")
-        return 0
+        print(f"{label}: no diff base (shallow clone or detached HEAD)")
+        return int(args.strict)
 
     added = _added_lines(base)
     if added is None:
-        print("skip: could not read the branch diff")
-        return 0
+        print(f"{label}: could not read the branch diff")
+        return int(args.strict)
 
     omitted = _omitted()
     targets = {
@@ -235,8 +245,8 @@ def main() -> int:
 
     files = _coverage_json(Path(args.data_file), targets)
     if files is None:
-        print(f"skip: no usable coverage data at {args.data_file}")
-        return 0
+        print(f"{label}: no usable coverage data at {args.data_file}")
+        return int(args.strict)
 
     gaps: list[tuple[str, list[int]]] = []
     arc_gaps: list[tuple[str, list[tuple[int, int]]]] = []
@@ -267,6 +277,9 @@ def main() -> int:
         # line number.
         summary = record.get("summary", {})
         if summary.get("num_branches") is None:
+            if args.strict:
+                print(f"error: no branch coverage data for {path}")
+                return 1
             continue
         branch_data = True
         arcs_checked += len(record.get("executed_branches") or ())

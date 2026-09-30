@@ -57,6 +57,7 @@ from esolangs import spec as _spec
 from esolangs.cli_args import (
     _check_count,
     _fail,
+    _pop_flags,
     _pop_options,
     _pop_width,
     _split_positional,
@@ -138,10 +139,11 @@ def _encode(rest: list[str]) -> None:
 
 def _list(rest: list[str]) -> None:
     """Print the supported languages, optionally with capability markers."""
-    rest = _split_positional(rest, {"--details", "--json"})
-    details = "--details" in rest
-    as_json = "--json" in rest
-    _check_count("list", [a for a in rest if a not in {"--details", "--json"}], 0)
+    rest, flags = _pop_flags(rest, {"--details", "--json"})
+    rest = _split_positional(rest, set(), {"--details", "--json"})
+    details = "--details" in flags
+    as_json = "--json" in flags
+    _check_count("list", rest, 0)
     if as_json:
         if not details:
             print(json.dumps(list_languages(), indent=2))
@@ -244,10 +246,10 @@ def _generate(rest: list[str]) -> None:
 
 def _describe(rest: list[str]) -> None:
     """Print a language's input shape, answer location and capabilities."""
-    rest = _split_positional(rest, {"--json", "--spec"})
-    as_json = "--json" in rest
-    as_spec = "--spec" in rest
-    rest = [a for a in rest if a not in {"--json", "--spec"}]
+    rest, flags = _pop_flags(rest, {"--json", "--spec"})
+    rest = _split_positional(rest, set(), {"--json", "--spec"})
+    as_json = "--json" in flags
+    as_spec = "--spec" in flags
     _check_count("describe", rest, 1)
     try:
         facts = describe(rest[0])
@@ -409,10 +411,11 @@ def _dispatch() -> None:
         sys.exit(2)
 
     cmd, rest = argv[0], argv[1:]
+    option_argv = argv[: argv.index("--")] if "--" in argv else argv
     # Accepted after a subcommand too.  The top-level help advertises it
     # without saying where it goes, and `esolangs list --version` answering
     # "unknown option" is a strange way to learn that.
-    if {"--version", "-V"} & set(argv):
+    if {"--version", "-V"} & set(option_argv):
         print(f"esolangs {__version__}")
         sys.exit(0)
     if cmd in ("--help", "-h", "help"):
@@ -423,7 +426,7 @@ def _dispatch() -> None:
         # they are typed after did not, so `esolangs lst` got the whole
         # usage block and no hint that `list` was one letter away.
         _fail(f"unknown command: {cmd}{_did_you_mean(cmd, set(HELP))}\n\n{USAGE}")
-    if {"--help", "-h"} & set(rest):
+    if {"--help", "-h"} & set(option_argv[1:]):
         sys.stdout.write(HELP[cmd])
         sys.exit(0)
 

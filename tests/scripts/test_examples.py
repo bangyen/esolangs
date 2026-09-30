@@ -106,6 +106,11 @@ def test_the_manifest_matches_what_the_script_would_write() -> None:
     )
 
 
+def test_example_filenames_are_windows_portable() -> None:
+    for path in (BASE_DIR / "examples").iterdir():
+        assert not set(path.name) & set('<>:"/\\|?*'), path.name
+
+
 def test_boolean_examples_cover_every_committed_file() -> None:
     """Every file in examples is accounted for, and vice versa."""
     on_disk = {p.stem for p in (BASE_DIR / "examples").glob("*.txt")}
