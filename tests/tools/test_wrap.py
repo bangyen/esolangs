@@ -153,7 +153,6 @@ WIDTH_EXCEPTIONS = {
     for name in (
         "back",
         "befunge",
-        "collatz_multiverse",
         "container",
         "crement",
         "cvnc",

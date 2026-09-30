@@ -822,6 +822,39 @@ class TestCollatzMultiverse:
             assert plain is not None
             assert len(boolean.collatz_multiverse(table)) <= len(plain), table
 
+    @pytest.mark.parametrize("width", [1, 27, 32, 40, 80])
+    def test_narrow_statements_keep_array_addresses(self, width: int) -> None:
+        """Alias prefixes preserve odd captures and read every input once."""
+        import esolangs
+
+        for table in ("0000", "1111", "0110", "01101001", "10101010"):
+            n = len(table).bit_length() - 1
+            plain = boolean.collatz_multiverse(table)
+            program = esolangs.generate("Collatz Multiverse", table, width)
+            assert max(map(len, program.splitlines())) <= max(
+                width, max(map(len, plain.splitlines()))
+            )
+            assert program.count("input") == n
+            assert program.count("DO PRINT.") == 1
+            for row in range(1 << n):
+                assert (
+                    run_collatz_multiverse(program, list(f"{row:0{n}b}")) == table[row]
+                )
+
+    def test_negative_one_alias_narrows_complete_statements(self) -> None:
+        """The narrow candidate changes source and actually reduces columns."""
+        plain = boolean.collatz_multiverse("01101001")
+        narrow = boolean.collatz_multiverse("01101001", 1)
+        assert narrow.startswith("_=zx+negativeOne,NOT PRINT.\nz=zx+z,NOT PRINT.\n")
+        assert max(map(len, narrow.splitlines())) < max(map(len, plain.splitlines()))
+
+    def test_narrow_cell_source_remains_linear(self) -> None:
+        sizes = [
+            len(boolean.collatz_multiverse("01101001" * (2 ** (n - 3)), 1))
+            for n in (7, 8)
+        ]
+        assert sizes[1] < 2 * sizes[0] + 256
+
 
 class TestDecleq:
     @pytest.mark.parametrize(
