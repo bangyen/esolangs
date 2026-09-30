@@ -100,12 +100,12 @@ def _apl_name(index: int) -> str:
 
     Names are uppercase runs, so they count in base 26.
     """
-    name = ""
+    digits = []
     while True:
-        name = chr(ord("A") + index % 26) + name
+        digits.append(chr(ord("A") + index % 26))
         index = index // 26 - 1
         if index < 0:
-            return name
+            return "".join(reversed(digits))
 
 
 Key = tuple[int, int]
