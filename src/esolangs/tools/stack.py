@@ -396,15 +396,41 @@ def _bfstack_decoder(truth_table: str) -> tuple[str, bool]:
     return direct, False
 
 
-def bfstack(truth_table: str) -> str:
-    """Build a BFStack program computing the given truth table.
-
-    No branching: encode the inputs as ``1 + sum(bit*2^k)``, then nested
-    ``[`` loops single out the rows of whichever result value is rarer.
-    """
-    n = _validate_truth_table(truth_table)
+def _bfstack_small(truth_table: str, n: int) -> str:
+    """Return a byte-indexed decoder; at most seven inputs fit its sentinel."""
     decoder, preset = _bfstack_decoder(truth_table)
     return _bfstack_encoder(n, preset=preset) + decoder + "<" + "+" * _ASCII_ZERO + "."
+
+
+def bfstack(truth_table: str) -> str:
+    """Build a BFStack program, routing wider tables into seven-input blocks.
+
+    The byte index is ``1 + row``; eight inputs wrap its nonzero sentinel.
+    Prefix branches select blocks before the byte-indexed decoder runs.
+    """
+    n = _validate_truth_table(truth_table)
+    if n <= 7:
+        return _bfstack_small(truth_table, n)
+    constant = constant_span_test(truth_table)
+
+    def build(level: int, lo: int, hi: int) -> str:
+        remaining = n - level
+        if constant(lo, hi):
+            return (
+                ",<" * remaining
+                + ">"
+                + "+" * (_ASCII_ZERO + int(truth_table[lo]))
+                + ".<"
+            )
+        if remaining <= 7:
+            return _bfstack_small(truth_table[lo:hi], remaining) + "<"
+        mid = (lo + hi) // 2
+        zero, one = build(level + 1, lo, mid), build(level + 1, mid, hi)
+        # The one arm clears the sentinel below the bit. Both arms restore
+        # their stack depth, so the zero arm runs only when the bit was zero.
+        return ">+," + "-" * _ASCII_ZERO + "[<-" + one + ">]<[<" + zero + ">]<"
+
+    return build(0, 0, len(truth_table))
 
 
 def unsquare(truth_table: str) -> str:
