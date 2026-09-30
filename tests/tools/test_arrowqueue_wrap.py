@@ -10,7 +10,7 @@ from tests.divergence import diverges
 from tests.tools.fills import _instantiate_arrowqueue
 
 
-@pytest.mark.parametrize("width", [1, 5, 6, 11, 80, None])
+@pytest.mark.parametrize("width", [1, 4, 5, 6, 11, 80, None])
 @pytest.mark.parametrize(
     "table",
     [
@@ -30,7 +30,7 @@ def test_arrowqueue_width_preserves_every_row(table: str, width: int | None) -> 
     if width is None:
         assert template == plain
     else:
-        assert max(map(len, template.splitlines())) <= max(5, width)
+        assert max(map(len, template.splitlines())) <= max(4, width)
     inputs = len(table).bit_length() - 1
     for row, expected in enumerate(table):
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
@@ -58,8 +58,8 @@ def test_arrowqueue_narrow_leaf_ring_executes_every_small_table(width: int) -> N
 
 
 def test_arrowqueue_leaf_gap_floor_and_corpus_size() -> None:
-    assert max(map(len, arrowqueue("0110", 1).splitlines())) == 5
-    assert sum(len(arrowqueue(format(v, "08b"), 1)) for v in range(256)) == 54039
+    assert max(map(len, arrowqueue("0110", 1).splitlines())) == 4
+    assert sum(len(arrowqueue(format(v, "08b"), 1)) for v in range(256)) == 54784
 
 
 def test_arrowqueue_compact_rings_at_larger_arity() -> None:
@@ -71,3 +71,17 @@ def test_arrowqueue_compact_rings_at_larger_arity() -> None:
             bits = [int(bit) for bit in format(row, f"0{inputs}b")]
             source = _instantiate_arrowqueue(template, bits)
             assert diverges("ArrowQueue", source, "") is (table[row] == "1")
+
+
+@pytest.mark.parametrize("tagged", [False, True])
+def test_arrowqueue_four_columns_preserve_public_provenance(*, tagged: bool) -> None:
+    table = "0110"
+    template = esolangs.generate("ArrowQueue", table, 1)
+    source = template if tagged else str(template)
+    for row, expected in enumerate(table):
+        bits = [row >> 1, row & 1]
+        program = esolangs.instantiate("ArrowQueue", source, bits, truth_table=table)
+        assert max(map(len, program.splitlines())) == 4
+        assert diverges("ArrowQueue", program, "") is (expected == "1")
+    with pytest.raises(ValueError, match="does not compute that table"):
+        esolangs.instantiate("ArrowQueue", source, [0, 1], truth_table="1001")

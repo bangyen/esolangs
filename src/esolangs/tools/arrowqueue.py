@@ -132,7 +132,8 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     tree with 3x3 leaves, constant subtrees folded (:func:`_drained_leaf`);
     from five a cascade of at most ``6n`` + ``3 * 2**n`` rows, linear in the
     table, its constant tail folded (:func:`_cascade`).  An over-wide tree
-    uses the cascade instead; its five-column floor preserves the rings.
+    uses the cascade instead; below five columns an extra down marker
+    moves the selector to the left edge while preserving the rings.
     """
     n = _validate_truth_table(truth_table)
     tree = (
@@ -143,6 +144,8 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     if tree is None or (
         width is not None and width > 0 and max(map(len, tree.split("\n"))) > width
     ):
+        if width is not None and 0 < width < 5:
+            return _four_column_cascade(truth_table, n)
         leaves = _cascade(truth_table)
         if width is not None and 0 < width < 6:
             # Entry travels down column1; column2 in every leaf is only blank
@@ -151,6 +154,23 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
         rows = ["  ~*", *(_STAGE * n), *_MIDDLE, *leaves]
         return "\n".join(row.rstrip() for row in rows)
     return tree
+
+
+def _four_column_cascade(table: str, n: int) -> str:
+    """Prepend one down marker to route the selector along column0."""
+    # Shift input stages left. A clockwise detour then lands down at1.
+    rows = [" ~*", *(row[1:] for row in _STAGE * n), "**", "* *", " ~"]
+    # Append D, rotate the existing D markers until the R sentinel,
+    # consume that R and restore it on exit. Queue becomes D^(index+1),R.
+    rows.extend(["*+~*", " ~", "**"])
+    rows.extend(_MIDDLE)
+    # The fixed extra D turns leftward travel down at the left edge;
+    # consuming it leaves the original selector/ring queue unchanged.
+    rows.append("+*")
+    for bit in table:
+        # Unfold the constant tail: its old drain loop uses column0.
+        rows.extend((row[:2] + row[3:])[1:] for row in _ROWS[bit])
+    return "\n".join(row.rstrip() for row in rows)
 
 
 def _cascade(truth_table: str) -> list[str]:
