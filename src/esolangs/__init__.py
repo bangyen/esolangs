@@ -227,6 +227,8 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         and template == generate(name, truth_table, 1)
     ):
         return True
+    if language_id == "minsky_swap" and template == generate(name, truth_table, 15):
+        return True
     if language_id == "intercal":
         # Its primitive layout fits between the natural and simplified floors.
         # Rebuild at the observed bound rather than accepting equivalent syntax.

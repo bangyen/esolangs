@@ -629,7 +629,7 @@ class TestParameterizedMinskySwap:
                 got = self.run_minsky_swap(self.instantiate(template, bits))
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
-    @pytest.mark.parametrize("width", [1, 10, 20, 40, 80])
+    @pytest.mark.parametrize("width", [1, 9, 10, 15, 20, 40, 80])
     def test_rmsn_templates_preserve_command_targets(self, width: int) -> None:
         """Public and example fills use the notation's one equal-width pair."""
         import esolangs
@@ -644,12 +644,25 @@ class TestParameterizedMinskySwap:
             pairs = minsky_swap_setters(template, n)
             assert len(set(pairs)) == 1
             assert len(pairs[0][0]) == len(pairs[0][1])
-            assert max(map(len, template.splitlines())) <= max(width, 15)
+            assert max(map(len, template.splitlines())) <= max(
+                width, 8 + len(str(2 ** (n + 1) + 7 * n + 6))
+            )
             for row in range(1 << n):
                 bits = list(map(int, f"{row:0{n}b}"))
                 program = esolangs.instantiate("Minsky Swap", str(template), bits)
                 assert self.run_minsky_swap(program) == table[row]
                 assert self.run_minsky_swap(example.fill(template, bits)) == table[row]
+
+    def test_short_rmsn_public_floor(self) -> None:
+        import esolangs
+
+        template = esolangs.generate("Minsky Swap", "0110", 1)
+        assert template.setters == (("decnz();", "inc();  "),) * 2
+        assert max(map(len, template.splitlines())) == 10
+        for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
+            program = esolangs.instantiate("Minsky Swap", template, bits)
+            assert max(map(len, program.splitlines())) == 10
+            assert self.run_minsky_swap(program) == str(bits[0] ^ bits[1])
 
     def test_rmsn_growth_remains_linear(self) -> None:
         from esolangs.tools import parameterized
