@@ -1,7 +1,9 @@
 """Compact trampoline initialization and executed five-state decoder controls."""
 
+import argparse
 import itertools
 
+from address17 import table_cells
 from decoder_group import (
     _VIEW,
     _admissible,
@@ -122,7 +124,7 @@ def emit_masks(
     return cells
 
 
-def main() -> None:
+def main(*, table_free_hubs: bool = False) -> None:
     """Run all 2744 row/meaning cases as standalone, uninjected sources."""
     addresses = {
         landing(state, parity, char)
@@ -132,11 +134,31 @@ def main() -> None:
     }
     assert len(addresses) == 940
     assert all(420 < a < 6561 for a in addresses)
-    group = _setup(frozenset())
+    group = _setup(frozenset(), table_free_hubs=table_free_hubs)
+    if table_free_hubs:
+        table = table_cells()
+        old_group = _setup(frozenset())
+        assert any(
+            hub + offset in table
+            for hubs in old_group.hub_values.values()
+            for hub in hubs
+            for offset in range(4)
+        )
+        assert (
+            not {
+                hub + offset
+                for hubs in group.hub_values.values()
+                for hub in hubs
+                for offset in range(4)
+            }
+            & table
+        )
     total = 0
     for row in range(8):
         emission = _build(row, group, compact=True)
         assert not set(emission.code) & set(emission.data)
+        if table_free_hubs:
+            assert set(emission.data) & table <= set(range(group.base, group.base + 3))
         for triple in itertools.product(range(7), repeat=3):
             program = list(emission.source)
             for offset, meaning in enumerate(triple):
@@ -160,4 +182,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--table-free-hubs", action="store_true")
+    main(table_free_hubs=parser.parse_args().table_free_hubs)

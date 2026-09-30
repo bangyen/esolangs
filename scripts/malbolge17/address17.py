@@ -27,6 +27,7 @@ source string can execute; this script checks the map, not an emitted program.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import cache
 
 from esolangs.interpreters.other.malbolge import _crazy
 from esolangs.tools._malbolge_core import _rot
@@ -94,6 +95,20 @@ def group_cells(bits: Sequence[int]) -> tuple[int, int, int]:
     base = _crazy(ALL2 - 2, group_word(list(bits))) + 1
     assert base + 2 < W
     return base, base + 1, base + 2
+
+
+@cache
+def table_cells() -> frozenset[int]:
+    """Return the packed table's cells, derived from all fourteen-bit addresses."""
+    cells = frozenset(
+        cell
+        for row in range(1 << 14)
+        for cell in group_cells(
+            tuple((row >> shift) & 1 for shift in range(13, -1, -1))
+        )
+    )
+    assert len(cells) == 49_152
+    return cells
 
 
 def main() -> None:

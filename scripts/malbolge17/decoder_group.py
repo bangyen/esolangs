@@ -168,6 +168,7 @@ def _setup(
     *,
     external_pointer: bool = False,
     runtime_base: bool = False,
+    table_free_hubs: bool = False,
 ) -> _Group:
     """Choose the group base and every shared walked cell, as the prototype did."""
     if runtime_base and not external_pointer:
@@ -223,17 +224,35 @@ def _setup(
     for constant in _VIEW:
         taken |= {_landing(constant, char) for char in range(33, 127)}
 
+    hub_taken = set(taken)
+    minimum_hub = 10000
+    if table_free_hubs:
+        from address17 import table_cells
+        from compact_decoder import landing
+
+        hub_taken.update(table_cells())
+        hub_taken.update(
+            landing(state, parity, char)
+            for state in range(5)
+            for parity in range(2)
+            for char in range(33, 127)
+        )
+        minimum_hub = _ENTRY
+
     seeds: dict[str, tuple[int, list[str]]] = {}
     hub_values: dict[str, tuple[int, ...]] = {}
     for label in "01xn":
         label_cells = sorted(q for q in _LABELS if _LABELS[q] == label)
-        seed_cell = _seed_cell(order, used, reach, taken, label_cells)
+        seed_cell = _seed_cell(
+            order, used, reach, hub_taken, label_cells, minimum_hub=minimum_hub
+        )
         assert seed_cell is not None
         cell, path, hub = seed_cell
         used.add(cell)
         seeds[label] = (cell, path)
         hub_values[label] = (hub,)
         taken |= {hub, hub + 1, hub + 2, hub + 3}
+        hub_taken |= {hub, hub + 1, hub + 2, hub + 3}
 
     near_cells = sorted(
         {
@@ -247,7 +266,9 @@ def _setup(
     )
     if runtime_base:
         near_cells = _OTHERS
-    neighbour = _neighbour_cell(order, used, reach, taken, near_cells)
+    neighbour = _neighbour_cell(
+        order, used, reach, hub_taken, near_cells, minimum_hub=minimum_hub
+    )
     assert neighbour is not None
     cell, path, hub = neighbour
     used.add(cell)
@@ -278,6 +299,8 @@ def _seed_cell(
     reach: dict[int, dict[int, list[str]]],
     taken: set[int],
     label_cells: list[int],
+    *,
+    minimum_hub: int = 10000,
 ) -> tuple[int, list[str], int] | None:
     """Find a walked seed whose label cells map to one free hub value."""
     for cell in order:
@@ -293,7 +316,7 @@ def _seed_cell(
             if len(set(collected)) != 1:
                 continue
             hub = collected[0]
-            if not 10000 <= hub < 59000:
+            if not minimum_hub <= hub < 59000:
                 continue
             if not any(_admits(hub + 3, e - 1) for e in _OTHERS):
                 continue
@@ -311,6 +334,8 @@ def _neighbour_cell(
     reach: dict[int, dict[int, list[str]]],
     taken: set[int],
     near_cells: list[int],
+    *,
+    minimum_hub: int = 10000,
 ) -> tuple[int, list[str], int] | None:
     """Find the seed for the shared neighbour-escape hub."""
     for cell in order:
@@ -326,7 +351,7 @@ def _neighbour_cell(
             if len(set(collected)) != 1:
                 continue
             hub = collected[0]
-            if not 10000 <= hub < 59000:
+            if not minimum_hub <= hub < 59000:
                 continue
             if not any(_admits(hub + 3, e - 1) for e in near_cells):
                 continue
