@@ -4,6 +4,7 @@ Subexpressions the expression would repeat are assigned once to spare
 variables and named where they recur (:func:`_intercal_shared`).
 """
 
+import re
 from dataclasses import dataclass
 
 from esolangs.tools.helpers import (
@@ -53,7 +54,7 @@ def intercal(truth_table: str, width: int | None = None) -> str:
     the Shannon levels may select them in any order: the shorter of the
     identity and greedy orders is kept (:func:`best_input_order`).  Each
     order is built plain and shared, and the shorter kept.  Over-wide
-    expressions name each Boolean operation; a complete statement is the floor.
+    expressions name each Boolean operation; narrower layouts break between tokens.
     """
     natural = best_input_order(truth_table, _intercal_either)
     if width is None or width <= 0 or max(map(len, natural.splitlines())) <= width:
@@ -66,10 +67,31 @@ def intercal(truth_table: str, width: int | None = None) -> str:
         return narrow
     split = _intercal_narrow(truth_table, split=True)
     best = min((narrow, split), key=lambda program: max(map(len, program.splitlines())))
-    return (
+    chosen = (
         best
         if max(map(len, best.splitlines())) < max(map(len, natural.splitlines()))
         else natural
+    )
+    return _wrap_intercal(chosen, width)
+
+
+_TOKEN = re.compile(r"[A-Z]+|[.#][0-9]+|<-|@+|[0-9]+|[^\s]")
+
+
+def _intercal_tokens(program: str) -> list[str]:
+    """Return whole keywords, decimal operands, and expression punctuation."""
+    return _TOKEN.findall(program)
+
+
+def _wrap_intercal(program: str, width: int) -> str:
+    """Break over-wide statements only at C-INTERCAL token boundaries."""
+    from esolangs.tools.wrap import _join_tokens
+
+    return "\n".join(
+        line
+        if len(line) <= width
+        else _join_tokens(_intercal_tokens(line), width, separator=" ")
+        for line in program.splitlines()
     )
 
 

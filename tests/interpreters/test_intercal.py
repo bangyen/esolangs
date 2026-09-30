@@ -99,3 +99,54 @@ def test_forget_discards_next_frames_without_resuming() -> None:
 def test_politeness_and_stack_errors(source: str) -> None:
     with pytest.raises(HaltError):
         _run(source)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "PLEASE\n.1\n<-\n'\n?\n.2\n$\n#1\n'\nDO\nREAD\nOUT\n.1\nDO\nGIVE\nUP",
+        "PLEASE\nDO\n.1 <- '#0 $ #1' DO READ OUT .1 DO GIVE UP",
+    ],
+)
+def test_logical_statements_allow_token_boundary_newlines(source: str) -> None:
+    machine = _Machine(source, ScriptedIO(""))
+    assert len(machine.lines) == 3
+    expected = "III\n" if "?" in source else "I\n"
+    assert _run(source) == expected
+
+
+def test_wrapped_labels_next_resume_and_input() -> None:
+    source = (
+        "PLEASE\nDO\n(10)\nNEXT\nDO\nREAD\nOUT\n.1\nDO\nGIVE\nUP\n"
+        "(10)\nDO\nWRITE\nIN\n.1\nDO\nRESUME\n#1"
+    )
+    assert _run(source, "ONE\n") == "I\n"
+
+
+def test_bare_core_lines_remain_separate_statements() -> None:
+    source = "PLEASE .1 <- #1\nREAD OUT .1\nGIVE UP"
+    assert _run(source) == "I\n"
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "RE\nAD OUT #1",
+        "READ OUT #1\n2",
+        ".1 <- #1\n2",
+        ".1 <- #\n1",
+        ".1 <\n- #1",
+    ],
+)
+def test_newlines_cannot_split_keyword_number_or_operator(statement: str) -> None:
+    with pytest.raises(HaltError):
+        _run(f"PLEASE {statement}\nDO GIVE UP\nDO GIVE UP")
+
+
+def test_empty_lines_do_not_count_toward_politeness() -> None:
+    assert _run("\nPLEASE\n\nREAD OUT #1\n\nDO GIVE UP\nDO GIVE UP\n") == "I\n"
+
+
+def test_truncated_group_after_whitespace_is_rejected() -> None:
+    with pytest.raises(HaltError, match="incomplete INTERCAL expression"):
+        _expression("'\n ", {})

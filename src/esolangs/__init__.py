@@ -230,6 +230,13 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
     if language_id == "minsky_swap" and template == generate(name, truth_table, 15):
         return True
     if language_id == "intercal":
+        from esolangs.tools.intercal import _intercal_tokens
+
+        narrow = generate(name, truth_table, 1)
+        if isinstance(narrow, str) and _intercal_tokens(template) == _intercal_tokens(
+            narrow
+        ):
+            return True
         # Its primitive layout fits between the natural and simplified floors.
         # Rebuild at the observed bound rather than accepting equivalent syntax.
         width = max(1, max(map(len, template.splitlines()), default=0))

@@ -1,4 +1,4 @@
-"""INTERCAL narrows expressions into complete polite calculation statements."""
+"""INTERCAL lays logical statements across valid token boundaries."""
 
 import random
 
@@ -22,7 +22,12 @@ def test_intercal_narrow_expressions_compute_every_row(
         assert template == natural
     else:
         assert max(map(len, template.splitlines())) <= max(width, floor)
-    lines = template.splitlines()
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.other.intercal import _Machine
+
+    lines = _Machine(
+        esolangs.instantiate("INTERCAL", template, [0] * inputs), ScriptedIO("")
+    ).lines
     polite = sum(line.startswith("PLEASE ") for line in lines)
     assert len(lines) <= 5 * polite
     assert len(lines) >= 3 * polite
@@ -44,7 +49,7 @@ def test_intercal_width_splits_an_overwide_expression() -> None:
     assert intercal(table, 1000) == intercal(table)
 
 
-@pytest.mark.parametrize("width", [1, 13, 17, 19, 22, 26, 40, 80])
+@pytest.mark.parametrize("width", [1, 6, 9, 13, 17, 19, 22, 26, 40, 80])
 def test_intercal_narrow_identities_execute_every_small_table(width: int) -> None:
     for n in range(1, 4):
         for value in range(2 ** (2**n)):
@@ -53,8 +58,8 @@ def test_intercal_narrow_identities_execute_every_small_table(width: int) -> Non
 
 
 def test_intercal_xor_floor_and_narrow_corpus_size() -> None:
-    assert max(map(len, intercal("0110", 1).splitlines())) == 17
-    assert sum(len(intercal(format(value, "08b"), 1)) for value in range(256)) == 78997
+    assert max(map(len, intercal("0110", 1).splitlines())) == 6
+    assert sum(len(intercal(format(value, "08b"), 1)) for value in range(256)) == 92560
 
 
 @pytest.mark.medium
@@ -95,7 +100,7 @@ def test_intercal_fitting_primitive_layout_keeps_its_source() -> None:
     assert esolangs.evaluate("INTERCAL", table, width=width) == table
 
 
-@pytest.mark.parametrize("width", [1, 17, 19, 20, 22, 40, 80])
+@pytest.mark.parametrize("width", [1, 6, 9, 17, 19, 20, 22, 40, 80])
 @pytest.mark.parametrize("as_string", [False, True])
 def test_intercal_split_operations_keep_public_provenance(
     width: int, *, as_string: bool
