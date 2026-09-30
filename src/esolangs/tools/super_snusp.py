@@ -74,14 +74,13 @@ def _emit_anf(
     truth_table: str,
     used: list[int],
     *,
-    coefficients: list[int] | None = None,
     negated: int = 0,
 ) -> str:
     """Emit a fixed-polarity ANF evaluator over ``used`` stream inputs.
 
     ``negated`` marks, as a row mask over ``truth_table``'s inputs, the
     retained inputs whose cells hold the complement; the terms are then the
-    ANF of the table with those inputs flipped (``coefficients`` when given).
+    ANF of the table with those inputs flipped.
     """
     k = len(used)
     base = _decode_base(k, negated)
@@ -105,8 +104,7 @@ def _emit_anf(
     if not used or used[-1] != n - 1:
         program.append("0")
     product = k + 1
-    if coefficients is None:
-        coefficients = _anf_coefficients(_flip(truth_table, negated))
+    coefficients = _anf_coefficients(_flip(truth_table, negated))
     if coefficients[0]:
         program.append(")")
 
@@ -138,7 +136,6 @@ def _anf_cost(
     truth_table: str,
     used: list[int],
     *,
-    coefficients: list[int] | None = None,
     negated: int = 0,
 ) -> int:
     """Return the rendered length of :func:`_emit_anf` without emitting it."""
@@ -147,8 +144,7 @@ def _anf_cost(
     cost = 4 + 2 * n + k + 7 + min(flips, k - flips)
     if not used or used[-1] != n - 1:
         cost += 1
-    if coefficients is None:
-        coefficients = _anf_coefficients(_flip(truth_table, negated))
+    coefficients = _anf_coefficients(_flip(truth_table, negated))
     cost += coefficients[0]
     product = k + 1
     for mask, coefficient in enumerate(coefficients[1:], start=1):
@@ -350,13 +346,8 @@ def super_snusp(truth_table: str, width: int | None = None) -> str:
         for token in _super_snusp_tokens(flat):
             if len(token) == 1:
                 pieces.append(token)
-            elif token in ("48", "49"):
-                pieces.append("6{8*" + (")" if token[-1] == "9" else ""))
             else:
-                # Decimal Horner uses temporary stack cells and restores its
-                # depth; each digit has constant source cost and folds singly.
-                pieces.append(
-                    token[0] + "".join("{2{5**{" + digit + "+" for digit in token[1:])
-                )
+                # Both emitters use only 48/49 as multi-digit literals.
+                pieces.append("6{8*" + (")" if token[-1] == "9" else ""))
         flat = "".join(pieces)
     return _super_snusp_folded(flat, width)
