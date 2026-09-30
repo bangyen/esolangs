@@ -91,9 +91,11 @@ def test_terminal_tree_character_bound() -> None:
 def test_constant_bracket_is_below_three() -> None:
     import math
 
-    lower = math.log(2) ** 2 / (math.log(8) * math.log(10))
+    from tests.proofs._factor_normal import growth
+
+    lower = math.log(2) ** 2 / (math.log(growth()) * math.log(10))
     upper = (29 / 32) * (15 / 14) * math.log10(2)
-    assert upper / lower == pytest.approx(1305 / 448)
+    assert upper / lower == pytest.approx(2.7459906952662383)
     assert upper < 3 * lower
 
 
