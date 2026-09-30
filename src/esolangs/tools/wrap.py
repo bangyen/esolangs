@@ -510,7 +510,6 @@ WRAPPERS = {
     "a_painter_ant": wrap_chars,
     "bf_pda": wrap_chars,
     # One statement a line; each folds on its own.
-    "qoibl": _qoibl,
     # Generators emit indented blocks; fold only an over-wide line.
     # Packlang punctuation separates tokens even without a space.
     "packlang": _packlang,
@@ -522,7 +521,7 @@ WRAPPERS = {
 # line is a statement, folded separately for the reader (the language would
 # not notice).  Minifuck keeps existing newline comments attached to the
 # bracket that may skip them, and preserves already-fitting template folds.
-MULTILINE = frozenset({"taglate", "qoibl", "packlang", "minifuck"})
+MULTILINE = frozenset({"taglate", "packlang", "minifuck"})
 
 
 def takes_width(fn: Callable[..., str]) -> bool:
