@@ -229,31 +229,16 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
-    from esolangs.tools.algebraic_programming_language import _apl_reduced_ordered
     from esolangs.tools.painfuck import _painfuck_ordered
     from esolangs.tools.parameterized import (
         _bitdeque_ordered,
-        _ram0_ordered,
     )
-    from esolangs.tools.tape import _bf_ordered, _jaune_ordered
     from esolangs.tools.three_d_brainfuck import _three_d_ordered
 
     entries: list[tuple[str, object, object]] = [
-        (
-            "algebraic_programming_language",
-            boolean.algebraic_programming_language,
-            _apl_reduced_ordered,
-        ),
-        (
-            "brainfuck",
-            boolean.brainfuck,
-            _bf_ordered,
-        ),
         ("painfuck", boolean.painfuck, _painfuck_ordered),
         ("three_d_brainfuck", boolean.three_d_brainfuck, _three_d_ordered),
-        ("ram0", boolean.ram0, _ram0_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
-        ("jaune", boolean.jaune, _jaune_ordered),
     ]
     return [
         (

@@ -25,8 +25,8 @@ from esolangs.tools.helpers import (
 )
 from esolangs.tools.helpers import (
     _validate_truth_table,
-    best_input_order,
     decision_tree_body,
+    in_input_order,
     move_text,
 )
 from esolangs.tools.jaune import (
@@ -99,7 +99,7 @@ def bf_tree(truth_table: str) -> str:
     its input the same way.  Factor most wants this: it refuses tables
     whose integer encoding exceeds Python's digit limit.
     """
-    return best_input_order(truth_table, _bf_ordered)
+    return in_input_order(truth_table, _bf_ordered)
 
 
 def _bf_ordered(truth_table: str, perm: tuple[int, ...]) -> str:

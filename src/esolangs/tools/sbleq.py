@@ -4,7 +4,7 @@ from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
-    best_input_order,
+    in_input_order,
     subtree_ids,
     subtree_slot,
 )
@@ -76,8 +76,8 @@ def sbleq(truth_table: str) -> str:
     """
     _validate_truth_table(truth_table)
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _sbleq_shared)
-    tree = best_input_order(truth_table, _sbleq_shared)
+        return in_input_order(truth_table, _sbleq_shared)
+    tree = in_input_order(truth_table, _sbleq_shared)
     packed = _sbleq_packed(truth_table)
     return tree if len(tree) < len(packed) else packed
 

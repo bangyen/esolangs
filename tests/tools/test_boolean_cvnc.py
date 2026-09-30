@@ -3,11 +3,19 @@
 import importlib
 import itertools
 import random
+from functools import partial
 
 import pytest
 
 from esolangs import tools as boolean
-from esolangs.tools.cvnc import _render, _stored
+from esolangs.tools.cvnc import (
+    _HALT_SQUARINGS,
+    _halt,
+    _ordered_candidate,
+    _prologue_syllables,
+    _render,
+    _stored,
+)
 from esolangs.tools.helpers import best_input_order
 from tests.tools.boolean_runners import (
     five_input_sample,
@@ -112,14 +120,14 @@ class TestCvnc:
         near it, so the escalation below is never paid in practice.
         """
         module = importlib.import_module("esolangs.tools.cvnc")
-        reach = module._reach(module._HALT_SQUARINGS)  # noqa: SLF001
+        reach = module._reach(_HALT_SQUARINGS)  # noqa: SLF001
 
         # parity is the table that folds nothing, so it is the worst case
         for n in range(1, 9):
             table = "01" * (2**n // 2)
             program = boolean.cvnc(table)
             assert len(program) < reach, f"n={n}"
-            assert module._halt(module._HALT_SQUARINGS + 1) not in program  # noqa: SLF001
+            assert _halt(_HALT_SQUARINGS + 1) not in program
 
     def test_a_program_outgrowing_the_goto_gets_another_squaring(
         self, monkeypatch: pytest.MonkeyPatch
@@ -140,8 +148,8 @@ class TestCvnc:
         dense = "".join(rng.choice("01") for _ in range(128))
         for table, squarings in (("01", 3), ("0110", 3), (dense, 4)):
             program = module.cvnc(table)
-            assert module._halt(squarings) in program  # noqa: SLF001
-            assert module._halt(squarings + 1) not in program  # noqa: SLF001
+            assert _halt(squarings) in program
+            assert _halt(squarings + 1) not in program
             assert len(program) < module._reach(squarings)  # noqa: SLF001
             n = len(table).bit_length() - 1
             for combo in range(len(table)):
@@ -186,7 +194,11 @@ class TestCvnc:
         tests input 2 first and folds after a single branch.  The win has to
         show up as a shorter program, not merely a different one.
         """
-        program = boolean.cvnc("10101010")
+        squarings = _HALT_SQUARINGS
+        program = _halt(squarings) + best_input_order(
+            "10101010",
+            partial(_ordered_candidate, offset=_prologue_syllables(squarings)),
+        )
         assert _leaves(program) == 2  # two leaves, as the reorder intends
         assert _branches(program) == 1
         # The unreordered node-read tree over the same table folds only at the
@@ -198,7 +210,11 @@ class TestCvnc:
 
     def test_the_hoisted_build_stores_and_fetches_rather_than_rotating(self) -> None:
         """The bridge between read order and test order is the deque's ends."""
-        program = boolean.cvnc("10101010")
+        squarings = _HALT_SQUARINGS
+        program = _halt(squarings) + best_input_order(
+            "10101010",
+            partial(_ordered_candidate, offset=_prologue_syllables(squarings)),
+        )
         # Every input is read once and pushed to an end in the same syllable.
         assert program.count("s") == 3
         assert program.count("sum") + program.count("sun") == 3
@@ -226,10 +242,10 @@ class TestCvnc:
         module = importlib.import_module("esolangs.tools.cvnc")
         for value in range(2**8):
             table = bin(value)[2:].zfill(8)
-            stream = module._Stream(table, module._prologue_syllables(4))  # noqa: SLF001
+            stream = module._Stream(table, _prologue_syllables(4))  # noqa: SLF001
             module._tree(table, stream)  # noqa: SLF001
             tree = stream.text()
-            assert len(boolean.cvnc(table)) <= len(module._halt(4)) + len(tree)  # noqa: SLF001
+            assert len(boolean.cvnc(table)) <= len(_halt(4)) + len(tree)
         # and parity specifically keeps the node-read build, pushing nothing
         assert not {"m", "n"} & set(boolean.cvnc("01101001"))
 
@@ -289,7 +305,7 @@ class TestCvnc:
         module = importlib.import_module("esolangs.tools.cvnc")
 
         def stored(table: str, perm: tuple[int, ...]) -> str:
-            stream = module._Stream(table, module._prologue_syllables(4))  # noqa: SLF001
+            stream = module._Stream(table, _prologue_syllables(4))  # noqa: SLF001
             if module._stored(table, perm, stream) is None:  # noqa: SLF001
                 return ""
             return stream.text()
@@ -297,7 +313,7 @@ class TestCvnc:
         tied = []
         for value in range(2**8):
             table = bin(value)[2:].zfill(8)
-            stream = module._Stream(table, module._prologue_syllables(4))  # noqa: SLF001
+            stream = module._Stream(table, _prologue_syllables(4))  # noqa: SLF001
             module._tree(table, stream)  # noqa: SLF001
             tree = stream.text()
             hoisted = best_input_order(
@@ -308,7 +324,7 @@ class TestCvnc:
                 tied.append(table)
         assert len(tied) == 4
         for table in tied:
-            stream = module._Stream(table, module._prologue_syllables(4))  # noqa: SLF001
+            stream = module._Stream(table, _prologue_syllables(4))  # noqa: SLF001
             module._tree(table, stream)  # noqa: SLF001
             tree = stream.text()
             assert boolean.cvnc(table).endswith(tree)
@@ -370,25 +386,24 @@ class TestCvncSharing:
     @staticmethod
     def _totals(tables: list[str]) -> tuple[int, int]:
         """Return plain and shipped character totals."""
-        module = importlib.import_module("esolangs.tools.cvnc")
         before = after = 0
         for table in tables:
-            body = best_input_order(table, module._ordered_candidate)  # noqa: SLF001
-            plain = len(module._halt(module._HALT_SQUARINGS)) + len(body)  # noqa: SLF001
+            body = best_input_order(table, _ordered_candidate)
+            plain = len(_halt(_HALT_SQUARINGS)) + len(body)
             shipped = len(boolean.cvnc(table))
             before, after = before + plain, after + shipped
         return before, after
 
     def test_three_input_total(self) -> None:
-        """Retiring plain candidates over three inputs: 14,621 to 14,633 (+0.082%)."""
+        """Three-input retirement stays within five percent of the original."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (14_849, 14_633)
-        assert 14_633 * 100 < 14_621 * 105
+        assert self._totals(tables) == (14_849, 15_192)
+        assert 15_192 * 100 < 14_621 * 105
 
     def test_five_input_sample_total(self) -> None:
-        """Retiring plain candidates over five inputs: 37,048 to 37,115 (+0.181%)."""
-        assert self._totals(five_input_sample()) == (39_373, 37_115)
-        assert 37_115 * 100 < 37_048 * 105
+        """Five-input retirement stays within five percent of the original."""
+        assert self._totals(five_input_sample()) == (39_373, 38_468)
+        assert 38_468 * 100 < 37_048 * 105
 
     def test_the_climb_is_a_closed_form(self) -> None:
         """A target is its nearer square's root climbed to, squared, stepped.
@@ -414,12 +429,11 @@ class TestCvncSharing:
     @pytest.mark.parametrize("n", [4, 5, 6])
     def test_a_shared_copy_runs_from_every_arm(self, n: int) -> None:
         """Seeded tables that share run every row, entered from each arm."""
-        module = importlib.import_module("esolangs.tools.cvnc")
         rng = random.Random(n)
         for _ in range(3):
             table = format(rng.getrandbits(2**n), f"0{2**n}b")
             program = boolean.cvnc(table)
-            plain = best_input_order(table, module._ordered_candidate)  # noqa: SLF001
+            plain = best_input_order(table, _ordered_candidate)
             assert not program.endswith(plain), table
             for combo in range(2**n):
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]

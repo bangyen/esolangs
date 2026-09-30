@@ -4,8 +4,8 @@ from collections.abc import Callable
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
-    best_input_order,
     constant_span_test,
+    in_input_order,
     stored_inputs,
     subtree_ids,
     subtree_slot,
@@ -25,21 +25,20 @@ def jaune(truth_table: str) -> str:
     :func:`_inverted_inputs` reads it inverted).  Reading up front keeps the
     input count constant: reads at the nodes let a folded tree skip them,
     and Jaune escaped the contract test only by not being in
-    ``BY_FUNCTION``.  The split order is whichever is shortest
-    (:func:`~esolangs.tools.helpers.best_input_order`); navigation costs one
+    ``BY_FUNCTION``. Splits stay in input order; navigation costs one
     move per cell, measured not assumed.
 
     A repeated subtree is laid out once and jumped to (``share`` in
     :func:`_jaune_ordered`). Sharing never grows a table through four inputs
     (exhaustively checked). Past that the shared tree, which lays out the
     distinct subtables alone in O(T), races the linear lookup.  Over the 256
-    three-input tables that is 7,437 to 7,055 characters (5.1%); over 200
-    seeded five-input tables, 47,973 to 19,193 (60.0%), where the unshared
+    three-input tables that is 7,437 to 7,199 characters (3.2%); over 200
+    seeded five-input tables, 47,973 to 19,568 (59.2%), where the unshared
     tree would give 29,291.
     """
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _jaune_shared)
-    shared = best_input_order(truth_table, _jaune_shared)
+        return in_input_order(truth_table, _jaune_shared)
+    shared = in_input_order(truth_table, _jaune_shared)
     linear = _jaune_linear(truth_table)
     return shared if len(shared) < len(linear) else linear
 

@@ -6,6 +6,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     constant_span_test,
+    in_input_order,
     subtree_ids,
 )
 
@@ -27,8 +28,8 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
     variable is read from stdin by appearing on an executed line, and the
     line's result is printed.  A folded decision tree selects subtrees with
     ``!x`` and ``x``; the harness feeds 0 or 1, so an input needs no
-    normalization and every value stays 0 or 1.  The split order is whichever is
-    shortest (:func:`~esolangs.tools.helpers.best_input_order`); the reads
+    normalization and every value stays 0 or 1. Splits stay in input order
+    unless a width is requested; the reads
     are unaffected since the line names ``a`` before ``b``.  A zero-valued
     prefix names every input first, preserving binding under folds; O(T)
     size.  Width-constrained output splits the compact tree into definitions,
@@ -38,7 +39,7 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
         return best_input_order(
             truth_table, lambda table, perm: _apl_narrow(table, perm, width)
         )
-    return best_input_order(truth_table, _apl_reduced_ordered)
+    return in_input_order(truth_table, _apl_reduced_ordered)
 
 
 def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:

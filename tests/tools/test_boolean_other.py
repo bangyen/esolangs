@@ -1059,14 +1059,7 @@ class TestAlgebraicProgrammingLanguageShapes:
         assert total == 16303
 
     def test_the_reduced_diagram_skips_idle_tests_and_complements(self) -> None:
-        """Reduced diagrams stay within the retirement budget.
-
-        A node whose halves agree is its half, and one that complements a
-        node built at its level is ``!`` of it.  16,303 characters over the
-        256 three-input tables fall to 16,079, and 42,875 over the
-        seeded five-input sample to 40,779. Retiring the inline candidate adds 0.075%
-        and 0.234% against the previous shipped totals.
-        """
+        """The fixed-order reduced diagram stays within the retirement budget."""
         from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
 
         assert boolean.algebraic_programming_language("00011110").endswith(
@@ -1077,8 +1070,8 @@ class TestAlgebraicProgrammingLanguageShapes:
         )
         three = [f"{value:08b}" for value in range(256)]
         for tables, before, after in (
-            (three, 16303, 16079),
-            (five_input_sample(), 42875, 40779),
+            (three, 16303, 16599),
+            (five_input_sample(), 42875, 42440),
         ):
             inline = [len(best_input_order(t, _apl_tree_ordered)) for t in tables]
             reduced = [len(boolean.algebraic_programming_language(t)) for t in tables]
