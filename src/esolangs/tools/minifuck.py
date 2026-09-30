@@ -264,6 +264,11 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
     wrapped = _wrap_template(natural, n, width)
     if max(map(len, wrapped.splitlines())) <= width:
         return wrapped
+    if width < 4 and all(
+        int(bit) == ((row.bit_count() ^ int(truth_table[0])) & 1)
+        for row, bit in enumerate(truth_table)
+    ):
+        return _parity_columns(n, int(truth_table[0]))
     if n == 1:
         # The lookup requires two inputs: duplicate each leaf and fix its
         # second setter to zero, leaving the first as the sole named input.
@@ -278,6 +283,47 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
         if max(map(len, narrow.splitlines())) < max(map(len, wrapped.splitlines()))
         else wrapped
     )
+
+
+def _parity_columns(n: int, complement: int) -> str:
+    """Toggle output bit 7 with each input; every skip absorbs only LF."""
+    bits = [0] * 10
+    pointer = 0
+    parts = ["q"]
+
+    def emit(command: str) -> None:
+        nonlocal pointer
+        parts.append(command)
+        if command == "<":
+            pointer = max(0, pointer - 1)
+        else:
+            pointer += 1
+            bits[pointer] ^= 1
+            if not bits[pointer]:
+                bits[pointer + 1] ^= 1
+
+    for _ in range(n):
+        for _ in range(6):
+            emit("[")
+        parts.append(TEMPLATE_CHAR)
+        # Either input ends at 6 or 7; clamping seven left steps returns to 0.
+        for _ in range(7):
+            emit("<")
+    for cell in range(1, 7):
+        emit("[")
+        if bits[cell] != int(cell in (2, 3)):
+            emit("<")
+            emit("[")
+    if bits[7] != (complement ^ 1):
+        emit("[")
+        emit("<")
+    parts.append(".")
+    return "\n".join(parts)
+
+
+def minifuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Recognize the parity layout's inert q prefix; retain legacy two-cell bits."""
+    return (("x", "[") if template.startswith("q\n") else PAIR,) * n
 
 
 def _wrap_template(template: str, n: int, width: int) -> str:
