@@ -166,9 +166,9 @@ Let `C_F(n)` be the worst-case minimum rendered digits over all `T = 2**n`
 tables. The existing witnesses and counting argument can be made explicit:
 
     (ln 2)**2 / (ln 8 * ln 10) <= liminf C_F(n)/(T*n)
-    limsup C_F(n)/(T*n) <= (45/28) log10 2.
+    limsup C_F(n)/(T*n) <= (435/448) log10 2.
 
-The coefficients are 0.10034333 and 0.48379821; neither is claimed sharp.
+The coefficients are 0.10034333 and 0.29229475; neither is claimed sharp.
 For the lower bound put `L = D ln 10` and `r = floor(L/(ln L)**2)`.
 The first `r` useful-prime exponents have total at most `L/ln 2`. Counting
 positive compositions and eight command choices bounds these prefixes by
@@ -183,78 +183,95 @@ are already counted among the prefixes. Thus behaviours number at most
 `exp((ln 8 + o(1)) L/ln L)`. Comparing with `2**T` and using the already
 proved `C_F(n) = Theta(T ln T)` gives the lower coefficient above.
 
-For the upper bound, use the traveling-counter construction in
-`tests/proofs/_factor_counter.py`. Write `M = T/2`, pack each consecutive
-pair `(a,b)` as `v = 2a+b`, and choose one global phase `p = 0,1,2,3`.
-Store `(v+p) mod 4` as the signed representative in `{-1,0,1,2}`; minus
-one is byte 255 on the wrapping tape. Its literal increment/decrement
-costs over the four phases are a permutation of `0,1,2,1`, summing to
-four. Summed over all pairs, the four phase costs sum to `4M`.
-Choose a minimum-cost phase, so payload initialization costs `s <= M`.
-This is four linear sums, a named cyclic averaging rule without search.
+For the upper bound, use the signed-ball block construction in
+`tests/proofs/_factor_blocks.py`. For `n >= 5`, split the truth table into
+`M = T/32` consecutive 32-bit words. Encode each word's integer rank as
+an integer vector of dimension 14 and total absolute value at most 14.
+The number of dimension-`a`, budget-`b` vectors is
 
-Initialize odd cell `2j+1` to payload `j`, leaving even controls zero,
-and end at control `2M-2`. The fill costs exactly `2M+s = T+s`.
-Use `w = n-1` control cells, starting at this last-pair control and
-extending rightward, for a little-endian binary counter. Read the first
-`w` inputs in order, storing their complements in descending counter
-positions. Thus the distance is `M-1-row`, where `row` is the prefix's
-binary value. All payloads remain on odd cells, outside the counter.
+    F(a,b) = sum_(j=0)^min(a,b) 2**j binom(a,j) binom(b,j).
 
-Three further control cells are scratch; another holds a nonzero guard.
-Copy each counter bit to scratch and back to compute the guard as their
-logical OR. While the guard is one, decrement the positive counter using
-a borrow bit: zero becomes one and propagates borrow; one becomes zero
-and clears borrow. A separate next-borrow cell keeps the conditional
-closing bracket on zero. Recompute the guard, then transfer the counter
-bits and guard one control cell left, in ascending order. Every destination
-has been cleared before its successor is shifted, and scratch is zero.
-The outer closing bracket tests the shifted guard, so its next iteration
-uses the translated window. Payload cells are crossed but never changed.
+Choose the `j` nonzero positions, their signs, and positive magnitudes
+with total at most `b`; the latter have `binom(b,j)` choices. Thus
+`F(14,14) = 7,923,848,253 > 2**32`. Use coordinate order
+`0,+1,-1,+2,-2,...` and unrank by subtracting each preceding group's
+`F(a-1,b-abs(digit))` count. This is a named enumerative code with exact
+binomial counts, not a search over programs or a frozen syntax table.
+All ranks below `2**32` have one such vector.
 
-After exactly `M-1-row` iterations the counter and guard are zero.
-The window base is at control `2row`, and moving right reaches the selected
-payload. No left-edge clamp is used: each window shift occurs with positive
-remaining distance, and movement within the window stays at or to the right
-of its base. The final return stops at that base.
-For `w=0` the counter code is empty. Each fixed counter pass has `O(w)`
-macros spanning `O(w)` cells, independent of runtime iteration count;
-its literal source is `O(w**2)`. Input setup, the two guard passes,
-decrement, and shift/return cost respectively `6w**2+78w+2`,
-`6w**2+30w+5`, `6w**2+30w+7`, `6w**2+75w+3`, and `14w+11`
-characters. Their sum is
+Place a zero control before each block's 14 payload cells. Initialize a
+payload with its signed number of pluses or minuses; negative values use
+byte wrap. Every block needs at most 14 arithmetic characters. Moving
+through the blocks and returning to the last control costs `15M+13`, so
+initialization costs at most `29M+13`.
 
-    K(0) = 0,       K(w) = 24w**2 + 227w + 28  (w >= 1).
+The traveling binary counter in `tests/proofs/_factor_counter.py` reads
+the first `w=n-5` inputs, storing their complements as a little-endian
+distance from the last block. It decrements a positive counter, recomputes
+a nonzero guard, and shifts its bits and guard one control cell left.
+Its closing bracket tests the shifted guard, so the next iteration uses
+the translated window. Control cells are 15 positions apart; payloads
+are crossed but never changed. Ascending transfers leave destinations
+zero before their successors move, and scratch is zero after each pass.
+After `M-1-row` shifts the counter is zero and its base is at the selected
+block. Each shift has positive remaining distance; local moves stay at or
+to the right of the base, and the final return stops there. No left-edge
+clamp is used. For stride `s`, counting the fixed macros gives
 
-Addressing is complete, so neighboring cells can now be cleared as scratch.
-Add `4-p` to the signed payload; its value is between zero and six and
-congruent to the original `2a+b` modulo four. Divide twice by two using
-fixed remainder toggles, retaining the two low bits and discarding overflow.
-Read the final input and print the high bit on zero or the low bit on one,
-adding 48. Exactly one branch prints, and all inputs are read in order.
-This decoder costs `290-p` characters, plus the move to the payload.
+    K_s(0) = 0,
+    K_s(w) = 12s*w**2 + (62s+103)w + 7s+14  (w >= 1).
+
+In particular `K_15(w) = 180w**2 + 1033w + 119`. Runtime may traverse
+exponentially many blocks, but source contains only one `O(w**2)` pass.
+For `n<5`, use the earlier cyclic pair witness; these finite arities do
+not affect the leading coefficient.
+
+Move to the selected payload and clear neighboring scratch, since
+addressing is complete. A fixed decoder reconstructs its rank in 32 binary
+cells. For a coordinate `d` with remaining dimension `a` and budget `b`,
+its contribution before descending to the next coordinate is zero if
+`d=0`; otherwise it is
+
+    F(a,b) + 2 sum_(k=1)^(abs(d)-1) F(a,b-k)
+           + (F(a,b-abs(d)) if d<0 else 0).
+
+Then reduce the budget by `abs(d)`. Adding 14 to a signed payload puts
+it in `0..28`; a threshold counter recovers magnitude and sign. A bounded
+loop visits the contribution terms, loading their exact binomial counts
+into binary addend cells. A ripple adder consumes each rank bit and carry,
+preserves the addend, and divides their sum (at most three) by two into
+new parity and carry. Every subtotal is nonnegative and at most the final
+rank, which is below `2**32`, so discarding overflow is harmless.
+All loaded counts satisfy `F(a,b) <= F(13,14) = 3,256,957,317 < 2**32`.
+The generated constants are re-derived from the displayed formula.
+
+Read the final five inputs into a byte index `j=0..31`, select rank bit
+`31-j`, add 48, and print once. Every input is read in order. The decoder
+has fixed source length 147,967, independent of `n` and the truth table.
 Consequently
 
-    C = T + s + K(n-1) + 291-p
-      <= (3/2)T + 24n**2 + 179n + 116.
+    C <= (29/32)T + K_15(n-5) + 147981
+       = (29/32)T + O(n**2)  (n >= 5).
 
-Construction takes `O(T+n**2) = O(T)` time. Encode the maximal runs with
-the same greedy prime-run encoder. The rendered digits are at most
-`C log10 Q + O(1)`. The complete-window covering bound gives
-`ln Q <= (15/14 + eta) ln C + O_eta(1)` for every `eta > 0`.
+Unranking each fixed-size block and emitting it takes `O(T)` time.
+Encode the maximal runs with the same greedy prime-run encoder. The
+rendered digits are at most `C log10 Q + O(1)`; complete-window covering
+gives `ln Q <= (15/14 + eta) ln C + O_eta(1)` for every `eta > 0`.
 Letting `eta` decrease to zero gives
-`(3/2)*(15/14)*log10 2 = (45/28)*log10 2`.
+`(29/32)*(15/14)*log10 2 = (435/448)*log10 2`.
 Against the lower coefficient `log10(2)/3`, the asymptotic bracket has an
-exact `135/28`-fold gap (4.821429).
+exact `1305/448`-fold gap (2.912946).
 
-The witness executes through Factor on every table through three inputs
-and eleven tables per arity at four through six: 309 programs, 3,352 input
-rows. Counter tests check all 63 prefix addresses through six inputs,
-payload preservation, cleared controls, and absence of clamped moves.
-All 32 phase/payload/final-input combinations execute through Brainfuck;
-exact source counts and the phase averaging identity are checked through
-twelve inputs. This is a language-level witness, separate from the shipped
-compact-transfer generator.
+Tests exhaust the smaller signed balls through dimension and budget four,
+check the counting recurrence through 14, and pin actual source lengths
+through twelve inputs. The decoder executes 14 tables on 576 input rows
+through Brainfuck, including every row of twelve 32-bit blocks and one
+table each at six and seven inputs. All 15 prefix addresses through width
+three preserve the stride-15 payloads, clear controls, and avoid clamping.
+A real Factor encoding of the five-input table `0xA596B47C` contains
+917,061 digits and executes on input `00000`, returning `1`; its decoded
+source has 148,010 characters. This is a language-level witness with a
+large fixed decoder, separate from the shipped compact-transfer generator.
 
 Executed parity encodings at n=1..5 contain 135, 266, 501, 966, 1883 digits;
 all 62 input rows return parity. Their normalized costs 67.5, 33.25,
