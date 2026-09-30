@@ -386,19 +386,65 @@ the text does too. The two ends built here are
     tree     D = Theta(T log T)   2n + 1 steps          O(log T)-bit values
     packed   D = Theta(T)         Theta(T**(1/3))       O(T**(1/3))-bit values
 
-and the open question is the joint one:
+The fraction-firing version of the joint question has a constructive answer.
+The interpreter-work version remains open.
 
-- is there a family with `D = O(T)` and `polylog(T)` steps? Every
-  construction here pays a fractional power of `T` for it, and the reason is
-  visible: `m = o(T)` forces some address to name more than one row, and the
-  only storage a fraction list has for the rest is a magnitude, which
-  Lemma 11 makes the run traverse;
-- or is there a size-time tradeoff theorem -- a lower bound on `D * S`, or
-  on `D` for `S = polylog(T)`, over every program in the language?
+### Shared threshold dictionaries
 
-Nothing above excludes either. What is excluded is any argument by
-counting, at either end: a `D`-character program has `2**Theta(D)`
-behaviours, so counting stops at `Omega(T)` exactly as Theorem 14 says.
+Let `n = log2 T`, and choose a power-of-two block width `w` with
+`n/4 < w <= n/2` for `n >= 2`. Route the high inputs through the ordinary
+tree, stopping at blocks of `w` rows. Intern equal block bit strings: there
+are at most `2**w <= sqrt(T)` distinct patterns. A block leaf replaces its
+state prime by its pattern prime. The low inputs load their offset `r` into
+one counter-prime exponent, using one fraction per input.
+
+For each pattern, emit descending threshold guards `pattern * counter**j`
+only at bit changes, including `j = 0`. The highest applicable threshold is
+exactly the start of the run containing `r`; its numerator is `1` or `2`.
+It consumes the pattern prime and `j` counter units. Trailing cleanup
+fractions remove the residual offset and unread input primes. Tree rules
+precede offset loading, which precedes dispatch and cleanup. Constant leaves
+use their own direct answer rule. No pattern is found by search.
+
+The tree has `O(T/w)` nodes; their primes have `O(n)` decimal digits, so
+routing costs `O(T)` text. The shared dictionary has at most `2**w * w`
+thresholds, each costing `O(n + log w)` characters. Its text is therefore
+`O(sqrt(T) * n**2) = o(T)`. Input loading and cleanup add `O(n log n)`.
+Thus every table has `O(T)` rendered text. This is a text bound; the prime
+sieve's build time has not been proved linear.
+
+A run uses at most `n-v` routing firings, one pattern load, `v = log2 w`
+offset loads, one dispatch, `w-1` counter clears, and `n` input clears:
+`O(n) = O(log T)` firings. Values have `O(n log n)` bits: each input prime
+has polynomial size in `n`, the active state or pattern prime has `O(n)`
+bits, and the counter exponent is at most `w-1`. Constant leaves obey the
+same bound.
+
+`tests/proofs/deep/fractran_shared.py` executes all tables through three
+inputs, then constants, parity, and twelve seeded tables per arity four
+through six: 3,800 rows, all correct. Maximum firings by arity are
+`2, 3, 4, 6, 7, 8`. Rendered seeded dense-table lengths are:
+
+    n       shared      shipped
+    8         1948         2210
+    10        7937         9057
+    12       34663        35705
+    14      149045       132259
+    16      342464       512956
+
+Four rows of each wider program and its shipped counterpart were also
+executed correctly. At sixteen inputs, the shared sample needed at most
+21 firings but 544,733 guard inspections, including the final halt scan.
+The three-input
+aggregate grows from 27,842 to 31,322, so this is a research construction,
+not a replacement for the shipped generator.
+
+The interpreter scans the ordered list to find each applicable fraction.
+These `O(log T)` firings therefore do not prove polylogarithmic execution
+work. The remaining question is whether linear text can also achieve
+polylogarithmic guard inspections and bit operations, or whether the
+language forces a tradeoff for that stronger cost model. Counting alone
+still gives only `Omega(T)` text.
 
 ## The other end: the row-addressing tree
 
