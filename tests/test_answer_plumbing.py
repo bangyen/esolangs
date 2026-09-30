@@ -694,6 +694,21 @@ class TestInstantiateCanCheckProvenance:
         template = esolangs.generate("Minifuck", "0110")
         assert esolangs.instantiate("Minifuck", template, [0, 1])
 
+    @pytest.mark.parametrize("language", ["BIO", "Bitdeque", "RAM0", "FRACTRAN"])
+    @pytest.mark.parametrize("width", [None, 5])
+    def test_wrapped_templates_keep_provenance(
+        self, language: str, width: int | None
+    ) -> None:
+        table = "01101001"
+        template = str(esolangs.generate(language, table, width))
+        for row, expected in enumerate(table):
+            bits = [(row >> shift) & 1 for shift in (2, 1, 0)]
+            program = esolangs.instantiate(language, template, bits, truth_table=table)
+            output = esolangs.run(language, program, timeout=1)
+            assert esolangs.read_answer(language, output) == expected
+        with pytest.raises(esolangs.TemplateError, match="is not the template"):
+            esolangs.instantiate(language, template, [0, 1, 0], truth_table="10010110")
+
 
 class TestSnapshotSaysItIsOpaque:
     """Its positions are not a schema and cannot be."""

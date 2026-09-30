@@ -397,3 +397,46 @@ class TestStepMachine:
         hash(before)  # must not raise
         state.step()
         assert state.snapshot() != before
+
+
+class TestBranchingMachine:
+    @pytest.mark.parametrize("command", ["PRT", "PRT INT"])
+    def test_branching_accepts_valid_output(self, command: str) -> None:
+        from esolangs.interpreters.stack_based.modulous import _Machine
+        from esolangs.vm import run_until_halt, run_until_halt_or_all_branches_cycle
+
+        code = f"[PSH INT 65][{command}][END]"
+        io = ScriptedIO("")
+        assert run_until_halt(_Machine(code, io), limit=3)
+        assert io.getvalue() == ("65" if command == "PRT INT" else "A")
+        assert run_until_halt_or_all_branches_cycle(
+            _Machine(code, ScriptedIO("")), limit=4
+        )
+
+    @pytest.mark.parametrize(
+        ("code", "message"),
+        [("[TYPO]", "is not a Modulous command"), ("[PSH INT -1][PRT]", "chr")],
+    )
+    def test_branching_rejects_invalid_programs_like_execution(
+        self, code: str, message: str
+    ) -> None:
+        from esolangs.interpreters.stack_based.modulous import _Machine
+        from esolangs.vm import run_until_halt, run_until_halt_or_all_branches_cycle
+
+        for runner in (run_until_halt, run_until_halt_or_all_branches_cycle):
+            with pytest.raises(ValueError, match=message):
+                runner(_Machine(code, ScriptedIO("")), limit=10)
+
+    @pytest.mark.parametrize("distance", [1, 100, 101])
+    def test_branching_wraps_backward_jumps_like_execution(self, distance: int) -> None:
+        from esolangs.interpreters.stack_based.modulous import _Machine
+        from esolangs.vm import run_until_halt, run_until_halt_or_all_branches_cycle
+
+        code = f"[JMP B {distance}][END]"
+        expected = run_until_halt(_Machine(code, ScriptedIO("")), limit=10)
+        assert (
+            run_until_halt_or_all_branches_cycle(
+                _Machine(code, ScriptedIO("")), limit=10
+            )
+            == expected
+        )

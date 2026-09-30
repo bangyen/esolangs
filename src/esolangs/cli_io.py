@@ -164,7 +164,9 @@ def _bounded_read(path: str, timeout: float | None) -> str | Raster:
         # ``OSError``, so pointing ``run`` at a PNG used to dump a raw
         # traceback where every other unreadable file gets one clean line.
         _fail(f"cannot read {path}: not text ({_decode_note(exc)})")
-    return text
+    # Match Path.read_text's universal newlines: CRLF left a stray command
+    # in NoComment, CV(N)(C) and Grapheme after stripping the final LF.
+    return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
 def _smuggled_bytes(text: str) -> UnicodeDecodeError | None:

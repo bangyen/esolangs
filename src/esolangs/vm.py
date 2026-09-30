@@ -393,6 +393,8 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
             else:
                 waves[ip] = (before, low, power, length)
         machine.step()
+    if machine.halted:
+        return True
     raise TimeoutError(
         f"undecided after {limit} steps: neither halted nor grew by a "
         "provable translation"
@@ -491,9 +493,7 @@ def run_until_halt_or_value_growth(
     slacks: list[int | None] = []
     visits: dict[Hashable, list[tuple[int, tuple[int, ...], int]]] = {}
     for index in range(limit):
-        # Suffolk is the only affine machine and never halts, so nothing
-        # reaches this return; it stays for the next affine language.
-        if machine.halted:  # pragma: no cover - see above
+        if machine.halted:
             return True
         slacks.append(machine.clamp_slack)
         key = machine.key
@@ -503,6 +503,8 @@ def run_until_halt_or_value_growth(
         if len(seen) == 3 and _climbs_forever(seen, slacks):
             return False
         machine.step()
+    if machine.halted:
+        return True
     raise TimeoutError(
         f"undecided after {limit} steps: neither halted nor climbed by a "
         "provable affine step"
