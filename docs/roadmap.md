@@ -1,7 +1,7 @@
 # Roadmap
 
-Only live work belongs here. Contracts and standing walls go to
-[limitations](limitations.md); a closed row leaves, and its commit is the record.
+Open work only. See [limitations](limitations.md) for standing contracts
+and proved limits; completed work is recorded in its commit.
 
 ## Conditional follow-up
 
@@ -51,8 +51,8 @@ Only live work belongs here. Contracts and standing walls go to
 
 ## Open problems
 
-Research questions the proofs leave open.  Each names the first executable
-step; an answer lands in the paper it extends, and the row leaves.
+Each problem names a next executable step. Record its answer in the linked
+proof and remove the completed item.
 
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
@@ -82,15 +82,15 @@ step; an answer lands in the paper it extends, and the row leaves.
   `2**46076` down, and the length and alphabet cuts are dead
   ([limitations](limitations.md), Malbolge).  The live route is a dependence
   cut over the 24,434-cell threshold (the largest `K` with
-  `C(59049, K) * 8**K < 2**131072`), but NOT per program: `'o'*59046 +
-  '/<v'` computes the one-input identity and every one of its cells flips
-  it, so some program for a table can depend on all 59,049.  With full
+  `C(59049, K) * 8**K < 2**131072`). This cannot hold for every program:
+  `'o'*59046 + '/<v'` computes the one-input identity and changing any
+  cell flips it, so a program can depend on all 59,049 cells. With full
   stores a cell's first access is always a read, so dependent cells are
   touched cells; in the shipped constructions every sampled touched cell
   is dependent (3,416 at `n = 4`, 9,308 at 10, 16,650 at 11, at least
-  19,007 at 12).  What survives is a cut over ONE program per table -- a
-  normal form that strips nop runs and padding -- or a count of
-  descriptions rather than of flip-sensitive cells.  Either way it is a
+  19,007 at 12). A proof must count one normal-form representative per table,
+  stripping nop runs and padding, or count descriptions instead of
+  flip-sensitive cells. Either route requires a
   density lemma: 17 inputs need 2.22 bits a cell against the 3 a cell
   holds, so every program must waste 0.78 bits a cell (the sixteen-input
   build stores 1.11).  Directly sampling scaled stores cannot measure this:
@@ -109,11 +109,9 @@ step; an answer lands in the paper it extends, and the row leaves.
   complement.  Relocating alone leaves 317 cells, and the decoder needs
   thousands, so the remaining work is sharing setup, not placement.  See
   [malbolge-scaling](proofs/malbolge-scaling.md#seventeen-navigation-is-linear-in-address-so-packing-helps-measured).
-  The shipped
-  constructions reach 16 inputs (a positional address, one cell per row
-  pair), so 17 is the only arity whose status is unknown: a build would
-  need more than two table bits in nearly every cell, and a proof that one
-  table is unreachable needs the density lemma above.
+  The shipped positional construction reaches 16 inputs. Only 17 remains
+  undecided: a build needs more than two table bits in nearly every cell;
+  an impossibility proof needs the density lemma above.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
@@ -124,8 +122,9 @@ step; an answer lands in the paper it extends, and the row leaves.
   Upper side: embedded automaton programs with an additive decoder
   (`lem:adddec`, `prop:embprog`, effective profile `325/8` per state
   squared, `lem:effprofile`) on a trie-banded automaton (`lem:trieband`,
-  `lem:bandtrie`) with `(1 + o(1)) T/n` states for every `n`, so levels
-  are CLOSED.  Open: profile (`325/8` against mass `13/4`).  Sources neither
+  `lem:bandtrie`) with `(1 + o(1)) T/n` states for every `n`. The level-count
+  problem is settled; the profile remains open (`325/8` against mass `13/4`).
+  Sources neither
   even nor odd pay mass `4` (`rem:parity`), even or odd ones `3`
   (`lem:evensigns`, both-signs rows on `E` with `f = x^e E(x**2)`), plus
   `1/4` for every large `n` by counting sign skeletons
@@ -176,7 +175,6 @@ step; an answer lands in the paper it extends, and the row leaves.
   odd symmetric decision-tree programs for every table, executed
   exhaustively through two inputs.  A matching lower bound must price
   parity sources themselves.
-
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between

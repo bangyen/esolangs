@@ -1,16 +1,15 @@
 # Brainfuck behaviour count
 
-Bounds on the exponential growth rate of the number of distinct behaviours
-of `C`-character Brainfuck programs (roadmap row "Brainfuck behaviour
-count").  The earlier interval `[1 + sqrt 2, 1 + lambda]` came from the Factor
+This document bounds the growth rate of distinct behaviours of
+`C`-character Brainfuck programs. The earlier interval `[1 + sqrt 2, 1 + lambda]` came from the Factor
 constant work removed in `e5276dc` (`lem:draw`, `prop:reduced`,
 `prop:drawing`, `rem:gap` of the old `factor.tex`).
 
 ## Status
 
-The limit is **not** determined.  The interval is narrowed from `[1 + sqrt 2, 1 + lambda] = [2.414, 7.388]`
-to the following.  Every bound is proved and every number is certified in exact rational
-arithmetic:
+The limit remains open. The bounds below narrow the earlier interval
+`[1 + sqrt 2, 1 + lambda] = [2.414, 7.388]`. Every bound is proved;
+the numerical certificates use exact rational arithmetic:
 
 | model (section 1) | lower bound on `liminf B(C)^(1/C)` | upper bound on `limsup B(C)^(1/C)` |
 |---|---|---|
@@ -23,7 +22,7 @@ arithmetic:
 | loop-free programs, EOF error | **4.06124** (Thm 3) | **2 + sqrt 5 = 4.23607** (Thm 3) |
 | loop-free programs, EOF constant / keep | 3.79003 | 4.23607 / 4.72458 |
 
-Headline (repo model): **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0347`**,
+For the repository model: **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0347`**,
 from `[2.414, 7.388]`.  In bits per character: `[2.085, 2.815]`, from `[1.272, 2.885]`.
 The lower bound uses nested loops (section 5c) and exceeds the loop-free upper bound
 `2 + sqrt 5 = 4.23607`.  Loops therefore strictly raise the growth rate.

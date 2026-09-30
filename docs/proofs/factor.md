@@ -57,7 +57,7 @@ Consequently `log Q = O(log(m + 1))` and
 
     D = O(C log(m + 1)) = O(T log(T + 1)).
 
-The shipped generator emits a variant of the tree these bounds are stated for.
+The shipped generator modifies this tree to reduce decimal digits.
 Digits are `sum(L_i log10 p_i)` over the runs -- weighted by position, since
 the primes ascend -- so the shortest brainfuck program is not the cheapest
 Factor one, and the `48(n + 1)` characters of ASCII offset are folded into one
