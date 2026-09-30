@@ -109,6 +109,17 @@ def smoke(*, math_extra: bool) -> None:
         _refuses_timeout()
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_refuses_timeout).result(timeout=5)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        assert pool.submit(esolangs.verify, "Suffolk", "0110", isolated=True).result(
+            timeout=30
+        )
+    assert esolangs.verify("123", "01", isolated=True)
+    try:
+        esolangs.run_isolated("brainfuck", "+[]", timeout=0.5)
+    except esolangs.ExecutionTimeoutError:
+        pass
+    else:
+        raise AssertionError("isolated timeout did not stop a loop")
     assert esolangs.verify("123", "01", timeout=None)
     if math_extra:
         assert importlib.util.find_spec("sympy") is not None

@@ -89,6 +89,7 @@ reports source units, generation time, and deterministic command count.
 - `esolangs.read_answer` -- return the answer bit a `language` program's `output` carries
 - `esolangs.run` -- execute `program` and return its output
 - `esolangs.run_bounded` -- execute a text program cooperatively, returning output only on halt
+- `esolangs.run_isolated` -- return output from a subprocess; the deadline includes loading and startup
 - `esolangs.spec` -- return the interpreter's own description of `language`
 - `esolangs.verify` -- whether a generated `language` program really computes `truth_table`
 
@@ -163,6 +164,12 @@ have, and names the 15 that ignore a width because their newlines are part
 of the program.
 
 ## Bounded execution
+
+`run_isolated(language, program, stdin, timeout=30)` bounds subprocess startup,
+loading and execution on Windows and worker threads. Timeout kills and reaps
+the child; errors retain their class and `partial_output`.
+`evaluate(..., isolated=True)` and `verify(..., isolated=True)` apply a finite
+deadline per row; a timeout remains undecided, including termination answers.
 
 `run_bounded(language, program, stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with

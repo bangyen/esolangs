@@ -15,6 +15,7 @@ from scripts.check_generator_sizes import (
     SCHEMA,
     TABLES,
     baseline,
+    boundary_tables,
     differences,
 )
 
@@ -103,7 +104,7 @@ class TestCommittedBaseline:
         assert recorded["tables"] == list(TABLES)
         assert recorded["records"]
         for name, rows in recorded["records"].items():
-            assert sorted(rows) == sorted(TABLES), name
+            assert sorted(rows) == sorted((*TABLES, *boundary_tables(name))), name
             for table, fields in rows.items():
                 assert fields["source_units"] > 0, (name, table)
 
@@ -114,6 +115,7 @@ def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch) -> None:
     from scripts import check_generator_sizes as sizes
 
     monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: ["brainfuck"])
+    monkeypatch.setattr(sizes, "BOUNDARIES", {})
     for matches in (False, None):
         monkeypatch.setattr(
             sizes,
@@ -128,3 +130,23 @@ def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch) -> None:
         )
         with pytest.raises(ValueError, match="expected 1, got None"):
             sizes.sweep()
+
+
+def test_boundary_rows_are_pinned_and_corpus_drift_fails():
+    table = boundary_tables("Streetcode")[0]
+    measured = baseline(
+        [
+            {
+                **RECORD,
+                "language": "Streetcode",
+                "truth_table": table,
+                "executions": [{"row": 0, "commands": 2}, {"row": 1, "commands": 3}],
+            }
+        ]
+    )
+    assert measured["records"]["Streetcode"][table]["commands_by_row"] == {
+        "0": 2,
+        "1": 3,
+    }
+    stale = {**measured, "boundaries": {}}
+    assert differences(stale, measured) == ["baseline boundary corpus changed"]
