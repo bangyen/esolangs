@@ -946,12 +946,12 @@ class TestAlgebraicProgrammingLanguage:
                 )
                 for w in (1, 5, 10)
             ]
-            assert len(set(widths)) == 1, (table, widths)
+            assert widths == sorted(widths), (table, widths)
 
     def test_compact_narrow_tree_executes_every_small_table(self) -> None:
-        """Definitions preserve binding and reduce the XOR floor to nine."""
+        """Operator definitions preserve binding and reduce the XOR floor to five."""
         program = boolean.algebraic_programming_language("0110", 1)
-        assert max(map(len, program.splitlines())) == 9
+        assert max(map(len, program.splitlines())) == 5
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")

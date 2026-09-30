@@ -309,6 +309,38 @@ def _apl_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
     # parentheses, preserving input order even when a Boolean arm folds.
     reads = "&".join(_NAMES[index] for index in range(n)) + "&0"
     candidate = "\n".join([_NOT.replace(" ", ""), *definitions, f"{reads}|{result}"])
-    return min(
+    chosen = min(
         (previous, candidate), key=lambda program: max(map(len, program.splitlines()))
     )
+    if max(map(len, chosen.splitlines())) <= width:
+        return chosen
+    operators = _apl_short_operators(table, perm)
+    return min(
+        (chosen, operators), key=lambda program: max(map(len, program.splitlines()))
+    )
+
+
+def _apl_short_operators(table: str, perm: tuple[int, ...]) -> str:
+    """Return five-column operator definitions for at most three inputs."""
+    constant = constant_span_test(table)
+    symbols = iter("!?:;~^@")
+    lines: list[str] = []
+
+    def tree(start: int, end: int, depth: int) -> str:
+        if constant(start, end):
+            return table[start]
+        half = (start + end) // 2
+        zero = tree(start, half, depth + 1)
+        one = tree(half, end, depth + 1)
+        symbol = next(symbols)
+        lines.extend([f"{symbol}x={{", f"x&${one}", f"${zero}", "}"])
+        return symbol + _NAMES[perm[depth]]
+
+    root = tree(0, len(table), 0)
+    # The executed binding call names all inputs before any operator runs.
+    # Its intermediate values are unused, so chaining binds three inputs.
+    if len(perm) == 1:
+        lines.extend(["]x={", f"${root}", "}", "]a"])
+    else:
+        lines.extend(["x`y={", f"${root}", "}", "`".join(_NAMES[: len(perm)])])
+    return "\n".join(lines)
