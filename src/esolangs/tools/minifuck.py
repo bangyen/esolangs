@@ -6,12 +6,16 @@ are pinned differentially against the interpreter.
 """
 
 from functools import cache
+from inspect import signature
 
 from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
     _validate_shape,
     _validate_truth_table,
     essential_inputs,
+    mark_runs,
     read_at,
+    unmark,
 )
 
 # The strategies live in their own modules, but this one is the
@@ -95,6 +99,7 @@ from esolangs.tools.minifuck_pool import (
 # the module because the test suite imports them from here by name.
 from esolangs.tools.minifuck_sim import (
     _MINIFUCK_INPUT,
+    PAIR,
 )
 from esolangs.tools.minifuck_sim import (
     _clamp as _clamp,
@@ -244,15 +249,43 @@ def _solve(truth_table: str) -> str:
     raise ValueError(f"the Minifuck boolean generator could not build {truth_table!r}")
 
 
-def minifuck(truth_table: str) -> str:
+def minifuck(truth_table: str, width: int | None = None) -> str:
     """Build a Minifuck template for the given truth table.
 
     :func:`_solve` plus the arity check: ``_solve`` accepts a nullary table
     while recursing (six such calls building the 276 tables up to three
-    inputs), but the API refuses it.
+    inputs), but the API refuses it.  Narrow layouts pair fresh walks with
+    comments so skip chains no longer bind the padding into one long line.
     """
-    _validate_truth_table(truth_table)
-    return _solve(truth_table)
+    n = _validate_truth_table(truth_table)
+    natural = _solve(truth_table)
+    if width is None or width <= 0:
+        return natural
+    wrapped = _wrap_template(natural, n, width)
+    if max(map(len, wrapped.splitlines())) <= width:
+        return wrapped
+    if n == 1:
+        # The lookup requires two inputs: duplicate each leaf and fix its
+        # second setter to zero, leaving the first as the sole named input.
+        narrow = _mux_lookup("".join(bit * 2 for bit in truth_table), 2, paired=True)
+        at = narrow.rindex(_MINIFUCK_INPUT)
+        narrow = narrow[:at] + PAIR[0] + narrow[at + len(PAIR[0]) :]
+    else:
+        narrow = _mux_lookup(truth_table, n, paired=True)
+    narrow = _wrap_template(narrow, n, width)
+    return (
+        narrow
+        if max(map(len, narrow.splitlines())) < max(map(len, wrapped.splitlines()))
+        else wrapped
+    )
+
+
+def _wrap_template(template: str, n: int, width: int) -> str:
+    """Wrap a template with each two-character input run kept atomic."""
+    from esolangs.tools.wrap import wrap_program
+
+    marked = mark_runs(template, TEMPLATE_CHAR, (PAIR,) * n)
+    return unmark(wrap_program(marked, "minifuck", width), TEMPLATE_CHAR, n)
 
 
 # The construction's cache and its undecorated body live on ``_solve`` now,
@@ -261,4 +294,6 @@ def minifuck(truth_table: str) -> str:
 # arity check off did not move the surface.
 minifuck.cache_clear = _solve.cache_clear  # type: ignore[attr-defined]
 minifuck.cache_info = _solve.cache_info  # type: ignore[attr-defined]
+# Keep the public width parameter visible despite the legacy raw-solver link.
+minifuck.__signature__ = signature(minifuck)  # type: ignore[attr-defined]
 minifuck.__wrapped__ = _solve.__wrapped__  # type: ignore[attr-defined]

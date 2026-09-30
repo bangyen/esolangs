@@ -227,6 +227,12 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         and template == generate(name, truth_table, 1)
     ):
         return True
+    if language_id == "minifuck" and generator is not None and _takes_width(generator):
+        narrow = generate(name, truth_table, 1)
+        if isinstance(narrow, str) and template.replace("\n", "") == narrow.replace(
+            "\n", ""
+        ):
+            return True
     # BIO discards whitespace; the other three tokenize on it. Their wrappers
     # replace spaces with newlines, so removing newlines loses token boundaries.
     if language_id == "bio":

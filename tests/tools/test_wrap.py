@@ -283,6 +283,12 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     the multi-character-token languages.
     """
     example = _example(name)
+    if takes_width(example.generator):
+        plain = example.build(width)
+        wrapped = wrap_program(plain, LANGUAGES[name].id, max(1, width // 2))
+        assert wrapped.replace("\n", "") == plain.replace("\n", "")
+        assert _run(name, wrapped) == _run(name, plain)
+        return
     plain = example.build(width=None)
     wrapped = example.build(width)
     if wrapped == plain:
@@ -721,7 +727,16 @@ def test_width_honouring_languages_respect_the_width(name: str) -> None:
     pin the layout, not the width.
     """
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
-    assert language.id not in WRAPPERS, f"{name} both lays out and reflows"
+    if language.id in WRAPPERS:
+        # Its layout changes fresh padding; the post-fill wrapper still
+        # protects skip chains and the already atomic two-character setters.
+        template = generate(language.name, TABLE, 1)
+        for row in range(4):
+            bits = [(row >> 1) & 1, row & 1]
+            code = esolangs.instantiate(
+                language.name, template, bits, 1, truth_table=TABLE
+            )
+            assert esolangs.run(language.name, code) == TABLE[row]
     assert language.boolean is not None
     for width in (40, 80, 94):
         program = generate(language.name, TABLE, width)
