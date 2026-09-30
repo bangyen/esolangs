@@ -478,10 +478,10 @@ def test_bitwise_cyclic_tag_does_not_cascade_a_one() -> None:
 
 @pytest.mark.medium
 def test_thue_contracted_heads_keep_a_unique_rewrite() -> None:
-    """C appears only after LR meets; D restores L before the next read."""
+    """Ready and waiting symbols leave exactly one rewrite before each read."""
     from esolangs.interpreters.other.thue import _Machine, _matches
 
-    assert max(map(len, boolean.thue("0110", 1).splitlines())) == 9
+    assert max(map(len, boolean.thue("0110", 1).splitlines())) == 7
     for n in range(1, 4):
         for value in range(1 << (1 << n)):
             table = format(value, f"0{1 << n}b")
