@@ -47,7 +47,7 @@ from esolangs.tools.parameterized import (
     minsky_swap_setters,
 )
 from esolangs.tools.ram0 import PAIR as RAM0_PAIR
-from esolangs.tools.smallfuck import PAIR as SMALLFUCK_PAIR
+from esolangs.tools.smallfuck import smallfuck_setters
 from esolangs.tools.underload import underload_setters
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
@@ -574,7 +574,7 @@ def _register() -> None:
         "smallfuck": _embedded(
             b.smallfuck,
             "tape_based.smallfuck",
-            pair=SMALLFUCK_PAIR,
+            setters=smallfuck_setters,
             note="Smallfuck defines no I/O; this implementation prints final cell 2",
         ),
         "underload": _embedded(

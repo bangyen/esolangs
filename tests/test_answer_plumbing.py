@@ -230,6 +230,7 @@ class TestATemplateCarriesItsSetters:
             BOOLEAN_EXAMPLES["fractran"],
             BOOLEAN_EXAMPLES["crement"],
             BOOLEAN_EXAMPLES["underload"],
+            BOOLEAN_EXAMPLES["smallfuck"],
             BOOLEAN_EXAMPLES["minsky-swap"],
         }
         for example in uniform_ones:

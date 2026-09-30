@@ -249,7 +249,11 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         width = max(1, max(map(len, template.splitlines()), default=0))
         if template == generate(name, truth_table, width):
             return True
-    if language_id == "minifuck" and generator is not None and _takes_width(generator):
+    if (
+        language_id in {"minifuck", "smallfuck"}
+        and generator is not None
+        and _takes_width(generator)
+    ):
         narrow = generate(name, truth_table, 1)
         if isinstance(narrow, str) and template.replace("\n", "") == narrow.replace(
             "\n", ""
