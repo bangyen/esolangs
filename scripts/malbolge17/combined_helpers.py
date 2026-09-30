@@ -38,6 +38,37 @@ def _emit(plan: _Planner, chunk: _Chunk, incoming: int | None = None) -> None:
         plan.mem[target] = value
 
 
+def place_chunks(
+    plan: _Planner, chunks: list[_Chunk], blocked: set[int], protected: set[int]
+) -> tuple[_Planner, dict[int, str], int]:
+    """Place accumulator-independent chunks, retaining an escape for each."""
+    emitted: dict[int, str] = {}
+    routes = 0
+    for index, chunk in enumerate(chunks):
+        trial = _copy(plan)
+        _emit(trial, chunk)
+        following = chunks[index + 1] if index + 1 < len(chunks) else None
+        stranded = False
+        if following is not None and not set(trial.code) & blocked:
+            try:
+                _route(trial, following, blocked | set(trial.code), protected, 1)
+            except AssertionError:
+                stranded = True
+        if set(trial.code) & blocked or _room(trial.c, sorted(blocked)) < 1 or stranded:
+            header, trial, sentinel = _route(
+                plan, chunk, blocked, protected, 1, following
+            )
+            emitted.update(header.code)
+            blocked.update(header.code)
+            blocked.add(sentinel)
+            routes += 1
+        assert not set(trial.code) & blocked
+        emitted.update(trial.code)
+        blocked.update(trial.code)
+        plan = trial
+    return plan, emitted, routes
+
+
 def _room(start: int, blocked: list[int]) -> int:
     index = bisect_left(blocked, start)
     return (blocked[index] if index < len(blocked) else 59049) - start
@@ -100,9 +131,9 @@ def _route(
     raise AssertionError(f"no non-overlapping helper route from C{plan.c}, D{plan.d}")
 
 
-def build_combined_helpers() -> tuple[
-    str, tuple[tuple[int, int, int], ...], dict[str, int], _Planner
-]:
+def build_combined_helpers(
+    *, reserved: set[int] | None = None
+) -> tuple[str, tuple[tuple[int, int, int], ...], dict[str, int], _Planner]:
     """Return one real source, fold interface, metadata and the live helper exit."""
     group = _setup(
         frozenset({142, 145, 139, 144}), external_pointer=True, runtime_base=True
@@ -195,6 +226,9 @@ def build_combined_helpers() -> tuple[
     plan.raw("v")
     assert plan.c - 1 not in blocked
     emitted[plan.c - 1] = "v"
+    if reserved is not None:
+        reserved.update(blocked)
+        reserved.add(plan.c - 1)
     assert set(emitted) & occupied == {replaced_halt}
     assert plan.data == plans[0].data
     rendered = list(source)
