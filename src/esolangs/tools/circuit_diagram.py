@@ -915,19 +915,13 @@ def _cheapest_selector_order(truth_table: str, n: int) -> tuple[int, ...]:
     return tuple(remaining + bottom_up[::-1])
 
 
-def _selector_orders(truth_table: str) -> list[tuple[int, ...] | None]:
-    """Return the selector orders worth building, identity (``None``) first.
+def _selector_orders(
+    truth_table: str, *, compact: bool = False
+) -> list[tuple[int, ...] | None]:
+    """Return named selector orders, identity first.
 
-    Only which rail each Shannon level selects moves; the rails themselves
-    are drawn, and read, in input order.  Three named candidates join the
-    identity: the shared greedy order
-    (:func:`~esolangs.tools.helpers._greedy_input_order`), which counts
-    constant cofactors; :func:`_cheapest_selector_order`, which counts this
-    fold's gates and complements; and the reversed identity, which hands
-    the bottom level -- the one with the most muxes -- the first rail.  None
-    of the three dominates: over all 256 three-input tables they save 7.4%,
-    12.5% and 13.6% alone and 19.6% together, against 19.8% for the best of
-    all six orders.  Four builds is the whole cost; nothing searches.
+    Compact builds keep identity, mux-cost greedy and reverse. Width requests
+    also try the constant-cofactor greedy order. Rails remain in input order.
     """
     n = len(truth_table).bit_length() - 1
     if n > _REORDER_MAX_ARITY:
@@ -937,7 +931,7 @@ def _selector_orders(truth_table: str) -> list[tuple[int, ...] | None]:
     identity = tuple(range(len(used)))
     orders: list[tuple[int, ...] | None] = [None]
     for order in (
-        _greedy_input_order(table, len(used)),
+        identity if compact else _greedy_input_order(table, len(used)),
         _cheapest_selector_order(table, len(used)),
         identity[::-1],
     ):
@@ -1068,12 +1062,10 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     for a column count: the drawing is built once without one, and again
     inside the width if that came out too wide.
 
-    Below eight inputs "once" is once per selector order
-    (:func:`_selector_orders`), the shortest kept, and a width bands that
-    order.  The orders' reach is a constant four builds: over all 256
-    three-input tables the shipped drawings are 19.6% smaller than the
-    identity's, 20.8% over all 65,536 four-input ones, and 9% to 19% on
-    random five- to seven-input ones.
+    Below eight inputs the shortest named selector order is kept. Compact
+    builds use three orders; width requests keep all four. Retiring the
+    constant-cofactor greedy choice adds 3.29% to the three-input total
+    and 1.62% to the seeded five-input sample.
 
     From eight inputs an unconstrained build uses the H-layout instead
     (:func:`_h_term_layout`).  That is a growth choice, not a size one: the
@@ -1107,7 +1099,7 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     flat, order = min(
         (
             (_circuit_diagram_at(truth_table, None, order), order)
-            for order in _selector_orders(truth_table)
+            for order in _selector_orders(truth_table, compact=width is None)
         ),
         key=lambda built: len(built[0]),
     )

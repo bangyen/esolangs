@@ -661,7 +661,10 @@ class TestCircuitDiagram:
         sizes = [len(_circuit_diagram_at(table, None, order)) for order in orders]
         assert sizes.index(min(sizes)) == winner
         assert sizes.count(min(sizes)) == 1
-        assert len(circuit_diagram(table)) == min(sizes)
+        compact = _selector_orders(table, compact=True)
+        assert len(circuit_diagram(table)) == min(
+            len(_circuit_diagram_at(table, None, order)) for order in compact
+        )
         assert self.run_table(table) == table
 
     def test_each_run_prints_exactly_one_bit(self) -> None:
@@ -817,7 +820,7 @@ class TestCircuitDiagramSelectorOrder:
 
         tables = [format(value, "08b") for value in range(256)]
         assert sum(len(_circuit_diagram_at(table, None)) for table in tables) == 183978
-        assert sum(len(circuit_diagram(table)) for table in tables) == 147858
+        assert sum(len(circuit_diagram(table)) for table in tables) == 152716
 
     @pytest.mark.parametrize(
         ("zero", "one", "cost"),

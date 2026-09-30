@@ -445,13 +445,10 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
     ``d := B + d*A`` for a destination holding zero and ``d := d // 2`` for an
     even one, so an address takes its odd weight last: nothing halves it.
 
-    The candidates are all O(T) and the shortest is kept, the plain build
-    first so ties keep it: the plain build stores each cell's value as its
-    code; the numbered builds store codes ``0 .. m`` (:func:`_cm_codes`),
+    Numbered builds store codes ``0 .. m`` (:func:`_cm_codes`),
     which halves the three-input total, over the essential inputs only (an
-    ignored input is read and never added) and under three named choices of
-    the two selecting inputs -- the last two, the first two, and the first
-    and last, which at three inputs is every pair.  Only which input a
+    ignored input is read and never added). The last two or the first and
+    last inputs select; width requests also try the first two.  Only which input a
     level tests moves; the reads stay in name order.  Each is also built
     for the complement, printed as ``49 - bit``, and with the last selector
     added as ``2 - bit``: arithmetic swaps those arms, not the fill.
@@ -481,10 +478,9 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
     essential = essential_inputs(truth_table, n)
     orders = [essential]
     if len(essential) >= 3:
-        orders += [
-            essential[2:] + essential[:2],
-            [*essential[1:-1], essential[0], essential[-1]],
-        ]
+        if width is not None:
+            orders.append(essential[2:] + essential[:2])
+        orders.append([*essential[1:-1], essential[0], essential[-1]])
     candidates = [
         _cm_build(truth_table, n, order, zero_top=zero_top)
         for order in orders
