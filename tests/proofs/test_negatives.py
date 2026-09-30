@@ -253,6 +253,8 @@ class TestSparseRemainderNeedsTheLargestPrime:
     ``p_L = 13`` exists through degree 20 at all.
     """
 
+    # 1.25-1.29s in two branch gates; both thresholds stay in the default suite.
+    @pytest.mark.medium
     def test_the_lemma_threshold_is_tight_at_five_primes(self) -> None:
         assert not _remainder_fits((2, 3, 5, 7, 11), 18, 3, 10)
         assert _remainder_fits((2, 3, 5, 7, 11), 18, 3, 11)

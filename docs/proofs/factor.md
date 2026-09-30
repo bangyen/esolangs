@@ -165,23 +165,47 @@ behaviour. It matches the generated `Theta(T log T)` upper.
 Let `C_F(n)` be the worst-case minimum rendered digits over all `T = 2**n`
 tables. The existing witnesses and counting argument can be made explicit:
 
-    (ln 2)**2 / (ln 8 * ln 10) <= liminf C_F(n)/(T*n)
+    (ln 2)**2 / (ln lambda * ln 10) <= liminf C_F(n)/(T*n)
     limsup C_F(n)/(T*n) <= (435/448) log10 2.
 
-The coefficients are 0.10034333 and 0.29229475; neither is claimed sharp.
-For the lower bound put `L = D ln 10` and `r = floor(L/(ln L)**2)`.
-The first `r` useful-prime exponents have total at most `L/ln 2`. Counting
-positive compositions and eight command choices bounds these prefixes by
-`exp(O(r ln(L/r))) = exp(o(L/ln L))`. Every later exponent costs at least
-`ln(r+1)`, so their total is at most `N = floor(L/ln(r+1))`.
-Merge adjacent equal decoded commands into maximal runs; this only lowers
-the weighted exponent cost, since later run ranks decrease. Given a nonempty
-prefix, each later command has at most seven choices. For `k` later runs,
-positive exponent sequences of total at most `N` number `binom(N,k)`.
-Summing `7**k binom(N,k)` gives `8**N`. Programs shorter than `r` runs
-are already counted among the prefixes. Thus behaviours number at most
-`exp((ln 8 + o(1)) L/ln L)`. Comparing with `2**T` and using the already
-proved `C_F(n) = Theta(T ln T)` gives the lower coefficient above.
+Here `lambda = 7.101160353...` is the largest root of
+`x**3 - 7x**2 - x + 2`. The coefficients are 0.10644419 and 0.29229475; neither is claimed sharp.
+For the lower bound, first normalize every balanced program that halts
+with exactly one output on each valid input. Delete adjacent `+-`, `-+`
+and `><`; the last returns to its origin even at the clamped boundary.
+Delete `[]`: reaching it on a nonzero cell would prevent halting, so it
+only runs as a no-op on valid inputs. Delete `..`: both outputs would run
+together, so this pair is unreachable on every single-output input.
+Replace `+,` and `-,` by `,`, which overwrites their arithmetic.
+Repeated deletion terminates and preserves the entire valid-input behavior,
+including input consumption. The restriction matters: `+[]` is not halting,
+and `<>` cannot be canceled at the clamped boundary.
+
+Every retained command's run rank weakly decreases. Thus normalization
+cannot increase `sum_i e_i ln(i+1)`, originally at most `L = D ln 10`.
+Put `r = floor(L/(ln L)**2)`. The first `r` normalized-run exponents
+have total at most `L/ln 2`; positive compositions and eight command
+choices bound these prefixes by `exp(O(r ln(L/r))) = exp(o(L/ln L))`.
+Every later exponent costs at least `ln(r+1)`, so the remaining word has
+length at most `N = floor(L/ln(r+1))`.
+
+The normalized word avoids the seven displayed adjacent pairs. Its
+8-by-8 transition matrix has entry one precisely when a pair is allowed,
+and characteristic polynomial
+
+    x**3 (x-1)(x+1)(x**3 - 7x**2 - x + 2).
+
+The matrix is irreducible and has self-loops, so the Perron root is the
+largest cubic root `lambda` in `(7.10,7.11)`; the other two cubic roots
+are in `(-1,0)` and `(0,1)`. Allowed words of length at most `N` number
+`O(lambda**N)`, uniformly over the prefix's last command. Programs shorter
+than `r` runs are already counted as prefixes. Hence distinct behaviors
+number at most `exp((ln lambda + o(1)) L/ln L)`. Comparing with `2**T`
+and using `C_F(n) = Theta(T ln T)` gives the displayed lower coefficient.
+`tests/proofs/test_factor_normal.py` checks the exact matrix polynomial,
+executes original and normalized witnesses on all tables through three
+inputs (2,120 rows each), and executes both Factor encodings of every
+one-input table. Clamp and nonhalting controls delimit the rewrite contract.
 
 For the upper bound, use the signed-ball block construction in
 `tests/proofs/_factor_blocks.py`. For `n >= 5`, split the truth table into
@@ -259,8 +283,8 @@ rendered digits are at most `C log10 Q + O(1)`; complete-window covering
 gives `ln Q <= (15/14 + eta) ln C + O_eta(1)` for every `eta > 0`.
 Letting `eta` decrease to zero gives
 `(29/32)*(15/14)*log10 2 = (435/448)*log10 2`.
-Against the lower coefficient `log10(2)/3`, the asymptotic bracket has an
-exact `1305/448`-fold gap (2.912946).
+Against the lower coefficient `ln(2)**2/(ln(lambda)*ln(10))`, the
+asymptotic bracket has gap `(435/448)*log_2(lambda) = 2.745991`.
 
 Tests exhaust the smaller signed balls through dimension and budget four,
 check the counting recurrence through 14, and pin actual source lengths
