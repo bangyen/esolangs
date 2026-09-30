@@ -30,26 +30,18 @@ def jaune(truth_table: str) -> str:
     move per cell, measured not assumed.
 
     A repeated subtree is laid out once and jumped to (``share`` in
-    :func:`_jaune_ordered`).  Through 16 entries each order is built plain
-    and shared and the shorter kept; past that only the shared tree, which
-    lays out the distinct subtables alone and so is O(T), races the linear
-    lookup; the plain tree, a label per node, is not.  Over the 256
+    :func:`_jaune_ordered`). Sharing never grows a table through four inputs
+    (exhaustively checked). Past that the shared tree, which lays out the
+    distinct subtables alone in O(T), races the linear lookup.  Over the 256
     three-input tables that is 7,437 to 7,055 characters (5.1%); over 200
     seeded five-input tables, 47,973 to 19,193 (60.0%), where the unshared
     tree would give 29,291.
     """
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _jaune_best)
+        return best_input_order(truth_table, _jaune_shared)
     shared = best_input_order(truth_table, _jaune_shared)
     linear = _jaune_linear(truth_table)
     return shared if len(shared) < len(linear) else linear
-
-
-def _jaune_best(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Return the shorter of one order's plain and shared programs."""
-    plain = _jaune_ordered(truth_table, perm)
-    shared = _jaune_shared(truth_table, perm)
-    return shared if len(shared) < len(plain) else plain
 
 
 def _jaune_shared(truth_table: str, perm: tuple[int, ...]) -> str:

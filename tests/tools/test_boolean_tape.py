@@ -996,3 +996,13 @@ def test_brainif_unpruned_large_tree_uses_spatial_fallback() -> None:
     program = _brainif_tree(table, 1, prune=False)
     for row in [0, 1, 7, 13, 31]:
         assert run_brainif(program, list(format(row, "05b"))) == table[row]
+
+
+def test_rotfuck_loop_does_not_swallow_an_invariant_failure() -> None:
+    from esolangs.tools.rotfuck import _Builder
+
+    def broken() -> None:
+        raise AssertionError("broken body invariant")
+
+    with pytest.raises(AssertionError, match="broken body invariant"):
+        _Builder().loop(broken, lambda: None)

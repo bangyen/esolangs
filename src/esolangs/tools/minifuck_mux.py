@@ -36,9 +36,7 @@ from esolangs.tools.minifuck_sim import (
 _MUX_BASE = _BASE + 16
 _MUX_GUARD = _MUX_BASE - 8
 
-# No upper bound: every ``None`` site closes uniformly in ``n`` (the
-# generator tests, "Is ``_mux`` total?").  Two is the floor because
-# ``_solve`` routes constants and projections to :func:`_degenerate` first.
+# Constants and unary projections use the standing column instead.
 _MUX_MIN_ARITY = 2
 
 
@@ -224,8 +222,8 @@ def _mux_lookup(truth_table: str, n: int, *, paired: bool = False) -> str:
     return "".join(parts)
 
 
-def _mux(truth_table: str, n: int) -> str | None:
+def _mux(truth_table: str, n: int) -> str:
     """Build the table with the linear preloaded-strip rule."""
     if n < _MUX_MIN_ARITY:
-        return None
+        raise ValueError("mux requires at least two inputs")
     return _mux_lookup(truth_table, n)

@@ -17,6 +17,8 @@ from esolangs.tools.helpers import (
     _greedy_input_order,
     _validate_truth_table,
     constant_span_test,
+    grid_width,
+    narrowest_grid,
     permute_truth_table,
 )
 
@@ -694,25 +696,20 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         candidate = min(layouts(permute_truth_table(truth_table, perm), perm), key=len)
         if len(candidate) < len(best):
             best = candidate
-    if width is not None and max(map(len, best.splitlines())) > width:
+    if width is not None and grid_width(best) > width:
         # Move the start funnel above the computation, reclaiming its three
         # reserved columns. Two '/' turns enter its first heading setter.
         best = _laserfuck_raise_funnel(best)
         # Turning the staircase upright costs O(T log T) padding in general;
         # this bounded fallback keeps the full family O(T).
-        if max(map(len, best.splitlines())) > width and len(truth_table) <= 8:
+        if grid_width(best) > width and len(truth_table) <= 8:
             candidate = _laserfuck_build(
                 truth_table, identity, width, vertical_tree=True
             )
-            if max(map(len, candidate.splitlines())) > width:
+            if grid_width(candidate) > width:
                 candidate = _laserfuck_raise_funnel(candidate)
-            if max(map(len, candidate.splitlines())) < max(map(len, best.splitlines())):
-                best = candidate
-    if (
-        width is not None
-        and len(truth_table) <= 4
-        and max(map(len, best.splitlines())) > max(width, 4)
-    ):
+            best = narrowest_grid(best, candidate)
+    if width is not None and len(truth_table) <= 4 and grid_width(best) > max(width, 4):
         return _laserfuck_four_columns(truth_table)
     return best
 

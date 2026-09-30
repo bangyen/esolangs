@@ -1,6 +1,11 @@
 """Boolean-function generator for Flowchart."""
 
-from esolangs.tools.helpers import _validate_truth_table, constant_span_test
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    constant_span_test,
+    grid_width,
+    narrowest_grid,
+)
 
 # Leave a blank column between adjacent five-cell end nodes.
 _FLOWCHART_PITCH = 6
@@ -193,16 +198,12 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     if len(truth_table) > 16 and width is None:
         return _flowchart_deque(truth_table)
     flat = _flowchart_render(_flowchart_cells(truth_table))
-    if width is not None and max(len(line) for line in flat.split("\n")) <= width:
+    if width is not None and grid_width(flat) <= width:
         return flat
     stacked = _flowchart_render(_flowchart_stacked(truth_table))
     if width is None:
         return min((flat, stacked, _flowchart_deque(truth_table)), key=len)
-    if max(len(line) for line in stacked.split("\n")) < max(
-        len(line) for line in flat.split("\n")
-    ):
-        return stacked
-    return flat
+    return narrowest_grid(flat, stacked)
 
 
 def _flowchart_deque(truth_table: str) -> str:

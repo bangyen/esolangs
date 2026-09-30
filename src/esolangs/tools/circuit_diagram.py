@@ -80,6 +80,8 @@ from esolangs.tools.helpers import (
     _greedy_input_order,
     _validate_truth_table,
     essential_inputs,
+    grid_width,
+    narrowest_grid,
     permute_truth_table,
     read_at,
 )
@@ -1109,13 +1111,13 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
         ),
         key=lambda built: len(built[0]),
     )
-    if width is None or max(len(line) for line in flat.split("\n")) <= width:
+    if width is None or grid_width(flat) <= width:
         return flat
     banded = _circuit_diagram_at(truth_table, width, order)
-    if max(map(len, banded.splitlines())) <= width:
+    if grid_width(banded) <= width:
         return banded
     # The output dash and colon extend beyond the final gate group.
     banded = _circuit_diagram_at(truth_table, max(1, width - 2), order)
     affine = _affine_circuit(truth_table, width)
     candidates = (flat, banded) if affine is None else (flat, banded, affine)
-    return min(candidates, key=lambda program: max(map(len, program.splitlines())))
+    return narrowest_grid(*candidates)

@@ -260,19 +260,9 @@ class TestCvnc:
     ) -> None:
         """How many permutations the deque serves, per arity.
 
-        The ends are chosen by *search* over the ``2**n`` push assignments,
-        with the pops then forced, and the search returns the first
-        assignment that works.  That makes the two ends' bit tests
-        surprisingly hard to break visibly: scrambling which bit selects
-        which end still finds *a* working assignment for many orders, so
-        the generator keeps emitting correct programs and only the size of
-        the servable set moves.  Measured at four inputs, the shift and
-        mask edits take it from 20 down to 8 or 16 while every program
-        that is still built stays right.
-
-        The counts are the documented ones (all six at three inputs, 20 of
-        24 at four, 252 of 720 at six) and they are the whole observable,
-        so they are asserted rather than sampled.
+        The named two-run rule must serve the same complete domain as the
+        former push-assignment enumeration: all six orders at three inputs,
+        twenty at four, and 252 at six.
         """
         module = importlib.import_module("esolangs.tools.cvnc")
 
