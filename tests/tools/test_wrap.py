@@ -153,7 +153,6 @@ WIDTH_EXCEPTIONS = {
     for name in (
         "back",
         "container",
-        "crement",
         "cvnc",
         "grapheme",
         "inject",
@@ -709,7 +708,11 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
             stdin = "" if example.fill else "".join(f"{bit}\n" for bit in bits)
             compact = _laid_out(language.name, table, bits, None)
             expected = _behaviour(language.name, compact, stdin)
-            widths = (1, *_HONOUR_WIDTHS) if name == "arrowqueue" else _HONOUR_WIDTHS
+            widths = (
+                (1, *_HONOUR_WIDTHS)
+                if name in {"arrowqueue", "crement"}
+                else _HONOUR_WIDTHS
+            )
             for width in widths:
                 folded = _laid_out(language.name, table, bits, width)
                 relaid += folded != compact

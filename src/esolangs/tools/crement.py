@@ -43,14 +43,36 @@ _HALT, _LOOP = 0, 1
 PAIR = ("+J 0 0", "+J 0 1")
 
 
-def crement(truth_table: str) -> str:
+def crement(truth_table: str, width: int | None = None) -> str:
     """Build a Crement template: one run per input, its tester's first line.
 
     Constant subtrees fold, so the tree splits in the shorter of the identity
     and greedy orders as emitted; the identity wins ties.  Each order is
     built plain and shared (:func:`_crement_ordered`), and the shorter wins.
+    Over-wide instructions use their shortest absolute or relative operands;
+    the width floor is one complete three-field instruction.
     """
-    return best_input_order(truth_table, _crement_best)
+    template = best_input_order(truth_table, _crement_best)
+    if width is None or width <= 0 or max(map(len, template.splitlines())) <= width:
+        return template
+    lines = []
+    for here, line in enumerate(template.splitlines()):
+        if line.startswith(TEMPLATE_CHAR):
+            lines.append(line)
+            continue
+        operator, address, data = line.split()
+        lines.append(
+            f"{operator} {_short_operand(address, here)} {_short_operand(data, here)}"
+        )
+    return "\n".join(lines)
+
+
+def _short_operand(source: str, here: int) -> str:
+    """Return the shortest absolute or relative spelling of one operand."""
+    value = here + int(source[1:] or "0") if source.startswith("@") else int(source)
+    offset = value - here
+    relative = "@" if not offset else f"@{offset:+d}"
+    return min((source, str(value), relative), key=len)
 
 
 def _crement_best(truth_table: str, perm: tuple[int, ...]) -> str:
