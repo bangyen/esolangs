@@ -62,5 +62,6 @@ def test_whitespace_duplicate_separator_executes_every_small_table(
 
 
 def test_whitespace_sentinel_floor_and_corpus_size() -> None:
-    assert max(map(len, whitespace("0110", 1).split("\n"))) == 4
+    assert max(map(len, whitespace("0110", 1).split("\n"))) == 3
+    assert len(whitespace("0110", 1)) == 223
     assert sum(len(whitespace(format(v, "08b"), 1)) for v in range(256)) == 241466
