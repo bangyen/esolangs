@@ -50,7 +50,8 @@ None of this is wired into the generator.
 - `tiling_runs.py` -- free cells in long runs under every digit-local
   six-slab tiling (best 5,127 in runs of 200 or more); needs numpy.
 - `address17.py` -- word-level model of the seventeen-input address fold
-  (16,384 groups, cells `0..6561` free, no wrap to cell 0).
+  (16,384 disjoint groups; the actual reader uses 49,152 cells in
+  `6563..59047`, with no wrap to cell 0).
 - `address_gadget.py` -- emits every fixed A/B/C/D address path plus combined
   dynamic A and A/B/C/D paths as real source; the combined program executes
   all 16,384 group addresses, retains the table pointer and initializes all
@@ -70,3 +71,14 @@ None of this is wired into the generator.
   measurements.
 - `address_parity.py` -- exhaustive certificate for the straight-line reducer
   from the computed group pointer to the parity toggle operand.
+- `combined_helpers.py`, `live_rows.py` -- execute the shared address/label
+  setup, ten decoder helpers and final three-input row fold without injection.
+- `row_routes.py` -- eight live row landings, optionally jumping through one
+  pointer to a shared entry at `D=22`. All 131,072 inputs passed the shared
+  routing check; the row word remains in cell 20. Shared routing writes
+  33,239 instruction cells.
+- `shared_reader.py` -- shared-entry first-field read using the live pointer
+  and parity-selected view. Its 256 executed controls compare the result
+  against the actual pre-read memory word; 33,435 instruction cells. This
+  diagnostic halts after the read. Return navigation, complete Boolean
+  decoding and placement around the arbitrary table remain unfinished.
