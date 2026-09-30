@@ -94,14 +94,14 @@ def _runs(pair: tuple[str, str], n: int) -> list[str]:
 
 
 BIO_PAIR = ("0oz;", "0ox;")
-#: Four is minimal: a search over ``<>@[]`` finds no equal-width pair under it.
-BFPDA_PAIR = ("<[@]", "<@@@")
+#: Each bit cell is freshly pushed as zero; the marker is a separate cell.
+BFPDA_PAIR = (" ", "@")
 BITDEQUE_PAIR = ("PUSH INVERT", "INVERT PUSH")
 #: Even widths: ``*`` swaps the pointer, so a one-wide zero would move it.
 MINSKY_SWAP_PAIR = ("**", "++")
 _MINSKY_RMSN_PAIR = ("swap();\nswap();", "inc(); \ninc(); ")
 #: ``j`` is the pad: a gate tests this cell next, so it must leave value and pointer.
-HOME_ROW_PAIR = ("as", "aj")
+HOME_ROW_PAIR = ("s", "j")
 
 
 # ("leaf", leaf_id, value, None, None) or ("node", node_id, level, zero, one).
@@ -148,8 +148,9 @@ def bfpda(truth_table: str) -> str:
     """Build a BF-PDA template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Each
-    run is a four-character push of its bit; the load pushes every ``<@`` +
-    run pair so the stack holds all bits and markers with ``b0`` on top.
+    run flips a fresh zero cell or leaves it alone; the load pushes
+    a marker and that bit cell before every run. The stack holds all bits
+    and markers with ``b0`` on top.
     Characters outside ``@.<>[]`` are comments.  A node tests and consumes
     its bit with ``[>> one ]>[> zero ]``: ``[`` enters on a one and ``>>``
     pops it and its marker; on a zero ``>`` pops the bit and the second loop
@@ -162,7 +163,7 @@ def bfpda(truth_table: str) -> str:
     # Marker then bit, in name order, so the tree tests the last input
     # first (the same tree reflected; the reversed load bought nothing and
     # put the runs out of order).
-    head = "".join("<@" + run for run in _runs(BFPDA_PAIR, n))[1:]
+    head = "".join("<@<" + run for run in _runs(BFPDA_PAIR, n))[1:]
 
     def leaf(level: int, value: str) -> str:
         # A one stops on the bottom entry, the first marker, and prints it.
@@ -420,8 +421,8 @@ def home_row(truth_table: str) -> str:
     """Build a Home Row template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  A
-    run is a two-character setter on a zero cell: ``a`` then ``s`` (clear)
-    or ``j`` (a skip that does not fire).  The bits pack into one binary
+    run follows a fixed ``a`` on a zero cell: ``s`` clears it,
+    while ``j`` is a skip that does not fire.  The bits pack into one binary
     accumulator: each packing line ``$$ l s ffff a{2**(n-1-i)} f l`` uses
     Home Row's position-stable ``l``/``s``/``l`` gate (loops cannot nest) to
     add the weight iff the bit is 1.  Then guarded leaves count it down:
@@ -441,7 +442,7 @@ def home_row(truth_table: str) -> str:
 
     setup = "aaaaaalsffaaaaaaaaffflf"
     bit_lines = [
-        run + "lsffff" + "a" * weights.get(i, 0) + "fl"
+        "a" + run + "lsffff" + "a" * weights.get(i, 0) + "fl"
         for i, run in enumerate(_runs(HOME_ROW_PAIR, n))
     ]
     guarded = table.rstrip(table[-1])
