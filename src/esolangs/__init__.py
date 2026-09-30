@@ -215,7 +215,18 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
     plain = generate(name, truth_table)
     if not isinstance(plain, str):
         return False
+    if template == plain:
+        return True
     language_id = LANGUAGES[name].id
+    generator = LANGUAGES[name].boolean
+    # Layouts may switch representations; their floor is a named candidate,
+    # unlike whitespace wrapping, so compare that template exactly too.
+    if (
+        generator is not None
+        and _takes_width(generator)
+        and template == generate(name, truth_table, 1)
+    ):
+        return True
     # BIO discards whitespace; the other three tokenize on it. Their wrappers
     # replace spaces with newlines, so removing newlines loses token boundaries.
     if language_id == "bio":

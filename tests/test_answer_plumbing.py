@@ -709,6 +709,33 @@ class TestInstantiateCanCheckProvenance:
         with pytest.raises(esolangs.TemplateError, match="is not the template"):
             esolangs.instantiate(language, template, [0, 1, 0], truth_table="10010110")
 
+    @pytest.mark.parametrize(
+        "language", ["ArrowQueue", "Crement", "Minsky Swap", "Underload", "INTERCAL"]
+    )
+    @pytest.mark.parametrize("width", [1, 10, 20, 40, 80])
+    @pytest.mark.parametrize("as_string", [False, True])
+    def test_layout_templates_keep_provenance(
+        self, language: str, width: int, *, as_string: bool
+    ) -> None:
+        """Both tagged and saved layouts retain their table provenance."""
+        from esolangs.vm import run_until_halt_or_cycle
+
+        table = "01101001"
+        template = esolangs.generate(language, table, width)
+        if as_string:
+            template = str(template)
+        for row, expected in enumerate(table):
+            bits = list(map(int, f"{row:03b}"))
+            program = esolangs.instantiate(language, template, bits, truth_table=table)
+            if language in {"ArrowQueue", "Crement"}:
+                machine = esolangs.make_vm(language, program)
+                answer = "0" if run_until_halt_or_cycle(machine) else "1"
+            else:
+                answer = esolangs.read_answer(language, esolangs.run(language, program))
+            assert answer == expected
+        with pytest.raises(esolangs.TemplateError, match="is not the template"):
+            esolangs.instantiate(language, template, [0, 1, 0], truth_table="10010110")
+
 
 class TestSnapshotSaysItIsOpaque:
     """Its positions are not a schema and cannot be."""
