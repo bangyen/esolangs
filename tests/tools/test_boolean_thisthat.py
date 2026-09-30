@@ -162,3 +162,25 @@ def test_layout_collisions_abort() -> None:
     builder.connect([(1, 0), (2, 0)], "single")
     with pytest.raises(ValueError, match="wire collision"):
         builder.connect([(1, 0), (2, 0)], "double")
+
+
+@pytest.mark.parametrize("width", [1, 10, 20, 40, 80])
+def test_rotated_layout_keeps_ports_and_bistack_axes(width: int) -> None:
+    """Rotation changes physical directions while input deque order stays fixed."""
+    for n in (1, 3, 5):
+        table = _parity(n)
+        plain = thisthat(table)
+        program = esolangs.generate("thisthat", table, width)
+        floor = min(max(map(len, plain.splitlines())), len(plain.splitlines()))
+        assert max(map(len, program.splitlines())) <= max(width, floor)
+        for row, expected in enumerate(table):
+            bits = f"{row:0{n}b}"
+            io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+            run(program.splitlines(), io)
+            assert (io.getvalue(), io.reads) == (expected, n)
+
+
+def test_rotated_rendered_area_remains_linear() -> None:
+    sizes = [len(thisthat(_parity(n), 1)) for n in (5, 7, 9)]
+    assert sizes[-1] / (1 << 9) < 300
+    assert sizes[2] / sizes[1] < 5
