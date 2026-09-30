@@ -841,6 +841,42 @@ class TestCollatzMultiverse:
                     run_collatz_multiverse(program, list(f"{row:0{n}b}")) == table[row]
                 )
 
+    @pytest.mark.parametrize("width", [1, 27, 29, 30, 40, 80])
+    def test_narrow_renaming_preserves_every_small_table(self, width: int) -> None:
+        for n in range(1, 4):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                program = boolean.collatz_multiverse(table, width)
+                assert max(map(len, program.splitlines())) <= max(width, 29)
+                assert program.count("input") == n
+                for row in range(2**n):
+                    bits = list(format(row, f"0{n}b"))
+                    assert run_collatz_multiverse(program, bits) == table[row]
+
+    @pytest.mark.parametrize("n", [5, 8, 10])
+    def test_narrow_renaming_preserves_larger_decoders(self, n: int) -> None:
+        rng = random.Random(20260930 + n)
+        for table in (
+            "".join(str(row.bit_count() & 1) for row in range(2**n)),
+            "".join(rng.choice("01") for _ in range(2**n)),
+        ):
+            for width in (1, 29, 40, 80):
+                program = boolean.collatz_multiverse(table, width)
+                for row in rng.sample(range(2**n), 12):
+                    bits = list(format(row, f"0{n}b"))
+                    assert run_collatz_multiverse(program, bits) == table[row]
+
+    def test_fitting_alias_layout_keeps_its_register_names(self) -> None:
+        program = boolean.collatz_multiverse("00", 27)
+        assert max(map(len, program.splitlines())) <= 27
+        assert "k48" in program
+        for bit in ("0", "1"):
+            assert run_collatz_multiverse(program, [bit]) == "0"
+
+    def test_narrow_xor_uses_the_complete_statement_floor(self) -> None:
+        program = boolean.collatz_multiverse("0110", 1)
+        assert max(map(len, program.splitlines())) == 29
+
     def test_negative_one_alias_narrows_complete_statements(self) -> None:
         """The narrow candidate changes source and actually reduces columns."""
         plain = boolean.collatz_multiverse("01101001")

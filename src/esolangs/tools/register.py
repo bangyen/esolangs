@@ -1,5 +1,6 @@
 """Boolean-function generators for register-based languages."""
 
+import re
 from itertools import chain, count, pairwise
 
 # Polynomial, Dig and AddSubJump each own a file: their constructions dwarf
@@ -387,8 +388,24 @@ def _cm_layout(program: str, width: int) -> str:
     aliased = "_=zx+negativeOne,NOT PRINT.\n" + "z=zx+z,NOT PRINT.\n"
     aliased += compact.replace("negativeOne", "_")
     if max(map(len, aliased.splitlines())) < max(map(len, compact.splitlines())):
-        return aliased
-    return compact
+        compact = aliased
+    if max(map(len, compact.splitlines())) <= width:
+        return compact
+    # A bijective rename changes no lines, so captured addresses and parity stay.
+    # Uppercase names other than A/D are absent from the generated cell decoder.
+    registers = list(
+        dict.fromkeys(re.findall(r"k\d+|w\d+|b\d+|\bout\b|\bzero\b", compact))
+    )
+    alphabet = "BCEFGHIJKLMNOPQRSTUVWXYZ"
+    aliases = {
+        name: alphabet[i] if i < len(alphabet) else f"B{i - len(alphabet)}"
+        for i, name in enumerate(registers)
+    }
+    return re.sub(
+        r"k\d+|w\d+|b\d+|\bout\b|\bzero\b",
+        lambda match: aliases[match.group()],
+        compact,
+    )
 
 
 def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
