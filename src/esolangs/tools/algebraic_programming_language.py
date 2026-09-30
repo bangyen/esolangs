@@ -30,12 +30,12 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
     shortest (:func:`~esolangs.tools.helpers.best_input_order`); the reads
     are unaffected since the line names ``a`` before ``b``.  A zero-valued
     prefix names every input first, preserving binding under folds; O(T)
-    size.  Width-constrained output keeps the definition-split minterm form,
+    size.  Width-constrained output splits the compact tree into definitions,
     since APL cannot continue an expression across lines.
     """
     if width is not None:
         return best_input_order(
-            truth_table, lambda table, perm: _apl_ordered(table, perm, width)
+            truth_table, lambda table, perm: _apl_tree_narrow(table, perm, width)
         )
     return best_input_order(truth_table, _apl_best_ordered)
 
@@ -267,3 +267,82 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     root: list[str] = []
     emit(resolve((0, ids[0][0])), root)
     return f"{_NOT}\n({reads}) | {''.join(root)}"
+
+
+def _apl_tree_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
+    """Split a compact tree into definitions with bounded fresh text per call."""
+    n = _validate_truth_table(table)
+    source = _apl_tree_ordered(table, perm).removeprefix(_NOT + "\n").replace(" ", "")
+    prefix, source = source.split(")|", 1)
+    prefix += ")|"
+    # There are fewer definitions than source characters, bounding name width.
+    name_width = len(_apl_name(len(source)))
+    call_width = name_width + 2
+    limit = max(width, 4 * call_width + 6, 2 * n + call_width + 4)
+    definitions: list[str] = []
+    # A frame's pieces carry their fresh source-character count; references
+    # carry zero. Every definition consumes at least one call-width of fresh
+    # text, so O(T / n) names of O(n) characters keep total source O(T).
+    frames: list[list[tuple[object, int, int]]] = [[]]
+
+    def render(node: object) -> str:
+        pieces: list[str] = []
+        pending = [node]
+        while pending:
+            current = pending.pop()
+            if isinstance(current, str):
+                pieces.append(current)
+            else:
+                assert isinstance(current, tuple)
+                pending.extend(reversed(current))
+        return "".join(pieces)
+
+    def define(part: tuple[object, int, int]) -> tuple[object, int, int]:
+        name = _apl_name(len(definitions))
+        definitions.append(f"{name}={render(part[0])}")
+        call = f"{name}()"
+        return call, len(call), 0
+
+    def trim(parts: list[tuple[object, int, int]], budget: int) -> None:
+        while sum(length for _, length, _ in parts) > budget:
+            eligible = [
+                (length, index)
+                for index, (_, length, fresh) in enumerate(parts)
+                if fresh >= call_width
+            ]
+            if not eligible:
+                raise AssertionError("tree frame cannot be split")
+            _, index = max(eligible)
+            parts[index] = define(parts[index])
+
+    for char in source:
+        if char == "(":
+            frames.append([("(", 1, 1)])
+        elif char == ")":
+            parts = frames.pop()
+            parts.append((")", 1, 1))
+            trim(parts, limit - name_width - 1)
+            frames[-1].append(
+                (
+                    tuple(node for node, _, _ in parts),
+                    sum(length for _, length, _ in parts),
+                    sum(fresh for _, _, fresh in parts),
+                )
+            )
+        else:
+            frames[-1].append((char, 1, 1))
+    parts = frames[0]
+    if sum(length for _, length, _ in parts) + len(prefix) > limit:
+        parts = [
+            define(
+                (
+                    tuple(node for node, _, _ in parts),
+                    sum(length for _, length, _ in parts),
+                    sum(fresh for _, _, fresh in parts),
+                )
+            )
+        ]
+    complement = _NOT.replace(" ", "")
+    return "\n".join(
+        [complement, *definitions, prefix + render(tuple(node for node, _, _ in parts))]
+    )
