@@ -1316,3 +1316,22 @@ five-state decoder. The actual three-field address mapping occupies 49,152
 disjoint cells in `6563..59047`; the source remains 59,049 characters long.
 Return navigation, complete Boolean decoding and placement around arbitrary
 table contents remain unfinished. This is not a seventeen-input generator.
+
+Separate shared-decoder controls now execute native common initialization and
+the final three-input row selector (`scripts/malbolge17/joined_decoder.py`).
+All 5,488 cases pass: eight row tails, two address parities and 343 meaning
+triples. The emitted source uses 27,032 instruction cells and 59,049 source
+characters. These controls inject the address, parity and selected table
+interface; they do not join the fourteen-input address producer or install the
+full truth table.
+
+An unshipped instruction-reuse prototype restores rotation at cell 247 and
+crazy at cell 26,500 through one continuation at cell 26,491. Four fixed
+operand records and their native initializer occupy 3,262 instruction cells,
+including six placement headers. Sixteen executions against complete admissible
+table fillings preserve all 49,152 table cells and all 940 decoder landing
+cells; one filling covers all 343 meaning triples. The prototype executes a
+fixed mixed-operation sequence, not Boolean-table queries. Variable-address
+read returns and integration with the address producer and complete decoder
+remain unresolved. These controls establish neither a seventeen-input
+generator nor an impossibility result.
