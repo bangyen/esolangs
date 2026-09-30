@@ -103,6 +103,7 @@ BITDEQUE_PAIR = ("PUSH INVERT", "INVERT PUSH")
 #: Even widths: ``*`` swaps the pointer, so a one-wide zero would move it.
 MINSKY_SWAP_PAIR = ("**", "++")
 _MINSKY_RMSN_PAIR = ("swap();\nswap();", "inc(); \ninc(); ")
+_MINSKY_SHORT_RMSN_PAIR = ("decnz();", "inc();  ")
 #: ``j`` is the pad: a gate tests this cell next, so it must leave value and pointer.
 HOME_ROW_PAIR = ("s", "j")
 
@@ -437,7 +438,8 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     (``+ * ~``) set ``reg[1]`` first.  Every target is the digit 2 or 3 (a
     leaf per row was ``Theta(T log T)`` of addresses), every table of one
     arity is one length, and the dump reads ``0 {answer}``.  Width switches
-    to RMSN, one command per line; whole setters and targets set the floor.
+    to RMSN, one command per line.  Below width 15 a shared increment
+    leaves setters eight wide; absolute jump operands set the remaining floor.
     """
     n = _validate_truth_table(truth_table)
 
@@ -470,7 +472,13 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     jumps = iter(resolved)
     for token in tokens:
         if token.startswith(TEMPLATE_CHAR):
-            lines.append(TEMPLATE_CHAR * len(_MINSKY_RMSN_PAIR[0]))
+            if width < 15:
+                # Both fills still execute two commands, preserving every target.
+                lines.extend(
+                    ("inc();", TEMPLATE_CHAR * len(_MINSKY_SHORT_RMSN_PAIR[0]))
+                )
+            else:
+                lines.append(TEMPLATE_CHAR * len(_MINSKY_RMSN_PAIR[0]))
         else:
             for command in token:
                 lines.append(
@@ -485,7 +493,13 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
 
 def minsky_swap_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Return the uniform pair for compact or line-oriented RMSN notation."""
-    pair = _MINSKY_RMSN_PAIR if template.startswith("decnz(") else MINSKY_SWAP_PAIR
+    pair = MINSKY_SWAP_PAIR
+    if template.startswith("decnz("):
+        pair = (
+            _MINSKY_RMSN_PAIR
+            if TEMPLATE_CHAR * len(_MINSKY_RMSN_PAIR[0]) in template
+            else _MINSKY_SHORT_RMSN_PAIR
+        )
     return (pair,) * n
 
 

@@ -232,14 +232,14 @@ class TestATemplateCarriesItsSetters:
         assert example.setters is not None
         assert example.fill is not None
         table = "01101001"
-        for width in (None, 1):
+        for width in (None, 1, 15):
             template = esolangs.generate("Minsky Swap", table, width)
             pairs = example.setters(template, 3)
             assert pairs == template.setters
             assert len(pairs) == 3
             assert len(set(pairs)) == 1
             assert len(pairs[0][0]) == len(pairs[0][1])
-            assert template.startswith("decnz(") == (width == 1)
+            assert template.startswith("decnz(") == (width is not None)
             for row, expected in enumerate(table):
                 bits = list(map(int, f"{row:03b}"))
                 program = example.fill(template, bits)
@@ -738,7 +738,7 @@ class TestInstantiateCanCheckProvenance:
     @pytest.mark.parametrize(
         "language", ["ArrowQueue", "Crement", "Minsky Swap", "Underload", "INTERCAL"]
     )
-    @pytest.mark.parametrize("width", [1, 10, 20, 40, 80])
+    @pytest.mark.parametrize("width", [1, 9, 10, 15, 20, 40, 80])
     @pytest.mark.parametrize("as_string", [False, True])
     def test_layout_templates_keep_provenance(
         self, language: str, width: int, *, as_string: bool
