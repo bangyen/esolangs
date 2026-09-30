@@ -356,13 +356,69 @@ def _container_threshold(truth_table: str) -> str:
     return "\n".join(lines)
 
 
-def container(truth_table: str) -> str:
-    """Build a Container program, switching to the threshold-sum decoder."""
+def _narrow_rules(program: str, width: int) -> str:
+    """Factor numeric conditions and partition deltas into complete rules."""
+    lines = program.splitlines()
+    occupied = {
+        line[:-1].split("=", 1)[0] for line in lines if line.endswith(":")
+    } | _RESERVED
+    identifiers = (_forbin_name(index) for index in count())
+    constants: dict[str, str] = {}
+    declarations: list[str] = []
+    declared: set[str] = set()
+    output: list[str] = []
+    for line in lines:
+        if line.endswith(":"):
+            output.append(line)
+            continue
+        delta_text, condition = line.split()
+        delta = int(delta_text)
+        operator = "<=" if "<=" in condition else ">="
+        left, right = condition.split(operator)
+        if len(f"{delta} {condition}") > width and right.isdecimal():
+            if right not in constants:
+                name = next(identifiers)
+                while name in occupied:
+                    name = next(identifiers)
+                occupied.add(name)
+                constants[right] = name
+            name = constants[right]
+            replacement = left + operator + name
+            declaration = f"{name}={right}:"
+            if max(len(declaration), len(f"{delta} {replacement}")) < len(line):
+                condition = replacement
+                if name not in declared:
+                    declarations.append(declaration)
+                    declared.add(name)
+        # Splitting a delta under one condition leaves every synchronous tick equal.
+        digits = max(1, width - len(condition) - 1 - (delta < 0))
+        bound = 10 ** min(digits, len(str(abs(delta)))) - 1
+        quotient, remainder = divmod(abs(delta), bound)
+        sign = "-" if delta < 0 else ""
+        output.extend(f"{sign}{bound} {condition}" for _ in range(quotient))
+        if remainder:
+            output.append(f"{sign}{remainder} {condition}")
+    return "\n".join(output + declarations)
+
+
+def container(truth_table: str, width: int | None = None) -> str:
+    """Build Container rules; narrow widths factor constants and deltas."""
     n = _validate_truth_table(truth_table)
     if n <= 6:
-        return min(
+        program = min(
             _container_tree(truth_table),
             _container_tree(truth_table, share=True),
             key=len,
         )
-    return _container_threshold(truth_table)
+    else:
+        program = _container_threshold(truth_table)
+    if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
+        return program
+    narrow = _narrow_rules(program, width)
+    if n > 6:
+        return narrow
+    return min(
+        narrow,
+        _narrow_rules(_container_threshold(truth_table), width),
+        key=lambda text: (max(map(len, text.splitlines())), len(text)),
+    )
