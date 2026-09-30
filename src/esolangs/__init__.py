@@ -259,6 +259,12 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         narrow = generate(name, truth_table, 1)
         if isinstance(narrow, str) and template.split() == narrow.split():
             return True
+    if language_id == "fractran":
+        # A numerator-input layout can coexist with fitting exponent layouts.
+        width = max(1, max(map(len, template.splitlines()), default=0))
+        observed = generate(name, truth_table, width)
+        if isinstance(observed, str) and template.split() == observed.split():
+            return True
     # BIO discards whitespace; the other three tokenize on it. Their wrappers
     # replace spaces with newlines, so removing newlines loses token boundaries.
     if language_id == "bio":

@@ -401,4 +401,22 @@ def fractran(truth_table: str, width: int | None = None) -> str:
         narrow = _plain(truth_table, n, small_root=True)
         if max(map(len, narrow.split())) < floor:
             program = narrow
+    # Consume unique phase primes3/7 once, depositing5 for each one.
+    # Cancel paired ones, then move the remaining5 onto answer2.
+    if (
+        n == 2
+        and max(map(len, program.split())) > width
+        and all(int(bit) == row.bit_count() % 2 for row, bit in enumerate(truth_table))
+    ):
+        program = _PARITY_TWO
     return wrap_program(program, "fractran", width)
+
+
+_PARITY_TWO = "21 $/3 $/7 1/25 2/5"
+_PARITY_PAIR = ("1", "5")
+
+
+def fractran_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Return parity numerator setters only for the exact two-phase program."""
+    pair = _PARITY_PAIR if n == 2 and template.split() == _PARITY_TWO.split() else PAIR
+    return (pair,) * n

@@ -28,7 +28,7 @@ from esolangs.tools.back import PAIR as BACK_PAIR
 from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
 from esolangs.tools.crement import PAIR as CREMENT_PAIR
 from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
-from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
+from esolangs.tools.fractran import fractran_setters
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     Setters,
@@ -523,7 +523,7 @@ def _register() -> None:
         "fractran": _embedded(
             b.fractran,
             "other.fractran",
-            pair=FRACTRAN_PAIR,
+            setters=fractran_setters,
             answer_mode="dump",
             answer_values=("1", "2"),
             expected="1",
