@@ -378,6 +378,54 @@ def _neighbour_cell(
     return None
 
 
+def _emit_field(
+    block: _Planner,
+    *,
+    base: int,
+    offset: int,
+    view_cell: int,
+    parity_cell: int,
+    pointer_cell: int,
+    z0: int,
+    all2: int,
+    compact_mask: tuple[int, int] | None = None,
+) -> None:
+    """Emit one destructive field read and its shared continuation jump."""
+    cell = base + offset
+    block.op("*", parity_cell)
+    block.op("p", view_cell)
+
+    def read() -> None:
+        block.goto(pointer_cell)
+        block.raw("j")
+        block.d = base
+        for _ in range(offset):
+            block.raw("o")
+        block.raw("p")
+        block.d = cell + 1
+        for _ in range(2 - offset):
+            block.raw("o")
+        for op in "jjoojj":
+            block.raw(op)
+        block.d = z0
+
+    read()
+    if compact_mask is not None:
+        from compact_decoder import load
+
+        load(block, compact_mask[0], compact_mask[1], all2)
+        read()
+    block.goto(pointer_cell)
+    block.raw("j")
+    block.d = base
+    for _ in range(offset):
+        block.raw("o")
+    block.raw("j")
+    block.raw("j")
+    block.raw("j")
+    block.raw("i")
+
+
 def _build(
     row: int,
     group: _Group,
@@ -629,42 +677,27 @@ def _build(
 
     def decoder(block: _Planner, state: int, depth: int) -> None:
         offset, view_cell, _constant, _parity = view(state)
-        cell = base + offset
         # One preserved base pointer reaches each within-group offset.
         z_cell = 142 if external_pointer else group.z_cell
         assert z_cell is not None
-        block.op("*", parity_fields[offset] if common_setup else parity_cells[depth][0])
-        block.op("p", view_cell)
-
-        def read() -> None:
-            block.goto(z_cell)
-            block.raw("j")
-            block.d = base
-            for _ in range(offset):
-                block.raw("o")
-            block.raw("p")
-            block.d = cell + 1
-            for _ in range(2 - offset):
-                block.raw("o")
-            for op in "jjoojj":
-                block.raw(op)
-            block.d = z0
-
-        read()
+        compact_mask = None
         if compact:
-            from compact_decoder import load, mask
+            from compact_decoder import mask
 
-            load(block, compact_masks[state], mask(state), helpers["all2"])
-            read()
-        block.goto(z_cell)
-        block.raw("j")
-        block.d = base
-        for _ in range(offset):
-            block.raw("o")
-        block.raw("j")
-        block.raw("j")
-        block.raw("j")
-        block.raw("i")
+            compact_mask = (compact_masks[state], mask(state))
+        _emit_field(
+            block,
+            base=base,
+            offset=offset,
+            view_cell=view_cell,
+            parity_cell=parity_fields[offset]
+            if common_setup
+            else parity_cells[depth][0],
+            pointer_cell=z_cell,
+            z0=z0,
+            all2=helpers["all2"],
+            compact_mask=compact_mask,
+        )
 
     if row_offset < 0:
         raise ValueError(row_offset)

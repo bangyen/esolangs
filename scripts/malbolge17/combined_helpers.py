@@ -118,7 +118,8 @@ def _route(
         assert word == value
         header.goto(pointer)
         header.raw("i")
-        if set(header.code) & blocked:
+        # The joined initializer previously emitted a header through C59404.
+        if set(header.code) & blocked or header.c > 59049:
             continue
         entry = value + 1
         reserved = blocked | set(header.code) | {entry - 1}
