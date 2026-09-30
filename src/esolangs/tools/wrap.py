@@ -457,6 +457,8 @@ WRAPPERS = {
     "six_five": _six_five,
     # Safe anywhere: every space and newline is stripped before parsing.
     "bitwise_cyclic_tag": wrap_chars,
+    # Loader whitespace is discarded before assigning memory addresses.
+    "malbolge": wrap_chars,
     "brainfuck": wrap_chars,
     "three_d_brainfuck": wrap_chars,
     "circlefuck": wrap_chars,

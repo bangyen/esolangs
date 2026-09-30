@@ -16,10 +16,11 @@ from itertools import product
 
 import pytest
 
+from esolangs import generate
 from esolangs import tools as boolean
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.malbolge import _XLAT1, run
+from esolangs.interpreters.other.malbolge import _XLAT1, _load, run
 
 _module = importlib.import_module("esolangs.tools.malbolge")
 
@@ -51,6 +52,25 @@ def _dense(n: int) -> str:
 
 def _parity(n: int) -> str:
     return "".join(str(row.bit_count() & 1) for row in range(2**n))
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("width", [1, 7, 13, 40, 80, 200])
+@pytest.mark.parametrize("table", ["00", "11", "0110", "01101001", _dense(5)])
+def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) -> None:
+    plain = boolean.malbolge(table)
+    wrapped = generate("Malbolge", table, width)
+    assert max(map(len, wrapped.splitlines())) <= width
+    assert wrapped.replace("\n", "") == plain
+    assert len(wrapped) == len(plain) + (len(plain) - 1) // width
+    assert _load(wrapped) == _load(plain)
+    n = len(table).bit_length() - 1
+    rows = range(len(table)) if n <= 3 else (0, 1, len(table) // 2, len(table) - 1)
+    for row in rows:
+        io = ScriptedIO("\n".join(f"{row:0{n}b}"))
+        run(wrapped, io)
+        assert io.getvalue() == table[row]
+        assert io.reads == n
 
 
 #: How many items each ``every_row`` sweep is split into, per shape.

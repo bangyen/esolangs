@@ -137,8 +137,6 @@ UNWRAPPABLE = {
     "crement": "each line is one instruction; jumps and patches name line numbers",
     "inject": "blocks and executable commands are delimited by source lines",
     "intercal": "each physical line is one statement; groups have no continuation",
-    "malbolge": "the source is the full 59049-cell store; the mixer and the "
-    "stubs sit at fixed addresses, so reflowing loses the layout",
     "whitespace": "every space, tab and newline is a token or a number terminator",
     "thue": "a newline ends a rule, and the state's own newlines are part of it",
     "thisthat": "the H-tree's nodes and wires occupy fixed grid coordinates",
@@ -154,7 +152,6 @@ WIDTH_EXCEPTIONS = {
         "back",
         "cvnc",
         "grapheme",
-        "malbolge",
         "minsky_swap",
         "nocomment",
         "thue",
