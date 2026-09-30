@@ -96,7 +96,7 @@ def thue(truth_table: str, width: int | None = None) -> str:
         capacity *= len(ascii_letters) - len("abLMRECD")
     marker_width = digits
     # Payload covers its names' overhead, keeping even the narrowest source O(T).
-    payload = max(marker_width, width - 2 * marker_width - 3)
+    payload = max(marker_width, width - marker_width - max(marker_width, 2) - 3)
     rules = rules_text.splitlines()[:-1]
     for index, offset in enumerate(range(0, length, payload)):
         marker = _chunk_marker(index, digits)
