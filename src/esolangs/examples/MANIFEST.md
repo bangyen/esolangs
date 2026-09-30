@@ -71,7 +71,7 @@ that row is actually spelled for the language.
 | `qoibl.txt` | Qoibl | `0001` | `01` | 0 1 | '0' |
 | `ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |
 | `rotfuck.txt` | ROTfuck | `0001` | `01` | 0 1 | '0' |
-| `s*bleq.txt` | S*bleq | `0001` | `01` | 0 1 | '0' |
+| `sbleq.txt` | S*bleq | `0001` | `01` | 0 1 | '0' |
 | `slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 0 1 | '0' |
 | `smallfuck.txt` | Smallfuck | `0001` | `01` | embedded 01 | '0' |
 | `sophie.txt` | Sophie | `0001` | `01` | 0 1 | '0' |

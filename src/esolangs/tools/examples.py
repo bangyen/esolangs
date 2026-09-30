@@ -424,7 +424,7 @@ def _register() -> None:
         "polynomial": _reader(b.polynomial, "register_based.polynomial"),
         "qoibl": _reader(b.qoibl, "register_based.qoibl", split=True),
         "rotfuck": _reader(b.rotfuck, "tape_based.rotfuck"),
-        "s*bleq": _reader(b.sbleq, "tape_based.sbleq"),
+        "sbleq": _reader(b.sbleq, "tape_based.sbleq"),
         "slow-acv-mammalian": _reader(
             b.slow_acv_mammalian, "tape_based.slow_acv_mammalian"
         ),
