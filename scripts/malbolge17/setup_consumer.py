@@ -3,13 +3,12 @@
 import itertools
 from collections.abc import Iterator
 
-from address17 import ALL1, ALL2, group_word
+from address17 import ALL1, ALL2, group_cells
 from address_gadget import execute_state
 from decoder_group import _LABELS, _Group, _setup
 from parity_views import STORED_PARITY
 from shared_fold import build_shared_fold
 
-from esolangs.interpreters.other.malbolge import _crazy
 from esolangs.tools._malbolge_core import _char_for
 from esolangs.tools.malbolge import _Planner
 
@@ -37,7 +36,7 @@ def check_setup_memory(
         memory[outputs[name]]
         for name in ("decoder_zero", "decoder_all1", "decoder_all2")
     ) == (0, ALL1, ALL2)
-    pointer = _crazy(ALL2 - 2, group_word(list(bits)))
+    pointer = group_cells(bits)[0] - 1
     assert memory[outputs["pointer"]] == pointer
     assert tuple(memory[cell] for cell in groups[-1]) == tuple(
         STORED_PARITY[(pointer + 1 + offset) % 2] for offset in range(3)

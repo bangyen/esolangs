@@ -1106,7 +1106,7 @@ def main() -> None:
     for bits in itertools.product(range(2), repeat=14):
         word = group_word(list(bits))
         pointer = _crazy(ALL2 - 2, word)
-        table_cells.update(_crazy(ALL2 - 2 + offset, word) + 1 for offset in range(3))
+        table_cells.update(pointer + 1 + offset for offset in range(3))
         if (
             all(pointer + offset not in occupied for offset in (1, 2, 3))
             and len(read_probes) < 8
