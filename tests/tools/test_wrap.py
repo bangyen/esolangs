@@ -154,7 +154,6 @@ WIDTH_EXCEPTIONS = {
         "back",
         "cvnc",
         "grapheme",
-        "intercal",
         "malbolge",
         "minsky_swap",
         "nocomment",
