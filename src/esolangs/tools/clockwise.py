@@ -25,7 +25,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
     program prints ``'0'`` or ``'1'``.  An over-wide lookup rotates
-    counterclockwise when narrower, with a floor of ``2*n + 17`` columns.
+    counterclockwise when narrower, with a floor of ``2*n + 7`` columns.
 
     A flat indexed lookup, not a tree.  The table is one ``!`` per entry in
     a row of ``!``/``-`` pairs: the index sits in the accumulator, the
@@ -109,8 +109,23 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         grid[y][x] = char
     # The interpreter pads short rows, so trailing filler is never reached.
     program = "\n".join("".join(row).rstrip() for row in grid)
-    if width is None or width <= 0 or span <= width or span <= height + 2:
+    if width is None or width <= 0 or span <= width:
         return program
+    if width < height + 2:
+        # Emit the common six digit bits on the entry rail, before reading.
+        # Only the selected final bit depends on the table. This removes the
+        # nine-row digit tail without changing the accumulator at the first read.
+        cells = {
+            (x + len(_DIGIT) + 1 if x else x, y): char
+            for (x, y), char in cells.items()
+            if y < digit
+        }
+        for x, char in enumerate(_DIGIT):
+            cells[x, 0] = char
+        cells[_DESCENT + len(_DIGIT) + 1, digit] = "R"
+        cells[_CLIMB + len(_DIGIT) + 1, digit] = "R"
+        height = digit + 1
+        span = max(x for x, _ in cells) + 1
     # Counterclockwise rotation puts the wide lookup down the page.  Most
     # rows end at the five table columns; the interpreter pads the entry rail.
     rotated: dict[int, dict[int, str]] = {}
