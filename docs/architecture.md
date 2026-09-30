@@ -1,7 +1,7 @@
 # Architecture
 
-The registry joins the package's generators and interpreters.  Public API and
-CLI calls resolve a language name there, then follow the same pipeline:
+The API and CLI use the registry to find a language’s generator and
+interpreter, then follow the same pipeline:
 
 ```text
 language name
@@ -31,9 +31,10 @@ the shared scripted I/O object, and calls its `run(code, io)` entry point.
 `make_vm` reaches the same interpreter through its step-capable machine and
 exposes common state for the debugger and hang proofs.
 
-Interpreter output is not uniformly a printed `0` or `1`.  `read_answer` uses
+Some languages print a bit; others dump state or answer by halting.
+`read_answer` uses
 the registered example metadata for printed and state-dump answers; `evaluate`
-also handles languages whose answer is whether execution terminates.  It runs
+also handles termination answers. It runs
 every input row through generation, optional instantiation, input encoding,
 execution, and extraction.  `verify` compares that observed table with the
 requested one.
