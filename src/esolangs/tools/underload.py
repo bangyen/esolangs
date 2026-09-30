@@ -24,6 +24,7 @@ from esolangs.tools.wrap import wrap_tokens
 # outside its pushed code so both setters occupy five characters.
 PAIR = ("(!^) ", "(~!^)")
 _SHORT_PAIR = ("(!) ", "(~!)")
+_BIT_PAIR = (" ", "~")
 
 #: How many levels below a node a carried subtree may sit: 2**4 candidates a
 #: node keeps the build O(T).
@@ -142,13 +143,23 @@ def underload(truth_table: str, width: int | None = None) -> str:
     if short:
         # The inert prefix distinguishes the four-character uniform setters.
         program = "()!" + program
-    slots = 4 if short else 5
+    if short and width < 4:
+        n = _validate_truth_table(truth_table)
+        # Build both selector strings, then keep one with a single swap bit.
+        program = "()!" + "(!)(~)(!)*$!" * n + program[3 + 4 * n :]
+    slots = 1 if short and width < 4 else (4 if short else 5)
     return wrap_tokens(program, width, rf"\${{{slots}}}|\(\)!|\([01]\)|.")
 
 
 def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Return the uniform selector pair distinguished by its inert prefix."""
-    return ((_SHORT_PAIR if template.startswith("()!") else PAIR),) * n
+    clean = template.replace("\n", "")
+    pair = (
+        _BIT_PAIR
+        if clean.startswith("()!(!)")
+        else (_SHORT_PAIR if template.startswith("()!") else PAIR)
+    )
+    return (pair,) * n
 
 
 def _underload_layout_tokens(template: str) -> list[str]:
