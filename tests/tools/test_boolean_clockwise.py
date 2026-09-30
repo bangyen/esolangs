@@ -152,7 +152,7 @@ def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
         program = esolangs.generate("Clockwise", table, width)
         plain_width = max(map(len, plain.splitlines()))
         assert max(map(len, program.splitlines())) <= max(
-            width, min(plain_width, 2 * n + 17)
+            width, min(plain_width, 2 * n + 7)
         )
         if plain_width <= width:
             assert program == plain
@@ -165,3 +165,15 @@ def test_rotated_lookup_size_is_linear() -> None:
     sizes = [len(boolean.clockwise("01101001" * (2 ** (n - 3)), 1)) for n in (5, 7, 9)]
     assert sizes[2] / 2**9 < 30
     assert 3.5 < (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) < 4.4
+
+
+@pytest.mark.medium
+def test_entry_digit_prefix_executes_every_small_table() -> None:
+    """The shared six bits precede lookup without carrying an index into it."""
+    assert max(map(len, boolean.clockwise("0110", 1).splitlines())) == 11
+    for n in range(1, 4):
+        for value in range(1 << (1 << n)):
+            table = format(value, f"0{1 << n}b")
+            program = boolean.clockwise(table, 1)
+            for row, expected in enumerate(table):
+                assert run_clockwise(program, _bits(row, n)) == expected
