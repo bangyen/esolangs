@@ -567,6 +567,55 @@ programs of length `<= C`:
 These are behaviours on finite input sets, so they are lower estimates of `B(C)`; the 13-input ratios (4.14 at `C = 11`) are well above the loop-free census
 (3.51 at `C = 11`) and still rising; the empty-input ratio (3.50 at `C = 11`) already exceeds the proved 3.366.
 
+## 7b. Bounded-input upper bound (Theorem 6)
+
+For a finite input set `I`, put `R(I) = sum_(x in I) (len(x)+1)`.
+Every program has an equivalent source on `I` with at most `R(I)` commas:
+on input `x`, a run visits at most `len(x)` successful reads and one
+failing read. This holds for divergent runs too; infinitely many successful
+reads are impossible on finite input. Delete comma locations visited by
+none of these runs. Bracket matching remains valid, and every run has the
+same transitions, outputs and outcome after source positions are relabelled.
+The pruning is existential; it is not a halting-decision algorithm.
+
+Next cancel `+-`, `-+` and `><` to a fixed point. These preserve the full
+machine state, introduce no reads, and never increase length. `<>` is
+excluded because the left boundary is clipped. The comma-free segments
+are words over seven commands avoiding those three pairs. Their adjacency
+matrix has characteristic polynomial
+
+    x**3 (x-1) (x**3 - 6x**2 - 4x + 1).
+
+It is irreducible and aperiodic. Its Perron root is
+`lambda_I = 6.584428340...`, so segments of length `l` number at most
+`K*lambda_I**l` for a fixed `K`. Inserting at most `R` commas into words
+of length at most `C` gives at most
+
+    (C+1) sum_(r=0..min(R,C)) binom(C,r) K**(r+1) lambda_I**(C-r).
+
+Consequently, for every fixed nonempty finite input set,
+
+    3.366148 <= liminf B_I(C)**(1/C)
+             <= limsup B_I(C)**(1/C) <= 6.584428341.
+
+The lower bound is Theorem 5's read-free output family, which is
+distinguishable on any one input. The upper bound preserves even partial
+output at EOF, so it also holds when buffered error output is discarded.
+The limit and sharp rate remain unproved.
+
+The upper bound also holds for varying sets `I_C` whenever `R(I_C)=o(C)`:
+the binomial term and `K**R` then contribute `exp(o(C))`. For all byte inputs
+of length at most `m`, it suffices that `(m+1)*256**m=o(C)`; in particular
+`m <= (1-eps)*log_256(C)` for fixed positive `eps`. This does not cover
+input lengths proportional to `C`.
+
+`tests/proofs/test_research_tracks.py` checks the exact matrix polynomial
+and a rational Perron upper certificate at `1317/200`. Executed pruning
+controls cover all loop-free sources through length four on seven binary
+inputs, plus halting, EOF and divergent loops. The control `,[,]` prunes
+to `,[]` on input zero but changes EOF to divergence on input one: the
+equivalence is confined to the chosen input set.
+
 ## 8. What is not settled
 
 * **The limit.**  The repo-model interval is `[4.2420, 7.0347]`.  Nested loops raise the
@@ -595,8 +644,9 @@ These are behaviours on finite input sets, so they are lower estimates of `B(C)`
 * **Model dependence.**  Bounds using `+,` need EOF err/const; the `F_err` lower bound needs the error
   convention (it reads the timing of reads from where the run stops); the rules `[S] -> []` with `.` in
   `S`, `[S[T]X] -> []` and `[]. -> .[]` need that a diverging run's output is not observed.
-* **Finite input sets.**  For a fixed finite `I` the lower bound is only Theorem 5's `3.366`; the
-  all-inputs families need inputs as long as the program.
+* **Finite input sets.** Theorem 6 brackets every fixed nonempty finite
+  `I` between `3.366148` and `6.584428341`. The limit, sharp rate and
+  bounds for input lengths proportional to source length remain open.
 
 ## 9. Reproduction
 

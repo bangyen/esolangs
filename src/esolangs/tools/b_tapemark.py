@@ -74,7 +74,17 @@ class _Builder:
         horizontal mirror is as faithful and is not offered, because it
         moves every ragged edge to the left, where it is rendered.
         """
-        xs = sorted({x for x, _ in self.cells})
+        occupied = {x for x, _ in self.cells}
+        xs: list[int] = []
+        if occupied:
+            lo, hi = min(occupied), max(occupied)
+            # The table occupies 3T columns; scanning its span removes the
+            # comparison-sort factor. Sparse standalone layouts retain sorting.
+            xs = (
+                [x for x in range(lo, hi + 1) if x in occupied]
+                if hi - lo + 1 <= 4 * len(occupied)
+                else sorted(occupied)
+            )
         ys = sorted({y for _, y in self.cells}, reverse=reflect)
         column = {x: i for i, x in enumerate(xs)}
         symbols = {"/": "\\", "\\": "/"} if reflect else {}

@@ -250,16 +250,16 @@
   },
   "BrainIf": {
    "0110": {
-    "commands": 61,
-    "source_units": 1097
+    "commands": 58,
+    "source_units": 993
    },
    "01101001": {
-    "commands": 67,
-    "source_units": 1253
+    "commands": 14,
+    "source_units": 1105
    },
    "0110100110010110": {
-    "commands": 70,
-    "source_units": 1409
+    "commands": 66,
+    "source_units": 1217
    }
   },
   "CV(N)(C)": {

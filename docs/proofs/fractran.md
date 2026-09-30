@@ -605,6 +605,77 @@ The public minimum-size selection has `O(T)` execution. It leaves the
 literal-scan obstruction intact and does not assert that scanning integers
 has the same cost.
 
+### Loading the generated indexed sources
+
+The loaded-run bound does not include parsing. For either indexed
+candidate, let `S` be rendered source length and `n` the input count.
+Apart from the initial product's `n+1` factors, each fraction has a
+constant number of prime-power atoms. Its exponents have `O(n)` bits:
+state indices are `T+i`, patterns are below `T`, and packed blocks
+have at most `2n/3` bits. Bases are among the first `n+12` primes or
+fixed decoder constants. All therefore lie below `O(n**2)` and the
+compiler's factoring allowance for sufficiently large `n`.
+
+Parsing an exponent of `l` digits costs at most `O(l**2)` elementary
+bit work. Since `l=O(n)` and their digit counts sum below `S`, all
+conversions cost `O(S*n)`. Cached trial factoring sees `O(n)` distinct
+bases, each requiring at most `O(n)` divisions on `O(log n)`-bit values,
+so `O(n**3)` conservatively covers that work. Sparse factor arithmetic,
+guard bucketing, negative threshold keys and monotonicity comparisons
+cost `O(n)` bits per fraction; the initial sort also fits `O(n**3)`.
+No state prime is raised to its exponent. Hence
+
+    loading = O(S*n + n**3) = O(T*log T) bit work,
+
+using the already proved `S=O(T)`. Stored rules, offsets and exponents
+use at most `O(S*n+n**2)` bits. This is a conservative upper bound;
+it does not assert a matching lower bound or apply to arbitrary-source
+literal fallback. The finitely many legacy arities change no asymptotic
+bound. Loaded parity programs through ten inputs executed correctly.
+
+### Order-only decoding with one priority consultation
+
+Fix a table-independent router, a multiset of `d` distinct fractions,
+and a table-independent decoder. The router maps each row to a state;
+the first applicable fraction is selected once, and the decoder returns
+its bit without consulting the permuted list again. A fixed default
+handles rows on which none applies. Permuting this multiset cannot
+cover every `T`-row table unless `d >= T-1`.
+
+For each row, form a `d+1`-dimensional signed feature vector: coordinate
+`i` is zero when fraction `i` is inapplicable, otherwise `+1` or `-1`
+according to the fixed decoder's answer after that fraction. Assign
+arbitrary signs to invalid outcomes; total Boolean programs never select
+them. The final coordinate is the default answer's sign. Give the rules
+weights `2**d, ..., 2`, in priority order, and the default weight one.
+The first nonzero coordinate outweighs every later coordinate together,
+so the sign of the weighted sum is exactly the program's answer.
+This is the dominant-weight encoding used for lexicographic strategies
+([Schmitt–Martignon, Theorem 14](https://www.jmlr.org/papers/volume7/schmitt06a/schmitt06a.pdf)).
+
+If `T>d+1`, the row feature vectors have a nonzero linear dependence
+`sum alpha_x*v_x=0`. Label each row with nonzero `alpha_x` by its sign.
+Any weight vector realizing that labeling strictly would make
+`sum alpha_x*(w dot v_x)>0`, contradicting the dependence. Thus even
+arbitrary real weights cannot realize every labeling, and neither can
+priority weights. Identical fractions have identical applicability and
+effects, so extra copies do not increase `d`.
+
+Distinct fraction spellings over a fixed alphabet cost `Omega(d log d)`
+characters in total: only `O(c**l)` different tokens have length at most
+`l`, so a fixed fraction of `d` tokens must have length `Omega(log d)`.
+Consequently this entire one-consultation family has a worst-case text
+floor `Omega(T log T)`, even with uniform embeds, arbitrary fixed routing
+and prime-power notation. This is not a language floor for FRACTRAN;
+multiple consultations change the feature vectors between selections.
+
+The executed control uses positive guards 3/5 and negative guards 7/11,
+with the four rows carrying one guard of each sign. All 24 orders of the
+same four fractions execute on all rows. Exactly 14 of 16 tables occur;
+XOR and XNOR are missing because the four feature rows are dependent.
+The eight-fraction independent-pair control realizes all sixteen tables.
+Both controls live in `tests/proofs/test_research_tracks.py`.
+
 ## The other end: the row-addressing tree
 
 The generator that shipped before this was a decision tree with one prime
