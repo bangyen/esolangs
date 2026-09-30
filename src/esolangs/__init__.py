@@ -255,14 +255,12 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         and _takes_width(generator)
     ):
         for width in (1, 4):
-            narrow = generate(name, truth_table, width)
-            if isinstance(narrow, str):
-                if language_id == "minifuck" and narrow.startswith("q\n"):
-                    # These LF characters absorb skips and are semantic.
-                    if template == narrow:
-                        return True
-                elif template.replace("\n", "") == narrow.replace("\n", ""):
-                    return True
+            narrow = str(generate(name, truth_table, width))
+            if language_id == "minifuck" and narrow.startswith("q\n"):
+                # Exact layouts were checked above; these LF absorb skips.
+                continue
+            if template.replace("\n", "") == narrow.replace("\n", ""):
+                return True
     if (
         language_id in {"fractran", "bitdeque", "crement"}
         and generator is not None
@@ -281,7 +279,7 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         from esolangs.tools.underload import _underload_layout_tokens
 
         for width in (1, 4):
-            narrow = generate(name, truth_table, width)
+            narrow = str(generate(name, truth_table, width))
             if isinstance(narrow, str) and _underload_layout_tokens(
                 template
             ) == _underload_layout_tokens(narrow):
