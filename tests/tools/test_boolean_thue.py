@@ -24,7 +24,7 @@ def _execute(table: str, row: int, width: int) -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("width", [1, 7, 10, 13, 40])
+@pytest.mark.parametrize("width", [1, 7, 8, 9, 10, 13, 40])
 def test_narrow_sources_execute_every_three_input_table(width: int) -> None:
     for value in range(256):
         table = f"{value:08b}"
@@ -41,8 +41,14 @@ def test_layout_never_widens_the_natural_source() -> None:
         for width in range(1, natural + 2):
             assert max(map(len, thue(table, width).splitlines())) <= natural
     for table in ("01", "0110", "01101001"):
-        for width in range(1, 12):
-            assert thue(table, width) == thue(table)
+        plain = thue(table)
+        natural = max(map(len, plain.splitlines()))
+        for width in (natural, natural + 1):
+            assert thue(table, width) == plain
+        for width in range(1, natural):
+            assert max(map(len, thue(table, width).splitlines())) <= max(width, 9)
+            for row in range(len(table)):
+                _execute(table, row, width)
 
 
 @pytest.mark.medium
