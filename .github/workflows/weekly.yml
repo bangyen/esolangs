@@ -71,7 +71,14 @@ jobs:
     # Per-PR CI reports it with `--partial`; the blocking form is the local
     # command that report prints.
     - name: Test with pytest (full suite, including the slow band)
-      run: uv run pytest -n auto
+      run: uv run pytest -n auto -p scripts.pytest_durations --duration-output test-durations.json
+
+    - name: Retain measured test durations
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: test-durations-${{ matrix.python-version }}
+        path: test-durations.json
 
   # Generation *time* is the one axis the per-PR gate cannot judge: it is
   # machine- and load-dependent, and a threshold loose enough not to flake on

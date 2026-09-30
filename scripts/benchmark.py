@@ -123,6 +123,7 @@ def measure(
     row: int,
     step_cap: int,
     all_rows: bool = False,
+    sample_rows: tuple[int, ...] | None = None,
     timeout: float | None = 30.0,
 ) -> dict[str, Any]:
     """Benchmark the last timed artifact; optionally check every input row."""
@@ -130,6 +131,12 @@ def measure(
         raise ValueError("repeat and step_cap must be positive")
     if not 0 <= row < len(table):
         raise ValueError("row must index the truth table")
+    if sample_rows is not None and (
+        not sample_rows
+        or row not in sample_rows
+        or any(not 0 <= at < len(table) for at in sample_rows)
+    ):
+        raise ValueError("sample rows must index the table and include row")
     check_timeout(timeout)
     if timeout is not None and not (
         threading.current_thread() is threading.main_thread()
@@ -145,7 +152,7 @@ def measure(
         program = esolangs.generate(language, table)
         timings.append(time.perf_counter_ns() - started)
     assert program is not None
-    rows = range(len(table)) if all_rows else (row,)
+    rows = range(len(table)) if all_rows else sample_rows or (row,)
     executions = [
         _execute(language, program, table, at, step_cap, timeout) for at in rows
     ]

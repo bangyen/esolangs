@@ -54,7 +54,19 @@ TABLES = ("0110", "01101001", "0110100110010110")
 #: None before stepping rather than on the cap.
 STEP_CAP = 200_000
 
-SCHEMA = 1
+# Dense parity reaches the named layout switches without folding inputs away.
+BOUNDARIES = {"Circuit Diagram": (7, 8), "Streetcode": (5, 6)}
+
+
+def boundary_tables(name: str) -> tuple[str, ...]:
+    """Return parity cases on both sides of each named layout switch."""
+    return tuple(
+        "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
+        for inputs in BOUNDARIES.get(name, ())
+    )
+
+
+SCHEMA = 2
 
 
 def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
@@ -73,12 +85,33 @@ def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
         if esolangs.describe(name)["boolean_generator"]
         for table in TABLES
     ]
+    records.extend(
+        measure(
+            name,
+            table,
+            repeat=repeat,
+            row=len(table) - 1,
+            step_cap=STEP_CAP,
+            sample_rows=(0, 1, len(table) // 2, len(table) - 1),
+        )
+        for name in BOUNDARIES
+        for table in boundary_tables(name)
+    )
     for record in records:
-        if record["matches"] is not True:
+        failed = next(
+            (
+                row
+                for row in record.get("executions", [record])
+                if row["matches"] is not True
+            ),
+            None,
+        )
+        if failed is not None:
             raise ValueError(
-                f"{record['language']} [{record['truth_table']}]: "
-                f"{record['execution_status']}, expected {record['expected_answer']}, "
-                f"got {record['actual_answer']}"
+                f"{record['language']} [{record['truth_table']}] "
+                f"row {failed.get('row')}: "
+                f"{failed['execution_status']}, expected {failed['expected_answer']}, "
+                f"got {failed['actual_answer']}"
             )
     return records
 
@@ -95,11 +128,22 @@ def baseline(records: list[dict[str, Any]]) -> dict[str, Any]:
         by_name.setdefault(record["language"], {})[record["truth_table"]] = {
             "source_units": record["source_units"],
             "commands": record["commands"],
+            **(
+                {
+                    "commands_by_row": {
+                        str(row["row"]): row["commands"] for row in record["executions"]
+                    }
+                }
+                if record["language"] in BOUNDARIES
+                and record["truth_table"] in boundary_tables(record["language"])
+                else {}
+            ),
         }
     return {
         "schema": SCHEMA,
         "step_cap": STEP_CAP,
         "tables": list(TABLES),
+        "boundaries": {name: list(boundary_tables(name)) for name in BOUNDARIES},
         "records": by_name,
     }
 
@@ -120,6 +164,8 @@ def differences(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
         return [f"baseline schema {old.get('schema')!r}, expected {SCHEMA}"]
     if old.get("tables") != new["tables"]:
         return [f"baseline tables {old.get('tables')!r}, expected {list(TABLES)}"]
+    if old.get("boundaries") != new["boundaries"]:
+        return ["baseline boundary corpus changed"]
     was, is_ = old.get("records", {}), new["records"]
     for name in sorted(set(was) | set(is_)):
         if name not in was:
@@ -128,13 +174,13 @@ def differences(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
         if name not in is_:
             lines.append(f"{name}: in the baseline but not in the registry")
             continue
-        for table in new["tables"]:
+        for table in sorted(set(was[name]) | set(is_[name])):
             # Both sides are read with .get: a record missing a table has to
             # report as a difference, not raise -- a gate that crashes on an
             # incomplete sweep says nothing about the sweep it did finish.
             before = was[name].get(table, {})
             after = is_[name].get(table, {})
-            for field in ("source_units", "commands"):
+            for field in sorted(set(before) | set(after)):
                 if before.get(field) != after.get(field):
                     lines.append(
                         f"{name} [{table}] {field}: "
@@ -179,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
     recorded = json.loads(BASELINE.read_text(encoding="utf-8"))
     lines = differences(recorded, measured)
     if not lines:
-        count = len(measured["records"]) * len(TABLES)
+        count = sum(len(rows) for rows in measured["records"].values())
         print(f"{count} generator measurements match the baseline")
         return 0
     print("generator size/step baseline changed:", file=sys.stderr)

@@ -1,7 +1,8 @@
 """Run one shard of a pytest marker band.
 
-Partitions the band's collected node IDs round-robin (``ids[index::total]``)
-and runs pytest on just that slice, so N CI jobs cover the band with no
+Without timings, partitions node IDs round-robin (``ids[index::total]``).
+With timings, balances estimated duration, longest tests first.
+Runs pytest on just that slice, so N CI jobs cover the band with no
 overlap and no omission.  Round-robin rather than contiguous because one
 file holds nearly half the slow band; contiguous slices would leave one
 shard carrying it whole.  Sorting the IDs keeps the assignment stable
@@ -12,6 +13,9 @@ Usage:
 """
 
 import argparse
+import json
+import math
+import statistics
 import subprocess
 import sys
 from pathlib import Path
@@ -50,9 +54,45 @@ def collect_ids(marker: str) -> list[str]:
     return sorted({line.strip() for line in proc.stdout.splitlines() if "::" in line})
 
 
-def shard_ids(ids: list[str], index: int, total: int) -> list[str]:
-    """Return every ``total``-th ID starting at ``index``."""
-    return ids[index::total]
+def load_durations(path: Path) -> dict[str, float]:
+    """Return finite positive timings, refusing a corrupt timing file."""
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or any(
+        not isinstance(key, str)
+        or isinstance(value, bool)
+        or not isinstance(value, int | float)
+        or not math.isfinite(value)
+        or value <= 0
+        for key, value in raw.items()
+    ):
+        raise ValueError("durations must map node IDs to finite positive seconds")
+    return {key: float(value) for key, value in raw.items()}
+
+
+def shard_ids(
+    ids: list[str],
+    index: int,
+    total: int,
+    durations: dict[str, float] | None = None,
+) -> list[str]:
+    """Partition once; place longest tests on the least loaded shard."""
+    if total < 1 or not 0 <= index < total:
+        raise ValueError("invalid shard index or count")
+    ids = sorted(set(ids))
+    if not durations:
+        return ids[index::total]
+    known = [durations[node] for node in ids if node in durations]
+    fallback = statistics.median(known) if known else 1.0
+    weights = {node: durations.get(node, fallback) for node in ids}
+    parts: list[list[str]] = [[] for _ in range(total)]
+    loads = [0.0] * total
+    for node in sorted(ids, key=lambda node: (-weights[node], node)):
+        target = min(
+            range(total), key=lambda part: (loads[part], len(parts[part]), part)
+        )
+        parts[target].append(node)
+        loads[target] += weights[node]
+    return sorted(parts[index])
 
 
 def _parse_args(argv: list[str] | None) -> tuple[argparse.Namespace, list[str]]:
@@ -61,6 +101,7 @@ def _parse_args(argv: list[str] | None) -> tuple[argparse.Namespace, list[str]]:
     parser.add_argument("--marker", required=True, help="pytest marker band to run")
     parser.add_argument("--shard", type=int, required=True, help="this job's slice")
     parser.add_argument("--shards", type=int, required=True, help="slice count")
+    parser.add_argument("--durations", type=Path, help="recorded seconds by node ID")
     args, rest = parser.parse_known_args(argv)
     if rest[:1] == ["--"]:
         rest = rest[1:]
@@ -74,7 +115,8 @@ def _parse_args(argv: list[str] | None) -> tuple[argparse.Namespace, list[str]]:
 def main(argv: list[str] | None = None) -> int:
     """Collect the band, run this shard's slice, return pytest's exit code."""
     args, rest = _parse_args(argv)
-    ids = shard_ids(collect_ids(args.marker), args.shard, args.shards)
+    durations = load_durations(args.durations) if args.durations else None
+    ids = shard_ids(collect_ids(args.marker), args.shard, args.shards, durations)
     if not ids:
         print(f"shard {args.shard}/{args.shards} of -m {args.marker}: no tests")
         return 0

@@ -181,7 +181,8 @@ jobs:
     #
     # 3.14 only: the fast suite already covers every promised interpreter
     # on every push, and weekly.yml keeps the whole suite on all three.
-    # Count-balanced, not time-balanced; the timeout has headroom for CI's
+    # Recorded durations balance the shards; new tests use the median known
+    # duration. Refresh from weekly timing artifacts; the timeout covers CI's
     # slower cores.
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -208,7 +209,7 @@ jobs:
       run: uv sync --extra dev --python 3.14
 
     - name: Test one slow shard
-      run: uv run python scripts/pytest_shard.py --marker "slow and not weekly" --shard ${{ matrix.shard }} --shards 4 -- -n auto
+      run: uv run python scripts/pytest_shard.py --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 -- -n auto
 
 
   generated-docs:

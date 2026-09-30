@@ -3,6 +3,7 @@
 ``generate`` produces a program computing a truth table; ``instantiate``
 fills a parameterized generator's input runs; ``run`` executes a program;
 ``run_bounded`` steps one within cooperative limits;
+``run_isolated`` executes one with a subprocess deadline;
 ``make_vm`` and ``make_debugger`` step one; ``describe`` and
 ``list_languages`` summarize the registry.  ``encode_inputs`` and
 ``read_answer`` feed a program and judge what it printed; ``check_stdin``,
@@ -38,6 +39,7 @@ from esolangs._describe import (
     spec,
 )
 from esolangs._evaluate import _Default, evaluate, verify
+from esolangs._isolated import run_isolated
 from esolangs._validate import check_bits, check_timeout, check_width
 from esolangs.debugger import STOP_REASONS, Debugger, StopReason, make_debugger
 from esolangs.exceptions import (
@@ -136,6 +138,7 @@ __all__ = [
     "read_answer",
     "run",
     "run_bounded",
+    "run_isolated",
     "spec",
     "verify",
 ]
