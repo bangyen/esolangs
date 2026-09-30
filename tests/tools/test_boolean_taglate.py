@@ -180,3 +180,38 @@ class TestTaglate:
         """A truth table with non-0/1 characters is malformed."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.taglate("0120")
+
+
+@pytest.mark.parametrize("width", [1, 7, 19])
+def test_narrow_seed_truth_tables(width: int) -> None:
+    """Bootstrapping leaves the original seed and input consumption intact."""
+    from esolangs.tools.taglate import _taglate_raw
+
+    tables = [f"{value:02b}" for value in range(4)]
+    tables += [f"{value:04b}" for value in range(16)]
+    tables += ["10010110", "00000001", "0000000000000001"]
+    for table in tables:
+        n = (len(table) - 1).bit_length()
+        program = boolean.taglate(table, width=width)
+        raw = _taglate_raw(table)
+        assert max(map(len, program.splitlines())) <= width
+        for combo in range(len(table)):
+            bits = [str((combo >> shift) & 1) for shift in range(n - 1, -1, -1)]
+            ghost = ["0"] if n > 1 and n % 2 else []
+            assert run_taglate(program, ghost + bits) == table[combo]
+        assert boolean.taglate(table) == raw
+
+
+@pytest.mark.parametrize("count", [20, 70, 262, 1030])
+def test_seed_bootstrap_exact_queue(count: int) -> None:
+    """Multiple URL layers initialize the exact FIFO without any input."""
+    from esolangs.interpreters.queue_based.taglate import _advance, _match, _tokens
+    from esolangs.tools.taglate import _seed_commands
+
+    seed = "1" + "0" * (count - 2) + "1"
+    tokens = _tokens(_seed_commands(seed))
+    match = _match(tokens)
+    state = ((), 0)
+    for token in tokens:
+        state = _advance(state, token, match)
+    assert state[0] == tuple(map(ord, seed))

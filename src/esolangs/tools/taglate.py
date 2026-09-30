@@ -137,7 +137,7 @@ def _taglate_reduced_table(truth_table: str, n: int, used: list[int]) -> str:
     return read_at(truth_table, used, n)
 
 
-def taglate(truth_table: str) -> str:
+def _taglate_raw(truth_table: str) -> str:
     r"""Build a Taglate program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -212,7 +212,7 @@ def taglate(truth_table: str) -> str:
             used = [used[0] - 1, *used]
     if 0 < len(used) < n and (len(used) % 2 == 0 or len(used) == 1):
         reduced = _taglate_reduced_table(truth_table, n, used)
-        seed, commands = taglate(reduced).split("\n", 1)
+        seed, commands = _taglate_raw(reduced).split("\n", 1)
         discard = "h" + "e" * len(seed) + "f"
         # Odd ``n`` above 1 is called with a leading ghost digit, which is
         # one more input to read and throw away before the real ones.
@@ -276,3 +276,58 @@ def taglate(truth_table: str) -> str:
 
     result: str = seed + "\n" + prefix + "".join(select_parts)
     return result
+
+
+def _seed_commands(seed: str) -> str:
+    """Build a generator seed from the empty queue with bounded ASCII passes."""
+    from esolangs.interpreters.queue_based.taglate import _PREFIX, _SUFFIX, _URL_SAFE
+
+    targets = list(map(ord, seed))
+    subtract = len(targets) == 3 and targets[1] == 65535
+    if subtract:
+        targets[1:2] = [0, 1]
+    count = len(targets)
+    prefixes: list[str] = []
+    suffixes: list[str] = []
+    prefix, suffix = _PREFIX, _SUFFIX
+    enough = 0
+    while enough < count:
+        prefixes.append(prefix)
+        suffixes.append(suffix)
+        enough += sum(ord(c) >= 49 for c in prefix + suffix)
+        prefix = "".join(c if c in _URL_SAFE else f"%{ord(c):02X}" for c in prefix)
+        suffix = "".join(c if c in _URL_SAFE else f"%{ord(c):02X}" for c in suffix)
+    # Encoding distributes over concatenation; nested URLs are these layers.
+    values = list(map(ord, "".join(prefixes + suffixes[::-1])))
+    parts: list[str] = ["t" * len(prefixes)]
+    selected: list[int] = []
+    for value in values:
+        keep = value >= 49 and len(selected) < count
+        parts.append("e" if keep else "f")
+        if keep:
+            selected.append(value)
+    # Each j/e rotates once, so a complete pass restores FIFO order.
+    # URL output is ASCII: at most 126 passes reach generator constants.
+    for _ in range(
+        max(v - target for v, target in zip(selected, targets, strict=True))
+    ):
+        for index, target in enumerate(targets):
+            decrement = selected[index] > target
+            parts.append("j" if decrement else "e")
+            selected[index] -= decrement
+    if subtract:
+        parts.append("ebe")  # [48, 0, 1, base] -> [48, 65535, base].
+    return "".join(parts)
+
+
+def taglate(truth_table: str, *, width: int | None = None) -> str:
+    """Return Taglate code; narrow seeds bootstrap an empty queue."""
+    from esolangs.tools.wrap import wrap_program
+
+    program = _taglate_raw(truth_table)
+    if width is None:
+        return program
+    seed, _, commands = program.partition("\n")
+    if len(seed) > width:
+        program = "\n" + _seed_commands(seed) + commands
+    return wrap_program(program, "taglate", width)
