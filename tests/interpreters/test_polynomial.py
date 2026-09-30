@@ -360,34 +360,18 @@ class TestPeelPrimePowerRoots:
 
     @staticmethod
     def _reference(coefficients: tuple[int, ...]) -> list[_Root]:
-        """Recover roots the way the interpreter did before the peel."""
-        import math
-
+        """Solve over Gaussian rationals, retaining only integer coordinates."""
         import sympy as sp
 
         x = sp.Symbol("x")
-        _, factors = sp.factor_list(sp.Poly.from_list(list(coefficients), x))
-        roots: list[_Root] = []
-        # pylint: disable=duplicate-code  # independent oracle; see class docstring
-        for factor, multiplicity in factors:
-            degree = factor.degree()
-            if degree == 1:
-                a, b = (int(k) for k in factor.all_coeffs())
-                if a != 1:
-                    continue
-                roots.extend([_Root(-b, 0)] * multiplicity)
-            elif degree == 2:
-                a, b, c = (int(k) for k in factor.all_coeffs())
-                if a != 1 or b % 2:
-                    continue
-                real = -b // 2
-                q = c - real * real
-                if q < 0:
-                    continue
-                imag = math.isqrt(q)
-                if imag * imag != q:
-                    continue
-                roots.extend([_Root(real, imag), _Root(real, -imag)] * multiplicity)
+        solved = sp.polys.polytools.ground_roots(
+            sp.Poly.from_list(list(coefficients), x), extension=sp.I
+        )
+        roots = []
+        for value, multiplicity in solved.items():
+            real, imag = value.as_real_imag()
+            if real.is_Integer and imag.is_Integer:
+                roots.extend([_Root(int(real), int(imag))] * multiplicity)
         return sorted(roots, key=lambda z: (z.imag, z.real))
 
     @pytest.mark.parametrize(
