@@ -1,5 +1,6 @@
 """Boolean-function generator for Forbin."""
 
+import re
 from collections.abc import Callable
 
 from esolangs.tools.helpers import (
@@ -68,8 +69,11 @@ def _byte(bit: int) -> str:
     return ",".join(format(_ASCII_ZERO + bit, "08b"))
 
 
-def forbin(truth_table: str) -> str:
+def forbin(truth_table: str, width: int | None = None) -> str:
     """Build a Forbin program computing the given truth table.
+
+    A supplied width uses disjoint guards and grammar-token wrapping, with
+    a four-column floor for ``main``. Unwrapped output retains early returns.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
@@ -93,6 +97,10 @@ def forbin(truth_table: str) -> str:
     0, and every leaf returns), and a constant span anywhere in that tree
     collapses to a call to one of the two printers.
     """
+    if width is not None:
+        natural = forbin(truth_table)
+        if max(map(len, natural.splitlines())) <= width:
+            return natural
     n = _validate_truth_table(truth_table)
     low = min(n, _BLOCK_BITS)
     high = n - low
@@ -100,7 +108,7 @@ def forbin(truth_table: str) -> str:
     names = _Names(n, block)
 
     used: set[str] = set()
-    tree = _tree(truth_table, n, high, names, used)
+    tree = _tree(truth_table, n, high, names, used, narrow=width is not None)
     lines = ["main{", _reads(n, names), *tree, "}"]
     # A table that folds everywhere paints no block, so the register would
     # be dead prologue.
@@ -109,7 +117,14 @@ def forbin(truth_table: str) -> str:
     for bit, name in ((0, names.zero), (1, names.one)):
         if name in used:
             lines.append(f"{name}{{out {_byte(bit)};}}")
-    return "\n".join(lines)
+    program = "\n".join(lines)
+    if width is None:
+        return program
+    # Whitespace separates every grammar token; identifiers and '..' stay whole.
+    from esolangs.tools.wrap import wrap_space_delimited
+
+    tokens = re.findall(r"[A-Za-z_][A-Za-z_0-9]*|\.\.|[^\s]", program)
+    return wrap_space_delimited(" ".join(tokens), width)
 
 
 def _reads(n: int, names: _Names) -> str:
@@ -127,6 +142,8 @@ def _tree(
     high: int,
     names: _Names,
     used: set[str],
+    *,
+    narrow: bool = False,
 ) -> list[str]:
     """Return the block-selecting branch tree, recording the callees used."""
     constant: Callable[[int, int], bool] = constant_span_test(truth_table)
@@ -136,19 +153,25 @@ def _tree(
         if constant(row, row + span):
             name = names.one if truth_table[row] == "1" else names.zero
             used.add(name)
-            return [f"return({name})"]
+            return [f"{name};" if narrow else f"return({name})"]
         if level == high:
             # The literal block goes on a line of its own: it is one
             # unbreakable token, and the wrapper holds a line to its width
             # unless a single token already overruns it.
             used.add(names.table)
             block = ",".join(truth_table[row : row + span])
+            if narrow:
+                return [f"{names.table} {block};"]
             return [f"return({names.table}", f"{block})"]
+        lower = emit(level + 1, row)
+        if narrow:
+            # Both guards run at most once, so a leaf needs no early return.
+            lower = [f"for _:1..!{names.bits[level]}{{", *lower, "}"]
         return [
             f"for _:1..{names.bits[level]}{{",
             *emit(level + 1, row + span // 2),
             "}",
-            *emit(level + 1, row),
+            *lower,
         ]
 
     return emit(0, 0)

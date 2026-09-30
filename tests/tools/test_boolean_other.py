@@ -273,6 +273,42 @@ class TestForbinBoolean:
             got = run_forbin_boolean(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
+    @pytest.mark.parametrize("width", [1, 4, 7, 13, 40, 80])
+    def test_narrow_small_tables(self, width: int) -> None:
+        """Every small table executes with a four-column grammar floor."""
+        for n in range(1, 4):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                program = esolangs.generate("Forbin", table, width)
+                assert isinstance(program, str)
+                assert max(map(len, program.splitlines())) <= max(width, 4)
+                for row in range(2**n):
+                    bits = list(format(row, f"0{n}b"))
+                    assert run_forbin_boolean(program, bits) == table[row]
+
+    @pytest.mark.parametrize("width", [1, 4, 13, 80])
+    def test_narrow_block_guards(self, width: int) -> None:
+        """Both block guards and constant spans emit exactly one answer."""
+        rng = random.Random(20260930)
+        for n in (8, 9):
+            tables = [
+                "0" * (2 ** (n - 1)) + "1" * (2 ** (n - 1)),
+                "".join(str(row.bit_count() & 1) for row in range(2**n)),
+                "".join(rng.choice("01") for _ in range(2**n)),
+            ]
+            for table in tables:
+                program = esolangs.generate("Forbin", table, width)
+                assert isinstance(program, str)
+                assert max(map(len, program.splitlines())) <= max(width, 4)
+                for row in [0, 2**n - 1, *rng.sample(range(2**n), 16)]:
+                    bits = list(format(row, f"0{n}b"))
+                    assert run_forbin_boolean(program, bits) == table[row]
+
+    def test_a_fitting_program_keeps_its_source(self) -> None:
+        program = boolean.forbin("01101001")
+        width = max(map(len, program.splitlines()))
+        assert boolean.forbin("01101001", width) == program
+
     def test_uses_the_lsb_of_each_input(self) -> None:
         """Each input is read as 8 bits and only the LSB is kept.
 
