@@ -31,14 +31,30 @@ class _Builder:
         self.code.append("*")
 
 
-def smallfuck(truth_table: str) -> str:
+def smallfuck(truth_table: str, width: int | None = None) -> str:
     """Return a Smallfuck template whose final tape cell 2 is the answer.
 
     Input ``i`` is stored in cell ``3 i`` before the tree runs, so a level
     may test any of them: the shorter of the identity and greedy orders is
     kept (:func:`best_input_order`).
     """
-    return best_input_order(truth_table, _smallfuck_ordered)
+    natural = best_input_order(truth_table, _smallfuck_ordered)
+    if width is None or width <= 0:
+        return natural
+    n = _validate_truth_table(truth_table)
+    if width < len(PAIR[0]):
+        natural = (TEMPLATE_CHAR + ">>>") * n + natural[len(PAIR[0]) * n :]
+    from esolangs.tools.helpers import mark_runs, unmark
+    from esolangs.tools.wrap import wrap_program
+
+    marked = mark_runs(natural, TEMPLATE_CHAR, smallfuck_setters(natural, n))
+    return unmark(wrap_program(marked, "smallfuck", width), TEMPLATE_CHAR, n)
+
+
+def smallfuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Keep the pointer walk outside narrow one-character input slots."""
+    pair = (" ", "*") if template.replace("\n", "").startswith("$>>>") else PAIR
+    return (pair,) * n
 
 
 def _smallfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
