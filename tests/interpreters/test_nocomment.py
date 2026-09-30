@@ -31,6 +31,65 @@ def run_and_capture(code: str) -> str:
     return buffer.getvalue()
 
 
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [("ciinsiio", "\x02"), ("ciindbo", "\x00"), ("cbo", "\x00")],
+)
+def test_lf_does_not_change_indexed_jump_targets(code: str, expected: str) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.nocomment import _Machine
+
+    plain = _Machine(code, ScriptedIO(""))
+    wrapped = _Machine("\n" + "\n".join(code) + "\n", ScriptedIO(""))
+    while not plain.halted:
+        assert plain.snapshot() == wrapped.snapshot()
+        plain.step()
+        wrapped.step()
+    assert wrapped.halted
+    assert plain.snapshot() == wrapped.snapshot()
+    assert wrapped.ind == len(code)
+    assert wrapped.io.getvalue() == plain.io.getvalue() == expected
+
+
+@pytest.mark.parametrize("char", [" ", "\t", "\r", "x"])
+def test_loading_ignores_only_lf(char: str) -> None:
+    with pytest.raises(ValueError, match="unrecognized NoComment command"):
+        run_and_capture("\nci" + char + "o\n")
+
+
+def test_lf_preserves_jump_range_errors() -> None:
+    code = "ciinsio"
+    messages = []
+    for source in (code, "\n".join(code)):
+        with pytest.raises(HaltError) as error:
+            run_and_capture(source)
+        messages.append(str(error.value))
+    assert messages[0] == messages[1]
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("width", [1, 2, 3, 7, 13, 80])
+def test_generated_nocomment_templates_run_at_arbitrary_breaks(width: int) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+    from esolangs.tools.nocomment import PAIR
+    from esolangs.tools.nocomment import nocomment as generate
+    from esolangs.tools.wrap import wrap_chars
+
+    tables = [f"{value:04b}" for value in range(16)]
+    tables += ["00000000", "11111111", "01101001", "01010011", "01101001" * 2]
+    for table in tables:
+        n = len(table).bit_length() - 1
+        template = wrap_chars(generate(table), width)
+        assert max(map(len, template.splitlines())) <= width
+        for row, expected in enumerate(table):
+            bits = [int(bit) for bit in f"{row:0{n}b}"]
+            source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
+            io = ScriptedIO("")
+            nocomment.run(source, io)
+            assert io.getvalue() == expected
+
+
 class TestNoComment:
     def test_output_character(self) -> None:
         assert run_and_capture("c" + "i" * 65 + "o") == "A"

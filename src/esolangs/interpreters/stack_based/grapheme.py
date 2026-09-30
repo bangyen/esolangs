@@ -5,6 +5,9 @@ strings and functions, with an untyped variable map.  ``E``/``F``/``H``
 toggle string/int/function mode, accumulating characters into a value
 pushed when the mode ends.
 
+Repository deviation: loading removes LF before validation, modes and indexing.
+Spaces, tabs and CR remain malformed.
+
 Gaps decided: underflow, math or ``Y`` on a function, a negative ``N``
 integer (alphabet ``A``-``J``), a function as a variable name, an
 undeclared ``D`` variable and division by zero halt
@@ -354,6 +357,7 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         """Build a machine running ``code`` as its top-level frame."""
+        code = code.replace("\n", "")
         if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
             raise ValueError(
                 "Grapheme programs may only contain uppercase Latin letters"
