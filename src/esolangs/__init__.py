@@ -227,6 +227,12 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         and template == generate(name, truth_table, 1)
     ):
         return True
+    if language_id == "intercal":
+        # Its primitive layout fits between the natural and simplified floors.
+        # Rebuild at the observed bound rather than accepting equivalent syntax.
+        width = max(1, max(map(len, template.splitlines()), default=0))
+        if template == generate(name, truth_table, width):
+            return True
     if language_id == "minifuck" and generator is not None and _takes_width(generator):
         narrow = generate(name, truth_table, 1)
         if isinstance(narrow, str) and template.replace("\n", "") == narrow.replace(

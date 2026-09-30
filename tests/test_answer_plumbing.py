@@ -755,6 +755,21 @@ class TestInstantiateCanCheckProvenance:
         with pytest.raises(esolangs.TemplateError, match="is not the template"):
             esolangs.instantiate(language, template, [0, 1, 0], truth_table="10010110")
 
+    @pytest.mark.parametrize("width", [1, 20, 40, 80])
+    def test_intercal_layout_candidates_keep_exact_provenance(self, width: int) -> None:
+        for inputs in range(1, 4):
+            for value in range(2 ** (2**inputs)):
+                table = format(value, f"0{2**inputs}b")
+                template = str(esolangs.generate("INTERCAL", table, width))
+                esolangs.instantiate(
+                    "INTERCAL", template, [0] * inputs, truth_table=table
+                )
+                wrong = table.translate(str.maketrans("01", "10"))
+                with pytest.raises(esolangs.TemplateError, match="is not the template"):
+                    esolangs.instantiate(
+                        "INTERCAL", template, [0] * inputs, truth_table=wrong
+                    )
+
 
 class TestSnapshotSaysItIsOpaque:
     """Its positions are not a schema and cannot be."""
