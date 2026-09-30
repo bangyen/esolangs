@@ -7,7 +7,7 @@ from shared_fold import build_shared_fold
 
 from esolangs.interpreters.other.malbolge import _crazy
 from esolangs.tools._malbolge_core import _char_for, _g
-from esolangs.tools.malbolge import _chain, _emit_chain, _Planner
+from esolangs.tools.malbolge import _chain, _Planner
 
 
 def helper_values(group: _Group) -> dict[int, int]:
@@ -16,6 +16,46 @@ def helper_values(group: _Group) -> dict[int, int]:
     # The 94-residue runtime-entry trace also reads these unchanged pointers.
     values.update({cell: _g(cell) for cell in (153, 174, 236)})
     return values
+
+
+def helper_chunks(
+    group: _Group,
+    cell: int,
+    wanted: int,
+    source: int,
+    constants: dict[str, int],
+) -> list[list[tuple[str, int, int | None]]]:
+    """Return initializer chunks, each independent of the incoming accumulator."""
+    initial = _g(cell)
+    chunks: list[list[tuple[str, int, int | None]]] = [
+        [("*", constants["all1"], 29524), ("p", target, None), ("p", target, 29524)]
+        for target in (19, cell)
+    ]
+    chunks.extend(
+        (
+            [("*", constants["all2"], 59048), ("p", source, _crazy(59048, initial))],
+            [
+                ("*", constants["all2"], 59048),
+                ("p", source, initial),
+                ("p", 19, _crazy(initial, 29524)),
+                ("p", cell, initial),
+            ],
+        )
+    )
+    value = initial
+    for token in () if wanted == initial else group.reach[cell][wanted]:
+        value = _chain(value, token)
+        if token == "rot":
+            chunks.append([("*", cell, value)])
+        else:
+            name, uniform = {
+                "K0": ("z0", 0),
+                "K1": ("all1", 29524),
+                "K2": ("all2", 59048),
+            }[token]
+            chunks.append([("*", constants[name], uniform), ("p", cell, value)])
+    assert value == wanted
+    return chunks
 
 
 def emit_helper(
@@ -27,11 +67,6 @@ def emit_helper(
 ) -> None:
     """Reset an unknown helper, copy its scalar seed, then run its known chain."""
     facts = {constants["all1"]: 29524, constants["all2"]: 59048, constants["z0"]: 0}
-
-    def op(operation: str, target: int) -> None:
-        plan.op(operation, target)
-        plan.mem.update(facts)
-
     initial = _g(cell)
     excluded = set(helper_values(group)) | set(facts) | {19}
     source = next(
@@ -39,28 +74,10 @@ def emit_helper(
         for address, value in plan.mem.items()
         if address >= 130 and address not in excluded and value == initial
     )
-    op("*", constants["all1"])
-    for target in (19, cell):
-        op("p", target)
-        op("p", target)
-        plan.mem[target] = 29524
-    op("*", constants["all2"])
-    op("p", source)
-    plan.mem[source] = _crazy(59048, initial)
-    op("*", constants["all2"])
-    op("p", source)
-    plan.mem[source] = initial
-    op("p", 19)
-    plan.mem[19] = _crazy(initial, 29524)
-    op("p", cell)
-    plan.mem[cell] = initial
-    value = initial
-    for token in () if wanted == initial else group.reach[cell][wanted]:
-        _emit_chain(plan, cell, token, constants)
-        value = _chain(value, token)
-        plan.mem[cell] = value
-        plan.mem.update(facts)
-    assert value == wanted
+    for chunk in helper_chunks(group, cell, wanted, source, constants):
+        for operation, target, value in chunk:
+            plan.op(operation, target)
+            plan.mem[target] = value
 
 
 def main() -> None:

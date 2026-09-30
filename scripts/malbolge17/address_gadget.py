@@ -1037,6 +1037,8 @@ def build(
             source[address] = _char_for(operation, address)
     if occupied is not None:
         occupied.update(emitted)
+        # An i enciphers the cell preceding its next instruction.
+        occupied.update(address - 1 for address in emitted if address > 0)
     if outputs is not None and parity:
         outputs["pointer"] = helper["a1"]
     result_cell = tail_cell
