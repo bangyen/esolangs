@@ -865,7 +865,6 @@ def build(
                 )
             from setup_constants import reset_labels
 
-            reset_labels(normalizer, map_all1)
             if restore_labels:
                 from decoder_group import _LABELS, _setup
 
@@ -880,34 +879,9 @@ def build(
                 }
                 assert label_targets[42] == 29524
                 assert label_targets[107] == 20776
+                from setup_constants import prepare_labels
 
-                def reload_seed() -> None:
-                    neighbour = normalizer.d
-                    if neighbour != 107:
-                        value = normalizer.mem[neighbour]
-                        assert value is not None, neighbour
-                        # All-one fold input leaves cell 29525 non-printable (28823).
-                        if value != 29524:
-                            normalizer.raw("j")
-                            normalizer.d = value + 1
-                        if normalizer.d >= _ENTRY:
-                            address = normalizer.d
-                            operation = next(
-                                (part[address] for part in parts if address in part),
-                                None,
-                            )
-                            if operation is not None:
-                                char = ord(_XLAT2[_char_for(operation, address) - 33])
-                                normalizer.data[address] = char
-                            else:
-                                char = max(
-                                    ch for ch in _valid_chars(address) if ch < 107
-                                )
-                                char = normalizer.data.setdefault(address, char)
-                            normalizer.raw("j")
-                            normalizer.d = char + 1
-                    normalizer.op("p", 107)
-                    normalizer.mem[107] = encoded
+                prepare_labels(normalizer, map_all1, label_targets)
 
                 for seed_cell, initial, turns in (
                     (18, 81, 8),
@@ -936,41 +910,29 @@ def build(
                         normalizer.op("p", 107)
                         normalizer.op("p", 107)
                         normalizer.mem[107] = 29524
+                    seed_value = normalizer.mem[107] if seed_cell == 107 else initial
+                    assert seed_value is not None
+                    value = seed_value
                     for _ in range(turns):
                         normalizer.op("*", seed_cell)
-                    encoded = initial
-                    for _ in range(turns):
-                        encoded = _rot(encoded)
-                    normalizer.mem[seed_cell] = encoded
-                    hub = 29524 - encoded
-                    primed = seed_cell == 107
-                    # Restored neighbours save 185 emitted cells in the 729 phase.
-                    for cell in sorted(label_targets, reverse=initial == 729):
-                        target = label_targets[cell]
+                        value = _rot(value)
+                        normalizer.mem[seed_cell] = value
+                    if seed_cell != 107:
+                        normalizer.op("p", 107)
+                        value = _crazy(value, 29524)
+                        normalizer.mem[107] = value
+                    hub = value
+                    assert hub == 29524 - _chain(initial, " ".join(("rot",) * turns))
+                    for cell, target in label_targets.items():
                         if target == hub and cell != 107:
                             normalizer.op("p", cell)
+                            normalizer.op("p", cell)
                             normalizer.mem[cell] = hub
-                            if not primed:
-                                normalizer.op("p", 107)
-                                normalizer.mem[107] = encoded
-                                primed = True
-                            else:
-                                reload_seed()
-                normalizer.op("*", 42)
-                normalizer.mem[42] = 29524
-                normalizer.op("p", 107)
-                normalizer.op("p", 107)
-                if decoder_constant_cells is not None:
-                    from setup_constants import load
-
-                    load(normalizer, 25, decoder_constant_cells[0])
-                else:
-                    for _ in range(10):
-                        normalizer.op("*", 25)
-                normalizer.op("p", 107)
                 normalizer.mem[107] = label_targets[107]
                 if outputs is not None:
                     outputs["labels_done"] = normalizer.c
+            else:
+                reset_labels(normalizer, map_all1)
             if decoder_constant_cells is not None:
                 all2_cell, _v_cell, zero_cell = decoder_constant_cells
                 assert normalizer.mem[42] == ALL1
