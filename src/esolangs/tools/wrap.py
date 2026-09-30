@@ -373,9 +373,9 @@ def _jaune(program: str, width: int) -> str:
 
 
 def _bracket_literal(program: str, width: int) -> str:
-    """Wrap 3x and Modulous, keeping a bracketed group whole.
+    """Wrap 3x, keeping a bracketed group whole.
 
-    Both print through a bracketed literal, so a newline inside it prints.
+    A newline inside its bracketed literal prints.
     """
     return wrap_tokens(program, width, _BRACKET_LITERAL)
 
@@ -494,7 +494,6 @@ WRAPPERS = {
     # Operand-before-operator, so a break between the two is a load error.
     "jaune": _jaune,
     # Print through a literal that must not be broken.
-    "modulous": _bracket_literal,
     "eval": _quote_literal,
     # ``'x`` and ``.x``/``?x`` take the character after them.
     "false": _false,
