@@ -30,7 +30,7 @@ _SAME = "^1&"
 _FLIPPED = "^'0=_"
 
 
-def false(truth_table: str) -> str:
+def false(truth_table: str, width: int | None = None) -> str:
     """Return a FALSE program computing ``truth_table``.
 
     Reads ``n`` lines, one ``0``/``1`` per input in table order, and prints
@@ -39,7 +39,16 @@ def false(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     plain = _plain(truth_table, n)
     shared = _shared(truth_table, n)
-    return shared if len(shared) < len(plain) else plain
+    program = shared if len(shared) < len(plain) else plain
+    # The only two-character atom is the ASCII-zero push; multiplication
+    # spells that value with single-character operands when width is one.
+    if width is None:
+        return program
+    from esolangs.tools.wrap import wrap_program
+
+    if width == 1:
+        program = program.replace("'0", "6 8*")
+    return wrap_program(program, "false", width)
 
 
 def _plain(truth_table: str, n: int) -> str:

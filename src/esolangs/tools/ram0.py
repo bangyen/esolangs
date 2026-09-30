@@ -8,11 +8,8 @@ from esolangs.tools.helpers import (
     subtree_slot,
 )
 
-#: How each input is set: ``Z`` resets the register absolutely, so ``Z Z``
-#: leaves a zero and ``Z A`` a one whatever came before.  The template
-#: spells each input as a run of :data:`TEMPLATE_CHAR` this wide -- one
-#: token that instantiates to two commands.
-PAIR = ("Z Z", "Z A")
+#: A fixed Z precedes each slot; the one-command pair selects zero or one.
+PAIR = ("Z", "A")
 _RAM0_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 #: A leaf: set ``z`` to the answer and jump to the halt trampoline.
@@ -37,7 +34,7 @@ def ram0(truth_table: str) -> str:
 
     RAM0 has no input command, so this is a parameterized generator: the
     template's input runs become a fixed-length two-command
-    setter — ``Z Z`` for a zero, ``Z A`` for a one — independent of the
+    unit — fixed ``Z``, then the ``Z``/``A`` setter — independent of the
     incoming register (``Z`` resets absolutely).  The earlier wall's
     variable-length setter (``Z`` vs ``Z A``) was what shifted the absolute
     ``goto`` operands; the padded setter removes that.
@@ -116,7 +113,7 @@ def _ram0_linear(truth_table: str) -> str:
     # pointer; cells 2..n+1 hold the parameterized inputs.
     for i in range(n):
         unary(i + 2)
-        emit("N", _RAM0_INPUT, "S")
+        emit("N", "Z", _RAM0_INPUT, "S")
 
     table_base = n + 2
     store_constant(0, table_base - 1)
@@ -149,12 +146,9 @@ def _ram0_linear(truth_table: str) -> str:
         mark(after)
 
     emit("Z", "A", "L", "L")
-    extra: list[int] = [0]
-    for token in tokens:
-        extra.append(extra[-1] + (token == _RAM0_INPUT))
     for at, target in jumps:
         target_at = labels[target]
-        tokens[at] = str(target_at + extra[target_at] + 1)
+        tokens[at] = str(target_at + 1)
     return " ".join(tokens)
 
 
@@ -187,7 +181,7 @@ def _ram0_ordered(
         tokens.extend("A" for _ in range(address))
         tokens.append("N")
         pos += 1 + address + 1
-        tokens.append(_RAM0_INPUT)  # expands to "Z A" / "Z Z"
+        tokens.extend(("Z", _RAM0_INPUT))  # reset, then set the bit
         pos += 2
         tokens.append("S")
         pos += 1

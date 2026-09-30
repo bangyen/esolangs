@@ -801,7 +801,7 @@ class TestParameterizedBfpda:
         template = parameterized.bfpda("0110")
         assert "{X" not in template
         # The first marker's ``<`` is dropped: ``@`` pushes a 1 onto the empty stack.
-        assert template.startswith("@$$$$<@$$$$")
+        assert template.startswith("@<$<@<$")
 
     def test_program_structure(self) -> None:
         """Each input is embedded once (pre-loaded), not re-embedded per node."""
@@ -812,7 +812,7 @@ class TestParameterizedBfpda:
 
         template = parameterized.bfpda("0110")
         # ``runs`` refuses a stray ``$``, so two spans is exactly two embeds
-        assert runs(template, "$", (BFPDA_PAIR,) * 2) == [(1, 5), (7, 11)]
+        assert runs(template, "$", (BFPDA_PAIR,) * 2) == [(2, 3), (6, 7)]
         assert "{C0}" not in template  # the marker is a constant, not a complement
         assert "{C1}" not in template
 
@@ -824,9 +824,9 @@ class TestParameterizedBfpda:
         """
         from esolangs.tools import parameterized
 
-        assert parameterized.bfpda("10") == "@$$$$[>>.]>[>@.>]"  # NOT
+        assert parameterized.bfpda("10") == "@<$[>>.]>[>@.>]"  # NOT
         assert parameterized.bfpda("0110") == (
-            "@$$$$<@$$$$[>>[>>.]>[>@.>]]>[>[>>@.>]>[>.]]"  # XOR
+            "@<$<@<$[>>[>>.]>[>@.>]]>[>[>>@.>]>[>.]]"  # XOR
         )
 
     def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
@@ -834,12 +834,12 @@ class TestParameterizedBfpda:
 
         24127 while each arm pushed a zero to break its loop and popped it
         after, and each leaf pushed its answer; 17578 once the arms end on
-        the empty stack a leaf leaves behind.
+        the empty stack a leaf leaves behind; 16042 with fresh-cell setters.
         """
         from esolangs.tools import parameterized
 
         total = sum(len(parameterized.bfpda(format(v, "08b"))) for v in range(256))
-        assert total == 17578
+        assert total == 16042
 
 
 class TestParameterizedHomeRow:
@@ -937,7 +937,7 @@ class TestParameterizedHomeRow:
         template = parameterized.home_row("0110")
         assert "{X" not in template
         # each packing line opens with its two-character run
-        assert "$$lsffffaafl$$lsffffafl" in template
+        assert "a$lsffffaafla$lsffffafl" in template
 
     def test_each_input_embedded_once(self) -> None:
 
@@ -955,7 +955,7 @@ class TestParameterizedHomeRow:
         """Only the rows before the table's trailing run get a guarded leaf."""
         from esolangs.tools import parameterized
 
-        setup = "aaaaaalsffaaaaaaaaffflf$$lsffffaafl$$lsffffafl"
+        setup = "aaaaaalsffaaaaaaaaffflfa$lsffffaafla$lsffffafl"
         assert parameterized.home_row("0111") == setup + "fffflflfflk;lffffak"
         assert parameterized.home_row("0110") == setup + (
             "fffflsflfflk;lfflsflfflak;lfflflfflak;lffffk"
