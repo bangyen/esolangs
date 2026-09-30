@@ -23,18 +23,15 @@ route width, work, or generation time are ignored: lifting such a guard leaves
 the construction below it unchanged.  Invalid-table guards are outside the
 domain.
 
-This is not a correctness proof for every emitted program.  The execution
-tests are that evidence.  Nor does a finite sweep prove the universal claim:
-the exhaustive `n <= 3` and sampled `n <= 10` sweeps in
-`tests/tools/test_boolean_contract.py` are counterexample searches for the
-arguments below.
+Execution tests check emitted programs; this ledger argues coverage for every
+finite arity. The exhaustive `n <= 3` and sampled `n <= 10` sweeps in
+`tests/tools/test_boolean_contract.py` seek counterexamples to those arguments,
+rather than proving them.
 
-What is machine-checked lives in `tests/proofs/`.  `test_ledger.py` holds this
-document to the registry and to itself, and `test_schemes.py` holds each
-lookup and parameterized row to its scheme's measurable consequence (the
-`tree` and `minterms` rows carry no such per-row check); both are in the fast
-band and gate every push.  `tests/proofs/deep/` holds the proofs themselves,
-at two depths.
+Machine checks live in `tests/proofs/`. `test_ledger.py` checks consistency
+with the registry; `test_schemes.py` checks measurable consequences for lookup
+and parameterized rows (`tree` and `minterms` have no per-row check). Both run
+in the fast band. The deeper proof checks live in `tests/proofs/deep/`.
 `all_generators.py` runs a lemma battery against all 72: every single
 row of the table demonstrably participates in the emitted program at the
 flip-tested arities, and the construction completes at every arity of a ladder
@@ -54,8 +51,8 @@ justfile, the workflow and
 number, not a measured time) and checks that no file under
 `deep/` is missing one.
 
-None of that bounds *size*: the schemes count nodes and entries, so a generator
-can satisfy its row and still emit super-linear text.  `linearity.py` is the
+Coverage does not bound source size: the schemes count nodes and entries,
+so a total generator can still emit super-linear text.  `linearity.py` is the
 separate, registry-wide scaling contract the roadmap asks for.  It measures
 characters per table entry past each generator's last route change and holds
 every generator to it except those the roadmap's scaling audit or this

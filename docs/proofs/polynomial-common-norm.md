@@ -1,9 +1,9 @@
 # Coefficient mass for common norm Gaussian factors
 
-The common-norm subproblem has a quadratic mass bound for its raw factor
-and for scaled reciprocal or anti-reciprocal integer multiples. The bound
-for arbitrary integer multiples remains a conjecture. This restriction
-does not cover the arbitrary Gaussian register-root families in
+A quadratic mass bound holds for the raw common-norm factor and for scaled
+reciprocal or anti-reciprocal integer multiples. Arbitrary integer multiples
+remain conjectural. The common-norm hypothesis does not cover the general
+Gaussian register-root families in
 [Polynomial](polynomial.tex), whose norms need not agree.
 
 Let `K >= 2`, let `p_j` be distinct primes, and put `c_j = p_j^b_j`

@@ -1,18 +1,17 @@
 # Security policy
 
-Supported: the latest PyPI release and `main`.  Older versions are not.
+Security fixes cover the latest PyPI release and `main`.
 
 ## Scope
 
-In scope is anything that escapes the interpreter:
+Report anything that escapes the interpreter:
 
 - executing arbitrary code on the host, or reading or writing files outside
   what a run was given;
 - code execution through the CLI's file or language arguments;
 - a compromise in the release pipeline or a published artifact.
 
-Out of scope: wrong output, loops and resource exhaustion.  Those are
-correctness bugs -- open a normal issue.
+For wrong output, loops, or resource exhaustion, open a normal issue.
 
 ## Reporting
 

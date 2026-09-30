@@ -1,12 +1,12 @@
-# Malbolge boolean generator: the hashed wall, and the build past it
+# Malbolge: generator limits and constructions
 
-Why the hashed cascade stopped at fourteen inputs, the positional build that
-now covers fifteen and sixteen, and why seventeen is out of reach for any
-build that spends a cell per pair of rows. Companion to the narrative in
-[../limitations.md](../limitations.md). Everything here is measured or
-verified against the interpreter's `crazy`/`rot`, or marked as an unbuilt
-design. The sections on the load law and the two fifteen-input cascade
-attempts are kept as the record of why the hash had to go.
+The hashed cascade reaches fourteen inputs; the positional construction
+reaches fifteen and sixteen. A construction using one cell per row pair
+cannot reach seventeen. See [limitations](../limitations.md) for the contract.
+
+Results below are measured, verified against the interpreter’s `crazy`/`rot`,
+or marked as unbuilt designs. The load law and two fifteen-input cascade
+attempts explain why the generator switched from hashing to positional reads.
 
 ## The load law
 
@@ -76,13 +76,10 @@ interpreter run over all 131,072 rows.
 
 ## The emitted-size law
 
-`len(program)` is 59,049 at every arity: the whole store is the source, so the
-load limit *is* the emitted length rather than a bound on it, and reading
-linearity off `len()` measures the padding. What the construction spends is
-its **set cells** -- those differing from `f(a) = 33 + ((35 - a) % 94)`, the
-unique nop character for a cell's own address, which is what every untouched
-cell holds. Unwritten cells decode as op `o`, so a set cell is exactly a
-non-`o` cell.
+`len(program)` is always 59,049: the source fills the store. To measure
+construction growth, count **set cells** instead of padding. A set cell differs
+from `f(a) = 33 + ((35 - a) % 94)`, the unique nop character at address `a`.
+Untouched cells decode as `o`, so set cells are exactly the non-`o` cells.
 
 Through ten inputs that count is not fitted but exact:
 

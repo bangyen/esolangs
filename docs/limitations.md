@@ -1,7 +1,7 @@
 # Limitations and contracts
 
-Standing contracts and walls. Closed scaling work belongs in its commit;
-Polynomial's proved wall is in [polynomial](proofs/polynomial.md).
+Interpreter conventions, generator constraints, and proved limits.
+See [Polynomial](proofs/polynomial.md) for its size lower bound.
 
 ## Interpreter conventions
 
@@ -44,11 +44,10 @@ character is build work. The input text must have:
 The template constructor enforces the shape. `tests/proofs/test_conventions.py`
 checks filled programs at n=2, 3, 5.
 
-A relaxed-width toggle is worth adding only for a smaller executed build; a
-space toggle has no remaining use. Reordering is optional around a construction, but
-its selection cost counts; named candidates are capped at four and the generic
-greedy scorer stops at n=10. Generator constructions may not use BFS or DFS;
-test-only oracles may.
+Add a relaxed-width option only if it produces a smaller, executed build.
+A space option has no remaining use. Input reordering counts toward generation
+cost: at most four named candidates, with the generic greedy scorer stopping
+at n=10. Generators may not use BFS or DFS; test-only oracles may.
 
 The screen script measures permuted tables, not admissible reorders under a
 fixed template and fill mapping. Dig, Flowchart, BrainIf, Sophie, and SLOW ACV
@@ -83,7 +82,7 @@ inputs would need sixteen labels, but its address admits eight characters.
 Seventeen inputs need more than two table bits per cell across almost the
 whole store.
 
-That construction gap ends before totality. Malbolge has 59,049 cells and
+The language itself has a separate limit. Malbolge has 59,049 cells and
 eight valid decoded instructions at each occupied source cell -- the
 decipherment cycles with the cell index, and `_XLAT1` holds each instruction
 character exactly once -- hence fewer than `sum(8**k for k in range(59050)) <
@@ -145,16 +144,14 @@ Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.
 Those choices prevent repeated scans, but command cost and source size remain
 separate axes.
 
-### The Malbolge sampled rows are not redundant
+### Malbolge sampling
 
-`test_boolean_malbolge.py` is the largest single block in the suite, and
-each sampled test runs a stride sample (every 8th/16th/32nd row) *and* every
-second-level row of the cascade.  The two halves cover disjoint failures, so
-neither is trimmable: at eleven inputs, corrupting the level-0 answers of
-`_cascade_program` is caught by 117 stride rows and **0** second-level rows,
-while corrupting the second-level answers is caught by 127 second-level rows
-and only 18 stride rows.  The stride rows are the only cover for the 1792
-level-0 rows.  Recorded because the file's size reads like waste and is not.
+`test_boolean_malbolge.py` checks stride samples (every 8th/16th/32nd row)
+and every second-level cascade row. Both are needed: at eleven inputs,
+corrupting `_cascade_program`’s level-0 answers fails 117 stride rows and
+**0** second-level rows. Corrupting second-level answers fails 127
+second-level rows and only 18 stride rows. Only the stride sample covers
+the 1792 level-0 rows.
 
 ## Curation
 

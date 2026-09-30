@@ -1,35 +1,25 @@
 # FRACTRAN: whose wall it is
 
-A program that gives each of a table's `T` rows its own address needs
-`Theta(T log T)` characters. This document proves that -- an unconditional
+Assigning a separate address to each of a truth table’s `T` rows costs
+`Theta(T log T)` characters. Distinctness alone gives the address bounds
 `Omega(m log m)` in the fraction count and `Omega(k log k)` in the prime
-count, from distinctness alone -- and then shows that the language is not
-bounded by it, because a program need not address rows. The generator
-shipped here does not, and costs `Theta(T)`.
+count. These bounds apply to that construction, not to all FRACTRAN programs.
 
-So the headline is a negative one. **FRACTRAN has no `Omega(T log T)`
-language lower bound; its boolean size complexity is `Theta(T)`.** The
-floor is the counting floor, `D >= T / log2(c) > 0.26 T` (Theorem 14), and
-Theorem 15 is within a constant of it. It is also what the generator now
-emits: `8.93` characters an entry at `n = 12` and falling, against a
-prime-per-row tree's `23.6` and climbing. The `log T` the generator used to
-carry was the construction's, not the language's.
+**FRACTRAN’s Boolean source complexity is `Theta(T)`.** The counting floor is
+`D >= T / log2(c) > 0.26 T` (Theorem 14); the packed construction in Theorem 15
+matches it within a constant. At `n = 12`, the shipped generator emits `8.93`
+characters per entry, decreasing with arity, versus `23.6` and increasing for
+the prime-per-row tree.
 
-What the wall really prices is the clock. A packed program holds `w` table
-entries in one exponent, so it buys those characters with a value of
-`Theta(2**w)` bits and a run that has to traverse them -- `O(2**w)` steps,
-against the tree's `2n + 1` on a value of `O(n log n)` bits. Linearity asks
-only `w = Omega(n)`, so `w` is held near `n / 3` and the run stays
-a fractional power of `T`; both ends are executed in
+Packing trades source size for execution cost. A packed program stores `w`
+entries in one exponent, using a value of `Theta(2**w)` bits and `O(2**w)`
+steps. The tree takes `2n + 1` steps on `O(n log n)` bits. Linear source size
+requires only `w = Omega(n)`; choosing `w` near `n / 3` keeps execution within
+a fractional power of `T`. Both constructions are executed in
 `tests/proofs/deep/fractran_packed.py`.
 
-Three corrections to earlier prose come out of this, all recorded below:
-the packing argument was notation-dependent and false under this port's own
-rendering; the Factor-style behaviour count *cannot* be imported here, for
-a reason that is structural rather than a gap in effort; and the address
-budget was being read as a statement about the language when it is a
-statement about a class of constructions -- a class nothing established was
-exhaustive, and which is not.
+The sections below also correct the earlier notation-dependent packing
+argument and explain why Factor’s behaviour count does not apply here.
 
 ## Setup
 

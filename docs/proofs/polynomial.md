@@ -3,23 +3,23 @@
 The standalone theorem is [polynomial.tex](polynomial.tex).  This companion
 retains implementation bounds, searches, counterexamples, and proof history.
 
-Program text is the expanded coefficient digits of a polynomial whose roots
-encode instructions.  The size and time cells of the roadmap's scaling audit
-close here as a language lower bound: every Polynomial program for a
-maximal-width table is `Omega(T**2 / log T)` characters, for every cofactor,
-every operand sign, every degree and every read count.  The distinct-root
-forcing is the next-read count (`thm:count` in the paper): a first-essential
-residual is fixed by the cursor of the next read, which must end its gap, so
-the program has at least as many distinct input values and distinct real
-values as the widest level has first-essential residuals.  The older routing
-lemma below (see "Variable read counts") is kept as history.  Everything else below is proved, executed,
-or a bounded search; the coefficient-mass bound is the theorem under "The slack
-certificate", and the searches that narrowed the question to it are kept
-because they say what is *not* available -- not because anything is still
-being looked for.  `tests/proofs/test_negatives.py` executes the claims
-marked (executed) that it covers; the block-incidence links are pinned in
-`tests/proofs/deep/multiplicity.py`, and a few (executed) markers still name
-scratch probes no test reruns.
+Program text lists the expanded coefficients of a polynomial whose roots
+encode instructions. Every program for a maximal-width table requires
+`Omega(T**2 / log T)` characters, regardless of cofactor, operand sign,
+degree, or read count.
+
+The next-read count (`thm:count` in the paper) forces distinct roots: each
+first-essential residual is fixed by the cursor of the next read, which
+ends its gap. The widest level therefore requires at least that many
+distinct input values and distinct real values. The coefficient-mass theorem
+under "The slack certificate" supplies the size bound.
+
+The older routing lemma under "Variable read counts" and the bounded
+searches remain as proof history and counterexamples. Claims below are
+proved, executed, or identified as bounded searches.
+`tests/proofs/test_negatives.py` reruns the executed claims it covers;
+`tests/proofs/deep/multiplicity.py` pins the block-incidence links. Some
+(executed) markers refer to scratch probes without a regression test.
 
 The order is tight for program text in this model.  The uncapped residual-DAG
 construction
