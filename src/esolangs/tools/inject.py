@@ -102,16 +102,74 @@ def _tree(
     return walk(0, len(table), depth)
 
 
-def inject(truth_table: str) -> str:
+def inject(truth_table: str, width: int | None = None) -> str:
     """Build an Inject program computing ``truth_table``.
 
     Reads ``n`` lines and writes the entry plus a newline.  The split order
     is whichever is shortest (:func:`~esolangs.tools.helpers.best_input_order`);
-    the ``readto`` block stays in input order.
+    the ``readto`` block stays in input order.  Width selects a chunked
+    lookup with an O(n) floor; complete commands never split.
     """
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _inject_ordered)
-    return _inject_halving(truth_table)
+        program = best_input_order(truth_table, _inject_ordered)
+    else:
+        program = _inject_halving(truth_table)
+    if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
+        return program
+    banded = _inject_banded(truth_table)
+    return (
+        banded
+        if max(map(len, banded.splitlines())) < max(map(len, program.splitlines()))
+        else program
+    )
+
+
+def _inject_banded(truth_table: str) -> str:
+    """Select an O(n)-bit chunk, then halve it in one shared postlude."""
+    n = _validate_truth_table(truth_table)
+    low = min(n, (n - 1).bit_length())
+    high = n - low
+    names = _Names(n, tuple(range(n)))
+    lines = [f"{name};\n{name};" for name in names.inputs]
+    lines += ["t;", "0", "t;", "z;", "0", "z;", "o;", "1", "o;"]
+    lines += [f"readto {name}" for name in names.inputs]
+
+    def walk(start: int, stop: int, level: int) -> None:
+        if level == high:
+            escape = names.fresh()
+            names.escapes.append(escape)
+            lines.extend(
+                ["inject t=^.*$/" + truth_table[start:stop], "skip", f"{escape};"]
+            )
+            return
+        middle = (start + stop) // 2
+        block = names.fresh()
+        lines.extend([f"skipq {names.inputs[level]} z", f"{block};"])
+        walk(middle, stop, level + 1)
+        lines.append(f"{block};")
+        walk(start, middle, level + 1)
+
+    # >= n rows per chunk amortize O(n)-letter unique labels over the table.
+    # Every leaf escapes the remaining tree to the same low-input postlude.
+    walk(0, len(truth_table), 0)
+    lines.extend(f"{escape};" for escape in names.escapes)
+    for depth in range(high, n):
+        half = 1 << (n - depth - 1)
+        one, zero = names.fresh(), names.fresh()
+        lines.extend(
+            [
+                f"skipq {names.inputs[depth]} z",
+                f"{one};",
+                "inject t=^" + "." * half + "/",
+                f"{one};",
+                f"skipq {names.inputs[depth]} o",
+                f"{zero};",
+                "inject t=" + "." * half + "$/",
+                f"{zero};",
+            ]
+        )
+    lines.append("send t")
+    return "\n".join(lines)
 
 
 def _inject_halving(truth_table: str) -> str:

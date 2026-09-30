@@ -154,7 +154,6 @@ WIDTH_EXCEPTIONS = {
         "back",
         "cvnc",
         "grapheme",
-        "inject",
         "intercal",
         "malbolge",
         "minsky_swap",
@@ -660,7 +659,10 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
     columns an input, and none of that belongs pinned in a test.
     """
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
-    for label, table in _HONOUR_TABLES.items():
+    tables = _HONOUR_TABLES
+    if name == "inject":
+        tables = {**tables, "parity5": _table(5)}
+    for label, table in tables.items():
         arity = len(table).bit_length() - 1
         bits = "0" * arity
         narrowest = _columns(_laid_out(language.name, table, bits, 1))
@@ -699,7 +701,10 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
     example = EXAMPLE_BY_ID[language.id]
     relaid = 0
-    for label, table in _HONOUR_TABLES.items():
+    tables = _HONOUR_TABLES
+    if name == "inject":
+        tables = {**tables, "parity5": _table(5)}
+    for label, table in tables.items():
         arity = len(table).bit_length() - 1
         for combo in range(2**arity):
             bits = format(combo, f"0{arity}b")
