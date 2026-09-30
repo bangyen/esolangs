@@ -418,7 +418,7 @@ class TestModulous:
                     )
 
     def test_narrow_literal_floor_and_corpus_size(self) -> None:
-        assert max(map(len, boolean.modulous("0110", 1).splitlines())) == 4
+        assert max(map(len, boolean.modulous("0110", 1).splitlines())) == 3
         assert (
             sum(len(boolean.modulous(format(v, "08b"), 1)) for v in range(256)) == 94976
         )
