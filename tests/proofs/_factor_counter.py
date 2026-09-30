@@ -23,10 +23,10 @@ class _Code:
         return "".join(self.parts)
 
 
-def _counter(width: int) -> str:
+def _counter(width: int, stride: int = 2) -> str:
     if not width:
         return ""
-    code = _Code(stride=2)
+    code = _Code(stride=stride)
     guard, carry, next_carry, zero = range(width, width + 4)
     # Inputs arrive most significant first; the distance counts zero bits.
     for bit in reversed(range(width)):
