@@ -103,25 +103,37 @@ def emit_masks(
             # Binary bases select tag 0 or 2; two zero bits yield tag 1.
             first = sum((digit == 0) * 2**i for i, digit in enumerate(digits))
             second = sum((digit == 2) * 2**i for i, digit in enumerate(digits))
-            initial = plan.mem[cell]
-            # Binary bases have six low 1-trits, so pp copies over low words.
-            if initial is None or not 0 <= initial < 3**6:
-                plan.op("*", helpers["all1"])
-                plan.op("p", cell)
-                plan.op("p", cell)
             source = group.view_cells[second]
             value = plan.mem[source]
             assert value is not None
-            load(plan, source, value, helpers["all2"])
-            plan.op("p", cell)
-            plan.op("p", cell)
-            plan.op("*", helpers["all2"])
-            plan.op("p", cell)
-            source = group.view_cells[first]
-            value = plan.mem[source]
-            assert value is not None
-            load(plan, source, value, helpers["all2"])
-            plan.op("p", cell)
+            if first == 0:
+                # ALL2 doubles a binary base; one pass back restores it.
+                plan.op("*", helpers["all1"])
+                plan.op("p", cell)
+                plan.op("p", cell)
+                plan.op("*", helpers["all2"])
+                plan.op("p", source)
+                plan.op("p", cell)
+                plan.op("*", helpers["all2"])
+                plan.op("p", source)
+                assert plan.mem[source] == value
+            else:
+                initial = plan.mem[cell]
+                # Binary bases have six low 1-trits, so pp copies over low words.
+                if initial is None or not 0 <= initial < 3**6:
+                    plan.op("*", helpers["all1"])
+                    plan.op("p", cell)
+                    plan.op("p", cell)
+                load(plan, source, value, helpers["all2"])
+                plan.op("p", cell)
+                plan.op("p", cell)
+                plan.op("*", helpers["all2"])
+                plan.op("p", cell)
+                source = group.view_cells[first]
+                value = plan.mem[source]
+                assert value is not None
+                load(plan, source, value, helpers["all2"])
+                plan.op("p", cell)
             assert plan.mem[cell] == wanted
             cells[state] = cell
         return cells
