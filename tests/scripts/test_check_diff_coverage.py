@@ -291,3 +291,47 @@ class TestCoverageJsonShape:
         assert "executed_lines" in one
         assert "missing_lines" in one
         assert "summary" in one
+
+
+@pytest.mark.parametrize("failure", ["base", "diff", "coverage", "branches"])
+@pytest.mark.parametrize("strict", [False, True])
+def test_missing_evidence_fails_only_in_strict_mode(
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+    *,
+    strict: bool,
+) -> None:
+    gate = load_script()
+    monkeypatch.setattr(
+        gate, "_diff_base", lambda: None if failure == "base" else "BASE"
+    )
+    monkeypatch.setattr(
+        gate,
+        "_added_lines",
+        lambda _base: None if failure == "diff" else {"src/esolangs/a.py": {1}},
+    )
+    monkeypatch.setattr(
+        gate,
+        "_coverage_json",
+        lambda _data, _targets: (
+            None
+            if failure == "coverage"
+            else {
+                "src/esolangs/a.py": record(
+                    [1], [], branches=None if failure == "branches" else 0
+                )
+            }
+        ),
+    )
+    monkeypatch.setattr(sys, "argv", [str(SCRIPT), *(["--strict"] if strict else [])])
+    assert gate.main() == int(strict)
+
+
+def test_strict_gate_allows_a_diff_without_measured_files(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gate = load_script()
+    monkeypatch.setattr(gate, "_diff_base", lambda: "BASE")
+    monkeypatch.setattr(gate, "_added_lines", lambda _base: {"README.md": {1}})
+    monkeypatch.setattr(sys, "argv", [str(SCRIPT), "--strict"])
+    assert gate.main() == 0

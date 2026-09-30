@@ -306,6 +306,7 @@ class TestCycles(CycleContract):
     # revisiting a state, so the cycle detector has no looping program to
     # prove: that class is the ancestor check's, tested below.
     looping_program: ClassVar = None
+    no_cycle_reason = "APL divergence grows the recursive frame stack."
 
 
 class TestFrameBookkeeping:

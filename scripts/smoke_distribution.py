@@ -42,6 +42,14 @@ def smoke(*, math_extra: bool) -> None:
     assert package.parent.name in {"site-packages", "dist-packages"}, package
     assert (package / "py.typed").is_file()
     assert "brainfuck" in _cli(["list"])
+    assert esolangs.run_bounded("brainfuck", "+.", max_steps=2, timeout=1) == "\x01"
+    try:
+        esolangs.run_bounded("brainfuck", "+[]", max_steps=10)
+    except esolangs.ExecutionTimeoutError:
+        pass
+    else:
+        raise AssertionError("the bounded runner accepted a diverging program")
+
     executable = Path(sys.executable).with_name(
         "esolangs.exe" if sys.platform == "win32" else "esolangs"
     )

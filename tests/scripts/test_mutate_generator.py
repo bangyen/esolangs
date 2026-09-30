@@ -17,6 +17,8 @@ number.
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "tests" / "tools" / "mutate_generator.py"
 TOOLS_TESTS = REPO_ROOT / "tests" / "tools"
@@ -340,3 +342,20 @@ class TestPrepare:
         # The same expression ``_score`` uses to find mutmut's result file.
         scored = proj / "mutants" / "esolangs" / "tools" / "tape.py.meta"
         assert scored == proj / "mutants" / f"{mutated}.meta"
+
+
+@pytest.mark.parametrize("selection", [None, "suffolk"])
+def test_config_isolates_xdist_and_applies_selection_to_every_pass(
+    tmp_path: Path,
+    selection: str | None,
+) -> None:
+    import tomllib
+
+    script = load_script()
+    proj, _ = script._prepare(  # noqa: SLF001
+        "tools", "suffolk", tmp_path, slow=False, selection=selection
+    )
+    config = tomllib.loads((proj / "pyproject.toml").read_text())
+    options = config["tool"]["pytest"]["ini_options"]["addopts"]
+    assert options[:4] == ["-n", "0", "-m", "not slow"]
+    assert options[4:] == ([] if selection is None else ["-k", "suffolk"])

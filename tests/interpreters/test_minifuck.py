@@ -286,6 +286,7 @@ class TestContract(
     machine = staticmethod(_machine)
     stepping_program = "."
     halting_program = "."
+    no_cycle_reason = "Minifuck advances its code cursor on every step."
 
     reader = staticmethod(_machine)
     reading_program = ".<."
@@ -297,3 +298,15 @@ class TestContract(
     state_views = ("tape", "ptr", "ind", "ip", "memory", "stack", "halted")
     viewing_program = "[.<"
     constant_views = frozenset({"stack"})
+
+
+@pytest.mark.parametrize("code", ["<", "[[<[[", "[[[[[[[<<<[<.", ".", "comment"])
+def test_forward_cursor_precludes_cycles(code: str) -> None:
+    machine = _machine(code)
+    steps = 0
+    while not machine.halted:
+        before = machine.ind
+        machine.step()
+        assert machine.ind > before
+        steps += 1
+        assert steps <= len(code)

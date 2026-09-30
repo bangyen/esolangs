@@ -201,3 +201,4 @@ class TestContract(SnapshotContract, CycleContract):
     machine = staticmethod(_machine)
     stepping_program: ClassVar[list[str]] = ["-*"]
     halting_program: ClassVar[list[str]] = ["-*"]
+    looping_program: ClassVar[list[str]] = ["-"]
