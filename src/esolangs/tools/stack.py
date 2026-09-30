@@ -1,5 +1,6 @@
 """Boolean-function generators for stack-based languages."""
 
+import re
 from functools import cache
 from itertools import product
 
@@ -303,8 +304,11 @@ def _forth_ordered(
     return "".join(prog)
 
 
-def modulous(truth_table: str) -> str:
-    """Build a Modulous program: a table literal popped down to its row."""
+def modulous(truth_table: str, width: int | None = None) -> str:
+    """Build a Modulous table lookup, chunking literals below the old width.
+
+    Command whitespace folds; each quoted chunk keeps its closing bracket.
+    """
     n = _validate_truth_table(truth_table)
     # ``PSH STR`` pushes the characters in reverse, so the leftmost entry is on
     # top and discarding ``index`` of them uncovers ``truth_table[index]`` --
@@ -320,7 +324,24 @@ def modulous(truth_table: str) -> str:
     # ``SWP``/``POP`` discards the entry *under* the counter, which is what
     # keeps the counter reachable: nothing but the top two cells is.
     walk = "[JMP F 5 IF 0][SUB 1][SWP][POP][JMP B 4][POP][PRT][END]"
-    return f'[PSH STR "{truth_table}"]{"".join(reads)}{walk}'
+    program = f'[PSH STR "{truth_table}"]{"".join(reads)}{walk}'
+    if width is None or width <= 0:
+        return program
+    from esolangs.tools.wrap import _bracket_literal, wrap_space_delimited
+
+    previous = _bracket_literal(program, width)
+    if max(map(len, previous.splitlines())) <= width:
+        return previous
+    # Push chunks from last to first: each string itself pushes in reverse.
+    # All jumps follow the prologue and are relative, so its length is free.
+    chunk = max(1, width - 3)
+    starts = range(0, len(truth_table), chunk)
+    prologue = "".join(
+        f'[PSH STR "{truth_table[start : start + chunk]}"]'
+        for start in reversed(starts)
+    )
+    tokens = re.findall(r'"[^"]*"\]|[A-Z]+|\d+|[^\s]', prologue + "".join(reads) + walk)
+    return wrap_space_delimited(" ".join(tokens), width)
 
 
 def _bfstack_encoder(n: int, *, preset: bool) -> str:
