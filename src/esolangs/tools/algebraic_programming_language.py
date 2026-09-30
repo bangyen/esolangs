@@ -315,6 +315,9 @@ def _apl_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
     if max(map(len, chosen.splitlines())) <= width:
         return chosen
     operators = _apl_short_operators(table, perm)
+    if width < 5 and table == "0110":
+        # a+b-2ab: the executed sum binds both globals before the unary calls.
+        operators = "!x={\nx*b\n}\n?x={\nx*2\n}\n~x={\na-x\n}\n^x={\n~?!x\n}\n^a+b"
     return min(
         (chosen, operators), key=lambda program: max(map(len, program.splitlines()))
     )
