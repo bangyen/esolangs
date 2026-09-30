@@ -178,12 +178,13 @@ def build() -> tuple[_Emission, dict[int, int]]:
                 ("p", targets[0]),
             ]
         )
+        # Nearby ALL2 saves 2138 code cells for copies through cell 1.
         for target in targets[1:]:
             chunk(
                 [
-                    ("*", 129),
+                    ("*", 32),
                     ("p", copy_cell),
-                    ("*", 129),
+                    ("*", 32),
                     ("p", copy_cell),
                     ("p", target),
                 ]
