@@ -899,7 +899,7 @@ class TestAWidthAwareGeneratorCanStillOverrun:
         counted = [
             max(len(line) for line in esolangs.generate(name, table, w).splitlines())
             - w
-            for w in range(8, 124, 4)
+            for w in range(1, 124, 4)
         ]
         over = [margin for margin in counted if margin > 0]
         return len(over), max(over, default=0)
@@ -914,8 +914,8 @@ class TestAWidthAwareGeneratorCanStillOverrun:
     def test_width_floors_match_public_sources_and_overrun_counts(self) -> None:
         """Warnings follow actual rendered widths, including narrower constructions."""
         for name, floor, count, margin in (
-            ("LaserFuck", 21, 4, 13),
-            ("Streetcode", 9, 1, 1),
+            ("LaserFuck", 8, 2, 7),
+            ("Streetcode", 9, 2, 8),
         ):
             source = esolangs.generate(name, "10010110", 1)
             assert max(map(len, source.splitlines())) == floor
