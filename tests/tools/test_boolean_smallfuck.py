@@ -4,6 +4,7 @@ from itertools import pairwise
 
 import pytest
 
+import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.smallfuck import run
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
@@ -29,10 +30,10 @@ def test_first_eight_tables_through_three_inputs(n: int) -> None:
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
-    assert len(PAIR[0]) == len(PAIR[1]) == 6
+    assert len(PAIR[0]) == len(PAIR[1]) == 4
     for n in range(1, 8):
         template = smallfuck("01" * (1 << (n - 1)))
-        assert template.count(TEMPLATE_CHAR) == 6 * n
+        assert template.count(TEMPLATE_CHAR) == 4 * n
 
 
 def test_source_growth_is_linear() -> None:
@@ -54,16 +55,29 @@ def test_levels_test_inputs_in_the_shorter_order() -> None:
         before, after = len(_smallfuck_ordered(table, (0, 1, 2))), len(smallfuck(table))
         assert after <= before, table
         old, new = old + before, new + after
-    assert (old, new) == (24431, 21366)
+    assert (old, new) == (22895, 19830)
 
 
 def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
-    """Pin the three-input total: 57,894 characters before, 21,366 after.
+    """Pin the three-input total: 57,894 characters before, 19,830 after.
 
     A constant lower arm drops the flag (AND is two nested bit loops), a
     band of three levels shares one result cell instead of transferring
     at every level, and the moves among the closing brackets go.
     """
-    assert smallfuck("0001") == TEMPLATE_CHAR * 12 + "<<<<<<[*>>>[*<*>]]"
+    assert smallfuck("0001") == TEMPLATE_CHAR * 8 + "<<<<<<[*>>>[*<*>]]"
     assert smallfuck("0110").endswith("<<<]>[*>>[*<*>]]")
-    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 21366
+    assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 19830
+
+
+@pytest.mark.medium
+def test_fresh_setters_lower_the_public_floor() -> None:
+    for inputs in (1, 2, 3):
+        for value in range(1 << (1 << inputs)):
+            table = format(value, f"0{1 << inputs}b")
+            template = esolangs.generate("Smallfuck", table, 1)
+            assert max(map(len, template.splitlines())) <= 4
+            for row, expected in enumerate(table):
+                bits = [int(bit) for bit in format(row, f"0{inputs}b")]
+                source = esolangs.instantiate("Smallfuck", template, bits, 1)
+                assert esolangs.run("Smallfuck", source) == expected
