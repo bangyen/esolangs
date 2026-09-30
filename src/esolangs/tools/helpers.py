@@ -638,6 +638,7 @@ def decision_tree_body(
     start: int,
     *,
     binary_leaves: bool = False,
+    result: int | None = None,
 ) -> tuple[str, int]:
     """Return the decision tree alone, and the cell it leaves the pointer on.
 
@@ -658,7 +659,7 @@ def decision_tree_body(
         cells.append(move_text(pos, target, right, left))
         pos = target
 
-    result = 2 * n
+    result = 2 * n if result is None else result
     is_constant = constant_span_test(truth_table)
 
     def constant(i: int, combo: int) -> str | None:
