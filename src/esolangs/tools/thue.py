@@ -98,4 +98,7 @@ def thue(truth_table: str, width: int | None = None) -> str:
         )
         rules.append(f"{marker}::={table[offset : offset + payload]}{following}")
     # No input marker exists until expansion finishes and R sweeps back to L.
-    return "\n".join([*rules, "::=", "L" + _chunk_marker(0, digits)])
+    expanded = "\n".join([*rules, "::=", "L" + _chunk_marker(0, digits)])
+    if max(map(len, expanded.splitlines())) >= max(map(len, program.splitlines())):
+        return program
+    return expanded
