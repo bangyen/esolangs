@@ -85,3 +85,74 @@ def test_normalized_factor_executes(table: str) -> None:
             io = ScriptedIO(str(row))
             run(program, io)
             assert io.getvalue() == table[row]
+
+
+class _PrintedError(Exception):
+    pass
+
+
+class _FirstOutputIO(ScriptedIO):
+    def print_char(self, value: str) -> None:
+        super().print_char(value)
+        raise _PrintedError
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", range(1, 4))
+@pytest.mark.parametrize("partition", range(4))
+def test_prefix_normalized_witnesses(n: int, partition: int) -> None:
+    from tests.proofs._factor_normal import prefix_normalize
+
+    for value in range(partition, 2 ** (2**n), 4):
+        table = format(value, f"0{2**n}b")
+        source = counter_program(table)
+        normal = prefix_normalize(source)
+        assert prefix_normalize(normal) == normal
+        assert "][" not in normal
+        assert "]." not in normal
+        assert all(first != "." or second == "]" for first, second in pairwise(normal))
+        for row in range(2**n):
+            bits = "\n".join(format(row, f"0{n}b"))
+            io = _FirstOutputIO(bits)
+            with pytest.raises(_PrintedError):
+                run_bf(normal, io)
+            assert io.getvalue() == table[row]
+
+
+@pytest.mark.medium
+def test_prefix_semantics_is_not_ordinary_halting() -> None:
+    from tests.proofs._factor_normal import prefix_normalize
+
+    source = ",[[-]" + "+" * 48 + ".[-]][+.]"
+    normal = prefix_normalize(source)
+    for bit in "01":
+        original = ScriptedIO(bit)
+        run_bf(source, original)
+        assert original.getvalue() == "0"
+        io = _FirstOutputIO(bit)
+        with pytest.raises(_PrintedError):
+            run(_render(normal), io)
+        assert io.getvalue() == "0"
+    io = ScriptedIO("0")
+    machine = _Machine(normal, io)
+    for _ in range(2000):
+        machine.step()
+    assert not machine.halted
+    assert len(io.getvalue()) > 1
+
+
+def test_prefix_word_matrix() -> None:
+    from tests.proofs._factor_normal import prefix_growth
+
+    forbidden = FORBIDDEN | {"][", "]."}
+    matrix = sympy.Matrix(
+        [
+            [int(a + b not in forbidden and (a != "." or b == "]")) for b in ALPHABET]
+            for a in ALPHABET
+        ]
+    )
+    x = sympy.Symbol("x")
+    assert matrix.charpoly(x).as_expr() == sympy.expand(
+        x**4 * (x - 1) * (x**3 - 6 * x**2 - x + 2)
+    )
+    assert 6.11 < prefix_growth() < 6.12
