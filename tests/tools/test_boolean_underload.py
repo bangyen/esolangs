@@ -109,16 +109,16 @@ def test_short_selectors_keep_public_provenance_and_uniform_width(width: int) ->
         )
         assert esolangs.run("Underload", filled) == expected
         if width < 5:
-            assert max(map(len, filled.splitlines())) <= 4
+            assert max(map(len, filled.splitlines())) <= max(3, width)
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         esolangs.instantiate("Underload", template, [0, 1], truth_table="0001")
 
 
 def test_short_selector_floor_and_actual_narrow_corpus() -> None:
     template = underload("0110", 1)
-    assert max(map(len, template.splitlines())) == 4
-    assert len(template) == 85
-    assert sum(len(underload(format(value, "08b"), 1)) for value in range(256)) == 29208
+    assert max(map(len, template.splitlines())) == 3
+    assert len(template) == 123
+    assert sum(len(underload(format(value, "08b"), 1)) for value in range(256)) == 43800
 
 
 def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
