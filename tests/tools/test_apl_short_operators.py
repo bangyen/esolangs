@@ -23,3 +23,23 @@ def test_operator_binding_reads_every_input_once(table: str, width: int) -> None
         assert machine.halted
         assert io.reads == n
         assert io.getvalue() == expected + "\n"
+
+
+def test_xor_arithmetic_family_reaches_four_columns() -> None:
+    import esolangs
+    from esolangs.tools.algebraic_programming_language import (
+        algebraic_programming_language,
+    )
+
+    program = generate("Algebraic Programming Language", "0110", 1)
+    assert max(map(len, program.splitlines())) == 4
+    assert len(program) == 49
+    for row, expected in enumerate("0110"):
+        stdin = "\n".join(format(row, "02b"))
+        for source in (program, str(program)):
+            assert (
+                esolangs.run("Algebraic Programming Language", source, stdin)
+                == expected + "\n"
+            )
+    assert algebraic_programming_language("0110", 4) == program
+    assert max(map(len, algebraic_programming_language("0110", 5).splitlines())) == 5
