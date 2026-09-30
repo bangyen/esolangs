@@ -140,6 +140,8 @@ class TestSeparationLaws:
 
         def sizes(walks: tuple[int, ...], disps: tuple[int, ...]) -> list[int] | None:
             """Every table's template length under one law, or ``None``."""
+            # pylint: disable=duplicate-code
+            # Independent replay re-derives the laws; sharing it would hide bugs.
             _work[0] = _WORK_BUDGET
             try:
                 b = _Builder(n)
