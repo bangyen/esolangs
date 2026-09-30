@@ -225,10 +225,13 @@ class TestATemplateCarriesItsSetters:
         embedded = [e for e in BOOLEAN_EXAMPLES.values() if e.setters is not None]
         uniform_ones = [e for e in embedded if e.pair is not None]
         dynamic = [e for e in embedded if e.pair is None]
-        assert dynamic == [BOOLEAN_EXAMPLES["minsky-swap"]]
+        assert set(dynamic) == {
+            BOOLEAN_EXAMPLES["bitdeque"],
+            BOOLEAN_EXAMPLES["minsky-swap"],
+        }
         for example in uniform_ones:
             assert example.setters("", 3) == uniform(example.pair)("", 3)
-        example = dynamic[0]
+        example = BOOLEAN_EXAMPLES["minsky-swap"]
         assert example.setters is not None
         assert example.fill is not None
         table = "01101001"
@@ -246,6 +249,22 @@ class TestATemplateCarriesItsSetters:
                 assert program == esolangs.instantiate("Minsky Swap", template, bits)
                 output = esolangs.run("Minsky Swap", program)
                 assert esolangs.read_answer("Minsky Swap", output) == expected
+        example = BOOLEAN_EXAMPLES["bitdeque"]
+        assert example.setters is not None
+        assert example.fill is not None
+        for width in (None, 1, 9, 15):
+            template = esolangs.generate("Bitdeque", table, width)
+            pairs = example.setters(template, 3)
+            assert pairs == template.setters
+            assert len(pairs) == 3
+            assert len(set(pairs)) == 1
+            assert len(pairs[0][0]) == len(pairs[0][1])
+            for row, expected in enumerate(table):
+                bits = list(map(int, f"{row:03b}"))
+                program = example.fill(template, bits)
+                assert program == esolangs.instantiate("Bitdeque", template, bits)
+                output = esolangs.run("Bitdeque", program)
+                assert esolangs.read_answer("Bitdeque", output) == expected
         with pytest.raises(TypeError, match="exactly one"):
             _embedded(
                 esolangs.generate, "x", pair=("a", "b"), setters=uniform(("a", "b"))
