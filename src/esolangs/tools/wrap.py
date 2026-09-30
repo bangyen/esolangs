@@ -3,7 +3,7 @@
 Most generators emit one long line and most languages read a newline as
 whitespace.  Wrapping is token-aware (slicing every ``width`` splits
 ``-6`` or BIO's ``0ox`` triples) and opt-in: 2D languages read newlines as
-rows; Forbin and Packlang fold only an over-wide line.
+rows; Packlang folds only an over-wide line.
 
 Generators detected by :func:`takes_width` lay out their own programs.
 They preserve structural lines and return a width floor when the requested
@@ -500,7 +500,6 @@ WRAPPERS = {
     # One statement a line; each folds on its own.
     "qoibl": _qoibl,
     # Generators emit indented blocks; fold only an over-wide line.
-    "forbin": _indented,
     "packlang": _indented,
 }
 
@@ -509,7 +508,7 @@ WRAPPERS = {
 # skipped: Taglate's first line seeds its queue (kept whole); Qoibl's every
 # line is a statement, folded separately for the reader (the language would
 # not notice).
-MULTILINE = frozenset({"taglate", "qoibl", "forbin", "packlang"})
+MULTILINE = frozenset({"taglate", "qoibl", "packlang"})
 
 
 def takes_width(fn: Callable[..., str]) -> bool:
