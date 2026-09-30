@@ -351,7 +351,7 @@ def super_snusp(truth_table: str, width: int | None = None) -> str:
             if len(token) == 1:
                 pieces.append(token)
             elif token in ("48", "49"):
-                pieces.append("6{8*" + (")" if token == "49" else ""))
+                pieces.append("6{8*" + (")" if token[-1] == "9" else ""))
             else:
                 # Decimal Horner uses temporary stack cells and restores its
                 # depth; each digit has constant source cost and folds singly.

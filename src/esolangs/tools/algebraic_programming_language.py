@@ -185,6 +185,9 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     return f"{_NOT}\n({reads}) | {''.join(root)}"
 
 
+type _Rope = str | tuple[_Rope, ...]
+
+
 def _apl_tree_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
     """Split a compact tree into definitions with bounded fresh text per call."""
     n = _validate_truth_table(table)
@@ -199,9 +202,9 @@ def _apl_tree_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
     # A frame's pieces carry their fresh source-character count; references
     # carry zero. Every definition consumes at least one call-width of fresh
     # text, so O(T / n) names of O(n) characters keep total source O(T).
-    frames: list[list[tuple[object, int, int]]] = [[]]
+    frames: list[list[tuple[_Rope, int, int]]] = [[]]
 
-    def render(node: object) -> str:
+    def render(node: _Rope) -> str:
         pieces: list[str] = []
         pending = [node]
         while pending:
@@ -209,17 +212,16 @@ def _apl_tree_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
             if isinstance(current, str):
                 pieces.append(current)
             else:
-                assert isinstance(current, tuple)
                 pending.extend(reversed(current))
         return "".join(pieces)
 
-    def define(part: tuple[object, int, int]) -> tuple[object, int, int]:
+    def define(part: tuple[_Rope, int, int]) -> tuple[_Rope, int, int]:
         name = _apl_name(len(definitions))
         definitions.append(f"{name}={render(part[0])}")
         call = f"{name}()"
         return call, len(call), 0
 
-    def trim(parts: list[tuple[object, int, int]], budget: int) -> None:
+    def trim(parts: list[tuple[_Rope, int, int]], budget: int) -> None:
         while sum(length for _, length, _ in parts) > budget:
             eligible = [
                 (length, index)
