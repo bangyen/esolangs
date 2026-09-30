@@ -232,6 +232,10 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         generate(name, truth_table, 15),
     ):
         return True
+    if language_id == "back":
+        width = max(1, max(map(len, template.splitlines()), default=0))
+        if template == generate(name, truth_table, width):
+            return True
     if language_id == "intercal":
         from esolangs.tools.intercal import _intercal_tokens
 

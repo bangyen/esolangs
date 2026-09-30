@@ -308,4 +308,34 @@ def test_vertical_leaf_finish_preserves_every_small_table() -> None:
                     "back", str(template), bits, truth_table=table
                 )
                 assert runner.run_back(code, n) == expected
-    assert max(map(len, esolangs.generate("back", "0110", 1).splitlines())) == 8
+    assert max(map(len, esolangs.generate("back", "0110", 1).splitlines())) == 1
+    assert max(map(len, esolangs.generate("back", "0110", 8).splitlines())) == 8
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 5])
+@pytest.mark.parametrize("bias", [0, 1])
+def test_parity_accumulator_keeps_public_slots_and_provenance(
+    n: int, bias: int
+) -> None:
+    import esolangs
+
+    table = "".join(str((row.bit_count() & 1) ^ bias) for row in range(1 << n))
+    runner = TestParameterizedBack()
+    for width in (1, 4, 7, 10, 80):
+        tagged = esolangs.generate("Back", table, width)
+        assert tagged.setters == (("-", "+"),) * n
+        for template in (tagged, str(tagged)):
+            for row, expected in enumerate(table):
+                bits = list(map(int, f"{row:0{n}b}"))
+                program = esolangs.instantiate(
+                    "Back", template, bits, truth_table=table
+                )
+                assert runner.run_back(program, n) == expected
+                assert len(program) == len(tagged)
+                if width == 1:
+                    assert max(map(len, program.splitlines())) == 1
+            with pytest.raises(esolangs.TemplateError):
+                esolangs.instantiate(
+                    "Back", template, [0] * n, truth_table="0" * len(table)
+                )
+    assert max(map(len, esolangs.generate("Back", table, 1).splitlines())) == 1
