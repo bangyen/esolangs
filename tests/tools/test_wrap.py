@@ -167,7 +167,6 @@ WIDTH_EXCEPTIONS = {
         "nocomment",
         "thue",
         "thisthat",
-        "underload",
         "whitespace",
     )
 }

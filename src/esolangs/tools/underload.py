@@ -17,6 +17,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
 )
+from esolangs.tools.wrap import wrap_tokens
 
 # ``()!`` and ``:!`` are stack-neutral before the shared selector suffix.
 PAIR = ("(()!!^)", "(:!~!^)")
@@ -125,7 +126,11 @@ def _shared(truth_table: str) -> str:
     return slots + "(" + "".join(pieces) + ")^S"
 
 
-def underload(truth_table: str) -> str:
-    """Return an Underload template computing ``truth_table`` in linear text."""
+def underload(truth_table: str, width: int | None = None) -> str:
+    """Return an Underload template; input setters need seven columns."""
     shared, plain = _shared(truth_table), _plain(truth_table)
-    return shared if len(shared) < len(plain) else plain
+    program = shared if len(shared) < len(plain) else plain
+    if width is None or width <= 0:
+        return program
+    # Only bit literals reach S; every other pushed string is executable code.
+    return wrap_tokens(program, width, r"\${7}|\([01]\)|.")
