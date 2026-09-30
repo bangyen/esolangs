@@ -83,8 +83,12 @@ def _added_lines(base: str) -> dict[str, set[int]] | None:
     added: dict[str, set[int]] = {}
     current: str | None = None
     for line in got.stdout.splitlines():
-        if line.startswith("+++ b/"):
-            current = line[6:]
+        if line.startswith("+++ "):
+            current = line[6:] if line.startswith("+++ b/") else None
+            if current is not None:
+                # Deleting code still touches the surviving file: whole-file
+                # coverage must judge it even when no new lines were added.
+                added.setdefault(current, set())
         elif line.startswith("@@") and current is not None:
             # "@@ -old,count +new,count @@" -- the new-side start and length
             # are what the branch is adding.  A hunk that deletes only has

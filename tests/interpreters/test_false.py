@@ -125,6 +125,27 @@ def test_arithmetic_wraps_to_signed_32_bits() -> None:
     assert run_program(run, "2147483647 1+.") == "-2147483648"
 
 
+@pytest.mark.parametrize(
+    ("literal", "expected"),
+    [
+        ("2147483647", "2147483647"),
+        ("2147483648", "-2147483648"),
+        ("4294967295", "-1"),
+        ("4294967296", "0"),
+    ],
+)
+def test_literals_wrap_to_signed_32_bits(literal: str, expected: str) -> None:
+    assert run_program(run, literal + ".") == expected
+
+
+def test_literal_wrapping_applies_before_comparison() -> None:
+    assert run_program(run, "2147483648 0>.") == "0"
+
+
+def test_a_long_literal_does_not_hit_the_python_decimal_limit() -> None:
+    assert run_program(run, "0" * 5000 + "4294967297.") == "1"
+
+
 def test_the_pointer_stays_a_source_offset_inside_a_lambda() -> None:
     """A lambda is a span, so ``ip`` indexes the text the caller handed in."""
     program = "1[2.]!"

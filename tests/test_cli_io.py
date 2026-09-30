@@ -523,6 +523,45 @@ class TestTheBoundedReaderInProcess:
         assert exc.value.code == 2
         assert "not text" in capsys.readouterr().err
 
+    @pytest.mark.parametrize("prefix", [b"", b"aa"])
+    def test_oversized_utf8_is_refused_before_decoding(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], prefix: bytes
+    ) -> None:
+        """Both a split character and a valid truncated prefix exceed the cap."""
+        path = tmp_path / "large.txt"
+        path.write_bytes(prefix + ("€" * 600_000).encode())
+        with pytest.raises(SystemExit) as exc:
+            cli._bounded_read(str(path), 1.0)  # noqa: SLF001
+        assert exc.value.code == 2
+        assert "larger than" in capsys.readouterr().err
+
+    def test_oversized_png_is_refused_before_decoding(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The image branch must obey the same byte cap as text."""
+        from esolangs.cli_io import _MAX_PROGRAM_BYTES
+        from esolangs.raster import Raster
+
+        path = tmp_path / "large.png"
+        path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"x" * _MAX_PROGRAM_BYTES)
+        with (
+            patch.object(Raster, "from_png") as decode,
+            pytest.raises(SystemExit) as exc,
+        ):
+            cli._bounded_read(str(path), 1.0)  # noqa: SLF001
+        assert exc.value.code == 2
+        assert "larger than" in capsys.readouterr().err
+        decode.assert_not_called()
+
+    def test_exact_byte_cap_is_accepted(self, tmp_path: Path) -> None:
+        """The sentinel byte distinguishes an oversized file from a full one."""
+        from esolangs.cli_io import _MAX_PROGRAM_BYTES
+
+        text = "é" * (_MAX_PROGRAM_BYTES // 2)
+        path = tmp_path / "full.txt"
+        path.write_bytes(text.encode())
+        assert cli._bounded_read(str(path), 1.0) == text  # noqa: SLF001
+
     def test_an_unexpected_error_propagates(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -706,3 +745,51 @@ class TestTheTableOptionIsValidated:
             cli._table_of({"--table": "0120"})  # noqa: SLF001
         assert exc.value.code == 2
         assert "truth table" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("filename", ["--timeout", "--judge", "--help", "--version"])
+def test_run_flag_filename_after_separator(
+    filename: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A positional filename must survive every option parser."""
+    monkeypatch.chdir(tmp_path)
+    Path(filename).write_text("+.")
+    assert call_main(["run", "brainfuck", "--", filename], capsys) == "\x01"
+
+
+def test_debug_tui_filename_after_separator(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The debugger's bare flag is positional after the separator."""
+    monkeypatch.chdir(tmp_path)
+    Path("--tui").write_text("+.")
+    assert "\\x01" in call_main(["debug", "brainfuck", "--", "--tui"], capsys)
+
+
+@pytest.mark.parametrize(
+    ("command", "filename"), [("list", "--json"), ("describe", "--spec")]
+)
+def test_bare_flags_after_separator_are_positional(
+    command: str,
+    filename: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The separator must not silently enable a display mode."""
+    with (
+        patch.object(sys, "argv", ["esolangs", command, "--", filename]),
+        pytest.raises(SystemExit) as exc,
+    ):
+        main()
+    assert exc.value.code == 2
+    assert not capsys.readouterr().out
+
+
+def test_width_after_separator_is_positional() -> None:
+    from esolangs.cli_args import _pop_width
+
+    assert _pop_width(["--", "--width", "80"]) == (["--", "--width", "80"], None, False)

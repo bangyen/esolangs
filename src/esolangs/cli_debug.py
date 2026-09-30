@@ -10,6 +10,7 @@ from esolangs.cli_args import (
     _fail,
     _is_int,
     _pop_cell,
+    _pop_flags,
     _pop_options,
     _split_positional,
     _table_of,
@@ -55,11 +56,6 @@ def _run_tui_session(
 
 def _debug(rest: list[str]) -> None:
     """Run a program under the debugger and report where it stopped."""
-    # ``--tui`` is the one bare flag here, and ``_pop_options`` gives every
-    # name a value, so it comes out first rather than teaching that helper
-    # about a second kind of option for a single caller.
-    tui = "--tui" in rest
-    rest = [arg for arg in rest if arg != "--tui"]
     options_taken = {
         "--steps",
         "--watch-cell",
@@ -75,11 +71,13 @@ def _debug(rest: list[str]) -> None:
     # consumed cannot tell one from a flag -- it answered that with
     # "unknown option: -inf" instead of "must be finite".
     rest, options = _pop_options(rest, options_taken)
+    rest, flags = _pop_flags(rest, {"--tui"})
+    tui = "--tui" in flags
     # Before the positional count, matching ``run``: a forgotten number made
     # the language the timeout's value and the complaint landed on the file.
     limit = _timeout_of(options)
     table = _table_of(options)
-    rest = _split_positional(rest, set(), options_taken)
+    rest = _split_positional(rest, set(), options_taken | {"--tui"})
     _check_count("debug", rest, 2)
     language, path = rest[0], rest[1]
     for name in ("--steps", "--watch-cell", "--break-at"):
