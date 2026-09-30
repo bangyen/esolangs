@@ -343,6 +343,7 @@ def _build(
     *,
     external_pointer: bool = False,
     external_parity: bool = False,
+    compact: bool = False,
 ) -> _Emission:
     """Emit one row's real-source group decoder and its code-cell count."""
     if group.runtime_base and not (external_pointer and external_parity):
@@ -391,6 +392,10 @@ def _build(
     data = {base + k: _char_for("o", base + k) for k in range(3)}
     planner = _Planner(_ENTRY + 1, 34 + (7 - _ENTRY) % 94, memory, data)
     planner.code[_ENTRY] = "j"
+    if compact:
+        from compact_decoder import begin
+
+        planner = begin(planner, used)
     _build_constants(planner, helpers)
     for cell in (helpers["all1"], helpers["all2"]):
         planner.op("p", cell)
@@ -454,12 +459,19 @@ def _build(
             planner.op("p", cell)
     phases.append(len(planner.code))
     z0 = values[group.near_cells[0]] + 1
+    compact_masks: dict[int, int] = {}
+    if compact:
+        from compact_decoder import emit_masks
+
+        compact_masks = emit_masks(planner, group, used, helpers, states)
     pointer: dict[int, int] = {}
     for point in sorted(values):
         hub = values[point]
         if _admits(hub + 2, point - 1):
             pointer.setdefault(hub, point)
     avoid = set(group.taken) | set(data)
+    if compact:
+        avoid.update(range(41554, _WORDS))
     for hub in set(values.values()):
         if hub in pointer:
             data[hub + 2] = pointer[hub] - 1
@@ -469,7 +481,7 @@ def _build(
     copies: list[tuple[str, int, int, list[int]]] = []
     for label in "01xn":
         key = _KEY[label]
-        room = 140 if key[0] == "p" else 300
+        room = 140 if key[0] == "p" else 1000 if compact else 300
         hubs = sorted({values[p] for p in values if _LABELS.get(p) == label})
         options: list[dict[int, tuple[int, int]]] = []
         for hub in hubs:
@@ -517,7 +529,12 @@ def _build(
             chars = range(33, 127) if group.runtime_base else _admissible(cell)
             for char in chars:
                 label = _LABEL_OF[_TARGET[_DELTA[state][_meaning(char, parity)]]]
-                landing = _landing(constant, char)
+                if compact:
+                    from compact_decoder import landing as compact_landing
+
+                    landing = compact_landing(state, parity, char)
+                else:
+                    landing = _landing(constant, char)
                 landing_char = next(
                     ch for ch in _valid_chars(landing) if _LABELS.get(ch + 1) == label
                 )
@@ -526,7 +543,11 @@ def _build(
                     landing,
                 )
                 data[landing] = landing_char
-    cleared = {a for a in range(_ENTRY) if planner.mem.get(a) is None}
+    cleared = {
+        a
+        for a in range(_ENTRY)
+        if planner.mem.get(a) is None or (compact and planner.mem.get(a) != _g(a))
+    }
     fresh: dict[int, int | None] = {a: _g(a) for a in range(_ENTRY)}
     planner.mem = fresh
     for address in cleared:
@@ -540,18 +561,27 @@ def _build(
         assert z_cell is not None
         block.op("*", parity_cells[depth][0])
         block.op("p", view_cell)
-        block.goto(z_cell)
-        block.raw("j")
-        block.d = base
-        for _ in range(offset):
-            block.raw("o")
-        block.raw("p")
-        block.d = cell + 1
-        for _ in range(2 - offset):
-            block.raw("o")
-        for op in "jjoojj":
-            block.raw(op)
-        block.d = z0
+
+        def read() -> None:
+            block.goto(z_cell)
+            block.raw("j")
+            block.d = base
+            for _ in range(offset):
+                block.raw("o")
+            block.raw("p")
+            block.d = cell + 1
+            for _ in range(2 - offset):
+                block.raw("o")
+            for op in "jjoojj":
+                block.raw(op)
+            block.d = z0
+
+        read()
+        if compact:
+            from compact_decoder import load, mask
+
+            load(block, compact_masks[state], mask(state), helpers["all2"])
+            read()
         block.goto(z_cell)
         block.raw("j")
         block.d = base
@@ -585,13 +615,20 @@ def _build(
             block.op("*", group.clear[0][0] if key == "p0" else group.clear[1][0])
             block.raw("<")
             block.raw("v")
-        assert all(address <= a < address + room for a in block.code)
+        assert all(address <= a < address + room for a in block.code), (
+            key,
+            address,
+            room,
+            max(block.code) - address + 1,
+        )
         for a, op in block.code.items():
             planner.code[a] = op
     source = [_char_for("o", a) for a in range(_WORDS)]
     for a, op in planner.code.items():
         source[a] = _char_for(op, a)
     for a, ch in data.items():
+        if compact:
+            assert a not in planner.code, (a, planner.code.get(a), ch)
         source[a] = ch
     phases.append(len(planner.code))
     return _Emission(
