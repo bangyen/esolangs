@@ -143,17 +143,18 @@ def _probe_frame(code: str, byte: int) -> tuple[int, int] | None:
 _MUX_PRESERVE_RIGHT = "[x<" * 3 + "[x"
 
 
-def _mux_init_bits(bits: str) -> str:
+def _mux_init_bits(bits: str, *, paired: bool = False) -> str:
     """Write ``bits`` on fresh cells in one left-to-right pass.
 
     Each tile leaves the next cell preset to one; callers append a zero guard.
+    ``paired`` adds comments only to leading fresh-one writes.
     """
     parts: list[str] = []
     zero_seen = False
     for bit in bits:
         if not zero_seen:
             if bit == "1":
-                parts.append("[")
+                parts.append("[x" if paired else "[")
             else:
                 parts.append("[<[x")
                 zero_seen = True
@@ -164,13 +165,14 @@ def _mux_init_bits(bits: str) -> str:
     return "".join(parts)
 
 
-def _mux_lookup(truth_table: str, n: int) -> str:
+def _mux_lookup(truth_table: str, n: int, *, paired: bool = False) -> str:
     """Return the linear preloaded-strip mux.
 
     The controls are written on fresh tape, and one left run maps row
     ``r`` to control ``r``.  With zero controls the printed row is
     ``popcount(r)`` plus the separator phase; a control flips every row but
     its own and the sentinel flips all, so the selected output is the bit.
+    ``paired`` absorbs skips on fresh padding, allowing two-character breaks.
     """
     total = len(truth_table)
     phase = (n ^ (_mux_start(n) - _MUX_BASE) ^ 1) & 1
@@ -186,8 +188,9 @@ def _mux_lookup(truth_table: str, n: int) -> str:
     # one preserving step crosses the preset one the field ends before.
     field_end = field_lo + len(field) + 1
     start = _mux_start(n) + 4 * total
-    parts = ["[" * (field_lo - 1), _mux_init_bits(field + "0")]
-    parts.extend((_MUX_PRESERVE_RIGHT, "[" * (start - 1 - field_end)))
+    walk = "[x" if paired else "["
+    parts = [walk * (field_lo - 1), _mux_init_bits(field + "0", paired=paired)]
+    parts.extend((_MUX_PRESERVE_RIGHT, walk * (start - 1 - field_end)))
 
     weights = _mux_weights(n)
     for i, weight in enumerate(weights):

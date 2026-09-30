@@ -195,7 +195,7 @@ _SOPHIE_COMMAND = r"@\$\d+\{|@\$?.\{|#\$\d+|#\$?.|\}\{|."
 # Minifuck ``[`` skips the next character (``ind + 2``), so a newline
 # there is what gets skipped; consecutive ``[`` chain, so the whole run
 # stays with the character after it, or with the input run after it.
-_MINIFUCK_COMMAND = rf"\[+(?:{_RUN}|.)|."
+_MINIFUCK_COMMAND = rf"\[+(?:{_RUN}|[\s\S])|[\s\S]"
 
 # Jaune: operand before operator (``3?``, ``2+``, ``v?``) is the only
 # unbreakable unit.  A bare run ``++`` splits harmlessly (1 + 1 = 2).
@@ -326,7 +326,11 @@ def _minifuck(program: str, width: int) -> str:
     ``[`` skips two *characters*, a newline included; a run chains, so in
     ``[[x`` a break before ``x`` is unsafe.
     """
-    return wrap_tokens(program, width, _MINIFUCK_COMMAND)
+    tokens = re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", program)
+    floor = max(map(len, tokens), default=0)
+    if "\n" in program and max(map(len, program.split("\n"))) <= max(width, floor):
+        return program
+    return _join_tokens(tokens, width, separator="")
 
 
 def _false(program: str, width: int) -> str:
@@ -507,8 +511,9 @@ WRAPPERS = {
 # Wrappers that handle a multi-line program themselves instead of being
 # skipped: Taglate's first line seeds its queue (kept whole); Qoibl's every
 # line is a statement, folded separately for the reader (the language would
-# not notice).
-MULTILINE = frozenset({"taglate", "qoibl", "packlang"})
+# not notice).  Minifuck keeps existing newline comments attached to the
+# bracket that may skip them, and preserves already-fitting template folds.
+MULTILINE = frozenset({"taglate", "qoibl", "packlang", "minifuck"})
 
 
 def takes_width(fn: Callable[..., str]) -> bool:
