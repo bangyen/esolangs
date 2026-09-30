@@ -3,8 +3,8 @@
     uv run python scripts/malbolge17/address17.py
 
 Fourteen address bits ``x1..x14`` (``x15..x17`` pick the row within a group)
-map to 16,384 distinct groups of three cells in the seven-box tiling of
-docs/proofs/malbolge-scaling.md, with cells ``0..6561`` one free run.  The
+map to 16,384 distinct groups in the one-cell translate of the seven-box tiling
+of docs/proofs/malbolge-scaling.md, with cells ``0..6562`` one free run.  The
 fold is the shipped gadget (``_GADGET``) plus crazy/rot steps, each of which a
 source string can execute; this script checks the map, not an emitted program.
 
@@ -25,6 +25,8 @@ source string can execute; this script checks the map, not an emitted program.
 """
 
 from __future__ import annotations
+
+from collections.abc import Sequence
 
 from esolangs.interpreters.other.malbolge import _crazy
 from esolangs.tools._malbolge_core import _rot
@@ -86,12 +88,25 @@ def group_word(bits: list[int]) -> int:
     return _crazy(_crazy(ALL2, _crazy(acc, ALL1)), ALL1 + 1)
 
 
+def group_cells(bits: Sequence[int]) -> tuple[int, int, int]:
+    """Return the contiguous cells actually read from the exported base pointer."""
+    assert len(bits) == 14
+    base = _crazy(ALL2 - 2, group_word(list(bits))) + 1
+    assert base + 2 < W
+    return base, base + 1, base + 2
+
+
 def main() -> None:
     """Check the map: distinct groups, no wrap, and the free runs."""
-    words = [
-        group_word([(r >> (13 - k)) & 1 for k in range(14)]) for r in range(1 << 14)
-    ]
-    cells = {(_crazy(ALL2 - 2 + q, w) + 1) % W for w in words for q in range(3)}
+    inputs = [tuple((r >> (13 - k)) & 1 for k in range(14)) for r in range(1 << 14)]
+    words = [group_word(list(bits)) for bits in inputs]
+    groups = [group_cells(bits) for bits in inputs]
+    cells = {cell for group in groups for cell in group}
+    tiling = {_crazy(ALL2 - 2 + q, w) + 1 for w in words for q in range(3)}
+    assert cells == {cell + 1 for cell in tiling}
+    assert len(set(groups)) == 16384
+    assert len(cells) == 49152
+    assert (min(cells), max(cells)) == (6563, 59047)
     free = [a not in cells for a in range(W)]
     runs, start = [], None
     for a, f in enumerate([*free, False]):
