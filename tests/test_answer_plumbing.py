@@ -1080,20 +1080,10 @@ class TestEvaluateTakesAWidth:
 
     @pytest.mark.parametrize(
         ("name", "effect"),
-        # Clockwise used to stand for "none" and now stacks its tree to a
-        # width, which is what pinning the effect against ``describe`` is
-        # for: it failed here rather than turning this into a test of
-        # "wrap" twice.  CV(N)(C) rejects newlines outright, so it cannot
-        # migrate the same way.
-        [("brainfuck", "wrap"), ("LaserFuck", "layout"), ("CV(N)(C)", "none")],
+        [("brainfuck", "wrap"), ("LaserFuck", "layout"), ("Line", "none")],
     )
     def test_it_works_for_each_width_effect(self, name: str, effect: str) -> None:
-        """The three things a width can do, one language each.
-
-        Pinned against ``describe`` rather than named in prose, so a
-        language that changes effect fails here instead of quietly making
-        this a test of one behaviour three times.
-        """
+        """Width effects remain explicit for text and raster generators."""
         assert esolangs.describe(name)["width_effect"] == effect
         assert esolangs.evaluate(name, "0110", timeout=30, width=25) == "0110"
 

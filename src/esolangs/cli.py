@@ -228,15 +228,9 @@ def _generate(rest: list[str]) -> None:
     except EsolangError as exc:
         _fail(f"{exc}{_swapped_hint(rest[0], rest[1])}")
     if (width is not None or bare) and describe(rest[0])["width_effect"] == "none":
-        # Silently ignoring the flag was the sharpest half of the width
-        # confusion: two identical programs, one of which was asked to be
-        # narrower.  The languages that ignore it have semantic newlines or
-        # reject them outright, so honouring it is not on the table --
-        # saying so is.
         sys.stderr.write(
             f"note: --width has no effect on {describe(rest[0])['name']} -- "
-            f"its newlines are part of the program, so it is emitted as the "
-            f"generator built it\n"
+            f"the generator retains its original layout\n"
         )
     if isinstance(program, Raster):
         sys.stdout.buffer.write(program.to_png())
