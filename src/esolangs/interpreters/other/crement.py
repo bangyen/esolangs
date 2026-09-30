@@ -71,12 +71,15 @@ def _number(source: str, labels: dict[str, int], here: int) -> int:
 
 
 def _source_lines(code: str) -> list[list[str]]:
-    """Return tokenized instruction lines with comments removed."""
-    return [
-        stripped.split()
-        for line in code.splitlines()
-        if (stripped := line.split("*", 1)[0].strip())
-    ]
+    """Group whitespace-separated fields; comments end at LF (wiki Syntax)."""
+    tokens = re.sub(r"\*[^\n]*", " ", code).split()
+    lines = []
+    position = 0
+    while position < len(tokens):
+        count = 4 if tokens[position].startswith(":") else 3
+        lines.append(tokens[position : position + count])
+        position += count
+    return lines
 
 
 def _parse(code: str) -> tuple[_Instruction, ...]:

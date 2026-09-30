@@ -26,7 +26,7 @@ from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
 from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
 from esolangs.tools.back import PAIR as BACK_PAIR
 from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
-from esolangs.tools.crement import PAIR as CREMENT_PAIR
+from esolangs.tools.crement import crement_setters
 from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
 from esolangs.tools.fractran import fractran_setters
 from esolangs.tools.helpers import (
@@ -622,7 +622,7 @@ def _register() -> None:
         "crement": _embedded(
             b.crement,
             "other.crement",
-            pair=CREMENT_PAIR,
+            setters=crement_setters,
             answer_mode="termination",
             answer_values=("halts", "diverges"),
             expected="",

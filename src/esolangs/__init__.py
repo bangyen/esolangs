@@ -252,7 +252,7 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         ):
             return True
     if (
-        language_id in {"fractran", "bitdeque"}
+        language_id in {"fractran", "bitdeque", "crement"}
         and generator is not None
         and _takes_width(generator)
     ):
