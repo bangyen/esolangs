@@ -152,7 +152,6 @@ WIDTH_EXCEPTIONS = {
     name: UNWRAPPABLE[name]
     for name in (
         "back",
-        "container",
         "cvnc",
         "grapheme",
         "inject",
@@ -710,7 +709,7 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
             expected = _behaviour(language.name, compact, stdin)
             widths = (
                 (1, *_HONOUR_WIDTHS)
-                if name in {"arrowqueue", "crement"}
+                if name in {"arrowqueue", "container", "crement"}
                 else _HONOUR_WIDTHS
             )
             for width in widths:

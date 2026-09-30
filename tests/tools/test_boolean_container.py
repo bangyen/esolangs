@@ -32,6 +32,41 @@ def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> st
 
 
 class TestContainer:
+    @pytest.mark.medium
+    @pytest.mark.parametrize("width", [1, 7, 8, 13])
+    def test_narrow_rules_execute_every_three_input_table(self, width: int) -> None:
+        for value in range(256):
+            table = f"{value:08b}"
+            program = boolean.container(table, width)
+            assert max(map(len, program.splitlines())) <= max(7, width)
+            for row in range(8):
+                assert (
+                    _run_container_capped(program, list(f"{row:03b}"), budget=8)
+                    == (table[row])
+                )
+
+    @pytest.mark.medium
+    def test_factored_rules_preserve_synchronous_state(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.container import _Machine
+        from esolangs.tools.container import _container_threshold, _narrow_rules
+
+        original = _container_threshold("01101001")
+        narrow = _narrow_rules(original, 7)
+        assert max(map(len, narrow.splitlines())) == 7
+        assert max(map(len, original.splitlines())) > 7
+        for row in range(8):
+            inputs = "\n".join(f"{row:03b}")
+            before = _Machine(original.splitlines(), ScriptedIO(inputs))
+            after = _Machine(narrow.splitlines(), ScriptedIO(inputs))
+            keys = before.var.keys()
+            for _ in range(8):
+                before.step()
+                after.step()
+                assert before.var == {key: after.var[key] for key in keys}
+                assert before.halted == after.halted
+                assert before.io.getvalue() == after.io.getvalue()
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
