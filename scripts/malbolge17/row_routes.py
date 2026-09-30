@@ -8,10 +8,10 @@ from decoder_group import _setup
 from dispatch3 import _readouts
 from helper_consumer import helper_chunks, helper_values
 from live_rows import build_live_rows
+from planner import _Planner
 from setup_consumer import check_setup_memory, control_inputs
 
 from esolangs.tools._malbolge_core import _char_for, _g, _rot
-from esolangs.tools.malbolge import _Planner
 
 
 def row_words() -> list[int]:

@@ -7,11 +7,11 @@ from bisect import bisect_left
 from address_gadget import execute_state
 from decoder_group import _Group, _setup
 from helper_consumer import helper_chunks, helper_values
+from planner import _Planner
 from setup_consumer import check_setup_memory, control_inputs
 from shared_fold import build_shared_fold
 
 from esolangs.tools._malbolge_core import _char_for, _g, _rot
-from esolangs.tools.malbolge import _Planner
 
 _Chunk = list[tuple[str, int, int | None]]
 

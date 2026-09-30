@@ -7,12 +7,12 @@ from combined_helpers import _copy, place_chunks
 from decoder_group import _setup
 from helper_consumer import helper_values
 from live_rows import build_live_rows
+from planner import _Planner
 from row_routes import row_words
 from setup_consumer import check_setup_memory, control_inputs
 
 from esolangs.interpreters.other.malbolge import _crazy
 from esolangs.tools._malbolge_core import _char_for
-from esolangs.tools.malbolge import _Planner
 
 
 def pointer_slots() -> list[int]:

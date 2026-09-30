@@ -7,11 +7,11 @@ from combined_helpers import _Chunk, _copy, build_combined_helpers, place_chunks
 from decoder_group import _setup
 from dispatch3 import _readouts
 from helper_consumer import helper_values
+from planner import _Planner
 from setup_consumer import check_setup_memory, control_inputs
 
 from esolangs.tools._malbolge_core import _char_for
 from esolangs.tools._malbolge_digits import _D_INITS, _GADGET
-from esolangs.tools.malbolge import _Planner
 
 
 def build_live_rows(
