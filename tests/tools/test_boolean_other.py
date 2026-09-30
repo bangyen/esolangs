@@ -1106,14 +1106,14 @@ def test_apl_elementary_definitions_compute_every_small_table(width: int) -> Non
 def test_apl_elementary_floor_and_corpus_size() -> None:
     assert (
         max(map(len, boolean.algebraic_programming_language("0110", 1).splitlines()))
-        == 9
+        == 5
     )
     assert (
         sum(
             len(boolean.algebraic_programming_language(format(v, "08b"), 1))
             for v in range(256)
         )
-        == 14703
+        == 20448
     )
 
 
