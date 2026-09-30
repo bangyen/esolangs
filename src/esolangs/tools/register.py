@@ -374,11 +374,29 @@ def _cm_build(
     return "\n".join(lines)
 
 
-def collatz_multiverse(truth_table: str) -> str:
+def _cm_layout(program: str, width: int) -> str:
+    """Narrow complete assignments; an even prefix preserves address parity."""
+    if max(map(len, program.splitlines()), default=0) <= width:
+        return program
+    compact = program.replace(" ", "").replace("NOTPRINT", "NOT PRINT")
+    compact = compact.replace("DOPRINT", "DO PRINT")
+    if max(map(len, compact.splitlines()), default=0) <= width:
+        return compact
+    # Generated names exclude '_'.  Captured lineNumber addresses shift
+    # together; two prefix lines keep the odd capture used by weighted sums.
+    aliased = "_=zx+negativeOne,NOT PRINT.\n" + "z=zx+z,NOT PRINT.\n"
+    aliased += compact.replace("negativeOne", "_")
+    if max(map(len, aliased.splitlines())) < max(map(len, compact.splitlines())):
+        return aliased
+    return compact
+
+
+def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
     """Build a Collatz Multiverse program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
+    ``width`` compacts statements and aliases negativeOne; lines stay whole.
 
     The table is placed in cells and indexed, not walked.  An array subscript
     may name ``lineNumber``, so ``A[lineNumber] = z x + v`` drops ``v`` into
@@ -409,7 +427,8 @@ def collatz_multiverse(truth_table: str) -> str:
         lines = _cm_constants({const})
         lines += [f"b{i} = negativeOne x + input, NOT PRINT." for i in range(n)]
         lines.append(f"out = negativeOne x + k{const}, DO PRINT.")
-        return "\n".join(lines)
+        program = "\n".join(lines)
+        return program if width is None or width <= 0 else _cm_layout(program, width)
 
     essential = essential_inputs(truth_table, n)
     orders = [essential]
@@ -426,7 +445,8 @@ def collatz_multiverse(truth_table: str) -> str:
         for negate in (False, True)
         for flip in (False, True)
     ]
-    return min((c for c in candidates if c is not None), key=len)
+    program = min((c for c in candidates if c is not None), key=len)
+    return program if width is None or width <= 0 else _cm_layout(program, width)
 
 
 def sophie(truth_table: str) -> str:
