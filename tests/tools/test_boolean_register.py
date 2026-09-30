@@ -848,6 +848,17 @@ class TestCollatzMultiverse:
         assert narrow.startswith("_=zx+negativeOne,NOT PRINT.\nz=zx+z,NOT PRINT.\n")
         assert max(map(len, narrow.splitlines())) < max(map(len, plain.splitlines()))
 
+    def test_narrow_statement_floor_is_idempotent(self) -> None:
+        """Another alias prefix cannot narrow or widen the existing floor."""
+        from esolangs.tools.register import _cm_layout
+
+        table = "01101001"
+        narrow = boolean.collatz_multiverse(table, 1)
+        relaid = _cm_layout(narrow, 1)
+        assert relaid == narrow
+        for row, expected in enumerate(table):
+            assert run_collatz_multiverse(relaid, list(f"{row:03b}")) == expected
+
     def test_narrow_cell_source_remains_linear(self) -> None:
         sizes = [
             len(boolean.collatz_multiverse("01101001" * (2 ** (n - 3)), 1))
