@@ -39,7 +39,12 @@ def _emit(plan: _Planner, chunk: _Chunk, incoming: int | None = None) -> None:
 
 
 def place_chunks(
-    plan: _Planner, chunks: list[_Chunk], blocked: set[int], protected: set[int]
+    plan: _Planner,
+    chunks: list[_Chunk],
+    blocked: set[int],
+    protected: set[int],
+    *,
+    continuation: _Chunk | None = None,
 ) -> tuple[_Planner, dict[int, str], int]:
     """Place accumulator-independent chunks, retaining an escape for each."""
     emitted: dict[int, str] = {}
@@ -47,7 +52,7 @@ def place_chunks(
     for index, chunk in enumerate(chunks):
         trial = _copy(plan)
         _emit(trial, chunk)
-        following = chunks[index + 1] if index + 1 < len(chunks) else None
+        following = chunks[index + 1] if index + 1 < len(chunks) else continuation
         stranded = False
         if following is not None and not set(trial.code) & blocked:
             try:
@@ -175,11 +180,25 @@ def build_combined_helpers(
     remaining_roots = set(roots.values())
     fixed = set(constants.values()) | {19, 142, 145, 139, 144} | set(direct)
     for cell, wanted in values.items():
+        copy_cell = min(
+            (
+                address
+                for address in range(130, 400)
+                if address not in protected and address not in roots.values()
+            ),
+            key=lambda address: (abs(address + 1 - cell), address),
+        )
         for chunk in helper_chunks(
-            group, cell, wanted, roots[cell], constants, initial=direct.get(cell)
+            group,
+            cell,
+            wanted,
+            roots[cell],
+            constants,
+            initial=direct.get(cell),
+            copy_cell=copy_cell,
         ):
             chunks.append(chunk)
-            protections.append(fixed | finished | {cell} | remaining_roots)
+            protections.append(fixed | finished | {cell, copy_cell} | remaining_roots)
         finished.add(cell)
         remaining_roots.discard(roots[cell])
     blocked = (occupied - {replaced_halt}) | set(plan.data) | set(range(420))

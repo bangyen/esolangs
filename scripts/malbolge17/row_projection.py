@@ -30,7 +30,9 @@ def build_row_projection() -> tuple[
 ]:
     """Emit the low selector without replacing labels or injecting memory."""
     blocked: set[int] = set()
-    source, groups, outputs, plan = build_live_rows(reserved=blocked)
+    source, groups, outputs, plan = build_live_rows(
+        reserved=blocked, next_chunk=[("*", 20, None)]
+    )
     blocked.remove(plan.c)
     group = _setup(
         frozenset({142, 145, 139, 144}), external_pointer=True, runtime_base=True
