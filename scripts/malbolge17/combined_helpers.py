@@ -166,14 +166,21 @@ def build_combined_helpers(
             direct[cell] = known
     values = dict(sorted(values.items(), key=lambda item: item[0] not in direct))
     protected = set(values) | set(constants.values()) | {19, 142, 145, 139, 144}
-    roots = {
-        cell: next(
-            address
-            for address, value in plan.mem.items()
-            if 130 <= address < 400 and address not in protected and value == _g(cell)
+    seeds = {
+        cell: min(
+            (
+                (len(reach[wanted]), abs(address - cell), seed, address)
+                for seed, reach in group.reach.items()
+                if wanted in reach
+                for address, value in plan.mem.items()
+                if 130 <= address < 400
+                and address not in protected
+                and value == _g(seed)
+            )
         )
-        for cell in values
+        for cell, wanted in values.items()
     }
+    roots = {cell: choice[3] for cell, choice in seeds.items()}
     chunks = []
     protections = []
     finished: set[int] = set()
@@ -196,6 +203,7 @@ def build_combined_helpers(
             constants,
             initial=direct.get(cell),
             copy_cell=copy_cell,
+            seed_cell=seeds[cell][2],
         ):
             chunks.append(chunk)
             protections.append(fixed | finished | {cell, copy_cell} | remaining_roots)
