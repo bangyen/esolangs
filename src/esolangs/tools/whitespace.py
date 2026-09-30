@@ -28,6 +28,7 @@ _RETRIEVE = _TAB + _TAB + _TAB
 _OUT_NUM = _TAB + _LINE + _SPACE + _TAB
 _READ_NUM = _TAB + _LINE + _TAB + _TAB
 _END = _LINE * 3
+_DISCARD = _SPACE + _LINE * 2
 
 
 def _push(value: int) -> str:
@@ -49,13 +50,15 @@ def _jz(label: str) -> str:
     return _LINE + _TAB + _SPACE + label + _LINE
 
 
-def whitespace(truth_table: str) -> str:
+def whitespace(truth_table: str, width: int | None = None) -> str:
     """Return a Whitespace program computing ``truth_table``.
 
     Address 0 is the read scratch, address 1 the index and address 2 the
     table.  The loop halves the table and decrements the index; at zero it
     takes the low bit.  The trailing ``swap`` is dead code past ``end``: the
     example writer strips trailing newlines, and ``end`` is three of them.
+    Over-wide literals use binary Horner chunks, separated at instruction
+    boundaries by push-zero/discard identities; the width floor is seven.
     """
     n = _validate_truth_table(truth_table)
     table = int(truth_table[::-1], 2)
@@ -104,4 +107,28 @@ def whitespace(truth_table: str) -> str:
         _END,
         _SWAP,
     ]
-    return "".join(parts)
+    natural = "".join(parts)
+    if width is None or width <= 0 or max(map(len, natural.split("\n"))) <= width:
+        return natural
+    return _fold(parts, max(7, width))
+
+
+def _fold(parts: list[str], width: int) -> str:
+    """Fold positive pushes into Horner chunks and separate complete commands."""
+    commands: list[str] = []
+    chunk_width = width - 4  # a power-of-two multiplier needs one extra bit
+    for part in parts:
+        if part.startswith(_SPACE * 3) and len(part) - 4 > chunk_width:
+            bits = part[3:-1]
+            chunks = [
+                bits[at : at + chunk_width] for at in range(0, len(bits), chunk_width)
+            ]
+            commands.append(_SPACE * 3 + chunks[0] + _LINE)
+            for chunk in chunks[1:]:
+                commands.extend(
+                    [_push(1 << len(chunk)), _MUL, _SPACE * 3 + chunk + _LINE, _ADD]
+                )
+        else:
+            commands.append(part)
+    separator = _push(0) + _DISCARD
+    return separator.join(commands)

@@ -155,7 +155,6 @@ WIDTH_EXCEPTIONS = {
         "nocomment",
         "thue",
         "thisthat",
-        "whitespace",
     )
 }
 
