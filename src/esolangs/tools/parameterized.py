@@ -9,6 +9,8 @@ in :mod:`esolangs.tools.examples` reads the same constant, so the widths
 the generator lays and the text the fill substitutes cannot drift apart.
 """
 
+import re
+
 from esolangs.tools.a_painter_ant import a_painter_ant
 from esolangs.tools.arrowqueue import (
     _MIDDLE as _MIDDLE,
@@ -58,6 +60,7 @@ from esolangs.tools.helpers import (
     decision_tree_tokens,
     essential_inputs,
     read_at,
+    runs,
 )
 from esolangs.tools.helpers import (
     permute_truth_table as permute_truth_table,
@@ -199,7 +202,7 @@ def bfpda(truth_table: str) -> str:
     return "".join(pieces)
 
 
-def bitdeque(truth_table: str) -> str:
+def bitdeque(truth_table: str, width: int | None = None) -> str:
     """Build a Bitdeque template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Every
@@ -215,10 +218,71 @@ def bitdeque(truth_table: str) -> str:
     ``EJECT``/``INJECT`` work the head, so any bit can be brought to an end
     at two commands per position, measured not modelled.  Rotations happen
     inside the tree; the load is byte-identical under every order.
+    Below eleven columns, up to four inputs use POP/EJECT on fresh
+    zero/one endpoints; larger tables keep the linear load.
     """
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _bitdeque_ordered)
-    return _bitdeque_linear(truth_table)
+        program = best_input_order(truth_table, _bitdeque_ordered)
+        if width is not None and width < len(BITDEQUE_PAIR[0]):
+            program = best_input_order(
+                truth_table,
+                lambda table, perm: _bitdeque_ordered(table, perm, short=True),
+            )
+    else:
+        program = _bitdeque_linear(truth_table)
+    if width is not None:
+        from esolangs.tools.wrap import _bitdeque
+
+        return _bitdeque(program, width)
+    return program
+
+
+_BITDEQUE_SHORT_PAIR = ("POP  ", "EJECT")
+
+
+def _bitdeque_short_load(n: int) -> list[str]:
+    """Bracket stored inputs with head one/tail zero before each setter."""
+    tokens: list[str] = []
+    for i in range(n):
+        at = 5 + 15 * i
+        # POP/EJECT selects zero/one. Both branches remove the other
+        # sentinel, append the selected bit, and restore register zero.
+        tokens.extend(
+            [
+                "INVERT",
+                "INJECT",
+                "INVERT",
+                "PUSH",
+                TEMPLATE_CHAR * 5,
+                f"GOTO {at + 11}",
+                "EJECT",
+                "INVERT",
+                "PUSH",
+                "INVERT",
+                f"GOTO {at + 14}",
+                "POP",
+                "INVERT",
+                "PUSH",
+                "INVERT",
+            ]
+        )
+    return tokens
+
+
+def bitdeque_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Resolve the five-character load only from its exact fixed prefix."""
+    normalized = " ".join(template.split())
+    header = re.match(r"GOTO 3 INVERT GOTO 4 GOTO [0-9]+ INVERT ", normalized)
+    short_count = template.count(TEMPLATE_CHAR) // 5
+    short_load = " ".join(_bitdeque_short_load(short_count))
+    short = header is not None and normalized[header.end() :].startswith(
+        short_load + " "
+    )
+    pair = _BITDEQUE_SHORT_PAIR if short else BITDEQUE_PAIR
+    setters = (pair,) * n
+    if template.count(TEMPLATE_CHAR) == 5 * n:
+        runs(template, TEMPLATE_CHAR, setters)
+    return setters
 
 
 def _bitdeque_linear(truth_table: str) -> str:
@@ -265,7 +329,9 @@ def _bitdeque_linear(truth_table: str) -> str:
     return " ".join(tokens)
 
 
-def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+def _bitdeque_ordered(
+    truth_table: str, perm: tuple[int, ...], *, short: bool = False
+) -> str:
     """Emit one input order's Bitdeque template; see :func:`bitdeque`.
 
     ``perm`` is spent on the rotations before a node consumes its bit, a
@@ -277,7 +343,11 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     n = _validate_truth_table(truth_table)
     # Level ``level`` tests input ``perm[level]``, whose load position is
     # its name; the row bit for a level is ``n - 1 - level``.
-    mask = sum(1 << (n - 1 - level) for level in range(n) if perm[level] % 2)
+    mask = (
+        0
+        if short
+        else sum(1 << (n - 1 - level) for level in range(n) if perm[level] % 2)
+    )
     seen = "".join(truth_table[row ^ mask] for row in range(2**n))
 
     def leaf(answer: str) -> list[str]:
@@ -324,7 +394,9 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     prelude = ["GOTO 3", "INVERT", "GOTO 4", "GOTO@END", "INVERT"]
     # The setters read the route off the template's prefix, so they are
     # handed the prelude, whose opening ``GOTO 3`` names this one.
-    load_block_in_name_order = _runs(BITDEQUE_PAIR, n)
+    load_block_in_name_order = (
+        _bitdeque_short_load(n) if short else _runs(BITDEQUE_PAIR, n)
+    )
 
     # A node spends its rotation, its pop and its ``GOTO`` before either
     # subtree, so the walker's ``at`` lands on this node and ``at +
@@ -342,10 +414,10 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         leaf_tokens,
         node,
         parent_width=width,
-        start=len(prelude) + 2 * n,
+        start=len(prelude) + (15 * n if short else 2 * n),
         collapse=True,
     )
-    end = len(prelude) + 2 * n + len(tree)
+    end = len(prelude) + (15 * n if short else 2 * n) + len(tree)
     tokens = prelude + load_block_in_name_order + tree
     return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)
 
