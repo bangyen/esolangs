@@ -41,9 +41,9 @@ from functools import partial
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
-    best_input_order,
     constant_span_test,
     deque_plan,
+    in_input_order,
     subtree_ids,
 )
 
@@ -438,7 +438,7 @@ def _ordered(
 def _ordered_candidate(
     truth_table: str, perm: tuple[int, ...], offset: int | None = None
 ) -> str:
-    """Adapt :func:`_ordered` to :func:`best_input_order`'s contract."""
+    """Adapt :func:`_ordered` to :func:`in_input_order`'s contract."""
     return _ordered(truth_table, perm, offset) or ""
 
 
@@ -456,8 +456,8 @@ def cvnc(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
     program reads ``n`` lines and prints ``0`` or ``1``.  One read and one
     ``ɰ``/``ʋ`` branch per level, every leaf printing with ``θ`` and
-    jumping to the one shared halt gadget.  The identity and greedy read
-    orders are both built, and the shorter wins.  A program not shorter
+    jumping to the one shared halt gadget. Splits stay in input order.
+    A program not shorter
     than the gadget's reach gets one more squaring, repeated until it
     fits; changing the prologue rebases the shared body before its
     reach is checked again.
@@ -466,7 +466,7 @@ def cvnc(truth_table: str) -> str:
     _validate_truth_table(truth_table)
     squarings = _HALT_SQUARINGS
     while True:
-        body = best_input_order(
+        body = in_input_order(
             truth_table,
             partial(_ordered_candidate, offset=_prologue_syllables(squarings)),
         )

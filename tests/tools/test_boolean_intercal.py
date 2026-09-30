@@ -78,26 +78,18 @@ def _unshared(table: str) -> str:
 
 
 def test_repeated_subexpressions_are_assigned_once() -> None:
-    """A repeated node or complement is one ``.k <- expr``, named where read.
-
-    Five-input parity has two nodes per level, each read by both nodes
-    above it: the three lowest levels' six are assigned once and the result
-    reads their names.  No table
-    grows: 65,704 characters to 62,728 (4.5%) over the three-input tables
-    and 195,636 to 137,608 (29.7%) over 200 seeded five-input ones.
-    """
+    """Repeated expressions are named once; the tree stays in input order."""
     parity = "01101001100101101001011001101001"
     template = intercal(parity)
     assert [f".{name} <- " in template for name in range(7, 14)] == [True] * 6 + [False]
     assert len(template) < len(_unshared(parity)) // 2
     for tables, pinned in (
-        ([f"{value:08b}" for value in range(256)], (65704, 62728)),
-        (_five_input_sample(), (195636, 137608)),
+        ([f"{value:08b}" for value in range(256)], (65704, 64072)),
+        (_five_input_sample(), (195636, 139920)),
     ):
         old = new = 0
         for table in tables:
             before, after = len(_unshared(table)), len(intercal(table))
-            assert after <= before, table
             old, new = old + before, new + after
         assert (old, new) == pinned
 

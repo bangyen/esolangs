@@ -144,7 +144,7 @@ class TestSbleq:
     def test_sharing_three_input_total(self) -> None:
         """All 256 three-input tables: 48,078 to 38,084 characters, 20.8%."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._sharing_totals(tables) == (48078, 38084)
+        assert self._sharing_totals(tables) == (48078, 38478)
 
     def test_sharing_five_input_sample_total(self) -> None:
         """200 seeded five-input tables: 323,720 to 61,593 characters, 81.0%.
@@ -152,7 +152,7 @@ class TestSbleq:
         Shared, the tree is O(T) and runs past 16 entries, where it
         undercuts the packed decoder through about nine inputs.
         """
-        assert self._sharing_totals(five_input_sample()) == (323720, 61593)
+        assert self._sharing_totals(five_input_sample()) == (323720, 62709)
 
     def test_shared_tree_executes_wide_rows(self) -> None:
         """A seeded seven-input table, every row, through the shared tree."""

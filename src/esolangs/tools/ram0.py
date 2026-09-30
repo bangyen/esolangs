@@ -3,7 +3,7 @@
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    best_input_order,
+    in_input_order,
     subtree_ids,
     subtree_slot,
 )
@@ -47,15 +47,9 @@ def ram0(truth_table: str, width: int | None = None) -> str:
     fixed low-address halt trampoline; the state dump's final ``z`` is the
     answer.
 
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.helpers.best_input_order`).
-    Folding a subtree needs the rows it covers to agree, and which rows a
-    subtree covers is what the split order decides; RAM0 also spells an
-    input as a run of ``A`` as long as its *address*, so a cheap order here
-    additionally benefits from low addresses at deep, oft-repeated levels.
-    That assignment is fixed optimally by depth: level ``n-1`` uses address
-    zero, up to the root at ``n-1``.  The load remains in input order, so the
-    input runs and their positions are untouched.
+    **The tree splits in input order.**
+    Input addresses are assigned by depth: level ``n-1`` uses zero,
+    up to the root at ``n-1``. Input runs remain in stream order.
 
     **A repeated subtree is emitted once and jumped to.**  A node assumes
     nothing on entry (it sets ``z`` and loads its own bit), so a one-subtree
@@ -67,9 +61,9 @@ def ram0(truth_table: str, width: int | None = None) -> str:
     Larger tables compare the shared tree with the linear lookup.
     """
     if len(truth_table) <= 16:
-        program = best_input_order(truth_table, _ram0_shared)
+        program = in_input_order(truth_table, _ram0_shared)
     else:
-        tree = best_input_order(truth_table, _ram0_shared)
+        tree = in_input_order(truth_table, _ram0_shared)
         lookup = _ram0_linear(truth_table)
         program = tree if len(tree) < len(lookup) else lookup
     if width is None:

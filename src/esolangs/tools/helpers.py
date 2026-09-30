@@ -464,6 +464,15 @@ def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
 _GREEDY_ORDER_MAX_ARITY = 10
 
 
+def in_input_order(
+    truth_table: str,
+    build: Callable[[str, tuple[int, ...]], str],
+) -> str:
+    """Build a validated table in input order."""
+    n = _validate_truth_table(truth_table)
+    return build(truth_table, tuple(range(n)))
+
+
 def best_input_order(
     truth_table: str,
     build: Callable[[str, tuple[int, ...]], str],

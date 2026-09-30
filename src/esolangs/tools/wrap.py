@@ -207,8 +207,8 @@ _SOPHIE_COMMAND = r"@\$\d+\{|@\$?.\{|#\$\d+|#\$?.|\}\{|."
 _MINIFUCK_COMMAND = rf"\[+(?:{_RUN}|[\s\S])|[\s\S]"
 
 # Jaune: operand before operator (``3?``, ``2+``, ``v?``) is the only
-# unbreakable unit.  A bare run ``++`` splits harmlessly (1 + 1 = 2).
-_JAUNE_COMMAND = r"\d+[-+:?!$@]|v[-+?!@]|."
+# unbreakable unit. Splitting ``++4:`` makes its final plus a label sign.
+_JAUNE_COMMAND = r"[+-]{2,}|[+-]?\d+[-+:?!$@]|v[-+?!@:$]|."
 _BRACKET_LITERAL = r"\[[^\]]*\]|."
 _EVAL_UNIT = r'"[^"]*"|\?.|.'
 

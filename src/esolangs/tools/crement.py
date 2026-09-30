@@ -23,7 +23,7 @@ five-input tables, 114,791 to 83,070 (27.6%).
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    best_input_order,
+    in_input_order,
     subtree_ids,
 )
 
@@ -51,13 +51,13 @@ def crement_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
 def crement(truth_table: str, width: int | None = None) -> str:
     """Build a Crement template: one run per input, its tester's first line.
 
-    Constant subtrees fold, so the tree splits in the shorter of the identity
-    and greedy orders as emitted; the identity wins ties.  Each order
-    shares repeated subtrees (:func:`_crement_ordered`).
+    Constant subtrees fold and repeated halves share code. Splits stay in
+    input order; retiring the greedy candidate adds 1.57% to the three-input
+    total and 1.84% to the five-input sample.
     Over-wide instructions use their shortest absolute or relative operands;
     Below six columns, whitespace separates fields and only tester data is filled.
     """
-    template = best_input_order(truth_table, _crement_shared)
+    template = in_input_order(truth_table, _crement_shared)
     if width is None or width <= 0 or max(map(len, template.splitlines())) <= width:
         return template
     lines = []
