@@ -166,9 +166,9 @@ Let `C_F(n)` be the worst-case minimum rendered digits over all `T = 2**n`
 tables. The existing witnesses and counting argument can be made explicit:
 
     (ln 2)**2 / (ln 8 * ln 10) <= liminf C_F(n)/(T*n)
-    limsup C_F(n)/(T*n) <= (75/7) log10 2.
+    limsup C_F(n)/(T*n) <= (75/14) log10 2.
 
-The coefficients are 0.10034333 and 3.22532138; neither is claimed sharp.
+The coefficients are 0.10034333 and 1.61266069; neither is claimed sharp.
 For the lower bound put `L = D ln 10` and `r = floor(L/(ln L)**2)`.
 The first `r` useful-prime exponents have total at most `L/ln 2`. Counting
 positive compositions and eight command choices bounds these prefixes by
@@ -183,58 +183,42 @@ are already counted among the prefixes. Thus behaviours number at most
 `exp((ln 8 + o(1)) L/ln L)`. Comparing with `2**T` and using the already
 proved `C_F(n) = Theta(T ln T)` gives the lower coefficient above.
 
-For the upper bound, use the full decision tree in
-`tests/proofs/_factor_print.py`. Read every input, subtract 48 from all but
-the last, and initialize an adjacent complement cell to 97 and a constant
-output cell to 48. A `01` terminal prints the raw final input; a `10`
-terminal uses `[->-<]>.` to print 97 minus it. Constant pairs print the
-constant cell, incrementing it only for `11`. Exactly one terminal runs,
-so these output cells need not be restored. All earlier branch bits and
-flags are consumed, and the program reads exactly `n` lines.
+For the upper bound, use the input-directed tape walk in
+`tests/proofs/_factor_walk.py`. Initialize odd cell `2j+1` to truth bit
+`j`, leaving every even control cell zero, and start at control `2T-2`.
+The uniform fill uses one `+` for each one bit and two moves per row;
+including the final move left, it costs `2T + ones` characters.
 
-The second fixed variant replaces the final input byte `c` by `97 - c`
-and swaps each truth-table pair. Its prelude
-`[->-<]>[-<+>]` transfers the reflected byte back and clears the complement
-cell; 97 pluses restore it. This costs 111 characters, independently of
-`n`, and exchanges the raw and complemented terminal cases.
+For input position `i = 0,...,n-1`, read its ASCII byte and subtract 49.
+The control is zero for input one and 255 for input zero, using the
+interpreter's eight-bit wrapping cells. Follow it with a loop containing
+one `+` and `2**(n-i)` left moves. On one the loop is skipped. On zero,
+the increment clears the departure control and the moves reach a zero
+control; the closing bracket tests that destination and exits. Thus a
+zero subtracts binary weight `2**(n-1-i)` from the row address.
+Starting at row `T-1` yields exactly the input's binary row. Moves are
+monotone left, never cross cell zero, and every control remains zero.
 
-Prepare every earlier input's zero-branch flag once, before the tree.
-For bit `b`, start its adjacent flag at one, subtract `b` while copying it
-to a shared scratch cell, then transfer the scratch value back to `b`.
-The result is `(b, 1-b)` with scratch zero. Exactly one node at each depth
-executes, so this pair is consumed only once along any input path. Every
-node can replace its ordinary one-branch prefix `>+<[->->` by `[->>`:
-both reach the next input with the active bit cleared and its flag zero,
-but the prepared prefix is four characters shorter.
+Each input gadget costs `53 + 2**(n-i)` characters. Their total is
+`53n + 2T - 2`. Move right to the addressed payload, add 48 and print,
+costing 50. Consequently the exact source length is
+`C = 4T + ones + 53n + 48 <= 5T + 53n + 48`.
+This named construction takes `O(T)` time and uses no searched syntax table.
 
-Charge the terminal branches with their connecting moves and average the
-two reflection variants. Before this substitution, the depth-two skeleton
-costs 12; nonconstant one/zero branches average 8/7, and constant branches
-cost at most 9/8. Removing four characters gives
-`H_2 <= 12 + 9 + 8 - 4 = 25`. Higher levels previously cost 19 around
-two children and now cost 15, so `H_d <= 2 H_(d-1) + 15` and
-`H_n <= 10T - 15` for `n >= 2`.
+Encode its maximal runs with the same greedy prime-run encoder.
+The rendered digits are at most `C log10 Q + O(1)`. The complete-window
+covering bound gives `ln Q <= (15/14 + eta) ln C + O_eta(1)` for every
+`eta > 0`. Letting `eta` decrease to zero gives
+`5*(15/14)*log10 2 = (75/14)*log10 2`. Against the lower coefficient
+`log10(2)/3`, the asymptotic bracket has an exact `225/14`-fold gap
+(16.071429).
 
-The shared scratch cell is at `2n + 3`. Preparing all `n-1` flags costs
-`6n**2 + 34n - 45` characters and leaves the pointer there. Initial setup
-costs `12n + 60`, moving into the root costs `2n + 3`, and averaging the
-reflection prelude adds `111/2`. The shorter fixed variant therefore has
-`C <= 10T + 6n**2 + 48n + 59`. The quadratic setup is `o(T)`;
-construction and choosing the shorter source take `O(T)` time.
-The emitted Factor integer is obtained with the same prime-run encoder.
-Its digits are at most `C log10 Q + O(1)`. The complete-window covering
-bound gives `ln Q <= (15/14 + eta) ln C + O_eta(1)` for every `eta > 0`.
-Letting `eta` decrease to zero gives
-`10*(15/14)*log10 2 = (75/7)*log10 2`. Against the lower coefficient
-`log10(2)/3`, the asymptotic bracket has an exact `225/7`-fold gap
-(32.142857).
-
-Both variants execute through Factor on every table through three inputs
-and eleven tables per arity at four through six: 618 programs, 6,704 input
-rows. The tests also check the averaged character bound through twelve
-inputs. This is a language-level witness, separate from the shipped
-compact-transfer generator; its quadratic preparation is paid before any
-branch executes.
+The witness executes through Factor on every table through three inputs
+and eleven tables per arity at four through six: 309 programs, 3,352 input
+rows. Tests check every address and zero-control invariant through six
+inputs (126 rows), and the exact character count through twelve inputs.
+This is a language-level witness, separate from the shipped
+compact-transfer generator.
 
 Executed parity encodings at n=1..5 contain 135, 266, 501, 966, 1883 digits;
 all 62 input rows return parity. Their normalized costs 67.5, 33.25,
