@@ -82,19 +82,6 @@ NARROW_WIDTH = 13
 # the implementation: each was verified to break (or to be meaningless) when
 # newlines are inserted, so the table is the record of that finding.
 #
-# The eight below NoComment were found the same way, by inserting a newline
-# at every position of the language's own boolean program and running each
-# one.  Grapheme, CV(N)(C), Fargo and Super SNUSP have no safe position at
-# all; Alight has only the very end, where the newline adds an empty row
-# rather than splitting anything.  Minsky Swap has six, but none a wrapper
-# could use: five sit inside its leading ``****`` run and the sixth is the
-# end of the program, so there is nowhere between two statements to break.
-# Either way there is no token rule to find and no narrower width that
-# would help.  They are recorded because "we tried and it cannot be done"
-# is worth as much as a wrapper, and because each is a long line that
-# otherwise looks like an oversight -- CV(N)(C) reaches 1162 columns at
-# n == 4 and Super SNUSP 286.
-#
 # Four of them are already covered by a general rule and named anyway,
 # because each has a *specific* reason worth keeping rather than deriving
 # again.  Alight and Super SNUSP are 2D, where a newline is a row: Alight's
@@ -117,9 +104,6 @@ NARROW_WIDTH = 13
 # not touch the finished text -- the reasons above are why a break is
 # destructive, and those hold whatever the generator learns to do.
 UNWRAPPABLE = {
-    "nocomment": "a newline is an unrecognized command, a load error",
-    "grapheme": "every character must be A-Z, so a newline is a load error",
-    "cvnc": "the source must syllabify and a newline is in no syllable",
     "fargo": "each physical line is one command; expressions have no continuation",
     "minsky_swap": "only line 1 is code; line 2 gives its numeric jump distances",
     "alight": "a command is a word walked cell by cell; a row end cuts it",
@@ -150,9 +134,6 @@ WIDTH_EXCEPTIONS = {
     name: UNWRAPPABLE[name]
     for name in (
         "back",
-        "cvnc",
-        "grapheme",
-        "nocomment",
     )
 }
 

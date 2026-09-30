@@ -3,8 +3,7 @@
 Most generators emit one long line and most languages read a newline as
 whitespace.  Wrapping is token-aware (slicing every ``width`` splits
 ``-6`` or BIO's ``0ox`` triples) and opt-in: 2D languages read newlines as
-rows, NoComment rejects them, Forbin and Packlang fold only an over-wide
-line.
+rows; Forbin and Packlang fold only an over-wide line.
 
 Generators detected by :func:`takes_width` lay out their own programs.
 They preserve structural lines and return a width floor when the requested
@@ -436,9 +435,7 @@ def _qoibl(program: str, width: int) -> str:
     return "\n".join(wrap_space_delimited(line, width) for line in program.split("\n"))
 
 
-# Language id -> wrapper.  Absent = never wrapped: semantic newlines (2D
-# grids), rejects them (NoComment), or position-dependent (ROTfuck).  See
-# the module docstring.
+# Language id -> wrapper; semantic newlines require generator-owned layouts.
 WRAPPERS = {
     "addsubjump": wrap_grid,
     "decleq": wrap_grid,
@@ -455,6 +452,10 @@ WRAPPERS = {
     "bitwise_cyclic_tag": wrap_chars,
     # Loader whitespace is discarded before assigning memory addresses.
     "malbolge": wrap_chars,
+    # LF-only source-format deviation: discard breaks before parsing or addressing.
+    "cvnc": wrap_chars,
+    "grapheme": wrap_chars,
+    "nocomment": wrap_chars,
     "brainfuck": wrap_chars,
     "three_d_brainfuck": wrap_chars,
     "circlefuck": wrap_chars,
