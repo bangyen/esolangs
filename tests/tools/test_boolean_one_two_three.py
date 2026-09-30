@@ -645,50 +645,57 @@ class TestParameterizedOneTwoThree:
         all_zero.rows[0].pos, all_zero.rows[1].pos = 2, 5
         _verdict(all_zero, "00")  # no 1-rows: nothing to prove, no check
 
-    def test_an_exhausted_work_budget_is_declined(self) -> None:
-        """A table that would build still raises once the work runs out.
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_small_geometry_separates_every_row(self, n: int) -> None:
+        """The modeled route's complete arity domain needs no geometry probe."""
+        from esolangs.tools import one_two_three_construct as module
 
-        ``_work`` is deterministic (simulated commands, not wall clock), so
-        shrinking :data:`_WORK_BUDGET` reproduces the exhausted-budget branch
-        exactly -- the path an unconvergent search takes, without paying one.
+        module._work[0] = module._WORK_BUDGET  # noqa: SLF001
+        marks, escapes = module._geometry(n)  # noqa: SLF001
+        builder = module._Builder(n)  # noqa: SLF001
+        module._phase_a(builder, list(marks))  # noqa: SLF001
+        module._close(builder)  # noqa: SLF001
+        module._separate(builder, list(marks), escapes)  # noqa: SLF001
+        rows = builder.live()
+        assert len(rows) == 1 << n
+        assert len({row.pos for row in rows}) == len(rows)
+        assert all(row.pos % 2 for row in rows)
+        assert not any(module._on_mark(row) for row in rows)  # noqa: SLF001
+        assert all(row.tape >> (row.pos + 1 + module._RING) == 0 for row in rows)  # noqa: SLF001
 
-        The cache clear is not tidiness, it is the whole correctness of
-        doing this in a shared process.  ``construct`` on an eight-bit table
-        is ``n = 3``, which calls ``_geometry(3)`` -- and ``_geometry`` is
-        ``@cache``d and *reads this constant*, budgeting its one reference
-        run from it.  First call under a budget of 50 and the reference run
-        exhausts, so ``_geometry`` takes its "no probed arity reaches this"
-        fallback to the doubling base and caches that for the life of the
-        process.  Every later three-input build then emits the longer
-        template: restoring the constant does not restore what was derived
-        from it.
+    @pytest.mark.parametrize("n", [0, 4])
+    def test_geometry_rejects_other_arities(self, n: int) -> None:
+        from esolangs.tools.one_two_three_construct import _geometry
 
-        That is not hypothetical.  It is what made
-        ``test_the_constructed_lengths_are_stable_over_three_inputs`` fail
-        with 229941 against its pinned 189055, once in three runs under
-        ``--dist worksteal`` -- which only changes *which worker* gets a
-        test, so the two had never shared a process under the default
-        scheduler.  The assertions below pin the invalidation rather than
-        trusting the next reader to notice.
-        """
-        from esolangs.tools import one_two_three_construct as construct_mod
+        with pytest.raises(ValueError, match="one through three"):
+            _geometry(n)
 
-        original_budget = construct_mod._WORK_BUDGET  # noqa: SLF001
-        construct_mod._WORK_BUDGET = 50  # noqa: SLF001
-        try:
+    def test_linear_endgame_parks_all_four_residues(self) -> None:
+        from esolangs.tools import one_two_three_construct as module
+
+        positions = {0, 1, 2, 3}
+        program = module._linear_endgame(positions)  # noqa: SLF001
+        module._work[0] = module._WORK_BUDGET  # noqa: SLF001
+        for pos in positions:
+            row = module._Row(())  # noqa: SLF001
+            row.pos = pos
+            for command in program:
+                module._exec_char(row, command)  # noqa: SLF001
+            assert row.pos == -1
+
+    def test_an_exhausted_work_budget_is_declined(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Budget exhaustion aborts without changing the mark geometry."""
+        from esolangs.tools import one_two_three_construct as module
+
+        geometry = module._geometry(3)  # noqa: SLF001
+        with monkeypatch.context() as patch:
+            patch.setattr(module, "_WORK_BUDGET", 50)
             with pytest.raises(ValueError, match="work budget ran out"):
-                construct_mod.construct("00000000")
-        finally:
-            construct_mod._WORK_BUDGET = original_budget  # noqa: SLF001
-            construct_mod._geometry.cache_clear()  # noqa: SLF001
-
-        # The tight layout, not the doubling base: `ws` is None only on the
-        # fallback, so this is exactly "the cache is not poisoned".
-        _, ws = construct_mod._geometry(3)  # noqa: SLF001
-        assert ws is not None, (
-            "_geometry(3) cached its exhausted-budget fallback; every later "
-            "three-input construct would emit the longer template"
-        )
+                module.construct("00000000")
+        assert module._geometry(3) == geometry  # noqa: SLF001
+        assert module.construct("00000000")
 
     def test_normalize_reports_a_live_locked_ring(self) -> None:
         """Four distinct rows pinned to all four ring cells cannot escape.

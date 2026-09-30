@@ -63,11 +63,11 @@ def ram0(truth_table: str, width: int | None = None) -> str:
     names the copy -- and a zero-subtree costs one ``goto`` in place of
     itself; a leaf is shared the same way, and a test whose halves agree is
     skipped. That caps the tree at its distinct subtables, O(T) with addresses.
-    The plain tree is a candidate through 16 entries and the linear lookup
-    past them; at five inputs the shared tree is a fifth of the lookup.
+    Sharing never grows a table through four inputs (exhaustively checked).
+    Larger tables compare the shared tree with the linear lookup.
     """
     if len(truth_table) <= 16:
-        program = best_input_order(truth_table, _ram0_best)
+        program = best_input_order(truth_table, _ram0_shared)
     else:
         tree = best_input_order(truth_table, _ram0_shared)
         lookup = _ram0_linear(truth_table)
@@ -147,13 +147,6 @@ def _ram0_nand(truth_table: str) -> str:
 def _ram0_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one order's shared tree; see :func:`_ram0_ordered`."""
     return _ram0_ordered(truth_table, perm, share=True)
-
-
-def _ram0_best(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Return the shorter of one order's plain and shared trees."""
-    plain = _ram0_ordered(truth_table, perm)
-    shared = _ram0_shared(truth_table, perm)
-    return shared if len(shared) < len(plain) else plain
 
 
 def _ram0_linear(truth_table: str) -> str:

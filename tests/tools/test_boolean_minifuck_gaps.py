@@ -74,7 +74,7 @@ def test_degenerate_column_rules_execute_or_decline() -> None:
             assert runner.run_minifuck(runner.instantiate(template, bits)) == expected
 
 
-def test_failed_projection_mux_refuses_misnamed_setters() -> None:
+def test_failed_projection_mux_aborts_without_lifting() -> None:
     """A failed construction cannot return a lifted template in the wrong order."""
     from unittest.mock import patch
 
@@ -84,8 +84,10 @@ def test_failed_projection_mux_refuses_misnamed_setters() -> None:
     module.minifuck.cache_clear()
     try:
         with (
-            patch.object(module, "_mux", return_value=None),
-            pytest.raises(ValueError, match="misnames a run"),
+            patch.object(
+                module, "_mux", side_effect=ValueError("broken mux invariant")
+            ),
+            pytest.raises(ValueError, match="broken mux invariant"),
         ):
             module.minifuck("0101")
     finally:
@@ -93,7 +95,7 @@ def test_failed_projection_mux_refuses_misnamed_setters() -> None:
 
 
 def test_failed_unary_column_rule_aborts_without_a_program() -> None:
-    """A broken unary rule must fail when the mux's arity guard also declines."""
+    """A broken unary rule must abort before entering the two-input mux."""
     from unittest.mock import patch
 
     import pytest

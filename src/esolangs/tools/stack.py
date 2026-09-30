@@ -159,15 +159,13 @@ def forth(truth_table: str) -> str:
     its own index -- an internal node is the fixed ``2*1++:;``.  Linear in
     the table.  ``;`` pops, so the last input is tested first, and that
     order is kept.  A subtree equal to one already emitted at its level is
-    a call to it (:data:`_FORTH_SHARE`); the unshared build stays a
-    candidate, so sharing never lengthens a program.
+    a call to it (:data:`_FORTH_SHARE`). A removed scope pays for the
+    merged index step; two removed children pay for the sharing call.
     """
     n = _validate_truth_table(truth_table)
     natural = tuple(reversed(range(n)))
     table = permute_truth_table(truth_table, natural)
-    plain = _forth_ordered(table, natural)
-    shared = _forth_ordered(table, natural, share=True)
-    return shared if len(shared) < len(plain) else plain
+    return _forth_ordered(table, natural, share=True)
 
 
 # The read that pushes one normalized input bit.

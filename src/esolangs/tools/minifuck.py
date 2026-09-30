@@ -209,44 +209,20 @@ def _solve(truth_table: str) -> str:
         # disorders their names when one lies below an essential input.  The
         # full-arity mux embeds every slot in order, so that case uses it.
         if _lift_leaves_name_order(essential, n):
-            sculpted = _mux(truth_table, n)
-            if sculpted is not None:
-                return sculpted
+            return _mux(truth_table, n)
         inner = _solve(_project(truth_table, essential, n))
         return _lift(inner, essential, n)
 
     # Nullary and unary inner solves use the embed's named standing column.
     if n < _MUX_MIN_ARITY:
         degenerate = _degenerate(truth_table, n)
-        if degenerate is not None:
-            return degenerate
+        if degenerate is None:  # pragma: no cover - nullary/unary column rule
+            raise ValueError(
+                f"the Minifuck boolean generator could not build {truth_table!r}"
+            )
+        return degenerate
 
-    # The one total construction for every non-degenerate inner solve.
-    sculpted = _mux(truth_table, n)
-    if sculpted is not None:
-        return sculpted
-
-    # **Reaching this is a bug, not a refusal.**
-    #
-    # This used to be a deliberate cost gate.  The column and parked searches
-    # sat at this point; at ``n >= 5`` they were reachable and *unbounded* (a
-    # five-input table the staged enumeration cannot place ran past a
-    # 240-second cap and was still going), so they turned a fast failure into
-    # an indefinite one.  Deleting them made a miss raise at once, and the
-    # comment here recorded that as a trade of coverage for bounded cost:
-    # "the tables it refuses are unreached, not unbuildable".
-    #
-    # There are no such tables left.  :func:`_mux` carried an arity gate at
-    # the time, so everything above five landed here; that gate is gone (see
-    # :data:`_MUX_MIN_ARITY`), and every one of the route's six ``None``-sites
-    # closes by an argument uniform in ``n``.  The section this used to cite,
-    # "Is ``_mux`` total?" in ``the relevant generator tests``, did
-    # not survive that file's condensing; ``the relevant tests`` carries the claim
-    # now, for this generator and the other 68.  So the generator is total on
-    # the arities that document states: this raise says the
-    # totality argument has been broken by a change, and the message names the
-    # table that broke it.
-    raise ValueError(f"the Minifuck boolean generator could not build {truth_table!r}")
+    return _mux(truth_table, n)
 
 
 def minifuck(truth_table: str, width: int | None = None) -> str:

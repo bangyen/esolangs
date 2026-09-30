@@ -49,6 +49,12 @@ class TestJaune:
                 got = run_jaune(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
+    @pytest.mark.parametrize("table", ["00", "11"])
+    def test_plain_constant_consumes_clobbered_input(self, table: str) -> None:
+        program = _jaune_ordered(table, (0,))
+        for bit in ("0", "1"):
+            assert run_jaune(program, [bit]) == table[int(bit)]
+
     def test_reads_every_input_whatever_the_table(self) -> None:
         """Every table consumes exactly ``n`` inputs, folds included.
 
@@ -146,11 +152,9 @@ class TestJaune:
 class TestJauneSharing:
     """A repeated subtree is laid out once and jumped to with ``?`` or ``!``.
 
-    Through 16 entries every order is built plain and shared; past that the
-    shared tree, O(T) since it lays out distinct subtables only, races the
-    linear lookup.  So no table grows, and the gain, which grows with the
-    table, is judged on the seeded five-input sample too
-    (``docs/CONTRIBUTING.md``).
+    Through 16 entries sharing alone wins or ties for every table; wider
+    shared trees race the linear lookup. The plain constructor remains
+    an oracle for these size comparisons.
     """
 
     @staticmethod

@@ -6,6 +6,7 @@ from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
+    essential_inputs,
 )
 
 
@@ -58,10 +59,6 @@ _Entry = _Cmd | _If | _MoveLeft | _Out | _End
 #: over.  An ignored level only reads, so a wide table that depends on at most
 #: this many inputs stays a tree however many it reads.
 _TREE_LEVELS = 4
-
-
-class _TooWideError(Exception):
-    """The tree reached a fifth branching level; build the linear lookup."""
 
 
 def brainif(truth_table: str, width: int | None = None) -> str:
@@ -220,7 +217,9 @@ def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) ->
     it branches on at most :data:`_TREE_LEVELS` inputs.
     """
     n = _validate_truth_table(truth_table)
-    if not prune and n > _TREE_LEVELS:
+    # Equal halves skip exactly the nonessential inputs. Decide before
+    # allocating entries; the unpruned tree retains its arity cutoff.
+    if (len(essential_inputs(truth_table, n)) if prune else n) > _TREE_LEVELS:
         return _brainif_linear(truth_table)
     # Initial zero skips the two-line output trampoline.  Leaves later return
     # with 48/49 to line 2, whose guards forward to the wide output-tail
@@ -238,7 +237,6 @@ def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) ->
 
     counter = [0]
     shared: dict[tuple[int, str], int] = {}
-    branching: set[int] = set()
 
     def build(lo: int, hi: int, k: int) -> list[_Entry]:
         """Emit a table span, entered with the pointer on cell n-k+1."""
@@ -281,9 +279,6 @@ def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) ->
         # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
         # bit it selects is the table's usual most-significant-first one --
         # the reads are in input order even though the pointer walks down.
-        branching.add(k)
-        if len(branching) > _TREE_LEVELS:
-            raise _TooWideError
         l0, l1 = counter[0], counter[0] + 1
         counter[0] += 2
         sub0 = build(lo, middle, k + 1)
@@ -297,10 +292,7 @@ def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) ->
             *sub1,
         ]
 
-    try:
-        entries += build(0, len(truth_table), 1)
-    except _TooWideError:
-        return _brainif_linear(truth_table)
+    entries += build(0, len(truth_table), 1)
     # One shared tail: the answer cell already holds the byte to print, so
     # this is two lines rather than a climb per digit.
     entries.append(_Out(0))

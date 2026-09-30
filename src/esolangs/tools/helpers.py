@@ -17,6 +17,16 @@ _ASCII_ZERO = 48
 _ASCII_ONE = _ASCII_ZERO + 1  # ``ord("1")``, the digit the other branch prints
 
 
+def grid_width(program: str) -> int:
+    """Return the widest rendered row, including its padding."""
+    return max(map(len, program.split("\n")))
+
+
+def narrowest_grid(*candidates: str) -> str:
+    """Return the narrowest layout, keeping the earlier one on a tie."""
+    return min(candidates, key=grid_width)
+
+
 def constant_span_test(truth_table: str) -> Callable[[int, int], bool]:
     """Return an O(1) test for whether a half-open table span is constant."""
     ones = [0]
@@ -340,6 +350,45 @@ def _residual_ids(
         levels[k] = list(names.values())
         ids = parents
     return levels, children, constants
+
+
+def deque_plan(order: tuple[int, ...]) -> tuple[list[bool], list[bool]] | None:
+    """Return head pushes by input and head pops by level that pop ``order``.
+
+    Inputs are read in order and each goes to the row's head or tail, so
+    the row reads (head first) the head-pushed inputs descending, input 0,
+    then the tail-pushed ones ascending; the tree pops either end at each
+    level.  Before input 0 is popped each pop is the largest left on its
+    side, so that prefix splits into two descending runs, the tail run
+    above every input popped after 0; those are all tail-pushed, so they
+    leave the row as a run each pop takes the least or the greatest of.
+    ``None`` when ``order`` has no such split: the plan is the greedy fit
+    (a tie goes to the lower run), which finds every poppable order.
+    """
+    depth = len(order)
+    zero = order.index(0)
+    floor = max(order[zero + 1 :], default=-1)
+    head_push = [False] * depth
+    head_pop = []
+    last = {True: depth, False: depth}
+    for x in order[:zero]:
+        fits = [
+            head for head in (True, False) if x < last[head] and (head or x > floor)
+        ]
+        if not fits:
+            return None
+        head = min(fits, key=last.__getitem__)
+        last[head] = x
+        head_push[x] = head
+        head_pop.append(head)
+    head_pop.append(True)
+    rest = sorted(order[zero + 1 :])
+    for x in order[zero + 1 :]:
+        if x not in (rest[0], rest[-1]):
+            return None
+        head_pop.append(x == rest[0])
+        rest.remove(x)
+    return head_push, head_pop
 
 
 def essential_inputs(truth_table: str, n: int) -> list[int]:

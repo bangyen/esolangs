@@ -43,6 +43,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     constant_span_test,
+    deque_plan,
     subtree_ids,
 )
 
@@ -365,34 +366,15 @@ def _tree(table: str, stream: _Stream | None = None) -> list[str]:
 def _deque_schedule(
     perm: tuple[int, ...],
 ) -> tuple[list[str], list[str]] | None:
-    """Return the push and pop ends that serve ``perm``, or None if none do.
-
-    The ``2**n`` push assignments are searched; the pops are forced.
-    Servable orders are the unimodal ones: all through ``n == 3``, 20 of 24
-    at ``n == 4``, 252 of 720 at ``n == 6``.
-    """
-    n = len(perm)
-    for assignment in range(1 << n):
-        front = [i for i in range(n) if assignment >> i & 1]
-        back = [i for i in range(n) if not assignment >> i & 1]
-        # Front pushes reverse, back pushes keep order.
-        held = list(reversed(front)) + back
-        pops = []
-        for wanted in perm:
-            if held and held[0] == wanted:
-                pops.append(_POP_FRONT)
-                held.pop(0)
-            elif held and held[-1] == wanted:
-                pops.append(_POP_BACK)
-                held.pop()
-            else:
-                break
-        else:
-            pushes = [
-                _PUSH_FRONT if assignment >> i & 1 else _PUSH_BACK for i in range(n)
-            ]
-            return pushes, pops
-    return None
+    """Return this order's named two-run deque routing, or None."""
+    plan = deque_plan(perm)
+    if plan is None:
+        return None
+    pushes, pops = plan
+    return (
+        [_PUSH_FRONT if head else _PUSH_BACK for head in pushes],
+        [_POP_FRONT if head else _POP_BACK for head in pops],
+    )
 
 
 def _stored(

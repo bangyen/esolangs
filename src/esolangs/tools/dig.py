@@ -1,6 +1,11 @@
 """Boolean-function generator for Dig."""
 
-from esolangs.tools.helpers import _validate_truth_table, constant_span_test
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    constant_span_test,
+    grid_width,
+    narrowest_grid,
+)
 
 # Dig blocks for one level of the decision tree.  ``$`` takes its count
 # from the digit beside it and looks up, right, down, left for one, so the
@@ -645,12 +650,12 @@ def dig(truth_table: str, width: int | None = None) -> str:
     banded = _dig_grid(truth_table, n, -(-(n + 2) // 2))
     if width is None:
         return min((flat, banded), key=len)
-    if max(len(line) for line in flat.split("\n")) <= width:
+    if grid_width(flat) <= width:
         return flat
-    if max(map(len, banded.splitlines())) <= width:
+    if grid_width(banded) <= width:
         return banded
     candidates: tuple[str, ...] = (flat, banded)
     # A bounded flat width keeps the rotated entry padding O(T).
     if n <= 4:
         candidates += (_dig_quarter_turn(flat),)
-    return min(candidates, key=lambda text: max(map(len, text.splitlines())))
+    return narrowest_grid(*candidates)

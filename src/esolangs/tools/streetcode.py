@@ -21,6 +21,9 @@ from esolangs.tools.helpers import (
     constant_span_test,
     permute_truth_table,
 )
+from esolangs.tools.helpers import (
+    grid_width as _streetcode_columns,
+)
 from esolangs.tools.wrap import shortest
 
 __all__ = ["streetcode"]
@@ -475,11 +478,6 @@ def _streetcode_orders(truth_table: str, n: int) -> list[tuple[int, ...]]:
     identity = tuple(range(n))
     greedy = _greedy_input_order(truth_table, n)
     return [identity] if greedy == identity else [identity, greedy]
-
-
-def _streetcode_columns(program: str) -> int:
-    """Return the widest row of ``program``, which is what a width bounds."""
-    return max(len(line) for line in program.split("\n"))
 
 
 def _streetcode_rotate(program: str) -> str:

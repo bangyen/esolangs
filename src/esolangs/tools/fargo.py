@@ -490,11 +490,11 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     the interpreter consumes the input line either way.
     """
     n = _validate_truth_table(truth_table)
-    coeffs = _anf_coefficients(truth_table)
+    orders = _orders(n)
     # Identity has linear text. Stop other orders at that budget: repeating
     # a high bit index at the leaves would otherwise cost Theta(T log n).
     expression = ""
-    for order in _orders(n):
+    for order in orders:
         for candidate in _expressions(
             truth_table, n, order, limit=len(expression) if expression else None
         ):
@@ -509,7 +509,7 @@ def fargo(truth_table: str, width: int | None = None) -> str:
                 compact,
                 *[
                     program
-                    for order in _orders(n)
+                    for order in orders
                     for program in _cost_programs(truth_table, n, order)
                 ],
             ],
@@ -519,5 +519,6 @@ def fargo(truth_table: str, width: int | None = None) -> str:
         return compact
     if n > 5:
         return _definition_program(expression, n)
+    coeffs = _anf_coefficients(truth_table)
     masks = [mask for mask in range(1 << n) if coeffs[mask] and mask]
     return _factored(masks, coeffs[0], n)
