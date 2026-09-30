@@ -558,10 +558,12 @@ def test_fractran_phase_parity_exact_resolver_and_size() -> None:
     from esolangs.tools.fractran import fractran, fractran_setters
 
     template = fractran("0110", 1)
-    assert len(template) == 19
-    assert max(map(len, template.splitlines())) == 4
-    assert fractran_setters(template, 2) == (("1", "5"),) * 2
-    assert fractran_setters(template.replace("1/25", "1/5"), 2) == (("0", "1"),) * 2
+    assert len(template) == 14
+    assert max(map(len, template.splitlines())) == 3
+    assert fractran_setters(template, 2) == (("1", "2"),) * 2
+    legacy = fractran("0110", 4)
+    assert fractran_setters(legacy, 2) == (("1", "5"),) * 2
+    assert fractran_setters(legacy.replace("1/25", "1/5"), 2) == (("0", "1"),) * 2
 
 
 @pytest.mark.parametrize("n", [4, 5, 6])
