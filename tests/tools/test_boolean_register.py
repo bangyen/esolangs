@@ -933,13 +933,15 @@ class TestCollatzMultiverse:
 
     def test_narrow_xor_uses_the_complete_statement_floor(self) -> None:
         program = boolean.collatz_multiverse("0110", 1)
-        assert max(map(len, program.splitlines())) == 29
+        assert max(map(len, program.splitlines())) == 26
 
-    def test_negative_one_alias_narrows_complete_statements(self) -> None:
+    def test_numbered_constants_narrow_complete_statements(self) -> None:
         """The narrow candidate changes source and actually reduces columns."""
         plain = boolean.collatz_multiverse("01101001")
         narrow = boolean.collatz_multiverse("01101001", 1)
-        assert narrow.startswith("_=zx+negativeOne,NOT PRINT.\nz=zx+z,NOT PRINT.\n")
+        assert "negativeOne" not in narrow
+        assert narrow.splitlines()[0].endswith("=zx+lineNumber,NOT PRINT.")
+        assert max(map(len, narrow.splitlines())) == 26
         assert max(map(len, narrow.splitlines())) < max(map(len, plain.splitlines()))
 
     def test_narrow_statement_floor_is_idempotent(self) -> None:
