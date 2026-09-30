@@ -515,3 +515,66 @@ def test_thue_fixed_width_chunk_names_expand_before_reading() -> None:
                 assert len(_matches(machine.state, machine.rules)) == 1
                 machine.step()
             assert io.getvalue() == expected
+
+
+@pytest.mark.parametrize("width", [1, 4, 9, 40, 80])
+def test_fractran_phase_parity_all_small_tables(width: int) -> None:
+    import esolangs
+
+    for n in range(1, 4):
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            assert esolangs.evaluate("FRACTRAN", table, width=width) == table
+
+
+@pytest.mark.parametrize("width", [1, 4, 5, 8, 9, 80])
+@pytest.mark.parametrize("as_string", [False, True])
+def test_fractran_phase_parity_public_uniform_setters(
+    width: int, *, as_string: bool
+) -> None:
+    import esolangs
+    from esolangs.tools.fractran import fractran_setters
+
+    template = esolangs.generate("FRACTRAN", "0110", width)
+    if as_string:
+        template = str(template)
+    pairs = fractran_setters(template, 2)
+    assert len(set(pairs)) == 1
+    for row, expected in enumerate("0110"):
+        program = esolangs.instantiate(
+            "FRACTRAN", template, [row // 2, row % 2], truth_table="0110"
+        )
+        assert (
+            esolangs.read_answer("FRACTRAN", esolangs.run("FRACTRAN", program))
+            == expected
+        )
+        if width < 9:
+            assert max(map(len, program.splitlines())) <= max(width, 4)
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        esolangs.instantiate("FRACTRAN", template, [0, 1], truth_table="0001")
+
+
+def test_fractran_phase_parity_exact_resolver_and_size() -> None:
+    from esolangs.tools.fractran import fractran, fractran_setters
+
+    template = fractran("0110", 1)
+    assert len(template) == 19
+    assert max(map(len, template.splitlines())) == 4
+    assert fractran_setters(template, 2) == (("1", "5"),) * 2
+    assert fractran_setters(template.replace("1/25", "1/5"), 2) == (("0", "1"),) * 2
+
+
+@pytest.mark.parametrize("n", [4, 5, 6])
+def test_fractran_phase_parity_retains_larger_layout_execution(n: int) -> None:
+    import esolangs
+
+    table = "".join(str(row.bit_count() % 2) for row in range(2**n))
+    for width in [1, 4, 80]:
+        program = esolangs.generate("FRACTRAN", table, width)
+        for row in [0, 1, 2**n // 3, 2**n - 1]:
+            bits = list(map(int, format(row, f"0{n}b")))
+            filled = esolangs.instantiate("FRACTRAN", program, bits)
+            assert (
+                esolangs.read_answer("FRACTRAN", esolangs.run("FRACTRAN", filled))
+                == table[row]
+            )
