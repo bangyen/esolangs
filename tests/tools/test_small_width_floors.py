@@ -48,7 +48,7 @@ def test_narrow_small_tokens_keep_larger_input_order(language: str) -> None:
 
 
 def test_factored_setters_reduce_public_template_floors() -> None:
-    for name, floor in (("BF-PDA", 1), ("Home Row", 1), ("RAM0", 2)):
+    for name, floor in (("BF-PDA", 1), ("Home Row", 1), ("RAM0", 1)):
         template = esolangs.generate(name, "0110", 1)
         assert max(map(len, template.splitlines())) == floor
         for row in range(4):
