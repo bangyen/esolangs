@@ -185,42 +185,6 @@ step; an answer lands in the paper it extends, and the row leaves.
   several rows in priority order without one distinct guard per row, or
   prove a language-wide tradeoff. See [fractran](proofs/fractran.md#what-is-not-proved).
 
-- **Fargo linear construction.** Replace the `Theta(T log T)` ANF transform
-  without losing the size contract. A direct Shannon emitter executed 3,464
-  rows, exhaustive through three inputs and twelve seeded tables per arity
-  four through six. Its three-input total was 12,990 characters against
-  7,576 shipped; 228 of 256 tables grew. Constants and projections were
-  included. Bottom-up shared residuals also fail the size gate: naming every
-  nontrivial residual totals 12,680 characters at three inputs (252 tables
-  grow); inlining single-use or short residuals totals 11,534 (203 grow).
-  Both execute 10,374 rows through six inputs, including constants and
-  projections. On 200 seeded five-input tables, both grow every table:
-  40,124 and 41,184 characters against 25,062 shipped. Parameterized
-  selection also fails: a shared three-argument selector totals 12,928
-  characters at three inputs (209 grow) and 30,656 on the same five-input
-  sample (188 grow). Per-bit selectors total 13,538 and 38,503 (209 and
-  200 grow). Both execute the same 10,374 rows. Packed literals decoded
-  by fixed shift definitions also fail: whole-table and three-input-block
-  variants total 38,885 and 39,901 at three inputs (254 grow each), and
-  54,415 and 56,439 on the five-input sample (200 grow each). Both execute
-  10,374 rows. Whole-table source is at most `T + O(n log n)` characters;
-  on one seeded twelve-input table it emits 4,686 versus 16,759 shipped,
-  but eight executed rows take 230,072 versus 62,128 machine steps.
-  Eager selection pays `T - 1` primitive shifts per nonconstant-table row;
-  step counts do not price arbitrary-integer bit operations. A hybrid of
-  shipped three-input residual expressions and whole-table packing matches
-  all three-input sizes (7,576 total), but totals 28,726 on the five-input
-  sample (168 grow). It executes 10,374 rows; packing wins none of that
-  corpus. Its small transforms are capped at three inputs, but recursive
-  string copying leaves the build-time bound unproved. Character-cost
-  difference-arm splits with index-taking selectors now ship through five
-  inputs as additional candidates: 7,467 versus 7,576 characters at three
-  inputs, and 23,199 versus 25,062 (7.43% smaller) on the five-input sample.
-  The old build stays a candidate; all 533 corpus programs execute 10,374
-  rows without growth. Larger arities retain the ANF transform. Next: make
-  difference residuals and emission linear beyond the five-input cap;
-  lifting the memoized recursion cap is not a build-time proof.
-
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between
   0.10034333 and 12.64325982 asymptotically. The lower side counts weighted

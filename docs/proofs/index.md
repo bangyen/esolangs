@@ -80,6 +80,48 @@ the Scaling column is worth reading only where it is *not* linear: the two
 rows proven to exceed the floor, Factor at `Theta(T log T)` and Polynomial at
 `Theta(T**2 / log T)`, and the `open` rows that may yet.
 
+
+Fargo's build bound uses a word RAM with `Theta(log T)`-bit words; input and
+output characters are charged. It does not claim linear bit complexity.
+For `T = 2**n`, its packing width is `w = max(2, 2**floor(log2(n)))`.
+For `n >= 2`, `n/2 < w <= n`. The within-word butterfly takes
+`(T/w) log2(w)` word operations, and the remaining transform takes
+`(T/w) (n - log2(w))`: together `T*n/w < 2T`. Mask construction costs
+`O(w log w)` characters; packing and unpacking cost `O(T)`.
+
+The arm rule uses the same truth functions and coefficient counts as the
+unpacked emitter. Counts come from a derived table: start with `[0]` and
+append every existing count plus one, `w/2` times. Its `2**(w/2)` entries
+are at most `sqrt(T)`; two lookups count a word. Above word width, each
+logical level scans `O(T/w)` words, for `O(T*n/w)` work. Below it, scalar
+nodes use a fixed number of word operations and lookups; their binary tree
+has at most `2T-1` nodes. The bounded five-input alternatives add only
+constant-size work.
+
+Identity-order literal indices at height `k` need `O(log(k+1))` characters;
+at most `O(T/2**k)` nodes emit them. Their sum is `O(T)`. Other orders can
+repeat high indices at leaves and emit `Theta(T log n)` characters, so their
+append-only emitters stop as soon as they cannot beat the identity source.
+The best source only shrinks. Four named permutations cost `O(T)` by index
+doubling, and each reordered emitter writes at most that linear budget.
+Thus both order selection and the final join stay inside the build bound.
+
+For narrow output above five inputs, a bottom-up pass ranks prefix nodes
+using integer child IDs. Nodes are bucketed by syntax height, at most `2n+2`.
+Stable radix passes with `2**ceil(n/2)` bins intern each bucket by operator
+and child ranks. There are a constant number of passes per bucket, so total
+work is `O(T + n sqrt(T)) = O(T)`, without a hash-table assumption.
+At logical height `k` there are at most `T/2**k` occurrences
+and `2**(2**k)` truth functions. A deterministic arm/ANF rule produces only
+a constant number of wrapper nodes per function, plus `O(n)` literals.
+Split the height sum at `m = floor(log2(n/2))`: lower levels total
+`O(sqrt(T))` distinct nodes, upper levels `O(T/n)`. Since `sqrt(T)` and `n`
+are `O(T/n)`, there are `O(T/n)` definitions. Each label needs `O(n)`
+characters and is built with one final join, so both naming and definition
+text cost `O(T)`. Expanding a definition recovers the original expression;
+no source loop or additional input read is introduced. Default programs are
+unchanged; executed scaling regressions cover both layouts.
+
 ## Proof schemes
 
 **Decision tree.**  Recursively split the table on an input.  A leaf emits its
@@ -248,7 +290,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Factor | tree | Brainfuck tree followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence | lower bound: tight language and generated Theta(T log T) ([factor](factor.md)) |
 | FALSE | tree | — | linear: 12 characters an internal node, two a leaf |
 | Fish | finite lookup | the inputs form a Horner row index and `g` reads that column from the table row | linear: T table cells, one g at the index |
-| Fargo | tree | finite folded layout | linear, time n log: Moebius transform, n passes over 2**n |
+| Fargo | tree | finite folded layout | linear: word-packed transform and budgeted emission |
 | Flowchart | finite lookup | a pair of answers per deque, and the input walks the deque cursor to the pair it wants | linear: T pushes, `T/2 - 1` cursor steps, two rows |
 | Forbin | finite lookup | the last seven inputs paint a block of `2**7` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry | linear: two characters an entry, halvings sum to `2 * 128` |
 | Forþ | tree | — | linear: span walk, constant dispatch, step literals geometric |
