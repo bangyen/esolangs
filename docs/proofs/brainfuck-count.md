@@ -14,8 +14,8 @@ arithmetic:
 
 | model (section 1) | lower bound on `liminf B(C)^(1/C)` | upper bound on `limsup B(C)^(1/C)` |
 |---|---|---|
-| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.24200** (Thm 4) | **7.0194** (Thm 1) |
-| clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0194 (Thm 1) |
+| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.24200** (Thm 4) | **7.0601** (Thm 1) |
+| clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0601 (Thm 1) |
 | clipped tape, EOF leaves the cell, all inputs | 3.79003 (Thm 4) | 7.3339 (Thm 1) |
 | bi-infinite tape, EOF error / keep | 4.24200 / 3.79003 | 6.9133 / 7.1949 |
 | any fixed nonempty finite input set `I`, any EOF, any tape | **3.36614** (Thm 5) | as for all inputs |
@@ -23,8 +23,8 @@ arithmetic:
 | loop-free programs, EOF error | **4.06124** (Thm 3) | **2 + sqrt 5 = 4.23607** (Thm 3) |
 | loop-free programs, EOF constant / keep | 3.79003 | 4.23607 / 4.72458 |
 
-Headline (repo model): **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0194`**,
-from `[2.414, 7.388]`.  In bits per character: `[2.085, 2.812]`, from `[1.272, 2.885]`.
+Headline (repo model): **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0601`**,
+from `[2.414, 7.388]`.  In bits per character: `[2.085, 2.820]`, from `[1.272, 2.885]`.
 The lower bound uses nested loops (section 5c) and exceeds the loop-free upper bound
 `2 + sqrt 5 = 4.23607`.  Loops therefore strictly raise the growth rate.
 
@@ -34,7 +34,7 @@ Two corrections to the old statement:
   programs.  Of the five adjacencies, `[]` can be deleted only from a program that terminates
   on every input (as the Factor setting had).  In a model where a program may diverge, `[]`
   is the shortest diverging loop and cannot be removed.  The four sound adjacencies give
-  `7.4979`.  Theorem 1 replaces both by `7.0194`.
+  `7.4979`.  Theorem 1 replaces both by `7.0601`.
 * The drawing floor `(1 + sqrt 2)^C` is far from the truth.  Loop-free programs with I/O
   already have `4.061^C` behaviours on all inputs and `3.366^C` distinct outputs on a single
   input.
@@ -63,7 +63,7 @@ behaviours of programs of length exactly `C` is nondecreasing in `C` and lies be
 ## 2. Results
 
 **Theorem 1 (upper bound).**  In the repo model (clip/err) and in clip/const,
-`B(C) <= K * 7.0194^C`.  For clip/keep `7.3339`, bi/err `6.9133`, bi/keep `7.1949`.  With only the
+`B(C) <= K * 7.0601^C`.  For clip/keep `7.3339`, bi/err `6.9133`, bi/keep `7.1949`.  With only the
 empty input (clip/err), `B_{{eps}}(C) <= K * 6.3218^C`.
 
 **Theorem 2 (the old five adjacencies).**  Words avoiding `+- -+ >< ][ []` grow as `7.38776` (Perron
@@ -145,8 +145,8 @@ set; with transfer matrix `M`, `N_n = e_root^T M^n 1 <= (v_root / min v) * rho^n
 | clip/err, four sound adjacencies | 4 | 5 | 7.4979068 |
 | clip/err, + `+, -, [-],` | 7 | 8 | 7.2356196 |
 | clip/err and clip/const, all rules (`--big`) | 5793 | 8634 | **7.0600257** |
-| clip/err and clip/const, sound subset + global bodies, `len(Y) <= 7` | 723653 | 1358980 | **7.0341** |
-| clip/err and clip/const, local rules + unrestricted global bodies | 4354 + regular families | 744 minimized | **7.0194** |
+| withdrawn: finite global bodies, `len(Y) <= 7` | 723653 | 1358980 | 7.0341 (unsound rule) |
+| withdrawn: unrestricted global bodies | 4354 + regular families | 744 minimized | 7.0194 (unsound rule) |
 | clip/keep, all rules | 7379 | 10410 | 7.3338896 |
 | bi/err, all rules | 9969 | 14814 | 6.9132619 |
 | bi/keep, all rules | 12759 | 17946 | 7.1948872 |
@@ -158,28 +158,31 @@ the optimum is `t = 1`.
 
 The local method has saturated: doubling every family size moves the third decimal (smaller families
 7.0632, larger 7.0600), and a heuristic search over all balanced fragments of length `<= 4`
-finds no further candidate that survives better contexts.  The global identity `[[Y]] -> [Y]`
+finds no further candidate that survives better contexts. The identity `[[Y]] -> [Y]`
 holds for every balanced `Y`: if the inner loop exits, it leaves the cell tested by the outer `]`
-at zero; otherwise both sides already have the same result.  Adding its instances through length
-7 to a sound subset of the local rules gives the finite-body row.  That row also uses `[Y[] -> []` for
-balanced read-free `Y`: if `Y` returns, the empty loop diverges; if it does not, both sides already
-diverge, and without a read `Y` cannot end at EOF.  See section 9 for the certificates and randomised
-soundness tests.
+at zero; otherwise both sides already have the same result.
 
-The unrestricted row applies both identities at arbitrary body length.  Regard a balanced program
-as a sequence of atoms of five kinds: a read-free instruction `O`, a read `C`, an empty loop `E`, a
-nonempty read-free loop `L0`, or a loop containing a read `L1`.  Let `R` be the matrix series for
-sequences over `O,L0`, and `P` the series for all atom sequences; entries record paths in the minimized
-avoidance DFA for the 4,354 local factors and the two regular commute families.  The permitted
-read-free and read-containing loop bodies are
+The 7.0341 and 7.0194 rows are withdrawn. Both used `[Y[] -> []` for arbitrary balanced,
+read-free `Y`, which is unsound: `+[-[]].` halts with output NUL, but `+[].` diverges.
+The prefix `Y = -` makes the tested cell zero, so the empty loop skips. Read-freedom
+alone does not prevent this. The local rules with `S` in `D_L` retain the missing
+cell-preservation hypothesis and are unaffected.
 
-    B0 = I + O R + L0 (R - I),
+The unrestricted matrix grammar also excluded every empty-loop atom before a read in a
+loop body. The counterexample invalidates that exclusion. Keeping only `[[Y]] -> [Y]`
+gives the following candidate grammar; no numerical upper bound is claimed for it.
+Let `O` be a read-free instruction, `C` a read, `E = []`, `L0` a nonempty read-free loop,
+and `L1` a read-containing loop. The read-free sequence series `R` must include `E`:
+
+    B0 = I + O R + (E + L0) (R - I),
     B1 = R C P + (R - I) L1 P + L1 (P - I),
+    L0 = [ (B0 - I) ],   L1 = [ B1 ],
+    R = (I - O - E - L0)^-1,
+    P = (I - O - C - E - L0 - L1)^-1.
 
-where `L0 = [ (B0 - I) ]`, `L1 = [ B1 ]`, `R = (I - O - L0)^-1`, and
-`P = (I - O - C - E - L0 - L1)^-1`.  The first formula excludes a sole loop and every empty loop
-before a read; the second partitions at the first read-bearing atom and excludes a sole `L1`.
-These are exactly the restrictions from `[[Y]]` and `[Y[]`.
+These bodies exclude a sole loop, but permit an empty loop after a prefix that may
+zero the tested cell. The executed counterexample is pinned in
+`tests/proofs/test_brainfuck_count.py`.
 
 ## 4. Loop-free programs (Theorem 3)
 
@@ -527,7 +530,7 @@ These are behaviours on finite input sets, so they are lower estimates of `B(C)`
 
 ## 8. What is not settled
 
-* **The limit.**  The repo-model interval is `[4.2420, 7.0194]`.  Nested loops raise the
+* **The limit.**  The repo-model interval is `[4.2420, 7.0601]`.  Nested loops raise the
   certified lower bound above the loop-free upper bound `4.236` (section 5c), so loops strictly
   raise the growth rate.  The
   idealised grammar explains why loops must nest.  Take prints of weight `x mu^2`, reads of
@@ -542,10 +545,10 @@ These are behaviours on finite input sets, so they are lower estimates of `B(C)`
   dead-cell families suggest a limit near 4.08.  An encoding that drops the positions of
   dead-at-birth reads needs an extra type and gets worse (`x mu^2 + x mu + x`).  Whether a
   read could be moved depends on the future, so no local rule captures it.
-* **Upper bound.**  Local rules have saturated near 7.06.  The unrestricted global nested-loop
-  identities and loop commutation improve the bound to 7.0194.  The next finite-state extension is
-  to admit `[]` and `[-]` tokens inside the four regular commute monitors, prove the enlarged
-  families sound, then certify and execute the resulting upper bound.
+* **Upper bound.** Local rules certify 7.0600257. The 7.0341 and 7.0194 improvements
+  used the unsound read-free-prefix rule above. Next: certify the corrected balanced-body
+  grammar with sound disjoint-cell commute families. A potentially diverging excursion
+  cannot commute across a read at EOF; excursions with output cannot commute across prints.
   Two tried and dead: (i) the event encoding of section 4 applied to each bracket-free segment between
   brackets must also charge the positions of the segment's final increments, and the resulting series
   is worse than counting words (radius near `1/8`); (ii) the segment-quotient transfer matrix of the
@@ -569,17 +572,10 @@ inputs is a counterexample search only; it carries negative controls (`[] -> emp
 `<> -> empty` on the clipped tape, `+, -> ,` under keep, `<+>. -> .<+>`) that
 the tests do catch.
 
-For the global nested-loop row, the Aho--Corasick automaton has 1,358,980 live states.  A positive
-right Perron vector rounded at scale `10^17` satisfies `10000 M v <= 70341 v` in exact integer
-arithmetic at every state; the largest ratio is 0.9999794.  Thus its growth is at most 7.0341.
-
-For the unrestricted row, intersecting the 4,354-factor avoidance DFA with monitors for the four
-unrestricted commute families, then minimizing, leaves 744 states.  At `x = 5000/35097`, four
-nonnegative rational
-matrices bound `B0`, `B1`, `R`, and `P` above and satisfy the
-four displayed defining inequalities componentwise.  They come from the numerical fixed point at
-`x = 1/7.01938`, rounded outward at scale `10^15`; the check expands every product and compares
-integers.  Thus all four series converge at `5000/35097`, proving growth at most `7.0194`.
+The former 7.0341 Perron certificate and 7.0194 matrix certificate count languages
+that exclude the counterexample `[-[]]`. Their arithmetic checks do not certify a
+behaviour bound: a certificate cannot repair an unsound rewrite. The local-rule
+7.0600257 certificate is the retained repo-model upper bound.
 
 The dead-cell certificates of section 5b come from the transfer matrices on `(p, m)`, and on
 `(c, m, q)` for the gadget.  A numerical Perron vector at the rational `x0` is rounded to
