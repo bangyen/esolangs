@@ -180,8 +180,8 @@ step; an answer lands in the paper it extends, and the row leaves.
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between
-  0.10644419 and 0.29229475 asymptotically (2.745991-fold gap). The lower side
-  counts weighted exponent compositions after seven local normalizations;
+  0.11528442 and 0.29229475 asymptotically (2.535423-fold gap). The lower side
+  counts weighted exponent compositions after local normalization and first-output pruning;
   the upper side prices a traveling counter and fixed signed-ball blocks and an almost-all
   prime-window covering bound.
   Parity encodings executed through five inputs do not determine either limit.
