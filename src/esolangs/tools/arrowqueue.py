@@ -124,20 +124,28 @@ def _tree(values: list[str]) -> list[str]:
     return _connect(_tree(values[:half]), _tree(values[half:]))
 
 
-def arrowqueue(truth_table: str) -> str:
+def arrowqueue(truth_table: str, width: int | None = None) -> str:
     """Build an ArrowQueue template for an ``n``-input Boolean function.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
     instantiated program halts iff the entry is ``0``.  Below five inputs a
     tree with 3x3 leaves, constant subtrees folded (:func:`_drained_leaf`);
     from five a cascade of at most ``6n`` + ``3 * 2**n`` rows, linear in the
-    table, its constant tail folded (:func:`_cascade`).
+    table, its constant tail folded (:func:`_cascade`).  An over-wide tree
+    uses the cascade instead; its six-column floor preserves the rings.
     """
     n = _validate_truth_table(truth_table)
-    if len(truth_table) > 16:
+    tree = (
+        "\n".join([*_header(n), *_compact(_MIDDLE + _tree(list(truth_table)))])
+        if n <= 4
+        else None
+    )
+    if tree is None or (
+        width is not None and width > 0 and max(map(len, tree.split("\n"))) > width
+    ):
         rows = ["  ~*", *(_STAGE * n), *_MIDDLE, *_cascade(truth_table)]
         return "\n".join(row.rstrip() for row in rows)
-    return "\n".join([*_header(n), *_compact(_MIDDLE + _tree(list(truth_table)))])
+    return tree
 
 
 def _cascade(truth_table: str) -> list[str]:

@@ -151,7 +151,6 @@ UNWRAPPABLE = {
 WIDTH_EXCEPTIONS = {
     name: UNWRAPPABLE[name]
     for name in (
-        "arrowqueue",
         "back",
         "befunge",
         "fish",
@@ -713,7 +712,8 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
             stdin = "" if example.fill else "".join(f"{bit}\n" for bit in bits)
             compact = _laid_out(language.name, table, bits, None)
             expected = _behaviour(language.name, compact, stdin)
-            for width in _HONOUR_WIDTHS:
+            widths = (1, *_HONOUR_WIDTHS) if name == "arrowqueue" else _HONOUR_WIDTHS
+            for width in widths:
                 folded = _laid_out(language.name, table, bits, width)
                 relaid += folded != compact
                 assert _behaviour(language.name, folded, stdin) == expected, (
