@@ -44,7 +44,7 @@ def test_intercal_width_splits_an_overwide_expression() -> None:
     assert intercal(table, 1000) == intercal(table)
 
 
-@pytest.mark.parametrize("width", [1, 13, 22, 26, 40, 80])
+@pytest.mark.parametrize("width", [1, 13, 17, 19, 22, 26, 40, 80])
 def test_intercal_narrow_identities_execute_every_small_table(width: int) -> None:
     for n in range(1, 4):
         for value in range(2 ** (2**n)):
@@ -53,10 +53,11 @@ def test_intercal_narrow_identities_execute_every_small_table(width: int) -> Non
 
 
 def test_intercal_xor_floor_and_narrow_corpus_size() -> None:
-    assert max(map(len, intercal("0110", 1).splitlines())) == 22
-    assert sum(len(intercal(format(value, "08b"), 1)) for value in range(256)) == 56897
+    assert max(map(len, intercal("0110", 1).splitlines())) == 17
+    assert sum(len(intercal(format(value, "08b"), 1)) for value in range(256)) == 78997
 
 
+@pytest.mark.medium
 @pytest.mark.parametrize("n", [7, 9])
 def test_intercal_narrow_larger_complementary_branches(n: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
@@ -92,3 +93,47 @@ def test_intercal_fitting_primitive_layout_keeps_its_source() -> None:
     width = max(map(len, previous.splitlines()))
     assert intercal(table, width) == previous
     assert esolangs.evaluate("INTERCAL", table, width=width) == table
+
+
+@pytest.mark.parametrize("width", [1, 17, 19, 20, 22, 40, 80])
+@pytest.mark.parametrize("as_string", [False, True])
+def test_intercal_split_operations_keep_public_provenance(
+    width: int, *, as_string: bool
+) -> None:
+    table = "0110"
+    template = esolangs.generate("INTERCAL", table, width)
+    if as_string:
+        template = str(template)
+    shapes = set()
+    for row, expected in enumerate(table):
+        bits = list(map(int, format(row, "02b")))
+        program = esolangs.instantiate("INTERCAL", template, bits, truth_table=table)
+        shapes.add(tuple(map(len, program.splitlines())))
+        assert (
+            esolangs.read_answer("INTERCAL", esolangs.run("INTERCAL", program))
+            == expected
+        )
+    assert len(shapes) == 1
+    with pytest.raises(esolangs.TemplateError, match="is not the template"):
+        esolangs.instantiate("INTERCAL", template, [0, 1], truth_table="1001")
+
+
+@pytest.mark.parametrize("operator", ["&", "V", "?"])
+def test_intercal_split_intermediates_fit_onespots(operator: str) -> None:
+    from esolangs.interpreters.other.intercal import _expression
+
+    for left in (0, 1):
+        for right in (0, 1):
+            value, end = _expression(f"'{operator}.1$.2'", {1: left, 2: right})
+            intermediate, _bits = value
+            assert end == 8
+            assert 0 <= intermediate <= 7
+            answer, _end = _expression("'.3~#2'", {3: intermediate})
+            expected = (
+                left & right
+                if operator == "&"
+                else left | right
+                if operator == "V"
+                else left ^ right
+            )
+            assert answer[0] == expected
