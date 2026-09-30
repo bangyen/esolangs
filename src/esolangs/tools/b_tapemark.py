@@ -85,7 +85,13 @@ class _Builder:
                 if hi - lo + 1 <= 4 * len(occupied)
                 else sorted(occupied)
             )
-        ys = sorted({y for _, y in self.cells}, reverse=reflect)
+        occupied_y = {y for _, y in self.cells}
+        lo_y, hi_y = min(occupied_y, default=0), max(occupied_y, default=-1)
+        if hi_y - lo_y + 1 <= 4 * len(occupied_y):
+            order = range(hi_y, lo_y - 1, -1) if reflect else range(lo_y, hi_y + 1)
+            ys = [y for y in order if y in occupied_y]
+        else:
+            ys = sorted(occupied_y, reverse=reflect)
         column = {x: i for i, x in enumerate(xs)}
         symbols = {"/": "\\", "\\": "/"} if reflect else {}
         rows: dict[int, dict[int, str]] = {y: {} for y in ys}
@@ -101,14 +107,67 @@ class _Builder:
         return "\n".join(lines)
 
 
+def _b_tapemark_narrow(table: str, depth: int) -> str:
+    """Copy on a staircase, retaining vertical compares and horizontal indices."""
+    builder = _Builder()
+    # The copy beam always travels west; only the connector reverses it.
+    for index, bit in enumerate(table):
+        row = 2 * index
+        builder.row(2, row, f"|{bit}*")
+        builder.put(1, row, "/")
+        if index == 0:
+            builder.put(5, row, "<")
+        else:
+            builder.put(5, row, "/")
+        if index + 1 < len(table):
+            builder.put(1, row + 1, "\\")
+            builder.put(5, row + 1, "\\")
+    bottom = 2 * len(table) - 1
+    builder.put(1, bottom, "\\")
+    builder.put(6, bottom, "/")
+    for offset in range(1, 2 * depth + 1):
+        builder.put(6, bottom - offset, "|")
+    # The climb is outside copy columns1..5; descent uses empty column0.
+    builder.put(6, -1, "\\")
+    builder.put(0, -1, "/")
+    stage = (
+        "|/   \\",
+        "*\\-|\\0",
+        "\\   ||",
+        "\\|*%/\\|\\",
+        "    /",
+        "/   /* /",
+        "|",
+    )
+    first = bottom + 1
+    for level in range(depth):
+        row = first + _STAGE_ROWS * level
+        weight = 1 << (depth - level - 1)
+        for offset, line in enumerate(stage):
+            builder.row(0, row + offset, line)
+        # Column8 clears the other arm's turn in column7, even at weight1.
+        start = max(6, 8 - weight)
+        for offset in range(weight):
+            builder.put(start + offset, row + 1, "|")
+        builder.put(start + weight, row + 1, "\\")
+        builder.put(start + weight, row + 4, "/")
+    # Correct the stages' shared horizontal displacement inside their columns.
+    tail = first + _STAGE_ROWS * depth
+    builder.put(0, tail, "\\")
+    builder.put(depth + 1, tail, "\\")
+    builder.put(depth + 1, tail + 1, "/")
+    builder.row(0, tail + 1, "!+" + "|" * (depth - 1))
+    return builder.render()
+
+
 def b_tapemark(truth_table: str, width: int | None = None) -> str:
     """Build a B-tapemark program computing ``truth_table``.
 
     The table is copied onto the blank grid one cell per row, the inputs
     walk the mark pointer to the row they name, and ``+`` prints the mark
-    it ends on.  A requested ``width`` selects the mirrored grid: the copy
-    is one line as long as the table, so no narrower bound can be honoured
-    by any orientation.
+    it ends on. Below the mirrored grid's width, a staircase copies one
+    entry per row and compact stages retain vertical comparisons. Both
+    layouts have O(T) source and construction; narrow XOR2 needs nine columns.
     """
     depth = _validate_truth_table(truth_table)
     size = len(truth_table)
@@ -139,4 +198,8 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     builder.put(-1, tail, "/")
     builder.row(-depth - 1, tail, "+" + "|" * (depth - 1))
     builder.put(-depth - 2, tail, "!")
-    return builder.render(reflect=width is not None)
+    program = builder.render(reflect=width is not None)
+    if width is None or max(map(len, program.splitlines())) <= width:
+        return program
+    # max(9,T/2+7) is below the original 3T+depth+4 columns.
+    return _b_tapemark_narrow(truth_table, depth)
