@@ -1121,6 +1121,9 @@ def test_wrappers_refuse_input_they_do_not_recognize() -> None:
     # BIO's tokens have to tile the program exactly; a stray character means
     # the regex did not account for something, so the program is left alone.
     assert _bio("0ox;!!!", 40) == "0ox;!!!"
+    # Unknown punctuation must survive Packlang lexical folding verbatim.
+    unknown = "package t { invalid@token; }"
+    assert _packlang(unknown, 1) == unknown
     # Taglate needs a queue seed *and* commands below it.
     assert _taglate("seed-only", 40) == "seed-only"
 
