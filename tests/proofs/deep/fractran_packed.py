@@ -11,7 +11,7 @@ language.  It is not one -- a program need not address rows -- and the
 generator that used to hit it is kept here, as ``row_addressed``, because the
 comparison is the evidence.
 
-The shipped builder stops the tree ``v`` levels early, at ``T / w`` blocks of
+The legacy builder stops the tree ``v`` levels early, at ``T / w`` blocks of
 ``w = 2**v`` entries, and loads each block as a single exponent: ``w`` bits of
 table for ``w log10 2`` characters, since this port parses ``p^e``.  One
 fixed decoder shifts that exponent right by the offset -- the low ``v`` input
@@ -30,18 +30,28 @@ from __future__ import annotations
 import random
 
 from esolangs.interpreters.other.fractran import _choose, _parse
-from esolangs.tools.fractran import PAIR, _plan, _primes, fractran
+from esolangs.tools.fractran import PAIR, _packed, _plain, _plan, _primes
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     constant_span_test,
     fill_runs,
 )
 
-#: Cost band; see ``__main__.py``.  Cheap because the shipped width keeps a
+#: Cost band; see ``__main__.py``.  Cheap because the legacy width keeps a
 #: run short: the size claim is a text measurement, and the rows it executes
 #: are the correctness claim, which no spot check would make.
 BAND = "ci"
 COST = 4.0
+
+
+def legacy_packed(truth_table: str) -> str:
+    """Return the pre-indexed construction, preserving its measured tradeoff."""
+    n = len(truth_table).bit_length() - 1
+    packed = _packed(truth_table, n)
+    if n <= 4:
+        plain = _plain(truth_table, n)
+        return plain if len(plain) <= len(packed) else packed
+    return packed
 
 
 def row_addressed(truth_table: str) -> str:
@@ -141,7 +151,7 @@ def _check_rows(failures: list[str]) -> int:
         worst = widest = 0
         for table in _tables(n):
             try:
-                steps, bits = rows(fractran(table), table)
+                steps, bits = rows(legacy_packed(table), table)
                 tree_steps, _bits = rows(row_addressed(table), table)
             except AssertionError as error:
                 failures.append(f"n={n} answered wrongly: {error}")
@@ -158,7 +168,7 @@ def _check_rows(failures: list[str]) -> int:
 
 
 def _check_sizes(failures: list[str]) -> None:
-    """Characters an entry: bounded for the shipped builder, not for a tree."""
+    """Characters an entry: bounded for the legacy builder, not for a tree."""
     print(
         f"\n  {'n':>3} {'T':>6} {'w':>3} {'packed':>8} {'/T':>6} "
         f"{'tree':>8} {'/T':>6} {'ratio':>6} {'m':>6} {'k':>6}"
@@ -166,7 +176,7 @@ def _check_sizes(failures: list[str]) -> None:
     worst_packed, least_tree = 0.0, 1e9
     for n in range(4, 15):
         table = "".join(random.choice("01") for _ in range(1 << n))
-        template, tree_text = fractran(table), row_addressed(table)
+        template, tree_text = legacy_packed(table), row_addressed(table)
         size, tree = len(template), len(tree_text)
         per, tree_per = size / (1 << n), tree / (1 << n)
         fractions, primes = len(template.split()) - 1, len(spelled(template))
@@ -197,7 +207,7 @@ def main() -> int:
         for line in failures:
             print(f"  FAIL: {line}")
         return 1
-    print("  the shipped builder is linear, and answers every row it was given")
+    print("  the legacy builder is linear, and answers every row it was given")
     return 0
 
 

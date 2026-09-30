@@ -2,6 +2,8 @@
 
 ``generate`` produces a program computing a truth table; ``instantiate``
 fills a parameterized generator's input runs; ``run`` executes a program;
+``run_bounded`` steps one within cooperative limits;
+``run_isolated`` executes one with a subprocess deadline;
 ``make_vm`` and ``make_debugger`` step one; ``describe`` and
 ``list_languages`` summarize the registry.  ``encode_inputs`` and
 ``read_answer`` feed a program and judge what it printed; ``check_stdin``,
@@ -37,6 +39,7 @@ from esolangs._describe import (
     spec,
 )
 from esolangs._evaluate import _Default, evaluate, verify
+from esolangs._isolated import run_isolated
 from esolangs._validate import check_bits, check_timeout, check_width
 from esolangs.debugger import STOP_REASONS, Debugger, StopReason, make_debugger
 from esolangs.exceptions import (
@@ -134,6 +137,8 @@ __all__ = [
     "make_vm",
     "read_answer",
     "run",
+    "run_bounded",
+    "run_isolated",
     "spec",
     "verify",
 ]
@@ -424,6 +429,36 @@ def check_program(
     return program
 
 
+def run_bounded(
+    language: str,
+    program: str | Raster | os.PathLike[str],
+    stdin: str = "",
+    *,
+    max_steps: int | None = None,
+    timeout: float | None = None,
+) -> str:
+    """Execute a text program cooperatively, returning output only on halt.
+
+    Supply at least one bound. Limits raise :class:`ExecutionTimeoutError`
+    with ``partial_output``. Works on Windows and worker threads; loading
+    and individual steps cannot be interrupted. Raster languages have no VM.
+    """
+    from esolangs._validate import check_whole
+
+    if max_steps is not None:
+        check_whole(max_steps, "max_steps")
+    check_timeout(timeout)
+    if max_steps is None and timeout is None:
+        raise ArgumentError("run_bounded needs max_steps or timeout")
+    debugger = make_debugger(language, program, stdin)
+    reason = debugger.run(max_steps=max_steps, timeout=timeout)
+    if reason != "halted":
+        error = ExecutionTimeoutError(f"execution stopped at the {reason} bound")
+        error.partial_output = debugger.output
+        raise error
+    return debugger.output
+
+
 def run(
     language: str,
     program: str | Raster | os.PathLike[str],
@@ -654,7 +689,7 @@ def _run_timed_signal(
     # theirs, so a ``signal.alarm(30)`` set before a timed run came back
     # with zero seconds left and would never have fired.
     old = signal.signal(signal.SIGALRM, _timeout_handler)
-    pending = signal.setitimer(signal.ITIMER_REAL, timeout)[0]
+    pending, interval = signal.setitimer(signal.ITIMER_REAL, timeout)
     try:
         run_fn(program, io_obj)
     finally:
@@ -671,4 +706,4 @@ def _run_timed_signal(
             # Whatever was left of the caller's alarm, resumed.  Not exact
             # -- the run's own duration is not deducted -- but a timer that
             # fires late is a great deal better than one silently cancelled.
-            signal.setitimer(signal.ITIMER_REAL, pending)
+            signal.setitimer(signal.ITIMER_REAL, pending, interval)

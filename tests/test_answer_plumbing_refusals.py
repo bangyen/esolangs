@@ -750,6 +750,23 @@ class TestATimeoutCannotKillTheProcess:
 class TestTheCallersSignalsAreTheirOwn:
     """The fix for the death took the caller's SIGALRM hostage."""
 
+    @pytest.mark.parametrize("program", ["+", ","])
+    def test_a_periodic_alarm_survives_a_timed_run(self, program: str) -> None:
+        import signal
+
+        previous = signal.signal(signal.SIGALRM, lambda *_a: None)
+        timer = signal.setitimer(signal.ITIMER_REAL, 30, 5)
+        try:
+            with contextlib.suppress(esolangs.EsolangError):
+                esolangs.run("brainfuck", program, timeout=1)
+            remaining, interval = signal.getitimer(signal.ITIMER_REAL)
+            assert remaining > 0
+            assert interval == 5
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, previous)
+            signal.setitimer(signal.ITIMER_REAL, *timer)
+
     def test_a_pending_alarm_survives_a_timed_run(self) -> None:
         """Arming ours cancelled theirs, and nothing put it back."""
         import signal
@@ -886,3 +903,32 @@ class TestEvaluateNoLongerClaimsToPayTheTimeout:
         # has to be there is the mechanism and the denial.
         assert "repeated machine state" in doc
         assert "do not pay it" in doc
+
+
+class TestTerminationTimeoutIsUndecided:
+    def test_timeout_propagates_with_row_context(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def expired(*_args: object) -> None:
+            raise esolangs.ExecutionTimeoutError("forced timeout")
+
+        monkeypatch.setattr(esolangs, "_run", expired)
+        with pytest.raises(
+            esolangs.ExecutionTimeoutError, match="forced timeout"
+        ) as exc:
+            esolangs.verify("123", "01")
+        assert "while evaluating row 0" in exc.value.__notes__[0]
+
+    @pytest.mark.medium
+    def test_vm_construction_is_timed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import time
+
+        from esolangs import _evaluate
+
+        def slow_machine(*_args: object) -> None:
+            time.sleep(1)
+            pytest.fail("construction escaped the timeout")
+
+        monkeypatch.setattr(_evaluate, "make_vm", slow_machine)
+        with pytest.raises(esolangs.ExecutionTimeoutError):
+            esolangs.evaluate("123", "01", timeout=0.02)

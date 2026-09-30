@@ -166,15 +166,20 @@ class TestStepMachine:
         """[ skips its body when the current cell is zero."""
         assert run_and_capture("\\0[.].@") == "\x00"
 
-    def test_the_unmatched_bracket_message_reads_exactly(self) -> None:
-        """``match=`` only looks for a substring, so pin the whole message.
+    def test_unmatched_taken_brackets_suspend(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.circlefuck import _Machine
 
-        The position is the bracket the ring walk set out from: the walk
-        wraps all the way round and returns to it, so the one it started
-        on is the one with no partner.
-        """
-        with raises_message(ValueError, "unmatched '[' at position 1"):
-            run_and_capture("\\0[.@")
+        for code in ("\\0[.@", "]@"):
+            machine = _Machine(code, ScriptedIO())
+            if code.startswith("\\0"):
+                machine.step()
+            before = machine.snapshot()
+            for _ in range(3):
+                machine.step()
+                assert machine.snapshot() == before
+                assert not machine.halted
+            assert machine.io.getvalue() == ""
 
     def test_loop_skip_finds_matching_bracket(self) -> None:
         assert run_and_capture("\\0[.]@") == ""

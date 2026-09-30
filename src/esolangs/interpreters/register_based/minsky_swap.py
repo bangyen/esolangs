@@ -64,21 +64,20 @@ def _parse(code: str) -> tuple[str, list[int]]:
     nums: list[int] = []
 
     if re.search(r"(inc|swap|decnz)\(", code):
-        pattern = r"(inc|swap|decnz)\((\d*)\);"
-        cmp = re.compile(pattern)
-        for m in cmp.findall(code):
-            if (s := m[0][0]) == "i":
+        pattern = re.compile(r"(inc|swap|decnz)\((\d*)\);")
+        for line in code.splitlines():
+            if not (line := line.strip()):
+                continue
+            match = pattern.fullmatch(line)
+            if match is None:
+                raise ValueError("RMSN requires one command per line")
+            if (command := match[1]) == "inc":
                 prog += "+"
-            elif s == "s":
+            elif command == "swap":
                 prog += "*"
             else:
                 prog += "~"
-                skip = int(m[1]) if m[1] else 1
-                nums.append(skip)
-        # Also process any remaining compact notation
-        compact_part = re.sub(r"(inc|swap|decnz)\([^)]*\);", "", code)
-        compact_part = re.sub("[^+~*]", "", compact_part)
-        prog += compact_part
+                nums.append(int(match[2]) if match[2] else 1)
     else:
         prog = (s := code.split("\n"))[0]
         prog = re.sub("[^+~*]", "", prog)

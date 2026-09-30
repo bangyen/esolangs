@@ -1,25 +1,9 @@
-"""FRACTRAN boolean program builder: a block of the table in one exponent.
+"""FRACTRAN boolean templates with linear text and generation work.
 
-The inputs are embedded as the exponents of ``n`` primes in the starting
-value, since FRACTRAN has no input vocabulary at all.  A decision tree over
-the high inputs walks to a *block* of consecutive entries -- a node owns two
-fractions, the first dividing by its input prime, the second reachable only
-when that one does not divide, which is FRACTRAN's first-match rule as the
-``else`` -- and the leaf loads its whole block as a single exponent.  A fixed
-decoder of twelve fractions then shifts that exponent right by the offset
-the remaining inputs spell in unary, and answers with the parity of what is
-left: ``2`` for a one and ``1`` for a zero, which no fraction divides, so that
-value is where the run stops and what it prints.  A folded span answers
-without decoding; the trailing ``1/p`` fractions clear what it left unread.
-
-Output size is ``Theta(T)``.  Addressing every row would not be: guards are
-distinct, so ``m`` fractions cost ``m log m`` characters and ``k`` primes cost
-``k log10 k``, and a row per address pays ``Theta(T log T)``.  This pays that
-budget for ``3T / w`` addresses instead, and buys the difference on the clock
--- a block in an exponent has to be traversed, so a run is ``O(2**w)`` steps.
-Below four inputs the decoder costs more than it saves on every table, so
-through four the plain tree is built as well and the shorter text ships.
-``docs/proofs/fractran.md`` proves both ends and the floor they sit above.
+High inputs route through alternating small-prime state thresholds. Blocks
+use a shared threshold dictionary or a fixed exponent decoder, by text size.
+The factored interpreter preserves first-match semantics without expanding
+state powers. At most six inputs retain the smaller legacy construction.
 """
 
 from __future__ import annotations
@@ -44,6 +28,9 @@ _FRACTRAN_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 #: on every table; at four the two split, and from five the tree all but
 #: never wins while it grows as ``T log T``, so it is not built past here.
 _PLAIN_MAX = 4
+
+#: Preserve small-table text while changing the asymptotic execution path.
+_INDEXED_MIN = 7
 
 #: Segment width for the sieve; the primes wanted are a prefix of it.
 _PRIME_CHUNK = 1 << 12
@@ -265,16 +252,133 @@ def _packed(truth_table: str, n: int) -> str:
     return " ".join([_start(states, inputs), *fractions])
 
 
-def fractran(truth_table: str) -> str:
-    """Return a FRACTRAN template computing ``truth_table``.
+def _threshold(table: str, n: int) -> str:
+    """Return small-prime state thresholds with shared block dictionaries."""
+    v, wide = _plan(n)
+    budget = [wide]
+    nodes: list[_Leaf | _Block | _Node] = []
+    depths: list[int] = []
+    constant = constant_span_test(table)
 
-    Each run of :data:`TEMPLATE_CHAR` is the exponent of one input's prime,
-    filled with :data:`PAIR`; the instantiated program prints ``2`` where the
-    table says one and ``1`` where it says zero.  Through :data:`_PLAIN_MAX`
-    inputs the plain tree is built too and the shorter text ships, the tree
-    on a tie: its run never takes more steps than the packed one's.
+    def walk(depth: int, lo: int, hi: int) -> int:
+        if constant(lo, hi):
+            nodes.append(_Leaf(table[lo], depth))
+        elif depth == n - v or (depth == n - v - 1 and budget[0] > 0):
+            if depth == n - v - 1:
+                budget[0] -= 1
+            nodes.append(_Block(int(table[lo:hi][::-1], 2)))
+        else:
+            mid = (lo + hi) // 2
+            zero = walk(depth + 1, lo, mid)
+            one = walk(depth + 1, mid, hi)
+            nodes.append(_Node(depth, zero, one))
+        depths.append(depth)
+        return len(nodes) - 1
+
+    walk(0, 0, len(table))
+    chunks = list(dict.fromkeys(e.chunk for e in nodes if isinstance(e, _Block)))
+    patterns = {chunk: i + 1 for i, chunk in enumerate(chunks)}
+    inputs = _primes(n + 5)[5:]
+
+    def state(i: int) -> str:
+        # Unshifted labels crossed decimal widths: n=9,11,13 read 4.690.
+        # T+i keeps the state fields at table-width magnitude (4.262).
+        depth = depths[i]
+        return _power(3 if depth % 2 == 0 else 5, len(table) + i + 1)
+
+    rules: list[str] = []
+    for i in reversed(range(len(nodes))):
+        e = nodes[i]
+        guard = state(i)
+        if isinstance(e, _Node):
+            rules += [
+                f"{state(e.one)}/{guard}*{inputs[e.depth]}",
+                f"{state(e.zero)}/{guard}",
+            ]
+        elif isinstance(e, _Leaf):
+            rules.append(f"{2 if e.answer == '1' else 1}/{guard}")
+        else:
+            rules.append(f"{_power(7, patterns[e.chunk])}/{guard}")
+    rules += [
+        f"{_power(11, 1 << (n - 1 - level))}/{inputs[level]}"
+        for level in range(n - v - 1 if wide and v < n else n - v, n)
+    ]
+    for chunk, ident in reversed(list(patterns.items())):
+        for offset in reversed(range(1 << (v + 1 if wide and v < n else v))):
+            bit = (chunk >> offset) & 1
+            if offset and bit == ((chunk >> (offset - 1)) & 1):
+                continue
+            guard = _power(7, ident)
+            if offset:
+                guard += "*" + _power(11, offset)
+            rules.append(f"{2 if bit else 1}/{guard}")
+    rules += [f"1/{p}" for p in [*inputs, 11]]
+    start = "*".join([state(len(nodes) - 1)] + [f"{p}^{TEMPLATE_CHAR}" for p in inputs])
+    return " ".join([start, *rules])
+
+
+def _indexed(table: str, n: int) -> str:
+    """Return the smaller indexed threshold or packed-block construction."""
+    v, wide = _plan(n)
+    nodes = _tree(table, n, v, wide)
+    depths: dict[int, int] = {}
+
+    def visit(index: int, depth: int) -> None:
+        depths[index] = depth
+        entry = nodes[index]
+        if isinstance(entry, _Node):
+            visit(entry.zero, depth + 1)
+            visit(entry.one, depth + 1)
+
+    visit(len(nodes) - 1, 0)
+    inputs = _primes(n + 12)[12:]
+    control = [2, 7, 11, 13, 17, 19, 23, 29, 31, 37]
+    carry, count, ready = 7, 13, 17
+
+    def state(index: int) -> str:
+        return _power(3 if depths[index] % 2 == 0 else 5, len(table) + index + 1)
+
+    rules: list[str] = []
+    for index in reversed(range(len(nodes))):
+        entry, guard = nodes[index], state(index)
+        if isinstance(entry, _Node):
+            rules.extend(
+                [
+                    f"{state(entry.one)}/{guard}*{inputs[entry.depth]}",
+                    f"{state(entry.zero)}/{guard}",
+                ]
+            )
+        elif isinstance(entry, _Leaf):
+            rules.append(f"{2 if entry.answer == '1' else 1}/{guard}")
+        else:
+            chunk = f"{_power(carry, entry.chunk)}*" if entry.chunk else ""
+            rules.append(f"{chunk}{ready}/{guard}")
+    first = n - v - 1 if wide and v < n else n - v
+    rules += [
+        f"{_power(count, 1 << (n - 1 - level))}/{inputs[level]}"
+        for level in range(first, n)
+    ]
+    rules += _decoder(control)
+    shallowest = _shallowest(nodes, n)
+    if shallowest < n:
+        rules += [f"1/{p}" for p in (*inputs[shallowest:first], count)]
+    start = "*".join(
+        [state(len(nodes) - 1)] + [f"{p}^{_FRACTRAN_INPUT}" for p in inputs]
+    )
+    packed = " ".join([start, *rules])
+    threshold = _threshold(table, n)
+    return threshold if len(threshold) <= len(packed) else packed
+
+
+def fractran(truth_table: str) -> str:
+    """Return a template, with input-prime exponents filled by ``PAIR``.
+
+    Halts at 1 or 2 for zero or one. Seven inputs use indexed blocks;
+    smaller tables retain the legacy size choice.
     """
     n = _validate_truth_table(truth_table)
+    if n >= _INDEXED_MIN:
+        return _indexed(truth_table, n)
     packed = _packed(truth_table, n)
     if n > _PLAIN_MAX:
         return packed

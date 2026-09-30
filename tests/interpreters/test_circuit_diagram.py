@@ -339,6 +339,24 @@ class TestMultiWire:
         assert output_for(circuit, "0\n1\n0\n") == "010"
 
 
+@pytest.mark.parametrize(
+    "source", [["-.", "  \\", "   :"], ["   :", "  /", "-."], ["-.:"], ["-=:"], [":"]]
+)
+def test_output_requires_a_horizontal_dash_directly_left(source: list[str]) -> None:
+    with pytest.raises(ValueError, match="requires '-' directly to its left"):
+        output_for(source, "1\n")
+
+
+def test_output_with_a_direct_left_dash_executes() -> None:
+    assert output_for(["-:"], "1\n") == "1"
+    assert output_for(["-:"], "0\n") == "0"
+
+
+def test_output_rejects_an_additional_diagonal_input() -> None:
+    with pytest.raises(ValueError, match=r"takes 1 input\(s\), found 2"):
+        output_for(["-.", "  \\", "---:"], "1\n")
+
+
 class TestSpecifiedSourcesAndRemoval:
     """The built-in functions outside the page's worked circuits."""
 
@@ -774,5 +792,5 @@ def test_a_not_fed_only_diagonally_is_still_rejected() -> None:
     nothing and the two diagonals stand.  A NOT takes one input, so the
     circuit is malformed rather than quietly reading one of them.
     """
-    with pytest.raises(ValueError, match="takes 1 input"):
+    with pytest.raises(ValueError, match=r"takes 1 input\(s\), found 2"):
         run(["-\\  ", "  ~-:", "-/  "], ScriptedIO("1\n0\n"))

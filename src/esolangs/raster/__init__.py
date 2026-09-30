@@ -14,6 +14,27 @@ Pixel = tuple[int, int, int]
 Rows = tuple[tuple[Pixel, ...], ...]
 
 
+def _freeze_rows(rows: Rows) -> Rows:
+    """Return validated immutable RGB rows, detached from the caller."""
+    frozen = tuple(tuple(tuple(pixel) for pixel in row) for row in rows)
+    width = len(frozen[0]) if frozen else 0
+    if not frozen or not width or any(len(row) != width for row in frozen):
+        raise ValueError("Raster needs non-empty equal-width rows")
+    if any(
+        len(pixel) != 3
+        or any(
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or not 0 <= value <= 255
+            for value in pixel
+        )
+        for row in frozen
+        for pixel in row
+    ):
+        raise ValueError("Raster pixels must be 8-bit RGB triples")
+    return cast("Rows", frozen)
+
+
 @dataclass(frozen=True, init=False, eq=False)
 class Raster:
     """An immutable 8-bit RGB image source, stored row by row."""
@@ -46,16 +67,7 @@ class Raster:
             if self._materialize is None:
                 raise ValueError("Raster needs pixels or a materializer")
             return
-        width = len(self._rows[0]) if self._rows else 0
-        valid = all(
-            len(pixel) == 3 and all(0 <= value <= 255 for value in pixel)
-            for row in self._rows
-            for pixel in row
-        )
-        if not self._rows or not width or any(len(row) != width for row in self._rows):
-            raise ValueError("Raster needs non-empty equal-width rows")
-        if not valid:
-            raise ValueError("Raster pixels must be 8-bit RGB triples")
+        object.__setattr__(self, "_rows", _freeze_rows(self._rows))
 
     def __eq__(self, other: object) -> bool:
         """Whether two rasters have identical RGB pixels."""
@@ -89,7 +101,7 @@ class Raster:
         """Return RGB rows, materializing lazy source on first access."""
         if self._rows is None:
             materialize = cast("Callable[[], Rows]", self._materialize)
-            object.__setattr__(self, "_rows", materialize())
+            object.__setattr__(self, "_rows", _freeze_rows(materialize()))
         return cast("Rows", self._rows)
 
     @classmethod

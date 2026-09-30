@@ -168,9 +168,12 @@ def _variable(value: _Value) -> int:
 def _literal(code: str, pc: int, end: int) -> tuple[int, int]:
     """Return the integer literal starting at ``pc``, and the index past it."""
     stop = pc
+    value = 0
     while stop < end and code[stop].isdigit():
+        # Bounded accumulation avoids Python's decimal conversion limit.
+        value = _wrap32(value * 10 + int(code[stop]))
         stop += 1
-    return int(code[pc:stop]), stop
+    return value, stop
 
 
 def _binary(char: str, stack: tuple[_Value, ...]) -> tuple[_Value, ...]:

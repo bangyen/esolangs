@@ -2,9 +2,8 @@
 
 from esolangs.tools.helpers import _validate_truth_table, constant_span_test
 
-# A leaf is exactly as wide as the ``(( ))`` it ends on, so consecutive
-# leaves abut and the tree needs no gutter between them at all.
-_FLOWCHART_PITCH = 5
+# Leave a blank column between adjacent five-cell end nodes.
+_FLOWCHART_PITCH = 6
 
 
 def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
@@ -27,7 +26,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     def leaf(slot: int, bit: str) -> int:
         """Draw the leaf for ``bit`` in column slot ``slot``; return its middle.
 
-        Leaf ``k`` spans ``5k .. 5k + 4``; its middle is ``5k + 2``.
+        Leaf ``k`` spans ``6k .. 6k + 4``; its middle is ``6k + 2``.
         """
         middle = _FLOWCHART_PITCH * slot + 2
         put(middle - 1, leaf_top, "[ }" if bit == "1" else "{ ]")
@@ -144,7 +143,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
         put(spine - 1, y + 2, "\\ \\")
         cells[(spine, y + 3)] = "│"
         put(spine - 2, y + 4, "(( ))")
-        return y + 5
+        return y + 6
 
     def walk(lo: int, hi: int, depth: int, y: int) -> int:
         """Draw the subtree for ``truth_table[lo:hi]``; return the row after."""
@@ -183,27 +182,12 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     """Build a Flowchart program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Wide
-    unconstrained programs preload a pair of answers onto each deque and let
-    the input walk the deque cursor to the pair it wants (two rows, O(T):
-    about 11 characters an entry, where popping halves of one deque cost
-    80).  Width-constrained programs, and the few small tables that fold,
-    draw a decision tree: ``/ /`` reads a bit, ``< >`` switches, each leaf
-    sets, prints and halts.  Leaves sit flush on one ``(( ))`` pitch
-    (dropping the gutter took ``n = 4`` from 2444 to 1557 chars).  The tree
-    draws ``2**n - 1`` read nodes but any run executes ``n``, so a folded
-    leaf carries its
-    skipped reads -- spatial duplication like an unrolled brainfuck branch,
-    not the once-only rule of ``tools.parameterized``, since Flowchart reads
-    input.  A deque-first construction (a ``4n``-row prologue, relying on
-    FIFO pop-bottom) was verified and shelved.  Without a width all three
-    layouts are built and the shortest wins.  Once the deque form came down
-    to its two rows it took the small arities too -- at ``n = 4`` it is 284
-    characters against the tree's 1395, and it wins every table at
-    ``n = 2, 3, 4`` bar the two constants, which fold to a single leaf the
-    deque still has to spell out entry by entry.  ``width`` under ``2 ** n``
-    stacks the tree (:func:`_flowchart_stacked`) at ``n + 5`` columns, and
-    under that floor the narrower is returned; the deque is never a
-    candidate there, its two rows being as long as the table.
+    unconstrained programs preload paired answers into deques and select
+    one with the input bits. Width-constrained programs draw a decision
+    tree, stacking branches when necessary. Every node connection includes
+    a path cell; adjacent leaves have a blank gutter. Folded leaves still
+    read the skipped inputs. Without a width, small tables use the shortest
+    of the flat tree, stacked tree, and deque layouts.
     """
     _validate_truth_table(truth_table)
     if len(truth_table) > 16 and width is None:
@@ -252,7 +236,8 @@ def _flowchart_deque(truth_table: str) -> str:
         left = col - len(text) + 1
         for offset, char in enumerate(text):
             cells[(left + offset, spine)] = char
-        col = left - 1
+        cells[(left - 1, spine)] = "─"
+        col = left - 2
         return left
 
     def paint(start: int, row: int, text: str) -> None:
@@ -278,10 +263,10 @@ def _flowchart_deque(truth_table: str) -> str:
         # Travelling west a switch sends 1 straight on and 0 up, and the
         # rail west of the switch is the one-branch's bypass.
         count = 1 << (n - 2 - level)
-        junction = col - 3 * count
+        junction = col - 4 * count + 1
         paint(switch, spine - 1, "─┐")
-        paint(junction + 1, spine - 1, "< ]" * count)
-        paint(junction + 1, spine, "─" * (3 * count))
+        paint(junction + 1, spine - 1, "< ]─" * count)
+        paint(junction + 1, spine, "─" * (4 * count))
         cells[(junction, spine - 1)] = "┌"
         cells[(junction, spine)] = "┴"
         col = junction - 1
@@ -296,8 +281,10 @@ def _flowchart_deque(truth_table: str) -> str:
     tail = west("(( ))")
     paint(tail - 1, spine - 1, "─" * (switch - tail + 2))
     paint(tail - 6, spine - 1, "/{ }\\")
-    paint(tail - 9, spine - 1, "\\ \\")
-    paint(tail - 14, spine - 1, "(( ))")
+    paint(tail - 10, spine - 1, "\\ \\")
+    paint(tail - 16, spine - 1, "(( ))")
+    paint(tail - 7, spine - 1, "─")
+    paint(tail - 11, spine - 1, "─")
 
     left = min(x for x, _ in cells)
     width = max(x for x, _ in cells) - left + 1

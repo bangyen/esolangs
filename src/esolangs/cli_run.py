@@ -9,6 +9,7 @@ from esolangs import describe, read_answer, run
 from esolangs.cli_args import (
     _check_count,
     _fail,
+    _pop_flags,
     _pop_options,
     _seed_of,
     _split_positional,
@@ -58,17 +59,15 @@ def _run(rest: list[str]) -> None:
     # "missing <program-file>", sending the reader to look at the one
     # argument that was not the problem.
     timeout = _timeout_of(options)
-    rest = _split_positional(
-        rest, {"--judge"}, {"--timeout", "--judge", "--table", "--seed"}
-    )
+    rest, flags = _pop_flags(rest, {"--judge"})
+    rest = _split_positional(rest, set(), {"--timeout", "--judge", "--table", "--seed"})
     seed = _seed_of(options)
-    judge = "--judge" in rest
+    judge = "--judge" in flags
     # Refused like every value-taking option is.  `--judge --judge` was
     # accepted in silence while `--timeout 5 --timeout 9` was refused, and
     # the inconsistency is the finding rather than either policy.
-    if rest.count("--judge") > 1:
+    if flags.count("--judge") > 1:
         _fail("--judge given more than once")
-    rest = [arg for arg in rest if arg != "--judge"]
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
     program = _read_program(path, timeout)

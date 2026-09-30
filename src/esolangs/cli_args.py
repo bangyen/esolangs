@@ -166,9 +166,9 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
     i = 0
     while i < len(rest):
         arg = rest[i]
-        # No ``--`` case here: :func:`_split_positional` has already consumed
-        # the separator and passed on what followed it, so this only ever
-        # sees positionals and the one option it owns.
+        if arg == "--":
+            args.extend(rest[i:])
+            break
         if arg == "--width":
             _refuse_repeat(seen, "--width")
             following = rest[i + 1] if i + 1 < len(rest) else None
@@ -204,6 +204,14 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
     return args, width, bare
 
 
+def _pop_flags(rest: list[str], names: set[str]) -> tuple[list[str], list[str]]:
+    """Remove bare flags before the positional separator."""
+    boundary = rest.index("--") if "--" in rest else len(rest)
+    flags = [arg for arg in rest[:boundary] if arg in names]
+    args = [arg for arg in rest[:boundary] if arg not in names]
+    return args + rest[boundary:], flags
+
+
 def _refuse_repeat(found: dict[str, str], name: str) -> None:
     """Refuse a second copy of an option that takes a value.
 
@@ -229,6 +237,9 @@ def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str,
     i = 0
     while i < len(rest):
         arg = rest[i]
+        if arg == "--":
+            args.extend(rest[i:])
+            break
         name, sep, inline = arg.partition("=")
         if name not in names:
             args.append(arg)

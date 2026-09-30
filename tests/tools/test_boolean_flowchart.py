@@ -257,7 +257,7 @@ class TestFlowchart:
             flat = _flowchart_render(_flowchart_cells(table))
             stacked = boolean.flowchart(table, 1)
             assert max(len(row) for row in stacked.splitlines()) == n + 5, n
-            assert max(len(row) for row in flat.splitlines()) == 5 * 2**n, n
+            assert max(len(row) for row in flat.splitlines()) == 6 * 2**n - 1, n
             assert len(stacked.splitlines()) > len(flat.splitlines()), n
         # A table that folds to a single leaf is already as wide as one
         # ``(( ))``, and stacking spends a corridor column per level on top

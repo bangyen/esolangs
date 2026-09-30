@@ -5,6 +5,7 @@
 
 import signal
 import threading
+from typing import cast
 
 import esolangs
 from esolangs._answers import (
@@ -17,7 +18,6 @@ from esolangs._validate import check_timeout
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
-    ExecutionTimeoutError,
     InputExhaustedError,
 )
 from esolangs.interpreters.io import ScriptedIO
@@ -54,6 +54,8 @@ def evaluate(
     truth_table: str,
     timeout: float | _Default | None = _DEFAULT,
     width: int | None = None,
+    *,
+    isolated: bool = False,
 ) -> str:
     """Return the truth table a generated ``language`` program *actually* computes.
 
@@ -62,7 +64,8 @@ def evaluate(
     row: omit for the defaults, ``None`` for unbounded (callable off the main
     thread).  The four termination-answer languages do not pay it: those rows are
     settled by a repeated machine state, so the bound is only a backstop
-    for growth.
+    for growth. A timeout raises rather than claiming divergence.
+    ``isolated=True`` runs each row in a subprocess with a portable deadline.
     ``width`` is passed through.  A failure carries the row as a note and
     ``partial_output``.
     """
@@ -85,9 +88,15 @@ def evaluate(
         # hatch (the guard is ``SIGALRM``).  Safe: every program here is
         # generated, and the divergers are settled by a repeated state.
         bound = timeout
-    if bound is not None and not (
-        threading.current_thread() is threading.main_thread()
-        and hasattr(signal, "SIGALRM")
+    if isolated and bound is None:
+        raise ArgumentError("isolated evaluation requires a finite timeout")
+    if (
+        not isolated
+        and bound is not None
+        and not (
+            threading.current_thread() is threading.main_thread()
+            and hasattr(signal, "SIGALRM")
+        )
     ):
         # The termination path drives ``_run`` directly and so never reached
         # ``run``'s guard: off a main thread it leaked ``signal.signal``'s
@@ -128,11 +137,24 @@ def evaluate(
                     # so this arm is unreachable metadata; the sibling check
                     # above carries the same note.
                     raise TypeError("a raster language cannot answer by termination")
-                answers.append(
-                    _terminates(name, source, stdin, bound, halts_is, diverges_is)
-                )
+                if isolated:
+                    from esolangs._isolated import termination_isolated
+
+                    answer = termination_isolated(
+                        name, source, stdin, cast("float", bound), halts_is, diverges_is
+                    )
+                else:
+                    answer = _terminates(
+                        name, source, stdin, bound, halts_is, diverges_is
+                    )
+                answers.append(answer)
             else:
-                output = esolangs.run(name, source, stdin, bound)
+                if isolated:
+                    output = esolangs.run_isolated(
+                        name, source, stdin, cast("float", bound)
+                    )
+                else:
+                    output = esolangs.run(name, source, stdin, bound)
                 answers.append(read_answer(name, output))
         except EsolangError as exc:
             # The row and its bits as a note (the classes share no
@@ -164,21 +186,16 @@ def _terminates(
     """
     from esolangs.vm import run_until_halt_or_cycle
 
-    machine = make_vm(name, source, stdin)
     # A box, because ``_run`` exists to apply the timeout and discards what
     # it drove -- which is right for ``run``, whose result is the io buffer.
     verdict: list[bool] = []
 
     def _drive(*_args: object) -> None:
+        machine = make_vm(name, source, stdin)
         verdict.append(run_until_halt_or_cycle(machine))
 
     try:
         esolangs._run(_drive, source, ScriptedIO(""), bound)  # noqa: SLF001
-    except ExecutionTimeoutError:  # pragma: no cover - see below
-        # No cycle inside the bound: unbounded growth or slow.  Unreached
-        # by the suite (every program repeats within ~100 steps); kept
-        # because the detector proves only cycles.
-        return diverges
     except InputExhaustedError:  # pragma: no cover - see below
         # Reading past the end is a halt.  Unreachable via :func:`evaluate`
         # (it never underfeeds); kept for a caller passing its own stdin.
@@ -191,9 +208,14 @@ def verify(
     truth_table: str,
     timeout: float | _Default | None = _DEFAULT,
     width: int | None = None,
+    *,
+    isolated: bool = False,
 ) -> bool:
     """Whether a generated ``language`` program really computes ``truth_table``.
 
     Use :func:`evaluate` to see which rows disagree.
     """
-    return evaluate(language, truth_table, timeout, width) == truth_table
+    return (
+        evaluate(language, truth_table, timeout, width, isolated=isolated)
+        == truth_table
+    )

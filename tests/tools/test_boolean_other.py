@@ -350,6 +350,14 @@ class TestFargo:
             assert boolean.fargo("0000", width=width) == "% 0 0\n$\n"
             assert boolean.fargo("00000000", width=width) == "% 0 0\n$\n"
 
+    def test_narrow_dense_anf_keeps_constant_and_long_names(self) -> None:
+        """Wrapping NOR needs the constant coefficient and more than 26 labels."""
+        table = "1" + "0" * 31
+        program = boolean.fargo(table, width=1)
+        assert "aa " in program
+        for row in range(32):
+            assert run_fargo(program, list(format(row, "05b"))) == table[row]
+
     def test_parity_is_one_term_per_input(self) -> None:
         """Parity's ANF is the sum of the single-variable terms."""
         assert boolean.fargo("01101001") == "% 0 ^ ^ @ 0 @ 1 @ 10\n$\n"
@@ -392,7 +400,8 @@ class TestFargo:
         The positive factoring in name order is the build before arms and
         orders were chosen, and it stays a candidate, so they only shorten a
         program: over three inputs the sweep falls from 9,556 characters to
-        8,202 with the arms, and to 7,576 with the four orders.
+        8,202 with the arms, 7,576 with four orders, and 7,467 with
+        character-cost splits.
         """
         from esolangs.tools.fargo import _anf_coefficients, _anf_expression
 
@@ -408,7 +417,50 @@ class TestFargo:
                 if n == 3:
                     before += old
                     after += built
-        assert (before, after) == (9556, 7576)
+        assert (before, after) == (9556, 7467)
+
+    @pytest.mark.medium
+    def test_character_cost_five_input_corpus(self) -> None:
+        """The seeded ship gate: no growth, 7.43% smaller, every row executed."""
+        from esolangs.tools.fargo import _expressions, _orders
+
+        rng = random.Random(20260929)
+        for _ in range(12 * 16):
+            rng.choice("01")
+        before = after = 0
+        for _ in range(200):
+            table = "".join(rng.choice("01") for _ in range(32))
+            old = min(
+                len(f"% 0 {expression}\n$\n")
+                for order in _orders(5)
+                for expression in _expressions(table, 5, order)
+            )
+            program = boolean.fargo(table)
+            assert len(program) <= old, table
+            before += old
+            after += len(program)
+            for row in range(32):
+                assert run_fargo(program, list(format(row, "05b"))) == table[row]
+        assert (before, after) == (25062, 23199)
+
+    def test_character_cost_ties_use_executed_steps(self) -> None:
+        """Selector-frame overhead is included in the size tie breaker."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.fargo import _Machine
+        from esolangs.tools.fargo import _cost_key
+
+        table = "10101111011001100111100001010100"
+        program = boolean.fargo(table)
+        assert program.startswith("M ")
+        for row in (0, 31):
+            io = ScriptedIO(str(row))
+            machine = _Machine(program, io)
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                steps += 1
+            assert io.getvalue() == table[row]
+            assert _cost_key(program) == (len(program), steps - 4)
 
     @pytest.mark.parametrize(
         ("table", "expression"),

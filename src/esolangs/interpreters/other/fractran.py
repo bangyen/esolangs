@@ -13,7 +13,9 @@ may be written as a product of prime powers (``2^3*5`` is 40), which is
 notation only -- the machine still starts from one integer -- and is how a
 generated program spells a value with thousands of digits without spelling
 the digits.  Because FRACTRAN has no output vocabulary either, the final
-value *is* the result, and this interpreter prints it.
+value *is* the result, and this interpreter prints it. Small-base sources
+retain exact prime exponents and indexed guards; other sources use the literal
+integer scan. Debug values are materialized on request.
 
 An empty source, a token that is not a fraction or a product of powers, a
 zero or negative value, and a zero denominator raise :class:`ValueError`.
@@ -27,9 +29,17 @@ from here: a program's inputs are in its starting value.
 from __future__ import annotations
 
 import re
+from typing import cast
 
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.other._fractran_index import (
+    Factors,
+    Index,
+    advance,
+    compile_index,
+    integer,
+)
 
 #: A fraction, as the numerator and denominator it was written with.
 type _Fraction = tuple[int, int]
@@ -101,9 +111,46 @@ class _Machine:
     """The run state: one integer, against a fixed list of fractions."""
 
     def __init__(self, code: str, io: IO) -> None:
-        self.value, self.fractions, self.offsets = _parse(code)
+        self._index = compile_index(code)
+        self._factors: Factors = ()
+        self._fractions: tuple[_Fraction, ...] | None = None
+        self._integer = 1
+        if self._index is None:
+            self._integer, self._fractions, self.offsets = _parse(code)
+        else:
+            self._factors = self._index.initial
+            self.offsets = self._index.offsets
+        self.inspections = 0
+        self._selected_for: int | Factors | None = None
+        self._selected: int | None = None
         self.io = io
         self.printed = False
+
+    @property
+    def value(self) -> int:
+        """The exact integer; materialized only when a caller requests it."""
+        return self._integer if self._index is None else integer(self._factors)
+
+    @property
+    def fractions(self) -> tuple[_Fraction, ...]:
+        """The exact fractions, retaining the literal machine's debug interface."""
+        if self._fractions is None:
+            self._fractions = tuple(
+                (integer(numerator), integer(denominator))
+                for numerator, denominator in cast(Index, self._index).literal
+            )
+        return self._fractions
+
+    def _next(self) -> int | None:
+        state = self._integer if self._index is None else self._factors
+        if state != self._selected_for:
+            if self._index is None:
+                self._selected = _choose(self._integer, self.fractions)
+            else:
+                self._selected, probes = self._index.choose(self._factors)
+                self.inspections += probes
+            self._selected_for = state
+        return self._selected
 
     @property
     def _state(self) -> _State:
@@ -113,12 +160,12 @@ class _Machine:
     @_state.setter
     def _state(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields."""
-        self.value, self.printed = state
+        self._integer, self.printed = state
 
     @property
     def halted(self) -> bool:
         """Whether no fraction divides the value any more."""
-        return _choose(self.value, self.fractions) is None and self.printed
+        return self.printed and self._next() is None
 
     #: The position is the offset of the fraction about to fire, on the
     #: source the caller handed in.
@@ -126,7 +173,7 @@ class _Machine:
 
     @property
     def ip(self) -> int | None:
-        index = _choose(self.value, self.fractions)
+        index = self._next()
         return None if index is None else self.offsets[index + 1]
 
     @property
@@ -141,7 +188,11 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.value, self.printed, self.io.position())
+        return (
+            self._integer if self._index is None else self._factors,
+            self.printed,
+            self.io.position(),
+        )
 
     def step(self) -> None:
         """Fire one fraction, or print the final value and stop.
@@ -152,8 +203,15 @@ class _Machine:
         """
         if self.halted:
             return
-        index = _choose(self.value, self.fractions)
-        self._state, out = _advance(self._state, self.fractions, index)
+        index = self._next()
+        if self._index is None:
+            self._state, out = _advance(self._state, self.fractions, index)
+        elif index is None:
+            out = None if self.printed else self.value
+            self.printed = True
+        else:
+            self._factors = advance(self._factors, self._index.rules[index][1])
+            out = None
         if out is not None:
             self.io.print_num(out)
 

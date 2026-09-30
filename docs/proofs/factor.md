@@ -143,3 +143,35 @@ all `2**T` tables forces
 The count covers every encoding: ignored-residue primes, comments and leading
 zeros do not add behaviours. The exceptional integer zero adds only the empty
 behaviour. It matches the generated `Theta(T log T)` upper.
+
+## Leading constants
+
+Let `C_F(n)` be the worst-case minimum rendered digits over all `T = 2**n`
+tables. The existing witnesses and counting argument can be made explicit:
+
+    (ln 2)**2 / (ln 8 * ln 10) <= liminf C_F(n)/(T*n)
+    limsup C_F(n)/(T*n) <= 42 log10 2.
+
+The coefficients are 0.10034333 and 12.64325982; neither is claimed sharp.
+For the lower bound put `L = D ln 10` and `r = floor(L/(ln L)**2)`.
+The first `r` useful-prime exponents have total at most `L/ln 2`. Counting
+positive compositions and eight command choices bounds these prefixes by
+`exp(O(r ln(L/r))) = exp(o(L/ln L))`. Every later exponent costs at least
+`ln(r+1)`, so their total is at most `N = floor(L/ln(r+1))`.
+Merge adjacent equal decoded commands into maximal runs; this only lowers
+the weighted exponent cost, since later run ranks decrease. Given a nonempty
+prefix, each later command has at most seven choices. For `k` later runs,
+positive exponent sequences of total at most `N` number `binom(N,k)`.
+Summing `7**k binom(N,k)` gives `8**N`. Programs shorter than `r` runs
+are already counted among the prefixes. Thus behaviours number at most
+`exp((ln 8 + o(1)) L/ln L)`. Comparing with `2**T` and using the already
+proved `C_F(n) = Theta(T ln T)` gives the lower coefficient above.
+
+For the upper bound take any fixed `theta > 7/12` in the prime-gap argument.
+Then `ln Q <= (1/(1-theta)) ln m + O(1)`, while the tree witness has
+`C <= (35/2)T + O(n)`, `m <= C`. Its digits are at most
+`C log10 Q + O(1)`. Letting `theta` decrease to `7/12` gives
+`(35/2)*(12/5)*log10 2 = 42 log10 2`.
+Executed parity encodings at n=1..5 contain 181, 352, 672, 1296, 2592 digits;
+all 62 input rows return parity. Their normalized costs 90.5, 44, 28, 20.25,
+16.2 are finite measurements, not a lower bound or an asymptotic limit.

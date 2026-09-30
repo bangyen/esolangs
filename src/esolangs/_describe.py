@@ -76,7 +76,7 @@ def describe(language: str) -> LanguageInfo:
     the ``(zero, one)`` pair (``("%", "A")`` for Grapheme) -- the wrong
     alphabet is a wrong answer.  Answer: ``answer_mode`` is ``"output"``
     (last non-whitespace character), ``"dump"`` (a fixed place in the final
-    state) or ``"termination"`` (a timeout *is* an answer);
+    state) or ``"termination"`` (a proven halt or divergence);
     ``answer_pattern`` is the regex whose first group holds it;
     ``answer_encoding`` the ``(zero, one)`` or ``("halts", "diverges")``;
     ``answer_convention`` prose.  These describe raw output (A Painter Ant's

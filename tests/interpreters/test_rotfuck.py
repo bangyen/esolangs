@@ -262,3 +262,22 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     machine = staticmethod(_machine)
     stepping_program = "."
     halting_program = "."
+    no_cycle_reason = "ROTfuck snapshots retain the increasing rotation count."
+
+
+@pytest.mark.parametrize("code", [build("+-><,.[]"), "+<.]>", "[[]", "comment"])
+def test_rotation_and_cursor_preclude_snapshot_cycles(code: str) -> None:
+    from esolangs.interpreters.tape_based.rotfuck import _Machine
+
+    machine = _Machine(code, ScriptedIO("x\n" * 100))
+    for _ in range(100):
+        if machine.halted:
+            break
+        before = machine.snapshot()
+        rank = (machine.prog.rotation(), machine.ind)
+        try:
+            machine.step()
+        except HaltError:
+            break
+        assert (machine.prog.rotation(), machine.ind) > rank
+        assert machine.snapshot() != before

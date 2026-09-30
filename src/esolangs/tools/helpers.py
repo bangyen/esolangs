@@ -314,17 +314,60 @@ def permute_truth_table(truth_table: str, perm: tuple[int, ...]) -> str:
     return read_at(truth_table, perm, len(perm))
 
 
-def essential_inputs(truth_table: str, n: int) -> list[int]:
-    """Which input positions the table's value actually depends on.
+def _residual_ids(
+    truth_table: str, n: int
+) -> tuple[list[list[int]], dict[int, tuple[int, int]], dict[int, int | None]]:
+    """Canonical residual IDs, children and constant values in O(T) RAM work."""
+    levels: list[list[int]] = [[] for _ in range(n + 1)]
+    ids = [1 if bit == "1" else 0 for bit in truth_table]
+    levels[n] = list(dict.fromkeys(ids))
+    children: dict[int, tuple[int, int]] = {}
+    constants: dict[int, int | None] = {0: 0, 1: 1}
+    serial = 2
+    for k in range(n - 1, -1, -1):
+        names: dict[tuple[int, int], int] = {}
+        parents = []
+        for zero, one in zip(ids[::2], ids[1::2], strict=True):
+            pair = (zero, one)
+            if pair not in names:
+                names[pair] = serial
+                children[serial] = pair
+                constants[serial] = (
+                    constants[zero] if constants[zero] == constants[one] else None
+                )
+                serial += 1
+            parents.append(names[pair])
+        levels[k] = list(names.values())
+        ids = parents
+    return levels, children, constants
 
-    Input ``i`` matters when flipping it changes some row; a table
-    ignoring some inputs is a smaller table wearing extra ones, which
-    :func:`read_at` projects down.  Three generators derived this
-    independently before it moved here (checked equal to ``n == 4``).
-    Theta(n * 2**n) = O(T log T): one scan per input, intrinsic to the
-    check; each scan is a C-level slice compare per block.
+
+def essential_inputs(truth_table: str, n: int) -> list[int]:
+    """Input positions affecting the table, with O(T) worst-case RAM work.
+
+    Slice comparisons stop early on dense tables. After four table lengths
+    of comparisons, canonical child IDs bound the remaining work instead.
     """
-    return [i for i in range(n) if _depends_on(truth_table, 1 << (n - 1 - i))]
+    budget = 4 * len(truth_table)
+    result = []
+    for i in range(n):
+        half = 1 << (n - 1 - i)
+        block = 2 * half
+        for lo in range(0, len(truth_table), block):
+            if block > budget:
+                if truth_table.count(truth_table[0]) == len(truth_table):
+                    return []
+                levels, children, _ = _residual_ids(truth_table, n)
+                return [
+                    k
+                    for k in range(n)
+                    if any(children[s][0] != children[s][1] for s in levels[k])
+                ]
+            budget -= block
+            if truth_table[lo : lo + half] != truth_table[lo + half : lo + block]:
+                result.append(i)
+                break
+    return result
 
 
 def _depends_on(truth_table: str, half: int) -> bool:

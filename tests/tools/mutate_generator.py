@@ -569,7 +569,7 @@ def _runner_command(kind: _Kind, tests: list[str]) -> str:
 
 
 def _prepare(
-    family: str, module: str, work: Path, *, slow: bool
+    family: str, module: str, work: Path, *, slow: bool, selection: str | None = None
 ) -> tuple[Path, list[str]]:
     """Lay out the work directory; return (project dir, selected test files).
 
@@ -647,7 +647,12 @@ def _prepare(
     runner = _runner_command(kind, tests)
     # In addopts rather than in the runner's arguments, so that mutmut's
     # stats pass -- which supplies its own -- deselects these too.
-    addopts = "" if slow else 'addopts = ["-m", "not slow"]\n'
+    options = ["-n", "0"]
+    if not slow:
+        options += ["-m", "not slow"]
+    if selection is not None:
+        options += ["-k", selection]
+    addopts = f"addopts = {json.dumps(options)}\n"
     (proj / "pyproject.toml").write_text(
         "[tool.mutmut]\n"
         f'paths_to_mutate = ["{rel_target}"]\n'
@@ -762,12 +767,24 @@ def main() -> int:
         help="mutants to run at once (default 4; mutmut's own default is "
         "every core, which saturates the machine for the whole run)",
     )
+    parser.add_argument("--report", type=Path, help="write the completed score as JSON")
+    parser.add_argument(
+        "--focused",
+        action="store_true",
+        help="select test names containing the module name for bounded scheduled runs",
+    )
     args = parser.parse_args()
 
     family, module = _parse_target(args.module)
     work = Path(tempfile.mkdtemp(prefix="mutate-generator-"))
     try:
-        proj, tests = _prepare(family, module, work, slow=args.slow)
+        proj, tests = _prepare(
+            family,
+            module,
+            work,
+            slow=args.slow,
+            selection=module if args.focused else None,
+        )
         print(f"[note] mutating {family}/{module}")
         print(f"[note] selected {len(tests)} test file(s): {', '.join(tests)}")
         _check_shadowing(proj, family, module)
@@ -835,6 +852,10 @@ def main() -> int:
                 "than the baseline the budget came from."
             )
 
+        if mutation.returncode != 0:
+            print(mutation.stdout[-3000:] or mutation.stderr[-3000:])
+            raise SystemExit("mutmut failed before completing; no score recorded")
+
         killed, total, survivors = _score(proj, family, module)
         if not total:
             raise SystemExit("no mutants were generated")
@@ -852,6 +873,22 @@ def main() -> int:
             f"\n{family}/{module}: {killed}/{total} killed "
             f"({100 * killed / total:.1f}%)"
         )
+        if args.report is not None:
+            args.report.write_text(
+                json.dumps(
+                    {
+                        "kind": "generator",
+                        "target": f"{family}/{module}",
+                        "killed": killed,
+                        "total": total,
+                        "survivors": survivors,
+                        "work_dir": str(work),
+                        "test_selection": module if args.focused else None,
+                    },
+                    indent=2,
+                )
+                + "\n"
+            )
         if survivors:
             print(f"\n{len(survivors)} survived:")
             for name in survivors:

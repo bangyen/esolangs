@@ -150,6 +150,9 @@ class TestSamplesCoverEveryLanguage:
     set equality is what makes the omission fail.
     """
 
+    def test_post_halt_exceptions_stay_empty(self) -> None:
+        assert not RAISES_ON_THE_POST_HALT_STEP
+
     def test_every_registry_language_has_a_sample(self) -> None:
         assert sorted(set(RUNNERS) - set(SAMPLES)) == []
 
