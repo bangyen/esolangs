@@ -7,8 +7,8 @@ execution path.
 
 ## What makes a candidate worth adding
 
-A language earns a place by forcing a point the existing set does not
-already occupy.  Four axes, with what currently sits on each:
+A new language must add a construction, branch mechanism, answer convention,
+or input interface the existing set does not cover:
 
 - **Construction shape** -- decision tree (the default), minterm sum
   (`bfstack`, `vandevelo`), ANF/XOR-of-products (`fargo`, and `super_snusp`
@@ -67,7 +67,7 @@ interpreter reads input or raises them.
 
 ## What makes a generator optimization worth shipping
 
-A generator size optimization must clear all of:
+A generator size optimization must meet every requirement below:
 
 - **5% or more** off the total emitted size over all 256 three-input tables,
   measured against its parent. ArrowQueue's 2.1% rotation gain was reverted.
@@ -88,8 +88,7 @@ A generator size optimization must clear all of:
   interpreter forgives it (truncated keywords, missing operands) is not
   shorter.
 
-A change aimed at execution time clears the same bar with steps in place of
-size: 5% or more off the executed commands summed over every row of the
+Execution-time optimizations use the same threshold, measured in steps: 5% or more off the executed commands summed over every row of the
 three-input tables (`scripts/screens/steps.py`), and no table slower *or*
 larger.  Where a generator chooses among candidates, it chooses by size and
 breaks ties by steps, so a step win never buys itself with characters.
@@ -106,5 +105,3 @@ Use `scripts/screens/` to bound the upside first.
    `source_units` and `commands`, not wall-clock time.
 5. Regenerate docs, then run `just test`; `just test-full` for release-scale
    changes.
-
-Preserve generated-file contracts, and require an end-to-end capability.

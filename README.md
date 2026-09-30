@@ -14,19 +14,14 @@ Interpreters and Boolean generators for 75 esoteric languages: 73 text and 2 ras
 `generate` takes a truth table and returns a program computing it;
 `verify` runs that program on every row and checks what it answers.
 
-[usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md) is the
-caller's guide -- a guided example, exported functions, input shapes,
-templates, answer extraction, debugging, and compatibility.
-[architecture](https://github.com/bangyen/esolangs/blob/main/docs/architecture.md)
-shows how the registry, generators, interpreters, and answer extraction
-connect.
-[roadmap](https://github.com/bangyen/esolangs/blob/main/docs/roadmap.md) tracks
-live work and
-[limitations](https://github.com/bangyen/esolangs/blob/main/docs/limitations.md)
-records contracts.
-
-Start with the [CLI](#command-line), [Python API](#python-api), or
-[contribution guide](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md).
+Start with the [CLI](#command-line) or [Python API](#python-api).
+The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
+covers inputs, templates, answers, and debugging.
+For development, see [architecture](https://github.com/bangyen/esolangs/blob/main/docs/architecture.md)
+and [contributing](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md).
+[Limitations](https://github.com/bangyen/esolangs/blob/main/docs/limitations.md)
+records contracts; the [roadmap](https://github.com/bangyen/esolangs/blob/main/docs/roadmap.md)
+tracks open work.
 
 ## Command line
 
@@ -74,9 +69,8 @@ halt or cycle; reaching a timeout raises `ExecutionTimeoutError`.
 The default row timeout requires a Unix main thread. `timeout=None` disables
 that bound and also works on Windows and worker threads.
 
-Pass each command the language it was generated for: running a Suffolk
-program as brainfuck does not fail, it reports something useless.  How a
-language reads its input bits is not universal either -- let
+Run each program with its intended language: a Suffolk program may run as
+brainfuck but produce the wrong answer. Input formats also vary; use
 [`encode_inputs`](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program)
 build the stdin.
 
@@ -243,8 +237,6 @@ Line is an image-language module under `esolangs.line`; its suite is
 `tests/line/`, run with the rest by `just test`.
 
 ## Generators
-
-Boolean generators accept a most-significant-input-first binary truth table.
 
 <!-- BOOLEAN-COUNT:START -->
 
