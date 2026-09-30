@@ -41,11 +41,38 @@ def _reflect_back(grid: dict[tuple[int, int], str], height: int, width: int) -> 
     return "\n".join(lines)
 
 
-def back(truth_table: str) -> str:
+def _descending_back(grid: dict[tuple[int, int], str], n: int, cells: list[int]) -> str:
+    """Reflect the tree below a downward loader, without outer entry columns."""
+    units: list[str] = []
+    at = 0
+    for cell in cells:
+        units.extend((">" if cell > at else "<") * abs(cell - at))
+        units.extend(("-", _BACK_INPUT))
+        at = cell
+    units.extend(">" * (n - at))
+    units.extend("<" * n)
+    top = len(units) + 1
+    last = max(column for _, column in grid)
+    rows: dict[int, dict[int, str]] = {0: {last: "\\"}}
+    for row, unit in enumerate(units, 1):
+        rows[row] = {last: unit}
+    rows[top] = {last: "/"}
+    mirrors = {"/": "\\", "\\": "/"}
+    for (row, column), char in grid.items():
+        rows.setdefault(top + row, {})[last - column] = mirrors.get(char, char)
+    return "\n".join(
+        "".join(painted.get(x, " ") for x in range(max(painted, default=-1) + 1))
+        for y in range(max(rows) + 1)
+        for painted in [rows.get(y, {})]
+    )
+
+
+def back(truth_table: str, width: int | None = None) -> str:
     r"""Build a Back template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
+    Width puts the loader above the tree, removing two entry columns.
 
     Back is a no-input grid language: a beam travels the grid and ``-`` flips
     the current tape bit, ``+`` steps the beam forward when the current bit
@@ -84,10 +111,12 @@ def back(truth_table: str) -> str:
     costs a leaf one ``-`` instead of one extra pointer move.
     """
     n = _validate_truth_table(truth_table)
-    return _back_ordered(truth_table, tuple(range(n)))
+    return _back_ordered(truth_table, tuple(range(n)), width)
 
 
-def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+def _back_ordered(
+    truth_table: str, perm: tuple[int, ...], width: int | None = None
+) -> str:
     r"""Build one Back template, loading its inputs in ``perm`` order.
 
     ``truth_table`` is already permuted, so every row index here is in the
@@ -183,6 +212,11 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
 
     emit(0, 0, 2**n, 0, 1)  # tree root at column 1, the beam arriving rightward
+
+    if width is not None and width > 0:
+        span = max(c for _, c in grid) + 3
+        if span > width:
+            return _descending_back(grid, n, cells)
 
     # Height is max(tree 2**n, load units + 1).  Past n=3 load rows share with
     # tree rows; safe only because a run is one character for either bit.
