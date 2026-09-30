@@ -132,7 +132,7 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     tree with 3x3 leaves, constant subtrees folded (:func:`_drained_leaf`);
     from five a cascade of at most ``6n`` + ``3 * 2**n`` rows, linear in the
     table, its constant tail folded (:func:`_cascade`).  An over-wide tree
-    uses the cascade instead; its six-column floor preserves the rings.
+    uses the cascade instead; its five-column floor preserves the rings.
     """
     n = _validate_truth_table(truth_table)
     tree = (
@@ -143,7 +143,12 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     if tree is None or (
         width is not None and width > 0 and max(map(len, tree.split("\n"))) > width
     ):
-        rows = ["  ~*", *(_STAGE * n), *_MIDDLE, *_cascade(truth_table)]
+        leaves = _cascade(truth_table)
+        if width is not None and 0 < width < 6:
+            # Entry travels down column1; column2 in every leaf is only blank
+            # travel between that selector and its ring, so remove it locally.
+            leaves = [row[:2] + row[3:] for row in leaves]
+        rows = ["  ~*", *(_STAGE * n), *_MIDDLE, *leaves]
         return "\n".join(row.rstrip() for row in rows)
     return tree
 
