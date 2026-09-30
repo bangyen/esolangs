@@ -290,3 +290,22 @@ def test_descending_loader_walks_permuted_cells_in_name_order() -> None:
     for row, expected in enumerate(table):
         bits = list(map(int, f"{row:03b}"))
         assert runner.run_back(runner.instantiate(template, bits), 3) == expected
+
+
+@pytest.mark.medium
+def test_vertical_leaf_finish_preserves_every_small_table() -> None:
+    import esolangs
+
+    runner = TestParameterizedBack()
+    for n in range(1, 4):
+        size = 1 << n
+        for value in range(1 << size):
+            table = f"{value:0{size}b}"
+            template = esolangs.generate("back", table, 1)
+            for row, expected in enumerate(table):
+                bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
+                code = esolangs.instantiate(
+                    "back", str(template), bits, truth_table=table
+                )
+                assert runner.run_back(code, n) == expected
+    assert max(map(len, esolangs.generate("back", "0110", 1).splitlines())) == 8

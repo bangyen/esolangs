@@ -187,14 +187,22 @@ def _back_ordered(
     grid: dict[tuple[int, int], str] = {}
     next_row = [1]
     constant = constant_span_test(truth_table)
+    vertical = False
 
     def leaf(level: int, value: str, row: int, col: int) -> None:
         # Walk to cell n, flip it (starts 0) for a 1-leaf, halt.
         delta = n - level
         move = (">" if delta >= 0 else "<") * abs(delta)
         code = move + ("-" if value == "1" else "") + "*"
-        for k, ch in enumerate(code):
-            grid[(row, col + k)] = ch
+        if vertical:
+            # Reserved DFS rows turn leaf finishers down without widening the tree.
+            grid[(row, col)] = "\\"
+            for k, ch in enumerate(code, 1):
+                grid[(row + k, col)] = ch
+            next_row[0] = max(next_row[0], row + len(code) + 1)
+        else:
+            for k, ch in enumerate(code):
+                grid[(row, col + k)] = ch
 
     def emit(level: int, lo: int, hi: int, row: int, col: int) -> None:
         if level == n or constant(lo, hi):
@@ -216,7 +224,15 @@ def _back_ordered(
     if width is not None and width > 0:
         span = max(c for _, c in grid) + 3
         if span > width:
-            return _descending_back(grid, n, cells)
+            original = _descending_back(grid, n, cells)
+            vertical = True
+            grid.clear()
+            next_row[0] = 1
+            emit(0, 0, 2**n, 0, 1)
+            narrow = _descending_back(grid, n, cells)
+            return min(
+                (original, narrow), key=lambda code: max(map(len, code.splitlines()))
+            )
 
     # Height is max(tree 2**n, load units + 1).  Past n=3 load rows share with
     # tree rows; safe only because a run is one character for either bit.
