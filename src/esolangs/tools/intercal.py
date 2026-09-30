@@ -32,7 +32,7 @@ class _Expr:
             children, operator = (*self.children, _Expr("constant", 1)), "?"
         else:
             children = self.children
-            operator = "&" if self.op == "and" else "V"
+            operator = {"and": "&", "or": "V", "xor": "?"}[self.op]
         left, right = children
         mingled = (
             f"{inner}{operator}{left.render(depth + 2)}$"
@@ -53,6 +53,9 @@ def intercal(truth_table: str, width: int | None = None) -> str:
     natural = best_input_order(truth_table, _intercal_either)
     if width is None or width <= 0 or max(map(len, natural.splitlines())) <= width:
         return natural
+    previous = _intercal_narrow(truth_table, simplify=False)
+    if max(map(len, previous.splitlines())) <= width:
+        return previous
     narrow = _intercal_narrow(truth_table)
     return (
         narrow
@@ -61,10 +64,11 @@ def intercal(truth_table: str, width: int | None = None) -> str:
     )
 
 
-def _intercal_narrow(truth_table: str) -> str:
+def _intercal_narrow(truth_table: str, *, simplify: bool = True) -> str:
     """Name each primitive operation in the reduced Shannon diagram.
 
     At most O(T/log T) diagram nodes need O(log T)-digit names: O(T) source.
+    Constant arms simplify Boolean operations; complementary arms use XOR.
     Each assignment has only one mingle/unary/select frame.
     """
     n = _validate_truth_table(truth_table)
@@ -77,12 +81,45 @@ def _intercal_narrow(truth_table: str) -> str:
         return _Expr("input", variable - 1)
 
     selectors = [_Expr("input", n - 1 - level) for level in range(n)]
-    negated = [name(_Expr("not", children=(selector,))) for selector in selectors]
+    if not simplify:
+        inverses = [name(_Expr("not", children=(selector,))) for selector in selectors]
+        previous = [_ZERO, _ONE]
+        for level, zero, one in nodes[2:]:
+            low = name(_Expr("and", children=(inverses[level], previous[zero])))
+            high = name(_Expr("and", children=(selectors[level], previous[one])))
+            previous.append(name(_Expr("or", children=(low, high))))
+        return _program(n, assigned, previous[root])
+    negated: dict[int, _Expr] = {}
     results = [_ZERO, _ONE]
-    for level, zero, one in nodes[2:]:
-        low = name(_Expr("and", children=(negated[level], results[zero])))
-        high = name(_Expr("and", children=(selectors[level], results[one])))
-        results.append(name(_Expr("or", children=(low, high))))
+    complements = {0: 1, 1: 0}
+    seen: dict[tuple[int, int, int], int] = {}
+    for node, (level, zero, one) in enumerate(nodes[2:], 2):
+        mirror = (level, complements.get(zero, -1), complements.get(one, -1))
+        if mirror in seen:
+            other = seen[mirror]
+            complements[node], complements[other] = other, node
+        seen[level, zero, one] = node
+        selector = selectors[level]
+        if (zero, one) == (0, 1):
+            result = selector
+        elif complements.get(zero) == one:
+            result = name(_Expr("xor", children=(selector, results[zero])))
+        else:
+            if level not in negated:
+                negated[level] = name(_Expr("not", children=(selector,)))
+            if zero == 0:
+                result = name(_Expr("and", children=(selector, results[one])))
+            elif one == 0:
+                result = name(_Expr("and", children=(negated[level], results[zero])))
+            elif zero == 1:
+                result = name(_Expr("or", children=(negated[level], results[one])))
+            elif one == 1:
+                result = name(_Expr("or", children=(selector, results[zero])))
+            else:
+                low = name(_Expr("and", children=(negated[level], results[zero])))
+                high = name(_Expr("and", children=(selector, results[one])))
+                result = name(_Expr("or", children=(low, high)))
+        results.append(result)
     return _program(n, assigned, results[root])
 
 
