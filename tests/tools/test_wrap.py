@@ -155,7 +155,6 @@ WIDTH_EXCEPTIONS = {
         "back",
         "befunge",
         "fish",
-        "clockwise",
         "collatz_multiverse",
         "container",
         "crement",
