@@ -155,9 +155,33 @@ def _deque_plan(order: tuple[int, ...]) -> tuple[list[bool], list[bool]] | None:
     return head_push, head_pop
 
 
-def thisthat(truth_table: str) -> str:
-    """Return a planar thisthat decision tree with linear source area."""
-    return _tree(truth_table)
+def thisthat(truth_table: str, width: int | None = None) -> str:
+    """Return a linear-area tree, rotated when narrower than an over-wide row."""
+    program = _tree(truth_table)
+    lines = program.splitlines()
+    span = max(map(len, lines))
+    if width is None or width <= 0 or span <= width or len(lines) >= span:
+        return program
+    # Rotate physical ports and router directions; bistack operations name
+    # logical memory axes, independent of the diagram's orientation.
+    directions = {"E": "N", "N": "W", "W": "S", "S": "E"}
+    glyphs = dict(zip("◐◑◒◓", "◒◓◑◐", strict=True))
+    for alphabet in (_SINGLE, _DOUBLE):
+        glyphs.update(
+            {
+                glyph: alphabet[frozenset(directions[p] for p in ports)]
+                for ports, glyph in alphabet.items()
+            }
+        )
+    rows: list[dict[int, str]] = [{} for _ in range(span)]
+    for y, line in enumerate(lines):
+        for x, char in enumerate(line):
+            if char != " ":
+                rows[span - x - 1][y] = glyphs.get(char, char)
+    return "\n".join(
+        "".join(row.get(x, " ") for x in range(max(row, default=-1) + 1))
+        for row in rows
+    )
 
 
 def _tree(truth_table: str, *, prune: bool = True, reorder: bool = True) -> str:

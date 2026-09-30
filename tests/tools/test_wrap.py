@@ -154,7 +154,6 @@ WIDTH_EXCEPTIONS = {
         "grapheme",
         "nocomment",
         "thue",
-        "thisthat",
     )
 }
 
