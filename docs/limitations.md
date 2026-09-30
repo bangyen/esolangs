@@ -71,6 +71,10 @@ dense, parity, constant tables were executed exhaustively at each shipped
 arity. Construction details and measurements are in
 [malbolge-scaling](proofs/malbolge-scaling.md).
 
+Seventeen remains open. Executed decoder and instruction-reuse controls exist,
+but no source joins the address fold, row selector and complete decoder around
+an arbitrary full truth table. The shipped cap remains sixteen.
+
 Counting bounds each family independently of mixer quality:
 
 - stubs need three gap-3 cells per row: `3 * 2**n <= 59049`, hence `n <= 14`;
@@ -110,7 +114,7 @@ expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 16 | 16 | Stubs need gap-3 readouts (none at eleven bits); the hashed cascade through fourteen resolves collisions over up to three levels and stops where their depth outruns the decoder. Fifteen and sixteen address positionally, three bits per two-trit digit, so no row collides; seventeen would need 65,536 row-pair cells in a 59,049-cell store ([scaling](proofs/malbolge-scaling.md)). |
+| Malbolge | 16 | 16 | Stubs need gap-3 readouts (none at eleven bits); the hashed cascade through fourteen resolves collisions over up to three levels and stops where their depth outruns the decoder. Fifteen and sixteen address positionally, three bits per two-trit digit, so no row collides; that positional readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell packing remains unintegrated ([scaling](proofs/malbolge-scaling.md)). |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
