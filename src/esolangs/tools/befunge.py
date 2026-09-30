@@ -16,19 +16,18 @@ _ASCII_ZERO = "68*"
 _END = ".@"
 
 
-def befunge(truth_table: str) -> str:
+def befunge(truth_table: str, width: int | None = None) -> str:
     """Return a Befunge grid computing ``truth_table``.
 
-    Row 0 is the header, which consumes the bits and ``g``s the answer; the
-    table follows, ``width`` columns wide, so row ``r`` sits at
-    ``(r % width, 1 + r // width)``.  ``width`` is a power of two near
-    ``sqrt(T)``, built by doubling so the header stays O(n) wide, and the
-    answer is the cell's character less the ASCII zero.
+    The natural grid has a straight header and a power-of-two table width
+    near ``sqrt(T)``.  An over-wide header folds along alternating rows;
+    ``g`` addresses the table below them.  The width floor reserves enough
+    cells for both within the 80x25 torus.
     """
     n = _validate_truth_table(truth_table)
     count = 1 << n
     shift = (n + 1) // 2
-    width = 1 << shift
+    table_width = 1 << shift
     # ``1`` then ``2*`` shift times is ``2**shift``; both are single commands.
     build_width = "1" + "2*" * shift
     header = (
@@ -44,5 +43,46 @@ def befunge(truth_table: str) -> str:
         + _END
     )
     rows = [header]
-    rows.extend(truth_table[base : base + width] for base in range(0, count, width))
-    return "\n".join(rows)
+    rows.extend(
+        truth_table[base : base + table_width] for base in range(0, count, table_width)
+    )
+    plain = "\n".join(rows)
+    if width is None or width <= 0 or max(map(len, rows)) <= width:
+        return plain
+    # At most two decimal digits per coordinate on the 80x25 torus.
+    # Reserving 23 rows of payload leaves the ceiling slack below 25 rows.
+    header_bound = 5 * n + 34
+    columns = min(80, max(width, 4, (count + header_bound + 22) // 23 + 2))
+    header_rows = (header_bound + columns - 3) // (columns - 2)
+    literal = _literal(columns)
+    header = (
+        "0"
+        + "&\\2*+" * n
+        + ":"
+        + literal
+        + "%\\"
+        + literal
+        + "/"
+        + _literal(header_rows)
+        + "+g"
+        + _ASCII_ZERO
+        + "-"
+        + _END
+    )
+    folded = []
+    for row, base in enumerate(range(0, len(header), columns - 2)):
+        payload = header[base : base + columns - 2].ljust(columns - 2)
+        folded.append(
+            ">" + payload + "v" if row % 2 == 0 else "v" + payload[::-1] + "<"
+        )
+    folded.extend("" for _ in range(header_rows - len(folded)))
+    folded.extend(
+        truth_table[base : base + columns] for base in range(0, count, columns)
+    )
+    return "\n".join(folded)
+
+
+def _literal(value: int) -> str:
+    """Push ``value`` with decimal Horner arithmetic, one digit per cell."""
+    digits = str(value)
+    return digits[0] + "".join("91+*" + digit + "+" for digit in digits[1:])
