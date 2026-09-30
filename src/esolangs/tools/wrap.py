@@ -44,7 +44,7 @@ def wrap_space_delimited(program: str, width: int) -> str:
     return _join_tokens(program.split(), width, separator=" ")
 
 
-_PACKLANG_TOKEN = r"[A-Za-z_][A-Za-z_0-9]*|\d+|[{}();:,^!]"
+_PACKLANG_LEXEME = r"[A-Za-z_][A-Za-z_0-9]*|\d+|[{}();:,^!]"
 
 
 def _packlang(program: str, width: int) -> str:
@@ -54,7 +54,7 @@ def _packlang(program: str, width: int) -> str:
         if len(line) <= width:
             lines.append(line)
             continue
-        tokens = re.findall(_PACKLANG_TOKEN, line)
+        tokens = re.findall(_PACKLANG_LEXEME, line)
         if "".join(tokens) != "".join(line.split()):
             return program
         indent = line[: len(line) - len(line.lstrip())]

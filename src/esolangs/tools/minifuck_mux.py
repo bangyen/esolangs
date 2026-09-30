@@ -2,8 +2,6 @@
 
 Each input is weighted as it lands so every row selects its own control
 cell; the strip is preloaded with the table and one left run reads it.
-The sculpted route this module used to hold (separate, then fix rows one by
-one) and its staged predecessor were deleted: nothing shipped reached them.
 """
 
 from functools import cache
