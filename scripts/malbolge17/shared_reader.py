@@ -26,6 +26,7 @@ def build_shared_reader() -> tuple[
     plan.goto(142)
     plan.raw("j")
     # Only C is needed after the runtime jump; D is the live base, not group.base.
+    outputs["read_operand_c"] = plan.c
     plan.raw("p")
     plan.raw("<")
     halt = plan.c
@@ -50,19 +51,33 @@ def main() -> None:
         frozenset({142, 145, 139, 144}), external_pointer=True, runtime_base=True
     )
     total = 0
-    for prefix in control_inputs():
+    # Prefix 83 reads cell 29627 after navigation has enciphered it.
+    overlap = tuple((83 >> shift) & 1 for shift in range(13, -1, -1))
+    changed_operand = False
+    for prefix in itertools.chain(control_inputs(), (overlap,)):
         for row, tail in enumerate(itertools.product((0, 1), repeat=3)):
             memory = list(_initial_memory(source))
             state = (0, 0, 0, False)
             inputs = iter(48 + bit for bit in prefix + tail)
             printed = []
             expected = None
+            entry_operand = None
             for _ in range(100_000):
                 if state[1] == outputs["shared_entry"]:
                     check_setup_memory(memory, groups, outputs, group, prefix)
                     base = memory[142] + 1
-                    expected = _crazy(_VIEW[base % 2], memory[base])
+                    entry_operand = memory[base]
                     parity = _rot(memory[145])
+                if state[1] == outputs["read_operand_c"]:
+                    assert state[2] == base
+                    assert state[0] == _VIEW[base % 2]
+                    expected = _crazy(state[0], memory[base])
+                    if prefix == overlap:
+                        assert entry_operand is not None
+                        assert base == 29627
+                        assert memory[base] != entry_operand
+                        assert expected != _crazy(state[0], entry_operand)
+                        changed_operand = True
                 char = next(inputs) if _op(memory[state[1]], state[1]) == "/" else None
                 state, writes, effect = _advance(state, memory, char)
                 for address, value in writes:
@@ -82,6 +97,8 @@ def main() -> None:
             helpers[outputs["read_view_cell"]] = _VIEW[base % 2]
             assert all(memory[cell] == value for cell, value in helpers.items())
             total += 1
+    assert changed_operand
+    assert total == 264
     print(
         f"shared live read: {total} executed controls; "
         f"{outputs['read_code_cells']} code cells"
