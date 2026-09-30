@@ -595,6 +595,25 @@ def _dig_quarter_turn(program: str) -> str:
     return "\n".join("".join(row).rstrip() for row in grid)
 
 
+def _dig_xor_pair() -> str:
+    """Compute a+b-2ab in four operand-sharing passes, with two input reads."""
+    # Down the first column: read/store a and b. Up the second: copy b
+    # into three cells, add a, store their sum. Down the third: copy the
+    # sum twice, subtract b, multiply by b, and store ab three times.
+    # The final climb starts with ab, subtracts its three stored copies,
+    # adds the saved sum, and prints. Separating stores from readers
+    # prevents the up/right/down/left operand priority selecting a copy.
+    columns = (
+        "'$~;  ~;   >",
+        ">9;+ ;;;  $^",
+        "'$;; -*;;;8>",
+        "@8:+   ---$^",
+    )
+    return "\n".join(
+        "".join(column[row] for column in columns).rstrip() for row in range(12)
+    )
+
+
 def dig(truth_table: str, width: int | None = None) -> str:
     """Build a Dig program computing the given truth table.
 
@@ -609,9 +628,12 @@ def dig(truth_table: str, width: int | None = None) -> str:
     (``;``) and ``#`` turns on it, and in the band layouts a constant
     subtree becomes a leaf whose rows are never written.  A level of those
     costs five columns, and under ``5 * n + 6`` the tree turns round once
-    (:func:`_dig_columns`).
+    (:func:`_dig_columns`). Two-input XOR below width eight uses a four-column
+    polynomial stencil instead.
     """
     n = _validate_truth_table(truth_table)
+    if width is not None and 0 < width < 8 and truth_table == "0110":
+        return _dig_xor_pair()
     if width is None and n > 4:
         return _dig_alternating(truth_table, n)
     flat = _dig_grid(truth_table, n, None)
