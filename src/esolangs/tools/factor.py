@@ -16,8 +16,9 @@ from every input, replacing ``48 * (n + 1)`` characters with 29.  That is
 456 tables, exhaustive through three inputs and sampled to six.  A plain
 tree candidate was dropped for never winning one of them.
 
-Terminal transfers save 7.44% of digits over all three-input tables; the
-old tree remains a candidate because prime positions weight the saving.
+Putting the answer in the final input's unused flag saves 7.99% against
+the previous terminal transfers over all three-input tables. Earlier trees
+remain weighted-cost candidates.
 
 And the input order wants choosing by digits rather than by characters,
 which is what :func:`~esolangs.tools.helpers.best_input_order` measures:
@@ -119,19 +120,26 @@ def _encode(code: str) -> int:
 
 
 def _program(
-    truth_table: str, perm: tuple[int, ...], *, binary_leaves: bool = False
+    truth_table: str,
+    perm: tuple[int, ...],
+    *,
+    binary_leaves: bool = False,
+    compact_result: bool = False,
 ) -> str:
     """Build the Brainfuck program Factor encodes, for one input order.
 
     Input ``k`` is read into cell ``2k`` with its flag at ``2k + 1`` and the
-    answer at ``2n``, the layout the shared tree body expects.  Above the
-    tree, one multiply loop puts 48 in the scratch cell at ``2n + 1`` and in
+    answer at ``2n`` (``2n - 1`` with compact terminal transfers). Above the
+    tree, one multiply loop puts 48 in the cell after the answer and in
     the answer cell, and one loop takes 48 off every input; the answer cell
     therefore already holds ``'0'`` when the tree runs, so a ``'1'`` leaf's
     single ``+`` finishes it and the print below the tree is bare.
     """
     n = _validate_truth_table(truth_table)
-    scratch, multiplier = 2 * n + 1, 2 * n + 2
+    if compact_result and (not binary_leaves or perm[-1] != n - 1):
+        raise ValueError("compact answer requires the last physical input tested last")
+    result = 2 * n - int(compact_result)
+    scratch, multiplier = result + 1, result + 2
     after_reads = 2 * (n - 1)
     back = scratch - after_reads
 
@@ -159,9 +167,15 @@ def _program(
         + "<" * back
     )
     body, pos = decision_tree_body(
-        truth_table, ">", "<", perm, after_reads, binary_leaves=binary_leaves
+        truth_table,
+        ">",
+        "<",
+        perm,
+        after_reads,
+        binary_leaves=binary_leaves,
+        result=result,
     )
-    return build + reads + dedent + body + move_text(pos, 2 * n, ">", "<") + "."
+    return build + reads + dedent + body + move_text(pos, result, ">", "<") + "."
 
 
 def factor(truth_table: str) -> str:
@@ -178,6 +192,7 @@ def factor(truth_table: str) -> str:
     candidates = [
         _program(truth_table, identity),
         _program(truth_table, identity, binary_leaves=True),
+        _program(truth_table, identity, binary_leaves=True, compact_result=True),
     ]
     if n <= _GREEDY_ORDER_MAX_ARITY:
         greedy = _greedy_input_order(truth_table, n)
@@ -190,6 +205,15 @@ def factor(truth_table: str) -> str:
                     permute_truth_table(truth_table, greedy), greedy, binary_leaves=True
                 )
             )
+            if greedy[-1] == n - 1:
+                candidates.append(
+                    _program(
+                        permute_truth_table(truth_table, greedy),
+                        greedy,
+                        binary_leaves=True,
+                        compact_result=True,
+                    )
+                )
 
     number = _encode(min(candidates, key=_digit_cost))
     digits = int(number.bit_length() * 0.30103) + 1

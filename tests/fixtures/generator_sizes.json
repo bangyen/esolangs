@@ -480,16 +480,16 @@
   },
   "Factor": {
    "0110": {
-    "commands": 866,
-    "source_units": 305
+    "commands": 761,
+    "source_units": 266
    },
    "01101001": {
-    "commands": 1126,
-    "source_units": 563
+    "commands": 1023,
+    "source_units": 501
    },
    "0110100110010110": {
-    "commands": 1396,
-    "source_units": 1079
+    "commands": 1291,
+    "source_units": 966
    }
   },
   "Fargo": {
