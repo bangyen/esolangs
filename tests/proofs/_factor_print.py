@@ -34,12 +34,8 @@ def _body(table: str, n: int, start: int, result: int, zero: int) -> str:
             cells.append(".")
             return
         flag = bit + 1
-        move(flag)
-        cells.append("+")
         move(bit)
         cells.append("[-")
-        move(flag)
-        cells.append("-")
         move(bit + 2)
         node(i + 1, offset + 2 ** (n - 1 - i))
         move(bit)
@@ -93,5 +89,21 @@ def printed_program(truth_table: str, *, reverse_last: bool = False) -> str:
             + "]"
             + "<" * back
         )
-    body = _body(truth_table, n, after_reads, result, zero)
-    return build + reads + inversion + dedent + body
+    prepared: list[str] = []
+    pos = after_reads
+    temp = multiplier + 1
+    for i in range(n - 1):
+        bit, flag = 2 * i, 2 * i + 1
+        prepared.append(move_text(pos, flag, ">", "<") + "+<[->-")
+        prepared.append(">" * (temp - flag) + "+" + "<" * (temp - bit) + "]")
+        prepared.append(
+            ">" * (temp - bit)
+            + "[-"
+            + "<" * (temp - bit)
+            + "+"
+            + ">" * (temp - bit)
+            + "]"
+        )
+        pos = temp
+    body = _body(truth_table, n, pos, result, zero)
+    return build + reads + inversion + dedent + "".join(prepared) + body

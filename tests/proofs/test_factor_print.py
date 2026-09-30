@@ -50,7 +50,7 @@ def test_averaged_character_bound() -> None:
     rng = random.Random(921)
     for n in range(2, 13):
         length = 2**n
-        sum_bound = 24 * length + 28 * n + 189
+        sum_bound = 20 * length + 12 * n**2 + 96 * n + 117
         ones = "1" * length
         assert (
             len(printed_program(ones)) + len(printed_program(ones, reverse_last=True))
@@ -65,4 +65,4 @@ def test_averaged_character_bound() -> None:
             a = len(printed_program(table))
             b = len(printed_program(table, reverse_last=True))
             assert a + b <= sum_bound
-            assert min(a, b) <= 12 * length + 14 * n + 95
+            assert min(a, b) <= 10 * length + 6 * n**2 + 48 * n + 59

@@ -150,9 +150,9 @@ Let `C_F(n)` be the worst-case minimum rendered digits over all `T = 2**n`
 tables. The existing witnesses and counting argument can be made explicit:
 
     (ln 2)**2 / (ln 8 * ln 10) <= liminf C_F(n)/(T*n)
-    limsup C_F(n)/(T*n) <= (144/5) log10 2.
+    limsup C_F(n)/(T*n) <= 24 log10 2.
 
-The coefficients are 0.10034333 and 8.66966388; neither is claimed sharp.
+The coefficients are 0.10034333 and 7.22471990; neither is claimed sharp.
 For the lower bound put `L = D ln 10` and `r = floor(L/(ln L)**2)`.
 The first `r` useful-prime exponents have total at most `L/ln 2`. Counting
 positive compositions and eight command choices bounds these prefixes by
@@ -182,34 +182,42 @@ and swaps each truth-table pair. Its prelude
 cell; 97 pluses restore it. This costs 111 characters, independently of
 `n`, and exchanges the raw and complemented terminal cases.
 
-Charge the two terminal branches together with their connecting moves.
-The fixed depth-two branch skeleton costs 12. In the ordinary and reflected
-variants, a nonconstant one-side averages 8 characters and a nonconstant
-zero-side averages 7. A constant one-side costs at most 9, a constant
-zero-side at most 8, including their print and optional increment. Thus
-the averaged depth-two body costs at most `H_2 = 12 + 9 + 8 = 29`.
-For depth `d >= 3`, both child bodies return at their flag cells, so the
-skeleton and connecting moves cost 19 and
-`H_d <= 2 H_(d-1) + 19`. Hence `H_n <= 12T - 19` for `n >= 2`.
+Prepare every earlier input's zero-branch flag once, before the tree.
+For bit `b`, start its adjacent flag at one, subtract `b` while copying it
+to a shared scratch cell, then transfer the scratch value back to `b`.
+The result is `(b, 1-b)` with scratch zero. Exactly one node at each depth
+executes, so this pair is consumed only once along any input path. Every
+node can replace its ordinary one-branch prefix `>+<[->->` by `[->>`:
+both reach the next input with the active bit cleared and its flag zero,
+but the prepared prefix is four characters shorter.
 
-Setup costs `12n + 60`, moving into the root costs `2n - 2`, and averaging
-the reflection prelude adds `111/2`. The shorter of the two fixed variants
-therefore has `C <= 12T + 14n + 95`. Construction and choosing the shorter
-source take `O(T)` time.
+Charge the terminal branches with their connecting moves and average the
+two reflection variants. Before this substitution, the depth-two skeleton
+costs 12; nonconstant one/zero branches average 8/7, and constant branches
+cost at most 9/8. Removing four characters gives
+`H_2 <= 12 + 9 + 8 - 4 = 25`. Higher levels previously cost 19 around
+two children and now cost 15, so `H_d <= 2 H_(d-1) + 15` and
+`H_n <= 10T - 15` for `n >= 2`.
+
+The shared scratch cell is at `2n + 3`. Preparing all `n-1` flags costs
+`6n**2 + 34n - 45` characters and leaves the pointer there. Initial setup
+costs `12n + 60`, moving into the root costs `2n + 3`, and averaging the
+reflection prelude adds `111/2`. The shorter fixed variant therefore has
+`C <= 10T + 6n**2 + 48n + 59`. The quadratic setup is `o(T)`;
+construction and choosing the shorter source take `O(T)` time.
 The emitted Factor integer is obtained with the same prime-run encoder.
 Its digits are at most `C log10 Q + O(1)`, with
 `ln Q <= (1/(1-theta)) ln C + O(1)` for every fixed `theta > 7/12`.
 Letting `theta` decrease to `7/12` gives
-`12*(12/5)*log10 2 = (144/5)*log10 2`. Against the lower coefficient
-`log10(2)/3`, the asymptotic bracket has an exact 86.4-fold gap.
+`10*(12/5)*log10 2 = 24*log10 2`. Against the lower coefficient
+`log10(2)/3`, the asymptotic bracket has an exact 72-fold gap.
 
 Both variants execute through Factor on every table through three inputs
 and eleven tables per arity at four through six: 618 programs, 6,704 input
 rows. The tests also check the averaged character bound through twelve
 inputs. This is a language-level witness, separate from the shipped
-compact-transfer generator: selecting the print variants saves only 0.078%
-over all three-input tables and 0.265% over 200 five-input tables (seed 919),
-below the 5% shipping threshold; no table grows in either corpus.
+compact-transfer generator; its quadratic preparation is paid before any
+branch executes.
 
 Executed parity encodings at n=1..5 contain 135, 266, 501, 966, 1883 digits;
 all 62 input rows return parity. Their normalized costs 67.5, 33.25,
