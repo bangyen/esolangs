@@ -505,10 +505,11 @@ finite check includes the zero-fraction projection and the ordered numeric
 description count. These checks exercise the proof's semantic premises;
 the universal counting inequality is the argument above.
 
-The roadmap question is therefore closed in both cost models: `O(T)` text
-and `O(log T)` fraction firings are constructible, while linear-list
-inspection with explicit integer bit work cannot be polylogarithmic for
-every table.
+The unit-cost firing question and the literal-scan bit-work question are
+settled in their respective models. The broader execution frontier remains
+open: this theorem does not cover indexed or factorized evaluation, and
+its `Omega(sqrt(T))` bound does not exclude linear execution even for the
+literal scan. A model-independent execution tradeoff has not been proved.
 
 ## The other end: the row-addressing tree
 
