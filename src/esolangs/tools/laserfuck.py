@@ -670,4 +670,14 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         candidate = min(layouts(permute_truth_table(truth_table, perm), perm), key=len)
         if len(candidate) < len(best):
             best = candidate
+    if width is not None and max(map(len, best.splitlines())) > width:
+        # Move the start funnel above the computation, reclaiming its three
+        # reserved columns. Two '/' turns enter its first heading setter.
+        rows = best.splitlines()
+        shifted = [line[laserfuck_layout.MARGIN :] for line in rows]
+        entry = len(shifted[0]) - len(shifted[0].lstrip())
+        route = " " * entry + "/" + " " * (2 - entry) + "/"
+        candidate = "\n".join([" }}v", "|o^", " _", route, *shifted])
+        if max(map(len, candidate.splitlines())) < max(map(len, rows)):
+            best = candidate
     return best
