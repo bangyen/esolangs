@@ -949,9 +949,9 @@ class TestAlgebraicProgrammingLanguage:
             assert len(set(widths)) == 1, (table, widths)
 
     def test_compact_narrow_tree_executes_every_small_table(self) -> None:
-        """Definitions preserve binding and reduce the XOR floor to 17."""
+        """Definitions preserve binding and reduce the XOR floor to nine."""
         program = boolean.algebraic_programming_language("0110", 1)
-        assert max(map(len, program.splitlines())) == 17
+        assert max(map(len, program.splitlines())) == 9
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
@@ -1088,3 +1088,46 @@ class TestAlgebraicProgrammingLanguageShapes:
             for value in (0x6996, 0x1234ABCD5678EF01, 0xF0F0CCCC5A5A3C3C):
                 table = format(value % 2**2**n, f"0{2**n}b")
                 assert esolangs.verify("Algebraic Programming Language", table)
+
+
+@pytest.mark.parametrize("width", [1, 7, 9, 10, 17, 40, 80])
+def test_apl_elementary_definitions_compute_every_small_table(width: int) -> None:
+    for n in range(1, 4):
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            program = esolangs.generate("Algebraic Programming Language", table, width)
+            for row, expected in enumerate(table):
+                bits = list(format(row, f"0{n}b"))
+                assert (
+                    run_algebraic_programming_language(program, bits) == expected + "\n"
+                )
+
+
+def test_apl_elementary_floor_and_corpus_size() -> None:
+    assert (
+        max(map(len, boolean.algebraic_programming_language("0110", 1).splitlines()))
+        == 9
+    )
+    assert (
+        sum(
+            len(boolean.algebraic_programming_language(format(v, "08b"), 1))
+            for v in range(256)
+        )
+        == 14703
+    )
+
+
+@pytest.mark.parametrize("width", [1, 9, 17, 40, 80])
+@pytest.mark.parametrize("as_string", [False, True])
+def test_apl_elementary_public_tagged_and_plain_source(
+    width: int, *, as_string: bool
+) -> None:
+    program = esolangs.generate("Algebraic Programming Language", "0110", width)
+    if as_string:
+        program = str(program)
+    for bits, expected in (("00", "0"), ("01", "1"), ("10", "1"), ("11", "0")):
+        stdin = "\n".join(bits) + "\n"
+        assert (
+            esolangs.run("Algebraic Programming Language", program, stdin)
+            == expected + "\n"
+        )

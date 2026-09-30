@@ -5,6 +5,7 @@ from itertools import pairwise
 from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
+    constant_span_test,
     subtree_ids,
 )
 
@@ -35,7 +36,7 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
     """
     if width is not None:
         return best_input_order(
-            truth_table, lambda table, perm: _apl_tree_narrow(table, perm, width)
+            truth_table, lambda table, perm: _apl_narrow(table, perm, width)
         )
     return best_input_order(truth_table, _apl_best_ordered)
 
@@ -263,4 +264,51 @@ def _apl_tree_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
     complement = _NOT.replace(" ", "")
     return "\n".join(
         [complement, *definitions, prefix + render(tuple(node for node, _, _ in parts))]
+    )
+
+
+def _apl_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
+    previous = _apl_tree_narrow(table, perm, width)
+    n = _validate_truth_table(table)
+    if n > 3 or max(map(len, previous.splitlines())) <= width:
+        return previous
+    # At most nine primitive definitions use one-character names below n=4.
+    # Larger trees retain fresh-text splitting, avoiding O(T log T) names.
+    constant = constant_span_test(table)
+    definitions: list[str] = []
+
+    def combine(left: str, operator: str, right: str) -> str:
+        name = _apl_name(len(definitions))
+        definitions.append(f"{name}={left}{operator}{right}")
+        return f"{name}()"
+
+    def tree(start: int, end: int, depth: int) -> str:
+        if constant(start, end):
+            return table[start]
+        half = (start + end) // 2
+        selector = _NAMES[perm[depth]]
+        zero, one = tree(start, half, depth + 1), tree(half, end, depth + 1)
+        if (zero, one) == ("0", "1"):
+            return selector
+        if (zero, one) == ("1", "0"):
+            return f"!{selector}"
+        if zero == "0":
+            return combine(selector, "&", one)
+        if one == "0":
+            return combine(f"!{selector}", "&", zero)
+        if zero == "1":
+            return combine(f"!{selector}", "|", one)
+        if one == "1":
+            return combine(selector, "|", zero)
+        low = combine(f"!{selector}", "&", zero)
+        high = combine(selector, "&", one)
+        return combine(low, "|", high)
+
+    result = tree(0, len(table), 0)
+    # '&' binds before '|'; the zero prefix pre-binds every input without
+    # parentheses, preserving input order even when a Boolean arm folds.
+    reads = "&".join(_NAMES[index] for index in range(n)) + "&0"
+    candidate = "\n".join([_NOT.replace(" ", ""), *definitions, f"{reads}|{result}"])
+    return min(
+        (previous, candidate), key=lambda program: max(map(len, program.splitlines()))
     )
