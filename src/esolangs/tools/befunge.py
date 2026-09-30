@@ -22,10 +22,13 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     The natural grid has a straight header and a power-of-two table width
     near ``sqrt(T)``.  An over-wide header folds along alternating rows;
     ``g`` addresses the table below them.  The width floor reserves enough
-    cells for both within the 80x25 torus.
+    cells for both within the 80x25 torus.  Tables above ten inputs raise
+    ``ValueError``: their cells alone exceed the torus.
     """
     n = _validate_truth_table(truth_table)
     count = 1 << n
+    if count > 1024:
+        raise ValueError("Befunge supports at most ten inputs on its 80x25 grid")
     shift = (n + 1) // 2
     table_width = 1 << shift
     # ``1`` then ``2*`` shift times is ``2**shift``; both are single commands.
@@ -47,7 +50,9 @@ def befunge(truth_table: str, width: int | None = None) -> str:
         truth_table[base : base + table_width] for base in range(0, count, table_width)
     )
     plain = "\n".join(rows)
-    if width is None or width <= 0 or max(map(len, rows)) <= width:
+    if width is None or width <= 0:
+        width = 80
+    if max(map(len, rows)) <= min(width, 80) and len(rows) <= 25:
         return plain
     # At most two decimal digits per coordinate on the 80x25 torus.
     # Reserving 23 rows of payload leaves the ceiling slack below 25 rows.
