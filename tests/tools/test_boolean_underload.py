@@ -12,13 +12,36 @@ from esolangs.tools.underload import PAIR, _plain, underload
 from tests.tools.boolean_runners import five_input_sample
 
 
-def _run(table: str, row: int) -> str:
+def _run(table: str, row: int, width: int | None = None) -> str:
     n = len(table).bit_length() - 1
     bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-    program = fill_runs(underload(table), TEMPLATE_CHAR, [PAIR] * n, bits)
+    program = fill_runs(underload(table, width), TEMPLATE_CHAR, [PAIR] * n, bits)
     io = ScriptedIO("")
     run(program, io)
     return io.getvalue()
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("width", [1, 3, 7, 8, 13, 40, 80])
+def test_wrapped_templates_execute_every_three_input_table(width: int) -> None:
+    for value in range(256):
+        table = f"{value:08b}"
+        template = underload(table, width)
+        assert max(map(len, template.split("\n"))) <= max(7, width)
+        assert template.replace("\n", "") == underload(table)
+        assert "".join(_run(table, row, width) for row in range(8)) == table
+
+
+@pytest.mark.medium
+def test_wrapped_public_templates_preserve_input_slots() -> None:
+    table = "0110100110010110"
+    for width in (1, 7, 13, 40):
+        template = esolangs.generate("Underload", table, width)
+        for row in range(16):
+            bits = [int(bit) for bit in f"{row:04b}"]
+            io = ScriptedIO("")
+            run(template.fill(bits), io)
+            assert io.getvalue() == table[row]
 
 
 @pytest.mark.parametrize("n", range(1, 4))
