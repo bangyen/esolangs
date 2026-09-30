@@ -1,6 +1,7 @@
 """Covers :mod:`esolangs.tools.laserfuck` and its layout module."""
 
 import importlib
+import random
 
 import pytest
 
@@ -564,3 +565,38 @@ class TestLaserFuck:
         """
         program = boolean.laserfuck("01101001", 8)
         assert run_laserfuck(program, ["0", "0", "0"], 3) == "0"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("heading", range(4))
+def test_overhead_funnel_executes_every_small_table(heading: int) -> None:
+    for n in range(1, 4):
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            program = boolean.laserfuck(table, 1)
+            for row in range(2**n):
+                assert (
+                    run_laserfuck(program, list(format(row, f"0{n}b")), heading)
+                    == table[row]
+                )
+
+
+def test_overhead_funnel_floor_and_corpus_size() -> None:
+    assert max(map(len, boolean.laserfuck("0110", 1).splitlines())) == 15
+    assert sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 94244
+
+
+@pytest.mark.parametrize("n", [5, 7])
+def test_overhead_funnel_larger_tables(n: int) -> None:
+    rng = random.Random(20260930 + n)
+    for table in (
+        "".join(str(row.bit_count() & 1) for row in range(2**n)),
+        format(rng.getrandbits(2**n), f"0{2**n}b"),
+    ):
+        program = boolean.laserfuck(table, 1)
+        for row in rng.sample(range(2**n), 12):
+            for heading in range(4):
+                assert (
+                    run_laserfuck(program, list(format(row, f"0{n}b")), heading)
+                    == table[row]
+                )
