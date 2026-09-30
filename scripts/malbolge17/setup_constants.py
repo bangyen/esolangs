@@ -18,6 +18,23 @@ def reset_labels(plan: _Planner, all1: int) -> None:
         plan.mem[cell] = ALL1
 
 
+def prepare_labels(plan: _Planner, all1: int, targets: dict[int, int]) -> None:
+    """Reset only words not known compatible with their hub's two-pass map."""
+    plan.op("*", all1)
+    plan.mem[all1] = ALL1
+    for cell, target in targets.items():
+        value = plan.mem.get(cell)
+        if target != ALL1 and value is not None:
+            first = _crazy(target, value)
+            if _crazy(first, first) == target:
+                continue
+        if value == ALL1:
+            continue
+        plan.op("p", cell)
+        plan.op("p", cell)
+        plan.mem[cell] = ALL1
+
+
 def preserve(plan: _Planner, all1: int, all2: int, target: int, zero: int) -> None:
     """Copy the live ALL2 word and clear an unknown word before label reset."""
     assert len({all1, all2, target, zero}) == 4
