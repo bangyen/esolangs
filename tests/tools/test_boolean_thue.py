@@ -61,3 +61,16 @@ def test_expansion_crosses_name_widths_without_rewrite_collisions() -> None:
                 assert max(map(len, program.splitlines())) < len(table) + 3
             for row in (0, 1, len(table) // 2, len(table) - 1):
                 _execute(table, row, width)
+
+
+@pytest.mark.medium
+def test_chunk_bounds_stay_narrower_across_marker_digit_boundaries() -> None:
+    """Expansion needs T>=8; its bound max(width,9,3d+3) is below T+3."""
+    for n, floor in ((3, 9), (6, 9), (11, 12)):
+        table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+        natural = max(map(len, thue(table).splitlines()))
+        assert max(map(len, thue(table, 1).splitlines())) == floor
+        for width in (1, natural - 1):
+            assert max(map(len, thue(table, width).splitlines())) < natural
+        for row in (0, len(table) - 1):
+            _execute(table, row, 1 if n < 11 else 80)

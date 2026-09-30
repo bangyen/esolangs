@@ -641,6 +641,19 @@ class TestDig:
         )
         assert all(row.strip() for row in folded.splitlines())
 
+    def test_unaligned_leaf_chains_seven_input_reads(self) -> None:
+        """A folded flat leaf needs two windows beyond its six-read tail."""
+        from esolangs.interpreters.grid_based.dig import run
+        from esolangs.interpreters.io import ScriptedIO
+
+        for expected in "01":
+            program = boolean.dig(expected * 128, 1000)
+            for row in range(128):
+                io = ScriptedIO("\n".join(format(row, "07b")) + "\n")
+                run(program.splitlines(), io)
+                assert io.getvalue() == expected
+                assert io.reads == 7
+
     def test_a_long_read_run_chains_its_windows(self) -> None:
         """Past nine cells the ``$`` runs chain rather than growing a digit.
 
