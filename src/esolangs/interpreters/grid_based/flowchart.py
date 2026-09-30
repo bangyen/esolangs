@@ -123,8 +123,8 @@ One further rule the spec does state, and this interpreter enforces:
   inside a node still leaves through whichever cell of the box its exit
   sits on, and a rail may still pass a node by without touching it.
 
-Malformed programs (an unknown node, a vertical path meeting a node off its
-middle, or no ``( )`` to start from) raise :class:`ValueError`.
+Malformed programs (touching nodes, an unknown node, a vertical path meeting
+a node off its middle, or no ``( )`` to start from) raise :class:`ValueError`.
 
 At EOF a ``/ /`` read leaves the register **empty** rather than raising,
 which is the same state ``{ }`` clears it to.  The nodes that consume the
@@ -412,7 +412,16 @@ class _Machine:
                     if c != " " and c not in _EXITS:
                         raise ValueError(f"unknown character {c!r} at ({col}, {row})")
                     col += 1
+        self._check_separation()
         self._check_alignment()
+
+    def _check_separation(self) -> None:
+        """Reject nodes touching without a connecting path."""
+        for (row, col), node in self.nodes.items():
+            for dr, dc in (_RIGHT, _DOWN):
+                neighbour = self.nodes.get((row + dr, col + dc))
+                if neighbour is not None and (dr or neighbour != node):
+                    raise ValueError(f"nodes touch without a path at ({col}, {row})")
 
     def _check_alignment(self) -> None:
         """Reject a vertical path that enters a node off its middle.
@@ -500,28 +509,15 @@ class _Machine:
     ) -> list[tuple[int, int, tuple[int, int]]]:
         """Return the ``(row, col, heading)`` steps leaving the node at ``(row, col)``.
 
-        A node's exits are the path cells and nodes touching any cell of its
+        A node's exits are the path cells touching any cell of its
         box, minus the cell the pointer entered from -- excluding by *cell*
         rather than by heading matters because a box is several cells wide,
         so a pointer can enter one cell of it from the north and still find
         that same northern cell offered again from a different column.
         ``came_from`` is ``None`` at the start, where nothing is excluded.
-
-        Exits are counted per *destination*, not per cell of this box.  Two
-        stacked nodes touch along their whole overlap, so a three-cell box
-        sitting on another offers a step from each of its columns -- but all
-        three land on the one node below, which is a single path onward, not
-        three.  Counting them separately made a ``( )`` drawn directly above
-        another node fork into three pointers that then walked the rest of
-        the program in lock-step, tripling its output.  A rail between the
-        two nodes never showed the bug, because only its middle column
-        carries the ``│``; the wire's real job is narrowing a wide contact
-        down to one path.  Deduplicating here means a drawing that omits it
-        behaves the same way instead of silently multiplying pointers.
         """
         cells = set(self._cells_of(row, col))
         out: list[tuple[int, int, tuple[int, int]]] = []
-        seen: set[tuple[int, int]] = set()
         for c_row, c_col in sorted(cells, key=lambda c: (c[0], c[1])):
             for d in _HEADINGS:
                 n_row, n_col = c_row + d[0], c_col + d[1]
@@ -531,13 +527,6 @@ class _Machine:
                     continue
                 if not self._accepts(n_row, n_col, d):
                     continue
-                # A node is reached once however many of its cells touch this
-                # box; a bare path cell is its own destination.
-                node = self.nodes.get((n_row, n_col))
-                target = (n_row, node[1]) if node else (n_row, n_col)
-                if target in seen:
-                    continue
-                seen.add(target)
                 out.append((n_row, n_col, d))
         return out
 

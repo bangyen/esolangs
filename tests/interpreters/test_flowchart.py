@@ -261,23 +261,21 @@ class TestParsing:
         assert machine.width == 5
         assert machine.grid == ("( )  ",)
 
-    def test_stacked_nodes_do_not_fork(self) -> None:
-        """A node drawn directly on top of another is one path, not three.
+    @pytest.mark.parametrize(
+        "program", [["( )[ }"], [" ( )", " [ }"], ["( )", "  [ }"]]
+    )
+    def test_touching_nodes_are_rejected(self, program: list[str]) -> None:
+        with pytest.raises(ValueError, match="nodes touch without a path"):
+            _Machine(program, ScriptedIO(""))
 
-        Two stacked boxes touch along their whole overlap, so the upper one
-        offers a step from each of its columns -- but every one of them lands
-        on the same node below.  Counting them separately used to start three
-        pointers here and print ``111``.
-        """
-        stacked = [" ( )", " [ }", " \\ \\", "(( ))"]
-        io = ScriptedIO("")
-        run(stacked, io)
-        assert io.getvalue() == "1"
-
-        railed = [" ( )", "  │", " [ }", "  │", " \\ \\", "  │", "(( ))"]
-        io = ScriptedIO("")
-        run(railed, io)
-        assert io.getvalue() == "1", "a rail between the nodes must not change it"
+    def test_separated_nodes_execute(self) -> None:
+        for program in (
+            ["( )─[ }─\\ \\─(( ))"],
+            [" ( )", "  │", " [ }", "  │", " \\ \\", "  │", "(( ))"],
+        ):
+            io = ScriptedIO("")
+            run(program, io)
+            assert io.getvalue() == "1"
 
     def test_a_genuine_fork_still_splits(self) -> None:
         """Deduplicating exits must not collapse real multi-path forks.
@@ -482,9 +480,10 @@ class TestPointersStop:
         assert self._halts(["( )─< >"])
         assert self._halts(["( )─{ }"])
 
-    def test_start_touching_only_another_node_stops(self) -> None:
-        """A start whose sole neighbour is the node it came from forks nowhere."""
-        assert self._halts(["( )( )"])
+    def test_touching_start_nodes_are_rejected(self) -> None:
+        """Start nodes also need a connecting path."""
+        with pytest.raises(ValueError, match="nodes touch without a path"):
+            _Machine(["( )( )"], ScriptedIO(""))
 
 
 class TestAmbiguousExits:

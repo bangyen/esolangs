@@ -100,15 +100,15 @@ drift.
 step 14, redrawn by `tui.render` every time this file is generated:
 
 ```
-Flowchart  step 14  ip (1, 33, 1, 0)  running
+Flowchart  step 14  ip (1, 57, 0, -1)  running
 --------------------------------------------------------------------------
-1 | (( ))\ \/{ }\───────────────┐    ┌< ]─┐
-2 |               (( ))\ \\{ }/< >/ /┴───< >/ /\[ ]/{ ]\[ ]/[ >\[ ]/[ }\[
+1 | ───────────┐     ┌< ]──┐
+2 | \ \─\{ }/─< >─/ /┴────< >─/ /─\[ ]/─{ ]─\[ ]/─[ >─\[ ]/─[ }─\[ ]/─{ ]─
 --------------------------------------------------------------------------
-memory   0 1 1 0
+memory   0 1 1
 stack    (empty)
 output   ''
-views    deques={0: [0, 1], 1: [1, 0]}  pointers=[_Pointer(row=1, col=33,
+views    deques={0: [0, 1], 1: [1]}  pointers=[_Pointer(row=1, col=57, d=(
 hjkl move | t break | space step | c continue | r run | b back | q quit
 ```
 
