@@ -233,6 +233,10 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
             "\n", ""
         ):
             return True
+    if language_id == "fractran" and generator is not None and _takes_width(generator):
+        narrow = generate(name, truth_table, 1)
+        if isinstance(narrow, str) and template.split() == narrow.split():
+            return True
     # BIO discards whitespace; the other three tokenize on it. Their wrappers
     # replace spaces with newlines, so removing newlines loses token boundaries.
     if language_id == "bio":

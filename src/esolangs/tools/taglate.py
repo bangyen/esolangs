@@ -320,7 +320,7 @@ def _seed_commands(seed: str) -> str:
     return "".join(parts)
 
 
-def taglate(truth_table: str, *, width: int | None = None) -> str:
+def taglate(truth_table: str, width: int | None = None) -> str:
     """Return Taglate code; narrow seeds bootstrap an empty queue."""
     from esolangs.tools.wrap import wrap_program
 
