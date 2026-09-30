@@ -345,4 +345,18 @@ def super_snusp(truth_table: str, width: int | None = None) -> str:
     flat = _super_snusp_flat(truth_table)
     if width is None or len(flat) <= width:
         return flat
+    if width < 4:
+        pieces = []
+        for token in _super_snusp_tokens(flat):
+            if len(token) == 1:
+                pieces.append(token)
+            elif token in ("48", "49"):
+                pieces.append("6{8*" + (")" if token == "49" else ""))
+            else:
+                # Decimal Horner uses temporary stack cells and restores its
+                # depth; each digit has constant source cost and folds singly.
+                pieces.append(
+                    token[0] + "".join("{2{5**{" + digit + "+" for digit in token[1:])
+                )
+        flat = "".join(pieces)
     return _super_snusp_folded(flat, width)

@@ -400,3 +400,19 @@ class TestAlightWidth:
     def test_width_must_have_one_column(self) -> None:
         with pytest.raises(ValueError, match="at least 1"):
             boolean.alight("0001", 0)
+
+
+@pytest.mark.parametrize("inputs", [1, 3, 5, 8])
+@pytest.mark.parametrize("width", [1, 3, 4])
+def test_super_snusp_arithmetic_literals_preserve_stack_and_floor(
+    inputs: int, width: int
+) -> None:
+    import esolangs
+
+    table = "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
+    program = esolangs.generate("Super SNUSP", table, width)
+    assert max(map(len, program.splitlines())) <= max(3, width)
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = [int(bit) for bit in format(row, f"0{inputs}b")]
+        stdin = esolangs.encode_inputs("Super SNUSP", bits)
+        assert esolangs.run("Super SNUSP", program, stdin) == table[row]
