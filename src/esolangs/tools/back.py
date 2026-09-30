@@ -67,12 +67,30 @@ def _descending_back(grid: dict[tuple[int, int], str], n: int, cells: list[int])
     )
 
 
+def _back_parity(truth_table: str, n: int) -> str | None:
+    """Return a one-column parity accumulator, or None for another function."""
+    bias = int(truth_table[0])
+    parity = bytearray(len(truth_table))
+    for row in range(1, len(truth_table)):
+        parity[row] = parity[row >> 1] ^ (row & 1)
+        if int(truth_table[row]) != parity[row] ^ bias:
+            return None
+    # The primer flips the accumulator. Zero flips it back; one keeps it,
+    # and its possible skip consumes only the blank spacer, not the next bit.
+    rows = ["\\", *(">" * n), *(["-"] if bias else [])]
+    for _ in range(n):
+        rows.extend(("-", _BACK_INPUT, " "))
+    return "\n".join([*rows, "*"])
+
+
 def back(truth_table: str, width: int | None = None) -> str:
     r"""Build a Back template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
     Width puts the loader above the tree, removing two entry columns.
+    Unfitting parity tables use a one-column accumulator in answer cell n;
+    earlier cells remain scratch rather than carrying the inputs.
 
     Back is a no-input grid language: a beam travels the grid and ``-`` flips
     the current tape bit, ``+`` steps the beam forward when the current bit
@@ -111,7 +129,12 @@ def back(truth_table: str, width: int | None = None) -> str:
     costs a leaf one ``-`` instead of one extra pointer move.
     """
     n = _validate_truth_table(truth_table)
-    return _back_ordered(truth_table, tuple(range(n)), width)
+    program = _back_ordered(truth_table, tuple(range(n)), width)
+    if width is not None and width > 0 and max(map(len, program.splitlines())) > width:
+        parity = _back_parity(truth_table, n)
+        if parity is not None:
+            return parity
+    return program
 
 
 def _back_ordered(
