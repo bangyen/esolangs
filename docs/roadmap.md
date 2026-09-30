@@ -180,10 +180,10 @@ step; an answer lands in the paper it extends, and the row leaves.
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between
-  0.10034333 and 7.22471990 asymptotically (72-fold gap). The lower side
+  0.10034333 and 3.22532138 asymptotically (32.142857-fold gap). The lower side
   counts weighted exponent compositions with adjacent equal commands merged;
-  the upper side prices two print-tree variants with prepared flags and
-  fixed-modulus prime gaps.
+  the upper side prices two print-tree variants with prepared flags and an
+  almost-all prime-window covering bound.
   Parity encodings executed through five inputs do not determine either limit.
   Next: count only semantically distinct decoded programs to
   raise the lower coefficient, or construct a cheaper weighted command stream
