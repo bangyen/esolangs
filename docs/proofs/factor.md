@@ -166,9 +166,9 @@ Let `C_F(n)` be the worst-case minimum rendered digits over all `T = 2**n`
 tables. The existing witnesses and counting argument can be made explicit:
 
     (ln 2)**2 / (ln 8 * ln 10) <= liminf C_F(n)/(T*n)
-    limsup C_F(n)/(T*n) <= (165/56) log10 2.
+    limsup C_F(n)/(T*n) <= (45/28) log10 2.
 
-The coefficients are 0.10034333 and 0.88696338; neither is claimed sharp.
+The coefficients are 0.10034333 and 0.48379821; neither is claimed sharp.
 For the lower bound put `L = D ln 10` and `r = floor(L/(ln L)**2)`.
 The first `r` useful-prime exponents have total at most `L/ln 2`. Counting
 positive compositions and eight command choices bounds these prefixes by
@@ -183,60 +183,78 @@ are already counted among the prefixes. Thus behaviours number at most
 `exp((ln 8 + o(1)) L/ln L)`. Comparing with `2**T` and using the already
 proved `C_F(n) = Theta(T ln T)` gives the lower coefficient above.
 
-For the upper bound, use the packed input-directed tape walk in
-`tests/proofs/_factor_walk.py`. Write `M = T/2` and pack each consecutive
-pair `(a,b)` into payload `2a+b`. Initialize odd cell `2j+1` to payload
-`j`, leaving even controls zero, and start at control `2M-2`.
-Either store these values or reflect every pair to `(1-a,1-b)`.
-The two increment totals sum to `3M`, so choose the smaller; the fill costs
-`2M + s` characters, with `s <= floor(3M/2) = floor(3T/4)`.
-This choice uses one linear sum, with no searched syntax table.
+For the upper bound, use the traveling-counter construction in
+`tests/proofs/_factor_counter.py`. Write `M = T/2`, pack each consecutive
+pair `(a,b)` as `v = 2a+b`, and choose one global phase `p = 0,1,2,3`.
+Store `(v+p) mod 4` as the signed representative in `{-1,0,1,2}`; minus
+one is byte 255 on the wrapping tape. Its literal increment/decrement
+costs over the four phases are a permutation of `0,1,2,1`, summing to
+four. Summed over all pairs, the four phase costs sum to `4M`.
+Choose a minimum-cost phase, so payload initialization costs `s <= M`.
+This is four linear sums, a named cyclic averaging rule without search.
 
-For input position `i = 0,...,n-2`, read its ASCII byte and subtract 49.
-The control is zero for input one and 255 for input zero, using the
-interpreter's eight-bit wrapping cells. Follow it with a loop containing
-one `+` and `2**(n-1-i)` left moves. On one the loop is skipped. On zero,
-the increment clears the departure control and the moves reach a zero
-control; the closing bracket tests that destination and exits. Thus a
-zero subtracts binary weight `2**(n-2-i)` from the pair address.
-Starting at pair `M-1` yields exactly the first `n-1` inputs' binary row.
-Moves are monotone left, never cross cell zero, and every control stays zero.
-These gadgets total `53(n-1) + 2M - 2` characters, including at `n=1`,
-where the sum is empty.
+Initialize odd cell `2j+1` to payload `j`, leaving even controls zero,
+and end at control `2M-2`. The fill costs exactly `2M+s = T+s`.
+Use `w = n-1` control cells, starting at this last-pair control and
+extending rightward, for a little-endian binary counter. Read the first
+`w` inputs in order, storing their complements in descending counter
+positions. Thus the distance is `M-1-row`, where `row` is the prefix's
+binary value. All payloads remain on odd cells, outside the counter.
 
-Move right to the selected payload. Addressing is finished, so three cells
-to its right can be cleared for scratch even when they held another pair.
-A fixed loop consumes the payload, toggling a remainder bit and incrementing
-a quotient whenever the remainder changes from one to zero. It leaves
-`b = payload mod 2` and `a = floor(payload/2)` in adjacent scratch cells.
-Read the final input and use it with a complementary flag to print `a`
-on zero or `b` on one. For reflected data, print 49 minus the selected
-bit using a fourth scratch cell cleared before use; otherwise add 48.
-Exactly one branch prints, and every input is read
-in order. The scratch loops operate only on values zero through three.
+Three further control cells are scratch; another holds a nonzero guard.
+Copy each counter bit to scratch and back to compute the guard as their
+logical OR. While the guard is one, decrement the positive counter using
+a borrow bit: zero becomes one and propagates borrow; one becomes zero
+and clears borrow. A separate next-borrow cell keeps the conditional
+closing bracket on zero. Recompute the guard, then transfer the counter
+bits and guard one control cell left, in ascending order. Every destination
+has been cleared before its successor is shifted, and scratch is zero.
+The outer closing bracket tests the shifted guard, so its next iteration
+uses the translated window. Payload cells are crossed but never changed.
 
-The fixed decoder and output cost 219 characters without reflection or
-265 with reflection, including the move to the payload. Consequently
+After exactly `M-1-row` iterations the counter and guard are zero.
+The window base is at control `2row`, and moving right reaches the selected
+payload. No left-edge clamp is used: each window shift occurs with positive
+remaining distance, and movement within the window stays at or to the right
+of its base. The final return stops at that base.
+For `w=0` the counter code is empty. Each fixed counter pass has `O(w)`
+macros spanning `O(w)` cells, independent of runtime iteration count;
+its literal source is `O(w**2)`. Input setup, the two guard passes,
+decrement, and shift/return cost respectively `6w**2+78w+2`,
+`6w**2+30w+5`, `6w**2+30w+7`, `6w**2+75w+3`, and `14w+11`
+characters. Their sum is
 
-    C = 2T + s + 53n + (164 if unreflected else 210)
-      <= (11/4)T + 53n + 210.
+    K(0) = 0,       K(w) = 24w**2 + 227w + 28  (w >= 1).
 
-Construction takes `O(T)` time. Encode the maximal runs with the same greedy
-prime-run encoder. The rendered digits are at most `C log10 Q + O(1)`.
-The complete-window covering bound gives
+Addressing is complete, so neighboring cells can now be cleared as scratch.
+Add `4-p` to the signed payload; its value is between zero and six and
+congruent to the original `2a+b` modulo four. Divide twice by two using
+fixed remainder toggles, retaining the two low bits and discarding overflow.
+Read the final input and print the high bit on zero or the low bit on one,
+adding 48. Exactly one branch prints, and all inputs are read in order.
+This decoder costs `290-p` characters, plus the move to the payload.
+Consequently
+
+    C = T + s + K(n-1) + 291-p
+      <= (3/2)T + 24n**2 + 179n + 116.
+
+Construction takes `O(T+n**2) = O(T)` time. Encode the maximal runs with
+the same greedy prime-run encoder. The rendered digits are at most
+`C log10 Q + O(1)`. The complete-window covering bound gives
 `ln Q <= (15/14 + eta) ln C + O_eta(1)` for every `eta > 0`.
 Letting `eta` decrease to zero gives
-`(11/4)*(15/14)*log10 2 = (165/56)*log10 2`.
+`(3/2)*(15/14)*log10 2 = (45/28)*log10 2`.
 Against the lower coefficient `log10(2)/3`, the asymptotic bracket has an
-exact `495/56`-fold gap (8.839286).
+exact `135/28`-fold gap (4.821429).
 
-The packed witness executes through Factor on every table through three
-inputs and eleven tables per arity at four through six: 309 programs,
-3,352 input rows. Tests pin both reflection cases and exact character
-counts through twelve inputs. The earlier single-bit walk also executes
-on this corpus; its address and zero-control invariants are checked on
-all 126 rows through six inputs. These are language-level witnesses,
-separate from the shipped compact-transfer generator.
+The witness executes through Factor on every table through three inputs
+and eleven tables per arity at four through six: 309 programs, 3,352 input
+rows. Counter tests check all 63 prefix addresses through six inputs,
+payload preservation, cleared controls, and absence of clamped moves.
+All 32 phase/payload/final-input combinations execute through Brainfuck;
+exact source counts and the phase averaging identity are checked through
+twelve inputs. This is a language-level witness, separate from the shipped
+compact-transfer generator.
 
 Executed parity encodings at n=1..5 contain 135, 266, 501, 966, 1883 digits;
 all 62 input rows return parity. Their normalized costs 67.5, 33.25,

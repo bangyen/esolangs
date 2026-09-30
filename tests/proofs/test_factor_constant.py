@@ -88,13 +88,13 @@ def test_terminal_tree_character_bound() -> None:
             )
 
 
-def test_constant_bracket_is_below_ten() -> None:
+def test_constant_bracket_is_below_five() -> None:
     import math
 
     lower = math.log(2) ** 2 / (math.log(8) * math.log(10))
-    upper = (11 / 4) * (15 / 14) * math.log10(2)
-    assert upper / lower == pytest.approx(495 / 56)
-    assert upper < 10 * lower
+    upper = (3 / 2) * (15 / 14) * math.log10(2)
+    assert upper / lower == pytest.approx(135 / 28)
+    assert upper < 5 * lower
 
 
 def test_compact_answer_requires_unused_flag() -> None:
