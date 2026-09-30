@@ -14,6 +14,8 @@ import itertools
 from dataclasses import dataclass
 from pathlib import Path
 
+from planner import _Planner
+
 from esolangs.interpreters.other.malbolge import (
     _WORDS,
     _advance,
@@ -31,7 +33,6 @@ from esolangs.tools.malbolge import (
     _T_HELPERS,
     _T_LABELS,
     _emit_chain,
-    _Planner,
     _rotations,
     _valid_chars,
 )
@@ -415,7 +416,7 @@ def _build(
         used.add(cell)
         helpers[name] = cell
     data = {base + k: _char_for("o", base + k) for k in range(3)}
-    planner = _Planner(_ENTRY + 1, 34 + (7 - _ENTRY) % 94, memory, data)
+    planner = _Planner(_ENTRY + 1, 34 + (7 - _ENTRY) % 94, memory, data, accumulator=0)
     planner.code[_ENTRY] = "j"
     if compact:
         from compact_decoder import begin

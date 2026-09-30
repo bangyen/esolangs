@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from planner import _Planner
+
 from esolangs.interpreters.other.malbolge import (
     _advance,
     _crazy,
@@ -32,13 +34,7 @@ from esolangs.tools._malbolge_digits import (
     _K,
     _hubs,
 )
-from esolangs.tools.malbolge import (
-    _T_HELPERS,
-    _T_LOW,
-    _chain,
-    _emit_chain,
-    _Planner,
-)
+from esolangs.tools.malbolge import _T_HELPERS, _T_LOW, _chain, _emit_chain
 
 _OPS = "ji*p</vo"
 

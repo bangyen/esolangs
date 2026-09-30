@@ -7,10 +7,10 @@ from address17 import ALL1, ALL2, group_cells
 from address_gadget import execute_state
 from decoder_group import _LABELS, _Group, _setup
 from parity_views import STORED_PARITY
+from planner import _Planner
 from shared_fold import build_shared_fold
 
 from esolangs.tools._malbolge_core import _char_for
-from esolangs.tools.malbolge import _Planner
 
 
 def control_inputs() -> Iterator[tuple[int, ...]]:

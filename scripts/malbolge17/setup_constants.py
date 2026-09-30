@@ -1,7 +1,8 @@
 """Preserved uniform words and involutive scalar loads for decoder setup."""
 
+from planner import _Planner
+
 from esolangs.interpreters.other.malbolge import _crazy
-from esolangs.tools.malbolge import _Planner
 
 ALL1, ALL2 = 29524, 59048
 

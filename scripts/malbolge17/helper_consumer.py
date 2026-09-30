@@ -2,12 +2,13 @@
 
 from address_gadget import execute_state
 from decoder_group import _BASES, _Group, _setup
+from planner import _Planner
 from setup_consumer import check_setup_memory, control_inputs
 from shared_fold import build_shared_fold
 
 from esolangs.interpreters.other.malbolge import _crazy
 from esolangs.tools._malbolge_core import _char_for, _g
-from esolangs.tools.malbolge import _chain, _Planner
+from esolangs.tools.malbolge import _chain
 
 
 def helper_values(group: _Group) -> dict[int, int]:

@@ -1,8 +1,7 @@
 """The canonical shared address-fold setup used by decoder consumers."""
 
 from address_gadget import build
-
-from esolangs.tools.malbolge import _Planner
+from planner import _Planner
 
 
 def build_shared_fold(

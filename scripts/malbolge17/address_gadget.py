@@ -5,6 +5,7 @@ import itertools
 from address17 import ALL1, ALL2, LOW, PIN, group_word
 from address_parity import parity_operand
 from parity_views import STORED_PARITY
+from planner import _Planner
 
 from esolangs.interpreters.other.malbolge import (
     _XLAT2,
@@ -22,13 +23,7 @@ from esolangs.tools._malbolge_core import (
     _rot,
 )
 from esolangs.tools._malbolge_digits import _GADGET
-from esolangs.tools.malbolge import (
-    _T_HELPERS,
-    _chain,
-    _emit_chain,
-    _Planner,
-    _valid_chars,
-)
+from esolangs.tools.malbolge import _T_HELPERS, _chain, _emit_chain, _valid_chars
 
 # Seed 33 collides at C5468 after reserving the V route; 78 lands at 51395/50666.
 _V_HANDOFF_SELECTOR_SEED = 78
@@ -312,7 +307,7 @@ def build(
         assert pin is not None
         for cell in pin:
             memory[cell] = None
-    path = _Planner(3272, 126, memory, {})
+    path = _Planner(3272, 126, memory, {}, accumulator=state[0])
     path.op("*", reset[0])
     path.op("p", reset[1])
     path.op("p", reset[2])
