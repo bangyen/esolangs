@@ -126,19 +126,20 @@ def six_five(truth_table: str) -> str:
     n == 10 vs 1023), and dense n == 7 needs 47.  Past that the table goes
     on the tape (:func:`_six_five_walk`, one label per input) and past 35
     inputs :func:`_six_five_looped` (sixteen at any width).  Trees stay
-    preferred while one fits.  Four orders compete: identity, fold-greedy,
-    reverse, first-then-reversed (the last two find cheap pointer walks on
-    symmetric tables; AND-8's 40320 orders took 17s vs milliseconds).  The
-    greedy order is scored through :data:`_GREEDY_ORDER_MAX_ARITY`, as in
-    :func:`best_input_order`; wider tables drop it.
+    preferred while one fits. Identity and reverse compete routinely;
+    fold-greedy and first-then-reversed remain label-budget fallbacks.
 
-    Within the budget each order lays repeated subtrees out once and jumps
-    to them (:class:`_Layout`). Retiring unshared candidates adds 18
-    characters over the three-input corpus (10,951 to 10,969), none over
-    the seeded five-input sample (27,168).
+    Each order shares repeated subtrees (:class:`_Layout`). Two routine
+    orders add 2.58% to the three-input total and 1.91% to the five-input
+    sample; alternate orders remain available when neither fits.
     """
-    orders = _six_five_orders(truth_table)
+    orders = _six_five_orders(truth_table, compact=True)
     best = _six_five_chosen(truth_table, orders, share=True)
+    if not best:
+        remaining = dict.fromkeys(
+            order for order in _six_five_orders(truth_table) if order not in orders
+        )
+        best = _six_five_chosen(truth_table, remaining, share=True)
     if not best:
         # Every order overflowed the budget even shared, so the table has
         # too many distinct subtrees for any tree-shaped emission.  The walk
@@ -149,10 +150,14 @@ def six_five(truth_table: str) -> str:
     return best.removesuffix("0")
 
 
-def _six_five_orders(truth_table: str) -> dict[tuple[int, ...], None]:
-    """Return the four named input orders, deduplicated, identity first."""
+def _six_five_orders(
+    truth_table: str, *, compact: bool = False
+) -> dict[tuple[int, ...], None]:
+    """Return two routine orders, or all four for label-budget fallback."""
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))
+    if compact:
+        return dict.fromkeys((identity, tuple(reversed(identity))))
     return dict.fromkeys(
         (
             identity,

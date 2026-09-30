@@ -474,7 +474,7 @@ class TestFargo:
                 if n == 3:
                     before += old
                     after += built
-        assert (before, after) == (9556, 7467)
+        assert (before, after) == (9556, 7740)
 
     @pytest.mark.medium
     def test_character_cost_five_input_corpus(self) -> None:
@@ -489,7 +489,7 @@ class TestFargo:
             table = "".join(rng.choice("01") for _ in range(32))
             old = min(
                 len(f"% 0 {expression}\n$\n")
-                for order in _orders(5)
+                for order in _orders(5, compact=True)
                 for expression in _expressions(table, 5, order)
             )
             program = boolean.fargo(table)
@@ -498,7 +498,7 @@ class TestFargo:
             after += len(program)
             for row in range(32):
                 assert run_fargo(program, list(format(row, "05b"))) == table[row]
-        assert (before, after) == (25064, 23199)
+        assert (before, after) == (25611, 23615)
 
     def test_character_cost_ties_use_executed_steps(self) -> None:
         """Selector-frame overhead is included in the size tie breaker."""

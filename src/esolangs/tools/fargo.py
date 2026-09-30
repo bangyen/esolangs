@@ -263,9 +263,11 @@ def _arm_expression(
     return pieces.render()
 
 
-def _orders(n: int) -> list[tuple[int, ...]]:
-    """Return the factoring orders tried: identity, reversed, both rotations."""
+def _orders(n: int, *, compact: bool = False) -> list[tuple[int, ...]]:
+    """Return two compact orders, or all four for width requests."""
     identity = tuple(range(n))
+    if compact:
+        return list(dict.fromkeys([identity, (*identity[1:], 0)]))
     orders = [identity, identity[::-1], (*identity[1:], 0), (n - 1, *identity[:-1])]
     return list(dict.fromkeys(orders))
 
@@ -441,7 +443,7 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     the interpreter consumes the input line either way.
     """
     n = _validate_truth_table(truth_table)
-    orders = _orders(n)
+    orders = _orders(n, compact=width is None)
     # Identity has linear text. Stop other orders at that budget: repeating
     # a high bit index at the leaves would otherwise cost Theta(T log n).
     expression = ""
