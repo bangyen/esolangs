@@ -239,7 +239,11 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
             "\n", ""
         ):
             return True
-    if language_id == "fractran" and generator is not None and _takes_width(generator):
+    if (
+        language_id in {"fractran", "bitdeque"}
+        and generator is not None
+        and _takes_width(generator)
+    ):
         narrow = generate(name, truth_table, 1)
         if isinstance(narrow, str) and template.split() == narrow.split():
             return True

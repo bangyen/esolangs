@@ -42,8 +42,8 @@ from esolangs.tools.one_two_three import PAIR as ONE_TWO_THREE_PAIR
 from esolangs.tools.parameterized import (
     BFPDA_PAIR,
     BIO_PAIR,
-    BITDEQUE_PAIR,
     HOME_ROW_PAIR,
+    bitdeque_setters,
     minsky_swap_setters,
 )
 from esolangs.tools.ram0 import PAIR as RAM0_PAIR
@@ -500,7 +500,7 @@ def _register() -> None:
         "bitdeque": _embedded(
             b.bitdeque,
             "queue_based.bitdeque",
-            pair=BITDEQUE_PAIR,
+            setters=bitdeque_setters,
             answer_mode="dump",
             note=(
                 "Bitdeque has no output instruction and dumps its deque at "

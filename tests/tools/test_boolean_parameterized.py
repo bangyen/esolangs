@@ -1088,3 +1088,67 @@ class TestConstructorWorkBudget:
         _work[0] = 1  # _paint_all is called outside construct() here
         with pytest.raises(_WorkExhaustedError):
             _paint_all(b, (1, 3))
+
+
+@pytest.mark.parametrize("width", [1, 7, 9, 10, 11, 40, 80])
+def test_bitdeque_short_load_all_small_tables(width: int) -> None:
+    import esolangs
+
+    for n in range(1, 4):
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            template = esolangs.generate("Bitdeque", table, width)
+            for row, expected in enumerate(table):
+                bits = list(map(int, format(row, f"0{n}b")))
+                program = esolangs.instantiate("Bitdeque", template, bits)
+                assert esolangs.run("Bitdeque", program) == expected
+
+
+def test_bitdeque_short_load_floor_and_rendered_total() -> None:
+    import esolangs
+
+    template = esolangs.generate("Bitdeque", "0110", 1)
+    assert max(map(len, template.splitlines())) == 7
+    for row in range(4):
+        program = esolangs.instantiate("Bitdeque", template, [row // 2, row % 2])
+        assert max(map(len, program.splitlines())) == 7
+    assert (
+        sum(
+            len(esolangs.generate("Bitdeque", format(value, "08b"), 1))
+            for value in range(256)
+        )
+        == 141184
+    )
+
+
+@pytest.mark.parametrize("width", [1, 9, 40, 80])
+def test_bitdeque_short_load_saved_source_and_large_tables(width: int) -> None:
+    import esolangs
+
+    for n in range(4, 7):
+        table = "".join(str(row.bit_count() % 2) for row in range(2**n))
+        template = str(esolangs.generate("Bitdeque", table, width))
+        for row in [0, 1, 2**n // 3, 2**n - 1]:
+            bits = list(map(int, format(row, f"0{n}b")))
+            program = esolangs.instantiate(
+                "Bitdeque", template, bits, truth_table=table
+            )
+            assert esolangs.run("Bitdeque", program) == table[row]
+
+
+def test_bitdeque_short_load_rejects_changed_prefix() -> None:
+    from esolangs.tools.parameterized import bitdeque, bitdeque_setters
+
+    template = bitdeque("0110", 1)
+    pair = bitdeque_setters(template, 2)
+    assert pair == (("POP  ", "EJECT"),) * 2
+    with pytest.raises(ValueError, match="shorter than"):
+        bitdeque_setters(template.replace("GOTO 16", "GOTO 17"), 2)
+
+
+def test_bitdeque_short_load_rejects_wrong_table_provenance() -> None:
+    import esolangs
+
+    template = str(esolangs.generate("Bitdeque", "0110", 9))
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        esolangs.instantiate("Bitdeque", template, [0, 1], truth_table="0001")
