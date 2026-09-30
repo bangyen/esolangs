@@ -19,8 +19,9 @@ from esolangs.tools.helpers import (
 )
 from esolangs.tools.wrap import wrap_tokens
 
-# ``()!`` and ``:!`` are stack-neutral before the shared selector suffix.
-PAIR = ("(()!!^)", "(:!~!^)")
+# Zero drops the upper promise; one swaps before dropping.  Pad zero
+# outside its pushed code so both setters occupy five characters.
+PAIR = ("(!^) ", "(~!^)")
 
 #: How many levels below a node a carried subtree may sit: 2**4 candidates a
 #: node keeps the build O(T).
@@ -127,10 +128,10 @@ def _shared(truth_table: str) -> str:
 
 
 def underload(truth_table: str, width: int | None = None) -> str:
-    """Return an Underload template; input setters need seven columns."""
+    """Return an Underload template; input setters need five columns."""
     shared, plain = _shared(truth_table), _plain(truth_table)
     program = shared if len(shared) < len(plain) else plain
     if width is None or width <= 0:
         return program
     # Only bit literals reach S; every other pushed string is executable code.
-    return wrap_tokens(program, width, r"\${7}|\([01]\)|.")
+    return wrap_tokens(program, width, r"\${5}|\([01]\)|.")
