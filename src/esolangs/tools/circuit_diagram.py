@@ -442,8 +442,11 @@ class _Builder:
     result on a fresh bus.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, narrow: bool = False) -> None:
         """Start an empty build."""
+        # Input junction, gate, output junction, then one clear column:
+        # different signals' junctions must remain two cells apart.
+        self.gate_stride = 4 if narrow else 3 * _COL_STEP
         self.layout = _Layout()
         self.next_column = 1
         self.next_row = 0
@@ -519,7 +522,7 @@ class _Builder:
             self.free_strides.remove(first)
         else:
             first = self.next_column
-            self.next_column += 3 * _COL_STEP
+            self.next_column += self.gate_stride
         return first, first + _COL_STEP
 
     def _band(self) -> None:
@@ -569,7 +572,7 @@ class _Builder:
             return True
         if any(group + _COL_STEP > after for group in self.free_strides):
             return True
-        return self.next_column + 3 * _COL_STEP <= self.limit
+        return self.next_column + self.gate_stride <= self.limit
 
     def _release(self, signal: int) -> None:
         """Give back ``signal``'s column group, if it owns one to give.
@@ -968,7 +971,7 @@ def _circuit_diagram_at(
     """
     _validate_truth_table(truth_table)
 
-    builder = _Builder()
+    builder = _Builder(narrow=limit is not None)
     n = len(truth_table).bit_length() - 1
     # Every input keeps its own ``-`` row -- the rows are the read order and
     # the interface -- but a table that ignores some of them is a smaller

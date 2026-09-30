@@ -407,6 +407,17 @@ class TestCircuitDiagramLayoutGuards:
                 assert columns <= max(width, floor), (table, width, columns)
                 assert self._run_at(table, width) == table, (table, width)
 
+    def test_narrow_gate_groups_preserve_every_small_table(self) -> None:
+        """Four-column groups retain clearance and reduce the XOR floor."""
+        from esolangs.tools.circuit_diagram import circuit_diagram
+
+        program = circuit_diagram("0110", 1)
+        assert max(map(len, program.splitlines())) == 23
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                assert self._run_at(table, 1) == table
+
     def test_banding_brings_every_arity_inside_eighty(self) -> None:
         """Which is the point: unbanded, parity clears 80 columns at n == 4.
 
@@ -424,8 +435,9 @@ class TestCircuitDiagramLayoutGuards:
             banded = circuit_diagram(table, 80)
             assert max(len(row) for row in flat.splitlines()) > 80, n
             assert max(len(row) for row in banded.splitlines()) <= 80, n
-            # and it costs rows, which is the trade
-            assert len(banded.splitlines()) > len(flat.splitlines()), n
+            # Compact groups can fit without a band; actual bands add rows.
+            assert len(banded.splitlines()) >= len(flat.splitlines()), n
+            assert self._run_at(table, 80) == table
 
     @pytest.mark.slow
     def test_a_band_must_re_carry_what_an_earlier_one_moved(
