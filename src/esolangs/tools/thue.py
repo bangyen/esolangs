@@ -52,13 +52,13 @@ _RULES = "\n".join(
 
 
 def _chunk_marker(index: int, digits: int) -> str:
-    """Return a delimited name containing no existing rewrite marker."""
-    alphabet = "".join(char for char in ascii_letters if char not in "abLMRE")
+    """Return a fixed-width name containing no table or control symbol."""
+    alphabet = "".join(char for char in ascii_letters if char not in "abLMRECD")
     name = []
     for _ in range(digits):
         index, digit = divmod(index, len(alphabet))
         name.append(alphabet[digit])
-    return "[" + "".join(reversed(name)) + "]"
+    return "".join(reversed(name))
 
 
 def thue(truth_table: str, width: int | None = None) -> str:
@@ -83,14 +83,21 @@ def thue(truth_table: str, width: int | None = None) -> str:
     program = f"{_RULES}\nLM{table}E"
     if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
         return program
-    digits, capacity = 1, len(ascii_letters) - len("abLMRE")
+    # Contract only a completed return sweep. D restores L before reading,
+    # so the shorter start rules cannot fire on R in the table's interior.
+    rules_text = _RULES.replace("LR", "C").replace("::=LM", "::=D")
+    rules_text = rules_text.removesuffix("::=") + "LR::=C\nD::=LM\n::="
+    narrow = f"{rules_text}\nLM{table}E"
+    if max(map(len, narrow.splitlines())) <= max(width, 9):
+        return narrow
+    digits, capacity = 1, len(ascii_letters) - len("abLMRECD")
     while capacity < length:
         digits += 1
-        capacity *= len(ascii_letters) - len("abLMRE")
-    marker_width = digits + 2
+        capacity *= len(ascii_letters) - len("abLMRECD")
+    marker_width = digits
     # Payload covers its names' overhead, keeping even the narrowest source O(T).
     payload = max(marker_width, width - 2 * marker_width - 3)
-    rules = _RULES.splitlines()[:-1]
+    rules = rules_text.splitlines()[:-1]
     for index, offset in enumerate(range(0, length, payload)):
         marker = _chunk_marker(index, digits)
         following = (
