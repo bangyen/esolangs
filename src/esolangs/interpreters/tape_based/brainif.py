@@ -44,19 +44,25 @@ def _parse(line: str) -> _Line:
     if not line:
         return None
     arr = line.split()
-    if len(arr) < 2:
+    if len(arr) < 2 or arr[0] != "if":
         raise ValueError("malformed BrainIf line: " + line)
     value = int(arr[1])
-    for name in ("increment", "inc", "right", "left", "goto", "input", "output"):
-        if name in arr[2:]:
-            if name == "goto":
-                if len(arr) < 4:
-                    raise ValueError("goto requires a target line")
-                return (value, "goto", int(arr[3]))
-            return (value, name, 0)
-    # A guarded line naming no command is inert but well-formed: it tests
-    # the cell, does nothing, and falls through like any other line.  The
-    # wiki would error here; recorded in docs/limitations.md.
+    command = arr[2] if len(arr) > 2 else ""
+    if command == "move":
+        if len(arr) != 4 or arr[3] not in ("right", "left"):
+            raise ValueError("malformed BrainIf line: " + line)
+        return (value, arr[3], 0)
+    if command == "goto":
+        if len(arr) < 4:
+            raise ValueError("goto requires a target line")
+        if len(arr) != 4:
+            raise ValueError("malformed BrainIf line: " + line)
+        return (value, command, int(arr[3]))
+    if len(arr) > 3:
+        raise ValueError("malformed BrainIf line: " + line)
+    if command in ("increment", "inc", "right", "left", "input", "output"):
+        return (value, command, 0)
+    # Unknown commands remain inert under the convention in limitations.md.
     return (value, "", 0)
 
 

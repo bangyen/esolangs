@@ -257,9 +257,9 @@ class TestParsing:
         generally would have gone unnoticed -- but it shortens the row and
         moves every column after it.
         """
-        machine = _Machine(["( )  \n"], ScriptedIO(""))
-        assert machine.width == 5
-        assert machine.grid == ("( )  ",)
+        machine = _Machine(["( )─(( ))  \n"], ScriptedIO(""))
+        assert machine.width == 11
+        assert machine.grid == ("( )─(( ))  ",)
 
     @pytest.mark.parametrize(
         "program", [["( )[ }"], [" ( )", " [ }"], ["( )", "  [ }"]]
@@ -452,18 +452,17 @@ class TestPointersStop:
             machine.step()
         return machine.halted
 
-    def test_start_with_no_exits_stops_immediately(self) -> None:
-        """A start node with nothing attached has nowhere to send a pointer."""
-        assert self._halts(["( )"])
-        assert run_program(["( )"]) == ""
+    def test_start_with_no_exits_is_invalid(self) -> None:
+        with pytest.raises(ValueError, match="no exit path"):
+            _Machine(["( )"], ScriptedIO(""))
 
     def test_stepping_a_halted_machine_does_nothing(self) -> None:
-        """``step`` returns early once every pointer is done."""
-        machine = _Machine(["( )"], ScriptedIO(""))
+        machine = _Machine(["( )─(( ))"], ScriptedIO(""))
+        while not machine.halted:
+            machine.step()
+        before = machine.snapshot()
         machine.step()
-        assert machine.halted
-        machine.step()  # the early return: no pointer is live to advance
-        assert machine.halted
+        assert machine.snapshot() == before
 
     def test_rail_running_off_the_grid_stops(self) -> None:
         """A rail that reaches the edge stops instead of stepping outside."""
@@ -474,11 +473,10 @@ class TestPointersStop:
         """A rail that ends in blank space has no cell to continue into."""
         assert self._halts(["( )─ ─"])
 
-    def test_node_with_no_onward_rail_stops(self) -> None:
-        """A node reached by a rail but leading nowhere stops the pointer."""
-        assert self._halts(["( )─\\[ ]/"])
-        assert self._halts(["( )─< >"])
-        assert self._halts(["( )─{ }"])
+    @pytest.mark.parametrize("node", ["\\[ ]/", "< >", "{ }", "( )"])
+    def test_node_with_no_onward_rail_is_invalid(self, node: str) -> None:
+        with pytest.raises(ValueError, match="no exit path"):
+            run_program([f"( )─{node}"])
 
     def test_touching_start_nodes_are_rejected(self) -> None:
         """Start nodes also need a connecting path."""
@@ -608,3 +606,21 @@ class TestThePointerMemoryIsAValue:
         from esolangs.interpreters.grid_based.flowchart import _Memory
 
         assert _Memory({}) != ()
+
+
+def test_counterclockwise_entry_prefers_clockwise_exit() -> None:
+    grid = [
+        "   (( ))",
+        "     │",
+        "    [ ]─( )",
+        "     │",
+        "    [ }",
+        "     │",
+        "    \\ \\",
+        "     │",
+        "   (( ))",
+    ]
+    machine = _Machine(grid, ScriptedIO())
+    machine.step()
+    machine.step()
+    assert machine.ip == (1, 5, -1, 0)

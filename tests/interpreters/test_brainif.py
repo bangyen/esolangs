@@ -286,3 +286,33 @@ class TestContract(CycleContract, InputCursorContract, StateViewContract):
     looping_program: ClassVar[list[str]] = ["if 0 goto 1"]
     state_views: ClassVar[tuple[str, ...]] = ("ptr", "ip", "memory")
     viewing_program: ClassVar[list[str]] = ["if 0 right", "if 0 output"]
+
+
+def test_malformed_command_lines_are_rejected() -> None:
+    import pytest
+
+    for line in (
+        "garbage 0 output",
+        "if 0 output junk",
+        "if 0 frobnicate output",
+        "if 0 goto 1 junk",
+        "if 0 move up",
+        "if 0 move right junk",
+    ):
+        with pytest.raises(ValueError, match="malformed BrainIf line"):
+            run_and_capture([line])
+
+
+def test_canonical_move_commands_remain_valid() -> None:
+    assert (
+        run_and_capture(
+            [
+                "if 0 increment",
+                "if 1 move right",
+                "if 0 output",
+                "if 0 move left",
+                "if 1 output",
+            ]
+        )
+        == "\x00\x01"
+    )

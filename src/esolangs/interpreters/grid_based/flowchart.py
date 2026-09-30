@@ -124,7 +124,8 @@ One further rule the spec does state, and this interpreter enforces:
   sits on, and a rail may still pass a node by without touching it.
 
 Malformed programs (touching nodes, an unknown node, a vertical path meeting
-a node off its middle, or no ``( )`` to start from) raise :class:`ValueError`.
+a node off its middle, no ``( )`` to start from, or a non-end node with no
+onward path) raise :class:`ValueError`.
 
 At EOF a ``/ /`` read leaves the register **empty** rather than raising,
 which is the same state ``{ }`` clears it to.  The nodes that consume the
@@ -471,8 +472,7 @@ class _Machine:
         here = (p.row, p.col)
         exits = self._reading_order(self._exits_from_node(p.row, p.col, None))
         if not exits:
-            self.pointers[0] = replace(p, done=True)
-            return
+            raise ValueError("start node has no exit path")
         self.pointers = [_Pointer(row, col, d, prev=here) for row, col, d in exits]
 
     def _cells_of(self, row: int, col: int) -> list[tuple[int, int]]:
@@ -488,9 +488,8 @@ class _Machine:
 
         The spec orders pointers "top-most left-most, traveling right, then
         downwards", so a fork creates them in the reading order of the cells
-        its paths leave through.  Only the fork sites sort: the unsorted
-        enumeration also feeds :meth:`_leave`'s fallback, which the spec says
-        nothing about.
+        its paths leave through. Other nodes order exits relative to the
+        arriving heading.
         """
         return sorted(exits, key=lambda step: (step[0], step[1]))
 
@@ -642,7 +641,7 @@ class _Machine:
                 allowed = [remembered]
             elif p.d in allowed:
                 allowed = [p.d]
-        d = allowed[0]
+        d = next(d for d in (p.d, _turn_right(p.d), _turn_left(p.d)) if d in allowed)
         self._put(i, p.remembering(self._anchor(p.row, p.col), d))
         self._move(i, d)
 
@@ -686,13 +685,18 @@ class _Machine:
         p = self.pointers[i]
         exits = self._exits_from_node(p.row, p.col, p.prev)
         if not exits:
-            self._put(i, replace(p, done=True))
-            return
+            raise ValueError("non-end node has no exit path")
+        order = (p.d, _turn_right(p.d), _turn_left(p.d))
+        exits.sort(key=lambda step: order.index(step[2]))
         if prefer is not None:
             for n_row, n_col, d in exits:
                 if d == prefer:
                     self._step_to(i, n_row, n_col, d)
                     return
+        if prefer is not None:
+            n_row, n_col, d = exits[0]
+            self._step_to(i, n_row, n_col, d)
+            return
         if len(exits) > 1:
             remembered = self._remembered(p, p.row, p.col, [d for _, _, d in exits])
             for n_row, n_col, d in exits:
@@ -722,8 +726,7 @@ class _Machine:
         p = self.pointers[i]
         exits = self._reading_order(self._exits_from_node(p.row, p.col, p.prev))
         if not exits:
-            self._put(i, replace(p, done=True))
-            return
+            raise ValueError("non-end node has no exit path")
         here = (p.row, p.col)
         for n_row, n_col, d in exits[1:]:
             self.pointers.append(
