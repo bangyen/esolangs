@@ -9,7 +9,7 @@ from esolangs.tools.whitespace import _ADD, _DISCARD, _END, _OUT_NUM, _push, whi
 
 
 @pytest.mark.parametrize("inputs", [1, 2, 3, 4, 5, 6])
-@pytest.mark.parametrize("width", [1, 5, 6, 7, 8, 11, 27, 80, None])
+@pytest.mark.parametrize("width", [1, 4, 5, 6, 7, 8, 11, 27, 80, None])
 def test_whitespace_horner_chunks_compute_every_row(
     inputs: int, width: int | None
 ) -> None:
@@ -18,7 +18,7 @@ def test_whitespace_horner_chunks_compute_every_row(
     if width is None:
         assert source == whitespace(table)
     else:
-        assert max(map(len, source.split("\n"))) <= max(5, width)
+        assert max(map(len, source.split("\n"))) <= max(4, width)
     assert esolangs.evaluate("Whitespace", table, width=width) == table
 
 
@@ -34,6 +34,11 @@ def test_whitespace_separator_preserves_a_live_stack() -> None:
     ending = _ADD + _OUT_NUM + _END
     assert esolangs.run("Whitespace", prefix + ending) == "42"
     assert esolangs.run("Whitespace", prefix + _push(0) + _DISCARD + ending) == "42"
+    from esolangs.tools.whitespace import _fold_four
+
+    folded = _fold_four([_push(19), _push(23), _ADD, _OUT_NUM, _END])
+    assert max(map(len, folded.split("\n"))) <= 4
+    assert esolangs.run("Whitespace", folded) == "42"
 
 
 def test_whitespace_keeps_fitting_source_and_narrows_a_long_literal() -> None:
@@ -57,5 +62,5 @@ def test_whitespace_duplicate_separator_executes_every_small_table(
 
 
 def test_whitespace_sentinel_floor_and_corpus_size() -> None:
-    assert max(map(len, whitespace("0110", 1).split("\n"))) == 5
-    assert sum(len(whitespace(format(v, "08b"), 1)) for v in range(256)) == 317013
+    assert max(map(len, whitespace("0110", 1).split("\n"))) == 4
+    assert sum(len(whitespace(format(v, "08b"), 1)) for v in range(256)) == 241466
