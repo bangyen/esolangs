@@ -1007,6 +1007,42 @@ def _circuit_diagram_at(
     return builder.layout.render()
 
 
+def _affine_circuit(table: str, width: int) -> str | None:
+    """Return a direct XOR chain if binary-carry parity verifies the table."""
+    n = _validate_truth_table(table)
+    constant = int(table[0])
+    coefficients = [constant ^ int(table[1 << bit]) for bit in range(n)]
+    parity = constant
+    for row, value in enumerate(table):
+        if parity != int(value):
+            return None
+        # All binary carries together flip fewer than 2T bits.
+        carry = row
+        bit = 0
+        while carry & 1:
+            parity ^= coefficients[bit]
+            carry >>= 1
+            bit += 1
+        if bit < n:
+            parity ^= coefficients[bit]
+    builder = _Builder(narrow=True)
+    rails = [builder.input_bus() for _ in range(n)]
+    selected = [rail for bit, rail in enumerate(reversed(rails)) if coefficients[bit]]
+    builder.band_start = builder.next_column
+    # Reserve the output dash and colon beyond the last gate group.
+    builder.limit = max(1, width - 2)
+    if not selected:
+        result = builder.constant(rails[0], "X" if constant else "x")
+    elif len(selected) == 1:
+        result = builder.invert(selected[0]) if constant else selected[0]
+    else:
+        result = builder.gate("X" if constant else "x", selected[0], selected[1])
+        for rail in selected[2:]:
+            result = builder.gate("x", result, rail)
+    builder.output(result)
+    return builder.layout.render()
+
+
 def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
@@ -1037,7 +1073,8 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     does with no new primitive: a tap already runs a bus down and then along
     a row in either direction.
 
-    The floor is what a band cannot reclaim -- the rails and the complements,
+    Below that floor, affine tables use native XOR/XNOR chains.
+    A mux layout's floor is what a band cannot reclaim -- the rails and complements,
     which their mux levels share and which therefore stay live for the whole
     drawing -- plus the carried signals and one gate group.  That is about
     ``8 * n`` columns, so the floor grows with the inputs rather than with
@@ -1059,8 +1096,10 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     if width is None or max(len(line) for line in flat.split("\n")) <= width:
         return flat
     banded = _circuit_diagram_at(truth_table, width, order)
-    if max(len(line) for line in banded.split("\n")) < max(
-        len(line) for line in flat.split("\n")
-    ):
+    if max(map(len, banded.splitlines())) <= width:
         return banded
-    return flat
+    # The output dash and colon extend beyond the final gate group.
+    banded = _circuit_diagram_at(truth_table, max(1, width - 2), order)
+    affine = _affine_circuit(truth_table, width)
+    candidates = (flat, banded) if affine is None else (flat, banded, affine)
+    return min(candidates, key=lambda program: max(map(len, program.splitlines())))

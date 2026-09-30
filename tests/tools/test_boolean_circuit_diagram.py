@@ -408,15 +408,52 @@ class TestCircuitDiagramLayoutGuards:
                 assert self._run_at(table, width) == table, (table, width)
 
     def test_narrow_gate_groups_preserve_every_small_table(self) -> None:
-        """Four-column groups retain clearance and reduce the XOR floor."""
+        """Compact groups and native XOR gates preserve every small table."""
         from esolangs.tools.circuit_diagram import circuit_diagram
 
         program = circuit_diagram("0110", 1)
-        assert max(map(len, program.splitlines())) == 23
+        assert max(map(len, program.splitlines())) == 11
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
                 assert self._run_at(table, 1) == table
+
+    def test_affine_floor_uses_native_xor_in_public_programs(self) -> None:
+        """Canonical input rails feed a single XOR gate below twenty columns."""
+        import esolangs
+
+        program = esolangs.generate("Circuit Diagram", "0110", 1)
+        assert max(map(len, program.splitlines())) == 11
+        assert "x" in program
+        for width in (1, 11, 19):
+            assert self._run_at("0110", width) == "0110"
+
+    def test_native_affine_chains_verify_constants_and_complements(self) -> None:
+        from esolangs.interpreters.grid_based.circuit_diagram import run
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.circuit_diagram import _affine_circuit
+
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                program = _affine_circuit(table, 1)
+                if program is None:
+                    continue
+                for row, expected in enumerate(table):
+                    io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+                    run(program.splitlines(), io)
+                    assert io.getvalue() == expected
+                    assert io.reads == n
+
+    def test_output_columns_fit_the_affine_and_mux_boundary(self) -> None:
+        from esolangs.tools.circuit_diagram import circuit_diagram
+
+        for table in ("00000001", "01101001", "0110100110010110"):
+            floor = max(map(len, circuit_diagram(table, 1).splitlines()))
+            for width in range(1, 25):
+                program = circuit_diagram(table, width)
+                assert max(map(len, program.splitlines())) <= max(width, floor)
+                assert self._run_at(table, width) == table
 
     def test_banding_brings_every_arity_inside_eighty(self) -> None:
         """Which is the point: unbanded, parity clears 80 columns at n == 4.
