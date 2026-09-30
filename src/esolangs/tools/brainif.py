@@ -74,9 +74,66 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     """
     plain = _brainif_tree(truth_table, width)
     if width is not None:
+        n = _validate_truth_table(truth_table)
+        if n <= 2 and max(map(len, plain.splitlines())) > width:
+            # The old two-digit output jump is13 columns; this is12.
+            return _brainif_zero_jumps(truth_table)
         return plain
     dag = _brainif_dag(truth_table)
     return dag if len(dag) < len(plain) else plain
+
+
+def _brainif_zero_jumps(table: str) -> str:
+    """Route small trees through unread zero cells before each branch jump."""
+    n = _validate_truth_table(table)
+    lines: list[str] = []
+    labels: dict[str, int] = {}
+
+    def mark(label: str) -> None:
+        labels[label] = len(lines) + 1
+
+    # Cell0 stays zero for the output escape; cell1 holds48, cell2 is
+    # the final zero landing, and input cells lie above it. Two-input
+    # addresses fit two digits; larger arities retain the scalable build
+    # rather than O(T log T) jump text.
+    lines.extend(["if 0 right", "if 0 goto @init"])
+    mark("zero")
+    lines.extend(["if 0 left", "if 48 output", "if 48 left", "if 0 goto @done"])
+    mark("one")
+    lines.extend(
+        [
+            "if 0 left",
+            "if 48 inc",
+            "if 49 output",
+            "if 49 left",
+            "if 0 goto @done",
+        ]
+    )
+    mark("init")
+    lines.extend(f"if {value} inc" for value in range(48))
+    lines.append("if 48 right")
+    lines.extend("if 0 right" for _ in range(n))
+
+    def tree(start: int, end: int, depth: int) -> None:
+        if depth == n:
+            lines.append("if 0 goto @" + ("one" if table[start] == "1" else "zero"))
+            return
+        # A one moves onto the unread zero cell below it before jumping;
+        # a zero stays on its input until the ordinary left step.
+        label = f"branch_{start}_{end}"
+        lines.extend(["if 0 input", "if 49 left", f"if 0 goto @{label}", "if 48 left"])
+        middle = (start + end) // 2
+        tree(start, middle, depth + 1)
+        mark(label)
+        tree(middle, end, depth + 1)
+
+    tree(0, len(table), 0)
+    mark("done")
+    lines.append("")
+    return "\n".join(
+        line.split("@")[0] + str(labels[line.split("@")[1]]) if "@" in line else line
+        for line in lines
+    )
 
 
 def _residual_layers(table: str) -> list[list[tuple[int, int]]]:
