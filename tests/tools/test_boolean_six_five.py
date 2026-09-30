@@ -399,7 +399,7 @@ class TestSixFive:
         10951 (-9.8%) once a tree jumps to the subtrees it repeats.
         """
         total = sum(len(boolean.six_five(format(v, "08b"))) for v in range(256))
-        assert total == 10951
+        assert total == 10969
 
     def test_the_executed_steps_are_stable_over_three_inputs(self) -> None:
         """Steps summed over every row of every three-input table.
@@ -420,7 +420,7 @@ class TestSixFive:
                 steps = _commands("6-5", program, table, row, 10_000)
                 assert steps is not None
                 total += steps
-        assert total == 40261
+        assert total == 40049
 
     def test_an_inverted_bit_skips_a_step_only_before_more_reads(self) -> None:
         """A node whose answer is NOT its bit tests it, unless reads remain.
@@ -585,9 +585,10 @@ class TestSixFive:
             with pytest.MonkeyPatch.context() as patch:
                 patch.setattr(module, "_six_five_hoisted", counted)
                 boolean.six_five(table)
-            # The plain and shared layouts see the same orders.
-            assert 1 <= plain == built - plain <= 4, f"n={n} built {built}"
-            assert rebuilt == 2
+            # Only shared layouts are production candidates.
+            assert plain == 0
+            assert 1 <= built <= 4, f"n={n} built {built}"
+            assert rebuilt == 1
 
     def test_retired_arithmetic_kernel_is_gone(self) -> None:
         """Retired construction helpers do not return as dispatch candidates."""
@@ -657,27 +658,25 @@ class TestSixFive:
 class TestSixFiveSharing:
     """A repeated subtree is laid out once and jumped to.
 
-    Every order is built plain and shared and the plain trees choose first,
-    so no table grows; the gain grows with the table, so it is judged on the
-    seeded five-input sample too (``docs/CONTRIBUTING.md``).
+    Only shared trees ship; plain trees remain size oracles.
     """
 
     @staticmethod
     def _totals(tables: list[str]) -> tuple[int, int]:
-        """(plain, shipped) character totals, each table checked not to grow."""
+        """Return plain and shipped character totals."""
         before = after = 0
         for table in tables:
             orders = _six_five_orders(table)
             plain = len(_six_five_chosen(table, orders, share=False).removesuffix("0"))
             shipped = len(boolean.six_five(table))
-            assert shipped <= plain, table
             before, after = before + plain, after + shipped
         return before, after
 
     def test_three_input_total(self) -> None:
-        """All 256 three-input tables: 12,135 to 10,951 characters, 9.8%."""
+        """Retiring plain candidates: 10,951 to 10,969 characters (+0.164%)."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (12135, 10951)
+        assert self._totals(tables) == (12135, 10969)
+        assert 10969 * 100 < 10951 * 105
 
     def test_five_input_sample_total(self) -> None:
         """200 seeded five-input tables: 41,884 to 27,168 characters, 35.1%."""

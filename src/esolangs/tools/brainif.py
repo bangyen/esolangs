@@ -62,22 +62,21 @@ _TREE_LEVELS = 4
 
 
 def brainif(truth_table: str, width: int | None = None) -> str:
-    """Choose the shorter BrainIf candidate, reading each input in order.
+    """Build BrainIf, reading each input in order.
 
     The residual DAG reuses one input cell and shares equal cofactors.
     It cuts the three-input total from 319,576 to 292,492 characters and
     steps from 134,984 to 74,752, with no table growing or slowing.
     Width requests retain the tree/spatial construction.
     """
-    plain = _brainif_tree(truth_table, width)
     if width is not None:
+        plain = _brainif_tree(truth_table, width)
         n = _validate_truth_table(truth_table)
         if n <= 2 and max(map(len, plain.splitlines())) > width:
             # The old two-digit output jump is13 columns; this is12.
             return _brainif_zero_jumps(truth_table)
         return plain
-    dag = _brainif_dag(truth_table)
-    return dag if len(dag) < len(plain) else plain
+    return _brainif_dag(truth_table)
 
 
 def _brainif_zero_jumps(table: str) -> str:

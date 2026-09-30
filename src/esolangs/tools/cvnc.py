@@ -459,21 +459,17 @@ def cvnc(truth_table: str) -> str:
     jumping to the one shared halt gadget.  The identity and greedy read
     orders are both built, and the shorter wins.  A program not shorter
     than the gadget's reach gets one more squaring, repeated until it
-    fits; the contest is run once, since the gadget is a fixed-size
-    prologue rather than part of any leaf.
+    fits; changing the prologue rebases the shared body before its
+    reach is checked again.
     """
     # For the refusal only; the arity is not needed below.
     _validate_truth_table(truth_table)
-    body = best_input_order(truth_table, _ordered_candidate)
     squarings = _HALT_SQUARINGS
-    while len(_halt(squarings)) + len(body) >= _reach(squarings):
+    while True:
+        body = best_input_order(
+            truth_table,
+            partial(_ordered_candidate, offset=_prologue_syllables(squarings)),
+        )
+        if len(_halt(squarings)) + len(body) < _reach(squarings):
+            return _halt(squarings) + body
         squarings += 1
-    # A shared body jumps to syllables counted past this prologue, so it is
-    # built once the prologue is fixed; shorter, it fits the same reach.
-    shared = best_input_order(
-        truth_table,
-        partial(_ordered_candidate, offset=_prologue_syllables(squarings)),
-    )
-    if len(shared) < len(body):
-        body = shared
-    return _halt(squarings) + body

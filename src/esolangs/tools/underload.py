@@ -16,7 +16,6 @@ from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     SubtreeDiagram,
     _validate_truth_table,
-    constant_span_test,
 )
 from esolangs.tools.wrap import wrap_tokens
 
@@ -36,24 +35,6 @@ _NODE = 7
 def _reflected(truth_table: str, n: int) -> str:
     """Reorder rows so the tree's first test is the last-pushed input."""
     return "".join(truth_table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(1 << n))
-
-
-def _plain(truth_table: str, *, short: bool = False) -> str:
-    """Return the unshared promise tree, each leaf printing its own bit."""
-    n = _validate_truth_table(truth_table)
-    reflected = _reflected(truth_table, n)
-    constant = constant_span_test(reflected)
-
-    def tree(level: int, lo: int, hi: int) -> str:
-        if constant(lo, hi):
-            return "!" * (n - level) + f"({reflected[lo]})S"
-        mid = (lo + hi) // 2
-        return f"({tree(level + 1, lo, mid)})~({tree(level + 1, mid, hi)})~^" + (
-            "^" if short else ""
-        )
-
-    slots = TEMPLATE_CHAR * (len((_SHORT_PAIR if short else PAIR)[0]) * n)
-    return slots + f"({tree(0, 0, len(reflected))})^"
 
 
 def _shared(truth_table: str, *, short: bool = False) -> str:
@@ -135,8 +116,7 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
 def underload(truth_table: str, width: int | None = None) -> str:
     """Return a promise tree; narrow selectors defer execution to their node."""
     short = width is not None and 0 < width < 5
-    shared, plain = _shared(truth_table, short=short), _plain(truth_table, short=short)
-    program = shared if len(shared) < len(plain) else plain
+    program = _shared(truth_table, short=short)
     if width is None or width <= 0:
         return program
     # Only bit literals reach S; every other pushed string is executable code.

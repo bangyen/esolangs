@@ -405,11 +405,7 @@ def container(truth_table: str, width: int | None = None) -> str:
     """Build Container rules; narrow widths factor constants and deltas."""
     n = _validate_truth_table(truth_table)
     if n <= 6:
-        program = min(
-            _container_tree(truth_table),
-            _container_tree(truth_table, share=True),
-            key=len,
-        )
+        program = _container_tree(truth_table, share=True)
     else:
         program = _container_threshold(truth_table)
     if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:

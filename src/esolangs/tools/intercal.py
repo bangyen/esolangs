@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
-    constant_span_test,
 )
 
 TEMPLATE_CHAR = "@"
@@ -56,7 +55,7 @@ def intercal(truth_table: str, width: int | None = None) -> str:
     order is built plain and shared, and the shorter kept.  Over-wide
     expressions name each Boolean operation; narrower layouts break between tokens.
     """
-    natural = best_input_order(truth_table, _intercal_either)
+    natural = best_input_order(truth_table, _intercal_shared)
     if width is None or width <= 0 or max(map(len, natural.splitlines())) <= width:
         return natural
     previous = _intercal_narrow(truth_table, simplify=False)
@@ -171,43 +170,6 @@ def _intercal_narrow(
     return _program(n, assigned, results[root])
 
 
-def _intercal_either(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Return the shorter of the plain and the shared template for one order.
-
-    Ties keep the plain one, so sharing only ever shrinks a template: over
-    the three-input tables 4.5% (65,704 to 62,728 characters), over 200
-    seeded five-input ones 29.7% (195,636 to 137,608), since the share of
-    repeated subtrees grows with the table.  The equal-halves fold alone
-    saves 1.6% and 5.2%, the fold with shared nodes 4.5% and 25.6%.
-    """
-    plain = _intercal_ordered(truth_table, perm)
-    shared = _intercal_shared(truth_table, perm)
-    return shared if len(shared) < len(plain) else plain
-
-
-def _intercal_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one order's template; level ``k`` selects input ``perm[k]``.
-
-    ``truth_table`` is already permuted.  The assignments stay in name
-    order, input ``i`` in ``.{n - i}``.
-    """
-    n = _validate_truth_table(truth_table)
-    constant = constant_span_test(truth_table)
-
-    def tree(level: int, lo: int, hi: int) -> _Expr:
-        if constant(lo, hi):
-            return _Expr("constant", int(truth_table[lo]))
-        mid = (lo + hi) // 2
-        # In name order large variable numbers occur near the root, where
-        # their decimal spelling is repeated least; this keeps source size
-        # linear in T.  A reorder moves them only through the greedy cap
-        # (n = 10), where no name is longer than two digits.
-        zero, one = tree(level + 1, lo, mid), tree(level + 1, mid, hi)
-        return _mux(_Expr("input", n - 1 - perm[level]), zero, one)
-
-    return _program(n, [], tree(0, 0, len(truth_table)))
-
-
 def _mux(
     selector: _Expr, zero: _Expr, one: _Expr, negated: "_Expr | None" = None
 ) -> _Expr:
@@ -289,7 +251,7 @@ def _diagram(truth_table: str, n: int) -> tuple[list[tuple[int, int, int]], int]
     two halves: ``O(T)`` dictionary lookups and no search.  Ids 0 and 1 are
     the constants; every later id is a ``(level, zero, one)`` node, listed
     after both its halves.  A subtable whose halves are the same id is that
-    id -- a constant span, as in :func:`_intercal_ordered`, or a node whose
+    id -- a constant span, or a node whose
     selector cannot change its value.
     """
     nodes: list[tuple[int, int, int]] = [(n, 0, 0), (n, 1, 1)]

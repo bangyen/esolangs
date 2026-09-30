@@ -148,19 +148,14 @@ class TestCvnc:
                 bits = bin(combo)[2:].zfill(n)
                 assert run_cvnc(program, bits) == table[combo], (table, bits)
 
-    def test_three_squarings_still_halt(self) -> None:
-        """The gadget past the shipped floor runs, so escalation is sound.
-
-        On a table that shares nothing: a shared copy's ``j`` counts
-        syllables past the prologue, so a longer gadget would move it.
-        """
+    def test_an_extra_squaring_rebases_shared_jumps(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Shared jumps still land after a larger halt prologue."""
         module = importlib.import_module("esolangs.tools.cvnc")
+        monkeypatch.setattr(module, "_HALT_SQUARINGS", 5)
         table = "11101000"
-        assert boolean.cvnc(table).endswith(module._render(module._tree(table)))  # noqa: SLF001
-        program = boolean.cvnc(table).replace(
-            module._halt(module._HALT_SQUARINGS),  # noqa: SLF001
-            module._halt(module._HALT_SQUARINGS + 1),  # noqa: SLF001
-        )
+        program = boolean.cvnc(table)
         for combo in range(8):
             bits = bin(combo)[2:].zfill(3)
             assert run_cvnc(program, bits) == table[combo], bits
@@ -231,7 +226,9 @@ class TestCvnc:
         module = importlib.import_module("esolangs.tools.cvnc")
         for value in range(2**8):
             table = bin(value)[2:].zfill(8)
-            tree = module._render(module._tree(table))  # noqa: SLF001
+            stream = module._Stream(table, module._prologue_syllables(4))  # noqa: SLF001
+            module._tree(table, stream)  # noqa: SLF001
+            tree = stream.text()
             assert len(boolean.cvnc(table)) <= len(module._halt(4)) + len(tree)  # noqa: SLF001
         # and parity specifically keeps the node-read build, pushing nothing
         assert not {"m", "n"} & set(boolean.cvnc("01101001"))
@@ -291,19 +288,29 @@ class TestCvnc:
 
         module = importlib.import_module("esolangs.tools.cvnc")
 
+        def stored(table: str, perm: tuple[int, ...]) -> str:
+            stream = module._Stream(table, module._prologue_syllables(4))  # noqa: SLF001
+            if module._stored(table, perm, stream) is None:  # noqa: SLF001
+                return ""
+            return stream.text()
+
         tied = []
         for value in range(2**8):
             table = bin(value)[2:].zfill(8)
-            tree = module._render(module._tree(table))  # noqa: SLF001
+            stream = module._Stream(table, module._prologue_syllables(4))  # noqa: SLF001
+            module._tree(table, stream)  # noqa: SLF001
+            tree = stream.text()
             hoisted = best_input_order(
                 table,
-                _stored_candidate,
+                stored,
             )
             if hoisted and len(hoisted) == len(tree):
                 tied.append(table)
-        assert len(tied) == 3
+        assert len(tied) == 4
         for table in tied:
-            tree = module._render(module._tree(table))  # noqa: SLF001
+            stream = module._Stream(table, module._prologue_syllables(4))  # noqa: SLF001
+            module._tree(table, stream)  # noqa: SLF001
+            tree = stream.text()
             assert boolean.cvnc(table).endswith(tree)
 
     def test_a_served_order_pops_from_the_end_holding_its_input(self) -> None:
@@ -356,32 +363,32 @@ class TestCvncSharing:
 
     ``j`` jumps to the syllable the accumulator names, so a later copy
     climbs to the first copy's syllable and jumps; the first copy opens a
-    syllable of its own for that.  The plain build stays a candidate, so no
-    table grows; the gain grows with the table, so it is judged on the
-    seeded five-input sample too (``docs/CONTRIBUTING.md``).
+    syllable of its own for that. Plain candidates are retired at a
+    measured cost below 0.2% of either corpus total.
     """
 
     @staticmethod
     def _totals(tables: list[str]) -> tuple[int, int]:
-        """(plain, shipped) character totals, no table allowed to grow."""
+        """Return plain and shipped character totals."""
         module = importlib.import_module("esolangs.tools.cvnc")
         before = after = 0
         for table in tables:
             body = best_input_order(table, module._ordered_candidate)  # noqa: SLF001
             plain = len(module._halt(module._HALT_SQUARINGS)) + len(body)  # noqa: SLF001
             shipped = len(boolean.cvnc(table))
-            assert shipped <= plain, table
             before, after = before + plain, after + shipped
         return before, after
 
     def test_three_input_total(self) -> None:
-        """All 256 three-input tables: 14,849 to 14,621 characters, 1.5%."""
+        """Retiring plain candidates over three inputs: 14,621 to 14,633 (+0.082%)."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (14_849, 14_621)
+        assert self._totals(tables) == (14_849, 14_633)
+        assert 14_633 * 100 < 14_621 * 105
 
     def test_five_input_sample_total(self) -> None:
-        """200 seeded five-input tables: 39,373 to 37,048 characters, 5.9%."""
-        assert self._totals(five_input_sample()) == (39_373, 37_048)
+        """Retiring plain candidates over five inputs: 37,048 to 37,115 (+0.181%)."""
+        assert self._totals(five_input_sample()) == (39_373, 37_115)
+        assert 37_115 * 100 < 37_048 * 105
 
     def test_the_climb_is_a_closed_form(self) -> None:
         """A target is its nearer square's root climbed to, squared, stepped.

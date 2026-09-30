@@ -169,15 +169,7 @@ def _fractran_steps(template: str, n: int) -> int:
 
 @pytest.mark.medium
 def test_fractran_ships_the_plain_tree_where_the_decoder_costs_more() -> None:
-    """Below four inputs the decoder's constant outweighs what blocks save.
-
-    Twelve fractions and ten reserved primes, and a run that loads a block,
-    spends the offset and shifts it out, against a tree that reads every
-    level and stops on its leaf.  So through four inputs both are built and
-    the shorter ships, the tree on a tie; over the 256 three-input tables
-    no table grows in characters or in steps, the text falls from 41,010 to
-    27,842, and the steps from 34,314 to 9,592.
-    """
+    """Small trees beat packed blocks in source size and executed steps."""
     from esolangs.tools.fractran import _packed, _plain
 
     tables = [format(i, "08b") for i in range(256)]
@@ -210,7 +202,7 @@ def test_false_tests_the_low_bit_and_prints_a_constant_pair() -> None:
     and ``1``/``0`` its ``'0=_`` complement.  Over every three-input table
     the program falls from 22,170 characters to 12,034.
     """
-    from esolangs.tools.false import _plain
+    from tests.tools.plain_oracles import false_plain as _plain
 
     assert boolean.false("0110") == "^1&$[^'0=_.]?0=[^1&.]?"
     assert boolean.false("0001") == "^1&$[^1&.]?0=[^%0.]?"
@@ -226,7 +218,7 @@ def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
     256 three-input tables fall to 10,634 (11.6%), and 45,372 over the
     seeded five-input sample to 35,721 (21.3%).
     """
-    from esolangs.tools.false import _plain
+    from tests.tools.plain_oracles import false_plain as _plain
 
     three = [format(value, "08b") for value in range(256)]
     assert boolean.false("01101001") == (
@@ -268,7 +260,7 @@ def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
     the 256 three-input tables fall to 32,522 (20.8%), and 144,722 over the
     seeded five-input sample to 100,963 (30.2%).
     """
-    from esolangs.tools.unlambda import _plain
+    from tests.tools.plain_oracles import unlambda_plain as _plain
 
     three = [format(value, "08b") for value in range(256)]
     assert boolean.unlambda("01101001") == (
@@ -345,8 +337,8 @@ def test_thue_answers_the_same_under_every_draw(table: str) -> None:
 
 def test_the_emissions_grow_by_a_line() -> None:
     """Successive differences at a fixed parity quadruple, exactly."""
-    from esolangs.tools.false import _plain
-    from esolangs.tools.unlambda import _plain as _plain_unlambda
+    from tests.tools.plain_oracles import false_plain as _plain
+    from tests.tools.plain_oracles import unlambda_plain as _plain_unlambda
 
     # FALSE's and Unlambda's shipped builds fold and share this table's
     # subtrees, so their plain trees are the ones measured.

@@ -376,16 +376,14 @@ def _fractran_raw(truth_table: str) -> str:
     """Return a template, with input-prime exponents filled by ``PAIR``.
 
     Halts at 1 or 2 for zero or one. Seven inputs use indexed blocks;
-    smaller tables retain the legacy size choice.
+    small tables use trees and intermediate tables use packed blocks.
     """
     n = _validate_truth_table(truth_table)
     if n >= _INDEXED_MIN:
         return _indexed(truth_table, n)
-    packed = _packed(truth_table, n)
-    if n > _PLAIN_MAX:
-        return packed
-    plain = _plain(truth_table, n)
-    return plain if len(plain) <= len(packed) else packed
+    if n <= _PLAIN_MAX:
+        return _plain(truth_table, n)
+    return _packed(truth_table, n)
 
 
 def fractran(truth_table: str, width: int | None = None) -> str:

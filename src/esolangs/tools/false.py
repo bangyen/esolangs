@@ -4,7 +4,7 @@ A node reads with ``^``, keeps the bit with ``1&``, and runs the matching
 half as a ``[...]?`` lambda; a leaf prints its bit with ``.`` after reading
 the inputs below it with ``^%``, which a caller's next program would
 otherwise be handed.  A node over two constant halves is its own literal.
-The shorter of that tree and the reduced diagram (:func:`_shared`) ships.
+The reduced diagram (:func:`_shared`) shares repeated halves.
 """
 
 from __future__ import annotations
@@ -13,16 +13,12 @@ from string import ascii_lowercase
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
-    separated_tree_text,
     subtree_ids,
 )
 
 #: ``'0`` and ``'1`` differ in their low bit, so ``1&`` is the bit and ``?``
 #: takes any nonzero flag; ``$`` leaves a copy under it for the ``0`` test.
 _TEST_ONE = "^1&$["
-#: ``0=`` consumes that copy here, so a node is stack-neutral.
-_TEST_ZERO = "]?0=["
-_CLOSE = "]?"
 _SKIP = "^%"
 #: The printed bit of a node whose halves are the constants ``0`` and ``1``,
 #: and of one whose halves are ``1`` and ``0``: ``'0=`` is ``-1`` on a zero.
@@ -37,9 +33,7 @@ def false(truth_table: str, width: int | None = None) -> str:
     the answer digit.
     """
     n = _validate_truth_table(truth_table)
-    plain = _plain(truth_table, n)
-    shared = _shared(truth_table, n)
-    program = shared if len(shared) < len(plain) else plain
+    program = _shared(truth_table, n)
     # The only two-character atom is the ASCII-zero push; multiplication
     # spells that value with single-character operands when width is one.
     if width is None:
@@ -49,24 +43,6 @@ def false(truth_table: str, width: int | None = None) -> str:
     if width == 1:
         program = program.replace("'0", "6 8*")
     return wrap_program(program, "false", width)
-
-
-def _plain(truth_table: str, n: int) -> str:
-    """Return the tree with every half written out where it is used."""
-
-    def pair(level: int, mid: int) -> str:
-        read = _SAME if truth_table[mid] == "1" else _FLIPPED
-        return read + _SKIP * (n - level - 1) + "."
-
-    return separated_tree_text(
-        truth_table,
-        lambda level, row: _SKIP * (n - level) + truth_table[row] + ".",
-        head=_TEST_ONE,
-        between=_TEST_ZERO,
-        close=_CLOSE,
-        one_first=True,
-        pair=pair,
-    )
 
 
 Key = tuple[int, int]
