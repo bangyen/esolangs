@@ -600,3 +600,23 @@ def test_overhead_funnel_larger_tables(n: int) -> None:
                     run_laserfuck(program, list(format(row, f"0{n}b")), heading)
                     == table[row]
                 )
+
+
+def test_valid_more_expensive_input_order_keeps_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from esolangs.tools.laserfuck import _laserfuck_build
+
+    module = importlib.import_module("esolangs.tools.laserfuck")
+    table = "01101001"
+    identity = _laserfuck_build(table, (0, 1, 2), 80)
+    alternative = _laserfuck_build(table, (1, 0, 2), 80)
+    assert len(alternative) > len(identity)
+    monkeypatch.setattr(module, "_greedy_input_order", lambda _table, _n: (1, 0, 2))
+    selected = boolean.laserfuck(table, 80)
+    assert selected == identity
+    for row, expected in enumerate(table):
+        bits = list(format(row, "03b"))
+        for heading in range(4):
+            assert run_laserfuck(selected, bits, heading) == expected
+            assert run_laserfuck(alternative, bits, heading) == expected
