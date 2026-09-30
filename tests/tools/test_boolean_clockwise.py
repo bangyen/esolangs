@@ -138,3 +138,30 @@ class TestClockwise:
         rise = (sizes[2] - sizes[1]) / (sizes[1] - sizes[0])
         assert 3.5 < rise < 4.4, sizes
         assert sizes[2] / 2**9 < 20, sizes
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("width", [1, 20, 27, 80])
+def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
+    """Both lookup orientations execute every row, including floor widths."""
+    import esolangs
+
+    for n in range(1, 7):
+        table = ("01101001" * 8)[: 1 << n]
+        plain = boolean.clockwise(table)
+        program = esolangs.generate("Clockwise", table, width)
+        plain_width = max(map(len, plain.splitlines()))
+        assert max(map(len, program.splitlines())) <= max(
+            width, min(plain_width, 2 * n + 17)
+        )
+        if plain_width <= width:
+            assert program == plain
+        for combo in range(1 << n):
+            assert run_clockwise(program, _bits(combo, n)) == table[combo]
+
+
+def test_rotated_lookup_size_is_linear() -> None:
+    """Implicit padded rails keep rotation from rendering a filled rectangle."""
+    sizes = [len(boolean.clockwise("01101001" * (2 ** (n - 3)), 1)) for n in (5, 7, 9)]
+    assert sizes[2] / 2**9 < 30
+    assert 3.5 < (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) < 4.4

@@ -20,11 +20,12 @@ _TABLE_ROWS = 5
 _DIGIT = "S;+;;+;;;S"
 
 
-def clockwise(truth_table: str) -> str:
+def clockwise(truth_table: str, width: int | None = None) -> str:
     """Build a Clockwise program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
-    program prints ``'0'`` or ``'1'``.
+    program prints ``'0'`` or ``'1'``.  An over-wide lookup rotates
+    counterclockwise when narrower, with a floor of ``2*n + 17`` columns.
 
     A flat indexed lookup, not a tree.  The table is one ``!`` per entry in
     a row of ``!``/``-`` pairs: the index sits in the accumulator, the
@@ -107,4 +108,21 @@ def clockwise(truth_table: str) -> str:
     for (x, y), char in cells.items():
         grid[y][x] = char
     # The interpreter pads short rows, so trailing filler is never reached.
-    return "\n".join("".join(row).rstrip() for row in grid)
+    program = "\n".join("".join(row).rstrip() for row in grid)
+    if width is None or width <= 0 or span <= width or span <= height + 2:
+        return program
+    # Counterclockwise rotation puts the wide lookup down the page.  Most
+    # rows end at the five table columns; the interpreter pads the entry rail.
+    rotated: dict[int, dict[int, str]] = {}
+    for (x, y), char in cells.items():
+        rotated.setdefault(span - x, {})[y + 1] = char
+    rotated[0] = {height + 1: "R"}
+    rotated[span + 1] = {1: "R", height + 1: "R"}
+    rotated.setdefault(span, {})[0] = "R"
+    rows: list[str] = []
+    for y in range(span + 2):
+        painted = rotated.get(y, {})
+        rows.append(
+            "".join(painted.get(x, " ") for x in range(max(painted, default=-1) + 1))
+        )
+    return "\n".join(rows)

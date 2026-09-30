@@ -7,12 +7,12 @@ rows, NoComment rejects them, Forbin and Packlang fold only an over-wide
 line.
 
 Ten generators lay out their own shape instead (:func:`takes_width`):
-Streetcode and LaserFuck fold into a boustrophedon; Clockwise and
-Flowchart stack a column per node; Dig turns
+Streetcode and LaserFuck fold into a boustrophedon; Clockwise rotates
+its lookup; Flowchart stacks a column per node; Dig turns
 once; Alight and Super SNUSP steer; function x(y) and APL name a
-subexpression per line; Circuit Diagram bands.  Only Clockwise folds to
-any width; the rest floor (Flowchart ``n + 5``, Alight ``2 ** n``, Super SNUSP
-four, Circuit Diagram ~``10 * n``) and return the narrowest program.
+subexpression per line; Circuit Diagram bands.  Layouts floor (Clockwise
+``2*n + 17``, Flowchart ``n + 5``, Alight ``2 ** n``, Super SNUSP four,
+Circuit Diagram ~``10 * n``) and return the narrowest program.
 
 :data:`MULTILINE` names the wrappers that handle their own structural
 lines.  :func:`_bio` indents by loop depth, :func:`wrap_grid` right-aligns
