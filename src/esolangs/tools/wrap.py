@@ -345,11 +345,7 @@ def _unlambda(program: str, width: int) -> str:
 
 
 def _bitdeque(program: str, width: int) -> str:
-    r"""Wrap Bitdeque, keeping each ``GOTO`` with the operand it jumps to.
-
-    The parser spells ``GOTO *(\d+)`` with spaces, not whitespace, so a break
-    there silently answers 1 for 0 -- at widths 12 and 13 only.
-    """
+    """Wrap Bitdeque, keeping each ``GOTO`` with its target operand."""
     tokens: list[str] = []
     for token in program.split():
         if tokens and tokens[-1] == "GOTO":

@@ -37,8 +37,8 @@ type _Line = tuple[int, str, int] | None
 def _parse(line: str) -> _Line:
     """Return the parsed form of one source line, or raise if malformed.
 
-    Commands are recognised by substring (the examples write ``increment``
-    where the wiki says ``inc``).
+    Commands are whole whitespace-delimited words; ``inc`` also names
+    ``increment``. Unknown commands retain the documented inert behavior.
     """
     line = line.strip()
     if not line:
@@ -48,7 +48,7 @@ def _parse(line: str) -> _Line:
         raise ValueError("malformed BrainIf line: " + line)
     value = int(arr[1])
     for name in ("increment", "inc", "right", "left", "goto", "input", "output"):
-        if name in line:
+        if name in arr[2:]:
             if name == "goto":
                 if len(arr) < 4:
                     raise ValueError("goto requires a target line")

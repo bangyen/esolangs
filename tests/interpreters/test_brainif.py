@@ -137,6 +137,13 @@ class TestBrainIfGeneratedHelloWorld:
         """
         assert run_and_capture(["if 0 output", "if 0 frobnicate"]) == "\x00"
 
+    def test_embedded_command_names_do_not_execute(self) -> None:
+        for command in ("incidental", "incrementoutput", "XinputY", "moveright"):
+            assert run_and_capture([f"if 0 {command}", "if 0 output"]) == "\x00"
+
+    def test_command_words_accept_horizontal_whitespace(self) -> None:
+        assert run_and_capture(["if\t0\tinc", "if 1 output"]) == "\x01"
+
     def test_goto(self) -> None:
         """Goto jumps to the given line number."""
         code = ["if 0 goto 3", "if 0 output", "if 0 increment", "if 1 output"]

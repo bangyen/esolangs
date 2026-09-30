@@ -9,7 +9,6 @@ undefined there, so it halts.  Exhausted input raises :class:`EOFError`.
 
 import functools
 import operator
-import re
 
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -122,8 +121,8 @@ _OPCODE = {name: op for op, name in enumerate(_INS)}
 
 @functools.lru_cache(maxsize=16)
 def _tokens(code: str) -> tuple[str, ...]:
-    """Return the reusable instruction tokens in ``code``."""
-    return tuple(re.findall(f"({'|'.join(_INS)})", code))
+    """Return whole whitespace-delimited instructions, ignoring other words."""
+    return tuple(word for word in code.split() if word in _OPCODE)
 
 
 def _advance(state: _State, n: int, byte: int | None = None) -> _State:

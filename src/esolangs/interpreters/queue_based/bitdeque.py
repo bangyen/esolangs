@@ -91,8 +91,8 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and reset the register, deque, and cursor."""
         self.io = io
-        lst = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", r"GOTO *(\d+)")
-        join = f"({'|'.join(lst)})"
+        lst = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", r"GOTO\s+(\d+)")
+        join = rf"(?<!\S)({'|'.join(lst)})(?!\S)"
         _reject_stray_text(code, re.compile(join))
         self.tokens = re.findall(join, code)
         # ``halted`` is read twice per token -- once by ``run``'s loop and

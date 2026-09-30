@@ -57,30 +57,16 @@ class TestBitdeque:
         """
         assert run_and_capture("INVERT GOTO 3 PUSH PUSH") == "1"
 
-    def test_goto_without_a_space(self) -> None:
-        """The space after GOTO is optional, as the token pattern allows.
+    @pytest.mark.parametrize(
+        "code", ["INVERTPUSH", "PUSHPOP", "GOTO12", "INVERT GOTO 2PUSH"]
+    )
+    def test_commands_require_whitespace_boundaries(self, code: str) -> None:
+        with pytest.raises(ValueError, match="is not a Bitdeque command"):
+            run_and_capture(code)
 
-        With a space the target is read from ``"GOTO 3"[4:]`` -- ``" 3"`` --
-        which int() parses the same as ``"3"``, so dropping one more
-        character made no difference to any spaced program.  Written tight,
-        the two disagree: one reads 12 and the other 2.
-        """
-        assert run_and_capture("INVERT GOTO12 PUSH PUSH") == ""
-
-    def test_goto_takes_any_run_of_spaces(self) -> None:
-        """The pattern allows any number of spaces, not just nought or one.
-
-        ``test_goto`` uses one and ``test_goto_without_a_space`` uses none,
-        which two different patterns -- ``GOTO *`` and ``GOTO ?`` -- both
-        accept, so neither test tells them apart.  Two spaces is the first
-        case that does: read as one token this jumps to 3 and prints once,
-        while a pattern stopping at one space fails to match the GOTO at
-        all, leaving two bare PUSHes.
-
-        This pins what the interpreter already does rather than narrowing
-        it; nothing says a wider run of spaces should be rejected.
-        """
-        assert run_and_capture("INVERT GOTO  3 PUSH PUSH") == "1"
+    @pytest.mark.parametrize("separator", [" ", "  ", "\t", "\n", "\r\n"])
+    def test_goto_accepts_whitespace_before_its_target(self, separator: str) -> None:
+        assert run_and_capture(f"INVERT GOTO{separator}3 INVERT PUSH") == "1"
 
     def test_inject_adds_to_the_front(self) -> None:
         """INJECT puts the register at the front, where PUSH appends.
@@ -187,10 +173,15 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     constant_views = frozenset({"rendered"})
 
 
-@pytest.mark.parametrize("code", ["xPUSH", "x y PUSH", "PUSH x INVERT", "PUSH x y"])
-def test_stray_text_is_rejected_with_the_first_invalid_word(code: str) -> None:
+@pytest.mark.parametrize(
+    ("code", "word"),
+    [("xPUSH", "xPUSH"), ("x y PUSH", "x"), ("PUSH x INVERT", "x"), ("PUSH x y", "x")],
+)
+def test_stray_text_is_rejected_with_the_first_invalid_word(
+    code: str, word: str
+) -> None:
     expected = (
-        "'x' is not a Bitdeque command; the commands are "
+        f"{word!r} is not a Bitdeque command; the commands are "
         "INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case"
     )
     with pytest.raises(ValueError, match="not a Bitdeque command") as caught:

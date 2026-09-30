@@ -4,6 +4,8 @@ import io
 from contextlib import redirect_stdout
 from pathlib import Path
 
+import pytest
+
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.slow_acv_mammalian import run
 from tests.interpreters.contract import SnapshotContract
@@ -21,6 +23,18 @@ class TestMammalian:
     def test_seed_adds_to_each_register(self) -> None:
         """SEED adds 1..23 to each list head; three SEEDs then CONSUME -> 3."""
         assert run_and_capture("SEED SEED SEED CONSUME PRONOUNCE") == "\x03"
+
+    @pytest.mark.parametrize("separator", [" ", "\t", "\n", "\r\n", "\v", "\f"])
+    def test_instructions_are_whitespace_delimited(self, separator: str) -> None:
+        program = separator.join(("SEED", "CONSUME", "PRONOUNCE"))
+        assert run_and_capture(program) == "\x01"
+
+    @pytest.mark.parametrize("word", ["SEEDSEED", "XSEEDY", "SEED!", "SEED/SEED"])
+    def test_embedded_instruction_names_do_not_execute(self, word: str) -> None:
+        assert run_and_capture(f"{word} CONSUME PRONOUNCE") == "\x00"
+
+    def test_concatenated_program_does_not_execute(self) -> None:
+        assert run_and_capture("SEEDCONSUMEPRONOUNCE") == ""
 
     def test_pronomce_default(self) -> None:
         assert run_and_capture("PRONOUNCE") == "\x00"

@@ -9,6 +9,8 @@ with two registers.
 import io
 from contextlib import redirect_stdout
 
+import pytest
+
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.minsky_swap import run
 from tests.interpreters.contract import (
@@ -85,27 +87,36 @@ class TestMinskySwapReadableNotation:
         assert f.getvalue().strip() == "1 0"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("inc(); inc();", io=IO())
+            run("inc();\ninc();", io=IO())
         assert f.getvalue().strip() == "2 0"
 
     def test_swap_command_readable(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
-            run("swap(); inc();", io=IO())
+            run("swap();\ninc();", io=IO())
         assert f.getvalue().strip() == "0 1"
 
     def test_decnz_command(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
-            run("inc(); decnz(1);", io=IO())
+            run("inc();\ndecnz(1);", io=IO())
         assert f.getvalue().strip() == "0 0"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("decnz(2); inc();", io=IO())
+            run("decnz(2);\ninc();", io=IO())
         assert f.getvalue().strip() == "1 0"
 
-    def test_mixed_notation(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("inc(); +", io=IO())
-        assert f.getvalue().strip() == "2 0"
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "inc();swap();",
+            "inc(); swap();",
+            "inc(); +",
+            "inc();\n+",
+            "inc(1+2);\ninc();",
+        ],
+    )
+    def test_readable_notation_requires_one_command_per_line(self, code: str) -> None:
+        with raises_message(ValueError, "RMSN requires one command per line"):
+            run(code, io=IO())
 
     def test_a_readable_command_contributes_exactly_one_symbol(self) -> None:
         """Each ``inc()``/``swap()`` becomes one command, not a run of them.
@@ -118,7 +129,7 @@ class TestMinskySwapReadableNotation:
         cancel -- the increments after it land in the other register.
         """
         with redirect_stdout(io.StringIO()) as f:
-            run("decnz(5); inc(); swap(); inc(); inc();", io=IO())
+            run("decnz(5);\ninc();\nswap();\ninc();\ninc();", io=IO())
         assert f.getvalue().strip() == "1 0"
 
     def test_a_bare_decnz_jumps_to_the_first_line(self) -> None:
@@ -136,30 +147,6 @@ class TestMinskySwapReadableNotation:
         machine.step()  # zero register, so the tilde jumps
         assert machine.ind == 0, "the jump returned to the first command"
         assert not machine.halted
-
-    def test_a_readable_command_is_stripped_with_its_argument(self) -> None:
-        """The cleanup removes the whole ``name(...)``, parentheses included.
-
-        Whatever is left after the readable commands is read as compact
-        notation, so an argument holding a ``+`` would be counted twice --
-        once as the command and again as a stray increment -- if the
-        cleanup only matched the name or matched it case-sensitively the
-        other way.
-        """
-        with redirect_stdout(io.StringIO()) as f:
-            run("inc(1+2); inc();", io=IO())
-        assert f.getvalue().strip() == "1 0"
-
-    def test_the_compact_tail_keeps_only_its_commands(self) -> None:
-        """Spaces in the trailing compact part are dropped, not kept.
-
-        The tail is appended after the readable commands, so anything left
-        in it shifts every command that follows -- and a jump into that
-        tail then lands on the padding instead of the increment.
-        """
-        with redirect_stdout(io.StringIO()) as f:
-            run("decnz(3); + +", io=IO())
-        assert f.getvalue().strip() == "1 0"
 
 
 class TestMinskySwapProgramFlow:
