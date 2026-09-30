@@ -104,6 +104,7 @@ BITDEQUE_PAIR = ("PUSH INVERT", "INVERT PUSH")
 MINSKY_SWAP_PAIR = ("**", "++")
 _MINSKY_RMSN_PAIR = ("swap();\nswap();", "inc(); \ninc(); ")
 _MINSKY_SHORT_RMSN_PAIR = ("decnz();", "inc();  ")
+_MINSKY_SMALL_RMSN_PAIR = ("decnz(2);", "inc();   ")
 #: ``j`` is the pad: a gate tests this cell next, so it must leave value and pointer.
 HOME_ROW_PAIR = ("s", "j")
 
@@ -440,6 +441,8 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     arity is one length, and the dump reads ``0 {answer}``.  Width switches
     to RMSN, one command per line.  Below width 15 a shared increment
     leaves setters eight wide; absolute jump operands set the remaining floor.
+    Below that floor, up to two inputs use a nine-command decision chain
+    with the first register as scratch; the answer remains the second register.
     """
     n = _validate_truth_table(truth_table)
 
@@ -468,7 +471,17 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     program = " ".join(tokens) + "\n" + " ".join(map(str, resolved))
     if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
         return program
-    lines: list[str] = []
+    if n <= 2 and width < 10:
+        # One bit contributes 1, the other 2: common inc plus decnz/inc
+        # adds 0/2 without branching. All leaves fit single-digit targets.
+        slot = TEMPLATE_CHAR * len(_MINSKY_SMALL_RMSN_PAIR[0])
+        lines = [slot] if n == 1 else [slot, "inc();", slot]
+        one = len(lines) + len(truth_table) + 1
+        for value in range(len(truth_table)):
+            row = value if n == 1 else (value & 1) * 2 + (value >> 1)
+            lines.append(f"decnz({one if truth_table[row] == '1' else one + 1});")
+        return "\n".join([*lines, "swap();", "inc();"])
+    lines = []
     jumps = iter(resolved)
     for token in tokens:
         if token.startswith(TEMPLATE_CHAR):
@@ -494,7 +507,9 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
 def minsky_swap_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Return the uniform pair for compact or line-oriented RMSN notation."""
     pair = MINSKY_SWAP_PAIR
-    if template.startswith("decnz("):
+    if template.startswith(TEMPLATE_CHAR * len(_MINSKY_SMALL_RMSN_PAIR[0])):
+        pair = _MINSKY_SMALL_RMSN_PAIR
+    elif template.startswith("decnz("):
         pair = (
             _MINSKY_RMSN_PAIR
             if TEMPLATE_CHAR * len(_MINSKY_RMSN_PAIR[0]) in template
