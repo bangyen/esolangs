@@ -289,7 +289,7 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
             from esolangs.interpreters.other.packlang import _tokenize
 
             assert _tokenize(wrapped) == _tokenize(plain)
-        elif name == "FRACTRAN":
+        elif name in {"FRACTRAN", "RAM0"}:
             assert wrapped.split() == plain.split()
         else:
             assert wrapped.replace("\n", "") == plain.replace("\n", "")
@@ -759,9 +759,14 @@ def test_width_honouring_languages_respect_the_width(name: str) -> None:
                 if esolangs.describe(language.name)["parameterized"]
                 else esolangs.encode_inputs(language.name, [int(bit) for bit in bits])
             )
-            assert _behaviour(language.name, wrapped, stdin) == _behaviour(
-                language.name, raw, stdin
-            )
+            actual = _behaviour(language.name, wrapped, stdin)
+            expected = _behaviour(language.name, raw, stdin)
+            if name == "ram0":
+                # Its NAND circuit exposes z; n and RAM are scratch.
+                actual = esolangs.read_answer(language.name, actual)
+                expected = esolangs.read_answer(language.name, expected)
+                assert actual == TABLE[row]
+            assert actual == expected
     assert language.boolean is not None
     for width in (40, 80, 94):
         program = generate(language.name, TABLE, width)

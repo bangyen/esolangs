@@ -26,11 +26,13 @@ def _ram0_width(address: int) -> int:
     return address + 4
 
 
-def ram0(truth_table: str) -> str:
+def ram0(truth_table: str, width: int | None = None) -> str:
     """Build a RAM0 template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
+    One-column builds through three inputs use unary-address NAND circuits.
+    Wider layouts retain the tree or lookup; only final ``z`` is the answer.
 
     RAM0 has no input command, so this is a parameterized generator: the
     template's input runs become a fixed-length two-command
@@ -65,10 +67,81 @@ def ram0(truth_table: str) -> str:
     past them; at five inputs the shared tree is a fifth of the lookup.
     """
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _ram0_best)
-    tree = best_input_order(truth_table, _ram0_shared)
-    lookup = _ram0_linear(truth_table)
-    return tree if len(tree) < len(lookup) else lookup
+        program = best_input_order(truth_table, _ram0_best)
+    else:
+        tree = best_input_order(truth_table, _ram0_shared)
+        lookup = _ram0_linear(truth_table)
+        program = tree if len(tree) < len(lookup) else lookup
+    if width is None:
+        return program
+    from esolangs.tools.wrap import wrap_space_delimited
+
+    if width == 1 and len(truth_table) <= 8:
+        program = _ram0_nand(truth_table)
+    return wrap_space_delimited(program, width)
+
+
+def _ram0_nand(truth_table: str) -> str:
+    """Build small Shannon circuits using unary addresses and NAND stores."""
+    n = _validate_truth_table(truth_table)
+    # RAM[0:2] implements NOT. A NAND writes NOT b to RAM[2+a], with
+    # RAM[3] reset to 1: reading RAM[3] then returns NOT(a AND b).
+    tokens = ["Z", "N", "A", "S"]
+
+    def target(address: int) -> None:
+        tokens.extend(["Z", *("A" for _ in range(address)), "N"])
+
+    def load(address: int) -> None:
+        tokens.extend(["Z", *("A" for _ in range(address)), "L"])
+
+    for i in range(n):
+        target(4 + i)
+        tokens.extend(["Z", _RAM0_INPUT, "S"])
+    gates: dict[tuple[int, int], int] = {}
+    next_address = 4 + n
+
+    def nand(left: int, right: int) -> int:
+        nonlocal next_address
+        if left == 1 or right == 1:
+            return 0
+        # Two true constants use the store kernel, avoiding self-recursion.
+        if left == 0 and right:
+            return nand(right, right)
+        if right == 0 and left:
+            return nand(left, left)
+        pair = (min(left, right), max(left, right))
+        if pair in gates:
+            return gates[pair]
+        result = next_address
+        next_address += 1
+        target(3)
+        tokens.extend(["Z", "A", "S"])
+        load(left)
+        tokens.extend(["A", "A", "N"])
+        load(right)
+        tokens.extend(["L", "S"])
+        target(result)
+        load(3)
+        tokens.append("S")
+        gates[pair] = result
+        return result
+
+    def tree(rows: str, level: int) -> int:
+        if rows == rows[0] * len(rows):
+            return 1 - int(rows[0])
+        half = len(rows) // 2
+        zero = tree(rows[:half], level + 1)
+        one = tree(rows[half:], level + 1)
+        if zero == one:
+            return zero
+        bit = 4 + level
+        inverted = nand(bit, bit)
+        return nand(nand(inverted, zero), nand(bit, one))
+
+    # Unary addresses would cost O(T squared) at unrestricted arity;
+    # the three-input cap keeps this fallback uniformly O(T).
+    load(tree(truth_table, 0))
+    return " ".join(tokens)
 
 
 def _ram0_shared(truth_table: str, perm: tuple[int, ...]) -> str:
