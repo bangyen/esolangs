@@ -176,12 +176,6 @@ step; an answer lands in the paper it extends, and the row leaves.
   exhaustively through two inputs.  A matching lower bound must price
   parity sources themselves.
 
-- **FRACTRAN size-time frontier.** Shared block threshold dictionaries give
-  `O(T)` text and `O(log T)` fraction firings; 3,800 rows executed correctly.
-  First-match list scans are still unbounded by a polylogarithm. Next: obtain
-  polylogarithmic guard inspections and bit work with linear text, or prove
-  a tradeoff for that cost model. See
-  [fractran](proofs/fractran.md#shared-threshold-dictionaries).
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between

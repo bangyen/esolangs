@@ -18,9 +18,9 @@ carry was the construction's, not the language's.
 What the wall really prices is the clock. A packed program holds `w` table
 entries in one exponent, so it buys those characters with a value of
 `Theta(2**w)` bits and a run that has to traverse them -- `O(2**w)` steps,
-against the tree's `2n + 1` on a value of `O(log T)` bits. Linearity asks
+against the tree's `2n + 1` on a value of `O(n log n)` bits. Linearity asks
 only `w = Omega(n)`, so `w` is held near `n / 3` and the run stays
-polylogarithmic in `T`; both ends are executed in
+a fractional power of `T`; both ends are executed in
 `tests/proofs/deep/fractran_packed.py`.
 
 Three corrections to earlier prose come out of this, all recorded below:
@@ -368,7 +368,7 @@ addresses that exist. At these arities `w` is small and the margin is a
 constant factor; it is the `w = Theta(n)` growth that makes the product
 `Theta(T)`.
 
-## What is not proved
+## Size-time frontier
 
 The width is a knob, and what it trades is sharp. Writing `alpha` for the
 tree's per-address constant,
@@ -387,7 +387,7 @@ the text does too. The two ends built here are
     packed   D = Theta(T)         Theta(T**(1/3))       O(T**(1/3))-bit values
 
 The fraction-firing version of the joint question has a constructive answer.
-The interpreter-work version remains open.
+The literal-scan bit-work version has a counting obstruction below.
 
 ### Shared threshold dictionaries
 
@@ -435,16 +435,80 @@ through six: 3,800 rows, all correct. Maximum firings by arity are
 Four rows of each wider program and its shipped counterpart were also
 executed correctly. At sixteen inputs, the shared sample needed at most
 21 firings but 544,733 guard inspections, including the final halt scan.
-The three-input
-aggregate grows from 27,842 to 31,322, so this is a research construction,
+The three-input aggregate grows from 27,842 to 31,322, so this is a research construction,
 not a replacement for the shipped generator.
 
-The interpreter scans the ordered list to find each applicable fraction.
-These `O(log T)` firings therefore do not prove polylogarithmic execution
-work. The remaining question is whether linear text can also achieve
-polylogarithmic guard inspections and bit operations, or whether the
-language forces a tradeoff for that stronger cost model. Counting alone
-still gives only `Omega(T)` text.
+### Literal-scan execution tradeoff
+
+The cost model matters. A mathematical FRACTRAN transition selects the first
+applicable fraction as one step. This port instead inspects the list in
+order, materializing `x * a_i` and testing divisibility by `b_i`. Parsing is
+excluded. Let `I` be the maximum number of fraction inspections over all
+input rows, including the final unsuccessful scan. Let `W` be the maximum
+binary width of any initial value or inspected product `x * a_i`. These
+parameters describe the loaded numeric machine, independent of whether the
+source spells an integer literally or as a product of powers.
+
+    Theorem 16 (inspection-width tradeoff). The number of n-input tables
+    computable by total programs with inspection bound I and product-width
+    bound W is at most (I + 1) 2**((2I + n + 1)W).
+
+**Proof.** Write the input convention as
+`v(x) = v_0 * prod_j p_j**x_j`. For a particular program, let `P` be the
+largest initial value or inspected product over all input runs. Totality
+makes this maximum finite, and `P < 2**W`.
+
+Every terminating run ends with a full unsuccessful scan, so `m <= I`.
+Every numerator satisfies `a_i <= P`: even a never-fired fraction is
+inspected during that scan, and the current value is positive. A denominator
+`b_i > P` can never divide an inspected positive product. Delete all such
+fractions. Induction on the original runs shows that the remaining ordered
+list takes exactly the same transitions and halts at exactly the same
+values: only failed inspections were removed. The remaining numerators and
+denominators are all positive integers below `2**W`.
+
+The all-one input has value `v_0 * prod_j p_j <= P`, so each of the `n + 1`
+input components is also below `2**W`. Encode these components and the
+ordered numerator-denominator pairs as fixed-width `W`-bit integers. For
+fixed remaining length `r <= I`, there are at most
+`2**((2r + n + 1)W)` descriptions. Summing over `r = 0, ..., I` gives the
+claimed bound. Allowing non-prime input bases and invalid or non-total
+descriptions only enlarges it. Fraction order is encoded, not quotiented
+away. Source length and coefficient magnitudes before deleting dead
+fractions are unrestricted. QED.
+
+Consequently, a family covering all `2**T` tables must satisfy
+
+    (2I + n + 1) W + log2(I + 1) >= T.
+
+Both `I` and `W` cannot be polynomial in `n = log2 T`. This excludes
+polylogarithmic inspections together with polylogarithmic explicit integer
+bit work, even without a linear-text restriction. In the explicit bit-cost
+model used for the packed construction, materializing a `b`-bit product
+costs at least `b` bit operations. With any fractions present, the first
+inspection already charges the initial width; a zero-fraction program only
+returns `1` or `2`, whose output width is charged. If every run has bit work
+at most `R`, then
+`I <= R` and `W <= R`, hence
+
+    (2R + n + 1) R + log2(R + 1) >= T,
+
+and some table needs `R >= (1 - o(1)) sqrt(T/2)`. This is an existential
+worst-case bound, not a claim about every table or every evaluator. An
+indexed or factorized implementation has a different cost model; the
+unit-cost fraction-firing model already has the shared construction above.
+
+`tests/proofs/test_fractran_bound.py` executes small total programs against
+the compacting lemma, checks their answers with the real chooser before and
+after deletion, and requires an oversized-guard positive control. A second
+finite check includes the zero-fraction projection and the ordered numeric
+description count. These checks exercise the proof's semantic premises;
+the universal counting inequality is the argument above.
+
+The roadmap question is therefore closed in both cost models: `O(T)` text
+and `O(log T)` fraction firings are constructible, while linear-list
+inspection with explicit integer bit work cannot be polylogarithmic for
+every table.
 
 ## The other end: the row-addressing tree
 

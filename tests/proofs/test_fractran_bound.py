@@ -327,7 +327,7 @@ def test_packing_pays_the_address_budget_rather_than_escaping_it() -> None:
 
 
 def test_priority_order_is_a_channel_no_counting_argument_can_close() -> None:
-    """ "What is not proved": order carries a bit per character, undamped.
+    """ "Size-time frontier": order carries a bit per character, undamped.
 
     `m` fractions carry `log2(m!)` bits of priority, and Theorem 7 prices
     them at `m log_c m` characters.  Enough order to name any table is
@@ -345,3 +345,83 @@ def test_priority_order_is_a_channel_no_counting_argument_can_close() -> None:
         assert needed < size, (n, needed)
         assert cost < 2 * size, (n, cost)
         assert size / math.log2(alphabet) <= cost, (n, cost)
+
+
+def _bounded_scan(
+    start: int, fractions: _Fractions, limit: int = 32
+) -> tuple[int, int, int] | None:
+    """Return halt value, inspections, and largest materialized integer."""
+    value, probes, largest = start, 0, start
+    seen: set[int] = set()
+    for _ in range(limit):
+        if value in seen:
+            return None
+        seen.add(value)
+        for numerator, denominator in fractions:
+            probes += 1
+            multiplied = value * numerator
+            largest = max(largest, multiplied)
+            if multiplied % denominator == 0:
+                value = multiplied // denominator
+                break
+        else:
+            return value, probes, largest
+    return None
+
+
+def test_halt_scan_compacts_every_total_small_program() -> None:
+    """Interpreter-work theorem: oversized denominators are universally dead."""
+    checked = removed = 0
+    # One fraction may fire before a huge denominator; raw, unreduced
+    # multipliers are deliberate, since _choose materializes those products.
+    options = tuple(product(range(1, 5), (1, 2, 3, 4, 257)))
+    for pairs in product(options, repeat=2):
+        fractions = tuple(pairs)
+        starts = (1, 2)
+        traces = [_bounded_scan(start, fractions) for start in starts]
+        if any(trace is None or trace[0] not in (1, 2) for trace in traces):
+            continue
+        total = [trace for trace in traces if trace is not None]
+        largest = max(trace[2] for trace in total)
+        compact = tuple(pair for pair in fractions if pair[1] <= largest)
+        removed += len(fractions) - len(compact)
+        assert len(fractions) <= min(trace[1] for trace in total)
+        assert all(part <= largest for pair in compact for part in pair)
+        for start, old in zip(starts, total, strict=True):
+            new = _bounded_scan(start, compact)
+            assert new is not None
+            assert new[0] == old[0]
+            assert _trace(start, fractions)[1] == old[0]
+            assert _trace(start, compact)[1] == old[0]
+        checked += 1
+    assert checked > 0, "no total program exercised the compacting lemma"
+    assert removed > 0, "no oversized guard was removed"
+
+
+def test_scan_counting_bound_includes_the_zero_fraction_case() -> None:
+    """Finite encodings cover order, unreduced fractions, and input labels."""
+    # Width two allows integers 1, 2, 3. Overcount input bases as arbitrary
+    # integers: both orders and non-primes must be covered by the bound.
+    width, inspections, n = 2, 1, 1
+    values = range(1, 1 << width)
+    behaviours: set[tuple[int, ...]] = set()
+    descriptions = 0
+    for fixed, base in product(values, repeat=2):
+        for fractions in [(), *((pair,) for pair in product(values, repeat=2))]:
+            descriptions += 1
+            starts = (fixed, fixed * base)
+            traces = [_bounded_scan(start, fractions) for start in starts]
+            if any(trace is None for trace in traces):
+                continue
+            total = [trace for trace in traces if trace is not None]
+            if any(
+                trace[0] not in (1, 2)
+                or trace[1] > inspections
+                or trace[2].bit_length() > width
+                for trace in total
+            ):
+                continue
+            behaviours.add(tuple(trace[0] for trace in total))
+    bound = (inspections + 1) * (1 << ((2 * inspections + n + 1) * width))
+    assert 0 < len(behaviours) <= descriptions <= bound
+    assert (1, 2) in behaviours, "the projection control never executed"
