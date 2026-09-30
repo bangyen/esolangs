@@ -1,0 +1,117 @@
+"""Packed Fargo coefficients, word work, and executed layout scaling."""
+
+import random
+import sys
+from types import FrameType
+
+import pytest
+
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.other.fargo import run
+from esolangs.tools.fargo import _anf_coefficients, _arm_expression, fargo
+from tests.tools.test_boolean_contract import _nested_dense
+
+
+def _scalar_coefficients(table: str) -> list[int]:
+    values = [int(bit) for bit in table]
+    stride = 1
+    while stride < len(values):
+        for start in range(0, len(values), stride * 2):
+            for offset in range(start, start + stride):
+                values[offset + stride] ^= values[offset]
+        stride *= 2
+    return values
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 4, 7, 8, 9, 15, 16, 17])
+def test_packed_coefficients_match_elementwise_transform(n: int) -> None:
+    rng = random.Random(20260929 + n)
+    table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+    assert _anf_coefficients(table) == _scalar_coefficients(table)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [6, 7, 8, 9, 15, 16, 17])
+def test_packed_arm_word_work_and_execution(n: int) -> None:
+    """Word visits stay bounded per row; dense inputs are positive controls."""
+    table = _nested_dense(n)
+    coefficients = _anf_coefficients(table)
+    visits = 0
+
+    def profile(frame: FrameType, event: str, _arg: object) -> None:
+        nonlocal visits
+        if (
+            event == "call"
+            and frame.f_code.co_name == "count"
+            and frame.f_code.co_filename == _arm_expression.__code__.co_filename
+        ):
+            visits += 1
+
+    previous = sys.getprofile()
+    sys.setprofile(profile)
+    try:
+        expression = _arm_expression(table, coefficients, n, tuple(range(n)))
+    finally:
+        sys.setprofile(previous)
+    assert len(table) // 4 <= visits <= 12 * len(table)
+    row = (1 << n) // 3
+    io = ScriptedIO(str(row))
+    run(f"% 0 {expression}\n$\n", io)
+    assert io.getvalue() == table[row]
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("width", [None, 1])
+def test_packed_layout_scaling_executes(width: int | None) -> None:
+    """Measure rendered text past the bounded route and execute every build."""
+    sizes = []
+    for n in (8, 10, 12):
+        table = _nested_dense(n)
+        program = fargo(table, width=width)
+        sizes.append(len(program))
+        for row in (0, (1 << n) // 3, (1 << n) - 1):
+            io = ScriptedIO(str(row))
+            run(program, io)
+            assert io.getvalue() == table[row]
+    assert sizes[1] - sizes[0] > 0
+    assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) <= 4.4
+
+
+def test_narrow_packed_constants_consume_input() -> None:
+    for bit in "01":
+        program = fargo(bit * 64, width=1)
+        io = ScriptedIO("63")
+        run(program, io)
+        assert io.getvalue() == bit
+        assert io.reads == 1
+
+
+def test_reordered_emission_has_a_real_character_budget(monkeypatch) -> None:
+    """High-index literals stop before they can add a logarithmic text factor."""
+    from esolangs.tools.fargo import _Emission, _expressions, _SourceLimitError
+
+    n = 8
+    table = _nested_dense(n)
+    budget = min(map(len, _expressions(table, n, tuple(range(n)))))
+    original = _Emission.append
+    characters = 0
+    stops = 0
+
+    def record(emission: _Emission, text: str) -> None:
+        nonlocal characters, stops
+        characters += len(text)
+        try:
+            original(emission, text)
+        except _SourceLimitError:
+            stops += 1
+            raise
+
+    monkeypatch.setattr(_Emission, "append", record)
+    candidates = _expressions(table, n, tuple(reversed(range(n))), limit=budget)
+    assert stops > 0
+    assert all(len(candidate) < budget for candidate in candidates)
+    assert characters <= 2 * (budget + 9 + n.bit_length())
+    row = (1 << n) // 3
+    io = ScriptedIO(str(row))
+    run(fargo(table), io)
+    assert io.getvalue() == table[row]
