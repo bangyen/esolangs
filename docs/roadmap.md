@@ -176,14 +176,12 @@ step; an answer lands in the paper it extends, and the row leaves.
   exhaustively through two inputs.  A matching lower bound must price
   parity sources themselves.
 
-- **FRACTRAN size-time frontier.** Can every table have `O(T)` text and
-  `polylog(T)` execution, or does the language force a tradeoff?
-  A priority-ordered monotone-guard construction executed all 2,120 rows of
-  every table through three inputs, with constants as controls. It still
-  names one guard per row, so the address bound defeats linear text; scanning
-  the fraction list also costs time beyond the firing count. Next: encode
-  several rows in priority order without one distinct guard per row, or
-  prove a language-wide tradeoff. See [fractran](proofs/fractran.md#what-is-not-proved).
+- **FRACTRAN size-time frontier.** Shared block threshold dictionaries give
+  `O(T)` text and `O(log T)` fraction firings; 3,800 rows executed correctly.
+  First-match list scans are still unbounded by a polylogarithm. Next: obtain
+  polylogarithmic guard inspections and bit work with linear text, or prove
+  a tradeoff for that cost model. See
+  [fractran](proofs/fractran.md#shared-threshold-dictionaries).
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between
