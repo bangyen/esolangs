@@ -191,18 +191,15 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     one with the input bits. Width-constrained programs draw a decision
     tree, stacking branches when necessary. Every node connection includes
     a path cell; adjacent leaves have a blank gutter. Folded leaves still
-    read the skipped inputs. Without a width, small tables use the shortest
-    of the flat tree, stacked tree, and deque layouts.
+    read the skipped inputs. Without a width, every table uses the deque layout.
     """
     _validate_truth_table(truth_table)
-    if len(truth_table) > 16 and width is None:
+    if width is None:
         return _flowchart_deque(truth_table)
     flat = _flowchart_render(_flowchart_cells(truth_table))
     if width is not None and grid_width(flat) <= width:
         return flat
     stacked = _flowchart_render(_flowchart_stacked(truth_table))
-    if width is None:
-        return min((flat, stacked, _flowchart_deque(truth_table)), key=len)
     return narrowest_grid(flat, stacked)
 
 

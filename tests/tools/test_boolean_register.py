@@ -609,8 +609,8 @@ class TestDig:
         )
         assert boolean.dig("0110", width=80) == expected
 
-    def test_compact_layout_uses_the_shorter_orientation(self) -> None:
-        """The safe turn is useful for size, not only width requests."""
+    def test_banded_layout_remains_available_for_width_requests(self) -> None:
+        """The unconstrained layout avoids comparing orientations."""
         from esolangs.tools.register import _dig_grid
 
         table = "0110100110010110"
@@ -618,7 +618,7 @@ class TestDig:
         flat = _dig_grid(table, n, None)
         banded = _dig_grid(table, n, -(-(n + 2) // 2))
         assert len(banded) < len(flat)
-        assert boolean.dig(table) == banded
+        assert boolean.dig(table) == flat
 
     def test_a_constant_table_is_one_line(self) -> None:
         """Nothing to branch on, so the whole grid is a single leaf."""
@@ -877,10 +877,10 @@ class TestCollatzMultiverse:
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
         plain = sum(len(_cm_build(t, 3, [0, 1, 2], zero_top=None)) for t in varied)
         built = sum(len(boolean.collatz_multiverse(t)) for t in varied)
-        assert (plain, built) == (450156, 218136)
+        assert (plain, built) == (450156, 227002)
 
     def test_numbering_never_grows_a_program(self) -> None:
-        """The plain build is the first candidate, so no table gets longer."""
+        """Numbered cells beat the retired value-as-code size oracle."""
         from esolangs.tools.register import _cm_build
 
         rng = random.Random(0)

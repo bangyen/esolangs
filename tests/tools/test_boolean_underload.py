@@ -8,8 +8,9 @@ import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.underload import run
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.tools.underload import PAIR, _plain, underload, underload_setters
+from esolangs.tools.underload import PAIR, underload, underload_setters
 from tests.tools.boolean_runners import five_input_sample
+from tests.tools.plain_oracles import underload_plain as _plain
 
 
 def _run(table: str, row: int, width: int | None = None) -> str:

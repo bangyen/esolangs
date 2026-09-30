@@ -673,23 +673,14 @@ class TestBooleanGenerator:
         assert packlang("0110").count("INCR t(") == 2
         assert packlang("01101001").count("INCR t(") == 4
         assert packlang("0000").count("INCR t(") == 0
-        # A mostly-ones table paints its zeros and prints ``49 ^ t``.
-        assert "INCR t(" not in packlang("1111")
+        assert "While q^4Do{" in packlang("1111")
         assert "DECR t(" not in packlang("1111")
-        assert packlang("1110").count("INCR t(3)") == 1
-        assert "charPut(49^t(" in packlang("1110")
+        assert packlang("1110").count("INCR t(") == 3
+        assert "charPut(48^t(" in packlang("1110")
 
     @pytest.mark.medium
     def test_three_input_steps_and_sizes(self) -> None:
-        """Painting the minority, and no doubling before the first read.
-
-        Every row runs every write, so a table painted over its 1-rows
-        paid for each of them (or for the fill loop) where its zeros were
-        fewer.  Commands summed over every row of all 256 tables, as
-        ``tests/fixtures/generator_sizes.json`` counts them; before, the
-        totals were 92,472 characters and 64,744 commands, and no table
-        grew in either.
-        """
+        """Retiring polarity choice adds 3.19% size and 20.5% steps."""
         size = steps = 0
         for value in range(256):
             program = packlang(format(value, "08b"))
@@ -700,7 +691,7 @@ class TestBooleanGenerator:
                 while not machine.halted:
                     machine.step()
                     steps += 1
-        assert (size, steps) == (81424, 52032)
+        assert (size, steps) == (84024, 62696)
 
     def test_full_table_growth_is_linear(self) -> None:
         """Parity paints half the rows, and its emitted size still doubles."""

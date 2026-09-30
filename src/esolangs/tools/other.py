@@ -123,10 +123,6 @@ _SCALE = "3" + _ZERO + _ONE + "x#" + _ZERO + "#x"
 _COMPLEMENT = _NEG_ONE + "#3#x"
 
 
-#: From ``[v]``, leave ``1 - v``: undoes an inverted result encoding.
-_INVERT = _NEG_ONE + "#" + _ONE + "#x"
-
-
 #: What a complemented column reads as.
 _SWAP = str.maketrans("01", "10")
 
@@ -173,17 +169,7 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     if len(essential) < n:
         table = read_at(truth_table, essential, n)
 
-    # Two free choices, both worth a build: which table value the stored 3
-    # stands for (writing the other costs 3 characters more), and whether the
-    # result starts at the unset key's own 3 or at an opening write.
-    return min(
-        (
-            _three_x_build(table, perm, essential, n, true_bit, ambient)
-            for true_bit in "10"
-            for ambient in "10"
-        ),
-        key=len,
-    )
+    return _three_x_build(table, perm, essential, n)
 
 
 def _three_x_build(
@@ -191,15 +177,8 @@ def _three_x_build(
     perm: tuple[int, ...],
     essential: list[int],
     n: int,
-    true_bit: str,
-    ambient: str,
 ) -> str:
-    """One build of the tree; see :func:`three_x`.
-
-    ``true_bit`` is the table value the stored 3 stands for and ``ambient``
-    the result's value on entry -- free when it is ``true_bit``, since an
-    unset key reads as 3, and an opening write otherwise.
-    """
+    """Emit the tree with stored 3 and an unset result both meaning one."""
     width = len(essential)
     pieces: list[str | tuple[str, int]] = []
     constant = constant_span_test(table)
@@ -220,7 +199,7 @@ def _three_x_build(
 
     def write(value: str) -> None:
         pieces.append(_RESULT)
-        pieces.append(("3" if value == true_bit else _ZERO) + "v")
+        pieces.append(("3" if value == "1" else _ZERO) + "v")
 
     def copy(level: int, *, complement: bool) -> None:
         pieces.append(_RESULT)
@@ -241,10 +220,10 @@ def _three_x_build(
         for level in range(depth, width):
             column = pattern(hi - lo, level - depth)
             if span == column:
-                copy(level, complement=true_bit == "0")
+                copy(level, complement=False)
                 return ""
             if span == column.translate(_SWAP):
-                copy(level, complement=true_bit == "1")
+                copy(level, complement=True)
                 return ""
 
         nonlocal top
@@ -258,12 +237,10 @@ def _three_x_build(
         top = "0"
         return first if first == second else ""
 
-    if ambient != true_bit:
-        write(ambient)
-    build(0, 2**width, 0, ambient)
+    build(0, 2**width, 0, "1")
     pieces.append("3" + _ZERO)
     pieces.append(_RESULT)
-    pieces.append("^x!" if true_bit == "1" else "^x" + _INVERT + "!")
+    pieces.append("^x!")
 
     # The reads run in stream order and only the store target moves: stream
     # input ``i`` goes into the name the tree tests at depth ``perm.index(i)``.

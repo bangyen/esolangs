@@ -132,19 +132,13 @@ def six_five(truth_table: str) -> str:
     greedy order is scored through :data:`_GREEDY_ORDER_MAX_ARITY`, as in
     :func:`best_input_order`; wider tables drop it.
 
-    Within the budget each order's tree may also lay a repeated subtree out
-    once and jump to it (:class:`_Layout`), and every order is built both
-    ways; the unshared trees choose first and a shared one must be strictly
-    shorter, so no table grows.  Over the 256 three-input tables that is
-    12,135 to 10,951 characters (9.8%); over 200 seeded five-input tables,
-    41,884 to 27,168 (35.1%).
+    Within the budget each order lays repeated subtrees out once and jumps
+    to them (:class:`_Layout`). Retiring unshared candidates adds 18
+    characters over the three-input corpus (10,951 to 10,969), none over
+    the seeded five-input sample (27,168).
     """
     orders = _six_five_orders(truth_table)
-    # The plain trees choose first and a shared one must be strictly shorter,
-    # so no table grows: the rebuild of a winner below can move the order.
-    plain = _six_five_chosen(truth_table, orders, share=False)
-    shared = _six_five_chosen(truth_table, orders, share=True)
-    best = shared if shared and (not plain or len(shared) < len(plain)) else plain
+    best = _six_five_chosen(truth_table, orders, share=True)
     if not best:
         # Every order overflowed the budget even shared, so the table has
         # too many distinct subtrees for any tree-shaped emission.  The walk

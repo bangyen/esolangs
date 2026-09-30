@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs.tools.register import _cm_build, _cm_layout, collatz_multiverse
+from esolangs.tools.register import _cm_layout, collatz_multiverse
 from tests.tools.boolean_runners import run_collatz_multiverse
 
 
@@ -42,16 +42,6 @@ def test_larger_narrow_address_weights_execute(n: int) -> None:
     source = esolangs.generate("collatz-multiverse", table, 1)
     for row in {0, (1 << n) - 1, *(rng.randrange(1 << n) for _ in range(4))}:
         assert run_collatz_multiverse(source, list(f"{row:0{n}b}")) == table[row]
-
-
-@pytest.mark.parametrize(("negate", "flip"), [(True, False), (False, True)])
-def test_narrow_decoder_rejects_unsupported_polarity(
-    *, negate: bool, flip: bool
-) -> None:
-    with pytest.raises(ValueError, match="unflipped, positive cells"):
-        _cm_build(
-            "0110", 2, [0, 1], zero_top=False, narrow=True, negate=negate, flip=flip
-        )
 
 
 def test_alias_prefix_is_not_inserted_when_it_cannot_narrow() -> None:

@@ -642,14 +642,12 @@ def dig(truth_table: str, width: int | None = None) -> str:
     if width is None and n > 4:
         return _dig_alternating(truth_table, n)
     flat = _dig_grid(truth_table, n, None)
-    if n < 2:
+    if width is None or n < 2:
         return flat
     # The turn has to leave the westbound band room to finish left of where
     # the eastbound one starts its last block, which is what fixes the
     # split rather than any search: the halves are as even as that allows.
     banded = _dig_grid(truth_table, n, -(-(n + 2) // 2))
-    if width is None:
-        return min((flat, banded), key=len)
     if grid_width(flat) <= width:
         return flat
     if grid_width(banded) <= width:

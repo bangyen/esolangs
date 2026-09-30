@@ -8,7 +8,8 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.intercal import run
 from esolangs.tools.helpers import best_input_order, fill_runs
-from esolangs.tools.intercal import PAIR, TEMPLATE_CHAR, _intercal_ordered, intercal
+from esolangs.tools.intercal import PAIR, TEMPLATE_CHAR, intercal
+from tests.tools.plain_oracles import intercal_plain as _intercal_ordered
 
 
 def _run(table: str, row: int) -> str:

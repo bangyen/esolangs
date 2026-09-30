@@ -308,8 +308,6 @@ def _cm_build(
     order: list[int],
     *,
     zero_top: bool | None,
-    negate: bool = False,
-    flip: bool = False,
     narrow: bool = False,
 ) -> str | None:
     """Emit the cell-and-decoder program over ``order``'s inputs.
@@ -319,18 +317,10 @@ def _cm_build(
     cells.  An input it leaves out is still read, and never added.
     ``zero_top`` picks :func:`_cm_codes`'s numbering; ``None`` stores each
     cell's own value as its code, the build before cells were numbered.
-    ``negate`` stores the complement and prints ``49 - bit``; ``flip``
-    stores the table with the last selector's arms swapped.
     ``narrow`` uses odd indices ``3 + 2 i`` and doubles address offsets.
     """
-    if narrow and (negate or flip):
-        raise ValueError("the narrow decoder uses unflipped, positive cells")
     address_scale = 2 if narrow else 1
     table = read_at(truth_table, order, n)
-    if negate:
-        table = table.translate(str.maketrans("01", "10"))
-    if flip:
-        table = "".join(table[r ^ 1] for r in range(len(table)))
     padded = table + "0" * (-len(table) % _CM_CHUNK)
     chunks = [
         sum(int(bit) << j for j, bit in enumerate(padded[base : base + _CM_CHUNK]))
@@ -350,7 +340,7 @@ def _cm_build(
     weights = {address_scale * 2 ** (high - 1 - k) for k in range(high)}
     stored = sorted((code, value) for value, code in codes.items() if code)
     needed = {
-        _ASCII_ZERO + negate,
+        _ASCII_ZERO,
         *weights,
         *(address_scale * _CM_CHUNK * code for code, _ in stored),
     }
@@ -395,14 +385,12 @@ def _cm_build(
     if len(select) == 2:
         lines.append(f"w{select[0]}=k{2 * address_scale}x+z,NOT PRINT.")
         lines.append(f"t=k1x+w{select[0]},NOT PRINT.")
-    # ``1 + bit``, or ``2 - bit`` when the build swapped that input's arms.
-    last = "negativeOnex+k2" if flip else f"k{address_scale}x+k{address_scale}"
+    last = f"k{address_scale}x+k{address_scale}"
     lines.append(f"w{select[-1]}={last},NOT PRINT.")
     lines.append(f"t=k1x+w{select[-1]},NOT PRINT.")
     lines.append("o=zx+D[t],NOT PRINT.")
     # ``o`` holds the bit: ``0 * a + b`` for a zero, ``1 * a + b`` for a one.
-    scale = "negativeOne" if negate else "k1"
-    lines.append(f"o={scale}x+k{_ASCII_ZERO + negate},DO PRINT.")
+    lines.append(f"o=k1x+k{_ASCII_ZERO},DO PRINT.")
     return "\n".join(lines)
 
 
@@ -497,13 +485,10 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
             essential[2:] + essential[:2],
             [*essential[1:-1], essential[0], essential[-1]],
         ]
-    candidates = [_cm_build(truth_table, n, list(range(n)), zero_top=None)]
-    candidates += [
-        _cm_build(truth_table, n, order, zero_top=zero_top, negate=negate, flip=flip)
+    candidates = [
+        _cm_build(truth_table, n, order, zero_top=zero_top)
         for order in orders
         for zero_top in (False, True)
-        for negate in (False, True)
-        for flip in (False, True)
     ]
     program = min((c for c in candidates if c is not None), key=len)
     if width is None or width <= 0:

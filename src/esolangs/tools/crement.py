@@ -52,12 +52,12 @@ def crement(truth_table: str, width: int | None = None) -> str:
     """Build a Crement template: one run per input, its tester's first line.
 
     Constant subtrees fold, so the tree splits in the shorter of the identity
-    and greedy orders as emitted; the identity wins ties.  Each order is
-    built plain and shared (:func:`_crement_ordered`), and the shorter wins.
+    and greedy orders as emitted; the identity wins ties.  Each order
+    shares repeated subtrees (:func:`_crement_ordered`).
     Over-wide instructions use their shortest absolute or relative operands;
     Below six columns, whitespace separates fields and only tester data is filled.
     """
-    template = best_input_order(truth_table, _crement_best)
+    template = best_input_order(truth_table, _crement_shared)
     if width is None or width <= 0 or max(map(len, template.splitlines())) <= width:
         return template
     lines = []
@@ -89,11 +89,9 @@ def _short_operand(source: str, here: int) -> str:
     return min((source, str(value), relative), key=len)
 
 
-def _crement_best(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Return the shorter of one order's plain and shared templates."""
-    plain = _crement_ordered(truth_table, perm)
-    shared = _crement_ordered(truth_table, perm, share=True)
-    return shared if len(shared) < len(plain) else plain
+def _crement_shared(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Return one order's shared template."""
+    return _crement_ordered(truth_table, perm, share=True)
 
 
 def _data(target: int, line: int) -> str:
