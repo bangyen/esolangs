@@ -24,9 +24,12 @@ def helper_chunks(
     wanted: int,
     source: int,
     constants: dict[str, int],
+    *,
+    initial: int | None = None,
 ) -> list[list[tuple[str, int, int | None]]]:
     """Return initializer chunks, each independent of the incoming accumulator."""
-    initial = _g(cell)
+    direct = initial is not None
+    initial = _g(cell) if initial is None else initial
     chunks: list[list[tuple[str, int, int | None]]] = [
         [("*", constants["all1"], 29524), ("p", target, None), ("p", target, 29524)]
         for target in (19, cell)
@@ -42,8 +45,15 @@ def helper_chunks(
             ],
         )
     )
+    if direct:
+        chunks = []
+        recipe_cell = next(
+            a for a in group.reach if _g(a) == initial and wanted in group.reach[a]
+        )
+    else:
+        recipe_cell = cell
     value = initial
-    for token in () if wanted == initial else group.reach[cell][wanted]:
+    for token in () if wanted == initial else group.reach[recipe_cell][wanted]:
         value = _chain(value, token)
         if token == "rot":
             chunks.append([("*", cell, value)])
