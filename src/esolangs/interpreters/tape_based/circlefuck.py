@@ -2,8 +2,9 @@
 
 The tape is the program: cells wrap, ``+``/``-`` adjust, ``,`` reads,
 ``.`` prints, ``[``/``]`` jump to matching brackets, ``@`` halts,
-``{``/``}`` insert and remove cells.  An empty program or unmatched
-brackets raise :class:`ValueError`; deleting the last cell halts with
+``{``/``}`` insert and remove cells. An empty program raises
+:class:`ValueError`; an unmatched taken bracket suspends forever.
+Deleting the last cell halts with
 :class:`~esolangs.exceptions.HaltError`; EOF is a no-op.
 
 :func:`_advance` is pure and *reports* one cell's edit and cursors,
@@ -21,7 +22,6 @@ from functools import lru_cache
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
 #: One instant of a run: ``(ind, ptr, cells, done)`` -- the code cursor, the
@@ -113,11 +113,10 @@ def _parsed(code: str) -> tuple[int, ...]:
     return tuple(parse(code))
 
 
-def find(code: Sequence[int], ind: int, ptr: int) -> int:
+def find(code: Sequence[int], ind: int, ptr: int) -> int | None:
     """Return the matching bracket for ``ind``.
 
-    Raises :class:`ValueError` on unbalanced brackets.  Takes any read-only
-    sequence, so callers pass the tape they hold.
+    Return ``None`` when a taken bracket has no partner on the ring.
     """
     char = chr(code[ind])
     if char == "[":
@@ -139,7 +138,7 @@ def find(code: Sequence[int], ind: int, ptr: int) -> int:
         if ind == start:
             # The walk wraps the ring and comes back, so the bracket with
             # no partner is the one it set out from.
-            raise unmatched(char, start)
+            return None
         if sym == "[":
             match += 1
         elif sym == "]":
@@ -177,7 +176,11 @@ def _advance(
         # ``+`` reduced what ``,`` had not.
         edit = ("set", ptr, byte % 256)
     elif char in "[]":
-        ind = find(cells, ind, ptr)
+        target = find(cells, ind, ptr)
+        if target is None:
+            # Circlefuck defines this state as suspended, not a syntax error.
+            return (ind, ptr, False, None)
+        ind = target
     elif char == "@":
         # The run stops on the ``@`` itself, without wrapping past it.
         return (ind, ptr, True, None)
