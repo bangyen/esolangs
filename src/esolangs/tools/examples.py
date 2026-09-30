@@ -44,7 +44,7 @@ from esolangs.tools.parameterized import (
     BIO_PAIR,
     BITDEQUE_PAIR,
     HOME_ROW_PAIR,
-    MINSKY_SWAP_PAIR,
+    minsky_swap_setters,
 )
 from esolangs.tools.ram0 import PAIR as RAM0_PAIR
 from esolangs.tools.smallfuck import PAIR as SMALLFUCK_PAIR
@@ -548,7 +548,7 @@ def _register() -> None:
         "minsky-swap": _embedded(
             b.minsky_swap,
             "register_based.minsky_swap",
-            pair=MINSKY_SWAP_PAIR,
+            setters=minsky_swap_setters,
             answer_mode="dump",
             expected="0 0",
             note=(

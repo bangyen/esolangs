@@ -629,6 +629,37 @@ class TestParameterizedMinskySwap:
                 got = self.run_minsky_swap(self.instantiate(template, bits))
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
+    @pytest.mark.parametrize("width", [1, 10, 20, 40, 80])
+    def test_rmsn_templates_preserve_command_targets(self, width: int) -> None:
+        """Public and example fills use the notation's one equal-width pair."""
+        import esolangs
+        from esolangs.tools.examples import BOOLEAN_EXAMPLES
+        from esolangs.tools.parameterized import minsky_swap_setters
+
+        example = BOOLEAN_EXAMPLES["minsky-swap"]
+        assert example.fill is not None
+        for n in (1, 2, 3, 5):
+            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+            template = esolangs.generate("Minsky Swap", table, width)
+            pairs = minsky_swap_setters(template, n)
+            assert len(set(pairs)) == 1
+            assert len(pairs[0][0]) == len(pairs[0][1])
+            assert max(map(len, template.splitlines())) <= max(width, 15)
+            for row in range(1 << n):
+                bits = list(map(int, f"{row:0{n}b}"))
+                program = esolangs.instantiate("Minsky Swap", str(template), bits)
+                assert self.run_minsky_swap(program) == table[row]
+                assert self.run_minsky_swap(example.fill(template, bits)) == table[row]
+
+    def test_rmsn_growth_remains_linear(self) -> None:
+        from esolangs.tools import parameterized
+
+        sizes = [
+            len(parameterized.minsky_swap("01101001" * (2 ** (n - 3)), 1))
+            for n in (7, 8, 9)
+        ]
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
+
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits.
 
