@@ -59,7 +59,7 @@ def whitespace(truth_table: str, width: int | None = None) -> str:
     takes the low bit.  The trailing ``swap`` is dead code past ``end``: the
     example writer strips trailing newlines, and ``end`` is three of them.
     Over-wide literals use binary Horner chunks, separated at instruction
-    boundaries by push-zero/discard identities; the width floor is five.
+    boundaries by identities; a shared return subroutine lowers the floor to four.
     """
     n = _validate_truth_table(truth_table)
     table = int(truth_table[::-1], 2)
@@ -111,7 +111,30 @@ def whitespace(truth_table: str, width: int | None = None) -> str:
     natural = "".join(parts)
     if width is None or width <= 0 or max(map(len, natural.split("\n"))) <= width:
         return natural
+    if width < 5:
+        return _fold_four(parts)
     return _fold(parts, max(5, width), sentinel=width < 7)
+
+
+def _fold_four(parts: list[str]) -> str:
+    """Use binary pushes and a stack-preserving call to reset each source row."""
+    commands: list[str] = []
+    for part in parts:
+        if part.startswith(_SPACE * 3) and len(part) > 5:
+            bits = part[3:-1]
+            commands.append(_push(int(bits[0] == _TAB)))
+            for bit in bits[1:]:
+                commands.extend((_DUP, _ADD))
+                if bit == _TAB:
+                    commands.extend((_push(1), _ADD))
+        else:
+            commands.append(part)
+    label = _TAB * 2
+    call = _LINE + _SPACE + _TAB + label + _LINE
+    # CALL starts with LF without touching the data stack; one RETURN
+    # subroutine replaces the five-column DUP/discard separator.
+    program = call.join(commands)
+    return program + _mark(label) + _LINE + _TAB + _LINE + _SWAP
 
 
 def _fold(parts: list[str], width: int, *, sentinel: bool = False) -> str:
