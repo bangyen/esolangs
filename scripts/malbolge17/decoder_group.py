@@ -133,6 +133,21 @@ def _expected(row: int, triple: tuple[int, ...]) -> str:
 
 
 @dataclass(frozen=True)
+class _SetupEmission:
+    """The pre-read code, static data, and known register/operand interface."""
+
+    code: dict[int, str]
+    data: dict[int, int]
+    memory: dict[int, int | None]
+    helpers: dict[str, int]
+    state_masks: dict[int, int]
+    parity_fields: tuple[int, int, int]
+    c: int
+    d: int
+    accumulator: int | None
+
+
+@dataclass(frozen=True)
 class _Emission:
     """One row's source, code and data maps, and movable block positions."""
 
@@ -142,6 +157,7 @@ class _Emission:
     data: dict[int, int]
     row_start: int
     copy_windows: tuple[tuple[str, int, int], ...]
+    setup: _SetupEmission
 
 
 @dataclass(frozen=True)
@@ -370,10 +386,13 @@ def _build(
     external_pointer: bool = False,
     external_parity: bool = False,
     compact: bool = False,
+    common_setup: bool = False,
 ) -> _Emission:
     """Emit one row's real-source group decoder and its code-cell count."""
     if group.runtime_base and not (external_pointer and external_parity):
         raise ValueError("runtime base requires external pointer and parity")
+    if common_setup and not compact:
+        raise ValueError("common setup requires the compact decoder")
     base = group.base
     used = {128, 129} | group.used
     memory: dict[int, int | None] = {
@@ -406,6 +425,11 @@ def _build(
             parity = offset % 2
             parity_cells.append(parity_sources[parity][parity_counts[parity]])
             parity_counts[parity] += 1
+    parity_fields = (
+        (145, 139, 144)
+        if external_parity
+        else (parity_sources[0][0][0], parity_sources[1][0][0], parity_sources[0][1][0])
+    )
     helpers = {"all1": 128, "all2": 129}
     for name, value in _T_HELPERS.items():
         cell = next(
@@ -489,7 +513,14 @@ def _build(
     if compact:
         from compact_decoder import emit_masks
 
-        compact_masks = emit_masks(planner, group, used, helpers, states)
+        compact_masks = emit_masks(
+            planner,
+            group,
+            used,
+            helpers,
+            list(range(5)) if common_setup else states,
+            derived=common_setup,
+        )
     pointer: dict[int, int] = {}
     for point in sorted(values):
         hub = values[point]
@@ -550,9 +581,15 @@ def _build(
     for state in range(5):
         offset, _view_cell, _constant, fixed_parity = view(state)
         cell = base + offset
-        for parity in range(2) if group.runtime_base else (fixed_parity,):
+        for parity in (
+            range(2) if group.runtime_base or common_setup else (fixed_parity,)
+        ):
             constant = _VIEW[2 * state + parity]
-            chars = range(33, 127) if group.runtime_base else _admissible(cell)
+            chars = (
+                range(33, 127)
+                if group.runtime_base or common_setup
+                else _admissible(cell)
+            )
             for char in chars:
                 label = _LABEL_OF[_TARGET[_DELTA[state][_meaning(char, parity)]]]
                 if compact:
@@ -569,6 +606,17 @@ def _build(
                     landing,
                 )
                 data[landing] = landing_char
+    setup = _SetupEmission(
+        code=dict(planner.code),
+        data=dict(data),
+        memory=dict(planner.mem),
+        helpers=dict(helpers),
+        state_masks=dict(compact_masks),
+        parity_fields=parity_fields,
+        c=planner.c,
+        d=planner.d,
+        accumulator=planner.accumulator,
+    )
     cleared = {
         a
         for a in range(_ENTRY)
@@ -585,7 +633,7 @@ def _build(
         # One preserved base pointer reaches each within-group offset.
         z_cell = 142 if external_pointer else group.z_cell
         assert z_cell is not None
-        block.op("*", parity_cells[depth][0])
+        block.op("*", parity_fields[offset] if common_setup else parity_cells[depth][0])
         block.op("p", view_cell)
 
         def read() -> None:
@@ -626,7 +674,7 @@ def _build(
     row_start = planner.c
     decoder(planner, _START[row], 0)
     for key, address, room, _turns in copies:
-        if key == "s3" and 3 not in states:
+        if key == "s3" and 3 not in states and not common_setup:
             continue
         block = _Planner(address, 0, dict(planner.mem), data)
         block.raw("o")
@@ -664,6 +712,7 @@ def _build(
         data=dict(data),
         row_start=row_start,
         copy_windows=tuple((key, address, room) for key, address, room, _ in copies),
+        setup=setup,
     )
 
 

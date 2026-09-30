@@ -83,6 +83,8 @@ def emit_masks(
     used: set[int],
     helpers: dict[str, int],
     states: list[int],
+    *,
+    derived: bool = False,
 ) -> dict[int, int]:
     """Initialize state masks; zero-prefix variants use pure powers of three."""
     facts = {
@@ -91,6 +93,35 @@ def emit_masks(
         helpers["z0"]: 0,
     }
     plan.mem.update(facts)
+    if derived:
+        cells = {}
+        for state in states:
+            cell = next(a for a in range(130, 420) if a not in used)
+            used.add(cell)
+            wanted = mask(state)
+            digits = (wanted // 3**6 % 3, wanted // 3**7 % 3)
+            # Binary bases select tag 0 or 2; two zero bits yield tag 1.
+            first = sum((digit == 0) * 2**i for i, digit in enumerate(digits))
+            second = sum((digit == 2) * 2**i for i, digit in enumerate(digits))
+            plan.op("*", helpers["all1"])
+            plan.op("p", cell)
+            plan.op("p", cell)
+            source = group.view_cells[second]
+            value = plan.mem[source]
+            assert value is not None
+            load(plan, source, value, helpers["all2"])
+            plan.op("p", cell)
+            plan.op("p", cell)
+            plan.op("*", helpers["all2"])
+            plan.op("p", cell)
+            source = group.view_cells[first]
+            value = plan.mem[source]
+            assert value is not None
+            load(plan, source, value, helpers["all2"])
+            plan.op("p", cell)
+            assert plan.mem[cell] == wanted
+            cells[state] = cell
+        return cells
 
     def constant(wanted: int) -> int:
         cell = next(
@@ -125,7 +156,7 @@ def emit_masks(
     return cells
 
 
-def main(*, table_free_hubs: bool = False) -> None:
+def main(*, table_free_hubs: bool = False, common_setup: bool = False) -> None:
     """Run all 2744 row/meaning cases as standalone, uninjected sources."""
     addresses = {
         landing(state, parity, char)
@@ -155,9 +186,25 @@ def main(*, table_free_hubs: bool = False) -> None:
             & table
         )
     total = 0
+    shared = None
     for row in range(8):
-        emission = _build(row, group, compact=True)
+        emission = _build(row, group, compact=True, common_setup=common_setup)
         assert not set(emission.code) & set(emission.data)
+        if common_setup:
+            from runtime_decoder import _prepare
+
+            state, memory = _prepare(emission)
+            assert state[1:3] == (emission.setup.c, emission.setup.d)
+            assert all(
+                memory[address] == value
+                for address, value in emission.setup.memory.items()
+                if value is not None
+            )
+            if emission.setup.accumulator is not None:
+                assert state[0] == emission.setup.accumulator
+            if shared is None:
+                shared = emission.setup
+            assert emission.setup == shared
         if table_free_hubs:
             assert set(emission.data) & table <= set(range(group.base, group.base + 3))
         for triple in itertools.product(range(7), repeat=3):
@@ -180,9 +227,16 @@ def main(*, table_free_hubs: bool = False) -> None:
         print(f"row {row}: 343 standalone runs; {emission.code_cells} code cells")
     assert total == 2744
     print("compact decoder: 2744 standalone executions; no host initialization")
+    if shared is not None:
+        print(
+            f"common setup: {len(shared.code)} code cells, "
+            f"{len(shared.data)} data cells; C={shared.c}, D={shared.d}"
+        )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--table-free-hubs", action="store_true")
-    main(table_free_hubs=parser.parse_args().table_free_hubs)
+    parser.add_argument("--common-setup", action="store_true")
+    args = parser.parse_args()
+    main(table_free_hubs=args.table_free_hubs, common_setup=args.common_setup)
