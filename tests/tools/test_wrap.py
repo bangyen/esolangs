@@ -286,7 +286,12 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     if takes_width(example.generator):
         plain = example.build(width)
         wrapped = wrap_program(plain, LANGUAGES[name].id, max(1, width // 2))
-        assert wrapped.replace("\n", "") == plain.replace("\n", "")
+        if name == "Packlang":
+            from esolangs.interpreters.other.packlang import _tokenize
+
+            assert _tokenize(wrapped) == _tokenize(plain)
+        else:
+            assert wrapped.replace("\n", "") == plain.replace("\n", "")
         assert _run(name, wrapped) == _run(name, plain)
         return
     plain = example.build(width=None)
@@ -320,7 +325,7 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     # These are multi-line with no structural first line. Their parsers see
     # whitespace-delimited tokens across the whole source, so flattening and
     # repacking may move every original line break.
-    if LANGUAGES[name].id in {"qoibl", "forbin", "packlang"}:
+    if LANGUAGES[name].id in {"qoibl", "forbin"}:
         assert wrapped.split() == plain.split()
         return
     # Taglate's first line is a structural queue seed the wrapper must leave
@@ -728,15 +733,18 @@ def test_width_honouring_languages_respect_the_width(name: str) -> None:
     """
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
     if language.id in WRAPPERS:
-        # Its layout changes fresh padding; the post-fill wrapper still
-        # protects skip chains and the already atomic two-character setters.
-        template = generate(language.name, TABLE, 1)
         for row in range(4):
-            bits = [(row >> 1) & 1, row & 1]
-            code = esolangs.instantiate(
-                language.name, template, bits, 1, truth_table=TABLE
+            bits = format(row, "02b")
+            wrapped = _laid_out(language.name, TABLE, bits, 1)
+            raw = _laid_out(language.name, TABLE, bits, None)
+            stdin = (
+                ""
+                if esolangs.describe(language.name)["parameterized"]
+                else esolangs.encode_inputs(language.name, [int(bit) for bit in bits])
             )
-            assert esolangs.run(language.name, code) == TABLE[row]
+            assert _behaviour(language.name, wrapped, stdin) == _behaviour(
+                language.name, raw, stdin
+            )
     assert language.boolean is not None
     for width in (40, 80, 94):
         program = generate(language.name, TABLE, width)

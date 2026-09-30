@@ -41,8 +41,11 @@ _FILL_COST = 3
 _WIDTH = 72
 
 
-def packlang(truth_table: str) -> str:
-    """Build a linear-size Packlang program computing ``truth_table``."""
+def packlang(truth_table: str, width: int | None = None) -> str:
+    """Build a linear-size Packlang program; narrow layouts floor at one token.
+
+    The unused package name shortens below ten columns; keywords floor at seven.
+    """
     n = _validate_truth_table(truth_table)
     # Painting the zeros and printing ``49 ^ t`` costs the same characters
     # as painting the ones and printing ``48 ^ t``, so the program paints
@@ -50,7 +53,15 @@ def packlang(truth_table: str) -> str:
     flipped = truth_table.translate(str.maketrans("01", "10"))
     ones = _painted(truth_table, n, _ASCII_ZERO)
     zeros = _painted(flipped, n, _ASCII_ONE)
-    return min(ones, zeros)[2]
+    program = min(ones, zeros)[2]
+    if width is None or width <= 0:
+        return program
+    # The package is never named by its own body or the IO dependency.
+    if width < len("truthTable"):
+        program = program.removesuffix("} truthTable;\n") + "} t;\n"
+    from esolangs.tools.wrap import wrap_program
+
+    return wrap_program(program, "packlang", width)
 
 
 def _painted(painted: str, n: int, blank: int) -> tuple[int, int, str]:
