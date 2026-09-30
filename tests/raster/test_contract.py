@@ -89,3 +89,46 @@ def test_a_malformed_png_is_a_program_error(language: str, tmp_path: Path) -> No
     path.write_bytes(truncated)
     with pytest.raises(esolangs.ProgramError):
         esolangs.check_program(language, path)
+
+
+def test_raster_detaches_mutable_pixels() -> None:
+    pixels = [[[0, 0, 0]]]
+    raster = Raster(pixels)  # type: ignore[arg-type]
+    before = hash(raster)
+    pixels[0][0][0] = 255
+    assert raster.rows == (((0, 0, 0),),)
+    assert hash(raster) == before
+    assert Raster.from_png(raster.to_png()) == raster
+
+
+@pytest.mark.parametrize("channel", [1.5, True, "1", None, -1, 256])
+def test_raster_refuses_invalid_channel_types(channel: object) -> None:
+    with pytest.raises(ValueError, match="8-bit RGB"):
+        Raster((((channel, 0, 0),),))  # type: ignore[arg-type]
+
+
+def test_lazy_raster_freezes_once_on_access() -> None:
+    pixels = [[[0, 0, 0]]]
+    calls = 0
+
+    def materialize() -> list[list[list[int]]]:
+        nonlocal calls
+        calls += 1
+        return pixels
+
+    raster = Raster(_materialize=materialize)  # type: ignore[arg-type]
+    assert calls == 0
+    assert raster.rows == (((0, 0, 0),),)
+    pixels[0][0][0] = 255
+    assert raster.rows == (((0, 0, 0),),)
+    assert calls == 1
+    assert hash(raster) == hash(Raster((((0, 0, 0),),)))
+
+
+def test_lazy_raster_does_not_cache_invalid_pixels() -> None:
+    pixels = [[[256, 0, 0]]]
+    raster = Raster(_materialize=lambda: pixels)  # type: ignore[arg-type,return-value]
+    with pytest.raises(ValueError, match="8-bit RGB"):
+        _ = raster.rows
+    pixels[0][0][0] = 0
+    assert raster.rows == (((0, 0, 0),),)

@@ -143,6 +143,12 @@ def _bounded_read(path: str, timeout: float | None) -> str | Raster:
         _fail(f"cannot read {path}: {result}")
     if isinstance(result, BaseException):
         raise result
+    if len(result) > _MAX_PROGRAM_BYTES:
+        _fail(
+            f"{path} is larger than the {_MAX_PROGRAM_BYTES // 1024} KiB this "
+            f"reads; the largest program this package generates is far under "
+            f"it, so this is almost certainly not a program"
+        )
     if result.startswith(_PNG_MAGIC):
         # A raster program; decoding it here means ``run`` and ``debug``
         # accept the same PNG ``generate`` wrote, rather than reading its
@@ -158,12 +164,6 @@ def _bounded_read(path: str, timeout: float | None) -> str | Raster:
         # ``OSError``, so pointing ``run`` at a PNG used to dump a raw
         # traceback where every other unreadable file gets one clean line.
         _fail(f"cannot read {path}: not text ({_decode_note(exc)})")
-    if len(text) > _MAX_PROGRAM_BYTES:
-        _fail(
-            f"{path} is larger than the {_MAX_PROGRAM_BYTES // 1024} KiB this "
-            f"reads; the largest program this package generates is far under "
-            f"it, so this is almost certainly not a program"
-        )
     return text
 
 

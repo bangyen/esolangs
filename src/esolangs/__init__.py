@@ -689,7 +689,7 @@ def _run_timed_signal(
     # theirs, so a ``signal.alarm(30)`` set before a timed run came back
     # with zero seconds left and would never have fired.
     old = signal.signal(signal.SIGALRM, _timeout_handler)
-    pending = signal.setitimer(signal.ITIMER_REAL, timeout)[0]
+    pending, interval = signal.setitimer(signal.ITIMER_REAL, timeout)
     try:
         run_fn(program, io_obj)
     finally:
@@ -706,4 +706,4 @@ def _run_timed_signal(
             # Whatever was left of the caller's alarm, resumed.  Not exact
             # -- the run's own duration is not deducted -- but a timer that
             # fires late is a great deal better than one silently cancelled.
-            signal.setitimer(signal.ITIMER_REAL, pending)
+            signal.setitimer(signal.ITIMER_REAL, pending, interval)

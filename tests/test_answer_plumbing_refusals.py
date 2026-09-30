@@ -750,6 +750,23 @@ class TestATimeoutCannotKillTheProcess:
 class TestTheCallersSignalsAreTheirOwn:
     """The fix for the death took the caller's SIGALRM hostage."""
 
+    @pytest.mark.parametrize("program", ["+", ","])
+    def test_a_periodic_alarm_survives_a_timed_run(self, program: str) -> None:
+        import signal
+
+        previous = signal.signal(signal.SIGALRM, lambda *_a: None)
+        timer = signal.setitimer(signal.ITIMER_REAL, 30, 5)
+        try:
+            with contextlib.suppress(esolangs.EsolangError):
+                esolangs.run("brainfuck", program, timeout=1)
+            remaining, interval = signal.getitimer(signal.ITIMER_REAL)
+            assert remaining > 0
+            assert interval == 5
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, previous)
+            signal.setitimer(signal.ITIMER_REAL, *timer)
+
     def test_a_pending_alarm_survives_a_timed_run(self) -> None:
         """Arming ours cancelled theirs, and nothing put it back."""
         import signal
