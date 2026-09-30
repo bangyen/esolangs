@@ -690,7 +690,7 @@ class TestDig:
 
     def test_rotated_small_dig_trees_keep_all_operand_reads(self) -> None:
         """Quarter-turning changes neighbor priority, so execute every path."""
-        assert max(map(len, boolean.dig("0110", 1).splitlines())) == 8
+        assert max(map(len, boolean.dig("0110", 1).splitlines())) == 4
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
@@ -698,6 +698,18 @@ class TestDig:
                 for row, expected in enumerate(table):
                     bits = list(format(row, f"0{n}b"))
                     assert run_dig(program, bits) == expected
+
+    @pytest.mark.parametrize("width", [1, 2, 3, 4, 7])
+    def test_xor_polynomial_uses_four_operand_columns(self, width: int) -> None:
+        from esolangs.interpreters.grid_based.dig import run
+        from esolangs.interpreters.io import ScriptedIO
+
+        program = esolangs.generate("Dig", "0110", width)
+        assert max(map(len, program.splitlines())) == 4
+        for row, expected in enumerate("0110"):
+            io = ScriptedIO("\n".join(f"{row:02b}") + "\n")
+            run(program.splitlines(), io)
+            assert (io.getvalue(), io.reads) == (expected, 2)
 
     def test_a_folded_table_keeps_the_flat_layout(self) -> None:
         """Turning round is not always narrower, so the narrower one wins.
@@ -752,7 +764,7 @@ class TestDig:
         monkeypatch.setattr(dig_module, "_DIG_BAND", _DIG_STRIDE)
         for table in ("0110", "10010110", "0110100110010110"):
             with pytest.raises(AssertionError):
-                boolean.dig(table, 1)
+                boolean.dig(table, 8)
         monkeypatch.undo()
         # and the stride the rule names still builds
         assert boolean.dig("0110100110010110", 1)
