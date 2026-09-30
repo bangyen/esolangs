@@ -17,6 +17,7 @@ _LINE = "\n"
 
 #: The tab/space/line tokens each command is built from, named so a run of
 #: whitespace at the emission site cannot silently become another command.
+_DUP = _SPACE + _LINE + _SPACE
 _SWAP = _SPACE + _LINE + _TAB
 _ADD = _TAB + _SPACE + _SPACE + _SPACE
 _SUB = _TAB + _SPACE + _SPACE + _TAB
@@ -58,7 +59,7 @@ def whitespace(truth_table: str, width: int | None = None) -> str:
     takes the low bit.  The trailing ``swap`` is dead code past ``end``: the
     example writer strips trailing newlines, and ``end`` is three of them.
     Over-wide literals use binary Horner chunks, separated at instruction
-    boundaries by push-zero/discard identities; the width floor is seven.
+    boundaries by push-zero/discard identities; the width floor is five.
     """
     n = _validate_truth_table(truth_table)
     table = int(truth_table[::-1], 2)
@@ -110,10 +111,10 @@ def whitespace(truth_table: str, width: int | None = None) -> str:
     natural = "".join(parts)
     if width is None or width <= 0 or max(map(len, natural.split("\n"))) <= width:
         return natural
-    return _fold(parts, max(7, width))
+    return _fold(parts, max(5, width), sentinel=width < 7)
 
 
-def _fold(parts: list[str], width: int) -> str:
+def _fold(parts: list[str], width: int, *, sentinel: bool = False) -> str:
     """Fold positive pushes into Horner chunks and separate complete commands."""
     commands: list[str] = []
     chunk_width = width - 4  # a power-of-two multiplier needs one extra bit
@@ -130,5 +131,8 @@ def _fold(parts: list[str], width: int) -> str:
                 )
         else:
             commands.append(part)
-    separator = _push(0) + _DISCARD
+    if sentinel:
+        # The bottom sentinel keeps DUP valid after STORE empties the work stack.
+        commands.insert(0, _push(0))
+    separator = (_DUP if sentinel else _push(0)) + _DISCARD
     return separator.join(commands)

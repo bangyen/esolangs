@@ -187,3 +187,13 @@ def test_advancing_a_done_state_is_a_no_op() -> None:
 def test_invalid_operations_halt(program: str, message: str) -> None:
     with pytest.raises(HaltError, match=message):
         run(program, IO())
+
+
+@pytest.mark.parametrize("stack", [(7,), (4, -2), (0, 1, 2)])
+def test_duplicate_adds_exactly_one_copy(stack: tuple[int, ...]) -> None:
+    state, effect = _advance((0, stack, (), (), False), [("dup", 0)], {})
+    assert state[1] == (*stack, stack[-1])
+    assert effect is None
+    restored, effect = _advance(state, [("dup", 0), ("discard", 0)], {})
+    assert restored[1] == stack
+    assert effect is None
