@@ -93,7 +93,7 @@ def _prefill(base: int, triple: tuple[int, ...]) -> dict[int, int]:
     return cells
 
 
-def main(*, inspect_entry: bool = False) -> None:
+def main(*, inspect_entry: bool = False, compact: bool = False) -> None:
     """Check all meaning triples at all 94 residues for each of eight rows."""
     group = _setup(
         frozenset({142, 145, 139, 144}), external_pointer=True, runtime_base=True
@@ -110,6 +110,7 @@ def main(*, inspect_entry: bool = False) -> None:
             row_offset=200 * row,
             external_pointer=True,
             external_parity=True,
+            compact=compact,
         )
         occupied = set(emission.code) | set(emission.data)
         representatives: dict[int, int] = {}
@@ -161,4 +162,6 @@ def main(*, inspect_entry: bool = False) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--entry", action="store_true", help="trace first-read values")
-    main(inspect_entry=parser.parse_args().entry)
+    parser.add_argument("--compact", action="store_true", help="use low trampolines")
+    args = parser.parse_args()
+    main(inspect_entry=args.entry, compact=args.compact)
