@@ -219,14 +219,33 @@ class TestATemplateCarriesItsSetters:
         assert getattr(esolangs.generate("brainfuck", "0110"), "setters", None) is None
 
     def test_a_uniform_example_derives_its_setters_from_its_pair(self) -> None:
-        """Every embedded example carries one pair and derives from it."""
+        """Static pairs derive setters; notation-dependent pairs stay uniform."""
         from esolangs.tools.examples import BOOLEAN_EXAMPLES, _embedded, uniform
 
         embedded = [e for e in BOOLEAN_EXAMPLES.values() if e.setters is not None]
         uniform_ones = [e for e in embedded if e.pair is not None]
-        assert uniform_ones == embedded
+        dynamic = [e for e in embedded if e.pair is None]
+        assert dynamic == [BOOLEAN_EXAMPLES["minsky-swap"]]
         for example in uniform_ones:
             assert example.setters("", 3) == uniform(example.pair)("", 3)
+        example = dynamic[0]
+        assert example.setters is not None
+        assert example.fill is not None
+        table = "01101001"
+        for width in (None, 1):
+            template = esolangs.generate("Minsky Swap", table, width)
+            pairs = example.setters(template, 3)
+            assert pairs == template.setters
+            assert len(pairs) == 3
+            assert len(set(pairs)) == 1
+            assert len(pairs[0][0]) == len(pairs[0][1])
+            assert template.startswith("decnz(") == (width == 1)
+            for row, expected in enumerate(table):
+                bits = list(map(int, f"{row:03b}"))
+                program = example.fill(template, bits)
+                assert program == esolangs.instantiate("Minsky Swap", template, bits)
+                output = esolangs.run("Minsky Swap", program)
+                assert esolangs.read_answer("Minsky Swap", output) == expected
         with pytest.raises(TypeError, match="exactly one"):
             _embedded(
                 esolangs.generate, "x", pair=("a", "b"), setters=uniform(("a", "b"))
