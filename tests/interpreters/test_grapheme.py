@@ -26,6 +26,63 @@ def run_program(code: str, stdin: str = "") -> str:
     return io.getvalue()
 
 
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        ("EABCEY", "ABC"),
+        ("FABFY", "120"),
+        ("FAFHYHI", "10"),
+        ("HABHJY", "2"),
+        ("HABHNY", "AB"),
+        ("FAFFFUKY", "10"),
+        ("FFFAFXYK", "0"),
+        ("FBFFAFFAFLRFFVKY", "20"),
+    ],
+)
+def test_lf_is_removed_before_literals_functions_and_command_positions(
+    code: str, expected: str
+) -> None:
+    from esolangs.interpreters.stack_based.grapheme import _Machine
+
+    plain = _Machine(code, ScriptedIO(""))
+    wrapped = _Machine("\n" + "\n".join(code) + "\n", ScriptedIO(""))
+    while not plain.halted:
+        assert plain.snapshot() == wrapped.snapshot()
+        plain.step()
+        wrapped.step()
+    assert wrapped.halted
+    assert plain.snapshot() == wrapped.snapshot()
+    assert wrapped.ip == (len(code),)
+    assert wrapped.io.getvalue() == plain.io.getvalue() == expected
+
+
+@pytest.mark.parametrize("char", [" ", "\t", "\r", "a"])
+def test_loading_ignores_only_lf(char: str) -> None:
+    with pytest.raises(ValueError, match="uppercase"):
+        run("\nEA" + char + "EY\n", ScriptedIO(""))
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("width", [1, 2, 3, 7, 13, 80])
+def test_generated_grapheme_programs_run_at_arbitrary_breaks(width: int) -> None:
+    from esolangs.tools.stack import grapheme
+    from esolangs.tools.wrap import wrap_chars
+
+    tables = [f"{value:04b}" for value in range(16)]
+    tables += ["00000000", "11111111", "01101001", "01010011"]
+    for table in tables:
+        n = len(table).bit_length() - 1
+        source = grapheme(table)
+        wrapped = wrap_chars(source, width)
+        assert max(map(len, wrapped.splitlines())) <= width
+        for row, expected in enumerate(table):
+            inputs = ["A" if bit == "1" else "%" for bit in f"{row:0{n}b}"]
+            io = ScriptedIO("\n".join(inputs))
+            run(wrapped, io)
+            assert io.getvalue() == expected
+            assert io.reads == n
+
+
 class TestModes:
     def test_stringmode(self) -> None:
         # E HELLOWORLD E Y -> the E's terminate the string, dropping one E
