@@ -627,7 +627,7 @@ def dig(truth_table: str, width: int | None = None) -> str:
         return flat
     if max(map(len, banded.splitlines())) <= width:
         return banded
-    candidates = (flat, banded)
+    candidates: tuple[str, ...] = (flat, banded)
     # A bounded flat width keeps the rotated entry padding O(T).
     if n <= 4:
         candidates += (_dig_quarter_turn(flat),)
