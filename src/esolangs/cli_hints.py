@@ -146,7 +146,7 @@ def _decode_note(exc: UnicodeDecodeError) -> str:
 def _stdin_hint(facts: LanguageInfo) -> str:
     """Return a clause naming what this language wants on stdin, if anything.
 
-    Suggests rather than skips: three of the fourteen embed-only languages
+    Suggests rather than skips: some embed-only languages
     have an input command a hand-written program may use.
     """
     if not facts["reads_input"] and facts["parameterized"]:

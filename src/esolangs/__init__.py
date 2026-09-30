@@ -153,7 +153,7 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str |
     """Return a program in ``language`` computing ``truth_table``.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first, so its
-    length implies ``n``.  Fourteen languages embed their inputs in the
+    length implies ``n``.  Some languages embed their inputs in the
     program text; for those this returns a *template* with each input as a
     run of one character (``$`` unless the language declares another), one
     run per input, exactly as long as the code :func:`instantiate` fills it
@@ -210,11 +210,18 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str |
 def _is_template_for(template: str, name: str, truth_table: str) -> bool:
     """Return whether ``template`` is what ``name`` generates for the table.
 
-    A wrapped template passes where the plain one is a single line.
+    Compare wrapping using the language's whitespace rules.
     """
     plain = generate(name, truth_table)
     if not isinstance(plain, str):
         return False
+    language_id = LANGUAGES[name].id
+    # BIO discards whitespace; the other three tokenize on it. Their wrappers
+    # replace spaces with newlines, so removing newlines loses token boundaries.
+    if language_id == "bio":
+        return "".join(template.split()) == "".join(plain.split())
+    if language_id in {"bitdeque", "ram0", "fractran"}:
+        return template.split() == plain.split()
     return template == plain or (
         "\n" not in plain and template.replace("\n", "") == plain
     )
@@ -451,7 +458,11 @@ def run_bounded(
     if max_steps is None and timeout is None:
         raise ArgumentError("run_bounded needs max_steps or timeout")
     debugger = make_debugger(language, program, stdin)
-    reason = debugger.run(max_steps=max_steps, timeout=timeout)
+    try:
+        reason = debugger.run(max_steps=max_steps, timeout=timeout)
+    except EsolangError as exc:
+        exc.partial_output = debugger.output
+        raise
     if reason != "halted":
         error = ExecutionTimeoutError(f"execution stopped at the {reason} bound")
         error.partial_output = debugger.output
@@ -533,11 +544,14 @@ def run(
         # ``RecursionError`` was the one exception escaping ``EsolangError``.
         # The limit is CPython's, not the interpreter's (raising it made the
         # program run); Qoibl's tokenizer carries its own stack now.
-        raise InterpreterLimitError(
-            f"the {name} interpreter recursed deeper than CPython's stack "
-            f"limit allows on this program; the "
-            f"program is well formed, and sys.setrecursionlimit can raise "
-            f"the limit if this interpreter's depth grows with program size"
+        raise _keeping_output(
+            InterpreterLimitError(
+                f"the {name} interpreter recursed deeper than CPython's stack "
+                f"limit allows on this program; the "
+                f"program is well formed, and sys.setrecursionlimit can raise "
+                f"the limit if this interpreter's depth grows with program size"
+            ),
+            io_obj,
         ) from exc
     except ValueError as exc:
         # The interpreters signal a malformed program with a plain

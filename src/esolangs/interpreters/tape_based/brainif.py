@@ -57,7 +57,10 @@ def _parse(line: str) -> _Line:
             raise ValueError("goto requires a target line")
         if len(arr) != 4:
             raise ValueError("malformed BrainIf line: " + line)
-        return (value, command, int(arr[3]))
+        target = int(arr[3])
+        if target < 1:
+            raise ValueError("goto target must be a positive line number")
+        return (value, command, target)
     if len(arr) > 3:
         raise ValueError("malformed BrainIf line: " + line)
     if command in ("increment", "inc", "right", "left", "input", "output"):

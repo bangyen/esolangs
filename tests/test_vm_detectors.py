@@ -360,24 +360,21 @@ class TestRunUntilHaltOrCycle:
     def test_modulous_non_command_tokens_advance_one_branch(self) -> None:
         """A token no handler claims still steps, and forks nothing.
 
-        Three shapes reach the branch search without a handler: an empty
-        token, a bare word, and a variable assignment.  Only the last
-        changes anything -- ``VAR1+1`` is arithmetic the dispatch table does
-        not list -- and none of them opens a second outcome, so each must
+        Empty tokens and variable arithmetic have no dispatch handler.
+        ``VAR1+1`` changes state, and none opens a second outcome, so each must
         return exactly one successor rather than ``None`` (which would
         claim the step needs input) or a fork.
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.modulous import _Machine
 
-        for code in ("[]", "[FOO]", "[VAR1+1]", "[VAR1-1]"):
+        for code in ("[]", "[VAR1+1]", "[VAR1-1]"):
             machine = _Machine(code, ScriptedIO())
             successors = machine.branching_successors(machine.branching_snapshot(), 100)
             assert successors is not None, code
             assert len(successors) == 1, code
 
-        # The arithmetic token is the only one that writes a variable, and
-        # the bare word leaves the state alone apart from the cursor.
+        # Arithmetic changes the named variable without forking.
         for token, expected in (("[VAR1+1]", 1), ("[VAR1-1]", -1)):
             arith = _Machine(token, ScriptedIO())
             (stepped,) = (
@@ -387,9 +384,8 @@ class TestRunUntilHaltOrCycle:
 
         word = _Machine("[FOO]", ScriptedIO())
         start = word.branching_snapshot()
-        (after,) = word.branching_successors(start, 100) or ()
-        assert after[0][0] == start[0][0]  # stack untouched
-        assert after[0][2] == start[0][2] + 1  # cursor advanced one token
+        with pytest.raises(ValueError, match="not a Modulous command"):
+            word.branching_successors(start, 100)
 
     def test_modulous_declines_input_and_caps_a_wide_draw(self) -> None:
         """``INP`` cannot be forked, and one ``RND`` cannot be unbounded."""
@@ -1119,3 +1115,20 @@ class TestTheDetectorsTakeAVM:
                     _Unbounded(),  # type: ignore[arg-type]
                     limit=limit,
                 )
+
+
+@pytest.mark.parametrize(("program", "limit"), [("", 0), ("+", 1), ("++", 2)])
+def test_growth_detector_accepts_halt_at_step_limit(program: str, limit: int) -> None:
+    from esolangs.vm import make_vm, run_until_halt_or_growth
+
+    assert run_until_halt_or_growth(make_vm("Brainfuck", program), limit) is True
+
+
+@pytest.mark.parametrize("limit", [0, 1, 2])
+def test_value_growth_detector_accepts_eof_halt_at_step_limit(limit: int) -> None:
+    from esolangs.vm import make_vm, run_until_halt_or_value_growth
+
+    machine = make_vm("Suffolk", ",")
+    if limit == 0:
+        machine.step()
+    assert run_until_halt_or_value_growth(machine, limit) is True

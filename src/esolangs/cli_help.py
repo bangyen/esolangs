@@ -109,7 +109,7 @@ significant first, so its length sets the input count: 0110 is two-input
 XOR, 10010110 is three-input.  The program reads one input per line and
 prints the result.
 
-Fourteen languages instead return a *template*: their generators embed the
+Some languages instead return a *template*: their generators embed the
 inputs in the code rather than reading them, leaving a run of `$` per input
 as long as the code that will replace it.  Running one unfilled is refused.
 `esolangs list --details` marks them `tmpl`; pass --bits to get a runnable
@@ -200,8 +200,8 @@ mis-encoded: the bits go in as bits.
   esolangs answer Fargo 10010110 101       -> 1
   esolangs answer "A Painter Ant" 0110 01  -> 1
 
-Works for every language, including the fourteen whose generators embed
-their inputs, the six that dump their whole final state, and the four that
+Works for every language, including those whose generators embed
+their inputs, those that dump their whole final state, and the four that
 answer by not terminating -- for those a bound is needed, and the default
 below is applied.
 
@@ -305,7 +305,7 @@ options:
               prints as `0 1` with no way back to two values, an empty
               field is dropped rather than shown as empty, the closing
               `input` line is a sentence this command composes and not a
-              key at all, and for the fourteen template languages
+              key at all, and for template languages
               `input_shape` and `input_encoding` are left out entirely --
               they describe an stdin those programs never read, and the
               `input` line says so instead.  --json is the dict, exactly,

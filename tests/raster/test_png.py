@@ -20,6 +20,7 @@ from __future__ import annotations
 import random
 import struct
 import zlib
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -367,6 +368,7 @@ def test_rejects_an_unknown_interlace_method() -> None:
     """Only the spec's two interlace methods exist; anything else is corrupt."""
     blob = bytearray(_encode([bytes([0, 0])], 1, 1))
     blob[8 + 8 + 12] = 7  # IHDR's interlace byte
+    _repair_ihdr_crc(blob)
     with pytest.raises(ValueError, match="interlace method"):
         png.read_grey(bytes(blob))
 
@@ -395,6 +397,7 @@ def test_empty_png_pass_has_no_samples() -> None:
 def test_rejects_an_unknown_compression_method() -> None:
     blob = bytearray(_encode([bytes([0, 0])], 1, 1))
     blob[8 + 8 + 10] = 1
+    _repair_ihdr_crc(blob)
     with pytest.raises(ValueError, match="compression"):
         png.read_rgb(bytes(blob))
 
@@ -428,8 +431,9 @@ def test_rgb_rejects_an_index_outside_the_palette() -> None:
         + chunk(b"IDAT", zlib.compress(bytes([0, 1])))
         + chunk(b"IEND", b"")
     )
-    with pytest.raises(ValueError, match="outside PLTE"):
-        png.read_rgb(blob)
+    for reader in (png.read_rgb, png.read_grey):
+        with pytest.raises(ValueError, match="outside PLTE"):
+            reader(blob)
 
 
 def test_rejects_a_malformed_palette_length() -> None:
@@ -462,6 +466,7 @@ def test_a_corrupt_ihdr_dimension_is_refused_before_allocating() -> None:
     """A flipped width byte used to OOM-kill the process (SIGKILL)."""
     data = bytearray(png.write_rgb([[(0, 0, 0)]]))
     data[16] ^= 0x80  # the IHDR width's most significant byte
+    _repair_ihdr_crc(data)
     for reader in (png.read_grey, png.read_rgb):
         with pytest.raises(ValueError, match="IHDR is corrupt"):
             reader(bytes(data))
@@ -486,3 +491,28 @@ def test_rgb_writer_rejects_empty_ragged_and_invalid_pixels() -> None:
         png.write_rgb([[(0, 0, 0)], []])
     with pytest.raises(ValueError, match="invalid RGB"):
         png.write_rgb([[(0, 0, 256)]])
+
+
+def _repair_ihdr_crc(blob: bytearray) -> None:
+    blob[29:33] = struct.pack(">I", zlib.crc32(blob[12:29]) & 0xFFFFFFFF)
+
+
+@pytest.mark.parametrize("reader", [png.read_rgb, png.read_grey])
+def test_rejects_corrupt_chunk_crc(reader: Callable[[bytes], object]) -> None:
+    blob = bytearray(png.write_rgb([[(255, 0, 0), (0, 255, 0)]]))
+    blob[19] = 1
+    with pytest.raises(ValueError, match="IHDR chunk CRC"):
+        reader(bytes(blob))
+
+
+@pytest.mark.parametrize("reader", [png.read_rgb, png.read_grey])
+def test_rejects_incomplete_chunk_crc(reader: Callable[[bytes], object]) -> None:
+    blob = png.write_grey([bytearray([0])])
+    with pytest.raises(ValueError, match="truncated IEND chunk CRC"):
+        reader(blob[:-1])
+
+
+@pytest.mark.parametrize("reader", [png.read_rgb, png.read_grey])
+def test_rejects_surplus_pixel_data(reader: Callable[[bytes], object]) -> None:
+    with pytest.raises(ValueError, match="IHDR is corrupt"):
+        reader(_encode([bytes([0, 0, 255])], 1, 1))
