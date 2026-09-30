@@ -898,11 +898,12 @@ def build(
                             )
                             if operation is not None:
                                 char = ord(_XLAT2[_char_for(operation, address) - 33])
+                                normalizer.data[address] = char
                             else:
                                 char = max(
                                     ch for ch in _valid_chars(address) if ch < 107
                                 )
-                            normalizer.data[address] = char
+                                char = normalizer.data.setdefault(address, char)
                             normalizer.raw("j")
                             normalizer.d = char + 1
                     normalizer.op("p", 107)
@@ -943,7 +944,9 @@ def build(
                     normalizer.mem[seed_cell] = encoded
                     hub = 29524 - encoded
                     primed = seed_cell == 107
-                    for cell, target in label_targets.items():
+                    # Restored neighbours save 185 emitted cells in the 729 phase.
+                    for cell in sorted(label_targets, reverse=initial == 729):
+                        target = label_targets[cell]
                         if target == hub and cell != 107:
                             normalizer.op("p", cell)
                             normalizer.mem[cell] = hub
