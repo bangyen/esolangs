@@ -479,14 +479,19 @@ def test_no_width_breaks_a_run(name: str) -> None:
     example = _example(name)
     if example.fill is None:
         pytest.skip(f"{name} is not parameterized; it has no placeholder")
+    from esolangs.tools.helpers import runs
+
     for arity in range(1, 4):
         template = generate(name, _table(arity))
         for width in range(4, 121):
             wrapped = generate(name, _table(arity), width)
             assert wrapped.inputs == template.inputs == arity, (name, width, arity)
-            assert wrapped.count(template.char) == template.count(template.char), (
-                f"{name}: width {width} at {arity} inputs lost a run"
-            )
+            assert wrapped.setters is not None
+            assert len(set(wrapped.setters)) == 1
+            assert len(runs(wrapped, wrapped.char, wrapped.setters)) == arity
+            assert wrapped.count(template.char) == sum(
+                len(zero) for zero, _one in wrapped.setters
+            ), f"{name}: width {width} at {arity} inputs lost a run"
 
 
 # Tables the generators take a *different path* on than parity.  The
