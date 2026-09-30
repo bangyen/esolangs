@@ -150,9 +150,9 @@ Let `C_F(n)` be the worst-case minimum rendered digits over all `T = 2**n`
 tables. The existing witnesses and counting argument can be made explicit:
 
     (ln 2)**2 / (ln 8 * ln 10) <= liminf C_F(n)/(T*n)
-    limsup C_F(n)/(T*n) <= (162/5) log10 2.
+    limsup C_F(n)/(T*n) <= (144/5) log10 2.
 
-The coefficients are 0.10034333 and 9.75337186; neither is claimed sharp.
+The coefficients are 0.10034333 and 8.66966388; neither is claimed sharp.
 For the lower bound put `L = D ln 10` and `r = floor(L/(ln L)**2)`.
 The first `r` useful-prime exponents have total at most `L/ln 2`. Counting
 positive compositions and eight command choices bounds these prefixes by
@@ -167,34 +167,49 @@ are already counted among the prefixes. Thus behaviours number at most
 `exp((ln 8 + o(1)) L/ln L)`. Comparing with `2**T` and using the already
 proved `C_F(n) = Theta(T ln T)` gives the lower coefficient above.
 
-For the upper bound, use the identity input order and place the answer in
-the final input's unused flag cell. The final input is tested by a transfer,
-so it needs no flag. With the answer one cell right, `01` uses `[->+<]`
-(6 characters), and `10` uses `>+<[->-<]` (9). The former adds the bit;
-the latter adds one and subtracts the bit. Both leave the input zero and
-the pointer at its cell.
-Constant pairs need only their constant answer increment.
+For the upper bound, use the full decision tree in
+`tests/proofs/_factor_print.py`. Read every input, subtract 48 from all but
+the last, and initialize an adjacent complement cell to 97 and a constant
+output cell to 48. A `01` terminal prints the raw final input; a `10`
+terminal uses `[->-<]>.` to print 97 minus it. Constant pairs print the
+constant cell, incrementing it only for `11`. Exactly one terminal runs,
+so these output cells need not be restored. All earlier branch bits and
+flags are consumed, and the program reads exactly `n` lines.
 
-A full depth-two body has at most `2*9 + 17 = 35` characters. For depth
-`d >= 3`, its two child bodies return at their flag cells, and the branch
-skeleton and connecting moves cost 19, giving `H_d = 2 H_(d-1) + 19`.
-Thus `H_n = (27/2)T - 19` for `n >= 2`, attained by repeated `10` pairs.
-Pruning a constant child replaces its body and connecting moves by at most
-one increment and a trip to the answer, `4d - 3` characters; this is below
-the full child cost (at the bottom, at most 5 against 9 plus connecting
-moves). It cannot increase this bound. Reads, folded ASCII setup, and the
-moves into and out of the root give the complete witness
-`C <= (27/2)T + 16n + 14` for `n >= 2`.
+The second fixed variant replaces the final input byte `c` by `97 - c`
+and swaps each truth-table pair. Its prelude
+`[->-<]>[-<+>]` transfers the reflected byte back and clears the complement
+cell; 97 pluses restore it. This costs 111 characters, independently of
+`n`, and exchanges the raw and complemented terminal cases.
 
-Take any fixed `theta > 7/12` in the prime-gap argument. Then
-`ln Q <= (1/(1-theta)) ln m + O(1)`, with `m <= C`, and the witness's
-digits are at most `C log10 Q + O(1)`. Letting `theta` decrease to `7/12`
-gives `(27/2)*(12/5)*log10 2 = (162/5) log10 2`. Since the lower coefficient
-is `log10(2)/3`, the upper-to-lower ratio is exactly 97.2. The generator
-retains the earlier trees as weighted-cost candidates. Executing all tables
-through three inputs gives 106,465 digits
-at three inputs against the parent's 115,712 (-7.99%), with no table growing;
-23 tables at each of four through six inputs also execute without growth.
+Charge the two terminal branches together with their connecting moves.
+The fixed depth-two branch skeleton costs 12. In the ordinary and reflected
+variants, a nonconstant one-side averages 8 characters and a nonconstant
+zero-side averages 7. A constant one-side costs at most 9, a constant
+zero-side at most 8, including their print and optional increment. Thus
+the averaged depth-two body costs at most `H_2 = 12 + 9 + 8 = 29`.
+For depth `d >= 3`, both child bodies return at their flag cells, so the
+skeleton and connecting moves cost 19 and
+`H_d <= 2 H_(d-1) + 19`. Hence `H_n <= 12T - 19` for `n >= 2`.
+
+Setup costs `12n + 60`, moving into the root costs `2n - 2`, and averaging
+the reflection prelude adds `111/2`. The shorter of the two fixed variants
+therefore has `C <= 12T + 14n + 95`. Construction and choosing the shorter
+source take `O(T)` time.
+The emitted Factor integer is obtained with the same prime-run encoder.
+Its digits are at most `C log10 Q + O(1)`, with
+`ln Q <= (1/(1-theta)) ln C + O(1)` for every fixed `theta > 7/12`.
+Letting `theta` decrease to `7/12` gives
+`12*(12/5)*log10 2 = (144/5)*log10 2`. Against the lower coefficient
+`log10(2)/3`, the asymptotic bracket has an exact 86.4-fold gap.
+
+Both variants execute through Factor on every table through three inputs
+and eleven tables per arity at four through six: 618 programs, 6,704 input
+rows. The tests also check the averaged character bound through twelve
+inputs. This is a language-level witness, separate from the shipped
+compact-transfer generator: selecting the print variants saves only 0.078%
+over all three-input tables and 0.265% over 200 five-input tables (seed 919),
+below the 5% shipping threshold; no table grows in either corpus.
 
 Executed parity encodings at n=1..5 contain 135, 266, 501, 966, 1883 digits;
 all 62 input rows return parity. Their normalized costs 67.5, 33.25,
