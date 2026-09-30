@@ -25,7 +25,8 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
     program prints ``'0'`` or ``'1'``.  An over-wide lookup rotates
-    counterclockwise when narrower, with a floor of ``max(9, 2*n + 5)`` columns.
+    counterclockwise when narrower: two columns through two inputs, then
+    ``2*n + 5``.
 
     A flat indexed lookup, not a tree.  The table is one ``!`` per entry in
     a row of ``!``/``-`` pairs: the index sits in the accumulator, the
@@ -145,7 +146,10 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     if max(map(len, rows)) <= width:
         return legacy
     lean = _clockwise_lean_rotate(original_cells, n, digit, original_span)
-    return lean if max(map(len, lean.splitlines())) < max(map(len, rows)) else legacy
+    chosen = lean if max(map(len, lean.splitlines())) < max(map(len, rows)) else legacy
+    if size <= 4 and max(map(len, chosen.splitlines())) > width:
+        return _clockwise_two_columns(truth_table)
+    return chosen
 
 
 def _clockwise_lean_rotate(
@@ -177,3 +181,25 @@ def _clockwise_lean_rotate(
             )
         )
     return "\n".join(rows)
+
+
+def _clockwise_two_columns(table: str) -> str:
+    """Index two inputs down one rail and accumulate the answer on the return."""
+    n = _validate_truth_table(table)
+    rows = [" R"]
+    read = "." * _READS
+    # Adding one to the first bit carries it into the second bit position;
+    # the next read clears the low bit and supplies the second input.
+    prefix = _DIGIT + read + ("+" + read if n == 2 else "")
+    for index, char in enumerate(prefix):
+        rows.append((";" if index == 0 else " ") + char)
+    previous = 0
+    for entry, bit in enumerate(table):
+        delta = 2 + (int(bit) ^ previous)
+        previous = int(bit)
+        # A selected zero turns north; positive accumulated values pass all
+        # earlier gates. Even padding preserves the telescoping answer parity.
+        for offset in range(delta):
+            rows.append("+" + ("-" if entry and offset == 0 else " "))
+        rows.append("!!")
+    return "\n".join(row.rstrip() for row in rows)

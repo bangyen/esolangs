@@ -142,7 +142,7 @@ class TestClockwise:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("width", [1, 9, 10, 11, 20, 27, 80])
+@pytest.mark.parametrize("width", [1, 2, 3, 9, 10, 11, 20, 27, 80])
 def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
     """Both lookup orientations execute every row, including floor widths."""
     import esolangs
@@ -153,7 +153,7 @@ def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
         program = esolangs.generate("Clockwise", table, width)
         plain_width = max(map(len, plain.splitlines()))
         assert max(map(len, program.splitlines())) <= max(
-            width, min(plain_width, max(9, 2 * n + 5))
+            width, min(plain_width, 2 if n <= 2 else 2 * n + 5)
         )
         if plain_width <= width:
             assert program == plain
@@ -171,10 +171,23 @@ def test_rotated_lookup_size_is_linear() -> None:
 @pytest.mark.medium
 def test_entry_digit_prefix_executes_every_small_table() -> None:
     """The shared six bits precede lookup without carrying an index into it."""
-    assert max(map(len, boolean.clockwise("0110", 1).splitlines())) == 9
+    assert max(map(len, boolean.clockwise("0110", 1).splitlines())) == 2
     for n in range(1, 4):
         for value in range(1 << (1 << n)):
             table = format(value, f"0{1 << n}b")
             program = boolean.clockwise(table, 1)
             for row, expected in enumerate(table):
                 assert run_clockwise(program, _bits(row, n)) == expected
+
+
+def test_single_column_cannot_close_a_clockwise_ring() -> None:
+    """A downward beam's next clockwise turn leaves the only column."""
+    from esolangs.interpreters.grid_based.clockwise import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+
+    machine = _Machine(["R", "R"], ScriptedIO(""))
+    machine.step()
+    machine.step()
+    with pytest.raises(ValueError, match="ring is not closed"):
+        machine.step()
+    assert len(boolean.clockwise("0110", 1)) == 112
