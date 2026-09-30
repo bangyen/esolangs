@@ -38,14 +38,7 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
         return best_input_order(
             truth_table, lambda table, perm: _apl_narrow(table, perm, width)
         )
-    return best_input_order(truth_table, _apl_best_ordered)
-
-
-def _apl_best_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Return the shorter of one order's inline tree and its reduced diagram."""
-    inline = _apl_tree_ordered(truth_table, perm)
-    reduced = _apl_reduced_ordered(truth_table, perm)
-    return reduced if len(reduced) < len(inline) else inline
+    return best_input_order(truth_table, _apl_reduced_ordered)
 
 
 def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
