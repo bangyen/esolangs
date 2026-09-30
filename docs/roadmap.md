@@ -57,7 +57,7 @@ step; an answer lands in the paper it extends, and the row leaves.
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
   inputs, repo model: clipped tape, `,` at EOF an error) of `C`-character
-  programs: `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0194`, from
+  programs: `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0601`, from
   `[2.414, 7.388]`.  Upper: behaviour-preserving shortlex rewriting (dead
   loops, clears, diverging bodies, excursion commutation) and an exactly
   certified Perron bound on the irreducible words; the old `7.388` counted
@@ -69,12 +69,11 @@ step; an answer lands in the paper it extends, and the row leaves.
   decodable.  The exact Collatz-Wielandt certificate gives `2121/500 = 4.242`,
   above the loop-free ceiling `2 + sqrt 5 = 4.2360`.  Thus loops strictly
   raise the rate.  A single fixed input gives `>= 3.366`.
-  Open: the limit.  Local rules have saturated near 7.06.  The global identities
-  `[[Y]] -> [Y]` and `[Y[] -> []`, certified for arbitrary balanced bodies
-  (read-free in the second), plus empty-loop commutation lower the upper bound
-  to 7.0194.  Next: admit `[]` and `[-]` tokens inside the four regular
-  commute monitors, prove each enlarged family sound, then certify and execute
-  the resulting upper bound.
+  Open: the limit and a sub-7 upper bound. The 7.0341 and 7.0194 certificates
+  used `[Y[] -> []` for arbitrary balanced read-free `Y`, which is unsound:
+  `+[-[]].` halts and prints NUL, while `+[].` diverges. The local-rule upper
+  certificate remains 7.0600257. Next: certify the corrected balanced-body grammar
+  in the paper, retaining `[[Y]] -> [Y]` and sound disjoint-cell commutation.
 
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further
