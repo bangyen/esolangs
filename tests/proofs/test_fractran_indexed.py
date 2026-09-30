@@ -171,7 +171,7 @@ def test_narrow_root_state_preserves_every_small_table() -> None:
     assert (before, after) == (27_842, 27_842)
 
 
-@pytest.mark.parametrize("width", [1, 9, 10, 19])
+@pytest.mark.parametrize("width", [1, 3, 4, 9, 10, 19])
 def test_narrow_template_provenance(width: int) -> None:
     import esolangs
     from esolangs.exceptions import TemplateError
@@ -207,3 +207,28 @@ def test_folded_constant_paths_discard_all_embedded_inputs(n: int, bit: str) -> 
             machine.step()
         assert machine.halted
         assert machine.value == (2 if bit == "1" else 1)
+
+
+def test_binary_parity_uses_three_column_fractions() -> None:
+    import esolangs
+
+    template = esolangs.generate("FRACTRAN", "0110", 1)
+    assert max(map(len, template.splitlines())) == 3
+    assert len(template) == 14
+    for row, expected in enumerate("0110"):
+        code = esolangs.instantiate("FRACTRAN", template, [row >> 1, row & 1], 1)
+        assert max(map(len, code.splitlines())) == 3
+        machine = _Machine(code, ScriptedIO(""))
+        for _ in range(8):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        assert machine.value == 1 + int(expected)
+
+
+def test_indexed_parity_without_constant_leaves_executes_sampled_rows() -> None:
+    table = "".join(str(row.bit_count() & 1) for row in range(128))
+    template = fractran(table)
+    for row in (0, 1, 37, 126, 127):
+        _row(template, table, row, literal=False)
