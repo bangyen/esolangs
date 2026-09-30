@@ -229,7 +229,7 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
-    from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
+    from esolangs.tools.algebraic_programming_language import _apl_reduced_ordered
     from esolangs.tools.painfuck import _painfuck_ordered
     from esolangs.tools.parameterized import (
         _bitdeque_ordered,
@@ -242,7 +242,7 @@ def _reordering_generators() -> list[object]:
         (
             "algebraic_programming_language",
             boolean.algebraic_programming_language,
-            _apl_tree_ordered,
+            _apl_reduced_ordered,
         ),
         (
             "brainfuck",
@@ -305,7 +305,9 @@ def test_reordering_shrinks_the_tables_it_should(
     """
     if name == "jaune":
         pytest.skip("clobbering already makes the identity order optimal here")
-    assert len(fn("10101010")) < len(ordered("10101010", (0, 1, 2))), (
+    # Reduced APL already drops idle tests; use two real dependencies.
+    table = "00010010" if name == "algebraic_programming_language" else "10101010"
+    assert len(fn(table)) < len(ordered(table, (0, 1, 2))), (
         f"{name} did not reorder a table that only reordering folds"
     )
 
