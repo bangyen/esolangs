@@ -58,6 +58,12 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     # Reserving 23 rows of payload leaves the ceiling slack below 25 rows.
     header_bound = 5 * n + 34
     columns = min(80, max(width, 4, (count + header_bound + 22) // 23 + 2))
+    # Single-digit column counts save twelve literal cells.  This named
+    # bound applies only when it proves that the count remains single-digit.
+    narrow_bound = 5 * n + 22
+    narrow_columns = max(width, 4, (count + narrow_bound + 22) // 23 + 2)
+    if narrow_columns < 10:
+        columns, header_bound = narrow_columns, narrow_bound
     header_rows = (header_bound + columns - 3) // (columns - 2)
     literal = _literal(columns)
     header = (

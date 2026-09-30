@@ -8,8 +8,8 @@ import esolangs
 from esolangs.tools.befunge import befunge
 
 
-@pytest.mark.parametrize("inputs", [1, 3, 4, 5, 8, 9, 10])
-@pytest.mark.parametrize("width", [1, 5, 11, 27, 80, 81, 1000, None])
+@pytest.mark.parametrize("inputs", [1, 2, 3, 4, 5, 8, 9, 10])
+@pytest.mark.parametrize("width", [1, 4, 5, 11, 27, 80, 81, 1000, None])
 def test_befunge_folded_header_reads_the_table(inputs: int, width: int | None) -> None:
     rng = random.Random(inputs)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << inputs))
@@ -40,3 +40,9 @@ def test_befunge_keeps_a_header_that_already_fits() -> None:
 def test_befunge_refuses_a_table_larger_than_the_torus(width: int | None) -> None:
     with pytest.raises(ValueError, match="at most ten inputs"):
         befunge("01" * 1024, width)
+
+
+def test_single_digit_bound_reclaims_a_column() -> None:
+    program = befunge("0110", 1)
+    assert max(map(len, program.splitlines())) == 4
+    assert len(program.splitlines()) <= 25
