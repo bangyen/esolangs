@@ -180,7 +180,7 @@ def _advance(
         stack = (*stack, int(argument))
     elif kind == "dup":
         value, _ = _pop(stack)
-        stack = (*stack, value, value)
+        stack = (*stack, value)
     elif kind == "swap":
         first, stack = _pop(stack)
         second, stack = _pop(stack)
