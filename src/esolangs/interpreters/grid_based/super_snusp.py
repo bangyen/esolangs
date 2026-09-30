@@ -93,7 +93,7 @@ def _advance(
     if done:
         return state, None
     command, value, effect, steps = code[row][col], _read(cells, pointer), None, 1
-    if command.isdigit():
+    if command in "0123456789":
         cells = _write(cells, pointer, (10 * value if last_digit else 0) + int(command))
         last_digit = True
     else:
@@ -192,7 +192,7 @@ def _advance(
             cells = _write(cells, pointer, _top(values))
         elif command == "~":
             cells = _write(cells, pointer, ~value)
-        elif command.isalpha():
+        elif "A" <= command <= "Z" or "a" <= command <= "z":
             cells = _write(cells, pointer, ord(command))
     d_row, d_col = _DIRECTIONS[heading]
     row += d_row * steps

@@ -43,6 +43,15 @@ def test_core_linear_opcodes(program: str, expected: str) -> None:
         assert run_super(program) == expected
 
 
+@pytest.mark.parametrize("character", ["\u0661", "²", "\U0001d7da", "é", "中"])
+def test_non_ascii_digits_and_letters_are_not_literals(character: str) -> None:
+    assert run_super('"' + character + "#'") == "0"
+
+
+def test_non_ascii_digit_breaks_an_ascii_literal_run() -> None:
+    assert run_super("\"1\u06612#'") == "2"
+
+
 def test_decimal_io_and_output() -> None:
     assert run_super('"@#', "-42\n") == "-42"
 
