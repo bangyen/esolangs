@@ -52,3 +52,83 @@ class TestProbeFrameAndColumns:
         """
         module = importlib.import_module("esolangs.tools.minifuck")
         assert module._probe_frame(".[[...[<", 242) is None  # noqa: SLF001
+
+
+def test_degenerate_column_rules_execute_or_decline() -> None:
+    """Standing columns cover both first inputs; later inputs use the mux."""
+    from tests.tools.minifuck_support import _MinifuckCase
+
+    module = importlib.import_module("esolangs.tools.minifuck")
+    runner = _MinifuckCase()
+    for table in ("0101", "1010"):
+        template = module._degenerate(table, 2)  # noqa: SLF001
+        assert template is not None
+        for row, expected in enumerate(table):
+            bits = [row >> 1, row & 1]
+            assert runner.run_minifuck(runner.instantiate(template, bits)) == expected
+    for table, n in (("0110", 2), ("01010101", 3)):
+        assert module._degenerate(table, n) is None  # noqa: SLF001
+        template = module.minifuck(table)
+        for row, expected in enumerate(table):
+            bits = [row >> shift & 1 for shift in range(n - 1, -1, -1)]
+            assert runner.run_minifuck(runner.instantiate(template, bits)) == expected
+
+
+def test_failed_projection_mux_refuses_misnamed_setters() -> None:
+    """A failed construction cannot return a lifted template in the wrong order."""
+    from unittest.mock import patch
+
+    import pytest
+
+    module = importlib.import_module("esolangs.tools.minifuck")
+    module.minifuck.cache_clear()
+    try:
+        with (
+            patch.object(module, "_mux", return_value=None),
+            pytest.raises(ValueError, match="misnames a run"),
+        ):
+            module.minifuck("0101")
+    finally:
+        module.minifuck.cache_clear()
+
+
+def test_failed_unary_column_rule_aborts_without_a_program() -> None:
+    """A broken unary rule must fail when the mux's arity guard also declines."""
+    from unittest.mock import patch
+
+    import pytest
+
+    module = importlib.import_module("esolangs.tools.minifuck")
+    module.minifuck.cache_clear()
+    try:
+        with (
+            patch.object(module, "_degenerate", return_value=None),
+            pytest.raises(ValueError, match="could not build '01'"),
+        ):
+            module.minifuck("01")
+    finally:
+        module.minifuck.cache_clear()
+
+
+def test_canonical_endgame_rejects_an_accumulator_inside_the_pool() -> None:
+    """The pool is reserved; invalid accumulator placement fails before emitting."""
+    import pytest
+
+    from esolangs.tools.minifuck_mux import _canonical_endgame
+    from esolangs.tools.minifuck_pool import _POOL_WIDTH
+    from esolangs.tools.minifuck_sim import _Joint
+
+    joint = _Joint(1)
+    before = joint.template()
+    with pytest.raises(ValueError, match="accumulator must sit past the pool"):
+        _canonical_endgame(joint, _POOL_WIDTH - 1, direct=True)
+    assert joint.template() == before
+
+
+def test_probe_frame_refuses_a_pointer_outside_its_low_byte() -> None:
+    """A low-byte summary cannot describe a cursor that has left that byte."""
+    from esolangs.tools.minifuck_mux import _probe_frame
+    from esolangs.tools.minifuck_pool import _POOL_WIDTH
+
+    assert _probe_frame("[" * (_POOL_WIDTH - 1), 0) == (_POOL_WIDTH - 1, 0)
+    assert _probe_frame("[" * _POOL_WIDTH, 0) is None
