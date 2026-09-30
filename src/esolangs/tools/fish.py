@@ -1,11 +1,17 @@
 """Fish boolean generator: a grid table read with ``g``."""
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _parity_bias, _validate_truth_table
 
 
 def fish(truth_table: str, width: int | None = None) -> str:
-    """Return a Fish lookup grid; folded execution needs three columns."""
+    """Return a Fish lookup grid; lookup folds need three columns; parity uses one."""
     n = _validate_truth_table(truth_table)
+    if width is not None and 0 < width < 3:
+        bias = _parity_bias(truth_table)
+        if bias is not None:
+            # ASCII zero is even, so sums modulo two already normalize inputs.
+            header = "vi" + "i+" * (n - 1) + "2%" + ("0=" if bias else "") + "n;"
+            return "\n".join(header)
     # Read ASCII bits, fold the row number, then fetch the digit below.
     header = "0" + "i68*-$2*+" * n + "1g68*-n;"
     plain = header + "\n" + truth_table

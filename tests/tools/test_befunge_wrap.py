@@ -44,5 +44,5 @@ def test_befunge_refuses_a_table_larger_than_the_torus(width: int | None) -> Non
 
 def test_single_digit_bound_reclaims_a_column() -> None:
     program = befunge("0110", 1)
-    assert max(map(len, program.splitlines())) == 4
+    assert max(map(len, program.splitlines())) == 1
     assert len(program.splitlines()) <= 25

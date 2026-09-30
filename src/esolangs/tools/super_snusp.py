@@ -341,6 +341,10 @@ def super_snusp(truth_table: str, width: int | None = None) -> str:
     flat = _super_snusp_flat(truth_table)
     if width is None or len(flat) <= width:
         return flat
+    if 0 < width < 3:
+        # START may be absent (wiki); the existing bottom-right leftward
+        # entry meets a backslash and climbs the complete straight evaluator.
+        return "\n".join(reversed("\\" + flat[1:]))
     if width < 4:
         pieces = []
         for token in _super_snusp_tokens(flat):
