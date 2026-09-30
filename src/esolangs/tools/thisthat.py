@@ -171,8 +171,43 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
     if len(truth_table) <= 8:
         narrow = _strip_tree(truth_table)
         if max(map(len, narrow.splitlines())) < max(map(len, program.splitlines())):
-            return narrow
+            program = narrow
+    if len(truth_table) <= 4 and max(map(len, program.splitlines())) > width:
+        streamed = _stream_tree(truth_table)
+        if max(map(len, streamed.splitlines())) < max(map(len, program.splitlines())):
+            return streamed
     return program
+
+
+def _stream_tree(table: str) -> str:
+    """Read along a three-column decision tree with at most two inputs."""
+    depth = _validate_truth_table(table)
+    builder = _Builder()
+
+    def tree(level: int, lo: int, hi: int, point: tuple[int, int]) -> None:
+        if level == depth:
+            builder.node(point, "■" if table[lo] == "1" else "□")
+            output = (1, point[1])
+            builder.node(output, "◇")
+            builder.connect(_path(point, output, "horizontal"), "double")
+            return
+        router = (2 - point[0], point[1])
+        builder.node(point, "◇")
+        builder.node(router, "◒")
+        builder.connect(_path(point, router, "horizontal"), "double")
+        half = (lo + hi) // 2
+        # The root's wider separation leaves its startup and wires clear of
+        # leaf outputs. Another level would overlap an ancestor's wire.
+        pitch = 8 if depth == 2 and level == 0 else 4 if level == 0 else 2
+        for sign, start, end in ((-1, lo, half), (1, half, hi)):
+            child = (router[0], router[1] + sign * pitch)
+            builder.connect(_path(router, child, "vertical"), "single")
+            tree(level + 1, start, end, child)
+
+    tree(0, 0, len(table), (0, 0))
+    builder.node((1, 1), "▣")
+    builder.connect([(1, 1), (0, 1), (0, 0)], "single")
+    return builder.render()
 
 
 def _rotate_tree(program: str) -> str:
