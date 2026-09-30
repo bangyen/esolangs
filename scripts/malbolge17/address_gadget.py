@@ -863,12 +863,9 @@ def build(
                     decoder_constant_cells[0],
                     decoder_constant_cells[2],
                 )
-            normalizer.op("*", map_all1)
-            for cell in range(34, 128):
-                # With A=ALL1, p twice resets any prior ten-trit word to ALL1.
-                normalizer.op("p", cell)
-                normalizer.op("p", cell)
-                normalizer.mem[cell] = 29524
+            from setup_constants import reset_labels
+
+            reset_labels(normalizer, map_all1)
             if restore_labels:
                 from decoder_group import _LABELS, _setup
 
