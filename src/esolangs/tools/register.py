@@ -281,6 +281,27 @@ def _cm_codes(chunks: list[int], *, zero_top: bool) -> dict[int, int] | None:
     return {value: code for code, value in enumerate([*head, *ranked, top])}
 
 
+def _cm_narrow_constants(needed: set[int]) -> list[str]:
+    """Capture constants at their numbered lines; intervening pads are inert."""
+    needed |= {1, 2, 3, 4}
+    return [
+        f"k{value}=zx+lineNumber,NOT PRINT." if value in needed else _CM_PAD
+        for value in range(1, max(needed) + 1)
+    ]
+
+
+def _cm_narrow_cells(
+    lines: list[str], array: str, values: list[str | None], capture: str
+) -> None:
+    """Write at odd indices 3+2i; an odd cursor advances without halving."""
+    lines += [f"{capture}=zx+k1,NOT PRINT.", "r=zx+k3,NOT PRINT."]
+    last = max((i for i, value in enumerate(values) if value), default=-1)
+    for value in values[: last + 1]:
+        if value:
+            lines.append(f"{array}[r]=zx+{value},NOT PRINT.")
+        lines.append("r=k1x+k2,NOT PRINT.")
+
+
 def _cm_build(
     truth_table: str,
     n: int,
@@ -289,6 +310,7 @@ def _cm_build(
     zero_top: bool | None,
     negate: bool = False,
     flip: bool = False,
+    narrow: bool = False,
 ) -> str | None:
     """Emit the cell-and-decoder program over ``order``'s inputs.
 
@@ -299,7 +321,11 @@ def _cm_build(
     cell's own value as its code, the build before cells were numbered.
     ``negate`` stores the complement and prints ``49 - bit``; ``flip``
     stores the table with the last selector's arms swapped.
+    ``narrow`` uses odd indices ``3 + 2 i`` and doubles address offsets.
     """
+    if narrow and (negate or flip):
+        raise ValueError("the narrow decoder uses unflipped, positive cells")
+    address_scale = 2 if narrow else 1
     table = read_at(truth_table, order, n)
     if negate:
         table = table.translate(str.maketrans("01", "10"))
@@ -321,18 +347,22 @@ def _cm_build(
         uses[value] = uses.get(value, 0) + 1
 
     high = max(len(order) - 2, 0)
-    weights = {2 ** (high - 1 - k) for k in range(high)}
+    weights = {address_scale * 2 ** (high - 1 - k) for k in range(high)}
     stored = sorted((code, value) for value, code in codes.items() if code)
-    lines = _cm_constants(
-        {_ASCII_ZERO + negate, *weights, *(_CM_CHUNK * code for code, _ in stored)},
-        zero="z",
-    )
+    needed = {
+        _ASCII_ZERO + negate,
+        *weights,
+        *(address_scale * _CM_CHUNK * code for code, _ in stored),
+    }
+    lines = _cm_narrow_constants(needed) if narrow else _cm_constants(needed, zero="z")
     # A cell names its code's constant, or a one-letter alias of it when the
     # alias line is cheaper than the characters the alias saves.
     names: dict[int, str] = {}
     for code, value in stored:
-        constant = f"k{_CM_CHUNK * code}"
-        alias = _CM_ALIAS[sum(len(name) == 1 for name in names.values())]
+        constant = f"k{address_scale * _CM_CHUNK * code}"
+        # The narrow cursor owns r throughout both array blocks.
+        alias_pool = _CM_ALIAS.replace("r", "u") if narrow else _CM_ALIAS
+        alias = alias_pool[sum(len(name) == 1 for name in names.values())]
         line = f"{alias}=zx+{constant},NOT PRINT."
         if uses[value] * (len(constant) - 1) > len(line) + 1:
             lines.append(line)
@@ -344,8 +374,9 @@ def _cm_build(
         for j in range(_CM_CHUNK):
             if (value >> j) & 1:
                 decoder[_CM_CHUNK * code + j] = "k1"
-    _cm_cells(lines, "D", decoder, "t")
-    _cm_cells(lines, "A", [names.get(value) for value in chunks], "s")
+    cells_builder = _cm_narrow_cells if narrow else _cm_cells
+    cells_builder(lines, "D", decoder, "t")
+    cells_builder(lines, "A", [names.get(value) for value in chunks], "s")
 
     for i in range(n):
         lines.append(f"w{i}=zx+input,NOT PRINT.")
@@ -353,19 +384,19 @@ def _cm_build(
     # one -- folded into the only odd weight, which has to be added last.
     cells, select = order[:high], order[high:]
     for k, i in enumerate(cells[:-1]):
-        lines.append(f"w{i}=k{2 ** (high - 1 - k)}x+z,NOT PRINT.")
+        lines.append(f"w{i}=k{address_scale * 2 ** (high - 1 - k)}x+z,NOT PRINT.")
         lines.append(f"s=k1x+w{i},NOT PRINT.")
     if cells:
-        lines.append(f"w{cells[-1]}=k1x+k1,NOT PRINT.")
+        lines.append(f"w{cells[-1]}=k{address_scale}x+k{address_scale},NOT PRINT.")
         lines.append(f"s=k1x+w{cells[-1]},NOT PRINT.")
     else:
-        lines.append("s=k1x+k1,NOT PRINT.")
+        lines.append(f"s=k1x+k{address_scale},NOT PRINT.")
     lines.append("t=k1x+A[s],NOT PRINT.")
     if len(select) == 2:
-        lines.append(f"w{select[0]}=k2x+z,NOT PRINT.")
+        lines.append(f"w{select[0]}=k{2 * address_scale}x+z,NOT PRINT.")
         lines.append(f"t=k1x+w{select[0]},NOT PRINT.")
     # ``1 + bit``, or ``2 - bit`` when the build swapped that input's arms.
-    last = "negativeOnex+k2" if flip else "k1x+k1"
+    last = "negativeOnex+k2" if flip else f"k{address_scale}x+k{address_scale}"
     lines.append(f"w{select[-1]}={last},NOT PRINT.")
     lines.append(f"t=k1x+w{select[-1]},NOT PRINT.")
     lines.append("o=zx+D[t],NOT PRINT.")
@@ -385,10 +416,11 @@ def _cm_layout(program: str, width: int) -> str:
         return compact
     # Generated names exclude '_'.  Captured lineNumber addresses shift
     # together; two prefix lines keep the odd capture used by weighted sums.
-    aliased = "_=zx+negativeOne,NOT PRINT.\n" + "z=zx+z,NOT PRINT.\n"
-    aliased += compact.replace("negativeOne", "_")
-    if max(map(len, aliased.splitlines())) < max(map(len, compact.splitlines())):
-        compact = aliased
+    if "negativeOne" in compact:
+        aliased = "_=zx+negativeOne,NOT PRINT.\n" + "z=zx+z,NOT PRINT.\n"
+        aliased += compact.replace("negativeOne", "_")
+        if max(map(len, aliased.splitlines())) < max(map(len, compact.splitlines())):
+            compact = aliased
     if max(map(len, compact.splitlines())) <= width:
         return compact
     # A bijective rename changes no lines, so captured addresses and parity stay.
@@ -413,7 +445,7 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
-    ``width`` compacts statements and aliases negativeOne; lines stay whole.
+    ``width`` selects complete statements with fixed odd-index cells when needed.
 
     The table is placed in cells and indexed, not walked.  An array subscript
     may name ``lineNumber``, so ``A[lineNumber] = z x + v`` drops ``v`` into
@@ -445,7 +477,18 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
         lines += [f"b{i} = negativeOne x + input, NOT PRINT." for i in range(n)]
         lines.append(f"out = negativeOne x + k{const}, DO PRINT.")
         program = "\n".join(lines)
-        return program if width is None or width <= 0 else _cm_layout(program, width)
+        if width is None or width <= 0:
+            return program
+        fitted = _cm_layout(program, width)
+        if max(map(len, fitted.splitlines())) <= width:
+            return fitted
+        lines = _cm_narrow_constants({const})
+        lines += [f"b{i}=zx+input,NOT PRINT." for i in range(n)]
+        lines.append(f"out=zx+k{const},DO PRINT.")
+        narrow = _cm_layout("\n".join(lines), width)
+        return min(
+            (fitted, narrow), key=lambda c: (max(map(len, c.splitlines())), len(c))
+        )
 
     essential = essential_inputs(truth_table, n)
     orders = [essential]
@@ -463,7 +506,20 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
         for flip in (False, True)
     ]
     program = min((c for c in candidates if c is not None), key=len)
-    return program if width is None or width <= 0 else _cm_layout(program, width)
+    if width is None or width <= 0:
+        return program
+    fitted = _cm_layout(program, width)
+    if max(map(len, fitted.splitlines())) <= width:
+        return fitted
+    narrow_candidates = [
+        _cm_build(truth_table, n, order, zero_top=zero_top, narrow=True)
+        for order in orders
+        for zero_top in (False, True)
+    ]
+    layouts = [fitted] + [
+        _cm_layout(c, width) for c in narrow_candidates if c is not None
+    ]
+    return min(layouts, key=lambda c: (max(map(len, c.splitlines())), len(c)))
 
 
 def sophie(truth_table: str) -> str:
