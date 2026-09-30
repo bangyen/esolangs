@@ -142,7 +142,7 @@ def test_wider_executed_size_scaling() -> None:
 
 
 def test_narrow_root_state_preserves_every_small_table() -> None:
-    from esolangs.tools.fractran import _fractran_raw
+    from esolangs.tools.fractran import _fractran_raw, fractran_setters
 
     before = after = 0
     for n in range(1, 4):
@@ -155,7 +155,9 @@ def test_narrow_root_state_preserves_every_small_table() -> None:
             assert max(map(len, narrow.splitlines())) <= max(map(len, raw.split()))
             for row in range(size):
                 bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
-                code = fill_runs(narrow, TEMPLATE_CHAR, [PAIR] * n, bits)
+                code = fill_runs(
+                    narrow, TEMPLATE_CHAR, fractran_setters(narrow, n), bits
+                )
                 machine = _Machine(code, ScriptedIO(""))
                 for _ in range(4 * n + 4):
                     if machine.halted:
@@ -187,3 +189,21 @@ def test_narrow_template_provenance(width: int) -> None:
         assert machine.value == 2
         with pytest.raises(TemplateError):
             esolangs.instantiate("fractran", text, [0, 1], truth_table="0001")
+
+
+@pytest.mark.parametrize("n", [5, 7])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_folded_constant_paths_discard_all_embedded_inputs(n: int, bit: str) -> None:
+    from esolangs.tools.fractran import fractran_setters
+
+    table = bit * 2**n
+    template = fractran(table, 1)
+    for bits in [[0] * n, [1] * n]:
+        code = fill_runs(template, TEMPLATE_CHAR, fractran_setters(template, n), bits)
+        machine = _Machine(code, ScriptedIO(""))
+        for _ in range(4 * n + 4):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        assert machine.value == (2 if bit == "1" else 1)

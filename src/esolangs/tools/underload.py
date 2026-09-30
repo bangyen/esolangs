@@ -9,6 +9,7 @@ half it runs, so only one half ever needs it and nothing is duplicated.  A
 copy of ``X`` is then ``^``, and a half without one drops it with ``!``.
 """
 
+import re
 from functools import cache
 
 from esolangs.tools.helpers import (
@@ -22,6 +23,7 @@ from esolangs.tools.wrap import wrap_tokens
 # Zero drops the upper promise; one swaps before dropping.  Pad zero
 # outside its pushed code so both setters occupy five characters.
 PAIR = ("(!^) ", "(~!^)")
+_SHORT_PAIR = ("(!) ", "(~!)")
 
 #: How many levels below a node a carried subtree may sit: 2**4 candidates a
 #: node keeps the build O(T).
@@ -35,7 +37,7 @@ def _reflected(truth_table: str, n: int) -> str:
     return "".join(truth_table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(1 << n))
 
 
-def _plain(truth_table: str) -> str:
+def _plain(truth_table: str, *, short: bool = False) -> str:
     """Return the unshared promise tree, each leaf printing its own bit."""
     n = _validate_truth_table(truth_table)
     reflected = _reflected(truth_table, n)
@@ -45,13 +47,15 @@ def _plain(truth_table: str) -> str:
         if constant(lo, hi):
             return "!" * (n - level) + f"({reflected[lo]})S"
         mid = (lo + hi) // 2
-        return f"({tree(level + 1, lo, mid)})~({tree(level + 1, mid, hi)})~^"
+        return f"({tree(level + 1, lo, mid)})~({tree(level + 1, mid, hi)})~^" + (
+            "^" if short else ""
+        )
 
-    slots = TEMPLATE_CHAR * (len(PAIR[0]) * n)
+    slots = TEMPLATE_CHAR * (len((_SHORT_PAIR if short else PAIR)[0]) * n)
     return slots + f"({tree(0, 0, len(reflected))})^"
 
 
-def _shared(truth_table: str) -> str:
+def _shared(truth_table: str, *, short: bool = False) -> str:
     """Return the tree over the reduced diagram, carrying repeated subtrees.
 
     Subtrees are named by :class:`~esolangs.tools.helpers.SubtreeDiagram`.  A
@@ -81,7 +85,7 @@ def _shared(truth_table: str) -> str:
         if zero == one:
             return 1 + opening + size(level + 1, zero, carry)
         halves_size = size(level + 1, zero, carry) + size(level + 1, one, carry)
-        return opening + _NODE + halves_size
+        return opening + _NODE + short + halves_size
 
     @cache
     def choice(level: int, key: int) -> tuple[int, int | None]:
@@ -120,18 +124,33 @@ def _shared(truth_table: str) -> str:
         write(level + 1, zero, carry)
         pieces.append(")~(")
         write(level + 1, one, carry)
-        pieces.append(")~^")
+        pieces.append(")~^^" if short else ")~^")
 
     write(0, diagram.ids[0][0], None)
-    slots = TEMPLATE_CHAR * (len(PAIR[0]) * n)
+    slots = TEMPLATE_CHAR * (len((_SHORT_PAIR if short else PAIR)[0]) * n)
     return slots + "(" + "".join(pieces) + ")^S"
 
 
 def underload(truth_table: str, width: int | None = None) -> str:
-    """Return an Underload template; input setters need five columns."""
-    shared, plain = _shared(truth_table), _plain(truth_table)
+    """Return a promise tree; narrow selectors defer execution to their node."""
+    short = width is not None and 0 < width < 5
+    shared, plain = _shared(truth_table, short=short), _plain(truth_table, short=short)
     program = shared if len(shared) < len(plain) else plain
     if width is None or width <= 0:
         return program
     # Only bit literals reach S; every other pushed string is executable code.
-    return wrap_tokens(program, width, r"\${5}|\([01]\)|.")
+    if short:
+        # The inert prefix distinguishes the four-character uniform setters.
+        program = "()!" + program
+    slots = 4 if short else 5
+    return wrap_tokens(program, width, rf"\${{{slots}}}|\(\)!|\([01]\)|.")
+
+
+def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Return the uniform selector pair distinguished by its inert prefix."""
+    return ((_SHORT_PAIR if template.startswith("()!") else PAIR),) * n
+
+
+def _underload_layout_tokens(template: str) -> list[str]:
+    """Ignore layout LF while retaining whole output literals as atoms."""
+    return re.findall(r"\${4}|\([01]\)|[^\n]", template)

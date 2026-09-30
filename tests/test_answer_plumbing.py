@@ -227,6 +227,8 @@ class TestATemplateCarriesItsSetters:
         dynamic = [e for e in embedded if e.pair is None]
         assert set(dynamic) == {
             BOOLEAN_EXAMPLES["bitdeque"],
+            BOOLEAN_EXAMPLES["fractran"],
+            BOOLEAN_EXAMPLES["underload"],
             BOOLEAN_EXAMPLES["minsky-swap"],
         }
         for example in uniform_ones:
