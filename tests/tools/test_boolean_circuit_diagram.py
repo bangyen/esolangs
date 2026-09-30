@@ -412,21 +412,22 @@ class TestCircuitDiagramLayoutGuards:
         from esolangs.tools.circuit_diagram import circuit_diagram
 
         program = circuit_diagram("0110", 1)
-        assert max(map(len, program.splitlines())) == 11
+        assert max(map(len, program.splitlines())) == 6
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
                 assert self._run_at(table, 1) == table
 
     def test_affine_floor_uses_native_xor_in_public_programs(self) -> None:
-        """Canonical input rails feed a single XOR gate below twenty columns."""
+        """Two adjacent input ports feed a six-column XOR gate."""
         import esolangs
 
         program = esolangs.generate("Circuit Diagram", "0110", 1)
-        assert max(map(len, program.splitlines())) == 11
+        assert max(map(len, program.splitlines())) == 6
         assert "x" in program
-        for width in (1, 11, 19):
-            assert self._run_at("0110", width) == "0110"
+        for table in ("0110", "1001"):
+            for width in (1, 6, 9, 11, 19):
+                assert self._run_at(table, width) == table
 
     def test_native_affine_chains_verify_constants_and_complements(self) -> None:
         from esolangs.interpreters.grid_based.circuit_diagram import run

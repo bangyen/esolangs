@@ -1025,6 +1025,17 @@ def _affine_circuit(table: str, width: int) -> str | None:
             bit += 1
         if bit < n:
             parity ^= coefficients[bit]
+    if n == 2 and all(coefficients):
+        # Adjacent input rows feed the two diagonal gate pins directly.
+        layout = _Layout()
+        for signal, row in enumerate((0, 2)):
+            layout.glyph(0, row, "-")
+            layout.junction(1, row, signal)
+        layout.glyph(2, 1, "X" if constant else "x")
+        layout.junction(3, 1, 2)
+        layout.glyph(4, 1, "-")
+        layout.glyph(5, 1, ":")
+        return layout.render()
     builder = _Builder(narrow=True)
     rails = [builder.input_bus() for _ in range(n)]
     selected = [rail for bit, rail in enumerate(reversed(rails)) if coefficients[bit]]
