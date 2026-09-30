@@ -7,7 +7,8 @@ from esolangs.tools.helpers import (
     constant_span_test,
 )
 
-PAIR = ("[*]>>>", "***>>>")
+# Each input cell is fresh; zero needs no clear and one needs one flip.
+PAIR = (" >>>", "*>>>")
 
 #: Levels sharing one result cell; measured best of 2 to 5 at n = 3 to 10.
 BAND = 3
