@@ -641,6 +641,17 @@ class TestDig:
                     got = run_dig(narrow, [str(b) for b in bits])
                     assert got == str(int(table[combo])), (table, width, bits)
 
+    def test_rotated_small_dig_trees_keep_all_operand_reads(self) -> None:
+        """Quarter-turning changes neighbor priority, so execute every path."""
+        assert max(map(len, boolean.dig("0110", 1).splitlines())) == 8
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                program = boolean.dig(table, 1)
+                for row, expected in enumerate(table):
+                    bits = list(format(row, f"0{n}b"))
+                    assert run_dig(program, bits) == expected
+
     def test_a_folded_table_keeps_the_flat_layout(self) -> None:
         """Turning round is not always narrower, so the narrower one wins.
 
