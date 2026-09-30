@@ -678,6 +678,7 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         entry = len(shifted[0]) - len(shifted[0].lstrip())
         route = " " * entry + "/" + " " * (2 - entry) + "/"
         candidate = "\n".join([" }}v", "|o^", " _", route, *shifted])
-        if max(map(len, candidate.splitlines())) < max(map(len, rows)):
-            best = candidate
+        # The reader spans at least six columns plus the three-cell margin;
+        # shifting it left always beats the new four-column startup prefix.
+        best = candidate
     return best
