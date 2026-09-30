@@ -934,7 +934,7 @@ class TestAWidthAwareGeneratorCanStillOverrun:
         """Warnings follow actual rendered widths, including narrower constructions."""
         for name, floor, count, margin in (
             ("LaserFuck", 8, 2, 7),
-            ("Streetcode", 9, 2, 8),
+            ("Streetcode", 7, 2, 6),
         ):
             source = esolangs.generate(name, "10010110", 1)
             assert max(map(len, source.splitlines())) == floor

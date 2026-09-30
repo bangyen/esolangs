@@ -9,7 +9,7 @@ from tests.divergence import diverges
 from tests.tools.fills import instantiate_crement
 
 
-@pytest.mark.parametrize("width", [1, 6, 7, 8, 11, 80, None])
+@pytest.mark.parametrize("width", [1, 2, 3, 4, 5, 6, 7, 8, 11, 80, None])
 @pytest.mark.parametrize(
     "table",
     ["01", "10", "0000", "1111", "0110", "00010111", "01101001" * 4, "0" * 63 + "1"],
@@ -38,3 +38,14 @@ def test_crement_width_narrows_the_widest_instruction() -> None:
         map(len, crement(table).splitlines())
     )
     assert crement(table, 80) == crement(table)
+
+
+def test_crement_data_only_setters_survive_plain_template() -> None:
+    template = esolangs.generate("Crement", "0110", 1)
+    assert max(map(len, template.splitlines())) == 2
+    for row, expected in enumerate("0110"):
+        source = esolangs.instantiate(
+            "Crement", str(template), [row // 2, row % 2], truth_table="0110"
+        )
+        assert max(map(len, source.splitlines())) == 2
+        assert diverges("Crement", source, "") is (expected == "1")

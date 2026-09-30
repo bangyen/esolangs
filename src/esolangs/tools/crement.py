@@ -43,6 +43,11 @@ _HALT, _LOOP = 0, 1
 PAIR = ("+J 0 0", "+J 0 1")
 
 
+def crement_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Return data-only setters for field-wrapped testers."""
+    return (("0", "1") if TEMPLATE_CHAR in template.split() else PAIR,) * n
+
+
 def crement(truth_table: str, width: int | None = None) -> str:
     """Build a Crement template: one run per input, its tester's first line.
 
@@ -50,7 +55,7 @@ def crement(truth_table: str, width: int | None = None) -> str:
     and greedy orders as emitted; the identity wins ties.  Each order is
     built plain and shared (:func:`_crement_ordered`), and the shorter wins.
     Over-wide instructions use their shortest absolute or relative operands;
-    the width floor is one complete three-field instruction.
+    Below six columns, whitespace separates fields and only tester data is filled.
     """
     template = best_input_order(truth_table, _crement_best)
     if width is None or width <= 0 or max(map(len, template.splitlines())) <= width:
@@ -64,7 +69,16 @@ def crement(truth_table: str, width: int | None = None) -> str:
         lines.append(
             f"{operator} {_short_operand(address, here)} {_short_operand(data, here)}"
         )
-    return "\n".join(lines)
+    narrowed = "\n".join(lines)
+    if width < 6:
+        narrowed = narrowed.replace(
+            TEMPLATE_CHAR * len(PAIR[0]), f"+J 0 {TEMPLATE_CHAR}"
+        )
+    if max(map(len, narrowed.splitlines())) > width:
+        from esolangs.tools.wrap import wrap_space_delimited
+
+        return wrap_space_delimited(narrowed, width)
+    return narrowed
 
 
 def _short_operand(source: str, here: int) -> str:
