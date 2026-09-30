@@ -152,7 +152,6 @@ WIDTH_EXCEPTIONS = {
     name: UNWRAPPABLE[name]
     for name in (
         "back",
-        "befunge",
         "container",
         "crement",
         "cvnc",
