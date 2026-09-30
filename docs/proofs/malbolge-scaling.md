@@ -1301,3 +1301,21 @@ Putting a parity word there changes that jump and prints `0` instead of `1`.
 The parity words must move outside this low routing region or the route must
 change. The first high-parity placement currently collides with an address
 branch at cell 4,051, so that placement needs adjustment before execution.
+
+The current combined source executes the fourteen-input address fold, shared
+label setup, ten decoder helper initializers and final three-input row fold.
+Eight high row landings now jump through one preserved pointer to a common
+entry with `D=22`, retaining the row word in cell 20. All 131,072 seventeen-bit
+inputs reached that entry with the expected diagnostic output and preserved
+fold interface and helpers; a deliberately wrong row expectation was rejected.
+This routing source writes 33,239 instruction cells.
+
+The shared-entry reader then consumes the first parity word, selects the
+corresponding view and reads through the live pointer in cell 142. Its 256
+uninjected control executions compare the output and changed table word
+against the actual operand immediately before the read. It writes 33,435
+instruction cells and halts diagnostically, rather than returning to the
+five-state decoder. The actual three-field address mapping occupies 49,152
+disjoint cells in `6563..59047`; the source remains 59,049 characters long.
+Return navigation, complete Boolean decoding and placement around arbitrary
+table contents remain unfinished. This is not a seventeen-input generator.
