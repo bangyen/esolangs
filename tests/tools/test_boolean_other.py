@@ -190,6 +190,28 @@ class TestInject:
             sizes.append(len(boolean.inject(table)))
         assert all(b <= 2 * a for a, b in pairwise(sizes))
 
+    @pytest.mark.parametrize("width", [1, 20, 40, 80])
+    def test_chunked_lookup_executes_every_row(self, width: int) -> None:
+        """Leaf escapes join one postlude without losing the selected chunk."""
+        import esolangs
+
+        for n in (5, 6, 7):
+            table = "".join(str((row * 73 + row // 3) & 1) for row in range(1 << n))
+            plain = boolean.inject(table)
+            program = esolangs.generate("Inject", table, width)
+            assert max(map(len, program.splitlines())) <= max(width, 22)
+            assert program.count("readto ") == n
+            if max(map(len, plain.splitlines())) <= width:
+                assert program == plain
+            for row in range(1 << n):
+                assert run_inject(program, list(f"{row:0{n}b}")) == table[row] + "\n"
+
+    def test_chunked_source_growth_is_linear(self) -> None:
+        sizes = [
+            len(boolean.inject("01101001" * (2 ** (n - 3)), 1)) for n in (9, 10, 11)
+        ]
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
+
     def test_the_tree_collapses_on_the_constant_subtree_alone(self) -> None:
         """Depth never terminates the recursion; a constant subtree always does.
 
