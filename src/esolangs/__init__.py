@@ -254,11 +254,15 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         and generator is not None
         and _takes_width(generator)
     ):
-        narrow = generate(name, truth_table, 1)
-        if isinstance(narrow, str) and template.replace("\n", "") == narrow.replace(
-            "\n", ""
-        ):
-            return True
+        for width in (1, 4):
+            narrow = generate(name, truth_table, width)
+            if isinstance(narrow, str):
+                if language_id == "minifuck" and narrow.startswith("q\n"):
+                    # These LF characters absorb skips and are semantic.
+                    if template == narrow:
+                        return True
+                elif template.replace("\n", "") == narrow.replace("\n", ""):
+                    return True
     if (
         language_id in {"fractran", "bitdeque", "crement"}
         and generator is not None
