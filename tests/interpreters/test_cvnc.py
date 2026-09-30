@@ -500,3 +500,43 @@ class TestMachine:
         first = machine.snapshot()
         machine.step()
         assert machine.snapshot() != first
+
+
+class TestIgnoredLF:
+    @pytest.mark.parametrize(
+        ("code", "stdin", "expected"),
+        [
+            (HI, "", "HI"),
+            ("suɹiθiθi", "4\n", "45"),
+            ("suɹiθiθi", "6\n", "6"),
+            ("sujiθiθi", "2\n", "23"),
+            ("sujiθiθi", "3\n", "3"),
+            ("suɹiciɰ̊uθəʋuθi", "6\n", "6543210"),
+            ("suɹiciɰ̊uθəʋuθi", "7\n", "76543210"),
+            (TRUTH_MACHINE, "0\n", "0"),
+        ],
+    )
+    def test_lf_at_every_boundary_preserves_execution(
+        self, code: str, stdin: str, expected: str
+    ) -> None:
+        assert run_program(code, stdin) == expected
+        for at in range(len(code) + 1):
+            assert run_program(code[:at] + "\n" + code[at:], stdin) == expected
+        assert run_program("\n\n" + "\n\n".join(code) + "\n\n", stdin) == expected
+
+    @pytest.mark.parametrize("char", [" ", "\t", "\r"])
+    def test_other_whitespace_remains_invalid(self, char: str) -> None:
+        with pytest.raises(ValueError, match="not a CV"):
+            run_program("θ\n" + char + "\ni")
+
+    def test_lf_does_not_fix_invalid_symbols_or_syllables(self) -> None:
+        for code in ("s\nx\ni", "s\n̊\ni", "su\ns\nŋ"):
+            with pytest.raises(ValueError, match=r"not a CV|syllable"):
+                run_program(code)
+        with pytest.raises(ValueError, match="empty"):
+            run_program("\n\n")
+
+    def test_lf_split_loop_still_has_the_same_cycle(self) -> None:
+        io = ScriptedIO("1\n")
+        assert run_until_halt_or_cycle(_Machine("\n".join(TRUTH_MACHINE), io)) is False
+        assert set(io.getvalue()) == {"1"}

@@ -427,3 +427,16 @@ class TestCvncSharing:
             for combo in range(2**n):
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                 assert run_cvnc(program, bits) == table[combo], f"{table} {bits}"
+
+
+@pytest.mark.parametrize("n", [1, 2, 3])
+@pytest.mark.parametrize("width", [1, 3, 11])
+@pytest.mark.medium
+def test_lf_wrapped_generators_execute_every_small_table(n: int, width: int) -> None:
+    for value in range(1 << (1 << n)):
+        table = format(value, f"0{1 << n}b")
+        raw = boolean.cvnc(table)
+        wrapped = "\n".join(raw[at : at + width] for at in range(0, len(raw), width))
+        for row, expected in enumerate(table):
+            inputs = list(format(row, f"0{n}b"))
+            assert run_cvnc(wrapped, inputs) == expected
