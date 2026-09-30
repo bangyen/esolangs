@@ -945,3 +945,54 @@ class TestRotfuck:
         two-entry table, 228 characters against ``01101001``'s 571.
         """
         assert len(boolean.rotfuck(table)) == length
+
+
+@pytest.mark.parametrize("width", [1, 11, 12, 13, 40, 80])
+def test_brainif_zero_landing_executes_all_small_tables(width: int) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.brainif import run
+
+    for n in range(1, 4):
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            program = boolean.brainif(table, width)
+            for row, expected in enumerate(table):
+                bits = list(format(row, f"0{n}b"))
+                io = ScriptedIO("\n".join([*bits, "sentinel"]))
+                run(program.splitlines(), io)
+                assert io.getvalue() == expected
+                assert io.input_str() == "sentinel"
+
+
+def test_brainif_zero_landing_output_floor_and_corpus_size() -> None:
+    program = boolean.brainif("0110", 1)
+    assert max(map(len, program.splitlines())) == 12
+    assert len(program) == 818
+    assert (
+        sum(len(boolean.brainif(format(value, "08b"), 1)) for value in range(256))
+        == 225958
+    )
+    for row, expected in enumerate("0110"):
+        assert run_brainif(program, list(format(row, "02b"))) == expected
+
+
+@pytest.mark.parametrize("width", [1, 12, 80])
+def test_brainif_zero_landing_public_and_larger_samples(width: int) -> None:
+    import esolangs
+
+    for n in range(2, 7):
+        table = "".join(str((row * 73 + row // 3) % 2) for row in range(2**n))
+        program = esolangs.generate("BrainIf", table, width)
+        for row in [0, 1, 2**n // 3, 2**n - 1]:
+            stdin = "\n".join(format(row, f"0{n}b")) + "\n"
+            assert esolangs.run("BrainIf", program, stdin) == table[row]
+            assert esolangs.run("BrainIf", str(program), stdin) == table[row]
+
+
+def test_brainif_unpruned_large_tree_uses_spatial_fallback() -> None:
+    from esolangs.tools.brainif import _brainif_tree
+
+    table = "".join(str(row.bit_count() % 2) for row in range(32))
+    program = _brainif_tree(table, 1, prune=False)
+    for row in [0, 1, 7, 13, 31]:
+        assert run_brainif(program, list(format(row, "05b"))) == table[row]
