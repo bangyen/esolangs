@@ -336,9 +336,13 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     # All jumps follow the prologue and are relative, so its length is free.
     chunk = max(1, width - 3)
     starts = range(0, len(truth_table), chunk)
-    prologue = "".join(
-        f'[PSH STR "{truth_table[start : start + chunk]}"]'
-        for start in reversed(starts)
+    prologue = (
+        "".join(f"[PSH INT {_ASCII_ZERO + int(bit)}]" for bit in reversed(truth_table))
+        if width < 4
+        else "".join(
+            f'[PSH STR "{truth_table[start : start + chunk]}"]'
+            for start in reversed(starts)
+        )
     )
     tokens = re.findall(r'"[^"]*"\]|[A-Z]+|\d+|[^\s]', prologue + "".join(reads) + walk)
     return wrap_space_delimited(" ".join(tokens), width)
