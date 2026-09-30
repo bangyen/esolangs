@@ -38,4 +38,3 @@ def test_crement_width_narrows_the_widest_instruction() -> None:
         map(len, crement(table).splitlines())
     )
     assert crement(table, 80) == crement(table)
-

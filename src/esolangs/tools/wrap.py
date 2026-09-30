@@ -6,13 +6,9 @@ whitespace.  Wrapping is token-aware (slicing every ``width`` splits
 rows, NoComment rejects them, Forbin and Packlang fold only an over-wide
 line.
 
-Ten generators lay out their own shape instead (:func:`takes_width`):
-Streetcode and LaserFuck fold into a boustrophedon; Clockwise rotates
-its lookup; Flowchart stacks a column per node; Dig turns
-once; Alight and Super SNUSP steer; function x(y) and APL name a
-subexpression per line; Circuit Diagram bands.  Layouts floor (Clockwise
-``2*n + 17``, Flowchart ``n + 5``, Alight ``2 ** n``, Super SNUSP four,
-Circuit Diagram ~``10 * n``) and return the narrowest program.
+Generators detected by :func:`takes_width` lay out their own programs.
+They preserve structural lines and return a width floor when the requested
+width cannot fit whole tokens, statements or routing cells.
 
 :data:`MULTILINE` names the wrappers that handle their own structural
 lines.  :func:`_bio` indents by loop depth, :func:`wrap_grid` right-aligns
