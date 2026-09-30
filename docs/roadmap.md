@@ -176,13 +176,6 @@ step; an answer lands in the paper it extends, and the row leaves.
   exhaustively through two inputs.  A matching lower bound must price
   parity sources themselves.
 
-- **FRACTRAN size-time frontier.** Shared block dictionaries give `O(T)` text
-  and `O(log T)` fraction firings. The literal-scan evaluator cannot have
-  polylogarithmic bit work for every table; its counting lower bound is
-  `Omega(sqrt(T))`, which does not exclude linear execution. Next: obtain
-  linear text with polylogarithmic execution using indexed evaluation, or
-  prove a tradeoff that also covers that model. See
-  [fractran](proofs/fractran.md#literal-scan-execution-tradeoff).
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between
