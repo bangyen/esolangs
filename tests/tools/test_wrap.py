@@ -126,16 +126,7 @@ UNWRAPPABLE = {
     "thisthat": "the H-tree's nodes and wires occupy fixed grid coordinates",
 }
 
-# The narrower claim needed by the registry audit: these generators currently
-# take no width and cannot be safely reflowed afterwards.  Keep it separate
-# from UNWRAPPABLE, which also contains self-laying grids such as Alight.  A
-# stale exception must fail below when its generator learns to honour width.
-WIDTH_EXCEPTIONS = {
-    name: UNWRAPPABLE[name]
-    for name in (
-        "back",
-    )
-}
+WIDTH_EXCEPTIONS: dict[str, str] = {}
 
 # These are 2D too, and wrap_program must not touch them either -- but each
 # honours a width itself by *laying its program out* to fit rather than by
