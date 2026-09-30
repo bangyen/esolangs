@@ -26,13 +26,14 @@ def helper_chunks(
     constants: dict[str, int],
     *,
     initial: int | None = None,
+    copy_cell: int = 19,
 ) -> list[list[tuple[str, int, int | None]]]:
     """Return initializer chunks, each independent of the incoming accumulator."""
     direct = initial is not None
     initial = _g(cell) if initial is None else initial
     chunks: list[list[tuple[str, int, int | None]]] = [
         [("*", constants["all1"], 29524), ("p", target, None), ("p", target, 29524)]
-        for target in (19, cell)
+        for target in (copy_cell, cell)
     ]
     chunks.extend(
         (
@@ -40,7 +41,7 @@ def helper_chunks(
             [
                 ("*", constants["all2"], 59048),
                 ("p", source, initial),
-                ("p", 19, _crazy(initial, 29524)),
+                ("p", copy_cell, _crazy(initial, 29524)),
                 ("p", cell, initial),
             ],
         )

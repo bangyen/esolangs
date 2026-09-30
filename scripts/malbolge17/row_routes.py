@@ -31,7 +31,9 @@ def build_row_routes() -> tuple[
 ]:
     """Emit eight print/halt controls reached through the live row word."""
     blocked: set[int] = set()
-    source, groups, outputs, plan = build_live_rows(reserved=blocked)
+    source, groups, outputs, plan = build_live_rows(
+        reserved=blocked, next_chunk=[("*", 20, None)]
+    )
     replaced_halt = plan.c
     blocked.remove(replaced_halt)
     words = row_words()

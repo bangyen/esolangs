@@ -3,7 +3,7 @@
 import itertools
 
 from address_gadget import execute_state
-from combined_helpers import _copy, build_combined_helpers, place_chunks
+from combined_helpers import _Chunk, _copy, build_combined_helpers, place_chunks
 from decoder_group import _setup
 from dispatch3 import _readouts
 from helper_consumer import helper_values
@@ -15,7 +15,7 @@ from esolangs.tools.malbolge import _Planner
 
 
 def build_live_rows(
-    *, reserved: set[int] | None = None
+    *, reserved: set[int] | None = None, next_chunk: _Chunk | None = None
 ) -> tuple[str, tuple[tuple[int, int, int], ...], dict[str, int], _Planner]:
     """Return a source reading all 17 inputs and retaining the row selector."""
     blocked: set[int] = set()
@@ -56,7 +56,9 @@ def build_live_rows(
             ("p", 20, None),
         )
     )
-    plan, emitted, routes = place_chunks(plan, chunks, blocked, protected)
+    plan, emitted, routes = place_chunks(
+        plan, chunks, blocked, protected, continuation=next_chunk
+    )
     exit_plan = _copy(plan)
     halt = plan.c
     plan.raw("v")
