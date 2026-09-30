@@ -25,7 +25,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
     program prints ``'0'`` or ``'1'``.  An over-wide lookup rotates
-    counterclockwise when narrower, with a floor of ``2*n + 7`` columns.
+    counterclockwise when narrower, with a floor of ``max(9, 2*n + 5)`` columns.
 
     A flat indexed lookup, not a tree.  The table is one ``!`` per entry in
     a row of ``!``/``-`` pairs: the index sits in the accumulator, the
@@ -111,6 +111,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     program = "\n".join("".join(row).rstrip() for row in grid)
     if width is None or width <= 0 or span <= width:
         return program
+    original_cells, original_span = cells, span
     if width < height + 2:
         # Emit the common six digit bits on the entry rail, before reading.
         # Only the selected final bit depends on the table. This removes the
@@ -139,5 +140,40 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         painted = rotated.get(y, {})
         rows.append(
             "".join(painted.get(x, " ") for x in range(max(painted, default=-1) + 1))
+        )
+    legacy = "\n".join(rows)
+    if max(map(len, rows)) <= width:
+        return legacy
+    lean = _clockwise_lean_rotate(original_cells, n, digit, original_span)
+    return lean if max(map(len, lean.splitlines())) < max(map(len, rows)) else legacy
+
+
+def _clockwise_lean_rotate(
+    cells: dict[tuple[int, int], str], n: int, digit: int, span: int
+) -> str:
+    """Share entry and return rails using zero/nonzero gates around the lookup."""
+    tail = digit - 1 if n > 1 else digit
+    body = {(x, y): char for (x, y), char in cells.items() if 0 < y < digit}
+    # The descent turns alongside the last gadget's return, outside its cells.
+    body[_DESCENT, tail] = "R"
+    body[_CLIMB, tail] = "R"
+    body[1, _TABLE_ROWS] = "+"  # Every completed answer returns with nonzero acc.
+    rotated: dict[int, dict[int, str]] = {}
+    for (x, y), char in body.items():
+        rotated.setdefault(span - x, {})[y] = char
+    prefix = _DIGIT[1:-1]  # Initial acc is already zero; clear after the entry turn.
+    rail = max(tail + 1, len(prefix))
+    rotated[0] = dict(enumerate(prefix)) | {rail: "R"}
+    rotated.setdefault(1, {})[rail] = "S"
+    rotated[span + 1] = {0: "R", rail: "R"}
+    rotated.setdefault(span, {})[0] = "?"
+    rotated.setdefault(span - _DESCENT, {})[0] = "!"
+    rows: list[str] = []
+    for row in range(span + 2):
+        painted = rotated.get(row, {})
+        rows.append(
+            "".join(
+                painted.get(col, " ") for col in range(max(painted, default=-1) + 1)
+            )
         )
     return "\n".join(rows)

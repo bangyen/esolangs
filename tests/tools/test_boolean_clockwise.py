@@ -88,7 +88,8 @@ class TestClockwise:
             assert len(differ) == 1, (entry, differ)
             assert flipped.splitlines()[differ[0][0]][differ[0][1]] == "+"
 
-    def test_every_run_reads_each_input_exactly_once(self) -> None:
+    @pytest.mark.parametrize("width", [None, 1])
+    def test_every_run_reads_each_input_exactly_once(self, width: int | None) -> None:
         """Clockwise's input queue rotates, so a run must consume 7n bits.
 
         The reads do not drain the queue, they rotate it; a program that read
@@ -113,7 +114,7 @@ class TestClockwise:
 
         for n in (1, 2, 3):
             table = "01101001"[: 2**n].ljust(2**n, "1")
-            program = boolean.clockwise(table)
+            program = boolean.clockwise(table, width)
             for combo in range(2**n):
                 machine = _Machine(
                     program.splitlines(), _Quiet("".join(_bits(combo, n)))
@@ -141,7 +142,7 @@ class TestClockwise:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("width", [1, 20, 27, 80])
+@pytest.mark.parametrize("width", [1, 9, 10, 11, 20, 27, 80])
 def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
     """Both lookup orientations execute every row, including floor widths."""
     import esolangs
@@ -152,7 +153,7 @@ def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
         program = esolangs.generate("Clockwise", table, width)
         plain_width = max(map(len, plain.splitlines()))
         assert max(map(len, program.splitlines())) <= max(
-            width, min(plain_width, 2 * n + 7)
+            width, min(plain_width, max(9, 2 * n + 5))
         )
         if plain_width <= width:
             assert program == plain
@@ -170,7 +171,7 @@ def test_rotated_lookup_size_is_linear() -> None:
 @pytest.mark.medium
 def test_entry_digit_prefix_executes_every_small_table() -> None:
     """The shared six bits precede lookup without carrying an index into it."""
-    assert max(map(len, boolean.clockwise("0110", 1).splitlines())) == 11
+    assert max(map(len, boolean.clockwise("0110", 1).splitlines())) == 9
     for n in range(1, 4):
         for value in range(1 << (1 << n)):
             table = format(value, f"0{1 << n}b")
