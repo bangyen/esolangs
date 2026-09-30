@@ -580,6 +580,10 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
         "backup = false\n"
         'runner = "python -m pytest -x -q -p no:cacheprovider tests/test_bundled.py"\n'
         'tests_dir = ["tests/"]\n'
+        # Nested scratch directories inherited -n 4 and lost all 105
+        # Bitdeque coverage hits: mutmut needs tests in its own process.
+        "\n[tool.pytest.ini_options]\n"
+        'addopts = ["-n", "0"]\n'
     )
     moved_classes = _undecorate_classes(out)
     if moved_classes:
@@ -726,6 +730,7 @@ def main() -> int:
         "the cap -- at two workers a Forbin run spent 85%% of its time on the "
         "6%% of mutants that timed out",
     )
+    parser.add_argument("--report", type=Path, help="write the completed score as JSON")
     args = parser.parse_args()
 
     work = Path(tempfile.mkdtemp(prefix="mutate-one-"))
@@ -786,6 +791,10 @@ def main() -> int:
             check=False,
         )
 
+        if mutation.returncode != 0:
+            print(mutation.stdout[-3000:] or mutation.stderr[-3000:])
+            raise SystemExit("mutmut failed before completing; no score recorded")
+
         killed, total, survivors = _score(proj, stem, classes)
         if not total:
             raise SystemExit("no mutants were generated")
@@ -807,6 +816,21 @@ def main() -> int:
         print(
             f"\n{args.language}: {killed}/{total} killed ({100 * killed / total:.1f}%)"
         )
+        if args.report is not None:
+            args.report.write_text(
+                json.dumps(
+                    {
+                        "kind": "interpreter",
+                        "target": args.language,
+                        "killed": killed,
+                        "total": total,
+                        "survivors": survivors,
+                        "work_dir": str(work),
+                    },
+                    indent=2,
+                )
+                + "\n"
+            )
         if survivors:
             print(f"\n{len(survivors)} survived:")
             for name in survivors:

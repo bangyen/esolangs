@@ -225,6 +225,7 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     machine = staticmethod(_machine)
     stepping_program = "-2 5 9 9 9 65 0 0"
     halting_program = "-2 5 9 9 9 65 0 0"
+    looping_program = "3 4 0 0 -1"
 
 
 class TestNegativeWriteIndex:

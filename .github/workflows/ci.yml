@@ -164,7 +164,7 @@ jobs:
     # and fail the job; the weekly suite retains the expensive evidence.
     - name: Check changed-line and changed-branch coverage
       if: matrix.python-version == '3.14'
-      run: uv run python scripts/check_diff_coverage.py --partial
+      run: uv run python scripts/check_diff_coverage.py --partial --strict
 
     - name: Test with pytest
       if: matrix.python-version != '3.14'

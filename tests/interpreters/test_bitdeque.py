@@ -1,6 +1,8 @@
 import io
 from contextlib import redirect_stdout
 
+import pytest
+
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.queue_based.bitdeque import run
 from tests.interpreters.contract import (
@@ -183,3 +185,14 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     # `rendered` latches on the step *past* the halt, and the check
     # stops at the halt, so no program can move it here.
     constant_views = frozenset({"rendered"})
+
+
+@pytest.mark.parametrize("code", ["xPUSH", "x y PUSH", "PUSH x INVERT", "PUSH x y"])
+def test_stray_text_is_rejected_with_the_first_invalid_word(code: str) -> None:
+    expected = (
+        "'x' is not a Bitdeque command; the commands are "
+        "INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case"
+    )
+    with pytest.raises(ValueError, match="not a Bitdeque command") as caught:
+        run_and_capture(code)
+    assert str(caught.value) == expected
