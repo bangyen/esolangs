@@ -474,3 +474,44 @@ def test_bitwise_cyclic_tag_does_not_cascade_a_one() -> None:
     """
     assert _bct_answer("1000", 0) == "1"
     assert _bct_answer("1" + "0" * 15, 0) == "1"
+
+
+@pytest.mark.medium
+def test_thue_contracted_heads_keep_a_unique_rewrite() -> None:
+    """C appears only after LR meets; D restores L before the next read."""
+    from esolangs.interpreters.other.thue import _Machine, _matches
+
+    assert max(map(len, boolean.thue("0110", 1).splitlines())) == 9
+    for n in range(1, 4):
+        for value in range(1 << (1 << n)):
+            table = format(value, f"0{1 << n}b")
+            program = boolean.thue(table, 1)
+            for row, expected in enumerate(table):
+                stdin = "".join(f"{bit}\n" for bit in _bits(row, n))
+                io = ScriptedIO(stdin)
+                machine = _Machine(program, io, Seeded(row))
+                while not machine.halted:
+                    assert len(_matches(machine.state, machine.rules)) == 1
+                    machine.step()
+                assert io.getvalue() == expected
+
+
+@pytest.mark.medium
+def test_thue_fixed_width_chunk_names_expand_before_reading() -> None:
+    """The marker alphabet excludes every table and control symbol."""
+    from esolangs.interpreters.other.thue import _Machine, _matches
+
+    for n in range(4, 7):
+        table = "".join(
+            str((row * 17 + row // 3).bit_count() % 2) for row in range(1 << n)
+        )
+        program = boolean.thue(table, 1)
+        assert max(map(len, program.splitlines())) == 9
+        for row, expected in enumerate(table):
+            stdin = "".join(f"{bit}\n" for bit in _bits(row, n))
+            io = ScriptedIO(stdin)
+            machine = _Machine(program, io, Seeded(row))
+            while not machine.halted:
+                assert len(_matches(machine.state, machine.rules)) == 1
+                machine.step()
+            assert io.getvalue() == expected
