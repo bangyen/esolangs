@@ -41,15 +41,49 @@ class _Expr:
         return f"{outer}{mingled}~#2{outer}"
 
 
-def intercal(truth_table: str) -> str:
+def intercal(truth_table: str, width: int | None = None) -> str:
     """Return a polite C-INTERCAL template computing ``truth_table``.
 
     Every input is assigned to its own variable before the expression, so
     the Shannon levels may select them in any order: the shorter of the
     identity and greedy orders is kept (:func:`best_input_order`).  Each
-    order is built plain and shared, and the shorter kept.
+    order is built plain and shared, and the shorter kept.  Over-wide
+    expressions name each Boolean operation; a complete statement is the floor.
     """
-    return best_input_order(truth_table, _intercal_either)
+    natural = best_input_order(truth_table, _intercal_either)
+    if width is None or width <= 0 or max(map(len, natural.splitlines())) <= width:
+        return natural
+    narrow = _intercal_narrow(truth_table)
+    return (
+        narrow
+        if max(map(len, narrow.splitlines())) < max(map(len, natural.splitlines()))
+        else natural
+    )
+
+
+def _intercal_narrow(truth_table: str) -> str:
+    """Name each primitive operation in the reduced Shannon diagram.
+
+    At most O(T/log T) diagram nodes need O(log T)-digit names: O(T) source.
+    Each assignment has only one mingle/unary/select frame.
+    """
+    n = _validate_truth_table(truth_table)
+    nodes, root = _diagram(truth_table, n)
+    assigned: list[tuple[int, _Expr]] = []
+
+    def name(expr: _Expr) -> _Expr:
+        variable = n + 2 + len(assigned)
+        assigned.append((variable, expr))
+        return _Expr("input", variable - 1)
+
+    selectors = [_Expr("input", n - 1 - level) for level in range(n)]
+    negated = [name(_Expr("not", children=(selector,))) for selector in selectors]
+    results = [_ZERO, _ONE]
+    for level, zero, one in nodes[2:]:
+        low = name(_Expr("and", children=(negated[level], results[zero])))
+        high = name(_Expr("and", children=(selectors[level], results[one])))
+        results.append(name(_Expr("or", children=(low, high))))
+    return _program(n, assigned, results[root])
 
 
 def _intercal_either(truth_table: str, perm: tuple[int, ...]) -> str:
