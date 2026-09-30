@@ -153,7 +153,6 @@ WIDTH_EXCEPTIONS = {
         "cvnc",
         "grapheme",
         "nocomment",
-        "thue",
     )
 }
 

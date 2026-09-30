@@ -13,6 +13,8 @@ unpinned, as the classics tests assert to ``n = 3`` under several draws.
 
 from __future__ import annotations
 
+from string import ascii_letters
+
 from esolangs.tools.helpers import _validate_truth_table
 
 #: Entries are ``a``/``b`` so a ``0``/``1`` input line is never mistaken for
@@ -49,11 +51,21 @@ _RULES = "\n".join(
 )
 
 
-def thue(truth_table: str) -> str:
+def _chunk_marker(index: int, digits: int) -> str:
+    """Return a delimited name containing no existing rewrite marker."""
+    alphabet = "".join(char for char in ascii_letters if char not in "abLMRE")
+    name = []
+    for _ in range(digits):
+        index, digit = divmod(index, len(alphabet))
+        name.append(alphabet[digit])
+    return "[" + "".join(reversed(name)) + "]"
+
+
+def thue(truth_table: str, width: int | None = None) -> str:
     """Return a Thue program computing ``truth_table``.
 
     Reads ``n`` lines, one ``0``/``1`` per input in table order, and prints
-    the answer digit.
+    the answer digit. Narrow layouts expand named chunks before reading.
     """
     _validate_truth_table(truth_table)
     length = len(truth_table)
@@ -67,4 +79,23 @@ def thue(truth_table: str) -> str:
             row ^= carry
             carry >>= 1
         row |= carry
-    return f"{_RULES}\nLM{''.join(entries)}E"
+    table = "".join(entries)
+    program = f"{_RULES}\nLM{table}E"
+    if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
+        return program
+    digits, capacity = 1, len(ascii_letters) - len("abLMRE")
+    while capacity < length:
+        digits += 1
+        capacity *= len(ascii_letters) - len("abLMRE")
+    marker_width = digits + 2
+    # Payload covers its names' overhead, keeping even the narrowest source O(T).
+    payload = max(marker_width, width - 2 * marker_width - 3)
+    rules = _RULES.splitlines()[:-1]
+    for index, offset in enumerate(range(0, length, payload)):
+        marker = _chunk_marker(index, digits)
+        following = (
+            _chunk_marker(index + 1, digits) if offset + payload < length else "RE"
+        )
+        rules.append(f"{marker}::={table[offset : offset + payload]}{following}")
+    # No input marker exists until expansion finishes and R sweeps back to L.
+    return "\n".join([*rules, "::=", "L" + _chunk_marker(0, digits)])
