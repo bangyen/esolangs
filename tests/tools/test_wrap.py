@@ -290,6 +290,8 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
             from esolangs.interpreters.other.packlang import _tokenize
 
             assert _tokenize(wrapped) == _tokenize(plain)
+        elif name == "FRACTRAN":
+            assert wrapped.split() == plain.split()
         else:
             assert wrapped.replace("\n", "") == plain.replace("\n", "")
         assert _run(name, wrapped) == _run(name, plain)
