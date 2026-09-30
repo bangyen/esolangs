@@ -25,8 +25,15 @@ def _copy(plan: _Planner, start: int | None = None) -> _Planner:
     )
 
 
-def _emit(plan: _Planner, chunk: _Chunk) -> None:
-    for operation, target, value in chunk:
+def _emit(plan: _Planner, chunk: _Chunk, incoming: int | None = None) -> None:
+    for index, (operation, target, value) in enumerate(chunk):
+        if (
+            index == 0
+            and operation == "*"
+            and value is not None
+            and incoming == value == plan.mem[target]
+        ):
+            continue
         plan.op(operation, target)
         plan.mem[target] = value
 
@@ -114,6 +121,14 @@ def build_combined_helpers() -> tuple[
         "z0": outputs["decoder_zero"],
     }
     values = helper_values(group)
+    direct: dict[int, int] = {}
+    for cell, wanted in values.items():
+        known = plan.mem[cell]
+        if known is not None and any(
+            _g(seed) == known and wanted in reach for seed, reach in group.reach.items()
+        ):
+            direct[cell] = known
+    values = dict(sorted(values.items(), key=lambda item: item[0] not in direct))
     protected = set(values) | set(constants.values()) | {19, 142, 145, 139, 144}
     roots = {
         cell: next(
@@ -127,9 +142,11 @@ def build_combined_helpers() -> tuple[
     protections = []
     finished: set[int] = set()
     remaining_roots = set(roots.values())
-    fixed = set(constants.values()) | {19, 142, 145, 139, 144}
+    fixed = set(constants.values()) | {19, 142, 145, 139, 144} | set(direct)
     for cell, wanted in values.items():
-        for chunk in helper_chunks(group, cell, wanted, roots[cell], constants):
+        for chunk in helper_chunks(
+            group, cell, wanted, roots[cell], constants, initial=direct.get(cell)
+        ):
             chunks.append(chunk)
             protections.append(fixed | finished | {cell} | remaining_roots)
         finished.add(cell)
@@ -137,11 +154,12 @@ def build_combined_helpers() -> tuple[
     blocked = (occupied - {replaced_halt}) | set(plan.data) | set(range(420))
     emitted: dict[int, str] = {}
     routes = 0
+    accumulator: int | None = None
     for index, chunk in enumerate(chunks):
         protected = protections[index]
         tail = 1
         trial = _copy(plan)
-        _emit(trial, chunk)
+        _emit(trial, chunk, accumulator)
         stranded = False
         if index + 1 < len(chunks) and not set(trial.code) & blocked:
             try:
@@ -171,6 +189,7 @@ def build_combined_helpers() -> tuple[
         emitted.update(trial.code)
         blocked.update(trial.code)
         plan = trial
+        accumulator = chunk[-1][2]
     assert all(plan.mem[cell] == wanted for cell, wanted in values.items())
     exit_plan = _copy(plan)
     plan.raw("v")

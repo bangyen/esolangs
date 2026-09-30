@@ -853,6 +853,16 @@ def build(
             reducer.goto(seed)
             reducer.raw("i")
             normalizer = _Planner(entry_word + 1, reducer.d, dict(reducer.mem), {})
+            if decoder_constant_cells is not None:
+                from setup_constants import preserve
+
+                preserve(
+                    normalizer,
+                    map_all1,
+                    helper["all2"],
+                    decoder_constant_cells[0],
+                    decoder_constant_cells[2],
+                )
             normalizer.op("*", map_all1)
             for cell in range(34, 128):
                 # With A=ALL1, p twice resets any prior ten-trit word to ALL1.
@@ -950,27 +960,22 @@ def build(
                 normalizer.mem[42] = 29524
                 normalizer.op("p", 107)
                 normalizer.op("p", 107)
-                for _ in range(10):
-                    normalizer.op("*", 25)
+                if decoder_constant_cells is not None:
+                    from setup_constants import load
+
+                    load(normalizer, 25, decoder_constant_cells[0])
+                else:
+                    for _ in range(10):
+                        normalizer.op("*", 25)
                 normalizer.op("p", 107)
                 normalizer.mem[107] = label_targets[107]
                 if outputs is not None:
                     outputs["labels_done"] = normalizer.c
             if decoder_constant_cells is not None:
-                all2_cell, v_cell, zero_cell = decoder_constant_cells
-                normalizer.op("*", 42)
-                normalizer.mem[42] = ALL1
-                normalizer.op("p", zero_cell)
-                normalizer.op("p", zero_cell)
-                normalizer.op("p", zero_cell)
-                normalizer.mem[zero_cell] = 0
-                _build_constants(
-                    normalizer,
-                    {"z1": 42, "z0": zero_cell, "w": all2_cell, "v": v_cell},
-                )
-                normalizer.mem[42] = ALL1
-                normalizer.mem[zero_cell] = 0
-                normalizer.mem[all2_cell] = ALL2
+                all2_cell, _v_cell, zero_cell = decoder_constant_cells
+                assert normalizer.mem[42] == ALL1
+                assert normalizer.mem[zero_cell] == 0
+                assert normalizer.mem[all2_cell] == ALL2
                 if outputs is not None:
                     outputs["decoder_all1"] = 42
                     outputs["decoder_all2"] = all2_cell
