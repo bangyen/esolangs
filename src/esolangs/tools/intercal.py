@@ -28,6 +28,11 @@ class _Expr:
         if self.op == "input":
             return f".{self.value + 1}"
         outer, inner = ("'", '"') if depth % 2 == 0 else ('"', "'")
+        if self.op == "mingle":
+            left, right = self.children
+            return f"{outer}{'&V?'[self.value]}{left.render()}${right.render()}{outer}"
+        if self.op == "select":
+            return f"{outer}{self.children[0].render()}~#2{outer}"
         if self.op == "not":
             children, operator = (*self.children, _Expr("constant", 1)), "?"
         else:
@@ -57,14 +62,20 @@ def intercal(truth_table: str, width: int | None = None) -> str:
     if max(map(len, previous.splitlines())) <= width:
         return previous
     narrow = _intercal_narrow(truth_table)
+    if max(map(len, narrow.splitlines())) <= width:
+        return narrow
+    split = _intercal_narrow(truth_table, split=True)
+    best = min((narrow, split), key=lambda program: max(map(len, program.splitlines())))
     return (
-        narrow
-        if max(map(len, narrow.splitlines())) < max(map(len, natural.splitlines()))
+        best
+        if max(map(len, best.splitlines())) < max(map(len, natural.splitlines()))
         else natural
     )
 
 
-def _intercal_narrow(truth_table: str, *, simplify: bool = True) -> str:
+def _intercal_narrow(
+    truth_table: str, *, simplify: bool = True, split: bool = False
+) -> str:
     """Name each primitive operation in the reduced Shannon diagram.
 
     At most O(T/log T) diagram nodes need O(log T)-digit names: O(T) source.
@@ -76,6 +87,21 @@ def _intercal_narrow(truth_table: str, *, simplify: bool = True) -> str:
     assigned: list[tuple[int, _Expr]] = []
 
     def name(expr: _Expr) -> _Expr:
+        if split:
+            children = expr.children
+            operator = "xor" if expr.op == "not" else expr.op
+            if expr.op == "not":
+                children = (*children, _ONE)
+            intermediate = n + 2 + len(assigned)
+            assigned.append(
+                (
+                    intermediate,
+                    _Expr("mingle", ("and", "or", "xor").index(operator), children),
+                )
+            )
+            # Boolean operands give a result at most7, which fits a onespot;
+            # the following selection extracts its answer from bit1.
+            expr = _Expr("select", children=(_Expr("input", intermediate - 1),))
         variable = n + 2 + len(assigned)
         assigned.append((variable, expr))
         return _Expr("input", variable - 1)
