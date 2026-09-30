@@ -411,7 +411,14 @@ class TestAProgramKnowsWhoseItIs:
         assert getattr(copied, "language", None) == "brainfuck"
         template = pickle.loads(pickle.dumps(esolangs.generate("Minifuck", "0110", 20)))
         assert template == esolangs.generate("Minifuck", "0110", 20)
-        assert template.replace("\n", "") == esolangs.generate("Minifuck", "0110")
+        assert isinstance(template, str)
+        assert template == str(template)
+        assert json.dumps(template) == json.dumps(str(template))
+        assert getattr(template, "language", None) == "Minifuck"
+        assert (
+            template.replace("\n", "").encode()
+            == str(template).replace("\n", "").encode()
+        )
 
     def test_a_width_keeps_the_tag(self) -> None:
         program = esolangs.generate("brainfuck", "0110", 20)
@@ -879,7 +886,7 @@ class TestTheDebuggerMirrorsSnapshot:
 
 
 class TestAWidthAwareGeneratorCanStillOverrun:
-    """The docstring named LaserFuck; Streetcode is the worse of the two.
+    """Width-aware layouts can exceed a request below their construction floor.
 
     Both take the width themselves rather than being reflowed afterwards,
     which reads as a guarantee and is not one -- a token wider than the
@@ -904,12 +911,16 @@ class TestAWidthAwareGeneratorCanStillOverrun:
             assert widths > 0, f"{name} never overran"
             assert worst > 0
 
-    def test_streetcode_is_the_worse_of_the_two(self) -> None:
-        """The specific thing the docstring got backwards."""
-        laser_widths, laser_worst = self._overruns("LaserFuck", "10010110")
-        street_widths, street_worst = self._overruns("Streetcode", "10010110")
-        assert street_widths > laser_widths
-        assert street_worst > laser_worst
+    def test_width_floors_match_public_sources_and_overrun_counts(self) -> None:
+        """Warnings follow actual rendered widths, including narrower constructions."""
+        for name, floor, count, margin in (
+            ("LaserFuck", 21, 4, 13),
+            ("Streetcode", 9, 1, 1),
+        ):
+            source = esolangs.generate(name, "10010110", 1)
+            assert max(map(len, source.splitlines())) == floor
+            assert self._overruns(name, "10010110") == (count, margin)
+            assert esolangs.evaluate(name, "10010110", width=1) == "10010110"
 
     def test_the_pair_is_still_width_aware(self) -> None:
         """The two this class measures must stay in the group it measures.
