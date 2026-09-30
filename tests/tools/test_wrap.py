@@ -654,6 +654,8 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
     tables = _HONOUR_TABLES
     if name == "inject":
         tables = {**tables, "parity5": _table(5)}
+    if name == "thue":
+        tables = {**tables, "parity4": _table(4)}
     for label, table in tables.items():
         arity = len(table).bit_length() - 1
         bits = "0" * arity
@@ -696,6 +698,8 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
     tables = _HONOUR_TABLES
     if name == "inject":
         tables = {**tables, "parity5": _table(5)}
+    if name == "thue":
+        tables = {**tables, "parity4": _table(4)}
     for label, table in tables.items():
         arity = len(table).bit_length() - 1
         for combo in range(2**arity):
