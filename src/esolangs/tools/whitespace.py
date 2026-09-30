@@ -111,9 +111,23 @@ def whitespace(truth_table: str, width: int | None = None) -> str:
     natural = "".join(parts)
     if width is None or width <= 0 or max(map(len, natural.split("\n"))) <= width:
         return natural
+    if width < 4 and truth_table == "0110":
+        return _xor_three()
     if width < 5:
         return _fold_four(parts)
     return _fold(parts, max(5, width), sentinel=width < 7)
+
+
+def _xor_three() -> str:
+    """Print XOR using live input ones, avoiding every nonzero literal."""
+    read = [_push(0), _READ_NUM, _push(0), _RETRIEVE]
+    parts = [*read, _DUP, _jz(_SPACE), *read, _DUP, _jz(_TAB)]
+    parts += [_DISCARD, _DISCARD, _push(0), _OUT_NUM, _END]
+    parts += [_mark(_TAB), _DISCARD, _OUT_NUM, _END]
+    parts += [_mark(_SPACE), *read, _OUT_NUM, _END]
+    # Empty subroutine label leaves only two characters between its LF tokens.
+    call = _LINE + _SPACE + _TAB + _LINE
+    return call.join(parts) + _mark("") + _LINE + _TAB + _LINE + _SWAP
 
 
 def _fold_four(parts: list[str]) -> str:
