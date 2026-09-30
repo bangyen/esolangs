@@ -1026,6 +1026,11 @@ def _affine_circuit(table: str, width: int) -> str | None:
         if bit < n:
             parity ^= coefficients[bit]
     if n == 2 and all(coefficients):
+        if width < 6:
+            # Return the output below both inputs, then left. Two rows
+            # isolate its final junction from the colon's diagonal pin.
+            gate = "X" if constant else "x"
+            return f"-.\n  {gate}.\n-. |\n   .\n  .\n .\n |\n .-:"
         # Adjacent input rows feed the two diagonal gate pins directly.
         layout = _Layout()
         for signal, row in enumerate((0, 2)):
