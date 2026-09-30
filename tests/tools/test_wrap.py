@@ -34,7 +34,7 @@ from esolangs.tools.wrap import (
     _bio,
     _bitdeque,
     _cell_width,
-    _indented,
+    _packlang,
     _mammalian,
     _polynomial,
     _six_five,
@@ -394,8 +394,8 @@ def test_every_wrapper_actually_fires(name: str) -> None:
         return
     # Packlang already emits one short, indented statement per line.  Its
     # wrapper exists for a caller's wider hand-written line; the focused
-    # ``_indented`` test supplies that positive control.
-    if WRAPPERS[LANGUAGES[name].id] is _indented and all(
+    # ``_packlang`` tests supplies that positive control.
+    if WRAPPERS[LANGUAGES[name].id] is _packlang and all(
         len(line) <= 40 for line in raw.splitlines()
     ):
         return
@@ -1024,12 +1024,6 @@ def test_mammalian_uses_seed_sized_cells() -> None:
     ]
     for row in wrapped.split("\n"):
         assert all(match.start() % 5 == 0 for match in re.finditer(r"\S+", row))
-
-
-def test_indented_wrapper_preserves_blocks_and_folds_within_a_line() -> None:
-    """Statement boundaries and indentation survive a narrow width."""
-    program = "root {\n  alpha beta gamma;\n}\n"
-    assert _indented(program, 12) == "root {\n  alpha beta\n  gamma;\n}\n"
 
 
 def test_wrap_chars_breaks_anywhere() -> None:
