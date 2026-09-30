@@ -14,8 +14,8 @@ arithmetic:
 
 | model (section 1) | lower bound on `liminf B(C)^(1/C)` | upper bound on `limsup B(C)^(1/C)` |
 |---|---|---|
-| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.24200** (Thm 4) | **7.0601** (Thm 1) |
-| clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0601 (Thm 1) |
+| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.24200** (Thm 4) | **7.0347** (Thm 1) |
+| clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0347 (Thm 1) |
 | clipped tape, EOF leaves the cell, all inputs | 3.79003 (Thm 4) | 7.3339 (Thm 1) |
 | bi-infinite tape, EOF error / keep | 4.24200 / 3.79003 | 6.9133 / 7.1949 |
 | any fixed nonempty finite input set `I`, any EOF, any tape | **3.36614** (Thm 5) | as for all inputs |
@@ -23,8 +23,8 @@ arithmetic:
 | loop-free programs, EOF error | **4.06124** (Thm 3) | **2 + sqrt 5 = 4.23607** (Thm 3) |
 | loop-free programs, EOF constant / keep | 3.79003 | 4.23607 / 4.72458 |
 
-Headline (repo model): **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0601`**,
-from `[2.414, 7.388]`.  In bits per character: `[2.085, 2.820]`, from `[1.272, 2.885]`.
+Headline (repo model): **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0347`**,
+from `[2.414, 7.388]`.  In bits per character: `[2.085, 2.815]`, from `[1.272, 2.885]`.
 The lower bound uses nested loops (section 5c) and exceeds the loop-free upper bound
 `2 + sqrt 5 = 4.23607`.  Loops therefore strictly raise the growth rate.
 
@@ -34,7 +34,7 @@ Two corrections to the old statement:
   programs.  Of the five adjacencies, `[]` can be deleted only from a program that terminates
   on every input (as the Factor setting had).  In a model where a program may diverge, `[]`
   is the shortest diverging loop and cannot be removed.  The four sound adjacencies give
-  `7.4979`.  Theorem 1 replaces both by `7.0601`.
+  `7.4979`.  Theorem 1 replaces both by `7.0347`.
 * The drawing floor `(1 + sqrt 2)^C` is far from the truth.  Loop-free programs with I/O
   already have `4.061^C` behaviours on all inputs and `3.366^C` distinct outputs on a single
   input.
@@ -63,7 +63,7 @@ behaviours of programs of length exactly `C` is nondecreasing in `C` and lies be
 ## 2. Results
 
 **Theorem 1 (upper bound).**  In the repo model (clip/err) and in clip/const,
-`B(C) <= K * 7.0601^C`.  For clip/keep `7.3339`, bi/err `6.9133`, bi/keep `7.1949`.  With only the
+`B(C) <= K * 7.0347^C`.  For clip/keep `7.3339`, bi/err `6.9133`, bi/keep `7.1949`.  With only the
 empty input (clip/err), `B_{{eps}}(C) <= K * 6.3218^C`.
 
 **Theorem 2 (the old five adjacencies).**  Words avoiding `+- -+ >< ][ []` grow as `7.38776` (Perron
@@ -145,6 +145,7 @@ set; with transfer matrix `M`, `N_n = e_root^T M^n 1 <= (v_root / min v) * rho^n
 | clip/err, four sound adjacencies | 4 | 5 | 7.4979068 |
 | clip/err, + `+, -, [-],` | 7 | 8 | 7.2356196 |
 | clip/err and clip/const, all rules (`--big`) | 5793 | 8634 | **7.0600257** |
+| clip/err and clip/const, local subset + extended regular families | 15619 + 15 regular families | 11673 minimized | **7.0347** |
 | withdrawn: finite global bodies, `len(Y) <= 7` | 723653 | 1358980 | 7.0341 (unsound rule) |
 | withdrawn: unrestricted global bodies | 4354 + regular families | 744 minimized | 7.0194 (unsound rule) |
 | clip/keep, all rules | 7379 | 10410 | 7.3338896 |
@@ -155,6 +156,45 @@ set; with transfer matrix `M`, `N_n = e_root^T M^n 1 <= (v_root / min v) * rho^n
 The last row: on the empty input `,` ends the run, so any instruction after it other than a closing
 `]` is dead.  Weighting `[` by `t` and `]` by `1/t` (a Chernoff bound for balanced words) gives no gain:
 the optimum is `t = 1`.
+
+The new regular-family row is independent of the withdrawn grammar below. Its definitions are:
+`S(A) = (A | [A*])*`, `F(A) = (A | [A*] | >A*<)*`, and
+`H = (+ | - | [-] | >(+ | -)*<)*`. Here an alphabet denotes a choice of letters.
+Every `S` block stays on one cell; every `F` block returns without going left of its start.
+`H` always terminates without I/O. Write `F0 = F(+-.)`, `F1 = F(+-.,)`,
+`N = F(+-)`, and `Pj = (. | >Fj<)*`. The four earlier commute monitors use
+`S(+-.)`, `F0`, `F1`, and `S(+-.,)` respectively instead of their smaller alphabets.
+Their proofs still apply, including divergence and EOF.
+
+The other eleven regular families are:
+
+| left-hand factor | replacement and proof |
+| --- | --- |
+| `>N<c`, `c` in `.+-` | `c>N<`: disjoint cells, no I/O in `N`; either `N` returns or both runs diverge |
+| `>H<,` | `,>H<`: the silent excursion always terminates; EOF therefore agrees |
+| `>F1<c`, `c` in `+-` | `c>F1<`: disjoint cells; neither increment affects the excursion's output or EOF |
+| `[A[-]B]`, `A,B` over `+-` | `[-]` if `B` has net increment 0 mod 256, otherwise `[]`: each returning iteration ends at that fixed residue |
+| `L>H<`, `L = [V]`, `V` over `+-.,` | `>H<L`: `L` stays on the tested cell; `H` is silent and terminating |
+| `>L<W>`, `W` over `+-` | `W>L`: the right-cell loop and the silent left-cell block commute |
+| `[W[Z]D]`, `D = .*(+|-).*` | `[]`: read-free balanced `W,Z` cannot reach EOF; every returning iteration ends at 1 or 255, so the outer loop cannot exit |
+| `>F1<>` | `>F1`: the last `<>` runs at a positive pointer |
+| `]P1[G]` | `]P1`: `P1` leaves the zero tested cell unchanged, so `[G]` skips |
+| `[P0[]G]` | `[]`: `P0` preserves the nonzero tested cell or diverges; the empty loop cannot return |
+| `[.Y].` | `.[Y.]`: rotation preserves the event sequence; the moved print leaves the loop test unchanged |
+
+For the last five monitors, `W,Z` have bracket nesting depth at most one and contain no read;
+`Y` has depth at most one and may read. `G` is arbitrary balanced text: the monitor rejects the
+prefix before `G` because its matching group can be deleted or collapsed. The forced-divergence
+rule observes no output from infinite runs, as required by the model. `D` consists of prints,
+one increment or decrement, and more prints. Print rotation runs the same
+sequence of `.` and `Y` blocks: at zero both print once; at nonzero both run `. Y . Y ... .`,
+ending on the same zero cell or at the same EOF.
+
+Each replacement shortens the program or decreases lexicographic order under `. , - + < > [ ]`. The checker rebuilds the finite factors with `L = 6`, excursion-body limits 6 (silent) and
+5 (I/O), and clipped-cancellation limit 4. It intersects their avoidance DFA with the fifteen
+regular monitors and minimizes after each intersection. This gives 11,673 states, not a frozen
+transition table. A positive integer vector checks `10000 M v <= 70347 v` at every state, hence
+`B(C) <= K * 7.0347**C`.
 
 The local method has saturated: doubling every family size moves the third decimal (smaller families
 7.0632, larger 7.0600), and a heuristic search over all balanced fragments of length `<= 4`
@@ -530,7 +570,7 @@ These are behaviours on finite input sets, so they are lower estimates of `B(C)`
 
 ## 8. What is not settled
 
-* **The limit.**  The repo-model interval is `[4.2420, 7.0601]`.  Nested loops raise the
+* **The limit.**  The repo-model interval is `[4.2420, 7.0347]`.  Nested loops raise the
   certified lower bound above the loop-free upper bound `4.236` (section 5c), so loops strictly
   raise the growth rate.  The
   idealised grammar explains why loops must nest.  Take prints of weight `x mu^2`, reads of
@@ -545,10 +585,10 @@ These are behaviours on finite input sets, so they are lower estimates of `B(C)`
   dead-cell families suggest a limit near 4.08.  An encoding that drops the positions of
   dead-at-birth reads needs an extra type and gets worse (`x mu^2 + x mu + x`).  Whether a
   read could be moved depends on the future, so no local rule captures it.
-* **Upper bound.** Local rules certify 7.0600257. The 7.0341 and 7.0194 improvements
-  used the unsound read-free-prefix rule above. Next: certify the corrected balanced-body
-  grammar with sound disjoint-cell commute families. A potentially diverging excursion
-  cannot commute across a read at EOF; excursions with output cannot commute across prints.
+* **Upper bound.** Extended regular rules certify 7.0347. The 7.0341 and 7.0194 improvements
+  used the unsound read-free-prefix rule above. Next: count the unrestricted sound print
+  rotation and forced-divergence families in the corrected balanced-body grammar. A potentially
+  diverging excursion cannot commute across a read at EOF; excursions with output cannot commute across prints.
   Two tried and dead: (i) the event encoding of section 4 applied to each bracket-free segment between
   brackets must also charge the positions of the segment's final increments, and the resulting series
   is worse than counting words (radius near `1/8`); (ii) the segment-quotient transfer matrix of the
@@ -574,8 +614,15 @@ the tests do catch.
 
 The former 7.0341 Perron certificate and 7.0194 matrix certificate count languages
 that exclude the counterexample `[-[]]`. Their arithmetic checks do not certify a
-behaviour bound: a certificate cannot repair an unsound rewrite. The local-rule
-7.0600257 certificate is the retained repo-model upper bound.
+behaviour bound: a certificate cannot repair an unsound rewrite.
+
+The replacement 7.0347 certificate is reproducible with
+`uv run python -m tests.proofs._brainfuck_count`. The helper builds the factors and regular
+monitors, computes a candidate vector by power iteration, rounds it at scale `10**12`, and
+checks the displayed Perron inequality using integers only. Floating-point accuracy is not a
+hypothesis of the certificate. `tests/proofs/test_brainfuck_count.py` checks the automata against
+an independent regex oracle, executes 240 contextual rewrite pairs, and rejects the unsafe
+read/print commutations with positive counterexamples. The invalid `[-[]]` body remains accepted.
 
 The dead-cell certificates of section 5b come from the transfer matrices on `(p, m)`, and on
 `(c, m, q)` for the gadget.  A numerical Perron vector at the rational `x0` is rounded to
