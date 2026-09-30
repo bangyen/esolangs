@@ -136,6 +136,64 @@ That statement cannot cover arbitrary Factor programs. A balanced `D`-digit
 semiprime can force the trial sieve toward `sqrt(N) = 10**Theta(D)`. There is
 no polynomial bound in source digits, and no fallback claim is made.
 
+A conservative bit bound makes the generated-family claim explicit. Put
+`B = ceil(log2(N+1))`. Charge a `b`-bit gcd or decimal conversion at
+`O(b**2)`, and division by a `q`-bit prime at `O(B*q)`. The expanding sieve
+has `O(sqrt(Q))` segments, each with `O(sqrt(Q))` primes or fewer; its
+segment product has `O(sqrt(Q)*log(Q))` bits. Sequential product formation
+and gcds therefore cost at most
+
+    O(sqrt(Q)*(B + sqrt(Q)*log(Q))**2).
+
+The `C` successful divisions add `O(C*B*log(Q))`; sieving and small-residue
+tests add `O(Q*log(Q)**2*log log(Q))`, decimal conversion adds `O(D**2)`,
+and sorting factors and loading the decoded brackets add
+`O(C*log(C+Q)**2)`. All logarithms here may be replaced by `log(2+.)`.
+These are elementary-arithmetic ceilings, not measured timing exponents.
+Together with the proved `Q=O_eta(T**(15/14+eta))`, `B,D=O(T*n)` and
+`C=O(T)`, they give, for every `eps>0`,
+
+    generated cold loading = O_eps(T**(71/28+eps)*n**2) bit work.
+
+The bound includes decimal conversion, prime discovery and VM construction;
+it needs no factorization oracle. It is an upper bound, not a claim that
+this exponent is attained. Generated parity sources through six inputs
+were loaded and executed separately from their construction.
+
+### General weighted descriptions
+
+The counting step applies beyond prime encodings. Suppose rank weights are
+positive and `w(i) >= (a-o(1))*ln(i)`, and admissible normalized suffixes
+through length `N` number at most `exp((h+o(1))*N)`. Normalization must not
+increase a retained command's rank or the total charged weight. At weight
+budget `L`, set `r=floor(L/(ln L)**2)`. The first `r` positive exponents
+have sum `O(L)`; their compositions and fixed-alphabet choices give
+`exp(O(r*ln(L/r)))=exp(o(L/ln L))` prefixes. Every later character costs
+at least `(a-o(1))*ln(r)`, so its suffix has length at most
+`(1/a+o(1))*L/ln L`. Thus the description count is
+
+    exp((h/a+o(1))*L/ln L).
+
+Covering `2**T` truth tables requires
+`L >= (a*ln(2)/h-o(1))*T*ln T`. Factor's first-output normal form satisfies
+the rank condition, with `a=1` and `h=ln(lambda)` from the leading-constant
+section. The lemma concerns descriptions, not an injective semantic code.
+
+For unrestricted descriptions with a fixed alphabet of `q>=2` commands
+and weights `w(i)=Theta(i**alpha)`, `alpha>0`, the logarithmic description
+count is instead `Theta(L**(1/(alpha+1)))`. Unit exponents at
+`k=Theta(L**(1/(alpha+1)))` consecutive ranks give the lower bound `q**k`.
+For the upper bound, allowing missing ranks overcounts, and for `t>0`
+
+    N(L) <= exp(tL) product_i (1 + q/(exp(t*c*i**alpha)-1)).
+
+The log of the product is `O(t**(-1/alpha))`: after rescaling, its
+decreasing summand is integrable, logarithmic at zero and exponentially
+decaying at infinity. Taking `t=L**(-alpha/(alpha+1))` proves the upper
+bound. Any language whose encodings meet these conditions consequently
+has a worst-case Boolean weight floor `Omega(T**(alpha+1))`; a matching
+semantic construction does not follow from the description count.
+
 ## Language lower bound
 
 Put `L = O(D)` for the log of a `D`-character source's digit integer. If its

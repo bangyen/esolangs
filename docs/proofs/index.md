@@ -181,6 +181,7 @@ is itself total.
 for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container;
 BrainIf's tree counts only the inputs it branches on — and the lookup above it.  Streetcode builds both at five inputs and keeps
 the shorter, so its crossover is where the two meet rather than a constant.
+BrainIf also competes with its input-forgetting residual DAG, proved below.
 Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
@@ -271,7 +272,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | bit~ | linear lookup | one tape cell an entry, and each input's one-shot loop jumps the pointer left by that input's weight, so the reads chain into a Horner index and a self-erasing walk carries the landed bit to one of two print windows | linear: bounded dependency scan and canonical residual IDs |
 | Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque | linear: 2T commands, discard blocks sum to T |
 | brainfuck | tree | `decision_tree_program` | linear: decision_tree_program, span walk, leaf moves geometric |
-| BrainIf | finite lookup | a spatial table is addressed by the read row index | linear: n + T strip cells of 2.6 lines |
+| BrainIf | tree | equal cofactors share one layered DAG node; spatial lookup remains a candidate | linear: O(T/n) nodes with O(n)-digit addresses |
 | Circlefuck | linear lookup | the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer | linear: bounded dependency scan and canonical residual IDs |
 | Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) |
 | Clockwise | linear lookup | the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit | linear: five table rows of 2T columns, doubling gadgets whose widths halve downward |
@@ -388,3 +389,47 @@ the interpreter decodes it to the tree the generator encoded.
 Accordingly, this ledger records 71 theoretical totality arguments and one
 proved language exception; every other row is `Total` or theoretically total
 past a resource ceiling.
+
+## Ordered reads without retained inputs
+
+Call a layered construction input-forgetting when, just before each read,
+its data store and pointer depend only on depth; the control location carries
+the residual function. Ordered reads alone do not imply this property:
+`,>,>,<<.` reaches one cursor with four stores after two reads. The shipped
+BrainIf residual-DAG candidate does satisfy it. Its first input cell is zero;
+before each later read, `if 48 increment` maps the prior Boolean byte to 49.
+The one input then overwrites it. No earlier input remains in the store.
+
+After `k` reads, distinct residual functions require distinct states: equal
+states would execute identically on every common suffix. At depth `k` there
+are at most `min(2**k, 2**(2**(n-k)))` distinct residuals. Intern equal pairs
+bottom-up to attain this bound level by level, with one node per distinct
+cofactor. No order search is needed; all pairs visited number below `T`.
+
+The worst-case total node count is `Theta(T/n)`. Let `r` be maximal with
+`2**r+r<=n`. For remaining depths through `r`, the double-exponential counts
+sum to at most `2*2**(2**r) <= 2T/2**r`. Larger remaining depths have at
+most `T/2**s` nodes and sum below `T/2**r`. Since `2**r>n/4` for `n>=4`,
+the total is below `12T/n`. For a matching lower bound, at remaining depth
+`r+1` assign every prefix a different zero-padded rank as its residual table.
+There are `T/2**(r+1) >= T/(2n)` prefixes and enough different residuals
+by maximality of `r`; every input-forgetting realization needs that width.
+
+BrainIf emits four lines per DAG node, three at the root. Destinations have
+`O(n)` digits, so the worst-case source is `O(T)`. Two shared output tails
+add constant text. A run consumes exactly `n` inputs in order and executes
+at most `4n+50` lines. The zero tail moves to a virgin cell only when the
+last byte is 49, then builds 48; the one tail increments 48 if needed and
+prints 49. All gotos go forward, so termination is structural.
+Interning and writing the labels cost `O(T)` in the repository's
+`Theta(n)`-bit table/index word model. This does not assert linear bit work.
+
+The public generator keeps the shorter source against the tree/spatial
+candidate; width requests retain that older route. Every three-input table
+shrinks: total characters `319576 -> 292492` (8.47%), summed executed
+lines `134984 -> 74752` (44.62%), with no table growing or slowing.
+All 2,120 rows through three inputs execute; constants, parity and four
+seeded tables per arity four through six also execute every row. A separate
+200-table five-input sample gives `573675 -> 360230` characters and
+`1501446 -> 280080` lines. Full-store boundary checks confirm erasure before
+the next read. The controls are in `tests/proofs/test_research_tracks.py`.

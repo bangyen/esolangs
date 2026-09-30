@@ -187,75 +187,40 @@ proof and remove the completed item.
   raise the lower coefficient, or construct a cheaper weighted command stream
   to lower the upper one; the existence and value of the limit remain open.
 
-- **Structural scaling audit.** The bounded attempt executed 104 rows each
-  for B-tapemark, Circuit Diagram, Forþ, 6-5 and Vandevelo, plus 62 parity
-  rows of 6-5's looped fallback. Source-size arguments give B-tapemark
-  `O(T+n**2)` by summing ragged stage widths; Forþ `O(T)` because label
-  gaps sum below `2T`, constant bodies are bounded, and shared calls replace
-  a subtree only below a fixed length. For 6-5, walk distances sum to
-  `T-1`, and looped mark valuations sum to `T-n-1`.
-  Circuit Diagram's H-side is exactly
-  `L*(12*2**k-4*k-10)` at `n=2k` and
-  `L*(14*2**k-4*k-12)` at `n=2k+1`, where `L` is its lattice spacing;
-  its square therefore has `O(T)` area. These source bounds do not prove
-  linear build work. The H builder repeatedly scans all sites at each
-  input depth; Vandevelo's line bound still charges names of `O(log n)`
-  characters and leaves exact autocorrelation fallbacks unamortized.
-  Next: bucket H sites by depth, price B-tapemark's coordinate sorting,
-  and prove or repair Vandevelo's character and fallback costs. Also
-  resolve 6-5's documented `O(n*T)` execution past 35 inputs against
-  the linear execution contract; small-arity runs cannot settle it.
-
-- **Loading complexity.** Executed parity builds separated loading from
-  running through six inputs for Factor and ten for FRACTRAN. The largest
-  sources were 3,850 and 12,913 characters; loading took 10.6 and 4.9 ms.
-  These single samples establish no exponent. Factor repeatedly divides
-  a shrinking wide integer; indexed FRACTRAN parses large decimal
-  exponents and builds guard buckets, so short loaded runs do not price
-  either operation. Next: derive bit-work bounds for the generated families,
-  counting decimal conversion, sieving, division and index construction;
-  keep arbitrary-source factoring and literal fallback separate.
-
-- **Ordered reads and retained state.** `00011011` has four distinct
-  residual functions after two inputs. An executed Brainfuck control
-  reads in order but reaches one cursor with four different stores.
-  Thus residual width bounds full configurations, not instruction
-  addresses; ordered input alone does not forbid reuse of stored bits.
-  Next: specify an input-forgetting subclass and derive its width/source
-  tradeoff, then test which shipped constructions actually belong to it.
+- **Structural scaling audit.** Source-size arguments close B-tapemark,
+  Forþ, 6-5 and Circuit Diagram's default H area. B-tapemark now scans dense
+  column spans in linear work, retaining sorting only for sparse standalone
+  layouts; 552 before/after programs have identical rendered hashes and
+  executed outputs. The H builder still scans all sites at each depth and
+  constructs string prefixes; linear area does not prove linear build work.
+  Vandevelo's upkeep bound counts lines carrying `O(log n)`-character names
+  and leaves exact autocorrelation fallbacks unamortized.
+  Next: use integer H-node identities and depth buckets, and prove or repair
+  Vandevelo's character and fallback costs. Also resolve 6-5's documented
+  `O(n*T)` execution past 35 inputs against the linear execution contract.
 
 - **FRACTRAN order encoding.** One unchanged multiset of eight fractions
   computes all sixteen four-row tables by ordering each `1/p, 2/p` pair;
-  all 64 rows executed, with row seeds `3,5,7,11`. This carries one bit
-  per pair, still costs `Theta(T log T)` text, and uses external row
-  seeds rather than the required input embeds. Next: construct an
-  admissible table-independent uniform-embed router and encode the table
-  solely by ordering a fixed multiset with `O(T)` text. Pair swapping is not that
-  construction; the indexed threshold route already achieves linear text.
+  all 64 rows executed. The one-consultation route is now closed negatively:
+  fixed applicability and postprocessing give a linear threshold class,
+  requiring at least `T-1` distinct fractions and `Omega(T log T)` text.
+  A four-guard overlap cycle executes all 24 orders on four rows and
+  realizes exactly fourteen tables, missing XOR and XNOR.
+  See [the order bound](proofs/fractran.md#order-only-decoding-with-one-priority-consultation).
+  Next: use repeated priority consultations with an admissible uniform-embed
+  router to encode the table solely by ordering a fixed `O(T)`-text multiset.
+  The indexed threshold route already achieves linear text by magnitudes.
 
-- **Brainfuck on bounded inputs.** An exact loop-free census over
-  `><+-.,` through length five ran 9,331 sources on binary-byte inputs.
-  At maximum input lengths zero, one and two it found 73, 168 and 226
-  behaviours, counting EOF as an error with no observable buffered output.
-  This is a restricted census, not a bound for all byte inputs or loops.
-  Next: derive bounds for fixed finite input sets and for input length
-  proportional to source length. Handle exhaustion explicitly: suffix
-  concatenation cannot distinguish programs whose prefix already errors.
-
-- **Weighted-description theorem.** Factor's counting proof generalizes
-  to rank-preserving normal forms with positive weights `w(i) ~ a*ln i`
-  and at most `exp((h+o(1))*N)` possible normalized suffixes through
-  length `N`: split the first
-  `L/(ln L)**2` ranks to obtain at most
-  `exp((h/a+o(1))*L/ln L)` descriptions of weight at most `L`.
-  A two-symbol positive-composition probe counted logarithmic, linear and
-  quadratic rank weights through budget 64. It counts descriptions,
-  not semantic classes. For unrestricted fixed-alphabet descriptions,
-  weights `Theta(i**alpha)`, `alpha > 0`, give log-count
-  `Theta(L**(1/(alpha+1)))`: a colored-partition product bounds above,
-  and unit exponents at every rank bound below.
-  Next: find a second language with such an encoding and
-  verify that its semantic normalization never raises retained ranks.
+- **Brainfuck on bounded inputs.** The finite-set upper bound is now
+  `6.584428341`, below the all-input upper `7.0347`: delete unvisited reads,
+  then count seven-command segments by a certified adjacency matrix.
+  [Theorem 6](proofs/brainfuck-count.md#7b-bounded-input-upper-bound-theorem-6)
+  also covers varying input sets with total read budget `o(C)`, including
+  byte-input lengths at most `(1-eps)*log_256(C)`. The lower bound remains
+  `3.366148`. Next: establish the limit or sharpen either side, and derive
+  a nontrivial bound when input length is proportional to source length.
 
 The additional controls are in `tests/proofs/test_research_tracks.py`.
-Research probes are bounded scratch work, not generator searches.
+Ordered input-forgetting construction, generated-family loading bounds and
+the weighted-description theorem are closed in the linked proofs; only
+the remaining questions above stay on this roadmap.
