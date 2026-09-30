@@ -581,6 +581,20 @@ def _dig_alternating(truth_table: str, n: int) -> str:
     return "\n".join("".join(row).rstrip() for row in grid)
 
 
+def _dig_quarter_turn(program: str) -> str:
+    """Turn a grid clockwise with an external entry above its original origin."""
+    rows = program.splitlines()
+    height = len(rows)
+    span = max(map(len, rows))
+    arrows = str.maketrans("^>'<", ">'<^")
+    grid = [[" "] * (height + 1) for _ in range(span + 1)]
+    grid[0][height] = "'"
+    for row, line in enumerate(rows):
+        for col, char in enumerate(line):
+            grid[col + 1][height - row] = char.translate(arrows)
+    return "\n".join("".join(row).rstrip() for row in grid)
+
+
 def dig(truth_table: str, width: int | None = None) -> str:
     """Build a Dig program computing the given truth table.
 
@@ -611,8 +625,10 @@ def dig(truth_table: str, width: int | None = None) -> str:
         return min((flat, banded), key=len)
     if max(len(line) for line in flat.split("\n")) <= width:
         return flat
-    if max(len(line) for line in banded.split("\n")) < max(
-        len(line) for line in flat.split("\n")
-    ):
+    if max(map(len, banded.splitlines())) <= width:
         return banded
-    return flat
+    candidates = (flat, banded)
+    # A bounded flat width keeps the rotated entry padding O(T).
+    if n <= 4:
+        candidates += (_dig_quarter_turn(flat),)
+    return min(candidates, key=lambda text: max(map(len, text.splitlines())))
