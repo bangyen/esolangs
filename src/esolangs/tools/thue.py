@@ -88,8 +88,11 @@ def thue(truth_table: str, width: int | None = None) -> str:
     rules_text = _RULES.replace("LR", "C").replace("::=LM", "::=D")
     rules_text = rules_text.removesuffix("::=") + "LR::=C\nD::=LM\n::="
     narrow = f"{rules_text}\nLM{table}E"
-    if max(map(len, narrow.splitlines())) <= max(width, 9):
+    if max(map(len, narrow.splitlines())) <= width:
         return narrow
+    # One-symbol nodes fit only bounded arities; larger trees retain chunks.
+    if length <= 8 and width < 9:
+        return _thue_short_tree(truth_table)
     digits, capacity = 1, len(ascii_letters) - len("abLMRECD")
     while capacity < length:
         digits += 1
@@ -107,3 +110,25 @@ def thue(truth_table: str, width: int | None = None) -> str:
     # No input marker exists until expansion finishes and R sweeps back to L.
     # Here T>=8 and 3*digits<T: max(width,9,3*digits+3)<T+3.
     return "\n".join([*rules, "::=", "L" + _chunk_marker(0, digits)])
+
+
+def _thue_short_tree(truth_table: str) -> str:
+    """Return a seven-column decision tree for at most three inputs."""
+    size = len(truth_table)
+    names = ascii_letters.replace("I", "")
+    ready = names[: size - 1]
+    waiting = names[size - 1 : 2 * (size - 1)]
+    leaves = names[2 * (size - 1) : 2 * size]
+    rules = ["I::=:::", *(f"{name}::=~{bit}" for bit, name in enumerate(leaves))]
+    for node in range(size - 1):
+        # Ready and waiting symbols differ: a read can never expand twice.
+        rules.append(f"{ready[node]}::={waiting[node]}I")
+        for bit in range(2):
+            child = 2 * node + 1 + bit
+            target = (
+                ready[child]
+                if child < size - 1
+                else leaves[int(truth_table[child - size + 1])]
+            )
+            rules.append(f"{waiting[node]}{bit}::={target}")
+    return "\n".join([*rules, "::=", ready[0]])
