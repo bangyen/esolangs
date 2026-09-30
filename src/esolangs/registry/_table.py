@@ -456,8 +456,7 @@ LANGUAGES: dict[str, Language] = {
 #: first, Unlambda has no conditional at all and branches by forcing one of
 #: two promises -- and the curator's call on promoting any of them out of
 #: this tier is open.  Malbolge's generator caps at sixteen inputs;
-#: FRACTRAN's emission is ``Theta(T log T)`` for a reason the language
-#: forces (``docs/limitations.md``).
+#: FRACTRAN emits linear text with shared indexed block dictionaries.
 CLASSICS: dict[str, Language] = {
     "Befunge": Language(
         "Befunge",
