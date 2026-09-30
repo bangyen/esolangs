@@ -2,7 +2,7 @@
 
 Worst-case Factor source length for a `T`-bit truth table is
 `Theta(T log T)` digits, at the language level and for the generator.  The
-upper bound is a linear Brainfuck program plus fixed-modulus Hoheisel; the
+upper bound uses a linear Brainfuck program and short prime windows; the
 lower bound counts every integer encoding.
 
 A Factor program is one decimal integer. Factoring it yields an ordered list
@@ -25,16 +25,33 @@ the result cell and return.  Summed over the tree that is
 
 ## Generated text
 
-Dirichlet proves termination but does not bound this adaptive prime sequence:
-each run asks for a possibly different residue above the preceding prime. The
-needed quantitative result is the fixed-modulus Hoheisel theorem (Thorner and
-Zaman, Math. Z. 306 (2024), art. 54, Section 1.2: every `h >=
-X**(7/12+eps)` works in each reduced class mod a fixed `q`). For each of
-the eight classes mod 11 used, some `theta < 1` puts a prime in
-`(x, x + x**theta]` for every sufficiently large `x`, and concavity of
-`x**(1 - theta)` turns that into `p_i = O(i**(1/(1 - theta)))`. Thus
+Dirichlet proves termination but does not bound the adaptive prime stream:
+each run asks for a possibly different residue above the preceding prime.
+[Koukoulopoulos, *Primes in short arithmetic progressions*](https://dms.umontreal.ca/~koukoulo/documents/publications/shortaps.pdf),
+Int. J. Number Theory 11 (2015), 1499–1521, Theorem 1.3, gives an
+unconditional averaged bound strong enough for this stream. For every
+fixed `1/15 < beta < 1`, take `h = X**beta` and the theorem's modulus cutoff
+11. Its hypotheses hold for sufficiently large `X`: choose
+`0 < eps < beta - 1/15`, then `121 <= h/X**(1/15+eps)`.
+The theorem bounds all failed `(q, j)` pairs with `q <= 11` and `j <= X`
+by `O(X/log(X)**A)`. Thus all but `o(X)` integer starts for modulus 11
+have a prime from every reduced residue class in `(j, j+h]`.
 
-    p_(i+1) <= p_i + O(p_i**theta),   so Q = m**O(1).
+Put `X = Q`, the final selected prime, and consider starts `Q/2 <= j < Q`.
+There are `Q/2 - o(Q)` complete windows there. For such a start, let `p_i`
+be the next selected prime. The encoder chooses the first prime of its
+requested class after `p_(i-1) <= j`, so completeness forces
+`j < p_i <= j+h`. A selected prime covers at most `ceil(h)` integer
+starts. Therefore `m*ceil(h) >= Q/2 - o(Q)`, even for an adversarial
+sequence of commands. Since `beta` can decrease to `1/15`, for every
+`eta > 0`, uniformly over all command streams,
+
+    Q = O_eta(m**(15/14 + eta)).
+
+This argument requires the first matching prime; arbitrary delayed prime
+choices can skip complete windows. `tests/proofs/test_factor_prime_cover.py`
+checks the covering implication against the actual greedy encoder, with a
+nonempty-window control and a delayed-prime counterexample.
 
 Consequently `log Q = O(log(m + 1))` and
 
@@ -104,8 +121,7 @@ is the upper bound
     generation = O(T + Q log log Q + D**alpha) = T**O(1).
 
 Only the upper bound is claimed: the terms need not balance, so `Theta` is not
-established, and the sieve term can exceed `D**alpha` for the largest `Q` the
-Hoheisel bound permits.
+established. Table traversal can dominate for a pruned tree.
 
 ## Cold parsing
 
@@ -150,9 +166,9 @@ Let `C_F(n)` be the worst-case minimum rendered digits over all `T = 2**n`
 tables. The existing witnesses and counting argument can be made explicit:
 
     (ln 2)**2 / (ln 8 * ln 10) <= liminf C_F(n)/(T*n)
-    limsup C_F(n)/(T*n) <= 24 log10 2.
+    limsup C_F(n)/(T*n) <= (75/7) log10 2.
 
-The coefficients are 0.10034333 and 7.22471990; neither is claimed sharp.
+The coefficients are 0.10034333 and 3.22532138; neither is claimed sharp.
 For the lower bound put `L = D ln 10` and `r = floor(L/(ln L)**2)`.
 The first `r` useful-prime exponents have total at most `L/ln 2`. Counting
 positive compositions and eight command choices bounds these prefixes by
@@ -206,11 +222,12 @@ reflection prelude adds `111/2`. The shorter fixed variant therefore has
 `C <= 10T + 6n**2 + 48n + 59`. The quadratic setup is `o(T)`;
 construction and choosing the shorter source take `O(T)` time.
 The emitted Factor integer is obtained with the same prime-run encoder.
-Its digits are at most `C log10 Q + O(1)`, with
-`ln Q <= (1/(1-theta)) ln C + O(1)` for every fixed `theta > 7/12`.
-Letting `theta` decrease to `7/12` gives
-`10*(12/5)*log10 2 = 24*log10 2`. Against the lower coefficient
-`log10(2)/3`, the asymptotic bracket has an exact 72-fold gap.
+Its digits are at most `C log10 Q + O(1)`. The complete-window covering
+bound gives `ln Q <= (15/14 + eta) ln C + O_eta(1)` for every `eta > 0`.
+Letting `eta` decrease to zero gives
+`10*(15/14)*log10 2 = (75/7)*log10 2`. Against the lower coefficient
+`log10(2)/3`, the asymptotic bracket has an exact `225/7`-fold gap
+(32.142857).
 
 Both variants execute through Factor on every table through three inputs
 and eleven tables per arity at four through six: 618 programs, 6,704 input
