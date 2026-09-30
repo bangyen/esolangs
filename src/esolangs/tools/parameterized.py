@@ -2,9 +2,9 @@ r"""Boolean generators that embed each input once.
 
 Input ``i`` is a run of :data:`TEMPLATE_CHAR` as wide as its setter, in
 name order; the harness fills the runs and runs one program per row.
-Equal-width setters keep bits out of the program length.  Each language's
-``(zero, one)`` pair is one constant its generator module owns (the
-``*_PAIR`` below for the five generators this module hosts); the example
+Equal-width setters keep bits out of the program length.  Each layout uses
+a uniform ``(zero, one)`` pair its generator module owns (the ``*_PAIR``
+below for the five generators this module hosts); the example
 in :mod:`esolangs.tools.examples` reads the same constant, so the widths
 the generator lays and the text the fill substitutes cannot drift apart.
 """
@@ -99,6 +99,7 @@ BFPDA_PAIR = ("<[@]", "<@@@")
 BITDEQUE_PAIR = ("PUSH INVERT", "INVERT PUSH")
 #: Even widths: ``*`` swaps the pointer, so a one-wide zero would move it.
 MINSKY_SWAP_PAIR = ("**", "++")
+_MINSKY_RMSN_PAIR = ("swap();\nswap();", "inc(); \ninc(); ")
 #: ``j`` is the pad: a gate tests this cell next, so it must leave value and pointer.
 HOME_ROW_PAIR = ("as", "aj")
 
@@ -348,7 +349,7 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)
 
 
-def minsky_swap(truth_table: str) -> str:
+def minsky_swap(truth_table: str, width: int | None = None) -> str:
     """Build a Minsky Swap template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Every
@@ -362,7 +363,8 @@ def minsky_swap(truth_table: str) -> str:
     line 2 halts (a ``~`` targeting one past the end), lines 3-5
     (``+ * ~``) set ``reg[1]`` first.  Every target is the digit 2 or 3 (a
     leaf per row was ``Theta(T log T)`` of addresses), every table of one
-    arity is one length, and the dump reads ``0 {answer}``.
+    arity is one length, and the dump reads ``0 {answer}``.  Width switches
+    to RMSN, one command per line; whole setters and targets set the floor.
     """
     n = _validate_truth_table(truth_table)
 
@@ -387,9 +389,31 @@ def minsky_swap(truth_table: str) -> str:
     pos += 2**n
 
     end = pos + 1
-    return (
-        " ".join(tokens) + "\n" + " ".join(str(end if t == 0 else t) for t in targets)
-    )
+    resolved = [end if t == 0 else t for t in targets]
+    program = " ".join(tokens) + "\n" + " ".join(map(str, resolved))
+    if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
+        return program
+    lines: list[str] = []
+    jumps = iter(resolved)
+    for token in tokens:
+        if token.startswith(TEMPLATE_CHAR):
+            lines.append(TEMPLATE_CHAR * len(_MINSKY_RMSN_PAIR[0]))
+        else:
+            for command in token:
+                lines.append(
+                    f"decnz({next(jumps)});"
+                    if command == "~"
+                    else "inc();"
+                    if command == "+"
+                    else "swap();"
+                )
+    return "\n".join(lines)
+
+
+def minsky_swap_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Return the uniform pair for compact or line-oriented RMSN notation."""
+    pair = _MINSKY_RMSN_PAIR if template.startswith("decnz(") else MINSKY_SWAP_PAIR
+    return (pair,) * n
 
 
 def home_row(truth_table: str) -> str:
