@@ -582,8 +582,10 @@ def test_overhead_funnel_executes_every_small_table(heading: int) -> None:
 
 
 def test_overhead_funnel_floor_and_corpus_size() -> None:
-    assert max(map(len, boolean.laserfuck("0110", 1).splitlines())) == 15
-    assert sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 94244
+    assert max(map(len, boolean.laserfuck("0110", 1).splitlines())) == 7
+    assert (
+        sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 104873
+    )
 
 
 @pytest.mark.parametrize("n", [5, 7])
@@ -620,3 +622,38 @@ def test_valid_more_expensive_input_order_keeps_identity(
         for heading in range(4):
             assert run_laserfuck(selected, bits, heading) == expected
             assert run_laserfuck(alternative, bits, heading) == expected
+
+
+@pytest.mark.parametrize("width", [1, 7, 9, 10, 15, 18, 20, 40, 80])
+def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
+    import esolangs
+    from esolangs.tools.laserfuck import _laserfuck_build, _laserfuck_raise_funnel
+
+    table = "0110"
+    legacy = _laserfuck_build(table, (0, 1), width)
+    if max(map(len, legacy.splitlines())) > width:
+        legacy = _laserfuck_raise_funnel(legacy)
+    source = esolangs.generate("LaserFuck", table, width)
+    if max(map(len, legacy.splitlines())) <= width:
+        assert source == legacy
+    for heading in range(4):
+        for row, expected in enumerate(table):
+            assert run_laserfuck(source, list(f"{row:02b}"), heading) == expected
+
+
+@pytest.mark.parametrize(("table", "perm"), [("0001", (1, 0)), ("10010110", (2, 0, 1))])
+def test_vertical_tree_places_permuted_inputs_in_stream_order(
+    table: str, perm: tuple[int, ...]
+) -> None:
+    from esolangs.tools.helpers import permute_truth_table
+    from esolangs.tools.laserfuck import _laserfuck_build, _laserfuck_raise_funnel
+
+    source = _laserfuck_build(
+        permute_truth_table(table, perm), perm, 1, vertical_tree=True
+    )
+    source = _laserfuck_raise_funnel(source)
+    for row, expected in enumerate(table):
+        for heading in range(4):
+            assert (
+                run_laserfuck(source, list(f"{row:0{len(perm)}b}"), heading) == expected
+            )

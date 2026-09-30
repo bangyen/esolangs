@@ -405,6 +405,8 @@ def _laserfuck_build(
     truth_table: str,
     perm: tuple[int, ...],
     width: int | None = None,
+    *,
+    vertical_tree: bool = False,
 ) -> str:
     r"""Build one LaserFuck program, reading its inputs in ``perm`` order.
 
@@ -473,14 +475,21 @@ def _laserfuck_build(
     # The tree adds only a column or two past the reader, so the reader is
     # what a width has to bargain with: side by side the rings are one row
     # and forty-odd columns, stacked they are seven rows and under twenty.
-    candidates = _laserfuck_reader_candidates(n, perm)
-    fitting = [
-        item
-        for item in candidates
-        if width is None or laserfuck_layout.MARGIN + item[1] + 2 <= width
-    ]
-    chosen = fitting[0] if fitting else min(candidates, key=lambda item: item[1])
-    _, _, reader_rows, reader_exit_row, reader_exit_col = chosen
+    reader_rows: list[str] | tuple[str, ...]
+    if vertical_tree:
+        placements = _laserfuck_placements(n, perm)
+        reader_rows, reader_exit_row, reader_exit_col = _laserfuck_assemble_reader(
+            placements, "R" * len(placements)
+        )
+    else:
+        candidates = _laserfuck_reader_candidates(n, perm)
+        fitting = [
+            item
+            for item in candidates
+            if width is None or laserfuck_layout.MARGIN + item[1] + 2 <= width
+        ]
+        chosen = fitting[0] if fitting else min(candidates, key=lambda item: item[1])
+        _, _, reader_rows, reader_exit_row, reader_exit_col = chosen
 
     margin = laserfuck_layout.MARGIN
     grid: list[list[str]] = []
@@ -589,7 +598,22 @@ def _laserfuck_build(
     # end to end; otherwise mirror it and hang it underneath (a '/' faces
     # the beam left, so no return row is needed).
     straight = margin + reader_exit_col + max(len(line) for line in upright)
-    if width is None or straight + 1 <= width:
+    if vertical_tree:
+        turned = _laserfuck_rotate(upright)
+        entry = margin + len(upright) - 1
+        exit_col = margin + reader_exit_col
+        top = len(reader_rows)
+        if entry < exit_col:
+            put(reader_exit_row, exit_col, "v")
+            put(top, exit_col, "/")
+            put(top, entry, "v")
+            top += 1
+        else:
+            put(reader_exit_row, entry, "v")
+        for offset, line in enumerate(turned):
+            for index, char in enumerate(line):
+                put(top + offset, margin + index, char)
+    elif width is None or straight + 1 <= width:
         # Laid from the runs, not from the padded rows: the tree is a
         # staircase, so ``upright`` is mostly blanks, and a blank is
         # re-padded by the next run on its row (or ``rstrip``ed off the
@@ -673,12 +697,24 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     if width is not None and max(map(len, best.splitlines())) > width:
         # Move the start funnel above the computation, reclaiming its three
         # reserved columns. Two '/' turns enter its first heading setter.
-        rows = best.splitlines()
-        shifted = [line[laserfuck_layout.MARGIN :] for line in rows]
-        entry = len(shifted[0]) - len(shifted[0].lstrip())
-        route = " " * entry + "/" + " " * (2 - entry) + "/"
-        candidate = "\n".join([" }}v", "|o^", " _", route, *shifted])
-        # The reader spans at least six columns plus the three-cell margin;
-        # shifting it left always beats the new four-column startup prefix.
-        best = candidate
+        best = _laserfuck_raise_funnel(best)
+        # Turning the staircase upright costs O(T log T) padding in general;
+        # this bounded fallback keeps the full family O(T).
+        if max(map(len, best.splitlines())) > width and len(truth_table) <= 8:
+            candidate = _laserfuck_build(
+                truth_table, identity, width, vertical_tree=True
+            )
+            if max(map(len, candidate.splitlines())) > width:
+                candidate = _laserfuck_raise_funnel(candidate)
+            if max(map(len, candidate.splitlines())) < max(map(len, best.splitlines())):
+                best = candidate
     return best
+
+
+def _laserfuck_raise_funnel(program: str) -> str:
+    """Move startup above the computation, reclaiming its three reserved columns."""
+    rows = program.splitlines()
+    shifted = [line[laserfuck_layout.MARGIN :] for line in rows]
+    entry = len(shifted[0]) - len(shifted[0].lstrip())
+    route = " " * entry + "/" + " " * (2 - entry) + "/"
+    return "\n".join([" }}v", "|o^", " _", route, *shifted])
