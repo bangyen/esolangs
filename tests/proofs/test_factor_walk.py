@@ -2,20 +2,24 @@
 
 import itertools
 import random
+from collections.abc import Callable
 
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.brainfuck import _Machine
 from esolangs.interpreters.tape_based.factor import run
-from tests.proofs._factor_walk import walked_program
+from tests.proofs._factor_walk import packed_program, walked_program
 from tests.proofs.test_factor_print import _render
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", range(1, 7))
 @pytest.mark.parametrize("partition", range(2))
-def test_walked_witness_executes(n: int, partition: int) -> None:
+@pytest.mark.parametrize("witness", [walked_program, packed_program])
+def test_walked_witness_executes(
+    n: int, partition: int, witness: Callable[[str], str]
+) -> None:
     rng = random.Random(922 + n)
     tables = (
         [format(i, f"0{2**n}b") for i in range(2 ** (2**n))]
@@ -28,7 +32,7 @@ def test_walked_witness_executes(n: int, partition: int) -> None:
         + ["".join(rng.choice("01") for _ in range(2**n)) for _ in range(8)]
     )
     for table in tables[partition::2]:
-        program = _render(walked_program(table))
+        program = _render(witness(table))
         for bits in itertools.product("01", repeat=n):
             io = ScriptedIO("\n".join(bits))
             run(program, io)
@@ -61,3 +65,20 @@ def test_walk_character_bound() -> None:
             code = walked_program(table)
             assert len(code) == 4 * length + table.count("1") + 53 * n + 48
             assert len(code) <= 5 * length + 53 * n + 48
+
+
+def test_packed_character_bound() -> None:
+    rng = random.Random(924)
+    for n in range(1, 13):
+        length = 2**n
+        tables = ["0" * length, "1" * length] + [
+            "".join(rng.choice("01") for _ in range(length)) for _ in range(8)
+        ]
+        for table in tables:
+            total = sum(int(table[i : i + 2], 2) for i in range(0, length, 2))
+            reflected = 2 * total > 3 * (length // 2)
+            fill = min(total, 3 * (length // 2) - total)
+            constant = 210 if reflected else 164
+            code = packed_program(table)
+            assert len(code) == 2 * length + fill + 53 * n + constant
+            assert len(code) <= 11 * length / 4 + 53 * n + 210
