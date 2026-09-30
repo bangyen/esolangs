@@ -794,3 +794,14 @@ def _cm_constants(needed: Iterable[int], zero: str = "zero") -> list[str]:
             else:
                 lines.append(f"k{n} = k{a} x + k{c}, NOT PRINT.")
     return lines
+
+
+def _parity_bias(truth_table: str) -> int | None:
+    """Return the complement bit for parity, or None, in O(T)."""
+    bias = int(truth_table[0])
+    parity = bytearray(len(truth_table))
+    for row in range(1, len(truth_table)):
+        parity[row] = parity[row >> 1] ^ (row & 1)
+        if int(truth_table[row]) != parity[row] ^ bias:
+            return None
+    return bias

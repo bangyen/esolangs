@@ -9,7 +9,7 @@ cells of source and O(n) executed commands, no branch and no loop.
 
 from __future__ import annotations
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _parity_bias, _validate_truth_table
 
 #: ``6 * 8``: Befunge has no multi-digit literal, so 48 is built arithmetically.
 _ASCII_ZERO = "68*"
@@ -23,12 +23,19 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     near ``sqrt(T)``.  An over-wide header folds along alternating rows;
     ``g`` addresses the table below them.  The width floor reserves enough
     cells for both within the 80x25 torus.  Tables above ten inputs raise
-    ``ValueError``: their cells alone exceed the torus.
+    ``ValueError``: their cells alone exceed the torus. Narrow parity uses
+    one vertical column of input sums modulo two instead.
     """
     n = _validate_truth_table(truth_table)
     count = 1 << n
     if count > 1024:
         raise ValueError("Befunge supports at most ten inputs on its 80x25 grid")
+    if width is not None and 0 < width < 4:
+        bias = _parity_bias(truth_table)
+        if bias is not None:
+            # At most 25 commands even at n=10, within the native torus.
+            header = "v&" + "&+" * (n - 1) + "2%" + ("!" if bias else "") + _END
+            return "\n".join(header)
     shift = (n + 1) // 2
     table_width = 1 << shift
     # ``1`` then ``2*`` shift times is ``2**shift``; both are single commands.

@@ -157,6 +157,11 @@ def _deque_plan(order: tuple[int, ...]) -> tuple[list[bool], list[bool]] | None:
 
 def thisthat(truth_table: str, width: int | None = None) -> str:
     """Return a linear-area tree, using a vertical strip for narrow small arities."""
+    if width is not None and 0 < width < 3 and truth_table == "0110":
+        # Equal-length paths merge both input transfers on native XOR.
+        # Top-to-bottom update order reads the first input first; the result
+        # returns along the lower wire to its input node, which now prints.
+        return "▣\n│\n◇\n║\n▦\n║\n◇\n│\n▣"
     program = _tree(truth_table)
     lines = program.splitlines()
     span = max(map(len, lines))

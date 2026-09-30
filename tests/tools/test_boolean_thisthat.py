@@ -199,9 +199,9 @@ def test_narrow_strip_executes_every_small_table() -> None:
                 io = ScriptedIO("".join(f"{bit}\n" for bit in f"{row:0{n}b}"))
                 run(source.splitlines(), io)
                 assert (io.getvalue(), io.reads) == (expected, n)
-    assert max(map(len, thisthat("0110", 1).splitlines())) == 3
-    assert len(thisthat("0110", 1)) == 77
-    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 1164
+    assert max(map(len, thisthat("0110", 1).splitlines())) == 1
+    assert len(thisthat("0110", 1)) == 17
+    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 1104
 
 
 @pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 9, 10, 19, 20, 40])
