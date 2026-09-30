@@ -228,6 +228,7 @@ class TestATemplateCarriesItsSetters:
         assert set(dynamic) == {
             BOOLEAN_EXAMPLES["bitdeque"],
             BOOLEAN_EXAMPLES["fractran"],
+            BOOLEAN_EXAMPLES["crement"],
             BOOLEAN_EXAMPLES["underload"],
             BOOLEAN_EXAMPLES["minsky-swap"],
         }
