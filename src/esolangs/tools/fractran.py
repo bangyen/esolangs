@@ -205,7 +205,7 @@ def _shallowest(nodes: list[_Leaf | _Block | _Node], n: int) -> int:
     return min((e.depth for e in nodes if isinstance(e, _Leaf)), default=n)
 
 
-def _plain(truth_table: str, n: int) -> str:
+def _plain(truth_table: str, n: int, *, small_root: bool = False) -> str:
     """Return the table as a plain tree: every level read, no decoder.
 
     Only ``2`` is reserved, so the inputs and states take the smallest primes
@@ -215,6 +215,8 @@ def _plain(truth_table: str, n: int) -> str:
     nodes = _tree(truth_table, n, 0, 0)
     primes = _primes(1 + n + len(nodes))
     inputs, states = primes[1 : 1 + n], primes[1 + n :]
+    if small_root:
+        states[0], states[-1] = states[-1], states[0]
     fractions = _nodes(nodes, states, inputs, (1, 1))
     fractions += [f"1/{prime}" for prime in inputs[_shallowest(nodes, n) :]]
     return " ".join([_start(states, inputs), *fractions])
@@ -370,7 +372,7 @@ def _indexed(table: str, n: int) -> str:
     return threshold if len(threshold) <= len(packed) else packed
 
 
-def fractran(truth_table: str) -> str:
+def _fractran_raw(truth_table: str) -> str:
     """Return a template, with input-prime exponents filled by ``PAIR``.
 
     Halts at 1 or 2 for zero or one. Seven inputs use indexed blocks;
@@ -384,3 +386,19 @@ def fractran(truth_table: str) -> str:
         return packed
     plain = _plain(truth_table, n)
     return plain if len(plain) <= len(packed) else packed
+
+
+def fractran(truth_table: str, width: int | None = None) -> str:
+    """Return a template; narrow small tables give the root the smallest state prime."""
+    from esolangs.tools.wrap import wrap_program
+
+    program = _fractran_raw(truth_table)
+    if width is None:
+        return program
+    n = _validate_truth_table(truth_table)
+    floor = max(map(len, program.split()))
+    if floor > width and n <= _PLAIN_MAX:
+        narrow = _plain(truth_table, n, small_root=True)
+        if max(map(len, narrow.split())) < floor:
+            program = narrow
+    return wrap_program(program, "fractran", width)

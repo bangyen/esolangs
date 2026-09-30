@@ -139,3 +139,51 @@ def test_wider_executed_size_scaling() -> None:
     trend = _trend(series)
     assert trend is not None
     assert trend <= 4.4
+
+
+def test_narrow_root_state_preserves_every_small_table() -> None:
+    from esolangs.tools.fractran import _fractran_raw
+
+    before = after = 0
+    for n in range(1, 4):
+        size = 1 << n
+        for value in range(1 << size):
+            table = f"{value:0{size}b}"
+            raw = _fractran_raw(table)
+            narrow = fractran(table, width=1)
+            assert fractran(table) == raw
+            assert max(map(len, narrow.splitlines())) <= max(map(len, raw.split()))
+            for row in range(size):
+                bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
+                code = fill_runs(narrow, TEMPLATE_CHAR, [PAIR] * n, bits)
+                machine = _Machine(code, ScriptedIO(""))
+                for _ in range(4 * n + 4):
+                    if machine.halted:
+                        break
+                    machine.step()
+                assert machine.halted
+                assert machine.value == (2 if table[row] == "1" else 1)
+            if n == 3:
+                before += len(raw.replace(" ", "\n"))
+                after += len(narrow)
+    assert (before, after) == (27_842, 27_842)
+
+
+@pytest.mark.parametrize("width", [1, 9, 10, 19])
+def test_narrow_template_provenance(width: int) -> None:
+    import esolangs
+    from esolangs.exceptions import TemplateError
+
+    table = "0110"
+    template = esolangs.generate("fractran", table, width)
+    for text in (template, str(template)):
+        code = esolangs.instantiate("fractran", text, [0, 1], truth_table=table)
+        machine = _Machine(code, ScriptedIO(""))
+        for _ in range(12):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        assert machine.value == 2
+        with pytest.raises(TemplateError):
+            esolangs.instantiate("fractran", text, [0, 1], truth_table="0001")
