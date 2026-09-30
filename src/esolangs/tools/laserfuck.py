@@ -708,7 +708,70 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
                 candidate = _laserfuck_raise_funnel(candidate)
             if max(map(len, candidate.splitlines())) < max(map(len, best.splitlines())):
                 best = candidate
+    if (
+        width is not None
+        and len(truth_table) <= 4
+        and max(map(len, best.splitlines())) > max(width, 4)
+    ):
+        return _laserfuck_four_columns(truth_table)
     return best
+
+
+def _laserfuck_four_columns(table: str) -> str:
+    """Return a four-column vertical reader and tree for at most two inputs."""
+    n = _validate_truth_table(table)
+    cells: dict[tuple[int, int], str] = {}
+
+    def vertical(row: int, col: int, text: str) -> int:
+        for offset, char in enumerate(text):
+            cells[row + offset, col] = char
+        return row + len(text)
+
+    # The original heading funnel enters a separate vertical read column.
+    for row, col, char in (
+        (0, 1, "}"),
+        (0, 2, "}"),
+        (0, 3, "v"),
+        (1, 0, "|"),
+        (1, 1, "o"),
+        (1, 2, "^"),
+        (2, 1, "_"),
+        (3, 3, "{"),
+        (3, 2, "v"),
+    ):
+        cells[row, col] = char
+    end = vertical(4, 2, (">," + "-" * 48) * n + "<" * n)
+
+    def select(row: int, one_column: int) -> int:
+        vertical(row, 2, ">#" + ("}" if one_column == 3 else "{") + "(")
+        cells[row + 2, one_column] = "v"
+        return row + 4
+
+    def leaves(row: int, base: int) -> int:
+        first = select(row, 3)
+        ends = []
+        for bit, col in enumerate((2, 3)):
+            index = base + bit
+            bits = format(index, f"0{n}b")
+            cleanup = "".join("-" * (int(value) + 1) + "<" for value in bits[::-1])
+            # Touch cell zero even when its answer is zero; retire input cells.
+            cleanup += "+" * (table[index] == "1") + "+-x"
+            ends.append(vertical(first, col, cleanup))
+        return max(ends)
+
+    if n == 1:
+        leaves(end, 0)
+    else:
+        zero = select(end, 1)
+        stop = leaves(zero, 0)
+        # The root's one arm bypasses both zero-arm leaves in column one.
+        cells[stop + 1, 1] = "}"
+        cells[stop + 1, 2] = "v"
+        leaves(stop + 2, 2)
+    return "\n".join(
+        "".join(cells.get((row, col), " ") for col in range(4)).rstrip()
+        for row in range(max(row for row, _ in cells) + 1)
+    )
 
 
 def _laserfuck_raise_funnel(program: str) -> str:
