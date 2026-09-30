@@ -247,10 +247,10 @@ class TestStreetcode:
         """Below every shape's width, the narrowest shape comes back.
 
         ``0100`` previously returned a 33-column hallway; the rotated
-        indexed street needs nine, with the same four answers.
+        indexed street shares its kerb and needs seven, with the same answers.
         """
         program = boolean.streetcode("0100", 1)
-        assert _columns(program) == 9
+        assert _columns(program) == 7
         for combo in range(4):
             bits = [str((combo >> 1) & 1), str(combo & 1)]
             assert run_streetcode(program, bits) == "0100"[combo]
@@ -320,23 +320,26 @@ class TestStreetcode:
 
 
 def test_a_width_past_the_crossover_still_chooses_a_shape() -> None:
-    """Past the crossover a quarter turn gives the same nine-column floor."""
+    """Past the crossover a quarter turn gives the shared seven-column floor."""
     table = "0110100110010110" * 4
     both = (boolean.streetcode(table), _columns(boolean.streetcode(table)))
     assert boolean.streetcode(table, 10_000) == both[0]
-    assert _columns(boolean.streetcode(table, 1)) == 9
+    assert _columns(boolean.streetcode(table, 1)) == 7
 
 
 @pytest.mark.parametrize("n", [1, 3, 6])
 @pytest.mark.parametrize("row", [0, 1, -1])
-def test_quarter_turned_lookup_preserves_input_order(n: int, row: int) -> None:
+@pytest.mark.parametrize("width", [1, 4, 7, 8, 9])
+def test_quarter_turned_lookup_preserves_input_order(
+    n: int, row: int, width: int
+) -> None:
     from esolangs.interpreters.grid_based.streetcode import run
     from esolangs.interpreters.io import ScriptedIO
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(1 << n))
     row %= len(table)
-    program = boolean.streetcode(table, 9)
-    assert _columns(program) == 9
+    program = boolean.streetcode(table, width)
+    assert _columns(program) == (7 if width < 9 else 9)
     io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\n")
     run(program.splitlines(), io)
     assert (io.getvalue(), io.reads) == (table[row], n)
