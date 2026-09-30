@@ -227,7 +227,10 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         and template == generate(name, truth_table, 1)
     ):
         return True
-    if language_id == "minsky_swap" and template == generate(name, truth_table, 15):
+    if language_id == "minsky_swap" and template in (
+        generate(name, truth_table, 10),
+        generate(name, truth_table, 15),
+    ):
         return True
     if language_id == "intercal":
         from esolangs.tools.intercal import _intercal_tokens

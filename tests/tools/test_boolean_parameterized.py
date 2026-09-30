@@ -657,12 +657,41 @@ class TestParameterizedMinskySwap:
         import esolangs
 
         template = esolangs.generate("Minsky Swap", "0110", 1)
-        assert template.setters == (("decnz();", "inc();  "),) * 2
-        assert max(map(len, template.splitlines())) == 10
+        assert template.setters == (("decnz(2);", "inc();   "),) * 2
+        assert max(map(len, template.splitlines())) == 9
         for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
             program = esolangs.instantiate("Minsky Swap", template, bits)
-            assert max(map(len, program.splitlines())) == 10
+            assert max(map(len, program.splitlines())) == 9
             assert self.run_minsky_swap(program) == str(bits[0] ^ bits[1])
+
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_single_digit_router_for_every_small_table(self, n: int) -> None:
+        import esolangs
+
+        for value in range(1 << (1 << n)):
+            table = format(value, f"0{1 << n}b")
+            for width in (1, 8, 9, 10, 15):
+                tagged = esolangs.generate("Minsky Swap", table, width)
+                assert tagged.setters is not None
+                assert len(tagged.setters) == n
+                assert len(set(tagged.setters)) == 1
+                assert len(tagged.setters[0][0]) == len(tagged.setters[0][1])
+                for template in (tagged, str(tagged)):
+                    for row in range(1 << n):
+                        bits = list(map(int, f"{row:0{n}b}"))
+                        program = esolangs.instantiate(
+                            "Minsky Swap", template, bits, truth_table=table
+                        )
+                        assert self.run_minsky_swap(program) == table[row]
+                    with pytest.raises(esolangs.TemplateError):
+                        esolangs.instantiate(
+                            "Minsky Swap",
+                            template,
+                            [0] * n,
+                            truth_table="".join(
+                                "1" if bit == "0" else "0" for bit in table
+                            ),
+                        )
 
     def test_rmsn_growth_remains_linear(self) -> None:
         from esolangs.tools import parameterized
