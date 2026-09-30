@@ -408,15 +408,21 @@ def fractran(truth_table: str, width: int | None = None) -> str:
         and max(map(len, program.split())) > width
         and all(int(bit) == row.bit_count() % 2 for row, bit in enumerate(truth_table))
     ):
-        program = _PARITY_TWO
+        program = _PARITY_BINARY if width < 4 else _PARITY_TWO
     return wrap_program(program, "fractran", width)
 
 
 _PARITY_TWO = "21 $/3 $/7 1/25 2/5"
 _PARITY_PAIR = ("1", "5")
+_PARITY_BINARY = "21 $/3 $/7 1/4"
 
 
 def fractran_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Return parity numerator setters only for the exact two-phase program."""
-    pair = _PARITY_PAIR if n == 2 and template.split() == _PARITY_TWO.split() else PAIR
+    pair = PAIR
+    if n == 2:
+        if template.split() == _PARITY_TWO.split():
+            pair = _PARITY_PAIR
+        elif template.split() == _PARITY_BINARY.split():
+            pair = ("1", "2")
     return (pair,) * n
