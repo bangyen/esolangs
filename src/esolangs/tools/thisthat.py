@@ -156,12 +156,28 @@ def _deque_plan(order: tuple[int, ...]) -> tuple[list[bool], list[bool]] | None:
 
 
 def thisthat(truth_table: str, width: int | None = None) -> str:
-    """Return a linear-area tree, rotated when narrower than an over-wide row."""
+    """Return a linear-area tree, using a vertical strip for narrow small arities."""
     program = _tree(truth_table)
     lines = program.splitlines()
     span = max(map(len, lines))
-    if width is None or width <= 0 or span <= width or len(lines) >= span:
+    if width is None or width <= 0 or span <= width:
         return program
+    if len(lines) < span:
+        program = _rotate_tree(program)
+    if max(map(len, program.splitlines())) <= width:
+        return program
+    # A strip needs O(T log T) wires in general; bounding it at three inputs
+    # keeps this fallback and the larger linear-area trees uniformly O(T).
+    if len(truth_table) <= 8:
+        narrow = _strip_tree(truth_table)
+        if max(map(len, narrow.splitlines())) < max(map(len, program.splitlines())):
+            return narrow
+    return program
+
+
+def _rotate_tree(program: str) -> str:
+    lines = program.splitlines()
+    span = max(map(len, lines))
     # Rotate physical ports and router directions; bistack operations name
     # logical memory axes, independent of the diagram's orientation.
     directions = {"E": "N", "N": "W", "W": "S", "S": "E"}
@@ -182,6 +198,48 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
         "".join(row.get(x, " ") for x in range(max(row, default=-1) + 1))
         for row in rows
     )
+
+
+def _strip_tree(truth_table: str) -> str:
+    """Build a small-arity vertical decision strip with channel-separated nodes."""
+    n = _validate_truth_table(truth_table)
+    ids = _span_ids(truth_table)
+    essential = [i for i in range(n) if ids[i + 1][::2] != ids[i + 1][1::2]]
+    table = read_at(truth_table, essential, n)
+    depth = len(essential)
+    builder = _Builder()
+
+    def tree(level: int, lo: int, hi: int, pop: tuple[int, int]) -> None:
+        output = (pop[0] - 2, pop[1])
+        if all(bit == table[lo] for bit in table[lo:hi]):
+            builder.node(pop, "■" if table[lo] == "1" else "□")
+            builder.node(output, "◇")
+            builder.connect(_path(pop, output, "horizontal"), "double")
+            return
+        builder.node(pop, "◧")
+        builder.node(output, "◒")
+        builder.connect(_path(pop, output, "horizontal"), "double")
+        mid = (lo + hi) // 2
+        for sign, child_lo, child_hi in ((-1, lo, mid), (1, mid, hi)):
+            child = (output[0], output[1] + sign * (1 << (depth - level)))
+            builder.connect(_path(output, child, "vertical"), "single")
+            tree(level + 1, child_lo, child_hi, child)
+
+    tree(0, 0, len(table), (0, 0))
+    min_y = min(y for _, y in set(builder.nodes) | set(builder.wires))
+    start = (0, min_y - 4 * n - 2)
+    builder.node(start, "▣")
+    previous = start
+    for i in range(n):
+        read = (0, start[1] + 2 + 4 * i)
+        push = (0, read[1] + 2)
+        builder.node(read, "◇")
+        builder.node(push, "◨" if i in essential else "⬒")
+        builder.connect(_path(previous, read, "vertical"), "single")
+        builder.connect(_path(read, push, "vertical"), "double")
+        previous = push
+    builder.connect(_path(previous, (0, 0), "vertical"), "single")
+    return builder.render()
 
 
 def _tree(truth_table: str, *, prune: bool = True, reorder: bool = True) -> str:
