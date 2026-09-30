@@ -697,6 +697,11 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
             stdin = "" if example.fill else "".join(f"{bit}\n" for bit in bits)
             compact = _laid_out(language.name, table, bits, None)
             expected = _behaviour(language.name, compact, stdin)
+            if name == "back":
+                assert len(expected.split()) == arity + 1
+                assert set(expected.split()) <= {"0", "1"}
+                expected = esolangs.read_answer(language.name, expected)
+                assert expected == table[combo]
             widths = (
                 (1, *_HONOUR_WIDTHS)
                 if name in {"arrowqueue", "container", "crement"}
@@ -705,7 +710,13 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
             for width in widths:
                 folded = _laid_out(language.name, table, bits, width)
                 relaid += folded != compact
-                assert _behaviour(language.name, folded, stdin) == expected, (
+                actual = _behaviour(language.name, folded, stdin)
+                if name == "back":
+                    # Its contract is cell n; earlier cells are scratch.
+                    assert len(actual.split()) == arity + 1
+                    assert set(actual.split()) <= {"0", "1"}
+                    actual = esolangs.read_answer(language.name, actual)
+                assert actual == expected, (
                     f"{name}: laying {label} out to width {width} changed the "
                     f"answer for inputs {bits}"
                 )
