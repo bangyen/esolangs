@@ -33,6 +33,35 @@ def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> st
 
 class TestContainer:
     @pytest.mark.medium
+    def test_narrow_threshold_layout_executes_wide_table(self) -> None:
+        n = 7
+        table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+        program = boolean.container(table, 1)
+        assert max(map(len, program.splitlines())) < max(
+            map(len, boolean.container(table).splitlines())
+        )
+        for row in (0, 1, 63, 64, 127):
+            assert (
+                _run_container_capped(program, list(f"{row:07b}"), budget=2 * n + 2)
+                == table[row]
+            )
+
+    @pytest.mark.parametrize(
+        "original", ["A:\n+9 A<=18\nEXIT:", "A=27:\n-9 A>=9\nEXIT:"]
+    )
+    def test_exact_delta_chunks_preserve_each_tick(self, original: str) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.container import _Machine
+        from esolangs.tools.container import _narrow_rules
+
+        before = _Machine(original.splitlines(), ScriptedIO(""))
+        after = _Machine(_narrow_rules(original, 1).splitlines(), ScriptedIO(""))
+        for _ in range(4):
+            before.step()
+            after.step()
+            assert before.var == {key: after.var[key] for key in before.var}
+            assert before.halted == after.halted
+
     @pytest.mark.parametrize("width", [1, 7, 8, 13])
     def test_narrow_rules_execute_every_three_input_table(self, width: int) -> None:
         for value in range(256):
