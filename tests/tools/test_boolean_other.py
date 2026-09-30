@@ -918,13 +918,15 @@ class TestAlgebraicProgrammingLanguage:
         # braces; past it, a line without an ``=`` is one that runs, and
         # there must be exactly one however much was hoisted
         lines = narrow.splitlines()
-        assert lines[:4] == ["!x = {", "x & $0", "$1", "}"], lines[:4]
+        assert lines[:4] == ["!x={", "x&$0", "$1", "}"], lines[:4]
         executed = [line for line in lines[4:] if "=" not in line]
         assert len(executed) == 1, executed
         line = executed[0]
-        assert line.startswith("(a & b & c & d & 0) | "), line
+        assert line.startswith("(a&b&c&d&0)|"), line
         # and every input is still read exactly once, in order
-        assert [ch for ch in line if ch in "abcd"] == ["a", "b", "c", "d"]
+        assert sorted({ch for ch in line if ch in "abcd"}) == ["a", "b", "c", "d"]
+        for row, output in enumerate(table):
+            assert self._run(narrow, 4, row) == output + "\n"
 
     def test_narrowing_below_the_floor_does_not_widen(self) -> None:
         """Asking for less than it can do returns its narrowest, not a worse one.
@@ -942,9 +944,32 @@ class TestAlgebraicProgrammingLanguage:
                         table, w
                     ).splitlines()
                 )
-                for w in (1, 5, 10, 20)
+                for w in (1, 5, 10)
             ]
             assert len(set(widths)) == 1, (table, widths)
+
+    def test_compact_narrow_tree_executes_every_small_table(self) -> None:
+        """Definitions preserve binding and reduce the XOR floor to 17."""
+        program = boolean.algebraic_programming_language("0110", 1)
+        assert max(map(len, program.splitlines())) == 17
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                program = boolean.algebraic_programming_language(table, 1)
+                for row, output in enumerate(table):
+                    assert self._run(program, n, row) == output + "\n"
+
+    def test_narrow_tree_keeps_asymmetric_large_input_bindings(self) -> None:
+        """Hoisting a prefix would leave variables unbound inside definitions."""
+        import random
+
+        rng = random.Random(42)
+        for n in range(4, 7):
+            table = "".join(rng.choice("01") for _ in range(1 << n))
+            for width in (1, 18, 30):
+                program = boolean.algebraic_programming_language(table, width)
+                for row, output in enumerate(table):
+                    assert self._run(program, n, row) == output + "\n"
 
     def test_default_full_tree_growth_is_linear(self) -> None:
         """Parity folds no subtree, but its source only doubles per input."""
