@@ -8,14 +8,15 @@ import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.underload import run
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from esolangs.tools.underload import PAIR, _plain, underload
+from esolangs.tools.underload import PAIR, _plain, underload, underload_setters
 from tests.tools.boolean_runners import five_input_sample
 
 
 def _run(table: str, row: int, width: int | None = None) -> str:
     n = len(table).bit_length() - 1
     bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-    program = fill_runs(underload(table, width), TEMPLATE_CHAR, [PAIR] * n, bits)
+    template = underload(table, width)
+    program = fill_runs(template, TEMPLATE_CHAR, underload_setters(template, n), bits)
     io = ScriptedIO("")
     run(program, io)
     return io.getvalue()
@@ -28,7 +29,8 @@ def test_wrapped_templates_execute_every_three_input_table(width: int) -> None:
         table = f"{value:08b}"
         template = underload(table, width)
         assert max(map(len, template.split("\n"))) <= max(5, width)
-        assert template.replace("\n", "") == underload(table)
+        if width >= 5:
+            assert template.replace("\n", "") == underload(table)
         assert "".join(_run(table, row, width) for row in range(8)) == table
 
 
@@ -93,3 +95,43 @@ def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
         for value in (0x6996, 0x1234ABCD5678EF01):
             table = format(value % 2**2**n, f"0{2**n}b")
             assert esolangs.verify("Underload", table), table
+
+
+@pytest.mark.parametrize("width", [1, 3, 4, 5, 13, 40, 80])
+def test_short_selectors_keep_public_provenance_and_uniform_width(width: int) -> None:
+    table = "0110"
+    template = str(esolangs.generate("Underload", table, width))
+    setters = underload_setters(template, 2)
+    assert len(set(setters)) == 1
+    for row, expected in enumerate(table):
+        filled = esolangs.instantiate(
+            "Underload", template, [row // 2, row % 2], truth_table=table
+        )
+        assert esolangs.run("Underload", filled) == expected
+        if width < 5:
+            assert max(map(len, filled.splitlines())) <= 4
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        esolangs.instantiate("Underload", template, [0, 1], truth_table="0001")
+
+
+def test_short_selector_floor_and_actual_narrow_corpus() -> None:
+    template = underload("0110", 1)
+    assert max(map(len, template.splitlines())) == 4
+    assert len(template) == 85
+    assert sum(len(underload(format(value, "08b"), 1)) for value in range(256)) == 29208
+
+
+def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
+    template = str(esolangs.generate("Underload", "0000", 1))
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        esolangs.instantiate(
+            "Underload", template.replace("(0)", "(0\n)"), [0, 1], truth_table="0000"
+        )
+
+
+@pytest.mark.parametrize("n", [4, 5, 6])
+def test_short_selectors_execute_larger_carried_trees(n: int) -> None:
+    for table in [format(0x6996 % 2 ** (2**n), f"0{2**n}b"), "0110" * 2 ** (n - 2)]:
+        for width in [1, 4]:
+            for row in [0, 1, 2**n // 3, 2**n - 1]:
+                assert _run(table, row, width) == table[row]
