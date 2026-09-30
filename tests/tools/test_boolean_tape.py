@@ -319,23 +319,13 @@ class TestFactor:
         assert boolean.factor("1" * 16).isdigit()
 
     def test_a_table_past_cpythons_own_limit_still_renders(self) -> None:
-        """XOR6 encodes to 5343 digits, past CPython's 4300-digit default.
+        """XOR7 exceeds CPython's 4300-digit rendering guard.
 
-        That default is a DoS guard on quadratic int-to-str conversion, not
-        anything Factor says, so it is raised for the render rather than
-        reported as a property of the language -- which is what used to cap
-        this generator at n=3.
-
-        The table here keeps climbing as the tree gets smaller: XOR4 (6390
-        digits) until the print-once leaf took it to 2842, then XOR5 until
-        dropping the complement construction took that to 3107.  Both fell
-        back under the default, so the check moves up rather than losing the
-        raise it exists to exercise.  Folding the ASCII offsets took XOR6
-        from 5934 to 5343, which is an O(n) saving against a tree that
-        doubles, so it stays clear of the default rather than moving again.
+        Terminal transfers brought XOR6 below it; use the next arity to
+        keep exercising the temporary limit increase.
         """
-        xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        program = boolean.factor(xor6)
+        xor7 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(128))
+        program = boolean.factor(xor7)
         assert program.isdigit()
         assert len(program) > sys.get_int_max_str_digits()
 

@@ -3,7 +3,7 @@
 Worst-case Factor source length for a `T`-bit truth table is
 `Theta(T log T)` digits, at the language level and for the generator.  The
 upper bound is a linear Brainfuck program plus fixed-modulus Hoheisel; the
-lower bound counts every integer encoding.  Constants are not tracked.
+lower bound counts every integer encoding.
 
 A Factor program is one decimal integer. Factoring it yields an ordered list
 of prime powers; a prime's residue mod 11 selects a Brainfuck command and its
@@ -150,9 +150,9 @@ Let `C_F(n)` be the worst-case minimum rendered digits over all `T = 2**n`
 tables. The existing witnesses and counting argument can be made explicit:
 
     (ln 2)**2 / (ln 8 * ln 10) <= liminf C_F(n)/(T*n)
-    limsup C_F(n)/(T*n) <= 42 log10 2.
+    limsup C_F(n)/(T*n) <= (186/5) log10 2.
 
-The coefficients are 0.10034333 and 12.64325982; neither is claimed sharp.
+The coefficients are 0.10034333 and 11.19831584; neither is claimed sharp.
 For the lower bound put `L = D ln 10` and `r = floor(L/(ln L)**2)`.
 The first `r` useful-prime exponents have total at most `L/ln 2`. Counting
 positive compositions and eight command choices bounds these prefixes by
@@ -167,11 +167,33 @@ are already counted among the prefixes. Thus behaviours number at most
 `exp((ln 8 + o(1)) L/ln L)`. Comparing with `2**T` and using the already
 proved `C_F(n) = Theta(T ln T)` gives the lower coefficient above.
 
-For the upper bound take any fixed `theta > 7/12` in the prime-gap argument.
-Then `ln Q <= (1/(1-theta)) ln m + O(1)`, while the tree witness has
-`C <= (35/2)T + O(n)`, `m <= C`. Its digits are at most
-`C log10 Q + O(1)`. Letting `theta` decrease to `7/12` gives
-`(35/2)*(12/5)*log10 2 = 42 log10 2`.
-Executed parity encodings at n=1..5 contain 181, 352, 672, 1296, 2592 digits;
-all 62 input rows return parity. Their normalized costs 90.5, 44, 28, 20.25,
-16.2 are finite measurements, not a lower bound or an asymptotic limit.
+For the upper bound, use the identity input order and replace the last
+input's two branch loops by a transfer. With the input two cells left of
+the answer, `01` uses `[->>+<<]` (8 characters), and `10` uses
+`>>+<<[->>-<<]` (13). The former adds the bit; the latter adds one and
+subtracts the bit. Both leave the input zero and the pointer at its cell.
+Constant pairs need only their constant answer increment.
+
+A full depth-two body has at most `2*13 + 17 = 43` characters. For depth
+`d >= 3`, its two child bodies return at their flag cells, and the branch
+skeleton and connecting moves cost 19, giving `H_d = 2 H_(d-1) + 19`.
+Thus `H_n = (31/2)T - 19` for `n >= 2`, attained by repeated `10` pairs.
+Pruning a constant child replaces its body and connecting moves by at most
+one increment and a trip to the answer, `4d - 1` characters; this is below
+the full child cost (at the bottom, at most 7 against 13 plus connecting
+moves). It cannot increase this bound. Reads, folded ASCII setup, and the
+moves into and out of the root give the complete witness
+`C <= (31/2)T + 16n + 21` for `n >= 2`.
+
+Take any fixed `theta > 7/12` in the prime-gap argument. Then
+`ln Q <= (1/(1-theta)) ln m + O(1)`, with `m <= C`, and the witness's
+digits are at most `C log10 Q + O(1)`. Letting `theta` decrease to `7/12`
+gives `(31/2)*(12/5)*log10 2 = (186/5) log10 2`, 11.4% below the old
+`42 log10 2`. The generator retains the old tree as a weighted-cost
+candidate. Executing all tables through three inputs gives 115,712 digits
+at three inputs against the parent's 125,018 (-7.44%), with no table growing;
+23 tables at each of four through six inputs also execute without growth.
+
+Executed parity encodings at n=1..5 contain 159, 305, 563, 1079, 2100 digits;
+all 62 input rows return parity. Their normalized costs 79.5, 38.125,
+23.4583, 16.859375, 13.125 are finite measurements, not a lower bound or an asymptotic limit.

@@ -16,6 +16,9 @@ from every input, replacing ``48 * (n + 1)`` characters with 29.  That is
 456 tables, exhaustive through three inputs and sampled to six.  A plain
 tree candidate was dropped for never winning one of them.
 
+Terminal transfers save 7.44% of digits over all three-input tables; the
+old tree remains a candidate because prime positions weight the saving.
+
 And the input order wants choosing by digits rather than by characters,
 which is what :func:`~esolangs.tools.helpers.best_input_order` measures:
 worth -6% on NAND3, nothing on most tables.  Scoring needs no
@@ -115,7 +118,9 @@ def _encode(code: str) -> int:
     return heap[0][2] if heap else 1
 
 
-def _program(truth_table: str, perm: tuple[int, ...]) -> str:
+def _program(
+    truth_table: str, perm: tuple[int, ...], *, binary_leaves: bool = False
+) -> str:
     """Build the Brainfuck program Factor encodes, for one input order.
 
     Input ``k`` is read into cell ``2k`` with its flag at ``2k + 1`` and the
@@ -153,7 +158,9 @@ def _program(truth_table: str, perm: tuple[int, ...]) -> str:
         + "]"
         + "<" * back
     )
-    body, pos = decision_tree_body(truth_table, ">", "<", perm, after_reads)
+    body, pos = decision_tree_body(
+        truth_table, ">", "<", perm, after_reads, binary_leaves=binary_leaves
+    )
     return build + reads + dedent + body + move_text(pos, 2 * n, ">", "<") + "."
 
 
@@ -168,12 +175,20 @@ def factor(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))
-    candidates = [_program(truth_table, identity)]
+    candidates = [
+        _program(truth_table, identity),
+        _program(truth_table, identity, binary_leaves=True),
+    ]
     if n <= _GREEDY_ORDER_MAX_ARITY:
         greedy = _greedy_input_order(truth_table, n)
         if greedy != identity:
             candidates.append(
                 _program(permute_truth_table(truth_table, greedy), greedy)
+            )
+            candidates.append(
+                _program(
+                    permute_truth_table(truth_table, greedy), greedy, binary_leaves=True
+                )
             )
 
     number = _encode(min(candidates, key=_digit_cost))

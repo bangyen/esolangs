@@ -636,6 +636,8 @@ def decision_tree_body(
     left: str,
     perm: tuple[int, ...],
     start: int,
+    *,
+    binary_leaves: bool = False,
 ) -> tuple[str, int]:
     """Return the decision tree alone, and the cell it leaves the pointer on.
 
@@ -644,6 +646,7 @@ def decision_tree_body(
     per command, and so wants to fold the ASCII offsets the reads and the
     print would otherwise spend 48 characters on each.
     :func:`_decision_tree_program` joins the three parts back.
+    ``binary_leaves`` transfers the final bit directly into the answer.
     """
     n = _validate_truth_table(truth_table)
 
@@ -676,6 +679,23 @@ def decision_tree_body(
     def node(i: int, combo: int) -> None:
         """Emit node ``i``: test ``b_i``, run one side, leave both cells zero."""
         bit = 2 * perm[i]
+        if binary_leaves and i == n - 1:
+            if truth_table[combo] == truth_table[combo + 1]:
+                if truth_table[combo] == "1":
+                    move(result)
+                    cells.append("+")
+                return
+            move(bit)
+            if truth_table[combo] == "1":
+                move(result)
+                cells.append("+")
+                move(bit)
+            cells.append("[-")
+            move(result)
+            cells.append("+" if truth_table[combo + 1] == "1" else "-")
+            move(bit)
+            cells.append("]")
+            return
         flag = bit + 1
         one = combo | (1 << (n - 1 - i))
         move(flag)
