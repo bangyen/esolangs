@@ -1,6 +1,7 @@
 """Analytic balance rules match all supported layouts and execute every row."""
 
 import random
+from itertools import product
 
 import pytest
 
@@ -24,6 +25,43 @@ def test_mixed_digit_operands_share_one_grid_cell(language):
         )
         assert balance_score(balanced) == balance_score(optimum)
         assert balanced.split() == program.split()
+
+
+def test_polynomial_quotient_transitions_match_every_width():
+    programs = ["", "1", "+ - 1"]
+    programs.extend(
+        "f(x) = " + " + ".join("1" * length for length in lengths)
+        for lengths in product(range(1, 13), repeat=3)
+    )
+    for program in programs:
+        balanced = balance_program(program, "polynomial")
+        layouts = [program] + [
+            wrap_program(program, "polynomial", width)
+            for width in range(1, len(program) + 1)
+        ]
+        assert balanced in layouts
+        assert balance_score(balanced) == min(map(balance_score, layouts))
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "table", ["01", "10", "0110", "0001", "10010110", "0110100110010110"]
+)
+def test_polynomial_balanced_folds_compute_the_table(table):
+    from esolangs.tools.wrap import _polynomial_terms
+
+    default = esolangs.generate("Polynomial", table)
+    balanced = esolangs.generate("Polynomial", table, balance=True)
+    layouts = [default] + [
+        wrap_program(default, "polynomial", width)
+        for width in range(1, max(map(len, _polynomial_terms(default))) + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    assert (
+        esolangs.evaluate("Polynomial", balanced, inputs=len(table).bit_length() - 1)
+        == table
+    )
 
 
 @pytest.mark.parametrize("language", ["AddSubJump", "Decleq", "S*bleq"])

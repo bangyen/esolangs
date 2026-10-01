@@ -19,6 +19,7 @@ is the entry point.
 import inspect
 import re
 from collections.abc import Callable
+from itertools import pairwise
 from math import isqrt
 
 from esolangs.tools.helpers import MARK, MOST_INPUTS, mark
@@ -399,6 +400,11 @@ def _polynomial(program: str, width: int) -> str:
     every non-digit non-operator character before parsing, and ``sanitize``
     sizes its digit cap from the cleaned text (checked on that table).
     """
+    return "\n".join(_folded_term(term, width) for term in _polynomial_terms(program))
+
+
+def _polynomial_terms(program: str) -> list[str]:
+    """Return signed terms, retaining the leading function declaration."""
     terms: list[str] = []
     pending = ""
     for token in program.split():
@@ -418,7 +424,34 @@ def _polynomial(program: str, width: int) -> str:
     # ``f(x)``, ``=`` and the leading term are three tokens of one line.
     if len(terms) >= 3 and terms[0] == "f(x)" and terms[1] == "=":
         terms[:3] = [" ".join(terms[:3])]
-    return "\n".join(_folded_term(term, width) for term in terms)
+    return terms
+
+
+def _balance_polynomial(program: str) -> str:
+    """Balance term folds at their integer-division transitions."""
+    terms = _polynomial_terms(program)
+    if not terms:
+        return program
+    lengths = list(map(len, terms))
+    total = sum(lengths)
+    widest = max(lengths)
+    events = {1: 0, widest + 1: 0}
+    for length in lengths:
+        remainder = length - 1
+        # ceil(length/w) = 1+floor(remainder/w). Its distinct quotient
+        # endpoints are divisor pairs through sqrt(remainder).
+        for divisor in range(1, isqrt(remainder) + 1):
+            for boundary in {divisor + 1, remainder // divisor + 1}:
+                change = remainder // boundary - remainder // (boundary - 1)
+                events[boundary] = events.get(boundary, 0) + change
+    height = total
+    choices: list[tuple[tuple[int, int, int], int]] = []
+    for lower, stop in pairwise(sorted(events)):
+        height += events[lower]
+        width = min(stop - 1, max(lower, height))
+        choices.append(((abs(width - height), total + height - 1, width), width))
+    _, width = min(choices)
+    return min(program, _polynomial(program, width), key=balance_score)
 
 
 def _folded_term(term: str, width: int) -> str:
@@ -565,11 +598,13 @@ def balance_width(program: str) -> int:
 
 
 def balance_program(program: str, language_id: str) -> str:
-    """Balance equal cells or a dominant token exactly; otherwise estimate.
+    """Balance term folds, equal cells or a dominant token; otherwise estimate.
 
     Lengths (2, 1, 1, 3) give a 4x3 estimate; width 3 gives a 3x3 grid.
     """
     wrapper = WRAPPERS.get(language_id)
+    if "\n" not in program and wrapper is _polynomial:
+        return _balance_polynomial(program)
     if "\n" not in program and wrapper in (wrap_space_delimited, wrap_grid, _mammalian):
         tokens = program.split()
         if tokens and max(map(len, tokens)) >= len(tokens):
