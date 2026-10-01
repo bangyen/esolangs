@@ -32,7 +32,7 @@ Machine checks live in `tests/proofs/`. `test_ledger.py` checks consistency
 with the registry; `test_schemes.py` checks measurable consequences for lookup
 and parameterized rows (`tree` and `minterms` have no per-row check). Both run
 in the fast band. The deeper proof checks live in `tests/proofs/deep/`.
-`all_generators.py` checks all 72 constructions: flipping each table row
+`all_generators.py` checks all 71 constructions: flipping each table row
 changes the emitted program at the tested arities, and each construction
 completes an arity ladder on both table shapes. This checks the counting half
 of each scheme. Four generators -- A Painter Ant, ArrowQueue, Container and
@@ -183,7 +183,7 @@ the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
 bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
 Dimensional, EGL, Eval, Fish,
 Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
-Suffolk, Thue, Unsquare and Whitespace keep no tree route at all: A Painter
+Suffolk, Thue and Unsquare keep no tree route at all: A Painter
 Ant's
 answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, bit~ lands the pointer on one tape cell an entry and walks the
@@ -215,8 +215,7 @@ SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf slot per
 row whatever the table says, Suffolk sweeps a countdown past every row,
 Unsquare pushes the whole table onto the stack a cell a row and pops the row
 index off the top of it, Thue makes the table its starting state and rewrites
-every adjacent pair down to one per input, and
-Whitespace halves one literal once per index step; none has a subtree to
+every adjacent pair down to one per input; none has a subtree to
 fold.  Collatz Multiverse, Eval, NoComment, Suffolk and Unsquare fold a degenerate
 table anyway, because their lookup route is what shrinks it -- Suffolk through
 `essential_inputs`, which halves the sweep per input dropped, Unsquare through
@@ -322,7 +321,6 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: 29 characters an internal node, four a leaf |
 | Unsquare | linear lookup | the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it | linear: `2**n` cells and `2**n - 1` pops, two bytes a row |
 | Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | linear: amortised peel; sqrt(log T) dual-basis core; proof fallback n 2^n |
-| Whitespace | linear lookup | the table is one binary literal, halved once per index step | linear: T-bit literal, index halvings |
 
 ## Exceptions and walls
 
@@ -380,7 +378,7 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 71 theoretical totality arguments and one
+Accordingly, this ledger records 70 theoretical totality arguments and one
 proved language exception; every other row is `Total` or theoretically total
 past a resource ceiling.
 

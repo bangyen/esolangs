@@ -446,17 +446,9 @@ LANGUAGES: dict[str, Language] = {
     ),
 }
 
-#: Widely known classics kept for coverage as much as construction.  All
-#: seven carry a generator, but they are here because a caller expects them
-#: rather than because they take an admission axis: Befunge, FALSE, Malbolge
-#: and Whitespace are each an ordinary machine in a costume.  Three of the
-#: four 2026-09-27 additions do touch something the rest of the set does not
-#: -- Thue rewrites the table in place instead of walking a tree, FRACTRAN
-#: answers with the value it stops on and branches by which fraction divides
-#: first, Unlambda has no conditional at all and branches by forcing one of
-#: two promises -- and the curator's call on promoting any of them out of
-#: this tier is open.  Malbolge's generator caps at sixteen inputs;
-#: FRACTRAN emits linear text with shared indexed block dictionaries.
+#: Classics admitted through the same fame gate as new candidates.
+#: All ten carry generators. Malbolge caps at sixteen inputs; FRACTRAN
+#: emits linear text with shared indexed block dictionaries.
 CLASSICS: dict[str, Language] = {
     "Befunge": Language(
         "Befunge",
@@ -519,12 +511,6 @@ CLASSICS: dict[str, Language] = {
         "stack_based.underload",
         boolean=_boolean.underload,
         id="underload",
-    ),
-    "Whitespace": Language(
-        "Whitespace",
-        "stack_based.whitespace",
-        boolean=_boolean.whitespace,
-        id="whitespace",
     ),
 }
 

@@ -517,16 +517,16 @@ _REDUCING = {
 # says; a one-dependency table only spares it the flat edges' adjustments,
 # which is 4.4% once the doubling between the input runs is in the text.
 #
-# ``qoibl`` is the same class as ``whitespace``: the whole table is one
+# ``qoibl`` encodes a lookup: the whole table is one
 # binary literal and the reads build the power of two that divides it down,
 # so the only thing a one-dependency table spares is the literal's leading
 # zeros.
 #
-# ``befunge``, ``clockwise``, ``dimensional``, ``modulous`` and ``whitespace``
+# ``befunge``, ``clockwise``, ``dimensional`` and ``modulous``
 # are branch-free lookups: Befunge writes one grid cell per entry and reads it
 # with ``g``, Clockwise stops a countdown on the entry's own column, Modulous
-# pops a ``PSH STR`` table down to the indexed character, and Whitespace halves
-# one literal once per index step, so a 0% fold is the construction working.
+# pops a ``PSH STR`` table down to the indexed character, so a 0% fold is
+# the construction working.
 # Dimensional paints one cell an entry along dimension 1 and stops at the last
 # one, so a constant-zero tail reads as a 6.9% fold with nothing collapsing.
 _UNSHAPED = {
@@ -552,7 +552,6 @@ _UNSHAPED = {
     # The table is the state and the bit read rewrites every pair down to
     # one, so nothing collapses and a 0% fold is the construction working.
     "thue",
-    "whitespace",
 }
 
 # Every table depending on exactly one input, at n == 3, both polarities.

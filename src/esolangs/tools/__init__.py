@@ -76,7 +76,6 @@ from esolangs.tools.thisthat import thisthat
 from esolangs.tools.thue import thue
 from esolangs.tools.unlambda import unlambda
 from esolangs.tools.vandevelo import vandevelo
-from esolangs.tools.whitespace import whitespace
 
 __all__ = [
     "BOOLEAN",
@@ -152,7 +151,6 @@ __all__ = [
     "unlambda",
     "unsquare",
     "vandevelo",
-    "whitespace",
 ]
 
 
