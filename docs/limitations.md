@@ -167,7 +167,7 @@ L was a searched syntax-level lookup table. The retained 2D screen intersected
 verdicts, co-categories, I/O and branch vocabulary, and page length. It admitted
 Super SNUSP and Alight and rejected Pinyin.
 
-The alternative admission route is fame: at least 50 unique esolangs linking
+The alternative admission route is fame: at least 60 unique esolangs linking
 pages. Resolve the candidate's title redirects, follow every `list=backlinks`
 continuation, include links through redirects across all namespaces, and
 deduplicate by linking page ID. Pause at least three seconds between requests.
@@ -175,7 +175,7 @@ deduplicate by linking page ID. Pause at least three seconds between requests.
 This fixed cutoff was adopted 2026-10-01 as a prospective policy choice,
 not an empirically established popularity boundary. Record the resolved title,
 measurement date, and count. Missing data leaves fame unassessed, not failed.
-Below 50, fame supplies no exception; intrinsic axes still apply. Low backlinks
+Below 60, fame supplies no exception; intrinsic axes still apply. Low backlinks
 count against only old languages. Wikipedia pageviews are not an admission gate.
 
 Backlinks were remeasured 2026-10-01. Brainfuck scores 2,057; the former 282
@@ -184,8 +184,8 @@ indeterminate band are retired.
 
 The seven classics score Befunge 381, Thue 155, Malbolge 129, FALSE 91,
 Unlambda 89, FRACTRAN 65, and Whitespace 58; rejected Brainloller and
-Braincopter score 26 and 14. Piet (65), Forth (57), Chicken (55), and
-Shakespeare (54) clear the fame gate; LOLCODE (47) does not.
+Braincopter score 26 and 14. Piet (65) clears the fame gate; Whitespace (58),
+Forth (57), Chicken (55), Shakespeare (54), and LOLCODE (47) do not.
 
 The fame bar is forward-only; past admissions are audited on the intrinsic
 axis test.

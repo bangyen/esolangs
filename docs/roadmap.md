@@ -13,14 +13,6 @@ and proved limits; completed work is recorded in its commit.
   embed, and final-deletion answer convention; register the language and add
   execution, VM, and convention coverage before integration.
 
-- **Forth, Chicken, and Shakespeare admission.** Their 57, 55, and 54 complete
-  backlinks clear the 50-link fame gate. Audit each specification and I/O
-  interface, derive a loop-less O(T) Boolean generator under the existing embed
-  conventions, and execute every table through three inputs plus sampled
-  larger tables before integration. If a specification precludes a generator,
-  document the obstruction and assess interpreter-only admission; an
-  unsuccessful construction attempt is not an impossibility.
-
 - **Boolfuck, Subleq, and /// admission.** Fame scores are 76, 83, and 88;
   [limitations](limitations.md) records the specification audit and executed
   probes. Integrate Boolfuck's bit-stream I/O and prove rendered linearity;
