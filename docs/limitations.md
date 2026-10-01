@@ -168,26 +168,31 @@ verdicts, co-categories, I/O and branch vocabulary, and page length. It admitted
 Super SNUSP and Alight and rejected Pinyin.
 
 The alternative route measures fame by esolangs backlinks and by an English
-Wikipedia article with 90-day pageviews, sampled 2026-09-27. A candidate may
-clear either proxy; low backlinks count against only old languages.
+Wikipedia article with 90-day pageviews. A candidate may clear either proxy;
+low backlinks count against only old languages. Wikipedia was sampled
+2026-09-27; backlinks were remeasured 2026-10-01, resolving title redirects,
+following every API continuation, and counting unique linking page IDs across
+all namespaces, including links through redirects. Requests pause three seconds.
 
-Brainfuck anchors the backlink bar at 282: `bf/5` (56) is sufficient, `bf/10`
-(28) carries nothing, and the axis test decides between them. The decided
-classics score 58--271; rejected Brainloller and Braincopter score 26 and 14.
-The band is intentionally indeterminate: Chicken 0.199, Shakespeare 0.195,
-and LOLCODE 0.167 fall inside it. A population percentile cannot replace the
-ratio: a fixed sample of 150 language pages had p99=20, below both rejected
-image languages.
+The backlink gate is calibrated to the decided set: 58 or more is sufficient,
+26 or fewer carries nothing, and the axis test decides between them. The seven
+classics score Befunge 380, Thue 155, Malbolge 129, FALSE 91, Unlambda 89,
+FRACTRAN 65, and Whitespace 58; rejected Brainloller and Braincopter score 26
+and 14. Piet scores 65. Chicken 55, Shakespeare 54, and LOLCODE 47 lie in the
+indeterminate band. Brainfuck scores 2,057; the former 282 counted only the
+first API batch, so the `bf/5` and `bf/10` gate is retired. These calibration
+landmarks define the gate, not a universal popularity threshold.
 
 The fame bar is forward-only; past admissions are audited on the intrinsic
 axis test.
 
-Bitwise Cyclic Tag (0.66) also earned the cyclic-schedule axis. Deadfish (0.89)
+Bitwise Cyclic Tag (181) also earned the cyclic-schedule axis. Deadfish (314)
 has no input vocabulary and is therefore interpreter-only: fame can admit a
 language, but cannot create a generator interface.
 
-Cyclic tag 0.35 duplicates the Bitwise Cyclic Tag axis.
-Emmental 0.15 and Prelude 0.05 are implemented elsewhere but do not clear the
+Cyclic tag (94) duplicates the Bitwise Cyclic Tag axis. Underload (167) and
+INTERCAL (103) also clear the backlink gate.
+Emmental (43) and Prelude (13) are implemented elsewhere but do not clear the
 fame bar, so neither admission route applies.
 
 The 2026-09-27 spec read closed the other candidates:
