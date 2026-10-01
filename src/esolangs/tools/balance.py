@@ -5,6 +5,9 @@ from collections.abc import Callable
 from itertools import pairwise
 from math import isqrt
 
+from esolangs.line import balance as balance_line
+from esolangs.piet.balance import balance as balance_piet
+from esolangs.raster import Raster
 from esolangs.tools._circuit_balance import balance_circuit_diagram
 from esolangs.tools.algebraic_programming_language import balance_apl
 from esolangs.tools.alight_balance import balance_alight
@@ -431,7 +434,9 @@ def _super_snusp(_table: str, default: str) -> str:
     return balance_super_snusp(default)
 
 
-BALANCERS: dict[str, Callable[[str, str], str]] = {
+BALANCERS: dict[str, Callable[[str, str], str] | Callable[[str, Raster], Raster]] = {
+    "line": balance_line,
+    "piet": balance_piet,
     "algebraic_programming_language": balance_apl,
     "alight": balance_alight,
     "arrowqueue": _arrowqueue,

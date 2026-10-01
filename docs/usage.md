@@ -33,8 +33,10 @@ info = bf.describe()
 It also provides `instantiate`, `check_program`, and `check_stdin`.
 The package functions remain available when working across languages.
 `balance=True` minimizes the rendered width/height difference across supported
-layouts, breaking ties by source length, then width. It excludes `width`;
-languages that ignore width retain their default layout.
+layouts, breaking ties by source length (raster pixel area), then width.
+It excludes `width`. Line compares forward and reverse input-test orders;
+Piet folds its path with stack-neutral turns. Both construct O(T) pixels
+for a truth table of length T.
 
 ## Run XOR
 

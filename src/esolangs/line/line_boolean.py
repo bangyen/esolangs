@@ -19,17 +19,25 @@ enforced; n=11 upward is untested.
 
 from __future__ import annotations
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import (
+    _residual_ids,
+    _validate_truth_table,
+    permute_truth_table,
+)
 
 from .render import Node, chain
 
 
-def line_boolean(truth_table: str) -> Node:
+def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
     """Build a Line program computing ``truth_table`` (see module docstring).
 
     Returns a :class:`render.Node` graph for :func:`render.render`; Line has no text.
     """
     n = _validate_truth_table(truth_table)
+    order = tuple(range(n - 1, -1, -1)) if reverse else tuple(range(n))
+    if reverse:
+        truth_table = permute_truth_table(truth_table, order)
+    levels, children, _ = _residual_ids(truth_table, n)
 
     # Read n inputs into cells 0..n-1, one `i` per cell, `>` between them.
     head = Node("i")
@@ -48,27 +56,24 @@ def line_boolean(truth_table: str) -> Node:
             rest = Node(step, next=rest)
         return rest
 
-    def fork(lo: int, depth: int, pointer: int, known: int | None) -> Node:
-        size = 2 ** (n - depth)
-        while (
-            depth < n
-            and truth_table[lo : lo + size // 2]
-            == truth_table[lo + size // 2 : lo + size]
-        ):
+    def fork(state: int, depth: int, pointer: int, known: int | None) -> Node:
+        while depth < n and children[state][0] == children[state][1]:
+            state = children[state][0]
             depth += 1
-            size //= 2
         if depth == n:
-            value = int(truth_table[lo])
+            value = state
             if known is None:
                 return moved(pointer, n, chain(*(["+"] * value), "o"))
             step = {1: ["+"], 0: [], -1: ["-"]}[value - known]
             return chain(*step, "o")
         node = Node("?")
-        node.zero = fork(lo, depth + 1, depth, 0)
-        node.nonzero = fork(lo + size // 2, depth + 1, depth, 1)
-        return moved(pointer, depth, node)
+        cell = order[depth]
+        zero, one = children[state]
+        node.zero = fork(zero, depth + 1, cell, 0)
+        node.nonzero = fork(one, depth + 1, cell, 1)
+        return moved(pointer, cell, node)
 
-    tail.next = fork(0, 0, n - 1, None)
+    tail.next = fork(levels[0][0], 0, n - 1, None)
     return head
 
 

@@ -153,19 +153,22 @@ def generate(
     than the width still overruns it.  A template wraps with each run kept
     whole, so every row breaks in the same places.
     ``balance`` minimizes the rendered width/height difference across supported
-    layouts, breaking ties by source length, then width.
+    layouts, breaking ties by source length (raster pixel area), then width.
     Token and routing constraints can prevent a square layout.
     """
     if balance and width is not None:
         raise ArgumentError("balance and width are mutually exclusive")
     if balance:
         default = generate(language, truth_table)
-        if not isinstance(default, str):
-            return default
         lang = LANGUAGES[resolve(language)]
         balancer = _BALANCERS.get(lang.id)
+        if isinstance(default, Raster):
+            if balancer is None:
+                return default
+            raster_balance = cast(Callable[[str, Raster], Raster], balancer)
+            return raster_balance(truth_table, default).tagged(resolve(language))
         if balancer is not None:
-            text = balancer(truth_table, default)
+            text = cast(Callable[[str, str], str], balancer)(truth_table, default)
             if isinstance(default, _Template):
                 text, char, pairs = render_template(lang.id, text, default.inputs)
                 return _Template(text, default.language, char, pairs)
@@ -197,9 +200,7 @@ def generate(
             f"{type(truth_table).__name__}"
         )
     check_width(width)
-    laid_out = (
-        width is not None and lang.boolean is not None and _takes_width(lang.boolean)
-    )
+    laid_out = width is not None and _takes_width(fn)
     generated = fn(truth_table, width) if laid_out else fn(truth_table)
     if lang.raster_boolean is not None:
         if not isinstance(generated, Raster):  # pragma: no cover - registry invariant

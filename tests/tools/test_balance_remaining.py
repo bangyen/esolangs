@@ -805,8 +805,8 @@ def test_native_width_generators_have_balance_rules():
     assert not [
         name
         for name, language in LANGUAGES.items()
-        if language.boolean is not None
-        and takes_width(language.boolean)
+        if (generator := language.boolean or language.raster_boolean) is not None
+        and takes_width(generator)
         and language.id not in BALANCERS
     ]
 

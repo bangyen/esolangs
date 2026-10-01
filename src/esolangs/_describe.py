@@ -155,7 +155,8 @@ def _width_effect(lang: Any) -> str:
     # One expression rather than an early return for the generator-less
     # case: every registered language has a generator, so that return was a
     # line no input could reach.
-    if lang.boolean is not None and _takes_width(lang.boolean):
+    generator = lang.boolean or lang.raster_boolean
+    if generator is not None and _takes_width(generator):
         return "layout"
     return "wrap" if lang.id in WRAPPERS else "none"
 
