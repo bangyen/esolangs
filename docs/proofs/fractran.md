@@ -215,9 +215,8 @@ FRACTRAN literature takes the first horn.
 
     Theorem 14 (floor). D >= T / log2(c) > 0.26 T.
 
-There are `2**T` tables and at most `c**D` texts. That is the whole of what
-counting gives, and the reason it gives no more is worth stating, because it
-is exactly the asymmetry with Factor. A Factor program is a single integer
+There are `2**T` tables and at most `c**D` texts. Counting cannot give the
+stronger Factor bound here. A Factor program is a single integer
 whose behaviour, by the analogue of Lemmas 4 and 5, is a function of
 exponents indexed by prime *rank*; the number of behaviours of a
 `D`-digit program is therefore `exp(O(D / log D))`, which is below `2**T`
@@ -227,7 +226,6 @@ program is a *list*, and its order is behaviour: `m` fractions carry
 `log2 c` bits per character -- the alphabet's full rate, with no log
 damping. The number of behaviours of a `D`-character FRACTRAN program is
 `2**Theta(D)`, so **no counting argument can reach `Omega(T log T)` here**.
-That is not a gap to be filled by a better count; it closes the route.
 
 Counting is therefore the only lower-bound technique available, and it
 stops at `Omega(T)`. An `O(T)`-character family would have to

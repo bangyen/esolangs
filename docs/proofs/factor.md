@@ -13,7 +13,7 @@ exponent is the run length. Put
 - `Q` for the largest selected prime; and
 - `D` for the rendered decimal digits.
 
-For a generated encoding, which has no ignored-residue factors, exactly
+Generated encodings have no ignored-residue factors, so
 
     log N = sum_i e_i log p_i,       D = floor(log10 N) + 1.
 
@@ -70,8 +70,9 @@ at `n = 13`. An `O(n)` saving against a doubling tree leaves the bound
 Prime discovery during generation uses exact segmented Eratosthenes
 enumeration, not `isprime` (`_factorint` below still calls the deterministic
 Miller--Rabin `_isprime64` under `2**64`): above `2**64` SymPy's latter is BPSW
-and is not a proof of primality, while SymPy's own sieve stores machine words. The local sieve keeps
-arbitrary Python integers through `sqrt(Q)`. Segments grow to `sqrt(start)`,
+rather than a primality proof; SymPy’s sieve stores machine words. The local
+sieve keeps arbitrary Python integers through `sqrt(Q)`. Segments grow to
+`sqrt(start)`,
 so composite marking costs `O(Q log log Q)`, revisiting base primes costs
 `O(Q/log Q)`, and extending them by trial division is smaller. Cold prime
 enumeration is therefore `Theta(Q log log Q)` RAM/byte work and `O(sqrt(Q))`

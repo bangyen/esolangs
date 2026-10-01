@@ -4,7 +4,7 @@ Security fixes cover the latest PyPI release and `main`.
 
 ## Scope
 
-Report anything that escapes the interpreter:
+Report interpreter escapes:
 
 - executing arbitrary code on the host, or reading or writing files outside
   what a run was given;
@@ -16,7 +16,7 @@ For wrong output, loops, or resource exhaustion, open a normal issue.
 ## Reporting
 
 Use GitHub's private [security advisory
-form](https://github.com/bangyen/esolangs/security/advisories/new).  Include
-the language, the smallest reproducer, the version and the impact.
+form](https://github.com/bangyen/esolangs/security/advisories/new). Include
+the language, version, impact, and smallest reproducer.
 
 Expect acknowledgement promptly; a fix may take longer.

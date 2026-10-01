@@ -247,8 +247,7 @@ def render_input_shapes_section() -> str:
                 if classics
                 else []
             ),
-            "Call `encode_inputs` rather than reading a row off",
-            "this table; it is generated from `describe`, and so is the table.",
+            "Use `encode_inputs` to build stdin; it and this table use `describe`.",
         ]
     )
     return "\n".join(rows)

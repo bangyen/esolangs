@@ -107,7 +107,7 @@ answer resting on at most 24,434 cells, the largest `K` with `C(59049, K) *
 the one-input identity and every cell flips it, so only a cut over one
 normal-form program per table remains open.
 
-The no-`i`/`j` model is still dead. Straight-line `c == d` from the reset
+The no-`i`/`j` model cannot express NOT. Straight-line `c == d` from the reset
 state gives a `p` its own cell's instruction character, one of 94 values in
 33..126, and the input pair `(49, 48)` is unreachable, so NOT is not
 expressible at any length.
@@ -215,25 +215,22 @@ languages remain rejected from the same image-source screen.
   the reference's own cat loop, which tests `^` against `-1`, a crash.
 - FRACTRAN has no I/O in the language, so this package reads the starting
   value from the source's first token and prints the value the run stops on.
-  A token may be written as a product of prime powers (`2^3*5` is 40), which
-  is notation only: it is how a generated starting value spells thousands of
-  digits without spelling them.
+  Prime-power products (`2^3*5` is 40) abbreviate starting values that would
+  otherwise need thousands of decimal digits.
 - Thue is nondeterministic by specification -- the rule *and* the position are
-  drawn at random -- and the interpreter draws, through the shared
-  `randomness` hook, rather than pinning a tie-break: a pinned one would make
-  every overlapping-rule program compute whatever this package preferred.
-  `--seed` fixes it.  The generator instead writes rules that never overlap,
+  drawn at random through the shared `randomness` hook. A fixed tie-break
+  would change overlapping-rule programs; `--seed` makes the draws repeatable.
+  The generator writes rules that never overlap,
   so each state it reaches has exactly one rewrite and the draw cannot change
   the answer; `tests/tools/test_boolean_classics.py` asserts that over every
   table to three inputs, and checks the answer under three seeds and the
   unseeded draw.
 - Unlambda's `@` reads a line and takes its first character, an empty line
-  giving a newline, since the package has no character stream.  Both spec
-  branches are live: at end of input `@` hands its argument `v`, reached by
-  catching the port's `EOFError` as nine other interpreters here catch it, and
-  the current character is left as it was.  `v` absorbs its arguments, so the
-  failure arm can run nothing of its own -- that is the language, not this
-  port.
+  giving a newline, since the package has no character stream.
+  At EOF, `@` catches the port’s `EOFError` (also caught by nine other
+  interpreters), hands its argument `v`, and leaves the current character
+  unchanged. `v` absorbs its arguments, so the failure arm cannot execute
+  its own code.
 - Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
   wiki's "Nth operation" reads one-based.  The generator's labels match this.
 - BrainIf ignores a guarded line naming no command (`if 0 frobnicate`), which
@@ -244,5 +241,3 @@ languages remain rejected from the same image-source screen.
   line-oriented input.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.
-
-Generated programs are evidence only after execution through their interpreter.

@@ -1,15 +1,15 @@
 # Brainfuck behaviour count
 
-This document bounds the growth rate of distinct behaviours of
-`C`-character Brainfuck programs. The earlier interval `[1 + sqrt 2, 1 + lambda]` came from the Factor
+We bound the growth rate of distinct behaviours of `C`-character Brainfuck
+programs. The earlier interval `[1 + sqrt 2, 1 + lambda]` came from the Factor
 constant work removed in `e5276dc` (`lem:draw`, `prop:reduced`,
 `prop:drawing`, `rem:gap` of the old `factor.tex`).
 
 ## Status
 
-The limit remains open. The bounds below narrow the earlier interval
-`[1 + sqrt 2, 1 + lambda] = [2.414, 7.388]`. Every bound is proved;
-the numerical certificates use exact rational arithmetic:
+The limit remains open. The proved bounds narrow
+`[1 + sqrt 2, 1 + lambda] = [2.414, 7.388]`; their numerical certificates
+use exact rational arithmetic:
 
 | model (section 1) | lower bound on `liminf B(C)^(1/C)` | upper bound on `limsup B(C)^(1/C)` |
 |---|---|---|

@@ -1,8 +1,7 @@
 # Seventeen-input Malbolge: research artifacts
 
-Research tools for the "Seventeen" sections of
-[malbolge-scaling](../../docs/proofs/malbolge-scaling.md), separate from the
-shipped generator.
+Research tools for [malbolge-scaling](../../docs/proofs/malbolge-scaling.md)’s
+"Seventeen" sections; these are separate from the shipped generator.
 
 - `msim.c`, `tables.h` -- a C Malbolge simulator matching
   `esolangs.interpreters.other.malbolge` (checked against it). Build with
@@ -38,10 +37,10 @@ shipped generator.
   escape and five-base parity views; also 2,744 of 2,744. Build `msim.c` as
   `/private/tmp/malbolge17-msim` before running it.
 - `prototype/five_lab.py.txt`, `prototype/chain_k.py.txt` -- the scratch
-  prototype of the five-state group decoder that runs 2,744 of 2,744 cases
-  on real sources (see the doc). Kept as text: it hard-codes `/tmp` paths
-  (`chain_k.py` is exec'd for its helpers) and is not written to the repo's
-  lint standard. To rerun `five_lab.py`, copy both into a scratch directory
+  five-state group-decoder prototype runs 2,744 of 2,744 real-source cases
+  (see the proof). Kept as text because it hard-codes `/tmp` paths, executes
+  `chain_k.py` for helpers, and does not meet the repo’s lint standard. To rerun
+  `five_lab.py`, copy both into a scratch directory
   as `.py`, fix its paths, build `msim`, and run with `PYTHONPATH=src`.
 - `fold_classes.py` -- the 272 triple classes that no `p p p` fold separates
   at the worst residue.

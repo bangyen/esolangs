@@ -18,12 +18,11 @@ and proved limits; completed work is recorded in its commit.
   generator. After one more executed round without a construction or bound,
   that language and row leave. An unproved wall is not a lookup table.
 
-  The audit covers totality, generation time, output size, and execution time.
+  Audit totality, generation time, output size, and execution time.
   `proofs/index.md` defines totality; `tests/proofs/deep/linearity.py` measures
   size by same-parity successive differences through n=12. Timings use the
   top five arities, best of three, and exclude loading; runs under 10 ms do not
-  establish an exponent. Closure requires a language-wide lower bound, not a
-  sample ratio. The live audit is:
+  establish an exponent. Closure requires a language-wide lower bound. Current status:
 
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
@@ -109,9 +108,9 @@ proof and remove the completed item.
   complement.  Relocating alone leaves 317 cells, and the decoder needs
   thousands, so the remaining work is sharing setup, not placement.  See
   [malbolge-scaling](proofs/malbolge-scaling.md#seventeen-navigation-is-linear-in-address-so-packing-helps-measured).
-  The shipped positional construction reaches 16 inputs. Only 17 remains
-  undecided: a build needs more than two table bits in nearly every cell;
-  an impossibility proof needs the density lemma above.
+  The shipped construction reaches 16 inputs; 17 remains undecided. A build
+  needs more than two table bits in nearly every cell; an impossibility proof
+  needs the density lemma.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
@@ -124,8 +123,7 @@ proof and remove the completed item.
   squared, `lem:effprofile`) on a trie-banded automaton (`lem:trieband`,
   `lem:bandtrie`) with `(1 + o(1)) T/n` states for every `n`. The level-count
   problem is settled; the profile remains open (`325/8` against mass `13/4`).
-  Sources neither
-  even nor odd pay mass `4` (`rem:parity`), even or odd ones `3`
+  Sources neither even nor odd pay mass `4` (`rem:parity`), even or odd ones `3`
   (`lem:evensigns`, both-signs rows on `E` with `f = x^e E(x**2)`), plus
   `1/4` for every large `n` by counting sign skeletons
   (`lem:evencount`, `cor:evenhard`; even or odd sources add and subtract
@@ -136,8 +134,8 @@ proof and remove the completed item.
   Retuning which states the embedded-automaton construction places inline
   cannot lower `325/8`: two unique successors per inline state force
   `a >= 1/2`, and its effective profile is minimized at `a = 1/2`, `x = 0`.
-  Next step: replace that instruction profile, or raise the mass bound; the
-  existing decoder has no remaining parameter route to a smaller constant.
+  Next: replace the instruction profile or raise the mass bound. Decoder
+  parameter tuning cannot lower the constant.
   Spending a fraction `delta` of the band width to shrink its operands is
   also closed: even the favorable relaxed constant
   `(325/8 - 4 delta)/(1 - delta)**2` is minimized at `delta = 0`.
@@ -220,7 +218,6 @@ proof and remove the completed item.
   `3.366148`. Next: establish the limit or sharpen either side, and derive
   a nontrivial bound when input length is proportional to source length.
 
-The additional controls are in `tests/proofs/test_research_tracks.py`.
-Ordered input-forgetting construction, generated-family loading bounds and
-the weighted-description theorem are closed in the linked proofs; only
-the remaining questions above stay on this roadmap.
+Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
+close ordered input-forgetting construction, generated-family loading bounds,
+and the weighted-description theorem.
