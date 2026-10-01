@@ -35,15 +35,22 @@ def addsubjump(truth_table: str) -> str:
     """
     if len(truth_table) <= 16:
         return best_input_order(truth_table, _addsubjump_candidate)
-    packed = _addsubjump_packed(truth_table)
+    packed = min(
+        (_addsubjump_packed(truth_table), _addsubjump_packed(truth_table, shared=True)),
+        key=len,
+    )
     if len(truth_table) == 32:
         shared = _addsubjump_ordered(truth_table, tuple(range(5)), shared=True)
         return min((packed, shared), key=len)
     return packed
 
 
-def _addsubjump_packed(truth_table: str) -> str:
-    """Emit a linear-size packed-table decoder for AddSubJump."""
+def _addsubjump_packed(truth_table: str, *, shared: bool = False) -> str:
+    """Emit a linear packed decoder, optionally interning equal numeric cells.
+
+    The shared map has O(T/n) pointers of O(n) digits. Its pool comes
+    first, keeping pointers short when few values occur; both builds are O(T).
+    """
     n = _validate_truth_table(truth_table)
     chunk_width = max(n, 1)
     # ``c`` is a literal destination (the wiki's ``goto c``), so a label or
@@ -130,7 +137,9 @@ def _addsubjump_packed(truth_table: str) -> str:
 
     mark("selected")
     clear("TABLE")
-    load_chunk = emit("TABLE", "CHUNK0", "next")
+    # Selection runs once: the indirect load operand starts at zero.
+    pointer_write = emit(0, "CHUNK0", "next") if shared else None
+    load_chunk = emit("TABLE", 0 if shared else "CHUNK0", "next")
     clear("SHIFT")
     emit("SHIFT", "OFFSET", "next")
     emit("SHIFT", "ONE", "div_init")
@@ -172,6 +181,8 @@ def _addsubjump_packed(truth_table: str) -> str:
     ]
 
     names = list(values)
+    unique = list(dict.fromkeys(chunks)) if shared else []
+    names.extend(f"VALUE{i}" for i in range(len(unique)))
     names.extend(f"CHUNK{i}" for i in range(len(chunks)))
     base = 4 * len(instructions)
     address = {name: base + i for i, name in enumerate(names)}
@@ -192,11 +203,17 @@ def _addsubjump_packed(truth_table: str) -> str:
 
     for name, value in values.items():
         memory[address[name]] = value
+    locations = {value: address[f"VALUE{i}"] for i, value in enumerate(unique)}
     for i, value in enumerate(chunks):
-        memory[address[f"CHUNK{i}"]] = value
+        memory[address[f"CHUNK{i}"]] = locations[value] if shared else value
+    for i, value in enumerate(unique):
+        memory[address[f"VALUE{i}"]] = value
+    if pointer_write is not None:
+        memory[4 * pointer_write] = 4 * load_chunk + 1
     # Advancing this instruction's destination advances LOAD_CHUNK's b
     # operand through the contiguous chunk cells.
-    memory[4 * load_operand_increment] = 4 * load_chunk + 1
+    indexed_load = pointer_write if pointer_write is not None else load_chunk
+    memory[4 * load_operand_increment] = 4 * indexed_load + 1
     return " ".join(map(str, memory))
 
 
@@ -208,7 +225,11 @@ def _addsubjump_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def _addsubjump_ordered(
-    truth_table: str, perm: tuple[int, ...], *, shared: bool = False
+    truth_table: str,
+    perm: tuple[int, ...],
+    *,
+    shared: bool = False,
+    skip_equal: bool = True,
 ) -> str:
     """Emit one input order's AddSubJump program; see :func:`addsubjump`.
 
@@ -296,10 +317,10 @@ def _addsubjump_ordered(
             emit(-1, 4 + int(truth_table[lo]), -8, _ADD)
             return
         half = (hi - lo) // 2
-        if perm[level] not in stored:
-            # A discarded input has no cell to test.  Its bit cannot change
-            # the answer, so both halves are the same function -- descend
-            # into the zero half, keeping the row span halving with level.
+        if perm[level] not in stored or (
+            shared and skip_equal and children[residual][0] == children[residual][1]
+        ):
+            # Reads already happened; this residual does not depend on the bit.
             build(level + 1, lo, lo + half, children[residual][0])
             return
         base = len(instructions)
@@ -329,18 +350,10 @@ def _addsubjump_ordered(
     # calls and 2.4s of a 3.8s six-input build, the generator's whole cost.
     # ``dict`` preserves insertion order, so the numbering it hands out is
     # the same one the scan produced.
-    names: dict[str, int] = {}
+    names = {name: index for index, name in enumerate(dict.fromkeys([*named, *values]))}
 
     def cell(name: str) -> int:
-        index = names.get(name)
-        if index is None:
-            index = names[name] = len(names)
-        return base_data + index
-
-    for name in named:
-        names.setdefault(name, len(names))
-    for name in values:
-        cell(name)
+        return base_data + names[name]
 
     mem = [0] * (base_data + len(names))
     for i, ins in enumerate(instructions):

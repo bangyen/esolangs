@@ -81,7 +81,6 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `unlambda.txt` | Unlambda | `0001` | `01` | 0 1 | '0' |
 | `unsquare.txt` | Unsquare | `0001` | `01` | 0 1 | '0' |
 | `vandevelo.txt` | Vandevelo | `0001` | `01` | 0 1 | (nothing) |
-| `whitespace.txt` | Whitespace | `0001` | `01` | 0 1 | '0' |
 
 ## Notes
 

@@ -56,8 +56,14 @@ def test_a_register_binds_the_polarity_its_test_wants() -> None:
     assert lines[4:] == ["d ~> c?", "d ~> d? == b?", "d? :: a? :: loop?"]
 
 
-def test_a_test_implied_by_an_earlier_half_space_is_dropped() -> None:
+def test_a_test_implied_by_an_earlier_half_space_is_dropped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Rows past ``a? :: loop?`` all have ``a`` at 0; nothing tests it again."""
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.vandevelo")
+    monkeypatch.setattr(module, "_affine_coset", lambda *_: None)
     lines = vandevelo("01111111").splitlines()
     assert lines[4:] == ["a? :: loop?", "c? :: loop?", "b? :: loop?"]
 
@@ -86,7 +92,7 @@ def test_three_input_steps_and_sizes() -> None:
         program = vandevelo(format(index, "08b"))
         size += len(program)
         steps += sum(_steps(program, bits) for bits in product(range(2), repeat=3))
-    assert (size, steps) == (23481, 22769)
+    assert (size, steps) == (23425, 22669)
 
 
 def test_parity_is_a_single_hyperplane() -> None:
@@ -96,6 +102,106 @@ def test_parity_is_a_single_hyperplane() -> None:
     assert lines[-1] == "i? :: loop?"
     # 8 reads, the loop line, 8 register lines building the parity, 1 guard.
     assert len(lines) == 18
+
+
+def test_affine_tables_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
+    import importlib
+
+    from esolangs.tools.vandevelo import _affine_form
+
+    module = importlib.import_module("esolangs.tools.vandevelo")
+
+    def reject(*_args: object) -> None:
+        raise AssertionError("an affine table entered the cube peel")
+
+    monkeypatch.setattr(module, "_Peel", reject)
+    for n in range(1, 5):
+        for mask in range(1 << n):
+            for offset in (0, 1):
+                table = "".join(
+                    str(((row & mask).bit_count() % 2) ^ offset)
+                    for row in range(1 << n)
+                )
+                assert _affine_form(table, n) == (mask, offset)
+                program = vandevelo(table)
+                for bits in product((0, 1), repeat=n):
+                    io = ScriptedIO("\n".join(map(str, bits)))
+                    halted = run_until_halt_or_cycle(_Machine(program, io))
+                    row = int("".join(map(str, bits)), 2)
+                    assert str(int(not halted)) == table[row]
+                    assert io.position() == n
+
+
+def test_affine_detection_checks_non_basis_rows() -> None:
+    from esolangs.tools.vandevelo import _affine_form
+
+    for n in range(2, 13):
+        parity = "".join(str(row.bit_count() % 2) for row in range(1 << n))
+        assert _affine_form(parity, n) == ((1 << n) - 1, 0)
+        changed = parity[:-1] + str(1 - int(parity[-1]))
+        assert _affine_form(changed, n) is None
+
+
+@pytest.mark.medium
+def test_affine_cosets_and_complements_bypass_the_peel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import importlib
+
+    from esolangs.tools.vandevelo import _affine_coset
+
+    module = importlib.import_module("esolangs.tools.vandevelo")
+
+    def reject(*_args: object) -> None:
+        raise AssertionError("an affine coset entered the cube peel")
+
+    monkeypatch.setattr(module, "_Peel", reject)
+    for n in range(1, 5):
+        for value in range(1 << (1 << n)):
+            table = format(value, f"0{1 << n}b")
+            ones = {row for row, entry in enumerate(table) if entry == "1"}
+            found = _affine_coset(table, ones)
+            base = min(ones, default=0)
+            closed = bool(ones) and all(
+                left ^ right ^ base in ones for left in ones for right in ones
+            )
+            assert (found is not None) == closed
+            if found is None:
+                continue
+            origin, dirs = found
+            points = {origin}
+            for direction in dirs:
+                assert direction ^ origin not in points
+                points |= {point ^ direction for point in points}
+            assert points == ones
+            complement = "".join("1" if entry == "0" else "0" for entry in table)
+            for target in (table, complement):
+                program = vandevelo(target)
+                for bits in product((0, 1), repeat=n):
+                    io = ScriptedIO("\n".join(map(str, bits)))
+                    halted = run_until_halt_or_cycle(_Machine(program, io))
+                    row = int("".join(map(str, bits)), 2)
+                    assert str(int(not halted)) == target[row]
+                    assert io.position() == n
+
+
+def test_coset_membership_work_is_geometric() -> None:
+    from esolangs.tools.vandevelo import _affine_coset
+
+    class CountedTable(str):
+        reads = 0
+
+        def __getitem__(self, key: int | slice) -> str:
+            self.reads += 1
+            return super().__getitem__(key)
+
+    for n in range(2, 13):
+        ones = {row for row in range(1 << n) if row & 3 == 0}
+        table = CountedTable(
+            "".join("1" if row in ones else "0" for row in range(1 << n))
+        )
+        assert _affine_coset(table, ones) is not None
+        assert table.reads == len(ones) - 1
 
 
 def test_the_exact_autocorrelation_improves_on_the_scored_candidates(

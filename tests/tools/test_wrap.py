@@ -120,7 +120,6 @@ UNWRAPPABLE = {
     "container": "each line declares a container or one of its rules",
     "crement": "each line is one instruction; jumps and patches name line numbers",
     "inject": "blocks and executable commands are delimited by source lines",
-    "whitespace": "every space, tab and newline is a token or a number terminator",
     "thue": "a newline ends a rule, and the state's own newlines are part of it",
     "thisthat": "the H-tree's nodes and wires occupy fixed grid coordinates",
 }

@@ -56,8 +56,8 @@ def test_sharing_admission() -> None:
                 assert esolangs.read_answer("AddSubJump", vm.output) == expected
                 assert vm.snapshot()[-1] == n
         totals[n] = before, after
-    assert totals[3] == (99032, 95678)
-    assert totals[5] == (252406, 217608)
+    assert totals[3] == (99032, 94800)
+    assert totals[5] == (252406, 205998)
     assert new <= 0.95 * old
 
 
@@ -77,3 +77,74 @@ def test_sharing_boundaries(n: int) -> None:
             timeout=None,
         )
         assert esolangs.read_answer("AddSubJump", output) == expected
+
+
+def _previous(table: str) -> str:
+    def candidate(table: str, order: tuple[int, ...]) -> str:
+        return min(
+            (
+                _addsubjump_ordered(table, order),
+                _addsubjump_ordered(table, order, shared=True, skip_equal=False),
+            ),
+            key=len,
+        )
+
+    if len(table) <= 16:
+        return best_input_order(table, candidate)
+    packed = _addsubjump_packed(table)
+    if len(table) == 32:
+        return min(
+            (
+                packed,
+                _addsubjump_ordered(
+                    table, tuple(range(5)), shared=True, skip_equal=False
+                ),
+            ),
+            key=len,
+        )
+    return packed
+
+
+@pytest.mark.medium
+def test_wider_sharing_admission() -> None:
+    rng = random.Random(0)
+    five = sorted({f"{rng.getrandbits(32):032b}" for _ in range(200)})
+    before = after = 0
+    for tables in ([f"{i:08b}" for i in range(256)], five):
+        for table in tables:
+            old, new = _previous(table), addsubjump(table)
+            assert len(new) <= len(old)
+            if len(table) == 32:
+                before += len(old)
+                after += len(new)
+    assert (before, after) == (217608, 205998)
+    assert after <= 0.95 * before
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [6, 8, 10, 12])
+def test_shared_packed_cells_execute(n: int) -> None:
+    rng = random.Random(n)
+    tables = [
+        "0" * (1 << n),
+        "1" * (1 << n),
+        "".join(str(row.bit_count() % 2) for row in range(1 << n)),
+        f"{rng.getrandbits(1 << n):0{1 << n}b}",
+    ]
+    for table in tables:
+        shared = _addsubjump_packed(table, shared=True)
+        program = addsubjump(table)
+        assert len(program) <= len(_previous(table))
+        rows = range(len(table)) if n == 6 else (0, 1, len(table) // 2, len(table) - 1)
+        for row in rows:
+            bits = [(row >> shift) & 1 for shift in reversed(range(n))]
+            output = esolangs.run(
+                "AddSubJump",
+                shared,
+                esolangs.encode_inputs("AddSubJump", bits),
+                timeout=None,
+            )
+            assert esolangs.read_answer("AddSubJump", output) == table[row]
+    if n == 12:
+        parity = tables[2]
+        assert len(addsubjump(parity)) <= 0.95 * len(_previous(parity))

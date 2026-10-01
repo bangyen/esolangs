@@ -5,6 +5,40 @@ and proved limits; completed work is recorded in its commit.
 
 ## Conditional follow-up
 
+- **Cyclic tag integration.** Its 94 complete backlinks clear the fame gate;
+  [limitations](limitations.md) records the completed specification and
+  generator audit. The direct padding construction emits 5T + 2n + 1 characters
+  and passed 309 tables / 3,352 rows, plus sampled rows through n=14. Implement
+  the semicolon-separated production parser, queue interpreter, ordered input
+  embed, and final-deletion answer convention; register the language and add
+  execution, VM, and convention coverage before integration.
+
+- **Boolfuck, Subleq, and /// admission.** Fame scores are 76, 83, and 88;
+  [limitations](limitations.md) records the specification audit and executed
+  probes. Integrate Boolfuck's bit-stream I/O and prove rendered linearity;
+  choose Subleq's I/O dialect and derive a linear rendered construction;
+  derive ///'s general source-embedded generator. Execute every table through
+  three inputs and sampled larger tables before integration. A failed build
+  does not justify interpreter-only admission.
+
+- **HQ9+, Nope., and Unary interpreter-only admission.** Scores are 136, 132,
+  and 63; [limitations](limitations.md) records their generator obstructions.
+  Pin HQ9+'s output/case conventions and Unary's decoded Brainfuck dialect;
+  implement Nope.'s constant semantics without inspecting source or input.
+  Add execution, VM, and convention coverage before integration.
+
+- **Emmental and AsciiDots intrinsic-axis audits.** Curated recognition sources
+  in [limitations](limitations.md) motivate investigation, not admission.
+  For [Emmental](https://esolangs.org/wiki/Emmental), test whether redefining
+  instruction meanings yields a construction or branch mechanism absent from
+  the collection; its 43 backlinks do not clear the fame gate. For
+  [AsciiDots](https://esolangs.org/wiki/AsciiDots), pin scheduling, dot
+  duplication, interaction, and I/O semantics before comparing data-bearing
+  paths with existing grid walkers. Admit either only after establishing a
+  distinct axis and deriving an O(T) Boolean generator under the embed
+  conventions. Execute every table through three inputs and sampled larger
+  tables; record ambiguity or obstruction rather than inventing semantics.
+
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
   T is the truth-table length.  For each remaining generator, either add a
   loop-less O(T) construction and an executed scaling regression, or record a
@@ -185,20 +219,18 @@ proof and remove the completed item.
   raise the lower coefficient, or construct a cheaper weighted command stream
   to lower the upper one; the existence and value of the limit remain open.
 
-- **Structural scaling audit.** Source-size arguments close B-tapemark,
-  Forþ, 6-5 and Circuit Diagram's default H area. The H builder now uses
-  integer heap identities and depth buckets: literal anchors take exactly
-  `4*T - 2*n - 4` visits. All 268 nonconstant two- and three-input H programs
-  retain identical source; all 2,088 rows execute correctly.
-  Vandevelo's upkeep proof gives `O(T)` lines but only `O(T log n)`
-  characters; exact `n*T` autocorrelation calls remain unamortized.
-  6-5's past-35-input fallback takes `Theta(n*T)` commands: its initial
-  `n-1` full-table passes already force that lower bound. Executed parity
-  tables on the all-zero input take `(28*n - 1)*T + 53*n + 31` commands
-  through n=9; linear source size does not meet the execution contract.
-  Next: remove Vandevelo's identifier factor and amortize or replace its
-  exact fallback; replace 6-5's full-table passes with a linear execution
-  construction. Neither obstruction is a language-wide lower bound.
+- **Vandevelo structural scaling.** Upkeep bounds `O(T)` lines and
+  `O(T log n)` characters; identifier references still carry the extra
+  factor. Exact fallback now transforms the quotient by a node's
+  `d`-dimensional span: `O(n*|S|)` projection plus
+  `O((n-d)*2**(n-d))` transform work per call. A forced six-input control
+  executes the three-dimensional transform and matches full-space counts;
+  280 generated programs retain identical source and all 2,536 rows execute.
+  Affine-coset complements use direct violation guards: the n=12 one-zero
+  table drops 40,938,391 candidate visits and shrinks from 333 to 277 characters.
+  Next: remove the identifier factor, amortize projection and fallback calls,
+  and bound the dual-basis core's aggregate work. Neither remaining gap is a
+  language-wide lower bound; measured scaling does not settle them.
 
 - **FRACTRAN order encoding.** One unchanged multiset of eight fractions
   computes all sixteen four-row tables by ordering each `1/p, 2/p` pair;
@@ -220,13 +252,6 @@ proof and remove the completed item.
   byte-input lengths at most `(1-eps)*log_256(C)`. The lower bound remains
   `3.366148`. Next: establish the limit or sharpen either side, and derive
   a nontrivial bound when input length is proportional to source length.
-
-- **Wider shared-residual constructions.** AddSubJump now chooses sharing
-  through five inputs: n=3 totals 99,032 -> 95,678 characters; 200 seeded
-  n=5 tables 252,406 -> 217,608 (13.79%), with no growth and every row
-  executed. Wider builds keep the linear packed decoder. Next: share packed
-  blocks without absolute-address text becoming super-linear; run
-  `tests/proofs/test_addsubjump_sharing.py` and the linearity regression.
 
 - **Execution and workspace bounds.** `scripts/screens/resources.py` executes
   constant, parity and seeded dense tables through eight inputs. Sophie

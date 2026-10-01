@@ -175,9 +175,6 @@ RAISES_ON_THE_POST_HALT_STEP: frozenset[str] = frozenset()
 # sides with the same heading; the sweep just leaves the comparison to it.
 NONDETERMINISTIC_AGAINST_RUN = frozenset({"LaserFuck"})
 
-#: Whitespace's "push 0, end" in its own three-token alphabet.
-WHITESPACE_PUSH_ZERO = "    \n\n\n\n"
-
 # language -> (program, stdin)
 SAMPLES: dict[str, tuple[str, str]] = {
     "123": ("3231", ""),
@@ -265,5 +262,4 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Unlambda": ("`.Ai", ""),
     "Unsquare": ("Io", ""),
     "Vandevelo": ("Nil?", ""),
-    "Whitespace": (WHITESPACE_PUSH_ZERO, ""),
 }

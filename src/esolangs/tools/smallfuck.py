@@ -8,7 +8,7 @@ from esolangs.tools.helpers import (
 )
 
 # Each input cell is fresh; zero needs no clear and one needs one flip.
-PAIR = (" >>>", "*>>>")
+PAIR = ("x>>>", "*>>>")
 
 #: Levels sharing one result cell; measured best of 2 to 5 at n = 3 to 10.
 BAND = 3
@@ -53,7 +53,7 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
 
 def smallfuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Keep the pointer walk outside narrow one-character input slots."""
-    pair = (" ", "*") if template.replace("\n", "").startswith("$>>>") else PAIR
+    pair = ("x", "*") if template.replace("\n", "").startswith("$>>>") else PAIR
     return (pair,) * n
 
 

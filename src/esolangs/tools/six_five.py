@@ -4,7 +4,7 @@
 jumps to its repeated subtrees where that is shorter, shares duplicates
 past the label budget, falls back to a positional walk
 (:func:`_six_five_walk`) when the distinct subtrees overflow, and past 35
-inputs loops (:func:`_six_five_looped`), so it is total.  A
+inputs uses conditional strides (:func:`_six_five_guarded`), so it is total.  A
 ``six_five_arithmetic`` construction (``(T >> x) & 1`` over packed cells)
 was retired: once the tree folded, any table small enough to pack was
 one that folds inside the budget.
@@ -125,7 +125,7 @@ def six_five(truth_table: str) -> str:
     cheapest wide table (two distinct subtrees per level, 20 markers at
     n == 10 vs 1023), and dense n == 7 needs 47.  Past that the table goes
     on the tape (:func:`_six_five_walk`, one label per input) and past 35
-    inputs :func:`_six_five_looped` (sixteen at any width).  Trees stay
+    inputs :func:`_six_five_guarded` (one label at any width).  Trees stay
     preferred while one fits. Identity and reverse compete routinely;
     fold-greedy and first-then-reversed remain label-budget fallbacks.
 
@@ -212,117 +212,48 @@ def _six_five_walk(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if n > _SIX_FIVE_MAX_LABEL:
-        # A table of 2**36 entries in practice, but the walk's arithmetic
-        # genuinely depends on the bound, so the wider table goes to the
-        # walk that loops instead of spending a label per input.
-        return _six_five_looped(truth_table)
-    ones = [j for j, value in enumerate(truth_table) if value == "1"]
-    out = ""
-    if ones:
-        # Rows past the last 1 stay virgin: the walk's own strides grow the
-        # tape, and a virgin cell already holds the 0 those rows need.
-        out += "1" * n
-        for j in range(ones[-1] + 1):
-            if truth_table[j] == "1":
-                out += "62"
-            if j != ones[-1]:
-                out += "1"
-        out += "3" * (2 * (n + ones[-1]))
+        return _six_five_guarded(truth_table)
+    out = _six_five_preload(truth_table, n)
     for i in range(n):
         out += "B" + _SIX_FIVE_NORMALIZE + "79" + "8" + _six_five_label(i + 1)
         out += "1" * 2 ** (n - 1 - i) + "4" + "1"
     return out + "6" * 8 + "A0"
 
 
-#: The looped walk's markers in program order.  ``8n`` names the n-th ``4``
-#: of the whole program, so a label is a position, and the list is the
-#: allocation: sixteen for any table.
-_SIX_FIVE_LOOP_MARKERS = (
-    "back",
-    "passes",
-    "go",
-    "dec",
-    "left",
-    "exit",
-    "bit",
-    "go2",
-    "here",
-    "advance",
-    "zero",
-    "join",
-    "inc",
-    "left2",
-    "done",
-    "here2",
-)
+def _six_five_preload(truth_table: str, n: int) -> str:
+    """Place table ones n strides from the entry cell; return there."""
+    # Later zero rows stay virgin; the walk grows the tape on demand.
+    last = truth_table.rfind("1")
+    if last < 0:
+        return ""
+    out = ["1" * n]
+    for row in range(last + 1):
+        if truth_table[row] == "1":
+            out.append("62")
+        if row != last:
+            out.append("1")
+    out.append("3" * (2 * (n + last)))
+    return "".join(out)
 
 
-def _six_five_looped(truth_table: str) -> str:
-    """Emit the positional walk that spends sixteen labels at any width.
+def _six_five_guarded(truth_table: str) -> str:
+    """Emit an O(T) positional walk with one label and no loops.
 
-    One bit loop, with a bit's advance (``2**(n-1-i)`` rows on a 1) read off
-    the tape.  Rows sit four cells apart from cell 4: value, *mark*, *flag*,
-    scratch; cells 0..2 hold the bits- and passes-remaining counters (in
-    sixes) and the start sentinel (5); an end sentinel (6) sits one row past
-    the table, and the current row's flag is 1.  Row ``q``'s mark is its
-    2-adic valuation ``v(q)``: after ``i`` bits the pointer is at a multiple
-    of ``S = 2**(n-1-i)`` with ``q / S`` even, so ``q + S`` is the first row
-    past ``q`` with valuation exactly ``n-1-i``; the advance loop walks marks
-    until one reads zero, and the marks are kept at ``6 * (v(q) - (n-1-i))``
-    by ``n-1`` decrement passes then one increment pass per bit.  Every loop
-    tests with ``7n`` and jumps back with the same label.  Size is linear;
-    execution ``Theta(n * 2**n)``: the initial ``n-1`` passes alone
-    visit every row. Every row at n <= 7 executed; reached only past 35.
+    Answers occupy odd cells; reads occupy the preceding even cells.
+    Each bit normalizes to 31/32. Repeat ``7V 1`` for its weight: zero
+    stays on its 31 and skips every move; one moves onto untouched zero
+    cells, so every later test allows its move. A jump over the first
+    bit's plain strides saves T-5 characters. The geometric weights give
+    at most 13*T/2 + 4*n + 12 executed commands.
     """
     n = _validate_truth_table(truth_table)
-    label = {
-        name: _six_five_label(index)
-        for index, name in enumerate(_SIX_FIVE_LOOP_MARKERS, start=1)
-    }
-
-    def jump(name: str) -> str:
-        return "8" + label[name]
-
-    out = [
-        # Cells 0..3: both counters pre-decrement before they test, so each
-        # holds one more than the loops it allows; the start sentinel is 5.
-        "6" * (n + 1),
-        "13" + "6" * n,
-        "13" + "5",
-        "13" + "13",
-    ]
-    for row in range(1 << n):
-        valuation = (row & -row).bit_length() - 1 if row else 0
-        out.append("62" if truth_table[row] == "1" else "")
-        out.append("13" + "6" * valuation)
-        out.append("13" + ("62" if row == 0 else ""))
-        out.append("1")
-    out.append("13" + "13" + "6")  # the end sentinel
-    # Back to the start sentinel.
-    out.append("4" + "3333" + "75" + jump("back"))
-    # n-1 decrement passes: count down, sweep right subtracting six from
-    # each mark, sweep left.
-    out.append("4" + "3" + "9" + "70" + jump("go") + jump("exit") + "4" + "13")
-    out.append("4" + "11" + "3" + "9" + "13" + "76" + jump("dec"))
-    out.append("4" + "3333" + "75" + jump("left") + jump("passes"))
-    out.append("4" + "13")
-    # The bit loop: count down, walk to the pointer's row, read the bit.
-    out.append("4" + "33" + "9" + "70" + jump("go2") + jump("done") + "4" + "1")
-    out.append("4" + "11" + "71" + jump("here"))
-    out.append("13" + "B" + _SIX_FIVE_NORMALIZE + "79" + jump("zero"))
-    # A 1: clear the flag, walk the marks to the first zero, plant the flag.
-    out.append("3" + "59" + "3")
-    out.append("4" + "11" + "70" + jump("advance"))
-    out.append("13" + "62" + jump("join"))
-    out.append("4" + "3")
-    out.append("4")
-    # The increment pass, then back to the counters.
-    out.append("4" + "11" + "3" + "6" + "13" + "76" + jump("inc"))
-    out.append("4" + "3333" + "75" + jump("left2") + jump("bit"))
-    # Every bit read: walk to the pointer's row and print it.
-    out.append("4" + "1")
-    out.append("4" + "11" + "71" + jump("here2"))
-    out.append("33" + "6" * 8 + "A0")
+    out = ["13" + _six_five_preload(truth_table, 0) + "3"]
+    out.append("B" + _SIX_FIVE_TREE_NORMALIZE + "7W81")
+    out.append("1" * (1 << (n - 1)) + "4")
+    for bit in range(1, n):
+        out.append("B" + _SIX_FIVE_TREE_NORMALIZE)
+        out.append("7V1" * (1 << (n - 1 - bit)))
+    out.append("13" + "6" * 8 + "A0")
     return "".join(out)
 
 
@@ -332,7 +263,7 @@ def _six_five_dag_cost(truth_table: str) -> int:
     One per distinct internal node less the root, plus one per distinct
     *right* leaf (:func:`_six_five_shared`).  Two windows are equal exactly
     when their children are, so each span is named by its children's names
-    (a constant span by its length and value) and the names are interned:
+    (a constant span by its length and value) and children return interned IDs:
     O(1) a node, O(2**n) in all, against hashing every slice.
     """
     constant = constant_span_test(truth_table)
@@ -340,15 +271,16 @@ def _six_five_dag_cost(truth_table: str) -> int:
     internal: set[int] = set()
     right_leaves: set[str] = set()
 
-    def walk(lo: int, hi: int, *, right: bool) -> tuple[object, object]:
+    def walk(lo: int, hi: int, *, right: bool) -> object:
         if constant(lo, hi):
             if right:
                 right_leaves.add(truth_table[lo])
             return (hi - lo, truth_table[lo])
         mid = (lo + hi) // 2
         name = (walk(lo, mid, right=False), walk(mid, hi, right=True))
-        internal.add(names.setdefault(name, len(names)))
-        return name
+        serial = names.setdefault(name, len(names))
+        internal.add(serial)
+        return serial
 
     walk(0, len(truth_table), right=False)
     return max(len(internal) - 1, 0) + len(right_leaves)
@@ -772,7 +704,7 @@ def _six_five_stream_ordered(truth_table: str, *, share: bool = False) -> str:
 
 
 def _six_five_const(value: int) -> str:
-    """Instructions adding ``value`` to the current cell, fewest first.
+    """Instructions adding nonnegative ``value`` to the current cell, fewest first.
 
     ``k = ceil(value / 6)`` tokens of ``6``/``5`` reach all of ``[5k, 6k]``,
     every leaf's 16..18 and 48..49 included; ``62`` pairs made +40 cost 14
@@ -782,6 +714,5 @@ def _six_five_const(value: int) -> str:
     if 5 * k <= value:
         return "6" * (value - 5 * k) + "5" * (6 * k - value)
     q, r = divmod(value, 6)
-    if r == 5:
-        return "6" * q + "5"  # one +5 beats five +1 pairs
+    # A remainder of five already satisfies 5*k <= value.
     return "6" * q + "62" * r

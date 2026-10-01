@@ -29,7 +29,7 @@ def test_wrapped_templates_execute_every_three_input_table(width: int) -> None:
     for value in range(256):
         table = f"{value:08b}"
         template = underload(table, width)
-        assert max(map(len, template.split("\n"))) <= max(5, width)
+        assert max(map(len, template.split("\n"))) <= max(7, width)
         if width >= 5:
             assert template.replace("\n", "") == underload(table)
         assert "".join(_run(table, row, width) for row in range(8)) == table
@@ -57,10 +57,10 @@ def test_first_eight_tables_through_three_inputs(n: int) -> None:
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
-    assert len(PAIR[0]) == len(PAIR[1]) == 5
+    assert len(PAIR[0]) == len(PAIR[1]) == 7
     for n in range(1, 8):
         template = underload("01" * (1 << (n - 1)))
-        assert template.count(TEMPLATE_CHAR) == 5 * n
+        assert template.count(TEMPLATE_CHAR) == 7 * n
 
 
 def test_source_growth_is_linear() -> None:
@@ -74,17 +74,17 @@ def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
 
     A repeated subtree is pushed once and run by ``^`` where it recurs, a
     node whose halves agree is ``!`` and the half, and one ``S`` prints the
-    leaf's bit.  19,496 characters over the 256 three-input tables fall to
-    16,314 (16.3%), and 56,565 over the seeded five-input sample to 42,756
-    (24.4%).
+    leaf's bit.  21,032 characters over the 256 three-input tables fall to
+    17,850 (15.1%), and 58,565 over the seeded five-input sample to 44,756
+    (23.6%).
     """
-    assert underload("01101001")[15:] == (
+    assert underload("01101001")[21:] == (
         "((((0))~((1))~^)~(~(^)~(!((1))~((0))~^)~^)~(~(!((1))~((0))~^)~(^)~^)~^)^S"
     )
     three = [format(value, "08b") for value in range(256)]
     for tables, before, after in (
-        (three, 19496, 16314),
-        (five_input_sample(), 56565, 42756),
+        (three, 21032, 17850),
+        (five_input_sample(), 58565, 44756),
     ):
         plain = [len(_plain(table)) for table in tables]
         shared = [len(underload(table)) for table in tables]

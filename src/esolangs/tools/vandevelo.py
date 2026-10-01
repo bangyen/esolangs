@@ -6,7 +6,8 @@ a Vandevelo program can bind is affine in the inputs (``==``/``!=`` are
 XNOR/XOR over nil), and only ``::`` chains evaluate conditionally, so a
 guard line hangs on an affine coset of inputs and a whole program hangs on
 a union of cosets.  The generator therefore emits one guard line per coset
-of an affine cover of the table's 1-set.
+of an affine cover of the table's 1-set. Affine tables, single cosets and their
+complements bypass the peel after geometric doubling checks.
 
 A test for 0 is ``x? == Nil?``, eight characters and four steps over a
 bare ``x?``, so the guards are spelled to need it rarely.  A register
@@ -15,8 +16,8 @@ rather than ``!=`` -- and an input most of whose tests ask for 0 is read
 negated (``~!>``) when the rows reaching those tests agree.  A guard's
 bare tests run first, and a test every row reaching it passes -- the
 far side of an earlier one-test guard -- is dropped.  Over the
-three-input tables these take 30,476 steps to 22,769 and 26,438
-characters to 23,481.
+three-input tables these take 30,476 steps to 22,669 and 26,438
+characters to 23,425.
 
 The cover is an affine-cube peel.  A cube is grown by iterated popular
 differences: pick the direction ``v`` maximising ``|B & (B ^ v)|``,
@@ -54,7 +55,9 @@ each; a refresh follows a fixed fraction of removals, so the pool's cost
 loses; the sparse tail costs a constant per point.  Two terms sit
 outside that: the proof's exact fallback -- when no scored direction
 reaches the pigeonhole average on a dense working set, the most popular
-one is found by autocorrelation, ``n * 2**n`` a call, none on random
+one is found by quotient autocorrelation: a d-dimensional chain span
+needs O(n*|S|) projection and O((n-d)*2**(n-d)) transform work per call.
+The original full-space transform took ``n * 2**n`` a call, none on random
 dense tables to n=14 and one at n=15 -- and the dual-basis core below,
 at most ``sqrt(2**(dim + 1))`` inputs, so under ``sqrt(n)`` per clause
 at the peel's dimensions and 2% of the build at n=15.  The per-cube peel
@@ -104,6 +107,7 @@ __all__ = ["vandevelo"]
 
 _ALPHABET = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMOPQRSTUVWXYZ0123456789_&*$"
 _RESERVED = {"Inp", "Nil", "l", "loop"}
+_COMPLEMENT = str.maketrans("01", "10")
 
 # Directions scored per node: the parent's best _INHERIT plus fresh nearest
 # differences inside the node.  The peel is exact with any cap -- a missed
@@ -269,6 +273,39 @@ def _best(node: _Node) -> tuple[int | None, int]:
     return best_v, best_c
 
 
+def _quotient_popularities(node: _Node, n: int) -> list[tuple[int, int]]:
+    """Return exact direction counts on S/span, with O(n*|S|) projection.
+
+    S is invariant under the d-dimensional span. Each quotient pair lifts
+    to 2**d pairs; the transform uses n-d dimensions, not n.
+    """
+    pivots: dict[int, int] = {}
+    dimension = len(node.span).bit_length() - 1
+    candidates = iter(node.span)
+    while len(pivots) < dimension:
+        value = next(candidates)
+        while value and value.bit_length() - 1 in pivots:
+            value ^= pivots[value.bit_length() - 1]
+        if value:
+            pivots[value.bit_length() - 1] = value
+    free = [bit for bit in range(n) if bit not in pivots]
+    quotient: set[int] = set()
+    for point in node.points:
+        for bit in range(n - 1, -1, -1):
+            if bit in pivots and point >> bit & 1:
+                point ^= pivots[bit]
+        quotient.add(sum((point >> bit & 1) << index for index, bit in enumerate(free)))
+    counts = _popularities(quotient, len(free))
+    return [
+        (
+            sum((value >> index & 1) << bit for index, bit in enumerate(free)),
+            count << dimension,
+        )
+        for value, count in enumerate(counts)
+        if value
+    ]
+
+
 def _ensure_popular(node: _Node, n: int) -> None:
     """Apply the proof's fallback: score the exact most popular direction.
 
@@ -284,11 +321,11 @@ def _ensure_popular(node: _Node, n: int) -> None:
     _, best_c = _best(node)
     if best_c * total >= size * size:
         return
-    popular = _popularities(node.points, n)
+    popular = _quotient_popularities(node, n)
     best_v = None
-    for v in range(1, total):
-        if popular[v] > best_c and v not in node.span and v not in node.cands:
-            best_v, best_c = v, popular[v]
+    for v, count in popular:
+        if count > best_c and v not in node.span and v not in node.cands:
+            best_v, best_c = v, count
     if best_v is not None:
         _score(node, [best_v])
 
@@ -627,15 +664,70 @@ def _constraints(base: int, dirs: list[int], n: int) -> list[tuple[int, int]]:
     return [(w, (w & base).bit_count() % 2) for w in duals]
 
 
+def _affine_form(table: str, n: int) -> tuple[int, int] | None:
+    """Return the XOR mask and constant, checking all rows in O(T) work."""
+    first = table[0]
+    mask = sum(1 << bit for bit in range(n) if table[1 << bit] != first)
+    expected = first
+    for bit in range(n):
+        expected += expected.translate(_COMPLEMENT) if mask & (1 << bit) else expected
+    return (mask, int(first)) if expected == table else None
+
+
+def _affine_coset(table: str, ones: set[int]) -> tuple[int, list[int]] | None:
+    """Return a basis for an affine 1-set, with O(T) membership work."""
+    size = len(ones)
+    if not size or size & (size - 1):
+        return None
+    base = min(ones)
+    points = {base}
+    dirs = []
+    for row, entry in enumerate(table):
+        if entry == "0" or row in points:
+            continue
+        direction = row ^ base
+        extension = {point ^ direction for point in points}
+        if len(points) * 2 > size or any(table[point] != "1" for point in extension):
+            return None
+        points.update(extension)
+        dirs.append(direction)
+    return base, dirs
+
+
 def vandevelo(truth_table: str, width: int | None = None) -> str:
     """Build a Vandevelo program computing ``truth_table`` by termination."""
     n = _validate_truth_table(truth_table)
     compact = width is not None
     names = [short_name(index, _ALPHABET) for index in range(n)]
-    ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
-    cubes = _Peel(ones, n).run() if ones else []
-    cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
-    flips = _flips(cover, [len(dirs) for _, dirs in cubes], n)
+    affine = _affine_form(truth_table, n)
+    if affine is None:
+        ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
+        coset = _affine_coset(truth_table, ones)
+        excluded = None
+        if coset is None:
+            zeros = set(range(1 << n)) - ones
+            excluded = _affine_coset(truth_table.translate(_COMPLEMENT), zeros)
+        if excluded is not None:
+            equations = _constraints(*excluded, n)
+            cover = [[(mask, value ^ 1)] for mask, value in equations]
+            # The first failed equation partitions the complement, even
+            # though earlier failures let its redundant prefix tests go.
+            dims = [n - index - 1 for index in range(len(equations))]
+        else:
+            cubes = (
+                [coset] if coset is not None else (_Peel(ones, n).run() if ones else [])
+            )
+            cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
+            dims = [len(dirs) for _, dirs in cubes]
+    else:
+        mask, offset = affine
+        if mask:
+            cover, dims = [[(mask, offset ^ 1)]], [n - 1]
+        elif offset:
+            cover, dims = [[]], [n]
+        else:
+            cover, dims = [], []
+    flips = _flips(cover, dims, n)
     lines = []
     for index in range(n):
         # A flipped input is read negated, so its ``== Nil`` tests go.
