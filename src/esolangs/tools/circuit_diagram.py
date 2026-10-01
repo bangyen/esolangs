@@ -219,16 +219,26 @@ def _h_minterm_sites(inputs: int) -> dict[str, tuple[int, int]]:
     return sites
 
 
-def _h_term_layout(table: str) -> "_Layout":
-    """Route one truth table's parallel minterm tree through an H-layout.
+@dataclass(frozen=True)
+class _HTermPlan:
+    inputs: int
+    sites: dict[str, tuple[int, int]]
+    signals: dict[str, int]
+    literal_start: int
+    results: dict[str, int | None]
+    result_gates: set[str]
+    result_signal: int
 
-    Every wire takes a lane fixed by its class (see ``_LATTICE``): the
-    input feeders run across then down, and everything else runs down its
-    own column then across, except the ``1`` literal's last hop to a gate
-    whose sibling sits beside it, which passes under the target.  Nothing
-    here searches; the collision check in :meth:`_RoutingLayout.route` is
-    a guard on the lattice.
-    """
+    def literal(self, depth: int, bit: str) -> int:
+        return self.literal_start + 2 * depth + int(bit)
+
+    def result_anchor(self, prefix: str) -> tuple[int, int]:
+        x, y = self.sites[prefix]
+        return x + _RESULT_TRACK[0], y - _RESULT_TRACK[1]
+
+
+def _h_term_plan(table: str) -> _HTermPlan:
+    """Assign minterm and result signals to fixed H-layout sites."""
     truth_table = table
     inputs = len(table).bit_length() - 1
     margin = _LATTICE * inputs + _LATTICE  # the root anchors and input feeders
@@ -236,15 +246,11 @@ def _h_term_layout(table: str) -> "_Layout":
         prefix: (x + margin, y + margin)
         for prefix, (x, y) in _h_minterm_sites(inputs).items()
     }
-    layout = _RoutingLayout()
     signals = {
         prefix: index
         for index, prefix in enumerate(prefix for prefix in sites if len(prefix) >= 2)
     }
     literal_start = len(signals)
-
-    def literal(depth: int, bit: str) -> int:
-        return literal_start + 2 * depth + int(bit)
 
     next_signal = literal_start + 2 * inputs
     results: dict[str, int | None] = {
@@ -267,6 +273,17 @@ def _h_term_layout(table: str) -> "_Layout":
     if result_signal is None:  # handled by the scalar constant construction
         raise AssertionError("the H layout needs at least one selected minterm")
 
+    return _HTermPlan(
+        inputs, sites, signals, literal_start, results, result_gates, result_signal
+    )
+
+
+def _h_reserve_terms(
+    layout: _RoutingLayout, plan: _HTermPlan
+) -> dict[tuple[int, str, str], tuple[int, int]]:
+    """Reserve gate ports, result holds, and table-independent literal anchors."""
+    inputs, sites, signals = plan.inputs, plan.sites, plan.signals
+    literal, result_anchor = plan.literal, plan.result_anchor
     for prefix, (x, y) in sites.items():
         if len(prefix) >= 2:
             layout.glyph(x, y, "a")
@@ -281,10 +298,6 @@ def _h_term_layout(table: str) -> "_Layout":
             )
             layout.reserve((x - 1, y + 1), literal(len(prefix) - 1, prefix[-1]))
 
-    def result_anchor(prefix: str) -> tuple[int, int]:
-        x, y = sites[prefix]
-        return x + _RESULT_TRACK[0], y - _RESULT_TRACK[1]
-
     # Every result anchor is kept clear whether or not this table uses it,
     # so the literal and selector trees are routed on a canvas that does
     # not depend on the table; the holds are released before the results
@@ -297,7 +310,6 @@ def _h_term_layout(table: str) -> "_Layout":
         for cell in ((x, y), (x + 1, y), (x - 1, y - 1), (x - 1, y + 1)):
             layout.reserve(cell, _HOLD)
     literal_anchors: dict[tuple[int, str, str], tuple[int, int]] = {}
-    roots: dict[tuple[int, str], tuple[int, int]] = {}
     for depth in range(inputs):
         for bit in "01":
             for prefix in sites:
@@ -312,7 +324,21 @@ def _h_term_layout(table: str) -> "_Layout":
                     layout.reserve(point, literal(depth, bit))
                     if not prefix:
                         layout.junction(*point, literal(depth, bit))
-            roots[(depth, bit)] = literal_anchors[(depth, bit, "")]
+    return literal_anchors
+
+
+def _h_route_literals(
+    layout: _RoutingLayout,
+    plan: _HTermPlan,
+    literal_anchors: dict[tuple[int, str, str], tuple[int, int]],
+) -> None:
+    """Route input feeders, minterm prefixes, and literal fanout."""
+    inputs, sites, signals, literal = (
+        plan.inputs,
+        plan.sites,
+        plan.signals,
+        plan.literal,
+    )
     input_starts: dict[tuple[int, str], tuple[int, int]] = {}
     for depth in range(inputs):
         row = 8 * depth
@@ -333,7 +359,7 @@ def _h_term_layout(table: str) -> "_Layout":
         for bit in "01":
             layout.route(
                 input_starts[(depth, bit)],
-                roots[(depth, bit)],
+                literal_anchors[(depth, bit, "")],
                 literal(depth, bit),
                 "across",
             )
@@ -385,6 +411,13 @@ def _h_term_layout(table: str) -> "_Layout":
                             following.append(child)
                         layout.route(source, target, signal, shape)
                 frontier = following
+
+
+def _h_route_results(layout: _RoutingLayout, plan: _HTermPlan) -> None:
+    """Release result holds and join the selected minterms at the output."""
+    inputs, sites, results = plan.inputs, plan.sites, plan.results
+    result_gates, result_signal = plan.result_gates, plan.result_signal
+    result_anchor = plan.result_anchor
     layout.release(_HOLD)
     result_points: dict[str, tuple[int, int]] = {}
     for prefix, result_value in results.items():
@@ -433,6 +466,23 @@ def _h_term_layout(table: str) -> "_Layout":
                 if child_result is None:  # pragma: no cover - filtered above
                     raise AssertionError("missing result signal")
                 layout.route(result_points[child], target, child_result)
+
+
+def _h_term_layout(table: str) -> "_Layout":
+    """Route one truth table's parallel minterm tree through an H-layout.
+
+    Every wire takes a lane fixed by its class (see ``_LATTICE``): the
+    input feeders run across then down, and everything else runs down its
+    own column then across, except the ``1`` literal's last hop to a gate
+    whose sibling sits beside it, which passes under the target.  Nothing
+    here searches; the collision check in :meth:`_RoutingLayout.route` is
+    a guard on the lattice.
+    """
+    plan = _h_term_plan(table)
+    layout = _RoutingLayout()
+    literal_anchors = _h_reserve_terms(layout, plan)
+    _h_route_literals(layout, plan, literal_anchors)
+    _h_route_results(layout, plan)
     return layout
 
 
