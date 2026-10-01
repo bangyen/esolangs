@@ -82,16 +82,16 @@
   },
   "AddSubJump": {
    "0110": {
-    "commands": 16,
-    "source_units": 289
+    "commands": 17,
+    "source_units": 287
    },
    "01101001": {
-    "commands": 23,
-    "source_units": 559
+    "commands": 24,
+    "source_units": 450
    },
    "0110100110010110": {
-    "commands": 30,
-    "source_units": 1046
+    "commands": 32,
+    "source_units": 614
    }
   },
   "Algebraic Programming Language": {

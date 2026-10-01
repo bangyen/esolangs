@@ -114,6 +114,20 @@ def test_regular_certificate() -> None:
 
     rows, vector = certificate()
     check_certificate(rows, vector)
+    from scripts.perron_certificate import check_certificate as independent_check
+    from tests.proofs._brainfuck_count import ALPHABET, BOUND
+
+    independent_check(rows, vector, BOUND, ALPHABET)
+    corrupted = list(vector)
+    corrupted[0] = 0
+    with pytest.raises(ValueError, match="vector"):
+        independent_check(rows, corrupted, BOUND, ALPHABET)
+    with pytest.raises(ValueError, match="spectral"):
+        independent_check(rows, vector, (1, 1), ALPHABET)
+    corrupted_rows = [list(row) for row in rows]
+    corrupted_rows[0][0] = len(rows)
+    with pytest.raises(ValueError, match="transition"):
+        independent_check(corrupted_rows, vector, BOUND, ALPHABET)
     # These are behaviours that the discarded grammar incorrectly excluded.
     assert accepts(rows, "[]")
     assert accepts(rows, "+[-[]].")

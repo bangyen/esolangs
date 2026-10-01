@@ -78,14 +78,9 @@ class TestAddSubJump:
                 assert run_addsubjump(program, bits) == table[row]
 
     def test_three_input_total(self) -> None:
-        """The 256 three-input programs total 99,032 characters.
-
-        108,054 before every ``d`` operand named cell 7, a zero data word,
-        in place of the special zero ``-7``, and the entry stopped enabling
-        a flag mode nothing reads.
-        """
+        """Shared residuals reduce the n=3 total from 99,032 to 95,678."""
         total = sum(len(boolean.addsubjump(f"{value:08b}")) for value in range(256))
-        assert total == 99032
+        assert total == 95678
 
     def test_every_path_reads_each_input_once(self) -> None:
         """A run consumes exactly ``n`` inputs, whatever the table.
