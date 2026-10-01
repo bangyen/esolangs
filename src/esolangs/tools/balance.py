@@ -5,6 +5,7 @@ from collections.abc import Callable
 from itertools import pairwise
 from math import isqrt
 
+from esolangs.tools.algebraic_programming_language import balance_apl
 from esolangs.tools.arrowqueue import arrowqueue
 from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.back import back
@@ -350,6 +351,7 @@ def _super_snusp(_table: str, default: str) -> str:
 
 
 BALANCERS: dict[str, Callable[[str, str], str]] = {
+    "algebraic_programming_language": balance_apl,
     "arrowqueue": _arrowqueue,
     "back": _back,
     "b_tapemark": _tapemark,
