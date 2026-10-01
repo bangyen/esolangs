@@ -319,8 +319,8 @@ def _threshold(table: str, n: int) -> str:
     return " ".join([start, *rules])
 
 
-def _indexed(table: str, n: int) -> str:
-    """Return the smaller indexed threshold or packed-block construction."""
+def _indexed_blocks(table: str, n: int) -> str:
+    """Return indexed states with packed blocks and a fixed exponent decoder."""
     v, wide = _plan(n)
     nodes = _tree(table, n, v, wide)
     depths: dict[int, int] = {}
@@ -367,7 +367,12 @@ def _indexed(table: str, n: int) -> str:
     start = "*".join(
         [state(len(nodes) - 1)] + [f"{p}^{_FRACTRAN_INPUT}" for p in inputs]
     )
-    packed = " ".join([start, *rules])
+    return " ".join([start, *rules])
+
+
+def _indexed(table: str, n: int) -> str:
+    """Return the smaller indexed threshold or packed-block construction."""
+    packed = _indexed_blocks(table, n)
     threshold = _threshold(table, n)
     return threshold if len(threshold) <= len(packed) else packed
 
