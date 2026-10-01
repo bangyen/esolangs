@@ -42,9 +42,9 @@ def smoke(*, math_extra: bool) -> None:
     assert package.parent.name in {"site-packages", "dist-packages"}, package
     assert (package / "py.typed").is_file()
     assert "brainfuck" in _cli(["list"])
-    assert esolangs.run_bounded("brainfuck", "+.", max_steps=2, timeout=1) == "\x01"
+    assert esolangs.run("brainfuck", "+.", max_steps=2, timeout=1) == "\x01"
     try:
-        esolangs.run_bounded("brainfuck", "+[]", max_steps=10)
+        esolangs.run("brainfuck", "+[]", max_steps=10)
     except esolangs.ExecutionTimeoutError:
         pass
     else:
@@ -141,7 +141,7 @@ def smoke(*, math_extra: bool) -> None:
         == "01"
     )
     try:
-        esolangs.run_isolated("brainfuck", "+[]", timeout=0.5)
+        esolangs.run("brainfuck", "+[]", timeout=0.5, isolated=True)
     except esolangs.ExecutionTimeoutError:
         pass
     else:

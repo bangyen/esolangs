@@ -21,6 +21,7 @@ from collections.abc import Callable
 import pytest
 
 import esolangs
+import esolangs.debugger as debugger_api
 from esolangs.vm import machine_traits, run_until_halt
 
 #: Enough for every generated boolean program in the suite to finish; the
@@ -35,7 +36,7 @@ def _row(name: str, table: str, bits: list[int]) -> tuple[str, str]:
     return esolangs.generate(name, table), esolangs.encode_inputs(name, bits, table)
 
 
-def _drive(vm: esolangs.VM) -> str:
+def _drive(vm: debugger_api.VM) -> str:
     """Step ``vm`` to its answer, honouring the two traits that say how."""
     run_until_halt(vm, _STEP_BUDGET)
     if vm.dumps_on_the_post_halt_step:
@@ -71,7 +72,7 @@ class TestTheTraitsAreReportedBeforeAMachineExists:
 
     def test_the_debugger_mirrors_them_too(self) -> None:
         """Reading them meant reaching through ``.vm``, which decides nothing."""
-        d = esolangs.make_debugger("RAM0", _row("RAM0", "0110", [0, 1])[0])
+        d = debugger_api.make_debugger("RAM0", _row("RAM0", "0110", [0, 1])[0])
         assert d.dumps_on_the_post_halt_step is True
         assert d.self_halts is True
         assert d.steppable_to_answer is True
@@ -124,7 +125,7 @@ class TestSteppingReachesTheSameAnswer:
                 program, stdin = _row(name, table, bits)
                 want = esolangs.run(name, program, stdin, timeout=30)
                 try:
-                    got = _drive(esolangs.make_vm(name, program, stdin))
+                    got = _drive(debugger_api.make_vm(name, program, stdin))
                 except esolangs.EsolangError as exc:
                     disagreed.append(f"{name} row {row}: stepping raised {exc!r}")
                     continue
@@ -142,7 +143,7 @@ class TestSteppingReachesTheSameAnswer:
         for bits, want in (([0, 0], "0"), ([0, 1], "1"), ([1, 0], "1"), ([1, 1], "0")):
             program, stdin = _row("Suffolk", table, bits)
             assert esolangs.run("Suffolk", program, stdin, timeout=20) == want
-            debugger = esolangs.make_debugger("Suffolk", program, stdin)
+            debugger = debugger_api.make_debugger("Suffolk", program, stdin)
             assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
             assert debugger.output == want
 
@@ -159,7 +160,7 @@ class TestSteppingReachesTheSameAnswer:
         returns.
         """
         program, _ = _row("RAM0", "0110", [0, 1])
-        debugger = esolangs.make_debugger("RAM0", program)
+        debugger = debugger_api.make_debugger("RAM0", program)
         assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
         assert esolangs.read_answer("RAM0", debugger.output) == "1"
         # And the step after the dump is the no-op the docstring promises,
@@ -185,7 +186,7 @@ class TestStepPastHaltIsSafeEverywhere:
             if facts["answer_mode"] == "termination":
                 continue
             program, stdin = _row(name, "0110", [0, 1])
-            vm = esolangs.make_vm(name, program, stdin)
+            vm = debugger_api.make_vm(name, program, stdin)
             run_until_halt(vm, _STEP_BUDGET)
             if not vm.halted:
                 continue
@@ -204,7 +205,9 @@ class TestStepPastHaltIsSafeEverywhere:
 class TestTheConstructorsTakeWhatRunTakes:
     """``check_program`` was called and its *return value* thrown away."""
 
-    @pytest.mark.parametrize("build", [esolangs.make_vm, esolangs.make_debugger])
+    @pytest.mark.parametrize(
+        "build", [debugger_api.make_vm, debugger_api.make_debugger]
+    )
     def test_a_path_is_read_rather_than_handed_to_the_interpreter(
         self, build: object
     ) -> None:
@@ -217,8 +220,8 @@ class TestTheConstructorsTakeWhatRunTakes:
         """Reading it here must match what a caller reading it gets."""
         example = pathlib.Path(str(esolangs.describe("brainfuck")["examples"][0]))
         source = example.read_text().rstrip("\n")
-        from_path = _drive(esolangs.make_vm("brainfuck", example, "1\n0\n"))
-        from_text = _drive(esolangs.make_vm("brainfuck", source, "1\n0\n"))
+        from_path = _drive(debugger_api.make_vm("brainfuck", example, "1\n0\n"))
+        from_text = _drive(debugger_api.make_vm("brainfuck", source, "1\n0\n"))
         assert from_path == from_text
 
 
@@ -230,7 +233,7 @@ class TestTheEofTraitIsOnTheVmToo:
         for name in ("Flowchart", "brainfuck"):
             program = esolangs.generate(name, "0110")
             stdin = esolangs.encode_inputs(name, [0, 1], "0110")
-            vm = esolangs.make_vm(name, program, stdin)
+            vm = debugger_api.make_vm(name, program, stdin)
             assert vm.eof_is_a_value == esolangs.describe(name)["eof_is_a_value"]
 
 
@@ -291,7 +294,7 @@ def test_stepping_agrees_at_a_wider_arity_and_shape(
                 source, stdin = program, esolangs.encode_inputs(name, bits, table)
             want = esolangs.run(name, source, stdin, timeout=30)
             try:
-                got = _drive(esolangs.make_vm(name, source, stdin))
+                got = _drive(debugger_api.make_vm(name, source, stdin))
             except esolangs.EsolangError as exc:
                 disagreed.append(f"{name} row {row}: stepping raised {exc!r}")
                 continue

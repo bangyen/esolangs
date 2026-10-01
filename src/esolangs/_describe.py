@@ -1,4 +1,4 @@
-"""Registry facts as data: :func:`describe`, :func:`spec`, :func:`list_languages`."""
+"""Registry facts as data: :func:`describe`, :func:`_spec`, :func:`list_languages`."""
 
 import importlib
 import pathlib
@@ -40,6 +40,7 @@ class LanguageInfo(TypedDict):
     """
 
     name: str
+    spec: str
     id: str
     source_kind: str
     state_model: str | None
@@ -66,6 +67,7 @@ class LanguageInfo(TypedDict):
 def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
+    ``spec`` contains the interpreter docstring; missing docstrings raise.
     Identity: ``name``, ``id``, ``source_kind``, ``state_model``,
     ``interpreter``, ``wiki_url``.
     Generation: ``boolean_generator``; ``parameterized`` (a template, filled by
@@ -111,6 +113,7 @@ def describe(language: str) -> LanguageInfo:
     example = _example_for(lang.id)
     return {
         "name": name,
+        "spec": _spec(name),
         "id": lang.id,
         "source_kind": lang.source_kind.value,
         "state_model": _STATE_MODELS.get(family) if family else None,
@@ -156,7 +159,7 @@ def _width_effect(lang: Any) -> str:
     return "wrap" if lang.id in WRAPPERS else "none"
 
 
-def spec(language: str) -> str:
+def _spec(language: str) -> str:
     """Return the interpreter's own description of ``language``.
 
     The module docstring: the command table and where this implementation

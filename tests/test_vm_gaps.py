@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-import esolangs
+import esolangs.debugger as debugger_api
 from esolangs import vm as vm_module
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.vm import _climbs_forever
@@ -81,7 +81,7 @@ class TestTheArmsThatTranslateWhatAnInterpreterRaises:
             ),
             pytest.raises(ProgramError) as exc,
         ):
-            esolangs.make_vm("brainfuck", "+")
+            debugger_api.make_vm("brainfuck", "+")
         assert exc.value is planted
 
     def test_a_recursion_error_from_the_loader_becomes_a_limit(self) -> None:
@@ -93,11 +93,11 @@ class TestTheArmsThatTranslateWhatAnInterpreterRaises:
             ),
             pytest.raises(InterpreterLimitError, match="recursed deeper"),
         ):
-            esolangs.make_vm("brainfuck", "+")
+            debugger_api.make_vm("brainfuck", "+")
 
     def test_a_program_error_from_a_step_passes_through(self) -> None:
         """The same promise one layer down, where the machine is running."""
-        machine = esolangs.make_vm("brainfuck", "+++")
+        machine = debugger_api.make_vm("brainfuck", "+++")
         planted = ProgramError("bad instruction")
 
         def boom() -> None:

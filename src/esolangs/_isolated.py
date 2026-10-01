@@ -56,7 +56,7 @@ def _decode(text: str, *, expired: bool) -> str:
 
 def run_isolated(
     language: str,
-    program: str | Raster,
+    program: str | Raster | os.PathLike[str],
     stdin: str = "",
     timeout: float = 30.0,
     *,

@@ -20,15 +20,15 @@ def test_generated_xor_runs_every_row_in_a_worker(language):
 @pytest.mark.medium
 def test_timeout_retains_streamed_output():
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs.run_isolated("brainfuck", "+.[]", timeout=1)
+        esolangs.run("brainfuck", "+.[]", timeout=1, isolated=True)
     assert caught.value.partial_output == "\x01"
-    assert esolangs.run_isolated("brainfuck", "++.") == "\x02"
+    assert esolangs.run("brainfuck", "++.", isolated=True) == "\x02"
 
 
 @pytest.mark.medium
 def test_input_error_retains_counts_and_output():
     with pytest.raises(esolangs.InputExhaustedError) as caught:
-        esolangs.run_isolated("brainfuck", "+.,")
+        esolangs.run("brainfuck", "+.,", isolated=True)
     assert caught.value.reads == 0
     assert caught.value.supplied == 0
     assert caught.value.partial_output == "\x01"
@@ -37,7 +37,7 @@ def test_input_error_retains_counts_and_output():
 @pytest.mark.parametrize("timeout", [None, 0, float("inf")])
 def test_refuses_missing_or_invalid_deadline(timeout):
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.run_isolated("brainfuck", "", timeout=timeout)
+        esolangs.run("brainfuck", "", timeout=timeout, isolated=True)
 
 
 def test_isolated_evaluation_requires_a_deadline():
@@ -178,7 +178,7 @@ def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
         error.partial_output = "prefix"
         raise error
 
-    monkeypatch.setattr(esolangs, "run_isolated", expire)
+    monkeypatch.setattr(esolangs, "run", expire)
     monkeypatch.setattr(_isolated, "termination_isolated", expire)
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         evaluate_generated(language, "0110", isolated=True)

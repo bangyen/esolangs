@@ -39,6 +39,8 @@ from itertools import permutations
 from pathlib import Path
 from time import perf_counter
 
+import esolangs.debugger as debugger_api
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -56,8 +58,8 @@ def _machine(name: str, program: str, row: int) -> VM:
     """Return a fresh machine for one row, fed as ``benchmark._commands``."""
     bits = _bits(row, 3)
     if esolangs.describe(name)["parameterized"]:
-        return esolangs.make_vm(name, esolangs.instantiate(name, program, bits), "")
-    return esolangs.make_vm(name, program, esolangs.encode_inputs(name, bits))
+        return debugger_api.make_vm(name, esolangs.instantiate(name, program, bits), "")
+    return debugger_api.make_vm(name, program, esolangs.encode_inputs(name, bits))
 
 
 def _to_verdict(name: str, program: str, row: int, cap: int) -> int | None:

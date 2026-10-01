@@ -1,18 +1,10 @@
-"""Public API for the esolangs package.
+"""Generate programs, run source, evaluate truth tables, and describe languages.
 
-``generate`` produces a program computing a truth table; ``instantiate``
-fills a parameterized generator's input runs; ``run`` executes a program;
-``run_bounded`` steps one within cooperative limits;
-``run_isolated`` executes one with a subprocess deadline;
-``make_vm`` and ``make_debugger`` step one; ``describe`` and
-``list_languages`` summarize the registry.  ``encode_inputs`` and
-``read_answer`` feed a program and judge what it printed; ``check_stdin``,
-``check_program`` and ``check_runnable`` apply the checks before anything
-runs; ``evaluate`` runs a supplied program on every input row; ``spec`` is the
-interpreter's own description of a language.
-
-Names resolve case-insensitively (:func:`esolangs.registry.resolve`), and
-every deliberate error derives from :class:`~esolangs.exceptions.EsolangError`.
+``generate`` builds source; ``instantiate`` fills templates; ``run`` executes;
+``evaluate`` returns a table. ``encode_inputs`` and ``read_answer`` handle rows.
+``check_program`` and ``check_stdin`` validate; ``describe`` and ``list_languages``
+provide registry facts. Stepping and debugging live in :mod:`esolangs.debugger`.
+Names resolve case-insensitively; deliberate errors derive from EsolangError.
 """
 
 import importlib
@@ -36,12 +28,10 @@ from esolangs._describe import (
     LanguageInfo,
     describe,
     list_languages,
-    spec,
 )
-from esolangs._evaluate import _Default, evaluate
-from esolangs._isolated import run_isolated
+from esolangs._evaluate import _DEFAULT, _Default, evaluate
+from esolangs._isolated import run_isolated as _run_isolated
 from esolangs._validate import check_bits, check_timeout, check_width
-from esolangs.debugger import STOP_REASONS, Debugger, StopReason, make_debugger
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -86,7 +76,6 @@ from esolangs.tools.wrap import (
     wrap_program,
 )
 from esolangs.tools.wrap import takes_width as _takes_width
-from esolangs.vm import VM, make_vm
 
 
 #: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
@@ -112,10 +101,7 @@ def __getattr__(name: str) -> str:
 #: alongside the six functions anyone wants, and there was no way to tell
 #: from the outside which was which.
 __all__ = [
-    "STOP_REASONS",
-    "VM",
     "ArgumentError",
-    "Debugger",
     "EsolangError",
     "ExecutionTimeoutError",
     "GeneratorCapError",
@@ -128,12 +114,10 @@ __all__ = [
     "ProgramError",
     "ProgramNotFoundError",
     "Raster",
-    "StopReason",
     "TemplateError",
     "TruthTableError",
     "UnknownLanguageError",
     "check_program",
-    "check_runnable",
     "check_stdin",
     "describe",
     "encode_inputs",
@@ -141,13 +125,8 @@ __all__ = [
     "generate",
     "instantiate",
     "list_languages",
-    "make_debugger",
-    "make_vm",
     "read_answer",
     "run",
-    "run_bounded",
-    "run_isolated",
-    "spec",
 ]
 
 
@@ -434,7 +413,7 @@ def _looks_like_a_path(program: str | Raster) -> bool:
     return rooted or bool(_PATH_EXTENSION.search(program))
 
 
-def check_runnable(language: str, program: str | Raster) -> None:
+def _check_runnable(language: str, program: str | Raster) -> None:
     """Reject a program that is a path or an unfilled template.
 
     Both are valid input to an interpreter and each produced a confident
@@ -466,23 +445,10 @@ def check_runnable(language: str, program: str | Raster) -> None:
         )
 
 
-def check_program(
-    language: str, program: str | Raster | os.PathLike[str], stdin: str = ""
+def _read_source(
+    language: str, program: str | Raster | os.PathLike[str]
 ) -> str | Raster:
-    """Return ``program`` as source, having checked what can be checked here.
-
-    Not a load check: it refuses the wrong *kind* of thing (a path as a
-    string, an unfilled template, a non-string, an unreadable file, an
-    unknown name) and type-checks ``stdin``, but ``check_program("brainfuck",
-    "[")`` returns the program and :func:`make_vm` raises ``ProgramError``.
-    :func:`make_vm` calls this, so it cannot build a machine to check.
-    :func:`check_stdin` judges ``stdin``'s shape.  A :class:`~pathlib.Path`
-    is read here with one trailing newline stripped (CV(N)(C), Grapheme and
-    NoComment reject one), so the whole call is::
-
-        path = pathlib.Path(describe(lang)["examples"][0])
-        run(lang, path, encode_inputs(lang, [0, 1]))
-    """
+    """Load source and check its kind and origin, allowing unfilled templates."""
     name = resolve(language)
     raster = LANGUAGES[name].source_kind.value == "raster"
     if isinstance(program, os.PathLike):
@@ -529,6 +495,28 @@ def check_program(
             f"{name} would read it as {name} source -- which may well run, "
             f"and answer nonsense"
         )
+    return program
+
+
+def check_program(
+    language: str, program: str | Raster | os.PathLike[str], stdin: str = ""
+) -> str | Raster:
+    """Return ``program`` as source, having checked what can be checked here.
+
+    Not a load check: it refuses the wrong *kind* of thing (a path as a
+    string, an unfilled template, a non-string, an unreadable file, an
+    unknown name) and type-checks ``stdin``, but ``check_program("brainfuck",
+    "[")`` returns the program and :func:`make_vm` raises ``ProgramError``.
+    :func:`make_vm` calls this, so it cannot build a machine to check.
+    :func:`check_stdin` judges ``stdin``'s shape.  A :class:`~pathlib.Path`
+    is read here with one trailing newline stripped (CV(N)(C), Grapheme and
+    NoComment reject one), so the whole call is::
+
+        path = pathlib.Path(describe(lang)["examples"][0])
+        run(lang, path, encode_inputs(lang, [0, 1]))
+    """
+    name = resolve(language)
+    program = _read_source(name, program)
     if not isinstance(stdin, str):
         # ArgumentError, matching ``check_stdin``: stdin is not the program,
         # and the four entry points here used to disagree with it.
@@ -536,16 +524,16 @@ def check_program(
             f"stdin must be a string, got {type(stdin).__name__}; "
             f"join your lines with '\\n'"
         )
-    check_runnable(name, program)
+    _check_runnable(name, program)
     return program
 
 
-def run_bounded(
+def _run_bounded(
     language: str,
     program: str | Raster | os.PathLike[str],
     stdin: str = "",
     *,
-    max_steps: int | None = None,
+    max_steps: int,
     timeout: float | None = None,
 ) -> str:
     """Execute a text program cooperatively, returning output only on halt.
@@ -556,11 +544,10 @@ def run_bounded(
     """
     from esolangs._validate import check_whole
 
-    if max_steps is not None:
-        check_whole(max_steps, "max_steps")
+    check_whole(max_steps, "max_steps")
     check_timeout(timeout)
-    if max_steps is None and timeout is None:
-        raise ArgumentError("run_bounded needs max_steps or timeout")
+    from esolangs.debugger import make_debugger
+
     debugger = make_debugger(language, program, stdin)
     try:
         reason = debugger.run(max_steps=max_steps, timeout=timeout)
@@ -578,8 +565,11 @@ def run(
     language: str,
     program: str | Raster | os.PathLike[str],
     stdin: str = "",
-    timeout: float | None = None,
+    timeout: float | _Default | None = _DEFAULT,
     seed: int | None = None,
+    *,
+    isolated: bool = False,
+    max_steps: int | None = None,
 ) -> str:
     """Execute ``program`` and return its output.
 
@@ -587,6 +577,12 @@ def run(
     filename is refused.  A Path and its text are
     not quite the same argument: a file loses one trailing newline, a
     string keeps it.
+
+    ``isolated=True`` uses a subprocess deadline, including startup and loading
+    (30 seconds by default). It works on Windows and worker threads.
+    ``max_steps`` uses cooperative stepping; its optional timeout excludes loading
+    and cannot interrupt a single step. Raster programs cannot be stepped.
+    Isolation and step bounds cannot be combined; stepping does not support seed.
 
     ``stdin`` is fed line by line.  Reading past the end usually raises
     :class:`~esolangs.exceptions.InputExhaustedError`;
@@ -606,7 +602,21 @@ def run(
     languages that draw.  An unloadable program raises
     :class:`~esolangs.exceptions.ProgramError`.
     """
+    if isinstance(timeout, _Default):
+        timeout = 30.0 if isolated else None
     check_timeout(timeout)
+    if isolated:
+        if max_steps is not None:
+            raise ArgumentError("isolated and max_steps are mutually exclusive")
+        if timeout is None:
+            raise ArgumentError("isolated execution requires a finite timeout")
+        return _run_isolated(language, program, stdin, timeout, seed=seed)
+    if max_steps is not None:
+        if seed is not None:
+            raise ArgumentError("seed is unsupported with max_steps")
+        return _run_bounded(
+            language, program, stdin, max_steps=max_steps, timeout=timeout
+        )
     if timeout is not None and not (
         threading.current_thread() is threading.main_thread()
         and hasattr(signal, "SIGALRM")
@@ -618,7 +628,8 @@ def run(
         raise ArgumentError(
             "the timeout guard uses SIGALRM and needs a Unix main thread; "
             "off it, either bound the run cooperatively with "
-            "make_debugger(language, program, stdin).run(timeout=...), "
+            "esolangs.debugger.make_debugger(language, program, stdin)"
+            ".run(timeout=...), "
             "which steps and so needs no signal, or use evaluate "
             "with timeout=None -- they settle a diverging row by proving "
             "the loop rather than waiting for it"

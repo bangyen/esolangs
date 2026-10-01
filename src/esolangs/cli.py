@@ -53,7 +53,6 @@ from esolangs import (
     list_languages,
     read_answer,
 )
-from esolangs import spec as _spec
 from esolangs.cli_args import (
     _check_count,
     _fail,
@@ -258,10 +257,7 @@ def _describe(rest: list[str]) -> None:
         _fail(str(exc))
         raise  # pragma: no cover - unreachable; _fail exits
     if as_spec:
-        # Printed rather than folded into the record, because it is prose
-        # of a few thousand characters and would swamp every other field.
-        text = _spec(str(facts["name"]))
-        print(json.dumps({**facts, "spec": text}, indent=2) if as_json else text)
+        print(json.dumps(facts, indent=2) if as_json else facts["spec"])
         return
     if as_json:
         # Verbatim, including the keys the reading layout hides: a caller
