@@ -282,6 +282,7 @@ _GOTO_CORRIDOR = 1 + 2 * _CLEARANCE
 # program stalled past two minutes vs under a second).  Cleared per render
 # because `id()` is reused once a `Node` is freed.
 _EXTENT_CACHE: dict[int, tuple[int, int, int, int]] = {}
+_TREE_NODES: set[int] = set()
 
 
 def _has_goto(node: Node | None, seen: set[int] | None = None) -> bool:
@@ -350,7 +351,7 @@ def _arm_spacing(arm: Node | None) -> int:
     # In the arm's frame, negative forward-extent is content behind the
     # entry point, toward the trunk.
     min_forward, _, _, _ = _subtree_extent(arm)
-    corridors = _GOTO_CORRIDOR if _has_goto(arm) else 0
+    corridors = _GOTO_CORRIDOR if id(arm) not in _TREE_NODES and _has_goto(arm) else 0
     return _BRANCH_SPACING + max(-min_forward, 0) + corridors
 
 
@@ -399,7 +400,7 @@ def _stem_len(node: Node) -> int:
     own body loops back to pays it, so a goto-free program -- and any fork
     whose ring is shorter than the floor -- renders pixel-identically.
     """
-    if not _returns_to(node.nonzero, node):
+    if id(node) in _TREE_NODES or not _returns_to(node.nonzero, node):
         return _STEM_LEN
     _, _, _, x1 = _subtree_extent(node.nonzero)
     return max(_STEM_LEN, x1 + _RING_OFFSET + _CLEARANCE)
@@ -680,7 +681,11 @@ def _arrowhead(draw: Canvas, y: float, x: float, heading: tuple[int, int]) -> No
 
 
 def render(
-    root: Node, start_heading: tuple[int, int] = (-1, 0), scale: int = 1
+    root: Node,
+    start_heading: tuple[int, int] = (-1, 0),
+    scale: int = 1,
+    *,
+    acyclic: bool = False,
 ) -> Canvas:
     """Lay out and rasterize a Line program, returning a :class:`Canvas`.
 
@@ -693,6 +698,12 @@ def render(
     """
     # See `_EXTENT_CACHE`: `id()`-keyed, so it must not outlive its nodes.
     _EXTENT_CACHE.clear()
+    _TREE_NODES.clear()
+    if acyclic:
+        from .tree_layout import tree_extents
+
+        _EXTENT_CACHE.update(tree_extents(root))
+        _TREE_NODES.update(_EXTENT_CACHE)
     occupied: set[tuple[int, int]] = set()
     cursor = _Cursor(0, 0, start_heading, occupied=occupied)
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]] = {}

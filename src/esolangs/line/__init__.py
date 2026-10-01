@@ -35,12 +35,13 @@ def _grey_rows(rows: Rows) -> list[bytearray]:
     ]
 
 
-def _render_node(node: Node) -> Rows:
+def _render_node(node: Node, heading: tuple[int, int] = (-1, 0)) -> Rows:
     """Render a generated Line graph into shared RGB rows."""
     from .render import render
 
-    canvas = render(node)
-    return tuple(tuple((level, level, level) for level in row) for row in canvas.pixels)
+    canvas = render(node, start_heading=heading, acyclic=True)
+    palette = tuple((level, level, level) for level in range(256))
+    return tuple(tuple(palette[level] for level in row) for row in canvas.pixels)
 
 
 @cache
@@ -52,6 +53,25 @@ def generate(truth_table: str) -> Raster:
     return Raster(
         _materialize=lambda: _render_node(node),
         _payload=node,
+    )
+
+
+def balance(truth_table: str, _default: Raster) -> Raster:
+    """Choose the more balanced forward or reverse input-test order."""
+    from .line_boolean import line_boolean
+    from .render import _UNIT
+    from .tree_layout import tree_extents
+
+    plans = []
+    for reverse in (False, True):
+        node = line_boolean(truth_table, reverse=reverse)
+        y0, y1, x0, x1 = tree_extents(node)[id(node)]
+        width, height = (x1 - x0 + 2) * _UNIT, (y1 - y0 + 2) * _UNIT
+        heading = (-1, 0)
+        plans.append(((abs(width - height), width * height, width), node, heading))
+    _, selected, heading = min(plans, key=lambda plan: plan[0])
+    return Raster(
+        _materialize=lambda: _render_node(selected, heading), _payload=selected
     )
 
 

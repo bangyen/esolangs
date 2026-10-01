@@ -249,8 +249,12 @@ def run(program: Raster, io: ScriptedIO) -> None:
             return
 
 
-def generate(truth_table: str) -> Raster:
+def generate(truth_table: str, width: int | None = None) -> Raster:
     """Return a Piet raster computing ``truth_table``."""
     from .piet_boolean import generate as _generate
 
+    if width is not None:
+        from .balance import folded
+
+        return folded(truth_table, width)
     return _generate(truth_table)

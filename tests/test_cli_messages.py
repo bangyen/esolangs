@@ -428,20 +428,38 @@ class TestTheSmallInconsistencies:
         assert exc.value.code == 2
         assert "--judge given more than once" in capsys.readouterr().err
 
+    @pytest.mark.medium
     def test_a_no_op_width_says_so(
         self, capsysbinary: pytest.CaptureFixture[bytes]
     ) -> None:
         with (
             patch.object(
-                sys, "argv", ["esolangs", "generate", "--width", "10", "Piet", "0100"]
+                sys, "argv", ["esolangs", "generate", "--width", "10", "Line", "0100"]
             ),
             patch.object(sys, "stdin", _FakeStdin("")),
         ):
             main()
         captured = capsysbinary.readouterr()
-        assert b"no effect on Piet" in captured.err
+        assert b"no effect on Line" in captured.err
         image = esolangs.Raster.from_png(captured.out)
-        assert esolangs.run("Piet", image, "0\n0\n") == "0"
+        assert esolangs.run("Line", image, "0\n0\n") == "0"
+
+    @pytest.mark.medium
+    def test_line_balance_has_no_no_op_warning(
+        self, capsysbinary: pytest.CaptureFixture[bytes]
+    ) -> None:
+        with (
+            patch.object(
+                sys, "argv", ["esolangs", "generate", "--balance", "Line", "0001"]
+            ),
+            patch.object(sys, "stdin", _FakeStdin("")),
+        ):
+            main()
+        captured = capsysbinary.readouterr()
+        assert b"no effect" not in captured.err
+        image = esolangs.Raster.from_png(captured.out)
+        assert (len(image.rows[0]), len(image.rows)) == (680, 800)
+        assert esolangs.run("Line", image, "1\n1\n") == "1"
 
     @pytest.mark.parametrize("name", ["Sophie", "CV(N)(C)"])
     def test_a_wrapping_width_says_nothing(
