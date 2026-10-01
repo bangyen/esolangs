@@ -63,9 +63,8 @@ from esolangs.registry import (
     template_char,
 )
 from esolangs.tagged import _Tagged, _Template
-from esolangs.tools.befunge import balance_befunge
+from esolangs.tools.balance import BALANCERS as _BALANCERS
 from esolangs.tools.helpers import mark_runs, unmark
-from esolangs.tools.super_snusp import balance_super_snusp
 
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width("LaserFuck")`` got False for
@@ -155,9 +154,9 @@ def generate(
     it does nothing where newlines are semantic, and a single token longer
     than the width still overruns it.  A template wraps with each run kept
     whole, so every row breaks in the same places.
-    ``balance`` recalculates a square target from the default source area;
-    token and routing constraints can prevent a globally square layout.
-    Befunge and Super SNUSP minimize the difference over all supported widths.
+    ``balance`` favors square layouts. Exact rules minimize the width/height
+    difference where available; other layouts estimate from default source area.
+    Token and routing constraints can prevent a square layout.
     """
     if balance and width is not None:
         raise ArgumentError("balance and width are mutually exclusive")
@@ -166,10 +165,12 @@ def generate(
         if not isinstance(default, str):
             return default
         lang = LANGUAGES[resolve(language)]
-        if lang.id == "befunge":
-            return _Tagged(balance_befunge(truth_table, default), resolve(language))
-        if lang.id == "super_snusp":
-            return _Tagged(balance_super_snusp(default), resolve(language))
+        balancer = _BALANCERS.get(lang.id)
+        if balancer is not None:
+            text = balancer(truth_table, default)
+            if isinstance(default, _Template):
+                return _Template(text, default.language, default.char, default.setters)
+            return _Tagged(text, resolve(language))
         if lang.boolean is not None and _takes_width(lang.boolean):
             candidate = cast(
                 str, generate(language, truth_table, balance_width(default))

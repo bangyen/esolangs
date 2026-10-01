@@ -13,6 +13,7 @@ unpinned, as the classics tests assert to ``n = 3`` under several draws.
 
 from __future__ import annotations
 
+from math import isqrt
 from string import ascii_letters
 
 from esolangs.tools.helpers import _validate_truth_table
@@ -93,10 +94,7 @@ def thue(truth_table: str, width: int | None = None) -> str:
     # One-symbol nodes fit only bounded arities; larger trees retain chunks.
     if length <= 8 and width < 9:
         return _thue_short_tree(truth_table)
-    digits, capacity = 1, len(ascii_letters) - len("abLMRECD")
-    while capacity < length:
-        digits += 1
-        capacity *= len(ascii_letters) - len("abLMRECD")
+    digits = _marker_digits(length)
     marker_width = digits
     # Payload covers its names' overhead, keeping even the narrowest source O(T).
     payload = max(marker_width, width - marker_width - max(marker_width, 2) - 3)
@@ -132,3 +130,36 @@ def _thue_short_tree(truth_table: str) -> str:
             )
             rules.append(f"{waiting[node]}{bit}::={target}")
     return "\n".join([*rules, "::=", ready[0]])
+
+
+def _marker_digits(length: int) -> int:
+    """Return the fixed base-44 name length covering the table."""
+    digits, capacity = 1, len(ascii_letters) - len("abLMRECD")
+    while capacity < length:
+        digits += 1
+        capacity *= len(ascii_letters) - len("abLMRECD")
+    return digits
+
+
+def balance_thue(truth_table: str, default: str) -> str:
+    """Balance chunk payloads at their quadratic crossing, plus the small tree.
+
+    H=23+ceil(T/p). Above the rule floor, W=p+2d+3, plus at most one cell for d=1.
+    The ceiling and extra cell put the crossing within one payload of the root.
+    """
+    _validate_truth_table(truth_table)
+    size = len(truth_table)
+    digits = _marker_digits(size)
+    fixed_rows = len(_RULES.splitlines()) + 3
+    offset = fixed_rows - 2 * digits - 3
+    root = (offset + isqrt(offset * offset + 4 * size)) // 2
+    overhead = digits + max(digits, 2) + 3
+    maximum = max(digits, max(map(len, default.split("\n"))) - 1 - overhead)
+    from esolangs.tools.wrap import balance_score
+
+    candidates = [default, thue(truth_table, 1)]
+    candidates.extend(
+        thue(truth_table, min(maximum, max(digits, payload)) + overhead)
+        for payload in (root - 1, root, root + 1, root + 2)
+    )
+    return min(candidates, key=balance_score)
