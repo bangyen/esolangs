@@ -1,7 +1,6 @@
 # Architecture
 
-The API and CLI use the registry to find a language’s generator and
-interpreter, then follow the same pipeline:
+The API and CLI resolve generators and interpreters through the registry:
 
 ```text
 language name
@@ -28,18 +27,15 @@ input-embedding languages return a `$`-placeholder template for `instantiate`.
 
 `run` loads the registered module from `src/esolangs/interpreters/`, constructs
 the shared scripted I/O object, and calls its `run(code, io)` entry point.
-`make_vm` reaches the same interpreter through its step-capable machine and
-exposes common state for the debugger and hang proofs.
+`make_vm` exposes the interpreter’s step-capable machine to the debugger
+and hang proofs.
 
-Some languages print a bit; others dump state or answer by halting.
-`read_answer` uses
-the registered example metadata for printed and state-dump answers; `evaluate`
-also handles termination answers. It runs
-every input row through generation, optional instantiation, input encoding,
-execution, and extraction.  `verify` compares that observed table with the
-requested one.
+Languages print a bit, dump state, or answer by halting. `read_answer` uses
+example metadata for printed and state-dump answers; `evaluate` also handles
+termination answers. It runs every input row through generation, optional
+instantiation, input encoding, execution, and extraction. `verify` compares
+the observed table with the requested one.
 
-When adding a language, keep the whole path connected: implement the
-interpreter and generator, add their `Language` entry, add example metadata,
-and test the generated program by executing every row.  The
-[contribution checklist](CONTRIBUTING.md) and `just test` enforce that contract.
+To add a language, implement its interpreter and generator, register its
+`Language` and example metadata, and execute every generated input row. Follow
+the [contribution checklist](CONTRIBUTING.md) and run `just test`.

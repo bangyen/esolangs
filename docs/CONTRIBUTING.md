@@ -23,8 +23,8 @@ the mathematics extra.
 
 ## What makes a candidate worth adding
 
-A new language must add a construction, branch mechanism, answer convention,
-or input interface the existing set does not cover:
+A new language must add an uncovered construction, branch mechanism,
+answer convention, or input interface:
 
 - **Construction shape** -- decision tree (the default), minterm sum
   (`bfstack`, `vandevelo`), ANF/XOR-of-products (`fargo`, and `super_snusp`
@@ -54,8 +54,7 @@ defines removal independently of admission.
 
 ## Interpreter conventions
 
-`src/esolangs/interpreters/_template.py` is the starting point.  Every
-interpreter:
+Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
 
 - Exposes `run(code, io)` with a required `IO` (most grid languages get
   `split=True` in the registry and receive lines; A Painter Ant, B-tapemark
@@ -74,7 +73,7 @@ interpreter:
   state, with `step` as the shell doing the I/O; a store that cannot be
   threaded cheaply returns effects instead (`grapheme.py`).
 - Documents decisions for genuine spec gaps in the module docstring
-  (`suffolk.py` shows one), never to define away invalid operations.
+  (`suffolk.py` shows one); it must not define away invalid operations.
 - Provides a `__main__` block calling `run(data, IO())`.
 
 `tests/test_interpreter_conventions.py` checks the module docstring names
@@ -83,7 +82,7 @@ interpreter reads input or raises them.
 
 ## What makes a generator optimization worth shipping
 
-A generator size optimization must meet every requirement below:
+A generator size optimization must meet all of these requirements:
 
 - **5% or more** off the total emitted size over all 256 three-input tables,
   measured against its parent. ArrowQueue's 2.1% rotation gain was reverted.
@@ -104,10 +103,9 @@ A generator size optimization must meet every requirement below:
   interpreter forgives it (truncated keywords, missing operands) is not
   shorter.
 
-Execution-time optimizations use the same threshold, measured in steps: 5% or more off the executed commands summed over every row of the
-three-input tables (`scripts/screens/steps.py`), and no table slower *or*
-larger.  Where a generator chooses among candidates, it chooses by size and
-breaks ties by steps, so a step win never buys itself with characters.
+Execution-time optimizations require 5% fewer commands summed over every row
+of the three-input tables (`scripts/screens/steps.py`), with no table slower
+or larger. Choose candidates by size, breaking ties by steps.
 
 Use `scripts/screens/` to bound the upside first.
 

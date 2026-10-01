@@ -87,8 +87,7 @@ within these reciprocal classes.
 Reciprocity of `Q` does not imply reciprocity of an arbitrary multiple.
 The support bound also does not locate its nonzero coefficients at
 indices where radius divisibility supplies a quadratic charge.
-The missing result must control cancellation for arbitrary integer
-quotients, rather than only prove that the raw factor is large.
+The missing result must control cancellation for arbitrary integer quotients.
 
 Local half-factor approximations do not remove this difficulty. For
 example, select one root `alpha_j` from each quadratic and let

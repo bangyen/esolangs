@@ -21,13 +21,12 @@ proved, executed, or identified as bounded searches.
 `tests/proofs/deep/multiplicity.py` pins the block-incidence links. Some
 (executed) markers refer to scratch probes without a regression test.
 
-The order is tight for program text in this model.  The uncapped residual-DAG
-construction
-emits `O(T**2 / log T)` characters for every table; the matching
-`Omega(T**2 / log T)` lower bound follows from the routing lemma.  This is an existence theorem,
-not a totality claim for the public generator: its 1934-instruction resource
-cap still refuses some wider tables.  Construction and generated-family cold
-parse time are classified below.
+Program-text complexity is tight in this model: the uncapped residual-DAG
+construction emits `O(T**2 / log T)` characters for every table, matching
+the routing lemma’s `Omega(T**2 / log T)` lower bound. This existence theorem
+does not make the public generator total: its 1934-instruction cap refuses
+some wider tables. Construction and generated-family cold parse time are
+classified below.
 
 ## Instruction count is language-forced
 

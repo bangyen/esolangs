@@ -15,51 +15,46 @@ manuscript bounding the coefficient mass of a polynomial multiple.
 `tests/proofs/test_citations.py` holds the numbered cross-references
 between them to the labels they name.
 
-This ledger answers one question: for every exported Boolean generator and
-every truth table of length `2**n`, does its construction produce a program
-for every finite `n`?  “Total” here means mathematical coverage, not practical
-availability.  Explicit limits on digits, instructions, lines, tape cells,
+This ledger records whether each exported Boolean generator covers every
+truth table of length `2**n`, for every finite `n`. “Total” means mathematical
+coverage, not practical availability. Explicit limits on digits, instructions,
+lines, tape cells,
 route width, work, or generation time are ignored: lifting such a guard leaves
 the construction below it unchanged.  Invalid-table guards are outside the
 domain.
 
 Execution tests check emitted programs; this ledger argues coverage for every
 finite arity. The exhaustive `n <= 3` and sampled `n <= 10` sweeps in
-`tests/tools/test_boolean_contract.py` seek counterexamples to those arguments,
-rather than proving them.
+`tests/tools/test_boolean_contract.py` seek counterexamples; they do not prove
+the coverage arguments.
 
 Machine checks live in `tests/proofs/`. `test_ledger.py` checks consistency
 with the registry; `test_schemes.py` checks measurable consequences for lookup
 and parameterized rows (`tree` and `minterms` have no per-row check). Both run
 in the fast band. The deeper proof checks live in `tests/proofs/deep/`.
-`all_generators.py` runs a lemma battery against all 72: every single
-row of the table demonstrably participates in the emitted program at the
-flip-tested arities, and the construction completes at every arity of a ladder
-on both table shapes.  That
-is the counting half of each scheme above, and it is what makes "finite object
-covering every row" checkable per generator.  Four generators -- A Painter Ant,
-ArrowQueue, Container and BIO -- additionally have a hand-derived proof of
-their own specific argument, which no generic battery can reach.
+`all_generators.py` checks all 72 constructions: flipping each table row
+changes the emitted program at the tested arities, and each construction
+completes an arity ladder on both table shapes. This checks the counting half
+of each scheme. Four generators -- A Painter Ant, ArrowQueue, Container and
+BIO -- also have construction-specific proofs.
 
 Each proof declares the cost band it runs in, and
 `python -m tests.proofs.deep <band>` selects on that: `verify` is the local
 gate, `ci` adds the registry-wide battery, `by-hand` is the expensive set, and
-`all` is everything and is what `just proofs` runs.  The bands are what the
-justfile, the workflow and
-`scripts/verify.py` each invoke, so none of them carries a list of proofs;
-`test_bands.py` holds each band's declared cost budget (a self-declared
-number, not a measured time) and checks that no file under
-`deep/` is missing one.
+`all` runs everything, as does `just proofs`. The justfile, workflow, and
+`scripts/verify.py` select bands instead of
+listing proofs. `test_bands.py` checks each file under `deep/` declares a band
+and enforces the band’s declared cost budget, not a measured runtime.
 
 Coverage does not bound source size: the schemes count nodes and entries,
 so a total generator can still emit super-linear text.  `linearity.py` is the
 separate, registry-wide scaling contract the roadmap asks for.  It measures
 characters per table entry past each generator's last route change and holds
 every generator to it except those the roadmap's scaling audit or this
-document's `cap` and `exception` rows already exempt.  Read its verdicts in one
-direction only: exceeding the bound is evidence, staying inside it is not, and
-Factor -- proven super-linear at the language level in [factor](factor.md) and
-measuring x2.11 -- is why.  Polynomial's block-incidence lemma forces
+document's `cap` and `exception` rows already exempt. Exceeding the bound is
+evidence against linearity; passing it is not a
+proof. Factor passes at x2.11 despite its language-level super-linear bound
+([factor](factor.md)).  Polynomial's block-incidence lemma forces
 `Omega(T/log T)` distinct real instruction-root values even when roots
 repeat, and the slack certificate prices every multiple of their distinct-root
 product, giving `Omega(T**2 / log T)` for every program, whatever its read
@@ -71,11 +66,10 @@ A `linear` row cannot be improved by more than a constant, and the reason is
 the counting argument the Malbolge exception uses below.  A language with `c`
 source characters has fewer than `c**(L+1)` programs of length at most `L`,
 against `2**T` tables of length `T`, so some table needs
-`L >= T / log2(c)` characters -- `T/3` for brainfuck's eight commands.  Every
-`linear` cell is therefore within a constant of optimal for free, which is why
-the Scaling column is worth reading only where it is *not* linear: the two
-rows proven to exceed the floor, Factor at `Theta(T log T)` and Polynomial at
-`Theta(T**2 / log T)`, and the `open` rows that may yet.
+`L >= T / log2(c)` characters -- `T/3` for brainfuck's eight commands. Thus each
+`linear` row is within a constant of the worst-case optimum.
+Factor at `Theta(T log T)` and Polynomial at `Theta(T**2 / log T)` provably
+exceed that floor; the `open` rows may also exceed it.
 
 
 Fargo's build bound uses a word RAM with `Theta(log T)`-bit words; input and

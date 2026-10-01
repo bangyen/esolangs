@@ -39,8 +39,8 @@ past load ~0.3 the required depth outruns any decoder pass count.
 
 ## Seventeen: three-cell orbit packing
 
-The one-cell-per-row-pair architecture stops at sixteen, but it does not give
-a language wall.  The raw capacity permits a different unbuilt design.  Use
+The one-cell-per-row-pair limit at sixteen is not a language bound. Raw
+capacity permits a different, unbuilt design.  Use
 fourteen inputs to select a block of eight rows and encode that block's eight
 answer bits in three source characters.  Three legal characters carry nine
 bits, so this needs `3 * 2**14 = 49,152` cells and leaves 9,897 for code.
