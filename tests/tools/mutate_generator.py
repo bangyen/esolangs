@@ -69,6 +69,11 @@ Usage:
     python scripts/mutate.py generator tools/register
     python scripts/mutate.py generator tools/streetcode
     python scripts/mutate.py generator dimensional --keep   # leave the work dir
+    python scripts/mutate.py generator line/line_boolean
+    python scripts/mutate.py generator piet/piet_boolean
+
+Raster families include their interpreter modules; ``__init__`` targets the
+public runner. They use the copied package rather than text-only bundling.
 
 Requires: mutmut==3.7.0, the same pin ``mutate_one`` documents.
 """
@@ -147,6 +152,7 @@ class _Kind:
         *,
         needs_scripts: bool = False,
         skip_tests: frozenset[str] = frozenset(),
+        include_init: bool = False,
     ) -> None:
         self.name = name
         self.pkg_rel = pkg_rel  # under src/esolangs, e.g. "tools"
@@ -159,6 +165,7 @@ class _Kind:
         # importable.  Kept as small and as named as possible: a glob with
         # no exceptions is the goal, and every name here owes a reason.
         self.skip_tests = skip_tests
+        self.include_init = include_init
 
     @property
     def pkg_dir(self) -> Path:
@@ -177,7 +184,7 @@ class _Kind:
         # the rest of the top-of-stack modules live; joining it blindly
         # would ask for ``esolangs..vm``.
         parts = ["esolangs", *self.pkg_rel.split("/"), module]
-        return ".".join(part for part in parts if part)
+        return ".".join(part for part in parts if part and part != "__init__")
 
     def rel_target(self, module: str) -> str:
         """Return the path mutmut mutates, relative to the work directory."""
@@ -187,6 +194,14 @@ class _Kind:
 
 # Keyed by the name the CLI takes.
 _KINDS = {
+    "line": _Kind("line", "line", "tests/line", _TOOLS_SUPPORT, include_init=True),
+    "piet": _Kind(
+        "piet",
+        "piet",
+        "tests/piet",
+        (*_TOOLS_SUPPORT, Path("tests/generator_support.py")),
+        include_init=True,
+    ),
     "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT, needs_scripts=True),
     # The package root: ``vm``, ``debug``, ``tui``, ``cli``, ``registry``.
     #
@@ -297,6 +312,7 @@ def _modules(family: str) -> list[str]:
         p.stem
         for p in _KINDS[family].pkg_dir.glob("*.py")
         if p.stem not in _NON_TARGETS
+        or (p.stem == "__init__" and _KINDS[family].include_init)
     )
 
 
@@ -769,6 +785,12 @@ def main() -> int:
     )
     parser.add_argument("--report", type=Path, help="write the completed score as JSON")
     parser.add_argument(
+        "--kind",
+        choices=("generator", "interpreter"),
+        default="generator",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "--focused",
         action="store_true",
         help="select test names containing the module name for bounded scheduled runs",
@@ -877,7 +899,7 @@ def main() -> int:
             args.report.write_text(
                 json.dumps(
                     {
-                        "kind": "generator",
+                        "kind": args.kind,
                         "target": f"{family}/{module}",
                         "killed": killed,
                         "total": total,
