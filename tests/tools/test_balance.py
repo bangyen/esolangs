@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import ArgumentError
-from esolangs.tools.wrap import balance_program, balance_score
+from esolangs.tools.wrap import balance_program, balance_score, wrap_program
 from tests.test_cli import call_main
 
 
@@ -13,6 +13,9 @@ from tests.test_cli import call_main
     [
         "Brainfuck",
         "BIO",
+        "Fractran",
+        "Sbleq",
+        "Slow ACV Mammalian",
         "Minifuck",
         "RAM0",
         "Bitdeque",
@@ -66,3 +69,28 @@ def test_balance_raster_retains_layout() -> None:
     assert isinstance(default, esolangs.Raster)
     assert isinstance(balanced, esolangs.Raster)
     assert balanced.to_png() == default.to_png()
+
+
+@pytest.mark.parametrize("language", ["fractran", "sbleq", "slow_acv_mammalian"])
+@pytest.mark.parametrize("cell", [1, 4, 7])
+def test_equal_cells_reach_the_global_minimum(language: str, cell: int) -> None:
+    for count in range(1, 33):
+        program = " ".join(["1" * cell] * count)
+        balanced = balance_program(program, language)
+        if language == "slow_acv_mammalian" and cell != 4:
+            continue
+        optimum = min(
+            (
+                wrap_program(program, language, width)
+                for width in range(1, len(program) + 1)
+            ),
+            key=balance_score,
+        )
+        assert balance_score(balanced) == balance_score(optimum)
+
+
+@pytest.mark.parametrize("program", ["", "1 22 333 4444"])
+def test_nonuniform_cells_retain_tokens(program: str) -> None:
+    balanced = balance_program(program, "fractran")
+    assert balanced.split() == program.split()
+    assert balance_score(balanced) <= balance_score(program)
