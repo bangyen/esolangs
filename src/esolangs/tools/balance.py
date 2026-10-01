@@ -7,6 +7,7 @@ from math import isqrt
 
 from esolangs.tools._circuit_balance import balance_circuit_diagram
 from esolangs.tools.algebraic_programming_language import balance_apl
+from esolangs.tools.alight_balance import balance_alight
 from esolangs.tools.arrowqueue import arrowqueue
 from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.back import back
@@ -432,6 +433,7 @@ def _super_snusp(_table: str, default: str) -> str:
 
 BALANCERS: dict[str, Callable[[str, str], str]] = {
     "algebraic_programming_language": balance_apl,
+    "alight": balance_alight,
     "arrowqueue": _arrowqueue,
     "back": _back,
     "b_tapemark": _tapemark,

@@ -118,11 +118,9 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
-  --balance    balance several layouts exactly, including Befunge, Fish,
-               Super SNUSP and Thue. Space/grid wrappers are also exact for
-               equal cells or a dominant token. Other cases estimate a square
-               target from source area and keep the better default or candidate.
-               Unequal tokens and routing can miss the minimum; excludes --width.
+  --balance    minimize the rendered width/height difference across supported
+               layouts. Ties prefer shorter source, then smaller width. Tokens
+               and routing can prevent a square; excludes --width.
   --width [N]  wrap the program to N columns (default {DEFAULT_WIDTH}) so it
                is readable in a diff.  Breaks only between whole tokens.
                `esolangs describe <language>` reports which of three
