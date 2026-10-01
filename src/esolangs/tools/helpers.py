@@ -211,10 +211,6 @@ def _validate_shape(truth_table: str) -> int:
     return n
 
 
-#: One ``(zero, one)`` pair per input, in name order: what a template's
-#: runs are filled with.  Each pair is equal width, checked by
-#: :func:`check_setters`, so the constant-width convention is a property
-#: of the object rather than of every caller.
 def anf_coefficients(truth_table: str) -> list[int]:
     """Return row-indexed ANF coefficients, allowing a nullary reduced table.
 
@@ -242,6 +238,10 @@ def anf_coefficients(truth_table: str) -> list[int]:
     return [(value >> bit) & 1 for value in words for bit in range(width)]
 
 
+#: One ``(zero, one)`` pair per input, in name order: what a template's
+#: runs are filled with.  Each pair is equal width, checked by
+#: :func:`check_setters`, so the constant-width convention is a property
+#: of the object rather than of every caller.
 Setters = tuple[tuple[str, str], ...]
 
 
