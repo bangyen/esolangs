@@ -218,6 +218,11 @@ The 2026-09-27 spec read closed the other candidates:
 - Gifunk defines motion through APNG/GIF frames but no instructions.
 - Turing Paint and Befunk are obscure but already implemented.
 
+The 2026-10-01 non-text screen deferred [BOOMOP](https://esolangs.org/wiki/BOOMOP):
+its entry/termination brightness metric, face selection at ray-edge hits, and
+equal-distance teleport anchors are unspecified. Character I/O is explicit;
+generator feasibility remains unaudited pending routing clarification.
+
 HuePrism, BitCode, PicCode, Brainloller, Braincopter, and the game-save
 languages remain rejected from the same image-source screen.
 
