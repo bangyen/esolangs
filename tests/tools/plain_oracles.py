@@ -139,3 +139,105 @@ def separated_tree_text(
         # Pushed back to front: the stack is popped, so this is source order.
         work += [close, (level + 1, *halves[1]), between, (level + 1, *halves[0])]
     return "".join(pieces)
+
+
+def _ram0_linear(truth_table: str) -> str:
+    """Emit a linear straight-line RAM initializer and indexed lookup."""
+    from esolangs.tools.ram0 import _RAM0_INPUT
+
+    n = _validate_truth_table(truth_table)
+    tokens: list[str] = []
+    labels: dict[str, int] = {}
+    jumps: list[tuple[int, str]] = []
+
+    def emit(*commands: str) -> None:
+        tokens.extend(commands)
+
+    def mark(name: str) -> None:
+        labels[name] = len(tokens)
+
+    def jump(target: str) -> None:
+        jumps.append((len(tokens), target))
+        tokens.append("@")
+
+    def unary(value: int) -> None:
+        emit("Z", *("A" for _ in range(value)))
+
+    def store_constant(address: int, value: int) -> None:
+        unary(address)
+        emit("N")
+        unary(value)
+        emit("S")
+
+    # Cells 0/1 hold the initializer's address counter and the selected table
+    # pointer; cells 2..n+1 hold the parameterized inputs.
+    for i in range(n):
+        unary(i + 2)
+        emit("N", "Z", _RAM0_INPUT, "S")
+
+    table_base = n + 2
+    store_constant(0, table_base - 1)
+    store_constant(1, table_base)
+
+    # Advance cell 0, using the new address as a temporary copy of itself,
+    # then store one table bit there.  This is constant work per row.
+    for bit in truth_table:
+        emit("Z", "L", "A", "N", "S")
+        emit("Z", "N", "Z", "L", "A", "L", "S")
+        emit("Z", "L", "N", "Z")
+        if bit == "1":
+            emit("A")
+        emit("S")
+
+    # Add each set bit's weight to the selected table pointer.  Across all
+    # inputs the unary runs contain 2T-2 commands.
+    for i in range(n):
+        unary(i + 2)
+        emit("L", "C")
+        one = f"input_{i}_one"
+        after = f"input_{i}_after"
+        jump(one)
+        jump(after)
+        mark(one)
+        unary(1)
+        emit("N", "Z", "A", "L")
+        emit(*("A" for _ in range(1 << (n - 1 - i))))
+        emit("S")
+        mark(after)
+
+    emit("Z", "A", "L", "L")
+    for at, target in jumps:
+        target_at = labels[target]
+        tokens[at] = str(target_at + 1)
+    return " ".join(tokens)
+
+
+def _jaune_linear(truth_table: str) -> str:
+    """Emit a linear spatial table and travelling counter for Jaune."""
+    n = _validate_truth_table(truth_table)
+    out = ["v>" * n]
+
+    # Cell n is counter 0; each row then owns one output cell and the next
+    # counter cell.  Only one increment is needed for a true row.
+    for bit in truth_table:
+        out.append(">")
+        if bit == "1":
+            out.append("+")
+        out.append(">")
+    out.append("<" * (n + 2 * len(truth_table)))
+
+    # Revisit each input, carry it in the hold cell, and add its unary weight
+    # to counter 0.  The weights sum to T-1.
+    for i in range(n):
+        out.append("#")
+        out.append(">" * (n - i))
+        out.append("&" * (1 << (n - 1 - i)))
+        if i + 1 < n:
+            out.append("<" * (n - i - 1))
+
+    # Move a decremented copy of the counter two cells at a time.  When it
+    # reaches zero, the adjacent cell is the selected output.
+    # A signed literal now includes ``-1?``; keep the decrement separate
+    # from the label jump with an ignored character.
+    out.append("1:2!#>>%&-x1?1!2:>^.")
+    return "".join(out)
