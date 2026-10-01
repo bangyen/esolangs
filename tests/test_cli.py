@@ -74,6 +74,30 @@ class TestSubprocess:
 
 
 class TestInProcess:
+    @pytest.mark.medium
+    def test_evaluate_upscaled_piet_with_timeout(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        program = Path(__file__).parents[1] / "src/esolangs/examples/piet.png"
+        out = call_main(
+            ["evaluate", "Piet", str(program), "--inputs", "2", "--timeout", "5"],
+            capsys,
+        )
+        assert out == "0001\n"
+
+    def test_evaluate_unknown_language(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        program = tmp_path / "program.txt"
+        program.write_text("anything")
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["evaluate", "NoSuchLanguage", str(program), "--inputs", "2"],
+                capsys,
+            )
+        assert exc.value.code == 2
+        assert "unknown language" in capsys.readouterr().err
+
     def test_list(self, capsys: pytest.CaptureFixture[str]) -> None:
         out = call_main(["list"], capsys)
         assert "Sophie" in out

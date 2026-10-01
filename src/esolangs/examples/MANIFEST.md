@@ -104,6 +104,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
 - **malbolge** -- the answer is one character and is printed with no newline
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
+- **piet** -- 10 pixels per codel for readability
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
 - **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2
 - **taglate** -- Taglate takes a line per bit like most languages, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four lines. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
