@@ -87,9 +87,9 @@ class _JauneLabels:
     def render(self, build: Callable[[], str], *, share: bool) -> str:
         """Emit once, or probe shared targets before replaying with their labels."""
         self.probe = share
-        text = build()
         if not share:
-            return text
+            return build()
+        build()
         self.probe = False
         self.targets.update(self.jumped)
         self.next_label = 1

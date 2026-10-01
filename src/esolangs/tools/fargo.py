@@ -17,9 +17,10 @@ holding ``int(bits, 2)``, so input ``i`` (most-significant-first) is bit
 ``n - 1 - i`` of that number -- the only place the mapping appears.  The
 interpreter reads that line before execution, so every program consumes
 exactly one input line.  With no reads there is no read order: factoring
-order only renames the ``@`` literals, and :func:`fargo` tries four.
+order only renames the ``@`` literals, and :func:`fargo` compares named orders.
 """
 
+from collections.abc import Callable
 from functools import cache
 
 from esolangs.tools.helpers import _validate_truth_table, permute_truth_table
@@ -125,6 +126,29 @@ class _Emission:
         return "".join(self.pieces)
 
 
+def _arm_choice(
+    w0: int,
+    wd: int,
+    w1: int,
+    *,
+    one_constant: bool,
+    zero_implies_one: Callable[[], bool],
+    one_implies_zero: Callable[[], bool],
+) -> int:
+    """Choose a Davio or monotone OR arm, preserving polarity ties."""
+    if not w1:
+        return 1
+    if one_constant and w0:
+        return 2
+    options = [(w0 + wd, 0, 0), (w1 + wd, 1, 1)]
+    # Keep implication checks lazy: the constant shortcuts need neither.
+    if w0 and zero_implies_one():
+        options.append((w0 + w1, 0, 2))
+    if one_implies_zero():
+        options.append((w0 + w1, 1, 3))
+    return min(options)[2]
+
+
 def _arm_expression(
     table: str,
     coeffs: list[int],
@@ -168,17 +192,14 @@ def _arm_expression(
         f0, f1 = table & mask, table >> half
         one = low ^ high
         w0, wd, w1 = count(low), count(high), count(one)
-        if not w1:
-            choice = 1
-        elif one == 1 and w0:
-            choice = 2
-        else:
-            options = [(w0 + wd, 0, 0), (w1 + wd, 1, 1)]
-            if w0 and not (f0 & ~f1):
-                options.append((w0 + w1, 0, 2))
-            if not (f1 & ~f0):
-                options.append((w0 + w1, 1, 3))
-            choice = min(options)[2]
+        choice = _arm_choice(
+            w0,
+            wd,
+            w1,
+            one_constant=one == 1,
+            zero_implies_one=lambda: not (f0 & ~f1),
+            one_implies_zero=lambda: not (f1 & ~f0),
+        )
         d = f0 ^ f1
         kept, kept_anf, op, operand, operand_anf = (
             (f0, low, "^", d, high),
@@ -221,17 +242,18 @@ def _arm_expression(
         f0, f1 = table[:half], table[half:]
         one = [a ^ b for a, b in zip(low, high, strict=True)]
         w0, wd, w1 = weight(low), weight(high), weight(one)
-        if not w1:
-            choice = 1
-        elif w1 == 1 and one[0] & 1 and w0:
-            choice = 2
-        else:
-            options = [(w0 + wd, 0, 0), (w1 + wd, 1, 1)]
-            if w0 and all(not (a & ~b) for a, b in zip(f0, f1, strict=True)):
-                options.append((w0 + w1, 0, 2))
-            if all(not (b & ~a) for a, b in zip(f0, f1, strict=True)):
-                options.append((w0 + w1, 1, 3))
-            choice = min(options)[2]
+        choice = _arm_choice(
+            w0,
+            wd,
+            w1,
+            one_constant=w1 == 1 and bool(one[0] & 1),
+            zero_implies_one=lambda: all(
+                not (a & ~b) for a, b in zip(f0, f1, strict=True)
+            ),
+            one_implies_zero=lambda: all(
+                not (b & ~a) for a, b in zip(f0, f1, strict=True)
+            ),
+        )
         d = [a ^ b for a, b in zip(f0, f1, strict=True)]
         kept, kept_anf, op, operand, operand_anf = (
             (f0, low, "^", d, high),
