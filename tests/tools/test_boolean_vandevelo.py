@@ -98,6 +98,44 @@ def test_parity_is_a_single_hyperplane() -> None:
     assert len(lines) == 18
 
 
+def test_affine_tables_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
+    import importlib
+
+    from esolangs.tools.vandevelo import _affine_form
+
+    module = importlib.import_module("esolangs.tools.vandevelo")
+
+    def reject(*_args: object) -> None:
+        raise AssertionError("an affine table entered the cube peel")
+
+    monkeypatch.setattr(module, "_Peel", reject)
+    for n in range(1, 5):
+        for mask in range(1 << n):
+            for offset in (0, 1):
+                table = "".join(
+                    str(((row & mask).bit_count() % 2) ^ offset)
+                    for row in range(1 << n)
+                )
+                assert _affine_form(table, n) == (mask, offset)
+                program = vandevelo(table)
+                for bits in product((0, 1), repeat=n):
+                    io = ScriptedIO("\n".join(map(str, bits)))
+                    halted = run_until_halt_or_cycle(_Machine(program, io))
+                    row = int("".join(map(str, bits)), 2)
+                    assert str(int(not halted)) == table[row]
+                    assert io.position() == n
+
+
+def test_affine_detection_checks_non_basis_rows() -> None:
+    from esolangs.tools.vandevelo import _affine_form
+
+    for n in range(2, 13):
+        parity = "".join(str(row.bit_count() % 2) for row in range(1 << n))
+        assert _affine_form(parity, n) == ((1 << n) - 1, 0)
+        changed = parity[:-1] + str(1 - int(parity[-1]))
+        assert _affine_form(changed, n) is None
+
+
 def test_the_exact_autocorrelation_improves_on_the_scored_candidates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
